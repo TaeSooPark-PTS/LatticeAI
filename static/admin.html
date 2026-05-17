@@ -522,6 +522,7 @@
             .field.full { grid-column: auto; }
         }
     </style>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
 </head>
 
 <body>
@@ -575,6 +576,18 @@
                     <div class="label">VPC Status</div>
                     <div class="value" id="vpc-status">-</div>
                     <div class="meta" id="vpc-status-meta">Private network state</div>
+                </div>
+            </section>
+
+            <section class="panel" style="margin-bottom:0;">
+                <div class="panel-header">
+                    <div>
+                        <h3>메시지 활동 (최근 14일)</h3>
+                        <p>사용자 메시지와 AI 응답 수를 날짜별로 표시합니다.</p>
+                    </div>
+                </div>
+                <div class="panel-body" style="padding:16px 20px;">
+                    <canvas id="activity-chart" height="80"></canvas>
                 </div>
             </section>
 
@@ -671,6 +684,26 @@
             <section class="panel">
                 <div class="panel-header">
                     <div>
+                        <h3>초대 링크</h3>
+                        <p>새 사용자를 초대할 링크를 확인하고 복사합니다.</p>
+                    </div>
+                </div>
+                <div class="panel-body">
+                    <div style="display:flex;gap:8px;align-items:center;">
+                        <input id="invite-link-input" type="text" readonly
+                            style="flex:1;background:rgba(0,0,0,0.3);border:1px solid rgba(255,255,255,0.08);border-radius:8px;color:#f8fafc;padding:8px 12px;font-size:13px;outline:none;">
+                        <button onclick="copyInviteLink()" id="copy-invite-btn"
+                            style="background:#6366f1;color:#fff;border:none;border-radius:8px;padding:8px 16px;cursor:pointer;font-size:13px;white-space:nowrap;transition:opacity .15s;">
+                            복사
+                        </button>
+                    </div>
+                    <div id="invite-gate-info" style="font-size:12px;color:#94a3b8;margin-top:8px;"></div>
+                </div>
+            </section>
+
+            <section class="panel">
+                <div class="panel-header">
+                    <div>
                         <h3>사용자 관리</h3>
                         <p>역할 변경, 비활성화, 삭제를 처리합니다.</p>
                     </div>
@@ -708,6 +741,45 @@
                 'Content-Type': 'application/json',
                 'X-Admin-Email': currentUserEmail()
             };
+        }
+
+        let activityChartInstance = null;
+        function renderActivityChart(daily) {
+            const labels = daily.map(d => d.date);
+            const userData = daily.map(d => d.user);
+            const aiData = daily.map(d => d.assistant);
+            const ctx = document.getElementById('activity-chart').getContext('2d');
+            if (activityChartInstance) activityChartInstance.destroy();
+            activityChartInstance = new Chart(ctx, {
+                type: 'bar',
+                data: {
+                    labels,
+                    datasets: [
+                        { label: '사용자', data: userData, backgroundColor: 'rgba(99,102,241,0.7)', borderRadius: 4 },
+                        { label: 'AI', data: aiData, backgroundColor: 'rgba(168,85,247,0.5)', borderRadius: 4 }
+                    ]
+                },
+                options: {
+                    responsive: true,
+                    plugins: { legend: { labels: { color: '#94a3b8', font: { size: 12 } } } },
+                    scales: {
+                        x: { ticks: { color: '#64748b' }, grid: { color: 'rgba(255,255,255,0.04)' } },
+                        y: { ticks: { color: '#64748b', stepSize: 1 }, grid: { color: 'rgba(255,255,255,0.04)' }, beginAtZero: true }
+                    }
+                }
+            });
+        }
+
+        async function copyInviteLink() {
+            const url = document.getElementById('invite-link-input').value;
+            const btn = document.getElementById('copy-invite-btn');
+            try {
+                await navigator.clipboard.writeText(url);
+                btn.textContent = '복사됨 ✅';
+                setTimeout(() => btn.textContent = '복사', 2000);
+            } catch {
+                document.getElementById('invite-link-input').select();
+            }
         }
 
         function esc(value) {
@@ -926,12 +998,14 @@
             access.style.display = 'none';
 
             try {
-                const [healthRes, vpcRes, summaryRes, usersRes, sensitivityRes] = await Promise.all([
+                const [healthRes, vpcRes, summaryRes, usersRes, sensitivityRes, inviteRes, statsRes] = await Promise.all([
                     apiFetch('/health'),
                     apiFetch('/vpc/status'),
                     apiFetch('/admin/summary', { headers: adminHeaders() }),
                     apiFetch('/admin/users', { headers: adminHeaders() }),
-                    apiFetch('/admin/sensitivity', { headers: adminHeaders() })
+                    apiFetch('/admin/sensitivity', { headers: adminHeaders() }),
+                    apiFetch('/admin/invite-link', { headers: adminHeaders() }),
+                    apiFetch('/admin/stats', { headers: adminHeaders() })
                 ]);
 
                 const health = healthRes.ok ? await healthRes.json() : null;
@@ -939,11 +1013,20 @@
                 const summary = summaryRes.ok ? await summaryRes.json() : null;
                 const users = usersRes.ok ? await usersRes.json() : null;
                 const sensitivity = sensitivityRes.ok ? await sensitivityRes.json() : null;
+                const invite = inviteRes.ok ? await inviteRes.json() : null;
+                const stats = statsRes.ok ? await statsRes.json() : null;
 
                 renderSummary(health, summary, vpc);
                 fillVpcForm(vpc);
                 renderUsers(users);
                 renderSensitivity(sensitivity);
+                if (invite) {
+                    document.getElementById('invite-link-input').value = invite.invite_url;
+                    document.getElementById('invite-gate-info').textContent = invite.gate_enabled
+                        ? `초대 코드: ${invite.invite_code} — 초대 게이트 활성화됨`
+                        : '초대 게이트 비활성화 상태 — 링크 없이도 접근 가능합니다.';
+                }
+                if (stats) renderActivityChart(stats.daily);
 
                 const failedSections = [];
                 if (!summaryRes.ok) failedSections.push('요약');

@@ -407,7 +407,7 @@
             background: rgba(255,255,255,0.04);
         }
 
-        .pw-modal-overlay {
+        .acct-modal-overlay {
             display: none;
             position: fixed;
             inset: 0;
@@ -417,20 +417,31 @@
             align-items: center;
             justify-content: center;
         }
-        .pw-modal-overlay.open { display: flex; }
-        .pw-modal {
+        .acct-modal-overlay.open { display: flex; }
+        .acct-modal {
             background: var(--surface, #1e293b);
             border: 1px solid rgba(255,255,255,0.08);
             border-radius: 16px;
-            padding: 28px;
             width: 100%;
-            max-width: 360px;
+            max-width: 380px;
             display: flex;
             flex-direction: column;
-            gap: 16px;
             box-shadow: 0 20px 60px rgba(0,0,0,0.5);
+            overflow: hidden;
         }
-        .pw-modal h3 { font-size: 15px; font-weight: 600; margin: 0; }
+        .acct-tabs {
+            display: flex;
+            border-bottom: 1px solid rgba(255,255,255,0.07);
+        }
+        .acct-tab {
+            flex: 1; padding: 14px; font-size: 13px; font-weight: 500;
+            background: none; border: none; color: var(--muted); cursor: pointer;
+            transition: all .15s; border-bottom: 2px solid transparent;
+        }
+        .acct-tab.active { color: var(--text, #f8fafc); border-bottom-color: var(--accent, #6366f1); }
+        .acct-body { padding: 24px; display: flex; flex-direction: column; gap: 14px; }
+        .acct-tab-panel { display: none; flex-direction: column; gap: 14px; }
+        .acct-tab-panel.active { display: flex; }
         .pw-field { display: flex; flex-direction: column; gap: 5px; }
         .pw-field label { font-size: 11px; color: var(--muted); }
         .pw-field input {
@@ -2767,25 +2778,27 @@
         <div class="auth-card">
             <div id="login-form">
                 <div class="auth-logo"><i class="ti ti-brain"></i></div>
-                <h2 class="auth-title">Lattice AI</h2>
-                <p class="auth-subtitle">Local AI Workspace — Apple Silicon</p>
-                <input class="auth-input" type="email" id="login-email" placeholder="이메일 주소">
-                <input class="auth-input" type="password" id="login-pw" placeholder="비밀번호">
-                <button class="auth-submit" onclick="handleLogin()">로그인</button>
-                <p class="auth-switch">계정이 없으신가요?
-                    <a href="#" onclick="toggleAuth(true)">회원가입</a></p>
+                <h2 class="auth-title" data-i18n="login_title">Lattice AI</h2>
+                <p class="auth-subtitle" data-i18n="login_sub">Local AI Workspace — Apple Silicon</p>
+                <input class="auth-input" type="email" id="login-email" placeholder="이메일 주소" data-i18n-ph="ph_email">
+                <input class="auth-input" type="password" id="login-pw" placeholder="비밀번호" data-i18n-ph="ph_password">
+                <button class="auth-submit" onclick="handleLogin()" data-i18n="btn_login">로그인</button>
+                <p class="auth-switch"><span data-i18n="no_account">계정이 없으신가요?</span>
+                    <a href="#" onclick="toggleAuth(true)" data-i18n="go_register">회원가입</a></p>
             </div>
             <div id="register-form" style="display: none;">
                 <div class="auth-logo"><i class="ti ti-user-plus"></i></div>
-                <h2 class="auth-title">계정 만들기</h2>
-                <p class="auth-subtitle">Lattice AI 워크스페이스에 참여하세요</p>
-                <input class="auth-input" type="email" id="reg-email" placeholder="이메일 주소">
-                <input class="auth-input" type="password" id="reg-pw" placeholder="비밀번호">
-                <input class="auth-input" type="text" id="reg-name" placeholder="이름">
-                <input class="auth-input" type="text" id="reg-nickname" placeholder="별명">
-                <button class="auth-submit" onclick="handleRegister()">가입하기</button>
-                <p class="auth-switch">이미 계정이 있나요?
-                    <a href="#" onclick="toggleAuth(false)">로그인</a></p>
+                <h2 class="auth-title" data-i18n="register_title">계정 만들기</h2>
+                <p class="auth-subtitle" data-i18n="register_sub">Lattice AI 워크스페이스에 참여하세요</p>
+                <input class="auth-input" type="email" id="reg-email" placeholder="이메일 주소" data-i18n-ph="ph_email">
+                <input class="auth-input" type="password" id="reg-pw" placeholder="비밀번호 (4자 이상)" data-i18n-ph="ph_new_pw">
+                <input class="auth-input" type="password" id="reg-pw2" placeholder="비밀번호 확인" data-i18n-ph="ph_pw_confirm">
+                <input class="auth-input" type="text" id="reg-name" placeholder="이름" data-i18n-ph="ph_fullname">
+                <input class="auth-input" type="text" id="reg-nickname" placeholder="닉네임" data-i18n-ph="ph_nick">
+                <div id="reg-msg" style="font-size:12px;min-height:16px;margin-bottom:4px;"></div>
+                <button class="auth-submit" id="reg-submit-btn" onclick="handleRegister()" data-i18n="btn_register">가입하기</button>
+                <p class="auth-switch"><span data-i18n="have_account">이미 계정이 있나요?</span>
+                    <a href="#" onclick="toggleAuth(false)" data-i18n="go_login">로그인</a></p>
             </div>
         </div>
     </div>
@@ -2832,30 +2845,53 @@
                 </div>
                 <div class="header-pills">
                     <div class="status-pill"><i class="ti ti-device-desktop"></i> Local</div>
-                    <button onclick="openPwModal()" class="logout-btn" title="비밀번호 변경"><i class="ti ti-user"></i></button>
-                    <button onclick="logout()" class="logout-btn">로그아웃</button>
+                    <button onclick="toggleLang()" class="logout-btn" id="lang-btn" title="언어 전환">KO</button>
+                    <button onclick="openAcctModal()" class="logout-btn" title="계정 설정"><i class="ti ti-user"></i></button>
+                    <button onclick="logout()" class="logout-btn" data-i18n="logout">로그아웃</button>
                 </div>
             </header>
 
-            <div class="pw-modal-overlay" id="pw-modal-overlay">
-                <div class="pw-modal">
-                    <h3>🔐 비밀번호 변경</h3>
-                    <div class="pw-field">
-                        <label>현재 비밀번호</label>
-                        <input type="password" id="pw-cur" placeholder="현재 비밀번호">
+            <div class="acct-modal-overlay" id="acct-modal-overlay">
+                <div class="acct-modal">
+                    <div class="acct-tabs">
+                        <button class="acct-tab active" id="tab-profile" onclick="switchAcctTab('profile')" data-i18n="tab_profile">프로필</button>
+                        <button class="acct-tab" id="tab-password" onclick="switchAcctTab('password')" data-i18n="tab_password">비밀번호</button>
                     </div>
-                    <div class="pw-field">
-                        <label>새 비밀번호</label>
-                        <input type="password" id="pw-new" placeholder="새 비밀번호 (4자 이상)">
-                    </div>
-                    <div class="pw-field">
-                        <label>새 비밀번호 확인</label>
-                        <input type="password" id="pw-new2" placeholder="새 비밀번호 재입력">
-                    </div>
-                    <div class="pw-msg" id="pw-msg"></div>
-                    <div class="pw-actions">
-                        <button class="pw-cancel" onclick="closePwModal()">취소</button>
-                        <button class="pw-submit" id="pw-submit-btn" onclick="submitPwChange()">변경</button>
+                    <div class="acct-body">
+                        <div class="acct-tab-panel active" id="panel-profile">
+                            <div class="pw-field">
+                                <label data-i18n="label_name">이름</label>
+                                <input type="text" id="profile-name" placeholder="이름" data-i18n-ph="ph_name">
+                            </div>
+                            <div class="pw-field">
+                                <label data-i18n="label_nickname">닉네임</label>
+                                <input type="text" id="profile-nickname" placeholder="닉네임" data-i18n-ph="ph_nickname">
+                            </div>
+                            <div class="pw-msg" id="profile-msg"></div>
+                            <div class="pw-actions">
+                                <button class="pw-cancel" onclick="closeAcctModal()" data-i18n="btn_cancel">취소</button>
+                                <button class="pw-submit" id="profile-submit-btn" onclick="submitProfileChange()" data-i18n="btn_save">저장</button>
+                            </div>
+                        </div>
+                        <div class="acct-tab-panel" id="panel-password">
+                            <div class="pw-field">
+                                <label data-i18n="label_cur_pw">현재 비밀번호</label>
+                                <input type="password" id="pw-cur" placeholder="현재 비밀번호" data-i18n-ph="ph_cur_pw">
+                            </div>
+                            <div class="pw-field">
+                                <label data-i18n="label_new_pw">새 비밀번호</label>
+                                <input type="password" id="pw-new" placeholder="새 비밀번호 (4자 이상)" data-i18n-ph="ph_new_pw">
+                            </div>
+                            <div class="pw-field">
+                                <label data-i18n="label_new_pw2">새 비밀번호 확인</label>
+                                <input type="password" id="pw-new2" placeholder="새 비밀번호 재입력" data-i18n-ph="ph_new_pw2">
+                            </div>
+                            <div class="pw-msg" id="pw-msg"></div>
+                            <div class="pw-actions">
+                                <button class="pw-cancel" onclick="closeAcctModal()" data-i18n="btn_cancel">취소</button>
+                                <button class="pw-submit" id="pw-submit-btn" onclick="submitPwChange()" data-i18n="btn_change">변경</button>
+                            </div>
+                        </div>
                     </div>
                 </div>
             </div>
@@ -3285,17 +3321,36 @@
         }
 
         async function handleRegister() {
-            const email = document.getElementById('reg-email').value;
+            const email = document.getElementById('reg-email').value.trim();
             const password = document.getElementById('reg-pw').value;
-            const name = document.getElementById('reg-name').value;
-            const nickname = document.getElementById('reg-nickname').value;
-            const res = await apiFetch('/register', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ email, password, name, nickname })
-            });
-            if (res.ok) { alert("가입 완료! 로그인 해주세요."); toggleAuth(false); }
-            else { alert("가입 실패: " + (await res.json()).detail); }
+            const password2 = document.getElementById('reg-pw2').value;
+            const name = document.getElementById('reg-name').value.trim();
+            const nickname = document.getElementById('reg-nickname').value.trim();
+            const msg = document.getElementById('reg-msg');
+            const btn = document.getElementById('reg-submit-btn');
+            const setMsg = (text, isError) => {
+                msg.textContent = text;
+                msg.style.color = isError ? '#f87171' : '#4ade80';
+            };
+            if (!email || !password || !password2 || !name || !nickname) return setMsg('모든 항목을 입력해주세요.', true);
+            if (password.length < 4) return setMsg('비밀번호는 4자 이상이어야 합니다.', true);
+            if (password !== password2) return setMsg('비밀번호가 일치하지 않습니다.', true);
+            btn.disabled = true; btn.textContent = '가입 중...';
+            try {
+                const res = await apiFetch('/register', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ email, password, name, nickname })
+                });
+                if (res.ok) {
+                    setMsg('✅ 가입 완료! 로그인 해주세요.', false);
+                    setTimeout(() => toggleAuth(false), 1200);
+                } else {
+                    const data = await res.json();
+                    setMsg(data.detail || '가입 실패', true);
+                }
+            } catch { setMsg('서버 연결 실패', true); }
+            finally { btn.disabled = false; btn.textContent = '가입하기'; }
         }
 
         async function handleLogin() {
@@ -3336,22 +3391,126 @@
             location.reload();
         }
 
-        function openPwModal() {
-            document.getElementById('pw-cur').value = '';
-            document.getElementById('pw-new').value = '';
-            document.getElementById('pw-new2').value = '';
-            const msg = document.getElementById('pw-msg');
-            msg.textContent = '';
-            msg.className = 'pw-msg';
-            document.getElementById('pw-modal-overlay').classList.add('open');
+        const I18N = {
+            ko: {
+                logout: '로그아웃', send: '전송', tab_profile: '프로필', tab_password: '비밀번호',
+                label_name: '이름', label_nickname: '닉네임', label_cur_pw: '현재 비밀번호',
+                label_new_pw: '새 비밀번호', label_new_pw2: '새 비밀번호 확인',
+                btn_save: '저장', btn_change: '변경', btn_cancel: '취소',
+                ph_name: '이름', ph_nickname: '닉네임', ph_cur_pw: '현재 비밀번호',
+                ph_new_pw: '새 비밀번호 (4자 이상)', ph_new_pw2: '새 비밀번호 재입력',
+                login_title: 'Lattice AI', login_sub: 'Local AI Workspace — Apple Silicon',
+                ph_email: '이메일 주소', ph_password: '비밀번호', btn_login: '로그인',
+                go_register: '회원가입', go_login: '로그인', register_title: '계정 만들기',
+                register_sub: 'Lattice AI 워크스페이스에 참여하세요',
+                ph_pw_confirm: '비밀번호 확인', ph_fullname: '이름', ph_nick: '닉네임',
+                btn_register: '가입하기', have_account: '이미 계정이 있나요?', no_account: '계정이 없으신가요?',
+            },
+            en: {
+                logout: 'Logout', send: 'Send', tab_profile: 'Profile', tab_password: 'Password',
+                label_name: 'Name', label_nickname: 'Nickname', label_cur_pw: 'Current Password',
+                label_new_pw: 'New Password', label_new_pw2: 'Confirm New Password',
+                btn_save: 'Save', btn_change: 'Change', btn_cancel: 'Cancel',
+                ph_name: 'Name', ph_nickname: 'Nickname', ph_cur_pw: 'Current password',
+                ph_new_pw: 'New password (min. 4 chars)', ph_new_pw2: 'Confirm new password',
+                login_title: 'Lattice AI', login_sub: 'Local AI Workspace — Apple Silicon',
+                ph_email: 'Email address', ph_password: 'Password', btn_login: 'Log in',
+                go_register: 'Sign up', go_login: 'Log in', register_title: 'Create Account',
+                register_sub: 'Join the Lattice AI workspace',
+                ph_pw_confirm: 'Confirm password', ph_fullname: 'Full name', ph_nick: 'Nickname',
+                btn_register: 'Sign up', have_account: 'Already have an account?', no_account: "Don't have an account?",
+            }
+        };
+        let currentLang = localStorage.getItem('ltcai_lang') || 'ko';
+
+        function t(key) { return (I18N[currentLang] || I18N.ko)[key] || key; }
+
+        function applyI18n() {
+            document.querySelectorAll('[data-i18n]').forEach(el => {
+                const key = el.dataset.i18n;
+                if (el.placeholder !== undefined && el.tagName === 'INPUT') el.placeholder = t(key);
+                else el.textContent = t(key);
+            });
+            document.querySelectorAll('[data-i18n-ph]').forEach(el => {
+                el.placeholder = t(el.dataset.i18nPh);
+            });
+            document.getElementById('lang-btn').textContent = currentLang === 'ko' ? 'KO' : 'EN';
         }
-        function closePwModal() {
-            document.getElementById('pw-modal-overlay').classList.remove('open');
+
+        function toggleLang() {
+            currentLang = currentLang === 'ko' ? 'en' : 'ko';
+            localStorage.setItem('ltcai_lang', currentLang);
+            applyI18n();
+        }
+
+        function switchAcctTab(tab) {
+            ['profile', 'password'].forEach(t => {
+                document.getElementById(`tab-${t}`).classList.toggle('active', t === tab);
+                document.getElementById(`panel-${t}`).classList.toggle('active', t === tab);
+            });
+        }
+        async function openAcctModal() {
+            ['profile-msg', 'pw-msg'].forEach(id => {
+                const el = document.getElementById(id);
+                el.textContent = ''; el.className = 'pw-msg';
+            });
+            ['pw-cur', 'pw-new', 'pw-new2'].forEach(id => document.getElementById(id).value = '');
+            switchAcctTab('profile');
+            try {
+                const res = await fetch('/account/profile');
+                if (res.ok) {
+                    const data = await res.json();
+                    document.getElementById('profile-name').value = data.name || '';
+                    document.getElementById('profile-nickname').value = data.nickname || '';
+                }
+            } catch {}
+            document.getElementById('acct-modal-overlay').classList.add('open');
+        }
+        function closeAcctModal() {
+            document.getElementById('acct-modal-overlay').classList.remove('open');
         }
         document.addEventListener('click', (e) => {
-            const overlay = document.getElementById('pw-modal-overlay');
-            if (e.target === overlay) closePwModal();
+            const overlay = document.getElementById('acct-modal-overlay');
+            if (e.target === overlay) closeAcctModal();
         });
+        async function submitProfileChange() {
+            const name = document.getElementById('profile-name').value.trim();
+            const nickname = document.getElementById('profile-nickname').value.trim();
+            const msg = document.getElementById('profile-msg');
+            const btn = document.getElementById('profile-submit-btn');
+            if (!name || !nickname) {
+                msg.textContent = '이름과 닉네임을 입력해주세요.';
+                msg.className = 'pw-msg error';
+                return;
+            }
+            btn.disabled = true; btn.textContent = '저장 중...';
+            try {
+                const res = await fetch('/account/profile', {
+                    method: 'PATCH',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ name, nickname })
+                });
+                const data = await res.json();
+                if (res.ok) {
+                    currentUserNickname = data.nickname;
+                    localStorage.setItem('ltcai_user_nickname', data.nickname);
+                    document.getElementById('user-nickname-display').innerText = data.nickname;
+                    const av = document.getElementById('user-avatar-initial');
+                    if (av) av.textContent = (data.nickname || 'G')[0].toUpperCase();
+                    msg.textContent = '✅ 프로필이 변경되었습니다.';
+                    msg.className = 'pw-msg success';
+                    setTimeout(closeAcctModal, 1500);
+                } else {
+                    msg.textContent = data.detail || '저장 실패';
+                    msg.className = 'pw-msg error';
+                }
+            } catch {
+                msg.textContent = '서버 연결 실패';
+                msg.className = 'pw-msg error';
+            } finally {
+                btn.disabled = false; btn.textContent = '저장';
+            }
+        }
         async function submitPwChange() {
             const cur = document.getElementById('pw-cur').value;
             const nw = document.getElementById('pw-new').value;
@@ -3373,8 +3532,7 @@
                 msg.className = 'pw-msg error';
                 return;
             }
-            btn.disabled = true;
-            btn.textContent = '변경 중...';
+            btn.disabled = true; btn.textContent = '변경 중...';
             try {
                 const res = await fetch('/account/change-password', {
                     method: 'POST',
@@ -3385,7 +3543,7 @@
                 if (res.ok) {
                     msg.textContent = '✅ 비밀번호가 변경되었습니다.';
                     msg.className = 'pw-msg success';
-                    setTimeout(closePwModal, 1500);
+                    setTimeout(closeAcctModal, 1500);
                 } else {
                     msg.textContent = data.detail || '변경 실패';
                     msg.className = 'pw-msg error';
@@ -3394,8 +3552,7 @@
                 msg.textContent = '서버 연결 실패';
                 msg.className = 'pw-msg error';
             } finally {
-                btn.disabled = false;
-                btn.textContent = '변경';
+                btn.disabled = false; btn.textContent = '변경';
             }
         }
 
@@ -5269,6 +5426,7 @@
         window.addEventListener('focus', tryClipboardReadFallback);
 
         document.getElementById('new-chat-btn').onclick = startNewChat;
+        applyI18n();
         loadModelStatus();
         loadVpcStatus();
         restoreCurrentConversation();

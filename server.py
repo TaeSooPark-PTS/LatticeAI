@@ -1262,6 +1262,41 @@ async def change_password(req: ChangePasswordRequest, request: Request):
     save_users(users)
     return {"status": "ok", "message": "비밀번호가 변경되었습니다."}
 
+class UpdateProfileRequest(BaseModel):
+    name: Optional[str] = None
+    nickname: Optional[str] = None
+
+@app.patch("/account/profile")
+async def update_profile(req: UpdateProfileRequest, request: Request):
+    email = require_user(request)
+    if not email:
+        raise HTTPException(status_code=401, detail="인증이 필요합니다.")
+    if req.name is not None and not req.name.strip():
+        raise HTTPException(status_code=400, detail="이름을 입력해주세요.")
+    if req.nickname is not None and not req.nickname.strip():
+        raise HTTPException(status_code=400, detail="닉네임을 입력해주세요.")
+    users = load_users()
+    user = users.get(email)
+    if not user:
+        raise HTTPException(status_code=404, detail="사용자를 찾을 수 없습니다.")
+    if req.name is not None:
+        users[email]["name"] = req.name.strip()
+    if req.nickname is not None:
+        users[email]["nickname"] = req.nickname.strip()
+    save_users(users)
+    return {"status": "ok", "name": users[email]["name"], "nickname": users[email]["nickname"]}
+
+@app.get("/account/profile")
+async def get_profile(request: Request):
+    email = require_user(request)
+    if not email:
+        raise HTTPException(status_code=401, detail="인증이 필요합니다.")
+    users = load_users()
+    user = users.get(email)
+    if not user:
+        raise HTTPException(status_code=404, detail="사용자를 찾을 수 없습니다.")
+    return {"email": email, "name": user.get("name", ""), "nickname": user.get("nickname", "")}
+
 @app.get("/admin/summary")
 async def admin_summary(request: Request):
     _, users = require_admin(request)
@@ -1277,6 +1312,23 @@ async def admin_summary(request: Request):
         "user_messages": len(user_messages),
         "assistant_messages": len(assistant_messages),
         "last_message_at": last_timestamp,
+    }
+
+@app.get("/admin/stats")
+async def admin_stats(request: Request):
+    require_admin(request)
+    history = get_history()
+    from collections import defaultdict
+    daily: dict = defaultdict(lambda: {"user": 0, "assistant": 0})
+    for item in history:
+        ts = item.get("timestamp", "")
+        day = ts[:10] if ts else "unknown"
+        role = item.get("role", "")
+        if role in ("user", "assistant"):
+            daily[day][role] += 1
+    sorted_days = sorted(daily.keys())[-14:]
+    return {
+        "daily": [{"date": d, "user": daily[d]["user"], "assistant": daily[d]["assistant"]} for d in sorted_days]
     }
 
 @app.get("/admin/users")
@@ -1332,6 +1384,17 @@ async def admin_delete_user(email: str, request: Request):
     del users[email]
     save_users(users)
     return {"status": "ok", "deleted": deleted}
+
+@app.get("/admin/invite-link")
+async def admin_invite_link(request: Request):
+    require_admin(request)
+    host = request.headers.get("host", f"localhost:{PORT}")
+    scheme = "https" if request.headers.get("x-forwarded-proto") == "https" else "http"
+    if INVITE_GATE_ENABLED:
+        url = f"{scheme}://{host}/?code={INVITE_CODE}"
+    else:
+        url = f"{scheme}://{host}/"
+    return {"invite_url": url, "invite_code": INVITE_CODE, "gate_enabled": INVITE_GATE_ENABLED}
 
 # ── Invitation Logic ────────────────────────────────────────────────────────
 INVITE_CODE = env_value("LATTICEAI_INVITE_CODE", "gemma-lattice-ai")
