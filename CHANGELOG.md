@@ -1,6 +1,6 @@
 # Changelog
 
-## [0.1.2] - 2026-05-18
+## [0.1.3] - 2026-05-18
 
 ### Added
 - 프로필 수정 API (`PATCH /account/profile`) 및 UI — 이름·닉네임 변경
@@ -8,6 +8,12 @@
 - 어드민 패널 초대 링크 섹션 — 원클릭 복사
 - 어드민 대시보드 메시지 활동 차트 (Chart.js, 최근 14일)
 - 웹 UI 한국어 / 영어 전환 (`🌐 Languages` 버튼, localStorage 저장)
+
+### Fixed
+- 로그아웃 시 `/logout` API 호출하여 서버 세션 쿠키 정상 만료
+- 인증(`account.html`)과 채팅(`chat.html`) UI 분리 — 레거시 `index.html` 제거
+- `chat.html` 내 죽은 인증 코드 제거
+- 채팅 헤더에서 언어 선택 드롭다운이 ops-strip을 가리는 문제 수정
 
 ---
 

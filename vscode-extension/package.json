@@ -2,7 +2,7 @@
   "name": "ltcai",
   "displayName": "Lattice AI",
   "description": "Lattice AI assistant for local coding workflows.",
-  "version": "0.1.2",
+  "version": "0.1.3",
   "publisher": "parktaesoo",
   "license": "MIT",
   "engines": {
