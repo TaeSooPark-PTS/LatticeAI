@@ -12,6 +12,12 @@
 - **현재 파일 첨부** — `Lattice AI: Attach Current File to Chat` 명령 추가 (VS Code)
 - `authlib` 의존성 추가 (SSO OIDC 지원)
 
+### Deployed
+- PyPI ✅
+- npm ✅
+- VS Code Marketplace ✅
+- Open VSX ✅
+
 ---
 
 ## [0.1.3] - 2026-05-18
