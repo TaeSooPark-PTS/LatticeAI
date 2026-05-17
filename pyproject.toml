@@ -48,4 +48,4 @@ py-modules = [
 include-package-data = true
 
 [tool.setuptools.data-files]
-"static" = ["static/index.html", "static/indexd.html", "static/admin.html"]
+"static" = ["static/account.html", "static/chat.html", "static/admin.html"]

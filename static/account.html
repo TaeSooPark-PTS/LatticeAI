@@ -1,0 +1,449 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Lattice AI</title>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@latest/tabler-icons.min.css">
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap');
+
+        :root {
+            --bg: #080c0a;
+            --text: #f3f1e8;
+            --faint: #7c8078;
+            --accent: #22d3a0;
+            --shadow: 0 24px 70px rgba(0,0,0,0.5);
+        }
+
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+        html, body { height: 100%; }
+        body {
+            font-family: Inter, -apple-system, BlinkMacSystemFont, sans-serif;
+            color: var(--text);
+            background:
+                linear-gradient(180deg, rgba(255,255,255,0.012), transparent 28%),
+                linear-gradient(135deg, #080c0a 0%, #060a08 52%, #0a0d09 100%);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            min-height: 100vh;
+            padding: 24px;
+            overflow: hidden;
+            position: relative;
+        }
+
+        body::before {
+            content: '';
+            position: fixed;
+            inset: 0;
+            background:
+                linear-gradient(rgba(255,255,255,0.022) 1px, transparent 1px),
+                linear-gradient(90deg, rgba(255,255,255,0.016) 1px, transparent 1px);
+            background-size: 44px 44px;
+            mask-image: linear-gradient(180deg, rgba(0,0,0,0.35), rgba(0,0,0,0.06));
+            pointer-events: none;
+        }
+
+        body::after {
+            content: '';
+            position: fixed;
+            inset: 0;
+            background:
+                radial-gradient(ellipse 70% 60% at 18% 18%, rgba(34,211,160,0.16) 0%, transparent 55%),
+                radial-gradient(ellipse 55% 50% at 82% 82%, rgba(129,140,248,0.13) 0%, transparent 55%);
+            pointer-events: none;
+        }
+
+        .orb {
+            position: fixed;
+            border-radius: 50%;
+            filter: blur(70px);
+            pointer-events: none;
+        }
+        .orb-1 { width: 440px; height: 440px; top: -170px; left: -120px; background: rgba(34,211,160,0.13); }
+        .orb-2 { width: 380px; height: 380px; bottom: -130px; right: -90px; background: rgba(129,140,248,0.11); }
+
+        .card {
+            width: min(400px, 100%);
+            background: rgba(10,14,12,0.88);
+            border: 1px solid rgba(255,255,255,0.08);
+            border-radius: 22px;
+            padding: 38px 34px;
+            box-shadow: var(--shadow), 0 0 0 1px rgba(34,211,160,0.05);
+            position: relative;
+            z-index: 1;
+            backdrop-filter: blur(28px);
+        }
+
+        .card::before {
+            content: '';
+            position: absolute;
+            top: 0; left: 50%;
+            transform: translateX(-50%);
+            width: 55%; height: 1px;
+            background: linear-gradient(90deg, transparent, rgba(34,211,160,0.55), transparent);
+        }
+
+        .logo {
+            width: 54px; height: 54px;
+            background: linear-gradient(135deg, #22d3a0, #818cf8);
+            border-radius: 15px;
+            display: flex; align-items: center; justify-content: center;
+            font-size: 26px; color: #040706;
+            margin: 0 auto 18px;
+            box-shadow: 0 0 32px rgba(34,211,160,0.32), 0 8px 24px rgba(0,0,0,0.4);
+        }
+
+        .title {
+            text-align: center;
+            font-size: 23px;
+            font-weight: 800;
+            margin-bottom: 6px;
+            background: linear-gradient(135deg, #fff 40%, rgba(34,211,160,0.9));
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+
+        .subtitle {
+            text-align: center;
+            color: var(--faint);
+            font-size: 12.5px;
+            margin-bottom: 26px;
+            line-height: 1.5;
+        }
+
+        .input {
+            width: 100%;
+            padding: 12px 14px;
+            margin-bottom: 10px;
+            background: rgba(255,255,255,0.04);
+            border: 1px solid rgba(255,255,255,0.08);
+            color: var(--text);
+            border-radius: 10px;
+            outline: none;
+            font-size: 14px;
+            font-family: inherit;
+            transition: border-color .15s, box-shadow .15s;
+        }
+        .input:focus {
+            border-color: rgba(34,211,160,0.5);
+            box-shadow: 0 0 0 3px rgba(34,211,160,0.08);
+        }
+        .input::placeholder { color: var(--faint); }
+
+        .submit {
+            width: 100%;
+            padding: 13px;
+            background: linear-gradient(135deg, #22d3a0, #1ab88c);
+            color: #030d09;
+            border: none;
+            border-radius: 10px;
+            cursor: pointer;
+            font-weight: 800;
+            font-size: 14px;
+            font-family: inherit;
+            box-shadow: 0 0 20px rgba(34,211,160,0.28), 0 4px 12px rgba(0,0,0,0.3);
+            transition: all .18s;
+            margin-top: 4px;
+        }
+        .submit:hover {
+            background: linear-gradient(135deg, #2de8b0, #22d3a0);
+            box-shadow: 0 0 30px rgba(34,211,160,0.38), 0 4px 14px rgba(0,0,0,0.3);
+            transform: translateY(-1px);
+        }
+        .submit:disabled { opacity: 0.6; cursor: not-allowed; transform: none; }
+
+        .switch {
+            margin-top: 18px;
+            text-align: center;
+            font-size: 12.5px;
+            color: var(--faint);
+        }
+        .switch a { color: var(--accent); text-decoration: none; font-weight: 700; }
+        .switch a:hover { text-decoration: underline; }
+
+        .msg {
+            font-size: 12px;
+            min-height: 18px;
+            margin-bottom: 6px;
+            text-align: center;
+            color: #ffbdb8;
+        }
+        .msg.ok { color: #9be7cd; }
+
+        /* Lang picker */
+        .lang-wrap {
+            position: fixed;
+            top: 20px;
+            right: 24px;
+            z-index: 10;
+        }
+        .lang-btn {
+            background: rgba(255,255,255,0.05);
+            border: 1px solid rgba(255,255,255,0.1);
+            color: var(--text);
+            border-radius: 8px;
+            padding: 7px 12px;
+            font-size: 13px;
+            font-family: inherit;
+            cursor: pointer;
+            transition: background .15s;
+        }
+        .lang-btn:hover { background: rgba(255,255,255,0.1); }
+        .lang-menu {
+            display: none;
+            position: absolute;
+            top: calc(100% + 6px);
+            right: 0;
+            background: #141a16;
+            border: 1px solid rgba(255,255,255,0.1);
+            border-radius: 10px;
+            padding: 4px;
+            min-width: 130px;
+            box-shadow: 0 8px 24px rgba(0,0,0,0.4);
+        }
+        .lang-menu.open { display: block; }
+        .lang-opt {
+            padding: 7px 10px;
+            border-radius: 7px;
+            cursor: pointer;
+            font-size: 13px;
+            color: var(--faint);
+        }
+        .lang-opt:hover { background: rgba(255,255,255,0.06); color: var(--text); }
+        .lang-opt.active { color: var(--accent); font-weight: 700; }
+    </style>
+</head>
+<body>
+    <div class="orb orb-1"></div>
+    <div class="orb orb-2"></div>
+
+    <div class="lang-wrap">
+        <button class="lang-btn" id="lang-btn" onclick="toggleLang()">🌐 <span id="lang-label">한국어</span></button>
+        <div class="lang-menu" id="lang-menu">
+            <div class="lang-opt" id="opt-ko" onclick="setLang('ko')">🇰🇷 한국어</div>
+            <div class="lang-opt" id="opt-en" onclick="setLang('en')">🇺🇸 English</div>
+        </div>
+    </div>
+
+    <div class="card">
+        <!-- Login form -->
+        <div id="login-section">
+            <div class="logo"><i class="ti ti-brain"></i></div>
+            <h2 class="title" id="login-title">Lattice AI</h2>
+            <p class="subtitle" id="login-sub">Local AI Workspace — Apple Silicon</p>
+            <input class="input" type="email" id="login-email" placeholder="이메일 주소">
+            <input class="input" type="password" id="login-pw" placeholder="비밀번호" onkeydown="if(event.key==='Enter')doLogin()">
+            <div class="msg" id="login-msg"></div>
+            <button class="submit" id="login-btn" onclick="doLogin()" data-ko="로그인" data-en="Log in">로그인</button>
+            <p class="switch" id="login-switch">
+                <span id="no-account-text">계정이 없으신가요?</span>
+                <a href="#" onclick="showSection('register');return false;" id="go-register-link">회원가입</a>
+            </p>
+        </div>
+
+        <!-- Register form -->
+        <div id="register-section" style="display:none;">
+            <div class="logo"><i class="ti ti-user-plus"></i></div>
+            <h2 class="title" id="reg-title">계정 만들기</h2>
+            <p class="subtitle" id="reg-sub">Lattice AI 워크스페이스에 참여하세요</p>
+            <input class="input" type="email" id="reg-email" placeholder="이메일 주소">
+            <input class="input" type="password" id="reg-pw" placeholder="비밀번호 (4자 이상)">
+            <input class="input" type="password" id="reg-pw2" placeholder="비밀번호 확인">
+            <input class="input" type="text" id="reg-name" placeholder="이름">
+            <input class="input" type="text" id="reg-nick" placeholder="닉네임">
+            <div class="msg" id="reg-msg"></div>
+            <button class="submit" id="reg-btn" onclick="doRegister()">가입하기</button>
+            <p class="switch" id="reg-switch">
+                <span id="have-account-text">이미 계정이 있나요?</span>
+                <a href="#" onclick="showSection('login');return false;" id="go-login-link">로그인</a>
+            </p>
+        </div>
+    </div>
+
+    <script>
+        const API_BASE = window.location.protocol === 'file:' ? 'http://localhost:4825' : '';
+        function apiFetch(path, opts = {}) { return fetch(API_BASE + path, opts); }
+
+        // ── i18n ──────────────────────────────────────────────
+        const I18N = {
+            ko: {
+                login_title: 'Lattice AI', login_sub: 'Local AI Workspace — Apple Silicon',
+                ph_email: '이메일 주소', ph_pw: '비밀번호', ph_new_pw: '비밀번호 (4자 이상)',
+                ph_pw_confirm: '비밀번호 확인', ph_name: '이름', ph_nick: '닉네임',
+                btn_login: '로그인', btn_register: '가입하기',
+                no_account: '계정이 없으신가요?', go_register: '회원가입',
+                have_account: '이미 계정이 있나요?', go_login: '로그인',
+                reg_title: '계정 만들기', reg_sub: 'Lattice AI 워크스페이스에 참여하세요',
+                err_pw_mismatch: '비밀번호가 일치하지 않습니다.',
+                err_fill: '모든 항목을 입력해주세요.',
+                err_login_fail: '이메일 또는 비밀번호가 틀렸습니다.',
+                err_server: '서버 연결 실패',
+            },
+            en: {
+                login_title: 'Lattice AI', login_sub: 'Local AI Workspace — Apple Silicon',
+                ph_email: 'Email address', ph_pw: 'Password', ph_new_pw: 'Password (min. 4 chars)',
+                ph_pw_confirm: 'Confirm password', ph_name: 'Full name', ph_nick: 'Nickname',
+                btn_login: 'Log in', btn_register: 'Sign up',
+                no_account: "Don't have an account?", go_register: 'Sign up',
+                have_account: 'Already have an account?', go_login: 'Log in',
+                reg_title: 'Create Account', reg_sub: 'Join the Lattice AI workspace',
+                err_pw_mismatch: 'Passwords do not match.',
+                err_fill: 'Please fill in all fields.',
+                err_login_fail: 'Invalid email or password.',
+                err_server: 'Server connection failed',
+            }
+        };
+
+        let lang = localStorage.getItem('ltcai_lang') || 'ko';
+        function t(k) { return (I18N[lang] || I18N.ko)[k] || k; }
+
+        function applyI18n() {
+            document.getElementById('login-title').textContent = t('login_title');
+            document.getElementById('login-sub').textContent = t('login_sub');
+            document.getElementById('reg-title').textContent = t('reg_title');
+            document.getElementById('reg-sub').textContent = t('reg_sub');
+            document.getElementById('login-btn').textContent = t('btn_login');
+            document.getElementById('reg-btn').textContent = t('btn_register');
+            document.getElementById('no-account-text').textContent = t('no_account');
+            document.getElementById('go-register-link').textContent = t('go_register');
+            document.getElementById('have-account-text').textContent = t('have_account');
+            document.getElementById('go-login-link').textContent = t('go_login');
+            document.getElementById('login-email').placeholder = t('ph_email');
+            document.getElementById('login-pw').placeholder = t('ph_pw');
+            document.getElementById('reg-email').placeholder = t('ph_email');
+            document.getElementById('reg-pw').placeholder = t('ph_new_pw');
+            document.getElementById('reg-pw2').placeholder = t('ph_pw_confirm');
+            document.getElementById('reg-name').placeholder = t('ph_name');
+            document.getElementById('reg-nick').placeholder = t('ph_nick');
+            document.getElementById('lang-label').textContent = lang === 'ko' ? '한국어' : 'English';
+            ['ko', 'en'].forEach(l => {
+                const el = document.getElementById(`opt-${l}`);
+                if (el) el.classList.toggle('active', l === lang);
+            });
+        }
+
+        function toggleLang() {
+            const m = document.getElementById('lang-menu');
+            m.classList.toggle('open');
+        }
+
+        function setLang(l) {
+            lang = l;
+            localStorage.setItem('ltcai_lang', l);
+            document.getElementById('lang-menu').classList.remove('open');
+            applyI18n();
+        }
+
+        document.addEventListener('click', e => {
+            if (!e.target.closest('.lang-wrap'))
+                document.getElementById('lang-menu').classList.remove('open');
+        });
+
+        function showSection(name) {
+            document.getElementById('login-section').style.display = name === 'login' ? '' : 'none';
+            document.getElementById('register-section').style.display = name === 'register' ? '' : 'none';
+            document.getElementById('login-msg').textContent = '';
+            document.getElementById('reg-msg').textContent = '';
+        }
+
+        function setMsg(id, text, ok = false) {
+            const el = document.getElementById(id);
+            el.textContent = text;
+            el.className = 'msg' + (ok ? ' ok' : '');
+        }
+
+        async function doLogin() {
+            const email = document.getElementById('login-email').value.trim();
+            const password = document.getElementById('login-pw').value;
+            if (!email || !password) { setMsg('login-msg', t('err_fill')); return; }
+            const btn = document.getElementById('login-btn');
+            btn.disabled = true;
+            btn.textContent = '...';
+            try {
+                const res = await apiFetch('/login', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ email, password })
+                });
+                if (res.ok) {
+                    const data = await res.json();
+                    localStorage.setItem('ltcai_user_email', data.email);
+                    localStorage.setItem('ltcai_user_nickname', data.nickname || data.name || data.email);
+                    localStorage.setItem('ltcai_is_admin', data.is_admin ? 'true' : 'false');
+                    window.location.href = '/chat';
+                } else {
+                    const data = await res.json().catch(() => ({}));
+                    setMsg('login-msg', data.detail || t('err_login_fail'));
+                    btn.disabled = false;
+                    btn.textContent = t('btn_login');
+                }
+            } catch {
+                setMsg('login-msg', t('err_server'));
+                btn.disabled = false;
+                btn.textContent = t('btn_login');
+            }
+        }
+
+        async function doRegister() {
+            const email = document.getElementById('reg-email').value.trim();
+            const pw = document.getElementById('reg-pw').value;
+            const pw2 = document.getElementById('reg-pw2').value;
+            const name = document.getElementById('reg-name').value.trim();
+            const nickname = document.getElementById('reg-nick').value.trim();
+            if (!email || !pw || !name || !nickname) { setMsg('reg-msg', t('err_fill')); return; }
+            if (pw !== pw2) { setMsg('reg-msg', t('err_pw_mismatch')); return; }
+            const btn = document.getElementById('reg-btn');
+            btn.disabled = true;
+            btn.textContent = '...';
+            try {
+                const res = await apiFetch('/register', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ email, password: pw, name, nickname })
+                });
+                if (res.ok) {
+                    setMsg('reg-msg', lang === 'ko' ? '가입 완료! 로그인 중...' : 'Registered! Logging in...', true);
+                    await apiFetch('/login', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ email, password: pw })
+                    }).then(r => r.ok ? r.json() : null).then(data => {
+                        if (data) {
+                            localStorage.setItem('ltcai_user_email', data.email);
+                            localStorage.setItem('ltcai_user_nickname', data.nickname || data.name || data.email);
+                            localStorage.setItem('ltcai_is_admin', data.is_admin ? 'true' : 'false');
+                            window.location.href = '/chat';
+                        }
+                    });
+                } else {
+                    const data = await res.json().catch(() => ({}));
+                    setMsg('reg-msg', data.detail || '가입 실패');
+                    btn.disabled = false;
+                    btn.textContent = t('btn_register');
+                }
+            } catch {
+                setMsg('reg-msg', t('err_server'));
+                btn.disabled = false;
+                btn.textContent = t('btn_register');
+            }
+        }
+
+        // If already logged in, skip to chat
+        apiFetch('/account/profile').then(r => {
+            if (r.ok) window.location.href = '/chat';
+        }).catch(() => {});
+
+        // Handle invite code in URL
+        const urlCode = new URLSearchParams(window.location.search).get('code');
+        if (urlCode) {
+            document.getElementById('reg-email').focus();
+            showSection('register');
+        }
+
+        applyI18n();
+    </script>
+</body>
+</html>

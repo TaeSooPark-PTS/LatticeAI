@@ -32,8 +32,8 @@
     "telegram_bot.py",
     "tools.py",
     "codex_telegram_bot.py",
-    "static/index.html",
-    "static/indexd.html",
+    "static/account.html",
+    "static/chat.html",
     "static/admin.html",
     "requirements.txt",
     "README.md"

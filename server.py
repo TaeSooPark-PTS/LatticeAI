@@ -1404,20 +1404,20 @@ INVITE_GATE_ENABLED = env_bool("LATTICEAI_INVITE_GATE_ENABLED", default=False)
 
 @app.get("/")
 async def root(request: Request, code: Optional[str] = None, authorized: Optional[str] = Cookie(None)):
-    """기본은 즉시 진입. 필요 시 초대 링크 게이트를 env로 활성화할 수 있습니다."""
+    """로그인/회원가입 페이지. 초대 게이트 활성화 시 코드 검증 후 진입."""
     if not INVITE_GATE_ENABLED:
-        return FileResponse(STATIC_DIR / "indexd.html")
+        return FileResponse(STATIC_DIR / "account.html")
 
     # 1. 이미 쿠키로 인증된 경우
     if authorized == "true":
-        return FileResponse(STATIC_DIR / "indexd.html")
+        return FileResponse(STATIC_DIR / "account.html")
 
     # 2. 초대 코드가 일치하는 경우 (최초 진입)
     if code == INVITE_CODE:
-        response = FileResponse(STATIC_DIR / "indexd.html")
+        response = FileResponse(STATIC_DIR / "account.html")
         response.set_cookie(key="authorized", value="true", httponly=True, samesite="lax", max_age=60*60*24*7)
         return response
-    
+
     # 3. 인증 실패 시 차단 화면
     return HTMLResponse(content=f"""
         <body style="background:#0f1115; color:white; display:flex; flex-direction:column; align-items:center; justify-content:center; height:100vh; font-family:sans-serif;">
@@ -1429,6 +1429,11 @@ async def root(request: Request, code: Optional[str] = None, authorized: Optiona
             </div>
         </body>
     """, status_code=403)
+
+
+@app.get("/chat")
+async def chat_page(request: Request):
+    return FileResponse(STATIC_DIR / "chat.html")
 
 
 @app.get("/admin")
