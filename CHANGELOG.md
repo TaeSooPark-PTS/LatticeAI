@@ -1,6 +1,6 @@
 # Changelog
 
-## [Unreleased]
+## [0.1.2] - 2026-05-18
 
 ### Added
 - 프로필 수정 API (`PATCH /account/profile`) 및 UI — 이름·닉네임 변경
