@@ -1241,6 +1241,27 @@ async def logout(request: Request):
     response.delete_cookie("session_token")
     return response
 
+class ChangePasswordRequest(BaseModel):
+    current_password: str
+    new_password: str
+
+@app.post("/account/change-password")
+async def change_password(req: ChangePasswordRequest, request: Request):
+    email = require_user(request)
+    if not email:
+        raise HTTPException(status_code=401, detail="인증이 필요합니다.")
+    if len(req.new_password) < 4:
+        raise HTTPException(status_code=400, detail="새 비밀번호는 4자 이상이어야 합니다.")
+    users = load_users()
+    user = users.get(email)
+    if not user:
+        raise HTTPException(status_code=404, detail="사용자를 찾을 수 없습니다.")
+    if not verify_and_migrate_password(email, req.current_password, user.get("password", ""), users):
+        raise HTTPException(status_code=401, detail="현재 비밀번호가 틀렸습니다.")
+    users[email]["password"] = hash_password(req.new_password)
+    save_users(users)
+    return {"status": "ok", "message": "비밀번호가 변경되었습니다."}
+
 @app.get("/admin/summary")
 async def admin_summary(request: Request):
     _, users = require_admin(request)

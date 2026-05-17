@@ -407,6 +407,56 @@
             background: rgba(255,255,255,0.04);
         }
 
+        .pw-modal-overlay {
+            display: none;
+            position: fixed;
+            inset: 0;
+            background: rgba(0,0,0,0.6);
+            backdrop-filter: blur(4px);
+            z-index: 1000;
+            align-items: center;
+            justify-content: center;
+        }
+        .pw-modal-overlay.open { display: flex; }
+        .pw-modal {
+            background: var(--surface, #1e293b);
+            border: 1px solid rgba(255,255,255,0.08);
+            border-radius: 16px;
+            padding: 28px;
+            width: 100%;
+            max-width: 360px;
+            display: flex;
+            flex-direction: column;
+            gap: 16px;
+            box-shadow: 0 20px 60px rgba(0,0,0,0.5);
+        }
+        .pw-modal h3 { font-size: 15px; font-weight: 600; margin: 0; }
+        .pw-field { display: flex; flex-direction: column; gap: 5px; }
+        .pw-field label { font-size: 11px; color: var(--muted); }
+        .pw-field input {
+            background: rgba(0,0,0,0.3);
+            border: 1px solid rgba(255,255,255,0.08);
+            border-radius: 8px;
+            color: var(--text, #f8fafc);
+            padding: 8px 12px;
+            font-size: 13px;
+            outline: none;
+            transition: border-color .15s;
+        }
+        .pw-field input:focus { border-color: var(--accent, #6366f1); }
+        .pw-actions { display: flex; gap: 8px; }
+        .pw-actions button {
+            flex: 1; padding: 8px; border-radius: 8px; border: none;
+            cursor: pointer; font-size: 13px; font-weight: 500; transition: all .15s;
+        }
+        .pw-cancel { background: rgba(255,255,255,0.06); color: var(--muted); }
+        .pw-cancel:hover { background: rgba(255,255,255,0.1); }
+        .pw-submit { background: var(--accent, #6366f1); color: #fff; }
+        .pw-submit:hover { opacity: 0.85; }
+        .pw-msg { font-size: 12px; min-height: 16px; }
+        .pw-msg.error { color: #f87171; }
+        .pw-msg.success { color: #4ade80; }
+
         .messages-viewport {
             flex: 1;
             overflow-y: auto;
@@ -2782,9 +2832,33 @@
                 </div>
                 <div class="header-pills">
                     <div class="status-pill"><i class="ti ti-device-desktop"></i> Local</div>
+                    <button onclick="openPwModal()" class="logout-btn" title="비밀번호 변경"><i class="ti ti-user"></i></button>
                     <button onclick="logout()" class="logout-btn">로그아웃</button>
                 </div>
             </header>
+
+            <div class="pw-modal-overlay" id="pw-modal-overlay">
+                <div class="pw-modal">
+                    <h3>🔐 비밀번호 변경</h3>
+                    <div class="pw-field">
+                        <label>현재 비밀번호</label>
+                        <input type="password" id="pw-cur" placeholder="현재 비밀번호">
+                    </div>
+                    <div class="pw-field">
+                        <label>새 비밀번호</label>
+                        <input type="password" id="pw-new" placeholder="새 비밀번호 (4자 이상)">
+                    </div>
+                    <div class="pw-field">
+                        <label>새 비밀번호 확인</label>
+                        <input type="password" id="pw-new2" placeholder="새 비밀번호 재입력">
+                    </div>
+                    <div class="pw-msg" id="pw-msg"></div>
+                    <div class="pw-actions">
+                        <button class="pw-cancel" onclick="closePwModal()">취소</button>
+                        <button class="pw-submit" id="pw-submit-btn" onclick="submitPwChange()">변경</button>
+                    </div>
+                </div>
+            </div>
 
             <section class="ops-strip" aria-label="workspace status">
                 <div class="ops-card primary interactive" onclick="openModelPanel()">
@@ -3260,6 +3334,69 @@
             localStorage.removeItem('ltcai_user_nickname');
             localStorage.removeItem('ltcai_is_admin');
             location.reload();
+        }
+
+        function openPwModal() {
+            document.getElementById('pw-cur').value = '';
+            document.getElementById('pw-new').value = '';
+            document.getElementById('pw-new2').value = '';
+            const msg = document.getElementById('pw-msg');
+            msg.textContent = '';
+            msg.className = 'pw-msg';
+            document.getElementById('pw-modal-overlay').classList.add('open');
+        }
+        function closePwModal() {
+            document.getElementById('pw-modal-overlay').classList.remove('open');
+        }
+        document.addEventListener('click', (e) => {
+            const overlay = document.getElementById('pw-modal-overlay');
+            if (e.target === overlay) closePwModal();
+        });
+        async function submitPwChange() {
+            const cur = document.getElementById('pw-cur').value;
+            const nw = document.getElementById('pw-new').value;
+            const nw2 = document.getElementById('pw-new2').value;
+            const msg = document.getElementById('pw-msg');
+            const btn = document.getElementById('pw-submit-btn');
+            if (!cur || !nw || !nw2) {
+                msg.textContent = '모든 항목을 입력해주세요.';
+                msg.className = 'pw-msg error';
+                return;
+            }
+            if (nw !== nw2) {
+                msg.textContent = '새 비밀번호가 일치하지 않습니다.';
+                msg.className = 'pw-msg error';
+                return;
+            }
+            if (nw.length < 4) {
+                msg.textContent = '새 비밀번호는 4자 이상이어야 합니다.';
+                msg.className = 'pw-msg error';
+                return;
+            }
+            btn.disabled = true;
+            btn.textContent = '변경 중...';
+            try {
+                const res = await fetch('/account/change-password', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ current_password: cur, new_password: nw })
+                });
+                const data = await res.json();
+                if (res.ok) {
+                    msg.textContent = '✅ 비밀번호가 변경되었습니다.';
+                    msg.className = 'pw-msg success';
+                    setTimeout(closePwModal, 1500);
+                } else {
+                    msg.textContent = data.detail || '변경 실패';
+                    msg.className = 'pw-msg error';
+                }
+            } catch {
+                msg.textContent = '서버 연결 실패';
+                msg.className = 'pw-msg error';
+            } finally {
+                btn.disabled = false;
+                btn.textContent = '변경';
+            }
         }
 
         function adminHeaders() {
