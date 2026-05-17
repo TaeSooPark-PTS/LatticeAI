@@ -3461,7 +3461,7 @@
                 btn_save: '저장', btn_change: '변경', btn_cancel: '취소',
                 // ops 스트립
                 vpc_not_set: '설정 안 됨', vpc_click_to_set: '클릭하여 VPC 연결 설정',
-                security_monitor: '민감정보 감시', admin_dashboard_access: '관리자 대시보드 접근',
+                security_monitor: '민감정보 감시', admin_dashboard_access: '관리자 대시보드 접근', admin_has_rights: '관리자 권한 있음',
                 // 빈 화면
                 empty_title: '무엇을 만들까요?',
                 empty_sub: '로컬 모델, 이미지 분석, 코드 생성, 프라이빗 VPC — 모든 걸 한 화면에서 이어가세요.',
@@ -3500,7 +3500,7 @@
                 btn_save: 'Save', btn_change: 'Change', btn_cancel: 'Cancel',
                 // Ops strip
                 vpc_not_set: 'Not configured', vpc_click_to_set: 'Click to set up VPC',
-                security_monitor: 'Sensitive data monitor', admin_dashboard_access: 'Admin dashboard access',
+                security_monitor: 'Sensitive data monitor', admin_dashboard_access: 'Admin dashboard access', admin_has_rights: 'Has admin rights',
                 // Empty state
                 empty_title: 'What would you like to build?',
                 empty_sub: 'Local models, image analysis, code generation, private VPC — all in one workspace.',
@@ -5546,6 +5546,29 @@
 
         document.getElementById('new-chat-btn').onclick = startNewChat;
         applyI18n();
+
+        // Auto-restore session from server cookie (handles navigation back from /admin)
+        (async function restoreSession() {
+            try {
+                const res = await apiFetch('/account/profile');
+                if (res.ok) {
+                    const data = await res.json();
+                    currentUserEmail = data.email;
+                    currentUserNickname = data.nickname || data.name || data.email;
+                    isAdmin = Boolean(data.is_admin);
+                    localStorage.setItem('ltcai_user_email', currentUserEmail);
+                    localStorage.setItem('ltcai_user_nickname', currentUserNickname);
+                    localStorage.setItem('ltcai_is_admin', isAdmin ? 'true' : 'false');
+                    document.getElementById('user-nickname-display').innerText = currentUserNickname;
+                    const av = document.getElementById('user-avatar-initial');
+                    if (av) av.textContent = (currentUserNickname || 'G')[0].toUpperCase();
+                    document.getElementById('admin-btn').style.display = isAdmin ? 'flex' : 'none';
+                    document.getElementById('security-admin-meta').textContent = isAdmin ? t('admin_has_rights') : t('admin_dashboard_access');
+                    document.getElementById('auth-overlay').style.display = 'none';
+                }
+            } catch (_) {}
+        })();
+
         loadModelStatus();
         loadVpcStatus();
         restoreCurrentConversation();

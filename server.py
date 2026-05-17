@@ -1295,7 +1295,9 @@ async def get_profile(request: Request):
     user = users.get(email)
     if not user:
         raise HTTPException(status_code=404, detail="사용자를 찾을 수 없습니다.")
-    return {"email": email, "name": user.get("name", ""), "nickname": user.get("nickname", "")}
+    role = get_user_role(email, users)
+    return {"email": email, "name": user.get("name", ""), "nickname": user.get("nickname", ""),
+            "role": role, "is_admin": role == "admin"}
 
 @app.get("/admin/summary")
 async def admin_summary(request: Request):
