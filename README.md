@@ -237,6 +237,13 @@ GITHUB_TOKEN=ghp-... GITHUB_REPO=owner/repo
 - 사용자 비활성화 / 삭제
 - 대시보드 (메모리, 모델, 시스템 상태)
 
+> **첫 번째로 가입한 계정이 자동으로 admin이 됩니다.** 서버를 처음 실행한 후 `/register` 또는 웹 UI에서 회원가입하면 됩니다. 이후 추가 admin은 어드민 패널에서 지정할 수 있습니다.
+>
+> 환경변수로 admin을 고정할 수도 있습니다:
+> ```bash
+> LATTICEAI_ADMIN_EMAILS=you@example.com LTCAI
+> ```
+
 ---
 
 ## P-Reinforce 지식 정원
