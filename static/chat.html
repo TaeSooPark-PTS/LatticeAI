@@ -3314,7 +3314,6 @@
             if (typeof acquireVsCodeApi === 'function') {
                 vscode = acquireVsCodeApi();
                 console.log("VS Code API Acquired");
-                document.getElementById('auth-overlay').style.display = 'none'; // VS Code에서는 로그인 건너뜀
             }
         } catch (e) { /* Not in VS Code */ }
 
@@ -3325,75 +3324,6 @@
                 userInput.focus();
             }
         });
-
-        function toggleAuth(showRegister) {
-            document.getElementById('login-form').style.display = showRegister ? 'none' : 'block';
-            document.getElementById('register-form').style.display = showRegister ? 'block' : 'none';
-        }
-
-        async function handleRegister() {
-            const email = document.getElementById('reg-email').value.trim();
-            const password = document.getElementById('reg-pw').value;
-            const password2 = document.getElementById('reg-pw2').value;
-            const name = document.getElementById('reg-name').value.trim();
-            const nickname = document.getElementById('reg-nickname').value.trim();
-            const msg = document.getElementById('reg-msg');
-            const btn = document.getElementById('reg-submit-btn');
-            const setMsg = (text, isError) => {
-                msg.textContent = text;
-                msg.style.color = isError ? '#f87171' : '#4ade80';
-            };
-            if (!email || !password || !password2 || !name || !nickname) return setMsg('모든 항목을 입력해주세요.', true);
-            if (password.length < 4) return setMsg('비밀번호는 4자 이상이어야 합니다.', true);
-            if (password !== password2) return setMsg('비밀번호가 일치하지 않습니다.', true);
-            btn.disabled = true; btn.textContent = '가입 중...';
-            try {
-                const res = await apiFetch('/register', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ email, password, name, nickname })
-                });
-                if (res.ok) {
-                    setMsg('✅ 가입 완료! 로그인 해주세요.', false);
-                    setTimeout(() => toggleAuth(false), 1200);
-                } else {
-                    const data = await res.json();
-                    setMsg(data.detail || '가입 실패', true);
-                }
-            } catch { setMsg('서버 연결 실패', true); }
-            finally { btn.disabled = false; btn.textContent = '가입하기'; }
-        }
-
-        async function handleLogin() {
-            const email = document.getElementById('login-email').value;
-            const password = document.getElementById('login-pw').value;
-            const res = await apiFetch('/login', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ email, password })
-            });
-            if (res.ok) {
-                const data = await res.json();
-                currentUserNickname = data.nickname;
-                currentUserEmail = data.email;
-                localStorage.setItem('ltcai_user_email', currentUserEmail);
-                localStorage.setItem('ltcai_user_nickname', currentUserNickname);
-                localStorage.setItem('ltcai_is_admin', data.is_admin ? 'true' : 'false');
-                isAdmin = Boolean(data.is_admin);
-                document.getElementById('user-nickname-display').innerText = currentUserNickname;
-                const av = document.getElementById('user-avatar-initial');
-                if (av) av.textContent = (currentUserNickname || 'G')[0].toUpperCase();
-                document.getElementById('admin-btn').style.display = 'flex';
-                document.getElementById('security-admin-meta').textContent = isAdmin ? '관리자 권한 있음' : '관리자 대시보드 접근';
-                document.getElementById('auth-overlay').style.display = 'none';
-                loadVpcStatus();
-                restoreCurrentConversation().then(() => {
-                    if (!chatViewport.querySelector('.message')) {
-                        addMessage('ai', `반갑습니다, <b>${currentUserNickname}</b>님!`);
-                    }
-                });
-            } else { alert("로그인 실패!"); }
-        }
 
         async function logout() {
             try { await apiFetch('/logout', { method: 'POST' }); } catch (_) {}
