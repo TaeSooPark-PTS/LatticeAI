@@ -3432,7 +3432,8 @@
             } else { alert("로그인 실패!"); }
         }
 
-        function logout() {
+        async function logout() {
+            try { await apiFetch('/logout', { method: 'POST' }); } catch (_) {}
             localStorage.removeItem('ltcai_user_email');
             localStorage.removeItem('ltcai_user_nickname');
             localStorage.removeItem('ltcai_is_admin');
