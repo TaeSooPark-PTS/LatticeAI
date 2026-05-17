@@ -15,6 +15,12 @@
 - `chat.html` 내 죽은 인증 코드 제거
 - 채팅 헤더에서 언어 선택 드롭다운이 ops-strip을 가리는 문제 수정
 
+### Deployed
+- PyPI ✅
+- npm ✅
+- VS Code Marketplace ✅
+- Open VSX ✅
+
 ---
 
 ## [0.1.1] - 2026-05-18
