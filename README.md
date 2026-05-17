@@ -38,12 +38,7 @@ Lattice AI/
 | MLX 로컬 모델 (Gemma, Qwen 등) | ✅ | ❌ Apple Silicon 전용 |
 | Ollama / vLLM / LM Studio 연동 | ✅ | ✅ |
 
-> Windows / Linux에서 로컬 모델을 사용하려면 [Ollama](https://ollama.com) 등을 별도로 설치하고 연결하세요.
->
-> ```bash
-> # Ollama 연동 예시
-> LATTICEAI_OLLAMA_BASE_URL=http://localhost:11434 LTCAI
-> ```
+> Windows / Linux에서 로컬 모델을 사용하려면 서버 실행 후 웹 UI(`http://localhost:4825`)에서 Ollama 등을 설치할 수 있습니다.
 
 ---
 
