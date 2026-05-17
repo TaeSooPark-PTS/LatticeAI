@@ -1,7 +1,12 @@
 # Lattice AI
 
-Local/cloud LLM workspace server with MLX, Ollama, vLLM, OpenAI-compatible providers,
-BYOK API keys, MCP recommendations, and editor extensions for VS Code, Cursor, and Antigravity.
+Local/cloud LLM workspace server — Apple Silicon MLX, OpenAI-compatible providers, MCP, VS Code/Cursor extension, Telegram bot.
+
+```bash
+pip install ltcai          # PyPI
+npm install -g ltcai       # npm
+LTCAI                      # → http://localhost:4825
+```
 
 ---
 
@@ -9,26 +14,29 @@ BYOK API keys, MCP recommendations, and editor extensions for VS Code, Cursor, a
 
 ```
 Lattice AI/
-├── server.py              # FastAPI bridge server (port 4825)
-├── llm_router.py          # local/cloud model router
-├── tools.py               # local workspace tools
-├── static/                # web UI
+├── server.py              # FastAPI 브릿지 서버 (port 4825)
+├── llm_router.py          # 로컬/클라우드 모델 라우터
+├── tools.py               # 워크스페이스 도구 (파일, 터미널, 스크린샷 등)
+├── p_reinforce.py         # P-Reinforce 지식 정원 엔진
+├── telegram_bot.py        # 로컬 AI Telegram 미러 봇
+├── codex_telegram_bot.py  # 클라우드 Codex Telegram 봇
+├── static/                # 웹 UI (indexd.html), 어드민 패널 (admin.html)
 ├── bin/ltcai.js           # npm CLI entrypoint
-├── pyproject.toml         # PyPI metadata
-└── vscode-extension/      # VS Code/Cursor/Antigravity extension
+├── pyproject.toml         # PyPI 메타데이터
+└── vscode-extension/      # VS Code / Cursor / Antigravity 확장
 ```
 
 ---
 
 ## 빠른 시작
 
-### 1. 서버 설치 & 실행
+### 설치 & 실행
 
 ```bash
-# PyPI
+# PyPI (기본 — 클라우드 모델만)
 pip install ltcai
 
-# 로컬 MLX까지 함께 쓰려면
+# PyPI (Apple Silicon MLX 포함)
 pip install "ltcai[local]"
 
 # npm
@@ -36,35 +44,119 @@ npm install -g ltcai
 
 # 서버 실행
 LTCAI
-# → http://localhost:4825 에서 실행됨
+# → http://localhost:4825
 ```
 
-개발 중에는 설치 없이도 실행할 수 있습니다.
+#### 개발 모드
 
 ```bash
 python ltcai_cli.py
-python ltcai_cli.py --reload
-LTCAI doctor
+python ltcai_cli.py --reload   # 코드 변경 시 자동 재시작
+
+LTCAI doctor                   # 의존성 및 환경 체크
 ```
 
-`npm install -g ltcai`로 설치한 경우 첫 실행 시 `~/.ltcai/npm-python`에 Python 가상환경을 만들고
-`requirements.txt`를 설치합니다. 자동 설치를 끄려면 `LTCAI_SKIP_NPM_BOOTSTRAP=1`을 설정하세요.
+npm으로 설치한 경우 첫 실행 시 `~/.ltcai/npm-python`에 Python 가상환경을 자동으로 생성합니다.
+자동 설치를 끄려면 `LTCAI_SKIP_NPM_BOOTSTRAP=1`을 설정하세요.
 
-Lattice AI stores runtime data in `~/.ltcai/` by default. Override it with
-`LATTICEAI_DATA_DIR=/path/to/data` when running `LTCAI`.
+런타임 데이터는 기본적으로 `~/.ltcai/`에 저장됩니다. 경로 변경: `LATTICEAI_DATA_DIR=/path/to/data`
 
-### 2. 첫 모델 로드 (터미널 or 확장 프로그램에서)
+---
+
+## 로컬 모드 (Apple Silicon)
 
 ```bash
-# 터미널에서 직접
-curl -X POST http://localhost:4825/models/load \
-  -H "Content-Type: application/json" \
-  -d '{"model_id": "mlx-community/Qwen2.5-Coder-7B-Instruct-4bit"}'
+LATTICEAI_MODE=local \
+LATTICEAI_LOCAL_MODEL=mlx-community/gemma-4-26b-a4b-it-4bit \
+LTCAI
 ```
 
-또는 확장 프로그램에서 `Cmd+Shift+M` → 모델 선택
+- MLX 로컬 모델 자동 로드
+- Telegram 미러 봇 활성화 가능
+- 파일/터미널/스크린샷 도구 사용 가능
 
-### 3. 확장 프로그램 설치
+---
+
+## 퍼블릭 모드 (클라우드 서버)
+
+Render, Fly.io, Railway, VPS 등에서 운영할 때 사용합니다. MLX를 사용하지 않고 클라우드 모델로 동작합니다.
+
+```bash
+LATTICEAI_MODE=public \
+LATTICEAI_ALLOW_LOCAL_MODELS=false \
+LATTICEAI_ENABLE_TELEGRAM=false \
+LATTICEAI_PUBLIC_MODEL=openai:gpt-4o-mini \
+OPENAI_API_KEY=sk-... \
+LATTICEAI_INVITE_CODE=my-secret-code \
+LTCAI
+```
+
+지원 클라우드 모델 프리픽스:
+
+```
+openai:gpt-4o-mini
+openrouter:openai/gpt-4o-mini
+groq:llama-3.1-8b-instant
+together:meta-llama/Llama-3.3-70B-Instruct-Turbo
+```
+
+### Docker
+
+```bash
+docker build -t lattice-ai .
+docker run --rm -p 4825:4825 \
+  -e OPENAI_API_KEY="$OPENAI_API_KEY" \
+  -e LATTICEAI_INVITE_CODE="my-secret-code" \
+  -v "$PWD/.data:/data" \
+  lattice-ai
+```
+
+### 퍼블릭 서버 체크리스트
+
+- `LATTICEAI_MODE=public` 설정
+- 클라우드 API 키 설정 (`OPENAI_API_KEY` 등)
+- `LATTICEAI_INVITE_CODE`를 비공개 값으로 설정
+- `/data`에 영구 볼륨 마운트
+- HTTPS 리버스 프록시 앞에 두기 (nginx, Caddy 등)
+
+---
+
+## 모델
+
+### 지원 모델 예시 (M-series Mac 기준)
+
+| 모델 | 용도 | 크기 | 추천도 |
+|------|------|------|--------|
+| `mlx-community/gemma-4-26b-a4b-it-4bit` | 범용/코딩 | ~14GB | ⭐⭐⭐⭐⭐ |
+| `mlx-community/Qwen2.5-Coder-32B-Instruct-4bit` | 코딩 | ~18GB | ⭐⭐⭐⭐⭐ |
+| `mlx-community/Qwen2.5-Coder-14B-Instruct-4bit` | 코딩 | ~8GB | ⭐⭐⭐⭐ |
+| `mlx-community/Qwen2.5-Coder-7B-Instruct-4bit` | 코딩 | ~4GB | ⭐⭐⭐ |
+| `mlx-community/DeepSeek-R1-0528-4bit` | 추론 | ~38GB | ⭐⭐⭐⭐ |
+| `mlx-community/Phi-4-4bit` | 코딩 | ~8GB | ⭐⭐⭐⭐ |
+| `mlx-community/Llama-3.1-8B-Instruct-4bit` | 범용 | ~4.5GB | ⭐⭐⭐ |
+
+> **32GB Mac 추천**: gemma-4-26b-a4b-it-4bit — 빠르고 뛰어난 범용 성능
+
+### 멀티모델 핫스왑
+
+```bash
+# 모델 로드
+curl -X POST localhost:4825/models/load \
+  -H "Content-Type: application/json" \
+  -d '{"model_id": "mlx-community/Qwen2.5-Coder-14B-Instruct-4bit"}'
+
+# 즉시 전환 (재로드 없음)
+curl -X POST localhost:4825/models/switch/mlx-community%2FQwen2.5-Coder-14B-Instruct-4bit
+
+# 언로드
+curl -X DELETE localhost:4825/models/unload/mlx-community%2FQwen2.5-Coder-14B-Instruct-4bit
+```
+
+---
+
+## 에디터 확장
+
+### VS Code / Cursor / Antigravity
 
 ```bash
 cd vscode-extension
@@ -72,81 +164,82 @@ npm install
 npm run build
 npm run package:vsix
 
-# VS Code / Cursor / Antigravity에서:
-# 1. Extensions 패널 → "..." → "Install from VSIX" 또는
-# 2. 로컬 CLI가 있으면:
+# 설치 (모든 에디터 한 번에)
 npm run install:all
+
+# 또는 에디터에서: Extensions → "..." → "Install from VSIX"
 ```
 
----
-
-## 모델/비용 구조
-
-- Local LLM: MLX, Ollama, vLLM, LM Studio, llama.cpp
-- Cloud LLM: OpenAI, OpenRouter, Groq, Together, xAI 등 OpenAI-compatible provider
-- API 비용: 사용자가 본인 API key를 입력하는 BYOK 구조입니다. 사용자별 키로 호출되므로 키 소유자가 사용량을 부담합니다.
-- 초대 링크 게이트는 기본 비활성화되어 있습니다. 다시 켜려면 `LATTICEAI_INVITE_GATE_ENABLED=true`를 설정하세요.
-
-## 보안 기본값
-
-- 기본 서버 바인딩은 `127.0.0.1:4825`입니다. 같은 네트워크에서 접속하게 하려면 명시적으로 `LATTICEAI_HOST=0.0.0.0`을 설정하세요.
-- CORS는 기본적으로 localhost만 허용합니다. 네트워크 공개가 필요하면 `LATTICEAI_CORS_ALLOW_NETWORK=true`를 명시적으로 설정하세요.
-- 사용자 API key는 OS keyring/Keychain에 저장합니다. keyring을 사용할 수 없는 환경에서 평문 저장을 허용하려면 `LATTICEAI_ALLOW_PLAINTEXT_API_KEYS=true`를 직접 설정해야 합니다.
-- 히스토리 저장 전 API key/token/password 패턴은 마스킹됩니다.
-
-## 지원 모델 예시 (M5 32GB 기준)
-
-| 모델 | 용도 | 크기 | 추천도 |
-|------|------|------|--------|
-| `mlx-community/Qwen2.5-Coder-7B-Instruct-4bit`  | 코딩 | ~4GB  | ⭐⭐⭐ |
-| `mlx-community/Qwen2.5-Coder-14B-Instruct-4bit` | 코딩 | ~8GB  | ⭐⭐⭐⭐ |
-| `mlx-community/Qwen2.5-Coder-32B-Instruct-4bit` | 코딩 | ~18GB | ⭐⭐⭐⭐⭐ |
-| `mlx-community/Llama-3.1-8B-Instruct-4bit`      | 범용 | ~4.5GB| ⭐⭐⭐ |
-| `mlx-community/DeepSeek-R1-0528-4bit`           | 추론 | ~38GB | ⭐⭐⭐⭐ |
-| `mlx-community/Phi-4-4bit`                      | 코딩 | ~8GB  | ⭐⭐⭐⭐ |
-| `mlx-community/gemma-3-27b-it-4bit`             | 범용 | ~15GB | ⭐⭐⭐ |
-
-> **M5 32GB 추천**: Qwen2.5-Coder-32B-Instruct-4bit (18GB) — 32GB에서 여유롭게 동작
-
----
-
-## 멀티모델 핫스왑
-
-여러 모델을 동시에 메모리에 올려두고 즉시 전환 가능:
-
-```bash
-# 모델 A 로드
-curl -X POST localhost:4825/models/load -d '{"model_id":"mlx-community/Qwen2.5-Coder-7B-Instruct-4bit"}'
-
-# 모델 B도 함께 로드
-curl -X POST localhost:4825/models/load -d '{"model_id":"mlx-community/Llama-3.1-8B-Instruct-4bit"}'
-
-# B → A 즉시 전환 (재로드 없음)
-curl -X POST localhost:4825/models/switch/mlx-community%2FQwen2.5-Coder-7B-Instruct-4bit
-
-# 메모리 해제
-curl -X DELETE localhost:4825/models/unload/mlx-community%2FLlama-3.1-8B-Instruct-4bit
-```
-
----
-
-## 키보드 단축키
+### 키보드 단축키
 
 | 단축키 | 기능 |
 |--------|------|
 | `Cmd+Shift+A` | 채팅 패널 열기 |
-| `Cmd+Shift+E` | 선택 코드 편집 (선택 필요) |
+| `Cmd+Shift+E` | 선택 코드 편집 |
 | `Cmd+Shift+M` | 모델 로드 / 전환 |
-| 우클릭 메뉴 | Explain / Edit / Garden에 저장 |
+| 우클릭 메뉴 | Explain / Edit / Knowledge Garden에 저장 |
 
 ---
 
-## P-Reinforce 지식 정원사
+## Telegram 봇
 
-지식은 `~/.ltcai-ai-brain/`에 자동 분류 저장:
+### 1. 로컬 AI 봇 (local 모드)
+
+로컬 Lattice AI 서버와 대화하고 웹 채팅을 Telegram으로 미러링합니다.
+
+```bash
+LATTICEAI_TELEGRAM_BOT_TOKEN=your-token LTCAI
+```
+
+### 2. Codex 클라우드 봇
+
+Telegram에서 GPT 기반 개발 어시스턴트와 대화하고, 선택적으로 GitHub 이슈를 생성합니다.
+
+```bash
+CODEX_TELEGRAM_BOT_TOKEN=your-token \
+OPENAI_API_KEY=sk-... \
+CODEX_OPENAI_MODEL=gpt-4o \
+python codex_telegram_bot.py
+```
+
+Telegram 명령어: `/start` `/reset` `/issue 제목`
+
+선택적으로 GitHub 이슈 연동:
+
+```bash
+GITHUB_TOKEN=ghp-... GITHUB_REPO=owner/repo
+```
+
+---
+
+## 보안
+
+- **인증**: 모든 `/tools/*`, `/agent`, `/mcp/*`, `/local/*` 등 민감 엔드포인트는 로그인 세션 필요 (`REQUIRE_AUTH=true` 시)
+- **세션**: 7일 TTL, 서버 메모리 저장 (재시작 시 로그아웃)
+- **바인딩**: 기본 `127.0.0.1:4825` — 외부 접근 허용 시 명시적으로 `LATTICEAI_HOST=0.0.0.0` 설정
+- **CORS**: 기본 localhost만 허용 — 외부 허용 시 `LATTICEAI_CORS_ALLOW_NETWORK=true`
+- **API 키**: OS keyring/Keychain 저장 — 평문 저장 허용 시 `LATTICEAI_ALLOW_PLAINTEXT_API_KEYS=true`
+- **히스토리**: 저장 전 API key/token/password 패턴 자동 마스킹
+- **쿠키**: `HttpOnly + SameSite=Lax` (CSRF 방어)
+
+---
+
+## 어드민 패널
+
+`http://localhost:4825/admin` — 관리자 계정으로 로그인 후 접근 가능
+
+- 사용자 목록 및 역할 관리 (admin / user)
+- 사용자 비활성화 / 삭제
+- 대시보드 (메모리, 모델, 시스템 상태)
+
+---
+
+## P-Reinforce 지식 정원
+
+코드/텍스트를 `~/.ltcai-brain/`에 자동 분류 저장합니다.
 
 ```
-~/.ltcai-ai-brain/
+~/.ltcai-brain/
 ├── INDEX.md
 ├── 00_Raw/       # 원시 데이터, 아이디어
 ├── 10_Wiki/      # 검증된 개념, 레퍼런스
@@ -155,7 +248,15 @@ curl -X DELETE localhost:4825/models/unload/mlx-community%2FLlama-3.1-8B-Instruc
 └── 40_Log/       # 날짜별 작업 로그
 ```
 
-사용법: 에디터에서 텍스트 선택 → 우클릭 → **"Save to Knowledge Garden"**
+에디터에서 텍스트 선택 → 우클릭 → **"Save to Knowledge Garden"**
+
+또는 API:
+
+```bash
+curl -X POST localhost:4825/garden \
+  -H "Content-Type: application/json" \
+  -d '{"content": "학습한 내용", "category": "10_Wiki"}'
+```
 
 ---
 
@@ -165,35 +266,51 @@ curl -X DELETE localhost:4825/models/unload/mlx-community%2FLlama-3.1-8B-Instruc
 |--------|------|------|
 | GET | `/health` | 서버 상태, 현재 모델 |
 | GET | `/models` | 추천 모델 목록 + 로드 상태 |
-| POST | `/models/load` | 모델 로드 (캐시 지원) |
+| POST | `/models/load` | 모델 로드 |
 | POST | `/models/switch/{id}` | 활성 모델 전환 |
 | DELETE | `/models/unload/{id}` | 모델 언로드 |
-| POST | `/chat` | 생성 (stream=true/false) |
-| POST | `/garden` | P-Reinforce 저장 |
+| POST | `/chat` | 채팅 생성 (`stream=true/false`) |
+| POST | `/agent` | 파일 생성/수정 에이전트 |
+| POST | `/garden` | 지식 정원 저장 |
 | GET | `/garden/tree` | 지식 트리 조회 |
+| GET | `/tools/list_dir` | 디렉토리 목록 |
+| POST | `/tools/run_command` | 터미널 명령 실행 |
+| GET | `/mcp/installed` | 설치된 MCP 목록 |
 
 ---
 
-## 자동 시작 설정 (선택)
+## 자동 시작 (Mac)
 
 ```bash
-# launchd plist로 Mac 부팅시 자동 시작
-cat > ~/Library/LaunchAgents/com.ltcai.mlx.plist << 'EOF'
+cat > ~/Library/LaunchAgents/com.ltcai.plist << 'EOF'
 <?xml version="1.0" encoding="UTF-8"?>
 <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
 <plist version="1.0">
 <dict>
-  <key>Label</key><string>com.ltcai.mlx</string>
+  <key>Label</key><string>com.ltcai</string>
   <key>ProgramArguments</key>
   <array>
-    <string>/usr/bin/python3</string>
-    <string>/path/to/LTCAI-ai-mlx/server/server.py</string>
+    <string>/usr/local/bin/LTCAI</string>
   </array>
   <key>RunAtLoad</key><true/>
   <key>KeepAlive</key><true/>
+  <key>StandardOutPath</key><string>/tmp/ltcai.log</string>
+  <key>StandardErrorPath</key><string>/tmp/ltcai.err</string>
 </dict>
 </plist>
 EOF
 
-launchctl load ~/Library/LaunchAgents/com.ltcai.mlx.plist
+launchctl load ~/Library/LaunchAgents/com.ltcai.plist
 ```
+
+또는 동봉된 스크립트 사용:
+
+```bash
+./start_ai.sh   # 자동 재시작 + caffeinate (슬립 방지)
+```
+
+---
+
+## 라이선스
+
+MIT
