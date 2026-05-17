@@ -1,6 +1,6 @@
 {
   "name": "ltcai",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "description": "Lattice AI local MLX/cloud LLM workspace server",
   "bin": {
     "ltcai": "bin/ltcai.js",
