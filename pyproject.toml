@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "ltcai"
-version = "0.1.3"
+version = "0.1.4"
 description = "Lattice AI local MLX/cloud LLM workspace server"
 readme = "README.md"
 requires-python = ">=3.11"
@@ -21,6 +21,7 @@ dependencies = [
   "python-pptx",
   "python-multipart",
   "keyring",
+  "authlib",
 ]
 
 [project.optional-dependencies]

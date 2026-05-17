@@ -180,6 +180,48 @@
             flex-shrink: 0;
         }
 
+        .sidebar-search {
+            padding: 8px 10px;
+            border-bottom: 1px solid rgba(255,255,255,0.05);
+        }
+        .sidebar-search input {
+            width: 100%;
+            padding: 7px 10px 7px 30px;
+            background: rgba(255,255,255,0.04);
+            border: 1px solid rgba(255,255,255,0.07);
+            border-radius: 8px;
+            color: var(--text);
+            font-size: 12px;
+            font-family: inherit;
+            outline: none;
+            transition: border-color .15s;
+        }
+        .sidebar-search input:focus { border-color: rgba(34,211,160,0.4); }
+        .sidebar-search input::placeholder { color: var(--faint); }
+        .sidebar-search-wrap {
+            position: relative;
+        }
+        .sidebar-search-wrap i {
+            position: absolute;
+            left: 8px; top: 50%;
+            transform: translateY(-50%);
+            color: var(--faint);
+            font-size: 13px;
+            pointer-events: none;
+        }
+        .history-item-del {
+            margin-left: auto;
+            opacity: 0;
+            color: var(--faint);
+            font-size: 13px;
+            padding: 2px 4px;
+            border-radius: 4px;
+            transition: all .15s;
+            flex-shrink: 0;
+        }
+        .history-item:hover .history-item-del { opacity: 1; }
+        .history-item-del:hover { color: #ff6b6b; background: rgba(255,107,107,0.12); }
+
         .history-container {
             flex: 1;
             overflow-y: auto;
@@ -420,6 +462,62 @@
             justify-content: center;
         }
         .acct-modal-overlay.open { display: flex; }
+
+        /* MCP 관리 모달 */
+        .mcp-modal-overlay {
+            display: none;
+            position: fixed;
+            inset: 0;
+            background: rgba(0,0,0,0.6);
+            backdrop-filter: blur(4px);
+            z-index: 1000;
+            align-items: center;
+            justify-content: center;
+        }
+        .mcp-modal-overlay.open { display: flex; }
+        .mcp-modal {
+            background: var(--surface, #1e293b);
+            border: 1px solid rgba(255,255,255,0.08);
+            border-radius: 16px;
+            width: 100%;
+            max-width: 560px;
+            max-height: 80vh;
+            display: flex;
+            flex-direction: column;
+            box-shadow: 0 20px 60px rgba(0,0,0,0.5);
+            overflow: hidden;
+        }
+        .mcp-modal-header {
+            padding: 18px 20px;
+            border-bottom: 1px solid rgba(255,255,255,0.07);
+            display: flex; align-items: center; justify-content: space-between;
+        }
+        .mcp-modal-header h3 { font-size: 15px; font-weight: 700; color: var(--text); }
+        .mcp-modal-close { background: none; border: none; color: var(--faint); cursor: pointer; font-size: 18px; padding: 2px 6px; border-radius: 6px; }
+        .mcp-modal-close:hover { color: var(--text); background: rgba(255,255,255,0.07); }
+        .mcp-modal-body { flex: 1; overflow-y: auto; padding: 16px 20px; }
+        .mcp-section-label { font-size: 10px; font-weight: 700; color: var(--faint); text-transform: uppercase; letter-spacing: .08em; margin: 12px 0 8px; }
+        .mcp-item {
+            display: flex; align-items: center; gap: 12px;
+            padding: 11px 14px;
+            background: rgba(255,255,255,0.03);
+            border: 1px solid rgba(255,255,255,0.06);
+            border-radius: 10px;
+            margin-bottom: 6px;
+        }
+        .mcp-item-icon { font-size: 20px; flex-shrink: 0; }
+        .mcp-item-info { flex: 1; min-width: 0; }
+        .mcp-item-name { font-size: 13px; font-weight: 600; color: var(--text); }
+        .mcp-item-desc { font-size: 11px; color: var(--faint); margin-top: 2px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+        .mcp-item-status { font-size: 10.5px; color: var(--accent); font-weight: 600; }
+        .mcp-item-status.inactive { color: var(--faint); }
+        .mcp-install-btn {
+            padding: 6px 12px; border-radius: 7px; font-size: 12px; font-weight: 600;
+            border: 1px solid rgba(34,211,160,0.3); background: rgba(34,211,160,0.08);
+            color: var(--accent); cursor: pointer; transition: all .15s; flex-shrink: 0;
+        }
+        .mcp-install-btn:hover { background: rgba(34,211,160,0.15); }
+        .mcp-install-btn.installed { border-color: rgba(255,255,255,0.1); background: rgba(255,255,255,0.04); color: var(--faint); }
         .acct-modal {
             background: var(--surface, #1e293b);
             border: 1px solid rgba(255,255,255,0.08);
@@ -2827,6 +2925,12 @@
                     <div style="font-size:10.5px;color:var(--faint)">Local Workspace</div>
                 </div>
             </div>
+            <div class="sidebar-search">
+                <div class="sidebar-search-wrap">
+                    <i class="ti ti-search"></i>
+                    <input type="text" id="history-search-input" placeholder="대화 검색..." oninput="onHistorySearch(this.value)">
+                </div>
+            </div>
             <div class="history-container" id="history-container">
                 <!-- History items -->
             </div>
@@ -2834,6 +2938,7 @@
                 <button id="admin-btn" class="admin-btn" onclick="openAdminPanel()"><i class="ti ti-shield-lock"></i> <span data-i18n="admin_dashboard">관리자 대시보드</span></button>
                 <button class="status-btn" onclick="openStatusPanel()"><i class="ti ti-info-circle"></i> <span data-i18n="my_status">내 상태 보기</span></button>
                 <button id="setup-wizard-btn" class="setup-wizard-sidebar-btn" onclick="openSetupWizard()"><i class="ti ti-sparkles"></i> <span data-i18n="auto_setup">자동 설정</span></button>
+                <button class="setup-wizard-sidebar-btn" onclick="openMcpModal()"><i class="ti ti-plug-connected"></i> MCP 관리</button>
                 <button id="new-chat-btn" class="new-chat-btn"><i class="ti ti-plus"></i> New Chat</button>
             </div>
         </aside>
@@ -2905,6 +3010,19 @@
                                 <button class="pw-submit" id="pw-submit-btn" onclick="submitPwChange()" data-i18n="btn_change">변경</button>
                             </div>
                         </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- MCP 관리 모달 -->
+            <div class="mcp-modal-overlay" id="mcp-modal-overlay" onclick="if(event.target===this)closeMcpModal()">
+                <div class="mcp-modal">
+                    <div class="mcp-modal-header">
+                        <h3><i class="ti ti-plug-connected"></i> MCP 서버 관리</h3>
+                        <button class="mcp-modal-close" onclick="closeMcpModal()"><i class="ti ti-x"></i></button>
+                    </div>
+                    <div class="mcp-modal-body" id="mcp-modal-body">
+                        <div style="color:var(--faint);font-size:13px;text-align:center;padding:24px">로딩 중...</div>
                     </div>
                 </div>
             </div>
@@ -4926,25 +5044,57 @@
             }
         }
 
+        function renderHistoryItems(conversations) {
+            if (!conversations.length) {
+                historyContainer.innerHTML = '<div class="history-section-label">CHATS</div><div class="history-empty">아직 저장된 대화가 없습니다.</div>';
+                return;
+            }
+            historyContainer.innerHTML = '<div class="history-section-label">CHATS</div>' + conversations.map(item => `
+                <div class="history-item ${item.id === currentConversationId ? 'active' : ''}" data-conversation-id="${escapeHtml(item.id)}" title="${escapeHtml(item.title || '')}">
+                    <i class="ti ti-message-2"></i>
+                    <span style="flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis">${escapeHtml(item.title || '새 대화')}</span>
+                    <span class="history-item-del" onclick="event.stopPropagation();deleteConversation('${escapeHtml(item.id)}')"><i class="ti ti-trash"></i></span>
+                </div>
+            `).join('');
+            historyContainer.querySelectorAll('.history-item').forEach(item => {
+                item.onclick = () => openConversation(item.dataset.conversationId);
+            });
+        }
+
         async function loadHistory() {
             try {
                 const conversations = await fetchConversations();
-                if (!conversations.length) {
-                    historyContainer.innerHTML = '<div class="history-section-label">CHATS</div><div class="history-empty">아직 저장된 대화가 없습니다.</div>';
-                    return [];
-                }
-                historyContainer.innerHTML = '<div class="history-section-label">CHATS</div>' + conversations.map(item => `
-                    <div class="history-item ${item.id === currentConversationId ? 'active' : ''}" data-conversation-id="${escapeHtml(item.id)}" title="${escapeHtml(item.title || '')}">
-                        <i class="ti ti-message-2"></i>
-                        <span>${escapeHtml(item.title || '새 대화')}</span>
-                    </div>
-                `).join('');
-                historyContainer.querySelectorAll('.history-item').forEach(item => {
-                    item.onclick = () => openConversation(item.dataset.conversationId);
-                });
+                renderHistoryItems(conversations);
                 return conversations;
             } catch (e) { }
             return [];
+        }
+
+        let _searchDebounce = null;
+        async function onHistorySearch(q) {
+            clearTimeout(_searchDebounce);
+            if (!q.trim()) { loadHistory(); return; }
+            _searchDebounce = setTimeout(async () => {
+                try {
+                    const res = await apiFetch(`/history/search?q=${encodeURIComponent(q)}`);
+                    if (!res.ok) return;
+                    const data = await res.json();
+                    const results = (data.results || []).map(r => ({
+                        id: r.conversation_id,
+                        title: r.title || '새 대화',
+                    }));
+                    renderHistoryItems(results);
+                } catch {}
+            }, 300);
+        }
+
+        async function deleteConversation(conversationId) {
+            if (!confirm('이 대화를 삭제할까요?')) return;
+            try {
+                await apiFetch(`/history/conversations/${encodeURIComponent(conversationId)}`, { method: 'DELETE' });
+                if (currentConversationId === conversationId) startNewConversation();
+                loadHistory();
+            } catch {}
         }
 
         async function restoreCurrentConversation() {
@@ -6011,6 +6161,91 @@
         _subtitle('설정 완료!');
         _footInfo('');
         _footBtns(`<button class="wbtn wbtn-primary" onclick="closeSetupWizard();loadModelStatus()">완료 ✓</button>`);
+    }
+    </script>
+
+    <script>
+    // ── MCP 관리 모달 ────────────────────────────────────────────────────────
+    async function openMcpModal() {
+        document.getElementById('mcp-modal-overlay').classList.add('open');
+        await renderMcpModal();
+    }
+
+    function closeMcpModal() {
+        document.getElementById('mcp-modal-overlay').classList.remove('open');
+    }
+
+    async function renderMcpModal() {
+        const body = document.getElementById('mcp-modal-body');
+        body.innerHTML = '<div style="color:var(--faint);font-size:13px;text-align:center;padding:24px">로딩 중...</div>';
+        try {
+            const [installedRes, toolsRes] = await Promise.all([
+                apiFetch('/mcp/installed'),
+                apiFetch('/mcp/tools'),
+            ]);
+            const installed = installedRes.ok ? await installedRes.json() : {};
+            const allTools = toolsRes.ok ? await toolsRes.json() : [];
+
+            const installedIds = new Set(Object.keys(installed));
+            const installedItems = allTools.filter(t => installedIds.has(t.id));
+            const availableItems = allTools.filter(t => !installedIds.has(t.id));
+
+            let html = '';
+
+            if (installedItems.length) {
+                html += '<div class="mcp-section-label">설치됨</div>';
+                html += installedItems.map(mcp => `
+                    <div class="mcp-item">
+                        <div class="mcp-item-icon">${mcp.icon || '🔌'}</div>
+                        <div class="mcp-item-info">
+                            <div class="mcp-item-name">${escapeHtml(mcp.name || mcp.id)}</div>
+                            <div class="mcp-item-desc">${escapeHtml(mcp.description || '')}</div>
+                        </div>
+                        <span class="mcp-item-status">활성</span>
+                    </div>
+                `).join('');
+            }
+
+            if (availableItems.length) {
+                html += '<div class="mcp-section-label">설치 가능</div>';
+                html += availableItems.map(mcp => `
+                    <div class="mcp-item" id="mcp-item-${escapeHtml(mcp.id)}">
+                        <div class="mcp-item-icon">${mcp.icon || '🔌'}</div>
+                        <div class="mcp-item-info">
+                            <div class="mcp-item-name">${escapeHtml(mcp.name || mcp.id)}</div>
+                            <div class="mcp-item-desc">${escapeHtml(mcp.description || '')}</div>
+                        </div>
+                        <button class="mcp-install-btn" onclick="installMcp('${escapeHtml(mcp.id)}')">설치</button>
+                    </div>
+                `).join('');
+            }
+
+            if (!html) html = '<div style="color:var(--faint);font-size:13px;text-align:center;padding:24px">사용 가능한 MCP 서버가 없습니다.</div>';
+            body.innerHTML = html;
+        } catch (e) {
+            body.innerHTML = `<div style="color:#ff6b6b;font-size:13px;text-align:center;padding:24px">로드 실패: ${escapeHtml(e.message)}</div>`;
+        }
+    }
+
+    async function installMcp(id) {
+        const btn = document.querySelector(`#mcp-item-${CSS.escape(id)} .mcp-install-btn`);
+        if (btn) { btn.disabled = true; btn.textContent = '설치 중...'; }
+        try {
+            const res = await apiFetch('/mcp/install', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ id }),
+            });
+            if (res.ok) {
+                await renderMcpModal();
+            } else {
+                const d = await res.json().catch(() => ({}));
+                if (btn) { btn.disabled = false; btn.textContent = '설치'; }
+                alert(d.detail || '설치 실패');
+            }
+        } catch {
+            if (btn) { btn.disabled = false; btn.textContent = '설치'; }
+        }
     }
     </script>
 </body>

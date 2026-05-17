@@ -1,5 +1,19 @@
 # Changelog
 
+## [0.1.4] - 2026-05-18
+
+### Added
+- **세션 영속성** — 서버 재시작 후에도 로그인 유지 (sessions.json 파일 기반)
+- **SSO 로그인** — Entra ID / Okta OIDC 지원 (`OIDC_DISCOVERY_URL`, `OIDC_CLIENT_ID`, `OIDC_CLIENT_SECRET` 환경변수)
+- **채팅 히스토리 검색** — 사이드바 검색창으로 대화 내용 키워드 검색 (`GET /history/search`)
+- **대화 삭제** — 사이드바 각 대화에 삭제 버튼 추가
+- **MCP 서버 관리 UI** — 사이드바 "MCP 관리" 버튼으로 설치/목록 확인 모달
+- **인라인 Diff 뷰** — Edit Selection 결과를 diff로 보여주고 Apply/Discard 선택
+- **현재 파일 첨부** — `Lattice AI: Attach Current File to Chat` 명령 추가 (VS Code)
+- `authlib` 의존성 추가 (SSO OIDC 지원)
+
+---
+
 ## [0.1.3] - 2026-05-18
 
 ### Added

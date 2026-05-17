@@ -9,3 +9,4 @@ openpyxl
 python-pptx
 python-multipart
 keyring
+authlib

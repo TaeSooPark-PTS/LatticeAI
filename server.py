@@ -175,6 +175,31 @@ PUBLIC_MODEL = env_value("LATTICEAI_PUBLIC_MODEL", env_value("LATTICEAI_DEFAULT_
 LOCAL_MODEL = env_value("LATTICEAI_LOCAL_MODEL", "mlx-community/gemma-4-26b-a4b-it-4bit")
 LOCAL_DRAFT_MODEL = env_value("LATTICEAI_LOCAL_DRAFT_MODEL", "")
 
+# ── SSO / OIDC config ─────────────────────────────────────────────────────────
+SSO_DISCOVERY_URL = env_value("OIDC_DISCOVERY_URL", "")
+SSO_CLIENT_ID = env_value("OIDC_CLIENT_ID", "")
+SSO_CLIENT_SECRET = env_value("OIDC_CLIENT_SECRET", "")
+SSO_REDIRECT_URI = env_value("OIDC_REDIRECT_URI", "http://localhost:4825/auth/sso/callback")
+SSO_PROVIDER_NAME = env_value("OIDC_PROVIDER_NAME", "SSO")
+_sso_discovery_cache: Optional[Dict] = None
+_sso_states: Dict[str, float] = {}  # state → timestamp (CSRF protection)
+
+async def _get_sso_discovery() -> Optional[Dict]:
+    global _sso_discovery_cache
+    if _sso_discovery_cache:
+        return _sso_discovery_cache
+    if not SSO_DISCOVERY_URL:
+        return None
+    try:
+        import httpx as _httpx
+        async with _httpx.AsyncClient() as c:
+            r = await c.get(SSO_DISCOVERY_URL, timeout=10)
+            _sso_discovery_cache = r.json()
+    except Exception as e:
+        logging.warning("SSO discovery failed: %s", e)
+        return None
+    return _sso_discovery_cache
+
 # ── Password hashing (stdlib scrypt, no extra deps) ────────────────────────────
 def hash_password(password: str) -> str:
     salt = secrets.token_hex(16)
@@ -199,27 +224,54 @@ def verify_and_migrate_password(email: str, plain: str, stored: str, users: Dict
         return True
     return False
 
-# ── Session store (in-memory, clears on restart) ──────────────────────────────
+# ── Session store (file-backed, survives restarts) ────────────────────────────
 _SESSION_TTL = 60 * 60 * 24 * 7  # 7 days
-_sessions: Dict[str, tuple] = {}  # token → (email, created_at)
+_sessions_lock = threading.Lock()
+
+def _sessions_file() -> Path:
+    return DATA_DIR / "sessions.json"
+
+def _load_sessions() -> Dict[str, tuple]:
+    try:
+        f = _sessions_file()
+        if f.exists():
+            raw = json.loads(f.read_text())
+            return {k: tuple(v) for k, v in raw.items()}
+    except Exception:
+        pass
+    return {}
+
+def _persist_sessions(sessions: Dict[str, tuple]) -> None:
+    try:
+        _sessions_file().write_text(json.dumps({k: list(v) for k, v in sessions.items()}, ensure_ascii=False))
+    except Exception:
+        pass
+
+_sessions: Dict[str, tuple] = _load_sessions()
 
 def create_session(email: str) -> str:
     token = secrets.token_urlsafe(32)
-    _sessions[token] = (email, time.time())
+    with _sessions_lock:
+        _sessions[token] = (email, time.time())
+        _persist_sessions(_sessions)
     return token
 
 def get_session_email(token: str) -> Optional[str]:
-    entry = _sessions.get(token)
-    if entry is None:
-        return None
-    email, created_at = entry
-    if time.time() - created_at > _SESSION_TTL:
-        _sessions.pop(token, None)
-        return None
-    return email
+    with _sessions_lock:
+        entry = _sessions.get(token)
+        if entry is None:
+            return None
+        email, created_at = entry
+        if time.time() - created_at > _SESSION_TTL:
+            _sessions.pop(token, None)
+            _persist_sessions(_sessions)
+            return None
+        return email
 
 def invalidate_session(token: str) -> None:
-    _sessions.pop(token, None)
+    with _sessions_lock:
+        _sessions.pop(token, None)
+        _persist_sessions(_sessions)
 
 # ── User Management Logic ──────────────────────────────────────────────────
 BASE_DIR = Path(__file__).resolve().parent
@@ -1231,6 +1283,79 @@ async def login(req: UserLogin):
     })
     response.set_cookie(key="session_token", value=token, httponly=True, samesite="lax", max_age=60 * 60 * 24 * 7)
     return response
+
+@app.get("/auth/sso/config")
+async def sso_config():
+    enabled = bool(SSO_DISCOVERY_URL and SSO_CLIENT_ID and SSO_CLIENT_SECRET)
+    return {"enabled": enabled, "provider_name": SSO_PROVIDER_NAME if enabled else ""}
+
+@app.get("/auth/sso/login")
+async def sso_login():
+    from urllib.parse import urlencode
+    from fastapi.responses import RedirectResponse as _Redirect
+    discovery = await _get_sso_discovery()
+    if not discovery:
+        raise HTTPException(status_code=503, detail="SSO가 설정되지 않았습니다.")
+    state = secrets.token_urlsafe(16)
+    _sso_states[state] = time.time()
+    params = urlencode({
+        "client_id": SSO_CLIENT_ID,
+        "response_type": "code",
+        "redirect_uri": SSO_REDIRECT_URI,
+        "scope": "openid email profile",
+        "state": state,
+    })
+    return _Redirect(f"{discovery['authorization_endpoint']}?{params}")
+
+@app.get("/auth/sso/callback")
+async def sso_callback(code: str = "", state: str = "", error: str = ""):
+    from fastapi.responses import RedirectResponse as _Redirect
+    import base64 as _b64
+    if error:
+        return _Redirect(f"/?sso_error={error}")
+    ts = _sso_states.pop(state, None)
+    if ts is None or time.time() - ts > 300:
+        raise HTTPException(status_code=400, detail="유효하지 않은 SSO 상태입니다.")
+    discovery = await _get_sso_discovery()
+    if not discovery:
+        raise HTTPException(status_code=503, detail="SSO 설정 오류입니다.")
+    import httpx as _httpx
+    async with _httpx.AsyncClient() as c:
+        r = await c.post(discovery["token_endpoint"], data={
+            "grant_type": "authorization_code",
+            "code": code,
+            "redirect_uri": SSO_REDIRECT_URI,
+            "client_id": SSO_CLIENT_ID,
+            "client_secret": SSO_CLIENT_SECRET,
+        }, headers={"Accept": "application/json"}, timeout=15)
+        tokens = r.json()
+    id_token = tokens.get("id_token")
+    if not id_token:
+        raise HTTPException(status_code=400, detail="ID 토큰을 받지 못했습니다.")
+    # Decode JWT payload (no signature verification — trust IdP redirect)
+    padded = id_token.split(".")[1] + "=="
+    payload = json.loads(_b64.urlsafe_b64decode(padded))
+    email = payload.get("email") or payload.get("preferred_username") or payload.get("upn") or ""
+    if not email:
+        raise HTTPException(status_code=400, detail="이메일을 확인할 수 없습니다.")
+    users = load_users()
+    if email not in users:
+        is_first = len(users) == 0
+        users[email] = {
+            "password": "",
+            "name": payload.get("name", email.split("@")[0]),
+            "nickname": payload.get("given_name", email.split("@")[0]),
+            "role": "admin" if is_first else "user",
+            "disabled": False,
+            "sso": True,
+        }
+        save_users(users)
+    if users[email].get("disabled"):
+        raise HTTPException(status_code=403, detail="비활성화된 계정입니다.")
+    token = create_session(email)
+    resp = _Redirect("/chat", status_code=302)
+    resp.set_cookie("session_token", token, httponly=True, samesite="lax", max_age=_SESSION_TTL)
+    return resp
 
 @app.post("/logout")
 async def logout(request: Request):
@@ -2404,6 +2529,23 @@ async def delete_history_conversation(conversation_id: str, request: Request):
 async def delete_history(request: Request, keep_last: int = 0):
     require_user(request)
     return clear_history(keep_last)
+
+@app.get("/history/search")
+async def search_history(q: str, request: Request):
+    """키워드로 채팅 히스토리를 검색합니다."""
+    require_user(request)
+    if not q or not q.strip():
+        return {"results": [], "query": q}
+    q_lower = q.strip().lower()
+    history = get_history()
+    matches = [item for item in history if q_lower in (item.get("content") or "").lower()]
+    grouped: Dict[str, Dict] = {}
+    for item in matches:
+        cid = item.get("conversation_id") or "legacy"
+        if cid not in grouped:
+            grouped[cid] = {"conversation_id": cid, "title": conversation_title(item), "messages": []}
+        grouped[cid]["messages"].append(item)
+    return {"results": list(grouped.values())[-30:], "query": q}
 
 
 async def _stream_chat(req: ChatRequest, context: str = "", image_data: str = None) -> AsyncIterator[str]:

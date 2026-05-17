@@ -6,11 +6,22 @@ import { ModelPicker } from "./modelPicker";
 let client: LatticeAIClient;
 let statusBar: vscode.StatusBarItem;
 
+const _diffDocs = new Map<string, string>();
+
+class DiffContentProvider implements vscode.TextDocumentContentProvider {
+  provideTextDocumentContent(uri: vscode.Uri): string {
+    return _diffDocs.get(uri.toString()) ?? "";
+  }
+}
+
 export async function activate(context: vscode.ExtensionContext) {
   const config = vscode.workspace.getConfiguration("ltcai");
   const serverUrl: string = config.get("serverUrl") ?? "http://localhost:4825";
 
   client = new LatticeAIClient(serverUrl);
+  context.subscriptions.push(
+    vscode.workspace.registerTextDocumentContentProvider("ltcai-diff", new DiffContentProvider())
+  );
 
   // ── Status Bar ───────────────────────────────────────────────────────────
   statusBar = vscode.window.createStatusBarItem(vscode.StatusBarAlignment.Right, 100);
@@ -61,7 +72,20 @@ export async function activate(context: vscode.ExtensionContext) {
       if (!instruction) return;
 
       const message = `Edit this code as instructed.\n\nInstruction: ${instruction}\n\nCode:\n\`\`\`\n${selectedText}\n\`\`\`\n\nReturn ONLY the edited code, no explanation.`;
-      await streamIntoEditor(message, editor, selection);
+      await diffEditSelection(message, editor, selection);
+    }),
+
+    vscode.commands.registerCommand("ltcai.attachFile", async () => {
+      const editor = vscode.window.activeTextEditor;
+      if (!editor) {
+        vscode.window.showWarningMessage("Lattice AI: No active editor.");
+        return;
+      }
+      const content = editor.document.getText();
+      const lang = editor.document.languageId;
+      const fileName = editor.document.fileName.split("/").pop() ?? "file";
+      ChatPanel.createOrShow(context.extensionUri, client);
+      ChatPanel.sendMessage(`\`\`\`${lang}\n// ${fileName}\n${content}\n\`\`\``);
     }),
 
     vscode.commands.registerCommand("ltcai.explainSelection", async () => {
@@ -215,12 +239,64 @@ async function streamIntoEditor(
     }
   );
 
-  // 코드 블록 펜스 제거
   const cleaned = accumulated.trim()
     .replace(/^```[a-z]*\n?/, "")
     .replace(/\n?```$/, "");
 
   await editor.edit((eb) => eb.replace(selection, cleaned));
+}
+
+async function diffEditSelection(
+  message: string,
+  editor: vscode.TextEditor,
+  selection: vscode.Selection
+) {
+  let accumulated = "";
+  await vscode.window.withProgress(
+    { location: vscode.ProgressLocation.Notification, title: "Lattice AI: Generating edit..." },
+    async () => {
+      for await (const chunk of client.streamGenerate(message)) {
+        accumulated += chunk;
+      }
+    }
+  );
+
+  const cleaned = accumulated.trim()
+    .replace(/^```[a-z]*\n?/, "")
+    .replace(/\n?```$/, "");
+
+  const originalUri = editor.document.uri;
+  const lang = editor.document.languageId;
+  const selectedText = editor.document.getText(selection);
+
+  // Write proposed edit to a temp virtual document for diff view
+  const proposedUri = originalUri.with({ scheme: "ltcai-diff", path: originalUri.path + ".proposed" });
+  const originalFull = editor.document.getText();
+  const proposedFull = originalFull.slice(0, editor.document.offsetAt(selection.start))
+    + cleaned
+    + originalFull.slice(editor.document.offsetAt(selection.end));
+
+  _diffDocs.set(proposedUri.toString(), proposedFull);
+
+  await vscode.commands.executeCommand(
+    "vscode.diff",
+    originalUri,
+    proposedUri,
+    `Lattice AI Edit — ${originalUri.path.split("/").pop()}`
+  );
+
+  const choice = await vscode.window.showInformationMessage(
+    "Apply this edit?",
+    { modal: false },
+    "Apply",
+    "Discard"
+  );
+  _diffDocs.delete(proposedUri.toString());
+
+  if (choice === "Apply") {
+    await editor.edit((eb) => eb.replace(selection, cleaned));
+    await vscode.commands.executeCommand("workbench.action.closeActiveEditor");
+  }
 }
 
 function renderGardenHTML(tree: any): string {

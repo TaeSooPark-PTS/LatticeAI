@@ -164,6 +164,34 @@
         .switch a { color: var(--accent); text-decoration: none; font-weight: 700; }
         .switch a:hover { text-decoration: underline; }
 
+        .sso-divider {
+            display: flex; align-items: center; gap: 10px;
+            margin: 14px 0 10px;
+            color: var(--faint); font-size: 11.5px;
+        }
+        .sso-divider::before, .sso-divider::after {
+            content: ''; flex: 1;
+            height: 1px; background: rgba(255,255,255,0.07);
+        }
+        .sso-btn {
+            width: 100%;
+            padding: 12px;
+            background: rgba(255,255,255,0.04);
+            border: 1px solid rgba(255,255,255,0.1);
+            color: var(--text);
+            border-radius: 10px;
+            cursor: pointer;
+            font-weight: 600;
+            font-size: 13.5px;
+            font-family: inherit;
+            display: flex; align-items: center; justify-content: center; gap: 8px;
+            transition: all .18s;
+        }
+        .sso-btn:hover {
+            background: rgba(255,255,255,0.08);
+            border-color: rgba(34,211,160,0.3);
+        }
+
         .msg {
             font-size: 12px;
             min-height: 18px;
@@ -238,6 +266,13 @@
             <input class="input" type="password" id="login-pw" placeholder="비밀번호" onkeydown="if(event.key==='Enter')doLogin()">
             <div class="msg" id="login-msg"></div>
             <button class="submit" id="login-btn" onclick="doLogin()" data-ko="로그인" data-en="Log in">로그인</button>
+            <div id="sso-section" style="display:none;">
+                <div class="sso-divider" id="sso-divider-text">또는</div>
+                <button class="sso-btn" id="sso-btn" onclick="doSSOLogin()">
+                    <i class="ti ti-building"></i>
+                    <span id="sso-btn-label">SSO로 로그인</span>
+                </button>
+            </div>
             <p class="switch" id="login-switch">
                 <span id="no-account-text">계정이 없으신가요?</span>
                 <a href="#" onclick="showSection('register');return false;" id="go-register-link">회원가입</a>
@@ -281,6 +316,7 @@
                 err_fill: '모든 항목을 입력해주세요.',
                 err_login_fail: '이메일 또는 비밀번호가 틀렸습니다.',
                 err_server: '서버 연결 실패',
+                sso_divider: '또는', sso_btn: '로 로그인',
             },
             en: {
                 login_title: 'Lattice AI', login_sub: 'Local AI Workspace — Apple Silicon',
@@ -294,6 +330,7 @@
                 err_fill: 'Please fill in all fields.',
                 err_login_fail: 'Invalid email or password.',
                 err_server: 'Server connection failed',
+                sso_divider: 'or', sso_btn: 'Sign in with',
             }
         };
 
@@ -319,10 +356,31 @@
             document.getElementById('reg-name').placeholder = t('ph_name');
             document.getElementById('reg-nick').placeholder = t('ph_nick');
             document.getElementById('lang-label').textContent = lang === 'ko' ? '한국어' : 'English';
+            document.getElementById('sso-divider-text').textContent = t('sso_divider');
+            const ssoName = window._ssoProviderName || 'SSO';
+            document.getElementById('sso-btn-label').textContent =
+                lang === 'ko' ? `${ssoName}${t('sso_btn')}` : `${t('sso_btn')} ${ssoName}`;
             ['ko', 'en'].forEach(l => {
                 const el = document.getElementById(`opt-${l}`);
                 if (el) el.classList.toggle('active', l === lang);
             });
+        }
+
+        async function initSSO() {
+            try {
+                const res = await apiFetch('/auth/sso/config');
+                if (!res.ok) return;
+                const cfg = await res.json();
+                if (cfg.enabled) {
+                    window._ssoProviderName = cfg.provider_name;
+                    document.getElementById('sso-section').style.display = '';
+                    applyI18n();
+                }
+            } catch {}
+        }
+
+        function doSSOLogin() {
+            window.location.href = '/auth/sso/login';
         }
 
         function toggleLang() {
@@ -435,6 +493,8 @@
         apiFetch('/account/profile').then(r => {
             if (r.ok) window.location.href = '/chat';
         }).catch(() => {});
+
+        initSSO();
 
         // Handle invite code in URL
         const urlCode = new URLSearchParams(window.location.search).get('code');
