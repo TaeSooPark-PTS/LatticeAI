@@ -156,7 +156,12 @@ curl -X DELETE localhost:4825/models/unload/mlx-community%2FQwen2.5-Coder-14B-In
 
 ## 에디터 확장
 
-### VS Code / Cursor / Antigravity
+| 마켓플레이스 | 링크 |
+|---|---|
+| VS Code / Cursor | [marketplace.visualstudio.com](https://marketplace.visualstudio.com/items?itemName=parktaesoo.ltcai) |
+| Antigravity / VSCodium | [open-vsx.org](https://open-vsx.org/extension/parktaesoo/ltcai) |
+
+### 수동 설치 (VSIX)
 
 ```bash
 cd vscode-extension
