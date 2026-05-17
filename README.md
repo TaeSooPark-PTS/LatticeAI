@@ -28,6 +28,25 @@ Lattice AI/
 
 ---
 
+## 플랫폼 지원
+
+| 기능 | macOS (Apple Silicon) | Windows / Linux |
+|------|:---:|:---:|
+| 웹 UI / 클라우드 모델 (OpenAI, Groq 등) | ✅ | ✅ |
+| VS Code / Cursor 확장 | ✅ | ✅ |
+| Telegram 봇 | ✅ | ✅ |
+| MLX 로컬 모델 (Gemma, Qwen 등) | ✅ | ❌ Apple Silicon 전용 |
+| Ollama / vLLM / LM Studio 연동 | ✅ | ✅ |
+
+> Windows / Linux에서 로컬 모델을 사용하려면 [Ollama](https://ollama.com) 등을 별도로 설치하고 연결하세요.
+>
+> ```bash
+> # Ollama 연동 예시
+> LATTICEAI_OLLAMA_BASE_URL=http://localhost:11434 LTCAI
+> ```
+
+---
+
 ## 빠른 시작
 
 ### 설치 & 실행
