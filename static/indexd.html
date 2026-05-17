@@ -468,6 +468,41 @@
         .pw-msg.error { color: #f87171; }
         .pw-msg.success { color: #4ade80; }
 
+        .lang-picker { position: relative; }
+        .lang-picker-menu {
+            display: none;
+            position: absolute;
+            top: calc(100% + 6px);
+            right: 0;
+            background: #1e293b;
+            border: 1px solid rgba(255,255,255,0.1);
+            border-radius: 10px;
+            overflow: hidden;
+            box-shadow: 0 8px 24px rgba(0,0,0,0.4);
+            z-index: 200;
+            min-width: 90px;
+        }
+        .lang-picker-menu.open { display: block; }
+        .lang-option {
+            display: flex; align-items: center; gap: 8px;
+            padding: 9px 14px; font-size: 13px; cursor: pointer;
+            color: var(--muted); transition: background .12s;
+        }
+        .lang-option:hover { background: rgba(255,255,255,0.06); color: var(--text, #f8fafc); }
+        .lang-option.active { color: var(--accent, #6366f1); font-weight: 600; }
+
+        .auth-lang-picker {
+            position: absolute; top: 20px; right: 20px;
+        }
+        .auth-lang-btn {
+            background: rgba(255,255,255,0.07);
+            border: 1px solid rgba(255,255,255,0.12);
+            color: #94a3b8; font-size: 12px; padding: 5px 10px;
+            border-radius: 8px; cursor: pointer; transition: all .15s;
+        }
+        .auth-lang-btn:hover { background: rgba(255,255,255,0.12); color: #f8fafc; }
+        .auth-lang-picker .lang-picker-menu { top: calc(100% + 6px); right: 0; }
+
         .messages-viewport {
             flex: 1;
             overflow-y: auto;
@@ -2775,6 +2810,13 @@
     <div id="auth-overlay" class="auth-overlay">
         <div class="auth-orb auth-orb-1"></div>
         <div class="auth-orb auth-orb-2"></div>
+        <div class="auth-lang-picker lang-picker" id="auth-lang-picker">
+            <button class="auth-lang-btn" id="auth-lang-btn" onclick="toggleLangMenu('auth-lang-picker')">🌐 Languages</button>
+            <div class="lang-picker-menu" id="auth-lang-picker-menu">
+                <div class="lang-option" id="auth-lang-ko" onclick="setLang('ko')">🇰🇷 한국어</div>
+                <div class="lang-option" id="auth-lang-en" onclick="setLang('en')">🇺🇸 English</div>
+            </div>
+        </div>
         <div class="auth-card">
             <div id="login-form">
                 <div class="auth-logo"><i class="ti ti-brain"></i></div>
@@ -2824,9 +2866,9 @@
                 <!-- History items -->
             </div>
             <div class="sidebar-footer">
-                <button id="admin-btn" class="admin-btn" onclick="openAdminPanel()"><i class="ti ti-shield-lock"></i> 관리자 대시보드</button>
-                <button class="status-btn" onclick="openStatusPanel()"><i class="ti ti-info-circle"></i> 내 상태 보기</button>
-                <button id="setup-wizard-btn" class="setup-wizard-sidebar-btn" onclick="openSetupWizard()"><i class="ti ti-sparkles"></i> 자동 설정</button>
+                <button id="admin-btn" class="admin-btn" onclick="openAdminPanel()"><i class="ti ti-shield-lock"></i> <span data-i18n="admin_dashboard">관리자 대시보드</span></button>
+                <button class="status-btn" onclick="openStatusPanel()"><i class="ti ti-info-circle"></i> <span data-i18n="my_status">내 상태 보기</span></button>
+                <button id="setup-wizard-btn" class="setup-wizard-sidebar-btn" onclick="openSetupWizard()"><i class="ti ti-sparkles"></i> <span data-i18n="auto_setup">자동 설정</span></button>
                 <button id="new-chat-btn" class="new-chat-btn"><i class="ti ti-plus"></i> New Chat</button>
             </div>
         </aside>
@@ -2845,7 +2887,13 @@
                 </div>
                 <div class="header-pills">
                     <div class="status-pill"><i class="ti ti-device-desktop"></i> Local</div>
-                    <button onclick="toggleLang()" class="logout-btn" id="lang-btn" title="언어 전환">KO</button>
+                    <div class="lang-picker" id="header-lang-picker">
+                        <button class="logout-btn" id="lang-btn" onclick="toggleLangMenu('header-lang-picker')" title="Language">🌐</button>
+                        <div class="lang-picker-menu" id="header-lang-picker-menu">
+                            <div class="lang-option" id="header-lang-ko" onclick="setLang('ko')">🇰🇷 한국어</div>
+                            <div class="lang-option" id="header-lang-en" onclick="setLang('en')">🇺🇸 English</div>
+                        </div>
+                    </div>
                     <button onclick="openAcctModal()" class="logout-btn" title="계정 설정"><i class="ti ti-user"></i></button>
                     <button onclick="logout()" class="logout-btn" data-i18n="logout">로그아웃</button>
                 </div>
@@ -2908,16 +2956,16 @@
                 <div class="ops-card interactive" onclick="openVpcPanel()">
                     <div>
                         <div class="ops-label">PRIVATE VPC</div>
-                        <div id="ops-vpc" class="ops-value">설정 안 됨</div>
-                        <div id="ops-vpc-meta" class="ops-meta">클릭하여 VPC 연결 설정</div>
+                        <div id="ops-vpc" class="ops-value" data-i18n="vpc_not_set">설정 안 됨</div>
+                        <div id="ops-vpc-meta" class="ops-meta" data-i18n="vpc_click_to_set">클릭하여 VPC 연결 설정</div>
                     </div>
                     <div class="ops-icon"><i class="ti ti-cloud-lock"></i></div>
                 </div>
                 <div class="ops-card interactive" onclick="openAdminPanel()">
                     <div>
                         <div class="ops-label">SECURITY</div>
-                        <div class="ops-value">민감정보 감시</div>
-                        <div id="security-admin-meta" class="ops-meta">관리자 대시보드 접근</div>
+                        <div class="ops-value" data-i18n="security_monitor">민감정보 감시</div>
+                        <div id="security-admin-meta" class="ops-meta" data-i18n="admin_dashboard_access">관리자 대시보드 접근</div>
                     </div>
                     <div class="ops-icon"><i class="ti ti-shield-check"></i></div>
                 </div>
@@ -2926,12 +2974,12 @@
             <div class="messages-viewport" id="chat-viewport">
                 <div class="empty-state" id="empty-state">
                     <div style="width:64px;height:64px;background:linear-gradient(135deg,rgba(34,211,160,0.18),rgba(129,140,248,0.12));border:1px solid rgba(34,211,160,0.18);border-radius:18px;display:flex;align-items:center;justify-content:center;font-size:28px;color:var(--accent);margin:0 auto 18px;box-shadow:0 0 32px rgba(34,211,160,0.14)"><i class="ti ti-sparkles"></i></div>
-                    <h1>무엇을 만들까요?</h1>
-                    <p>로컬 모델, 이미지 분석, 코드 생성, 프라이빗 VPC — 모든 걸 한 화면에서 이어가세요.</p>
+                    <h1 data-i18n="empty_title">무엇을 만들까요?</h1>
+                    <p data-i18n="empty_sub">로컬 모델, 이미지 분석, 코드 생성, 프라이빗 VPC — 모든 걸 한 화면에서 이어가세요.</p>
                     <div class="empty-grid">
-                        <div class="empty-chip" onclick="document.getElementById('user-input').value='보고서 초안을 만들어줘';document.getElementById('user-input').focus()"><span class="empty-chip-icon"><i class="ti ti-file-text"></i></span>파일 생성 · 코드 초안</div>
-                        <div class="empty-chip" onclick="document.getElementById('user-input').value='VPC 보안 구성을 점검해줘';document.getElementById('user-input').focus()"><span class="empty-chip-icon"><i class="ti ti-shield-check"></i></span>VPC 보안 구성 점검</div>
-                        <div class="empty-chip" onclick="document.getElementById('user-input').value='이 내용을 지식베이스에 정리해줘';document.getElementById('user-input').focus()"><span class="empty-chip-icon"><i class="ti ti-brain"></i></span>로컬 지식 정리</div>
+                        <div class="empty-chip" id="chip-file" onclick="document.getElementById('user-input').value=t('chip_file_prompt');document.getElementById('user-input').focus()"><span class="empty-chip-icon"><i class="ti ti-file-text"></i></span><span data-i18n="chip_file">파일 생성 · 코드 초안</span></div>
+                        <div class="empty-chip" id="chip-vpc" onclick="document.getElementById('user-input').value=t('chip_vpc_prompt');document.getElementById('user-input').focus()"><span class="empty-chip-icon"><i class="ti ti-shield-check"></i></span><span data-i18n="chip_vpc">VPC 보안 구성 점검</span></div>
+                        <div class="empty-chip" id="chip-kb" onclick="document.getElementById('user-input').value=t('chip_kb_prompt');document.getElementById('user-input').focus()"><span class="empty-chip-icon"><i class="ti ti-brain"></i></span><span data-i18n="chip_kb">로컬 지식 정리</span></div>
                     </div>
                 </div>
             </div>
@@ -2954,16 +3002,16 @@
                             <i class="ti ti-paperclip" style="font-size: 20px;"></i>
                             <input type="file" id="doc-input" accept=".pdf,.docx,.xlsx,.pptx,.txt,.md,.csv" hidden onchange="attachDocument(this)">
                         </label>
-                        <textarea id="user-input" placeholder="Lattice AI에게 작업을 지시하세요..." rows="1"></textarea>
+                        <textarea id="user-input" placeholder="Lattice AI에게 작업을 지시하세요..." rows="1" data-i18n-ph="ph_input"></textarea>
                         <button class="send-btn" id="send-btn"><i class="ti ti-send"></i></button>
                     </div>
                     <div class="file-toolbar">
-                        <span class="file-toolbar-label">파일 만들기</span>
+                        <span class="file-toolbar-label" data-i18n="create_file">파일 만들기</span>
                         <button class="file-type-btn" onclick="openFileCreate('docx')"><i class="ti ti-file-word"></i> DOCX</button>
                         <button class="file-type-btn" onclick="openFileCreate('xlsx')"><i class="ti ti-file-spreadsheet"></i> XLSX</button>
                         <button class="file-type-btn" onclick="openFileCreate('pptx')"><i class="ti ti-presentation"></i> PPTX</button>
                         <button class="file-type-btn" onclick="openFileCreate('pdf')"><i class="ti ti-file-type-pdf"></i> PDF</button>
-                        <button class="file-type-btn" onclick="openLocalBrowser()"><i class="ti ti-folder-open"></i> 로컬 파일</button>
+                        <button class="file-type-btn" onclick="openLocalBrowser()"><i class="ti ti-folder-open"></i> <span data-i18n="local_files">로컬 파일</span></button>
                     </div>
                 </div>
             </div>
@@ -2974,8 +3022,8 @@
         <section class="model-panel">
             <div class="model-panel-header">
                 <div>
-                    <h2>모델 스위처</h2>
-                    <p style="color: var(--muted); font-size: 12px; margin-top: 4px;">실행 엔진을 설치하고, 엔진에 맞는 local/cloud LLM을 선택합니다.</p>
+                    <h2 data-i18n="model_switcher">모델 스위처</h2>
+                    <p style="color: var(--muted); font-size: 12px; margin-top: 4px;" data-i18n="model_switcher_sub">실행 엔진을 설치하고, 엔진에 맞는 local/cloud LLM을 선택합니다.</p>
                 </div>
                 <button class="admin-close" onclick="closeModelPanel()"><i class="ti ti-x"></i></button>
             </div>
@@ -2987,12 +3035,12 @@
     <div id="perm-overlay" class="perm-overlay" style="display:none">
         <div class="perm-dialog">
             <div class="perm-icon"><i class="ti ti-shield-lock"></i></div>
-            <div class="perm-title" id="perm-title">파일 접근 요청</div>
+            <div class="perm-title" id="perm-title" data-i18n="perm_title">파일 접근 요청</div>
             <div class="perm-path" id="perm-path"></div>
             <div class="perm-desc" id="perm-desc"></div>
             <div class="perm-actions">
-                <button class="perm-deny-btn" onclick="resolvePermission(false)">거부</button>
-                <button class="perm-allow-btn" onclick="resolvePermission(true)">허용</button>
+                <button class="perm-deny-btn" onclick="resolvePermission(false)" data-i18n="btn_deny">거부</button>
+                <button class="perm-allow-btn" onclick="resolvePermission(true)" data-i18n="btn_allow">허용</button>
             </div>
         </div>
     </div>
@@ -3393,32 +3441,82 @@
 
         const I18N = {
             ko: {
-                logout: '로그아웃', send: '전송', tab_profile: '프로필', tab_password: '비밀번호',
-                label_name: '이름', label_nickname: '닉네임', label_cur_pw: '현재 비밀번호',
-                label_new_pw: '새 비밀번호', label_new_pw2: '새 비밀번호 확인',
-                btn_save: '저장', btn_change: '변경', btn_cancel: '취소',
-                ph_name: '이름', ph_nickname: '닉네임', ph_cur_pw: '현재 비밀번호',
-                ph_new_pw: '새 비밀번호 (4자 이상)', ph_new_pw2: '새 비밀번호 재입력',
+                // 인증
                 login_title: 'Lattice AI', login_sub: 'Local AI Workspace — Apple Silicon',
                 ph_email: '이메일 주소', ph_password: '비밀번호', btn_login: '로그인',
-                go_register: '회원가입', go_login: '로그인', register_title: '계정 만들기',
-                register_sub: 'Lattice AI 워크스페이스에 참여하세요',
-                ph_pw_confirm: '비밀번호 확인', ph_fullname: '이름', ph_nick: '닉네임',
-                btn_register: '가입하기', have_account: '이미 계정이 있나요?', no_account: '계정이 없으신가요?',
+                no_account: '계정이 없으신가요?', go_register: '회원가입',
+                register_title: '계정 만들기', register_sub: 'Lattice AI 워크스페이스에 참여하세요',
+                ph_new_pw: '비밀번호 (4자 이상)', ph_pw_confirm: '비밀번호 확인',
+                ph_fullname: '이름', ph_nick: '닉네임',
+                btn_register: '가입하기', have_account: '이미 계정이 있나요?', go_login: '로그인',
+                // 헤더 / 사이드바
+                logout: '로그아웃', admin_dashboard: '관리자 대시보드',
+                my_status: '내 상태 보기', auto_setup: '자동 설정',
+                // 계정 모달
+                tab_profile: '프로필', tab_password: '비밀번호',
+                label_name: '이름', label_nickname: '닉네임',
+                label_cur_pw: '현재 비밀번호', label_new_pw: '새 비밀번호', label_new_pw2: '새 비밀번호 확인',
+                ph_name: '이름', ph_nickname: '닉네임', ph_cur_pw: '현재 비밀번호',
+                ph_new_pw2: '새 비밀번호 재입력',
+                btn_save: '저장', btn_change: '변경', btn_cancel: '취소',
+                // ops 스트립
+                vpc_not_set: '설정 안 됨', vpc_click_to_set: '클릭하여 VPC 연결 설정',
+                security_monitor: '민감정보 감시', admin_dashboard_access: '관리자 대시보드 접근',
+                // 빈 화면
+                empty_title: '무엇을 만들까요?',
+                empty_sub: '로컬 모델, 이미지 분석, 코드 생성, 프라이빗 VPC — 모든 걸 한 화면에서 이어가세요.',
+                chip_file: '파일 생성 · 코드 초안', chip_vpc: 'VPC 보안 구성 점검', chip_kb: '로컬 지식 정리',
+                chip_file_prompt: '보고서 초안을 만들어줘',
+                chip_vpc_prompt: 'VPC 보안 구성을 점검해줘',
+                chip_kb_prompt: '이 내용을 지식베이스에 정리해줘',
+                // 입력창
+                ph_input: 'Lattice AI에게 작업을 지시하세요...',
+                // 파일 툴바
+                create_file: '파일 만들기', local_files: '로컬 파일',
+                // 패널 제목
+                model_switcher: '모델 스위처',
+                model_switcher_sub: '실행 엔진을 설치하고, 엔진에 맞는 local/cloud LLM을 선택합니다.',
+                // 권한 다이얼로그
+                perm_title: '파일 접근 요청', btn_deny: '거부', btn_allow: '허용',
             },
             en: {
-                logout: 'Logout', send: 'Send', tab_profile: 'Profile', tab_password: 'Password',
-                label_name: 'Name', label_nickname: 'Nickname', label_cur_pw: 'Current Password',
-                label_new_pw: 'New Password', label_new_pw2: 'Confirm New Password',
-                btn_save: 'Save', btn_change: 'Change', btn_cancel: 'Cancel',
-                ph_name: 'Name', ph_nickname: 'Nickname', ph_cur_pw: 'Current password',
-                ph_new_pw: 'New password (min. 4 chars)', ph_new_pw2: 'Confirm new password',
+                // Auth
                 login_title: 'Lattice AI', login_sub: 'Local AI Workspace — Apple Silicon',
                 ph_email: 'Email address', ph_password: 'Password', btn_login: 'Log in',
-                go_register: 'Sign up', go_login: 'Log in', register_title: 'Create Account',
-                register_sub: 'Join the Lattice AI workspace',
-                ph_pw_confirm: 'Confirm password', ph_fullname: 'Full name', ph_nick: 'Nickname',
-                btn_register: 'Sign up', have_account: 'Already have an account?', no_account: "Don't have an account?",
+                no_account: "Don't have an account?", go_register: 'Sign up',
+                register_title: 'Create Account', register_sub: 'Join the Lattice AI workspace',
+                ph_new_pw: 'Password (min. 4 chars)', ph_pw_confirm: 'Confirm password',
+                ph_fullname: 'Full name', ph_nick: 'Nickname',
+                btn_register: 'Sign up', have_account: 'Already have an account?', go_login: 'Log in',
+                // Header / Sidebar
+                logout: 'Logout', admin_dashboard: 'Admin Dashboard',
+                my_status: 'My Status', auto_setup: 'Auto Setup',
+                // Account modal
+                tab_profile: 'Profile', tab_password: 'Password',
+                label_name: 'Name', label_nickname: 'Nickname',
+                label_cur_pw: 'Current Password', label_new_pw: 'New Password', label_new_pw2: 'Confirm New Password',
+                ph_name: 'Name', ph_nickname: 'Nickname', ph_cur_pw: 'Current password',
+                ph_new_pw2: 'Confirm new password',
+                btn_save: 'Save', btn_change: 'Change', btn_cancel: 'Cancel',
+                // Ops strip
+                vpc_not_set: 'Not configured', vpc_click_to_set: 'Click to set up VPC',
+                security_monitor: 'Sensitive data monitor', admin_dashboard_access: 'Admin dashboard access',
+                // Empty state
+                empty_title: 'What would you like to build?',
+                empty_sub: 'Local models, image analysis, code generation, private VPC — all in one workspace.',
+                chip_file: 'Create file · Code draft', chip_vpc: 'Review VPC security', chip_kb: 'Organize knowledge',
+                chip_file_prompt: 'Draft a report for me',
+                chip_vpc_prompt: 'Review my VPC security configuration',
+                chip_kb_prompt: 'Organize this into my knowledge base',
+                // Input
+                ph_input: 'Ask Lattice AI anything...',
+                // File toolbar
+                create_file: 'Create file', local_files: 'Local files',
+                // Panel titles
+                model_switcher: 'Model Switcher',
+                model_switcher_sub: 'Install a runtime engine and select a local/cloud LLM.',
+                // Permission dialog
+                perm_title: 'File Access Request', btn_deny: 'Deny', btn_allow: 'Allow',
             }
         };
         let currentLang = localStorage.getItem('ltcai_lang') || 'ko';
@@ -3427,21 +3525,42 @@
 
         function applyI18n() {
             document.querySelectorAll('[data-i18n]').forEach(el => {
-                const key = el.dataset.i18n;
-                if (el.placeholder !== undefined && el.tagName === 'INPUT') el.placeholder = t(key);
-                else el.textContent = t(key);
+                el.textContent = t(el.dataset.i18n);
             });
             document.querySelectorAll('[data-i18n-ph]').forEach(el => {
                 el.placeholder = t(el.dataset.i18nPh);
             });
-            document.getElementById('lang-btn').textContent = currentLang === 'ko' ? 'KO' : 'EN';
+            // 언어 선택기 active 표시 업데이트
+            ['auth', 'header'].forEach(prefix => {
+                ['ko', 'en'].forEach(lang => {
+                    const el = document.getElementById(`${prefix}-lang-${lang}`);
+                    if (el) el.classList.toggle('active', lang === currentLang);
+                });
+            });
+            const authBtn = document.getElementById('auth-lang-btn');
+            if (authBtn) authBtn.textContent = `🌐 ${currentLang === 'ko' ? '한국어' : 'English'}`;
         }
 
-        function toggleLang() {
-            currentLang = currentLang === 'ko' ? 'en' : 'ko';
-            localStorage.setItem('ltcai_lang', currentLang);
+        function toggleLangMenu(pickerId) {
+            const menu = document.getElementById(`${pickerId}-menu`);
+            if (!menu) return;
+            const isOpen = menu.classList.contains('open');
+            document.querySelectorAll('.lang-picker-menu').forEach(m => m.classList.remove('open'));
+            if (!isOpen) menu.classList.add('open');
+        }
+
+        function setLang(lang) {
+            currentLang = lang;
+            localStorage.setItem('ltcai_lang', lang);
+            document.querySelectorAll('.lang-picker-menu').forEach(m => m.classList.remove('open'));
             applyI18n();
         }
+
+        document.addEventListener('click', (e) => {
+            if (!e.target.closest('.lang-picker')) {
+                document.querySelectorAll('.lang-picker-menu').forEach(m => m.classList.remove('open'));
+            }
+        });
 
         function switchAcctTab(tab) {
             ['profile', 'password'].forEach(t => {
