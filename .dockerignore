@@ -1,0 +1,15 @@
+.env
+.ltcai
+.ltcai-brain
+agent_workspace
+__pycache__
+*.pyc
+*.log
+venv
+.venv
+.git
+.DS_Store
+chat_history.json
+telegram_chats.json
+users.json
+mcp_installs.json

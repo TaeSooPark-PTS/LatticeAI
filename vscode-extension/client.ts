@@ -7,7 +7,7 @@ export interface ModelInfo {
   size: string;
 }
 
-export class ConnectAIClient {
+export class LatticeAIClient {
   constructor(private baseUrl: string) { }
 
   // ── Health ────────────────────────────────────────────────────────────────
@@ -29,6 +29,11 @@ export class ConnectAIClient {
 
   async listModels(): Promise<{ recommended: ModelInfo[]; loaded: string[]; current: string }> {
     return this._get("/models");
+  }
+
+  async getCurrentModel(): Promise<string> {
+    const models = await this.listModels();
+    return models.current;
   }
 
   async loadModel(modelId: string, adapterPath?: string): Promise<any> {

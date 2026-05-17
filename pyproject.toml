@@ -1,0 +1,51 @@
+[build-system]
+requires = ["setuptools>=68", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "ltcai"
+version = "0.1.0"
+description = "Lattice AI local MLX/cloud LLM workspace server"
+readme = "README.md"
+requires-python = ">=3.11"
+license = "MIT"
+dependencies = [
+  "fastapi",
+  "uvicorn",
+  "pydantic",
+  "httpx",
+  "pillow",
+  "openai",
+  "python-docx",
+  "openpyxl",
+  "python-pptx",
+  "python-multipart",
+  "keyring",
+]
+
+[project.optional-dependencies]
+local = ["mlx-lm", "mlx-vlm"]
+voice = ["openai-whisper", "SpeechRecognition", "pydub"]
+all = ["mlx-lm", "mlx-vlm", "openai-whisper", "SpeechRecognition", "pydub"]
+
+[project.scripts]
+LTCAI = "ltcai_cli:main"
+
+[project.urls]
+Homepage = "https://github.com/TaeSooPark-PTS/LatticeAI"
+Repository = "https://github.com/TaeSooPark-PTS/LatticeAI"
+
+[tool.setuptools]
+py-modules = [
+  "ltcai_cli",
+  "server",
+  "llm_router",
+  "p_reinforce",
+  "telegram_bot",
+  "tools",
+  "codex_telegram_bot",
+]
+include-package-data = true
+
+[tool.setuptools.data-files]
+"static" = ["static/index.html", "static/indexd.html", "static/admin.html"]

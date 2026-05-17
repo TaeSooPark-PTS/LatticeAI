@@ -1,29 +1,21 @@
-# 🧠 Connect AI MLX
+# Lattice AI
 
-**100% 로컬 AI 코딩 에이전트** — mlx-lm 기반, Apple Silicon 전용  
-VS Code · Antigravity · Cursor 전부 지원 | P-Reinforce 지식 정원사 내장
+Local/cloud LLM workspace server with MLX, Ollama, vLLM, OpenAI-compatible providers,
+BYOK API keys, MCP recommendations, and editor extensions for VS Code, Cursor, and Antigravity.
 
 ---
 
 ## 아키텍처
 
 ```
-connect-ai-mlx/
-├── server/
-│   ├── server.py        # FastAPI 브릿지 서버 (포트 4825)
-│   ├── llm_router.py    # mlx-lm 멀티모델 핫스왑 코어
-│   ├── p_reinforce.py   # 지식 정원사 (마크다운 위키 자동 정리)
-│   └── requirements.txt
-└── extension/
-    ├── package.json
-    ├── tsconfig.json
-    └── src/
-        ├── extension.ts          # 메인 진입점
-        ├── client.ts             # HTTP 클라이언트 (streaming 포함)
-        ├── commands/
-        │   └── modelPicker.ts    # 모델 선택 QuickPick UI
-        └── panels/
-            └── ChatPanel.ts      # 채팅 Webview UI
+Lattice AI/
+├── server.py              # FastAPI bridge server (port 4825)
+├── llm_router.py          # local/cloud model router
+├── tools.py               # local workspace tools
+├── static/                # web UI
+├── bin/ltcai.js           # npm CLI entrypoint
+├── pyproject.toml         # PyPI metadata
+└── vscode-extension/      # VS Code/Cursor/Antigravity extension
 ```
 
 ---
@@ -33,14 +25,33 @@ connect-ai-mlx/
 ### 1. 서버 설치 & 실행
 
 ```bash
-# 의존성 설치 (Python 3.11+ 권장)
-cd server
-pip install -r requirements.txt
+# PyPI
+pip install ltcai
+
+# 로컬 MLX까지 함께 쓰려면
+pip install "ltcai[local]"
+
+# npm
+npm install -g ltcai
 
 # 서버 실행
-python server.py
+LTCAI
 # → http://localhost:4825 에서 실행됨
 ```
+
+개발 중에는 설치 없이도 실행할 수 있습니다.
+
+```bash
+python ltcai_cli.py
+python ltcai_cli.py --reload
+LTCAI doctor
+```
+
+`npm install -g ltcai`로 설치한 경우 첫 실행 시 `~/.ltcai/npm-python`에 Python 가상환경을 만들고
+`requirements.txt`를 설치합니다. 자동 설치를 끄려면 `LTCAI_SKIP_NPM_BOOTSTRAP=1`을 설정하세요.
+
+Lattice AI stores runtime data in `~/.ltcai/` by default. Override it with
+`LATTICEAI_DATA_DIR=/path/to/data` when running `LTCAI`.
 
 ### 2. 첫 모델 로드 (터미널 or 확장 프로그램에서)
 
@@ -56,18 +67,34 @@ curl -X POST http://localhost:4825/models/load \
 ### 3. 확장 프로그램 설치
 
 ```bash
-cd extension
+cd vscode-extension
 npm install
-npm run compile
+npm run build
+npm run package:vsix
 
 # VS Code / Cursor / Antigravity에서:
 # 1. Extensions 패널 → "..." → "Install from VSIX" 또는
-# 2. F5로 개발 모드 실행
+# 2. 로컬 CLI가 있으면:
+npm run install:all
 ```
 
 ---
 
-## 지원 모델 (M5 32GB 기준)
+## 모델/비용 구조
+
+- Local LLM: MLX, Ollama, vLLM, LM Studio, llama.cpp
+- Cloud LLM: OpenAI, OpenRouter, Groq, Together, xAI 등 OpenAI-compatible provider
+- API 비용: 사용자가 본인 API key를 입력하는 BYOK 구조입니다. 사용자별 키로 호출되므로 키 소유자가 사용량을 부담합니다.
+- 초대 링크 게이트는 기본 비활성화되어 있습니다. 다시 켜려면 `LATTICEAI_INVITE_GATE_ENABLED=true`를 설정하세요.
+
+## 보안 기본값
+
+- 기본 서버 바인딩은 `127.0.0.1:4825`입니다. 같은 네트워크에서 접속하게 하려면 명시적으로 `LATTICEAI_HOST=0.0.0.0`을 설정하세요.
+- CORS는 기본적으로 localhost만 허용합니다. 네트워크 공개가 필요하면 `LATTICEAI_CORS_ALLOW_NETWORK=true`를 명시적으로 설정하세요.
+- 사용자 API key는 OS keyring/Keychain에 저장합니다. keyring을 사용할 수 없는 환경에서 평문 저장을 허용하려면 `LATTICEAI_ALLOW_PLAINTEXT_API_KEYS=true`를 직접 설정해야 합니다.
+- 히스토리 저장 전 API key/token/password 패턴은 마스킹됩니다.
+
+## 지원 모델 예시 (M5 32GB 기준)
 
 | 모델 | 용도 | 크기 | 추천도 |
 |------|------|------|--------|
@@ -116,10 +143,10 @@ curl -X DELETE localhost:4825/models/unload/mlx-community%2FLlama-3.1-8B-Instruc
 
 ## P-Reinforce 지식 정원사
 
-지식은 `~/.connect-ai-brain/`에 자동 분류 저장:
+지식은 `~/.ltcai-ai-brain/`에 자동 분류 저장:
 
 ```
-~/.connect-ai-brain/
+~/.ltcai-ai-brain/
 ├── INDEX.md
 ├── 00_Raw/       # 원시 데이터, 아이디어
 ├── 10_Wiki/      # 검증된 개념, 레퍼런스
@@ -151,16 +178,16 @@ curl -X DELETE localhost:4825/models/unload/mlx-community%2FLlama-3.1-8B-Instruc
 
 ```bash
 # launchd plist로 Mac 부팅시 자동 시작
-cat > ~/Library/LaunchAgents/com.connectai.mlx.plist << 'EOF'
+cat > ~/Library/LaunchAgents/com.ltcai.mlx.plist << 'EOF'
 <?xml version="1.0" encoding="UTF-8"?>
 <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
 <plist version="1.0">
 <dict>
-  <key>Label</key><string>com.connectai.mlx</string>
+  <key>Label</key><string>com.ltcai.mlx</string>
   <key>ProgramArguments</key>
   <array>
     <string>/usr/bin/python3</string>
-    <string>/path/to/connect-ai-mlx/server/server.py</string>
+    <string>/path/to/LTCAI-ai-mlx/server/server.py</string>
   </array>
   <key>RunAtLoad</key><true/>
   <key>KeepAlive</key><true/>
@@ -168,5 +195,5 @@ cat > ~/Library/LaunchAgents/com.connectai.mlx.plist << 'EOF'
 </plist>
 EOF
 
-launchctl load ~/Library/LaunchAgents/com.connectai.mlx.plist
+launchctl load ~/Library/LaunchAgents/com.ltcai.mlx.plist
 ```

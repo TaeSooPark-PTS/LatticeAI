@@ -1,20 +1,20 @@
 import * as vscode from "vscode";
-import { ConnectAIClient, ModelInfo } from "../client";
+import { LatticeAIClient } from "./client";
 
 export class ModelPicker {
-  constructor(private client: ConnectAIClient) {}
+  constructor(private client: LatticeAIClient) {}
 
   async show(): Promise<string | undefined> {
     // 서버 살아있는지 체크
     const alive = await this.client.isAlive();
     if (!alive) {
       const action = await vscode.window.showErrorMessage(
-        "Connect AI: Server not running. Start it first.",
+        "Lattice AI: Server not running. Start it first.",
         "How to start"
       );
       if (action === "How to start") {
         vscode.env.openExternal(
-          vscode.Uri.parse("https://github.com/your-repo/connect-ai-mlx#quick-start")
+          vscode.Uri.parse("https://github.com/your-repo/ltcai#quick-start")
         );
       }
       return undefined;
@@ -68,7 +68,7 @@ export class ModelPicker {
     });
 
     const pick = await vscode.window.showQuickPick(items, {
-      title: "Connect AI MLX — Select Model",
+      title: "Lattice AI MLX — Select Model",
       placeHolder: "Search models...",
       matchOnDescription: true,
       matchOnDetail: true,

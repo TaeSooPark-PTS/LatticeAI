@@ -1,0 +1,67 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Lattice AI</title>
+  <style>
+    body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; margin: 0; }
+    .wrap { display: grid; grid-template-rows: 1fr auto; height: 100vh; }
+    #messages { padding: 12px; overflow: auto; white-space: pre-wrap; }
+    .row { display: grid; grid-template-columns: 1fr auto; gap: 8px; padding: 10px; border-top: 1px solid #3333; }
+    textarea { width: 100%; min-height: 72px; resize: vertical; font: inherit; }
+    button { padding: 8px 12px; font: inherit; cursor: pointer; }
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <div id="messages"></div>
+    <div class="row">
+      <textarea id="input" placeholder="Ask Lattice AI..."></textarea>
+      <button id="send">Send</button>
+    </div>
+  </div>
+  <script>
+    const vscode = acquireVsCodeApi();
+    const messagesEl = document.getElementById("messages");
+    const inputEl = document.getElementById("input");
+    const sendBtn = document.getElementById("send");
+    let assistantBuffer = "";
+
+    function appendLine(prefix, text) {
+      const p = document.createElement("div");
+      p.textContent = prefix + text;
+      messagesEl.appendChild(p);
+      messagesEl.scrollTop = messagesEl.scrollHeight;
+    }
+
+    sendBtn.addEventListener("click", () => {
+      const text = inputEl.value.trim();
+      if (!text) return;
+      appendLine("You: ", text);
+      assistantBuffer = "";
+      vscode.postMessage({ type: "send", text });
+      inputEl.value = "";
+    });
+
+    window.addEventListener("message", (event) => {
+      const msg = event.data;
+      if (msg.type === "prefill") {
+        inputEl.value = msg.text || "";
+        inputEl.focus();
+      }
+      if (msg.type === "startAssistant") {
+        appendLine("AI: ", "");
+      }
+      if (msg.type === "chunk") {
+        assistantBuffer += msg.chunk || "";
+        const last = messagesEl.lastElementChild;
+        if (last) last.textContent = "AI: " + assistantBuffer;
+      }
+      if (msg.type === "error") {
+        appendLine("Error: ", msg.message || "Unknown error");
+      }
+    });
+  </script>
+</body>
+</html>

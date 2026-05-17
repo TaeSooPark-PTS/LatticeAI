@@ -1,4 +1,11 @@
 fastapi
 uvicorn
 pydantic
-mlx-lm
+httpx
+pillow
+openai
+python-docx
+openpyxl
+python-pptx
+python-multipart
+keyring

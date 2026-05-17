@@ -4,13 +4,19 @@ Raw 데이터를 자동으로 분석해서 구조화된 마크다운 위키로 �
 """
 
 import json
+import os
 import re
 import time
+import shutil
 from datetime import datetime
 from pathlib import Path
 from typing import Optional
 
-BRAIN_DIR = Path.home() / ".connect-ai-brain"
+BRAIN_DIR = Path(
+    os.getenv("LATTICEAI_OBSIDIAN_VAULT_DIR")
+    or os.getenv("LATTICEAI_BRAIN_DIR")
+    or Path.home() / ".ltcai-brain"
+)
 
 STRUCTURE = {
     "10_Wiki":   "검증된 지식, 개념 설명, 레퍼런스",
@@ -34,10 +40,13 @@ class PReinforceGardener:
             index_path.write_text(self._render_index())
 
     def _render_index(self) -> str:
-        lines = ["# 🧠 Connect AI Brain — P-Reinforce Index\n"]
+        lines = ["# 🧠 Lattice AI Brain — P-Reinforce Index\n"]
         lines.append(f"*Generated: {datetime.now().strftime('%Y-%m-%d %H:%M')}*\n")
+        lines.append("\nThis folder is an Obsidian-compatible Markdown vault.\n")
         for folder, desc in STRUCTURE.items():
             lines.append(f"## [{folder}](./{folder}/)\n_{desc}_\n")
+        lines.append("## Connector Status\n")
+        lines.append(f"- OCR engine: `{'tesseract' if shutil.which('tesseract') else 'not installed'}`\n")
         return "\n".join(lines)
 
     # ── Classify ──────────────────────────────────────────────────────────────
@@ -99,7 +108,7 @@ class PReinforceGardener:
         first_line = raw.strip().split("\n")[0][:80]
         lines = [
             f"# {first_line}",
-            f"\n> 📁 `{folder}` | 🕐 {now} | Connect AI MLX\n",
+            f"\n> 📁 `{folder}` | 🕐 {now} | Lattice AI MLX\n",
             "---\n",
             raw,
             "\n\n---",
@@ -128,13 +137,12 @@ class PReinforceGardener:
             
             try:
                 content = file_path.read_text(encoding="utf-8")
-                # 간단한 키워드 매칭 검색
                 keywords = [k for k in re.split(r'\s+', query) if len(k) > 1]
                 if any(k.lower() in content.lower() for k in keywords):
                     results.append(f"--- Document: {file_path.name} ---\n{content[:800]}")
                     if len(results) >= limit:
                         break
-            except:
+            except Exception:
                 continue
         
         return "\n\n".join(results)

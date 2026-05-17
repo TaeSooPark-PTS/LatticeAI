@@ -1,0 +1,1013 @@
+<!DOCTYPE html>
+<html lang="ko">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Lattice AI Admin</title>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@latest/tabler-icons.min.css">
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap');
+
+        :root {
+            --bg: #0e1110;
+            --panel: #171b19;
+            --panel-2: #1d2220;
+            --panel-3: #232a26;
+            --text: #f3f1e8;
+            --muted: #b7b5ab;
+            --faint: #7c8078;
+            --accent: #42d39a;
+            --accent-2: #d8a54a;
+            --danger: #e47a73;
+            --border: rgba(243,241,232,0.1);
+            --border-strong: rgba(243,241,232,0.18);
+            --shadow: 0 24px 70px rgba(0,0,0,0.34);
+            --radius: 14px;
+            --radius-sm: 10px;
+        }
+
+        * { box-sizing: border-box; }
+        html, body { height: 100%; }
+        body {
+            margin: 0;
+            font-family: Inter, -apple-system, BlinkMacSystemFont, sans-serif;
+            color: var(--text);
+            background:
+                linear-gradient(180deg, rgba(255,255,255,0.018), transparent 28%),
+                linear-gradient(135deg, #101211 0%, #0d100f 52%, #141514 100%);
+        }
+
+        body::before {
+            content: "";
+            position: fixed;
+            inset: 0;
+            pointer-events: none;
+            background:
+                linear-gradient(rgba(243,241,232,0.032) 1px, transparent 1px),
+                linear-gradient(90deg, rgba(243,241,232,0.022) 1px, transparent 1px);
+            background-size: 46px 46px;
+            mask-image: linear-gradient(180deg, rgba(0,0,0,0.4), rgba(0,0,0,0.08));
+        }
+
+        .page {
+            position: relative;
+            z-index: 1;
+            min-height: 100%;
+            display: flex;
+            flex-direction: column;
+        }
+
+        .topbar {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 16px;
+            padding: 22px 28px;
+            border-bottom: 1px solid rgba(243,241,232,0.08);
+            background: rgba(15,17,16,0.84);
+            backdrop-filter: blur(20px);
+            position: sticky;
+            top: 0;
+            z-index: 2;
+        }
+
+        .brand {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            min-width: 0;
+        }
+
+        .brand-mark {
+            width: 42px;
+            height: 42px;
+            border-radius: 12px;
+            background: linear-gradient(135deg, #42d39a, #d8a54a);
+            color: #0c120f;
+            display: grid;
+            place-items: center;
+            font-size: 20px;
+            font-weight: 800;
+            box-shadow: 0 12px 30px rgba(0,0,0,0.25);
+            flex: 0 0 auto;
+        }
+
+        .brand h1 {
+            margin: 0;
+            font-size: 18px;
+            line-height: 1.15;
+            letter-spacing: 0;
+        }
+
+        .brand p {
+            margin: 4px 0 0;
+            color: var(--muted);
+            font-size: 12px;
+        }
+
+        .top-actions {
+            display: flex;
+            gap: 8px;
+            flex-wrap: wrap;
+            justify-content: flex-end;
+        }
+
+        .btn {
+            border: 1px solid var(--border);
+            background: rgba(255,255,255,0.03);
+            color: var(--text);
+            border-radius: 999px;
+            padding: 10px 14px;
+            font: inherit;
+            font-size: 13px;
+            font-weight: 700;
+            cursor: pointer;
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            transition: all .15s ease;
+            text-decoration: none;
+        }
+
+        .btn:hover {
+            border-color: rgba(66,211,154,0.28);
+            background: rgba(66,211,154,0.08);
+            color: var(--accent);
+        }
+
+        .btn.primary {
+            background: rgba(66,211,154,0.1);
+            border-color: rgba(66,211,154,0.22);
+        }
+
+        .btn.danger:hover {
+            background: rgba(228,122,115,0.08);
+            border-color: rgba(228,122,115,0.22);
+            color: #ffbdb8;
+        }
+
+        .content {
+            width: min(1440px, calc(100vw - 32px));
+            margin: 0 auto;
+            padding: 22px 0 28px;
+            display: flex;
+            flex-direction: column;
+            gap: 18px;
+        }
+
+        .hero {
+            border: 1px solid var(--border);
+            border-radius: calc(var(--radius) + 2px);
+            background:
+                linear-gradient(135deg, rgba(66,211,154,0.09), rgba(216,165,74,0.05)),
+                rgba(23,27,25,0.9);
+            box-shadow: var(--shadow);
+            padding: 20px 22px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 14px;
+            flex-wrap: wrap;
+        }
+
+        .hero h2 {
+            margin: 0 0 6px;
+            font-size: 26px;
+            line-height: 1.15;
+        }
+
+        .hero p {
+            margin: 0;
+            color: var(--muted);
+            font-size: 13px;
+            line-height: 1.5;
+            max-width: 760px;
+        }
+
+        .session-card {
+            border: 1px solid rgba(66,211,154,0.16);
+            background: rgba(66,211,154,0.06);
+            color: var(--text);
+            border-radius: 12px;
+            padding: 12px 14px;
+            min-width: 280px;
+        }
+
+        .session-card .label {
+            font-size: 11px;
+            text-transform: uppercase;
+            letter-spacing: 0.08em;
+            color: var(--faint);
+            margin-bottom: 6px;
+        }
+
+        .session-card .value {
+            font-size: 13px;
+            font-weight: 700;
+            word-break: break-all;
+        }
+
+        .notice {
+            border: 1px solid rgba(216,165,74,0.2);
+            background: rgba(216,165,74,0.08);
+            color: #f4dfb3;
+            border-radius: 12px;
+            padding: 12px 14px;
+            font-size: 13px;
+            line-height: 1.5;
+        }
+
+        .summary-grid {
+            display: grid;
+            grid-template-columns: repeat(4, minmax(0, 1fr));
+            gap: 12px;
+        }
+
+        .summary-card {
+            border: 1px solid var(--border);
+            border-radius: var(--radius);
+            background: rgba(24,28,26,0.94);
+            box-shadow: var(--shadow);
+            padding: 16px 16px 15px;
+            min-width: 0;
+        }
+
+        .summary-card .label {
+            color: var(--faint);
+            font-size: 11px;
+            font-weight: 700;
+            letter-spacing: 0.08em;
+            text-transform: uppercase;
+            margin-bottom: 8px;
+        }
+
+        .summary-card .value {
+            font-size: 28px;
+            font-weight: 800;
+            line-height: 1;
+        }
+
+        .summary-card .meta {
+            margin-top: 8px;
+            color: var(--muted);
+            font-size: 12px;
+            line-height: 1.45;
+            min-height: 2.7em;
+        }
+
+        .panel-grid {
+            display: grid;
+            grid-template-columns: 1.1fr 0.9fr;
+            gap: 18px;
+        }
+
+        .panel {
+            border: 1px solid var(--border);
+            border-radius: var(--radius);
+            background: rgba(23,27,25,0.96);
+            box-shadow: var(--shadow);
+            overflow: hidden;
+            min-width: 0;
+        }
+
+        .panel-header {
+            padding: 16px 18px;
+            border-bottom: 1px solid var(--border);
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 12px;
+        }
+
+        .panel-header h3 {
+            margin: 0;
+            font-size: 15px;
+        }
+
+        .panel-header p {
+            margin: 4px 0 0;
+            color: var(--muted);
+            font-size: 12px;
+            line-height: 1.45;
+        }
+
+        .panel-body {
+            padding: 16px 18px 18px;
+        }
+
+        .form-grid {
+            display: grid;
+            grid-template-columns: repeat(2, minmax(0, 1fr));
+            gap: 10px;
+        }
+
+        .field {
+            display: flex;
+            flex-direction: column;
+            gap: 6px;
+        }
+
+        .field.full { grid-column: 1 / -1; }
+
+        label {
+            color: var(--muted);
+            font-size: 12px;
+            font-weight: 700;
+        }
+
+        input, textarea {
+            width: 100%;
+            border: 1px solid var(--border);
+            background: var(--panel-2);
+            color: var(--text);
+            border-radius: 10px;
+            padding: 10px 12px;
+            font: inherit;
+            font-size: 13px;
+            outline: none;
+        }
+
+        textarea {
+            min-height: 80px;
+            resize: vertical;
+        }
+
+        input:focus, textarea:focus {
+            border-color: rgba(66,211,154,0.45);
+            box-shadow: 0 0 0 3px rgba(66,211,154,0.06);
+        }
+
+        .toolbar {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 12px;
+            margin-top: 12px;
+            flex-wrap: wrap;
+        }
+
+        .status-copy {
+            color: var(--muted);
+            font-size: 12px;
+        }
+
+        .tag-row {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 8px;
+        }
+
+        .tag {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            padding: 5px 9px;
+            border-radius: 999px;
+            border: 1px solid var(--border);
+            background: rgba(255,255,255,0.03);
+            color: var(--muted);
+            font-size: 12px;
+            font-weight: 600;
+        }
+
+        .tag.high { border-color: rgba(228,122,115,0.34); color: #ffbdb8; }
+        .tag.medium { border-color: rgba(216,165,74,0.34); color: #f1d39e; }
+        .tag.low { border-color: rgba(66,211,154,0.34); color: #9be7cd; }
+
+        .two-col {
+            display: grid;
+            grid-template-columns: repeat(2, minmax(0, 1fr));
+            gap: 12px;
+        }
+
+        .subpanel {
+            border: 1px solid var(--border);
+            border-radius: 12px;
+            background: rgba(255,255,255,0.02);
+            padding: 14px;
+            min-width: 0;
+        }
+
+        .subpanel h4 {
+            margin: 0 0 10px;
+            font-size: 13px;
+            display: flex;
+            align-items: center;
+            gap: 7px;
+        }
+
+        .list {
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+            max-height: 320px;
+            overflow: auto;
+        }
+
+        .item {
+            border: 1px solid var(--border);
+            border-radius: 10px;
+            background: rgba(0,0,0,0.12);
+            padding: 10px 11px;
+        }
+
+        .item-meta {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 6px;
+            margin-bottom: 6px;
+        }
+
+        .preview {
+            color: var(--muted);
+            font-size: 12px;
+            line-height: 1.5;
+            word-break: break-word;
+        }
+
+        .table-wrap {
+            overflow: auto;
+            border: 1px solid var(--border);
+            border-radius: 12px;
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            min-width: 820px;
+            background: rgba(255,255,255,0.015);
+        }
+
+        th, td {
+            padding: 11px 10px;
+            border-bottom: 1px solid var(--border);
+            text-align: left;
+            vertical-align: middle;
+            font-size: 13px;
+        }
+
+        th {
+            color: var(--muted);
+            background: rgba(255,255,255,0.03);
+            font-size: 12px;
+            letter-spacing: 0.02em;
+        }
+
+        td .actions {
+            display: flex;
+            gap: 6px;
+            flex-wrap: wrap;
+        }
+
+        .table-btn {
+            border: 1px solid var(--border);
+            background: rgba(255,255,255,0.03);
+            color: var(--text);
+            border-radius: 8px;
+            padding: 7px 9px;
+            cursor: pointer;
+            font-size: 12px;
+            font-weight: 600;
+        }
+
+        .table-btn:hover {
+            border-color: rgba(66,211,154,0.24);
+            background: rgba(66,211,154,0.08);
+        }
+
+        .table-btn.danger:hover {
+            border-color: rgba(228,122,115,0.24);
+            background: rgba(228,122,115,0.08);
+            color: #ffbdb8;
+        }
+
+        .role {
+            display: inline-flex;
+            align-items: center;
+            padding: 4px 8px;
+            border-radius: 999px;
+            border: 1px solid var(--border);
+            color: var(--muted);
+            font-size: 12px;
+            font-weight: 700;
+        }
+
+        .footer-space { height: 8px; }
+
+        .muted {
+            color: var(--muted);
+        }
+
+        .error {
+            color: #ffbdb8;
+        }
+
+        @media (max-width: 1100px) {
+            .summary-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+            .panel-grid { grid-template-columns: 1fr; }
+        }
+
+        @media (max-width: 760px) {
+            .topbar, .content { width: auto; }
+            .topbar {
+                padding: 16px;
+                align-items: flex-start;
+                flex-direction: column;
+            }
+            .content { padding: 16px; gap: 14px; }
+            .hero h2 { font-size: 22px; }
+            .summary-grid { grid-template-columns: 1fr; }
+            .two-col, .form-grid { grid-template-columns: 1fr; }
+            .field.full { grid-column: auto; }
+        }
+    </style>
+</head>
+
+<body>
+    <div class="page">
+        <header class="topbar">
+            <div class="brand">
+                <div class="brand-mark"><i class="ti ti-shield-lock"></i></div>
+                <div>
+                    <h1>Lattice AI Admin</h1>
+                    <p>관리자 대시보드</p>
+                </div>
+            </div>
+            <div class="top-actions">
+                <a class="btn" href="/"><i class="ti ti-arrow-left"></i> 채팅으로</a>
+                <button class="btn primary" id="refresh-btn" type="button"><i class="ti ti-refresh"></i> 새로고침</button>
+                <button class="btn danger" id="logout-btn" type="button"><i class="ti ti-logout"></i> 로그아웃</button>
+            </div>
+        </header>
+
+        <main class="content">
+            <section class="hero">
+                <div>
+                    <h2>관리자 대시보드</h2>
+                    <p>사용자, 민감도 로그, Private VPC, 서버 상태를 한 화면에서 관리합니다. 채팅 화면과 분리되어 있고, 필요할 때만 따로 열어볼 수 있습니다.</p>
+                </div>
+                <div class="session-card">
+                    <div class="label">Current Session</div>
+                    <div class="value" id="session-value">세션 확인 중...</div>
+                </div>
+            </section>
+
+            <div id="access-notice" class="notice" style="display:none"></div>
+
+            <section class="summary-grid" id="summary-grid">
+                <div class="summary-card">
+                    <div class="label">Total Users</div>
+                    <div class="value" id="total-users">-</div>
+                    <div class="meta" id="total-users-meta">사용자 계정 수</div>
+                </div>
+                <div class="summary-card">
+                    <div class="label">Active Messages</div>
+                    <div class="value" id="total-messages">-</div>
+                    <div class="meta" id="total-messages-meta">최근 대화 활동</div>
+                </div>
+                <div class="summary-card">
+                    <div class="label">Current Model</div>
+                    <div class="value" id="current-model">-</div>
+                    <div class="meta" id="current-model-meta">로드된 모델 수: -</div>
+                </div>
+                <div class="summary-card">
+                    <div class="label">VPC Status</div>
+                    <div class="value" id="vpc-status">-</div>
+                    <div class="meta" id="vpc-status-meta">Private network state</div>
+                </div>
+            </section>
+
+            <section class="panel-grid">
+                <article class="panel">
+                    <div class="panel-header">
+                        <div>
+                            <h3>Private VPC</h3>
+                            <p>네트워크 프로필과 운영 상태를 수정합니다.</p>
+                        </div>
+                        <span class="tag" id="admin-pill"><i class="ti ti-user-cog"></i> Admin</span>
+                    </div>
+                    <div class="panel-body">
+                        <div class="form-grid">
+                            <div class="field">
+                                <label for="vpc-provider">Provider</label>
+                                <input id="vpc-provider" placeholder="AWS">
+                            </div>
+                            <div class="field">
+                                <label for="vpc-region">Region</label>
+                                <input id="vpc-region" placeholder="ap-northeast-2">
+                            </div>
+                            <div class="field">
+                                <label for="vpc-cidr">CIDR Block</label>
+                                <input id="vpc-cidr" placeholder="10.42.0.0/16">
+                            </div>
+                            <div class="field">
+                                <label for="vpc-endpoint">Private Endpoint</label>
+                                <input id="vpc-endpoint" placeholder="ltcai-private.local">
+                            </div>
+                            <div class="field">
+                                <label for="vpc-vpn">VPN Status</label>
+                                <input id="vpc-vpn" placeholder="standby">
+                            </div>
+                            <div class="field">
+                                <label for="vpc-peering">Peering Status</label>
+                                <input id="vpc-peering" placeholder="not_configured">
+                            </div>
+                            <div class="field full">
+                                <label for="vpc-subnets">Private Subnets</label>
+                                <input id="vpc-subnets" placeholder="10.42.10.0/24, 10.42.20.0/24">
+                            </div>
+                            <div class="field full">
+                                <label for="vpc-notes">Notes</label>
+                                <textarea id="vpc-notes" placeholder="운영 메모"></textarea>
+                            </div>
+                        </div>
+                        <div class="toolbar">
+                            <div class="status-copy" id="vpc-save-status">불러오는 중...</div>
+                            <button class="btn primary" id="save-vpc-btn" type="button"><i class="ti ti-device-floppy"></i> 저장</button>
+                        </div>
+                    </div>
+                </article>
+
+                <article class="panel">
+                    <div class="panel-header">
+                        <div>
+                            <h3>Current Session</h3>
+                            <p>현재 로그인한 계정과 서버 상태를 빠르게 확인합니다.</p>
+                        </div>
+                    </div>
+                    <div class="panel-body">
+                        <div class="tag-row" id="session-tags"></div>
+                        <div class="footer-space"></div>
+                        <div class="notice" id="session-help">
+                            로그인 정보가 없으면 이 화면의 관리자 API를 사용할 수 없습니다.
+                        </div>
+                    </div>
+                </article>
+            </section>
+
+            <section class="panel">
+                <div class="panel-header">
+                    <div>
+                        <h3>민감도 분석</h3>
+                        <p>감지된 위험 메시지와 준수 메시지를 분리해서 보여줍니다.</p>
+                    </div>
+                    <div class="tag-row" id="sensitivity-summary"></div>
+                </div>
+                <div class="panel-body">
+                    <div class="two-col">
+                        <div class="subpanel">
+                            <h4><i class="ti ti-alert-triangle"></i> Risk Fields</h4>
+                            <div class="list" id="risk-fields"></div>
+                        </div>
+                        <div class="subpanel">
+                            <h4><i class="ti ti-shield-check"></i> Compliance Fields</h4>
+                            <div class="list" id="compliance-fields"></div>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            <section class="panel">
+                <div class="panel-header">
+                    <div>
+                        <h3>사용자 관리</h3>
+                        <p>역할 변경, 비활성화, 삭제를 처리합니다.</p>
+                    </div>
+                </div>
+                <div class="panel-body">
+                    <div class="table-wrap" id="user-table-wrap">
+                        <div class="preview" style="padding: 14px;">불러오는 중...</div>
+                    </div>
+                </div>
+            </section>
+        </main>
+    </div>
+
+    <script>
+        const API_BASE = window.location.protocol === 'file:' ? 'http://localhost:4825' : '';
+
+        function apiFetch(path, options = {}) {
+            return fetch(`${API_BASE}${path}`, options);
+        }
+
+        function currentUserEmail() {
+            return localStorage.getItem('ltcai_user_email') || '';
+        }
+
+        function currentUserNickname() {
+            return localStorage.getItem('ltcai_user_nickname') || 'Guest';
+        }
+
+        function currentUserIsAdmin() {
+            return localStorage.getItem('ltcai_is_admin') === 'true';
+        }
+
+        function adminHeaders() {
+            return {
+                'Content-Type': 'application/json',
+                'X-Admin-Email': currentUserEmail()
+            };
+        }
+
+        function esc(value) {
+            return String(value ?? '')
+                .replace(/&/g, '&amp;')
+                .replace(/</g, '&lt;')
+                .replace(/>/g, '&gt;')
+                .replace(/"/g, '&quot;')
+                .replace(/'/g, '&#039;');
+        }
+
+        function compactModelName(modelId) {
+            if (!modelId) return 'None';
+            const clean = String(modelId).replaceAll('mlx-community/', '');
+            return clean.length <= 28 ? clean : `${clean.slice(0, 18)}...${clean.slice(-8)}`;
+        }
+
+        function vpcHealthText(config) {
+            if (!config) return '대기';
+            if (config.vpn_status === 'connected' || config.peering_status === 'active') return '연결됨';
+            if (config.vpn_status === 'standby') return '대기';
+            return config.vpn_status || config.peering_status || '설정 필요';
+        }
+
+        function setSessionInfo() {
+            const email = currentUserEmail();
+            const nick = currentUserNickname();
+            const isAdmin = currentUserIsAdmin();
+            document.getElementById('session-value').textContent = email ? `${nick} <${email}>` : '세션 정보가 없습니다';
+            const tags = [
+                ['사용자', nick, 'low'],
+                ['이메일', email || '없음', 'medium'],
+                ['권한', isAdmin ? 'admin' : 'user', isAdmin ? 'low' : 'medium']
+            ];
+            document.getElementById('session-tags').innerHTML = tags.map(([label, value, tone]) => `
+                <span class="tag ${tone}"><span>${esc(label)}</span> ${esc(value)}</span>
+            `).join('');
+            document.getElementById('admin-pill').innerHTML = isAdmin
+                ? '<i class="ti ti-shield-check"></i> Admin'
+                : '<i class="ti ti-lock"></i> Read only';
+            const help = document.getElementById('session-help');
+            help.innerHTML = email
+                ? '이메일 헤더가 설정되어 관리자 API를 호출할 수 있습니다.'
+                : '채팅 화면에서 로그인한 뒤 이 화면을 열어야 관리자 API를 사용할 수 있습니다.';
+        }
+
+        function fillVpcForm(config) {
+            if (!config) return;
+            document.getElementById('vpc-provider').value = config.provider || '';
+            document.getElementById('vpc-region').value = config.region || '';
+            document.getElementById('vpc-cidr').value = config.cidr_block || '';
+            document.getElementById('vpc-endpoint').value = config.endpoint || '';
+            document.getElementById('vpc-vpn').value = config.vpn_status || '';
+            document.getElementById('vpc-peering').value = config.peering_status || '';
+            document.getElementById('vpc-subnets').value = (config.private_subnets || []).join(', ');
+            document.getElementById('vpc-notes').value = config.notes || '';
+            document.getElementById('vpc-save-status').textContent = config.updated_at
+                ? `마지막 저장: ${new Date(config.updated_at).toLocaleString()}`
+                : '기본 VPC 프로필을 사용 중입니다.';
+
+            const provider = config.provider || 'VPC';
+            const region = config.region || '-';
+            document.getElementById('vpc-status').textContent = `${provider} ${region}`;
+            document.getElementById('vpc-status-meta').textContent = `${config.cidr_block || '-'} · ${config.endpoint || '-'} · ${vpcHealthText(config)}`;
+        }
+
+        function renderSummary(health, summary, vpc) {
+            document.getElementById('total-users').textContent = summary ? summary.total_users : '-';
+            document.getElementById('total-users-meta').textContent = summary
+                ? `${summary.active_users} active · ${summary.admin_users} admins`
+                : '관리자 권한 필요';
+            document.getElementById('total-messages').textContent = summary ? summary.total_messages : '-';
+            document.getElementById('total-messages-meta').textContent = summary
+                ? `user ${summary.user_messages} · assistant ${summary.assistant_messages}`
+                : '최근 메시지 정보를 불러올 수 없음';
+            document.getElementById('current-model').textContent = compactModelName(health?.current_model);
+            document.getElementById('current-model-meta').textContent = `${health?.loaded_models?.length || 0} loaded · ${health?.device || 'local runtime'}`;
+            document.getElementById('vpc-status').textContent = `${vpc?.provider || '-'} ${vpc?.region || '-'}`;
+            document.getElementById('vpc-status-meta').textContent = `${vpc?.cidr_block || '-'} · ${vpc?.endpoint || '-'} · ${vpcHealthText(vpc)}`;
+        }
+
+        function renderSensitivity(report) {
+            const summary = report?.summary || {};
+            const severity = summary.severity_counts || {};
+            const fieldCounts = summary.field_counts || {};
+            const userCounts = summary.user_counts || {};
+
+            const tags = [
+                ['risk', `위험 ${summary.risky_messages || 0}`],
+                ['low', `준수 ${summary.compliant_messages || 0}`],
+                ['medium', `위험률 ${summary.risk_rate || 0}%`],
+                ['high', `높음 ${severity.high || 0}`]
+            ];
+            document.getElementById('sensitivity-summary').innerHTML = tags.map(([tone, label]) => `<span class="tag ${tone}">${esc(label)}</span>`).join('');
+
+            const riskList = report?.risk_fields || [];
+            const complianceList = report?.compliance_fields || [];
+
+            document.getElementById('risk-fields').innerHTML = riskList.length
+                ? riskList.slice().reverse().map(item => `
+                    <div class="item">
+                        <div class="item-meta">
+                            <span class="tag">${esc(item.user_nickname || 'Unknown')}</span>
+                            <span class="tag">${esc(item.user_email || 'unknown')}</span>
+                            <span class="tag ${item.sensitivity || 'low'}">${esc(item.sensitivity || 'none')}</span>
+                            ${(item.labels || []).map(label => `<span class="tag medium">${esc(label)}</span>`).join('')}
+                        </div>
+                        <div class="preview">${esc(item.preview || '')}</div>
+                    </div>
+                `).join('')
+                : '<div class="preview">감지된 위험 필드가 없습니다.</div>';
+
+            document.getElementById('compliance-fields').innerHTML = complianceList.length
+                ? complianceList.slice().reverse().map(item => `
+                    <div class="item">
+                        <div class="item-meta">
+                            <span class="tag">${esc(item.user_nickname || 'Unknown')}</span>
+                            <span class="tag">${esc(item.user_email || 'unknown')}</span>
+                            <span class="tag ${item.sensitivity || 'low'}">${esc(item.sensitivity || 'none')}</span>
+                            ${(item.compliance_fields || []).map(label => `<span class="tag low">${esc(label)}</span>`).join('')}
+                        </div>
+                        <div class="preview">${esc(item.preview || '')}</div>
+                    </div>
+                `).join('')
+                : '<div class="preview">준수 항목이 없습니다.</div>';
+
+            const fieldTags = Object.entries(fieldCounts).map(([label, count]) => `<span class="tag medium">${esc(label)} ${esc(count)}</span>`);
+            const userTags = Object.entries(userCounts).map(([label, count]) => `<span class="tag high">${esc(label)} ${esc(count)}</span>`);
+            document.getElementById('sensitivity-summary').insertAdjacentHTML('beforeend', fieldTags.join('') + userTags.join(''));
+        }
+
+        function renderUsers(users) {
+            const wrap = document.getElementById('user-table-wrap');
+            if (!Array.isArray(users) || !users.length) {
+                wrap.innerHTML = '<div class="preview" style="padding:14px">사용자 데이터가 없습니다.</div>';
+                return;
+            }
+            wrap.innerHTML = `
+                <table>
+                    <thead>
+                        <tr>
+                            <th>Email</th>
+                            <th>Name</th>
+                            <th>Nickname</th>
+                            <th>Role</th>
+                            <th>Status</th>
+                            <th>Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        ${users.map(user => `
+                            <tr>
+                                <td>${esc(user.email)}</td>
+                                <td>${esc(user.name || '-')}</td>
+                                <td>${esc(user.nickname || '-')}</td>
+                                <td><span class="role">${esc(user.role || '-')}</span></td>
+                                <td>${user.disabled ? '비활성' : '활성'}</td>
+                                <td>
+                                    <div class="actions">
+                                        <button class="table-btn"
+                                            data-action="role"
+                                            data-email="${esc(user.email)}"
+                                            data-next-role="${user.role === 'admin' ? 'user' : 'admin'}">
+                                            ${user.role === 'admin' ? '권한 해제' : '관리자 지정'}
+                                        </button>
+                                        <button class="table-btn"
+                                            data-action="disable"
+                                            data-email="${esc(user.email)}"
+                                            data-disabled="${user.disabled ? 'false' : 'true'}">
+                                            ${user.disabled ? '활성화' : '비활성화'}
+                                        </button>
+                                        <button class="table-btn danger"
+                                            data-action="delete"
+                                            data-email="${esc(user.email)}">삭제</button>
+                                    </div>
+                                </td>
+                            </tr>
+                        `).join('')}
+                    </tbody>
+                </table>
+            `;
+        }
+
+        document.getElementById('user-table-wrap').addEventListener('click', async (e) => {
+            const btn = e.target.closest('button[data-action]');
+            if (!btn) return;
+            const action = btn.dataset.action;
+            const email = btn.dataset.email;
+            if (!email) return;
+            const encodedEmail = encodeURIComponent(email);
+            if (action === 'role') {
+                const nextRole = btn.dataset.nextRole;
+                await apiFetch(`/admin/users/${encodedEmail}`, {
+                    method: 'PATCH', headers: adminHeaders(), body: JSON.stringify({ role: nextRole })
+                });
+                await loadDashboard();
+            } else if (action === 'disable') {
+                const disabled = btn.dataset.disabled === 'true';
+                await apiFetch(`/admin/users/${encodedEmail}`, {
+                    method: 'PATCH', headers: adminHeaders(), body: JSON.stringify({ disabled })
+                });
+                await loadDashboard();
+            } else if (action === 'delete') {
+                if (!confirm(`'${email}' 사용자를 삭제할까요?`)) return;
+                await apiFetch(`/admin/users/${encodedEmail}`, {
+                    method: 'DELETE', headers: adminHeaders()
+                });
+                await loadDashboard();
+            }
+        });
+
+        async function loadDashboard() {
+            setSessionInfo();
+
+            const access = document.getElementById('access-notice');
+            access.style.display = 'none';
+
+            try {
+                const [healthRes, vpcRes, summaryRes, usersRes, sensitivityRes] = await Promise.all([
+                    apiFetch('/health'),
+                    apiFetch('/vpc/status'),
+                    apiFetch('/admin/summary', { headers: adminHeaders() }),
+                    apiFetch('/admin/users', { headers: adminHeaders() }),
+                    apiFetch('/admin/sensitivity', { headers: adminHeaders() })
+                ]);
+
+                const health = healthRes.ok ? await healthRes.json() : null;
+                const vpc = vpcRes.ok ? await vpcRes.json() : null;
+                const summary = summaryRes.ok ? await summaryRes.json() : null;
+                const users = usersRes.ok ? await usersRes.json() : null;
+                const sensitivity = sensitivityRes.ok ? await sensitivityRes.json() : null;
+
+                renderSummary(health, summary, vpc);
+                fillVpcForm(vpc);
+                renderUsers(users);
+                renderSensitivity(sensitivity);
+
+                const failedSections = [];
+                if (!summaryRes.ok) failedSections.push('요약');
+                if (!usersRes.ok) failedSections.push('사용자 목록');
+                if (!sensitivityRes.ok) failedSections.push('민감 정보 분석');
+
+                if (failedSections.length) {
+                    access.style.display = 'block';
+                    access.textContent = summaryRes.status === 403
+                        ? '관리자 권한이 없습니다. 채팅 화면에서 관리자 계정으로 로그인한 뒤 다시 열어주세요.'
+                        : `일부 섹션을 불러오지 못했습니다: ${failedSections.join(', ')}`;
+                }
+            } catch (e) {
+                access.style.display = 'block';
+                access.textContent = !navigator.onLine
+                    ? '네트워크 연결을 확인해 주세요.'
+                    : (e.message || '대시보드를 불러오지 못했습니다.');
+            }
+        }
+
+        async function saveVpc() {
+            const payload = {
+                provider: document.getElementById('vpc-provider').value.trim(),
+                region: document.getElementById('vpc-region').value.trim(),
+                cidr_block: document.getElementById('vpc-cidr').value.trim(),
+                endpoint: document.getElementById('vpc-endpoint').value.trim(),
+                vpn_status: document.getElementById('vpc-vpn').value.trim(),
+                peering_status: document.getElementById('vpc-peering').value.trim(),
+                private_subnets: document.getElementById('vpc-subnets').value.split(',').map(v => v.trim()).filter(Boolean),
+                notes: document.getElementById('vpc-notes').value.trim()
+            };
+            const status = document.getElementById('vpc-save-status');
+            status.textContent = '저장 중...';
+            try {
+                const res = await apiFetch('/admin/vpc', {
+                    method: 'PATCH',
+                    headers: adminHeaders(),
+                    body: JSON.stringify(payload)
+                });
+                const data = await res.json().catch(() => ({}));
+                if (!res.ok) throw new Error(data.detail || '저장 실패');
+                fillVpcForm(data);
+                status.textContent = '저장되었습니다.';
+                await loadDashboard();
+            } catch (e) {
+                status.textContent = e.message || '저장 실패';
+            }
+        }
+
+        async function logout() {
+            try {
+                await apiFetch('/logout', { method: 'POST' });
+            } catch (e) { }
+            localStorage.removeItem('ltcai_user_email');
+            localStorage.removeItem('ltcai_user_nickname');
+            localStorage.removeItem('ltcai_is_admin');
+            window.location.href = '/';
+        }
+
+        document.getElementById('refresh-btn').addEventListener('click', loadDashboard);
+        document.getElementById('save-vpc-btn').addEventListener('click', saveVpc);
+        document.getElementById('logout-btn').addEventListener('click', logout);
+        loadDashboard();
+    </script>
+</body>
+
+</html>

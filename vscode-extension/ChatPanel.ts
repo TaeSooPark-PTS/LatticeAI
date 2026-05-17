@@ -1,17 +1,17 @@
 import * as vscode from "vscode";
-import { ConnectAIClient } from "./client";
+import { LatticeAIClient } from "./client";
 import * as fs from "fs";
 import * as path from "path";
 
 export class ChatPanel {
   static currentPanel: ChatPanel | undefined;
-  private static readonly viewType = "connectai.chat";
+  private static readonly viewType = "ltcai.chat";
   private readonly _panel: vscode.WebviewPanel;
   private _disposables: vscode.Disposable[] = [];
-  private static _client: ConnectAIClient;
+  private static _client: LatticeAIClient;
   private static _pendingMessage: string | undefined;
 
-  static createOrShow(extensionUri: vscode.Uri, client: ConnectAIClient) {
+  static createOrShow(extensionUri: vscode.Uri, client: LatticeAIClient) {
     ChatPanel._client = client;
     const column = vscode.window.activeTextEditor ? vscode.ViewColumn.Beside : vscode.ViewColumn.One;
 
@@ -26,7 +26,7 @@ export class ChatPanel {
 
     const panel = vscode.window.createWebviewPanel(
       ChatPanel.viewType,
-      "Connect AI MLX",
+      "Lattice AI MLX",
       column,
       { enableScripts: true, retainContextWhenHidden: true }
     );

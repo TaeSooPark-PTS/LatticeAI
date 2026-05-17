@@ -1,21 +1,21 @@
 import * as vscode from "vscode";
 import { ChatPanel } from "./ChatPanel";
-import { ConnectAIClient } from "./client";
+import { LatticeAIClient } from "./client";
 import { ModelPicker } from "./modelPicker";
 
-let client: ConnectAIClient;
+let client: LatticeAIClient;
 let statusBar: vscode.StatusBarItem;
 
 export async function activate(context: vscode.ExtensionContext) {
-  const config = vscode.workspace.getConfiguration("connectai");
+  const config = vscode.workspace.getConfiguration("ltcai");
   const serverUrl: string = config.get("serverUrl") ?? "http://localhost:4825";
 
-  client = new ConnectAIClient(serverUrl);
+  client = new LatticeAIClient(serverUrl);
 
   // ── Status Bar ───────────────────────────────────────────────────────────
   statusBar = vscode.window.createStatusBarItem(vscode.StatusBarAlignment.Right, 100);
-  statusBar.command = "connectai.loadModel";
-  statusBar.text = "$(loading~spin) Connect AI";
+  statusBar.command = "ltcai.loadModel";
+  statusBar.text = "$(loading~spin) Lattice AI";
   statusBar.show();
   context.subscriptions.push(statusBar);
 
@@ -32,11 +32,11 @@ export async function activate(context: vscode.ExtensionContext) {
   // ── Commands ─────────────────────────────────────────────────────────────
 
   context.subscriptions.push(
-    vscode.commands.registerCommand("connectai.chat", () => {
+    vscode.commands.registerCommand("ltcai.chat", () => {
       ChatPanel.createOrShow(context.extensionUri, client);
     }),
 
-    vscode.commands.registerCommand("connectai.loadModel", async () => {
+    vscode.commands.registerCommand("ltcai.loadModel", async () => {
       const picker = new ModelPicker(client);
       const chosen = await picker.show();
       if (chosen) {
@@ -44,13 +44,13 @@ export async function activate(context: vscode.ExtensionContext) {
       }
     }),
 
-    vscode.commands.registerCommand("connectai.editSelection", async () => {
+    vscode.commands.registerCommand("ltcai.editSelection", async () => {
       const editor = vscode.window.activeTextEditor;
       if (!editor) return;
       const selection = editor.selection;
       const selectedText = editor.document.getText(selection);
       if (!selectedText) {
-        vscode.window.showWarningMessage("Connect AI: No text selected.");
+        vscode.window.showWarningMessage("Lattice AI: No text selected.");
         return;
       }
 
@@ -64,7 +64,7 @@ export async function activate(context: vscode.ExtensionContext) {
       await streamIntoEditor(message, editor, selection);
     }),
 
-    vscode.commands.registerCommand("connectai.explainSelection", async () => {
+    vscode.commands.registerCommand("ltcai.explainSelection", async () => {
       const editor = vscode.window.activeTextEditor;
       if (!editor) return;
       const selectedText = editor.document.getText(editor.selection);
@@ -74,7 +74,7 @@ export async function activate(context: vscode.ExtensionContext) {
       ChatPanel.sendMessage(`Explain this code:\n\`\`\`\n${selectedText}\n\`\`\``);
     }),
 
-    vscode.commands.registerCommand("connectai.createFile", async () => {
+    vscode.commands.registerCommand("ltcai.createFile", async () => {
       const description = await vscode.window.showInputBox({
         prompt: "Describe the file to create",
         placeHolder: "e.g. Python FastAPI server with /health and /chat endpoints",
@@ -97,7 +97,7 @@ export async function activate(context: vscode.ExtensionContext) {
       const message = `Create a complete, production-ready ${filename} file.\nDescription: ${description}\nReturn ONLY the file content, no explanation, no markdown fences.`;
 
       await vscode.window.withProgress(
-        { location: vscode.ProgressLocation.Notification, title: `Connect AI: Creating ${filename}...` },
+        { location: vscode.ProgressLocation.Notification, title: `Lattice AI: Creating ${filename}...` },
         async () => {
           const result = await client.generate(message);
           await vscode.workspace.fs.writeFile(filePath, Buffer.from(result, "utf-8"));
@@ -107,7 +107,7 @@ export async function activate(context: vscode.ExtensionContext) {
       );
     }),
 
-    vscode.commands.registerCommand("connectai.runTerminal", async () => {
+    vscode.commands.registerCommand("ltcai.runTerminal", async () => {
       const description = await vscode.window.showInputBox({
         prompt: "What do you want to run in the terminal?",
         placeHolder: "e.g. Install dependencies, run tests, build the project",
@@ -127,7 +127,7 @@ export async function activate(context: vscode.ExtensionContext) {
       );
 
       if (confirm === "Run") {
-        let terminal = vscode.window.activeTerminal ?? vscode.window.createTerminal("Connect AI");
+        let terminal = vscode.window.activeTerminal ?? vscode.window.createTerminal("Lattice AI");
         terminal.show();
         terminal.sendText(command);
       } else if (confirm === "Copy only") {
@@ -136,7 +136,7 @@ export async function activate(context: vscode.ExtensionContext) {
       }
     }),
 
-    vscode.commands.registerCommand("connectai.garden", async () => {
+    vscode.commands.registerCommand("ltcai.garden", async () => {
       const editor = vscode.window.activeTextEditor;
       const rawData = editor?.document.getText(editor.selection) ?? "";
       if (!rawData) {
@@ -149,14 +149,14 @@ export async function activate(context: vscode.ExtensionContext) {
       );
     }),
 
-    vscode.commands.registerCommand("connectai.showGarden", async () => {
+    vscode.commands.registerCommand("ltcai.showGarden", async () => {
       const tree = await client.gardenTree();
       const panel = vscode.window.createWebviewPanel("gardenTree", "Knowledge Garden", vscode.ViewColumn.Beside, {});
       panel.webview.html = renderGardenHTML(tree);
     })
   );
 
-  console.log("Connect AI MLX extension activated.");
+  console.log("Lattice AI MLX extension activated.");
 }
 
 // ── Helpers ──────────────────────────────────────────────────────────────────
@@ -175,7 +175,7 @@ async function loadModelWithProgress(modelId: string) {
   await vscode.window.withProgress(
     {
       location: vscode.ProgressLocation.Notification,
-      title: `Connect AI: Loading ${shortName(modelId)}...`,
+      title: `Lattice AI: Loading ${shortName(modelId)}...`,
       cancellable: false,
     },
     async () => {
@@ -183,16 +183,16 @@ async function loadModelWithProgress(modelId: string) {
       updateStatusBar(modelId);
     }
   );
-  vscode.window.showInformationMessage(`✅ Connect AI: ${shortName(modelId)} ready`);
+  vscode.window.showInformationMessage(`✅ Lattice AI: ${shortName(modelId)} ready`);
 }
 
 function updateStatusBar(modelId: string | null) {
   if (modelId) {
     statusBar.text = `$(brain) ${shortName(modelId)}`;
-    statusBar.tooltip = `Connect AI MLX — ${modelId}\nClick to switch model`;
+    statusBar.tooltip = `Lattice AI MLX — ${modelId}\nClick to switch model`;
   } else {
-    statusBar.text = `$(brain) Connect AI — No model`;
-    statusBar.tooltip = "Connect AI MLX — Click to load a model";
+    statusBar.text = `$(brain) Lattice AI — No model`;
+    statusBar.tooltip = "Lattice AI MLX — Click to load a model";
   }
 }
 
@@ -207,7 +207,7 @@ async function streamIntoEditor(
 ) {
   let accumulated = "";
   await vscode.window.withProgress(
-    { location: vscode.ProgressLocation.Notification, title: "Connect AI: Editing..." },
+    { location: vscode.ProgressLocation.Notification, title: "Lattice AI: Editing..." },
     async () => {
       for await (const chunk of client.streamGenerate(message)) {
         accumulated += chunk;
