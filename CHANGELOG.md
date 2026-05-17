@@ -1,5 +1,16 @@
 # Changelog
 
+## [Unreleased]
+
+### Added
+- 프로필 수정 API (`PATCH /account/profile`) 및 UI — 이름·닉네임 변경
+- 회원가입 폼 개선 — 비밀번호 확인 필드, 인라인 에러 메시지
+- 어드민 패널 초대 링크 섹션 — 원클릭 복사
+- 어드민 대시보드 메시지 활동 차트 (Chart.js, 최근 14일)
+- 웹 UI 한국어 / 영어 전환 (`🌐 Languages` 버튼, localStorage 저장)
+
+---
+
 ## [0.1.1] - 2026-05-18
 
 ### Added
@@ -9,6 +20,7 @@
 ### Docs
 - 어드민 패널: 첫 가입자 자동 admin 안내 추가
 - 플랫폼 지원 범위 (Windows/Linux) 안내 추가
+- 언어 지원 (KO/EN) 안내 추가
 
 ### Deployed
 - PyPI ✅
