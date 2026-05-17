@@ -10,6 +10,19 @@ LTCAI                      # → http://localhost:4825
 
 ---
 
+## v0.1.4 변경사항
+
+### Added
+- 세션 영속성 — 서버 재시작 후에도 로그인 유지
+- SSO 로그인 — Entra ID / Okta OIDC 지원 (`OIDC_DISCOVERY_URL`, `OIDC_CLIENT_ID`, `OIDC_CLIENT_SECRET`)
+- 채팅 히스토리 검색 — 사이드바 검색창으로 대화 내용 키워드 검색
+- 대화 삭제 — 사이드바 각 대화에 삭제 버튼
+- MCP 서버 관리 UI — 사이드바 "MCP 관리" 버튼으로 설치/목록 모달
+- VS Code 인라인 Diff 뷰 — Edit Selection 결과를 diff로 먼저 확인 후 Apply/Discard
+- VS Code 현재 파일 첨부 — `Lattice AI: Attach Current File to Chat` 명령 추가
+
+---
+
 ## v0.1.3 변경사항
 
 ### Added

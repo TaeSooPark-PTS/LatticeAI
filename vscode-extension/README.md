@@ -32,6 +32,19 @@ pip install ltcai && LTCAI
 # → http://localhost:4825
 ```
 
+## v0.1.4 Changes
+
+### Added
+- Session persistence — stay logged in after server restart
+- SSO login — Entra ID / Okta OIDC support
+- Chat history search — keyword search in sidebar
+- Delete conversation button in sidebar
+- MCP server management UI modal
+- Inline diff view for Edit Selection — review before applying
+- Attach Current File to Chat command
+
+---
+
 ## v0.1.3 Changes
 
 ### Added
