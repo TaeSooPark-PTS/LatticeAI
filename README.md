@@ -10,6 +10,22 @@ LTCAI                      # → http://localhost:4825
 
 ---
 
+## v0.1.3 변경사항
+
+### Added
+- 프로필 수정 (`PATCH /account/profile`) — 이름·닉네임 변경
+- 회원가입 폼 — 비밀번호 확인 필드, 인라인 에러 메시지
+- 어드민 패널 초대 링크 섹션 — 원클릭 복사
+- 어드민 대시보드 메시지 활동 차트 (Chart.js, 최근 14일)
+- 웹 UI 한국어 / 영어 전환 (`🌐 Languages` 버튼, localStorage 저장)
+
+### Fixed
+- 로그아웃 시 `/logout` API 호출로 서버 세션 쿠키 정상 만료
+- 인증(`account.html`)과 채팅(`chat.html`) UI 분리 — 레거시 파일 제거
+- 채팅 헤더에서 언어 선택 드롭다운이 ops-strip을 가리는 문제 수정
+
+---
+
 ## 아키텍처
 
 ```
