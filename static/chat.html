@@ -2242,13 +2242,36 @@
 
         /* ── 모바일 드로어 (≤768px) ── */
         @media (max-width: 768px) {
+            /* ops-strip: 가로 스크롤 한 줄로 압축 */
+            .ops-strip {
+                display: flex;
+                flex-direction: row;
+                overflow-x: auto;
+                gap: 8px;
+                width: calc(100% - 24px);
+                margin: 10px auto 0;
+                scrollbar-width: none;
+                -ms-overflow-style: none;
+            }
+            .ops-strip::-webkit-scrollbar { display: none; }
+            .ops-card {
+                flex: 0 0 auto;
+                min-width: 160px;
+                padding: 10px 12px;
+                font-size: 12px;
+            }
+            .ops-label { font-size: 9px; }
+            .ops-value { font-size: 13px; }
+            .ops-meta { font-size: 10px; }
+            .ops-icon { font-size: 18px; }
             body { overflow: hidden; }
 
             .sidebar-toggle { display: flex; align-items: center; justify-content: center; }
             .sidebar-close { display: flex; align-items: center; justify-content: center; }
 
             /* 사이드바: fixed 드로어로 전환 */
-            .sidebar {
+            .sidebar,
+            .app-layout .sidebar {
                 position: fixed;
                 top: 0;
                 left: 0;
@@ -2260,6 +2283,9 @@
                 transition: transform 0.25s cubic-bezier(0.4,0,0.2,1);
                 border-right: 1px solid var(--border-strong);
                 box-shadow: 4px 0 32px rgba(0,0,0,0.5);
+                background: #141715;
+                backdrop-filter: none;
+                -webkit-backdrop-filter: none;
             }
             body.sidebar-open .sidebar {
                 transform: translateX(0);
@@ -2732,6 +2758,14 @@
             box-shadow: inset -1px 0 0 rgba(255,255,255,0.025);
         }
 
+        @media (max-width: 768px) {
+            .app-layout .sidebar {
+                background: #141715;
+                backdrop-filter: none;
+                -webkit-backdrop-filter: none;
+            }
+        }
+
         .app-layout .sidebar-header,
         .app-layout .user-strip,
         .app-layout .sidebar-footer {
@@ -2939,8 +2973,8 @@
     <div class="bg-grid"></div>
 
 
-    <div class="sidebar-overlay" onclick="closeSidebar()"></div>
     <div class="app-layout">
+        <div class="sidebar-overlay" onclick="closeSidebar()"></div>
         <!-- Sidebar -->
         <aside class="sidebar">
             <div class="sidebar-header">
