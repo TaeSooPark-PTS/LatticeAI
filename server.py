@@ -2410,6 +2410,7 @@ async def health(request: Request):
 
 
 @app.get("/mode")
+@app.get("/runtime_features")
 async def mode():
     return runtime_features()
 

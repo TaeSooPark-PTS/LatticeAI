@@ -544,7 +544,15 @@ async def ask_ai(client, message, image_data=None, agent_mode=True):
             payload["stream"] = False
             payload["image_data"] = image_data
         res = await client.post(url, json=payload, timeout=300.0)
-        return res.json() if res.status_code == 200 else {"response": f"❌ 서버 에러 ({res.status_code})"}
+        if res.status_code == 200:
+            return res.json()
+        try:
+            detail = res.json().get("detail", "")
+        except Exception:
+            detail = ""
+        if res.status_code == 400 and "model" in detail.lower():
+            return {"response": "⚠️ 로드된 모델이 없습니다. 먼저 /model 명령으로 모델을 선택해주세요."}
+        return {"response": f"❌ 서버 에러 ({res.status_code}){': ' + detail if detail else ''}"}
     except Exception as e:
         return {"response": f"❌ 서버 연결 실패: {e}"}
 
