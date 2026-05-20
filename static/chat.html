@@ -104,7 +104,7 @@
 
         .app-layout {
             display: flex;
-            height: 100vh;
+            height: 100dvh;
             width: 100vw;
         }
 
@@ -864,9 +864,51 @@
             border: 1px solid var(--border);
         }
 
+        /* ── 사이드바 오버레이 (모바일 드로어 배경) ── */
+        .sidebar-overlay {
+            display: none;
+            position: fixed;
+            inset: 0;
+            background: rgba(0,0,0,0.5);
+            z-index: 99;
+            backdrop-filter: blur(2px);
+        }
+        body.sidebar-open .sidebar-overlay { display: block; }
+
+        /* ── 햄버거 버튼 ── */
+        .sidebar-toggle {
+            display: none;
+            background: transparent;
+            border: none;
+            color: var(--text);
+            font-size: 20px;
+            cursor: pointer;
+            padding: 4px 6px;
+            border-radius: 6px;
+            line-height: 1;
+            flex-shrink: 0;
+        }
+        .sidebar-toggle:hover { background: rgba(255,255,255,0.08); }
+
+        /* ── 사이드바 닫기 버튼 (모바일 전용) ── */
+        .sidebar-close {
+            display: none;
+            margin-left: auto;
+            background: transparent;
+            border: none;
+            color: var(--faint);
+            font-size: 18px;
+            cursor: pointer;
+            padding: 4px 6px;
+            border-radius: 6px;
+            line-height: 1;
+        }
+        .sidebar-close:hover { color: var(--text); }
+
         /* ── 입력창 ── */
         .input-area {
             padding: 14px 20px 20px;
+            padding-bottom: max(20px, env(safe-area-inset-bottom));
             background: linear-gradient(0deg, rgba(24,35,50,0.96) 0%, transparent 100%);
         }
 
@@ -2171,49 +2213,9 @@
             background: var(--muted);
         }
 
+        /* ── 태블릿 (≤900px) ── */
         @media (max-width: 900px) {
-            body {
-                overflow: hidden;
-            }
-
-            .app-layout {
-                flex-direction: column;
-            }
-
-            .sidebar {
-                width: 100%;
-                min-width: 0;
-                max-height: 132px;
-                border-right: none;
-                border-bottom: 1px solid var(--border);
-            }
-
-            .sidebar-header {
-                padding: 12px 14px;
-            }
-
-            .user-strip,
-            .history-container {
-                display: none;
-            }
-
-            .sidebar-footer {
-                padding: 0 14px 12px;
-                border-top: none;
-            }
-
-            .chat-header {
-                align-items: flex-start;
-                padding: 10px 14px;
-            }
-
-            .header-pills {
-                gap: 6px;
-            }
-
-            .status-pill.hide-mobile {
-                display: none;
-            }
+            .status-pill.hide-mobile { display: none; }
 
             .ops-strip {
                 width: calc(100% - 28px);
@@ -2221,47 +2223,71 @@
                 margin-top: 12px;
             }
 
-            .messages-viewport {
-                padding: 20px 14px 14px;
-            }
+            .bubble { max-width: 92%; }
 
-            .bubble {
-                max-width: 92%;
-            }
+            .empty-grid { grid-template-columns: 1fr; }
+            .empty-state { margin-top: 4vh; }
 
-            .input-area {
-                padding: 12px 14px 14px;
-            }
-
-            .empty-grid {
-                grid-template-columns: 1fr;
-            }
-
-            .empty-state {
-                margin-top: 4vh;
-            }
-
-            .admin-stats {
-                grid-template-columns: repeat(2, minmax(0, 1fr));
-            }
-
-            .sensitivity-grid {
-                grid-template-columns: 1fr;
-            }
-
-            .admin-form-grid {
-                grid-template-columns: 1fr;
-            }
-
-            .mcp-list {
-                grid-template-columns: 1fr;
-            }
+            .admin-stats { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+            .sensitivity-grid { grid-template-columns: 1fr; }
+            .admin-form-grid { grid-template-columns: 1fr; }
+            .mcp-list { grid-template-columns: 1fr; }
 
             .admin-table {
                 display: block;
                 overflow-x: auto;
                 white-space: nowrap;
             }
+        }
+
+        /* ── 모바일 드로어 (≤768px) ── */
+        @media (max-width: 768px) {
+            body { overflow: hidden; }
+
+            .sidebar-toggle { display: flex; align-items: center; justify-content: center; }
+            .sidebar-close { display: flex; align-items: center; justify-content: center; }
+
+            /* 사이드바: fixed 드로어로 전환 */
+            .sidebar {
+                position: fixed;
+                top: 0;
+                left: 0;
+                height: 100dvh;
+                width: 280px;
+                min-width: 0;
+                z-index: 100;
+                transform: translateX(-100%);
+                transition: transform 0.25s cubic-bezier(0.4,0,0.2,1);
+                border-right: 1px solid var(--border-strong);
+                box-shadow: 4px 0 32px rgba(0,0,0,0.5);
+            }
+            body.sidebar-open .sidebar {
+                transform: translateX(0);
+            }
+
+            .sidebar-header { padding: 14px 14px; }
+            .sidebar-footer { padding: 10px 14px 14px; border-top: 1px solid var(--border); }
+
+            /* 메인 채팅은 항상 전체 너비 */
+            .main-chat { width: 100%; flex: 1; }
+
+            .chat-header { padding: 10px 14px; }
+            .header-pills { gap: 6px; }
+
+            .messages-viewport { padding: 16px 12px 12px; }
+            .input-area { padding: 10px 12px max(14px, env(safe-area-inset-bottom)); }
+
+            .bubble { max-width: 94%; }
+        }
+
+        /* ── 폰 (≤480px) ── */
+        @media (max-width: 480px) {
+            .bubble { max-width: 98%; font-size: 14px; }
+            .sender-label { font-size: 11px; }
+            textarea { font-size: 16px; } /* iOS 자동 줌 방지 */
+            .model-badge span { max-width: 140px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+            .header-pills .status-pill { display: none; }
+            .admin-stats { grid-template-columns: 1fr; }
         }
     </style>
 
@@ -2913,6 +2939,7 @@
     <div class="bg-grid"></div>
 
 
+    <div class="sidebar-overlay" onclick="closeSidebar()"></div>
     <div class="app-layout">
         <!-- Sidebar -->
         <aside class="sidebar">
@@ -2922,6 +2949,7 @@
                     <div class="brand-title">Lattice AI</div>
                     <div class="brand-subtitle">Local MLX Workspace</div>
                 </div>
+                <button class="sidebar-close" onclick="closeSidebar()" title="닫기"><i class="ti ti-x"></i></button>
             </div>
             <div class="user-strip">
                 <div class="user-avatar" id="user-avatar-initial">G</div>
@@ -2955,6 +2983,7 @@
         <main class="main-chat">
             <header class="chat-header">
                 <div class="header-left">
+                    <button class="sidebar-toggle" onclick="toggleSidebar()" title="메뉴"><i class="ti ti-menu-2"></i></button>
                     <div class="model-badge">
                         <div class="status-dot"></div>
                         <span>Gemma-4 Multimodal Agent</span>
@@ -3463,6 +3492,13 @@
             localStorage.removeItem('ltcai_is_admin');
             localStorage.removeItem('ltcai_session_token');
             window.location.href = '/account';
+        }
+
+        function toggleSidebar() {
+            document.body.classList.toggle('sidebar-open');
+        }
+        function closeSidebar() {
+            document.body.classList.remove('sidebar-open');
         }
 
         function openDataGraph() {
@@ -5035,6 +5071,7 @@
         }
 
         async function openConversation(conversationId) {
+            closeSidebar();
             try {
                 let data = null;
                 const res = await apiFetch(`/history/conversations/${encodeURIComponent(conversationId)}`);
