@@ -10,6 +10,24 @@ LTCAI                      # → http://localhost:4825
 
 ---
 
+## v0.1.6 변경사항
+
+### Added
+- **LATTICEAI_ENABLE_GRAPH** 환경변수 — Data Graph를 퍼블릭 배포에서 완전히 비활성화하는 토글 (기본값 `true`)
+  - `false` 설정 시 모든 그래프 API 404, 인제스트 건너뜀, 사이드바 버튼 자동 숨김
+
+---
+
+## v0.1.5 변경사항
+
+### Added
+- **Data Graph** — 채팅·AI 답변·업로드 문서를 SQLite 지식 그래프로 자동 구조화, `/graph`에서 Canvas 기반 Force-directed 시각화
+- **Graph RAG** — 그래프 검색 결과를 채팅 컨텍스트에 자동 주입하여 이전 대화·문서 참조 강화
+- **Telegram 원격 제어** — 인라인 키보드 메뉴로 상태 조회, 모델 관리, 스크린샷, 그래프 통계 원격 제어
+- 어드민 세션 핸드오프 보안 강화 — URL 파라미터 → `sessionStorage` 1회 읽기 방식으로 교체
+
+---
+
 ## v0.1.4 변경사항
 
 ### Added
@@ -18,8 +36,6 @@ LTCAI                      # → http://localhost:4825
 - 채팅 히스토리 검색 — 사이드바 검색창으로 대화 내용 키워드 검색
 - 대화 삭제 — 사이드바 각 대화에 삭제 버튼
 - MCP 서버 관리 UI — 사이드바 "MCP 관리" 버튼으로 설치/목록 모달
-- Data Graph — 채팅/AI 답변/업로드 문서를 SQLite 지식 그래프로 자동 구조화하고 `/graph`에서 시각화
-- Graph RAG — 그래프 검색 결과를 채팅 컨텍스트에 자동 주입
 - VS Code 인라인 Diff 뷰 — Edit Selection 결과를 diff로 먼저 확인 후 Apply/Discard
 - VS Code 현재 파일 첨부 — `Lattice AI: Attach Current File to Chat` 명령 추가
 
@@ -172,6 +188,7 @@ docker run --rm -p 4825:4825 \
 - `LATTICEAI_MODE=public` 설정
 - 클라우드 API 키 설정 (`OPENAI_API_KEY` 등)
 - `LATTICEAI_INVITE_CODE`를 비공개 값으로 설정
+- `LATTICEAI_ENABLE_GRAPH=false` — Data Graph를 공개 서버에서 숨기려면 설정
 - `/data`에 영구 볼륨 마운트
 - HTTPS 리버스 프록시 앞에 두기 (nginx, Caddy 등)
 
