@@ -40,6 +40,7 @@ from pydantic import BaseModel
 from PIL import Image
 
 from llm_router import AsyncOpenAI, LLMRouter, OPENAI_COMPATIBLE_PROVIDERS, parse_model_ref, mx, normalize_branding
+from knowledge_graph import KnowledgeGraphStore
 from p_reinforce import BRAIN_DIR, PReinforceGardener
 from setup import get_recommendations, install_stream, open_url, scan_environment
 from telegram_bot import broadcast_web_chat
@@ -287,6 +288,8 @@ USERS_FILE = DATA_DIR / "users.json"
 HISTORY_FILE = DATA_DIR / "chat_history.json"
 VPC_FILE = DATA_DIR / "vpc_config.json"
 MCP_FILE = DATA_DIR / "mcp_installs.json"
+AUDIT_FILE = DATA_DIR / "audit_log.json"
+KNOWLEDGE_GRAPH = KnowledgeGraphStore(DATA_DIR / "knowledge_graph.sqlite", DATA_DIR / "knowledge_graph_blobs")
 
 class UserRegister(BaseModel):
     email: str
@@ -318,6 +321,17 @@ class McpRecommendRequest(BaseModel):
 
 class McpInstallRequest(BaseModel):
     mcp_id: str
+
+class KnowledgeGraphIngestRequest(BaseModel):
+    type: str
+    content: str = ""
+    role: Optional[str] = None
+    title: Optional[str] = None
+    source: Optional[str] = None
+    conversation_id: Optional[str] = None
+    user_email: Optional[str] = None
+    user_nickname: Optional[str] = None
+    metadata: Optional[Dict] = None
 
 DEFAULT_VPC_CONFIG = {
     "provider": "AWS",
@@ -727,6 +741,36 @@ def connector_info(mcp_id: str) -> Dict:
 
 _history_lock = threading.Lock()
 
+def get_audit_log() -> List[Dict]:
+    if not os.path.exists(AUDIT_FILE):
+        return []
+    try:
+        with open(AUDIT_FILE, "r", encoding="utf-8") as f:
+            data = json.load(f)
+        return data if isinstance(data, list) else []
+    except Exception as e:
+        logging.warning("get_audit_log failed: %s", e)
+        return []
+
+def append_audit_event(event_type: str, **payload) -> None:
+    try:
+        event = {
+            "event_type": event_type,
+            "timestamp": datetime.now().isoformat(),
+            **payload,
+        }
+        with _history_lock:
+            events = get_audit_log()
+            events.append(event)
+            if len(events) > 5000:
+                events = events[-5000:]
+            tmp_path = str(AUDIT_FILE) + ".tmp"
+            with open(tmp_path, "w", encoding="utf-8") as f:
+                json.dump(events, f, ensure_ascii=False, indent=2)
+            os.replace(tmp_path, AUDIT_FILE)
+    except Exception as e:
+        logging.warning("append_audit_event failed: %s", e)
+
 def save_to_history(
     role: str,
     message: str,
@@ -748,6 +792,19 @@ def save_to_history(
             item["source"] = source
         if conversation_id:
             item["conversation_id"] = conversation_id
+        sensitive = classify_sensitive_message(item, -1)
+        append_audit_event(
+            "chat_message",
+            role=role,
+            user_email=user_email,
+            user_nickname=user_nickname,
+            source=source,
+            conversation_id=conversation_id,
+            content_preview=sensitive.get("preview"),
+            content_chars=len(message or ""),
+            sensitivity=sensitive.get("sensitivity"),
+            sensitive_labels=sensitive.get("labels") or [],
+        )
         with _history_lock:
             history = []
             if os.path.exists(HISTORY_FILE):
@@ -760,6 +817,18 @@ def save_to_history(
             with open(tmp_path, "w", encoding="utf-8") as f:
                 json.dump(history, f, ensure_ascii=False, indent=2)
             os.replace(tmp_path, HISTORY_FILE)
+        try:
+            KNOWLEDGE_GRAPH.ingest_message(
+                role,
+                message,
+                user_email=user_email,
+                user_nickname=user_nickname,
+                source=source,
+                conversation_id=conversation_id,
+                raw=item,
+            )
+        except Exception as graph_error:
+            logging.warning("knowledge graph message ingest failed: %s", graph_error)
     except Exception as e:
         logging.warning("save_to_history failed: %s", e)
 
@@ -974,11 +1043,11 @@ def require_user(request: Request) -> str:
     return email or ""
 
 def require_admin(request: Request) -> tuple[str, Dict]:
+    users = load_users()
     token = _extract_bearer_token(request)
     if token:
         email = get_session_email(token)
         if email:
-            users = load_users()
             if get_user_role(email, users) == "admin":
                 return email, users
     raise HTTPException(status_code=403, detail="관리자 권한이 필요합니다.")
@@ -1151,6 +1220,136 @@ def build_sensitivity_report(history: List[Dict]) -> Dict:
         "compliance_fields": compliant_items[-30:],
     }
 
+AUDIT_DELETE_EVENTS = {"conversation_delete", "history_delete", "user_delete"}
+
+def _audit_user_bucket(email: Optional[str], nickname: Optional[str] = None, users: Optional[Dict] = None) -> Dict:
+    user = (users or {}).get(email or "", {})
+    return {
+        "email": email or "Unknown",
+        "nickname": nickname or user.get("nickname") or user.get("name") or email or "Unknown",
+        "role": get_user_role(email, users or {}) if email else "unknown",
+        "disabled": bool(user.get("disabled")) if user else False,
+        "user_messages": 0,
+        "assistant_messages": 0,
+        "document_uploads": 0,
+        "clear_events": 0,
+        "delete_events": 0,
+        "sensitive_events": 0,
+        "high_sensitive_events": 0,
+        "total_content_chars": 0,
+        "last_activity_at": None,
+    }
+
+def _public_audit_event(event: Dict) -> Dict:
+    allowed = {
+        "event_type",
+        "timestamp",
+        "role",
+        "user_email",
+        "user_nickname",
+        "source",
+        "conversation_id",
+        "command",
+        "scope",
+        "target_email",
+        "filename",
+        "mime_type",
+        "ext",
+        "bytes",
+        "extracted_chars",
+        "graph_node",
+        "keep_last",
+        "removed",
+        "kept",
+        "started_at",
+        "sensitivity",
+        "sensitive_labels",
+        "content_preview",
+        "content_chars",
+    }
+    return {key: event.get(key) for key in allowed if key in event}
+
+def build_admin_audit_report(users: Dict) -> Dict:
+    events = get_audit_log()
+    per_user: Dict[str, Dict] = {}
+
+    def ensure_user(email: Optional[str], nickname: Optional[str] = None) -> Dict:
+        key = email or nickname or "Unknown"
+        if key not in per_user:
+            per_user[key] = _audit_user_bucket(email, nickname, users)
+        elif nickname and per_user[key].get("nickname") in {"Unknown", email, None}:
+            per_user[key]["nickname"] = nickname
+        return per_user[key]
+
+    for email, user in users.items():
+        ensure_user(email, user.get("nickname") or user.get("name"))
+
+    summary = {
+        "total_events": len(events),
+        "chat_events": 0,
+        "user_messages": 0,
+        "assistant_messages": 0,
+        "document_uploads": 0,
+        "clear_events": 0,
+        "delete_events": 0,
+        "sensitive_events": 0,
+        "high_sensitive_events": 0,
+    }
+
+    sensitive_events = []
+    deletion_events = []
+    for event in events:
+        event_type = event.get("event_type")
+        email = event.get("user_email")
+        user = ensure_user(email, event.get("user_nickname"))
+        timestamp = event.get("timestamp")
+        if timestamp and (not user["last_activity_at"] or timestamp > user["last_activity_at"]):
+            user["last_activity_at"] = timestamp
+
+        user["total_content_chars"] += int(event.get("content_chars") or event.get("extracted_chars") or 0)
+        sensitivity = event.get("sensitivity") or "none"
+        labels = event.get("sensitive_labels") or []
+        is_sensitive = sensitivity != "none" or bool(labels)
+
+        if event_type == "chat_message":
+            summary["chat_events"] += 1
+            if event.get("role") == "user":
+                summary["user_messages"] += 1
+                user["user_messages"] += 1
+            elif event.get("role") == "assistant":
+                summary["assistant_messages"] += 1
+                user["assistant_messages"] += 1
+        elif event_type == "document_upload":
+            summary["document_uploads"] += 1
+            user["document_uploads"] += 1
+        elif event_type == "clear_command":
+            summary["clear_events"] += 1
+            user["clear_events"] += 1
+        elif event_type in AUDIT_DELETE_EVENTS:
+            summary["delete_events"] += 1
+            user["delete_events"] += 1
+            deletion_events.append(_public_audit_event(event))
+
+        if is_sensitive:
+            summary["sensitive_events"] += 1
+            user["sensitive_events"] += 1
+            sensitive_events.append(_public_audit_event(event))
+        if sensitivity == "high":
+            summary["high_sensitive_events"] += 1
+            user["high_sensitive_events"] += 1
+
+    return {
+        "summary": summary,
+        "per_user": sorted(
+            per_user.values(),
+            key=lambda item: (item.get("last_activity_at") or "", item.get("user_messages", 0) + item.get("assistant_messages", 0)),
+            reverse=True,
+        ),
+        "recent_events": [_public_audit_event(event) for event in events[-80:]][::-1],
+        "sensitive_events": sensitive_events[-80:][::-1],
+        "deletion_events": deletion_events[-80:][::-1],
+    }
+
 router = LLMRouter()
 gardener = PReinforceGardener()
 
@@ -1239,6 +1438,7 @@ app.add_middleware(
     allow_origins=CORS_ALLOWED_ORIGINS,
     allow_methods=["*"],
     allow_headers=["*"],
+    allow_credentials=True,
 )
 
 # UI 파일이 담길 static 폴더 연결
@@ -1468,6 +1668,17 @@ async def admin_sensitivity(request: Request):
     require_admin(request)
     return build_sensitivity_report(get_history())
 
+@app.get("/admin/audit")
+async def admin_audit(request: Request):
+    _, users = require_admin(request)
+    report = build_admin_audit_report(users)
+    try:
+        report["graph"] = KNOWLEDGE_GRAPH.stats()
+    except Exception as e:
+        logging.warning("knowledge graph stats for audit failed: %s", e)
+        report["graph"] = {"error": str(e)}
+    return report
+
 @app.get("/vpc/status")
 async def vpc_status(request: Request):
     require_user(request)
@@ -1489,6 +1700,7 @@ async def admin_update_user(email: str, req: AdminUserUpdate, request: Request):
     admin_email, users = require_admin(request)
     if email not in users:
         raise HTTPException(status_code=404, detail="사용자를 찾을 수 없습니다.")
+    before = public_user(email, users[email], users)
     if req.role is not None:
         if req.role not in {"admin", "user"}:
             raise HTTPException(status_code=400, detail="role은 admin 또는 user만 가능합니다.")
@@ -1498,7 +1710,9 @@ async def admin_update_user(email: str, req: AdminUserUpdate, request: Request):
             raise HTTPException(status_code=400, detail="자기 자신은 비활성화할 수 없습니다.")
         users[email]["disabled"] = req.disabled
     save_users(users)
-    return public_user(email, users[email], users)
+    after = public_user(email, users[email], users)
+    append_audit_event("user_update", user_email=admin_email, target_email=email, before=before, after=after)
+    return after
 
 @app.delete("/admin/users/{email:path}")
 async def admin_delete_user(email: str, request: Request):
@@ -1508,6 +1722,7 @@ async def admin_delete_user(email: str, request: Request):
     if email not in users:
         raise HTTPException(status_code=404, detail="사용자를 찾을 수 없습니다.")
     deleted = public_user(email, users[email], users)
+    append_audit_event("user_delete", user_email=admin_email, target_email=email, deleted_user=deleted)
     del users[email]
     save_users(users)
     return {"status": "ok", "deleted": deleted}
@@ -1515,7 +1730,7 @@ async def admin_delete_user(email: str, request: Request):
 @app.get("/admin/invite-link")
 async def admin_invite_link(request: Request):
     require_admin(request)
-    host = request.headers.get("host", f"localhost:{PORT}")
+    host = request.headers.get("host", f"localhost:{DEFAULT_PORT}")
     scheme = "https" if request.headers.get("x-forwarded-proto") == "https" else "http"
     if INVITE_GATE_ENABLED:
         url = f"{scheme}://{host}/?code={INVITE_CODE}"
@@ -1554,6 +1769,12 @@ async def root(request: Request, code: Optional[str] = None, authorized: Optiona
             </div>
         </body>
     """, status_code=403)
+
+
+@app.get("/account")
+async def account_page():
+    """Direct login/register page route used by logout and manual navigation."""
+    return FileResponse(STATIC_DIR / "account.html")
 
 
 @app.get("/chat")
@@ -1796,6 +2017,7 @@ ENGINE_MODEL_CATALOG = {
         {"id": "mlx-community/gemma-4-e4b-4bit", "name": "Gemma 4 E4B Base", "family": "Gemma 4", "tag": "local-vlm", "size": "5.2GB", "pullable": True},
         {"id": "mlx-community/gemma-4-e4b-it-4bit", "name": "Gemma 4 E4B Instruct", "family": "Gemma 4", "tag": "local-vlm", "size": "5.2GB", "pullable": True},
         {"id": "mlx-community/gemma-4-26b-a4b-it-4bit", "name": "Gemma 4 26B A4B Instruct", "family": "Gemma 4", "tag": "local-vlm", "size": "Apple Silicon", "pullable": True},
+        {"id": "Jiunsong/supergemma4-26b-abliterated-multimodal-mlx-4bit", "name": "SuperGemma4 26B Abliterated Multimodal", "family": "Gemma 4", "tag": "local-vlm", "size": "Apple Silicon", "pullable": True},
         {"id": "mlx-community/Qwen2.5-Coder-3B-Instruct-4bit", "name": "Qwen 2.5 Coder 3B", "family": "Qwen 2.5 Coder", "tag": "local-coding", "size": "2.1GB", "pullable": True},
         {"id": "mlx-community/Qwen2.5-Coder-7B-Instruct-4bit", "name": "Qwen 2.5 Coder 7B", "family": "Qwen 2.5 Coder", "tag": "local-coding", "size": "4.3GB", "pullable": True},
         {"id": "mlx-community/Qwen2.5-Coder-14B-Instruct-4bit", "name": "Qwen 2.5 Coder 14B", "family": "Qwen 2.5 Coder", "tag": "local-coding", "size": "8.5GB", "pullable": True},
@@ -2400,16 +2622,40 @@ async def chat(req: ChatRequest, request: Request):
 
     if is_clear_command(req.message):
         command = req.message.strip().lower()
+        clear_scope = "all" if command == "/clear_all" else "conversation"
+        try:
+            KNOWLEDGE_GRAPH.ingest_event(
+                "ClearEvent",
+                f"{command} requested",
+                user_email=effective_email,
+                user_nickname=req.user_nickname,
+                source=req.source or "web",
+                conversation_id=req.conversation_id,
+                metadata={"command": command, "scope": clear_scope},
+            )
+        except Exception as e:
+            logging.warning("knowledge graph clear event ingest failed: %s", e)
         if command == "/clear_all":
             result = clear_history(0)
-            answer = f"전체 대화 기록을 지웠습니다. 삭제 {result.get('removed', 0)}개."
+            answer = f"채팅창을 정리했습니다. 화면에서 제거 {result.get('removed', 0)}개. 감사 로그와 Data Graph/RAG 데이터는 유지됩니다."
         else:
             if req.conversation_id:
                 result = clear_conversation(req.conversation_id)
-                answer = f"현재 대화방 기록을 지웠습니다. 삭제 {result.get('removed', 0)}개."
+                answer = f"현재 대화방 채팅창을 정리했습니다. 화면에서 제거 {result.get('removed', 0)}개. 감사 로그와 Data Graph/RAG 데이터는 유지됩니다."
             else:
                 result = clear_history(0)
-                answer = f"대화 기록을 지웠습니다. 삭제 {result.get('removed', 0)}개."
+                answer = f"채팅창을 정리했습니다. 화면에서 제거 {result.get('removed', 0)}개. 감사 로그와 Data Graph/RAG 데이터는 유지됩니다."
+        append_audit_event(
+            "clear_command",
+            user_email=effective_email,
+            user_nickname=req.user_nickname,
+            source=req.source or "web",
+            conversation_id=req.conversation_id,
+            command=command,
+            scope=clear_scope,
+            removed=result.get("removed", 0),
+            kept=result.get("kept", 0),
+        )
         if req.stream:
             return StreamingResponse(
                 single_text_stream(answer),
@@ -2453,6 +2699,14 @@ async def chat(req: ChatRequest, request: Request):
             print(f"📖 Context reinforced with local knowledge.")
     except Exception as e:
         logging.warning("Knowledge reinforcement skipped: %s", e)
+
+    try:
+        graph_context = KNOWLEDGE_GRAPH.context_for_query(req.message)
+        if graph_context:
+            context += f"\n\n[KNOWLEDGE GRAPH]\n{graph_context}"
+            print("🕸️ Context reinforced with knowledge graph.")
+    except Exception as e:
+        logging.warning("Knowledge graph reinforcement skipped: %s", e)
 
     if req.image_data:
         screenshot_context = extract_screenshot_context(req.image_data)
@@ -2521,14 +2775,31 @@ async def fetch_history_conversation(conversation_id: str, request: Request):
 @app.delete("/history/conversations/{conversation_id:path}")
 async def delete_history_conversation(conversation_id: str, request: Request):
     """선택한 대화방의 메시지만 삭제합니다."""
-    require_user(request)
-    return clear_conversation(conversation_id, request.query_params.get("started_at"))
+    email = require_user(request)
+    result = clear_conversation(conversation_id, request.query_params.get("started_at"))
+    append_audit_event(
+        "conversation_delete",
+        user_email=email,
+        conversation_id=conversation_id,
+        started_at=request.query_params.get("started_at"),
+        removed=result.get("removed", 0),
+        kept=result.get("kept", 0),
+    )
+    return result
 
 
 @app.delete("/history")
 async def delete_history(request: Request, keep_last: int = 0):
-    require_user(request)
-    return clear_history(keep_last)
+    email = require_user(request)
+    result = clear_history(keep_last)
+    append_audit_event(
+        "history_delete",
+        user_email=email,
+        keep_last=keep_last,
+        removed=result.get("removed", 0),
+        kept=result.get("kept", 0),
+    )
+    return result
 
 @app.get("/history/search")
 async def search_history(q: str, request: Request):
@@ -2546,6 +2817,83 @@ async def search_history(q: str, request: Request):
             grouped[cid] = {"conversation_id": cid, "title": conversation_title(item), "messages": []}
         grouped[cid]["messages"].append(item)
     return {"results": list(grouped.values())[-30:], "query": q}
+
+
+@app.get("/graph")
+async def knowledge_graph_page(request: Request):
+    """Serve the interactive knowledge graph canvas UI."""
+    require_user(request)
+    return FileResponse(STATIC_DIR / "graph.html")
+
+
+@app.get("/knowledge-graph")
+async def knowledge_graph_legacy_page(request: Request):
+    """Backward-compatible route for the graph page."""
+    require_user(request)
+    return FileResponse(STATIC_DIR / "graph.html")
+
+
+@app.get("/knowledge-graph/stats")
+async def knowledge_graph_stats(request: Request):
+    """Return node/edge counts for the automatic workspace graph."""
+    require_user(request)
+    return KNOWLEDGE_GRAPH.stats()
+
+
+@app.get("/knowledge-graph/graph")
+async def knowledge_graph_data(request: Request, limit: int = 300):
+    """Return Obsidian-style nodes and edges for graph visualization."""
+    require_user(request)
+    return KNOWLEDGE_GRAPH.graph(limit)
+
+
+@app.get("/knowledge-graph/search")
+async def knowledge_graph_search(q: str, request: Request, limit: int = 30):
+    """Search normalized graph metadata, summaries, and source titles."""
+    require_user(request)
+    if not q or not q.strip():
+        return {"query": q, "matches": []}
+    return KNOWLEDGE_GRAPH.search(q, limit)
+
+
+@app.get("/knowledge-graph/context")
+async def knowledge_graph_context(q: str, request: Request, limit: int = 6):
+    """Return compact graph-backed RAG context for a prompt."""
+    require_user(request)
+    return {"query": q, "context": KNOWLEDGE_GRAPH.context_for_query(q, limit)}
+
+
+@app.get("/knowledge-graph/neighbors/{node_id:path}")
+async def knowledge_graph_neighbors(node_id: str, request: Request):
+    """Return direct 1-hop neighbors of a node."""
+    require_user(request)
+    if not node_id:
+        raise HTTPException(status_code=400, detail="node_id required")
+    return KNOWLEDGE_GRAPH.neighbors(node_id)
+
+
+@app.post("/knowledge-graph/ingest")
+async def knowledge_graph_ingest(req: KnowledgeGraphIngestRequest, request: Request):
+    """Manual ingestion hook for MCP/connectors that emit structured events."""
+    current_user = require_user(request)
+    event_type = (req.type or "").strip().lower()
+    if event_type not in {"message", "ai_response", "note"}:
+        raise HTTPException(status_code=400, detail="지원하는 type: message, ai_response, note")
+    role = req.role or ("assistant" if event_type == "ai_response" else "user")
+    return KNOWLEDGE_GRAPH.ingest_message(
+        role,
+        req.content,
+        user_email=req.user_email or current_user,
+        user_nickname=req.user_nickname,
+        source=req.source or "mcp",
+        conversation_id=req.conversation_id,
+        raw={
+            "type": req.type,
+            "title": req.title,
+            "content": req.content,
+            "metadata": req.metadata or {},
+        },
+    )
 
 
 async def _stream_chat(req: ChatRequest, context: str = "", image_data: str = None) -> AsyncIterator[str]:
@@ -2587,6 +2935,7 @@ Available actions:
 - create_xlsx: {"action":"create_xlsx","args":{"rows":[["A","B"],[1,2]],"filename":"spreadsheet.xlsx","sheet_name":"Sheet1"}}
 - create_pptx: {"action":"create_pptx","args":{"title":"title","slides":[{"title":"Slide","bullets":["point"]}],"filename":"presentation.pptx"}}
 - create_pdf: {"action":"create_pdf","args":{"title":"title","body":"paragraphs","filename":"document.pdf"}}
+- create_web_project: {"action":"create_web_project","args":{"path":"my_app","framework":"react","template":"vite"}} — scaffold a runnable web app project
 - local_list: {"action":"local_list","args":{"path":"/Users/username/Downloads"}} — lists any local folder (UI will request user permission first)
 - local_read: {"action":"local_read","args":{"path":"/Users/username/Documents/note.txt"}} — reads any local file (UI will request user permission first)
 - local_write: {"action":"local_write","args":{"path":"/Users/username/Desktop/output.txt","content":"..."}} — writes any local file (UI will request user permission first)
@@ -2626,10 +2975,14 @@ Rules:
 - Prefer simple, verifiable steps.
 - Use inspect_html and preview_url for generated web UI.
 - Use build_project when the user asks to build, compile, typecheck, or run a package build script.
-- Use deploy_project when the user asks to deploy, preview, or release and package.json defines that script.
+- Use deploy_project when the user asks to deploy, preview, release, or package installers (pkg/exe) and package.json defines that script (e.g. package, dist, make, build:pkg, build:exe).
+- If the user asks for app/service/web creation, prefer create_web_project first, then edit files with write_file/read_file and verify with build_project or run_command.
+- If the user asks for installer outputs (.pkg/.exe), set up packaging config (for example Electron/electron-builder or equivalent), create package scripts in package.json, then run deploy_project for installer scripts.
+- If .exe cannot be built on current OS/toolchain, still generate the full packaging config and scripts for Windows and report the exact missing prerequisite.
 - Do not claim you cannot build or deploy. If a script, token, or platform config is missing, inspect the workspace and explain the exact missing piece.
 - Use knowledge tools when the user asks to remember, search memory, or organize project context.
 - Use run_command for local inspection, tests, and short development commands after files are written.
+- For data analysis tasks, read the provided files first (read_document/local_read), compute with run_command when needed, and return concrete findings plus output artifact paths when created.
 - Use clear_history when the user asks to forget, clear, delete, reset, or speed up chat history.
 - Git is read-only: status, diff, log, and show only. Never commit, push, pull, fetch, clone, reset, or checkout.
 - If the user asks for something unsafe or outside the workspace, explain the limitation with final.
@@ -2637,13 +2990,22 @@ Rules:
 """
 
 
-_FILE_CREATE_ACTIONS = {"create_docx", "create_xlsx", "create_pptx", "create_pdf", "write_file"}
+_FILE_CREATE_ACTIONS = {"create_docx", "create_xlsx", "create_pptx", "create_pdf", "write_file", "create_web_project"}
 
 def _collect_created_files(transcript: list) -> list:
     files = []
     for step in transcript:
         if step.get("action") in _FILE_CREATE_ACTIONS:
             result = step.get("result", {})
+            if isinstance(result.get("created_files"), list):
+                for rel_path in result["created_files"]:
+                    files.append({
+                        "path": rel_path,
+                        "filename": Path(rel_path).name,
+                        "bytes": 0,
+                        "action": step["action"],
+                    })
+                continue
             path = result.get("path")
             if path:
                 files.append({
@@ -2679,7 +3041,7 @@ def _extract_agent_action(raw: str) -> Dict:
 @app.post("/agent")
 async def agent(req: AgentRequest, request: Request):
     """Natural-language local agent loop for Telegram and future clients."""
-    require_user(request)
+    current_user = require_user(request)
     if not router.current_model_id:
         raise HTTPException(status_code=400, detail="No model loaded. Call /models/load first.")
 
@@ -2710,10 +3072,17 @@ async def agent(req: AgentRequest, request: Request):
             action = _extract_agent_action(str(raw))
         except ValueError as exc:
             transcript.append({"step": step + 1, "action": "parse_error", "raw": str(raw), "error": str(exc)})
-            return JSONResponse(
-                status_code=500,
-                content={"status": "error", "error": str(exc), "raw": str(raw), "steps": transcript},
-            )
+            message = "작업 계획을 안정적으로 해석하지 못해 자동 실행을 중단했습니다. 요청을 더 짧고 구체적으로 다시 시도해 주세요."
+            save_to_history("user", req.message, source=req.source or "web", conversation_id=req.conversation_id)
+            save_to_history("assistant", message, source=req.source or "web", conversation_id=req.conversation_id)
+            created_files = _collect_created_files(transcript)
+            return {
+                "status": "ok",
+                "response": message,
+                "workspace": str(AGENT_ROOT),
+                "steps": transcript,
+                "created_files": created_files,
+            }
 
         name = action.get("action")
         if name == "final":
@@ -2723,16 +3092,40 @@ async def agent(req: AgentRequest, request: Request):
             created_files = _collect_created_files(transcript)
             return {"status": "ok", "response": message, "workspace": str(AGENT_ROOT), "steps": transcript, "created_files": created_files}
 
+        # Prevent repeated file/project creation loops with identical action+args.
+        last_step = transcript[-1] if transcript else None
+        current_args = action.get("args") or {}
+        if (
+            name in _FILE_CREATE_ACTIONS
+            and last_step
+            and last_step.get("action") == name
+            and (last_step.get("args") or {}) == current_args
+            and "result" in last_step
+        ):
+            message = "요청한 파일 생성을 이미 완료해서 반복 실행을 중단했습니다."
+            save_to_history("user", req.message, source=req.source or "web", conversation_id=req.conversation_id)
+            save_to_history("assistant", message, source=req.source or "web", conversation_id=req.conversation_id)
+            created_files = _collect_created_files(transcript)
+            return {"status": "ok", "response": message, "workspace": str(AGENT_ROOT), "steps": transcript, "created_files": created_files}
+
         if name == "clear_history":
-            result = clear_history((action.get("args") or {}).get("keep_last", 0))
-            transcript.append({"step": step + 1, "action": name, "args": action.get("args") or {}, "result": result})
+            result = clear_history(current_args.get("keep_last", 0))
+            append_audit_event(
+                "history_delete",
+                user_email=current_user,
+                source=req.source or "agent",
+                keep_last=current_args.get("keep_last", 0),
+                removed=result.get("removed", 0),
+                kept=result.get("kept", 0),
+            )
+            transcript.append({"step": step + 1, "action": name, "args": current_args, "result": result})
             continue
 
         try:
-            result = execute_tool(name, action.get("args") or {})
-            transcript.append({"step": step + 1, "action": name, "args": action.get("args") or {}, "result": result})
+            result = execute_tool(name, current_args)
+            transcript.append({"step": step + 1, "action": name, "args": current_args, "result": result})
         except (ToolError, KeyError, TypeError) as exc:
-            transcript.append({"step": step + 1, "action": name, "args": action.get("args") or {}, "error": str(exc)})
+            transcript.append({"step": step + 1, "action": name, "args": current_args, "error": str(exc)})
 
     summary_context = (
         f"{AGENT_SYSTEM_PROMPT}\n\n"
@@ -2799,8 +3192,17 @@ async def tools_search_files(req: ToolSearchFilesRequest, request: Request):
 
 @app.post("/tools/clear_history")
 async def tools_clear_history(req: ToolClearHistoryRequest, request: Request):
-    require_user(request)
-    return clear_history(req.keep_last)
+    current_user = require_user(request)
+    result = clear_history(req.keep_last)
+    append_audit_event(
+        "history_delete",
+        user_email=current_user,
+        source="tools",
+        keep_last=req.keep_last,
+        removed=result.get("removed", 0),
+        kept=result.get("kept", 0),
+    )
+    return result
 
 
 @app.post("/tools/inspect_html")
@@ -2859,7 +3261,7 @@ async def tools_download(path: str, request: Request):
 
 @app.post("/upload/document")
 async def upload_document(request: Request, file: UploadFile = File(...)):
-    require_user(request)
+    current_user = require_user(request)
     """Upload a document and extract text (PDF, DOCX, XLSX, PPTX, TXT, MD, CSV)."""
     suffix = Path(file.filename or "upload").suffix.lower()
     allowed = {".pdf", ".docx", ".xlsx", ".pptx", ".txt", ".md", ".csv"}
@@ -2873,6 +3275,45 @@ async def upload_document(request: Request, file: UploadFile = File(...)):
         tmp_path = tmp.name
     try:
         result = read_document(tmp_path)
+        sensitive = classify_sensitive_message(
+            {
+                "role": "document",
+                "content": result.get("content") or result.get("preview") or "",
+                "user_email": current_user,
+                "timestamp": datetime.now().isoformat(),
+            },
+            -1,
+        )
+        try:
+            graph_result = KNOWLEDGE_GRAPH.ingest_document(
+                Path(tmp_path),
+                original_filename=file.filename,
+                mime_type=file.content_type,
+                uploader=current_user,
+                conversation_id=request.query_params.get("conversation_id"),
+                extracted=result,
+            )
+            result["knowledge_graph"] = {
+                "node_id": graph_result["node_id"],
+                "sha256": graph_result["sha256"],
+            }
+        except Exception as graph_error:
+            logging.warning("knowledge graph document ingest failed: %s", graph_error)
+            result["knowledge_graph"] = {"error": str(graph_error)}
+        append_audit_event(
+            "document_upload",
+            user_email=current_user,
+            conversation_id=request.query_params.get("conversation_id"),
+            filename=file.filename,
+            mime_type=file.content_type,
+            ext=suffix,
+            bytes=len(contents),
+            extracted_chars=result.get("chars"),
+            graph_node=(result.get("knowledge_graph") or {}).get("node_id"),
+            content_preview=sensitive.get("preview"),
+            sensitivity=sensitive.get("sensitivity"),
+            sensitive_labels=sensitive.get("labels") or [],
+        )
     except ToolError as exc:
         raise HTTPException(status_code=400, detail=str(exc))
     finally:
@@ -3311,6 +3752,10 @@ async def mcp_tools():
             {"name": "knowledge_save", "description": "Save a note into the local knowledge garden."},
             {"name": "knowledge_search", "description": "Search the local knowledge garden."},
             {"name": "knowledge_tree", "description": "List local knowledge garden markdown files."},
+            {"name": "knowledge_graph_ingest", "description": "Ingest a message, AI answer, or connector event into the SQLite knowledge graph."},
+            {"name": "knowledge_graph_search", "description": "Search graph nodes, summaries, and JSON metadata."},
+            {"name": "knowledge_graph_graph", "description": "Return Obsidian-style graph nodes and edges."},
+            {"name": "knowledge_graph_context", "description": "Return compact graph-backed RAG context for a prompt."},
             {"name": "obsidian_save", "description": "Save a note into the Obsidian-compatible memory vault."},
             {"name": "obsidian_search", "description": "Search the Obsidian-compatible memory vault."},
             {"name": "obsidian_tree", "description": "List Obsidian memory vault markdown files."},
@@ -3321,7 +3766,7 @@ async def mcp_tools():
             {"name": "network_status", "description": "Get current local/private IP, public IP, hostname, and Wi-Fi info."},
             {"name": "run_command", "description": "Run an allowlisted local command inside the workspace."},
             {"name": "build_project", "description": "Run an allowlisted package.json build/compile/typecheck/test script."},
-            {"name": "deploy_project", "description": "Run an allowlisted package.json deploy/preview/release script."},
+            {"name": "deploy_project", "description": "Run an allowlisted package.json deploy/preview/release/package installer script (pkg/exe)."},
         ],
     }
 
@@ -3353,7 +3798,29 @@ async def mcp_connector(mcp_id: str, request: Request):
 
 @app.post("/mcp/call")
 async def mcp_call(req: McpCallRequest, request: Request):
-    require_user(request)
+    current_user = require_user(request)
+    args = req.args or {}
+    if req.action == "knowledge_graph_ingest":
+        return KNOWLEDGE_GRAPH.ingest_message(
+            args.get("role") or ("assistant" if args.get("type") == "ai_response" else "user"),
+            args.get("content") or "",
+            user_email=args.get("user_email") or current_user,
+            user_nickname=args.get("user_nickname"),
+            source=args.get("source") or "mcp",
+            conversation_id=args.get("conversation_id"),
+            raw=args,
+        )
+    if req.action == "knowledge_graph_search":
+        return KNOWLEDGE_GRAPH.search(args.get("query") or args.get("q") or "", args.get("limit", 30))
+    if req.action == "knowledge_graph_graph":
+        return KNOWLEDGE_GRAPH.graph(args.get("limit", 300))
+    if req.action == "knowledge_graph_context":
+        return {
+            "context": KNOWLEDGE_GRAPH.context_for_query(
+                args.get("query") or args.get("q") or "",
+                args.get("limit", 6),
+            )
+        }
     return _tool_response(execute_tool, req.action, req.args or {})
 
 

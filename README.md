@@ -18,6 +18,8 @@ LTCAI                      # → http://localhost:4825
 - 채팅 히스토리 검색 — 사이드바 검색창으로 대화 내용 키워드 검색
 - 대화 삭제 — 사이드바 각 대화에 삭제 버튼
 - MCP 서버 관리 UI — 사이드바 "MCP 관리" 버튼으로 설치/목록 모달
+- Data Graph — 채팅/AI 답변/업로드 문서를 SQLite 지식 그래프로 자동 구조화하고 `/graph`에서 시각화
+- Graph RAG — 그래프 검색 결과를 채팅 컨텍스트에 자동 주입
 - VS Code 인라인 Diff 뷰 — Edit Selection 결과를 diff로 먼저 확인 후 Apply/Discard
 - VS Code 현재 파일 첨부 — `Lattice AI: Attach Current File to Chat` 명령 추가
 
@@ -44,6 +46,7 @@ LTCAI                      # → http://localhost:4825
 ```
 Lattice AI/
 ├── server.py              # FastAPI 브릿지 서버 (port 4825)
+├── knowledge_graph.py     # SQLite Data Graph + Graph RAG 저장소
 ├── llm_router.py          # 로컬/클라우드 모델 라우터
 ├── tools.py               # 워크스페이스 도구 (파일, 터미널, 스크린샷 등)
 ├── p_reinforce.py         # P-Reinforce 지식 정원 엔진
@@ -322,6 +325,20 @@ curl -X POST localhost:4825/garden \
   -H "Content-Type: application/json" \
   -d '{"content": "학습한 내용", "category": "10_Wiki"}'
 ```
+
+---
+
+## Data Graph / Graph RAG
+
+웹 채팅과 AI 답변, 업로드 문서(PDF/DOCX/XLSX/PPTX/TXT/CSV)를 `~/.ltcai/knowledge_graph.sqlite`에 자동 저장합니다.
+
+- 채팅/AI 답변: `Message`, `AIResponse`, `Person`, `Conversation`, `Topic`, `Decision`, `Task`
+- 문서 업로드: `File`, `Chunk`, `Page`, `Slide`, `Sheet`, `Image`, `Topic`
+- 원본 파일 blob: `~/.ltcai/knowledge_graph_blobs/`
+- 시각화: `http://localhost:4825/graph`
+- API: `/knowledge-graph/graph`, `/knowledge-graph/search`, `/knowledge-graph/context`
+
+`/clear`, `/clear_all`, 대화 삭제는 사용자 채팅창만 정리합니다. Data Graph/RAG 데이터와 관리자 감사 로그는 보존됩니다.
 
 ---
 

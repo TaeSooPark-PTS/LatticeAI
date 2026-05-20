@@ -381,6 +381,43 @@
             gap: 12px;
         }
 
+        .audit-grid {
+            display: grid;
+            grid-template-columns: repeat(5, minmax(0, 1fr));
+            gap: 10px;
+            margin-bottom: 14px;
+        }
+
+        .audit-metric {
+            border: 1px solid var(--border);
+            border-radius: 12px;
+            background: rgba(255,255,255,0.025);
+            padding: 12px;
+            min-width: 0;
+        }
+
+        .audit-metric .label {
+            color: var(--faint);
+            font-size: 11px;
+            font-weight: 800;
+            letter-spacing: 0.06em;
+            text-transform: uppercase;
+            margin-bottom: 8px;
+        }
+
+        .audit-metric .value {
+            font-size: 24px;
+            font-weight: 800;
+            line-height: 1;
+        }
+
+        .audit-metric .meta {
+            color: var(--muted);
+            font-size: 12px;
+            margin-top: 7px;
+            line-height: 1.4;
+        }
+
         .subpanel {
             border: 1px solid var(--border);
             border-radius: 12px;
@@ -505,6 +542,7 @@
 
         @media (max-width: 1100px) {
             .summary-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+            .audit-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
             .panel-grid { grid-template-columns: 1fr; }
         }
 
@@ -518,6 +556,7 @@
             .content { padding: 16px; gap: 14px; }
             .hero h2 { font-size: 22px; }
             .summary-grid { grid-template-columns: 1fr; }
+            .audit-grid { grid-template-columns: 1fr; }
             .two-col, .form-grid { grid-template-columns: 1fr; }
             .field.full { grid-column: auto; }
         }
@@ -620,6 +659,33 @@
                 </div>
                 <div class="panel-body" style="padding:16px 20px;">
                     <canvas id="activity-chart" height="80"></canvas>
+                </div>
+            </section>
+
+            <section class="panel">
+                <div class="panel-header">
+                    <div>
+                        <h3>Audit & Data Governance</h3>
+                        <p>사용자별 AI 사용량, 문서 업로드, 민감정보 감지, 삭제/정리 이벤트를 보존합니다.</p>
+                    </div>
+                    <div class="tag-row" id="audit-summary-tags"></div>
+                </div>
+                <div class="panel-body">
+                    <div class="audit-grid" id="audit-metrics"></div>
+                    <div class="two-col">
+                        <div class="subpanel">
+                            <h4><i class="ti ti-users"></i> User Usage & Risk</h4>
+                            <div class="table-wrap" id="audit-user-table">
+                                <div class="preview" style="padding:14px">불러오는 중...</div>
+                            </div>
+                        </div>
+                        <div class="subpanel">
+                            <h4><i class="ti ti-history"></i> Audit Trail</h4>
+                            <div class="table-wrap" id="audit-event-table">
+                                <div class="preview" style="padding:14px">불러오는 중...</div>
+                            </div>
+                        </div>
+                    </div>
                 </div>
             </section>
 
@@ -753,7 +819,10 @@
         const API_BASE = window.location.protocol === 'file:' ? 'http://localhost:4825' : '';
 
         function apiFetch(path, options = {}) {
-            return fetch(`${API_BASE}${path}`, options);
+            const headers = { ...(options.headers || {}) };
+            const token = localStorage.getItem('ltcai_session_token') || '';
+            if (token && !headers.Authorization) headers.Authorization = `Bearer ${token}`;
+            return fetch(`${API_BASE}${path}`, { credentials: 'include', ...options, headers });
         }
 
         function currentUserEmail() {
@@ -768,10 +837,26 @@
             return localStorage.getItem('ltcai_is_admin') === 'true';
         }
 
+        function restoreSessionFromQuery() {
+            const raw = sessionStorage.getItem('ltcai_admin_handoff');
+            if (!raw) return;
+            sessionStorage.removeItem('ltcai_admin_handoff');
+            let data;
+            try { data = JSON.parse(raw); } catch { return; }
+            const { email, nickname, is_admin, token } = data;
+            if (!email) return;
+            localStorage.setItem('ltcai_user_email', email);
+            if (nickname) localStorage.setItem('ltcai_user_nickname', nickname);
+            if (is_admin === 'true' || is_admin === 'false') localStorage.setItem('ltcai_is_admin', is_admin);
+            if (token) localStorage.setItem('ltcai_session_token', token);
+        }
+
         function adminHeaders() {
+            const token = localStorage.getItem('ltcai_session_token') || '';
             return {
                 'Content-Type': 'application/json',
-                'X-Admin-Email': currentUserEmail()
+                'X-Admin-Email': currentUserEmail(),
+                ...(token ? { Authorization: `Bearer ${token}` } : {})
             };
         }
 
@@ -854,6 +939,7 @@
 
         function applyI18n() {
             document.querySelectorAll('[data-i18n]').forEach(el => {
+                if (el.id === 'session-help') return;
                 const val = t(el.dataset.i18n);
                 if (val) el.textContent = val;
             });
@@ -1056,6 +1142,128 @@
             document.getElementById('sensitivity-summary').insertAdjacentHTML('beforeend', fieldTags.join('') + userTags.join(''));
         }
 
+        function formatAuditTime(value) {
+            if (!value) return '-';
+            const date = new Date(value);
+            if (Number.isNaN(date.getTime())) return value;
+            return date.toLocaleString();
+        }
+
+        function auditEventLabel(event) {
+            const type = event?.event_type || '-';
+            const labels = {
+                chat_message: event?.role === 'assistant' ? 'AI response' : 'User message',
+                document_upload: 'Document upload',
+                clear_command: 'Chat clear',
+                conversation_delete: 'Conversation delete',
+                history_delete: 'History delete',
+                user_delete: 'User delete'
+            };
+            return labels[type] || type;
+        }
+
+        function auditTarget(event) {
+            if (!event) return '-';
+            if (event.filename) return event.filename;
+            if (event.target_email) return `target: ${event.target_email}`;
+            if (event.command) return `${event.command} · ${event.scope || '-'} · removed ${event.removed || 0}`;
+            if (event.event_type === 'history_delete') return `history · removed ${event.removed || 0} · kept ${event.kept || 0}`;
+            if (event.conversation_id) return `conversation ${String(event.conversation_id).slice(0, 18)}`;
+            return event.content_preview || '-';
+        }
+
+        function renderAudit(audit) {
+            const summary = audit?.summary || {};
+            const graph = audit?.graph || {};
+            const metrics = [
+                ['Total Events', summary.total_events || 0, `${summary.chat_events || 0} chat events`],
+                ['AI Usage', `${summary.user_messages || 0}/${summary.assistant_messages || 0}`, 'user / assistant'],
+                ['Uploads', summary.document_uploads || 0, `${graph.nodes || 0} graph nodes`],
+                ['Clear Events', summary.clear_events || 0, 'screen cleanup only'],
+                ['Sensitive', summary.sensitive_events || 0, `${summary.high_sensitive_events || 0} high risk`],
+            ];
+            document.getElementById('audit-metrics').innerHTML = metrics.map(([label, value, meta]) => `
+                <div class="audit-metric">
+                    <div class="label">${esc(label)}</div>
+                    <div class="value">${esc(value)}</div>
+                    <div class="meta">${esc(meta)}</div>
+                </div>
+            `).join('');
+
+            const tags = [
+                ['low', `Graph nodes ${graph.nodes || 0}`],
+                ['low', `Edges ${graph.edges || 0}`],
+                ['medium', `Deletes ${summary.delete_events || 0}`],
+                [summary.high_sensitive_events ? 'high' : 'low', `High risk ${summary.high_sensitive_events || 0}`]
+            ];
+            document.getElementById('audit-summary-tags').innerHTML = tags.map(([tone, label]) => `<span class="tag ${tone}">${esc(label)}</span>`).join('');
+
+            const users = audit?.per_user || [];
+            document.getElementById('audit-user-table').innerHTML = users.length ? `
+                <table>
+                    <thead>
+                        <tr>
+                            <th>User</th>
+                            <th>AI Use</th>
+                            <th>Uploads</th>
+                            <th>Sensitive</th>
+                            <th>Clear/Delete</th>
+                            <th>Last Active</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        ${users.map(user => `
+                            <tr>
+                                <td>
+                                    <strong>${esc(user.nickname || user.email || 'Unknown')}</strong>
+                                    <div class="preview">${esc(user.email || '')}</div>
+                                </td>
+                                <td>${esc(user.user_messages || 0)} / ${esc(user.assistant_messages || 0)}</td>
+                                <td>${esc(user.document_uploads || 0)}</td>
+                                <td>
+                                    <span class="tag ${(user.high_sensitive_events || 0) ? 'high' : ((user.sensitive_events || 0) ? 'medium' : 'low')}">
+                                        ${esc(user.sensitive_events || 0)}
+                                    </span>
+                                </td>
+                                <td>${esc(user.clear_events || 0)} / ${esc(user.delete_events || 0)}</td>
+                                <td>${esc(formatAuditTime(user.last_activity_at))}</td>
+                            </tr>
+                        `).join('')}
+                    </tbody>
+                </table>
+            ` : '<div class="preview" style="padding:14px">감사 데이터가 아직 없습니다.</div>';
+
+            const events = audit?.recent_events || [];
+            document.getElementById('audit-event-table').innerHTML = events.length ? `
+                <table>
+                    <thead>
+                        <tr>
+                            <th>Time</th>
+                            <th>Event</th>
+                            <th>User</th>
+                            <th>Target/Data</th>
+                            <th>Risk</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        ${events.map(event => `
+                            <tr>
+                                <td>${esc(formatAuditTime(event.timestamp))}</td>
+                                <td>${esc(auditEventLabel(event))}</td>
+                                <td>${esc(event.user_nickname || event.user_email || 'Unknown')}</td>
+                                <td>${esc(auditTarget(event))}</td>
+                                <td>
+                                    <span class="tag ${event.sensitivity === 'high' ? 'high' : (event.sensitivity && event.sensitivity !== 'none' ? 'medium' : 'low')}">
+                                        ${esc(event.sensitivity || 'none')}
+                                    </span>
+                                </td>
+                            </tr>
+                        `).join('')}
+                    </tbody>
+                </table>
+            ` : '<div class="preview" style="padding:14px">최근 감사 이벤트가 없습니다.</div>';
+        }
+
         function renderUsers(users) {
             const wrap = document.getElementById('user-table-wrap');
             if (!Array.isArray(users) || !users.length) {
@@ -1137,21 +1345,22 @@
         });
 
         async function loadDashboard() {
-            setSessionInfo();
             applyI18n();
+            setSessionInfo();
 
             const access = document.getElementById('access-notice');
             access.style.display = 'none';
 
             try {
-                const [healthRes, vpcRes, summaryRes, usersRes, sensitivityRes, inviteRes, statsRes] = await Promise.all([
+                const [healthRes, vpcRes, summaryRes, usersRes, sensitivityRes, inviteRes, statsRes, auditRes] = await Promise.all([
                     apiFetch('/health'),
                     apiFetch('/vpc/status'),
                     apiFetch('/admin/summary', { headers: adminHeaders() }),
                     apiFetch('/admin/users', { headers: adminHeaders() }),
                     apiFetch('/admin/sensitivity', { headers: adminHeaders() }),
                     apiFetch('/admin/invite-link', { headers: adminHeaders() }),
-                    apiFetch('/admin/stats', { headers: adminHeaders() })
+                    apiFetch('/admin/stats', { headers: adminHeaders() }),
+                    apiFetch('/admin/audit', { headers: adminHeaders() })
                 ]);
 
                 const health = healthRes.ok ? await healthRes.json() : null;
@@ -1161,11 +1370,13 @@
                 const sensitivity = sensitivityRes.ok ? await sensitivityRes.json() : null;
                 const invite = inviteRes.ok ? await inviteRes.json() : null;
                 const stats = statsRes.ok ? await statsRes.json() : null;
+                const audit = auditRes.ok ? await auditRes.json() : null;
 
                 renderSummary(health, summary, vpc);
                 fillVpcForm(vpc);
                 renderUsers(users);
                 renderSensitivity(sensitivity);
+                renderAudit(audit);
                 if (invite) {
                     document.getElementById('invite-link-input').value = invite.invite_url;
                     document.getElementById('invite-gate-info').textContent = invite.gate_enabled
@@ -1178,6 +1389,7 @@
                 if (!summaryRes.ok) failedSections.push(t('section_summary'));
                 if (!usersRes.ok) failedSections.push(t('section_users'));
                 if (!sensitivityRes.ok) failedSections.push(t('section_sensitivity'));
+                if (!auditRes.ok) failedSections.push('audit');
 
                 if (failedSections.length) {
                     access.style.display = 'block';
@@ -1229,6 +1441,7 @@
             localStorage.removeItem('ltcai_user_email');
             localStorage.removeItem('ltcai_user_nickname');
             localStorage.removeItem('ltcai_is_admin');
+            localStorage.removeItem('ltcai_session_token');
             window.location.href = '/';
         }
 
@@ -1236,6 +1449,7 @@
         document.getElementById('save-vpc-btn').addEventListener('click', saveVpc);
         document.getElementById('logout-btn').addEventListener('click', logout);
         applyI18n();
+        restoreSessionFromQuery();
         loadDashboard();
     </script>
 </body>

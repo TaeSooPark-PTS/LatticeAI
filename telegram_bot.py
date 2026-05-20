@@ -4,6 +4,7 @@ import logging
 import base64
 import os
 import socket
+import subprocess
 import tempfile
 import zipfile
 import json
@@ -25,32 +26,39 @@ load_env_file()
 def env_value(primary: str, default: str = "") -> str:
     return os.getenv(primary) or default
 
-# 설정
-TOKEN = env_value("LATTICEAI_TELEGRAM_BOT_TOKEN")
-API_URL = f"https://api.telegram.org/bot{TOKEN}"
-CHAT_URL = "http://127.0.0.1:4825/chat"
-AGENT_URL = "http://127.0.0.1:4825/agent"
-MCP_TOOLS_URL = "http://127.0.0.1:4825/mcp/tools"
-HISTORY_URL = "http://127.0.0.1:4825/history"
-AGENT_WORKSPACE = Path(env_value("LATTICEAI_AGENT_ROOT", "agent_workspace")).resolve()
+TOKEN          = env_value("LATTICEAI_TELEGRAM_BOT_TOKEN")
+API_URL        = f"https://api.telegram.org/bot{TOKEN}"
+BASE_URL       = "http://127.0.0.1:4825"
+CHAT_URL       = f"{BASE_URL}/chat"
+AGENT_URL      = f"{BASE_URL}/agent"
+MCP_TOOLS_URL  = f"{BASE_URL}/mcp/tools"
+HISTORY_URL    = f"{BASE_URL}/history"
+STATUS_URL     = f"{BASE_URL}/status"
+MODELS_URL     = f"{BASE_URL}/models"
+GRAPH_STATS_URL = f"{BASE_URL}/knowledge-graph/stats"
+UPLOAD_DOC_URL  = f"{BASE_URL}/upload/document"
+
+AGENT_WORKSPACE       = Path(env_value("LATTICEAI_AGENT_ROOT", "agent_workspace")).resolve()
 MAX_TELEGRAM_FILE_BYTES = 45 * 1024 * 1024
-SERVER_PORT = int(env_value("LATTICEAI_SERVER_PORT", "4825"))
-INVITE_CODE = env_value("LATTICEAI_INVITE_CODE", "gemma-lattice-ai")
-PUBLIC_WEB_URL = env_value("LATTICEAI_PUBLIC_URL")
-DATA_DIR = Path(env_value("LATTICEAI_DATA_DIR", str(Path.home() / ".ltcai")))
+SERVER_PORT           = int(env_value("LATTICEAI_SERVER_PORT", "4825"))
+INVITE_CODE           = env_value("LATTICEAI_INVITE_CODE", "gemma-lattice-ai")
+PUBLIC_WEB_URL        = env_value("LATTICEAI_PUBLIC_URL")
+DATA_DIR              = Path(env_value("LATTICEAI_DATA_DIR", str(Path.home() / ".ltcai")))
 DATA_DIR.mkdir(parents=True, exist_ok=True)
 CHAT_IDS_FILE = Path(env_value("LATTICEAI_TELEGRAM_CHATS_FILE", str(DATA_DIR / "telegram_chats.json")))
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
+# ── Chat ID registry ─────────────────────────────────────────────────────────
+
 def load_chat_ids():
     try:
         if CHAT_IDS_FILE.exists():
             data = json.loads(CHAT_IDS_FILE.read_text(encoding="utf-8"))
-            return {int(chat_id) for chat_id in data.get("chat_ids", [])}
+            return {int(cid) for cid in data.get("chat_ids", [])}
     except Exception as e:
-        logger.error(f"텔레그램 채팅 목록 로드 실패: {e}")
+        logger.error("텔레그램 채팅 목록 로드 실패: %s", e)
     return set()
 
 def save_chat_ids(chat_ids):
@@ -60,32 +68,123 @@ def save_chat_ids(chat_ids):
             encoding="utf-8",
         )
     except Exception as e:
-        logger.error(f"텔레그램 채팅 목록 저장 실패: {e}")
+        logger.error("텔레그램 채팅 목록 저장 실패: %s", e)
 
 def register_chat_id(chat_id):
     chat_ids = load_chat_ids()
-    if chat_id in chat_ids:
-        return
-    chat_ids.add(chat_id)
-    save_chat_ids(chat_ids)
-    logger.info(f"텔레그램 웹 미러링 대상 등록: {chat_id}")
+    if chat_id not in chat_ids:
+        chat_ids.add(chat_id)
+        save_chat_ids(chat_ids)
+        logger.info("텔레그램 웹 미러링 대상 등록: %s", chat_id)
+
+# ── Telegram API helpers ──────────────────────────────────────────────────────
+
+async def send_message(client, chat_id, text, reply_markup=None):
+    url = f"{API_URL}/sendMessage"
+    try:
+        chunks = [text[i:i+3900] for i in range(0, len(text), 3900)] or [""]
+        for i, chunk in enumerate(chunks):
+            payload = {"chat_id": chat_id, "text": chunk}
+            if reply_markup and i == len(chunks) - 1:
+                payload["reply_markup"] = reply_markup
+            await client.post(url, json=payload)
+    except Exception as e:
+        logger.error("메시지 전송 실패: %s", e)
+
+async def send_photo(client, chat_id, file_path: Path, caption: str = ""):
+    url = f"{API_URL}/sendPhoto"
+    try:
+        with open(file_path, "rb") as f:
+            res = await client.post(url, data={"chat_id": str(chat_id), "caption": caption[:1024]},
+                                    files={"photo": (file_path.name, f)}, timeout=60.0)
+        if res.status_code != 200:
+            await send_message(client, chat_id, f"사진 전송 실패 ({res.status_code})")
+    except Exception as e:
+        logger.error("사진 전송 실패: %s", e)
+        await send_message(client, chat_id, f"사진 전송 오류: {e}")
+
+async def send_document(client, chat_id, file_path, caption=None, filename=None):
+    url = f"{API_URL}/sendDocument"
+    try:
+        with open(file_path, "rb") as f:
+            res = await client.post(
+                url,
+                data={"chat_id": str(chat_id), **({"caption": caption[:1024]} if caption else {})},
+                files={"document": (filename or Path(file_path).name, f)},
+                timeout=300.0,
+            )
+            if res.status_code != 200:
+                logger.error("파일 전송 실패 (%s): %s", res.status_code, res.text)
+    except Exception as e:
+        logger.error("파일 전송 실패: %s", e)
+
+async def send_chat_action(client, chat_id, action="typing"):
+    try:
+        await client.post(f"{API_URL}/sendChatAction", json={"chat_id": chat_id, "action": action})
+    except Exception:
+        pass
+
+async def answer_callback(client, callback_query_id, text=""):
+    try:
+        await client.post(f"{API_URL}/answerCallbackQuery",
+                          json={"callback_query_id": callback_query_id, "text": text})
+    except Exception:
+        pass
+
+async def edit_message(client, chat_id, message_id, text, reply_markup=None):
+    try:
+        payload = {"chat_id": chat_id, "message_id": message_id, "text": text}
+        if reply_markup:
+            payload["reply_markup"] = reply_markup
+        await client.post(f"{API_URL}/editMessageText", json=payload)
+    except Exception:
+        pass
+
+# ── Network helpers ───────────────────────────────────────────────────────────
+
+def get_lan_ip():
+    try:
+        with socket.socket(socket.AF_INET, socket.SOCK_DGRAM) as s:
+            s.connect(("8.8.8.8", 80))
+            ip = s.getsockname()[0]
+            if not ip.startswith("127."):
+                return ip
+    except OSError:
+        pass
+    try:
+        hostname = socket.gethostname()
+        for ip in socket.gethostbyname_ex(hostname)[2]:
+            if not ip.startswith("127."):
+                return ip
+    except OSError:
+        pass
+    return "127.0.0.1"
+
+def get_web_url():
+    if PUBLIC_WEB_URL:
+        return PUBLIC_WEB_URL.rstrip("/")
+    return f"http://{get_lan_ip()}:{SERVER_PORT}/?code={INVITE_CODE}"
+
+def get_graph_url():
+    if PUBLIC_WEB_URL:
+        return f"{PUBLIC_WEB_URL.rstrip('/')}/graph"
+    return f"http://{get_lan_ip()}:{SERVER_PORT}/graph"
+
+# ── Broadcast (web → telegram mirror) ────────────────────────────────────────
 
 async def broadcast_web_chat(role, text):
     if not TOKEN:
-        logger.info("LATTICEAI_TELEGRAM_BOT_TOKEN이 없어 웹 대화 텔레그램 미러링을 건너뜁니다.")
         return
-
     chat_ids = load_chat_ids()
     if not chat_ids:
-        logger.info("웹 대화 미러링 대상 텔레그램 채팅이 없습니다. 봇에 /start 또는 /web을 먼저 보내세요.")
         return
-
     label = "사용자" if role == "user" else "Lattice AI"
     message = f"[Web] {label}\n{text}"
-
     async with httpx.AsyncClient() as client:
         for chat_id in chat_ids:
             await send_message(client, chat_id, message)
+
+# ── Polling ───────────────────────────────────────────────────────────────────
 
 async def get_updates(client, offset=None):
     url = f"{API_URL}/getUpdates?timeout=30"
@@ -94,94 +193,348 @@ async def get_updates(client, offset=None):
     try:
         res = await client.get(url, timeout=35)
         return res.json()
-    except Exception as e:
+    except Exception:
         return None
 
-async def send_message(client, chat_id, text):
-    url = f"{API_URL}/sendMessage"
+# ── File download ─────────────────────────────────────────────────────────────
+
+async def download_telegram_file(client, file_id) -> bytes | None:
     try:
-        chunks = [text[i:i + 3900] for i in range(0, len(text), 3900)] or [""]
-        for chunk in chunks:
-            await client.post(url, json={"chat_id": chat_id, "text": chunk})
+        res = await client.get(f"{API_URL}/getFile?file_id={file_id}")
+        file_path = res.json().get("result", {}).get("file_path")
+        if not file_path:
+            return None
+        dl = await client.get(f"https://api.telegram.org/file/bot{TOKEN}/{file_path}")
+        return dl.content if dl.status_code == 200 else None
     except Exception as e:
-        logger.error(f"메시지 전송 실패: {e}")
+        logger.error("파일 다운로드 실패: %s", e)
+        return None
 
-async def send_chat_action(client, chat_id, action="typing"):
-    url = f"{API_URL}/sendChatAction"
+async def download_as_base64(client, file_id) -> str | None:
+    data = await download_telegram_file(client, file_id)
+    return base64.b64encode(data).decode() if data else None
+
+# ── Main menu ─────────────────────────────────────────────────────────────────
+
+MAIN_MENU = {
+    "inline_keyboard": [
+        [
+            {"text": "📊 서버 상태",          "callback_data": "cmd:status"},
+            {"text": "🧠 현재 모델",           "callback_data": "cmd:model"},
+        ],
+        [
+            {"text": "🕸 Knowledge Graph",     "callback_data": "cmd:graph"},
+            {"text": "📸 스크린샷",            "callback_data": "cmd:screenshot"},
+        ],
+        [
+            {"text": "📜 최근 대화 5건",        "callback_data": "cmd:history"},
+            {"text": "🗑 기록 정리",            "callback_data": "cmd:clear"},
+        ],
+        [
+            {"text": "🔗 웹 UI 열기",           "callback_data": "cmd:web"},
+            {"text": "🔌 MCP 도구 목록",        "callback_data": "cmd:mcp"},
+        ],
+    ]
+}
+
+async def show_menu(client, chat_id):
+    await send_message(client, chat_id, "📱 Lattice AI 원격 제어 메뉴입니다.", reply_markup=MAIN_MENU)
+
+# ── Server status ─────────────────────────────────────────────────────────────
+
+async def _mac_ram_used_gb() -> str:
     try:
-        await client.post(url, json={"chat_id": chat_id, "action": action})
+        vm_proc = await asyncio.create_subprocess_exec(
+            "vm_stat", stdout=asyncio.subprocess.PIPE, stderr=asyncio.subprocess.DEVNULL
+        )
+        vm_out, _ = await vm_proc.communicate()
+        lines = vm_out.decode().splitlines()
+
+        # Parse page size from header line: "Mach Virtual Memory Statistics: (page size of 16384 bytes)"
+        page_size = 4096
+        if lines:
+            import re
+            m = re.search(r"page size of (\d+) bytes", lines[0])
+            if m:
+                page_size = int(m.group(1))
+
+        stats = {}
+        for line in lines[1:]:
+            if ":" in line:
+                k, _, v = line.partition(":")
+                try:
+                    stats[k.strip()] = int(v.strip().rstrip(".")) * page_size
+                except ValueError:
+                    pass
+
+        used = stats.get("Pages active", 0) + stats.get("Pages wired down", 0)
+
+        mem_proc = await asyncio.create_subprocess_exec(
+            "sysctl", "-n", "hw.memsize", stdout=asyncio.subprocess.PIPE
+        )
+        mem_out, _ = await mem_proc.communicate()
+        total = int(mem_out.strip())
+        return f"{used/1e9:.1f} GB / {total/1e9:.0f} GB"
+    except Exception:
+        return "N/A"
+
+async def show_status(client, chat_id):
+    await send_chat_action(client, chat_id, "typing")
+    try:
+        async with httpx.AsyncClient() as lc:
+            res = await lc.get(STATUS_URL, timeout=5.0)
+            data = res.json() if res.status_code == 200 else {}
+    except Exception:
+        data = {}
+
+    ram = await _mac_ram_used_gb()
+    model = data.get("loaded_model") or "없음"
+    mode  = data.get("mode") or "unknown"
+    state = "🟢 온라인" if data.get("status") == "online" else "🔴 오프라인"
+
+    text = (
+        f"📊 Lattice AI 서버 상태\n"
+        f"상태: {state}\n"
+        f"모드: {mode}\n"
+        f"모델: {model}\n"
+        f"RAM: {ram}"
+    )
+    await send_message(client, chat_id, text)
+
+# ── Model info & unload ───────────────────────────────────────────────────────
+
+async def show_model_info(client, chat_id):
+    await send_chat_action(client, chat_id, "typing")
+    try:
+        async with httpx.AsyncClient() as lc:
+            res = await lc.get(MODELS_URL, timeout=5.0)
+            data = res.json() if res.status_code == 200 else {}
+    except Exception:
+        data = {}
+
+    current = data.get("current") or "없음"
+    loaded  = data.get("loaded") or []
+    loaded_str = "\n".join(f"  - {m}" for m in loaded) if loaded else "  없음"
+    text = f"🧠 현재 모델: {current}\n\n로드된 모델:\n{loaded_str}"
+
+    markup = None
+    if loaded:
+        markup = {
+            "inline_keyboard": [
+                [{"text": f"🗑 {m} 언로드", "callback_data": f"model:unload:{m}"}]
+                for m in loaded
+            ] + [[{"text": "↩ 메뉴로", "callback_data": "cmd:menu"}]]
+        }
+    await send_message(client, chat_id, text, reply_markup=markup)
+
+async def do_unload_model(client, chat_id, model_id: str = ""):
+    await send_chat_action(client, chat_id, "typing")
+    try:
+        async with httpx.AsyncClient() as lc:
+            if model_id:
+                res = await lc.delete(f"{BASE_URL}/models/unload/{model_id}", timeout=15.0)
+            else:
+                # Unload all
+                res = await lc.get(MODELS_URL, timeout=5.0)
+                mdata = res.json() if res.status_code == 200 else {}
+                for mid in mdata.get("loaded") or []:
+                    await lc.delete(f"{BASE_URL}/models/unload/{mid}", timeout=15.0)
+                res = type("R", (), {"status_code": 200})()
+        if res.status_code == 200:
+            label = model_id or "모든 모델"
+            await send_message(client, chat_id, f"✅ {label} 언로드 완료. RAM이 해제되었습니다.")
+        else:
+            await send_message(client, chat_id, f"언로드 실패 ({res.status_code})")
     except Exception as e:
-        logger.error(f"채팅 액션 전송 실패: {e}")
+        await send_message(client, chat_id, f"언로드 오류: {e}")
 
-def get_lan_ip():
+# ── Knowledge Graph stats ─────────────────────────────────────────────────────
+
+async def show_graph_stats(client, chat_id):
+    await send_chat_action(client, chat_id, "typing")
     try:
-        with socket.socket(socket.AF_INET, socket.SOCK_DGRAM) as sock:
-            sock.connect(("8.8.8.8", 80))
-            ip = sock.getsockname()[0]
-            if not ip.startswith("127."):
-                return ip
-    except OSError:
-        pass
+        async with httpx.AsyncClient() as lc:
+            res = await lc.get(GRAPH_STATS_URL, timeout=5.0)
+            data = res.json() if res.status_code == 200 else {}
+    except Exception:
+        data = {}
 
+    nodes = data.get("nodes") or {}
+    edges = data.get("edges") or {}
+    total_nodes = sum(nodes.values())
+    total_edges = sum(edges.values())
+
+    node_lines = "\n".join(f"  {t}: {c}" for t, c in sorted(nodes.items(), key=lambda x: -x[1])) or "  없음"
+    edge_lines  = "\n".join(f"  {t}: {c}" for t, c in sorted(edges.items(), key=lambda x: -x[1])[:8]) or "  없음"
+
+    text = (
+        f"🕸 Knowledge Graph 통계\n\n"
+        f"노드 총 {total_nodes}개:\n{node_lines}\n\n"
+        f"엣지 총 {total_edges}개:\n{edge_lines}\n\n"
+        f"그래프 보기: {get_graph_url()}"
+    )
+    markup = {
+        "inline_keyboard": [[
+            {"text": "🔗 그래프 열기", "url": get_graph_url()},
+            {"text": "↩ 메뉴로", "callback_data": "cmd:menu"},
+        ]]
+    }
+    await send_message(client, chat_id, text, reply_markup=markup)
+
+# ── Screenshot ────────────────────────────────────────────────────────────────
+
+async def take_screenshot(client, chat_id):
+    await send_chat_action(client, chat_id, "upload_photo")
+    tmp = Path(tempfile.mktemp(suffix=".jpg"))
     try:
-        hostname = socket.gethostname()
-        for ip in socket.gethostbyname_ex(hostname)[2]:
-            if not ip.startswith("127."):
-                return ip
-    except OSError:
-        pass
+        proc = await asyncio.create_subprocess_exec(
+            "screencapture", "-x", str(tmp),
+            stdout=asyncio.subprocess.DEVNULL,
+            stderr=asyncio.subprocess.DEVNULL,
+        )
+        await asyncio.wait_for(proc.communicate(), timeout=10.0)
+        if tmp.exists() and tmp.stat().st_size > 0:
+            await send_photo(client, chat_id, tmp, caption="현재 화면입니다.")
+        else:
+            await send_message(client, chat_id, "스크린샷 파일이 생성되지 않았습니다. screencapture가 설치되어 있는지 확인하세요.")
+    except asyncio.TimeoutError:
+        await send_message(client, chat_id, "스크린샷 시간 초과")
+    except FileNotFoundError:
+        await send_message(client, chat_id, "screencapture 명령이 없습니다. macOS에서만 동작합니다.")
+    except Exception as e:
+        await send_message(client, chat_id, f"스크린샷 오류: {e}")
+    finally:
+        try:
+            tmp.unlink(missing_ok=True)
+        except Exception:
+            pass
 
-    return "127.0.0.1"
+# ── History ───────────────────────────────────────────────────────────────────
 
-def get_web_url():
-    if PUBLIC_WEB_URL:
-        return PUBLIC_WEB_URL.rstrip("/")
-    return f"http://{get_lan_ip()}:{SERVER_PORT}/?code={INVITE_CODE}"
+async def show_history_summary(client, chat_id, n: int = 5):
+    await send_chat_action(client, chat_id, "typing")
+    try:
+        async with httpx.AsyncClient() as lc:
+            res = await lc.get(HISTORY_URL, timeout=10.0)
+            items = res.json() if res.status_code == 200 else []
+    except Exception:
+        items = []
+
+    if not items:
+        await send_message(client, chat_id, "저장된 대화 기록이 없습니다.")
+        return
+
+    recent = [i for i in items if i.get("role") == "user"][-n:]
+    lines = [f"📜 최근 사용자 메시지 {len(recent)}건\n"]
+    for item in recent:
+        ts  = str(item.get("timestamp", ""))[:16]
+        src = item.get("source", "web")
+        content = str(item.get("content", ""))[:120].replace("\n", " ")
+        lines.append(f"[{ts}] ({src}) {content}")
+    await send_message(client, chat_id, "\n".join(lines))
+
+async def clear_server_history(client, chat_id, keep_last=0):
+    try:
+        async with httpx.AsyncClient() as lc:
+            res = await lc.delete(HISTORY_URL, params={"keep_last": keep_last}, timeout=10.0)
+            data = res.json() if res.headers.get("content-type", "").startswith("application/json") else {}
+        if res.status_code == 200:
+            await send_message(client, chat_id, f"대화 기록을 정리했습니다. 삭제 {data.get('removed', 0)}개, 유지 {data.get('kept', 0)}개.")
+        else:
+            await send_message(client, chat_id, f"대화 기록 정리 실패: {res.status_code}")
+    except Exception as e:
+        await send_message(client, chat_id, f"대화 기록 정리 오류: {e}")
+
+# ── Web UI link ───────────────────────────────────────────────────────────────
 
 async def send_web_link(client, chat_id):
-    url = f"{API_URL}/sendMessage"
     web_url = get_web_url()
     text = (
         "웹 UI 링크입니다.\n"
         f"{web_url}\n\n"
-        "핸드폰이 Mac과 같은 Wi-Fi에 있어야 바로 열립니다. 외부망에서 쓰려면 LATTICEAI_PUBLIC_URL에 터널 주소를 설정하세요."
+        "핸드폰이 Mac과 같은 Wi-Fi에 있어야 바로 열립니다. "
+        "외부망에서 쓰려면 LATTICEAI_PUBLIC_URL에 터널 주소를 설정하세요."
     )
     payload = {
         "chat_id": chat_id,
         "text": text,
         "reply_markup": {
-            "inline_keyboard": [[{"text": "Lattice AI Web 열기", "url": web_url}]]
+            "inline_keyboard": [[
+                {"text": "Lattice AI Web 열기", "url": web_url},
+                {"text": "Knowledge Graph", "url": get_graph_url()},
+            ]]
         },
     }
     try:
-        await client.post(url, json=payload)
+        async with httpx.AsyncClient() as lc:
+            await lc.post(f"{API_URL}/sendMessage", json=payload)
     except Exception as e:
-        logger.error(f"웹 링크 전송 실패: {e}")
+        logger.error("웹 링크 전송 실패: %s", e)
+
+# ── MCP tools ─────────────────────────────────────────────────────────────────
 
 async def send_mcp_tools(client, chat_id):
     try:
-        async with httpx.AsyncClient() as local_client:
-            res = await local_client.get(MCP_TOOLS_URL, timeout=10.0)
+        async with httpx.AsyncClient() as lc:
+            res = await lc.get(MCP_TOOLS_URL, timeout=10.0)
             if res.status_code != 200:
                 await send_message(client, chat_id, f"MCP 도구 목록을 가져오지 못했습니다: {res.status_code}")
                 return
             data = res.json()
         names = [tool["name"] for tool in data.get("tools", [])]
-        await send_message(client, chat_id, "사용 가능한 로컬 MCP 도구:\n" + "\n".join(f"- {name}" for name in names))
+        await send_message(client, chat_id, "사용 가능한 MCP 도구:\n" + ("\n".join(f"- {n}" for n in names) or "없음"))
     except Exception as e:
-        await send_message(client, chat_id, f"MCP 도구 목록 조회 실패: {e}")
+        await send_message(client, chat_id, f"MCP 도구 조회 실패: {e}")
 
-async def clear_server_history(client, chat_id, keep_last=0):
+# ── Document upload → knowledge graph ────────────────────────────────────────
+
+async def process_document_file(client, chat_id, file_id: str, filename: str, caption: str = ""):
+    await send_chat_action(client, chat_id, "upload_document")
+    raw = await download_telegram_file(client, file_id)
+    if not raw:
+        await send_message(client, chat_id, "파일 다운로드 실패")
+        return
+
+    suffix = Path(filename).suffix.lower()
+    allowed = {".pdf", ".docx", ".xlsx", ".pptx", ".txt", ".md", ".csv"}
+    if suffix not in allowed:
+        await send_message(client, chat_id,
+                           f"지원하지 않는 파일 형식입니다({suffix}). "
+                           f"지원 형식: {', '.join(sorted(allowed))}")
+        return
+
+    tmp = Path(tempfile.mktemp(suffix=suffix))
     try:
-        async with httpx.AsyncClient() as local_client:
-            res = await local_client.delete(HISTORY_URL, params={"keep_last": keep_last}, timeout=10.0)
-            data = res.json() if res.headers.get("content-type", "").startswith("application/json") else {}
+        tmp.write_bytes(raw)
+        async with httpx.AsyncClient() as lc:
+            with open(tmp, "rb") as f:
+                res = await lc.post(
+                    UPLOAD_DOC_URL,
+                    files={"file": (filename, f)},
+                    timeout=60.0,
+                )
         if res.status_code == 200:
-            await send_message(client, chat_id, f"대화 기록을 정리했습니다. 삭제 {data.get('removed', 0)}개, 유지 {data.get('kept', 0)}개.")
+            data = res.json()
+            chars   = data.get("chars") or len(raw)
+            preview = str(data.get("preview") or "")[:300]
+            kg      = data.get("knowledge_graph") or {}
+            node_id = kg.get("node_id", "")
+            text = (
+                f"✅ {filename} 수집 완료\n"
+                f"크기: {len(raw) // 1024} KB | 문자: {chars}\n"
+                f"노드: {node_id}\n"
+                f"\n미리보기:\n{preview}"
+            )
+            await send_message(client, chat_id, text)
         else:
-            await send_message(client, chat_id, f"대화 기록 정리에 실패했습니다: {res.status_code}")
+            err = res.json().get("detail") if res.headers.get("content-type", "").startswith("application/json") else res.text
+            await send_message(client, chat_id, f"업로드 실패 ({res.status_code}): {err}")
     except Exception as e:
-        await send_message(client, chat_id, f"대화 기록 정리 실패: {e}")
+        await send_message(client, chat_id, f"문서 처리 오류: {e}")
+    finally:
+        tmp.unlink(missing_ok=True)
+
+# ── AI chat ───────────────────────────────────────────────────────────────────
 
 async def ask_ai(client, message, image_data=None, agent_mode=True):
     try:
@@ -190,13 +543,8 @@ async def ask_ai(client, message, image_data=None, agent_mode=True):
         if image_data:
             payload["stream"] = False
             payload["image_data"] = image_data
-            
         res = await client.post(url, json=payload, timeout=300.0)
-        if res.status_code == 200:
-            data = res.json()
-            return data
-        else:
-            return {"response": f"❌ 서버 에러 ({res.status_code}): {res.text}"}
+        return res.json() if res.status_code == 200 else {"response": f"❌ 서버 에러 ({res.status_code})"}
     except Exception as e:
         return {"response": f"❌ 서버 연결 실패: {e}"}
 
@@ -211,10 +559,9 @@ def resolve_workspace_file(relative_path):
     return target
 
 def collect_generated_files(agent_data):
-    files = []
-    seen = set()
+    files, seen = [], set()
     for step in agent_data.get("steps", []):
-        if step.get("action") != "write_file":
+        if step.get("action") not in {"write_file", "create_docx", "create_xlsx", "create_pptx", "create_pdf"}:
             continue
         path = (step.get("result") or {}).get("path") or (step.get("args") or {}).get("path")
         if not path or path in seen:
@@ -226,107 +573,157 @@ def collect_generated_files(agent_data):
     return files
 
 def collect_preview_urls(agent_data):
-    urls = []
-    seen = set()
+    urls, seen = [], set()
     for step in agent_data.get("steps", []):
         if step.get("action") != "preview_url":
             continue
         result = step.get("result") or {}
         local_url = result.get("local_url")
-        path = result.get("path")
         if not local_url or local_url in seen:
             continue
         phone_url = local_url.replace("http://127.0.0.1:4825", f"http://{get_lan_ip()}:{SERVER_PORT}")
         seen.add(local_url)
-        urls.append((path or "preview", phone_url))
+        urls.append((result.get("path") or "preview", phone_url))
     return urls
 
 async def send_preview_links(client, chat_id, preview_urls):
     if not preview_urls:
         return
-    lines = ["미리보기 링크입니다. 핸드폰이 Mac과 같은 Wi-Fi에 있어야 열립니다."]
+    lines = ["미리보기 링크 (Mac과 같은 Wi-Fi 필요):"]
     keyboard = []
     for label, url in preview_urls:
         lines.append(f"- {label}: {url}")
         keyboard.append([{"text": f"{label} 열기"[:64], "url": url}])
-
-    try:
-        await client.post(
-            f"{API_URL}/sendMessage",
-            json={
-                "chat_id": chat_id,
-                "text": "\n".join(lines),
-                "reply_markup": {"inline_keyboard": keyboard[:8]},
-            },
-        )
-    except Exception as e:
-        logger.error(f"미리보기 링크 전송 실패: {e}")
-
-async def send_document(client, chat_id, file_path, caption=None, filename=None):
-    url = f"{API_URL}/sendDocument"
-    try:
-        with open(file_path, "rb") as f:
-            files = {"document": (filename or Path(file_path).name, f)}
-            data = {"chat_id": str(chat_id)}
-            if caption:
-                data["caption"] = caption[:1024]
-            res = await client.post(url, data=data, files=files, timeout=300.0)
-            if res.status_code != 200:
-                logger.error(f"파일 전송 실패 ({res.status_code}): {res.text}")
-    except Exception as e:
-        logger.error(f"파일 전송 실패: {e}")
+    await send_message(client, chat_id, "\n".join(lines), reply_markup={"inline_keyboard": keyboard[:8]})
 
 async def send_generated_files(client, chat_id, generated_files):
     if not generated_files:
         return
-
     if len(generated_files) == 1:
-        relative_path, file_path = generated_files[0]
-        await send_document(client, chat_id, file_path, caption=f"생성 파일: {relative_path}")
+        path, fpath = generated_files[0]
+        await send_document(client, chat_id, fpath, caption=f"생성 파일: {path}")
         return
-
-    with tempfile.NamedTemporaryFile(prefix="ltcai-", suffix=".zip", delete=False) as temp:
-        zip_path = Path(temp.name)
-
+    with tempfile.NamedTemporaryFile(prefix="ltcai-", suffix=".zip", delete=False) as tmp:
+        zip_path = Path(tmp.name)
     try:
         with zipfile.ZipFile(zip_path, "w", compression=zipfile.ZIP_DEFLATED) as zf:
-            for relative_path, file_path in generated_files:
-                zf.write(file_path, arcname=relative_path)
-
+            for rel, fpath in generated_files:
+                zf.write(fpath, arcname=rel)
         if zip_path.stat().st_size <= MAX_TELEGRAM_FILE_BYTES:
-            await send_document(
-                client,
-                chat_id,
-                zip_path,
-                caption=f"생성 파일 {len(generated_files)}개를 zip으로 묶었습니다.",
-                filename="ltcai-generated-files.zip",
-            )
+            await send_document(client, chat_id, zip_path,
+                                caption=f"생성 파일 {len(generated_files)}개", filename="ltcai-files.zip")
         else:
-            await send_message(client, chat_id, "생성 파일 묶음이 너무 커서 텔레그램으로 전송하지 못했습니다.")
+            await send_message(client, chat_id, "생성 파일이 너무 커서 전송할 수 없습니다.")
     finally:
+        zip_path.unlink(missing_ok=True)
+
+# ── AI request task ───────────────────────────────────────────────────────────
+
+async def process_ai_request(client, chat_id, user_text, image_data=None):
+    try:
+        await send_chat_action(client, chat_id, "upload_photo" if image_data else "typing")
+        data  = await ask_ai(client, user_text, image_data, agent_mode=not image_data)
+        ans   = data.get("response", str(data)) if isinstance(data, dict) else str(data)
+        if not ans or not str(ans).strip():
+            ans = "⚠️ AI가 답변을 생성하지 못했습니다."
+        await send_message(client, chat_id, str(ans))
+        if not image_data and isinstance(data, dict):
+            await send_generated_files(client, chat_id, collect_generated_files(data))
+            await send_preview_links(client, chat_id, collect_preview_urls(data))
+    except Exception as e:
+        logger.error("process_ai_request 실패 (chat_id=%s): %s", chat_id, e)
         try:
-            zip_path.unlink()
-        except OSError:
+            await send_message(client, chat_id, "⚠️ 처리 중 오류가 발생했습니다. 잠시 후 다시 시도해 주세요.")
+        except Exception:
             pass
 
-async def download_telegram_file(client, file_id):
-    """텔레그램 서버에서 파일을 다운로드하여 Base64로 변환합니다."""
-    try:
-        # 1. 파일 경로 가져오기
-        res = await client.get(f"{API_URL}/getFile?file_id={file_id}")
-        file_info = res.json()
-        file_path = file_info.get("result", {}).get("file_path")
-        if not file_path:
-            return None
-        
-        # 2. 실제 파일 다운로드
-        file_url = f"https://api.telegram.org/file/bot{TOKEN}/{file_path}"
-        file_res = await client.get(file_url)
-        if file_res.status_code == 200:
-            return base64.b64encode(file_res.content).decode("utf-8")
-    except Exception as e:
-        logger.error(f"Failed to download file: {e}")
-    return None
+# ── Command dispatch ──────────────────────────────────────────────────────────
+
+HELP_TEXT = """\
+🧠 Lattice AI 원격 제어 명령어
+
+/menu — 메인 메뉴 (인라인 키보드)
+/status — 서버 상태 및 메모리
+/model — 현재 모델 + 언로드 버튼
+/unload — 모든 모델 언로드 (RAM 해제)
+/graph — Knowledge Graph 통계
+/ss 또는 /screenshot — 현재 화면 캡처
+/history [n] — 최근 대화 n건 (기본 5)
+/clear [n] — 기록 정리 (마지막 n건 유지)
+/web — 웹 UI 링크
+/mcp — MCP 도구 목록
+/help — 이 도움말
+
+일반 텍스트 → AI에게 질문
+사진 전송 → AI 이미지 분석
+문서 전송(PDF, DOCX, XLSX, PPTX, TXT, CSV) → Knowledge Graph 수집
+"""
+
+async def handle_command(client, chat_id, command: str, args: str):
+    cmd = command.lower().lstrip("/").split("@")[0]
+
+    if cmd == "start":
+        await send_message(client, chat_id, "🧠 Lattice AI 원격 제어 준비 완료!")
+        await show_menu(client, chat_id)
+    elif cmd == "menu":
+        await show_menu(client, chat_id)
+    elif cmd == "status":
+        await show_status(client, chat_id)
+    elif cmd == "model":
+        await show_model_info(client, chat_id)
+    elif cmd == "unload":
+        await do_unload_model(client, chat_id)
+    elif cmd == "graph":
+        await show_graph_stats(client, chat_id)
+    elif cmd in {"ss", "screenshot"}:
+        await take_screenshot(client, chat_id)
+    elif cmd == "history":
+        n = int(args.strip()) if args.strip().isdigit() else 5
+        await show_history_summary(client, chat_id, n)
+    elif cmd in {"clear", "clear_history", "forget"}:
+        keep = int(args.strip()) if args.strip().isdigit() else 0
+        await clear_server_history(client, chat_id, keep)
+    elif cmd == "web":
+        await send_web_link(client, chat_id)
+    elif cmd == "mcp":
+        await send_mcp_tools(client, chat_id)
+    elif cmd in {"help", "h"}:
+        await send_message(client, chat_id, HELP_TEXT)
+    else:
+        await send_message(client, chat_id, f"알 수 없는 명령어: /{cmd}\n/help 로 명령어 목록을 확인하세요.")
+
+# ── Callback query handler ────────────────────────────────────────────────────
+
+async def handle_callback_query(client, callback_query):
+    cq_id   = callback_query["id"]
+    chat_id = callback_query["message"]["chat"]["id"]
+    data    = callback_query.get("data", "")
+
+    await answer_callback(client, cq_id)
+
+    if data == "cmd:status":
+        await show_status(client, chat_id)
+    elif data == "cmd:model":
+        await show_model_info(client, chat_id)
+    elif data == "cmd:graph":
+        await show_graph_stats(client, chat_id)
+    elif data == "cmd:screenshot":
+        await take_screenshot(client, chat_id)
+    elif data == "cmd:history":
+        await show_history_summary(client, chat_id, 5)
+    elif data == "cmd:clear":
+        await clear_server_history(client, chat_id, 0)
+    elif data == "cmd:web":
+        await send_web_link(client, chat_id)
+    elif data == "cmd:mcp":
+        await send_mcp_tools(client, chat_id)
+    elif data == "cmd:menu":
+        await show_menu(client, chat_id)
+    elif data.startswith("model:unload:"):
+        model_id = data[len("model:unload:"):]
+        await do_unload_model(client, chat_id, model_id)
+
+# ── Main loop ─────────────────────────────────────────────────────────────────
 
 async def run_bot():
     if not TOKEN:
@@ -343,85 +740,94 @@ async def run_bot():
                 updates = await get_updates(client, last_update_id)
                 retry_delay = 1
             except Exception as e:
-                logger.error(f"get_updates 실패: {e}")
+                logger.error("get_updates 실패: %s", e)
                 await asyncio.sleep(min(retry_delay, 30))
                 retry_delay = min(retry_delay * 2, 30)
                 continue
 
-            if updates and updates.get("ok"):
-                for update in updates.get("result", []):
-                    try:
-                        last_update_id = update.get("update_id") + 1
+            if not (updates and updates.get("ok")):
+                await asyncio.sleep(0.5)
+                continue
 
-                        if "message" not in update:
-                            continue
+            for update in updates.get("result", []):
+                try:
+                    last_update_id = update.get("update_id") + 1
 
-                        msg = update["message"]
-                        chat_id = msg["chat"]["id"]
-                        register_chat_id(chat_id)
-                        text = msg.get("text", "")
-                        caption = msg.get("caption", "")
+                    # ── Callback query (inline button press) ──────────────────
+                    if "callback_query" in update:
+                        task = asyncio.create_task(handle_callback_query(client, update["callback_query"]))
+                        task.add_done_callback(_log_task_exception)
+                        continue
 
-                        image_data = None
-                        final_prompt = text or caption or "이 이미지를 분석해줘."
+                    if "message" not in update:
+                        continue
 
-                        if "photo" in msg:
-                            file_id = msg["photo"][-1]["file_id"]
-                            await send_message(client, chat_id, "📸 사진을 받았습니다. 분석을 시작합니다...")
-                            image_data = await download_telegram_file(client, file_id)
-                        elif "document" in msg and msg["document"].get("mime_type", "").startswith("image/"):
-                            file_id = msg["document"]["file_id"]
-                            image_data = await download_telegram_file(client, file_id)
+                    msg     = update["message"]
+                    chat_id = msg["chat"]["id"]
+                    register_chat_id(chat_id)
+                    text    = msg.get("text", "")
+                    caption = msg.get("caption", "")
 
-                        if not (text or image_data):
-                            continue
+                    # ── Photo → vision AI ─────────────────────────────────────
+                    if "photo" in msg:
+                        file_id = msg["photo"][-1]["file_id"]
+                        await send_message(client, chat_id, "📸 사진을 받았습니다. 분석을 시작합니다...")
+                        image_data = await download_as_base64(client, file_id)
+                        prompt = caption or text or "이 이미지를 분석해줘."
+                        task = asyncio.create_task(process_ai_request(client, chat_id, prompt, image_data))
+                        task.add_done_callback(_log_task_exception)
+                        continue
 
-                        if final_prompt == "/start":
-                            await send_message(client, chat_id, "🧠 Lattice AI 준비 완료! 텍스트로 지시하면 agent_workspace 안에서 파일 작업을 하고, 사진을 보내면 분석합니다. /web 은 웹 UI 링크, /mcp 는 로컬 도구 목록입니다.")
-                            continue
-                        if final_prompt == "/web":
-                            await send_web_link(client, chat_id)
-                            continue
-                        if final_prompt == "/mcp":
-                            await send_mcp_tools(client, chat_id)
-                            continue
-                        if final_prompt in {"/clear", "/clear_history", "/forget"}:
-                            await clear_server_history(client, chat_id)
-                            continue
+                    # ── Document ──────────────────────────────────────────────
+                    if "document" in msg:
+                        doc      = msg["document"]
+                        mime     = doc.get("mime_type", "")
+                        filename = doc.get("file_name", "file")
+                        if mime.startswith("image/"):
+                            image_data = await download_as_base64(client, doc["file_id"])
+                            prompt = caption or text or "이 이미지를 분석해줘."
+                            task = asyncio.create_task(process_ai_request(client, chat_id, prompt, image_data))
+                        else:
+                            await send_message(client, chat_id, f"📄 {filename} 을 Knowledge Graph에 수집합니다...")
+                            task = asyncio.create_task(
+                                process_document_file(client, chat_id, doc["file_id"], filename, caption)
+                            )
+                        task.add_done_callback(_log_task_exception)
+                        continue
 
-                        task = asyncio.create_task(process_ai_request(client, chat_id, final_prompt, image_data))
-                        task.add_done_callback(
-                            lambda t: logger.error(f"process_ai_request 예외: {t.exception()}") if not t.cancelled() and t.exception() else None
+                    # ── Voice / audio ─────────────────────────────────────────
+                    if "voice" in msg or "audio" in msg:
+                        await send_message(
+                            client, chat_id,
+                            "🎤 음성 메시지를 받았습니다. 현재 음성 인식(Whisper)이 설정되어 있지 않습니다.\n"
+                            "텍스트로 질문을 보내주세요."
                         )
-                    except Exception as e:
-                        logger.error(f"업데이트 처리 중 예외: {e}")
+                        continue
+
+                    if not text:
+                        continue
+
+                    # ── Commands ──────────────────────────────────────────────
+                    if text.startswith("/"):
+                        parts   = text.split(None, 1)
+                        command = parts[0]
+                        args    = parts[1] if len(parts) > 1 else ""
+                        task = asyncio.create_task(handle_command(client, chat_id, command, args))
+                        task.add_done_callback(_log_task_exception)
+                        continue
+
+                    # ── Plain text → AI ───────────────────────────────────────
+                    task = asyncio.create_task(process_ai_request(client, chat_id, text))
+                    task.add_done_callback(_log_task_exception)
+
+                except Exception as e:
+                    logger.error("업데이트 처리 중 예외: %s", e)
 
             await asyncio.sleep(0.5)
 
-async def process_ai_request(client, chat_id, user_text, image_data=None):
-    """별도의 태스크로 AI 답변을 처리합니다."""
-    try:
-        await send_chat_action(client, chat_id, "upload_photo" if image_data else "typing")
-        data = await ask_ai(client, user_text, image_data, agent_mode=not image_data)
-        logger.info("🤖 AI 답변 생성 완료")
-
-        ans = data.get("response", str(data)) if isinstance(data, dict) else str(data)
-        if not ans or not str(ans).strip():
-            ans = "⚠️ AI가 답변을 생성하지 못했습니다."
-
-        await send_message(client, chat_id, str(ans))
-
-        if not image_data and isinstance(data, dict):
-            generated_files = collect_generated_files(data)
-            await send_generated_files(client, chat_id, generated_files)
-            preview_urls = collect_preview_urls(data)
-            await send_preview_links(client, chat_id, preview_urls)
-    except Exception as e:
-        logger.error(f"process_ai_request 실패 (chat_id={chat_id}): {e}")
-        try:
-            await send_message(client, chat_id, f"⚠️ 처리 중 오류가 발생했습니다. 잠시 후 다시 시도해 주세요.")
-        except Exception:
-            pass
+def _log_task_exception(task):
+    if not task.cancelled() and task.exception():
+        logger.error("백그라운드 태스크 예외: %s", task.exception())
 
 if __name__ == "__main__":
     try:

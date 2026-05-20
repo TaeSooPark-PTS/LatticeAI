@@ -10,3 +10,4 @@ python-pptx
 python-multipart
 keyring
 authlib
+pdfplumber

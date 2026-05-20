@@ -315,6 +315,11 @@
             box-shadow: 0 0 16px rgba(34,211,160,0.12);
         }
 
+        .sidebar-primary-actions {
+            padding: 8px 10px 10px;
+            border-bottom: 1px solid rgba(255,255,255,0.05);
+        }
+
         .admin-btn {
             width: 100%;
             padding: 9px 12px;
@@ -2931,15 +2936,18 @@
                     <input type="text" id="history-search-input" placeholder="대화 검색..." oninput="onHistorySearch(this.value)">
                 </div>
             </div>
+            <div class="sidebar-primary-actions">
+                <button id="new-chat-btn" class="new-chat-btn"><i class="ti ti-plus"></i> New Chat</button>
+            </div>
             <div class="history-container" id="history-container">
                 <!-- History items -->
             </div>
             <div class="sidebar-footer">
+                <button id="data-graph-btn" class="new-chat-btn" onclick="openDataGraph()"><i class="ti ti-chart-dots-3"></i> Data Graph</button>
                 <button id="admin-btn" class="admin-btn" onclick="openAdminPanel()"><i class="ti ti-shield-lock"></i> <span data-i18n="admin_dashboard">관리자 대시보드</span></button>
                 <button class="status-btn" onclick="openStatusPanel()"><i class="ti ti-info-circle"></i> <span data-i18n="my_status">내 상태 보기</span></button>
                 <button id="setup-wizard-btn" class="setup-wizard-sidebar-btn" onclick="openSetupWizard()"><i class="ti ti-sparkles"></i> <span data-i18n="auto_setup">자동 설정</span></button>
                 <button class="setup-wizard-sidebar-btn" onclick="openMcpModal()"><i class="ti ti-plug-connected"></i> MCP 관리</button>
-                <button id="new-chat-btn" class="new-chat-btn"><i class="ti ti-plus"></i> New Chat</button>
             </div>
         </aside>
 
@@ -3420,7 +3428,10 @@
         }
 
         function apiFetch(path, options = {}) {
-            return fetch(`${API_BASE}${path}`, options);
+            const headers = { ...(options.headers || {}) };
+            const token = localStorage.getItem('ltcai_session_token') || '';
+            if (token && !headers.Authorization) headers.Authorization = `Bearer ${token}`;
+            return fetch(`${API_BASE}${path}`, { credentials: 'include', ...options, headers });
         }
 
         function createConversationId() {
@@ -3450,7 +3461,12 @@
             localStorage.removeItem('ltcai_user_email');
             localStorage.removeItem('ltcai_user_nickname');
             localStorage.removeItem('ltcai_is_admin');
+            localStorage.removeItem('ltcai_session_token');
             window.location.href = '/account';
+        }
+
+        function openDataGraph() {
+            window.location.href = `${API_BASE}/graph`;
         }
 
         const I18N = {
@@ -3690,9 +3706,11 @@
         }
 
         function adminHeaders() {
+            const token = localStorage.getItem('ltcai_session_token') || '';
             return {
                 'Content-Type': 'application/json',
-                'X-Admin-Email': currentUserEmail
+                'X-Admin-Email': currentUserEmail,
+                ...(token ? { Authorization: `Bearer ${token}` } : {})
             };
         }
 
@@ -4069,7 +4087,13 @@
                 showToast(currentLang === 'ko' ? '관리자 권한이 없습니다.' : 'Admin access required.');
                 return;
             }
-            window.location.href = '/admin';
+            sessionStorage.setItem('ltcai_admin_handoff', JSON.stringify({
+                email: currentUserEmail || '',
+                nickname: currentUserNickname || '',
+                is_admin: isAdmin ? 'true' : 'false',
+                token: localStorage.getItem('ltcai_session_token') || '',
+            }));
+            window.location.href = `${API_BASE || ''}/admin`;
         }
 
         function showToast(msg) {
@@ -5098,6 +5122,13 @@
         }
 
         async function restoreCurrentConversation() {
+            const urlParams = new URLSearchParams(window.location.search);
+            const openId = urlParams.get('open_conversation');
+            if (openId) {
+                history.replaceState(null, '', window.location.pathname);
+                currentConversationId = openId;
+                localStorage.setItem(CONVERSATION_KEY, currentConversationId);
+            }
             const conversations = await loadHistory();
             if (conversations.some(item => item.id === currentConversationId)) {
                 await openConversation(currentConversationId);
@@ -5198,7 +5229,8 @@
         async function uploadAttachedDoc(file) {
             const form = new FormData();
             form.append('file', file);
-            const res = await apiFetch('/upload/document', { method: 'POST', body: form });
+            const qs = currentConversationId ? `?conversation_id=${encodeURIComponent(currentConversationId)}` : '';
+            const res = await apiFetch(`/upload/document${qs}`, { method: 'POST', body: form });
             if (!res.ok) {
                 const err = await res.json().catch(() => ({}));
                 throw new Error(err.detail || '파일 업로드 실패');
@@ -5231,17 +5263,53 @@
             'word','excel','powerpoint','ppt','피피티','엑셀','스프레드시트','프레젠테이션',
             '보고서 만들','기획서','제안서','이력서','계약서','파일 생성','문서 생성',
         ];
+        const PROJECT_BUILD_KEYWORDS = [
+            '프로젝트', '앱 만들', '웹앱', '웹 app', 'react', 'vite', 'next.js', 'nextjs',
+            'vue', 'svelte', 'frontend', 'backend', '서버 만들', 'api 만들', '코드 작성',
+            '개발해', '구현해', 'scaffold', 'boilerplate', 'build', 'compile', 'typecheck',
+            '테스트 돌려', 'npm run build', '빌드해', '배포해', 'deploy',
+            'installer', 'install file', '.pkg', '.exe', 'pkg', 'exe', 'electron', 'electron-builder',
+            '설치파일', '설치 파일', '실행파일', '패키징'
+        ];
+        const DATA_ANALYSIS_KEYWORDS = [
+            '데이터 분석', '분석해', '통계', '인사이트', '추세', '리포트', '요약표',
+            'csv', 'xlsx', 'tsv', '매출 데이터', '로그 분석', 'pivot', '회귀', '상관관계',
+            'data analysis', 'analyze', 'insight', 'trend', 'statistics', 'dataset'
+        ];
 
         function _isFileRequest(text) {
             const t = text.toLowerCase();
             return FILE_KEYWORDS.some(k => t.includes(k));
         }
 
+        function _isProjectOrBuildRequest(text) {
+            const t = text.toLowerCase();
+            return PROJECT_BUILD_KEYWORDS.some(k => t.includes(k));
+        }
+
+        function _isDataAnalysisRequest(text) {
+            const t = text.toLowerCase();
+            return DATA_ANALYSIS_KEYWORDS.some(k => t.includes(k));
+        }
+
         function _isComputerUseRequest(text) {
             const t = text.toLowerCase();
-            const desktopWords = ['computer use', 'desktop', 'screen', 'click', 'type', 'scroll', 'chrome', 'safari'];
-            const koWords = ['컴퓨터', '데스크탑', '화면', '클릭', '타이핑', '스크롤', '크롬', '사파리', '브라우저', '열어', '켜줘', '실행'];
-            return desktopWords.some(k => t.includes(k)) || koWords.some(k => t.includes(k));
+            const controlTargets = [
+                'computer use', 'desktop', 'screen', 'chrome', 'safari', 'browser',
+                '컴퓨터', '데스크탑', '화면', '크롬', '사파리', '브라우저'
+            ];
+            const controlVerbs = [
+                'click', 'type', 'scroll', 'open', 'launch', 'press', 'drag',
+                '클릭', '타이핑', '스크롤', '열어', '켜', '실행', '눌러', '드래그'
+            ];
+            const hasTarget = controlTargets.some(k => t.includes(k));
+            const hasVerb = controlVerbs.some(k => t.includes(k));
+            return hasTarget && hasVerb;
+        }
+
+        function _isFileOrProjectRequest(text, hasDocAttachment = false) {
+            if (hasDocAttachment) return true;
+            return _isFileRequest(text) || _isProjectOrBuildRequest(text);
         }
 
         function _isNetworkStatusRequest(text) {
@@ -5413,11 +5481,6 @@
                 return;
             }
 
-            if (!capturedImage && !capturedDocFile && text && _isComputerUseRequest(text)) {
-                await sendToComputerUse(text);
-                return;
-            }
-
             if (text) recommendMcpForPrompt(text);
 
             if (vscode) {
@@ -5441,9 +5504,36 @@
             const lang = detectLang(text);
             const langCtx = langHint(lang);
 
-            // 파일 생성 요청은 /agent로 라우팅
-            if (!capturedImage && text && (_isFileRequest(text) || capturedDocFile)) {
+            const wantsFileOrProject = !capturedImage && text && _isFileOrProjectRequest(text, Boolean(capturedDocFile));
+            const wantsDataAnalysis = !capturedImage && text && _isDataAnalysisRequest(text);
+            const wantsComputerUse = !capturedImage && !capturedDocFile && text && _isComputerUseRequest(text);
+
+            // 충돌 시 사용자 선택: 파일 생성(/agent) vs 컴퓨터 제어(/cu/agent)
+            if (wantsFileOrProject && wantsComputerUse) {
+                const useComputer = confirm('요청을 어떻게 처리할까요?\n확인: 내 컴퓨터를 직접 제어(설치/실행)\n취소: 채팅에서 프로젝트 파일 생성(다운로드)');
+                if (useComputer) {
+                    await sendToComputerUse(text);
+                } else {
+                    await sendToAgent(text + docContext, langCtx);
+                }
+                return;
+            }
+
+            // 파일/프로젝트 생성 요청은 /agent를 우선
+            if (wantsFileOrProject) {
                 await sendToAgent(text + docContext, langCtx);
+                return;
+            }
+
+            // 데이터 분석 요청도 /agent 우선 (파일 읽기/명령 실행/산출물 생성 가능)
+            if (wantsDataAnalysis) {
+                await sendToAgent(text + docContext, langCtx);
+                return;
+            }
+
+            // 명시적 컴퓨터 제어 요청만 /cu/agent로 라우팅
+            if (wantsComputerUse) {
+                await sendToComputerUse(text);
                 return;
             }
 
@@ -6183,12 +6273,14 @@
                 apiFetch('/mcp/installed'),
                 apiFetch('/mcp/tools'),
             ]);
-            const installed = installedRes.ok ? await installedRes.json() : {};
-            const allTools = toolsRes.ok ? await toolsRes.json() : [];
+            const installedData = installedRes.ok ? await installedRes.json() : { installed: [] };
+            const toolsData = toolsRes.ok ? await toolsRes.json() : { installed_mcps: [] };
 
-            const installedIds = new Set(Object.keys(installed));
-            const installedItems = allTools.filter(t => installedIds.has(t.id));
-            const availableItems = allTools.filter(t => !installedIds.has(t.id));
+            const allMcps = Array.isArray(installedData?.installed)
+                ? installedData.installed
+                : (Array.isArray(toolsData?.installed_mcps) ? toolsData.installed_mcps : []);
+            const installedItems = allMcps.filter(mcp => mcp.installed);
+            const availableItems = allMcps.filter(mcp => !mcp.installed);
 
             let html = '';
 
@@ -6234,7 +6326,7 @@
             const res = await apiFetch('/mcp/install', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ id }),
+                body: JSON.stringify({ mcp_id: id }),
             });
             if (res.ok) {
                 await renderMcpModal();

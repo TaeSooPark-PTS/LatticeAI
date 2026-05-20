@@ -1,0 +1,612 @@
+<!doctype html>
+<html lang="ko">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Lattice AI — Knowledge Graph</title>
+  <style>
+    :root {
+      color-scheme: dark;
+      --bg: #101215;
+      --panel: #161b20;
+      --line: #252d35;
+      --text: #eef2f6;
+      --muted: #8a96a3;
+      --faint: #4e5a64;
+      --accent: #54d6a5;
+    }
+    * { box-sizing: border-box; }
+    body { margin: 0; background: var(--bg); color: var(--text); font-family: Inter, ui-sans-serif, system-ui, -apple-system, sans-serif; overflow: hidden; }
+    .app { display: grid; grid-template-columns: 1fr 320px; height: 100vh; }
+
+    /* Canvas area */
+    .stage { position: relative; min-width: 0; border-right: 1px solid var(--line); }
+    canvas { display: block; width: 100%; height: 100%; cursor: grab; }
+    canvas.panning { cursor: grabbing; }
+
+    .toolbar {
+      position: absolute; top: 14px; left: 14px;
+      display: flex; gap: 6px; align-items: center;
+      padding: 7px; background: rgba(16,18,21,0.9);
+      border: 1px solid var(--line); border-radius: 8px;
+      backdrop-filter: blur(14px);
+    }
+    .toolbar input {
+      width: 220px; height: 32px; border: 1px solid var(--line);
+      border-radius: 6px; background: #0b0d10; color: var(--text);
+      padding: 0 10px; outline: none; font-size: 13px;
+    }
+    .toolbar input:focus { border-color: var(--accent); }
+    .tb-btn {
+      height: 32px; border: 1px solid var(--line); border-radius: 6px;
+      background: #1c2228; color: var(--text); cursor: pointer;
+      padding: 0 12px; font-size: 13px; white-space: nowrap;
+    }
+    .tb-btn:hover { border-color: var(--accent); color: var(--accent); }
+
+    #tooltip {
+      position: fixed; background: rgba(16,18,21,0.96); border: 1px solid var(--line);
+      border-radius: 6px; padding: 5px 10px; font-size: 12px;
+      pointer-events: none; z-index: 200; max-width: 280px;
+      word-break: break-word; display: none;
+    }
+
+    /* Sidebar */
+    aside {
+      background: var(--panel); display: flex; flex-direction: column;
+      overflow: hidden;
+    }
+    .sidebar-head {
+      padding: 16px 16px 0; flex-shrink: 0;
+    }
+    h1 { margin: 0 0 12px; font-size: 17px; font-weight: 700; }
+
+    .stats-row {
+      display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-bottom: 12px;
+    }
+    .stat {
+      border: 1px solid var(--line); border-radius: 8px;
+      padding: 9px 10px; background: #0e1114;
+    }
+    .stat strong { display: block; font-size: 20px; font-weight: 700; line-height: 1; margin-bottom: 3px; }
+    .stat span { color: var(--muted); font-size: 11px; }
+
+    .type-filters { padding: 10px 16px 8px; border-bottom: 1px solid var(--line); flex-shrink: 0; }
+    .filter-section-label {
+      font-size: 10px; font-weight: 700; letter-spacing: 0.08em;
+      text-transform: uppercase; color: var(--faint); margin-bottom: 7px;
+    }
+    .filter-grid { display: flex; flex-direction: column; gap: 3px; }
+    .filter-item {
+      display: flex; align-items: center; gap: 7px;
+      padding: 3px 0; cursor: pointer; font-size: 12px; user-select: none;
+    }
+    .filter-item input[type="checkbox"] { width: 13px; height: 13px; cursor: pointer; accent-color: var(--accent); }
+    .dot { width: 9px; height: 9px; border-radius: 50%; flex-shrink: 0; }
+    .filter-name { flex: 1; color: var(--text); }
+    .filter-count { color: var(--faint); font-size: 11px; min-width: 20px; text-align: right; }
+
+    .detail-wrap { flex: 1; overflow-y: auto; padding: 14px 16px 20px; }
+    .type-badge {
+      display: inline-block; color: #07100d; border-radius: 999px;
+      padding: 2px 10px; font-size: 11px; font-weight: 700; margin-bottom: 9px;
+    }
+    .detail-title { font-size: 15px; font-weight: 700; line-height: 1.35; margin-bottom: 6px; }
+    .detail-summary { color: var(--muted); font-size: 12px; line-height: 1.6; word-break: break-word; white-space: pre-wrap; margin-bottom: 10px; }
+    .detail-meta { color: var(--faint); font-size: 11px; line-height: 1.5; word-break: break-word; white-space: pre-wrap; }
+    .jump-btn {
+      display: inline-flex; align-items: center; gap: 5px;
+      margin: 8px 0 12px; padding: 6px 13px;
+      background: rgba(84,214,165,0.1); border: 1px solid rgba(84,214,165,0.28);
+      border-radius: 6px; color: var(--accent); font-size: 12px;
+      text-decoration: none; cursor: pointer;
+    }
+    .jump-btn:hover { background: rgba(84,214,165,0.18); }
+    .empty-hint { color: var(--muted); font-size: 13px; line-height: 1.65; margin: 0; }
+
+    @media (max-width: 760px) {
+      .app { grid-template-columns: 1fr; grid-template-rows: 1fr 300px; }
+      .stage { border-right: 0; border-bottom: 1px solid var(--line); }
+      .toolbar { right: 12px; left: 12px; }
+      .toolbar input { flex: 1; width: auto; }
+    }
+  </style>
+</head>
+<body>
+  <div class="app">
+    <main class="stage">
+      <canvas id="graph"></canvas>
+      <div class="toolbar">
+        <input id="search" placeholder="Search nodes…" autocomplete="off">
+        <button class="tb-btn" id="fit-btn">Fit</button>
+        <button class="tb-btn" id="refresh-btn">Refresh</button>
+        <button class="tb-btn" id="back-btn">← Chat</button>
+      </div>
+    </main>
+    <aside>
+      <div class="sidebar-head">
+        <h1>Knowledge Graph</h1>
+        <div class="stats-row">
+          <div class="stat"><strong id="node-count">—</strong><span>nodes</span></div>
+          <div class="stat"><strong id="edge-count">—</strong><span>edges</span></div>
+        </div>
+      </div>
+      <div class="type-filters" id="type-filters"></div>
+      <div class="detail-wrap">
+        <div id="detail">
+          <p class="empty-hint">채팅과 파일이 쌓이면 여기에 연결 관계가 나타납니다.<br>노드를 클릭하면 원문 요약과 메타데이터를 볼 수 있습니다.</p>
+        </div>
+      </div>
+    </aside>
+  </div>
+  <div id="tooltip"></div>
+
+  <script>
+    const API_BASE = window.location.protocol === 'file:' ? 'http://localhost:4825' : '';
+
+    const TYPE_CONFIG = {
+      Conversation: { color: '#8fa8bb', label: 'Conversation' },
+      Message:      { color: '#dce4ee', label: 'Message' },
+      AIResponse:   { color: '#ea7fa4', label: 'AI Response' },
+      File:         { color: '#73a7ff', label: 'File' },
+      Topic:        { color: '#f2b36d', label: 'Topic' },
+      Person:       { color: '#54d6a5', label: 'Person' },
+      Page:         { color: '#89c2ff', label: 'Page' },
+      Slide:        { color: '#9bb6ff', label: 'Slide' },
+      Sheet:        { color: '#78d4c8', label: 'Sheet' },
+      Image:        { color: '#ffd166', label: 'Image' },
+      Decision:     { color: '#c4f06f', label: 'Decision' },
+      Task:         { color: '#ff9f7a', label: 'Task' },
+      ClearEvent:   { color: '#bca7ff', label: 'Clear Event' },
+    };
+
+    const canvas = document.getElementById('graph');
+    const ctx = canvas.getContext('2d');
+    const detail = document.getElementById('detail');
+    const search = document.getElementById('search');
+    const tooltip = document.getElementById('tooltip');
+
+    let rawGraph = { nodes: [], edges: [] };
+    let graph    = { nodes: [], edges: [] };
+    let hiddenTypes = new Set();
+    let selected = null;
+    let hovered  = null;
+    let dragging = null;
+    let panning  = null;
+    let cam = { scale: 1, tx: 0, ty: 0 };
+    let animFrameId = null;
+    let width = 0, height = 0;
+
+    // ── Auth ─────────────────────────────────────────────────────────────────
+    function authHeaders() {
+      const t = localStorage.getItem('ltcai_session_token') || '';
+      return t ? { Authorization: `Bearer ${t}` } : {};
+    }
+    function apiFetch(path, opts = {}) {
+      return fetch(`${API_BASE}${path}`, {
+        credentials: 'include',
+        ...opts,
+        headers: { ...authHeaders(), ...(opts.headers || {}) },
+      });
+    }
+
+    // ── Color ─────────────────────────────────────────────────────────────────
+    function nodeColor(type) {
+      return (TYPE_CONFIG[type] || {}).color || '#8fa8bb';
+    }
+
+    // ── Degree & layout ───────────────────────────────────────────────────────
+    function computeDegrees() {
+      const deg = {};
+      rawGraph.edges.forEach(e => {
+        deg[e.from] = (deg[e.from] || 0) + 1;
+        deg[e.to]   = (deg[e.to]   || 0) + 1;
+      });
+      rawGraph.nodes.forEach(n => {
+        n.degree = deg[n.id] || 0;
+        const base = 4 + Math.sqrt(n.degree) * 2.8;
+        if (n.type === 'Conversation') n.r = Math.max(base, 10);
+        else if (n.type === 'File')    n.r = Math.max(base, 8);
+        else if (n.type === 'Topic')   n.r = Math.max(base, 5);
+        else                           n.r = Math.max(base, 4);
+        n.r = Math.min(n.r, 22);
+      });
+    }
+
+    function applyFilter() {
+      graph.nodes = rawGraph.nodes.filter(n => !hiddenTypes.has(n.type));
+      const nodeSet = new Set(graph.nodes.map(n => n.id));
+      const byId = Object.fromEntries(rawGraph.nodes.map(n => [n.id, n]));
+      graph.edges = rawGraph.edges
+        .filter(e => nodeSet.has(e.from) && nodeSet.has(e.to))
+        .map(e => ({ ...e, source: byId[e.from], target: byId[e.to] }));
+    }
+
+    function seedLayout() {
+      rawGraph.nodes.forEach((n, i) => {
+        if (n.x === undefined) {
+          const a = (i / Math.max(1, rawGraph.nodes.length)) * Math.PI * 2;
+          n.x = width / 2 + Math.cos(a) * Math.min(width, height) * 0.32;
+          n.y = height / 2 + Math.sin(a) * Math.min(width, height) * 0.32;
+        }
+        n.vx = n.vx || 0;
+        n.vy = n.vy || 0;
+      });
+    }
+
+    // ── Load ──────────────────────────────────────────────────────────────────
+    async function loadGraph() {
+      document.getElementById('node-count').textContent = '…';
+      document.getElementById('edge-count').textContent = '…';
+
+      const [gRes, sRes] = await Promise.all([
+        apiFetch('/knowledge-graph/graph?limit=600'),
+        apiFetch('/knowledge-graph/stats'),
+      ]);
+      if (gRes.status === 401) { window.location.href = '/account'; return; }
+      if (!gRes.ok) throw new Error(`Graph API failed (${gRes.status})`);
+
+      rawGraph = await gRes.json();
+      rawGraph.nodes = Array.isArray(rawGraph.nodes) ? rawGraph.nodes : [];
+      rawGraph.edges = Array.isArray(rawGraph.edges) ? rawGraph.edges : [];
+      const stats = sRes.ok ? await sRes.json() : {};
+
+      computeDegrees();
+      seedLayout();
+      applyFilter();
+
+      document.getElementById('node-count').textContent = rawGraph.nodes.length;
+      document.getElementById('edge-count').textContent = rawGraph.edges.length;
+      renderTypeFilters(stats.nodes || {});
+      showDetail(selected && rawGraph.nodes.find(n => n.id === selected.id) || graph.nodes[0] || null);
+      cam = { scale: 1, tx: 0, ty: 0 };
+      wakeUp();
+    }
+
+    // ── Type filters ──────────────────────────────────────────────────────────
+    function renderTypeFilters(typeCounts) {
+      const presentTypes = [...new Set(rawGraph.nodes.map(n => n.type))];
+      const ordered = [...Object.keys(TYPE_CONFIG), ...presentTypes.filter(t => !TYPE_CONFIG[t])].filter(t => presentTypes.includes(t));
+      const container = document.getElementById('type-filters');
+      if (!ordered.length) { container.innerHTML = ''; return; }
+      const items = ordered.map(t => {
+        const cfg = TYPE_CONFIG[t] || {};
+        const col = cfg.color || '#8fa8bb';
+        const cnt = typeCounts[t] ?? rawGraph.nodes.filter(n => n.type === t).length;
+        const chk = !hiddenTypes.has(t) ? 'checked' : '';
+        return `<label class="filter-item">
+          <input type="checkbox" ${chk} onchange="toggleType('${t}',this.checked)">
+          <span class="dot" style="background:${col}"></span>
+          <span class="filter-name">${cfg.label || t}</span>
+          <span class="filter-count">${cnt}</span>
+        </label>`;
+      }).join('');
+      container.innerHTML = `<div class="filter-section-label">Node types</div><div class="filter-grid">${items}</div>`;
+    }
+
+    function toggleType(type, visible) {
+      if (visible) hiddenTypes.delete(type); else hiddenTypes.add(type);
+      applyFilter();
+      wakeUp();
+    }
+
+    // ── Physics ───────────────────────────────────────────────────────────────
+    function step() {
+      const nodes = graph.nodes;
+      const edges = graph.edges;
+
+      for (let i = 0; i < nodes.length; i++) {
+        for (let j = i + 1; j < nodes.length; j++) {
+          const a = nodes[i], b = nodes[j];
+          const dx = a.x - b.x, dy = a.y - b.y;
+          const d2 = Math.max(100, dx * dx + dy * dy);
+          const f = 2200 / d2;
+          a.vx += dx * f; a.vy += dy * f;
+          b.vx -= dx * f; b.vy -= dy * f;
+        }
+      }
+
+      edges.forEach(e => {
+        if (!e.source || !e.target) return;
+        const dx = e.target.x - e.source.x, dy = e.target.y - e.source.y;
+        const dist = Math.max(1, Math.hypot(dx, dy));
+        const target = 130;
+        const f = (dist - target) * 0.005;
+        e.source.vx += dx / dist * f; e.source.vy += dy / dist * f;
+        e.target.vx -= dx / dist * f; e.target.vy -= dy / dist * f;
+      });
+
+      let ke = 0;
+      nodes.forEach(n => {
+        if (n === dragging) return;
+        n.vx += (width / 2 - n.x) * 0.0006;
+        n.vy += (height / 2 - n.y) * 0.0006;
+        n.vx *= 0.85; n.vy *= 0.85;
+        n.x += n.vx; n.y += n.vy;
+        ke += n.vx * n.vx + n.vy * n.vy;
+      });
+      return ke;
+    }
+
+    function wakeUp() {
+      if (!animFrameId) animFrameId = requestAnimationFrame(draw);
+    }
+
+    // ── Draw ──────────────────────────────────────────────────────────────────
+    const nbCache = new Map();
+    function neighborIds(node) {
+      if (nbCache.has(node.id)) return nbCache.get(node.id);
+      const ids = new Set([node.id]);
+      graph.edges.forEach(e => {
+        if (e.from === node.id) ids.add(e.to);
+        if (e.to   === node.id) ids.add(e.from);
+      });
+      nbCache.set(node.id, ids);
+      return ids;
+    }
+
+    function draw() {
+      animFrameId = null;
+      const ke = step();
+      nbCache.clear();
+
+      ctx.clearRect(0, 0, width, height);
+      ctx.save();
+      ctx.translate(cam.tx, cam.ty);
+      ctx.scale(cam.scale, cam.scale);
+
+      const active = hovered || selected;
+      const nbIds  = active ? neighborIds(active) : null;
+      const q = search.value.trim().toLowerCase();
+
+      // Edges
+      graph.edges.forEach(e => {
+        if (!e.source || !e.target) return;
+        const hi = nbIds && nbIds.has(e.from) && nbIds.has(e.to);
+        const a  = nbIds ? (hi ? 0.7 : 0.06) : 0.22;
+        ctx.strokeStyle = (e.type === 'mentions' || e.type === 'discusses')
+          ? `rgba(242,179,109,${a})` : `rgba(155,167,180,${a})`;
+        ctx.lineWidth = 1 / cam.scale;
+        ctx.beginPath();
+        ctx.moveTo(e.source.x, e.source.y);
+        ctx.lineTo(e.target.x, e.target.y);
+        ctx.stroke();
+      });
+
+      // Nodes
+      graph.nodes.forEach(n => {
+        const isNb  = nbIds ? nbIds.has(n.id) : true;
+        const hit   = q && `${n.title} ${n.type} ${n.summary || ''}`.toLowerCase().includes(q);
+        const isSel = n === selected;
+        const isHov = n === hovered;
+        const alpha = nbIds ? (isNb ? 1 : 0.12) : 1;
+        const r = n.r + (isSel ? 4 : isHov ? 2 : hit ? 2 : 0);
+
+        ctx.globalAlpha = alpha;
+        ctx.beginPath();
+        ctx.arc(n.x, n.y, r, 0, Math.PI * 2);
+        ctx.fillStyle = isSel ? '#ffffff' : nodeColor(n.type);
+        ctx.fill();
+
+        if (isSel || isHov) {
+          ctx.strokeStyle = isSel ? 'rgba(255,255,255,0.5)' : nodeColor(n.type);
+          ctx.lineWidth = (isSel ? 2.5 : 1.5) / cam.scale;
+          ctx.beginPath();
+          ctx.arc(n.x, n.y, r + 3.5, 0, Math.PI * 2);
+          ctx.stroke();
+        }
+
+        const showLabel = hit || isSel || isHov
+          || n.type === 'File' || n.type === 'Conversation'
+          || (n.type === 'Topic' && cam.scale > 0.55)
+          || (n.type === 'Person');
+        if (showLabel) {
+          ctx.fillStyle = alpha < 0.5 ? 'rgba(220,228,238,0.25)' : '#dce4ee';
+          ctx.font = `${Math.max(9, 11 / cam.scale)}px system-ui`;
+          ctx.fillText(n.title.slice(0, 36), n.x + r + 5 / cam.scale, n.y + 4 / cam.scale);
+        }
+        ctx.globalAlpha = 1;
+      });
+
+      ctx.restore();
+      if (ke > 0.04 || dragging) animFrameId = requestAnimationFrame(draw);
+    }
+
+    // ── Coordinates ───────────────────────────────────────────────────────────
+    function toWorld(cx, cy) {
+      return { x: (cx - cam.tx) / cam.scale, y: (cy - cam.ty) / cam.scale };
+    }
+    function nodeAt(cx, cy) {
+      const { x, y } = toWorld(cx, cy);
+      let best = null, bestD = Infinity;
+      graph.nodes.forEach(n => {
+        const d = Math.hypot(n.x - x, n.y - y);
+        if (d < (n.r + 9) / cam.scale && d < bestD) { best = n; bestD = d; }
+      });
+      return best;
+    }
+
+    // ── Fit to screen ─────────────────────────────────────────────────────────
+    function fitToScreen() {
+      if (!graph.nodes.length) return;
+      let x0 = Infinity, x1 = -Infinity, y0 = Infinity, y1 = -Infinity;
+      graph.nodes.forEach(n => {
+        x0 = Math.min(x0, n.x - n.r); x1 = Math.max(x1, n.x + n.r);
+        y0 = Math.min(y0, n.y - n.r); y1 = Math.max(y1, n.y + n.r);
+      });
+      const margin = 52;
+      const s = Math.min(3, Math.min(
+        (width  - margin * 2) / Math.max(1, x1 - x0),
+        (height - margin * 2) / Math.max(1, y1 - y0),
+      ));
+      cam.scale = s;
+      cam.tx = (width  - (x0 + x1) * s) / 2;
+      cam.ty = (height - (y0 + y1) * s) / 2;
+      wakeUp();
+    }
+
+    // ── Detail panel ──────────────────────────────────────────────────────────
+    function showDetail(node) {
+      if (!node) {
+        detail.innerHTML = '<p class="empty-hint">노드를 클릭하면 원문 요약과 메타데이터를 볼 수 있습니다.</p>';
+        return;
+      }
+      selected = node;
+      const meta  = node.metadata || {};
+      const convId = meta.conversation_id;
+      const jumpHtml = convId
+        ? `<a class="jump-btn" href="${API_BASE}/chat?open_conversation=${encodeURIComponent(convId)}">→ 채팅에서 열기</a>`
+        : '';
+      const metaStr = Object.keys(meta).length ? JSON.stringify(meta, null, 2) : '';
+      detail.innerHTML = `
+        <div class="type-badge" style="background:${nodeColor(node.type)};color:#07100d">${node.type}</div>
+        <div class="detail-title"></div>
+        ${node.summary ? '<div class="detail-summary"></div>' : ''}
+        ${jumpHtml}
+        ${metaStr ? '<div class="detail-meta"></div>' : ''}
+      `;
+      detail.querySelector('.detail-title').textContent = node.title || node.id;
+      if (node.summary) detail.querySelector('.detail-summary').textContent = node.summary;
+      if (metaStr) detail.querySelector('.detail-meta').textContent = metaStr;
+    }
+
+    // ── Canvas resize ─────────────────────────────────────────────────────────
+    function resize() {
+      const rect = canvas.getBoundingClientRect();
+      width = rect.width; height = rect.height;
+      const dpr = window.devicePixelRatio || 1;
+      canvas.width  = Math.floor(width  * dpr);
+      canvas.height = Math.floor(height * dpr);
+      ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+    }
+
+    // ── Mouse events ──────────────────────────────────────────────────────────
+    canvas.addEventListener('mousedown', e => {
+      const rect = canvas.getBoundingClientRect();
+      const cx = e.clientX - rect.left, cy = e.clientY - rect.top;
+      const n = nodeAt(cx, cy);
+      if (n) { dragging = n; showDetail(n); wakeUp(); }
+      else { panning = { sx: e.clientX, sy: e.clientY, tx0: cam.tx, ty0: cam.ty }; canvas.classList.add('panning'); }
+    });
+
+    canvas.addEventListener('mousemove', e => {
+      const rect = canvas.getBoundingClientRect();
+      const n = nodeAt(e.clientX - rect.left, e.clientY - rect.top);
+      if (n !== hovered) { hovered = n; wakeUp(); }
+      canvas.style.cursor = panning ? 'grabbing' : (n ? 'pointer' : 'grab');
+      if (n) {
+        tooltip.style.display = 'block';
+        tooltip.style.left = (e.clientX + 14) + 'px';
+        tooltip.style.top  = (e.clientY -  8) + 'px';
+        tooltip.textContent = n.title;
+      } else { tooltip.style.display = 'none'; }
+    });
+    canvas.addEventListener('mouseleave', () => { hovered = null; tooltip.style.display = 'none'; wakeUp(); });
+
+    window.addEventListener('mousemove', e => {
+      if (dragging) {
+        const rect = canvas.getBoundingClientRect();
+        const w = toWorld(e.clientX - rect.left, e.clientY - rect.top);
+        dragging.x = w.x; dragging.y = w.y; dragging.vx = 0; dragging.vy = 0;
+        wakeUp();
+      } else if (panning) {
+        cam.tx = panning.tx0 + (e.clientX - panning.sx);
+        cam.ty = panning.ty0 + (e.clientY - panning.sy);
+        wakeUp();
+      }
+    });
+
+    window.addEventListener('mouseup', () => {
+      dragging = null; panning = null;
+      canvas.classList.remove('panning');
+    });
+
+    canvas.addEventListener('wheel', e => {
+      e.preventDefault();
+      const rect = canvas.getBoundingClientRect();
+      const cx = e.clientX - rect.left, cy = e.clientY - rect.top;
+      const f  = e.deltaY < 0 ? 1.12 : 1 / 1.12;
+      const ns = Math.min(6, Math.max(0.07, cam.scale * f));
+      cam.tx = cx - (cx - cam.tx) * (ns / cam.scale);
+      cam.ty = cy - (cy - cam.ty) * (ns / cam.scale);
+      cam.scale = ns;
+      wakeUp();
+    }, { passive: false });
+
+    // ── Touch events ──────────────────────────────────────────────────────────
+    let lastTouchDist = null;
+    canvas.addEventListener('touchstart', e => {
+      e.preventDefault();
+      if (e.touches.length === 2) {
+        lastTouchDist = Math.hypot(
+          e.touches[0].clientX - e.touches[1].clientX,
+          e.touches[0].clientY - e.touches[1].clientY,
+        );
+        dragging = null;
+        return;
+      }
+      const t = e.touches[0];
+      const rect = canvas.getBoundingClientRect();
+      const n = nodeAt(t.clientX - rect.left, t.clientY - rect.top);
+      if (n) { dragging = n; showDetail(n); wakeUp(); }
+      else panning = { sx: t.clientX, sy: t.clientY, tx0: cam.tx, ty0: cam.ty };
+    }, { passive: false });
+
+    canvas.addEventListener('touchmove', e => {
+      e.preventDefault();
+      if (e.touches.length === 2) {
+        const dist = Math.hypot(
+          e.touches[0].clientX - e.touches[1].clientX,
+          e.touches[0].clientY - e.touches[1].clientY,
+        );
+        if (lastTouchDist) {
+          const f  = dist / lastTouchDist;
+          const cx = (e.touches[0].clientX + e.touches[1].clientX) / 2;
+          const cy = (e.touches[0].clientY + e.touches[1].clientY) / 2;
+          const rect = canvas.getBoundingClientRect();
+          const px = cx - rect.left, py = cy - rect.top;
+          const ns = Math.min(6, Math.max(0.07, cam.scale * f));
+          cam.tx = px - (px - cam.tx) * (ns / cam.scale);
+          cam.ty = py - (py - cam.ty) * (ns / cam.scale);
+          cam.scale = ns;
+          wakeUp();
+        }
+        lastTouchDist = dist;
+        return;
+      }
+      const t = e.touches[0];
+      if (dragging) {
+        const rect = canvas.getBoundingClientRect();
+        const w = toWorld(t.clientX - rect.left, t.clientY - rect.top);
+        dragging.x = w.x; dragging.y = w.y; dragging.vx = 0; dragging.vy = 0;
+        wakeUp();
+      } else if (panning) {
+        cam.tx = panning.tx0 + (t.clientX - panning.sx);
+        cam.ty = panning.ty0 + (t.clientY - panning.sy);
+        wakeUp();
+      }
+    }, { passive: false });
+
+    canvas.addEventListener('touchend', () => { dragging = null; panning = null; lastTouchDist = null; });
+
+    // ── Controls ──────────────────────────────────────────────────────────────
+    search.addEventListener('input', wakeUp);
+    document.getElementById('fit-btn').addEventListener('click', fitToScreen);
+    document.getElementById('refresh-btn').addEventListener('click', () => {
+      rawGraph = { nodes: [], edges: [] };
+      graph    = { nodes: [], edges: [] };
+      loadGraph().catch(err => {
+        detail.innerHTML = `<div class="type-badge" style="background:#e47a73;color:#fff">Error</div><div class="detail-title">불러오기 실패</div><div class="detail-summary">${err.message}</div>`;
+      });
+    });
+    document.getElementById('back-btn').addEventListener('click', () => window.location.href = `${API_BASE}/chat`);
+    window.addEventListener('resize', () => { resize(); wakeUp(); });
+
+    // ── Init ──────────────────────────────────────────────────────────────────
+    resize();
+    loadGraph().catch(err => {
+      detail.innerHTML = `<div class="type-badge" style="background:#e47a73;color:#fff">Error</div><div class="detail-title">그래프를 불러오지 못했습니다.</div><div class="detail-summary">${err.message}</div>`;
+    });
+  </script>
+</body>
+</html>

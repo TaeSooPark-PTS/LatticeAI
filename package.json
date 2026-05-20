@@ -10,7 +10,7 @@
     "start": "LTCAI",
     "dev": "python3 ltcai_cli.py --reload",
     "build:python": "python3 -m build",
-    "check:python": "python3 -m py_compile ltcai_cli.py server.py llm_router.py p_reinforce.py telegram_bot.py tools.py codex_telegram_bot.py",
+    "check:python": "python3 -m py_compile ltcai_cli.py server.py knowledge_graph.py llm_router.py p_reinforce.py telegram_bot.py tools.py codex_telegram_bot.py",
     "publish:npm": "npm publish --access public",
     "publish:pypi": "python3 -m twine upload dist/*"
   },
@@ -27,6 +27,7 @@
     "LICENSE",
     "ltcai_cli.py",
     "server.py",
+    "knowledge_graph.py",
     "llm_router.py",
     "p_reinforce.py",
     "telegram_bot.py",
@@ -35,6 +36,7 @@
     "static/account.html",
     "static/chat.html",
     "static/admin.html",
+    "static/graph.html",
     "requirements.txt",
     "README.md"
   ],

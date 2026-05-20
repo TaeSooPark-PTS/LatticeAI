@@ -300,7 +300,12 @@
 
     <script>
         const API_BASE = window.location.protocol === 'file:' ? 'http://localhost:4825' : '';
-        function apiFetch(path, opts = {}) { return fetch(API_BASE + path, opts); }
+        function apiFetch(path, opts = {}) {
+            const headers = { ...(opts.headers || {}) };
+            const token = localStorage.getItem('ltcai_session_token') || '';
+            if (token && !headers.Authorization) headers.Authorization = `Bearer ${token}`;
+            return fetch(API_BASE + path, { credentials: 'include', ...opts, headers });
+        }
 
         // ── i18n ──────────────────────────────────────────────
         const I18N = {
@@ -431,6 +436,7 @@
                     localStorage.setItem('ltcai_user_email', data.email);
                     localStorage.setItem('ltcai_user_nickname', data.nickname || data.name || data.email);
                     localStorage.setItem('ltcai_is_admin', data.is_admin ? 'true' : 'false');
+                    if (data.token) localStorage.setItem('ltcai_session_token', data.token);
                     window.location.href = '/chat';
                 } else {
                     const data = await res.json().catch(() => ({}));
@@ -473,6 +479,7 @@
                             localStorage.setItem('ltcai_user_email', data.email);
                             localStorage.setItem('ltcai_user_nickname', data.nickname || data.name || data.email);
                             localStorage.setItem('ltcai_is_admin', data.is_admin ? 'true' : 'false');
+                            if (data.token) localStorage.setItem('ltcai_session_token', data.token);
                             window.location.href = '/chat';
                         }
                     });
