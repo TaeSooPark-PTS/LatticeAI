@@ -166,6 +166,7 @@ IS_PUBLIC_MODE = APP_MODE == "public"
 DEFAULT_HOST = env_value("LATTICEAI_HOST", "127.0.0.1")
 DEFAULT_PORT = int(env_value("LATTICEAI_PORT", "4825"))
 ENABLE_TELEGRAM = env_bool("LATTICEAI_ENABLE_TELEGRAM", default=not IS_PUBLIC_MODE)
+ENABLE_GRAPH    = env_bool("LATTICEAI_ENABLE_GRAPH",    default=True)
 AUTOLOAD_MODELS = env_bool("LATTICEAI_AUTOLOAD_MODELS", default=IS_PUBLIC_MODE)
 MODEL_IDLE_UNLOAD_SECONDS = int(env_value("LATTICEAI_MODEL_IDLE_UNLOAD_SECONDS", "0"))
 ALLOW_LOCAL_MODELS = env_bool("LATTICEAI_ALLOW_LOCAL_MODELS", default=not IS_PUBLIC_MODE)
@@ -289,7 +290,11 @@ HISTORY_FILE = DATA_DIR / "chat_history.json"
 VPC_FILE = DATA_DIR / "vpc_config.json"
 MCP_FILE = DATA_DIR / "mcp_installs.json"
 AUDIT_FILE = DATA_DIR / "audit_log.json"
-KNOWLEDGE_GRAPH = KnowledgeGraphStore(DATA_DIR / "knowledge_graph.sqlite", DATA_DIR / "knowledge_graph_blobs")
+KNOWLEDGE_GRAPH = KnowledgeGraphStore(DATA_DIR / "knowledge_graph.sqlite", DATA_DIR / "knowledge_graph_blobs") if ENABLE_GRAPH else None
+
+def _require_graph():
+    if not ENABLE_GRAPH or KNOWLEDGE_GRAPH is None:
+        raise HTTPException(status_code=404, detail="Data Graph is disabled. Set LATTICEAI_ENABLE_GRAPH=true in .env to enable.")
 
 class UserRegister(BaseModel):
     email: str
@@ -818,15 +823,16 @@ def save_to_history(
                 json.dump(history, f, ensure_ascii=False, indent=2)
             os.replace(tmp_path, HISTORY_FILE)
         try:
-            KNOWLEDGE_GRAPH.ingest_message(
-                role,
-                message,
-                user_email=user_email,
-                user_nickname=user_nickname,
-                source=source,
-                conversation_id=conversation_id,
-                raw=item,
-            )
+            if ENABLE_GRAPH and KNOWLEDGE_GRAPH:
+                KNOWLEDGE_GRAPH.ingest_message(
+                    role,
+                    message,
+                    user_email=user_email,
+                    user_nickname=user_nickname,
+                    source=source,
+                    conversation_id=conversation_id,
+                    raw=item,
+                )
         except Exception as graph_error:
             logging.warning("knowledge graph message ingest failed: %s", graph_error)
     except Exception as e:
@@ -1673,7 +1679,7 @@ async def admin_audit(request: Request):
     _, users = require_admin(request)
     report = build_admin_audit_report(users)
     try:
-        report["graph"] = KNOWLEDGE_GRAPH.stats()
+        report["graph"] = KNOWLEDGE_GRAPH.stats() if (ENABLE_GRAPH and KNOWLEDGE_GRAPH) else {"disabled": True}
     except Exception as e:
         logging.warning("knowledge graph stats for audit failed: %s", e)
         report["graph"] = {"error": str(e)}
@@ -2267,6 +2273,7 @@ def runtime_features() -> Dict:
         "port": DEFAULT_PORT,
         "data_dir": str(DATA_DIR),
         "telegram_enabled": ENABLE_TELEGRAM,
+        "graph_enabled": ENABLE_GRAPH,
         "autoload_models": AUTOLOAD_MODELS,
         "model_idle_unload_seconds": MODEL_IDLE_UNLOAD_SECONDS,
         "model_memory_policy": router.model_memory_policy(),
@@ -2623,18 +2630,19 @@ async def chat(req: ChatRequest, request: Request):
     if is_clear_command(req.message):
         command = req.message.strip().lower()
         clear_scope = "all" if command == "/clear_all" else "conversation"
-        try:
-            KNOWLEDGE_GRAPH.ingest_event(
-                "ClearEvent",
-                f"{command} requested",
-                user_email=effective_email,
-                user_nickname=req.user_nickname,
-                source=req.source or "web",
-                conversation_id=req.conversation_id,
-                metadata={"command": command, "scope": clear_scope},
-            )
-        except Exception as e:
-            logging.warning("knowledge graph clear event ingest failed: %s", e)
+        if ENABLE_GRAPH and KNOWLEDGE_GRAPH:
+            try:
+                KNOWLEDGE_GRAPH.ingest_event(
+                    "ClearEvent",
+                    f"{command} requested",
+                    user_email=effective_email,
+                    user_nickname=req.user_nickname,
+                    source=req.source or "web",
+                    conversation_id=req.conversation_id,
+                    metadata={"command": command, "scope": clear_scope},
+                )
+            except Exception as e:
+                logging.warning("knowledge graph clear event ingest failed: %s", e)
         if command == "/clear_all":
             result = clear_history(0)
             answer = f"채팅창을 정리했습니다. 화면에서 제거 {result.get('removed', 0)}개. 감사 로그와 Data Graph/RAG 데이터는 유지됩니다."
@@ -2701,10 +2709,11 @@ async def chat(req: ChatRequest, request: Request):
         logging.warning("Knowledge reinforcement skipped: %s", e)
 
     try:
-        graph_context = KNOWLEDGE_GRAPH.context_for_query(req.message)
-        if graph_context:
-            context += f"\n\n[KNOWLEDGE GRAPH]\n{graph_context}"
-            print("🕸️ Context reinforced with knowledge graph.")
+        if ENABLE_GRAPH and KNOWLEDGE_GRAPH:
+            graph_context = KNOWLEDGE_GRAPH.context_for_query(req.message)
+            if graph_context:
+                context += f"\n\n[KNOWLEDGE GRAPH]\n{graph_context}"
+                print("🕸️ Context reinforced with knowledge graph.")
     except Exception as e:
         logging.warning("Knowledge graph reinforcement skipped: %s", e)
 
@@ -2822,6 +2831,7 @@ async def search_history(q: str, request: Request):
 @app.get("/graph")
 async def knowledge_graph_page(request: Request):
     """Serve the interactive knowledge graph canvas UI."""
+    _require_graph()
     require_user(request)
     return FileResponse(STATIC_DIR / "graph.html")
 
@@ -2829,27 +2839,28 @@ async def knowledge_graph_page(request: Request):
 @app.get("/knowledge-graph")
 async def knowledge_graph_legacy_page(request: Request):
     """Backward-compatible route for the graph page."""
+    _require_graph()
     require_user(request)
     return FileResponse(STATIC_DIR / "graph.html")
 
 
 @app.get("/knowledge-graph/stats")
 async def knowledge_graph_stats(request: Request):
-    """Return node/edge counts for the automatic workspace graph."""
+    _require_graph()
     require_user(request)
     return KNOWLEDGE_GRAPH.stats()
 
 
 @app.get("/knowledge-graph/graph")
 async def knowledge_graph_data(request: Request, limit: int = 300):
-    """Return Obsidian-style nodes and edges for graph visualization."""
+    _require_graph()
     require_user(request)
     return KNOWLEDGE_GRAPH.graph(limit)
 
 
 @app.get("/knowledge-graph/search")
 async def knowledge_graph_search(q: str, request: Request, limit: int = 30):
-    """Search normalized graph metadata, summaries, and source titles."""
+    _require_graph()
     require_user(request)
     if not q or not q.strip():
         return {"query": q, "matches": []}
@@ -2858,14 +2869,14 @@ async def knowledge_graph_search(q: str, request: Request, limit: int = 30):
 
 @app.get("/knowledge-graph/context")
 async def knowledge_graph_context(q: str, request: Request, limit: int = 6):
-    """Return compact graph-backed RAG context for a prompt."""
+    _require_graph()
     require_user(request)
     return {"query": q, "context": KNOWLEDGE_GRAPH.context_for_query(q, limit)}
 
 
 @app.get("/knowledge-graph/neighbors/{node_id:path}")
 async def knowledge_graph_neighbors(node_id: str, request: Request):
-    """Return direct 1-hop neighbors of a node."""
+    _require_graph()
     require_user(request)
     if not node_id:
         raise HTTPException(status_code=400, detail="node_id required")
@@ -2874,7 +2885,7 @@ async def knowledge_graph_neighbors(node_id: str, request: Request):
 
 @app.post("/knowledge-graph/ingest")
 async def knowledge_graph_ingest(req: KnowledgeGraphIngestRequest, request: Request):
-    """Manual ingestion hook for MCP/connectors that emit structured events."""
+    _require_graph()
     current_user = require_user(request)
     event_type = (req.type or "").strip().lower()
     if event_type not in {"message", "ai_response", "note"}:
@@ -3285,6 +3296,8 @@ async def upload_document(request: Request, file: UploadFile = File(...)):
             -1,
         )
         try:
+            if not (ENABLE_GRAPH and KNOWLEDGE_GRAPH):
+                raise RuntimeError("graph disabled")
             graph_result = KNOWLEDGE_GRAPH.ingest_document(
                 Path(tmp_path),
                 original_filename=file.filename,
@@ -3801,6 +3814,7 @@ async def mcp_call(req: McpCallRequest, request: Request):
     current_user = require_user(request)
     args = req.args or {}
     if req.action == "knowledge_graph_ingest":
+        _require_graph()
         return KNOWLEDGE_GRAPH.ingest_message(
             args.get("role") or ("assistant" if args.get("type") == "ai_response" else "user"),
             args.get("content") or "",
@@ -3811,10 +3825,13 @@ async def mcp_call(req: McpCallRequest, request: Request):
             raw=args,
         )
     if req.action == "knowledge_graph_search":
+        _require_graph()
         return KNOWLEDGE_GRAPH.search(args.get("query") or args.get("q") or "", args.get("limit", 30))
     if req.action == "knowledge_graph_graph":
+        _require_graph()
         return KNOWLEDGE_GRAPH.graph(args.get("limit", 300))
     if req.action == "knowledge_graph_context":
+        _require_graph()
         return {
             "context": KNOWLEDGE_GRAPH.context_for_query(
                 args.get("query") or args.get("q") or "",

@@ -5726,6 +5726,19 @@
             }
         })();
 
+        (async function applyRuntimeFeatures() {
+            try {
+                const res = await apiFetch('/runtime_features');
+                if (res.ok) {
+                    const f = await res.json();
+                    if (!f.graph_enabled) {
+                        const btn = document.getElementById('data-graph-btn');
+                        if (btn) btn.style.display = 'none';
+                    }
+                }
+            } catch (_) {}
+        })();
+
         loadModelStatus();
         loadVpcStatus();
         restoreCurrentConversation();
