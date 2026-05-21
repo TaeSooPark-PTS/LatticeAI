@@ -4646,8 +4646,11 @@
 
         let _editorCurrentPath = '';
 
-        const IMAGE_EXTS = new Set(['png','jpg','jpeg','gif','webp','bmp','svg','ico','tiff','heic']);
-        const BINARY_EXTS = new Set(['zip','dmg','pkg','exe','bin','dll','so','dylib','mp4','mp3','mov','avi','pdf','docx','xlsx','pptx','db','sqlite']);
+        const IMAGE_EXTS  = new Set(['png','jpg','jpeg','gif','webp','bmp','svg','ico','tiff','heic']);
+        const VIDEO_EXTS  = new Set(['mp4','mov','webm','avi','mkv','m4v']);
+        const DOC_EXTS    = new Set(['pdf','docx','xlsx','pptx','doc','xls','ppt','csv','md','txt']);
+        const ARCHIVE_EXTS= new Set(['zip','dmg','pkg','gz','tar','rar','7z','iso']);
+        const BINARY_EXTS = new Set(['exe','bin','dll','so','dylib','db','sqlite','mp3','wav','aac','flac']);
 
         async function readLocalFile(encodedPath) {
             const path = decodeURIComponent(encodedPath);
@@ -4677,9 +4680,75 @@
                 return;
             }
 
-            // 바이너리 파일: 열기 거부
+            // 동영상: HTML5 플레이어
+            if (VIDEO_EXTS.has(ext)) {
+                const safeEnc = encodeURIComponent(path);
+                resultEl.innerHTML = `
+                    <div style="text-align:center;padding:8px">
+                        <video controls style="max-width:100%;max-height:280px;border-radius:8px;border:1px solid var(--border)"
+                               src="/local/serve?path=${safeEnc}">지원하지 않는 형식</video>
+                        <div style="color:var(--faint);font-size:11px;margin-top:6px">${escapeHtml(path.split('/').pop())}</div>
+                        <button class="status-btn" style="font-size:12px;margin-top:8px"
+                            onclick="sendArchiveToChat('${path.replace(/'/g,"\\'")}','video')">
+                            <i class='ti ti-send'></i> AI에게 경로 보내기
+                        </button>
+                    </div>`;
+                return;
+            }
+
+            // 문서(PDF/DOCX 등): 텍스트 추출 후 에디터로
+            if (DOC_EXTS.has(ext)) {
+                resultEl.innerHTML = '<div class="sensitivity-preview">문서 읽는 중...</div>';
+                try {
+                    const res = await apiFetch('/tools/read_document', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ path })
+                    });
+                    const data = await res.json();
+                    if (!res.ok || data.error) throw new Error(data.error || data.detail || '읽기 실패');
+                    const text = (data.result ?? data).content ?? '';
+                    const pages = (data.result ?? data).meta?.pages;
+                    _editorCurrentPath = path;
+                    document.getElementById('editor-filepath').textContent =
+                        path + (pages ? `  (${pages}p)` : '');
+                    document.getElementById('file-editor-content').value = text;
+                    document.getElementById('editor-status').textContent = '읽기 전용 — 저장 시 원본 덮어씀';
+                    document.getElementById('editor-status').style.color = 'var(--faint)';
+                    document.getElementById('local-browser-overlay').style.display = 'none';
+                    document.getElementById('file-editor-overlay').style.display = 'flex';
+                } catch(e) {
+                    // 읽기 실패 시 바이너리로 간주해 경로만 전송 옵션 표시
+                    resultEl.innerHTML = `
+                        <div class="sensitivity-preview">
+                            ⚠️ 문서 텍스트 추출 실패: ${escapeHtml(e.message)}<br>
+                            <button class="admin-action" style="margin-top:10px;font-size:12px"
+                                onclick="sendArchiveToChat('${path.replace(/'/g,"\\'")}','document')">
+                                <i class='ti ti-send'></i> AI에게 경로 보내기
+                            </button>
+                        </div>`;
+                }
+                return;
+            }
+
+            // 압축/디스크 이미지: 파일 정보 + AI 경로 전송
+            if (ARCHIVE_EXTS.has(ext)) {
+                resultEl.innerHTML = `
+                    <div class="sensitivity-preview" style="text-align:center">
+                        <i class="ti ti-archive" style="font-size:36px;color:var(--accent-2);display:block;margin-bottom:8px"></i>
+                        <div style="font-size:13px;font-weight:600">${escapeHtml(path.split('/').pop())}</div>
+                        <div style="color:var(--faint);font-size:11px;margin-top:4px">${ext.toUpperCase()} 파일 — 직접 열기 불가</div>
+                        <button class="admin-action" style="margin-top:12px;font-size:12px"
+                            onclick="sendArchiveToChat('${path.replace(/'/g,"\\'")}','archive')">
+                            <i class='ti ti-send'></i> AI에게 보내기 (내용 분석 요청)
+                        </button>
+                    </div>`;
+                return;
+            }
+
+            // 기타 바이너리: 차단
             if (BINARY_EXTS.has(ext)) {
-                resultEl.innerHTML = `<div class="sensitivity-preview">⚠️ 바이너리 파일은 텍스트 편집기로 열 수 없습니다.<br><span style="color:var(--faint);font-size:11px">${escapeHtml(path)}</span></div>`;
+                resultEl.innerHTML = `<div class="sensitivity-preview">⚠️ 바이너리 파일은 열 수 없습니다.<br><span style="color:var(--faint);font-size:11px">${escapeHtml(path)}</span></div>`;
                 return;
             }
 
@@ -4757,6 +4826,18 @@
                 statusEl.style.color = 'var(--danger)';
                 statusEl.textContent = '저장 실패: ' + e.message;
             }
+        }
+
+        function sendArchiveToChat(path, type) {
+            closeLocalBrowser();
+            const name = path.split('/').pop();
+            const prompts = {
+                archive: `${path} 파일의 내용을 분석해줘. (압축 파일이면 내부 목록을 보여주고, 필요하면 압축 해제해줘)`,
+                video:   `${path} 영상 파일에 대해 알 수 있는 정보를 알려줘.`,
+                document:`${path} 문서를 읽고 요약해줘.`,
+            };
+            userInput.value = prompts[type] || `${path} 파일을 분석해줘.`;
+            userInput.focus();
         }
 
         async function sendImageFileToChat(path) {

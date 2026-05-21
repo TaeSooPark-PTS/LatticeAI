@@ -3268,6 +3268,12 @@ async def tools_create_pdf(req: ToolPdfRequest, request: Request):
     return _tool_response(create_pdf, req.title, req.body, req.filename)
 
 
+@app.post("/tools/read_document")
+async def tools_read_document(req: ToolPathRequest, request: Request):
+    require_user(request)
+    return _tool_response(read_document, req.path)
+
+
 @app.get("/tools/download")
 async def tools_download(path: str, request: Request):
     """Serve a generated file from agent workspace for download."""
