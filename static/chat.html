@@ -3219,6 +3219,38 @@
         </section>
     </div>
 
+    <!-- ── 파일 에디터 ── -->
+    <div id="file-editor-overlay" class="admin-overlay" style="display:none">
+        <section class="admin-panel" style="max-width:720px;height:85vh;display:flex;flex-direction:column">
+            <div class="admin-header" style="flex-shrink:0">
+                <div style="min-width:0;flex:1">
+                    <h2><i class="ti ti-file-pencil" style="color:var(--accent)"></i> 파일 편집</h2>
+                    <div id="editor-filepath" style="color:var(--faint);font-size:11px;margin-top:3px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap"></div>
+                </div>
+                <button class="admin-close" onclick="closeFileEditor()"><i class="ti ti-x"></i></button>
+            </div>
+            <div style="flex:1;display:flex;flex-direction:column;padding:0 20px 16px;min-height:0">
+                <textarea id="file-editor-content"
+                    style="flex:1;width:100%;background:rgba(15,18,15,0.8);border:1px solid var(--border);border-radius:8px;
+                           color:var(--text);font-family:monospace;font-size:13px;line-height:1.6;
+                           padding:14px;resize:none;outline:none;margin-top:12px"
+                    spellcheck="false"></textarea>
+                <div style="display:flex;gap:8px;margin-top:12px;flex-wrap:wrap">
+                    <button class="admin-action" onclick="saveLocalFile()" style="flex:1">
+                        <i class="ti ti-device-floppy"></i> 저장
+                    </button>
+                    <button class="admin-action" onclick="sendFileToChat()" style="flex:1;background:rgba(34,211,160,0.15);border-color:rgba(34,211,160,0.3)">
+                        <i class="ti ti-send"></i> AI에게 보내기
+                    </button>
+                    <button class="status-btn" onclick="closeFileEditor();document.getElementById('local-browser-overlay').style.display='flex'" style="flex:1">
+                        <i class="ti ti-arrow-left"></i> 탐색기로
+                    </button>
+                </div>
+                <div id="editor-status" style="font-size:12px;color:var(--accent);margin-top:8px;min-height:18px;text-align:center"></div>
+            </div>
+        </section>
+    </div>
+
     <!-- ── 로컬 파일 브라우저 ── -->
     <div id="local-browser-overlay" class="admin-overlay" style="display:none">
         <section class="admin-panel" style="max-width:560px">
@@ -4612,10 +4644,12 @@
             await localNav(decodeURIComponent(encodedPath));
         }
 
+        let _editorCurrentPath = '';
+
         async function readLocalFile(encodedPath) {
             const path = decodeURIComponent(encodedPath);
             const resultEl = document.getElementById('local-browser-result');
-            resultEl.innerHTML = '<div class="sensitivity-preview">권한 확인 중...</div>';
+            resultEl.innerHTML = '<div class="sensitivity-preview">읽는 중...</div>';
 
             const probe = await apiFetch('/local/read', {
                 method: 'POST',
@@ -4639,14 +4673,64 @@
                 });
                 const data = await res.json();
                 if (!res.ok || data.error) throw new Error(data.error || data.detail || '오류');
-                closeLocalBrowser();
-                addMessage('ai', `📄 <b>${escapeHtml(path.split('/').pop())}</b> 파일 내용을 불러왔습니다. AI에게 이 파일로 작업을 요청하세요.`);
-                // 파일 내용을 입력창에 컨텍스트로 추가
-                userInput.value = `다음 파일 내용을 분석해줘:\n\n${data.content.slice(0, 3000)}`;
-                userInput.focus();
+                const content = (data.result ?? data).content ?? '';
+                // 에디터 열기
+                _editorCurrentPath = path;
+                document.getElementById('editor-filepath').textContent = path;
+                document.getElementById('file-editor-content').value = content;
+                document.getElementById('editor-status').textContent = '';
+                document.getElementById('local-browser-overlay').style.display = 'none';
+                document.getElementById('file-editor-overlay').style.display = 'flex';
             } catch(e) {
                 resultEl.innerHTML = `<div class="sensitivity-preview">${escapeHtml(e.message)}</div>`;
             }
+        }
+
+        function closeFileEditor() {
+            document.getElementById('file-editor-overlay').style.display = 'none';
+        }
+
+        async function saveLocalFile() {
+            const path = _editorCurrentPath;
+            const content = document.getElementById('file-editor-content').value;
+            const statusEl = document.getElementById('editor-status');
+            statusEl.style.color = 'var(--accent)';
+            statusEl.textContent = '저장 중...';
+
+            const probe = await apiFetch('/local/write', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ path, content, approved: false })
+            });
+            const probeData = await probe.json();
+            if (probeData.permission_required) {
+                const allowed = await requestPermission(probeData.path, probeData.action, probeData.action_label);
+                if (!allowed) { statusEl.style.color = 'var(--danger)'; statusEl.textContent = '저장 취소됨'; return; }
+            }
+
+            try {
+                const res = await apiFetch('/local/write', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ path, content, approved: true })
+                });
+                const data = await res.json();
+                if (!res.ok || data.error) throw new Error(data.error || data.detail || '오류');
+                statusEl.style.color = 'var(--accent)';
+                statusEl.textContent = '✓ 저장 완료';
+                setTimeout(() => { statusEl.textContent = ''; }, 2500);
+            } catch(e) {
+                statusEl.style.color = 'var(--danger)';
+                statusEl.textContent = '저장 실패: ' + e.message;
+            }
+        }
+
+        function sendFileToChat() {
+            const content = document.getElementById('file-editor-content').value;
+            const name = _editorCurrentPath.split('/').pop();
+            closeFileEditor();
+            userInput.value = `다음 파일(${name}) 내용을 분석하거나 수정해줘:\n\n\`\`\`\n${content.slice(0, 4000)}\n\`\`\``;
+            userInput.focus();
         }
 
         function renderAdminStats(summary) {
