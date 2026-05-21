@@ -217,17 +217,25 @@ def verify_password(password: str, hashed: str) -> bool:
         return False
 
 def verify_and_migrate_password(email: str, plain: str, stored: str, users: Dict) -> bool:
-    """평문 비밀번호를 투명하게 해시로 마이그레이션."""
+    """평문 비밀번호를 투명하게 해시로 마이그레이션. 마이그레이션 발생 시 audit log 남김."""
     if ":" in stored and len(stored) > 64:
         return verify_password(plain, stored)
     if plain == stored:
         users[email]["password"] = hash_password(plain)
         save_users(users)
+        try:
+            append_audit_event("password_migrated_from_plaintext", user_email=email)
+        except Exception as e:
+            logging.warning("audit log failed on password migration: %s", e)
+        logging.info("Migrated plaintext password to bcrypt hash for %s", email)
         return True
     return False
 
 # ── Session store (file-backed, survives restarts) ────────────────────────────
-_SESSION_TTL = 60 * 60 * 24 * 7  # 7 days
+# 24-hour TTL with sliding-window refresh — every authenticated request bumps
+# created_at, so an active user stays logged in while idle sessions auto-expire.
+_SESSION_TTL = 60 * 60 * 24  # 24 hours
+_SESSION_REFRESH_THRESHOLD = 60 * 15  # only persist if >15 min since last bump (write amplification guard)
 _sessions_lock = threading.Lock()
 
 def _sessions_file() -> Path:
@@ -239,15 +247,15 @@ def _load_sessions() -> Dict[str, tuple]:
         if f.exists():
             raw = json.loads(f.read_text())
             return {k: tuple(v) for k, v in raw.items()}
-    except Exception:
-        pass
+    except Exception as e:
+        logging.warning("_load_sessions failed (starting empty): %s", e)
     return {}
 
 def _persist_sessions(sessions: Dict[str, tuple]) -> None:
     try:
         _sessions_file().write_text(json.dumps({k: list(v) for k, v in sessions.items()}, ensure_ascii=False))
-    except Exception:
-        pass
+    except Exception as e:
+        logging.warning("_persist_sessions failed: %s", e)
 
 _sessions: Dict[str, tuple] = _load_sessions()
 
@@ -259,15 +267,21 @@ def create_session(email: str) -> str:
     return token
 
 def get_session_email(token: str) -> Optional[str]:
+    """Return email for a valid session, sliding the expiry forward on activity."""
+    now = time.time()
     with _sessions_lock:
         entry = _sessions.get(token)
         if entry is None:
             return None
         email, created_at = entry
-        if time.time() - created_at > _SESSION_TTL:
+        if now - created_at > _SESSION_TTL:
             _sessions.pop(token, None)
             _persist_sessions(_sessions)
             return None
+        # Sliding refresh: only update if the timestamp drifted enough to be worth a disk write
+        if now - created_at > _SESSION_REFRESH_THRESHOLD:
+            _sessions[token] = (email, now)
+            _persist_sessions(_sessions)
         return email
 
 def invalidate_session(token: str) -> None:
@@ -628,7 +642,8 @@ def load_vpc_config() -> Dict:
         with open(VPC_FILE, "r", encoding="utf-8") as f:
             stored = json.load(f)
         return {**DEFAULT_VPC_CONFIG, **stored}
-    except Exception:
+    except Exception as e:
+        logging.warning("load_vpc_config failed (using defaults): %s", e)
         return DEFAULT_VPC_CONFIG.copy()
 
 def save_vpc_config(config: Dict):
@@ -645,7 +660,8 @@ def load_mcp_installs() -> Dict:
         if "installed" not in data:
             data["installed"] = {}
         return data
-    except Exception:
+    except Exception as e:
+        logging.warning("load_mcp_installs failed: %s", e)
         return {"installed": {}, "updated_at": None}
 
 def save_mcp_installs(data: Dict):
@@ -1048,6 +1064,71 @@ def require_user(request: Request) -> str:
         raise HTTPException(status_code=401, detail="인증이 필요합니다.")
     return email or ""
 
+
+# ── Rate limiting ─────────────────────────────────────────────────────────────
+# Per-user token bucket. Disabled when LATTICEAI_RATE_LIMIT=0 (default: enabled).
+_RATE_LIMIT_ENABLED = os.getenv("LATTICEAI_RATE_LIMIT", "1") != "0"
+_rate_buckets: Dict[str, Dict[str, float]] = {}
+_rate_lock = threading.Lock()
+
+# (capacity, refill_per_second) per endpoint family
+_RATE_LIMITS = {
+    "chat":   (30, 0.5),   # 30 burst, 30/min sustained
+    "agent":  (10, 0.1),   # 10 burst, 6/min sustained (agent is expensive)
+    "upload": (20, 0.2),   # 20 burst, 12/min sustained
+}
+
+
+def enforce_rate_limit(email: str, bucket_key: str) -> None:
+    """Raise HTTP 429 if user exceeds the bucket. No-op when disabled or unauth'd."""
+    if not _RATE_LIMIT_ENABLED or not email:
+        return
+    cap, refill = _RATE_LIMITS.get(bucket_key, (60, 1.0))
+    key = f"{email}:{bucket_key}"
+    now = time.time()
+    with _rate_lock:
+        bucket = _rate_buckets.get(key)
+        if bucket is None:
+            _rate_buckets[key] = {"tokens": cap - 1, "ts": now}
+            return
+        elapsed = now - bucket["ts"]
+        bucket["tokens"] = min(cap, bucket["tokens"] + elapsed * refill)
+        bucket["ts"] = now
+        if bucket["tokens"] < 1:
+            retry_after = max(1, int((1 - bucket["tokens"]) / refill))
+            raise HTTPException(
+                status_code=429,
+                detail=f"Rate limit exceeded for {bucket_key}. Retry after {retry_after}s.",
+                headers={"Retry-After": str(retry_after)},
+            )
+        bucket["tokens"] -= 1
+
+
+# ── File magic-number validation ──────────────────────────────────────────────
+# Map of extension → list of byte-prefix signatures (any-match). Files without
+# distinctive magic (.txt, .md, .csv) skip the check.
+_FILE_MAGIC: Dict[str, List[bytes]] = {
+    ".pdf":  [b"%PDF-"],
+    ".docx": [b"PK\x03\x04"],
+    ".xlsx": [b"PK\x03\x04"],
+    ".pptx": [b"PK\x03\x04"],
+    ".zip":  [b"PK\x03\x04", b"PK\x05\x06", b"PK\x07\x08"],
+    ".png":  [b"\x89PNG\r\n\x1a\n"],
+    ".jpg":  [b"\xff\xd8\xff"],
+    ".jpeg": [b"\xff\xd8\xff"],
+    ".gif":  [b"GIF87a", b"GIF89a"],
+}
+
+
+def _bytes_match_extension(data: bytes, ext: str) -> bool:
+    """Return True if the file bytes match the claimed extension (or extension has no magic)."""
+    ext = (ext or "").lower()
+    signatures = _FILE_MAGIC.get(ext)
+    if not signatures:
+        return True  # text-like formats — no reliable magic
+    head = data[:16]
+    return any(head.startswith(sig) for sig in signatures)
+
 def require_admin(request: Request) -> tuple[str, Dict]:
     users = load_users()
     token = _extract_bearer_token(request)
@@ -1414,18 +1495,31 @@ async def unload_idle_models_loop() -> None:
         except Exception as e:
             logging.warning("Idle model unload failed: %s", e)
 
+def _spawn(coro, *, name: str):
+    """Fire-and-forget asyncio task that logs exceptions instead of swallowing them."""
+    task = asyncio.create_task(coro, name=name)
+    def _on_done(t: asyncio.Task) -> None:
+        if t.cancelled():
+            return
+        exc = t.exception()
+        if exc is not None:
+            logging.warning("background task '%s' failed: %s", name, exc)
+    task.add_done_callback(_on_done)
+    return task
+
+
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     try:
         print(f"🧭 Lattice AI mode: {APP_MODE}")
         if ENABLE_TELEGRAM:
             from telegram_bot import run_bot
-            asyncio.create_task(run_bot())
+            _spawn(run_bot(), name="telegram_bot")
             print("🚀 Telegram Bot Bridge activated!")
         else:
             print("⏭️ Telegram Bot Bridge disabled for this mode.")
-        asyncio.create_task(unload_idle_models_loop())
-        asyncio.create_task(autoload_default_model())
+        _spawn(unload_idle_models_loop(), name="unload_idle_models")
+        _spawn(autoload_default_model(), name="autoload_default_model")
     except Exception as e:
         print(f"⚠️ Startup sequence failed: {e}")
     try:
@@ -1491,7 +1585,7 @@ async def login(req: UserLogin):
         "is_admin": role == "admin",
         "token": token,
     })
-    response.set_cookie(key="session_token", value=token, httponly=True, samesite="lax", max_age=60 * 60 * 24 * 7)
+    response.set_cookie(key="session_token", value=token, httponly=True, samesite="lax", max_age=_SESSION_TTL)
     return response
 
 @app.get("/auth/sso/config")
@@ -2349,11 +2443,28 @@ def install_engine(engine: str) -> Dict:
         "installed": engine_installed(engine),
     }
     if engine == "ollama" and completed.returncode == 0 and shutil.which("ollama"):
+        # Skip if already running to avoid orphan daemons.
+        already_up = False
         try:
-            subprocess.Popen(["ollama", "serve"], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
-            result["daemon_started"] = True
+            probe = subprocess.run(["ollama", "list"], capture_output=True, timeout=2, check=False)
+            already_up = probe.returncode == 0
         except Exception:
-            result["daemon_started"] = False
+            already_up = False
+        if already_up:
+            result["daemon_started"] = "already_running"
+        else:
+            try:
+                # Detach so the daemon survives this request but doesn't become our zombie.
+                subprocess.Popen(
+                    ["ollama", "serve"],
+                    stdout=subprocess.DEVNULL,
+                    stderr=subprocess.DEVNULL,
+                    start_new_session=True,
+                )
+                result["daemon_started"] = True
+            except Exception as e:
+                logging.warning("ollama serve spawn failed: %s", e)
+                result["daemon_started"] = False
     return result
 
 CLOUD_VERIFY_CACHE: Dict[str, Dict] = {}
@@ -2623,6 +2734,7 @@ async def unload_all_models(request: Request):
 @app.post("/chat")
 async def chat(req: ChatRequest, request: Request):
     current_user = require_user(request)
+    enforce_rate_limit(current_user, "chat")
     img_len = len(req.image_data) if req.image_data else 0
     print(
         f"🧪 /chat request: stream={req.stream} image_data_len={img_len} "
@@ -3142,6 +3254,7 @@ def _extract_agent_action(raw: str) -> Dict:
 async def agent(req: AgentRequest, request: Request):
     """Natural-language local agent loop for Telegram and future clients."""
     current_user = require_user(request)
+    enforce_rate_limit(current_user, "agent")
     if not router.current_model_id:
         raise HTTPException(status_code=400, detail="No model loaded. Call /models/load first.")
 
@@ -3378,21 +3491,28 @@ async def tools_pdf_pages(path: str, request: Request):
     target = Path(path).expanduser().resolve()
     if not target.exists() or not target.is_file():
         raise HTTPException(status_code=404, detail="File not found")
+    import fitz  # PyMuPDF
+    doc = None
     try:
-        import fitz  # PyMuPDF
         doc = fitz.open(str(target))
+        total = len(doc)
         pages = []
         for i, page in enumerate(doc):
             if i >= 20:  # 최대 20페이지
                 break
-            mat = fitz.Matrix(1.5, 1.5)  # 1.5x 해상도
+            mat = fitz.Matrix(1.5, 1.5)
             pix = page.get_pixmap(matrix=mat)
             b64 = base64.b64encode(pix.tobytes("png")).decode()
             pages.append({"page": i + 1, "b64": b64})
-        doc.close()
-        return {"total": len(doc), "pages": pages}
+        return {"total": total, "pages": pages}
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"PDF 렌더링 실패: {e}")
+    finally:
+        if doc is not None:
+            try:
+                doc.close()
+            except Exception as e:
+                logging.warning("fitz doc close failed: %s", e)
 
 
 @app.get("/tools/download")
@@ -3416,6 +3536,7 @@ async def tools_download(path: str, request: Request):
 @app.post("/upload/document")
 async def upload_document(request: Request, file: UploadFile = File(...)):
     current_user = require_user(request)
+    enforce_rate_limit(current_user, "upload")
     """Upload a document and extract text (PDF, DOCX, XLSX, PPTX, TXT, MD, CSV)."""
     suffix = Path(file.filename or "upload").suffix.lower()
     allowed = {".pdf", ".docx", ".xlsx", ".pptx", ".txt", ".md", ".csv"}
@@ -3424,6 +3545,9 @@ async def upload_document(request: Request, file: UploadFile = File(...)):
     contents = await file.read()
     if len(contents) > 10 * 1024 * 1024:
         raise HTTPException(status_code=400, detail="파일이 너무 큽니다. 최대 10MB.")
+    # MIME sniff — verify the bytes actually match the claimed extension (cheap header check)
+    if not _bytes_match_extension(contents, suffix):
+        raise HTTPException(status_code=400, detail=f"파일 내용이 확장자({suffix})와 일치하지 않습니다.")
     with tempfile.NamedTemporaryFile(suffix=suffix, delete=False) as tmp:
         tmp.write(contents)
         tmp_path = tmp.name

@@ -10,6 +10,24 @@ LTCAI                      # → http://localhost:4825
 
 ---
 
+## v0.1.9 변경사항
+
+### Security
+- 세션 TTL 7일 → 24시간, sliding refresh (활동시 자동 연장)
+- 파일 업로드 magic-number 검증 (PDF/DOCX/PNG 등 시그니처 확인)
+- Rate limiting: `/chat` 30/min, `/agent` 6/min, `/upload` 12/min (per user, 토큰 버킷)
+
+### Reliability
+- PyMuPDF 파일 핸들 누수 수정, ollama serve 좀비 방지 (detach)
+- knowledge_graph metadata 손상 row 안전 통과
+- 백그라운드 asyncio 태스크 예외 로깅 (`_spawn` 헬퍼)
+- silent except → logging.warning (sessions/config 로딩)
+
+### Tests
+- `tests/unit/test_security.py` 16개 추가 (bcrypt, MIME, rate limit, harness risk)
+
+---
+
 ## v0.1.8 변경사항
 
 ### Added

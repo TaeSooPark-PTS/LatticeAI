@@ -8,6 +8,7 @@ the ingestion contract.
 
 import hashlib
 import json
+import logging
 import re
 import shutil
 import sqlite3
@@ -26,6 +27,18 @@ def _now() -> str:
 
 def _json(data: Optional[Dict[str, Any]]) -> str:
     return json.dumps(data or {}, ensure_ascii=False, sort_keys=True)
+
+
+def _safe_loads(raw: Optional[str]) -> Dict[str, Any]:
+    """Tolerantly parse a metadata_json column — returns {} on corrupt rows."""
+    if not raw:
+        return {}
+    try:
+        value = json.loads(raw)
+        return value if isinstance(value, dict) else {}
+    except (json.JSONDecodeError, TypeError) as e:
+        logging.warning("knowledge_graph: corrupt metadata_json (%s) — using empty dict", e)
+        return {}
 
 
 def _slug(text: str, max_len: int = 96) -> str:
@@ -573,7 +586,7 @@ class KnowledgeGraphStore:
                     "type": row["type"],
                     "title": row["title"],
                     "summary": row["summary"],
-                    "metadata": json.loads(row["metadata_json"] or "{}"),
+                    "metadata": _safe_loads(row["metadata_json"]),
                 }
                 for row in conn.execute(
                     "SELECT id, type, title, summary, metadata_json FROM nodes WHERE type != 'Chunk' ORDER BY updated_at DESC LIMIT ?",
@@ -588,7 +601,7 @@ class KnowledgeGraphStore:
                     "to": row["to_node"],
                     "type": row["type"],
                     "weight": row["weight"],
-                    "metadata": json.loads(row["metadata_json"] or "{}"),
+                    "metadata": _safe_loads(row["metadata_json"]),
                 }
                 for row in conn.execute(
                     "SELECT id, from_node, to_node, type, weight, metadata_json FROM edges ORDER BY created_at DESC LIMIT ?",
@@ -655,7 +668,7 @@ class KnowledgeGraphStore:
                     "type": row["type"],
                     "title": row["title"],
                     "summary": row["summary"],
-                    "metadata": json.loads(row["metadata_json"] or "{}"),
+                    "metadata": _safe_loads(row["metadata_json"]),
                 }
                 for row in rows
             ],
@@ -694,7 +707,7 @@ class KnowledgeGraphStore:
                         "type": row["type"],
                         "title": row["title"],
                         "summary": row["summary"],
-                        "metadata": json.loads(row["metadata_json"] or "{}"),
+                        "metadata": _safe_loads(row["metadata_json"]),
                     })
                     if len(matches) >= limit:
                         break
@@ -729,7 +742,7 @@ class KnowledgeGraphStore:
                         "type": row["type"],
                         "title": row["title"],
                         "summary": row["summary"],
-                        "metadata": json.loads(row["metadata_json"] or "{}"),
+                        "metadata": _safe_loads(row["metadata_json"]),
                     }
                     for row in conn.execute(
                         f"SELECT id, type, title, summary, metadata_json FROM nodes WHERE id IN ({placeholders})",

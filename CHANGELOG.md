@@ -1,5 +1,25 @@
 # Changelog
 
+## [0.1.9] - 2026-05-21
+
+### Security
+- **세션 TTL 7일 → 24시간 + sliding refresh** — 활동 시 만료시간 자동 연장, 15분 단위 디스크 쓰기 throttle
+- **평문 비밀번호 마이그레이션 audit 로깅** — `password_migrated_from_plaintext` 이벤트로 남은 평문 사용자 추적
+- **파일 업로드 magic-number 검증** — `_bytes_match_extension()`: PDF/DOCX/XLSX/PPTX/PNG/JPEG/ZIP 시그니처 확인, 확장자 위조 방지
+- **Rate limiting** — `/chat` 30 burst/분당 30, `/agent` 10 burst/분당 6, `/upload` 20 burst/분당 12. 토큰 버킷 per-user. `LATTICEAI_RATE_LIMIT=0`으로 비활성화 가능
+
+### Reliability
+- **PyMuPDF 파일 핸들 누수 수정** — `/tools/pdf_pages` try/finally로 doc.close() 보장, `len(doc)` 호출 위치 버그 수정
+- **ollama serve 좀비 방지** — 실행 전 already_up 체크, `start_new_session=True`로 detach
+- **knowledge_graph.py 손상된 metadata_json 안전 처리** — `_safe_loads()` 헬퍼로 corrupt row 통과 (5곳 적용)
+- **백그라운드 asyncio 태스크 예외 로깅** — `_spawn()` 헬퍼 (`add_done_callback`) — startup 태스크 silent fail 방지
+- **silent except → logging.warning** — `_load_sessions`, `_persist_sessions`, `load_vpc_config`, `load_mcp_installs`
+
+### Tests
+- **`tests/unit/test_security.py`** — 16개 신규 테스트: bcrypt 해시 라운드트립/유니크, MIME 검증, rate limit (29 → 31개 전체 통과)
+
+---
+
 ## [0.1.8] - 2026-05-21
 
 ### Added
