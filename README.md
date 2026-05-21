@@ -10,6 +10,23 @@ LTCAI                      # → http://localhost:4825
 
 ---
 
+## v0.1.8 변경사항
+
+### Added
+- **PWA (Progressive Web App)** — iPad / Android / Galaxy Tab 홈화면 설치 지원
+  - `manifest.json` + Service Worker (`sw.js`) + 아이콘 4종 (192px, 512px, apple-touch-icon 180px, favicon 32px)
+  - iOS Safari: 공유 버튼 → "홈 화면에 추가" → 앱처럼 전체화면 실행
+  - Android Chrome: 주소창 "설치" 버튼 → 홈화면 앱
+  - `viewport-fit=cover` — iPhone Dynamic Island / 노치 안전영역 확장
+- **서버 네트워크 공개 바인딩** — 기본 host `0.0.0.0`으로 변경
+  - 같은 Wi-Fi에서 모든 기기(`http://<Mac IP>:4825`)로 바로 접근 가능
+  - 시작 배너에 로컬 URL + 네트워크 IP 자동 출력
+- **Windows 서버 호환성**
+  - `computer_screenshot`: macOS `screencapture` → Windows/Linux `pyautogui` fallback
+  - `computer_open_app` / `computer_open_url`: `open -a` / `cmd /c start` / `xdg-open` 플랫폼 자동 분기
+
+---
+
 ## v0.1.7 변경사항
 
 ### Added
