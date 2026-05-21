@@ -25,6 +25,12 @@ LTCAI                      # → http://localhost:4825
   - `computer_screenshot`: macOS `screencapture` → Windows/Linux `pyautogui` fallback
   - `computer_open_app` / `computer_open_url`: `open -a` / `cmd /c start` / `xdg-open` 플랫폼 자동 분기
 
+### 배포 현황
+- npm ✅
+- PyPI ✅
+- VS Code Marketplace ✅
+- Open VSX ✅
+
 ---
 
 ## v0.1.7 변경사항

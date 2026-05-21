@@ -18,6 +18,12 @@
   - `_PLATFORM` 상수 도입으로 향후 플랫폼 분기 일관성 확보
 - **배포 파일 포함**: `manifest.json`, `sw.js`, `icons/` 폴더를 npm · PyPI 패키지에 포함
 
+### Deployed
+- npm ✅
+- PyPI ✅
+- VS Code Marketplace ✅
+- Open VSX ✅
+
 ---
 
 ## [0.1.7] - 2026-05-21
