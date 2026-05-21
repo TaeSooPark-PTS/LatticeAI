@@ -3019,6 +3019,57 @@ Rules:
 
 _FILE_CREATE_ACTIONS = {"create_docx", "create_xlsx", "create_pptx", "create_pdf", "write_file", "create_web_project"}
 
+# Harness risk level per tool action.
+# low    — read-only, no side effects
+# medium — write/create files or knowledge entries
+# high   — execute commands, control computer, write to arbitrary FS paths
+_TOOL_RISK: Dict[str, str] = {
+    # read-only workspace tools
+    "list_dir": "low", "workspace_tree": "low", "read_file": "low",
+    "search_files": "low", "inspect_html": "low",
+    # read-only local FS
+    "local_list": "low", "local_read": "low",
+    # read-only git
+    "git_status": "low", "git_log": "low", "git_diff": "low", "git_show": "low",
+    # read-only knowledge / computer
+    "knowledge_search": "low", "knowledge_tree": "low",
+    "obsidian_search": "low", "obsidian_tree": "low",
+    "computer_screenshot": "low", "computer_status": "low",
+    # write workspace
+    "write_file": "medium", "create_web_project": "medium",
+    "create_docx": "medium", "create_xlsx": "medium",
+    "create_pptx": "medium", "create_pdf": "medium",
+    # write knowledge
+    "knowledge_save": "medium", "obsidian_save": "medium",
+    # write local FS (arbitrary path — treated as medium; blocked from system roots below)
+    "local_write": "medium",
+    # preview
+    "preview_url": "medium",
+    # execute commands
+    "run_command": "high",
+    # computer control
+    "computer_click": "high", "computer_type": "high", "computer_key": "high",
+    "computer_scroll": "high", "computer_drag": "high", "computer_move": "high",
+    "computer_open_app": "high", "computer_open_url": "high",
+}
+
+# Paths that local_write must never target (system-level protection)
+_LOCAL_WRITE_BLOCKED_PREFIXES = (
+    "/etc/", "/usr/", "/bin/", "/sbin/", "/System/", "/private/etc/",
+    "/Library/LaunchDaemons/", "/Library/LaunchAgents/",
+)
+
+
+def _agent_risk(action_name: str, args: dict) -> str:
+    """Return risk level for an action, upgrading local_write to 'high' for system paths."""
+    risk = _TOOL_RISK.get(action_name, "medium")
+    if action_name == "local_write":
+        path = str(args.get("path", ""))
+        if any(path.startswith(p) for p in _LOCAL_WRITE_BLOCKED_PREFIXES):
+            risk = "high"
+    return risk
+
+
 def _collect_created_files(transcript: list) -> list:
     files = []
     for step in transcript:
@@ -3148,11 +3199,35 @@ async def agent(req: AgentRequest, request: Request):
             transcript.append({"step": step + 1, "action": name, "args": current_args, "result": result})
             continue
 
+        risk = _agent_risk(name, current_args)
+
+        # Block system-path local_write even if the LLM tries it
+        if name == "local_write":
+            path = str(current_args.get("path", ""))
+            if any(path.startswith(p) for p in _LOCAL_WRITE_BLOCKED_PREFIXES):
+                transcript.append({
+                    "step": step + 1, "action": name, "args": current_args,
+                    "risk": "high", "error": f"BLOCKED: writing to system path is not allowed: {path}",
+                })
+                append_audit_event(
+                    "agent_blocked", user_email=current_user, source=req.source or "agent",
+                    action=name, path=path, reason="system_path",
+                )
+                continue
+
+        # Audit medium/high actions before execution
+        if risk in ("medium", "high"):
+            append_audit_event(
+                "agent_exec", user_email=current_user, source=req.source or "agent",
+                step=step + 1, action=name, risk=risk,
+                args={k: v for k, v in (current_args or {}).items() if k != "content"},
+            )
+
         try:
             result = execute_tool(name, current_args)
-            transcript.append({"step": step + 1, "action": name, "args": current_args, "result": result})
+            transcript.append({"step": step + 1, "action": name, "args": current_args, "risk": risk, "result": result})
         except (ToolError, KeyError, TypeError) as exc:
-            transcript.append({"step": step + 1, "action": name, "args": current_args, "error": str(exc)})
+            transcript.append({"step": step + 1, "action": name, "args": current_args, "risk": risk, "error": str(exc)})
 
     summary_context = (
         f"{AGENT_SYSTEM_PROMPT}\n\n"

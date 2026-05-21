@@ -1,6 +1,6 @@
 {
   "name": "ltcai",
-  "version": "0.1.4",
+  "version": "0.1.7",
   "description": "Lattice AI local MLX/cloud LLM workspace server",
   "bin": {
     "ltcai": "bin/ltcai.js",
@@ -11,6 +11,9 @@
     "dev": "python3 ltcai_cli.py --reload",
     "build:python": "python3 -m build",
     "check:python": "python3 -m py_compile ltcai_cli.py server.py knowledge_graph.py llm_router.py p_reinforce.py telegram_bot.py tools.py codex_telegram_bot.py",
+    "test": "python3 -m pytest tests/ -v",
+    "test:unit": "python3 -m pytest tests/unit/ -v",
+    "test:integration": "python3 -m pytest tests/integration/ -v",
     "publish:npm": "npm publish --access public",
     "publish:pypi": "python3 -m twine upload dist/*"
   },
@@ -18,7 +21,8 @@
     "ltcai",
     "llm",
     "mlx",
-    "LTCAI"
+    "local-ai",
+    "agent"
   ],
   "license": "MIT",
   "private": false,
@@ -33,6 +37,8 @@
     "telegram_bot.py",
     "tools.py",
     "codex_telegram_bot.py",
+    "skills/",
+    "tests/",
     "static/account.html",
     "static/chat.html",
     "static/admin.html",
