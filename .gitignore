@@ -1,4 +1,6 @@
 .env
+.ltcai/
+.ltcai-brain/
 *.log
 __pycache__/
 *.py[cod]

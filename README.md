@@ -10,8 +10,21 @@ Apple Silicon MLX 로컬 추론 · OpenAI/Groq/OpenRouter 클라우드 모델 ·
 [![Open VSX](https://img.shields.io/open-vsx/v/parktaesoo/ltcai?label=Open%20VSX)](https://open-vsx.org/extension/parktaesoo/ltcai)
 [![License](https://img.shields.io/github/license/TaeSooPark-PTS/LatticeAI)](./LICENSE)
 
-<!-- 스크린샷 / GIF — docs/demo.gif 또는 스크린샷으로 교체하세요 -->
-<!-- ![Lattice AI demo](docs/demo.gif) -->
+Lattice AI는 개인 개발자가 로컬 모델, 클라우드 모델, 에이전트 툴링, 코드 에디터 연동을 하나의 워크스페이스로 운영할 수 있게 만든 서버입니다.
+
+### 왜 Lattice AI인가
+
+- **하나의 서버, 여러 인터페이스**: 웹 UI, VS Code/Cursor 확장, Telegram 봇, MCP 도구를 한 번에 연결합니다.
+- **로컬 우선 + 클라우드 선택**: Apple Silicon MLX 로컬 모델과 OpenAI 호환 클라우드 모델을 같은 UX로 다룹니다.
+- **실전형 에이전트 워크플로**: 파일 편집, grep, todo, 터미널 도구를 묶어 멀티스텝 작업을 수행합니다.
+
+### 빠른 링크
+
+- [설치 & 첫 실행](#설치--첫-실행-30초)
+- [퍼블릭 배포 가이드](./docs/public-deploy.md)
+- [보안 모델](./docs/security-model.md)
+- [아키텍처](./docs/architecture.md)
+- [변경 이력](./docs/CHANGELOG.md)
 
 ---
 

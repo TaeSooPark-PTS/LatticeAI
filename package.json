@@ -2,6 +2,14 @@
   "name": "ltcai",
   "version": "0.1.11",
   "description": "Lattice AI local MLX/cloud LLM workspace server",
+  "homepage": "https://github.com/TaeSooPark-PTS/LatticeAI#readme",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/TaeSooPark-PTS/LatticeAI.git"
+  },
+  "bugs": {
+    "url": "https://github.com/TaeSooPark-PTS/LatticeAI/issues"
+  },
   "bin": {
     "ltcai": "bin/ltcai.js",
     "LTCAI": "bin/ltcai.js"
@@ -19,10 +27,14 @@
   },
   "keywords": [
     "ltcai",
+    "ai-assistant",
     "llm",
     "mlx",
     "local-ai",
-    "agent"
+    "agent",
+    "mcp",
+    "rag",
+    "vscode"
   ],
   "license": "MIT",
   "private": false,

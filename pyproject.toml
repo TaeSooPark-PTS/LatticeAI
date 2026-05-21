@@ -9,6 +9,25 @@ description = "Lattice AI local MLX/cloud LLM workspace server"
 readme = "README.md"
 requires-python = ">=3.11"
 license = "MIT"
+authors = [
+  { name = "TaeSoo Park" }
+]
+keywords = ["ai", "llm", "mlx", "mcp", "rag", "vscode"]
+classifiers = [
+  "Development Status :: 4 - Beta",
+  "Environment :: Web Environment",
+  "Framework :: FastAPI",
+  "Intended Audience :: Developers",
+  "License :: OSI Approved :: MIT License",
+  "Operating System :: MacOS",
+  "Operating System :: Microsoft :: Windows",
+  "Operating System :: POSIX :: Linux",
+  "Programming Language :: Python :: 3",
+  "Programming Language :: Python :: 3.11",
+  "Programming Language :: Python :: 3.12",
+  "Topic :: Scientific/Engineering :: Artificial Intelligence",
+  "Topic :: Software Development :: Libraries :: Application Frameworks",
+]
 dependencies = [
   "fastapi",
   "uvicorn",
@@ -37,6 +56,9 @@ LTCAI = "ltcai_cli:main"
 [project.urls]
 Homepage = "https://github.com/TaeSooPark-PTS/LatticeAI"
 Repository = "https://github.com/TaeSooPark-PTS/LatticeAI"
+Documentation = "https://github.com/TaeSooPark-PTS/LatticeAI/blob/main/README.md"
+Issues = "https://github.com/TaeSooPark-PTS/LatticeAI/issues"
+Changelog = "https://github.com/TaeSooPark-PTS/LatticeAI/blob/main/docs/CHANGELOG.md"
 
 [tool.setuptools]
 py-modules = [

@@ -5,11 +5,25 @@
   "version": "0.1.11",
   "publisher": "parktaesoo",
   "license": "MIT",
+  "homepage": "https://github.com/TaeSooPark-PTS/LatticeAI#readme",
+  "bugs": {
+    "url": "https://github.com/TaeSooPark-PTS/LatticeAI/issues"
+  },
   "engines": {
     "vscode": "^1.105.0"
   },
   "categories": [
     "Other"
+  ],
+  "keywords": [
+    "ai",
+    "llm",
+    "assistant",
+    "local-ai",
+    "coding",
+    "mlx",
+    "mcp",
+    "rag"
   ],
   "activationEvents": [
     "onCommand:ltcai.chat",
@@ -102,5 +116,6 @@
   "repository": {
     "type": "git",
     "url": "https://github.com/TaeSooPark-PTS/LatticeAI.git"
-  }
+  },
+  "pricing": "Free"
 }
