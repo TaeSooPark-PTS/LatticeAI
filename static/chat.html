@@ -4654,18 +4654,25 @@
             const resultEl = document.getElementById('local-browser-result');
             const ext = path.split('.').pop().toLowerCase();
 
-            // 이미지 파일: 미리보기
+            // 이미지 파일: 미리보기 + AI 전송
             if (IMAGE_EXTS.has(ext)) {
+                const safeEnc = encodeURIComponent(path);
                 resultEl.innerHTML = `
                     <div style="text-align:center;padding:12px">
-                        <img src="/local/serve?path=${encodeURIComponent(path)}" alt="${escapeHtml(path.split('/').pop())}"
-                             style="max-width:100%;max-height:300px;border-radius:8px;border:1px solid var(--border)"
+                        <img src="/local/serve?path=${safeEnc}" alt="${escapeHtml(path.split('/').pop())}"
+                             style="max-width:100%;max-height:280px;border-radius:8px;border:1px solid var(--border)"
                              onerror="this.parentElement.innerHTML='<div style=color:var(--faint)>이미지 미리보기 불가</div>'">
                         <div style="color:var(--faint);font-size:11px;margin-top:8px">${escapeHtml(path.split('/').pop())}</div>
-                        <button class="admin-action" style="margin-top:10px;font-size:12px"
-                            onclick="navigator.clipboard.writeText('${path.replace(/'/g,"\\'")}').then(()=>alert('경로 복사됨'))">
-                            <i class='ti ti-copy'></i> 경로 복사
-                        </button>
+                        <div style="display:flex;gap:8px;margin-top:12px;justify-content:center">
+                            <button class="admin-action" style="font-size:12px;flex:1"
+                                onclick="sendImageFileToChat('${path.replace(/\\/g,'\\\\').replace(/'/g,"\\'")}')">
+                                <i class='ti ti-send'></i> AI에게 보내기
+                            </button>
+                            <button class="status-btn" style="font-size:12px"
+                                onclick="navigator.clipboard.writeText('${path.replace(/'/g,"\\'")}')">
+                                <i class='ti ti-copy'></i> 경로 복사
+                            </button>
+                        </div>
                     </div>`;
                 return;
             }
@@ -4749,6 +4756,20 @@
             } catch(e) {
                 statusEl.style.color = 'var(--danger)';
                 statusEl.textContent = '저장 실패: ' + e.message;
+            }
+        }
+
+        async function sendImageFileToChat(path) {
+            try {
+                const res = await apiFetch('/local/serve?path=' + encodeURIComponent(path));
+                if (!res.ok) throw new Error('이미지 로드 실패');
+                const blob = await res.blob();
+                closeLocalBrowser();
+                setImagePreviewFromBlob(blob);
+                userInput.value = `이 이미지를 분석해줘: ${path.split('/').pop()}`;
+                userInput.focus();
+            } catch(e) {
+                alert('이미지를 불러올 수 없습니다: ' + e.message);
             }
         }
 
