@@ -3386,6 +3386,16 @@ async def local_read_endpoint(req: LocalAccessRequest, request: Request):
     return _tool_response(local_read, req.path)
 
 
+@app.get("/local/serve")
+async def local_serve_file(path: str, request: Request):
+    """Serve a local file (images etc.) directly for browser preview."""
+    require_user(request)
+    target = Path(path).expanduser().resolve()
+    if not target.exists() or not target.is_file():
+        raise HTTPException(status_code=404, detail="File not found")
+    return FileResponse(str(target))
+
+
 @app.post("/local/write")
 async def local_write_endpoint(req: LocalWriteRequest, request: Request):
     require_user(request)

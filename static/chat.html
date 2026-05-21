@@ -4646,9 +4646,36 @@
 
         let _editorCurrentPath = '';
 
+        const IMAGE_EXTS = new Set(['png','jpg','jpeg','gif','webp','bmp','svg','ico','tiff','heic']);
+        const BINARY_EXTS = new Set(['zip','dmg','pkg','exe','bin','dll','so','dylib','mp4','mp3','mov','avi','pdf','docx','xlsx','pptx','db','sqlite']);
+
         async function readLocalFile(encodedPath) {
             const path = decodeURIComponent(encodedPath);
             const resultEl = document.getElementById('local-browser-result');
+            const ext = path.split('.').pop().toLowerCase();
+
+            // 이미지 파일: 미리보기
+            if (IMAGE_EXTS.has(ext)) {
+                resultEl.innerHTML = `
+                    <div style="text-align:center;padding:12px">
+                        <img src="/local/serve?path=${encodeURIComponent(path)}" alt="${escapeHtml(path.split('/').pop())}"
+                             style="max-width:100%;max-height:300px;border-radius:8px;border:1px solid var(--border)"
+                             onerror="this.parentElement.innerHTML='<div style=color:var(--faint)>이미지 미리보기 불가</div>'">
+                        <div style="color:var(--faint);font-size:11px;margin-top:8px">${escapeHtml(path.split('/').pop())}</div>
+                        <button class="admin-action" style="margin-top:10px;font-size:12px"
+                            onclick="navigator.clipboard.writeText('${path.replace(/'/g,"\\'")}').then(()=>alert('경로 복사됨'))">
+                            <i class='ti ti-copy'></i> 경로 복사
+                        </button>
+                    </div>`;
+                return;
+            }
+
+            // 바이너리 파일: 열기 거부
+            if (BINARY_EXTS.has(ext)) {
+                resultEl.innerHTML = `<div class="sensitivity-preview">⚠️ 바이너리 파일은 텍스트 편집기로 열 수 없습니다.<br><span style="color:var(--faint);font-size:11px">${escapeHtml(path)}</span></div>`;
+                return;
+            }
+
             resultEl.innerHTML = '<div class="sensitivity-preview">읽는 중...</div>';
 
             const probe = await apiFetch('/local/read', {
