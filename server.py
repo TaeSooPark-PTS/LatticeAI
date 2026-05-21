@@ -3274,6 +3274,30 @@ async def tools_read_document(req: ToolPathRequest, request: Request):
     return _tool_response(read_document, req.path)
 
 
+@app.get("/tools/pdf_pages")
+async def tools_pdf_pages(path: str, request: Request):
+    """Render PDF pages as base64 PNG images using PyMuPDF."""
+    require_user(request)
+    target = Path(path).expanduser().resolve()
+    if not target.exists() or not target.is_file():
+        raise HTTPException(status_code=404, detail="File not found")
+    try:
+        import fitz  # PyMuPDF
+        doc = fitz.open(str(target))
+        pages = []
+        for i, page in enumerate(doc):
+            if i >= 20:  # 최대 20페이지
+                break
+            mat = fitz.Matrix(1.5, 1.5)  # 1.5x 해상도
+            pix = page.get_pixmap(matrix=mat)
+            b64 = base64.b64encode(pix.tobytes("png")).decode()
+            pages.append({"page": i + 1, "b64": b64})
+        doc.close()
+        return {"total": len(doc), "pages": pages}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"PDF 렌더링 실패: {e}")
+
+
 @app.get("/tools/download")
 async def tools_download(path: str, request: Request):
     """Serve a generated file from agent workspace for download."""

@@ -4696,7 +4696,31 @@
                 return;
             }
 
-            // 문서(PDF/DOCX 등): 텍스트 추출 후 에디터로
+            // PDF: 브라우저 내장 뷰어 + AI 전송 (페이지 이미지 + 텍스트)
+            if (ext === 'pdf') {
+                const safeEnc = encodeURIComponent(path);
+                const safePath = path.replace(/\\/g,'\\\\').replace(/'/g,"\\'");
+                resultEl.innerHTML = `
+                    <div style="display:flex;flex-direction:column;gap:10px">
+                        <embed src="/local/serve?path=${safeEnc}#toolbar=0"
+                               type="application/pdf"
+                               style="width:100%;height:340px;border-radius:8px;border:1px solid var(--border)">
+                        <div style="display:flex;gap:8px">
+                            <button class="admin-action" style="flex:1;font-size:12px"
+                                onclick="sendPdfToAI('${safePath}')">
+                                <i class='ti ti-brain'></i> AI에게 보내기 (이미지+텍스트)
+                            </button>
+                            <button class="status-btn" style="flex:1;font-size:12px"
+                                onclick="openPdfTextEditor('${safePath}')">
+                                <i class='ti ti-text-size'></i> 텍스트만 보기
+                            </button>
+                        </div>
+                        <div id="pdf-send-status" style="font-size:12px;color:var(--faint);text-align:center"></div>
+                    </div>`;
+                return;
+            }
+
+            // 기타 문서(DOCX/XLSX 등): 텍스트 추출 후 에디터로
             if (DOC_EXTS.has(ext)) {
                 resultEl.innerHTML = '<div class="sensitivity-preview">문서 읽는 중...</div>';
                 try {
@@ -4708,20 +4732,15 @@
                     const data = await res.json();
                     if (!res.ok || data.error) throw new Error(data.error || data.detail || '읽기 실패');
                     const text = (data.result ?? data).content ?? '';
-                    const pages = (data.result ?? data).meta?.pages;
                     _editorCurrentPath = path;
-                    document.getElementById('editor-filepath').textContent =
-                        path + (pages ? `  (${pages}p)` : '');
+                    document.getElementById('editor-filepath').textContent = path;
                     document.getElementById('file-editor-content').value = text;
-                    document.getElementById('editor-status').textContent = '읽기 전용 — 저장 시 원본 덮어씀';
-                    document.getElementById('editor-status').style.color = 'var(--faint)';
+                    document.getElementById('editor-status').textContent = '';
                     document.getElementById('local-browser-overlay').style.display = 'none';
                     document.getElementById('file-editor-overlay').style.display = 'flex';
                 } catch(e) {
-                    // 읽기 실패 시 바이너리로 간주해 경로만 전송 옵션 표시
                     resultEl.innerHTML = `
-                        <div class="sensitivity-preview">
-                            ⚠️ 문서 텍스트 추출 실패: ${escapeHtml(e.message)}<br>
+                        <div class="sensitivity-preview">⚠️ 문서 읽기 실패: ${escapeHtml(e.message)}<br>
                             <button class="admin-action" style="margin-top:10px;font-size:12px"
                                 onclick="sendArchiveToChat('${path.replace(/'/g,"\\'")}','document')">
                                 <i class='ti ti-send'></i> AI에게 경로 보내기
@@ -4825,6 +4844,66 @@
             } catch(e) {
                 statusEl.style.color = 'var(--danger)';
                 statusEl.textContent = '저장 실패: ' + e.message;
+            }
+        }
+
+        async function sendPdfToAI(path) {
+            const statusEl = document.getElementById('pdf-send-status');
+            if (statusEl) statusEl.textContent = '페이지 렌더링 중...';
+            try {
+                // 1. 페이지 이미지 가져오기
+                const res = await apiFetch('/tools/pdf_pages?path=' + encodeURIComponent(path));
+                const data = await res.json();
+                const pages = data.pages || [];
+
+                // 2. 텍스트도 추출
+                const textRes = await apiFetch('/tools/read_document', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ path })
+                });
+                const textData = await textRes.json();
+                const text = (textData.result ?? textData).content ?? '';
+
+                closeLocalBrowser();
+
+                if (pages.length > 0) {
+                    // 첫 페이지 이미지를 채팅 첨부로 설정
+                    const firstPage = pages[0];
+                    const blob = await (await fetch(`data:image/png;base64,${firstPage.b64}`)).blob();
+                    setImagePreviewFromBlob(blob);
+                }
+
+                // 텍스트 + 페이지 수 안내 메시지
+                const name = path.split('/').pop();
+                const pageInfo = pages.length > 0 ? ` (${data.total}페이지, 첫 페이지 이미지 첨부됨)` : '';
+                userInput.value = `다음 PDF 문서를 분석해줘: ${name}${pageInfo}\n\n[추출된 텍스트]\n${text.slice(0, 3000)}`;
+                userInput.focus();
+            } catch(e) {
+                if (statusEl) { statusEl.style.color = 'var(--danger)'; statusEl.textContent = '실패: ' + e.message; }
+            }
+        }
+
+        async function openPdfTextEditor(path) {
+            const resultEl = document.getElementById('local-browser-result');
+            resultEl.innerHTML = '<div class="sensitivity-preview">텍스트 추출 중...</div>';
+            try {
+                const res = await apiFetch('/tools/read_document', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ path })
+                });
+                const data = await res.json();
+                const text = (data.result ?? data).content ?? '';
+                _editorCurrentPath = path;
+                document.getElementById('editor-filepath').textContent = path + '  [텍스트 추출]';
+                document.getElementById('file-editor-content').value = text;
+                document.getElementById('editor-status').textContent = '⚠️ 이미지/표 등 비텍스트 요소는 표시되지 않을 수 있습니다';
+                document.getElementById('editor-status').style.color = 'var(--accent-2)';
+                document.getElementById('local-browser-overlay').style.display = 'none';
+                document.getElementById('file-editor-overlay').style.display = 'flex';
+            } catch(e) {
+                resultEl.innerHTML = `<div class="sensitivity-preview">텍스트 추출 실패: ${escapeHtml(e.message)}</div>`;
             }
         }
 
