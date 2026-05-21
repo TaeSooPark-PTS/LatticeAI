@@ -3221,20 +3221,24 @@
 
     <!-- ── 로컬 파일 브라우저 ── -->
     <div id="local-browser-overlay" class="admin-overlay" style="display:none">
-        <section class="admin-panel" style="max-width:540px">
+        <section class="admin-panel" style="max-width:560px">
             <div class="admin-header">
-                <div>
-                    <h2><i class="ti ti-folder-open" style="color:var(--accent)"></i> 로컬 파일 접근</h2>
-                    <p style="color:var(--muted);font-size:12px;margin-top:4px">경로를 입력하면 AI가 권한을 요청 후 접근합니다.</p>
+                <div style="flex:1;min-width:0">
+                    <h2><i class="ti ti-folder-open" style="color:var(--accent)"></i> 로컬 파일</h2>
+                    <div id="local-breadcrumb" style="color:var(--faint);font-size:11px;margin-top:3px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">~</div>
                 </div>
                 <button class="admin-close" onclick="closeLocalBrowser()"><i class="ti ti-x"></i></button>
             </div>
-            <div class="admin-body">
-                <div style="display:flex;gap:8px;margin-bottom:14px">
-                    <input id="local-path-input" class="admin-input" style="flex:1" placeholder="/Users/parktaesoo/Downloads" value="">
-                    <button class="admin-action" onclick="browseLocalPath()"><i class="ti ti-folder-search"></i> 탐색</button>
+            <div class="admin-body" style="padding-top:10px">
+                <!-- 즐겨찾기 -->
+                <div id="local-favorites" style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:12px">
+                    <button class="status-btn" style="font-size:12px;padding:5px 10px" onclick="localNav('~')"><i class="ti ti-home"></i> 홈</button>
+                    <button class="status-btn" style="font-size:12px;padding:5px 10px" onclick="localNav('~/Downloads')"><i class="ti ti-download"></i> 다운로드</button>
+                    <button class="status-btn" style="font-size:12px;padding:5px 10px" onclick="localNav('~/Desktop')"><i class="ti ti-device-desktop"></i> 데스크탑</button>
+                    <button class="status-btn" style="font-size:12px;padding:5px 10px" onclick="localNav('~/Documents')"><i class="ti ti-files"></i> 문서</button>
+                    <button class="status-btn" style="font-size:12px;padding:5px 10px" onclick="localNavUp()"><i class="ti ti-arrow-up"></i> 위로</button>
                 </div>
-                <div id="local-browser-result" style="min-height:60px"></div>
+                <div id="local-browser-result" style="min-height:80px;max-height:420px;overflow-y:auto"></div>
             </div>
         </section>
     </div>
@@ -4505,16 +4509,6 @@
             }
         }
 
-        // ── 로컬 파일 브라우저 ────────────────────────────────
-        function openLocalBrowser() {
-            document.getElementById('local-path-input').value = `${(typeof window !== 'undefined' ? '' : '')}`;
-            document.getElementById('local-browser-result').innerHTML = '';
-            document.getElementById('local-browser-overlay').style.display = 'flex';
-        }
-
-        function closeLocalBrowser() {
-            document.getElementById('local-browser-overlay').style.display = 'none';
-        }
 
         // 권한 요청 Promise 핸들러
         let _permResolve = null;
@@ -4534,13 +4528,35 @@
             if (_permResolve) { _permResolve(allowed); _permResolve = null; }
         }
 
-        async function browseLocalPath() {
-            const path = document.getElementById('local-path-input').value.trim();
-            if (!path) return;
-            const resultEl = document.getElementById('local-browser-result');
-            resultEl.innerHTML = '<div class="sensitivity-preview">권한 확인 중...</div>';
+        let _localCurrentPath = '~';
 
-            // 1차: permission_required 확인
+        async function openLocalBrowser() {
+            document.getElementById('local-browser-overlay').style.display = 'flex';
+            await localNav(_localCurrentPath || '~');
+        }
+
+        function closeLocalBrowser() {
+            document.getElementById('local-browser-overlay').style.display = 'none';
+        }
+
+        async function localNav(path) {
+            _localCurrentPath = path;
+            document.getElementById('local-breadcrumb').textContent = path;
+            await browseLocalPath(path);
+        }
+
+        async function localNavUp() {
+            const parts = _localCurrentPath.replace(/\/$/, '').split('/');
+            if (parts.length <= 1) return;
+            parts.pop();
+            await localNav(parts.join('/') || '/');
+        }
+
+        async function browseLocalPath(path) {
+            path = path ?? _localCurrentPath;
+            const resultEl = document.getElementById('local-browser-result');
+            resultEl.innerHTML = '<div class="sensitivity-preview">불러오는 중...</div>';
+
             const probe = await apiFetch('/local/list', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
@@ -4556,8 +4572,6 @@
                 }
             }
 
-            // 승인 후 실제 요청
-            resultEl.innerHTML = '<div class="sensitivity-preview">불러오는 중...</div>';
             try {
                 const res = await apiFetch('/local/list', {
                     method: 'POST',
@@ -4566,7 +4580,10 @@
                 });
                 const data = await res.json();
                 if (!res.ok || data.error) throw new Error(data.error || data.detail || '오류');
-                renderLocalListing(data, resultEl);
+                const listing = data.result ?? data;
+                _localCurrentPath = listing.path ?? path;
+                document.getElementById('local-breadcrumb').textContent = _localCurrentPath;
+                renderLocalListing(listing, resultEl);
             } catch(e) {
                 resultEl.innerHTML = `<div class="sensitivity-preview">${escapeHtml(e.message)}</div>`;
             }
@@ -4577,23 +4594,22 @@
                 container.innerHTML = '<div class="sensitivity-preview">비어 있는 폴더입니다.</div>';
                 return;
             }
-            container.innerHTML = `
-                <div style="color:var(--muted);font-size:11px;margin-bottom:8px;font-weight:700">${escapeHtml(data.path)}</div>
-                <div style="display:flex;flex-direction:column;gap:4px">
-                ${data.items.map(item => `
-                    <div style="display:flex;align-items:center;gap:8px;padding:7px 10px;border-radius:6px;border:1px solid var(--border);background:var(--surface-2);cursor:pointer"
-                         onclick="${item.type === 'directory' ? `navigateLocalPath('${encodeURIComponent(item.path)}')` : `readLocalFile('${encodeURIComponent(item.path)}')`}">
-                        <i class="ti ${item.type === 'directory' ? 'ti-folder' : 'ti-file'}" style="color:${item.type === 'directory' ? '#f0a500' : 'var(--muted)'}"></i>
-                        <span style="flex:1;font-size:13px">${escapeHtml(item.name)}</span>
-                        ${item.size !== null ? `<span style="color:var(--muted);font-size:11px">${_formatBytes(item.size)}</span>` : ''}
-                    </div>`).join('')}
-                </div>`;
+            container.innerHTML = `<div style="display:flex;flex-direction:column;gap:3px">
+                ${data.items.map(item => {
+                    const isDir = item.type === 'directory';
+                    const enc = encodeURIComponent(item.path);
+                    return `<div style="display:flex;align-items:center;gap:8px;padding:8px 10px;border-radius:6px;border:1px solid var(--border);background:var(--surface-2);cursor:pointer"
+                         onclick="${isDir ? `localNav('${item.path.replace(/'/g,"\\'")}')` : `readLocalFile('${enc}')`}">
+                        <i class="ti ${isDir ? 'ti-folder' : 'ti-file'}" style="color:${isDir ? '#f0a500' : 'var(--muted)'}"></i>
+                        <span style="flex:1;font-size:13px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${escapeHtml(item.name)}</span>
+                        ${item.size !== null ? `<span style="color:var(--faint);font-size:11px;flex-shrink:0">${_formatBytes(item.size)}</span>` : ''}
+                    </div>`;
+                }).join('')}
+            </div>`;
         }
 
         async function navigateLocalPath(encodedPath) {
-            const path = decodeURIComponent(encodedPath);
-            document.getElementById('local-path-input').value = path;
-            await browseLocalPath();
+            await localNav(decodeURIComponent(encodedPath));
         }
 
         async function readLocalFile(encodedPath) {
