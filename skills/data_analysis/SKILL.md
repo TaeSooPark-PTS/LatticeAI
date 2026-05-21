@@ -9,6 +9,34 @@
 ## 설명
 CSV/Excel/JSON 파일을 읽어 기초 통계, 컬럼 요약, 이상치 탐지를 수행하고 인사이트를 제공한다.
 
+## 거버넌스
+
+`policies/policy.md` 참고. 요약: `risk=read`, `destructive=false`, `shell=false`, `network=false`, `auto_approve=true`, `sandbox=home`, `rollback=none`
+
+## 트리거 조건
+
+호출해야 하는 상황:
+- 사용자가 "이 CSV 분석해줘", "이 데이터 통계 내줘", "이상치 찾아줘"라고 요청할 때
+- 에이전트가 Discover 단계에서 데이터 파일의 구조를 파악해야 할 때
+- 상관관계, 추세, 분포를 파악해야 할 때
+
+호출하면 **안** 되는 상황:
+- 파일을 수정해야 할 때 → `edit_file` / `write_file` 사용
+- .csv가 아닌 텍스트 파일 내용 검색 → `grep` 사용
+
+## Side Effects
+
+| 항목 | 내용 |
+|------|------|
+| 파일 변경 | 없음 |
+| 생성 파일 | 없음 |
+| 프로세스 | 없음 |
+| 네트워크 | 없음 |
+
+## Rollback
+
+없음. 읽기 전용 작업.
+
 ## 입력 스키마
 ```json
 {

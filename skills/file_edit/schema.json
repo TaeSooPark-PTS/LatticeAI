@@ -1,0 +1,60 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "file_edit",
+  "input": {
+    "required": ["path", "new_content"],
+    "optional": ["start_line", "end_line", "backup"],
+    "properties": {
+      "path":        { "type": "string",  "description": "절대 경로 또는 ~/로 시작하는 경로" },
+      "new_content": { "type": "string",  "description": "교체할 새 내용" },
+      "start_line":  { "type": "integer", "description": "편집 시작 줄 번호 (1-indexed). 없으면 전체 교체" },
+      "end_line":    { "type": "integer", "description": "편집 종료 줄 번호 (포함). 없으면 start_line 단일 줄" },
+      "backup":      { "type": "boolean", "default": false, "description": "true면 .bak 백업 생성" }
+    }
+  },
+  "output": {
+    "oneOf": [
+      {
+        "title": "success",
+        "properties": {
+          "success": { "const": true },
+          "result": {
+            "properties": {
+              "path":          { "type": "string" },
+              "lines_changed": { "type": "integer" },
+              "backup_path":   { "type": ["string", "null"] }
+            },
+            "required": ["path", "lines_changed"]
+          }
+        },
+        "required": ["success", "result"]
+      },
+      {
+        "title": "failure",
+        "properties": {
+          "success": { "const": false },
+          "error":   { "type": "string", "enum": ["INVALID_INPUT","FILE_NOT_FOUND","BINARY_FILE","PERMISSION_DENIED","SIZE_LIMIT"] },
+          "message": { "type": "string" }
+        },
+        "required": ["success", "error", "message"]
+      }
+    ]
+  },
+  "evals": [
+    {
+      "id": "full_replace_success",
+      "input": { "path": "__TEST__/config.py", "new_content": "DEBUG = False\n" },
+      "pass_criteria": "success == true and lines_changed >= 1"
+    },
+    {
+      "id": "binary_rejected",
+      "input": { "path": "__TEST__/photo.png", "new_content": "..." },
+      "pass_criteria": "error == BINARY_FILE"
+    },
+    {
+      "id": "missing_path",
+      "input": { "new_content": "x = 1" },
+      "pass_criteria": "error == INVALID_INPUT"
+    }
+  ]
+}

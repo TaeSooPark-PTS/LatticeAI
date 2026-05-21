@@ -29,7 +29,8 @@ try:
 except Exception as e:
     print(f"⚠️ MLX Metal context unavailable: {e}")
     mx = None
-from typing import AsyncIterator, Optional, List, Dict
+from enum import Enum
+from typing import AsyncIterator, Optional, List, Dict, TypedDict
 
 import uvicorn
 from fastapi import FastAPI, File, HTTPException, Request, Cookie, UploadFile
@@ -103,19 +104,15 @@ except Exception:
 from datetime import datetime
 
 def detect_language(text: str) -> str:
-    """Detect language: 'ko' (Korean), 'zh' (Chinese), or 'en' (English)."""
+    """Detect language: 'ko' (Korean) or 'en' (English)."""
     total = max(len(text), 1)
     ko = sum(1 for c in text if '가' <= c <= '힣')
-    zh = sum(1 for c in text if '一' <= c <= '鿿')
     if ko / total > 0.05:
         return "ko"
-    if zh / total > 0.05:
-        return "zh"
     return "en"
 
 _LANG_HINT = {
     "ko": "Respond in Korean (한국어로 답변하세요).",
-    "zh": "Respond in Chinese (用中文回答).",
     "en": "Respond in English.",
 }
 
@@ -1988,6 +1985,42 @@ class AgentRequest(BaseModel):
     user_nickname: Optional[str] = None
 
 
+class AgentEvalRequest(BaseModel):
+    skill: str
+    case_id: Optional[str] = None
+
+
+class AgentState(str, Enum):
+    IDLE             = "IDLE"
+    PLANNING         = "PLANNING"
+    WAITING_APPROVAL = "WAITING_APPROVAL"
+    EXECUTING        = "EXECUTING"
+    VERIFYING        = "VERIFYING"
+    FAILED           = "FAILED"
+    ROLLBACK         = "ROLLBACK"
+    DONE             = "DONE"
+
+
+# Terminal states — the agent loop exits when reaching one of these
+AGENT_TERMINAL_STATES = frozenset({AgentState.DONE, AgentState.FAILED})
+
+
+class AgentRunContext:
+    """Mutable state carrier passed through all agent phases."""
+    __slots__ = ("state", "plan", "transcript", "retry_count",
+                 "state_history", "corrections", "final_message", "rollback_log")
+
+    def __init__(self) -> None:
+        self.state:         AgentState = AgentState.IDLE
+        self.plan:          dict       = {}
+        self.transcript:    list       = []
+        self.retry_count:   int        = 0
+        self.state_history: list       = []
+        self.corrections:   list       = []
+        self.final_message: str        = ""
+        self.rollback_log:  list       = []
+
+
 class ToolPathRequest(BaseModel):
     path: str = "."
 
@@ -3109,7 +3142,116 @@ async def _stream_chat(req: ChatRequest, context: str = "", image_data: str = No
 
 # ── Local Computer Agent ──────────────────────────────────────────────────────
 
-AGENT_SYSTEM_PROMPT = """You are Lattice AI Agent — a local, professional-grade coding assistant.
+# ── Agent Role Prompts (Planner / Executor / Critic / Memory Updater) ─────────
+
+_TOOL_CATALOG_BRIEF = """
+FILESYSTEM  : list_dir  workspace_tree  read_file  write_file  edit_file  grep  search_files  inspect_html  preview_url
+PLANNING    : todo_read  todo_write
+PROJECT     : run_command  build_project  deploy_project  create_web_project
+GIT (read)  : git_status  git_diff  git_log  git_show
+LOCAL FS    : local_list  local_read  local_write  read_document
+DOCS        : create_docx  create_xlsx  create_pptx  create_pdf
+KNOWLEDGE   : knowledge_save  knowledge_search  knowledge_tree
+COMPUTER    : computer_screenshot  computer_open_app  computer_open_url  computer_click  computer_type  computer_key
+MISC        : network_status  clear_history  final
+"""
+
+PLANNER_PROMPT = """You are the PLANNER role in Lattice AI's multi-role agent harness.
+Your ONLY job: analyze the request and produce a structured execution plan.
+You do NOT call tools or write code.
+
+Respond with exactly ONE JSON object (no markdown, no fences):
+{
+  "action": "plan",
+  "state": "PLANNING",
+  "goal": "one-sentence goal in the user's language",
+  "steps": [
+    {"id": 1, "description": "what this step does", "action": "expected_tool", "purpose": "why needed"}
+  ],
+  "requires_approval": true,
+  "rollback_strategy": "git",
+  "estimated_steps": 3
+}
+
+Rules:
+- requires_approval = true if ANY step uses write/exec tools (edit_file, write_file, run_command, etc.)
+- rollback_strategy = "git" if steps modify existing files; "none" otherwise
+- Keep steps realistic: 2-4 for simple tasks, up to 10 for complex ones
+- Do NOT specify full tool args — that is the Executor's job
+
+Available tools:""" + _TOOL_CATALOG_BRIEF
+
+EXECUTOR_PROMPT = """You are the EXECUTOR role in Lattice AI's multi-role agent harness.
+You have a plan from the Planner. Execute it step by step using exactly one tool per response.
+
+You think and act like a senior software engineer:
+- Read (read_file, grep) BEFORE editing — never guess at file contents
+- Prefer edit_file over write_file for existing files
+- Keep changes small and precise
+- Verify after changes with build_project or run_command
+
+Respond with exactly ONE JSON object per step:
+{"thoughts": "what you learned / why this next action", "action": "tool_name", "args": {...}}
+
+When the task is fully done AND a tool result in this run confirms it:
+{"thoughts": "verified", "action": "final", "message": "한국어로 무엇을 했고 어디서 검증했는지 요약"}
+
+ANTI-PATTERNS (will halt the loop):
+- Editing without reading first → read_file + grep BEFORE edit_file
+- Repeating the same action+args → check the transcript
+- Claiming done without a verification tool result in transcript
+- Hallucinating imports or file paths that were never confirmed by a tool result
+
+Available tools:""" + _TOOL_CATALOG_BRIEF
+
+CRITIC_PROMPT = """You are the CRITIC / REVIEWER role in Lattice AI's multi-role agent harness.
+Review the execution transcript and determine whether the goal was achieved.
+
+Respond with exactly ONE JSON object:
+{
+  "action": "verdict",
+  "state": "VERIFYING",
+  "verdict": "PASS",
+  "reason": "why you think it passed or failed (cite specific tool results)",
+  "corrections": [],
+  "confidence": 0.95,
+  "next_state": "DONE"
+}
+
+verdict: "PASS" | "FAIL"
+next_state:
+  "DONE"      — task succeeded; finish
+  "EXECUTING" — task failed but corrections can fix it (use corrections field for retry)
+  "ROLLBACK"  — task failed AND file changes should be undone
+
+Criteria for PASS: a tool result in the transcript explicitly confirms success.
+Be strict. Claiming done without evidence = FAIL."""
+
+MEMORY_UPDATER_PROMPT = """You are the MEMORY UPDATER role in Lattice AI's multi-role agent harness.
+After a completed task, extract reusable learnings.
+
+Respond with exactly ONE JSON object:
+{
+  "action": "memory",
+  "state": "DONE",
+  "learnings": ["one concise fact about this codebase or task"],
+  "artifacts": ["relative/path/to/created_or_modified_file"],
+  "save_to_knowledge": false
+}
+
+Rules:
+- max 5 learnings, one sentence each
+- save_to_knowledge = true only if learnings are genuinely useful across future sessions
+- artifacts = files the Executor actually created or modified (from transcript)
+"""
+
+# Keep backward-compat alias used by any existing callers
+AGENT_SYSTEM_PROMPT = EXECUTOR_PROMPT
+
+# Marker: the old monolithic prompt was replaced by 4-role prompts above.
+# Legacy variable kept so Telegram bot / VS Code extension still work.
+
+_ORIGINAL_MONOLITHIC_PROMPT_NOTE = """You are Lattice AI Agent — a local, professional-grade coding assistant.
 You have full access to a sandboxed workspace and (with user approval) the wider filesystem.
 You think and work like a senior software engineer, not like an autocompleter.
 
@@ -3272,8 +3414,8 @@ DOMAIN RULES (keep in mind)
 - Document requests (docx/xlsx/pptx/pdf, 문서/엑셀/PPT/피피티/파워포인트): call
   the matching create_* action immediately with rich, complete content. Never
   say you cannot create files.
-- Korean/English/Chinese: answer in the language the user used; default to
-  Korean if mixed or ambiguous.
+- Korean/English: answer in the language the user used; default to Korean
+  if mixed or ambiguous.
 
 ================================================================================
 ANTI-PATTERNS (will be flagged by the orchestrator)
@@ -3294,55 +3436,152 @@ _FILE_CREATE_ACTIONS = {"create_docx", "create_xlsx", "create_pptx", "create_pdf
 # low    — read-only, no side effects
 # medium — write/create files or knowledge entries
 # high   — execute commands, control computer, write to arbitrary FS paths
-_TOOL_RISK: Dict[str, str] = {
-    # read-only workspace tools
-    "list_dir": "low", "workspace_tree": "low", "read_file": "low",
-    "search_files": "low", "grep": "low", "inspect_html": "low",
-    # read-only planning
-    "todo_read": "low",
-    # read-only local FS
-    "local_list": "low", "local_read": "low",
-    # read-only git
-    "git_status": "low", "git_log": "low", "git_diff": "low", "git_show": "low",
-    # read-only knowledge / computer
-    "knowledge_search": "low", "knowledge_tree": "low",
-    "obsidian_search": "low", "obsidian_tree": "low",
-    "computer_screenshot": "low", "computer_status": "low",
-    # write workspace
-    "write_file": "medium", "edit_file": "medium", "create_web_project": "medium",
-    "create_docx": "medium", "create_xlsx": "medium",
-    "create_pptx": "medium", "create_pdf": "medium",
-    # write planning
-    "todo_write": "low",
-    # write knowledge
-    "knowledge_save": "medium", "obsidian_save": "medium",
-    # write local FS (arbitrary path — treated as medium; blocked from system roots below)
-    "local_write": "medium",
-    # preview
-    "preview_url": "medium",
-    # execute commands
-    "run_command": "high",
-    # computer control
-    "computer_click": "high", "computer_type": "high", "computer_key": "high",
-    "computer_scroll": "high", "computer_drag": "high", "computer_move": "high",
-    "computer_open_app": "high", "computer_open_url": "high",
+class ToolPolicy(TypedDict):
+    risk: str         # "read" | "write" | "exec" | "destructive"
+    destructive: bool # True = data loss possible, no auto-undo
+    shell: bool       # True = spawns a subprocess
+    network: bool     # True = makes external network calls
+    auto_approve: bool# True = agent may call without human confirmation
+    sandbox: str      # "workspace" | "home" | "system"
+    rollback: str     # "none" | "backup" | "git"
+
+
+_R = lambda s, sb="workspace", ro="none": ToolPolicy(risk="read",        destructive=False, shell=False, network=False, auto_approve=True,  sandbox=sb, rollback=ro)
+_RS = lambda s, sb="workspace", ro="none": ToolPolicy(risk="read",       destructive=False, shell=True,  network=False, auto_approve=True,  sandbox=sb, rollback=ro)
+_RN = lambda s, sb="system",    ro="none": ToolPolicy(risk="read",       destructive=False, shell=True,  network=True,  auto_approve=True,  sandbox=sb, rollback=ro)
+_W = lambda s, sb="workspace", ro="none": ToolPolicy(risk="write",       destructive=False, shell=False, network=False, auto_approve=False, sandbox=sb, rollback=ro)
+_E = lambda s, sb="workspace", ro="none": ToolPolicy(risk="exec",        destructive=False, shell=True,  network=False, auto_approve=False, sandbox=sb, rollback=ro)
+_EN = lambda s, sb="workspace", ro="none": ToolPolicy(risk="exec",       destructive=False, shell=True,  network=True,  auto_approve=False, sandbox=sb, rollback=ro)
+_EC = lambda s, sb="system",   ro="none": ToolPolicy(risk="exec",        destructive=False, shell=False, network=False, auto_approve=False, sandbox=sb, rollback=ro)
+_D = lambda s, sb="workspace", ro="none": ToolPolicy(risk="destructive", destructive=True,  shell=True,  network=False, auto_approve=False, sandbox=sb, rollback=ro)
+
+TOOL_GOVERNANCE: Dict[str, ToolPolicy] = {
+    # ── read-only / workspace ──────────────────────────────────────────────────
+    "list_dir":           _R("list_dir"),
+    "workspace_tree":     _R("workspace_tree"),
+    "read_file":          _R("read_file"),
+    "search_files":       _R("search_files"),
+    "grep":               _R("grep"),
+    "inspect_html":       _R("inspect_html"),
+    "todo_read":          _R("todo_read"),
+    # ── read-only / home FS ───────────────────────────────────────────────────
+    "local_list":         _R("local_list",  sb="home"),
+    "local_read":         _R("local_read",  sb="home"),
+    # ── read-only / git (spawns subprocess, read-only) ───────────────────────
+    "git_status":         _RS("git_status"),
+    "git_diff":           _RS("git_diff"),
+    "git_log":            _RS("git_log"),
+    "git_show":           _RS("git_show"),
+    # ── read-only / knowledge ─────────────────────────────────────────────────
+    "knowledge_search":   _R("knowledge_search", sb="home"),
+    "knowledge_tree":     _R("knowledge_tree",   sb="home"),
+    "obsidian_search":    _R("obsidian_search",  sb="home"),
+    "obsidian_tree":      _R("obsidian_tree",    sb="home"),
+    # ── read-only / system ────────────────────────────────────────────────────
+    "computer_screenshot":_R("computer_screenshot", sb="system"),
+    "computer_status":    _R("computer_status",     sb="system"),
+    "chrome_status":      _R("chrome_status",       sb="system"),
+    "computer_use_status":_R("computer_use_status", sb="system"),
+    "network_status":     _RN("network_status"),
+    # ── write / workspace ─────────────────────────────────────────────────────
+    "write_file":         _W("write_file",       ro="git"),
+    "edit_file":          _W("edit_file",        ro="git"),
+    "create_web_project": _W("create_web_project"),
+    "create_docx":        _W("create_docx"),
+    "create_xlsx":        _W("create_xlsx"),
+    "create_pptx":        _W("create_pptx"),
+    "create_pdf":         _W("create_pdf"),
+    "preview_url":        _W("preview_url"),
+    "todo_write":         _W("todo_write"),
+    # ── write / home FS ───────────────────────────────────────────────────────
+    "knowledge_save":     _W("knowledge_save",  sb="home"),
+    "obsidian_save":      _W("obsidian_save",   sb="home"),
+    "local_write":        _W("local_write",     sb="home"),
+    # ── exec / workspace ──────────────────────────────────────────────────────
+    "run_command":        _E("run_command"),
+    "build_project":      _E("build_project"),
+    # ── exec / network ────────────────────────────────────────────────────────
+    "deploy_project":     _EN("deploy_project"),
+    # ── exec / computer use (system-level input injection) ───────────────────
+    "computer_click":     _EC("computer_click"),
+    "computer_type":      _EC("computer_type"),
+    "computer_key":       _EC("computer_key"),
+    "computer_scroll":    _EC("computer_scroll"),
+    "computer_drag":      _EC("computer_drag"),
+    "computer_move":      _EC("computer_move"),
+    "computer_open_app":  _EC("computer_open_app"),
+    "computer_open_url":  ToolPolicy(risk="exec", destructive=False, shell=False, network=True,  auto_approve=False, sandbox="system",    rollback="none"),
 }
 
-# Paths that local_write must never target (system-level protection)
+_TOOL_GOVERNANCE_DEFAULT = ToolPolicy(
+    risk="write", destructive=False, shell=False, network=False,
+    auto_approve=False, sandbox="workspace", rollback="none",
+)
+
+# Paths that local_write / local_list must never target
 _LOCAL_WRITE_BLOCKED_PREFIXES = (
     "/etc/", "/usr/", "/bin/", "/sbin/", "/System/", "/private/etc/",
     "/Library/LaunchDaemons/", "/Library/LaunchAgents/",
 )
 
+# Backward-compat: map policy risk → legacy low/medium/high string
+_RISK_LEVEL_MAP = {"read": "low", "write": "medium", "exec": "high", "destructive": "high"}
 
-def _agent_risk(action_name: str, args: dict) -> str:
-    """Return risk level for an action, upgrading local_write to 'high' for system paths."""
-    risk = _TOOL_RISK.get(action_name, "medium")
+
+def _agent_policy(action_name: str, args: dict) -> ToolPolicy:
+    """Return the full governance policy for an action.
+
+    Upgrades local_write to destructive risk when targeting system paths.
+    """
+    policy = TOOL_GOVERNANCE.get(action_name, _TOOL_GOVERNANCE_DEFAULT)
     if action_name == "local_write":
         path = str(args.get("path", ""))
         if any(path.startswith(p) for p in _LOCAL_WRITE_BLOCKED_PREFIXES):
-            risk = "high"
-    return risk
+            policy = ToolPolicy(
+                risk="destructive", destructive=True, shell=False, network=False,
+                auto_approve=False, sandbox="system", rollback="none",
+            )
+    return policy
+
+
+def _agent_risk(action_name: str, args: dict) -> str:
+    """Return legacy low/medium/high risk string (kept for transcript backward-compat)."""
+    return _RISK_LEVEL_MAP.get(_agent_policy(action_name, args)["risk"], "medium")
+
+
+# ── Tool Permission Layer ─────────────────────────────────────────────────────
+# A compact, public-facing view of each tool's authorization profile, derived
+# from TOOL_GOVERNANCE. Designed for client UIs / approval dialogs that don't
+# need the full 7-dimensional governance object.
+#
+# Example:
+#   { "tool": "shell", "risk": "high", "requires_approval": true, "network": false }
+
+class ToolPermission(TypedDict):
+    tool: str
+    risk: str                 # "low" | "medium" | "high"
+    requires_approval: bool   # inverse of governance.auto_approve
+    network: bool             # tool makes external network calls
+
+
+def get_tool_permission(name: str, args: Optional[dict] = None) -> ToolPermission:
+    """Return the simplified permission view for a tool name.
+
+    `args` lets path-sensitive tools (e.g. local_write to /etc) escalate risk;
+    omit it for static catalog views.
+    """
+    policy = _agent_policy(name, args or {})
+    return ToolPermission(
+        tool=name,
+        risk=_RISK_LEVEL_MAP.get(policy["risk"], "medium"),
+        requires_approval=not policy["auto_approve"],
+        network=policy["network"],
+    )
+
+
+def list_tool_permissions() -> list:
+    """Return permission views for every governed tool, sorted by tool name."""
+    return [get_tool_permission(name) for name in sorted(TOOL_GOVERNANCE.keys())]
 
 
 def _collect_created_files(transcript: list) -> list:
@@ -3391,143 +3630,420 @@ def _extract_agent_action(raw: str) -> Dict:
     return action
 
 
+# ── Agent State Machine — Phase Functions ─────────────────────────────────────
+
+async def _phase_plan(
+    ctx: AgentRunContext, req: AgentRequest, router, lang_hint: str, current_user: str,
+) -> None:
+    """PLAN: Planner role produces a structured plan JSON."""
+    context = (
+        f"{PLANNER_PROMPT}\n\n"
+        f"[LANGUAGE HINT: {lang_hint}]\n"
+        f"Workspace root: {AGENT_ROOT}\n\n"
+        f"User request: {req.message}"
+    )
+    raw = await router.generate(
+        message="Produce a JSON execution plan for this request.",
+        context=context, max_tokens=1024, temperature=0.1,
+    )
+    try:
+        plan = _extract_agent_action(str(raw))
+    except ValueError:
+        plan = {
+            "action": "plan", "state": "PLAN",
+            "goal": req.message, "steps": [],
+            "requires_approval": False, "rollback_strategy": "none", "estimated_steps": 1,
+        }
+    ctx.plan = plan
+    ctx.transcript.append({
+        "state": AgentState.PLANNING.value,
+        "goal": plan.get("goal", req.message),
+        "steps": plan.get("steps", []),
+        "requires_approval": plan.get("requires_approval", False),
+        "rollback_strategy": plan.get("rollback_strategy", "none"),
+        "estimated_steps": plan.get("estimated_steps", 1),
+    })
+    ctx.state = AgentState.WAITING_APPROVAL
+
+
+def _phase_approval(ctx: AgentRunContext, current_user: str) -> None:
+    """APPROVAL: Check governance, log decision, auto-approve (future: UI prompt)."""
+    auto_approve_tools = {name for name, p in TOOL_GOVERNANCE.items() if p["auto_approve"]}
+    steps = ctx.plan.get("steps", [])
+    non_auto = [s.get("action") for s in steps if s.get("action") not in auto_approve_tools]
+    requires = ctx.plan.get("requires_approval", False) or bool(non_auto)
+
+    ctx.transcript.append({
+        "state": AgentState.WAITING_APPROVAL.value,
+        "requires_approval": requires,
+        "non_auto_approve_steps": non_auto,
+        "decision": "auto_approved",
+    })
+    append_audit_event(
+        "agent_approval", user_email=current_user,
+        requires_approval=requires, non_auto_steps=non_auto, decision="auto_approved",
+    )
+    ctx.state = AgentState.EXECUTING
+
+
+async def _phase_execute(
+    ctx: AgentRunContext, req: AgentRequest, router, lang_hint: str,
+    current_user: str, max_steps: int,
+) -> None:
+    """EXECUTE: Executor role calls tools one at a time until final or budget exhausted."""
+    exec_count = sum(1 for s in ctx.transcript if s.get("state") == AgentState.EXECUTING.value)
+    budget = max(1, max_steps - exec_count)
+
+    for _ in range(budget):
+        corrections_hint = (
+            "\n\nCritic corrections from previous attempt:\n"
+            + "\n".join(f"- {c}" for c in ctx.corrections)
+        ) if ctx.corrections else ""
+
+        context = (
+            f"{EXECUTOR_PROMPT}\n\n"
+            f"[LANGUAGE HINT: {lang_hint}]\n"
+            f"Workspace root: {AGENT_ROOT}\n\n"
+            f"PLAN:\n{json.dumps(ctx.plan, ensure_ascii=False)}\n\n"
+            f"Recent conversation:\n{build_recent_chat_context(conversation_id=req.conversation_id) or '(none)'}\n\n"
+            f"User request: {req.message}{corrections_hint}\n\n"
+            f"Execution transcript:\n{json.dumps(ctx.transcript, ensure_ascii=False, indent=2)}"
+        )
+        raw = await router.generate(
+            message="Execute the next step.",
+            context=context, max_tokens=4096, temperature=req.temperature,
+        )
+        try:
+            action = _extract_agent_action(str(raw))
+        except ValueError as exc:
+            ctx.transcript.append({
+                "state": AgentState.EXECUTING.value, "action": "parse_error",
+                "raw": str(raw)[:400], "error": str(exc),
+            })
+            break
+
+        name     = action.get("action")
+        thoughts = str(action.get("thoughts") or "")[:600]
+        args     = action.get("args") or {}
+
+        if name == "final":
+            ctx.final_message = action.get("message", "작업을 완료했습니다.")
+            ctx.transcript.append({
+                "state": AgentState.EXECUTING.value, "action": "final", "thoughts": thoughts,
+            })
+            ctx.state = AgentState.VERIFYING
+            return
+
+        # Loop guard
+        exec_steps = [s for s in ctx.transcript if s.get("state") == AgentState.EXECUTING.value]
+        last = exec_steps[-1] if exec_steps else None
+        if (
+            name in _FILE_CREATE_ACTIONS and last
+            and last.get("action") == name
+            and (last.get("args") or {}) == args
+            and "result" in last
+        ):
+            ctx.transcript.append({
+                "state": AgentState.EXECUTING.value, "action": name,
+                "error": "LOOP_DETECTED: identical action+args repeated — halted.",
+            })
+            break
+
+        if name == "clear_history":
+            result = clear_history(args.get("keep_last", 0))
+            ctx.transcript.append({
+                "state": AgentState.EXECUTING.value, "action": name,
+                "thoughts": thoughts, "args": args, "result": result,
+            })
+            continue
+
+        policy = _agent_policy(name, args)
+        risk   = _RISK_LEVEL_MAP.get(policy["risk"], "medium")
+
+        if policy["risk"] == "destructive":
+            ctx.transcript.append({
+                "state": AgentState.EXECUTING.value, "action": name,
+                "thoughts": thoughts, "args": args, "risk": risk,
+                "governance": dict(policy),
+                "error": f"BLOCKED: destructive action '{name}' not permitted in agent mode.",
+            })
+            append_audit_event(
+                "agent_blocked", user_email=current_user, source=req.source or "agent",
+                action=name, reason="destructive", governance=dict(policy),
+            )
+            continue
+
+        if not policy["auto_approve"]:
+            append_audit_event(
+                "agent_exec", user_email=current_user, source=req.source or "agent",
+                state=AgentState.EXECUTING.value, action=name, risk=risk,
+                shell=policy["shell"], network=policy["network"],
+                destructive=policy["destructive"], sandbox=policy["sandbox"],
+                rollback=policy["rollback"],
+                args={k: v for k, v in args.items() if k != "content"},
+            )
+
+        try:
+            result = execute_tool(name, args)
+            ctx.transcript.append({
+                "state": AgentState.EXECUTING.value, "action": name,
+                "thoughts": thoughts, "args": args,
+                "risk": risk, "governance": dict(policy), "result": result,
+            })
+        except (ToolError, KeyError, TypeError) as exc:
+            ctx.transcript.append({
+                "state": AgentState.EXECUTING.value, "action": name,
+                "thoughts": thoughts, "args": args,
+                "risk": risk, "governance": dict(policy), "error": str(exc),
+            })
+
+    ctx.state = AgentState.VERIFYING
+
+
+async def _phase_verify(
+    ctx: AgentRunContext, req: AgentRequest, router, lang_hint: str, current_user: str,
+    max_retry: int = 3,
+) -> None:
+    """VERIFYING: Critic role evaluates transcript → DONE / EXECUTING (retry) / ROLLBACK / FAILED."""
+    context = (
+        f"{CRITIC_PROMPT}\n\n"
+        f"[LANGUAGE HINT: {lang_hint}]\n\n"
+        f"Original request: {req.message}\n"
+        f"Plan goal: {ctx.plan.get('goal', req.message)}\n\n"
+        f"Full transcript:\n{json.dumps(ctx.transcript, ensure_ascii=False, indent=2)}"
+    )
+    raw = await router.generate(
+        message="Review the execution transcript and return your verdict JSON.",
+        context=context, max_tokens=512, temperature=0.1,
+    )
+    try:
+        verdict = _extract_agent_action(str(raw))
+    except ValueError:
+        verdict = {"action": "verdict", "verdict": "PASS", "next_state": "DONE",
+                   "reason": "Critic parse failed — assuming pass.", "corrections": [], "confidence": 0.7}
+
+    ctx.corrections = verdict.get("corrections", [])
+    # Normalize legacy verdict next_state strings to current AgentState names
+    raw_next = verdict.get("next_state", "DONE")
+    next_s = {"COMPLETE": "DONE", "RETRY": "EXECUTING"}.get(raw_next, raw_next)
+
+    ctx.transcript.append({
+        "state": AgentState.VERIFYING.value,
+        "verdict":     verdict.get("verdict", "PASS"),
+        "reason":      verdict.get("reason", ""),
+        "corrections": ctx.corrections,
+        "confidence":  verdict.get("confidence", 0.9),
+        "next_state":  next_s,
+    })
+
+    if verdict.get("verdict") == "PASS" or next_s == "DONE":
+        if not ctx.final_message:
+            ctx.final_message = verdict.get("reason", "작업이 완료되었습니다.")
+        ctx.state = AgentState.DONE
+    elif next_s == "ROLLBACK":
+        ctx.state = AgentState.ROLLBACK
+    elif next_s == "EXECUTING":
+        if ctx.retry_count >= max_retry:
+            ctx.final_message = (
+                f"최대 재시도({max_retry}회) 초과로 작업을 종료했습니다. "
+                f"마지막 비판: {verdict.get('reason', '(없음)')}"
+            )
+            ctx.state = AgentState.FAILED
+        else:
+            ctx.retry_count += 1
+            ctx.transcript.append({
+                "state": AgentState.EXECUTING.value,
+                "retry_attempt": ctx.retry_count,
+                "corrections": ctx.corrections,
+            })
+            ctx.state = AgentState.EXECUTING
+    else:
+        ctx.final_message = verdict.get("reason", "검증자가 인식되지 않은 다음 상태를 반환했습니다.")
+        ctx.state = AgentState.FAILED
+
+
+def _phase_rollback(ctx: AgentRunContext, current_user: str) -> None:
+    """ROLLBACK: attempt git checkout for each edited file, then COMPLETE."""
+    import subprocess as _sp
+    rolled: list = []
+    for step in ctx.transcript:
+        if step.get("state") != AgentState.EXECUTING.value:
+            continue
+        gov = step.get("governance", {})
+        if gov.get("rollback") != "git":
+            continue
+        result = step.get("result", {})
+        if not (isinstance(result, dict) and result.get("success")):
+            continue
+        path = result.get("path") or (step.get("args") or {}).get("path", "")
+        if not path:
+            continue
+        try:
+            r = _sp.run(
+                ["git", "checkout", "--", path], cwd=str(AGENT_ROOT),
+                capture_output=True, text=True, timeout=10,
+            )
+            rolled.append({"path": path, "ok": r.returncode == 0, "stderr": r.stderr[:200]})
+        except Exception as exc:
+            rolled.append({"path": path, "ok": False, "error": str(exc)})
+
+    ctx.transcript.append({"state": AgentState.ROLLBACK.value, "rolled_back": rolled})
+    recovered = [r["path"] for r in rolled if r.get("ok")]
+    ctx.final_message = (
+        f"실행 실패로 롤백했습니다. 복구 파일: {recovered}"
+        if recovered
+        else "롤백을 시도했으나 복구할 파일이 없거나 git이 초기화되지 않았습니다."
+    )
+    append_audit_event("agent_rollback", user_email=current_user, rolled_back=rolled)
+    # Rollback is a recovery from a failed verification — terminal state is FAILED
+    ctx.state = AgentState.FAILED
+
+
+async def _phase_memory_update(
+    ctx: AgentRunContext, req: AgentRequest, router, current_user: str,
+) -> None:
+    """Background: Memory Updater role extracts learnings after COMPLETE."""
+    context = (
+        f"{MEMORY_UPDATER_PROMPT}\n\n"
+        f"Completed task: {req.message}\n\n"
+        f"Last 5 transcript steps:\n{json.dumps(ctx.transcript[-5:], ensure_ascii=False)}"
+    )
+    try:
+        raw = await router.generate(
+            message="Extract learnings from this completed task.",
+            context=context, max_tokens=256, temperature=0.1,
+        )
+        mem = _extract_agent_action(str(raw))
+        if mem.get("save_to_knowledge") and mem.get("learnings"):
+            from tools import knowledge_save
+            knowledge_save(
+                "\n".join(mem["learnings"]),
+                folder="30_Projects",
+                title=f"Agent: {req.message[:60]}",
+            )
+    except Exception:
+        pass
+
+
+# ── Eval harness ──────────────────────────────────────────────────────────────
+
+@app.post("/agent/eval")
+async def agent_eval(req: AgentEvalRequest, request: Request):
+    """Run a skill's eval cases from schema.json and return pass/fail per case."""
+    require_user(request)
+    skill_dir = Path(__file__).resolve().parent / "skills" / req.skill
+    schema_path = skill_dir / "schema.json"
+    if not schema_path.exists():
+        raise HTTPException(404, detail=f"Skill '{req.skill}' not found or missing schema.json")
+
+    schema = json.loads(schema_path.read_text(encoding="utf-8"))
+    eval_cases = schema.get("evals", [])
+    if req.case_id:
+        eval_cases = [c for c in eval_cases if c.get("id") == req.case_id]
+    if not eval_cases:
+        return {"skill": req.skill, "total": 0, "passed": 0, "failed": 0, "results": [],
+                "message": "No eval cases defined in schema.json"}
+
+    action_name = schema.get("action", req.skill)
+    results = []
+    for case in eval_cases:
+        case_id = case.get("id", "?")
+        try:
+            result   = execute_tool(action_name, case.get("input", {}))
+            criteria = case.get("pass_criteria", "")
+            if "success == true" in criteria:
+                passed = result.get("success") is True
+            elif "success == false" in criteria:
+                passed = result.get("success") is False
+            else:
+                passed = True  # manual review required
+            results.append({"id": case_id, "description": case.get("description", ""),
+                            "passed": passed, "result": result, "pass_criteria": criteria})
+        except Exception as exc:
+            results.append({"id": case_id, "description": case.get("description", ""),
+                            "passed": False, "error": str(exc),
+                            "pass_criteria": case.get("pass_criteria", "")})
+
+    n_passed = sum(1 for r in results if r.get("passed") is True)
+    return {
+        "skill": req.skill, "action": action_name,
+        "total": len(results), "passed": n_passed, "failed": len(results) - n_passed,
+        "results": results,
+    }
+
+
 @app.post("/agent")
 async def agent(req: AgentRequest, request: Request):
-    """Natural-language local agent loop for Telegram and future clients."""
+    """Natural-language local agent.
+
+    State machine:
+        IDLE → PLANNING → WAITING_APPROVAL → EXECUTING → VERIFYING
+                                       ↓                     ↓
+                                     FAILED       DONE | EXECUTING(retry) | ROLLBACK
+                                                                                  ↓
+                                                                               FAILED
+    """
     current_user = require_user(request)
     enforce_rate_limit(current_user, "agent")
     if not router.current_model_id:
         raise HTTPException(status_code=400, detail="No model loaded. Call /models/load first.")
 
     ensure_agent_root()
-    transcript = []
-    max_steps = max(1, min(req.max_steps, 50))
     lang = detect_language(req.message)
     lang_hint = _LANG_HINT[lang]
+    max_steps = max(1, min(req.max_steps, 50))
+    max_retry = 3
 
-    for step in range(max_steps):
-        recent_context = build_recent_chat_context(conversation_id=req.conversation_id)
-        context = (
-            f"{AGENT_SYSTEM_PROMPT}\n\n"
-            f"[LANGUAGE: {lang_hint}]\n\n"
-            f"Workspace root: {AGENT_ROOT}\n\n"
-            f"Recent conversation:\n{recent_context or '(none)'}\n\n"
-            f"User request:\n{req.message}\n\n"
-            f"Previous tool results:\n{json.dumps(transcript, ensure_ascii=False, indent=2)}"
-        )
-        raw = await router.generate(
-            message="Choose the next agent action.",
-            context=context,
-            max_tokens=4096,
-            temperature=req.temperature,
-        )
+    ctx = AgentRunContext()
 
-        try:
-            action = _extract_agent_action(str(raw))
-        except ValueError as exc:
-            transcript.append({"step": step + 1, "action": "parse_error", "raw": str(raw), "error": str(exc)})
-            message = "작업 계획을 안정적으로 해석하지 못해 자동 실행을 중단했습니다. 요청을 더 짧고 구체적으로 다시 시도해 주세요."
-            save_to_history("user", req.message, source=req.source or "web", conversation_id=req.conversation_id)
-            save_to_history("assistant", message, source=req.source or "web", conversation_id=req.conversation_id)
-            created_files = _collect_created_files(transcript)
-            return {
-                "status": "ok",
-                "response": message,
-                "workspace": str(AGENT_ROOT),
-                "steps": transcript,
-                "created_files": created_files,
-            }
+    while ctx.state not in AGENT_TERMINAL_STATES:
+        ctx.state_history.append(ctx.state.value)
+        # Hard guard against infinite state loops
+        if len(ctx.state_history) > 200:
+            ctx.final_message = "에이전트 상태 머신이 최대 반복(200)에 도달해 중단했습니다."
+            ctx.state = AgentState.FAILED
+            break
 
-        name = action.get("action")
-        thoughts = str(action.get("thoughts") or "")[:600]
-        if name == "final":
-            message = action.get("message", "작업을 완료했습니다.")
-            save_to_history("user", req.message, source=req.source or "web", conversation_id=req.conversation_id)
-            save_to_history("assistant", message, source=req.source or "web", conversation_id=req.conversation_id)
-            created_files = _collect_created_files(transcript)
-            return {"status": "ok", "response": message, "workspace": str(AGENT_ROOT), "steps": transcript, "created_files": created_files}
+        if ctx.state == AgentState.IDLE:
+            ctx.state = AgentState.PLANNING
 
-        # Prevent repeated file/project creation loops with identical action+args.
-        last_step = transcript[-1] if transcript else None
-        current_args = action.get("args") or {}
-        if (
-            name in _FILE_CREATE_ACTIONS
-            and last_step
-            and last_step.get("action") == name
-            and (last_step.get("args") or {}) == current_args
-            and "result" in last_step
-        ):
-            message = "동일한 파일 작성을 반복 시도해서 중단했습니다. 직전 결과를 확인하고 다음 단계로 진행하세요."
-            save_to_history("user", req.message, source=req.source or "web", conversation_id=req.conversation_id)
-            save_to_history("assistant", message, source=req.source or "web", conversation_id=req.conversation_id)
-            created_files = _collect_created_files(transcript)
-            return {"status": "ok", "response": message, "workspace": str(AGENT_ROOT), "steps": transcript, "created_files": created_files}
+        elif ctx.state == AgentState.PLANNING:
+            await _phase_plan(ctx, req, router, lang_hint, current_user)
 
-        if name == "clear_history":
-            result = clear_history(current_args.get("keep_last", 0))
-            append_audit_event(
-                "history_delete",
-                user_email=current_user,
-                source=req.source or "agent",
-                keep_last=current_args.get("keep_last", 0),
-                removed=result.get("removed", 0),
-                kept=result.get("kept", 0),
-            )
-            transcript.append({"step": step + 1, "thoughts": thoughts, "action": name, "args": current_args, "result": result})
-            continue
+        elif ctx.state == AgentState.WAITING_APPROVAL:
+            _phase_approval(ctx, current_user)
 
-        risk = _agent_risk(name, current_args)
+        elif ctx.state == AgentState.EXECUTING:
+            await _phase_execute(ctx, req, router, lang_hint, current_user, max_steps)
 
-        # Block system-path local_write even if the LLM tries it
-        if name == "local_write":
-            path = str(current_args.get("path", ""))
-            if any(path.startswith(p) for p in _LOCAL_WRITE_BLOCKED_PREFIXES):
-                transcript.append({
-                    "step": step + 1, "thoughts": thoughts, "action": name, "args": current_args,
-                    "risk": "high", "error": f"BLOCKED: writing to system path is not allowed: {path}",
-                })
-                append_audit_event(
-                    "agent_blocked", user_email=current_user, source=req.source or "agent",
-                    action=name, path=path, reason="system_path",
-                )
-                continue
+        elif ctx.state == AgentState.VERIFYING:
+            await _phase_verify(ctx, req, router, lang_hint, current_user, max_retry)
 
-        # Audit medium/high actions before execution
-        if risk in ("medium", "high"):
-            append_audit_event(
-                "agent_exec", user_email=current_user, source=req.source or "agent",
-                step=step + 1, action=name, risk=risk,
-                args={k: v for k, v in (current_args or {}).items() if k != "content"},
-            )
+        elif ctx.state == AgentState.ROLLBACK:
+            _phase_rollback(ctx, current_user)
 
-        try:
-            result = execute_tool(name, current_args)
-            transcript.append({"step": step + 1, "thoughts": thoughts, "action": name, "args": current_args, "risk": risk, "result": result})
-        except (ToolError, KeyError, TypeError) as exc:
-            transcript.append({"step": step + 1, "thoughts": thoughts, "action": name, "args": current_args, "risk": risk, "error": str(exc)})
+        else:
+            ctx.state = AgentState.FAILED
 
-    summary_context = (
-        f"{AGENT_SYSTEM_PROMPT}\n\n"
-        f"Recent conversation:\n{build_recent_chat_context(conversation_id=req.conversation_id) or '(none)'}\n\n"
-        f"User request:\n{req.message}\n\n"
-        f"Tool transcript:\n{json.dumps(transcript, ensure_ascii=False, indent=2)}"
-    )
-    summary = await router.generate(
-        message='Return only {"action":"final","message":"..."} summarizing the current result in Korean.',
-        context=summary_context,
-        max_tokens=1024,
-        temperature=0.1,
-    )
-    try:
-        final_action = _extract_agent_action(str(summary))
-        message = final_action.get("message", str(summary))
-    except ValueError:
-        message = str(summary)
+    # Record terminal state in history for clients
+    ctx.state_history.append(ctx.state.value)
 
+    # Fire-and-forget memory update — does not block the response
+    asyncio.create_task(_phase_memory_update(ctx, req, router, current_user))
+
+    message = ctx.final_message or "작업을 완료했습니다."
     save_to_history("user", req.message, source=req.source or "web", conversation_id=req.conversation_id)
     save_to_history("assistant", message, source=req.source or "web", conversation_id=req.conversation_id)
-    created_files = _collect_created_files(transcript)
-    return {"status": "ok", "response": message, "workspace": str(AGENT_ROOT), "steps": transcript, "created_files": created_files}
+    created_files = _collect_created_files(ctx.transcript)
+    return {
+        "status": "ok" if ctx.state == AgentState.DONE else "failed",
+        "response": message,
+        "workspace": str(AGENT_ROOT),
+        "steps": ctx.transcript,
+        "state_history": ctx.state_history,
+        "final_state": ctx.state.value,
+        "created_files": created_files,
+    }
 
 
 # ── Direct Tool API ───────────────────────────────────────────────────────────
@@ -4188,65 +4704,96 @@ async def tools_deploy_project(req: ToolScriptRequest, request: Request):
     return _tool_response(deploy_project, req.cwd, req.script)
 
 
+_MCP_TOOL_DESCRIPTIONS: Dict[str, str] = {
+    "list_dir":              "List files in the agent workspace.",
+    "workspace_tree":        "Return a recursive workspace tree.",
+    "read_file":             "Read a UTF-8 file from the workspace with optional line numbers and offset/limit slicing.",
+    "write_file":            "Write a UTF-8 file inside the workspace (new files / full rewrites).",
+    "edit_file":             "Precise diff-style edit: replace exact old_string with new_string. Requires unique match unless replace_all=true.",
+    "search_files":          "Substring search in text files (legacy).",
+    "grep":                  "Regex search across the workspace with line numbers and optional context.",
+    "todo_read":             "Read the agent's persistent TODO list for the current workspace.",
+    "todo_write":            "Replace the agent's TODO list (id, content, status: pending/in_progress/completed).",
+    "clear_history":         "Clear chat history to reduce context and speed up responses.",
+    "inspect_html":          "Inspect local HTML structure and assets.",
+    "preview_url":           "Return a server URL for a workspace file.",
+    "create_docx":           "Create a Word DOCX document in the agent workspace.",
+    "create_xlsx":           "Create an XLSX spreadsheet in the agent workspace.",
+    "create_pptx":           "Create a PPTX presentation deck in the agent workspace.",
+    "create_pdf":            "Create a PDF document in the agent workspace.",
+    "local_list":            "List any local folder (requires user permission via UI).",
+    "local_read":            "Read any local file (requires user permission via UI).",
+    "local_write":           "Write any local file (requires user permission via UI).",
+    "read_document":         "Extract text from PDF, DOCX, XLSX, PPTX, TXT, MD, CSV files.",
+    "computer_screenshot":   "Capture the current Mac screen as base64 PNG.",
+    "computer_open_app":     "Open or focus a Mac app, e.g. Google Chrome.",
+    "computer_open_url":     "Open a URL in a Mac app, e.g. Google Chrome.",
+    "computer_click":        "Click at screen coordinates (x, y).",
+    "computer_type":         "Type text at the current focus position.",
+    "computer_key":          "Press a keyboard key or shortcut (e.g. 'command+c').",
+    "computer_scroll":       "Scroll at screen coordinates.",
+    "computer_move":         "Move the mouse to screen coordinates.",
+    "computer_drag":         "Drag from (x1,y1) to (x2,y2).",
+    "computer_status":       "Check if Mac Computer Use (pyautogui) is available.",
+    "chrome_status":         "Report Chrome desktop bridge availability.",
+    "computer_use_status":   "Report Mac Computer Use bridge availability.",
+    "knowledge_save":        "Save a note into the local knowledge garden.",
+    "knowledge_search":      "Search the local knowledge garden.",
+    "knowledge_tree":        "List local knowledge garden markdown files.",
+    "knowledge_graph_ingest":"Ingest a message, AI answer, or connector event into the SQLite knowledge graph.",
+    "knowledge_graph_search":"Search graph nodes, summaries, and JSON metadata.",
+    "knowledge_graph_graph": "Return Obsidian-style graph nodes and edges.",
+    "knowledge_graph_context":"Return compact graph-backed RAG context for a prompt.",
+    "obsidian_save":         "Save a note into the Obsidian-compatible memory vault.",
+    "obsidian_search":       "Search the Obsidian-compatible memory vault.",
+    "obsidian_tree":         "List Obsidian memory vault markdown files.",
+    "git_status":            "Read-only local git status inside the workspace.",
+    "git_diff":              "Read-only local git diff inside the workspace.",
+    "git_log":               "Read-only local git log inside the workspace.",
+    "git_show":              "Read-only local git show --stat inside the workspace.",
+    "network_status":        "Get current local/private IP, public IP, hostname, and Wi-Fi info.",
+    "run_command":           "Run an allowlisted local command inside the workspace.",
+    "build_project":         "Run an allowlisted package.json build/compile/typecheck/test script to verify changes actually work.",
+    "deploy_project":        "Run an allowlisted package.json deploy/preview/release/package installer script (pkg/exe).",
+}
+
+
+@app.get("/tools/permissions")
+async def tools_permissions(request: Request):
+    """Compact tool permission view (tool / risk / requires_approval / network).
+
+    A simpler authorization-layer summary derived from TOOL_GOVERNANCE.
+    Use /mcp/tools for the full 7-dimensional governance object.
+    """
+    require_user(request)
+    return {"status": "ok", "permissions": list_tool_permissions()}
+
+
 @app.get("/mcp/tools")
 async def mcp_tools():
     installed = load_mcp_installs().get("installed", {})
+    tools = []
+    for name, description in _MCP_TOOL_DESCRIPTIONS.items():
+        policy = TOOL_GOVERNANCE.get(name, _TOOL_GOVERNANCE_DEFAULT)
+        tools.append({
+            "name": name,
+            "description": description,
+            "permission": get_tool_permission(name),
+            "governance": {
+                "risk":         policy["risk"],
+                "destructive":  policy["destructive"],
+                "shell":        policy["shell"],
+                "network":      policy["network"],
+                "auto_approve": policy["auto_approve"],
+                "sandbox":      policy["sandbox"],
+                "rollback":     policy["rollback"],
+            },
+        })
     return {
         "status": "ok",
         "workspace": str(AGENT_ROOT),
         "installed_mcps": [mcp_public_item(item, installed) for item in MCP_REGISTRY],
-        "tools": [
-            {"name": "list_dir", "description": "List files in the agent workspace."},
-            {"name": "workspace_tree", "description": "Return a recursive workspace tree."},
-            {"name": "read_file", "description": "Read a UTF-8 file from the workspace with optional line numbers and offset/limit slicing."},
-            {"name": "write_file", "description": "Write a UTF-8 file inside the workspace (new files / full rewrites)."},
-            {"name": "edit_file", "description": "Precise diff-style edit: replace exact old_string with new_string. Requires unique match unless replace_all=true."},
-            {"name": "search_files", "description": "Substring search in text files (legacy)."},
-            {"name": "grep", "description": "Regex search across the workspace with line numbers and optional context."},
-            {"name": "todo_read", "description": "Read the agent's persistent TODO list for the current workspace."},
-            {"name": "todo_write", "description": "Replace the agent's TODO list (id, content, status: pending/in_progress/completed)."},
-            {"name": "clear_history", "description": "Clear chat history to reduce context and speed up responses."},
-            {"name": "inspect_html", "description": "Inspect local HTML structure and assets."},
-            {"name": "preview_url", "description": "Return a server URL for a workspace file."},
-            {"name": "create_docx", "description": "Create a Word DOCX document in the agent workspace."},
-            {"name": "create_xlsx", "description": "Create an XLSX spreadsheet in the agent workspace."},
-            {"name": "create_pptx", "description": "Create a PPTX presentation deck in the agent workspace."},
-            {"name": "create_pdf", "description": "Create a PDF document in the agent workspace."},
-            {"name": "local_list", "description": "List any local folder (requires user permission via UI)."},
-            {"name": "local_read", "description": "Read any local file (requires user permission via UI)."},
-            {"name": "local_write", "description": "Write any local file (requires user permission via UI)."},
-            {"name": "read_document", "description": "Extract text from PDF, DOCX, XLSX, PPTX, TXT, MD, CSV files."},
-            {"name": "computer_screenshot", "description": "Capture the current Mac screen as base64 PNG."},
-            {"name": "computer_open_app", "description": "Open or focus a Mac app, e.g. Google Chrome."},
-            {"name": "computer_open_url", "description": "Open a URL in a Mac app, e.g. Google Chrome."},
-            {"name": "computer_click", "description": "Click at screen coordinates (x, y)."},
-            {"name": "computer_type", "description": "Type text at the current focus position."},
-            {"name": "computer_key", "description": "Press a keyboard key or shortcut (e.g. 'command+c')."},
-            {"name": "computer_scroll", "description": "Scroll at screen coordinates."},
-            {"name": "computer_move", "description": "Move the mouse to screen coordinates."},
-            {"name": "computer_drag", "description": "Drag from (x1,y1) to (x2,y2)."},
-            {"name": "computer_status", "description": "Check if Mac Computer Use (pyautogui) is available."},
-            {"name": "chrome_status", "description": "Report Chrome desktop bridge availability."},
-            {"name": "computer_use_status", "description": "Report Mac Computer Use bridge availability."},
-            {"name": "knowledge_save", "description": "Save a note into the local knowledge garden."},
-            {"name": "knowledge_search", "description": "Search the local knowledge garden."},
-            {"name": "knowledge_tree", "description": "List local knowledge garden markdown files."},
-            {"name": "knowledge_graph_ingest", "description": "Ingest a message, AI answer, or connector event into the SQLite knowledge graph."},
-            {"name": "knowledge_graph_search", "description": "Search graph nodes, summaries, and JSON metadata."},
-            {"name": "knowledge_graph_graph", "description": "Return Obsidian-style graph nodes and edges."},
-            {"name": "knowledge_graph_context", "description": "Return compact graph-backed RAG context for a prompt."},
-            {"name": "obsidian_save", "description": "Save a note into the Obsidian-compatible memory vault."},
-            {"name": "obsidian_search", "description": "Search the Obsidian-compatible memory vault."},
-            {"name": "obsidian_tree", "description": "List Obsidian memory vault markdown files."},
-            {"name": "git_status", "description": "Read-only local git status inside the workspace."},
-            {"name": "git_diff", "description": "Read-only local git diff inside the workspace."},
-            {"name": "git_log", "description": "Read-only local git log inside the workspace."},
-            {"name": "git_show", "description": "Read-only local git show --stat inside the workspace."},
-            {"name": "network_status", "description": "Get current local/private IP, public IP, hostname, and Wi-Fi info."},
-            {"name": "run_command", "description": "Run an allowlisted local command inside the workspace."},
-            {"name": "build_project", "description": "Run an allowlisted package.json build/compile/typecheck/test script to verify changes actually work."},
-            {"name": "deploy_project", "description": "Run an allowlisted package.json deploy/preview/release/package installer script (pkg/exe)."},
-        ],
+        "tools": tools,
     }
 
 

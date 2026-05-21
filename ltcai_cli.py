@@ -89,8 +89,8 @@ def main() -> None:
     parser = argparse.ArgumentParser(prog="LTCAI", description="Run the Lattice AI local server.")
     subparsers = parser.add_subparsers(dest="command")
     subparsers.add_parser("doctor", help="Check local runtime dependencies and configuration.")
-    # Default to 0.0.0.0 so other devices on the same network can connect
-    parser.add_argument("--host", default=os.getenv("LATTICEAI_HOST") or "0.0.0.0")
+    # Default to 127.0.0.1; set LATTICEAI_HOST=0.0.0.0 to expose to the local network
+    parser.add_argument("--host", default=os.getenv("LATTICEAI_HOST") or "127.0.0.1")
     parser.add_argument("--port", type=int, default=int(os.getenv("LATTICEAI_PORT") or "4825"))
     parser.add_argument("--reload", action="store_true", help="Enable uvicorn reload for local development.")
     args = parser.parse_args()

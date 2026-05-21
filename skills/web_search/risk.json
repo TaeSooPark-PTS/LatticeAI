@@ -1,0 +1,9 @@
+{
+  "risk": "read",
+  "destructive": false,
+  "shell": false,
+  "network": true,
+  "auto_approve": true,
+  "sandbox": "system",
+  "rollback": "none"
+}

@@ -1,0 +1,65 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "code_review",
+  "input": {
+    "required": ["target"],
+    "optional": ["focus", "lang", "max_lines"],
+    "properties": {
+      "target":    { "type": "string", "description": "절대 파일 경로 또는 코드 스니펫 문자열" },
+      "focus":     { "type": "array", "items": { "type": "string", "enum": ["bug","security","performance","style"] }, "default": ["bug","security"] },
+      "lang":      { "type": "string", "description": "언어 힌트 (python, js, go …). 미입력시 자동 감지" },
+      "max_lines": { "type": "integer", "default": 500 }
+    }
+  },
+  "output": {
+    "oneOf": [
+      {
+        "title": "success",
+        "properties": {
+          "success": { "const": true },
+          "result": {
+            "properties": {
+              "summary": { "type": "string" },
+              "issues": {
+                "type": "array",
+                "items": {
+                  "properties": {
+                    "severity": { "type": "string", "enum": ["high","medium","low"] },
+                    "line":     { "type": "integer" },
+                    "category": { "type": "string" },
+                    "message":  { "type": "string" }
+                  },
+                  "required": ["severity","category","message"]
+                }
+              },
+              "score": { "type": "integer", "minimum": 0, "maximum": 100 }
+            },
+            "required": ["summary","issues","score"]
+          }
+        },
+        "required": ["success","result"]
+      },
+      {
+        "title": "failure",
+        "properties": {
+          "success": { "const": false },
+          "error":   { "type": "string", "enum": ["INVALID_INPUT","FILE_NOT_FOUND","MODEL_NOT_LOADED","SIZE_LIMIT"] },
+          "message": { "type": "string" }
+        },
+        "required": ["success","error","message"]
+      }
+    ]
+  },
+  "evals": [
+    {
+      "id": "snippet_review",
+      "input": { "target": "def foo(x):\n  return eval(x)\n", "focus": ["security"] },
+      "pass_criteria": "success == true and score < 80"
+    },
+    {
+      "id": "empty_target",
+      "input": { "target": "" },
+      "pass_criteria": "error == INVALID_INPUT"
+    }
+  ]
+}

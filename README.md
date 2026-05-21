@@ -1,218 +1,29 @@
 # Lattice AI
 
-Local/cloud LLM workspace server — Apple Silicon MLX, OpenAI-compatible providers, MCP, VS Code/Cursor extension, Telegram bot.
+**개인 AI 워크스페이스 서버** — 로컬/클라우드 LLM을 웹 UI · VS Code 확장 · Telegram 봇 · MCP 도구 하나로 묶습니다.
+
+Apple Silicon MLX 로컬 추론 · OpenAI/Groq/OpenRouter 클라우드 모델 · Graph RAG · 멀티스텝 에이전트 워크플로
+
+[![PyPI](https://img.shields.io/pypi/v/ltcai)](https://pypi.org/project/ltcai/)
+[![npm](https://img.shields.io/npm/v/ltcai)](https://www.npmjs.com/package/ltcai)
+[![VS Code](https://img.shields.io/visual-studio-marketplace/v/parktaesoo.ltcai)](https://marketplace.visualstudio.com/items?itemName=parktaesoo.ltcai)
+[![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
+
+<!-- 스크린샷 / GIF — docs/demo.gif 또는 스크린샷으로 교체하세요 -->
+<!-- ![Lattice AI demo](docs/demo.gif) -->
+
+---
+
+## 설치 & 첫 실행 (30초)
 
 ```bash
-pip install ltcai          # PyPI
-npm install -g ltcai       # npm
-LTCAI                      # → http://localhost:4825
-```
-
----
-
-## v0.1.10 변경사항
-
-### Agent intelligence (프로 개발자 워크플로)
-- **`AGENT_SYSTEM_PROMPT` 완전 재작성** — Discover → Plan → Implement → Verify 4단계 강제, `thoughts` 필드로 스텝 간 추론 유지
-- 코드 읽기 전 수정 금지, 검증 없이 "완료" 주장 금지, 작은 diff 원칙
-- `max_steps` 기본값 6 → 25, 캡 10 → 50 — 진짜 멀티스텝 작업 가능
-
-### 새 도구
-- **`edit_file`** — 정밀 diff 편집. `old_string`이 파일에 유일해야만 성공(또는 `replace_all=true`). 환각/오편집 차단
-- **`grep`** — regex + glob + context_lines, 모든 텍스트 파일 대상, `node_modules`/`.git`/`venv`/`dist` 자동 제외
-- **`todo_write` / `todo_read`** — 워크스페이스별 영구 TODO 리스트(`.lattice/todos.json`), 멀티스텝 작업 상태 유지
-- **`read_file` 업그레이드** — 라인 번호 뷰(`numbered`), `total_lines`, optional `offset`/`limit`
-- 위 도구들 `/tools/*` REST 엔드포인트, `_TOOL_RISK` 등록, `/mcp/tools` 카탈로그 노출
-
-### Tests
-- `tests/unit/test_tools.py` 23개 추가 — edit_file/grep/todo/read_file/샌드박스 이탈 차단 (`52 passed`)
-
----
-
-## v0.1.9 변경사항
-
-### Security
-- 세션 TTL 7일 → 24시간, sliding refresh (활동시 자동 연장)
-- 파일 업로드 magic-number 검증 (PDF/DOCX/PNG 등 시그니처 확인)
-- Rate limiting: `/chat` 30/min, `/agent` 6/min, `/upload` 12/min (per user, 토큰 버킷)
-
-### Reliability
-- PyMuPDF 파일 핸들 누수 수정, ollama serve 좀비 방지 (detach)
-- knowledge_graph metadata 손상 row 안전 통과
-- 백그라운드 asyncio 태스크 예외 로깅 (`_spawn` 헬퍼)
-- silent except → logging.warning (sessions/config 로딩)
-
-### Tests
-- `tests/unit/test_security.py` 16개 추가 (bcrypt, MIME, rate limit, harness risk)
-
----
-
-## v0.1.8 변경사항
-
-### Added
-- **PWA (Progressive Web App)** — iPad / Android / Galaxy Tab 홈화면 설치 지원
-  - `manifest.json` + Service Worker (`sw.js`) + 아이콘 4종 (192px, 512px, apple-touch-icon 180px, favicon 32px)
-  - iOS Safari: 공유 버튼 → "홈 화면에 추가" → 앱처럼 전체화면 실행
-  - Android Chrome: 주소창 "설치" 버튼 → 홈화면 앱
-  - `viewport-fit=cover` — iPhone Dynamic Island / 노치 안전영역 확장
-- **서버 네트워크 공개 바인딩** — 기본 host `0.0.0.0`으로 변경
-  - 같은 Wi-Fi에서 모든 기기(`http://<Mac IP>:4825`)로 바로 접근 가능
-  - 시작 배너에 로컬 URL + 네트워크 IP 자동 출력
-- **Windows 서버 호환성**
-  - `computer_screenshot`: macOS `screencapture` → Windows/Linux `pyautogui` fallback
-  - `computer_open_app` / `computer_open_url`: `open -a` / `cmd /c start` / `xdg-open` 플랫폼 자동 분기
-
-### 배포 현황
-- npm ✅
-- PyPI ✅
-- VS Code Marketplace ✅
-- Open VSX ✅
-
----
-
-## v0.1.7 변경사항
-
-### Added
-- **모바일 반응형 UI** — 폰/태블릿 화면 크기에 자동 대응
-  - 사이드바 슬라이드 드로어 (☰ 햄버거 버튼, 오버레이 탭으로 닫기)
-  - iOS 소프트 키보드 대응 (`100dvh`), 노치/홈바 안전영역 (`safe-area-inset`)
-  - ops-strip 카드 가로 스크롤 압축, textarea 자동 줌 방지
-- 브레이크포인트 3단계: 900px / 768px / 480px
-
----
-
-## v0.1.6 변경사항
-
-### Added
-- **LATTICEAI_ENABLE_GRAPH** 환경변수 — Data Graph를 퍼블릭 배포에서 완전히 비활성화하는 토글 (기본값 `true`)
-  - `false` 설정 시 모든 그래프 API 404, 인제스트 건너뜀, 사이드바 버튼 자동 숨김
-
----
-
-## v0.1.5 변경사항
-
-### Added
-- **Data Graph** — 채팅·AI 답변·업로드 문서를 SQLite 지식 그래프로 자동 구조화, `/graph`에서 Canvas 기반 Force-directed 시각화
-- **Graph RAG** — 그래프 검색 결과를 채팅 컨텍스트에 자동 주입하여 이전 대화·문서 참조 강화
-- **Telegram 원격 제어** — 인라인 키보드 메뉴로 상태 조회, 모델 관리, 스크린샷, 그래프 통계 원격 제어
-- 어드민 세션 핸드오프 보안 강화 — URL 파라미터 → `sessionStorage` 1회 읽기 방식으로 교체
-
----
-
-## v0.1.4 변경사항
-
-### Added
-- 세션 영속성 — 서버 재시작 후에도 로그인 유지
-- SSO 로그인 — Entra ID / Okta OIDC 지원 (`OIDC_DISCOVERY_URL`, `OIDC_CLIENT_ID`, `OIDC_CLIENT_SECRET`)
-- 채팅 히스토리 검색 — 사이드바 검색창으로 대화 내용 키워드 검색
-- 대화 삭제 — 사이드바 각 대화에 삭제 버튼
-- MCP 서버 관리 UI — 사이드바 "MCP 관리" 버튼으로 설치/목록 모달
-- VS Code 인라인 Diff 뷰 — Edit Selection 결과를 diff로 먼저 확인 후 Apply/Discard
-- VS Code 현재 파일 첨부 — `Lattice AI: Attach Current File to Chat` 명령 추가
-
----
-
-## v0.1.3 변경사항
-
-### Added
-- 프로필 수정 (`PATCH /account/profile`) — 이름·닉네임 변경
-- 회원가입 폼 — 비밀번호 확인 필드, 인라인 에러 메시지
-- 어드민 패널 초대 링크 섹션 — 원클릭 복사
-- 어드민 대시보드 메시지 활동 차트 (Chart.js, 최근 14일)
-- 웹 UI 한국어 / 영어 전환 (`🌐 Languages` 버튼, localStorage 저장)
-
-### Fixed
-- 로그아웃 시 `/logout` API 호출로 서버 세션 쿠키 정상 만료
-- 인증(`account.html`)과 채팅(`chat.html`) UI 분리 — 레거시 파일 제거
-- 채팅 헤더에서 언어 선택 드롭다운이 ops-strip을 가리는 문제 수정
-
----
-
-## v0.1.1 변경사항
-
-### Added
-- 비밀번호 변경 API (`POST /account/change-password`)
-- 웹 UI 비밀번호 변경 모달 (헤더 계정 아이콘)
-
----
-
-## v0.1.0 변경사항
-
-### Added
-- FastAPI 브릿지 서버 (port 4825)
-- Apple Silicon MLX 로컬 모델 지원 (Gemma 4, Qwen 2.5 등)
-- 클라우드 모델 지원 (OpenAI, Groq, Together, OpenRouter 등)
-- VS Code / Cursor / Antigravity 확장
-- Telegram 봇 (로컬 AI 미러 + Codex 클라우드 봇)
-- 어드민 패널 (`/admin`)
-- P-Reinforce 지식 정원 엔진
-- MCP 서버 연동
-- Ollama / vLLM / LM Studio / llama.cpp 연동
-
-### Security
-- 모든 민감 엔드포인트 인증 적용
-- SameSite=Lax 쿠키 (CSRF 방어)
-- scrypt 비밀번호 해싱
-- tempfile 레이스 컨디션 수정
-- `run_command()` 위험 플래그 차단
-
----
-
-## 아키텍처
-
-```
-Lattice AI/
-├── server.py              # FastAPI 브릿지 서버 (port 4825)
-├── knowledge_graph.py     # SQLite Data Graph + Graph RAG 저장소
-├── llm_router.py          # 로컬/클라우드 모델 라우터
-├── tools.py               # 워크스페이스 도구 (파일, 터미널, 스크린샷 등)
-├── p_reinforce.py         # P-Reinforce 지식 정원 엔진
-├── telegram_bot.py        # 로컬 AI Telegram 미러 봇
-├── codex_telegram_bot.py  # 클라우드 Codex Telegram 봇
-├── static/                # 웹 UI (indexd.html), 어드민 패널 (admin.html)
-├── bin/ltcai.js           # npm CLI entrypoint
-├── pyproject.toml         # PyPI 메타데이터
-└── vscode-extension/      # VS Code / Cursor / Antigravity 확장
-```
-
----
-
-## 언어 지원
-
-웹 UI는 **한국어 / 영어** 전환을 지원합니다.
-
-- 로그인 페이지 우측 상단 **🌐 Languages** 버튼
-- 메인 화면 헤더 **🌐** 버튼
-- 선택한 언어는 브라우저에 저장됩니다
-
----
-
-## 플랫폼 지원
-
-| 기능 | macOS (Apple Silicon) | Windows / Linux |
-|------|:---:|:---:|
-| 웹 UI / 클라우드 모델 (OpenAI, Groq 등) | ✅ | ✅ |
-| VS Code / Cursor 확장 | ✅ | ✅ |
-| Telegram 봇 | ✅ | ✅ |
-| MLX 로컬 모델 (Gemma, Qwen 등) | ✅ | ❌ Apple Silicon 전용 |
-| Ollama / vLLM / LM Studio 연동 | ✅ | ✅ |
-
-> Windows / Linux에서 로컬 모델을 사용하려면 서버 실행 후 웹 UI(`http://localhost:4825`)에서 Ollama 등을 설치할 수 있습니다.
-
----
-
-## 빠른 시작
-
-### 설치 & 실행
-
-```bash
-# PyPI (기본 — 클라우드 모델만)
+# PyPI (클라우드 모델)
 pip install ltcai
 
-# PyPI (Apple Silicon MLX 포함)
+# PyPI (Apple Silicon MLX 로컬 모델 포함)
 pip install "ltcai[local]"
 
-# npm
+# npm (자동 Python 환경 구성)
 npm install -g ltcai
 
 # 서버 실행
@@ -220,23 +31,94 @@ LTCAI
 # → http://localhost:4825
 ```
 
-#### 개발 모드
+**설치 확인:**
 
-```bash
-python ltcai_cli.py
-python ltcai_cli.py --reload   # 코드 변경 시 자동 재시작
-
-LTCAI doctor                   # 의존성 및 환경 체크
 ```
-
-npm으로 설치한 경우 첫 실행 시 `~/.ltcai/npm-python`에 Python 가상환경을 자동으로 생성합니다.
-자동 설치를 끄려면 `LTCAI_SKIP_NPM_BOOTSTRAP=1`을 설정하세요.
-
-런타임 데이터는 기본적으로 `~/.ltcai/`에 저장됩니다. 경로 변경: `LATTICEAI_DATA_DIR=/path/to/data`
+$ LTCAI doctor
+[OK] Python 3.11+: 3.11.9
+[OK] FastAPI: required server dependency
+[OK] Uvicorn: required server dependency
+[OK] OpenAI SDK: required for cloud providers
+[OK] MLX: required for Apple Silicon local models
+[OK] MLX-LM: required for local text models
+[OK] MLX-VLM: required for Gemma/VLM models
+[OPTIONAL] Ollama binary: optional local-server engine
+[OK] Data dir: /Users/you/.ltcai
+[OK] Static UI: /path/to/static
+[INFO] Cloud keys configured: OPENAI_API_KEY
+```
 
 ---
 
-## 로컬 모드 (Apple Silicon)
+## 첫 채팅 → VS Code 연결 → Telegram 연결
+
+### 1단계: 첫 채팅
+
+1. `http://localhost:4825` 열기
+2. **회원가입** → 첫 번째 계정이 자동으로 admin
+3. 상단 모델 드롭다운 → 모델 선택 → 채팅 시작
+
+클라우드 모델 사용 시 API 키를 먼저 설정하거나, 어드민 패널에서 입력합니다:
+
+```bash
+OPENAI_API_KEY=sk-... LTCAI
+```
+
+### 2단계: VS Code 연결
+
+1. VS Code → Extensions → `ltcai` 검색 → Install
+2. `Cmd+Shift+A` → Lattice AI 채팅 패널 열기
+3. 기본적으로 `http://localhost:4825` 에 자동 연결됩니다
+
+| 단축키 | 기능 |
+|--------|------|
+| `Cmd+Shift+A` | 채팅 패널 열기 |
+| `Cmd+Shift+E` | 선택 코드 편집 |
+| `Cmd+Shift+M` | 모델 로드 / 전환 |
+| 우클릭 메뉴 | Explain / Edit / Knowledge Garden 저장 |
+
+### 3단계: Telegram 봇 연결
+
+BotFather에서 토큰을 발급받은 후:
+
+```bash
+LATTICEAI_TELEGRAM_BOT_TOKEN=your-token LTCAI
+```
+
+이후 Telegram에서 봇과 대화하면 로컬 AI 서버와 실시간으로 연결됩니다.
+
+---
+
+## 기능 개요
+
+| 기능 | 설명 |
+|------|------|
+| **웹 UI** | 반응형 채팅 + 어드민 패널 + 그래프 시각화 |
+| **VS Code / Cursor 확장** | 채팅, Edit Selection, Diff 뷰, 파일 첨부 |
+| **Telegram 봇** | 로컬 AI 미러 + Codex 클라우드 봇 |
+| **MCP 서버** | Claude Desktop / Cursor에서 직접 도구 사용 |
+| **MLX 로컬 추론** | Apple Silicon에서 Gemma, Qwen, DeepSeek 등 |
+| **클라우드 모델** | OpenAI, Groq, Together, OpenRouter |
+| **Graph RAG** | 채팅·문서를 SQLite 지식 그래프로 자동 구조화 |
+| **에이전트** | 파일 편집·생성, grep, todo, 터미널 (25스텝) |
+| **PWA** | iPad / Android 홈화면 설치 지원 |
+| **SSO** | Entra ID / Okta OIDC |
+
+---
+
+## 플랫폼 지원
+
+| 기능 | macOS (Apple Silicon) | Windows / Linux |
+|------|:---:|:---:|
+| 웹 UI / 클라우드 모델 | ✅ | ✅ |
+| VS Code / Cursor 확장 | ✅ | ✅ |
+| Telegram 봇 | ✅ | ✅ |
+| MLX 로컬 모델 (Gemma, Qwen 등) | ✅ | ❌ Apple Silicon 전용 |
+| Ollama / vLLM / LM Studio 연동 | ✅ | ✅ |
+
+---
+
+## 로컬 모델 (Apple Silicon)
 
 ```bash
 LATTICEAI_MODE=local \
@@ -244,34 +126,42 @@ LATTICEAI_LOCAL_MODEL=mlx-community/gemma-4-26b-a4b-it-4bit \
 LTCAI
 ```
 
-- MLX 로컬 모델 자동 로드
-- Telegram 미러 봇 활성화 가능
-- 파일/터미널/스크린샷 도구 사용 가능
+### 추천 모델 (M-series Mac)
+
+| 모델 | 용도 | 크기 | 추천 |
+|------|------|------|------|
+| `mlx-community/gemma-4-26b-a4b-it-4bit` | 범용/코딩 | ~14GB | ⭐⭐⭐⭐⭐ |
+| `mlx-community/Qwen2.5-Coder-32B-Instruct-4bit` | 코딩 | ~18GB | ⭐⭐⭐⭐⭐ |
+| `mlx-community/Qwen2.5-Coder-14B-Instruct-4bit` | 코딩 | ~8GB | ⭐⭐⭐⭐ |
+| `mlx-community/DeepSeek-R1-0528-4bit` | 추론 | ~38GB | ⭐⭐⭐⭐ |
+| `mlx-community/Phi-4-4bit` | 코딩 | ~8GB | ⭐⭐⭐⭐ |
+
+> **32GB Mac 추천**: `gemma-4-26b-a4b-it-4bit` — 빠르고 뛰어난 범용 성능
+
+### 멀티모델 핫스왑
+
+```bash
+curl -X POST localhost:4825/models/load \
+  -H "Content-Type: application/json" \
+  -d '{"model_id": "mlx-community/Qwen2.5-Coder-14B-Instruct-4bit"}'
+```
 
 ---
 
 ## 퍼블릭 모드 (클라우드 서버)
 
-Render, Fly.io, Railway, VPS 등에서 운영할 때 사용합니다. MLX를 사용하지 않고 클라우드 모델로 동작합니다.
+Render, Fly.io, Railway, VPS 등에서 운영할 때:
 
 ```bash
 LATTICEAI_MODE=public \
 LATTICEAI_ALLOW_LOCAL_MODELS=false \
-LATTICEAI_ENABLE_TELEGRAM=false \
 LATTICEAI_PUBLIC_MODEL=openai:gpt-4o-mini \
 OPENAI_API_KEY=sk-... \
 LATTICEAI_INVITE_CODE=my-secret-code \
 LTCAI
 ```
 
-지원 클라우드 모델 프리픽스:
-
-```
-openai:gpt-4o-mini
-openrouter:openai/gpt-4o-mini
-groq:llama-3.1-8b-instant
-together:meta-llama/Llama-3.3-70B-Instruct-Turbo
-```
+자세한 내용은 [docs/public-deploy.md](docs/public-deploy.md)를 참고하세요.
 
 ### Docker
 
@@ -284,47 +174,36 @@ docker run --rm -p 4825:4825 \
   lattice-ai
 ```
 
-### 퍼블릭 서버 체크리스트
+---
 
-- `LATTICEAI_MODE=public` 설정
-- 클라우드 API 키 설정 (`OPENAI_API_KEY` 등)
-- `LATTICEAI_INVITE_CODE`를 비공개 값으로 설정
-- `LATTICEAI_ENABLE_GRAPH=false` — Data Graph를 공개 서버에서 숨기려면 설정
-- `/data`에 영구 볼륨 마운트
-- HTTPS 리버스 프록시 앞에 두기 (nginx, Caddy 등)
+## 보안
+
+- **바인딩**: 기본 `127.0.0.1:4825` (로컬 전용) — 같은 Wi-Fi 기기 접근 허용 시 `LATTICEAI_HOST=0.0.0.0` 설정
+- **인증**: 모든 민감 엔드포인트 로그인 세션 필요 (`REQUIRE_AUTH=true` 기본)
+- **세션**: 24시간 TTL + sliding refresh, 서버 디스크 저장 (재시작 후에도 유지)
+- **CORS**: 기본 localhost만 허용 — 외부 허용 시 `LATTICEAI_CORS_ALLOW_NETWORK=true`
+- **API 키**: OS keyring/Keychain 저장 (평문 미저장)
+- **쿠키**: `HttpOnly + SameSite=Lax` (CSRF 방어)
+- **Rate limit**: `/chat` 30/분, `/agent` 6/분, `/upload` 12/분 (per user)
+- **파일 업로드**: magic-number 시그니처 검증 (확장자 위조 차단)
+- **텔레메트리**: 없음. 모든 데이터는 로컬(`~/.ltcai/`)에만 저장됩니다.
+
+보안 취약점 제보: [SECURITY.md](SECURITY.md) 참고
 
 ---
 
-## 모델
+## 문제 해결
 
-### 지원 모델 예시 (M-series Mac 기준)
-
-| 모델 | 용도 | 크기 | 추천도 |
-|------|------|------|--------|
-| `mlx-community/gemma-4-26b-a4b-it-4bit` | 범용/코딩 | ~14GB | ⭐⭐⭐⭐⭐ |
-| `mlx-community/Qwen2.5-Coder-32B-Instruct-4bit` | 코딩 | ~18GB | ⭐⭐⭐⭐⭐ |
-| `mlx-community/Qwen2.5-Coder-14B-Instruct-4bit` | 코딩 | ~8GB | ⭐⭐⭐⭐ |
-| `mlx-community/Qwen2.5-Coder-7B-Instruct-4bit` | 코딩 | ~4GB | ⭐⭐⭐ |
-| `mlx-community/DeepSeek-R1-0528-4bit` | 추론 | ~38GB | ⭐⭐⭐⭐ |
-| `mlx-community/Phi-4-4bit` | 코딩 | ~8GB | ⭐⭐⭐⭐ |
-| `mlx-community/Llama-3.1-8B-Instruct-4bit` | 범용 | ~4.5GB | ⭐⭐⭐ |
-
-> **32GB Mac 추천**: gemma-4-26b-a4b-it-4bit — 빠르고 뛰어난 범용 성능
-
-### 멀티모델 핫스왑
-
-```bash
-# 모델 로드
-curl -X POST localhost:4825/models/load \
-  -H "Content-Type: application/json" \
-  -d '{"model_id": "mlx-community/Qwen2.5-Coder-14B-Instruct-4bit"}'
-
-# 즉시 전환 (재로드 없음)
-curl -X POST localhost:4825/models/switch/mlx-community%2FQwen2.5-Coder-14B-Instruct-4bit
-
-# 언로드
-curl -X DELETE localhost:4825/models/unload/mlx-community%2FQwen2.5-Coder-14B-Instruct-4bit
-```
+| 증상 | 원인 | 해결 |
+|------|------|------|
+| 포트 4825 이미 사용 중 | 이전 프로세스 잔존 | `lsof -i :4825` → `kill <PID>` 또는 `--port 4826` |
+| `ModuleNotFoundError: mlx` | MLX 미설치 | `pip install "ltcai[local]"` (Apple Silicon 전용) |
+| Python 3.10 이하 | 버전 불일치 | Python 3.11+ 필요. `python3 --version` 확인 |
+| `pyautogui` 권한 오류 | macOS 접근성 권한 | 시스템 설정 → 개인정보 보호 → 접근성 → 터미널 허용 |
+| `LTCAI doctor` OPTIONAL 표시 | 선택 의존성 미설치 | 해당 기능 불필요 시 무시 가능 |
+| API 키 없음 경고 | 클라우드 모델 미설정 | `OPENAI_API_KEY=sk-...` 환경변수 또는 어드민 패널에서 입력 |
+| Telegram 봇 응답 없음 | 토큰 미설정 또는 서버 미실행 | `LATTICEAI_TELEGRAM_BOT_TOKEN` 확인, 서버 로그 확인 |
+| iPad / 다른 기기에서 접근 안 됨 | 기본 바인딩 127.0.0.1 | `LATTICEAI_HOST=0.0.0.0 LTCAI` 로 재시작 |
 
 ---
 
@@ -339,84 +218,22 @@ curl -X DELETE localhost:4825/models/unload/mlx-community%2FQwen2.5-Coder-14B-In
 
 ```bash
 cd vscode-extension
-npm install
-npm run build
-npm run package:vsix
-
-# 설치 (모든 에디터 한 번에)
-npm run install:all
-
-# 또는 에디터에서: Extensions → "..." → "Install from VSIX"
+npm install && npm run build && npm run package:vsix
+# Extensions → "..." → "Install from VSIX"
 ```
-
-### 키보드 단축키
-
-| 단축키 | 기능 |
-|--------|------|
-| `Cmd+Shift+A` | 채팅 패널 열기 |
-| `Cmd+Shift+E` | 선택 코드 편집 |
-| `Cmd+Shift+M` | 모델 로드 / 전환 |
-| 우클릭 메뉴 | Explain / Edit / Knowledge Garden에 저장 |
-
----
-
-## Telegram 봇
-
-### 1. 로컬 AI 봇 (local 모드)
-
-로컬 Lattice AI 서버와 대화하고 웹 채팅을 Telegram으로 미러링합니다.
-
-```bash
-LATTICEAI_TELEGRAM_BOT_TOKEN=your-token LTCAI
-```
-
-### 2. Codex 클라우드 봇
-
-Telegram에서 GPT 기반 개발 어시스턴트와 대화하고, 선택적으로 GitHub 이슈를 생성합니다.
-
-```bash
-CODEX_TELEGRAM_BOT_TOKEN=your-token \
-OPENAI_API_KEY=sk-... \
-CODEX_OPENAI_MODEL=gpt-4o \
-python codex_telegram_bot.py
-```
-
-Telegram 명령어: `/start` `/reset` `/issue 제목`
-
-선택적으로 GitHub 이슈 연동:
-
-```bash
-GITHUB_TOKEN=ghp-... GITHUB_REPO=owner/repo
-```
-
----
-
-## 보안
-
-- **인증**: 모든 `/tools/*`, `/agent`, `/mcp/*`, `/local/*` 등 민감 엔드포인트는 로그인 세션 필요 (`REQUIRE_AUTH=true` 시)
-- **세션**: 7일 TTL, 서버 메모리 저장 (재시작 시 로그아웃)
-- **바인딩**: 기본 `127.0.0.1:4825` — 외부 접근 허용 시 명시적으로 `LATTICEAI_HOST=0.0.0.0` 설정
-- **CORS**: 기본 localhost만 허용 — 외부 허용 시 `LATTICEAI_CORS_ALLOW_NETWORK=true`
-- **API 키**: OS keyring/Keychain 저장 — 평문 저장 허용 시 `LATTICEAI_ALLOW_PLAINTEXT_API_KEYS=true`
-- **히스토리**: 저장 전 API key/token/password 패턴 자동 마스킹
-- **쿠키**: `HttpOnly + SameSite=Lax` (CSRF 방어)
 
 ---
 
 ## 어드민 패널
 
-`http://localhost:4825/admin` — 관리자 계정으로 로그인 후 접근 가능
+`http://localhost:4825/admin` — 관리자 계정으로 로그인 후 접근
 
 - 사용자 목록 및 역할 관리 (admin / user)
-- 사용자 비활성화 / 삭제
-- 대시보드 (메모리, 모델, 시스템 상태)
+- 대시보드 (메모리, 모델, 시스템 상태, 활동 차트)
+- 초대 링크 생성 및 복사
 
-> **첫 번째로 가입한 계정이 자동으로 admin이 됩니다.** 서버를 처음 실행한 후 `/register` 또는 웹 UI에서 회원가입하면 됩니다. 이후 추가 admin은 어드민 패널에서 지정할 수 있습니다.
->
-> 환경변수로 admin을 고정할 수도 있습니다:
-> ```bash
-> LATTICEAI_ADMIN_EMAILS=you@example.com LTCAI
-> ```
+> 첫 번째로 가입한 계정이 자동으로 admin입니다.
+> 환경변수로 고정: `LATTICEAI_ADMIN_EMAILS=you@example.com`
 
 ---
 
@@ -426,7 +243,6 @@ GITHUB_TOKEN=ghp-... GITHUB_REPO=owner/repo
 
 ```
 ~/.ltcai-brain/
-├── INDEX.md
 ├── 00_Raw/       # 원시 데이터, 아이디어
 ├── 10_Wiki/      # 검증된 개념, 레퍼런스
 ├── 20_Skills/    # 코드 스니펫, 프롬프트
@@ -436,27 +252,14 @@ GITHUB_TOKEN=ghp-... GITHUB_REPO=owner/repo
 
 에디터에서 텍스트 선택 → 우클릭 → **"Save to Knowledge Garden"**
 
-또는 API:
-
-```bash
-curl -X POST localhost:4825/garden \
-  -H "Content-Type: application/json" \
-  -d '{"content": "학습한 내용", "category": "10_Wiki"}'
-```
-
 ---
 
 ## Data Graph / Graph RAG
 
-웹 채팅과 AI 답변, 업로드 문서(PDF/DOCX/XLSX/PPTX/TXT/CSV)를 `~/.ltcai/knowledge_graph.sqlite`에 자동 저장합니다.
+채팅·AI 답변·업로드 문서(PDF/DOCX/XLSX/PPTX/TXT/CSV)를 `~/.ltcai/knowledge_graph.sqlite`에 자동 저장합니다.
 
-- 채팅/AI 답변: `Message`, `AIResponse`, `Person`, `Conversation`, `Topic`, `Decision`, `Task`
-- 문서 업로드: `File`, `Chunk`, `Page`, `Slide`, `Sheet`, `Image`, `Topic`
-- 원본 파일 blob: `~/.ltcai/knowledge_graph_blobs/`
 - 시각화: `http://localhost:4825/graph`
-- API: `/knowledge-graph/graph`, `/knowledge-graph/search`, `/knowledge-graph/context`
-
-`/clear`, `/clear_all`, 대화 삭제는 사용자 채팅창만 정리합니다. Data Graph/RAG 데이터와 관리자 감사 로그는 보존됩니다.
+- 검색 및 RAG 컨텍스트 자동 주입
 
 ---
 
@@ -471,11 +274,11 @@ curl -X POST localhost:4825/garden \
 | DELETE | `/models/unload/{id}` | 모델 언로드 |
 | POST | `/chat` | 채팅 생성 (`stream=true/false`) |
 | POST | `/agent` | 파일 생성/수정 에이전트 |
-| POST | `/garden` | 지식 정원 저장 |
-| GET | `/garden/tree` | 지식 트리 조회 |
 | GET | `/tools/list_dir` | 디렉토리 목록 |
 | POST | `/tools/run_command` | 터미널 명령 실행 |
 | GET | `/mcp/installed` | 설치된 MCP 목록 |
+
+자세한 MCP 도구 목록: [docs/mcp-tools.md](docs/mcp-tools.md)
 
 ---
 
@@ -488,8 +291,7 @@ cat > ~/Library/LaunchAgents/com.ltcai.plist << 'EOF'
 <plist version="1.0">
 <dict>
   <key>Label</key><string>com.ltcai</string>
-  <key>ProgramArguments</key>
-  <array>
+  <key>ProgramArguments</key><array>
     <string>/usr/local/bin/LTCAI</string>
   </array>
   <key>RunAtLoad</key><true/>
@@ -499,17 +301,24 @@ cat > ~/Library/LaunchAgents/com.ltcai.plist << 'EOF'
 </dict>
 </plist>
 EOF
-
 launchctl load ~/Library/LaunchAgents/com.ltcai.plist
 ```
 
-또는 동봉된 스크립트 사용:
-
-```bash
-./start_ai.sh   # 자동 재시작 + caffeinate (슬립 방지)
-```
+또는: `./start_ai.sh` (자동 재시작 + caffeinate)
 
 ---
+
+## 기여
+
+[CONTRIBUTING.md](CONTRIBUTING.md)를 참고하세요.
+
+## 보안 취약점 제보
+
+[SECURITY.md](SECURITY.md)를 참고하세요.
+
+## 릴리스 노트
+
+현재 버전: **0.1.11** — 자세한 변경 이력은 [docs/CHANGELOG.md](docs/CHANGELOG.md) 참고.
 
 ## 라이선스
 

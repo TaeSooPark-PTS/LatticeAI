@@ -1,5 +1,28 @@
 # Changelog
 
+## [0.1.11] - 2026-05-21
+
+### Agent state machine (renamed + cleaned up)
+- 8개의 명시적 상태: `IDLE → PLANNING → WAITING_APPROVAL → EXECUTING → VERIFYING → (DONE | ROLLBACK → FAILED)`
+- `RETRY` 상태 제거 — 재시도 카운터는 `AgentRunContext.retry_count`에 보관, `VERIFYING`이 `EXECUTING`으로 직접 전환
+- 종료 상태를 `DONE` / `FAILED`로 분리 — 응답에 `final_state` 필드 추가, `status`는 `"ok"` 또는 `"failed"`
+
+### Tool Permission Layer
+- `ToolPermission` 추가 — `{ tool, risk, requires_approval, network }` 4-필드 컴팩트 뷰
+- 기존 7-차원 `TOOL_GOVERNANCE`에서 자동 파생 (단일 진실 공급원)
+- `GET /tools/permissions` 엔드포인트 추가
+- `/mcp/tools` 응답의 각 툴에 `permission` 필드 노출
+
+### Cleanup
+- 중국어 응답 지원 제거 — `detect_language`는 이제 `ko` 또는 `en`만 반환
+- `_LANG_HINT`에서 `"zh"` 키 삭제, EXECUTOR_PROMPT의 "Chinese" 언급 제거
+
+### Repo
+- `CHANGELOG.md` → `docs/CHANGELOG.md` 이동 (루트 가독성 개선)
+- 자동 릴리스 워크플로(`release.yml`) 제거 — 수동 배포 유지
+
+---
+
 ## [0.1.10] - 2026-05-21
 
 ### Agent intelligence (pro-developer workflow)
@@ -23,6 +46,11 @@
 
 ### Tests
 - `tests/unit/test_tools.py`에 23개 신규 테스트 — edit_file (유일/모호/`replace_all`/identical), grep (regex·glob·case·context·binary dir), todo round-trip + 검증, read_file numbered/offset/limit, 샌드박스 이탈 차단 (`52 passed`)
+
+### Security (보안 기본값 통일)
+- **기본 바인딩 `0.0.0.0` → `127.0.0.1` 롤백** — v0.1.8에서 PWA 편의를 위해 0.0.0.0으로 변경했으나 개인 AI 서버의 기본값은 로컬 전용이어야 안전함. 네트워크 노출이 필요한 경우 `LATTICEAI_HOST=0.0.0.0` 명시적 설정.
+- SECURITY.md, CONTRIBUTING.md, GitHub Actions CI/Release 워크플로 추가
+- docs/ 문서 추가: architecture, security-model, public-deploy, mcp-tools, privacy
 
 ---
 

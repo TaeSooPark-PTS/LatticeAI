@@ -9,6 +9,39 @@
 ## 설명
 로컬 파일을 읽고 특정 범위를 편집한 뒤 저장한다. 원본 백업을 `.bak` 파일로 생성한다.
 
+## 거버넌스
+
+`policies/policy.md` 참고. 요약: `risk=write`, `destructive=false`, `shell=false`, `network=false`, `auto_approve=false`, `sandbox=workspace`, `rollback=git`
+
+## 트리거 조건
+
+호출해야 하는 상황:
+- 에이전트가 Implement 단계에서 코드/설정 파일을 변경해야 할 때
+- 사용자가 "이 부분 고쳐줘", "이 라인 바꿔줘", "수정해줘"라고 요청할 때
+- `read_file`로 내용 확인 후 특정 문자열을 교체해야 할 때
+
+호출하면 **안** 되는 상황:
+- 파일 내용 확인만 필요할 때 → `read_file` 사용
+- 파일 전체를 처음부터 새로 쓸 때 → `write_file` 사용
+- 바이너리 파일(이미지, ZIP 등) 수정 시도 → 불가, `BINARY_FILE` 에러
+
+## Side Effects
+
+| 항목 | 내용 |
+|------|------|
+| 파일 변경 | 대상 파일의 내용이 영구 변경됨 |
+| 생성 파일 | 없음 (`backup=false` 기본) |
+| 프로세스 | 없음 |
+| 네트워크 | 없음 |
+
+## Rollback
+
+| 항목 | 내용 |
+|------|------|
+| 가능 여부 | `git` — git이 초기화된 워크스페이스에서 복구 가능 |
+| 방법 | `git diff <file>` 확인 후 `git checkout <file>` |
+| 주의사항 | git 미초기화 시 rollback 불가 (`.bak` 파일 없음, backup=false 기본) |
+
 ## 입력 스키마
 ```json
 {

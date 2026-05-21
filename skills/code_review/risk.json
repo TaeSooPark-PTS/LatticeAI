@@ -1,0 +1,9 @@
+{
+  "risk": "read",
+  "destructive": false,
+  "shell": false,
+  "network": false,
+  "auto_approve": true,
+  "sandbox": "workspace",
+  "rollback": "none"
+}

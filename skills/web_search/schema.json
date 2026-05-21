@@ -1,0 +1,62 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "web_search",
+  "input": {
+    "required": ["query"],
+    "optional": ["num_results", "lang"],
+    "properties": {
+      "query":       { "type": "string", "description": "검색어" },
+      "num_results": { "type": "integer", "default": 5, "minimum": 1, "maximum": 20 },
+      "lang":        { "type": "string", "default": "ko-KR" }
+    }
+  },
+  "output": {
+    "oneOf": [
+      {
+        "title": "success",
+        "properties": {
+          "success": { "const": true },
+          "result": {
+            "properties": {
+              "query":   { "type": "string" },
+              "results": {
+                "type": "array",
+                "items": {
+                  "properties": {
+                    "title":   { "type": "string" },
+                    "url":     { "type": "string", "format": "uri" },
+                    "snippet": { "type": "string" }
+                  },
+                  "required": ["title","url","snippet"]
+                }
+              }
+            },
+            "required": ["query","results"]
+          }
+        },
+        "required": ["success","result"]
+      },
+      {
+        "title": "failure",
+        "properties": {
+          "success": { "const": false },
+          "error":   { "type": "string", "enum": ["INVALID_INPUT","NETWORK_ERROR","TIMEOUT"] },
+          "message": { "type": "string" }
+        },
+        "required": ["success","error","message"]
+      }
+    ]
+  },
+  "evals": [
+    {
+      "id": "basic_search",
+      "input": { "query": "FastAPI async", "num_results": 3 },
+      "pass_criteria": "success == true and len(results) >= 1"
+    },
+    {
+      "id": "empty_query",
+      "input": { "query": "" },
+      "pass_criteria": "error == INVALID_INPUT"
+    }
+  ]
+}

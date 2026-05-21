@@ -1,0 +1,9 @@
+{
+  "risk": "write",
+  "destructive": false,
+  "shell": false,
+  "network": false,
+  "auto_approve": false,
+  "sandbox": "workspace",
+  "rollback": "git"
+}

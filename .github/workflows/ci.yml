@@ -1,0 +1,65 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+jobs:
+  test:
+    name: Test (Python ${{ matrix.python-version }})
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        python-version: ["3.11", "3.12"]
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python ${{ matrix.python-version }}
+        uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python-version }}
+          cache: pip
+
+      - name: Install dependencies
+        run: |
+          pip install -e "." pytest pytest-asyncio httpx
+
+      - name: Syntax check
+        run: |
+          python -m py_compile ltcai_cli.py server.py knowledge_graph.py llm_router.py p_reinforce.py telegram_bot.py tools.py codex_telegram_bot.py
+
+      - name: Run tests
+        run: |
+          python -m pytest tests/unit/ -v --tb=short
+
+  build:
+    name: Build package
+    runs-on: ubuntu-latest
+    needs: test
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: pip
+
+      - name: Install build tools
+        run: pip install build twine
+
+      - name: Build
+        run: python -m build
+
+      - name: Check package
+        run: twine check dist/*
+
+      - name: Upload dist artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: dist
+          path: dist/

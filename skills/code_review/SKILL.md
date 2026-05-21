@@ -9,6 +9,34 @@
 ## 설명
 파일 또는 코드 스니펫을 LLM에 전달해 버그, 보안 이슈, 성능, 스타일을 리뷰한다.
 
+## 거버넌스
+
+`policies/policy.md` 참고. 요약: `risk=read`, `destructive=false`, `shell=false`, `network=false(local)/true(cloud)`, `auto_approve=true`, `sandbox=workspace`, `rollback=none`
+
+## 트리거 조건
+
+호출해야 하는 상황:
+- 사용자가 "이 코드 리뷰해줘", "보안 검토해줘", "버그 있어?"라고 요청할 때
+- 에이전트가 Verify 단계에서 작성한 코드를 검증해야 할 때
+- PR 제출 전 코드 품질 확인이 필요할 때
+
+호출하면 **안** 되는 상황:
+- 코드를 수정해야 할 때 → `edit_file` 사용
+- 파일 내용만 확인할 때 → `read_file` 사용
+
+## Side Effects
+
+| 항목 | 내용 |
+|------|------|
+| 파일 변경 | 없음 |
+| 생성 파일 | 없음 |
+| 프로세스 | 없음 |
+| 네트워크 | 클라우드 LLM 사용 시 코드 내용이 외부 API로 전송됨 |
+
+## Rollback
+
+없음. 읽기 전용 작업.
+
 ## 입력 스키마
 ```json
 {

@@ -1,0 +1,61 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "data_analysis",
+  "input": {
+    "required": ["path"],
+    "optional": ["columns", "analysis_type", "max_rows"],
+    "properties": {
+      "path":          { "type": "string", "description": "분석할 파일 절대 경로 (.csv, .xlsx, .json)" },
+      "columns":       { "type": "array", "items": { "type": "string" }, "description": "분석할 컬럼 목록. 미입력시 전체" },
+      "analysis_type": { "type": "array", "items": { "type": "string", "enum": ["summary","outlier","correlation","trend"] }, "default": ["summary"] },
+      "max_rows":      { "type": "integer", "default": 10000 }
+    }
+  },
+  "output": {
+    "oneOf": [
+      {
+        "title": "success",
+        "properties": {
+          "success": { "const": true },
+          "result": {
+            "properties": {
+              "shape":    { "type": "array", "items": { "type": "integer" }, "minItems": 2, "maxItems": 2 },
+              "columns":  { "type": "array", "items": { "type": "string" } },
+              "summary":  { "type": "object" },
+              "outliers": { "type": "object" },
+              "insights": { "type": "string" }
+            },
+            "required": ["shape","columns","summary"]
+          }
+        },
+        "required": ["success","result"]
+      },
+      {
+        "title": "failure",
+        "properties": {
+          "success": { "const": false },
+          "error":   { "type": "string", "enum": ["INVALID_INPUT","FILE_NOT_FOUND","UNSUPPORTED_FORMAT","PARSE_ERROR","SIZE_LIMIT"] },
+          "message": { "type": "string" }
+        },
+        "required": ["success","error","message"]
+      }
+    ]
+  },
+  "evals": [
+    {
+      "id": "csv_summary",
+      "input": { "path": "__TEST__/sales.csv", "analysis_type": ["summary"] },
+      "pass_criteria": "success == true and shape[0] > 0"
+    },
+    {
+      "id": "unsupported_format",
+      "input": { "path": "__TEST__/photo.png" },
+      "pass_criteria": "error == UNSUPPORTED_FORMAT"
+    },
+    {
+      "id": "missing_path",
+      "input": {},
+      "pass_criteria": "error == INVALID_INPUT"
+    }
+  ]
+}

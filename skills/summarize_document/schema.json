@@ -1,0 +1,71 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "summarize_document",
+  "input": {
+    "required": ["path"],
+    "optional": ["max_length", "style", "focus_sections"],
+    "properties": {
+      "path":           { "type": "string", "description": "절대 경로 또는 ~/로 시작하는 경로 (.txt, .md, .pdf, .docx)" },
+      "max_length":     { "type": "integer", "default": 500, "description": "요약 최대 글자 수" },
+      "style":          { "type": "string", "enum": ["bullet","paragraph","table"], "default": "bullet", "description": "출력 형식" },
+      "focus_sections": { "type": "array", "items": { "type": "string" }, "description": "특정 섹션만 요약할 때 섹션 제목 목록" }
+    }
+  },
+  "output": {
+    "oneOf": [
+      {
+        "title": "success",
+        "properties": {
+          "success": { "const": true },
+          "result": {
+            "properties": {
+              "title":    { "type": "string", "description": "문서 제목 또는 파일명" },
+              "summary":  { "type": "string", "description": "핵심 요약" },
+              "keywords": { "type": "array", "items": { "type": "string" }, "description": "주요 키워드 (최대 10개)" },
+              "sections": {
+                "type": "array",
+                "items": {
+                  "properties": {
+                    "heading": { "type": "string" },
+                    "summary": { "type": "string" }
+                  },
+                  "required": ["heading","summary"]
+                },
+                "description": "섹션별 요약 (있는 경우)"
+              },
+              "word_count": { "type": "integer" }
+            },
+            "required": ["title","summary","keywords"]
+          }
+        },
+        "required": ["success","result"]
+      },
+      {
+        "title": "failure",
+        "properties": {
+          "success": { "const": false },
+          "error":   { "type": "string", "enum": ["INVALID_INPUT","FILE_NOT_FOUND","UNSUPPORTED_FORMAT","SIZE_LIMIT","MODEL_NOT_LOADED"] },
+          "message": { "type": "string" }
+        },
+        "required": ["success","error","message"]
+      }
+    ]
+  },
+  "evals": [
+    {
+      "id": "markdown_summary",
+      "input": { "path": "__TEST__/README.md", "style": "bullet" },
+      "pass_criteria": "success == true and len(keywords) >= 1"
+    },
+    {
+      "id": "unsupported_format",
+      "input": { "path": "__TEST__/data.csv" },
+      "pass_criteria": "error == UNSUPPORTED_FORMAT"
+    },
+    {
+      "id": "missing_path",
+      "input": {},
+      "pass_criteria": "error == INVALID_INPUT"
+    }
+  ]
+}
