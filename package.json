@@ -1,6 +1,6 @@
 {
   "name": "ltcai",
-  "version": "0.1.7",
+  "version": "0.1.8",
   "description": "Lattice AI local MLX/cloud LLM workspace server",
   "bin": {
     "ltcai": "bin/ltcai.js",
@@ -43,6 +43,10 @@
     "static/chat.html",
     "static/admin.html",
     "static/graph.html",
+    "static/manifest.json",
+    "static/sw.js",
+    "static/icons/",
+    "docs/",
     "requirements.txt",
     "README.md"
   ],

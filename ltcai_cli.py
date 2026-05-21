@@ -6,12 +6,53 @@ import argparse
 import importlib.util
 import os
 import shutil
+import socket
 import sys
 from pathlib import Path
 
 
 def _has_module(name: str) -> bool:
     return importlib.util.find_spec(name) is not None
+
+
+def _local_ips() -> list[str]:
+    """Return all non-loopback IPv4 addresses for this machine."""
+    ips: list[str] = []
+    try:
+        hostname = socket.gethostname()
+        for info in socket.getaddrinfo(hostname, None):
+            addr = info[4][0]
+            if ":" not in addr and not addr.startswith("127."):
+                if addr not in ips:
+                    ips.append(addr)
+    except Exception:
+        pass
+    if not ips:
+        try:
+            s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+            s.connect(("8.8.8.8", 80))
+            ips.append(s.getsockname()[0])
+            s.close()
+        except Exception:
+            pass
+    return ips
+
+
+def _print_banner(host: str, port: int) -> None:
+    local_url = f"http://localhost:{port}"
+    print()
+    print("=" * 56)
+    print("  Lattice AI is running")
+    print(f"  Local:    {local_url}")
+    if host == "0.0.0.0":
+        for ip in _local_ips():
+            print(f"  Network:  http://{ip}:{port}")
+        print()
+        print("  Other devices on the same Wi-Fi can open the")
+        print("  Network URL above in their browser.")
+        print("  On iPad/Android: browser menu → 'Add to Home Screen'")
+    print("=" * 56)
+    print()
 
 
 def doctor() -> int:
@@ -48,7 +89,8 @@ def main() -> None:
     parser = argparse.ArgumentParser(prog="LTCAI", description="Run the Lattice AI local server.")
     subparsers = parser.add_subparsers(dest="command")
     subparsers.add_parser("doctor", help="Check local runtime dependencies and configuration.")
-    parser.add_argument("--host", default=os.getenv("LATTICEAI_HOST") or "127.0.0.1")
+    # Default to 0.0.0.0 so other devices on the same network can connect
+    parser.add_argument("--host", default=os.getenv("LATTICEAI_HOST") or "0.0.0.0")
     parser.add_argument("--port", type=int, default=int(os.getenv("LATTICEAI_PORT") or "4825"))
     parser.add_argument("--reload", action="store_true", help="Enable uvicorn reload for local development.")
     args = parser.parse_args()
@@ -58,6 +100,8 @@ def main() -> None:
 
     app_dir = Path(__file__).resolve().parent
     os.chdir(app_dir)
+
+    _print_banner(args.host, args.port)
 
     import uvicorn
 

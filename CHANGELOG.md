@@ -1,5 +1,25 @@
 # Changelog
 
+## [0.1.8] - 2026-05-21
+
+### Added
+- **PWA (Progressive Web App)** — iPad / Android / Galaxy Tab 홈화면 설치 지원
+  - `manifest.json`: 앱 이름, 아이콘, 배경색, 테마색, 단축키 정의
+  - `sw.js` Service Worker: 정적 파일 캐시-퍼스트, API 네트워크-퍼스트, 오프라인 대응
+  - 192×192, 512×512, apple-touch-icon 180×180, favicon 32×32 PNG 아이콘 생성
+  - 모든 HTML에 `<link rel="manifest">`, `apple-mobile-web-app-*`, `theme-color` 메타태그 추가
+  - `viewport-fit=cover` — iPhone Dynamic Island / 노치 안전영역 확장
+- **서버 네트워크 공개 바인딩** — 기본 host `127.0.0.1` → `0.0.0.0`으로 변경
+  - 같은 Wi-Fi 내 iPad / Android / Galaxy Tab 에서 `http://<Mac IP>:4825` 로 바로 접근 가능
+  - 시작 배너에 로컬 / 네트워크 URL 및 "Add to Home Screen" 안내 출력
+- **Windows 서버 호환성**
+  - `computer_screenshot`: macOS `screencapture` 외 Windows/Linux에서 pyautogui fallback
+  - `computer_open_app` / `computer_open_url`: `open -a` (macOS) / `cmd /c start` (Windows) / `xdg-open` (Linux) 자동 분기
+  - `_PLATFORM` 상수 도입으로 향후 플랫폼 분기 일관성 확보
+- **배포 파일 포함**: `manifest.json`, `sw.js`, `icons/` 폴더를 npm · PyPI 패키지에 포함
+
+---
+
 ## [0.1.7] - 2026-05-21
 
 ### Added

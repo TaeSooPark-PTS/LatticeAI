@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "ltcai"
-version = "0.1.7"
+version = "0.1.8"
 description = "Lattice AI local MLX/cloud LLM workspace server"
 readme = "README.md"
 requires-python = ">=3.11"
@@ -51,5 +51,16 @@ py-modules = [
 ]
 include-package-data = true
 
+[tool.setuptools.package-data]
+"*" = [
+  "static/*.html",
+  "static/manifest.json",
+  "static/sw.js",
+  "static/icons/*.png",
+  "docs/*.md",
+  "skills/**/*.md",
+]
+
 [tool.setuptools.data-files]
-"static" = ["static/account.html", "static/chat.html", "static/admin.html", "static/graph.html"]
+"static" = ["static/account.html", "static/chat.html", "static/admin.html", "static/graph.html", "static/manifest.json", "static/sw.js"]
+"static/icons" = ["static/icons/icon-192.png", "static/icons/icon-512.png", "static/icons/apple-touch-icon.png", "static/icons/favicon-32.png"]

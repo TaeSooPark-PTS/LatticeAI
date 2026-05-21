@@ -1450,6 +1450,10 @@ app.add_middleware(
 # UI 파일이 담길 static 폴더 연결
 STATIC_DIR.mkdir(parents=True, exist_ok=True)
 app.mount("/static", StaticFiles(directory=str(STATIC_DIR)), name="static")
+# PWA icons served at /icons/*
+_ICONS_DIR = STATIC_DIR / "icons"
+if _ICONS_DIR.exists():
+    app.mount("/icons", StaticFiles(directory=str(_ICONS_DIR)), name="icons")
 ensure_agent_root()
 app.mount("/agent-files", StaticFiles(directory=str(AGENT_ROOT)), name="agent-files")
 
@@ -1781,6 +1785,24 @@ async def root(request: Request, code: Optional[str] = None, authorized: Optiona
 async def account_page():
     """Direct login/register page route used by logout and manual navigation."""
     return FileResponse(STATIC_DIR / "account.html")
+
+
+@app.get("/manifest.json")
+async def manifest():
+    p = STATIC_DIR / "manifest.json"
+    if not p.exists():
+        raise HTTPException(status_code=404)
+    return FileResponse(str(p), media_type="application/manifest+json")
+
+
+@app.get("/sw.js")
+async def service_worker():
+    p = STATIC_DIR / "sw.js"
+    if not p.exists():
+        raise HTTPException(status_code=404)
+    resp = FileResponse(str(p), media_type="application/javascript")
+    resp.headers["Service-Worker-Allowed"] = "/"
+    return resp
 
 
 @app.get("/chat")
