@@ -2723,6 +2723,19 @@ async def chat(req: ChatRequest, request: Request):
         if screenshot_context:
             context += f"\n\n{screenshot_context}"
 
+    # 메시지 안에 절대 경로나 ~/... 경로가 있으면 자동으로 파일 읽어서 컨텍스트 주입
+    _file_path_re = re.compile(r'(?:^|[\s\'\"(])((~|/[\w.])[^\s\'")\]]*)', re.MULTILINE)
+    for _m in _file_path_re.finditer(req.message or ""):
+        _fpath = _m.group(1).strip()
+        try:
+            _result = local_read(_fpath)
+            _fcontent = _result.get("content", "")
+            if _fcontent:
+                context += f"\n\n[FILE: {_fpath}]\n```\n{_fcontent[:6000]}\n```"
+                print(f"📂 Auto-injected file context: {_fpath}")
+        except Exception:
+            pass
+
     history_message = f"{req.message}\n[Image attached]" if req.image_data else req.message
     save_to_history("user", history_message, source=req.source or "web", conversation_id=req.conversation_id, **history_user)
     if req.source != "telegram":
@@ -2932,7 +2945,9 @@ async def _stream_chat(req: ChatRequest, context: str = "", image_data: str = No
 # ── Local Computer Agent ──────────────────────────────────────────────────────
 
 AGENT_SYSTEM_PROMPT = """You are Lattice AI Agent, a local computer-use coding assistant.
-You can work only inside the agent workspace.
+You have full access to the local filesystem via local_list / local_read / local_write tools.
+Use read_file / write_file for paths inside the agent workspace (relative paths).
+Use local_read / local_write for any absolute path on the system (e.g. ~/Downloads, ~/Desktop).
 
 Available actions:
 - list_dir: {"action":"list_dir","args":{"path":"."}}
