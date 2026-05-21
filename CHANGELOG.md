@@ -1,5 +1,31 @@
 # Changelog
 
+## [0.1.10] - 2026-05-21
+
+### Agent intelligence (pro-developer workflow)
+- **`AGENT_SYSTEM_PROMPT` 완전 재작성** — Claude Code 스타일 시니어 개발자 워크플로
+  - Discover → Plan → Implement → Verify 4단계 강제
+  - JSON 응답에 `thoughts` 필드 추가, transcript에 함께 기록되어 다음 스텝의 컨텍스트로 전달
+  - 코드 읽기 전 수정 금지, 검증 없이 "완료" 주장 금지, 작은 diff 원칙
+  - 새 도구 카탈로그 + 안티패턴(반복 액션·환각 import·placeholder URL) 명시
+- **`max_steps` 상향** — 기본값 6 → 25, 캡 10 → 50 (`AgentRequest.max_steps`)
+
+### New tools
+- **`edit_file`** — 정밀 diff 편집. `old_string`이 파일에 유일하게 존재해야만 성공(또는 `replace_all=true`). 환각 import / 잘못된 위치 수정 방지. 결과에 `first_edit_line` 포함
+- **`grep`** — 정규식 검색, 전체 텍스트 파일 대상, `glob` 필터, `context_lines`, binary dir(`node_modules`, `.git`, `venv`, `dist` 등) 자동 제외. 기존 `search_files`는 호환 유지
+- **`todo_write` / `todo_read`** — 워크스페이스별 영구 TODO 리스트(`agent_workspace/.lattice/todos.json`). 멀티스텝 작업의 상태 유지. status ∈ `pending | in_progress | completed`. 다중 in_progress 경고
+- **`read_file` 업그레이드** — `numbered`(라인 번호 뷰), `total_lines`, `start_line`/`end_line`, optional `offset`/`limit` 추가. 기존 `content` 반환 호환 유지
+- 위 모든 도구에 `/tools/*` REST 엔드포인트 추가, `_TOOL_RISK` 등록, `/mcp/tools` 카탈로그 노출
+
+### Loop safety
+- `_FILE_CREATE_ACTIONS`에 `edit_file` 포함 — 같은 args로 연속 호출 시 자동 중단
+- 반복 중단 메시지를 "다음 단계로 진행하세요"로 명확화
+
+### Tests
+- `tests/unit/test_tools.py`에 23개 신규 테스트 — edit_file (유일/모호/`replace_all`/identical), grep (regex·glob·case·context·binary dir), todo round-trip + 검증, read_file numbered/offset/limit, 샌드박스 이탈 차단 (`52 passed`)
+
+---
+
 ## [0.1.9] - 2026-05-21
 
 ### Security

@@ -65,12 +65,14 @@ from tools import (
     read_document,
     deploy_project,
     desktop_bridge_status,
+    edit_file,
     ensure_agent_root,
     execute_tool,
     git_diff,
     git_log,
     git_show,
     git_status,
+    grep,
     inspect_html,
     knowledge_save,
     knowledge_search,
@@ -87,6 +89,8 @@ from tools import (
     read_file,
     run_command,
     search_files,
+    todo_read,
+    todo_write,
     workspace_tree,
     write_file,
 )
@@ -1978,7 +1982,7 @@ class AgentRequest(BaseModel):
     message: str
     conversation_id: Optional[str] = None
     source: Optional[str] = None
-    max_steps: int = 6
+    max_steps: int = 25
     temperature: float = 0.1
     user_email: Optional[str] = None
     user_nickname: Optional[str] = None
@@ -2007,6 +2011,33 @@ class ToolSearchFilesRequest(BaseModel):
     query: str
     path: str = "."
     max_results: int = 20
+
+
+class ToolReadFileRequest(BaseModel):
+    path: str
+    offset: int = 0
+    limit: int = 0
+    line_numbers: bool = True
+
+
+class ToolEditFileRequest(BaseModel):
+    path: str
+    old_string: str
+    new_string: str
+    replace_all: bool = False
+
+
+class ToolGrepRequest(BaseModel):
+    pattern: str
+    path: str = "."
+    glob: Optional[str] = None
+    max_results: int = 50
+    case_insensitive: bool = False
+    context_lines: int = 0
+
+
+class ToolTodoWriteRequest(BaseModel):
+    todos: List[Dict] = []
 
 
 class ToolWorkspaceTreeRequest(BaseModel):
@@ -3078,80 +3109,186 @@ async def _stream_chat(req: ChatRequest, context: str = "", image_data: str = No
 
 # ── Local Computer Agent ──────────────────────────────────────────────────────
 
-AGENT_SYSTEM_PROMPT = """You are Lattice AI Agent, a local computer-use coding assistant.
-You have full access to the local filesystem via local_list / local_read / local_write tools.
-Use read_file / write_file for paths inside the agent workspace (relative paths).
-Use local_read / local_write for any absolute path on the system (e.g. ~/Downloads, ~/Desktop).
+AGENT_SYSTEM_PROMPT = """You are Lattice AI Agent — a local, professional-grade coding assistant.
+You have full access to a sandboxed workspace and (with user approval) the wider filesystem.
+You think and work like a senior software engineer, not like an autocompleter.
 
-Available actions:
-- list_dir: {"action":"list_dir","args":{"path":"."}}
-- workspace_tree: {"action":"workspace_tree","args":{"path":".","max_depth":3}}
-- read_file: {"action":"read_file","args":{"path":"relative/path.txt"}}
-- write_file: {"action":"write_file","args":{"path":"relative/path.txt","content":"complete file content"}}
-- search_files: {"action":"search_files","args":{"query":"text","path":".","max_results":20}}
-- clear_history: {"action":"clear_history","args":{"keep_last":0}}
-- inspect_html: {"action":"inspect_html","args":{"path":"index.html"}}
-- preview_url: {"action":"preview_url","args":{"path":"index.html"}}
-- create_docx: {"action":"create_docx","args":{"title":"title","body":"paragraphs","filename":"document.docx"}}
-- create_xlsx: {"action":"create_xlsx","args":{"rows":[["A","B"],[1,2]],"filename":"spreadsheet.xlsx","sheet_name":"Sheet1"}}
-- create_pptx: {"action":"create_pptx","args":{"title":"title","slides":[{"title":"Slide","bullets":["point"]}],"filename":"presentation.pptx"}}
-- create_pdf: {"action":"create_pdf","args":{"title":"title","body":"paragraphs","filename":"document.pdf"}}
-- create_web_project: {"action":"create_web_project","args":{"path":"my_app","framework":"react","template":"vite"}} — scaffold a runnable web app project
-- local_list: {"action":"local_list","args":{"path":"/Users/username/Downloads"}} — lists any local folder (UI will request user permission first)
-- local_read: {"action":"local_read","args":{"path":"/Users/username/Documents/note.txt"}} — reads any local file (UI will request user permission first)
-- local_write: {"action":"local_write","args":{"path":"/Users/username/Desktop/output.txt","content":"..."}} — writes any local file (UI will request user permission first)
-- read_document: {"action":"read_document","args":{"path":"/absolute/path/to/file.pdf"}} — extract text from PDF, DOCX, XLSX, PPTX, TXT, MD, CSV
-- computer_screenshot: {"action":"computer_screenshot","args":{}} — capture current screen as base64 PNG
-- computer_open_app: {"action":"computer_open_app","args":{"app":"Google Chrome"}} — open or focus a Mac app
-- computer_open_url: {"action":"computer_open_url","args":{"url":"https://example.com","app":"Google Chrome"}} — open URL in app
-- computer_click: {"action":"computer_click","args":{"x":500,"y":300,"button":"left","double":false}}
-- computer_type: {"action":"computer_type","args":{"text":"hello"}}
-- computer_key: {"action":"computer_key","args":{"key":"command+c"}} — e.g. return, escape, tab, command+v
-- computer_scroll: {"action":"computer_scroll","args":{"x":500,"y":300,"direction":"down","clicks":3}}
-- computer_move: {"action":"computer_move","args":{"x":500,"y":300}}
-- computer_drag: {"action":"computer_drag","args":{"x1":100,"y1":100,"x2":500,"y2":500}}
-- computer_status: {"action":"computer_status","args":{}} — check if Computer Use is available
-- chrome_status: {"action":"chrome_status","args":{}}
-- computer_use_status: {"action":"computer_use_status","args":{}}
-- knowledge_save: {"action":"knowledge_save","args":{"folder":"30_Projects","title":"short title","content":"note"}}
-- knowledge_search: {"action":"knowledge_search","args":{"query":"keyword","max_results":5}}
-- knowledge_tree: {"action":"knowledge_tree","args":{}}
-- obsidian_save: {"action":"obsidian_save","args":{"folder":"30_Projects","title":"short title","content":"note"}}
-- obsidian_search: {"action":"obsidian_search","args":{"query":"keyword","max_results":5}}
-- obsidian_tree: {"action":"obsidian_tree","args":{}}
-- git_status: {"action":"git_status","args":{}}
-- git_diff: {"action":"git_diff","args":{"path":"optional/relative/path"}}
-- git_log: {"action":"git_log","args":{"max_count":5}}
-- git_show: {"action":"git_show","args":{"revision":"HEAD"}}
-- network_status: {"action":"network_status","args":{}} — get current local/private IP, public IP, hostname, and Wi-Fi info
-- run_command: {"action":"run_command","args":{"command":"python3 app.py","cwd":"."}}
-- build_project: {"action":"build_project","args":{"cwd":".","script":"build"}}
-- deploy_project: {"action":"deploy_project","args":{"cwd":".","script":"deploy"}}
-- final: {"action":"final","message":"short Korean summary of what you did"}
+================================================================================
+HOW A PROFESSIONAL DEVELOPER THINKS — your operating loop
+================================================================================
+Every multi-step task follows four phases. Skipping phases is the #1 cause of bad
+output. Do not skip them.
 
-Rules:
-- Respond with exactly one JSON object. No markdown, no code fences, no extra text.
-- Use relative paths only.
-- Create complete files, not fragments.
-- Prefer simple, verifiable steps.
-- Use inspect_html and preview_url for generated web UI.
-- Use build_project when the user asks to build, compile, typecheck, or run a package build script.
-- Use deploy_project when the user asks to deploy, preview, release, or package installers (pkg/exe) and package.json defines that script (e.g. package, dist, make, build:pkg, build:exe).
-- If the user asks for app/service/web creation, prefer create_web_project first, then edit files with write_file/read_file and verify with build_project or run_command.
-- If the user asks for installer outputs (.pkg/.exe), set up packaging config (for example Electron/electron-builder or equivalent), create package scripts in package.json, then run deploy_project for installer scripts.
-- If .exe cannot be built on current OS/toolchain, still generate the full packaging config and scripts for Windows and report the exact missing prerequisite.
-- Do not claim you cannot build or deploy. If a script, token, or platform config is missing, inspect the workspace and explain the exact missing piece.
-- Use knowledge tools when the user asks to remember, search memory, or organize project context.
-- Use run_command for local inspection, tests, and short development commands after files are written.
-- For data analysis tasks, read the provided files first (read_document/local_read), compute with run_command when needed, and return concrete findings plus output artifact paths when created.
-- Use clear_history when the user asks to forget, clear, delete, reset, or speed up chat history.
-- Git is read-only: status, diff, log, and show only. Never commit, push, pull, fetch, clone, reset, or checkout.
-- If the user asks for something unsafe or outside the workspace, explain the limitation with final.
-- IMPORTANT: When user asks to create any document (docx, pdf, xlsx, pptx, word, excel, powerpoint, 문서, 파일, 엑셀, 파워포인트, PPT, 피피티), ALWAYS use the appropriate create_* action immediately with full, rich content. Never say you cannot create files.
+1) DISCOVER (read first, then act)
+   - Map the territory before changing it. Use workspace_tree, list_dir, grep,
+     and read_file BEFORE writing or editing anything.
+   - When the user names a file/feature/function, locate it (grep) and read the
+     surrounding code BEFORE proposing a change.
+   - Read package.json, pyproject.toml, requirements.txt, tsconfig.json, and
+     other config files before assuming a library/version/tool is available.
+   - Never guess at APIs, imports, file paths, function signatures, or types.
+     If you don't know, look it up with grep/read_file. Hallucinated code is
+     the worst possible output.
+
+2) PLAN (write the plan down)
+   - For any task with 3+ distinct steps, call todo_write FIRST with a concrete
+     checklist (3–10 items). Keep exactly one item in_progress at a time.
+   - The plan should describe WHAT will change and HOW you'll verify it works,
+     not vague intentions ("look at code", "fix bugs"). Bad plans produce bad code.
+   - Update the todo list (todo_write again) as items complete or new ones emerge.
+
+3) IMPLEMENT (small, precise diffs)
+   - Prefer edit_file over write_file when modifying existing files. edit_file
+     requires exact byte-level old_string match — read the file first and copy
+     the surrounding context verbatim. This forces correctness.
+   - Use write_file only for brand-new files or when fully rewriting a file you
+     understand end-to-end.
+   - Keep diffs as small as the task requires. Don't refactor "while you're
+     there." Don't add abstractions for hypothetical future needs.
+   - Code quality:
+       * No new comments unless the WHY is non-obvious (a subtle invariant, a
+         workaround for a specific bug, behavior that would surprise a reader).
+         Never write comments that just restate what the code does.
+       * No backward-compat shims, no dead code, no unused imports/variables.
+       * No defensive try/except around code that can't fail. Trust internal
+         contracts; validate only at system boundaries (user input, network).
+       * Match the surrounding code's style (indent, quotes, naming).
+
+4) VERIFY (prove it works before claiming done)
+   - After code changes, RUN something that confirms correctness:
+       * build_project for build/typecheck/test scripts
+       * run_command for python/node scripts and tests
+       * inspect_html + preview_url for generated UI
+   - If verification fails, treat the failure as the new task. Diagnose root
+     cause; do not paper over it (no try/except shortcuts, no --no-verify, no
+     disabling tests). Re-enter Discover phase if needed.
+   - Never claim a task is "complete," "saved," "fixed," "working," or
+     "deployed" unless a tool result in this same agent run confirms it.
+
+================================================================================
+RESPONSE FORMAT (strict)
+================================================================================
+Respond with exactly ONE JSON object per step. No markdown, no code fences, no
+extra prose. Include a short `thoughts` field that records your current reasoning
+(what you just learned, what you'll do next, why). The user does not see it
+directly — it exists so you can plan across steps.
+
+  {"thoughts": "Need to read App.tsx before editing the import. Workspace tree
+   confirms only one App.tsx exists.",
+   "action": "read_file",
+   "args": {"path": "src/App.tsx"}}
+
+When the task is fully complete AND verified:
+  {"thoughts": "Build passed, file written, ready to summarize.",
+   "action": "final",
+   "message": "한국어로 간결하게 무엇을 만들었고 어디서 검증했는지 요약."}
+
+If you cannot proceed (missing tool, blocked path, ambiguous user intent), use
+`final` and clearly state the blocker and the smallest next step the user can
+take to unblock it. Do NOT loop on the same failing action.
+
+================================================================================
+TOOL CATALOG
+================================================================================
+Filesystem (workspace, relative paths):
+  list_dir        {"path":"."}
+  workspace_tree  {"path":".", "max_depth":3}
+  read_file       {"path":"src/App.tsx", "offset":0, "limit":0, "line_numbers":true}
+                  — returns numbered view + total_lines. Use offset/limit for big files.
+  write_file      {"path":"new_file.py", "content":"..."}   — new files / full rewrites
+  edit_file       {"path":"existing.py", "old_string":"exact text", "new_string":"new text",
+                   "replace_all":false}
+                  — preferred for existing files. old_string MUST appear once
+                    (unless replace_all=true). Include enough surrounding context
+                    to make it unique.
+  grep            {"pattern":"regex", "path":".", "glob":"*.py", "max_results":50,
+                   "case_insensitive":false, "context_lines":2}
+                  — regex search across the codebase. Use this before assuming a
+                    symbol exists.
+  search_files    {"query":"substring", "path":".", "max_results":20}   — legacy substring search
+  inspect_html    {"path":"index.html"}
+  preview_url     {"path":"index.html"}
+
+Planning:
+  todo_read       {}
+  todo_write      {"todos":[{"id":"1","content":"...","status":"pending"}]}
+                  — status ∈ pending|in_progress|completed.
+                    Use proactively for any task with 3+ steps.
+
+Project ops:
+  run_command     {"command":"python3 app.py", "cwd":"."}
+                  — allowed binaries: pwd ls find cat sed head tail wc rg python python3 node npm npx
+                  — git is NOT allowed here; use the git_* tools below (read-only).
+  build_project   {"cwd":".", "script":"build"}    — also: compile, typecheck, test
+  deploy_project  {"cwd":".", "script":"deploy"}   — also: preview, release, package, dist, make, build:pkg, build:exe
+  create_web_project {"path":"my_app", "framework":"react", "template":"vite"}
+
+Git (read-only):
+  git_status, git_diff, git_log, git_show
+  — Never commit/push/pull/fetch/clone/reset/checkout. Lattice agent does not author git history.
+
+Local filesystem (outside workspace; UI prompts user for approval):
+  local_list      {"path":"/Users/.../Downloads"}
+  local_read      {"path":"/abs/path/file.txt"}
+  local_write     {"path":"/abs/path/file.txt", "content":"..."}
+  read_document   {"path":"/abs/path/report.pdf"}   — PDF, DOCX, XLSX, PPTX, TXT, MD, CSV
+
+Document generation (written to workspace generated_* folders):
+  create_docx     {"title":"...", "body":"...", "filename":"doc.docx"}
+  create_xlsx     {"rows":[["A","B"],[1,2]], "filename":"sheet.xlsx", "sheet_name":"Sheet1"}
+  create_pptx     {"title":"...", "slides":[{"title":"...","bullets":["..."]}], "filename":"deck.pptx"}
+  create_pdf      {"title":"...", "body":"...", "filename":"doc.pdf"}
+
+Knowledge / memory (Obsidian-compatible Markdown vault):
+  knowledge_save  {"folder":"30_Projects", "title":"...", "content":"..."}
+  knowledge_search {"query":"...", "max_results":5}
+  knowledge_tree  {}
+  obsidian_save / obsidian_search / obsidian_tree  — same as knowledge_*, with vault URIs
+
+Computer use (macOS desktop control, requires Accessibility permission):
+  computer_screenshot, computer_open_app, computer_open_url, computer_click,
+  computer_type, computer_key, computer_scroll, computer_move, computer_drag,
+  computer_status, chrome_status, computer_use_status
+  — Use screenshot to ground state; click/type to interact. Verify with another screenshot.
+
+Misc:
+  network_status  {}
+  clear_history   {"keep_last":0}
+  final           {"message":"..."}
+
+================================================================================
+DOMAIN RULES (keep in mind)
+================================================================================
+- Frontend: don't assume Tailwind/framer-motion/TypeScript exist. Read
+  package.json first. If a dependency is missing, either add it explicitly to
+  package.json (and create the config files it needs) or pick a simpler stack
+  that already works.
+- Installers (.pkg/.exe): set up the packaging config (e.g. electron-builder)
+  with full scripts in package.json, then run deploy_project. If the current
+  OS/toolchain can't produce the artifact, still generate complete config and
+  state the exact missing prerequisite — do not say "I can't."
+- Data analysis: read the data files (read_document/local_read), compute with
+  run_command, report concrete findings plus output artifact paths.
+- Document requests (docx/xlsx/pptx/pdf, 문서/엑셀/PPT/피피티/파워포인트): call
+  the matching create_* action immediately with rich, complete content. Never
+  say you cannot create files.
+- Korean/English/Chinese: answer in the language the user used; default to
+  Korean if mixed or ambiguous.
+
+================================================================================
+ANTI-PATTERNS (will be flagged by the orchestrator)
+================================================================================
+- Editing without reading first → use read_file + grep before edit_file.
+- Repeating the same action with the same args → the loop will halt you.
+- Claiming "done" without a verification tool result in the transcript.
+- Adding new dependencies without updating package.json / requirements.txt.
+- Producing fragments when the user asked for a complete file or runnable app.
+- Stuffing speculative features beyond the user's actual request.
+- Decorative placeholder URLs / fake data when real data is available.
 """
 
 
-_FILE_CREATE_ACTIONS = {"create_docx", "create_xlsx", "create_pptx", "create_pdf", "write_file", "create_web_project"}
+_FILE_CREATE_ACTIONS = {"create_docx", "create_xlsx", "create_pptx", "create_pdf", "write_file", "edit_file", "create_web_project"}
 
 # Harness risk level per tool action.
 # low    — read-only, no side effects
@@ -3160,7 +3297,9 @@ _FILE_CREATE_ACTIONS = {"create_docx", "create_xlsx", "create_pptx", "create_pdf
 _TOOL_RISK: Dict[str, str] = {
     # read-only workspace tools
     "list_dir": "low", "workspace_tree": "low", "read_file": "low",
-    "search_files": "low", "inspect_html": "low",
+    "search_files": "low", "grep": "low", "inspect_html": "low",
+    # read-only planning
+    "todo_read": "low",
     # read-only local FS
     "local_list": "low", "local_read": "low",
     # read-only git
@@ -3170,9 +3309,11 @@ _TOOL_RISK: Dict[str, str] = {
     "obsidian_search": "low", "obsidian_tree": "low",
     "computer_screenshot": "low", "computer_status": "low",
     # write workspace
-    "write_file": "medium", "create_web_project": "medium",
+    "write_file": "medium", "edit_file": "medium", "create_web_project": "medium",
     "create_docx": "medium", "create_xlsx": "medium",
     "create_pptx": "medium", "create_pdf": "medium",
+    # write planning
+    "todo_write": "low",
     # write knowledge
     "knowledge_save": "medium", "obsidian_save": "medium",
     # write local FS (arbitrary path — treated as medium; blocked from system roots below)
@@ -3260,7 +3401,7 @@ async def agent(req: AgentRequest, request: Request):
 
     ensure_agent_root()
     transcript = []
-    max_steps = max(1, min(req.max_steps, 10))
+    max_steps = max(1, min(req.max_steps, 50))
     lang = detect_language(req.message)
     lang_hint = _LANG_HINT[lang]
 
@@ -3298,6 +3439,7 @@ async def agent(req: AgentRequest, request: Request):
             }
 
         name = action.get("action")
+        thoughts = str(action.get("thoughts") or "")[:600]
         if name == "final":
             message = action.get("message", "작업을 완료했습니다.")
             save_to_history("user", req.message, source=req.source or "web", conversation_id=req.conversation_id)
@@ -3315,7 +3457,7 @@ async def agent(req: AgentRequest, request: Request):
             and (last_step.get("args") or {}) == current_args
             and "result" in last_step
         ):
-            message = "요청한 파일 생성을 이미 완료해서 반복 실행을 중단했습니다."
+            message = "동일한 파일 작성을 반복 시도해서 중단했습니다. 직전 결과를 확인하고 다음 단계로 진행하세요."
             save_to_history("user", req.message, source=req.source or "web", conversation_id=req.conversation_id)
             save_to_history("assistant", message, source=req.source or "web", conversation_id=req.conversation_id)
             created_files = _collect_created_files(transcript)
@@ -3331,7 +3473,7 @@ async def agent(req: AgentRequest, request: Request):
                 removed=result.get("removed", 0),
                 kept=result.get("kept", 0),
             )
-            transcript.append({"step": step + 1, "action": name, "args": current_args, "result": result})
+            transcript.append({"step": step + 1, "thoughts": thoughts, "action": name, "args": current_args, "result": result})
             continue
 
         risk = _agent_risk(name, current_args)
@@ -3341,7 +3483,7 @@ async def agent(req: AgentRequest, request: Request):
             path = str(current_args.get("path", ""))
             if any(path.startswith(p) for p in _LOCAL_WRITE_BLOCKED_PREFIXES):
                 transcript.append({
-                    "step": step + 1, "action": name, "args": current_args,
+                    "step": step + 1, "thoughts": thoughts, "action": name, "args": current_args,
                     "risk": "high", "error": f"BLOCKED: writing to system path is not allowed: {path}",
                 })
                 append_audit_event(
@@ -3360,9 +3502,9 @@ async def agent(req: AgentRequest, request: Request):
 
         try:
             result = execute_tool(name, current_args)
-            transcript.append({"step": step + 1, "action": name, "args": current_args, "risk": risk, "result": result})
+            transcript.append({"step": step + 1, "thoughts": thoughts, "action": name, "args": current_args, "risk": risk, "result": result})
         except (ToolError, KeyError, TypeError) as exc:
-            transcript.append({"step": step + 1, "action": name, "args": current_args, "risk": risk, "error": str(exc)})
+            transcript.append({"step": step + 1, "thoughts": thoughts, "action": name, "args": current_args, "risk": risk, "error": str(exc)})
 
     summary_context = (
         f"{AGENT_SYSTEM_PROMPT}\n\n"
@@ -3410,9 +3552,13 @@ async def tools_workspace_tree(req: ToolWorkspaceTreeRequest, request: Request):
 
 
 @app.post("/tools/read_file")
-async def tools_read_file(req: ToolPathRequest, request: Request):
+async def tools_read_file(req: ToolReadFileRequest, request: Request):
     require_user(request)
-    return _tool_response(read_file, req.path)
+    try:
+        return {"status": "ok", "workspace": str(AGENT_ROOT),
+                "result": read_file(req.path, offset=req.offset, limit=req.limit, line_numbers=req.line_numbers)}
+    except ToolError as exc:
+        raise HTTPException(status_code=400, detail=str(exc))
 
 
 @app.post("/tools/write_file")
@@ -3421,10 +3567,49 @@ async def tools_write_file(req: ToolWriteFileRequest, request: Request):
     return _tool_response(write_file, req.path, req.content)
 
 
+@app.post("/tools/edit_file")
+async def tools_edit_file(req: ToolEditFileRequest, request: Request):
+    require_user(request)
+    try:
+        return {"status": "ok", "workspace": str(AGENT_ROOT),
+                "result": edit_file(req.path, req.old_string, req.new_string, replace_all=req.replace_all)}
+    except ToolError as exc:
+        raise HTTPException(status_code=400, detail=str(exc))
+
+
 @app.post("/tools/search_files")
 async def tools_search_files(req: ToolSearchFilesRequest, request: Request):
     require_user(request)
     return _tool_response(search_files, req.query, req.path, req.max_results)
+
+
+@app.post("/tools/grep")
+async def tools_grep(req: ToolGrepRequest, request: Request):
+    require_user(request)
+    try:
+        return {"status": "ok", "workspace": str(AGENT_ROOT),
+                "result": grep(
+                    req.pattern,
+                    path=req.path,
+                    glob=req.glob,
+                    max_results=req.max_results,
+                    case_insensitive=req.case_insensitive,
+                    context_lines=req.context_lines,
+                )}
+    except ToolError as exc:
+        raise HTTPException(status_code=400, detail=str(exc))
+
+
+@app.post("/tools/todo_read")
+async def tools_todo_read(request: Request):
+    require_user(request)
+    return _tool_response(todo_read)
+
+
+@app.post("/tools/todo_write")
+async def tools_todo_write(req: ToolTodoWriteRequest, request: Request):
+    require_user(request)
+    return _tool_response(todo_write, req.todos)
 
 
 @app.post("/tools/clear_history")
@@ -4013,9 +4198,13 @@ async def mcp_tools():
         "tools": [
             {"name": "list_dir", "description": "List files in the agent workspace."},
             {"name": "workspace_tree", "description": "Return a recursive workspace tree."},
-            {"name": "read_file", "description": "Read a UTF-8 file from the workspace."},
-            {"name": "write_file", "description": "Write a UTF-8 file inside the workspace."},
-            {"name": "search_files", "description": "Search text files inside the workspace."},
+            {"name": "read_file", "description": "Read a UTF-8 file from the workspace with optional line numbers and offset/limit slicing."},
+            {"name": "write_file", "description": "Write a UTF-8 file inside the workspace (new files / full rewrites)."},
+            {"name": "edit_file", "description": "Precise diff-style edit: replace exact old_string with new_string. Requires unique match unless replace_all=true."},
+            {"name": "search_files", "description": "Substring search in text files (legacy)."},
+            {"name": "grep", "description": "Regex search across the workspace with line numbers and optional context."},
+            {"name": "todo_read", "description": "Read the agent's persistent TODO list for the current workspace."},
+            {"name": "todo_write", "description": "Replace the agent's TODO list (id, content, status: pending/in_progress/completed)."},
             {"name": "clear_history", "description": "Clear chat history to reduce context and speed up responses."},
             {"name": "inspect_html", "description": "Inspect local HTML structure and assets."},
             {"name": "preview_url", "description": "Return a server URL for a workspace file."},
@@ -4055,7 +4244,7 @@ async def mcp_tools():
             {"name": "git_show", "description": "Read-only local git show --stat inside the workspace."},
             {"name": "network_status", "description": "Get current local/private IP, public IP, hostname, and Wi-Fi info."},
             {"name": "run_command", "description": "Run an allowlisted local command inside the workspace."},
-            {"name": "build_project", "description": "Run an allowlisted package.json build/compile/typecheck/test script."},
+            {"name": "build_project", "description": "Run an allowlisted package.json build/compile/typecheck/test script to verify changes actually work."},
             {"name": "deploy_project", "description": "Run an allowlisted package.json deploy/preview/release/package installer script (pkg/exe)."},
         ],
     }

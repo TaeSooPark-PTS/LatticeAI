@@ -347,7 +347,15 @@ def workspace_tree(path: str = ".", max_depth: int = 3) -> Dict[str, Any]:
     return {"root": str(AGENT_ROOT), "path": _relative(target) if target != AGENT_ROOT else ".", "entries": entries}
 
 
-def read_file(path: str) -> Dict[str, Any]:
+def read_file(path: str, offset: int = 0, limit: int = 0, line_numbers: bool = True) -> Dict[str, Any]:
+    """Read a file from the agent workspace.
+
+    Returns content as plain text. When line_numbers is True (default), also
+    returns a numbered view (`numbered`) plus `total_lines` so the agent can
+    cite file:line locations precisely.
+
+    offset is 0-indexed (the first line is offset=0). limit=0 reads to the end.
+    """
     target = _resolve_path(path)
     if not target.exists():
         raise ToolError("File does not exist.")
@@ -356,7 +364,31 @@ def read_file(path: str) -> Dict[str, Any]:
     size = target.stat().st_size
     if size > MAX_FILE_BYTES:
         raise ToolError(f"File is too large to read ({size} bytes).")
-    return {"path": _relative(target), "content": target.read_text(encoding="utf-8")}
+    text = target.read_text(encoding="utf-8")
+    all_lines = text.splitlines()
+    total_lines = len(all_lines)
+
+    offset = max(0, int(offset or 0))
+    limit = max(0, int(limit or 0))
+    end = total_lines if limit == 0 else min(total_lines, offset + limit)
+    sliced = all_lines[offset:end]
+    sliced_text = "\n".join(sliced)
+    if offset == 0 and limit == 0 and text.endswith("\n"):
+        sliced_text += "\n"
+
+    result: Dict[str, Any] = {
+        "path": _relative(target),
+        "content": sliced_text,
+        "total_lines": total_lines,
+        "start_line": offset + 1,
+        "end_line": end,
+    }
+    if line_numbers:
+        width = max(4, len(str(end or total_lines)))
+        result["numbered"] = "\n".join(
+            f"{(offset + i + 1):>{width}}\t{line}" for i, line in enumerate(sliced)
+        )
+    return result
 
 
 def write_file(path: str, content: str) -> Dict[str, Any]:
@@ -366,6 +398,199 @@ def write_file(path: str, content: str) -> Dict[str, Any]:
     target.parent.mkdir(parents=True, exist_ok=True)
     target.write_text(content, encoding="utf-8")
     return {"path": _relative(target), "bytes": target.stat().st_size}
+
+
+def edit_file(path: str, old_string: str, new_string: str, replace_all: bool = False) -> Dict[str, Any]:
+    """Precise diff-style edit: replace `old_string` with `new_string` in `path`.
+
+    Fails when `old_string` is missing or appears more than once (unless
+    replace_all=True). This forces the caller to read the file first and pass
+    enough surrounding context to uniquely identify the edit site — the same
+    discipline Claude Code uses for safe edits.
+    """
+    if old_string == new_string:
+        raise ToolError("old_string and new_string are identical; nothing to change.")
+    target = _resolve_path(path)
+    if not target.exists() or not target.is_file():
+        raise ToolError("File does not exist.")
+    if target.stat().st_size > MAX_FILE_BYTES:
+        raise ToolError("File is too large to edit.")
+
+    original = target.read_text(encoding="utf-8")
+    occurrences = original.count(old_string)
+    if occurrences == 0:
+        raise ToolError("old_string not found in file. Read the file first and copy the exact bytes (including whitespace).")
+    if occurrences > 1 and not replace_all:
+        raise ToolError(f"old_string is ambiguous: appears {occurrences} times. Add more context to make it unique, or pass replace_all=true.")
+
+    updated = original.replace(old_string, new_string) if replace_all else original.replace(old_string, new_string, 1)
+    if len(updated.encode("utf-8")) > MAX_FILE_BYTES:
+        raise ToolError("Resulting file would exceed the workspace size limit.")
+    target.write_text(updated, encoding="utf-8")
+
+    edited_line = original[: original.find(old_string)].count("\n") + 1
+    return {
+        "path": _relative(target),
+        "replacements": occurrences if replace_all else 1,
+        "bytes": target.stat().st_size,
+        "first_edit_line": edited_line,
+    }
+
+
+_GREP_BINARY_EXTS = {".png", ".jpg", ".jpeg", ".gif", ".webp", ".pdf", ".zip", ".tar",
+                    ".gz", ".bz2", ".xz", ".7z", ".mp3", ".mp4", ".mov", ".wav",
+                    ".woff", ".woff2", ".ttf", ".eot", ".ico", ".db", ".sqlite",
+                    ".pyc", ".pyo", ".o", ".so", ".dylib", ".dll", ".exe", ".bin"}
+_GREP_BINARY_DIRS = {"node_modules", ".git", ".venv", "venv", "__pycache__",
+                    ".pytest_cache", "dist", "build", ".next", ".cache"}
+
+
+def grep(
+    pattern: str,
+    path: str = ".",
+    glob: Optional[str] = None,
+    max_results: int = 50,
+    case_insensitive: bool = False,
+    context_lines: int = 0,
+) -> Dict[str, Any]:
+    """Regex search across the agent workspace.
+
+    Unlike `search_files` (single line, 9 extensions, substring only), this
+    walks all text files, supports regex, returns line numbers, and can
+    optionally include surrounding context lines. Skips obvious binary
+    files/directories.
+    """
+    if not pattern:
+        raise ToolError("Pattern is required.")
+    try:
+        flags = re.IGNORECASE if case_insensitive else 0
+        regex = re.compile(pattern, flags)
+    except re.error as exc:
+        raise ToolError(f"Invalid regex: {exc}") from exc
+
+    target = _resolve_path(path)
+    if not target.exists() or not target.is_dir():
+        raise ToolError("Path is not a directory.")
+
+    max_results = max(1, min(int(max_results), 500))
+    context_lines = max(0, min(int(context_lines), 8))
+    matches: List[Dict[str, Any]] = []
+    files_scanned = 0
+    files_with_matches = 0
+
+    iterator = target.rglob(glob) if glob else target.rglob("*")
+    for file_path in iterator:
+        if len(matches) >= max_results:
+            break
+        if not file_path.is_file():
+            continue
+        if file_path.suffix.lower() in _GREP_BINARY_EXTS:
+            continue
+        if any(part in _GREP_BINARY_DIRS for part in file_path.parts):
+            continue
+        if file_path.stat().st_size > MAX_FILE_BYTES:
+            continue
+        try:
+            lines = file_path.read_text(encoding="utf-8").splitlines()
+        except (UnicodeDecodeError, OSError):
+            continue
+
+        files_scanned += 1
+        file_had_match = False
+        for index, line in enumerate(lines, start=1):
+            if len(matches) >= max_results:
+                break
+            if not regex.search(line):
+                continue
+            file_had_match = True
+            entry: Dict[str, Any] = {
+                "path": _relative(file_path),
+                "line": index,
+                "match": line[:400],
+            }
+            if context_lines:
+                lo = max(0, index - 1 - context_lines)
+                hi = min(len(lines), index + context_lines)
+                entry["context"] = [
+                    {"line": lo + i + 1, "text": lines[lo + i][:200]}
+                    for i in range(hi - lo)
+                ]
+            matches.append(entry)
+        if file_had_match:
+            files_with_matches += 1
+
+    return {
+        "pattern": pattern,
+        "matches": matches,
+        "files_scanned": files_scanned,
+        "files_with_matches": files_with_matches,
+        "truncated": len(matches) >= max_results,
+    }
+
+
+_TODO_REL_PATH = ".lattice/todos.json"
+_TODO_ALLOWED_STATUS = {"pending", "in_progress", "completed"}
+
+
+def _todo_file() -> Path:
+    ensure_agent_root()
+    target = AGENT_ROOT / _TODO_REL_PATH
+    target.parent.mkdir(parents=True, exist_ok=True)
+    return target
+
+
+def todo_read() -> Dict[str, Any]:
+    """Read the agent's persistent TODO list (per-workspace)."""
+    target = _todo_file()
+    if not target.exists():
+        return {"todos": [], "path": _TODO_REL_PATH}
+    try:
+        todos = json.loads(target.read_text(encoding="utf-8"))
+    except (json.JSONDecodeError, OSError):
+        todos = []
+    if not isinstance(todos, list):
+        todos = []
+    return {"todos": todos, "path": _TODO_REL_PATH}
+
+
+def todo_write(todos: List[Dict[str, Any]]) -> Dict[str, Any]:
+    """Replace the agent's TODO list. Each todo: {id, content, status}.
+
+    Status must be one of: pending, in_progress, completed.
+    At most one todo should be in_progress at any time — the agent enforces
+    this convention; the tool only warns if violated.
+    """
+    if not isinstance(todos, list):
+        raise ToolError("todos must be a list.")
+    if len(todos) > 50:
+        raise ToolError("Too many todos (max 50). Split into smaller batches.")
+
+    cleaned: List[Dict[str, Any]] = []
+    in_progress_count = 0
+    for idx, raw in enumerate(todos, start=1):
+        if not isinstance(raw, dict):
+            raise ToolError(f"Todo #{idx} is not an object.")
+        content = str(raw.get("content") or "").strip()
+        if not content:
+            raise ToolError(f"Todo #{idx} is missing 'content'.")
+        status = str(raw.get("status") or "pending").strip().lower()
+        if status not in _TODO_ALLOWED_STATUS:
+            raise ToolError(f"Todo #{idx} has invalid status '{status}'. Use one of {sorted(_TODO_ALLOWED_STATUS)}.")
+        if status == "in_progress":
+            in_progress_count += 1
+        cleaned.append({
+            "id": str(raw.get("id") or idx),
+            "content": content[:240],
+            "status": status,
+        })
+
+    target = _todo_file()
+    target.write_text(json.dumps(cleaned, ensure_ascii=False, indent=2), encoding="utf-8")
+    return {
+        "todos": cleaned,
+        "path": _TODO_REL_PATH,
+        "warning": "More than one todo is in_progress; keep only one active at a time." if in_progress_count > 1 else None,
+    }
 
 
 def search_files(query: str, path: str = ".", max_results: int = 20) -> Dict[str, Any]:
@@ -547,6 +772,12 @@ npm run dev
 npm run build
 npm run preview
 ```
+
+## Lattice AI Notes
+
+- Inspect `package.json` and existing config files before adding new libraries.
+- If you add Tailwind CSS, framer-motion, TypeScript, or other tooling, add the required config files too.
+- Do not report the app as complete until `npm run build` succeeds.
 """,
         "src/main.jsx": """import React from 'react'
 import ReactDOM from 'react-dom/client'
@@ -564,9 +795,13 @@ ReactDOM.createRoot(document.getElementById('root')).render(
 export default function App() {
   const [count, setCount] = useState(0)
   return (
-    <main style={{ maxWidth: 680, margin: '48px auto', fontFamily: 'system-ui, sans-serif' }}>
+    <main style={{ maxWidth: 760, margin: '48px auto', padding: '0 20px', fontFamily: 'system-ui, sans-serif' }}>
       <h1>Vite + React</h1>
       <p>Starter generated by Lattice AI agent.</p>
+      <p style={{ color: '#555', lineHeight: 1.6 }}>
+        Inspect the current setup before adding new UI libraries, then verify
+        changes with <code>npm run build</code>.
+      </p>
       <button onClick={() => setCount((c) => c + 1)}>count is {count}</button>
     </main>
   )
@@ -1206,11 +1441,36 @@ def execute_tool(action: str, args: Dict[str, Any]) -> Dict[str, Any]:
     if action == "workspace_tree":
         return workspace_tree(args.get("path", "."), args.get("max_depth", 3))
     if action == "read_file":
-        return read_file(args["path"])
+        return read_file(
+            args["path"],
+            offset=args.get("offset", 0),
+            limit=args.get("limit", 0),
+            line_numbers=args.get("line_numbers", True),
+        )
     if action == "write_file":
         return write_file(args["path"], args.get("content", ""))
+    if action == "edit_file":
+        return edit_file(
+            args["path"],
+            args["old_string"],
+            args["new_string"],
+            replace_all=bool(args.get("replace_all", False)),
+        )
+    if action == "grep":
+        return grep(
+            args["pattern"],
+            path=args.get("path", "."),
+            glob=args.get("glob"),
+            max_results=args.get("max_results", 50),
+            case_insensitive=bool(args.get("case_insensitive", False)),
+            context_lines=args.get("context_lines", 0),
+        )
     if action == "search_files":
         return search_files(args["query"], args.get("path", "."), args.get("max_results", 20))
+    if action == "todo_read":
+        return todo_read()
+    if action == "todo_write":
+        return todo_write(args.get("todos") or [])
     if action == "inspect_html":
         return inspect_html(args["path"])
     if action == "preview_url":

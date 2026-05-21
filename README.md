@@ -10,6 +10,25 @@ LTCAI                      # → http://localhost:4825
 
 ---
 
+## v0.1.10 변경사항
+
+### Agent intelligence (프로 개발자 워크플로)
+- **`AGENT_SYSTEM_PROMPT` 완전 재작성** — Discover → Plan → Implement → Verify 4단계 강제, `thoughts` 필드로 스텝 간 추론 유지
+- 코드 읽기 전 수정 금지, 검증 없이 "완료" 주장 금지, 작은 diff 원칙
+- `max_steps` 기본값 6 → 25, 캡 10 → 50 — 진짜 멀티스텝 작업 가능
+
+### 새 도구
+- **`edit_file`** — 정밀 diff 편집. `old_string`이 파일에 유일해야만 성공(또는 `replace_all=true`). 환각/오편집 차단
+- **`grep`** — regex + glob + context_lines, 모든 텍스트 파일 대상, `node_modules`/`.git`/`venv`/`dist` 자동 제외
+- **`todo_write` / `todo_read`** — 워크스페이스별 영구 TODO 리스트(`.lattice/todos.json`), 멀티스텝 작업 상태 유지
+- **`read_file` 업그레이드** — 라인 번호 뷰(`numbered`), `total_lines`, optional `offset`/`limit`
+- 위 도구들 `/tools/*` REST 엔드포인트, `_TOOL_RISK` 등록, `/mcp/tools` 카탈로그 노출
+
+### Tests
+- `tests/unit/test_tools.py` 23개 추가 — edit_file/grep/todo/read_file/샌드박스 이탈 차단 (`52 passed`)
+
+---
+
 ## v0.1.9 변경사항
 
 ### Security
