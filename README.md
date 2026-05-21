@@ -4,10 +4,11 @@
 
 Apple Silicon MLX 로컬 추론 · OpenAI/Groq/OpenRouter 클라우드 모델 · Graph RAG · 멀티스텝 에이전트 워크플로
 
-[![PyPI](https://img.shields.io/pypi/v/ltcai)](https://pypi.org/project/ltcai/)
-[![npm](https://img.shields.io/npm/v/ltcai)](https://www.npmjs.com/package/ltcai)
-[![VS Code](https://img.shields.io/visual-studio-marketplace/v/parktaesoo.ltcai)](https://marketplace.visualstudio.com/items?itemName=parktaesoo.ltcai)
-[![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
+[![PyPI](https://img.shields.io/pypi/v/ltcai?label=pypi)](https://pypi.org/project/ltcai/)
+[![npm](https://img.shields.io/npm/v/ltcai?label=npm)](https://www.npmjs.com/package/ltcai)
+[![VS Code Marketplace](https://img.shields.io/visual-studio-marketplace/v/parktaesoo.ltcai?label=VS%20Code%20Marketplace)](https://marketplace.visualstudio.com/items?itemName=parktaesoo.ltcai)
+[![Open VSX](https://img.shields.io/open-vsx/v/parktaesoo/ltcai?label=Open%20VSX)](https://open-vsx.org/extension/parktaesoo/ltcai)
+[![License](https://img.shields.io/github/license/TaeSooPark-PTS/LatticeAI)](./LICENSE)
 
 <!-- 스크린샷 / GIF — docs/demo.gif 또는 스크린샷으로 교체하세요 -->
 <!-- ![Lattice AI demo](docs/demo.gif) -->
