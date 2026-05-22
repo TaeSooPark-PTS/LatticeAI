@@ -1597,15 +1597,18 @@ async def register(req: UserRegister, request: Request):
     users = load_users()
     if req.email in users:
         raise HTTPException(status_code=400, detail="이미 존재하는 이메일입니다.")
+    # First user to register on a fresh server becomes admin automatically
+    role = "admin" if not users else "user"
     users[req.email] = {
         "password": hash_password(req.password),
         "name": req.name,
         "nickname": req.nickname,
-        "role": "user",
+        "role": role,
         "disabled": False,
     }
     save_users(users)
-    return {"status": "ok", "message": "회원가입 성공!"}
+    msg = "회원가입 성공! 첫 번째 사용자로 관리자 권한이 부여되었습니다." if role == "admin" else "회원가입 성공!"
+    return {"status": "ok", "message": msg, "role": role}
 
 @app.post("/login")
 async def login(req: UserLogin, request: Request):

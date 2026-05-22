@@ -1,5 +1,16 @@
 # Changelog
 
+## [0.1.16] - 2026-05-22
+
+### First-user admin bootstrap
+
+- 서버를 처음 설치하고 가입하는 첫 번째 사용자가 자동으로 **admin** 권한 획득
+- 이후 가입자는 기존과 동일하게 `user` 역할
+- `/register` 응답에 `role` 필드 추가 — 클라이언트가 첫 가입 여부 확인 가능
+
+### Release
+- 배포 버전을 `0.1.16`으로 상향
+
 ## [0.1.15] - 2026-05-22
 
 ### Security hardening
