@@ -32,6 +32,14 @@ pip install ltcai && LTCAI
 # → http://localhost:4825
 ```
 
+## v0.1.12 Changes
+
+### Added
+- 로컬 엔진 모델 준비 흐름 개선: 설치, 다운로드, 서버 시작, 모델 로드를 한 번에 처리
+- LM Studio / llama.cpp / vLLM 경로를 최신 서버 동작에 맞게 정리
+
+---
+
 ## v0.1.4 Changes
 
 ### Added

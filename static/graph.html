@@ -3,112 +3,548 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>Lattice AI — Knowledge Graph</title>
+  <title>Lattice AI - Data Graph</title>
   <style>
     :root {
       color-scheme: dark;
-      --bg: #101215;
-      --panel: #161b20;
-      --line: #252d35;
-      --text: #eef2f6;
-      --muted: #8a96a3;
-      --faint: #4e5a64;
-      --accent: #54d6a5;
+      --bg: #282a36;
+      --bg-soft: #222431;
+      --panel: rgba(34, 36, 49, 0.76);
+      --panel-strong: rgba(31, 33, 45, 0.9);
+      --line: rgba(164, 180, 242, 0.18);
+      --line-strong: rgba(218, 225, 255, 0.28);
+      --text: #f7f7f2;
+      --muted: #c4c8d8;
+      --faint: #8d93ab;
+      --accent: #a77cff;
+      --accent-2: #20b8aa;
+      --danger: #ef7f7f;
+      --shadow: 0 18px 60px rgba(4, 6, 12, 0.34);
     }
-    * { box-sizing: border-box; }
-    body { margin: 0; background: var(--bg); color: var(--text); font-family: Inter, ui-sans-serif, system-ui, -apple-system, sans-serif; overflow: hidden; }
-    .app { display: grid; grid-template-columns: 1fr 320px; height: 100vh; }
 
-    /* Canvas area */
-    .stage { position: relative; min-width: 0; border-right: 1px solid var(--line); }
-    canvas { display: block; width: 100%; height: 100%; cursor: grab; }
+    * { box-sizing: border-box; }
+    html, body { height: 100%; }
+    body {
+      margin: 0;
+      overflow: hidden;
+      color: var(--text);
+      background:
+        radial-gradient(circle at 50% 42%, rgba(167,124,255,0.10), transparent 34%),
+        radial-gradient(circle at 70% 22%, rgba(32,184,170,0.08), transparent 28%),
+        linear-gradient(180deg, #2b2d3a, #282a36 62%, #242632);
+      font-family: "SF Pro Display", "Inter", ui-sans-serif, system-ui, -apple-system, sans-serif;
+    }
+
+    .app {
+      display: grid;
+      grid-template-columns: minmax(0, 1fr) 360px;
+      height: 100vh;
+    }
+
+    .stage {
+      position: relative;
+      min-width: 0;
+      border-right: 1px solid var(--line);
+      background:
+        radial-gradient(circle, rgba(247,247,242,0.62) 1px, transparent 1.9px),
+        linear-gradient(116deg, transparent 0 43%, rgba(120,145,220,0.10) 43.1%, transparent 43.28% 100%),
+        linear-gradient(28deg, transparent 0 61%, rgba(167,124,255,0.09) 61.1%, transparent 61.28% 100%);
+      background-size: 84px 84px, 100% 100%, 100% 100%;
+      background-position: 18px 22px, 0 0, 0 0;
+    }
+
+    canvas {
+      display: block;
+      width: 100%;
+      height: 100%;
+      cursor: grab;
+    }
+
     canvas.panning { cursor: grabbing; }
 
+    .search-shell,
     .toolbar {
-      position: absolute; top: 14px; left: 14px;
-      display: flex; gap: 6px; align-items: center;
-      padding: 7px; background: rgba(16,18,21,0.9);
-      border: 1px solid var(--line); border-radius: 8px;
-      backdrop-filter: blur(14px);
-    }
-    .toolbar input {
-      width: 220px; height: 32px; border: 1px solid var(--line);
-      border-radius: 6px; background: #0b0d10; color: var(--text);
-      padding: 0 10px; outline: none; font-size: 13px;
-    }
-    .toolbar input:focus { border-color: var(--accent); }
-    .tb-btn {
-      height: 32px; border: 1px solid var(--line); border-radius: 6px;
-      background: #1c2228; color: var(--text); cursor: pointer;
-      padding: 0 12px; font-size: 13px; white-space: nowrap;
-    }
-    .tb-btn:hover { border-color: var(--accent); color: var(--accent); }
-
-    #tooltip {
-      position: fixed; background: rgba(16,18,21,0.96); border: 1px solid var(--line);
-      border-radius: 6px; padding: 5px 10px; font-size: 12px;
-      pointer-events: none; z-index: 200; max-width: 280px;
-      word-break: break-word; display: none;
+      position: absolute;
+      z-index: 20;
+      border: 1px solid var(--line);
+      background: var(--panel);
+      backdrop-filter: blur(18px);
+      box-shadow: var(--shadow);
     }
 
-    /* Sidebar */
-    aside {
-      background: var(--panel); display: flex; flex-direction: column;
+    .search-shell {
+      top: 16px;
+      left: 16px;
+      width: min(360px, calc(100% - 32px));
+      border-radius: 10px;
       overflow: hidden;
     }
-    .sidebar-head {
-      padding: 16px 16px 0; flex-shrink: 0;
+
+    .search-head {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+      padding: 14px 16px 10px;
+      border-bottom: 1px solid rgba(255,255,255,0.04);
     }
-    h1 { margin: 0 0 12px; font-size: 17px; font-weight: 700; }
+
+    .search-title {
+      display: flex;
+      flex-direction: column;
+      gap: 3px;
+    }
+
+    .search-title strong {
+      font-size: 14px;
+      font-weight: 700;
+      letter-spacing: 0.01em;
+    }
+
+    .search-title span {
+      font-size: 12px;
+      color: var(--muted);
+    }
+
+    .search-count {
+      flex-shrink: 0;
+      font-size: 11px;
+      color: #08100d;
+      background: linear-gradient(135deg, #7df0c3, #56d4ff);
+      border-radius: 999px;
+      padding: 5px 10px;
+      font-weight: 700;
+    }
+
+    .search-input-wrap {
+      padding: 12px 16px 10px;
+    }
+
+    .search-input-row {
+      display: flex;
+      gap: 8px;
+      align-items: center;
+    }
+
+    .search-input {
+      flex: 1;
+      height: 42px;
+      border-radius: 12px;
+      border: 1px solid var(--line-strong);
+      background: rgba(6, 10, 14, 0.88);
+      color: var(--text);
+      padding: 0 14px;
+      font-size: 14px;
+      outline: none;
+    }
+
+    .search-input:focus {
+      border-color: rgba(98, 224, 176, 0.75);
+      box-shadow: 0 0 0 4px rgba(98, 224, 176, 0.12);
+    }
+
+    .icon-btn,
+    .tb-btn {
+      height: 42px;
+      border-radius: 8px;
+      border: 1px solid var(--line-strong);
+      background: rgba(255,255,255,0.03);
+      color: var(--text);
+      cursor: pointer;
+      font-size: 13px;
+      transition: 140ms ease;
+    }
+
+    .icon-btn {
+      width: 42px;
+      flex-shrink: 0;
+      font-size: 16px;
+    }
+
+    .icon-btn:hover,
+    .tb-btn:hover {
+      transform: translateY(-1px);
+      border-color: rgba(98, 224, 176, 0.6);
+      color: var(--accent);
+      background: rgba(98, 224, 176, 0.07);
+    }
+
+    .search-results {
+      max-height: min(420px, calc(100vh - 180px));
+      overflow-y: auto;
+      padding: 0 8px 10px;
+    }
+
+    .search-empty,
+    .search-loading {
+      margin: 0;
+      padding: 14px 12px 16px;
+      color: var(--muted);
+      font-size: 13px;
+      line-height: 1.65;
+    }
+
+    .search-list {
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+      padding: 0 8px 8px;
+    }
+
+    .search-item {
+      width: 100%;
+      text-align: left;
+      border: 1px solid transparent;
+      border-radius: 8px;
+      background: rgba(255,255,255,0.03);
+      color: var(--text);
+      padding: 12px 12px 13px;
+      cursor: pointer;
+      transition: 140ms ease;
+    }
+
+    .search-item:hover,
+    .search-item.active {
+      border-color: rgba(122, 168, 255, 0.45);
+      background: linear-gradient(180deg, rgba(122, 168, 255, 0.10), rgba(98, 224, 176, 0.05));
+      transform: translateY(-1px);
+    }
+
+    .search-item-top {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      margin-bottom: 6px;
+    }
+
+    .search-type {
+      display: inline-flex;
+      align-items: center;
+      border-radius: 999px;
+      padding: 4px 10px;
+      font-size: 11px;
+      font-weight: 700;
+      color: #091019;
+    }
+
+    .search-item-title {
+      font-size: 13px;
+      font-weight: 700;
+      letter-spacing: 0.01em;
+      color: var(--text);
+    }
+
+    .search-item-summary {
+      font-size: 12px;
+      color: var(--muted);
+      line-height: 1.55;
+      margin: 0 0 8px;
+      word-break: break-word;
+      display: -webkit-box;
+      -webkit-line-clamp: 3;
+      line-clamp: 3;
+      -webkit-box-orient: vertical;
+      overflow: hidden;
+    }
+
+    .search-item-meta {
+      font-size: 11px;
+      color: var(--faint);
+      display: flex;
+      gap: 10px;
+      flex-wrap: wrap;
+    }
+
+    .toolbar {
+      top: 16px;
+      right: 16px;
+      display: flex;
+      gap: 8px;
+      padding: 8px;
+      border-radius: 10px;
+    }
+
+    .tb-btn {
+      padding: 0 14px;
+      min-width: 72px;
+      white-space: nowrap;
+    }
+
+    #tooltip {
+      position: fixed;
+      z-index: 50;
+      max-width: 300px;
+      padding: 8px 11px;
+      border-radius: 10px;
+      border: 1px solid var(--line-strong);
+      background: rgba(7, 11, 15, 0.96);
+      color: var(--text);
+      box-shadow: var(--shadow);
+      font-size: 12px;
+      line-height: 1.45;
+      pointer-events: none;
+      display: none;
+      word-break: break-word;
+    }
+
+    aside {
+      display: flex;
+      flex-direction: column;
+      background:
+        linear-gradient(180deg, rgba(34, 36, 49, 0.88), rgba(28, 30, 41, 0.92)),
+        var(--bg-soft);
+      overflow: hidden;
+    }
+
+    .sidebar-head {
+      padding: 18px 18px 12px;
+      border-bottom: 1px solid rgba(255,255,255,0.04);
+    }
+
+    .eyebrow {
+      color: var(--accent);
+      font-size: 11px;
+      font-weight: 700;
+      letter-spacing: 0.12em;
+      text-transform: uppercase;
+      margin-bottom: 8px;
+    }
+
+    h1 {
+      margin: 0;
+      font-size: 22px;
+      line-height: 1.1;
+      letter-spacing: -0.02em;
+    }
+
+    .sidebar-sub {
+      margin: 10px 0 0;
+      color: var(--muted);
+      font-size: 13px;
+      line-height: 1.65;
+    }
 
     .stats-row {
-      display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-bottom: 12px;
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 10px;
+      margin-top: 14px;
     }
+
     .stat {
-      border: 1px solid var(--line); border-radius: 8px;
-      padding: 9px 10px; background: #0e1114;
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      background: rgba(6, 10, 14, 0.34);
+      padding: 12px 13px;
     }
-    .stat strong { display: block; font-size: 20px; font-weight: 700; line-height: 1; margin-bottom: 3px; }
-    .stat span { color: var(--muted); font-size: 11px; }
 
-    .type-filters { padding: 10px 16px 8px; border-bottom: 1px solid var(--line); flex-shrink: 0; }
-    .filter-section-label {
-      font-size: 10px; font-weight: 700; letter-spacing: 0.08em;
-      text-transform: uppercase; color: var(--faint); margin-bottom: 7px;
+    .stat strong {
+      display: block;
+      font-size: 24px;
+      line-height: 1;
+      margin-bottom: 5px;
     }
-    .filter-grid { display: flex; flex-direction: column; gap: 3px; }
+
+    .stat span {
+      display: block;
+      font-size: 11px;
+      color: var(--muted);
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+    }
+
+    .section {
+      padding: 16px 18px 0;
+      flex-shrink: 0;
+    }
+
+    .section-label {
+      color: var(--faint);
+      font-size: 11px;
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+      font-weight: 700;
+      margin-bottom: 10px;
+    }
+
+    .legend-grid,
+    .filter-grid {
+      display: flex;
+      flex-direction: column;
+      gap: 7px;
+    }
+
+    .legend-item,
     .filter-item {
-      display: flex; align-items: center; gap: 7px;
-      padding: 3px 0; cursor: pointer; font-size: 12px; user-select: none;
+      display: flex;
+      align-items: center;
+      gap: 9px;
+      min-height: 26px;
+      font-size: 12px;
     }
-    .filter-item input[type="checkbox"] { width: 13px; height: 13px; cursor: pointer; accent-color: var(--accent); }
-    .dot { width: 9px; height: 9px; border-radius: 50%; flex-shrink: 0; }
-    .filter-name { flex: 1; color: var(--text); }
-    .filter-count { color: var(--faint); font-size: 11px; min-width: 20px; text-align: right; }
 
-    .detail-wrap { flex: 1; overflow-y: auto; padding: 14px 16px 20px; }
+    .filter-item {
+      cursor: pointer;
+      user-select: none;
+    }
+
+    .filter-item input[type="checkbox"] {
+      width: 14px;
+      height: 14px;
+      margin: 0;
+      accent-color: var(--accent);
+      cursor: pointer;
+    }
+
+    .dot {
+      width: 10px;
+      height: 10px;
+      border-radius: 50%;
+      flex-shrink: 0;
+      box-shadow: 0 0 0 3px rgba(255,255,255,0.03);
+    }
+
+    .legend-line {
+      width: 18px;
+      height: 0;
+      border-top: 2px solid #fff;
+      opacity: 0.8;
+      flex-shrink: 0;
+    }
+
+    .filter-name,
+    .legend-name {
+      flex: 1;
+      color: var(--text);
+    }
+
+    .filter-count,
+    .legend-meta {
+      color: var(--faint);
+      font-size: 11px;
+      text-align: right;
+      white-space: nowrap;
+    }
+
+    .detail-wrap {
+      flex: 1;
+      overflow-y: auto;
+      padding: 18px;
+    }
+
     .type-badge {
-      display: inline-block; color: #07100d; border-radius: 999px;
-      padding: 2px 10px; font-size: 11px; font-weight: 700; margin-bottom: 9px;
+      display: inline-flex;
+      align-items: center;
+      border-radius: 999px;
+      padding: 5px 11px;
+      font-size: 11px;
+      font-weight: 700;
+      color: #091019;
+      margin-bottom: 10px;
     }
-    .detail-title { font-size: 15px; font-weight: 700; line-height: 1.35; margin-bottom: 6px; }
-    .detail-summary { color: var(--muted); font-size: 12px; line-height: 1.6; word-break: break-word; white-space: pre-wrap; margin-bottom: 10px; }
-    .detail-meta { color: var(--faint); font-size: 11px; line-height: 1.5; word-break: break-word; white-space: pre-wrap; }
-    .jump-btn {
-      display: inline-flex; align-items: center; gap: 5px;
-      margin: 8px 0 12px; padding: 6px 13px;
-      background: rgba(84,214,165,0.1); border: 1px solid rgba(84,214,165,0.28);
-      border-radius: 6px; color: var(--accent); font-size: 12px;
-      text-decoration: none; cursor: pointer;
-    }
-    .jump-btn:hover { background: rgba(84,214,165,0.18); }
-    .empty-hint { color: var(--muted); font-size: 13px; line-height: 1.65; margin: 0; }
 
-    @media (max-width: 760px) {
-      .app { grid-template-columns: 1fr; grid-template-rows: 1fr 300px; }
-      .stage { border-right: 0; border-bottom: 1px solid var(--line); }
-      .toolbar { right: 12px; left: 12px; }
-      .toolbar input { flex: 1; width: auto; }
+    .detail-title {
+      font-size: 19px;
+      line-height: 1.28;
+      font-weight: 750;
+      margin-bottom: 8px;
+      letter-spacing: -0.01em;
+    }
+
+    .detail-summary {
+      color: var(--muted);
+      font-size: 13px;
+      line-height: 1.7;
+      white-space: pre-wrap;
+      word-break: break-word;
+      margin-bottom: 14px;
+    }
+
+    .metric-grid {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 10px;
+      margin-bottom: 14px;
+    }
+
+    .metric-card {
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      padding: 11px 12px;
+      background: rgba(255,255,255,0.03);
+    }
+
+    .metric-card strong {
+      display: block;
+      font-size: 18px;
+      line-height: 1;
+      margin-bottom: 5px;
+    }
+
+    .metric-card span {
+      display: block;
+      font-size: 11px;
+      color: var(--muted);
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+    }
+
+    .meta-block {
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      background: rgba(255,255,255,0.02);
+      padding: 12px;
+      color: var(--muted);
+      font-size: 12px;
+      line-height: 1.65;
+      white-space: pre-wrap;
+      word-break: break-word;
+    }
+
+    .jump-btn {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      margin: 0 0 14px;
+      padding: 8px 14px;
+      border-radius: 999px;
+      text-decoration: none;
+      font-size: 12px;
+      font-weight: 700;
+      color: #07120d;
+      background: linear-gradient(135deg, #f7f7f2, #cfc6ff);
+      box-shadow: 0 10px 26px rgba(167, 124, 255, 0.18);
+    }
+
+    .jump-btn:hover { filter: brightness(1.04); }
+
+    .empty-hint {
+      margin: 0;
+      color: var(--muted);
+      font-size: 13px;
+      line-height: 1.8;
+    }
+
+    @media (max-width: 900px) {
+      .app {
+        grid-template-columns: 1fr;
+        grid-template-rows: 1fr 360px;
+      }
+
+      .stage {
+        border-right: 0;
+        border-bottom: 1px solid var(--line);
+      }
+
+      .search-shell {
+        width: calc(100% - 32px);
+      }
+
+      .toolbar {
+        top: auto;
+        bottom: 16px;
+        right: 16px;
+      }
     }
   </style>
 </head>
@@ -116,72 +552,131 @@
   <div class="app">
     <main class="stage">
       <canvas id="graph"></canvas>
+
+      <section class="search-shell">
+        <div class="search-head">
+          <div class="search-title">
+            <strong>Explore the graph</strong>
+            <span>Search topics, files, conversations, decisions, and tasks.</span>
+          </div>
+          <div class="search-count" id="search-count">Ready</div>
+        </div>
+        <div class="search-input-wrap">
+          <div class="search-input-row">
+            <input id="search" class="search-input" placeholder="Search by topic, file, or conversation..." autocomplete="off">
+            <button id="clear-search-btn" class="icon-btn" title="Clear search">×</button>
+          </div>
+        </div>
+        <div id="search-results" class="search-results">
+          <p class="search-empty">검색 결과는 여기에 표시됩니다. 키워드를 입력하면 서버 검색 결과를 불러오고, 항목을 누르면 해당 노드로 바로 이동합니다.</p>
+        </div>
+      </section>
+
       <div class="toolbar">
-        <input id="search" placeholder="Search nodes…" autocomplete="off">
-        <button class="tb-btn" id="fit-btn">Fit</button>
+        <button class="tb-btn" id="fit-btn">Fit view</button>
         <button class="tb-btn" id="refresh-btn">Refresh</button>
-        <button class="tb-btn" id="back-btn">← Chat</button>
+        <button class="tb-btn" id="back-btn">Back to chat</button>
       </div>
     </main>
+
     <aside>
       <div class="sidebar-head">
-        <h1>Knowledge Graph</h1>
+        <div class="eyebrow">Data Graph</div>
+        <h1>Knowledge topology</h1>
+        <p class="sidebar-sub">주제의 크기는 중요도 기반으로, 선의 굵기와 색은 관계 종류와 강도를 반영합니다.</p>
         <div class="stats-row">
-          <div class="stat"><strong id="node-count">—</strong><span>nodes</span></div>
-          <div class="stat"><strong id="edge-count">—</strong><span>edges</span></div>
+          <div class="stat"><strong id="node-count">-</strong><span>Nodes</span></div>
+          <div class="stat"><strong id="edge-count">-</strong><span>Edges</span></div>
         </div>
       </div>
-      <div class="type-filters" id="type-filters"></div>
+
+      <div class="section">
+        <div class="section-label">Relationship legend</div>
+        <div id="edge-legend" class="legend-grid"></div>
+      </div>
+
+      <div class="section">
+        <div class="section-label">Node types</div>
+        <div id="type-filters" class="filter-grid"></div>
+      </div>
+
       <div class="detail-wrap">
         <div id="detail">
-          <p class="empty-hint">채팅과 파일이 쌓이면 여기에 연결 관계가 나타납니다.<br>노드를 클릭하면 원문 요약과 메타데이터를 볼 수 있습니다.</p>
+          <p class="empty-hint">노드를 클릭하면 요약, 중요도, 연결 강도, 메타데이터를 볼 수 있습니다. 검색 패널에서는 서버 검색 결과를 기준으로 더 정확하게 이동할 수 있습니다.</p>
         </div>
       </div>
     </aside>
   </div>
+
   <div id="tooltip"></div>
 
   <script>
     const API_BASE = window.location.protocol === 'file:' ? 'http://localhost:4825' : '';
 
     const TYPE_CONFIG = {
-      Conversation: { color: '#8fa8bb', label: 'Conversation' },
-      Message:      { color: '#dce4ee', label: 'Message' },
-      AIResponse:   { color: '#ea7fa4', label: 'AI Response' },
-      File:         { color: '#73a7ff', label: 'File' },
-      Topic:        { color: '#f2b36d', label: 'Topic' },
-      Person:       { color: '#54d6a5', label: 'Person' },
-      Page:         { color: '#89c2ff', label: 'Page' },
-      Slide:        { color: '#9bb6ff', label: 'Slide' },
-      Sheet:        { color: '#78d4c8', label: 'Sheet' },
-      Image:        { color: '#ffd166', label: 'Image' },
-      Decision:     { color: '#c4f06f', label: 'Decision' },
-      Task:         { color: '#ff9f7a', label: 'Task' },
-      ClearEvent:   { color: '#bca7ff', label: 'Clear Event' },
+      Conversation: { color: '#f7f7f2', label: 'Conversation' },
+      Message:      { color: '#f7f7f2', label: 'Message' },
+      AIResponse:   { color: '#a77cff', label: 'AI Response' },
+      File:         { color: '#7db7ff', label: 'File' },
+      Topic:        { color: '#a77cff', label: 'Topic' },
+      Person:       { color: '#20b8aa', label: 'Person' },
+      Page:         { color: '#f7f7f2', label: 'Page' },
+      Slide:        { color: '#8fa3ff', label: 'Slide' },
+      Sheet:        { color: '#20b8aa', label: 'Sheet' },
+      Image:        { color: '#f1c86d', label: 'Image' },
+      Decision:     { color: '#f1c86d', label: 'Decision' },
+      Task:         { color: '#ff7db3', label: 'Task' },
+      ClearEvent:   { color: '#7a6ba8', label: 'Clear Event' },
+      Event:        { color: '#7a6ba8', label: 'Event' },
+    };
+
+    const EDGE_CONFIG = {
+      contains:        { color: '#7186c8', label: 'Contains', width: 1.3 },
+      authored:        { color: '#20b8aa', label: 'Authored', width: 1.5 },
+      uploaded:        { color: '#7db7ff', label: 'Uploaded', width: 1.5 },
+      has_event:       { color: '#7a6ba8', label: 'Event', width: 1.2 },
+      triggered:       { color: '#a77cff', label: 'Triggered', width: 1.2, dash: [5, 4] },
+      mentions:        { color: '#aebcff', label: 'Mentions', width: 1.55 },
+      discusses:       { color: '#c9b7ff', label: 'Discusses', width: 1.75 },
+      implies:         { color: '#ff7db3', label: 'Implies', width: 1.55 },
+      based_on:        { color: '#a77cff', label: 'Based on', width: 1.4, dash: [8, 4] },
+      contains_signal: { color: '#f1c86d', label: 'Signal', width: 1.6 },
+      has_page:        { color: '#7186c8', label: 'Page', width: 1.25 },
+      has_slide:       { color: '#8fa3ff', label: 'Slide', width: 1.3 },
+      has_sheet:       { color: '#20b8aa', label: 'Sheet', width: 1.3 },
+      contains_image:  { color: '#f1c86d', label: 'Image', width: 1.35 },
+      has_chunk:       { color: '#4e566f', label: 'Chunk', width: 0.9, dash: [2, 5] },
     };
 
     const canvas = document.getElementById('graph');
     const ctx = canvas.getContext('2d');
     const detail = document.getElementById('detail');
-    const search = document.getElementById('search');
     const tooltip = document.getElementById('tooltip');
+    const searchInput = document.getElementById('search');
+    const searchResultsEl = document.getElementById('search-results');
+    const searchCountEl = document.getElementById('search-count');
 
     let rawGraph = { nodes: [], edges: [] };
-    let graph    = { nodes: [], edges: [] };
+    let graph = { nodes: [], edges: [] };
     let hiddenTypes = new Set();
     let selected = null;
-    let hovered  = null;
+    let hovered = null;
     let dragging = null;
-    let panning  = null;
+    let panning = null;
     let cam = { scale: 1, tx: 0, ty: 0 };
     let animFrameId = null;
-    let width = 0, height = 0;
+    let width = 0;
+    let height = 0;
+    let searchResults = [];
+    let searchResultIds = new Set();
+    let searchAbortController = null;
+    let searchDebounceId = null;
 
-    // ── Auth ─────────────────────────────────────────────────────────────────
     function authHeaders() {
-      const t = localStorage.getItem('ltcai_session_token') || '';
-      return t ? { Authorization: `Bearer ${t}` } : {};
+      const token = localStorage.getItem('ltcai_session_token') || '';
+      return token ? { Authorization: `Bearer ${token}` } : {};
     }
+
     function apiFetch(path, opts = {}) {
       return fetch(`${API_BASE}${path}`, {
         credentials: 'include',
@@ -190,156 +685,307 @@
       });
     }
 
-    // ── Color ─────────────────────────────────────────────────────────────────
+    function clamp(value, min, max) {
+      return Math.max(min, Math.min(max, value));
+    }
+
+    function escapeHtml(text) {
+      return String(text || '')
+        .replaceAll('&', '&amp;')
+        .replaceAll('<', '&lt;')
+        .replaceAll('>', '&gt;')
+        .replaceAll('"', '&quot;')
+        .replaceAll("'", '&#39;');
+    }
+
     function nodeColor(type) {
       return (TYPE_CONFIG[type] || {}).color || '#8fa8bb';
     }
 
-    // ── Degree & layout ───────────────────────────────────────────────────────
-    function computeDegrees() {
-      const deg = {};
-      rawGraph.edges.forEach(e => {
-        deg[e.from] = (deg[e.from] || 0) + 1;
-        deg[e.to]   = (deg[e.to]   || 0) + 1;
+    function edgeStyle(type) {
+      return EDGE_CONFIG[type] || { color: '#7f8f9d', label: type, width: 1.3 };
+    }
+
+    function typeLabel(type) {
+      return (TYPE_CONFIG[type] || {}).label || type;
+    }
+
+    function formatMetric(value, digits = 2) {
+      if (value === null || value === undefined || Number.isNaN(Number(value))) return '-';
+      const num = Number(value);
+      if (Math.abs(num) >= 1000) return num.toLocaleString();
+      return Number.isInteger(num) ? String(num) : num.toFixed(digits);
+    }
+
+    function formatUpdatedAt(updatedAt) {
+      if (!updatedAt) return '';
+      const stamp = new Date(updatedAt);
+      if (Number.isNaN(stamp.getTime())) return '';
+      const diffMs = Date.now() - stamp.getTime();
+      const diffDays = Math.floor(diffMs / 86400000);
+      if (diffDays <= 0) return 'today';
+      if (diffDays === 1) return '1 day ago';
+      if (diffDays < 30) return `${diffDays} days ago`;
+      const diffMonths = Math.floor(diffDays / 30);
+      if (diffMonths < 12) return `${diffMonths} mo ago`;
+      const diffYears = Math.floor(diffMonths / 12);
+      return `${diffYears} yr ago`;
+    }
+
+    function updateStats() {
+      document.getElementById('node-count').textContent = rawGraph.nodes.length.toLocaleString();
+      document.getElementById('edge-count').textContent = rawGraph.edges.length.toLocaleString();
+    }
+
+    function computeVisuals() {
+      const degreeMap = {};
+      rawGraph.edges.forEach(edge => {
+        degreeMap[edge.from] = (degreeMap[edge.from] || 0) + 1;
+        degreeMap[edge.to] = (degreeMap[edge.to] || 0) + 1;
       });
-      rawGraph.nodes.forEach(n => {
-        n.degree = deg[n.id] || 0;
-        const base = 4 + Math.sqrt(n.degree) * 2.8;
-        if (n.type === 'Conversation') n.r = Math.max(base, 10);
-        else if (n.type === 'File')    n.r = Math.max(base, 8);
-        else if (n.type === 'Topic')   n.r = Math.max(base, 5);
-        else                           n.r = Math.max(base, 4);
-        n.r = Math.min(n.r, 22);
+
+      rawGraph.nodes.forEach(node => {
+        const metrics = ((node.metadata || {}).graph_metrics) || {};
+        const importanceNorm = clamp(
+          Number.isFinite(Number(node.importance_norm))
+            ? Number(node.importance_norm)
+            : Number(metrics.importance_norm || 0),
+          0,
+          1
+        );
+        node.degree = degreeMap[node.id] || Number(metrics.degree || 0) || 0;
+        node.importance_norm = importanceNorm;
+        node.importance = Number.isFinite(Number(node.importance))
+          ? Number(node.importance)
+          : Number(metrics.importance_raw || 0);
+
+        let radius = 6;
+        if (node.type === 'Topic') {
+          radius = 10 + importanceNorm * 18 + Math.sqrt(node.degree) * 0.8;
+        } else if (node.type === 'Conversation') {
+          radius = 8 + importanceNorm * 11 + Math.sqrt(node.degree) * 0.55;
+        } else if (node.type === 'File') {
+          radius = 7 + importanceNorm * 9 + Math.sqrt(node.degree) * 0.5;
+        } else if (node.type === 'Decision' || node.type === 'Task') {
+          radius = 7 + importanceNorm * 8 + Math.sqrt(node.degree) * 0.45;
+        } else {
+          radius = 5 + importanceNorm * 7 + Math.sqrt(node.degree) * 0.35;
+        }
+        const maxRadius = node.type === 'Topic' ? 34 : 24;
+        node.r = clamp(radius, node.type === 'Topic' ? 9 : 5, maxRadius);
       });
+    }
+
+    function buildTypeCounts() {
+      const counts = {};
+      rawGraph.nodes.forEach(node => {
+        counts[node.type] = (counts[node.type] || 0) + 1;
+      });
+      return counts;
+    }
+
+    function buildEdgeCounts() {
+      const counts = {};
+      rawGraph.edges.forEach(edge => {
+        counts[edge.type] = (counts[edge.type] || 0) + 1;
+      });
+      return counts;
     }
 
     function applyFilter() {
-      graph.nodes = rawGraph.nodes.filter(n => !hiddenTypes.has(n.type));
-      const nodeSet = new Set(graph.nodes.map(n => n.id));
-      const byId = Object.fromEntries(rawGraph.nodes.map(n => [n.id, n]));
+      graph.nodes = rawGraph.nodes.filter(node => !hiddenTypes.has(node.type));
+      const nodeSet = new Set(graph.nodes.map(node => node.id));
+      const byId = Object.fromEntries(rawGraph.nodes.map(node => [node.id, node]));
       graph.edges = rawGraph.edges
-        .filter(e => nodeSet.has(e.from) && nodeSet.has(e.to))
-        .map(e => ({ ...e, source: byId[e.from], target: byId[e.to] }));
+        .filter(edge => nodeSet.has(edge.from) && nodeSet.has(edge.to))
+        .map(edge => ({ ...edge, source: byId[edge.from], target: byId[edge.to] }));
     }
 
     function seedLayout() {
-      rawGraph.nodes.forEach((n, i) => {
-        if (n.x === undefined) {
-          const a = (i / Math.max(1, rawGraph.nodes.length)) * Math.PI * 2;
-          n.x = width / 2 + Math.cos(a) * Math.min(width, height) * 0.32;
-          n.y = height / 2 + Math.sin(a) * Math.min(width, height) * 0.32;
+      rawGraph.nodes.forEach((node, index) => {
+        if (node.x === undefined || node.y === undefined) {
+          const angle = (index / Math.max(1, rawGraph.nodes.length)) * Math.PI * 2;
+          const ring = Math.min(width, height) * (node.type === 'Topic' ? 0.22 : 0.32);
+          node.x = width / 2 + Math.cos(angle) * ring;
+          node.y = height / 2 + Math.sin(angle) * ring;
         }
-        n.vx = n.vx || 0;
-        n.vy = n.vy || 0;
+        node.vx = node.vx || 0;
+        node.vy = node.vy || 0;
       });
     }
 
-    // ── Load ──────────────────────────────────────────────────────────────────
-    async function loadGraph() {
-      document.getElementById('node-count').textContent = '…';
-      document.getElementById('edge-count').textContent = '…';
+    function mergeGraphData(extraNodes, extraEdges) {
+      const nodeMap = new Map(rawGraph.nodes.map(node => [node.id, node]));
+      extraNodes.forEach(node => {
+        const prev = nodeMap.get(node.id) || {};
+        nodeMap.set(node.id, {
+          ...prev,
+          ...node,
+          metadata: { ...(prev.metadata || {}), ...(node.metadata || {}) },
+        });
+      });
+      rawGraph.nodes = [...nodeMap.values()];
 
-      const [gRes, sRes] = await Promise.all([
+      const edgeMap = new Map(rawGraph.edges.map(edge => [edge.id || `${edge.from}|${edge.type}|${edge.to}`, edge]));
+      extraEdges.forEach(edge => {
+        const key = edge.id || `${edge.from}|${edge.type}|${edge.to}`;
+        edgeMap.set(key, edge);
+      });
+      rawGraph.edges = [...edgeMap.values()];
+
+      computeVisuals();
+      seedLayout();
+      applyFilter();
+      updateStats();
+      renderTypeFilters(buildTypeCounts());
+      renderEdgeLegend(buildEdgeCounts());
+    }
+
+    async function loadGraph() {
+      updateStats();
+      const [graphRes, statsRes] = await Promise.all([
         apiFetch('/knowledge-graph/graph?limit=600'),
         apiFetch('/knowledge-graph/stats'),
       ]);
-      if (gRes.status === 401) { window.location.href = '/account'; return; }
-      if (!gRes.ok) throw new Error(`Graph API failed (${gRes.status})`);
+      if (graphRes.status === 401) {
+        window.location.href = '/account';
+        return;
+      }
+      if (!graphRes.ok) throw new Error(`Graph API failed (${graphRes.status})`);
 
-      rawGraph = await gRes.json();
-      rawGraph.nodes = Array.isArray(rawGraph.nodes) ? rawGraph.nodes : [];
-      rawGraph.edges = Array.isArray(rawGraph.edges) ? rawGraph.edges : [];
-      const stats = sRes.ok ? await sRes.json() : {};
-
-      computeDegrees();
+      const graphData = await graphRes.json();
+      const stats = statsRes.ok ? await statsRes.json() : {};
+      rawGraph = {
+        nodes: Array.isArray(graphData.nodes) ? graphData.nodes : [],
+        edges: Array.isArray(graphData.edges) ? graphData.edges : [],
+      };
+      computeVisuals();
       seedLayout();
       applyFilter();
-
-      document.getElementById('node-count').textContent = rawGraph.nodes.length;
-      document.getElementById('edge-count').textContent = rawGraph.edges.length;
-      renderTypeFilters(stats.nodes || {});
-      showDetail(selected && rawGraph.nodes.find(n => n.id === selected.id) || graph.nodes[0] || null);
+      updateStats();
+      renderTypeFilters(stats.nodes || buildTypeCounts());
+      renderEdgeLegend(stats.edges || {});
+      showDetail(selected && rawGraph.nodes.find(node => node.id === selected.id) || graph.nodes[0] || null);
       cam = { scale: 1, tx: 0, ty: 0 };
+      fitToScreen();
       wakeUp();
     }
 
-    // ── Type filters ──────────────────────────────────────────────────────────
     function renderTypeFilters(typeCounts) {
-      const presentTypes = [...new Set(rawGraph.nodes.map(n => n.type))];
-      const ordered = [...Object.keys(TYPE_CONFIG), ...presentTypes.filter(t => !TYPE_CONFIG[t])].filter(t => presentTypes.includes(t));
+      const presentTypes = [...new Set(rawGraph.nodes.map(node => node.type))];
+      const ordered = [...Object.keys(TYPE_CONFIG), ...presentTypes.filter(type => !TYPE_CONFIG[type])]
+        .filter(type => presentTypes.includes(type));
       const container = document.getElementById('type-filters');
-      if (!ordered.length) { container.innerHTML = ''; return; }
-      const items = ordered.map(t => {
-        const cfg = TYPE_CONFIG[t] || {};
-        const col = cfg.color || '#8fa8bb';
-        const cnt = typeCounts[t] ?? rawGraph.nodes.filter(n => n.type === t).length;
-        const chk = !hiddenTypes.has(t) ? 'checked' : '';
-        return `<label class="filter-item">
-          <input type="checkbox" ${chk} onchange="toggleType('${t}',this.checked)">
-          <span class="dot" style="background:${col}"></span>
-          <span class="filter-name">${cfg.label || t}</span>
-          <span class="filter-count">${cnt}</span>
-        </label>`;
+      if (!ordered.length) {
+        container.innerHTML = '<div class="empty-hint">No node types yet.</div>';
+        return;
+      }
+      container.innerHTML = ordered.map(type => {
+        const checked = hiddenTypes.has(type) ? '' : 'checked';
+        return `
+          <label class="filter-item">
+            <input type="checkbox" ${checked} onchange="toggleType('${type}', this.checked)">
+            <span class="dot" style="background:${nodeColor(type)}"></span>
+            <span class="filter-name">${escapeHtml(typeLabel(type))}</span>
+            <span class="filter-count">${typeCounts[type] || 0}</span>
+          </label>
+        `;
       }).join('');
-      container.innerHTML = `<div class="filter-section-label">Node types</div><div class="filter-grid">${items}</div>`;
+    }
+
+    function renderEdgeLegend(edgeCounts) {
+      const presentEdgeTypes = [...new Set(rawGraph.edges.map(edge => edge.type))];
+      const ordered = [...Object.keys(EDGE_CONFIG), ...presentEdgeTypes.filter(type => !EDGE_CONFIG[type])]
+        .filter(type => presentEdgeTypes.includes(type));
+      const container = document.getElementById('edge-legend');
+      if (!ordered.length) {
+        container.innerHTML = '<div class="empty-hint">No relationships yet.</div>';
+        return;
+      }
+      container.innerHTML = ordered.map(type => {
+        const style = edgeStyle(type);
+        return `
+          <div class="legend-item">
+            <span class="legend-line" style="border-top-color:${style.color}; border-top-width:${Math.max(2, style.width)}px;"></span>
+            <span class="legend-name">${escapeHtml(style.label || type)}</span>
+            <span class="legend-meta">${edgeCounts[type] || 0}</span>
+          </div>
+        `;
+      }).join('');
     }
 
     function toggleType(type, visible) {
-      if (visible) hiddenTypes.delete(type); else hiddenTypes.add(type);
+      if (visible) hiddenTypes.delete(type);
+      else hiddenTypes.add(type);
       applyFilter();
+      if (selected && hiddenTypes.has(selected.type)) showDetail(null);
       wakeUp();
     }
+    window.toggleType = toggleType;
 
-    // ── Physics ───────────────────────────────────────────────────────────────
     function step() {
       const nodes = graph.nodes;
       const edges = graph.edges;
+      const centerPull = selected ? 0.00035 : 0.00055;
 
       for (let i = 0; i < nodes.length; i++) {
         for (let j = i + 1; j < nodes.length; j++) {
-          const a = nodes[i], b = nodes[j];
-          const dx = a.x - b.x, dy = a.y - b.y;
-          const d2 = Math.max(100, dx * dx + dy * dy);
-          const f = 2200 / d2;
-          a.vx += dx * f; a.vy += dy * f;
-          b.vx -= dx * f; b.vy -= dy * f;
+          const a = nodes[i];
+          const b = nodes[j];
+          const dx = a.x - b.x;
+          const dy = a.y - b.y;
+          const d2 = Math.max(120, dx * dx + dy * dy);
+          const strength = (a.type === 'Topic' || b.type === 'Topic') ? 2900 : 2100;
+          const force = strength / d2;
+          a.vx += dx * force;
+          a.vy += dy * force;
+          b.vx -= dx * force;
+          b.vy -= dy * force;
         }
       }
 
-      edges.forEach(e => {
-        if (!e.source || !e.target) return;
-        const dx = e.target.x - e.source.x, dy = e.target.y - e.source.y;
+      edges.forEach(edge => {
+        if (!edge.source || !edge.target) return;
+        const dx = edge.target.x - edge.source.x;
+        const dy = edge.target.y - edge.source.y;
         const dist = Math.max(1, Math.hypot(dx, dy));
-        const target = 130;
-        const f = (dist - target) * 0.005;
-        e.source.vx += dx / dist * f; e.source.vy += dy / dist * f;
-        e.target.vx -= dx / dist * f; e.target.vy -= dy / dist * f;
+        const targetDistance = edge.type === 'mentions' || edge.type === 'discusses'
+          ? 118
+          : edge.type === 'contains'
+            ? 138
+            : 132;
+        const force = (dist - targetDistance) * (0.0038 + Math.min(0.003, (edge.weight || 1) * 0.0015));
+        edge.source.vx += (dx / dist) * force;
+        edge.source.vy += (dy / dist) * force;
+        edge.target.vx -= (dx / dist) * force;
+        edge.target.vy -= (dy / dist) * force;
       });
 
-      let ke = 0;
-      nodes.forEach(n => {
-        if (n === dragging) return;
-        n.vx += (width / 2 - n.x) * 0.0006;
-        n.vy += (height / 2 - n.y) * 0.0006;
-        n.vx *= 0.85; n.vy *= 0.85;
-        n.x += n.vx; n.y += n.vy;
-        ke += n.vx * n.vx + n.vy * n.vy;
+      let kineticEnergy = 0;
+      nodes.forEach(node => {
+        if (node === dragging) return;
+        node.vx += (width / 2 - node.x) * centerPull;
+        node.vy += (height / 2 - node.y) * centerPull;
+        node.vx *= 0.84;
+        node.vy *= 0.84;
+        node.x += node.vx;
+        node.y += node.vy;
+        kineticEnergy += node.vx * node.vx + node.vy * node.vy;
       });
-      return ke;
+      return kineticEnergy;
     }
 
     function wakeUp() {
       if (!animFrameId) animFrameId = requestAnimationFrame(draw);
     }
 
-    // ── Draw ──────────────────────────────────────────────────────────────────
     const nbCache = new Map();
     function neighborIds(node) {
       if (nbCache.has(node.id)) return nbCache.get(node.id);
       const ids = new Set([node.id]);
-      graph.edges.forEach(e => {
-        if (e.from === node.id) ids.add(e.to);
-        if (e.to   === node.id) ids.add(e.from);
+      graph.edges.forEach(edge => {
+        if (edge.from === node.id) ids.add(edge.to);
+        if (edge.to === node.id) ids.add(edge.from);
       });
       nbCache.set(node.id, ids);
       return ids;
@@ -347,7 +993,7 @@
 
     function draw() {
       animFrameId = null;
-      const ke = step();
+      const kineticEnergy = step();
       nbCache.clear();
 
       ctx.clearRect(0, 0, width, height);
@@ -356,256 +1002,504 @@
       ctx.scale(cam.scale, cam.scale);
 
       const active = hovered || selected;
-      const nbIds  = active ? neighborIds(active) : null;
-      const q = search.value.trim().toLowerCase();
+      const neighborSet = active ? neighborIds(active) : null;
 
-      // Edges
-      graph.edges.forEach(e => {
-        if (!e.source || !e.target) return;
-        const hi = nbIds && nbIds.has(e.from) && nbIds.has(e.to);
-        const a  = nbIds ? (hi ? 0.7 : 0.06) : 0.22;
-        ctx.strokeStyle = (e.type === 'mentions' || e.type === 'discusses')
-          ? `rgba(242,179,109,${a})` : `rgba(155,167,180,${a})`;
-        ctx.lineWidth = 1 / cam.scale;
+      graph.edges.forEach(edge => {
+        if (!edge.source || !edge.target) return;
+        const style = edgeStyle(edge.type);
+        const isNeighborEdge = neighborSet && neighborSet.has(edge.from) && neighborSet.has(edge.to);
+        const baseAlpha = neighborSet ? (isNeighborEdge ? 0.88 : 0.07) : 0.34;
+        const widthBoost = isNeighborEdge ? 0.5 : 0;
+        ctx.save();
+        ctx.globalAlpha = baseAlpha;
+        ctx.strokeStyle = style.color;
+        ctx.lineWidth = (style.width + Math.min(3.4, (edge.weight || 1) * 1.1) + widthBoost) / cam.scale;
+        ctx.setLineDash(style.dash || []);
         ctx.beginPath();
-        ctx.moveTo(e.source.x, e.source.y);
-        ctx.lineTo(e.target.x, e.target.y);
+        ctx.moveTo(edge.source.x, edge.source.y);
+        ctx.lineTo(edge.target.x, edge.target.y);
         ctx.stroke();
+        ctx.restore();
       });
 
-      // Nodes
-      graph.nodes.forEach(n => {
-        const isNb  = nbIds ? nbIds.has(n.id) : true;
-        const hit   = q && `${n.title} ${n.type} ${n.summary || ''}`.toLowerCase().includes(q);
-        const isSel = n === selected;
-        const isHov = n === hovered;
-        const alpha = nbIds ? (isNb ? 1 : 0.12) : 1;
-        const r = n.r + (isSel ? 4 : isHov ? 2 : hit ? 2 : 0);
+      graph.nodes.forEach(node => {
+        const isNeighbor = neighborSet ? neighborSet.has(node.id) : true;
+        const isSearchHit = searchResultIds.has(node.id);
+        const isSelected = node === selected;
+        const isHovered = node === hovered;
+        const alpha = neighborSet ? (isNeighbor ? 1 : 0.12) : 1;
+        const radius = node.r + (isSelected ? 4 : isHovered ? 2 : isSearchHit ? 2.6 : 0);
 
         ctx.globalAlpha = alpha;
+
+        if (node.type === 'Topic') {
+          const haloRadius = radius + 6 + node.importance_norm * 8;
+          const halo = ctx.createRadialGradient(node.x, node.y, radius * 0.4, node.x, node.y, haloRadius);
+          halo.addColorStop(0, `${nodeColor(node.type)}30`);
+          halo.addColorStop(1, `${nodeColor(node.type)}00`);
+          ctx.fillStyle = halo;
+          ctx.beginPath();
+          ctx.arc(node.x, node.y, haloRadius, 0, Math.PI * 2);
+          ctx.fill();
+        }
+
+        ctx.fillStyle = isSelected ? '#ffffff' : nodeColor(node.type);
         ctx.beginPath();
-        ctx.arc(n.x, n.y, r, 0, Math.PI * 2);
-        ctx.fillStyle = isSel ? '#ffffff' : nodeColor(n.type);
+        ctx.arc(node.x, node.y, radius, 0, Math.PI * 2);
         ctx.fill();
 
-        if (isSel || isHov) {
-          ctx.strokeStyle = isSel ? 'rgba(255,255,255,0.5)' : nodeColor(n.type);
-          ctx.lineWidth = (isSel ? 2.5 : 1.5) / cam.scale;
+        if (isSelected || isHovered || isSearchHit) {
+          ctx.strokeStyle = isSelected ? '#ffffff' : nodeColor(node.type);
+          ctx.lineWidth = (isSelected ? 2.8 : 1.8) / cam.scale;
           ctx.beginPath();
-          ctx.arc(n.x, n.y, r + 3.5, 0, Math.PI * 2);
+          ctx.arc(node.x, node.y, radius + 3.5, 0, Math.PI * 2);
           ctx.stroke();
         }
 
-        const showLabel = hit || isSel || isHov
-          || n.type === 'File' || n.type === 'Conversation'
-          || (n.type === 'Topic' && cam.scale > 0.55)
-          || (n.type === 'Person');
+        const showLabel = isSelected || isHovered || isSearchHit
+          || node.type === 'Conversation'
+          || node.type === 'File'
+          || (node.type === 'Topic' && (node.importance_norm > 0.45 || cam.scale > 0.52))
+          || (node.type === 'Decision' || node.type === 'Task');
         if (showLabel) {
-          ctx.fillStyle = alpha < 0.5 ? 'rgba(220,228,238,0.25)' : '#dce4ee';
-          ctx.font = `${Math.max(9, 11 / cam.scale)}px system-ui`;
-          ctx.fillText(n.title.slice(0, 36), n.x + r + 5 / cam.scale, n.y + 4 / cam.scale);
+          ctx.fillStyle = alpha < 0.5 ? 'rgba(237,244,251,0.3)' : '#edf4fb';
+          ctx.font = `${Math.max(9, 11.5 / cam.scale)}px system-ui`;
+          ctx.fillText(node.title.slice(0, 40), node.x + radius + 6 / cam.scale, node.y + 4 / cam.scale);
         }
+
         ctx.globalAlpha = 1;
       });
 
       ctx.restore();
-      if (ke > 0.04 || dragging) animFrameId = requestAnimationFrame(draw);
+      if (kineticEnergy > 0.04 || dragging) animFrameId = requestAnimationFrame(draw);
     }
 
-    // ── Coordinates ───────────────────────────────────────────────────────────
-    function toWorld(cx, cy) {
-      return { x: (cx - cam.tx) / cam.scale, y: (cy - cam.ty) / cam.scale };
+    function toWorld(canvasX, canvasY) {
+      return { x: (canvasX - cam.tx) / cam.scale, y: (canvasY - cam.ty) / cam.scale };
     }
-    function nodeAt(cx, cy) {
-      const { x, y } = toWorld(cx, cy);
-      let best = null, bestD = Infinity;
-      graph.nodes.forEach(n => {
-        const d = Math.hypot(n.x - x, n.y - y);
-        if (d < (n.r + 9) / cam.scale && d < bestD) { best = n; bestD = d; }
+
+    function nodeAt(canvasX, canvasY) {
+      const { x, y } = toWorld(canvasX, canvasY);
+      let best = null;
+      let bestDistance = Infinity;
+      graph.nodes.forEach(node => {
+        const distance = Math.hypot(node.x - x, node.y - y);
+        if (distance < (node.r + 10) / cam.scale && distance < bestDistance) {
+          best = node;
+          bestDistance = distance;
+        }
       });
       return best;
     }
 
-    // ── Fit to screen ─────────────────────────────────────────────────────────
     function fitToScreen() {
       if (!graph.nodes.length) return;
       let x0 = Infinity, x1 = -Infinity, y0 = Infinity, y1 = -Infinity;
-      graph.nodes.forEach(n => {
-        x0 = Math.min(x0, n.x - n.r); x1 = Math.max(x1, n.x + n.r);
-        y0 = Math.min(y0, n.y - n.r); y1 = Math.max(y1, n.y + n.r);
+      graph.nodes.forEach(node => {
+        x0 = Math.min(x0, node.x - node.r);
+        x1 = Math.max(x1, node.x + node.r);
+        y0 = Math.min(y0, node.y - node.r);
+        y1 = Math.max(y1, node.y + node.r);
       });
-      const margin = 52;
-      const s = Math.min(3, Math.min(
-        (width  - margin * 2) / Math.max(1, x1 - x0),
-        (height - margin * 2) / Math.max(1, y1 - y0),
-      ));
-      cam.scale = s;
-      cam.tx = (width  - (x0 + x1) * s) / 2;
-      cam.ty = (height - (y0 + y1) * s) / 2;
+      const margin = 56;
+      const scale = Math.min(
+        2.8,
+        Math.min(
+          (width - margin * 2) / Math.max(1, x1 - x0),
+          (height - margin * 2) / Math.max(1, y1 - y0)
+        )
+      );
+      cam.scale = scale;
+      cam.tx = (width - (x0 + x1) * scale) / 2;
+      cam.ty = (height - (y0 + y1) * scale) / 2;
       wakeUp();
     }
 
-    // ── Detail panel ──────────────────────────────────────────────────────────
+    function centerOnNode(node, targetScale = cam.scale) {
+      cam.scale = clamp(targetScale, 0.12, 4.5);
+      cam.tx = width / 2 - node.x * cam.scale;
+      cam.ty = height / 2 - node.y * cam.scale;
+      wakeUp();
+    }
+
+    function metricCards(node) {
+      const metrics = ((node.metadata || {}).graph_metrics) || {};
+      const cards = [
+        { value: formatMetric(metrics.importance_norm ? metrics.importance_norm * 100 : 0, 0), label: 'Importance %' },
+        { value: formatMetric(metrics.degree || node.degree || 0, 0), label: 'Connections' },
+      ];
+      if (node.type === 'Topic') {
+        cards.push({ value: formatMetric(metrics.mention_count || 0, 0), label: 'Mentions' });
+        cards.push({ value: formatMetric(metrics.conversation_count || 0, 0), label: 'Conversations' });
+      } else {
+        cards.push({ value: formatMetric(metrics.recency_score || 0), label: 'Recency' });
+        cards.push({ value: formatMetric(node.importance || metrics.importance_raw || 0), label: 'Raw score' });
+      }
+      return `<div class="metric-grid">${cards.map(card => `
+        <div class="metric-card">
+          <strong>${escapeHtml(card.value)}</strong>
+          <span>${escapeHtml(card.label)}</span>
+        </div>
+      `).join('')}</div>`;
+    }
+
     function showDetail(node) {
       if (!node) {
-        detail.innerHTML = '<p class="empty-hint">노드를 클릭하면 원문 요약과 메타데이터를 볼 수 있습니다.</p>';
+        selected = null;
+        detail.innerHTML = '<p class="empty-hint">노드를 클릭하면 요약, 중요도, 메타데이터를 볼 수 있습니다.</p>';
+        wakeUp();
         return;
       }
       selected = node;
-      const meta  = node.metadata || {};
+      const meta = node.metadata || {};
       const convId = meta.conversation_id;
       const jumpHtml = convId
-        ? `<a class="jump-btn" href="${API_BASE}/chat?open_conversation=${encodeURIComponent(convId)}">→ 채팅에서 열기</a>`
+        ? `<a class="jump-btn" href="${API_BASE}/chat?open_conversation=${encodeURIComponent(convId)}">Open in chat</a>`
         : '';
-      const metaStr = Object.keys(meta).length ? JSON.stringify(meta, null, 2) : '';
+      const metrics = metricCards(node);
+      const updatedAt = formatUpdatedAt(node.updated_at);
+      const source = meta.filename || meta.conversation_id || meta.source || '';
+      const metadataStr = Object.keys(meta).length ? JSON.stringify(meta, null, 2) : '';
       detail.innerHTML = `
-        <div class="type-badge" style="background:${nodeColor(node.type)};color:#07100d">${node.type}</div>
-        <div class="detail-title"></div>
-        ${node.summary ? '<div class="detail-summary"></div>' : ''}
+        <div class="type-badge" style="background:${nodeColor(node.type)}">${escapeHtml(typeLabel(node.type))}</div>
+        <div class="detail-title">${escapeHtml(node.title || node.id)}</div>
+        ${node.summary ? `<div class="detail-summary">${escapeHtml(node.summary)}</div>` : ''}
         ${jumpHtml}
-        ${metaStr ? '<div class="detail-meta"></div>' : ''}
+        ${metrics}
+        <div class="detail-summary">
+          ${source ? `<strong>source:</strong> ${escapeHtml(source)}<br>` : ''}
+          ${updatedAt ? `<strong>updated:</strong> ${escapeHtml(updatedAt)}` : ''}
+        </div>
+        ${metadataStr ? `<div class="meta-block">${escapeHtml(metadataStr)}</div>` : ''}
       `;
-      detail.querySelector('.detail-title').textContent = node.title || node.id;
-      if (node.summary) detail.querySelector('.detail-summary').textContent = node.summary;
-      if (metaStr) detail.querySelector('.detail-meta').textContent = metaStr;
+      wakeUp();
     }
 
-    // ── Canvas resize ─────────────────────────────────────────────────────────
     function resize() {
       const rect = canvas.getBoundingClientRect();
-      width = rect.width; height = rect.height;
+      width = rect.width;
+      height = rect.height;
       const dpr = window.devicePixelRatio || 1;
-      canvas.width  = Math.floor(width  * dpr);
+      canvas.width = Math.floor(width * dpr);
       canvas.height = Math.floor(height * dpr);
       ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
     }
 
-    // ── Mouse events ──────────────────────────────────────────────────────────
-    canvas.addEventListener('mousedown', e => {
+    function setSearchIdleState(message = 'Ready') {
+      searchCountEl.textContent = message;
+    }
+
+    function renderSearchResults() {
+      if (!searchInput.value.trim()) {
+        searchResultsEl.innerHTML = '<p class="search-empty">검색 결과는 여기에 표시됩니다. 키워드를 입력하면 서버 검색 결과를 불러오고, 항목을 누르면 해당 노드로 바로 이동합니다.</p>';
+        return;
+      }
+      if (!searchResults.length) {
+        searchResultsEl.innerHTML = '<p class="search-empty">일치하는 노드를 찾지 못했습니다. 더 구체적인 주제어, 파일명, 대화 제목으로 다시 시도해 보세요.</p>';
+        return;
+      }
+      searchResultsEl.innerHTML = `
+        <div class="search-list">
+          ${searchResults.map(match => {
+            const active = selected && selected.id === match.id ? 'active' : '';
+            const source = (match.metadata || {}).filename || (match.metadata || {}).conversation_id || '';
+            return `
+              <button class="search-item ${active}" data-node-id="${escapeHtml(match.id)}">
+                <div class="search-item-top">
+                  <span class="search-type" style="background:${nodeColor(match.type)}">${escapeHtml(typeLabel(match.type))}</span>
+                  <span class="search-item-title">${escapeHtml(match.title || match.id)}</span>
+                </div>
+                ${match.summary ? `<p class="search-item-summary">${escapeHtml(match.summary)}</p>` : ''}
+                <div class="search-item-meta">
+                  ${source ? `<span>${escapeHtml(source)}</span>` : ''}
+                  ${match.updated_at ? `<span>${escapeHtml(formatUpdatedAt(match.updated_at))}</span>` : ''}
+                </div>
+              </button>
+            `;
+          }).join('')}
+        </div>
+      `;
+    }
+
+    async function runSearch(query) {
+      const trimmed = String(query || '').trim();
+      if (!trimmed) {
+        searchResults = [];
+        searchResultIds = new Set();
+        setSearchIdleState('Ready');
+        renderSearchResults();
+        wakeUp();
+        return;
+      }
+
+      if (searchAbortController) searchAbortController.abort();
+      searchAbortController = new AbortController();
+      searchCountEl.textContent = 'Searching...';
+      searchResultsEl.innerHTML = '<p class="search-loading">Searching graph index...</p>';
+
+      try {
+        const res = await apiFetch(`/knowledge-graph/search?q=${encodeURIComponent(trimmed)}&limit=12`, {
+          signal: searchAbortController.signal,
+        });
+        if (!res.ok) throw new Error(`Search failed (${res.status})`);
+        const data = await res.json();
+        searchResults = Array.isArray(data.matches) ? data.matches : [];
+        searchResultIds = new Set(searchResults.map(match => match.id));
+        searchCountEl.textContent = `${searchResults.length} result${searchResults.length === 1 ? '' : 's'}`;
+        renderSearchResults();
+        wakeUp();
+      } catch (error) {
+        if (error.name === 'AbortError') return;
+        searchResults = [];
+        searchResultIds = new Set();
+        searchCountEl.textContent = 'Error';
+        searchResultsEl.innerHTML = `<p class="search-empty">${escapeHtml(error.message)}</p>`;
+        wakeUp();
+      }
+    }
+
+    function scheduleSearch() {
+      clearTimeout(searchDebounceId);
+      searchDebounceId = setTimeout(() => runSearch(searchInput.value), 160);
+    }
+
+    function clearSearch() {
+      searchInput.value = '';
+      searchResults = [];
+      searchResultIds = new Set();
+      setSearchIdleState('Ready');
+      renderSearchResults();
+      wakeUp();
+    }
+
+    async function focusSearchResult(match) {
+      let node = rawGraph.nodes.find(item => item.id === match.id);
+      if (!node) {
+        const res = await apiFetch(`/knowledge-graph/neighbors/${encodeURIComponent(match.id)}`);
+        if (res.ok) {
+          const payload = await res.json();
+          mergeGraphData([
+            {
+              id: match.id,
+              type: match.type,
+              title: match.title,
+              summary: match.summary,
+              metadata: match.metadata,
+              updated_at: match.updated_at,
+            },
+            ...((payload.neighbors || []).map(nodeItem => ({
+              ...nodeItem,
+              updated_at: nodeItem.updated_at,
+            }))),
+          ], payload.edges || []);
+          node = rawGraph.nodes.find(item => item.id === match.id);
+        }
+      }
+      if (!node) return;
+      showDetail(node);
+      centerOnNode(node, Math.max(cam.scale, node.type === 'Topic' ? 1.15 : 0.95));
+      renderSearchResults();
+    }
+
+    canvas.addEventListener('mousedown', event => {
       const rect = canvas.getBoundingClientRect();
-      const cx = e.clientX - rect.left, cy = e.clientY - rect.top;
-      const n = nodeAt(cx, cy);
-      if (n) { dragging = n; showDetail(n); wakeUp(); }
-      else { panning = { sx: e.clientX, sy: e.clientY, tx0: cam.tx, ty0: cam.ty }; canvas.classList.add('panning'); }
+      const canvasX = event.clientX - rect.left;
+      const canvasY = event.clientY - rect.top;
+      const node = nodeAt(canvasX, canvasY);
+      if (node) {
+        dragging = node;
+        showDetail(node);
+      } else {
+        panning = { sx: event.clientX, sy: event.clientY, tx0: cam.tx, ty0: cam.ty };
+        canvas.classList.add('panning');
+      }
+      wakeUp();
     });
 
-    canvas.addEventListener('mousemove', e => {
+    canvas.addEventListener('mousemove', event => {
       const rect = canvas.getBoundingClientRect();
-      const n = nodeAt(e.clientX - rect.left, e.clientY - rect.top);
-      if (n !== hovered) { hovered = n; wakeUp(); }
-      canvas.style.cursor = panning ? 'grabbing' : (n ? 'pointer' : 'grab');
-      if (n) {
+      const node = nodeAt(event.clientX - rect.left, event.clientY - rect.top);
+      if (node !== hovered) {
+        hovered = node;
+        wakeUp();
+      }
+      canvas.style.cursor = panning ? 'grabbing' : (node ? 'pointer' : 'grab');
+      if (node) {
+        const metrics = ((node.metadata || {}).graph_metrics) || {};
         tooltip.style.display = 'block';
-        tooltip.style.left = (e.clientX + 14) + 'px';
-        tooltip.style.top  = (e.clientY -  8) + 'px';
-        tooltip.textContent = n.title;
-      } else { tooltip.style.display = 'none'; }
+        tooltip.style.left = `${event.clientX + 14}px`;
+        tooltip.style.top = `${event.clientY - 8}px`;
+        tooltip.innerHTML = `
+          <strong>${escapeHtml(node.title)}</strong><br>
+          ${escapeHtml(typeLabel(node.type))} · importance ${escapeHtml(formatMetric((node.importance_norm || 0) * 100, 0))}%<br>
+          ${node.type === 'Topic'
+            ? `mentions ${escapeHtml(formatMetric(metrics.mention_count || 0, 0))} · conversations ${escapeHtml(formatMetric(metrics.conversation_count || 0, 0))}`
+            : `connections ${escapeHtml(formatMetric(metrics.degree || node.degree || 0, 0))}`
+          }
+        `;
+      } else {
+        tooltip.style.display = 'none';
+      }
     });
-    canvas.addEventListener('mouseleave', () => { hovered = null; tooltip.style.display = 'none'; wakeUp(); });
 
-    window.addEventListener('mousemove', e => {
+    canvas.addEventListener('mouseleave', () => {
+      hovered = null;
+      tooltip.style.display = 'none';
+      wakeUp();
+    });
+
+    window.addEventListener('mousemove', event => {
       if (dragging) {
         const rect = canvas.getBoundingClientRect();
-        const w = toWorld(e.clientX - rect.left, e.clientY - rect.top);
-        dragging.x = w.x; dragging.y = w.y; dragging.vx = 0; dragging.vy = 0;
+        const world = toWorld(event.clientX - rect.left, event.clientY - rect.top);
+        dragging.x = world.x;
+        dragging.y = world.y;
+        dragging.vx = 0;
+        dragging.vy = 0;
         wakeUp();
       } else if (panning) {
-        cam.tx = panning.tx0 + (e.clientX - panning.sx);
-        cam.ty = panning.ty0 + (e.clientY - panning.sy);
+        cam.tx = panning.tx0 + (event.clientX - panning.sx);
+        cam.ty = panning.ty0 + (event.clientY - panning.sy);
         wakeUp();
       }
     });
 
     window.addEventListener('mouseup', () => {
-      dragging = null; panning = null;
+      dragging = null;
+      panning = null;
       canvas.classList.remove('panning');
     });
 
-    canvas.addEventListener('wheel', e => {
-      e.preventDefault();
+    canvas.addEventListener('wheel', event => {
+      event.preventDefault();
       const rect = canvas.getBoundingClientRect();
-      const cx = e.clientX - rect.left, cy = e.clientY - rect.top;
-      const f  = e.deltaY < 0 ? 1.12 : 1 / 1.12;
-      const ns = Math.min(6, Math.max(0.07, cam.scale * f));
-      cam.tx = cx - (cx - cam.tx) * (ns / cam.scale);
-      cam.ty = cy - (cy - cam.ty) * (ns / cam.scale);
-      cam.scale = ns;
+      const canvasX = event.clientX - rect.left;
+      const canvasY = event.clientY - rect.top;
+      const zoomFactor = event.deltaY < 0 ? 1.12 : 1 / 1.12;
+      const nextScale = clamp(cam.scale * zoomFactor, 0.07, 6);
+      cam.tx = canvasX - (canvasX - cam.tx) * (nextScale / cam.scale);
+      cam.ty = canvasY - (canvasY - cam.ty) * (nextScale / cam.scale);
+      cam.scale = nextScale;
       wakeUp();
     }, { passive: false });
 
-    // ── Touch events ──────────────────────────────────────────────────────────
-    let lastTouchDist = null;
-    canvas.addEventListener('touchstart', e => {
-      e.preventDefault();
-      if (e.touches.length === 2) {
-        lastTouchDist = Math.hypot(
-          e.touches[0].clientX - e.touches[1].clientX,
-          e.touches[0].clientY - e.touches[1].clientY,
+    let lastTouchDistance = null;
+    canvas.addEventListener('touchstart', event => {
+      event.preventDefault();
+      if (event.touches.length === 2) {
+        lastTouchDistance = Math.hypot(
+          event.touches[0].clientX - event.touches[1].clientX,
+          event.touches[0].clientY - event.touches[1].clientY
         );
         dragging = null;
         return;
       }
-      const t = e.touches[0];
+      const touch = event.touches[0];
       const rect = canvas.getBoundingClientRect();
-      const n = nodeAt(t.clientX - rect.left, t.clientY - rect.top);
-      if (n) { dragging = n; showDetail(n); wakeUp(); }
-      else panning = { sx: t.clientX, sy: t.clientY, tx0: cam.tx, ty0: cam.ty };
+      const node = nodeAt(touch.clientX - rect.left, touch.clientY - rect.top);
+      if (node) {
+        dragging = node;
+        showDetail(node);
+      } else {
+        panning = { sx: touch.clientX, sy: touch.clientY, tx0: cam.tx, ty0: cam.ty };
+      }
+      wakeUp();
     }, { passive: false });
 
-    canvas.addEventListener('touchmove', e => {
-      e.preventDefault();
-      if (e.touches.length === 2) {
-        const dist = Math.hypot(
-          e.touches[0].clientX - e.touches[1].clientX,
-          e.touches[0].clientY - e.touches[1].clientY,
+    canvas.addEventListener('touchmove', event => {
+      event.preventDefault();
+      if (event.touches.length === 2) {
+        const distance = Math.hypot(
+          event.touches[0].clientX - event.touches[1].clientX,
+          event.touches[0].clientY - event.touches[1].clientY
         );
-        if (lastTouchDist) {
-          const f  = dist / lastTouchDist;
-          const cx = (e.touches[0].clientX + e.touches[1].clientX) / 2;
-          const cy = (e.touches[0].clientY + e.touches[1].clientY) / 2;
+        if (lastTouchDistance) {
+          const factor = distance / lastTouchDistance;
+          const centerX = (event.touches[0].clientX + event.touches[1].clientX) / 2;
+          const centerY = (event.touches[0].clientY + event.touches[1].clientY) / 2;
           const rect = canvas.getBoundingClientRect();
-          const px = cx - rect.left, py = cy - rect.top;
-          const ns = Math.min(6, Math.max(0.07, cam.scale * f));
-          cam.tx = px - (px - cam.tx) * (ns / cam.scale);
-          cam.ty = py - (py - cam.ty) * (ns / cam.scale);
-          cam.scale = ns;
+          const px = centerX - rect.left;
+          const py = centerY - rect.top;
+          const nextScale = clamp(cam.scale * factor, 0.07, 6);
+          cam.tx = px - (px - cam.tx) * (nextScale / cam.scale);
+          cam.ty = py - (py - cam.ty) * (nextScale / cam.scale);
+          cam.scale = nextScale;
           wakeUp();
         }
-        lastTouchDist = dist;
+        lastTouchDistance = distance;
         return;
       }
-      const t = e.touches[0];
+
+      const touch = event.touches[0];
       if (dragging) {
         const rect = canvas.getBoundingClientRect();
-        const w = toWorld(t.clientX - rect.left, t.clientY - rect.top);
-        dragging.x = w.x; dragging.y = w.y; dragging.vx = 0; dragging.vy = 0;
-        wakeUp();
+        const world = toWorld(touch.clientX - rect.left, touch.clientY - rect.top);
+        dragging.x = world.x;
+        dragging.y = world.y;
+        dragging.vx = 0;
+        dragging.vy = 0;
       } else if (panning) {
-        cam.tx = panning.tx0 + (t.clientX - panning.sx);
-        cam.ty = panning.ty0 + (t.clientY - panning.sy);
-        wakeUp();
+        cam.tx = panning.tx0 + (touch.clientX - panning.sx);
+        cam.ty = panning.ty0 + (touch.clientY - panning.sy);
       }
+      wakeUp();
     }, { passive: false });
 
-    canvas.addEventListener('touchend', () => { dragging = null; panning = null; lastTouchDist = null; });
+    canvas.addEventListener('touchend', () => {
+      dragging = null;
+      panning = null;
+      lastTouchDistance = null;
+    });
 
-    // ── Controls ──────────────────────────────────────────────────────────────
-    search.addEventListener('input', wakeUp);
+    searchInput.addEventListener('input', scheduleSearch);
+    searchInput.addEventListener('keydown', event => {
+      if (event.key === 'Enter' && searchResults.length) {
+        event.preventDefault();
+        focusSearchResult(searchResults[0]).catch(error => {
+          searchCountEl.textContent = 'Error';
+          searchResultsEl.innerHTML = `<p class="search-empty">${escapeHtml(error.message)}</p>`;
+        });
+      }
+    });
+
+    document.getElementById('clear-search-btn').addEventListener('click', clearSearch);
     document.getElementById('fit-btn').addEventListener('click', fitToScreen);
     document.getElementById('refresh-btn').addEventListener('click', () => {
       rawGraph = { nodes: [], edges: [] };
-      graph    = { nodes: [], edges: [] };
-      loadGraph().catch(err => {
-        detail.innerHTML = `<div class="type-badge" style="background:#e47a73;color:#fff">Error</div><div class="detail-title">불러오기 실패</div><div class="detail-summary">${err.message}</div>`;
+      graph = { nodes: [], edges: [] };
+      selected = null;
+      loadGraph().catch(error => {
+        detail.innerHTML = `<div class="type-badge" style="background:${nodeColor('ClearEvent')}; color:#091019">Error</div><div class="detail-title">그래프를 새로고침하지 못했습니다.</div><div class="detail-summary">${escapeHtml(error.message)}</div>`;
       });
     });
-    document.getElementById('back-btn').addEventListener('click', () => window.location.href = `${API_BASE}/chat`);
-    window.addEventListener('resize', () => { resize(); wakeUp(); });
+    document.getElementById('back-btn').addEventListener('click', () => {
+      window.location.href = `${API_BASE}/chat`;
+    });
 
-    // ── Init ──────────────────────────────────────────────────────────────────
+    searchResultsEl.addEventListener('click', event => {
+      const target = event.target.closest('[data-node-id]');
+      if (!target) return;
+      const match = searchResults.find(item => item.id === target.dataset.nodeId);
+      if (!match) return;
+      focusSearchResult(match).catch(error => {
+        searchCountEl.textContent = 'Error';
+        searchResultsEl.innerHTML = `<p class="search-empty">${escapeHtml(error.message)}</p>`;
+      });
+    });
+
+    window.addEventListener('resize', () => {
+      resize();
+      wakeUp();
+    });
+
     resize();
-    loadGraph().catch(err => {
-      detail.innerHTML = `<div class="type-badge" style="background:#e47a73;color:#fff">Error</div><div class="detail-title">그래프를 불러오지 못했습니다.</div><div class="detail-summary">${err.message}</div>`;
+    renderSearchResults();
+    loadGraph().catch(error => {
+      detail.innerHTML = `
+        <div class="type-badge" style="background:${nodeColor('ClearEvent')}">Error</div>
+        <div class="detail-title">그래프를 불러오지 못했습니다.</div>
+        <div class="detail-summary">${escapeHtml(error.message)}</div>
+      `;
     });
   </script>
 </body>

@@ -12,6 +12,13 @@ Apple Silicon MLX 로컬 추론 · OpenAI/Groq/OpenRouter 클라우드 모델 ·
 
 Lattice AI는 개인 개발자가 로컬 모델, 클라우드 모델, 에이전트 툴링, 코드 에디터 연동을 하나의 워크스페이스로 운영할 수 있게 만든 서버입니다.
 
+### 현재 배포 버전
+
+- `PyPI`: `ltcai==0.1.12`
+- `npm`: `ltcai@0.1.12`
+- `VS Code Marketplace`: `parktaesoo.ltcai@0.1.12`
+- `Open VSX`: `parktaesoo.ltcai@0.1.12`
+
 ### 왜 Lattice AI인가
 
 - **하나의 서버, 여러 인터페이스**: 웹 UI, VS Code/Cursor 확장, Telegram 봇, MCP 도구를 한 번에 연결합니다.
@@ -227,6 +234,15 @@ docker run --rm -p 4825:4825 \
 |---|---|
 | VS Code / Cursor | [marketplace.visualstudio.com](https://marketplace.visualstudio.com/items?itemName=parktaesoo.ltcai) |
 | Antigravity / VSCodium | [open-vsx.org](https://open-vsx.org/extension/parktaesoo/ltcai) |
+
+### 릴리스 체크
+
+`0.1.12` 릴리스는 아래 네 채널을 동일 버전으로 맞춥니다.
+
+- `npm`
+- `PyPI`
+- `VS Code Marketplace`
+- `Open VSX`
 
 ### 수동 설치 (VSIX)
 

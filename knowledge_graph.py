@@ -9,6 +9,7 @@ the ingestion contract.
 import hashlib
 import json
 import logging
+import math
 import re
 import shutil
 import sqlite3
@@ -23,6 +24,25 @@ GRAPH_SCHEMA_VERSION = 1
 
 def _now() -> str:
     return datetime.now().isoformat()
+
+
+def _parse_iso(raw: Optional[str]) -> Optional[datetime]:
+    if not raw:
+        return None
+    try:
+        return datetime.fromisoformat(str(raw))
+    except (TypeError, ValueError):
+        return None
+
+
+def _recency_score(updated_at: Optional[str], *, now: Optional[datetime] = None, half_life_days: float = 14.0) -> float:
+    stamp = _parse_iso(updated_at)
+    if not stamp:
+        return 0.0
+    now = now or datetime.now()
+    age_days = max(0.0, (now - stamp).total_seconds() / 86400.0)
+    decay = math.log(2) / max(0.1, half_life_days)
+    return math.exp(-decay * age_days)
 
 
 def _json(data: Optional[Dict[str, Any]]) -> str:
@@ -587,28 +607,117 @@ class KnowledgeGraphStore:
                     "title": row["title"],
                     "summary": row["summary"],
                     "metadata": _safe_loads(row["metadata_json"]),
+                    "updated_at": row["updated_at"],
                 }
                 for row in conn.execute(
-                    "SELECT id, type, title, summary, metadata_json FROM nodes WHERE type != 'Chunk' ORDER BY updated_at DESC LIMIT ?",
+                    "SELECT id, type, title, summary, metadata_json, updated_at FROM nodes WHERE type != 'Chunk' ORDER BY updated_at DESC LIMIT ?",
                     (limit,),
                 )
             ]
             node_ids = {node["id"] for node in nodes}
-            edges = [
-                {
-                    "id": row["id"],
-                    "from": row["from_node"],
-                    "to": row["to_node"],
-                    "type": row["type"],
-                    "weight": row["weight"],
-                    "metadata": _safe_loads(row["metadata_json"]),
-                }
-                for row in conn.execute(
-                    "SELECT id, from_node, to_node, type, weight, metadata_json FROM edges ORDER BY created_at DESC LIMIT ?",
-                    (limit * 3,),
+            edges: List[Dict[str, Any]] = []
+            if node_ids:
+                edge_rows = conn.execute(
+                    """
+                    SELECT id, from_node, to_node, type, weight, metadata_json
+                    FROM edges
+                    WHERE from_node IN (
+                        SELECT id
+                        FROM nodes
+                        WHERE type != 'Chunk'
+                        ORDER BY updated_at DESC
+                        LIMIT ?
+                    )
+                    AND to_node IN (
+                        SELECT id
+                        FROM nodes
+                        WHERE type != 'Chunk'
+                        ORDER BY updated_at DESC
+                        LIMIT ?
+                    )
+                    ORDER BY created_at DESC
+                    """,
+                    (limit, limit),
+                ).fetchall()
+                edges = [
+                    {
+                        "id": row["id"],
+                        "from": row["from_node"],
+                        "to": row["to_node"],
+                        "type": row["type"],
+                        "weight": row["weight"],
+                        "metadata": _safe_loads(row["metadata_json"]),
+                    }
+                    for row in edge_rows
+                ]
+
+        degree_map: Dict[str, int] = {}
+        for edge in edges:
+            degree_map[edge["from"]] = degree_map.get(edge["from"], 0) + 1
+            degree_map[edge["to"]] = degree_map.get(edge["to"], 0) + 1
+
+        now = datetime.now()
+        node_by_id = {node["id"]: node for node in nodes}
+        topic_metrics: Dict[str, Dict[str, Any]] = {}
+
+        for edge in edges:
+            from_node = node_by_id.get(edge["from"])
+            to_node = node_by_id.get(edge["to"])
+            if not from_node or not to_node:
+                continue
+            for topic_node, other_node in ((from_node, to_node), (to_node, from_node)):
+                if topic_node["type"] != "Topic":
+                    continue
+                metrics = topic_metrics.setdefault(topic_node["id"], {
+                    "mention_count": 0.0,
+                    "conversation_ids": set(),
+                })
+                if edge["type"] in {"mentions", "discusses"}:
+                    metrics["mention_count"] += max(0.5, float(edge.get("weight") or 1.0))
+                other_meta = other_node.get("metadata") or {}
+                conversation_id = other_meta.get("conversation_id")
+                if other_node["type"] == "Conversation":
+                    conversation_id = other_node["id"]
+                if conversation_id:
+                    metrics["conversation_ids"].add(str(conversation_id))
+
+        type_max_raw: Dict[str, float] = {}
+        for node in nodes:
+            degree = degree_map.get(node["id"], 0)
+            recency = _recency_score(node.get("updated_at"), now=now)
+            metrics = {
+                "degree": degree,
+                "recency_score": round(recency, 4),
+            }
+            if node["type"] == "Topic":
+                topic_stat = topic_metrics.get(node["id"], {})
+                mention_count = float(topic_stat.get("mention_count") or 0.0)
+                conversation_count = len(topic_stat.get("conversation_ids") or ())
+                raw_importance = (
+                    math.log1p(mention_count) * 2.8
+                    + math.log1p(conversation_count) * 2.2
+                    + recency * 1.4
+                    + math.sqrt(max(0, degree)) * 0.45
                 )
-                if row["from_node"] in node_ids and row["to_node"] in node_ids
-            ]
+                metrics.update({
+                    "mention_count": round(mention_count, 2),
+                    "conversation_count": conversation_count,
+                })
+            else:
+                raw_importance = math.log1p(max(0, degree)) * 1.4 + recency * 0.9
+
+            metrics["importance_raw"] = round(raw_importance, 4)
+            node["importance"] = round(raw_importance, 4)
+            node["_raw_importance"] = raw_importance
+            node["metadata"] = {**(node.get("metadata") or {}), "graph_metrics": metrics}
+            type_max_raw[node["type"]] = max(type_max_raw.get(node["type"], 0.0), raw_importance)
+
+        for node in nodes:
+            max_raw = max(type_max_raw.get(node["type"], 0.0), 0.0001)
+            importance_norm = min(1.0, (node.get("_raw_importance") or 0.0) / max_raw)
+            node["importance_norm"] = round(importance_norm, 4)
+            node["metadata"]["graph_metrics"]["importance_norm"] = node["importance_norm"]
+            node.pop("_raw_importance", None)
         return {"nodes": nodes, "edges": edges}
 
     def search(self, query: str, limit: int = 30) -> Dict[str, Any]:
@@ -669,6 +778,7 @@ class KnowledgeGraphStore:
                     "title": row["title"],
                     "summary": row["summary"],
                     "metadata": _safe_loads(row["metadata_json"]),
+                    "updated_at": row["updated_at"],
                 }
                 for row in rows
             ],

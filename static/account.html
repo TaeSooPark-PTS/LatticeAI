@@ -5,7 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
     <title>Lattice AI</title>
     <link rel="manifest" href="/manifest.json">
-    <meta name="theme-color" content="#2d5a3d">
+    <meta name="theme-color" content="#282a36">
     <meta name="apple-mobile-web-app-capable" content="yes">
     <link rel="apple-touch-icon" href="/icons/apple-touch-icon.png">
     <link rel="icon" type="image/png" sizes="32x32" href="/icons/favicon-32.png">
@@ -14,11 +14,13 @@
         @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap');
 
         :root {
-            --bg: #080c0a;
-            --text: #f3f1e8;
-            --faint: #7c8078;
-            --accent: #22d3a0;
-            --shadow: 0 24px 70px rgba(0,0,0,0.5);
+            --bg: #282a36;
+            --text: #f7f7f2;
+            --faint: #8d93ab;
+            --muted: #c4c8d8;
+            --accent: #a77cff;
+            --accent-2: #20b8aa;
+            --shadow: 0 24px 70px rgba(5,7,12,0.46);
         }
 
         * { box-sizing: border-box; margin: 0; padding: 0; }
@@ -27,8 +29,9 @@
             font-family: Inter, -apple-system, BlinkMacSystemFont, sans-serif;
             color: var(--text);
             background:
-                linear-gradient(180deg, rgba(255,255,255,0.012), transparent 28%),
-                linear-gradient(135deg, #080c0a 0%, #060a08 52%, #0a0d09 100%);
+                radial-gradient(circle at 50% 35%, rgba(167,124,255,0.16), transparent 34%),
+                radial-gradient(circle at 80% 75%, rgba(32,184,170,0.10), transparent 28%),
+                linear-gradient(135deg, #292b38 0%, #242632 52%, #2f3040 100%);
             display: flex;
             align-items: center;
             justify-content: center;
@@ -43,9 +46,11 @@
             position: fixed;
             inset: 0;
             background:
-                linear-gradient(rgba(255,255,255,0.022) 1px, transparent 1px),
-                linear-gradient(90deg, rgba(255,255,255,0.016) 1px, transparent 1px);
-            background-size: 44px 44px;
+                radial-gradient(circle, rgba(247,247,242,0.66) 1px, transparent 1.8px),
+                linear-gradient(rgba(157,177,255,0.12) 1px, transparent 1px),
+                linear-gradient(90deg, rgba(157,177,255,0.08) 1px, transparent 1px);
+            background-size: 82px 82px, 46px 46px, 46px 46px;
+            background-position: 16px 18px, 0 0, 0 0;
             mask-image: linear-gradient(180deg, rgba(0,0,0,0.35), rgba(0,0,0,0.06));
             pointer-events: none;
         }
@@ -55,27 +60,24 @@
             position: fixed;
             inset: 0;
             background:
-                radial-gradient(ellipse 70% 60% at 18% 18%, rgba(34,211,160,0.16) 0%, transparent 55%),
-                radial-gradient(ellipse 55% 50% at 82% 82%, rgba(129,140,248,0.13) 0%, transparent 55%);
+                linear-gradient(116deg, transparent 0 44%, rgba(125,183,255,0.08) 44.1%, transparent 44.3% 100%),
+                linear-gradient(28deg, transparent 0 62%, rgba(167,124,255,0.08) 62.1%, transparent 62.3% 100%);
             pointer-events: none;
         }
 
         .orb {
-            position: fixed;
-            border-radius: 50%;
-            filter: blur(70px);
-            pointer-events: none;
+            display: none;
         }
         .orb-1 { width: 440px; height: 440px; top: -170px; left: -120px; background: rgba(34,211,160,0.13); }
         .orb-2 { width: 380px; height: 380px; bottom: -130px; right: -90px; background: rgba(129,140,248,0.11); }
 
         .card {
             width: min(400px, 100%);
-            background: rgba(10,14,12,0.88);
-            border: 1px solid rgba(255,255,255,0.08);
-            border-radius: 22px;
+            background: rgba(34,36,49,0.86);
+            border: 1px solid rgba(218,225,255,0.14);
+            border-radius: 10px;
             padding: 38px 34px;
-            box-shadow: var(--shadow), 0 0 0 1px rgba(34,211,160,0.05);
+            box-shadow: var(--shadow), 0 0 0 1px rgba(167,124,255,0.06);
             position: relative;
             z-index: 1;
             backdrop-filter: blur(28px);
@@ -87,17 +89,17 @@
             top: 0; left: 50%;
             transform: translateX(-50%);
             width: 55%; height: 1px;
-            background: linear-gradient(90deg, transparent, rgba(34,211,160,0.55), transparent);
+            background: linear-gradient(90deg, transparent, rgba(167,124,255,0.55), rgba(32,184,170,0.5), transparent);
         }
 
         .logo {
             width: 54px; height: 54px;
-            background: linear-gradient(135deg, #22d3a0, #818cf8);
-            border-radius: 15px;
+            background: radial-gradient(circle at 34% 30%, #ffffff 0 16%, #a77cff 17% 62%, #5b6cff 100%);
+            border-radius: 10px;
             display: flex; align-items: center; justify-content: center;
             font-size: 26px; color: #040706;
             margin: 0 auto 18px;
-            box-shadow: 0 0 32px rgba(34,211,160,0.32), 0 8px 24px rgba(0,0,0,0.4);
+            box-shadow: 0 0 32px rgba(167,124,255,0.28), 0 8px 24px rgba(0,0,0,0.38);
         }
 
         .title {
@@ -105,7 +107,7 @@
             font-size: 23px;
             font-weight: 800;
             margin-bottom: 6px;
-            background: linear-gradient(135deg, #fff 40%, rgba(34,211,160,0.9));
+            background: linear-gradient(135deg, #fff 40%, #cfc6ff 76%, #8be9df);
             -webkit-background-clip: text;
             -webkit-text-fill-color: transparent;
             background-clip: text;
@@ -113,7 +115,7 @@
 
         .subtitle {
             text-align: center;
-            color: var(--faint);
+            color: var(--muted);
             font-size: 12.5px;
             margin-bottom: 26px;
             line-height: 1.5;
@@ -123,39 +125,39 @@
             width: 100%;
             padding: 12px 14px;
             margin-bottom: 10px;
-            background: rgba(255,255,255,0.04);
-            border: 1px solid rgba(255,255,255,0.08);
+            background: rgba(20,22,31,0.74);
+            border: 1px solid rgba(218,225,255,0.14);
             color: var(--text);
-            border-radius: 10px;
+            border-radius: 8px;
             outline: none;
             font-size: 14px;
             font-family: inherit;
             transition: border-color .15s, box-shadow .15s;
         }
         .input:focus {
-            border-color: rgba(34,211,160,0.5);
-            box-shadow: 0 0 0 3px rgba(34,211,160,0.08);
+            border-color: rgba(167,124,255,0.5);
+            box-shadow: 0 0 0 3px rgba(167,124,255,0.09);
         }
         .input::placeholder { color: var(--faint); }
 
         .submit {
             width: 100%;
             padding: 13px;
-            background: linear-gradient(135deg, #22d3a0, #1ab88c);
-            color: #030d09;
+            background: linear-gradient(135deg, #f7f7f2, #cfc6ff);
+            color: #242632;
             border: none;
-            border-radius: 10px;
+            border-radius: 8px;
             cursor: pointer;
             font-weight: 800;
             font-size: 14px;
             font-family: inherit;
-            box-shadow: 0 0 20px rgba(34,211,160,0.28), 0 4px 12px rgba(0,0,0,0.3);
+            box-shadow: 0 0 22px rgba(167,124,255,0.18), 0 4px 12px rgba(0,0,0,0.3);
             transition: all .18s;
             margin-top: 4px;
         }
         .submit:hover {
-            background: linear-gradient(135deg, #2de8b0, #22d3a0);
-            box-shadow: 0 0 30px rgba(34,211,160,0.38), 0 4px 14px rgba(0,0,0,0.3);
+            background: linear-gradient(135deg, #ffffff, #d9d1ff);
+            box-shadow: 0 0 30px rgba(167,124,255,0.26), 0 4px 14px rgba(0,0,0,0.3);
             transform: translateY(-1px);
         }
         .submit:disabled { opacity: 0.6; cursor: not-allowed; transform: none; }
@@ -166,7 +168,7 @@
             font-size: 12.5px;
             color: var(--faint);
         }
-        .switch a { color: var(--accent); text-decoration: none; font-weight: 700; }
+        .switch a { color: #cfc6ff; text-decoration: none; font-weight: 700; }
         .switch a:hover { text-decoration: underline; }
 
         .sso-divider {
@@ -181,10 +183,10 @@
         .sso-btn {
             width: 100%;
             padding: 12px;
-            background: rgba(255,255,255,0.04);
-            border: 1px solid rgba(255,255,255,0.1);
+            background: rgba(247,247,242,0.045);
+            border: 1px solid rgba(218,225,255,0.13);
             color: var(--text);
-            border-radius: 10px;
+            border-radius: 8px;
             cursor: pointer;
             font-weight: 600;
             font-size: 13.5px;
@@ -193,8 +195,8 @@
             transition: all .18s;
         }
         .sso-btn:hover {
-            background: rgba(255,255,255,0.08);
-            border-color: rgba(34,211,160,0.3);
+            background: rgba(167,124,255,0.10);
+            border-color: rgba(167,124,255,0.3);
         }
 
         .msg {
@@ -214,8 +216,8 @@
             z-index: 10;
         }
         .lang-btn {
-            background: rgba(255,255,255,0.05);
-            border: 1px solid rgba(255,255,255,0.1);
+            background: rgba(34,36,49,0.72);
+            border: 1px solid rgba(218,225,255,0.14);
             color: var(--text);
             border-radius: 8px;
             padding: 7px 12px;
@@ -224,15 +226,15 @@
             cursor: pointer;
             transition: background .15s;
         }
-        .lang-btn:hover { background: rgba(255,255,255,0.1); }
+        .lang-btn:hover { background: rgba(167,124,255,0.12); }
         .lang-menu {
             display: none;
             position: absolute;
             top: calc(100% + 6px);
             right: 0;
-            background: #141a16;
-            border: 1px solid rgba(255,255,255,0.1);
-            border-radius: 10px;
+            background: #222431;
+            border: 1px solid rgba(218,225,255,0.14);
+            border-radius: 8px;
             padding: 4px;
             min-width: 130px;
             box-shadow: 0 8px 24px rgba(0,0,0,0.4);
@@ -245,7 +247,7 @@
             font-size: 13px;
             color: var(--faint);
         }
-        .lang-opt:hover { background: rgba(255,255,255,0.06); color: var(--text); }
+        .lang-opt:hover { background: rgba(167,124,255,0.10); color: var(--text); }
         .lang-opt.active { color: var(--accent); font-weight: 700; }
     </style>
 </head>

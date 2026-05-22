@@ -11,6 +11,7 @@ import io
 import json
 import logging
 import os
+import platform
 import re
 import secrets
 import threading
@@ -19,6 +20,8 @@ import subprocess
 import sys
 import tempfile
 import time
+import urllib.error
+import urllib.request
 from contextlib import asynccontextmanager
 from pathlib import Path
 
@@ -40,7 +43,7 @@ from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel
 from PIL import Image
 
-from llm_router import AsyncOpenAI, LLMRouter, OPENAI_COMPATIBLE_PROVIDERS, parse_model_ref, mx, normalize_branding
+from llm_router import AsyncOpenAI, LLMRouter, OPENAI_COMPATIBLE_PROVIDERS, ensure_mlx_runtime, parse_model_ref, mx, normalize_branding
 from knowledge_graph import KnowledgeGraphStore
 from p_reinforce import BRAIN_DIR, PReinforceGardener
 from setup import get_recommendations, install_stream, open_url, scan_environment
@@ -1965,6 +1968,11 @@ class SetApiKeyRequest(BaseModel):
 class PullModelRequest(BaseModel):
     model: str
 
+class PrepareModelRequest(BaseModel):
+    model: str
+    engine: Optional[str] = None
+    user_email: Optional[str] = None
+
 class VerifyCloudRequest(BaseModel):
     force: bool = False
     provider: Optional[str] = None
@@ -2235,6 +2243,7 @@ ENGINE_MODEL_CATALOG = {
         {"id": "ollama:llama3.1:70b", "name": "Llama 3.1 70B via Ollama", "family": "Llama 3.1", "tag": "local-server", "size": "pull required", "pullable": True},
     ],
     "vllm": [
+        {"id": "vllm:Qwen/Qwen2.5-0.5B-Instruct-AWQ", "name": "Qwen 2.5 0.5B AWQ via vLLM", "family": "Qwen 2.5", "tag": "local-light", "size": "0.5B", "pullable": True},
         {"id": "vllm:google/gemma-2-2b", "name": "Gemma 2 2B Base via vLLM", "family": "Gemma", "tag": "local-server", "size": "server model", "pullable": True},
         {"id": "vllm:google/gemma-2-2b-it", "name": "Gemma 2 2B via vLLM", "family": "Gemma", "tag": "local-server", "size": "server model", "pullable": True},
         {"id": "vllm:google/gemma-2-9b", "name": "Gemma 2 9B Base via vLLM", "family": "Gemma", "tag": "local-server", "size": "server model", "pullable": True},
@@ -2250,6 +2259,7 @@ ENGINE_MODEL_CATALOG = {
         {"id": "vllm:meta-llama/Llama-3.1-70B-Instruct", "name": "Llama 3.1 70B via vLLM", "family": "Llama 3.1", "tag": "local-server", "size": "server model", "pullable": True},
     ],
     "lmstudio": [
+        {"id": "lmstudio:https://huggingface.co/lmstudio-community/Qwen2.5-0.5B-Instruct-GGUF", "name": "Qwen 2.5 0.5B GGUF via LM Studio", "family": "Qwen 2.5", "tag": "local-light", "size": "0.5B", "pullable": True},
         {"id": "lmstudio:google/gemma-2-2b-it", "name": "Gemma 2 2B via LM Studio", "family": "Gemma", "tag": "local-server", "size": "server model", "pullable": True},
         {"id": "lmstudio:google/gemma-2-9b-it", "name": "Gemma 2 9B via LM Studio", "family": "Gemma", "tag": "local-server", "size": "server model", "pullable": True},
         {"id": "lmstudio:Qwen/Qwen2.5-3B-Instruct", "name": "Qwen 2.5 3B via LM Studio", "family": "Qwen 2.5", "tag": "local-server", "size": "server model", "pullable": True},
@@ -2263,9 +2273,9 @@ ENGINE_MODEL_CATALOG = {
         {"id": "lmstudio:meta-llama/Llama-3.1-70B-Instruct", "name": "Llama 3.1 70B via LM Studio", "family": "Llama 3.1", "tag": "local-server", "size": "server model", "pullable": True},
     ],
     "llamacpp": [
+        {"id": "llamacpp:lmstudio-community/Qwen2.5-0.5B-Instruct-GGUF", "name": "Qwen 2.5 0.5B GGUF via llama.cpp", "family": "Qwen 2.5", "tag": "gguf-q4", "size": "0.5B", "pullable": True},
         {"id": "llamacpp:unsloth/gemma-2-2b-it-GGUF", "name": "Gemma 2 2B GGUF via llama.cpp", "family": "Gemma", "tag": "gguf-q4", "size": "gguf", "pullable": True},
         {"id": "llamacpp:unsloth/gemma-2-9b-it-GGUF", "name": "Gemma 2 9B GGUF via llama.cpp", "family": "Gemma", "tag": "gguf-q4", "size": "gguf", "pullable": True},
-        {"id": "llamacpp:Qwen/Qwen2.5-3B-Instruct-GGUF", "name": "Qwen 2.5 3B GGUF via llama.cpp", "family": "Qwen 2.5", "tag": "gguf-q4", "size": "gguf", "pullable": True},
         {"id": "llamacpp:Qwen/Qwen2.5-7B-Instruct-GGUF", "name": "Qwen 2.5 7B GGUF via llama.cpp", "family": "Qwen 2.5", "tag": "local-server", "size": "gguf", "pullable": True},
         {"id": "llamacpp:Qwen/Qwen2.5-14B-Instruct-GGUF", "name": "Qwen 2.5 14B GGUF via llama.cpp", "family": "Qwen 2.5", "tag": "local-server", "size": "gguf", "pullable": True},
         {"id": "llamacpp:Qwen/Qwen2.5-32B-Instruct-GGUF", "name": "Qwen 2.5 32B GGUF via llama.cpp", "family": "Qwen 2.5", "tag": "gguf-q4", "size": "gguf", "pullable": True},
@@ -2292,6 +2302,298 @@ def _update_env_file(env_file: Path, key: str, value: str) -> None:
     env_file.write_text("\n".join(lines) + "\n", encoding="utf-8")
 
 
+HF_MODELS_ROOT = Path.home() / ".latticeai" / "hf-models"
+LOCAL_SERVER_PROCESSES: Dict[str, subprocess.Popen] = {}
+VLLM_METAL_ENV = Path.home() / ".venv-vllm-metal"
+VLLM_METAL_BIN = VLLM_METAL_ENV / "bin" / "vllm"
+VLLM_METAL_PYTHON = VLLM_METAL_ENV / "bin" / "python"
+LMSTUDIO_BUNDLED_CLI = Path("/Applications/LM Studio.app/Contents/Resources/app/.webpack/lms")
+
+def find_lmstudio_cli() -> Optional[str]:
+    cli = shutil.which("lms")
+    if cli:
+        return cli
+    if LMSTUDIO_BUNDLED_CLI.exists():
+        return str(LMSTUDIO_BUNDLED_CLI)
+    return None
+
+
+def vllm_executable() -> Optional[str]:
+    if shutil.which("vllm"):
+        return shutil.which("vllm")
+    if VLLM_METAL_BIN.exists():
+        return str(VLLM_METAL_BIN)
+    return None
+
+
+def vllm_metal_python() -> Optional[str]:
+    if VLLM_METAL_PYTHON.exists():
+        return str(VLLM_METAL_PYTHON)
+    return None
+
+
+def _json_request(
+    url: str,
+    *,
+    method: str = "GET",
+    payload: Optional[Dict[str, object]] = None,
+    headers: Optional[Dict[str, str]] = None,
+    timeout: float = 10.0,
+) -> Dict[str, object]:
+    data = None
+    req_headers = dict(headers or {})
+    if payload is not None:
+        data = json.dumps(payload).encode("utf-8")
+        req_headers.setdefault("Content-Type", "application/json")
+    req = urllib.request.Request(url, data=data, headers=req_headers, method=method)
+    with urllib.request.urlopen(req, timeout=timeout) as res:
+        raw = res.read().decode("utf-8", errors="replace")
+    if not raw.strip():
+        return {}
+    return json.loads(raw)
+
+
+def lmstudio_api_base() -> str:
+    return (os.getenv("LMSTUDIO_BASE_URL") or OPENAI_COMPATIBLE_PROVIDERS["lmstudio"]["base_url"]).rstrip("/")
+
+
+def lmstudio_native_api_base() -> str:
+    base = lmstudio_api_base()
+    return base[:-3] if base.endswith("/v1") else base
+
+
+def ensure_lmstudio_server() -> None:
+    base_url = lmstudio_native_api_base()
+    try:
+        _json_request(f"{base_url}/api/v1/models", headers={"Authorization": "Bearer lmstudio"}, timeout=2.5)
+        return
+    except Exception:
+        pass
+
+    cli = find_lmstudio_cli()
+    if not cli:
+        raise HTTPException(status_code=400, detail="LM Studio CLI를 찾지 못했습니다. LM Studio를 설치한 뒤 다시 시도하세요.")
+
+    try:
+        subprocess.Popen(
+            [cli, "server", "start"],
+            stdout=subprocess.DEVNULL,
+            stderr=subprocess.DEVNULL,
+            start_new_session=True,
+        )
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"LM Studio 서버 시작 실패: {e}")
+
+    deadline = time.time() + 45
+    while time.time() < deadline:
+        try:
+            _json_request(f"{base_url}/api/v1/models", headers={"Authorization": "Bearer lmstudio"}, timeout=2.5)
+            return
+        except Exception:
+            time.sleep(1)
+    raise HTTPException(status_code=500, detail="LM Studio Local Server를 자동으로 시작하지 못했습니다.")
+
+
+def get_lmstudio_models() -> List[Dict[str, object]]:
+    try:
+        ensure_lmstudio_server()
+    except HTTPException:
+        return []
+    try:
+        payload = _json_request(
+            f"{lmstudio_native_api_base()}/api/v1/models",
+            headers={"Authorization": f"Bearer {os.getenv('LMSTUDIO_API_KEY') or 'lmstudio'}"},
+            timeout=5,
+        )
+    except Exception:
+        return []
+    models = payload.get("models")
+    return models if isinstance(models, list) else []
+
+
+def _lmstudio_candidate_keys(model_name: str) -> List[str]:
+    raw = model_name.strip()
+    if not raw:
+        return []
+    slug = raw.split("/")[-1].lower()
+    slug = slug.replace("-gguf", "").replace("-awq", "")
+    parts = [p for p in slug.split("-") if p]
+    candidates = [raw.lower(), slug]
+    if parts:
+        candidates.append("-".join(parts[: min(4, len(parts))]))
+    return list(dict.fromkeys(candidates))
+
+
+def _find_lmstudio_model_key(model_name: str, models: List[Dict[str, object]]) -> Optional[str]:
+    if not models:
+        return None
+    candidate_keys = _lmstudio_candidate_keys(model_name)
+    exact = []
+    fuzzy = []
+    for item in models:
+        if not isinstance(item, dict):
+            continue
+        key = str(item.get("key") or "").strip()
+        display_name = str(item.get("display_name") or "").strip()
+        haystacks = [key.lower(), display_name.lower()]
+        if any(raw == key.lower() for raw in candidate_keys):
+            exact.append(key)
+            continue
+        if any(token and token in hay for token in candidate_keys for hay in haystacks):
+            fuzzy.append(key)
+    return (exact or fuzzy or [None])[0]
+
+
+def ensure_lmstudio_model(model_name: str) -> Dict[str, object]:
+    ensure_lmstudio_server()
+    auth_header = {"Authorization": f"Bearer {os.getenv('LMSTUDIO_API_KEY') or 'lmstudio'}"}
+    models = get_lmstudio_models()
+    model_key = _find_lmstudio_model_key(model_name, models) or model_name
+
+    if model_key == model_name and not _find_lmstudio_model_key(model_name, models):
+        try:
+            job = _json_request(
+                f"{lmstudio_native_api_base()}/api/v1/models/download",
+                method="POST",
+                payload={"model": model_name},
+                headers=auth_header,
+                timeout=30,
+            )
+        except urllib.error.HTTPError as e:
+            detail = e.read().decode("utf-8", errors="replace")[-2000:]
+            raise HTTPException(status_code=500, detail=f"LM Studio 모델 다운로드 실패: {detail or e.reason}")
+        except Exception as e:
+            raise HTTPException(status_code=500, detail=f"LM Studio 모델 다운로드 실패: {e}")
+
+        status = str(job.get("status") or "")
+        job_id = str(job.get("job_id") or "")
+        if status not in {"completed", "already_downloaded"} and job_id:
+            deadline = time.time() + 3600
+            while time.time() < deadline:
+                polled = _json_request(
+                    f"{lmstudio_native_api_base()}/api/v1/models/download/status/{job_id}",
+                    headers=auth_header,
+                    timeout=30,
+                )
+                polled_status = str(polled.get("status") or "")
+                if polled_status == "completed":
+                    break
+                if polled_status == "failed":
+                    raise HTTPException(status_code=500, detail=f"LM Studio 모델 다운로드 실패: {polled}")
+                time.sleep(2)
+            else:
+                raise HTTPException(status_code=408, detail="LM Studio 모델 다운로드 시간이 초과되었습니다.")
+
+        models = get_lmstudio_models()
+        model_key = _find_lmstudio_model_key(model_name, models) or model_name
+
+    target = next((item for item in models if isinstance(item, dict) and item.get("key") == model_key), None)
+    loaded_instances = target.get("loaded_instances") if isinstance(target, dict) else None
+    if loaded_instances:
+        return {"provider": "lmstudio", "model": model_name, "resolved_model": model_key, "server_ready": True, "cached": True}
+
+    try:
+        loaded = _json_request(
+            f"{lmstudio_native_api_base()}/api/v1/models/load",
+            method="POST",
+            payload={"model": model_key, "context_length": 4096},
+            headers=auth_header,
+            timeout=120,
+        )
+    except urllib.error.HTTPError as e:
+        detail = e.read().decode("utf-8", errors="replace")[-2000:]
+        raise HTTPException(status_code=500, detail=f"LM Studio 모델 로드 실패: {detail or e.reason}")
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"LM Studio 모델 로드 실패: {e}")
+
+    if str(loaded.get("status") or "") != "loaded":
+        raise HTTPException(status_code=500, detail=f"LM Studio 모델 로드 실패: {loaded}")
+
+    return {
+        "provider": "lmstudio",
+        "model": model_name,
+        "resolved_model": model_key,
+        "instance_id": loaded.get("instance_id"),
+        "server_ready": True,
+        "cached": False,
+    }
+
+def engine_support_status(engine: str) -> Dict[str, object]:
+    if engine == "vllm":
+        if sys.platform == "darwin" and platform.machine() != "arm64":
+            return {
+                "supported": False,
+                "reason": "vLLM Metal 자동 설치는 Apple Silicon macOS에서만 지원됩니다.",
+            }
+        if sys.version_info >= (3, 13):
+            if sys.platform == "darwin" and platform.machine() == "arm64":
+                return {
+                    "supported": True,
+                    "reason": "현재 환경에서는 vLLM Metal 전용 런타임으로 설치합니다.",
+                }
+            return {
+                "supported": False,
+                "reason": "vLLM 설치는 현재 Python 3.13 이하 또는 별도 전용 런타임이 필요합니다.",
+            }
+    return {"supported": True, "reason": None}
+
+def hf_model_dir(repo_id: str) -> Path:
+    return HF_MODELS_ROOT / repo_id.replace("/", "__")
+
+def hf_model_ready(repo_id: str, provider: str = "local_mlx") -> bool:
+    model_dir = hf_model_dir(repo_id)
+    if provider == "vllm" and (not model_dir.exists() or not model_dir.is_dir()):
+        hf_cache_repo = Path.home() / ".cache" / "huggingface" / "hub" / f"models--{repo_id.replace('/', '--')}"
+        if hf_cache_repo.exists() and any(hf_cache_repo.glob("snapshots/*")):
+            return True
+        return False
+    if not model_dir.exists() or not model_dir.is_dir():
+        return False
+    if provider == "llamacpp":
+        return any(model_dir.rglob("*.gguf"))
+    has_config = (model_dir / "config.json").exists()
+    has_weights = any(model_dir.glob("*.safetensors")) or any(model_dir.glob("*.bin"))
+    has_tokenizer = (
+        (model_dir / "tokenizer.json").exists()
+        or (model_dir / "tokenizer.model").exists()
+        or (model_dir / "tokenizer_config.json").exists()
+    )
+    return has_config and has_weights and has_tokenizer
+
+def download_hf_model(repo_id: str, provider: str = "local_mlx") -> Dict[str, object]:
+    if importlib.util.find_spec("huggingface_hub") is None:
+        raise HTTPException(status_code=400, detail="huggingface_hub가 없습니다. 먼저 MLX runtime 설치를 진행해 주세요.")
+
+    target_dir = hf_model_dir(repo_id)
+    if hf_model_ready(repo_id, provider):
+        return {"model": repo_id, "path": str(target_dir), "cached": True}
+
+    target_dir.mkdir(parents=True, exist_ok=True)
+    try:
+        from huggingface_hub import HfApi, hf_hub_download, snapshot_download
+
+        if provider == "llamacpp":
+            files = HfApi().list_repo_files(repo_id)
+            ggufs = sorted([name for name in files if name.lower().endswith(".gguf")])
+            if not ggufs:
+                raise RuntimeError("GGUF 파일을 찾지 못했습니다.")
+            preference = ("q4_k_m", "q4_0", "q4_k_s", "q3_k_m", "q2_k")
+            filename = next(
+                (name for pref in preference for name in ggufs if pref in name.lower()),
+                ggufs[0],
+            )
+            hf_hub_download(repo_id=repo_id, filename=filename, local_dir=str(target_dir))
+        else:
+            snapshot_download(repo_id=repo_id, local_dir=str(target_dir), resume_download=True)
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"{repo_id} 다운로드 실패: {str(e)[-2000:]}")
+
+    if not hf_model_ready(repo_id, provider):
+        raise HTTPException(status_code=500, detail=f"{repo_id} 다운로드가 완료되지 않았습니다. 모델 파일을 찾지 못했습니다.")
+
+    return {"model": repo_id, "path": str(target_dir), "cached": False}
+
+
 def get_ollama_pulled_models() -> set:
     if not shutil.which("ollama"):
         return set()
@@ -2307,15 +2609,221 @@ def get_ollama_pulled_models() -> set:
         return set()
 
 
+def get_openai_compatible_server_models(provider: str) -> List[str]:
+    if provider == "lmstudio":
+        models = []
+        for item in get_lmstudio_models():
+            if not isinstance(item, dict):
+                continue
+            key = str(item.get("key") or "").strip()
+            loaded_instances = item.get("loaded_instances") or []
+            if loaded_instances:
+                instance_ids = [
+                    str(instance.get("id") or "").strip()
+                    for instance in loaded_instances
+                    if isinstance(instance, dict) and instance.get("id")
+                ]
+                models.extend(instance_ids or ([key] if key else []))
+        return list(dict.fromkeys([model for model in models if model]))
+
+    config = OPENAI_COMPATIBLE_PROVIDERS.get(provider) or {}
+    base_url = os.getenv(config.get("base_url_env", "")) if config.get("base_url_env") else None
+    base_url = (base_url or config.get("base_url") or "").rstrip("/")
+    if not base_url:
+        return []
+
+    api_key = os.getenv(config.get("env_key", "")) or config.get("api_key_fallback") or provider
+    req = urllib.request.Request(
+        f"{base_url}/models",
+        headers={"Authorization": f"Bearer {api_key}"},
+        method="GET",
+    )
+    try:
+        with urllib.request.urlopen(req, timeout=2.5) as res:
+            payload = json.loads(res.read().decode("utf-8", errors="replace"))
+    except (urllib.error.URLError, TimeoutError, json.JSONDecodeError, OSError):
+        return []
+
+    models = []
+    for item in payload.get("data") or []:
+        model_id = item.get("id") if isinstance(item, dict) else None
+        if model_id:
+            models.append(str(model_id))
+    return models
+
+
+def ensure_ollama_server() -> None:
+    if not shutil.which("ollama"):
+        raise HTTPException(status_code=400, detail="Ollama가 설치되지 않았습니다.")
+    try:
+        probe = subprocess.run(["ollama", "list"], capture_output=True, text=True, timeout=3, check=False)
+        if probe.returncode == 0:
+            return
+    except Exception:
+        pass
+    subprocess.Popen(
+        ["ollama", "serve"],
+        stdout=subprocess.DEVNULL,
+        stderr=subprocess.DEVNULL,
+        start_new_session=True,
+    )
+    deadline = time.time() + 20
+    while time.time() < deadline:
+        try:
+            probe = subprocess.run(["ollama", "list"], capture_output=True, text=True, timeout=3, check=False)
+            if probe.returncode == 0:
+                return
+        except Exception:
+            pass
+        time.sleep(0.5)
+    raise HTTPException(status_code=500, detail="Ollama 서버를 자동으로 시작하지 못했습니다.")
+
+
+def wait_for_openai_compatible_server(provider: str, model_name: Optional[str] = None, timeout: int = 45) -> bool:
+    deadline = time.time() + timeout
+    while time.time() < deadline:
+        models = get_openai_compatible_server_models(provider)
+        if models and (not model_name or model_name in models):
+            return True
+        time.sleep(1)
+    return False
+
+
+def ensure_vllm_server(model_name: str) -> None:
+    served_models = get_openai_compatible_server_models("vllm")
+    if model_name in served_models:
+        return
+    vllm_bin = vllm_executable()
+    vllm_metal_py = vllm_metal_python()
+    if not vllm_bin and not vllm_metal_py and importlib.util.find_spec("vllm") is None:
+        raise HTTPException(status_code=400, detail="vLLM runtime이 설치되지 않았습니다.")
+
+    local_dir = hf_model_dir(model_name)
+    if not vllm_metal_py and not hf_model_ready(model_name, "vllm"):
+        download_hf_model(model_name, "vllm")
+
+    running = LOCAL_SERVER_PROCESSES.get("vllm")
+    if running and running.poll() is None:
+        running.terminate()
+        try:
+            running.wait(timeout=10)
+        except subprocess.TimeoutExpired:
+            running.kill()
+    elif served_models:
+        raise HTTPException(status_code=409, detail="다른 vLLM 서버가 이미 실행 중입니다. 현재 서버를 종료한 뒤 다시 시도하세요.")
+
+    running = LOCAL_SERVER_PROCESSES.get("vllm")
+    if running and running.poll() is None:
+        return
+
+    command = (
+        [
+            vllm_metal_py,
+            "-m",
+            "vllm_metal.server",
+            "--model",
+            model_name,
+            "--host",
+            "127.0.0.1",
+            "--port",
+            "8000",
+        ]
+        if vllm_metal_py
+        else
+        [
+            vllm_bin,
+            "serve",
+            str(local_dir),
+            "--served-model-name",
+            model_name,
+            "--host",
+            "127.0.0.1",
+            "--port",
+            "8000",
+        ] if vllm_bin else [
+            sys.executable,
+            "-m",
+            "vllm.entrypoints.openai.api_server",
+            "--model",
+            str(local_dir),
+            "--served-model-name",
+            model_name,
+            "--host",
+            "127.0.0.1",
+            "--port",
+            "8000",
+        ]
+    )
+    LOCAL_SERVER_PROCESSES["vllm"] = subprocess.Popen(
+        command,
+        stdout=subprocess.DEVNULL,
+        stderr=subprocess.DEVNULL,
+        start_new_session=True,
+    )
+    if not wait_for_openai_compatible_server("vllm", model_name, timeout=90):
+        raise HTTPException(status_code=500, detail="vLLM 서버가 모델을 자동 로드하지 못했습니다.")
+
+
+def ensure_llamacpp_server(model_name: str) -> None:
+    served_models = get_openai_compatible_server_models("llamacpp")
+    if model_name in served_models:
+        return
+    if served_models:
+        running = LOCAL_SERVER_PROCESSES.get("llamacpp")
+        if running and running.poll() is None:
+            running.terminate()
+            try:
+                running.wait(timeout=10)
+            except subprocess.TimeoutExpired:
+                running.kill()
+    if not shutil.which("llama-server"):
+        raise HTTPException(status_code=400, detail="llama.cpp가 설치되지 않았습니다.")
+    if not hf_model_ready(model_name, "llamacpp"):
+        download_hf_model(model_name, "llamacpp")
+
+    gguf_files = sorted(hf_model_dir(model_name).rglob("*.gguf"))
+    if not gguf_files:
+        raise HTTPException(status_code=500, detail="다운로드된 GGUF 파일을 찾지 못했습니다.")
+
+    preferred = next((p for p in gguf_files if "q4_k_m" in p.name.lower()), None)
+    model_file = preferred or gguf_files[0]
+    running = LOCAL_SERVER_PROCESSES.get("llamacpp")
+    if running and running.poll() is None:
+        running.terminate()
+        try:
+            running.wait(timeout=10)
+        except subprocess.TimeoutExpired:
+            running.kill()
+
+    LOCAL_SERVER_PROCESSES["llamacpp"] = subprocess.Popen(
+        [
+            "llama-server",
+            "-m",
+            str(model_file),
+            "--alias",
+            model_name,
+            "--host",
+            "127.0.0.1",
+            "--port",
+            "8080",
+        ],
+        stdout=subprocess.DEVNULL,
+        stderr=subprocess.DEVNULL,
+        start_new_session=True,
+    )
+    if not wait_for_openai_compatible_server("llamacpp", model_name, timeout=45):
+        raise HTTPException(status_code=500, detail="llama.cpp 서버가 모델을 자동 로드하지 못했습니다.")
+
+
 def engine_installed(engine: str) -> bool:
     if engine == "local_mlx":
-        return bool(mx is not None)
+        return bool(importlib.util.find_spec("mlx") and importlib.util.find_spec("mlx_lm"))
     if engine == "ollama":
         return shutil.which("ollama") is not None
     if engine == "vllm":
-        return importlib.util.find_spec("vllm") is not None
+        return vllm_metal_python() is not None or vllm_executable() is not None or importlib.util.find_spec("vllm") is not None
     if engine == "lmstudio":
-        return shutil.which("lms") is not None or Path("/Applications/LM Studio.app").exists()
+        return find_lmstudio_cli() is not None or Path("/Applications/LM Studio.app").exists()
     if engine == "llamacpp":
         return shutil.which("llama-server") is not None
     if engine in {"openai", "openrouter", "groq", "together", "xai"}:
@@ -2335,31 +2843,52 @@ def engine_status() -> List[Dict]:
         pull_name = m["id"].removeprefix("ollama:")
         ollama_models.append({**m, "pulled": pull_name in pulled})
 
-    hf_models_root = Path.home() / ".latticeai" / "hf-models"
-    hf_models_root.mkdir(parents=True, exist_ok=True)
+    HF_MODELS_ROOT.mkdir(parents=True, exist_ok=True)
     mlx_models = []
     for m in ENGINE_MODEL_CATALOG.get("local_mlx", []):
         repo_id = m["id"]
-        marker = hf_models_root / repo_id.replace("/", "__")
-        mlx_models.append({**m, "pulled": marker.exists()})
+        mlx_models.append({**m, "pulled": hf_model_ready(repo_id, "local_mlx")})
 
     vllm_models = []
     for m in ENGINE_MODEL_CATALOG.get("vllm", []):
         repo_id = m["id"].removeprefix("vllm:")
-        marker = hf_models_root / repo_id.replace("/", "__")
-        vllm_models.append({**m, "pulled": marker.exists()})
+        vllm_models.append({**m, "pulled": hf_model_ready(repo_id, "vllm")})
 
     lmstudio_models = []
-    for m in ENGINE_MODEL_CATALOG.get("lmstudio", []):
-        repo_id = m["id"].removeprefix("lmstudio:")
-        marker = hf_models_root / repo_id.replace("/", "__")
-        lmstudio_models.append({**m, "pulled": marker.exists()})
+    downloaded_lmstudio = get_lmstudio_models()
+    downloaded_by_key = {}
+    for item in downloaded_lmstudio:
+        if not isinstance(item, dict):
+            continue
+        key = str(item.get("key") or "").strip()
+        if not key:
+            continue
+        downloaded_by_key[key] = item
+        loaded_instances = item.get("loaded_instances") or []
+        lmstudio_models.append({
+            "id": f"lmstudio:{key}",
+            "name": item.get("display_name") or f"LM Studio · {key}",
+            "family": item.get("architecture") or item.get("publisher") or "LM Studio",
+            "tag": "loaded-server-model" if loaded_instances else "downloaded",
+            "size": item.get("params_string") or item.get("format") or "LM Studio",
+            "pullable": True,
+            "pulled": True,
+        })
+
+    if not lmstudio_models:
+        for m in ENGINE_MODEL_CATALOG.get("lmstudio", []):
+            lmstudio_models.append({**m, "pulled": False})
+    else:
+        known_ids = {item["id"] for item in lmstudio_models}
+        for m in ENGINE_MODEL_CATALOG.get("lmstudio", []):
+            repo_id = m["id"].removeprefix("lmstudio:")
+            if f"lmstudio:{repo_id}" not in known_ids and repo_id not in downloaded_by_key:
+                lmstudio_models.append({**m, "pulled": False})
 
     llamacpp_models = []
     for m in ENGINE_MODEL_CATALOG.get("llamacpp", []):
         repo_id = m["id"].removeprefix("llamacpp:")
-        marker = hf_models_root / repo_id.replace("/", "__")
-        llamacpp_models.append({**m, "pulled": marker.exists()})
+        llamacpp_models.append({**m, "pulled": hf_model_ready(repo_id, "llamacpp")})
 
     local_server_specs = [
         {
@@ -2367,12 +2896,19 @@ def engine_status() -> List[Dict]:
             "name": "vLLM",
             "description": "vLLM OpenAI 호환 서버(예: http://localhost:8000/v1)에 연결합니다.",
             "requires": "VLLM_BASE_URL",
+            "note": engine_support_status("vllm").get("reason"),
         },
         {
             "id": "lmstudio",
             "name": "LM Studio",
             "description": "LM Studio 로컬 OpenAI 호환 서버에 연결합니다.",
             "requires": "LMSTUDIO_BASE_URL",
+            "note": (
+                "다운로드된 모델은 자동 감지하고, 선택 시 필요하면 다운로드 후 바로 로드합니다."
+                if downloaded_lmstudio else
+                "LM Studio 설치 후 모델을 선택하면 Local Server 시작, 다운로드, 로드를 자동으로 진행합니다."
+            ),
+            "server_ready": bool(downloaded_lmstudio),
         },
         {
             "id": "llamacpp",
@@ -2405,13 +2941,16 @@ def engine_status() -> List[Dict]:
         },
     ]
     for spec in local_server_specs:
+        support = engine_support_status(spec["id"])
         engines.append({
             "id": spec["id"],
             "name": spec["name"],
             "kind": "local-server",
             "description": spec["description"],
             "installed": engine_installed(spec["id"]),
-            "installable": spec["id"] in ENGINE_INSTALLERS,
+            "supported": support["supported"],
+            "support_reason": support["reason"],
+            "installable": support["supported"] and spec["id"] in ENGINE_INSTALLERS,
             "install_label": ENGINE_INSTALLERS.get(spec["id"], {}).get("label"),
             "requires": spec["requires"],
             "models": (
@@ -2420,7 +2959,8 @@ def engine_status() -> List[Dict]:
                 else llamacpp_models if spec["id"] == "llamacpp"
                 else ENGINE_MODEL_CATALOG.get(spec["id"], [])
             ),
-            "note": f"{spec['requires']} 설정 시 활성화됩니다.",
+            "note": spec.get("note") or support["reason"] or f"{spec['requires']} 설정 시 활성화됩니다.",
+            "server_ready": spec.get("server_ready"),
         })
     for provider in ["openai", "openrouter", "groq", "together", "xai"]:
         env_key = next((item.get("requires") for item in cloud_by_provider.get(provider, []) if item.get("requires")), None)
@@ -2487,20 +3027,32 @@ def install_engine(engine: str) -> Dict:
     required_binary = installer.get("requires_binary")
     if required_binary and shutil.which(required_binary) is None:
         raise HTTPException(status_code=400, detail=f"{required_binary}가 설치되어 있지 않아 자동 설치할 수 없습니다.")
+    command = installer["command"]
+    run_kwargs = {
+        "cwd": str(Path(__file__).resolve().parent),
+        "capture_output": True,
+        "text": True,
+        "timeout": 900,
+        "check": False,
+    }
+
+    if engine == "vllm" and sys.platform == "darwin" and platform.machine() == "arm64":
+        command = [
+            "/bin/bash",
+            "-lc",
+            "set -euo pipefail; "
+            "if [ ! -x /opt/homebrew/bin/python3.12 ]; then brew install python@3.12; fi; "
+            "/opt/homebrew/bin/python3.12 -m venv ~/.venv-vllm-metal; "
+            "~/.venv-vllm-metal/bin/pip install -U pip setuptools wheel; "
+            "~/.venv-vllm-metal/bin/pip install vllm-metal",
+        ]
     try:
-        completed = subprocess.run(
-            installer["command"],
-            cwd=str(Path(__file__).resolve().parent),
-            capture_output=True,
-            text=True,
-            timeout=900,
-            check=False,
-        )
+        completed = subprocess.run(command, **run_kwargs)
     except subprocess.TimeoutExpired:
         raise HTTPException(status_code=408, detail="엔진 설치 시간이 초과되었습니다.")
     result = {
         "engine": engine,
-        "command": " ".join(installer["command"]),
+        "command": " ".join(command),
         "returncode": completed.returncode,
         "stdout": completed.stdout[-12000:],
         "stderr": completed.stderr[-12000:],
@@ -2530,6 +3082,119 @@ def install_engine(engine: str) -> Dict:
                 logging.warning("ollama serve spawn failed: %s", e)
                 result["daemon_started"] = False
     return result
+
+
+def normalize_local_model_request(model_id: str, engine: Optional[str] = None) -> str:
+    model_id = model_id.strip()
+    engine = (engine or "").strip().lower()
+    if engine in {"local_mlx", "mlx"} and model_id.startswith(("local_mlx:", "mlx:")):
+        return model_id.split(":", 1)[1].strip()
+    if engine and engine not in {"local_mlx", "mlx"} and ":" not in model_id:
+        return f"{engine}:{model_id}"
+    return model_id
+
+
+def ensure_engine_ready(engine: str) -> Dict[str, object]:
+    engine = "local_mlx" if engine == "mlx" else engine
+    if engine not in ENGINE_INSTALLERS and engine not in OPENAI_COMPATIBLE_PROVIDERS:
+        raise HTTPException(status_code=400, detail=f"지원하지 않는 엔진입니다: {engine}")
+    support = engine_support_status(engine)
+    if not support["supported"]:
+        raise HTTPException(status_code=400, detail=str(support["reason"]))
+
+    if engine_installed(engine):
+        if engine == "local_mlx":
+            ensure_mlx_runtime()
+        return {"engine": engine, "installed": True, "installed_now": False}
+
+    if engine not in ENGINE_INSTALLERS:
+        raise HTTPException(status_code=400, detail=f"{engine} 엔진 설치 방법이 등록되어 있지 않습니다.")
+
+    result = install_engine(engine)
+    if result.get("returncode") not in (0, None) or not engine_installed(engine):
+        detail = result.get("stderr") or result.get("stdout") or f"{engine} 설치에 실패했습니다."
+        raise HTTPException(status_code=500, detail=str(detail)[-2000:])
+
+    if engine == "local_mlx":
+        ensure_mlx_runtime()
+    return {"engine": engine, "installed": True, "installed_now": True, "install": result}
+
+
+async def prepare_and_load_model(
+    model_id: str,
+    request: Request,
+    engine: Optional[str] = None,
+    user_email: Optional[str] = None,
+    adapter_path: Optional[str] = None,
+    draft_model_id: Optional[str] = None,
+) -> Dict[str, object]:
+    model_id = normalize_local_model_request(model_id, engine)
+    if not model_id:
+        raise HTTPException(status_code=400, detail="모델 식별자가 비어 있습니다.")
+
+    parsed_provider, parsed_model = parse_model_ref(model_id)
+    if parsed_provider == "mlx":
+        parsed_provider = "local_mlx"
+
+    local_engines = {"local_mlx", "ollama", "vllm", "lmstudio", "llamacpp"}
+    install_result: Dict[str, object] = {}
+    download_result: Optional[Dict[str, object]] = None
+
+    if parsed_provider in local_engines:
+        install_result = ensure_engine_ready(parsed_provider)
+
+    if parsed_provider == "local_mlx":
+        explicit_path = Path(parsed_model).expanduser()
+        if not explicit_path.exists() and not hf_model_ready(parsed_model, "local_mlx"):
+            download_result = download_hf_model(parsed_model, "local_mlx")
+    elif parsed_provider == "ollama":
+        ensure_ollama_server()
+        if parsed_model not in get_ollama_pulled_models():
+            completed = subprocess.run(
+                ["ollama", "pull", parsed_model],
+                capture_output=True,
+                text=True,
+                timeout=900,
+                check=False,
+            )
+            if completed.returncode != 0:
+                raise HTTPException(status_code=500, detail=completed.stderr[-2000:] or "Ollama 모델 다운로드 실패")
+            download_result = {"provider": "ollama", "model": parsed_model, "returncode": completed.returncode}
+    elif parsed_provider == "vllm":
+        ensure_vllm_server(parsed_model)
+        download_result = {"provider": "vllm", "model": parsed_model, "server_ready": True}
+    elif parsed_provider == "llamacpp":
+        ensure_llamacpp_server(parsed_model)
+        download_result = {"provider": "llamacpp", "model": parsed_model, "server_ready": True}
+    elif parsed_provider == "lmstudio":
+        ensured = ensure_lmstudio_model(parsed_model)
+        resolved_model = str(
+            ensured.get("instance_id")
+            or ensured.get("resolved_model")
+            or parsed_model
+        ).strip()
+        parsed_model = resolved_model
+        model_id = f"lmstudio:{resolved_model}"
+        download_result = ensured
+
+    effective_email = (user_email or get_current_user(request) or "").strip()
+    user_api_key = get_user_api_key(effective_email, parsed_provider) if parsed_provider != "local_mlx" else None
+    msg = await router.load_model(
+        model_id,
+        adapter_path,
+        draft_model_id=draft_model_id,
+        api_key_override=user_api_key,
+        owner=effective_email or None,
+    )
+    return {
+        "status": "ok",
+        "message": msg,
+        "model": model_id,
+        "current": router.current_model_id,
+        "engine": parsed_provider,
+        "installed_now": bool(install_result.get("installed_now")),
+        "download": download_result,
+    }
 
 CLOUD_VERIFY_CACHE: Dict[str, Dict] = {}
 CLOUD_VERIFY_TTL_SECONDS = 600
@@ -2647,8 +3312,7 @@ async def pull_ollama_model(req: PullModelRequest, request: Request):
         raise HTTPException(status_code=400, detail="모델 이름이 비어 있습니다.")
 
     if provider == "ollama":
-        if not shutil.which("ollama"):
-            raise HTTPException(status_code=400, detail="Ollama가 설치되지 않았습니다.")
+        ensure_ollama_server()
         try:
             completed = subprocess.run(
                 ["ollama", "pull", model_name],
@@ -2660,23 +3324,33 @@ async def pull_ollama_model(req: PullModelRequest, request: Request):
             raise HTTPException(status_code=500, detail=completed.stderr[-2000:] or "pull 실패")
         return {"provider": provider, "model": model_name, "returncode": completed.returncode}
 
-    if provider in {"vllm", "lmstudio", "llamacpp", "local_mlx", "mlx"}:
-        if importlib.util.find_spec("huggingface_hub") is None:
-            raise HTTPException(status_code=400, detail="huggingface_hub가 없습니다. 먼저 엔진 설치를 진행해 주세요.")
-        target_dir = Path.home() / ".latticeai" / "hf-models" / model_name.replace("/", "__")
-        target_dir.mkdir(parents=True, exist_ok=True)
-        try:
-            completed = subprocess.run(
-                [sys.executable, "-m", "huggingface_hub", "download", model_name, "--local-dir", str(target_dir)],
-                capture_output=True, text=True, timeout=3600, check=False,
-            )
-        except subprocess.TimeoutExpired:
-            raise HTTPException(status_code=408, detail=f"{provider} 모델 다운로드 시간이 초과되었습니다.")
-        if completed.returncode != 0:
-            raise HTTPException(status_code=500, detail=completed.stderr[-2000:] or f"{provider} 모델 다운로드 실패")
-        return {"provider": provider, "model": model_name, "returncode": completed.returncode, "path": str(target_dir)}
+    if provider == "lmstudio":
+        raise HTTPException(
+            status_code=400,
+            detail=(
+                "LM Studio 모델은 Lattice에서 Hugging Face로 pull하지 않습니다. "
+                "LM Studio 앱에서 모델을 다운로드하고 Local Server를 켠 뒤 모델을 로드하세요. "
+                "그러면 모델 선택창에 실제 /v1/models 항목이 표시됩니다."
+            ),
+        )
+
+    if provider in {"vllm", "llamacpp", "local_mlx", "mlx"}:
+        download_provider = "local_mlx" if provider == "mlx" else provider
+        result = download_hf_model(model_name, download_provider)
+        return {"provider": provider, "model": model_name, "returncode": 0, **result}
 
     raise HTTPException(status_code=400, detail=f"{provider} 엔진 모델 다운로드는 아직 자동화되지 않았습니다.")
+
+
+@app.post("/engines/prepare-model")
+async def engines_prepare_model(req: PrepareModelRequest, request: Request):
+    require_user(request)
+    return await prepare_and_load_model(
+        req.model,
+        request,
+        engine=req.engine,
+        user_email=req.user_email,
+    )
 
 
 @app.post("/setup/set-api-key")
@@ -2744,21 +3418,14 @@ async def load_model(req: LoadModelRequest, request: Request):
                 status_code=400,
                 detail="Public mode blocks local MLX model loading. Use openai:, openrouter:, groq:, together:, or set LATTICEAI_ALLOW_LOCAL_MODELS=true.",
             )
-        if req.engine and req.engine not in {"local_mlx", "mlx"} and ":" not in model_id:
-            model_id = f"{req.engine}:{model_id}"
-        effective_email = (req.user_email or get_current_user(request) or "").strip()
-        user_api_key = None
-        if ":" in model_id:
-            provider = model_id.split(":", 1)[0]
-            user_api_key = get_user_api_key(effective_email, provider)
-        msg = await router.load_model(
+        return await prepare_and_load_model(
             model_id,
-            req.adapter_path,
+            request,
+            engine=req.engine,
+            user_email=req.user_email,
+            adapter_path=req.adapter_path,
             draft_model_id=req.draft_model_id,
-            api_key_override=user_api_key,
-            owner=effective_email or None,
         )
-        return {"status": "ok", "message": msg, "current": router.current_model_id}
     except HTTPException:
         raise
     except Exception as e:

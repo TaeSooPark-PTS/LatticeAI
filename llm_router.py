@@ -10,6 +10,7 @@ import os
 import re
 import time
 from dataclasses import dataclass
+from pathlib import Path
 
 # Set MLX_VLM_DRAFT_KIND to 'mtp' to enable the Gemma 4 assistant MTP drafter.
 os.environ["MLX_VLM_DRAFT_KIND"] = "mtp"
@@ -167,9 +168,58 @@ def parse_model_ref(model_id: str) -> tuple[str, str]:
         provider, model = model_id.split(":", 1)
         if provider in OPENAI_COMPATIBLE_PROVIDERS:
             return provider, model
+        if provider in {"local_mlx", "mlx"}:
+            return "local_mlx", model
     if model_id.startswith("local_mlx:"):
         return "local_mlx", model_id.split(":", 1)[1]
     return "local_mlx", model_id
+
+HF_MODELS_ROOT = Path.home() / ".latticeai" / "hf-models"
+
+def _hf_model_dir(repo_id: str) -> Path:
+    return HF_MODELS_ROOT / repo_id.replace("/", "__")
+
+def _looks_like_hf_model_dir(path: Path) -> bool:
+    if not path.exists() or not path.is_dir():
+        return False
+    has_config = (path / "config.json").exists()
+    has_weights = any(path.glob("*.safetensors")) or any(path.glob("*.gguf"))
+    has_tokenizer = (
+        (path / "tokenizer.json").exists()
+        or (path / "tokenizer.model").exists()
+        or (path / "tokenizer_config.json").exists()
+    )
+    return has_config and has_weights and has_tokenizer
+
+def _resolve_local_hf_model(model_id: str) -> str:
+    explicit_path = Path(model_id).expanduser()
+    if explicit_path.exists():
+        return str(explicit_path)
+    local_dir = _hf_model_dir(model_id)
+    if _looks_like_hf_model_dir(local_dir):
+        return str(local_dir)
+    return model_id
+
+def ensure_mlx_runtime() -> None:
+    global mx, lm_load, vlm_load, VLM_AVAILABLE
+    if mx is not None and lm_load is not None:
+        return
+    try:
+        import mlx.core as mlx_core
+        from mlx_lm import load as mlx_lm_load
+
+        mx = mlx_core
+        lm_load = mlx_lm_load
+        try:
+            from mlx_vlm import load as mlx_vlm_load
+            vlm_load = mlx_vlm_load
+            VLM_AVAILABLE = True
+        except Exception:
+            vlm_load = None
+            VLM_AVAILABLE = False
+        mx.set_default_device(mx.gpu)
+    except Exception as e:
+        raise RuntimeError(f"MLX runtime is not available after install: {e}") from e
 
 class LLMRouter:
     def __init__(self):
@@ -262,6 +312,7 @@ class LLMRouter:
         if provider != "local_mlx":
             return self._load_cloud_model(provider, provider_model, api_key_override=api_key_override, owner=owner)
 
+        ensure_mlx_runtime()
         if mx is None or lm_load is None:
             raise RuntimeError("MLX is not available in this process. Run on Apple Silicon with Metal access.")
 
@@ -274,6 +325,8 @@ class LLMRouter:
         self._enforce_local_model_limit(cache_key)
         print(f"⏳ Loading Gemma 4 Stack: {cache_key}...")
         loop = asyncio.get_event_loop()
+        target_model_id = _resolve_local_hf_model(model_id)
+        target_draft_model_id = _resolve_local_hf_model(draft_model_id) if draft_model_id else None
         
         def _load():
             mx.set_default_device(mx.gpu)
@@ -281,20 +334,20 @@ class LLMRouter:
             
             # 1. Target 로드 (Gemma 4는 항상 vlm_load 사용)
             if is_gemma4 and VLM_AVAILABLE:
-                print(f"🔄 Loading Target (VLM Mode): {model_id}...")
-                model, tokenizer = vlm_load(model_id)
+                print(f"🔄 Loading Target (VLM Mode): {target_model_id}...")
+                model, tokenizer = vlm_load(target_model_id)
             else:
-                print(f"🔄 Loading Target (LM Mode): {model_id}...")
-                model, tokenizer = lm_load(model_id)
+                print(f"🔄 Loading Target (LM Mode): {target_model_id}...")
+                model, tokenizer = lm_load(target_model_id)
 
             # 2. Draft 로드 (Gemma 4는 항상 vlm_load 사용)
             draft_model = None
-            if draft_model_id:
-                print(f"🔄 Loading Assistant (VLM Mode): {draft_model_id}...")
+            if target_draft_model_id:
+                print(f"🔄 Loading Assistant (VLM Mode): {target_draft_model_id}...")
                 if is_gemma4 and VLM_AVAILABLE:
-                    draft_model, _ = vlm_load(draft_model_id)
+                    draft_model, _ = vlm_load(target_draft_model_id)
                 else:
-                    draft_model, _ = lm_load(draft_model_id)
+                    draft_model, _ = lm_load(target_draft_model_id)
                 print(f"✅ Assistant Ready.")
 
             return model, tokenizer, draft_model
@@ -374,6 +427,18 @@ class LLMRouter:
     def _is_cloud_current(self) -> bool:
         return bool(self._current and isinstance(self._cache.get(self._current), CloudModel))
 
+    def _local_server_error_hint(self, cloud: CloudModel, error: Exception) -> str:
+        raw = str(error)
+        if cloud.provider == "lmstudio":
+            base_url = os.getenv("LMSTUDIO_BASE_URL") or OPENAI_COMPATIBLE_PROVIDERS["lmstudio"]["base_url"]
+            return (
+                f"LM Studio 연결 실패: {raw}\n\n"
+                f"- LM Studio의 Developer/Local Server를 켜고 모델을 로드했는지 확인하세요.\n"
+                f"- Lattice가 보는 주소는 {base_url} 입니다. 포트가 다르면 LMSTUDIO_BASE_URL을 맞춰주세요.\n"
+                f"- 모델 선택창에는 LM Studio /v1/models에서 감지된 모델만 표시됩니다."
+            )
+        return raw
+
     def _build_prompt(self, message: str, context: Optional[str], tokenizer) -> str:
         system = SYSTEM_PROMPT
         context = normalize_branding(context)
@@ -445,15 +510,18 @@ class LLMRouter:
         context = normalize_branding(context)
         if context:
             system += f"\n\nContext:\n{context}"
-        response = await cloud.client.chat.completions.create(
-            model=cloud.model,
-            messages=[
-                {"role": "system", "content": system},
-                {"role": "user", "content": message},
-            ],
-            max_tokens=max_tokens,
-            temperature=temperature,
-        )
+        try:
+            response = await cloud.client.chat.completions.create(
+                model=cloud.model,
+                messages=[
+                    {"role": "system", "content": system},
+                    {"role": "user", "content": message},
+                ],
+                max_tokens=max_tokens,
+                temperature=temperature,
+            )
+        except Exception as e:
+            raise RuntimeError(self._local_server_error_hint(cloud, e)) from e
         return normalize_branding(response.choices[0].message.content or "")
 
     async def stream_generate(self, message: str, context: Optional[str] = None, max_tokens: int = 4096, temperature: float = 0.2, image_data: Optional[str] = None) -> AsyncIterator[str]:
@@ -508,16 +576,20 @@ class LLMRouter:
         context = normalize_branding(context)
         if context:
             system += f"\n\nContext:\n{context}"
-        stream = await cloud.client.chat.completions.create(
-            model=cloud.model,
-            messages=[
-                {"role": "system", "content": system},
-                {"role": "user", "content": message},
-            ],
-            max_tokens=max_tokens,
-            temperature=temperature,
-            stream=True,
-        )
+        try:
+            stream = await cloud.client.chat.completions.create(
+                model=cloud.model,
+                messages=[
+                    {"role": "system", "content": system},
+                    {"role": "user", "content": message},
+                ],
+                max_tokens=max_tokens,
+                temperature=temperature,
+                stream=True,
+            )
+        except Exception as e:
+            yield f"⚠️ {self._local_server_error_hint(cloud, e)}"
+            return
         async for event in stream:
             if not event.choices:
                 continue

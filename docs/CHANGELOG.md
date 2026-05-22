@@ -1,5 +1,23 @@
 # Changelog
 
+## [0.1.12] - 2026-05-22
+
+### Local engine install / load flow
+- `vLLM` 설치 경로를 macOS용 `Python 3.12 + vllm-metal` 흐름으로 교체
+- `LM Studio` 번들 `lms` CLI와 native API를 사용해 서버 시작, 모델 다운로드, 모델 로드를 자동화
+- `llama.cpp`는 선택한 GGUF를 alias와 함께 OpenAI 호환 서버로 직접 로드하도록 정리
+- 모델 패널의 `설치` / `다운로드 후 자동 로드` 흐름이 실제 `prepare_and_load_model()` 경로로 수렴되도록 정리
+
+### Verified
+- 최소 테스트 모델 기준 실사용 검증 완료
+- `vLLM`: `Qwen/Qwen2.5-0.5B-Instruct-AWQ`
+- `LM Studio`: `https://huggingface.co/lmstudio-community/Qwen2.5-0.5B-Instruct-GGUF`
+- `llama.cpp`: `lmstudio-community/Qwen2.5-0.5B-Instruct-GGUF`
+
+### Release
+- 배포 버전을 `0.1.12`로 상향
+- 대상 채널: `npm`, `PyPI`, `VS Code Marketplace`, `Open VSX`
+
 ## [0.1.11] - 2026-05-21
 
 ### Agent state machine (renamed + cleaned up)
