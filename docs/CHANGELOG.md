@@ -1,5 +1,19 @@
 # Changelog
 
+## [0.1.14] - 2026-05-22
+
+### `--tunnel` flag — 누구나 자기 PC를 서버로
+
+- `LTCAI --tunnel` 한 줄로 Cloudflare 무료 터널 자동 개설
+- cloudflared 바이너리가 없으면 GitHub에서 자동 다운로드 (`~/.latticeai/bin/`)
+- macOS arm64/amd64, Linux arm64/amd64, Windows amd64 지원
+- 터널 URL을 배너에 출력 + `LATTICEAI_TELEGRAM_BOT_TOKEN` / `LATTICEAI_TELEGRAM_CHAT_ID` 설정 시 Telegram 자동 알림
+- `--tunnel` 지정 시 host 자동으로 `0.0.0.0`, CORS 네트워크 허용으로 전환
+
+### Release
+- 배포 버전을 `0.1.14`로 상향
+- 대상 채널: `npm`, `PyPI`, `VS Code Marketplace`, `Open VSX`
+
 ## [0.1.13] - 2026-05-22
 
 ### Code quality & efficiency

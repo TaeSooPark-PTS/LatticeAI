@@ -5,9 +5,16 @@ from __future__ import annotations
 import argparse
 import importlib.util
 import os
+import platform
+import re
 import shutil
 import socket
+import stat
+import subprocess
 import sys
+import threading
+import time
+import urllib.request
 from pathlib import Path
 
 
@@ -16,7 +23,6 @@ def _has_module(name: str) -> bool:
 
 
 def _local_ips() -> list[str]:
-    """Return all non-loopback IPv4 addresses for this machine."""
     ips: list[str] = []
     try:
         hostname = socket.gethostname()
@@ -38,7 +44,7 @@ def _local_ips() -> list[str]:
     return ips
 
 
-def _print_banner(host: str, port: int) -> None:
+def _print_banner(host: str, port: int, tunnel_url: str | None = None) -> None:
     local_url = f"http://localhost:{port}"
     print()
     print("=" * 56)
@@ -51,6 +57,10 @@ def _print_banner(host: str, port: int) -> None:
         print("  Other devices on the same Wi-Fi can open the")
         print("  Network URL above in their browser.")
         print("  On iPad/Android: browser menu → 'Add to Home Screen'")
+    if tunnel_url:
+        print()
+        print(f"  Tunnel:   {tunnel_url}")
+        print("  Anyone on the internet can access via the Tunnel URL.")
     print("=" * 56)
     print()
 
@@ -85,14 +95,122 @@ def doctor() -> int:
     return 0 if ok else 1
 
 
+# ── Cloudflare Tunnel ─────────────────────────────────────────────────────────
+
+def _cloudflared_url() -> str:
+    system = sys.platform
+    machine = platform.machine().lower()
+    base = "https://github.com/cloudflare/cloudflared/releases/latest/download"
+    if system == "darwin":
+        arch = "arm64" if machine in ("arm64", "aarch64") else "amd64"
+        return f"{base}/cloudflared-darwin-{arch}"
+    if system == "win32":
+        return f"{base}/cloudflared-windows-amd64.exe"
+    arch = "arm64" if machine in ("arm64", "aarch64") else "amd64"
+    return f"{base}/cloudflared-linux-{arch}"
+
+
+def _cloudflared_bin() -> Path:
+    suffix = ".exe" if sys.platform == "win32" else ""
+    return Path.home() / ".latticeai" / "bin" / f"cloudflared{suffix}"
+
+
+def _ensure_cloudflared() -> str:
+    found = shutil.which("cloudflared")
+    if found:
+        return found
+    dest = _cloudflared_bin()
+    if dest.exists():
+        return str(dest)
+    dest.parent.mkdir(parents=True, exist_ok=True)
+    url = _cloudflared_url()
+    print(f"  cloudflared not found — downloading from GitHub...")
+    try:
+        urllib.request.urlretrieve(url, dest)
+        if sys.platform != "win32":
+            dest.chmod(dest.stat().st_mode | stat.S_IEXEC | stat.S_IXGRP | stat.S_IXOTH)
+        print(f"  cloudflared installed at {dest}")
+        return str(dest)
+    except Exception as e:
+        print(f"  cloudflared download failed: {e}")
+        print("  Install manually: https://developers.cloudflare.com/cloudflared/install")
+        return ""
+
+
+def _send_telegram(token: str, chat_id: str, text: str) -> None:
+    try:
+        data = urllib.parse.urlencode({"chat_id": chat_id, "text": text}).encode()
+        req = urllib.request.Request(
+            f"https://api.telegram.org/bot{token}/sendMessage",
+            data=data,
+        )
+        urllib.request.urlopen(req, timeout=10)
+    except Exception:
+        pass
+
+
+def _start_tunnel(port: int) -> str | None:
+    import urllib.parse
+
+    bin_path = _ensure_cloudflared()
+    if not bin_path:
+        return None
+
+    log_path = Path.home() / ".latticeai" / "tunnel.log"
+    log_path.parent.mkdir(parents=True, exist_ok=True)
+
+    proc = subprocess.Popen(
+        [bin_path, "tunnel", "--url", f"http://localhost:{port}"],
+        stdout=open(log_path, "w"),
+        stderr=subprocess.STDOUT,
+    )
+
+    # Wait for the public URL (up to 30s)
+    pattern = re.compile(r"https://[a-z0-9-]+\.trycloudflare\.com")
+    deadline = time.time() + 30
+    url: str | None = None
+    while time.time() < deadline:
+        time.sleep(0.5)
+        try:
+            text = log_path.read_text(errors="replace")
+            m = pattern.search(text)
+            if m:
+                url = m.group(0)
+                break
+        except Exception:
+            pass
+
+    if not url:
+        return None
+
+    # Telegram notification if configured
+    token = os.getenv("LATTICEAI_TELEGRAM_BOT_TOKEN", "")
+    chat_id = os.getenv("LATTICEAI_TELEGRAM_CHAT_ID", "")
+    if token and chat_id:
+        msg = (
+            f"✅ Lattice AI 시작됨\n\n"
+            f"🌐 외부 URL: {url}\n"
+            f"🏠 로컬: http://localhost:{port}"
+        )
+        threading.Thread(target=_send_telegram, args=(token, chat_id, msg), daemon=True).start()
+
+    return url
+
+
+# ─────────────────────────────────────────────────────────────────────────────
+
 def main() -> None:
     parser = argparse.ArgumentParser(prog="LTCAI", description="Run the Lattice AI local server.")
     subparsers = parser.add_subparsers(dest="command")
     subparsers.add_parser("doctor", help="Check local runtime dependencies and configuration.")
-    # Default to 127.0.0.1; set LATTICEAI_HOST=0.0.0.0 to expose to the local network
     parser.add_argument("--host", default=os.getenv("LATTICEAI_HOST") or "127.0.0.1")
     parser.add_argument("--port", type=int, default=int(os.getenv("LATTICEAI_PORT") or "4825"))
     parser.add_argument("--reload", action="store_true", help="Enable uvicorn reload for local development.")
+    parser.add_argument(
+        "--tunnel",
+        action="store_true",
+        help="Open a public Cloudflare tunnel so anyone can access this server from the internet.",
+    )
     args = parser.parse_args()
 
     if args.command == "doctor":
@@ -101,7 +219,21 @@ def main() -> None:
     app_dir = Path(__file__).resolve().parent
     os.chdir(app_dir)
 
-    _print_banner(args.host, args.port)
+    # --tunnel forces 0.0.0.0 so cloudflared can reach the server
+    if args.tunnel and args.host == "127.0.0.1":
+        args.host = "0.0.0.0"
+        os.environ.setdefault("LATTICEAI_HOST", "0.0.0.0")
+        os.environ.setdefault("LATTICEAI_CORS_ALLOW_NETWORK", "true")
+
+    tunnel_url: str | None = None
+    if args.tunnel:
+        print()
+        print("  Starting Cloudflare tunnel...")
+        tunnel_url = _start_tunnel(args.port)
+        if not tunnel_url:
+            print("  ⚠️  Tunnel URL not obtained — server will start without tunnel.")
+
+    _print_banner(args.host, args.port, tunnel_url)
 
     import uvicorn
 

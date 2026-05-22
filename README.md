@@ -14,10 +14,10 @@ Lattice AI는 개인 개발자가 로컬 모델, 클라우드 모델, 에이전�
 
 ### 현재 배포 버전
 
-- `PyPI`: `ltcai==0.1.13`
-- `npm`: `ltcai@0.1.13`
-- `VS Code Marketplace`: `parktaesoo.ltcai@0.1.13`
-- `Open VSX`: `parktaesoo.ltcai@0.1.13`
+- `PyPI`: `ltcai==0.1.14`
+- `npm`: `ltcai@0.1.14`
+- `VS Code Marketplace`: `parktaesoo.ltcai@0.1.14`
+- `Open VSX`: `parktaesoo.ltcai@0.1.14`
 
 ### 왜 Lattice AI인가
 
@@ -47,10 +47,21 @@ pip install "ltcai[local]"
 # npm (자동 Python 환경 구성)
 npm install -g ltcai
 
-# 서버 실행
+# 서버 실행 (로컬)
 LTCAI
 # → http://localhost:4825
+
+# 외부에서 접속 가능하게 실행 (Cloudflare 터널 자동 개설)
+LTCAI --tunnel
+# → http://localhost:4825
+# → https://xxxx.trycloudflare.com  ← 어디서든 접속 가능한 공개 URL
 ```
+
+**`--tunnel` 동작 방식:**
+- cloudflared가 없으면 자동 다운로드 (계정 불필요)
+- 서버를 `0.0.0.0`에 바인딩하고 Cloudflare 무료 터널로 HTTPS 공개 URL 발급
+- `LATTICEAI_TELEGRAM_BOT_TOKEN` + `LATTICEAI_TELEGRAM_CHAT_ID` 환경변수가 있으면 시작 시 Telegram으로 URL 자동 전송
+- 서버 종료 시 터널도 함께 종료
 
 **설치 확인:**
 
@@ -237,7 +248,7 @@ docker run --rm -p 4825:4825 \
 
 ### 릴리스 체크
 
-`0.1.13` 릴리스는 아래 네 채널을 동일 버전으로 맞춥니다.
+`0.1.14 릴리스는 아래 네 채널을 동일 버전으로 맞춥니다.
 
 - `npm`
 - `PyPI`
