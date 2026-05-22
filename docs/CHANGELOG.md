@@ -1,5 +1,14 @@
 # Changelog
 
+## [0.1.19] - 2026-05-23
+
+### Publisher 변경
+
+- VS Code extension publisher `parktaesoo` → `TaeSooPark-PTS` 로 변경
+- Extension ID: `parktaesoo.ltcai` → `TaeSooPark-PTS.ltcai`
+- Open VSX namespace 통일 (`TaeSooPark-PTS`)
+- 대상 채널: `npm` · `PyPI` · `VS Code Marketplace` · `Open VSX`
+
 ## [0.1.18] - 2026-05-23
 
 ### MCP Registry 통합

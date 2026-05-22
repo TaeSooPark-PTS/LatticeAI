@@ -2,8 +2,8 @@
   "name": "ltcai",
   "displayName": "Lattice AI",
   "description": "Lattice AI assistant for local coding workflows.",
-  "version": "0.1.18",
-  "publisher": "parktaesoo",
+  "version": "0.1.19",
+  "publisher": "TaeSooPark-PTS",
   "license": "MIT",
   "homepage": "https://github.com/TaeSooPark-PTS/LatticeAI#readme",
   "bugs": {
