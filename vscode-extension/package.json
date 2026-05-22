@@ -101,8 +101,8 @@
     "build": "tsc -p .",
     "package": "vsce package",
     "package:vsix": "vsce package",
-    "publish:vscode": "vsce publish -p $VSCE_PAT",
-    "publish:openvsx": "ovsx publish ltcai-$(node -p \"require('./package.json').version\").vsix -p $OVSX_PAT",
+    "publish:vscode": "vsce publish",
+    "publish:openvsx": "ovsx publish *.vsix",
     "publish:all": "npm run build && npm run package:vsix && npm run publish:vscode && npm run publish:openvsx",
     "install:all": "bash ./scripts/install-all-editors.sh"
   },
