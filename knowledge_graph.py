@@ -652,15 +652,13 @@ class KnowledgeGraphStore:
                 ]
 
         degree_map: Dict[str, int] = {}
-        for edge in edges:
-            degree_map[edge["from"]] = degree_map.get(edge["from"], 0) + 1
-            degree_map[edge["to"]] = degree_map.get(edge["to"], 0) + 1
-
         now = datetime.now()
         node_by_id = {node["id"]: node for node in nodes}
         topic_metrics: Dict[str, Dict[str, Any]] = {}
 
         for edge in edges:
+            degree_map[edge["from"]] = degree_map.get(edge["from"], 0) + 1
+            degree_map[edge["to"]] = degree_map.get(edge["to"], 0) + 1
             from_node = node_by_id.get(edge["from"])
             to_node = node_by_id.get(edge["to"])
             if not from_node or not to_node:

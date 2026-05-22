@@ -43,7 +43,7 @@ from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel
 from PIL import Image
 
-from llm_router import AsyncOpenAI, LLMRouter, OPENAI_COMPATIBLE_PROVIDERS, ensure_mlx_runtime, parse_model_ref, mx, normalize_branding
+from llm_router import AsyncOpenAI, LLMRouter, OPENAI_COMPATIBLE_PROVIDERS, HF_MODELS_ROOT, ensure_mlx_runtime, hf_model_dir, parse_model_ref, mx, normalize_branding
 from knowledge_graph import KnowledgeGraphStore
 from p_reinforce import BRAIN_DIR, PReinforceGardener
 from setup import get_recommendations, install_stream, open_url, scan_environment
@@ -1530,6 +1530,13 @@ async def lifespan(app: FastAPI):
         yield
     finally:
         router.unload_all()
+        for proc in LOCAL_SERVER_PROCESSES.values():
+            try:
+                if proc.poll() is None:
+                    proc.terminate()
+                    proc.wait(timeout=5)
+            except Exception:
+                pass
 
 app = FastAPI(title=f"Lattice AI Server ({APP_MODE})", version="2.1.0", lifespan=lifespan)
 
@@ -2302,7 +2309,6 @@ def _update_env_file(env_file: Path, key: str, value: str) -> None:
     env_file.write_text("\n".join(lines) + "\n", encoding="utf-8")
 
 
-HF_MODELS_ROOT = Path.home() / ".latticeai" / "hf-models"
 LOCAL_SERVER_PROCESSES: Dict[str, subprocess.Popen] = {}
 VLLM_METAL_ENV = Path.home() / ".venv-vllm-metal"
 VLLM_METAL_BIN = VLLM_METAL_ENV / "bin" / "vllm"
@@ -2319,8 +2325,9 @@ def find_lmstudio_cli() -> Optional[str]:
 
 
 def vllm_executable() -> Optional[str]:
-    if shutil.which("vllm"):
-        return shutil.which("vllm")
+    found = shutil.which("vllm")
+    if found:
+        return found
     if VLLM_METAL_BIN.exists():
         return str(VLLM_METAL_BIN)
     return None
@@ -2394,11 +2401,19 @@ def ensure_lmstudio_server() -> None:
     raise HTTPException(status_code=500, detail="LM Studio Local Server를 자동으로 시작하지 못했습니다.")
 
 
-def get_lmstudio_models() -> List[Dict[str, object]]:
+_LMSTUDIO_MODELS_CACHE: List[Dict[str, object]] = []
+_LMSTUDIO_MODELS_CACHE_TS: float = 0.0
+_LMSTUDIO_MODELS_CACHE_TTL: float = 10.0
+
+
+def get_lmstudio_models(*, force: bool = False) -> List[Dict[str, object]]:
+    global _LMSTUDIO_MODELS_CACHE, _LMSTUDIO_MODELS_CACHE_TS
+    if not force and time.monotonic() - _LMSTUDIO_MODELS_CACHE_TS < _LMSTUDIO_MODELS_CACHE_TTL:
+        return _LMSTUDIO_MODELS_CACHE
     try:
         ensure_lmstudio_server()
     except HTTPException:
-        return []
+        return _LMSTUDIO_MODELS_CACHE
     try:
         payload = _json_request(
             f"{lmstudio_native_api_base()}/api/v1/models",
@@ -2406,9 +2421,11 @@ def get_lmstudio_models() -> List[Dict[str, object]]:
             timeout=5,
         )
     except Exception:
-        return []
+        return _LMSTUDIO_MODELS_CACHE
     models = payload.get("models")
-    return models if isinstance(models, list) else []
+    _LMSTUDIO_MODELS_CACHE = models if isinstance(models, list) else []
+    _LMSTUDIO_MODELS_CACHE_TS = time.monotonic()
+    return _LMSTUDIO_MODELS_CACHE
 
 
 def _lmstudio_candidate_keys(model_name: str) -> List[str]:
@@ -2448,9 +2465,10 @@ def ensure_lmstudio_model(model_name: str) -> Dict[str, object]:
     ensure_lmstudio_server()
     auth_header = {"Authorization": f"Bearer {os.getenv('LMSTUDIO_API_KEY') or 'lmstudio'}"}
     models = get_lmstudio_models()
-    model_key = _find_lmstudio_model_key(model_name, models) or model_name
+    found_key = _find_lmstudio_model_key(model_name, models)
+    model_key = found_key or model_name
 
-    if model_key == model_name and not _find_lmstudio_model_key(model_name, models):
+    if not found_key:
         try:
             job = _json_request(
                 f"{lmstudio_native_api_base()}/api/v1/models/download",
@@ -2484,7 +2502,7 @@ def ensure_lmstudio_model(model_name: str) -> Dict[str, object]:
             else:
                 raise HTTPException(status_code=408, detail="LM Studio 모델 다운로드 시간이 초과되었습니다.")
 
-        models = get_lmstudio_models()
+        models = get_lmstudio_models(force=True)
         model_key = _find_lmstudio_model_key(model_name, models) or model_name
 
     target = next((item for item in models if isinstance(item, dict) and item.get("key") == model_key), None)
@@ -2519,26 +2537,16 @@ def ensure_lmstudio_model(model_name: str) -> Dict[str, object]:
     }
 
 def engine_support_status(engine: str) -> Dict[str, object]:
-    if engine == "vllm":
-        if sys.platform == "darwin" and platform.machine() != "arm64":
-            return {
-                "supported": False,
-                "reason": "vLLM Metal 자동 설치는 Apple Silicon macOS에서만 지원됩니다.",
-            }
-        if sys.version_info >= (3, 13):
-            if sys.platform == "darwin" and platform.machine() == "arm64":
-                return {
-                    "supported": True,
-                    "reason": "현재 환경에서는 vLLM Metal 전용 런타임으로 설치합니다.",
-                }
-            return {
-                "supported": False,
-                "reason": "vLLM 설치는 현재 Python 3.13 이하 또는 별도 전용 런타임이 필요합니다.",
-            }
+    if engine != "vllm":
+        return {"supported": True, "reason": None}
+    is_apple_silicon = sys.platform == "darwin" and platform.machine() == "arm64"
+    if sys.platform == "darwin" and not is_apple_silicon:
+        return {"supported": False, "reason": "vLLM Metal 자동 설치는 Apple Silicon macOS에서만 지원됩니다."}
+    if sys.version_info >= (3, 13) and is_apple_silicon:
+        return {"supported": True, "reason": "현재 환경에서는 vLLM Metal 전용 런타임으로 설치합니다."}
+    if sys.version_info >= (3, 13):
+        return {"supported": False, "reason": "vLLM 설치는 현재 Python 3.13 이하 또는 별도 전용 런타임이 필요합니다."}
     return {"supported": True, "reason": None}
-
-def hf_model_dir(repo_id: str) -> Path:
-    return HF_MODELS_ROOT / repo_id.replace("/", "__")
 
 def hf_model_ready(repo_id: str, provider: str = "local_mlx") -> bool:
     model_dir = hf_model_dir(repo_id)
@@ -2716,44 +2724,13 @@ def ensure_vllm_server(model_name: str) -> None:
     if running and running.poll() is None:
         return
 
-    command = (
-        [
-            vllm_metal_py,
-            "-m",
-            "vllm_metal.server",
-            "--model",
-            model_name,
-            "--host",
-            "127.0.0.1",
-            "--port",
-            "8000",
-        ]
-        if vllm_metal_py
-        else
-        [
-            vllm_bin,
-            "serve",
-            str(local_dir),
-            "--served-model-name",
-            model_name,
-            "--host",
-            "127.0.0.1",
-            "--port",
-            "8000",
-        ] if vllm_bin else [
-            sys.executable,
-            "-m",
-            "vllm.entrypoints.openai.api_server",
-            "--model",
-            str(local_dir),
-            "--served-model-name",
-            model_name,
-            "--host",
-            "127.0.0.1",
-            "--port",
-            "8000",
-        ]
-    )
+    _host_args = ["--host", "127.0.0.1", "--port", "8000"]
+    if vllm_metal_py:
+        command = [vllm_metal_py, "-m", "vllm_metal.server", "--model", model_name, *_host_args]
+    elif vllm_bin:
+        command = [vllm_bin, "serve", str(local_dir), "--served-model-name", model_name, *_host_args]
+    else:
+        command = [sys.executable, "-m", "vllm.entrypoints.openai.api_server", "--model", str(local_dir), "--served-model-name", model_name, *_host_args]
     LOCAL_SERVER_PROCESSES["vllm"] = subprocess.Popen(
         command,
         stdout=subprocess.DEVNULL,
@@ -2768,14 +2745,15 @@ def ensure_llamacpp_server(model_name: str) -> None:
     served_models = get_openai_compatible_server_models("llamacpp")
     if model_name in served_models:
         return
-    if served_models:
-        running = LOCAL_SERVER_PROCESSES.get("llamacpp")
-        if running and running.poll() is None:
-            running.terminate()
-            try:
-                running.wait(timeout=10)
-            except subprocess.TimeoutExpired:
-                running.kill()
+    running = LOCAL_SERVER_PROCESSES.get("llamacpp")
+    if running and running.poll() is None:
+        running.terminate()
+        try:
+            running.wait(timeout=10)
+        except subprocess.TimeoutExpired:
+            running.kill()
+    elif served_models:
+        raise HTTPException(status_code=409, detail="다른 llama.cpp 서버가 이미 실행 중입니다. 현재 서버를 종료한 뒤 다시 시도하세요.")
     if not shutil.which("llama-server"):
         raise HTTPException(status_code=400, detail="llama.cpp가 설치되지 않았습니다.")
     if not hf_model_ready(model_name, "llamacpp"):
@@ -2787,14 +2765,6 @@ def ensure_llamacpp_server(model_name: str) -> None:
 
     preferred = next((p for p in gguf_files if "q4_k_m" in p.name.lower()), None)
     model_file = preferred or gguf_files[0]
-    running = LOCAL_SERVER_PROCESSES.get("llamacpp")
-    if running and running.poll() is None:
-        running.terminate()
-        try:
-            running.wait(timeout=10)
-        except subprocess.TimeoutExpired:
-            running.kill()
-
     LOCAL_SERVER_PROCESSES["llamacpp"] = subprocess.Popen(
         [
             "llama-server",
@@ -3260,6 +3230,7 @@ async def health(request: Request):
     base = {"status": "ok", "version": "2.1.0", "mode": APP_MODE}
     if not get_current_user(request) and REQUIRE_AUTH:
         return base
+    engines = await asyncio.to_thread(engine_status)
     return {
         **base,
         "current_model": router.current_model_id,
@@ -3267,7 +3238,7 @@ async def health(request: Request):
         "device": "Apple Silicon MLX" if not IS_PUBLIC_MODE else "Public cloud/API runtime",
         "features": runtime_features(),
         "providers": router.detected_cloud_models(),
-        "engines": engine_status(),
+        "engines": engines,
     }
 
 
@@ -3279,7 +3250,7 @@ async def mode():
 
 @app.get("/engines")
 async def engines():
-    return {"engines": engine_status(), "current": router.current_model_id}
+    return {"engines": await asyncio.to_thread(engine_status), "current": router.current_model_id}
 
 
 @app.post("/engines/install")
@@ -3399,7 +3370,7 @@ async def list_models():
     return {
         "recommended": recommended,
         "cloud": router.detected_cloud_models(),
-        "engines": engine_status(),
+        "engines": await asyncio.to_thread(engine_status),
         "loaded": router.loaded_model_ids,
         "current": router.current_model_id,
     }

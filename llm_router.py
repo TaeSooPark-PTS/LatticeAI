@@ -176,14 +176,14 @@ def parse_model_ref(model_id: str) -> tuple[str, str]:
 
 HF_MODELS_ROOT = Path.home() / ".latticeai" / "hf-models"
 
-def _hf_model_dir(repo_id: str) -> Path:
+def hf_model_dir(repo_id: str) -> Path:
     return HF_MODELS_ROOT / repo_id.replace("/", "__")
 
 def _looks_like_hf_model_dir(path: Path) -> bool:
     if not path.exists() or not path.is_dir():
         return False
     has_config = (path / "config.json").exists()
-    has_weights = any(path.glob("*.safetensors")) or any(path.glob("*.gguf"))
+    has_weights = any(path.glob("*.safetensors")) or any(path.glob("*.bin"))
     has_tokenizer = (
         (path / "tokenizer.json").exists()
         or (path / "tokenizer.model").exists()
@@ -195,7 +195,7 @@ def _resolve_local_hf_model(model_id: str) -> str:
     explicit_path = Path(model_id).expanduser()
     if explicit_path.exists():
         return str(explicit_path)
-    local_dir = _hf_model_dir(model_id)
+    local_dir = hf_model_dir(model_id)
     if _looks_like_hf_model_dir(local_dir):
         return str(local_dir)
     return model_id
@@ -447,7 +447,7 @@ class LLMRouter:
             try:
                 msgs = [{"role": "system", "content": system}, {"role": "user", "content": message}]
                 return tokenizer.apply_chat_template(msgs, tokenize=False, add_generation_prompt=True)
-            except: pass
+            except Exception: pass
         return f"<|im_start|>system\n{system}<|im_end|>\n<|im_start|>user\n{message}<|im_end|>\n<|im_start|>assistant\n"
 
     def _build_vlm_prompt(self, model, processor, message: str, context: Optional[str], num_images: int) -> str:

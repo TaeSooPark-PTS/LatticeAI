@@ -14,10 +14,10 @@ Lattice AI는 개인 개발자가 로컬 모델, 클라우드 모델, 에이전�
 
 ### 현재 배포 버전
 
-- `PyPI`: `ltcai==0.1.12`
-- `npm`: `ltcai@0.1.12`
-- `VS Code Marketplace`: `parktaesoo.ltcai@0.1.12`
-- `Open VSX`: `parktaesoo.ltcai@0.1.12`
+- `PyPI`: `ltcai==0.1.13`
+- `npm`: `ltcai@0.1.13`
+- `VS Code Marketplace`: `parktaesoo.ltcai@0.1.13`
+- `Open VSX`: `parktaesoo.ltcai@0.1.13`
 
 ### 왜 Lattice AI인가
 
@@ -237,7 +237,7 @@ docker run --rm -p 4825:4825 \
 
 ### 릴리스 체크
 
-`0.1.12` 릴리스는 아래 네 채널을 동일 버전으로 맞춥니다.
+`0.1.13` 릴리스는 아래 네 채널을 동일 버전으로 맞춥니다.
 
 - `npm`
 - `PyPI`

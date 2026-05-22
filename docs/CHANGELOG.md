@@ -1,5 +1,29 @@
 # Changelog
 
+## [0.1.13] - 2026-05-22
+
+### Code quality & efficiency
+
+- `HF_MODELS_ROOT` / `hf_model_dir` 중복 정의 제거 — `llm_router.py` 단일 소스로 통합, `server.py`에서 import
+- `_looks_like_hf_model_dir` 가중치 파일 체크를 `.safetensors` / `.bin`으로 일치 — `.gguf`를 MLX 경로에서 잘못 허용하던 버그 수정
+- `vllm_executable()` `shutil.which` 이중 호출 → 변수 캐시
+- `ensure_lmstudio_model()` `_find_lmstudio_model_key` 이중 호출 → `found_key` 변수로 캐시
+- `engine_support_status` 3단계 중첩 조건 → `is_apple_silicon` 플래그로 평탄화
+- `ensure_llamacpp_server` 동일 프로세스 이중 `terminate()` 블록 → 단일 블록 (vllm 패턴과 통일)
+- `ensure_vllm_server` 37줄 중첩 삼항 커맨드 빌더 → `if/elif/else` + `_host_args` 공통화
+- `except: pass` → `except Exception: pass` (KeyboardInterrupt 노출)
+- `knowledge_graph.py` 엣지 순회 루프 두 번 (`degree_map` + `topic_metrics`) → 단일 루프로 병합
+
+### Performance & correctness
+
+- `get_lmstudio_models()` TTL 캐시(10초) 추가 — `/health`, `/engines`, `/models` 매 요청마다 LM Studio HTTP 프로브하던 문제 해결, 서버 미응답 시 마지막 캐시 반환
+- `/health`, `/engines`, `/models` 엔드포인트에서 `engine_status()` 호출을 `asyncio.to_thread()`로 오프로드 — LM Studio 최대 45초, ollama subprocess 블로킹이 이벤트 루프를 점유하던 문제 해결
+- 앱 종료 시 `LOCAL_SERVER_PROCESSES` (vLLM, llama.cpp) 자식 프로세스 정리 — GPU 메모리 고아 프로세스 누수 수정
+
+### Release
+- 배포 버전을 `0.1.13`으로 상향
+- 대상 채널: `npm`, `PyPI`, `VS Code Marketplace`, `Open VSX`
+
 ## [0.1.12] - 2026-05-22
 
 ### Local engine install / load flow
