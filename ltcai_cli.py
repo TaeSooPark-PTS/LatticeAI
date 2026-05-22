@@ -224,6 +224,7 @@ def main() -> None:
         args.host = "0.0.0.0"
         os.environ.setdefault("LATTICEAI_HOST", "0.0.0.0")
         os.environ.setdefault("LATTICEAI_CORS_ALLOW_NETWORK", "true")
+        os.environ.setdefault("LATTICEAI_REQUIRE_AUTH", "true")
 
     tunnel_url: str | None = None
     if args.tunnel:

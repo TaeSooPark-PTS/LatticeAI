@@ -263,6 +263,30 @@ def _persist_sessions(sessions: Dict[str, tuple]) -> None:
 
 _sessions: Dict[str, tuple] = _load_sessions()
 
+# ── Rate limiting ─────────────────────────────────────────────────────────────
+_rate_windows: dict[tuple[str, str], list[float]] = {}
+_rate_lock = threading.Lock()
+
+def _check_rate_limit(ip: str, action: str, max_calls: int, window_secs: float) -> None:
+    key = (ip, action)
+    now = time.time()
+    cutoff = now - window_secs
+    with _rate_lock:
+        calls = [t for t in _rate_windows.get(key, []) if t > cutoff]
+        if len(calls) >= max_calls:
+            raise HTTPException(status_code=429, detail="요청이 너무 많습니다. 잠시 후 다시 시도하세요.")
+        calls.append(now)
+        _rate_windows[key] = calls
+
+def _client_ip(request: Request) -> str:
+    for header in ("CF-Connecting-IP", "X-Forwarded-For"):
+        val = request.headers.get(header)
+        if val:
+            return val.split(",")[0].strip()
+    return request.client.host if request.client else "unknown"
+
+# ─────────────────────────────────────────────────────────────────────────────
+
 def create_session(email: str) -> str:
     token = secrets.token_urlsafe(32)
     with _sessions_lock:
@@ -1562,8 +1586,14 @@ if _ICONS_DIR.exists():
 ensure_agent_root()
 app.mount("/agent-files", StaticFiles(directory=str(AGENT_ROOT)), name="agent-files")
 
+OPEN_REGISTRATION = env_bool("LATTICEAI_OPEN_REGISTRATION", default=True)
+
 @app.post("/register")
-async def register(req: UserRegister):
+async def register(req: UserRegister, request: Request):
+    # 5 registration attempts per IP per hour
+    _check_rate_limit(_client_ip(request), "register", max_calls=5, window_secs=3600)
+    if not OPEN_REGISTRATION:
+        raise HTTPException(status_code=403, detail="회원가입이 비활성화되어 있습니다. 관리자에게 문의하세요.")
     users = load_users()
     if req.email in users:
         raise HTTPException(status_code=400, detail="이미 존재하는 이메일입니다.")
@@ -1578,7 +1608,9 @@ async def register(req: UserRegister):
     return {"status": "ok", "message": "회원가입 성공!"}
 
 @app.post("/login")
-async def login(req: UserLogin):
+async def login(req: UserLogin, request: Request):
+    # 10 login attempts per IP per 5 minutes
+    _check_rate_limit(_client_ip(request), "login", max_calls=10, window_secs=300)
     users = load_users()
     user = users.get(req.email)
     if not user or not verify_and_migrate_password(req.email, req.password, user.get("password", ""), users):

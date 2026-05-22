@@ -1,5 +1,18 @@
 # Changelog
 
+## [0.1.15] - 2026-05-22
+
+### Security hardening
+
+- `LTCAI --tunnel` 실행 시 `LATTICEAI_REQUIRE_AUTH=true` 자동 강제 — 터널로 공개된 서버에 로그인 없이 접근 불가
+- `/register` IP당 시간당 5회 rate limit
+- `/login` IP당 5분당 10회 rate limit (brute force 방지)
+- Cloudflare 터널 통과 시 `CF-Connecting-IP` 헤더로 실제 클라이언트 IP 추출
+- `LATTICEAI_OPEN_REGISTRATION=false` 설정 시 회원가입 완전 차단 (관리자 직접 추가만 허용)
+
+### Release
+- 배포 버전을 `0.1.15`로 상향
+
 ## [0.1.14] - 2026-05-22
 
 ### `--tunnel` flag — 누구나 자기 PC를 서버로
