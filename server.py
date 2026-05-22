@@ -104,7 +104,8 @@ try:
 except Exception:
     keyring = None
 
-from datetime import datetime
+from datetime import datetime, timedelta
+import httpx
 
 def detect_language(text: str) -> str:
     """Detect language: 'ko' (Korean) or 'en' (English)."""
@@ -370,6 +371,10 @@ class McpRecommendRequest(BaseModel):
 
 class McpInstallRequest(BaseModel):
     mcp_id: str
+
+class SkillInstallRequest(BaseModel):
+    plugin: str
+    skill: str
 
 class KnowledgeGraphIngestRequest(BaseModel):
     type: str
@@ -655,6 +660,341 @@ MCP_REGISTRY = [
     },
 ]
 
+# ── Remote MCP Registry (registry.modelcontextprotocol.io) ───────────────────
+_REMOTE_REGISTRY_CACHE: List[Dict] = []
+_REMOTE_REGISTRY_FETCHED_AT: Optional[datetime] = None
+_REMOTE_REGISTRY_TTL = timedelta(hours=1)
+_REMOTE_REGISTRY_URL = "https://registry.modelcontextprotocol.io/v0/servers"
+_LOCAL_IDS = {e["id"] for e in MCP_REGISTRY}
+
+async def _fetch_remote_mcp_registry() -> List[Dict]:
+    global _REMOTE_REGISTRY_CACHE, _REMOTE_REGISTRY_FETCHED_AT
+    now = datetime.now()
+    if _REMOTE_REGISTRY_FETCHED_AT and (now - _REMOTE_REGISTRY_FETCHED_AT) < _REMOTE_REGISTRY_TTL:
+        return _REMOTE_REGISTRY_CACHE
+    try:
+        result: List[Dict] = []
+        cursor = None
+        async with httpx.AsyncClient(timeout=10.0) as client:
+            while True:
+                params: Dict = {"limit": 100}
+                if cursor:
+                    params["cursor"] = cursor
+                resp = await client.get(_REMOTE_REGISTRY_URL, params=params)
+                resp.raise_for_status()
+                data = resp.json()
+                for s in data.get("servers", []):
+                    srv = s["server"]
+                    meta = s.get("_meta", {}).get("io.modelcontextprotocol.registry/official", {})
+                    if not meta.get("isLatest", True):
+                        continue
+                    pkg = next(
+                        (p for p in srv.get("packages", [])
+                         if p.get("transport", {}).get("type") == "stdio"
+                         and p.get("registryType") in ("npm", "pypi")),
+                        None,
+                    )
+                    if not pkg:
+                        continue
+                    entry_id = srv["name"].replace("/", "-").replace(".", "-")
+                    if entry_id in _LOCAL_IDS:
+                        continue
+                    result.append({
+                        "id": entry_id,
+                        "name": srv.get("title") or srv["name"],
+                        "category": "MCP Registry",
+                        "install_mode": pkg["registryType"],
+                        "package": pkg["identifier"],
+                        "package_version": pkg.get("version"),
+                        "description": srv.get("description", ""),
+                        "keywords": [],
+                        "capabilities": [],
+                        "source": "registry",
+                        "homepage": (srv.get("repository") or {}).get("url"),
+                    })
+                cursor = data.get("nextCursor")
+                if not cursor:
+                    break
+        _REMOTE_REGISTRY_CACHE = result
+        _REMOTE_REGISTRY_FETCHED_AT = now
+        logging.info("Fetched %d stdio MCP servers from remote registry", len(result))
+    except Exception as e:
+        logging.warning("Failed to fetch remote MCP registry: %s", e)
+    return _REMOTE_REGISTRY_CACHE
+
+async def _get_combined_registry() -> List[Dict]:
+    remote = await _fetch_remote_mcp_registry()
+    return MCP_REGISTRY + remote
+
+# ── Anthropic Skills Marketplace (Apache 2.0) ─────────────────────────────────
+_MARKETPLACE_RAW = "https://raw.githubusercontent.com/anthropics/claude-plugins-official/main"
+_MARKETPLACE_API = "https://api.github.com/repos/anthropics/claude-plugins-official/contents"
+
+# 검증된 서드파티 skills 소스 (Apache-2.0 / MIT)
+_THIRD_PARTY_SKILL_SOURCES: List[Dict] = [
+    {
+        "plugin": "adobe-for-creativity", "author": "Adobe", "license": "Apache-2.0",
+        "repo": "adobe/skills", "branch": "main",
+        "plugin_path": "plugins/creative-cloud/adobe-for-creativity",
+        "category": "design",
+    },
+    {
+        "plugin": "airtable", "author": "Airtable", "license": "MIT",
+        "repo": "Airtable/skills", "branch": "main",
+        "plugin_path": "plugins/airtable",
+        "category": "productivity",
+    },
+    {
+        "plugin": "auth0", "author": "Auth0", "license": "Apache-2.0",
+        "repo": "auth0/agent-skills", "branch": "main",
+        "plugin_path": "plugins/auth0",
+        "category": "security",
+    },
+    {
+        "plugin": "expo", "author": "Expo", "license": "MIT",
+        "repo": "expo/skills", "branch": "main",
+        "plugin_path": "plugins/expo",
+        "category": "development",
+    },
+    {
+        "plugin": "logfire", "author": "Pydantic", "license": "MIT",
+        "repo": "pydantic/skills", "branch": "main",
+        "plugin_path": "plugins/logfire",
+        "category": "monitoring",
+    },
+]
+
+# 검증된 레포 라이선스 맵 (GitHub API 없이 빠르게 조회)
+_KNOWN_REPO_LICENSES: Dict[str, str] = {
+    # Apache-2.0
+    "adobe/skills": "Apache-2.0", "awslabs/agent-plugins": "Apache-2.0",
+    "auth0/agent-skills": "Apache-2.0", "aws/agent-toolkit-for-aws": "Apache-2.0",
+    "carta/plugins": "Apache-2.0", "circlefin/skills": "Apache-2.0",
+    "clickhouse/clickhouse-docs": "Apache-2.0", "cloudflare/agents": "Apache-2.0",
+    "cockroachdb/claude-code": "Apache-2.0", "codspeed-hq/codspeed-claude": "Apache-2.0",
+    "DataDog/datadog-claude-code": "Apache-2.0", "datahub-project/datahub-skills": "Apache-2.0",
+    "neondatabase/agent-skills": "Apache-2.0", "PagerDuty/pd-ai-agents-plugins": "Apache-2.0",
+    "getpostman/postman-mcp-server": "Apache-2.0", "qdrant/qdrant-skills": "Apache-2.0",
+    "rootlyhq/rootly-plugins": "Apache-2.0", "snowflake-labs/snowflake-claude": "Apache-2.0",
+    "sumup/sumup-claude": "Apache-2.0", "zilliz-labs/zilliz-skills": "Apache-2.0",
+    "mercadopago/mercadopago-claude-marketplace": "Apache-2.0",
+    # MIT
+    "Airtable/skills": "MIT", "endorlabs/ai-plugins": "MIT",
+    "apollographql/apollo-claude-skills": "MIT", "appwrite/skills": "MIT",
+    "atlan-inc/claude-code-skills": "MIT", "boxer/boxerbox": "MIT",
+    "buildkite/claude-code": "MIT", "coderabbitai/coderabbit-skills": "MIT",
+    "CrowdStrike/crowdstrike-skills": "MIT", "microsoft/Dataverse-skills": "MIT",
+    "duckdb/duckdb-skills": "MIT", "expo/skills": "MIT",
+    "intercom/intercom-skills": "MIT", "pydantic/skills": "MIT",
+    "mapbox/mapbox-skills": "MIT", "mintlify/mintlify-skills": "MIT",
+    "miroapp/miro-ai": "MIT", "netlify/netlify-skills": "MIT",
+    "pinecone-io/pinecone-skills": "MIT", "railwayapp/railway-skills": "MIT",
+    "resend/resend-skills": "MIT", "sanity-io/sanity-skills": "MIT",
+    "getsentry/sentry-ai-skills": "MIT", "Shopify/liquid-skills": "MIT",
+    "slackapi/slack-skills": "MIT", "stripe/stripe-skills": "MIT",
+    "twilio-labs/twilio-skills": "MIT", "workos/workos-skills": "MIT",
+    "zoom/zoom-skills": "MIT", "aws-samples/sample-claude-code-plugins-for-startups": "MIT-0",
+}
+
+_SKILLS_MARKETPLACE_CACHE: List[Dict] = []
+_SKILLS_MARKETPLACE_FETCHED_AT: Optional[datetime] = None
+_SKILLS_MARKETPLACE_TTL = timedelta(hours=1)
+
+def _extract_skill_desc(skill_md: str, fallback: str) -> str:
+    for line in skill_md.splitlines():
+        if line.startswith("description:"):
+            return line.split(":", 1)[1].strip()
+    return fallback
+
+async def _fetch_plugin_skills(client: httpx.AsyncClient, source: Dict) -> List[Dict]:
+    """단일 소스에서 skill 목록을 fetch해 반환"""
+    repo, branch, plugin_path = source["repo"], source["branch"], source["plugin_path"]
+    raw_base = f"https://raw.githubusercontent.com/{repo}/{branch}"
+    api_base = f"https://api.github.com/repos/{repo}/contents"
+    homepage_base = f"https://github.com/{repo}/tree/{branch}"
+
+    dir_resp = await client.get(f"{api_base}/{plugin_path}/skills")
+    if dir_resp.status_code != 200:
+        return []
+    skill_dirs = [f["name"] for f in dir_resp.json() if f["type"] == "dir"]
+
+    skills: List[Dict] = []
+    for skill_name in skill_dirs:
+        skill_md_url = f"{raw_base}/{plugin_path}/skills/{skill_name}/SKILL.md"
+        sm_resp = await client.get(skill_md_url)
+        if sm_resp.status_code != 200:
+            continue
+        skills.append({
+            "plugin":       source["plugin"],
+            "skill":        skill_name,
+            "category":     source.get("category", "development"),
+            "description":  _extract_skill_desc(sm_resp.text, source.get("description", "")),
+            "skill_md_url": skill_md_url,
+            "homepage":     f"{homepage_base}/{plugin_path}/skills/{skill_name}",
+            "license":      source["license"],
+            "author":       source["author"],
+        })
+    return skills
+
+async def _fetch_skills_marketplace() -> List[Dict]:
+    global _SKILLS_MARKETPLACE_CACHE, _SKILLS_MARKETPLACE_FETCHED_AT
+    now = datetime.now()
+    if _SKILLS_MARKETPLACE_FETCHED_AT and (now - _SKILLS_MARKETPLACE_FETCHED_AT) < _SKILLS_MARKETPLACE_TTL:
+        return _SKILLS_MARKETPLACE_CACHE
+    try:
+        result: List[Dict] = []
+        async with httpx.AsyncClient(timeout=15.0) as client:
+            # ── Anthropic 공식 skills (Apache-2.0) ──────────────────────────
+            mp_resp = await client.get(f"{_MARKETPLACE_RAW}/.claude-plugin/marketplace.json")
+            mp_resp.raise_for_status()
+            marketplace_json = mp_resp.json()
+            anthropic_plugins = [
+                p for p in marketplace_json.get("plugins", [])
+                if (p.get("author") or {}).get("name") == "Anthropic"
+                and isinstance(p.get("source"), str)
+                and p["source"].startswith("./")
+            ]
+            for plugin in anthropic_plugins:
+                plugin_path = plugin["source"].lstrip("./")
+                result.extend(await _fetch_plugin_skills(client, {
+                    "plugin":      plugin["name"],
+                    "author":      "Anthropic",
+                    "license":     "Apache-2.0",
+                    "repo":        "anthropics/claude-plugins-official",
+                    "branch":      "main",
+                    "plugin_path": plugin_path,
+                    "category":    plugin.get("category", "development"),
+                    "description": plugin.get("description", ""),
+                }))
+            # ── 검증된 서드파티 skills ────────────────────────────────────────
+            for source in _THIRD_PARTY_SKILL_SOURCES:
+                result.extend(await _fetch_plugin_skills(client, source))
+
+        _SKILLS_MARKETPLACE_CACHE = result
+        _SKILLS_MARKETPLACE_FETCHED_AT = now
+        logging.info("Fetched %d skills from marketplace (%d sources)",
+                     len(result), len(anthropic_plugins) + len(_THIRD_PARTY_SKILL_SOURCES))
+    except Exception as e:
+        logging.warning("Failed to fetch skills marketplace: %s", e)
+    return _SKILLS_MARKETPLACE_CACHE
+
+# ── Plugin Directory ──────────────────────────────────────────────────────────
+_PLUGIN_DIRECTORY_CACHE: List[Dict] = []
+_PLUGIN_DIRECTORY_FETCHED_AT: Optional[datetime] = None
+_PLUGIN_DIRECTORY_TTL = timedelta(hours=1)
+_OPEN_LICENSES = {"Apache-2.0", "MIT", "MIT-0", "CC-BY-4.0"}
+_REPO_LICENSE_CACHE: Dict[str, str] = {}
+
+async def _get_repo_license(client: httpx.AsyncClient, repo: str) -> str:
+    if repo in _REPO_LICENSE_CACHE:
+        return _REPO_LICENSE_CACHE[repo]
+    if repo in _KNOWN_REPO_LICENSES:
+        _REPO_LICENSE_CACHE[repo] = _KNOWN_REPO_LICENSES[repo]
+        return _KNOWN_REPO_LICENSES[repo]
+    try:
+        r = await client.get(f"https://api.github.com/repos/{repo}", timeout=5.0)
+        lic = (r.json().get("license") or {}).get("spdx_id", "") if r.status_code == 200 else ""
+    except Exception:
+        lic = ""
+    _REPO_LICENSE_CACHE[repo] = lic
+    return lic
+
+async def _fetch_plugin_directory() -> List[Dict]:
+    global _PLUGIN_DIRECTORY_CACHE, _PLUGIN_DIRECTORY_FETCHED_AT
+    now = datetime.now()
+    if _PLUGIN_DIRECTORY_FETCHED_AT and (now - _PLUGIN_DIRECTORY_FETCHED_AT) < _PLUGIN_DIRECTORY_TTL:
+        return _PLUGIN_DIRECTORY_CACHE
+    try:
+        result: List[Dict] = []
+        async with httpx.AsyncClient(timeout=15.0) as client:
+            mp_resp = await client.get(f"{_MARKETPLACE_RAW}/.claude-plugin/marketplace.json")
+            mp_resp.raise_for_status()
+            plugins = mp_resp.json().get("plugins", [])
+
+            for p in plugins:
+                author = (p.get("author") or {}).get("name", "")
+                src = p.get("source", {})
+
+                # Anthropic 같은 레포 플러그인 → Apache-2.0 확인됨
+                if isinstance(src, str) and src.startswith("./") and author == "Anthropic":
+                    plugin_path = src.lstrip("./")
+                    result.append({
+                        "name":        p["name"],
+                        "description": p.get("description", ""),
+                        "category":    p.get("category", ""),
+                        "author":      author,
+                        "license":     "Apache-2.0",
+                        "homepage":    p.get("homepage") or f"https://github.com/anthropics/claude-plugins-official/tree/main/{plugin_path}",
+                        "source_type": "anthropic",
+                    })
+                    continue
+
+                # 외부 레포 플러그인 → 라이선스 확인
+                if not isinstance(src, dict):
+                    continue
+                repo_url = src.get("url", "").replace("https://github.com/", "").replace(".git", "").split("/tree/")[0]
+                if not repo_url:
+                    continue
+                license_id = await _get_repo_license(client, repo_url)
+                if license_id not in _OPEN_LICENSES:
+                    continue
+                result.append({
+                    "name":        p["name"],
+                    "description": p.get("description", ""),
+                    "category":    p.get("category", ""),
+                    "author":      author or repo_url.split("/")[0],
+                    "license":     license_id,
+                    "homepage":    p.get("homepage") or f"https://github.com/{repo_url}",
+                    "source_type": "third-party",
+                })
+
+        _PLUGIN_DIRECTORY_CACHE = result
+        _PLUGIN_DIRECTORY_FETCHED_AT = now
+        logging.info("Fetched plugin directory: %d open-source plugins", len(result))
+    except Exception as e:
+        logging.warning("Failed to fetch plugin directory: %s", e)
+    return _PLUGIN_DIRECTORY_CACHE
+
+# ─────────────────────────────────────────────────────────────────────────────
+
+SKILLS_DIR = Path(__file__).resolve().parent / "skills"
+
+async def install_skill(plugin: str, skill: str) -> Dict:
+    marketplace = await _fetch_skills_marketplace()
+    entry = next((s for s in marketplace if s["plugin"] == plugin and s["skill"] == skill), None)
+    if not entry:
+        raise HTTPException(status_code=404, detail=f"Skill '{plugin}/{skill}' not found in marketplace")
+    skill_dir = SKILLS_DIR / skill
+    skill_dir.mkdir(parents=True, exist_ok=True)
+    skill_md_path = skill_dir / "SKILL.md"
+    async with httpx.AsyncClient(timeout=15.0) as client:
+        resp = await client.get(entry["skill_md_url"])
+        resp.raise_for_status()
+        content = resp.text
+    # 출처 표기 (Apache-2.0 / MIT 공통)
+    repo_hint = entry.get("homepage", "")
+    attribution = f"<!-- Source: {repo_hint}, {entry['license']} -->\n"
+    if not content.startswith("<!--"):
+        content = attribution + content
+    skill_md_path.write_text(content, encoding="utf-8")
+    risk_path = skill_dir / "risk.json"
+    if not risk_path.exists():
+        risk_path.write_text(json.dumps({
+            "risk": "read", "destructive": False,
+            "shell": False, "network": False,
+            "auto_approve": True, "sandbox": "workspace", "rollback": "none"
+        }, indent=2), encoding="utf-8")
+    return {
+        "status":  "installed",
+        "plugin":  plugin,
+        "skill":   skill,
+        "path":    str(skill_dir),
+        "license": entry["license"],
+        "author":  entry["author"],
+    }
+
+# ─────────────────────────────────────────────────────────────────────────────
+
 def load_users():
     if not os.path.exists(USERS_FILE):
         return {}
@@ -705,26 +1045,42 @@ def mcp_public_item(item: Dict, installed_state: Dict) -> Dict:
     connector_pending = item["install_mode"] == "connector" and not state.get("authenticated")
     authenticated = item["install_mode"] != "connector" or bool(state.get("authenticated"))
     return {
-        **{key: item[key] for key in ["id", "name", "category", "install_mode", "description", "capabilities"]},
+        "id": item["id"],
+        "name": item["name"],
+        "category": item.get("category", ""),
+        "install_mode": item["install_mode"],
+        "description": item.get("description", ""),
+        "capabilities": item.get("capabilities", []),
         "connector_url": item.get("connector_url"),
         "external_url": item.get("external_url"),
+        "package": item.get("package"),
+        "homepage": item.get("homepage"),
+        "source": item.get("source", "local"),
         "installed": installed,
         "status": state.get("status") or ("active" if installed and not connector_pending else "needs_auth" if connector_pending else "available"),
         "authenticated": authenticated,
         "updated_at": state.get("updated_at"),
     }
 
-def recommend_mcps(query: str, limit: int = 5) -> List[Dict]:
+async def recommend_mcps(query: str, limit: int = 5) -> List[Dict]:
     text = (query or "").lower()
     installed = load_mcp_installs().get("installed", {})
+    registry = await _get_combined_registry()
     scored = []
-    for item in MCP_REGISTRY:
+    for item in registry:
         score = 0
         hits = []
-        for keyword in item["keywords"]:
+        for keyword in item.get("keywords", []):
             if keyword.lower() in text:
                 score += 3 if len(keyword) > 2 else 1
                 hits.append(keyword)
+        # description 키워드 매칭 (remote 항목 보완)
+        if not hits and text:
+            desc_words = item.get("description", "").lower().split()
+            for word in text.split():
+                if len(word) > 2 and word in desc_words:
+                    score += 1
+                    hits.append(word)
         if item["id"] == "filesystem" and any(word in text for word in ["만들", "구현", "build", "deploy", "코드", "앱"]):
             score += 2
         if score:
@@ -736,13 +1092,14 @@ def recommend_mcps(query: str, limit: int = 5) -> List[Dict]:
         fallback_ids = ["filesystem", "browser", "documents"]
         scored = [
             {**mcp_public_item(item, installed), "score": 1, "matched_keywords": []}
-            for item in MCP_REGISTRY
+            for item in registry
             if item["id"] in fallback_ids
         ]
     return sorted(scored, key=lambda item: item["score"], reverse=True)[: max(1, min(limit, 24))]
 
-def install_mcp(mcp_id: str) -> Dict:
-    item = next((entry for entry in MCP_REGISTRY if entry["id"] == mcp_id), None)
+async def install_mcp(mcp_id: str) -> Dict:
+    registry = await _get_combined_registry()
+    item = next((entry for entry in registry if entry["id"] == mcp_id), None)
     if not item:
         raise HTTPException(status_code=404, detail="MCP를 찾을 수 없습니다.")
     data = load_mcp_installs()
@@ -757,15 +1114,33 @@ def install_mcp(mcp_id: str) -> Dict:
         for pkg in packages:
             completed = subprocess.run(
                 [sys.executable, "-m", "pip", "install", "--upgrade", pkg],
-                capture_output=True,
-                text=True,
-                timeout=900,
-                check=False,
+                capture_output=True, text=True, timeout=900, check=False,
             )
             if completed.returncode != 0:
                 raise HTTPException(status_code=500, detail=completed.stderr[-2000:] or f"{pkg} 설치 실패")
-        status = "active"
         message = f"필수 패키지 설치 완료: {', '.join(packages)}"
+    elif item["install_mode"] == "pypi":
+        pkg = item.get("package", "")
+        version = item.get("package_version")
+        pkg_str = f"{pkg}=={version}" if version else pkg
+        completed = subprocess.run(
+            [sys.executable, "-m", "pip", "install", pkg_str],
+            capture_output=True, text=True, timeout=300, check=False,
+        )
+        if completed.returncode != 0:
+            raise HTTPException(status_code=500, detail=completed.stderr[-2000:] or f"{pkg} 설치 실패")
+        message = f"pip 패키지 설치 완료: {pkg_str}"
+    elif item["install_mode"] == "npm":
+        pkg = item.get("package", "")
+        version = item.get("package_version")
+        pkg_str = f"{pkg}@{version}" if version else pkg
+        completed = subprocess.run(
+            ["npm", "install", "-g", pkg_str],
+            capture_output=True, text=True, timeout=300, check=False,
+        )
+        if completed.returncode != 0:
+            raise HTTPException(status_code=500, detail=completed.stderr[-2000:] or f"{pkg} 설치 실패")
+        message = f"npm 패키지 설치 완료: {pkg_str}"
     state[mcp_id] = {
         "installed": True,
         "status": status,
@@ -775,19 +1150,6 @@ def install_mcp(mcp_id: str) -> Dict:
     save_mcp_installs(data)
     public = mcp_public_item(item, state)
     public["message"] = message
-    return public
-
-def connector_info(mcp_id: str) -> Dict:
-    item = next((entry for entry in MCP_REGISTRY if entry["id"] == mcp_id), None)
-    if not item or item.get("install_mode") != "connector":
-        raise HTTPException(status_code=404, detail="커넥터를 찾을 수 없습니다.")
-    installed = load_mcp_installs().get("installed", {})
-    public = mcp_public_item(item, installed)
-    public["instructions"] = [
-        "Codex 또는 ChatGPT 앱의 Connectors 설정을 엽니다.",
-        f"{item['name']} 항목을 선택하고 계정을 인증합니다.",
-        "인증 후 Lattice AI에서 이 MCP를 다시 활성화하면 작업에 사용할 수 있습니다.",
-    ]
     return public
 
 _history_lock = threading.Lock()
@@ -5542,6 +5904,7 @@ async def tools_permissions(request: Request):
 @app.get("/mcp/tools")
 async def mcp_tools():
     installed = load_mcp_installs().get("installed", {})
+    registry = await _get_combined_registry()
     tools = []
     for name, description in _MCP_TOOL_DESCRIPTIONS.items():
         policy = TOOL_GOVERNANCE.get(name, _TOOL_GOVERNANCE_DEFAULT)
@@ -5562,7 +5925,7 @@ async def mcp_tools():
     return {
         "status": "ok",
         "workspace": str(AGENT_ROOT),
-        "installed_mcps": [mcp_public_item(item, installed) for item in MCP_REGISTRY],
+        "installed_mcps": [mcp_public_item(item, installed) for item in registry],
         "tools": tools,
     }
 
@@ -5570,26 +5933,159 @@ async def mcp_tools():
 @app.post("/mcp/recommend")
 async def mcp_recommend(req: McpRecommendRequest, request: Request):
     require_user(request)
-    return {"recommendations": recommend_mcps(req.query, req.limit)}
+    return {"recommendations": await recommend_mcps(req.query, req.limit)}
 
 
 @app.post("/mcp/install")
 async def mcp_install(req: McpInstallRequest, request: Request):
     require_user(request)
-    return install_mcp(req.mcp_id)
+    return await install_mcp(req.mcp_id)
 
 
 @app.get("/mcp/installed")
 async def mcp_installed(request: Request):
     require_user(request)
     installed = load_mcp_installs().get("installed", {})
-    return {"installed": [mcp_public_item(item, installed) for item in MCP_REGISTRY]}
+    registry = await _get_combined_registry()
+    return {"installed": [mcp_public_item(item, installed) for item in registry]}
 
 
 @app.get("/mcp/connectors/{mcp_id}")
 async def mcp_connector(mcp_id: str, request: Request):
     require_user(request)
-    return connector_info(mcp_id)
+    registry = await _get_combined_registry()
+    item = next((e for e in registry if e["id"] == mcp_id), None)
+    if not item or item.get("install_mode") != "connector":
+        raise HTTPException(status_code=404, detail="커넥터를 찾을 수 없습니다.")
+    installed = load_mcp_installs().get("installed", {})
+    public = mcp_public_item(item, installed)
+    public["instructions"] = [
+        "Codex 또는 ChatGPT 앱의 Connectors 설정을 엽니다.",
+        f"{item['name']} 항목을 선택하고 계정을 인증합니다.",
+        "인증 후 Lattice AI에서 이 MCP를 다시 활성화하면 작업에 사용할 수 있습니다.",
+    ]
+    return public
+
+
+@app.post("/mcp/registry/refresh")
+async def mcp_registry_refresh(request: Request):
+    require_user(request)
+    global _REMOTE_REGISTRY_FETCHED_AT
+    _REMOTE_REGISTRY_FETCHED_AT = None
+    registry = await _get_combined_registry()
+    return {"status": "ok", "total": len(registry), "remote": len(_REMOTE_REGISTRY_CACHE)}
+
+
+# ── Skills & Plugin Directory endpoints ───────────────────────────────────────
+
+@app.get("/skills/marketplace")
+async def skills_marketplace(request: Request, category: Optional[str] = None, author: Optional[str] = None):
+    """Skills 마켓플레이스 (Anthropic Apache-2.0 + 검증된 서드파티 MIT/Apache-2.0)"""
+    require_user(request)
+    skills = await _fetch_skills_marketplace()
+    installed_names = {d.name for d in SKILLS_DIR.iterdir() if d.is_dir()} if SKILLS_DIR.exists() else set()
+    filtered = skills
+    if category:
+        filtered = [s for s in filtered if s.get("category", "").lower() == category.lower()]
+    if author:
+        filtered = [s for s in filtered if s.get("author", "").lower() == author.lower()]
+    return {
+        "skills": [{**s, "installed": s["skill"] in installed_names} for s in filtered],
+        "total": len(filtered),
+        "authors": sorted({s["author"] for s in skills}),
+        "categories": sorted({s["category"] for s in skills}),
+    }
+
+
+@app.post("/skills/install")
+async def skills_install(req: SkillInstallRequest, request: Request):
+    """skill을 로컬 skills 디렉터리에 설치 (Apache-2.0 / MIT)"""
+    require_user(request)
+    return await install_skill(req.plugin, req.skill)
+
+
+@app.get("/skills/list")
+async def skills_list(request: Request):
+    """로컬에 설치된 skills 목록"""
+    require_user(request)
+    if not SKILLS_DIR.exists():
+        return {"skills": []}
+    skills = []
+    for skill_dir in sorted(SKILLS_DIR.iterdir()):
+        if not skill_dir.is_dir():
+            continue
+        skill_md = skill_dir / "SKILL.md"
+        if not skill_md.exists():
+            continue
+        lines = skill_md.read_text(encoding="utf-8").splitlines()
+        desc = next((l.split(":", 1)[1].strip() for l in lines if l.startswith("description:")), "")
+        comment = lines[0] if lines else ""
+        if "anthropics/claude-plugins-official" in comment:
+            source = "anthropic"
+        elif "Source:" in comment:
+            source = "third-party"
+        else:
+            source = "local"
+        skills.append({"name": skill_dir.name, "description": desc, "source": source})
+    return {"skills": skills, "total": len(skills)}
+
+
+@app.post("/skills/marketplace/refresh")
+async def skills_marketplace_refresh(request: Request):
+    """Skills 마켓플레이스 캐시 강제 갱신"""
+    require_user(request)
+    global _SKILLS_MARKETPLACE_FETCHED_AT
+    _SKILLS_MARKETPLACE_FETCHED_AT = None
+    skills = await _fetch_skills_marketplace()
+    by_author = {}
+    for s in skills:
+        by_author[s["author"]] = by_author.get(s["author"], 0) + 1
+    return {"status": "ok", "total": len(skills), "by_author": by_author}
+
+
+@app.get("/plugins/directory")
+async def plugins_directory(
+    request: Request,
+    category: Optional[str] = None,
+    license: Optional[str] = None,
+    q: Optional[str] = None,
+):
+    """오픈소스 플러그인 디렉터리 (Apache-2.0 / MIT / MIT-0, 런타임 fetch)"""
+    require_user(request)
+    plugins = await _fetch_plugin_directory()
+    filtered = plugins
+    if category:
+        filtered = [p for p in filtered if p.get("category", "").lower() == category.lower()]
+    if license:
+        filtered = [p for p in filtered if p.get("license", "").lower() == license.lower()]
+    if q:
+        q_lower = q.lower()
+        filtered = [
+            p for p in filtered
+            if q_lower in p.get("name", "").lower()
+            or q_lower in p.get("description", "").lower()
+            or q_lower in p.get("author", "").lower()
+        ]
+    return {
+        "plugins": filtered,
+        "total": len(filtered),
+        "categories": sorted({p["category"] for p in plugins if p.get("category")}),
+        "licenses": sorted({p["license"] for p in plugins if p.get("license")}),
+    }
+
+
+@app.post("/plugins/directory/refresh")
+async def plugins_directory_refresh(request: Request):
+    """플러그인 디렉터리 캐시 강제 갱신"""
+    require_user(request)
+    global _PLUGIN_DIRECTORY_FETCHED_AT
+    _PLUGIN_DIRECTORY_FETCHED_AT = None
+    plugins = await _fetch_plugin_directory()
+    by_license = {}
+    for p in plugins:
+        lic = p.get("license", "unknown")
+        by_license[lic] = by_license.get(lic, 0) + 1
+    return {"status": "ok", "total": len(plugins), "by_license": by_license}
 
 
 @app.post("/mcp/call")

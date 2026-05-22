@@ -14,10 +14,10 @@ Lattice AI는 개인 개발자가 로컬 모델, 클라우드 모델, 에이전�
 
 ### 현재 배포 버전
 
-- `PyPI`: `ltcai==0.1.17`
-- `npm`: `ltcai@0.1.17`
-- `VS Code Marketplace`: `parktaesoo.ltcai@0.1.17`
-- `Open VSX`: `parktaesoo.ltcai@0.1.17`
+- `PyPI`: `ltcai==0.1.18`
+- `npm`: `ltcai@0.1.18`
+- `VS Code Marketplace`: `parktaesoo.ltcai@0.1.18`
+- `Open VSX`: `parktaesoo.ltcai@0.1.18`
 
 ### 왜 Lattice AI인가
 
@@ -129,6 +129,9 @@ LATTICEAI_TELEGRAM_BOT_TOKEN=your-token LTCAI
 | **VS Code / Cursor 확장** | 채팅, Edit Selection, Diff 뷰, 파일 첨부 |
 | **Telegram 봇** | 로컬 AI 미러 + Codex 클라우드 봇 |
 | **MCP 서버** | Claude Desktop / Cursor에서 직접 도구 사용 |
+| **MCP 레지스트리** | [registry.modelcontextprotocol.io](https://registry.modelcontextprotocol.io) 원격 목록 실시간 통합 — stdio MCP 서버 원클릭 설치 |
+| **Skills 마켓플레이스** | Anthropic + Adobe · Airtable · Auth0 · Expo · Pydantic 공식 skills 77개 (Apache-2.0 / MIT) |
+| **플러그인 디렉터리** | 오픈소스 플러그인 149개 메타데이터 브라우저 (검색 · 카테고리 · 라이선스 필터) |
 | **MLX 로컬 추론** | Apple Silicon에서 Gemma, Qwen, DeepSeek 등 |
 | **클라우드 모델** | OpenAI, Groq, Together, OpenRouter |
 | **Graph RAG** | 채팅·문서를 SQLite 지식 그래프로 자동 구조화 |
@@ -317,7 +320,13 @@ npm install && npm run build && npm run package:vsix
 | POST | `/agent` | 파일 생성/수정 에이전트 |
 | GET | `/tools/list_dir` | 디렉토리 목록 |
 | POST | `/tools/run_command` | 터미널 명령 실행 |
-| GET | `/mcp/installed` | 설치된 MCP 목록 |
+| GET | `/mcp/installed` | 설치된 MCP 목록 (로컬 + 원격 레지스트리) |
+| POST | `/mcp/install` | MCP 설치 (bundled / pip / npm / pypi) |
+| POST | `/mcp/registry/refresh` | 원격 MCP 레지스트리 캐시 갱신 |
+| GET | `/skills/marketplace` | Skills 마켓플레이스 (Anthropic + 서드파티, `?category=` `?author=`) |
+| POST | `/skills/install` | Skill 설치 (`{ "plugin": "...", "skill": "..." }`) |
+| GET | `/skills/list` | 로컬 설치 skills 목록 |
+| GET | `/plugins/directory` | 오픈소스 플러그인 디렉터리 149개 (`?q=` `?category=` `?license=`) |
 
 자세한 MCP 도구 목록: [docs/mcp-tools.md](docs/mcp-tools.md)
 
@@ -359,7 +368,7 @@ launchctl load ~/Library/LaunchAgents/com.ltcai.plist
 
 ## 릴리스 노트
 
-현재 버전: **0.1.17** — 자세한 변경 이력은 [docs/CHANGELOG.md](docs/CHANGELOG.md) 참고.
+현재 버전: **0.1.18** — 자세한 변경 이력은 [docs/CHANGELOG.md](docs/CHANGELOG.md) 참고.
 
 ## 라이선스
 

@@ -1,6 +1,6 @@
 {
   "name": "ltcai",
-  "version": "0.1.17",
+  "version": "0.1.18",
   "description": "Lattice AI local MLX/cloud LLM workspace server",
   "homepage": "https://github.com/TaeSooPark-PTS/LatticeAI#readme",
   "repository": {

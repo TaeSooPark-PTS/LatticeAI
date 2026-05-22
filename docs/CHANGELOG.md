@@ -1,5 +1,42 @@
 # Changelog
 
+## [0.1.18] - 2026-05-23
+
+### MCP Registry 통합
+
+- **`GET /mcp/tools` · `GET /mcp/installed`** — 기존 로컬 목록에 [registry.modelcontextprotocol.io](https://registry.modelcontextprotocol.io) 원격 목록을 실시간 병합
+- **`POST /mcp/install`** — `npm` / `pypi` 설치 모드 추가 — 원격 레지스트리 MCP 서버를 클릭 한 번으로 설치 (`npm install -g` / `pip install`)
+- **`POST /mcp/registry/refresh`** — 원격 레지스트리 캐시 강제 갱신
+- `mcp_public_item` 응답에 `package` · `homepage` · `source` 필드 추가
+- 원격 레지스트리는 1시간 TTL 인메모리 캐시, 서버 재시작 없이 최신 목록 유지
+- `connector_info` 함수 인라인화 — `mcp_connector` 엔드포인트에서 combined registry 직접 조회
+
+### Skills 마켓플레이스 (신규)
+
+- **`GET /skills/marketplace`** — Apache-2.0 / MIT 검증 skills 목록 (Anthropic 18개 + 서드파티 59개 = 약 77개)
+  - `?category=` · `?author=` 필터 파라미터 지원
+  - 응답에 `authors` · `categories` 열거 포함
+- **`POST /skills/install`** — `{ "plugin": "...", "skill": "..." }` 로 SKILL.md 런타임 fetch 후 로컬 `skills/` 에 저장
+  - 파일 상단에 출처·라이선스 주석 자동 삽입 (`<!-- Source: ..., Apache-2.0 -->`)
+  - `risk.json` 없으면 기본값 자동 생성
+- **`GET /skills/list`** — 로컬 설치 skills 목록 (`source`: local / anthropic / third-party 구분)
+- **`POST /skills/marketplace/refresh`** — 캐시 강제 갱신, author별 집계 반환
+- 서드파티 소스 (모두 라이선스 검증 완료): Adobe (Apache-2.0) · Airtable (MIT) · Auth0 (Apache-2.0) · Expo (MIT) · Pydantic/Logfire (MIT)
+
+### 플러그인 디렉터리 (신규)
+
+- **`GET /plugins/directory`** — marketplace.json 기반 오픈소스 플러그인 149개 메타데이터 브라우저
+  - `?q=` 전문 검색 · `?category=` · `?license=` 필터 지원
+  - 응답에 `categories` · `licenses` 열거 포함
+- **`POST /plugins/directory/refresh`** — 캐시 강제 갱신, license별 집계 반환
+- `_KNOWN_REPO_LICENSES` 맵 — GitHub API 호출 없이 검증된 라이선스 즉시 조회
+- 미확인 레포는 GitHub API fallback + 인메모리 per-repo 캐시
+- Apache-2.0 / MIT / MIT-0 / CC-BY-4.0 플러그인만 노출, 라이선스 없는 34개 자동 제외
+
+### Release
+- 배포 버전을 `0.1.18`로 상향
+- 대상 채널: `npm` · `PyPI` · `VS Code Marketplace` · `Open VSX`
+
 ## [0.1.17] - 2026-05-22
 
 ### Multi-LLM Pipeline
