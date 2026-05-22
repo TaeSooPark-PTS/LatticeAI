@@ -4156,6 +4156,22 @@ _TOOL_GOVERNANCE_DEFAULT = ToolPolicy(
     auto_approve=False, sandbox="workspace", rollback="none",
 )
 
+# Tools that require admin role — computer control + shell execution
+ADMIN_ONLY_TOOLS: frozenset[str] = frozenset(
+    name for name, policy in TOOL_GOVERNANCE.items()
+    if policy["sandbox"] == "system" or policy["risk"] in {"exec", "destructive"}
+)
+
+def _check_tool_role(tool_name: str, current_user: str) -> None:
+    if tool_name not in ADMIN_ONLY_TOOLS:
+        return
+    users = load_users()
+    if get_user_role(current_user, users) != "admin":
+        raise HTTPException(
+            status_code=403,
+            detail=f"'{tool_name}' 툴은 관리자 전용입니다.",
+        )
+
 # Paths that local_write / local_list must never target
 _LOCAL_WRITE_BLOCKED_PREFIXES = (
     "/etc/", "/usr/", "/bin/", "/sbin/", "/System/", "/private/etc/",
@@ -4422,6 +4438,7 @@ async def _phase_execute(
             )
 
         try:
+            _check_tool_role(name, current_user)
             result = execute_tool(name, args)
             ctx.transcript.append({
                 "state": AgentState.EXECUTING.value, "action": name,
@@ -5145,7 +5162,7 @@ async def cu_drag(req: CuDragRequest, request: Request):
 @app.post("/cu/agent")
 async def cu_agent(req: CuAgentRequest, request: Request):
     """SSE streaming Computer Use agent loop."""
-    require_user(request)
+    require_admin(request)
     async def _stream():
         task_lower = (req.task or "").lower()
         url_match = re.search(r"(https?://[^\s]+|localhost:\d+[^\s]*|127\.0\.0\.1:\d+[^\s]*)", req.task or "")
@@ -5320,7 +5337,7 @@ async def tools_git_show(req: ToolGitShowRequest, request: Request):
 
 @app.post("/tools/run_command")
 async def tools_run_command(req: ToolRunCommandRequest, request: Request):
-    require_user(request)
+    require_admin(request)
     return _tool_response(run_command, req.command, req.cwd)
 
 
@@ -5332,13 +5349,13 @@ async def tools_network_status(request: Request):
 
 @app.post("/tools/build_project")
 async def tools_build_project(req: ToolScriptRequest, request: Request):
-    require_user(request)
+    require_admin(request)
     return _tool_response(build_project, req.cwd, req.script)
 
 
 @app.post("/tools/deploy_project")
 async def tools_deploy_project(req: ToolScriptRequest, request: Request):
-    require_user(request)
+    require_admin(request)
     return _tool_response(deploy_project, req.cwd, req.script)
 
 
@@ -5489,6 +5506,7 @@ async def mcp_call(req: McpCallRequest, request: Request):
                 args.get("limit", 6),
             )
         }
+    _check_tool_role(req.action, current_user)
     return _tool_response(execute_tool, req.action, req.args or {})
 
 
