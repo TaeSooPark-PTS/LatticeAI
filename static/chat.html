@@ -1048,6 +1048,47 @@
             background: rgba(34,211,160,0.07);
         }
 
+        /* ── 멀티 LLM 파이프라인 ── */
+        .pipeline-phase-row {
+            display: flex; flex-direction: column; gap: 8px;
+            background: rgba(255,255,255,0.02);
+            border: 1px solid var(--border);
+            border-radius: 10px; padding: 12px;
+        }
+        .pipeline-phase-label { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+        .pipeline-phase-badge {
+            font-size: 12px; font-weight: 600; padding: 3px 10px;
+            border-radius: 20px; white-space: nowrap;
+        }
+        .pipeline-select {
+            width: 100%; background: var(--surface); border: 1px solid var(--border);
+            color: var(--text); padding: 8px 10px; border-radius: 8px;
+            font-size: 13px; cursor: pointer; outline: none;
+        }
+        .pipeline-select:focus { border-color: var(--accent); }
+        .pipeline-active-badge {
+            display: inline-flex; align-items: center; gap: 4px;
+            font-size: 11px; background: rgba(34,211,160,0.1);
+            border: 1px solid rgba(34,211,160,0.25); color: var(--accent);
+            padding: 2px 8px; border-radius: 20px; margin-left: 6px; cursor: pointer;
+        }
+        .plan-approval-card {
+            background: rgba(99,102,241,0.07); border: 1px solid rgba(99,102,241,0.2);
+            border-radius: 12px; padding: 16px; margin-top: 4px;
+        }
+        .plan-approval-card h4 { margin: 0 0 10px; color: #818cf8; font-size: 14px; }
+        .plan-approval-card ol { margin: 0 0 12px; padding-left: 20px; color: var(--text); font-size: 13px; line-height: 1.8; }
+        .plan-approval-card .plan-meta { font-size: 11px; color: var(--muted); margin-bottom: 12px; }
+        .plan-approval-actions { display: flex; gap: 8px; }
+        .plan-approve-btn {
+            flex: 1; background: var(--accent); border: none; color: #05120d;
+            padding: 9px; border-radius: 8px; font-size: 13px; font-weight: 600; cursor: pointer;
+        }
+        .plan-cancel-btn {
+            background: rgba(248,113,113,0.1); border: 1px solid rgba(248,113,113,0.25);
+            color: var(--danger); padding: 9px 16px; border-radius: 8px; font-size: 13px; cursor: pointer;
+        }
+
         /* ── 첨부 파일 칩 ── */
         .attach-chip {
             display: inline-flex;
@@ -3134,6 +3175,14 @@
                     </div>
                     <div class="ops-icon"><i class="ti ti-cpu-2"></i></div>
                 </div>
+                <div class="ops-card interactive" id="pipeline-ops-card" onclick="openPipelineModal()">
+                    <div>
+                        <div class="ops-label">PIPELINE</div>
+                        <div id="ops-pipeline-value" class="ops-value">멀티 LLM 파이프라인</div>
+                        <div id="ops-pipeline-meta" class="ops-meta">Plan → Execute → Review 모델 설정</div>
+                    </div>
+                    <div class="ops-icon"><i class="ti ti-git-branch"></i></div>
+                </div>
                 <div class="ops-card interactive" onclick="openVpcPanel()">
                     <div>
                         <div class="ops-label">PRIVATE VPC</div>
@@ -3224,6 +3273,65 @@
                 <button class="perm-allow-btn" onclick="resolvePermission(true)" data-i18n="btn_allow">허용</button>
             </div>
         </div>
+    </div>
+
+    <!-- ── 멀티 LLM 파이프라인 모달 ── -->
+    <div id="pipeline-overlay" class="admin-overlay" style="display:none" onclick="if(event.target===this)closePipelineModal()">
+        <section class="admin-panel" style="max-width:520px">
+            <div class="model-panel-header">
+                <div>
+                    <h2><i class="ti ti-git-branch" style="color:var(--accent)"></i> 멀티 LLM 파이프라인</h2>
+                    <p style="color:var(--muted);font-size:12px;margin-top:4px">각 단계에 사용할 LLM을 지정합니다. 동일 모델을 여러 단계에 써도 됩니다.</p>
+                </div>
+                <button class="admin-close" onclick="closePipelineModal()"><i class="ti ti-x"></i></button>
+            </div>
+
+            <div style="display:flex;flex-direction:column;gap:16px;padding:0 4px 4px">
+                <!-- Planning -->
+                <div class="pipeline-phase-row">
+                    <div class="pipeline-phase-label">
+                        <span class="pipeline-phase-badge" style="background:rgba(99,102,241,0.15);color:#818cf8">📋 Planning</span>
+                        <span style="color:var(--muted);font-size:11px">계획 수립 · 유저와 함께 검토</span>
+                    </div>
+                    <select id="pipeline-planning-select" class="pipeline-select">
+                        <option value="">현재 로드된 모델 (기본)</option>
+                    </select>
+                </div>
+
+                <!-- Executing -->
+                <div class="pipeline-phase-row">
+                    <div class="pipeline-phase-label">
+                        <span class="pipeline-phase-badge" style="background:rgba(34,197,94,0.12);color:#4ade80">⚙️ Executing</span>
+                        <span style="color:var(--muted);font-size:11px">코드 작성 · 파일 생성 · 툴 호출</span>
+                    </div>
+                    <select id="pipeline-executing-select" class="pipeline-select">
+                        <option value="">현재 로드된 모델 (기본)</option>
+                    </select>
+                </div>
+
+                <!-- Reviewing -->
+                <div class="pipeline-phase-row">
+                    <div class="pipeline-phase-label">
+                        <span class="pipeline-phase-badge" style="background:rgba(251,146,60,0.12);color:#fb923c">🔍 Reviewing</span>
+                        <span style="color:var(--muted);font-size:11px">결과 검증 · 최종 답변 생성</span>
+                    </div>
+                    <select id="pipeline-reviewing-select" class="pipeline-select">
+                        <option value="">현재 로드된 모델 (기본)</option>
+                    </select>
+                </div>
+
+                <div style="background:rgba(99,102,241,0.07);border:1px solid rgba(99,102,241,0.15);border-radius:10px;padding:12px;font-size:12px;color:var(--muted)">
+                    <i class="ti ti-info-circle" style="color:var(--accent)"></i>
+                    모달을 닫고 채팅창에 작업을 입력하면 <b style="color:var(--text)">Pipeline 모드</b>로 실행됩니다.<br>
+                    계획이 완성되면 UI에서 검토 후 <b style="color:var(--accent)">✅ Done</b>을 눌러야 실행이 시작됩니다.
+                </div>
+
+                <div style="display:flex;gap:8px;justify-content:flex-end">
+                    <button onclick="resetPipeline()" style="background:none;border:1px solid var(--border);color:var(--muted);padding:8px 16px;border-radius:8px;cursor:pointer;font-size:13px">초기화</button>
+                    <button onclick="savePipelineAndClose()" style="background:var(--accent);border:none;color:#05120d;padding:8px 20px;border-radius:8px;cursor:pointer;font-size:13px;font-weight:600"><i class="ti ti-check"></i> 저장</button>
+                </div>
+            </div>
+        </section>
     </div>
 
     <!-- ── 파일 생성 패널 ── -->
@@ -3542,6 +3650,148 @@
         let currentUserNickname = "Guest";
         let currentUserEmail = "";
         let isAdmin = false;
+
+        // ── 멀티 LLM 파이프라인 상태 ──
+        let pipelineConfig = { planning: null, executing: null, reviewing: null };
+        let pipelineActive = false; // true이면 전송 시 pipeline 모드
+
+        function openPipelineModal() {
+            document.getElementById('pipeline-overlay').style.display = 'flex';
+            loadPipelineModelOptions();
+        }
+        function closePipelineModal() {
+            document.getElementById('pipeline-overlay').style.display = 'none';
+        }
+        function resetPipeline() {
+            pipelineConfig = { planning: null, executing: null, reviewing: null };
+            pipelineActive = false;
+            ['planning','executing','reviewing'].forEach(p =>
+                document.getElementById(`pipeline-${p}-select`).value = '');
+            updatePipelineBadge();
+        }
+        function savePipelineAndClose() {
+            pipelineConfig = {
+                planning:  document.getElementById('pipeline-planning-select').value  || null,
+                executing: document.getElementById('pipeline-executing-select').value || null,
+                reviewing: document.getElementById('pipeline-reviewing-select').value || null,
+            };
+            pipelineActive = true;
+            updatePipelineBadge();
+            closePipelineModal();
+        }
+        function updatePipelineBadge() {
+            const card = document.getElementById('pipeline-ops-card');
+            const val  = document.getElementById('ops-pipeline-value');
+            const meta = document.getElementById('ops-pipeline-meta');
+            if (!card) return;
+            if (pipelineActive) {
+                card.style.borderColor = 'rgba(34,211,160,0.35)';
+                card.style.boxShadow = '0 0 0 1px rgba(34,211,160,0.18)';
+                const pLabel = pipelineConfig.planning  ? pipelineConfig.planning.split('/').pop()  : '—';
+                const eLabel = pipelineConfig.executing ? pipelineConfig.executing.split('/').pop() : '—';
+                const rLabel = pipelineConfig.reviewing ? pipelineConfig.reviewing.split('/').pop() : '—';
+                if (val)  val.textContent  = 'Pipeline ON';
+                if (meta) meta.textContent = `P:${pLabel} E:${eLabel} R:${rLabel}`;
+            } else {
+                card.style.borderColor = '';
+                card.style.boxShadow   = '';
+                if (val)  val.textContent  = '멀티 LLM 파이프라인';
+                if (meta) meta.textContent = 'Plan → Execute → Review 모델 설정';
+            }
+        }
+        async function loadPipelineModelOptions() {
+            let models = [];
+            try {
+                const res = await apiFetch('/models');
+                const data = await res.json();
+                const loaded = data.loaded || [];
+                const cloud  = data.providers || [];
+                loaded.forEach(m => models.push({ id: m, label: `[로컬] ${m.split('/').pop()}` }));
+                cloud.forEach(m => {
+                    if (m.available !== false)
+                        models.push({ id: m.id || m.model_id, label: `[클라우드] ${m.name || m.id}` });
+                });
+            } catch(e) { /* silent */ }
+            ['planning','executing','reviewing'].forEach(phase => {
+                const sel = document.getElementById(`pipeline-${phase}-select`);
+                const cur = pipelineConfig[phase] || '';
+                sel.innerHTML = '<option value="">현재 로드된 모델 (기본)</option>';
+                models.forEach(m => {
+                    const opt = document.createElement('option');
+                    opt.value = m.id; opt.textContent = m.label;
+                    if (m.id === cur) opt.selected = true;
+                    sel.appendChild(opt);
+                });
+            });
+        }
+
+        // ── 플랜 승인 카드 렌더링 ──
+        async function renderPlanApprovalCard(bubble, data) {
+            const plan  = data.plan || {};
+            const steps = plan.steps || [];
+            const pM = data.planning_model  || '현재 모델';
+            const eM = data.executing_model || '현재 모델';
+            const rM = data.reviewing_model || '현재 모델';
+            const contextId = data.context_id;
+
+            let stepsHtml = steps.map((s,i) =>
+                `<li>${escapeHtml(s.description || s.action || JSON.stringify(s))}</li>`).join('');
+
+            bubble.innerHTML = `
+                <div class="plan-approval-card">
+                    <h4>📋 플래닝 완료 — 실행 전 확인해주세요</h4>
+                    ${plan.goal ? `<p style="color:var(--text);font-size:13px;margin:0 0 10px"><b>목표:</b> ${escapeHtml(plan.goal)}</p>` : ''}
+                    <ol>${stepsHtml || '<li>(단계 없음)</li>'}</ol>
+                    <div class="plan-meta">
+                        🧠 Planning: <b>${escapeHtml(compactModelName(pM))}</b> &nbsp;·&nbsp;
+                        ⚙️ Executing: <b>${escapeHtml(compactModelName(eM))}</b> &nbsp;·&nbsp;
+                        🔍 Reviewing: <b>${escapeHtml(compactModelName(rM))}</b>
+                    </div>
+                    <div class="plan-approval-actions">
+                        <button class="plan-approve-btn" onclick="resumeAgent('${contextId}', this)">
+                            <i class="ti ti-player-play"></i> ✅ Done — 실행 시작
+                        </button>
+                        <button class="plan-cancel-btn" onclick="cancelAgent('${contextId}', this)">❌ 취소</button>
+                    </div>
+                </div>`;
+        }
+
+        async function resumeAgent(contextId, btn) {
+            btn.disabled = true;
+            btn.textContent = '⚙️ 실행 중...';
+            const card = btn.closest('.plan-approval-card');
+            try {
+                const res = await apiFetch('/agent/resume', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        context_id: contextId,
+                        approved: true,
+                        executing_model: pipelineConfig.executing || null,
+                        reviewing_model: pipelineConfig.reviewing || null,
+                    })
+                });
+                const data = await res.json();
+                if (!res.ok) throw new Error(data.detail || `서버 오류 (${res.status})`);
+                const bubble = btn.closest('.bubble');
+                renderAiBubble(bubble, data.response || '완료되었습니다.');
+                const files = data.created_files || [];
+                files.forEach(f => renderFileDownloadCard(f.filename, f.path, f.bytes || 0));
+            } catch(e) {
+                card.innerHTML += `<p style="color:var(--danger);font-size:12px;margin-top:8px">❌ ${escapeHtml(e.message)}</p>`;
+                btn.disabled = false;
+                btn.textContent = '다시 시도';
+            }
+        }
+
+        async function cancelAgent(contextId, btn) {
+            await apiFetch('/agent/resume', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ context_id: contextId, approved: false })
+            }).catch(()=>{});
+            btn.closest('.bubble').innerHTML = '<span style="color:var(--muted)">작업이 취소되었습니다.</span>';
+        }
         let latestVpcConfig = null;
         const mirroredHistoryKeys = new Set();
         const API_BASE = window.location.protocol === 'file:' ? 'http://localhost:4825' : '';
@@ -5577,7 +5827,10 @@
             sendBtn.disabled = true;
             const aiMsgDiv = document.createElement('div');
             aiMsgDiv.className = 'message ai';
-            aiMsgDiv.innerHTML = `<div class="sender-label">Lattice AI <span style="color:var(--accent);font-size:11px">⚙ 에이전트 모드</span></div><div class="bubble">파일을 생성하고 있습니다...</div>`;
+            const modeLabel = pipelineActive
+                ? '⚙ 파이프라인 모드'
+                : '⚙ 에이전트 모드';
+            aiMsgDiv.innerHTML = `<div class="sender-label">Lattice AI <span style="color:var(--accent);font-size:11px">${modeLabel}</span></div><div class="bubble">${pipelineActive ? '📋 계획 수립 중입니다...' : '파일을 생성하고 있습니다...'}</div>`;
             chatViewport.appendChild(aiMsgDiv);
             chatViewport.scrollTop = chatViewport.scrollHeight;
             const bubble = aiMsgDiv.querySelector('.bubble');
@@ -5593,7 +5846,11 @@
                         max_steps: 4,
                         temperature: 0.1,
                         user_email: currentUserEmail,
-                        user_nickname: currentUserNickname
+                        user_nickname: currentUserNickname,
+                        human_in_loop: pipelineActive,
+                        planning_model:  pipelineActive ? (pipelineConfig.planning  || null) : null,
+                        executing_model: pipelineActive ? (pipelineConfig.executing || null) : null,
+                        reviewing_model: pipelineActive ? (pipelineConfig.reviewing || null) : null,
                     })
                 });
 
@@ -5601,6 +5858,13 @@
                 try { data = await res.json(); } catch { data = {}; }
 
                 if (!res.ok) throw new Error(data.detail || `서버 오류 (${res.status})`);
+
+                // Pipeline mode: show plan for approval
+                if (data.status === 'waiting_approval') {
+                    await renderPlanApprovalCard(bubble, data);
+                    loadHistory();
+                    return;
+                }
 
                 renderAiBubble(bubble, data.response || '완료되었습니다.');
 

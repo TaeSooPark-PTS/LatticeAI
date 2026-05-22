@@ -472,6 +472,19 @@ class LLMRouter:
             print(f"⚠️ VLM chat template fallback: {e}")
             return self._build_prompt(message, context, processor)
 
+    async def generate_as(self, model_id: str | None, message: str, context: Optional[str] = None, max_tokens: int = 4096, temperature: float = 0.2) -> str:
+        """Generate using a specific model, temporarily switching if needed. Falls back to current model if model_id is None or not loaded."""
+        if not model_id or model_id == self._current:
+            return await self.generate(message, context, max_tokens, temperature)
+        if model_id not in self._cache:
+            raise ValueError(f"Model '{model_id}' is not loaded. Load it first via /models/load.")
+        prev = self._current
+        self._current = model_id
+        try:
+            return await self.generate(message, context, max_tokens, temperature)
+        finally:
+            self._current = prev
+
     async def generate(self, message: str, context: Optional[str] = None, max_tokens: int = 4096, temperature: float = 0.2, image_data: Optional[str] = None) -> str:
         if not self._current: return "No model."
         self._touch()

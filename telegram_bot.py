@@ -6,6 +6,7 @@ import os
 import socket
 import subprocess
 import tempfile
+import time
 import zipfile
 import json
 from pathlib import Path
@@ -38,7 +39,11 @@ MODELS_URL     = f"{BASE_URL}/models"
 GRAPH_STATS_URL = f"{BASE_URL}/knowledge-graph/stats"
 UPLOAD_DOC_URL  = f"{BASE_URL}/upload/document"
 
+AGENT_RESUME_URL      = f"{BASE_URL}/agent/resume"
 AGENT_WORKSPACE       = Path(env_value("LATTICEAI_AGENT_ROOT", "agent_workspace")).resolve()
+
+# Pending plan approvals: context_id → (chat_id, executing_model, reviewing_model)
+_bot_pending_plans: dict[str, dict] = {}
 MAX_TELEGRAM_FILE_BYTES = 45 * 1024 * 1024
 SERVER_PORT           = int(env_value("LATTICEAI_SERVER_PORT", "4825"))
 INVITE_CODE           = env_value("LATTICEAI_INVITE_CODE", "gemma-lattice-ai")
@@ -49,6 +54,41 @@ CHAT_IDS_FILE = Path(env_value("LATTICEAI_TELEGRAM_CHATS_FILE", str(DATA_DIR / "
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
+
+# ── Server session auth ───────────────────────────────────────────────────────
+
+def _get_server_session() -> str:
+    """Read the most recent valid admin session from sessions.json (web login)."""
+    sessions_file = DATA_DIR / "sessions.json"
+    users_file = DATA_DIR / "users.json"
+    try:
+        if not sessions_file.exists():
+            return ""
+        sessions = json.loads(sessions_file.read_text())
+        admin_emails: set[str] = set()
+        if users_file.exists():
+            users = json.loads(users_file.read_text())
+            admin_emails = {e for e, u in users.items() if u.get("role") == "admin" and not u.get("disabled")}
+        now = time.time()
+        # Pick the newest non-expired admin session
+        best_token, best_ts = "", 0.0
+        for token, entry in sessions.items():
+            email, created_at = entry[0], float(entry[1])
+            if admin_emails and email not in admin_emails:
+                continue
+            if now - created_at > 7 * 86400:
+                continue
+            if created_at > best_ts:
+                best_token, best_ts = token, created_at
+        return best_token
+    except Exception:
+        return ""
+
+def _server_client(**kwargs) -> httpx.AsyncClient:
+    """httpx client pre-loaded with the web session cookie."""
+    token = _get_server_session()
+    cookies = {"session_token": token} if token else {}
+    return httpx.AsyncClient(cookies=cookies, **kwargs)
 
 # ── Chat ID registry ─────────────────────────────────────────────────────────
 
@@ -281,7 +321,7 @@ async def _mac_ram_used_gb() -> str:
 async def show_status(client, chat_id):
     await send_chat_action(client, chat_id, "typing")
     try:
-        async with httpx.AsyncClient() as lc:
+        async with _server_client() as lc:
             res = await lc.get(STATUS_URL, timeout=5.0)
             data = res.json() if res.status_code == 200 else {}
     except Exception:
@@ -306,7 +346,7 @@ async def show_status(client, chat_id):
 async def show_model_info(client, chat_id):
     await send_chat_action(client, chat_id, "typing")
     try:
-        async with httpx.AsyncClient() as lc:
+        async with _server_client() as lc:
             res = await lc.get(MODELS_URL, timeout=5.0)
             data = res.json() if res.status_code == 200 else {}
     except Exception:
@@ -330,7 +370,7 @@ async def show_model_info(client, chat_id):
 async def do_unload_model(client, chat_id, model_id: str = ""):
     await send_chat_action(client, chat_id, "typing")
     try:
-        async with httpx.AsyncClient() as lc:
+        async with _server_client() as lc:
             if model_id:
                 res = await lc.delete(f"{BASE_URL}/models/unload/{model_id}", timeout=15.0)
             else:
@@ -353,7 +393,7 @@ async def do_unload_model(client, chat_id, model_id: str = ""):
 async def show_graph_stats(client, chat_id):
     await send_chat_action(client, chat_id, "typing")
     try:
-        async with httpx.AsyncClient() as lc:
+        async with _server_client() as lc:
             res = await lc.get(GRAPH_STATS_URL, timeout=5.0)
             data = res.json() if res.status_code == 200 else {}
     except Exception:
@@ -414,7 +454,7 @@ async def take_screenshot(client, chat_id):
 async def show_history_summary(client, chat_id, n: int = 5):
     await send_chat_action(client, chat_id, "typing")
     try:
-        async with httpx.AsyncClient() as lc:
+        async with _server_client() as lc:
             res = await lc.get(HISTORY_URL, timeout=10.0)
             items = res.json() if res.status_code == 200 else []
     except Exception:
@@ -435,7 +475,7 @@ async def show_history_summary(client, chat_id, n: int = 5):
 
 async def clear_server_history(client, chat_id, keep_last=0):
     try:
-        async with httpx.AsyncClient() as lc:
+        async with _server_client() as lc:
             res = await lc.delete(HISTORY_URL, params={"keep_last": keep_last}, timeout=10.0)
             data = res.json() if res.headers.get("content-type", "").startswith("application/json") else {}
         if res.status_code == 200:
@@ -466,7 +506,7 @@ async def send_web_link(client, chat_id):
         },
     }
     try:
-        async with httpx.AsyncClient() as lc:
+        async with _server_client() as lc:
             await lc.post(f"{API_URL}/sendMessage", json=payload)
     except Exception as e:
         logger.error("웹 링크 전송 실패: %s", e)
@@ -475,7 +515,7 @@ async def send_web_link(client, chat_id):
 
 async def send_mcp_tools(client, chat_id):
     try:
-        async with httpx.AsyncClient() as lc:
+        async with _server_client() as lc:
             res = await lc.get(MCP_TOOLS_URL, timeout=10.0)
             if res.status_code != 200:
                 await send_message(client, chat_id, f"MCP 도구 목록을 가져오지 못했습니다: {res.status_code}")
@@ -506,7 +546,7 @@ async def process_document_file(client, chat_id, file_id: str, filename: str, ca
     tmp = Path(tempfile.mktemp(suffix=suffix))
     try:
         tmp.write_bytes(raw)
-        async with httpx.AsyncClient() as lc:
+        async with _server_client() as lc:
             with open(tmp, "rb") as f:
                 res = await lc.post(
                     UPLOAD_DOC_URL,
@@ -536,15 +576,37 @@ async def process_document_file(client, chat_id, file_id: str, filename: str, ca
 
 # ── AI chat ───────────────────────────────────────────────────────────────────
 
-async def ask_ai(client, message, image_data=None, agent_mode=True):
+async def ask_ai(client, message, image_data=None, agent_mode=False,
+                 planning_model=None, executing_model=None, reviewing_model=None):
     try:
-        url = CHAT_URL if image_data or not agent_mode else AGENT_URL
-        payload = {"message": message, "source": "telegram"}
-        if image_data:
-            payload["stream"] = False
-            payload["image_data"] = image_data
-        res = await client.post(url, json=payload, timeout=300.0)
+        if agent_mode and not image_data:
+            url = AGENT_URL
+            payload = {
+                "message": message, "source": "telegram",
+                "human_in_loop": True,
+                "planning_model": planning_model,
+                "executing_model": executing_model,
+                "reviewing_model": reviewing_model,
+            }
+        else:
+            url = CHAT_URL
+            payload = {"message": message, "source": "telegram", "stream": False}
+            if image_data:
+                payload["image_data"] = image_data
+        async with _server_client() as sc:
+            res = await sc.post(url, json=payload, timeout=300.0)
         if res.status_code == 200:
+            ct = res.headers.get("content-type", "")
+            if "text/event-stream" in ct:
+                text = ""
+                for line in res.text.splitlines():
+                    if line.startswith("data:"):
+                        try:
+                            chunk = json.loads(line[5:].strip()).get("chunk", "")
+                            text += chunk
+                        except Exception:
+                            pass
+                return {"response": text.strip() or "⚠️ 빈 응답"}
             return res.json()
         try:
             detail = res.json().get("detail", "")
@@ -625,12 +687,88 @@ async def send_generated_files(client, chat_id, generated_files):
     finally:
         zip_path.unlink(missing_ok=True)
 
+# ── Plan approval (Human-in-the-loop) ────────────────────────────────────────
+
+async def send_plan_for_approval(client, chat_id, data: dict) -> None:
+    """Show the agent plan to the user and present Done/Cancel buttons."""
+    context_id = data.get("context_id", "")
+    plan = data.get("plan", {})
+    goal = plan.get("goal", "")
+    steps = plan.get("steps", [])
+    p_model = data.get("planning_model", "current")
+    e_model = data.get("executing_model", "current")
+    r_model = data.get("reviewing_model", "current")
+
+    lines = [f"📋 *플래닝 완료* — 실행 전 확인해주세요\n"]
+    if goal:
+        lines.append(f"*목표:* {goal}\n")
+    for i, step in enumerate(steps, 1):
+        desc = step.get("description") or step.get("action") or str(step)
+        lines.append(f"{i}. {desc}")
+    lines.append(f"\n🧠 플래닝: `{p_model}`")
+    lines.append(f"⚙️ 실행: `{e_model}`")
+    lines.append(f"🔍 검토: `{r_model}`")
+
+    _bot_pending_plans[context_id] = {
+        "chat_id": chat_id,
+        "executing_model": data.get("executing_model"),
+        "reviewing_model": data.get("reviewing_model"),
+    }
+
+    keyboard = {"inline_keyboard": [[
+        {"text": "✅ Done — 실행 시작", "callback_data": f"plan:approve:{context_id}"},
+        {"text": "❌ 취소", "callback_data": f"plan:cancel:{context_id}"},
+    ]]}
+    await send_message(client, chat_id, "\n".join(lines), reply_markup=keyboard)
+
+
+async def handle_plan_callback(client, chat_id, data: str) -> None:
+    """Handle Done/Cancel callback from plan approval buttons."""
+    parts = data.split(":", 2)
+    if len(parts) != 3:
+        return
+    _, action, context_id = parts
+    pending = _bot_pending_plans.pop(context_id, None)
+
+    if action == "cancel" or not pending:
+        await send_message(client, chat_id, "❌ 작업이 취소되었습니다.")
+        return
+
+    await send_message(client, chat_id, "⚙️ 실행 중입니다. 잠시 기다려주세요...")
+    await send_chat_action(client, chat_id, "typing")
+
+    try:
+        async with _server_client() as sc:
+            res = await sc.post(AGENT_RESUME_URL, json={
+                "context_id": context_id,
+                "approved": True,
+                "executing_model": pending.get("executing_model"),
+                "reviewing_model": pending.get("reviewing_model"),
+            }, timeout=300.0)
+        data_r = res.json() if res.status_code == 200 else {}
+        ans = data_r.get("response", f"❌ 서버 에러 ({res.status_code})")
+        await send_message(client, chat_id, str(ans))
+        if isinstance(data_r, dict):
+            await send_generated_files(client, chat_id, collect_generated_files(data_r))
+            await send_preview_links(client, chat_id, collect_preview_urls(data_r))
+    except Exception as e:
+        await send_message(client, chat_id, f"❌ 실행 중 오류: {e}")
+
+
 # ── AI request task ───────────────────────────────────────────────────────────
 
 async def process_ai_request(client, chat_id, user_text, image_data=None):
     try:
         await send_chat_action(client, chat_id, "upload_photo" if image_data else "typing")
+        logger.info("ask_ai 호출 시작: chat_id=%s text=%r", chat_id, user_text[:30])
         data  = await ask_ai(client, user_text, image_data, agent_mode=not image_data)
+        logger.info("ask_ai 완료: chat_id=%s result_keys=%s", chat_id, list(data.keys()) if isinstance(data, dict) else type(data))
+
+        # Human-in-the-loop: show plan and wait for approval
+        if isinstance(data, dict) and data.get("status") == "waiting_approval":
+            await send_plan_for_approval(client, chat_id, data)
+            return
+
         ans   = data.get("response", str(data)) if isinstance(data, dict) else str(data)
         if not ans or not str(ans).strip():
             ans = "⚠️ AI가 답변을 생성하지 못했습니다."
@@ -639,7 +777,7 @@ async def process_ai_request(client, chat_id, user_text, image_data=None):
             await send_generated_files(client, chat_id, collect_generated_files(data))
             await send_preview_links(client, chat_id, collect_preview_urls(data))
     except Exception as e:
-        logger.error("process_ai_request 실패 (chat_id=%s): %s", chat_id, e)
+        logger.error("process_ai_request 실패 (chat_id=%s): %s", chat_id, e, exc_info=True)
         try:
             await send_message(client, chat_id, "⚠️ 처리 중 오류가 발생했습니다. 잠시 후 다시 시도해 주세요.")
         except Exception:
@@ -661,6 +799,9 @@ HELP_TEXT = """\
 /web — 웹 UI 링크
 /mcp — MCP 도구 목록
 /help — 이 도움말
+
+/agent <작업> — 멀티 LLM 에이전트 (계획 확인 후 실행)
+/agent <작업> --exec <모델> --review <모델> — 실행/검토 LLM 지정
 
 일반 텍스트 → AI에게 질문
 사진 전송 → AI 이미지 분석
@@ -697,6 +838,30 @@ async def handle_command(client, chat_id, command: str, args: str):
         await send_mcp_tools(client, chat_id)
     elif cmd in {"help", "h"}:
         await send_message(client, chat_id, HELP_TEXT)
+    elif cmd == "agent":
+        if not args:
+            await send_message(client, chat_id, "사용법: /agent <작업 내용>\n예: /agent 쇼핑몰 메인 페이지 HTML 만들어줘\n\n특정 LLM 지정:\n/agent <작업> --exec openai/gpt-4o --review deepseek/deepseek-chat")
+            return
+        # Parse optional --exec / --review flags
+        exec_model = reviewing_model = None
+        task_text = args
+        import re as _re
+        em = _re.search(r'--exec\s+(\S+)', args)
+        rm = _re.search(r'--review\s+(\S+)', args)
+        if em:
+            exec_model = em.group(1)
+            task_text = task_text.replace(em.group(0), "").strip()
+        if rm:
+            reviewing_model = rm.group(1)
+            task_text = task_text.replace(rm.group(0), "").strip()
+        await send_chat_action(client, chat_id, "typing")
+        data = await ask_ai(client, task_text, agent_mode=True,
+                            executing_model=exec_model, reviewing_model=reviewing_model)
+        if isinstance(data, dict) and data.get("status") == "waiting_approval":
+            await send_plan_for_approval(client, chat_id, data)
+        else:
+            ans = data.get("response", str(data)) if isinstance(data, dict) else str(data)
+            await send_message(client, chat_id, ans)
     else:
         await send_message(client, chat_id, f"알 수 없는 명령어: /{cmd}\n/help 로 명령어 목록을 확인하세요.")
 
@@ -730,6 +895,9 @@ async def handle_callback_query(client, callback_query):
     elif data.startswith("model:unload:"):
         model_id = data[len("model:unload:"):]
         await do_unload_model(client, chat_id, model_id)
+    elif data.startswith("plan:"):
+        task = asyncio.create_task(handle_plan_callback(client, chat_id, data))
+        task.add_done_callback(_log_task_exception)
 
 # ── Main loop ─────────────────────────────────────────────────────────────────
 

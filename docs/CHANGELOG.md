@@ -1,5 +1,29 @@
 # Changelog
 
+## [0.1.17] - 2026-05-22
+
+### Multi-LLM Pipeline
+
+- **파이프라인 UI 카드** — ops 대시보드의 ACTIVE MODEL 카드와 PRIVATE VPC 카드 사이에 PIPELINE 카드 추가
+  - 파이프라인 비활성 시: "멀티 LLM 파이프라인 / Plan → Execute → Review 모델 설정" 표시
+  - 파이프라인 활성 시: "Pipeline ON / P:모델명 E:모델명 R:모델명" 으로 현재 설정 표시
+- **멀티 LLM 에이전트 파이프라인** — Planning / Executing / Reviewing 3단계에 각각 다른 LLM 지정 가능
+  - 모달에서 각 단계별 모델 선택 (로드된 로컬 모델 + 클라우드 프로바이더 자동 목록 구성)
+  - 하나의 모델을 모든 단계에 사용해도 정상 동작
+- **Human-in-the-loop** — 파이프라인 활성화 시 Planning 완료 후 사용자 승인을 기다렸다가 Execute 단계로 진행
+  - 웹 UI: 플랜 승인 카드(`✅ 승인 / ❌ 취소`) 렌더링
+  - Telegram 봇: 인라인 버튼으로 플랜 승인/취소
+- **`/agent/resume` 엔드포인트** — `context_id`와 `approved` 필드로 대기 중인 에이전트 재개 또는 취소
+- **`AgentRequest` 확장** — `planning_model`, `executing_model`, `reviewing_model`, `human_in_loop` 파라미터 추가
+- **`LLMRouter.generate_as(model_id, ...)`** — 현재 모델을 임시 교체해 지정 모델로 생성 후 원복하는 헬퍼
+- **Telegram 봇 인증 수정** — 서버 호출 시 `~/.ltcai/sessions.json`에서 어드민 세션 토큰을 읽어 쿠키로 전달
+- **Telegram SSE 파싱** — `/chat` 스트리밍 응답(`text/event-stream`)을 올바르게 파싱하도록 수정
+- **`_sessions_file()` 버그 수정** — 정의 이전에 전역 `DATA_DIR` 참조하던 문제 해결 (함수 내 경로 직접 계산)
+
+### Release
+- 배포 버전을 `0.1.17`로 상향
+- 대상 채널: `npm`, `PyPI`, `VS Code Marketplace`, `Open VSX`
+
 ## [0.1.16] - 2026-05-22
 
 ### First-user admin bootstrap

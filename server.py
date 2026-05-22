@@ -243,7 +243,9 @@ _SESSION_REFRESH_THRESHOLD = 60 * 15  # only persist if >15 min since last bump 
 _sessions_lock = threading.Lock()
 
 def _sessions_file() -> Path:
-    return DATA_DIR / "sessions.json"
+    data_dir = Path(os.getenv("LATTICEAI_DATA_DIR") or (Path.home() / ".ltcai"))
+    data_dir.mkdir(parents=True, exist_ok=True)
+    return data_dir / "sessions.json"
 
 def _load_sessions() -> Dict[str, tuple]:
     try:
@@ -2033,6 +2035,20 @@ class AgentRequest(BaseModel):
     temperature: float = 0.1
     user_email: Optional[str] = None
     user_nickname: Optional[str] = None
+    # Multi-LLM pipeline: per-phase model override (None = use current loaded model)
+    planning_model: Optional[str] = None
+    executing_model: Optional[str] = None
+    reviewing_model: Optional[str] = None
+    # When True: pause after planning and wait for /agent/resume
+    human_in_loop: bool = False
+
+
+class AgentResumeRequest(BaseModel):
+    context_id: str
+    approved: bool = True
+    modified_plan: Optional[dict] = None
+    executing_model: Optional[str] = None
+    reviewing_model: Optional[str] = None
 
 
 class AgentEvalRequest(BaseModel):
@@ -2058,17 +2074,25 @@ AGENT_TERMINAL_STATES = frozenset({AgentState.DONE, AgentState.FAILED})
 class AgentRunContext:
     """Mutable state carrier passed through all agent phases."""
     __slots__ = ("state", "plan", "transcript", "retry_count",
-                 "state_history", "corrections", "final_message", "rollback_log")
+                 "state_history", "corrections", "final_message", "rollback_log",
+                 "executing_model", "reviewing_model")
 
     def __init__(self) -> None:
-        self.state:         AgentState = AgentState.IDLE
-        self.plan:          dict       = {}
-        self.transcript:    list       = []
-        self.retry_count:   int        = 0
-        self.state_history: list       = []
-        self.corrections:   list       = []
-        self.final_message: str        = ""
-        self.rollback_log:  list       = []
+        self.state:           AgentState   = AgentState.IDLE
+        self.plan:            dict         = {}
+        self.transcript:      list         = []
+        self.retry_count:     int          = 0
+        self.state_history:   list         = []
+        self.corrections:     list         = []
+        self.final_message:   str          = ""
+        self.rollback_log:    list         = []
+        self.executing_model: str | None   = None
+        self.reviewing_model: str | None   = None
+
+
+# Pending agent contexts waiting for human approval: context_id → (ctx, req, lang_hint, current_user)
+_pending_agents: dict[str, tuple] = {}
+_pending_agents_lock = threading.Lock()
 
 
 class ToolPathRequest(BaseModel):
@@ -4323,6 +4347,7 @@ def _extract_agent_action(raw: str) -> Dict:
 
 async def _phase_plan(
     ctx: AgentRunContext, req: AgentRequest, router, lang_hint: str, current_user: str,
+    model_id: str | None = None,
 ) -> None:
     """PLAN: Planner role produces a structured plan JSON."""
     context = (
@@ -4331,7 +4356,8 @@ async def _phase_plan(
         f"Workspace root: {AGENT_ROOT}\n\n"
         f"User request: {req.message}"
     )
-    raw = await router.generate(
+    raw = await router.generate_as(
+        model_id,
         message="Produce a JSON execution plan for this request.",
         context=context, max_tokens=1024, temperature=0.1,
     )
@@ -4377,7 +4403,7 @@ def _phase_approval(ctx: AgentRunContext, current_user: str) -> None:
 
 async def _phase_execute(
     ctx: AgentRunContext, req: AgentRequest, router, lang_hint: str,
-    current_user: str, max_steps: int,
+    current_user: str, max_steps: int, model_id: str | None = None,
 ) -> None:
     """EXECUTE: Executor role calls tools one at a time until final or budget exhausted."""
     exec_count = sum(1 for s in ctx.transcript if s.get("state") == AgentState.EXECUTING.value)
@@ -4398,7 +4424,8 @@ async def _phase_execute(
             f"User request: {req.message}{corrections_hint}\n\n"
             f"Execution transcript:\n{json.dumps(ctx.transcript, ensure_ascii=False, indent=2)}"
         )
-        raw = await router.generate(
+        raw = await router.generate_as(
+            model_id,
             message="Execute the next step.",
             context=context, max_tokens=4096, temperature=req.temperature,
         )
@@ -4492,7 +4519,7 @@ async def _phase_execute(
 
 async def _phase_verify(
     ctx: AgentRunContext, req: AgentRequest, router, lang_hint: str, current_user: str,
-    max_retry: int = 3,
+    max_retry: int = 3, model_id: str | None = None,
 ) -> None:
     """VERIFYING: Critic role evaluates transcript → DONE / EXECUTING (retry) / ROLLBACK / FAILED."""
     context = (
@@ -4502,7 +4529,8 @@ async def _phase_verify(
         f"Plan goal: {ctx.plan.get('goal', req.message)}\n\n"
         f"Full transcript:\n{json.dumps(ctx.transcript, ensure_ascii=False, indent=2)}"
     )
-    raw = await router.generate(
+    raw = await router.generate_as(
+        model_id,
         message="Review the execution transcript and return your verdict JSON.",
         context=context, max_tokens=512, temperature=0.1,
     )
@@ -4685,29 +4713,54 @@ async def agent(req: AgentRequest, request: Request):
     max_retry = 3
 
     ctx = AgentRunContext()
+    ctx.executing_model = req.executing_model
+    ctx.reviewing_model = req.reviewing_model
 
+    # PLANNING phase
+    ctx.state = AgentState.PLANNING
+    ctx.state_history.append(ctx.state.value)
+    await _phase_plan(ctx, req, router, lang_hint, current_user, model_id=req.planning_model)
+
+    # Human-in-the-loop: pause after planning, return plan to UI
+    if req.human_in_loop:
+        context_id = secrets.token_urlsafe(16)
+        with _pending_agents_lock:
+            _pending_agents[context_id] = (ctx, req, lang_hint, current_user)
+        return {
+            "status": "waiting_approval",
+            "context_id": context_id,
+            "plan": ctx.plan,
+            "steps": ctx.transcript,
+            "state_history": ctx.state_history,
+            "planning_model": req.planning_model or router.current_model_id,
+            "executing_model": req.executing_model or router.current_model_id,
+            "reviewing_model": req.reviewing_model or router.current_model_id,
+        }
+
+    # Auto-approve and run to completion (default behaviour)
+    _phase_approval(ctx, current_user)
+    return await _agent_run_to_completion(ctx, req, router, lang_hint, current_user, max_steps, max_retry)
+
+
+async def _agent_run_to_completion(
+    ctx: AgentRunContext, req: AgentRequest, router, lang_hint: str,
+    current_user: str, max_steps: int, max_retry: int,
+) -> dict:
+    """Run EXECUTING → VERIFYING loop until terminal state."""
     while ctx.state not in AGENT_TERMINAL_STATES:
         ctx.state_history.append(ctx.state.value)
-        # Hard guard against infinite state loops
         if len(ctx.state_history) > 200:
             ctx.final_message = "에이전트 상태 머신이 최대 반복(200)에 도달해 중단했습니다."
             ctx.state = AgentState.FAILED
             break
 
-        if ctx.state == AgentState.IDLE:
-            ctx.state = AgentState.PLANNING
-
-        elif ctx.state == AgentState.PLANNING:
-            await _phase_plan(ctx, req, router, lang_hint, current_user)
-
-        elif ctx.state == AgentState.WAITING_APPROVAL:
-            _phase_approval(ctx, current_user)
-
-        elif ctx.state == AgentState.EXECUTING:
-            await _phase_execute(ctx, req, router, lang_hint, current_user, max_steps)
+        if ctx.state == AgentState.EXECUTING:
+            await _phase_execute(ctx, req, router, lang_hint, current_user, max_steps,
+                                 model_id=ctx.executing_model)
 
         elif ctx.state == AgentState.VERIFYING:
-            await _phase_verify(ctx, req, router, lang_hint, current_user, max_retry)
+            await _phase_verify(ctx, req, router, lang_hint, current_user, max_retry,
+                                model_id=ctx.reviewing_model)
 
         elif ctx.state == AgentState.ROLLBACK:
             _phase_rollback(ctx, current_user)
@@ -4715,10 +4768,7 @@ async def agent(req: AgentRequest, request: Request):
         else:
             ctx.state = AgentState.FAILED
 
-    # Record terminal state in history for clients
     ctx.state_history.append(ctx.state.value)
-
-    # Fire-and-forget memory update — does not block the response
     asyncio.create_task(_phase_memory_update(ctx, req, router, current_user))
 
     message = ctx.final_message or "작업을 완료했습니다."
@@ -4734,6 +4784,36 @@ async def agent(req: AgentRequest, request: Request):
         "final_state": ctx.state.value,
         "created_files": created_files,
     }
+
+
+@app.post("/agent/resume")
+async def agent_resume(req: AgentResumeRequest, request: Request):
+    """Resume a paused agent after human approval of the plan."""
+    current_user = require_user(request)
+
+    with _pending_agents_lock:
+        entry = _pending_agents.pop(req.context_id, None)
+    if not entry:
+        raise HTTPException(status_code=404, detail="Agent context not found or expired. Start a new request.")
+
+    ctx, orig_req, lang_hint, _orig_user = entry
+
+    if not req.approved:
+        return {"status": "cancelled", "response": "사용자가 계획을 취소했습니다."}
+
+    if req.modified_plan:
+        ctx.plan = req.modified_plan
+        ctx.transcript[-1].update(ctx.plan)  # keep transcript in sync
+
+    # Apply model overrides from resume request (takes priority over original request)
+    ctx.executing_model = req.executing_model or ctx.executing_model
+    ctx.reviewing_model = req.reviewing_model or ctx.reviewing_model
+
+    _phase_approval(ctx, current_user)
+
+    max_steps = max(1, min(orig_req.max_steps, 50))
+    max_retry = 3
+    return await _agent_run_to_completion(ctx, orig_req, router, lang_hint, current_user, max_steps, max_retry)
 
 
 # ── Direct Tool API ───────────────────────────────────────────────────────────
