@@ -265,6 +265,21 @@ def main() -> None:
 
     _print_banner(args.host, args.port, tunnel_url)
 
+    # Telegram startup notification (local start, tunnel handled separately inside _start_tunnel)
+    if not args.tunnel:
+        _tg_token = os.getenv("LATTICEAI_TELEGRAM_BOT_TOKEN", "")
+        _tg_chat  = os.getenv("LATTICEAI_TELEGRAM_CHAT_ID", "")
+        if _tg_token and _tg_chat:
+            _local_msg = (
+                f"✅ Lattice AI 시작됨\n\n"
+                f"🏠 로컬: http://localhost:{args.port}"
+            )
+            threading.Thread(
+                target=_send_telegram,
+                args=(_tg_token, _tg_chat, _local_msg),
+                daemon=True,
+            ).start()
+
     import uvicorn
 
     uvicorn.run(
