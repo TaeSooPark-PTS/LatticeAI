@@ -1,5 +1,34 @@
 # Changelog
 
+## [0.1.23] - 2026-05-24
+
+### Discord 권한 알림 시스템
+
+- **`GET /permissions/pending`** — 대기 중인 파일 접근 권한 요청 목록 (관리자)
+- **`POST /permissions/approve/{token}`** — 권한 승인 (관리자 세션 또는 `LATTICEAI_PERMISSION_SECRET`)
+- **`POST /permissions/deny/{token}`** — 권한 거부/취소
+- **`GET /permissions/status/{token}`** — 승인 상태 폴링 (AI 에이전트용)
+- 권한 토큰 기본값 `approved: False` — 명시적 승인 전까지 파일 접근 불가
+- `~/.ltcai/permission_queue.json` — 서버가 기록, Claude Code Discord 플러그인이 읽어 알림 전송
+- `LATTICEAI_PERMISSION_SECRET` 환경변수 — 모니터 스크립트가 세션 없이 approve/deny 호출 가능
+- `perm_monitor.py` — 권한 목록 조회·승인·거부 CLI 도우미 (`list` / `approve TOKEN` / `deny TOKEN` / `discord-msg`)
+- Discord에서 `승인 <토큰앞8자>` / `거부 <토큰앞8자>` 로 파일 접근 제어 가능
+
+### 리포지터리 UX 개선
+
+- **영어 README** 전면 재작성 — 한국어는 접을 수 있는 `<details>` 섹션으로 이동
+- **SVG 로고** 추가 (`docs/images/logo.svg`)
+- **경쟁 제품 비교표** — Lattice AI vs Open WebUI · Continue.dev · GitHub Copilot
+- **실제 UI 스크린샷 3장** — Chat UI · Admin Dashboard · Data Graph (Playwright 2x 캡처)
+- **VS Code 익스텐션 카테고리** `Other` → `AI, Machine Learning, Chat, Other`
+- **VS Code 익스텐션 키워드** 8개 → 16개 (copilot, apple-silicon, groq, graph-rag 등)
+- **VS Code 익스텐션 README** 전면 재작성 (기능표, 비교표, 모델 목록)
+- 구버전 `.tgz` / `.vsix` 빌드 파일 삭제
+
+### Release
+- 배포 버전을 `0.1.23`으로 상향
+- 대상 채널: `npm` · `PyPI` · `VS Code Marketplace` · `Open VSX`
+
 ## [0.1.22] - 2026-05-24
 
 ### 리포지터리 UX 개선 — 다운로드 유입 최적화

@@ -7,7 +7,7 @@
 [![PyPI](https://img.shields.io/pypi/v/ltcai?label=PyPI&color=blue)](https://pypi.org/project/ltcai/)
 [![PyPI Downloads](https://img.shields.io/pypi/dm/ltcai?label=PyPI%20downloads)](https://pypi.org/project/ltcai/)
 [![npm](https://img.shields.io/npm/v/ltcai?label=npm)](https://www.npmjs.com/package/ltcai)
-[![VS Code](https://img.shields.io/badge/VS%20Code%20Marketplace-v0.1.22-blue?logo=visualstudiocode)](https://marketplace.visualstudio.com/items?itemName=parktaesoo.ltcai)
+[![VS Code](https://img.shields.io/badge/VS%20Code%20Marketplace-v0.1.23-blue?logo=visualstudiocode)](https://marketplace.visualstudio.com/items?itemName=parktaesoo.ltcai)
 [![Open VSX](https://img.shields.io/open-vsx/v/parktaesoo/ltcai?label=Open%20VSX)](https://open-vsx.org/extension/parktaesoo/ltcai)
 [![License: MIT](https://img.shields.io/badge/License-MIT-green)](./LICENSE)
 [![Python 3.11+](https://img.shields.io/badge/python-3.11+-blue)](https://www.python.org/)
@@ -270,7 +270,7 @@ Or: `./start_ai.sh` (auto-restart + caffeinate)
 | VS Code Marketplace | [marketplace.visualstudio.com](https://marketplace.visualstudio.com/items?itemName=parktaesoo.ltcai) |
 | Open VSX | [open-vsx.org](https://open-vsx.org/extension/parktaesoo/ltcai) |
 
-Current version: **0.1.22** — [Changelog](docs/CHANGELOG.md)
+Current version: **0.1.23** — [Changelog](docs/CHANGELOG.md)
 
 ---
 
