@@ -5475,8 +5475,44 @@ _LOCAL_APPROVAL_TTL_SECONDS = 5 * 60
 _local_approval_lock = threading.Lock()
 _local_approvals: Dict[str, Dict[str, object]] = {}
 
-# Discord webhook URL for permission notifications (optional)
+# Discord bot / webhook settings for permission notifications (optional)
 DISCORD_PERMISSION_WEBHOOK_URL = env_value("LATTICEAI_DISCORD_PERMISSION_WEBHOOK", "")
+DISCORD_BOT_TOKEN = env_value("LATTICEAI_DISCORD_BOT_TOKEN", "")
+DISCORD_PERMISSION_CHANNEL = env_value("LATTICEAI_DISCORD_PERMISSION_CHANNEL", "")
+
+# Secret token that allows permission monitor script to call approve/deny endpoints
+# without an admin user session (used by perm_monitor.py).
+PERMISSION_MONITOR_SECRET = env_value("LATTICEAI_PERMISSION_SECRET", "")
+
+# Local queue file — written by server, read by perm_monitor.py
+_PERM_QUEUE_FILE = DATA_DIR / "permission_queue.json"
+
+
+def _perm_queue_write(token: str, record: Dict[str, object]) -> None:
+    """Append a permission request to the local queue file for the monitor script."""
+    try:
+        queue: Dict = {}
+        if _PERM_QUEUE_FILE.exists():
+            try:
+                queue = json.loads(_PERM_QUEUE_FILE.read_text(encoding="utf-8"))
+            except Exception:
+                queue = {}
+        queue[token] = {**record, "notified": False}
+        _PERM_QUEUE_FILE.write_text(json.dumps(queue, ensure_ascii=False, indent=2), encoding="utf-8")
+    except Exception as exc:
+        logging.warning("perm_queue_write failed: %s", exc)
+
+
+def _perm_queue_remove(token: str) -> None:
+    """Remove a token from the queue file after approval or denial."""
+    try:
+        if not _PERM_QUEUE_FILE.exists():
+            return
+        queue: Dict = json.loads(_PERM_QUEUE_FILE.read_text(encoding="utf-8"))
+        queue.pop(token, None)
+        _PERM_QUEUE_FILE.write_text(json.dumps(queue, ensure_ascii=False, indent=2), encoding="utf-8")
+    except Exception as exc:
+        logging.warning("perm_queue_remove failed: %s", exc)
 
 
 def _normalize_local_path_for_approval(path: str) -> str:
@@ -5488,47 +5524,80 @@ def _content_fingerprint(content: str = "") -> str:
 
 
 def _notify_discord_permission_sync(token: str, path: str, action: str, user_email: str) -> None:
-    """Fire-and-forget Discord webhook notification for permission requests."""
-    if not DISCORD_PERMISSION_WEBHOOK_URL:
-        return
-    action_label = _PERMISSION_ACTION_LABELS.get(action, action)
-    expires_at_iso = time.strftime(
-        "%Y-%m-%d %H:%M:%S UTC",
-        time.gmtime(time.time() + _LOCAL_APPROVAL_TTL_SECONDS),
-    )
-    payload = json.dumps({
-        "embeds": [
-            {
-                "title": "🔐 파일 접근 권한 요청",
-                "color": 0xFF9900,
-                "fields": [
-                    {"name": "경로", "value": f"`{path}`", "inline": False},
-                    {"name": "작업", "value": action_label, "inline": True},
-                    {"name": "요청자", "value": user_email, "inline": True},
-                    {"name": "토큰", "value": f"`{token}`", "inline": False},
-                    {"name": "만료", "value": expires_at_iso, "inline": True},
-                ],
-                "footer": {
-                    "text": (
-                        "승인: POST /permissions/approve/{token}  |  "
-                        "거부: POST /permissions/deny/{token}  |  "
-                        "목록: GET /permissions/pending"
-                    )
-                },
-            }
-        ]
-    }, ensure_ascii=False).encode("utf-8")
-    try:
-        req = urllib.request.Request(
-            DISCORD_PERMISSION_WEBHOOK_URL,
-            data=payload,
-            headers={"Content-Type": "application/json"},
-            method="POST",
+    """Fire-and-forget Discord bot/webhook notification for permission requests."""
+    # Try Discord bot API first (sends to a specific channel), then fall back to webhook
+    sent = False
+    if DISCORD_BOT_TOKEN and DISCORD_PERMISSION_CHANNEL:
+        action_label = _PERMISSION_ACTION_LABELS.get(action, action)
+        expires_at_iso = time.strftime(
+            "%Y-%m-%d %H:%M:%S UTC",
+            time.gmtime(time.time() + _LOCAL_APPROVAL_TTL_SECONDS),
         )
-        with urllib.request.urlopen(req, timeout=5):
-            pass
-    except Exception as exc:  # pylint: disable=broad-except
-        logging.warning("Discord permission webhook failed: %s", exc)
+        msg = (
+            f"🔐 **파일 접근 권한 요청**\n"
+            f"**경로:** `{path}`\n"
+            f"**작업:** {action_label}\n"
+            f"**요청자:** {user_email}\n"
+            f"**토큰:** `{token}`\n"
+            f"**만료:** {expires_at_iso}\n\n"
+            f"승인하려면 `승인 {token[:8]}` / 거부하려면 `거부 {token[:8]}` 라고 답장하세요."
+        )
+        payload = json.dumps({"content": msg}, ensure_ascii=False).encode("utf-8")
+        try:
+            req = urllib.request.Request(
+                f"https://discord.com/api/v10/channels/{DISCORD_PERMISSION_CHANNEL}/messages",
+                data=payload,
+                headers={
+                    "Content-Type": "application/json",
+                    "Authorization": f"Bot {DISCORD_BOT_TOKEN}",
+                },
+                method="POST",
+            )
+            with urllib.request.urlopen(req, timeout=5):
+                pass
+            sent = True
+        except Exception as exc:
+            logging.warning("Discord bot permission notify failed: %s", exc)
+
+    if not sent and DISCORD_PERMISSION_WEBHOOK_URL:
+        action_label = _PERMISSION_ACTION_LABELS.get(action, action)
+        expires_at_iso = time.strftime(
+            "%Y-%m-%d %H:%M:%S UTC",
+            time.gmtime(time.time() + _LOCAL_APPROVAL_TTL_SECONDS),
+        )
+        payload = json.dumps({
+            "embeds": [
+                {
+                    "title": "🔐 파일 접근 권한 요청",
+                    "color": 0xFF9900,
+                    "fields": [
+                        {"name": "경로", "value": f"`{path}`", "inline": False},
+                        {"name": "작업", "value": action_label, "inline": True},
+                        {"name": "요청자", "value": user_email, "inline": True},
+                        {"name": "토큰", "value": f"`{token}`", "inline": False},
+                        {"name": "만료", "value": expires_at_iso, "inline": True},
+                    ],
+                    "footer": {
+                        "text": (
+                            "승인: POST /permissions/approve/{token}  |  "
+                            "거부: POST /permissions/deny/{token}  |  "
+                            "목록: GET /permissions/pending"
+                        )
+                    },
+                }
+            ]
+        }, ensure_ascii=False).encode("utf-8")
+        try:
+            req = urllib.request.Request(
+                DISCORD_PERMISSION_WEBHOOK_URL,
+                data=payload,
+                headers={"Content-Type": "application/json"},
+                method="POST",
+            )
+            with urllib.request.urlopen(req, timeout=5):
+                pass
+        except Exception as exc:  # pylint: disable=broad-except
+            logging.warning("Discord permission webhook failed: %s", exc)
 
 
 def _local_permission_response(path: str, action: str, user_email: str, content: str = "") -> dict:
@@ -5546,13 +5615,9 @@ def _local_permission_response(path: str, action: str, user_email: str, content:
         record["content_hash"] = _content_fingerprint(content)
     with _local_approval_lock:
         _local_approvals[token] = record
-    # Notify Discord in background thread so the HTTP response isn't delayed
-    if DISCORD_PERMISSION_WEBHOOK_URL:
-        threading.Thread(
-            target=_notify_discord_permission_sync,
-            args=(token, path, action, user_email),
-            daemon=True,
-        ).start()
+    # Write to local queue file — perm_monitor.py or Claude Code reads this
+    # and relays the notification to Discord via the Discord MCP plugin.
+    _perm_queue_write(token, record)
     action_label = _PERMISSION_ACTION_LABELS.get(action, action)
     return {
         "permission_required": True,
@@ -5562,7 +5627,7 @@ def _local_permission_response(path: str, action: str, user_email: str, content:
         "approval_token": token,
         "expires_in": _LOCAL_APPROVAL_TTL_SECONDS,
         "message": f"AI가 '{path}' 에 대한 {action_label} 권한을 요청합니다.",
-        "discord_notified": bool(DISCORD_PERMISSION_WEBHOOK_URL),
+        "check_status_url": f"/permissions/status/{token}",
     }
 
 
@@ -5619,11 +5684,23 @@ async def permissions_pending(request: Request):
     return {"pending": result, "count": len(result)}
 
 
+def _check_permission_auth(request: Request) -> None:
+    """Allow access if requester is admin OR presents the LATTICEAI_PERMISSION_SECRET.
+    Used by approve/deny endpoints so the permission monitor script can call them."""
+    # Check secret header first (monitor script path)
+    if PERMISSION_MONITOR_SECRET:
+        auth_header = request.headers.get("Authorization", "")
+        if auth_header == f"Bearer {PERMISSION_MONITOR_SECRET}":
+            return  # Authorized via secret
+    # Fall back to admin session
+    require_admin(request)
+
+
 @app.post("/permissions/approve/{token}")
 async def permissions_approve(token: str, request: Request):
-    """Approve a pending permission request. Admin only.
+    """Approve a pending permission request. Admin or permission-monitor secret.
     Called by Discord (via Claude Code) or web UI after user confirmation."""
-    require_admin(request)
+    _check_permission_auth(request)
     with _local_approval_lock:
         record = _local_approvals.get(token)
         if not record:
@@ -5632,6 +5709,7 @@ async def permissions_approve(token: str, request: Request):
             _local_approvals.pop(token, None)
             raise HTTPException(status_code=410, detail="토큰이 만료되었습니다.")
         record["approved"] = True
+    _perm_queue_remove(token)
     logging.info(
         "Permission approved: token=%s path=%s action=%s user=%s",
         token, record.get("path"), record.get("action"), record.get("user_email"),
@@ -5647,10 +5725,11 @@ async def permissions_approve(token: str, request: Request):
 
 @app.post("/permissions/deny/{token}")
 async def permissions_deny(token: str, request: Request):
-    """Deny/revoke a pending permission request. Admin only."""
-    require_admin(request)
+    """Deny/revoke a pending permission request. Admin or permission-monitor secret."""
+    _check_permission_auth(request)
     with _local_approval_lock:
         record = _local_approvals.pop(token, None)
+    _perm_queue_remove(token)
     if not record:
         raise HTTPException(status_code=404, detail="토큰이 없거나 이미 처리되었습니다.")
     logging.info(
