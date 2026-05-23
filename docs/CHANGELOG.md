@@ -2,13 +2,37 @@
 
 ## [0.1.22] - 2026-05-24
 
+### 리포지터리 UX 개선 — 다운로드 유입 최적화
+
+#### README 전면 재작성
+- **영어 메인 문서** — 한국어는 접을 수 있는 `<details>` 섹션으로 이동 (국제 유입 대응)
+- **SVG 로고 추가** (`docs/images/logo.svg`) — 인디고→시안 그라디언트 래티스 그리드 아이콘
+- **경쟁 제품 비교표** — Lattice AI vs Open WebUI · Continue.dev · GitHub Copilot 10개 기준 비교
+- **PyPI 월간 다운로드 수 배지** 추가 (신뢰도 지표)
+- 기능 · 보안 · API · 트러블슈팅 섹션을 표(table) 형식으로 정리 (가독성 향상)
+
+#### 실제 UI 스크린샷 자동 캡처
+- `docs/images/screenshot-chat.png` — 웹 채팅 UI (사이드바, 모델/파이프라인/VPC 카드)
+- `docs/images/screenshot-admin.png` — 어드민 대시보드 + Audit & Data Governance 섹션
+- `docs/images/screenshot-graph.png` — Data Graph 시각화 (299 노드, 443 엣지)
+- README 상단에 3단 그리드 스크린샷 테이블 추가
+- `scripts/take_screenshots.js` — Playwright Chromium 헤드리스 캡처 스크립트 (2x 레티나)
+
+#### VS Code 익스텐션 메타데이터 개선
+- **카테고리** `Other` → `AI, Machine Learning, Chat, Other` (Marketplace 검색 노출 증가)
+- **키워드** 8개 → 16개 추가 (`copilot`, `apple-silicon`, `groq`, `graph-rag` 등)
+- **설명 문구** 구체화 — 핵심 차별점(MLX, MCP, Graph RAG, zero telemetry) 명시
+- **익스텐션 README 전면 재작성** — 기능표 · 빠른 시작 · 단축키 · 지원 모델 · 설정 · 비교표 포함
+
+#### 리포지터리 정리
+- 루트 및 `vscode-extension/`의 구버전 `.tgz` / `.vsix` 빌드 파일 삭제
+
 ### Release preparation
 
 - 배포 버전을 `0.1.22`로 상향
   - `package.json`
   - `pyproject.toml`
   - `vscode-extension/package.json`
-- README 현재 배포 버전과 릴리스 체크 섹션을 `0.1.22` 기준으로 갱신
 - npm / PyPI / VS Code Marketplace / Open VSX 배포 전 빌드 산출물 생성
 
 ### Verification
