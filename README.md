@@ -28,6 +28,18 @@
 
 ---
 
+## 📸 Screenshots
+
+<table>
+<tr>
+<td width="33%"><b>Chat UI</b><br/><img src="docs/images/screenshot-chat.png" alt="Lattice AI Chat" width="100%"/></td>
+<td width="33%"><b>Admin Dashboard</b><br/><img src="docs/images/screenshot-admin.png" alt="Admin Dashboard" width="100%"/></td>
+<td width="33%"><b>Data Graph (Graph RAG)</b><br/><img src="docs/images/screenshot-graph.png" alt="Knowledge Graph" width="100%"/></td>
+</tr>
+</table>
+
+---
+
 ## ⚡ Quick Start (30 seconds)
 
 ```bash
