@@ -5631,6 +5631,13 @@ def _local_permission_response(path: str, action: str, user_email: str, content:
     }
 
 
+def _require_local_user(request: Request) -> str:
+    email = get_current_user(request)
+    if not email:
+        raise HTTPException(status_code=401, detail="로컬 파일 접근은 로그인 세션이 필요합니다.")
+    return email
+
+
 def _require_local_approval(
     *,
     token: Optional[str],
@@ -5773,16 +5780,22 @@ async def permissions_status(token: str, request: Request):
 
 @app.post("/local/list")
 async def local_list_endpoint(req: LocalAccessRequest, request: Request):
-    current_user = require_user(request)
+    current_user = _require_local_user(request)
     if not req.approved:
         return _local_permission_response(req.path, "list", current_user)
     _require_local_approval(token=req.approval_token, path=req.path, action="list", user_email=current_user)
     return _tool_response(local_list, req.path)
 
 
+@app.get("/local/list")
+async def local_list_get_endpoint(path: str, request: Request):
+    current_user = _require_local_user(request)
+    return _local_permission_response(path, "list", current_user)
+
+
 @app.post("/local/read")
 async def local_read_endpoint(req: LocalAccessRequest, request: Request):
-    current_user = require_user(request)
+    current_user = _require_local_user(request)
     if not req.approved:
         return _local_permission_response(req.path, "read", current_user)
     _require_local_approval(token=req.approval_token, path=req.path, action="read", user_email=current_user)
@@ -5792,7 +5805,7 @@ async def local_read_endpoint(req: LocalAccessRequest, request: Request):
 @app.get("/local/serve")
 async def local_serve_file(path: str, request: Request, approval_token: Optional[str] = None):
     """Serve a local file (images etc.) directly for browser preview."""
-    current_user = require_user(request)
+    current_user = _require_local_user(request)
     _require_local_approval(token=approval_token, path=path, action="read", user_email=current_user)
     target = Path(path).expanduser().resolve()
     if not target.exists() or not target.is_file():
@@ -5802,7 +5815,7 @@ async def local_serve_file(path: str, request: Request, approval_token: Optional
 
 @app.post("/local/write")
 async def local_write_endpoint(req: LocalWriteRequest, request: Request):
-    current_user = require_user(request)
+    current_user = _require_local_user(request)
     if not req.approved:
         return _local_permission_response(req.path, "write", current_user, req.content)
     _require_local_approval(

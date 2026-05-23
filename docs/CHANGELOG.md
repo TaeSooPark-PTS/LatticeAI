@@ -19,11 +19,21 @@
 - **영어 README** 전면 재작성 — 한국어는 접을 수 있는 `<details>` 섹션으로 이동
 - **SVG 로고** 추가 (`docs/images/logo.svg`)
 - **경쟁 제품 비교표** — Lattice AI vs Open WebUI · Continue.dev · GitHub Copilot
+- **Quick Start 분리** — PyPI / npm / VS Code 사용자의 첫 설치 경로를 각각 명확히 안내
+- **비교표 기준 명시** — 공개 제품 동작 기준 시점을 README에 표기
+- **패키지 페이지 이미지 안정화** — README 이미지 URL을 GitHub raw URL로 전환해 PyPI / npm / Marketplace에서도 표시되도록 개선
+- **npm 패키지 정리** — 배포 tarball에서 테스트/캐시 파일 제외
 - **실제 UI 스크린샷 3장** — Chat UI · Admin Dashboard · Data Graph (Playwright 2x 캡처)
 - **VS Code 익스텐션 카테고리** `Other` → `AI, Machine Learning, Chat, Other`
 - **VS Code 익스텐션 키워드** 8개 → 16개 (copilot, apple-silicon, groq, graph-rag 등)
 - **VS Code 익스텐션 README** 전면 재작성 (기능표, 비교표, 모델 목록)
 - 구버전 `.tgz` / `.vsix` 빌드 파일 삭제
+
+### CI / 보안 안정화
+
+- `/local/list` `GET` smoke-test 호환 라우트 추가
+- `/local/list`, `/local/read`, `/local/write`, `/local/serve`는 로컬 개발 모드에서도 로그인 세션을 요구하도록 강화
+- GitHub Actions integration smoke test 실패 원인 수정
 
 ### Release
 - 배포 버전을 `0.1.23`으로 상향

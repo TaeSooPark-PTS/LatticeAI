@@ -50,7 +50,6 @@
     "tools.py",
     "codex_telegram_bot.py",
     "skills/",
-    "tests/",
     "static/account.html",
     "static/chat.html",
     "static/admin.html",

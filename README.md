@@ -1,5 +1,5 @@
 <div align="center">
-  <img src="docs/images/logo.svg" alt="Lattice AI" width="280"/>
+  <img src="https://raw.githubusercontent.com/TaeSooPark-PTS/LatticeAI/main/docs/images/logo.svg" alt="Lattice AI" width="280"/>
   <br/>
   <strong>Your personal AI workspace server — local & cloud, one stack.</strong>
   <br/><br/>
@@ -32,15 +32,17 @@
 
 <table>
 <tr>
-<td width="33%"><b>Chat UI</b><br/><img src="docs/images/screenshot-chat.png" alt="Lattice AI Chat" width="100%"/></td>
-<td width="33%"><b>Admin Dashboard</b><br/><img src="docs/images/screenshot-admin.png" alt="Admin Dashboard" width="100%"/></td>
-<td width="33%"><b>Data Graph (Graph RAG)</b><br/><img src="docs/images/screenshot-graph.png" alt="Knowledge Graph" width="100%"/></td>
+<td width="33%"><b>Chat UI</b><br/><img src="https://raw.githubusercontent.com/TaeSooPark-PTS/LatticeAI/main/docs/images/screenshot-chat.png" alt="Lattice AI Chat" width="100%"/></td>
+<td width="33%"><b>Admin Dashboard</b><br/><img src="https://raw.githubusercontent.com/TaeSooPark-PTS/LatticeAI/main/docs/images/screenshot-admin.png" alt="Admin Dashboard" width="100%"/></td>
+<td width="33%"><b>Data Graph (Graph RAG)</b><br/><img src="https://raw.githubusercontent.com/TaeSooPark-PTS/LatticeAI/main/docs/images/screenshot-graph.png" alt="Knowledge Graph" width="100%"/></td>
 </tr>
 </table>
 
 ---
 
 ## ⚡ Quick Start (30 seconds)
+
+**Python / PyPI**
 
 ```bash
 # Install (cloud models)
@@ -49,20 +51,42 @@ pip install ltcai
 # Install (+ Apple Silicon local models)
 pip install "ltcai[local]"
 
+# Verify environment
+LTCAI doctor
+
 # Start server
 LTCAI
 # → http://localhost:4825
+```
 
-# Start with public HTTPS tunnel (Cloudflare, no account needed)
+**Node / npm**
+
+```bash
+npm install -g ltcai
+LTCAI doctor
+LTCAI
+```
+
+**VS Code / Cursor**
+
+1. Install **Lattice AI** from [VS Code Marketplace](https://marketplace.visualstudio.com/items?itemName=parktaesoo.ltcai) or [Open VSX](https://open-vsx.org/extension/parktaesoo/ltcai)
+2. Start the local server with `LTCAI`
+3. Run `Lattice AI: Open Chat` (`Cmd+Shift+A`) in your editor
+
+**First run:** open `http://localhost:4825` → sign up → first account auto-becomes admin → pick a model → start chatting.
+
+**Public HTTPS tunnel (Cloudflare, no account needed):**
+
+```bash
 LTCAI --tunnel
 # → https://xxxx.trycloudflare.com
 ```
 
-**First run:** open `http://localhost:4825` → sign up → first account auto-becomes admin → pick a model → start chatting.
-
 ---
 
 ## 🆚 Why Lattice AI?
+
+Comparison is based on public product behavior as of 2026-05.
 
 | | Lattice AI | Open WebUI | Continue.dev | GitHub Copilot |
 |---|:---:|:---:|:---:|:---:|
