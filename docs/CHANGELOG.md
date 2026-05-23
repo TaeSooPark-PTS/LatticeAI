@@ -1,5 +1,24 @@
 # Changelog
 
+## [0.1.22] - 2026-05-24
+
+### Release preparation
+
+- 배포 버전을 `0.1.22`로 상향
+  - `package.json`
+  - `pyproject.toml`
+  - `vscode-extension/package.json`
+- README 현재 배포 버전과 릴리스 체크 섹션을 `0.1.22` 기준으로 갱신
+- npm / PyPI / VS Code Marketplace / Open VSX 배포 전 빌드 산출물 생성
+
+### Verification
+
+- Python compile check 통과
+- unit tests 통과
+- root npm package 생성
+- Python wheel / sdist 생성
+- VS Code / Open VSX용 VSIX 생성
+
 ## [0.1.21] - 2026-05-24
 
 ### Setup Wizard — 자동 설치 · 연결 · 검증 · 복구
