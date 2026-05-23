@@ -1,97 +1,122 @@
-# Lattice AI Extension
+# Lattice AI — VS Code Extension
 
-Local/cloud LLM assistant for VS Code, Cursor, and Antigravity — powered by [Lattice AI](https://github.com/TaeSooPark-PTS/LatticeAI).
+**Local & cloud AI coding assistant** — Apple Silicon MLX · OpenAI · Groq · MCP · Graph RAG · zero telemetry
 
-Connects to a running Lattice AI server (`http://localhost:4825`) and provides chat, code editing, explanation, terminal command generation, and knowledge garden features directly in your editor.
+[![VS Code Marketplace](https://img.shields.io/badge/VS%20Code%20Marketplace-Install-blue?logo=visualstudiocode)](https://marketplace.visualstudio.com/items?itemName=parktaesoo.ltcai)
+[![Open VSX](https://img.shields.io/open-vsx/v/parktaesoo/ltcai?label=Open%20VSX)](https://open-vsx.org/extension/parktaesoo/ltcai)
+[![License](https://img.shields.io/badge/license-MIT-green)](../LICENSE)
 
-## Features
+Connects to a running [Lattice AI](https://github.com/TaeSooPark-PTS/LatticeAI) server and brings local/cloud AI directly into VS Code, Cursor, and VSCodium.
 
-- **Chat panel** — talk to local MLX or cloud models (OpenAI, Groq, Together, etc.)
-- **Edit selection** — rewrite selected code with AI
-- **Explain selection** — get an explanation of selected code
-- **Generate terminal command** — describe a task, get a shell command
-- **Knowledge Garden** — save snippets/notes to `~/.ltcai-brain/`
-- **Language** — Korean / English UI
+---
 
-## Commands
+## ✨ Features
 
-| Command | Shortcut |
-|---------|----------|
-| Lattice AI: Open Chat | `Cmd+Shift+A` |
-| Lattice AI: Edit Selection | `Cmd+Shift+E` |
-| Lattice AI: Load Model | `Cmd+Shift+M` |
-| Lattice AI: Explain Selection | right-click menu |
-| Lattice AI: Save to Knowledge Garden | right-click menu |
+| Feature | Description |
+|---------|-------------|
+| **💬 Chat panel** | Talk to local MLX models (Gemma, Qwen, DeepSeek) or cloud (GPT-4o, Claude, Groq) |
+| **✏️ Edit Selection** | Rewrite selected code with AI (`Cmd+Shift+E`) |
+| **🔍 Explain Selection** | Get a plain-English explanation of selected code |
+| **⚡ Generate Command** | Describe a task → get a shell command |
+| **🕸️ Graph RAG** | Chat history & docs auto-indexed as a knowledge graph |
+| **🌱 Knowledge Garden** | Save snippets/notes to `~/.ltcai-brain/` |
+| **🔌 MCP Tools** | Use any MCP server tool directly from the chat panel |
+| **🔒 Zero telemetry** | All data stays local (`~/.ltcai/`) |
 
-## Requirements
+---
 
-Lattice AI server must be running:
+## 🚀 Quick Start
+
+**1. Install the Lattice AI server** (one-time):
 
 ```bash
-pip install ltcai && LTCAI
+pip install ltcai
+# With Apple Silicon local models:
+pip install "ltcai[local]"
+```
+
+**2. Start the server:**
+
+```bash
+LTCAI
 # → http://localhost:4825
 ```
 
-## v0.1.12 Changes
+**3. Open VS Code** → `Cmd+Shift+A` → Chat starts immediately.
 
-### Added
-- 로컬 엔진 모델 준비 흐름 개선: 설치, 다운로드, 서버 시작, 모델 로드를 한 번에 처리
-- LM Studio / llama.cpp / vLLM 경로를 최신 서버 동작에 맞게 정리
+> The extension auto-connects to `http://localhost:4825`. No configuration needed for local use.
 
 ---
 
-## v0.1.4 Changes
+## ⌨️ Commands & Shortcuts
 
-### Added
-- Session persistence — stay logged in after server restart
-- SSO login — Entra ID / Okta OIDC support
-- Chat history search — keyword search in sidebar
-- Delete conversation button in sidebar
-- MCP server management UI modal
-- Inline diff view for Edit Selection — review before applying
-- Attach Current File to Chat command
-
----
-
-## v0.1.3 Changes
-
-### Added
-- 프로필 수정 UI — 이름·닉네임 변경
-- 회원가입 폼 — 비밀번호 확인 필드, 인라인 에러 메시지
-- 어드민 패널 초대 링크 섹션 — 원클릭 복사
-- 어드민 대시보드 메시지 활동 차트 (Chart.js, 최근 14일)
-- 웹 UI 한국어 / 영어 전환
-
-### Fixed
-- 로그아웃 시 서버 세션 쿠키 정상 만료
-- 인증(`account.html`)과 채팅(`chat.html`) UI 분리
-- 채팅 헤더 언어 선택 드롭다운 겹침 문제 수정
+| Command | Shortcut | Description |
+|---------|----------|-------------|
+| Lattice AI: Open Chat | `Cmd+Shift+A` | Open chat panel |
+| Lattice AI: Edit Selection | `Cmd+Shift+E` | Rewrite selected code |
+| Lattice AI: Load / Switch Model | `Cmd+Shift+M` | Pick a model to load |
+| Lattice AI: Explain Selection | Right-click menu | Explain selected code |
+| Lattice AI: Generate Terminal Command | Right-click menu | Generate shell command |
+| Lattice AI: Save to Knowledge Garden | Right-click menu | Save snippet/note |
 
 ---
 
-## Build
+## 🧠 Supported Models
 
-```bash
-cd vscode-extension
-npm install
-npm run build
-npm run package:vsix
+**Local (Apple Silicon only):**
+- `mlx-community/gemma-4-26b-a4b-it-4bit` — Best all-round (32GB Mac)
+- `mlx-community/Qwen2.5-Coder-32B-Instruct-4bit` — Best for coding
+- `mlx-community/DeepSeek-R1-0528-4bit` — Best for reasoning
+- Any MLX-compatible model from Hugging Face
+
+**Cloud (any platform):**
+- OpenAI (GPT-4o, GPT-4o-mini, o3, o4-mini)
+- Groq (Llama 3.3, DeepSeek-R1, Gemma 2)
+- OpenRouter / Together AI
+- Any OpenAI-compatible endpoint
+
+---
+
+## ⚙️ Settings
+
+| Setting | Default | Description |
+|---------|---------|-------------|
+| `ltcai.serverUrl` | `http://localhost:4825` | Lattice AI server URL |
+| `ltcai.language` | `ko` | UI language (`ko` / `en`) |
+
+For remote/tunnel server:
+```json
+{
+  "ltcai.serverUrl": "https://your-server.trycloudflare.com"
+}
 ```
 
-## Install to all three editors
+---
 
-```bash
-cd vscode-extension
-npm run install:all
-```
+## 🆚 vs. Other AI Extensions
 
-The script installs the latest `.vsix` into `code`, `cursor`, and `antigravity` if each CLI is available.
+| | Lattice AI | GitHub Copilot | Continue.dev | Cursor |
+|---|:---:|:---:|:---:|:---:|
+| Local model (offline) | ✅ | ❌ | ✅ | ✅ |
+| Zero telemetry | ✅ | ❌ | ✅ | ❌ |
+| Graph RAG | ✅ | ❌ | ❌ | ❌ |
+| MCP tool support | ✅ | ❌ | ✅ | ✅ |
+| Web UI included | ✅ | ❌ | ❌ | ❌ |
+| Telegram / Discord bot | ✅ | ❌ | ❌ | ❌ |
+| Free | ✅ | ❌ | ✅ | partial |
 
-## Publish
+---
 
-```bash
-npm run publish:vscode
-npm run publish:openvsx
-```
+## 🔗 Links
 
-Before publishing, log in with `vsce login <publisher>` and configure an Open VSX token for `ovsx`.
+- [Server GitHub](https://github.com/TaeSooPark-PTS/LatticeAI)
+- [PyPI](https://pypi.org/project/ltcai/)
+- [Changelog](https://github.com/TaeSooPark-PTS/LatticeAI/blob/main/docs/CHANGELOG.md)
+- [Security Policy](https://github.com/TaeSooPark-PTS/LatticeAI/blob/main/SECURITY.md)
+- [Report an Issue](https://github.com/TaeSooPark-PTS/LatticeAI/issues)
+
+---
+
+## 📄 License
+
+MIT — [TaeSoo Park](https://github.com/TaeSooPark-PTS)

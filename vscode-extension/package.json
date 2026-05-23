@@ -1,7 +1,7 @@
 {
   "name": "ltcai",
   "displayName": "Lattice AI",
-  "description": "Lattice AI assistant for local coding workflows.",
+  "description": "Local & cloud AI coding assistant — Apple Silicon MLX, OpenAI, Groq, MCP tools, Graph RAG, zero telemetry.",
   "version": "0.1.22",
   "publisher": "parktaesoo",
   "license": "MIT",
@@ -13,6 +13,9 @@
     "vscode": "^1.105.0"
   },
   "categories": [
+    "AI",
+    "Machine Learning",
+    "Chat",
     "Other"
   ],
   "keywords": [
@@ -23,7 +26,14 @@
     "coding",
     "mlx",
     "mcp",
-    "rag"
+    "rag",
+    "copilot",
+    "chat",
+    "apple-silicon",
+    "openai",
+    "groq",
+    "ollama",
+    "graph-rag"
   ],
   "activationEvents": [
     "onCommand:ltcai.chat",
