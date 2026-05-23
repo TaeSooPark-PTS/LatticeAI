@@ -6,7 +6,7 @@ Apple Silicon MLX 로컬 추론 · OpenAI/Groq/OpenRouter 클라우드 모델 ·
 
 [![PyPI](https://img.shields.io/pypi/v/ltcai?label=pypi)](https://pypi.org/project/ltcai/)
 [![npm](https://img.shields.io/npm/v/ltcai?label=npm)](https://www.npmjs.com/package/ltcai)
-[![VS Code Marketplace](https://vsmarketplacebadges.dev/version/parktaesoo.ltcai.svg)](https://marketplace.visualstudio.com/items?itemName=parktaesoo.ltcai)
+[![VS Code Marketplace](https://img.shields.io/badge/VS%20Code%20Marketplace-v0.1.22-blue)](https://marketplace.visualstudio.com/items?itemName=parktaesoo.ltcai)
 [![Open VSX](https://img.shields.io/open-vsx/v/parktaesoo/ltcai?label=Open%20VSX)](https://open-vsx.org/extension/parktaesoo/ltcai)
 [![License](https://img.shields.io/github/license/TaeSooPark-PTS/LatticeAI)](./LICENSE)
 
