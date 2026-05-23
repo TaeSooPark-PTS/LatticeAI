@@ -1,5 +1,20 @@
 # Changelog
 
+## [0.1.24] - 2026-05-24
+
+### 안정화 및 UX 개선
+
+- **로컬 파일 인증 강화** — `/local/list` · `/local/read` · `/local/write` · `/local/serve`에서 로그인 세션 필수화 (`_require_local_user` 헬퍼 도입)
+- **`GET /local/list` 라우트 추가** — smoke-test 및 브라우저 직접 호출 호환
+- **VS Code 배지 수정** — shields.io `visual-studio-marketplace` 폐기 → `vsmarketplacebadges.dev`로 전환
+- **README 이미지 URL 안정화** — 로고·스크린샷을 `raw.githubusercontent.com` 절대 URL로 전환해 PyPI / npm / Marketplace 페이지에서도 표시
+- **Quick Start 분리** — PyPI / npm / VS Code 사용자의 첫 설치 경로를 각각 명확히 안내
+- **GitHub Actions Node 24** — CI 런타임을 Node 24로 업그레이드
+
+### Release
+- 배포 버전을 `0.1.24`로 상향
+- 대상 채널: `npm` · `PyPI` · `VS Code Marketplace` · `Open VSX`
+
 ## [0.1.23] - 2026-05-24
 
 ### Discord 권한 알림 시스템
