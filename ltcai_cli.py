@@ -248,6 +248,10 @@ def main() -> None:
 
     os.chdir(app_dir)
 
+    # LATTICEAI_TUNNEL=true in .env acts like --tunnel flag
+    if not args.tunnel and os.getenv("LATTICEAI_TUNNEL", "").lower() in ("1", "true", "yes"):
+        args.tunnel = True
+
     # --tunnel forces 0.0.0.0 so cloudflared can reach the server
     if args.tunnel and args.host == "127.0.0.1":
         args.host = "0.0.0.0"
