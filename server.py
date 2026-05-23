@@ -5684,7 +5684,7 @@ async def permissions_pending(request: Request):
     return {"pending": result, "count": len(result)}
 
 
-def _check_permission_auth(request: Request) -> None:
+def _check_permission_auth(request: Request, token: Optional[str] = None) -> None:
     """Allow access if requester is admin OR presents the LATTICEAI_PERMISSION_SECRET.
     Used by approve/deny endpoints so the permission monitor script can call them."""
     # Check secret header first (monitor script path)
@@ -5692,6 +5692,12 @@ def _check_permission_auth(request: Request) -> None:
         auth_header = request.headers.get("Authorization", "")
         if auth_header == f"Bearer {PERMISSION_MONITOR_SECRET}":
             return  # Authorized via secret
+    if token:
+        current_user = get_current_user(request)
+        with _local_approval_lock:
+            record = _local_approvals.get(token)
+        if current_user and record and record.get("user_email") == current_user:
+            return
     # Fall back to admin session
     require_admin(request)
 
@@ -5700,7 +5706,7 @@ def _check_permission_auth(request: Request) -> None:
 async def permissions_approve(token: str, request: Request):
     """Approve a pending permission request. Admin or permission-monitor secret.
     Called by Discord (via Claude Code) or web UI after user confirmation."""
-    _check_permission_auth(request)
+    _check_permission_auth(request, token)
     with _local_approval_lock:
         record = _local_approvals.get(token)
         if not record:
@@ -5726,7 +5732,7 @@ async def permissions_approve(token: str, request: Request):
 @app.post("/permissions/deny/{token}")
 async def permissions_deny(token: str, request: Request):
     """Deny/revoke a pending permission request. Admin or permission-monitor secret."""
-    _check_permission_auth(request)
+    _check_permission_auth(request, token)
     with _local_approval_lock:
         record = _local_approvals.pop(token, None)
     _perm_queue_remove(token)

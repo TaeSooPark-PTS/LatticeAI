@@ -144,6 +144,8 @@ def test_local_approval_token_allows_exact_scope(tmp_path):
     target.write_text("hello")
     user = "alice@example.com"
     approval = _local_permission_response(str(target), "read", user)
+    from server import _local_approvals
+    _local_approvals[approval["approval_token"]]["approved"] = True
 
     _require_local_approval(
         token=approval["approval_token"],
@@ -160,6 +162,8 @@ def test_local_approval_token_rejects_wrong_path(tmp_path):
     denied.write_text("denied")
     user = "alice@example.com"
     approval = _local_permission_response(str(allowed), "read", user)
+    from server import _local_approvals
+    _local_approvals[approval["approval_token"]]["approved"] = True
 
     with pytest.raises(HTTPException) as exc:
         _require_local_approval(
@@ -175,6 +179,8 @@ def test_local_write_approval_binds_content(tmp_path):
     target = tmp_path / "out.txt"
     user = "alice@example.com"
     approval = _local_permission_response(str(target), "write", user, "first")
+    from server import _local_approvals
+    _local_approvals[approval["approval_token"]]["approved"] = True
 
     with pytest.raises(HTTPException) as exc:
         _require_local_approval(

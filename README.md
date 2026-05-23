@@ -126,6 +126,7 @@ LATTICEAI_TELEGRAM_BOT_TOKEN=your-token LTCAI
 | 기능 | 설명 |
 |------|------|
 | **웹 UI** | 반응형 채팅 + 어드민 패널 + 그래프 시각화 |
+| **Auto Setup Wizard** | 구성요소 감지 → 공식 다운로드 연결 → 설치 감지 → PATH/env 세팅 → 동작 테스트 → 자동 복구 |
 | **VS Code / Cursor 확장** | 채팅, Edit Selection, Diff 뷰, 파일 첨부 |
 | **Telegram 봇** | 로컬 AI 미러 + Codex 클라우드 봇 |
 | **MCP 서버** | Claude Desktop / Cursor에서 직접 도구 사용 |
@@ -214,11 +215,13 @@ docker run --rm -p 4825:4825 \
 ## 보안
 
 - **바인딩**: 기본 `127.0.0.1:4825` (로컬 전용) — 같은 Wi-Fi 기기 접근 허용 시 `LATTICEAI_HOST=0.0.0.0` 설정
-- **인증**: 모든 민감 엔드포인트 로그인 세션 필요 (`REQUIRE_AUTH=true` 기본)
+- **인증**: 퍼블릭 모드 또는 `0.0.0.0` 등 네트워크 노출 호스트에서는 로그인 세션이 기본으로 필요합니다
 - **세션**: 24시간 TTL + sliding refresh, 서버 디스크 저장 (재시작 후에도 유지)
-- **CORS**: 기본 localhost만 허용 — 외부 허용 시 `LATTICEAI_CORS_ALLOW_NETWORK=true`
+- **CORS**: 기본 localhost만 허용 — 외부 브라우저 origin은 `LATTICEAI_CORS_ALLOWED_ORIGINS`에 명시
 - **API 키**: OS keyring/Keychain 저장 (평문 미저장)
-- **쿠키**: `HttpOnly + SameSite=Lax` (CSRF 방어)
+- **쿠키**: `HttpOnly + SameSite=Lax` (세션 토큰은 localStorage에 저장하지 않음)
+- **로컬 파일 접근**: list/read/write/preview는 서버 발급 approval token으로 경로·사용자·작업 범위를 검증하고, 웹 UI 또는 Discord permission flow에서 승인 후 실행
+- **채팅 경로 자동 읽기**: 기본 OFF. `LATTICEAI_AUTO_READ_CHAT_PATHS=true`로 명시한 경우에만 `/path` 또는 `~/path` 내용을 모델 컨텍스트에 주입
 - **Rate limit**: `/chat` 30/분, `/agent` 6/분, `/upload` 12/분 (per user)
 - **파일 업로드**: magic-number 시그니처 검증 (확장자 위조 차단)
 - **텔레메트리**: 없음. 모든 데이터는 로컬(`~/.ltcai/`)에만 저장됩니다.

@@ -20,10 +20,15 @@
   - 5분(300초) TTL 만료 토큰으로 read / write / list 각 액션을 별도 승인
   - write 승인 시 `content_hash`(SHA-256)로 내용 위변조 방지
   - 만료 토큰 자동 정리(lazy GC)
+  - Discord permission monitor 또는 웹 UI 승인 후에만 토큰 활성화
+- **로컬 파일 미리보기 보호** — `/local/serve`, `/tools/read_document`, `/tools/pdf_pages`도 서버 발급 approval token 없이는 로컬 절대 경로를 열지 않도록 변경
+- **workspace 정적 노출 제거** — `/agent-files` `StaticFiles` mount 제거, 인증이 있는 다운로드 라우트만 사용
+- **세션 토큰 저장 강화** — 로그인 응답 body에서 bearer token 제거, 웹 UI는 HttpOnly cookie 기반 인증만 사용
+  - `static/account.html`, `static/chat.html`, `static/admin.html`, `static/graph.html`의 `localStorage` 세션 토큰 의존 제거
 - **loopback 감지** — `_host_is_loopback()` + `ipaddress` 표준 라이브러리로 네트워크 노출 여부 판단
   - `REQUIRE_AUTH` 기본값: 퍼블릭 모드 또는 네트워크 노출 시 `true` 자동 적용
   - `OPEN_REGISTRATION`: 네트워크 노출/퍼블릭 모드에서 기본 `false` (초대 코드 필요)
-- **CORS 세밀 제어** — `LATTICEAI_CORS_ALLOWED_ORIGINS` 환경변수로 허용 출처 추가 설정 가능
+- **CORS 세밀 제어** — wildcard credential CORS 대신 `LATTICEAI_CORS_ALLOWED_ORIGINS` 환경변수로 허용 출처 추가 설정 가능
 - **파일 자동 주입(opt-in)** — `LATTICEAI_AUTO_READ_CHAT_PATHS=true` 설정 시에만 채팅 메시지의 로컬 경로를 컨텍스트에 주입 (기본 OFF — 클라우드 모델 파일 누출 방지)
 
 ### 어드민 대시보드 — Audit & Data Governance
@@ -45,7 +50,8 @@
 
 ### 테스트
 
-- `tests/unit/test_security.py` — 로컬 파일 접근 승인 토큰 흐름 검증 (62줄 신규 추가)
+- `tests/unit/test_security.py` — loopback 감지, 로컬 파일 접근 approval token, write content hash 검증 추가
+- `tests/unit/test_setup_wizard.py` — 자동 설정 구성요소 감지와 PATH 보정 검증 추가
 
 ### 환경변수 추가 (`.env.example`)
 

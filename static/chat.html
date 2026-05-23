@@ -4880,7 +4880,15 @@
             const probeData = await probe.json();
             if (!probeData.permission_required) return probeData.approval_token || '';
             const allowed = await requestPermission(probeData.path, probeData.action, probeData.action_label);
-            return allowed ? (probeData.approval_token || '') : '';
+            if (!allowed) return '';
+            const token = probeData.approval_token || '';
+            if (!token) return '';
+            const approval = await apiFetch(`/permissions/approve/${encodeURIComponent(token)}`, { method: 'POST' });
+            if (!approval.ok) {
+                const data = await approval.json().catch(() => ({}));
+                throw new Error(data.detail || '파일 접근 승인 실패');
+            }
+            return token;
         }
 
         async function browseLocalPath(path) {
