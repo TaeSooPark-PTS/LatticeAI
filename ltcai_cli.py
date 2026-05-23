@@ -18,6 +18,32 @@ import urllib.request
 from pathlib import Path
 
 
+def _load_env_file(path: Path) -> None:
+    if not path.exists():
+        return
+    for raw_line in path.read_text(encoding="utf-8").splitlines():
+        line = raw_line.strip()
+        if not line or line.startswith("#") or "=" not in line:
+            continue
+        key, value = line.split("=", 1)
+        key = key.strip()
+        value = value.strip().strip('"').strip("'")
+        if key and key not in os.environ:
+            os.environ[key] = value
+
+
+def _apply_extra_path() -> None:
+    extra = os.getenv("LATTICEAI_EXTRA_PATH", "")
+    if not extra:
+        return
+    current = [p for p in os.environ.get("PATH", "").split(os.pathsep) if p]
+    for item in reversed([p for p in extra.split(os.pathsep) if p]):
+        expanded = str(Path(item).expanduser())
+        if Path(expanded).exists() and expanded not in current:
+            current.insert(0, expanded)
+    os.environ["PATH"] = os.pathsep.join(current)
+
+
 def _has_module(name: str) -> bool:
     return importlib.util.find_spec(name) is not None
 
@@ -200,6 +226,10 @@ def _start_tunnel(port: int) -> str | None:
 # ─────────────────────────────────────────────────────────────────────────────
 
 def main() -> None:
+    app_dir = Path(__file__).resolve().parent
+    _load_env_file(app_dir / ".env")
+    _apply_extra_path()
+
     parser = argparse.ArgumentParser(prog="LTCAI", description="Run the Lattice AI local server.")
     subparsers = parser.add_subparsers(dest="command")
     subparsers.add_parser("doctor", help="Check local runtime dependencies and configuration.")
@@ -216,7 +246,6 @@ def main() -> None:
     if args.command == "doctor":
         raise SystemExit(doctor())
 
-    app_dir = Path(__file__).resolve().parent
     os.chdir(app_dir)
 
     # --tunnel forces 0.0.0.0 so cloudflared can reach the server

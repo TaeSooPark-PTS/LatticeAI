@@ -3805,8 +3805,6 @@
 
         function apiFetch(path, options = {}) {
             const headers = { ...(options.headers || {}) };
-            const token = localStorage.getItem('ltcai_session_token') || '';
-            if (token && !headers.Authorization) headers.Authorization = `Bearer ${token}`;
             return fetch(`${API_BASE}${path}`, { credentials: 'include', ...options, headers });
         }
 
@@ -3837,7 +3835,6 @@
             localStorage.removeItem('ltcai_user_email');
             localStorage.removeItem('ltcai_user_nickname');
             localStorage.removeItem('ltcai_is_admin');
-            localStorage.removeItem('ltcai_session_token');
             window.location.href = '/account';
         }
 
@@ -4089,11 +4086,9 @@
         }
 
         function adminHeaders() {
-            const token = localStorage.getItem('ltcai_session_token') || '';
             return {
                 'Content-Type': 'application/json',
                 'X-Admin-Email': currentUserEmail,
-                ...(token ? { Authorization: `Bearer ${token}` } : {})
             };
         }
 
@@ -4486,7 +4481,6 @@
                 email: currentUserEmail || '',
                 nickname: currentUserNickname || '',
                 is_admin: isAdmin ? 'true' : 'false',
-                token: localStorage.getItem('ltcai_session_token') || '',
             }));
             window.location.href = `${API_BASE || ''}/admin`;
         }
@@ -4873,31 +4867,38 @@
             await localNav(parts.join('/') || '/');
         }
 
+        async function getLocalApprovalToken(path, action = 'read', content = '') {
+            const endpoint = action === 'write' ? '/local/write' : action === 'list' ? '/local/list' : '/local/read';
+            const payload = action === 'write'
+                ? { path, content, approved: false }
+                : { path, approved: false };
+            const probe = await apiFetch(endpoint, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(payload)
+            });
+            const probeData = await probe.json();
+            if (!probeData.permission_required) return probeData.approval_token || '';
+            const allowed = await requestPermission(probeData.path, probeData.action, probeData.action_label);
+            return allowed ? (probeData.approval_token || '') : '';
+        }
+
         async function browseLocalPath(path) {
             path = path ?? _localCurrentPath;
             const resultEl = document.getElementById('local-browser-result');
             resultEl.innerHTML = '<div class="sensitivity-preview">불러오는 중...</div>';
 
-            const probe = await apiFetch('/local/list', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ path, approved: false })
-            });
-            const probeData = await probe.json();
-
-            if (probeData.permission_required) {
-                const allowed = await requestPermission(probeData.path, probeData.action, probeData.action_label);
-                if (!allowed) {
-                    resultEl.innerHTML = '<div class="sensitivity-preview">접근이 거부되었습니다.</div>';
-                    return;
-                }
+            const approvalToken = await getLocalApprovalToken(path, 'list');
+            if (!approvalToken) {
+                resultEl.innerHTML = '<div class="sensitivity-preview">접근이 거부되었습니다.</div>';
+                return;
             }
 
             try {
                 const res = await apiFetch('/local/list', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ path, approved: true })
+                    body: JSON.stringify({ path, approved: true, approval_token: approvalToken })
                 });
                 const data = await res.json();
                 if (!res.ok || data.error) throw new Error(data.error || data.detail || '오류');
@@ -4945,13 +4946,18 @@
             const path = decodeURIComponent(encodedPath);
             const resultEl = document.getElementById('local-browser-result');
             const ext = path.split('.').pop().toLowerCase();
+            const readApprovalToken = await getLocalApprovalToken(path, 'read');
+            if (!readApprovalToken) {
+                resultEl.innerHTML = '<div class="sensitivity-preview">접근이 거부되었습니다.</div>';
+                return;
+            }
+            const localServeUrl = `/local/serve?path=${encodeURIComponent(path)}&approval_token=${encodeURIComponent(readApprovalToken)}`;
 
             // 이미지 파일: 미리보기 + AI 전송
             if (IMAGE_EXTS.has(ext)) {
-                const safeEnc = encodeURIComponent(path);
                 resultEl.innerHTML = `
                     <div style="text-align:center;padding:12px">
-                        <img src="/local/serve?path=${safeEnc}" alt="${escapeHtml(path.split('/').pop())}"
+                        <img src="${localServeUrl}" alt="${escapeHtml(path.split('/').pop())}"
                              style="max-width:100%;max-height:280px;border-radius:8px;border:1px solid var(--border)"
                              onerror="this.parentElement.innerHTML='<div style=color:var(--faint)>이미지 미리보기 불가</div>'">
                         <div style="color:var(--faint);font-size:11px;margin-top:8px">${escapeHtml(path.split('/').pop())}</div>
@@ -4971,11 +4977,10 @@
 
             // 동영상: HTML5 플레이어
             if (VIDEO_EXTS.has(ext)) {
-                const safeEnc = encodeURIComponent(path);
                 resultEl.innerHTML = `
                     <div style="text-align:center;padding:8px">
                         <video controls style="max-width:100%;max-height:280px;border-radius:8px;border:1px solid var(--border)"
-                               src="/local/serve?path=${safeEnc}">지원하지 않는 형식</video>
+                               src="${localServeUrl}">지원하지 않는 형식</video>
                         <div style="color:var(--faint);font-size:11px;margin-top:6px">${escapeHtml(path.split('/').pop())}</div>
                         <button class="status-btn" style="font-size:12px;margin-top:8px"
                             onclick="sendArchiveToChat('${path.replace(/'/g,"\\'")}','video')">
@@ -4987,11 +4992,10 @@
 
             // PDF: 브라우저 내장 뷰어 + AI 전송 (페이지 이미지 + 텍스트)
             if (ext === 'pdf') {
-                const safeEnc = encodeURIComponent(path);
                 const safePath = path.replace(/\\/g,'\\\\').replace(/'/g,"\\'");
                 resultEl.innerHTML = `
                     <div style="display:flex;flex-direction:column;gap:10px">
-                        <embed src="/local/serve?path=${safeEnc}#toolbar=0"
+                        <embed src="${localServeUrl}#toolbar=0"
                                type="application/pdf"
                                style="width:100%;height:340px;border-radius:8px;border:1px solid var(--border)">
                         <div style="display:flex;gap:8px">
@@ -5016,7 +5020,7 @@
                     const res = await apiFetch('/tools/read_document', {
                         method: 'POST',
                         headers: { 'Content-Type': 'application/json' },
-                        body: JSON.stringify({ path })
+                        body: JSON.stringify({ path, approval_token: readApprovalToken })
                     });
                     const data = await res.json();
                     if (!res.ok || data.error) throw new Error(data.error || data.detail || '읽기 실패');
@@ -5062,25 +5066,11 @@
 
             resultEl.innerHTML = '<div class="sensitivity-preview">읽는 중...</div>';
 
-            const probe = await apiFetch('/local/read', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ path, approved: false })
-            });
-            const probeData = await probe.json();
-            if (probeData.permission_required) {
-                const allowed = await requestPermission(probeData.path, probeData.action, probeData.action_label);
-                if (!allowed) {
-                    resultEl.innerHTML = '<div class="sensitivity-preview">접근이 거부되었습니다.</div>';
-                    return;
-                }
-            }
-
             try {
                 const res = await apiFetch('/local/read', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ path, approved: true })
+                    body: JSON.stringify({ path, approved: true, approval_token: readApprovalToken })
                 });
                 const data = await res.json();
                 if (!res.ok || data.error) throw new Error(data.error || data.detail || '오류');
@@ -5108,22 +5098,18 @@
             statusEl.style.color = 'var(--accent)';
             statusEl.textContent = '저장 중...';
 
-            const probe = await apiFetch('/local/write', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ path, content, approved: false })
-            });
-            const probeData = await probe.json();
-            if (probeData.permission_required) {
-                const allowed = await requestPermission(probeData.path, probeData.action, probeData.action_label);
-                if (!allowed) { statusEl.style.color = 'var(--danger)'; statusEl.textContent = '저장 취소됨'; return; }
+            const approvalToken = await getLocalApprovalToken(path, 'write', content);
+            if (!approvalToken) {
+                statusEl.style.color = 'var(--danger)';
+                statusEl.textContent = '저장 취소됨';
+                return;
             }
 
             try {
                 const res = await apiFetch('/local/write', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ path, content, approved: true })
+                    body: JSON.stringify({ path, content, approved: true, approval_token: approvalToken })
                 });
                 const data = await res.json();
                 if (!res.ok || data.error) throw new Error(data.error || data.detail || '오류');
@@ -5140,8 +5126,10 @@
             const statusEl = document.getElementById('pdf-send-status');
             if (statusEl) statusEl.textContent = '페이지 렌더링 중...';
             try {
+                const approvalToken = await getLocalApprovalToken(path, 'read');
+                if (!approvalToken) throw new Error('파일 접근이 거부되었습니다.');
                 // 1. 페이지 이미지 가져오기
-                const res = await apiFetch('/tools/pdf_pages?path=' + encodeURIComponent(path));
+                const res = await apiFetch('/tools/pdf_pages?path=' + encodeURIComponent(path) + '&approval_token=' + encodeURIComponent(approvalToken));
                 const data = await res.json();
                 const pages = data.pages || [];
 
@@ -5149,7 +5137,7 @@
                 const textRes = await apiFetch('/tools/read_document', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ path })
+                    body: JSON.stringify({ path, approval_token: approvalToken })
                 });
                 const textData = await textRes.json();
                 const text = (textData.result ?? textData).content ?? '';
@@ -5177,10 +5165,12 @@
             const resultEl = document.getElementById('local-browser-result');
             resultEl.innerHTML = '<div class="sensitivity-preview">텍스트 추출 중...</div>';
             try {
+                const approvalToken = await getLocalApprovalToken(path, 'read');
+                if (!approvalToken) throw new Error('파일 접근이 거부되었습니다.');
                 const res = await apiFetch('/tools/read_document', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ path })
+                    body: JSON.stringify({ path, approval_token: approvalToken })
                 });
                 const data = await res.json();
                 const text = (data.result ?? data).content ?? '';
@@ -5210,7 +5200,9 @@
 
         async function sendImageFileToChat(path) {
             try {
-                const res = await apiFetch('/local/serve?path=' + encodeURIComponent(path));
+                const approvalToken = await getLocalApprovalToken(path, 'read');
+                if (!approvalToken) throw new Error('파일 접근이 거부되었습니다.');
+                const res = await apiFetch('/local/serve?path=' + encodeURIComponent(path) + '&approval_token=' + encodeURIComponent(approvalToken));
                 if (!res.ok) throw new Error('이미지 로드 실패');
                 const blob = await res.blob();
                 closeLocalBrowser();
@@ -6813,13 +6805,14 @@
                     <div class="rec-grid ${colClass || ''}">${cards}</div>`;
         };
 
+        html += renderSection('필수 구성요소', recs.components);
         html += renderSection('엔진 (로컬 · 클라우드)', recs.engines);
         html += renderSection('모델 — 로컬 실행 (RAM 기준 필터)', recs.models);
         html += renderSection('MCP — 도구 연결', recs.mcps);
 
         _body().innerHTML = html;
 
-        const allItems = [...(recs.engines||[]), ...(recs.models||[]), ...(recs.mcps||[])];
+        const allItems = [...(recs.components||[]), ...(recs.engines||[]), ...(recs.models||[]), ...(recs.mcps||[])];
         _wizItems = allItems.filter(i => i.checked && !i.disabled);
 
         _footInfo('');
@@ -6828,7 +6821,7 @@
 
     function _toggleItem(id) {
         const recs = _wizRecs;
-        const allItems = [...(recs.engines||[]), ...(recs.models||[]), ...(recs.mcps||[])];
+        const allItems = [...(recs.components||[]), ...(recs.engines||[]), ...(recs.models||[]), ...(recs.mcps||[])];
         const item = allItems.find(i => i.id === id);
         if (!item || item.disabled) return;
 

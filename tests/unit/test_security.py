@@ -13,6 +13,9 @@ from server import (
     hash_password,
     verify_password,
     _agent_risk,
+    _host_is_loopback,
+    _local_permission_response,
+    _require_local_approval,
     _LOCAL_WRITE_BLOCKED_PREFIXES,
 )
 from fastapi import HTTPException
@@ -123,3 +126,62 @@ def test_agent_risk_system_path_write_upgraded_to_high():
 
 def test_agent_risk_unknown_action_defaults_medium():
     assert _agent_risk("nonexistent_tool_xyz", {}) == "medium"
+
+
+# ---------------------------------------------------------------------------
+# Network exposure / local file approvals
+# ---------------------------------------------------------------------------
+
+def test_host_loopback_detection():
+    assert _host_is_loopback("127.0.0.1")
+    assert _host_is_loopback("localhost")
+    assert not _host_is_loopback("0.0.0.0")
+    assert not _host_is_loopback("192.168.0.2")
+
+
+def test_local_approval_token_allows_exact_scope(tmp_path):
+    target = tmp_path / "note.txt"
+    target.write_text("hello")
+    user = "alice@example.com"
+    approval = _local_permission_response(str(target), "read", user)
+
+    _require_local_approval(
+        token=approval["approval_token"],
+        path=str(target),
+        action="read",
+        user_email=user,
+    )
+
+
+def test_local_approval_token_rejects_wrong_path(tmp_path):
+    allowed = tmp_path / "allowed.txt"
+    denied = tmp_path / "denied.txt"
+    allowed.write_text("allowed")
+    denied.write_text("denied")
+    user = "alice@example.com"
+    approval = _local_permission_response(str(allowed), "read", user)
+
+    with pytest.raises(HTTPException) as exc:
+        _require_local_approval(
+            token=approval["approval_token"],
+            path=str(denied),
+            action="read",
+            user_email=user,
+        )
+    assert exc.value.status_code == 403
+
+
+def test_local_write_approval_binds_content(tmp_path):
+    target = tmp_path / "out.txt"
+    user = "alice@example.com"
+    approval = _local_permission_response(str(target), "write", user, "first")
+
+    with pytest.raises(HTTPException) as exc:
+        _require_local_approval(
+            token=approval["approval_token"],
+            path=str(target),
+            action="write",
+            user_email=user,
+            content="changed",
+        )
+    assert exc.value.status_code == 403

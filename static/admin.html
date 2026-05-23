@@ -829,8 +829,6 @@
 
         function apiFetch(path, options = {}) {
             const headers = { ...(options.headers || {}) };
-            const token = localStorage.getItem('ltcai_session_token') || '';
-            if (token && !headers.Authorization) headers.Authorization = `Bearer ${token}`;
             return fetch(`${API_BASE}${path}`, { credentials: 'include', ...options, headers });
         }
 
@@ -852,20 +850,17 @@
             sessionStorage.removeItem('ltcai_admin_handoff');
             let data;
             try { data = JSON.parse(raw); } catch { return; }
-            const { email, nickname, is_admin, token } = data;
+            const { email, nickname, is_admin } = data;
             if (!email) return;
             localStorage.setItem('ltcai_user_email', email);
             if (nickname) localStorage.setItem('ltcai_user_nickname', nickname);
             if (is_admin === 'true' || is_admin === 'false') localStorage.setItem('ltcai_is_admin', is_admin);
-            if (token) localStorage.setItem('ltcai_session_token', token);
         }
 
         function adminHeaders() {
-            const token = localStorage.getItem('ltcai_session_token') || '';
             return {
                 'Content-Type': 'application/json',
                 'X-Admin-Email': currentUserEmail(),
-                ...(token ? { Authorization: `Bearer ${token}` } : {})
             };
         }
 
@@ -1450,7 +1445,6 @@
             localStorage.removeItem('ltcai_user_email');
             localStorage.removeItem('ltcai_user_nickname');
             localStorage.removeItem('ltcai_is_admin');
-            localStorage.removeItem('ltcai_session_token');
             window.location.href = '/';
         }
 

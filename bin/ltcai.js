@@ -12,6 +12,33 @@ const managedPython = process.platform === "win32"
   ? path.join(managedVenv, "Scripts", "python.exe")
   : path.join(managedVenv, "bin", "python");
 
+function loadDotEnv(file) {
+  if (!fs.existsSync(file)) return;
+  for (const rawLine of fs.readFileSync(file, "utf8").split(/\r?\n/)) {
+    const line = rawLine.trim();
+    if (!line || line.startsWith("#") || !line.includes("=")) continue;
+    const index = line.indexOf("=");
+    const key = line.slice(0, index).trim();
+    const value = line.slice(index + 1).trim().replace(/^["']|["']$/g, "");
+    if (key && process.env[key] === undefined) process.env[key] = value;
+  }
+}
+
+function applyExtraPath() {
+  const extra = process.env.LATTICEAI_EXTRA_PATH;
+  if (!extra) return;
+  const sep = path.delimiter;
+  const current = (process.env.PATH || "").split(sep).filter(Boolean);
+  for (const item of extra.split(sep).filter(Boolean).reverse()) {
+    const expanded = item.replace(/^~(?=$|\/|\\)/, os.homedir());
+    if (fs.existsSync(expanded) && !current.includes(expanded)) current.unshift(expanded);
+  }
+  process.env.PATH = current.join(sep);
+}
+
+loadDotEnv(path.join(root, ".env"));
+applyExtraPath();
+
 function runSync(cmd, args, options = {}) {
   const result = spawnSync(cmd, args, { stdio: "inherit", ...options });
   return result.status === 0;

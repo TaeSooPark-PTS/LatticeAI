@@ -1,5 +1,60 @@
 # Changelog
 
+## [0.1.21] - 2026-05-24
+
+### Setup Wizard — 자동 설치 · 연결 · 검증 · 복구
+
+- **구성요소 자동 감지** — Homebrew, Python, Git, Node/npm, Ollama, LM Studio, Tesseract, MLX 계열 탐지
+  - `COMMON_PATH_DIRS` 확장: `/opt/homebrew/bin`, `~/.local/bin`, `~/.latticeai/bin` 등 자동 포함
+  - `PACKAGE_MODULES` 맵으로 pip 패키지 → import 이름 변환 (mlx-lm, mlx-vlm, openai-whisper 등)
+- **공식 다운로드 연결** — 자동 설치 실패 시 OS별 공식 페이지(`OFFICIAL_DOWNLOADS`) 자동 오픈
+- **설치 완료 자동 감지** — binary / Python 모듈 재탐색 폴링으로 설치 완료 감지
+- **환경 변수 / PATH 자동 세팅** — PATH 누락 디렉토리를 `.env`의 `LATTICEAI_EXTRA_PATH`에 자동 저장
+  - `_update_env_file()` 헬퍼로 `.env` 파일 안전 갱신 (중복 없이 key 업데이트)
+- **동작 테스트** — binary는 `--version`, Python 패키지는 `import` smoke test
+- **실패 시 자동 복구** — PATH 재보정, pip 재시도, brew 실패 시 공식 다운로드 fallback
+
+### 보안 강화 — 로컬 파일 접근 승인 시스템
+
+- **토큰 기반 로컬 파일 승인** — `_local_permission_response()` / `_require_local_approval()`
+  - 5분(300초) TTL 만료 토큰으로 read / write / list 각 액션을 별도 승인
+  - write 승인 시 `content_hash`(SHA-256)로 내용 위변조 방지
+  - 만료 토큰 자동 정리(lazy GC)
+- **loopback 감지** — `_host_is_loopback()` + `ipaddress` 표준 라이브러리로 네트워크 노출 여부 판단
+  - `REQUIRE_AUTH` 기본값: 퍼블릭 모드 또는 네트워크 노출 시 `true` 자동 적용
+  - `OPEN_REGISTRATION`: 네트워크 노출/퍼블릭 모드에서 기본 `false` (초대 코드 필요)
+- **CORS 세밀 제어** — `LATTICEAI_CORS_ALLOWED_ORIGINS` 환경변수로 허용 출처 추가 설정 가능
+- **파일 자동 주입(opt-in)** — `LATTICEAI_AUTO_READ_CHAT_PATHS=true` 설정 시에만 채팅 메시지의 로컬 경로를 컨텍스트에 주입 (기본 OFF — 클라우드 모델 파일 누출 방지)
+
+### 어드민 대시보드 — Audit & Data Governance
+
+- **감사 로그 섹션** — 사용자별 AI 사용량, 업로드 문서 수, 민감정보 감지, clear/delete 이벤트, 최근 감사 이벤트 표시
+- **데이터 보존 정책** — `/clear`, `/clear_all`, 대화 삭제는 화면 정리만 수행; Data Graph / RAG / 감사 로그는 보존
+  - clear 동작을 `ClearEvent` 노드로 그래프에 기록 (언제 누가 clear 했는지 감사 추적)
+- **민감정보 검사** — 문서 업로드 텍스트를 감사 로그에 기록
+
+### Graph RAG / Data Graph
+
+- **한국어 단어 검색 개선** — 2글자 키워드(`문서`, `모델` 등) RAG 검색 누락 문제 수정
+- **`graph.html` 독립 페이지 유지** — 채팅 사이드바 `Data Graph` 버튼으로 연결, New Chat 버튼은 대화 검색 아래로 이동
+
+### CLI / Node.js 래퍼
+
+- `ltcai_cli.py` — `doctor` 명령어에 확장된 구성요소 탐지 통합
+- `bin/ltcai.js` — Node.js 래퍼 PATH 보정 로직 개선
+
+### 테스트
+
+- `tests/unit/test_security.py` — 로컬 파일 접근 승인 토큰 흐름 검증 (62줄 신규 추가)
+
+### 환경변수 추가 (`.env.example`)
+
+| 변수 | 기본값 | 설명 |
+|------|--------|------|
+| `LATTICEAI_AUTO_READ_CHAT_PATHS` | `false` | 채팅 메시지 내 로컬 경로 자동 주입 |
+| `LATTICEAI_CORS_ALLOWED_ORIGINS` | `` | 추가 허용 CORS 출처 (콤마 구분) |
+| `LATTICEAI_EXTRA_PATH` | `` | 추가 PATH 디렉토리 (Setup Wizard 자동 기록) |
+
 ## [0.1.20] - 2026-05-23
 
 ### Release

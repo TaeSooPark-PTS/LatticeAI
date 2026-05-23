@@ -672,16 +672,11 @@
     let searchAbortController = null;
     let searchDebounceId = null;
 
-    function authHeaders() {
-      const token = localStorage.getItem('ltcai_session_token') || '';
-      return token ? { Authorization: `Bearer ${token}` } : {};
-    }
-
     function apiFetch(path, opts = {}) {
       return fetch(`${API_BASE}${path}`, {
         credentials: 'include',
         ...opts,
-        headers: { ...authHeaders(), ...(opts.headers || {}) },
+        headers: { ...(opts.headers || {}) },
       });
     }
 

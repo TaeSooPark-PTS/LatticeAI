@@ -22,6 +22,7 @@ import tempfile
 import time
 import urllib.error
 import urllib.request
+import ipaddress
 from contextlib import asynccontextmanager
 from pathlib import Path
 
@@ -170,14 +171,28 @@ if APP_MODE not in {"local", "public"}:
 IS_PUBLIC_MODE = APP_MODE == "public"
 DEFAULT_HOST = env_value("LATTICEAI_HOST", "127.0.0.1")
 DEFAULT_PORT = int(env_value("LATTICEAI_PORT", "4825"))
+def _host_is_loopback(host: str) -> bool:
+    if host in {"localhost", "127.0.0.1", "::1"}:
+        return True
+    try:
+        return ipaddress.ip_address(host).is_loopback
+    except ValueError:
+        return False
+
+NETWORK_EXPOSED = not _host_is_loopback(DEFAULT_HOST)
 ENABLE_TELEGRAM = env_bool("LATTICEAI_ENABLE_TELEGRAM", default=not IS_PUBLIC_MODE)
 ENABLE_GRAPH    = env_bool("LATTICEAI_ENABLE_GRAPH",    default=True)
 AUTOLOAD_MODELS = env_bool("LATTICEAI_AUTOLOAD_MODELS", default=IS_PUBLIC_MODE)
 MODEL_IDLE_UNLOAD_SECONDS = int(env_value("LATTICEAI_MODEL_IDLE_UNLOAD_SECONDS", "0"))
 ALLOW_LOCAL_MODELS = env_bool("LATTICEAI_ALLOW_LOCAL_MODELS", default=not IS_PUBLIC_MODE)
-REQUIRE_AUTH = env_bool("LATTICEAI_REQUIRE_AUTH", default=IS_PUBLIC_MODE)
+REQUIRE_AUTH = env_bool("LATTICEAI_REQUIRE_AUTH", default=IS_PUBLIC_MODE or NETWORK_EXPOSED)
 ALLOW_PLAINTEXT_API_KEYS = env_bool("LATTICEAI_ALLOW_PLAINTEXT_API_KEYS", default=False)
 CORS_ALLOW_NETWORK = env_bool("LATTICEAI_CORS_ALLOW_NETWORK", default=False)
+CORS_EXTRA_ORIGINS = [
+    item.strip()
+    for item in env_value("LATTICEAI_CORS_ALLOWED_ORIGINS", "").split(",")
+    if item.strip()
+]
 PUBLIC_MODEL = env_value("LATTICEAI_PUBLIC_MODEL", env_value("LATTICEAI_DEFAULT_MODEL", "openai:gpt-4o-mini"))
 LOCAL_MODEL = env_value("LATTICEAI_LOCAL_MODEL", "mlx-community/gemma-4-26b-a4b-it-4bit")
 LOCAL_DRAFT_MODEL = env_value("LATTICEAI_LOCAL_DRAFT_MODEL", "")
@@ -1928,9 +1943,16 @@ async def lifespan(app: FastAPI):
 
 app = FastAPI(title=f"Lattice AI Server ({APP_MODE})", version="2.1.0", lifespan=lifespan)
 
-CORS_ALLOWED_ORIGINS = ["http://localhost:4825", "http://127.0.0.1:4825"]
+CORS_ALLOWED_ORIGINS = [
+    f"http://localhost:{DEFAULT_PORT}",
+    f"http://127.0.0.1:{DEFAULT_PORT}",
+    *CORS_EXTRA_ORIGINS,
+]
 if CORS_ALLOW_NETWORK:
-    CORS_ALLOWED_ORIGINS = ["*"]
+    CORS_ALLOWED_ORIGINS = CORS_ALLOWED_ORIGINS + [
+        f"http://{DEFAULT_HOST}:{DEFAULT_PORT}",
+        f"https://{DEFAULT_HOST}:{DEFAULT_PORT}",
+    ]
 
 app.add_middleware(
     CORSMiddleware,
@@ -1948,9 +1970,8 @@ _ICONS_DIR = STATIC_DIR / "icons"
 if _ICONS_DIR.exists():
     app.mount("/icons", StaticFiles(directory=str(_ICONS_DIR)), name="icons")
 ensure_agent_root()
-app.mount("/agent-files", StaticFiles(directory=str(AGENT_ROOT)), name="agent-files")
 
-OPEN_REGISTRATION = env_bool("LATTICEAI_OPEN_REGISTRATION", default=True)
+OPEN_REGISTRATION = env_bool("LATTICEAI_OPEN_REGISTRATION", default=not NETWORK_EXPOSED and not IS_PUBLIC_MODE)
 
 @app.post("/register")
 async def register(req: UserRegister, request: Request):
@@ -1993,7 +2014,6 @@ async def login(req: UserLogin, request: Request):
         "email": req.email,
         "role": role,
         "is_admin": role == "admin",
-        "token": token,
     })
     response.set_cookie(key="session_token", value=token, httponly=True, samesite="lax", max_age=_SESSION_TTL)
     return response
@@ -2459,6 +2479,7 @@ _pending_agents_lock = threading.Lock()
 
 class ToolPathRequest(BaseModel):
     path: str = "."
+    approval_token: Optional[str] = None
 
 
 class ToolWriteFileRequest(BaseModel):
@@ -2556,12 +2577,14 @@ class ToolPdfRequest(BaseModel):
 class LocalAccessRequest(BaseModel):
     path: str
     approved: bool = False
+    approval_token: Optional[str] = None
 
 
 class LocalWriteRequest(BaseModel):
     path: str
     content: str
     approved: bool = False
+    approval_token: Optional[str] = None
 
 
 class McpCallRequest(BaseModel):
@@ -2588,7 +2611,7 @@ class ToolGitShowRequest(BaseModel):
 
 ENGINE_INSTALLERS = {
     "local_mlx": {
-        "command": [sys.executable, "-m", "pip", "install", "-r", "requirements.txt"],
+        "command": [sys.executable, "-m", "pip", "install", "--upgrade", "mlx-lm", "mlx-vlm", "huggingface_hub[cli]"],
         "label": "Install MLX runtime",
     },
     "openai": {
@@ -3980,18 +4003,19 @@ async def chat(req: ChatRequest, request: Request):
         if screenshot_context:
             context += f"\n\n{screenshot_context}"
 
-    # 메시지 안에 절대 경로나 ~/... 경로가 있으면 자동으로 파일 읽어서 컨텍스트 주입
-    _file_path_re = re.compile(r'(?:^|[\s\'\"(])((~|/[\w.])[^\s\'")\]]*)', re.MULTILINE)
-    for _m in _file_path_re.finditer(req.message or ""):
-        _fpath = _m.group(1).strip()
-        try:
-            _result = local_read(_fpath)
-            _fcontent = _result.get("content", "")
-            if _fcontent:
-                context += f"\n\n[FILE: {_fpath}]\n```\n{_fcontent[:6000]}\n```"
-                print(f"📂 Auto-injected file context: {_fpath}")
-        except Exception:
-            pass
+    if env_bool("LATTICEAI_AUTO_READ_CHAT_PATHS", default=False):
+        # Off by default: automatic local-file injection can leak files to cloud models.
+        _file_path_re = re.compile(r'(?:^|[\s\'\"(])((~|/[\w.])[^\s\'")\]]*)', re.MULTILINE)
+        for _m in _file_path_re.finditer(req.message or ""):
+            _fpath = _m.group(1).strip()
+            try:
+                _result = local_read(_fpath)
+                _fcontent = _result.get("content", "")
+                if _fcontent:
+                    context += f"\n\n[FILE: {_fpath}]\n```\n{_fcontent[:6000]}\n```"
+                    print(f"📂 Auto-injected file context: {_fpath}")
+            except Exception:
+                pass
 
     history_message = f"{req.message}\n[Image attached]" if req.image_data else req.message
     save_to_history("user", history_message, source=req.source or "web", conversation_id=req.conversation_id, **history_user)
@@ -5313,14 +5337,17 @@ async def tools_create_pdf(req: ToolPdfRequest, request: Request):
 
 @app.post("/tools/read_document")
 async def tools_read_document(req: ToolPathRequest, request: Request):
-    require_user(request)
+    current_user = require_user(request)
+    if Path(req.path).expanduser().is_absolute():
+        _require_local_approval(token=req.approval_token, path=req.path, action="read", user_email=current_user)
     return _tool_response(read_document, req.path)
 
 
 @app.get("/tools/pdf_pages")
-async def tools_pdf_pages(path: str, request: Request):
+async def tools_pdf_pages(path: str, request: Request, approval_token: Optional[str] = None):
     """Render PDF pages as base64 PNG images using PyMuPDF."""
-    require_user(request)
+    current_user = require_user(request)
+    _require_local_approval(token=approval_token, path=path, action="read", user_email=current_user)
     target = Path(path).expanduser().resolve()
     if not target.exists() or not target.is_file():
         raise HTTPException(status_code=404, detail="File not found")
@@ -5444,36 +5471,93 @@ _PERMISSION_ACTION_LABELS = {
     "write": "파일 쓰기",
 }
 
-def _local_permission_response(path: str, action: str) -> dict:
+_LOCAL_APPROVAL_TTL_SECONDS = 5 * 60
+_local_approval_lock = threading.Lock()
+_local_approvals: Dict[str, Dict[str, object]] = {}
+
+
+def _normalize_local_path_for_approval(path: str) -> str:
+    return str(Path(path).expanduser().resolve())
+
+
+def _content_fingerprint(content: str = "") -> str:
+    return hashlib.sha256(content.encode("utf-8")).hexdigest()
+
+
+def _local_permission_response(path: str, action: str, user_email: str, content: str = "") -> dict:
+    normalized = _normalize_local_path_for_approval(path)
+    token = secrets.token_urlsafe(24)
+    record = {
+        "path": normalized,
+        "action": action,
+        "user_email": user_email,
+        "expires_at": time.time() + _LOCAL_APPROVAL_TTL_SECONDS,
+    }
+    if action == "write":
+        record["content_hash"] = _content_fingerprint(content)
+    with _local_approval_lock:
+        _local_approvals[token] = record
     return {
         "permission_required": True,
         "path": path,
         "action": action,
         "action_label": _PERMISSION_ACTION_LABELS.get(action, action),
+        "approval_token": token,
+        "expires_in": _LOCAL_APPROVAL_TTL_SECONDS,
         "message": f"AI가 '{path}' 에 대한 {_PERMISSION_ACTION_LABELS.get(action, action)} 권한을 요청합니다.",
     }
 
 
+def _require_local_approval(
+    *,
+    token: Optional[str],
+    path: str,
+    action: str,
+    user_email: str,
+    content: str = "",
+) -> None:
+    if not token:
+        raise HTTPException(status_code=403, detail="파일 접근 승인 토큰이 필요합니다.")
+    normalized = _normalize_local_path_for_approval(path)
+    now = time.time()
+    with _local_approval_lock:
+        expired = [key for key, value in _local_approvals.items() if float(value.get("expires_at", 0)) < now]
+        for key in expired:
+            _local_approvals.pop(key, None)
+        record = _local_approvals.get(token)
+    if not record:
+        raise HTTPException(status_code=403, detail="파일 접근 승인이 만료되었거나 유효하지 않습니다.")
+    if record.get("user_email") != user_email:
+        raise HTTPException(status_code=403, detail="다른 사용자의 파일 접근 승인은 사용할 수 없습니다.")
+    if record.get("path") != normalized or record.get("action") != action:
+        raise HTTPException(status_code=403, detail="파일 접근 승인 범위가 일치하지 않습니다.")
+    if action == "write" and record.get("content_hash") != _content_fingerprint(content):
+        raise HTTPException(status_code=403, detail="승인된 파일 내용과 요청 내용이 다릅니다.")
+
+
 @app.post("/local/list")
 async def local_list_endpoint(req: LocalAccessRequest, request: Request):
-    require_user(request)
+    current_user = require_user(request)
     if not req.approved:
-        return _local_permission_response(req.path, "list")
+        return _local_permission_response(req.path, "list", current_user)
+    _require_local_approval(token=req.approval_token, path=req.path, action="list", user_email=current_user)
     return _tool_response(local_list, req.path)
 
 
 @app.post("/local/read")
 async def local_read_endpoint(req: LocalAccessRequest, request: Request):
-    require_user(request)
+    current_user = require_user(request)
     if not req.approved:
-        return _local_permission_response(req.path, "read")
+        return _local_permission_response(req.path, "read", current_user)
+    _require_local_approval(token=req.approval_token, path=req.path, action="read", user_email=current_user)
     return _tool_response(local_read, req.path)
 
 
 @app.get("/local/serve")
-async def local_serve_file(path: str, request: Request):
+async def local_serve_file(path: str, request: Request, approval_token: Optional[str] = None):
     """Serve a local file (images etc.) directly for browser preview."""
-    require_user(request)
+    current_user = require_user(request)
+    _require_local_approval(token=approval_token, path=path, action="read", user_email=current_user)
     target = Path(path).expanduser().resolve()
     if not target.exists() or not target.is_file():
         raise HTTPException(status_code=404, detail="File not found")
@@ -5482,9 +5566,16 @@ async def local_serve_file(path: str, request: Request):
 
 @app.post("/local/write")
 async def local_write_endpoint(req: LocalWriteRequest, request: Request):
-    require_user(request)
+    current_user = require_user(request)
     if not req.approved:
-        return _local_permission_response(req.path, "write")
+        return _local_permission_response(req.path, "write", current_user, req.content)
+    _require_local_approval(
+        token=req.approval_token,
+        path=req.path,
+        action="write",
+        user_email=current_user,
+        content=req.content,
+    )
     return _tool_response(local_write, req.path, req.content)
 
 
