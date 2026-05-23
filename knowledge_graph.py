@@ -94,31 +94,200 @@ def _chunks(text: str, size: int = 1200, overlap: int = 160) -> List[str]:
     return chunks
 
 
-def _topic_candidates(text: str, limit: int = 8) -> List[str]:
+_CONCEPT_STOP: set = {
+    # English stop words
+    "the", "and", "for", "with", "this", "that", "from", "into", "which",
+    "are", "was", "were", "has", "have", "had", "can", "will", "would",
+    "could", "should", "may", "might", "must", "shall", "being", "been",
+    "also", "just", "then", "than", "when", "where", "what", "how", "why",
+    "its", "their", "your", "our", "you", "they", "them", "these", "those",
+    "use", "used", "using", "based", "like", "such", "via", "per", "let",
+    "yes", "not", "but", "are", "all", "any", "out", "new", "get", "set",
+    # Korean stop words
+    "사용자", "내용", "파일", "채팅", "답변", "입니다", "그리고", "처럼",
+    "있어", "없어", "이야", "이다", "한다", "하다", "되다", "됩니다",
+    "경우", "방법", "부분", "상태", "정도", "결과", "이후", "이전",
+    "그것", "이것", "저것", "여기", "거기", "저기", "우리", "저희",
+    "기능", "서버", "모델", "설정", "설명", "버전", "지원", "사용", "실행",
+}
+
+
+def _extract_concepts(text: str, limit: int = 12) -> List[str]:
+    """Extract meaningful named concepts from text.
+
+    Priority order:
+    1. Backtick / quoted terms (explicitly technical)
+    2. Multi-word proper nouns (Lattice AI, GPT-4o, Claude Sonnet)
+    3. Single capitalized proper nouns not at sentence start (Claude, Python, FastAPI)
+    4. Korean compound technical terms (멀티모달, 에이전트, 그래프RAG)
+    5. Hyphenated / versioned identifiers (gpt-4o, mlx-lm, llama-3.3)
+    """
     text = str(text or "")
-    candidates: Dict[str, int] = {}
-    patterns = [
-        r"[A-Za-z][A-Za-z0-9_\-./]{2,}",
-        r"[가-힣][가-힣A-Za-z0-9_\-]{1,}",
-    ]
-    stop = {
-        "the", "and", "for", "with", "this", "that", "from", "into",
-        "사용자", "내용", "파일", "채팅", "답변", "입니다", "그리고", "처럼",
-    }
-    for pattern in patterns:
-        for match in re.findall(pattern, text):
-            key = match.strip("._-/").lower()
-            if (len(key) < 3 and not re.search(r"[가-힣]", key)) or key in stop or key.isdigit():
+    seen: dict = {}  # concept_lower → original form
+
+    def _add(term: str) -> None:
+        key = term.strip().lower()
+        if (
+            key
+            and key not in _CONCEPT_STOP
+            and not key.isdigit()
+            and len(key) >= 2
+        ):
+            seen.setdefault(key, term.strip())
+
+    # 1. Backtick-quoted code/term (highest confidence)
+    for m in re.findall(r'`([^`]{2,40})`', text):
+        if not re.search(r'[\(\)\[\]{}]', m):  # skip code expressions
+            _add(m)
+
+    # 2. Double/single quoted terms
+    for m in re.findall(r'"([^"]{2,40})"', text):
+        _add(m)
+
+    # 3. Multi-word English proper nouns (Title Case or ALL-CAPS first word, 2–4 words).
+    #    Pattern A: Mixed-case first word — "Lattice AI", "Tool Use", "Graph RAG"
+    for m in re.findall(
+        r'([A-Z][a-z]{1,20}(?:\s+(?:[A-Z]{2,10}|[A-Z][a-z0-9]{1,20}|\d[\w.]{0,6})){1,3})',
+        text,
+    ):
+        _add(m)
+    #    Pattern B: ALL-CAPS first word — "VS Code", "MCP Server", "GPT-4o Mini"
+    for m in re.findall(
+        r'([A-Z]{2,6}(?:\s+(?:[A-Z]{2,10}|[A-Z][a-z0-9]{1,20})){1,2})',
+        text,
+    ):
+        _add(m)
+
+    # 4. Single capitalized proper noun.
+    #    Use ASCII-boundary lookaround instead of \b so Korean particles
+    #    (와, 의, 는 …) after an English word don't block the match.
+    all_caps_words = re.findall(r'(?<![A-Za-z0-9])([A-Z][A-Za-z0-9]{2,24})(?![A-Za-z0-9])', text)
+    freq: Dict[str, int] = {}
+    for w in all_caps_words:
+        freq[w] = freq.get(w, 0) + 1
+    sentence_starts = set(re.findall(r'(?:^|(?<=[.!?])\s+)([A-Z][a-z]+)', text))
+    for m, cnt in freq.items():
+        if m.lower() in _CONCEPT_STOP:
+            continue
+        if cnt >= 2 or m not in sentence_starts:
+            _add(m)
+
+    # 5. Korean technical compound nouns (3–12 chars, no common particles)
+    for m in re.findall(r'[가-힣]{2,12}(?:AI|LLM|API|UI|RAG|bot|Bot|기능|모델|서버|에이전트|파이프라인|워크플로)', text):
+        _add(m)
+    # Korean standalone terms that appear after topic markers (은/는/이/가 앞)
+    for m in re.findall(r'([가-힣]{2,12})(?:은|는|이|가|을|를|의|에서|으로|와|과)', text):
+        if m.lower() not in _CONCEPT_STOP and len(m) >= 2:
+            # Only add if it's non-trivial (has 3+ chars or appears multiple times)
+            cnt = text.count(m)
+            if len(m) >= 3 or cnt >= 2:
+                _add(m)
+
+    # 6. Hyphenated / versioned identifiers (gpt-4o, llama-3.3, mlx-lm)
+    for m in re.findall(r'\b([a-zA-Z][a-zA-Z0-9]*(?:-[a-zA-Z0-9.]+)+)\b', text):
+        if len(m) >= 4:
+            _add(m)
+
+    # De-duplicate: remove shorter concepts that are sub-strings of longer ones
+    # e.g. if "Lattice AI" exists, drop "Lattice"; if "Graph RAG" exists, drop "Graph"
+    final: List[str] = []
+    values = list(seen.values())
+    values_lower = [v.lower() for v in values]
+    for i, v in enumerate(values):
+        vl = v.lower()
+        is_substring = any(
+            vl != values_lower[j] and vl in values_lower[j]
+            for j in range(len(values))
+        )
+        if not is_substring:
+            final.append(v)
+
+    return final[:limit]
+
+
+def _infer_relation(sentence: str) -> str:
+    """Infer a human-readable relation label from a sentence."""
+    s = sentence.lower()
+    if re.search(r'비교|versus|vs\.?|차이|다르', s):
+        return "비교"
+    if re.search(r'기능|feature|할 수 있|지원|support|제공|provide', s):
+        return "기능 제공"
+    if re.search(r'포함|include|consist|구성|구현|탑재', s):
+        return "포함"
+    if re.search(r'사용|use|활용|이용', s):
+        return "사용"
+    if re.search(r'연결|connect|통합|integrate|연동', s):
+        return "연결"
+    if re.search(r'설명|explain|describe|정의|definition|란|이란', s):
+        return "설명"
+    if re.search(r'확장|extend|플러그인|plugin|addon', s):
+        return "확장"
+    if re.search(r'대체|replace|instead|instead of', s):
+        return "대체"
+    if re.search(r'필요|require|depend|의존', s):
+        return "의존"
+    if re.search(r'생성|만들|create|generate|build', s):
+        return "생성"
+    return "관련"
+
+
+def _extract_triples(
+    text: str, concepts: List[str], limit: int = 16
+) -> List[Dict[str, str]]:
+    """Extract (subject, relation, object, context) triples from text.
+
+    Scans each sentence for pairs of concepts and infers the relation from
+    surrounding verb/particle patterns.
+    """
+    if len(concepts) < 2:
+        return []
+
+    # Build a fast lookup: lowercased concept → canonical form
+    concept_lower = {c.lower(): c for c in concepts}
+
+    triples: List[Dict[str, str]] = []
+    seen_pairs: set = set()
+
+    sentences = re.split(r'(?<=[.!?\n])\s+|\n{2,}', text)
+    for sent in sentences:
+        sent = sent.strip()
+        if len(sent) < 8:
+            continue
+        sent_lower = sent.lower()
+
+        # Find which concepts appear in this sentence
+        present = [
+            concept_lower[k]
+            for k in concept_lower
+            if k in sent_lower
+        ]
+        if len(present) < 2:
+            continue
+
+        relation = _infer_relation(sent)
+        # Create one triple per adjacent concept pair (avoid combinatorial explosion)
+        for i in range(len(present) - 1):
+            subj = present[i]
+            obj = present[i + 1]
+            pair_key = f"{subj.lower()}|{relation}|{obj.lower()}"
+            rev_key = f"{obj.lower()}|{relation}|{subj.lower()}"
+            if pair_key in seen_pairs or rev_key in seen_pairs:
                 continue
-            candidates[key] = candidates.get(key, 0) + 1
-    return [
-        k for k, v in sorted(candidates.items(), key=lambda item: (-item[1], item[0]))
-        if (re.search(r"[가-힣]", k) and len(k) >= 2) or (len(k) >= 4 and (v >= 2 or len(k) >= 6))
-    ][:limit]
+            seen_pairs.add(pair_key)
+            triples.append({
+                "subject": subj,
+                "relation": relation,
+                "object": obj,
+                "context": sent[:240],
+            })
+            if len(triples) >= limit:
+                return triples
+
+    return triples
 
 
 def _semantic_items(text: str) -> List[Dict[str, str]]:
-    """Lightweight extraction for product MVP before model-based IE is wired in."""
+    """Extract explicit decision / task items from text."""
     items: List[Dict[str, str]] = []
     for raw_line in str(text or "").splitlines():
         line = _clean_text(raw_line)
@@ -129,7 +298,7 @@ def _semantic_items(text: str) -> List[Dict[str, str]]:
             items.append({"type": "Decision", "title": line[:120], "summary": line[:500]})
         if re.search(r"(todo|해야|하자|진행|구현|수정|확인|next|task|\[ \])", lowered):
             items.append({"type": "Task", "title": line[:120], "summary": line[:500]})
-    return items[:12]
+    return items[:8]
 
 
 class KnowledgeGraphStore:
@@ -268,54 +437,95 @@ class KnowledgeGraphStore:
             "user_nickname": user_nickname,
             "chars": len(content),
         }
+        concepts = _extract_concepts(content)
+        triples = _extract_triples(content, concepts)
+        semantic = _semantic_items(content)
+
         with self._connect() as conn:
-            self._upsert_node(conn, conv_id, "Conversation", conversation_id or "Default conversation", metadata={"source": source})
+            # ── Conversation node (always kept, acts as context anchor) ──────
             self._upsert_node(
-                conn,
-                node_id,
-                node_type,
+                conn, conv_id, "Conversation",
+                conversation_id or "Default conversation",
+                metadata={"source": source},
+            )
+
+            # ── Message/AIResponse node — stored for RAG/search but hidden
+            #    from the graph visualization (type filtered in graph()) ──────
+            self._upsert_node(
+                conn, node_id, node_type,
                 _clean_text(content)[:80] or role,
                 summary=_clean_text(content)[:500],
                 metadata=metadata,
                 raw=raw or metadata,
             )
             self._upsert_edge(conn, conv_id, node_id, "contains", metadata={"source": source})
+
+            # ── Person node ───────────────────────────────────────────────────
+            person_id = None
             if user_email or user_nickname:
                 person_key = user_email or user_nickname or "unknown"
                 person_id = f"person:{_slug(person_key)}"
-                self._upsert_node(conn, person_id, "Person", user_nickname or user_email or "Unknown user", metadata={"email": user_email})
+                self._upsert_node(
+                    conn, person_id, "Person",
+                    user_nickname or user_email or "Unknown user",
+                    metadata={"email": user_email},
+                )
                 self._upsert_edge(conn, person_id, node_id, "authored", metadata={"role": role})
+
+            # ── Text chunks (for RAG retrieval, invisible in graph) ───────────
             for index, chunk in enumerate(_chunks(content)):
                 chunk_id = f"chunk:{_sha256_text(f'{node_id}:{index}:{chunk}')[:24]}"
-                self._upsert_node(conn, chunk_id, "Chunk", f"{node_type} chunk {index + 1}", summary=chunk[:500], metadata={"index": index, "source_node": node_id})
+                self._upsert_node(
+                    conn, chunk_id, "Chunk",
+                    f"{node_type} chunk {index + 1}",
+                    summary=chunk[:500],
+                    metadata={"index": index, "source_node": node_id},
+                )
                 conn.execute(
-                    """
-                    INSERT OR REPLACE INTO chunks(id, source_node, text, metadata_json, created_at)
-                    VALUES (?, ?, ?, ?, ?)
-                    """,
+                    "INSERT OR REPLACE INTO chunks(id, source_node, text, metadata_json, created_at) VALUES (?, ?, ?, ?, ?)",
                     (chunk_id, node_id, chunk, _json({"index": index, "source_node": node_id}), _now()),
                 )
                 self._upsert_edge(conn, node_id, chunk_id, "has_chunk")
-            for topic in _topic_candidates(content):
-                topic_id = f"topic:{_slug(topic)}"
-                self._upsert_node(conn, topic_id, "Topic", topic, metadata={"auto_extracted": True})
-                self._upsert_edge(conn, node_id, topic_id, "mentions", weight=0.5)
-            for item in _semantic_items(content):
-                semantic_type = item["type"]
-                semantic_title = item["title"]
-                semantic_id = f"{semantic_type.lower()}:{_sha256_text(f'{node_id}:{semantic_type}:{semantic_title}')[:24]}"
+
+            # ── Concept nodes — the PRIMARY visible nodes in the graph ────────
+            concept_ids: Dict[str, str] = {}
+            for concept in concepts:
+                cid = f"concept:{_slug(concept)}"
+                concept_ids[concept.lower()] = cid
                 self._upsert_node(
-                    conn,
-                    semantic_id,
-                    semantic_type,
-                    semantic_title,
+                    conn, cid, "Concept", concept,
+                    metadata={"auto_extracted": True, "source": source},
+                )
+                # Conversation → Concept edge (for context lookup)
+                self._upsert_edge(conn, conv_id, cid, "discusses", weight=0.6)
+
+            # ── Concept–Concept edges from extracted triples ──────────────────
+            for triple in triples:
+                subj_id = concept_ids.get(triple["subject"].lower())
+                obj_id = concept_ids.get(triple["object"].lower())
+                if subj_id and obj_id and subj_id != obj_id:
+                    self._upsert_edge(
+                        conn, subj_id, obj_id, triple["relation"],
+                        weight=0.9,
+                        metadata={"context": triple.get("context", "")[:240]},
+                    )
+
+            # ── Decision / Task nodes ─────────────────────────────────────────
+            for item in semantic:
+                sem_type = item["type"]
+                sem_title = item["title"]
+                sem_id = f"{sem_type.lower()}:{_sha256_text(f'{node_id}:{sem_type}:{sem_title}')[:24]}"
+                self._upsert_node(
+                    conn, sem_id, sem_type, sem_title,
                     summary=item["summary"],
                     metadata={"auto_extracted": True, "source_node": node_id},
                     raw=item,
                 )
-                self._upsert_edge(conn, node_id, semantic_id, "implies", weight=0.8)
-                if node_type == "AIResponse":
-                    self._upsert_edge(conn, semantic_id, node_id, "based_on", weight=0.6)
+                self._upsert_edge(conn, conv_id, sem_id, "produced", weight=0.8)
+                # Link Decision/Task to mentioned concepts
+                for cid in list(concept_ids.values())[:3]:
+                    self._upsert_edge(conn, sem_id, cid, "involves", weight=0.7)
+
         return {"node_id": node_id, "type": node_type}
 
     def ingest_document(
@@ -597,8 +807,16 @@ class KnowledgeGraphStore:
             sheets.append({"title": ws.title, "max_row": ws.max_row, "max_column": ws.max_column})
         return {"sheets": sheets}
 
+    # Node types visible in the graph visualization.
+    # Message / AIResponse / Chunk are stored for RAG but hidden from the graph.
+    _GRAPH_VISIBLE_TYPES = (
+        "Concept", "Person", "File", "Conversation",
+        "Decision", "Task", "Topic",
+    )
+
     def graph(self, limit: int = 300) -> Dict[str, Any]:
         limit = max(1, min(int(limit or 300), 2000))
+        visible = ",".join(f"'{t}'" for t in self._GRAPH_VISIBLE_TYPES)
         with self._connect() as conn:
             nodes = [
                 {
@@ -610,7 +828,7 @@ class KnowledgeGraphStore:
                     "updated_at": row["updated_at"],
                 }
                 for row in conn.execute(
-                    "SELECT id, type, title, summary, metadata_json, updated_at FROM nodes WHERE type != 'Chunk' ORDER BY updated_at DESC LIMIT ?",
+                    f"SELECT id, type, title, summary, metadata_json, updated_at FROM nodes WHERE type IN ({visible}) ORDER BY updated_at DESC LIMIT ?",
                     (limit,),
                 )
             ]
@@ -618,24 +836,18 @@ class KnowledgeGraphStore:
             edges: List[Dict[str, Any]] = []
             if node_ids:
                 edge_rows = conn.execute(
-                    """
+                    f"""
                     SELECT id, from_node, to_node, type, weight, metadata_json
                     FROM edges
                     WHERE from_node IN (
-                        SELECT id
-                        FROM nodes
-                        WHERE type != 'Chunk'
-                        ORDER BY updated_at DESC
-                        LIMIT ?
+                        SELECT id FROM nodes WHERE type IN ({visible})
+                        ORDER BY updated_at DESC LIMIT ?
                     )
                     AND to_node IN (
-                        SELECT id
-                        FROM nodes
-                        WHERE type != 'Chunk'
-                        ORDER BY updated_at DESC
-                        LIMIT ?
+                        SELECT id FROM nodes WHERE type IN ({visible})
+                        ORDER BY updated_at DESC LIMIT ?
                     )
-                    ORDER BY created_at DESC
+                    ORDER BY weight DESC, created_at DESC
                     """,
                     (limit, limit),
                 ).fetchall()
