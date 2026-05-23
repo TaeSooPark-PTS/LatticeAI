@@ -534,6 +534,44 @@
         }
         .mcp-install-btn:hover { background: rgba(34,211,160,0.15); }
         .mcp-install-btn.installed { border-color: rgba(255,255,255,0.1); background: rgba(255,255,255,0.04); color: var(--faint); }
+        /* MCP 소스 배지 */
+        .mcp-source-badge {
+            font-size: 9.5px; font-weight: 700; padding: 2px 6px; border-radius: 4px;
+            text-transform: uppercase; letter-spacing: .05em; flex-shrink: 0;
+        }
+        .mcp-source-badge.claude-code { background: rgba(100,180,255,0.12); color: #64b4ff; border: 1px solid rgba(100,180,255,0.2); }
+        .mcp-source-badge.custom { background: rgba(255,180,60,0.12); color: #ffb43c; border: 1px solid rgba(255,180,60,0.2); }
+        /* MCP 탭 */
+        .mcp-tabs { display: flex; gap: 4px; padding: 12px 20px 0; border-bottom: 1px solid rgba(255,255,255,0.07); }
+        .mcp-tab {
+            padding: 7px 14px; border-radius: 8px 8px 0 0; font-size: 12px; font-weight: 600;
+            color: var(--faint); cursor: pointer; border: none; background: none;
+            border-bottom: 2px solid transparent; transition: all .15s;
+        }
+        .mcp-tab.active { color: var(--accent); border-bottom-color: var(--accent); background: rgba(34,211,160,0.06); }
+        .mcp-tab:hover:not(.active) { color: var(--text); background: rgba(255,255,255,0.04); }
+        /* Custom MCP 추가 폼 */
+        .mcp-add-form { display: flex; flex-direction: column; gap: 10px; padding: 4px 0; }
+        .mcp-add-form label { font-size: 11px; font-weight: 600; color: var(--faint); text-transform: uppercase; letter-spacing: .06em; }
+        .mcp-add-form input, .mcp-add-form textarea, .mcp-add-form select {
+            width: 100%; padding: 8px 11px; border-radius: 8px; font-size: 13px;
+            background: rgba(255,255,255,0.05); border: 1px solid rgba(255,255,255,0.1);
+            color: var(--text); outline: none; transition: border .15s; box-sizing: border-box;
+        }
+        .mcp-add-form input:focus, .mcp-add-form textarea:focus { border-color: rgba(34,211,160,0.4); }
+        .mcp-add-form .field-hint { font-size: 10.5px; color: var(--faint); margin-top: -6px; }
+        .mcp-submit-btn {
+            padding: 9px 18px; border-radius: 8px; font-size: 13px; font-weight: 700;
+            background: rgba(34,211,160,0.12); border: 1px solid rgba(34,211,160,0.3);
+            color: var(--accent); cursor: pointer; transition: all .15s; align-self: flex-end;
+        }
+        .mcp-submit-btn:hover { background: rgba(34,211,160,0.22); }
+        .mcp-delete-btn {
+            padding: 5px 10px; border-radius: 6px; font-size: 11px; font-weight: 600;
+            background: rgba(255,80,80,0.08); border: 1px solid rgba(255,80,80,0.2);
+            color: #ff6b6b; cursor: pointer; transition: all .15s; flex-shrink: 0;
+        }
+        .mcp-delete-btn:hover { background: rgba(255,80,80,0.18); }
         .acct-modal {
             background: var(--surface, #1e293b);
             border: 1px solid rgba(255,255,255,0.08);
@@ -3159,6 +3197,11 @@
                     <div class="mcp-modal-header">
                         <h3><i class="ti ti-plug-connected"></i> MCP 서버 관리</h3>
                         <button class="mcp-modal-close" onclick="closeMcpModal()"><i class="ti ti-x"></i></button>
+                    </div>
+                    <div class="mcp-tabs" id="mcp-tabs">
+                        <button class="mcp-tab active" onclick="switchMcpTab('registry',this)">🗂 레지스트리</button>
+                        <button class="mcp-tab" onclick="switchMcpTab('claude-code',this)">🤖 Claude Code</button>
+                        <button class="mcp-tab" onclick="switchMcpTab('custom',this)">➕ 직접 추가</button>
                     </div>
                     <div class="mcp-modal-body" id="mcp-modal-body">
                         <div style="color:var(--faint);font-size:13px;text-align:center;padding:24px">로딩 중...</div>
@@ -6952,18 +6995,39 @@
 
     <script>
     // ── MCP 관리 모달 ────────────────────────────────────────────────────────
+    let _mcpCurrentTab = 'registry';
+
     async function openMcpModal() {
         document.getElementById('mcp-modal-overlay').classList.add('open');
-        await renderMcpModal();
+        await renderMcpModal(_mcpCurrentTab);
     }
 
     function closeMcpModal() {
         document.getElementById('mcp-modal-overlay').classList.remove('open');
     }
 
-    async function renderMcpModal() {
+    function switchMcpTab(tab, btn) {
+        _mcpCurrentTab = tab;
+        document.querySelectorAll('.mcp-tab').forEach(b => b.classList.remove('active'));
+        btn.classList.add('active');
+        renderMcpModal(tab);
+    }
+
+    async function renderMcpModal(tab) {
+        tab = tab || _mcpCurrentTab || 'registry';
         const body = document.getElementById('mcp-modal-body');
         body.innerHTML = '<div style="color:var(--faint);font-size:13px;text-align:center;padding:24px">로딩 중...</div>';
+
+        if (tab === 'claude-code') {
+            await renderMcpClaudeCode(body);
+        } else if (tab === 'custom') {
+            await renderMcpCustom(body);
+        } else {
+            await renderMcpRegistry(body);
+        }
+    }
+
+    async function renderMcpRegistry(body) {
         try {
             const [installedRes, toolsRes] = await Promise.all([
                 apiFetch('/mcp/installed'),
@@ -7015,6 +7079,148 @@
         }
     }
 
+    async function renderMcpClaudeCode(body) {
+        try {
+            const res = await apiFetch('/mcp/claude-code-servers');
+            const data = res.ok ? await res.json() : { servers: [] };
+            const servers = data.servers || [];
+
+            if (!servers.length) {
+                body.innerHTML = `
+                    <div style="color:var(--faint);font-size:13px;text-align:center;padding:32px 24px;">
+                        <div style="font-size:28px;margin-bottom:10px">🤖</div>
+                        <div><strong>Claude Code MCP 없음</strong></div>
+                        <div style="margin-top:6px;font-size:11px">~/.claude/settings.json에 mcpServers 항목이 없습니다.</div>
+                        <div style="margin-top:4px;font-size:11px">Claude Code에서 MCP를 설치하면 여기에 자동으로 표시됩니다.</div>
+                    </div>`;
+                return;
+            }
+
+            let html = '<div class="mcp-section-label">Claude Code에서 설치된 MCP</div>';
+            html += servers.map(srv => `
+                <div class="mcp-item">
+                    <div class="mcp-item-icon">${srv.icon || '🤖'}</div>
+                    <div class="mcp-item-info">
+                        <div class="mcp-item-name" style="display:flex;align-items:center;gap:6px;">
+                            ${escapeHtml(srv.name)}
+                            <span class="mcp-source-badge claude-code">Claude Code</span>
+                        </div>
+                        <div class="mcp-item-desc" title="${escapeHtml(srv.package || '')}">${escapeHtml(srv.package || '')}</div>
+                        ${srv.env_vars && srv.env_vars.length ? `<div class="mcp-item-desc" style="margin-top:2px">ENV: ${escapeHtml(srv.env_vars.map(e=>e.name).join(', '))}</div>` : ''}
+                    </div>
+                    <span class="mcp-item-status">활성</span>
+                </div>
+            `).join('');
+            body.innerHTML = html;
+        } catch (e) {
+            body.innerHTML = `<div style="color:#ff6b6b;font-size:13px;text-align:center;padding:24px">로드 실패: ${escapeHtml(e.message)}</div>`;
+        }
+    }
+
+    async function renderMcpCustom(body) {
+        // Load existing custom MCPs
+        let existingHtml = '';
+        try {
+            const res = await apiFetch('/mcp/custom');
+            const data = res.ok ? await res.json() : { custom: [] };
+            const customs = data.custom || [];
+            if (customs.length) {
+                existingHtml = '<div class="mcp-section-label">직접 추가한 MCP</div>';
+                existingHtml += customs.map(c => `
+                    <div class="mcp-item" id="mcp-custom-item-${escapeHtml(c.id)}">
+                        <div class="mcp-item-icon">${c.icon || '🔌'}</div>
+                        <div class="mcp-item-info">
+                            <div class="mcp-item-name" style="display:flex;align-items:center;gap:6px;">
+                                ${escapeHtml(c.name)}
+                                <span class="mcp-source-badge custom">Custom</span>
+                            </div>
+                            <div class="mcp-item-desc" title="${escapeHtml(c.package||'')}">${escapeHtml(c.package||'')}</div>
+                            ${c.description ? `<div class="mcp-item-desc">${escapeHtml(c.description)}</div>` : ''}
+                        </div>
+                        <button class="mcp-delete-btn" onclick="deleteCustomMcp('${escapeHtml(c.id)}')">삭제</button>
+                    </div>
+                `).join('');
+            }
+        } catch {}
+
+        body.innerHTML = existingHtml + `
+            <div class="mcp-section-label" style="margin-top:${existingHtml?'16px':'4px'}">새 MCP 추가</div>
+            <div class="mcp-add-form">
+                <div>
+                    <label>이름 *</label>
+                    <input id="mcp-add-name" type="text" placeholder="예: my-database" />
+                </div>
+                <div>
+                    <label>패키지 / 명령어 *</label>
+                    <input id="mcp-add-package" type="text" placeholder="예: @company/mcp-server 또는 npx mcp-server" />
+                    <div class="field-hint">npm 패키지명 또는 실행 명령어</div>
+                </div>
+                <div>
+                    <label>설명</label>
+                    <input id="mcp-add-desc" type="text" placeholder="이 MCP가 하는 일 (선택)" />
+                </div>
+                <div>
+                    <label>필요한 환경변수 (쉼표 구분)</label>
+                    <input id="mcp-add-envs" type="text" placeholder="예: API_KEY, BASE_URL" />
+                    <div class="field-hint">서버 실행 시 필요한 env var 이름들</div>
+                </div>
+                <div style="display:flex;align-items:center;gap:8px;">
+                    <input id="mcp-add-icon" type="text" placeholder="🔌" style="width:56px;text-align:center;" maxlength="4" />
+                    <label style="margin:0">아이콘 (이모지)</label>
+                </div>
+                <div id="mcp-add-error" style="color:#ff6b6b;font-size:12px;display:none;"></div>
+                <button class="mcp-submit-btn" onclick="submitCustomMcp()">➕ MCP 추가</button>
+            </div>
+        `;
+    }
+
+    async function submitCustomMcp() {
+        const name = document.getElementById('mcp-add-name').value.trim();
+        const pkg = document.getElementById('mcp-add-package').value.trim();
+        const desc = document.getElementById('mcp-add-desc').value.trim();
+        const envsRaw = document.getElementById('mcp-add-envs').value.trim();
+        const icon = document.getElementById('mcp-add-icon').value.trim() || '🔌';
+        const errEl = document.getElementById('mcp-add-error');
+        errEl.style.display = 'none';
+
+        if (!name) { errEl.textContent = '이름을 입력해주세요.'; errEl.style.display='block'; return; }
+        if (!pkg)  { errEl.textContent = '패키지를 입력해주세요.'; errEl.style.display='block'; return; }
+
+        const env_vars = envsRaw ? envsRaw.split(',').map(s=>({name:s.trim(),description:''})).filter(e=>e.name) : [];
+        try {
+            const res = await apiFetch('/mcp/custom', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ name, package: pkg, description: desc, icon, env_vars }),
+            });
+            if (res.ok) {
+                await renderMcpModal('custom');
+            } else {
+                const d = await res.json().catch(()=>({}));
+                errEl.textContent = d.detail || '추가 실패';
+                errEl.style.display = 'block';
+            }
+        } catch (e) {
+            errEl.textContent = e.message || '네트워크 오류';
+            errEl.style.display = 'block';
+        }
+    }
+
+    async function deleteCustomMcp(id) {
+        if (!confirm('이 MCP를 삭제하시겠습니까?')) return;
+        try {
+            const res = await apiFetch('/mcp/custom/' + encodeURIComponent(id), { method: 'DELETE' });
+            if (res.ok) {
+                await renderMcpModal('custom');
+            } else {
+                const d = await res.json().catch(()=>({}));
+                alert(d.detail || '삭제 실패');
+            }
+        } catch (e) {
+            alert(e.message || '네트워크 오류');
+        }
+    }
+
     async function installMcp(id) {
         const btn = document.querySelector(`#mcp-item-${CSS.escape(id)} .mcp-install-btn`);
         if (btn) { btn.disabled = true; btn.textContent = '설치 중...'; }
@@ -7025,7 +7231,7 @@
                 body: JSON.stringify({ mcp_id: id }),
             });
             if (res.ok) {
-                await renderMcpModal();
+                await renderMcpModal('registry');
             } else {
                 const d = await res.json().catch(() => ({}));
                 if (btn) { btn.disabled = false; btn.textContent = '설치'; }

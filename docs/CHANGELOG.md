@@ -1,5 +1,32 @@
 # Changelog
 
+## [0.1.26] - 2026-05-24
+
+### MCP 관리 대폭 확장 — 3-탭 UI
+
+**새 기능**
+
+- **레지스트리 탭** — 기존 MCP 목록 (빌트인 + 원격 레지스트리)
+  - 인기 MCP 20개 추가: `mcp-postgres`, `mcp-sqlite`, `mcp-brave-search`, `mcp-tavily`, `mcp-puppeteer`, `mcp-vercel`, `mcp-cloudflare`, `mcp-docker`, `mcp-stripe`, `mcp-supabase`, `mcp-hubspot`, `mcp-memory`, `mcp-sequential-thinking`, `mcp-discord`, `mcp-telegram`, `mcp-everything` 등
+  - 각 항목에 `env_vars` 필드 (설치 시 필요한 환경변수 안내)
+
+- **Claude Code 탭** — `~/.claude/settings.json` mcpServers 자동 동기화
+  - Claude Code에서 설치한 MCP 목록을 Lattice AI UI에서 바로 확인
+  - 이름·패키지·환경변수 정보 표시, "Claude Code" 소스 배지
+
+- **직접 추가 탭** — 커스텀 MCP 폼
+  - 이름·패키지·설명·환경변수·아이콘 직접 입력
+  - 추가된 항목은 `~/.ltcai/custom_mcps.json`에 저장 (서버 재시작 후에도 유지)
+  - 삭제 버튼 (어드민 전용)
+
+**API 엔드포인트**
+- `GET /mcp/claude-code-servers` — Claude Code settings.json mcpServers 반환
+- `GET /mcp/custom` — 사용자 추가 커스텀 MCP 목록
+- `POST /mcp/custom` — 커스텀 MCP 추가
+- `DELETE /mcp/custom/{id}` — 커스텀 MCP 삭제 (어드민)
+
+---
+
 ## [0.1.25] - 2026-05-24
 
 ### Knowledge Graph 전면 재설계 — 점=명사, 선=동사

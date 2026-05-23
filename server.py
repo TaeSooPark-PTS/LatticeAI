@@ -387,6 +387,14 @@ class McpRecommendRequest(BaseModel):
 class McpInstallRequest(BaseModel):
     mcp_id: str
 
+class McpCustomRequest(BaseModel):
+    name: str
+    package: str
+    description: str = ""
+    category: str = "custom"
+    icon: str = "🔌"
+    env_vars: List[Dict] = []
+
 class SkillInstallRequest(BaseModel):
     plugin: str
     skill: str
@@ -672,6 +680,187 @@ MCP_REGISTRY = [
         "description": "디자인 템플릿 기반 이미지/슬라이드 작업을 연동합니다.",
         "keywords": ["canva", "design", "poster", "card", "캔바", "디자인"],
         "capabilities": ["디자인 템플릿", "이미지 제작 워크플로"],
+    },
+    # ── 데이터베이스 ─────────────────────────────────────────────────────────
+    {
+        "id": "mcp-postgres",
+        "name": "PostgreSQL MCP",
+        "category": "Database",
+        "install_mode": "npm",
+        "package": "@modelcontextprotocol/server-postgres",
+        "description": "PostgreSQL 데이터베이스에 연결해 쿼리 실행, 스키마 탐색, 데이터 분석을 수행합니다.",
+        "keywords": ["postgres", "postgresql", "database", "sql", "db", "데이터베이스", "쿼리"],
+        "capabilities": ["SQL 쿼리 실행", "스키마 탐색", "테이블 분석"],
+        "env_vars": [{"name": "POSTGRES_CONNECTION_STRING", "description": "postgresql://user:pass@host:5432/db"}],
+    },
+    {
+        "id": "mcp-sqlite",
+        "name": "SQLite MCP",
+        "category": "Database",
+        "install_mode": "npm",
+        "package": "@modelcontextprotocol/server-sqlite",
+        "description": "로컬 SQLite 파일에 쿼리를 실행하고 데이터를 탐색합니다.",
+        "keywords": ["sqlite", "database", "sql", "local", "로컬", "데이터베이스"],
+        "capabilities": ["SQLite 쿼리", "테이블 탐색", "데이터 집계"],
+        "env_vars": [{"name": "SQLITE_DB_PATH", "description": "/path/to/database.db"}],
+    },
+    # ── 검색 / 웹 ────────────────────────────────────────────────────────────
+    {
+        "id": "mcp-brave-search",
+        "name": "Brave Search MCP",
+        "category": "Search / web",
+        "install_mode": "npm",
+        "package": "@modelcontextprotocol/server-brave-search",
+        "description": "Brave Search API로 실시간 웹 검색 결과를 가져옵니다.",
+        "keywords": ["search", "web", "brave", "websearch", "검색", "웹검색"],
+        "capabilities": ["실시간 웹 검색", "뉴스 검색", "이미지 검색"],
+        "env_vars": [{"name": "BRAVE_API_KEY", "description": "Brave Search API 키 (search.brave.com)"}],
+    },
+    {
+        "id": "mcp-tavily",
+        "name": "Tavily Search MCP",
+        "category": "Search / web",
+        "install_mode": "npm",
+        "package": "tavily-mcp",
+        "description": "AI 최적화 웹 검색 엔진 Tavily로 고품질 검색 결과를 가져옵니다.",
+        "keywords": ["search", "tavily", "ai search", "검색", "AI검색"],
+        "capabilities": ["AI 최적화 검색", "요약 검색 결과"],
+        "env_vars": [{"name": "TAVILY_API_KEY", "description": "app.tavily.com에서 발급"}],
+    },
+    {
+        "id": "mcp-puppeteer",
+        "name": "Puppeteer MCP",
+        "category": "Browser automation",
+        "install_mode": "npm",
+        "package": "@modelcontextprotocol/server-puppeteer",
+        "description": "Puppeteer로 브라우저를 제어하고 웹 스크래핑, 스크린샷, 자동화를 수행합니다.",
+        "keywords": ["puppeteer", "browser", "scraping", "screenshot", "automation", "스크래핑", "자동화"],
+        "capabilities": ["웹 스크래핑", "스크린샷", "폼 자동화", "클릭/입력"],
+    },
+    # ── 배포 / 인프라 ─────────────────────────────────────────────────────────
+    {
+        "id": "mcp-vercel",
+        "name": "Vercel MCP",
+        "category": "Deployment",
+        "install_mode": "npm",
+        "package": "@vercel/mcp-adapter",
+        "description": "Vercel 프로젝트 배포 상태 확인, 로그 조회, 환경 변수 관리를 수행합니다.",
+        "keywords": ["vercel", "deploy", "deployment", "serverless", "배포", "버셀"],
+        "capabilities": ["배포 상태 확인", "로그 조회", "환경 변수 관리"],
+        "env_vars": [{"name": "VERCEL_API_TOKEN", "description": "Vercel 계정 토큰"}],
+    },
+    {
+        "id": "mcp-cloudflare",
+        "name": "Cloudflare MCP",
+        "category": "Deployment / CDN",
+        "install_mode": "npm",
+        "package": "@cloudflare/mcp-server-cloudflare",
+        "description": "Cloudflare Workers, KV, R2, D1 등 Cloudflare 서비스를 관리합니다.",
+        "keywords": ["cloudflare", "workers", "cdn", "kv", "r2", "클라우드플레어"],
+        "capabilities": ["Workers 배포", "KV/R2 관리", "DNS 조회", "D1 쿼리"],
+        "env_vars": [{"name": "CLOUDFLARE_API_TOKEN", "description": "Cloudflare API 토큰"}],
+    },
+    {
+        "id": "mcp-docker",
+        "name": "Docker MCP",
+        "category": "Infrastructure",
+        "install_mode": "npm",
+        "package": "docker-mcp",
+        "description": "Docker 컨테이너 목록 조회, 실행/중지, 로그 확인을 수행합니다.",
+        "keywords": ["docker", "container", "devops", "도커", "컨테이너", "인프라"],
+        "capabilities": ["컨테이너 관리", "이미지 조회", "로그 확인", "실행/중지"],
+    },
+    # ── SaaS / 결제 ───────────────────────────────────────────────────────────
+    {
+        "id": "mcp-stripe",
+        "name": "Stripe MCP",
+        "category": "Payments",
+        "install_mode": "npm",
+        "package": "@stripe/agent-toolkit",
+        "description": "Stripe 결제, 고객, 구독, 인보이스를 조회하고 관리합니다.",
+        "keywords": ["stripe", "payment", "billing", "subscription", "결제", "스트라이프"],
+        "capabilities": ["결제 조회", "고객 관리", "구독 확인", "인보이스"],
+        "env_vars": [{"name": "STRIPE_SECRET_KEY", "description": "Stripe Secret Key (sk_...)"}],
+    },
+    {
+        "id": "mcp-supabase",
+        "name": "Supabase MCP",
+        "category": "Database / BaaS",
+        "install_mode": "npm",
+        "package": "@supabase/mcp-server-supabase",
+        "description": "Supabase 프로젝트의 DB 쿼리, Auth 관리, Storage 파일 접근을 수행합니다.",
+        "keywords": ["supabase", "database", "auth", "storage", "supabase", "슈퍼베이스"],
+        "capabilities": ["DB 쿼리", "Auth 사용자 조회", "Storage 파일 관리"],
+        "env_vars": [
+            {"name": "SUPABASE_URL", "description": "https://xxx.supabase.co"},
+            {"name": "SUPABASE_SERVICE_ROLE_KEY", "description": "service_role 키"},
+        ],
+    },
+    {
+        "id": "mcp-hubspot",
+        "name": "HubSpot MCP",
+        "category": "CRM / marketing",
+        "install_mode": "npm",
+        "package": "@hubspot/mcp-server",
+        "description": "HubSpot CRM의 연락처, 딜, 캠페인 데이터를 조회하고 분석합니다.",
+        "keywords": ["hubspot", "crm", "marketing", "sales", "허브스팟", "CRM"],
+        "capabilities": ["연락처 조회", "딜 파이프라인", "캠페인 분석"],
+        "env_vars": [{"name": "HUBSPOT_ACCESS_TOKEN", "description": "HubSpot Private App 토큰"}],
+    },
+    # ── AI / 메모리 ───────────────────────────────────────────────────────────
+    {
+        "id": "mcp-memory",
+        "name": "Memory MCP (공식)",
+        "category": "Memory / knowledge",
+        "install_mode": "npm",
+        "package": "@modelcontextprotocol/server-memory",
+        "description": "대화 간 지속 메모리를 저장하고 검색하는 공식 MCP 서버입니다.",
+        "keywords": ["memory", "remember", "knowledge", "기억", "메모리", "지식"],
+        "capabilities": ["장기 기억 저장", "메모리 검색", "엔티티 추적"],
+    },
+    {
+        "id": "mcp-sequential-thinking",
+        "name": "Sequential Thinking MCP",
+        "category": "AI / reasoning",
+        "install_mode": "npm",
+        "package": "@modelcontextprotocol/server-sequential-thinking",
+        "description": "복잡한 문제를 단계별로 분해해 추론하는 사고 흐름 도구입니다.",
+        "keywords": ["reasoning", "thinking", "chain of thought", "추론", "사고"],
+        "capabilities": ["단계별 추론", "문제 분해", "사고 흐름 추적"],
+    },
+    # ── 커뮤니케이션 ──────────────────────────────────────────────────────────
+    {
+        "id": "mcp-discord",
+        "name": "Discord MCP",
+        "category": "Communication",
+        "install_mode": "npm",
+        "package": "discord-mcp",
+        "description": "Discord 서버 채널 메시지 전송, 읽기, 관리 자동화를 수행합니다.",
+        "keywords": ["discord", "message", "channel", "디스코드", "메시지", "알림"],
+        "capabilities": ["메시지 전송", "채널 읽기", "알림 자동화"],
+        "env_vars": [{"name": "DISCORD_BOT_TOKEN", "description": "Discord Bot 토큰"}],
+    },
+    {
+        "id": "mcp-telegram",
+        "name": "Telegram MCP",
+        "category": "Communication",
+        "install_mode": "npm",
+        "package": "telegram-mcp",
+        "description": "Telegram 봇을 통한 메시지 전송, 수신, 알림 자동화를 수행합니다.",
+        "keywords": ["telegram", "bot", "message", "텔레그램", "봇", "메시지"],
+        "capabilities": ["메시지 전송/수신", "알림 자동화", "그룹 관리"],
+        "env_vars": [{"name": "TELEGRAM_BOT_TOKEN", "description": "BotFather에서 발급한 토큰"}],
+    },
+    # ── 개발 도구 ─────────────────────────────────────────────────────────────
+    {
+        "id": "mcp-everything",
+        "name": "Everything MCP (테스트)",
+        "category": "Developer tools",
+        "install_mode": "npm",
+        "package": "@modelcontextprotocol/server-everything",
+        "description": "MCP 연결 테스트용 모든 기능이 포함된 데모 서버입니다.",
+        "keywords": ["test", "demo", "everything", "테스트", "개발"],
+        "capabilities": ["MCP 기능 테스트", "프로토타입"],
     },
 ]
 
@@ -6314,6 +6503,106 @@ async def mcp_registry_refresh(request: Request):
     _REMOTE_REGISTRY_FETCHED_AT = None
     registry = await _get_combined_registry()
     return {"status": "ok", "total": len(registry), "remote": len(_REMOTE_REGISTRY_CACHE)}
+
+
+@app.get("/mcp/claude-code-servers")
+async def mcp_claude_code_servers(request: Request):
+    """Read ~/.claude/settings.json mcpServers and return them as Lattice MCP items."""
+    require_user(request)
+    settings_path = Path.home() / ".claude" / "settings.json"
+    if not settings_path.exists():
+        return {"servers": []}
+    try:
+        with open(settings_path, "r", encoding="utf-8") as f:
+            settings = json.load(f)
+        mcp_servers = settings.get("mcpServers", {})
+        servers = []
+        for name, cfg in mcp_servers.items():
+            cmd = cfg.get("command", "")
+            args = cfg.get("args", [])
+            package = " ".join([cmd] + args) if args else cmd
+            env = cfg.get("env", {})
+            env_vars = [{"name": k, "value": v} for k, v in env.items()]
+            servers.append({
+                "id": f"claude-code:{name}",
+                "name": name,
+                "description": f"Claude Code MCP: {package}",
+                "package": package,
+                "icon": "🤖",
+                "category": "Claude Code",
+                "source": "claude-code",
+                "installed": True,
+                "env_vars": env_vars,
+            })
+        return {"servers": servers}
+    except Exception as e:
+        logging.warning("mcp_claude_code_servers failed: %s", e)
+        return {"servers": []}
+
+
+_CUSTOM_MCP_FILE = DATA_DIR / "custom_mcps.json"
+
+def _load_custom_mcps() -> List[Dict]:
+    if not _CUSTOM_MCP_FILE.exists():
+        return []
+    try:
+        with open(_CUSTOM_MCP_FILE, "r", encoding="utf-8") as f:
+            return json.load(f)
+    except Exception:
+        return []
+
+def _save_custom_mcps(items: List[Dict]):
+    with open(_CUSTOM_MCP_FILE, "w", encoding="utf-8") as f:
+        json.dump(items, f, ensure_ascii=False, indent=2)
+
+
+@app.get("/mcp/custom")
+async def mcp_custom_list(request: Request):
+    """Return user-added custom MCP entries."""
+    require_user(request)
+    return {"custom": _load_custom_mcps()}
+
+
+@app.post("/mcp/custom")
+async def mcp_custom_add(req: McpCustomRequest, request: Request):
+    """Save a custom MCP entry (user-defined)."""
+    require_user(request)
+    if not req.name.strip():
+        raise HTTPException(status_code=400, detail="name은 필수입니다.")
+    if not req.package.strip():
+        raise HTTPException(status_code=400, detail="package는 필수입니다.")
+    items = _load_custom_mcps()
+    entry = {
+        "id": f"custom:{req.name.strip().lower().replace(' ', '-')}",
+        "name": req.name.strip(),
+        "package": req.package.strip(),
+        "description": req.description.strip(),
+        "category": req.category or "custom",
+        "icon": req.icon or "🔌",
+        "env_vars": req.env_vars or [],
+        "install_mode": "npm",
+        "source": "custom",
+        "installed": False,
+        "added_at": datetime.now().isoformat(),
+    }
+    # overwrite if same id
+    items = [e for e in items if e["id"] != entry["id"]]
+    items.append(entry)
+    _save_custom_mcps(items)
+    return {"status": "ok", "entry": entry}
+
+
+@app.delete("/mcp/custom/{mcp_id:path}")
+async def mcp_custom_delete(mcp_id: str, request: Request):
+    """Remove a custom MCP entry."""
+    require_admin(request)
+    items = _load_custom_mcps()
+    before = len(items)
+    items = [e for e in items if e["id"] != mcp_id]
+    if len(items) == before:
+        raise HTTPException(status_code=404, detail="항목을 찾을 수 없습니다.")
+    _save_custom_mcps(items)
+    return {"status": "ok"}
 
 
 # ── Skills & Plugin Directory endpoints ───────────────────────────────────────
