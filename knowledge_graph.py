@@ -109,6 +109,7 @@ _CONCEPT_STOP: set = {
     "경우", "방법", "부분", "상태", "정도", "결과", "이후", "이전",
     "그것", "이것", "저것", "여기", "거기", "저기", "우리", "저희",
     "기능", "서버", "모델", "설정", "설명", "버전", "지원", "사용", "실행",
+    "todo", "fixme", "note", "참고", "주의", "warning",
 }
 
 
@@ -188,66 +189,145 @@ def _extract_concepts(text: str, limit: int = 12) -> List[str]:
         if len(m) >= 4:
             _add(m)
 
-    # De-duplicate: remove shorter concepts that are sub-strings of longer ones
-    # e.g. if "Lattice AI" exists, drop "Lattice"; if "Graph RAG" exists, drop "Graph"
-    final: List[str] = []
+    # De-duplicate: remove shorter if ALL its occurrences in the source text
+    # are followed immediately by the suffix that forms the longer concept.
+    # "Lattice" → dropped when every occurrence is "Lattice AI"
+    # "Claude"  → kept  because it appears as just "Claude" too.
     values = list(seen.values())
     values_lower = [v.lower() for v in values]
+    keep = set(range(len(values)))
     for i, v in enumerate(values):
         vl = v.lower()
-        is_substring = any(
-            vl != values_lower[j] and vl in values_lower[j]
-            for j in range(len(values))
-        )
-        if not is_substring:
-            final.append(v)
+        for j, wl in enumerate(values_lower):
+            if i == j or j not in keep:
+                continue
+            # Check if vl is a word-prefix of wl
+            suffix = wl[len(vl):]
+            if not (wl.startswith(vl) and re.match(r'^[\s\-]', suffix)):
+                continue
+            # Count occurrences of v NOT followed by the suffix
+            suffix_stripped = suffix.lstrip(" -")
+            # Escape for regex
+            pattern_with_suffix = re.escape(v) + r'[\s\-]+' + re.escape(suffix_stripped)
+            pattern_alone = re.escape(v) + r'(?![\s\-]*' + re.escape(suffix_stripped) + r')'
+            alone_count = len(re.findall(pattern_alone, text, re.IGNORECASE))
+            if alone_count == 0:
+                # Shorter term never appears alone → safe to remove
+                keep.discard(i)
+                break
 
+    final = [values[i] for i in range(len(values)) if i in keep]
     return final[:limit]
 
 
-def _infer_relation(sentence: str) -> str:
-    """Infer a human-readable relation label from a sentence."""
+# ──────────────────────────────────────────────────────────────────────────────
+# Node type taxonomy  (점 = 명사)
+# ──────────────────────────────────────────────────────────────────────────────
+# Chat      — 대화 세션
+# Document  — 파일 (PDF·PPT·Word·Excel·이미지 등)
+# Concept   — 개념·아이디어·기술 용어
+# Person    — 사람 (사용자, 언급된 인물)
+# Error     — 오류·버그·예외
+# Code      — 코드 스니펫·함수·클래스
+# Feature   — 소프트웨어 기능
+# Task      — 할 일·액션 아이템
+# Decision  — 결정 사항
+
+# Edge type vocabulary  (선 = 동사 — 과거형 서술어)
+EDGE_VERB = {
+    "언급함":   r"언급|mention|refer|cited",
+    "포함함":   r"포함|include|consist|구성|탑재|contains",
+    "해결함":   r"해결|resolv|fix|수정|고쳤|closed",
+    "의존함":   r"의존|depend|require|필요|based on",
+    "설명함":   r"설명|explain|describe|정의|란|이란|means",
+    "비교함":   r"비교|versus|vs\.?|차이|다르|compare",
+    "사용함":   r"사용|use|활용|이용|apply",
+    "연결함":   r"연결|connect|통합|integrate|연동|link",
+    "확장함":   r"확장|extend|플러그인|plugin|addon",
+    "생성함":   r"생성|만들|create|generate|build|produced",
+    "대체함":   r"대체|replace|instead|alternative",
+    "지원함":   r"지원|support|제공|provide|offer",
+    "발생함":   r"발생|occur|throw|raise|triggered",
+    "관련됨":   r"관련|related|associated|연관",
+}
+
+
+def _infer_edge(sentence: str) -> str:
+    """Return the best-matching verb-form edge label for a sentence."""
     s = sentence.lower()
-    if re.search(r'비교|versus|vs\.?|차이|다르', s):
-        return "비교"
-    if re.search(r'기능|feature|할 수 있|지원|support|제공|provide', s):
-        return "기능 제공"
-    if re.search(r'포함|include|consist|구성|구현|탑재', s):
-        return "포함"
-    if re.search(r'사용|use|활용|이용', s):
-        return "사용"
-    if re.search(r'연결|connect|통합|integrate|연동', s):
-        return "연결"
-    if re.search(r'설명|explain|describe|정의|definition|란|이란', s):
-        return "설명"
-    if re.search(r'확장|extend|플러그인|plugin|addon', s):
-        return "확장"
-    if re.search(r'대체|replace|instead|instead of', s):
-        return "대체"
-    if re.search(r'필요|require|depend|의존', s):
-        return "의존"
-    if re.search(r'생성|만들|create|generate|build', s):
-        return "생성"
-    return "관련"
+    for label, pattern in EDGE_VERB.items():
+        if re.search(pattern, s):
+            return label
+    return "관련됨"
+
+
+# Technical words that cannot be person names
+_NOT_PERSON_WORDS: set = {
+    "use", "api", "rag", "sdk", "ide", "cli", "llm", "mcp", "ui", "ux",
+    "new", "old", "get", "set", "run", "add", "fix", "tool", "code",
+    "base", "core", "data", "file", "test", "type", "mode", "view",
+}
+
+
+def _classify_node_type(concept: str, text: str) -> str:
+    """Classify a concept into the node taxonomy.
+
+    Term-level signals take priority; then a tight ±60-char window is used
+    so distant keywords don't cause mis-classification.
+    """
+    term = concept.lower()
+
+    # ── Term-level signals (highest confidence) ───────────────────────────
+    if re.search(r'(?:error|exception|traceback|오류|에러|버그)$', term, re.I):
+        return "Error"
+    if re.search(r'error|exception|err\b', term, re.I) and len(concept) < 30:
+        return "Error"
+    if re.search(r'\(\)|\.py$|\.js$|\.ts$|\.go$|::\w', term):
+        return "Code"
+
+    # Person: "First Last" pattern, neither word is a known technical term
+    if re.match(r'^[A-Z][a-z]{1,15} [A-Z][a-z]{1,15}$', concept):
+        words = term.split()
+        if not any(w in _NOT_PERSON_WORDS for w in words):
+            return "Person"
+
+    # ── Windowed context (±60 chars) — NOT used for Error to avoid false positives
+    idx = text.lower().find(term)
+    if idx >= 0:
+        win = text[max(0, idx - 60): idx + len(concept) + 60].lower()
+        if re.search(r'def |class |function|함수|클래스|메서드|import', win):
+            return "Code"
+        # Feature: concept appears DIRECTLY adjacent to 기능/feature keyword
+        if (
+            len(concept) <= 12
+            and re.search(
+                rf'{re.escape(term)}.{{0,8}}(?:기능|feature)|(?:기능|feature).{{0,8}}{re.escape(term)}',
+                win,
+            )
+        ):
+            return "Feature"
+
+    return "Concept"
 
 
 def _extract_triples(
-    text: str, concepts: List[str], limit: int = 16
+    text: str,
+    concepts: List[str],
+    limit: int = 20,
 ) -> List[Dict[str, str]]:
-    """Extract (subject, relation, object, context) triples from text.
+    """Extract (subject, verb-edge, object, context) triples from text.
 
-    Scans each sentence for pairs of concepts and infers the relation from
-    surrounding verb/particle patterns.
+    For each sentence containing ≥2 concepts, infer the verb-form edge label
+    from surrounding context and create a directed triple.
     """
     if len(concepts) < 2:
         return []
 
-    # Build a fast lookup: lowercased concept → canonical form
     concept_lower = {c.lower(): c for c in concepts}
-
     triples: List[Dict[str, str]] = []
     seen_pairs: set = set()
 
+    # Split on sentence boundaries
     sentences = re.split(r'(?<=[.!?\n])\s+|\n{2,}', text)
     for sent in sentences:
         sent = sent.strip()
@@ -255,28 +335,22 @@ def _extract_triples(
             continue
         sent_lower = sent.lower()
 
-        # Find which concepts appear in this sentence
-        present = [
-            concept_lower[k]
-            for k in concept_lower
-            if k in sent_lower
-        ]
+        present = [concept_lower[k] for k in concept_lower if k in sent_lower]
         if len(present) < 2:
             continue
 
-        relation = _infer_relation(sent)
-        # Create one triple per adjacent concept pair (avoid combinatorial explosion)
+        edge = _infer_edge(sent)
+
         for i in range(len(present) - 1):
-            subj = present[i]
-            obj = present[i + 1]
-            pair_key = f"{subj.lower()}|{relation}|{obj.lower()}"
-            rev_key = f"{obj.lower()}|{relation}|{subj.lower()}"
-            if pair_key in seen_pairs or rev_key in seen_pairs:
+            subj, obj = present[i], present[i + 1]
+            # Deduplicate by (subj, obj) regardless of direction for same edge
+            pair_key = tuple(sorted([subj.lower(), obj.lower()])) + (edge,)
+            if pair_key in seen_pairs:
                 continue
             seen_pairs.add(pair_key)
             triples.append({
                 "subject": subj,
-                "relation": relation,
+                "relation": edge,          # verb form (동사)
                 "object": obj,
                 "context": sent[:240],
             })
@@ -438,19 +512,36 @@ class KnowledgeGraphStore:
             "chars": len(content),
         }
         concepts = _extract_concepts(content)
-        triples = _extract_triples(content, concepts)
+        triples  = _extract_triples(content, concepts)
         semantic = _semantic_items(content)
 
         with self._connect() as conn:
-            # ── Conversation node (always kept, acts as context anchor) ──────
+            # ── 1. Chat node  (점: 명사 — 대화 세션 단위) ─────────────────────
+            #    One Chat node per conversation_id; title = first 80 chars of
+            #    the first user message in this session (updated on each call).
+            chat_title = _clean_text(content)[:80] or (conversation_id or "대화")
             self._upsert_node(
-                conn, conv_id, "Conversation",
-                conversation_id or "Default conversation",
-                metadata={"source": source},
+                conn, conv_id, "Chat",
+                chat_title,
+                summary=_clean_text(content)[:400],
+                metadata={"source": source, "conversation_id": conversation_id},
             )
 
-            # ── Message/AIResponse node — stored for RAG/search but hidden
-            #    from the graph visualization (type filtered in graph()) ──────
+            # ── 2. Person node  (점: 명사 — 사람) ─────────────────────────────
+            person_id = None
+            if user_email or user_nickname:
+                person_key = user_email or user_nickname or "unknown"
+                person_id = f"person:{_slug(person_key)}"
+                self._upsert_node(
+                    conn, person_id, "Person",
+                    user_nickname or user_email or "Unknown",
+                    metadata={"email": user_email, "nickname": user_nickname},
+                )
+                # 선: 동사 — Person이 Chat을 "작성함"
+                self._upsert_edge(conn, person_id, conv_id, "작성함",
+                                  weight=1.0, metadata={"role": role})
+
+            # ── 3. Raw message node  (RAG 검색용, 그래프에서 숨김) ─────────────
             self._upsert_node(
                 conn, node_id, node_type,
                 _clean_text(content)[:80] or role,
@@ -458,73 +549,69 @@ class KnowledgeGraphStore:
                 metadata=metadata,
                 raw=raw or metadata,
             )
-            self._upsert_edge(conn, conv_id, node_id, "contains", metadata={"source": source})
+            # 선: Chat이 메시지를 "포함함"
+            self._upsert_edge(conn, conv_id, node_id, "포함함",
+                              weight=0.3, metadata={"role": role})
 
-            # ── Person node ───────────────────────────────────────────────────
-            person_id = None
-            if user_email or user_nickname:
-                person_key = user_email or user_nickname or "unknown"
-                person_id = f"person:{_slug(person_key)}"
-                self._upsert_node(
-                    conn, person_id, "Person",
-                    user_nickname or user_email or "Unknown user",
-                    metadata={"email": user_email},
-                )
-                self._upsert_edge(conn, person_id, node_id, "authored", metadata={"role": role})
-
-            # ── Text chunks (for RAG retrieval, invisible in graph) ───────────
+            # ── 4. RAG chunks  (검색용, 그래프에서 숨김) ──────────────────────
             for index, chunk in enumerate(_chunks(content)):
                 chunk_id = f"chunk:{_sha256_text(f'{node_id}:{index}:{chunk}')[:24]}"
                 self._upsert_node(
                     conn, chunk_id, "Chunk",
-                    f"{node_type} chunk {index + 1}",
+                    f"chunk {index + 1}",
                     summary=chunk[:500],
                     metadata={"index": index, "source_node": node_id},
                 )
                 conn.execute(
-                    "INSERT OR REPLACE INTO chunks(id, source_node, text, metadata_json, created_at) VALUES (?, ?, ?, ?, ?)",
-                    (chunk_id, node_id, chunk, _json({"index": index, "source_node": node_id}), _now()),
+                    "INSERT OR REPLACE INTO chunks(id, source_node, text, metadata_json, created_at) "
+                    "VALUES (?, ?, ?, ?, ?)",
+                    (chunk_id, node_id, chunk,
+                     _json({"index": index, "source_node": node_id}), _now()),
                 )
-                self._upsert_edge(conn, node_id, chunk_id, "has_chunk")
+                self._upsert_edge(conn, node_id, chunk_id, "포함함")
 
-            # ── Concept nodes — the PRIMARY visible nodes in the graph ────────
+            # ── 5. Concept / Feature / Error / Code 노드  (점: 명사) ───────────
             concept_ids: Dict[str, str] = {}
             for concept in concepts:
-                cid = f"concept:{_slug(concept)}"
+                node_t = _classify_node_type(concept, content)
+                cid = f"{node_t.lower()}:{_slug(concept)}"
                 concept_ids[concept.lower()] = cid
                 self._upsert_node(
-                    conn, cid, "Concept", concept,
+                    conn, cid, node_t, concept,
                     metadata={"auto_extracted": True, "source": source},
                 )
-                # Conversation → Concept edge (for context lookup)
-                self._upsert_edge(conn, conv_id, cid, "discusses", weight=0.6)
+                # 선: Chat이 개념을 "언급함"
+                self._upsert_edge(conn, conv_id, cid, "언급함",
+                                  weight=0.7, metadata={"source": source})
 
-            # ── Concept–Concept edges from extracted triples ──────────────────
+            # ── 6. Concept–Concept 엣지  (선: 동사형) ─────────────────────────
             for triple in triples:
                 subj_id = concept_ids.get(triple["subject"].lower())
-                obj_id = concept_ids.get(triple["object"].lower())
+                obj_id  = concept_ids.get(triple["object"].lower())
                 if subj_id and obj_id and subj_id != obj_id:
                     self._upsert_edge(
-                        conn, subj_id, obj_id, triple["relation"],
-                        weight=0.9,
+                        conn, subj_id, obj_id,
+                        triple["relation"],          # 동사형 레이블
+                        weight=1.0,
                         metadata={"context": triple.get("context", "")[:240]},
                     )
 
-            # ── Decision / Task nodes ─────────────────────────────────────────
+            # ── 7. Task / Decision 노드  (점: 명사) ────────────────────────────
             for item in semantic:
-                sem_type = item["type"]
+                sem_type  = item["type"]
                 sem_title = item["title"]
-                sem_id = f"{sem_type.lower()}:{_sha256_text(f'{node_id}:{sem_type}:{sem_title}')[:24]}"
+                sem_id = f"{sem_type.lower()}:{_sha256_text(f'{conv_id}:{sem_type}:{sem_title}')[:24]}"
                 self._upsert_node(
                     conn, sem_id, sem_type, sem_title,
                     summary=item["summary"],
                     metadata={"auto_extracted": True, "source_node": node_id},
                     raw=item,
                 )
-                self._upsert_edge(conn, conv_id, sem_id, "produced", weight=0.8)
-                # Link Decision/Task to mentioned concepts
+                # 선: Chat이 Task/Decision을 "생성함"
+                self._upsert_edge(conn, conv_id, sem_id, "생성함", weight=0.9)
+                # Task/Decision이 관련 개념을 "언급함"
                 for cid in list(concept_ids.values())[:3]:
-                    self._upsert_edge(conn, sem_id, cid, "involves", weight=0.7)
+                    self._upsert_edge(conn, sem_id, cid, "언급함", weight=0.6)
 
         return {"node_id": node_id, "type": node_type}
 
@@ -563,43 +650,92 @@ class KnowledgeGraphStore:
             "extracted": {k: v for k, v in (extracted or {}).items() if k != "content"},
             "structure": doc_meta,
         }
+        full_text = f"{filename}\n{text}"
+        concepts = _extract_concepts(full_text, limit=15)
+        triples  = _extract_triples(full_text, concepts)
+
         with self._connect() as conn:
-            self._upsert_node(conn, file_id, "File", filename, summary=(text or filename)[:500], metadata=metadata, raw=metadata)
+            # ── Document 노드  (점: 명사 — 파일) ────────────────────────────────
+            self._upsert_node(
+                conn, file_id, "Document", filename,
+                summary=(text or filename)[:500],
+                metadata=metadata, raw=metadata,
+            )
             self._ingest_structure_nodes(conn, file_id, filename, doc_meta)
+
+            # ── Person 노드 + 동사형 엣지 ─────────────────────────────────────
             if uploader:
                 person_id = f"person:{_slug(uploader)}"
-                self._upsert_node(conn, person_id, "Person", uploader, metadata={"email": uploader})
-                self._upsert_edge(conn, person_id, file_id, "uploaded")
+                self._upsert_node(
+                    conn, person_id, "Person", uploader,
+                    metadata={"email": uploader},
+                )
+                # 선: 동사 — Person이 Document를 "업로드함"
+                self._upsert_edge(conn, person_id, file_id, "업로드함", weight=1.0)
+
+            # ── Chat 노드와 연결 ──────────────────────────────────────────────
             if conversation_id:
                 conv_id = f"conversation:{_slug(conversation_id)}"
-                self._upsert_node(conn, conv_id, "Conversation", conversation_id)
-                self._upsert_edge(conn, conv_id, file_id, "contains")
+                self._upsert_node(conn, conv_id, "Chat", conversation_id)
+                # 선: 동사 — Chat이 Document를 "언급함"
+                self._upsert_edge(conn, conv_id, file_id, "언급함", weight=0.8)
+
+            # ── RAG chunks (검색용, 그래프 비표시) ────────────────────────────
             for index, chunk in enumerate(_chunks(text)):
                 chunk_id = f"chunk:{_sha256_text(f'{file_id}:{index}:{chunk}')[:24]}"
-                self._upsert_node(conn, chunk_id, "Chunk", f"{filename} chunk {index + 1}", summary=chunk[:500], metadata={"index": index, "source_node": file_id})
-                conn.execute(
-                    "INSERT OR REPLACE INTO chunks(id, source_node, text, metadata_json, created_at) VALUES (?, ?, ?, ?, ?)",
-                    (chunk_id, file_id, chunk, _json({"index": index, "source_node": file_id}), _now()),
-                )
-                self._upsert_edge(conn, file_id, chunk_id, "has_chunk")
-            for topic in _topic_candidates(f"{filename}\n{text}"):
-                topic_id = f"topic:{_slug(topic)}"
-                self._upsert_node(conn, topic_id, "Topic", topic, metadata={"auto_extracted": True})
-                self._upsert_edge(conn, file_id, topic_id, "discusses", weight=0.7)
-            for item in _semantic_items(text):
-                semantic_type = item["type"]
-                semantic_title = item["title"]
-                semantic_id = f"{semantic_type.lower()}:{_sha256_text(f'{file_id}:{semantic_type}:{semantic_title}')[:24]}"
                 self._upsert_node(
-                    conn,
-                    semantic_id,
-                    semantic_type,
-                    semantic_title,
+                    conn, chunk_id, "Chunk",
+                    f"{filename} chunk {index + 1}",
+                    summary=chunk[:500],
+                    metadata={"index": index, "source_node": file_id},
+                )
+                conn.execute(
+                    "INSERT OR REPLACE INTO chunks(id, source_node, text, metadata_json, created_at) "
+                    "VALUES (?, ?, ?, ?, ?)",
+                    (chunk_id, file_id, chunk,
+                     _json({"index": index, "source_node": file_id}), _now()),
+                )
+                self._upsert_edge(conn, file_id, chunk_id, "포함함")
+
+            # ── Concept / Feature / Error / Code 노드 + 동사형 엣지 ───────────
+            concept_ids: Dict[str, str] = {}
+            for concept in concepts:
+                node_t = _classify_node_type(concept, full_text)
+                cid = f"{node_t.lower()}:{_slug(concept)}"
+                concept_ids[concept.lower()] = cid
+                self._upsert_node(
+                    conn, cid, node_t, concept,
+                    metadata={"auto_extracted": True, "source_file": filename},
+                )
+                # 선: 동사 — Document가 Concept을 "포함함"
+                self._upsert_edge(conn, file_id, cid, "포함함", weight=0.8)
+
+            # ── Concept–Concept 엣지  (선: 동사형) ───────────────────────────
+            for triple in triples:
+                subj_id = concept_ids.get(triple["subject"].lower())
+                obj_id  = concept_ids.get(triple["object"].lower())
+                if subj_id and obj_id and subj_id != obj_id:
+                    self._upsert_edge(
+                        conn, subj_id, obj_id,
+                        triple["relation"],
+                        weight=1.0,
+                        metadata={"context": triple.get("context", "")[:240]},
+                    )
+
+            # ── Task / Decision 노드 ──────────────────────────────────────────
+            for item in _semantic_items(text):
+                sem_type  = item["type"]
+                sem_title = item["title"]
+                sem_id = f"{sem_type.lower()}:{_sha256_text(f'{file_id}:{sem_type}:{sem_title}')[:24]}"
+                self._upsert_node(
+                    conn, sem_id, sem_type, sem_title,
                     summary=item["summary"],
                     metadata={"auto_extracted": True, "source_node": file_id, "filename": filename},
                     raw=item,
                 )
-                self._upsert_edge(conn, file_id, semantic_id, "contains_signal", weight=0.8)
+                # 선: Document가 Task/Decision을 "포함함"
+                self._upsert_edge(conn, file_id, sem_id, "포함함", weight=0.9)
+
         return {"node_id": file_id, "sha256": digest, "metadata": metadata}
 
     def ingest_event(
@@ -807,11 +943,18 @@ class KnowledgeGraphStore:
             sheets.append({"title": ws.title, "max_row": ws.max_row, "max_column": ws.max_column})
         return {"sheets": sheets}
 
-    # Node types visible in the graph visualization.
-    # Message / AIResponse / Chunk are stored for RAG but hidden from the graph.
+    # ── 그래프에 표시되는 노드 타입  (점 = 명사) ──────────────────────────────
+    # Message / AIResponse / Chunk 는 RAG 검색용으로만 저장, 그래프에서 숨김.
     _GRAPH_VISIBLE_TYPES = (
-        "Concept", "Person", "File", "Conversation",
-        "Decision", "Task", "Topic",
+        "Chat",       # 대화 세션
+        "Document",   # 파일 (PDF·PPT·Word·Excel·이미지)
+        "Concept",    # 개념 / 아이디어 / 기술 용어
+        "Person",     # 사람
+        "Error",      # 오류 / 버그
+        "Code",       # 코드 / 함수
+        "Feature",    # 소프트웨어 기능
+        "Task",       # 할 일
+        "Decision",   # 결정 사항
     )
 
     def graph(self, limit: int = 300) -> Dict[str, Any]:
