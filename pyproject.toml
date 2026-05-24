@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "ltcai"
-version = "0.1.28"
+version = "0.1.29"
 description = "Lattice AI local MLX/cloud LLM workspace server"
 readme = "README.md"
 requires-python = ">=3.11"
@@ -62,7 +62,9 @@ Changelog = "https://github.com/TaeSooPark-PTS/LatticeAI/blob/main/docs/CHANGELO
 [tool.setuptools]
 py-modules = [
   "ltcai_cli",
+  "auto_setup",
   "server",
+  "kg_schema",
   "knowledge_graph",
   "llm_router",
   "p_reinforce",
@@ -76,6 +78,7 @@ include-package-data = true
 "*" = [
   "static/*.html",
   "static/*.css",
+  "static/scripts/*.js",
   "static/manifest.json",
   "static/sw.js",
   "static/icons/*.png",
@@ -86,5 +89,6 @@ include-package-data = true
 
 [tool.setuptools.data-files]
 "static" = ["static/account.html", "static/chat.html", "static/admin.html", "static/graph.html", "static/manifest.json", "static/sw.js", "static/lattice-reference.css"]
+"static/scripts" = ["static/scripts/account.js", "static/scripts/admin.js", "static/scripts/chat.js", "static/scripts/graph.js"]
 "static/css" = ["static/css/tokens.css"]
 "static/icons" = ["static/icons/icon-192.png", "static/icons/icon-512.png", "static/icons/apple-touch-icon.png", "static/icons/favicon-32.png"]

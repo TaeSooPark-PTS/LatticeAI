@@ -223,7 +223,7 @@ def _detect_mlx() -> Dict[str, Any]:
         except ImportError:
             pass
         return {"available": True, "mlx_lm": has_lm, "mlx_vlm": has_vlm}
-    except ImportError:
+    except Exception:
         return {"available": False, "mlx_lm": False, "mlx_vlm": False}
 
 def _detect_api_keys() -> Dict[str, bool]:

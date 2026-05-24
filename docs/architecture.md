@@ -119,3 +119,38 @@ GET /auth/sso/callback?code=... → 토큰 교환 → 세션 생성
 Claude Desktop / Cursor의 MCP 설정에 `http://localhost:4825/mcp` 추가 시 직접 도구 사용 가능.
 
 자세한 내용: [mcp-tools.md](mcp-tools.md)
+
+---
+
+## PPT 명세와의 정렬 (2026-05 추가)
+
+`lattice_ai_full_spec.pptx` (UI 명세서) 에 맞춰 세 가지 보강 모듈이 추가됐다.
+어떤 슬라이드가 어떤 파일에 매핑되는지 한눈에:
+
+| PPT 슬라이드 | 의미 | 구현 파일 |
+|--------------|------|-----------|
+| 14 (세 가지 약속) | Cross-platform · Auto-setup · Graph 원칙 | (전체 아키텍처) |
+| 15·19 (크로스플랫폼·디자인 토큰) | 공유 토큰 = 단일 진실 근원 | [`static/css/tokens.css`](../static/css/tokens.css) |
+| 16·17 (자동 환경 매트릭스·5단계) | OS·HW 감지 → 모델 추천 → 설치 → 검증 → 프리셋 | [`auto_setup.py`](../auto_setup.py) |
+| 20·21·22 (KG 노드·엣지·데이터 모델) | 10 NodeType / 12 EdgeType + embedding + confidence | [`kg_schema.py`](../kg_schema.py), [`docs/kg-schema.md`](kg-schema.md) |
+| 24 (통합 아키텍처) | 6 레이어 (UI / Logic / AI Core / KG / Storage / Auto-Setup) | 이 문서 + 위 파일들 |
+
+### 신규 모듈 빠른 참조
+
+```bash
+# 자동 환경 세팅 5단계
+python3 auto_setup.py probe          # ① 시스템 감지
+python3 auto_setup.py recommend      # ② 모델 추천
+python3 auto_setup.py plan           # ③ 설치 계획 (실행 안 함)
+python3 auto_setup.py plan --apply   # ③ 실제 설치 (위험)
+python3 auto_setup.py verify         # ④ 검증
+python3 auto_setup.py preset         # ⑤ 프리셋
+python3 auto_setup.py all            # 전체 흐름
+
+# KG v2 스키마
+python3 kg_schema.py init  ~/.ltcai/kg_v2.db
+python3 kg_schema.py migrate ~/.ltcai/knowledge_graph.db    # legacy → v2
+python3 kg_schema.py stats ~/.ltcai/knowledge_graph.db
+```
+
+전체 명세 ↔ 구현 매핑은 [`spec-vs-impl.md`](spec-vs-impl.md) 참고.

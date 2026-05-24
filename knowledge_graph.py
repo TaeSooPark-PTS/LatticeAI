@@ -18,6 +18,11 @@ from datetime import datetime
 from pathlib import Path
 from typing import Any, Dict, List, Optional
 
+try:
+    from kg_schema import KGStoreV2
+except Exception:  # pragma: no cover - v2 schema is optional at import time
+    KGStoreV2 = None  # type: ignore[assignment]
+
 
 GRAPH_SCHEMA_VERSION = 1
 
@@ -438,6 +443,16 @@ class KnowledgeGraphStore:
                 "INSERT OR REPLACE INTO graph_meta(key, value) VALUES (?, ?)",
                 ("schema_version", str(GRAPH_SCHEMA_VERSION)),
             )
+        self._init_v2_schema()
+
+    def _init_v2_schema(self) -> None:
+        """Initialize the PPT-aligned v2 tables alongside the legacy graph tables."""
+        if KGStoreV2 is None:
+            return
+        try:
+            KGStoreV2(self.db_path).init_schema()
+        except Exception as e:
+            logging.warning("knowledge_graph: v2 schema init skipped: %s", e)
 
     def _upsert_node(
         self,
@@ -1275,4 +1290,17 @@ class KnowledgeGraphStore:
                 row["type"]: row["count"]
                 for row in conn.execute("SELECT type, COUNT(*) AS count FROM edges GROUP BY type")
             }
-        return {"db_path": str(self.db_path), "nodes": node_counts, "edges": edge_counts}
+        v2 = None
+        if KGStoreV2 is not None:
+            try:
+                v2 = KGStoreV2(self.db_path).stats()
+            except Exception as e:
+                v2 = {"available": False, "error": str(e)}
+        return {
+            "db_path": str(self.db_path),
+            "schema_version": GRAPH_SCHEMA_VERSION,
+            "v2_schema_available": KGStoreV2 is not None,
+            "nodes": node_counts,
+            "edges": edge_counts,
+            "v2": v2,
+        }

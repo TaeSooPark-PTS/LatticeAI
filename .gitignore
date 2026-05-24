@@ -18,6 +18,7 @@ dist/
 build/
 *.egg-info/
 node_modules/
+.npm-cache/
 vscode-extension/node_modules/
 vscode-extension/out/
 vscode-extension/*.vsix

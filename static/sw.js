@@ -1,8 +1,14 @@
 // Lattice AI Service Worker — enables PWA install on Android/iOS
 // Strategy: network-first for API, cache-first for static assets.
-const CACHE = "ltcai-v1";
+const CACHE = "ltcai-v6";
 const STATIC = [
   "/",
+  "/static/lattice-reference.css",
+  "/static/css/tokens.css",
+  "/static/scripts/chat.js",
+  "/static/scripts/admin.js",
+  "/static/scripts/graph.js",
+  "/static/scripts/account.js",
   "/manifest.json",
   "/icons/icon-192.png",
   "/icons/icon-512.png",
@@ -30,6 +36,12 @@ self.addEventListener("fetch", e => {
   if (url.pathname.startsWith("/chat") ||
       url.pathname.startsWith("/agent") ||
       url.pathname.startsWith("/models") ||
+      url.pathname.startsWith("/admin/") ||
+      url.pathname.startsWith("/auth/") ||
+      url.pathname.startsWith("/account/") ||
+      url.pathname.startsWith("/vpc/") ||
+      url.pathname.startsWith("/health") ||
+      url.pathname.startsWith("/runtime_features") ||
       url.pathname.startsWith("/local") ||
       url.pathname.startsWith("/tools") ||
       url.pathname.startsWith("/knowledge") ||

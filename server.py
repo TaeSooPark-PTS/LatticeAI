@@ -12,6 +12,7 @@ import json
 import logging
 import os
 import platform
+import queue
 import re
 import secrets
 import threading
@@ -211,19 +212,24 @@ SSO_CLIENT_SECRET = env_value("OIDC_CLIENT_SECRET", "")
 SSO_REDIRECT_URI = env_value("OIDC_REDIRECT_URI", "http://localhost:4825/auth/sso/callback")
 SSO_PROVIDER_NAME = env_value("OIDC_PROVIDER_NAME", "SSO")
 _sso_discovery_cache: Optional[Dict] = None
+_sso_discovery_cache_url: str = ""
 _sso_states: Dict[str, float] = {}  # state → timestamp (CSRF protection)
 
 async def _get_sso_discovery() -> Optional[Dict]:
-    global _sso_discovery_cache
-    if _sso_discovery_cache:
+    global _sso_discovery_cache, _sso_discovery_cache_url
+    settings = get_sso_settings()
+    discovery_url = settings.get("discovery_url", "")
+    if _sso_discovery_cache and _sso_discovery_cache_url == discovery_url:
         return _sso_discovery_cache
-    if not SSO_DISCOVERY_URL:
+    if not discovery_url:
         return None
     try:
         import httpx as _httpx
         async with _httpx.AsyncClient() as c:
-            r = await c.get(SSO_DISCOVERY_URL, timeout=10)
+            r = await c.get(discovery_url, timeout=10)
+            r.raise_for_status()
             _sso_discovery_cache = r.json()
+            _sso_discovery_cache_url = discovery_url
     except Exception as e:
         logging.warning("SSO discovery failed: %s", e)
         return None
@@ -357,11 +363,12 @@ HISTORY_FILE = DATA_DIR / "chat_history.json"
 VPC_FILE = DATA_DIR / "vpc_config.json"
 MCP_FILE = DATA_DIR / "mcp_installs.json"
 AUDIT_FILE = DATA_DIR / "audit_log.json"
+SSO_FILE = DATA_DIR / "sso_config.json"
 KNOWLEDGE_GRAPH = KnowledgeGraphStore(DATA_DIR / "knowledge_graph.sqlite", DATA_DIR / "knowledge_graph_blobs") if ENABLE_GRAPH else None
 
 def _require_graph():
     if not ENABLE_GRAPH or KNOWLEDGE_GRAPH is None:
-        raise HTTPException(status_code=404, detail="Data Graph is disabled. Set LATTICEAI_ENABLE_GRAPH=true in .env to enable.")
+        raise HTTPException(status_code=404, detail="지식 그래프가 비활성화되어 있습니다. LATTICEAI_ENABLE_GRAPH=true 설정 후 다시 시도해 주세요.")
 
 class UserRegister(BaseModel):
     email: str
@@ -386,6 +393,75 @@ class VpcConfigUpdate(BaseModel):
     vpn_status: Optional[str] = None
     peering_status: Optional[str] = None
     notes: Optional[str] = None
+
+class SsoConfigUpdate(BaseModel):
+    enabled: Optional[bool] = None
+    provider_name: Optional[str] = None
+    discovery_url: Optional[str] = None
+    client_id: Optional[str] = None
+    client_secret: Optional[str] = None
+    redirect_uri: Optional[str] = None
+    scopes: Optional[str] = None
+
+def _sso_env_defaults() -> Dict[str, object]:
+    return {
+        "enabled": bool(SSO_DISCOVERY_URL and SSO_CLIENT_ID and SSO_CLIENT_SECRET),
+        "provider_name": SSO_PROVIDER_NAME,
+        "discovery_url": SSO_DISCOVERY_URL,
+        "client_id": SSO_CLIENT_ID,
+        "client_secret": SSO_CLIENT_SECRET,
+        "redirect_uri": SSO_REDIRECT_URI,
+        "scopes": "openid email profile",
+    }
+
+def load_sso_config() -> Dict[str, object]:
+    config = _sso_env_defaults()
+    if SSO_FILE.exists():
+        try:
+            data = json.loads(SSO_FILE.read_text(encoding="utf-8"))
+            if isinstance(data, dict):
+                config.update({k: v for k, v in data.items() if v is not None})
+        except Exception as e:
+            logging.warning("load_sso_config failed (using env/defaults): %s", e)
+    config["provider_name"] = str(config.get("provider_name") or "SSO")
+    config["discovery_url"] = str(config.get("discovery_url") or "")
+    config["client_id"] = str(config.get("client_id") or "")
+    config["client_secret"] = str(config.get("client_secret") or "")
+    config["redirect_uri"] = str(config.get("redirect_uri") or SSO_REDIRECT_URI)
+    config["scopes"] = str(config.get("scopes") or "openid email profile")
+    config["enabled"] = bool(config.get("enabled")) and bool(
+        config["discovery_url"] and config["client_id"] and config["client_secret"]
+    )
+    return config
+
+def get_sso_settings() -> Dict[str, object]:
+    return load_sso_config()
+
+def public_sso_config(config: Optional[Dict[str, object]] = None) -> Dict[str, object]:
+    cfg = config or get_sso_settings()
+    return {
+        "enabled": bool(cfg.get("enabled")),
+        "provider_name": cfg.get("provider_name") or "",
+        "discovery_url": cfg.get("discovery_url") or "",
+        "client_id": cfg.get("client_id") or "",
+        "redirect_uri": cfg.get("redirect_uri") or SSO_REDIRECT_URI,
+        "scopes": cfg.get("scopes") or "openid email profile",
+        "secret_configured": bool(cfg.get("client_secret")),
+    }
+
+def save_sso_config(update: Dict[str, object]) -> Dict[str, object]:
+    global _sso_discovery_cache, _sso_discovery_cache_url
+    current = load_sso_config()
+    if update.get("client_secret") == "":
+        update.pop("client_secret", None)
+    current.update({k: v for k, v in update.items() if v is not None})
+    current["enabled"] = bool(current.get("enabled")) and bool(
+        current.get("discovery_url") and current.get("client_id") and current.get("client_secret")
+    )
+    SSO_FILE.write_text(json.dumps(current, ensure_ascii=False, indent=2), encoding="utf-8")
+    _sso_discovery_cache = None
+    _sso_discovery_cache_url = ""
+    return current
 
 class McpRecommendRequest(BaseModel):
     query: str
@@ -479,13 +555,13 @@ MCP_REGISTRY = [
     },
     {
         "id": "computer-use",
-        "name": "Computer Use MCP",
+        "name": "내 컴퓨터 MCP",
         "category": "Desktop / Mac UI",
         "install_mode": "connector",
         "connector_url": "/mcp/connectors/computer-use",
         "external_url": "codex://plugins/computer-use",
-        "description": "Mac 앱 화면을 읽고 클릭, 타이핑, 스크롤하는 데스크톱 UI 자동화 브리지입니다.",
-        "keywords": ["computer use", "desktop", "mac", "click", "type", "scroll", "컴퓨터", "맥", "앱", "클릭", "타이핑"],
+        "description": "사용자의 허용을 받아 이 컴퓨터의 파일, 화면, 앱 작업을 돕는 브리지입니다.",
+        "keywords": ["computer use", "desktop", "mac", "click", "type", "scroll", "내 컴퓨터", "컴퓨터", "맥", "앱", "클릭", "타이핑"],
         "capabilities": ["Mac 앱 UI 조작", "스크린샷 기반 상태 확인", "클릭/입력/스크롤"],
     },
     {
@@ -2216,23 +2292,23 @@ async def login(req: UserLogin, request: Request):
 
 @app.get("/auth/sso/config")
 async def sso_config():
-    enabled = bool(SSO_DISCOVERY_URL and SSO_CLIENT_ID and SSO_CLIENT_SECRET)
-    return {"enabled": enabled, "provider_name": SSO_PROVIDER_NAME if enabled else ""}
+    return public_sso_config()
 
 @app.get("/auth/sso/login")
 async def sso_login():
     from urllib.parse import urlencode
     from fastapi.responses import RedirectResponse as _Redirect
+    settings = get_sso_settings()
     discovery = await _get_sso_discovery()
-    if not discovery:
+    if not settings.get("enabled") or not discovery:
         raise HTTPException(status_code=503, detail="SSO가 설정되지 않았습니다.")
     state = secrets.token_urlsafe(16)
     _sso_states[state] = time.time()
     params = urlencode({
-        "client_id": SSO_CLIENT_ID,
+        "client_id": settings["client_id"],
         "response_type": "code",
-        "redirect_uri": SSO_REDIRECT_URI,
-        "scope": "openid email profile",
+        "redirect_uri": settings["redirect_uri"],
+        "scope": settings.get("scopes") or "openid email profile",
         "state": state,
     })
     return _Redirect(f"{discovery['authorization_endpoint']}?{params}")
@@ -2246,17 +2322,18 @@ async def sso_callback(code: str = "", state: str = "", error: str = ""):
     ts = _sso_states.pop(state, None)
     if ts is None or time.time() - ts > 300:
         raise HTTPException(status_code=400, detail="유효하지 않은 SSO 상태입니다.")
+    settings = get_sso_settings()
     discovery = await _get_sso_discovery()
-    if not discovery:
+    if not settings.get("enabled") or not discovery:
         raise HTTPException(status_code=503, detail="SSO 설정 오류입니다.")
     import httpx as _httpx
     async with _httpx.AsyncClient() as c:
         r = await c.post(discovery["token_endpoint"], data={
             "grant_type": "authorization_code",
             "code": code,
-            "redirect_uri": SSO_REDIRECT_URI,
-            "client_id": SSO_CLIENT_ID,
-            "client_secret": SSO_CLIENT_SECRET,
+            "redirect_uri": settings["redirect_uri"],
+            "client_id": settings["client_id"],
+            "client_secret": settings["client_secret"],
         }, headers={"Accept": "application/json"}, timeout=15)
         tokens = r.json()
     id_token = tokens.get("id_token")
@@ -2468,6 +2545,25 @@ async def admin_invite_link(request: Request):
         url = f"{scheme}://{host}/"
     return {"invite_url": url, "invite_code": INVITE_CODE, "gate_enabled": INVITE_GATE_ENABLED}
 
+@app.get("/admin/sso")
+async def admin_sso(request: Request):
+    require_admin(request)
+    return public_sso_config()
+
+@app.patch("/admin/sso")
+async def admin_update_sso(req: SsoConfigUpdate, request: Request):
+    admin_email, _ = require_admin(request)
+    update = req.dict(exclude_unset=True)
+    saved = save_sso_config(update)
+    append_audit_event(
+        "sso_config_update",
+        user_email=admin_email,
+        provider_name=saved.get("provider_name"),
+        discovery_url=saved.get("discovery_url"),
+        enabled=bool(saved.get("enabled")),
+    )
+    return public_sso_config(saved)
+
 # ── Invitation Logic ────────────────────────────────────────────────────────
 INVITE_CODE = env_value("LATTICEAI_INVITE_CODE", "gemma-lattice-ai")
 INVITE_GATE_ENABLED = env_bool("LATTICEAI_INVITE_GATE_ENABLED", default=False)
@@ -2495,7 +2591,7 @@ async def root(request: Request, code: Optional[str] = None, authorized: Optiona
                 <div style="font-size:48px; margin-bottom:20px;">🔒</div>
                 <h1 style="color:#378ADD; margin:0; font-size:24px;">Invitation Required</h1>
                 <p style="color:#94a3b8; margin:20px 0; line-height:1.6;">이 서비스는 비공개로 운영되고 있습니다.<br>선생님께 받은 <b>초대용 전용 링크</b>를 통해 접속해 주세요.</p>
-                <div style="margin-top:30px; padding-top:20px; border-top:1px solid rgba(255,255,255,0.05); font-size:11px; color:rgba(255,255,255,0.2); letter-spacing:1px;">LATTICE AI SECURITY AGENT</div>
+                <div style="margin-top:30px; padding-top:20px; border-top:1px solid rgba(255,255,255,0.05); font-size:11px; color:rgba(255,255,255,0.2); letter-spacing:1px;">LATTICE AI</div>
             </div>
         </body>
     """, status_code=403)
@@ -2548,6 +2644,48 @@ async def status():
         "mode": APP_MODE,
         "loaded_model": router._current or "None"
     }
+
+
+@app.get("/local/sysinfo")
+async def local_sysinfo(request: Request):
+    """CPU / RAM / GPU(MLX) 사용량을 반환합니다."""
+    require_user(request)
+    import subprocess, re as _re
+    result = {"cpu_pct": 0.0, "ram_pct": 0.0, "gpu_mem_pct": 0.0, "gpu_mem_gb": 0.0}
+    try:
+        # CPU
+        top_out = subprocess.run(["top", "-l", "1", "-n", "0"], capture_output=True, text=True, timeout=4).stdout
+        for line in top_out.splitlines():
+            if "CPU usage" in line:
+                m = _re.search(r"([\d.]+)% user.*?([\d.]+)% sys", line)
+                if m:
+                    result["cpu_pct"] = round(float(m.group(1)) + float(m.group(2)), 1)
+        # RAM
+        vm_out = subprocess.run(["vm_stat"], capture_output=True, text=True, timeout=4).stdout
+        page_size = 16384
+        pages: dict = {}
+        for line in vm_out.splitlines():
+            for key in ["Pages free", "Pages active", "Pages inactive", "Pages wired down", "Pages occupied by compressor"]:
+                if line.startswith(key):
+                    m = _re.search(r"(\d+)", line)
+                    if m:
+                        pages[key] = int(m.group(1))
+        total = sum(pages.values())
+        used  = total - pages.get("Pages free", 0)
+        result["ram_pct"] = round(used / total * 100, 1) if total else 0.0
+        # GPU (MLX / Apple Silicon unified memory)
+        try:
+            import mlx.core as _mx
+            hw_out = subprocess.run(["sysctl", "-n", "hw.memsize"], capture_output=True, text=True, timeout=2).stdout
+            total_bytes = int(hw_out.strip())
+            gpu_bytes = _mx.get_active_memory() + _mx.get_cache_memory()
+            result["gpu_mem_gb"]  = round(gpu_bytes / (1024 ** 3), 2)
+            result["gpu_mem_pct"] = round(gpu_bytes / total_bytes * 100, 1) if total_bytes else 0.0
+        except Exception:
+            pass
+    except Exception as e:
+        result["error"] = str(e)
+    return result
 
 
 
@@ -3208,31 +3346,224 @@ def hf_model_ready(repo_id: str, provider: str = "local_mlx") -> bool:
     )
     return has_config and has_weights and has_tokenizer
 
-def download_hf_model(repo_id: str, provider: str = "local_mlx") -> Dict[str, object]:
+
+def model_download_progress_payload(
+    stage: str,
+    message: str,
+    *,
+    percent: Optional[float] = None,
+    detail: Optional[str] = None,
+    downloaded_bytes: Optional[int] = None,
+    total_bytes: Optional[int] = None,
+    eta_seconds: Optional[float] = None,
+    file: Optional[str] = None,
+    indeterminate: bool = False,
+) -> Dict[str, object]:
+    payload: Dict[str, object] = {
+        "stage": stage,
+        "message": message,
+        "indeterminate": indeterminate,
+        "ts": time.time(),
+    }
+    if percent is not None:
+        payload["percent"] = max(0, min(100, round(float(percent), 1)))
+    if detail:
+        payload["detail"] = detail
+    if downloaded_bytes is not None:
+        payload["downloaded_bytes"] = max(0, int(downloaded_bytes))
+    if total_bytes is not None:
+        payload["total_bytes"] = max(0, int(total_bytes))
+    if eta_seconds is not None:
+        payload["eta_seconds"] = max(0, round(float(eta_seconds)))
+    if file:
+        payload["file"] = file
+    return payload
+
+
+def estimate_eta_seconds(started_at: float, percent: Optional[float]) -> Optional[float]:
+    if percent is None or percent <= 0 or percent >= 100:
+        return None
+    elapsed = max(0.0, time.time() - started_at)
+    return elapsed * (100.0 - percent) / percent
+
+
+def hf_repo_files_with_sizes(repo_id: str) -> List[Dict[str, object]]:
+    from huggingface_hub import HfApi
+
+    api = HfApi()
+    try:
+        info = api.model_info(repo_id, files_metadata=True)
+        files = []
+        for sibling in getattr(info, "siblings", []) or []:
+            name = str(getattr(sibling, "rfilename", "") or "").strip()
+            if not name or name.endswith("/"):
+                continue
+            files.append({"name": name, "size": int(getattr(sibling, "size", 0) or 0)})
+        if files:
+            return files
+    except TypeError:
+        pass
+    except Exception as e:
+        logging.warning("huggingface model_info failed for %s: %s", repo_id, e)
+
+    return [{"name": str(name), "size": 0} for name in api.list_repo_files(repo_id) if str(name).strip()]
+
+
+def download_hf_model(
+    repo_id: str,
+    provider: str = "local_mlx",
+    progress_emit=None,
+) -> Dict[str, object]:
     if importlib.util.find_spec("huggingface_hub") is None:
         raise HTTPException(status_code=400, detail="huggingface_hub가 없습니다. 먼저 MLX runtime 설치를 진행해 주세요.")
 
     target_dir = hf_model_dir(repo_id)
     if hf_model_ready(repo_id, provider):
+        if progress_emit:
+            progress_emit(model_download_progress_payload(
+                "download",
+                "이미 다운로드된 모델을 확인했습니다.",
+                percent=100,
+                downloaded_bytes=0,
+                total_bytes=0,
+                eta_seconds=0,
+            ))
         return {"model": repo_id, "path": str(target_dir), "cached": True}
 
     target_dir.mkdir(parents=True, exist_ok=True)
     try:
-        from huggingface_hub import HfApi, hf_hub_download, snapshot_download
+        from huggingface_hub import hf_hub_download
 
+        started_at = time.time()
+        all_files = hf_repo_files_with_sizes(repo_id)
         if provider == "llamacpp":
-            files = HfApi().list_repo_files(repo_id)
-            ggufs = sorted([name for name in files if name.lower().endswith(".gguf")])
+            ggufs = sorted(
+                [item for item in all_files if str(item["name"]).lower().endswith(".gguf")],
+                key=lambda item: str(item["name"]),
+            )
             if not ggufs:
                 raise RuntimeError("GGUF 파일을 찾지 못했습니다.")
             preference = ("q4_k_m", "q4_0", "q4_k_s", "q3_k_m", "q2_k")
-            filename = next(
-                (name for pref in preference for name in ggufs if pref in name.lower()),
-                ggufs[0],
-            )
-            hf_hub_download(repo_id=repo_id, filename=filename, local_dir=str(target_dir))
+            selected_files = [
+                next(
+                    (item for pref in preference for item in ggufs if pref in str(item["name"]).lower()),
+                    ggufs[0],
+                )
+            ]
         else:
-            snapshot_download(repo_id=repo_id, local_dir=str(target_dir), resume_download=True)
+            selected_files = all_files
+
+        total_bytes = sum(int(item.get("size") or 0) for item in selected_files) or None
+        downloaded_bytes = 0
+        total_files = max(1, len(selected_files))
+        if progress_emit:
+            progress_emit(model_download_progress_payload(
+                "download",
+                "모델 파일 정보를 확인했습니다.",
+                percent=0,
+                downloaded_bytes=0,
+                total_bytes=total_bytes,
+                indeterminate=total_bytes is None,
+            ))
+
+        for index, item in enumerate(selected_files, start=1):
+            filename = str(item["name"])
+            size = int(item.get("size") or 0)
+            tqdm_class = None
+            if progress_emit:
+                current_percent = (
+                    (downloaded_bytes / total_bytes) * 100 if total_bytes else ((index - 1) / total_files) * 100
+                )
+                progress_emit(model_download_progress_payload(
+                    "download",
+                    "모델 다운로드 중입니다.",
+                    percent=current_percent,
+                    detail=filename,
+                    downloaded_bytes=downloaded_bytes,
+                    total_bytes=total_bytes,
+                    eta_seconds=estimate_eta_seconds(started_at, current_percent),
+                    file=filename,
+                    indeterminate=total_bytes is None and total_files <= 1,
+                ))
+                try:
+                    from tqdm.auto import tqdm as base_tqdm
+
+                    downloaded_before = downloaded_bytes
+                    last_emit = {"at": 0.0, "percent": -1.0}
+
+                    def emit_byte_progress(done_bytes: float) -> None:
+                        done = max(0, int(done_bytes or 0))
+                        if total_bytes:
+                            aggregate = min(total_bytes, downloaded_before + done)
+                            percent = (aggregate / total_bytes) * 100
+                        else:
+                            file_total = size or done
+                            file_ratio = min(1.0, done / file_total) if file_total else 0.0
+                            aggregate = downloaded_before + done
+                            percent = ((index - 1) + file_ratio) / total_files * 100
+                        now = time.time()
+                        if percent < 100 and now - last_emit["at"] < 0.5 and percent - last_emit["percent"] < 0.3:
+                            return
+                        last_emit["at"] = now
+                        last_emit["percent"] = percent
+                        progress_emit(model_download_progress_payload(
+                            "download",
+                            "모델 다운로드 중입니다.",
+                            percent=percent,
+                            detail=filename,
+                            downloaded_bytes=aggregate,
+                            total_bytes=total_bytes,
+                            eta_seconds=estimate_eta_seconds(started_at, percent),
+                            file=filename,
+                            indeterminate=total_bytes is None and total_files <= 1,
+                        ))
+
+                    class ProgressTqdm(base_tqdm):
+                        def update(self, n=1):
+                            result = super().update(n)
+                            emit_byte_progress(float(getattr(self, "n", 0) or 0))
+                            return result
+
+                    tqdm_class = ProgressTqdm
+                except Exception:
+                    tqdm_class = None
+            local_path = hf_hub_download(
+                repo_id=repo_id,
+                filename=filename,
+                local_dir=str(target_dir),
+                tqdm_class=tqdm_class,
+            )
+            if size <= 0:
+                try:
+                    size = Path(local_path).stat().st_size
+                except OSError:
+                    size = 0
+            downloaded_bytes += size
+            if progress_emit:
+                current_percent = (
+                    (downloaded_bytes / total_bytes) * 100 if total_bytes else (index / total_files) * 100
+                )
+                progress_emit(model_download_progress_payload(
+                    "download",
+                    "모델 다운로드 중입니다.",
+                    percent=current_percent,
+                    detail=filename,
+                    downloaded_bytes=downloaded_bytes,
+                    total_bytes=total_bytes,
+                    eta_seconds=estimate_eta_seconds(started_at, current_percent),
+                    file=filename,
+                    indeterminate=False,
+                ))
+
+        if progress_emit:
+            progress_emit(model_download_progress_payload(
+                "download",
+                "모델 다운로드가 완료되었습니다.",
+                percent=100,
+                downloaded_bytes=downloaded_bytes,
+                total_bytes=total_bytes or downloaded_bytes,
+                eta_seconds=0,
+            ))
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"{repo_id} 다운로드 실패: {str(e)[-2000:]}")
 
@@ -3240,6 +3571,75 @@ def download_hf_model(repo_id: str, provider: str = "local_mlx") -> Dict[str, ob
         raise HTTPException(status_code=500, detail=f"{repo_id} 다운로드가 완료되지 않았습니다. 모델 파일을 찾지 못했습니다.")
 
     return {"model": repo_id, "path": str(target_dir), "cached": False}
+
+
+def pull_ollama_model_with_progress(model_name: str, progress_emit=None) -> Dict[str, object]:
+    started_at = time.time()
+    if progress_emit:
+        progress_emit(model_download_progress_payload(
+            "download",
+            "Ollama 모델 다운로드를 시작합니다.",
+            percent=0,
+            detail=model_name,
+            indeterminate=True,
+        ))
+    process = subprocess.Popen(
+        ["ollama", "pull", model_name],
+        stdout=subprocess.PIPE,
+        stderr=subprocess.STDOUT,
+        text=True,
+        bufsize=1,
+    )
+    last_percent: Optional[float] = None
+    lines: List[str] = []
+    try:
+        assert process.stdout is not None
+        for raw_line in process.stdout:
+            for part in re.split(r"[\r\n]+", raw_line):
+                line = part.strip()
+                if not line:
+                    continue
+                lines.append(line)
+                match = re.search(r"(\d{1,3}(?:\.\d+)?)\s*%", line)
+                if match:
+                    last_percent = min(100.0, float(match.group(1)))
+                    if progress_emit:
+                        progress_emit(model_download_progress_payload(
+                            "download",
+                            "Ollama 모델 다운로드 중입니다.",
+                            percent=last_percent,
+                            detail=line[-180:],
+                            eta_seconds=estimate_eta_seconds(started_at, last_percent),
+                            indeterminate=False,
+                        ))
+                elif progress_emit:
+                    progress_emit(model_download_progress_payload(
+                        "download",
+                        "Ollama 모델 다운로드 중입니다.",
+                        percent=last_percent,
+                        detail=line[-180:],
+                        eta_seconds=estimate_eta_seconds(started_at, last_percent),
+                        indeterminate=last_percent is None,
+                    ))
+        returncode = process.wait()
+    except Exception:
+        process.kill()
+        raise
+
+    if returncode != 0:
+        tail = "\n".join(lines[-12:])
+        raise HTTPException(status_code=500, detail=tail[-2000:] or "Ollama 모델 다운로드 실패")
+
+    if progress_emit:
+        progress_emit(model_download_progress_payload(
+            "download",
+            "Ollama 모델 다운로드가 완료되었습니다.",
+            percent=100,
+            detail=model_name,
+            eta_seconds=0,
+            indeterminate=False,
+        ))
+    return {"provider": "ollama", "model": model_name, "returncode": returncode}
 
 
 def get_ollama_pulled_models() -> set:
@@ -3806,6 +4206,227 @@ async def prepare_and_load_model(
         "download": download_result,
     }
 
+
+def sse_event(event: str, data: Dict[str, object]) -> str:
+    return f"event: {event}\ndata: {json.dumps(data, ensure_ascii=False)}\n\n"
+
+
+async def prepare_and_load_model_stream(
+    model_id: str,
+    request: Request,
+    engine: Optional[str] = None,
+    user_email: Optional[str] = None,
+) -> AsyncIterator[str]:
+    model_id = normalize_local_model_request(model_id, engine)
+    if not model_id:
+        raise HTTPException(status_code=400, detail="모델 식별자가 비어 있습니다.")
+
+    parsed_provider, parsed_model = parse_model_ref(model_id)
+    if parsed_provider == "mlx":
+        parsed_provider = "local_mlx"
+
+    work_queue: "queue.Queue[Dict[str, object]]" = queue.Queue()
+    work_result: Dict[str, object] = {}
+
+    def emit_progress(payload: Dict[str, object]) -> None:
+        work_queue.put({"kind": "progress", "data": payload})
+
+    def blocking_prepare() -> None:
+        try:
+            local_engines = {"local_mlx", "ollama", "vllm", "lmstudio", "llamacpp"}
+            install_result: Dict[str, object] = {}
+            download_result: Optional[Dict[str, object]] = None
+            prepared_model_id = model_id
+            prepared_model_name = parsed_model
+
+            if parsed_provider in local_engines:
+                emit_progress(model_download_progress_payload(
+                    "engine",
+                    "실행 엔진을 확인하는 중입니다.",
+                    percent=2,
+                    indeterminate=True,
+                ))
+                install_result = ensure_engine_ready(parsed_provider)
+                emit_progress(model_download_progress_payload(
+                    "engine",
+                    "실행 엔진 준비가 완료되었습니다.",
+                    percent=10,
+                    indeterminate=False,
+                ))
+
+            if parsed_provider == "local_mlx":
+                explicit_path = Path(parsed_model).expanduser()
+                if explicit_path.exists():
+                    download_result = {"model": parsed_model, "path": str(explicit_path), "cached": True}
+                    emit_progress(model_download_progress_payload(
+                        "download",
+                        "로컬 모델 경로를 확인했습니다.",
+                        percent=100,
+                        detail=str(explicit_path),
+                        eta_seconds=0,
+                    ))
+                elif not hf_model_ready(parsed_model, "local_mlx"):
+                    download_result = download_hf_model(parsed_model, "local_mlx", progress_emit=emit_progress)
+                else:
+                    download_result = {"model": parsed_model, "path": str(hf_model_dir(parsed_model)), "cached": True}
+                    emit_progress(model_download_progress_payload(
+                        "download",
+                        "이미 다운로드된 모델을 확인했습니다.",
+                        percent=100,
+                        eta_seconds=0,
+                    ))
+            elif parsed_provider == "ollama":
+                emit_progress(model_download_progress_payload(
+                    "engine",
+                    "Ollama 서버를 확인하는 중입니다.",
+                    percent=12,
+                    indeterminate=True,
+                ))
+                ensure_ollama_server()
+                if parsed_model not in get_ollama_pulled_models():
+                    download_result = pull_ollama_model_with_progress(parsed_model, progress_emit=emit_progress)
+                else:
+                    download_result = {"provider": "ollama", "model": parsed_model, "cached": True}
+                    emit_progress(model_download_progress_payload(
+                        "download",
+                        "이미 다운로드된 Ollama 모델을 확인했습니다.",
+                        percent=100,
+                        detail=parsed_model,
+                        eta_seconds=0,
+                    ))
+            elif parsed_provider == "vllm":
+                if not hf_model_ready(parsed_model, "vllm"):
+                    download_result = download_hf_model(parsed_model, "vllm", progress_emit=emit_progress)
+                else:
+                    download_result = {"provider": "vllm", "model": parsed_model, "cached": True}
+                    emit_progress(model_download_progress_payload(
+                        "download",
+                        "이미 다운로드된 모델을 확인했습니다.",
+                        percent=100,
+                        detail=parsed_model,
+                        eta_seconds=0,
+                    ))
+                emit_progress(model_download_progress_payload(
+                    "server",
+                    "vLLM 서버를 시작하는 중입니다.",
+                    percent=92,
+                    indeterminate=True,
+                ))
+                ensure_vllm_server(parsed_model)
+                download_result = {**(download_result or {}), "provider": "vllm", "model": parsed_model, "server_ready": True}
+            elif parsed_provider == "llamacpp":
+                if not hf_model_ready(parsed_model, "llamacpp"):
+                    download_result = download_hf_model(parsed_model, "llamacpp", progress_emit=emit_progress)
+                else:
+                    download_result = {"provider": "llamacpp", "model": parsed_model, "cached": True}
+                    emit_progress(model_download_progress_payload(
+                        "download",
+                        "이미 다운로드된 GGUF 모델을 확인했습니다.",
+                        percent=100,
+                        detail=parsed_model,
+                        eta_seconds=0,
+                    ))
+                emit_progress(model_download_progress_payload(
+                    "server",
+                    "llama.cpp 서버를 시작하는 중입니다.",
+                    percent=92,
+                    indeterminate=True,
+                ))
+                ensure_llamacpp_server(parsed_model)
+                download_result = {**(download_result or {}), "provider": "llamacpp", "model": parsed_model, "server_ready": True}
+            elif parsed_provider == "lmstudio":
+                emit_progress(model_download_progress_payload(
+                    "download",
+                    "LM Studio 모델을 확인하는 중입니다.",
+                    percent=35,
+                    indeterminate=True,
+                ))
+                ensured = ensure_lmstudio_model(parsed_model)
+                resolved_model = str(
+                    ensured.get("instance_id")
+                    or ensured.get("resolved_model")
+                    or parsed_model
+                ).strip()
+                prepared_model_name = resolved_model
+                prepared_model_id = f"lmstudio:{resolved_model}"
+                download_result = ensured
+            else:
+                emit_progress(model_download_progress_payload(
+                    "engine",
+                    "모델 연결을 준비하는 중입니다.",
+                    percent=30,
+                    indeterminate=True,
+                ))
+
+            work_result.update({
+                "model_id": prepared_model_id,
+                "parsed_provider": parsed_provider,
+                "parsed_model": prepared_model_name,
+                "install_result": install_result,
+                "download_result": download_result,
+            })
+            work_queue.put({"kind": "done"})
+        except HTTPException as exc:
+            work_queue.put({"kind": "error", "status_code": exc.status_code, "detail": exc.detail})
+        except Exception as exc:
+            logging.exception("model prepare stream worker failed")
+            work_queue.put({"kind": "error", "status_code": 500, "detail": str(exc)[-2000:]})
+
+    worker = threading.Thread(target=blocking_prepare, daemon=True)
+    worker.start()
+
+    while True:
+        item = await asyncio.to_thread(work_queue.get)
+        kind = item.get("kind")
+        if kind == "progress":
+            yield sse_event("progress", item["data"])
+        elif kind == "error":
+            raise HTTPException(
+                status_code=int(item.get("status_code") or 500),
+                detail=item.get("detail") or "모델 준비에 실패했습니다.",
+            )
+        elif kind == "done":
+            break
+
+    prepared_model_id = str(work_result.get("model_id") or model_id)
+    prepared_provider = str(work_result.get("parsed_provider") or parsed_provider)
+    install_result = work_result.get("install_result") or {}
+    download_result = work_result.get("download_result")
+
+    yield sse_event("progress", model_download_progress_payload(
+        "load",
+        "모델을 메모리에 로드하는 중입니다.",
+        percent=96,
+        indeterminate=True,
+    ))
+
+    effective_email = (user_email or get_current_user(request) or "").strip()
+    user_api_key = get_user_api_key(effective_email, prepared_provider) if prepared_provider != "local_mlx" else None
+    msg = await router.load_model(
+        prepared_model_id,
+        None,
+        draft_model_id=None,
+        api_key_override=user_api_key,
+        owner=effective_email or None,
+    )
+    result = {
+        "status": "ok",
+        "message": msg,
+        "model": prepared_model_id,
+        "current": router.current_model_id,
+        "engine": prepared_provider,
+        "installed_now": bool(isinstance(install_result, dict) and install_result.get("installed_now")),
+        "download": download_result,
+    }
+    yield sse_event("progress", model_download_progress_payload(
+        "done",
+        "모델 준비가 완료되었습니다.",
+        percent=100,
+        eta_seconds=0,
+    ))
+    yield sse_event("done", result)
+
+
 CLOUD_VERIFY_CACHE: Dict[str, Dict] = {}
 CLOUD_VERIFY_TTL_SECONDS = 600
 
@@ -3961,6 +4582,38 @@ async def engines_prepare_model(req: PrepareModelRequest, request: Request):
         request,
         engine=req.engine,
         user_email=req.user_email,
+    )
+
+
+@app.post("/engines/prepare-model/stream")
+async def engines_prepare_model_stream(req: PrepareModelRequest, request: Request):
+    require_user(request)
+
+    async def event_stream():
+        try:
+            async for chunk in prepare_and_load_model_stream(
+                req.model,
+                request,
+                engine=req.engine,
+                user_email=req.user_email,
+            ):
+                yield chunk
+        except HTTPException as exc:
+            yield sse_event("error", {
+                "status_code": exc.status_code,
+                "detail": exc.detail or "모델 준비에 실패했습니다.",
+            })
+        except Exception as exc:
+            logging.exception("model prepare stream failed")
+            yield sse_event("error", {
+                "status_code": 500,
+                "detail": str(exc)[-1000:] or "모델 준비에 실패했습니다.",
+            })
+
+    return StreamingResponse(
+        event_stream(),
+        media_type="text/event-stream",
+        headers={"Cache-Control": "no-cache", "X-Accel-Buffering": "no"},
     )
 
 
@@ -4122,14 +4775,14 @@ async def chat(req: ChatRequest, request: Request):
                 logging.warning("knowledge graph clear event ingest failed: %s", e)
         if command == "/clear_all":
             result = clear_history(0)
-            answer = f"채팅창을 정리했습니다. 화면에서 제거 {result.get('removed', 0)}개. 감사 로그와 Data Graph/RAG 데이터는 유지됩니다."
+            answer = f"채팅창을 정리했습니다. 화면에서 제거 {result.get('removed', 0)}개. 감사 로그와 지식 그래프/RAG 데이터는 유지됩니다."
         else:
             if req.conversation_id:
                 result = clear_conversation(req.conversation_id)
-                answer = f"현재 대화방 채팅창을 정리했습니다. 화면에서 제거 {result.get('removed', 0)}개. 감사 로그와 Data Graph/RAG 데이터는 유지됩니다."
+                answer = f"현재 대화방 채팅창을 정리했습니다. 화면에서 제거 {result.get('removed', 0)}개. 감사 로그와 지식 그래프/RAG 데이터는 유지됩니다."
             else:
                 result = clear_history(0)
-                answer = f"채팅창을 정리했습니다. 화면에서 제거 {result.get('removed', 0)}개. 감사 로그와 Data Graph/RAG 데이터는 유지됩니다."
+                answer = f"채팅창을 정리했습니다. 화면에서 제거 {result.get('removed', 0)}개. 감사 로그와 지식 그래프/RAG 데이터는 유지됩니다."
         append_audit_event(
             "clear_command",
             user_email=effective_email,
@@ -5155,10 +5808,7 @@ async def _phase_verify(
         ctx.state = AgentState.ROLLBACK
     elif next_s == "EXECUTING":
         if ctx.retry_count >= max_retry:
-            ctx.final_message = (
-                f"최대 재시도({max_retry}회) 초과로 작업을 종료했습니다. "
-                f"마지막 비판: {verdict.get('reason', '(없음)')}"
-            )
+            ctx.final_message = "처리 중 문제가 발생했습니다. 다시 시도해 주세요."
             ctx.state = AgentState.FAILED
         else:
             ctx.retry_count += 1
@@ -6047,9 +6697,9 @@ async def tools_computer_use_status(request: Request):
     return _tool_response(computer_status)
 
 
-# ── Computer Use API ──────────────────────────────────────────────────────────
+# ── 내 컴퓨터 API ──────────────────────────────────────────────────────────
 
-CU_SYSTEM_PROMPT = """You are Lattice AI Computer Use Agent. You control the Mac desktop using tools.
+CU_SYSTEM_PROMPT = """You are Lattice AI desktop-control agent. You control the Mac desktop using tools.
 Prefer non-visual direct actions when possible. Use screenshots only when you must inspect visible UI state or choose screen coordinates.
 
 Available actions:
@@ -6185,8 +6835,8 @@ async def cu_drag(req: CuDragRequest, request: Request):
 
 @app.post("/cu/agent")
 async def cu_agent(req: CuAgentRequest, request: Request):
-    """SSE streaming Computer Use agent loop."""
-    require_admin(request)
+    """SSE streaming desktop-control agent loop."""
+    require_user(request)
     async def _stream():
         task_lower = (req.task or "").lower()
         url_match = re.search(r"(https?://[^\s]+|localhost:\d+[^\s]*|127\.0\.0\.1:\d+[^\s]*)", req.task or "")
@@ -6413,9 +7063,9 @@ _MCP_TOOL_DESCRIPTIONS: Dict[str, str] = {
     "computer_scroll":       "Scroll at screen coordinates.",
     "computer_move":         "Move the mouse to screen coordinates.",
     "computer_drag":         "Drag from (x1,y1) to (x2,y2).",
-    "computer_status":       "Check if Mac Computer Use (pyautogui) is available.",
+    "computer_status":       "Check if Mac desktop control (pyautogui) is available.",
     "chrome_status":         "Report Chrome desktop bridge availability.",
-    "computer_use_status":   "Report Mac Computer Use bridge availability.",
+    "computer_use_status":   "Report Mac desktop-control bridge availability.",
     "knowledge_save":        "Save a note into the local knowledge garden.",
     "knowledge_search":      "Search the local knowledge garden.",
     "knowledge_tree":        "List local knowledge garden markdown files.",
@@ -6803,6 +7453,20 @@ def setup_auto_state() -> Dict[str, object]:
         "preset": auto_setup_preset(profile, recommendation),
     }
 
+
+def primary_setup_model(recs: Dict[str, object]) -> Optional[Dict[str, object]]:
+    models = recs.get("models") if isinstance(recs, dict) else None
+    if not isinstance(models, list):
+        return None
+    candidates = [
+        item for item in models
+        if isinstance(item, dict) and not item.get("disabled") and (item.get("model_id") or (item.get("action") or {}).get("model_id"))
+    ]
+    if not candidates:
+        return None
+    return next((item for item in candidates if item.get("checked")), candidates[0])
+
+
 @app.get("/setup/scan")
 async def setup_scan(request: Request):
     """환경 감지 및 맞춤 추천 반환."""
@@ -6810,6 +7474,27 @@ async def setup_scan(request: Request):
     env  = scan_environment()
     recs = get_recommendations(env)
     zero_config = setup_auto_state()
+    primary_model = primary_setup_model(recs)
+    if primary_model:
+        model_id = primary_model.get("model_id") or (primary_model.get("action") or {}).get("model_id")
+        zero_config.setdefault("recommend", {})["model_id"] = model_id
+        zero_config["recommend"]["runtime"] = "mlx"
+        rationale = [
+            item for item in zero_config["recommend"].get("rationale", [])
+            if not (isinstance(item, str) and item.startswith("RAM ") and "→" in item)
+        ]
+        rationale.append(f"실제 다운로드 및 로드 가능한 MLX 모델 → {model_id}")
+        zero_config["recommend"]["rationale"] = rationale
+        if isinstance(zero_config.get("plan"), dict):
+            zero_config["plan"]["steps"] = [{
+                "name": f"weights:{model_id}",
+                "why": "추론에 사용할 모델 가중치",
+                "command": ["huggingface-cli", "download", model_id, "--quiet"],
+                "requires_admin": False,
+            }]
+        if isinstance(zero_config.get("preset"), dict):
+            zero_config["preset"].setdefault("model", {})["id"] = model_id
+            zero_config["preset"]["model"]["runtime"] = "mlx"
     env["zero_config"] = zero_config
     recs.setdefault("summary", {})["zero_config"] = zero_config["recommend"]
     recs["install_plan"] = zero_config["plan"]

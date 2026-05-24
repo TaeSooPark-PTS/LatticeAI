@@ -8,3 +8,5 @@ recursive-include skills *.md
 recursive-include docs *.md
 include requirements.txt
 include README.md
+include auto_setup.py
+include kg_schema.py

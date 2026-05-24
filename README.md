@@ -135,7 +135,8 @@ OpenAI · Groq · Together · OpenRouter · any OpenAI-compatible endpoint
 | **Multi-step agent** | File edit/create, grep, todo, terminal (25 steps) |
 | **Multi-LLM pipeline** | Plan → Execute → Review with different models |
 | **Human-in-the-loop** | Approve agent plan before execution |
-| **Audit dashboard** | Per-user AI usage, sensitive data detection, event log |
+| **Admin governance** | User status, role permissions, Okta / Entra ID SSO, security monitoring |
+| **Audit dashboard** | Per-user AI usage, sensitive data detection, event log, UTF-8 TXT/CSV/Excel exports |
 | **PWA** | Install on iPad / Android home screen |
 | **SSO** | Entra ID / Okta OIDC |
 
@@ -241,6 +242,9 @@ Report vulnerabilities: [SECURITY.md](SECURITY.md)
 | GET | `/skills/marketplace` | Skills marketplace |
 | POST | `/skills/install` | Install a skill |
 | GET | `/plugins/directory` | Plugin directory |
+| GET | `/admin/audit` | Admin audit report with per-user usage and recent events |
+| GET | `/admin/sensitivity` | Security monitoring report for risky/compliant fields |
+| GET/PATCH | `/admin/sso` | Okta / Entra ID OIDC configuration |
 | GET | `/permissions/pending` | Pending file-access approvals (admin) |
 | POST | `/permissions/approve/{token}` | Approve file access (admin) |
 
@@ -294,7 +298,7 @@ Or: `./start_ai.sh` (auto-restart + caffeinate)
 | VS Code Marketplace | [marketplace.visualstudio.com](https://marketplace.visualstudio.com/items?itemName=parktaesoo.ltcai) |
 | Open VSX | [open-vsx.org](https://open-vsx.org/extension/parktaesoo/ltcai) |
 
-Current version: **0.1.27** — [Changelog](docs/CHANGELOG.md)
+Current version: **0.1.29** — [Changelog](docs/CHANGELOG.md)
 
 ---
 
@@ -333,7 +337,8 @@ LTCAI --tunnel                       # + Cloudflare 공개 URL 자동 발급
 - Graph RAG — 채팅·문서를 SQLite 지식 그래프로 자동 구조화
 - 멀티 LLM 파이프라인 (Plan → Execute → Review)
 - Human-in-the-loop 에이전트 승인
-- 감사 로그 & 데이터 거버넌스 대시보드
+- 감사 로그 & 데이터 거버넌스 대시보드, UTF-8 TXT/CSV/Excel 추출
+- 사용자/권한/SSO/보안 모니터링이 분리된 관리자 화면
 - 텔레메트리 없음 — 모든 데이터 로컬 저장
 
 ### 추천 로컬 모델 (M-series Mac)
