@@ -116,11 +116,13 @@ Comparison is based on public product behavior as of 2026-05.
 | VS Code extension | ✅ | ❌ | ✅ | ✅ |
 | Telegram bot | ✅ | ❌ | ❌ | ❌ |
 | Graph RAG (auto knowledge graph) | ✅ | ❌ | ❌ | ❌ |
-| MCP registry & install | ✅ | ❌ | ✅ | ❌ |
+| MCP registry (browse & one-click install) | ✅ | ⚠️* | ✅ | ❌ |
 | Admin dashboard + audit log | ✅ | ✅ | ❌ | ❌ |
 | Self-hosted, zero telemetry | ✅ | ✅ | ✅ | ❌ |
 | One-command public tunnel | ✅ | ❌ | ❌ | ❌ |
 | Free | ✅ | ✅ | ✅ | ❌ |
+
+> ⚠️ *Open WebUI supports MCP via manual URL configuration — no registry browsing or one-click install.
 
 ---
 
