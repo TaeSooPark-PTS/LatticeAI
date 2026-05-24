@@ -1,6 +1,6 @@
 {
   "name": "ltcai",
-  "version": "0.1.29",
+  "version": "0.1.30",
   "description": "Lattice AI local MLX/cloud LLM workspace server",
   "homepage": "https://github.com/TaeSooPark-PTS/LatticeAI#readme",
   "repository": {
@@ -51,6 +51,7 @@
     "telegram_bot.py",
     "tools.py",
     "codex_telegram_bot.py",
+    "mcp_registry.py",
     "skills/",
     "static/account.html",
     "static/chat.html",

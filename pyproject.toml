@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "ltcai"
-version = "0.1.29"
+version = "0.1.30"
 description = "Lattice AI local MLX/cloud LLM workspace server"
 readme = "README.md"
 requires-python = ">=3.11"
@@ -64,6 +64,7 @@ py-modules = [
   "ltcai_cli",
   "auto_setup",
   "server",
+  "mcp_registry",
   "kg_schema",
   "knowledge_graph",
   "llm_router",

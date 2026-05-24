@@ -1,5 +1,32 @@
 # Changelog
 
+## [0.1.30] - 2026-05-25
+
+### 코드 품질 및 리팩토링
+
+- **`server.py` 모듈 분리** — 7,568줄 → 6,798줄
+  - MCP 레지스트리 상수 + 원격 레지스트리 페치 + 스킬 마켓플레이스 + 플러그인 디렉터리 로직을 `mcp_registry.py`(791줄)로 분리
+  - `server.py`의 가독성과 유지보수성 대폭 향상
+
+- **버그 수정 6건**
+  - `requirements.txt`에 누락된 `pymupdf` 추가 (Docker 빌드 실패 방지)
+  - 비밀번호 해싱 로그 메시지 "bcrypt" → 실제 알고리즘 "scrypt"로 수정
+  - HuggingFace 모델 캐시 경로 `~/.latticeai/` → `~/.ltcai/`로 통일 (DATA_DIR과 일치)
+  - OpenRouter 모델 카탈로그: Claude 3.5 → Claude 4.x, Gemini 2.0 → 2.5 업데이트
+  - `.gitignore`에 임시 파일, 로그, 세션 파일 패턴 8개 추가
+  - 고아 파일 정리 (구버전 GIF, 캡처 스크립트 삭제)
+
+- **README 개선**
+  - v0.1.29 실제 UI에서 새로 찍은 스크린샷 3장 + 애니메이션 데모 GIF 추가
+  - GitHub Actions CI 배지 추가
+  - 스크린샷에 이모지 레이블 + 설명 캡션 추가
+
+### Release
+- 배포 버전을 `0.1.30`으로 상향
+- 대상 채널: `npm` · `PyPI` · `VS Code Marketplace` · `Open VSX`
+
+---
+
 ## [0.1.29] - 2026-05-25
 
 ### 관리자 UX 및 거버넌스 개선
