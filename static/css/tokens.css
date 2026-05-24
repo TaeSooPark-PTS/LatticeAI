@@ -1,0 +1,169 @@
+/* ============================================================
+ * Lattice AI — Design Tokens (Single Source of Truth)
+ *
+ * 명세: lattice_ai_full_spec.pptx 슬라이드 19 (디자인 토큰)
+ *
+ * 이 파일이 모든 화면의 색·간격·타이포·반경·모션의 기준이다.
+ * chat.html / graph.html / admin.html / account.html 의 :root {}
+ * 블록은 점차 이 파일의 변수만 참조하도록 정리할 것.
+ *
+ * 토큰 명명 규칙:
+ *   --lt-{category}-{scale}      (예: --lt-color-primary-600)
+ *   --lt-bg / --lt-ink / --lt-accent-* 는 의미 토큰 (semantic)
+ *   기존 --bg / --text 등은 이 파일의 의미 토큰으로 alias
+ * ============================================================ */
+
+:root {
+  /* ── Brand · Color (raw scale) ────────────────────────────── */
+  --lt-color-primary-100: #EAE2FD;
+  --lt-color-primary-200: #D3C2FB;
+  --lt-color-primary-400: #9A78F0;
+  --lt-color-primary-600: #6E4AE6;   /* PRIMARY — Lattice 보라 */
+  --lt-color-primary-800: #3B1F8E;   /* PRIMARY_DEEP */
+
+  --lt-color-ink-900: #0E102A;       /* 본문/제목 텍스트 (딥 네이비) */
+  --lt-color-ink-700: #2A2D4A;
+  --lt-color-ink-600: #4A4F6D;       /* 보조 텍스트 */
+  --lt-color-ink-400: #8A90A7;       /* 캡션 */
+  --lt-color-ink-200: #C8CCDC;
+  --lt-color-line:    #E3E3F0;       /* 경계선 */
+
+  --lt-color-surface-0:  #FFFFFF;    /* 페이지 배경 (라이트) */
+  --lt-color-surface-50: #F7F5FD;    /* 카드 면 */
+  --lt-color-surface-100:#EEE7FE;    /* 보조 면 */
+
+  --lt-color-dark-0:  #0B0B1E;       /* 페이지 배경 (다크) */
+  --lt-color-dark-50: #151539;
+  --lt-color-dark-card: #181A35;
+  --lt-color-dark-line: rgba(151,179,231,0.18);
+
+  /* Accents */
+  --lt-color-accent-cyan:  #18C6D9;
+  --lt-color-accent-green: #2FC28E;
+  --lt-color-accent-amber: #F1A52A;
+  --lt-color-accent-pink:  #F060B8;
+  --lt-color-danger:       #F47171;
+
+  /* ── Spacing · 4px grid ──────────────────────────────────── */
+  --lt-space-1: 4px;
+  --lt-space-2: 8px;
+  --lt-space-3: 12px;
+  --lt-space-4: 16px;
+  --lt-space-5: 24px;
+  --lt-space-6: 32px;
+  --lt-space-7: 48px;
+  --lt-space-8: 64px;
+
+  /* ── Radius ──────────────────────────────────────────────── */
+  --lt-radius-sm: 8px;
+  --lt-radius-md: 12px;
+  --lt-radius-lg: 16px;
+  --lt-radius-xl: 24px;
+  --lt-radius-pill: 9999px;
+
+  /* ── Typography ──────────────────────────────────────────── */
+  --lt-font-head: "Pretendard", "Inter", -apple-system, BlinkMacSystemFont,
+                  "Apple SD Gothic Neo", "Malgun Gothic", "Noto Sans KR",
+                  system-ui, sans-serif;
+  --lt-font-body: var(--lt-font-head);
+  --lt-font-mono: "JetBrains Mono", "SF Mono", Menlo, Consolas,
+                  "Liberation Mono", monospace;
+
+  --lt-fs-display: 32px;
+  --lt-fs-title:   22px;
+  --lt-fs-section: 18px;
+  --lt-fs-body:    14px;
+  --lt-fs-caption: 11px;
+  --lt-fs-mono:    12px;
+
+  --lt-fw-regular: 400;
+  --lt-fw-medium:  500;
+  --lt-fw-semibold:600;
+  --lt-fw-bold:    700;
+
+  --lt-lh-tight:   1.15;
+  --lt-lh-normal:  1.4;
+  --lt-lh-relaxed: 1.55;
+
+  /* ── Motion ──────────────────────────────────────────────── */
+  --lt-motion-fast:   120ms;
+  --lt-motion-normal: 200ms;
+  --lt-motion-slow:   280ms;
+  --lt-motion-ease:   cubic-bezier(0.22, 1, 0.36, 1);   /* ease-out-quint */
+
+  /* ── Shadow ──────────────────────────────────────────────── */
+  --lt-shadow-sm: 0 4px 12px rgba(14, 16, 42, 0.06);
+  --lt-shadow-md: 0 12px 32px rgba(14, 16, 42, 0.10);
+  --lt-shadow-lg: 0 24px 64px rgba(14, 16, 42, 0.14);
+
+  /* ── Semantic aliases — LIGHT mode (default) ──────────────── */
+  --lt-bg:        var(--lt-color-surface-0);
+  --lt-surface:   var(--lt-color-surface-50);
+  --lt-surface-2: var(--lt-color-surface-100);
+  --lt-ink:       var(--lt-color-ink-900);
+  --lt-ink-soft:  var(--lt-color-ink-600);
+  --lt-muted:     var(--lt-color-ink-400);
+  --lt-line:      var(--lt-color-line);
+  --lt-accent:    var(--lt-color-primary-600);
+  --lt-accent-deep: var(--lt-color-primary-800);
+}
+
+/* ── Semantic aliases — DARK mode ──────────────────────────── */
+:root[data-lt-theme="dark"],
+.lt-theme-dark {
+  --lt-bg:        var(--lt-color-dark-0);
+  --lt-surface:   var(--lt-color-dark-50);
+  --lt-surface-2: var(--lt-color-dark-card);
+  --lt-ink:       #FFFFFF;
+  --lt-ink-soft:  var(--lt-color-ink-200);
+  --lt-muted:     #8B92AC;
+  --lt-line:      var(--lt-color-dark-line);
+  --lt-accent:    var(--lt-color-primary-400);
+  --lt-accent-deep:var(--lt-color-primary-200);
+}
+
+/* Auto dark mode (respects OS preference unless overridden) */
+@media (prefers-color-scheme: dark) {
+  :root:not([data-lt-theme="light"]) {
+    --lt-bg:        var(--lt-color-dark-0);
+    --lt-surface:   var(--lt-color-dark-50);
+    --lt-surface-2: var(--lt-color-dark-card);
+    --lt-ink:       #FFFFFF;
+    --lt-ink-soft:  var(--lt-color-ink-200);
+    --lt-muted:     #8B92AC;
+    --lt-line:      var(--lt-color-dark-line);
+    --lt-accent:    var(--lt-color-primary-400);
+    --lt-accent-deep:var(--lt-color-primary-200);
+  }
+}
+
+/* ============================================================
+ * Backward-compat aliases for legacy --bg / --text / --accent.
+ * 기존 HTML 들이 자체 :root 를 가지고 있어도, 이 파일을 import 한
+ * 뒤 자체 :root 의 값을 지우면 자연히 토큰을 따라간다.
+ * ============================================================ */
+:root {
+  --bg:           var(--lt-bg);
+  --surface:      var(--lt-surface);
+  --surface-2:    var(--lt-surface-2);
+  --text:         var(--lt-ink);
+  --muted:        var(--lt-ink-soft);
+  --faint:        var(--lt-muted);
+  --border:       var(--lt-line);
+  --accent:       var(--lt-accent);
+  --accent-2:     var(--lt-color-accent-amber);
+  --accent-3:     var(--lt-color-accent-cyan);
+  --accent-pink:  var(--lt-color-accent-pink);
+  --danger:       var(--lt-color-danger);
+  --radius:       var(--lt-radius-lg);
+  --radius-sm:    var(--lt-radius-sm);
+}
+
+/* ── Reduced motion (a11y) ─────────────────────────────────── */
+@media (prefers-reduced-motion: reduce) {
+  :root {
+    --lt-motion-fast:   1ms;
+    --lt-motion-normal: 1ms;
+    --lt-motion-slow:   1ms;
+  }
+}

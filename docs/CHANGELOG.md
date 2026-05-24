@@ -1,5 +1,28 @@
 # Changelog
 
+## [0.1.27] - 2026-05-24
+
+### 로그인 페이지 UI 개선
+
+**Language 버튼**
+- 언어 표시 버튼 라벨을 `한국어 / English` 가변 텍스트에서 `Language` 고정 텍스트로 변경
+- 버튼 위치를 화면 고정(fixed) → 로그인 카드 우측 상단(absolute) 으로 이동, 화면 크기 무관하게 카드 안에 항상 위치
+- 버튼 크기 약 2/3 축소 (font 13px→11px, padding 6/14px→4/9px)
+- footer 하단 언어 전환 버튼 제거 (도움말·개인정보처리방침 링크만 유지)
+
+**로그인 카드 레이아웃**
+- 카드 전체 크기 약 4/5 축소 — 너비 `min(720px)→min(460px)`, 폰트·버튼 높이·여백 비례 감소
+- 타이틀 폰트 `38–54px → 28–40px`, 부제목 `24–34px → 17–24px`
+- 카드 수직 위치: 타이틀바(58px)를 제외한 나머지 화면의 정중앙 배치 (`flex-direction: column` + `justify-content: center`, `padding-top: 58px`)
+- 카드가 타이틀바와 겹치는 현상 구조적 수정 (기존 `align-items: center` 로 카드가 위로 올라가는 문제 해결)
+- 로그인 카드와 개인정보처리방침 사이 여백 확보 (bottom padding 증가)
+
+### Release
+- 배포 버전을 `0.1.27`로 상향
+- 대상 채널: `npm` · `PyPI` · `VS Code Marketplace` · `Open VSX`
+
+---
+
 ## [0.1.26] - 2026-05-24
 
 ### MCP 관리 대폭 확장 — 3-탭 UI

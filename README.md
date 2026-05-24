@@ -294,7 +294,7 @@ Or: `./start_ai.sh` (auto-restart + caffeinate)
 | VS Code Marketplace | [marketplace.visualstudio.com](https://marketplace.visualstudio.com/items?itemName=parktaesoo.ltcai) |
 | Open VSX | [open-vsx.org](https://open-vsx.org/extension/parktaesoo/ltcai) |
 
-Current version: **0.1.26** — [Changelog](docs/CHANGELOG.md)
+Current version: **0.1.27** — [Changelog](docs/CHANGELOG.md)
 
 ---
 

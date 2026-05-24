@@ -1,7 +1,9 @@
 include static/*.html
+include static/*.css
 include static/manifest.json
 include static/sw.js
 recursive-include static/icons *.png
+recursive-include static/css *.css
 recursive-include skills *.md
 recursive-include docs *.md
 include requirements.txt
