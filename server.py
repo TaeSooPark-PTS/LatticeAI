@@ -48,6 +48,13 @@ from llm_router import AsyncOpenAI, LLMRouter, OPENAI_COMPATIBLE_PROVIDERS, HF_M
 from knowledge_graph import KnowledgeGraphStore
 from p_reinforce import BRAIN_DIR, PReinforceGardener
 from setup import get_recommendations, install_stream, open_url, scan_environment
+from auto_setup import (
+    plan as auto_setup_plan,
+    preset as auto_setup_preset,
+    probe as auto_setup_probe,
+    recommend as auto_setup_recommend,
+    verify as auto_setup_verify,
+)
 from telegram_bot import broadcast_web_chat
 from tools import (
     AGENT_ROOT,
@@ -3993,7 +4000,7 @@ async def list_models():
         {"id": "mlx-community/Llama-3.1-8B-Instruct-4bit",      "name": "Llama 3.1 8B",      "tag": "general", "size": "4.7GB"},
         
         # Gemma Series
-        {"id": "google/gemma-4-E4B",                            "name": "Gemma 4 E4B (Latest)", "tag": "next-gen", "size": "Next-Gen"},
+        {"id": "mlx-community/gemma-4-e4b-it-4bit",             "name": "Gemma 4 E4B (4-bit)", "tag": "next-gen", "size": "5.2GB"},
         {"id": "mlx-community/gemma-2-9b-it-4bit",              "name": "Gemma 2 9B",        "tag": "balanced","size": "5.4GB"},
         {"id": "mlx-community/gemma-2-2b-it-4bit",              "name": "Gemma 2 2B",        "tag": "ultra-light", "size": "1.6GB"},
 
@@ -4333,6 +4340,17 @@ async def knowledge_graph_stats(request: Request):
     _require_graph()
     require_user(request)
     return KNOWLEDGE_GRAPH.stats()
+
+@app.get("/knowledge-graph/schema")
+async def knowledge_graph_schema(request: Request):
+    _require_graph()
+    require_user(request)
+    stats = KNOWLEDGE_GRAPH.stats()
+    return {
+        "legacy_schema_version": stats.get("schema_version"),
+        "v2_schema_available": stats.get("v2_schema_available"),
+        "v2": stats.get("v2"),
+    }
 
 
 @app.get("/knowledge-graph/graph")
@@ -6772,13 +6790,37 @@ async def garden_tree(request: Request):
 class SetupInstallRequest(BaseModel):
     items: List[Dict]
 
+def setup_auto_state() -> Dict[str, object]:
+    """Return the PPT-aligned zero-config setup state used by setup UI/API."""
+    profile = auto_setup_probe()
+    recommendation = auto_setup_recommend(profile)
+    install_plan = auto_setup_plan(profile, recommendation)
+    return {
+        "probe": profile.to_json(),
+        "recommend": recommendation.to_json(),
+        "plan": install_plan.to_json(),
+        "verify": auto_setup_verify(profile, recommendation),
+        "preset": auto_setup_preset(profile, recommendation),
+    }
+
 @app.get("/setup/scan")
 async def setup_scan(request: Request):
     """환경 감지 및 맞춤 추천 반환."""
     require_user(request)
     env  = scan_environment()
     recs = get_recommendations(env)
-    return {"environment": env, "recommendations": recs}
+    zero_config = setup_auto_state()
+    env["zero_config"] = zero_config
+    recs.setdefault("summary", {})["zero_config"] = zero_config["recommend"]
+    recs["install_plan"] = zero_config["plan"]
+    recs["preset"] = zero_config["preset"]
+    return {"environment": env, "recommendations": recs, "zero_config": zero_config}
+
+@app.get("/setup/auto")
+async def setup_auto(request: Request):
+    """PPT-aligned zero-config setup pipeline: probe → recommend → plan → verify → preset."""
+    require_user(request)
+    return setup_auto_state()
 
 @app.post("/setup/install")
 async def setup_install(req: SetupInstallRequest, request: Request):

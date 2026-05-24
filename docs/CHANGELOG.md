@@ -1,5 +1,20 @@
 # Changelog
 
+## [0.1.28] - 2026-05-24
+
+### 버그 수정: 추천 모델 ID 오류
+
+- **`google/gemma-4-E4B` → `mlx-community/gemma-4-e4b-it-4bit` 수정**
+  - 기존 ID는 HuggingFace의 BF16 풀프리시전 원본 모델 (~16GB) 로, MLX 포맷이 아니어서 `mlx_vlm.load()` 로 로드 불가능
+  - 올바른 MLX 4-bit 양자화 버전(`mlx-community/gemma-4-e4b-it-4bit`, 5.2GB, 43K downloads)으로 교체
+  - 크기 표시도 `"Next-Gen"` → `"5.2GB"` 로 실제 값으로 수정
+
+### Release
+- 배포 버전을 `0.1.28`로 상향
+- 대상 채널: `npm` · `PyPI` · `VS Code Marketplace` · `Open VSX`
+
+---
+
 ## [0.1.27] - 2026-05-24
 
 ### 로그인 페이지 UI 개선
