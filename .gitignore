@@ -23,3 +23,11 @@ vscode-extension/node_modules/
 vscode-extension/out/
 vscode-extension/*.vsix
 *.tgz
+docs/images/tmp_frames/
+scripts/capture_*.js
+scripts/capture_*.mjs
+server.log
+ai_server.log
+sessions.json
+audit_log.json
+sso_config.json

@@ -128,12 +128,12 @@ PROVIDER_MODEL_CATALOG = {
     ],
     "openrouter": [
         {"id": "openai/gpt-4o-mini", "name": "GPT-4o Mini via OpenRouter", "family": "GPT"},
-        {"id": "anthropic/claude-3.5-sonnet", "name": "Claude 3.5 Sonnet via OpenRouter", "family": "Claude"},
-        {"id": "anthropic/claude-3.5-haiku", "name": "Claude 3.5 Haiku via OpenRouter", "family": "Claude"},
+        {"id": "anthropic/claude-sonnet-4-6", "name": "Claude Sonnet 4.6 via OpenRouter", "family": "Claude"},
+        {"id": "anthropic/claude-haiku-4-5", "name": "Claude Haiku 4.5 via OpenRouter", "family": "Claude"},
         {"id": "x-ai/grok-2", "name": "Grok 2 via OpenRouter", "family": "Grok"},
         {"id": "meta-llama/llama-3.3-70b-instruct", "name": "Llama 3.3 70B via OpenRouter", "family": "Llama"},
         {"id": "qwen/qwen-2.5-72b-instruct", "name": "Qwen 2.5 72B via OpenRouter", "family": "Qwen"},
-        {"id": "google/gemini-2.0-flash-exp", "name": "Gemini 2 Flash via OpenRouter", "family": "Gemini"},
+        {"id": "google/gemini-2.5-flash", "name": "Gemini 2.5 Flash via OpenRouter", "family": "Gemini"},
     ],
     "groq": [
         {"id": "llama-3.1-8b-instant", "name": "Llama 3.1 8B Instant", "family": "Llama"},
@@ -174,7 +174,7 @@ def parse_model_ref(model_id: str) -> tuple[str, str]:
         return "local_mlx", model_id.split(":", 1)[1]
     return "local_mlx", model_id
 
-HF_MODELS_ROOT = Path.home() / ".latticeai" / "hf-models"
+HF_MODELS_ROOT = Path.home() / ".ltcai" / "hf-models"
 
 def hf_model_dir(repo_id: str) -> Path:
     return HF_MODELS_ROOT / repo_id.replace("/", "__")

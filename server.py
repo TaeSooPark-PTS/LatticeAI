@@ -260,7 +260,7 @@ def verify_and_migrate_password(email: str, plain: str, stored: str, users: Dict
             append_audit_event("password_migrated_from_plaintext", user_email=email)
         except Exception as e:
             logging.warning("audit log failed on password migration: %s", e)
-        logging.info("Migrated plaintext password to bcrypt hash for %s", email)
+        logging.info("Migrated plaintext password to scrypt hash for %s", email)
         return True
     return False
 
