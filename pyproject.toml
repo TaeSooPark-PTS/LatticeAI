@@ -41,7 +41,7 @@ dependencies = [
   "keyring",
   "authlib",
   "pdfplumber",
-  "pymupdf",
+  "pypdfium2",
 ]
 
 [project.optional-dependencies]

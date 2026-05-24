@@ -5435,24 +5435,26 @@ async def tools_read_document(req: ToolPathRequest, request: Request):
 
 @app.get("/tools/pdf_pages")
 async def tools_pdf_pages(path: str, request: Request, approval_token: Optional[str] = None):
-    """Render PDF pages as base64 PNG images using PyMuPDF."""
+    """Render PDF pages as base64 PNG images using pypdfium2 (Apache-2.0)."""
     current_user = require_user(request)
     _require_local_approval(token=approval_token, path=path, action="read", user_email=current_user)
     target = Path(path).expanduser().resolve()
     if not target.exists() or not target.is_file():
         raise HTTPException(status_code=404, detail="File not found")
-    import fitz  # PyMuPDF
+    import io
+    import pypdfium2 as pdfium
     doc = None
     try:
-        doc = fitz.open(str(target))
+        doc = pdfium.PdfDocument(str(target))
         total = len(doc)
         pages = []
-        for i, page in enumerate(doc):
-            if i >= 20:  # 최대 20페이지
-                break
-            mat = fitz.Matrix(1.5, 1.5)
-            pix = page.get_pixmap(matrix=mat)
-            b64 = base64.b64encode(pix.tobytes("png")).decode()
+        for i in range(min(total, 20)):  # 최대 20페이지
+            page = doc[i]
+            bitmap = page.render(scale=1.5)
+            pil_image = bitmap.to_pil()
+            buf = io.BytesIO()
+            pil_image.save(buf, format="PNG")
+            b64 = base64.b64encode(buf.getvalue()).decode()
             pages.append({"page": i + 1, "b64": b64})
         return {"total": total, "pages": pages}
     except Exception as e:
@@ -5462,7 +5464,7 @@ async def tools_pdf_pages(path: str, request: Request, approval_token: Optional[
             try:
                 doc.close()
             except Exception as e:
-                logging.warning("fitz doc close failed: %s", e)
+                logging.warning("pypdfium2 doc close failed: %s", e)
 
 
 @app.get("/tools/download")

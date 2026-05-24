@@ -11,4 +11,4 @@ python-multipart
 keyring
 authlib
 pdfplumber
-pymupdf
+pypdfium2
