@@ -1,7 +1,9 @@
 <div align="center">
   <img src="https://raw.githubusercontent.com/TaeSooPark-PTS/LatticeAI/main/docs/images/logo.svg" alt="Lattice AI" width="280"/>
   <br/>
-  <strong>Your personal AI workspace server — local & cloud, one stack.</strong>
+  <strong>One install. Your personal AI workspace.</strong>
+  <br/>
+  Local LLMs, cloud models, VS Code / Cursor, Telegram, MCP tools, files, admin controls, and a knowledge graph in one self-hosted stack.
   <br/><br/>
 
 [![PyPI](https://img.shields.io/pypi/v/ltcai?label=PyPI&color=blue)](https://pypi.org/project/ltcai/)
@@ -14,7 +16,7 @@
 
 <br/>
 
-<img src="https://raw.githubusercontent.com/TaeSooPark-PTS/LatticeAI/main/docs/images/demo.gif" alt="Lattice AI Demo" width="100%"/>
+<img src="https://raw.githubusercontent.com/TaeSooPark-PTS/LatticeAI/main/docs/images/lattice-ai-demo.gif" alt="Lattice AI demo showing chat, knowledge graph, and admin dashboard" width="100%"/>
 
 </div>
 
@@ -22,37 +24,46 @@
 
 ## What is Lattice AI?
 
-**Lattice AI** is a self-hosted AI server that unifies local and cloud LLMs into one workspace — web chat, VS Code extension, Telegram bot, and MCP tools, all from a single `pip install`.
+**Lattice AI** is a self-hosted AI server that unifies local and cloud LLMs into one practical workspace. Install once, then use the same AI from the web UI, VS Code / Cursor, Telegram, MCP clients, files, and your personal knowledge graph.
 
 - 🖥️ **Web UI** — chat, file upload, admin dashboard, data graph
 - 🧩 **VS Code / Cursor extension** — edit, explain, generate commands inline
 - 📱 **Telegram bot** — access your AI from anywhere
 - 🔌 **MCP server** — use Lattice tools inside Claude Desktop / Cursor
 - 🔒 **Zero telemetry** — all data stays in `~/.ltcai/` on your machine
+- ⚡ **30-second start** — `pip install ltcai` or `npm install -g ltcai`
 
 ---
 
-## 📸 Screenshots
+## 📸 Product Preview
+
+Real screens from the local web app:
 
 <table>
 <tr>
 <td align="center" width="33%">
-  <b>💬 Chat UI</b><br/>
-  <img src="https://raw.githubusercontent.com/TaeSooPark-PTS/LatticeAI/main/docs/images/screenshot-chat.png" alt="Lattice AI Chat" width="100%"/>
+  <b>💬 Workspace Chat</b><br/>
+  <img src="https://raw.githubusercontent.com/TaeSooPark-PTS/LatticeAI/main/docs/images/screenshot-chat.png" alt="Lattice AI workspace chat" width="100%"/>
   <sub>Web chat with local LLM, file upload, pipeline status</sub>
 </td>
 <td align="center" width="33%">
   <b>🛡️ Admin Dashboard</b><br/>
-  <img src="https://raw.githubusercontent.com/TaeSooPark-PTS/LatticeAI/main/docs/images/screenshot-admin.png" alt="Admin Dashboard" width="100%"/>
+  <img src="https://raw.githubusercontent.com/TaeSooPark-PTS/LatticeAI/main/docs/images/screenshot-admin.png" alt="Lattice AI admin dashboard" width="100%"/>
   <sub>User management, audit log, security monitoring</sub>
 </td>
 <td align="center" width="33%">
   <b>🕸️ Knowledge Graph</b><br/>
-  <img src="https://raw.githubusercontent.com/TaeSooPark-PTS/LatticeAI/main/docs/images/screenshot-graph.png" alt="Knowledge Graph" width="100%"/>
+  <img src="https://raw.githubusercontent.com/TaeSooPark-PTS/LatticeAI/main/docs/images/screenshot-graph.png" alt="Lattice AI knowledge graph" width="100%"/>
   <sub>Auto-built Graph RAG from chats &amp; documents</sub>
 </td>
 </tr>
 </table>
+
+What this gives users after install:
+
+- A single local workspace for chat, files, models, runtime setup, and tool control
+- A graph view that turns chats and documents into searchable knowledge
+- Admin screens for users, model status, VPC settings, SSO, audit logs, and security monitoring
 
 ---
 
@@ -61,16 +72,9 @@
 **Python / PyPI**
 
 ```bash
-# Install (cloud models)
 pip install ltcai
-
-# Install (+ Apple Silicon local models)
 pip install "ltcai[local]"
-
-# Verify environment
 LTCAI doctor
-
-# Start server
 LTCAI
 # → http://localhost:4825
 ```
