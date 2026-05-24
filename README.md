@@ -12,6 +12,10 @@
 [![License: MIT](https://img.shields.io/badge/License-MIT-green)](./LICENSE)
 [![Python 3.11+](https://img.shields.io/badge/python-3.11+-blue)](https://www.python.org/)
 
+<br/>
+
+<img src="https://raw.githubusercontent.com/TaeSooPark-PTS/LatticeAI/main/docs/images/demo.gif" alt="Lattice AI Demo" width="100%"/>
+
 </div>
 
 ---
@@ -32,9 +36,21 @@
 
 <table>
 <tr>
-<td width="33%"><b>Chat UI</b><br/><img src="https://raw.githubusercontent.com/TaeSooPark-PTS/LatticeAI/main/docs/images/screenshot-chat.png" alt="Lattice AI Chat" width="100%"/></td>
-<td width="33%"><b>Admin Dashboard</b><br/><img src="https://raw.githubusercontent.com/TaeSooPark-PTS/LatticeAI/main/docs/images/screenshot-admin.png" alt="Admin Dashboard" width="100%"/></td>
-<td width="33%"><b>Data Graph (Graph RAG)</b><br/><img src="https://raw.githubusercontent.com/TaeSooPark-PTS/LatticeAI/main/docs/images/screenshot-graph.png" alt="Knowledge Graph" width="100%"/></td>
+<td align="center" width="33%">
+  <b>💬 Chat UI</b><br/>
+  <img src="https://raw.githubusercontent.com/TaeSooPark-PTS/LatticeAI/main/docs/images/screenshot-chat.png" alt="Lattice AI Chat" width="100%"/>
+  <sub>Web chat with local LLM, file upload, pipeline status</sub>
+</td>
+<td align="center" width="33%">
+  <b>🛡️ Admin Dashboard</b><br/>
+  <img src="https://raw.githubusercontent.com/TaeSooPark-PTS/LatticeAI/main/docs/images/screenshot-admin.png" alt="Admin Dashboard" width="100%"/>
+  <sub>User management, audit log, security monitoring</sub>
+</td>
+<td align="center" width="33%">
+  <b>🕸️ Knowledge Graph</b><br/>
+  <img src="https://raw.githubusercontent.com/TaeSooPark-PTS/LatticeAI/main/docs/images/screenshot-graph.png" alt="Knowledge Graph" width="100%"/>
+  <sub>Auto-built Graph RAG from chats &amp; documents</sub>
+</td>
 </tr>
 </table>
 
