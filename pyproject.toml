@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "ltcai"
-version = "0.1.30"
+version = "0.1.31"
 description = "Lattice AI local MLX/cloud LLM workspace server"
 readme = "README.md"
 requires-python = ">=3.11"
@@ -42,6 +42,7 @@ dependencies = [
   "authlib",
   "pdfplumber",
   "pypdfium2",
+  "watchdog",
 ]
 
 [project.optional-dependencies]
@@ -67,6 +68,8 @@ py-modules = [
   "mcp_registry",
   "kg_schema",
   "knowledge_graph",
+  "knowledge_graph_api",
+  "local_knowledge_api",
   "llm_router",
   "p_reinforce",
   "telegram_bot",

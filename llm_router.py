@@ -100,7 +100,7 @@ OPENAI_COMPATIBLE_PROVIDERS = {
         "env_key": "VLLM_API_KEY",
         "base_url_env": "VLLM_BASE_URL",
         "base_url": "http://localhost:8000/v1",
-        "default_model": "Qwen/Qwen2.5-7B-Instruct",
+        "default_model": "meta-llama/Llama-3.1-8B-Instruct",
         "api_key_fallback": "vllm",
     },
     "lmstudio": {
@@ -121,29 +121,35 @@ OPENAI_COMPATIBLE_PROVIDERS = {
 
 PROVIDER_MODEL_CATALOG = {
     "openai": [
+        {"id": "gpt-5.5", "name": "GPT-5.5", "family": "GPT"},
+        {"id": "gpt-5.4", "name": "GPT-5.4", "family": "GPT"},
+        {"id": "gpt-5.4-mini", "name": "GPT-5.4 Mini", "family": "GPT"},
+        {"id": "gpt-5.4-nano", "name": "GPT-5.4 Nano", "family": "GPT"},
         {"id": "gpt-4o-mini", "name": "GPT-4o Mini", "family": "GPT"},
         {"id": "gpt-4o", "name": "GPT-4o", "family": "GPT"},
         {"id": "gpt-4.1-mini", "name": "GPT-4.1 Mini", "family": "GPT"},
         {"id": "gpt-4.1", "name": "GPT-4.1", "family": "GPT"},
     ],
     "openrouter": [
+        {"id": "openai/gpt-5.5", "name": "GPT-5.5 via OpenRouter", "family": "GPT"},
         {"id": "openai/gpt-4o-mini", "name": "GPT-4o Mini via OpenRouter", "family": "GPT"},
-        {"id": "anthropic/claude-sonnet-4-6", "name": "Claude Sonnet 4.6 via OpenRouter", "family": "Claude"},
-        {"id": "anthropic/claude-haiku-4-5", "name": "Claude Haiku 4.5 via OpenRouter", "family": "Claude"},
+        {"id": "anthropic/claude-opus-4.7", "name": "Claude Opus 4.7 via OpenRouter", "family": "Claude"},
+        {"id": "anthropic/claude-sonnet-4.6", "name": "Claude Sonnet 4.6 via OpenRouter", "family": "Claude"},
+        {"id": "anthropic/claude-haiku-4.5", "name": "Claude Haiku 4.5 via OpenRouter", "family": "Claude"},
+        {"id": "qwen/qwen3-vl-235b-a22b-instruct", "name": "Qwen3-VL 235B A22B via OpenRouter", "family": "Qwen"},
+        {"id": "qwen/qwen3-coder", "name": "Qwen3 Coder via OpenRouter", "family": "Qwen"},
         {"id": "x-ai/grok-2", "name": "Grok 2 via OpenRouter", "family": "Grok"},
         {"id": "meta-llama/llama-3.3-70b-instruct", "name": "Llama 3.3 70B via OpenRouter", "family": "Llama"},
-        {"id": "qwen/qwen-2.5-72b-instruct", "name": "Qwen 2.5 72B via OpenRouter", "family": "Qwen"},
         {"id": "google/gemini-2.5-flash", "name": "Gemini 2.5 Flash via OpenRouter", "family": "Gemini"},
     ],
     "groq": [
+        {"id": "qwen/qwen3-32b", "name": "Qwen3 32B", "family": "Qwen"},
         {"id": "llama-3.1-8b-instant", "name": "Llama 3.1 8B Instant", "family": "Llama"},
         {"id": "llama-3.3-70b-versatile", "name": "Llama 3.3 70B Versatile", "family": "Llama"},
-        {"id": "qwen-qwq-32b", "name": "Qwen QwQ 32B", "family": "Qwen"},
     ],
     "together": [
+        {"id": "Qwen/Qwen3-VL-32B-Instruct", "name": "Qwen3-VL 32B", "family": "Qwen"},
         {"id": "meta-llama/Llama-3.3-70B-Instruct-Turbo", "name": "Llama 3.3 70B Turbo", "family": "Llama"},
-        {"id": "Qwen/Qwen2.5-72B-Instruct-Turbo", "name": "Qwen 2.5 72B Turbo", "family": "Qwen"},
-        {"id": "deepseek-ai/DeepSeek-R1", "name": "DeepSeek R1", "family": "DeepSeek"},
         {"id": "mistralai/Mixtral-8x22B-Instruct-v0.1", "name": "Mixtral 8x22B", "family": "Mistral"},
     ],
     "xai": [

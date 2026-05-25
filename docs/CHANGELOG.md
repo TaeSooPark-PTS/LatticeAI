@@ -1,5 +1,30 @@
 # Changelog
 
+## [0.1.31] - 2026-05-25
+
+### 모델 추천 보정 — 하드웨어 대비 과도한 모델 방지
+
+- **Apple Silicon 32GB 추천 모델 하향 조정**
+  - 32GB Mac: `Qwen3-VL-30B-A3B` (18GB) → `Qwen3-VL-8B` (q5_K_M, 5GB) 로 변경
+  - 30B-A3B 모델은 48GB 이상에서만 추천 (OS 오버헤드 + KV 캐시 여유 확보)
+  - 32GB 시스템에서 메모리 압박으로 인한 성능 저하 방지
+
+- **`auto_setup.py` `_MODEL_CATALOG` 보수적 임계값 적용**
+  - 30B-A3B: 최소 RAM 32GB → 48GB
+  - 24GB VRAM 임계값 조정 (12GB로 완화하여 중급 GPU 커버)
+  - 각 티어 간 여유분을 확보하여 실사용 시 안정적 추론 보장
+
+- **`setup.py` 추천 로직 보정**
+  - Apple Silicon 기본 추천 30B 임계값: `ram >= 32` → `ram >= 48`
+  - MLX 모델 카탈로그 min_ram 상향: Qwen3-VL 30B (32→48), Gemma 3 27B (32→48), Gemma 4 26B (24→32), Mistral Small 24B (24→32), Qwen2.5 Coder 32B (32→36)
+  - 크로스 플랫폼(vLLM/LM Studio) 30B 모델: 전용 GPU 시스템은 min_ram=32 유지 (VRAM에 로드되므로 RAM 부담 적음)
+
+### Release
+- 배포 버전을 `0.1.31`로 상향
+- 대상 채널: `npm` · `PyPI` · `VS Code Marketplace` · `Open VSX`
+
+---
+
 ## [0.1.30] - 2026-05-25
 
 ### 코드 품질 및 리팩토링

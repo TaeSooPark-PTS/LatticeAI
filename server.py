@@ -47,6 +47,8 @@ from PIL import Image
 
 from llm_router import AsyncOpenAI, LLMRouter, OPENAI_COMPATIBLE_PROVIDERS, HF_MODELS_ROOT, ensure_mlx_runtime, hf_model_dir, parse_model_ref, mx, normalize_branding
 from knowledge_graph import KnowledgeGraphStore
+from knowledge_graph_api import create_knowledge_graph_router
+from local_knowledge_api import LocalKnowledgeWatcher, create_local_knowledge_router
 import mcp_registry
 from mcp_registry import (
     MCP_REGISTRY, _THIRD_PARTY_SKILL_SOURCES, _KNOWN_REPO_LICENSES,
@@ -374,6 +376,7 @@ MCP_FILE = DATA_DIR / "mcp_installs.json"
 AUDIT_FILE = DATA_DIR / "audit_log.json"
 SSO_FILE = DATA_DIR / "sso_config.json"
 KNOWLEDGE_GRAPH = KnowledgeGraphStore(DATA_DIR / "knowledge_graph.sqlite", DATA_DIR / "knowledge_graph_blobs") if ENABLE_GRAPH else None
+LOCAL_KG_WATCHER = LocalKnowledgeWatcher(lambda: KNOWLEDGE_GRAPH) if ENABLE_GRAPH else None
 
 def _require_graph():
     if not ENABLE_GRAPH or KNOWLEDGE_GRAPH is None:
@@ -490,17 +493,6 @@ class McpCustomRequest(BaseModel):
 class SkillInstallRequest(BaseModel):
     plugin: str
     skill: str
-
-class KnowledgeGraphIngestRequest(BaseModel):
-    type: str
-    content: str = ""
-    role: Optional[str] = None
-    title: Optional[str] = None
-    source: Optional[str] = None
-    conversation_id: Optional[str] = None
-    user_email: Optional[str] = None
-    user_nickname: Optional[str] = None
-    metadata: Optional[Dict] = None
 
 DEFAULT_VPC_CONFIG = {
     "provider": "AWS",
@@ -1432,11 +1424,17 @@ async def lifespan(app: FastAPI):
             print("⏭️ Telegram Bot Bridge disabled for this mode.")
         _spawn(unload_idle_models_loop(), name="unload_idle_models")
         _spawn(autoload_default_model(), name="autoload_default_model")
+        if LOCAL_KG_WATCHER:
+            restored = LOCAL_KG_WATCHER.restore_enabled_sources()
+            if restored.get("restored"):
+                print(f"🕸️ Local knowledge watchers restored: {restored['restored']}")
     except Exception as e:
         print(f"⚠️ Startup sequence failed: {e}")
     try:
         yield
     finally:
+        if LOCAL_KG_WATCHER:
+            LOCAL_KG_WATCHER.stop_all()
         router.unload_all()
         for proc in LOCAL_SERVER_PROCESSES.values():
             try:
@@ -2224,83 +2222,114 @@ ENGINE_INSTALLERS = {
 
 ENGINE_MODEL_CATALOG = {
     "local_mlx": [
+        {"id": "mlx-community/SmolLM-1.7B-Instruct-4bit", "name": "SmolLM 1.7B", "family": "SmolLM", "tag": "local-light", "size": "963MB", "pullable": True},
+        {"id": "mlx-community/gemma-3-1b-it-4bit", "name": "Gemma 3 1B", "family": "Gemma 3", "tag": "local-light", "size": "733MB", "pullable": True},
+        {"id": "mlx-community/Llama-3.2-1B-Instruct-4bit", "name": "Llama 3.2 1B", "family": "Llama 3.x", "tag": "local-light", "size": "1.3GB", "pullable": True},
+        {"id": "mlx-community/gemma-2-2b-it-4bit", "name": "Gemma 2 2B", "family": "Gemma 2", "tag": "local-light", "size": "1.6GB", "pullable": True},
         {"id": "mlx-community/gemma-4-e2b-4bit", "name": "Gemma 4 E2B Base", "family": "Gemma 4", "tag": "local-vlm", "size": "3.6GB", "pullable": True},
         {"id": "mlx-community/gemma-4-e2b-it-4bit", "name": "Gemma 4 E2B Instruct", "family": "Gemma 4", "tag": "local-vlm", "size": "3.6GB", "pullable": True},
         {"id": "mlx-community/gemma-4-e4b-4bit", "name": "Gemma 4 E4B Base", "family": "Gemma 4", "tag": "local-vlm", "size": "5.2GB", "pullable": True},
         {"id": "mlx-community/gemma-4-e4b-it-4bit", "name": "Gemma 4 E4B Instruct", "family": "Gemma 4", "tag": "local-vlm", "size": "5.2GB", "pullable": True},
-        {"id": "mlx-community/gemma-4-26b-a4b-it-4bit", "name": "Gemma 4 26B A4B Instruct", "family": "Gemma 4", "tag": "local-vlm", "size": "Apple Silicon", "pullable": True},
-        {"id": "Jiunsong/supergemma4-26b-abliterated-multimodal-mlx-4bit", "name": "SuperGemma4 26B Abliterated Multimodal", "family": "Gemma 4", "tag": "local-vlm", "size": "Apple Silicon", "pullable": True},
-        {"id": "mlx-community/Qwen2.5-Coder-3B-Instruct-4bit", "name": "Qwen 2.5 Coder 3B", "family": "Qwen 2.5 Coder", "tag": "local-coding", "size": "2.1GB", "pullable": True},
-        {"id": "mlx-community/Qwen2.5-Coder-7B-Instruct-4bit", "name": "Qwen 2.5 Coder 7B", "family": "Qwen 2.5 Coder", "tag": "local-coding", "size": "4.3GB", "pullable": True},
-        {"id": "mlx-community/Qwen2.5-Coder-14B-Instruct-4bit", "name": "Qwen 2.5 Coder 14B", "family": "Qwen 2.5 Coder", "tag": "local-coding", "size": "8.5GB", "pullable": True},
-        {"id": "mlx-community/Qwen2.5-3B-Instruct-4bit", "name": "Qwen 2.5 3B", "family": "Qwen 2.5", "tag": "local-general", "size": "2.1GB", "pullable": True},
-        {"id": "mlx-community/Qwen2.5-7B-Instruct-4bit", "name": "Qwen 2.5 7B", "family": "Qwen 2.5", "tag": "local-general", "size": "4.3GB", "pullable": True},
-        {"id": "mlx-community/Qwen2.5-14B-Instruct-4bit", "name": "Qwen 2.5 14B", "family": "Qwen 2.5", "tag": "local-general", "size": "8.5GB", "pullable": True},
+        {"id": "mlx-community/Qwen3-VL-4B-Instruct-4bit", "name": "Qwen3-VL 4B", "family": "Qwen3-VL", "tag": "local-vlm", "size": "2.7GB", "pullable": True},
+        {"id": "mlx-community/Qwen3-VL-8B-Instruct-4bit", "name": "Qwen3-VL 8B", "family": "Qwen3-VL", "tag": "local-vlm", "size": "4.8GB", "pullable": True},
+        {"id": "mlx-community/Qwen2.5-VL-7B-Instruct-4bit", "name": "Qwen2.5-VL 7B", "family": "Qwen2.5-VL", "tag": "local-vlm", "size": "4.4GB", "pullable": True},
+        {"id": "mlx-community/gemma-3-4b-it-4bit", "name": "Gemma 3 4B", "family": "Gemma 3", "tag": "local-vlm", "size": "3.3GB", "pullable": True},
         {"id": "mlx-community/Llama-3.2-3B-Instruct-4bit", "name": "Llama 3.2 3B", "family": "Llama 3.x", "tag": "local-general", "size": "2.0GB", "pullable": True},
         {"id": "mlx-community/Llama-3.1-8B-Instruct-4bit", "name": "Llama 3.1 8B", "family": "Llama 3.1", "tag": "local-general", "size": "4.7GB", "pullable": True},
+        {"id": "mlx-community/gemma-2-9b-it-4bit", "name": "Gemma 2 9B", "family": "Gemma 2", "tag": "local-general", "size": "5.4GB", "pullable": True},
+        {"id": "mlx-community/gemma-3-12b-it-4bit", "name": "Gemma 3 12B", "family": "Gemma 3", "tag": "local-vlm", "size": "8.0GB", "pullable": True},
+        {"id": "mlx-community/Phi-3.5-mini-instruct-4bit", "name": "Phi 3.5 Mini", "family": "Phi", "tag": "local-coding", "size": "2.2GB", "pullable": True},
+        {"id": "mlx-community/Phi-4-mini-instruct-4bit", "name": "Phi 4 Mini", "family": "Phi", "tag": "local-coding", "size": "2.2GB", "pullable": True},
+        {"id": "mlx-community/phi-4-4bit", "name": "Phi 4", "family": "Phi", "tag": "local-coding", "size": "8.3GB", "pullable": True},
+        {"id": "mlx-community/Mistral-7B-Instruct-v0.3-4bit", "name": "Mistral 7B Instruct v0.3", "family": "Mistral", "tag": "local-general", "size": "4.1GB", "pullable": True},
+        {"id": "mlx-community/Ministral-8B-Instruct-2410-4bit", "name": "Ministral 8B Instruct", "family": "Mistral", "tag": "local-general", "size": "4.5GB", "pullable": True},
+        {"id": "mlx-community/Mistral-Small-24B-Instruct-2501-4bit", "name": "Mistral Small 24B", "family": "Mistral", "tag": "local-large", "size": "13.3GB", "pullable": True},
+        {"id": "mlx-community/Qwen2.5-Coder-32B-Instruct-4bit", "name": "Qwen2.5 Coder 32B", "family": "Qwen2.5", "tag": "local-coding", "size": "18.5GB", "pullable": True},
+        {"id": "mlx-community/Qwen3-VL-30B-A3B-Instruct-4bit", "name": "Qwen3-VL 30B A3B", "family": "Qwen3-VL", "tag": "local-vlm", "size": "18GB", "pullable": True},
+        {"id": "mlx-community/gemma-3-27b-it-4bit", "name": "Gemma 3 27B", "family": "Gemma 3", "tag": "local-vlm", "size": "17GB", "pullable": True},
+        {"id": "mlx-community/gemma-4-26b-a4b-it-4bit", "name": "Gemma 4 26B A4B Instruct", "family": "Gemma 4", "tag": "local-vlm", "size": "15.6GB", "pullable": True},
         {"id": "mlx-community/Llama-3.3-70B-Instruct-4bit", "name": "Llama 3.3 70B", "family": "Llama 3.x", "tag": "local-general", "size": "40GB+", "pullable": True},
         {"id": "mlx-community/Llama-3.1-70B-Instruct-4bit", "name": "Llama 3.1 70B", "family": "Llama 3.1", "tag": "local-general", "size": "40GB+", "pullable": True},
-        {"id": "mlx-community/Phi-3.5-mini-instruct-4bit", "name": "Phi 3.5 Mini", "family": "Phi", "tag": "local-light", "size": "2.2GB", "pullable": True},
-        {"id": "mlx-community/DeepSeek-R1-Distill-Qwen-7B-4bit", "name": "DeepSeek R1 Distill 7B", "family": "DeepSeek", "tag": "reasoning", "size": "4.3GB", "pullable": True},
     ],
     "ollama": [
+        {"id": "ollama:qwen3-vl:4b", "name": "Qwen3-VL 4B via Ollama", "family": "Qwen3-VL", "tag": "local-vlm", "size": "pull required", "pullable": True},
+        {"id": "ollama:qwen3-vl:8b", "name": "Qwen3-VL 8B via Ollama", "family": "Qwen3-VL", "tag": "local-vlm", "size": "pull required", "pullable": True},
+        {"id": "ollama:qwen3-vl:30b", "name": "Qwen3-VL 30B via Ollama", "family": "Qwen3-VL", "tag": "local-vlm", "size": "pull required", "pullable": True},
+        {"id": "ollama:qwen3:8b", "name": "Qwen3 8B via Ollama", "family": "Qwen", "tag": "local-server", "size": "pull required", "pullable": True},
+        {"id": "ollama:qwen2.5-coder:14b", "name": "Qwen2.5 Coder 14B via Ollama", "family": "Qwen", "tag": "local-coding", "size": "pull required", "pullable": True},
+        {"id": "ollama:gemma3:1b", "name": "Gemma 3 1B via Ollama", "family": "Gemma", "tag": "local-light", "size": "pull required", "pullable": True},
         {"id": "ollama:gemma3:4b", "name": "Gemma 3 4B via Ollama", "family": "Gemma", "tag": "local-server", "size": "pull required", "pullable": True},
         {"id": "ollama:gemma3:4b-it-q4_K_M", "name": "Gemma 3 4B q4_K_M via Ollama", "family": "Gemma", "tag": "quantized", "size": "pull required", "pullable": True},
         {"id": "ollama:gemma3:12b", "name": "Gemma 3 12B via Ollama", "family": "Gemma", "tag": "local-server", "size": "pull required", "pullable": True},
         {"id": "ollama:gemma3:12b-it-q4_K_M", "name": "Gemma 3 12B q4_K_M via Ollama", "family": "Gemma", "tag": "quantized", "size": "pull required", "pullable": True},
-        {"id": "ollama:qwen2.5:3b", "name": "Qwen 2.5 3B via Ollama", "family": "Qwen 2.5", "tag": "local-server", "size": "pull required", "pullable": True},
-        {"id": "ollama:qwen2.5:7b", "name": "Qwen 2.5 7B via Ollama", "family": "Qwen 2.5", "tag": "local-server", "size": "pull required", "pullable": True},
-        {"id": "ollama:qwen2.5:14b", "name": "Qwen 2.5 14B via Ollama", "family": "Qwen 2.5", "tag": "local-server", "size": "pull required", "pullable": True},
-        {"id": "ollama:qwen2.5:32b", "name": "Qwen 2.5 32B via Ollama", "family": "Qwen 2.5", "tag": "local-server", "size": "pull required", "pullable": True},
-        {"id": "ollama:qwen2.5-coder:7b", "name": "Qwen 2.5 Coder 7B via Ollama", "family": "Qwen 2.5 Coder", "tag": "local-coding", "size": "pull required", "pullable": True},
-        {"id": "ollama:qwen2.5-coder:14b", "name": "Qwen 2.5 Coder 14B via Ollama", "family": "Qwen 2.5 Coder", "tag": "local-coding", "size": "pull required", "pullable": True},
+        {"id": "ollama:gemma3:27b", "name": "Gemma 3 27B via Ollama", "family": "Gemma", "tag": "local-large", "size": "pull required", "pullable": True},
+        {"id": "ollama:llama3.2:1b", "name": "Llama 3.2 1B via Ollama", "family": "Llama 3.x", "tag": "local-light", "size": "pull required", "pullable": True},
         {"id": "ollama:llama3.2:3b", "name": "Llama 3.2 3B via Ollama", "family": "Llama 3.x", "tag": "local-server", "size": "pull required", "pullable": True},
         {"id": "ollama:llama3.1:8b", "name": "Llama 3.1 8B via Ollama", "family": "Llama 3.1", "tag": "local-server", "size": "pull required", "pullable": True},
         {"id": "ollama:llama3.1:8b-instruct-q4_0", "name": "Llama 3.1 8B q4_0 via Ollama", "family": "Llama 3.1", "tag": "quantized", "size": "pull required", "pullable": True},
         {"id": "ollama:llama3.1:8b-instruct-q8_0", "name": "Llama 3.1 8B q8_0 via Ollama", "family": "Llama 3.1", "tag": "quantized", "size": "pull required", "pullable": True},
         {"id": "ollama:llama3.1:70b", "name": "Llama 3.1 70B via Ollama", "family": "Llama 3.1", "tag": "local-server", "size": "pull required", "pullable": True},
+        {"id": "ollama:llama3.3:70b", "name": "Llama 3.3 70B via Ollama", "family": "Llama 3.x", "tag": "local-large", "size": "pull required", "pullable": True},
+        {"id": "ollama:mistral:7b", "name": "Mistral 7B via Ollama", "family": "Mistral", "tag": "local-server", "size": "pull required", "pullable": True},
+        {"id": "ollama:mixtral:8x7b", "name": "Mixtral 8x7B via Ollama", "family": "Mistral", "tag": "local-large", "size": "pull required", "pullable": True},
+        {"id": "ollama:phi4-mini", "name": "Phi 4 Mini via Ollama", "family": "Phi", "tag": "local-coding", "size": "pull required", "pullable": True},
+        {"id": "ollama:phi4", "name": "Phi 4 via Ollama", "family": "Phi", "tag": "local-coding", "size": "pull required", "pullable": True},
+        {"id": "ollama:smollm2:1.7b", "name": "SmolLM2 1.7B via Ollama", "family": "SmolLM", "tag": "local-light", "size": "pull required", "pullable": True},
     ],
     "vllm": [
-        {"id": "vllm:Qwen/Qwen2.5-0.5B-Instruct-AWQ", "name": "Qwen 2.5 0.5B AWQ via vLLM", "family": "Qwen 2.5", "tag": "local-light", "size": "0.5B", "pullable": True},
+        {"id": "vllm:Qwen/Qwen3-VL-4B-Instruct", "name": "Qwen3-VL 4B via vLLM", "family": "Qwen3-VL", "tag": "local-vlm", "size": "server model", "pullable": True},
+        {"id": "vllm:Qwen/Qwen3-VL-8B-Instruct", "name": "Qwen3-VL 8B via vLLM", "family": "Qwen3-VL", "tag": "local-vlm", "size": "server model", "pullable": True},
+        {"id": "vllm:Qwen/Qwen3-VL-30B-A3B-Instruct", "name": "Qwen3-VL 30B A3B via vLLM", "family": "Qwen3-VL", "tag": "local-vlm", "size": "server model", "pullable": True},
+        {"id": "vllm:Qwen/Qwen2.5-VL-7B-Instruct", "name": "Qwen2.5-VL 7B via vLLM", "family": "Qwen2.5-VL", "tag": "local-vlm", "size": "server model", "pullable": True},
         {"id": "vllm:google/gemma-2-2b", "name": "Gemma 2 2B Base via vLLM", "family": "Gemma", "tag": "local-server", "size": "server model", "pullable": True},
         {"id": "vllm:google/gemma-2-2b-it", "name": "Gemma 2 2B via vLLM", "family": "Gemma", "tag": "local-server", "size": "server model", "pullable": True},
         {"id": "vllm:google/gemma-2-9b", "name": "Gemma 2 9B Base via vLLM", "family": "Gemma", "tag": "local-server", "size": "server model", "pullable": True},
         {"id": "vllm:google/gemma-2-9b-it", "name": "Gemma 2 9B via vLLM", "family": "Gemma", "tag": "local-server", "size": "server model", "pullable": True},
-        {"id": "vllm:Qwen/Qwen2.5-3B-Instruct", "name": "Qwen 2.5 3B via vLLM", "family": "Qwen 2.5", "tag": "local-server", "size": "server model", "pullable": True},
-        {"id": "vllm:Qwen/Qwen2.5-7B-Instruct", "name": "Qwen 2.5 7B via vLLM", "family": "Qwen 2.5", "tag": "local-server", "size": "server model", "pullable": True},
-        {"id": "vllm:Qwen/Qwen2.5-14B-Instruct", "name": "Qwen 2.5 14B via vLLM", "family": "Qwen 2.5", "tag": "local-server", "size": "server model", "pullable": True},
-        {"id": "vllm:Qwen/Qwen2.5-32B-Instruct", "name": "Qwen 2.5 32B via vLLM", "family": "Qwen 2.5", "tag": "local-server", "size": "server model", "pullable": True},
-        {"id": "vllm:Qwen/Qwen2.5-Coder-7B-Instruct", "name": "Qwen 2.5 Coder 7B via vLLM", "family": "Qwen 2.5 Coder", "tag": "local-coding", "size": "server model", "pullable": True},
-        {"id": "vllm:Qwen/Qwen2.5-Coder-14B-Instruct", "name": "Qwen 2.5 Coder 14B via vLLM", "family": "Qwen 2.5 Coder", "tag": "local-coding", "size": "server model", "pullable": True},
+        {"id": "vllm:google/gemma-3-4b-it", "name": "Gemma 3 4B via vLLM", "family": "Gemma", "tag": "local-server", "size": "server model", "pullable": True},
+        {"id": "vllm:google/gemma-3-12b-it", "name": "Gemma 3 12B via vLLM", "family": "Gemma", "tag": "local-server", "size": "server model", "pullable": True},
+        {"id": "vllm:microsoft/Phi-3.5-mini-instruct", "name": "Phi 3.5 Mini via vLLM", "family": "Phi", "tag": "local-coding", "size": "server model", "pullable": True},
+        {"id": "vllm:microsoft/Phi-4-mini-instruct", "name": "Phi 4 Mini via vLLM", "family": "Phi", "tag": "local-coding", "size": "server model", "pullable": True},
+        {"id": "vllm:microsoft/phi-4", "name": "Phi 4 via vLLM", "family": "Phi", "tag": "local-coding", "size": "server model", "pullable": True},
+        {"id": "vllm:mistralai/Mistral-7B-Instruct-v0.3", "name": "Mistral 7B via vLLM", "family": "Mistral", "tag": "local-server", "size": "server model", "pullable": True},
+        {"id": "vllm:mistralai/Ministral-8B-Instruct-2410", "name": "Ministral 8B via vLLM", "family": "Mistral", "tag": "local-server", "size": "server model", "pullable": True},
+        {"id": "vllm:mistralai/Mistral-Small-24B-Instruct-2501", "name": "Mistral Small 24B via vLLM", "family": "Mistral", "tag": "local-large", "size": "server model", "pullable": True},
         {"id": "vllm:meta-llama/Llama-3.2-3B-Instruct", "name": "Llama 3.2 3B via vLLM", "family": "Llama 3.x", "tag": "local-server", "size": "server model", "pullable": True},
         {"id": "vllm:meta-llama/Llama-3.1-8B-Instruct", "name": "Llama 3.1 8B via vLLM", "family": "Llama 3.1", "tag": "local-server", "size": "server model", "pullable": True},
+        {"id": "vllm:meta-llama/Llama-3.3-70B-Instruct", "name": "Llama 3.3 70B via vLLM", "family": "Llama 3.x", "tag": "local-large", "size": "server model", "pullable": True},
         {"id": "vllm:meta-llama/Llama-3.1-70B-Instruct", "name": "Llama 3.1 70B via vLLM", "family": "Llama 3.1", "tag": "local-server", "size": "server model", "pullable": True},
     ],
     "lmstudio": [
-        {"id": "lmstudio:https://huggingface.co/lmstudio-community/Qwen2.5-0.5B-Instruct-GGUF", "name": "Qwen 2.5 0.5B GGUF via LM Studio", "family": "Qwen 2.5", "tag": "local-light", "size": "0.5B", "pullable": True},
+        {"id": "lmstudio:Qwen/Qwen3-VL-4B-Instruct", "name": "Qwen3-VL 4B via LM Studio", "family": "Qwen3-VL", "tag": "local-vlm", "size": "server model", "pullable": True},
+        {"id": "lmstudio:Qwen/Qwen3-VL-8B-Instruct", "name": "Qwen3-VL 8B via LM Studio", "family": "Qwen3-VL", "tag": "local-vlm", "size": "server model", "pullable": True},
+        {"id": "lmstudio:Qwen/Qwen3-VL-30B-A3B-Instruct", "name": "Qwen3-VL 30B A3B via LM Studio", "family": "Qwen3-VL", "tag": "local-vlm", "size": "server model", "pullable": True},
+        {"id": "lmstudio:Qwen/Qwen2.5-VL-7B-Instruct", "name": "Qwen2.5-VL 7B via LM Studio", "family": "Qwen2.5-VL", "tag": "local-vlm", "size": "server model", "pullable": True},
         {"id": "lmstudio:google/gemma-2-2b-it", "name": "Gemma 2 2B via LM Studio", "family": "Gemma", "tag": "local-server", "size": "server model", "pullable": True},
         {"id": "lmstudio:google/gemma-2-9b-it", "name": "Gemma 2 9B via LM Studio", "family": "Gemma", "tag": "local-server", "size": "server model", "pullable": True},
-        {"id": "lmstudio:Qwen/Qwen2.5-3B-Instruct", "name": "Qwen 2.5 3B via LM Studio", "family": "Qwen 2.5", "tag": "local-server", "size": "server model", "pullable": True},
-        {"id": "lmstudio:Qwen/Qwen2.5-7B-Instruct", "name": "Qwen 2.5 7B via LM Studio", "family": "Qwen 2.5", "tag": "local-server", "size": "server model", "pullable": True},
-        {"id": "lmstudio:Qwen/Qwen2.5-14B-Instruct", "name": "Qwen 2.5 14B via LM Studio", "family": "Qwen 2.5", "tag": "local-server", "size": "server model", "pullable": True},
-        {"id": "lmstudio:Qwen/Qwen2.5-32B-Instruct", "name": "Qwen 2.5 32B via LM Studio", "family": "Qwen 2.5", "tag": "local-server", "size": "server model", "pullable": True},
-        {"id": "lmstudio:Qwen/Qwen2.5-Coder-7B-Instruct", "name": "Qwen 2.5 Coder 7B via LM Studio", "family": "Qwen 2.5 Coder", "tag": "local-coding", "size": "server model", "pullable": True},
-        {"id": "lmstudio:Qwen/Qwen2.5-Coder-14B-Instruct", "name": "Qwen 2.5 Coder 14B via LM Studio", "family": "Qwen 2.5 Coder", "tag": "local-coding", "size": "server model", "pullable": True},
+        {"id": "lmstudio:google/gemma-3-4b-it", "name": "Gemma 3 4B via LM Studio", "family": "Gemma", "tag": "local-server", "size": "server model", "pullable": True},
+        {"id": "lmstudio:google/gemma-3-12b-it", "name": "Gemma 3 12B via LM Studio", "family": "Gemma", "tag": "local-server", "size": "server model", "pullable": True},
+        {"id": "lmstudio:microsoft/Phi-3.5-mini-instruct", "name": "Phi 3.5 Mini via LM Studio", "family": "Phi", "tag": "local-coding", "size": "server model", "pullable": True},
+        {"id": "lmstudio:microsoft/Phi-4-mini-instruct", "name": "Phi 4 Mini via LM Studio", "family": "Phi", "tag": "local-coding", "size": "server model", "pullable": True},
+        {"id": "lmstudio:microsoft/phi-4", "name": "Phi 4 via LM Studio", "family": "Phi", "tag": "local-coding", "size": "server model", "pullable": True},
+        {"id": "lmstudio:mistralai/Mistral-7B-Instruct-v0.3", "name": "Mistral 7B via LM Studio", "family": "Mistral", "tag": "local-server", "size": "server model", "pullable": True},
+        {"id": "lmstudio:mistralai/Ministral-8B-Instruct-2410", "name": "Ministral 8B via LM Studio", "family": "Mistral", "tag": "local-server", "size": "server model", "pullable": True},
+        {"id": "lmstudio:mistralai/Mistral-Small-24B-Instruct-2501", "name": "Mistral Small 24B via LM Studio", "family": "Mistral", "tag": "local-large", "size": "server model", "pullable": True},
         {"id": "lmstudio:meta-llama/Llama-3.2-3B-Instruct", "name": "Llama 3.2 3B via LM Studio", "family": "Llama 3.x", "tag": "local-server", "size": "server model", "pullable": True},
         {"id": "lmstudio:meta-llama/Llama-3.1-8B-Instruct", "name": "Llama 3.1 8B via LM Studio", "family": "Llama 3.1", "tag": "local-server", "size": "server model", "pullable": True},
+        {"id": "lmstudio:meta-llama/Llama-3.3-70B-Instruct", "name": "Llama 3.3 70B via LM Studio", "family": "Llama 3.x", "tag": "local-large", "size": "server model", "pullable": True},
         {"id": "lmstudio:meta-llama/Llama-3.1-70B-Instruct", "name": "Llama 3.1 70B via LM Studio", "family": "Llama 3.1", "tag": "local-server", "size": "server model", "pullable": True},
     ],
     "llamacpp": [
-        {"id": "llamacpp:lmstudio-community/Qwen2.5-0.5B-Instruct-GGUF", "name": "Qwen 2.5 0.5B GGUF via llama.cpp", "family": "Qwen 2.5", "tag": "gguf-q4", "size": "0.5B", "pullable": True},
+        {"id": "llamacpp:Qwen/Qwen3-VL-4B-Instruct-GGUF", "name": "Qwen3-VL 4B GGUF via llama.cpp", "family": "Qwen3-VL", "tag": "gguf-vlm", "size": "gguf", "pullable": True},
+        {"id": "llamacpp:Qwen/Qwen3-VL-8B-Instruct-GGUF", "name": "Qwen3-VL 8B GGUF via llama.cpp", "family": "Qwen3-VL", "tag": "gguf-vlm", "size": "gguf", "pullable": True},
         {"id": "llamacpp:unsloth/gemma-2-2b-it-GGUF", "name": "Gemma 2 2B GGUF via llama.cpp", "family": "Gemma", "tag": "gguf-q4", "size": "gguf", "pullable": True},
         {"id": "llamacpp:unsloth/gemma-2-9b-it-GGUF", "name": "Gemma 2 9B GGUF via llama.cpp", "family": "Gemma", "tag": "gguf-q4", "size": "gguf", "pullable": True},
-        {"id": "llamacpp:Qwen/Qwen2.5-7B-Instruct-GGUF", "name": "Qwen 2.5 7B GGUF via llama.cpp", "family": "Qwen 2.5", "tag": "local-server", "size": "gguf", "pullable": True},
-        {"id": "llamacpp:Qwen/Qwen2.5-14B-Instruct-GGUF", "name": "Qwen 2.5 14B GGUF via llama.cpp", "family": "Qwen 2.5", "tag": "local-server", "size": "gguf", "pullable": True},
-        {"id": "llamacpp:Qwen/Qwen2.5-32B-Instruct-GGUF", "name": "Qwen 2.5 32B GGUF via llama.cpp", "family": "Qwen 2.5", "tag": "gguf-q4", "size": "gguf", "pullable": True},
-        {"id": "llamacpp:Qwen/Qwen2.5-Coder-7B-Instruct-GGUF", "name": "Qwen 2.5 Coder 7B GGUF via llama.cpp", "family": "Qwen 2.5 Coder", "tag": "local-coding", "size": "gguf", "pullable": True},
-        {"id": "llamacpp:Qwen/Qwen2.5-Coder-14B-Instruct-GGUF", "name": "Qwen 2.5 Coder 14B GGUF via llama.cpp", "family": "Qwen 2.5 Coder", "tag": "gguf-q4", "size": "gguf", "pullable": True},
+        {"id": "llamacpp:unsloth/gemma-3-4b-it-GGUF", "name": "Gemma 3 4B GGUF via llama.cpp", "family": "Gemma", "tag": "gguf-q4", "size": "gguf", "pullable": True},
+        {"id": "llamacpp:bartowski/Mistral-7B-Instruct-v0.3-GGUF", "name": "Mistral 7B GGUF via llama.cpp", "family": "Mistral", "tag": "gguf-q4", "size": "gguf", "pullable": True},
+        {"id": "llamacpp:bartowski/Phi-3.5-mini-instruct-GGUF", "name": "Phi 3.5 Mini GGUF via llama.cpp", "family": "Phi", "tag": "gguf-q4", "size": "gguf", "pullable": True},
+        {"id": "llamacpp:bartowski/phi-4-GGUF", "name": "Phi 4 GGUF via llama.cpp", "family": "Phi", "tag": "gguf-q4", "size": "gguf", "pullable": True},
         {"id": "llamacpp:bartowski/Llama-3.2-3B-Instruct-GGUF", "name": "Llama 3.2 3B GGUF via llama.cpp", "family": "Llama 3.x", "tag": "gguf-q4", "size": "gguf", "pullable": True},
         {"id": "llamacpp:bartowski/Llama-3.1-8B-Instruct-GGUF", "name": "Llama 3.1 8B GGUF via llama.cpp", "family": "Llama 3.1", "tag": "local-server", "size": "gguf", "pullable": True},
+        {"id": "llamacpp:bartowski/Llama-3.3-70B-Instruct-GGUF", "name": "Llama 3.3 70B GGUF via llama.cpp", "family": "Llama 3.x", "tag": "local-large", "size": "gguf", "pullable": True},
         {"id": "llamacpp:bartowski/Llama-3.1-70B-Instruct-GGUF", "name": "Llama 3.1 70B GGUF via llama.cpp", "family": "Llama 3.1", "tag": "local-server", "size": "gguf", "pullable": True},
     ],
 }
@@ -2326,8 +2355,40 @@ VLLM_METAL_BIN = VLLM_METAL_ENV / "bin" / "vllm"
 VLLM_METAL_PYTHON = VLLM_METAL_ENV / "bin" / "python"
 LMSTUDIO_BUNDLED_CLI = Path("/Applications/LM Studio.app/Contents/Resources/app/.webpack/lms")
 
+def windows_binary_candidates(binary: str) -> List[Path]:
+    local_appdata = os.environ.get("LOCALAPPDATA", "")
+    program_files = os.environ.get("ProgramFiles", r"C:\Program Files")
+    program_files_x86 = os.environ.get("ProgramFiles(x86)", r"C:\Program Files (x86)")
+    candidates = {
+        "ollama": [
+            Path(local_appdata) / "Programs" / "Ollama" / "ollama.exe" if local_appdata else None,
+            Path(program_files) / "Ollama" / "ollama.exe",
+        ],
+        "lms": [
+            Path(local_appdata) / "Programs" / "LM Studio" / "resources" / "app" / ".webpack" / "lms.exe" if local_appdata else None,
+            Path(program_files) / "LM Studio" / "resources" / "app" / ".webpack" / "lms.exe",
+        ],
+        "nvidia-smi": [
+            Path(program_files) / "NVIDIA Corporation" / "NVSMI" / "nvidia-smi.exe",
+            Path(program_files_x86) / "NVIDIA Corporation" / "NVSMI" / "nvidia-smi.exe",
+        ],
+    }
+    return [item for item in candidates.get(binary, []) if item is not None]
+
+
+def local_binary(binary: str) -> Optional[str]:
+    found = shutil.which(binary)
+    if found:
+        return found
+    if platform.system() == "Windows":
+        for candidate in windows_binary_candidates(binary):
+            if candidate.exists():
+                return str(candidate)
+    return None
+
+
 def find_lmstudio_cli() -> Optional[str]:
-    cli = shutil.which("lms")
+    cli = local_binary("lms")
     if cli:
         return cli
     if LMSTUDIO_BUNDLED_CLI.exists():
@@ -2551,6 +2612,8 @@ def engine_support_status(engine: str) -> Dict[str, object]:
     if engine != "vllm":
         return {"supported": True, "reason": None}
     is_apple_silicon = sys.platform == "darwin" and platform.machine() == "arm64"
+    if sys.platform.startswith("win"):
+        return {"supported": False, "reason": "vLLM은 Windows native 자동 설치보다 WSL2/Linux 환경을 권장합니다."}
     if sys.platform == "darwin" and not is_apple_silicon:
         return {"supported": False, "reason": "vLLM Metal 자동 설치는 Apple Silicon macOS에서만 지원됩니다."}
     if sys.version_info >= (3, 13) and is_apple_silicon:
@@ -2807,6 +2870,9 @@ def download_hf_model(
 
 
 def pull_ollama_model_with_progress(model_name: str, progress_emit=None) -> Dict[str, object]:
+    ollama = local_binary("ollama")
+    if not ollama:
+        raise HTTPException(status_code=400, detail="Ollama가 설치되지 않았습니다.")
     started_at = time.time()
     if progress_emit:
         progress_emit(model_download_progress_payload(
@@ -2817,7 +2883,7 @@ def pull_ollama_model_with_progress(model_name: str, progress_emit=None) -> Dict
             indeterminate=True,
         ))
     process = subprocess.Popen(
-        ["ollama", "pull", model_name],
+        [ollama, "pull", model_name],
         stdout=subprocess.PIPE,
         stderr=subprocess.STDOUT,
         text=True,
@@ -2876,10 +2942,11 @@ def pull_ollama_model_with_progress(model_name: str, progress_emit=None) -> Dict
 
 
 def get_ollama_pulled_models() -> set:
-    if not shutil.which("ollama"):
+    ollama = local_binary("ollama")
+    if not ollama:
         return set()
     try:
-        result = subprocess.run(["ollama", "list"], capture_output=True, text=True, timeout=5, check=False)
+        result = subprocess.run([ollama, "list"], capture_output=True, text=True, timeout=5, check=False)
         pulled = set()
         for line in result.stdout.splitlines()[1:]:
             parts = line.split()
@@ -2934,16 +3001,17 @@ def get_openai_compatible_server_models(provider: str) -> List[str]:
 
 
 def ensure_ollama_server() -> None:
-    if not shutil.which("ollama"):
+    ollama = local_binary("ollama")
+    if not ollama:
         raise HTTPException(status_code=400, detail="Ollama가 설치되지 않았습니다.")
     try:
-        probe = subprocess.run(["ollama", "list"], capture_output=True, text=True, timeout=3, check=False)
+        probe = subprocess.run([ollama, "list"], capture_output=True, text=True, timeout=3, check=False)
         if probe.returncode == 0:
             return
     except Exception:
         pass
     subprocess.Popen(
-        ["ollama", "serve"],
+        [ollama, "serve"],
         stdout=subprocess.DEVNULL,
         stderr=subprocess.DEVNULL,
         start_new_session=True,
@@ -2951,7 +3019,7 @@ def ensure_ollama_server() -> None:
     deadline = time.time() + 20
     while time.time() < deadline:
         try:
-            probe = subprocess.run(["ollama", "list"], capture_output=True, text=True, timeout=3, check=False)
+            probe = subprocess.run([ollama, "list"], capture_output=True, text=True, timeout=3, check=False)
             if probe.returncode == 0:
                 return
         except Exception:
@@ -3062,7 +3130,7 @@ def engine_installed(engine: str) -> bool:
     if engine == "local_mlx":
         return bool(importlib.util.find_spec("mlx") and importlib.util.find_spec("mlx_lm"))
     if engine == "ollama":
-        return shutil.which("ollama") is not None
+        return local_binary("ollama") is not None
     if engine == "vllm":
         return vllm_metal_python() is not None or vllm_executable() is not None or importlib.util.find_spec("vllm") is not None
     if engine == "lmstudio":
@@ -3301,11 +3369,12 @@ def install_engine(engine: str) -> Dict:
         "stderr": completed.stderr[-12000:],
         "installed": engine_installed(engine),
     }
-    if engine == "ollama" and completed.returncode == 0 and shutil.which("ollama"):
+    ollama = local_binary("ollama")
+    if engine == "ollama" and completed.returncode == 0 and ollama:
         # Skip if already running to avoid orphan daemons.
         already_up = False
         try:
-            probe = subprocess.run(["ollama", "list"], capture_output=True, timeout=2, check=False)
+            probe = subprocess.run([ollama, "list"], capture_output=True, timeout=2, check=False)
             already_up = probe.returncode == 0
         except Exception:
             already_up = False
@@ -3315,7 +3384,7 @@ def install_engine(engine: str) -> Dict:
             try:
                 # Detach so the daemon survives this request but doesn't become our zombie.
                 subprocess.Popen(
-                    ["ollama", "serve"],
+                    [ollama, "serve"],
                     stdout=subprocess.DEVNULL,
                     stderr=subprocess.DEVNULL,
                     start_new_session=True,
@@ -3392,9 +3461,12 @@ async def prepare_and_load_model(
             download_result = download_hf_model(parsed_model, "local_mlx")
     elif parsed_provider == "ollama":
         ensure_ollama_server()
+        ollama = local_binary("ollama")
+        if not ollama:
+            raise HTTPException(status_code=400, detail="Ollama가 설치되지 않았습니다.")
         if parsed_model not in get_ollama_pulled_models():
             completed = subprocess.run(
-                ["ollama", "pull", parsed_model],
+                [ollama, "pull", parsed_model],
                 capture_output=True,
                 text=True,
                 timeout=900,
@@ -3778,9 +3850,12 @@ async def pull_ollama_model(req: PullModelRequest, request: Request):
 
     if provider == "ollama":
         ensure_ollama_server()
+        ollama = local_binary("ollama")
+        if not ollama:
+            raise HTTPException(status_code=400, detail="Ollama가 설치되지 않았습니다.")
         try:
             completed = subprocess.run(
-                ["ollama", "pull", model_name],
+                [ollama, "pull", model_name],
                 capture_output=True, text=True, timeout=900, check=False,
             )
         except subprocess.TimeoutExpired:
@@ -3877,21 +3952,23 @@ async def set_api_key(req: SetApiKeyRequest, request: Request):
 async def list_models():
     """HuggingFace 추천 모델 목록 및 로드 상태 반환"""
     recommended = [
-        # Qwen Series
-        {"id": "mlx-community/Qwen2.5-Coder-7B-Instruct-4bit",  "name": "Qwen 2.5 Coder 7B", "tag": "coding",  "size": "4.3GB"},
-        {"id": "mlx-community/Qwen2.5-7B-Instruct-4bit",        "name": "Qwen 2.5 7B",       "tag": "general", "size": "4.3GB"},
-        
-        # Llama Series
-        {"id": "mlx-community/Llama-3.2-3B-Instruct-4bit",      "name": "Llama 3.2 3B",      "tag": "light",   "size": "2.0GB"},
-        {"id": "mlx-community/Llama-3.1-8B-Instruct-4bit",      "name": "Llama 3.1 8B",      "tag": "general", "size": "4.7GB"},
-        
-        # Gemma Series
-        {"id": "mlx-community/gemma-4-e4b-it-4bit",             "name": "Gemma 4 E4B (4-bit)", "tag": "next-gen", "size": "5.2GB"},
-        {"id": "mlx-community/gemma-2-9b-it-4bit",              "name": "Gemma 2 9B",        "tag": "balanced","size": "5.4GB"},
-        {"id": "mlx-community/gemma-2-2b-it-4bit",              "name": "Gemma 2 2B",        "tag": "ultra-light", "size": "1.6GB"},
-
-        # Reasoning
-        {"id": "mlx-community/DeepSeek-R1-Distill-Qwen-7B-4bit","name": "DeepSeek R1 (7B)",  "tag": "reasoning","size": "4.3GB"},
+        {"id": "mlx-community/Qwen3-VL-4B-Instruct-4bit",       "name": "Qwen3-VL 4B",      "tag": "multimodal",  "size": "2.7GB"},
+        {"id": "mlx-community/Qwen3-VL-8B-Instruct-4bit",       "name": "Qwen3-VL 8B",      "tag": "multimodal",  "size": "4.8GB"},
+        {"id": "mlx-community/Qwen3-VL-30B-A3B-Instruct-4bit",  "name": "Qwen3-VL 30B A3B","tag": "multimodal",  "size": "18GB"},
+        {"id": "mlx-community/SmolLM-1.7B-Instruct-4bit",       "name": "SmolLM 1.7B",       "tag": "ultra-light", "size": "963MB"},
+        {"id": "mlx-community/gemma-3-1b-it-4bit",              "name": "Gemma 3 1B",        "tag": "ultra-light", "size": "733MB"},
+        {"id": "mlx-community/Llama-3.2-1B-Instruct-4bit",      "name": "Llama 3.2 1B",      "tag": "light",       "size": "1.3GB"},
+        {"id": "mlx-community/Llama-3.2-3B-Instruct-4bit",      "name": "Llama 3.2 3B",      "tag": "light",       "size": "2.0GB"},
+        {"id": "mlx-community/Phi-4-mini-instruct-4bit",        "name": "Phi 4 Mini",        "tag": "coding",      "size": "2.2GB"},
+        {"id": "mlx-community/Qwen2.5-VL-7B-Instruct-4bit",     "name": "Qwen2.5-VL 7B",    "tag": "multimodal",  "size": "4.4GB"},
+        {"id": "mlx-community/Mistral-7B-Instruct-v0.3-4bit",   "name": "Mistral 7B v0.3",   "tag": "general",     "size": "4.1GB"},
+        {"id": "mlx-community/Llama-3.1-8B-Instruct-4bit",      "name": "Llama 3.1 8B",      "tag": "general",     "size": "4.7GB"},
+        {"id": "mlx-community/gemma-4-e4b-it-4bit",             "name": "Gemma 4 E4B",       "tag": "multimodal",  "size": "5.2GB"},
+        {"id": "mlx-community/gemma-3-12b-it-4bit",             "name": "Gemma 3 12B",       "tag": "balanced",    "size": "8.0GB"},
+        {"id": "mlx-community/phi-4-4bit",                      "name": "Phi 4",             "tag": "coding",      "size": "8.3GB"},
+        {"id": "mlx-community/Mistral-Small-24B-Instruct-2501-4bit", "name": "Mistral Small 24B", "tag": "large", "size": "13.3GB"},
+        {"id": "mlx-community/Qwen2.5-Coder-32B-Instruct-4bit", "name": "Qwen2.5 Coder 32B","tag": "coding",      "size": "18.5GB"},
+        {"id": "mlx-community/gemma-4-26b-a4b-it-4bit",         "name": "Gemma 4 26B A4B",   "tag": "multimodal",  "size": "15.6GB"},
     ]
     return {
         "recommended": recommended,
@@ -4203,97 +4280,6 @@ async def search_history(q: str, request: Request):
             grouped[cid] = {"conversation_id": cid, "title": conversation_title(item), "messages": []}
         grouped[cid]["messages"].append(item)
     return {"results": list(grouped.values())[-30:], "query": q}
-
-
-@app.get("/graph")
-async def knowledge_graph_page(request: Request):
-    """Serve the interactive knowledge graph canvas UI."""
-    _require_graph()
-    require_user(request)
-    return FileResponse(STATIC_DIR / "graph.html")
-
-
-@app.get("/knowledge-graph")
-async def knowledge_graph_legacy_page(request: Request):
-    """Backward-compatible route for the graph page."""
-    _require_graph()
-    require_user(request)
-    return FileResponse(STATIC_DIR / "graph.html")
-
-
-@app.get("/knowledge-graph/stats")
-async def knowledge_graph_stats(request: Request):
-    _require_graph()
-    require_user(request)
-    return KNOWLEDGE_GRAPH.stats()
-
-@app.get("/knowledge-graph/schema")
-async def knowledge_graph_schema(request: Request):
-    _require_graph()
-    require_user(request)
-    stats = KNOWLEDGE_GRAPH.stats()
-    return {
-        "legacy_schema_version": stats.get("schema_version"),
-        "v2_schema_available": stats.get("v2_schema_available"),
-        "v2": stats.get("v2"),
-    }
-
-
-@app.get("/knowledge-graph/graph")
-async def knowledge_graph_data(request: Request, limit: int = 300):
-    _require_graph()
-    require_user(request)
-    return KNOWLEDGE_GRAPH.graph(limit)
-
-
-@app.get("/knowledge-graph/search")
-async def knowledge_graph_search(q: str, request: Request, limit: int = 30):
-    _require_graph()
-    require_user(request)
-    if not q or not q.strip():
-        return {"query": q, "matches": []}
-    return KNOWLEDGE_GRAPH.search(q, limit)
-
-
-@app.get("/knowledge-graph/context")
-async def knowledge_graph_context(q: str, request: Request, limit: int = 6):
-    _require_graph()
-    require_user(request)
-    return {"query": q, "context": KNOWLEDGE_GRAPH.context_for_query(q, limit)}
-
-
-@app.get("/knowledge-graph/neighbors/{node_id:path}")
-async def knowledge_graph_neighbors(node_id: str, request: Request):
-    _require_graph()
-    require_user(request)
-    if not node_id:
-        raise HTTPException(status_code=400, detail="node_id required")
-    return KNOWLEDGE_GRAPH.neighbors(node_id)
-
-
-@app.post("/knowledge-graph/ingest")
-async def knowledge_graph_ingest(req: KnowledgeGraphIngestRequest, request: Request):
-    _require_graph()
-    current_user = require_user(request)
-    event_type = (req.type or "").strip().lower()
-    if event_type not in {"message", "ai_response", "note"}:
-        raise HTTPException(status_code=400, detail="지원하는 type: message, ai_response, note")
-    role = req.role or ("assistant" if event_type == "ai_response" else "user")
-    return KNOWLEDGE_GRAPH.ingest_message(
-        role,
-        req.content,
-        user_email=req.user_email or current_user,
-        user_nickname=req.user_nickname,
-        source=req.source or "mcp",
-        conversation_id=req.conversation_id,
-        raw={
-            "type": req.type,
-            "title": req.title,
-            "content": req.content,
-            "metadata": req.metadata or {},
-        },
-    )
-
 
 async def _stream_chat(req: ChatRequest, context: str = "", image_data: str = None) -> AsyncIterator[str]:
     full_response = ""
@@ -5920,6 +5906,24 @@ async def local_write_endpoint(req: LocalWriteRequest, request: Request):
     return _tool_response(local_write, req.path, req.content)
 
 
+app.include_router(create_knowledge_graph_router(
+    get_graph=lambda: KNOWLEDGE_GRAPH,
+    require_graph=_require_graph,
+    require_user=require_user,
+    static_dir=STATIC_DIR,
+))
+
+app.include_router(create_local_knowledge_router(
+    get_graph=lambda: KNOWLEDGE_GRAPH,
+    require_graph=_require_graph,
+    require_user=require_user,
+    require_local_user=_require_local_user,
+    local_permission_response=_local_permission_response,
+    require_local_approval=_require_local_approval,
+    watcher=LOCAL_KG_WATCHER,
+))
+
+
 @app.get("/tools/chrome_status")
 async def tools_chrome_status(request: Request):
     require_user(request)
@@ -6709,24 +6713,32 @@ async def setup_scan(request: Request):
     primary_model = primary_setup_model(recs)
     if primary_model:
         model_id = primary_model.get("model_id") or (primary_model.get("action") or {}).get("model_id")
+        model_provider, provider_model = parse_model_ref(str(model_id))
+        primary_runtime = "mlx" if model_provider == "local_mlx" else model_provider
         zero_config.setdefault("recommend", {})["model_id"] = model_id
-        zero_config["recommend"]["runtime"] = "mlx"
+        zero_config["recommend"]["runtime"] = primary_runtime
         rationale = [
             item for item in zero_config["recommend"].get("rationale", [])
             if not (isinstance(item, str) and item.startswith("RAM ") and "→" in item)
         ]
-        rationale.append(f"실제 다운로드 및 로드 가능한 MLX 모델 → {model_id}")
+        rationale.append(f"실제 다운로드 및 로드 가능한 {primary_runtime} 모델 → {model_id}")
         zero_config["recommend"]["rationale"] = rationale
         if isinstance(zero_config.get("plan"), dict):
+            if model_provider == "ollama":
+                command = ["ollama", "pull", provider_model]
+            elif model_provider in {"vllm", "lmstudio", "llamacpp"}:
+                command = ["lattice-ai", "models", "load", str(model_id)]
+            else:
+                command = ["huggingface-cli", "download", str(model_id), "--quiet"]
             zero_config["plan"]["steps"] = [{
                 "name": f"weights:{model_id}",
                 "why": "추론에 사용할 모델 가중치",
-                "command": ["huggingface-cli", "download", model_id, "--quiet"],
+                "command": command,
                 "requires_admin": False,
             }]
         if isinstance(zero_config.get("preset"), dict):
             zero_config["preset"].setdefault("model", {})["id"] = model_id
-            zero_config["preset"]["model"]["runtime"] = "mlx"
+            zero_config["preset"]["model"]["runtime"] = primary_runtime
     env["zero_config"] = zero_config
     recs.setdefault("summary", {})["zero_config"] = zero_config["recommend"]
     recs["install_plan"] = zero_config["plan"]

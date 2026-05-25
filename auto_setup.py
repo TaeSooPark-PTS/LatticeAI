@@ -38,6 +38,7 @@ import argparse
 import json
 import os
 import platform
+import re
 import shutil
 import subprocess
 import sys
@@ -68,12 +69,19 @@ class SystemProfile:
     arch: str = ""                   # x86_64 | arm64 | …
     cpu_model: str = ""
     cpu_cores: int = 0
+    cpu_logical_cores: int = 0
+    cpu_instructions: List[str] = field(default_factory=list)
     ram_mb: int = 0
     disk_free_mb: int = 0
     gpu: GPUInfo = field(default_factory=GPUInfo)
     package_manager: Optional[str] = None   # winget | brew | apt | dnf | pacman
     has_internet: bool = True
     python_version: str = ""
+    is_wsl: bool = False
+    wsl_version: str = ""
+    cuda_available: bool = False
+    cuda_version: str = ""
+    tools: Dict[str, str] = field(default_factory=dict)
 
     def score(self) -> int:
         """LLM 적합도 점수 (0..100). RECOMMEND 의 입력."""
@@ -105,13 +113,84 @@ def _run(cmd: List[str], timeout: float = 4.0) -> str:
         return ""
 
 
+def _windows_candidate_paths(binary: str) -> List[str]:
+    local_appdata = os.environ.get("LOCALAPPDATA", "")
+    program_files = os.environ.get("ProgramFiles", r"C:\Program Files")
+    program_files_x86 = os.environ.get("ProgramFiles(x86)", r"C:\Program Files (x86)")
+    candidates = {
+        "ollama": [
+            str(Path(local_appdata) / "Programs" / "Ollama" / "ollama.exe") if local_appdata else "",
+            str(Path(program_files) / "Ollama" / "ollama.exe"),
+        ],
+        "lms": [
+            str(Path(local_appdata) / "Programs" / "LM Studio" / "resources" / "app" / ".webpack" / "lms.exe") if local_appdata else "",
+            str(Path(program_files) / "LM Studio" / "resources" / "app" / ".webpack" / "lms.exe"),
+        ],
+        "nvidia-smi": [
+            str(Path(program_files) / "NVIDIA Corporation" / "NVSMI" / "nvidia-smi.exe"),
+            str(Path(program_files_x86) / "NVIDIA Corporation" / "NVSMI" / "nvidia-smi.exe"),
+        ],
+    }
+    return [item for item in candidates.get(binary, []) if item]
+
+
+def _which(binary: str) -> Optional[str]:
+    found = shutil.which(binary)
+    if found:
+        return found
+    if platform.system() == "Windows":
+        for candidate in _windows_candidate_paths(binary):
+            if Path(candidate).exists():
+                return candidate
+    return None
+
+
+def _parse_windows_video_controllers(raw: str) -> List[Dict[str, Any]]:
+    controllers: List[Dict[str, Any]] = []
+    if not raw:
+        return controllers
+    try:
+        data = json.loads(raw)
+        if isinstance(data, dict):
+            data = [data]
+        if isinstance(data, list):
+            for item in data:
+                name = str(item.get("Name") or "").strip()
+                if not name:
+                    continue
+                try:
+                    ram_mb = int(item.get("AdapterRAM") or 0) // (1024 * 1024)
+                except Exception:
+                    ram_mb = 0
+                controllers.append({"name": name, "vram_mb": ram_mb})
+        if controllers:
+            return controllers
+    except Exception:
+        pass
+    current: Dict[str, Any] = {}
+    for line in raw.splitlines():
+        if line.startswith("Name="):
+            if current:
+                controllers.append(current)
+            current = {"name": line.split("=", 1)[-1].strip(), "vram_mb": 0}
+        elif line.startswith("AdapterRAM=") and current:
+            try:
+                current["vram_mb"] = int(line.split("=", 1)[-1].strip()) // (1024 * 1024)
+            except ValueError:
+                current["vram_mb"] = 0
+    if current:
+        controllers.append(current)
+    return controllers
+
+
 def _detect_gpu(prof_os: str, arch: str) -> GPUInfo:
     """OS별 휴리스틱으로 GPU 감지. 외부 라이브러리 없이 가능한 만큼만."""
     gpu = GPUInfo()
 
     # NVIDIA
-    if shutil.which("nvidia-smi"):
-        info = _run(["nvidia-smi", "--query-gpu=name,memory.total",
+    nvidia_smi = _which("nvidia-smi")
+    if nvidia_smi:
+        info = _run([nvidia_smi, "--query-gpu=name,memory.total",
                      "--format=csv,noheader,nounits"])
         if info.strip():
             first = info.strip().splitlines()[0]
@@ -139,30 +218,29 @@ def _detect_gpu(prof_os: str, arch: str) -> GPUInfo:
 
     # Windows
     if prof_os == "windows" and gpu.vendor == "unknown":
-        info = _run(["wmic", "path", "win32_VideoController", "get",
-                     "Name,AdapterRAM", "/format:list"])
-        if info:
-            name = ""
-            ram = 0
-            for line in info.splitlines():
-                if line.startswith("Name="):
-                    name = line.split("=", 1)[-1].strip()
-                elif line.startswith("AdapterRAM="):
-                    try:
-                        ram = int(line.split("=", 1)[-1].strip()) // (1024 * 1024)
-                    except ValueError:
-                        ram = 0
-            if name:
-                gpu.model = name
-                low = name.lower()
-                if "nvidia" in low or "rtx" in low or "geforce" in low:
-                    gpu.vendor = "nvidia"; gpu.sdk.append("cuda")
-                elif "amd" in low or "radeon" in low:
-                    gpu.vendor = "amd"; gpu.sdk.extend(["directml", "vulkan"])
-                elif "intel" in low:
-                    gpu.vendor = "intel"; gpu.sdk.extend(["directml", "vulkan"])
-                if ram > 0:
-                    gpu.vram_mb = ram
+        shell = _which("powershell") or _which("pwsh")
+        info = ""
+        if shell:
+            info = _run([
+                shell, "-NoProfile", "-Command",
+                "Get-CimInstance Win32_VideoController | Select-Object Name,AdapterRAM | ConvertTo-Json -Compress",
+            ], timeout=8.0)
+        if not info:
+            info = _run(["wmic", "path", "win32_VideoController", "get",
+                         "Name,AdapterRAM", "/format:list"])
+        controllers = _parse_windows_video_controllers(info)
+        if controllers:
+            primary = max(controllers, key=lambda item: int(item.get("vram_mb") or 0))
+            name = str(primary.get("name") or "")
+            gpu.model = name
+            gpu.vram_mb = int(primary.get("vram_mb") or 0)
+            low = name.lower()
+            if "nvidia" in low or "rtx" in low or "geforce" in low:
+                gpu.vendor = "nvidia"; gpu.sdk.append("cuda")
+            elif "amd" in low or "radeon" in low:
+                gpu.vendor = "amd"; gpu.sdk.extend(["directml", "vulkan"])
+            elif "intel" in low or "arc" in low or "iris" in low:
+                gpu.vendor = "intel"; gpu.sdk.extend(["directml", "vulkan"])
 
     # Linux (lspci)
     if prof_os == "linux" and gpu.vendor == "unknown":
@@ -179,14 +257,94 @@ def _detect_gpu(prof_os: str, arch: str) -> GPUInfo:
 
 def _detect_package_manager(prof_os: str) -> Optional[str]:
     if prof_os == "windows":
-        return "winget" if shutil.which("winget") else None
+        return "winget" if _which("winget") else None
     if prof_os == "darwin":
-        return "brew" if shutil.which("brew") else None
+        return "brew" if _which("brew") else None
     if prof_os == "linux":
         for pm in ("apt", "dnf", "pacman", "zypper", "apk"):
-            if shutil.which(pm):
+            if _which(pm):
                 return pm
     return None
+
+
+def _detect_tools() -> Dict[str, str]:
+    tools: Dict[str, str] = {}
+    for binary in ("ollama", "lms", "nvidia-smi", "nvcc", "winget", "brew", "apt", "git", "node", "python", "python3"):
+        found = _which(binary)
+        if found:
+            tools[binary] = found
+    return tools
+
+
+def _detect_wsl(prof_os: str) -> Tuple[bool, str]:
+    if prof_os != "linux":
+        return False, ""
+    raw = _read_text("/proc/version")
+    is_wsl = "microsoft" in raw.lower() or "wsl" in raw.lower()
+    version = "2" if "microsoft-standard" in raw.lower() or "wsl2" in raw.lower() else ("1" if is_wsl else "")
+    return is_wsl, version
+
+
+def _detect_cuda() -> Tuple[bool, str]:
+    nvidia_smi = _which("nvidia-smi")
+    nvcc = _which("nvcc")
+    version = ""
+    if nvidia_smi:
+        raw = _run([nvidia_smi, "--query-gpu=driver_version", "--format=csv,noheader"], timeout=4.0)
+        version = raw.splitlines()[0].strip() if raw.splitlines() else ""
+    if nvcc:
+        raw = _run([nvcc, "--version"], timeout=4.0)
+        m = re.search(r"release\s+([\d.]+)", raw)
+        if m:
+            version = m.group(1)
+    return bool(nvidia_smi or nvcc), version
+
+
+def _detect_cpu_details(prof_os: str) -> Tuple[str, int, int, List[str]]:
+    model = platform.processor() or ""
+    physical = os.cpu_count() or 0
+    logical = os.cpu_count() or 0
+    flags: List[str] = []
+    if prof_os == "darwin":
+        model = _run(["sysctl", "-n", "machdep.cpu.brand_string"]).strip() or model
+        try:
+            physical = int((_run(["sysctl", "-n", "hw.physicalcpu"]).strip() or physical))
+            logical = int((_run(["sysctl", "-n", "hw.logicalcpu"]).strip() or logical))
+        except ValueError:
+            pass
+        flags = [item.lower() for item in _run(["sysctl", "-n", "machdep.cpu.features"]).split()]
+    elif prof_os == "linux":
+        text = _read_text("/proc/cpuinfo")
+        for line in text.splitlines():
+            if line.lower().startswith("model name") and not model:
+                model = line.split(":", 1)[-1].strip()
+            if line.lower().startswith(("flags", "features")) and not flags:
+                flags = line.split(":", 1)[-1].strip().lower().split()
+    elif prof_os == "windows":
+        raw = _run(["wmic", "cpu", "get", "Name,NumberOfCores,NumberOfLogicalProcessors", "/format:list"])
+        for line in raw.splitlines():
+            key, _, value = line.partition("=")
+            if key == "Name" and value.strip():
+                model = value.strip()
+            elif key == "NumberOfCores" and value.strip():
+                try:
+                    physical = int(value.strip())
+                except ValueError:
+                    pass
+            elif key == "NumberOfLogicalProcessors" and value.strip():
+                try:
+                    logical = int(value.strip())
+                except ValueError:
+                    pass
+        try:
+            import ctypes
+            kernel32 = ctypes.windll.kernel32
+            feature_map = {6: "sse", 10: "sse2", 13: "sse3", 19: "neon", 28: "rdrand"}
+            flags.extend(name for code, name in feature_map.items() if kernel32.IsProcessorFeaturePresent(code))
+        except Exception:
+            pass
+    interesting = {"avx", "avx2", "avx512f", "fma", "neon", "sse4_2", "sse", "sse2", "sse3", "rdrand"}
+    return model, physical, logical, sorted({flag for flag in flags if flag in interesting})
 
 
 def _has_module(name: str) -> bool:
@@ -204,9 +362,15 @@ def probe() -> SystemProfile:
                "Linux": "linux"}.get(platform.system(), platform.system().lower())
     prof.os_version = platform.release()
     prof.arch = platform.machine().lower()
-    prof.cpu_model = platform.processor() or ""
-    prof.cpu_cores = os.cpu_count() or 0
+    cpu_model, cpu_cores, cpu_logical_cores, cpu_instructions = _detect_cpu_details(prof.os)
+    prof.cpu_model = cpu_model
+    prof.cpu_cores = cpu_cores
+    prof.cpu_logical_cores = cpu_logical_cores
+    prof.cpu_instructions = cpu_instructions
     prof.python_version = platform.python_version()
+    prof.is_wsl, prof.wsl_version = _detect_wsl(prof.os)
+    prof.cuda_available, prof.cuda_version = _detect_cuda()
+    prof.tools = _detect_tools()
 
     # RAM
     try:
@@ -218,7 +382,27 @@ def probe() -> SystemProfile:
         elif prof.os == "darwin":
             out = _run(["sysctl", "-n", "hw.memsize"])
             if out.strip():
-                prof.ram_mb = int(out.strip()) // (1024 * 1024)
+                try:
+                    prof.ram_mb = int(out.strip()) // (1024 * 1024)
+                except ValueError:
+                    prof.ram_mb = 0
+            if not prof.ram_mb:
+                profiler = _run(["system_profiler", "SPHardwareDataType"], timeout=8.0)
+                m = re.search(r"Memory:\s+([\d.]+)\s*(TB|GB|MB)", profiler, re.IGNORECASE)
+                if m:
+                    value = float(m.group(1))
+                    unit = m.group(2).lower()
+                    if unit == "tb":
+                        prof.ram_mb = int(value * 1024 * 1024)
+                    elif unit == "gb":
+                        prof.ram_mb = int(value * 1024)
+                    else:
+                        prof.ram_mb = int(value)
+                if not prof.ram_mb:
+                    hostinfo = _run(["hostinfo"])
+                    m = re.search(r"Primary memory available:\s+([\d.]+)\s+gigabytes", hostinfo, re.IGNORECASE)
+                    if m:
+                        prof.ram_mb = int(float(m.group(1)) * 1024)
         elif prof.os == "windows":
             out = _run(["wmic", "ComputerSystem", "get", "TotalPhysicalMemory",
                         "/format:list"])
@@ -258,16 +442,23 @@ class Recommendation:
 # 모델 카탈로그. PPT 슬라이드 16 의 "추천 모델" 열과 동기화.
 _MODEL_CATALOG: List[Dict[str, Any]] = [
     # (min_ram_mb, min_vram_mb, model_id, quant, runtime_preference)
-    {"ram": 24 * 1024, "vram": 16 * 1024,
-     "id": "google/gemma-3-12b-it", "q": "q5_K_M"},
+    # OS 오버헤드(~4-6 GB) + KV 캐시 여유를 감안한 보수적 RAM 임계값
+    {"ram": 64 * 1024, "vram": 32 * 1024,
+     "id": "Qwen/Qwen3-VL-30B-A3B-Instruct", "q": "q4_K_M", "multimodal": True},
+    {"ram": 48 * 1024, "vram": 24 * 1024,
+     "id": "Qwen/Qwen3-VL-30B-A3B-Instruct", "q": "q4_K_M", "multimodal": True},
+    {"ram": 32 * 1024, "vram": 16 * 1024,
+     "id": "Qwen/Qwen3-VL-8B-Instruct", "q": "q5_K_M", "multimodal": True},
+    {"ram": 24 * 1024, "vram": 12 * 1024,
+     "id": "Qwen/Qwen3-VL-8B-Instruct", "q": "q4_K_M", "multimodal": True},
     {"ram": 16 * 1024, "vram": 8 * 1024,
-     "id": "Qwen/Qwen2.5-7B-Instruct", "q": "q4_K_M"},
+     "id": "Qwen/Qwen3-VL-8B-Instruct", "q": "q4_K_M", "multimodal": True},
     {"ram": 12 * 1024, "vram": 6 * 1024,
-     "id": "google/gemma-3-4b-it", "q": "q4_K_M"},
+     "id": "Qwen/Qwen3-VL-4B-Instruct", "q": "q4_K_M", "multimodal": True},
     {"ram":  8 * 1024, "vram": 4 * 1024,
-     "id": "microsoft/Phi-3.5-mini-instruct", "q": "q4_K_M"},
+     "id": "Qwen/Qwen3-VL-4B-Instruct", "q": "q4_K_M", "multimodal": True},
     {"ram":  4 * 1024, "vram": 0,
-     "id": "google/gemma-3-2b-it", "q": "q4_K_M"},
+     "id": "google/gemma-3-1b-it", "q": "q4_K_M", "multimodal": False},
 ]
 
 
@@ -280,34 +471,41 @@ def recommend(profile: SystemProfile) -> Recommendation:
         backend = "metal+mlx"
         runtime = "mlx" if _has_module("mlx") else "llama.cpp"
         rationale.append("Apple Silicon → Metal + MLX")
-    elif profile.gpu.vendor == "nvidia" and profile.gpu.vram_mb >= 6000:
+    elif profile.gpu.vendor == "nvidia" and profile.cuda_available and (profile.os == "linux" or profile.is_wsl):
         backend = "cuda"
-        runtime = "llama.cpp"
-        rationale.append(f"NVIDIA GPU {profile.gpu.vram_mb} MB VRAM → CUDA + llama.cpp")
+        runtime = "vllm" if profile.gpu.vram_mb >= 12 * 1024 else "llama.cpp"
+        rationale.append(f"NVIDIA GPU {profile.gpu.vram_mb} MB VRAM + CUDA → {runtime}")
+    elif profile.gpu.vendor == "nvidia":
+        backend = "cuda" if profile.cuda_available else "vulkan"
+        runtime = "lmstudio" if profile.tools.get("lms") else ("ollama" if profile.tools.get("ollama") else "llama.cpp")
+        rationale.append("Windows NVIDIA는 LM Studio/Ollama 우선, vLLM은 WSL/Linux 권장")
     elif profile.os == "windows" and profile.gpu.vendor in ("amd", "intel"):
-        backend = "directml"
-        runtime = "llama.cpp"
-        rationale.append("Windows + AMD/Intel GPU → DirectML")
+        backend = "directml/vulkan"
+        runtime = "lmstudio" if profile.tools.get("lms") else ("ollama" if profile.tools.get("ollama") else "llama.cpp")
+        rationale.append("Windows + AMD/Intel GPU → DirectML/Vulkan")
     elif profile.os == "linux" and profile.gpu.vendor == "amd":
         backend = "rocm" if "rocm" in profile.gpu.sdk else "vulkan"
-        runtime = "llama.cpp"
+        runtime = "ollama" if profile.tools.get("ollama") else "llama.cpp"
         rationale.append("Linux + AMD GPU → ROCm/Vulkan")
     else:
         backend = "cpu"
-        runtime = "llama.cpp"
-        rationale.append("GPU 가속이 없거나 미감지 → CPU 추론")
+        runtime = "ollama" if profile.tools.get("ollama") else "llama.cpp"
+        instruction_hint = ", ".join(profile.cpu_instructions) or "명령어 미감지"
+        rationale.append(f"GPU 가속이 없거나 미감지 → CPU 추론 ({profile.cpu_logical_cores or profile.cpu_cores} threads, {instruction_hint})")
 
     # model size by RAM/VRAM
     pick = _MODEL_CATALOG[-1]   # 가장 작은 모델 기본값
     for entry in _MODEL_CATALOG:
         if profile.ram_mb >= entry["ram"] and (
-            backend == "cpu" or profile.gpu.vram_mb >= entry["vram"]
+            backend in {"cpu", "metal+mlx"} or profile.gpu.vram_mb >= entry["vram"]
         ):
             pick = entry
             break
     rationale.append(
         f"RAM {profile.ram_mb} MB · VRAM {profile.gpu.vram_mb} MB → {pick['id']}"
     )
+    if pick.get("multimodal"):
+        rationale.append("최신 멀티모달 모델을 우선 선택")
 
     # 양자화: VRAM 충분 → 더 정밀한 양자화로 업그레이드
     quant = pick["q"]
@@ -402,7 +600,7 @@ def plan(profile: SystemProfile, rec: Recommendation) -> InstallPlan:
 
     if sys.version_info < (3, 11):
         need("python3.11+", "Lattice AI 서버는 Python 3.11 이상이 필요합니다.")
-    if not shutil.which("node"):
+    if not _which("node"):
         need("node20", "VSCode 확장 / npm CLI 부트스트랩에 필요")
 
     # 런타임별 추가
@@ -411,17 +609,39 @@ def plan(profile: SystemProfile, rec: Recommendation) -> InstallPlan:
             name="mlx-lm", why="Apple Silicon LLM 추론",
             command=["pip3", "install", "--upgrade", "mlx-lm"],
         ))
-    if rec.runtime == "llama.cpp" and not shutil.which("ollama"):
+    if rec.runtime in {"llama.cpp", "ollama"} and not _which("ollama"):
         need("ollama", "llama.cpp 가중치를 가장 쉽게 받는 경로")
+    if rec.runtime == "lmstudio" and not _which("lms"):
+        notes.append("LM Studio CLI(lms)를 찾지 못했습니다. https://lmstudio.ai/download 에서 설치하면 Windows/macOS/Linux 모델 다운로드와 GPU 백엔드를 자동 감지합니다.")
+    if rec.runtime == "vllm" and not _has_module("vllm"):
+        steps.append(InstallStep(
+            name="vllm", why="NVIDIA CUDA/WSL/Linux 서버형 추론",
+            command=["pip3", "install", "--upgrade", "vllm", "huggingface_hub"],
+        ))
+    if profile.gpu.vendor == "nvidia" and not profile.cuda_available:
+        notes.append("NVIDIA GPU는 감지됐지만 CUDA/nvidia-smi를 찾지 못했습니다. Windows에서는 NVIDIA 드라이버와 CUDA Toolkit 설치 후 재검사를 권장합니다.")
+    if profile.os == "windows" and profile.gpu.vendor == "nvidia" and not profile.is_wsl:
+        notes.append("vLLM은 Windows native보다 WSL2/Linux에서 안정적입니다. Windows 데스크톱은 LM Studio 또는 Ollama GPU 경로를 먼저 권장합니다.")
 
-    if not shutil.which("huggingface-cli"):
+    if not _which("huggingface-cli"):
         need("huggingface-cli", "추천 모델 가중치 다운로드용")
 
     # 모델 가중치 풀
+    model_command = ["huggingface-cli", "download", rec.model_id, "--quiet"]
+    if rec.runtime == "ollama":
+        lower = rec.model_id.lower()
+        if "qwen3-vl-8b" in lower:
+            model_command = ["ollama", "pull", "qwen3-vl:8b"]
+        elif "qwen3-vl-4b" in lower:
+            model_command = ["ollama", "pull", "qwen3-vl:4b"]
+        elif "gemma-3-1b" in lower:
+            model_command = ["ollama", "pull", "gemma3:1b"]
+    elif rec.runtime == "lmstudio":
+        model_command = ["lms", "get", rec.model_id]
     steps.append(InstallStep(
         name=f"weights:{rec.model_id}",
         why="추론에 사용할 모델 가중치",
-        command=["huggingface-cli", "download", rec.model_id, "--quiet"],
+        command=model_command,
     ))
 
     return InstallPlan(package_manager=pm, steps=steps, notes=notes)
@@ -463,9 +683,13 @@ def verify(profile: SystemProfile, rec: Recommendation) -> Dict[str, Any]:
 
     if rec.runtime == "mlx":
         add("mlx_lm import", _has_module("mlx_lm"), "Apple Silicon 런타임")
-    if rec.runtime == "llama.cpp":
-        add("ollama binary", shutil.which("ollama") is not None,
-            shutil.which("ollama") or "not found")
+    if rec.runtime in {"llama.cpp", "ollama"}:
+        add("ollama binary", _which("ollama") is not None,
+            _which("ollama") or "not found")
+    if rec.runtime == "lmstudio":
+        add("LM Studio CLI", _which("lms") is not None, _which("lms") or "not found")
+    if rec.backend == "cuda":
+        add("CUDA/nvidia-smi", profile.cuda_available, profile.cuda_version or "not found")
 
     # CPU/메모리 잠깐 측정
     t0 = time.perf_counter()

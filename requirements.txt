@@ -12,3 +12,4 @@ keyring
 authlib
 pdfplumber
 pypdfium2
+watchdog

@@ -14,6 +14,11 @@ const API_BASE = window.location.protocol === 'file:' ? 'http://localhost:4825' 
         sidebar_eyebrow: '지식 그래프', sidebar_title: '지식 토폴로지',
         sidebar_sub: '주제의 크기는 중요도 기반으로, 선의 굵기와 색은 관계 종류와 강도를 반영합니다.',
         nodes: '노드', edges: '연결', relationship_legend: '관계 범례', node_types: '노드 유형',
+        local_sources: '지식 소스', local_notice: 'Lattice AI는 사용자가 선택한 폴더만 AI 지식으로 변환합니다.',
+        local_path_ph: '폴더 경로 입력...', local_roots: '드라이브 선택', local_tree: '폴더 구조 확인',
+        local_audit: '안전 검사', local_index: '지식 그래프 만들기', local_ocr: '이미지 글자 인식',
+        local_watch: '자동 감지 켜기', local_permission: '권한 승인', local_sources_empty: '아직 추가된 지식 소스가 없습니다.',
+        local_indexed: '지식 그래프 생성 완료', local_watch_unavailable: '자동 감지는 watchdog 설치 후 작동합니다.',
         detail_empty: '노드를 클릭하면 요약, 중요도, 연결 강도, 메타데이터를 볼 수 있습니다. 검색 패널에서는 서버 검색 결과를 기준으로 더 정확하게 이동할 수 있습니다.',
         detail_empty_short: '노드를 클릭하면 요약, 중요도, 메타데이터를 볼 수 있습니다.',
         refresh: '새로고침', error: '오류', graph_load_fail: '그래프를 불러오지 못했습니다.', graph_refresh_fail: '그래프를 새로고침하지 못했습니다.',
@@ -31,6 +36,11 @@ const API_BASE = window.location.protocol === 'file:' ? 'http://localhost:4825' 
         sidebar_eyebrow: 'Knowledge Graph', sidebar_title: 'Knowledge topology',
         sidebar_sub: 'Topic size follows importance; line width and color reflect relationship type and strength.',
         nodes: 'Nodes', edges: 'Edges', relationship_legend: 'Relationship legend', node_types: 'Node types',
+        local_sources: 'Knowledge sources', local_notice: 'Lattice AI only turns folders you choose into AI knowledge.',
+        local_path_ph: 'Enter a folder path...', local_roots: 'Drive picker', local_tree: 'Check folders',
+        local_audit: 'Safety check', local_index: 'Build graph', local_ocr: 'Image text recognition',
+        local_watch: 'Auto watch', local_permission: 'Approve access', local_sources_empty: 'No knowledge sources yet.',
+        local_indexed: 'Knowledge graph built', local_watch_unavailable: 'Auto watch works after watchdog is installed.',
         detail_empty: 'Click a node to see its summary, importance, connection strength, and metadata. Search results can jump to more precise nodes.',
         detail_empty_short: 'Click a node to see its summary, importance, and metadata.',
         refresh: 'Refresh', error: 'Error', graph_load_fail: 'Could not load the graph.', graph_refresh_fail: 'Could not refresh the graph.',
@@ -60,8 +70,9 @@ const API_BASE = window.location.protocol === 'file:' ? 'http://localhost:4825' 
       document.querySelector('.sidebar-sub').textContent = t('sidebar_sub');
       document.querySelectorAll('.stat span')[0].textContent = t('nodes');
       document.querySelectorAll('.stat span')[1].textContent = t('edges');
-      document.querySelectorAll('.section-label')[0].textContent = t('relationship_legend');
-      document.querySelectorAll('.section-label')[1].textContent = t('node_types');
+      document.getElementById('local-source-label').textContent = t('local_sources');
+      document.getElementById('edge-label').textContent = t('relationship_legend');
+      document.getElementById('type-label').textContent = t('node_types');
       document.getElementById('refresh-btn').textContent = `↺ ${t('refresh')}`;
       const langBtn = document.getElementById('graph-lang-btn');
       if (langBtn) langBtn.textContent = `Language: ${currentLang === 'ko' ? '한국어' : 'English'}`;
@@ -88,22 +99,32 @@ const API_BASE = window.location.protocol === 'file:' ? 'http://localhost:4825' 
       renderSearchResults();
       renderTypeFilters(buildTypeCounts());
       renderEdgeLegend(buildEdgeCounts());
+      renderLocalSources();
       showDetail(selected);
     }
     window.toggleLangMenu = toggleLangMenu;
     window.setLang = setLang;
 
     const TYPE_CONFIG = {
+      Computer:     { color: '#14b8a6', label: 'Computer' },
+      Drive:        { color: '#38bdf8', label: 'Drive' },
+      Folder:       { color: '#f0a500', label: 'Folder' },
       Conversation: { color: '#9b8af0', label: 'Conversation' },
       Message:      { color: '#b8a9f5', label: 'Message' },
       AIResponse:   { color: '#6f42e8', label: 'AI Response' },
       File:         { color: '#5b9cf6', label: 'File' },
+      Document:     { color: '#5b9cf6', label: 'Document' },
+      CodeFile:     { color: '#22c55e', label: 'Code File' },
+      Spreadsheet:  { color: '#059669', label: 'Spreadsheet' },
+      SlideDeck:    { color: '#818cf8', label: 'Slide Deck' },
       Topic:        { color: '#7c3aed', label: 'Topic' },
+      Concept:      { color: '#7c3aed', label: 'Concept' },
       Person:       { color: '#0d9488', label: 'Person' },
       Page:         { color: '#a78bfa', label: 'Page' },
       Slide:        { color: '#818cf8', label: 'Slide' },
       Sheet:        { color: '#059669', label: 'Sheet' },
       Image:        { color: '#d97706', label: 'Image' },
+      ImageText:    { color: '#f97316', label: 'Image Text' },
       Decision:     { color: '#f59e0b', label: 'Decision' },
       Task:         { color: '#ec4899', label: 'Task' },
       ClearEvent:   { color: '#6366f1', label: 'Clear Event' },
@@ -126,6 +147,9 @@ const API_BASE = window.location.protocol === 'file:' ? 'http://localhost:4825' 
       has_sheet:       { color: '#20b8aa', label: 'Sheet', width: 1.3 },
       contains_image:  { color: '#f1c86d', label: 'Image', width: 1.35 },
       has_chunk:       { color: '#4e566f', label: 'Chunk', width: 0.9, dash: [2, 5] },
+      '포함함':          { color: '#7186c8', label: 'Contains', width: 1.35 },
+      '언급함':          { color: '#aebcff', label: 'Mentions', width: 1.45 },
+      '관련됨':          { color: '#7f8f9d', label: 'Related', width: 1.3 },
     };
 
     const canvas = document.getElementById('graph');
@@ -135,6 +159,7 @@ const API_BASE = window.location.protocol === 'file:' ? 'http://localhost:4825' 
     const searchInput = document.getElementById('search');
     const searchResultsEl = document.getElementById('search-results');
     const searchCountEl = document.getElementById('search-count');
+    const localSourcePanel = document.getElementById('local-source-panel');
 
     let rawGraph = { nodes: [], edges: [] };
     let graph = { nodes: [], edges: [] };
@@ -151,6 +176,20 @@ const API_BASE = window.location.protocol === 'file:' ? 'http://localhost:4825' 
     let searchResultIds = new Set();
     let searchAbortController = null;
     let searchDebounceId = null;
+    let localState = {
+      roots: [],
+      sources: [],
+      watch: null,
+      selectedPath: '',
+      tree: null,
+      audit: null,
+      includeOcr: false,
+      watchEnabled: false,
+      busy: false,
+      status: '',
+      error: '',
+      pendingPermission: null,
+    };
 
     function apiFetch(path, opts = {}) {
       return fetch(`${API_BASE}${path}`, {
@@ -172,6 +211,266 @@ const API_BASE = window.location.protocol === 'file:' ? 'http://localhost:4825' 
         .replaceAll('"', '&quot;')
         .replaceAll("'", '&#39;');
     }
+
+    function formatCount(value) {
+      return Number(value || 0).toLocaleString();
+    }
+
+    async function apiJson(path, payload) {
+      return apiFetch(path, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload || {}),
+      });
+    }
+
+    async function loadLocalSources() {
+      try {
+        const [rootsRes, sourcesRes] = await Promise.all([
+          apiFetch('/knowledge-graph/local/roots'),
+          apiFetch('/knowledge-graph/local/sources'),
+        ]);
+        if (rootsRes.status === 401 || sourcesRes.status === 401) {
+          window.location.href = '/account';
+          return;
+        }
+        const rootsData = rootsRes.ok ? await rootsRes.json() : {};
+        const sourcesData = sourcesRes.ok ? await sourcesRes.json() : {};
+        localState.roots = Array.isArray(rootsData.roots) ? rootsData.roots : [];
+        localState.sources = Array.isArray(sourcesData.sources) ? sourcesData.sources : [];
+        localState.watch = sourcesData.watch || null;
+        if (!localState.selectedPath && localState.roots[0]) {
+          localState.selectedPath = localState.roots[0].path;
+        }
+        renderLocalSources();
+      } catch (error) {
+        localState.error = error.message;
+        renderLocalSources();
+      }
+    }
+
+    function renderLocalSources() {
+      if (!localSourcePanel) return;
+      const rootRows = localState.roots.slice(0, 8).map(root => {
+        const active = root.path === localState.selectedPath ? 'active' : '';
+        return `
+          <button class="local-root-btn ${active}" onclick="selectLocalPath(decodeURIComponent('${encodeURIComponent(root.path)}'))" title="${escapeHtml(root.path)}">
+            <i class="ti ${root.kind === 'drive' || root.kind === 'volume' ? 'ti-device-desktop' : 'ti-folder'}"></i>
+            <span class="local-source-main">
+              <strong>${escapeHtml(root.label || root.path)}</strong>
+              <span>${escapeHtml(root.path)}</span>
+            </span>
+            ${root.warning ? '<i class="ti ti-alert-triangle"></i>' : ''}
+          </button>
+        `;
+      }).join('');
+
+      const treeRows = (localState.tree?.items || []).slice(0, 8).map(item => `
+        <div class="local-tree-row" title="${escapeHtml(item.path)}">
+          <i class="ti ${item.type === 'directory' ? 'ti-folder' : 'ti-file'}"></i>
+          <span class="local-tree-main">
+            <strong>${escapeHtml(item.name)}</strong>
+            <span>${escapeHtml(item.excluded_reason || item.extension || item.type)}</span>
+          </span>
+          ${item.accessible === false ? '<i class="ti ti-lock"></i>' : ''}
+        </div>
+      `).join('');
+
+      const summary = localState.audit?.summary || null;
+      const auditHtml = summary ? `
+        <div class="local-audit-grid">
+          <div class="local-audit-stat"><strong>${formatCount(summary.readable_files)}</strong><span>읽을 파일</span></div>
+          <div class="local-audit-stat"><strong>${formatCount(summary.sensitive_files)}</strong><span>민감 제외</span></div>
+          <div class="local-audit-stat"><strong>${formatCount(summary.unsupported_files)}</strong><span>미지원</span></div>
+          <div class="local-audit-stat"><strong>${formatCount(summary.too_large_files)}</strong><span>너무 큼</span></div>
+          <div class="local-audit-stat"><strong>${formatCount(summary.image_ocr_candidates)}</strong><span>이미지</span></div>
+          <div class="local-audit-stat"><strong>${formatCount(summary.estimated_seconds)}</strong><span>예상 초</span></div>
+        </div>
+      ` : '';
+
+      const permissionHtml = localState.pendingPermission ? `
+        <div class="local-permission">
+          <div class="local-status-line">${escapeHtml(localState.pendingPermission.message || '')}</div>
+          <button class="local-source-btn primary" onclick="approveLocalPermission()">
+            <i class="ti ti-shield-check"></i>${t('local_permission')}
+          </button>
+        </div>
+      ` : '';
+
+      const sourceRows = localState.sources.slice(0, 4).map(source => {
+        const status = source.watch_active ? '자동 감지 중' : (source.watch_enabled ? '자동 감지 대기' : '수동 반영');
+        return `
+          <div class="local-source-row" title="${escapeHtml(source.root_path)}">
+            <i class="ti ti-database"></i>
+            <span class="local-source-main">
+              <strong>${escapeHtml(source.label || source.root_path)}</strong>
+              <span>${escapeHtml(status)} · ${escapeHtml(source.root_path)}</span>
+            </span>
+            <span>${formatCount((source.file_status || {}).indexed)}</span>
+          </div>
+        `;
+      }).join('');
+
+      const watchWarning = localState.watch && localState.watch.available === false
+        ? `<div class="local-status-line">${t('local_watch_unavailable')}</div>`
+        : '';
+      const statusClass = localState.error ? ' error' : '';
+      const statusText = localState.error || localState.status || '';
+
+      localSourcePanel.innerHTML = `
+        <div class="local-source-notice">${t('local_notice')}</div>
+        <div class="local-source-input">
+          <input id="local-path-input" value="${escapeHtml(localState.selectedPath)}" placeholder="${t('local_path_ph')}" oninput="updateLocalPath(this.value)">
+        </div>
+        ${rootRows ? `<div class="local-root-list">${rootRows}</div>` : ''}
+        <div class="local-option-row">
+          <label><input type="checkbox" ${localState.includeOcr ? 'checked' : ''} onchange="setLocalOption('includeOcr', this.checked)"> ${t('local_ocr')}</label>
+          <label><input type="checkbox" ${localState.watchEnabled ? 'checked' : ''} onchange="setLocalOption('watchEnabled', this.checked)"> ${t('local_watch')}</label>
+        </div>
+        <div class="local-source-actions">
+          <button class="local-source-btn" ${localState.busy ? 'disabled' : ''} onclick="runLocalTree()" title="${t('local_tree')}"><i class="ti ti-folders"></i>${t('local_tree')}</button>
+          <button class="local-source-btn" ${localState.busy ? 'disabled' : ''} onclick="runLocalAudit()" title="${t('local_audit')}"><i class="ti ti-shield-search"></i>${t('local_audit')}</button>
+          <button class="local-source-btn primary" ${localState.busy ? 'disabled' : ''} onclick="runLocalIndex()" title="${t('local_index')}"><i class="ti ti-chart-dots-3"></i>${t('local_index')}</button>
+        </div>
+        ${permissionHtml}
+        ${statusText ? `<div class="local-status-line${statusClass}">${escapeHtml(statusText)}</div>` : ''}
+        ${watchWarning}
+        ${auditHtml}
+        ${treeRows ? `<div class="local-tree-list">${treeRows}</div>` : ''}
+        <div class="local-source-list">
+          ${sourceRows || `<div class="local-status-line">${t('local_sources_empty')}</div>`}
+        </div>
+      `;
+    }
+
+    function selectLocalPath(path) {
+      localState.selectedPath = path;
+      localState.tree = null;
+      localState.audit = null;
+      localState.error = '';
+      localState.status = '';
+      renderLocalSources();
+    }
+
+    function updateLocalPath(path) {
+      localState.selectedPath = path;
+    }
+
+    function setLocalOption(key, value) {
+      localState[key] = Boolean(value);
+      renderLocalSources();
+    }
+
+    async function runLocalRequest(endpoint, payload, onSuccess) {
+      if (!localState.selectedPath) return;
+      localState.busy = true;
+      localState.error = '';
+      localState.status = '';
+      localState.pendingPermission = null;
+      renderLocalSources();
+      try {
+        const res = await apiJson(endpoint, payload);
+        if (res.status === 401) {
+          window.location.href = '/account';
+          return;
+        }
+        const data = await res.json();
+        if (data.permission_required) {
+          localState.pendingPermission = { endpoint, payload, ...data };
+          localState.busy = false;
+          renderLocalSources();
+          return;
+        }
+        if (!res.ok) throw new Error(data.detail || `Request failed (${res.status})`);
+        await onSuccess(data);
+      } catch (error) {
+        localState.error = error.message;
+      } finally {
+        localState.busy = false;
+        renderLocalSources();
+      }
+    }
+
+    async function approveLocalPermission() {
+      const pending = localState.pendingPermission;
+      if (!pending) return;
+      localState.busy = true;
+      renderLocalSources();
+      try {
+        const approveRes = await apiFetch(`/permissions/approve/${encodeURIComponent(pending.approval_token)}`, { method: 'POST' });
+        const approveData = await approveRes.json().catch(() => ({}));
+        if (!approveRes.ok) throw new Error(approveData.detail || `Approval failed (${approveRes.status})`);
+        const payload = { ...pending.payload, approved: true, approval_token: pending.approval_token };
+        const res = await apiJson(pending.endpoint, payload);
+        const data = await res.json();
+        if (!res.ok) throw new Error(data.detail || `Request failed (${res.status})`);
+        localState.pendingPermission = null;
+        if (pending.endpoint.endsWith('/tree')) {
+          localState.tree = data;
+          localState.status = data.privacy_notice || '';
+        } else if (pending.endpoint.endsWith('/audit')) {
+          localState.audit = data;
+          localState.status = data.privacy_notice || '';
+        } else if (pending.endpoint.endsWith('/index')) {
+          localState.status = `${t('local_indexed')} · ${formatCount((data.counts || {}).indexed)} files`;
+          await Promise.all([loadGraph(), loadLocalSources()]);
+          return;
+        }
+      } catch (error) {
+        localState.error = error.message;
+      } finally {
+        localState.busy = false;
+        renderLocalSources();
+      }
+    }
+
+    function runLocalTree() {
+      runLocalRequest('/knowledge-graph/local/tree', {
+        path: localState.selectedPath,
+        max_items: 120,
+      }, data => {
+        localState.tree = data;
+        localState.status = data.privacy_notice || '';
+      });
+    }
+
+    function runLocalAudit() {
+      runLocalRequest('/knowledge-graph/local/audit', {
+        path: localState.selectedPath,
+        include_ocr: localState.includeOcr,
+        max_files: 50000,
+      }, data => {
+        localState.audit = data;
+        localState.status = data.privacy_notice || '';
+      });
+    }
+
+    function runLocalIndex() {
+      runLocalRequest('/knowledge-graph/local/index', {
+        path: localState.selectedPath,
+        include_ocr: localState.includeOcr,
+        watch_enabled: localState.watchEnabled,
+        max_files: 5000,
+        consent: {
+          ui: 'graph',
+          knowledge_source: true,
+          image_ocr: localState.includeOcr,
+          watch_enabled: localState.watchEnabled,
+          sensitive_files_default_excluded: true,
+        },
+      }, async data => {
+        localState.status = `${t('local_indexed')} · ${formatCount((data.counts || {}).indexed)} files`;
+        await Promise.all([loadGraph(), loadLocalSources()]);
+      });
+    }
+
+    window.selectLocalPath = selectLocalPath;
+    window.updateLocalPath = updateLocalPath;
+    window.setLocalOption = setLocalOption;
+    window.runLocalTree = runLocalTree;
+    window.runLocalAudit = runLocalAudit;
+    window.runLocalIndex = runLocalIndex;
+    window.approveLocalPermission = approveLocalPermission;
 
     function nodeColor(type) {
       return (TYPE_CONFIG[type] || {}).color || '#8fa8bb';
@@ -712,7 +1011,7 @@ const API_BASE = window.location.protocol === 'file:' ? 'http://localhost:4825' 
         : '';
       const metrics = metricCards(node);
       const updatedAt = formatUpdatedAt(node.updated_at);
-      const source = meta.filename || meta.conversation_id || meta.source || '';
+      const source = meta.relative_path || meta.filename || meta.conversation_id || meta.source || '';
       const metadataStr = Object.keys(meta).length ? JSON.stringify(meta, null, 2) : '';
       detail.innerHTML = `
         <div class="type-badge" style="background:${nodeColor(node.type)}">${escapeHtml(typeLabel(node.type))}</div>
@@ -756,7 +1055,7 @@ const API_BASE = window.location.protocol === 'file:' ? 'http://localhost:4825' 
         <div class="search-list">
           ${searchResults.map(match => {
             const active = selected && selected.id === match.id ? 'active' : '';
-            const source = (match.metadata || {}).filename || (match.metadata || {}).conversation_id || '';
+            const source = (match.metadata || {}).relative_path || (match.metadata || {}).filename || (match.metadata || {}).conversation_id || '';
             return `
               <button class="search-item ${active}" data-node-id="${escapeHtml(match.id)}">
                 <div class="search-item-top">
@@ -1050,6 +1349,8 @@ const API_BASE = window.location.protocol === 'file:' ? 'http://localhost:4825' 
     resize();
     applyI18n();
     renderSearchResults();
+    renderLocalSources();
+    loadLocalSources();
     loadGraph().catch(error => {
       detail.innerHTML = `
         <div class="type-badge" style="background:${nodeColor('ClearEvent')}">${t('error')}</div>

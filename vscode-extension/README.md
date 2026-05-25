@@ -14,7 +14,7 @@ Connects to a running [Lattice AI](https://github.com/TaeSooPark-PTS/LatticeAI) 
 
 | Feature | Description |
 |---------|-------------|
-| **💬 Chat panel** | Talk to local MLX models (Gemma, Qwen, DeepSeek) or cloud (GPT-4o, Claude, Groq) |
+| **💬 Chat panel** | Talk to local MLX models (Gemma, Llama, Phi, Mistral) or cloud (GPT-4o, Claude, Groq) |
 | **✏️ Edit Selection** | Rewrite selected code with AI (`Cmd+Shift+E`) |
 | **🔍 Explain Selection** | Get a plain-English explanation of selected code |
 | **⚡ Generate Command** | Describe a task → get a shell command |
@@ -63,16 +63,20 @@ LTCAI
 
 ## 🧠 Supported Models
 
-**Local (Apple Silicon only):**
-- `mlx-community/gemma-4-26b-a4b-it-4bit` — Best all-round (32GB Mac)
-- `mlx-community/Qwen2.5-Coder-32B-Instruct-4bit` — Best for coding
-- `mlx-community/DeepSeek-R1-0528-4bit` — Best for reasoning
-- Any MLX-compatible model from Hugging Face
+**Local (Apple Silicon MLX + cross-platform local servers):**
+- `mlx-community/Qwen3-VL-4B-Instruct-4bit` — Multimodal low-spec default
+- `mlx-community/Qwen3-VL-8B-Instruct-4bit` — Multimodal balanced default
+- `mlx-community/Qwen3-VL-30B-A3B-Instruct-4bit` — Large multimodal model
+- `mlx-community/gemma-4-26b-a4b-it-4bit` — Strong all-round multimodal model
+- `mlx-community/Llama-3.1-8B-Instruct-4bit` — Balanced general model
+- `mlx-community/Phi-4-mini-instruct-4bit` — Lightweight coding model
+- `mlx-community/Mistral-7B-Instruct-v0.3-4bit` — Apache-licensed general model
+- Ollama / LM Studio / vLLM / llama.cpp models on Windows and Linux
 
 **Cloud (any platform):**
-- OpenAI (GPT-4o, GPT-4o-mini, o3, o4-mini)
-- Groq (Llama 3.3, DeepSeek-R1, Gemma 2)
-- OpenRouter / Together AI
+- OpenAI (GPT-5.5, GPT-5.4-mini, GPT-4o)
+- OpenRouter (Claude Opus 4.7, Sonnet 4.6, Haiku 4.5, Qwen3-VL)
+- Groq / Together AI
 - Any OpenAI-compatible endpoint
 
 ---

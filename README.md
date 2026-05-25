@@ -128,17 +128,20 @@ Comparison is based on public product behavior as of 2026-05.
 
 ## 🧠 Supported Models
 
-**Local — Apple Silicon only (MLX):**
+**Local — Apple Silicon MLX + cross-platform local servers:**
 
 | Model | Best for | Size |
 |-------|----------|------|
-| `mlx-community/gemma-4-26b-a4b-it-4bit` | General / coding | ~14 GB |
-| `mlx-community/Qwen2.5-Coder-32B-Instruct-4bit` | Coding | ~18 GB |
-| `mlx-community/DeepSeek-R1-0528-4bit` | Reasoning | ~38 GB |
-| `mlx-community/Phi-4-4bit` | Coding (fast) | ~8 GB |
+| `mlx-community/Qwen3-VL-4B-Instruct-4bit` | Multimodal / low spec | ~2.7 GB |
+| `mlx-community/Qwen3-VL-8B-Instruct-4bit` | Multimodal / balanced | ~4.8 GB |
+| `mlx-community/Qwen3-VL-30B-A3B-Instruct-4bit` | Multimodal / large | ~18 GB |
+| `mlx-community/Llama-3.1-8B-Instruct-4bit` | General | ~4.7 GB |
+| `mlx-community/Mistral-7B-Instruct-v0.3-4bit` | General / Apache | ~4.1 GB |
+| `mlx-community/Phi-4-mini-instruct-4bit` | Coding (fast) | ~2.2 GB |
+| `mlx-community/gemma-4-26b-a4b-it-4bit` | Multimodal / large | ~15.6 GB |
 
 **Cloud (any platform):**
-OpenAI · Groq · Together · OpenRouter · any OpenAI-compatible endpoint
+OpenAI GPT-5.5 · OpenRouter Claude Opus 4.7 / Sonnet 4.6 / Haiku 4.5 · Groq · Together · any OpenAI-compatible endpoint
 
 ---
 
@@ -321,7 +324,7 @@ Or: `./start_ai.sh` (auto-restart + caffeinate)
 | VS Code Marketplace | [marketplace.visualstudio.com](https://marketplace.visualstudio.com/items?itemName=parktaesoo.ltcai) |
 | Open VSX | [open-vsx.org](https://open-vsx.org/extension/parktaesoo/ltcai) |
 
-Current version: **0.1.30** — [Changelog](docs/CHANGELOG.md)
+Current version: **0.1.31** — [Changelog](docs/CHANGELOG.md)
 
 ---
 
@@ -368,9 +371,13 @@ LTCAI --tunnel                       # + Cloudflare 공개 URL 자동 발급
 
 | 모델 | 용도 | 크기 |
 |------|------|------|
-| `mlx-community/gemma-4-26b-a4b-it-4bit` | 범용 | ~14GB |
-| `mlx-community/Qwen2.5-Coder-32B-Instruct-4bit` | 코딩 | ~18GB |
-| `mlx-community/DeepSeek-R1-0528-4bit` | 추론 | ~38GB |
+| `mlx-community/Qwen3-VL-4B-Instruct-4bit` | 멀티모달 / 저사양 | ~2.7GB |
+| `mlx-community/Qwen3-VL-8B-Instruct-4bit` | 멀티모달 / 균형 | ~4.8GB |
+| `mlx-community/Qwen3-VL-30B-A3B-Instruct-4bit` | 멀티모달 / 대형 | ~18GB |
+| `mlx-community/Llama-3.1-8B-Instruct-4bit` | 범용 | ~4.7GB |
+| `mlx-community/Mistral-7B-Instruct-v0.3-4bit` | 범용 / Apache | ~4.1GB |
+| `mlx-community/Phi-4-mini-instruct-4bit` | 코딩 | ~2.2GB |
+| `mlx-community/gemma-4-26b-a4b-it-4bit` | 멀티모달 / 대형 | ~15.6GB |
 
 자세한 내용: [docs/CHANGELOG.md](docs/CHANGELOG.md) · [보안](SECURITY.md) · [기여](CONTRIBUTING.md)
 

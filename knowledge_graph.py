@@ -10,13 +10,16 @@ import hashlib
 import json
 import logging
 import math
+import os
+import platform
 import re
 import shutil
 import sqlite3
 import zipfile
+from collections import Counter
 from datetime import datetime
 from pathlib import Path
-from typing import Any, Dict, List, Optional
+from typing import Any, Dict, Iterable, List, Optional, Tuple
 
 try:
     from kg_schema import KGStoreV2
@@ -25,6 +28,76 @@ except Exception:  # pragma: no cover - v2 schema is optional at import time
 
 
 GRAPH_SCHEMA_VERSION = 1
+
+LOCAL_TEXT_EXTENSIONS = {".txt", ".md"}
+LOCAL_CODE_EXTENSIONS = {
+    ".py", ".js", ".ts", ".tsx", ".jsx", ".html", ".css", ".json",
+    ".yaml", ".yml", ".xml", ".sql", ".sh", ".zsh", ".toml", ".ini",
+}
+LOCAL_DOCUMENT_EXTENSIONS = {".pdf", ".docx"}
+LOCAL_SPREADSHEET_EXTENSIONS = {".xlsx", ".csv"}
+LOCAL_SLIDE_EXTENSIONS = {".pptx"}
+LOCAL_IMAGE_EXTENSIONS = {".png", ".jpg", ".jpeg", ".webp"}
+LOCAL_SUPPORTED_EXTENSIONS = (
+    LOCAL_TEXT_EXTENSIONS
+    | LOCAL_CODE_EXTENSIONS
+    | LOCAL_DOCUMENT_EXTENSIONS
+    | LOCAL_SPREADSHEET_EXTENSIONS
+    | LOCAL_SLIDE_EXTENSIONS
+    | LOCAL_IMAGE_EXTENSIONS
+)
+
+LOCAL_SIZE_LIMITS = {
+    "text": 4_000_000,
+    "code": 4_000_000,
+    "pdf": 50_000_000,
+    "document": 50_000_000,
+    "spreadsheet": 50_000_000,
+    "slide_deck": 50_000_000,
+    "image": 100_000_000,
+}
+
+COMMON_EXCLUDED_DIRS = {
+    ".git", "node_modules", ".venv", "venv", "env", "__pycache__",
+    ".pytest_cache", ".mypy_cache", ".ruff_cache", ".next", ".nuxt",
+    ".turbo", "dist", "build", "target", "out", "coverage", ".cache",
+    ".config", ".ssh", ".gnupg", ".docker", ".kube", ".aws", ".azure",
+    ".npm", ".pnpm-store", ".yarn", ".bun", ".cargo", ".rustup", ".pyenv",
+    ".conda", ".local", ".claude", ".codex", ".cursor", ".copilot",
+    ".antigravity", ".antigravity-ide",
+}
+
+COMMON_EXCLUDED_FILE_NAMES = {
+    ".env", ".env.local", ".env.production", ".env.development",
+    "id_rsa", "id_ed25519", "authorized_keys", "known_hosts",
+    "credentials.json", "service-account.json", "token.json", "secrets.json",
+    "cookies", "login data", "history", "web data", ".ds_store", "thumbs.db",
+}
+COMMON_EXCLUDED_FILE_SUFFIXES = {
+    ".pem", ".key", ".p12", ".pfx", ".kdbx", ".wallet", ".sqlite", ".db",
+    ".exe", ".dll", ".sys", ".msi", ".dmg", ".pkg", ".app", ".zip", ".tar",
+    ".gz", ".7z", ".rar", ".mp4", ".mov", ".mp3", ".wav", ".tmp", ".bak",
+    ".lock",
+}
+SENSITIVE_PATH_KEYWORDS = {
+    "secret", "secrets", "token", "password", "passwd", "credential",
+    "credentials", "private", "key", "wallet", "recovery", "seed",
+    "mnemonic", "cookie", "session", "auth", "oauth", "certificate",
+    "cert", "api_key", "apikey",
+}
+
+MACOS_EXCLUDED_PREFIXES = (
+    "/System", "/Library", "/Applications", "/private", "/tmp", "/var",
+)
+WINDOWS_EXCLUDED_NAMES = {
+    "windows", "program files", "program files (x86)", "programdata", "appdata",
+    "$recycle.bin", "system volume information", "recovery", "perflogs",
+    "intel", "amd", "nvidia",
+}
+LINUX_EXCLUDED_PREFIXES = (
+    "/bin", "/boot", "/dev", "/etc", "/lib", "/lib64", "/proc", "/root",
+    "/run", "/sbin", "/sys", "/tmp", "/usr", "/var", "/snap", "/lost+found",
+)
 
 
 def _now() -> str:
@@ -78,6 +151,199 @@ def _sha256_bytes(data: bytes) -> str:
 
 def _sha256_text(text: str) -> str:
     return hashlib.sha256(text.encode("utf-8", errors="replace")).hexdigest()
+
+
+def _safe_iso_from_stat_mtime(mtime: float) -> str:
+    try:
+        return datetime.fromtimestamp(float(mtime)).isoformat()
+    except (TypeError, ValueError, OSError):
+        return ""
+
+
+def _path_fingerprint(path: Path) -> str:
+    return _sha256_text(str(path.expanduser().resolve()))[:24]
+
+
+def _is_relative_to(path: Path, base: Path) -> bool:
+    try:
+        path.relative_to(base)
+        return True
+    except ValueError:
+        return False
+
+
+def _path_parts_lower(path: Path) -> List[str]:
+    return [part.lower() for part in path.parts if part and part not in {os.sep, path.anchor}]
+
+
+def _current_os_type() -> str:
+    system = platform.system().lower()
+    if system.startswith("darwin"):
+        return "macos"
+    if system.startswith("windows"):
+        return "windows"
+    if system.startswith("linux"):
+        return "linux"
+    return system or "unknown"
+
+
+def _drive_id_for_path(path: Path) -> str:
+    resolved = path.expanduser().resolve()
+    if resolved.drive:
+        return resolved.drive.upper()
+    parts = resolved.parts
+    if len(parts) >= 3 and parts[1] == "Volumes":
+        return f"/Volumes/{parts[2]}"
+    if len(parts) >= 3 and parts[1] == "media":
+        return f"/media/{parts[2]}"
+    if len(parts) >= 3 and parts[1] == "mnt":
+        return f"/mnt/{parts[2]}"
+    return resolved.anchor or "/"
+
+
+def _file_category(ext: str) -> str:
+    ext = (ext or "").lower()
+    if ext in LOCAL_CODE_EXTENSIONS:
+        return "code"
+    if ext in LOCAL_TEXT_EXTENSIONS:
+        return "text"
+    if ext == ".pdf":
+        return "pdf"
+    if ext in LOCAL_DOCUMENT_EXTENSIONS:
+        return "document"
+    if ext in LOCAL_SPREADSHEET_EXTENSIONS:
+        return "spreadsheet"
+    if ext in LOCAL_SLIDE_EXTENSIONS:
+        return "slide_deck"
+    if ext in LOCAL_IMAGE_EXTENSIONS:
+        return "image"
+    return "unsupported"
+
+
+def _node_type_for_category(category: str) -> str:
+    return {
+        "code": "CodeFile",
+        "spreadsheet": "Spreadsheet",
+        "slide_deck": "SlideDeck",
+        "image": "Image",
+        "unsupported": "File",
+    }.get(category, "Document")
+
+
+def _parser_type_for_category(category: str, ext: str) -> str:
+    if category in {"text", "code"}:
+        return "plain_text"
+    if category == "spreadsheet" and ext == ".csv":
+        return "csv_text"
+    if category == "image":
+        return "image_ocr"
+    return ext.lstrip(".") or category
+
+
+def _size_limit_for_category(category: str) -> int:
+    return LOCAL_SIZE_LIMITS.get(category, LOCAL_SIZE_LIMITS["document"])
+
+
+def _is_hidden_path(path: Path, root: Optional[Path] = None) -> bool:
+    parts: Iterable[str]
+    if root is not None:
+        try:
+            parts = path.relative_to(root).parts
+        except ValueError:
+            parts = path.parts
+    else:
+        parts = path.parts
+    return any(part.startswith(".") and part not in {".", ".."} for part in parts)
+
+
+def _excluded_directory_reason(path: Path, *, root: Optional[Path] = None, os_type: Optional[str] = None) -> Optional[str]:
+    os_type = os_type or _current_os_type()
+    name = path.name.lower()
+    if name in COMMON_EXCLUDED_DIRS:
+        return "excluded_folder"
+    if _is_hidden_path(path, root):
+        return "hidden_folder"
+    parts = _path_parts_lower(path)
+    if os_type == "windows" and any(part in WINDOWS_EXCLUDED_NAMES for part in parts):
+        return "system_folder"
+    normalized = path.as_posix()
+    root_normalized = root.as_posix() if root else ""
+
+    def _prefix_blocks(prefixes: Tuple[str, ...]) -> bool:
+        for prefix in prefixes:
+            path_under_prefix = normalized == prefix or normalized.startswith(f"{prefix}/")
+            root_under_prefix = bool(root_normalized) and (
+                root_normalized == prefix or root_normalized.startswith(f"{prefix}/")
+            )
+            if path_under_prefix and not root_under_prefix:
+                return True
+        return False
+
+    if os_type == "macos":
+        home_library = Path.home() / "Library"
+        try:
+            root_is_library = bool(root) and _is_relative_to(root.expanduser().resolve(), home_library.expanduser().resolve())
+            if _is_relative_to(path.expanduser().resolve(), home_library.expanduser().resolve()) and not root_is_library:
+                return "user_library"
+        except OSError:
+            pass
+        if _prefix_blocks(MACOS_EXCLUDED_PREFIXES):
+            return "system_folder"
+    if os_type == "linux":
+        if _prefix_blocks(LINUX_EXCLUDED_PREFIXES):
+            return "system_folder"
+    return None
+
+
+def _sensitive_file_reason(path: Path, *, root: Optional[Path] = None) -> Optional[str]:
+    name = path.name.lower()
+    suffix = path.suffix.lower()
+    if name in COMMON_EXCLUDED_FILE_NAMES or suffix in COMMON_EXCLUDED_FILE_SUFFIXES:
+        return "sensitive_or_excluded_file"
+    try:
+        rel_text = path.relative_to(root).as_posix().lower() if root else path.as_posix().lower()
+    except ValueError:
+        rel_text = path.as_posix().lower()
+    tokens = re.split(r"[^0-9a-zA-Z_가-힣]+", rel_text)
+    if any(token in SENSITIVE_PATH_KEYWORDS for token in tokens):
+        return "sensitive_name"
+    return None
+
+
+def _root_warning(path: Path, os_type: str) -> Optional[str]:
+    resolved = path.expanduser().resolve()
+    home = Path.home().expanduser().resolve()
+    if os_type == "macos" and resolved == home:
+        return "홈 전체에는 설정/숨김 폴더가 포함될 수 있습니다. 문서, 데스크탑, 다운로드, 프로젝트 폴더부터 추가하는 것을 권장합니다."
+    if os_type == "linux" and resolved.as_posix() == "/":
+        return "루트 디렉터리에는 시스템 파일이 포함되어 있습니다. 일반 사용자 폴더나 마운트된 데이터 폴더를 권장합니다."
+    if os_type == "windows" and str(resolved).rstrip("\\/").upper() in {"C:", "C:\\"}:
+        return "C드라이브에는 Windows 시스템 파일과 앱 설정 파일이 포함되어 있습니다. 하위 폴더를 선택하는 것을 권장합니다."
+    return None
+
+
+def _sample_file(path: Path, root: Path, status: str, reason: str = "") -> Dict[str, Any]:
+    try:
+        rel = path.relative_to(root).as_posix()
+    except ValueError:
+        rel = path.name
+    try:
+        stat = path.stat()
+        size = stat.st_size if path.is_file() else None
+        modified_at = _safe_iso_from_stat_mtime(stat.st_mtime)
+    except OSError:
+        size = None
+        modified_at = ""
+    return {
+        "path": str(path),
+        "relative_path": rel,
+        "name": path.name,
+        "extension": path.suffix.lower(),
+        "status": status,
+        "reason": reason,
+        "size_bytes": size,
+        "modified_at": modified_at,
+    }
 
 
 def _clean_text(text: str) -> str:
@@ -380,6 +646,22 @@ def _semantic_items(text: str) -> List[Dict[str, str]]:
     return items[:8]
 
 
+def _topic_candidates(text: str, limit: int = 8) -> List[str]:
+    """Return compact keyword candidates for fallback graph search."""
+    candidates = _extract_concepts(text, limit=limit)
+    if candidates:
+        return candidates[:limit]
+    seen: Dict[str, str] = {}
+    for token in re.findall(r"[A-Za-z][A-Za-z0-9_.:-]{2,}|[가-힣]{2,12}", str(text or "")):
+        key = token.lower()
+        if key in _CONCEPT_STOP or key.isdigit():
+            continue
+        seen.setdefault(key, token)
+        if len(seen) >= limit:
+            break
+    return list(seen.values())[:limit]
+
+
 class KnowledgeGraphStore:
     def __init__(self, db_path: Path, blob_dir: Path):
         self.db_path = Path(db_path)
@@ -433,10 +715,52 @@ class KnowledgeGraphStore:
                   created_at TEXT NOT NULL,
                   FOREIGN KEY(source_node) REFERENCES nodes(id) ON DELETE CASCADE
                 );
+                CREATE TABLE IF NOT EXISTS knowledge_sources (
+                  id TEXT PRIMARY KEY,
+                  root_path TEXT NOT NULL UNIQUE,
+                  os_type TEXT NOT NULL,
+                  drive_id TEXT,
+                  label TEXT,
+                  status TEXT NOT NULL,
+                  include_ocr INTEGER NOT NULL DEFAULT 0,
+                  watch_enabled INTEGER NOT NULL DEFAULT 0,
+                  consent_json TEXT NOT NULL CHECK (json_valid(consent_json)),
+                  created_at TEXT NOT NULL,
+                  updated_at TEXT NOT NULL,
+                  last_scanned_at TEXT
+                );
+                CREATE TABLE IF NOT EXISTS local_file_index (
+                  id TEXT PRIMARY KEY,
+                  source_id TEXT NOT NULL,
+                  os_type TEXT NOT NULL,
+                  drive_id TEXT,
+                  root_path TEXT NOT NULL,
+                  file_path TEXT NOT NULL,
+                  relative_path TEXT NOT NULL,
+                  file_name TEXT NOT NULL,
+                  extension TEXT NOT NULL,
+                  size_bytes INTEGER,
+                  modified_at TEXT,
+                  sha256 TEXT,
+                  last_scanned_at TEXT,
+                  last_indexed_at TEXT,
+                  parser_type TEXT,
+                  status TEXT NOT NULL,
+                  error_message TEXT,
+                  graph_node_id TEXT,
+                  deleted INTEGER NOT NULL DEFAULT 0,
+                  metadata_json TEXT NOT NULL CHECK (json_valid(metadata_json)),
+                  UNIQUE(source_id, relative_path),
+                  FOREIGN KEY(source_id) REFERENCES knowledge_sources(id) ON DELETE CASCADE
+                );
                 CREATE INDEX IF NOT EXISTS idx_nodes_type ON nodes(type);
                 CREATE INDEX IF NOT EXISTS idx_edges_from ON edges(from_node);
                 CREATE INDEX IF NOT EXISTS idx_edges_to ON edges(to_node);
                 CREATE INDEX IF NOT EXISTS idx_chunks_source ON chunks(source_node);
+                CREATE INDEX IF NOT EXISTS idx_knowledge_sources_root ON knowledge_sources(root_path);
+                CREATE INDEX IF NOT EXISTS idx_local_file_index_source ON local_file_index(source_id);
+                CREATE INDEX IF NOT EXISTS idx_local_file_index_status ON local_file_index(status);
+                CREATE INDEX IF NOT EXISTS idx_local_file_index_graph_node ON local_file_index(graph_node_id);
                 """
             )
             conn.execute(
@@ -501,6 +825,988 @@ class KnowledgeGraphStore:
             (edge_id, from_node, to_node, edge_type, float(weight), _json(metadata), _now()),
         )
         return edge_id
+
+    # ── Local folder sources → Graph RAG ──────────────────────────────────
+
+    def discover_local_roots(self) -> Dict[str, Any]:
+        """Return safe, cross-platform starting points for structure browsing."""
+        os_type = _current_os_type()
+        home = Path.home().expanduser()
+        roots: List[Dict[str, Any]] = []
+        seen: set = set()
+
+        def add(label: str, path: Path, kind: str, *, recommended: bool = True, warning: Optional[str] = None) -> None:
+            try:
+                resolved = path.expanduser().resolve()
+            except OSError:
+                resolved = path.expanduser()
+            key = str(resolved)
+            if key in seen or not resolved.exists():
+                return
+            seen.add(key)
+            roots.append({
+                "id": f"{kind}:{_path_fingerprint(resolved)}",
+                "label": label,
+                "path": key,
+                "kind": kind,
+                "recommended": recommended,
+                "warning": warning or _root_warning(resolved, os_type),
+            })
+
+        add("홈", home, "home", warning=_root_warning(home, os_type))
+        for name, label in (
+            ("Documents", "문서"),
+            ("Desktop", "데스크탑"),
+            ("Downloads", "다운로드"),
+            ("Pictures", "사진"),
+            ("Projects", "프로젝트"),
+        ):
+            add(label, home / name, name.lower())
+
+        if os_type == "macos":
+            volumes = Path("/Volumes")
+            if volumes.exists():
+                try:
+                    for volume in sorted(volumes.iterdir(), key=lambda p: p.name.lower()):
+                        add(volume.name, volume, "volume", recommended=False)
+                except OSError:
+                    pass
+        elif os_type == "windows":
+            for letter in "ABCDEFGHIJKLMNOPQRSTUVWXYZ":
+                drive = Path(f"{letter}:\\")
+                if drive.exists():
+                    add(f"{letter}: 드라이브", drive, "drive", recommended=(letter != "C"))
+            for env_name, label in (("OneDrive", "OneDrive"), ("OneDriveCommercial", "OneDrive")):
+                raw = os.environ.get(env_name)
+                if raw:
+                    add(label, Path(raw), "cloud", recommended=False)
+        elif os_type == "linux":
+            for base in (Path("/mnt"), Path("/media")):
+                add(str(base), base, "mounts", recommended=False)
+                try:
+                    if base.exists():
+                        for mounted in sorted(base.iterdir(), key=lambda p: p.name.lower()):
+                            add(mounted.name, mounted, "volume", recommended=False)
+                except OSError:
+                    pass
+
+        return {
+            "os_type": os_type,
+            "computer": platform.node() or "local",
+            "roots": roots,
+            "privacy_notice": "처음에는 드라이브와 폴더 구조만 확인하며, 파일 내용은 사용자가 동의한 뒤에만 읽습니다.",
+        }
+
+    def preview_local_tree(self, path: Path, *, max_items: int = 200) -> Dict[str, Any]:
+        """List one folder level using metadata only; file contents are not read."""
+        root = Path(path).expanduser().resolve()
+        if not root.exists():
+            raise ValueError(f"경로가 존재하지 않습니다: {path}")
+        if not root.is_dir():
+            raise ValueError(f"폴더가 아닙니다: {path}")
+
+        os_type = _current_os_type()
+        max_items = max(1, min(int(max_items or 200), 1000))
+        items: List[Dict[str, Any]] = []
+        inaccessible = 0
+        try:
+            children = sorted(root.iterdir(), key=lambda p: (not p.is_dir(), p.name.lower()))
+        except PermissionError as exc:
+            return {
+                "path": str(root),
+                "items": [],
+                "error": f"접근 권한 없음: {exc}",
+                "privacy_notice": "현재 단계에서는 파일 내용을 읽지 않고, 폴더와 파일의 이름/크기/수정일만 확인합니다.",
+            }
+
+        for child in children[:max_items]:
+            try:
+                is_dir = child.is_dir()
+                stat = child.stat()
+                reason = _excluded_directory_reason(child, root=root, os_type=os_type) if is_dir else _sensitive_file_reason(child, root=root)
+                items.append({
+                    "name": child.name,
+                    "path": str(child),
+                    "type": "directory" if is_dir else "file",
+                    "extension": "" if is_dir else child.suffix.lower(),
+                    "size_bytes": None if is_dir else stat.st_size,
+                    "modified_at": _safe_iso_from_stat_mtime(stat.st_mtime),
+                    "hidden": _is_hidden_path(child, root),
+                    "accessible": True,
+                    "excluded_reason": reason,
+                })
+            except PermissionError:
+                inaccessible += 1
+                items.append({
+                    "name": child.name,
+                    "path": str(child),
+                    "type": "unknown",
+                    "accessible": False,
+                    "excluded_reason": "permission_denied",
+                })
+            except OSError as exc:
+                inaccessible += 1
+                items.append({
+                    "name": child.name,
+                    "path": str(child),
+                    "type": "unknown",
+                    "accessible": False,
+                    "excluded_reason": str(exc),
+                })
+
+        return {
+            "path": str(root),
+            "os_type": os_type,
+            "items": items,
+            "truncated": len(children) > max_items,
+            "inaccessible": inaccessible,
+            "warning": _root_warning(root, os_type),
+            "privacy_notice": "현재 단계에서는 파일 내용을 읽지 않고, 폴더와 파일의 이름/크기/수정일만 확인합니다.",
+        }
+
+    def _iter_local_scan_entries(self, root: Path, *, max_files: int) -> Iterable[Dict[str, Any]]:
+        os_type = _current_os_type()
+        stack = [root]
+        files_seen = 0
+        while stack:
+            current = stack.pop()
+            try:
+                children = sorted(current.iterdir(), key=lambda p: (not p.is_dir(), p.name.lower()))
+            except PermissionError as exc:
+                yield {"kind": "inaccessible_dir", "path": current, "reason": f"permission_denied: {exc}"}
+                continue
+            except OSError as exc:
+                yield {"kind": "inaccessible_dir", "path": current, "reason": str(exc)}
+                continue
+
+            for child in children:
+                if child.is_symlink():
+                    yield {"kind": "excluded", "path": child, "reason": "symlink"}
+                    continue
+                try:
+                    if child.is_dir():
+                        reason = _excluded_directory_reason(child, root=root, os_type=os_type)
+                        if reason:
+                            yield {"kind": "excluded_dir", "path": child, "reason": reason}
+                        else:
+                            stack.append(child)
+                        continue
+                    if not child.is_file():
+                        yield {"kind": "excluded", "path": child, "reason": "not_regular_file"}
+                        continue
+                    stat = child.stat()
+                except PermissionError as exc:
+                    yield {"kind": "inaccessible_file", "path": child, "reason": f"permission_denied: {exc}"}
+                    continue
+                except OSError as exc:
+                    yield {"kind": "inaccessible_file", "path": child, "reason": str(exc)}
+                    continue
+
+                files_seen += 1
+                if files_seen > max_files:
+                    yield {"kind": "limit_reached", "path": child, "reason": "max_files"}
+                    return
+                yield {"kind": "file", "path": child, "stat": stat}
+
+    def _local_file_decision(self, path: Path, root: Path, stat: os.stat_result) -> Dict[str, Any]:
+        ext = path.suffix.lower()
+        category = _file_category(ext)
+        parser_type = _parser_type_for_category(category, ext)
+        sensitive_reason = _sensitive_file_reason(path, root=root)
+        if sensitive_reason:
+            return {
+                "status": "sensitive_blocked",
+                "reason": sensitive_reason,
+                "category": category,
+                "parser_type": parser_type,
+                "indexable": False,
+            }
+        if category == "unsupported":
+            return {
+                "status": "unsupported",
+                "reason": "unsupported_extension",
+                "category": category,
+                "parser_type": parser_type,
+                "indexable": False,
+            }
+        limit = _size_limit_for_category(category)
+        if stat.st_size > limit:
+            return {
+                "status": "too_large",
+                "reason": f"size>{limit}",
+                "category": category,
+                "parser_type": parser_type,
+                "indexable": False,
+            }
+        return {
+            "status": "pending",
+            "reason": "",
+            "category": category,
+            "parser_type": parser_type,
+            "indexable": True,
+        }
+
+    def audit_local_folder(self, path: Path, *, include_ocr: bool = False, max_files: int = 50_000) -> Dict[str, Any]:
+        """Safety-check a folder using metadata only; file bodies are not read."""
+        root = Path(path).expanduser().resolve()
+        if not root.exists():
+            raise ValueError(f"경로가 존재하지 않습니다: {path}")
+        if not root.is_dir():
+            raise ValueError(f"폴더가 아닙니다: {path}")
+
+        os_type = _current_os_type()
+        max_files = max(1, min(int(max_files or 50_000), 200_000))
+        status_counts: Counter = Counter()
+        category_counts: Counter = Counter()
+        extension_counts: Counter = Counter()
+        allowed_samples: List[Dict[str, Any]] = []
+        excluded_samples: List[Dict[str, Any]] = []
+        total_files = 0
+        readable_files = 0
+        inaccessible = 0
+        excluded_dirs = 0
+        limit_reached = False
+
+        for entry in self._iter_local_scan_entries(root, max_files=max_files):
+            kind = entry["kind"]
+            path_obj = entry["path"]
+            if kind == "limit_reached":
+                limit_reached = True
+                break
+            if kind == "excluded_dir":
+                excluded_dirs += 1
+                if len(excluded_samples) < 25:
+                    excluded_samples.append(_sample_file(path_obj, root, "excluded", entry.get("reason", "")))
+                continue
+            if kind in {"inaccessible_dir", "inaccessible_file"}:
+                inaccessible += 1
+                status_counts["failed"] += 1
+                if len(excluded_samples) < 25:
+                    excluded_samples.append(_sample_file(path_obj, root, "failed", entry.get("reason", "")))
+                continue
+            if kind == "excluded":
+                status_counts["excluded"] += 1
+                if len(excluded_samples) < 25:
+                    excluded_samples.append(_sample_file(path_obj, root, "excluded", entry.get("reason", "")))
+                continue
+            if kind != "file":
+                continue
+
+            total_files += 1
+            stat = entry["stat"]
+            decision = self._local_file_decision(path_obj, root, stat)
+            status = decision["status"]
+            category = decision["category"]
+            ext = path_obj.suffix.lower() or "(none)"
+            category_counts[category] += 1
+            extension_counts[ext] += 1
+            if decision["indexable"]:
+                readable_files += 1
+                status_counts["readable"] += 1
+                if len(allowed_samples) < 25:
+                    allowed_samples.append(_sample_file(path_obj, root, "readable"))
+            else:
+                status_counts[status] += 1
+                if len(excluded_samples) < 25:
+                    excluded_samples.append(_sample_file(path_obj, root, status, decision["reason"]))
+
+        doc_weight = category_counts["pdf"] * 1.4 + category_counts["document"] * 0.9 + category_counts["slide_deck"] * 1.0
+        sheet_weight = category_counts["spreadsheet"] * 0.6
+        ocr_weight = category_counts["image"] * (1.8 if include_ocr else 0.1)
+        estimated_seconds = round(readable_files * 0.04 + doc_weight + sheet_weight + ocr_weight, 1)
+
+        return {
+            "path": str(root),
+            "source_id": f"source:{_path_fingerprint(root)}",
+            "os_type": os_type,
+            "drive_id": _drive_id_for_path(root),
+            "warning": _root_warning(root, os_type),
+            "privacy_notice": "현재 단계에서는 파일 내용을 읽지 않고, 폴더와 파일의 이름/크기/수정일만 확인합니다.",
+            "include_ocr_requested": bool(include_ocr),
+            "summary": {
+                "total_files": total_files,
+                "readable_files": readable_files,
+                "excluded_files": int(
+                    status_counts["excluded"]
+                    + status_counts["sensitive_blocked"]
+                    + status_counts["too_large"]
+                    + status_counts["unsupported"]
+                ),
+                "sensitive_files": int(status_counts["sensitive_blocked"]),
+                "too_large_files": int(status_counts["too_large"]),
+                "unsupported_files": int(status_counts["unsupported"]),
+                "image_ocr_candidates": int(category_counts["image"]),
+                "inaccessible_items": inaccessible,
+                "excluded_dirs": excluded_dirs,
+                "estimated_seconds": estimated_seconds,
+                "storage_root": str(self.db_path.parent),
+                "limit_reached": limit_reached,
+            },
+            "by_status": dict(status_counts),
+            "by_category": dict(category_counts),
+            "by_extension": dict(extension_counts.most_common(40)),
+            "allowed_samples": allowed_samples,
+            "excluded_samples": excluded_samples,
+            "consent_required": {
+                "knowledge_source": True,
+                "image_ocr": bool(category_counts["image"]),
+                "watch": True,
+                "sensitive_files_default_excluded": True,
+            },
+        }
+
+    def local_sources(self) -> Dict[str, Any]:
+        with self._connect() as conn:
+            sources = [
+                {
+                    "id": row["id"],
+                    "root_path": row["root_path"],
+                    "os_type": row["os_type"],
+                    "drive_id": row["drive_id"],
+                    "label": row["label"],
+                    "status": row["status"],
+                    "include_ocr": bool(row["include_ocr"]),
+                    "watch_enabled": bool(row["watch_enabled"]),
+                    "consent": _safe_loads(row["consent_json"]),
+                    "created_at": row["created_at"],
+                    "updated_at": row["updated_at"],
+                    "last_scanned_at": row["last_scanned_at"],
+                }
+                for row in conn.execute(
+                    """
+                    SELECT id, root_path, os_type, drive_id, label, status, include_ocr,
+                           watch_enabled, consent_json, created_at, updated_at, last_scanned_at
+                    FROM knowledge_sources
+                    ORDER BY updated_at DESC
+                    """
+                )
+            ]
+            status_rows = conn.execute(
+                "SELECT source_id, status, COUNT(*) AS count FROM local_file_index GROUP BY source_id, status"
+            ).fetchall()
+        counts: Dict[str, Dict[str, int]] = {}
+        for row in status_rows:
+            counts.setdefault(row["source_id"], {})[row["status"]] = row["count"]
+        for source in sources:
+            source["file_status"] = counts.get(source["id"], {})
+        return {"sources": sources}
+
+    def set_local_source_watch(self, source_id: str, enabled: bool) -> Dict[str, Any]:
+        source_id = str(source_id or "").strip()
+        if not source_id:
+            raise ValueError("source_id required")
+        with self._connect() as conn:
+            row = conn.execute(
+                "SELECT id FROM knowledge_sources WHERE id=?",
+                (source_id,),
+            ).fetchone()
+            if not row:
+                raise ValueError(f"knowledge source not found: {source_id}")
+            conn.execute(
+                "UPDATE knowledge_sources SET watch_enabled=?, updated_at=? WHERE id=?",
+                (1 if enabled else 0, _now(), source_id),
+            )
+        return {"source_id": source_id, "watch_enabled": bool(enabled)}
+
+    def _extract_local_file_text(self, path: Path, category: str, *, include_ocr: bool) -> Tuple[str, Dict[str, Any]]:
+        ext = path.suffix.lower()
+        meta: Dict[str, Any] = {"parser": _parser_type_for_category(category, ext)}
+        text = ""
+        if category in {"text", "code"} or ext == ".csv":
+            text = path.read_text(encoding="utf-8", errors="replace")
+        elif ext == ".pdf":
+            import pdfplumber
+            with pdfplumber.open(str(path)) as pdf:
+                meta["pages"] = len(pdf.pages)
+                text = "\n\n".join((page.extract_text() or "") for page in pdf.pages)
+        elif ext == ".docx":
+            from docx import Document
+            doc = Document(str(path))
+            paragraphs = [p.text for p in doc.paragraphs if p.text.strip()]
+            meta["paragraphs"] = len(paragraphs)
+            meta["tables"] = len(doc.tables)
+            text = "\n\n".join(paragraphs)
+        elif ext == ".xlsx":
+            from openpyxl import load_workbook
+            wb = load_workbook(str(path), read_only=True, data_only=True)
+            rows_all = []
+            for ws in wb.worksheets:
+                rows_all.append(f"[Sheet: {ws.title}]")
+                for row in ws.iter_rows(values_only=True):
+                    cells = [str(cell) if cell is not None else "" for cell in row]
+                    rows_all.append("\t".join(cells))
+                    if len("\n".join(rows_all)) > 200_000:
+                        break
+            meta["sheets"] = len(wb.worksheets)
+            text = "\n".join(rows_all)
+        elif ext == ".pptx":
+            from pptx import Presentation
+            prs = Presentation(str(path))
+            slides_text = []
+            for index, slide in enumerate(prs.slides, 1):
+                parts = []
+                for shape in slide.shapes:
+                    if getattr(shape, "has_text_frame", False):
+                        parts.append(shape.text_frame.text)
+                slides_text.append(f"[Slide {index}]\n" + "\n".join(parts))
+            meta["slides"] = len(prs.slides)
+            text = "\n\n".join(slides_text)
+        elif category == "image":
+            from PIL import Image
+            with Image.open(str(path)) as image:
+                meta.update({
+                    "width": image.width,
+                    "height": image.height,
+                    "format": image.format,
+                    "mode": image.mode,
+                    "ocr_enabled": bool(include_ocr),
+                })
+                if include_ocr:
+                    try:
+                        import pytesseract
+                        text = pytesseract.image_to_string(image)
+                        meta["ocr_chars"] = len(text)
+                    except Exception as exc:  # pragma: no cover - depends on local OCR runtime
+                        meta["ocr_error"] = str(exc)
+                        text = ""
+        return text[:200_000], meta
+
+    def _ensure_local_hierarchy(
+        self,
+        conn: sqlite3.Connection,
+        *,
+        source_id: str,
+        root: Path,
+        file_path: Path,
+        os_type: str,
+        drive_id: str,
+    ) -> str:
+        computer_label = platform.node() or "내 컴퓨터"
+        computer_id = f"computer:{_slug(computer_label)}"
+        drive_node_id = f"drive:{_sha256_text(f'{os_type}:{drive_id}')[:24]}"
+        root_folder_id = f"folder:{_sha256_text(f'{source_id}:root')[:24]}"
+        self._upsert_node(conn, computer_id, "Computer", computer_label, metadata={"os_type": os_type})
+        self._upsert_node(conn, drive_node_id, "Drive", drive_id, metadata={"os_type": os_type, "drive_id": drive_id})
+        self._upsert_edge(conn, computer_id, drive_node_id, "포함함", metadata={"source": "local_scan"})
+        self._upsert_node(
+            conn,
+            root_folder_id,
+            "Folder",
+            root.name or str(root),
+            summary=str(root),
+            metadata={"source_id": source_id, "path": str(root), "root": True},
+        )
+        self._upsert_edge(conn, drive_node_id, root_folder_id, "포함함", metadata={"source": "local_scan"})
+
+        try:
+            relative_parent = file_path.parent.relative_to(root)
+        except ValueError:
+            relative_parent = Path()
+        parent_id = root_folder_id
+        current_path = root
+        for part in relative_parent.parts:
+            current_path = current_path / part
+            folder_id = f"folder:{_sha256_text(f'{source_id}:{current_path.as_posix()}')[:24]}"
+            self._upsert_node(
+                conn,
+                folder_id,
+                "Folder",
+                part,
+                summary=str(current_path),
+                metadata={"source_id": source_id, "path": str(current_path), "root": False},
+            )
+            self._upsert_edge(conn, parent_id, folder_id, "포함함", metadata={"source": "local_scan"})
+            parent_id = folder_id
+        return parent_id
+
+    def _upsert_local_file_index(
+        self,
+        conn: sqlite3.Connection,
+        *,
+        source_id: str,
+        root: Path,
+        file_path: Path,
+        stat: Optional[os.stat_result],
+        os_type: str,
+        drive_id: str,
+        status: str,
+        parser_type: str,
+        sha256: Optional[str] = None,
+        graph_node_id: Optional[str] = None,
+        error_message: Optional[str] = None,
+        metadata: Optional[Dict[str, Any]] = None,
+    ) -> str:
+        try:
+            relative_path = file_path.relative_to(root).as_posix()
+        except ValueError:
+            relative_path = file_path.name
+        index_id = f"local-index:{_sha256_text(f'{source_id}:{relative_path}')[:24]}"
+        now = _now()
+        size = stat.st_size if stat else None
+        modified_at = _safe_iso_from_stat_mtime(stat.st_mtime) if stat else ""
+        conn.execute(
+            """
+            INSERT INTO local_file_index(
+              id, source_id, os_type, drive_id, root_path, file_path, relative_path,
+              file_name, extension, size_bytes, modified_at, sha256, last_scanned_at,
+              last_indexed_at, parser_type, status, error_message, graph_node_id,
+              deleted, metadata_json
+            )
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+            ON CONFLICT(source_id, relative_path) DO UPDATE SET
+              os_type=excluded.os_type,
+              drive_id=excluded.drive_id,
+              root_path=excluded.root_path,
+              file_path=excluded.file_path,
+              file_name=excluded.file_name,
+              extension=excluded.extension,
+              size_bytes=excluded.size_bytes,
+              modified_at=excluded.modified_at,
+              sha256=COALESCE(excluded.sha256, local_file_index.sha256),
+              last_scanned_at=excluded.last_scanned_at,
+              last_indexed_at=COALESCE(excluded.last_indexed_at, local_file_index.last_indexed_at),
+              parser_type=excluded.parser_type,
+              status=excluded.status,
+              error_message=excluded.error_message,
+              graph_node_id=COALESCE(excluded.graph_node_id, local_file_index.graph_node_id),
+              deleted=excluded.deleted,
+              metadata_json=excluded.metadata_json
+            """,
+            (
+                index_id, source_id, os_type, drive_id, str(root), str(file_path), relative_path,
+                file_path.name, file_path.suffix.lower(), size, modified_at, sha256, now,
+                now if status == "indexed" else None, parser_type, status, error_message,
+                graph_node_id, 0 if status != "deleted" else 1, _json(metadata),
+            ),
+        )
+        return index_id
+
+    def _upsert_local_file_node(
+        self,
+        conn: sqlite3.Connection,
+        *,
+        source_id: str,
+        root: Path,
+        file_path: Path,
+        stat: os.stat_result,
+        os_type: str,
+        drive_id: str,
+        sha256: str,
+        category: str,
+        parser_type: str,
+        text: str,
+        parser_meta: Dict[str, Any],
+    ) -> str:
+        try:
+            relative_path = file_path.relative_to(root).as_posix()
+        except ValueError:
+            relative_path = file_path.name
+        file_node_id = f"local-file:{_sha256_text(f'{source_id}:{relative_path}')[:24]}"
+        parent_folder_id = self._ensure_local_hierarchy(
+            conn,
+            source_id=source_id,
+            root=root,
+            file_path=file_path,
+            os_type=os_type,
+            drive_id=drive_id,
+        )
+        child_rows = conn.execute(
+            """
+            SELECT e.to_node AS id
+            FROM edges e
+            JOIN nodes n ON n.id=e.to_node
+            WHERE e.from_node=? AND n.type IN ('Chunk', 'ImageText', 'Section')
+            """,
+            (file_node_id,),
+        ).fetchall()
+        child_ids = [row["id"] for row in child_rows]
+        conn.execute("DELETE FROM chunks WHERE source_node=?", (file_node_id,))
+        if child_ids:
+            placeholders = ",".join("?" * len(child_ids))
+            conn.execute(f"DELETE FROM nodes WHERE id IN ({placeholders})", child_ids)
+        conn.execute("DELETE FROM edges WHERE from_node=?", (file_node_id,))
+
+        metadata = {
+            "source": "local_folder",
+            "source_id": source_id,
+            "root_path": str(root),
+            "file_path": str(file_path),
+            "relative_path": relative_path,
+            "filename": file_path.name,
+            "ext": file_path.suffix.lower(),
+            "category": category,
+            "parser_type": parser_type,
+            "bytes": stat.st_size,
+            "modified_at": _safe_iso_from_stat_mtime(stat.st_mtime),
+            "sha256": sha256,
+            "parser": parser_meta,
+        }
+        self._upsert_node(
+            conn,
+            file_node_id,
+            _node_type_for_category(category),
+            file_path.name,
+            summary=(_clean_text(text) or relative_path)[:700],
+            metadata=metadata,
+            raw=metadata,
+        )
+        self._upsert_edge(conn, parent_folder_id, file_node_id, "포함함", weight=1.0, metadata={"source": "local_scan"})
+
+        target_for_concepts = text
+        if category == "image" and text:
+            image_text_id = f"imagetext:{_sha256_text(f'{file_node_id}:ocr')[:24]}"
+            self._upsert_node(
+                conn,
+                image_text_id,
+                "ImageText",
+                f"{file_path.name} OCR",
+                summary=_clean_text(text)[:700],
+                metadata={"source_node": file_node_id, "source_id": source_id, "chars": len(text)},
+            )
+            self._upsert_edge(conn, file_node_id, image_text_id, "포함함", weight=0.8, metadata={"source": "ocr"})
+
+        for index, chunk in enumerate(_chunks(text)):
+            chunk_id = f"chunk:{_sha256_text(f'{file_node_id}:{index}:{chunk}')[:24]}"
+            self._upsert_node(
+                conn,
+                chunk_id,
+                "Chunk",
+                f"{file_path.name} chunk {index + 1}",
+                summary=chunk[:500],
+                metadata={"index": index, "source_node": file_node_id, "source_id": source_id},
+            )
+            conn.execute(
+                "INSERT OR REPLACE INTO chunks(id, source_node, text, metadata_json, created_at) "
+                "VALUES (?, ?, ?, ?, ?)",
+                (
+                    chunk_id,
+                    file_node_id,
+                    chunk,
+                    _json({"index": index, "source_node": file_node_id, "source_id": source_id}),
+                    _now(),
+                ),
+            )
+            self._upsert_edge(conn, file_node_id, chunk_id, "포함함", weight=0.7, metadata={"source": "local_scan"})
+
+        concepts = _extract_concepts(f"{file_path.name}\n{target_for_concepts}", limit=18)
+        concept_ids: Dict[str, str] = {}
+        for concept in concepts:
+            node_t = _classify_node_type(concept, target_for_concepts)
+            concept_id = f"{node_t.lower()}:{_slug(concept)}"
+            concept_ids[concept.lower()] = concept_id
+            self._upsert_node(
+                conn,
+                concept_id,
+                node_t,
+                concept,
+                metadata={"auto_extracted": True, "source": "local_folder", "source_id": source_id},
+            )
+            self._upsert_edge(conn, file_node_id, concept_id, "언급함", weight=0.75, metadata={"source": "local_scan"})
+
+        for triple in _extract_triples(target_for_concepts, concepts, limit=20):
+            subj_id = concept_ids.get(triple["subject"].lower())
+            obj_id = concept_ids.get(triple["object"].lower())
+            if subj_id and obj_id and subj_id != obj_id:
+                self._upsert_edge(
+                    conn,
+                    subj_id,
+                    obj_id,
+                    triple["relation"],
+                    weight=0.9,
+                    metadata={"context": triple.get("context", "")[:240], "source_id": source_id},
+                )
+
+        for item in _semantic_items(target_for_concepts):
+            sem_type = item["type"]
+            sem_title = item["title"]
+            sem_id = f"{sem_type.lower()}:{_sha256_text(f'{file_node_id}:{sem_type}:{sem_title}')[:24]}"
+            self._upsert_node(
+                conn,
+                sem_id,
+                sem_type,
+                sem_title,
+                summary=item["summary"],
+                metadata={"auto_extracted": True, "source_node": file_node_id, "filename": file_path.name},
+                raw=item,
+            )
+            self._upsert_edge(conn, file_node_id, sem_id, "포함함", weight=0.9)
+
+        return file_node_id
+
+    def index_local_folder(
+        self,
+        path: Path,
+        *,
+        include_ocr: bool = False,
+        watch_enabled: bool = False,
+        user_email: Optional[str] = None,
+        consent: Optional[Dict[str, Any]] = None,
+        max_files: int = 5_000,
+    ) -> Dict[str, Any]:
+        """Read approved files from a local folder and connect them to Graph RAG."""
+        root = Path(path).expanduser().resolve()
+        if not root.exists():
+            raise ValueError(f"경로가 존재하지 않습니다: {path}")
+        if not root.is_dir():
+            raise ValueError(f"폴더가 아닙니다: {path}")
+
+        os_type = _current_os_type()
+        drive_id = _drive_id_for_path(root)
+        source_id = f"source:{_path_fingerprint(root)}"
+        now = _now()
+        max_files = max(1, min(int(max_files or 5_000), 50_000))
+        consent_payload = {
+            "approved_at": now,
+            "approved_by": user_email,
+            "knowledge_source": True,
+            "include_ocr": bool(include_ocr),
+            "watch_enabled": bool(watch_enabled),
+            "sensitive_files_default_excluded": True,
+            **(consent or {}),
+        }
+        counts: Counter = Counter()
+        seen_relative_paths: set = set()
+        indexed_nodes: List[str] = []
+        errors: List[Dict[str, str]] = []
+        limit_reached = False
+
+        with self._connect() as conn:
+            conn.execute(
+                """
+                INSERT INTO knowledge_sources(
+                  id, root_path, os_type, drive_id, label, status, include_ocr,
+                  watch_enabled, consent_json, created_at, updated_at, last_scanned_at
+                )
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                ON CONFLICT(id) DO UPDATE SET
+                  root_path=excluded.root_path,
+                  os_type=excluded.os_type,
+                  drive_id=excluded.drive_id,
+                  label=excluded.label,
+                  status=excluded.status,
+                  include_ocr=excluded.include_ocr,
+                  watch_enabled=excluded.watch_enabled,
+                  consent_json=excluded.consent_json,
+                  updated_at=excluded.updated_at,
+                  last_scanned_at=excluded.last_scanned_at
+                """,
+                (
+                    source_id, str(root), os_type, drive_id, root.name or str(root), "scanning",
+                    1 if include_ocr else 0, 1 if watch_enabled else 0, _json(consent_payload),
+                    now, now, now,
+                ),
+            )
+
+            for entry in self._iter_local_scan_entries(root, max_files=max_files):
+                kind = entry["kind"]
+                file_path = entry["path"]
+                if kind == "limit_reached":
+                    counts["limit_reached"] += 1
+                    limit_reached = True
+                    break
+                if kind in {"excluded_dir", "excluded"}:
+                    counts["excluded"] += 1
+                    continue
+                if kind in {"inaccessible_dir", "inaccessible_file"}:
+                    counts["failed"] += 1
+                    errors.append({"path": str(file_path), "error": entry.get("reason", "inaccessible")})
+                    continue
+                if kind != "file":
+                    continue
+
+                stat = entry["stat"]
+                try:
+                    relative_path = file_path.relative_to(root).as_posix()
+                except ValueError:
+                    relative_path = file_path.name
+                seen_relative_paths.add(relative_path)
+                decision = self._local_file_decision(file_path, root, stat)
+                parser_type = decision["parser_type"]
+                if not decision["indexable"]:
+                    counts[decision["status"]] += 1
+                    self._upsert_local_file_index(
+                        conn,
+                        source_id=source_id,
+                        root=root,
+                        file_path=file_path,
+                        stat=stat,
+                        os_type=os_type,
+                        drive_id=drive_id,
+                        status=decision["status"],
+                        parser_type=parser_type,
+                        metadata={"reason": decision["reason"], "category": decision["category"]},
+                    )
+                    continue
+
+                modified_at = _safe_iso_from_stat_mtime(stat.st_mtime)
+                existing = conn.execute(
+                    """
+                    SELECT size_bytes, modified_at, sha256, graph_node_id, status
+                    FROM local_file_index
+                    WHERE source_id=? AND relative_path=?
+                    """,
+                    (source_id, relative_path),
+                ).fetchone()
+                if (
+                    existing
+                    and existing["status"] == "indexed"
+                    and existing["graph_node_id"]
+                    and existing["size_bytes"] == stat.st_size
+                    and existing["modified_at"] == modified_at
+                ):
+                    counts["skipped_unchanged"] += 1
+                    self._upsert_local_file_index(
+                        conn,
+                        source_id=source_id,
+                        root=root,
+                        file_path=file_path,
+                        stat=stat,
+                        os_type=os_type,
+                        drive_id=drive_id,
+                        status="indexed",
+                        parser_type=parser_type,
+                        sha256=existing["sha256"],
+                        graph_node_id=existing["graph_node_id"],
+                        metadata={"category": decision["category"], "unchanged": True},
+                    )
+                    continue
+
+                try:
+                    data = file_path.read_bytes()
+                    digest = _sha256_bytes(data)
+                except Exception as exc:
+                    counts["failed"] += 1
+                    errors.append({"path": str(file_path), "error": str(exc)})
+                    self._upsert_local_file_index(
+                        conn,
+                        source_id=source_id,
+                        root=root,
+                        file_path=file_path,
+                        stat=stat,
+                        os_type=os_type,
+                        drive_id=drive_id,
+                        status="failed",
+                        parser_type=parser_type,
+                        error_message=str(exc),
+                        metadata={"category": decision["category"]},
+                    )
+                    continue
+
+                if existing and existing["sha256"] == digest and existing["graph_node_id"]:
+                    counts["skipped_unchanged"] += 1
+                    self._upsert_local_file_index(
+                        conn,
+                        source_id=source_id,
+                        root=root,
+                        file_path=file_path,
+                        stat=stat,
+                        os_type=os_type,
+                        drive_id=drive_id,
+                        status="indexed",
+                        parser_type=parser_type,
+                        sha256=digest,
+                        graph_node_id=existing["graph_node_id"],
+                        metadata={"category": decision["category"], "sha256_unchanged": True},
+                    )
+                    continue
+
+                try:
+                    text, parser_meta = self._extract_local_file_text(
+                        file_path,
+                        decision["category"],
+                        include_ocr=include_ocr,
+                    )
+                    graph_node_id = self._upsert_local_file_node(
+                        conn,
+                        source_id=source_id,
+                        root=root,
+                        file_path=file_path,
+                        stat=stat,
+                        os_type=os_type,
+                        drive_id=drive_id,
+                        sha256=digest,
+                        category=decision["category"],
+                        parser_type=parser_type,
+                        text=text,
+                        parser_meta=parser_meta,
+                    )
+                    self._upsert_local_file_index(
+                        conn,
+                        source_id=source_id,
+                        root=root,
+                        file_path=file_path,
+                        stat=stat,
+                        os_type=os_type,
+                        drive_id=drive_id,
+                        status="indexed",
+                        parser_type=parser_type,
+                        sha256=digest,
+                        graph_node_id=graph_node_id,
+                        metadata={"category": decision["category"], "parser": parser_meta},
+                    )
+                    counts["indexed"] += 1
+                    indexed_nodes.append(graph_node_id)
+                except Exception as exc:
+                    counts["failed"] += 1
+                    errors.append({"path": str(file_path), "error": str(exc)})
+                    self._upsert_local_file_index(
+                        conn,
+                        source_id=source_id,
+                        root=root,
+                        file_path=file_path,
+                        stat=stat,
+                        os_type=os_type,
+                        drive_id=drive_id,
+                        status="failed",
+                        parser_type=parser_type,
+                        sha256=digest,
+                        error_message=str(exc),
+                        metadata={"category": decision["category"]},
+                    )
+
+            if not limit_reached:
+                existing_paths = {
+                    row["relative_path"]
+                    for row in conn.execute(
+                        "SELECT relative_path FROM local_file_index WHERE source_id=?",
+                        (source_id,),
+                    )
+                }
+                deleted_paths = existing_paths - seen_relative_paths
+                for relative_path in deleted_paths:
+                    conn.execute(
+                        """
+                        UPDATE local_file_index
+                        SET status='deleted', deleted=1, last_scanned_at=?, error_message=NULL
+                        WHERE source_id=? AND relative_path=?
+                        """,
+                        (_now(), source_id, relative_path),
+                    )
+                counts["deleted"] = len(deleted_paths)
+            conn.execute(
+                """
+                UPDATE knowledge_sources
+                SET status='active', updated_at=?, last_scanned_at=?
+                WHERE id=?
+                """,
+                (_now(), _now(), source_id),
+            )
+
+        return {
+            "status": "ok",
+            "source": {
+                "id": source_id,
+                "root_path": str(root),
+                "os_type": os_type,
+                "drive_id": drive_id,
+                "include_ocr": bool(include_ocr),
+                "watch_enabled": bool(watch_enabled),
+            },
+            "counts": dict(counts),
+            "indexed_nodes": indexed_nodes[:100],
+            "errors": errors[:50],
+            "notice": "Lattice AI는 사용자가 선택한 폴더만 AI 지식으로 변환합니다.",
+        }
 
     def ingest_message(
         self,
@@ -961,8 +2267,17 @@ class KnowledgeGraphStore:
     # ── 그래프에 표시되는 노드 타입  (점 = 명사) ──────────────────────────────
     # Message / AIResponse / Chunk 는 RAG 검색용으로만 저장, 그래프에서 숨김.
     _GRAPH_VISIBLE_TYPES = (
+        "Computer",   # 내 컴퓨터
+        "Drive",      # 드라이브 / 볼륨
+        "Folder",     # 폴더
+        "File",       # 일반 파일
         "Chat",       # 대화 세션
         "Document",   # 파일 (PDF·PPT·Word·Excel·이미지)
+        "CodeFile",   # 코드 파일
+        "Spreadsheet",# 엑셀/CSV
+        "SlideDeck",  # 프레젠테이션
+        "Image",      # 이미지
+        "ImageText",  # OCR 텍스트
         "Concept",    # 개념 / 아이디어 / 기술 용어
         "Person",     # 사람
         "Error",      # 오류 / 버그
@@ -1133,7 +2448,10 @@ class KnowledgeGraphStore:
             def score(row: sqlite3.Row) -> tuple:
                 haystack = f"{row['title']} {row['summary']} {row['metadata_json']}".lower()
                 hits = sum(1 for term in terms_for_score if term.lower() in haystack)
-                type_boost = 1 if row["type"] in {"Decision", "Task", "File", "Page", "Slide"} else 0
+                type_boost = 1 if row["type"] in {
+                    "Decision", "Task", "File", "Document", "CodeFile",
+                    "Spreadsheet", "SlideDeck", "Image", "ImageText", "Page", "Slide",
+                } else 0
                 return (hits, type_boost, row["updated_at"] or "")
 
             rows = sorted(rows, key=score, reverse=True)[:limit]
@@ -1192,7 +2510,13 @@ class KnowledgeGraphStore:
         lines = []
         for match in matches[:limit]:
             meta = match.get("metadata") or {}
-            source = meta.get("filename") or meta.get("conversation_id") or meta.get("source") or match["id"]
+            source = (
+                meta.get("relative_path")
+                or meta.get("filename")
+                or meta.get("conversation_id")
+                or meta.get("source")
+                or match["id"]
+            )
             summary = _clean_text(match.get("summary") or "")[:700]
             lines.append(f"- [{match['type']}] {match['title']} | source={source} | {summary}")
         return "\n".join(lines)
@@ -1271,7 +2595,11 @@ class KnowledgeGraphStore:
                 "nodes": conn.execute("SELECT COUNT(*) AS c FROM nodes").fetchone()["c"],
                 "edges": conn.execute("SELECT COUNT(*) AS c FROM edges").fetchone()["c"],
                 "chunks": conn.execute("SELECT COUNT(*) AS c FROM chunks").fetchone()["c"],
+                "knowledge_sources": conn.execute("SELECT COUNT(*) AS c FROM knowledge_sources").fetchone()["c"],
+                "local_file_index": conn.execute("SELECT COUNT(*) AS c FROM local_file_index").fetchone()["c"],
             }
+            conn.execute("DELETE FROM local_file_index")
+            conn.execute("DELETE FROM knowledge_sources")
             conn.execute("DELETE FROM chunks")
             conn.execute("DELETE FROM edges")
             conn.execute("DELETE FROM nodes")
@@ -1290,6 +2618,11 @@ class KnowledgeGraphStore:
                 row["type"]: row["count"]
                 for row in conn.execute("SELECT type, COUNT(*) AS count FROM edges GROUP BY type")
             }
+            local_sources = conn.execute("SELECT COUNT(*) AS c FROM knowledge_sources").fetchone()["c"]
+            local_file_status = {
+                row["status"]: row["count"]
+                for row in conn.execute("SELECT status, COUNT(*) AS count FROM local_file_index GROUP BY status")
+            }
         v2 = None
         if KGStoreV2 is not None:
             try:
@@ -1302,5 +2635,7 @@ class KnowledgeGraphStore:
             "v2_schema_available": KGStoreV2 is not None,
             "nodes": node_counts,
             "edges": edge_counts,
+            "local_sources": local_sources,
+            "local_file_status": local_file_status,
             "v2": v2,
         }

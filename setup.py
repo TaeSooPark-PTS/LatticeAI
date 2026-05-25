@@ -21,7 +21,7 @@ from typing import Any, AsyncIterator, Dict, List, Tuple
 def _cmd(args: List[str], timeout: int = 10) -> str:
     try:
         r = subprocess.run(args, capture_output=True, text=True, timeout=timeout, check=False)
-        return r.stdout.strip()
+        return (r.stdout or r.stderr or "").strip()
     except Exception:
         return ""
 
@@ -35,6 +35,7 @@ OFFICIAL_DOWNLOADS: Dict[str, str] = {
     "git": "https://git-scm.com/downloads",
     "ollama": "https://ollama.com/download",
     "lmstudio": "https://lmstudio.ai/download",
+    "cuda": "https://developer.nvidia.com/cuda-downloads",
     "mlx": "https://ml-explore.github.io/mlx/build/html/install.html",
     "cloudflared": "https://developers.cloudflare.com/cloudflare-one/connections/connect-networks/downloads/",
     "tesseract": "https://tesseract-ocr.github.io/tessdoc/Installation.html",
@@ -49,6 +50,34 @@ COMMON_PATH_DIRS = [
     str(Path.home() / ".cargo" / "bin"),
     str(Path.home() / ".latticeai" / "bin"),
 ]
+
+if platform.system() == "Windows":
+    _local_appdata = os.environ.get("LOCALAPPDATA", "")
+    _program_files = os.environ.get("ProgramFiles", r"C:\Program Files")
+    _program_files_x86 = os.environ.get("ProgramFiles(x86)", r"C:\Program Files (x86)")
+    COMMON_PATH_DIRS.extend([
+        str(Path(_local_appdata) / "Programs" / "Ollama") if _local_appdata else "",
+        str(Path(_program_files) / "Ollama"),
+        str(Path(_program_files) / "LM Studio"),
+        str(Path(_program_files) / "NVIDIA Corporation" / "NVSMI"),
+        str(Path(_program_files_x86) / "NVIDIA Corporation" / "NVSMI"),
+    ])
+    COMMON_PATH_DIRS = [p for p in COMMON_PATH_DIRS if p]
+
+WINDOWS_BINARY_CANDIDATES: Dict[str, List[str]] = {
+    "ollama": [
+        str(Path(os.environ.get("LOCALAPPDATA", "")) / "Programs" / "Ollama" / "ollama.exe"),
+        str(Path(os.environ.get("ProgramFiles", r"C:\Program Files")) / "Ollama" / "ollama.exe"),
+    ],
+    "lms": [
+        str(Path(os.environ.get("LOCALAPPDATA", "")) / "Programs" / "LM Studio" / "resources" / "app" / ".webpack" / "lms.exe"),
+        str(Path(os.environ.get("ProgramFiles", r"C:\Program Files")) / "LM Studio" / "resources" / "app" / ".webpack" / "lms.exe"),
+    ],
+    "nvidia-smi": [
+        str(Path(os.environ.get("ProgramFiles", r"C:\Program Files")) / "NVIDIA Corporation" / "NVSMI" / "nvidia-smi.exe"),
+        str(Path(os.environ.get("ProgramFiles(x86)", r"C:\Program Files (x86)")) / "NVIDIA Corporation" / "NVSMI" / "nvidia-smi.exe"),
+    ],
+}
 
 PACKAGE_MODULES: Dict[str, str] = {
     "mlx-lm": "mlx_lm",
@@ -106,15 +135,26 @@ def _persist_extra_path(dirs: List[str]) -> None:
 
 
 def repair_path_for(binary: str | None = None) -> List[str]:
-    before = shutil.which(binary) if binary else None
+    before = _which_any(binary) if binary else None
     paths = _merge_path_dirs(COMMON_PATH_DIRS)
-    if binary and not before and shutil.which(binary):
+    if binary and not before and _which_any(binary):
         _persist_extra_path(COMMON_PATH_DIRS)
     return paths
 
 
-def _which_detail(binary: str) -> Dict[str, Any]:
+def _which_any(binary: str) -> str | None:
     path = shutil.which(binary)
+    if path:
+        return path
+    if platform.system() == "Windows":
+        for candidate in WINDOWS_BINARY_CANDIDATES.get(binary, []):
+            if candidate and Path(candidate).exists():
+                return candidate
+    return None
+
+
+def _which_detail(binary: str) -> Dict[str, Any]:
+    path = _which_any(binary)
     return {"installed": path is not None, "path": path}
 
 
@@ -139,7 +179,7 @@ def _component_detail(name: str, binary: str | None = None, module: str | None =
 
 def _verify_binary(binary: str, version_args: List[str] | None = None, timeout: int = 20) -> Tuple[bool, str]:
     repair_path_for(binary)
-    found = shutil.which(binary)
+    found = _which_any(binary)
     if not found:
         return False, f"{binary} 실행 파일을 PATH에서 찾지 못했습니다."
     args = [found, *(version_args or ["--version"])]
@@ -177,18 +217,116 @@ def _detect_chip() -> Dict[str, Any]:
         gm = re.search(r"M(\d+)", name)
         gen = int(gm.group(1)) if gm else 1
     else:
-        brand = _cmd(["sysctl", "-n", "machdep.cpu.brand_string"])
+        brand = ""
+        if platform.system() == "Darwin":
+            brand = _cmd(["sysctl", "-n", "machdep.cpu.brand_string"])
+        elif platform.system() == "Windows":
+            raw = _cmd(["wmic", "cpu", "get", "Name", "/value"], timeout=5)
+            if "Name=" in raw:
+                brand = raw.split("Name=", 1)[-1].splitlines()[0].strip()
+        elif platform.system() == "Linux":
+            try:
+                for line in Path("/proc/cpuinfo").read_text(encoding="utf-8", errors="replace").splitlines():
+                    if line.lower().startswith("model name"):
+                        brand = line.split(":", 1)[-1].strip()
+                        break
+            except Exception:
+                pass
         name = brand or platform.processor() or "Unknown CPU"
 
     return {"name": name, "arch": arch, "is_apple_silicon": is_apple, "gen": gen}
 
+
+def _detect_cpu() -> Dict[str, Any]:
+    flags: List[str] = []
+    physical_cores = os.cpu_count() or 0
+    logical_cores = os.cpu_count() or 0
+    model = _detect_chip()["name"]
+    if platform.system() == "Darwin":
+        flags = [item.lower() for item in _cmd(["sysctl", "-n", "machdep.cpu.features"], timeout=5).split()]
+        try:
+            physical_cores = int(_cmd(["sysctl", "-n", "hw.physicalcpu"], timeout=5) or physical_cores)
+            logical_cores = int(_cmd(["sysctl", "-n", "hw.logicalcpu"], timeout=5) or logical_cores)
+        except ValueError:
+            pass
+    elif platform.system() == "Linux":
+        try:
+            text = Path("/proc/cpuinfo").read_text(encoding="utf-8", errors="replace")
+            for line in text.splitlines():
+                if line.lower().startswith(("flags", "features")):
+                    flags = line.split(":", 1)[-1].strip().lower().split()
+                    break
+        except Exception:
+            pass
+    elif platform.system() == "Windows":
+        raw = _cmd(["wmic", "cpu", "get", "Name,NumberOfCores,NumberOfLogicalProcessors", "/format:list"], timeout=5)
+        for line in raw.splitlines():
+            key, _, value = line.partition("=")
+            if key == "Name" and value.strip():
+                model = value.strip()
+            elif key == "NumberOfCores" and value.strip():
+                try:
+                    physical_cores = int(value.strip())
+                except ValueError:
+                    pass
+            elif key == "NumberOfLogicalProcessors" and value.strip():
+                try:
+                    logical_cores = int(value.strip())
+                except ValueError:
+                    pass
+        try:
+            import ctypes
+            kernel32 = ctypes.windll.kernel32
+            feature_map = {
+                6: "sse",
+                10: "sse2",
+                13: "sse3",
+                19: "neon",
+                28: "rdrand",
+            }
+            flags.extend(name for code, name in feature_map.items() if kernel32.IsProcessorFeaturePresent(code))
+        except Exception:
+            pass
+    interesting = {"avx", "avx2", "avx512f", "fma", "neon", "sse4_2"}
+    if platform.system() == "Windows":
+        interesting.update({"sse", "sse2", "sse3", "rdrand"})
+    return {
+        "model": model,
+        "physical_cores": physical_cores,
+        "logical_cores": logical_cores,
+        "instructions": sorted({flag for flag in flags if flag in interesting}),
+    }
+
 def _detect_ram_gb() -> float:
+    if platform.system() == "Windows":
+        raw = _cmd(["wmic", "ComputerSystem", "get", "TotalPhysicalMemory", "/format:list"], timeout=5)
+        for line in raw.splitlines():
+            if line.startswith("TotalPhysicalMemory="):
+                try:
+                    return round(int(line.split("=", 1)[-1].strip()) / 1_073_741_824, 1)
+                except ValueError:
+                    break
     raw = _cmd(["sysctl", "-n", "hw.memsize"])
     if raw:
         try:
             return round(int(raw) / 1_073_741_824, 1)
         except ValueError:
             pass
+    if platform.system() == "Darwin":
+        profiler = _cmd(["system_profiler", "SPHardwareDataType"], timeout=8)
+        m = re.search(r"Memory:\s+([\d.]+)\s*(TB|GB|MB)", profiler, re.IGNORECASE)
+        if m:
+            value = float(m.group(1))
+            unit = m.group(2).lower()
+            if unit == "tb":
+                return round(value * 1024, 1)
+            if unit == "gb":
+                return round(value, 1)
+            return round(value / 1024, 1)
+        hostinfo = _cmd(["hostinfo"], timeout=5)
+        m = re.search(r"Primary memory available:\s+([\d.]+)\s+gigabytes", hostinfo, re.IGNORECASE)
+        if m:
+            return round(float(m.group(1)), 1)
     try:
         with open("/proc/meminfo") as f:
             for line in f:
@@ -205,10 +343,141 @@ def _detect_disk_free_gb() -> float:
     except Exception:
         return 0.0
 
+
+def _parse_windows_video_controllers(raw: str) -> List[Dict[str, Any]]:
+    controllers: List[Dict[str, Any]] = []
+    if not raw:
+        return controllers
+    try:
+        data = _json.loads(raw)
+        if isinstance(data, dict):
+            data = [data]
+        if isinstance(data, list):
+            for item in data:
+                name = str(item.get("Name") or "").strip()
+                try:
+                    ram_mb = int(item.get("AdapterRAM") or 0) // (1024 * 1024)
+                except Exception:
+                    ram_mb = 0
+                if name:
+                    controllers.append({"name": name, "vram_mb": ram_mb})
+        if controllers:
+            return controllers
+    except Exception:
+        pass
+    current: Dict[str, Any] = {}
+    for line in raw.splitlines():
+        if line.startswith("Name="):
+            if current:
+                controllers.append(current)
+            current = {"name": line.split("=", 1)[-1].strip(), "vram_mb": 0}
+        elif line.startswith("AdapterRAM=") and current:
+            try:
+                current["vram_mb"] = int(line.split("=", 1)[-1].strip()) // (1024 * 1024)
+            except ValueError:
+                current["vram_mb"] = 0
+    if current:
+        controllers.append(current)
+    return controllers
+
+
+def _detect_gpu() -> Dict[str, Any]:
+    devices: List[Dict[str, Any]] = []
+    nvidia_smi = _which_any("nvidia-smi")
+    if nvidia_smi:
+        info = _cmd([nvidia_smi, "--query-gpu=name,memory.total", "--format=csv,noheader,nounits"], timeout=8)
+        for line in [item.strip() for item in info.splitlines() if item.strip()]:
+            try:
+                name, mem = [part.strip() for part in line.split(",", 1)]
+                devices.append({"vendor": "nvidia", "name": name, "vram_mb": int(float(mem)), "backend": "cuda"})
+            except Exception:
+                continue
+
+    if platform.system() == "Windows":
+        shell = _which_any("powershell") or _which_any("pwsh")
+        raw = ""
+        if shell:
+            raw = _cmd([
+                shell, "-NoProfile", "-Command",
+                "Get-CimInstance Win32_VideoController | Select-Object Name,AdapterRAM | ConvertTo-Json -Compress",
+            ], timeout=8)
+        if not raw:
+            raw = _cmd(["wmic", "path", "win32_VideoController", "get", "Name,AdapterRAM", "/format:list"], timeout=8)
+        for item in _parse_windows_video_controllers(raw):
+            if any(existing.get("name") == item["name"] for existing in devices):
+                continue
+            low = item["name"].lower()
+            vendor, backend = "unknown", "cpu"
+            if "nvidia" in low or "geforce" in low or "rtx" in low:
+                vendor, backend = "nvidia", "cuda"
+            elif "amd" in low or "radeon" in low:
+                vendor, backend = "amd", "directml/vulkan"
+            elif "intel" in low or "arc" in low or "iris" in low:
+                vendor, backend = "intel", "directml/vulkan"
+            devices.append({"vendor": vendor, "name": item["name"], "vram_mb": item["vram_mb"], "backend": backend})
+    elif platform.system() == "Darwin":
+        sp = _cmd(["system_profiler", "SPDisplaysDataType"], timeout=8)
+        for line in sp.splitlines():
+            if "Chipset Model" in line:
+                devices.append({"vendor": "apple", "name": line.split(":", 1)[-1].strip(), "vram_mb": 0, "backend": "metal/mlx"})
+                break
+    elif platform.system() == "Linux" and not devices:
+        info = _cmd(["lspci"], timeout=5)
+        for line in info.splitlines():
+            low = line.lower()
+            if not any(token in low for token in ("vga", "3d controller", "display")):
+                continue
+            if "nvidia" in low:
+                devices.append({"vendor": "nvidia", "name": line.strip(), "vram_mb": 0, "backend": "cuda"})
+            elif "amd" in low or "advanced micro devices" in low or "radeon" in low:
+                devices.append({"vendor": "amd", "name": line.strip(), "vram_mb": 0, "backend": "rocm/vulkan"})
+            elif "intel" in low:
+                devices.append({"vendor": "intel", "name": line.strip(), "vram_mb": 0, "backend": "vulkan"})
+
+    primary = max(devices, key=lambda item: int(item.get("vram_mb") or 0), default={})
+    vram_mb = int(primary.get("vram_mb") or 0)
+    return {
+        "devices": devices,
+        "vendor": primary.get("vendor", "none"),
+        "name": primary.get("name", ""),
+        "vram_mb": vram_mb,
+        "vram_gb": round(vram_mb / 1024, 1),
+        "backend": primary.get("backend", "cpu"),
+    }
+
+
+def _detect_cuda() -> Dict[str, Any]:
+    nvidia_smi = _which_any("nvidia-smi")
+    nvcc = _which_any("nvcc")
+    version = ""
+    if nvidia_smi:
+        raw = _cmd([nvidia_smi, "--query-gpu=driver_version", "--format=csv,noheader"], timeout=5)
+        version = raw.splitlines()[0].strip() if raw.splitlines() else ""
+    if nvcc:
+        raw = _cmd([nvcc, "--version"], timeout=5)
+        m = re.search(r"release\s+([\d.]+)", raw)
+        if m:
+            version = m.group(1)
+    return {"available": bool(nvidia_smi or nvcc), "nvidia_smi": nvidia_smi, "nvcc": nvcc, "version": version}
+
+
+def _detect_wsl() -> Dict[str, Any]:
+    if platform.system() != "Linux":
+        return {"is_wsl": False, "version": ""}
+    raw = ""
+    try:
+        raw = Path("/proc/version").read_text(encoding="utf-8", errors="replace")
+    except Exception:
+        pass
+    is_wsl = "microsoft" in raw.lower() or "wsl" in raw.lower()
+    version = "2" if "microsoft-standard" in raw.lower() or "wsl2" in raw.lower() else ("1" if is_wsl else "")
+    return {"is_wsl": is_wsl, "version": version}
+
+
 def _detect_tools() -> Dict[str, bool]:
     repair_path_for()
-    return {t: shutil.which(t) is not None
-            for t in ["brew", "ollama", "python3", "node", "npm", "git", "tesseract"]}
+    return {t: _which_any(t) is not None
+            for t in ["brew", "ollama", "python3", "python", "node", "npm", "git", "tesseract", "lms", "nvidia-smi", "nvcc"]}
 
 def _detect_mlx() -> Dict[str, Any]:
     has_lm = has_vlm = False
@@ -236,22 +505,32 @@ def _detect_api_keys() -> Dict[str, bool]:
 
 def scan_environment() -> Dict[str, Any]:
     chip = _detect_chip()
+    cpu = _detect_cpu()
+    gpu = _detect_gpu()
+    cuda = _detect_cuda()
+    wsl = _detect_wsl()
     tools = _detect_tools()
+    python_binary = "python3" if tools.get("python3") else "python"
     return {
         "os":           platform.system(),
         "os_version":   platform.mac_ver()[0] if platform.system() == "Darwin" else platform.version(),
         "chip":         chip,
+        "cpu":          cpu,
+        "gpu":          gpu,
+        "cuda":         cuda,
+        "wsl":          wsl,
         "ram_gb":       _detect_ram_gb(),
         "disk_free_gb": _detect_disk_free_gb(),
         "tools":        tools,
         "components": {
             "homebrew": _component_detail("homebrew", "brew"),
-            "python": {**_component_detail("python", "python3"), "version": platform.python_version()},
+            "python": {**_component_detail("python", python_binary), "version": platform.python_version()},
             "node": _component_detail("node", "node"),
             "npm": _component_detail("node", "npm"),
             "git": _component_detail("git", "git"),
             "ollama": _component_detail("ollama", "ollama"),
             "lmstudio": _component_detail("lmstudio", "lms"),
+            "cuda": {**_component_detail("cuda", "nvcc"), **cuda},
             "tesseract": _component_detail("tesseract", "tesseract"),
             "mlx": _component_detail("mlx", module="mlx"),
             "mlx_lm": _component_detail("mlx", module="mlx_lm"),
@@ -268,17 +547,56 @@ def scan_environment() -> Dict[str, Any]:
 # ── Model Catalog ─────────────────────────────────────────────────────────────
 # (model_id, display_name, size_gb, tag, description, min_ram_gb)
 _MODEL_CATALOG = [
-    ("mlx-community/gemma-2-2b-it-4bit",             "Gemma 2 2B",           1.6,  "초경량",  "빠른 응답 · 간단한 작업",        4),
+    ("mlx-community/gemma-3-1b-it-4bit",             "Gemma 3 1B",           0.8,  "초경량",  "가벼운 요약 · 빠른 응답",        4),
+    ("mlx-community/SmolLM-1.7B-Instruct-4bit",      "SmolLM 1.7B",          1.0,  "초경량",  "CPU/저사양 백업",               4),
+    ("mlx-community/Llama-3.2-1B-Instruct-4bit",     "Llama 3.2 1B",         1.3,  "경량",    "엣지 작업 · 빠른 응답",          4),
+    ("mlx-community/gemma-2-2b-it-4bit",             "Gemma 2 2B",           1.6,  "경량",    "간단한 작업 · 안정적",           4),
     ("mlx-community/Llama-3.2-3B-Instruct-4bit",     "Llama 3.2 3B",         2.0,  "경량",    "일상 대화 · 빠름",              4),
-    ("mlx-community/Qwen2.5-Coder-7B-Instruct-4bit", "Qwen 2.5 Coder 7B",    4.3,  "코딩",    "코드 생성 특화",                8),
+    ("mlx-community/Qwen3-VL-4B-Instruct-4bit",      "Qwen3-VL 4B",          2.7,  "VLM",     "최신 Qwen 멀티모달 · 저사양",     8),
+    ("mlx-community/Phi-4-mini-instruct-4bit",       "Phi 4 Mini",           2.2,  "코딩",    "가벼운 코딩 · 함수 호출",        8),
+    ("mlx-community/Mistral-7B-Instruct-v0.3-4bit",  "Mistral 7B v0.3",      4.1,  "범용",    "Apache 라이선스 · 안정적",       8),
+    ("mlx-community/Qwen3-VL-8B-Instruct-4bit",      "Qwen3-VL 8B",          4.8,  "VLM",     "최신 Qwen 멀티모달 · 균형 추천",  16),
+    ("mlx-community/Qwen2.5-VL-7B-Instruct-4bit",    "Qwen2.5-VL 7B",        4.4,  "VLM",     "검증된 Qwen 멀티모달 백업",       16),
     ("mlx-community/Llama-3.1-8B-Instruct-4bit",     "Llama 3.1 8B",         4.7,  "범용",    "균형 잡힌 성능",                8),
     ("mlx-community/gemma-2-9b-it-4bit",             "Gemma 2 9B",           5.4,  "정확도",  "높은 응답 품질",               10),
-    ("mlx-community/Qwen2.5-Coder-14B-Instruct-4bit","Qwen 2.5 Coder 14B",   8.3,  "코딩+",   "고품질 코드 생성",              16),
-    ("mlx-community/Phi-4-4bit",                     "Phi 4",                8.4,  "코딩",    "Microsoft 코딩 특화",           16),
-    ("mlx-community/gemma-4-26b-a4b-it-4bit",        "Gemma 4 26B",         18.0,  "VLM",     "이미지 지원 · 추천 모델",        24),
-    ("mlx-community/Qwen2.5-Coder-32B-Instruct-4bit","Qwen 2.5 Coder 32B",  18.5,  "코딩★",   "최고 코딩 품질",               24),
-    ("mlx-community/DeepSeek-R1-0528-4bit",          "DeepSeek R1",         38.0,  "추론",    "복잡한 수학 · 추론",            48),
+    ("mlx-community/gemma-3-12b-it-4bit",            "Gemma 3 12B",          8.0,  "멀티모달", "이미지/텍스트 균형",            16),
+    ("mlx-community/phi-4-4bit",                     "Phi 4",                8.3,  "코딩+",   "Microsoft 코딩 · 수학",         16),
+    ("mlx-community/Qwen2.5-Coder-32B-Instruct-4bit", "Qwen2.5 Coder 32B",   18.5, "코딩+",   "대형 코딩 · Qwen 계열",          36),
+    ("mlx-community/Mistral-Small-24B-Instruct-2501-4bit","Mistral Small 24B",13.3, "대형",    "고품질 범용 응답",              32),
+    ("mlx-community/gemma-4-26b-a4b-it-4bit",        "Gemma 4 26B",         15.6,  "VLM",     "이미지 지원 · 대형 추천",        32),
+    ("mlx-community/Qwen3-VL-30B-A3B-Instruct-4bit", "Qwen3-VL 30B A3B",    18.0,  "VLM+",    "최신 Qwen 대형 멀티모달",        48),
+    ("mlx-community/gemma-3-27b-it-4bit",            "Gemma 3 27B",         17.0,  "VLM+",    "대형 멀티모달",                 48),
+    ("mlx-community/Llama-3.3-70B-Instruct-4bit",    "Llama 3.3 70B",       40.0,  "최고급",  "충분한 RAM에서 고품질 대화",     64),
 ]
+
+_CROSS_PLATFORM_MODEL_CATALOG: Dict[str, List[Tuple[str, str, float, str, str, int]]] = {
+    "ollama": [
+        ("ollama:qwen3-vl:4b", "Qwen3-VL 4B", 2.7, "VLM", "Ollama 멀티모달 · 저사양", 8),
+        ("ollama:qwen3-vl:8b", "Qwen3-VL 8B", 4.8, "VLM", "Ollama 멀티모달 · 균형 추천", 16),
+        ("ollama:qwen3:8b", "Qwen3 8B", 4.8, "범용", "텍스트 추론 · Qwen 백업", 12),
+        ("ollama:gemma3:4b", "Gemma 3 4B", 3.3, "VLM", "검증된 멀티모달 대안", 8),
+        ("ollama:gemma3:12b", "Gemma 3 12B", 8.0, "VLM", "이미지/텍스트 균형", 16),
+        ("ollama:qwen2.5-coder:14b", "Qwen2.5 Coder 14B", 9.0, "코딩", "코딩 작업용 Qwen", 24),
+    ],
+    "lmstudio": [
+        ("lmstudio:Qwen/Qwen3-VL-4B-Instruct", "Qwen3-VL 4B", 2.7, "VLM", "LM Studio 멀티모달 · 저사양", 8),
+        ("lmstudio:Qwen/Qwen3-VL-8B-Instruct", "Qwen3-VL 8B", 4.8, "VLM", "LM Studio 멀티모달 · 균형 추천", 16),
+        ("lmstudio:Qwen/Qwen3-VL-30B-A3B-Instruct", "Qwen3-VL 30B A3B", 18.0, "VLM+", "대형 Qwen 멀티모달 · 24GB+ VRAM 권장", 32),
+        ("lmstudio:google/gemma-3-12b-it", "Gemma 3 12B", 8.0, "VLM", "검증된 멀티모달 대안", 16),
+    ],
+    "vllm": [
+        ("vllm:Qwen/Qwen3-VL-4B-Instruct", "Qwen3-VL 4B", 2.7, "VLM", "vLLM 멀티모달 · WSL/Linux 권장", 8),
+        ("vllm:Qwen/Qwen3-VL-8B-Instruct", "Qwen3-VL 8B", 4.8, "VLM", "vLLM 멀티모달 · NVIDIA 권장", 16),
+        ("vllm:Qwen/Qwen3-VL-30B-A3B-Instruct", "Qwen3-VL 30B A3B", 18.0, "VLM+", "대형 Qwen 멀티모달 · 24GB+ VRAM 권장", 32),
+        ("vllm:google/gemma-3-12b-it", "Gemma 3 12B", 8.0, "VLM", "검증된 멀티모달 대안", 16),
+    ],
+    "llamacpp": [
+        ("llamacpp:Qwen/Qwen3-VL-4B-Instruct-GGUF", "Qwen3-VL 4B GGUF", 2.7, "GGUF", "CPU/Vulkan 백업 · 멀티모달 GGUF", 8),
+        ("llamacpp:Qwen/Qwen3-VL-8B-Instruct-GGUF", "Qwen3-VL 8B GGUF", 4.8, "GGUF", "CPU/Vulkan 백업 · 균형형", 16),
+        ("llamacpp:unsloth/gemma-3-4b-it-GGUF", "Gemma 3 4B GGUF", 3.3, "GGUF", "검증된 CPU 백업", 8),
+        ("llamacpp:bartowski/Llama-3.2-3B-Instruct-GGUF", "Llama 3.2 3B GGUF", 2.0, "GGUF", "CPU-only 초경량 백업", 4),
+    ],
+}
 
 # ── Recommendation Logic ──────────────────────────────────────────────────────
 
@@ -290,18 +608,34 @@ def get_recommendations(env: Dict[str, Any]) -> Dict[str, Any]:
     api_keys  = env["api_keys"]
     disk_free = env["disk_free_gb"]
     is_apple  = chip["is_apple_silicon"]
+    gpu       = env.get("gpu", {})
+    cuda      = env.get("cuda", {})
+    wsl       = env.get("wsl", {})
+    cpu       = env.get("cpu", {})
+    os_name   = env.get("os", "")
 
     max_model_gb = ram * 0.72  # ~28% headroom for OS + apps
 
-    # pick the single "best" default model for this RAM
-    if ram >= 48:
-        best_id = "mlx-community/gemma-4-26b-a4b-it-4bit"
-    elif ram >= 24:
-        best_id = "mlx-community/Qwen2.5-Coder-14B-Instruct-4bit"
-    elif ram >= 8:
-        best_id = "mlx-community/Qwen2.5-Coder-7B-Instruct-4bit"
+    if is_apple:
+        preferred_engine = "local_mlx"
+    elif gpu.get("vendor") == "nvidia" and cuda.get("available") and (os_name == "Linux" or wsl.get("is_wsl")):
+        preferred_engine = "vllm"
+    elif tools.get("lms"):
+        preferred_engine = "lmstudio"
+    elif tools.get("ollama"):
+        preferred_engine = "ollama"
     else:
-        best_id = "mlx-community/Llama-3.2-3B-Instruct-4bit"
+        preferred_engine = "llamacpp"
+
+    # pick the single "best" default model for this RAM
+    if is_apple and ram >= 48:
+        best_id = "mlx-community/Qwen3-VL-30B-A3B-Instruct-4bit"
+    elif ram >= 16:
+        best_id = "mlx-community/Qwen3-VL-8B-Instruct-4bit" if is_apple else _CROSS_PLATFORM_MODEL_CATALOG[preferred_engine][1][0]
+    elif ram >= 8:
+        best_id = "mlx-community/Qwen3-VL-4B-Instruct-4bit" if is_apple else _CROSS_PLATFORM_MODEL_CATALOG[preferred_engine][0][0]
+    else:
+        best_id = "mlx-community/gemma-3-1b-it-4bit" if is_apple else _CROSS_PLATFORM_MODEL_CATALOG["llamacpp"][-1][0]
 
     # ── Engines ──────────────────────────────────────────────────────────────
     engines: List[Dict] = []
@@ -328,16 +662,16 @@ def get_recommendations(env: Dict[str, Any]) -> Dict[str, Any]:
         engines.append({
             "id": "engine_ollama", "name": "Ollama",
             "subtitle": "범용 로컬 LLM 서버 · 크로스 플랫폼",
-            "status": "installed", "priority": "optional",
-            "checked": False, "action": None, "badge": "설치됨",
+            "status": "installed", "priority": "recommended" if preferred_engine == "ollama" else "optional",
+            "checked": preferred_engine == "ollama", "action": None, "badge": "설치됨",
         })
     else:
         hint = "brew install 가능" if (tools.get("brew") or env["os"] == "Darwin") else "수동 설치 필요"
         engines.append({
             "id": "engine_ollama", "name": "Ollama",
             "subtitle": "범용 로컬 LLM 서버 · 크로스 플랫폼",
-            "status": "available", "priority": "optional",
-            "checked": False,
+            "status": "available", "priority": "recommended" if preferred_engine == "ollama" else "optional",
+            "checked": preferred_engine == "ollama",
             "action": (
                 {"type": "brew", "package": "ollama", "binary": "ollama", "official_url": OFFICIAL_DOWNLOADS["ollama"]}
                 if tools.get("brew")
@@ -345,6 +679,47 @@ def get_recommendations(env: Dict[str, Any]) -> Dict[str, Any]:
             ),
             "badge": hint,
         })
+
+    if not is_apple:
+        lmstudio_installed = bool(tools.get("lms"))
+        engines.append({
+            "id": "engine_lmstudio", "name": "LM Studio",
+            "subtitle": "Windows/macOS/Linux 데스크톱 GPU 서버 · 모델 다운로드 UI 포함",
+            "status": "installed" if lmstudio_installed else "available",
+            "priority": "recommended" if preferred_engine == "lmstudio" else "optional",
+            "checked": preferred_engine == "lmstudio",
+            "action": None if lmstudio_installed else {"type": "url", "url": OFFICIAL_DOWNLOADS["lmstudio"], "binary": "lms"},
+            "badge": "설치됨" if lmstudio_installed else "설치 필요",
+        })
+        if gpu.get("vendor") == "nvidia":
+            engines.append({
+                "id": "engine_cuda", "name": "CUDA",
+                "subtitle": f"NVIDIA {gpu.get('name') or 'GPU'} · VRAM {gpu.get('vram_gb') or 0} GB",
+                "status": "installed" if cuda.get("available") else "available",
+                "priority": "recommended",
+                "checked": False,
+                "action": None if cuda.get("available") else {"type": "url", "url": OFFICIAL_DOWNLOADS["cuda"], "binary": "nvcc"},
+                "badge": cuda.get("version") or ("감지됨" if cuda.get("available") else "설치 필요"),
+            })
+            engines.append({
+                "id": "engine_vllm", "name": "vLLM",
+                "subtitle": "NVIDIA 서버형 추론 · Windows는 WSL/Linux 권장",
+                "status": "available",
+                "priority": "recommended" if preferred_engine == "vllm" else "optional",
+                "checked": preferred_engine == "vllm",
+                "action": {"type": "pip", "packages": ["vllm", "huggingface_hub[cli]"], "verify_modules": ["vllm", "huggingface_hub"]},
+                "badge": "WSL/Linux 권장" if os_name == "Windows" and not wsl.get("is_wsl") else "설치 가능",
+            })
+        elif gpu.get("vendor") in {"amd", "intel"}:
+            engines.append({
+                "id": "engine_vulkan_directml", "name": "Vulkan/DirectML",
+                "subtitle": f"{gpu.get('vendor', '').upper()} GPU 감지 · LM Studio 또는 llama.cpp 백엔드 권장",
+                "status": "available",
+                "priority": "recommended" if preferred_engine in {"lmstudio", "llamacpp"} else "optional",
+                "checked": False,
+                "action": None,
+                "badge": gpu.get("backend") or "GPU",
+            })
 
     components: List[Dict] = []
     component_specs = [
@@ -418,6 +793,33 @@ def get_recommendations(env: Dict[str, Any]) -> Dict[str, Any]:
                 "badge":    f"{size_gb} GB",
                 "action":   {"type": "load_model", "model_id": mid} if fits else None,
             })
+    else:
+        vram_gb = float(gpu.get("vram_gb") or 0)
+        gpu_budget_gb = vram_gb * 1.15 if gpu.get("vendor") in {"nvidia", "amd", "intel"} and vram_gb else max_model_gb
+        model_budget_gb = min(max_model_gb, gpu_budget_gb)
+        for mid, mname, size_gb, tag, desc, min_ram in _CROSS_PLATFORM_MODEL_CATALOG[preferred_engine]:
+            fits = ram >= min_ram and size_gb <= model_budget_gb and disk_free >= size_gb + 2
+            is_best = mid == best_id
+            models.append({
+                "id":       f"model_{mid.replace('/', '__').replace(':', '__').replace('-', '_')}",
+                "model_id": mid,
+                "name":     mname,
+                "subtitle": desc,
+                "size_gb":  size_gb,
+                "tag":      tag,
+                "fits":     fits,
+                "priority": "recommended" if is_best else "optional",
+                "checked":  is_best and fits,
+                "disabled": not fits,
+                "badge":    f"{size_gb} GB · {preferred_engine}",
+                "action":   {"type": "load_model", "model_id": mid} if fits else None,
+            })
+    if models and not any(item.get("checked") for item in models):
+        for item in models:
+            if not item.get("disabled"):
+                item["priority"] = "recommended"
+                item["checked"] = True
+                break
 
     # ── MCPs ─────────────────────────────────────────────────────────────────
     mcps: List[Dict] = [
@@ -468,6 +870,15 @@ def get_recommendations(env: Dict[str, Any]) -> Dict[str, Any]:
         "mcps":    mcps,
         "summary": {
             "chip":            chip["name"],
+            "cpu_cores":       cpu.get("logical_cores"),
+            "cpu_instructions": cpu.get("instructions", []),
+            "gpu":             gpu.get("name") or gpu.get("vendor"),
+            "gpu_vendor":      gpu.get("vendor"),
+            "vram_gb":         gpu.get("vram_gb"),
+            "cuda":            cuda.get("available"),
+            "cuda_version":    cuda.get("version"),
+            "wsl":             wsl,
+            "preferred_engine": preferred_engine,
             "ram_gb":          ram,
             "disk_free_gb":    disk_free,
             "is_apple_silicon": is_apple,
