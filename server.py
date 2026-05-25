@@ -49,6 +49,27 @@ from llm_router import AsyncOpenAI, LLMRouter, OPENAI_COMPATIBLE_PROVIDERS, HF_M
 from knowledge_graph import KnowledgeGraphStore
 from knowledge_graph_api import create_knowledge_graph_router
 from local_knowledge_api import LocalKnowledgeWatcher, create_local_knowledge_router
+from latticeai.core.security import (
+    hash_password as _hash_password,
+    verify_password as _verify_password,
+    host_is_loopback as _host_is_loopback_impl,
+    client_ip as _client_ip_impl,
+    bytes_match_extension as _bytes_match_extension_impl,
+    redact_secret_text as _redact_secret_text,
+    check_ip_rate_limit as _check_ip_rate_limit,
+    enforce_rate_limit as _enforce_rate_limit,
+)
+from latticeai.core.sessions import SessionStore as _SessionStore
+from latticeai.core.audit import (
+    get_audit_log as _get_audit_log,
+    append_audit_event as _append_audit_event,
+    classify_sensitive_message as _classify_sensitive_message,
+    mask_sensitive_text as _mask_sensitive_text,
+    build_sensitivity_report as _build_sensitivity_report,
+    build_admin_audit_report as _build_admin_audit_report,
+)
+from latticeai.api.auth import create_auth_router
+from latticeai.api.admin import create_admin_router
 import mcp_registry
 from mcp_registry import (
     MCP_REGISTRY, _THIRD_PARTY_SKILL_SOURCES, _KNOWN_REPO_LICENSES,
@@ -191,12 +212,7 @@ IS_PUBLIC_MODE = APP_MODE == "public"
 DEFAULT_HOST = env_value("LATTICEAI_HOST", "127.0.0.1")
 DEFAULT_PORT = int(env_value("LATTICEAI_PORT", "4825"))
 def _host_is_loopback(host: str) -> bool:
-    if host in {"localhost", "127.0.0.1", "::1"}:
-        return True
-    try:
-        return ipaddress.ip_address(host).is_loopback
-    except ValueError:
-        return False
+    return _host_is_loopback_impl(host)
 
 NETWORK_EXPOSED = not _host_is_loopback(DEFAULT_HOST)
 ENABLE_TELEGRAM = env_bool("LATTICEAI_ENABLE_TELEGRAM", default=not IS_PUBLIC_MODE)
@@ -246,19 +262,12 @@ async def _get_sso_discovery() -> Optional[Dict]:
         return None
     return _sso_discovery_cache
 
-# ── Password hashing (stdlib scrypt, no extra deps) ────────────────────────────
+# ── Password hashing — delegated to latticeai.core.security ────────────────────
 def hash_password(password: str) -> str:
-    salt = secrets.token_hex(16)
-    key = hashlib.scrypt(password.encode(), salt=salt.encode(), n=16384, r=8, p=1)
-    return f"{salt}:{key.hex()}"
+    return _hash_password(password)
 
 def verify_password(password: str, hashed: str) -> bool:
-    try:
-        salt, key_hex = hashed.split(":", 1)
-        key = hashlib.scrypt(password.encode(), salt=salt.encode(), n=16384, r=8, p=1)
-        return secrets.compare_digest(key.hex(), key_hex)
-    except Exception:
-        return False
+    return _verify_password(password, hashed)
 
 def verify_and_migrate_password(email: str, plain: str, stored: str, users: Dict) -> bool:
     """평문 비밀번호를 투명하게 해시로 마이그레이션. 마이그레이션 발생 시 audit log 남김."""
@@ -275,89 +284,24 @@ def verify_and_migrate_password(email: str, plain: str, stored: str, users: Dict
         return True
     return False
 
-# ── Session store (file-backed, survives restarts) ────────────────────────────
-# 24-hour TTL with sliding-window refresh — every authenticated request bumps
-# created_at, so an active user stays logged in while idle sessions auto-expire.
-_SESSION_TTL = 60 * 60 * 24  # 24 hours
-_SESSION_REFRESH_THRESHOLD = 60 * 15  # only persist if >15 min since last bump (write amplification guard)
-_sessions_lock = threading.Lock()
-
-def _sessions_file() -> Path:
-    data_dir = Path(os.getenv("LATTICEAI_DATA_DIR") or (Path.home() / ".ltcai"))
-    data_dir.mkdir(parents=True, exist_ok=True)
-    return data_dir / "sessions.json"
-
-def _load_sessions() -> Dict[str, tuple]:
-    try:
-        f = _sessions_file()
-        if f.exists():
-            raw = json.loads(f.read_text())
-            return {k: tuple(v) for k, v in raw.items()}
-    except Exception as e:
-        logging.warning("_load_sessions failed (starting empty): %s", e)
-    return {}
-
-def _persist_sessions(sessions: Dict[str, tuple]) -> None:
-    try:
-        _sessions_file().write_text(json.dumps({k: list(v) for k, v in sessions.items()}, ensure_ascii=False))
-    except Exception as e:
-        logging.warning("_persist_sessions failed: %s", e)
-
-_sessions: Dict[str, tuple] = _load_sessions()
-
-# ── Rate limiting ─────────────────────────────────────────────────────────────
-_rate_windows: dict[tuple[str, str], list[float]] = {}
-_rate_lock = threading.Lock()
+# ── Session store — delegated to latticeai.core.sessions ──────────────────────
+_SESSION_TTL = 60 * 60 * 24
+_session_store = _SessionStore()
 
 def _check_rate_limit(ip: str, action: str, max_calls: int, window_secs: float) -> None:
-    key = (ip, action)
-    now = time.time()
-    cutoff = now - window_secs
-    with _rate_lock:
-        calls = [t for t in _rate_windows.get(key, []) if t > cutoff]
-        if len(calls) >= max_calls:
-            raise HTTPException(status_code=429, detail="요청이 너무 많습니다. 잠시 후 다시 시도하세요.")
-        calls.append(now)
-        _rate_windows[key] = calls
+    _check_ip_rate_limit(ip, action, max_calls=max_calls, window_secs=window_secs)
 
 def _client_ip(request: Request) -> str:
-    for header in ("CF-Connecting-IP", "X-Forwarded-For"):
-        val = request.headers.get(header)
-        if val:
-            return val.split(",")[0].strip()
-    return request.client.host if request.client else "unknown"
-
-# ─────────────────────────────────────────────────────────────────────────────
+    return _client_ip_impl(request)
 
 def create_session(email: str) -> str:
-    token = secrets.token_urlsafe(32)
-    with _sessions_lock:
-        _sessions[token] = (email, time.time())
-        _persist_sessions(_sessions)
-    return token
+    return _session_store.create(email)
 
 def get_session_email(token: str) -> Optional[str]:
-    """Return email for a valid session, sliding the expiry forward on activity."""
-    now = time.time()
-    with _sessions_lock:
-        entry = _sessions.get(token)
-        if entry is None:
-            return None
-        email, created_at = entry
-        if now - created_at > _SESSION_TTL:
-            _sessions.pop(token, None)
-            _persist_sessions(_sessions)
-            return None
-        # Sliding refresh: only update if the timestamp drifted enough to be worth a disk write
-        if now - created_at > _SESSION_REFRESH_THRESHOLD:
-            _sessions[token] = (email, now)
-            _persist_sessions(_sessions)
-        return email
+    return _session_store.get_email(token)
 
 def invalidate_session(token: str) -> None:
-    with _sessions_lock:
-        _sessions.pop(token, None)
-        _persist_sessions(_sessions)
+    _session_store.invalidate(token)
 
 # ── User Management Logic ──────────────────────────────────────────────────
 BASE_DIR = Path(__file__).resolve().parent
@@ -667,34 +611,10 @@ async def install_mcp(mcp_id: str) -> Dict:
 _history_lock = threading.Lock()
 
 def get_audit_log() -> List[Dict]:
-    if not os.path.exists(AUDIT_FILE):
-        return []
-    try:
-        with open(AUDIT_FILE, "r", encoding="utf-8") as f:
-            data = json.load(f)
-        return data if isinstance(data, list) else []
-    except Exception as e:
-        logging.warning("get_audit_log failed: %s", e)
-        return []
+    return _get_audit_log(AUDIT_FILE)
 
 def append_audit_event(event_type: str, **payload) -> None:
-    try:
-        event = {
-            "event_type": event_type,
-            "timestamp": datetime.now().isoformat(),
-            **payload,
-        }
-        with _history_lock:
-            events = get_audit_log()
-            events.append(event)
-            if len(events) > 5000:
-                events = events[-5000:]
-            tmp_path = str(AUDIT_FILE) + ".tmp"
-            with open(tmp_path, "w", encoding="utf-8") as f:
-                json.dump(events, f, ensure_ascii=False, indent=2)
-            os.replace(tmp_path, AUDIT_FILE)
-    except Exception as e:
-        logging.warning("append_audit_event failed: %s", e)
+    _append_audit_event(AUDIT_FILE, event_type, **payload)
 
 def save_to_history(
     role: str,
@@ -759,18 +679,7 @@ def save_to_history(
         logging.warning("save_to_history failed: %s", e)
 
 def redact_secret_text(text: str) -> str:
-    if not text:
-        return ""
-    patterns = [
-        r"(?i)(api[_ -]?key|secret|token|password|passwd)\s*[:=]\s*['\"]?([A-Za-z0-9_\-\.]{12,})['\"]?",
-        r"\b(sk-[A-Za-z0-9_\-]{16,})\b",
-        r"\b(xai-[A-Za-z0-9_\-]{16,})\b",
-        r"\b(gsk_[A-Za-z0-9_\-]{16,})\b",
-    ]
-    redacted = str(text)
-    for pattern in patterns:
-        redacted = re.sub(pattern, lambda m: f"{m.group(1)}=[REDACTED]" if len(m.groups()) > 1 else "[REDACTED]", redacted)
-    return redacted
+    return _redact_secret_text(text)
 
 def get_history():
     if not os.path.exists(HISTORY_FILE):
@@ -969,69 +878,14 @@ def require_user(request: Request) -> str:
     return email or ""
 
 
-# ── Rate limiting ─────────────────────────────────────────────────────────────
-# Per-user token bucket. Disabled when LATTICEAI_RATE_LIMIT=0 (default: enabled).
+# ── Rate limiting & file validation — delegated to latticeai.core.security ────
 _RATE_LIMIT_ENABLED = os.getenv("LATTICEAI_RATE_LIMIT", "1") != "0"
-_rate_buckets: Dict[str, Dict[str, float]] = {}
-_rate_lock = threading.Lock()
-
-# (capacity, refill_per_second) per endpoint family
-_RATE_LIMITS = {
-    "chat":   (30, 0.5),   # 30 burst, 30/min sustained
-    "agent":  (10, 0.1),   # 10 burst, 6/min sustained (agent is expensive)
-    "upload": (20, 0.2),   # 20 burst, 12/min sustained
-}
-
 
 def enforce_rate_limit(email: str, bucket_key: str) -> None:
-    """Raise HTTP 429 if user exceeds the bucket. No-op when disabled or unauth'd."""
-    if not _RATE_LIMIT_ENABLED or not email:
-        return
-    cap, refill = _RATE_LIMITS.get(bucket_key, (60, 1.0))
-    key = f"{email}:{bucket_key}"
-    now = time.time()
-    with _rate_lock:
-        bucket = _rate_buckets.get(key)
-        if bucket is None:
-            _rate_buckets[key] = {"tokens": cap - 1, "ts": now}
-            return
-        elapsed = now - bucket["ts"]
-        bucket["tokens"] = min(cap, bucket["tokens"] + elapsed * refill)
-        bucket["ts"] = now
-        if bucket["tokens"] < 1:
-            retry_after = max(1, int((1 - bucket["tokens"]) / refill))
-            raise HTTPException(
-                status_code=429,
-                detail=f"Rate limit exceeded for {bucket_key}. Retry after {retry_after}s.",
-                headers={"Retry-After": str(retry_after)},
-            )
-        bucket["tokens"] -= 1
-
-
-# ── File magic-number validation ──────────────────────────────────────────────
-# Map of extension → list of byte-prefix signatures (any-match). Files without
-# distinctive magic (.txt, .md, .csv) skip the check.
-_FILE_MAGIC: Dict[str, List[bytes]] = {
-    ".pdf":  [b"%PDF-"],
-    ".docx": [b"PK\x03\x04"],
-    ".xlsx": [b"PK\x03\x04"],
-    ".pptx": [b"PK\x03\x04"],
-    ".zip":  [b"PK\x03\x04", b"PK\x05\x06", b"PK\x07\x08"],
-    ".png":  [b"\x89PNG\r\n\x1a\n"],
-    ".jpg":  [b"\xff\xd8\xff"],
-    ".jpeg": [b"\xff\xd8\xff"],
-    ".gif":  [b"GIF87a", b"GIF89a"],
-}
-
+    _enforce_rate_limit(email, bucket_key, enabled=_RATE_LIMIT_ENABLED)
 
 def _bytes_match_extension(data: bytes, ext: str) -> bool:
-    """Return True if the file bytes match the claimed extension (or extension has no magic)."""
-    ext = (ext or "").lower()
-    signatures = _FILE_MAGIC.get(ext)
-    if not signatures:
-        return True  # text-like formats — no reliable magic
-    head = data[:16]
-    return any(head.startswith(sig) for sig in signatures)
+    return _bytes_match_extension_impl(data, ext)
 
 def require_admin(request: Request) -> tuple[str, Dict]:
     users = load_users()
@@ -1125,221 +979,26 @@ def set_user_api_key(email: str, provider: str, key: str) -> None:
     users[email] = user
     save_users(users)
 
-SENSITIVE_PATTERNS = [
-    {"key": "rrn", "label": "주민등록번호", "severity": "high", "pattern": r"\b\d{6}[- ]?[1-4]\d{6}\b"},
-    {"key": "card", "label": "카드번호", "severity": "high", "pattern": r"\b(?:\d[ -]?){13,19}\b"},
-    {"key": "account", "label": "계좌번호", "severity": "medium", "pattern": r"(?:계좌|account|bank).{0,12}\d[\d -]{8,24}"},
-    {"key": "password", "label": "비밀번호/인증정보", "severity": "high", "pattern": r"(?:password|passwd|비밀번호|암호|token|api[_ -]?key|secret)\s*[:=]\s*[^\s,;]{4,}"},
-    {"key": "email", "label": "이메일", "severity": "low", "pattern": r"\b[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}\b"},
-    {"key": "phone", "label": "전화번호", "severity": "medium", "pattern": r"\b(?:01[016789]|02|0[3-6][1-5])[- ]?\d{3,4}[- ]?\d{4}\b"},
-    {"key": "address", "label": "주소", "severity": "medium", "pattern": r"(?:[가-힣]+(?:시|도)\s*)?[가-힣]+(?:시|군|구)\s+[가-힣0-9\s-]+(?:로|길)\s*\d*"},
-    {"key": "health", "label": "건강/의료정보", "severity": "medium", "pattern": r"(?:진단|병명|처방|복용|수술|장애|임신|혈액형|알레르기|medical|diagnosis)"},
-]
-
-SEVERITY_SCORE = {"low": 1, "medium": 2, "high": 3}
-
-def mask_sensitive_text(text: str, matches: List[Dict]) -> str:
-    masked = text
-    for item in sorted(matches, key=lambda match: match["start"], reverse=True):
-        value = masked[item["start"]:item["end"]]
-        if len(value) <= 4:
-            replacement = "*" * len(value)
-        else:
-            replacement = value[:2] + "*" * min(len(value) - 4, 12) + value[-2:]
-        masked = masked[:item["start"]] + replacement + masked[item["end"]:]
-    return masked
-
+# ── Sensitivity analysis — delegated to latticeai.core.audit ──────────────────
 def classify_sensitive_message(item: Dict, index: int) -> Dict:
-    content = str(item.get("content", ""))
-    found = []
-    seen = set()
-    for rule in SENSITIVE_PATTERNS:
-        for match in re.finditer(rule["pattern"], content, flags=re.IGNORECASE):
-            key = (rule["key"], match.start(), match.end())
-            if key in seen:
-                continue
-            seen.add(key)
-            found.append({
-                "type": rule["key"],
-                "label": rule["label"],
-                "severity": rule["severity"],
-                "start": match.start(),
-                "end": match.end(),
-            })
-    severity = "none"
-    if found:
-        severity = max(found, key=lambda item: SEVERITY_SCORE[item["severity"]])["severity"]
-    preview_text = content[:240]
-    preview_matches = [match for match in found if match["start"] < len(preview_text)]
-    return {
-        "index": index,
-        "role": item.get("role", ""),
-        "user_email": item.get("user_email"),
-        "user_nickname": item.get("user_nickname") or item.get("user_email") or "Unknown",
-        "timestamp": item.get("timestamp"),
-        "sensitivity": severity,
-        "labels": sorted({match["label"] for match in found}),
-        "risk_fields": found,
-        "compliance_fields": [] if found else ["민감정보 미검출"],
-        "preview": mask_sensitive_text(preview_text, preview_matches),
-    }
+    return _classify_sensitive_message(item, index)
 
 def build_sensitivity_report(history: List[Dict]) -> Dict:
-    items = [classify_sensitive_message(item, index) for index, item in enumerate(history)]
-    risky_items = [item for item in items if item["risk_fields"]]
-    compliant_items = [item for item in items if not item["risk_fields"]]
-    field_counts = {}
-    user_counts = {}
-    severity_counts = {"high": 0, "medium": 0, "low": 0, "none": len(compliant_items)}
-    for item in risky_items:
-        severity_counts[item["sensitivity"]] += 1
-        user_key = item.get("user_email") or item.get("user_nickname") or "Unknown"
-        user_counts[user_key] = user_counts.get(user_key, 0) + 1
-        for field in item["risk_fields"]:
-            field_counts[field["label"]] = field_counts.get(field["label"], 0) + 1
-    return {
-        "summary": {
-            "total_messages": len(items),
-            "risky_messages": len(risky_items),
-            "compliant_messages": len(compliant_items),
-            "risk_rate": round((len(risky_items) / len(items)) * 100, 1) if items else 0,
-            "severity_counts": severity_counts,
-            "field_counts": field_counts,
-            "user_counts": user_counts,
-        },
-        "risk_fields": risky_items[-30:],
-        "compliance_fields": compliant_items[-30:],
-    }
+    return _build_sensitivity_report(history)
 
-AUDIT_DELETE_EVENTS = {"conversation_delete", "history_delete", "user_delete"}
-
-def _audit_user_bucket(email: Optional[str], nickname: Optional[str] = None, users: Optional[Dict] = None) -> Dict:
-    user = (users or {}).get(email or "", {})
-    return {
-        "email": email or "Unknown",
-        "nickname": nickname or user.get("nickname") or user.get("name") or email or "Unknown",
-        "role": get_user_role(email, users or {}) if email else "unknown",
-        "disabled": bool(user.get("disabled")) if user else False,
-        "user_messages": 0,
-        "assistant_messages": 0,
-        "document_uploads": 0,
-        "clear_events": 0,
-        "delete_events": 0,
-        "sensitive_events": 0,
-        "high_sensitive_events": 0,
-        "total_content_chars": 0,
-        "last_activity_at": None,
-    }
-
-def _public_audit_event(event: Dict) -> Dict:
-    allowed = {
-        "event_type",
-        "timestamp",
-        "role",
-        "user_email",
-        "user_nickname",
-        "source",
-        "conversation_id",
-        "command",
-        "scope",
-        "target_email",
-        "filename",
-        "mime_type",
-        "ext",
-        "bytes",
-        "extracted_chars",
-        "graph_node",
-        "keep_last",
-        "removed",
-        "kept",
-        "started_at",
-        "sensitivity",
-        "sensitive_labels",
-        "content_preview",
-        "content_chars",
-    }
-    return {key: event.get(key) for key in allowed if key in event}
-
+# ── Admin audit report — delegated to latticeai.core.audit ───────────────────
 def build_admin_audit_report(users: Dict) -> Dict:
-    events = get_audit_log()
-    per_user: Dict[str, Dict] = {}
-
-    def ensure_user(email: Optional[str], nickname: Optional[str] = None) -> Dict:
-        key = email or nickname or "Unknown"
-        if key not in per_user:
-            per_user[key] = _audit_user_bucket(email, nickname, users)
-        elif nickname and per_user[key].get("nickname") in {"Unknown", email, None}:
-            per_user[key]["nickname"] = nickname
-        return per_user[key]
-
-    for email, user in users.items():
-        ensure_user(email, user.get("nickname") or user.get("name"))
-
-    summary = {
-        "total_events": len(events),
-        "chat_events": 0,
-        "user_messages": 0,
-        "assistant_messages": 0,
-        "document_uploads": 0,
-        "clear_events": 0,
-        "delete_events": 0,
-        "sensitive_events": 0,
-        "high_sensitive_events": 0,
-    }
-
-    sensitive_events = []
-    deletion_events = []
-    for event in events:
-        event_type = event.get("event_type")
-        email = event.get("user_email")
-        user = ensure_user(email, event.get("user_nickname"))
-        timestamp = event.get("timestamp")
-        if timestamp and (not user["last_activity_at"] or timestamp > user["last_activity_at"]):
-            user["last_activity_at"] = timestamp
-
-        user["total_content_chars"] += int(event.get("content_chars") or event.get("extracted_chars") or 0)
-        sensitivity = event.get("sensitivity") or "none"
-        labels = event.get("sensitive_labels") or []
-        is_sensitive = sensitivity != "none" or bool(labels)
-
-        if event_type == "chat_message":
-            summary["chat_events"] += 1
-            if event.get("role") == "user":
-                summary["user_messages"] += 1
-                user["user_messages"] += 1
-            elif event.get("role") == "assistant":
-                summary["assistant_messages"] += 1
-                user["assistant_messages"] += 1
-        elif event_type == "document_upload":
-            summary["document_uploads"] += 1
-            user["document_uploads"] += 1
-        elif event_type == "clear_command":
-            summary["clear_events"] += 1
-            user["clear_events"] += 1
-        elif event_type in AUDIT_DELETE_EVENTS:
-            summary["delete_events"] += 1
-            user["delete_events"] += 1
-            deletion_events.append(_public_audit_event(event))
-
-        if is_sensitive:
-            summary["sensitive_events"] += 1
-            user["sensitive_events"] += 1
-            sensitive_events.append(_public_audit_event(event))
-        if sensitivity == "high":
-            summary["high_sensitive_events"] += 1
-            user["high_sensitive_events"] += 1
-
-    return {
-        "summary": summary,
-        "per_user": sorted(
-            per_user.values(),
-            key=lambda item: (item.get("last_activity_at") or "", item.get("user_messages", 0) + item.get("assistant_messages", 0)),
-            reverse=True,
-        ),
-        "recent_events": [_public_audit_event(event) for event in events[-80:]][::-1],
-        "sensitive_events": sensitive_events[-80:][::-1],
-        "deletion_events": deletion_events[-80:][::-1],
-    }
+    graph_stats = None
+    try:
+        if ENABLE_GRAPH and KNOWLEDGE_GRAPH:
+            graph_stats = KNOWLEDGE_GRAPH.stats()
+    except Exception:
+        pass
+    return _build_admin_audit_report(
+        AUDIT_FILE, users,
+        get_user_role=get_user_role,
+        graph_stats=graph_stats,
+    )
 
 router = LLMRouter()
 gardener = PReinforceGardener()
@@ -1475,329 +1134,42 @@ if _ICONS_DIR.exists():
 ensure_agent_root()
 
 OPEN_REGISTRATION = env_bool("LATTICEAI_OPEN_REGISTRATION", default=not NETWORK_EXPOSED and not IS_PUBLIC_MODE)
-
-@app.post("/register")
-async def register(req: UserRegister, request: Request):
-    # 5 registration attempts per IP per hour
-    _check_rate_limit(_client_ip(request), "register", max_calls=5, window_secs=3600)
-    if not OPEN_REGISTRATION:
-        raise HTTPException(status_code=403, detail="회원가입이 비활성화되어 있습니다. 관리자에게 문의하세요.")
-    users = load_users()
-    if req.email in users:
-        raise HTTPException(status_code=400, detail="이미 존재하는 이메일입니다.")
-    # First user to register on a fresh server becomes admin automatically
-    role = "admin" if not users else "user"
-    users[req.email] = {
-        "password": hash_password(req.password),
-        "name": req.name,
-        "nickname": req.nickname,
-        "role": role,
-        "disabled": False,
-    }
-    save_users(users)
-    msg = "회원가입 성공! 첫 번째 사용자로 관리자 권한이 부여되었습니다." if role == "admin" else "회원가입 성공!"
-    return {"status": "ok", "message": msg, "role": role}
-
-@app.post("/login")
-async def login(req: UserLogin, request: Request):
-    # 10 login attempts per IP per 5 minutes
-    _check_rate_limit(_client_ip(request), "login", max_calls=10, window_secs=300)
-    users = load_users()
-    user = users.get(req.email)
-    if not user or not verify_and_migrate_password(req.email, req.password, user.get("password", ""), users):
-        raise HTTPException(status_code=401, detail="이메일 또는 비밀번호가 틀렸습니다.")
-    if user.get("disabled"):
-        raise HTTPException(status_code=403, detail="비활성화된 계정입니다.")
-    role = get_user_role(req.email, users)
-    token = create_session(req.email)
-    response = JSONResponse(content={
-        "status": "ok",
-        "nickname": user["nickname"],
-        "name": user["name"],
-        "email": req.email,
-        "role": role,
-        "is_admin": role == "admin",
-    })
-    response.set_cookie(key="session_token", value=token, httponly=True, samesite="lax", max_age=_SESSION_TTL)
-    return response
-
-@app.get("/auth/sso/config")
-async def sso_config():
-    return public_sso_config()
-
-@app.get("/auth/sso/login")
-async def sso_login():
-    from urllib.parse import urlencode
-    from fastapi.responses import RedirectResponse as _Redirect
-    settings = get_sso_settings()
-    discovery = await _get_sso_discovery()
-    if not settings.get("enabled") or not discovery:
-        raise HTTPException(status_code=503, detail="SSO가 설정되지 않았습니다.")
-    state = secrets.token_urlsafe(16)
-    _sso_states[state] = time.time()
-    params = urlencode({
-        "client_id": settings["client_id"],
-        "response_type": "code",
-        "redirect_uri": settings["redirect_uri"],
-        "scope": settings.get("scopes") or "openid email profile",
-        "state": state,
-    })
-    return _Redirect(f"{discovery['authorization_endpoint']}?{params}")
-
-@app.get("/auth/sso/callback")
-async def sso_callback(code: str = "", state: str = "", error: str = ""):
-    from fastapi.responses import RedirectResponse as _Redirect
-    import base64 as _b64
-    if error:
-        return _Redirect(f"/?sso_error={error}")
-    ts = _sso_states.pop(state, None)
-    if ts is None or time.time() - ts > 300:
-        raise HTTPException(status_code=400, detail="유효하지 않은 SSO 상태입니다.")
-    settings = get_sso_settings()
-    discovery = await _get_sso_discovery()
-    if not settings.get("enabled") or not discovery:
-        raise HTTPException(status_code=503, detail="SSO 설정 오류입니다.")
-    import httpx as _httpx
-    async with _httpx.AsyncClient() as c:
-        r = await c.post(discovery["token_endpoint"], data={
-            "grant_type": "authorization_code",
-            "code": code,
-            "redirect_uri": settings["redirect_uri"],
-            "client_id": settings["client_id"],
-            "client_secret": settings["client_secret"],
-        }, headers={"Accept": "application/json"}, timeout=15)
-        tokens = r.json()
-    id_token = tokens.get("id_token")
-    if not id_token:
-        raise HTTPException(status_code=400, detail="ID 토큰을 받지 못했습니다.")
-    # Decode JWT payload (no signature verification — trust IdP redirect)
-    padded = id_token.split(".")[1] + "=="
-    payload = json.loads(_b64.urlsafe_b64decode(padded))
-    email = payload.get("email") or payload.get("preferred_username") or payload.get("upn") or ""
-    if not email:
-        raise HTTPException(status_code=400, detail="이메일을 확인할 수 없습니다.")
-    users = load_users()
-    if email not in users:
-        is_first = len(users) == 0
-        users[email] = {
-            "password": "",
-            "name": payload.get("name", email.split("@")[0]),
-            "nickname": payload.get("given_name", email.split("@")[0]),
-            "role": "admin" if is_first else "user",
-            "disabled": False,
-            "sso": True,
-        }
-        save_users(users)
-    if users[email].get("disabled"):
-        raise HTTPException(status_code=403, detail="비활성화된 계정입니다.")
-    token = create_session(email)
-    resp = _Redirect("/chat", status_code=302)
-    resp.set_cookie("session_token", token, httponly=True, samesite="lax", max_age=_SESSION_TTL)
-    return resp
-
-@app.post("/logout")
-async def logout(request: Request):
-    token = _extract_bearer_token(request)
-    if token:
-        invalidate_session(token)
-    response = JSONResponse(content={"status": "ok"})
-    response.delete_cookie("session_token")
-    return response
-
-class ChangePasswordRequest(BaseModel):
-    current_password: str
-    new_password: str
-
-@app.post("/account/change-password")
-async def change_password(req: ChangePasswordRequest, request: Request):
-    email = require_user(request)
-    if not email:
-        raise HTTPException(status_code=401, detail="인증이 필요합니다.")
-    if len(req.new_password) < 4:
-        raise HTTPException(status_code=400, detail="새 비밀번호는 4자 이상이어야 합니다.")
-    users = load_users()
-    user = users.get(email)
-    if not user:
-        raise HTTPException(status_code=404, detail="사용자를 찾을 수 없습니다.")
-    if not verify_and_migrate_password(email, req.current_password, user.get("password", ""), users):
-        raise HTTPException(status_code=401, detail="현재 비밀번호가 틀렸습니다.")
-    users[email]["password"] = hash_password(req.new_password)
-    save_users(users)
-    return {"status": "ok", "message": "비밀번호가 변경되었습니다."}
-
-class UpdateProfileRequest(BaseModel):
-    name: Optional[str] = None
-    nickname: Optional[str] = None
-
-@app.patch("/account/profile")
-async def update_profile(req: UpdateProfileRequest, request: Request):
-    email = require_user(request)
-    if not email:
-        raise HTTPException(status_code=401, detail="인증이 필요합니다.")
-    if req.name is not None and not req.name.strip():
-        raise HTTPException(status_code=400, detail="이름을 입력해주세요.")
-    if req.nickname is not None and not req.nickname.strip():
-        raise HTTPException(status_code=400, detail="닉네임을 입력해주세요.")
-    users = load_users()
-    user = users.get(email)
-    if not user:
-        raise HTTPException(status_code=404, detail="사용자를 찾을 수 없습니다.")
-    if req.name is not None:
-        users[email]["name"] = req.name.strip()
-    if req.nickname is not None:
-        users[email]["nickname"] = req.nickname.strip()
-    save_users(users)
-    return {"status": "ok", "name": users[email]["name"], "nickname": users[email]["nickname"]}
-
-@app.get("/account/profile")
-async def get_profile(request: Request):
-    email = require_user(request)
-    if not email:
-        raise HTTPException(status_code=401, detail="인증이 필요합니다.")
-    users = load_users()
-    user = users.get(email)
-    if not user:
-        raise HTTPException(status_code=404, detail="사용자를 찾을 수 없습니다.")
-    role = get_user_role(email, users)
-    return {"email": email, "name": user.get("name", ""), "nickname": user.get("nickname", ""),
-            "role": role, "is_admin": role == "admin"}
-
-@app.get("/admin/summary")
-async def admin_summary(request: Request):
-    _, users = require_admin(request)
-    history = get_history()
-    user_messages = [item for item in history if item.get("role") == "user"]
-    assistant_messages = [item for item in history if item.get("role") == "assistant"]
-    last_timestamp = history[-1].get("timestamp") if history else None
-    return {
-        "total_users": len(users),
-        "active_users": sum(1 for user in users.values() if not user.get("disabled")),
-        "admin_users": sum(1 for email in users if get_user_role(email, users) == "admin"),
-        "total_messages": len(history),
-        "user_messages": len(user_messages),
-        "assistant_messages": len(assistant_messages),
-        "last_message_at": last_timestamp,
-    }
-
-@app.get("/admin/stats")
-async def admin_stats(request: Request):
-    require_admin(request)
-    history = get_history()
-    from collections import defaultdict
-    daily: dict = defaultdict(lambda: {"user": 0, "assistant": 0})
-    for item in history:
-        ts = item.get("timestamp", "")
-        day = ts[:10] if ts else "unknown"
-        role = item.get("role", "")
-        if role in ("user", "assistant"):
-            daily[day][role] += 1
-    sorted_days = sorted(daily.keys())[-14:]
-    return {
-        "daily": [{"date": d, "user": daily[d]["user"], "assistant": daily[d]["assistant"]} for d in sorted_days]
-    }
-
-@app.get("/admin/users")
-async def admin_users(request: Request):
-    _, users = require_admin(request)
-    return [public_user(email, user, users) for email, user in users.items()]
-
-@app.get("/admin/sensitivity")
-async def admin_sensitivity(request: Request):
-    require_admin(request)
-    return build_sensitivity_report(get_history())
-
-@app.get("/admin/audit")
-async def admin_audit(request: Request):
-    _, users = require_admin(request)
-    report = build_admin_audit_report(users)
-    try:
-        report["graph"] = KNOWLEDGE_GRAPH.stats() if (ENABLE_GRAPH and KNOWLEDGE_GRAPH) else {"disabled": True}
-    except Exception as e:
-        logging.warning("knowledge graph stats for audit failed: %s", e)
-        report["graph"] = {"error": str(e)}
-    return report
-
-@app.get("/vpc/status")
-async def vpc_status(request: Request):
-    require_user(request)
-    return load_vpc_config()
-
-@app.patch("/admin/vpc")
-async def admin_update_vpc(req: VpcConfigUpdate, request: Request):
-    require_admin(request)
-    config = load_vpc_config()
-    update = req.dict(exclude_unset=True)
-    if "private_subnets" in update and update["private_subnets"] is not None:
-        update["private_subnets"] = [item.strip() for item in update["private_subnets"] if item.strip()]
-    config.update(update)
-    save_vpc_config(config)
-    return config
-
-@app.patch("/admin/users/{email:path}")
-async def admin_update_user(email: str, req: AdminUserUpdate, request: Request):
-    admin_email, users = require_admin(request)
-    if email not in users:
-        raise HTTPException(status_code=404, detail="사용자를 찾을 수 없습니다.")
-    before = public_user(email, users[email], users)
-    if req.role is not None:
-        if req.role not in {"admin", "user"}:
-            raise HTTPException(status_code=400, detail="role은 admin 또는 user만 가능합니다.")
-        users[email]["role"] = req.role
-    if req.disabled is not None:
-        if email == admin_email and req.disabled:
-            raise HTTPException(status_code=400, detail="자기 자신은 비활성화할 수 없습니다.")
-        users[email]["disabled"] = req.disabled
-    save_users(users)
-    after = public_user(email, users[email], users)
-    append_audit_event("user_update", user_email=admin_email, target_email=email, before=before, after=after)
-    return after
-
-@app.delete("/admin/users/{email:path}")
-async def admin_delete_user(email: str, request: Request):
-    admin_email, users = require_admin(request)
-    if email == admin_email:
-        raise HTTPException(status_code=400, detail="자기 자신은 삭제할 수 없습니다.")
-    if email not in users:
-        raise HTTPException(status_code=404, detail="사용자를 찾을 수 없습니다.")
-    deleted = public_user(email, users[email], users)
-    append_audit_event("user_delete", user_email=admin_email, target_email=email, deleted_user=deleted)
-    del users[email]
-    save_users(users)
-    return {"status": "ok", "deleted": deleted}
-
-@app.get("/admin/invite-link")
-async def admin_invite_link(request: Request):
-    require_admin(request)
-    host = request.headers.get("host", f"localhost:{DEFAULT_PORT}")
-    scheme = "https" if request.headers.get("x-forwarded-proto") == "https" else "http"
-    if INVITE_GATE_ENABLED:
-        url = f"{scheme}://{host}/?code={INVITE_CODE}"
-    else:
-        url = f"{scheme}://{host}/"
-    return {"invite_url": url, "invite_code": INVITE_CODE, "gate_enabled": INVITE_GATE_ENABLED}
-
-@app.get("/admin/sso")
-async def admin_sso(request: Request):
-    require_admin(request)
-    return public_sso_config()
-
-@app.patch("/admin/sso")
-async def admin_update_sso(req: SsoConfigUpdate, request: Request):
-    admin_email, _ = require_admin(request)
-    update = req.dict(exclude_unset=True)
-    saved = save_sso_config(update)
-    append_audit_event(
-        "sso_config_update",
-        user_email=admin_email,
-        provider_name=saved.get("provider_name"),
-        discovery_url=saved.get("discovery_url"),
-        enabled=bool(saved.get("enabled")),
-    )
-    return public_sso_config(saved)
-
-# ── Invitation Logic ────────────────────────────────────────────────────────
 INVITE_CODE = env_value("LATTICEAI_INVITE_CODE", "gemma-lattice-ai")
 INVITE_GATE_ENABLED = env_bool("LATTICEAI_INVITE_GATE_ENABLED", default=False)
+
+# ── Auth & Admin routers (latticeai.api) ─────────────────────────────────────
+app.include_router(create_auth_router(
+    load_users=load_users, save_users=save_users,
+    hash_password=hash_password, verify_and_migrate=verify_and_migrate_password,
+    create_session=create_session, get_session_email=get_session_email,
+    invalidate_session=invalidate_session, extract_bearer_token=_extract_bearer_token,
+    get_user_role=get_user_role, require_user=require_user,
+    check_ip_rate_limit=_check_rate_limit, client_ip=_client_ip,
+    get_sso_settings=get_sso_settings, get_sso_discovery=_get_sso_discovery,
+    public_sso_config=public_sso_config,
+    open_registration=OPEN_REGISTRATION, session_ttl=_SESSION_TTL,
+))
+
+def _graph_stats_safe():
+    try:
+        return KNOWLEDGE_GRAPH.stats() if (ENABLE_GRAPH and KNOWLEDGE_GRAPH) else {"disabled": True}
+    except Exception as e:
+        return {"error": str(e)}
+
+app.include_router(create_admin_router(
+    require_admin=require_admin, require_user=require_user,
+    load_users=load_users, save_users=save_users,
+    get_user_role=get_user_role, get_history=get_history,
+    public_user=public_user, load_vpc_config=load_vpc_config,
+    save_vpc_config=save_vpc_config,
+    build_admin_audit_report=build_admin_audit_report,
+    build_sensitivity_report=build_sensitivity_report,
+    append_audit_event=append_audit_event,
+    public_sso_config=public_sso_config, save_sso_config=save_sso_config,
+    get_graph_stats=_graph_stats_safe, enable_graph=ENABLE_GRAPH,
+    invite_code=INVITE_CODE, invite_gate_enabled=INVITE_GATE_ENABLED,
+    default_port=DEFAULT_PORT,
+))
 
 @app.get("/")
 async def root(request: Request, code: Optional[str] = None, authorized: Optional[str] = Cookie(None)):
@@ -6374,7 +5746,8 @@ async def mcp_recommend(req: McpRecommendRequest, request: Request):
 
 @app.post("/mcp/install")
 async def mcp_install(req: McpInstallRequest, request: Request):
-    require_user(request)
+    admin_email, _ = require_admin(request)
+    append_audit_event("mcp_install", user_email=admin_email, mcp_id=req.mcp_id)
     return await install_mcp(req.mcp_id)
 
 
@@ -6471,8 +5844,9 @@ async def mcp_custom_list(request: Request):
 
 @app.post("/mcp/custom")
 async def mcp_custom_add(req: McpCustomRequest, request: Request):
-    """Save a custom MCP entry (user-defined)."""
-    require_user(request)
+    """Save a custom MCP entry (admin-only)."""
+    admin_email, _ = require_admin(request)
+    append_audit_event("mcp_custom_add", user_email=admin_email, name=req.name, package=req.package)
     if not req.name.strip():
         raise HTTPException(status_code=400, detail="name은 필수입니다.")
     if not req.package.strip():
@@ -6534,8 +5908,9 @@ async def skills_marketplace(request: Request, category: Optional[str] = None, a
 
 @app.post("/skills/install")
 async def skills_install(req: SkillInstallRequest, request: Request):
-    """skill을 로컬 skills 디렉터리에 설치 (Apache-2.0 / MIT)"""
-    require_user(request)
+    """skill을 로컬 skills 디렉터리에 설치 (Apache-2.0 / MIT, 관리자 전용)"""
+    admin_email, _ = require_admin(request)
+    append_audit_event("skill_install", user_email=admin_email, plugin=req.plugin, skill=req.skill)
     return await install_skill(req.plugin, req.skill)
 
 

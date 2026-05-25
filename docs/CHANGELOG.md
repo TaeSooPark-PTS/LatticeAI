@@ -1,5 +1,49 @@
 # Changelog
 
+## [0.2.0] - 2026-05-25
+
+### server.py 모듈 분리 — latticeai/ 패키지 도입
+
+server.py(6,815줄)에서 핵심 로직을 `latticeai/` 패키지로 분리하여 유지보수성을 개선했습니다.
+
+**새 패키지 구조:**
+```
+latticeai/
+  core/
+    security.py    — 비밀번호 해싱, 레이트 리밋, IP 감지, 파일 매직 검증
+    sessions.py    — 파일 기반 세션 저장소 (SessionStore 클래스)
+    audit.py       — 감사 로깅, 민감정보 분석, 관리자 감사 리포트
+  api/
+    auth.py        — 인증/SSO/프로필 API 라우터 (register, login, logout, SSO, profile)
+    admin.py       — 관리자 API 라우터 (dashboard, users, VPC, SSO, audit)
+```
+
+- server.py: 6,815줄 → 6,187줄 (628줄 감소, 868줄이 5개 모듈로 분산)
+- 기존 API 호환성 100% 유지 — 모든 엔드포인트 경로와 응답 동일
+- `knowledge_graph_api.py` / `local_knowledge_api.py`와 동일한 팩토리 라우터 패턴 사용
+
+### README 전면 개편 — 사용자 경험 중심
+
+- 핵심 메시지: "내 파일과 대화를 기억하고 연결하는 로컬 AI 워크스페이스"
+- 기능 나열형 → 3분 워크플로 + Why 섹션 + 지식 그래프 설명
+- 고급 기능(전체 기능표, 보안, 설정, API, 트러블슈팅)은 접기(details) 섹션으로 이동
+- 비교표에 Knowledge Graph, Local Folder Indexing 항목 추가
+- 모델 추천표에 최소 RAM 컬럼 추가
+- 한국어 섹션도 경험 중심으로 재작성
+
+### 보안 강화 — 패키지 설치 관리자 전용
+
+- `/mcp/install`: `require_user` → `require_admin` + 감사 로그
+- `/skills/install`: `require_user` → `require_admin` + 감사 로그
+- `/mcp/custom` POST: `require_user` → `require_admin` + 감사 로그
+- pip/npm 패키지 설치는 관리자만 실행 가능, 모든 시도가 `audit_log.json`에 기록
+
+### Release
+- 배포 버전을 `0.2.0`으로 상향 (메이저 구조 변경)
+- 대상 채널: `npm` · `PyPI` · `VS Code Marketplace` · `Open VSX`
+
+---
+
 ## [0.1.31] - 2026-05-25
 
 ### 모델 추천 보정 — 하드웨어 대비 과도한 모델 방지

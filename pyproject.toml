@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "ltcai"
-version = "0.1.31"
+version = "0.2.0"
 description = "Lattice AI local MLX/cloud LLM workspace server"
 readme = "README.md"
 requires-python = ">=3.11"
@@ -76,6 +76,7 @@ py-modules = [
   "tools",
   "codex_telegram_bot",
 ]
+packages = ["latticeai", "latticeai.core", "latticeai.api"]
 include-package-data = true
 
 [tool.setuptools.package-data]
