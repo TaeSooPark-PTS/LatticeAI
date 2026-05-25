@@ -8,7 +8,6 @@ sys.path.insert(0, str(Path(__file__).parent.parent.parent))
 
 from server import (
     _bytes_match_extension,
-    _rate_buckets,
     enforce_rate_limit,
     hash_password,
     verify_password,
@@ -18,6 +17,7 @@ from server import (
     _require_local_approval,
     _LOCAL_WRITE_BLOCKED_PREFIXES,
 )
+from latticeai.core.security import _rate_buckets
 from fastapi import HTTPException
 
 
