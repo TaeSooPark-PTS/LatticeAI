@@ -561,42 +561,144 @@ _MODEL_CATALOG = [
     ("mlx-community/gemma-2-9b-it-4bit",             "Gemma 2 9B",           5.4,  "정확도",  "높은 응답 품질",               10),
     ("mlx-community/gemma-3-12b-it-4bit",            "Gemma 3 12B",          8.0,  "멀티모달", "이미지/텍스트 균형",            16),
     ("mlx-community/phi-4-4bit",                     "Phi 4",                8.3,  "코딩+",   "Microsoft 코딩 · 수학",         16),
+    ("mlx-community/gpt-oss-20b-MXFP4-Q8",           "GPT-OSS 20B",         12.1,  "추론",    "OpenAI 오픈가중치 · 로컬 추론",   32),
     ("mlx-community/Qwen2.5-Coder-32B-Instruct-4bit", "Qwen2.5 Coder 32B",   18.5, "코딩+",   "대형 코딩 · Qwen 계열",          36),
     ("mlx-community/Mistral-Small-24B-Instruct-2501-4bit","Mistral Small 24B",13.3, "대형",    "고품질 범용 응답",              32),
     ("mlx-community/gemma-4-26b-a4b-it-4bit",        "Gemma 4 26B",         15.6,  "VLM",     "이미지 지원 · 대형 추천",        32),
+    ("mlx-community/gemma-4-31b-it-4bit",            "Gemma 4 31B",         18.4,  "VLM+",    "Gemma 4 최신 31B instruct",      48),
     ("mlx-community/Qwen3-VL-30B-A3B-Instruct-4bit", "Qwen3-VL 30B A3B",    18.0,  "VLM+",    "최신 Qwen 대형 멀티모달",        48),
     ("mlx-community/gemma-3-27b-it-4bit",            "Gemma 3 27B",         17.0,  "VLM+",    "대형 멀티모달",                 48),
     ("mlx-community/Llama-3.3-70B-Instruct-4bit",    "Llama 3.3 70B",       40.0,  "최고급",  "충분한 RAM에서 고품질 대화",     64),
+    ("mlx-community/gpt-oss-120b-MXFP4-Q4",          "GPT-OSS 120B",        62.3,  "최고급",  "OpenAI 대형 오픈가중치 추론",    128),
 ]
 
 _CROSS_PLATFORM_MODEL_CATALOG: Dict[str, List[Tuple[str, str, float, str, str, int]]] = {
     "ollama": [
         ("ollama:qwen3-vl:4b", "Qwen3-VL 4B", 2.7, "VLM", "Ollama 멀티모달 · 저사양", 8),
         ("ollama:qwen3-vl:8b", "Qwen3-VL 8B", 4.8, "VLM", "Ollama 멀티모달 · 균형 추천", 16),
+        ("ollama:gpt-oss:20b", "GPT-OSS 20B", 12.1, "추론", "Ollama OpenAI gpt-oss 로컬 추론", 32),
+        ("ollama:hf.co/ggml-org/gemma-4-31B-it-GGUF:Q4_K_M", "Gemma 4 31B Q4", 18.7, "VLM+", "Hugging Face GGUF 기반 Gemma 4", 48),
+        ("ollama:gpt-oss:120b", "GPT-OSS 120B", 62.3, "최고급", "Ollama 대형 gpt-oss", 128),
         ("ollama:qwen3:8b", "Qwen3 8B", 4.8, "범용", "텍스트 추론 · Qwen 백업", 12),
         ("ollama:gemma3:4b", "Gemma 3 4B", 3.3, "VLM", "검증된 멀티모달 대안", 8),
         ("ollama:gemma3:12b", "Gemma 3 12B", 8.0, "VLM", "이미지/텍스트 균형", 16),
         ("ollama:qwen2.5-coder:14b", "Qwen2.5 Coder 14B", 9.0, "코딩", "코딩 작업용 Qwen", 24),
     ],
     "lmstudio": [
+        ("lmstudio:openai/gpt-oss-20b", "GPT-OSS 20B", 12.1, "추론", "LM Studio OpenAI gpt-oss", 32),
+        ("lmstudio:ggml-org/gemma-4-31B-it-GGUF", "Gemma 4 31B 4-bit", 18.7, "VLM+", "LM Studio GGUF Gemma 4", 48),
+        ("lmstudio:openai/gpt-oss-120b", "GPT-OSS 120B", 62.3, "최고급", "LM Studio 대형 gpt-oss", 128),
         ("lmstudio:Qwen/Qwen3-VL-4B-Instruct", "Qwen3-VL 4B", 2.7, "VLM", "LM Studio 멀티모달 · 저사양", 8),
         ("lmstudio:Qwen/Qwen3-VL-8B-Instruct", "Qwen3-VL 8B", 4.8, "VLM", "LM Studio 멀티모달 · 균형 추천", 16),
         ("lmstudio:Qwen/Qwen3-VL-30B-A3B-Instruct", "Qwen3-VL 30B A3B", 18.0, "VLM+", "대형 Qwen 멀티모달 · 24GB+ VRAM 권장", 32),
         ("lmstudio:google/gemma-3-12b-it", "Gemma 3 12B", 8.0, "VLM", "검증된 멀티모달 대안", 16),
     ],
     "vllm": [
+        ("vllm:openai/gpt-oss-20b", "GPT-OSS 20B", 12.1, "추론", "vLLM OpenAI gpt-oss", 32),
+        ("vllm:openai/gpt-oss-120b", "GPT-OSS 120B", 62.3, "최고급", "vLLM 대형 gpt-oss", 128),
         ("vllm:Qwen/Qwen3-VL-4B-Instruct", "Qwen3-VL 4B", 2.7, "VLM", "vLLM 멀티모달 · WSL/Linux 권장", 8),
         ("vllm:Qwen/Qwen3-VL-8B-Instruct", "Qwen3-VL 8B", 4.8, "VLM", "vLLM 멀티모달 · NVIDIA 권장", 16),
         ("vllm:Qwen/Qwen3-VL-30B-A3B-Instruct", "Qwen3-VL 30B A3B", 18.0, "VLM+", "대형 Qwen 멀티모달 · 24GB+ VRAM 권장", 32),
         ("vllm:google/gemma-3-12b-it", "Gemma 3 12B", 8.0, "VLM", "검증된 멀티모달 대안", 16),
     ],
     "llamacpp": [
+        ("llamacpp:ggml-org/gpt-oss-20b-GGUF", "GPT-OSS 20B GGUF", 12.1, "GGUF", "llama.cpp gpt-oss Q4", 32),
+        ("llamacpp:ggml-org/gemma-4-31B-it-GGUF", "Gemma 4 31B GGUF", 18.7, "GGUF", "Gemma 4 31B Q4_K_M", 48),
+        ("llamacpp:ggml-org/gpt-oss-120b-GGUF", "GPT-OSS 120B GGUF", 62.3, "GGUF", "llama.cpp 대형 gpt-oss", 128),
         ("llamacpp:Qwen/Qwen3-VL-4B-Instruct-GGUF", "Qwen3-VL 4B GGUF", 2.7, "GGUF", "CPU/Vulkan 백업 · 멀티모달 GGUF", 8),
         ("llamacpp:Qwen/Qwen3-VL-8B-Instruct-GGUF", "Qwen3-VL 8B GGUF", 4.8, "GGUF", "CPU/Vulkan 백업 · 균형형", 16),
         ("llamacpp:unsloth/gemma-3-4b-it-GGUF", "Gemma 3 4B GGUF", 3.3, "GGUF", "검증된 CPU 백업", 8),
         ("llamacpp:bartowski/Llama-3.2-3B-Instruct-GGUF", "Llama 3.2 3B GGUF", 2.0, "GGUF", "CPU-only 초경량 백업", 4),
     ],
 }
+
+_VERSIONED_MODEL_PATTERNS = (
+    ("gemma", re.compile(r"\bgemma[-\s]?(\d+(?:\.\d+)?)", re.IGNORECASE)),
+    ("qwen", re.compile(r"\bqwen[-\s]?(\d+(?:\.\d+)?)", re.IGNORECASE)),
+    ("llama", re.compile(r"\bllama[-\s]?(\d+(?:\.\d+)?)", re.IGNORECASE)),
+    ("phi", re.compile(r"\bphi[-\s]?(\d+(?:\.\d+)?)", re.IGNORECASE)),
+)
+
+_BEST_MODEL_TIERS: Dict[str, List[Tuple[int, str]]] = {
+    "local_mlx": [
+        (128, "mlx-community/gpt-oss-120b-MXFP4-Q4"),
+        (48, "mlx-community/gemma-4-31b-it-4bit"),
+        (32, "mlx-community/gpt-oss-20b-MXFP4-Q8"),
+        (16, "mlx-community/Qwen3-VL-8B-Instruct-4bit"),
+        (8, "mlx-community/Qwen3-VL-4B-Instruct-4bit"),
+        (0, "mlx-community/SmolLM-1.7B-Instruct-4bit"),
+    ],
+    "ollama": [
+        (128, "ollama:gpt-oss:120b"),
+        (48, "ollama:hf.co/ggml-org/gemma-4-31B-it-GGUF:Q4_K_M"),
+        (32, "ollama:gpt-oss:20b"),
+        (16, "ollama:qwen3-vl:8b"),
+        (8, "ollama:qwen3-vl:4b"),
+    ],
+    "lmstudio": [
+        (128, "lmstudio:openai/gpt-oss-120b"),
+        (48, "lmstudio:ggml-org/gemma-4-31B-it-GGUF"),
+        (32, "lmstudio:openai/gpt-oss-20b"),
+        (16, "lmstudio:Qwen/Qwen3-VL-8B-Instruct"),
+        (8, "lmstudio:Qwen/Qwen3-VL-4B-Instruct"),
+    ],
+    "vllm": [
+        (128, "vllm:openai/gpt-oss-120b"),
+        (32, "vllm:openai/gpt-oss-20b"),
+        (16, "vllm:Qwen/Qwen3-VL-8B-Instruct"),
+        (8, "vllm:Qwen/Qwen3-VL-4B-Instruct"),
+    ],
+    "llamacpp": [
+        (128, "llamacpp:ggml-org/gpt-oss-120b-GGUF"),
+        (48, "llamacpp:ggml-org/gemma-4-31B-it-GGUF"),
+        (32, "llamacpp:ggml-org/gpt-oss-20b-GGUF"),
+        (16, "llamacpp:Qwen/Qwen3-VL-8B-Instruct-GGUF"),
+        (8, "llamacpp:Qwen/Qwen3-VL-4B-Instruct-GGUF"),
+    ],
+}
+
+
+def _version_tuple(raw: str) -> Tuple[int, ...]:
+    return tuple(int(part) for part in raw.split(".") if part.isdigit())
+
+
+def _catalog_row_family_version(row: Tuple[str, str, float, str, str, int]) -> Tuple[str, Tuple[int, ...]] | None:
+    text = f"{row[0]} {row[1]}"
+    for family, pattern in _VERSIONED_MODEL_PATTERNS:
+        match = pattern.search(text)
+        if match:
+            version = _version_tuple(match.group(1))
+            if version:
+                return family, version
+    return None
+
+
+def _filter_lower_family_versions(
+    rows: List[Tuple[str, str, float, str, str, int]],
+) -> List[Tuple[str, str, float, str, str, int]]:
+    max_versions: Dict[str, Tuple[int, ...]] = {}
+    detected: List[Tuple[Tuple[str, str, float, str, str, int], Tuple[str, Tuple[int, ...]] | None]] = []
+    for row in rows:
+        version_info = _catalog_row_family_version(row)
+        detected.append((row, version_info))
+        if not version_info:
+            continue
+        family, version = version_info
+        if version > max_versions.get(family, (0,)):
+            max_versions[family] = version
+    return [
+        row for row, version_info in detected
+        if not version_info or version_info[1] >= max_versions.get(version_info[0], version_info[1])
+    ]
+
+
+def _best_model_for_engine(engine: str, ram_gb: float, rows: List[Tuple[str, str, float, str, str, int]]) -> str:
+    available_ids = {row[0] for row in rows}
+    for min_ram, model_id in _BEST_MODEL_TIERS.get(engine, []):
+        if ram_gb >= min_ram and model_id in available_ids:
+            return model_id
+    return rows[0][0] if rows else ""
+
 
 # ── Recommendation Logic ──────────────────────────────────────────────────────
 
@@ -627,15 +729,17 @@ def get_recommendations(env: Dict[str, Any]) -> Dict[str, Any]:
     else:
         preferred_engine = "llamacpp"
 
-    # pick the single "best" default model for this RAM
-    if is_apple and ram >= 48:
-        best_id = "mlx-community/Qwen3-VL-30B-A3B-Instruct-4bit"
-    elif ram >= 16:
-        best_id = "mlx-community/Qwen3-VL-8B-Instruct-4bit" if is_apple else _CROSS_PLATFORM_MODEL_CATALOG[preferred_engine][1][0]
-    elif ram >= 8:
-        best_id = "mlx-community/Qwen3-VL-4B-Instruct-4bit" if is_apple else _CROSS_PLATFORM_MODEL_CATALOG[preferred_engine][0][0]
-    else:
-        best_id = "mlx-community/gemma-3-1b-it-4bit" if is_apple else _CROSS_PLATFORM_MODEL_CATALOG["llamacpp"][-1][0]
+    apple_catalog = _filter_lower_family_versions(_MODEL_CATALOG)
+    engine_catalog = (
+        []
+        if is_apple
+        else _filter_lower_family_versions(_CROSS_PLATFORM_MODEL_CATALOG[preferred_engine])
+    )
+    best_id = _best_model_for_engine(
+        "local_mlx" if is_apple else preferred_engine,
+        ram,
+        apple_catalog if is_apple else engine_catalog,
+    )
 
     # ── Engines ──────────────────────────────────────────────────────────────
     engines: List[Dict] = []
@@ -776,8 +880,8 @@ def get_recommendations(env: Dict[str, Any]) -> Dict[str, Any]:
     models: List[Dict] = []
 
     if is_apple:
-        for mid, mname, size_gb, tag, desc, _ in _MODEL_CATALOG:
-            fits    = size_gb <= max_model_gb and disk_free >= size_gb + 2
+        for mid, mname, size_gb, tag, desc, min_ram in apple_catalog:
+            fits    = ram >= min_ram and size_gb <= max_model_gb and disk_free >= size_gb + 2
             is_best = mid == best_id
             models.append({
                 "id":       f"model_{mid.replace('/', '__').replace('-', '_')}",
@@ -797,7 +901,7 @@ def get_recommendations(env: Dict[str, Any]) -> Dict[str, Any]:
         vram_gb = float(gpu.get("vram_gb") or 0)
         gpu_budget_gb = vram_gb * 1.15 if gpu.get("vendor") in {"nvidia", "amd", "intel"} and vram_gb else max_model_gb
         model_budget_gb = min(max_model_gb, gpu_budget_gb)
-        for mid, mname, size_gb, tag, desc, min_ram in _CROSS_PLATFORM_MODEL_CATALOG[preferred_engine]:
+        for mid, mname, size_gb, tag, desc, min_ram in engine_catalog:
             fits = ram >= min_ram and size_gb <= model_budget_gb and disk_free >= size_gb + 2
             is_best = mid == best_id
             models.append({

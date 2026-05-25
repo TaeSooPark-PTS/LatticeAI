@@ -1223,21 +1223,44 @@ class KnowledgeGraphStore:
             from docx import Document
             doc = Document(str(path))
             paragraphs = [p.text for p in doc.paragraphs if p.text.strip()]
+            table_lines = []
+            for table in doc.tables:
+                for row in table.rows:
+                    cells = [_clean_text(cell.text) for cell in row.cells]
+                    if any(cells):
+                        table_lines.append("\t".join(cells))
             meta["paragraphs"] = len(paragraphs)
             meta["tables"] = len(doc.tables)
-            text = "\n\n".join(paragraphs)
+            meta["table_rows"] = len(table_lines)
+            text = "\n\n".join([*paragraphs, *table_lines])
         elif ext == ".xlsx":
             from openpyxl import load_workbook
             wb = load_workbook(str(path), read_only=True, data_only=True)
             rows_all = []
+            non_empty_rows = 0
+            non_empty_cells = 0
+            char_count = 0
             for ws in wb.worksheets:
-                rows_all.append(f"[Sheet: {ws.title}]")
+                sheet_rows = []
                 for row in ws.iter_rows(values_only=True):
-                    cells = [str(cell) if cell is not None else "" for cell in row]
-                    rows_all.append("\t".join(cells))
-                    if len("\n".join(rows_all)) > 200_000:
+                    cells = [str(cell).strip() if cell is not None else "" for cell in row]
+                    if not any(cells):
+                        continue
+                    line = "\t".join(cells)
+                    non_empty_rows += 1
+                    non_empty_cells += sum(1 for cell in cells if cell)
+                    sheet_rows.append(line)
+                    char_count += len(line) + 1
+                    if char_count > 200_000:
                         break
+                if sheet_rows:
+                    rows_all.append(f"[Sheet: {ws.title}]")
+                    rows_all.extend(sheet_rows)
+                if char_count > 200_000:
+                    break
             meta["sheets"] = len(wb.worksheets)
+            meta["rows"] = non_empty_rows
+            meta["cells"] = non_empty_cells
             text = "\n".join(rows_all)
         elif ext == ".pptx":
             from pptx import Presentation
@@ -1247,9 +1270,13 @@ class KnowledgeGraphStore:
                 parts = []
                 for shape in slide.shapes:
                     if getattr(shape, "has_text_frame", False):
-                        parts.append(shape.text_frame.text)
-                slides_text.append(f"[Slide {index}]\n" + "\n".join(parts))
+                        slide_text = shape.text_frame.text.strip()
+                        if slide_text:
+                            parts.append(slide_text)
+                if parts:
+                    slides_text.append(f"[Slide {index}]\n" + "\n".join(parts))
             meta["slides"] = len(prs.slides)
+            meta["text_slides"] = len(slides_text)
             text = "\n\n".join(slides_text)
         elif category == "image":
             from PIL import Image
@@ -1362,13 +1389,13 @@ class KnowledgeGraphStore:
               extension=excluded.extension,
               size_bytes=excluded.size_bytes,
               modified_at=excluded.modified_at,
-              sha256=COALESCE(excluded.sha256, local_file_index.sha256),
+              sha256=excluded.sha256,
               last_scanned_at=excluded.last_scanned_at,
-              last_indexed_at=COALESCE(excluded.last_indexed_at, local_file_index.last_indexed_at),
+              last_indexed_at=excluded.last_indexed_at,
               parser_type=excluded.parser_type,
               status=excluded.status,
               error_message=excluded.error_message,
-              graph_node_id=COALESCE(excluded.graph_node_id, local_file_index.graph_node_id),
+              graph_node_id=excluded.graph_node_id,
               deleted=excluded.deleted,
               metadata_json=excluded.metadata_json
             """,
@@ -1380,6 +1407,113 @@ class KnowledgeGraphStore:
             ),
         )
         return index_id
+
+    def _delete_local_file_graph(self, conn: sqlite3.Connection, file_node_id: Optional[str]) -> None:
+        if not file_node_id:
+            return
+
+        file_row = conn.execute(
+            "SELECT metadata_json FROM nodes WHERE id=?",
+            (file_node_id,),
+        ).fetchone()
+        source_id = None
+        if file_row:
+            source_id = _safe_loads(file_row["metadata_json"]).get("source_id")
+
+        linked_rows = conn.execute(
+            """
+            SELECT n.id, n.type, n.metadata_json
+            FROM edges e
+            JOIN nodes n ON n.id=e.to_node
+            WHERE e.from_node=?
+            """,
+            (file_node_id,),
+        ).fetchall()
+        owned_ids: set = set()
+        auto_candidate_ids: set = set()
+        for row in linked_rows:
+            metadata = _safe_loads(row["metadata_json"])
+            if row["type"] in {"Chunk", "ImageText", "Section"} or metadata.get("source_node") == file_node_id:
+                owned_ids.add(row["id"])
+            elif metadata.get("auto_extracted") and metadata.get("source") == "local_folder":
+                auto_candidate_ids.add(row["id"])
+
+        conn.execute("DELETE FROM chunks WHERE source_node=?", (file_node_id,))
+        conn.execute("DELETE FROM edges WHERE from_node=? OR to_node=?", (file_node_id, file_node_id))
+        conn.execute("DELETE FROM nodes WHERE id=?", (file_node_id,))
+
+        def delete_nodes(node_ids: set) -> None:
+            if not node_ids:
+                return
+            placeholders = ",".join("?" * len(node_ids))
+            params = list(node_ids)
+            conn.execute(f"DELETE FROM chunks WHERE source_node IN ({placeholders})", params)
+            conn.execute(f"DELETE FROM edges WHERE from_node IN ({placeholders}) OR to_node IN ({placeholders})", params * 2)
+            conn.execute(f"DELETE FROM nodes WHERE id IN ({placeholders})", params)
+
+        delete_nodes(owned_ids)
+
+        removable_auto_ids: set = set()
+        for node_id in auto_candidate_ids:
+            remaining_edges = conn.execute(
+                "SELECT from_node, to_node FROM edges WHERE from_node=? OR to_node=?",
+                (node_id, node_id),
+            ).fetchall()
+            if all(
+                (row["from_node"] in auto_candidate_ids and row["to_node"] in auto_candidate_ids)
+                for row in remaining_edges
+            ):
+                removable_auto_ids.add(node_id)
+        delete_nodes(removable_auto_ids)
+        if source_id:
+            self._cleanup_local_graph_orphans(conn, str(source_id))
+
+    def _cleanup_local_graph_orphans(self, conn: sqlite3.Connection, source_id: str) -> None:
+        while True:
+            folder_rows = conn.execute(
+                "SELECT id, metadata_json FROM nodes WHERE type='Folder'"
+            ).fetchall()
+            leaf_ids = []
+            for row in folder_rows:
+                metadata = _safe_loads(row["metadata_json"])
+                if metadata.get("source_id") != source_id:
+                    continue
+                has_children = conn.execute(
+                    "SELECT 1 FROM edges WHERE from_node=? LIMIT 1",
+                    (row["id"],),
+                ).fetchone()
+                if not has_children:
+                    leaf_ids.append(row["id"])
+            if not leaf_ids:
+                break
+            placeholders = ",".join("?" * len(leaf_ids))
+            conn.execute(f"DELETE FROM edges WHERE from_node IN ({placeholders}) OR to_node IN ({placeholders})", leaf_ids * 2)
+            conn.execute(f"DELETE FROM nodes WHERE id IN ({placeholders})", leaf_ids)
+
+        for node_type in ("Drive", "Computer"):
+            rows = conn.execute("SELECT id FROM nodes WHERE type=?", (node_type,)).fetchall()
+            removable = []
+            for row in rows:
+                has_children = conn.execute(
+                    "SELECT 1 FROM edges WHERE from_node=? LIMIT 1",
+                    (row["id"],),
+                ).fetchone()
+                if not has_children:
+                    removable.append(row["id"])
+            if removable:
+                placeholders = ",".join("?" * len(removable))
+                conn.execute(f"DELETE FROM edges WHERE from_node IN ({placeholders}) OR to_node IN ({placeholders})", removable * 2)
+                conn.execute(f"DELETE FROM nodes WHERE id IN ({placeholders})", removable)
+
+    def _local_file_index_has_extracted_text(self, row: sqlite3.Row) -> bool:
+        metadata = _safe_loads(row["metadata_json"])
+        parser = metadata.get("parser") if isinstance(metadata, dict) else {}
+        if not isinstance(parser, dict):
+            return False
+        try:
+            return int(parser.get("extracted_chars") or 0) > 0
+        except (TypeError, ValueError):
+            return False
 
     def _upsert_local_file_node(
         self,
@@ -1397,6 +1531,9 @@ class KnowledgeGraphStore:
         text: str,
         parser_meta: Dict[str, Any],
     ) -> str:
+        text = _clean_text(text)
+        if not text:
+            raise ValueError("텍스트 추출 결과가 비어 있습니다.")
         try:
             relative_path = file_path.relative_to(root).as_posix()
         except ValueError:
@@ -1446,7 +1583,7 @@ class KnowledgeGraphStore:
             file_node_id,
             _node_type_for_category(category),
             file_path.name,
-            summary=(_clean_text(text) or relative_path)[:700],
+            summary=text[:700],
             metadata=metadata,
             raw=metadata,
         )
@@ -1488,7 +1625,7 @@ class KnowledgeGraphStore:
             )
             self._upsert_edge(conn, file_node_id, chunk_id, "포함함", weight=0.7, metadata={"source": "local_scan"})
 
-        concepts = _extract_concepts(f"{file_path.name}\n{target_for_concepts}", limit=18)
+        concepts = _extract_concepts(target_for_concepts, limit=18)
         concept_ids: Dict[str, str] = {}
         for concept in concepts:
             node_t = _classify_node_type(concept, target_for_concepts)
@@ -1620,10 +1757,21 @@ class KnowledgeGraphStore:
                 except ValueError:
                     relative_path = file_path.name
                 seen_relative_paths.add(relative_path)
+                modified_at = _safe_iso_from_stat_mtime(stat.st_mtime)
+                existing = conn.execute(
+                    """
+                    SELECT size_bytes, modified_at, sha256, graph_node_id, status, metadata_json
+                    FROM local_file_index
+                    WHERE source_id=? AND relative_path=?
+                    """,
+                    (source_id, relative_path),
+                ).fetchone()
                 decision = self._local_file_decision(file_path, root, stat)
                 parser_type = decision["parser_type"]
                 if not decision["indexable"]:
                     counts[decision["status"]] += 1
+                    if existing and existing["graph_node_id"]:
+                        self._delete_local_file_graph(conn, existing["graph_node_id"])
                     self._upsert_local_file_index(
                         conn,
                         source_id=source_id,
@@ -1638,19 +1786,11 @@ class KnowledgeGraphStore:
                     )
                     continue
 
-                modified_at = _safe_iso_from_stat_mtime(stat.st_mtime)
-                existing = conn.execute(
-                    """
-                    SELECT size_bytes, modified_at, sha256, graph_node_id, status
-                    FROM local_file_index
-                    WHERE source_id=? AND relative_path=?
-                    """,
-                    (source_id, relative_path),
-                ).fetchone()
                 if (
                     existing
                     and existing["status"] == "indexed"
                     and existing["graph_node_id"]
+                    and self._local_file_index_has_extracted_text(existing)
                     and existing["size_bytes"] == stat.st_size
                     and existing["modified_at"] == modified_at
                 ):
@@ -1667,7 +1807,7 @@ class KnowledgeGraphStore:
                         parser_type=parser_type,
                         sha256=existing["sha256"],
                         graph_node_id=existing["graph_node_id"],
-                        metadata={"category": decision["category"], "unchanged": True},
+                        metadata={**_safe_loads(existing["metadata_json"]), "category": decision["category"], "unchanged": True},
                     )
                     continue
 
@@ -1677,6 +1817,8 @@ class KnowledgeGraphStore:
                 except Exception as exc:
                     counts["failed"] += 1
                     errors.append({"path": str(file_path), "error": str(exc)})
+                    if existing and existing["graph_node_id"]:
+                        self._delete_local_file_graph(conn, existing["graph_node_id"])
                     self._upsert_local_file_index(
                         conn,
                         source_id=source_id,
@@ -1692,7 +1834,12 @@ class KnowledgeGraphStore:
                     )
                     continue
 
-                if existing and existing["sha256"] == digest and existing["graph_node_id"]:
+                if (
+                    existing
+                    and existing["sha256"] == digest
+                    and existing["graph_node_id"]
+                    and self._local_file_index_has_extracted_text(existing)
+                ):
                     counts["skipped_unchanged"] += 1
                     self._upsert_local_file_index(
                         conn,
@@ -1706,7 +1853,7 @@ class KnowledgeGraphStore:
                         parser_type=parser_type,
                         sha256=digest,
                         graph_node_id=existing["graph_node_id"],
-                        metadata={"category": decision["category"], "sha256_unchanged": True},
+                        metadata={**_safe_loads(existing["metadata_json"]), "category": decision["category"], "sha256_unchanged": True},
                     )
                     continue
 
@@ -1716,6 +1863,27 @@ class KnowledgeGraphStore:
                         decision["category"],
                         include_ocr=include_ocr,
                     )
+                    text = _clean_text(text)
+                    parser_meta = {**parser_meta, "extracted_chars": len(text)}
+                    if not text:
+                        counts["skipped_empty_text"] += 1
+                        if existing and existing["graph_node_id"]:
+                            self._delete_local_file_graph(conn, existing["graph_node_id"])
+                        self._upsert_local_file_index(
+                            conn,
+                            source_id=source_id,
+                            root=root,
+                            file_path=file_path,
+                            stat=stat,
+                            os_type=os_type,
+                            drive_id=drive_id,
+                            status="skipped_empty_text",
+                            parser_type=parser_type,
+                            sha256=digest,
+                            error_message="텍스트 추출 결과가 비어 있습니다.",
+                            metadata={"category": decision["category"], "parser": parser_meta},
+                        )
+                        continue
                     graph_node_id = self._upsert_local_file_node(
                         conn,
                         source_id=source_id,
@@ -1749,6 +1917,8 @@ class KnowledgeGraphStore:
                 except Exception as exc:
                     counts["failed"] += 1
                     errors.append({"path": str(file_path), "error": str(exc)})
+                    if existing and existing["graph_node_id"]:
+                        self._delete_local_file_graph(conn, existing["graph_node_id"])
                     self._upsert_local_file_index(
                         conn,
                         source_id=source_id,
@@ -1765,19 +1935,20 @@ class KnowledgeGraphStore:
                     )
 
             if not limit_reached:
-                existing_paths = {
-                    row["relative_path"]
+                existing_rows = {
+                    row["relative_path"]: row["graph_node_id"]
                     for row in conn.execute(
-                        "SELECT relative_path FROM local_file_index WHERE source_id=?",
+                        "SELECT relative_path, graph_node_id FROM local_file_index WHERE source_id=?",
                         (source_id,),
                     )
                 }
-                deleted_paths = existing_paths - seen_relative_paths
+                deleted_paths = set(existing_rows) - seen_relative_paths
                 for relative_path in deleted_paths:
+                    self._delete_local_file_graph(conn, existing_rows.get(relative_path))
                     conn.execute(
                         """
                         UPDATE local_file_index
-                        SET status='deleted', deleted=1, last_scanned_at=?, error_message=NULL
+                        SET status='deleted', deleted=1, last_scanned_at=?, error_message=NULL, graph_node_id=NULL
                         WHERE source_id=? AND relative_path=?
                         """,
                         (_now(), source_id, relative_path),

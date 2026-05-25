@@ -154,14 +154,17 @@ Based on public product behavior as of 2026-05.
 |-------|----------|------|---------|
 | Qwen3-VL 4B | Multimodal / low spec | ~2.7 GB | 8 GB |
 | Qwen3-VL 8B | Multimodal / balanced | ~4.8 GB | 16 GB |
+| GPT-OSS 20B | Reasoning / open-weight | ~12.1 GB | 32 GB |
 | Gemma 4 26B | Multimodal / large | ~15.6 GB | 32 GB |
+| Gemma 4 31B | Multimodal / latest Gemma 4 | ~18.4 GB | 48 GB |
 | Qwen3-VL 30B A3B | Multimodal / top | ~18 GB | 48 GB |
+| GPT-OSS 120B | Reasoning / top open-weight | ~62.3 GB | 128 GB |
 | Phi 4 Mini | Coding (fast) | ~2.2 GB | 8 GB |
 | Llama 3.1 8B | General | ~4.7 GB | 8 GB |
 | Mistral 7B v0.3 | General / Apache | ~4.1 GB | 8 GB |
 
 **Cross-platform (Ollama / LM Studio / vLLM / llama.cpp):**
-Same models via Ollama pull, LM Studio download, or vLLM serve.
+Same models via Ollama pull, LM Studio download, vLLM serve, or llama.cpp GGUF where available.
 
 **Cloud (any platform):**
 OpenAI GPT-5.5 · Claude Opus 4.7 / Sonnet 4.6 / Haiku 4.5 via OpenRouter · Groq · Together · xAI · any OpenAI-compatible endpoint
@@ -360,7 +363,7 @@ Full reference: [docs/mcp-tools.md](docs/mcp-tools.md)
 | VS Code Marketplace | [marketplace.visualstudio.com](https://marketplace.visualstudio.com/items?itemName=parktaesoo.ltcai) |
 | Open VSX | [open-vsx.org](https://open-vsx.org/extension/parktaesoo/ltcai) |
 
-Current version: **0.2.1** — [Changelog](docs/CHANGELOG.md)
+Current version: **0.2.2** — [Changelog](docs/CHANGELOG.md)
 
 ---
 
@@ -416,8 +419,11 @@ LTCAI --tunnel                       # + Cloudflare 공개 URL 자동 발급
 |------|------|------|----------|
 | Qwen3-VL 4B | 멀티모달 / 저사양 | ~2.7GB | 8GB |
 | Qwen3-VL 8B | 멀티모달 / 균형 추천 | ~4.8GB | 16GB |
+| GPT-OSS 20B | 추론 / 오픈가중치 | ~12.1GB | 32GB |
 | Gemma 4 26B | 멀티모달 / 대형 | ~15.6GB | 32GB |
+| Gemma 4 31B | 멀티모달 / 최신 Gemma 4 | ~18.4GB | 48GB |
 | Qwen3-VL 30B A3B | 멀티모달 / 최고급 | ~18GB | 48GB |
+| GPT-OSS 120B | 추론 / 최고급 오픈가중치 | ~62.3GB | 128GB |
 
 자세한 내용: [docs/CHANGELOG.md](docs/CHANGELOG.md) · [보안](SECURITY.md) · [기여](CONTRIBUTING.md)
 

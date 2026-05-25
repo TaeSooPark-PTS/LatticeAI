@@ -443,8 +443,16 @@ class Recommendation:
 _MODEL_CATALOG: List[Dict[str, Any]] = [
     # (min_ram_mb, min_vram_mb, model_id, quant, runtime_preference)
     # OS 오버헤드(~4-6 GB) + KV 캐시 여유를 감안한 보수적 RAM 임계값
+    {"ram": 128 * 1024, "vram": 48 * 1024,
+     "id": "mlx-community/gpt-oss-120b-MXFP4-Q4", "q": "mxfp4", "multimodal": False},
+    {"ram": 64 * 1024, "vram": 32 * 1024,
+     "id": "mlx-community/gemma-4-31b-it-4bit", "q": "4bit", "multimodal": True},
     {"ram": 64 * 1024, "vram": 32 * 1024,
      "id": "Qwen/Qwen3-VL-30B-A3B-Instruct", "q": "q4_K_M", "multimodal": True},
+    {"ram": 48 * 1024, "vram": 24 * 1024,
+     "id": "mlx-community/gemma-4-31b-it-4bit", "q": "4bit", "multimodal": True},
+    {"ram": 32 * 1024, "vram": 16 * 1024,
+     "id": "mlx-community/gpt-oss-20b-MXFP4-Q8", "q": "mxfp4", "multimodal": False},
     {"ram": 48 * 1024, "vram": 24 * 1024,
      "id": "Qwen/Qwen3-VL-30B-A3B-Instruct", "q": "q4_K_M", "multimodal": True},
     {"ram": 32 * 1024, "vram": 16 * 1024,
@@ -630,7 +638,13 @@ def plan(profile: SystemProfile, rec: Recommendation) -> InstallPlan:
     model_command = ["huggingface-cli", "download", rec.model_id, "--quiet"]
     if rec.runtime == "ollama":
         lower = rec.model_id.lower()
-        if "qwen3-vl-8b" in lower:
+        if "gpt-oss-120b" in lower:
+            model_command = ["ollama", "pull", "gpt-oss:120b"]
+        elif "gpt-oss-20b" in lower:
+            model_command = ["ollama", "pull", "gpt-oss:20b"]
+        elif "gemma-4-31b" in lower:
+            model_command = ["ollama", "pull", "hf.co/ggml-org/gemma-4-31B-it-GGUF:Q4_K_M"]
+        elif "qwen3-vl-8b" in lower:
             model_command = ["ollama", "pull", "qwen3-vl:8b"]
         elif "qwen3-vl-4b" in lower:
             model_command = ["ollama", "pull", "qwen3-vl:4b"]

@@ -7,9 +7,12 @@ from pathlib import Path
 sys.path.insert(0, str(Path(__file__).parent.parent.parent))
 
 from server import (
+    ENGINE_MODEL_CATALOG,
     _bytes_match_extension,
     enforce_rate_limit,
+    filter_lower_family_versions,
     hash_password,
+    normalize_local_model_request,
     verify_password,
     _agent_risk,
     _host_is_loopback,
@@ -44,6 +47,24 @@ def test_password_hash_unique_per_call():
     assert h1 != h2
     assert verify_password("same", h1)
     assert verify_password("same", h2)
+
+
+def test_model_catalog_hides_lower_family_versions_when_newer_exists():
+    mlx_models = filter_lower_family_versions(ENGINE_MODEL_CATALOG["local_mlx"])
+    mlx_ids = {item["id"] for item in mlx_models}
+    assert "mlx-community/gemma-4-31b-it-4bit" in mlx_ids
+    assert "mlx-community/gemma-3-12b-it-4bit" not in mlx_ids
+
+    ollama_models = filter_lower_family_versions(ENGINE_MODEL_CATALOG["ollama"])
+    ollama_ids = {item["id"] for item in ollama_models}
+    assert "ollama:hf.co/ggml-org/gemma-4-31B-it-GGUF:Q4_K_M" in ollama_ids
+    assert "ollama:gemma3:12b" not in ollama_ids
+
+
+def test_model_aliases_resolve_to_engine_loadable_ids():
+    assert normalize_local_model_request("openai/gpt-oss-20b", "local_mlx") == "mlx-community/gpt-oss-20b-MXFP4-Q8"
+    assert normalize_local_model_request("gpt-oss-120b", "ollama") == "ollama:gpt-oss:120b"
+    assert normalize_local_model_request("gemma-4-31b-it-4bit", "llamacpp") == "llamacpp:ggml-org/gemma-4-31B-it-GGUF"
 
 
 # ---------------------------------------------------------------------------
