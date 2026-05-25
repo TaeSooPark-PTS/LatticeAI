@@ -1,5 +1,17 @@
 # Changelog
 
+## [0.2.1] - 2026-05-25
+
+### 버그 수정
+
+- **CI 테스트 import 수정** — `test_security.py`에서 `_rate_buckets` import 경로를 `server` → `latticeai.core.security`로 변경 (v0.2.0 모듈 분리에 따른 경로 변경 반영)
+
+### Release
+- 배포 버전을 `0.2.1`로 상향
+- 대상 채널: `npm` · `PyPI` · `VS Code Marketplace` · `Open VSX`
+
+---
+
 ## [0.2.0] - 2026-05-25
 
 ### server.py 모듈 분리 — latticeai/ 패키지 도입
