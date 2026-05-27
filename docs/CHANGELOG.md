@@ -1,5 +1,48 @@
 # Changelog
 
+## [0.3.0] - 2026-05-27
+
+### Knowledge Graph — LLM Structured Output Extraction
+
+- `_extract_concepts()` / `_extract_triples()`를 LLM 기반으로 전환 (rule-based 폴백 유지)
+- LLM Router 참조를 knowledge_graph에 주입하는 `set_llm_router()` 함수 추가
+- `LATTICEAI_LLM_EXTRACTION` 환경변수로 LLM extraction on/off 제어
+
+### Knowledge Graph — Hybrid Retrieval & Document Generation
+
+- `search_for_document_generation()` 추가 — Hybrid Score (0.5×text + 0.3×graph + 0.2×recency) 기반 검색
+- `multi_hop_context()` 추가 — Seed nodes에서 N-hop 그래프 탐색
+- `DOCUMENT` NodeType, `USED_IN` / `INSPIRED_BY` / `CONTRADICTS` / `EVOLVES_FROM` EdgeType 추가
+- Node에 `style`, `tone`, `importance_score`, `last_used` 필드 추가 (SQLite v2 스키마 반영)
+
+### 문서 자동 생성 파이프라인
+
+- `latticeai/core/context_builder.py` 신규 — Knowledge Graph → 구조화 Markdown Context 변환
+- `latticeai/core/document_generator.py` 신규 — Intent detection + 전용 System Prompt + Session 관리
+- `llm_router.py`에 `generate_document()` / `stream_generate_document()` 추가
+- `/chat` 엔드포인트에서 "보고서 작성해줘" 같은 문서 생성 의도 자동 감지 → 전용 파이프라인 활성화
+- 생성 문서에 참조 Knowledge Graph 노드 각주 자동 첨부
+- 대화별 `DocumentGenerationSession`으로 반복 수정("이 부분 더 수정해") 지원
+
+### UI/UX — 디자인 통일
+
+- Account/Chat/Graph/Admin 전체 페이지를 통일된 lavender purple 테마로 전환
+- 다크 모드 base 스타일 완전 제거 (`.app-layout` Obsidian dark, account dark base 등)
+- 초록 테마(`#22d3a0`) 60+ 인스턴스를 보라(`#6f42e8`) 계열로 교체
+- 메시지 버블: 다크 green → 보라 gradient(user), 밝은 lavender glass(AI)
+- 사이드바, 입력창, 버튼, 모달 오버레이 모두 라이트 lavender로 통일
+- 카드/패널에 hover lift 효과, 커스텀 스크롤바, focus ring, selection 색상 추가
+- tokens.css에 글로벌 polish (scrollbar, selection, focus-visible) 추가
+
+### 테스트
+
+- `test_document_generation.py` 33개 테스트 추가 (intent detection, session, extraction, hybrid retrieval, context builder, schema v2)
+
+### Release
+
+- 배포 버전을 `0.3.0`으로 상향
+- 대상 채널: `npm` · `PyPI` · `VS Code Marketplace` · `Open VSX`
+
 ## [0.2.2] - 2026-05-26
 
 ### 모델 카탈로그

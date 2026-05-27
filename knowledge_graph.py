@@ -6,6 +6,7 @@ portable database so it can later migrate to Neo4j/Postgres without changing
 the ingestion contract.
 """
 
+import asyncio
 import hashlib
 import json
 import logging
@@ -25,6 +26,12 @@ try:
     from kg_schema import KGStoreV2
 except Exception:  # pragma: no cover - v2 schema is optional at import time
     KGStoreV2 = None  # type: ignore[assignment]
+
+_llm_router_ref = None
+
+def set_llm_router(router_instance):
+    global _llm_router_ref
+    _llm_router_ref = router_instance
 
 
 GRAPH_SCHEMA_VERSION = 1
@@ -365,6 +372,109 @@ def _chunks(text: str, size: int = 1200, overlap: int = 160) -> List[str]:
     return chunks
 
 
+_LLM_EXTRACT_CONCEPT_PROMPT = """Extract the key concepts from the following text.
+Return ONLY a JSON array of objects, each with "concept" (string) and "importance" (float 0-1).
+Extract up to {limit} concepts. Focus on named entities, technical terms, and domain-specific nouns.
+Do NOT include common words, stop words, or generic terms.
+
+Text:
+{text}
+
+JSON:"""
+
+_LLM_EXTRACT_TRIPLE_PROMPT = """Extract relationship triples from the following text.
+Return ONLY a JSON array of objects, each with:
+- "subject": source concept (string)
+- "relation": relationship verb (string, Korean or English)
+- "object": target concept (string)
+- "evidence": the sentence supporting this triple (string, max 240 chars)
+- "confidence": how confident you are (float 0-1)
+
+Extract up to {limit} triples. Focus on meaningful semantic relationships.
+
+Text:
+{text}
+
+Concepts already identified: {concepts}
+
+JSON:"""
+
+ENABLE_LLM_EXTRACTION = os.getenv("LATTICEAI_LLM_EXTRACTION", "true").lower() in ("1", "true", "yes")
+
+
+def _llm_extract_concepts(text: str, limit: int = 12) -> Optional[List[str]]:
+    if not ENABLE_LLM_EXTRACTION or not _llm_router_ref:
+        return None
+    if not _llm_router_ref.current_model_id:
+        return None
+    prompt = _LLM_EXTRACT_CONCEPT_PROMPT.format(text=text[:3000], limit=limit)
+    try:
+        loop = asyncio.get_event_loop()
+        if loop.is_running():
+            import concurrent.futures
+            with concurrent.futures.ThreadPoolExecutor(max_workers=1) as pool:
+                future = pool.submit(asyncio.run, _llm_router_ref.generate(prompt, max_tokens=1024, temperature=0.1))
+                raw = future.result(timeout=30)
+        else:
+            raw = asyncio.run(_llm_router_ref.generate(prompt, max_tokens=1024, temperature=0.1))
+        raw = raw.strip()
+        if raw.startswith("```"):
+            raw = re.sub(r"^```(?:json)?\s*", "", raw)
+            raw = re.sub(r"\s*```$", "", raw)
+        parsed = json.loads(raw)
+        if isinstance(parsed, list):
+            concepts = []
+            for item in parsed[:limit]:
+                if isinstance(item, dict) and "concept" in item:
+                    concepts.append(item["concept"])
+                elif isinstance(item, str):
+                    concepts.append(item)
+            return concepts if concepts else None
+    except Exception as e:
+        logging.debug("LLM concept extraction failed (falling back to rules): %s", e)
+    return None
+
+
+def _llm_extract_triples(text: str, concepts: List[str], limit: int = 20) -> Optional[List[Dict[str, str]]]:
+    if not ENABLE_LLM_EXTRACTION or not _llm_router_ref:
+        return None
+    if not _llm_router_ref.current_model_id:
+        return None
+    prompt = _LLM_EXTRACT_TRIPLE_PROMPT.format(
+        text=text[:3000], limit=limit,
+        concepts=", ".join(concepts[:15]),
+    )
+    try:
+        loop = asyncio.get_event_loop()
+        if loop.is_running():
+            import concurrent.futures
+            with concurrent.futures.ThreadPoolExecutor(max_workers=1) as pool:
+                future = pool.submit(asyncio.run, _llm_router_ref.generate(prompt, max_tokens=2048, temperature=0.1))
+                raw = future.result(timeout=30)
+        else:
+            raw = asyncio.run(_llm_router_ref.generate(prompt, max_tokens=2048, temperature=0.1))
+        raw = raw.strip()
+        if raw.startswith("```"):
+            raw = re.sub(r"^```(?:json)?\s*", "", raw)
+            raw = re.sub(r"\s*```$", "", raw)
+        parsed = json.loads(raw)
+        if isinstance(parsed, list):
+            triples = []
+            for item in parsed[:limit]:
+                if isinstance(item, dict) and "subject" in item and "object" in item:
+                    triples.append({
+                        "subject": str(item["subject"]),
+                        "relation": str(item.get("relation", "관련됨")),
+                        "object": str(item["object"]),
+                        "context": str(item.get("evidence", ""))[:240],
+                        "confidence": float(item.get("confidence", 0.8)),
+                    })
+            return triples if triples else None
+    except Exception as e:
+        logging.debug("LLM triple extraction failed (falling back to rules): %s", e)
+    return None
+
+
 _CONCEPT_STOP: set = {
     # English stop words
     "the", "and", "for", "with", "this", "that", "from", "into", "which",
@@ -385,7 +495,15 @@ _CONCEPT_STOP: set = {
 
 
 def _extract_concepts(text: str, limit: int = 12) -> List[str]:
-    """Extract meaningful named concepts from text.
+    """LLM-first concept extraction with rule-based fallback."""
+    llm_result = _llm_extract_concepts(text, limit)
+    if llm_result:
+        return llm_result
+    return _extract_concepts_rules(text, limit)
+
+
+def _extract_concepts_rules(text: str, limit: int = 12) -> List[str]:
+    """Extract meaningful named concepts from text (rule-based).
 
     Priority order:
     1. Backtick / quoted terms (explicitly technical)
@@ -586,7 +704,19 @@ def _extract_triples(
     concepts: List[str],
     limit: int = 20,
 ) -> List[Dict[str, str]]:
-    """Extract (subject, verb-edge, object, context) triples from text.
+    """LLM-first triple extraction with rule-based fallback."""
+    llm_result = _llm_extract_triples(text, concepts, limit)
+    if llm_result:
+        return llm_result
+    return _extract_triples_rules(text, concepts, limit)
+
+
+def _extract_triples_rules(
+    text: str,
+    concepts: List[str],
+    limit: int = 20,
+) -> List[Dict[str, str]]:
+    """Extract (subject, verb-edge, object, context) triples from text (rule-based).
 
     For each sentence containing ≥2 concepts, infer the verb-form edge label
     from surrounding context and create a directed triple.
@@ -2810,3 +2940,170 @@ class KnowledgeGraphStore:
             "local_file_status": local_file_status,
             "v2": v2,
         }
+
+    def search_for_document_generation(self, query: str, limit: int = 10) -> List[Dict[str, Any]]:
+        """Hybrid retrieval optimized for document generation.
+
+        Scoring: 0.5*text_relevance + 0.3*graph_relationship + 0.2*recency
+        Returns nodes with rich context for document generation prompts.
+        """
+        query = str(query or "").strip()
+        if not query:
+            return []
+        limit = max(1, min(int(limit or 10), 50))
+        terms = _topic_candidates(query, limit=12)
+        now = datetime.now()
+
+        with self._connect() as conn:
+            candidate_rows = []
+            seen_ids = set()
+
+            if query:
+                q = f"%{query}%"
+                rows = conn.execute(
+                    """
+                    SELECT id, type, title, summary, metadata_json, updated_at
+                    FROM nodes
+                    WHERE (title LIKE ? OR summary LIKE ? OR metadata_json LIKE ?)
+                      AND type IN ('Document', 'File', 'CodeFile', 'SlideDeck',
+                                   'Spreadsheet', 'Image', 'ImageText', 'Chat',
+                                   'Decision', 'Task', 'Concept', 'Feature',
+                                   'Page', 'Slide')
+                    ORDER BY updated_at DESC
+                    LIMIT ?
+                    """,
+                    (q, q, q, limit * 5),
+                ).fetchall()
+                for row in rows:
+                    if row["id"] not in seen_ids:
+                        seen_ids.add(row["id"])
+                        candidate_rows.append(row)
+
+            for term in terms:
+                t = f"%{term}%"
+                rows = conn.execute(
+                    """
+                    SELECT id, type, title, summary, metadata_json, updated_at
+                    FROM nodes
+                    WHERE (title LIKE ? OR summary LIKE ? OR metadata_json LIKE ?)
+                      AND type IN ('Document', 'File', 'CodeFile', 'SlideDeck',
+                                   'Spreadsheet', 'Image', 'ImageText', 'Chat',
+                                   'Decision', 'Task', 'Concept', 'Feature',
+                                   'Page', 'Slide')
+                    ORDER BY updated_at DESC
+                    LIMIT ?
+                    """,
+                    (t, t, t, limit * 3),
+                ).fetchall()
+                for row in rows:
+                    if row["id"] not in seen_ids:
+                        seen_ids.add(row["id"])
+                        candidate_rows.append(row)
+
+            scored_results = []
+            for row in candidate_rows:
+                haystack = f"{row['title']} {row['summary']} {row['metadata_json']}".lower()
+
+                text_hits = sum(1 for term in terms if term.lower() in haystack)
+                text_score = min(1.0, text_hits / max(len(terms), 1))
+
+                edge_count = conn.execute(
+                    "SELECT COUNT(*) AS c FROM edges WHERE from_node=? OR to_node=?",
+                    (row["id"], row["id"]),
+                ).fetchone()["c"]
+                graph_score = min(1.0, math.log1p(edge_count) / 4.0)
+
+                recency = _recency_score(row["updated_at"], now=now, half_life_days=14.0)
+
+                doc_type_boost = 1.2 if row["type"] in (
+                    "Document", "File", "SlideDeck", "Decision",
+                ) else 1.0
+
+                hybrid_score = (
+                    0.5 * text_score
+                    + 0.3 * graph_score
+                    + 0.2 * recency
+                ) * doc_type_boost
+
+                meta = _safe_loads(row["metadata_json"])
+                neighbor_concepts = []
+                neighbor_rows = conn.execute(
+                    """
+                    SELECT n.title, n.type FROM edges e
+                    JOIN nodes n ON n.id = CASE WHEN e.from_node = ? THEN e.to_node ELSE e.from_node END
+                    WHERE (e.from_node = ? OR e.to_node = ?)
+                      AND n.type IN ('Concept', 'Feature', 'Decision', 'Task')
+                    LIMIT 8
+                    """,
+                    (row["id"], row["id"], row["id"]),
+                ).fetchall()
+                for nr in neighbor_rows:
+                    neighbor_concepts.append({"title": nr["title"], "type": nr["type"]})
+
+                scored_results.append({
+                    "id": row["id"],
+                    "type": row["type"],
+                    "title": row["title"],
+                    "summary": row["summary"],
+                    "metadata": meta,
+                    "updated_at": row["updated_at"],
+                    "hybrid_score": round(hybrid_score, 4),
+                    "scores": {
+                        "text": round(text_score, 4),
+                        "graph": round(graph_score, 4),
+                        "recency": round(recency, 4),
+                    },
+                    "related_concepts": neighbor_concepts,
+                })
+
+            scored_results.sort(key=lambda x: x["hybrid_score"], reverse=True)
+            return scored_results[:limit]
+
+    def multi_hop_context(self, node_ids: List[str], max_hops: int = 2) -> Dict[str, Any]:
+        """Multi-hop graph traversal from seed nodes for richer context."""
+        visited_nodes = set()
+        visited_edges = set()
+        all_nodes = []
+        all_edges = []
+        frontier = set(node_ids)
+
+        with self._connect() as conn:
+            for hop in range(max_hops):
+                if not frontier:
+                    break
+                next_frontier = set()
+                for nid in frontier:
+                    if nid in visited_nodes:
+                        continue
+                    visited_nodes.add(nid)
+                    row = conn.execute(
+                        "SELECT id, type, title, summary, metadata_json, updated_at FROM nodes WHERE id=?",
+                        (nid,),
+                    ).fetchone()
+                    if row:
+                        all_nodes.append({
+                            "id": row["id"], "type": row["type"],
+                            "title": row["title"], "summary": row["summary"],
+                            "metadata": _safe_loads(row["metadata_json"]),
+                            "hop": hop,
+                        })
+                    edge_rows = conn.execute(
+                        """
+                        SELECT id, from_node, to_node, type, weight
+                        FROM edges WHERE from_node=? OR to_node=?
+                        """,
+                        (nid, nid),
+                    ).fetchall()
+                    for er in edge_rows:
+                        if er["id"] not in visited_edges:
+                            visited_edges.add(er["id"])
+                            all_edges.append({
+                                "from": er["from_node"], "to": er["to_node"],
+                                "type": er["type"], "weight": er["weight"],
+                            })
+                            other = er["to_node"] if er["from_node"] == nid else er["from_node"]
+                            if other not in visited_nodes:
+                                next_frontier.add(other)
+                frontier = next_frontier
+
+        return {"nodes": all_nodes, "edges": all_edges}

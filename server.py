@@ -46,8 +46,10 @@ from pydantic import BaseModel
 from PIL import Image
 
 from llm_router import AsyncOpenAI, LLMRouter, OPENAI_COMPATIBLE_PROVIDERS, HF_MODELS_ROOT, ensure_mlx_runtime, hf_model_dir, parse_model_ref, mx, normalize_branding
-from knowledge_graph import KnowledgeGraphStore
+from knowledge_graph import KnowledgeGraphStore, set_llm_router
 from knowledge_graph_api import create_knowledge_graph_router
+from latticeai.core.context_builder import retrieve_context_for_generation, format_sources_footnote
+from latticeai.core.document_generator import detect_document_intent, DocumentGenerationSession
 from local_knowledge_api import LocalKnowledgeWatcher, create_local_knowledge_router
 from latticeai.core.security import (
     hash_password as _hash_password,
@@ -1001,7 +1003,9 @@ def build_admin_audit_report(users: Dict) -> Dict:
     )
 
 router = LLMRouter()
+set_llm_router(router)
 gardener = PReinforceGardener()
+_doc_gen_sessions: dict = {}  # conversation_id → DocumentGenerationSession
 
 async def autoload_default_model() -> None:
     if not AUTOLOAD_MODELS:
@@ -3636,12 +3640,24 @@ async def chat(req: ChatRequest, request: Request):
     except Exception as e:
         logging.warning("Knowledge reinforcement skipped: %s", e)
 
+    is_doc_gen = detect_document_intent(req.message)
+    doc_gen_context_result = None
+
     try:
         if ENABLE_GRAPH and KNOWLEDGE_GRAPH:
-            graph_context = KNOWLEDGE_GRAPH.context_for_query(req.message)
-            if graph_context:
-                context += f"\n\n[KNOWLEDGE GRAPH]\n{graph_context}"
-                print("🕸️ Context reinforced with knowledge graph.")
+            if is_doc_gen:
+                doc_gen_context_result = retrieve_context_for_generation(
+                    KNOWLEDGE_GRAPH, req.message, max_results=10, max_hops=2,
+                )
+                graph_md = doc_gen_context_result.get("context_markdown", "")
+                if graph_md:
+                    context += f"\n\n[KNOWLEDGE GRAPH — Document Generation Context]\n{graph_md}"
+                    print("📝 Document generation context retrieved from knowledge graph.")
+            else:
+                graph_context = KNOWLEDGE_GRAPH.context_for_query(req.message)
+                if graph_context:
+                    context += f"\n\n[KNOWLEDGE GRAPH]\n{graph_context}"
+                    print("🕸️ Context reinforced with knowledge graph.")
     except Exception as e:
         logging.warning("Knowledge graph reinforcement skipped: %s", e)
 
@@ -3651,7 +3667,6 @@ async def chat(req: ChatRequest, request: Request):
             context += f"\n\n{screenshot_context}"
 
     if env_bool("LATTICEAI_AUTO_READ_CHAT_PATHS", default=False):
-        # Off by default: automatic local-file injection can leak files to cloud models.
         _file_path_re = re.compile(r'(?:^|[\s\'\"(])((~|/[\w.])[^\s\'")\]]*)', re.MULTILINE)
         for _m in _file_path_re.finditer(req.message or ""):
             _fpath = _m.group(1).strip()
@@ -3668,6 +3683,55 @@ async def chat(req: ChatRequest, request: Request):
     save_to_history("user", history_message, source=req.source or "web", conversation_id=req.conversation_id, **history_user)
     if req.source != "telegram":
         asyncio.create_task(broadcast_web_chat("user", req.message))
+
+    if is_doc_gen and ENABLE_GRAPH and KNOWLEDGE_GRAPH:
+        conv_key = req.conversation_id or "default"
+        session = _doc_gen_sessions.get(conv_key)
+        if session is None:
+            session = DocumentGenerationSession()
+            _doc_gen_sessions[conv_key] = session
+        graph_md = (doc_gen_context_result or {}).get("context_markdown", "")
+        system_prompt = session.get_system_prompt(graph_md)
+        sources = (doc_gen_context_result or {}).get("sources", [])
+        footnote = format_sources_footnote(sources)
+
+        if req.stream:
+            async def _stream_doc_gen():
+                collected = []
+                async for chunk in router.stream_generate_document(
+                    req.message, system_prompt,
+                    max_tokens=req.max_tokens or 8192,
+                    temperature=req.temperature or 0.3,
+                ):
+                    collected.append(chunk)
+                    yield f"data: {json.dumps({'text': chunk}, ensure_ascii=False)}\n\n"
+                full_text = "".join(collected)
+                if footnote:
+                    yield f"data: {json.dumps({'text': footnote}, ensure_ascii=False)}\n\n"
+                    full_text += footnote
+                session.update(graph_md, full_text, req.conversation_id)
+                save_to_history("assistant", full_text, source=req.source or "web", conversation_id=req.conversation_id, **history_user)
+                if req.source != "telegram":
+                    asyncio.create_task(broadcast_web_chat("assistant", full_text))
+                yield "data: [DONE]\n\n"
+            return StreamingResponse(
+                _stream_doc_gen(),
+                media_type="text/event-stream",
+                headers={"X-Model": router.current_model_id, "X-Doc-Gen": "true"},
+            )
+        else:
+            result = await router.generate_document(
+                req.message, system_prompt,
+                max_tokens=req.max_tokens or 8192,
+                temperature=req.temperature or 0.3,
+            )
+            if footnote:
+                result += footnote
+            session.update(graph_md, result, req.conversation_id)
+            save_to_history("assistant", str(result), source=req.source or "web", conversation_id=req.conversation_id, **history_user)
+            if req.source != "telegram":
+                asyncio.create_task(broadcast_web_chat("assistant", str(result)))
+            return JSONResponse(content={"response": str(result)})
 
     if req.stream:
         recent_context = build_recent_chat_context(user_email=effective_email, conversation_id=req.conversation_id)

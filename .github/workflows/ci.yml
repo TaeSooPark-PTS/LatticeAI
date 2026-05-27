@@ -32,7 +32,7 @@ jobs:
 
       - name: Syntax check
         run: |
-          python -m py_compile ltcai_cli.py server.py knowledge_graph.py llm_router.py p_reinforce.py telegram_bot.py tools.py codex_telegram_bot.py
+          python -m py_compile ltcai_cli.py server.py knowledge_graph.py llm_router.py p_reinforce.py telegram_bot.py tools.py codex_telegram_bot.py latticeai/core/context_builder.py latticeai/core/document_generator.py
 
       - name: Run tests
         run: |

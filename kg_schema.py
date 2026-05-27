@@ -81,6 +81,7 @@ class NodeType(str, Enum):
     CONVERSATION = "CONVERSATION"   # 대화 세션 전체
     MESSAGE      = "MESSAGE"        # 단일 발화
     FILE         = "FILE"           # 업로드/연결된 파일
+    DOCUMENT     = "DOCUMENT"       # 생성/관리되는 문서 (보고서, 계획서 등)
     CHUNK        = "CHUNK"          # 파일의 분할 청크
     CODE_SYMBOL  = "CODE_SYMBOL"    # 함수·클래스·모듈
     CONCEPT      = "CONCEPT"        # 추출된 개념 / 태그
@@ -110,6 +111,10 @@ class EdgeType(str, Enum):
     TAGGED_AS     = "TAGGED_AS"       # ANY → CONCEPT
     VERSION_OF    = "VERSION_OF"      # FILE → FILE (히스토리)
     GRANTS_ACCESS = "GRANTS_ACCESS"   # PERSON → RESOURCE
+    USED_IN       = "USED_IN"         # CONCEPT → DOCUMENT (문서에 활용됨)
+    INSPIRED_BY   = "INSPIRED_BY"     # DOCUMENT → DOCUMENT (영감/참조 관계)
+    CONTRADICTS   = "CONTRADICTS"     # DOCUMENT ↔ DOCUMENT (상충 관계)
+    EVOLVES_FROM  = "EVOLVES_FROM"    # DOCUMENT → DOCUMENT (발전/개정 관계)
 
     @classmethod
     def from_legacy(cls, label: str) -> "EdgeType":
@@ -140,6 +145,13 @@ _LEGACY_NODE_MAP: Dict[str, NodeType] = {
     "mcp":          NodeType.TOOL,
     "project":      NodeType.PROJECT,
     "workspace":    NodeType.PROJECT,
+    "document":     NodeType.DOCUMENT,
+    "report":       NodeType.DOCUMENT,
+    "plan":         NodeType.DOCUMENT,
+    "proposal":     NodeType.DOCUMENT,
+    "보고서":       NodeType.DOCUMENT,
+    "계획서":       NodeType.DOCUMENT,
+    "기획서":       NodeType.DOCUMENT,
 }
 
 _LEGACY_EDGE_MAP: Dict[str, EdgeType] = {
@@ -171,18 +183,27 @@ _LEGACY_EDGE_MAP: Dict[str, EdgeType] = {
     "tagged_as": EdgeType.TAGGED_AS,
     "version_of": EdgeType.VERSION_OF,
     "grants_access": EdgeType.GRANTS_ACCESS,
+    "used_in":       EdgeType.USED_IN,
+    "inspired_by":   EdgeType.INSPIRED_BY,
+    "contradicts":   EdgeType.CONTRADICTS,
+    "evolves_from":  EdgeType.EVOLVES_FROM,
+    "활용됨":        EdgeType.USED_IN,
+    "영감받음":      EdgeType.INSPIRED_BY,
+    "상충함":        EdgeType.CONTRADICTS,
+    "발전함":        EdgeType.EVOLVES_FROM,
 }
 
 # 노드 타입별로 허용되는 source / target 조합 (PPT 카탈로그 그대로)
 # None == 모든 타입 허용
 EDGE_ENDPOINT_RULES: Dict[EdgeType, Tuple[Optional[Sequence[NodeType]], Optional[Sequence[NodeType]]]] = {
-    EdgeType.CONTAINS:      ((NodeType.FILE,),            (NodeType.CHUNK,)),
-    EdgeType.MENTIONS:      ((NodeType.MESSAGE, NodeType.FILE, NodeType.CHUNK),
+    EdgeType.CONTAINS:      ((NodeType.FILE, NodeType.DOCUMENT),
+                             (NodeType.CHUNK,)),
+    EdgeType.MENTIONS:      ((NodeType.MESSAGE, NodeType.FILE, NodeType.CHUNK, NodeType.DOCUMENT),
                              (NodeType.CONCEPT, NodeType.PERSON, NodeType.MODEL, NodeType.TOOL)),
     EdgeType.REFERENCES:    ((NodeType.FILE, NodeType.MESSAGE, NodeType.CHUNK),
                              (NodeType.FILE, NodeType.MESSAGE, NodeType.CHUNK)),
     EdgeType.REPLIES_TO:    ((NodeType.MESSAGE,),         (NodeType.MESSAGE,)),
-    EdgeType.AUTHORED_BY:   ((NodeType.FILE, NodeType.MESSAGE, NodeType.CONVERSATION),
+    EdgeType.AUTHORED_BY:   ((NodeType.FILE, NodeType.MESSAGE, NodeType.CONVERSATION, NodeType.DOCUMENT),
                              (NodeType.PERSON,)),
     EdgeType.USES:          ((NodeType.PROJECT, NodeType.CONVERSATION),
                              (NodeType.TOOL, NodeType.MODEL)),
@@ -194,6 +215,14 @@ EDGE_ENDPOINT_RULES: Dict[EdgeType, Tuple[Optional[Sequence[NodeType]], Optional
     EdgeType.VERSION_OF:    ((NodeType.FILE,), (NodeType.FILE,)),
     EdgeType.GRANTS_ACCESS: ((NodeType.PERSON,),
                              (NodeType.FILE, NodeType.CONVERSATION, NodeType.PROJECT)),
+    EdgeType.USED_IN:       ((NodeType.CONCEPT,),
+                             (NodeType.DOCUMENT, NodeType.FILE)),
+    EdgeType.INSPIRED_BY:   ((NodeType.DOCUMENT, NodeType.FILE),
+                             (NodeType.DOCUMENT, NodeType.FILE)),
+    EdgeType.CONTRADICTS:   ((NodeType.DOCUMENT, NodeType.FILE),
+                             (NodeType.DOCUMENT, NodeType.FILE)),
+    EdgeType.EVOLVES_FROM:  ((NodeType.DOCUMENT, NodeType.FILE),
+                             (NodeType.DOCUMENT, NodeType.FILE)),
 }
 
 
@@ -262,6 +291,10 @@ class Node:
     visibility: Visibility = Visibility.PRIVATE
     created_at: str = field(default_factory=_now_iso)
     updated_at: str = field(default_factory=_now_iso)
+    style: Optional[str] = None
+    tone: Optional[str] = None
+    importance_score: float = 0.0
+    last_used: Optional[str] = None
 
     def validate(self) -> None:
         if not isinstance(self.type, NodeType):
@@ -345,15 +378,19 @@ CREATE TABLE IF NOT EXISTS kg_meta (
 );
 
 CREATE TABLE IF NOT EXISTS nodes_v2 (
-  id          TEXT PRIMARY KEY,
-  type        TEXT NOT NULL,
-  label       TEXT NOT NULL,
-  attrs       TEXT NOT NULL DEFAULT '{}',
-  embedding   BLOB,
-  owner_id    TEXT,
-  visibility  TEXT NOT NULL DEFAULT 'private',
-  created_at  TEXT NOT NULL,
-  updated_at  TEXT NOT NULL
+  id               TEXT PRIMARY KEY,
+  type             TEXT NOT NULL,
+  label            TEXT NOT NULL,
+  attrs            TEXT NOT NULL DEFAULT '{}',
+  embedding        BLOB,
+  owner_id         TEXT,
+  visibility       TEXT NOT NULL DEFAULT 'private',
+  created_at       TEXT NOT NULL,
+  updated_at       TEXT NOT NULL,
+  style            TEXT,
+  tone             TEXT,
+  importance_score REAL NOT NULL DEFAULT 0.0,
+  last_used        TEXT
 );
 
 CREATE TABLE IF NOT EXISTS edges_v2 (
@@ -418,8 +455,9 @@ class KGStoreV2:
             conn.execute(
                 """
                 INSERT INTO nodes_v2(id, type, label, attrs, embedding,
-                                     owner_id, visibility, created_at, updated_at)
-                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+                                     owner_id, visibility, created_at, updated_at,
+                                     style, tone, importance_score, last_used)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
                 ON CONFLICT(id) DO UPDATE SET
                   type=excluded.type,
                   label=excluded.label,
@@ -427,7 +465,11 @@ class KGStoreV2:
                   embedding=COALESCE(excluded.embedding, nodes_v2.embedding),
                   owner_id=excluded.owner_id,
                   visibility=excluded.visibility,
-                  updated_at=excluded.updated_at
+                  updated_at=excluded.updated_at,
+                  style=COALESCE(excluded.style, nodes_v2.style),
+                  tone=COALESCE(excluded.tone, nodes_v2.tone),
+                  importance_score=MAX(excluded.importance_score, nodes_v2.importance_score),
+                  last_used=COALESCE(excluded.last_used, nodes_v2.last_used)
                 """,
                 (
                     node.id, node.type.value, node.label,
@@ -435,6 +477,8 @@ class KGStoreV2:
                     encode_embedding(node.embedding),
                     node.owner_id, node.visibility.value,
                     node.created_at, node.updated_at,
+                    node.style, node.tone,
+                    float(node.importance_score), node.last_used,
                 ),
             )
         return node.id
@@ -575,6 +619,7 @@ class KGStoreV2:
 
 # ── Row → model helpers ────────────────────────────────────────────────────
 def _row_to_node(row: sqlite3.Row) -> Node:
+    keys = row.keys() if hasattr(row, "keys") else []
     return Node(
         id=row["id"],
         type=NodeType(row["type"]),
@@ -585,6 +630,10 @@ def _row_to_node(row: sqlite3.Row) -> Node:
         visibility=Visibility(row["visibility"]),
         created_at=row["created_at"],
         updated_at=row["updated_at"],
+        style=row["style"] if "style" in keys else None,
+        tone=row["tone"] if "tone" in keys else None,
+        importance_score=float(row["importance_score"]) if "importance_score" in keys else 0.0,
+        last_used=row["last_used"] if "last_used" in keys else None,
     )
 
 

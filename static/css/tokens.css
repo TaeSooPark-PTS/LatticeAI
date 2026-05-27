@@ -159,6 +159,32 @@
   --radius-sm:    var(--lt-radius-sm);
 }
 
+/* ── Global polish ─────────────────────────────────────────── */
+::selection {
+  background: rgba(110, 74, 230, 0.18);
+  color: var(--lt-color-ink-900);
+}
+
+:focus-visible {
+  outline: 2px solid rgba(110, 74, 230, 0.40);
+  outline-offset: 2px;
+}
+
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+::-webkit-scrollbar-thumb {
+  background: rgba(110, 74, 230, 0.16);
+  border-radius: 99px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: rgba(110, 74, 230, 0.28);
+}
+
 /* ── Reduced motion (a11y) ─────────────────────────────────── */
 @media (prefers-reduced-motion: reduce) {
   :root {
