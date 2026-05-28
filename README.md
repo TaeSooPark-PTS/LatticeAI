@@ -387,7 +387,7 @@ Full reference: [docs/mcp-tools.md](docs/mcp-tools.md)
 | VS Code Marketplace | [marketplace.visualstudio.com](https://marketplace.visualstudio.com/items?itemName=parktaesoo.ltcai) |
 | Open VSX | [open-vsx.org](https://open-vsx.org/extension/parktaesoo/ltcai) |
 
-Current version: **0.2.2** — [Changelog](docs/CHANGELOG.md)
+Current version: **0.3.1** — [Changelog](docs/CHANGELOG.md)
 
 ---
 
