@@ -1,6 +1,6 @@
 // Lattice AI Service Worker — enables PWA install on Android/iOS
 // Strategy: network-first for API, cache-first for static assets.
-const CACHE = "ltcai-v6";
+const CACHE = "ltcai-v7";
 const STATIC = [
   "/",
   "/static/lattice-reference.css",

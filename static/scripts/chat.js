@@ -11,6 +11,8 @@ const chatViewport = document.getElementById('chat-viewport');
         let currentUserNickname = "Guest";
         let currentUserEmail = "";
         let isAdmin = false;
+        let telegramHistorySyncEnabled = false;
+        let telegramHistorySyncInFlight = false;
 
         // ── 멀티 LLM 파이프라인 상태 ──
         let pipelineConfig = { planning: null, executing: null, reviewing: null };
@@ -517,6 +519,32 @@ const chatViewport = document.getElementById('chat-viewport');
             localStorage.setItem(scopedStorageKey('onboarding_complete'), 'true');
         }
 
+        function consumeSetupAfterLoginFlag() {
+            try {
+                const params = new URLSearchParams(window.location.search);
+                const value = params.get('setup') === '1' || sessionStorage.getItem('ltcai_force_setup_after_login') === 'true';
+                sessionStorage.removeItem('ltcai_force_setup_after_login');
+                if (params.get('setup') === '1') {
+                    const cleanUrl = `${window.location.pathname}${window.location.hash || ''}`;
+                    window.history.replaceState({}, '', cleanUrl);
+                }
+                return value;
+            } catch (_) {
+                return false;
+            }
+        }
+
+        async function modelLoadedForChat() {
+            try {
+                const res = await apiFetch('/health');
+                if (!res.ok) return false;
+                const data = await res.json();
+                return Boolean(data.current_model || (data.loaded_models || []).length);
+            } catch (_) {
+                return false;
+            }
+        }
+
         function workspaceLabel(kind) {
             if (kind === 'company') return currentLang === 'ko' ? '회사 워크스페이스' : 'Company Workspace';
             return currentLang === 'ko' ? '개인 워크스페이스' : 'Personal Workspace';
@@ -799,14 +827,20 @@ const chatViewport = document.getElementById('chat-viewport');
         let onboardingRecs = null;
         let onboardingSelectedModel = null;
 
-        function startOnboardingIfNeeded(force = false) {
+        async function startOnboardingIfNeeded(force = false) {
             updateWorkspaceModeUi();
-            if (!force && onboardingComplete()) {
+            const forceAfterLogin = consumeSetupAfterLoginFlag();
+            const hasLoadedModel = await modelLoadedForChat();
+            if (!force && !forceAfterLogin && onboardingComplete() && hasLoadedModel) {
                 document.getElementById('onboarding-overlay')?.classList.remove('open');
                 return;
             }
             document.getElementById('onboarding-overlay')?.classList.add('open');
-            renderOnboardingWorkspace();
+            if (forceAfterLogin || !hasLoadedModel) {
+                renderPcAnalysis();
+            } else {
+                renderOnboardingWorkspace();
+            }
         }
 
         function renderOnboardingShell(stepIndex, bodyHtml, actionsHtml = '') {
@@ -1260,7 +1294,7 @@ const chatViewport = document.getElementById('chat-viewport');
             selectMode(mode);
             setOnboardingComplete();
             document.getElementById('onboarding-overlay')?.classList.remove('open');
-            showHome();
+            showChat();
         }
 
         function switchAcctTab(tab) {
@@ -1836,7 +1870,17 @@ const chatViewport = document.getElementById('chat-viewport');
                 if (!finalData) throw new Error('모델 준비 응답이 비어 있습니다.');
                 closeModelPanel();
                 await loadModelStatus();
-                addMessage('ai', `<b>${escapeHtml(compactModelName(finalData.current || modelId))}</b> 로드 되었습니다.`);
+                // 피드백 #1/#2: 사용자가 클릭한 modelId가 아니라 백엔드가 돌려준 current를 신뢰한다.
+                const actualCurrent = finalData.current || (finalData.resolution && finalData.resolution.expected_current) || modelId;
+                window.__latticeActiveModel = actualCurrent;
+                let statusLine = `<b>${escapeHtml(compactModelName(actualCurrent))}</b> 로드 되었습니다.`;
+                if (finalData.ready_to_chat === false) {
+                    const reason = (finalData.smoke_test && finalData.smoke_test.reason) || '채팅 호환성 검사 실패';
+                    statusLine += `<br><span class="sensitivity-preview">⚠️ 현재 채팅 호환성이 낮습니다 (${escapeHtml(reason)}). 다른 실행 엔진을 추천합니다.</span>`;
+                } else if (finalData.compatibility_status === 'unknown') {
+                    statusLine += `<br><span class="sensitivity-preview">호환성 테스트를 완료하지 못했습니다. 채팅이 가능하지만 답변 품질이 일정하지 않을 수 있어요.</span>`;
+                }
+                addMessage('ai', statusLine);
             } catch (e) {
                 document.getElementById('model-list').innerHTML = `
                     <div class="sensitivity-preview">${escapeHtml(e.message)}</div>
@@ -1847,6 +1891,19 @@ const chatViewport = document.getElementById('chat-viewport');
 
         async function pullAndLoadModel(encodedId, engine = '') {
             return prepareAndLoadModel(encodedId, engine);
+        }
+
+        // 피드백 #1/#2: 사용자가 직접 모델을 선택했을 때도 같은 표준 흐름을 타도록 노출.
+        async function selectModelByCard(card) {
+            if (!card || !card.id) {
+                throw new Error('모델 카드가 비어 있습니다.');
+            }
+            const encoded = encodeURIComponent(card.id);
+            const engine = card.engine || (Array.isArray(card.engine_options) && card.engine_options[0]?.engine) || '';
+            return prepareAndLoadModel(encoded, engine);
+        }
+        if (typeof window !== 'undefined') {
+            window.selectModelByCard = selectModelByCard;
         }
 
         function fillVpcForm(config) {
@@ -1938,7 +1995,7 @@ const chatViewport = document.getElementById('chat-viewport');
             if (!t) {
                 t = document.createElement('div');
                 t.id = 'ltcai-toast';
-                t.style.cssText = 'position:fixed;bottom:28px;left:50%;transform:translateX(-50%);background:#1e2330;color:#f8fafc;border:1px solid rgba(255,255,255,0.12);border-radius:10px;padding:10px 18px;font-size:13px;font-weight:600;z-index:9999;box-shadow:0 8px 24px rgba(0,0,0,0.4);pointer-events:none;transition:opacity .2s;';
+                t.style.cssText = 'position:fixed;bottom:28px;left:50%;transform:translateX(-50%);background:rgba(255,255,255,0.96);color:#14162c;border:1px solid rgba(111,66,232,0.16);border-radius:10px;padding:10px 18px;font-size:13px;font-weight:600;z-index:9999;box-shadow:0 8px 24px rgba(88,72,150,0.16);pointer-events:none;transition:opacity .2s;';
                 document.body.appendChild(t);
             }
             t.textContent = msg;
@@ -3264,10 +3321,13 @@ const chatViewport = document.getElementById('chat-viewport');
         }
 
         async function syncTelegramHistory() {
+            if (!telegramHistorySyncEnabled || telegramHistorySyncInFlight) return;
+            telegramHistorySyncInFlight = true;
             try {
                 const res = await apiFetch('/history');
                 if (!res.ok) return;
                 const history = await res.json();
+                let added = false;
                 for (const item of history) {
                     if (item.source !== 'telegram') continue;
                     const key = `${item.timestamp || ''}:${item.role}:${item.content}`;
@@ -3278,9 +3338,13 @@ const chatViewport = document.getElementById('chat-viewport');
                         ? 'Lattice AI'
                         : (item.user_nickname || 'Telegram');
                     addMessage(role, item.content || '', null, sender);
+                    added = true;
                 }
-                loadHistory();
+                if (added) loadHistory();
             } catch (e) { }
+            finally {
+                telegramHistorySyncInFlight = false;
+            }
         }
 
         async function sendToAgent(text, extraCtx = '') {
@@ -3866,10 +3930,19 @@ const chatViewport = document.getElementById('chat-viewport');
                 const res = await apiFetch('/runtime_features');
                 if (res.ok) {
                     const f = await res.json();
+                    telegramHistorySyncEnabled = Boolean(f.telegram_enabled);
                     if (!f.graph_enabled) {
                         const btn = document.getElementById('data-graph-btn');
                         if (btn) btn.style.display = 'none';
                     }
+                    return;
+                }
+            } catch (_) {}
+            try {
+                const res = await apiFetch('/health');
+                if (res.ok) {
+                    const data = await res.json();
+                    telegramHistorySyncEnabled = Boolean(data.features?.telegram_enabled);
                 }
             } catch (_) {}
         })();
@@ -3878,7 +3951,7 @@ const chatViewport = document.getElementById('chat-viewport');
         loadVpcStatus();
         restoreCurrentConversation();
         syncTelegramHistory();
-        setInterval(syncTelegramHistory, 2500);
+        setInterval(syncTelegramHistory, 15000);
 
         // ── 내 컴퓨터 ──────────────────────────────────────────────────
         let cuAgentRunning = false;
@@ -4370,7 +4443,7 @@ const chatViewport = document.getElementById('chat-viewport');
     function _showComplete() {
         _subtitle('설정 완료!');
         _footInfo('');
-        _footBtns(`<button class="wbtn wbtn-primary" onclick="closeSetupWizard();loadModelStatus()">완료 ✓</button>`);
+        _footBtns(`<button class="wbtn wbtn-primary" onclick="closeSetupWizard();loadModelStatus();showChat()">완료 ✓</button>`);
     }
 
 // ── MCP 관리 모달 ────────────────────────────────────────────────────────

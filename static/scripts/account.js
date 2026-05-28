@@ -137,6 +137,12 @@ const API_BASE = window.location.protocol === 'file:' ? 'http://localhost:4825' 
             el.className = 'msg' + (ok ? ' ok' : '');
         }
 
+        function requestSetupAfterLogin() {
+            try {
+                sessionStorage.setItem('ltcai_force_setup_after_login', 'true');
+            } catch (_) {}
+        }
+
         async function doLogin() {
             const email = document.getElementById('login-email').value.trim();
             const password = document.getElementById('login-pw').value;
@@ -155,7 +161,8 @@ const API_BASE = window.location.protocol === 'file:' ? 'http://localhost:4825' 
                     localStorage.setItem('ltcai_user_email', data.email);
                     localStorage.setItem('ltcai_user_nickname', data.nickname || data.name || data.email);
                     localStorage.setItem('ltcai_is_admin', data.is_admin ? 'true' : 'false');
-                    window.location.href = '/chat';
+                    requestSetupAfterLogin();
+                    window.location.href = '/chat?setup=1';
                 } else {
                     const data = await res.json().catch(() => ({}));
                     setMsg('login-msg', data.detail || t('err_login_fail'));
@@ -197,7 +204,8 @@ const API_BASE = window.location.protocol === 'file:' ? 'http://localhost:4825' 
                             localStorage.setItem('ltcai_user_email', data.email);
                             localStorage.setItem('ltcai_user_nickname', data.nickname || data.name || data.email);
                             localStorage.setItem('ltcai_is_admin', data.is_admin ? 'true' : 'false');
-                            window.location.href = '/chat';
+                            requestSetupAfterLogin();
+                            window.location.href = '/chat?setup=1';
                         }
                     });
                 } else {

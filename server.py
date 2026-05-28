@@ -72,6 +72,24 @@ from latticeai.core.audit import (
 )
 from latticeai.api.auth import create_auth_router
 from latticeai.api.admin import create_admin_router
+from latticeai.api.security_dashboard import create_security_router as _create_security_router
+from latticeai.core.model_compat import (
+    ensure_profile as _ensure_compat_profile,
+    record_smoke_result as _record_smoke_result,
+    fast_postprocess as _compat_fast_postprocess,
+    validate_smoke_response as _validate_smoke_response,
+    list_cached_profiles as _list_compat_profiles,
+    SMOKE_PROMPT as _SMOKE_PROMPT,
+)
+from latticeai.core.model_resolution import (
+    ModelResolution as _ModelResolution,
+    PrepareState as _PrepareState,
+    PrepareReport as _PrepareReport,
+)
+from latticeai.core.graph_curator import (
+    auto_build_graph_overlay as _auto_build_graph_overlay,
+    mask_secrets as _curator_mask_secrets,
+)
 import mcp_registry
 from mcp_registry import (
     MCP_REGISTRY, _THIRD_PARTY_SKILL_SOURCES, _KNOWN_REPO_LICENSES,
@@ -1107,7 +1125,7 @@ async def lifespan(app: FastAPI):
             except Exception:
                 pass
 
-app = FastAPI(title=f"Lattice AI Server ({APP_MODE})", version="0.2.2", lifespan=lifespan)
+app = FastAPI(title=f"Lattice AI Server ({APP_MODE})", version="0.3.0", lifespan=lifespan)
 
 CORS_ALLOWED_ORIGINS = [
     f"http://localhost:{DEFAULT_PORT}",
@@ -1175,19 +1193,64 @@ app.include_router(create_admin_router(
     default_port=DEFAULT_PORT,
 ))
 
+# ── Security & Audit Command Center (피드백 #5) ──────────────────────────────
+def _security_audit_events_safe() -> List[Dict]:
+    try:
+        return _get_audit_log(AUDIT_FILE)
+    except Exception as e:
+        logging.warning("security audit events load failed: %s", e)
+        return []
+
+def _security_list_uploaded_files() -> List[Dict]:
+    """Audit log에서 document_upload 이벤트를 가공해서 file 목록으로 노출."""
+    files: List[Dict] = []
+    for idx, e in enumerate(_security_audit_events_safe()):
+        if e.get("event_type") != "document_upload":
+            continue
+        files.append({
+            "file_id": str(e.get("filename") or idx),
+            "filename": e.get("filename"),
+            "user_email": e.get("user_email"),
+            "user_nickname": e.get("user_nickname"),
+            "uploaded_at": e.get("timestamp"),
+            "ext": e.get("ext"),
+            "bytes": e.get("bytes"),
+            "sensitivity": e.get("sensitivity") or "none",
+            "sensitive_labels": e.get("sensitive_labels") or [],
+            "content_preview": e.get("content_preview"),
+        })
+    return files
+
+app.include_router(_create_security_router(
+    require_admin=require_admin,
+    get_history=get_history,
+    get_audit_events=_security_audit_events_safe,
+    classify_sensitive_message=classify_sensitive_message,
+    build_sensitivity_report=build_sensitivity_report,
+    list_uploaded_files=_security_list_uploaded_files,
+    append_audit_event=append_audit_event,
+))
+
+def ui_file_response(path: Path) -> FileResponse:
+    response = FileResponse(path)
+    response.headers["Cache-Control"] = "no-cache, no-store, must-revalidate"
+    response.headers["Pragma"] = "no-cache"
+    response.headers["Expires"] = "0"
+    return response
+
 @app.get("/")
 async def root(request: Request, code: Optional[str] = None, authorized: Optional[str] = Cookie(None)):
     """로그인/회원가입 페이지. 초대 게이트 활성화 시 코드 검증 후 진입."""
     if not INVITE_GATE_ENABLED:
-        return FileResponse(STATIC_DIR / "account.html")
+        return ui_file_response(STATIC_DIR / "account.html")
 
     # 1. 이미 쿠키로 인증된 경우
     if authorized == "true":
-        return FileResponse(STATIC_DIR / "account.html")
+        return ui_file_response(STATIC_DIR / "account.html")
 
     # 2. 초대 코드가 일치하는 경우 (최초 진입)
     if code == INVITE_CODE:
-        response = FileResponse(STATIC_DIR / "account.html")
+        response = ui_file_response(STATIC_DIR / "account.html")
         response.set_cookie(key="authorized", value="true", httponly=True, samesite="lax", max_age=60*60*24*7)
         return response
 
@@ -1207,7 +1270,7 @@ async def root(request: Request, code: Optional[str] = None, authorized: Optiona
 @app.get("/account")
 async def account_page():
     """Direct login/register page route used by logout and manual navigation."""
-    return FileResponse(STATIC_DIR / "account.html")
+    return ui_file_response(STATIC_DIR / "account.html")
 
 
 @app.get("/manifest.json")
@@ -1230,7 +1293,7 @@ async def service_worker():
 
 @app.get("/chat")
 async def chat_page(request: Request):
-    return FileResponse(STATIC_DIR / "chat.html")
+    return ui_file_response(STATIC_DIR / "chat.html")
 
 
 @app.get("/admin")
@@ -1964,14 +2027,10 @@ def get_lmstudio_models(*, force: bool = False) -> List[Dict[str, object]]:
     if not force and time.monotonic() - _LMSTUDIO_MODELS_CACHE_TS < _LMSTUDIO_MODELS_CACHE_TTL:
         return _LMSTUDIO_MODELS_CACHE
     try:
-        ensure_lmstudio_server()
-    except HTTPException:
-        return _LMSTUDIO_MODELS_CACHE
-    try:
         payload = _json_request(
             f"{lmstudio_native_api_base()}/api/v1/models",
             headers={"Authorization": f"Bearer {os.getenv('LMSTUDIO_API_KEY') or 'lmstudio'}"},
-            timeout=5,
+            timeout=2.5,
         )
     except Exception:
         return _LMSTUDIO_MODELS_CACHE
@@ -2939,6 +2998,82 @@ def ensure_engine_ready(engine: str) -> Dict[str, object]:
     return {"engine": engine, "installed": True, "installed_now": True, "install": result}
 
 
+def build_model_resolution(
+    input_id: str,
+    engine: Optional[str],
+    *,
+    user_email: Optional[str] = None,
+    display_name: Optional[str] = None,
+) -> _ModelResolution:
+    """피드백 #1/#2 공용 ModelResolution 생성기.
+
+    사용자가 클릭한 input_id + engine 힌트를 받아 모든 단계가 공유할
+    canonical identity를 만든다.
+    """
+    normalized = normalize_local_model_request(input_id, engine)
+    return _ModelResolution.from_request(
+        normalized,
+        engine=engine,
+        user_email=user_email,
+        display_name=display_name or input_id,
+        engine_aliases=MODEL_ENGINE_ALIASES,
+    )
+
+
+_LOCAL_SMOKE_ENGINES = {"local_mlx", "ollama", "vllm", "lmstudio", "llamacpp"}
+
+
+async def _smoke_test_loaded_model(
+    resolution: _ModelResolution,
+    *,
+    api_key_override: Optional[str] = None,
+) -> Dict[str, object]:
+    """로드 직후 짧은 채팅 테스트를 돌려 ready_to_chat 여부를 판정한다.
+
+    Cloud(OpenAI/Anthropic/OpenRouter 등) 모델은 사용자 비용 발생 가능성 때문에 skip.
+    실패해도 예외를 던지지 않는다. 결과는 compat_cache에도 기록된다.
+    """
+    if (resolution.engine or "").lower() not in _LOCAL_SMOKE_ENGINES:
+        profile = _ensure_compat_profile(resolution.load_id, resolution.engine)
+        return {
+            "ok": True,
+            "reason": "skipped (cloud model — smoke test would incur cost)",
+            "answer": None,
+            "profile": profile.to_dict(),
+            "skipped": True,
+        }
+    try:
+        text = await asyncio.wait_for(
+            router.generate(
+                _SMOKE_PROMPT,
+                context=None,
+                max_tokens=128,
+                temperature=0.1,
+            ),
+            timeout=30,
+        )
+    except Exception as exc:  # pragma: no cover - generator may not exist on all engines
+        reason = str(exc)[:200] or "generation_failed"
+        profile = _record_smoke_result(resolution.load_id, resolution.engine, False, reason)
+        return {
+            "ok": False,
+            "reason": reason,
+            "answer": None,
+            "profile": profile.to_dict(),
+        }
+
+    profile = _ensure_compat_profile(resolution.load_id, resolution.engine)
+    cleaned = _compat_fast_postprocess(str(text or ""), profile.to_dict())
+    ok, reason = _validate_smoke_response(cleaned)
+    profile = _record_smoke_result(resolution.load_id, resolution.engine, ok, reason)
+    return {
+        "ok": ok,
+        "reason": reason,
+        "answer": cleaned,
+        "profile": profile.to_dict(),
+    }
+
+
 async def prepare_and_load_model(
     model_id: str,
     request: Request,
@@ -2950,6 +3085,14 @@ async def prepare_and_load_model(
     model_id = normalize_local_model_request(model_id, engine)
     if not model_id:
         raise HTTPException(status_code=400, detail="모델 식별자가 비어 있습니다.")
+
+    # 피드백 #1: ModelResolution을 모든 단계가 공유한다.
+    resolution = _ModelResolution.from_request(
+        model_id,
+        engine=engine,
+        user_email=user_email or get_current_user(request),
+        engine_aliases=MODEL_ENGINE_ALIASES,
+    )
 
     parsed_provider, parsed_model = parse_model_ref(model_id)
     if parsed_provider == "mlx":
@@ -3008,6 +3151,18 @@ async def prepare_and_load_model(
         api_key_override=user_api_key,
         owner=effective_email or None,
     )
+    # 피드백 #1/#2: 로드 직후 ModelResolution을 실제 current로 동기화하고 smoke test 수행.
+    resolution.update_after_load(actual_current=router.current_model_id)
+    smoke_result: Dict[str, object] = {}
+    ready_to_chat = True
+    compat_status = "ok"
+    try:
+        smoke_result = await _smoke_test_loaded_model(resolution, api_key_override=user_api_key)
+        ready_to_chat = bool(smoke_result.get("ok"))
+        compat_status = "ok" if ready_to_chat else "degraded"
+    except Exception as exc:  # never break load on smoke test failures
+        logging.warning("smoke test failed for %s: %s", resolution.load_id, exc)
+        compat_status = "unknown"
     return {
         "status": "ok",
         "message": msg,
@@ -3016,6 +3171,12 @@ async def prepare_and_load_model(
         "engine": parsed_provider,
         "installed_now": bool(install_result.get("installed_now")),
         "download": download_result,
+        "resolution": resolution.to_dict(),
+        "downloaded": True,
+        "loaded": True,
+        "ready_to_chat": ready_to_chat,
+        "compatibility_status": compat_status,
+        "smoke_test": smoke_result,
     }
 
 
@@ -3221,6 +3382,30 @@ async def prepare_and_load_model_stream(
         api_key_override=user_api_key,
         owner=effective_email or None,
     )
+    # 피드백 #1/#2: SSE에도 ModelResolution과 smoke test 결과를 같이 내려준다.
+    resolution_stream = _ModelResolution.from_request(
+        prepared_model_id,
+        engine=prepared_provider,
+        user_email=effective_email or None,
+        engine_aliases=MODEL_ENGINE_ALIASES,
+    )
+    resolution_stream.update_after_load(actual_current=router.current_model_id)
+    yield sse_event("progress", model_download_progress_payload(
+        "smoke_test",
+        "채팅 호환성 테스트 중입니다.",
+        percent=98,
+        indeterminate=True,
+    ))
+    smoke_result: Dict[str, object] = {}
+    ready_to_chat = True
+    compat_status = "ok"
+    try:
+        smoke_result = await _smoke_test_loaded_model(resolution_stream, api_key_override=user_api_key)
+        ready_to_chat = bool(smoke_result.get("ok"))
+        compat_status = "ok" if ready_to_chat else "degraded"
+    except Exception as exc:
+        logging.warning("smoke test (stream) failed for %s: %s", resolution_stream.load_id, exc)
+        compat_status = "unknown"
     result = {
         "status": "ok",
         "message": msg,
@@ -3229,6 +3414,12 @@ async def prepare_and_load_model_stream(
         "engine": prepared_provider,
         "installed_now": bool(isinstance(install_result, dict) and install_result.get("installed_now")),
         "download": download_result,
+        "resolution": resolution_stream.to_dict(),
+        "downloaded": True,
+        "loaded": True,
+        "ready_to_chat": ready_to_chat,
+        "compatibility_status": compat_status,
+        "smoke_test": smoke_result,
     }
     yield sse_event("progress", model_download_progress_payload(
         "done",
@@ -3300,7 +3491,7 @@ async def verify_cloud_models(force: bool = False, provider_filter: Optional[str
 
 @app.get("/health")
 async def health(request: Request):
-    base = {"status": "ok", "version": "0.2.2", "mode": APP_MODE}
+    base = {"status": "ok", "version": "0.3.0", "mode": APP_MODE}
     if not get_current_user(request) and REQUIRE_AUTH:
         return base
     engines = await asyncio.to_thread(engine_status)
@@ -3455,20 +3646,67 @@ async def set_api_key(req: SetApiKeyRequest, request: Request):
     return {"ok": True, "provider": req.provider, "user_email": target_email, "scope": "user"}
 
 
+def _recommended_with_engine_options(items: List[Dict[str, object]]) -> List[Dict[str, object]]:
+    """피드백 #1: 추천 모델에 엔진별 선택지(engine_options)를 붙여 내려준다.
+
+    프론트에서 추천 카드를 누르는 순간 어느 엔진/실제 모델로 다운로드/로드할지가
+    이미 확정되도록 한다.
+    """
+    out: List[Dict[str, object]] = []
+    for item in items:
+        base = {
+            "id": item["id"],
+            "name": item["name"],
+            "tag": item["tag"],
+            "size": item["size"],
+            "display_name": item.get("name") or item.get("id"),
+        }
+        short_id = str(item["id"]).lower()
+        aliases = MODEL_ENGINE_ALIASES.get(short_id) or {}
+        options: List[Dict[str, str]] = []
+        for engine_name in ("local_mlx", "ollama", "lmstudio", "llamacpp", "vllm"):
+            real = aliases.get(engine_name)
+            if not real:
+                continue
+            options.append({
+                "engine": engine_name,
+                "model_id": real,
+                "load_id": real if engine_name == "local_mlx" else f"{engine_name}:{real}",
+            })
+        # 어느 엔진도 alias가 없으면 local_mlx 카탈로그 자체를 사용한다.
+        if not options:
+            options.append({
+                "engine": "local_mlx",
+                "model_id": item["id"],
+                "load_id": item["id"],
+            })
+        base["engine_options"] = options
+        base["recommended_engine"] = options[0]["engine"]
+        out.append(base)
+    return out
+
+
 @app.get("/models")
 async def list_models():
     """HuggingFace 추천 모델 목록 및 로드 상태 반환"""
-    recommended = [
-        {"id": item["id"], "name": item["name"], "tag": item["tag"], "size": item["size"]}
-        for item in filter_lower_family_versions(ENGINE_MODEL_CATALOG.get("local_mlx", []))
-    ]
+    recommended = _recommended_with_engine_options(
+        list(filter_lower_family_versions(ENGINE_MODEL_CATALOG.get("local_mlx", [])))
+    )
     return {
         "recommended": recommended,
         "cloud": router.detected_cloud_models(),
         "engines": await asyncio.to_thread(engine_status),
         "loaded": router.loaded_model_ids,
         "current": router.current_model_id,
+        "compat_profiles": _list_compat_profiles(),
     }
+
+
+@app.get("/models/compat-profiles")
+async def list_model_compat_profiles(request: Request):
+    """피드백 #3: Model Compatibility Layer 캐시 상태를 조회한다."""
+    require_user(request)
+    return {"profiles": _list_compat_profiles()}
 
 
 # ── Model Management ───────────────────────────────────────────────────────────

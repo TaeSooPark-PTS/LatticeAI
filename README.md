@@ -21,6 +21,30 @@
 
 ---
 
+## What's new in 0.3.1
+
+- **Reliable model selection** — `ModelResolution` unifies recommended card ID,
+  download ID, load ID, router cache key, and the front-end `current` so
+  "downloaded but not loaded" / "loaded but UI shows a different model"
+  classes of bugs are gone.
+- **Smoke test on load** — every local model load runs a one-shot Korean
+  chat probe and surfaces `ready_to_chat` / `compatibility_status` to the UI.
+- **Model Compatibility Layer** — per-family profiles (GPT-OSS, Gemma, Qwen,
+  Llama, Mistral, Phi, Deepseek …) with cached stop tokens, postprocess
+  rules, and Fast / Slow / Recovery paths so chat speed stays the same.
+- **Auto graph curator** — topic extraction → alias clustering → promotion
+  with secret/PII firewall, so the graph builds itself without the user
+  managing nodes.
+- **AI Security & Audit Command Center** — admin dashboard now shows
+  per-user risk matrix (compliant chats vs risky chats vs compliant files
+  vs risky files), sensitive-type donut, drill-down, raw explorer, and
+  JSON / CSV / XLSX / PDF exports — with hard-secret redaction
+  enforced on every response.
+
+See [docs/CHANGELOG.md](./docs/CHANGELOG.md) for the full list.
+
+---
+
 ## Why Lattice AI?
 
 Most AI tools forget everything after each conversation. Your files sit in folders, your chats vanish, and nothing connects.

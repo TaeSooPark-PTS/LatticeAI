@@ -38,14 +38,22 @@ def create_knowledge_graph_router(
         """Serve the interactive knowledge graph canvas UI."""
         graph()
         require_user(request)
-        return FileResponse(static_dir / "graph.html")
+        response = FileResponse(static_dir / "graph.html")
+        response.headers["Cache-Control"] = "no-cache, no-store, must-revalidate"
+        response.headers["Pragma"] = "no-cache"
+        response.headers["Expires"] = "0"
+        return response
 
     @router.get("/knowledge-graph")
     async def knowledge_graph_legacy_page(request: Request):
         """Backward-compatible route for the graph page."""
         graph()
         require_user(request)
-        return FileResponse(static_dir / "graph.html")
+        response = FileResponse(static_dir / "graph.html")
+        response.headers["Cache-Control"] = "no-cache, no-store, must-revalidate"
+        response.headers["Pragma"] = "no-cache"
+        response.headers["Expires"] = "0"
+        return response
 
     @router.get("/knowledge-graph/stats")
     async def knowledge_graph_stats(request: Request):

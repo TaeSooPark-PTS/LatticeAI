@@ -1,5 +1,87 @@
 # Changelog
 
+## [0.3.1] - 2026-05-29
+
+> Model loading reliability + auto-graph curation + AI Security & Audit Command Center.
+>
+> 외부 리뷰 5건(모델 추천/다운로드, 사용자 직접 모델 선택, 모델 호환성 계층,
+> 자동 그래프 방향, 관리자 보안/감사 대시보드) 피드백을 모두 반영했다.
+
+### Model loading & inference
+
+- 새 모듈 `latticeai/core/model_resolution.py` — `ModelResolution`이
+  `input_id / engine / resolved_model / download_id / load_id / expected_current`을
+  하나로 묶어 추천 카드, 다운로드, 로드, router cache, 프론트 current 표시가
+  단계마다 어긋나는 문제를 제거.
+- `prepare_and_load_model()` 와 `/engines/prepare-model/stream`이 동일한
+  `ModelResolution`을 공유하도록 통합. LM Studio처럼 `instance_id`가 부여되는
+  엔진은 `resolution.update_after_load()`로 후처리.
+- 로드 직후 `_smoke_test_loaded_model()`가 한국어 짧은 채팅 테스트를 실행 →
+  응답에 `ready_to_chat`, `compatibility_status`, `smoke_test` 필드 추가.
+  Cloud 모델은 사용자 비용 발생을 피하기 위해 자동 skip.
+- `/models` 응답에 `engine_options`(local_mlx / ollama / lmstudio / llamacpp /
+  vllm 별 실제 model_id)와 `compat_profiles` 추가.
+- 새 엔드포인트 `GET /models/compat-profiles`.
+
+### Model compatibility layer
+
+- 새 모듈 `latticeai/core/model_compat.py` — Family detection
+  (gpt-oss / gemma / qwen / llama / mistral / phi / deepseek …),
+  family 프로파일(stop tokens, disable_draft, postprocess, generation params),
+  `fast_postprocess`, `validate_smoke_response`, `record_smoke_result`,
+  `compat_cache`. 무거운 검사는 모델 로드 시 1회(Slow Path), 채팅 중에는
+  캐시된 profile만 사용하는 Fast Path. 답변이 깨졌을 때만 1회 retry하는
+  Recovery Path 구조.
+
+### Auto knowledge graph curation
+
+- 새 모듈 `latticeai/core/graph_curator.py` — 대화/파일/작업 로그에서
+  Topic candidate 추출 → alias clustering(자동 병합) → promotion 결정
+  (secret 차단, 중복 차단, 출처 최소치) → 파생 이야기 엣지 → 행동 시그널
+  기반 큐레이션. Secret/API key/private key는 그래프 후보에서 자동 제거.
+
+### Frontend — user-trusted current model
+
+- `static/scripts/chat.js`의 `prepareAndLoadModel` 결과에서 백엔드
+  `response.current`를 신뢰하고, `ready_to_chat=false` 또는
+  `compatibility_status=degraded`일 때 사용자에게 호환성 경고 표시.
+- 모델 카드를 직접 클릭할 때도 같은 표준 흐름을 타는
+  `window.selectModelByCard()` 헬퍼 추가.
+
+### Admin — AI Security & Audit Command Center
+
+- 새 라우터 `latticeai/api/security_dashboard.py`가 11개 엔드포인트 추가:
+  `/admin/security/{overview,users,events,events/{id},conversations/{id},`
+  `conversations/{id}/raw,files,files/{id},files/{id}/content,raw,export}`.
+- 모든 응답에서 hard secret(`sk-…`, `ghp_…`, `xoxb-…`, `AKIA…`,
+  private key block 등)을 자동 redact. 원문/raw 조회는 별도
+  `admin_view_sensitive_raw` 감사 이벤트로 기록.
+- 관리자 UI: Security Overview 카드(오늘 이벤트, High Risk, 위험 채팅/파일,
+  Secret/외부 전송 차단, 관리자 원문 조회 수, 검토 필요), User Risk Matrix
+  (stacked bar), 민감정보 유형 donut chart, 민감 채팅/위험 파일 모니터,
+  감사 타임라인, Raw Data Explorer.
+- 사용자별 막대 클릭 → drill-down. JSON / CSV / XLSX / PDF / TXT
+  추출 지원.
+
+### Tests / CI
+
+- 새 단위 테스트 28개 — `tests/unit/test_model_compat.py`,
+  `tests/unit/test_model_resolution.py`, `tests/unit/test_graph_curator.py`,
+  `tests/unit/test_security_dashboard.py`.
+- `.github/workflows/ci.yml` syntax-check 단계에 4개 새 모듈 추가.
+- 새 `.github/workflows/release.yml` — tag `v*` 푸시 시 PyPI / npm /
+  VS Code Marketplace / Open VSX 자동 배포(필요 secrets: `PYPI_TOKEN`,
+  `NPM_TOKEN`, `VSCE_PAT`, `OVSX_TOKEN`). 해당 secret이 비어 있는 job은
+  자동 skip.
+
+### Fixed
+
+- FastAPI에서 `Request` 인자에 `= None` 디폴트 사용 시 발생하던 잠재 문제 수정
+  (`security_dashboard.py` `/admin/security/raw`).
+- `gpt-oss` family postprocess 순서를
+  `trim_after_user_marker → strip_role_tokens`로 보정 — `<|user|>` 마커가
+  먼저 제거돼 trim이 동작하지 않던 버그.
+
 ## [0.3.0] - 2026-05-27
 
 ### Knowledge Graph — LLM Structured Output Extraction

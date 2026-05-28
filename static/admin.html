@@ -14,7 +14,7 @@
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap">
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@latest/tabler-icons.min.css">
-    <link rel="stylesheet" href="/static/lattice-reference.css">
+    <link rel="stylesheet" href="/static/lattice-reference.css?v=0.3.3">
     <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
 </head>
 
@@ -256,6 +256,80 @@
             </section>
 
             <section class="admin-view" id="admin-view-security" data-admin-view="security">
+                <!-- Security & Audit Command Center (피드백 #5) -->
+                <section class="panel" id="security-overview-panel">
+                    <div class="panel-header">
+                        <div>
+                            <h3>AI 보안 감사 콘솔</h3>
+                            <p>사용자별 위험/준수 채팅 및 파일, 민감정보 유형 분포, 원문 조회 현황을 한눈에 확인합니다.</p>
+                        </div>
+                        <div class="panel-tools">
+                            <div class="export-control">
+                                <button class="btn" id="security-cc-export-toggle" type="button">
+                                    <i class="ti ti-download"></i>
+                                    <span>보안 리포트 추출</span>
+                                </button>
+                                <div class="export-options" id="security-cc-export-options">
+                                    <button class="table-btn" type="button" data-cc-scope="overview" data-cc-format="json">Overview JSON</button>
+                                    <button class="table-btn" type="button" data-cc-scope="users" data-cc-format="csv">User Risk CSV</button>
+                                    <button class="table-btn" type="button" data-cc-scope="users" data-cc-format="xlsx">User Risk Excel</button>
+                                    <button class="table-btn" type="button" data-cc-scope="events" data-cc-format="csv">Events CSV</button>
+                                    <button class="table-btn" type="button" data-cc-scope="events" data-cc-format="json">Events JSON</button>
+                                    <button class="table-btn" type="button" data-cc-scope="overview" data-cc-format="pdf">Security PDF</button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="panel-body">
+                        <div class="audit-grid" id="security-cc-cards"></div>
+                        <div class="two-col" style="margin-top:18px">
+                            <div class="subpanel">
+                                <h4><i class="ti ti-users"></i> 사용자별 위험/준수 (채팅 + 파일)</h4>
+                                <div class="table-wrap" id="security-cc-users">
+                                    <div class="preview" style="padding:14px">불러오는 중...</div>
+                                </div>
+                                <canvas id="security-cc-user-chart" height="180" style="margin-top:12px"></canvas>
+                            </div>
+                            <div class="subpanel">
+                                <h4><i class="ti ti-chart-donut"></i> 민감정보 유형 분포</h4>
+                                <canvas id="security-cc-field-chart" height="200"></canvas>
+                                <div id="security-cc-field-legend" style="margin-top:10px;font-size:12px;color:var(--muted-text)"></div>
+                            </div>
+                        </div>
+                        <div class="two-col" style="margin-top:18px">
+                            <div class="subpanel">
+                                <h4><i class="ti ti-message-2"></i> 민감 채팅 모니터</h4>
+                                <div class="table-wrap" id="security-cc-chats">
+                                    <div class="preview" style="padding:14px">불러오는 중...</div>
+                                </div>
+                            </div>
+                            <div class="subpanel">
+                                <h4><i class="ti ti-file-shield"></i> 위험 파일 모니터</h4>
+                                <div class="table-wrap" id="security-cc-files">
+                                    <div class="preview" style="padding:14px">불러오는 중...</div>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="two-col" style="margin-top:18px">
+                            <div class="subpanel">
+                                <h4><i class="ti ti-timeline"></i> 감사 타임라인</h4>
+                                <div class="table-wrap" id="security-cc-timeline">
+                                    <div class="preview" style="padding:14px">불러오는 중...</div>
+                                </div>
+                            </div>
+                            <div class="subpanel">
+                                <h4><i class="ti ti-code"></i> Raw Data Explorer</h4>
+                                <div style="display:flex;gap:8px;margin-bottom:8px;flex-wrap:wrap">
+                                    <button class="table-btn" type="button" data-cc-raw="audit">감사 로그</button>
+                                    <button class="table-btn" type="button" data-cc-raw="history">대화 원문</button>
+                                    <button class="table-btn" type="button" data-cc-raw="files">파일 인덱스</button>
+                                </div>
+                                <pre id="security-cc-raw" style="max-height:280px;overflow:auto;background:rgba(0,0,0,.04);padding:12px;border-radius:8px;font-size:12px;white-space:pre-wrap;">선택한 scope의 raw JSON이 여기에 표시됩니다. (관리자 원문 조회는 별도로 감사로그에 기록됩니다.)</pre>
+                            </div>
+                        </div>
+                    </div>
+                </section>
+
                 <section class="panel">
                     <div class="panel-header">
                         <div>

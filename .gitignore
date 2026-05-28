@@ -1,6 +1,9 @@
 .env
 .ltcai/
 .ltcai-brain/
+.claude/
+# extracted sdist build artifact
+ltcai-[0-9]*/
 *.log
 __pycache__/
 *.py[cod]

@@ -324,8 +324,12 @@ const API_BASE = window.location.protocol === 'file:' ? 'http://localhost:4825' 
         </div>
         ${rootRows ? `<div class="local-root-list">${rootRows}</div>` : ''}
         <div class="local-option-row">
-          <label><input type="checkbox" ${localState.includeOcr ? 'checked' : ''} onchange="setLocalOption('includeOcr', this.checked)"> ${t('local_ocr')}</label>
-          <label><input type="checkbox" ${localState.watchEnabled ? 'checked' : ''} onchange="setLocalOption('watchEnabled', this.checked)"> ${t('local_watch')}</label>
+          <button type="button" class="local-option-btn ${localState.includeOcr ? 'active' : ''}" onclick="setLocalOption('includeOcr', ${localState.includeOcr ? 'false' : 'true'})" aria-pressed="${localState.includeOcr ? 'true' : 'false'}">
+            <i class="ti ti-photo-scan"></i><span>${t('local_ocr')}</span>
+          </button>
+          <button type="button" class="local-option-btn ${localState.watchEnabled ? 'active' : ''}" onclick="setLocalOption('watchEnabled', ${localState.watchEnabled ? 'false' : 'true'})" aria-pressed="${localState.watchEnabled ? 'true' : 'false'}">
+            <i class="ti ti-refresh-dot"></i><span>${t('local_watch')}</span>
+          </button>
         </div>
         <div class="local-source-actions">
           <button class="local-source-btn" ${localState.busy ? 'disabled' : ''} onclick="runLocalTree()" title="${t('local_tree')}"><i class="ti ti-folders"></i>${t('local_tree')}</button>

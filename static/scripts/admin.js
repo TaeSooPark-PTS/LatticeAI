@@ -1195,4 +1195,300 @@ document.querySelectorAll('[data-export-scope][data-export-format]').forEach(btn
     btn.addEventListener('click', () => exportAdminLogs(btn.dataset.exportScope, btn.dataset.exportFormat));
 });
 
+// ── Security & Audit Command Center (피드백 #5) ─────────────────────────────
+
+function ccEscape(value) {
+    if (value === null || value === undefined) return '';
+    const str = String(value);
+    return str
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;')
+        .replace(/'/g, '&#39;');
+}
+
+const CC_CARD_LABELS = {
+    events_today: '오늘 이벤트',
+    high_risk_events: 'High Risk',
+    risky_chats: '위험 채팅',
+    risky_files: '위험 파일',
+    secret_blocks: 'Secret 차단',
+    external_blocks: '외부 전송 차단',
+    admin_raw_views: '관리자 원문 조회',
+    review_required: '검토 필요',
+};
+
+let ccUserChart = null;
+let ccFieldChart = null;
+
+async function ccFetchJson(path) {
+    try {
+        const res = await apiFetch(path, { headers: adminHeaders() });
+        if (!res.ok) {
+            console.warn('Security CC fetch failed', path, res.status);
+            return null;
+        }
+        return await res.json();
+    } catch (e) {
+        console.warn('Security CC fetch error', path, e);
+        return null;
+    }
+}
+
+function renderCcCards(overview) {
+    const root = document.getElementById('security-cc-cards');
+    if (!root || !overview || !overview.cards) return;
+    const html = Object.entries(overview.cards).map(([key, value]) => `
+        <div class="audit-card">
+            <div class="audit-card-label">${ccEscape(CC_CARD_LABELS[key] || key)}</div>
+            <div class="audit-card-value">${ccEscape(value)}</div>
+        </div>
+    `).join('');
+    root.innerHTML = html;
+}
+
+function renderCcUsersTable(users) {
+    const wrap = document.getElementById('security-cc-users');
+    if (!wrap) return;
+    if (!users || users.length === 0) {
+        wrap.innerHTML = '<div class="preview" style="padding:14px">표시할 사용자가 없습니다.</div>';
+        return;
+    }
+    const rows = users.slice(0, 25).map(u => `
+        <tr data-cc-user="${ccEscape(u.email)}" style="cursor:pointer">
+            <td>${ccEscape(u.user)}</td>
+            <td>${ccEscape(u.total_chats)}</td>
+            <td style="color:#2c8a3f">${ccEscape(u.compliant_chats)}</td>
+            <td style="color:#b13030">${ccEscape(u.risky_chats)}</td>
+            <td>${ccEscape(u.uploaded_files)}</td>
+            <td style="color:#2c8a3f">${ccEscape(u.compliant_files)}</td>
+            <td style="color:#b13030">${ccEscape(u.risky_files)}</td>
+            <td>${ccEscape(u.high_risk_events)}</td>
+            <td>${ccEscape(u.risk_rate)}%</td>
+            <td>${ccEscape((u.last_activity_at || '').slice(0, 19).replace('T', ' '))}</td>
+        </tr>
+    `).join('');
+    wrap.innerHTML = `
+        <table class="data-table">
+            <thead><tr>
+                <th>사용자</th><th>총 채팅</th><th>준수 채팅</th><th>위험 채팅</th>
+                <th>총 파일</th><th>준수 파일</th><th>위험 파일</th>
+                <th>High</th><th>위험률</th><th>마지막 활동</th>
+            </tr></thead>
+            <tbody>${rows}</tbody>
+        </table>`;
+    wrap.querySelectorAll('tr[data-cc-user]').forEach(tr => {
+        tr.addEventListener('click', () => ccShowUserDrillDown(tr.dataset.ccUser));
+    });
+}
+
+function renderCcUserChart(users) {
+    const canvas = document.getElementById('security-cc-user-chart');
+    if (!canvas || typeof Chart === 'undefined') return;
+    const top = users.slice(0, 8);
+    const labels = top.map(u => u.user);
+    if (ccUserChart) { ccUserChart.destroy(); ccUserChart = null; }
+    ccUserChart = new Chart(canvas, {
+        type: 'bar',
+        data: {
+            labels,
+            datasets: [
+                { label: '준수 채팅', backgroundColor: '#5cb874', data: top.map(u => u.compliant_chats) },
+                { label: '위험 채팅', backgroundColor: '#e8636e', data: top.map(u => u.risky_chats) },
+                { label: '준수 파일', backgroundColor: '#7fb5e6', data: top.map(u => u.compliant_files) },
+                { label: '위험 파일', backgroundColor: '#d94c4c', data: top.map(u => u.risky_files) },
+            ]
+        },
+        options: {
+            responsive: true,
+            scales: { x: { stacked: true }, y: { stacked: true } },
+            plugins: { legend: { position: 'bottom' } },
+        }
+    });
+}
+
+function renderCcFieldChart(overview) {
+    const canvas = document.getElementById('security-cc-field-chart');
+    const legend = document.getElementById('security-cc-field-legend');
+    if (!canvas || typeof Chart === 'undefined') return;
+    const counts = overview?.field_counts || {};
+    const labels = Object.keys(counts);
+    const data = labels.map(l => counts[l]);
+    if (ccFieldChart) { ccFieldChart.destroy(); ccFieldChart = null; }
+    if (labels.length === 0) {
+        if (legend) legend.textContent = '감지된 민감정보 유형이 없습니다.';
+        return;
+    }
+    ccFieldChart = new Chart(canvas, {
+        type: 'doughnut',
+        data: { labels, datasets: [{ data, backgroundColor: ['#e8636e','#7fb5e6','#f0b14a','#5cb874','#9b6cd0','#3da9b6','#d18cd4','#a3a3a3'] }] },
+        options: { plugins: { legend: { position: 'bottom' } } }
+    });
+    if (legend) {
+        legend.innerHTML = labels.map((l, i) => `${ccEscape(l)}: ${ccEscape(data[i])}`).join(' · ');
+    }
+}
+
+async function ccShowUserDrillDown(email) {
+    const data = await ccFetchJson(`/admin/security/events?user=${encodeURIComponent(email)}`);
+    const wrap = document.getElementById('security-cc-timeline');
+    if (!wrap) return;
+    const events = (data && data.events) || [];
+    if (!events.length) {
+        wrap.innerHTML = `<div class="preview" style="padding:14px">${ccEscape(email)} 사용자에 대한 이벤트가 없습니다.</div>`;
+        return;
+    }
+    const rows = events.slice(0, 40).map(e => `
+        <tr>
+            <td>${ccEscape((e.timestamp || '').slice(0, 19).replace('T', ' '))}</td>
+            <td>${ccEscape(e.event_type || '')}</td>
+            <td>${ccEscape(e.sensitivity || 'none')}</td>
+            <td>${ccEscape((e.sensitive_labels || []).join(', '))}</td>
+            <td>${ccEscape((e.content_preview || '').slice(0, 80))}</td>
+        </tr>
+    `).join('');
+    wrap.innerHTML = `
+        <div style="margin-bottom:8px;color:var(--muted-text);font-size:12px">${ccEscape(email)} 사용자의 보안 이벤트 ${events.length}건</div>
+        <table class="data-table">
+            <thead><tr><th>시각</th><th>유형</th><th>민감도</th><th>라벨</th><th>마스킹 preview</th></tr></thead>
+            <tbody>${rows}</tbody>
+        </table>`;
+}
+
+async function loadSecurityCommandCenter() {
+    const [overview, usersResp, eventsResp, filesResp] = await Promise.all([
+        ccFetchJson('/admin/security/overview'),
+        ccFetchJson('/admin/security/users'),
+        ccFetchJson('/admin/security/events?limit=50'),
+        ccFetchJson('/admin/security/files'),
+    ]);
+
+    if (overview) {
+        renderCcCards(overview);
+        renderCcFieldChart(overview);
+    }
+    if (usersResp && Array.isArray(usersResp.users)) {
+        renderCcUsersTable(usersResp.users);
+        renderCcUserChart(usersResp.users);
+    }
+    if (eventsResp && Array.isArray(eventsResp.events)) {
+        const chats = eventsResp.events.filter(e => (e.sensitivity || 'none') !== 'none' && e.event_type === 'chat_message').slice(0, 20);
+        const chatWrap = document.getElementById('security-cc-chats');
+        if (chatWrap) {
+            chatWrap.innerHTML = chats.length ? `
+                <table class="data-table">
+                    <thead><tr><th>시각</th><th>사용자</th><th>민감도</th><th>라벨</th><th>마스킹 preview</th></tr></thead>
+                    <tbody>${chats.map(e => `
+                        <tr>
+                            <td>${ccEscape((e.timestamp || '').slice(0, 19).replace('T', ' '))}</td>
+                            <td>${ccEscape(e.user_nickname || e.user_email || 'Unknown')}</td>
+                            <td>${ccEscape(e.sensitivity)}</td>
+                            <td>${ccEscape((e.sensitive_labels || []).join(', '))}</td>
+                            <td>${ccEscape((e.content_preview || '').slice(0, 100))}</td>
+                        </tr>`).join('')}
+                    </tbody>
+                </table>` : '<div class="preview" style="padding:14px">감지된 민감 채팅이 없습니다.</div>';
+        }
+        const timelineWrap = document.getElementById('security-cc-timeline');
+        if (timelineWrap && !timelineWrap.querySelector('table')) {
+            const rows = eventsResp.events.slice(0, 30).map(e => `
+                <tr>
+                    <td>${ccEscape((e.timestamp || '').slice(0, 19).replace('T', ' '))}</td>
+                    <td>${ccEscape(e.event_type || '')}</td>
+                    <td>${ccEscape(e.user_nickname || e.user_email || 'Unknown')}</td>
+                    <td>${ccEscape(e.sensitivity || 'none')}</td>
+                </tr>
+            `).join('');
+            timelineWrap.innerHTML = rows ? `
+                <table class="data-table">
+                    <thead><tr><th>시각</th><th>유형</th><th>사용자</th><th>민감도</th></tr></thead>
+                    <tbody>${rows}</tbody>
+                </table>` : '<div class="preview" style="padding:14px">감사 이벤트가 없습니다.</div>';
+        }
+    }
+    if (filesResp && Array.isArray(filesResp.files)) {
+        const files = filesResp.files.filter(f => (f.sensitivity || 'none') !== 'none' || (f.sensitive_labels || []).length > 0).slice(0, 20);
+        const fileWrap = document.getElementById('security-cc-files');
+        if (fileWrap) {
+            fileWrap.innerHTML = files.length ? `
+                <table class="data-table">
+                    <thead><tr><th>파일</th><th>업로드 사용자</th><th>민감도</th><th>라벨</th><th>크기</th></tr></thead>
+                    <tbody>${files.map(f => `
+                        <tr>
+                            <td>${ccEscape(f.filename || f.file_id)}</td>
+                            <td>${ccEscape(f.user_nickname || f.user_email || 'Unknown')}</td>
+                            <td>${ccEscape(f.sensitivity || 'none')}</td>
+                            <td>${ccEscape((f.sensitive_labels || []).join(', '))}</td>
+                            <td>${ccEscape(f.bytes || '')}</td>
+                        </tr>`).join('')}
+                    </tbody>
+                </table>` : '<div class="preview" style="padding:14px">위험 등급 파일이 없습니다.</div>';
+        }
+    }
+}
+
+async function ccLoadRaw(scope) {
+    const pre = document.getElementById('security-cc-raw');
+    if (!pre) return;
+    pre.textContent = '불러오는 중...';
+    try {
+        const res = await apiFetch(`/admin/security/raw?scope=${encodeURIComponent(scope)}`, { headers: adminHeaders() });
+        if (!res.ok) { pre.textContent = `요청 실패 (HTTP ${res.status})`; return; }
+        const text = await res.text();
+        try {
+            pre.textContent = JSON.stringify(JSON.parse(text), null, 2);
+        } catch (_) {
+            pre.textContent = text;
+        }
+    } catch (e) {
+        pre.textContent = String(e);
+    }
+}
+
+async function ccExport(scope, format) {
+    try {
+        const res = await apiFetch('/admin/security/export', {
+            method: 'POST',
+            headers: { ...adminHeaders(), 'Content-Type': 'application/json' },
+            body: JSON.stringify({ scope, format }),
+        });
+        if (!res.ok) {
+            alert('보안 리포트 추출 실패 (HTTP ' + res.status + ')');
+            return;
+        }
+        const blob = await res.blob();
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = `security_${scope}.${format === 'xlsx' ? 'xlsx' : format}`;
+        a.click();
+        setTimeout(() => URL.revokeObjectURL(url), 5000);
+    } catch (e) {
+        alert(String(e));
+    }
+}
+
+document.getElementById('security-cc-export-toggle')?.addEventListener('click', () => {
+    const opts = document.getElementById('security-cc-export-options');
+    if (opts) opts.classList.toggle('open');
+});
+document.querySelectorAll('[data-cc-scope][data-cc-format]').forEach(btn => {
+    btn.addEventListener('click', () => ccExport(btn.dataset.ccScope, btn.dataset.ccFormat));
+});
+document.querySelectorAll('[data-cc-raw]').forEach(btn => {
+    btn.addEventListener('click', () => ccLoadRaw(btn.dataset.ccRaw));
+});
+
+// 보안 탭 진입 시 자동 로드
+document.querySelectorAll('[data-admin-nav="security"]').forEach(el => {
+    el.addEventListener('click', () => { setTimeout(loadSecurityCommandCenter, 50); });
+});
+// 메뉴 셀렉터를 모를 수도 있으니 hash 변경 시에도 시도
+window.addEventListener('hashchange', () => {
+    if (location.hash.indexOf('security') >= 0) loadSecurityCommandCenter();
+});
+
 loadDashboard();
+// 보안 콘솔도 첫 진입 시 로드 시도 (실패해도 무해)
+setTimeout(loadSecurityCommandCenter, 600);

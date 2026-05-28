@@ -1,10 +1,23 @@
 # Lattice AI Release Guide
 
-이 문서는 `npm`, `PyPI`, `VS Code`, `Cursor`, `Antigravity` 배포를 한 번에 처리하기 위한 체크리스트입니다.
+이 문서는 `npm`, `PyPI`, `VS Code`, `Cursor`, `Antigravity`, `Open VSX` 배포를
+한 번에 처리하기 위한 체크리스트입니다.
+
+> **v0.3.1부터는 `git tag v0.3.1 && git push origin v0.3.1` 한 번으로
+> `.github/workflows/release.yml`이 PyPI / npm / VS Code Marketplace / Open VSX에
+> 자동 배포합니다.** 아래 수동 절차는 토큰을 GitHub Secrets에 등록하지 않은
+> 경우의 fallback입니다. 필요한 secrets는 `PYPI_TOKEN`, `NPM_TOKEN`,
+> `VSCE_PAT`, `OVSX_TOKEN`이며, 비어 있는 job은 자동으로 skip됩니다.
+
+## 0) 릴리스 전 체크
+
+1. `python3 -m pytest tests/unit/ -v` — 단위 테스트 모두 통과 확인
+2. `docs/CHANGELOG.md`의 최신 항목 작성 완료
+3. CI(GitHub Actions) `ci.yml`이 main에서 green
 
 ## 1) 공통 준비
 
-1. 버전 업데이트
+1. 버전 업데이트(세 곳 모두 동일하게 유지)
    - `package.json` (root)
    - `pyproject.toml`
    - `vscode-extension/package.json`

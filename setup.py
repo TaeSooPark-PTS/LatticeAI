@@ -480,20 +480,11 @@ def _detect_tools() -> Dict[str, bool]:
             for t in ["brew", "ollama", "python3", "python", "node", "npm", "git", "tesseract", "lms", "nvidia-smi", "nvcc"]}
 
 def _detect_mlx() -> Dict[str, Any]:
-    has_lm = has_vlm = False
-    try:
-        import mlx.core  # noqa: F401
-        try:
-            import mlx_lm; has_lm = True  # noqa: F401,E702
-        except ImportError:
-            pass
-        try:
-            import mlx_vlm; has_vlm = True  # noqa: F401,E702
-        except ImportError:
-            pass
-        return {"available": True, "mlx_lm": has_lm, "mlx_vlm": has_vlm}
-    except Exception:
-        return {"available": False, "mlx_lm": False, "mlx_vlm": False}
+    return {
+        "available": _module_available("mlx"),
+        "mlx_lm": _module_available("mlx_lm"),
+        "mlx_vlm": _module_available("mlx_vlm"),
+    }
 
 def _detect_api_keys() -> Dict[str, bool]:
     return {
