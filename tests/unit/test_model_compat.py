@@ -5,6 +5,7 @@ from latticeai.core.model_compat import (
     ensure_profile,
     fast_postprocess,
     validate_smoke_response,
+    classify_smoke_response,
     record_smoke_result,
     list_cached_profiles,
     strip_role_tokens,
@@ -74,6 +75,51 @@ def test_fast_postprocess_uses_profile_steps():
     )
     assert "<|im_start|>" not in cleaned
     assert "다음" not in cleaned  # trim_after_user_marker
+
+
+def test_classify_smoke_ok():
+    status, reason = classify_smoke_response("2+2는 4입니다.")
+    assert status == "ok"
+    assert reason == "ok"
+
+
+def test_classify_smoke_failed_on_role_token():
+    status, reason = classify_smoke_response("<|im_end|> 어쩌고")
+    assert status == "failed"
+    assert "leakage" in reason
+
+
+def test_classify_smoke_failed_on_severe_repetition():
+    status, _ = classify_smoke_response("같은 문장. " * 6)
+    assert status == "failed"
+
+
+def test_classify_smoke_failed_on_runaway_repetition():
+    status, _ = classify_smoke_response("안녕" * 30)
+    assert status == "failed"
+
+
+def test_classify_smoke_failed_on_too_long():
+    status, _ = classify_smoke_response("4 " + "가" * 5000)
+    assert status == "failed"
+
+
+def test_classify_smoke_degraded_when_no_answer():
+    # 형식은 멀쩡하지만 기대한 정답(4/네/사)이 없음 → degraded.
+    status, reason = classify_smoke_response("잘 모르겠어요.")
+    assert status == "degraded"
+    assert "expected result" in reason
+
+
+def test_validate_wrapper_treats_degraded_as_chattable():
+    ok, _ = validate_smoke_response("잘 모르겠어요.")
+    assert ok is True  # degraded 도 채팅 가능
+
+
+def test_record_smoke_result_explicit_failed_status():
+    profile = record_smoke_result("model-f", "local_mlx", False, "severe repetition", status="failed")
+    assert profile.chat_compatible is False
+    assert profile.quality_status == "failed"
 
 
 def test_list_cached_profiles_returns_dicts():

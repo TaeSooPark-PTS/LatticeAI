@@ -1469,7 +1469,7 @@ const chatViewport = document.getElementById('chat-viewport');
             const icon = isUnavailable ? 'ti-lock' : (engineMissing || needsPull) ? 'ti-cloud-download' : verifyUnknown ? 'ti-activity' : 'ti-switch-3';
             const cls = (engineMissing || needsPull) && isLocalEngine ? ' needs-pull' : '';
             const action = isLocalEngine
-                ? `prepareAndLoadModel('${encodeURIComponent(model.id)}', '${engine?.id || ''}')`
+                ? `selectModelByCard('${encodeURIComponent(model.id)}', '${engine?.id || ''}')`
                 : `loadSelectedModel('${encodeURIComponent(model.id)}', '${engine?.id || ''}')`;
             return `
                 <button class="model-option${cls}" ${isUnavailable ? 'disabled' : ''} onclick="${action}">
@@ -1669,7 +1669,17 @@ const chatViewport = document.getElementById('chat-viewport');
                 if (!res.ok) throw new Error(data.detail || '모델 로드에 실패했습니다.');
                 closeModelPanel();
                 await loadModelStatus();
-                addMessage('ai', `모델을 <b>${escapeHtml(compactModelName(data.current || modelId))}</b>로 전환했습니다.`);
+                // 피드백 #1/#2: 클라우드 경로도 백엔드 current를 단일 진실원으로 사용한다.
+                const actualCurrent = resolveActualCurrent(data, modelId);
+                setCurrentModel(actualCurrent);
+                updateCurrentModelUI(actualCurrent);
+                let statusLine = `모델을 <b>${escapeHtml(compactModelName(actualCurrent))}</b>로 전환했습니다.`;
+                const compat = describeCompatibility(data);
+                if (compat) {
+                    statusLine += `<br><span class="sensitivity-preview">${escapeHtml(compat.message)}</span>`;
+                    showModelCompatibilityWarning(data);
+                }
+                addMessage('ai', statusLine);
             } catch (e) {
                 document.getElementById('model-list').innerHTML = `
                     <div class="sensitivity-preview">${escapeHtml(e.message)}</div>
@@ -1829,6 +1839,66 @@ const chatViewport = document.getElementById('chat-viewport');
             if (buffer.trim()) dispatchBlock(buffer.trim());
         }
 
+        // 피드백 #1/#2: "사용자가 보는 현재 모델" === "실제로 채팅에 사용되는 모델".
+        // 백엔드가 돌려준 current/resolution을 단일 진실원으로 사용한다.
+        function resolveActualCurrent(finalData, fallbackId) {
+            if (!finalData) return fallbackId || '';
+            return (
+                finalData.current
+                || (finalData.resolution && (finalData.resolution.expected_current || finalData.resolution.resolved_model))
+                || fallbackId
+                || ''
+            );
+        }
+
+        function setCurrentModel(modelId) {
+            if (!modelId) return;
+            window.__latticeActiveModel = modelId;
+        }
+
+        function updateCurrentModelUI(modelId) {
+            if (!modelId) return;
+            const modelEl = document.getElementById('ops-model');
+            if (modelEl) {
+                modelEl.textContent = compactModelName(modelId);
+                modelEl.title = modelId;
+            }
+            const metaEl = document.getElementById('ops-model-meta');
+            if (metaEl && !metaEl.dataset.loaded) {
+                metaEl.dataset.loaded = 'true';
+            }
+        }
+
+        function describeCompatibility(finalData) {
+            if (!finalData) return null;
+            if (finalData.ready_to_chat === false) {
+                const reason = (finalData.smoke_test && finalData.smoke_test.reason) || '채팅 호환성 검사 실패';
+                return {
+                    severity: 'degraded',
+                    message: `⚠️ 채팅 호환성이 낮습니다 (${reason}). 다른 실행 엔진을 추천합니다.`,
+                };
+            }
+            if (finalData.compatibility_status === 'degraded') {
+                return {
+                    severity: 'degraded',
+                    message: '⚠️ 모델은 로드됐지만 호환성 테스트가 degraded로 나왔습니다. 답변 품질이 일정하지 않을 수 있어요.',
+                };
+            }
+            if (finalData.compatibility_status === 'unknown') {
+                return {
+                    severity: 'unknown',
+                    message: '호환성 테스트를 완료하지 못했습니다. 채팅이 가능하지만 답변 품질이 일정하지 않을 수 있어요.',
+                };
+            }
+            return null;
+        }
+
+        function showModelCompatibilityWarning(finalData) {
+            const info = describeCompatibility(finalData);
+            if (!info) return;
+            try { showToast(info.message); } catch (_) {}
+        }
+
         async function prepareAndLoadModel(encodedId, engine = '') {
             const modelId = decodeURIComponent(encodedId);
             const displayName = compactModelName(modelId);
@@ -1870,22 +1940,22 @@ const chatViewport = document.getElementById('chat-viewport');
                 if (!finalData) throw new Error('모델 준비 응답이 비어 있습니다.');
                 closeModelPanel();
                 await loadModelStatus();
-                // 피드백 #1/#2: 사용자가 클릭한 modelId가 아니라 백엔드가 돌려준 current를 신뢰한다.
-                const actualCurrent = finalData.current || (finalData.resolution && finalData.resolution.expected_current) || modelId;
-                window.__latticeActiveModel = actualCurrent;
+                const actualCurrent = resolveActualCurrent(finalData, modelId);
+                setCurrentModel(actualCurrent);
+                updateCurrentModelUI(actualCurrent);
                 let statusLine = `<b>${escapeHtml(compactModelName(actualCurrent))}</b> 로드 되었습니다.`;
-                if (finalData.ready_to_chat === false) {
-                    const reason = (finalData.smoke_test && finalData.smoke_test.reason) || '채팅 호환성 검사 실패';
-                    statusLine += `<br><span class="sensitivity-preview">⚠️ 현재 채팅 호환성이 낮습니다 (${escapeHtml(reason)}). 다른 실행 엔진을 추천합니다.</span>`;
-                } else if (finalData.compatibility_status === 'unknown') {
-                    statusLine += `<br><span class="sensitivity-preview">호환성 테스트를 완료하지 못했습니다. 채팅이 가능하지만 답변 품질이 일정하지 않을 수 있어요.</span>`;
+                const compat = describeCompatibility(finalData);
+                if (compat) {
+                    statusLine += `<br><span class="sensitivity-preview">${escapeHtml(compat.message)}</span>`;
                 }
                 addMessage('ai', statusLine);
+                return finalData;
             } catch (e) {
                 document.getElementById('model-list').innerHTML = `
                     <div class="sensitivity-preview">${escapeHtml(e.message)}</div>
                     <button class="admin-action" onclick="openModelPanel()" style="margin-top: 12px;">목록으로 돌아가기</button>
                 `;
+                throw e;
             }
         }
 
@@ -1893,17 +1963,36 @@ const chatViewport = document.getElementById('chat-viewport');
             return prepareAndLoadModel(encodedId, engine);
         }
 
-        // 피드백 #1/#2: 사용자가 직접 모델을 선택했을 때도 같은 표준 흐름을 타도록 노출.
-        async function selectModelByCard(card) {
-            if (!card || !card.id) {
+        // 피드백 #1/#2: 모델 카드 클릭 → prepare/load → smoke test → current 반영 → 채팅 가능 여부 표시
+        // 가 하나의 흐름으로 이어지도록 한다. encodedId/engine 또는 card 객체 양쪽 모두 받는다.
+        async function selectModelByCard(modelIdOrCard, engineArg) {
+            let encoded;
+            let engine = engineArg || '';
+            if (typeof modelIdOrCard === 'string') {
+                encoded = modelIdOrCard.includes('%') ? modelIdOrCard : encodeURIComponent(modelIdOrCard);
+            } else if (modelIdOrCard && modelIdOrCard.id) {
+                encoded = encodeURIComponent(modelIdOrCard.id);
+                if (!engine) {
+                    engine = modelIdOrCard.engine
+                        || (Array.isArray(modelIdOrCard.engine_options) && modelIdOrCard.engine_options[0]?.engine)
+                        || '';
+                }
+            } else {
                 throw new Error('모델 카드가 비어 있습니다.');
             }
-            const encoded = encodeURIComponent(card.id);
-            const engine = card.engine || (Array.isArray(card.engine_options) && card.engine_options[0]?.engine) || '';
-            return prepareAndLoadModel(encoded, engine);
+            const result = await prepareAndLoadModel(encoded, engine);
+            if (result && result.current) {
+                setCurrentModel(result.current);
+                updateCurrentModelUI(result.current);
+            }
+            if (result && (result.ready_to_chat === false || result.compatibility_status === 'degraded')) {
+                showModelCompatibilityWarning(result);
+            }
+            return result;
         }
         if (typeof window !== 'undefined') {
             window.selectModelByCard = selectModelByCard;
+            window.prepareAndLoadModel = prepareAndLoadModel;
         }
 
         function fillVpcForm(config) {

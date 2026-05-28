@@ -21,6 +21,22 @@
 
 ---
 
+## What's new in 0.3.2
+
+- **Consistent "current model"** — model-card click → prepare/load → smoke test →
+  `current` update → chat-readiness flows through one path in the web UI, so the
+  model you see is always the model chat uses.
+- **3-way smoke status** — load-time chat probe now reports `ok` / `degraded` /
+  `failed` (special-token leakage, runaway repetition, over-long output), and the
+  UI shows a compatibility warning for `degraded` while still allowing chat.
+- **Timezone-correct security dashboard** — "events today" now uses the same
+  timezone as audit timestamps (configurable via `LATTICE_TZ`, e.g. `Asia/Seoul`),
+  fixing off-by-one day counts.
+- **Cleaner auto-graph** — Korean particle stripping, generic-word / file-extension
+  blacklists, and a single-source penalty so only concepts repeated across multiple
+  sources get promoted to nodes.
+- **Honest docs** — toned down unverifiable claims (telemetry, skill/plugin counts).
+
 ## What's new in 0.3.1
 
 - **Reliable model selection** — `ModelResolution` unifies recommended card ID,
@@ -49,11 +65,11 @@ See [docs/CHANGELOG.md](./docs/CHANGELOG.md) for the full list.
 
 Most AI tools forget everything after each conversation. Your files sit in folders, your chats vanish, and nothing connects.
 
-**Lattice AI remembers.** It reads your local files, indexes your conversations, and builds a knowledge graph that links people, projects, concepts, and documents — all on your machine, with zero data leaving your PC.
+**Lattice AI remembers.** It reads your local files, indexes your conversations, and builds a knowledge graph that links people, projects, concepts, and documents — all on your machine. With local models, nothing leaves your PC; cloud models are opt-in and clearly labeled.
 
 - **Your data stays local** — everything lives in `~/.ltcai/`, never sent to external servers
 - **Your AI gets smarter over time** — every chat and file builds your personal knowledge graph
-- **One install, works everywhere** — web UI, VS Code, Telegram, MCP clients, all connected to the same brain
+- **One local server, many surfaces** — a single local server powers the web UI, VS Code extension, and optional integrations (Telegram, MCP)
 
 ---
 
@@ -164,7 +180,7 @@ Based on public product behavior as of 2026-05.
 | Telegram bot | **Yes** | No | No | No |
 | MCP registry (one-click install) | **Yes** | Partial | Yes | No |
 | Admin + audit log | **Yes** | Yes | No | No |
-| Zero telemetry, self-hosted | **Yes** | Yes | Yes | No |
+| No built-in telemetry, self-hosted | **Yes** | Yes | Yes | No |
 | One-command public tunnel | **Yes** | No | No | No |
 | Free | **Yes** | Yes | Yes | No |
 
@@ -202,7 +218,7 @@ The setup wizard auto-detects your hardware and recommends the best model for yo
 | | |
 |---|---|
 | **Storage** | All data in `~/.ltcai/` on your machine |
-| **Telemetry** | None — no analytics, no tracking, no phoning home |
+| **Telemetry** | No built-in analytics or product telemetry by default |
 | **File access** | Approval-token gated — explicit consent per folder |
 | **Cloud models** | When using cloud APIs, prompts are sent to the provider. Local models keep everything offline. |
 | **Sensitive files** | `.env`, credentials, keys, certificates auto-excluded from indexing |
@@ -229,8 +245,8 @@ The setup wizard auto-detects your hardware and recommends the best model for yo
 | **Multi-LLM pipeline** | Plan → Execute → Review with different models |
 | **MCP server** | Use Lattice tools in Claude Desktop / Cursor |
 | **MCP registry** | One-click install from registry.modelcontextprotocol.io |
-| **Skills marketplace** | 77 official skills (Anthropic + verified third-party) |
-| **Plugin directory** | Browse 149 open-source plugins |
+| **Skills browser** | Optional browser for Anthropic + third-party skills |
+| **Plugin browser** | Browse open-source plugins from the registry |
 
 ### Access & Communication
 | Feature | Description |
@@ -387,7 +403,7 @@ Full reference: [docs/mcp-tools.md](docs/mcp-tools.md)
 | VS Code Marketplace | [marketplace.visualstudio.com](https://marketplace.visualstudio.com/items?itemName=parktaesoo.ltcai) |
 | Open VSX | [open-vsx.org](https://open-vsx.org/extension/parktaesoo/ltcai) |
 
-Current version: **0.3.1** — [Changelog](docs/CHANGELOG.md)
+Current version: **0.3.2** — [Changelog](docs/CHANGELOG.md)
 
 ---
 

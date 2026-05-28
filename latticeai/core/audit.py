@@ -9,6 +9,8 @@ from datetime import datetime
 from pathlib import Path
 from typing import Any, Callable, Dict, List, Optional
 
+from . import timezones
+
 _history_lock = threading.Lock()
 
 SENSITIVE_PATTERNS = [
@@ -41,7 +43,8 @@ def append_audit_event(audit_file: Path, event_type: str, **payload) -> None:
     try:
         event = {
             "event_type": event_type,
-            "timestamp": datetime.now().isoformat(),
+            # item 7: 대시보드 "오늘" 계산과 동일한 시간대 기준으로 기록한다.
+            "timestamp": timezones.now_iso(),
             **payload,
         }
         with _history_lock:

@@ -4,6 +4,7 @@ from latticeai.api.security_dashboard import (
     create_security_router,
     redact_hard_secrets,
     soft_mask,
+    _csv_dump,
 )
 
 
@@ -86,6 +87,50 @@ def _build_minimal_router(events, history):
         append_audit_event=fake_append,
     )
     return router, events_recorded
+
+
+def test_csv_export_never_leaks_hard_secrets():
+    """item 6: export 파일에도 hard secret 원문이 절대 들어가면 안 된다."""
+    rows = [
+        {
+            "user": "alice",
+            "content_preview": "api_key=sk-1234567890abcdefghij1234567890",
+            "note": "github ghp_abcdefghijklmnopqrstuvwxyz12345678",
+        }
+    ]
+    out = _csv_dump(rows).decode("utf-8")
+    assert "sk-1234567890" not in out
+    assert "ghp_abcdef" not in out
+    assert "[REDACTED_SECRET]" in out
+
+
+def test_overview_events_today_uses_configured_timezone(monkeypatch):
+    """item 7 회귀 방지: events_today 가 audit timestamp 와 같은 시간대로 계산된다."""
+    from fastapi import FastAPI
+    from fastapi.testclient import TestClient
+    from latticeai.core import timezones
+
+    monkeypatch.setenv("LATTICE_TZ", "Asia/Seoul")
+    # audit 와 동일한 헬퍼로 만든 "오늘" timestamp 2건 + "어제" 1건.
+    today_ts = timezones.now_iso()
+    yesterday = (timezones.now().date().toordinal() - 1)
+    from datetime import date
+    yday_ts = date.fromordinal(yesterday).isoformat() + "T10:00:00+09:00"
+    events = [
+        {"event_type": "secret_block", "timestamp": today_ts},
+        {"event_type": "external_send_block", "timestamp": today_ts},
+        {"event_type": "secret_block", "timestamp": yday_ts},
+    ]
+    router, _ = _build_minimal_router(events, [])
+    app = FastAPI()
+    app.include_router(router)
+    client = TestClient(app)
+
+    resp = client.get("/admin/security/overview")
+    assert resp.status_code == 200
+    data = resp.json()
+    assert data["cards"]["events_today"] == 2  # 어제 1건은 제외
+    assert data.get("timezone") == "Asia/Seoul"
 
 
 def test_router_registers_expected_routes():

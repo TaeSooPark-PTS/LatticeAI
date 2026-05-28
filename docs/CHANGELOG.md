@@ -1,5 +1,40 @@
 # Changelog
 
+## [0.3.2] - 2026-05-29
+
+> 안정화 릴리스 — 모델 current 일관성, smoke test 3분류, 보안 대시보드 timezone
+> 버그 수정, 자동 그래프 한국어 노이즈 개선, README 과장 표현 정리.
+
+### Model loading & UI
+
+- 웹 UI 모델 선택을 단일 흐름으로 통일(`selectModelByCard` → `prepareAndLoadModel`
+  → smoke test → `current` 반영 → 채팅 가능 여부 표시). cloud(`loadSelectedModel`)
+  경로도 백엔드 `current`를 단일 진실원으로 사용. "보이는 모델 ≠ 채팅에 쓰이는
+  모델" 문제 제거.
+- Smoke test 결과를 **ok / degraded / failed** 3분류로 확장
+  (`model_compat.classify_smoke_response()`). 특수/role 토큰 누출, 폭주 반복,
+  과도한 길이를 감지. `degraded`는 채팅은 가능하되 UI에 호환성 경고 표시.
+  `/models/load`·`/engines/prepare-model/stream` 응답의 `compatibility_status`가
+  3분류 값을 그대로 노출.
+
+### Security dashboard
+
+- **Timezone 버그 수정** — audit timestamp는 로컬 시간으로 기록되는데
+  "events_today"는 UTC로 계산해 한국 사용자에게 날짜가 어긋나던 문제 수정.
+  새 모듈 `latticeai/core/timezones.py`로 기준 시간대를 통일(`LATTICE_TZ` /
+  `LTCAI_TZ` 환경변수, 기본 시스템 로컬). overview 응답에 `timezone` 필드 추가.
+
+### Auto graph curator
+
+- 한국어 노이즈 감소 — 조사 제거, 일반어/파일확장자 blacklist, 단일 출처
+  후보 score 감점(여러 출처에서 반복된 개념만 승격).
+
+### Docs & tests
+
+- README/확장 설명의 과장 표현 완화(telemetry, skills/plugins 수치 등).
+- 단위 테스트 추가: timezone, smoke 3분류, graph 노이즈, export secret redaction.
+  (tests/unit 149 passed)
+
 ## [0.3.1] - 2026-05-29
 
 > Model loading reliability + auto-graph curation + AI Security & Audit Command Center.

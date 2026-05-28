@@ -78,6 +78,7 @@ from latticeai.core.model_compat import (
     record_smoke_result as _record_smoke_result,
     fast_postprocess as _compat_fast_postprocess,
     validate_smoke_response as _validate_smoke_response,
+    classify_smoke_response as _classify_smoke_response,
     list_cached_profiles as _list_compat_profiles,
     SMOKE_PROMPT as _SMOKE_PROMPT,
 )
@@ -1125,7 +1126,7 @@ async def lifespan(app: FastAPI):
             except Exception:
                 pass
 
-app = FastAPI(title=f"Lattice AI Server ({APP_MODE})", version="0.3.1", lifespan=lifespan)
+app = FastAPI(title=f"Lattice AI Server ({APP_MODE})", version="0.3.2", lifespan=lifespan)
 
 CORS_ALLOWED_ORIGINS = [
     f"http://localhost:{DEFAULT_PORT}",
@@ -3054,9 +3055,12 @@ async def _smoke_test_loaded_model(
         )
     except Exception as exc:  # pragma: no cover - generator may not exist on all engines
         reason = str(exc)[:200] or "generation_failed"
-        profile = _record_smoke_result(resolution.load_id, resolution.engine, False, reason)
+        profile = _record_smoke_result(
+            resolution.load_id, resolution.engine, False, reason, status="failed"
+        )
         return {
             "ok": False,
+            "status": "failed",
             "reason": reason,
             "answer": None,
             "profile": profile.to_dict(),
@@ -3064,10 +3068,15 @@ async def _smoke_test_loaded_model(
 
     profile = _ensure_compat_profile(resolution.load_id, resolution.engine)
     cleaned = _compat_fast_postprocess(str(text or ""), profile.to_dict())
-    ok, reason = _validate_smoke_response(cleaned)
-    profile = _record_smoke_result(resolution.load_id, resolution.engine, ok, reason)
+    # item 3-3: ok / degraded / failed 3분류. degraded는 채팅은 가능하다.
+    status, reason = _classify_smoke_response(cleaned)
+    ok = status != "failed"
+    profile = _record_smoke_result(
+        resolution.load_id, resolution.engine, ok, reason, status=status
+    )
     return {
         "ok": ok,
+        "status": status,
         "reason": reason,
         "answer": cleaned,
         "profile": profile.to_dict(),
@@ -3159,7 +3168,8 @@ async def prepare_and_load_model(
     try:
         smoke_result = await _smoke_test_loaded_model(resolution, api_key_override=user_api_key)
         ready_to_chat = bool(smoke_result.get("ok"))
-        compat_status = "ok" if ready_to_chat else "degraded"
+        # item 3-3: smoke 결과의 3분류(ok/degraded/failed)를 그대로 노출한다.
+        compat_status = str(smoke_result.get("status") or ("ok" if ready_to_chat else "degraded"))
     except Exception as exc:  # never break load on smoke test failures
         logging.warning("smoke test failed for %s: %s", resolution.load_id, exc)
         compat_status = "unknown"
@@ -3402,7 +3412,8 @@ async def prepare_and_load_model_stream(
     try:
         smoke_result = await _smoke_test_loaded_model(resolution_stream, api_key_override=user_api_key)
         ready_to_chat = bool(smoke_result.get("ok"))
-        compat_status = "ok" if ready_to_chat else "degraded"
+        # item 3-3: smoke 결과의 3분류(ok/degraded/failed)를 그대로 노출한다.
+        compat_status = str(smoke_result.get("status") or ("ok" if ready_to_chat else "degraded"))
     except Exception as exc:
         logging.warning("smoke test (stream) failed for %s: %s", resolution_stream.load_id, exc)
         compat_status = "unknown"
@@ -3491,7 +3502,7 @@ async def verify_cloud_models(force: bool = False, provider_filter: Optional[str
 
 @app.get("/health")
 async def health(request: Request):
-    base = {"status": "ok", "version": "0.3.1", "mode": APP_MODE}
+    base = {"status": "ok", "version": "0.3.2", "mode": APP_MODE}
     if not get_current_user(request) and REQUIRE_AUTH:
         return base
     engines = await asyncio.to_thread(engine_status)

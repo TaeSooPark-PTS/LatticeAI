@@ -36,6 +36,8 @@ from fastapi import APIRouter, HTTPException, Query, Request
 from fastapi.responses import Response, StreamingResponse
 from pydantic import BaseModel
 
+from ..core import timezones
+
 logger = logging.getLogger(__name__)
 
 
@@ -304,11 +306,13 @@ def create_security_router(
         report = build_sensitivity_report(history) or {}
         summary = report.get("summary", {})
         sev = summary.get("severity_counts", {}) or {}
-        today = datetime.utcnow().date().isoformat()
+        # item 7: audit timestamp(로컬/설정 시간대)와 동일한 기준으로 "오늘"을 계산한다.
+        today = timezones.today_str()
         today_events = [e for e in events if str(e.get("timestamp", ""))[:10] == today]
 
         return {
-            "generated_at": datetime.utcnow().isoformat() + "Z",
+            "generated_at": timezones.now_iso(),
+            "timezone": timezones.tz_name(),
             "cards": {
                 "events_today": len(today_events),
                 "high_risk_events": int(sev.get("high", 0)),

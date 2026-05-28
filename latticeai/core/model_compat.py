@@ -241,38 +241,70 @@ def fast_postprocess(text: str, profile: Dict[str, Any]) -> str:
 SMOKE_PROMPT = "한국어로 한 문장만 답해. 2+2는?"
 
 
-def validate_smoke_response(text: str) -> Tuple[bool, str]:
-    """Smoke test 응답의 정상성을 판단한다.
+def classify_smoke_response(text: str) -> Tuple[str, str]:
+    """Smoke test 응답을 ok / degraded / failed 로 분류한다. (item 3-3)
 
-    반환: (정상 여부, reason)
+    - failed: 채팅에 쓸 수 없는 수준 (빈 응답, 특수/role 토큰 누출, 심한 반복,
+      과도하게 긴 출력).
+    - degraded: 로드/채팅은 되지만 품질이 일정하지 않음 (가벼운 반복, 기대한
+      정답 없음, 다소 긴 출력).
+    - ok: 형식·정답·길이 모두 정상.
+
+    반환: (status, reason)
     """
     if text is None:
-        return False, "empty response"
+        return "failed", "empty response"
     raw = str(text).strip()
     if not raw:
-        return False, "empty response"
-    # 특수 토큰 leakage
+        return "failed", "empty response"
+
+    # 1. role / 특수 토큰 누출 → 채팅 형식이 깨진 것이므로 failed.
     for marker in BAD_MARKERS:
         if marker in raw:
-            return False, f"role token leakage ({marker})"
-    # 같은 문장 5회 이상 반복
-    sentences = re.split(r"[.!?\n]+", raw)
+            return "failed", f"role token leakage ({marker})"
+    if re.search(r"<\|[^|]{0,40}\|>", raw):
+        return "failed", "special token leakage"
+    # role marker 줄 출력 (예: "assistant:" 로 시작)
+    if re.match(r"^\s*(?:assistant|system|user)\s*:", raw, flags=re.I):
+        return "failed", "role marker leakage"
+
+    # 2. 반복 감지.
+    sentences = [s.strip() for s in re.split(r"[.!?\n]+", raw) if len(s.strip()) >= 3]
     counts: Dict[str, int] = {}
-    for s in sentences:
-        key = s.strip()
-        if len(key) >= 3:
-            counts[key] = counts.get(key, 0) + 1
-    if counts and max(counts.values()) >= 5:
-        return False, "repetition detected"
-    # 4 라는 답이 포함되어 있는지(약한 정상성 휴리스틱)
-    if "4" not in raw and "네" not in raw and "사" not in raw:
-        # 정답이 아니더라도 채팅 형식이 깨지지 않았으면 degraded로 통과
-        if len(raw) < 200:
-            return True, "no exact answer but formed"
-        return False, "answer did not contain 4 and response too long"
+    for key in sentences:
+        counts[key] = counts.get(key, 0) + 1
+    max_rep = max(counts.values()) if counts else 0
+    if max_rep >= 5:
+        return "failed", "severe repetition"
+    # 문자열 단위 폭주 반복 (예: "안녕안녕안녕…", "AAAA…")
+    if re.search(r"(.{1,20}?)\1{6,}", raw):
+        return "failed", "runaway repetition"
+
+    # 3. 과도하게 긴 출력 → failed.
     if len(raw) > 4000:
-        return False, "response too long"
-    return True, "ok"
+        return "failed", "response too long"
+
+    # 4. 여기까지 왔으면 채팅은 가능. degraded 신호를 모은다.
+    degraded: List[str] = []
+    if max_rep >= 3:
+        degraded.append("mild repetition")
+    if len(raw) > 600:
+        degraded.append("response longer than expected")
+    has_answer = ("4" in raw) or ("네" in raw) or ("사" in raw)
+    if not has_answer:
+        degraded.append("answer did not contain expected result")
+    if degraded:
+        return "degraded", "; ".join(degraded)
+    return "ok", "ok"
+
+
+def validate_smoke_response(text: str) -> Tuple[bool, str]:
+    """하위호환 wrapper. (ok 또는 degraded면 채팅 가능 → True)
+
+    반환: (채팅 가능 여부, reason)
+    """
+    status, reason = classify_smoke_response(text)
+    return status != "failed", reason
 
 
 # ── Compat cache (Slow Path) ──────────────────────────────────────────────────
@@ -346,11 +378,21 @@ def record_smoke_result(
     engine: Optional[str],
     ok: bool,
     reason: str,
+    *,
+    status: Optional[str] = None,
 ) -> CompatProfile:
+    """Smoke 결과를 프로필 캐시에 기록한다.
+
+    status 가 주어지면 ok/degraded/failed 3분류를 그대로 저장한다.
+    (하위호환: status 없이 ok bool만 오면 ok→"ok", False→"degraded")
+    """
     profile = ensure_profile(model_id, engine)
     profile.loaded = True
     profile.chat_compatible = bool(ok)
-    profile.quality_status = "ok" if ok else "degraded"
+    if status in ("ok", "degraded", "failed"):
+        profile.quality_status = status
+    else:
+        profile.quality_status = "ok" if ok else "degraded"
     profile.last_test_error = None if ok else reason
     profile.validated_at = time.time()
     remember_profile(profile)
@@ -395,6 +437,7 @@ __all__ = [
     "get_model_profile",
     "fast_postprocess",
     "validate_smoke_response",
+    "classify_smoke_response",
     "ensure_profile",
     "lookup_profile",
     "remember_profile",

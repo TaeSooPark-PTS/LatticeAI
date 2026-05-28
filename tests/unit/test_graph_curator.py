@@ -10,6 +10,8 @@ from latticeai.core.graph_curator import (
     auto_build_graph_overlay,
     DEFAULT_ALIAS_GROUPS,
     build_alias_index,
+    _tokenize,
+    _strip_josa,
 )
 
 
@@ -84,6 +86,43 @@ def test_curate_nodes_sets_visibility():
     visible = [n for n in curated if n["visible"]]
     assert len(visible) == 1
     assert visible[0]["label"] == "Hot"
+
+
+def test_strip_josa_merges_korean_particles():
+    # item 5: 조사 제거로 "그래프"/"그래프를"/"그래프가" 가 하나로 모인다.
+    assert _strip_josa("그래프를") == "그래프"
+    assert _strip_josa("그래프가") == "그래프"
+    assert _strip_josa("래티스에서") == "래티스"
+    # 영문/혼합 토큰은 건드리지 않는다.
+    assert _strip_josa("lattice") == "lattice"
+    # 조사 제거 후 2자 미만이 되면 원형 유지.
+    assert _strip_josa("가") == "가"
+
+
+def test_tokenize_drops_generic_and_file_ext_noise():
+    tokens = _tokenize("그래프 시스템 server py json 사용 내용 lattice")
+    # 일반어/확장자 토큰은 제거된다.
+    assert "사용" not in tokens
+    assert "내용" not in tokens
+    assert "py" not in tokens
+    assert "json" not in tokens
+    # 의미 토큰은 남는다.
+    assert "그래프" in tokens
+    assert "lattice" in tokens
+
+
+def test_single_source_candidate_scored_lower_than_multi_source():
+    # 한 대화에서만 반복된 단어 vs 여러 대화에서 나온 단어
+    docs = [
+        {"id": "conv-1", "text": "솔로토픽 솔로토픽 솔로토픽 솔로토픽", "kind": "chat"},
+        {"id": "conv-1", "text": "솔로토픽 솔로토픽", "kind": "chat"},  # 같은 출처 취급 X (id 다른 doc)
+        {"id": "conv-2", "text": "공유토픽 그래프", "kind": "chat"},
+        {"id": "conv-3", "text": "공유토픽 그래프", "kind": "chat"},
+        {"id": "conv-4", "text": "공유토픽 그래프", "kind": "chat"},
+    ]
+    cands = {c.label: c.score for c in extract_topic_candidates(docs, min_score=0.0)}
+    # 공유토픽(여러 출처)은 솔로토픽(사실상 단일 출처)보다 점수가 높아야 한다.
+    assert cands.get("공유토픽", 0) > cands.get("솔로토픽", 0)
 
 
 def test_auto_build_graph_overlay_skips_secrets_and_limits_new_nodes():

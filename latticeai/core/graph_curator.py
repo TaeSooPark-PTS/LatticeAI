@@ -72,6 +72,54 @@ _STOPWORDS: Set[str] = {
     "i'll", "as", "be", "is", "it", "an", "or", "to", "of", "in", "on",
 }
 
+# item 5: 한국어 그래프 노이즈를 줄이기 위한 일반어 blacklist 강화.
+# 의미를 담지 않는 흔한 단어들. (코드/도메인 고유명사는 제외)
+_GENERIC_BLACKLIST: Set[str] = {
+    # 한국어 일반어
+    "내용", "관련", "사용", "경우", "부분", "정도", "생각", "방법", "진행",
+    "확인", "작업", "설정", "추가", "수정", "정보", "결과", "상태", "기준",
+    "그것", "그거", "여기", "거기", "이거", "저거", "무엇", "어떤", "관해",
+    "그냥", "정말", "조금", "많이", "다시", "먼저", "현재", "다음", "이전",
+    # 영어 일반어
+    "thing", "things", "stuff", "etc", "really", "just", "like", "make",
+    "made", "want", "need", "good", "work", "works", "very", "more", "most",
+    "some", "such", "then", "than", "also", "here", "there", "what", "which",
+    "when", "where", "will", "would", "should", "could", "does", "done",
+}
+
+# item 5: 파일 확장자 토큰. 파일명에서 떨어져 나온 노이즈라 노드 후보로 부적절.
+_FILE_EXT_TOKENS: Set[str] = {
+    "py", "js", "ts", "tsx", "jsx", "json", "md", "txt", "csv", "tsv",
+    "png", "jpg", "jpeg", "gif", "svg", "webp", "pdf", "html", "css",
+    "yml", "yaml", "toml", "sh", "bash", "zsh", "log", "ipynb", "xml",
+    "lock", "cfg", "ini", "env", "bin", "exe", "zip", "tar", "gz",
+}
+
+_FILTER_TOKENS: Set[str] = _STOPWORDS | _GENERIC_BLACKLIST | _FILE_EXT_TOKENS
+
+# item 5: 한국어 조사. 토큰 끝에서 제거해 "그래프를"/"그래프가"/"그래프" 를 하나로 모은다.
+_JOSA_SUFFIXES: List[str] = sorted(
+    [
+        "으로는", "에서는", "에서의", "에게서", "이라는", "이라고", "라는", "라고",
+        "으로", "에서", "에게", "한테", "까지", "부터", "보다", "처럼", "마다",
+        "조차", "밖에", "라도", "이나", "에는", "에도", "께서", "이란",
+        "은", "는", "이", "가", "을", "를", "와", "과", "에", "의", "도",
+        "만", "로", "나", "께", "란",
+    ],
+    key=len,
+    reverse=True,
+)
+
+
+def _strip_josa(token: str) -> str:
+    """한국어 토큰 끝의 조사를 제거한다. (영문/혼합 토큰은 그대로)"""
+    if not re.search(r"[가-힣]", token):
+        return token
+    for suf in _JOSA_SUFFIXES:
+        if token.endswith(suf) and len(token) - len(suf) >= 2:
+            return token[: -len(suf)]
+    return token
+
 
 def _tokenize(text: str) -> List[str]:
     if not text:
@@ -81,10 +129,10 @@ def _tokenize(text: str) -> List[str]:
     tokens = [t for t in cleaned.split() if t]
     out = []
     for t in tokens:
-        low = t.lower()
+        low = _strip_josa(t.lower())
         if len(low) < 2:
             continue
-        if low in _STOPWORDS:
+        if low in _FILTER_TOKENS:
             continue
         out.append(low)
     return out
@@ -158,12 +206,20 @@ def extract_topic_candidates(
     for term, score in counts.items():
         if score < min_score:
             continue
-        normalized = math.log(1.0 + score) * (1.0 + 0.05 * len(term.split()))
+        term_sources = sources.get(term, [])
+        # item 5: 같은 대화/폴더(단일 출처)에서만 반복된 단어는 감점한다.
+        # 여러 출처에서 반복된 개념일수록 가산해 "진짜 주제"만 위로 올린다.
+        distinct_sources = len({s for s in term_sources if s})
+        if distinct_sources <= 1:
+            diversity = 0.5  # 단일 출처 노이즈 감점
+        else:
+            diversity = 1.0 + 0.15 * math.log(distinct_sources)
+        normalized = math.log(1.0 + score) * (1.0 + 0.05 * len(term.split())) * diversity
         candidates.append(
             TopicCandidate(
                 label=term,
                 score=round(normalized, 4),
-                sources=sources.get(term, [])[:20],
+                sources=term_sources[:20],
             )
         )
 
