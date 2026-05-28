@@ -23,7 +23,7 @@
     "test:unit": "python3 -m pytest tests/unit/ -v",
     "test:integration": "python3 -m pytest tests/integration/ -v",
     "publish:npm": "npm publish --access public",
-    "publish:pypi": "python3 -m twine upload dist/*"
+    "publish:pypi": "python3 -m twine upload --skip-existing dist/*.tar.gz dist/*.whl"
   },
   "keywords": [
     "ltcai",

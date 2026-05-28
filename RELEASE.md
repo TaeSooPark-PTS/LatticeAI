@@ -43,7 +43,7 @@
 
 참고:
 - TestPyPI 먼저 쓰려면:
-  - `python3 -m twine upload --repository testpypi dist/*`
+  - `python3 -m twine upload --skip-existing --repository testpypi dist/*.tar.gz dist/*.whl`
 
 ## 4) VS Code / Cursor / Antigravity 확장 배포
 
