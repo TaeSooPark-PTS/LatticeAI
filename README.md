@@ -1,7 +1,7 @@
 <div align="center">
   <img src="https://raw.githubusercontent.com/TaeSooPark-PTS/LatticeAI/main/docs/images/logo.svg" alt="Lattice AI" width="280"/>
   <br/>
-  <strong>Private local AI workspace that turns your files, chats, and folders into a searchable knowledge graph.</strong>
+  <strong>Local-first AI workspace for your files, chats, folders, and knowledge graph.</strong>
   <br/><br/>
 
 [![PyPI](https://img.shields.io/pypi/v/ltcai?label=PyPI&color=blue)](https://pypi.org/project/ltcai/)
@@ -13,75 +13,93 @@
 [![License: MIT](https://img.shields.io/badge/License-MIT-green)](./LICENSE)
 [![Python 3.11+](https://img.shields.io/badge/python-3.11+-blue)](https://www.python.org/)
 
-<br/>
+  <br/>
 
-<img src="https://raw.githubusercontent.com/TaeSooPark-PTS/LatticeAI/main/docs/images/lattice-ai-demo.gif" alt="Lattice AI demo showing chat, knowledge graph, and admin dashboard" width="100%"/>
-
+  <img src="https://raw.githubusercontent.com/TaeSooPark-PTS/LatticeAI/main/docs/images/lattice-ai-demo.gif" alt="Lattice AI demo showing chat, knowledge graph, and admin dashboard" width="100%"/>
 </div>
 
 ---
 
-## What's new in 0.3.2
+## What is Lattice AI?
 
-- **Consistent "current model"** — model-card click → prepare/load → smoke test →
-  `current` update → chat-readiness flows through one path in the web UI, so the
-  model you see is always the model chat uses.
-- **3-way smoke status** — load-time chat probe now reports `ok` / `degraded` /
-  `failed` (special-token leakage, runaway repetition, over-long output), and the
-  UI shows a compatibility warning for `degraded` while still allowing chat.
-- **Timezone-correct security dashboard** — "events today" now uses the same
-  timezone as audit timestamps (configurable via `LATTICE_TZ`, e.g. `Asia/Seoul`),
-  fixing off-by-one day counts.
-- **Cleaner auto-graph** — Korean particle stripping, generic-word / file-extension
-  blacklists, and a single-source penalty so only concepts repeated across multiple
-  sources get promoted to nodes.
-- **Honest docs** — toned down unverifiable claims (telemetry, skill/plugin counts).
+Most AI tools answer one chat at a time. They do not remember your folders, your project history, your previous decisions, or how your files relate to each other.
 
-## What's new in 0.3.1
+**Lattice AI turns your local workspace into an AI memory layer.**
 
-- **Reliable model selection** — `ModelResolution` unifies recommended card ID,
-  download ID, load ID, router cache key, and the front-end `current` so
-  "downloaded but not loaded" / "loaded but UI shows a different model"
-  classes of bugs are gone.
-- **Smoke test on load** — every local model load runs a one-shot Korean
-  chat probe and surfaces `ready_to_chat` / `compatibility_status` to the UI.
-- **Model Compatibility Layer** — per-family profiles (GPT-OSS, Gemma, Qwen,
-  Llama, Mistral, Phi, Deepseek …) with cached stop tokens, postprocess
-  rules, and Fast / Slow / Recovery paths so chat speed stays the same.
-- **Auto graph curator** — topic extraction → alias clustering → promotion
-  with secret/PII firewall, so the graph builds itself without the user
-  managing nodes.
-- **AI Security & Audit Command Center** — admin dashboard now shows
-  per-user risk matrix (compliant chats vs risky chats vs compliant files
-  vs risky files), sensitive-type donut, drill-down, raw explorer, and
-  JSON / CSV / XLSX / PDF exports — with hard-secret redaction
-  enforced on every response.
+It reads approved local folders, indexes chats and documents, builds a searchable knowledge graph, and lets you ask questions over that graph with local or opt-in cloud models.
 
-See [docs/CHANGELOG.md](./docs/CHANGELOG.md) for the full list.
-
----
-
-## Why Lattice AI?
-
-Most AI tools forget everything after each conversation. Your files sit in folders, your chats vanish, and nothing connects.
-
-**Lattice AI remembers.** It reads your local files, indexes your conversations, and builds a knowledge graph that links people, projects, concepts, and documents — all on your machine. With local models, nothing leaves your PC; cloud models are opt-in and clearly labeled.
-
-- **Your data stays local** — everything lives in `~/.ltcai/`, never sent to external servers
-- **Your AI gets smarter over time** — every chat and file builds your personal knowledge graph
-- **One local server, many surfaces** — a single local server powers the web UI, VS Code extension, and optional integrations (Telegram, MCP)
-
----
-
-## 3-Minute Workflow
-
+```text
+Local files + chats + folders
+          ↓
+Automatic knowledge graph
+          ↓
+Graph-aware AI chat, search, document generation, and admin audit
 ```
-1. Install             pip install ltcai && LTCAI
-2. Detect hardware     Auto-detect CPU, GPU, RAM → recommend the best local model
-3. Connect folders     Select local folders to index into your knowledge graph
-4. Build knowledge     Files and chats auto-analyzed → nodes (people, concepts, files) + edges (mentions, contains, depends on)
-5. Ask anything        "What did I discuss about the auth migration last week?" → Graph RAG retrieves context
-6. Work from anywhere  Web UI · VS Code · Telegram · MCP — all connected to the same knowledge
+
+### Built for people who want
+
+- a private AI workspace that runs from their own machine
+- local model setup without hunting through many tools
+- folder indexing that becomes useful AI memory
+- a visual knowledge graph instead of disconnected files and chats
+- optional team/admin controls for audit, permissions, and sensitive-data monitoring
+
+---
+
+## Quick Start
+
+### Python / PyPI
+
+```bash
+pip install ltcai
+LTCAI
+# open http://localhost:4825
+```
+
+### Apple Silicon local models
+
+```bash
+pip install "ltcai[local]"
+LTCAI
+```
+
+### Node / npm
+
+```bash
+npm install -g ltcai
+LTCAI
+```
+
+### VS Code / Cursor
+
+1. Install **Lattice AI** from the [VS Code Marketplace](https://marketplace.visualstudio.com/items?itemName=parktaesoo.ltcai) or [Open VSX](https://open-vsx.org/extension/parktaesoo/ltcai)
+2. Start the local server with `LTCAI`
+3. Press `Cmd+Shift+A` to open the chat panel
+
+**First run:** create an account → the first account becomes admin → choose a model → connect folders → start asking questions.
+
+---
+
+## The 3-minute workflow
+
+```text
+1. Install
+   pip install ltcai && LTCAI
+
+2. Detect hardware
+   CPU, GPU, RAM are detected and a suitable local model is recommended.
+
+3. Connect folders
+   Pick the local folders you want Lattice AI to index.
+
+4. Build knowledge
+   Files and chats become nodes and edges in a local knowledge graph.
+
+5. Ask questions
+   “What did I decide about the auth migration last week?”
+
+6. Keep working
+   Use the same local knowledge from the web UI, VS Code, Telegram, or MCP clients.
 ```
 
 ---
@@ -93,175 +111,214 @@ Most AI tools forget everything after each conversation. Your files sit in folde
 <td align="center" width="33%">
   <b>Workspace Chat</b><br/>
   <img src="https://raw.githubusercontent.com/TaeSooPark-PTS/LatticeAI/main/docs/images/screenshot-chat.png" alt="Lattice AI workspace chat" width="100%"/>
-  <sub>Chat with local/cloud LLM, upload files, pipeline controls</sub>
+  <sub>Chat with local/cloud models, upload files, and control pipelines.</sub>
 </td>
 <td align="center" width="33%">
   <b>Knowledge Graph</b><br/>
   <img src="https://raw.githubusercontent.com/TaeSooPark-PTS/LatticeAI/main/docs/images/screenshot-graph.png" alt="Lattice AI knowledge graph" width="100%"/>
-  <sub>Auto-built from chats and documents — nodes = nouns, edges = verbs</sub>
+  <sub>Automatically built from chats, files, folders, and project context.</sub>
 </td>
 <td align="center" width="33%">
   <b>Admin Dashboard</b><br/>
   <img src="https://raw.githubusercontent.com/TaeSooPark-PTS/LatticeAI/main/docs/images/screenshot-admin.png" alt="Lattice AI admin dashboard" width="100%"/>
-  <sub>User management, audit log, security monitoring</sub>
+  <sub>User management, audit logs, permissions, and security monitoring.</sub>
 </td>
 </tr>
 </table>
 
 ---
 
-## Quick Start
+## Why it is different
 
-**Python / PyPI**
-
-```bash
-pip install ltcai
-pip install "ltcai[local]"   # + Apple Silicon MLX models
-LTCAI
-# → http://localhost:4825
-```
-
-**Node / npm**
-
-```bash
-npm install -g ltcai
-LTCAI
-```
-
-**VS Code / Cursor**
-
-1. Install **Lattice AI** from [VS Code Marketplace](https://marketplace.visualstudio.com/items?itemName=parktaesoo.ltcai) or [Open VSX](https://open-vsx.org/extension/parktaesoo/ltcai)
-2. Start the local server: `LTCAI`
-3. `Cmd+Shift+A` to open the chat panel
-
-**First run:** open `http://localhost:4825` → sign up → first account auto-becomes admin → pick a model → start chatting.
+| Problem | Lattice AI approach |
+|---|---|
+| AI forgets every conversation | Chats and files are indexed into persistent local memory |
+| Files are scattered across folders | Approved folders become searchable graph context |
+| Local model setup is confusing | Hardware detection recommends and loads a suitable model |
+| Graph tools require manual node editing | Nodes and edges are created automatically from real work |
+| Cloud AI may expose private data | Local models keep data on your machine; cloud is opt-in |
+| Teams need visibility | Admin dashboard, audit logs, role controls, and sensitive-data monitoring |
 
 ---
 
-## How the Knowledge Graph Works
+## Core Features
 
-Lattice AI automatically analyzes your chats and files, extracting meaningful structure:
+### Local-first AI workspace
 
-**Nodes (nouns)** — the things in your world:
-| Type | Examples |
-|------|----------|
-| Document | PDF, PPTX, DOCX, code files, images |
-| Person | You, mentioned colleagues |
-| Concept | Technologies, frameworks, ideas |
-| Chat | Conversation sessions |
-| Task | Action items, TODOs |
-| Decision | Choices made in discussions |
+- Web UI running from a local server
+- Local SQLite storage under `~/.ltcai/`
+- Local folder indexing with explicit approval
+- File upload, chat history, graph search, and document generation
+- Optional cloud providers when you choose to use them
 
-**Edges (verbs)** — how things relate:
-`mentions` · `contains` · `resolves` · `depends on` · `explains` · `uses` · `replaces` · `supports` · `related to`
+### Automatic knowledge graph
 
-**Local folder indexing:**
-1. Browse your drives and folders from the UI
-2. Preview file counts, types, and sizes before indexing
-3. Approve which folders to connect (sensitive files auto-excluded)
-4. Files are parsed, chunked, and linked into the graph
-5. Optional: enable file watcher for real-time updates
+Lattice AI turns your work into structure automatically.
 
-All data stays in a local SQLite database. Nothing leaves your machine.
+**Nodes** can represent:
 
----
+| Node type | Examples |
+|---|---|
+| Document | PDF, DOCX, PPTX, XLSX, Markdown, code files |
+| Concept | technologies, project names, ideas, architecture topics |
+| Person | you, teammates, mentioned people |
+| Chat | previous conversations and sessions |
+| Task | TODOs, action items, follow-ups |
+| Decision | choices made during discussions |
 
-## Comparison
+**Edges** describe relationships such as:
 
-Based on public product behavior as of 2026-05.
+`mentions` · `contains` · `depends on` · `explains` · `uses` · `replaces` · `supports` · `related to`
 
-| | Lattice AI | Open WebUI | Continue.dev | GitHub Copilot |
-|---|:---:|:---:|:---:|:---:|
-| Local model (offline, Apple Silicon) | **Yes** | Yes | Yes | No |
-| Cloud models (OpenAI, Groq...) | **Yes** | Yes | Yes | Yes |
-| Knowledge graph (auto from files + chats) | **Yes** | No | No | No |
-| Local folder indexing + file watcher | **Yes** | No | No | No |
-| VS Code extension | **Yes** | No | Yes | Yes |
-| Telegram bot | **Yes** | No | No | No |
-| MCP registry (one-click install) | **Yes** | Partial | Yes | No |
-| Admin + audit log | **Yes** | Yes | No | No |
-| No built-in telemetry, self-hosted | **Yes** | Yes | Yes | No |
-| One-command public tunnel | **Yes** | No | No | No |
-| Free | **Yes** | Yes | Yes | No |
+The graph is curated automatically: noisy tokens, file extensions, generic words, and hard secrets are filtered before promotion.
+
+### Model loading that users can trust
+
+Lattice AI keeps model identity consistent across recommendation, download, load, backend router state, and frontend display.
+
+- unified model resolution
+- local model smoke test after load
+- `ok` / `degraded` / `failed` compatibility status
+- per-family compatibility profiles for GPT-OSS, Gemma, Qwen, Llama, Mistral, Phi, Deepseek, and more
+- fast post-processing path during normal chat
+- recovery path only when output looks broken
+
+### Admin and security command center
+
+For team or organization usage, Lattice AI includes admin-facing controls:
+
+- user management and roles
+- permission approvals for local file access
+- audit event timeline
+- sensitive chat/file detection
+- risk overview by user
+- raw data explorer with hard-secret redaction
+- export to JSON, CSV, XLSX, TXT, or PDF
+
+Hard secrets such as API keys, tokens, passwords, private keys, and common cloud credentials are redacted from security responses.
 
 ---
 
 ## Supported Models
 
-**Local (Apple Silicon MLX):**
+### Local on Apple Silicon MLX
 
-| Model | Best for | Size | Min RAM |
-|-------|----------|------|---------|
+| Model | Best for | Approx. size | Suggested RAM |
+|---|---|---:|---:|
 | Qwen3-VL 4B | Multimodal / low spec | ~2.7 GB | 8 GB |
 | Qwen3-VL 8B | Multimodal / balanced | ~4.8 GB | 16 GB |
 | GPT-OSS 20B | Reasoning / open-weight | ~12.1 GB | 32 GB |
 | Gemma 4 26B | Multimodal / large | ~15.6 GB | 32 GB |
 | Gemma 4 31B | Multimodal / latest Gemma 4 | ~18.4 GB | 48 GB |
-| Qwen3-VL 30B A3B | Multimodal / top | ~18 GB | 48 GB |
-| GPT-OSS 120B | Reasoning / top open-weight | ~62.3 GB | 128 GB |
-| Phi 4 Mini | Coding (fast) | ~2.2 GB | 8 GB |
-| Llama 3.1 8B | General | ~4.7 GB | 8 GB |
+| Qwen3-VL 30B A3B | Multimodal / top local | ~18 GB | 48 GB |
+| GPT-OSS 120B | Large reasoning model | ~62.3 GB | 128 GB |
+| Phi 4 Mini | Fast coding/general chat | ~2.2 GB | 8 GB |
+| Llama 3.1 8B | General chat | ~4.7 GB | 8 GB |
 | Mistral 7B v0.3 | General / Apache | ~4.1 GB | 8 GB |
 
-**Cross-platform (Ollama / LM Studio / vLLM / llama.cpp):**
-Same models via Ollama pull, LM Studio download, vLLM serve, or llama.cpp GGUF where available.
+### Cross-platform engines
 
-**Cloud (any platform):**
-OpenAI GPT-5.5 · Claude Opus 4.7 / Sonnet 4.6 / Haiku 4.5 via OpenRouter · Groq · Together · xAI · any OpenAI-compatible endpoint
+Lattice AI can also work with models served by:
 
-The setup wizard auto-detects your hardware and recommends the best model for your specs.
+- Ollama
+- LM Studio
+- llama.cpp
+- vLLM
+- OpenAI-compatible local or remote endpoints
+
+### Cloud providers
+
+Cloud models are optional. When enabled, prompts are sent to the selected provider.
+
+Supported routes include OpenAI-compatible APIs, OpenRouter, Groq, Together, xAI, and other compatible endpoints.
 
 ---
 
-## Data Privacy
+## Privacy and data storage
 
-| | |
+| Area | Default behavior |
 |---|---|
-| **Storage** | All data in `~/.ltcai/` on your machine |
-| **Telemetry** | No built-in analytics or product telemetry by default |
-| **File access** | Approval-token gated — explicit consent per folder |
-| **Cloud models** | When using cloud APIs, prompts are sent to the provider. Local models keep everything offline. |
-| **Sensitive files** | `.env`, credentials, keys, certificates auto-excluded from indexing |
-| **Delete** | Clear chat history, delete graph nodes, remove indexed folders at any time |
+| Storage | Data is stored locally under `~/.ltcai/` |
+| Default binding | `127.0.0.1:4825` local server |
+| Telemetry | No built-in product telemetry by default |
+| Folder access | Explicit approval per folder/action scope |
+| Sensitive files | `.env`, credentials, keys, certificates, and similar files are auto-excluded |
+| Cloud models | Off unless configured; cloud prompts go to the selected provider |
+| Delete controls | Remove chats, graph nodes, indexed folders, and local data |
+
+---
+
+## Comparison
+
+| Capability | Lattice AI | Open WebUI | Continue.dev | GitHub Copilot |
+|---|:---:|:---:|:---:|:---:|
+| Local model workflow | Yes | Yes | Yes | No |
+| Local folder indexing | Yes | Limited | Workspace-focused | Limited |
+| Automatic knowledge graph | Yes | No | No | No |
+| Chat + file memory | Yes | Partial | Partial | Partial |
+| VS Code / Cursor extension | Yes | No | Yes | Yes |
+| Admin dashboard | Yes | Yes | No | No |
+| Security audit exports | Yes | Limited | No | No |
+| Optional cloud models | Yes | Yes | Yes | Yes |
+| Local-first by default | Yes | Self-hosted | Local/dev focused | No |
+
+---
+
+## Current release
+
+**0.3.2** focuses on reliability and trust:
+
+- consistent current-model flow from model card click to chat readiness
+- `ok` / `degraded` / `failed` model smoke status
+- timezone-correct security dashboard
+- cleaner Korean auto-graph promotion
+- more honest documentation around telemetry and feature claims
+
+See the full [changelog](docs/CHANGELOG.md).
 
 ---
 
 <details>
 <summary><b>All Features</b></summary>
 
-### Core Experience
-| Feature | Description |
-|---------|-------------|
-| **Web UI** | Responsive chat, file upload, model picker, knowledge graph |
-| **Auto Setup Wizard** | Detect hardware → recommend model → install dependencies → verify |
-| **Graph RAG** | Chats and files auto-indexed into SQLite knowledge graph |
-| **Local folder indexing** | Browse, audit, and index local folders with file watcher |
+### Core experience
 
-### Developer Tools
 | Feature | Description |
-|---------|-------------|
-| **VS Code / Cursor** | Chat panel, Edit Selection, Explain, Generate command |
-| **Multi-step agent** | File edit/create, grep, todo, terminal (25 steps, human-in-the-loop) |
-| **Multi-LLM pipeline** | Plan → Execute → Review with different models |
-| **MCP server** | Use Lattice tools in Claude Desktop / Cursor |
-| **MCP registry** | One-click install from registry.modelcontextprotocol.io |
-| **Skills browser** | Optional browser for Anthropic + third-party skills |
-| **Plugin browser** | Browse open-source plugins from the registry |
+|---|---|
+| Web UI | Chat, file upload, model picker, graph view, admin pages |
+| Auto setup wizard | Detect hardware, recommend model, install dependencies, verify load |
+| Graph RAG | Retrieve context from indexed chats, files, and graph relationships |
+| Local folder indexing | Browse, audit, approve, index, and optionally watch folders |
+| Document generation | Use graph context to generate reports, summaries, and structured drafts |
 
-### Access & Communication
+### Developer tools
+
 | Feature | Description |
-|---------|-------------|
-| **Telegram bot** | Chat, upload files, manage models from anywhere |
-| **PWA** | Install on iPad / Android home screen |
-| **Public tunnel** | `LTCAI --tunnel` — Cloudflare HTTPS, no account needed |
+|---|---|
+| VS Code / Cursor | Chat panel, edit selection, explain code, generate code |
+| Multi-step agent | File edit/create, grep, todo, and terminal workflow with human-in-the-loop |
+| Multi-LLM pipeline | Plan, execute, and review with different models |
+| MCP server | Expose Lattice tools to MCP-compatible clients |
+| MCP registry | Install MCP servers from supported registries |
+| Skills browser | Browse and install optional skills |
+| Plugin browser | Browse compatible open-source plugins |
+
+### Access and communication
+
+| Feature | Description |
+|---|---|
+| Telegram bot | Chat, upload files, and manage models remotely |
+| PWA | Install the web UI on mobile/tablet home screens |
+| Public tunnel | `LTCAI --tunnel` for a temporary Cloudflare HTTPS URL |
 
 ### Administration
+
 | Feature | Description |
-|---------|-------------|
-| **User management** | Roles, permissions, disable/enable accounts |
-| **SSO** | Entra ID / Okta OIDC |
-| **Audit dashboard** | Per-user AI usage, sensitive data detection, event log, TXT/CSV/Excel export |
-| **Security monitoring** | Rate limits, file access approvals, MCP install audit trail |
+|---|---|
+| User management | Roles, permissions, account enable/disable |
+| SSO | Entra ID / Okta OIDC configuration |
+| Audit dashboard | AI usage, sensitive-data events, file access, exports |
+| Security monitoring | Rate limits, approval logs, raw explorer, redaction |
 
 </details>
 
@@ -269,18 +326,18 @@ The setup wizard auto-detects your hardware and recommends the best model for yo
 <summary><b>Security</b></summary>
 
 | Property | Detail |
-|----------|--------|
-| Binding | Default `127.0.0.1:4825` — local only |
+|---|---|
+| Binding | Default `127.0.0.1:4825` local only |
 | Auth | Session required when network-exposed or public mode |
-| Cookies | `HttpOnly + SameSite=Lax` — no localStorage token |
-| Local file access | Approval-token gated (path + user + action scope) |
-| Package install | Admin-only with audit trail (MCP, skills, pip, npm) |
-| CORS | Localhost only by default; configure via `LATTICEAI_CORS_ALLOWED_ORIGINS` |
-| File upload | Magic-number signature check (blocks extension spoofing) |
+| Cookies | `HttpOnly + SameSite=Lax`; no localStorage token |
+| Local file access | Approval-token gated by path, user, and action scope |
+| Package install | Admin-only with audit trail for MCP, skills, pip, npm |
+| CORS | Localhost only by default; configurable via `LATTICEAI_CORS_ALLOWED_ORIGINS` |
+| File upload | Magic-number signature checks for extension spoofing defense |
 | Rate limits | `/chat` 30/min · `/agent` 6/min · `/upload` 12/min per user |
-| Telemetry | None — all data in `~/.ltcai/` |
+| Telemetry | No built-in product telemetry by default |
 
-Report vulnerabilities: [SECURITY.md](SECURITY.md)
+Report vulnerabilities in [SECURITY.md](SECURITY.md).
 
 </details>
 
@@ -290,10 +347,10 @@ Report vulnerabilities: [SECURITY.md](SECURITY.md)
 ### VS Code shortcuts
 
 | Shortcut | Action |
-|----------|--------|
+|---|---|
 | `Cmd+Shift+A` | Open chat |
 | `Cmd+Shift+E` | Edit selected code |
-| `Cmd+Shift+M` | Load / switch model |
+| `Cmd+Shift+M` | Load or switch model |
 | Right-click | Explain / Save to Knowledge Garden |
 
 ### Telegram bot
@@ -302,7 +359,7 @@ Report vulnerabilities: [SECURITY.md](SECURITY.md)
 LATTICEAI_TELEGRAM_BOT_TOKEN=your-token LTCAI
 ```
 
-### Public server (Docker / Render / Fly.io)
+### Public server
 
 ```bash
 LATTICEAI_MODE=public \
@@ -312,14 +369,14 @@ LATTICEAI_INVITE_CODE=my-secret \
 LTCAI
 ```
 
-### Public tunnel (Cloudflare, no account)
+### Public tunnel
 
 ```bash
 LTCAI --tunnel
 # → https://xxxx.trycloudflare.com
 ```
 
-### Auto-start (Mac)
+### Auto-start on macOS
 
 ```bash
 cat > ~/Library/LaunchAgents/com.ltcai.plist << 'EOF'
@@ -345,21 +402,21 @@ launchctl load ~/Library/LaunchAgents/com.ltcai.plist
 <summary><b>API Reference</b></summary>
 
 | Method | Path | Description |
-|--------|------|-------------|
-| GET | `/health` | Server status & current model |
-| GET | `/models` | Model list + load state |
+|---|---|---|
+| GET | `/health` | Server status and current model |
+| GET | `/models` | Model list and load state |
 | POST | `/models/load` | Load a model |
-| POST | `/chat` | Chat (`stream=true/false`) |
+| POST | `/chat` | Chat with streaming or non-streaming output |
 | POST | `/agent` | Multi-step file agent |
 | GET | `/knowledge-graph/stats` | Graph statistics |
 | GET | `/knowledge-graph/search?q=` | Search the knowledge graph |
-| GET | `/knowledge-graph/local/roots` | Discover local drives & folders |
+| GET | `/knowledge-graph/local/roots` | Discover local drives and folders |
 | POST | `/knowledge-graph/local/audit` | Audit a folder before indexing |
 | POST | `/knowledge-graph/local/index` | Index a folder into Graph RAG |
 | GET | `/mcp/installed` | Installed MCP servers |
-| POST | `/mcp/install` | Install MCP server (admin) |
+| POST | `/mcp/install` | Install MCP server as admin |
 | GET | `/skills/marketplace` | Skills marketplace |
-| POST | `/skills/install` | Install a skill (admin) |
+| POST | `/skills/install` | Install a skill as admin |
 | GET | `/admin/audit` | Audit report |
 | GET | `/permissions/pending` | Pending file-access approvals |
 
@@ -371,12 +428,13 @@ Full reference: [docs/mcp-tools.md](docs/mcp-tools.md)
 <summary><b>Troubleshooting</b></summary>
 
 | Symptom | Fix |
-|---------|-----|
-| Port 4825 in use | `lsof -i :4825` → `kill <PID>` or `LTCAI --port 4826` |
-| `ModuleNotFoundError: mlx` | `pip install "ltcai[local]"` (Apple Silicon only) |
-| Python < 3.11 | Upgrade Python: `python3 --version` |
-| No API key warning | `OPENAI_API_KEY=sk-... LTCAI` or set in admin panel |
-| Can't reach from iPad | `LATTICEAI_HOST=0.0.0.0 LTCAI` or use `--tunnel` |
+|---|---|
+| Port 4825 is already in use | `lsof -i :4825` then `kill <PID>`, or run `LTCAI --port 4826` |
+| `ModuleNotFoundError: mlx` | Install local extras with `pip install "ltcai[local]"` on Apple Silicon |
+| Python version is too old | Use Python 3.11 or newer |
+| No API key warning | Set a provider key or use a local model |
+| Cannot reach from iPad | Use `LATTICEAI_HOST=0.0.0.0 LTCAI` or `LTCAI --tunnel` |
+| Model loads but chat looks broken | Check compatibility status; try another engine or model family |
 
 </details>
 
@@ -385,31 +443,29 @@ Full reference: [docs/mcp-tools.md](docs/mcp-tools.md)
 ## Platform Support
 
 | Feature | macOS Apple Silicon | macOS Intel / Windows / Linux |
-|---------|:---:|:---:|
+|---|:---:|:---:|
 | Web UI + cloud models | Yes | Yes |
 | VS Code / Cursor extension | Yes | Yes |
 | Telegram bot | Yes | Yes |
-| MLX local models | Yes | -- |
-| Ollama / LM Studio / vLLM | Yes | Yes |
+| MLX local models | Yes | No |
+| Ollama / LM Studio / vLLM / llama.cpp | Yes | Yes |
 
 ---
 
 ## Distribution
 
 | Channel | Link |
-|---------|------|
+|---|---|
 | PyPI | [pypi.org/project/ltcai](https://pypi.org/project/ltcai/) |
 | npm | [npmjs.com/package/ltcai](https://www.npmjs.com/package/ltcai) |
 | VS Code Marketplace | [marketplace.visualstudio.com](https://marketplace.visualstudio.com/items?itemName=parktaesoo.ltcai) |
 | Open VSX | [open-vsx.org](https://open-vsx.org/extension/parktaesoo/ltcai) |
 
-Current version: **0.3.2** — [Changelog](docs/CHANGELOG.md)
-
 ---
 
 ## Contributing
 
-See [CONTRIBUTING.md](CONTRIBUTING.md). All PRs welcome.
+See [CONTRIBUTING.md](CONTRIBUTING.md). Issues and pull requests are welcome.
 
 ## License
 
@@ -422,49 +478,53 @@ MIT — [TaeSoo Park](https://github.com/TaeSooPark-PTS)
 
 ## Lattice AI
 
-**내 PC의 파일, 대화, 프로젝트를 기억하고 연결하는 로컬 AI 워크스페이스**
+**내 PC의 파일, 대화, 폴더를 기억하고 연결하는 로컬 우선 AI 워크스페이스**
 
-대부분의 AI 도구는 대화가 끝나면 모든 것을 잊습니다. Lattice AI는 다릅니다. 로컬 파일을 읽고, 대화를 기록하고, 사람·프로젝트·개념·문서를 연결하는 지식 그래프를 자동으로 만듭니다. 모든 데이터는 내 PC에만 저장됩니다.
+대부분의 AI 도구는 대화가 끝나면 맥락을 잊습니다. Lattice AI는 승인한 로컬 폴더와 대화를 인덱싱하고, 사람·프로젝트·개념·문서를 자동으로 지식 그래프로 연결합니다.
 
-### 3분 사용 흐름
-
-```
-1. 설치          pip install ltcai && LTCAI
-2. 하드웨어 감지   CPU, GPU, RAM 자동 감지 → 최적 로컬 모델 추천
-3. 폴더 연결      로컬 폴더를 선택하여 지식 그래프에 연결
-4. 지식 구축      파일과 대화 자동 분석 → 점(사람, 개념, 파일) + 선(언급함, 포함함, 의존함)
-5. 질문           "지난주 인증 마이그레이션 논의 내용은?" → Graph RAG가 컨텍스트 검색
-6. 어디서든 작업   웹 UI · VS Code · Telegram · MCP — 같은 지식에 연결
+```text
+로컬 파일 + 대화 + 폴더
+        ↓
+자동 지식 그래프
+        ↓
+그래프 기반 AI 검색, 채팅, 문서 생성, 관리자 감사
 ```
 
 ### 설치
 
 ```bash
-pip install ltcai                    # 클라우드 모델
-pip install "ltcai[local]"           # + Apple Silicon MLX 로컬 모델
-LTCAI                                # 서버 실행 → http://localhost:4825
-LTCAI --tunnel                       # + Cloudflare 공개 URL 자동 발급
+pip install ltcai
+LTCAI
+# http://localhost:4825
+```
+
+Apple Silicon에서 로컬 모델까지 쓰려면:
+
+```bash
+pip install "ltcai[local]"
+LTCAI
+```
+
+### 사용 흐름
+
+```text
+1. 설치한다.
+2. CPU, GPU, RAM을 감지해서 적합한 로컬 모델을 추천받는다.
+3. 연결할 로컬 폴더를 선택한다.
+4. 파일과 대화가 자동으로 지식 그래프가 된다.
+5. “지난주 인증 마이그레이션에서 결정한 게 뭐였지?”처럼 질문한다.
+6. 같은 지식을 웹 UI, VS Code, Telegram, MCP에서 사용한다.
 ```
 
 ### 핵심 차별점
 
-- **내 데이터가 AI의 기억이 된다** — 채팅과 파일이 자동으로 지식 그래프로 구조화
-- **로컬 폴더를 연결하면 프로젝트 전체를 이해** — 파일 변경 시 실시간 업데이트
-- **모든 데이터는 내 PC에** — `~/.ltcai/`에 저장, 텔레메트리 없음, 외부 전송 없음
-- **설치 한 번으로 어디서든** — 웹 · VS Code · Telegram · MCP 클라이언트
+- **내 데이터가 AI의 기억이 됨** — 채팅과 파일을 자동으로 구조화
+- **로컬 우선** — 기본 데이터는 `~/.ltcai/`에 저장
+- **자동 그래프** — 사용자가 노드와 엣지를 직접 만들 필요 없음
+- **모델 추천/로드 흐름** — 하드웨어 감지 후 적합한 모델 추천
+- **선택형 클라우드** — 클라우드 모델은 사용자가 설정한 경우에만 사용
+- **관리자/보안 기능** — 권한, 감사 로그, 민감정보 감지, export 지원
 
-### 추천 로컬 모델 (M-series Mac)
-
-| 모델 | 용도 | 크기 | 최소 RAM |
-|------|------|------|----------|
-| Qwen3-VL 4B | 멀티모달 / 저사양 | ~2.7GB | 8GB |
-| Qwen3-VL 8B | 멀티모달 / 균형 추천 | ~4.8GB | 16GB |
-| GPT-OSS 20B | 추론 / 오픈가중치 | ~12.1GB | 32GB |
-| Gemma 4 26B | 멀티모달 / 대형 | ~15.6GB | 32GB |
-| Gemma 4 31B | 멀티모달 / 최신 Gemma 4 | ~18.4GB | 48GB |
-| Qwen3-VL 30B A3B | 멀티모달 / 최고급 | ~18GB | 48GB |
-| GPT-OSS 120B | 추론 / 최고급 오픈가중치 | ~62.3GB | 128GB |
-
-자세한 내용: [docs/CHANGELOG.md](docs/CHANGELOG.md) · [보안](SECURITY.md) · [기여](CONTRIBUTING.md)
+자세한 내용은 [docs/CHANGELOG.md](docs/CHANGELOG.md), [SECURITY.md](SECURITY.md), [CONTRIBUTING.md](CONTRIBUTING.md)를 참고하세요.
 
 </details>
