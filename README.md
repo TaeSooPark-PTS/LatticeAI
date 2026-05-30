@@ -21,6 +21,23 @@
 
 ---
 
+## What's new in 0.4.0
+
+- **Knowledge Graph v2 read/write cutover** — graph reads (`search`,
+  `context_for_query`, `graph`, `neighbors`, `multi_hop_context`,
+  `search_for_document_generation`, `stats`) and writes now flow through the v2
+  store, behind the unchanged `KnowledgeGraphStore` interface.
+- **Legacy ↔ v2 equivalence guaranteed** — one read code path runs against
+  either the legacy tables or v2 reconstruction views, with a dedicated
+  equivalence test suite proving identical results.
+- **Dual-write projection** — every node/edge write is mirrored into the v2
+  graph on the same transaction; deletes are mirrored too (incl. local-folder
+  re-index, `delete_conversation`, `clear_all`).
+- **Deterministic ordering** — every graph read uses a stable `… , id ASC`
+  tie-break, so result order is identical across the legacy and v2 paths.
+- Internal: agent loop extracted to `latticeai/core/agent.py`, app config to
+  `latticeai/core/config.py`, and a tool registry in `tools.py`. Unit tests: 181 pass.
+
 ## What's new in 0.3.2
 
 - **Consistent "current model"** — model-card click → prepare/load → smoke test →
@@ -403,7 +420,7 @@ Full reference: [docs/mcp-tools.md](docs/mcp-tools.md)
 | VS Code Marketplace | [marketplace.visualstudio.com](https://marketplace.visualstudio.com/items?itemName=parktaesoo.ltcai) |
 | Open VSX | [open-vsx.org](https://open-vsx.org/extension/parktaesoo/ltcai) |
 
-Current version: **0.3.2** — [Changelog](docs/CHANGELOG.md)
+Current version: **0.4.0** — [Changelog](docs/CHANGELOG.md)
 
 ---
 

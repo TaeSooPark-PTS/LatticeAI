@@ -17,7 +17,7 @@ import tempfile
 import json
 from html.parser import HTMLParser
 from pathlib import Path
-from typing import Any, Dict, List, Optional
+from typing import Any, Callable, Dict, List, Optional
 
 _PLATFORM = platform.system()  # "Darwin" | "Windows" | "Linux"
 
@@ -1435,118 +1435,90 @@ def git_show(revision: str = "HEAD", cwd: Optional[str] = None) -> Dict[str, Any
     return _run_git(["show", "--stat", "--oneline", "--decorate", revision], cwd)
 
 
+def _h_create_xlsx(args: Dict[str, Any]) -> Dict[str, Any]:
+    rows = args.get("rows", [])
+    if isinstance(rows, str):
+        rows = json.loads(rows)
+    return create_xlsx(rows, args.get("filename", "spreadsheet.xlsx"), args.get("sheet_name", "Sheet1"))
+
+
+def _h_create_pptx(args: Dict[str, Any]) -> Dict[str, Any]:
+    slides = args.get("slides", [])
+    if isinstance(slides, str):
+        slides = json.loads(slides)
+    return create_pptx(args.get("title", ""), slides, args.get("filename", "presentation.pptx"))
+
+
+# ── Tool registry: the single source of truth for name → invocation ───────────
+# Each entry binds the args dict to a tool function. ``execute_tool`` is a
+# lookup over this table — adding a tool means adding one entry here, not
+# editing an if/elif chain. server.py's governance map and catalog brief are
+# checked against ``registered_tools()`` so the three never silently drift.
+TOOL_HANDLERS: Dict[str, Callable[[Dict[str, Any]], Dict[str, Any]]] = {
+    # filesystem
+    "list_dir":          lambda a: list_dir(a.get("path", ".")),
+    "workspace_tree":    lambda a: workspace_tree(a.get("path", "."), a.get("max_depth", 3)),
+    "read_file":         lambda a: read_file(a["path"], offset=a.get("offset", 0), limit=a.get("limit", 0), line_numbers=a.get("line_numbers", True)),
+    "write_file":        lambda a: write_file(a["path"], a.get("content", "")),
+    "edit_file":         lambda a: edit_file(a["path"], a["old_string"], a["new_string"], replace_all=bool(a.get("replace_all", False))),
+    "grep":              lambda a: grep(a["pattern"], path=a.get("path", "."), glob=a.get("glob"), max_results=a.get("max_results", 50), case_insensitive=bool(a.get("case_insensitive", False)), context_lines=a.get("context_lines", 0)),
+    "search_files":      lambda a: search_files(a["query"], a.get("path", "."), a.get("max_results", 20)),
+    "inspect_html":      lambda a: inspect_html(a["path"]),
+    "preview_url":       lambda a: preview_url(a.get("path", "index.html")),
+    # planning
+    "todo_read":         lambda a: todo_read(),
+    "todo_write":        lambda a: todo_write(a.get("todos") or []),
+    # documents
+    "create_docx":       lambda a: create_docx(a.get("title", ""), a.get("body", ""), a.get("filename", "document.docx")),
+    "create_xlsx":       _h_create_xlsx,
+    "create_pptx":       _h_create_pptx,
+    "create_pdf":        lambda a: create_pdf(a.get("title", ""), a.get("body", ""), a.get("filename", "document.pdf")),
+    "create_web_project": lambda a: create_web_project(a.get("path", ""), a.get("framework", "react"), a.get("template", "vite")),
+    # local filesystem
+    "local_list":        lambda a: local_list(a["path"]),
+    "local_read":        lambda a: local_read(a["path"]),
+    "local_write":       lambda a: local_write(a["path"], a.get("content", "")),
+    "read_document":     lambda a: read_document(a["path"]),
+    "network_status":    lambda a: network_status(),
+    # computer use
+    "computer_screenshot": lambda a: computer_screenshot(),
+    "computer_open_app": lambda a: computer_open_app(a.get("app", "Google Chrome")),
+    "computer_open_url": lambda a: computer_open_url(a["url"], a.get("app", "Google Chrome")),
+    "computer_click":    lambda a: computer_click(a.get("x", 0), a.get("y", 0), a.get("button", "left"), a.get("double", False)),
+    "computer_type":     lambda a: computer_type(a["text"], a.get("interval", 0.04)),
+    "computer_key":      lambda a: computer_key(a["key"]),
+    "computer_scroll":   lambda a: computer_scroll(a.get("x", 0), a.get("y", 0), a.get("direction", "down"), a.get("clicks", 3)),
+    "computer_move":     lambda a: computer_move(a.get("x", 0), a.get("y", 0)),
+    "computer_drag":     lambda a: computer_drag(a.get("x1", 0), a.get("y1", 0), a.get("x2", 0), a.get("y2", 0)),
+    "computer_status":   lambda a: computer_status(),
+    "chrome_status":     lambda a: desktop_bridge_status(),
+    "computer_use_status": lambda a: desktop_bridge_status(),
+    # knowledge / obsidian
+    "knowledge_save":    lambda a: knowledge_save(a["content"], a.get("folder", "00_Raw"), a.get("title")),
+    "knowledge_search":  lambda a: knowledge_search(a["query"], a.get("max_results", 5)),
+    "knowledge_tree":    lambda a: knowledge_tree(),
+    "obsidian_save":     lambda a: obsidian_save(a["content"], a.get("folder", "00_Raw"), a.get("title")),
+    "obsidian_search":   lambda a: obsidian_search(a["query"], a.get("max_results", 5)),
+    "obsidian_tree":     lambda a: obsidian_tree(),
+    # git (read-only)
+    "git_status":        lambda a: git_status(a.get("cwd")),
+    "git_diff":          lambda a: git_diff(a.get("path"), a.get("cwd")),
+    "git_log":           lambda a: git_log(a.get("max_count", 5), a.get("cwd")),
+    "git_show":          lambda a: git_show(a.get("revision", "HEAD"), a.get("cwd")),
+    # exec
+    "run_command":       lambda a: run_command(a["command"], a.get("cwd")),
+    "build_project":     lambda a: build_project(a.get("cwd"), a.get("script", "build")),
+    "deploy_project":    lambda a: deploy_project(a.get("cwd"), a.get("script", "deploy")),
+}
+
+
+def registered_tools() -> frozenset:
+    """Names dispatchable through ``execute_tool`` — the seam other modules verify against."""
+    return frozenset(TOOL_HANDLERS)
+
+
 def execute_tool(action: str, args: Dict[str, Any]) -> Dict[str, Any]:
-    if action == "list_dir":
-        return list_dir(args.get("path", "."))
-    if action == "workspace_tree":
-        return workspace_tree(args.get("path", "."), args.get("max_depth", 3))
-    if action == "read_file":
-        return read_file(
-            args["path"],
-            offset=args.get("offset", 0),
-            limit=args.get("limit", 0),
-            line_numbers=args.get("line_numbers", True),
-        )
-    if action == "write_file":
-        return write_file(args["path"], args.get("content", ""))
-    if action == "edit_file":
-        return edit_file(
-            args["path"],
-            args["old_string"],
-            args["new_string"],
-            replace_all=bool(args.get("replace_all", False)),
-        )
-    if action == "grep":
-        return grep(
-            args["pattern"],
-            path=args.get("path", "."),
-            glob=args.get("glob"),
-            max_results=args.get("max_results", 50),
-            case_insensitive=bool(args.get("case_insensitive", False)),
-            context_lines=args.get("context_lines", 0),
-        )
-    if action == "search_files":
-        return search_files(args["query"], args.get("path", "."), args.get("max_results", 20))
-    if action == "todo_read":
-        return todo_read()
-    if action == "todo_write":
-        return todo_write(args.get("todos") or [])
-    if action == "inspect_html":
-        return inspect_html(args["path"])
-    if action == "preview_url":
-        return preview_url(args.get("path", "index.html"))
-    if action == "create_docx":
-        return create_docx(args.get("title", ""), args.get("body", ""), args.get("filename", "document.docx"))
-    if action == "create_xlsx":
-        rows = args.get("rows", [])
-        if isinstance(rows, str):
-            rows = json.loads(rows)
-        return create_xlsx(rows, args.get("filename", "spreadsheet.xlsx"), args.get("sheet_name", "Sheet1"))
-    if action == "create_pptx":
-        slides = args.get("slides", [])
-        if isinstance(slides, str):
-            slides = json.loads(slides)
-        return create_pptx(args.get("title", ""), slides, args.get("filename", "presentation.pptx"))
-    if action == "create_pdf":
-        return create_pdf(args.get("title", ""), args.get("body", ""), args.get("filename", "document.pdf"))
-    if action == "create_web_project":
-        return create_web_project(args.get("path", ""), args.get("framework", "react"), args.get("template", "vite"))
-    if action == "local_list":
-        return local_list(args["path"])
-    if action == "local_read":
-        return local_read(args["path"])
-    if action == "local_write":
-        return local_write(args["path"], args.get("content", ""))
-    if action == "read_document":
-        return read_document(args["path"])
-    if action == "network_status":
-        return network_status()
-    if action == "computer_screenshot":
-        return computer_screenshot()
-    if action == "computer_open_app":
-        return computer_open_app(args.get("app", "Google Chrome"))
-    if action == "computer_open_url":
-        return computer_open_url(args["url"], args.get("app", "Google Chrome"))
-    if action == "computer_click":
-        return computer_click(args.get("x", 0), args.get("y", 0), args.get("button", "left"), args.get("double", False))
-    if action == "computer_type":
-        return computer_type(args["text"], args.get("interval", 0.04))
-    if action == "computer_key":
-        return computer_key(args["key"])
-    if action == "computer_scroll":
-        return computer_scroll(args.get("x", 0), args.get("y", 0), args.get("direction", "down"), args.get("clicks", 3))
-    if action == "computer_move":
-        return computer_move(args.get("x", 0), args.get("y", 0))
-    if action == "computer_drag":
-        return computer_drag(args.get("x1", 0), args.get("y1", 0), args.get("x2", 0), args.get("y2", 0))
-    if action == "computer_status":
-        return computer_status()
-    if action in {"chrome_status", "computer_use_status"}:
-        return desktop_bridge_status()
-    if action == "knowledge_save":
-        return knowledge_save(args["content"], args.get("folder", "00_Raw"), args.get("title"))
-    if action == "knowledge_search":
-        return knowledge_search(args["query"], args.get("max_results", 5))
-    if action == "knowledge_tree":
-        return knowledge_tree()
-    if action == "obsidian_save":
-        return obsidian_save(args["content"], args.get("folder", "00_Raw"), args.get("title"))
-    if action == "obsidian_search":
-        return obsidian_search(args["query"], args.get("max_results", 5))
-    if action == "obsidian_tree":
-        return obsidian_tree()
-    if action == "git_status":
-        return git_status(args.get("cwd"))
-    if action == "git_diff":
-        return git_diff(args.get("path"), args.get("cwd"))
-    if action == "git_log":
-        return git_log(args.get("max_count", 5), args.get("cwd"))
-    if action == "git_show":
-        return git_show(args.get("revision", "HEAD"), args.get("cwd"))
-    if action == "run_command":
-        return run_command(args["command"], args.get("cwd"))
-    if action == "build_project":
-        return build_project(args.get("cwd"), args.get("script", "build"))
-    if action == "deploy_project":
-        return deploy_project(args.get("cwd"), args.get("script", "deploy"))
-    raise ToolError(f"Unknown action: {action}")
+    handler = TOOL_HANDLERS.get(action)
+    if handler is None:
+        raise ToolError(f"Unknown action: {action}")
+    return handler(args)

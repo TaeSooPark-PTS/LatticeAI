@@ -9,6 +9,37 @@
 > 경우의 fallback입니다. 필요한 secrets는 `PYPI_TOKEN`, `NPM_TOKEN`,
 > `VSCE_PAT`, `OVSX_TOKEN`이며, 비어 있는 job은 자동으로 skip됩니다.
 
+## v0.4.0 릴리스 노트 (2026-05-31)
+
+Knowledge Graph v2 read/write cutover. 자세한 내용은
+[`docs/CHANGELOG.md`](docs/CHANGELOG.md)의 `[0.4.0]` 항목 참고.
+
+- KGStoreV2 read/write cutover 완료 (legacy ↔ v2 동등성 보장)
+- Dual-write projection 도입 (legacy 타입/summary/metadata를 `attrs._kg`에 보존)
+- 모든 그래프 read에 deterministic ordering(`… , id ASC`) 적용
+- 삭제 미러링 완성 (clear_all / delete_conversation / 로컬 폴더 재인덱싱)
+- Legacy/V2 equivalence test suite 추가, 단위 테스트 **181 pass**
+- 빌드 산출물만 생성 — 어떤 배포도 수행하지 않음
+
+> 참고: legacy `nodes`/`edges`는 여전히 durable write source이며, v2는 동일
+> 트랜잭션에서 갱신되는 프로젝션입니다. `LATTICEAI_KG_READ_V2=0`으로 legacy
+> read 경로로 즉시 롤백할 수 있습니다.
+
+## TODO — 후속 작업 (v0.4.0 이후, 이번 릴리스 범위 밖)
+
+아래 항목은 의도적으로 v0.4.0에 **포함하지 않았습니다**. 별도 작업/PR로 진행:
+
+- **Dead code cleanup** — cutover로 main-path에서 미사용이 된 코드 정리.
+- **`migrate_legacy_to_v2()` 제거** — backfill을 프로젝션이 대체해 main-path에서
+  dead(현재 `kg_schema._cli`만 사용). 제거 또는 CLI 전용으로 강등.
+- **`KGStoreV2.upsert_*` 정리** — 프로젝션은 raw SQL, read는 뷰를 쓰므로
+  production 경로 미사용. 정리 시 `test_document_generation` 동반 조정 필요.
+- **KG schema redesign / `NodeType` 재설계** — v2 `type` 칼럼이 현재 legacy
+  자유문자열을 담는 타협 상태. 무손실 superset enum으로 재설계하면 typed/embedding
+  의미론을 복원 가능.
+- 잔여 저위험 항목: 혼합 `_kg` 상태 리프로젝션 가드(any→all), 프로젝션 실패 시
+  edge 발산 모니터링.
+
 ## 0) 릴리스 전 체크
 
 1. `python3 -m pytest tests/unit/ -v` — 단위 테스트 모두 통과 확인

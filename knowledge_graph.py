@@ -27,6 +27,10 @@ try:
 except Exception:  # pragma: no cover - v2 schema is optional at import time
     KGStoreV2 = None  # type: ignore[assignment]
 
+# Default read source for the graph queries: v2 reconstruction views.
+# Override with LATTICEAI_KG_READ_V2=0 to fall back to the legacy tables.
+_READ_FROM_V2_DEFAULT = os.getenv("LATTICEAI_KG_READ_V2", "1") != "0"
+
 _llm_router_ref = None
 
 def set_llm_router(router_instance):
@@ -799,6 +803,19 @@ class KnowledgeGraphStore:
         self.db_path.parent.mkdir(parents=True, exist_ok=True)
         self.blob_dir.mkdir(parents=True, exist_ok=True)
         self._init_db()
+        # Read graph queries from the v2 projection (kgv2_* views) when available.
+        # Toggle off (e.g. in tests) to compare against the legacy tables.
+        self._read_from_v2 = KGStoreV2 is not None and _READ_FROM_V2_DEFAULT
+
+    def _read_tables(self) -> tuple:
+        """Return (nodes_table, edges_table) for read queries.
+
+        Same read code runs against the legacy tables or the v2 reconstruction
+        views, so the two paths are equivalent by construction.
+        """
+        if self._read_from_v2:
+            return ("kgv2_nodes", "kgv2_edges")
+        return ("nodes", "edges")
 
     def _connect(self) -> sqlite3.Connection:
         conn = sqlite3.connect(str(self.db_path))
@@ -899,14 +916,158 @@ class KnowledgeGraphStore:
             )
         self._init_v2_schema()
 
+    # SQL views that reconstruct the *exact* legacy row shape on top of the v2
+    # tables, so the read methods can run unchanged against either source. The
+    # projection (see _v2_project_node/_edge) stashes summary + the original
+    # metadata_json + (via the type column) the legacy type string, so these
+    # views are byte-faithful to the legacy nodes/edges tables.
+    _V2_VIEWS_SQL = """
+    CREATE VIEW IF NOT EXISTS kgv2_nodes AS
+      SELECT id, type,
+             label AS title,
+             COALESCE(json_extract(attrs, '$._kg.summary'), '')   AS summary,
+             COALESCE(json_extract(attrs, '$._kg.metadata_json'), '{}') AS metadata_json,
+             created_at, updated_at
+      FROM nodes_v2;
+    CREATE VIEW IF NOT EXISTS kgv2_edges AS
+      SELECT id, source AS from_node, target AS to_node, type, weight,
+             COALESCE(evidence, '{}') AS metadata_json, created_at
+      FROM edges_v2;
+    """
+
     def _init_v2_schema(self) -> None:
-        """Initialize the PPT-aligned v2 tables alongside the legacy graph tables."""
+        """Initialize the v2 tables + reconstruction views and backfill from legacy.
+
+        Completes the v2 migration: both write (dual-write projection in
+        _upsert_node/_upsert_edge) and read (read methods route to the kgv2_*
+        views when ``_READ_FROM_V2`` is on) flow through the v2 tables. Legacy
+        nodes/edges are retained as the durable source until the v2 path bakes in.
+        """
         if KGStoreV2 is None:
             return
         try:
             KGStoreV2(self.db_path).init_schema()
+            with self._connect() as conn:
+                conn.executescript(self._V2_VIEWS_SQL)
+            self._backfill_v2_if_needed()
         except Exception as e:
-            logging.warning("knowledge_graph: v2 schema init skipped: %s", e)
+            logging.warning("knowledge_graph: v2 schema init/backfill skipped: %s", e)
+
+    def _backfill_v2_if_needed(self) -> None:
+        """Project legacy nodes/edges into the v2 tables when v2 is empty or stale.
+
+        Non-destructive to legacy. Reprojects when the v2 rows predate the
+        ``_kg`` reconstruction blob (older enum-only backfill), so the views
+        stay faithful. Idempotent: no-ops once v2 carries the current projection.
+        """
+        try:
+            with self._connect() as conn:
+                v2_nodes = conn.execute("SELECT COUNT(*) FROM nodes_v2").fetchone()[0]
+                legacy_nodes = conn.execute("SELECT COUNT(*) FROM nodes").fetchone()[0]
+                if legacy_nodes == 0:
+                    return
+                if v2_nodes > 0:
+                    has_kg = conn.execute(
+                        "SELECT COUNT(*) FROM nodes_v2 WHERE json_extract(attrs,'$._kg') IS NOT NULL"
+                    ).fetchone()[0]
+                    if has_kg > 0:
+                        return  # current projection already present
+                # (re)project: clear v2 graph (not authoritative) and rebuild
+                conn.execute("DELETE FROM edges_v2")
+                conn.execute("DELETE FROM nodes_v2")
+                n = e = 0
+                for r in conn.execute(
+                    "SELECT id, type, title, summary, metadata_json, created_at, updated_at FROM nodes"
+                ).fetchall():
+                    self._v2_project_node(
+                        conn, r["id"], r["type"], r["title"] or "", r["summary"] or "",
+                        _safe_loads(r["metadata_json"]),
+                        created_at=r["created_at"], updated_at=r["updated_at"],
+                    )
+                    n += 1
+                for r in conn.execute(
+                    "SELECT id, from_node, to_node, type, weight, metadata_json, created_at FROM edges"
+                ).fetchall():
+                    self._v2_project_edge(
+                        conn, r["from_node"], r["to_node"], r["type"], float(r["weight"] or 1.0),
+                        _safe_loads(r["metadata_json"]), edge_id=r["id"], created_at=r["created_at"],
+                    )
+                    e += 1
+                logging.info("knowledge_graph: projected legacy → v2 (%d nodes, %d edges)", n, e)
+        except Exception as ex:
+            logging.warning("knowledge_graph: v2 backfill skipped: %s", ex)
+
+    # ── v2 dual-write projection (legacy types + summary/metadata in attrs._kg) ──
+    def _v2_project_node(
+        self, conn: sqlite3.Connection, node_id: str, node_type: str, title: str,
+        summary: str, metadata: Optional[Dict[str, Any]],
+        *, created_at: Optional[str] = None, updated_at: Optional[str] = None,
+    ) -> None:
+        if KGStoreV2 is None:
+            return
+        ts = updated_at or _now()
+        attrs = _json({"_kg": {"summary": (summary or "")[:1000], "metadata_json": _json(metadata)}})
+        try:
+            conn.execute(
+                """
+                INSERT INTO nodes_v2(id, type, label, attrs, owner_id, visibility,
+                                     created_at, updated_at, importance_score)
+                VALUES (?, ?, ?, ?, NULL, 'private', ?, ?, 0.0)
+                ON CONFLICT(id) DO UPDATE SET
+                  type=excluded.type, label=excluded.label,
+                  attrs=excluded.attrs, updated_at=excluded.updated_at
+                """,
+                (node_id, node_type, (title or "")[:240], attrs, created_at or ts, ts),
+            )
+        except Exception as ex:
+            logging.debug("knowledge_graph: v2 node projection skipped (%s): %s", node_id, ex)
+
+    def _v2_project_edge(
+        self, conn: sqlite3.Connection, from_node: str, to_node: str, edge_type: str,
+        weight: float, metadata: Optional[Dict[str, Any]],
+        *, edge_id: Optional[str] = None, created_at: Optional[str] = None,
+    ) -> None:
+        if KGStoreV2 is None:
+            return
+        meta = metadata or {}
+        eid = edge_id or f"edge:{_sha256_text(f'{from_node}|{edge_type}|{to_node}')[:24]}"
+        try:
+            conn.execute(
+                """
+                INSERT INTO edges_v2(id, source, target, type, weight, confidence,
+                                     evidence, created_by, created_at)
+                VALUES (?, ?, ?, ?, ?, ?, ?, 'legacy', ?)
+                ON CONFLICT(source, target, type) DO UPDATE SET
+                  weight=max(edges_v2.weight, excluded.weight),
+                  evidence=excluded.evidence
+                """,
+                (eid, from_node, to_node, edge_type, float(weight),
+                 float(meta.get("confidence", 1.0)), _json(meta), created_at or _now()),
+            )
+        except Exception as ex:
+            logging.debug("knowledge_graph: v2 edge projection skipped (%s->%s): %s", from_node, to_node, ex)
+
+    def _v2_delete_nodes(self, conn: sqlite3.Connection, ids) -> None:
+        """Mirror legacy node deletions into v2 (edges_v2 cascade on the FK)."""
+        if KGStoreV2 is None:
+            return
+        ids = list(ids)
+        if not ids:
+            return
+        ph = ",".join("?" * len(ids))
+        try:
+            conn.execute(f"DELETE FROM nodes_v2 WHERE id IN ({ph})", ids)
+        except Exception as ex:
+            logging.debug("knowledge_graph: v2 node delete mirror skipped: %s", ex)
+
+    def _v2_delete_edges_from(self, conn: sqlite3.Connection, node_id: str) -> None:
+        """Mirror a legacy ``DELETE FROM edges WHERE from_node=?`` into v2."""
+        if KGStoreV2 is None:
+            return
+        try:
+            conn.execute("DELETE FROM edges_v2 WHERE source=?", (node_id,))
+        except Exception as ex:
+            logging.debug("knowledge_graph: v2 edge delete mirror skipped: %s", ex)
 
     def _upsert_node(
         self,
@@ -932,6 +1093,9 @@ class KnowledgeGraphStore:
             """,
             (node_id, node_type, title[:240], summary[:1000], _json(metadata), _json(raw), now, now),
         )
+        # dual-write: project into the v2 graph on the same transaction
+        self._v2_project_node(conn, node_id, node_type, title, summary, metadata,
+                              created_at=now, updated_at=now)
         return node_id
 
     def _upsert_edge(
@@ -944,6 +1108,7 @@ class KnowledgeGraphStore:
         metadata: Optional[Dict[str, Any]] = None,
     ) -> str:
         edge_id = f"edge:{_sha256_text(f'{from_node}|{edge_type}|{to_node}')[:24]}"
+        now = _now()
         conn.execute(
             """
             INSERT INTO edges(id, from_node, to_node, type, weight, metadata_json, created_at)
@@ -952,8 +1117,11 @@ class KnowledgeGraphStore:
               weight=max(edges.weight, excluded.weight),
               metadata_json=excluded.metadata_json
             """,
-            (edge_id, from_node, to_node, edge_type, float(weight), _json(metadata), _now()),
+            (edge_id, from_node, to_node, edge_type, float(weight), _json(metadata), now),
         )
+        # dual-write: project into the v2 graph on the same transaction
+        self._v2_project_edge(conn, from_node, to_node, edge_type, float(weight), metadata,
+                              edge_id=edge_id, created_at=now)
         return edge_id
 
     # ── Local folder sources → Graph RAG ──────────────────────────────────
@@ -1307,7 +1475,7 @@ class KnowledgeGraphStore:
                     SELECT id, root_path, os_type, drive_id, label, status, include_ocr,
                            watch_enabled, consent_json, created_at, updated_at, last_scanned_at
                     FROM knowledge_sources
-                    ORDER BY updated_at DESC
+                    ORDER BY updated_at DESC, id ASC
                     """
                 )
             ]
@@ -1571,6 +1739,7 @@ class KnowledgeGraphStore:
         conn.execute("DELETE FROM chunks WHERE source_node=?", (file_node_id,))
         conn.execute("DELETE FROM edges WHERE from_node=? OR to_node=?", (file_node_id, file_node_id))
         conn.execute("DELETE FROM nodes WHERE id=?", (file_node_id,))
+        self._v2_delete_nodes(conn, [file_node_id])
 
         def delete_nodes(node_ids: set) -> None:
             if not node_ids:
@@ -1580,6 +1749,7 @@ class KnowledgeGraphStore:
             conn.execute(f"DELETE FROM chunks WHERE source_node IN ({placeholders})", params)
             conn.execute(f"DELETE FROM edges WHERE from_node IN ({placeholders}) OR to_node IN ({placeholders})", params * 2)
             conn.execute(f"DELETE FROM nodes WHERE id IN ({placeholders})", params)
+            self._v2_delete_nodes(conn, params)
 
         delete_nodes(owned_ids)
 
@@ -1619,6 +1789,7 @@ class KnowledgeGraphStore:
             placeholders = ",".join("?" * len(leaf_ids))
             conn.execute(f"DELETE FROM edges WHERE from_node IN ({placeholders}) OR to_node IN ({placeholders})", leaf_ids * 2)
             conn.execute(f"DELETE FROM nodes WHERE id IN ({placeholders})", leaf_ids)
+            self._v2_delete_nodes(conn, leaf_ids)
 
         for node_type in ("Drive", "Computer"):
             rows = conn.execute("SELECT id FROM nodes WHERE type=?", (node_type,)).fetchall()
@@ -1634,6 +1805,7 @@ class KnowledgeGraphStore:
                 placeholders = ",".join("?" * len(removable))
                 conn.execute(f"DELETE FROM edges WHERE from_node IN ({placeholders}) OR to_node IN ({placeholders})", removable * 2)
                 conn.execute(f"DELETE FROM nodes WHERE id IN ({placeholders})", removable)
+                self._v2_delete_nodes(conn, removable)
 
     def _local_file_index_has_extracted_text(self, row: sqlite3.Row) -> bool:
         metadata = _safe_loads(row["metadata_json"])
@@ -1691,7 +1863,9 @@ class KnowledgeGraphStore:
         if child_ids:
             placeholders = ",".join("?" * len(child_ids))
             conn.execute(f"DELETE FROM nodes WHERE id IN ({placeholders})", child_ids)
+            self._v2_delete_nodes(conn, child_ids)
         conn.execute("DELETE FROM edges WHERE from_node=?", (file_node_id,))
+        self._v2_delete_edges_from(conn, file_node_id)
 
         metadata = {
             "source": "local_folder",
@@ -2591,6 +2765,7 @@ class KnowledgeGraphStore:
     def graph(self, limit: int = 300) -> Dict[str, Any]:
         limit = max(1, min(int(limit or 300), 2000))
         visible = ",".join(f"'{t}'" for t in self._GRAPH_VISIBLE_TYPES)
+        nt, et = self._read_tables()
         with self._connect() as conn:
             nodes = [
                 {
@@ -2602,7 +2777,7 @@ class KnowledgeGraphStore:
                     "updated_at": row["updated_at"],
                 }
                 for row in conn.execute(
-                    f"SELECT id, type, title, summary, metadata_json, updated_at FROM nodes WHERE type IN ({visible}) ORDER BY updated_at DESC LIMIT ?",
+                    f"SELECT id, type, title, summary, metadata_json, updated_at FROM {nt} WHERE type IN ({visible}) ORDER BY updated_at DESC, id ASC LIMIT ?",
                     (limit,),
                 )
             ]
@@ -2612,16 +2787,16 @@ class KnowledgeGraphStore:
                 edge_rows = conn.execute(
                     f"""
                     SELECT id, from_node, to_node, type, weight, metadata_json
-                    FROM edges
+                    FROM {et}
                     WHERE from_node IN (
-                        SELECT id FROM nodes WHERE type IN ({visible})
-                        ORDER BY updated_at DESC LIMIT ?
+                        SELECT id FROM {nt} WHERE type IN ({visible})
+                        ORDER BY updated_at DESC, id ASC LIMIT ?
                     )
                     AND to_node IN (
-                        SELECT id FROM nodes WHERE type IN ({visible})
-                        ORDER BY updated_at DESC LIMIT ?
+                        SELECT id FROM {nt} WHERE type IN ({visible})
+                        ORDER BY updated_at DESC, id ASC LIMIT ?
                     )
-                    ORDER BY weight DESC, created_at DESC
+                    ORDER BY weight DESC, created_at DESC, id ASC
                     """,
                     (limit, limit),
                 ).fetchall()
@@ -2708,15 +2883,16 @@ class KnowledgeGraphStore:
         query = str(query or "").strip()
         q = f"%{query}%"
         limit = max(1, min(int(limit or 30), 100))
+        nt, et = self._read_tables()
         with self._connect() as conn:
             rows = []
             if query:
                 rows = conn.execute(
-                    """
+                    f"""
                     SELECT id, type, title, summary, metadata_json, updated_at
-                    FROM nodes
+                    FROM {nt}
                     WHERE title LIKE ? OR summary LIKE ? OR metadata_json LIKE ?
-                    ORDER BY updated_at DESC
+                    ORDER BY updated_at DESC, id ASC
                     LIMIT ?
                     """,
                     (q, q, q, limit),
@@ -2733,9 +2909,9 @@ class KnowledgeGraphStore:
                     extra = conn.execute(
                         f"""
                         SELECT id, type, title, summary, metadata_json, updated_at
-                        FROM nodes
+                        FROM {nt}
                         WHERE {' OR '.join(clauses)}
-                        ORDER BY updated_at DESC
+                        ORDER BY updated_at DESC, id ASC
                         LIMIT ?
                         """,
                         (*params, limit * 3),
@@ -2780,15 +2956,16 @@ class KnowledgeGraphStore:
         if not matches:
             topics = _topic_candidates(query, limit=4)
             if topics:
+                nt, et = self._read_tables()
                 with self._connect() as conn:
                     rows = []
                     for topic in topics:
                         rows.extend(conn.execute(
-                            """
+                            f"""
                             SELECT id, type, title, summary, metadata_json
-                            FROM nodes
+                            FROM {nt}
                             WHERE title LIKE ? OR metadata_json LIKE ?
-                            ORDER BY updated_at DESC
+                            ORDER BY updated_at DESC, id ASC
                             LIMIT 3
                             """,
                             (f"%{topic}%", f"%{topic}%"),
@@ -2824,9 +3001,10 @@ class KnowledgeGraphStore:
 
     def neighbors(self, node_id: str) -> Dict[str, Any]:
         """Return direct neighbors (1-hop) of a node."""
+        nt, et = self._read_tables()
         with self._connect() as conn:
             edge_rows = conn.execute(
-                "SELECT from_node, to_node, type, weight FROM edges WHERE from_node=? OR to_node=?",
+                f"SELECT from_node, to_node, type, weight FROM {et} WHERE from_node=? OR to_node=? ORDER BY id ASC",
                 (node_id, node_id),
             ).fetchall()
             neighbor_ids: set = set()
@@ -2848,7 +3026,7 @@ class KnowledgeGraphStore:
                         "metadata": _safe_loads(row["metadata_json"]),
                     }
                     for row in conn.execute(
-                        f"SELECT id, type, title, summary, metadata_json FROM nodes WHERE id IN ({placeholders})",
+                        f"SELECT id, type, title, summary, metadata_json FROM {nt} WHERE id IN ({placeholders}) ORDER BY id ASC",
                         list(neighbor_ids),
                     )
                 ]
@@ -2880,6 +3058,8 @@ class KnowledgeGraphStore:
             remove_ids.add(conv_id)
             for node_id in remove_ids:
                 conn.execute("DELETE FROM nodes WHERE id=?", (node_id,))
+                if KGStoreV2 is not None:
+                    conn.execute("DELETE FROM nodes_v2 WHERE id=?", (node_id,))  # edges_v2 cascade
             conn.execute(
                 """
                 DELETE FROM nodes
@@ -2888,6 +3068,15 @@ class KnowledgeGraphStore:
                   AND id NOT IN (SELECT from_node FROM edges)
                 """
             )
+            if KGStoreV2 is not None:
+                conn.execute(
+                    """
+                    DELETE FROM nodes_v2
+                    WHERE type='Topic'
+                      AND id NOT IN (SELECT target FROM edges_v2)
+                      AND id NOT IN (SELECT source FROM edges_v2)
+                    """
+                )
         return {"status": "ok", "conversation_id": conversation_id, "removed_nodes": len(remove_ids)}
 
     def clear_all(self) -> Dict[str, Any]:
@@ -2904,20 +3093,24 @@ class KnowledgeGraphStore:
             conn.execute("DELETE FROM chunks")
             conn.execute("DELETE FROM edges")
             conn.execute("DELETE FROM nodes")
+            if KGStoreV2 is not None:
+                conn.execute("DELETE FROM edges_v2")
+                conn.execute("DELETE FROM nodes_v2")
         if self.blob_dir.exists():
             shutil.rmtree(self.blob_dir, ignore_errors=True)
             self.blob_dir.mkdir(parents=True, exist_ok=True)
         return {"status": "ok", "removed": counts}
 
     def stats(self) -> Dict[str, Any]:
+        nt, et = self._read_tables()
         with self._connect() as conn:
             node_counts = {
                 row["type"]: row["count"]
-                for row in conn.execute("SELECT type, COUNT(*) AS count FROM nodes GROUP BY type")
+                for row in conn.execute(f"SELECT type, COUNT(*) AS count FROM {nt} GROUP BY type")
             }
             edge_counts = {
                 row["type"]: row["count"]
-                for row in conn.execute("SELECT type, COUNT(*) AS count FROM edges GROUP BY type")
+                for row in conn.execute(f"SELECT type, COUNT(*) AS count FROM {et} GROUP BY type")
             }
             local_sources = conn.execute("SELECT COUNT(*) AS c FROM knowledge_sources").fetchone()["c"]
             local_file_status = {
@@ -2953,6 +3146,7 @@ class KnowledgeGraphStore:
         limit = max(1, min(int(limit or 10), 50))
         terms = _topic_candidates(query, limit=12)
         now = datetime.now()
+        nt, et = self._read_tables()
 
         with self._connect() as conn:
             candidate_rows = []
@@ -2961,15 +3155,15 @@ class KnowledgeGraphStore:
             if query:
                 q = f"%{query}%"
                 rows = conn.execute(
-                    """
+                    f"""
                     SELECT id, type, title, summary, metadata_json, updated_at
-                    FROM nodes
+                    FROM {nt}
                     WHERE (title LIKE ? OR summary LIKE ? OR metadata_json LIKE ?)
                       AND type IN ('Document', 'File', 'CodeFile', 'SlideDeck',
                                    'Spreadsheet', 'Image', 'ImageText', 'Chat',
                                    'Decision', 'Task', 'Concept', 'Feature',
                                    'Page', 'Slide')
-                    ORDER BY updated_at DESC
+                    ORDER BY updated_at DESC, id ASC
                     LIMIT ?
                     """,
                     (q, q, q, limit * 5),
@@ -2982,15 +3176,15 @@ class KnowledgeGraphStore:
             for term in terms:
                 t = f"%{term}%"
                 rows = conn.execute(
-                    """
+                    f"""
                     SELECT id, type, title, summary, metadata_json, updated_at
-                    FROM nodes
+                    FROM {nt}
                     WHERE (title LIKE ? OR summary LIKE ? OR metadata_json LIKE ?)
                       AND type IN ('Document', 'File', 'CodeFile', 'SlideDeck',
                                    'Spreadsheet', 'Image', 'ImageText', 'Chat',
                                    'Decision', 'Task', 'Concept', 'Feature',
                                    'Page', 'Slide')
-                    ORDER BY updated_at DESC
+                    ORDER BY updated_at DESC, id ASC
                     LIMIT ?
                     """,
                     (t, t, t, limit * 3),
@@ -3008,7 +3202,7 @@ class KnowledgeGraphStore:
                 text_score = min(1.0, text_hits / max(len(terms), 1))
 
                 edge_count = conn.execute(
-                    "SELECT COUNT(*) AS c FROM edges WHERE from_node=? OR to_node=?",
+                    f"SELECT COUNT(*) AS c FROM {et} WHERE from_node=? OR to_node=?",
                     (row["id"], row["id"]),
                 ).fetchone()["c"]
                 graph_score = min(1.0, math.log1p(edge_count) / 4.0)
@@ -3028,9 +3222,9 @@ class KnowledgeGraphStore:
                 meta = _safe_loads(row["metadata_json"])
                 neighbor_concepts = []
                 neighbor_rows = conn.execute(
-                    """
-                    SELECT n.title, n.type FROM edges e
-                    JOIN nodes n ON n.id = CASE WHEN e.from_node = ? THEN e.to_node ELSE e.from_node END
+                    f"""
+                    SELECT n.title, n.type FROM {et} e
+                    JOIN {nt} n ON n.id = CASE WHEN e.from_node = ? THEN e.to_node ELSE e.from_node END
                     WHERE (e.from_node = ? OR e.to_node = ?)
                       AND n.type IN ('Concept', 'Feature', 'Decision', 'Task')
                     LIMIT 8
@@ -3066,6 +3260,7 @@ class KnowledgeGraphStore:
         all_nodes = []
         all_edges = []
         frontier = set(node_ids)
+        nt, et = self._read_tables()
 
         with self._connect() as conn:
             for hop in range(max_hops):
@@ -3077,7 +3272,7 @@ class KnowledgeGraphStore:
                         continue
                     visited_nodes.add(nid)
                     row = conn.execute(
-                        "SELECT id, type, title, summary, metadata_json, updated_at FROM nodes WHERE id=?",
+                        f"SELECT id, type, title, summary, metadata_json, updated_at FROM {nt} WHERE id=?",
                         (nid,),
                     ).fetchone()
                     if row:
@@ -3088,9 +3283,10 @@ class KnowledgeGraphStore:
                             "hop": hop,
                         })
                     edge_rows = conn.execute(
-                        """
+                        f"""
                         SELECT id, from_node, to_node, type, weight
-                        FROM edges WHERE from_node=? OR to_node=?
+                        FROM {et} WHERE from_node=? OR to_node=?
+                        ORDER BY id ASC
                         """,
                         (nid, nid),
                     ).fetchall()

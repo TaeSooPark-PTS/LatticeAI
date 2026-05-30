@@ -52,8 +52,8 @@ from latticeai.core.context_builder import retrieve_context_for_generation, form
 from latticeai.core.document_generator import detect_document_intent, DocumentGenerationSession
 from local_knowledge_api import LocalKnowledgeWatcher, create_local_knowledge_router
 from latticeai.core.security import (
-    hash_password as _hash_password,
-    verify_password as _verify_password,
+    hash_password,
+    verify_password,
     host_is_loopback as _host_is_loopback_impl,
     client_ip as _client_ip_impl,
     bytes_match_extension as _bytes_match_extension_impl,
@@ -90,6 +90,15 @@ from latticeai.core.model_resolution import (
 from latticeai.core.graph_curator import (
     auto_build_graph_overlay as _auto_build_graph_overlay,
     mask_secrets as _curator_mask_secrets,
+)
+from latticeai.core.config import Config
+from latticeai.core.agent import (
+    AgentState,
+    AgentRunContext,
+    AGENT_TERMINAL_STATES,
+    AgentDeps,
+    AgentRuntime,
+    extract_action as _extract_agent_action,
 )
 import mcp_registry
 from mcp_registry import (
@@ -226,39 +235,38 @@ def env_bool(name: str, default: bool = False) -> bool:
         return default
     return raw.strip().lower() in {"1", "true", "yes", "on"}
 
-APP_MODE = env_value("LATTICEAI_MODE", "local").strip().lower()
-if APP_MODE not in {"local", "public"}:
-    APP_MODE = "local"
-IS_PUBLIC_MODE = APP_MODE == "public"
-DEFAULT_HOST = env_value("LATTICEAI_HOST", "127.0.0.1")
-DEFAULT_PORT = int(env_value("LATTICEAI_PORT", "4825"))
+# ── App-level config — parsed once, in one place (latticeai.core.config) ──────
+# The module-level names below are kept as a compatibility surface for the rest
+# of server.py; all of them are now derived from a single CONFIG instance.
+CONFIG = Config.from_env()
+
+APP_MODE = CONFIG.app_mode
+IS_PUBLIC_MODE = CONFIG.is_public
+DEFAULT_HOST = CONFIG.host
+DEFAULT_PORT = CONFIG.port
 def _host_is_loopback(host: str) -> bool:
     return _host_is_loopback_impl(host)
 
-NETWORK_EXPOSED = not _host_is_loopback(DEFAULT_HOST)
-ENABLE_TELEGRAM = env_bool("LATTICEAI_ENABLE_TELEGRAM", default=not IS_PUBLIC_MODE)
-ENABLE_GRAPH    = env_bool("LATTICEAI_ENABLE_GRAPH",    default=True)
-AUTOLOAD_MODELS = env_bool("LATTICEAI_AUTOLOAD_MODELS", default=IS_PUBLIC_MODE)
-MODEL_IDLE_UNLOAD_SECONDS = int(env_value("LATTICEAI_MODEL_IDLE_UNLOAD_SECONDS", "0"))
-ALLOW_LOCAL_MODELS = env_bool("LATTICEAI_ALLOW_LOCAL_MODELS", default=not IS_PUBLIC_MODE)
-REQUIRE_AUTH = env_bool("LATTICEAI_REQUIRE_AUTH", default=IS_PUBLIC_MODE or NETWORK_EXPOSED)
-ALLOW_PLAINTEXT_API_KEYS = env_bool("LATTICEAI_ALLOW_PLAINTEXT_API_KEYS", default=False)
-CORS_ALLOW_NETWORK = env_bool("LATTICEAI_CORS_ALLOW_NETWORK", default=False)
-CORS_EXTRA_ORIGINS = [
-    item.strip()
-    for item in env_value("LATTICEAI_CORS_ALLOWED_ORIGINS", "").split(",")
-    if item.strip()
-]
-PUBLIC_MODEL = env_value("LATTICEAI_PUBLIC_MODEL", env_value("LATTICEAI_DEFAULT_MODEL", "openai:gpt-4o-mini"))
-LOCAL_MODEL = env_value("LATTICEAI_LOCAL_MODEL", "mlx-community/gemma-4-26b-a4b-it-4bit")
-LOCAL_DRAFT_MODEL = env_value("LATTICEAI_LOCAL_DRAFT_MODEL", "")
+NETWORK_EXPOSED = CONFIG.network_exposed
+ENABLE_TELEGRAM = CONFIG.enable_telegram
+ENABLE_GRAPH    = CONFIG.enable_graph
+AUTOLOAD_MODELS = CONFIG.autoload_models
+MODEL_IDLE_UNLOAD_SECONDS = CONFIG.model_idle_unload_seconds
+ALLOW_LOCAL_MODELS = CONFIG.allow_local_models
+REQUIRE_AUTH = CONFIG.require_auth
+ALLOW_PLAINTEXT_API_KEYS = CONFIG.allow_plaintext_api_keys
+CORS_ALLOW_NETWORK = CONFIG.cors_allow_network
+CORS_EXTRA_ORIGINS = CONFIG.cors_extra_origins
+PUBLIC_MODEL = CONFIG.public_model
+LOCAL_MODEL = CONFIG.local_model
+LOCAL_DRAFT_MODEL = CONFIG.local_draft_model
 
 # ── SSO / OIDC config ─────────────────────────────────────────────────────────
-SSO_DISCOVERY_URL = env_value("OIDC_DISCOVERY_URL", "")
-SSO_CLIENT_ID = env_value("OIDC_CLIENT_ID", "")
-SSO_CLIENT_SECRET = env_value("OIDC_CLIENT_SECRET", "")
-SSO_REDIRECT_URI = env_value("OIDC_REDIRECT_URI", "http://localhost:4825/auth/sso/callback")
-SSO_PROVIDER_NAME = env_value("OIDC_PROVIDER_NAME", "SSO")
+SSO_DISCOVERY_URL = CONFIG.sso_discovery_url
+SSO_CLIENT_ID = CONFIG.sso_client_id
+SSO_CLIENT_SECRET = CONFIG.sso_client_secret
+SSO_REDIRECT_URI = CONFIG.sso_redirect_uri
+SSO_PROVIDER_NAME = CONFIG.sso_provider_name
 _sso_discovery_cache: Optional[Dict] = None
 _sso_discovery_cache_url: str = ""
 _sso_states: Dict[str, float] = {}  # state → timestamp (CSRF protection)
@@ -283,13 +291,8 @@ async def _get_sso_discovery() -> Optional[Dict]:
         return None
     return _sso_discovery_cache
 
-# ── Password hashing — delegated to latticeai.core.security ────────────────────
-def hash_password(password: str) -> str:
-    return _hash_password(password)
-
-def verify_password(password: str, hashed: str) -> bool:
-    return _verify_password(password, hashed)
-
+# ── Password hashing — used directly from latticeai.core.security ──────────────
+# (hash_password / verify_password are imported above; no local wrapper needed)
 def verify_and_migrate_password(email: str, plain: str, stored: str, users: Dict) -> bool:
     """평문 비밀번호를 투명하게 해시로 마이그레이션. 마이그레이션 발생 시 audit log 남김."""
     if ":" in stored and len(stored) > 64:
@@ -326,13 +329,9 @@ def invalidate_session(token: str) -> None:
 
 # ── User Management Logic ──────────────────────────────────────────────────
 BASE_DIR = Path(__file__).resolve().parent
-DATA_DIR = Path(env_value("LATTICEAI_DATA_DIR", str(Path.home() / ".ltcai")))
+DATA_DIR = CONFIG.data_dir
 DATA_DIR.mkdir(parents=True, exist_ok=True)
-STATIC_DIR = Path(env_value("LATTICEAI_STATIC_DIR", str(BASE_DIR / "static")))
-if not STATIC_DIR.exists():
-    packaged_static = Path(sys.prefix) / "static"
-    if packaged_static.exists():
-        STATIC_DIR = packaged_static
+STATIC_DIR = CONFIG.static_dir
 
 USERS_FILE = DATA_DIR / "users.json"
 HISTORY_FILE = DATA_DIR / "chat_history.json"
@@ -870,11 +869,7 @@ def get_user_role(email: str, users: Optional[Dict] = None) -> str:
     user = users.get(email) or {}
     if user.get("role") in {"admin", "user"}:
         return user["role"]
-    admin_emails = {
-        item.strip().lower()
-        for item in env_value("LATTICEAI_ADMIN_EMAILS", "").split(",")
-        if item.strip()
-    }
+    admin_emails = set(CONFIG.admin_emails)
     if email.lower() in admin_emails:
         return "admin"
     first_email = next(iter(users), None)
@@ -900,7 +895,7 @@ def require_user(request: Request) -> str:
 
 
 # ── Rate limiting & file validation — delegated to latticeai.core.security ────
-_RATE_LIMIT_ENABLED = os.getenv("LATTICEAI_RATE_LIMIT", "1") != "0"
+_RATE_LIMIT_ENABLED = CONFIG.rate_limit_enabled
 
 def enforce_rate_limit(email: str, bucket_key: str) -> None:
     _enforce_rate_limit(email, bucket_key, enabled=_RATE_LIMIT_ENABLED)
@@ -1126,7 +1121,7 @@ async def lifespan(app: FastAPI):
             except Exception:
                 pass
 
-app = FastAPI(title=f"Lattice AI Server ({APP_MODE})", version="0.3.2", lifespan=lifespan)
+app = FastAPI(title=f"Lattice AI Server ({APP_MODE})", version="0.4.0", lifespan=lifespan)
 
 CORS_ALLOWED_ORIGINS = [
     f"http://localhost:{DEFAULT_PORT}",
@@ -1156,9 +1151,9 @@ if _ICONS_DIR.exists():
     app.mount("/icons", StaticFiles(directory=str(_ICONS_DIR)), name="icons")
 ensure_agent_root()
 
-OPEN_REGISTRATION = env_bool("LATTICEAI_OPEN_REGISTRATION", default=not NETWORK_EXPOSED and not IS_PUBLIC_MODE)
-INVITE_CODE = env_value("LATTICEAI_INVITE_CODE", "gemma-lattice-ai")
-INVITE_GATE_ENABLED = env_bool("LATTICEAI_INVITE_GATE_ENABLED", default=False)
+OPEN_REGISTRATION = CONFIG.open_registration
+INVITE_CODE = CONFIG.invite_code
+INVITE_GATE_ENABLED = CONFIG.invite_gate_enabled
 
 # ── Auth & Admin routers (latticeai.api) ─────────────────────────────────────
 app.include_router(create_auth_router(
@@ -1443,39 +1438,8 @@ class AgentEvalRequest(BaseModel):
     case_id: Optional[str] = None
 
 
-class AgentState(str, Enum):
-    IDLE             = "IDLE"
-    PLANNING         = "PLANNING"
-    WAITING_APPROVAL = "WAITING_APPROVAL"
-    EXECUTING        = "EXECUTING"
-    VERIFYING        = "VERIFYING"
-    FAILED           = "FAILED"
-    ROLLBACK         = "ROLLBACK"
-    DONE             = "DONE"
-
-
-# Terminal states — the agent loop exits when reaching one of these
-AGENT_TERMINAL_STATES = frozenset({AgentState.DONE, AgentState.FAILED})
-
-
-class AgentRunContext:
-    """Mutable state carrier passed through all agent phases."""
-    __slots__ = ("state", "plan", "transcript", "retry_count",
-                 "state_history", "corrections", "final_message", "rollback_log",
-                 "executing_model", "reviewing_model")
-
-    def __init__(self) -> None:
-        self.state:           AgentState   = AgentState.IDLE
-        self.plan:            dict         = {}
-        self.transcript:      list         = []
-        self.retry_count:     int          = 0
-        self.state_history:   list         = []
-        self.corrections:     list         = []
-        self.final_message:   str          = ""
-        self.rollback_log:    list         = []
-        self.executing_model: str | None   = None
-        self.reviewing_model: str | None   = None
-
+# AgentState / AgentRunContext / AGENT_TERMINAL_STATES are defined in
+# latticeai.core.agent and imported at the top of this module.
 
 # Pending agent contexts waiting for human approval: context_id → (ctx, req, lang_hint, current_user)
 _pending_agents: dict[str, tuple] = {}
@@ -3502,7 +3466,7 @@ async def verify_cloud_models(force: bool = False, provider_filter: Optional[str
 
 @app.get("/health")
 async def health(request: Request):
-    base = {"status": "ok", "version": "0.3.2", "mode": APP_MODE}
+    base = {"status": "ok", "version": "0.4.0", "mode": APP_MODE}
     if not get_current_user(request) and REQUIRE_AUTH:
         return base
     engines = await asyncio.to_thread(engine_status)
@@ -3915,7 +3879,7 @@ async def chat(req: ChatRequest, request: Request):
         if screenshot_context:
             context += f"\n\n{screenshot_context}"
 
-    if env_bool("LATTICEAI_AUTO_READ_CHAT_PATHS", default=False):
+    if CONFIG.auto_read_chat_paths:
         _file_path_re = re.compile(r'(?:^|[\s\'\"(])((~|/[\w.])[^\s\'")\]]*)', re.MULTILINE)
         for _m in _file_path_re.finditer(req.message or ""):
             _fpath = _m.group(1).strip()
@@ -4588,322 +4552,35 @@ def _collect_created_files(transcript: list) -> list:
     return files
 
 
-def _extract_agent_action(raw: str) -> Dict:
-    text = raw.strip()
-    fenced = re.search(r"```(?:json)?\s*(\{.*?\})\s*```", text, flags=re.DOTALL)
-    if fenced:
-        text = fenced.group(1).strip()
-    elif not text.startswith("{"):
-        start = text.find("{")
-        end = text.rfind("}")
-        if start >= 0 and end > start:
-            text = text[start : end + 1]
+# ── Agent Runtime wiring ──────────────────────────────────────────────────────
+# The Discover→Plan→Implement→Verify state machine lives in
+# latticeai.core.agent. server.py wires the ports (LLM, tools, governance,
+# audit, prompts) into one AgentRuntime and keeps only the HTTP glue below.
 
-    try:
-        action = json.loads(text)
-    except json.JSONDecodeError as exc:
-        raise ValueError(f"Agent did not return valid JSON: {exc}") from exc
-
-    if not isinstance(action, dict) or "action" not in action:
-        raise ValueError("Agent JSON must include an action field.")
-    return action
-
-
-# ── Agent State Machine — Phase Functions ─────────────────────────────────────
-
-async def _phase_plan(
-    ctx: AgentRunContext, req: AgentRequest, router, lang_hint: str, current_user: str,
-    model_id: str | None = None,
-) -> None:
-    """PLAN: Planner role produces a structured plan JSON."""
-    context = (
-        f"{PLANNER_PROMPT}\n\n"
-        f"[LANGUAGE HINT: {lang_hint}]\n"
-        f"Workspace root: {AGENT_ROOT}\n\n"
-        f"User request: {req.message}"
+def _build_agent_runtime() -> AgentRuntime:
+    deps = AgentDeps(
+        generate_as=router.generate_as,
+        generate=router.generate,
+        execute_tool=execute_tool,
+        policy_for=_agent_policy,
+        risk_level=lambda policy: _RISK_LEVEL_MAP.get(policy["risk"], "medium"),
+        check_role=_check_tool_role,
+        tool_governance=TOOL_GOVERNANCE,
+        file_create_actions=frozenset(_FILE_CREATE_ACTIONS),
+        recent_chat_context=build_recent_chat_context,
+        clear_history=clear_history,
+        knowledge_save=knowledge_save,
+        audit=append_audit_event,
+        planner_prompt=PLANNER_PROMPT,
+        executor_prompt=EXECUTOR_PROMPT,
+        critic_prompt=CRITIC_PROMPT,
+        memory_updater_prompt=MEMORY_UPDATER_PROMPT,
+        agent_root=AGENT_ROOT,
     )
-    raw = await router.generate_as(
-        model_id,
-        message="Produce a JSON execution plan for this request.",
-        context=context, max_tokens=1024, temperature=0.1,
-    )
-    try:
-        plan = _extract_agent_action(str(raw))
-    except ValueError:
-        plan = {
-            "action": "plan", "state": "PLAN",
-            "goal": req.message, "steps": [],
-            "requires_approval": False, "rollback_strategy": "none", "estimated_steps": 1,
-        }
-    ctx.plan = plan
-    ctx.transcript.append({
-        "state": AgentState.PLANNING.value,
-        "goal": plan.get("goal", req.message),
-        "steps": plan.get("steps", []),
-        "requires_approval": plan.get("requires_approval", False),
-        "rollback_strategy": plan.get("rollback_strategy", "none"),
-        "estimated_steps": plan.get("estimated_steps", 1),
-    })
-    ctx.state = AgentState.WAITING_APPROVAL
+    return AgentRuntime(deps)
 
 
-def _phase_approval(ctx: AgentRunContext, current_user: str) -> None:
-    """APPROVAL: Check governance, log decision, auto-approve (future: UI prompt)."""
-    auto_approve_tools = {name for name, p in TOOL_GOVERNANCE.items() if p["auto_approve"]}
-    steps = ctx.plan.get("steps", [])
-    non_auto = [s.get("action") for s in steps if s.get("action") not in auto_approve_tools]
-    requires = ctx.plan.get("requires_approval", False) or bool(non_auto)
-
-    ctx.transcript.append({
-        "state": AgentState.WAITING_APPROVAL.value,
-        "requires_approval": requires,
-        "non_auto_approve_steps": non_auto,
-        "decision": "auto_approved",
-    })
-    append_audit_event(
-        "agent_approval", user_email=current_user,
-        requires_approval=requires, non_auto_steps=non_auto, decision="auto_approved",
-    )
-    ctx.state = AgentState.EXECUTING
-
-
-async def _phase_execute(
-    ctx: AgentRunContext, req: AgentRequest, router, lang_hint: str,
-    current_user: str, max_steps: int, model_id: str | None = None,
-) -> None:
-    """EXECUTE: Executor role calls tools one at a time until final or budget exhausted."""
-    exec_count = sum(1 for s in ctx.transcript if s.get("state") == AgentState.EXECUTING.value)
-    budget = max(1, max_steps - exec_count)
-
-    for _ in range(budget):
-        corrections_hint = (
-            "\n\nCritic corrections from previous attempt:\n"
-            + "\n".join(f"- {c}" for c in ctx.corrections)
-        ) if ctx.corrections else ""
-
-        context = (
-            f"{EXECUTOR_PROMPT}\n\n"
-            f"[LANGUAGE HINT: {lang_hint}]\n"
-            f"Workspace root: {AGENT_ROOT}\n\n"
-            f"PLAN:\n{json.dumps(ctx.plan, ensure_ascii=False)}\n\n"
-            f"Recent conversation:\n{build_recent_chat_context(conversation_id=req.conversation_id) or '(none)'}\n\n"
-            f"User request: {req.message}{corrections_hint}\n\n"
-            f"Execution transcript:\n{json.dumps(ctx.transcript, ensure_ascii=False, indent=2)}"
-        )
-        raw = await router.generate_as(
-            model_id,
-            message="Execute the next step.",
-            context=context, max_tokens=4096, temperature=req.temperature,
-        )
-        try:
-            action = _extract_agent_action(str(raw))
-        except ValueError as exc:
-            ctx.transcript.append({
-                "state": AgentState.EXECUTING.value, "action": "parse_error",
-                "raw": str(raw)[:400], "error": str(exc),
-            })
-            break
-
-        name     = action.get("action")
-        thoughts = str(action.get("thoughts") or "")[:600]
-        args     = action.get("args") or {}
-
-        if name == "final":
-            ctx.final_message = action.get("message", "작업을 완료했습니다.")
-            ctx.transcript.append({
-                "state": AgentState.EXECUTING.value, "action": "final", "thoughts": thoughts,
-            })
-            ctx.state = AgentState.VERIFYING
-            return
-
-        # Loop guard
-        exec_steps = [s for s in ctx.transcript if s.get("state") == AgentState.EXECUTING.value]
-        last = exec_steps[-1] if exec_steps else None
-        if (
-            name in _FILE_CREATE_ACTIONS and last
-            and last.get("action") == name
-            and (last.get("args") or {}) == args
-            and "result" in last
-        ):
-            ctx.transcript.append({
-                "state": AgentState.EXECUTING.value, "action": name,
-                "error": "LOOP_DETECTED: identical action+args repeated — halted.",
-            })
-            break
-
-        if name == "clear_history":
-            result = clear_history(args.get("keep_last", 0))
-            ctx.transcript.append({
-                "state": AgentState.EXECUTING.value, "action": name,
-                "thoughts": thoughts, "args": args, "result": result,
-            })
-            continue
-
-        policy = _agent_policy(name, args)
-        risk   = _RISK_LEVEL_MAP.get(policy["risk"], "medium")
-
-        if policy["risk"] == "destructive":
-            ctx.transcript.append({
-                "state": AgentState.EXECUTING.value, "action": name,
-                "thoughts": thoughts, "args": args, "risk": risk,
-                "governance": dict(policy),
-                "error": f"BLOCKED: destructive action '{name}' not permitted in agent mode.",
-            })
-            append_audit_event(
-                "agent_blocked", user_email=current_user, source=req.source or "agent",
-                action=name, reason="destructive", governance=dict(policy),
-            )
-            continue
-
-        if not policy["auto_approve"]:
-            append_audit_event(
-                "agent_exec", user_email=current_user, source=req.source or "agent",
-                state=AgentState.EXECUTING.value, action=name, risk=risk,
-                shell=policy["shell"], network=policy["network"],
-                destructive=policy["destructive"], sandbox=policy["sandbox"],
-                rollback=policy["rollback"],
-                args={k: v for k, v in args.items() if k != "content"},
-            )
-
-        try:
-            _check_tool_role(name, current_user)
-            result = execute_tool(name, args)
-            ctx.transcript.append({
-                "state": AgentState.EXECUTING.value, "action": name,
-                "thoughts": thoughts, "args": args,
-                "risk": risk, "governance": dict(policy), "result": result,
-            })
-        except (ToolError, KeyError, TypeError) as exc:
-            ctx.transcript.append({
-                "state": AgentState.EXECUTING.value, "action": name,
-                "thoughts": thoughts, "args": args,
-                "risk": risk, "governance": dict(policy), "error": str(exc),
-            })
-
-    ctx.state = AgentState.VERIFYING
-
-
-async def _phase_verify(
-    ctx: AgentRunContext, req: AgentRequest, router, lang_hint: str, current_user: str,
-    max_retry: int = 3, model_id: str | None = None,
-) -> None:
-    """VERIFYING: Critic role evaluates transcript → DONE / EXECUTING (retry) / ROLLBACK / FAILED."""
-    context = (
-        f"{CRITIC_PROMPT}\n\n"
-        f"[LANGUAGE HINT: {lang_hint}]\n\n"
-        f"Original request: {req.message}\n"
-        f"Plan goal: {ctx.plan.get('goal', req.message)}\n\n"
-        f"Full transcript:\n{json.dumps(ctx.transcript, ensure_ascii=False, indent=2)}"
-    )
-    raw = await router.generate_as(
-        model_id,
-        message="Review the execution transcript and return your verdict JSON.",
-        context=context, max_tokens=512, temperature=0.1,
-    )
-    try:
-        verdict = _extract_agent_action(str(raw))
-    except ValueError:
-        verdict = {"action": "verdict", "verdict": "PASS", "next_state": "DONE",
-                   "reason": "Critic parse failed — assuming pass.", "corrections": [], "confidence": 0.7}
-
-    ctx.corrections = verdict.get("corrections", [])
-    # Normalize legacy verdict next_state strings to current AgentState names
-    raw_next = verdict.get("next_state", "DONE")
-    next_s = {"COMPLETE": "DONE", "RETRY": "EXECUTING"}.get(raw_next, raw_next)
-
-    ctx.transcript.append({
-        "state": AgentState.VERIFYING.value,
-        "verdict":     verdict.get("verdict", "PASS"),
-        "reason":      verdict.get("reason", ""),
-        "corrections": ctx.corrections,
-        "confidence":  verdict.get("confidence", 0.9),
-        "next_state":  next_s,
-    })
-
-    if verdict.get("verdict") == "PASS" or next_s == "DONE":
-        if not ctx.final_message:
-            ctx.final_message = verdict.get("reason", "작업이 완료되었습니다.")
-        ctx.state = AgentState.DONE
-    elif next_s == "ROLLBACK":
-        ctx.state = AgentState.ROLLBACK
-    elif next_s == "EXECUTING":
-        if ctx.retry_count >= max_retry:
-            ctx.final_message = "처리 중 문제가 발생했습니다. 다시 시도해 주세요."
-            ctx.state = AgentState.FAILED
-        else:
-            ctx.retry_count += 1
-            ctx.transcript.append({
-                "state": AgentState.EXECUTING.value,
-                "retry_attempt": ctx.retry_count,
-                "corrections": ctx.corrections,
-            })
-            ctx.state = AgentState.EXECUTING
-    else:
-        ctx.final_message = verdict.get("reason", "검증자가 인식되지 않은 다음 상태를 반환했습니다.")
-        ctx.state = AgentState.FAILED
-
-
-def _phase_rollback(ctx: AgentRunContext, current_user: str) -> None:
-    """ROLLBACK: attempt git checkout for each edited file, then COMPLETE."""
-    import subprocess as _sp
-    rolled: list = []
-    for step in ctx.transcript:
-        if step.get("state") != AgentState.EXECUTING.value:
-            continue
-        gov = step.get("governance", {})
-        if gov.get("rollback") != "git":
-            continue
-        result = step.get("result", {})
-        if not (isinstance(result, dict) and result.get("success")):
-            continue
-        path = result.get("path") or (step.get("args") or {}).get("path", "")
-        if not path:
-            continue
-        try:
-            r = _sp.run(
-                ["git", "checkout", "--", path], cwd=str(AGENT_ROOT),
-                capture_output=True, text=True, timeout=10,
-            )
-            rolled.append({"path": path, "ok": r.returncode == 0, "stderr": r.stderr[:200]})
-        except Exception as exc:
-            rolled.append({"path": path, "ok": False, "error": str(exc)})
-
-    ctx.transcript.append({"state": AgentState.ROLLBACK.value, "rolled_back": rolled})
-    recovered = [r["path"] for r in rolled if r.get("ok")]
-    ctx.final_message = (
-        f"실행 실패로 롤백했습니다. 복구 파일: {recovered}"
-        if recovered
-        else "롤백을 시도했으나 복구할 파일이 없거나 git이 초기화되지 않았습니다."
-    )
-    append_audit_event("agent_rollback", user_email=current_user, rolled_back=rolled)
-    # Rollback is a recovery from a failed verification — terminal state is FAILED
-    ctx.state = AgentState.FAILED
-
-
-async def _phase_memory_update(
-    ctx: AgentRunContext, req: AgentRequest, router, current_user: str,
-) -> None:
-    """Background: Memory Updater role extracts learnings after COMPLETE."""
-    context = (
-        f"{MEMORY_UPDATER_PROMPT}\n\n"
-        f"Completed task: {req.message}\n\n"
-        f"Last 5 transcript steps:\n{json.dumps(ctx.transcript[-5:], ensure_ascii=False)}"
-    )
-    try:
-        raw = await router.generate(
-            message="Extract learnings from this completed task.",
-            context=context, max_tokens=256, temperature=0.1,
-        )
-        mem = _extract_agent_action(str(raw))
-        if mem.get("save_to_knowledge") and mem.get("learnings"):
-            from tools import knowledge_save
-            knowledge_save(
-                "\n".join(mem["learnings"]),
-                folder="30_Projects",
-                title=f"Agent: {req.message[:60]}",
-            )
-    except Exception:
-        pass
+_AGENT_RUNTIME = _build_agent_runtime()
 
 
 # ── Eval harness ──────────────────────────────────────────────────────────────
@@ -4982,7 +4659,7 @@ async def agent(req: AgentRequest, request: Request):
     # PLANNING phase
     ctx.state = AgentState.PLANNING
     ctx.state_history.append(ctx.state.value)
-    await _phase_plan(ctx, req, router, lang_hint, current_user, model_id=req.planning_model)
+    await _AGENT_RUNTIME.plan(ctx, req, lang_hint, current_user, model_id=req.planning_model)
 
     # Human-in-the-loop: pause after planning, return plan to UI
     if req.human_in_loop:
@@ -5001,38 +4678,17 @@ async def agent(req: AgentRequest, request: Request):
         }
 
     # Auto-approve and run to completion (default behaviour)
-    _phase_approval(ctx, current_user)
-    return await _agent_run_to_completion(ctx, req, router, lang_hint, current_user, max_steps, max_retry)
+    _AGENT_RUNTIME.approve(ctx, current_user)
+    return await _agent_finish(ctx, req, lang_hint, current_user, max_steps, max_retry)
 
 
-async def _agent_run_to_completion(
-    ctx: AgentRunContext, req: AgentRequest, router, lang_hint: str,
+async def _agent_finish(
+    ctx: AgentRunContext, req: AgentRequest, lang_hint: str,
     current_user: str, max_steps: int, max_retry: int,
 ) -> dict:
-    """Run EXECUTING → VERIFYING loop until terminal state."""
-    while ctx.state not in AGENT_TERMINAL_STATES:
-        ctx.state_history.append(ctx.state.value)
-        if len(ctx.state_history) > 200:
-            ctx.final_message = "에이전트 상태 머신이 최대 반복(200)에 도달해 중단했습니다."
-            ctx.state = AgentState.FAILED
-            break
-
-        if ctx.state == AgentState.EXECUTING:
-            await _phase_execute(ctx, req, router, lang_hint, current_user, max_steps,
-                                 model_id=ctx.executing_model)
-
-        elif ctx.state == AgentState.VERIFYING:
-            await _phase_verify(ctx, req, router, lang_hint, current_user, max_retry,
-                                model_id=ctx.reviewing_model)
-
-        elif ctx.state == AgentState.ROLLBACK:
-            _phase_rollback(ctx, current_user)
-
-        else:
-            ctx.state = AgentState.FAILED
-
-    ctx.state_history.append(ctx.state.value)
-    asyncio.create_task(_phase_memory_update(ctx, req, router, current_user))
+    """HTTP glue: drive the runtime to a terminal state, persist, shape the response."""
+    await _AGENT_RUNTIME.run_to_completion(ctx, req, lang_hint, current_user, max_steps, max_retry)
+    asyncio.create_task(_AGENT_RUNTIME.memory_update(ctx, req, current_user))
 
     message = ctx.final_message or "작업을 완료했습니다."
     save_to_history("user", req.message, source=req.source or "web", conversation_id=req.conversation_id)
@@ -5072,11 +4728,11 @@ async def agent_resume(req: AgentResumeRequest, request: Request):
     ctx.executing_model = req.executing_model or ctx.executing_model
     ctx.reviewing_model = req.reviewing_model or ctx.reviewing_model
 
-    _phase_approval(ctx, current_user)
+    _AGENT_RUNTIME.approve(ctx, current_user)
 
     max_steps = max(1, min(orig_req.max_steps, 50))
     max_retry = 3
-    return await _agent_run_to_completion(ctx, orig_req, router, lang_hint, current_user, max_steps, max_retry)
+    return await _agent_finish(ctx, orig_req, lang_hint, current_user, max_steps, max_retry)
 
 
 # ── Direct Tool API ───────────────────────────────────────────────────────────
@@ -5355,13 +5011,13 @@ _local_approval_lock = threading.Lock()
 _local_approvals: Dict[str, Dict[str, object]] = {}
 
 # Discord bot / webhook settings for permission notifications (optional)
-DISCORD_PERMISSION_WEBHOOK_URL = env_value("LATTICEAI_DISCORD_PERMISSION_WEBHOOK", "")
-DISCORD_BOT_TOKEN = env_value("LATTICEAI_DISCORD_BOT_TOKEN", "")
-DISCORD_PERMISSION_CHANNEL = env_value("LATTICEAI_DISCORD_PERMISSION_CHANNEL", "")
+DISCORD_PERMISSION_WEBHOOK_URL = CONFIG.discord_permission_webhook
+DISCORD_BOT_TOKEN = CONFIG.discord_bot_token
+DISCORD_PERMISSION_CHANNEL = CONFIG.discord_permission_channel
 
 # Secret token that allows permission monitor script to call approve/deny endpoints
 # without an admin user session (used by perm_monitor.py).
-PERMISSION_MONITOR_SECRET = env_value("LATTICEAI_PERMISSION_SECRET", "")
+PERMISSION_MONITOR_SECRET = CONFIG.permission_monitor_secret
 
 # Local queue file — written by server, read by perm_monitor.py
 _PERM_QUEUE_FILE = DATA_DIR / "permission_queue.json"

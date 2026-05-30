@@ -1,0 +1,178 @@
+"""App-level configuration as a single deep module.
+
+All environment parsing for Lattice AI's *application* settings (mode, host,
+port, feature flags, SSO, auth gating, integrations) lives here behind one
+interface: ``Config.from_env``. Callers read typed attributes off a frozen
+``Config`` instance instead of reaching for ``os.getenv`` in 40 places.
+
+The ``env`` mapping passed to ``from_env`` is the seam:
+
+* production passes ``os.environ`` (the default);
+* tests pass a plain ``dict`` and get a fully-formed ``Config`` with no
+  monkeypatching of the process environment.
+
+Per-request provider credentials (``OPENAI_API_KEY``, ``LMSTUDIO_API_KEY`` …)
+are intentionally *not* here — those belong to the LLM Router's provider
+concept and are read dynamically at call time.
+"""
+
+from __future__ import annotations
+
+import sys
+from dataclasses import dataclass, field
+from pathlib import Path
+from typing import List, Mapping, Optional
+
+from latticeai.core.security import host_is_loopback
+
+
+def _value(env: Mapping[str, str], key: str, default: str = "") -> str:
+    """Mirror the legacy ``env_value``: ``getenv(key) or default or ""`` (no strip)."""
+    return env.get(key) or default or ""
+
+
+def _str(env: Mapping[str, str], key: str, default: str = "") -> str:
+    """Mirror ``os.getenv(key, default)``: default only when the key is absent."""
+    raw = env.get(key)
+    return raw if raw is not None else default
+
+
+def _bool(env: Mapping[str, str], key: str, default: bool = False) -> bool:
+    raw = env.get(key)
+    if raw is None:
+        return default
+    return raw.strip().lower() in {"1", "true", "yes", "on"}
+
+
+def _int(env: Mapping[str, str], key: str, default: int) -> int:
+    raw = env.get(key)
+    if raw is None or not str(raw).strip():
+        return default
+    try:
+        return int(str(raw).strip())
+    except ValueError:
+        return default
+
+
+@dataclass(frozen=True)
+class Config:
+    """Everything a caller must know about app-level settings.
+
+    Construct once at startup via :meth:`from_env`; pass the values onward
+    rather than re-reading the environment.
+    """
+
+    # ── mode / network ──────────────────────────────────────────────
+    app_mode: str
+    is_public: bool
+    host: str
+    port: int
+    network_exposed: bool
+
+    # ── feature flags ───────────────────────────────────────────────
+    enable_telegram: bool
+    enable_graph: bool
+    autoload_models: bool
+    model_idle_unload_seconds: int
+    allow_local_models: bool
+
+    # ── auth / security ─────────────────────────────────────────────
+    require_auth: bool
+    allow_plaintext_api_keys: bool
+    cors_allow_network: bool
+    cors_extra_origins: List[str]
+    rate_limit_enabled: bool
+    open_registration: bool
+    invite_code: str
+    invite_gate_enabled: bool
+    admin_emails: List[str]
+
+    # ── models ──────────────────────────────────────────────────────
+    public_model: str
+    local_model: str
+    local_draft_model: str
+    auto_read_chat_paths: bool
+
+    # ── SSO / OIDC ──────────────────────────────────────────────────
+    sso_discovery_url: str
+    sso_client_id: str
+    sso_client_secret: str
+    sso_redirect_uri: str
+    sso_provider_name: str
+
+    # ── integrations ────────────────────────────────────────────────
+    discord_permission_webhook: str
+    discord_bot_token: str
+    discord_permission_channel: str
+    permission_monitor_secret: str
+
+    # ── paths ───────────────────────────────────────────────────────
+    data_dir: Path
+    static_dir: Path
+
+    @classmethod
+    def from_env(cls, env: Optional[Mapping[str, str]] = None, *, base_dir: Optional[Path] = None) -> "Config":
+        if env is None:
+            import os
+            env = os.environ
+        if base_dir is None:
+            base_dir = Path(__file__).resolve().parent.parent.parent
+
+        app_mode = _value(env, "LATTICEAI_MODE", "local").lower()
+        if app_mode not in {"local", "public"}:
+            app_mode = "local"
+        is_public = app_mode == "public"
+
+        host = _value(env, "LATTICEAI_HOST", "127.0.0.1")
+        port = _int(env, "LATTICEAI_PORT", 4825)
+        network_exposed = not host_is_loopback(host)
+
+        cors_extra = [item.strip() for item in _value(env, "LATTICEAI_CORS_ALLOWED_ORIGINS", "").split(",") if item.strip()]
+        admin_emails = [item.strip().lower() for item in _value(env, "LATTICEAI_ADMIN_EMAILS", "").split(",") if item.strip()]
+
+        public_model = _value(env, "LATTICEAI_PUBLIC_MODEL", _value(env, "LATTICEAI_DEFAULT_MODEL", "openai:gpt-4o-mini"))
+        local_model = _value(env, "LATTICEAI_LOCAL_MODEL", "mlx-community/gemma-4-26b-a4b-it-4bit")
+
+        data_dir = Path(_value(env, "LATTICEAI_DATA_DIR", str(Path.home() / ".ltcai")))
+        static_dir = Path(_value(env, "LATTICEAI_STATIC_DIR", str(base_dir / "static")))
+        if not static_dir.exists():
+            packaged_static = Path(sys.prefix) / "static"
+            if packaged_static.exists():
+                static_dir = packaged_static
+
+        return cls(
+            app_mode=app_mode,
+            is_public=is_public,
+            host=host,
+            port=port,
+            network_exposed=network_exposed,
+            enable_telegram=_bool(env, "LATTICEAI_ENABLE_TELEGRAM", default=not is_public),
+            enable_graph=_bool(env, "LATTICEAI_ENABLE_GRAPH", default=True),
+            autoload_models=_bool(env, "LATTICEAI_AUTOLOAD_MODELS", default=is_public),
+            model_idle_unload_seconds=_int(env, "LATTICEAI_MODEL_IDLE_UNLOAD_SECONDS", 0),
+            allow_local_models=_bool(env, "LATTICEAI_ALLOW_LOCAL_MODELS", default=not is_public),
+            require_auth=_bool(env, "LATTICEAI_REQUIRE_AUTH", default=is_public or network_exposed),
+            allow_plaintext_api_keys=_bool(env, "LATTICEAI_ALLOW_PLAINTEXT_API_KEYS", default=False),
+            cors_allow_network=_bool(env, "LATTICEAI_CORS_ALLOW_NETWORK", default=False),
+            cors_extra_origins=cors_extra,
+            rate_limit_enabled=_str(env, "LATTICEAI_RATE_LIMIT", "1") != "0",
+            open_registration=_bool(env, "LATTICEAI_OPEN_REGISTRATION", default=not network_exposed and not is_public),
+            invite_code=_value(env, "LATTICEAI_INVITE_CODE", "gemma-lattice-ai"),
+            invite_gate_enabled=_bool(env, "LATTICEAI_INVITE_GATE_ENABLED", default=False),
+            admin_emails=admin_emails,
+            public_model=public_model,
+            local_model=local_model,
+            local_draft_model=_value(env, "LATTICEAI_LOCAL_DRAFT_MODEL", ""),
+            auto_read_chat_paths=_bool(env, "LATTICEAI_AUTO_READ_CHAT_PATHS", default=False),
+            sso_discovery_url=_value(env, "OIDC_DISCOVERY_URL", ""),
+            sso_client_id=_value(env, "OIDC_CLIENT_ID", ""),
+            sso_client_secret=_value(env, "OIDC_CLIENT_SECRET", ""),
+            sso_redirect_uri=_value(env, "OIDC_REDIRECT_URI", "http://localhost:4825/auth/sso/callback"),
+            sso_provider_name=_value(env, "OIDC_PROVIDER_NAME", "SSO"),
+            discord_permission_webhook=_value(env, "LATTICEAI_DISCORD_PERMISSION_WEBHOOK", ""),
+            discord_bot_token=_value(env, "LATTICEAI_DISCORD_BOT_TOKEN", ""),
+            discord_permission_channel=_value(env, "LATTICEAI_DISCORD_PERMISSION_CHANNEL", ""),
+            permission_monitor_secret=_value(env, "LATTICEAI_PERMISSION_SECRET", ""),
+            data_dir=data_dir,
+            static_dir=static_dir,
+        )
