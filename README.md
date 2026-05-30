@@ -266,13 +266,14 @@ Supported routes include OpenAI-compatible APIs, OpenRouter, Groq, Together, xAI
 
 ## Current release
 
-**0.3.2** focuses on reliability and trust:
+**0.4.0** completes the Knowledge Graph v2 read/write cutover:
 
-- consistent current-model flow from model card click to chat readiness
-- `ok` / `degraded` / `failed` model smoke status
-- timezone-correct security dashboard
-- cleaner Korean auto-graph promotion
-- more honest documentation around telemetry and feature claims
+- graph reads and writes flow through the v2 store, behind the unchanged
+  `KnowledgeGraphStore` interface
+- legacy ↔ v2 result equivalence guaranteed (single read path + reconstruction
+  views), backed by a dedicated equivalence test suite
+- dual-write projection keeps the v2 graph in sync on every write and delete
+- deterministic ordering (`… , id ASC`) so results match across both paths
 
 See the full [changelog](docs/CHANGELOG.md).
 

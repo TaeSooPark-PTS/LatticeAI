@@ -59,6 +59,7 @@ from __future__ import annotations
 import json
 import os
 import re
+import logging
 import sqlite3
 import struct
 import time
@@ -435,8 +436,49 @@ class KGStoreV2:
         finally:
             conn.close()
 
+    # Columns the current code writes; used to detect schema-evolution drift in
+    # v2 tables that an older ``CREATE TABLE IF NOT EXISTS`` left behind.
+    _V2_EXPECTED_COLUMNS = {
+        "edges_v2": {"id", "source", "target", "type", "weight", "confidence",
+                     "evidence", "created_by", "created_at"},
+        "nodes_v2": {"id", "type", "label", "attrs", "embedding", "owner_id",
+                     "visibility", "created_at", "updated_at", "style", "tone",
+                     "importance_score", "last_used"},
+    }
+
+    def _drop_stale_empty_v2_tables(self, conn: sqlite3.Connection) -> None:
+        """Drop v2 tables that predate a schema change — but only when empty.
+
+        ``CREATE TABLE IF NOT EXISTS`` never upgrades an existing table, so a
+        v2 table created by an older version keeps its old columns and breaks
+        inserts. Recreating is safe precisely because these tables have never
+        held data (the v2 read-path isn't wired yet); we refuse to drop any
+        table that contains rows.
+        """
+        # edges_v2 first (it has FKs into nodes_v2)
+        for table in ("edges_v2", "nodes_v2"):
+            exists = conn.execute(
+                "SELECT 1 FROM sqlite_master WHERE type='table' AND name=?", (table,)
+            ).fetchone()
+            if not exists:
+                continue
+            cols = {r[1] for r in conn.execute(f"PRAGMA table_info({table})").fetchall()}
+            missing = self._V2_EXPECTED_COLUMNS[table] - cols
+            if not missing:
+                continue
+            count = conn.execute(f"SELECT COUNT(*) FROM {table}").fetchone()[0]
+            if count == 0:
+                conn.execute(f"DROP TABLE {table}")
+            else:
+                logging.warning(
+                    "kg_schema: %s is missing columns %s but holds %d rows — "
+                    "leaving it untouched (manual migration required).",
+                    table, sorted(missing), count,
+                )
+
     def init_schema(self) -> None:
         with self._conn() as conn:
+            self._drop_stale_empty_v2_tables(conn)
             conn.executescript(SCHEMA_SQL)
             conn.execute(
                 "INSERT OR REPLACE INTO kg_meta(key, value) VALUES (?, ?)",

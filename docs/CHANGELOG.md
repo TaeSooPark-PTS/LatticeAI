@@ -1,5 +1,43 @@
 # Changelog
 
+## [0.4.0] - 2026-05-31
+
+> Knowledge Graph v2 read/write cutover — legacy/v2 동등성 보장, dual-write
+> projection, deterministic ordering, 삭제 미러링 완성. 그래프 안정화 릴리스.
+
+### Changed
+
+- **KGStoreV2 read/write cutover 완료** — 그래프 read 메서드(`search`,
+  `context_for_query`, `graph`, `neighbors`, `multi_hop_context`,
+  `search_for_document_generation`, `stats`)와 write가 v2 store를 단일 경로로
+  사용. `KnowledgeGraphStore` 공개 인터페이스는 시그니처·반환형 그대로 유지.
+- **단일 read 코드 경로** — `_read_tables()`가 legacy 테이블 또는 v2 재구성
+  뷰(`kgv2_nodes`/`kgv2_edges`)를 같은 코드로 조회. `LATTICEAI_KG_READ_V2`로
+  소스 토글(기본 v2).
+
+### Added
+
+- **Dual-write projection** — `_upsert_node`/`_upsert_edge`가 동일 트랜잭션에서
+  `nodes_v2`/`edges_v2`에 프로젝션 기록. legacy 타입 문자열을 v2 type 칼럼에
+  보존하고 summary·원본 metadata_json을 `attrs._kg`에 보존해 결과 동등성 확보.
+- **삭제 미러링** — `clear_all`, `delete_conversation`, 로컬 폴더 재인덱싱의
+  모든 노드/엣지 삭제를 v2에 미러(`_v2_delete_nodes`/`_v2_delete_edges_from`,
+  edges_v2 FK cascade 활용).
+- **Deterministic ordering** — 모든 그래프 read의 `ORDER BY`에 `id ASC`
+  tie-break 추가(엣지/이웃 쿼리 포함). legacy/v2 결과 순서가 항상 동일.
+- **Legacy/V2 equivalence test suite** — `test_kg_v2_read_equivalence.py`(7개
+  read + dual-write + 동률 timestamp + 재upsert + 삭제 반영),
+  `test_kg_v2_backfill.py`(프로젝션·self-heal·idempotent).
+- v2 스키마 self-heal — 구버전 init이 만든 *빈* v2 테이블의 컬럼 누락 시
+  drop+recreate(행이 있으면 절대 drop 안 함).
+
+### Internal
+
+- agent 루프를 `latticeai/core/agent.py`(`AgentRuntime`+ports)로 추출, 앱 설정을
+  `latticeai/core/config.py`(`Config.from_env`)로 단일화, `tools.py`에 tool
+  registry 도입(`execute_tool` if/elif 제거). server.py 대폭 축소.
+- 단위 테스트 181 passed.
+
 ## [0.3.2] - 2026-05-29
 
 > 안정화 릴리스 — 모델 current 일관성, smoke test 3분류, 보안 대시보드 timezone
