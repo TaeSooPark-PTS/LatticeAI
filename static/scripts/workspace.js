@@ -8,6 +8,7 @@ const state = {
   managingWorkspace: null,
   skillsPayload: null,
   skillTab: "recommended",
+  skillProgress: {},
   entities: [],
   activeEntity: null,
 };
@@ -66,6 +67,56 @@ function renderMetrics(os) {
       <i class="ti ${icon}"></i>
       <span>${escapeHtml(label)}</span>
       <strong>${escapeHtml(value)}</strong>
+    </div>
+  `).join("");
+}
+
+function latestTimestamp(...groups) {
+  const values = groups.flat().filter(Boolean).map((value) => {
+    const stamp = new Date(value);
+    return Number.isNaN(stamp.getTime()) ? null : stamp;
+  }).filter(Boolean);
+  if (!values.length) return "";
+  return new Date(Math.max(...values.map((stamp) => stamp.getTime()))).toISOString().slice(0, 19).replace("T", " ");
+}
+
+function renderWorkspaceHealth({ os, indexing, skills, timeline }) {
+  const counts = os?.counts || {};
+  const graph = os?.graph || {};
+  const nodes = Object.values(graph.nodes || {}).reduce((sum, value) => sum + Number(value || 0), 0);
+  const edges = Object.values(graph.edges || {}).reduce((sum, value) => sum + Number(value || 0), 0);
+  const sources = indexing?.sources || [];
+  const indexedFiles = sources.reduce((sum, source) => {
+    const fileStatus = source.file_status || {};
+    return sum + Number(fileStatus.indexed ?? source.success_count ?? 0);
+  }, 0);
+  const sourceTimes = sources.flatMap((source) => [source.last_run_at, source.last_scanned_at, source.updated_at]);
+  const eventTimes = (timeline?.events || []).slice(0, 10).map((event) => event.timestamp);
+  const currentModel = os?.models?.current_model || os?.models?.local_model || os?.models?.public_model || "not loaded";
+  const status = nodes || indexedFiles || counts.memories || counts.agent_runs ? "ready" : "empty";
+  const statusEl = $("workspace-health-status");
+  if (statusEl) {
+    statusEl.textContent = status;
+    statusEl.className = `status-pill ${status === "ready" ? "status-complete" : "status-running"}`;
+  }
+  const items = [
+    ["Indexed Files", indexedFiles, "ti-files", sources.length ? `${sources.length} source(s)` : "No indexed sources"],
+    ["Graph Nodes", nodes, "ti-chart-dots-3", `${edges.toLocaleString()} relationship(s)`],
+    ["Graph Relationships", edges, "ti-git-branch", "Knowledge links"],
+    ["Installed Skills", skills?.total_installed ?? counts.skills ?? 0, "ti-puzzle", `${skills?.total_available ?? 0} available`],
+    ["Memory Entries", counts.memories || 0, "ti-book-2", "Workspace memory"],
+    ["Agent Runs", counts.agent_runs || 0, "ti-route-alt-left", `${counts.workflows || 0} workflow(s)`],
+    ["Current Model", currentModel, "ti-cpu", `${(os?.models?.loaded_models || []).length} loaded`],
+    ["Last Sync Time", latestTimestamp(os?.updated_at, sourceTimes, eventTimes) || "not synced", "ti-clock", `v${os?.version || "unknown"}`],
+  ];
+  const grid = $("workspace-health-grid");
+  if (!grid) return;
+  grid.innerHTML = items.map(([label, value, icon, meta]) => `
+    <div class="health-card">
+      <i class="ti ${icon}"></i>
+      <span>${escapeHtml(label)}</span>
+      <strong>${escapeHtml(value)}</strong>
+      <em>${escapeHtml(meta)}</em>
     </div>
   `).join("");
 }
@@ -205,6 +256,10 @@ function skillName(skill) {
   return skill.skill || skill.name || "skill";
 }
 
+function skillProgress(name) {
+  return state.skillProgress[name] || null;
+}
+
 // Compute the four marketplace tabs from the registry payload (machine-global
 // registry + locally-installed state). "Updates" = installed skills whose
 // registry version differs from the installed version.
@@ -222,17 +277,28 @@ function computeSkillTabs(payload) {
     const hay = `${skillName(s)} ${s.category || ""} ${s.description || ""}`.toLowerCase();
     return RECOMMENDED_SKILL_HINTS.some((h) => hay.includes(h));
   });
-  return { installed, popular: notInstalled, recommended, updates };
+  const popular = notInstalled.slice().sort((a, b) => Number(b.downloads || b.popularity || 0) - Number(a.downloads || a.popularity || 0));
+  return { installed, popular, recommended: recommended.length ? recommended : popular.slice(0, 8), updates };
 }
 
 function renderSkillRow(skill, { installed }) {
   const name = skillName(skill);
   const enabled = skill.enabled !== false;
   const version = skill.version || (installed ? "local" : "registry");
-  const source = skill.plugin || skill.source || (installed ? "installed" : "marketplace");
+  const source = skill.plugin || skill.source || skill.source_url || (installed ? "installed" : "marketplace");
+  const validation = skill.validation_status || (installed ? "ready" : "not installed");
+  const installStatus = skill.install_status || (installed ? "ready" : "available");
+  const progress = skillProgress(name);
   const actions = installed
-    ? `<button class="small-action" data-skill-action="${enabled ? "disable" : "enable"}" data-skill="${escapeHtml(name)}"><i class="ti ti-${enabled ? "toggle-left" : "toggle-right"}"></i>${enabled ? "Disable" : "Enable"}</button>`
-    : `<button class="small-action" data-skill-action="install" data-skill="${escapeHtml(name)}"><i class="ti ti-download"></i>Install</button>`;
+    ? `<button class="small-action" data-skill-action="${enabled ? "disable" : "enable"}" data-skill="${escapeHtml(name)}"><i class="ti ti-${enabled ? "toggle-left" : "toggle-right"}"></i>${enabled ? "Disable" : "Enable"}</button>
+       <button class="small-action" data-skill-action="update" data-skill="${escapeHtml(name)}"><i class="ti ti-refresh"></i>Update</button>`
+    : `<button class="small-action" data-skill-action="install" data-skill="${escapeHtml(name)}" ${progress ? "disabled" : ""}><i class="ti ti-download"></i>Install</button>`;
+  const progressHtml = progress ? `
+    <div class="skill-progress" aria-label="Install progress">
+      <div class="skill-progress-head"><span>${escapeHtml(progress.phase)}</span><span>${escapeHtml(progress.percent)}%</span></div>
+      <div class="skill-progress-track"><span style="width:${Math.max(0, Math.min(100, progress.percent))}%"></span></div>
+    </div>
+  ` : "";
   return `
     <div class="list-item">
       <div class="list-title">
@@ -244,7 +310,10 @@ function renderSkillRow(skill, { installed }) {
         <span class="tag">v${escapeHtml(version)}</span>
         ${skill.category ? `<span class="tag">${escapeHtml(skill.category)}</span>` : ""}
         <span class="tag">${escapeHtml(source)}</span>
+        <span class="tag">install: ${escapeHtml(installStatus)}</span>
+        <span class="tag">validation: ${escapeHtml(validation)}</span>
       </div>
+      ${progressHtml}
       <div class="item-actions">${actions}</div>
     </div>`;
 }
@@ -561,6 +630,7 @@ async function refreshAll() {
   ]);
   state.os = os;
   renderMetrics(os);
+  renderWorkspaceHealth({ os, indexing, skills, timeline });
   if (os.workspace_registry) renderWorkspaceRegistry(os.workspace_registry, os.edition);
   renderOnboarding(onboarding);
   renderTraces(traces);
@@ -645,6 +715,38 @@ async function configureComputerMemory(enabled) {
   await refreshAll();
 }
 
+function setSkillProgress(name, phase, percent) {
+  state.skillProgress[name] = { phase, percent };
+  renderSkills();
+}
+
+function clearSkillProgress(name) {
+  delete state.skillProgress[name];
+  renderSkills();
+}
+
+async function runSkillAction(action, skill) {
+  if (action === "install" || action === "update") {
+    setSkillProgress(skill, "Download", 24);
+    await new Promise((resolve) => setTimeout(resolve, 180));
+    setSkillProgress(skill, "Validate", 68);
+  }
+  try {
+    await api(`/workspace/skills/${action}`, {
+      method: "POST",
+      body: JSON.stringify({ skill }),
+    });
+    if (action === "install" || action === "update") {
+      setSkillProgress(skill, "Ready", 100);
+      await new Promise((resolve) => setTimeout(resolve, 260));
+    }
+    toast(`Skill ${action}`);
+    await refreshAll();
+  } finally {
+    clearSkillProgress(skill);
+  }
+}
+
 document.addEventListener("click", async (event) => {
   const entityBtn = event.target.closest("[data-entity]");
   if (entityBtn) {
@@ -689,12 +791,7 @@ document.addEventListener("click", async (event) => {
 
   const skillBtn = event.target.closest("[data-skill-action]");
   if (skillBtn) {
-    await api(`/workspace/skills/${skillBtn.dataset.skillAction}`, {
-      method: "POST",
-      body: JSON.stringify({ skill: skillBtn.dataset.skill }),
-    });
-    toast(`Skill ${skillBtn.dataset.skillAction}`);
-    await refreshAll();
+    await runSkillAction(skillBtn.dataset.skillAction, skillBtn.dataset.skill);
     return;
   }
 

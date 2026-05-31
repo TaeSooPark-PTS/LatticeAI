@@ -8,7 +8,7 @@
   <link rel="icon" type="image/png" sizes="32x32" href="/icons/favicon-32.png">
   <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap">
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@latest/tabler-icons.min.css">
-  <link rel="stylesheet" href="/static/workspace.css?v=1.6.0">
+  <link rel="stylesheet" href="/static/workspace.css?v=1.7.0">
 </head>
 <body>
   <div class="workspace-shell">
@@ -19,6 +19,7 @@
       </a>
       <nav>
         <a class="active" href="#overview"><i class="ti ti-layout-dashboard"></i><span>Overview</span></a>
+        <a href="#health"><i class="ti ti-heartbeat"></i><span>Health</span></a>
         <a href="#graph"><i class="ti ti-chart-dots-3"></i><span>Graph</span></a>
         <a href="#graph-explorer"><i class="ti ti-affiliate"></i><span>Explorer</span></a>
         <a href="#snapshots"><i class="ti ti-stack-2"></i><span>Snapshots</span></a>
@@ -55,6 +56,17 @@
       </header>
 
       <section class="metric-grid" id="metric-grid"></section>
+
+      <section class="workspace-band" id="health">
+        <div class="section-head">
+          <div>
+            <div class="eyebrow">Workspace Health</div>
+            <h2>Operational Snapshot</h2>
+          </div>
+          <span class="status-pill status-complete" id="workspace-health-status">checking</span>
+        </div>
+        <div class="health-grid" id="workspace-health-grid"></div>
+      </section>
 
       <section class="workspace-band" id="workspace-summary-band">
         <div class="section-head">
@@ -314,6 +326,6 @@
   </div>
 
   <div class="toast" id="toast"></div>
-  <script src="/static/scripts/workspace.js?v=1.6.0"></script>
+  <script src="/static/scripts/workspace.js?v=1.7.0"></script>
 </body>
 </html>

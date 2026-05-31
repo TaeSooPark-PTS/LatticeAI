@@ -26,6 +26,7 @@
             <a href="#users" data-admin-nav="users"><i class="ti ti-users"></i> <span data-i18n="nav_users">사용자 관리</span></a>
             <a href="#permissions" data-admin-nav="permissions"><i class="ti ti-key"></i> <span data-i18n="nav_permissions">권한 관리</span></a>
             <a href="#sso" data-admin-nav="sso"><i class="ti ti-lock-access"></i> <span data-i18n="nav_sso">SSO 관리</span></a>
+            <a href="#enterprise" data-admin-nav="enterprise"><i class="ti ti-building-skyscraper"></i> <span data-i18n="nav_enterprise">Enterprise</span></a>
             <a href="#security" data-admin-nav="security"><i class="ti ti-shield-check"></i> <span data-i18n="nav_security">보안 모니터링</span></a>
             <a href="#audit" data-admin-nav="audit"><i class="ti ti-report-search"></i> <span data-i18n="nav_audit">감사 로그</span></a>
             <a href="/workspace"><i class="ti ti-layout-dashboard"></i> <span>Workspace OS</span></a>
@@ -253,6 +254,67 @@
                             </div>
                         </div>
                     </div>
+                </section>
+            </section>
+
+            <section class="admin-view" id="admin-view-enterprise" data-admin-view="enterprise">
+                <section class="panel">
+                    <div class="panel-header">
+                        <div>
+                            <h3 data-i18n="enterprise_title">Enterprise Admin</h3>
+                            <p data-i18n="enterprise_desc">Admin policies, audit export, SIEM export, organization settings, and capability status.</p>
+                        </div>
+                        <div class="tag-row" id="enterprise-status-tags"></div>
+                    </div>
+                    <div class="panel-body">
+                        <div class="enterprise-grid" id="enterprise-capability-status"></div>
+                    </div>
+                </section>
+
+                <section class="panel-grid">
+                    <article class="panel">
+                        <div class="panel-header">
+                            <div>
+                                <h3 data-i18n="enterprise_policies">Admin Policies</h3>
+                                <p data-i18n="enterprise_policies_desc">Effective Community policy and Enterprise policy-pack status.</p>
+                            </div>
+                        </div>
+                        <div class="panel-body" id="enterprise-admin-policies"></div>
+                    </article>
+                    <article class="panel">
+                        <div class="panel-header">
+                            <div>
+                                <h3 data-i18n="enterprise_org">Organization Settings</h3>
+                                <p data-i18n="enterprise_org_desc">Workspace governance and organization capability status.</p>
+                            </div>
+                        </div>
+                        <div class="panel-body" id="enterprise-org-settings"></div>
+                    </article>
+                </section>
+
+                <section class="panel-grid">
+                    <article class="panel">
+                        <div class="panel-header">
+                            <div>
+                                <h3 data-i18n="enterprise_audit_export">Audit Export</h3>
+                                <p data-i18n="enterprise_audit_export_desc">Local export remains available in Community; retention is an Enterprise extension point.</p>
+                            </div>
+                        </div>
+                        <div class="panel-body" id="enterprise-audit-export"></div>
+                    </article>
+                    <article class="panel">
+                        <div class="panel-header">
+                            <div>
+                                <h3 data-i18n="enterprise_siem">SIEM Export</h3>
+                                <p data-i18n="enterprise_siem_desc">Preview the SIEM envelope without streaming external events in Community.</p>
+                            </div>
+                            <button class="btn" id="refresh-siem-btn" type="button"><i class="ti ti-refresh"></i> <span>SIEM</span></button>
+                        </div>
+                        <div class="panel-body">
+                            <div id="enterprise-siem-export"></div>
+                            <pre class="enterprise-json" id="enterprise-siem-preview"></pre>
+                        </div>
+                    </article>
                 </section>
             </section>
 

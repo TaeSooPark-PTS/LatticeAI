@@ -50,6 +50,10 @@ the boundary stays predictable for contributors and users.
 
 - `GET /workspace/editions` → edition + per-capability matrix.
 - `GET /workspace/os` → `edition` block in the Workspace OS summary.
+- `/admin#enterprise` → Admin policy, audit export, SIEM preview,
+  organization settings, and capability status UI.
+- `GET /admin/enterprise` and `GET /admin/enterprise/siem-export` → descriptive
+  Community-safe Enterprise surfaces for integrations.
 - `latticeai.core.enterprise.detect_edition()` for in-process checks.
 
 In the Community build all of the above report `community` with every Enterprise

@@ -21,7 +21,10 @@ const API_BASE = window.location.protocol === 'file:' ? 'http://localhost:4825' 
         local_indexed: '지식 그래프 생성 완료', local_watch_unavailable: '자동 감지는 watchdog 설치 후 작동합니다.',
         detail_empty: '노드를 클릭하면 요약, 중요도, 연결 강도, 메타데이터를 볼 수 있습니다. 검색 패널에서는 서버 검색 결과를 기준으로 더 정확하게 이동할 수 있습니다.',
         detail_empty_short: '노드를 클릭하면 요약, 중요도, 메타데이터를 볼 수 있습니다.',
-        refresh: '새로고침', error: '오류', graph_load_fail: '그래프를 불러오지 못했습니다.', graph_refresh_fail: '그래프를 새로고침하지 못했습니다.',
+        refresh: '새로고침', fit: '맞춤', expand: '확장', collapse: '접기', focus: '포커스', path: '경로',
+        clear_focus: '포커스 해제', path_start: '경로 시작 지정', path_ready: '경로 시작: {title}', path_pick_target: '도착 노드를 선택한 뒤 경로를 누르세요.',
+        path_not_found: '두 노드 사이의 경로를 찾지 못했습니다.', source_open: '소스 열기',
+        error: '오류', graph_load_fail: '그래프를 불러오지 못했습니다.', graph_refresh_fail: '그래프를 새로고침하지 못했습니다.',
         no_node_types: '아직 노드 유형이 없습니다.', no_relationships: '아직 관계가 없습니다.',
         open_in_chat: '채팅에서 열기', today: '오늘', day_ago: '1일 전', days_ago: '{n}일 전', months_ago: '{n}개월 전', years_ago: '{n}년 전',
       },
@@ -43,7 +46,10 @@ const API_BASE = window.location.protocol === 'file:' ? 'http://localhost:4825' 
         local_indexed: 'Knowledge graph built', local_watch_unavailable: 'Auto watch works after watchdog is installed.',
         detail_empty: 'Click a node to see its summary, importance, connection strength, and metadata. Search results can jump to more precise nodes.',
         detail_empty_short: 'Click a node to see its summary, importance, and metadata.',
-        refresh: 'Refresh', error: 'Error', graph_load_fail: 'Could not load the graph.', graph_refresh_fail: 'Could not refresh the graph.',
+        refresh: 'Refresh', fit: 'Fit', expand: 'Expand', collapse: 'Collapse', focus: 'Focus', path: 'Path',
+        clear_focus: 'Clear focus', path_start: 'Set path start', path_ready: 'Path start: {title}', path_pick_target: 'Select a destination node, then press Path.',
+        path_not_found: 'No path found between those nodes.', source_open: 'Open source',
+        error: 'Error', graph_load_fail: 'Could not load the graph.', graph_refresh_fail: 'Could not refresh the graph.',
         no_node_types: 'No node types yet.', no_relationships: 'No relationships yet.',
         open_in_chat: 'Open in chat', today: 'today', day_ago: '1 day ago', days_ago: '{n} days ago', months_ago: '{n} mo ago', years_ago: '{n} yr ago',
       }
@@ -73,7 +79,18 @@ const API_BASE = window.location.protocol === 'file:' ? 'http://localhost:4825' 
       document.getElementById('local-source-label').textContent = t('local_sources');
       document.getElementById('edge-label').textContent = t('relationship_legend');
       document.getElementById('type-label').textContent = t('node_types');
-      document.getElementById('refresh-btn').textContent = `↺ ${t('refresh')}`;
+      const toolbarLabels = {
+        'refresh-btn': ['ti-refresh', t('refresh')],
+        'fit-btn': ['ti-arrows-maximize', t('fit')],
+        'expand-btn': ['ti-circle-plus', t('expand')],
+        'collapse-btn': ['ti-circle-minus', t('collapse')],
+        'focus-btn': ['ti-focus-2', focusNodeId ? t('clear_focus') : t('focus')],
+        'path-btn': ['ti-route', t('path')],
+      };
+      Object.entries(toolbarLabels).forEach(([id, [icon, label]]) => {
+        const btn = document.getElementById(id);
+        if (btn) btn.innerHTML = `<i class="ti ${icon}"></i> ${label}`;
+      });
       const langBtn = document.getElementById('graph-lang-btn');
       if (langBtn) langBtn.textContent = `Language: ${currentLang === 'ko' ? '한국어' : 'English'}`;
       ['ko', 'en'].forEach(lang => {
@@ -174,6 +191,13 @@ const API_BASE = window.location.protocol === 'file:' ? 'http://localhost:4825' 
     let height = 0;
     let searchResults = [];
     let searchResultIds = new Set();
+    let expandedNodeIds = new Set();
+    let hiddenNodeIds = new Set();
+    let focusNodeId = null;
+    let focusDepth = 2;
+    let pathStartId = null;
+    let pathNodeIds = new Set();
+    let pathEdgeKeys = new Set();
     let searchAbortController = null;
     let searchDebounceId = null;
     let localState = {
@@ -570,13 +594,55 @@ const API_BASE = window.location.protocol === 'file:' ? 'http://localhost:4825' 
       return counts;
     }
 
+    function edgeKey(edgeOrFrom, to) {
+      if (typeof edgeOrFrom === 'object') {
+        return `${edgeOrFrom.from}|${edgeOrFrom.to}`;
+      }
+      return `${edgeOrFrom}|${to}`;
+    }
+
+    function computeSubgraphIds(rootId, depth = 2) {
+      if (!rootId) return null;
+      const adjacency = new Map();
+      rawGraph.edges.forEach(edge => {
+        if (!edge.from || !edge.to) return;
+        if (!adjacency.has(edge.from)) adjacency.set(edge.from, new Set());
+        if (!adjacency.has(edge.to)) adjacency.set(edge.to, new Set());
+        adjacency.get(edge.from).add(edge.to);
+        adjacency.get(edge.to).add(edge.from);
+      });
+      const visible = new Set([rootId]);
+      let frontier = new Set([rootId]);
+      for (let i = 0; i < depth; i++) {
+        const next = new Set();
+        frontier.forEach(id => {
+          (adjacency.get(id) || []).forEach(neighbor => {
+            if (!visible.has(neighbor)) {
+              visible.add(neighbor);
+              next.add(neighbor);
+            }
+          });
+        });
+        frontier = next;
+      }
+      pathNodeIds.forEach(id => visible.add(id));
+      return visible;
+    }
+
     function applyFilter() {
-      graph.nodes = rawGraph.nodes.filter(node => !hiddenTypes.has(node.type));
+      const focusIds = computeSubgraphIds(focusNodeId, focusDepth);
+      graph.nodes = rawGraph.nodes.filter(node => {
+        if (hiddenTypes.has(node.type)) return false;
+        if (focusIds && !focusIds.has(node.id)) return false;
+        if (hiddenNodeIds.has(node.id) && node.id !== selected?.id && node.id !== focusNodeId && !pathNodeIds.has(node.id)) return false;
+        return true;
+      });
       const nodeSet = new Set(graph.nodes.map(node => node.id));
       const byId = Object.fromEntries(rawGraph.nodes.map(node => [node.id, node]));
       graph.edges = rawGraph.edges
         .filter(edge => nodeSet.has(edge.from) && nodeSet.has(edge.to))
         .map(edge => ({ ...edge, source: byId[edge.from], target: byId[edge.to] }));
+      renderFocusChip();
     }
 
     function seedLayout() {
@@ -698,8 +764,14 @@ const API_BASE = window.location.protocol === 'file:' ? 'http://localhost:4825' 
       updateStats();
       renderTypeFilters(stats.nodes || buildTypeCounts());
       renderEdgeLegend(stats.edges || {});
-      showDetail(selected && rawGraph.nodes.find(node => node.id === selected.id) || graph.nodes[0] || null);
+      const urlNode = new URLSearchParams(window.location.search).get('node');
+      const initialNode = (urlNode && rawGraph.nodes.find(node => node.id === urlNode))
+        || (selected && rawGraph.nodes.find(node => node.id === selected.id))
+        || graph.nodes[0]
+        || null;
       cam = { scale: 1, tx: 0, ty: 0 };
+      showDetail(initialNode);
+      if (initialNode && urlNode) centerOnNode(initialNode, Math.max(cam.scale, 1));
       wakeUp();
     }
 
@@ -754,6 +826,29 @@ const API_BASE = window.location.protocol === 'file:' ? 'http://localhost:4825' 
       wakeUp();
     }
     window.toggleType = toggleType;
+
+    function renderFocusChip() {
+      const chip = document.getElementById('graph-focus-chip');
+      if (!chip) return;
+      const focusNode = rawGraph.nodes.find(node => node.id === focusNodeId);
+      const pathStart = rawGraph.nodes.find(node => node.id === pathStartId);
+      const parts = [];
+      if (focusNode) parts.push(`<span><i class="ti ti-focus-2"></i>${escapeHtml(focusNode.title || focusNode.id)}</span>`);
+      if (pathStart) parts.push(`<span><i class="ti ti-route"></i>${escapeHtml(t('path_ready').replace('{title}', pathStart.title || pathStart.id))}</span>`);
+      if (pathNodeIds.size) parts.push(`<span>${pathNodeIds.size} nodes</span>`);
+      chip.hidden = parts.length === 0;
+      chip.innerHTML = parts.join('');
+      applyI18n();
+    }
+
+    function relatedNodeIds(nodeId) {
+      const ids = new Set();
+      rawGraph.edges.forEach(edge => {
+        if (edge.from === nodeId) ids.add(edge.to);
+        if (edge.to === nodeId) ids.add(edge.from);
+      });
+      return ids;
+    }
 
     function step() {
       const nodes = graph.nodes;
@@ -841,13 +936,14 @@ const API_BASE = window.location.protocol === 'file:' ? 'http://localhost:4825' 
         if (!edge.source || !edge.target) return;
         const style = edgeStyle(edge.type);
         const isNeighborEdge = neighborSet && neighborSet.has(edge.from) && neighborSet.has(edge.to);
-        const baseAlpha = neighborSet ? (isNeighborEdge ? 0.88 : 0.07) : 0.34;
-        const widthBoost = isNeighborEdge ? 0.5 : 0;
+        const isPathEdge = pathEdgeKeys.has(edgeKey(edge)) || pathEdgeKeys.has(edgeKey(edge.to, edge.from));
+        const baseAlpha = isPathEdge ? 0.98 : (neighborSet ? (isNeighborEdge ? 0.88 : 0.07) : 0.34);
+        const widthBoost = isPathEdge ? 2.2 : (isNeighborEdge ? 0.5 : 0);
         ctx.save();
         ctx.globalAlpha = baseAlpha;
-        ctx.strokeStyle = style.color;
+        ctx.strokeStyle = isPathEdge ? '#f59e0b' : style.color;
         ctx.lineWidth = (style.width + Math.min(3.4, (edge.weight || 1) * 1.1) + widthBoost) / cam.scale;
-        ctx.setLineDash(style.dash || []);
+        ctx.setLineDash(isPathEdge ? [] : (style.dash || []));
         ctx.beginPath();
         ctx.moveTo(edge.source.x, edge.source.y);
         ctx.lineTo(edge.target.x, edge.target.y);
@@ -858,10 +954,11 @@ const API_BASE = window.location.protocol === 'file:' ? 'http://localhost:4825' 
       graph.nodes.forEach(node => {
         const isNeighbor = neighborSet ? neighborSet.has(node.id) : true;
         const isSearchHit = searchResultIds.has(node.id);
+        const isPathNode = pathNodeIds.has(node.id);
         const isSelected = node === selected;
         const isHovered = node === hovered;
         const alpha = neighborSet ? (isNeighbor ? 1 : 0.12) : 1;
-        const radius = node.r + (isSelected ? 4 : isHovered ? 2 : isSearchHit ? 2.6 : 0);
+        const radius = node.r + (isSelected ? 4 : isHovered ? 2 : isPathNode ? 3.5 : isSearchHit ? 2.6 : 0);
 
         ctx.globalAlpha = alpha;
 
@@ -890,9 +987,9 @@ const API_BASE = window.location.protocol === 'file:' ? 'http://localhost:4825' 
         ctx.stroke();
 
         // 선택/호버 외곽 링
-        if (isSelected || isHovered || isSearchHit) {
-          ctx.strokeStyle = isSelected ? '#6f42e8' : nodeColor(node.type);
-          ctx.lineWidth = (isSelected ? 2.8 : 1.8) / cam.scale;
+        if (isSelected || isHovered || isSearchHit || isPathNode) {
+          ctx.strokeStyle = isPathNode ? '#f59e0b' : (isSelected ? '#6f42e8' : nodeColor(node.type));
+          ctx.lineWidth = (isSelected || isPathNode ? 2.8 : 1.8) / cam.scale;
           ctx.globalAlpha = alpha * 0.55;
           ctx.beginPath();
           ctx.arc(node.x, node.y, radius + 5 / cam.scale, 0, Math.PI * 2);
@@ -979,6 +1076,123 @@ const API_BASE = window.location.protocol === 'file:' ? 'http://localhost:4825' 
       wakeUp();
     }
 
+    async function expandNode(node = selected) {
+      if (!node) return;
+      const res = await apiFetch(`/knowledge-graph/neighbors/${encodeURIComponent(node.id)}`);
+      if (!res.ok) throw new Error(`Expand failed (${res.status})`);
+      const payload = await res.json();
+      const nodes = [
+        payload.node || node,
+        ...((payload.neighbors || []).map(item => ({ ...item, updated_at: item.updated_at }))),
+      ];
+      expandedNodeIds.add(node.id);
+      nodes.forEach(item => hiddenNodeIds.delete(item.id));
+      mergeGraphData(nodes, payload.edges || []);
+      showDetail(rawGraph.nodes.find(item => item.id === node.id) || node);
+      centerOnNode(node, Math.max(cam.scale, 1));
+    }
+
+    function collapseNode(node = selected) {
+      if (!node) return;
+      relatedNodeIds(node.id).forEach(id => {
+        if (id !== node.id && id !== focusNodeId && !pathNodeIds.has(id)) hiddenNodeIds.add(id);
+      });
+      expandedNodeIds.delete(node.id);
+      applyFilter();
+      showDetail(node);
+      wakeUp();
+    }
+
+    function toggleFocus(node = selected) {
+      if (!node) return;
+      if (focusNodeId === node.id) {
+        focusNodeId = null;
+      } else {
+        focusNodeId = node.id;
+        hiddenNodeIds.delete(node.id);
+      }
+      applyFilter();
+      centerOnNode(node, Math.max(cam.scale, 0.9));
+    }
+
+    function localShortestPath(startId, targetId) {
+      if (!startId || !targetId || startId === targetId) return startId ? [startId] : [];
+      const adjacency = new Map();
+      rawGraph.edges.forEach(edge => {
+        if (!edge.from || !edge.to) return;
+        if (!adjacency.has(edge.from)) adjacency.set(edge.from, []);
+        if (!adjacency.has(edge.to)) adjacency.set(edge.to, []);
+        adjacency.get(edge.from).push(edge.to);
+        adjacency.get(edge.to).push(edge.from);
+      });
+      const queue = [[startId]];
+      const seen = new Set([startId]);
+      while (queue.length) {
+        const path = queue.shift();
+        const last = path[path.length - 1];
+        if (last === targetId) return path;
+        (adjacency.get(last) || []).forEach(next => {
+          if (!seen.has(next)) {
+            seen.add(next);
+            queue.push([...path, next]);
+          }
+        });
+      }
+      return [];
+    }
+
+    async function showShortestPath(target = selected) {
+      if (!target) return;
+      if (!pathStartId) {
+        pathStartId = target.id;
+        renderFocusChip();
+        showDetail(target);
+        return;
+      }
+      let path = localShortestPath(pathStartId, target.id);
+      if (!path.length || path[path.length - 1] !== target.id) {
+        const res = await apiFetch(`/workspace/relationships/${encodeURIComponent(pathStartId)}?target_id=${encodeURIComponent(target.id)}`);
+        if (res.ok) {
+          const payload = await res.json();
+          path = Array.isArray(payload.shortest_path) ? payload.shortest_path : path;
+        }
+      }
+      if (!path.length || path[path.length - 1] !== target.id) {
+        searchCountEl.textContent = t('path_not_found');
+        return;
+      }
+      pathNodeIds = new Set(path);
+      pathEdgeKeys = new Set();
+      for (let i = 0; i < path.length - 1; i++) {
+        pathEdgeKeys.add(edgeKey(path[i], path[i + 1]));
+        pathEdgeKeys.add(edgeKey(path[i + 1], path[i]));
+      }
+      path.forEach(id => hiddenNodeIds.delete(id));
+      applyFilter();
+      const first = rawGraph.nodes.find(node => node.id === path[0]);
+      const last = rawGraph.nodes.find(node => node.id === path[path.length - 1]);
+      if (first && last) {
+        const x0 = Math.min(...path.map(id => rawGraph.nodes.find(node => node.id === id)?.x ?? first.x));
+        const x1 = Math.max(...path.map(id => rawGraph.nodes.find(node => node.id === id)?.x ?? first.x));
+        const y0 = Math.min(...path.map(id => rawGraph.nodes.find(node => node.id === id)?.y ?? first.y));
+        const y1 = Math.max(...path.map(id => rawGraph.nodes.find(node => node.id === id)?.y ?? first.y));
+        cam.scale = clamp(Math.min(width / Math.max(260, x1 - x0 + 180), height / Math.max(220, y1 - y0 + 160)), 0.4, 2.4);
+        cam.tx = width / 2 - ((x0 + x1) / 2) * cam.scale;
+        cam.ty = height / 2 - ((y0 + y1) / 2) * cam.scale;
+      }
+      showDetail(target);
+      wakeUp();
+    }
+
+    function clearPath() {
+      pathStartId = selected?.id || null;
+      pathNodeIds = new Set();
+      pathEdgeKeys = new Set();
+      renderFocusChip();
+      applyFilter();
+      wakeUp();
+    }
+
     function metricCards(node) {
       const metrics = ((node.metadata || {}).graph_metrics) || {};
       const cards = [
@@ -1010,25 +1224,74 @@ const API_BASE = window.location.protocol === 'file:' ? 'http://localhost:4825' 
       selected = node;
       const meta = node.metadata || {};
       const convId = meta.conversation_id;
+      const sourcePath = meta.path || meta.absolute_path || meta.root_path || meta.source_path || '';
       const jumpHtml = convId
         ? `<a class="jump-btn" href="${API_BASE}/chat?open_conversation=${encodeURIComponent(convId)}">${t('open_in_chat')}</a>`
+        : '';
+      const sourceHtml = sourcePath
+        ? `<a class="jump-btn secondary" href="${API_BASE}/local/serve?path=${encodeURIComponent(sourcePath)}">${t('source_open')}</a>`
         : '';
       const metrics = metricCards(node);
       const updatedAt = formatUpdatedAt(node.updated_at);
       const source = meta.relative_path || meta.filename || meta.conversation_id || meta.source || '';
       const metadataStr = Object.keys(meta).length ? JSON.stringify(meta, null, 2) : '';
+      const relatedRows = rawGraph.edges
+        .filter(edge => edge.from === node.id || edge.to === node.id)
+        .slice(0, 10)
+        .map(edge => {
+          const otherId = edge.from === node.id ? edge.to : edge.from;
+          const other = rawGraph.nodes.find(item => item.id === otherId) || { id: otherId, title: otherId, type: 'Event' };
+          const direction = edge.from === node.id ? '→' : '←';
+          return `
+            <button class="related-node-btn" data-detail-node="${escapeHtml(otherId)}">
+              <span>${direction}</span>
+              <strong>${escapeHtml(other.title || other.id)}</strong>
+              <em>${escapeHtml(edge.type || 'related')}</em>
+            </button>
+          `;
+        }).join('');
       detail.innerHTML = `
         <div class="type-badge" style="background:${nodeColor(node.type)}">${escapeHtml(typeLabel(node.type))}</div>
         <div class="detail-title">${escapeHtml(node.title || node.id)}</div>
         ${node.summary ? `<div class="detail-summary">${escapeHtml(node.summary)}</div>` : ''}
-        ${jumpHtml}
+        <div class="detail-actions">
+          ${jumpHtml}
+          ${sourceHtml}
+          <button class="jump-btn secondary" data-graph-action="expand">${t('expand')}</button>
+          <button class="jump-btn secondary" data-graph-action="focus">${focusNodeId === node.id ? t('clear_focus') : t('focus')}</button>
+          <button class="jump-btn secondary" data-graph-action="path-start">${t('path_start')}</button>
+        </div>
         ${metrics}
         <div class="detail-summary">
           ${source ? `<strong>source:</strong> ${escapeHtml(source)}<br>` : ''}
           ${updatedAt ? `<strong>updated:</strong> ${escapeHtml(updatedAt)}` : ''}
         </div>
+        ${relatedRows ? `<div class="related-node-list">${relatedRows}</div>` : ''}
         ${metadataStr ? `<div class="meta-block">${escapeHtml(metadataStr)}</div>` : ''}
       `;
+      detail.querySelectorAll('[data-graph-action]').forEach(btn => {
+        btn.addEventListener('click', () => {
+          const action = btn.dataset.graphAction;
+          if (action === 'expand') expandNode(node).catch(error => { searchCountEl.textContent = error.message; });
+          if (action === 'focus') toggleFocus(node);
+          if (action === 'path-start') {
+            pathStartId = node.id;
+            pathNodeIds = new Set();
+            pathEdgeKeys = new Set();
+            renderFocusChip();
+            wakeUp();
+          }
+        });
+      });
+      detail.querySelectorAll('[data-detail-node]').forEach(btn => {
+        btn.addEventListener('click', () => {
+          const next = rawGraph.nodes.find(item => item.id === btn.dataset.detailNode);
+          if (next) {
+            showDetail(next);
+            centerOnNode(next, Math.max(cam.scale, 0.95));
+          }
+        });
+      });
       wakeUp();
     }
 
@@ -1047,6 +1310,7 @@ const API_BASE = window.location.protocol === 'file:' ? 'http://localhost:4825' 
     }
 
     function renderSearchResults() {
+      document.querySelector('.search-shell')?.classList.toggle('search-open', Boolean(searchInput.value.trim()));
       if (!searchInput.value.trim()) {
         searchResultsEl.innerHTML = `<p class="search-empty">${t('search_empty')}</p>`;
         return;
@@ -1240,6 +1504,14 @@ const API_BASE = window.location.protocol === 'file:' ? 'http://localhost:4825' 
       wakeUp();
     }, { passive: false });
 
+    canvas.addEventListener('dblclick', event => {
+      const rect = canvas.getBoundingClientRect();
+      const node = nodeAt(event.clientX - rect.left, event.clientY - rect.top);
+      if (node) expandNode(node).catch(error => {
+        searchCountEl.textContent = error.message;
+      });
+    });
+
     let lastTouchDistance = null;
     canvas.addEventListener('touchstart', event => {
       event.preventDefault();
@@ -1320,6 +1592,11 @@ const API_BASE = window.location.protocol === 'file:' ? 'http://localhost:4825' 
     });
 
     document.getElementById('clear-search-btn').addEventListener('click', clearSearch);
+    document.getElementById('fit-btn').addEventListener('click', fitToScreen);
+    document.getElementById('expand-btn').addEventListener('click', () => expandNode().catch(error => { searchCountEl.textContent = error.message; }));
+    document.getElementById('collapse-btn').addEventListener('click', () => collapseNode());
+    document.getElementById('focus-btn').addEventListener('click', () => toggleFocus());
+    document.getElementById('path-btn').addEventListener('click', () => showShortestPath().catch(error => { searchCountEl.textContent = error.message; }));
     document.addEventListener('click', event => {
       if (!event.target.closest('.lang-picker')) {
         document.querySelectorAll('.lang-picker-menu').forEach(menu => menu.classList.remove('open'));
@@ -1329,6 +1606,11 @@ const API_BASE = window.location.protocol === 'file:' ? 'http://localhost:4825' 
       rawGraph = { nodes: [], edges: [] };
       graph = { nodes: [], edges: [] };
       selected = null;
+      focusNodeId = null;
+      pathStartId = null;
+      pathNodeIds = new Set();
+      pathEdgeKeys = new Set();
+      hiddenNodeIds = new Set();
       loadGraph().catch(error => {
         detail.innerHTML = `<div class="type-badge" style="background:${nodeColor('ClearEvent')}; color:#091019">${t('error')}</div><div class="detail-title">${t('graph_refresh_fail')}</div><div class="detail-summary">${escapeHtml(error.message)}</div>`;
       });

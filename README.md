@@ -156,7 +156,7 @@ See [docs/architecture.md](docs/architecture.md) for request and data-flow detai
 </table>
 
 > Every image in this section is a **real screenshot** of the running app
-> (Lattice AI v1.6.0), captured with a headless browser.
+> (Lattice AI v1.7.0), captured with a headless browser.
 
 ---
 
@@ -179,7 +179,9 @@ DeepSeek, and more), with estimated RAM and a clear next step.
 A **Current Workspace** card shows exactly where you are; switch instantly
 between a **Personal** workspace and shared **Organization** workspaces. Org data
 is scoped by `workspace_id`, and `owner / admin / member / viewer` roles map to a
-transparent permission matrix with member management.
+transparent permission matrix with member management. A Workspace Health panel
+summarizes indexed files, graph size, installed skills, memories, agent runs,
+current model, last sync time, and status at a glance.
 
 <div align="center">
   <img src="docs/images/workspace.png" alt="Current Workspace summary card with scoped counts" width="100%"/>
@@ -195,6 +197,10 @@ relationships, related entities, and a path back to you.
 <div align="center">
   <img src="docs/images/graph.png" alt="Knowledge graph entity explorer with relationship detail" width="100%"/>
 </div>
+
+The Graph Canvas also supports node expand/collapse, focused subgraphs,
+relationship highlighting, shortest-path visualization, and direct navigation
+back into source conversations or files.
 
 ### Skills & editions
 
@@ -347,24 +353,29 @@ Supported routes include OpenAI-compatible APIs, OpenRouter, Groq, Together, xAI
 
 ## Current release
 
-**1.6.0 — Product Experience Deepening.** A UX release: the screens in this README
-are now real captured UI.
+**1.7.0 — Graph & Collaboration Release.** An additive UI and validation release
+for graph exploration, workspace health, Enterprise admin visibility, skills,
+screenshots, and visual smoke coverage.
 
-- **Knowledge Graph explorer** — entity cards, a relationship/related-entities/
-  shortest-path detail panel, recent activity, and a memory feed (additive UI on
-  existing endpoints)
-- **Workspace UX** — a "Current Workspace" summary card with quick-switch chips
-- **Model Recommendation 2.0** — machine summary, a best-pick callout with
-  estimated RAM and next step, per-family status, and a cloud caution
-- **Skill Marketplace** — Recommended / Popular / Installed / Updates tabs
-- **Enterprise capability panel** — an honest 12-capability matrix (Community: all
-  disabled, nothing gated)
-- **Real screenshots** — `docs/images/*` refreshed from the running app; API,
-  schemas, `server:app`, CLI, MCP, and the Knowledge Graph contract unchanged
+- **Graph Canvas** — expand/collapse, subgraph focus, relationship/path
+  highlighting, shortest-path visualization, and click-through node navigation.
+- **Workspace Health** — indexed files, graph nodes/relationships, installed
+  skills, memories, agent runs, current model, last sync, and workspace status.
+- **Enterprise Admin UI** — admin policies, audit export, SIEM export preview,
+  organization settings, and capability status surfaced in `/admin`.
+- **Skill Marketplace completion** — install progress, validation status,
+  recommended/popular skills, updates, version, and source metadata.
+- **Screenshot automation + visual smoke tests** — `scripts/capture/*` and a
+  scheduled Playwright workflow cover Workspace, Graph, Skills, Organization,
+  and Enterprise screens.
+- **Compatibility preserved** — API schemas, `server:app`,
+  `latticeai.server_app.app`, CLI, MCP, model, workspace, chat, KG, and VS Code
+  extension surfaces remain backward compatible.
 
 | Version | Theme |
 |---|---|
-| **1.6.0** | Product Experience Deepening (UX + real screenshots) |
+| **1.7.0** | Graph & Collaboration Release |
+| 1.6.0 | Product Experience Deepening (UX + real screenshots) |
 | 1.5.0 | Unified Product Release (CI/VSIX recovery, model recommendation, Enterprise PoC) |
 | 1.4.0 | Server App final decomposition |
 | 1.1.0–1.3.0 | Organization workspaces, modularization, route safety net |

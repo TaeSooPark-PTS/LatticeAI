@@ -49,6 +49,7 @@ const A18N = {
         nav_users: '사용자 관리',
         nav_permissions: '권한 관리',
         nav_sso: 'SSO 관리',
+        nav_enterprise: 'Enterprise',
         nav_security: '보안 모니터링',
         nav_audit: '감사 로그',
         nav_chat: '채팅으로',
@@ -170,6 +171,16 @@ const A18N = {
         section_sensitivity: '보안 모니터링',
         section_audit: '감사 로그',
         section_sso: 'SSO 관리',
+        enterprise_title: 'Enterprise 관리자',
+        enterprise_desc: '관리자 정책, 감사 추출, SIEM 추출, 조직 설정, 기능 상태를 확인합니다.',
+        enterprise_policies: '관리자 정책',
+        enterprise_policies_desc: 'Community 유효 정책과 Enterprise 정책 팩 상태입니다.',
+        enterprise_org: '조직 설정',
+        enterprise_org_desc: '워크스페이스 거버넌스와 조직 기능 상태입니다.',
+        enterprise_audit_export: '감사 추출',
+        enterprise_audit_export_desc: 'Community에서는 로컬 추출이 가능하며 보존 정책은 Enterprise 확장 지점입니다.',
+        enterprise_siem: 'SIEM 추출',
+        enterprise_siem_desc: 'Community에서 외부 이벤트를 전송하지 않고 SIEM envelope를 미리 봅니다.',
     },
     en: {
         admin_sub: 'Admin Dashboard',
@@ -180,6 +191,7 @@ const A18N = {
         nav_users: 'User Management',
         nav_permissions: 'Permission Management',
         nav_sso: 'SSO Management',
+        nav_enterprise: 'Enterprise',
         nav_security: 'Security Monitoring',
         nav_audit: 'Audit Logs',
         nav_chat: 'Back to Chat',
@@ -301,6 +313,16 @@ const A18N = {
         section_sensitivity: 'Security monitoring',
         section_audit: 'Audit logs',
         section_sso: 'SSO management',
+        enterprise_title: 'Enterprise Admin',
+        enterprise_desc: 'Review admin policies, audit export, SIEM export, organization settings, and capability status.',
+        enterprise_policies: 'Admin Policies',
+        enterprise_policies_desc: 'Effective Community policy and Enterprise policy-pack status.',
+        enterprise_org: 'Organization Settings',
+        enterprise_org_desc: 'Workspace governance and organization capability status.',
+        enterprise_audit_export: 'Audit Export',
+        enterprise_audit_export_desc: 'Community local export is available; retention is an Enterprise extension point.',
+        enterprise_siem: 'SIEM Export',
+        enterprise_siem_desc: 'Preview the SIEM envelope without streaming external events in Community.',
     }
 };
 
@@ -310,6 +332,7 @@ let latestUsers = [];
 let latestSso = null;
 let latestSensitivity = null;
 let latestAudit = null;
+let latestEnterprise = null;
 
 function t(key) {
     return (A18N[currentLang] || A18N.ko)[key] || key;
@@ -352,6 +375,7 @@ function setLang(lang) {
     renderSso(latestSso);
     renderSensitivity(latestSensitivity);
     renderAudit(latestAudit);
+    renderEnterpriseAdmin(latestEnterprise);
     loadDashboard();
 }
 
@@ -788,6 +812,97 @@ function renderAudit(audit) {
     ` : `<div class="preview" style="padding:14px">${t('audit_no_events')}</div>`;
 }
 
+function enterpriseStatusTag(label, enabled) {
+    return `<span class="tag ${enabled ? 'low' : 'medium'}">${esc(label)}: ${enabled ? 'enabled' : 'disabled'}</span>`;
+}
+
+function renderKeyValues(targetId, rows) {
+    const target = document.getElementById(targetId);
+    if (!target) return;
+    target.innerHTML = `
+        <div class="enterprise-kv">
+            ${rows.map(([label, value]) => `
+                <div>
+                    <span>${esc(label)}</span>
+                    <strong>${esc(value)}</strong>
+                </div>
+            `).join('')}
+        </div>
+    `;
+}
+
+function renderEnterpriseAdmin(payload) {
+    latestEnterprise = payload || null;
+    const enterprise = payload || {};
+    const edition = enterprise.edition || {};
+    const caps = edition.capabilities || {};
+    const tags = document.getElementById('enterprise-status-tags');
+    if (tags) {
+        tags.innerHTML = [
+            enterpriseStatusTag('edition', Boolean(edition.is_enterprise)),
+            enterpriseStatusTag('policy packs', Boolean(enterprise.admin_policies?.enabled)),
+            enterpriseStatusTag('siem', Boolean(enterprise.siem_export?.enabled)),
+        ].join('');
+    }
+
+    const grid = document.getElementById('enterprise-capability-status');
+    if (grid) {
+        const entries = Object.keys(caps).length ? Object.entries(caps) : [];
+        grid.innerHTML = entries.length ? entries.map(([name, enabled]) => `
+            <div class="enterprise-cap-card ${enabled ? 'on' : 'off'}">
+                <i class="ti ${enabled ? 'ti-circle-check' : 'ti-lock'}"></i>
+                <span>${esc(name.replaceAll('_', ' '))}</span>
+                <strong>${enabled ? 'enabled' : 'disabled'}</strong>
+            </div>
+        `).join('') : `<div class="preview" style="padding:14px">Capability status unavailable.</div>`;
+    }
+
+    const policies = enterprise.admin_policies || {};
+    renderKeyValues('enterprise-admin-policies', [
+        ['Capability', policies.capability || 'admin_policy_packs'],
+        ['Enabled', Boolean(policies.enabled)],
+        ['Enforced', Boolean(policies.enforced)],
+        ['Base roles', (policies.effective_policy?.base_roles || []).join(', ')],
+        ['Local file access', policies.effective_policy?.local_file_access || 'approval-token gated'],
+        ['Package install', policies.effective_policy?.package_install || 'admin-only'],
+        ['Note', policies.note || 'Community features remain available.'],
+    ]);
+
+    const org = enterprise.organization_settings || {};
+    renderKeyValues('enterprise-org-settings', [
+        ['Workspaces', (org.community_baseline?.workspaces || []).join(', ')],
+        ['Roles', (org.community_baseline?.roles || []).join(', ')],
+        ['Data isolation', org.community_baseline?.data_isolation || 'single-tenant local storage'],
+        ['Governance enabled', Object.values(org.governance_capabilities || {}).filter(Boolean).length],
+        ['Note', org.note || 'Enterprise governance is an extension point.'],
+    ]);
+
+    const audit = enterprise.audit_export || {};
+    renderKeyValues('enterprise-audit-export', [
+        ['Local export', audit.local_export?.available ? 'available' : 'unavailable'],
+        ['Endpoint', audit.local_export?.endpoint || '/admin/security/export'],
+        ['Formats', (audit.local_export?.formats || []).join(', ')],
+        ['SIEM streaming', audit.siem_streaming?.enabled ? 'enabled' : 'disabled'],
+        ['Retention', audit.compliance_retention?.enabled ? 'enabled' : 'disabled'],
+    ]);
+
+    const siem = enterprise.siem_export || {};
+    renderKeyValues('enterprise-siem-export', [
+        ['Capability', siem.capability || 'siem_export'],
+        ['Enabled', Boolean(siem.enabled)],
+        ['Streamed', Boolean(siem.streamed)],
+        ['Destination', siem.destination || 'not configured'],
+    ]);
+    const preview = document.getElementById('enterprise-siem-preview');
+    if (preview) preview.textContent = JSON.stringify(siem.preview_envelope || {}, null, 2);
+}
+
+async function refreshSiemPreview() {
+    const res = await apiFetch('/admin/enterprise/siem-export', { headers: adminHeaders() });
+    const data = res.ok ? await res.json() : {};
+    renderEnterpriseAdmin({ ...(latestEnterprise || {}), siem_export: data });
+}
+
 function cellValue(value) {
     if (value === null || value === undefined) return '';
     if (Array.isArray(value)) return value.map(cellValue).filter(Boolean).join('; ');
@@ -1074,7 +1189,7 @@ async function loadDashboard() {
     access.style.display = 'none';
 
     try {
-        const [healthRes, vpcRes, summaryRes, usersRes, sensitivityRes, inviteRes, statsRes, auditRes, ssoRes] = await Promise.all([
+        const [healthRes, vpcRes, summaryRes, usersRes, sensitivityRes, inviteRes, statsRes, auditRes, ssoRes, enterpriseRes] = await Promise.all([
             apiFetch('/health'),
             apiFetch('/vpc/status'),
             apiFetch('/admin/summary', { headers: adminHeaders() }),
@@ -1084,6 +1199,7 @@ async function loadDashboard() {
             apiFetch('/admin/stats', { headers: adminHeaders() }),
             apiFetch('/admin/audit', { headers: adminHeaders() }),
             apiFetch('/admin/sso', { headers: adminHeaders() }),
+            apiFetch('/admin/enterprise', { headers: adminHeaders() }),
         ]);
 
         const health = healthRes.ok ? await healthRes.json() : null;
@@ -1095,6 +1211,7 @@ async function loadDashboard() {
         const stats = statsRes.ok ? await statsRes.json() : null;
         const audit = auditRes.ok ? await auditRes.json() : null;
         const sso = ssoRes.ok ? await ssoRes.json() : null;
+        const enterprise = enterpriseRes.ok ? await enterpriseRes.json() : null;
 
         renderSummary(health, summary, vpc);
         fillVpcForm(vpc);
@@ -1103,6 +1220,7 @@ async function loadDashboard() {
         renderSensitivity(sensitivity);
         renderAudit(audit);
         renderSso(sso);
+        renderEnterpriseAdmin(enterprise);
 
         if (invite) {
             document.getElementById('invite-link-input').value = invite.invite_url;
@@ -1118,6 +1236,7 @@ async function loadDashboard() {
         if (!sensitivityRes.ok) failedSections.push(t('section_sensitivity'));
         if (!auditRes.ok) failedSections.push(t('section_audit'));
         if (!ssoRes.ok) failedSections.push(t('section_sso'));
+        if (!enterpriseRes.ok) failedSections.push('Enterprise');
 
         if (failedSections.length) {
             access.style.display = 'block';
@@ -1189,6 +1308,7 @@ document.getElementById('save-sso-btn').addEventListener('click', saveSso);
 document.getElementById('test-sso-btn').addEventListener('click', () => {
     window.location.href = `${API_BASE}/auth/sso/login`;
 });
+document.getElementById('refresh-siem-btn')?.addEventListener('click', () => refreshSiemPreview().catch(e => alert(String(e))));
 document.getElementById('security-export-toggle')?.addEventListener('click', () => toggleExportOptions('security'));
 document.getElementById('audit-export-toggle')?.addEventListener('click', () => toggleExportOptions('audit'));
 document.querySelectorAll('[data-export-scope][data-export-format]').forEach(btn => {

@@ -10,6 +10,16 @@ Connects to a running [Lattice AI](https://github.com/TaeSooPark-PTS/LatticeAI) 
 
 ---
 
+## Current Release
+
+**1.7.0 — Graph & Collaboration Release.** The server adds Graph Canvas
+expand/collapse/focus/path tooling, Workspace Health, Enterprise Admin surfaces,
+Skill Marketplace validation/progress metadata, screenshot automation, and
+Playwright visual smoke coverage. The extension command surface remains
+backward compatible.
+
+---
+
 ## ✨ Features
 
 | Feature | Description |

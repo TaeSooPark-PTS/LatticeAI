@@ -51,7 +51,12 @@
       </section>
 
       <div class="toolbar">
-        <button class="tb-btn" id="refresh-btn">↺ Refresh</button>
+        <button class="tb-btn" id="refresh-btn"><i class="ti ti-refresh"></i> Refresh</button>
+        <button class="tb-btn" id="fit-btn" title="Fit graph"><i class="ti ti-arrows-maximize"></i> Fit</button>
+        <button class="tb-btn" id="expand-btn" title="Expand selected node"><i class="ti ti-circle-plus"></i> Expand</button>
+        <button class="tb-btn" id="collapse-btn" title="Collapse selected neighbors"><i class="ti ti-circle-minus"></i> Collapse</button>
+        <button class="tb-btn" id="focus-btn" title="Focus selected subgraph"><i class="ti ti-focus-2"></i> Focus</button>
+        <button class="tb-btn" id="path-btn" title="Shortest path from saved start"><i class="ti ti-route"></i> Path</button>
         <div class="lang-picker" id="graph-lang-picker">
           <button class="tb-btn" id="graph-lang-btn" type="button" onclick="toggleLangMenu('graph-lang-picker')">Language</button>
           <div class="lang-picker-menu" id="graph-lang-picker-menu">
@@ -60,6 +65,7 @@
           </div>
         </div>
       </div>
+      <div id="graph-focus-chip" class="focus-chip" hidden></div>
     </main>
 
     <aside>

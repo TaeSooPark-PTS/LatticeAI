@@ -1,5 +1,47 @@
 # Changelog
 
+## [1.7.0] - 2026-06-01
+
+> Graph & Collaboration Release — Graph Canvas interactions, Enterprise Admin
+> UI, Skill Marketplace completion, Workspace Health, screenshot automation, and
+> Playwright visual smoke coverage. Backward compatible: API paths/schemas,
+> `server:app`, `latticeai.server_app.app`, CLI, Workspace/Chat/Model/MCP/KG
+> APIs, and VS Code extension commands remain stable.
+
+### Added
+
+- **Graph Canvas** — node expand/collapse, focused subgraphs, relationship
+  highlighting, shortest-path visualization, URL/node click-through navigation,
+  and source/conversation actions. Uses existing graph/relationship APIs; no
+  schema change or destructive migration.
+- **Enterprise Admin UI** — `/admin#enterprise` now surfaces Admin Policies,
+  Audit Export, SIEM Export preview, Organization Settings, and Enterprise
+  Capability Status. Community remains fully functional and ungated.
+- **Skill Marketplace completion** — install progress (Download → Validate →
+  Ready), validation status, recommended/popular/update surfaces, version
+  metadata, and source metadata.
+- **Workspace Health Dashboard** — indexed files, graph nodes, graph
+  relationships, installed skills, memory entries, agent runs, current model,
+  last sync time, and workspace status.
+- **Screenshot automation** — `scripts/capture/` contains reproducible
+  Playwright capture scripts for workspace, graph, skills, enterprise, and
+  onboarding screenshots.
+- **Visual smoke tests** — `tests/visual/*` plus `.github/workflows/visual.yml`
+  run Workspace, Graph, Skills, Organization, and Enterprise screen checks on
+  PR/push and nightly schedule with failure artifacts.
+
+### Changed
+
+- Python package, npm package, VS Code extension, Workspace OS, FastAPI app, and
+  `/health` version metadata aligned at `1.7.0`.
+- CI package validation is version-scoped instead of a broad `dist/*` check.
+
+### Validation
+
+- Unit, integration, startup/import, route compatibility, MCP, model endpoint,
+  visual smoke, VSIX build, and release artifact validation are the release
+  target checks. Package-store publish remains manual only.
+
 ## [1.6.0] - 2026-06-01
 
 > Product Experience Deepening — user-facing UX (Knowledge Graph explorer,

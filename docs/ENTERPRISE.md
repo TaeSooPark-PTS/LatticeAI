@@ -33,8 +33,14 @@ Community code consults the seam at extension points via
 `is_capability_enabled(EnterpriseCapability.X)`. In the Community build this is
 always `False`, so the Community code path is taken and nothing is gated off.
 
-The live edition + capability matrix is exposed at `GET /workspace/editions`
-and surfaced in the Workspace OS summary (`GET /workspace/os` → `edition`).
+The live edition + capability matrix is exposed at `GET /workspace/editions`,
+surfaced in the Workspace OS summary (`GET /workspace/os` → `edition`), and
+shown in the Enterprise Admin UI at `/admin#enterprise`.
+
+Community also exposes descriptive admin surfaces at `GET /admin/enterprise`
+and `GET /admin/enterprise/siem-export`: they show policy/export/envelope
+shapes while reporting Enterprise-only capabilities disabled and never
+streaming external events.
 
 ## Enterprise capability roadmap
 

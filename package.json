@@ -1,6 +1,6 @@
 {
   "name": "ltcai",
-  "version": "1.6.0",
+  "version": "1.7.0",
   "description": "Lattice AI Workspace OS for local-first graph, memory, agent, workflow, and skill operations",
   "homepage": "https://github.com/TaeSooPark-PTS/LatticeAI#readme",
   "repository": {
@@ -23,6 +23,12 @@
     "test": "python3 -m pytest tests/ -v",
     "test:unit": "python3 -m pytest tests/unit/ -v",
     "test:integration": "python3 -m pytest tests/integration/ -v",
+    "test:visual": "playwright test",
+    "capture:workspace": "node scripts/capture/capture_workspace.js",
+    "capture:graph": "node scripts/capture/capture_graph.js",
+    "capture:skills": "node scripts/capture/capture_skills.js",
+    "capture:enterprise": "node scripts/capture/capture_enterprise.js",
+    "capture:onboarding": "node scripts/capture/capture_onboarding.js",
     "publish:npm": "npm publish --access public",
     "publish:pypi": "python3 -m twine upload --skip-existing dist/ltcai-$npm_package_version.tar.gz dist/ltcai-$npm_package_version-py3-none-any.whl"
   },
@@ -75,5 +81,8 @@
   ],
   "publishConfig": {
     "access": "public"
+  },
+  "devDependencies": {
+    "@playwright/test": "^1.60.0"
   }
 }

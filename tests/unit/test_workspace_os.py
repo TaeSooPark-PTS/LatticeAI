@@ -125,6 +125,33 @@ def test_relationship_explorer_finds_shortest_path(tmp_path: Path):
     assert result["shortest_path"] == ["node:a", "node:b"]
 
 
+def test_workspace_summary_exposes_health_timestamp(tmp_path: Path):
+    store = WorkspaceOSStore(tmp_path)
+    store.record_timeline_event("workspace", "health_check", {})
+
+    summary = store.summary()
+
+    assert summary["version"] == "1.7.0"
+    assert summary["updated_at"]
+
+
+def test_skill_registry_reports_install_and_validation_status(tmp_path: Path):
+    skills_dir = tmp_path / "skills"
+    skill_dir = skills_dir / "demo_skill"
+    skill_dir.mkdir(parents=True)
+    (skill_dir / "SKILL.md").write_text("---\ndescription: Demo skill\n---\n", encoding="utf-8")
+
+    registry = WorkspaceOSStore(tmp_path).list_skill_registry(
+        skills_dir,
+        marketplace=[{"skill": "remote_skill", "description": "Remote", "version": "2.0.0", "source": "marketplace"}],
+    )
+
+    assert registry["installed"][0]["install_status"] == "ready"
+    assert registry["installed"][0]["validation_status"] == "ready"
+    assert registry["available"][0]["install_status"] == "available"
+    assert registry["available"][0]["validation_status"] == "not_installed"
+
+
 # ── Organization Workspace foundation (v1.1.0) ───────────────────────────────
 
 

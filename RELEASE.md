@@ -9,6 +9,40 @@
 > PyPI / npm / VS Code Marketplace / Open VSX 배포는 아래 수동 절차로 로컬에서
 > 직접 인증 후 진행합니다. GitHub Secrets에 배포 토큰을 저장하지 않습니다.
 
+## v1.7.0 릴리스 노트 (2026-06-01)
+
+Graph & Collaboration Release — Graph Canvas, Collaboration UX, Enterprise Admin
+UI, Skill Marketplace completion, Workspace Health, screenshot automation, and
+visual smoke coverage. 모든 변경은 additive이며 API path/schema, `server:app`,
+`latticeai.server_app.app`, CLI, Workspace/Chat/Model/MCP/KG API, VS Code 확장
+호환성을 유지합니다.
+
+- **Added (Graph Canvas)**: expand/collapse, focus subgraph, relationship
+  highlighting, shortest-path visualization, URL/node click-through navigation,
+  and source/conversation actions. 기존 `/knowledge-graph/*` 및
+  `/workspace/relationships/*` endpoint 재사용, schema 변경 없음.
+- **Added (Enterprise Admin UI)**: `/admin#enterprise`에 Admin Policies, Audit
+  Export, SIEM Export preview, Organization Settings, Capability Status. Community
+  edition은 기능 lockout 없이 disabled capability를 명확히 표시.
+- **Added (Skill Marketplace completion)**: install progress(Download →
+  Validate → Ready), validation status, recommended/popular/update tabs,
+  version/source/install metadata.
+- **Added (Workspace Health Dashboard)**: Indexed Files, Graph Nodes,
+  Relationships, Installed Skills, Memory Entries, Agent Runs, Current Model,
+  Last Sync Time, Workspace Status.
+- **Added (Screenshot automation)**: `scripts/capture/`에 workspace, graph,
+  skills, enterprise, onboarding capture scripts와 README. `npm run
+  capture:*`로 exact screenshot 재생성 가능.
+- **Added (Visual Regression Smoke)**: Playwright mock-server 기반 시각 smoke
+  tests(`tests/visual/*`)와 nightly/PR/push GitHub Actions workflow. Workspace,
+  Graph, Skills, Organization, Enterprise 화면을 검증하고 실패 report artifact를
+  업로드.
+- **Changed (Version sync)**: Python/npm/VS Code/Workspace OS/FastAPI `/health`
+  version metadata aligned at `1.7.0`.
+- **Validation**: unit/integration/startup/import/route compatibility/MCP/model/
+  visual smoke/VSIX/release artifact checks 대상. 패키지 스토어 publish는 수동
+  절차로만 진행.
+
 ## v1.6.0 릴리스 노트 (2026-06-01)
 
 Product Experience Deepening — 구조 리팩토링이 아니라 사용자가 체감하는 UX 강화와
@@ -316,11 +350,11 @@ Knowledge Graph v2 read/write cutover. 자세한 내용은
 3. 업로드
    - `npm run publish:pypi`
    - 직접 실행 시:
-     `python3 -m twine upload dist/ltcai-1.6.0-py3-none-any.whl dist/ltcai-1.6.0.tar.gz`
+     `python3 -m twine upload dist/ltcai-1.7.0-py3-none-any.whl dist/ltcai-1.7.0.tar.gz`
 
 참고:
 - TestPyPI 먼저 쓰려면:
-  - `python3 -m twine upload --skip-existing --repository testpypi dist/ltcai-1.6.0.tar.gz dist/ltcai-1.6.0-py3-none-any.whl`
+  - `python3 -m twine upload --skip-existing --repository testpypi dist/ltcai-1.7.0.tar.gz dist/ltcai-1.7.0-py3-none-any.whl`
 
 ## 4) VS Code / Cursor / Antigravity 확장 배포
 
@@ -334,11 +368,11 @@ Knowledge Graph v2 read/write cutover. 자세한 내용은
 3. VS Code Marketplace 배포
    - `npm run publish:vscode`
    - 직접 실행 시:
-     `npx vsce publish --packagePath dist/ltcai-1.6.0.vsix`
+     `npx vsce publish --packagePath dist/ltcai-1.7.0.vsix`
 4. Open VSX 배포 (Cursor/일부 포크 호환)
    - `npm run publish:openvsx`
    - 직접 실행 시:
-     `npx ovsx publish dist/ltcai-1.6.0.vsix`
+     `npx ovsx publish dist/ltcai-1.7.0.vsix`
 5. 로컬 설치 (VS Code/Cursor/Antigravity)
    - `npm run install:all`
 
