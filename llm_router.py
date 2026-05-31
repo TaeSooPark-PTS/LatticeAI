@@ -227,6 +227,18 @@ def ensure_mlx_runtime() -> None:
     except Exception as e:
         raise RuntimeError(f"MLX runtime is not available after install: {e}") from e
 
+def _mlx_sampler(temperature: float):
+    """Build an MLX sampler callable for the given temperature.
+
+    mlx_lm >= 0.20 removed the ``temp`` keyword from generate_step in favour of a
+    ``sampler`` callable, and mlx_vlm follows the same convention. Passing
+    ``temp=`` to generate/stream_generate now raises
+    ``generate_step() got an unexpected keyword argument 'temp'``. Both libraries
+    accept ``sampler=`` and share make_sampler from mlx_lm.sample_utils.
+    """
+    from mlx_lm.sample_utils import make_sampler
+    return make_sampler(temp=temperature)
+
 class LLMRouter:
     def __init__(self):
         self._cache: Dict[str, Tuple] = {}
@@ -514,10 +526,10 @@ class LLMRouter:
             is_gemma4 = "gemma-4" in self._current.lower() or "gemma4" in self._current.lower()
             if is_gemma4 and VLM_AVAILABLE:
                 from mlx_vlm import generate as vlm_gen
-                return vlm_gen(model, tokenizer, prompt=prompt, image=self._prep_image(image_data), max_tokens=max_tokens, temp=temperature, draft_model=draft_model, draft_kind="mtp")
+                return vlm_gen(model, tokenizer, prompt=prompt, image=self._prep_image(image_data), max_tokens=max_tokens, sampler=_mlx_sampler(temperature), draft_model=draft_model, draft_kind="mtp")
             else:
                 from mlx_lm import generate as lm_gen
-                return lm_gen(model, tokenizer, prompt=prompt, max_tokens=max_tokens, temp=temperature, draft_model=draft_model)
+                return lm_gen(model, tokenizer, prompt=prompt, max_tokens=max_tokens, sampler=_mlx_sampler(temperature), draft_model=draft_model)
         result = await loop.run_in_executor(executor, _gen)
         # mlx-vlm might return a GenerationResult object; extract the text
         if hasattr(result, "text"):
@@ -571,10 +583,10 @@ class LLMRouter:
                 is_gemma4 = "gemma-4" in self._current.lower() or "gemma4" in self._current.lower()
                 if is_gemma4 and VLM_AVAILABLE:
                     from mlx_vlm import stream_generate as vlm_stream
-                    gen = vlm_stream(model, tokenizer, prompt=prompt, image=self._prep_image(image_data), max_tokens=max_tokens, temp=temperature, draft_model=draft_model, draft_kind="mtp")
+                    gen = vlm_stream(model, tokenizer, prompt=prompt, image=self._prep_image(image_data), max_tokens=max_tokens, sampler=_mlx_sampler(temperature), draft_model=draft_model, draft_kind="mtp")
                 else:
                     from mlx_lm import stream_generate as lm_stream
-                    gen = lm_stream(model, tokenizer, prompt=prompt, max_tokens=max_tokens, temp=temperature, draft_model=draft_model)
+                    gen = lm_stream(model, tokenizer, prompt=prompt, max_tokens=max_tokens, sampler=_mlx_sampler(temperature), draft_model=draft_model)
                 
                 for chunk in gen:
                     text = chunk.text if hasattr(chunk, "text") else (chunk[0] if isinstance(chunk, tuple) else str(chunk))
@@ -666,10 +678,10 @@ class LLMRouter:
             is_gemma4 = "gemma-4" in self._current.lower() or "gemma4" in self._current.lower()
             if is_gemma4 and VLM_AVAILABLE:
                 from mlx_vlm import generate as vlm_gen
-                return vlm_gen(model, tokenizer, prompt=prompt, image=None, max_tokens=max_tokens, temp=temperature, draft_model=draft_model, draft_kind="mtp")
+                return vlm_gen(model, tokenizer, prompt=prompt, image=None, max_tokens=max_tokens, sampler=_mlx_sampler(temperature), draft_model=draft_model, draft_kind="mtp")
             else:
                 from mlx_lm import generate as lm_gen
-                return lm_gen(model, tokenizer, prompt=prompt, max_tokens=max_tokens, temp=temperature, draft_model=draft_model)
+                return lm_gen(model, tokenizer, prompt=prompt, max_tokens=max_tokens, sampler=_mlx_sampler(temperature), draft_model=draft_model)
         result = await loop.run_in_executor(executor, _gen)
         if hasattr(result, "text"):
             return normalize_branding(result.text)
@@ -733,10 +745,10 @@ class LLMRouter:
                 is_gemma4 = "gemma-4" in self._current.lower() or "gemma4" in self._current.lower()
                 if is_gemma4 and VLM_AVAILABLE:
                     from mlx_vlm import stream_generate as vlm_stream
-                    gen = vlm_stream(model, tokenizer, prompt=prompt, image=None, max_tokens=max_tokens, temp=temperature, draft_model=draft_model, draft_kind="mtp")
+                    gen = vlm_stream(model, tokenizer, prompt=prompt, image=None, max_tokens=max_tokens, sampler=_mlx_sampler(temperature), draft_model=draft_model, draft_kind="mtp")
                 else:
                     from mlx_lm import stream_generate as lm_stream
-                    gen = lm_stream(model, tokenizer, prompt=prompt, max_tokens=max_tokens, temp=temperature, draft_model=draft_model)
+                    gen = lm_stream(model, tokenizer, prompt=prompt, max_tokens=max_tokens, sampler=_mlx_sampler(temperature), draft_model=draft_model)
                 for chunk in gen:
                     text = chunk.text if hasattr(chunk, "text") else (chunk[0] if isinstance(chunk, tuple) else str(chunk))
                     loop.call_soon_threadsafe(queue.put_nowait, text)
