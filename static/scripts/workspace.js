@@ -3,6 +3,9 @@ const API_BASE = window.location.protocol === "file:" ? "http://localhost:4825" 
 const state = {
   os: null,
   snapshots: [],
+  activeWorkspace: null,
+  registry: null,
+  managingWorkspace: null,
 };
 
 function $(id) {
@@ -21,6 +24,7 @@ function escapeHtml(value) {
 async function api(path, options = {}) {
   const headers = { ...(options.headers || {}) };
   if (options.body && !headers["Content-Type"]) headers["Content-Type"] = "application/json";
+  if (state.activeWorkspace && !headers["X-Workspace-Id"]) headers["X-Workspace-Id"] = state.activeWorkspace;
   const response = await fetch(API_BASE + path, { credentials: "include", ...options, headers });
   const text = await response.text();
   let data = {};
@@ -226,6 +230,103 @@ function renderTimeline(payload) {
   `).join("") : `<div class="timeline-item"><div class="meta-line">No timeline events.</div></div>`;
 }
 
+function renderWorkspaceRegistry(registry, edition) {
+  state.registry = registry;
+  if (!state.activeWorkspace) state.activeWorkspace = registry.active_workspace || "personal";
+  const workspaces = registry.workspaces || [];
+  const select = $("workspace-select");
+  if (select) {
+    select.innerHTML = workspaces.map((ws) => `
+      <option value="${escapeHtml(ws.workspace_id)}" ${ws.workspace_id === state.activeWorkspace ? "selected" : ""}>
+        ${escapeHtml(ws.name)}${ws.type === "organization" ? " (org)" : ""}${ws.status === "archived" ? " · archived" : ""}
+      </option>
+    `).join("");
+  }
+  const active = workspaces.find((ws) => ws.workspace_id === state.activeWorkspace);
+  const rolePill = $("workspace-role");
+  if (rolePill) rolePill.textContent = active ? (active.your_role || "—") : "";
+  if (edition) {
+    const pill = $("edition-pill");
+    if (pill) pill.textContent = edition.edition || "community";
+  }
+  const list = $("workspace-list");
+  if (list) {
+    list.innerHTML = workspaces.length ? workspaces.map((ws) => `
+      <div class="list-item">
+        <div class="list-title">
+          <span>${escapeHtml(ws.name)}</span>
+          <span class="status-pill">${escapeHtml(ws.type)}</span>
+        </div>
+        <div class="meta-line">id: ${escapeHtml(ws.workspace_id)} · members: ${escapeHtml(ws.member_count)} · role: ${escapeHtml(ws.your_role || "—")} · ${escapeHtml(ws.status || "active")}</div>
+        <div class="item-actions">
+          ${ws.workspace_id === state.activeWorkspace ? `<span class="status-pill">active</span>` : `<button class="small-action" data-ws-action="activate" data-ws="${escapeHtml(ws.workspace_id)}"><i class="ti ti-switch-horizontal"></i>Switch</button>`}
+          ${ws.type === "organization" ? `<button class="small-action" data-ws-action="members" data-ws="${escapeHtml(ws.workspace_id)}"><i class="ti ti-users"></i>Members</button>` : ""}
+          ${ws.type === "organization" && ws.status !== "archived" ? `<button class="small-action" data-ws-action="archive" data-ws="${escapeHtml(ws.workspace_id)}"><i class="ti ti-archive"></i>Archive</button>` : ""}
+        </div>
+      </div>
+    `).join("") : `<div class="list-item"><div class="meta-line">No workspaces.</div></div>`;
+  }
+  renderMembers(workspaces);
+}
+
+function renderMembers(workspaces) {
+  const panel = $("member-panel");
+  if (!panel) return;
+  if (!state.managingWorkspace) {
+    panel.hidden = true;
+    return;
+  }
+  const ws = (workspaces || []).find((item) => item.workspace_id === state.managingWorkspace);
+  if (!ws || ws.type !== "organization") {
+    panel.hidden = true;
+    return;
+  }
+  panel.hidden = false;
+  const title = $("member-panel-title");
+  if (title) title.textContent = `Members — ${ws.name}`;
+  const members = ws.members || [];
+  $("member-list").innerHTML = members.length ? members.map((m) => `
+    <div class="list-item">
+      <div class="list-title"><span>${escapeHtml(m.user_id)}</span><span class="status-pill">${escapeHtml(m.role)}</span></div>
+      <div class="item-actions">
+        <select class="small-action" data-member-role="${escapeHtml(m.user_id)}" data-ws="${escapeHtml(ws.workspace_id)}">
+          ${["owner", "admin", "member", "viewer"].map((r) => `<option value="${r}" ${m.role === r ? "selected" : ""}>${r}</option>`).join("")}
+        </select>
+        <button class="small-action" data-member-remove="${escapeHtml(m.user_id)}" data-ws="${escapeHtml(ws.workspace_id)}"><i class="ti ti-user-minus"></i>Remove</button>
+      </div>
+    </div>
+  `).join("") : `<div class="list-item"><div class="meta-line">No members yet.</div></div>`;
+}
+
+async function activateWorkspace(workspaceId) {
+  await api("/workspace/activate", { method: "POST", body: JSON.stringify({ workspace_id: workspaceId }) });
+  state.activeWorkspace = workspaceId;
+  toast(`Switched to ${workspaceId}`);
+  await refreshAll();
+}
+
+async function createOrg() {
+  const name = ($("org-name").value || "").trim();
+  if (!name) return;
+  const result = await api("/workspace/orgs", { method: "POST", body: JSON.stringify({ name, settings: {} }) });
+  $("org-name").value = "";
+  toast(`Created ${result.workspace.workspace_id}`);
+  state.managingWorkspace = result.workspace.workspace_id;
+  await refreshAll();
+}
+
+async function addMember(workspaceId) {
+  const userId = ($("member-user").value || "").trim();
+  if (!userId) return;
+  await api(`/workspace/orgs/${encodeURIComponent(workspaceId)}/members`, {
+    method: "POST",
+    body: JSON.stringify({ user_id: userId, role: $("member-role").value }),
+  });
+  $("member-user").value = "";
+  toast(`Added ${userId}`);
+  await refreshAll();
+}
+
 async function refreshAll() {
   const [os, onboarding, traces, indexing, snapshots, memories, computerMemory, agents, workflows, skills, timeline] = await Promise.all([
     api("/workspace/os"),
@@ -242,6 +343,7 @@ async function refreshAll() {
   ]);
   state.os = os;
   renderMetrics(os);
+  if (os.workspace_registry) renderWorkspaceRegistry(os.workspace_registry, os.edition);
   renderOnboarding(onboarding);
   renderTraces(traces);
   renderIndexing(indexing);
@@ -357,6 +459,47 @@ document.addEventListener("click", async (event) => {
     });
     toast(`Skill ${skillBtn.dataset.skillAction}`);
     await refreshAll();
+    return;
+  }
+
+  const wsBtn = event.target.closest("[data-ws-action]");
+  if (wsBtn) {
+    const action = wsBtn.dataset.wsAction;
+    const ws = wsBtn.dataset.ws;
+    if (action === "activate") {
+      await activateWorkspace(ws);
+    } else if (action === "members") {
+      state.managingWorkspace = ws;
+      if (state.registry) renderMembers(state.registry.workspaces);
+    } else if (action === "archive") {
+      await api(`/workspace/orgs/${encodeURIComponent(ws)}/archive`, { method: "POST" });
+      toast(`Archived ${ws}`);
+      await refreshAll();
+    }
+    return;
+  }
+
+  const removeBtn = event.target.closest("[data-member-remove]");
+  if (removeBtn) {
+    await api(`/workspace/orgs/${encodeURIComponent(removeBtn.dataset.ws)}/members/${encodeURIComponent(removeBtn.dataset.memberRemove)}`, { method: "DELETE" });
+    toast("Member removed");
+    await refreshAll();
+  }
+});
+
+document.addEventListener("change", async (event) => {
+  const roleSelect = event.target.closest("[data-member-role]");
+  if (roleSelect) {
+    try {
+      await api(`/workspace/orgs/${encodeURIComponent(roleSelect.dataset.ws)}/members/${encodeURIComponent(roleSelect.dataset.memberRole)}`, {
+        method: "PATCH",
+        body: JSON.stringify({ role: roleSelect.value }),
+      });
+      toast("Role updated");
+      await refreshAll();
+    } catch (err) {
+      toast(err.message);
+    }
   }
 });
 
@@ -378,5 +521,11 @@ document.addEventListener("DOMContentLoaded", () => {
   }));
   $("create-demo-workflow").addEventListener("click", () => createDemoWorkflow().catch((err) => toast(err.message)));
   $("reload-skills").addEventListener("click", () => refreshAll().catch((err) => toast(err.message)));
+  $("workspace-select").addEventListener("change", (event) => activateWorkspace(event.target.value).catch((err) => toast(err.message)));
+  $("create-org").addEventListener("click", () => createOrg().catch((err) => toast(err.message)));
+  $("new-org-btn").addEventListener("click", () => $("org-name").focus());
+  $("add-member").addEventListener("click", () => {
+    if (state.managingWorkspace) addMember(state.managingWorkspace).catch((err) => toast(err.message));
+  });
   refreshAll().catch((err) => toast(err.message));
 });

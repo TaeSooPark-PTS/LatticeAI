@@ -8,7 +8,7 @@
   <link rel="icon" type="image/png" sizes="32x32" href="/icons/favicon-32.png">
   <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap">
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@latest/tabler-icons.min.css">
-  <link rel="stylesheet" href="/static/workspace.css?v=1.0.0">
+  <link rel="stylesheet" href="/static/workspace.css?v=1.1.0">
 </head>
 <body>
   <div class="workspace-shell">
@@ -41,12 +41,51 @@
           <h1>Workspace Command Center</h1>
         </div>
         <div class="top-actions">
+          <div class="workspace-switcher" title="Active workspace">
+            <i class="ti ti-building-community"></i>
+            <select id="workspace-select" aria-label="Active workspace"></select>
+            <span class="workspace-role-pill" id="workspace-role"></span>
+          </div>
+          <button class="icon-action" id="new-org-btn" title="New organization workspace"><i class="ti ti-plus"></i></button>
           <button class="icon-action" id="refresh-btn" title="Refresh"><i class="ti ti-refresh"></i></button>
           <button class="primary-action" id="snapshot-now"><i class="ti ti-device-floppy"></i><span>Snapshot</span></button>
         </div>
       </header>
 
       <section class="metric-grid" id="metric-grid"></section>
+
+      <section class="workspace-band" id="organization">
+        <div class="section-head">
+          <div>
+            <div class="eyebrow">Workspaces</div>
+            <h2>Personal &amp; Organization</h2>
+          </div>
+          <span class="status-pill" id="edition-pill">community</span>
+        </div>
+        <div class="inline-form" id="org-create-form">
+          <input id="org-name" placeholder="New organization workspace name">
+          <button class="secondary-action" id="create-org"><i class="ti ti-building-plus"></i><span>Create Org</span></button>
+        </div>
+        <div id="workspace-list" class="list-stack"></div>
+        <div class="workspace-panel" id="member-panel" hidden>
+          <div class="section-head">
+            <div>
+              <div class="eyebrow">Members</div>
+              <h2 id="member-panel-title">Manage Members</h2>
+            </div>
+          </div>
+          <div class="inline-form split">
+            <input id="member-user" placeholder="user@example.com">
+            <select id="member-role">
+              <option value="admin">admin</option>
+              <option value="member" selected>member</option>
+              <option value="viewer">viewer</option>
+            </select>
+            <button class="secondary-action" id="add-member"><i class="ti ti-user-plus"></i><span>Add</span></button>
+          </div>
+          <div id="member-list" class="list-stack"></div>
+        </div>
+      </section>
 
       <section class="workspace-band onboarding-band" id="onboarding">
         <div class="section-head">
@@ -194,6 +233,6 @@
   </div>
 
   <div class="toast" id="toast"></div>
-  <script src="/static/scripts/workspace.js?v=1.0.0"></script>
+  <script src="/static/scripts/workspace.js?v=1.1.0"></script>
 </body>
 </html>

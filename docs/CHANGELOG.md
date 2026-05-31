@@ -1,5 +1,55 @@
 # Changelog
 
+## [1.1.0] - 2026-05-31
+
+> Organization Workspace foundation, open-core Enterprise seam, and CI/release hardening.
+
+### Added
+
+- **Organization Workspace foundation** — Workspace OS now distinguishes
+  `personal` and `organization` workspace types. A full workspace model
+  (`workspace_id`, `name`, `type`, `owner_user_id`, `members`, `roles`,
+  `settings`, `created_at`, `updated_at`, `status`) is stored in the existing
+  local-first JSON store.
+- **Organization Workspace API** — create org workspace, list workspaces, get
+  workspace, update, archive (soft, non-destructive), add/remove member, update
+  member role, get workspace summary, activate workspace, and an edition info
+  endpoint, exposed under `/workspace/orgs/*`, `/workspace/registry`,
+  `/workspace/activate`, and `/workspace/editions`.
+- **Workspace roles and permissions** — `owner`, `admin`, `member`, `viewer`
+  mapped to `read` / `write` / `manage_members` / `manage_workspace`. Owners and
+  admins manage settings and members; members use the workspace; viewers are
+  read-only. Personal workspaces always grant their local user owner rights.
+- **Workspace-scoped data** — Snapshots, Memories, Agent runs, Workflows, answer
+  Traces, and Timeline events now carry a `workspace_id`. Reads accept an
+  optional `X-Workspace-Id` header / `workspace_id` query to scope results.
+- **Enterprise extension seam (open-core)** — new `latticeai/core/enterprise.py`
+  defines an `Edition` enum (`community`/`enterprise`), an
+  `EnterpriseCapability` enum, and a runtime `CapabilityRegistry` that a future,
+  separately-distributed Enterprise plugin can attach a provider to. The
+  Community build ships **zero** enabled Enterprise capabilities and restricts no
+  Community feature. Documented in `docs/ENTERPRISE.md` and
+  `docs/EDITION_STRATEGY.md`.
+- **Release artifact validator** — `scripts/validate_release_artifacts.py`
+  verifies that exactly the expected `whl`/`tar.gz`/`vsix`/`tgz` exist for a
+  single version, that internal versions match, that the VSIX contains
+  `extension/out/extension.js`, and warns when `dist/` mixes other versions.
+- **Workspace OS UI** — Personal/Organization workspace switcher, current
+  workspace indicator, and a minimal organization create / member / role panel
+  wired into the existing Workspace OS command center.
+
+### Changed
+
+- **CI / release hardening** — `release.yml` opts into Node.js 24
+  (`FORCE_JAVASCRIPT_ACTIONS_TO_NODE24`) and bumps `actions/checkout@v5`,
+  `actions/setup-node@v5`, `actions/setup-python@v6`. Artifact upload and
+  `twine check` are now scoped to the tagged version only — never a `dist/*`
+  glob — and the build runs the release artifact validator before upload.
+- Existing 1.0.x Workspace OS state is migrated non-destructively to the v1.1
+  workspace model on load; legacy records map to the Personal workspace.
+- Release metadata aligned to `1.1.0` across Python, npm, VS Code extension,
+  FastAPI app metadata, and `/health`.
+
 ## [1.0.1] - 2026-05-31
 
 > CI packaging fix for the VS Code extension build.

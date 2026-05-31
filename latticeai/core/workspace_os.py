@@ -18,7 +18,30 @@ from pathlib import Path
 from typing import Any, Callable, Dict, Iterable, List, Optional
 
 
-WORKSPACE_OS_VERSION = "1.0.1"
+WORKSPACE_OS_VERSION = "1.1.0"
+
+# Workspace types separate single-user Personal workspaces from shared
+# Organization workspaces. Both keep the same local-first JSON store; the type
+# only changes how membership and permissions are evaluated.
+WORKSPACE_TYPES = ("personal", "organization")
+
+DEFAULT_WORKSPACE_ID = "personal"
+
+# Role hierarchy for Organization workspaces. Personal workspaces always grant
+# their single local user the owner role.
+WORKSPACE_ROLES = ("owner", "admin", "member", "viewer")
+
+# Capability-style permissions. Kept intentionally small so Enterprise editions
+# can layer advanced RBAC/ABAC on top via the enterprise seam without changing
+# these community defaults.
+WORKSPACE_PERMISSIONS = ("read", "write", "manage_members", "manage_workspace")
+
+ROLE_PERMISSIONS: Dict[str, set] = {
+    "owner": {"read", "write", "manage_members", "manage_workspace"},
+    "admin": {"read", "write", "manage_members", "manage_workspace"},
+    "member": {"read", "write"},
+    "viewer": {"read"},
+}
 
 WORKSPACE_AREAS = [
     "graph",
@@ -150,26 +173,94 @@ class WorkspaceOSStore:
         self.snapshots_dir.mkdir(parents=True, exist_ok=True)
         self.exports_dir.mkdir(parents=True, exist_ok=True)
 
+    @staticmethod
+    def _new_workspace_record(
+        *,
+        workspace_id: str,
+        name: str,
+        workspace_type: str,
+        owner_user_id: Optional[str],
+        settings: Optional[Dict[str, Any]] = None,
+        members: Optional[List[Dict[str, Any]]] = None,
+    ) -> Dict[str, Any]:
+        if workspace_type not in WORKSPACE_TYPES:
+            raise ValueError(f"unknown workspace type: {workspace_type}")
+        now = _now()
+        member_list = list(members or [])
+        if owner_user_id and not any(m.get("user_id") == owner_user_id for m in member_list):
+            member_list.insert(0, {"user_id": owner_user_id, "role": "owner", "added_at": now})
+        return {
+            "workspace_id": workspace_id,
+            "id": workspace_id,
+            "name": name,
+            "type": workspace_type,
+            "owner_user_id": owner_user_id,
+            "members": member_list,
+            "roles": {role: sorted(perms) for role, perms in ROLE_PERMISSIONS.items()},
+            "status": "active",
+            "areas": list(WORKSPACE_AREAS),
+            "settings": settings or {},
+            "created_at": now,
+            "updated_at": now,
+        }
+
+    def _migrate_workspaces(self, state: Dict[str, Any]) -> Dict[str, Any]:
+        """Non-destructive upgrade of legacy workspace entries to the v1.1 model.
+
+        Existing 1.0.x state files stored minimal ``{id,name,type,areas}`` dicts.
+        This backfills membership/role/timestamp fields without dropping data and
+        guarantees the default Personal workspace always exists.
+        """
+        workspaces = state.get("workspaces")
+        if not isinstance(workspaces, dict):
+            workspaces = {}
+        migrated: Dict[str, Any] = {}
+        for ws_id, ws in workspaces.items():
+            if not isinstance(ws, dict):
+                continue
+            ws_type = ws.get("type") if ws.get("type") in WORKSPACE_TYPES else "organization"
+            if ws_id == DEFAULT_WORKSPACE_ID:
+                ws_type = "personal"
+            base = self._new_workspace_record(
+                workspace_id=ws_id,
+                name=ws.get("name") or ws_id,
+                workspace_type=ws_type,
+                owner_user_id=ws.get("owner_user_id"),
+                settings=ws.get("settings") or {},
+                members=ws.get("members") if isinstance(ws.get("members"), list) else None,
+            )
+            # Preserve any pre-existing timestamps / status from the loaded record.
+            base["created_at"] = ws.get("created_at") or base["created_at"]
+            base["updated_at"] = ws.get("updated_at") or base["updated_at"]
+            base["status"] = ws.get("status") or base["status"]
+            migrated[ws_id] = base
+        if DEFAULT_WORKSPACE_ID not in migrated:
+            migrated[DEFAULT_WORKSPACE_ID] = self._new_workspace_record(
+                workspace_id=DEFAULT_WORKSPACE_ID,
+                name="Personal Workspace",
+                workspace_type="personal",
+                owner_user_id=None,
+            )
+        state["workspaces"] = migrated
+        active = state.get("active_workspace")
+        if active not in migrated:
+            state["active_workspace"] = DEFAULT_WORKSPACE_ID
+        return state
+
     def _default_state(self) -> Dict[str, Any]:
         return {
             "version": WORKSPACE_OS_VERSION,
             "identity": "AI Workspace OS",
             "created_at": _now(),
             "updated_at": _now(),
-            "active_workspace": "personal",
+            "active_workspace": DEFAULT_WORKSPACE_ID,
             "workspaces": {
-                "personal": {
-                    "id": "personal",
-                    "name": "Personal Workspace",
-                    "type": "personal",
-                    "areas": list(WORKSPACE_AREAS),
-                },
-                "organization": {
-                    "id": "organization",
-                    "name": "Organization Workspace",
-                    "type": "organization",
-                    "areas": list(WORKSPACE_AREAS),
-                },
+                DEFAULT_WORKSPACE_ID: self._new_workspace_record(
+                    workspace_id=DEFAULT_WORKSPACE_ID,
+                    name="Personal Workspace",
+                    workspace_type="personal",
+                    owner_user_id=None,
+                ),
             },
             "feature_flags": {
                 "workspace_os": True,
@@ -180,6 +271,8 @@ class WorkspaceOSStore:
                 "workflow_graph": True,
                 "skill_marketplace": True,
                 "local_computer_memory": False,
+                "organization_workspaces": True,
+                "enterprise_seam": True,
             },
             "onboarding": {
                 "completed": False,
@@ -227,6 +320,7 @@ class WorkspaceOSStore:
             loaded = {}
         state = _deep_merge(default, loaded)
         state["version"] = WORKSPACE_OS_VERSION
+        self._migrate_workspaces(state)
         return state
 
     def save_state(self, state: Dict[str, Any]) -> Dict[str, Any]:
@@ -235,13 +329,14 @@ class WorkspaceOSStore:
         _atomic_write_json(self.state_path, state)
         return state
 
-    def record_timeline_event(self, area: str, event_type: str, payload: Dict[str, Any]) -> Dict[str, Any]:
+    def record_timeline_event(self, area: str, event_type: str, payload: Dict[str, Any], workspace_id: Optional[str] = None) -> Dict[str, Any]:
         state = self.load_state()
         event = {
             "id": f"timeline-{_json_hash([area, event_type, payload, _now()])[:16]}",
             "area": area,
             "event_type": event_type,
             "timestamp": _now(),
+            "workspace_id": self._resolve_scope(workspace_id, state),
             "payload": payload,
         }
         state.setdefault("timeline", []).append(event)
@@ -274,6 +369,269 @@ class WorkspaceOSStore:
                 "exports_dir": str(self.exports_dir),
             },
         }
+
+    # ------------------------------------------------------------------
+    # Organization workspaces, membership, and roles
+    # ------------------------------------------------------------------
+
+    def _active_workspace_id(self, state: Optional[Dict[str, Any]] = None) -> str:
+        state = state or self.load_state()
+        active = state.get("active_workspace") or DEFAULT_WORKSPACE_ID
+        if active not in (state.get("workspaces") or {}):
+            return DEFAULT_WORKSPACE_ID
+        return active
+
+    def _resolve_scope(self, workspace_id: Optional[str], state: Optional[Dict[str, Any]] = None) -> str:
+        """Resolve the workspace a write should be tagged with.
+
+        ``None`` falls back to the active workspace (Personal by default), so
+        legacy callers keep writing to the Personal workspace unchanged.
+        """
+        if workspace_id:
+            return str(workspace_id)
+        return self._active_workspace_id(state)
+
+    @staticmethod
+    def _record_workspace(record: Dict[str, Any]) -> str:
+        """Workspace a stored record belongs to (legacy records map to Personal)."""
+        return str(record.get("workspace_id") or DEFAULT_WORKSPACE_ID)
+
+    def _scoped(self, records: List[Dict[str, Any]], workspace_id: Optional[str]) -> List[Dict[str, Any]]:
+        if not workspace_id:
+            return records
+        target = str(workspace_id)
+        return [item for item in records if self._record_workspace(item) == target]
+
+    def list_workspaces(self, user_id: Optional[str] = None) -> Dict[str, Any]:
+        state = self.load_state()
+        workspaces = state.get("workspaces") or {}
+        items = []
+        for ws in workspaces.values():
+            if user_id and ws.get("type") == "organization":
+                role = self._member_role(ws, user_id)
+                if role is None:
+                    continue
+            items.append(self._workspace_public(ws, user_id))
+        items.sort(key=lambda w: (w.get("type") != "personal", w.get("created_at") or ""))
+        return {
+            "active_workspace": self._active_workspace_id(state),
+            "workspaces": items,
+            "roles": list(WORKSPACE_ROLES),
+            "permissions": {role: sorted(perms) for role, perms in ROLE_PERMISSIONS.items()},
+        }
+
+    def _workspace_public(self, ws: Dict[str, Any], user_id: Optional[str] = None) -> Dict[str, Any]:
+        return {
+            "workspace_id": ws.get("workspace_id") or ws.get("id"),
+            "id": ws.get("workspace_id") or ws.get("id"),
+            "name": ws.get("name"),
+            "type": ws.get("type"),
+            "owner_user_id": ws.get("owner_user_id"),
+            "status": ws.get("status", "active"),
+            "member_count": len(_listify(ws.get("members"))),
+            "members": _listify(ws.get("members")),
+            "settings": ws.get("settings") or {},
+            "created_at": ws.get("created_at"),
+            "updated_at": ws.get("updated_at"),
+            "your_role": self._member_role(ws, user_id) if user_id else ("owner" if ws.get("type") == "personal" else None),
+        }
+
+    def get_workspace(self, workspace_id: str, user_id: Optional[str] = None) -> Dict[str, Any]:
+        state = self.load_state()
+        ws = (state.get("workspaces") or {}).get(workspace_id)
+        if not ws:
+            raise FileNotFoundError(workspace_id)
+        return self._workspace_public(ws, user_id)
+
+    def create_organization_workspace(
+        self,
+        *,
+        name: str,
+        owner_user_id: Optional[str],
+        settings: Optional[Dict[str, Any]] = None,
+    ) -> Dict[str, Any]:
+        if not str(name or "").strip():
+            raise ValueError("workspace name is required")
+        state = self.load_state()
+        workspaces = state.setdefault("workspaces", {})
+        base = _safe_slug(f"org-{name}")
+        workspace_id = base
+        suffix = 2
+        while workspace_id in workspaces:
+            workspace_id = f"{base}-{suffix}"
+            suffix += 1
+        record = self._new_workspace_record(
+            workspace_id=workspace_id,
+            name=name.strip(),
+            workspace_type="organization",
+            owner_user_id=owner_user_id,
+            settings=settings or {},
+        )
+        workspaces[workspace_id] = record
+        self.save_state(state)
+        self.record_timeline_event("workspace", "workspace_created", {"workspace_id": workspace_id, "type": "organization"})
+        return self._workspace_public(record, owner_user_id)
+
+    @staticmethod
+    def _member_role(ws: Dict[str, Any], user_id: Optional[str]) -> Optional[str]:
+        if ws.get("type") == "personal":
+            return "owner"
+        owner = ws.get("owner_user_id")
+        # Local single-user / no-auth mode: an ownerless org is owned by the
+        # local user (who has no identity), so they can manage what they create.
+        if not owner and not user_id:
+            return "owner"
+        if user_id and user_id == owner:
+            return "owner"
+        for member in _listify(ws.get("members")):
+            if member.get("user_id") == user_id:
+                return member.get("role")
+        return None
+
+    def get_member_role(self, workspace_id: str, user_id: Optional[str]) -> Optional[str]:
+        ws = (self.load_state().get("workspaces") or {}).get(workspace_id)
+        if not ws:
+            raise FileNotFoundError(workspace_id)
+        return self._member_role(ws, user_id)
+
+    def has_permission(self, workspace_id: str, user_id: Optional[str], permission: str) -> bool:
+        try:
+            role = self.get_member_role(workspace_id, user_id)
+        except FileNotFoundError:
+            return False
+        if role is None:
+            return False
+        return permission in ROLE_PERMISSIONS.get(role, set())
+
+    def _require_permission(self, ws: Dict[str, Any], actor: Optional[str], permission: str) -> None:
+        role = self._member_role(ws, actor)
+        if role is None or permission not in ROLE_PERMISSIONS.get(role, set()):
+            raise PermissionError(
+                f"'{actor or 'anonymous'}' lacks '{permission}' on workspace '{ws.get('workspace_id')}'"
+            )
+
+    def _load_org(self, state: Dict[str, Any], workspace_id: str) -> Dict[str, Any]:
+        ws = (state.get("workspaces") or {}).get(workspace_id)
+        if not ws:
+            raise FileNotFoundError(workspace_id)
+        if ws.get("type") != "organization":
+            raise ValueError("operation only valid for organization workspaces")
+        return ws
+
+    def update_workspace(
+        self,
+        workspace_id: str,
+        *,
+        name: Optional[str] = None,
+        settings: Optional[Dict[str, Any]] = None,
+        actor: Optional[str] = None,
+    ) -> Dict[str, Any]:
+        state = self.load_state()
+        ws = self._load_org(state, workspace_id)
+        self._require_permission(ws, actor, "manage_workspace")
+        if name is not None and str(name).strip():
+            ws["name"] = str(name).strip()
+        if settings is not None:
+            ws["settings"] = {**(ws.get("settings") or {}), **settings}
+        ws["updated_at"] = _now()
+        self.save_state(state)
+        self.record_timeline_event("workspace", "workspace_updated", {"workspace_id": workspace_id})
+        return self._workspace_public(ws, actor)
+
+    def archive_workspace(self, workspace_id: str, *, actor: Optional[str] = None) -> Dict[str, Any]:
+        """Soft-archive an organization workspace. Data is never deleted."""
+        state = self.load_state()
+        ws = self._load_org(state, workspace_id)
+        self._require_permission(ws, actor, "manage_workspace")
+        ws["status"] = "archived"
+        ws["updated_at"] = _now()
+        if state.get("active_workspace") == workspace_id:
+            state["active_workspace"] = DEFAULT_WORKSPACE_ID
+        self.save_state(state)
+        self.record_timeline_event("workspace", "workspace_archived", {"workspace_id": workspace_id})
+        return self._workspace_public(ws, actor)
+
+    def add_member(self, workspace_id: str, *, user_id: str, role: str = "member", actor: Optional[str] = None) -> Dict[str, Any]:
+        if role not in WORKSPACE_ROLES:
+            raise ValueError(f"unknown role: {role}")
+        if not str(user_id or "").strip():
+            raise ValueError("user_id is required")
+        state = self.load_state()
+        ws = self._load_org(state, workspace_id)
+        self._require_permission(ws, actor, "manage_members")
+        members = ws.setdefault("members", [])
+        existing = next((m for m in members if m.get("user_id") == user_id), None)
+        if existing:
+            existing["role"] = role
+            existing["updated_at"] = _now()
+        else:
+            members.append({"user_id": user_id, "role": role, "added_at": _now()})
+        ws["updated_at"] = _now()
+        self.save_state(state)
+        self.record_timeline_event("workspace", "member_added", {"workspace_id": workspace_id, "user_id": user_id, "role": role})
+        return self._workspace_public(ws, actor)
+
+    def update_member_role(self, workspace_id: str, *, user_id: str, role: str, actor: Optional[str] = None) -> Dict[str, Any]:
+        if role not in WORKSPACE_ROLES:
+            raise ValueError(f"unknown role: {role}")
+        state = self.load_state()
+        ws = self._load_org(state, workspace_id)
+        self._require_permission(ws, actor, "manage_members")
+        if user_id == ws.get("owner_user_id") and role != "owner":
+            raise ValueError("cannot demote the workspace owner")
+        member = next((m for m in _listify(ws.get("members")) if m.get("user_id") == user_id), None)
+        if not member:
+            raise FileNotFoundError(user_id)
+        member["role"] = role
+        member["updated_at"] = _now()
+        ws["updated_at"] = _now()
+        self.save_state(state)
+        self.record_timeline_event("workspace", "member_role_updated", {"workspace_id": workspace_id, "user_id": user_id, "role": role})
+        return self._workspace_public(ws, actor)
+
+    def remove_member(self, workspace_id: str, *, user_id: str, actor: Optional[str] = None) -> Dict[str, Any]:
+        state = self.load_state()
+        ws = self._load_org(state, workspace_id)
+        self._require_permission(ws, actor, "manage_members")
+        if user_id == ws.get("owner_user_id"):
+            raise ValueError("cannot remove the workspace owner")
+        members = _listify(ws.get("members"))
+        kept = [m for m in members if m.get("user_id") != user_id]
+        if len(kept) == len(members):
+            raise FileNotFoundError(user_id)
+        ws["members"] = kept
+        ws["updated_at"] = _now()
+        self.save_state(state)
+        self.record_timeline_event("workspace", "member_removed", {"workspace_id": workspace_id, "user_id": user_id})
+        return self._workspace_public(ws, actor)
+
+    def set_active_workspace(self, workspace_id: str, user_id: Optional[str] = None) -> Dict[str, Any]:
+        state = self.load_state()
+        ws = (state.get("workspaces") or {}).get(workspace_id)
+        if not ws:
+            raise FileNotFoundError(workspace_id)
+        if ws.get("type") == "organization" and self._member_role(ws, user_id) is None:
+            raise PermissionError(f"'{user_id or 'anonymous'}' is not a member of '{workspace_id}'")
+        state["active_workspace"] = workspace_id
+        self.save_state(state)
+        self.record_timeline_event("workspace", "workspace_activated", {"workspace_id": workspace_id})
+        return self._workspace_public(ws, user_id)
+
+    def workspace_summary(self, workspace_id: str, user_id: Optional[str] = None) -> Dict[str, Any]:
+        state = self.load_state()
+        ws = (state.get("workspaces") or {}).get(workspace_id)
+        if not ws:
+            raise FileNotFoundError(workspace_id)
+        public = self._workspace_public(ws, user_id)
+        public["counts"] = {
+            "snapshots": len(self._scoped(_listify(state.get("snapshots")), workspace_id)),
+            "memories": len(self._scoped(_listify(state.get("memories")), workspace_id)),
+            "agent_runs": len(self._scoped(_listify(state.get("agent_runs")), workspace_id)),
+            "workflows": len(self._scoped(_listify(state.get("workflows")), workspace_id)),
+            "traces": len(self._scoped(_listify(state.get("traces")), workspace_id)),
+            "timeline": len(self._scoped(_listify(state.get("timeline")), workspace_id)),
+        }
+        return public
 
     # ------------------------------------------------------------------
     # Onboarding
@@ -438,6 +796,7 @@ class WorkspaceOSStore:
         conversation_id: Optional[str],
         user_email: Optional[str],
         trace: Dict[str, Any],
+        workspace_id: Optional[str] = None,
     ) -> Dict[str, Any]:
         state = self.load_state()
         trace_id = f"trace-{_json_hash([question, response, conversation_id, _now()])[:16]}"
@@ -447,6 +806,7 @@ class WorkspaceOSStore:
             "response_preview": str(response or "")[:700],
             "conversation_id": conversation_id,
             "user_email": user_email,
+            "workspace_id": self._resolve_scope(workspace_id, state),
             "created_at": _now(),
             **trace,
         }
@@ -456,8 +816,8 @@ class WorkspaceOSStore:
         self.record_timeline_event("graph", "answer_trace", {"trace_id": trace_id, "conversation_id": conversation_id})
         return record
 
-    def list_traces(self, conversation_id: Optional[str] = None, limit: int = 50) -> Dict[str, Any]:
-        traces = _listify(self.load_state().get("traces"))
+    def list_traces(self, conversation_id: Optional[str] = None, limit: int = 50, workspace_id: Optional[str] = None) -> Dict[str, Any]:
+        traces = self._scoped(_listify(self.load_state().get("traces")), workspace_id)
         if conversation_id:
             traces = [trace for trace in traces if trace.get("conversation_id") == conversation_id]
         return {"traces": list(reversed(traces[-max(1, min(limit, 200)):]))}
@@ -550,7 +910,9 @@ class WorkspaceOSStore:
         history: Iterable[Dict[str, Any]],
         settings: Dict[str, Any],
         models: Dict[str, Any],
+        workspace_id: Optional[str] = None,
     ) -> Dict[str, Any]:
+        scope = self._resolve_scope(workspace_id)
         graph_payload = {"nodes": [], "edges": []}
         graph_stats = {}
         local_sources = {"sources": []}
@@ -563,7 +925,8 @@ class WorkspaceOSStore:
             "version": WORKSPACE_OS_VERSION,
             "name": name or "Workspace snapshot",
             "created_at": _now(),
-            "workspace": self.load_state().get("active_workspace", "personal"),
+            "workspace": scope,
+            "workspace_id": scope,
             "graph": graph_payload,
             "graph_stats": graph_stats,
             "chat": chat,
@@ -581,6 +944,7 @@ class WorkspaceOSStore:
             "id": snapshot_id,
             "name": snapshot_body["name"],
             "created_at": snapshot_body["created_at"],
+            "workspace_id": scope,
             "path": str(path),
             "node_count": len(graph_payload.get("nodes") or []),
             "edge_count": len(graph_payload.get("edges") or []),
@@ -594,8 +958,8 @@ class WorkspaceOSStore:
         self.record_timeline_event("snapshot", "snapshot_saved", {"snapshot_id": snapshot_id, "name": name})
         return {"snapshot": meta}
 
-    def list_snapshots(self) -> Dict[str, Any]:
-        snapshots = _listify(self.load_state().get("snapshots"))
+    def list_snapshots(self, workspace_id: Optional[str] = None) -> Dict[str, Any]:
+        snapshots = self._scoped(_listify(self.load_state().get("snapshots")), workspace_id)
         return {"snapshots": list(reversed(snapshots))}
 
     def get_snapshot(self, snapshot_id: str) -> Dict[str, Any]:
@@ -682,18 +1046,18 @@ class WorkspaceOSStore:
             },
         }
 
-    def timeline(self, audit_events: Optional[Iterable[Dict[str, Any]]] = None, limit: int = 100) -> Dict[str, Any]:
+    def timeline(self, audit_events: Optional[Iterable[Dict[str, Any]]] = None, limit: int = 100, workspace_id: Optional[str] = None) -> Dict[str, Any]:
         state = self.load_state()
         events: List[Dict[str, Any]] = []
-        events.extend(_listify(state.get("timeline")))
-        for snapshot in _listify(state.get("snapshots")):
-            events.append({"area": "snapshot", "event_type": "snapshot", "timestamp": snapshot.get("created_at"), "payload": snapshot})
-        for trace in _listify(state.get("traces")):
-            events.append({"area": "graph", "event_type": "answer_trace", "timestamp": trace.get("created_at"), "payload": trace})
-        for run in _listify(state.get("agent_runs")):
-            events.append({"area": "agent", "event_type": "agent_run", "timestamp": run.get("created_at"), "payload": run})
-        for workflow in _listify(state.get("workflows")):
-            events.append({"area": "workflow", "event_type": "workflow", "timestamp": workflow.get("created_at"), "payload": workflow})
+        events.extend(self._scoped(_listify(state.get("timeline")), workspace_id))
+        for snapshot in self._scoped(_listify(state.get("snapshots")), workspace_id):
+            events.append({"area": "snapshot", "event_type": "snapshot", "timestamp": snapshot.get("created_at"), "workspace_id": self._record_workspace(snapshot), "payload": snapshot})
+        for trace in self._scoped(_listify(state.get("traces")), workspace_id):
+            events.append({"area": "graph", "event_type": "answer_trace", "timestamp": trace.get("created_at"), "workspace_id": self._record_workspace(trace), "payload": trace})
+        for run in self._scoped(_listify(state.get("agent_runs")), workspace_id):
+            events.append({"area": "agent", "event_type": "agent_run", "timestamp": run.get("created_at"), "workspace_id": self._record_workspace(run), "payload": run})
+        for workflow in self._scoped(_listify(state.get("workflows")), workspace_id):
+            events.append({"area": "workflow", "event_type": "workflow", "timestamp": workflow.get("created_at"), "workspace_id": self._record_workspace(workflow), "payload": workflow})
         for audit in audit_events or []:
             events.append({"area": "audit", "event_type": audit.get("event_type") or "audit", "timestamp": audit.get("timestamp"), "payload": audit})
         events.sort(key=lambda item: item.get("timestamp") or "", reverse=True)
@@ -713,6 +1077,7 @@ class WorkspaceOSStore:
         memory_id: Optional[str] = None,
         metadata: Optional[Dict[str, Any]] = None,
         graph: Any = None,
+        workspace_id: Optional[str] = None,
     ) -> Dict[str, Any]:
         if kind not in MEMORY_KINDS:
             raise ValueError(f"unknown memory kind: {kind}")
@@ -733,6 +1098,7 @@ class WorkspaceOSStore:
             "user_email": user_email,
             "tags": tags or [],
             "metadata": metadata or {},
+            "workspace_id": self._resolve_scope(workspace_id, state) if existing is None else self._record_workspace(record),
             "updated_at": now,
         })
         if graph is not None:
@@ -754,17 +1120,17 @@ class WorkspaceOSStore:
         self.record_timeline_event("memory", "memory_upserted", {"memory_id": memory_id, "kind": kind})
         return record
 
-    def list_memories(self, user_email: Optional[str] = None, kind: Optional[str] = None) -> Dict[str, Any]:
-        memories = _listify(self.load_state().get("memories"))
+    def list_memories(self, user_email: Optional[str] = None, kind: Optional[str] = None, workspace_id: Optional[str] = None) -> Dict[str, Any]:
+        memories = self._scoped(_listify(self.load_state().get("memories")), workspace_id)
         if user_email:
             memories = [item for item in memories if item.get("user_email") in {None, user_email}]
         if kind:
             memories = [item for item in memories if item.get("kind") == kind]
         return {"memories": list(reversed(memories))}
 
-    def search_memories(self, query: str, user_email: Optional[str] = None, limit: int = 20) -> Dict[str, Any]:
+    def search_memories(self, query: str, user_email: Optional[str] = None, limit: int = 20, workspace_id: Optional[str] = None) -> Dict[str, Any]:
         q = str(query or "").lower().strip()
-        memories = self.list_memories(user_email=user_email).get("memories", [])
+        memories = self.list_memories(user_email=user_email, workspace_id=workspace_id).get("memories", [])
         if q:
             memories = [
                 item for item in memories
@@ -789,9 +1155,10 @@ class WorkspaceOSStore:
     # Agent and workflow graph
     # ------------------------------------------------------------------
 
-    def list_agents(self) -> Dict[str, Any]:
+    def list_agents(self, workspace_id: Optional[str] = None) -> Dict[str, Any]:
         state = self.load_state()
-        return {"agents": _listify(state.get("agents")), "runs": list(reversed(_listify(state.get("agent_runs"))[-100:]))}
+        runs = self._scoped(_listify(state.get("agent_runs")), workspace_id)
+        return {"agents": _listify(state.get("agents")), "runs": list(reversed(runs[-100:]))}
 
     def record_agent_run(
         self,
@@ -804,6 +1171,7 @@ class WorkspaceOSStore:
         timeline: Optional[List[Dict[str, Any]]] = None,
         relationships: Optional[List[str]] = None,
         graph: Any = None,
+        workspace_id: Optional[str] = None,
     ) -> Dict[str, Any]:
         state = self.load_state()
         run = {
@@ -813,6 +1181,7 @@ class WorkspaceOSStore:
             "input": input_text,
             "output_preview": output_text[:1000],
             "user_email": user_email,
+            "workspace_id": self._resolve_scope(workspace_id, state),
             "relationships": relationships or [],
             "timeline": timeline or [],
             "created_at": _now(),
@@ -843,6 +1212,7 @@ class WorkspaceOSStore:
         user_email: Optional[str],
         metadata: Optional[Dict[str, Any]] = None,
         graph: Any = None,
+        workspace_id: Optional[str] = None,
     ) -> Dict[str, Any]:
         state = self.load_state()
         workflow = {
@@ -850,6 +1220,7 @@ class WorkspaceOSStore:
             "name": name or "Untitled workflow",
             "steps": steps,
             "user_email": user_email,
+            "workspace_id": self._resolve_scope(workspace_id, state),
             "metadata": metadata or {},
             "events": [{"type": "created", "timestamp": _now()}],
             "created_at": _now(),
@@ -873,8 +1244,8 @@ class WorkspaceOSStore:
         self.record_timeline_event("workflow", "workflow_created", {"workflow_id": workflow["id"], "name": workflow["name"]})
         return workflow
 
-    def list_workflows(self, query: str = "") -> Dict[str, Any]:
-        workflows = list(reversed(_listify(self.load_state().get("workflows"))))
+    def list_workflows(self, query: str = "", workspace_id: Optional[str] = None) -> Dict[str, Any]:
+        workflows = list(reversed(self._scoped(_listify(self.load_state().get("workflows")), workspace_id)))
         q = str(query or "").lower().strip()
         if q:
             workflows = [

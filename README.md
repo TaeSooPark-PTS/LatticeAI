@@ -36,6 +36,21 @@ Automatic knowledge graph
 Graph-aware chat, snapshots, memory, agents, workflows, skills, and timeline
 ```
 
+### New in 1.1.0: Organization Workspace Foundation
+
+- **Organization Workspace** alongside Personal Workspace — create shared org
+  workspaces, list/switch between them, and archive (non-destructively)
+- **Workspace roles & permissions** — `owner`, `admin`, `member`, `viewer`
+  mapped to read / write / manage-members / manage-workspace
+- **Workspace-scoped data** — snapshots, memory, agent runs, workflows, traces,
+  and timeline carry a `workspace_id`; reads scope via the `X-Workspace-Id` header
+- **CI / release hardening** — Node.js 24 ready workflow, version-scoped
+  artifact upload (never `dist/*`), and a release artifact validator
+- **Enterprise extension foundation (open-core)** — a stable seam for a future
+  Enterprise plugin; Community ships everything it has today, unrestricted
+  (see [docs/ENTERPRISE.md](docs/ENTERPRISE.md) and
+  [docs/EDITION_STRATEGY.md](docs/EDITION_STRATEGY.md))
+
 ### New in 1.0.0: AI Workspace OS
 
 - Workspace OS command center at `/workspace`

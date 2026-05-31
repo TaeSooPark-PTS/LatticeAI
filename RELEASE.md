@@ -9,6 +9,34 @@
 > PyPI / npm / VS Code Marketplace / Open VSX 배포는 아래 수동 절차로 로컬에서
 > 직접 인증 후 진행합니다. GitHub Secrets에 배포 토큰을 저장하지 않습니다.
 
+## v1.1.0 릴리스 노트 (2026-05-31)
+
+Organization Workspace foundation + open-core Enterprise seam + CI/release
+하드닝. 자세한 내용은 [`docs/CHANGELOG.md`](docs/CHANGELOG.md)의 `[1.1.0]` 항목 참고.
+
+- **Added**: Personal / Organization workspace 분리 모델(`workspace_id`, `type`,
+  `owner_user_id`, `members`, `roles`, `settings`)과 `/workspace/orgs/*`,
+  `/workspace/registry`, `/workspace/activate`, `/workspace/editions` API.
+- **Added**: owner/admin/member/viewer 역할과 read/write/manage_members/
+  manage_workspace 권한. Snapshot/Memory/Agent/Workflow/Trace/Timeline에
+  `workspace_id` 스코핑(`X-Workspace-Id` 헤더).
+- **Added**: open-core Enterprise seam(`latticeai/core/enterprise.py`) —
+  `Edition`/`EnterpriseCapability` enum + `CapabilityRegistry`. Community는 어떤
+  Enterprise 기능도 활성화하지 않으며 Community 기능을 제한하지 않음.
+  `docs/ENTERPRISE.md`, `docs/EDITION_STRATEGY.md` 참고.
+- **Added**: `scripts/validate_release_artifacts.py` — 단일 버전 산출물 존재/버전
+  일치/VSIX entrypoint 검증, `dist/*` 글롭 혼입 경고.
+- **Changed**: `release.yml` Node.js 24 대응(`FORCE_JAVASCRIPT_ACTIONS_TO_NODE24`),
+  `actions/checkout@v5`/`setup-node@v5`/`setup-python@v6`로 갱신. 산출물 업로드와
+  `twine check`를 태그 버전으로만 한정 — **`dist/*` 글롭 업로드 금지**.
+- **Changed**: 1.0.x Workspace OS state는 로드 시 비파괴 마이그레이션으로 v1.1
+  모델로 승격(레거시 레코드는 Personal workspace로 매핑).
+- 테스트/빌드/패키징 산출물만 생성 — 어떤 배포도 수행하지 않음.
+
+> **릴리스 산출물 업로드 규칙**: PyPI/npm/VSIX 업로드 시 `dist/*` 글롭을 쓰지 말고
+> 항상 해당 버전 파일명만 명시한다. CI는 `validate_release_artifacts.py`로 이를
+> 강제한다.
+
 ## v1.0.1 릴리스 노트 (2026-05-31)
 
 CI packaging 회귀 수정 patch. 자세한 내용은

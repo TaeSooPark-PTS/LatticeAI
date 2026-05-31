@@ -96,6 +96,11 @@ from latticeai.core.workspace_os import (
     WorkspaceOSStore,
     remove_skill_directory,
 )
+from latticeai.core.enterprise import (
+    EnterpriseCapability,
+    capability_registry,
+    detect_edition,
+)
 from latticeai.core.agent import (
     AgentState,
     AgentRunContext,
@@ -1507,6 +1512,29 @@ class WorkspaceVSCodeRequest(BaseModel):
     prompt: str = ""
 
 
+class WorkspaceCreateRequest(BaseModel):
+    name: str
+    settings: Dict = {}
+
+
+class WorkspaceUpdateRequest(BaseModel):
+    name: Optional[str] = None
+    settings: Optional[Dict] = None
+
+
+class WorkspaceMemberRequest(BaseModel):
+    user_id: str
+    role: str = "member"
+
+
+class WorkspaceMemberRoleRequest(BaseModel):
+    role: str
+
+
+class WorkspaceActivateRequest(BaseModel):
+    workspace_id: str
+
+
 class GardenRequest(BaseModel):
     raw_data: str
     category: Optional[str] = None       # 10_Wiki / 00_Raw / Skills
@@ -1708,12 +1736,27 @@ def _workspace_graph():
     return KNOWLEDGE_GRAPH if (ENABLE_GRAPH and KNOWLEDGE_GRAPH) else None
 
 
+def _workspace_scope(request: Request) -> Optional[str]:
+    """Resolve the active workspace for scoping from an optional header/query.
+
+    Returns ``None`` when unset so the store falls back to the active workspace
+    (Personal by default), preserving pre-1.1 behaviour for legacy clients.
+    """
+    header = request.headers.get("X-Workspace-Id")
+    if header and header.strip():
+        return header.strip()
+    query = request.query_params.get("workspace_id")
+    return query.strip() if query and query.strip() else None
+
+
 @app.get("/workspace/os")
 async def workspace_os_summary(request: Request):
-    require_user(request)
+    user = require_user(request)
     summary = WORKSPACE_OS.summary()
     summary["graph"] = _graph_stats_safe()
     summary["models"] = _workspace_models_payload()
+    summary["workspace_registry"] = WORKSPACE_OS.list_workspaces(user_id=user or None)
+    summary["edition"] = capability_registry.describe()
     return summary
 
 
@@ -1770,7 +1813,7 @@ async def workspace_onboarding_model_recommendations(request: Request):
 @app.get("/workspace/traces")
 async def workspace_traces(request: Request, conversation_id: Optional[str] = None, limit: int = 50):
     require_user(request)
-    return WORKSPACE_OS.list_traces(conversation_id=conversation_id, limit=limit)
+    return WORKSPACE_OS.list_traces(conversation_id=conversation_id, limit=limit, workspace_id=_workspace_scope(request))
 
 
 @app.get("/workspace/indexing")
@@ -1805,7 +1848,7 @@ async def workspace_indexing_remove(source_id: str, request: Request):
 @app.get("/workspace/snapshots")
 async def workspace_snapshots(request: Request):
     require_user(request)
-    return WORKSPACE_OS.list_snapshots()
+    return WORKSPACE_OS.list_snapshots(workspace_id=_workspace_scope(request))
 
 
 @app.post("/workspace/snapshots")
@@ -1817,6 +1860,7 @@ async def workspace_snapshot_create(req: WorkspaceSnapshotRequest, request: Requ
         history=get_history(),
         settings=_workspace_settings_payload(),
         models=_workspace_models_payload(),
+        workspace_id=_workspace_scope(request),
     )
     append_audit_event("workspace_snapshot", user_email=current_user, snapshot_id=result["snapshot"]["id"])
     return result
@@ -1863,7 +1907,7 @@ async def workspace_snapshot_export(snapshot_id: str, request: Request):
 @app.get("/workspace/time-machine")
 async def workspace_time_machine(request: Request, limit: int = 100):
     require_user(request)
-    return WORKSPACE_OS.timeline(get_audit_log(), limit=limit)
+    return WORKSPACE_OS.timeline(get_audit_log(), limit=limit, workspace_id=_workspace_scope(request))
 
 
 @app.get("/workspace/time-machine/{snapshot_id}/{area}")
@@ -1878,13 +1922,13 @@ async def workspace_time_machine_view(snapshot_id: str, area: str, request: Requ
 @app.get("/workspace/memories")
 async def workspace_memories(request: Request, kind: Optional[str] = None):
     current_user = require_user(request)
-    return WORKSPACE_OS.list_memories(user_email=current_user or None, kind=kind)
+    return WORKSPACE_OS.list_memories(user_email=current_user or None, kind=kind, workspace_id=_workspace_scope(request))
 
 
 @app.get("/workspace/memories/search")
 async def workspace_memory_search(q: str, request: Request, limit: int = 20):
     current_user = require_user(request)
-    return WORKSPACE_OS.search_memories(q, user_email=current_user or None, limit=limit)
+    return WORKSPACE_OS.search_memories(q, user_email=current_user or None, limit=limit, workspace_id=_workspace_scope(request))
 
 
 @app.post("/workspace/memories")
@@ -1899,6 +1943,7 @@ async def workspace_memory_upsert(req: WorkspaceMemoryRequest, request: Request)
             metadata=req.metadata,
             user_email=current_user or None,
             graph=_workspace_graph(),
+            workspace_id=_workspace_scope(request),
         )
     except ValueError as exc:
         raise HTTPException(status_code=400, detail=str(exc)) from exc
@@ -1917,7 +1962,7 @@ async def workspace_memory_delete(memory_id: str, request: Request):
 @app.get("/workspace/agents")
 async def workspace_agents(request: Request):
     require_user(request)
-    return WORKSPACE_OS.list_agents()
+    return WORKSPACE_OS.list_agents(workspace_id=_workspace_scope(request))
 
 
 @app.post("/workspace/agents/runs")
@@ -1932,6 +1977,7 @@ async def workspace_agent_run(req: WorkspaceAgentRunRequest, request: Request):
         relationships=req.relationships,
         user_email=current_user or None,
         graph=_workspace_graph(),
+        workspace_id=_workspace_scope(request),
     )
     return {"run": run}
 
@@ -1974,7 +2020,7 @@ async def workspace_computer_memory_activity(req: WorkspaceComputerActivityReque
 @app.get("/workspace/workflows")
 async def workspace_workflows(request: Request, q: str = ""):
     require_user(request)
-    return WORKSPACE_OS.list_workflows(query=q)
+    return WORKSPACE_OS.list_workflows(query=q, workspace_id=_workspace_scope(request))
 
 
 @app.post("/workspace/workflows")
@@ -1986,6 +2032,7 @@ async def workspace_workflow_create(req: WorkspaceWorkflowRequest, request: Requ
         metadata=req.metadata,
         user_email=current_user or None,
         graph=_workspace_graph(),
+        workspace_id=_workspace_scope(request),
     )
     return {"workflow": workflow}
 
@@ -2112,6 +2159,139 @@ async def workspace_vscode_send(req: WorkspaceVSCodeRequest, request: Request):
         except Exception as exc:
             logging.warning("vscode workflow graph ingest failed: %s", exc)
     return {"status": "ok", "workflow": workflow}
+
+
+# ── Organization Workspaces, membership, roles, and edition seam ─────────────────
+
+@app.get("/workspace/registry")
+async def workspace_registry(request: Request):
+    user = require_user(request)
+    return WORKSPACE_OS.list_workspaces(user_id=user or None)
+
+
+@app.get("/workspace/editions")
+async def workspace_editions(request: Request):
+    require_user(request)
+    return capability_registry.describe()
+
+
+@app.post("/workspace/activate")
+async def workspace_activate(req: WorkspaceActivateRequest, request: Request):
+    user = require_user(request)
+    try:
+        return WORKSPACE_OS.set_active_workspace(req.workspace_id, user_id=user or None)
+    except FileNotFoundError as exc:
+        raise HTTPException(status_code=404, detail=f"Workspace not found: {exc}") from exc
+    except PermissionError as exc:
+        raise HTTPException(status_code=403, detail=str(exc)) from exc
+
+
+@app.post("/workspace/orgs")
+async def workspace_org_create(req: WorkspaceCreateRequest, request: Request):
+    user = require_user(request)
+    try:
+        workspace = WORKSPACE_OS.create_organization_workspace(
+            name=req.name,
+            owner_user_id=user or None,
+            settings=req.settings,
+        )
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
+    append_audit_event("workspace_created", user_email=user, workspace_id=workspace["workspace_id"])
+    return {"workspace": workspace}
+
+
+@app.get("/workspace/orgs/{workspace_id}")
+async def workspace_org_get(workspace_id: str, request: Request):
+    user = require_user(request)
+    try:
+        return {"workspace": WORKSPACE_OS.get_workspace(workspace_id, user_id=user or None)}
+    except FileNotFoundError as exc:
+        raise HTTPException(status_code=404, detail=f"Workspace not found: {exc}") from exc
+
+
+@app.get("/workspace/orgs/{workspace_id}/summary")
+async def workspace_org_summary(workspace_id: str, request: Request):
+    user = require_user(request)
+    try:
+        return WORKSPACE_OS.workspace_summary(workspace_id, user_id=user or None)
+    except FileNotFoundError as exc:
+        raise HTTPException(status_code=404, detail=f"Workspace not found: {exc}") from exc
+
+
+@app.patch("/workspace/orgs/{workspace_id}")
+async def workspace_org_update(workspace_id: str, req: WorkspaceUpdateRequest, request: Request):
+    user = require_user(request)
+    try:
+        workspace = WORKSPACE_OS.update_workspace(workspace_id, name=req.name, settings=req.settings, actor=user or None)
+    except FileNotFoundError as exc:
+        raise HTTPException(status_code=404, detail=f"Workspace not found: {exc}") from exc
+    except PermissionError as exc:
+        raise HTTPException(status_code=403, detail=str(exc)) from exc
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
+    append_audit_event("workspace_updated", user_email=user, workspace_id=workspace_id)
+    return {"workspace": workspace}
+
+
+@app.post("/workspace/orgs/{workspace_id}/archive")
+async def workspace_org_archive(workspace_id: str, request: Request):
+    user = require_user(request)
+    try:
+        workspace = WORKSPACE_OS.archive_workspace(workspace_id, actor=user or None)
+    except FileNotFoundError as exc:
+        raise HTTPException(status_code=404, detail=f"Workspace not found: {exc}") from exc
+    except PermissionError as exc:
+        raise HTTPException(status_code=403, detail=str(exc)) from exc
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
+    append_audit_event("workspace_archived", user_email=user, workspace_id=workspace_id)
+    return {"workspace": workspace}
+
+
+@app.post("/workspace/orgs/{workspace_id}/members")
+async def workspace_org_add_member(workspace_id: str, req: WorkspaceMemberRequest, request: Request):
+    user = require_user(request)
+    try:
+        workspace = WORKSPACE_OS.add_member(workspace_id, user_id=req.user_id, role=req.role, actor=user or None)
+    except FileNotFoundError as exc:
+        raise HTTPException(status_code=404, detail=f"Workspace not found: {exc}") from exc
+    except PermissionError as exc:
+        raise HTTPException(status_code=403, detail=str(exc)) from exc
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
+    append_audit_event("workspace_member_added", user_email=user, workspace_id=workspace_id, member=req.user_id, role=req.role)
+    return {"workspace": workspace}
+
+
+@app.patch("/workspace/orgs/{workspace_id}/members/{user_id}")
+async def workspace_org_update_member(workspace_id: str, user_id: str, req: WorkspaceMemberRoleRequest, request: Request):
+    user = require_user(request)
+    try:
+        workspace = WORKSPACE_OS.update_member_role(workspace_id, user_id=user_id, role=req.role, actor=user or None)
+    except FileNotFoundError as exc:
+        raise HTTPException(status_code=404, detail=f"Not found: {exc}") from exc
+    except PermissionError as exc:
+        raise HTTPException(status_code=403, detail=str(exc)) from exc
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
+    append_audit_event("workspace_member_role_updated", user_email=user, workspace_id=workspace_id, member=user_id, role=req.role)
+    return {"workspace": workspace}
+
+
+@app.delete("/workspace/orgs/{workspace_id}/members/{user_id}")
+async def workspace_org_remove_member(workspace_id: str, user_id: str, request: Request):
+    user = require_user(request)
+    try:
+        workspace = WORKSPACE_OS.remove_member(workspace_id, user_id=user_id, actor=user or None)
+    except FileNotFoundError as exc:
+        raise HTTPException(status_code=404, detail=f"Not found: {exc}") from exc
+    except PermissionError as exc:
+        raise HTTPException(status_code=403, detail=str(exc)) from exc
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
+    append_audit_event("workspace_member_removed", user_email=user, workspace_id=workspace_id, member=user_id)
+    return {"workspace": workspace}
 
 
 # ── Health & Info ──────────────────────────────────────────────────────────────

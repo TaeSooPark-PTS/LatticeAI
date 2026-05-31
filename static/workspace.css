@@ -513,3 +513,34 @@ textarea {
     grid-template-columns: 1fr;
   }
 }
+
+/* Workspace switcher + organization management (v1.1.0) */
+.workspace-switcher {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 10px;
+  border-radius: 10px;
+  background: rgba(255, 255, 255, 0.06);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+}
+.workspace-switcher select {
+  background: transparent;
+  border: none;
+  color: inherit;
+  font: inherit;
+  font-weight: 600;
+  max-width: 220px;
+}
+.workspace-role-pill {
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  opacity: 0.75;
+}
+#member-panel {
+  margin-top: 16px;
+}
+#org-create-form {
+  margin-bottom: 12px;
+}
