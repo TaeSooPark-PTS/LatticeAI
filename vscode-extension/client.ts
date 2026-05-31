@@ -93,6 +93,19 @@ export class LatticeAIClient {
     return this._get("/garden/tree");
   }
 
+  // ── Workspace OS ─────────────────────────────────────────────────────────
+
+  async sendToWorkspace(payload: {
+    action: string;
+    file_path?: string;
+    language?: string;
+    content?: string;
+    selection?: string;
+    prompt?: string;
+  }): Promise<any> {
+    return this._post("/workspace/vscode/send", payload);
+  }
+
   // ── HTTP Helpers ──────────────────────────────────────────────────────────
 
   private _get(path: string): Promise<any> {

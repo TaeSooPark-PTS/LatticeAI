@@ -9,6 +9,24 @@
 > PyPI / npm / VS Code Marketplace / Open VSX 배포는 아래 수동 절차로 로컬에서
 > 직접 인증 후 진행합니다. GitHub Secrets에 배포 토큰을 저장하지 않습니다.
 
+## v1.0.0 릴리스 노트 (2026-05-31)
+
+AI Workspace OS integration release. 자세한 내용은
+[`docs/CHANGELOG.md`](docs/CHANGELOG.md)의 `[1.0.0]` 항목 참고.
+
+- **Added**: `/workspace` command center and `/workspace/*` APIs for Graph,
+  Snapshot, Memory, Agent, Workflow, Skills, and Timeline.
+- **Added**: reentrant first-run onboarding, Graph RAG answer traces, indexing
+  dashboard, snapshots, Time Machine, Knowledge Diff, Personal Memory,
+  Multi-Agent Graph, Relationship Explorer, approval-gated Local Computer
+  Memory, Skill Marketplace state, and Workflow Graph.
+- **Added**: VS Code workflow commands for Refactor Selection, Generate Tests,
+  Send To Lattice, and Ask About Current File while preserving Explain
+  Selection.
+- **Changed**: Python/npm/VS Code extension/FastAPI `/health` 버전을 `1.0.0`
+  으로 정렬.
+- 테스트/빌드/패키징 산출물만 생성 — 어떤 배포도 수행하지 않음.
+
 ## v0.6.0 릴리스 노트 (2026-05-31)
 
 Runtime / registry / config extraction release. 자세한 내용은

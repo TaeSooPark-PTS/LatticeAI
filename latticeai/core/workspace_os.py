@@ -1,0 +1,1178 @@
+"""Workspace OS persistence and orchestration primitives.
+
+This module keeps the 1.0 Workspace OS surface intentionally local-first:
+state is stored as JSON under the configured LatticeAI data directory, graph
+operations are additive, and snapshots are immutable files that can be
+exported or compared without mutating the live knowledge graph.
+"""
+
+from __future__ import annotations
+
+import json
+import os
+import shutil
+import zipfile
+from collections import deque
+from datetime import datetime
+from pathlib import Path
+from typing import Any, Callable, Dict, Iterable, List, Optional
+
+
+WORKSPACE_OS_VERSION = "1.0.0"
+
+WORKSPACE_AREAS = [
+    "graph",
+    "snapshot",
+    "memory",
+    "agent",
+    "workflow",
+    "skills",
+    "timeline",
+]
+
+ONBOARDING_STEPS = [
+    "account",
+    "admin",
+    "hardware",
+    "model_recommendation",
+    "model_install",
+    "model_connection",
+    "folder_connection",
+    "first_question",
+    "complete",
+]
+
+MEMORY_KINDS = {
+    "preferences",
+    "decisions",
+    "working_style",
+    "frequently_used_tools",
+    "long_term",
+}
+
+DEFAULT_AGENTS = [
+    {
+        "id": "agent:planner",
+        "name": "Planner",
+        "role": "Breaks workspace goals into executable plans.",
+        "status": "available",
+        "relationships": ["agent:executor", "agent:reviewer"],
+    },
+    {
+        "id": "agent:executor",
+        "name": "Executor",
+        "role": "Runs approved tool and code workflows.",
+        "status": "available",
+        "relationships": ["agent:planner", "agent:reviewer"],
+    },
+    {
+        "id": "agent:reviewer",
+        "name": "Reviewer",
+        "role": "Checks outputs, tests, and regressions.",
+        "status": "available",
+        "relationships": ["agent:executor", "agent:release"],
+    },
+    {
+        "id": "agent:researcher",
+        "name": "Researcher",
+        "role": "Finds and curates relevant workspace knowledge.",
+        "status": "available",
+        "relationships": ["agent:planner"],
+    },
+    {
+        "id": "agent:release",
+        "name": "Release Agent",
+        "role": "Coordinates versioning, packaging, and release checks.",
+        "status": "available",
+        "relationships": ["agent:reviewer"],
+    },
+]
+
+
+def _now() -> str:
+    return datetime.now().isoformat(timespec="seconds")
+
+
+def _safe_slug(raw: str) -> str:
+    value = "".join(ch if ch.isalnum() or ch in "-_." else "-" for ch in str(raw or "").strip())
+    value = "-".join(part for part in value.split("-") if part)
+    return (value or "item")[:96]
+
+
+def _json_hash(value: Any) -> str:
+    import hashlib
+
+    payload = json.dumps(value, ensure_ascii=False, sort_keys=True, default=str)
+    return hashlib.sha256(payload.encode("utf-8", errors="replace")).hexdigest()
+
+
+def _deep_merge(default: Any, loaded: Any) -> Any:
+    if isinstance(default, dict) and isinstance(loaded, dict):
+        merged = {key: _deep_merge(value, loaded.get(key)) for key, value in default.items()}
+        for key, value in loaded.items():
+            if key not in merged:
+                merged[key] = value
+        return merged
+    if loaded is None:
+        return default
+    return loaded
+
+
+def _atomic_write_json(path: Path, payload: Dict[str, Any]) -> None:
+    path.parent.mkdir(parents=True, exist_ok=True)
+    tmp_path = path.with_suffix(path.suffix + ".tmp")
+    tmp_path.write_text(json.dumps(payload, ensure_ascii=False, indent=2), encoding="utf-8")
+    os.replace(tmp_path, path)
+
+
+def _listify(value: Any) -> List[Any]:
+    return value if isinstance(value, list) else []
+
+
+def _parse_iso(value: Optional[str]) -> Optional[datetime]:
+    if not value:
+        return None
+    try:
+        return datetime.fromisoformat(str(value))
+    except (TypeError, ValueError):
+        return None
+
+
+class WorkspaceOSStore:
+    """Local-first state store for Workspace OS APIs."""
+
+    def __init__(self, data_dir: Path | str):
+        self.data_dir = Path(data_dir).expanduser()
+        self.state_path = self.data_dir / "workspace_os.json"
+        self.snapshots_dir = self.data_dir / "workspace_snapshots"
+        self.exports_dir = self.data_dir / "workspace_exports"
+        self.data_dir.mkdir(parents=True, exist_ok=True)
+        self.snapshots_dir.mkdir(parents=True, exist_ok=True)
+        self.exports_dir.mkdir(parents=True, exist_ok=True)
+
+    def _default_state(self) -> Dict[str, Any]:
+        return {
+            "version": WORKSPACE_OS_VERSION,
+            "identity": "AI Workspace OS",
+            "created_at": _now(),
+            "updated_at": _now(),
+            "active_workspace": "personal",
+            "workspaces": {
+                "personal": {
+                    "id": "personal",
+                    "name": "Personal Workspace",
+                    "type": "personal",
+                    "areas": list(WORKSPACE_AREAS),
+                },
+                "organization": {
+                    "id": "organization",
+                    "name": "Organization Workspace",
+                    "type": "organization",
+                    "areas": list(WORKSPACE_AREAS),
+                },
+            },
+            "feature_flags": {
+                "workspace_os": True,
+                "graph_trace": True,
+                "snapshots": True,
+                "personal_memory": True,
+                "multi_agent_graph": True,
+                "workflow_graph": True,
+                "skill_marketplace": True,
+                "local_computer_memory": False,
+            },
+            "onboarding": {
+                "completed": False,
+                "current_step": "account",
+                "steps": {
+                    step: {
+                        "id": step,
+                        "status": "pending",
+                        "data": {},
+                        "error": "",
+                        "updated_at": None,
+                    }
+                    for step in ONBOARDING_STEPS
+                },
+            },
+            "snapshots": [],
+            "traces": [],
+            "memories": [],
+            "agents": list(DEFAULT_AGENTS),
+            "agent_runs": [],
+            "workflows": [],
+            "skill_registry": {},
+            "computer_memory": {
+                "enabled": False,
+                "approved": False,
+                "approved_at": None,
+                "approved_by": None,
+                "scopes": ["Downloads", "Documents", "Repositories"],
+                "activities": [],
+                "notice": "Local Computer Memory is OFF by default and requires explicit approval.",
+            },
+            "timeline": [],
+        }
+
+    def load_state(self) -> Dict[str, Any]:
+        default = self._default_state()
+        if not self.state_path.exists():
+            self.save_state(default)
+            return default
+        try:
+            loaded = json.loads(self.state_path.read_text(encoding="utf-8"))
+            if not isinstance(loaded, dict):
+                loaded = {}
+        except Exception:
+            loaded = {}
+        state = _deep_merge(default, loaded)
+        state["version"] = WORKSPACE_OS_VERSION
+        return state
+
+    def save_state(self, state: Dict[str, Any]) -> Dict[str, Any]:
+        state["version"] = WORKSPACE_OS_VERSION
+        state["updated_at"] = _now()
+        _atomic_write_json(self.state_path, state)
+        return state
+
+    def record_timeline_event(self, area: str, event_type: str, payload: Dict[str, Any]) -> Dict[str, Any]:
+        state = self.load_state()
+        event = {
+            "id": f"timeline-{_json_hash([area, event_type, payload, _now()])[:16]}",
+            "area": area,
+            "event_type": event_type,
+            "timestamp": _now(),
+            "payload": payload,
+        }
+        state.setdefault("timeline", []).append(event)
+        state["timeline"] = state["timeline"][-500:]
+        self.save_state(state)
+        return event
+
+    def summary(self) -> Dict[str, Any]:
+        state = self.load_state()
+        return {
+            "version": WORKSPACE_OS_VERSION,
+            "identity": state.get("identity"),
+            "active_workspace": state.get("active_workspace"),
+            "workspaces": state.get("workspaces"),
+            "navigation": list(WORKSPACE_AREAS),
+            "feature_flags": state.get("feature_flags"),
+            "counts": {
+                "snapshots": len(_listify(state.get("snapshots"))),
+                "traces": len(_listify(state.get("traces"))),
+                "memories": len(_listify(state.get("memories"))),
+                "agent_runs": len(_listify(state.get("agent_runs"))),
+                "workflows": len(_listify(state.get("workflows"))),
+                "skills": len(state.get("skill_registry") or {}),
+                "timeline": len(_listify(state.get("timeline"))),
+            },
+            "onboarding": state.get("onboarding"),
+            "storage": {
+                "state_path": str(self.state_path),
+                "snapshots_dir": str(self.snapshots_dir),
+                "exports_dir": str(self.exports_dir),
+            },
+        }
+
+    # ------------------------------------------------------------------
+    # Onboarding
+    # ------------------------------------------------------------------
+
+    def onboarding_status(self, users: Optional[Dict[str, Any]] = None, graph_stats: Optional[Dict[str, Any]] = None) -> Dict[str, Any]:
+        state = self.load_state()
+        users = users or {}
+        admins = [
+            email for email, user in users.items()
+            if isinstance(user, dict) and user.get("role") == "admin"
+        ]
+        onboarding = state.get("onboarding") or {}
+        steps = onboarding.get("steps") or {}
+        return {
+            **onboarding,
+            "steps": [steps.get(step, {"id": step, "status": "pending"}) for step in ONBOARDING_STEPS],
+            "has_account": bool(users),
+            "has_admin": bool(admins) or bool(users),
+            "graph_ready": bool(graph_stats and not graph_stats.get("disabled")),
+            "required_steps": list(ONBOARDING_STEPS),
+        }
+
+    def update_onboarding_step(
+        self,
+        step: str,
+        *,
+        status: str = "complete",
+        data: Optional[Dict[str, Any]] = None,
+        error: str = "",
+        user_email: Optional[str] = None,
+    ) -> Dict[str, Any]:
+        if step not in ONBOARDING_STEPS:
+            raise ValueError(f"unknown onboarding step: {step}")
+        if status not in {"pending", "running", "complete", "failed", "skipped"}:
+            raise ValueError(f"unknown onboarding status: {status}")
+        state = self.load_state()
+        onboarding = state.setdefault("onboarding", {})
+        steps = onboarding.setdefault("steps", {})
+        record = steps.setdefault(step, {"id": step})
+        record.update({
+            "id": step,
+            "status": status,
+            "data": data or record.get("data") or {},
+            "error": error,
+            "updated_at": _now(),
+            "user_email": user_email,
+        })
+        if status in {"complete", "skipped"}:
+            index = ONBOARDING_STEPS.index(step)
+            if step == "complete":
+                onboarding["completed"] = True
+                onboarding["completed_at"] = _now()
+                onboarding["current_step"] = "complete"
+            elif index + 1 < len(ONBOARDING_STEPS):
+                onboarding["current_step"] = ONBOARDING_STEPS[index + 1]
+        elif status == "failed":
+            onboarding["current_step"] = step
+        self.save_state(state)
+        self.record_timeline_event("workspace", "onboarding_step", {"step": step, "status": status})
+        return self.onboarding_status()
+
+    def complete_onboarding(self, data: Optional[Dict[str, Any]] = None, user_email: Optional[str] = None) -> Dict[str, Any]:
+        for step in ONBOARDING_STEPS:
+            self.update_onboarding_step(step, status="complete", data=data if step == "complete" else None, user_email=user_email)
+        return self.onboarding_status()
+
+    # ------------------------------------------------------------------
+    # Graph answer traces
+    # ------------------------------------------------------------------
+
+    def build_graph_trace(self, question: str, graph: Any, context: str = "", *, limit: int = 8) -> Dict[str, Any]:
+        if graph is None:
+            return {
+                "source_files": [],
+                "graph_nodes": [],
+                "graph_edges": [],
+                "confidence": 0.0,
+                "retrieval_metadata": {
+                    "query": question,
+                    "matched_nodes": 0,
+                    "graph_enabled": False,
+                    "context_chars": len(context or ""),
+                },
+            }
+
+        matches: List[Dict[str, Any]] = []
+        search_error = ""
+        try:
+            matches = graph.search(question, limit=limit).get("matches", [])
+        except Exception as exc:
+            search_error = str(exc)
+            matches = []
+
+        source_files: List[Dict[str, Any]] = []
+        seen_sources = set()
+        for match in matches:
+            meta = match.get("metadata") or {}
+            source = (
+                meta.get("relative_path")
+                or meta.get("file_path")
+                or meta.get("filename")
+                or meta.get("blob_path")
+                or meta.get("source")
+            )
+            if source and source not in seen_sources:
+                seen_sources.add(source)
+                source_files.append({
+                    "source": source,
+                    "node_id": match.get("id"),
+                    "node_title": match.get("title"),
+                    "node_type": match.get("type"),
+                    "jump": {
+                        "graph": f"/graph?node={match.get('id')}",
+                        "source": source,
+                    },
+                })
+
+        edges: List[Dict[str, Any]] = []
+        edge_seen = set()
+        for match in matches[:5]:
+            node_id = match.get("id")
+            if not node_id:
+                continue
+            try:
+                for edge in graph.neighbors(node_id).get("edges", []):
+                    key = (edge.get("from"), edge.get("to"), edge.get("type"))
+                    if key in edge_seen:
+                        continue
+                    edge_seen.add(key)
+                    edges.append(edge)
+                    if len(edges) >= 24:
+                        break
+            except Exception:
+                continue
+
+        if matches:
+            confidence = min(0.95, 0.35 + min(len(matches), limit) / max(limit, 1) * 0.45 + (0.10 if edges else 0.0))
+        else:
+            confidence = 0.05 if context else 0.0
+
+        return {
+            "source_files": source_files,
+            "graph_nodes": matches,
+            "graph_edges": edges,
+            "confidence": round(confidence, 4),
+            "retrieval_metadata": {
+                "query": question,
+                "matched_nodes": len(matches),
+                "matched_edges": len(edges),
+                "graph_enabled": True,
+                "context_chars": len(context or ""),
+                "search_error": search_error,
+            },
+        }
+
+    def record_trace(
+        self,
+        *,
+        question: str,
+        response: str,
+        conversation_id: Optional[str],
+        user_email: Optional[str],
+        trace: Dict[str, Any],
+    ) -> Dict[str, Any]:
+        state = self.load_state()
+        trace_id = f"trace-{_json_hash([question, response, conversation_id, _now()])[:16]}"
+        record = {
+            "id": trace_id,
+            "question": question,
+            "response_preview": str(response or "")[:700],
+            "conversation_id": conversation_id,
+            "user_email": user_email,
+            "created_at": _now(),
+            **trace,
+        }
+        state.setdefault("traces", []).append(record)
+        state["traces"] = state["traces"][-200:]
+        self.save_state(state)
+        self.record_timeline_event("graph", "answer_trace", {"trace_id": trace_id, "conversation_id": conversation_id})
+        return record
+
+    def list_traces(self, conversation_id: Optional[str] = None, limit: int = 50) -> Dict[str, Any]:
+        traces = _listify(self.load_state().get("traces"))
+        if conversation_id:
+            traces = [trace for trace in traces if trace.get("conversation_id") == conversation_id]
+        return {"traces": list(reversed(traces[-max(1, min(limit, 200)):]))}
+
+    # ------------------------------------------------------------------
+    # Indexing dashboard
+    # ------------------------------------------------------------------
+
+    def build_indexing_dashboard(self, graph: Any, watcher_status: Optional[Dict[str, Any]] = None) -> Dict[str, Any]:
+        if graph is None:
+            return {
+                "sources": [],
+                "watcher": watcher_status or {"available": False, "active": {}},
+                "totals": {"success": 0, "failed": 0, "nodes": 0, "edges": 0},
+            }
+        stats = graph.stats()
+        sources = graph.local_sources().get("sources", [])
+        watcher_status = watcher_status or {"available": False, "active": {}}
+        active = watcher_status.get("active", {})
+        dashboard_sources = []
+        total_success = 0
+        total_failed = 0
+        for source in sources:
+            file_status = source.get("file_status") or {}
+            success = int(file_status.get("indexed") or 0)
+            failed = sum(int(file_status.get(key) or 0) for key in ("failed", "inaccessible", "skipped_empty_text"))
+            total_success += success
+            total_failed += failed
+            watch = active.get(source.get("id")) or {}
+            dashboard_sources.append({
+                "id": source.get("id"),
+                "label": source.get("label"),
+                "root_path": source.get("root_path"),
+                "status": source.get("status"),
+                "watch_enabled": bool(source.get("watch_enabled")),
+                "watch_active": source.get("id") in active,
+                "watch_status": watch,
+                "success_count": success,
+                "failure_count": failed,
+                "last_run_at": source.get("last_scanned_at") or source.get("updated_at"),
+                "file_status": file_status,
+                "include_ocr": bool(source.get("include_ocr")),
+            })
+        return {
+            "sources": dashboard_sources,
+            "watcher": watcher_status,
+            "totals": {
+                "success": total_success,
+                "failed": total_failed,
+                "nodes": sum(int(v or 0) for v in (stats.get("nodes") or {}).values()),
+                "edges": sum(int(v or 0) for v in (stats.get("edges") or {}).values()),
+                "local_sources": stats.get("local_sources", len(sources)),
+            },
+            "graph_stats": stats,
+        }
+
+    def pause_indexing(self, graph: Any, source_id: str, watcher: Any = None) -> Dict[str, Any]:
+        result = graph.set_local_source_watch(source_id, False)
+        watch = watcher.stop_source(source_id) if watcher else {"stopped": False, "source_id": source_id}
+        self.record_timeline_event("graph", "indexing_paused", {"source_id": source_id})
+        return {"status": "ok", "source": result, "watch": watch}
+
+    def resume_indexing(self, graph: Any, source_id: str, watcher: Any = None) -> Dict[str, Any]:
+        result = graph.set_local_source_watch(source_id, True)
+        watch = {"watching": False, "source_id": source_id}
+        source = next((item for item in graph.local_sources().get("sources", []) if item.get("id") == source_id), None)
+        if watcher and source:
+            watch = watcher.start_source(source)
+        self.record_timeline_event("graph", "indexing_resumed", {"source_id": source_id})
+        return {"status": "ok", "source": result, "watch": watch}
+
+    def remove_index_source(self, graph: Any, source_id: str, watcher: Any = None) -> Dict[str, Any]:
+        if watcher:
+            watcher.stop_source(source_id)
+        if not hasattr(graph, "remove_local_source"):
+            raise ValueError("graph store does not support removing local sources")
+        result = graph.remove_local_source(source_id)
+        self.record_timeline_event("graph", "indexing_removed", {"source_id": source_id})
+        return {"status": "ok", **result}
+
+    # ------------------------------------------------------------------
+    # Snapshots, Time Machine, and diffs
+    # ------------------------------------------------------------------
+
+    def create_snapshot(
+        self,
+        *,
+        name: str,
+        graph: Any,
+        history: Iterable[Dict[str, Any]],
+        settings: Dict[str, Any],
+        models: Dict[str, Any],
+    ) -> Dict[str, Any]:
+        graph_payload = {"nodes": [], "edges": []}
+        graph_stats = {}
+        local_sources = {"sources": []}
+        if graph is not None:
+            graph_payload = graph.graph(limit=2000)
+            graph_stats = graph.stats()
+            local_sources = graph.local_sources()
+        chat = list(history or [])
+        snapshot_body = {
+            "version": WORKSPACE_OS_VERSION,
+            "name": name or "Workspace snapshot",
+            "created_at": _now(),
+            "workspace": self.load_state().get("active_workspace", "personal"),
+            "graph": graph_payload,
+            "graph_stats": graph_stats,
+            "chat": chat,
+            "settings": settings,
+            "indexed_folders": local_sources.get("sources", []),
+            "models": models,
+        }
+        snapshot_id = f"snapshot-{datetime.now().strftime('%Y%m%d%H%M%S')}-{_json_hash(snapshot_body)[:10]}"
+        snapshot_body["id"] = snapshot_id
+        path = self.snapshots_dir / f"{snapshot_id}.json"
+        _atomic_write_json(path, snapshot_body)
+
+        state = self.load_state()
+        meta = {
+            "id": snapshot_id,
+            "name": snapshot_body["name"],
+            "created_at": snapshot_body["created_at"],
+            "path": str(path),
+            "node_count": len(graph_payload.get("nodes") or []),
+            "edge_count": len(graph_payload.get("edges") or []),
+            "chat_count": len(chat),
+            "model_count": len(models.get("loaded_models") or []),
+            "indexed_folder_count": len(local_sources.get("sources") or []),
+        }
+        state.setdefault("snapshots", []).append(meta)
+        state["snapshots"] = state["snapshots"][-200:]
+        self.save_state(state)
+        self.record_timeline_event("snapshot", "snapshot_saved", {"snapshot_id": snapshot_id, "name": name})
+        return {"snapshot": meta}
+
+    def list_snapshots(self) -> Dict[str, Any]:
+        snapshots = _listify(self.load_state().get("snapshots"))
+        return {"snapshots": list(reversed(snapshots))}
+
+    def get_snapshot(self, snapshot_id: str) -> Dict[str, Any]:
+        path = self.snapshots_dir / f"{_safe_slug(snapshot_id)}.json"
+        if not path.exists():
+            state = self.load_state()
+            meta = next((item for item in _listify(state.get("snapshots")) if item.get("id") == snapshot_id), None)
+            if meta:
+                path = Path(meta.get("path") or path)
+        if not path.exists():
+            raise FileNotFoundError(snapshot_id)
+        return json.loads(path.read_text(encoding="utf-8"))
+
+    def snapshot_view(self, snapshot_id: str, area: str) -> Dict[str, Any]:
+        snapshot = self.get_snapshot(snapshot_id)
+        if area == "graph":
+            return {"snapshot_id": snapshot_id, "graph": snapshot.get("graph") or {}, "graph_stats": snapshot.get("graph_stats") or {}}
+        if area == "chat":
+            return {"snapshot_id": snapshot_id, "chat": snapshot.get("chat") or []}
+        if area == "decision":
+            nodes = (snapshot.get("graph") or {}).get("nodes") or []
+            return {"snapshot_id": snapshot_id, "decisions": [node for node in nodes if node.get("type") == "Decision"]}
+        return {"snapshot_id": snapshot_id, "snapshot": snapshot}
+
+    def export_snapshot(self, snapshot_id: str) -> Dict[str, Any]:
+        snapshot = self.get_snapshot(snapshot_id)
+        export_path = self.exports_dir / f"{_safe_slug(snapshot_id)}.zip"
+        with zipfile.ZipFile(export_path, "w", compression=zipfile.ZIP_DEFLATED) as zf:
+            zf.writestr("snapshot.json", json.dumps(snapshot, ensure_ascii=False, indent=2))
+            zf.writestr("graph.json", json.dumps(snapshot.get("graph") or {}, ensure_ascii=False, indent=2))
+            zf.writestr("chat.json", json.dumps(snapshot.get("chat") or [], ensure_ascii=False, indent=2))
+            zf.writestr("settings.json", json.dumps(snapshot.get("settings") or {}, ensure_ascii=False, indent=2))
+            zf.writestr("indexed_folders.json", json.dumps(snapshot.get("indexed_folders") or [], ensure_ascii=False, indent=2))
+            zf.writestr("models.json", json.dumps(snapshot.get("models") or {}, ensure_ascii=False, indent=2))
+        self.record_timeline_event("snapshot", "snapshot_exported", {"snapshot_id": snapshot_id, "path": str(export_path)})
+        return {"snapshot_id": snapshot_id, "export_path": str(export_path), "bytes": export_path.stat().st_size}
+
+    def compare_snapshots(self, before_id: str, after_id: str) -> Dict[str, Any]:
+        before = self.get_snapshot(before_id)
+        after = self.get_snapshot(after_id)
+        before_nodes = {node.get("id"): node for node in (before.get("graph") or {}).get("nodes") or [] if node.get("id")}
+        after_nodes = {node.get("id"): node for node in (after.get("graph") or {}).get("nodes") or [] if node.get("id")}
+
+        def edge_key(edge: Dict[str, Any]) -> str:
+            return "|".join(str(edge.get(key) or "") for key in ("from", "to", "type"))
+
+        before_edges = {edge_key(edge): edge for edge in (before.get("graph") or {}).get("edges") or []}
+        after_edges = {edge_key(edge): edge for edge in (after.get("graph") or {}).get("edges") or []}
+
+        added_nodes = [after_nodes[key] for key in sorted(set(after_nodes) - set(before_nodes))]
+        removed_nodes = [before_nodes[key] for key in sorted(set(before_nodes) - set(after_nodes))]
+        changed_nodes = [
+            {"before": before_nodes[key], "after": after_nodes[key]}
+            for key in sorted(set(before_nodes) & set(after_nodes))
+            if _json_hash(before_nodes[key]) != _json_hash(after_nodes[key])
+        ]
+        added_edges = [after_edges[key] for key in sorted(set(after_edges) - set(before_edges))]
+        removed_edges = [before_edges[key] for key in sorted(set(before_edges) - set(after_edges))]
+
+        before_decisions = {key: value for key, value in before_nodes.items() if value.get("type") == "Decision"}
+        after_decisions = {key: value for key, value in after_nodes.items() if value.get("type") == "Decision"}
+        decisions_changed = [
+            {"before": before_decisions.get(key), "after": after_decisions.get(key)}
+            for key in sorted(set(before_decisions) | set(after_decisions))
+            if _json_hash(before_decisions.get(key)) != _json_hash(after_decisions.get(key))
+        ]
+
+        return {
+            "before": before_id,
+            "after": after_id,
+            "nodes_added": added_nodes,
+            "nodes_removed": removed_nodes,
+            "nodes_changed": changed_nodes,
+            "edges_added": added_edges,
+            "edges_removed": removed_edges,
+            "decisions_changed": decisions_changed,
+            "summary": {
+                "nodes_added": len(added_nodes),
+                "nodes_removed": len(removed_nodes),
+                "nodes_changed": len(changed_nodes),
+                "edges_added": len(added_edges),
+                "edges_removed": len(removed_edges),
+                "decisions_changed": len(decisions_changed),
+            },
+        }
+
+    def timeline(self, audit_events: Optional[Iterable[Dict[str, Any]]] = None, limit: int = 100) -> Dict[str, Any]:
+        state = self.load_state()
+        events: List[Dict[str, Any]] = []
+        events.extend(_listify(state.get("timeline")))
+        for snapshot in _listify(state.get("snapshots")):
+            events.append({"area": "snapshot", "event_type": "snapshot", "timestamp": snapshot.get("created_at"), "payload": snapshot})
+        for trace in _listify(state.get("traces")):
+            events.append({"area": "graph", "event_type": "answer_trace", "timestamp": trace.get("created_at"), "payload": trace})
+        for run in _listify(state.get("agent_runs")):
+            events.append({"area": "agent", "event_type": "agent_run", "timestamp": run.get("created_at"), "payload": run})
+        for workflow in _listify(state.get("workflows")):
+            events.append({"area": "workflow", "event_type": "workflow", "timestamp": workflow.get("created_at"), "payload": workflow})
+        for audit in audit_events or []:
+            events.append({"area": "audit", "event_type": audit.get("event_type") or "audit", "timestamp": audit.get("timestamp"), "payload": audit})
+        events.sort(key=lambda item: item.get("timestamp") or "", reverse=True)
+        return {"events": events[: max(1, min(limit, 500))]}
+
+    # ------------------------------------------------------------------
+    # Personal memory
+    # ------------------------------------------------------------------
+
+    def upsert_memory(
+        self,
+        *,
+        kind: str,
+        content: str,
+        user_email: Optional[str],
+        tags: Optional[List[str]] = None,
+        memory_id: Optional[str] = None,
+        metadata: Optional[Dict[str, Any]] = None,
+        graph: Any = None,
+    ) -> Dict[str, Any]:
+        if kind not in MEMORY_KINDS:
+            raise ValueError(f"unknown memory kind: {kind}")
+        if not str(content or "").strip():
+            raise ValueError("content is required")
+        state = self.load_state()
+        memories = _listify(state.get("memories"))
+        now = _now()
+        memory_id = memory_id or f"memory-{_json_hash([kind, content, user_email, now])[:16]}"
+        existing = next((item for item in memories if item.get("id") == memory_id), None)
+        record = existing or {
+            "id": memory_id,
+            "created_at": now,
+        }
+        record.update({
+            "kind": kind,
+            "content": content,
+            "user_email": user_email,
+            "tags": tags or [],
+            "metadata": metadata or {},
+            "updated_at": now,
+        })
+        if graph is not None:
+            try:
+                ingested = graph.ingest_event(
+                    "Memory",
+                    f"{kind}: {content[:80]}",
+                    user_email=user_email,
+                    source="workspace_os",
+                    metadata={"memory_id": memory_id, "kind": kind, "tags": tags or []},
+                )
+                record["graph_node_id"] = ingested.get("node_id")
+            except Exception as exc:
+                record["graph_error"] = str(exc)
+        if existing is None:
+            memories.append(record)
+        state["memories"] = memories[-500:]
+        self.save_state(state)
+        self.record_timeline_event("memory", "memory_upserted", {"memory_id": memory_id, "kind": kind})
+        return record
+
+    def list_memories(self, user_email: Optional[str] = None, kind: Optional[str] = None) -> Dict[str, Any]:
+        memories = _listify(self.load_state().get("memories"))
+        if user_email:
+            memories = [item for item in memories if item.get("user_email") in {None, user_email}]
+        if kind:
+            memories = [item for item in memories if item.get("kind") == kind]
+        return {"memories": list(reversed(memories))}
+
+    def search_memories(self, query: str, user_email: Optional[str] = None, limit: int = 20) -> Dict[str, Any]:
+        q = str(query or "").lower().strip()
+        memories = self.list_memories(user_email=user_email).get("memories", [])
+        if q:
+            memories = [
+                item for item in memories
+                if q in str(item.get("content") or "").lower()
+                or q in " ".join(item.get("tags") or []).lower()
+                or q in str(item.get("kind") or "").lower()
+            ]
+        return {"query": query, "memories": memories[: max(1, min(limit, 100))]}
+
+    def delete_memory(self, memory_id: str) -> Dict[str, Any]:
+        state = self.load_state()
+        memories = _listify(state.get("memories"))
+        kept = [item for item in memories if item.get("id") != memory_id]
+        if len(kept) == len(memories):
+            raise FileNotFoundError(memory_id)
+        state["memories"] = kept
+        self.save_state(state)
+        self.record_timeline_event("memory", "memory_deleted", {"memory_id": memory_id})
+        return {"status": "ok", "memory_id": memory_id}
+
+    # ------------------------------------------------------------------
+    # Agent and workflow graph
+    # ------------------------------------------------------------------
+
+    def list_agents(self) -> Dict[str, Any]:
+        state = self.load_state()
+        return {"agents": _listify(state.get("agents")), "runs": list(reversed(_listify(state.get("agent_runs"))[-100:]))}
+
+    def record_agent_run(
+        self,
+        *,
+        agent_id: str,
+        status: str,
+        input_text: str,
+        output_text: str,
+        user_email: Optional[str],
+        timeline: Optional[List[Dict[str, Any]]] = None,
+        relationships: Optional[List[str]] = None,
+        graph: Any = None,
+    ) -> Dict[str, Any]:
+        state = self.load_state()
+        run = {
+            "id": f"agent-run-{_json_hash([agent_id, input_text, output_text, _now()])[:16]}",
+            "agent_id": agent_id,
+            "status": status,
+            "input": input_text,
+            "output_preview": output_text[:1000],
+            "user_email": user_email,
+            "relationships": relationships or [],
+            "timeline": timeline or [],
+            "created_at": _now(),
+        }
+        if graph is not None:
+            try:
+                ingested = graph.ingest_event(
+                    "AgentRun",
+                    f"{agent_id} {status}",
+                    user_email=user_email,
+                    source="workspace_os",
+                    metadata={"run_id": run["id"], "agent_id": agent_id, "status": status},
+                )
+                run["graph_node_id"] = ingested.get("node_id")
+            except Exception as exc:
+                run["graph_error"] = str(exc)
+        state.setdefault("agent_runs", []).append(run)
+        state["agent_runs"] = state["agent_runs"][-300:]
+        self.save_state(state)
+        self.record_timeline_event("agent", "agent_run", {"run_id": run["id"], "agent_id": agent_id, "status": status})
+        return run
+
+    def create_workflow(
+        self,
+        *,
+        name: str,
+        steps: List[Dict[str, Any]],
+        user_email: Optional[str],
+        metadata: Optional[Dict[str, Any]] = None,
+        graph: Any = None,
+    ) -> Dict[str, Any]:
+        state = self.load_state()
+        workflow = {
+            "id": f"workflow-{_json_hash([name, steps, user_email, _now()])[:16]}",
+            "name": name or "Untitled workflow",
+            "steps": steps,
+            "user_email": user_email,
+            "metadata": metadata or {},
+            "events": [{"type": "created", "timestamp": _now()}],
+            "created_at": _now(),
+            "updated_at": _now(),
+        }
+        if graph is not None:
+            try:
+                ingested = graph.ingest_event(
+                    "Workflow",
+                    workflow["name"],
+                    user_email=user_email,
+                    source="workspace_os",
+                    metadata={"workflow_id": workflow["id"], "steps": steps},
+                )
+                workflow["graph_node_id"] = ingested.get("node_id")
+            except Exception as exc:
+                workflow["graph_error"] = str(exc)
+        state.setdefault("workflows", []).append(workflow)
+        state["workflows"] = state["workflows"][-300:]
+        self.save_state(state)
+        self.record_timeline_event("workflow", "workflow_created", {"workflow_id": workflow["id"], "name": workflow["name"]})
+        return workflow
+
+    def list_workflows(self, query: str = "") -> Dict[str, Any]:
+        workflows = list(reversed(_listify(self.load_state().get("workflows"))))
+        q = str(query or "").lower().strip()
+        if q:
+            workflows = [
+                wf for wf in workflows
+                if q in str(wf.get("name") or "").lower()
+                or q in json.dumps(wf.get("steps") or [], ensure_ascii=False).lower()
+            ]
+        return {"workflows": workflows}
+
+    def record_workflow_event(self, workflow_id: str, event_type: str, payload: Optional[Dict[str, Any]] = None) -> Dict[str, Any]:
+        state = self.load_state()
+        workflows = _listify(state.get("workflows"))
+        workflow = next((item for item in workflows if item.get("id") == workflow_id), None)
+        if not workflow:
+            raise FileNotFoundError(workflow_id)
+        event = {"type": event_type, "timestamp": _now(), "payload": payload or {}}
+        workflow.setdefault("events", []).append(event)
+        workflow["updated_at"] = _now()
+        self.save_state(state)
+        self.record_timeline_event("workflow", "workflow_event", {"workflow_id": workflow_id, "event_type": event_type})
+        return workflow
+
+    # ------------------------------------------------------------------
+    # Relationship explorer
+    # ------------------------------------------------------------------
+
+    def relationship_explorer(self, graph: Any, node_id: str, target_id: Optional[str] = None, limit: int = 500) -> Dict[str, Any]:
+        if graph is None:
+            return {"node_id": node_id, "inbound": [], "outbound": [], "related_entities": [], "shortest_path": []}
+        data = graph.graph(limit=limit)
+        nodes = {node.get("id"): node for node in data.get("nodes") or [] if node.get("id")}
+        edges = data.get("edges") or []
+        inbound = [edge for edge in edges if edge.get("to") == node_id]
+        outbound = [edge for edge in edges if edge.get("from") == node_id]
+        if node_id not in nodes:
+            try:
+                neighbors = graph.neighbors(node_id)
+                for node in neighbors.get("neighbors") or []:
+                    nodes[node.get("id")] = node
+                edges.extend(neighbors.get("edges") or [])
+                inbound = [edge for edge in edges if edge.get("to") == node_id]
+                outbound = [edge for edge in edges if edge.get("from") == node_id]
+            except Exception:
+                pass
+
+        related_ids = []
+        for edge in inbound + outbound:
+            other = edge.get("from") if edge.get("to") == node_id else edge.get("to")
+            if other:
+                related_ids.append(other)
+        related = [nodes.get(rid, {"id": rid}) for rid in dict.fromkeys(related_ids)]
+        shortest_path = self._shortest_path(edges, node_id, target_id) if target_id else []
+        return {
+            "node_id": node_id,
+            "node": nodes.get(node_id, {"id": node_id}),
+            "inbound": inbound,
+            "outbound": outbound,
+            "related_entities": related,
+            "shortest_path": shortest_path,
+        }
+
+    @staticmethod
+    def _shortest_path(edges: List[Dict[str, Any]], start: str, target: Optional[str]) -> List[str]:
+        if not start or not target:
+            return []
+        adjacency: Dict[str, List[str]] = {}
+        for edge in edges:
+            src = edge.get("from")
+            dst = edge.get("to")
+            if src and dst:
+                adjacency.setdefault(src, []).append(dst)
+                adjacency.setdefault(dst, []).append(src)
+        queue: deque[List[str]] = deque([[start]])
+        seen = {start}
+        while queue:
+            path = queue.popleft()
+            node = path[-1]
+            if node == target:
+                return path
+            for neighbor in adjacency.get(node, []):
+                if neighbor not in seen:
+                    seen.add(neighbor)
+                    queue.append(path + [neighbor])
+        return []
+
+    # ------------------------------------------------------------------
+    # Local Computer Memory
+    # ------------------------------------------------------------------
+
+    def configure_computer_memory(
+        self,
+        *,
+        enabled: bool,
+        approved_by: Optional[str],
+        consent: Optional[Dict[str, Any]] = None,
+        scopes: Optional[List[str]] = None,
+    ) -> Dict[str, Any]:
+        consent = consent or {}
+        if enabled and not consent.get("approved"):
+            raise PermissionError("Local Computer Memory requires explicit approval.")
+        state = self.load_state()
+        config = state.setdefault("computer_memory", {})
+        config.update({
+            "enabled": bool(enabled),
+            "approved": bool(enabled),
+            "approved_at": _now() if enabled else config.get("approved_at"),
+            "approved_by": approved_by if enabled else config.get("approved_by"),
+            "scopes": scopes or config.get("scopes") or ["Downloads", "Documents", "Repositories"],
+            "consent": consent,
+        })
+        state.setdefault("feature_flags", {})["local_computer_memory"] = bool(enabled)
+        self.save_state(state)
+        self.record_timeline_event("memory", "computer_memory_configured", {"enabled": bool(enabled), "approved_by": approved_by})
+        return config
+
+    def record_computer_activity(self, activity: Dict[str, Any], graph: Any = None) -> Dict[str, Any]:
+        state = self.load_state()
+        config = state.setdefault("computer_memory", {})
+        if not config.get("enabled"):
+            return {"status": "ignored", "reason": "local computer memory is disabled"}
+        record = {
+            "id": f"activity-{_json_hash([activity, _now()])[:16]}",
+            "timestamp": _now(),
+            **activity,
+        }
+        config.setdefault("activities", []).append(record)
+        config["activities"] = config["activities"][-500:]
+        if graph is not None:
+            try:
+                graph.ingest_event(
+                    "ComputerActivity",
+                    str(activity.get("summary") or activity.get("path") or "Computer activity")[:120],
+                    source="workspace_os",
+                    metadata=record,
+                )
+            except Exception as exc:
+                record["graph_error"] = str(exc)
+        self.save_state(state)
+        self.record_timeline_event("memory", "computer_activity", {"activity_id": record["id"]})
+        return {"status": "ok", "activity": record}
+
+    # ------------------------------------------------------------------
+    # Skills
+    # ------------------------------------------------------------------
+
+    def list_skill_registry(self, skills_dir: Path, marketplace: Optional[List[Dict[str, Any]]] = None) -> Dict[str, Any]:
+        state = self.load_state()
+        registry = state.setdefault("skill_registry", {})
+        installed = []
+        if skills_dir.exists():
+            for skill_dir in sorted(skills_dir.iterdir()):
+                if not skill_dir.is_dir():
+                    continue
+                skill_md = skill_dir / "SKILL.md"
+                schema = skill_dir / "schema.json"
+                if not skill_md.exists():
+                    continue
+                desc = ""
+                try:
+                    for line in skill_md.read_text(encoding="utf-8").splitlines():
+                        if line.startswith("description:"):
+                            desc = line.split(":", 1)[1].strip()
+                            break
+                except Exception:
+                    desc = ""
+                version = "local"
+                if schema.exists():
+                    try:
+                        version = str((json.loads(schema.read_text(encoding="utf-8")) or {}).get("version") or "local")
+                    except Exception:
+                        version = "local"
+                entry = registry.setdefault(skill_dir.name, {})
+                entry.setdefault("enabled", True)
+                entry.update({
+                    "name": skill_dir.name,
+                    "description": desc,
+                    "version": version,
+                    "installed": True,
+                    "path": str(skill_dir),
+                    "updated_at": entry.get("updated_at") or _now(),
+                })
+                installed.append(entry)
+        available = []
+        for item in marketplace or []:
+            name = item.get("skill") or item.get("name")
+            if not name:
+                continue
+            state_entry = registry.get(name, {})
+            available.append({
+                **item,
+                "enabled": bool(state_entry.get("enabled", True)),
+                "installed": bool(state_entry.get("installed")),
+                "version": state_entry.get("version") or item.get("version") or "remote",
+            })
+        self.save_state(state)
+        return {
+            "installed": installed,
+            "available": available,
+            "registry": registry,
+            "total_installed": len(installed),
+            "total_available": len(available),
+        }
+
+    def set_skill_enabled(self, skill: str, enabled: bool) -> Dict[str, Any]:
+        state = self.load_state()
+        entry = state.setdefault("skill_registry", {}).setdefault(skill, {"name": skill})
+        entry["enabled"] = bool(enabled)
+        entry["updated_at"] = _now()
+        self.save_state(state)
+        self.record_timeline_event("skills", "skill_enabled" if enabled else "skill_disabled", {"skill": skill})
+        return entry
+
+    def mark_skill_installed(self, skill: str, *, version: str = "local", metadata: Optional[Dict[str, Any]] = None) -> Dict[str, Any]:
+        state = self.load_state()
+        entry = state.setdefault("skill_registry", {}).setdefault(skill, {"name": skill})
+        entry.update({
+            "installed": True,
+            "enabled": entry.get("enabled", True),
+            "version": version,
+            "metadata": metadata or entry.get("metadata") or {},
+            "updated_at": _now(),
+        })
+        self.save_state(state)
+        self.record_timeline_event("skills", "skill_installed", {"skill": skill, "version": version})
+        return entry
+
+    def mark_skill_uninstalled(self, skill: str) -> Dict[str, Any]:
+        state = self.load_state()
+        entry = state.setdefault("skill_registry", {}).setdefault(skill, {"name": skill})
+        entry.update({"installed": False, "enabled": False, "updated_at": _now()})
+        self.save_state(state)
+        self.record_timeline_event("skills", "skill_uninstalled", {"skill": skill})
+        return entry
+
+    # ------------------------------------------------------------------
+    # Audit timeline
+    # ------------------------------------------------------------------
+
+    def filter_audit_timeline(
+        self,
+        audit_events: Iterable[Dict[str, Any]],
+        *,
+        user: Optional[str] = None,
+        event_type: Optional[str] = None,
+        model: Optional[str] = None,
+        since: Optional[str] = None,
+        until: Optional[str] = None,
+        limit: int = 100,
+    ) -> Dict[str, Any]:
+        since_dt = _parse_iso(since)
+        until_dt = _parse_iso(until)
+        filtered = []
+        for event in audit_events:
+            stamp = _parse_iso(event.get("timestamp"))
+            if user and user.lower() not in str(event.get("user_email") or event.get("user") or "").lower():
+                continue
+            if event_type and event_type.lower() not in str(event.get("event_type") or "").lower():
+                continue
+            if model and model.lower() not in json.dumps(event, ensure_ascii=False).lower():
+                continue
+            if since_dt and stamp and stamp < since_dt:
+                continue
+            if until_dt and stamp and stamp > until_dt:
+                continue
+            filtered.append({
+                **event,
+                "category": self._audit_category(event),
+            })
+        filtered.sort(key=lambda item: item.get("timestamp") or "", reverse=True)
+        return {"events": filtered[: max(1, min(limit, 1000))], "total": len(filtered)}
+
+    @staticmethod
+    def _audit_category(event: Dict[str, Any]) -> str:
+        raw = str(event.get("event_type") or "").lower()
+        if "model" in raw or "chat" in raw:
+            return "model_usage"
+        if "file" in raw or "document" in raw or "local" in raw:
+            return "file_access"
+        if "folder" in raw or "permission" in raw:
+            return "folder_approval"
+        if "sensitive" in raw or "secret" in raw:
+            return "sensitive_data"
+        if "admin" in raw or "user" in raw or "sso" in raw:
+            return "admin_action"
+        if "security" in raw or "auth" in raw or "login" in raw:
+            return "security_event"
+        return "workspace_event"
+
+
+def remove_skill_directory(skills_dir: Path, skill: str) -> Dict[str, Any]:
+    """Remove an installed skill directory after caller has performed auth checks."""
+
+    safe_name = _safe_slug(skill)
+    target = (skills_dir / safe_name).resolve()
+    root = skills_dir.resolve()
+    if not str(target).startswith(str(root)):
+        raise ValueError("invalid skill path")
+    if not target.exists() or not target.is_dir():
+        raise FileNotFoundError(skill)
+    shutil.rmtree(target)
+    return {"status": "ok", "skill": safe_name, "removed_path": str(target)}

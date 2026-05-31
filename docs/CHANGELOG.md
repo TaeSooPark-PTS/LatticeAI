@@ -1,5 +1,56 @@
 # Changelog
 
+## [1.0.0] - 2026-05-31
+
+> AI Workspace OS integration release.
+
+### Added
+
+- **Workspace OS foundation** — new `/workspace` UI and `/workspace/*` API surface
+  organize LatticeAI around Graph, Snapshot, Memory, Agent, Workflow, Skills,
+  and Timeline areas while preserving existing chat, graph, admin, CLI, and MCP
+  compatibility.
+- **First-run onboarding wizard** — reentrant step state, completion API,
+  hardware scan, model recommendations, folder connection state, and recovery
+  from failed/skipped steps.
+- **Graph RAG answer trace** — each generated answer records source files,
+  graph nodes, graph edges, confidence, retrieval metadata, graph jumps, and
+  source jumps.
+- **Local indexing dashboard** — indexed folder status, watcher state, success
+  and failure counts, last scan time, graph node/edge totals, and pause/resume/
+  remove operations.
+- **Workspace snapshots and Time Machine** — immutable snapshots capture graph,
+  chat, settings, indexed folders, and loaded model state. Snapshots can be
+  listed, viewed by area, compared, and exported as ZIP artifacts.
+- **Knowledge Diff** — Snapshot A/B comparison reports nodes added/removed/
+  changed, edges added/removed, and decisions changed.
+- **Personal Memory layer** — per-user preferences, decisions, working style,
+  frequently used tools, and long-term memory with CRUD/search and graph links.
+- **Multi-Agent Graph** — Planner, Executor, Reviewer, Researcher, and Release
+  Agent entities plus agent run history and timeline recording.
+- **Relationship Explorer** — inbound/outbound edge views, related entities, and
+  shortest-path exploration for graph nodes.
+- **Local Computer Memory** — defaults OFF, requires explicit approval, tracks
+  activity summaries only after consent, and links approved records to graph.
+- **Skill Marketplace registry** — install, uninstall, update, enable, disable,
+  version tracking, and metadata state surfaced in Workspace OS.
+- **Workflow Graph** — stores workflow timelines and searchable workflow graphs
+  for repeatable actions such as Upload -> Summarize -> Generate -> Export.
+- **VS Code workflow** — added Refactor Selection, Generate Tests, Send To
+  Lattice, and Ask About Current File while preserving Explain Selection.
+
+### Changed
+
+- Release metadata aligned to `1.0.0` across Python, npm, VS Code extension,
+  FastAPI app metadata, `/health`, README, changelog, and release docs.
+- `KnowledgeGraphStore` gained non-destructive `remove_local_source()` for
+  deleting only derived index/graph data while leaving user files untouched.
+
+### Validation
+
+- Unit, integration, Python build, npm build, VSIX packaging, and package
+  verification were run for this release.
+
 ## [0.6.0] - 2026-05-31
 
 > Runtime / registry / config extraction release.

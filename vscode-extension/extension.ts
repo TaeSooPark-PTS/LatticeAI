@@ -98,6 +98,106 @@ export async function activate(context: vscode.ExtensionContext) {
       ChatPanel.sendMessage(`Explain this code:\n\`\`\`\n${selectedText}\n\`\`\``);
     }),
 
+    vscode.commands.registerCommand("ltcai.refactorSelection", async () => {
+      const editor = vscode.window.activeTextEditor;
+      if (!editor) return;
+      const selection = editor.selection;
+      const selectedText = editor.document.getText(selection);
+      if (!selectedText) {
+        vscode.window.showWarningMessage("Lattice AI: No text selected.");
+        return;
+      }
+      const instruction = await vscode.window.showInputBox({
+        prompt: "Refactor goal",
+        placeHolder: "e.g. simplify control flow, extract helper, improve naming",
+      });
+      const message = [
+        "Refactor this selection while preserving behavior.",
+        instruction ? `Goal: ${instruction}` : "Goal: improve maintainability.",
+        `Language: ${editor.document.languageId}`,
+        "Return ONLY the refactored code, no markdown fences.",
+        "Code:",
+        "```",
+        selectedText,
+        "```",
+      ].join("\n");
+      await diffEditSelection(message, editor, selection);
+    }),
+
+    vscode.commands.registerCommand("ltcai.generateTests", async () => {
+      const editor = vscode.window.activeTextEditor;
+      if (!editor) return;
+      const selectedText = editor.document.getText(editor.selection);
+      const source = selectedText || editor.document.getText();
+      const fileName = editor.document.fileName.split("/").pop() ?? "current file";
+      const message = [
+        `Generate focused tests for ${fileName}.`,
+        `Language: ${editor.document.languageId}`,
+        "Return ONLY test code, no markdown fences.",
+        "Source:",
+        "```",
+        source.slice(0, 12000),
+        "```",
+      ].join("\n");
+      await vscode.window.withProgress(
+        { location: vscode.ProgressLocation.Notification, title: "Lattice AI: Generating tests..." },
+        async () => {
+          const generated = await client.generate(message);
+          const doc = await vscode.workspace.openTextDocument({
+            language: editor.document.languageId,
+            content: stripCodeFences(generated),
+          });
+          await vscode.window.showTextDocument(doc, vscode.ViewColumn.Beside);
+        }
+      );
+    }),
+
+    vscode.commands.registerCommand("ltcai.sendToLattice", async () => {
+      const editor = vscode.window.activeTextEditor;
+      if (!editor) {
+        vscode.window.showWarningMessage("Lattice AI: No active editor.");
+        return;
+      }
+      const selection = editor.document.getText(editor.selection);
+      const content = editor.document.getText();
+      await client.sendToWorkspace({
+        action: "send_to_lattice",
+        file_path: editor.document.fileName,
+        language: editor.document.languageId,
+        content,
+        selection,
+      });
+      vscode.window.showInformationMessage("Lattice AI: Sent to Workspace OS.");
+    }),
+
+    vscode.commands.registerCommand("ltcai.askCurrentFile", async () => {
+      const editor = vscode.window.activeTextEditor;
+      if (!editor) return;
+      const question = await vscode.window.showInputBox({
+        prompt: "Ask Lattice AI about this file",
+        placeHolder: "What should I understand or change here?",
+      });
+      if (!question) return;
+      const fileName = editor.document.fileName.split("/").pop() ?? "file";
+      ChatPanel.createOrShow(context.extensionUri, client);
+      ChatPanel.sendMessage([
+        question,
+        "",
+        `Current file: ${editor.document.fileName}`,
+        `Language: ${editor.document.languageId}`,
+        "```",
+        `// ${fileName}`,
+        editor.document.getText().slice(0, 12000),
+        "```",
+      ].join("\n"));
+      await client.sendToWorkspace({
+        action: "ask_current_file",
+        file_path: editor.document.fileName,
+        language: editor.document.languageId,
+        prompt: question,
+      });
+    }),
+
     vscode.commands.registerCommand("ltcai.createFile", async () => {
       const description = await vscode.window.showInputBox({
         prompt: "Describe the file to create",
@@ -222,6 +322,12 @@ function updateStatusBar(modelId: string | null) {
 
 function shortName(modelId: string): string {
   return modelId.split("/").pop()?.replace(/-4bit$/, "").slice(0, 28) ?? modelId;
+}
+
+function stripCodeFences(text: string): string {
+  return text.trim()
+    .replace(/^```[a-zA-Z0-9_-]*\n?/, "")
+    .replace(/\n?```$/, "");
 }
 
 async function streamIntoEditor(

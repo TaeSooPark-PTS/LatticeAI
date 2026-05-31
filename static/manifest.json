@@ -1,8 +1,8 @@
 {
   "name": "Lattice AI",
   "short_name": "LatticeAI",
-  "description": "Local AI agent workspace — MLX & cloud LLMs",
-  "start_url": "/",
+  "description": "AI Workspace OS for local-first graph, memory, agents, workflows, and skills",
+  "start_url": "/workspace",
   "id": "/",
   "display": "standalone",
   "orientation": "any",

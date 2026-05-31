@@ -225,7 +225,7 @@ const chatViewport = document.getElementById('chat-viewport');
                 // 헤더 / 사이드바
                 logout: '로그아웃', admin_dashboard: '관리자 대시보드',
                 my_status: '내 상태 보기', auto_setup: '자동 설정',
-                nav_home: '홈', nav_chat: '채팅', nav_knowledge: '지식 그래프',
+                nav_home: '홈', nav_chat: '채팅', nav_workspace: 'Workspace OS', nav_knowledge: '지식 그래프',
                 nav_pipeline: '파이프라인', nav_files: '내 컴퓨터',
                 nav_model_status: '모델 상태', nav_runtime: '런타임 설정',
                 nav_advanced_settings: '고급 설정',
@@ -304,7 +304,7 @@ const chatViewport = document.getElementById('chat-viewport');
                 // Header / Sidebar
                 logout: 'Logout', admin_dashboard: 'Admin Dashboard',
                 my_status: 'My Status', auto_setup: 'Auto Setup',
-                nav_home: 'Home', nav_chat: 'Chat', nav_knowledge: 'Knowledge Graph',
+                nav_home: 'Home', nav_chat: 'Chat', nav_workspace: 'Workspace OS', nav_knowledge: 'Knowledge Graph',
                 nav_pipeline: 'Pipeline', nav_files: 'My Computer',
                 nav_model_status: 'Model Status', nav_runtime: 'Runtime Settings',
                 nav_advanced_settings: 'Advanced Settings',
@@ -559,6 +559,7 @@ const chatViewport = document.getElementById('chat-viewport');
         const BASE_NAV_ITEMS = [
             { id: 'home', icon: 'ti-home', labelKey: 'nav_home' },
             { id: 'chat', icon: 'ti-message-circle', labelKey: 'nav_chat' },
+            { id: 'workspace-os', icon: 'ti-layout-dashboard', labelKey: 'nav_workspace' },
             { id: 'knowledge', icon: 'ti-chart-dots-3', labelKey: 'nav_knowledge' },
             { id: 'pipeline', icon: 'ti-git-branch', labelKey: 'nav_pipeline' },
             { id: 'files', icon: 'ti-device-desktop', labelKey: 'nav_files' },
@@ -622,6 +623,7 @@ const chatViewport = document.getElementById('chat-viewport');
             closeSidebar();
             if (id === 'home') showHome();
             else if (id === 'chat') showChat();
+            else if (id === 'workspace-os') window.location.href = `${API_BASE}/workspace`;
             else if (id === 'knowledge') openDataGraph();
             else if (id === 'pipeline') openPipelineModal();
             else if (id === 'files') openLocalBrowser();

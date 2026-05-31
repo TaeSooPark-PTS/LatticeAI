@@ -1609,6 +1609,39 @@ class KnowledgeGraphStore:
             )
         return {"source_id": source_id, "watch_enabled": bool(enabled)}
 
+    def remove_local_source(self, source_id: str) -> Dict[str, Any]:
+        """Remove one approved local source and its derived graph projection.
+
+        This is intentionally non-destructive for user files: only the LatticeAI
+        index rows, graph nodes, edges, and chunks derived from the source are
+        removed. The original folder and files are never touched.
+        """
+        source_id = str(source_id or "").strip()
+        if not source_id:
+            raise ValueError("source_id required")
+        with self._connect() as conn:
+            source = conn.execute(
+                "SELECT id, root_path FROM knowledge_sources WHERE id=?",
+                (source_id,),
+            ).fetchone()
+            if not source:
+                raise ValueError(f"knowledge source not found: {source_id}")
+            rows = conn.execute(
+                "SELECT graph_node_id FROM local_file_index WHERE source_id=? AND graph_node_id IS NOT NULL",
+                (source_id,),
+            ).fetchall()
+            graph_node_ids = [row["graph_node_id"] for row in rows if row["graph_node_id"]]
+            for graph_node_id in graph_node_ids:
+                self._delete_local_file_graph(conn, graph_node_id)
+            conn.execute("DELETE FROM local_file_index WHERE source_id=?", (source_id,))
+            conn.execute("DELETE FROM knowledge_sources WHERE id=?", (source_id,))
+            self._cleanup_local_graph_orphans(conn, source_id)
+        return {
+            "source_id": source_id,
+            "root_path": source["root_path"],
+            "removed_graph_nodes": len(graph_node_ids),
+        }
+
     def _extract_local_file_text(self, path: Path, category: str, *, include_ocr: bool) -> Tuple[str, Dict[str, Any]]:
         ext = path.suffix.lower()
         meta: Dict[str, Any] = {"parser": _parser_type_for_category(category, ext)}

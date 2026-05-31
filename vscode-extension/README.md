@@ -1,6 +1,6 @@
 # Lattice AI — VS Code Extension
 
-**Local & cloud AI coding assistant** — Apple Silicon MLX · OpenAI · Groq · MCP · Graph RAG · zero telemetry
+**AI Workspace OS coding assistant** — Apple Silicon MLX · OpenAI · Groq · MCP · Graph RAG · zero telemetry
 
 [![VS Code Marketplace](https://img.shields.io/badge/VS%20Code%20Marketplace-Install-blue?logo=visualstudiocode)](https://marketplace.visualstudio.com/items?itemName=parktaesoo.ltcai)
 [![Open VSX](https://img.shields.io/open-vsx/v/parktaesoo/ltcai?label=Open%20VSX)](https://open-vsx.org/extension/parktaesoo/ltcai)
@@ -17,6 +17,10 @@ Connects to a running [Lattice AI](https://github.com/TaeSooPark-PTS/LatticeAI) 
 | **💬 Chat panel** | Talk to local MLX models (Gemma, Llama, Phi, Mistral) or cloud (GPT-4o, Claude, Groq) |
 | **✏️ Edit Selection** | Rewrite selected code with AI (`Cmd+Shift+E`) |
 | **🔍 Explain Selection** | Get a plain-English explanation of selected code |
+| **🧩 Refactor Selection** | Generate a reviewable diff for selected code |
+| **🧪 Generate Tests** | Create focused tests from a selection or current file |
+| **📤 Send To Lattice** | Send the current file/selection into Workspace OS workflows |
+| **📄 Ask About Current File** | Ask with the active file attached as context |
 | **⚡ Generate Command** | Describe a task → get a shell command |
 | **🕸️ Graph RAG** | Chat history & docs auto-indexed as a knowledge graph |
 | **🌱 Knowledge Garden** | Save snippets/notes to `~/.ltcai-brain/` |
@@ -56,6 +60,10 @@ LTCAI
 | Lattice AI: Edit Selection | `Cmd+Shift+E` | Rewrite selected code |
 | Lattice AI: Load / Switch Model | `Cmd+Shift+M` | Pick a model to load |
 | Lattice AI: Explain Selection | Right-click menu | Explain selected code |
+| Lattice AI: Refactor Selection | Command palette | Refactor selected code with a diff preview |
+| Lattice AI: Generate Tests | Command palette | Generate tests for the selection or current file |
+| Lattice AI: Send To Lattice | Command palette | Record the file/selection in Workspace OS |
+| Lattice AI: Ask About Current File | Command palette | Ask chat with current file context |
 | Lattice AI: Generate Terminal Command | Right-click menu | Generate shell command |
 | Lattice AI: Save to Knowledge Garden | Right-click menu | Save snippet/note |
 

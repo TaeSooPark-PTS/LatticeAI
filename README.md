@@ -1,7 +1,7 @@
 <div align="center">
   <img src="https://raw.githubusercontent.com/TaeSooPark-PTS/LatticeAI/main/docs/images/logo.svg" alt="Lattice AI" width="280"/>
   <br/>
-  <strong>Local-first AI workspace for your files, chats, folders, and knowledge graph.</strong>
+  <strong>AI Workspace OS for local-first graph, memory, agents, workflows, skills, and timelines.</strong>
   <br/><br/>
 
 [![PyPI](https://img.shields.io/pypi/v/ltcai?label=PyPI&color=blue)](https://pypi.org/project/ltcai/)
@@ -24,17 +24,32 @@
 
 Most AI tools answer one chat at a time. They do not remember your folders, your project history, your previous decisions, or how your files relate to each other.
 
-**Lattice AI turns your local workspace into an AI memory layer.**
+**Lattice AI turns your local workspace into an AI Workspace OS.**
 
-It reads approved local folders, indexes chats and documents, builds a searchable knowledge graph, and lets you ask questions over that graph with local or opt-in cloud models.
+It reads approved local folders, indexes chats and documents, builds a searchable knowledge graph, and connects the graph to snapshots, personal memory, agent runs, workflow history, skills, and an auditable timeline.
 
 ```text
 Local files + chats + folders
           ↓
 Automatic knowledge graph
           ↓
-Graph-aware AI chat, search, document generation, and admin audit
+Graph-aware chat, snapshots, memory, agents, workflows, skills, and timeline
 ```
+
+### New in 1.0.0: AI Workspace OS
+
+- Workspace OS command center at `/workspace`
+- First-run onboarding state API and UI
+- Graph RAG answer traces with sources, nodes, edges, confidence, and jump links
+- Local indexing dashboard with watcher state, success/failure counts, pause/resume/remove
+- Workspace snapshots, Time Machine views, export, and Knowledge Diff
+- Personal memory CRUD/search linked back to the graph
+- Multi-agent graph entities and agent run history
+- Relationship Explorer for inbound, outbound, related entities, and shortest path
+- Local Computer Memory remains OFF by default and requires explicit approval
+- Skill Marketplace registry with install, uninstall, update, enable, disable, and version state
+- Workflow Graph for upload -> summarize -> generate -> export style work histories
+- VS Code commands for Explain Selection, Refactor Selection, Generate Tests, Send To Lattice, and Ask About Current File
 
 ### Built for people who want
 
@@ -76,7 +91,7 @@ LTCAI
 2. Start the local server with `LTCAI`
 3. Press `Cmd+Shift+A` to open the chat panel
 
-**First run:** create an account → the first account becomes admin → choose a model → connect folders → start asking questions.
+**First run:** create an account -> the first account becomes admin -> open `/workspace` -> complete onboarding -> choose a model -> connect folders -> start asking questions.
 
 ---
 

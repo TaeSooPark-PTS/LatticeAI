@@ -203,3 +203,19 @@ def test_set_local_source_watch_updates_source(tmp_path):
     source = store.local_sources()["sources"][0]
     assert source["id"] == source_id
     assert source["watch_enabled"] is True
+
+
+def test_remove_local_source_removes_only_derived_index(tmp_path):
+    root = tmp_path / "source"
+    root.mkdir()
+    local_file = root / "notes.md"
+    local_file.write_text("Lattice AI Graph RAG", encoding="utf-8")
+
+    store = _store(tmp_path)
+    source_id = store.index_local_folder(root, user_email="user@example.com")["source"]["id"]
+    result = store.remove_local_source(source_id)
+
+    assert result["source_id"] == source_id
+    assert local_file.exists()
+    assert store.local_sources()["sources"] == []
+    assert store.stats()["local_sources"] == 0

@@ -4,7 +4,7 @@ const API_BASE = window.location.protocol === 'file:' ? 'http://localhost:4825' 
 
     const G18N = {
       ko: {
-        nav_home: '홈', nav_graph: '지식 그래프', nav_chat: '대화', nav_files: '파일', nav_code: '코드', nav_settings: '설정',
+        nav_home: '홈', nav_workspace: 'Workspace OS', nav_graph: '지식 그래프', nav_chat: '대화', nav_files: '파일', nav_code: '코드', nav_settings: '설정',
         project: '프로젝트', search_title: '그래프 탐색', search_sub: '주제, 파일, 대화, 결정, 작업을 검색하세요.',
         ready: '준비됨', search_ph: '주제, 파일, 대화로 검색...', clear_search: '검색 지우기',
         search_results: '{n}개 결과',
@@ -26,7 +26,7 @@ const API_BASE = window.location.protocol === 'file:' ? 'http://localhost:4825' 
         open_in_chat: '채팅에서 열기', today: '오늘', day_ago: '1일 전', days_ago: '{n}일 전', months_ago: '{n}개월 전', years_ago: '{n}년 전',
       },
       en: {
-        nav_home: 'Home', nav_graph: 'Knowledge Graph', nav_chat: 'Chat', nav_files: 'Files', nav_code: 'Code', nav_settings: 'Settings',
+        nav_home: 'Home', nav_workspace: 'Workspace OS', nav_graph: 'Knowledge Graph', nav_chat: 'Chat', nav_files: 'Files', nav_code: 'Code', nav_settings: 'Settings',
         project: 'Project', search_title: 'Explore the graph', search_sub: 'Search topics, files, conversations, decisions, and tasks.',
         ready: 'Ready', search_ph: 'Search by topic, file, or conversation...', clear_search: 'Clear search',
         search_results: '{n} result(s)',
@@ -54,7 +54,7 @@ const API_BASE = window.location.protocol === 'file:' ? 'http://localhost:4825' 
 
     function applyI18n() {
       document.documentElement.lang = currentLang;
-      const navLabels = ['nav_home', 'nav_graph', 'nav_chat', 'nav_files', 'nav_code', 'nav_settings'];
+      const navLabels = ['nav_home', 'nav_workspace', 'nav_graph', 'nav_chat', 'nav_files', 'nav_code', 'nav_settings'];
       document.querySelectorAll('.graph-rail nav a').forEach((link, index) => {
         const icon = link.querySelector('i')?.outerHTML || '';
         link.innerHTML = `${icon} ${t(navLabels[index])}`;

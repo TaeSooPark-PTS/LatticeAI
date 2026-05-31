@@ -4,8 +4,8 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "ltcai"
-version = "0.6.0"
-description = "Lattice AI local MLX/cloud LLM workspace server"
+version = "1.0.0"
+description = "Lattice AI Workspace OS for local-first graph, memory, agent, workflow, and skill operations"
 readme = "README.md"
 requires-python = ">=3.11"
 license = "MIT"
@@ -93,7 +93,7 @@ include-package-data = true
 ]
 
 [tool.setuptools.data-files]
-"static" = ["static/account.html", "static/chat.html", "static/admin.html", "static/graph.html", "static/manifest.json", "static/sw.js", "static/lattice-reference.css"]
-"static/scripts" = ["static/scripts/account.js", "static/scripts/admin.js", "static/scripts/chat.js", "static/scripts/graph.js"]
+"static" = ["static/account.html", "static/chat.html", "static/admin.html", "static/graph.html", "static/workspace.html", "static/manifest.json", "static/sw.js", "static/lattice-reference.css", "static/workspace.css"]
+"static/scripts" = ["static/scripts/account.js", "static/scripts/admin.js", "static/scripts/chat.js", "static/scripts/graph.js", "static/scripts/workspace.js"]
 "static/css" = ["static/css/tokens.css"]
 "static/icons" = ["static/icons/icon-192.png", "static/icons/icon-512.png", "static/icons/apple-touch-icon.png", "static/icons/favicon-32.png"]
