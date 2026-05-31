@@ -1,5 +1,59 @@
 # Changelog
 
+## [1.5.0] - 2026-06-01
+
+> Unified Product Release — CI/VSIX recovery, hardware-aware local model
+> recommendation, model-catalog extraction, an Enterprise PoC seam, and a
+> product-page README with an up-to-date architecture diagram. The public route
+> contract, schemas, `server:app`, CLI, UI, and VS Code integration are
+> unchanged.
+
+### Fixed
+
+- **VSIX / `npm ci` (ETARGET)** — `vscode-extension/package-lock.json` pinned a
+  non-existent `@azure/core-tracing@^1.4.0` (the registry's latest is `1.3.1`),
+  breaking `npm ci` and the GitHub Actions VSIX build. The lockfile is
+  regenerated so the published `^1.3.0` ranges resolve; `npm ci` → `npm run
+  compile` → `vsce package` is green again.
+
+### Added
+
+- **Local model recommendation** — `latticeai/services/model_recommendation.py`
+  classifies the model catalog into **recommended / compatible / not_recommended**
+  from a detected system profile (OS/RAM/CPU/GPU/disk), grouped by family
+  (Gemma, Qwen, Llama, Phi, DeepSeek, …). Exposed at `GET /models/recommendations`
+  and folded into `/workspace/onboarding/model-recommendations` as a `catalog`
+  field. Covered by `tests/unit/test_model_recommendation.py`.
+- **Enterprise PoC surfaces** — `latticeai/core/enterprise_admin.py` plus
+  `GET /admin/enterprise` and `GET /admin/enterprise/siem-export` provide admin
+  policy, audit-export, SIEM-export-stub, and organization-settings views built
+  on the existing capability seam. Community reports every Enterprise capability
+  as disabled and never gates a Community feature
+  (`tests/unit/test_enterprise_admin.py`).
+- **DeepSeek family** — added to the Ollama and llama.cpp catalogs with
+  identifiers chosen so the version-dedup filter is unaffected.
+
+### Changed
+
+- **Model catalog extraction** — the static catalog (`ENGINE_MODEL_CATALOG`,
+  `ENGINE_INSTALLERS`, `MODEL_ENGINE_ALIASES`) and the pure version-dedup helpers
+  moved to `latticeai/services/model_catalog.py`, re-exported by `model_runtime`
+  for backward compatibility. `model_runtime.py` shrank from 1,973 to 1,721 lines
+  (`tests/unit/test_model_catalog.py` pins the re-export identity).
+- **README rewritten as a product page** — Why / Core Capabilities / Quick Start
+  / Architecture / Current Release / Documentation, with structural diagrams
+  (`docs/images/*`) and a current architecture diagram. Historical "New in 1.x"
+  marketing blocks were removed from the README top (this changelog remains the
+  version history).
+- Python package, npm package, VS Code extension, FastAPI app, and `/health`
+  version metadata aligned at `1.5.0`.
+
+### Validation
+
+- 266 unit tests pass; route-compatibility, import/startup, streaming, model
+  endpoint, MCP/KG contract tests preserved; `npm run check:python` green; VSIX
+  build verified. Test/build/packaging artifacts only — no package-store publish.
+
 ## [1.4.0] - 2026-05-31
 
 > Server App Final Decomposition — chat, model runtime, tools/local/CU,

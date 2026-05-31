@@ -304,4 +304,20 @@ def create_models_router(
         _router.unload_all()
         return {"status": "ok", "unloaded": unloaded}
 
+    @router.get("/models/recommendations")
+    async def model_recommendations(request: Request, engine: str = "local_mlx"):
+        """Hardware-aware tri-state model recommendation for this machine.
+
+        Detects the system profile (OS/RAM/CPU/GPU/disk) and classifies the
+        ``engine`` catalog into recommended / compatible / not_recommended,
+        grouped by family. Used by the onboarding and model-picker UIs.
+        """
+        require_user(request)
+        from auto_setup import probe as auto_setup_probe
+        from latticeai.services.model_recommendation import recommend_catalog
+
+        profile = await asyncio.to_thread(lambda: auto_setup_probe().to_json())
+        catalog = recommend_catalog(profile, engine=engine)
+        return {"profile": profile, "recommendations": catalog}
+
     return router

@@ -1016,10 +1016,55 @@ const chatViewport = document.getElementById('chat-viewport');
                         <p>${escapeHtml(rec.reason || '현재 PC 환경과 선택한 워크스페이스 기준으로 추천했습니다.')}</p>
                     </article>
                 </div>
+                <div id="onboarding-model-compat" class="onboarding-model-compat"></div>
             `, `
                 <button class="onboarding-secondary" onclick="renderOnboardingCustomModelSelect()">개인이 원하는 설정으로 시작</button>
                 <button class="onboarding-primary" onclick="runOnboardingSetup()">추천 설정으로 시작하기</button>
             `);
+            // Best-effort: surface the hardware-aware tri-state model catalog.
+            loadCompatibleModels();
+        }
+
+        async function loadCompatibleModels() {
+            const container = document.getElementById('onboarding-model-compat');
+            if (!container) return;
+            try {
+                const res = await apiFetch('/models/recommendations');
+                const data = await res.json();
+                if (!res.ok) return;
+                const rec = (data && data.recommendations) || {};
+                const families = rec.families || [];
+                if (!families.length) return;
+                const counts = rec.counts || {};
+                const badge = (status) => {
+                    const map = {
+                        recommended: ['추천', '#16a34a'],
+                        compatible: ['실행 가능', '#d97706'],
+                        not_recommended: ['권장 안 함', '#9ca3af'],
+                    };
+                    const [label, color] = map[status] || ['', '#9ca3af'];
+                    return `<span style="display:inline-block;padding:1px 7px;border-radius:999px;font-size:11px;color:#fff;background:${color}">${label}</span>`;
+                };
+                const rows = families.map((fam) => {
+                    const best = fam.best;
+                    const items = (fam.models || []).map((m) => `
+                        <div style="display:flex;justify-content:space-between;gap:8px;padding:2px 0;font-size:12px;opacity:${m.status === 'not_recommended' ? 0.55 : 1}">
+                            <span>${escapeHtml(m.name || m.id)}</span>
+                            <span>${escapeHtml(m.size || '')} ${badge(m.status)}</span>
+                        </div>`).join('');
+                    return `
+                        <details style="margin:6px 0;border:1px solid var(--border,#e5e7eb);border-radius:8px;padding:8px 10px">
+                            <summary style="cursor:pointer;font-weight:600">${escapeHtml(fam.family)} ${best ? badge(best.status) : ''}</summary>
+                            <div style="margin-top:6px">${items}</div>
+                        </details>`;
+                }).join('');
+                container.innerHTML = `
+                    <h3 style="margin:14px 0 4px">이 PC에서 실행 가능한 로컬 모델</h3>
+                    <p style="font-size:12px;opacity:0.7;margin:0 0 8px">RAM ${escapeHtml(String(rec.ram_gb || '?'))}GB 기준 · 추천 ${counts.recommended || 0} · 실행 가능 ${counts.compatible || 0} · 권장 안 함 ${counts.not_recommended || 0}</p>
+                    ${rows}`;
+            } catch (e) {
+                /* best-effort enhancement; never break onboarding */
+            }
         }
 
         function recommendedSetupItems() {

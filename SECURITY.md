@@ -6,9 +6,9 @@
 
 | 버전 | 지원 여부 |
 |------|-----------|
-| 1.4.x (latest) | ✅ 지원 |
-| 1.3.x | ✅ 보안 패치 범위 내 지원 |
-| 1.2.x 이하 | ❌ 미지원 |
+| 1.5.x (latest) | ✅ 지원 |
+| 1.4.x | ✅ 보안 패치 범위 내 지원 |
+| 1.3.x 이하 | ❌ 미지원 |
 
 ## 취약점 제보
 
@@ -27,7 +27,7 @@
 
 ## 보안 모델
 
-Lattice AI v1.4.0은 local-first AI Workspace OS로, 아래 보안 모델을 따릅니다:
+Lattice AI v1.5.0은 local-first AI Workspace OS로, 아래 보안 모델을 따릅니다:
 
 ### 기본 안전 설정 (Default Secure)
 

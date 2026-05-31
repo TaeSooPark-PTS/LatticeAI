@@ -15,7 +15,7 @@
 
   <br/>
 
-  <img src="https://raw.githubusercontent.com/TaeSooPark-PTS/LatticeAI/main/docs/images/lattice-ai-demo.gif" alt="Lattice AI demo showing chat, knowledge graph, and admin dashboard" width="100%"/>
+  <img src="docs/images/hero.gif" alt="Lattice AI — AI Workspace OS for local-first graph, memory, and agents" width="100%"/>
 </div>
 
 ---
@@ -36,80 +36,28 @@ Automatic knowledge graph
 Graph-aware chat, snapshots, memory, agents, workflows, skills, and timeline
 ```
 
-### New in 1.4.0: Server App Final Decomposition
+## Why Lattice AI?
 
-- **server_app.py final decomposition** — the app shell is now FastAPI assembly,
-  lifespan, middleware, static mounting, and router wiring only
-  (~5,381 → 1,303 lines)
-- **Chat / model / tools extraction** — chat/history/agent, model runtime and
-  provider helpers, tools, local files, computer-use, permissions, upload,
-  garden/setup/static UI, MCP, and KG glue now live in API routers and services
-- **AppContext and dependency cleanup** — routers receive explicit dependencies
-  and do not import the FastAPI app; service modules own runtime and dispatch
-  business logic
-- **Safety validation suite** — route compatibility, import/startup, streaming,
-  model endpoint, tools/local/CU, release-artifact, and documentation stale
-  checks guard the split
-- **Compatibility preserved** — all public API paths, request/response schemas,
-  `server:app`, CLI, UI, Knowledge Graph, Admin/Security, Workspace OS, and
-  VS Code expectations remain unchanged
+- **Local-first by default** — models, data, and your knowledge graph stay on your machine (`~/.ltcai/`); cloud is strictly opt-in.
+- **Memory that compounds** — every chat, file, and folder you approve becomes durable, searchable context instead of being forgotten.
+- **A graph, not a pile of files** — people, projects, documents, decisions, and tasks are linked automatically and explored visually.
+- **One workspace, everywhere** — the same local knowledge powers the web UI, VS Code / Cursor, Telegram, and MCP clients.
+- **Built-in governance** — Personal and Organization workspaces, roles, an audit timeline, and sensitive-data monitoring for teams.
 
-### New in 1.2.0: Server App Modularization
+## Core Capabilities
 
-- **server_app.py modularized** — Workspace/Organization and health/engine
-  endpoints extracted into dedicated routers (`latticeai/api/*`) backed by a
-  service layer (`latticeai/services/*`); `server_app` is now app assembly +
-  router include (~6,585 → ~5,948 lines)
-- **Routers / services split** — `create_workspace_router`,
-  `create_health_router`, `WorkspaceService`, `ModelService`, `ChatService`
-- **Workspace API service layer** — scope resolution and role/permission checks
-  centralized in `WorkspaceService`
-- **Workspace / org guardrails** — non-members can't read/write org data,
-  viewers can't write, owners/admins manage members; no-auth local owner
-  fallback preserved
-- **Health / model / chat modularization** — `/health`, `/mode`,
-  `/runtime_features`, `/engines` via the health router; chat trace recording
-  via the chat service (streaming behavior unchanged)
-- **Compatibility preserved** — `server:app` import path, all API routes, CLI,
-  Knowledge Graph / Admin / Security routers, and VS Code integration unchanged
+| Capability | What it does |
+|---|---|
+| 🧠 Automatic knowledge graph | Turns chats, files, and folders into linked nodes and edges, curated automatically |
+| 💬 Graph-aware chat & agents | Answers and multi-step agents grounded in your indexed local memory |
+| 🖥️ Local model recommendation | Scans your hardware and rates each model **Recommended / Compatible / Not Recommended** |
+| 🗂️ Workspaces & roles | Personal and Organization workspaces with owner / admin / member / viewer permissions |
+| 🧩 Skills & MCP | Install skills and connect MCP tools from the in-product marketplace |
+| 🔒 Admin & security | Audit timeline, permission approvals, sensitive-data detection, exportable reports |
 
-### New in 1.1.0: Organization Workspace Foundation
-
-- **Organization Workspace** alongside Personal Workspace — create shared org
-  workspaces, list/switch between them, and archive (non-destructively)
-- **Workspace roles & permissions** — `owner`, `admin`, `member`, `viewer`
-  mapped to read / write / manage-members / manage-workspace
-- **Workspace-scoped data** — snapshots, memory, agent runs, workflows, traces,
-  and timeline carry a `workspace_id`; reads scope via the `X-Workspace-Id` header
-- **CI / release hardening** — Node.js 24 ready workflow, version-scoped
-  artifact upload (never `dist/*`), and a release artifact validator
-- **Enterprise extension foundation (open-core)** — a stable seam for a future
-  Enterprise plugin; Community ships everything it has today, unrestricted
-  (see [docs/ENTERPRISE.md](docs/ENTERPRISE.md) and
-  [docs/EDITION_STRATEGY.md](docs/EDITION_STRATEGY.md))
-
-### New in 1.0.0: AI Workspace OS
-
-- Workspace OS command center at `/workspace`
-- First-run onboarding state API and UI
-- Graph RAG answer traces with sources, nodes, edges, confidence, and jump links
-- Local indexing dashboard with watcher state, success/failure counts, pause/resume/remove
-- Workspace snapshots, Time Machine views, export, and Knowledge Diff
-- Personal memory CRUD/search linked back to the graph
-- Multi-agent graph entities and agent run history
-- Relationship Explorer for inbound, outbound, related entities, and shortest path
-- Local Computer Memory remains OFF by default and requires explicit approval
-- Skill Marketplace registry with install, uninstall, update, enable, disable, and version state
-- Workflow Graph for upload -> summarize -> generate -> export style work histories
-- VS Code commands for Explain Selection, Refactor Selection, Generate Tests, Send To Lattice, and Ask About Current File
-
-### Built for people who want
-
-- a private AI workspace that runs from their own machine
-- local model setup without hunting through many tools
-- folder indexing that becomes useful AI memory
-- a visual knowledge graph instead of disconnected files and chats
-- optional team/admin controls for audit, permissions, and sensitive-data monitoring
+<div align="center">
+  <img src="docs/images/onboarding.png" alt="Onboarding flow: install, system scan, model recommendation, workspace, indexing, knowledge graph, first chat" width="100%"/>
+</div>
 
 ---
 
@@ -171,6 +119,20 @@ LTCAI
 
 ---
 
+## Architecture
+
+`server:app` stays a thin compatibility entrypoint; the FastAPI app is assembled in
+`latticeai/server_app.py`, and the work lives in focused API routers, a service
+layer, and core modules — so the app shell never grows monolithic again.
+
+<div align="center">
+  <img src="docs/images/architecture.png" alt="Lattice AI architecture — entrypoint, API routers, services, core, local engines and knowledge graph" width="100%"/>
+</div>
+
+See [docs/architecture.md](docs/architecture.md) for request and data-flow detail.
+
+---
+
 ## Product Preview
 
 <table>
@@ -192,6 +154,44 @@ LTCAI
 </td>
 </tr>
 </table>
+
+> Screenshots above are the live web UI. The diagrams below map the product
+> experience to the current v1.5.0 structure.
+
+---
+
+## Product Experience
+
+### Local model recommendation
+
+Lattice AI detects your OS, CPU, GPU, RAM, and disk, then rates every local model
+**Recommended**, **Compatible**, or **Not Recommended** for your machine — grouped
+by family (Gemma, Qwen, Llama, Phi, DeepSeek, and more).
+
+<div align="center">
+  <img src="docs/images/model-recommendation.png" alt="Tri-state local model recommendation grouped by family" width="100%"/>
+</div>
+
+### Workspaces & organization
+
+Switch instantly between a **Personal** workspace and shared **Organization**
+workspaces. Org data is scoped by `workspace_id`, and `owner / admin / member /
+viewer` roles map to a transparent permission matrix.
+
+<div align="center">
+  <img src="docs/images/workspace.png" alt="Personal and Organization workspace model" width="49%"/>
+  <img src="docs/images/organization.png" alt="Organization roles and permission matrix" width="49%"/>
+</div>
+
+### Knowledge graph & skills
+
+Your work becomes a typed knowledge graph (built automatically), and skills extend
+the workspace through an in-product marketplace.
+
+<div align="center">
+  <img src="docs/images/graph.png" alt="Knowledge graph node and edge taxonomy" width="49%"/>
+  <img src="docs/images/skills.png" alt="Skill marketplace: recommended, popular, installed, updates" width="49%"/>
+</div>
 
 ---
 
@@ -333,20 +333,24 @@ Supported routes include OpenAI-compatible APIs, OpenRouter, Groq, Together, xAI
 
 ## Current release
 
-**1.4.0** completes the Server App Final Decomposition release:
+**1.5.0 — Unified Product Release.** Onboarding, model recommendation, and CI
+stabilization in one release:
 
-- `server.py` remains the thin compatibility entrypoint and
-  `latticeai/server_app.py` is now a compact app assembly shell
-- chat/history/agent, model runtime/provider helpers, tools/local/CU/
-  permissions/upload, garden/setup/static pages, MCP, and KG router wiring are
-  extracted into `latticeai/api/*` and `latticeai/services/*`
-- route compatibility, streaming, model endpoint, tools/local/CU,
-  import/startup, build, packaging, and documentation stale-reference checks
-  are part of the release validation
+- **CI / VSIX recovery** — the stale `@azure/core-tracing` lockfile pin that
+  broke `npm ci` (ETARGET) is regenerated, so the VSIX build is green again
+- **Local model recommendation** — a hardware-aware engine
+  (`latticeai/services/model_recommendation.py`) classifies the model catalog as
+  Recommended / Compatible / Not Recommended, exposed at `/models/recommendations`
+- **Catalog extraction** — the static model catalog moved to
+  `latticeai/services/model_catalog.py`, simplifying `model_runtime.py`
+- **Enterprise PoC seam** — admin policy / audit-export / SIEM-stub / org-settings
+  surfaces consult the capability registry (Community keeps everything ungated)
+- **Documentation & visuals** — README rewritten as a product page with an
+  up-to-date architecture diagram and structural visuals
 - Python package, npm package, VS Code extension, FastAPI app, and `/health`
-  version metadata are aligned at `1.4.0`
+  version metadata are aligned at `1.5.0`
 
-See the full [changelog](docs/CHANGELOG.md).
+See the full [changelog](docs/CHANGELOG.md) and [RELEASE.md](RELEASE.md).
 
 ---
 
@@ -532,6 +536,20 @@ Full reference: [docs/mcp-tools.md](docs/mcp-tools.md)
 | npm | [npmjs.com/package/ltcai](https://www.npmjs.com/package/ltcai) |
 | VS Code Marketplace | [marketplace.visualstudio.com](https://marketplace.visualstudio.com/items?itemName=parktaesoo.ltcai) |
 | Open VSX | [open-vsx.org](https://open-vsx.org/extension/parktaesoo/ltcai) |
+
+---
+
+## Documentation
+
+| Doc | What's inside |
+|---|---|
+| [docs/architecture.md](docs/architecture.md) | App structure, request and data flow |
+| [docs/CHANGELOG.md](docs/CHANGELOG.md) | Full version history |
+| [RELEASE.md](RELEASE.md) | Release notes and the build/publish checklist |
+| [SECURITY.md](SECURITY.md) | Security model and vulnerability reporting |
+| [docs/ENTERPRISE.md](docs/ENTERPRISE.md) · [docs/EDITION_STRATEGY.md](docs/EDITION_STRATEGY.md) | Open-core boundary and edition strategy |
+| [docs/kg-schema.md](docs/kg-schema.md) · [docs/mcp-tools.md](docs/mcp-tools.md) | Knowledge graph schema and MCP tool catalog |
+| [docs/privacy.md](docs/privacy.md) · [docs/public-deploy.md](docs/public-deploy.md) · [docs/OPERATIONS.md](docs/OPERATIONS.md) | Privacy, public deployment, operations |
 
 ---
 

@@ -184,4 +184,21 @@ def create_admin_router(
         )
         return public_sso_config(saved)
 
+    @router.get("/admin/enterprise")
+    async def admin_enterprise_overview(request: Request):
+        """Enterprise PoC surface: edition matrix, admin policies, audit export,
+        SIEM stub, and org-governance capabilities. Community reports every
+        Enterprise capability as disabled and never gates Community features."""
+        require_admin(request)
+        from latticeai.core.enterprise_admin import poc_overview
+        return poc_overview()
+
+    @router.get("/admin/enterprise/siem-export")
+    async def admin_enterprise_siem_export(request: Request):
+        """Preview the SIEM export envelope. In Community this is a stub
+        (``streamed=false``) — no events are pushed to an external SIEM."""
+        require_admin(request)
+        from latticeai.core.enterprise_admin import siem_export_stub
+        return siem_export_stub()
+
     return router

@@ -9,6 +9,37 @@
 > PyPI / npm / VS Code Marketplace / Open VSX 배포는 아래 수동 절차로 로컬에서
 > 직접 인증 후 진행합니다. GitHub Secrets에 배포 토큰을 저장하지 않습니다.
 
+## v1.5.0 릴리스 노트 (2026-06-01)
+
+Unified Product Release — CI 복구, model recommendation, catalog 추출, Enterprise
+PoC, 문서/비주얼 현대화를 한 릴리스로 통합. 자세한 내용은
+[`docs/CHANGELOG.md`](docs/CHANGELOG.md)의 `[1.5.0]` 항목 참고.
+
+- **Fixed (CI/VSIX)**: `vscode-extension/package-lock.json`에 고정돼 있던
+  `@azure/core-tracing@^1.4.0`(레지스트리 최신은 1.3.1)로 인한 `npm ci` ETARGET
+  실패를 lockfile 재생성으로 해결. `npm ci` → `tsc` compile → `vsce package`
+  체인이 다시 green.
+- **Added**: `latticeai/services/model_recommendation.py` — OS/RAM/CPU/GPU/Disk
+  기반 tri-state(Recommended/Compatible/Not Recommended) 분류 + family 그룹화.
+  `GET /models/recommendations` 신규 엔드포인트, `/workspace/onboarding/model-
+  recommendations` payload에 `catalog` 보강.
+- **Changed**: 정적 모델 카탈로그(`ENGINE_MODEL_CATALOG` 등)를
+  `latticeai/services/model_catalog.py`로 추출하고 `model_runtime`에서 재export —
+  `model_runtime.py` 1,973 → 1,721줄. 동작/공개 import 불변.
+- **Added**: Enterprise PoC seam — `latticeai/core/enterprise_admin.py`(admin
+  policies / audit export / SIEM export stub / org settings)와
+  `GET /admin/enterprise`, `GET /admin/enterprise/siem-export`. Community는 모든
+  Enterprise capability를 비활성으로 보고하며 어떤 Community 기능도 게이트하지 않음.
+- **Added**: DeepSeek 모델 패밀리를 ollama/llamacpp 카탈로그에 안전하게 추가
+  (버전 필터 정규식과 충돌하지 않는 식별자 사용).
+- **Changed**: README를 릴리스 로그가 아닌 제품 소개 페이지로 재작성
+  (Why / Core Capabilities / Architecture / Current Release / Documentation),
+  구조 기반 다이어그램(`docs/images/*`)과 최신 아키텍처 다이어그램 삽입.
+- **Validation**: 단위 테스트 266 pass, route compatibility/startup/import/
+  streaming/model endpoint/MCP/KG contract 유지, `npm run check:python` green,
+  VSIX 빌드 검증.
+- 테스트/빌드/패키징 산출물만 생성 — 패키지 스토어 publish는 수동 절차로만 진행.
+
 ## v1.4.0 릴리스 노트 (2026-05-31)
 
 Server App Final Decomposition — 목표 줄 수 미달 없이 핵심 클러스터를 실제
@@ -259,11 +290,11 @@ Knowledge Graph v2 read/write cutover. 자세한 내용은
 3. 업로드
    - `npm run publish:pypi`
    - 직접 실행 시:
-     `python3 -m twine upload dist/ltcai-1.4.0-py3-none-any.whl dist/ltcai-1.4.0.tar.gz`
+     `python3 -m twine upload dist/ltcai-1.5.0-py3-none-any.whl dist/ltcai-1.5.0.tar.gz`
 
 참고:
 - TestPyPI 먼저 쓰려면:
-  - `python3 -m twine upload --skip-existing --repository testpypi dist/ltcai-1.4.0.tar.gz dist/ltcai-1.4.0-py3-none-any.whl`
+  - `python3 -m twine upload --skip-existing --repository testpypi dist/ltcai-1.5.0.tar.gz dist/ltcai-1.5.0-py3-none-any.whl`
 
 ## 4) VS Code / Cursor / Antigravity 확장 배포
 
@@ -277,11 +308,11 @@ Knowledge Graph v2 read/write cutover. 자세한 내용은
 3. VS Code Marketplace 배포
    - `npm run publish:vscode`
    - 직접 실행 시:
-     `npx vsce publish --packagePath dist/ltcai-1.4.0.vsix`
+     `npx vsce publish --packagePath dist/ltcai-1.5.0.vsix`
 4. Open VSX 배포 (Cursor/일부 포크 호환)
    - `npm run publish:openvsx`
    - 직접 실행 시:
-     `npx ovsx publish dist/ltcai-1.4.0.vsix`
+     `npx ovsx publish dist/ltcai-1.5.0.vsix`
 5. 로컬 설치 (VS Code/Cursor/Antigravity)
    - `npm run install:all`
 

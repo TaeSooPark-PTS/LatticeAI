@@ -262,9 +262,20 @@ def create_workspace_router(
         require_user(request)
         env = await asyncio.to_thread(scan_environment)
         recommendations = get_recommendations(env)
+        # Tri-state, family-grouped catalog (recommended / compatible /
+        # not_recommended) for this machine, used by the onboarding model step.
+        catalog = None
+        try:
+            from auto_setup import probe as auto_setup_probe
+            from latticeai.services.model_recommendation import recommend_catalog
+            profile = await asyncio.to_thread(lambda: auto_setup_probe().to_json())
+            catalog = recommend_catalog(profile, engine="local_mlx")
+        except Exception as exc:  # pragma: no cover - recommendation is best-effort
+            logging.warning("model recommendation catalog failed: %s", exc)
         payload = {
             "environment": env,
             "recommendations": recommendations,
+            "catalog": catalog,
             "default_local_model": LOCAL_MODEL,
             "default_public_model": PUBLIC_MODEL,
         }

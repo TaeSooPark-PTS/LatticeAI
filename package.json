@@ -1,6 +1,6 @@
 {
   "name": "ltcai",
-  "version": "1.4.0",
+  "version": "1.5.0",
   "description": "Lattice AI Workspace OS for local-first graph, memory, agent, workflow, and skill operations",
   "homepage": "https://github.com/TaeSooPark-PTS/LatticeAI#readme",
   "repository": {
@@ -19,7 +19,7 @@
     "dev": "python3 ltcai_cli.py --reload",
     "build": "npm run build:python",
     "build:python": "python3 -m build",
-    "check:python": "python3 -m py_compile ltcai_cli.py server.py latticeai/server_app.py latticeai/api/chat.py latticeai/api/computer_use.py latticeai/api/deps.py latticeai/api/garden.py latticeai/api/local_files.py latticeai/api/permissions.py latticeai/api/setup.py latticeai/api/static_routes.py latticeai/api/tools.py latticeai/services/app_context.py latticeai/services/model_runtime.py latticeai/services/tool_dispatch.py latticeai/services/upload_service.py latticeai/core/tool_registry.py latticeai/core/agent_prompts.py latticeai/core/workspace_os.py knowledge_graph.py knowledge_graph_api.py local_knowledge_api.py llm_router.py p_reinforce.py telegram_bot.py tools.py codex_telegram_bot.py",
+    "check:python": "python3 -m py_compile ltcai_cli.py server.py latticeai/server_app.py latticeai/api/chat.py latticeai/api/computer_use.py latticeai/api/deps.py latticeai/api/garden.py latticeai/api/local_files.py latticeai/api/permissions.py latticeai/api/setup.py latticeai/api/static_routes.py latticeai/api/tools.py latticeai/services/app_context.py latticeai/services/model_runtime.py latticeai/services/model_catalog.py latticeai/services/model_recommendation.py latticeai/services/tool_dispatch.py latticeai/services/upload_service.py latticeai/core/tool_registry.py latticeai/core/enterprise.py latticeai/core/enterprise_admin.py latticeai/core/agent_prompts.py latticeai/core/workspace_os.py knowledge_graph.py knowledge_graph_api.py local_knowledge_api.py llm_router.py p_reinforce.py telegram_bot.py tools.py codex_telegram_bot.py",
     "test": "python3 -m pytest tests/ -v",
     "test:unit": "python3 -m pytest tests/unit/ -v",
     "test:integration": "python3 -m pytest tests/integration/ -v",
