@@ -1,5 +1,29 @@
 # Changelog
 
+## [0.6.0] - 2026-05-31
+
+> Runtime / registry / config extraction release.
+
+### Changed
+
+- **server.py thin entrypoint** — moved FastAPI app assembly and route wiring to
+  `latticeai.server_app`; `server.py` now preserves the historical `server:app`
+  import path for uvicorn, Docker, CLI scripts, and tests.
+- **ToolRegistry ownership** — centralized tool dispatch, governance policies,
+  permission views, MCP descriptions, prompt catalog text, and file-create
+  metadata in `latticeai.core.tool_registry`. `tools.execute_tool()` delegates
+  through the registry.
+- **Agent prompts separated** — moved planner / executor / critic / memory
+  updater prompts to `latticeai.core.agent_prompts`; `AgentRuntime` remains the
+  injected state-machine core in `latticeai.core.agent`.
+- **Release metadata** — bumped Python package, npm package, VS Code extension,
+  FastAPI app, and `/health` version to `0.6.0`.
+
+### Validation
+
+- Full test suite: 202 passed.
+- Python package build, `twine check`, npm pack, and VSIX package build verified.
+
 ## [0.5.1] - 2026-05-31
 
 > KGStoreV2 정규화 스키마 + 마이그레이션 하드닝 + native API 정리(릴리스).

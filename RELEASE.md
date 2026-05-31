@@ -9,6 +9,22 @@
 > PyPI / npm / VS Code Marketplace / Open VSX 배포는 아래 수동 절차로 로컬에서
 > 직접 인증 후 진행합니다. GitHub Secrets에 배포 토큰을 저장하지 않습니다.
 
+## v0.6.0 릴리스 노트 (2026-05-31)
+
+Runtime / registry / config extraction release. 자세한 내용은
+[`docs/CHANGELOG.md`](docs/CHANGELOG.md)의 `[0.6.0]` 항목 참고.
+
+- **Changed**: `server.py`를 historical `server:app` 호환 엔트리포인트로 축소하고
+  FastAPI 앱 조립/라우트 wiring을 `latticeai.server_app`으로 이동.
+- **Changed**: tool dispatch, governance, permission view, MCP description,
+  prompt catalog를 `latticeai.core.tool_registry.ToolRegistry`로 통합.
+- **Changed**: planner / executor / critic / memory updater prompts를
+  `latticeai.core.agent_prompts`로 분리. `AgentRuntime`은 injected state-machine
+  core로 유지.
+- **Changed**: Python/npm/VS Code extension/FastAPI `/health` 버전을 `0.6.0`으로
+  정렬.
+- 테스트/빌드/패키징 산출물만 생성 — 어떤 배포도 수행하지 않음.
+
 ## v0.5.1 릴리스 노트 (2026-05-31)
 
 KGStoreV2 정규화 스키마 + 마이그레이션 하드닝 + native API 정리. 자세한 내용은
@@ -145,4 +161,3 @@ Knowledge Graph v2 read/write cutover. 자세한 내용은
 - `Cursor`, `Antigravity`는 VSIX 설치가 가능하므로 `install:all`로 로컬 검증 가능.
 - 원격 “스토어 등록”은 해당 스토어 정책/토큰이 필요합니다.
 - 스토어 API/토큰 준비 후에는 같은 VSIX를 재사용해 등록하면 됩니다.
-

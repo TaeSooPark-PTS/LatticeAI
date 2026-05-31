@@ -266,14 +266,16 @@ Supported routes include OpenAI-compatible APIs, OpenRouter, Groq, Together, xAI
 
 ## Current release
 
-**0.4.0** completes the Knowledge Graph v2 read/write cutover:
+**0.6.0** completes the runtime / registry / config extraction sprint:
 
-- graph reads and writes flow through the v2 store, behind the unchanged
-  `KnowledgeGraphStore` interface
-- legacy ↔ v2 result equivalence guaranteed (single read path + reconstruction
-  views), backed by a dedicated equivalence test suite
-- dual-write projection keeps the v2 graph in sync on every write and delete
-- deterministic ordering (`… , id ASC`) so results match across both paths
+- `server.py` is now a thin compatibility entrypoint; FastAPI app assembly lives
+  in `latticeai.server_app`
+- tool dispatch, governance, permission views, MCP descriptions, and prompt
+  catalog metadata are centralized in `ToolRegistry`
+- agent role prompts are split into `latticeai.core.agent_prompts`, while
+  `AgentRuntime` remains the injected state-machine core
+- Python package, npm package, VS Code extension, FastAPI app, and `/health`
+  version metadata are aligned at `0.6.0`
 
 See the full [changelog](docs/CHANGELOG.md).
 
