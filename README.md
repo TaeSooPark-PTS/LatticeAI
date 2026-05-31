@@ -36,6 +36,25 @@ Automatic knowledge graph
 Graph-aware chat, snapshots, memory, agents, workflows, skills, and timeline
 ```
 
+### New in 1.2.0: Server App Modularization
+
+- **server_app.py modularized** — Workspace/Organization and health/engine
+  endpoints extracted into dedicated routers (`latticeai/api/*`) backed by a
+  service layer (`latticeai/services/*`); `server_app` is now app assembly +
+  router include (~6,585 → ~5,948 lines)
+- **Routers / services split** — `create_workspace_router`,
+  `create_health_router`, `WorkspaceService`, `ModelService`, `ChatService`
+- **Workspace API service layer** — scope resolution and role/permission checks
+  centralized in `WorkspaceService`
+- **Workspace / org guardrails** — non-members can't read/write org data,
+  viewers can't write, owners/admins manage members; no-auth local owner
+  fallback preserved
+- **Health / model / chat modularization** — `/health`, `/mode`,
+  `/runtime_features`, `/engines` via the health router; chat trace recording
+  via the chat service (streaming behavior unchanged)
+- **Compatibility preserved** — `server:app` import path, all API routes, CLI,
+  Knowledge Graph / Admin / Security routers, and VS Code integration unchanged
+
 ### New in 1.1.0: Organization Workspace Foundation
 
 - **Organization Workspace** alongside Personal Workspace — create shared org

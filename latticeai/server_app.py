@@ -101,6 +101,11 @@ from latticeai.core.enterprise import (
     capability_registry,
     detect_edition,
 )
+from latticeai.services.workspace_service import WorkspaceService
+from latticeai.services.model_service import ModelService
+from latticeai.services.chat_service import ChatService
+from latticeai.api.workspace import create_workspace_router
+from latticeai.api.health import create_health_router
 from latticeai.core.agent import (
     AgentState,
     AgentRunContext,
@@ -357,6 +362,9 @@ SSO_FILE = DATA_DIR / "sso_config.json"
 KNOWLEDGE_GRAPH = KnowledgeGraphStore(DATA_DIR / "knowledge_graph.sqlite", DATA_DIR / "knowledge_graph_blobs") if ENABLE_GRAPH else None
 LOCAL_KG_WATCHER = LocalKnowledgeWatcher(lambda: KNOWLEDGE_GRAPH) if ENABLE_GRAPH else None
 WORKSPACE_OS = WorkspaceOSStore(DATA_DIR)
+# Service layer (latticeai.services) wraps the store with scope/permission
+# guardrails; routers and the app assembly share this single instance.
+WORKSPACE_SERVICE = WorkspaceService(WORKSPACE_OS)
 
 def _require_graph():
     if not ENABLE_GRAPH or KNOWLEDGE_GRAPH is None:
@@ -726,6 +734,10 @@ def get_history():
     except Exception as e:
         logging.warning("get_history failed: %s", e)
         return []
+
+# Chat service seam: behaviour-preserving façade for history access and
+# Workspace-OS answer-trace recording used by the (unchanged) streaming chat path.
+CHAT_SERVICE = ChatService(store=WORKSPACE_OS, get_history=get_history)
 
 def conversation_title(item: Dict) -> str:
     content = str(item.get("content") or "").strip()
@@ -1317,22 +1329,8 @@ async def admin_page():
     response.headers["Cache-Control"] = "no-cache, no-store, must-revalidate"
     return response
 
-@app.get("/workspace")
-async def workspace_page(request: Request):
-    require_user(request)
-    workspace_path = STATIC_DIR / "workspace.html"
-    if not workspace_path.exists():
-        raise HTTPException(status_code=404, detail="Workspace OS UI not found.")
-    return ui_file_response(workspace_path)
-
-
-@app.get("/onboarding")
-async def onboarding_page(request: Request):
-    require_user(request)
-    workspace_path = STATIC_DIR / "workspace.html"
-    if not workspace_path.exists():
-        raise HTTPException(status_code=404, detail="Workspace OS UI not found.")
-    return ui_file_response(workspace_path)
+# /workspace and /onboarding UI pages are served by the workspace router
+# (latticeai.api.workspace), included below after its dependencies are defined.
 
 @app.get("/status")
 async def status():
@@ -1437,102 +1435,7 @@ class VerifyCloudRequest(BaseModel):
     provider: Optional[str] = None
 
 
-class WorkspaceOnboardingStepRequest(BaseModel):
-    step: str
-    status: str = "complete"
-    data: Dict = {}
-    error: str = ""
-
-
-class WorkspaceOnboardingCompleteRequest(BaseModel):
-    data: Dict = {}
-
-
-class WorkspaceSnapshotRequest(BaseModel):
-    name: str = "Workspace snapshot"
-
-
-class WorkspaceSnapshotCompareRequest(BaseModel):
-    before_id: str
-    after_id: str
-
-
-class WorkspaceMemoryRequest(BaseModel):
-    kind: str
-    content: str
-    tags: List[str] = []
-    memory_id: Optional[str] = None
-    metadata: Dict = {}
-
-
-class WorkspaceAgentRunRequest(BaseModel):
-    agent_id: str = "agent:executor"
-    status: str = "ok"
-    input: str = ""
-    output: str = ""
-    timeline: List[Dict] = []
-    relationships: List[str] = []
-
-
-class WorkspaceWorkflowRequest(BaseModel):
-    name: str
-    steps: List[Dict] = []
-    metadata: Dict = {}
-
-
-class WorkspaceWorkflowEventRequest(BaseModel):
-    event_type: str
-    payload: Dict = {}
-
-
-class WorkspaceComputerMemoryRequest(BaseModel):
-    enabled: bool = False
-    consent: Dict = {}
-    scopes: List[str] = []
-
-
-class WorkspaceComputerActivityRequest(BaseModel):
-    activity: Dict = {}
-
-
-class WorkspaceSkillActionRequest(BaseModel):
-    skill: str
-    plugin: Optional[str] = None
-    enabled: Optional[bool] = None
-    version: Optional[str] = None
-    metadata: Dict = {}
-
-
-class WorkspaceVSCodeRequest(BaseModel):
-    action: str
-    file_path: Optional[str] = None
-    language: Optional[str] = None
-    content: str = ""
-    selection: str = ""
-    prompt: str = ""
-
-
-class WorkspaceCreateRequest(BaseModel):
-    name: str
-    settings: Dict = {}
-
-
-class WorkspaceUpdateRequest(BaseModel):
-    name: Optional[str] = None
-    settings: Optional[Dict] = None
-
-
-class WorkspaceMemberRequest(BaseModel):
-    user_id: str
-    role: str = "member"
-
-
-class WorkspaceMemberRoleRequest(BaseModel):
-    role: str
-
-
-class WorkspaceActivateRequest(BaseModel):
-    workspace_id: str
+# Workspace request models moved to latticeai.api.workspace (v1.2.0 modularization).
 
 
 class GardenRequest(BaseModel):
@@ -1736,562 +1639,37 @@ def _workspace_graph():
     return KNOWLEDGE_GRAPH if (ENABLE_GRAPH and KNOWLEDGE_GRAPH) else None
 
 
-def _workspace_scope(request: Request) -> Optional[str]:
-    """Resolve the active workspace for scoping from an optional header/query.
-
-    Returns ``None`` when unset so the store falls back to the active workspace
-    (Personal by default), preserving pre-1.1 behaviour for legacy clients.
-    """
-    header = request.headers.get("X-Workspace-Id")
-    if header and header.strip():
-        return header.strip()
-    query = request.query_params.get("workspace_id")
-    return query.strip() if query and query.strip() else None
-
-
-@app.get("/workspace/os")
-async def workspace_os_summary(request: Request):
-    user = require_user(request)
-    summary = WORKSPACE_OS.summary()
-    summary["graph"] = _graph_stats_safe()
-    summary["models"] = _workspace_models_payload()
-    summary["workspace_registry"] = WORKSPACE_OS.list_workspaces(user_id=user or None)
-    summary["edition"] = capability_registry.describe()
-    return summary
-
-
-@app.get("/workspace/onboarding/status")
-async def workspace_onboarding_status(request: Request):
-    require_user(request)
-    return WORKSPACE_OS.onboarding_status(load_users(), _graph_stats_safe())
-
-
-@app.post("/workspace/onboarding/step")
-async def workspace_onboarding_step(req: WorkspaceOnboardingStepRequest, request: Request):
-    current_user = require_user(request)
-    return WORKSPACE_OS.update_onboarding_step(
-        req.step,
-        status=req.status,
-        data=req.data,
-        error=req.error,
-        user_email=current_user or None,
-    )
-
-
-@app.post("/workspace/onboarding/complete")
-async def workspace_onboarding_complete(req: WorkspaceOnboardingCompleteRequest, request: Request):
-    current_user = require_user(request)
-    append_audit_event("onboarding_complete", user_email=current_user, platform="AI Workspace OS")
-    return WORKSPACE_OS.complete_onboarding(req.data, user_email=current_user or None)
-
-
-@app.get("/workspace/onboarding/hardware")
-async def workspace_onboarding_hardware(request: Request):
-    require_user(request)
-    env = await asyncio.to_thread(scan_environment)
-    sysinfo = await local_sysinfo(request)
-    payload = {"environment": env, "sysinfo": sysinfo, "scanned_at": datetime.now().isoformat()}
-    WORKSPACE_OS.update_onboarding_step("hardware", status="complete", data=payload, user_email=get_current_user(request))
-    return payload
-
-
-@app.get("/workspace/onboarding/model-recommendations")
-async def workspace_onboarding_model_recommendations(request: Request):
-    require_user(request)
-    env = await asyncio.to_thread(scan_environment)
-    recommendations = get_recommendations(env)
-    payload = {
-        "environment": env,
-        "recommendations": recommendations,
-        "default_local_model": LOCAL_MODEL,
-        "default_public_model": PUBLIC_MODEL,
-    }
-    WORKSPACE_OS.update_onboarding_step("model_recommendation", status="complete", data=payload, user_email=get_current_user(request))
-    return payload
-
-
-@app.get("/workspace/traces")
-async def workspace_traces(request: Request, conversation_id: Optional[str] = None, limit: int = 50):
-    require_user(request)
-    return WORKSPACE_OS.list_traces(conversation_id=conversation_id, limit=limit, workspace_id=_workspace_scope(request))
-
-
-@app.get("/workspace/indexing")
-async def workspace_indexing_dashboard(request: Request):
-    require_user(request)
-    graph = _workspace_graph()
-    watcher_status = LOCAL_KG_WATCHER.status() if LOCAL_KG_WATCHER else {"available": False, "active": {}}
-    return WORKSPACE_OS.build_indexing_dashboard(graph, watcher_status)
-
-
-@app.post("/workspace/indexing/{source_id}/pause")
-async def workspace_indexing_pause(source_id: str, request: Request):
-    require_user(request)
-    _require_graph()
-    return WORKSPACE_OS.pause_indexing(KNOWLEDGE_GRAPH, source_id, LOCAL_KG_WATCHER)
-
-
-@app.post("/workspace/indexing/{source_id}/resume")
-async def workspace_indexing_resume(source_id: str, request: Request):
-    require_user(request)
-    _require_graph()
-    return WORKSPACE_OS.resume_indexing(KNOWLEDGE_GRAPH, source_id, LOCAL_KG_WATCHER)
-
-
-@app.post("/workspace/indexing/{source_id}/remove")
-async def workspace_indexing_remove(source_id: str, request: Request):
-    require_user(request)
-    _require_graph()
-    return WORKSPACE_OS.remove_index_source(KNOWLEDGE_GRAPH, source_id, LOCAL_KG_WATCHER)
-
-
-@app.get("/workspace/snapshots")
-async def workspace_snapshots(request: Request):
-    require_user(request)
-    return WORKSPACE_OS.list_snapshots(workspace_id=_workspace_scope(request))
-
-
-@app.post("/workspace/snapshots")
-async def workspace_snapshot_create(req: WorkspaceSnapshotRequest, request: Request):
-    current_user = require_user(request)
-    result = WORKSPACE_OS.create_snapshot(
-        name=req.name,
-        graph=_workspace_graph(),
-        history=get_history(),
-        settings=_workspace_settings_payload(),
-        models=_workspace_models_payload(),
-        workspace_id=_workspace_scope(request),
-    )
-    append_audit_event("workspace_snapshot", user_email=current_user, snapshot_id=result["snapshot"]["id"])
-    return result
-
-
-@app.post("/workspace/snapshots/compare")
-async def workspace_snapshot_compare(req: WorkspaceSnapshotCompareRequest, request: Request):
-    require_user(request)
-    try:
-        return WORKSPACE_OS.compare_snapshots(req.before_id, req.after_id)
-    except FileNotFoundError as exc:
-        raise HTTPException(status_code=404, detail=f"Snapshot not found: {exc}") from exc
-
-
-@app.get("/workspace/snapshots/{snapshot_id}")
-async def workspace_snapshot_get(snapshot_id: str, request: Request):
-    require_user(request)
-    try:
-        return WORKSPACE_OS.get_snapshot(snapshot_id)
-    except FileNotFoundError as exc:
-        raise HTTPException(status_code=404, detail=f"Snapshot not found: {exc}") from exc
-
-
-@app.get("/workspace/snapshots/{snapshot_id}/{area}")
-async def workspace_snapshot_area(snapshot_id: str, area: str, request: Request):
-    require_user(request)
-    try:
-        return WORKSPACE_OS.snapshot_view(snapshot_id, area)
-    except FileNotFoundError as exc:
-        raise HTTPException(status_code=404, detail=f"Snapshot not found: {exc}") from exc
-
-
-@app.post("/workspace/snapshots/{snapshot_id}/export")
-async def workspace_snapshot_export(snapshot_id: str, request: Request):
-    current_user = require_user(request)
-    try:
-        result = WORKSPACE_OS.export_snapshot(snapshot_id)
-    except FileNotFoundError as exc:
-        raise HTTPException(status_code=404, detail=f"Snapshot not found: {exc}") from exc
-    append_audit_event("workspace_snapshot_export", user_email=current_user, snapshot_id=snapshot_id, path=result.get("export_path"))
-    return result
-
-
-@app.get("/workspace/time-machine")
-async def workspace_time_machine(request: Request, limit: int = 100):
-    require_user(request)
-    return WORKSPACE_OS.timeline(get_audit_log(), limit=limit, workspace_id=_workspace_scope(request))
-
-
-@app.get("/workspace/time-machine/{snapshot_id}/{area}")
-async def workspace_time_machine_view(snapshot_id: str, area: str, request: Request):
-    require_user(request)
-    try:
-        return WORKSPACE_OS.snapshot_view(snapshot_id, area)
-    except FileNotFoundError as exc:
-        raise HTTPException(status_code=404, detail=f"Snapshot not found: {exc}") from exc
-
-
-@app.get("/workspace/memories")
-async def workspace_memories(request: Request, kind: Optional[str] = None):
-    current_user = require_user(request)
-    return WORKSPACE_OS.list_memories(user_email=current_user or None, kind=kind, workspace_id=_workspace_scope(request))
-
-
-@app.get("/workspace/memories/search")
-async def workspace_memory_search(q: str, request: Request, limit: int = 20):
-    current_user = require_user(request)
-    return WORKSPACE_OS.search_memories(q, user_email=current_user or None, limit=limit, workspace_id=_workspace_scope(request))
-
-
-@app.post("/workspace/memories")
-async def workspace_memory_upsert(req: WorkspaceMemoryRequest, request: Request):
-    current_user = require_user(request)
-    try:
-        record = WORKSPACE_OS.upsert_memory(
-            kind=req.kind,
-            content=req.content,
-            tags=req.tags,
-            memory_id=req.memory_id,
-            metadata=req.metadata,
-            user_email=current_user or None,
-            graph=_workspace_graph(),
-            workspace_id=_workspace_scope(request),
-        )
-    except ValueError as exc:
-        raise HTTPException(status_code=400, detail=str(exc)) from exc
-    return {"memory": record}
-
-
-@app.delete("/workspace/memories/{memory_id}")
-async def workspace_memory_delete(memory_id: str, request: Request):
-    require_user(request)
-    try:
-        return WORKSPACE_OS.delete_memory(memory_id)
-    except FileNotFoundError as exc:
-        raise HTTPException(status_code=404, detail=f"Memory not found: {exc}") from exc
-
-
-@app.get("/workspace/agents")
-async def workspace_agents(request: Request):
-    require_user(request)
-    return WORKSPACE_OS.list_agents(workspace_id=_workspace_scope(request))
-
-
-@app.post("/workspace/agents/runs")
-async def workspace_agent_run(req: WorkspaceAgentRunRequest, request: Request):
-    current_user = require_user(request)
-    run = WORKSPACE_OS.record_agent_run(
-        agent_id=req.agent_id,
-        status=req.status,
-        input_text=req.input,
-        output_text=req.output,
-        timeline=req.timeline,
-        relationships=req.relationships,
-        user_email=current_user or None,
-        graph=_workspace_graph(),
-        workspace_id=_workspace_scope(request),
-    )
-    return {"run": run}
-
-
-@app.get("/workspace/relationships/{node_id:path}")
-async def workspace_relationships(node_id: str, request: Request, target_id: Optional[str] = None):
-    require_user(request)
-    _require_graph()
-    return WORKSPACE_OS.relationship_explorer(KNOWLEDGE_GRAPH, node_id, target_id=target_id)
-
-
-@app.get("/workspace/computer-memory")
-async def workspace_computer_memory(request: Request):
-    require_user(request)
-    return WORKSPACE_OS.load_state().get("computer_memory")
-
-
-@app.post("/workspace/computer-memory")
-async def workspace_computer_memory_config(req: WorkspaceComputerMemoryRequest, request: Request):
-    current_user = require_user(request)
-    try:
-        config = WORKSPACE_OS.configure_computer_memory(
-            enabled=req.enabled,
-            approved_by=current_user or None,
-            consent=req.consent,
-            scopes=req.scopes or None,
-        )
-    except PermissionError as exc:
-        raise HTTPException(status_code=403, detail=str(exc)) from exc
-    append_audit_event("computer_memory_config", user_email=current_user, enabled=req.enabled)
-    return {"computer_memory": config}
-
-
-@app.post("/workspace/computer-memory/activity")
-async def workspace_computer_memory_activity(req: WorkspaceComputerActivityRequest, request: Request):
-    require_user(request)
-    return WORKSPACE_OS.record_computer_activity(req.activity, graph=_workspace_graph())
-
-
-@app.get("/workspace/workflows")
-async def workspace_workflows(request: Request, q: str = ""):
-    require_user(request)
-    return WORKSPACE_OS.list_workflows(query=q, workspace_id=_workspace_scope(request))
-
-
-@app.post("/workspace/workflows")
-async def workspace_workflow_create(req: WorkspaceWorkflowRequest, request: Request):
-    current_user = require_user(request)
-    workflow = WORKSPACE_OS.create_workflow(
-        name=req.name,
-        steps=req.steps,
-        metadata=req.metadata,
-        user_email=current_user or None,
-        graph=_workspace_graph(),
-        workspace_id=_workspace_scope(request),
-    )
-    return {"workflow": workflow}
-
-
-@app.post("/workspace/workflows/{workflow_id}/events")
-async def workspace_workflow_event(workflow_id: str, req: WorkspaceWorkflowEventRequest, request: Request):
-    require_user(request)
-    try:
-        return {"workflow": WORKSPACE_OS.record_workflow_event(workflow_id, req.event_type, req.payload)}
-    except FileNotFoundError as exc:
-        raise HTTPException(status_code=404, detail=f"Workflow not found: {exc}") from exc
-
-
-@app.get("/workspace/skills")
-async def workspace_skills(request: Request):
-    require_user(request)
-    marketplace = []
-    try:
-        marketplace = await _fetch_skills_marketplace()
-    except Exception as exc:
-        logging.warning("workspace skills marketplace unavailable: %s", exc)
-    return WORKSPACE_OS.list_skill_registry(SKILLS_DIR, marketplace)
-
-
-@app.post("/workspace/skills/install")
-async def workspace_skill_install(req: WorkspaceSkillActionRequest, request: Request):
-    admin_email, _ = require_admin(request)
-    if req.plugin:
-        result = await install_skill(req.plugin, req.skill)
-    else:
-        result = {"status": "recorded", "skill": req.skill}
-    entry = WORKSPACE_OS.mark_skill_installed(req.skill, version=req.version or "local", metadata={"install_result": result, **req.metadata})
-    append_audit_event("skill_install", user_email=admin_email, plugin=req.plugin, skill=req.skill, workspace_os=True)
-    return {"skill": entry, "install": result}
-
-
-@app.post("/workspace/skills/uninstall")
-async def workspace_skill_uninstall(req: WorkspaceSkillActionRequest, request: Request):
-    admin_email, _ = require_admin(request)
-    removal = remove_skill_directory(SKILLS_DIR, req.skill)
-    entry = WORKSPACE_OS.mark_skill_uninstalled(req.skill)
-    append_audit_event("skill_uninstall", user_email=admin_email, skill=req.skill, workspace_os=True)
-    return {"skill": entry, "removal": removal}
-
-
-@app.post("/workspace/skills/enable")
-async def workspace_skill_enable(req: WorkspaceSkillActionRequest, request: Request):
-    require_user(request)
-    return {"skill": WORKSPACE_OS.set_skill_enabled(req.skill, True)}
-
-
-@app.post("/workspace/skills/disable")
-async def workspace_skill_disable(req: WorkspaceSkillActionRequest, request: Request):
-    require_user(request)
-    return {"skill": WORKSPACE_OS.set_skill_enabled(req.skill, False)}
-
-
-@app.post("/workspace/skills/update")
-async def workspace_skill_update(req: WorkspaceSkillActionRequest, request: Request):
-    admin_email, _ = require_admin(request)
-    if req.plugin:
-        result = await install_skill(req.plugin, req.skill)
-    else:
-        result = {"status": "version_recorded", "skill": req.skill}
-    entry = WORKSPACE_OS.mark_skill_installed(req.skill, version=req.version or "latest", metadata={"update_result": result, **req.metadata})
-    append_audit_event("skill_update", user_email=admin_email, plugin=req.plugin, skill=req.skill, workspace_os=True)
-    return {"skill": entry, "update": result}
-
-
-@app.get("/workspace/audit-timeline")
-async def workspace_audit_timeline(
-    request: Request,
-    user: Optional[str] = None,
-    event_type: Optional[str] = None,
-    model: Optional[str] = None,
-    since: Optional[str] = None,
-    until: Optional[str] = None,
-    limit: int = 100,
-):
-    require_admin(request)
-    return WORKSPACE_OS.filter_audit_timeline(
-        get_audit_log(),
-        user=user,
-        event_type=event_type,
-        model=model,
-        since=since,
-        until=until,
-        limit=limit,
-    )
-
-
-@app.post("/workspace/vscode/send")
-async def workspace_vscode_send(req: WorkspaceVSCodeRequest, request: Request):
-    current_user = require_user(request)
-    content = req.selection or req.content or req.prompt
-    workflow = WORKSPACE_OS.create_workflow(
-        name=f"VS Code: {req.action}",
-        steps=[
-            {"action": req.action, "file_path": req.file_path, "language": req.language},
-            {"action": "send_to_lattice", "chars": len(content or "")},
-        ],
-        metadata={
-            "file_path": req.file_path,
-            "language": req.language,
-            "content_preview": redact_secret_text(content or "")[:500],
-        },
-        user_email=current_user or None,
-        graph=_workspace_graph(),
-    )
-    if _workspace_graph() is not None and content:
-        try:
-            _workspace_graph().ingest_event(
-                "VSCodeWorkflow",
-                req.action,
-                user_email=current_user or None,
-                source="vscode",
-                metadata={
-                    "file_path": req.file_path,
-                    "language": req.language,
-                    "chars": len(content),
-                    "workflow_id": workflow["id"],
-                },
-            )
-        except Exception as exc:
-            logging.warning("vscode workflow graph ingest failed: %s", exc)
-    return {"status": "ok", "workflow": workflow}
-
-
-# ── Organization Workspaces, membership, roles, and edition seam ─────────────────
-
-@app.get("/workspace/registry")
-async def workspace_registry(request: Request):
-    user = require_user(request)
-    return WORKSPACE_OS.list_workspaces(user_id=user or None)
-
-
-@app.get("/workspace/editions")
-async def workspace_editions(request: Request):
-    require_user(request)
-    return capability_registry.describe()
-
-
-@app.post("/workspace/activate")
-async def workspace_activate(req: WorkspaceActivateRequest, request: Request):
-    user = require_user(request)
-    try:
-        return WORKSPACE_OS.set_active_workspace(req.workspace_id, user_id=user or None)
-    except FileNotFoundError as exc:
-        raise HTTPException(status_code=404, detail=f"Workspace not found: {exc}") from exc
-    except PermissionError as exc:
-        raise HTTPException(status_code=403, detail=str(exc)) from exc
-
-
-@app.post("/workspace/orgs")
-async def workspace_org_create(req: WorkspaceCreateRequest, request: Request):
-    user = require_user(request)
-    try:
-        workspace = WORKSPACE_OS.create_organization_workspace(
-            name=req.name,
-            owner_user_id=user or None,
-            settings=req.settings,
-        )
-    except ValueError as exc:
-        raise HTTPException(status_code=400, detail=str(exc)) from exc
-    append_audit_event("workspace_created", user_email=user, workspace_id=workspace["workspace_id"])
-    return {"workspace": workspace}
-
-
-@app.get("/workspace/orgs/{workspace_id}")
-async def workspace_org_get(workspace_id: str, request: Request):
-    user = require_user(request)
-    try:
-        return {"workspace": WORKSPACE_OS.get_workspace(workspace_id, user_id=user or None)}
-    except FileNotFoundError as exc:
-        raise HTTPException(status_code=404, detail=f"Workspace not found: {exc}") from exc
-
-
-@app.get("/workspace/orgs/{workspace_id}/summary")
-async def workspace_org_summary(workspace_id: str, request: Request):
-    user = require_user(request)
-    try:
-        return WORKSPACE_OS.workspace_summary(workspace_id, user_id=user or None)
-    except FileNotFoundError as exc:
-        raise HTTPException(status_code=404, detail=f"Workspace not found: {exc}") from exc
-
-
-@app.patch("/workspace/orgs/{workspace_id}")
-async def workspace_org_update(workspace_id: str, req: WorkspaceUpdateRequest, request: Request):
-    user = require_user(request)
-    try:
-        workspace = WORKSPACE_OS.update_workspace(workspace_id, name=req.name, settings=req.settings, actor=user or None)
-    except FileNotFoundError as exc:
-        raise HTTPException(status_code=404, detail=f"Workspace not found: {exc}") from exc
-    except PermissionError as exc:
-        raise HTTPException(status_code=403, detail=str(exc)) from exc
-    except ValueError as exc:
-        raise HTTPException(status_code=400, detail=str(exc)) from exc
-    append_audit_event("workspace_updated", user_email=user, workspace_id=workspace_id)
-    return {"workspace": workspace}
-
-
-@app.post("/workspace/orgs/{workspace_id}/archive")
-async def workspace_org_archive(workspace_id: str, request: Request):
-    user = require_user(request)
-    try:
-        workspace = WORKSPACE_OS.archive_workspace(workspace_id, actor=user or None)
-    except FileNotFoundError as exc:
-        raise HTTPException(status_code=404, detail=f"Workspace not found: {exc}") from exc
-    except PermissionError as exc:
-        raise HTTPException(status_code=403, detail=str(exc)) from exc
-    except ValueError as exc:
-        raise HTTPException(status_code=400, detail=str(exc)) from exc
-    append_audit_event("workspace_archived", user_email=user, workspace_id=workspace_id)
-    return {"workspace": workspace}
-
-
-@app.post("/workspace/orgs/{workspace_id}/members")
-async def workspace_org_add_member(workspace_id: str, req: WorkspaceMemberRequest, request: Request):
-    user = require_user(request)
-    try:
-        workspace = WORKSPACE_OS.add_member(workspace_id, user_id=req.user_id, role=req.role, actor=user or None)
-    except FileNotFoundError as exc:
-        raise HTTPException(status_code=404, detail=f"Workspace not found: {exc}") from exc
-    except PermissionError as exc:
-        raise HTTPException(status_code=403, detail=str(exc)) from exc
-    except ValueError as exc:
-        raise HTTPException(status_code=400, detail=str(exc)) from exc
-    append_audit_event("workspace_member_added", user_email=user, workspace_id=workspace_id, member=req.user_id, role=req.role)
-    return {"workspace": workspace}
-
-
-@app.patch("/workspace/orgs/{workspace_id}/members/{user_id}")
-async def workspace_org_update_member(workspace_id: str, user_id: str, req: WorkspaceMemberRoleRequest, request: Request):
-    user = require_user(request)
-    try:
-        workspace = WORKSPACE_OS.update_member_role(workspace_id, user_id=user_id, role=req.role, actor=user or None)
-    except FileNotFoundError as exc:
-        raise HTTPException(status_code=404, detail=f"Not found: {exc}") from exc
-    except PermissionError as exc:
-        raise HTTPException(status_code=403, detail=str(exc)) from exc
-    except ValueError as exc:
-        raise HTTPException(status_code=400, detail=str(exc)) from exc
-    append_audit_event("workspace_member_role_updated", user_email=user, workspace_id=workspace_id, member=user_id, role=req.role)
-    return {"workspace": workspace}
-
-
-@app.delete("/workspace/orgs/{workspace_id}/members/{user_id}")
-async def workspace_org_remove_member(workspace_id: str, user_id: str, request: Request):
-    user = require_user(request)
-    try:
-        workspace = WORKSPACE_OS.remove_member(workspace_id, user_id=user_id, actor=user or None)
-    except FileNotFoundError as exc:
-        raise HTTPException(status_code=404, detail=f"Not found: {exc}") from exc
-    except PermissionError as exc:
-        raise HTTPException(status_code=403, detail=str(exc)) from exc
-    except ValueError as exc:
-        raise HTTPException(status_code=400, detail=str(exc)) from exc
-    append_audit_event("workspace_member_removed", user_email=user, workspace_id=workspace_id, member=user_id)
-    return {"workspace": workspace}
+# ── Workspace OS + Organization router (latticeai.api.workspace, v1.2.0) ──────
+app.include_router(create_workspace_router(
+    service=WORKSPACE_SERVICE,
+    require_user=require_user,
+    require_admin=require_admin,
+    get_current_user=get_current_user,
+    append_audit_event=append_audit_event,
+    graph_stats=_graph_stats_safe,
+    workspace_models=_workspace_models_payload,
+    workspace_settings=_workspace_settings_payload,
+    get_history=get_history,
+    get_audit_log=get_audit_log,
+    require_graph=_require_graph,
+    workspace_graph=_workspace_graph,
+    knowledge_graph=KNOWLEDGE_GRAPH,
+    local_kg_watcher=LOCAL_KG_WATCHER,
+    load_users=load_users,
+    scan_environment=scan_environment,
+    local_sysinfo=local_sysinfo,
+    get_recommendations=get_recommendations,
+    fetch_skills_marketplace=_fetch_skills_marketplace,
+    install_skill=install_skill,
+    remove_skill_directory=remove_skill_directory,
+    redact_secret_text=redact_secret_text,
+    skills_dir=SKILLS_DIR,
+    capability_registry=capability_registry,
+    ui_file_response=ui_file_response,
+    static_dir=STATIC_DIR,
+    local_model=LOCAL_MODEL,
+    public_model=PUBLIC_MODEL,
+))
 
 
 # ── Health & Info ──────────────────────────────────────────────────────────────
@@ -4182,37 +3560,22 @@ async def verify_cloud_models(force: bool = False, provider_filter: Optional[str
         results[model_ref] = record
     return results
 
-@app.get("/health")
-async def health(request: Request):
-    base = {
-        "status": "ok",
-        "version": APP_VERSION,
-        "mode": APP_MODE,
-        "platform": "AI Workspace OS",
-    }
-    if not get_current_user(request) and REQUIRE_AUTH:
-        return base
-    engines = await asyncio.to_thread(engine_status)
-    return {
-        **base,
-        "current_model": router.current_model_id,
-        "loaded_models": router.loaded_model_ids,
-        "device": "Apple Silicon MLX" if not IS_PUBLIC_MODE else "Public cloud/API runtime",
-        "features": runtime_features(),
-        "providers": router.detected_cloud_models(),
-        "engines": engines,
-    }
-
-
-@app.get("/mode")
-@app.get("/runtime_features")
-async def mode():
-    return runtime_features()
-
-
-@app.get("/engines")
-async def engines():
-    return {"engines": await asyncio.to_thread(engine_status), "current": router.current_model_id}
+# ── Health / status / engine-summary router (latticeai.api.health, v1.2.0) ───
+# /health, /mode, /runtime_features, /engines(GET) now live in the health router.
+# Heavier engine mutation endpoints remain below in server_app.
+MODEL_SERVICE = ModelService(
+    model_router=router,
+    runtime_features=runtime_features,
+    is_public=IS_PUBLIC_MODE,
+)
+app.include_router(create_health_router(
+    model_service=MODEL_SERVICE,
+    engine_status=engine_status,
+    get_current_user=get_current_user,
+    require_auth=REQUIRE_AUTH,
+    app_version=APP_VERSION,
+    app_mode=APP_MODE,
+))
 
 
 @app.post("/engines/install")
@@ -4615,7 +3978,7 @@ async def chat(req: ChatRequest, request: Request):
             except Exception:
                 pass
 
-    trace_seed = WORKSPACE_OS.build_graph_trace(
+    trace_seed = CHAT_SERVICE.build_graph_trace(
         req.message,
         KNOWLEDGE_GRAPH if (ENABLE_GRAPH and KNOWLEDGE_GRAPH) else None,
         context,
@@ -4653,7 +4016,7 @@ async def chat(req: ChatRequest, request: Request):
                     full_text += footnote
                 session.update(graph_md, full_text, req.conversation_id)
                 save_to_history("assistant", full_text, source=req.source or "web", conversation_id=req.conversation_id, **history_user)
-                trace_record = WORKSPACE_OS.record_trace(
+                trace_record = CHAT_SERVICE.record_trace(
                     question=req.message,
                     response=full_text,
                     conversation_id=req.conversation_id,
@@ -4679,7 +4042,7 @@ async def chat(req: ChatRequest, request: Request):
                 result += footnote
             session.update(graph_md, result, req.conversation_id)
             save_to_history("assistant", str(result), source=req.source or "web", conversation_id=req.conversation_id, **history_user)
-            trace_record = WORKSPACE_OS.record_trace(
+            trace_record = CHAT_SERVICE.record_trace(
                 question=req.message,
                 response=str(result),
                 conversation_id=req.conversation_id,
@@ -4716,7 +4079,7 @@ async def chat(req: ChatRequest, request: Request):
         result = await router.generate(req.message, full_context, req.max_tokens, req.temperature, req.image_data)
 
         save_to_history("assistant", str(result), source=req.source or "web", conversation_id=req.conversation_id, **history_user)
-        trace_record = WORKSPACE_OS.record_trace(
+        trace_record = CHAT_SERVICE.record_trace(
             question=req.message,
             response=str(result),
             conversation_id=req.conversation_id,
@@ -4820,12 +4183,12 @@ async def _stream_chat(
         yield f"data: {json.dumps({'chunk': clean_chunk, 'model': router.current_model_id}, ensure_ascii=False)}\n\n"
     history_user = get_history_user(req.user_email, req.user_nickname)
     save_to_history("assistant", full_response, source=req.source or "web", conversation_id=req.conversation_id, **history_user)
-    trace_record = WORKSPACE_OS.record_trace(
+    trace_record = CHAT_SERVICE.record_trace(
         question=req.message,
         response=full_response,
         conversation_id=req.conversation_id,
         user_email=effective_email or req.user_email,
-        trace=trace_seed or WORKSPACE_OS.build_graph_trace(
+        trace=trace_seed or CHAT_SERVICE.build_graph_trace(
             req.message,
             KNOWLEDGE_GRAPH if (ENABLE_GRAPH and KNOWLEDGE_GRAPH) else None,
             context,

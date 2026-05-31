@@ -9,6 +9,26 @@
 > PyPI / npm / VS Code Marketplace / Open VSX 배포는 아래 수동 절차로 로컬에서
 > 직접 인증 후 진행합니다. GitHub Secrets에 배포 토큰을 저장하지 않습니다.
 
+## v1.2.0 릴리스 노트 (2026-05-31)
+
+server_app.py 모듈화(routers + service layer) + workspace/org guardrail 강화.
+자세한 내용은 [`docs/CHANGELOG.md`](docs/CHANGELOG.md)의 `[1.2.0]` 항목 참고.
+
+- **Changed**: `latticeai/server_app.py`를 ~6,585 → ~5,948줄로 축소. Workspace OS/
+  Organization API와 health/engine summary endpoint를 전용 router(+service layer)로
+  추출. `server_app`은 app assembly/lifespan/middleware/router include 중심.
+  `server:app` import path·API path·schema 모두 유지.
+- **Added**: `latticeai/api/workspace.py`(`create_workspace_router`),
+  `latticeai/api/health.py`(`create_health_router`),
+  `latticeai/services/{workspace_service,model_service,chat_service}.py`.
+- **Changed**: workspace read/write가 `WorkspaceService` 게이트를 통과 — 비멤버는
+  org read/write 불가, viewer는 write 불가, owner/admin만 멤버 관리. no-auth
+  로컬 owner fallback 유지, named stranger bypass 차단.
+- **Added**: graph/skills가 machine-global 공유 상태임을 `shared_global_areas`로 명시.
+- **Added**: `test_server_app_modularization.py`, `test_workspace_service.py`.
+- CI 하드닝(VSIX compile guard, Node.js 24, 버전 한정 validator, no `dist/*` glob) 유지.
+- 테스트/빌드/패키징 산출물만 생성 — 어떤 배포도 수행하지 않음.
+
 ## v1.1.0 릴리스 노트 (2026-05-31)
 
 Organization Workspace foundation + open-core Enterprise seam + CI/release

@@ -1,5 +1,54 @@
 # Changelog
 
+## [1.2.0] - 2026-05-31
+
+> Server app modularization (routers + service layer) and workspace/org guardrail hardening.
+
+### Changed
+
+- **server_app.py modularization (phase 2)** — reduced
+  `latticeai/server_app.py` from ~6,585 to ~5,948 lines by extracting the
+  Workspace OS / Organization API and the health/engine-summary endpoints into
+  dedicated routers backed by a new service layer. `server_app` now focuses on
+  app assembly, lifespan, middleware, and router include. The historical
+  `server:app` import path, all API paths, and request/response shapes are
+  unchanged.
+- **Workspace/Organization guardrails strengthened** — workspace-scoped reads
+  and writes now go through `WorkspaceService`, which gates explicitly-named
+  workspaces: non-members cannot read or write organization data, viewers
+  cannot write, members can write, and only owners/admins manage members. The
+  no-auth local-owner fallback for ownerless org workspaces is preserved, but a
+  *named* stranger never bypasses membership. `set_active_workspace` continues
+  to enforce membership.
+
+### Added
+
+- **New API routers** — `latticeai/api/workspace.py`
+  (`create_workspace_router`) and `latticeai/api/health.py`
+  (`create_health_router`), mirroring the existing auth/admin router-factory
+  convention (no import cycle: routers receive dependencies, never import the
+  app).
+- **New service layer** — `latticeai/services/workspace_service.py`
+  (`WorkspaceService`: scope resolution + permission guardrails),
+  `latticeai/services/model_service.py` (`ModelService`: health/engine summary
+  payloads), and `latticeai/services/chat_service.py` (`ChatService`: history +
+  answer-trace seam; the streaming chat path is unchanged and now records traces
+  through this façade).
+- **Shared-global areas made explicit** — the local knowledge graph and
+  installed skills remain machine-global shared state (not partitioned per
+  workspace); this is now surfaced in `WorkspaceService.SHARED_GLOBAL_AREAS`,
+  the `/workspace/os` summary (`shared_global_areas`), and code comments.
+- **Startup/modularization tests** — `tests/unit/test_server_app_modularization.py`
+  (import path, router registration, key route presence, no import cycle) and
+  `tests/unit/test_workspace_service.py` (read/write/member guardrails).
+
+### Notes
+
+- Release metadata aligned to `1.2.0`; `APP_VERSION` continues to derive from
+  `WORKSPACE_OS_VERSION` and `/health` reports `1.2.0`.
+- CI release hardening from 1.0.1/1.1.0 is retained (VSIX compile guard, Node.js
+  24, version-scoped artifact validation — no `dist/*` glob).
+
 ## [1.1.0] - 2026-05-31
 
 > Organization Workspace foundation, open-core Enterprise seam, and CI/release hardening.
