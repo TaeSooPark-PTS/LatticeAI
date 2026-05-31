@@ -158,6 +158,89 @@ def test_edge_distinct_legacy_type_adds_row_on_reupsert(store):
     assert n == 2
 
 
+def test_view_is_byte_faithful_to_legacy(store):
+    """The kgv2_* views reproduce the legacy row strings verbatim — including
+    unsorted multi-key metadata (no key re-sorting), NULL summary, and
+    over-length title/summary that bypassed the _upsert_* truncation."""
+    with store._connect() as conn:
+        # direct inserts (not via _upsert_*) with awkward values
+        conn.execute(
+            "INSERT INTO nodes(id,type,title,summary,metadata_json,raw_json,created_at,updated_at)"
+            " VALUES (?,?,?,?,?,?,?,?)",
+            ("n1", "Concept", "T" * 300, None, '{"z":1,"a":2,"m":3}', "{}", "2026-01-01", "2026-01-01"),
+        )
+        conn.execute(
+            "INSERT INTO edges(id,from_node,to_node,type,weight,metadata_json,created_at)"
+            " VALUES (?,?,?,?,?,?,?)",
+            ("n1", "n1", "n1", "self", 1.0, '{"k2":"b","k1":"a"}', "2026-02-01"),
+        )
+    store._backfill_v2_if_needed(force=True)
+
+    with store._connect() as conn:
+        ln = conn.execute("SELECT title,summary,metadata_json FROM nodes WHERE id='n1'").fetchone()
+        vn = conn.execute("SELECT title,summary,metadata_json FROM kgv2_nodes WHERE id='n1'").fetchone()
+        le = conn.execute("SELECT type,metadata_json FROM edges WHERE id='n1'").fetchone()
+        ve = conn.execute("SELECT type,metadata_json FROM kgv2_edges WHERE id='n1'").fetchone()
+    assert vn["title"] == ln["title"], "title verbatim (no projection-side truncation divergence)"
+    assert vn["summary"] is None and ln["summary"] is None, "NULL summary preserved, not coerced to ''"
+    assert vn["metadata_json"] == ln["metadata_json"] == '{"z":1,"a":2,"m":3}', "metadata key order preserved"
+    assert ve["type"] == le["type"] == "self", "edge legacy type round-trips"
+    assert ve["metadata_json"] == le["metadata_json"] == '{"k2":"b","k1":"a"}', "edge metadata verbatim"
+
+
+def test_dual_write_invariant_holds_through_writes_and_deletes(store):
+    """Every legacy write goes through _upsert_* (dual-write) and every delete is
+    mirrored, so legacy and v2 id-sets stay identical. _v2_sync_report is the
+    runtime guard for a bypassed write path."""
+    with store._connect() as conn:
+        store._upsert_node(conn, "conv:1", "Conversation", "c1", "", {})
+        store._upsert_node(conn, "concept:x", "Concept", "X", "about x", {"k": "v"})
+        store._upsert_node(conn, "concept:y", "Concept", "Y", "about y", {})
+        store._upsert_edge(conn, "conv:1", "concept:x", "contains", 1.0, {})
+        store._upsert_edge(conn, "concept:x", "concept:y", "mentions", 0.8, {})
+
+    rep = store._v2_sync_report()
+    assert rep["in_sync"], f"dual-write drift: {rep}"
+    assert rep["nodes_legacy"] == rep["nodes_v2"] == 3
+    assert rep["edges_legacy"] == rep["edges_v2"] == 2
+
+    # deletes are mirrored too → still in sync
+    store.clear_all()
+    rep = store._v2_sync_report()
+    assert rep["in_sync"], f"delete mirror drift: {rep}"
+    assert rep["nodes_v2"] == 0 and rep["edges_v2"] == 0
+
+
+def test_migration_is_atomic_on_failure(tmp_path, monkeypatch):
+    """A crash mid-migration rolls back: legacy intact, projection_version stays
+    stale so the next startup retries, and a clean restart self-heals."""
+    db = tmp_path / "kg.sqlite"
+    blobs = tmp_path / "blobs"
+    store = kg.KnowledgeGraphStore(db, blobs)
+    with store._connect() as conn:
+        _insert_node(conn, "c1", "Concept", "Alpha", "body", {"k": "v"})
+    # force the projection stale, then make the rebuild explode mid-flight
+    with sqlite3.connect(str(db)) as conn:
+        conn.execute("UPDATE kg_meta SET value='0' WHERE key='projection_version'")
+
+    def boom(self, conn, *, force=False):
+        conn.execute("DELETE FROM nodes_v2")          # partial work inside the txn
+        raise RuntimeError("simulated mid-migration crash")
+
+    monkeypatch.setattr(kg.KnowledgeGraphStore, "_backfill_v2_on", boom)
+    kg.KnowledgeGraphStore(db, blobs)                 # _init_v2_schema must roll back
+    monkeypatch.undo()
+
+    with sqlite3.connect(str(db)) as conn:
+        legacy_n = conn.execute("SELECT COUNT(*) FROM nodes").fetchone()[0]
+        version = conn.execute("SELECT value FROM kg_meta WHERE key='projection_version'").fetchone()[0]
+    assert legacy_n == 1, "legacy data intact after rolled-back migration"
+    assert version == "0", "projection_version stayed stale (rolled back) so next startup retries"
+
+    healed = kg.KnowledgeGraphStore(db, blobs)         # clean restart heals
+    assert healed._v2_sync_report()["in_sync"]
+
+
 def test_projection_version_migration_rebuilds_old_shape(tmp_path):
     """An old-shape v2 projection (pre-normalization columns) is migrated in
     place on construction: dropped, rebuilt with the new columns, legacy intact."""

@@ -483,7 +483,7 @@ CREATE TABLE IF NOT EXISTS nodes_v2 (
   type             TEXT NOT NULL,
   legacy_type      TEXT,
   label            TEXT NOT NULL,
-  summary          TEXT NOT NULL DEFAULT '',
+  summary          TEXT,
   attrs            TEXT NOT NULL DEFAULT '{}',
   embedding        BLOB,
   owner_id         TEXT,
@@ -524,6 +524,19 @@ CREATE INDEX IF NOT EXISTS idx_edges_v2_target   ON edges_v2(target);
 CREATE INDEX IF NOT EXISTS idx_edges_v2_type     ON edges_v2(type);
 CREATE INDEX IF NOT EXISTS idx_edges_v2_legacy   ON edges_v2(legacy_type);
 """
+
+
+def _exec_script(conn: sqlite3.Connection, script: str) -> None:
+    """Run a multi-statement SQL script on ``conn`` statement-by-statement.
+
+    Unlike ``sqlite3.Connection.executescript``, this does NOT issue an implicit
+    COMMIT before running, so the statements join the caller's open transaction.
+    Safe for our schema/view DDL (no ``;`` inside string literals).
+    """
+    for stmt in script.split(";"):
+        s = stmt.strip()
+        if s:
+            conn.execute(s)
 
 
 class KGStoreV2:
@@ -585,18 +598,31 @@ class KGStoreV2:
                     table, sorted(missing), count,
                 )
 
-    def init_schema(self) -> None:
-        with self._conn() as conn:
-            self._drop_stale_empty_v2_tables(conn)
-            conn.executescript(SCHEMA_SQL)
-            conn.execute(
-                "INSERT OR REPLACE INTO kg_meta(key, value) VALUES (?, ?)",
-                ("schema_version", str(KG_SCHEMA_V2_VERSION)),
-            )
-            conn.execute(
-                "INSERT OR REPLACE INTO kg_meta(key, value) VALUES (?, ?)",
-                ("embed_dim", str(EMBED_DIM)),
-            )
+    def init_schema(self, conn: Optional[sqlite3.Connection] = None) -> None:
+        """Create the v2 schema and record metadata.
+
+        Pass ``conn`` to run inside the caller's open transaction (used by the
+        atomic knowledge_graph migration); otherwise a private connection is
+        opened and committed. Uses ``_exec_script`` rather than
+        ``executescript`` so it never force-commits the caller's transaction.
+        """
+        if conn is not None:
+            self._init_schema_on(conn)
+            return
+        with self._conn() as own:
+            self._init_schema_on(own)
+
+    def _init_schema_on(self, conn: sqlite3.Connection) -> None:
+        self._drop_stale_empty_v2_tables(conn)
+        _exec_script(conn, SCHEMA_SQL)
+        conn.execute(
+            "INSERT OR REPLACE INTO kg_meta(key, value) VALUES (?, ?)",
+            ("schema_version", str(KG_SCHEMA_V2_VERSION)),
+        )
+        conn.execute(
+            "INSERT OR REPLACE INTO kg_meta(key, value) VALUES (?, ?)",
+            ("embed_dim", str(EMBED_DIM)),
+        )
 
     # ── Upsert ───────────────────────────────────────────────
     def upsert_node(self, node: Node) -> str:

@@ -48,22 +48,26 @@ Knowledge Graph v2 read/write cutover. 자세한 내용은
   legacy 자유문자열 타입을 무손실 `NodeType`/`EdgeType` superset으로 정규화
   (`type`), 원본은 `legacy_type` 칼럼에 보존. summary/metadata는 1급 칼럼으로
   승격. 엣지 정체성은 `(source,target,legacy_type)`로 보존.
+- ✅ **마이그레이션 원자성** — `_init_v2_schema`의 DROP→CREATE→VIEWS→BACKFILL→
+  version-stamp 전체를 단일 트랜잭션(`BEGIN` + `_exec_script`로 implicit-commit
+  회피)으로 처리. 중간 실패 시 전부 롤백 → 이전 프로젝션·version 보존, 다음 기동에
+  재시도. legacy `nodes`/`edges`는 마이그레이션이 절대 건드리지 않음(손상 불가).
+- ✅ **뷰 byte-faithfulness** — 프로젝션이 legacy `title`/`summary`/`metadata_json`을
+  **verbatim** 저장(truncation·`sort_keys` 재인코딩 제거). 절단/정렬은 `_upsert_*`이
+  legacy 기록 시 1회 수행하고 동일 값을 프로젝션에 전달. NULL summary·비정렬 멀티키·
+  초과 길이까지 뷰가 legacy와 byte-identical(`test_view_is_byte_faithful_to_legacy`).
+  `summary` 칼럼은 nullable로 변경. (projection_version 3→4 → 자동 리빌드.)
+- ✅ **dual-write 불변식 가드** — 모든 legacy write는 `_upsert_*`(유일한 2개
+  writer)를 경유하고 모든 delete는 v2에 미러됨을 구조적으로 확인. 런타임 진단
+  `_v2_sync_report()`(legacy↔v2 id-set 일치) 추가 + 불변식 테스트.
 
 남은 항목:
 
 - **`KGStoreV2.upsert_*` / read API 정리** — 프로젝션은 raw SQL, read는 뷰를
   쓰므로 production 경로 미사용. (단, `test_document_generation`이 native
   `upsert_node`/`get_node`를 사용하므로 정리 시 동반 조정 필요.)
-- **뷰 byte-faithfulness 한계(기존 제약)** — 프로젝션은 legacy `title`/`summary`를
-  `[:240]`/`[:1000]`로 자르고 `metadata_json`을 `sort_keys`로 재인코딩한다.
-  `_upsert_*` 경로로 쓰인 행은 동일하지만, 외부에서 직접 삽입된 초과 길이/비정렬
-  키 행은 `metadata_json LIKE` 검색에서 legacy와 미세하게 달라질 수 있음. (리팩터
-  이전부터 동일하게 존재하던 제약 — 이번 변경이 악화시키지 않음. faithful 프로젝션
-  + equivalence 테스트 케이스 추가로 별도 개선 가능.)
-- **마이그레이션 원자성** — `_init_v2_schema`의 DROP/init/backfill/version-set이
-  분리된 트랜잭션. 단일 트랜잭션으로 묶으면 중간 크래시 시 torn 상태 가능성 제거.
-- **dual-write 불변식 가드** — 모든 legacy write가 `_upsert_*`를 경유한다는 가정.
-  직접 INSERT 경로가 생기면 v2가 조용히 발산할 수 있음(현재 모니터링 없음).
+- **dual-write 모니터링 자동화** — `_v2_sync_report()`는 현재 테스트/진단용.
+  주기적/기동시 헬스체크로 노출하면 우회 write 회귀를 조기 감지 가능.
 
 ## 0) 릴리스 전 체크
 
