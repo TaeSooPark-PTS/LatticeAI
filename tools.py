@@ -21,6 +21,7 @@ from typing import Any, Callable, Dict, List, Optional
 
 _PLATFORM = platform.system()  # "Darwin" | "Windows" | "Linux"
 
+from latticeai.core.tool_registry import ToolRegistry
 from p_reinforce import BRAIN_DIR, STRUCTURE
 
 # ── Computer Use ──────────────────────────────────────────────────────────────
@@ -1512,13 +1513,13 @@ TOOL_HANDLERS: Dict[str, Callable[[Dict[str, Any]], Dict[str, Any]]] = {
 }
 
 
+DEFAULT_TOOL_REGISTRY = ToolRegistry(TOOL_HANDLERS)
+
+
 def registered_tools() -> frozenset:
     """Names dispatchable through ``execute_tool`` — the seam other modules verify against."""
-    return frozenset(TOOL_HANDLERS)
+    return DEFAULT_TOOL_REGISTRY.registered_tools()
 
 
 def execute_tool(action: str, args: Dict[str, Any]) -> Dict[str, Any]:
-    handler = TOOL_HANDLERS.get(action)
-    if handler is None:
-        raise ToolError(f"Unknown action: {action}")
-    return handler(args)
+    return DEFAULT_TOOL_REGISTRY.execute(action, args, error_cls=ToolError)

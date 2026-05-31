@@ -2,8 +2,8 @@
 
 These tests keep the three lists that used to drift in lock-step:
   * tools.TOOL_HANDLERS   — how a tool is invoked (dispatch)
-  * server.TOOL_GOVERNANCE — how the agent is allowed to use it (policy)
-  * server._TOOL_CATALOG_BRIEF — how the tool is described to the LLM (prompt)
+  * ToolRegistry governance — how the agent is allowed to use it (policy)
+  * ToolRegistry catalog — how the tool is described to the LLM (prompt)
 """
 
 import re
@@ -14,6 +14,7 @@ import tools
 def test_execute_tool_uses_registry():
     assert "read_file" in tools.registered_tools()
     assert callable(tools.TOOL_HANDLERS["read_file"])
+    assert tools.DEFAULT_TOOL_REGISTRY.registered_tools() == tools.registered_tools()
 
 
 def test_unknown_action_raises():
@@ -29,6 +30,12 @@ def test_governance_keys_are_all_dispatchable():
     registered = tools.registered_tools()
     stray = set(server.TOOL_GOVERNANCE) - set(registered)
     assert not stray, f"governance references tools that cannot be dispatched: {sorted(stray)}"
+
+
+def test_tool_registry_owns_permission_views():
+    permission = tools.DEFAULT_TOOL_REGISTRY.permission("run_command", {"command": "ls"})
+    assert permission["risk"] == "high"
+    assert permission["requires_approval"] is True
 
 
 def test_catalog_brief_tokens_are_all_dispatchable():

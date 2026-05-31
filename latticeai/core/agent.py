@@ -8,13 +8,13 @@ no globals, and no I/O of its own — every collaborator is injected through
 
 Two adapters justify the seam:
 
-* production wires ``AgentDeps`` from server.py's ``LLMRouter``, governance
+* production wires ``AgentDeps`` from ``latticeai.server_app``'s ``LLMRouter``, governance
   map, audit log, and prompts;
 * tests pass fake ports (an LLM that returns canned JSON, a recording tool
   executor) and drive a full PLAN→EXECUTE→VERIFY→DONE cycle without a server.
 
 HTTP concerns — request parsing, chat-history persistence, response shaping,
-scheduling the background memory update — stay in server.py. This module
+scheduling the background memory update — stay in the app layer. This module
 only owns the state machine.
 """
 
