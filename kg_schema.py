@@ -14,15 +14,19 @@ owner/visibility · createdBy 필드를 1급 시민으로 승격해서, semantic
 설계 원칙
 ---------
 1. **기존 코드를 깨지 않는다**: 새 테이블 이름은 ``nodes_v2`` / ``edges_v2``
-   로 분리. 기존 ``nodes`` / ``edges`` 와 공존한다. 마이그레이션은 별도
-   유틸리티(`migrate_legacy_to_v2()`) 로 수행.
-2. **표준 라이브러리만 사용**: Pydantic 이 없는 환경에서도 dataclass 로
+   로 분리. 기존 ``nodes`` / ``edges`` 와 공존한다. legacy → v2 reprojection 은
+   ``knowledge_graph.py`` 의 버전 게이트 백필 한 곳에서만 수행한다.
+2. **정규화 + 무손실**: legacy 자유 문자열 타입은 ``NodeType``/``EdgeType``
+   superset 으로 정규화해 ``type`` 칼럼에 저장하고, 원본 문자열은 ``legacy_type``
+   칼럼에 그대로 보존한다. summary 와 metadata 는 ``attrs._kg`` 패스스루 blob 이
+   아니라 전용 ``summary`` 칼럼 / ``attrs``·``metadata`` 칼럼에 1급으로 저장한다.
+3. **표준 라이브러리만 사용**: Pydantic 이 없는 환경에서도 dataclass 로
    동작하도록 ``from dataclasses import dataclass`` 를 사용한다.
    타입 검증은 ``validate()`` 메서드에서 수동.
-3. **embedding 은 옵셔널이지만 권장**: 차원은 환경 변수
+4. **embedding 은 옵셔널이지만 권장**: 차원은 환경 변수
    ``LATTICEAI_EMBED_DIM`` (기본 1024). bytes blob 으로 저장.
-4. **마이그레이션 매핑은 명시적**: 한글 동사 → 영문 enum 표가 코드 안에 들어
-   있어서 어떤 옛 라벨이 어디로 매핑되는지 한눈에 보인다.
+5. **정규화 매핑은 명시적**: 한글 동사/legacy 라벨 → 영문 enum 표가 코드 안에
+   들어 있어서 어떤 옛 라벨이 어디로 매핑되는지 한눈에 보인다.
 
 사용 예
 -------
@@ -78,7 +82,15 @@ EMBED_DIM = int(os.getenv("LATTICEAI_EMBED_DIM", "1024"))
 
 # ── Node / Edge taxonomy (PPT 슬라이드 20·21) ──────────────────────────────
 class NodeType(str, Enum):
-    """워크스페이스의 모든 ‘명사’.  PPT 슬라이드 20 카탈로그."""
+    """워크스페이스의 모든 ‘명사’.
+
+    PPT 슬라이드 20 카탈로그(상단 그룹)에 더해, ``knowledge_graph.py`` 가 실제로
+    써오던 legacy 자유 문자열 타입을 **무손실 superset**(하단 그룹)으로 1급 enum 화
+    한다. 덕분에 ``from_legacy`` 정규화가 의미를 잃지 않고(예: ``Computer`` →
+    ``COMPUTER``), 알 수 없는/동적(이벤트) 타입만 ``CONCEPT`` 로 폴백한다.
+    원본 문자열은 ``nodes_v2.legacy_type`` 에 그대로 보존되므로 정규화는 항상 무손실.
+    """
+    # PPT 슬라이드 20 정식 카탈로그
     CONVERSATION = "CONVERSATION"   # 대화 세션 전체
     MESSAGE      = "MESSAGE"        # 단일 발화
     FILE         = "FILE"           # 업로드/연결된 파일
@@ -90,10 +102,35 @@ class NodeType(str, Enum):
     MODEL        = "MODEL"          # 로컬/원격 LLM
     TOOL         = "TOOL"           # MCP 서버·외부 도구
     PROJECT      = "PROJECT"        # 주제별 작업 공간
+    # legacy superset — knowledge_graph.py 가 실제로 생성하던 노드 타입들
+    COMPUTER     = "COMPUTER"       # 내 컴퓨터 (로컬 스캔 루트)
+    DRIVE        = "DRIVE"          # 드라이브 / 볼륨
+    FOLDER       = "FOLDER"         # 폴더
+    CODE_FILE    = "CODE_FILE"      # 코드 파일 (.py/.ts 등)
+    SPREADSHEET  = "SPREADSHEET"    # 엑셀 / CSV
+    SLIDE_DECK   = "SLIDE_DECK"     # 프레젠테이션
+    IMAGE        = "IMAGE"          # 이미지 파일
+    IMAGE_TEXT   = "IMAGE_TEXT"     # OCR 텍스트
+    SLIDE        = "SLIDE"          # 슬라이드 (덱의 한 장)
+    PAGE         = "PAGE"           # 페이지 (문서의 한 면)
+    SHEET        = "SHEET"          # 시트 (스프레드시트의 한 탭)
+    SECTION      = "SECTION"        # 문서 섹션
+    CHAT         = "CHAT"           # 대화 세션(채팅 UI)
+    AI_RESPONSE  = "AI_RESPONSE"    # 어시스턴트 발화
+    TOPIC        = "TOPIC"          # 주제 / 토픽
+    FEATURE      = "FEATURE"        # 소프트웨어 기능
+    TASK         = "TASK"           # 할 일
+    DECISION     = "DECISION"       # 결정 사항
+    ERROR        = "ERROR"          # 오류 / 버그
+    EVENT        = "EVENT"          # 분석/시스템 이벤트(동적 타입 폴백)
 
     @classmethod
     def from_legacy(cls, label: str) -> "NodeType":
-        """legacy ``knowledge_graph.py`` 의 자유 문자열을 정식 enum 으로."""
+        """legacy ``knowledge_graph.py`` 의 자유 문자열을 정식 enum 으로 정규화.
+
+        매핑이 없는(동적 이벤트 등) 타입은 ``CONCEPT`` 로 폴백하지만, 호출부는
+        원본 문자열을 ``legacy_type`` 칼럼에 별도 보존하므로 정보 손실은 없다.
+        """
         m = (label or "").strip().lower()
         return _LEGACY_NODE_MAP.get(m, cls.CONCEPT)
 
@@ -116,28 +153,61 @@ class EdgeType(str, Enum):
     INSPIRED_BY   = "INSPIRED_BY"     # DOCUMENT → DOCUMENT (영감/참조 관계)
     CONTRADICTS   = "CONTRADICTS"     # DOCUMENT ↔ DOCUMENT (상충 관계)
     EVOLVES_FROM  = "EVOLVES_FROM"    # DOCUMENT → DOCUMENT (발전/개정 관계)
+    # legacy superset — knowledge_graph.py 가 실제로 생성하던 엣지 타입들
+    UPLOADED_BY    = "UPLOADED_BY"    # PERSON → FILE (업로드함)
+    WROTE          = "WROTE"          # PERSON → CONVERSATION (작성함)
+    HAS_EVENT      = "HAS_EVENT"      # CONVERSATION → EVENT (has_event)
+    TRIGGERED      = "TRIGGERED"      # PERSON → EVENT (triggered)
+    HAS_SLIDE      = "HAS_SLIDE"      # SLIDE_DECK → SLIDE (has_slide)
+    HAS_PAGE       = "HAS_PAGE"       # DOCUMENT → PAGE (has_page)
+    HAS_SHEET      = "HAS_SHEET"      # SPREADSHEET → SHEET (has_sheet)
+    HAS_CHUNK      = "HAS_CHUNK"      # FILE → CHUNK (has_chunk)
+    CONTAINS_IMAGE = "CONTAINS_IMAGE" # FILE → IMAGE (contains_image)
+    CONTAINS_SIGNAL = "CONTAINS_SIGNAL"  # NODE → CONCEPT (contains_signal)
+    DISCUSSES      = "DISCUSSES"      # SLIDE/PAGE → TOPIC (discusses)
+    IMPLIES        = "IMPLIES"        # NODE → NODE (implies)
+    RELATED_TO     = "RELATED_TO"     # ANY ↔ ANY (related_to)
 
     @classmethod
     def from_legacy(cls, label: str) -> "EdgeType":
+        """legacy 자유 문자열/한글 동사를 정식 enum 으로 정규화.
+
+        매핑이 없는 동적 타입은 ``MENTIONS`` 로 폴백하지만, 호출부는 원본 문자열을
+        ``edges_v2.legacy_type`` 에 보존하므로 정보 손실은 없다.
+        """
         m = (label or "").strip().lower()
         return _LEGACY_EDGE_MAP.get(m, cls.MENTIONS)
 
 
-# legacy(자유 문자열 / 한글 동사) → enum 매핑 표
+# legacy(자유 문자열 / 한글 동사) → enum 매핑 표.
+# superset 정규화: 알려진 legacy 타입은 1:1 의미 보존 매핑, 미지/동적 타입만 폴백.
 _LEGACY_NODE_MAP: Dict[str, NodeType] = {
     "conversation": NodeType.CONVERSATION,
+    "chat":         NodeType.CHAT,
     "message":      NodeType.MESSAGE,
-    "airesponse":   NodeType.MESSAGE,
+    "airesponse":   NodeType.AI_RESPONSE,
     "file":         NodeType.FILE,
-    "document":     NodeType.FILE,
-    "page":         NodeType.CHUNK,
-    "sheet":        NodeType.CHUNK,
-    "slide":        NodeType.CHUNK,
+    "codefile":     NodeType.CODE_FILE,
+    "spreadsheet":  NodeType.SPREADSHEET,
+    "slidedeck":    NodeType.SLIDE_DECK,
+    "image":        NodeType.IMAGE,
+    "imagetext":    NodeType.IMAGE_TEXT,
+    "computer":     NodeType.COMPUTER,
+    "drive":        NodeType.DRIVE,
+    "folder":       NodeType.FOLDER,
+    "page":         NodeType.PAGE,
+    "sheet":        NodeType.SHEET,
+    "slide":        NodeType.SLIDE,
+    "section":      NodeType.SECTION,
     "chunk":        NodeType.CHUNK,
     "code":         NodeType.CODE_SYMBOL,
     "concept":      NodeType.CONCEPT,
-    "feature":      NodeType.CONCEPT,
-    "error":        NodeType.CONCEPT,
+    "topic":        NodeType.TOPIC,
+    "feature":      NodeType.FEATURE,
+    "task":         NodeType.TASK,
+    "decision":     NodeType.DECISION,
+    "error":        NodeType.ERROR,
+    "event":        NodeType.EVENT,
     "tag":          NodeType.CONCEPT,
     "person":       NodeType.PERSON,
     "user":         NodeType.PERSON,
@@ -167,6 +237,8 @@ _LEGACY_EDGE_MAP: Dict[str, EdgeType] = {
     "연결함": EdgeType.REFERENCES,
     "확장함": EdgeType.DERIVED_FROM,
     "생성함": EdgeType.AUTHORED_BY,
+    "작성함": EdgeType.WROTE,
+    "업로드함": EdgeType.UPLOADED_BY,
     "대체함": EdgeType.VERSION_OF,
     "지원함": EdgeType.USES,
     "발생함": EdgeType.REFERENCES,
@@ -188,6 +260,20 @@ _LEGACY_EDGE_MAP: Dict[str, EdgeType] = {
     "inspired_by":   EdgeType.INSPIRED_BY,
     "contradicts":   EdgeType.CONTRADICTS,
     "evolves_from":  EdgeType.EVOLVES_FROM,
+    # legacy superset 별칭 (knowledge_graph.py 가 실제로 쓰던 엣지 타입)
+    "uploaded_by":     EdgeType.UPLOADED_BY,
+    "wrote":           EdgeType.WROTE,
+    "has_event":       EdgeType.HAS_EVENT,
+    "triggered":       EdgeType.TRIGGERED,
+    "has_slide":       EdgeType.HAS_SLIDE,
+    "has_page":        EdgeType.HAS_PAGE,
+    "has_sheet":       EdgeType.HAS_SHEET,
+    "has_chunk":       EdgeType.HAS_CHUNK,
+    "contains_image":  EdgeType.CONTAINS_IMAGE,
+    "contains_signal": EdgeType.CONTAINS_SIGNAL,
+    "discusses":       EdgeType.DISCUSSES,
+    "implies":         EdgeType.IMPLIES,
+    "related_to":      EdgeType.RELATED_TO,
     "활용됨":        EdgeType.USED_IN,
     "영감받음":      EdgeType.INSPIRED_BY,
     "상충함":        EdgeType.CONTRADICTS,
@@ -282,11 +368,18 @@ def cosine(a: Sequence[float], b: Sequence[float]) -> float:
 
 @dataclass
 class Node:
-    """PPT 슬라이드 20 의 노드 정의."""
+    """PPT 슬라이드 20 의 노드 정의.
+
+    ``summary`` 와 ``legacy_type`` 은 1급 칼럼이다. (이전엔 summary·metadata 를
+    ``attrs._kg`` 패스스루 blob 에 숨겨 넣었지만 정규화 스키마에서는 ``summary`` 는
+    전용 칼럼, metadata 는 ``attrs`` 자체로 직접 보존한다.)
+    """
     type: NodeType
     label: str
     id: str = field(default_factory=lambda: f"node:{_ulid()}")
     attrs: Dict[str, Any] = field(default_factory=dict)
+    summary: str = ""
+    legacy_type: Optional[str] = None   # 원본 legacy 타입 문자열(무손실 보존)
     embedding: Optional[List[float]] = None
     owner_id: Optional[str] = None
     visibility: Visibility = Visibility.PRIVATE
@@ -323,7 +416,12 @@ class Node:
 
 @dataclass
 class Edge:
-    """PPT 슬라이드 21 의 엣지 정의."""
+    """PPT 슬라이드 21 의 엣지 정의.
+
+    ``metadata`` 와 ``legacy_type`` 은 1급 칼럼이다. (이전 프로젝션은 엣지
+    metadata_json 을 ``evidence`` 칼럼에 우겨넣었지만, 정규화 스키마에서는 전용
+    ``metadata`` 칼럼에 보존하고 ``evidence`` 는 본래 의미(근거 ID 목록)로 되돌린다.)
+    """
     source: str
     target: str
     type: EdgeType
@@ -331,6 +429,8 @@ class Edge:
     weight: float = 1.0           # 강도 0..1
     confidence: float = 1.0       # 추출 신뢰도 0..1
     evidence: List[str] = field(default_factory=list)   # 근거(노드/청크 ID)
+    metadata: Dict[str, Any] = field(default_factory=dict)  # legacy metadata_json 보존
+    legacy_type: Optional[str] = None   # 원본 legacy 타입 문자열(무손실 보존)
     created_by: str = "user"      # extractor 식별자
     created_at: str = field(default_factory=_now_iso)
 
@@ -381,7 +481,9 @@ CREATE TABLE IF NOT EXISTS kg_meta (
 CREATE TABLE IF NOT EXISTS nodes_v2 (
   id               TEXT PRIMARY KEY,
   type             TEXT NOT NULL,
+  legacy_type      TEXT,
   label            TEXT NOT NULL,
+  summary          TEXT NOT NULL DEFAULT '',
   attrs            TEXT NOT NULL DEFAULT '{}',
   embedding        BLOB,
   owner_id         TEXT,
@@ -399,21 +501,28 @@ CREATE TABLE IF NOT EXISTS edges_v2 (
   source       TEXT NOT NULL,
   target       TEXT NOT NULL,
   type         TEXT NOT NULL,
+  legacy_type  TEXT NOT NULL DEFAULT '',
   weight       REAL NOT NULL DEFAULT 1.0,
   confidence   REAL NOT NULL DEFAULT 1.0,
   evidence     TEXT NOT NULL DEFAULT '[]',
+  metadata     TEXT NOT NULL DEFAULT '{}',
   created_by   TEXT NOT NULL DEFAULT 'user',
   created_at   TEXT NOT NULL,
-  UNIQUE(source, target, type),
+  -- Edge identity follows the *raw* legacy type, not the normalized type:
+  -- two distinct legacy types between the same pair (e.g. "mentions" and
+  -- "관련됨") must stay distinct edges even though both normalize to MENTIONS.
+  UNIQUE(source, target, legacy_type),
   FOREIGN KEY(source) REFERENCES nodes_v2(id) ON DELETE CASCADE,
   FOREIGN KEY(target) REFERENCES nodes_v2(id) ON DELETE CASCADE
 );
 
 CREATE INDEX IF NOT EXISTS idx_nodes_v2_type     ON nodes_v2(type);
+CREATE INDEX IF NOT EXISTS idx_nodes_v2_legacy   ON nodes_v2(legacy_type);
 CREATE INDEX IF NOT EXISTS idx_nodes_v2_owner    ON nodes_v2(owner_id);
 CREATE INDEX IF NOT EXISTS idx_edges_v2_source   ON edges_v2(source);
 CREATE INDEX IF NOT EXISTS idx_edges_v2_target   ON edges_v2(target);
 CREATE INDEX IF NOT EXISTS idx_edges_v2_type     ON edges_v2(type);
+CREATE INDEX IF NOT EXISTS idx_edges_v2_legacy   ON edges_v2(legacy_type);
 """
 
 
@@ -439,11 +548,11 @@ class KGStoreV2:
     # Columns the current code writes; used to detect schema-evolution drift in
     # v2 tables that an older ``CREATE TABLE IF NOT EXISTS`` left behind.
     _V2_EXPECTED_COLUMNS = {
-        "edges_v2": {"id", "source", "target", "type", "weight", "confidence",
-                     "evidence", "created_by", "created_at"},
-        "nodes_v2": {"id", "type", "label", "attrs", "embedding", "owner_id",
-                     "visibility", "created_at", "updated_at", "style", "tone",
-                     "importance_score", "last_used"},
+        "edges_v2": {"id", "source", "target", "type", "legacy_type", "weight",
+                     "confidence", "evidence", "metadata", "created_by", "created_at"},
+        "nodes_v2": {"id", "type", "legacy_type", "label", "summary", "attrs",
+                     "embedding", "owner_id", "visibility", "created_at",
+                     "updated_at", "style", "tone", "importance_score", "last_used"},
     }
 
     def _drop_stale_empty_v2_tables(self, conn: sqlite3.Connection) -> None:
@@ -496,13 +605,15 @@ class KGStoreV2:
         with self._conn() as conn:
             conn.execute(
                 """
-                INSERT INTO nodes_v2(id, type, label, attrs, embedding,
-                                     owner_id, visibility, created_at, updated_at,
-                                     style, tone, importance_score, last_used)
-                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                INSERT INTO nodes_v2(id, type, legacy_type, label, summary, attrs,
+                                     embedding, owner_id, visibility, created_at,
+                                     updated_at, style, tone, importance_score, last_used)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
                 ON CONFLICT(id) DO UPDATE SET
                   type=excluded.type,
+                  legacy_type=excluded.legacy_type,
                   label=excluded.label,
+                  summary=excluded.summary,
                   attrs=excluded.attrs,
                   embedding=COALESCE(excluded.embedding, nodes_v2.embedding),
                   owner_id=excluded.owner_id,
@@ -514,7 +625,8 @@ class KGStoreV2:
                   last_used=COALESCE(excluded.last_used, nodes_v2.last_used)
                 """,
                 (
-                    node.id, node.type.value, node.label,
+                    node.id, node.type.value, node.legacy_type or node.type.value,
+                    node.label, node.summary,
                     json.dumps(node.attrs, ensure_ascii=False),
                     encode_embedding(node.embedding),
                     node.owner_id, node.visibility.value,
@@ -536,19 +648,23 @@ class KGStoreV2:
         with self._conn() as conn:
             conn.execute(
                 """
-                INSERT INTO edges_v2(id, source, target, type, weight,
-                                     confidence, evidence, created_by, created_at)
-                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
-                ON CONFLICT(source, target, type) DO UPDATE SET
+                INSERT INTO edges_v2(id, source, target, type, legacy_type, weight,
+                                     confidence, evidence, metadata, created_by, created_at)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                ON CONFLICT(source, target, legacy_type) DO UPDATE SET
+                  type=excluded.type,
                   weight=excluded.weight,
                   confidence=excluded.confidence,
                   evidence=excluded.evidence,
+                  metadata=excluded.metadata,
                   created_by=excluded.created_by
                 """,
                 (
                     edge.id, edge.source, edge.target, edge.type.value,
+                    edge.legacy_type or edge.type.value,
                     float(edge.weight), float(edge.confidence),
                     json.dumps(edge.evidence, ensure_ascii=False),
+                    json.dumps(edge.metadata, ensure_ascii=False),
                     edge.created_by, edge.created_at,
                 ),
             )
@@ -665,7 +781,9 @@ def _row_to_node(row: sqlite3.Row) -> Node:
     return Node(
         id=row["id"],
         type=NodeType(row["type"]),
+        legacy_type=row["legacy_type"] if "legacy_type" in keys else None,
         label=row["label"],
+        summary=row["summary"] if "summary" in keys else "",
         attrs=json.loads(row["attrs"] or "{}"),
         embedding=decode_embedding(row["embedding"]),
         owner_id=row["owner_id"],
@@ -680,102 +798,28 @@ def _row_to_node(row: sqlite3.Row) -> Node:
 
 
 def _row_to_edge(row: sqlite3.Row) -> Edge:
+    keys = row.keys() if hasattr(row, "keys") else []
     return Edge(
         id=row["id"],
         source=row["source"],
         target=row["target"],
         type=EdgeType(row["type"]),
+        legacy_type=row["legacy_type"] if "legacy_type" in keys else None,
         weight=float(row["weight"]),
         confidence=float(row["confidence"]),
         evidence=json.loads(row["evidence"] or "[]"),
+        metadata=json.loads(row["metadata"]) if "metadata" in keys and row["metadata"] else {},
         created_by=row["created_by"],
         created_at=row["created_at"],
     )
 
 
-# ── Migration: legacy (nodes/edges) → v2 (nodes_v2/edges_v2) ───────────────
-def migrate_legacy_to_v2(db_path: str, *, dry_run: bool = False) -> Dict[str, int]:
-    """기존 ``knowledge_graph.py`` 가 만든 ``nodes`` / ``edges`` 테이블을
-    ``nodes_v2`` / ``edges_v2`` 로 복사. ``dry_run`` 이면 카운트만 반환.
-    """
-    counters = {"nodes_seen": 0, "nodes_migrated": 0,
-                "edges_seen": 0, "edges_migrated": 0, "edges_skipped": 0}
-    store = KGStoreV2(db_path)
-    store.init_schema()
-    with sqlite3.connect(db_path) as conn:
-        conn.row_factory = sqlite3.Row
-
-        # nodes
-        try:
-            old_nodes = conn.execute(
-                "SELECT id, type, title, summary, metadata_json, created_at, updated_at FROM nodes"
-            ).fetchall()
-        except sqlite3.OperationalError:
-            old_nodes = []
-        for r in old_nodes:
-            counters["nodes_seen"] += 1
-            if dry_run:
-                continue
-            node = Node(
-                id=r["id"],
-                type=NodeType.from_legacy(r["type"]),
-                label=r["title"] or "(untitled)",
-                attrs=_safe_json(r["metadata_json"]),
-                created_at=r["created_at"] or _now_iso(),
-                updated_at=r["updated_at"] or _now_iso(),
-            )
-            try:
-                store.upsert_node(node)
-                counters["nodes_migrated"] += 1
-            except Exception as exc:
-                # 잘못된 legacy row 는 스킵
-                _log_skip("node", r["id"], exc)
-
-        # edges
-        try:
-            old_edges = conn.execute(
-                "SELECT id, from_node, to_node, type, weight, metadata_json, created_at FROM edges"
-            ).fetchall()
-        except sqlite3.OperationalError:
-            old_edges = []
-        for r in old_edges:
-            counters["edges_seen"] += 1
-            if dry_run:
-                continue
-            meta = _safe_json(r["metadata_json"])
-            edge = Edge(
-                id=r["id"],
-                source=r["from_node"],
-                target=r["to_node"],
-                type=EdgeType.from_legacy(r["type"]),
-                weight=float(r["weight"] or 1.0),
-                confidence=float(meta.get("confidence", 1.0)),
-                evidence=list(meta.get("evidence", []) or []),
-                created_by=str(meta.get("created_by", "legacy")),
-                created_at=r["created_at"] or _now_iso(),
-            )
-            try:
-                store.upsert_edge(edge, check_endpoints=False)
-                counters["edges_migrated"] += 1
-            except Exception as exc:
-                counters["edges_skipped"] += 1
-                _log_skip("edge", r["id"], exc)
-    return counters
-
-
-def _safe_json(raw: Optional[str]) -> Dict[str, Any]:
-    if not raw:
-        return {}
-    try:
-        v = json.loads(raw)
-        return v if isinstance(v, dict) else {"_raw": v}
-    except (ValueError, TypeError):
-        return {"_raw": raw}
-
-
-def _log_skip(kind: str, ident: str, exc: Exception) -> None:
-    # 의도적으로 print: 마이그레이션은 일회성이라 로깅 인프라 의존 안 함
-    print(f"[migrate] skip {kind} {ident}: {exc}")
+# NOTE: legacy → v2 reprojection lives in ``knowledge_graph.py``
+# (``KnowledgeGraphStore._backfill_v2_if_needed`` / ``_v2_project_node``/_edge),
+# which is the single live, version-gated migration path. The old standalone
+# ``migrate_legacy_to_v2()`` helper + CLI ``migrate`` subcommand were removed as
+# dead code (no callers); the normalized projection now writes the first-class
+# ``legacy_type``/``summary``/``metadata`` columns directly.
 
 
 # ── CLI ────────────────────────────────────────────────────────────────────
@@ -788,10 +832,6 @@ def _cli() -> int:
     sub_init = sub.add_parser("init", help="initialize v2 schema in a DB")
     sub_init.add_argument("db", help="path to sqlite db")
 
-    sub_mig = sub.add_parser("migrate", help="migrate legacy nodes/edges → v2")
-    sub_mig.add_argument("db", help="path to sqlite db")
-    sub_mig.add_argument("--dry-run", action="store_true")
-
     sub_stats = sub.add_parser("stats", help="print store statistics")
     sub_stats.add_argument("db", help="path to sqlite db")
 
@@ -799,10 +839,6 @@ def _cli() -> int:
     if args.cmd == "init":
         KGStoreV2(args.db).init_schema()
         print(f"initialized v2 schema in {args.db}")
-        return 0
-    if args.cmd == "migrate":
-        out = migrate_legacy_to_v2(args.db, dry_run=args.dry_run)
-        print(json.dumps(out, indent=2, ensure_ascii=False))
         return 0
     if args.cmd == "stats":
         print(json.dumps(KGStoreV2(args.db).stats(), indent=2, ensure_ascii=False))

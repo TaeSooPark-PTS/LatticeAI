@@ -37,20 +37,33 @@ Knowledge Graph v2 read/write cutover. 자세한 내용은
 > 트랜잭션에서 갱신되는 프로젝션입니다. `LATTICEAI_KG_READ_V2=0`으로 legacy
 > read 경로로 즉시 롤백할 수 있습니다.
 
-## TODO — 후속 작업 (v0.4.0 이후, 이번 릴리스 범위 밖)
+## TODO — 후속 작업 (이번 릴리스 범위 밖)
 
-아래 항목은 의도적으로 v0.4.0에 **포함하지 않았습니다**. 별도 작업/PR로 진행:
+완료된 항목 (KGStoreV2 정규화 리팩터링):
 
-- **Dead code cleanup** — cutover로 main-path에서 미사용이 된 코드 정리.
-- **`migrate_legacy_to_v2()` 제거** — backfill을 프로젝션이 대체해 main-path에서
-  dead(현재 `kg_schema._cli`만 사용). 제거 또는 CLI 전용으로 강등.
-- **`KGStoreV2.upsert_*` 정리** — 프로젝션은 raw SQL, read는 뷰를 쓰므로
-  production 경로 미사용. 정리 시 `test_document_generation` 동반 조정 필요.
-- **KG schema redesign / `NodeType` 재설계** — v2 `type` 칼럼이 현재 legacy
-  자유문자열을 담는 타협 상태. 무손실 superset enum으로 재설계하면 typed/embedding
-  의미론을 복원 가능.
-- 잔여 저위험 항목: 혼합 `_kg` 상태 리프로젝션 가드(any→all), 프로젝션 실패 시
-  edge 발산 모니터링.
+- ✅ **`migrate_legacy_to_v2()` 제거** — dead code 제거. 리프로젝션은
+  `knowledge_graph._backfill_v2_if_needed` 단일 경로로 통합. CLI `migrate`
+  서브커맨드도 제거.
+- ✅ **KG schema redesign / `NodeType` 재설계** — `attrs._kg` 패스스루 제거,
+  legacy 자유문자열 타입을 무손실 `NodeType`/`EdgeType` superset으로 정규화
+  (`type`), 원본은 `legacy_type` 칼럼에 보존. summary/metadata는 1급 칼럼으로
+  승격. 엣지 정체성은 `(source,target,legacy_type)`로 보존.
+
+남은 항목:
+
+- **`KGStoreV2.upsert_*` / read API 정리** — 프로젝션은 raw SQL, read는 뷰를
+  쓰므로 production 경로 미사용. (단, `test_document_generation`이 native
+  `upsert_node`/`get_node`를 사용하므로 정리 시 동반 조정 필요.)
+- **뷰 byte-faithfulness 한계(기존 제약)** — 프로젝션은 legacy `title`/`summary`를
+  `[:240]`/`[:1000]`로 자르고 `metadata_json`을 `sort_keys`로 재인코딩한다.
+  `_upsert_*` 경로로 쓰인 행은 동일하지만, 외부에서 직접 삽입된 초과 길이/비정렬
+  키 행은 `metadata_json LIKE` 검색에서 legacy와 미세하게 달라질 수 있음. (리팩터
+  이전부터 동일하게 존재하던 제약 — 이번 변경이 악화시키지 않음. faithful 프로젝션
+  + equivalence 테스트 케이스 추가로 별도 개선 가능.)
+- **마이그레이션 원자성** — `_init_v2_schema`의 DROP/init/backfill/version-set이
+  분리된 트랜잭션. 단일 트랜잭션으로 묶으면 중간 크래시 시 torn 상태 가능성 제거.
+- **dual-write 불변식 가드** — 모든 legacy write가 `_upsert_*`를 경유한다는 가정.
+  직접 INSERT 경로가 생기면 v2가 조용히 발산할 수 있음(현재 모니터링 없음).
 
 ## 0) 릴리스 전 체크
 

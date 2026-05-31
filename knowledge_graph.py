@@ -23,13 +23,20 @@ from pathlib import Path
 from typing import Any, Dict, Iterable, List, Optional, Tuple
 
 try:
-    from kg_schema import KGStoreV2
+    from kg_schema import KGStoreV2, NodeType, EdgeType
 except Exception:  # pragma: no cover - v2 schema is optional at import time
     KGStoreV2 = None  # type: ignore[assignment]
+    NodeType = None   # type: ignore[assignment]
+    EdgeType = None   # type: ignore[assignment]
 
 # Default read source for the graph queries: v2 reconstruction views.
 # Override with LATTICEAI_KG_READ_V2=0 to fall back to the legacy tables.
 _READ_FROM_V2_DEFAULT = os.getenv("LATTICEAI_KG_READ_V2", "1") != "0"
+
+# Bump when the v2 projection layout changes (columns, normalization rules).
+# On init, a stale projection is dropped and rebuilt from the authoritative
+# legacy tables — safe because nodes_v2/edges_v2 only ever hold a derived view.
+_PROJECTION_VERSION = 3
 
 _llm_router_ref = None
 
@@ -916,62 +923,105 @@ class KnowledgeGraphStore:
             )
         self._init_v2_schema()
 
-    # SQL views that reconstruct the *exact* legacy row shape on top of the v2
-    # tables, so the read methods can run unchanged against either source. The
-    # projection (see _v2_project_node/_edge) stashes summary + the original
-    # metadata_json + (via the type column) the legacy type string, so these
-    # views are byte-faithful to the legacy nodes/edges tables.
+    # SQL views that reconstruct the *exact* legacy row shape on top of the
+    # normalized v2 tables, so the read methods run unchanged against either
+    # source. The projection stores the raw legacy type string in ``legacy_type``
+    # and promotes summary + metadata to first-class columns (no more
+    # ``attrs._kg`` passthrough / ``evidence`` abuse), so these views are
+    # byte-faithful to the legacy nodes/edges tables.
     _V2_VIEWS_SQL = """
     CREATE VIEW IF NOT EXISTS kgv2_nodes AS
-      SELECT id, type,
+      SELECT id,
+             COALESCE(legacy_type, type) AS type,
              label AS title,
-             COALESCE(json_extract(attrs, '$._kg.summary'), '')   AS summary,
-             COALESCE(json_extract(attrs, '$._kg.metadata_json'), '{}') AS metadata_json,
+             summary,
+             attrs AS metadata_json,
              created_at, updated_at
       FROM nodes_v2;
     CREATE VIEW IF NOT EXISTS kgv2_edges AS
-      SELECT id, source AS from_node, target AS to_node, type, weight,
-             COALESCE(evidence, '{}') AS metadata_json, created_at
+      SELECT id, source AS from_node, target AS to_node,
+             COALESCE(legacy_type, type) AS type,
+             weight,
+             metadata AS metadata_json,
+             created_at
       FROM edges_v2;
     """
 
     def _init_v2_schema(self) -> None:
-        """Initialize the v2 tables + reconstruction views and backfill from legacy.
+        """Initialize the normalized v2 tables + reconstruction views, migrating
+        the projection layout when it is stale.
 
-        Completes the v2 migration: both write (dual-write projection in
-        _upsert_node/_upsert_edge) and read (read methods route to the kgv2_*
-        views when ``_READ_FROM_V2`` is on) flow through the v2 tables. Legacy
-        nodes/edges are retained as the durable source until the v2 path bakes in.
+        Both write (dual-write projection in _upsert_node/_upsert_edge) and read
+        (read methods route to the kgv2_* views when ``_READ_FROM_V2`` is on)
+        flow through the v2 tables. Legacy nodes/edges remain the durable source,
+        so a layout change just drops the derived projection and rebuilds it.
         """
         if KGStoreV2 is None:
             return
         try:
+            stale = self._projection_version() != _PROJECTION_VERSION
+            if stale:
+                # The projection is non-authoritative; drop it so init_schema can
+                # recreate the tables with the current normalized columns.
+                with self._connect() as conn:
+                    conn.executescript(
+                        "DROP VIEW IF EXISTS kgv2_edges;"
+                        "DROP VIEW IF EXISTS kgv2_nodes;"
+                        "DROP TABLE IF EXISTS edges_v2;"
+                        "DROP TABLE IF EXISTS nodes_v2;"
+                    )
             KGStoreV2(self.db_path).init_schema()
             with self._connect() as conn:
                 conn.executescript(self._V2_VIEWS_SQL)
-            self._backfill_v2_if_needed()
+            self._backfill_v2_if_needed(force=stale)
+            self._set_projection_version(_PROJECTION_VERSION)
         except Exception as e:
             logging.warning("knowledge_graph: v2 schema init/backfill skipped: %s", e)
 
-    def _backfill_v2_if_needed(self) -> None:
-        """Project legacy nodes/edges into the v2 tables when v2 is empty or stale.
+    def _projection_version(self) -> int:
+        """Return the stored v2 projection layout version (0 if unknown).
 
-        Non-destructive to legacy. Reprojects when the v2 rows predate the
-        ``_kg`` reconstruction blob (older enum-only backfill), so the views
-        stay faithful. Idempotent: no-ops once v2 carries the current projection.
+        A fresh DB (kg_meta absent) raises ``sqlite3.OperationalError`` here and
+        is correctly treated as version 0 → rebuild. Only sqlite errors are
+        swallowed so a real bug doesn't masquerade as a stale projection.
         """
         try:
             with self._connect() as conn:
-                v2_nodes = conn.execute("SELECT COUNT(*) FROM nodes_v2").fetchone()[0]
+                row = conn.execute(
+                    "SELECT value FROM kg_meta WHERE key='projection_version'"
+                ).fetchone()
+            return int(row["value"]) if row and row["value"] is not None else 0
+        except sqlite3.Error:
+            return 0
+
+    def _set_projection_version(self, version: int) -> None:
+        # Failure here is non-fatal but must be visible: if the version never
+        # persists, every startup re-forces a full projection rebuild.
+        try:
+            with self._connect() as conn:
+                conn.execute(
+                    "INSERT OR REPLACE INTO kg_meta(key, value) VALUES ('projection_version', ?)",
+                    (str(version),),
+                )
+        except sqlite3.Error as ex:
+            logging.warning("knowledge_graph: could not record projection_version: %s", ex)
+
+    def _backfill_v2_if_needed(self, *, force: bool = False) -> None:
+        """Project legacy nodes/edges into the normalized v2 tables.
+
+        Non-destructive to legacy. ``force`` rebuilds unconditionally (used after
+        a layout migration); otherwise it only projects when v2 is empty. The v2
+        graph is a derived projection, so clearing + rebuilding it is always safe.
+        Idempotent: no-ops once v2 carries the current projection.
+        """
+        try:
+            with self._connect() as conn:
                 legacy_nodes = conn.execute("SELECT COUNT(*) FROM nodes").fetchone()[0]
                 if legacy_nodes == 0:
                     return
-                if v2_nodes > 0:
-                    has_kg = conn.execute(
-                        "SELECT COUNT(*) FROM nodes_v2 WHERE json_extract(attrs,'$._kg') IS NOT NULL"
-                    ).fetchone()[0]
-                    if has_kg > 0:
-                        return  # current projection already present
+                v2_nodes = conn.execute("SELECT COUNT(*) FROM nodes_v2").fetchone()[0]
+                if v2_nodes > 0 and not force:
+                    return  # current projection already present
                 # (re)project: clear v2 graph (not authoritative) and rebuild
                 conn.execute("DELETE FROM edges_v2")
                 conn.execute("DELETE FROM nodes_v2")
@@ -997,7 +1047,7 @@ class KnowledgeGraphStore:
         except Exception as ex:
             logging.warning("knowledge_graph: v2 backfill skipped: %s", ex)
 
-    # ── v2 dual-write projection (legacy types + summary/metadata in attrs._kg) ──
+    # ── v2 dual-write projection (normalized type + first-class summary/metadata) ──
     def _v2_project_node(
         self, conn: sqlite3.Connection, node_id: str, node_type: str, title: str,
         summary: str, metadata: Optional[Dict[str, Any]],
@@ -1006,18 +1056,21 @@ class KnowledgeGraphStore:
         if KGStoreV2 is None:
             return
         ts = updated_at or _now()
-        attrs = _json({"_kg": {"summary": (summary or "")[:1000], "metadata_json": _json(metadata)}})
+        norm_type = NodeType.from_legacy(node_type).value if NodeType is not None else node_type
         try:
             conn.execute(
                 """
-                INSERT INTO nodes_v2(id, type, label, attrs, owner_id, visibility,
-                                     created_at, updated_at, importance_score)
-                VALUES (?, ?, ?, ?, NULL, 'private', ?, ?, 0.0)
+                INSERT INTO nodes_v2(id, type, legacy_type, label, summary, attrs,
+                                     owner_id, visibility, created_at, updated_at,
+                                     importance_score)
+                VALUES (?, ?, ?, ?, ?, ?, NULL, 'private', ?, ?, 0.0)
                 ON CONFLICT(id) DO UPDATE SET
-                  type=excluded.type, label=excluded.label,
+                  type=excluded.type, legacy_type=excluded.legacy_type,
+                  label=excluded.label, summary=excluded.summary,
                   attrs=excluded.attrs, updated_at=excluded.updated_at
                 """,
-                (node_id, node_type, (title or "")[:240], attrs, created_at or ts, ts),
+                (node_id, norm_type, node_type, (title or "")[:240],
+                 (summary or "")[:1000], _json(metadata), created_at or ts, ts),
             )
         except Exception as ex:
             logging.debug("knowledge_graph: v2 node projection skipped (%s): %s", node_id, ex)
@@ -1031,17 +1084,20 @@ class KnowledgeGraphStore:
             return
         meta = metadata or {}
         eid = edge_id or f"edge:{_sha256_text(f'{from_node}|{edge_type}|{to_node}')[:24]}"
+        norm_type = EdgeType.from_legacy(edge_type).value if EdgeType is not None else edge_type
         try:
             conn.execute(
                 """
-                INSERT INTO edges_v2(id, source, target, type, weight, confidence,
-                                     evidence, created_by, created_at)
-                VALUES (?, ?, ?, ?, ?, ?, ?, 'legacy', ?)
-                ON CONFLICT(source, target, type) DO UPDATE SET
+                INSERT INTO edges_v2(id, source, target, type, legacy_type, weight,
+                                     confidence, evidence, metadata, created_by, created_at)
+                VALUES (?, ?, ?, ?, ?, ?, ?, '[]', ?, 'legacy', ?)
+                ON CONFLICT(source, target, legacy_type) DO UPDATE SET
+                  type=excluded.type,
                   weight=max(edges_v2.weight, excluded.weight),
-                  evidence=excluded.evidence
+                  confidence=excluded.confidence,
+                  metadata=excluded.metadata
                 """,
-                (eid, from_node, to_node, edge_type, float(weight),
+                (eid, from_node, to_node, norm_type, edge_type, float(weight),
                  float(meta.get("confidence", 1.0)), _json(meta), created_at or _now()),
             )
         except Exception as ex:
@@ -3072,7 +3128,7 @@ class KnowledgeGraphStore:
                 conn.execute(
                     """
                     DELETE FROM nodes_v2
-                    WHERE type='Topic'
+                    WHERE legacy_type='Topic'
                       AND id NOT IN (SELECT target FROM edges_v2)
                       AND id NOT IN (SELECT source FROM edges_v2)
                     """
