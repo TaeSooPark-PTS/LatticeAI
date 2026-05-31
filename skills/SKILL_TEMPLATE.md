@@ -1,7 +1,7 @@
 # Skill: <name>
 
 ## 메타데이터
-- **버전**: 0.1.0
+- **버전**: 1.4.0
 - **카테고리**: coding | data | document | web | system | analysis
 - **위험도**: low | medium | high
 - **필요 권한**: none | local_read | local_write | exec | network | admin

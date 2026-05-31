@@ -9,6 +9,30 @@
 > PyPI / npm / VS Code Marketplace / Open VSX 배포는 아래 수동 절차로 로컬에서
 > 직접 인증 후 진행합니다. GitHub Secrets에 배포 토큰을 저장하지 않습니다.
 
+## v1.4.0 릴리스 노트 (2026-05-31)
+
+Server App Final Decomposition — 목표 줄 수 미달 없이 핵심 클러스터를 실제
+router/service 계층으로 이동.
+자세한 내용은 [`docs/CHANGELOG.md`](docs/CHANGELOG.md)의 `[1.4.0]` 항목 참고.
+
+- **Changed**: `latticeai/server_app.py` 5,381 → 1,303줄. 2,000줄 이하와
+  1,500줄 이하 목표를 모두 달성.
+- **Added**: `latticeai/api/{chat,tools,computer_use,local_files,permissions,garden,setup,static_routes}.py`,
+  `latticeai/services/{model_runtime,tool_dispatch,upload_service,app_context}.py`,
+  `latticeai/api/deps.py`.
+- **Changed**: chat/history/agent, model runtime/provider helpers, tools/local/
+  CU/permissions/upload, garden/setup/static UI pages, MCP/KG glue를
+  `server_app.py` 밖으로 이동.
+- **Added**: v1.4 decomposition guard
+  (`tests/unit/test_server_app_v14_decomposition.py`)로 line-count,
+  independent import, version metadata를 검증.
+- **Changed**: README / RELEASE / CHANGELOG / SECURITY / package scripts의
+  current-release 문맥을 v1.4.0으로 정렬하고 README 내부 0.6.0 current 충돌 제거.
+- **Validation**: route compatibility, streaming contract, model endpoint
+  presence, MCP/KG presence, import/startup, tools/local/CU route snapshot,
+  Python/VSIX/npm packaging을 검증.
+- 테스트/빌드/패키징 산출물만 생성 — 패키지 스토어 publish는 수동 절차로만 진행.
+
 ## v1.3.0 릴리스 노트 (2026-05-31)
 
 server_app.py 추가 분해(phase 3) — 안전망 우선 구축 후 model/MCP 라우터 추출.
@@ -234,10 +258,12 @@ Knowledge Graph v2 read/write cutover. 자세한 내용은
    - `npm run build:python`
 3. 업로드
    - `npm run publish:pypi`
+   - 직접 실행 시:
+     `python3 -m twine upload dist/ltcai-1.4.0-py3-none-any.whl dist/ltcai-1.4.0.tar.gz`
 
 참고:
 - TestPyPI 먼저 쓰려면:
-  - `python3 -m twine upload --skip-existing --repository testpypi dist/*.tar.gz dist/*.whl`
+  - `python3 -m twine upload --skip-existing --repository testpypi dist/ltcai-1.4.0.tar.gz dist/ltcai-1.4.0-py3-none-any.whl`
 
 ## 4) VS Code / Cursor / Antigravity 확장 배포
 
@@ -250,8 +276,12 @@ Knowledge Graph v2 read/write cutover. 자세한 내용은
    - `npm run package:vsix`
 3. VS Code Marketplace 배포
    - `npm run publish:vscode`
+   - 직접 실행 시:
+     `npx vsce publish --packagePath dist/ltcai-1.4.0.vsix`
 4. Open VSX 배포 (Cursor/일부 포크 호환)
    - `npm run publish:openvsx`
+   - 직접 실행 시:
+     `npx ovsx publish dist/ltcai-1.4.0.vsix`
 5. 로컬 설치 (VS Code/Cursor/Antigravity)
    - `npm run install:all`
 

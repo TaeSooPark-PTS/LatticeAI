@@ -36,17 +36,23 @@ Automatic knowledge graph
 Graph-aware chat, snapshots, memory, agents, workflows, skills, and timeline
 ```
 
-### New in 1.3.0: Server App Decomposition
+### New in 1.4.0: Server App Final Decomposition
 
-- **server_app.py decomposition** — model/engine and MCP/skills/plugins
-  endpoints extracted into `latticeai/api/models.py` and `latticeai/api/mcp.py`
-  (~5,948 → ~5,382 lines)
-- **Safety validation suite** — a route-compatibility snapshot (209 paths) plus
-  import/startup, streaming-contract, and model/MCP/KG checks, built before the
-  move so no endpoint can silently change
-- **Compatibility preserved** — all API paths, request/response schemas, the
-  `server:app` import path, CLI, UI, KG/Admin/Security routers, and VS Code
-  integration are unchanged
+- **server_app.py final decomposition** — the app shell is now FastAPI assembly,
+  lifespan, middleware, static mounting, and router wiring only
+  (~5,381 → 1,303 lines)
+- **Chat / model / tools extraction** — chat/history/agent, model runtime and
+  provider helpers, tools, local files, computer-use, permissions, upload,
+  garden/setup/static UI, MCP, and KG glue now live in API routers and services
+- **AppContext and dependency cleanup** — routers receive explicit dependencies
+  and do not import the FastAPI app; service modules own runtime and dispatch
+  business logic
+- **Safety validation suite** — route compatibility, import/startup, streaming,
+  model endpoint, tools/local/CU, release-artifact, and documentation stale
+  checks guard the split
+- **Compatibility preserved** — all public API paths, request/response schemas,
+  `server:app`, CLI, UI, Knowledge Graph, Admin/Security, Workspace OS, and
+  VS Code expectations remain unchanged
 
 ### New in 1.2.0: Server App Modularization
 
@@ -327,16 +333,18 @@ Supported routes include OpenAI-compatible APIs, OpenRouter, Groq, Together, xAI
 
 ## Current release
 
-**0.6.0** completes the runtime / registry / config extraction sprint:
+**1.4.0** completes the Server App Final Decomposition release:
 
-- `server.py` is now a thin compatibility entrypoint; FastAPI app assembly lives
-  in `latticeai.server_app`
-- tool dispatch, governance, permission views, MCP descriptions, and prompt
-  catalog metadata are centralized in `ToolRegistry`
-- agent role prompts are split into `latticeai.core.agent_prompts`, while
-  `AgentRuntime` remains the injected state-machine core
+- `server.py` remains the thin compatibility entrypoint and
+  `latticeai/server_app.py` is now a compact app assembly shell
+- chat/history/agent, model runtime/provider helpers, tools/local/CU/
+  permissions/upload, garden/setup/static pages, MCP, and KG router wiring are
+  extracted into `latticeai/api/*` and `latticeai/services/*`
+- route compatibility, streaming, model endpoint, tools/local/CU,
+  import/startup, build, packaging, and documentation stale-reference checks
+  are part of the release validation
 - Python package, npm package, VS Code extension, FastAPI app, and `/health`
-  version metadata are aligned at `0.6.0`
+  version metadata are aligned at `1.4.0`
 
 See the full [changelog](docs/CHANGELOG.md).
 

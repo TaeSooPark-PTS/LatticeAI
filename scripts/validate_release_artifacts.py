@@ -119,7 +119,7 @@ def validate(
         warnings.append(
             "dist/ also contains other versions "
             f"{sorted(other_versions)} — NEVER upload with a `dist/*` glob; "
-            "upload only the explicit 1.1.0 filenames."
+            f"upload only the explicit {version} filenames."
         )
 
     return {

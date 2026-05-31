@@ -1,5 +1,60 @@
 # Changelog
 
+## [1.4.0] - 2026-05-31
+
+> Server App Final Decomposition — chat, model runtime, tools/local/CU,
+> permissions/upload, garden/setup/static, MCP, and KG glue extracted while
+> preserving the public route contract.
+
+### Added
+
+- **Final decomposition guard** —
+  `tests/unit/test_server_app_v14_decomposition.py` asserts
+  `latticeai/server_app.py` stays under the 1,500-line target, new routers and
+  services import independently, and version metadata is aligned.
+- **New routers** — `latticeai/api/chat.py`, `latticeai/api/tools.py`,
+  `latticeai/api/computer_use.py`, `latticeai/api/local_files.py`,
+  `latticeai/api/permissions.py`, `latticeai/api/garden.py`,
+  `latticeai/api/setup.py`, `latticeai/api/static_routes.py`, plus
+  `latticeai/api/deps.py`.
+- **New service seams** — `latticeai/services/model_runtime.py`,
+  `latticeai/services/tool_dispatch.py`, `latticeai/services/upload_service.py`,
+  and
+  `latticeai/services/app_context.py`.
+
+### Changed
+
+- **server_app.py final decomposition** — reduced from 5,381 lines to 1,303
+  lines. The file now owns FastAPI construction, lifespan, middleware, static
+  mount, router wiring, and compatibility globals only.
+- **Chat/history/agent extracted** — `/chat`, `/history*`, `/agent*`, streaming
+  generator, document-generation session handling, Graph RAG trace recording,
+  and AgentRuntime wiring moved to `latticeai/api/chat.py` with behavior and
+  SSE chunk format preserved.
+- **Model runtime/provider extracted** — provider catalogs, engine aliases,
+  install/download/pull/load/unload helpers, prepare-model streaming,
+  compatibility smoke tests, runtime feature payloads, and cloud verification
+  moved to `latticeai/services/model_runtime.py`.
+- **Tools/local/CU/permissions/upload extracted** — `/tools/*` moved to
+  `latticeai/api/tools.py`, `/local/*` and KG/local-knowledge router glue moved
+  to `latticeai/api/local_files.py`, `/cu/*` moved to
+  `latticeai/api/computer_use.py`, `/permissions/*` moved to
+  `latticeai/api/permissions.py`, and `/upload/document` now delegates to
+  `latticeai/services/upload_service.py`.
+- **Garden/setup/static routes extracted** — `/garden*`, `/setup*`,
+  `/permissions/open/*`, `/`, `/account`, `/chat`, `/admin`, `/status`,
+  `/manifest.json`, `/sw.js`, and `/local/sysinfo` moved to dedicated routers.
+- **Docs and release metadata aligned** — README current release conflict fixed,
+  SECURITY supported versions updated, package metadata bumped to `1.4.0`, and
+  publish docs avoid unsafe `dist/*` upload commands.
+
+### Validation
+
+- Route compatibility snapshot, import/startup checks, chat streaming contract,
+  model endpoint presence, MCP/KG presence, v1.4 line-count/import/version
+  guard, unit/integration suites, Python build, VSIX package, npm pack, twine
+  check, and release artifact validation all pass for `1.4.0`.
+
 ## [1.3.0] - 2026-05-31
 
 > Server app decomposition (phase 3) — safety-net suite first, then model & MCP router extraction.

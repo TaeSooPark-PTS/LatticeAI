@@ -1,7 +1,7 @@
 # Skill: file_edit
 
 ## 메타데이터
-- **버전**: 0.1.0
+- **버전**: 1.4.0
 - **카테고리**: system
 - **위험도**: medium
 - **필요 권한**: local_write
