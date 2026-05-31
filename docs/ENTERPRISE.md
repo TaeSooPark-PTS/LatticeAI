@@ -9,7 +9,9 @@ Lattice AI follows an **open-core** model:
 
 - **Community** (this repository, MIT) is fully functional on its own: local
   LLMs, knowledge graph, Personal and Organization workspaces, roles, snapshots,
-  memory, agents, workflows, skills, and the auditable timeline.
+  memory, agents, workflows, skills, the auditable timeline, and the full v2.0
+  Agentic Workspace Platform (Plugin SDK, Workflow Designer, Multi-Agent Runtime
+  2.0, Realtime Collaboration).
 - **Enterprise** is a separately-distributed plugin that attaches advanced,
   organization-scale governance and deployment capabilities through a stable
   runtime seam. It is never bundled into the Community build.

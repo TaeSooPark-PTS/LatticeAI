@@ -1,0 +1,70 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Realtime Activity — Lattice AI</title>
+  <link rel="stylesheet" href="/static/platform.css" />
+</head>
+<body>
+  <main>
+    <h1>Realtime Activity</h1>
+    <p class="sub" id="sub">Live presence + activity feed across workspace, graph, agent, and workflow events (SSE).</p>
+
+    <div class="row">
+      <span class="badge" id="connBadge">connecting…</span>
+      <span class="badge" id="presenceBadge">presence: 0</span>
+      <div class="spacer"></div>
+      <button class="ghost" id="clearBtn">Clear view</button>
+    </div>
+
+    <div class="section">
+      <h3>Live feed</h3>
+      <div id="feed"><div class="empty">Waiting for events…</div></div>
+    </div>
+  </main>
+
+  <script type="module">
+    import { mountHeader, api, escapeHtml, badge } from "/static/scripts/platform.js";
+    mountHeader("/activity");
+
+    const feed = document.getElementById("feed");
+    const seen = new Set();
+
+    function renderEvent(ev) {
+      if (ev.seq && seen.has(ev.seq)) return;
+      if (ev.seq) seen.add(ev.seq);
+      if (feed.querySelector(".empty")) feed.innerHTML = "";
+      const node = document.createElement("div");
+      node.className = "timeline-item";
+      node.innerHTML = `<div class="row">${badge(ev.area || "event")} <strong>${escapeHtml(ev.event_type || "")}</strong>
+        <span class="t-meta">${escapeHtml(ev.workspace_id || "personal")} · ${escapeHtml(ev.received_at || ev.timestamp || "")}</span></div>
+        <pre style="max-height:160px">${escapeHtml(JSON.stringify(ev.payload || {}, null, 2))}</pre>`;
+      feed.prepend(node);
+      while (feed.children.length > 100) feed.lastChild.remove();
+    }
+
+    async function refreshPresence() {
+      try {
+        const data = await api("/realtime/presence");
+        document.getElementById("presenceBadge").textContent = `presence: ${data.presence.length}`;
+        document.getElementById("sub").textContent =
+          `Transport: ${data.stats.transport.toUpperCase()} · subscribers: ${data.stats.subscribers} · feed: ${data.stats.feed_size}`;
+      } catch {}
+    }
+
+    document.getElementById("clearBtn").addEventListener("click", () => { feed.innerHTML = `<div class="empty">Cleared.</div>`; });
+
+    // Seed with recent feed, then connect to the SSE stream.
+    api("/realtime/feed?limit=30").then((d) => (d.events || []).reverse().forEach(renderEvent)).catch(() => {});
+
+    const es = new EventSource("/realtime/stream");
+    es.onopen = () => { document.getElementById("connBadge").textContent = "● live"; document.getElementById("connBadge").className = "badge ok"; };
+    es.onerror = () => { document.getElementById("connBadge").textContent = "○ reconnecting"; document.getElementById("connBadge").className = "badge warn"; };
+    es.onmessage = (e) => { try { renderEvent(JSON.parse(e.data)); } catch {} };
+
+    refreshPresence();
+    setInterval(refreshPresence, 8000);
+  </script>
+</body>
+</html>

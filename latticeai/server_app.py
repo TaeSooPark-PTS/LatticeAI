@@ -91,8 +91,16 @@ from latticeai.services.model_runtime import (
     verify_cloud_models,
     ensure_ollama_server,
 )
-from latticeai.api.workspace import create_workspace_router
+from latticeai.api.workspace import create_workspace_router, _workspace_scope_from_request
 from latticeai.api.health import create_health_router
+# ── v2.0 Agentic Workspace Platform layers ───────────────────────────────────
+from latticeai.core.plugins import PluginRegistry
+from latticeai.core.realtime import RealtimeBus
+from latticeai.services.platform_runtime import PlatformRuntime
+from latticeai.api.plugins import create_plugins_router
+from latticeai.api.workflow_designer import create_workflow_designer_router
+from latticeai.api.agents import create_agents_router
+from latticeai.api.realtime import create_realtime_router
 from latticeai.api.models import create_models_router
 from latticeai.api.chat import create_chat_router
 from latticeai.api.tools import create_tools_router
@@ -236,10 +244,16 @@ AUDIT_FILE = DATA_DIR / "audit_log.json"
 SSO_FILE = DATA_DIR / "sso_config.json"
 KNOWLEDGE_GRAPH = KnowledgeGraphStore(DATA_DIR / "knowledge_graph.sqlite", DATA_DIR / "knowledge_graph_blobs") if ENABLE_GRAPH else None
 LOCAL_KG_WATCHER = LocalKnowledgeWatcher(lambda: KNOWLEDGE_GRAPH) if ENABLE_GRAPH else None
-WORKSPACE_OS = WorkspaceOSStore(DATA_DIR)
+# ── v2.0 Realtime bus: constructed first so the store can fan every timeline
+# event into the realtime feed via a single additive sink (no per-call wiring).
+REALTIME_BUS = RealtimeBus()
+WORKSPACE_OS = WorkspaceOSStore(DATA_DIR, event_sink=REALTIME_BUS)
 # Service layer (latticeai.services) wraps the store with scope/permission
 # guardrails; routers and the app assembly share this single instance.
 WORKSPACE_SERVICE = WorkspaceService(WORKSPACE_OS)
+# ── v2.0 Plugin SDK registry (extends skills; discovers plugins/<id>/plugin.json)
+PLUGINS_DIR = Path(os.getenv("LATTICEAI_PLUGINS_DIR") or (BASE_DIR / "plugins"))
+PLUGIN_REGISTRY = PluginRegistry(PLUGINS_DIR, store=WORKSPACE_OS)
 
 def _require_graph():
     if not ENABLE_GRAPH or KNOWLEDGE_GRAPH is None:
@@ -1184,6 +1198,66 @@ app.include_router(create_workspace_router(
     static_dir=STATIC_DIR,
     local_model=LOCAL_MODEL,
     public_model=PUBLIC_MODEL,
+))
+
+
+# ── v2.0 Agentic Workspace Platform: cross-system wiring ─────────────────────
+# All cross-subsystem closures live in latticeai.services.platform_runtime to
+# keep this assembly file lean; server_app only constructs it and mounts routers.
+PLATFORM = PlatformRuntime(
+    store=WORKSPACE_OS,
+    workspace_service=WORKSPACE_SERVICE,
+    plugin_registry=PLUGIN_REGISTRY,
+    get_current_user=get_current_user,
+    workspace_graph=_workspace_graph,
+    workspace_scope_from_request=_workspace_scope_from_request,
+    get_tool_permission=get_tool_permission,
+)
+
+app.include_router(create_plugins_router(
+    registry=PLUGIN_REGISTRY,
+    require_user=require_user,
+    require_admin=require_admin,
+    append_audit_event=append_audit_event,
+    register_skill=PLATFORM.register_plugin_skill,
+    plugin_runners_factory=lambda: PLATFORM.plugin_capability_runners(None, None),
+    ui_file_response=ui_file_response,
+    static_dir=STATIC_DIR,
+))
+
+app.include_router(create_workflow_designer_router(
+    store=WORKSPACE_OS,
+    require_user=require_user,
+    get_current_user=get_current_user,
+    gate_read=PLATFORM.gate_read,
+    gate_write=PLATFORM.gate_write,
+    workspace_graph=_workspace_graph,
+    build_runners=PLATFORM.build_workflow_runners,
+    append_audit_event=append_audit_event,
+    ui_file_response=ui_file_response,
+    static_dir=STATIC_DIR,
+))
+
+app.include_router(create_agents_router(
+    store=WORKSPACE_OS,
+    orchestrator_factory=PLATFORM.build_orchestrator,
+    require_user=require_user,
+    get_current_user=get_current_user,
+    gate_read=PLATFORM.gate_read,
+    gate_write=PLATFORM.gate_write,
+    workspace_graph=_workspace_graph,
+    append_audit_event=append_audit_event,
+    ui_file_response=ui_file_response,
+    static_dir=STATIC_DIR,
+))
+
+app.include_router(create_realtime_router(
+    bus=REALTIME_BUS,
+    require_user=require_user,
+    get_current_user=get_current_user,
+    allowed_scopes=PLATFORM.allowed_scopes,
+    ui_file_response=ui_file_response,
+    static_dir=STATIC_DIR,
 ))
 
 

@@ -1,7 +1,7 @@
 <div align="center">
   <img src="https://raw.githubusercontent.com/TaeSooPark-PTS/LatticeAI/main/docs/images/logo.svg" alt="Lattice AI" width="280"/>
   <br/>
-  <strong>AI Workspace OS for local-first graph, memory, agents, workflows, skills, and timelines.</strong>
+  <strong>Lattice AI — Local-first Agentic Workspace Platform: plugins, visual workflows, multi-agent runs, and realtime activity over your graph, memory, skills, and timeline.</strong>
   <br/><br/>
 
 [![PyPI](https://img.shields.io/pypi/v/ltcai?label=PyPI&color=blue)](https://pypi.org/project/ltcai/)
@@ -24,7 +24,7 @@
 
 Most AI tools answer one chat at a time. They do not remember your folders, your project history, your previous decisions, or how your files relate to each other.
 
-**Lattice AI turns your local workspace into an AI Workspace OS.**
+**Lattice AI turns your local workspace into a Local-first Agentic Workspace Platform.**
 
 It reads approved local folders, indexes chats and documents, builds a searchable knowledge graph, and connects the graph to snapshots, personal memory, agent runs, workflow history, skills, and an auditable timeline.
 
@@ -156,7 +156,7 @@ See [docs/architecture.md](docs/architecture.md) for request and data-flow detai
 </table>
 
 > Every image in this section is a **real screenshot** of the running app
-> (Lattice AI v1.7.0), captured with a headless browser.
+> (Lattice AI v2.0.0), captured with a headless browser.
 
 ---
 
@@ -353,28 +353,38 @@ Supported routes include OpenAI-compatible APIs, OpenRouter, Groq, Together, xAI
 
 ## Current release
 
-**1.7.0 — Graph & Collaboration Release.** An additive UI and validation release
-for graph exploration, workspace health, Enterprise admin visibility, skills,
-screenshots, and visual smoke coverage.
+**2.0.0 — Agentic Workspace Platform.** Lattice AI graduates from a local-first
+AI *workspace* to a local-first **Agentic Workspace Platform**: four new
+subsystems land as one cohesive, fully integrated platform — all additive, with
+every v1.x surface preserved.
 
-- **Graph Canvas** — expand/collapse, subgraph focus, relationship/path
-  highlighting, shortest-path visualization, and click-through node navigation.
-- **Workspace Health** — indexed files, graph nodes/relationships, installed
-  skills, memories, agent runs, current model, last sync, and workspace status.
-- **Enterprise Admin UI** — admin policies, audit export, SIEM export preview,
-  organization settings, and capability status surfaced in `/admin`.
-- **Skill Marketplace completion** — install progress, validation status,
-  recommended/popular skills, updates, version, and source metadata.
-- **Screenshot automation + visual smoke tests** — `scripts/capture/*` and a
-  scheduled Playwright workflow cover Workspace, Graph, Skills, Organization,
-  and Enterprise screens.
+- **Plugin SDK** — versioned, permissioned plugins (`plugin.json` manifest,
+  allow-listed permissions, lifecycle, validation, and a safe execution
+  boundary) that **extend** existing skills/tools/workflows rather than replace
+  them. Ships two example plugins. See [docs/PLUGIN_SDK.md](docs/PLUGIN_SDK.md).
+- **Workflow Designer** — node-based workflows (trigger · tool · skill · plugin ·
+  agent · condition · output) with validation, execution, run history, and
+  export/import. Pre-2.0 workflow history keeps working.
+  See [docs/WORKFLOW_DESIGNER.md](docs/WORKFLOW_DESIGNER.md).
+- **Multi-Agent Runtime 2.0** — Planner · Executor · Reviewer · Researcher ·
+  Release roles with handoff, retry, and an observable timeline, connected to
+  workspace, memory, graph, and workflow runs.
+  See [docs/MULTI_AGENT_RUNTIME.md](docs/MULTI_AGENT_RUNTIME.md).
+- **Realtime Collaboration** — presence + an activity feed over SSE, fed
+  automatically from every workspace timeline event; single-user local mode and
+  workspace isolation preserved. See [docs/REALTIME_COLLABORATION.md](docs/REALTIME_COLLABORATION.md).
+- **Cross-system integration** — workflows run plugins/skills/agents, agent runs
+  run plugins/workflows, and all activity surfaces in the realtime feed, the
+  knowledge graph, and the workspace timeline. See [docs/V2_ARCHITECTURE.md](docs/V2_ARCHITECTURE.md).
 - **Compatibility preserved** — API schemas, `server:app`,
-  `latticeai.server_app.app`, CLI, MCP, model, workspace, chat, KG, and VS Code
-  extension surfaces remain backward compatible.
+  `latticeai.server_app.app`, CLI, MCP, model, workspace, chat, KG, existing
+  skills/snapshots/memories/agent history, and the VS Code extension remain
+  backward compatible. Changes are additive; no destructive migrations.
 
 | Version | Theme |
 |---|---|
-| **1.7.0** | Graph & Collaboration Release |
+| **2.0.0** | Agentic Workspace Platform (Plugin SDK, Workflow Designer, Multi-Agent Runtime, Realtime) |
+| 1.7.0 | Graph & Collaboration Release |
 | 1.6.0 | Product Experience Deepening (UX + real screenshots) |
 | 1.5.0 | Unified Product Release (CI/VSIX recovery, model recommendation, Enterprise PoC) |
 | 1.4.0 | Server App final decomposition |

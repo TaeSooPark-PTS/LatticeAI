@@ -1,0 +1,121 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Workflow Designer — Lattice AI</title>
+  <link rel="stylesheet" href="/static/platform.css" />
+</head>
+<body>
+  <main>
+    <h1>Workflow Designer</h1>
+    <p class="sub">Compose triggers, tools, skills, plugins, agents, conditions, and outputs into runnable workflows.</p>
+
+    <div class="row">
+      <button id="newBtn">+ New from template</button>
+      <button class="ghost" id="validateBtn">Validate</button>
+      <button class="ghost" id="saveBtn">Save</button>
+      <div class="spacer"></div>
+    </div>
+
+    <div class="section">
+      <label>Workflow name</label>
+      <input id="wfName" value="My workflow" />
+      <label>Nodes (JSON) — trigger → … → output</label>
+      <textarea id="wfNodes" spellcheck="false" style="min-height:240px"></textarea>
+      <pre id="validateOut" style="display:none"></pre>
+    </div>
+
+    <div class="section">
+      <h3>Saved workflows</h3>
+      <div id="list" class="grid"><div class="empty">Loading…</div></div>
+    </div>
+
+    <div class="section">
+      <h3>Run history</h3>
+      <div id="runs"><div class="empty">No runs yet.</div></div>
+    </div>
+  </main>
+
+  <script type="module">
+    import { mountHeader, api, escapeHtml, badge, toast } from "/static/scripts/platform.js";
+    mountHeader("/workflows");
+
+    const TEMPLATE = [
+      { id: "trigger", type: "trigger", name: "Manual start", config: { trigger: "manual" }, next: "review" },
+      { id: "review", type: "agent", name: "Multi-agent review", config: { goal: "Review the latest workspace changes", roles: ["planner", "executor", "reviewer"] }, next: "decide" },
+      { id: "decide", type: "condition", name: "Passed?", config: { left: "last_output", op: "truthy" }, branches: { true: "done", false: "done" } },
+      { id: "done", type: "output", name: "Output", config: {}, next: null },
+    ];
+
+    function loadTemplate() {
+      document.getElementById("wfName").value = "My workflow";
+      document.getElementById("wfNodes").value = JSON.stringify(TEMPLATE, null, 2);
+    }
+
+    function readNodes() { return JSON.parse(document.getElementById("wfNodes").value); }
+
+    document.getElementById("newBtn").addEventListener("click", loadTemplate);
+
+    document.getElementById("validateBtn").addEventListener("click", async () => {
+      const out = document.getElementById("validateOut");
+      out.style.display = "block";
+      try {
+        const res = await api("/workflows/api/validate", { method: "POST", body: JSON.stringify({ name: document.getElementById("wfName").value, nodes: readNodes() }) });
+        out.textContent = res.ok ? "✓ Valid workflow" : "Errors:\n" + res.errors.join("\n");
+      } catch (err) { out.textContent = "Error: " + err.message; }
+    });
+
+    document.getElementById("saveBtn").addEventListener("click", async () => {
+      try {
+        await api("/workflows/api/definitions", { method: "POST", body: JSON.stringify({ name: document.getElementById("wfName").value, nodes: readNodes() }) });
+        toast("Workflow saved"); await loadList();
+      } catch (err) { toast(err.message); }
+    });
+
+    async function loadList() {
+      const data = await api("/workflows/api/definitions");
+      const list = document.getElementById("list");
+      const items = data.workflows || [];
+      if (!items.length) { list.innerHTML = `<div class="empty">No workflows yet.</div>`; return; }
+      list.innerHTML = items.map((w) => `
+        <div class="card">
+          <h3>${escapeHtml(w.name)}</h3>
+          <div class="meta">${(w.nodes||w.steps||[]).length} node(s) · ${escapeHtml(w.updated_at||w.created_at||"")}</div>
+          <div class="row" style="margin-top:12px">
+            <button data-run="${w.id}">Run</button>
+            <a class="btn ghost" href="/workflows/api/export/${w.id}" target="_blank">Export</a>
+          </div>
+        </div>`).join("");
+    }
+
+    document.getElementById("list").addEventListener("click", async (e) => {
+      const btn = e.target.closest("button[data-run]");
+      if (!btn) return;
+      btn.disabled = true;
+      try {
+        const res = await api(`/workflows/api/definitions/${btn.dataset.run}/run`, { method: "POST", body: JSON.stringify({ inputs: {} }) });
+        toast(`Run ${res.result.status} · ${res.result.step_count} steps`);
+        await loadRuns();
+      } catch (err) { toast(err.message); } finally { btn.disabled = false; }
+    });
+
+    async function loadRuns() {
+      const data = await api("/workflows/api/runs");
+      const runs = data.runs || [];
+      const box = document.getElementById("runs");
+      if (!runs.length) { box.innerHTML = `<div class="empty">No runs yet.</div>`; return; }
+      box.innerHTML = runs.map((r) => `
+        <div class="card" style="margin-bottom:10px">
+          <div class="row"><h3>${escapeHtml(r.name)}</h3><div class="spacer"></div>${badge(r.status)}</div>
+          <div class="meta">${escapeHtml(r.created_at)} · ${ (r.timeline||[]).length } steps</div>
+          <pre>${escapeHtml(JSON.stringify(r.timeline, null, 2))}</pre>
+        </div>`).join("");
+    }
+
+    loadTemplate();
+    loadList().catch((e) => toast(e.message));
+    loadRuns().catch(() => {});
+  </script>
+</body>
+</html>

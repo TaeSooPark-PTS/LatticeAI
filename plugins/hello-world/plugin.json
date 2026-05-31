@@ -1,0 +1,16 @@
+{
+  "id": "hello-world",
+  "name": "Hello World",
+  "version": "1.0.0",
+  "description": "Example plugin demonstrating the Lattice AI Plugin SDK: bundles a skill, a workflow template, and a greet action.",
+  "author": "Lattice AI",
+  "lattice_version": "2.0.0",
+  "permissions": ["read_workspace", "run_skills"],
+  "provides": {
+    "skills": ["hello_skill"],
+    "workflows": ["hello-workflow"],
+    "actions": ["greet"]
+  },
+  "entrypoint": "",
+  "homepage": "https://github.com/TaeSooPark-PTS/LatticeAI/blob/main/docs/PLUGIN_SDK.md"
+}

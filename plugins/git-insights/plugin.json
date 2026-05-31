@@ -1,0 +1,15 @@
+{
+  "id": "git-insights",
+  "name": "Git Insights",
+  "version": "1.0.0",
+  "description": "Example plugin that surfaces read-only git status and log insights through the permissioned tool execution boundary.",
+  "author": "Lattice AI",
+  "lattice_version": ">=2.0.0",
+  "permissions": ["read_workspace", "run_tools"],
+  "provides": {
+    "tools": ["git_status", "git_log"],
+    "actions": ["summarize_repo"]
+  },
+  "entrypoint": "",
+  "homepage": "https://github.com/TaeSooPark-PTS/LatticeAI/blob/main/docs/PLUGIN_SDK.md"
+}

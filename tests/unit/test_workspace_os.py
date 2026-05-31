@@ -131,7 +131,7 @@ def test_workspace_summary_exposes_health_timestamp(tmp_path: Path):
 
     summary = store.summary()
 
-    assert summary["version"] == "1.7.0"
+    assert summary["version"] == "2.0.0"
     assert summary["updated_at"]
 
 
@@ -247,6 +247,25 @@ def test_workspace_scoping_isolates_records(tmp_path: Path):
     # Search respects scope too.
     assert store.search_memories("org-only", workspace_id="personal")["memories"] == []
     assert store.search_memories("org-only", workspace_id=wid)["memories"][0]["content"] == "org-only"
+
+
+def test_workflow_detail_and_edit_respect_workspace_scope(tmp_path: Path):
+    store = WorkspaceOSStore(tmp_path)
+    org = store.create_organization_workspace(name="Workflows", owner_user_id="owner@wf.com")
+    wid = org["workspace_id"]
+
+    personal = store.create_workflow(name="Personal flow", steps=[], user_email="u@x.com", workspace_id="personal")
+    org_flow = store.create_workflow(name="Org flow", steps=[], user_email="owner@wf.com", workspace_id=wid)
+
+    assert store.get_workflow(personal["id"], workspace_id="personal")["name"] == "Personal flow"
+    assert store.get_workflow(org_flow["id"], workspace_id=wid)["name"] == "Org flow"
+    with pytest.raises(FileNotFoundError):
+        store.get_workflow(org_flow["id"], workspace_id="personal")
+    with pytest.raises(FileNotFoundError):
+        store.update_workflow_definition(org_flow["id"], name="Leaked edit", workspace_id="personal")
+
+    updated = store.update_workflow_definition(org_flow["id"], name="Scoped edit", workspace_id=wid)
+    assert updated["name"] == "Scoped edit"
 
 
 def test_archive_is_soft_and_non_destructive(tmp_path: Path):

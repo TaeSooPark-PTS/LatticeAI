@@ -18,7 +18,7 @@ from pathlib import Path
 from typing import Any, Callable, Dict, Iterable, List, Optional
 
 
-WORKSPACE_OS_VERSION = "1.7.0"
+WORKSPACE_OS_VERSION = "2.0.0"
 
 # Workspace types separate single-user Personal workspaces from shared
 # Organization workspaces. Both keep the same local-first JSON store; the type
@@ -49,6 +49,7 @@ WORKSPACE_AREAS = [
     "memory",
     "agent",
     "workflow",
+    "plugins",
     "skills",
     "timeline",
 ]
@@ -164,7 +165,7 @@ def _parse_iso(value: Optional[str]) -> Optional[datetime]:
 class WorkspaceOSStore:
     """Local-first state store for Workspace OS APIs."""
 
-    def __init__(self, data_dir: Path | str):
+    def __init__(self, data_dir: Path | str, *, event_sink: Optional[Callable[[Dict[str, Any]], Any]] = None):
         self.data_dir = Path(data_dir).expanduser()
         self.state_path = self.data_dir / "workspace_os.json"
         self.snapshots_dir = self.data_dir / "workspace_snapshots"
@@ -172,6 +173,10 @@ class WorkspaceOSStore:
         self.data_dir.mkdir(parents=True, exist_ok=True)
         self.snapshots_dir.mkdir(parents=True, exist_ok=True)
         self.exports_dir.mkdir(parents=True, exist_ok=True)
+        # Optional realtime hook: fired on every timeline event so the Realtime
+        # bus (v2.0) receives all workspace activity without per-call wiring.
+        # Defaults to None → zero behavior change for existing callers/tests.
+        self.event_sink = event_sink
 
     @staticmethod
     def _new_workspace_record(
@@ -273,6 +278,10 @@ class WorkspaceOSStore:
                 "local_computer_memory": False,
                 "organization_workspaces": True,
                 "enterprise_seam": True,
+                "plugin_sdk": True,
+                "workflow_designer": True,
+                "multi_agent_runtime": True,
+                "realtime_collaboration": True,
             },
             "onboarding": {
                 "completed": False,
@@ -294,7 +303,9 @@ class WorkspaceOSStore:
             "agents": list(DEFAULT_AGENTS),
             "agent_runs": [],
             "workflows": [],
+            "workflow_runs": [],
             "skill_registry": {},
+            "plugin_registry": {},
             "computer_memory": {
                 "enabled": False,
                 "approved": False,
@@ -342,6 +353,12 @@ class WorkspaceOSStore:
         state.setdefault("timeline", []).append(event)
         state["timeline"] = state["timeline"][-500:]
         self.save_state(state)
+        if self.event_sink is not None:
+            try:
+                self.event_sink(event)
+            except Exception:
+                # Realtime delivery is best-effort and must never break a write.
+                pass
         return event
 
     def summary(self) -> Dict[str, Any]:
@@ -360,7 +377,9 @@ class WorkspaceOSStore:
                 "memories": len(_listify(state.get("memories"))),
                 "agent_runs": len(_listify(state.get("agent_runs"))),
                 "workflows": len(_listify(state.get("workflows"))),
+                "workflow_runs": len(_listify(state.get("workflow_runs"))),
                 "skills": len(state.get("skill_registry") or {}),
+                "plugins": len(state.get("plugin_registry") or {}),
                 "timeline": len(_listify(state.get("timeline"))),
             },
             "onboarding": state.get("onboarding"),
@@ -629,6 +648,7 @@ class WorkspaceOSStore:
             "memories": len(self._scoped(_listify(state.get("memories")), workspace_id)),
             "agent_runs": len(self._scoped(_listify(state.get("agent_runs")), workspace_id)),
             "workflows": len(self._scoped(_listify(state.get("workflows")), workspace_id)),
+            "workflow_runs": len(self._scoped(_listify(state.get("workflow_runs")), workspace_id)),
             "traces": len(self._scoped(_listify(state.get("traces")), workspace_id)),
             "timeline": len(self._scoped(_listify(state.get("timeline")), workspace_id)),
         }
@@ -1214,6 +1234,7 @@ class WorkspaceOSStore:
         metadata: Optional[Dict[str, Any]] = None,
         graph: Any = None,
         workspace_id: Optional[str] = None,
+        nodes: Optional[List[Dict[str, Any]]] = None,
     ) -> Dict[str, Any]:
         state = self.load_state()
         workflow = {
@@ -1227,6 +1248,10 @@ class WorkspaceOSStore:
             "created_at": _now(),
             "updated_at": _now(),
         }
+        # v2.0 Workflow Designer stores a typed-node graph alongside the legacy
+        # ``steps`` list so older history keeps working and new editors get nodes.
+        if nodes is not None:
+            workflow["nodes"] = nodes
         if graph is not None:
             try:
                 ingested = graph.ingest_event(
@@ -1243,6 +1268,93 @@ class WorkspaceOSStore:
         state["workflows"] = state["workflows"][-300:]
         self.save_state(state)
         self.record_timeline_event("workflow", "workflow_created", {"workflow_id": workflow["id"], "name": workflow["name"]})
+        return workflow
+
+    def record_workflow_run(
+        self,
+        *,
+        workflow_id: Optional[str],
+        name: str,
+        status: str,
+        timeline: List[Dict[str, Any]],
+        outputs: Optional[Dict[str, Any]] = None,
+        user_email: Optional[str] = None,
+        graph: Any = None,
+        workspace_id: Optional[str] = None,
+    ) -> Dict[str, Any]:
+        """Persist a Workflow Designer execution into local-first run history."""
+        state = self.load_state()
+        run = {
+            "id": f"workflow-run-{_json_hash([workflow_id, name, status, _now()])[:16]}",
+            "workflow_id": workflow_id,
+            "name": name or "workflow",
+            "status": status,
+            "timeline": timeline or [],
+            "outputs": outputs or {},
+            "user_email": user_email,
+            "workspace_id": self._resolve_scope(workspace_id, state),
+            "created_at": _now(),
+        }
+        if graph is not None:
+            try:
+                ingested = graph.ingest_event(
+                    "WorkflowRun",
+                    f"{run['name']} {status}",
+                    user_email=user_email,
+                    source="workspace_os",
+                    metadata={"run_id": run["id"], "workflow_id": workflow_id, "status": status},
+                )
+                run["graph_node_id"] = ingested.get("node_id")
+            except Exception as exc:
+                run["graph_error"] = str(exc)
+        state.setdefault("workflow_runs", []).append(run)
+        state["workflow_runs"] = state["workflow_runs"][-300:]
+        # Attach the run id to the workflow's event log for cross-linking.
+        for wf in _listify(state.get("workflows")):
+            if wf.get("id") == workflow_id:
+                wf.setdefault("events", []).append({"type": "run", "timestamp": _now(), "payload": {"run_id": run["id"], "status": status}})
+                wf["updated_at"] = _now()
+                break
+        self.save_state(state)
+        self.record_timeline_event("workflow", "workflow_run", {"run_id": run["id"], "workflow_id": workflow_id, "status": status})
+        return run
+
+    def list_workflow_runs(self, workflow_id: Optional[str] = None, limit: int = 50, workspace_id: Optional[str] = None) -> Dict[str, Any]:
+        runs = self._scoped(_listify(self.load_state().get("workflow_runs")), workspace_id)
+        if workflow_id:
+            runs = [run for run in runs if run.get("workflow_id") == workflow_id]
+        return {"runs": list(reversed(runs[-max(1, min(limit, 300)):]))}
+
+    def get_workflow(self, workflow_id: str, workspace_id: Optional[str] = None) -> Dict[str, Any]:
+        workflow = next((wf for wf in _listify(self.load_state().get("workflows")) if wf.get("id") == workflow_id), None)
+        if not workflow or (workspace_id and self._record_workspace(workflow) != str(workspace_id)):
+            raise FileNotFoundError(workflow_id)
+        return workflow
+
+    def update_workflow_definition(
+        self,
+        workflow_id: str,
+        *,
+        name: Optional[str] = None,
+        nodes: Optional[List[Dict[str, Any]]] = None,
+        metadata: Optional[Dict[str, Any]] = None,
+        workspace_id: Optional[str] = None,
+    ) -> Dict[str, Any]:
+        """Edit a stored workflow's node graph / name without losing its history."""
+        state = self.load_state()
+        workflow = next((wf for wf in _listify(state.get("workflows")) if wf.get("id") == workflow_id), None)
+        if not workflow or (workspace_id and self._record_workspace(workflow) != str(workspace_id)):
+            raise FileNotFoundError(workflow_id)
+        if name is not None and str(name).strip():
+            workflow["name"] = str(name).strip()
+        if nodes is not None:
+            workflow["nodes"] = nodes
+        if metadata is not None:
+            workflow["metadata"] = {**(workflow.get("metadata") or {}), **metadata}
+        workflow.setdefault("events", []).append({"type": "edited", "timestamp": _now()})
+        workflow["updated_at"] = _now()
+        self.save_state(state)
+        self.record_timeline_event("workflow", "workflow_edited", {"workflow_id": workflow_id})
         return workflow
 
     def list_workflows(self, query: str = "", workspace_id: Optional[str] = None) -> Dict[str, Any]:
@@ -1489,6 +1601,47 @@ class WorkspaceOSStore:
         self.save_state(state)
         self.record_timeline_event("skills", "skill_uninstalled", {"skill": skill})
         return entry
+
+    # ------------------------------------------------------------------
+    # Plugin SDK registry (v2.0) — mirrors the skill registry contract.
+    # ------------------------------------------------------------------
+
+    def list_plugin_registry(self) -> Dict[str, Any]:
+        return dict(self.load_state().get("plugin_registry") or {})
+
+    def set_plugin_enabled(self, plugin_id: str, enabled: bool) -> Dict[str, Any]:
+        state = self.load_state()
+        entry = state.setdefault("plugin_registry", {}).setdefault(plugin_id, {"id": plugin_id})
+        entry["enabled"] = bool(enabled)
+        entry["updated_at"] = _now()
+        self.save_state(state)
+        self.record_timeline_event("plugins", "plugin_enabled" if enabled else "plugin_disabled", {"plugin": plugin_id})
+        return entry
+
+    def mark_plugin_installed(self, plugin_id: str, *, version: str = "0.0.0", metadata: Optional[Dict[str, Any]] = None) -> Dict[str, Any]:
+        state = self.load_state()
+        entry = state.setdefault("plugin_registry", {}).setdefault(plugin_id, {"id": plugin_id})
+        entry.update({
+            "id": plugin_id,
+            "installed": True,
+            "enabled": entry.get("enabled", True),
+            "version": version,
+            "install_status": "ready",
+            "validation_status": "valid",
+            "metadata": metadata or entry.get("metadata") or {},
+            "updated_at": _now(),
+        })
+        self.save_state(state)
+        self.record_timeline_event("plugins", "plugin_installed", {"plugin": plugin_id, "version": version})
+        return entry
+
+    def mark_plugin_uninstalled(self, plugin_id: str) -> Dict[str, Any]:
+        state = self.load_state()
+        entry = state.setdefault("plugin_registry", {}).setdefault(plugin_id, {"id": plugin_id})
+        entry.update({"installed": False, "enabled": False, "updated_at": _now()})
+        self.save_state(state)
+        self.record_timeline_event("plugins", "plugin_uninstalled", {"plugin": plugin_id})
+        return {"status": "ok", "plugin_id": plugin_id, "registry": entry}
 
     # ------------------------------------------------------------------
     # Audit timeline

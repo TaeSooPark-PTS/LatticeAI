@@ -5,10 +5,12 @@ the boundary stays predictable for contributors and users.
 
 ## Editions
 
-- **Community** — this repository, MIT licensed. Local-first AI Workspace OS:
-  local LLMs, knowledge graph, Personal **and** Organization workspaces,
-  role-based membership, snapshots, memory, agents, workflows, skills, and the
-  auditable timeline. Community is a complete product.
+- **Community** — this repository, MIT licensed. Local-first **Agentic Workspace
+  Platform**: local LLMs, knowledge graph, Personal **and** Organization
+  workspaces, role-based membership, snapshots, memory, agents, workflows,
+  skills, the auditable timeline, and the full v2.0 platform — **Plugin SDK**,
+  **Workflow Designer**, **Multi-Agent Runtime 2.0**, and **Realtime
+  Collaboration**. Community is a complete product.
 - **Enterprise** — a separately-distributed plugin adding organization-scale
   governance, identity, compliance, and deployment capabilities. Distributed and
   licensed separately. See [ENTERPRISE.md](ENTERPRISE.md).
@@ -39,6 +41,10 @@ the boundary stays predictable for contributors and users.
 | Personal & Organization workspaces | ✅ | — |
 | Base roles (owner/admin/member/viewer) | ✅ | — |
 | Snapshots / memory / agents / workflows / skills | ✅ | — |
+| Plugin SDK (manifest, lifecycle, permission boundary) | ✅ | RBAC/ABAC over plugin permissions |
+| Workflow Designer (build/run/run-history) | ✅ | Org approval gates, scheduled triggers |
+| Multi-Agent Runtime 2.0 (roles/handoff/retry) | ✅ | Policy-bounded autonomous runs |
+| Realtime Collaboration (presence + activity feed) | ✅ | Cross-tenant fan-out, retention |
 | Audit timeline (local) | ✅ | — |
 | Capability seam & enum | ✅ (declares) | ✅ (implements) |
 | SSO/SCIM/IdP provisioning | seam only | ✅ |

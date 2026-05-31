@@ -1,0 +1,82 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Plugin SDK — Lattice AI</title>
+  <link rel="stylesheet" href="/static/platform.css" />
+</head>
+<body>
+  <main>
+    <h1>Plugin SDK</h1>
+    <p class="sub" id="sub">Versioned, permissioned plugins that extend skills, tools, and workflows.</p>
+    <div id="list" class="grid"><div class="empty">Loading plugins…</div></div>
+
+    <div class="section">
+      <h3>Validate a manifest</h3>
+      <p class="sub">Paste a <code>plugin.json</code> to check it against the SDK schema and permission allow-list.</p>
+      <textarea id="manifest" spellcheck="false">{
+  "id": "my-plugin",
+  "name": "My Plugin",
+  "version": "1.0.0",
+  "lattice_version": ">=2.0.0",
+  "permissions": ["read_workspace"],
+  "provides": { "skills": [] }
+}</textarea>
+      <div class="row" style="margin-top:10px"><button id="validate">Validate</button></div>
+      <pre id="validateOut" style="display:none"></pre>
+    </div>
+  </main>
+
+  <script type="module">
+    import { mountHeader, api, escapeHtml, badge, toast } from "/static/scripts/platform.js";
+    mountHeader("/plugins/sdk");
+
+    async function load() {
+      const data = await api("/plugins/registry");
+      document.getElementById("sub").textContent =
+        `SDK v${data.sdk_version} · ${data.total} plugin(s) discovered in ${data.plugins_dir}`;
+      const list = document.getElementById("list");
+      if (!data.plugins.length) { list.innerHTML = `<div class="empty">No plugins found.</div>`; return; }
+      list.innerHTML = data.plugins.map((p) => `
+        <div class="card">
+          <div class="row"><h3>${escapeHtml(p.name)}</h3><div class="spacer"></div>
+            ${badge(p.installed ? (p.enabled ? "ready" : "available") : "available")}</div>
+          <div class="meta">v${escapeHtml(p.version)} · ${escapeHtml(p.author || "unknown")} · ${p.compatible ? "compatible" : "<span class='badge err'>incompatible</span>"}</div>
+          <p style="font-size:13px;color:#cbd5e1">${escapeHtml(p.description)}</p>
+          <div class="meta">Permissions: ${(p.permissions||[]).map(x=>`<span class="badge">${escapeHtml(x)}</span>`).join(" ") || "none"}</div>
+          <div class="meta" style="margin-top:6px">Provides: ${Object.entries(p.provides||{}).map(([k,v])=>`${k}(${(v||[]).length})`).join(", ") || "—"}</div>
+          <div class="row" style="margin-top:12px">
+            ${p.installed
+              ? `<button class="ghost" data-act="${p.enabled?"disable":"enable"}" data-id="${p.id}">${p.enabled?"Disable":"Enable"}</button>
+                 <button class="ghost" data-act="uninstall" data-id="${p.id}">Uninstall</button>`
+              : `<button data-act="install" data-id="${p.id}" ${p.compatible?"":"disabled"}>Install</button>`}
+          </div>
+        </div>`).join("");
+    }
+
+    document.getElementById("list").addEventListener("click", async (e) => {
+      const btn = e.target.closest("button[data-act]");
+      if (!btn) return;
+      btn.disabled = true;
+      try {
+        await api(`/plugins/${btn.dataset.act}`, { method: "POST", body: JSON.stringify({ plugin_id: btn.dataset.id }) });
+        toast(`${btn.dataset.act}: ${btn.dataset.id}`);
+        await load();
+      } catch (err) { toast(err.message); btn.disabled = false; }
+    });
+
+    document.getElementById("validate").addEventListener("click", async () => {
+      const out = document.getElementById("validateOut");
+      out.style.display = "block";
+      try {
+        const manifest = JSON.parse(document.getElementById("manifest").value);
+        const res = await api("/plugins/validate", { method: "POST", body: JSON.stringify({ manifest }) });
+        out.textContent = JSON.stringify(res, null, 2);
+      } catch (err) { out.textContent = "Error: " + err.message; }
+    });
+
+    load().catch((e) => toast(e.message));
+  </script>
+</body>
+</html>

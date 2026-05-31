@@ -1,0 +1,207 @@
+"""Workflow Designer API router (v2.0).
+
+Create / edit / validate / execute / inspect / export / import workflows plus
+run history, layered on :mod:`latticeai.core.workflow_engine` and the existing
+``WorkspaceOSStore`` workflow persistence (so pre-2.0 workflow history is
+preserved). Paths are namespaced under ``/workflows`` to avoid colliding with
+``/workspace/workflows``.
+
+server_app injects a ``build_runners`` callable that returns the executable
+runner map (tool / skill / plugin / agent), which is what lets a workflow
+actually drive plugins, skills, and multi-agent runs.
+"""
+
+from __future__ import annotations
+
+from pathlib import Path
+from typing import Any, Callable, Dict, List, Optional
+
+from fastapi import APIRouter, HTTPException, Request
+from pydantic import BaseModel
+
+
+class WorkflowDefinitionRequest(BaseModel):
+    name: str
+    nodes: List[Dict[str, Any]] = []
+    metadata: Dict[str, Any] = {}
+
+
+class WorkflowUpdateRequest(BaseModel):
+    name: Optional[str] = None
+    nodes: Optional[List[Dict[str, Any]]] = None
+    metadata: Optional[Dict[str, Any]] = None
+
+
+class WorkflowRunRequest(BaseModel):
+    inputs: Dict[str, Any] = {}
+
+
+class WorkflowValidateRequest(BaseModel):
+    name: str = "Draft"
+    nodes: List[Dict[str, Any]] = []
+
+
+class WorkflowImportRequest(BaseModel):
+    data: Dict[str, Any] = {}
+
+
+def create_workflow_designer_router(
+    *,
+    store,
+    require_user: Callable[[Request], str],
+    get_current_user: Callable[[Request], Optional[str]],
+    gate_read: Callable[[Request], Optional[str]],
+    gate_write: Callable[[Request], Optional[str]],
+    workspace_graph: Callable[[], Any],
+    build_runners: Callable[[Optional[str], Optional[str]], Dict[str, Callable[..., Any]]],
+    append_audit_event: Callable[..., None],
+    ui_file_response: Optional[Callable[[Path], Any]] = None,
+    static_dir: Optional[Path] = None,
+) -> APIRouter:
+    from latticeai.core.workflow_engine import (
+        WorkflowEngine,
+        validate_definition,
+        export_workflow,
+        import_workflow,
+        WorkflowError,
+    )
+
+    router = APIRouter()
+
+    @router.get("/workflows")
+    async def workflows_page(request: Request):
+        require_user(request)
+        if ui_file_response is None or static_dir is None:
+            raise HTTPException(status_code=404, detail="Workflow Designer UI not available.")
+        page = static_dir / "workflows.html"
+        if not page.exists():
+            raise HTTPException(status_code=404, detail="Workflow Designer UI not found.")
+        return ui_file_response(page)
+
+    @router.get("/workflows/api/definitions")
+    async def list_definitions(request: Request, q: str = ""):
+        require_user(request)
+        scope = gate_read(request)
+        return store.list_workflows(query=q, workspace_id=scope)
+
+    @router.post("/workflows/api/definitions")
+    async def create_definition(req: WorkflowDefinitionRequest, request: Request):
+        current_user = require_user(request)
+        scope = gate_write(request)
+        errors = validate_definition({"name": req.name, "nodes": req.nodes})
+        if errors:
+            raise HTTPException(status_code=400, detail={"validation_errors": errors})
+        workflow = store.create_workflow(
+            name=req.name,
+            steps=[{"action": n.get("type"), "node": n.get("id")} for n in req.nodes],
+            nodes=req.nodes,
+            metadata=req.metadata,
+            user_email=current_user or None,
+            graph=workspace_graph(),
+            workspace_id=scope,
+        )
+        append_audit_event("workflow_created", user_email=current_user, workflow_id=workflow["id"])
+        return {"workflow": workflow}
+
+    @router.get("/workflows/api/definitions/{workflow_id}")
+    async def get_definition(workflow_id: str, request: Request):
+        require_user(request)
+        scope = gate_read(request)
+        try:
+            return {"workflow": store.get_workflow(workflow_id, workspace_id=scope)}
+        except FileNotFoundError as exc:
+            raise HTTPException(status_code=404, detail=f"Workflow not found: {exc}") from exc
+
+    @router.patch("/workflows/api/definitions/{workflow_id}")
+    async def update_definition(workflow_id: str, req: WorkflowUpdateRequest, request: Request):
+        require_user(request)
+        scope = gate_write(request)
+        if req.nodes is not None:
+            errors = validate_definition({"name": req.name or "wf", "nodes": req.nodes})
+            if errors:
+                raise HTTPException(status_code=400, detail={"validation_errors": errors})
+        try:
+            workflow = store.update_workflow_definition(
+                workflow_id,
+                name=req.name,
+                nodes=req.nodes,
+                metadata=req.metadata,
+                workspace_id=scope,
+            )
+        except FileNotFoundError as exc:
+            raise HTTPException(status_code=404, detail=f"Workflow not found: {exc}") from exc
+        return {"workflow": workflow}
+
+    @router.post("/workflows/api/validate")
+    async def validate_workflow(req: WorkflowValidateRequest, request: Request):
+        require_user(request)
+        errors = validate_definition({"name": req.name, "nodes": req.nodes})
+        return {"ok": not errors, "errors": errors}
+
+    @router.post("/workflows/api/definitions/{workflow_id}/run")
+    async def run_definition(workflow_id: str, req: WorkflowRunRequest, request: Request):
+        current_user = require_user(request)
+        scope = gate_write(request)
+        try:
+            workflow = store.get_workflow(workflow_id, workspace_id=scope)
+        except FileNotFoundError as exc:
+            raise HTTPException(status_code=404, detail=f"Workflow not found: {exc}") from exc
+        runners = build_runners(current_user or None, scope)
+        engine = WorkflowEngine(runners)
+        result = engine.run(workflow, inputs=req.inputs)
+        run = store.record_workflow_run(
+            workflow_id=workflow_id,
+            name=workflow.get("name") or "workflow",
+            status=result.status,
+            timeline=result.timeline,
+            outputs=result.outputs,
+            user_email=current_user or None,
+            graph=workspace_graph(),
+            workspace_id=scope,
+        )
+        append_audit_event("workflow_run", user_email=current_user, workflow_id=workflow_id, status=result.status)
+        return {"run": run, "result": result.as_dict()}
+
+    @router.get("/workflows/api/definitions/{workflow_id}/runs")
+    async def list_runs(workflow_id: str, request: Request, limit: int = 50):
+        require_user(request)
+        scope = gate_read(request)
+        return store.list_workflow_runs(workflow_id=workflow_id, limit=limit, workspace_id=scope)
+
+    @router.get("/workflows/api/runs")
+    async def list_all_runs(request: Request, limit: int = 50):
+        require_user(request)
+        scope = gate_read(request)
+        return store.list_workflow_runs(limit=limit, workspace_id=scope)
+
+    @router.get("/workflows/api/export/{workflow_id}")
+    async def export_definition(workflow_id: str, request: Request):
+        require_user(request)
+        scope = gate_read(request)
+        try:
+            workflow = store.get_workflow(workflow_id, workspace_id=scope)
+        except FileNotFoundError as exc:
+            raise HTTPException(status_code=404, detail=f"Workflow not found: {exc}") from exc
+        return export_workflow(workflow)
+
+    @router.post("/workflows/api/import")
+    async def import_definition(req: WorkflowImportRequest, request: Request):
+        current_user = require_user(request)
+        scope = gate_write(request)
+        try:
+            definition = import_workflow(req.data)
+        except WorkflowError as exc:
+            raise HTTPException(status_code=400, detail=str(exc)) from exc
+        workflow = store.create_workflow(
+            name=definition["name"],
+            steps=[{"action": n.get("type"), "node": n.get("id")} for n in definition["nodes"]],
+            nodes=definition["nodes"],
+            metadata=definition.get("metadata") or {},
+            user_email=current_user or None,
+            graph=workspace_graph(),
+            workspace_id=scope,
+        )
+        append_audit_event("workflow_imported", user_email=current_user, workflow_id=workflow["id"])
+        return {"workflow": workflow}
+
+    return router

@@ -1,5 +1,70 @@
 # Changelog
 
+## [2.0.0] - 2026-06-01
+
+> Agentic Workspace Platform — Lattice AI becomes a local-first **Agentic
+> Workspace Platform** with four integrated subsystems: Plugin SDK, Workflow
+> Designer, Multi-Agent Runtime 2.0, and Realtime Collaboration. Backward
+> compatible and additive: API paths/schemas, `server:app`,
+> `latticeai.server_app.app`, CLI, Workspace/Chat/Model/MCP/KG APIs, existing
+> skills/snapshots/memories/agent & workflow history, and VS Code extension
+> commands remain stable. New Workspace OS state keys (`plugin_registry`,
+> `workflow_runs`) are backfilled on load via deep-merge — no destructive
+> migration.
+
+### Added
+
+- **Plugin SDK** (`latticeai/core/plugins.py`, `latticeai/api/plugins.py`) —
+  `plugin.json` manifest, an allow-listed permission model, discovery,
+  validation, lifecycle (install/enable/disable/uninstall), and a permissioned
+  execution boundary. Plugins **extend** the existing skill registry (installing
+  a plugin registers its bundled skills) rather than replacing skills. Ships two
+  example plugins (`plugins/hello-world`, `plugins/git-insights`). Routes under
+  `/plugins/registry`, `/plugins/validate`, `/plugins/install`, `/plugins/enable`,
+  `/plugins/disable`, `/plugins/uninstall`, `/plugins/execute`, page `/plugins/sdk`.
+- **Workflow Designer** (`latticeai/core/workflow_engine.py`,
+  `latticeai/api/workflow_designer.py`) — node-based workflows
+  (trigger/tool/skill/plugin/agent/condition/output), validation, a bounded
+  deterministic execution engine, run history, and JSON export/import. Legacy
+  `steps`-list workflows are auto-normalized so pre-2.0 history still runs.
+  Routes under `/workflows/api/*`, page `/workflows`.
+- **Multi-Agent Runtime 2.0** (`latticeai/core/multi_agent.py`,
+  `latticeai/api/agents.py`) — Planner/Executor/Reviewer/Researcher/Release role
+  orchestration with handoff, bounded retry, and an observable timeline; runs
+  persist to agent history + knowledge graph + timeline. Deterministic by
+  default (no LLM required) with an injectable role runner. Routes under
+  `/agents/api/*`, page `/agents`.
+- **Realtime Collaboration** (`latticeai/core/realtime.py`,
+  `latticeai/api/realtime.py`) — in-process pub/sub bus, presence, and an
+  activity feed over SSE. Wired as the Workspace OS `event_sink`, so every
+  timeline event flows to the feed automatically. Workspace isolation enforced;
+  single-user local mode preserved. Routes `/realtime/stream` (SSE),
+  `/realtime/feed`, `/realtime/presence*`, page `/activity`.
+- **Cross-system integration** (`latticeai/services/platform_runtime.py`) —
+  workflows can run tools/skills/plugins/agents; agent runs can run
+  plugins/workflows; graph entities link to workflow runs and agent runs; all
+  activity surfaces in the unified timeline + realtime feed. Recursion is bounded
+  by construction.
+- **Platform UI** — `static/plugins.html`, `workflows.html`, `agents.html`,
+  `activity.html` (+ shared `static/platform.css`, `static/scripts/platform.js`),
+  linked from the Workspace dashboard.
+- **Docs** — `docs/V2_ARCHITECTURE.md`, `docs/PLUGIN_SDK.md`,
+  `docs/WORKFLOW_DESIGNER.md`, `docs/MULTI_AGENT_RUNTIME.md`,
+  `docs/REALTIME_COLLABORATION.md`.
+
+### Changed
+
+- Python package, npm package, VS Code extension, Workspace OS, FastAPI app, and
+  `/health` version metadata aligned at `2.0.0`.
+- `server_app` cross-system wiring extracted into
+  `latticeai/services/platform_runtime.py` to keep the assembly file lean.
+
+### Validation
+
+- Unit (incl. new plugin/workflow/multi-agent/realtime suites), integration
+  smoke, startup/import, route-compatibility (full v1.x baseline preserved),
+  and release-artifact checks. Package-store publishing remains manual.
+
 ## [1.7.0] - 2026-06-01
 
 > Graph & Collaboration Release — Graph Canvas interactions, Enterprise Admin
