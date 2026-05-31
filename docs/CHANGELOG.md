@@ -1,5 +1,52 @@
 # Changelog
 
+## [1.6.0] - 2026-06-01
+
+> Product Experience Deepening — user-facing UX (Knowledge Graph explorer,
+> workspace summary, model recommendation 2.0, skill marketplace tabs, Enterprise
+> capability panel) and a refresh of `docs/images/*` to **real captured UI**
+> screenshots. Not a refactor: API paths, request/response schemas, `server:app`,
+> CLI, MCP, and the Knowledge Graph contract are unchanged. The only code changes
+> are additive frontend (`static/`) and version metadata.
+
+### Added
+
+- **Knowledge Graph Explorer (Workspace OS)** — an Entity Explorer (importance-
+  ranked entity cards + search) with a detail panel showing inbound/outbound
+  relationships, related entities, and the shortest path back to you; plus a
+  Recent Activity feed and a Workspace Memory feed. Built entirely on the existing
+  `/knowledge-graph/graph` and `/workspace/relationships/*` endpoints (additive
+  UI, no new API, no schema change).
+- **Workspace summary & quick-switch** — a "Current Workspace" card (active
+  workspace, role, members, scoped counts) and one-click switch chips, preserving
+  `workspace_id` scoping and the owner/admin/member/viewer model.
+- **Model Recommendation 2.0** — the onboarding recommendation panel now shows a
+  machine summary (OS/RAM/GPU/engine), a "best for this PC" callout with the
+  reason, estimated RAM, and next step, per-family status, and a cloud caution.
+  Estimates are labelled and conservative.
+- **Skill Marketplace tabs** — Recommended / Popular / Installed / Updates tabs
+  with version, category, and source, plus install / enable / disable actions on
+  the existing skill lifecycle API.
+- **Enterprise capability panel** — a 12-capability status matrix in Workspace OS
+  (Community reports all disabled; nothing gates a Community feature).
+
+### Changed
+
+- **Real UI visuals** — `docs/images/{hero.gif,onboarding,model-recommendation,
+  workspace,graph,organization,skills,enterprise}` are now **real screenshots**
+  captured from the running app with Playwright + headless Chrome (the v1.5.0
+  set was structural diagrams). `architecture.png` remains a structural diagram.
+  README references the new real screenshots with no broken links.
+- Python package, npm package, VS Code extension, FastAPI app, and `/health`
+  version metadata aligned at `1.6.0`.
+
+### Validation
+
+- Unit tests pass; route-compatibility, startup/import, streaming, model-endpoint,
+  MCP/KG, and workspace/org permission tests preserved; `npm run check:python`
+  green; new UI verified rendering in a real browser via Playwright; VSIX build
+  verified. Test/build/packaging artifacts only — no package-store publish.
+
 ## [1.5.0] - 2026-06-01
 
 > Unified Product Release — CI/VSIX recovery, hardware-aware local model

@@ -6,7 +6,14 @@ const state = {
   activeWorkspace: null,
   registry: null,
   managingWorkspace: null,
+  skillsPayload: null,
+  skillTab: "recommended",
+  entities: [],
+  activeEntity: null,
 };
+
+// Skills that match common workspace needs are surfaced under "Recommended".
+const RECOMMENDED_SKILL_HINTS = ["code", "review", "doc", "test", "security", "research", "changelog", "refactor", "debug"];
 
 function $(id) {
   return document.getElementById(id);
@@ -194,30 +201,74 @@ function renderWorkflows(payload) {
   `).join("") : `<div class="list-item"><div class="meta-line">No workflows.</div></div>`;
 }
 
-function renderSkills(payload) {
+function skillName(skill) {
+  return skill.skill || skill.name || "skill";
+}
+
+// Compute the four marketplace tabs from the registry payload (machine-global
+// registry + locally-installed state). "Updates" = installed skills whose
+// registry version differs from the installed version.
+function computeSkillTabs(payload) {
   const installed = payload.installed || [];
-  const available = (payload.available || []).filter((skill) => !installed.some((item) => item.name === (skill.skill || skill.name))).slice(0, 8);
-  const rows = [
-    ...installed.map((skill) => ({ ...skill, marketplace: false })),
-    ...available.map((skill) => ({ name: skill.skill || skill.name, description: skill.description, version: skill.version || "remote", enabled: skill.enabled, marketplace: true })),
-  ];
-  $("skill-list").innerHTML = rows.length ? rows.map((skill) => `
+  const available = payload.available || [];
+  const installedNames = new Set(installed.map(skillName));
+  const notInstalled = available.filter((s) => !installedNames.has(skillName(s)));
+  const availByName = new Map(available.map((s) => [skillName(s), s]));
+  const updates = installed.filter((s) => {
+    const remote = availByName.get(skillName(s));
+    return remote && remote.version && s.version && remote.version !== s.version;
+  });
+  const recommended = notInstalled.filter((s) => {
+    const hay = `${skillName(s)} ${s.category || ""} ${s.description || ""}`.toLowerCase();
+    return RECOMMENDED_SKILL_HINTS.some((h) => hay.includes(h));
+  });
+  return { installed, popular: notInstalled, recommended, updates };
+}
+
+function renderSkillRow(skill, { installed }) {
+  const name = skillName(skill);
+  const enabled = skill.enabled !== false;
+  const version = skill.version || (installed ? "local" : "registry");
+  const source = skill.plugin || skill.source || (installed ? "installed" : "marketplace");
+  const actions = installed
+    ? `<button class="small-action" data-skill-action="${enabled ? "disable" : "enable"}" data-skill="${escapeHtml(name)}"><i class="ti ti-${enabled ? "toggle-left" : "toggle-right"}"></i>${enabled ? "Disable" : "Enable"}</button>`
+    : `<button class="small-action" data-skill-action="install" data-skill="${escapeHtml(name)}"><i class="ti ti-download"></i>Install</button>`;
+  return `
     <div class="list-item">
       <div class="list-title">
-        <span>${escapeHtml(skill.name)}</span>
-        <span class="status-pill ${skill.enabled === false ? "status-failed" : "status-complete"}">${skill.enabled === false ? "disabled" : "enabled"}</span>
+        <span>${escapeHtml(name)}</span>
+        <span class="status-pill ${installed ? (enabled ? "status-complete" : "status-failed") : ""}">${installed ? (enabled ? "enabled" : "disabled") : "available"}</span>
       </div>
-      <div class="meta-line">${escapeHtml(skill.description || "")}</div>
+      <div class="meta-line">${escapeHtml(skill.description || "No description")}</div>
       <div class="tag-row">
-        <span class="tag">${escapeHtml(skill.version || "local")}</span>
-        <span class="tag">${skill.marketplace ? "marketplace" : "installed"}</span>
+        <span class="tag">v${escapeHtml(version)}</span>
+        ${skill.category ? `<span class="tag">${escapeHtml(skill.category)}</span>` : ""}
+        <span class="tag">${escapeHtml(source)}</span>
       </div>
-      <div class="item-actions">
-        <button class="small-action" data-skill-action="enable" data-skill="${escapeHtml(skill.name)}"><i class="ti ti-toggle-right"></i>Enable</button>
-        <button class="small-action" data-skill-action="disable" data-skill="${escapeHtml(skill.name)}"><i class="ti ti-toggle-left"></i>Disable</button>
-      </div>
-    </div>
-  `).join("") : `<div class="list-item"><div class="meta-line">No skills found.</div></div>`;
+      <div class="item-actions">${actions}</div>
+    </div>`;
+}
+
+function renderSkills(payload) {
+  if (payload) state.skillsPayload = payload;
+  const data = state.skillsPayload || { installed: [], available: [] };
+  const tabs = computeSkillTabs(data);
+  const updatesCount = $("skill-updates-count");
+  if (updatesCount) updatesCount.textContent = tabs.updates.length ? String(tabs.updates.length) : "";
+  document.querySelectorAll("[data-skill-tab]").forEach((btn) => {
+    btn.classList.toggle("active", btn.dataset.skillTab === state.skillTab);
+  });
+  const tab = state.skillTab;
+  const rows = (tab === "installed" || tab === "updates")
+    ? (tabs[tab] || []).map((s) => renderSkillRow(s, { installed: true }))
+    : (tabs[tab] || []).slice(0, 24).map((s) => renderSkillRow(s, { installed: false }));
+  const empty = {
+    recommended: "No recommended skills right now.",
+    popular: "Marketplace is empty.",
+    installed: "No skills installed yet.",
+    updates: "All installed skills are up to date.",
+  }[tab];
+  $("skill-list").innerHTML = rows.length ? rows.join("") : `<div class="list-item"><div class="meta-line">${escapeHtml(empty)}</div></div>`;
 }
 
 function renderTimeline(payload) {
@@ -327,6 +378,173 @@ async function addMember(workspaceId) {
   await refreshAll();
 }
 
+// ── Workspace summary (Phase 3) ──────────────────────────────────────────────
+function renderWorkspaceSummary(os) {
+  const reg = os?.workspace_registry || {};
+  const workspaces = reg.workspaces || [];
+  const activeId = state.activeWorkspace || reg.active_workspace;
+  const active = workspaces.find((w) => w.workspace_id === activeId) || workspaces[0] || { name: "Personal Workspace", type: "personal", your_role: "owner", member_count: 1 };
+  const counts = os?.counts || {};
+  const scopePill = $("summary-scope-pill");
+  if (scopePill) scopePill.textContent = active.type || "personal";
+  const summary = $("workspace-summary");
+  if (summary) {
+    const stats = [["Snapshots", counts.snapshots], ["Memories", counts.memories], ["Agent runs", counts.agent_runs], ["Workflows", counts.workflows], ["Traces", counts.traces], ["Timeline", counts.timeline]];
+    summary.innerHTML = `
+      <div class="summary-main">
+        <div class="summary-icon"><i class="ti ${active.type === "organization" ? "ti-building-community" : "ti-user"}"></i></div>
+        <div class="summary-id">
+          <div class="summary-name">${escapeHtml(active.name || "Personal Workspace")}</div>
+          <div class="meta-line">${escapeHtml(active.type || "personal")} workspace · your role <strong>${escapeHtml(active.your_role || "owner")}</strong> · ${escapeHtml(active.member_count ?? 1)} member(s)</div>
+        </div>
+      </div>
+      <div class="summary-stats">
+        ${stats.map(([l, v]) => `<div class="summary-stat"><strong>${escapeHtml(v || 0)}</strong><span>${escapeHtml(l)}</span></div>`).join("")}
+      </div>`;
+  }
+  const quick = $("workspace-quickswitch");
+  if (quick) {
+    quick.innerHTML = workspaces.map((w) => `
+      <button class="switch-chip ${w.workspace_id === activeId ? "active" : ""}" data-ws-action="activate" data-ws="${escapeHtml(w.workspace_id)}">
+        <i class="ti ${w.type === "organization" ? "ti-building-community" : "ti-user"}"></i>
+        <span>${escapeHtml(w.name)}</span>${w.workspace_id === activeId ? ' <i class="ti ti-check"></i>' : ""}
+      </button>`).join("");
+  }
+}
+
+// ── Knowledge Graph explorer (Phase 2) ───────────────────────────────────────
+const ENTITY_ICONS = { Person: "ti-user", Concept: "ti-bulb", Document: "ti-file-text", File: "ti-file", Code: "ti-code", Chat: "ti-message", Conversation: "ti-messages", Message: "ti-message-dots", Task: "ti-checklist", Decision: "ti-gavel", Error: "ti-alert-triangle", Model: "ti-cpu", Tool: "ti-tool", Project: "ti-folders", Feature: "ti-star", AIResponse: "ti-robot", Chunk: "ti-file-stack" };
+function entityIcon(type) { return ENTITY_ICONS[type] || "ti-point"; }
+function prettyId(id) { return String(id || "").split(":").slice(1).join(":") || String(id || ""); }
+
+async function loadGraphExplorer() {
+  try {
+    const data = await api("/knowledge-graph/graph?limit=150");
+    const nodes = (data.nodes || []).slice();
+    nodes.sort((a, b) => (b.importance ?? b.metadata?.graph_metrics?.importance_raw ?? 0) - (a.importance ?? a.metadata?.graph_metrics?.importance_raw ?? 0));
+    state.entities = nodes;
+    renderEntities();
+  } catch (e) {
+    const el = $("entity-list");
+    if (el) el.innerHTML = `<div class="list-item"><div class="meta-line">Knowledge graph unavailable: ${escapeHtml(e.message)}</div></div>`;
+  }
+}
+
+function renderEntities() {
+  const el = $("entity-list");
+  if (!el) return;
+  const q = ($("entity-search")?.value || "").toLowerCase().trim();
+  const filtered = q ? state.entities.filter((n) => `${n.title || ""} ${n.type || ""} ${n.id || ""}`.toLowerCase().includes(q)) : state.entities;
+  const list = filtered.slice(0, 40);
+  el.innerHTML = list.length ? list.map((n) => {
+    const m = n.metadata?.graph_metrics || {};
+    const imp = Math.round((n.importance_norm ?? m.importance_norm ?? 0) * 100);
+    return `
+    <button class="list-item entity-card ${n.id === state.activeEntity ? "selected" : ""}" data-entity="${escapeHtml(n.id)}">
+      <div class="list-title"><span><i class="ti ${entityIcon(n.type)}"></i> ${escapeHtml(n.title || prettyId(n.id))}</span><span class="status-pill">${escapeHtml(n.type || "node")}</span></div>
+      ${n.summary ? `<div class="meta-line">${escapeHtml(String(n.summary).slice(0, 110))}</div>` : ""}
+      <div class="tag-row"><span class="tag">${escapeHtml(m.degree ?? 0)} links</span><span class="tag">importance ${imp}%</span></div>
+      <div class="importance-bar"><span style="width:${imp}%"></span></div>
+    </button>`;
+  }).join("") : `<div class="list-item"><div class="meta-line">No matching entities.</div></div>`;
+}
+
+async function selectEntity(id) {
+  state.activeEntity = id;
+  renderEntities();
+  const detail = $("entity-detail");
+  const title = $("entity-detail-title");
+  if (title) title.textContent = "Loading…";
+  try {
+    const d = await api(`/workspace/relationships/${encodeURIComponent(id)}`);
+    const node = d.node || {};
+    const related = d.related_entities || [];
+    const relMap = new Map(related.map((r) => [r.id, r]));
+    const labelFor = (nodeId) => { const r = relMap.get(nodeId); return r ? (r.title || prettyId(nodeId)) : prettyId(nodeId); };
+    const edgeRow = (e, dir) => {
+      const other = dir === "out" ? e.to : e.from;
+      return `<div class="rel-row"><span class="rel-dir">${dir === "out" ? "→" : "←"}</span><span class="tag">${escapeHtml(e.type || "related")}</span><span class="rel-node">${escapeHtml(labelFor(other))}</span></div>`;
+    };
+    const inbound = (d.inbound || []).slice(0, 8);
+    const outbound = (d.outbound || []).slice(0, 8);
+    const path = Array.isArray(d.shortest_path) ? d.shortest_path : [];
+    if (title) title.textContent = node.title || prettyId(id);
+    detail.innerHTML = `
+      <div class="list-item">
+        <div class="list-title"><span><i class="ti ${entityIcon(node.type)}"></i> ${escapeHtml(node.title || prettyId(id))}</span><span class="status-pill">${escapeHtml(node.type || "node")}</span></div>
+        ${node.summary ? `<div class="meta-line">${escapeHtml(node.summary)}</div>` : ""}
+        <div class="tag-row"><span class="tag">importance ${Math.round((node.importance_norm || 0) * 100)}%</span><span class="tag">${inbound.length + outbound.length} relationships</span></div>
+      </div>
+      <div class="list-item"><div class="list-title"><span>Outbound</span><span class="status-pill">${outbound.length}</span></div>${outbound.map((e) => edgeRow(e, "out")).join("") || '<div class="meta-line">None</div>'}</div>
+      <div class="list-item"><div class="list-title"><span>Inbound</span><span class="status-pill">${inbound.length}</span></div>${inbound.map((e) => edgeRow(e, "in")).join("") || '<div class="meta-line">None</div>'}</div>
+      ${related.length ? `<div class="list-item"><div class="list-title"><span>Related entities</span><span class="status-pill">${related.length}</span></div><div class="tag-row">${related.slice(0, 10).map((r) => `<span class="tag"><i class="ti ${entityIcon(r.type)}"></i> ${escapeHtml(r.title || prettyId(r.id))}</span>`).join("")}</div></div>` : ""}
+      ${path.length ? `<div class="list-item"><div class="list-title"><span>Path to you</span><span class="status-pill">${path.length} hops</span></div><div class="meta-line">${path.map((p) => escapeHtml(typeof p === "string" ? prettyId(p) : (p.title || prettyId(p.id)))).join(" → ")}</div></div>` : ""}
+      <div class="item-actions"><a class="small-action" href="/graph?node=${encodeURIComponent(id)}"><i class="ti ti-network"></i>Open in Graph Canvas</a></div>`;
+  } catch (e) {
+    if (title) title.textContent = "Relationships";
+    detail.innerHTML = `<div class="list-item"><div class="meta-line">No relationships available: ${escapeHtml(e.message)}</div></div>`;
+  }
+}
+
+// ── Recent activity feed (Phase 2), built from already-fetched data ───────────
+function renderActivity({ traces, snapshots, memories, workflows, timeline }) {
+  const items = [];
+  (traces.traces || []).forEach((t) => items.push({ ts: t.created_at, icon: "ti-search", label: `Answer trace: ${t.question || "query"}`, tag: "graph rag" }));
+  (snapshots.snapshots || []).forEach((s) => items.push({ ts: s.created_at, icon: "ti-stack-2", label: `Snapshot: ${s.name}`, tag: "snapshot" }));
+  (memories.memories || []).forEach((m) => items.push({ ts: m.updated_at, icon: "ti-book-2", label: `Memory: ${(m.content || m.kind || "").slice(0, 60)}`, tag: m.kind || "memory" }));
+  (workflows.workflows || []).forEach((w) => items.push({ ts: w.created_at, icon: "ti-git-branch", label: `Workflow: ${w.name}`, tag: "workflow" }));
+  (timeline.events || []).forEach((e) => items.push({ ts: e.timestamp, icon: "ti-timeline-event", label: e.event_type || "event", tag: e.area || "workspace" }));
+  items.sort((a, b) => String(b.ts || "").localeCompare(String(a.ts || "")));
+  const el = $("activity-list");
+  if (!el) return;
+  el.innerHTML = items.length ? items.slice(0, 18).map((it) => `
+    <div class="list-item activity-item">
+      <div class="list-title"><span><i class="ti ${it.icon}"></i> ${escapeHtml(it.label)}</span><span class="status-pill">${escapeHtml(it.tag)}</span></div>
+      <div class="meta-line">${escapeHtml(it.ts || "")}</div>
+    </div>`).join("") : `<div class="list-item"><div class="meta-line">No recent activity yet — index a folder or ask a question to get started.</div></div>`;
+}
+
+function renderMemoryFeed(payload) {
+  const memories = payload.memories || [];
+  const el = $("memory-feed");
+  if (!el) return;
+  el.innerHTML = memories.length ? memories.slice(0, 8).map((m) => `
+    <div class="list-item">
+      <div class="list-title"><span><i class="ti ti-book-2"></i> ${escapeHtml(m.kind || "memory")}</span><span class="status-pill">${escapeHtml(m.updated_at || "")}</span></div>
+      <div class="meta-line">${escapeHtml(String(m.content || "").slice(0, 140))}</div>
+    </div>`).join("") : `<div class="list-item"><div class="meta-line">No workspace memory yet.</div></div>`;
+}
+
+// ── Enterprise capability panel (Phase 6) ─────────────────────────────────────
+const CAPABILITY_LABELS = {
+  sso_advanced: "Advanced SSO", idp_provisioning: "IdP Provisioning", scim: "SCIM",
+  rbac_abac_advanced: "Advanced RBAC/ABAC", tenant_isolation: "Tenant Isolation",
+  compliance_retention: "Compliance Retention", siem_export: "SIEM Export",
+  private_vpc: "Private VPC", air_gapped_deployment: "Air-gapped Deploy",
+  dlp_policy: "DLP Policy", ediscovery: "eDiscovery", admin_policy_packs: "Admin Policy Packs",
+};
+function renderEnterprise(edition) {
+  edition = edition || {};
+  const caps = edition.capabilities || {};
+  const editionName = edition.edition || "community";
+  const pill = $("enterprise-edition-pill");
+  if (pill) { pill.textContent = editionName; pill.className = `status-pill ${edition.is_enterprise ? "status-complete" : ""}`; }
+  const note = $("enterprise-note");
+  if (note) note.textContent = edition.community_notice || "Community edition: every Enterprise capability below is an extension point and is disabled. Nothing here gates a Community feature.";
+  const grid = $("capability-grid");
+  if (!grid) return;
+  const keys = Object.keys(caps).length ? Object.keys(caps) : Object.keys(CAPABILITY_LABELS);
+  grid.innerHTML = keys.map((k) => {
+    const on = Boolean(caps[k]);
+    return `
+    <div class="capability-card ${on ? "on" : "off"}">
+      <i class="ti ${on ? "ti-circle-check" : "ti-lock"}"></i>
+      <span class="cap-name">${escapeHtml(CAPABILITY_LABELS[k] || k)}</span>
+      <span class="status-pill ${on ? "status-complete" : "status-failed"}">${on ? "enabled" : "disabled"}</span>
+    </div>`;
+  }).join("");
+}
+
 async function refreshAll() {
   const [os, onboarding, traces, indexing, snapshots, memories, computerMemory, agents, workflows, skills, timeline] = await Promise.all([
     api("/workspace/os"),
@@ -354,6 +572,11 @@ async function refreshAll() {
   renderWorkflows(workflows);
   renderSkills(skills);
   renderTimeline(timeline);
+  renderWorkspaceSummary(os);
+  renderEnterprise(os.edition);
+  renderActivity({ traces, snapshots, memories, workflows, timeline });
+  renderMemoryFeed(memories);
+  loadGraphExplorer();
 }
 
 async function createSnapshot() {
@@ -423,6 +646,19 @@ async function configureComputerMemory(enabled) {
 }
 
 document.addEventListener("click", async (event) => {
+  const entityBtn = event.target.closest("[data-entity]");
+  if (entityBtn) {
+    selectEntity(entityBtn.dataset.entity).catch((err) => toast(err.message));
+    return;
+  }
+
+  const skillTab = event.target.closest("[data-skill-tab]");
+  if (skillTab) {
+    state.skillTab = skillTab.dataset.skillTab;
+    renderSkills();
+    return;
+  }
+
   const step = event.target.closest("[data-step]");
   if (step) {
     await api("/workspace/onboarding/step", {
@@ -521,6 +757,12 @@ document.addEventListener("DOMContentLoaded", () => {
   }));
   $("create-demo-workflow").addEventListener("click", () => createDemoWorkflow().catch((err) => toast(err.message)));
   $("reload-skills").addEventListener("click", () => refreshAll().catch((err) => toast(err.message)));
+  const entitySearch = $("entity-search");
+  if (entitySearch) entitySearch.addEventListener("input", () => renderEntities());
+  const reloadEntities = $("reload-entities");
+  if (reloadEntities) reloadEntities.addEventListener("click", () => loadGraphExplorer().catch((err) => toast(err.message)));
+  const reloadActivity = $("reload-activity");
+  if (reloadActivity) reloadActivity.addEventListener("click", () => refreshAll().catch((err) => toast(err.message)));
   $("workspace-select").addEventListener("change", (event) => activateWorkspace(event.target.value).catch((err) => toast(err.message)));
   $("create-org").addEventListener("click", () => createOrg().catch((err) => toast(err.message)));
   $("new-org-btn").addEventListener("click", () => $("org-name").focus());

@@ -155,42 +155,56 @@ See [docs/architecture.md](docs/architecture.md) for request and data-flow detai
 </tr>
 </table>
 
-> Screenshots above are the live web UI. The diagrams below map the product
-> experience to the current v1.5.0 structure.
+> Every image in this section is a **real screenshot** of the running app
+> (Lattice AI v1.6.0), captured with a headless browser.
 
 ---
 
 ## Product Experience
 
-### Local model recommendation
+### Onboard in minutes
 
-Lattice AI detects your OS, CPU, GPU, RAM, and disk, then rates every local model
-**Recommended**, **Compatible**, or **Not Recommended** for your machine — grouped
-by family (Gemma, Qwen, Llama, Phi, DeepSeek, and more).
+A first run detects your OS, CPU, GPU, RAM, and disk, then recommends a local
+model and rates every option **Recommended**, **Compatible**, or **Not
+Recommended** for your machine — grouped by family (Gemma, Qwen, Llama, Phi,
+DeepSeek, and more), with estimated RAM and a clear next step.
 
 <div align="center">
-  <img src="docs/images/model-recommendation.png" alt="Tri-state local model recommendation grouped by family" width="100%"/>
+  <img src="docs/images/onboarding.png" alt="Onboarding hardware scan: OS, CPU, GPU, RAM, disk, runtime" width="49%"/>
+  <img src="docs/images/model-recommendation.png" alt="Local model recommendation with best-pick callout and per-family status" width="49%"/>
 </div>
 
 ### Workspaces & organization
 
-Switch instantly between a **Personal** workspace and shared **Organization**
-workspaces. Org data is scoped by `workspace_id`, and `owner / admin / member /
-viewer` roles map to a transparent permission matrix.
+A **Current Workspace** card shows exactly where you are; switch instantly
+between a **Personal** workspace and shared **Organization** workspaces. Org data
+is scoped by `workspace_id`, and `owner / admin / member / viewer` roles map to a
+transparent permission matrix with member management.
 
 <div align="center">
-  <img src="docs/images/workspace.png" alt="Personal and Organization workspace model" width="49%"/>
-  <img src="docs/images/organization.png" alt="Organization roles and permission matrix" width="49%"/>
+  <img src="docs/images/workspace.png" alt="Current Workspace summary card with scoped counts" width="100%"/>
+  <img src="docs/images/organization.png" alt="Organization workspace with members and roles" width="100%"/>
 </div>
 
-### Knowledge graph & skills
+### Knowledge graph explorer
 
-Your work becomes a typed knowledge graph (built automatically), and skills extend
-the workspace through an in-product marketplace.
+Your work becomes a typed knowledge graph automatically. The Entity Explorer
+surfaces the most important entities and, on selection, their inbound/outbound
+relationships, related entities, and a path back to you.
 
 <div align="center">
-  <img src="docs/images/graph.png" alt="Knowledge graph node and edge taxonomy" width="49%"/>
-  <img src="docs/images/skills.png" alt="Skill marketplace: recommended, popular, installed, updates" width="49%"/>
+  <img src="docs/images/graph.png" alt="Knowledge graph entity explorer with relationship detail" width="100%"/>
+</div>
+
+### Skills & editions
+
+Browse and install skills from an in-product marketplace; an honest editions
+panel shows that every Enterprise capability is an opt-in extension point,
+disabled in the open-source Community build.
+
+<div align="center">
+  <img src="docs/images/skills.png" alt="Skill marketplace tabs: recommended, popular, installed, updates" width="49%"/>
+  <img src="docs/images/enterprise.png" alt="Enterprise capability status panel — all disabled in Community" width="49%"/>
 </div>
 
 ---
@@ -333,22 +347,27 @@ Supported routes include OpenAI-compatible APIs, OpenRouter, Groq, Together, xAI
 
 ## Current release
 
-**1.5.0 — Unified Product Release.** Onboarding, model recommendation, and CI
-stabilization in one release:
+**1.6.0 — Product Experience Deepening.** A UX release: the screens in this README
+are now real captured UI.
 
-- **CI / VSIX recovery** — the stale `@azure/core-tracing` lockfile pin that
-  broke `npm ci` (ETARGET) is regenerated, so the VSIX build is green again
-- **Local model recommendation** — a hardware-aware engine
-  (`latticeai/services/model_recommendation.py`) classifies the model catalog as
-  Recommended / Compatible / Not Recommended, exposed at `/models/recommendations`
-- **Catalog extraction** — the static model catalog moved to
-  `latticeai/services/model_catalog.py`, simplifying `model_runtime.py`
-- **Enterprise PoC seam** — admin policy / audit-export / SIEM-stub / org-settings
-  surfaces consult the capability registry (Community keeps everything ungated)
-- **Documentation & visuals** — README rewritten as a product page with an
-  up-to-date architecture diagram and structural visuals
-- Python package, npm package, VS Code extension, FastAPI app, and `/health`
-  version metadata are aligned at `1.5.0`
+- **Knowledge Graph explorer** — entity cards, a relationship/related-entities/
+  shortest-path detail panel, recent activity, and a memory feed (additive UI on
+  existing endpoints)
+- **Workspace UX** — a "Current Workspace" summary card with quick-switch chips
+- **Model Recommendation 2.0** — machine summary, a best-pick callout with
+  estimated RAM and next step, per-family status, and a cloud caution
+- **Skill Marketplace** — Recommended / Popular / Installed / Updates tabs
+- **Enterprise capability panel** — an honest 12-capability matrix (Community: all
+  disabled, nothing gated)
+- **Real screenshots** — `docs/images/*` refreshed from the running app; API,
+  schemas, `server:app`, CLI, MCP, and the Knowledge Graph contract unchanged
+
+| Version | Theme |
+|---|---|
+| **1.6.0** | Product Experience Deepening (UX + real screenshots) |
+| 1.5.0 | Unified Product Release (CI/VSIX recovery, model recommendation, Enterprise PoC) |
+| 1.4.0 | Server App final decomposition |
+| 1.1.0–1.3.0 | Organization workspaces, modularization, route safety net |
 
 See the full [changelog](docs/CHANGELOG.md) and [RELEASE.md](RELEASE.md).
 

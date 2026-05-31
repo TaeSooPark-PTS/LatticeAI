@@ -544,3 +544,70 @@ textarea {
 #org-create-form {
   margin-bottom: 12px;
 }
+
+/* ── Product Experience Deepening (v1.6.0) ──────────────────────────────── */
+
+/* Workspace summary */
+.summary-card {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: space-between;
+  gap: 16px;
+  align-items: center;
+}
+.summary-main { display: flex; align-items: center; gap: 14px; }
+.summary-icon {
+  width: 48px; height: 48px; border-radius: 12px;
+  display: grid; place-items: center;
+  background: #eef2ff; color: var(--blue); font-size: 24px;
+}
+.summary-name { font-weight: 800; font-size: 18px; color: var(--ink); }
+.summary-stats { display: flex; flex-wrap: wrap; gap: 18px; }
+.summary-stat { display: grid; text-align: center; }
+.summary-stat strong { font-size: 20px; color: var(--ink); }
+.summary-stat span { font-size: 11px; color: var(--muted); font-weight: 700; }
+.quickswitch-row { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 14px; }
+.switch-chip {
+  display: inline-flex; align-items: center; gap: 6px;
+  border: 1px solid var(--line); background: #fbfcfe; color: var(--ink);
+  border-radius: 999px; padding: 6px 12px; font-weight: 700; font-size: 13px; cursor: pointer;
+}
+.switch-chip.active { border-color: var(--blue); background: #eef2ff; color: var(--blue); }
+
+/* Entity explorer */
+.entity-card { text-align: left; cursor: pointer; width: 100%; font: inherit; }
+.entity-card.selected { border-color: var(--blue); box-shadow: 0 0 0 2px rgba(37, 99, 235, 0.15); }
+.importance-bar { height: 4px; border-radius: 999px; background: #edf2f7; overflow: hidden; }
+.importance-bar span { display: block; height: 100%; background: linear-gradient(90deg, #2563eb, #7c3aed); }
+.rel-row { display: flex; align-items: center; gap: 8px; font-size: 13px; padding: 2px 0; }
+.rel-dir { color: var(--muted); font-weight: 800; width: 16px; }
+.rel-node { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.activity-item .list-title span { font-weight: 700; }
+
+/* Skill marketplace tabs */
+.tab-bar { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 12px; }
+.tab {
+  border: 1px solid var(--line); background: #fbfcfe; color: var(--muted);
+  border-radius: 999px; padding: 6px 14px; font-weight: 700; font-size: 13px; cursor: pointer;
+}
+.tab.active { border-color: var(--blue); background: #eef2ff; color: var(--blue); }
+.tab-count {
+  display: inline-block; min-width: 16px; padding: 0 5px; margin-left: 4px;
+  border-radius: 999px; background: var(--red); color: #fff; font-size: 11px;
+}
+.tab-count:empty { display: none; }
+
+/* Enterprise capability grid */
+.capability-grid {
+  display: grid; gap: 10px;
+  grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+  margin-top: 12px;
+}
+.capability-card {
+  display: flex; align-items: center; gap: 10px;
+  border: 1px solid var(--line); border-radius: 8px; padding: 10px 12px; background: #fbfcfe;
+}
+.capability-card i { font-size: 18px; }
+.capability-card.off i { color: var(--muted); }
+.capability-card.on i { color: var(--green); }
+.capability-card .cap-name { flex: 1; font-weight: 700; font-size: 13px; color: var(--ink); }

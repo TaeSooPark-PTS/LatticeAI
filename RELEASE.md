@@ -9,6 +9,32 @@
 > PyPI / npm / VS Code Marketplace / Open VSX 배포는 아래 수동 절차로 로컬에서
 > 직접 인증 후 진행합니다. GitHub Secrets에 배포 토큰을 저장하지 않습니다.
 
+## v1.6.0 릴리스 노트 (2026-06-01)
+
+Product Experience Deepening — 구조 리팩토링이 아니라 사용자가 체감하는 UX 강화와
+**실제 UI 스크린샷** 갱신에 집중. API path/schema/호환성은 그대로 유지.
+자세한 내용은 [`docs/CHANGELOG.md`](docs/CHANGELOG.md)의 `[1.6.0]` 항목 참고.
+
+- **Added (Knowledge Graph UX)**: Workspace OS에 Entity Explorer — 중요도순 엔터티
+  카드 + 검색, 선택 시 inbound/outbound 관계·related entities·shortest path를 보여주는
+  detail 패널, Recent Activity 피드, Workspace Memory 피드. 기존
+  `/knowledge-graph/graph`·`/workspace/relationships/*` API만 사용(additive UI).
+- **Added (Workspace UX)**: "Current Workspace" 요약 카드(활성 워크스페이스·역할·멤버·
+  스코프 카운트)와 quick-switch 칩. workspace_id 스코핑/권한 모델 불변.
+- **Added (Model Recommendation 2.0)**: 온보딩 추천 패널을 강화 — 머신 요약(OS/RAM/
+  GPU/engine), top pick 콜아웃(이유·예상 RAM·다음 단계), family별 상태, 클라우드 caution.
+  추정치는 "estimated"로 보수적으로 표시.
+- **Added (Skill Marketplace UX)**: Recommended / Popular / Installed / Updates 탭과
+  버전/카테고리/소스 표시, install·enable·disable 액션. 기존 skill lifecycle API 사용.
+- **Added (Enterprise surface)**: Workspace OS에 Enterprise Capability 패널 — 12개
+  capability 상태 매트릭스(Community=모두 disabled, 게이트 없음).
+- **Changed (Visuals)**: `docs/images/*`를 Playwright + 실제 서버 캡처 기반의 **실제 UI
+  스크린샷**으로 교체(onboarding, model-recommendation, workspace, graph, organization,
+  skills, enterprise) + 실제 UI 기반 hero.gif. architecture.png는 구조 다이어그램 유지.
+- **Validation**: 단위 테스트 green, route compatibility/startup/streaming/model/MCP/KG
+  contract 유지, `npm run check:python` green, Playwright로 신규 UI 렌더 검증, VSIX 빌드 검증.
+- 테스트/빌드/패키징 산출물만 생성 — 패키지 스토어 publish는 수동 절차로만 진행.
+
 ## v1.5.0 릴리스 노트 (2026-06-01)
 
 Unified Product Release — CI 복구, model recommendation, catalog 추출, Enterprise
@@ -290,11 +316,11 @@ Knowledge Graph v2 read/write cutover. 자세한 내용은
 3. 업로드
    - `npm run publish:pypi`
    - 직접 실행 시:
-     `python3 -m twine upload dist/ltcai-1.5.0-py3-none-any.whl dist/ltcai-1.5.0.tar.gz`
+     `python3 -m twine upload dist/ltcai-1.6.0-py3-none-any.whl dist/ltcai-1.6.0.tar.gz`
 
 참고:
 - TestPyPI 먼저 쓰려면:
-  - `python3 -m twine upload --skip-existing --repository testpypi dist/ltcai-1.5.0.tar.gz dist/ltcai-1.5.0-py3-none-any.whl`
+  - `python3 -m twine upload --skip-existing --repository testpypi dist/ltcai-1.6.0.tar.gz dist/ltcai-1.6.0-py3-none-any.whl`
 
 ## 4) VS Code / Cursor / Antigravity 확장 배포
 
@@ -308,11 +334,11 @@ Knowledge Graph v2 read/write cutover. 자세한 내용은
 3. VS Code Marketplace 배포
    - `npm run publish:vscode`
    - 직접 실행 시:
-     `npx vsce publish --packagePath dist/ltcai-1.5.0.vsix`
+     `npx vsce publish --packagePath dist/ltcai-1.6.0.vsix`
 4. Open VSX 배포 (Cursor/일부 포크 호환)
    - `npm run publish:openvsx`
    - 직접 실행 시:
-     `npx ovsx publish dist/ltcai-1.5.0.vsix`
+     `npx ovsx publish dist/ltcai-1.6.0.vsix`
 5. 로컬 설치 (VS Code/Cursor/Antigravity)
    - `npm run install:all`
 

@@ -1033,6 +1033,7 @@ const chatViewport = document.getElementById('chat-viewport');
                 const data = await res.json();
                 if (!res.ok) return;
                 const rec = (data && data.recommendations) || {};
+                const profile = (data && data.profile) || {};
                 const families = rec.families || [];
                 if (!families.length) return;
                 const counts = rec.counts || {};
@@ -1043,25 +1044,45 @@ const chatViewport = document.getElementById('chat-viewport');
                         not_recommended: ['권장 안 함', '#9ca3af'],
                     };
                     const [label, color] = map[status] || ['', '#9ca3af'];
-                    return `<span style="display:inline-block;padding:1px 7px;border-radius:999px;font-size:11px;color:#fff;background:${color}">${label}</span>`;
+                    return `<span style="display:inline-block;padding:1px 8px;border-radius:999px;font-size:11px;font-weight:700;color:#fff;background:${color}">${label}</span>`;
                 };
+                const ram = (m) => (m.required_ram_gb != null) ? `~${m.required_ram_gb}GB RAM (est.)` : '';
+                const nextStep = (engine) => engine === 'ollama'
+                    ? 'Next: ollama pull'
+                    : engine === 'local_mlx' ? 'Next: download & load' : 'Next: connect engine';
+
+                // Top pick callout
+                const top = rec.top_pick;
+                const topHtml = top ? `
+                    <div style="border:1px solid #16a34a;background:#f0fdf4;border-radius:10px;padding:10px 12px;margin:8px 0">
+                        <div style="font-weight:700">⭐ Best for this PC — ${escapeHtml(top.name || top.id)} ${badge('recommended')}</div>
+                        <div style="font-size:12px;opacity:0.8;margin-top:3px">${escapeHtml(top.reason || '')}</div>
+                        <div style="font-size:12px;margin-top:4px">${escapeHtml(top.size || '')} · ${escapeHtml(ram(top))} · ${escapeHtml(nextStep(rec.engine))}</div>
+                    </div>` : '';
+
                 const rows = families.map((fam) => {
                     const best = fam.best;
                     const items = (fam.models || []).map((m) => `
-                        <div style="display:flex;justify-content:space-between;gap:8px;padding:2px 0;font-size:12px;opacity:${m.status === 'not_recommended' ? 0.55 : 1}">
+                        <div style="display:flex;justify-content:space-between;gap:8px;padding:3px 0;font-size:12px;opacity:${m.status === 'not_recommended' ? 0.55 : 1}">
                             <span>${escapeHtml(m.name || m.id)}</span>
-                            <span>${escapeHtml(m.size || '')} ${badge(m.status)}</span>
+                            <span style="white-space:nowrap">${escapeHtml(m.size || '')} · ${escapeHtml(ram(m))} ${badge(m.status)}</span>
                         </div>`).join('');
                     return `
                         <details style="margin:6px 0;border:1px solid var(--border,#e5e7eb);border-radius:8px;padding:8px 10px">
-                            <summary style="cursor:pointer;font-weight:600">${escapeHtml(fam.family)} ${best ? badge(best.status) : ''}</summary>
+                            <summary style="cursor:pointer;font-weight:600">${escapeHtml(fam.family)} ${best ? badge(best.status) : ''}${best ? ` <span style="font-weight:400;opacity:0.7">${escapeHtml(best.name || '')}</span>` : ''}</summary>
                             <div style="margin-top:6px">${items}</div>
                         </details>`;
                 }).join('');
+
+                const engineLabel = rec.engine === 'local_mlx' ? 'MLX (Apple Silicon)' : rec.engine;
+                const machine = `${profile.os || ''} · RAM ${rec.ram_gb || '?'}GB · ${rec.apple_silicon ? 'Apple Silicon' : (profile.gpu && profile.gpu.vendor) || 'CPU'} · engine ${engineLabel}`;
                 container.innerHTML = `
-                    <h3 style="margin:14px 0 4px">이 PC에서 실행 가능한 로컬 모델</h3>
-                    <p style="font-size:12px;opacity:0.7;margin:0 0 8px">RAM ${escapeHtml(String(rec.ram_gb || '?'))}GB 기준 · 추천 ${counts.recommended || 0} · 실행 가능 ${counts.compatible || 0} · 권장 안 함 ${counts.not_recommended || 0}</p>
-                    ${rows}`;
+                    <h3 style="margin:14px 0 4px">이 PC에 맞는 로컬 모델</h3>
+                    <p style="font-size:12px;opacity:0.7;margin:0 0 4px">${escapeHtml(machine)}</p>
+                    <p style="font-size:12px;opacity:0.7;margin:0 0 6px">${badge('recommended')} ${counts.recommended || 0} · ${badge('compatible')} ${counts.compatible || 0} · ${badge('not_recommended')} ${counts.not_recommended || 0} · estimates are conservative, verify before loading</p>
+                    ${topHtml}
+                    ${rows}
+                    <p style="font-size:12px;opacity:0.65;margin:8px 0 0">로컬 모델이 부족하면 클라우드 모델(OpenAI·OpenRouter·Groq 등, API 키 필요)을 선택할 수 있습니다.</p>`;
             } catch (e) {
                 /* best-effort enhancement; never break onboarding */
             }
