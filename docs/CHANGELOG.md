@@ -1,5 +1,27 @@
 # Changelog
 
+## [0.5.0] - 2026-05-31
+
+> MLX 샘플링 API 호환성 버그 수정 + 릴리스 워크플로 build-only 전환.
+
+### Fixed
+
+- **MLX `temp` kwarg 제거 대응** — `llm_router.py`의 로컬 MLX 추론 경로(텍스트/
+  비전, 동기/스트리밍, 문서 생성 4계열·총 8개 호출부)가 `mlx_lm.generate` /
+  `mlx_vlm.generate`에 `temp=temperature`를 직접 넘기다가
+  `generate_step() got an unexpected keyword argument 'temp'`로 실패하던 문제
+  수정. mlx_lm ≥ 0.20 / mlx_vlm는 `temp` 키워드를 제거하고 `sampler` 콜러블을
+  받도록 API가 바뀌었으므로, `make_sampler(temp=...)`로 만든 sampler를
+  `sampler=`로 전달하도록 `_mlx_sampler()` 헬퍼를 도입.
+
+### Changed
+
+- **릴리스 워크플로 build-only 전환** — `.github/workflows/release.yml`이 v* 태그
+  push 시 단위 테스트와 빌드 산출물 생성(`python -m build`, `twine check`,
+  `npm pack`, `vsce package`)까지만 수행. `publish-pypi`/`publish-npm`/
+  `publish-vscode`/`publish-ovsx` job과 GitHub Secrets 의존(`if: secrets.*`)을
+  제거. 배포는 로컬에서 수동 인증 후 진행.
+
 ## [0.4.0] - 2026-05-31
 
 > Knowledge Graph v2 read/write cutover — legacy/v2 동등성 보장, dual-write

@@ -3,11 +3,23 @@
 이 문서는 `npm`, `PyPI`, `VS Code`, `Cursor`, `Antigravity`, `Open VSX` 배포를
 한 번에 처리하기 위한 체크리스트입니다.
 
-> **v0.3.1부터는 `git tag v0.3.1 && git push origin v0.3.1` 한 번으로
-> `.github/workflows/release.yml`이 PyPI / npm / VS Code Marketplace / Open VSX에
-> 자동 배포합니다.** 아래 수동 절차는 토큰을 GitHub Secrets에 등록하지 않은
-> 경우의 fallback입니다. 필요한 secrets는 `PYPI_TOKEN`, `NPM_TOKEN`,
-> `VSCE_PAT`, `OVSX_TOKEN`이며, 비어 있는 job은 자동으로 skip됩니다.
+> **v0.5.0부터 `.github/workflows/release.yml`은 build-only입니다.** v* 태그를
+> push하면 단위 테스트와 빌드 산출물(`python -m build`, `twine check`,
+> `npm pack`, `vsce package`)만 생성하고 **어떤 배포도 수행하지 않습니다**.
+> PyPI / npm / VS Code Marketplace / Open VSX 배포는 아래 수동 절차로 로컬에서
+> 직접 인증 후 진행합니다. GitHub Secrets에 배포 토큰을 저장하지 않습니다.
+
+## v0.5.0 릴리스 노트 (2026-05-31)
+
+MLX 샘플링 API 호환성 버그 수정 + 릴리스 워크플로 build-only 전환. 자세한
+내용은 [`docs/CHANGELOG.md`](docs/CHANGELOG.md)의 `[0.5.0]` 항목 참고.
+
+- **Fixed**: 로컬 MLX 추론에서 `generate_step() got an unexpected keyword
+  argument 'temp'` 오류 수정 — `temp=` 대신 `sampler=make_sampler(temp=…)` 전달
+  (mlx_lm ≥ 0.20 / mlx_vlm API 변경 대응, 8개 호출부).
+- **Changed**: 릴리스 워크플로를 build-only로 전환 — publish job 4종과
+  `if: secrets.*` 제거, 테스트·빌드까지만 수행.
+- 빌드 산출물만 생성 — 어떤 배포도 수행하지 않음.
 
 ## v0.4.0 릴리스 노트 (2026-05-31)
 
