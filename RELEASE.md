@@ -9,6 +9,24 @@
 > PyPI / npm / VS Code Marketplace / Open VSX 배포는 아래 수동 절차로 로컬에서
 > 직접 인증 후 진행합니다. GitHub Secrets에 배포 토큰을 저장하지 않습니다.
 
+## v1.0.1 릴리스 노트 (2026-05-31)
+
+CI packaging 회귀 수정 patch. 자세한 내용은
+[`docs/CHANGELOG.md`](docs/CHANGELOG.md)의 `[1.0.1]` 항목 참고.
+
+- **Fixed**: Release (build-only) 워크플로의 `Build VSIX` 단계가
+  `Extension entrypoint(s) missing: extension/out/extension.js`로 실패하던 문제
+  수정. `vsce package` 전에 TypeScript 컴파일이 없었음(`vscode-extension/out/`은
+  gitignore되어 clean CI checkout에 부재).
+- **Added**: `vscode-extension/package.json`에 `vscode:prepublish` → `compile`
+  (`tsc -p .`) 스크립트를 추가해 `vsce package`가 항상 entrypoint를 컴파일하도록
+  하고 로컬/CI 빌드 경로를 일치시킴.
+- **Changed**: `release.yml`이 packaging 전에 `npm run compile` 실행 +
+  `out/extension.js` 존재를 검증.
+- **Changed**: Python/npm/VS Code extension/FastAPI `/health` 버전을 `1.0.1`
+  으로 정렬.
+- 테스트/빌드/패키징 산출물만 생성 — 어떤 배포도 수행하지 않음.
+
 ## v1.0.0 릴리스 노트 (2026-05-31)
 
 AI Workspace OS integration release. 자세한 내용은

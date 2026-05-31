@@ -18,7 +18,7 @@ from pathlib import Path
 from typing import Any, Callable, Dict, Iterable, List, Optional
 
 
-WORKSPACE_OS_VERSION = "1.0.0"
+WORKSPACE_OS_VERSION = "1.0.1"
 
 WORKSPACE_AREAS = [
     "graph",

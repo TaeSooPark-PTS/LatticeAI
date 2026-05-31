@@ -59,6 +59,8 @@ jobs:
         working-directory: vscode-extension
         run: |
           npm ci || npm install
+          npm run compile
+          test -f out/extension.js
           vsce package --no-yarn -o "../dist/ltcai-${{ steps.meta.outputs.version }}.vsix"
 
       - name: Upload build artifacts

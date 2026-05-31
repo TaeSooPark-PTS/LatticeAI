@@ -1,5 +1,26 @@
 # Changelog
 
+## [1.0.1] - 2026-05-31
+
+> CI packaging fix for the VS Code extension build.
+
+### Fixed
+
+- **Release (build-only) VSIX packaging** — the `Build VSIX` job failed with
+  `Extension entrypoint(s) missing: extension/out/extension.js` because the
+  workflow ran `vsce package` without first compiling the TypeScript sources
+  (`vscode-extension/out/` is gitignored and absent in a clean CI checkout).
+- Added a `vscode:prepublish` → `compile` (`tsc -p .`) script to
+  `vscode-extension/package.json` so `vsce package` always compiles the
+  extension entrypoint, aligning the local and CI build paths.
+- Updated `.github/workflows/release.yml` to run `npm run compile` and assert
+  `out/extension.js` exists before packaging.
+
+### Changed
+
+- Release metadata aligned to `1.0.1` across Python, npm, VS Code extension,
+  FastAPI app metadata, and `/health`.
+
 ## [1.0.0] - 2026-05-31
 
 > AI Workspace OS integration release.

@@ -2,7 +2,7 @@
   "name": "ltcai",
   "displayName": "Lattice AI",
   "description": "AI Workspace OS extension for local-first graph, memory, workflow, and coding actions.",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "publisher": "parktaesoo",
   "license": "MIT",
   "homepage": "https://github.com/TaeSooPark-PTS/LatticeAI#readme",
@@ -128,6 +128,8 @@
     }
   },
   "scripts": {
+    "vscode:prepublish": "npm run compile",
+    "compile": "tsc -p .",
     "build": "tsc -p .",
     "package": "vsce package",
     "package:vsix": "vsce package",
