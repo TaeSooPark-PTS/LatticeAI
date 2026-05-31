@@ -2,7 +2,7 @@
   "name": "ltcai",
   "displayName": "Lattice AI",
   "description": "Local & cloud AI coding assistant — Apple Silicon MLX, OpenAI, Groq, MCP tools, Graph RAG, no built-in telemetry.",
-  "version": "0.5.0",
+  "version": "0.5.1",
   "publisher": "parktaesoo",
   "license": "MIT",
   "homepage": "https://github.com/TaeSooPark-PTS/LatticeAI#readme",

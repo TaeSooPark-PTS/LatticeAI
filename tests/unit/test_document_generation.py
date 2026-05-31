@@ -188,34 +188,32 @@ class TestKGSchemaV2Enhancements:
         for name in ("USED_IN", "INSPIRED_BY", "CONTRADICTS", "EVOLVES_FROM"):
             assert hasattr(EdgeType, name), f"EdgeType.{name} missing"
 
-    def test_node_has_document_fields(self):
-        from kg_schema import Node, NodeType
-        node = Node(
-            type=NodeType.DOCUMENT,
-            label="Q3 보고서",
-            style="formal",
-            tone="professional",
-            importance_score=0.85,
-        )
-        assert node.style == "formal"
-        assert node.tone == "professional"
-        assert node.importance_score == 0.85
+    def test_v2_schema_has_document_fields(self, tmp_path):
+        """nodes_v2 carries the document-generation columns (style/tone/
+        importance_score). Asserted at the schema level — KGStoreV2 is a
+        schema/init helper, not a data API."""
+        import sqlite3
+        from kg_schema import KGStoreV2
+        KGStoreV2(str(tmp_path / "v2.db")).init_schema()
+        with sqlite3.connect(str(tmp_path / "v2.db")) as conn:
+            cols = {r[1] for r in conn.execute("PRAGMA table_info(nodes_v2)")}
+        assert {"style", "tone", "importance_score"} <= cols
 
-    def test_v2_store_upsert_document_node(self, tmp_path):
-        from kg_schema import KGStoreV2, Node, NodeType
-        store = KGStoreV2(str(tmp_path / "v2.db"))
-        store.init_schema()
-        node = Node(
-            type=NodeType.DOCUMENT,
-            label="테스트 문서",
-            style="casual",
-            tone="friendly",
-            importance_score=0.7,
-        )
-        nid = store.upsert_node(node)
-        retrieved = store.get_node(nid)
-        assert retrieved is not None
-        assert retrieved.type == NodeType.DOCUMENT
-        assert retrieved.style == "casual"
-        assert retrieved.tone == "friendly"
-        assert retrieved.importance_score >= 0.7
+    def test_document_node_projects_through_store(self, tmp_path):
+        """A Document node written via the production KnowledgeGraphStore path is
+        projected into nodes_v2 with the normalized type + preserved legacy type,
+        and is readable through the graph read API."""
+        import knowledge_graph as kg
+        store = kg.KnowledgeGraphStore(tmp_path / "kg.sqlite", tmp_path / "blobs")
+        with store._connect() as conn:
+            store._upsert_node(conn, "doc:1", "Document", "테스트 문서",
+                               "report body", {"style": "casual"})
+        with store._connect() as conn:
+            row = conn.execute(
+                "SELECT type, legacy_type FROM nodes_v2 WHERE id='doc:1'"
+            ).fetchone()
+        assert row["type"] == "DOCUMENT" and row["legacy_type"] == "Document"
+        # readable through the v2 read path
+        store._read_from_v2 = True
+        ids = [n["id"] for n in store.search("테스트", limit=10)["matches"]]
+        assert "doc:1" in ids

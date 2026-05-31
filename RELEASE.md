@@ -9,6 +9,21 @@
 > PyPI / npm / VS Code Marketplace / Open VSX 배포는 아래 수동 절차로 로컬에서
 > 직접 인증 후 진행합니다. GitHub Secrets에 배포 토큰을 저장하지 않습니다.
 
+## v0.5.1 릴리스 노트 (2026-05-31)
+
+KGStoreV2 정규화 스키마 + 마이그레이션 하드닝 + native API 정리. 자세한 내용은
+[`docs/CHANGELOG.md`](docs/CHANGELOG.md)의 `[0.5.1]` 항목 참고.
+
+- **Changed**: `attrs._kg` 패스스루 제거 — legacy 타입을 무손실 `NodeType`/
+  `EdgeType` superset으로 정규화(`type`), 원본은 `legacy_type` 칼럼에 보존.
+  summary/metadata 1급 칼럼화. 엣지 정체성 `(source,target,legacy_type)`.
+- **Changed**: `_init_v2_schema` 마이그레이션을 단일 트랜잭션으로 원자화(중간 실패
+  롤백, legacy 무손상). 프로젝션이 legacy 값을 verbatim 저장 → 뷰가 byte-faithful.
+- **Removed**: production 미사용 native KGStoreV2 데이터 API(`upsert_*`/`get_node`/
+  `search_*`)·`Node`/`Edge` 모델·관련 dead helper 제거. `KGStoreV2`는 schema/init/
+  projection 지원 역할만 유지. 테스트의 직접 의존 제거.
+- 단위 테스트 192 통과. 빌드 산출물만 생성 — 어떤 배포도 수행하지 않음.
+
 ## v0.5.0 릴리스 노트 (2026-05-31)
 
 MLX 샘플링 API 호환성 버그 수정 + 릴리스 워크플로 build-only 전환. 자세한

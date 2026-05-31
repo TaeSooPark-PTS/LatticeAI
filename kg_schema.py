@@ -6,10 +6,15 @@ Lattice AI — Knowledge Graph v2 schema (PPT spec aligned)
 
 목적
 ----
-기존 ``knowledge_graph.py`` 의 자유 문자열 노드/엣지 타입을 **명시 enum + Pydantic
-모델 + SQLite v2 스키마** 로 정식화한다. embedding · confidence · evidence ·
-owner/visibility · createdBy 필드를 1급 시민으로 승격해서, semantic search
-(SIMILAR_TO 엣지 추론) 와 multi-tenant 권한 모델의 기반을 만든다.
+기존 ``knowledge_graph.py`` 의 자유 문자열 노드/엣지 타입을 **명시 enum + SQLite v2
+스키마** 로 정식화한다. 이 모듈은 **스키마/초기화/프로젝션 지원** 역할만 담당한다:
+``NodeType``/``EdgeType`` taxonomy + legacy 정규화 매핑, ``nodes_v2``/``edges_v2``
+DDL(``SCHEMA_SQL``), 그리고 ``KGStoreV2``(스키마 init·heal·stats).
+
+실제 데이터 read/write 는 ``knowledge_graph.py`` 의 ``KnowledgeGraphStore`` 가
+legacy 테이블에 대한 dual-write 프로젝션(raw SQL) + ``kgv2_*`` 재구성 뷰로 수행한다.
+(과거의 native ``Node``/``Edge`` 모델과 ``KGStoreV2.upsert_*``/``get_node``/
+``search_*`` API 는 production 에서 쓰이지 않아 제거되었다.)
 
 설계 원칙
 ---------
@@ -20,41 +25,18 @@ owner/visibility · createdBy 필드를 1급 시민으로 승격해서, semantic
    superset 으로 정규화해 ``type`` 칼럼에 저장하고, 원본 문자열은 ``legacy_type``
    칼럼에 그대로 보존한다. summary 와 metadata 는 ``attrs._kg`` 패스스루 blob 이
    아니라 전용 ``summary`` 칼럼 / ``attrs``·``metadata`` 칼럼에 1급으로 저장한다.
-3. **표준 라이브러리만 사용**: Pydantic 이 없는 환경에서도 dataclass 로
-   동작하도록 ``from dataclasses import dataclass`` 를 사용한다.
-   타입 검증은 ``validate()`` 메서드에서 수동.
-4. **embedding 은 옵셔널이지만 권장**: 차원은 환경 변수
-   ``LATTICEAI_EMBED_DIM`` (기본 1024). bytes blob 으로 저장.
-5. **정규화 매핑은 명시적**: 한글 동사/legacy 라벨 → 영문 enum 표가 코드 안에
+3. **표준 라이브러리만 사용**: 외부 의존성 없이 ``sqlite3`` 만으로 동작한다.
+4. **정규화 매핑은 명시적**: 한글 동사/legacy 라벨 → 영문 enum 표가 코드 안에
    들어 있어서 어떤 옛 라벨이 어디로 매핑되는지 한눈에 보인다.
 
 사용 예
 -------
 ```python
-from kg_schema import (
-    KGStoreV2, Node, Edge, NodeType, EdgeType,
-)
+from kg_schema import KGStoreV2
 
 store = KGStoreV2("/Users/me/.ltcai/kg_v2.db")
-store.init_schema()
-
-n1 = Node(
-    type=NodeType.FILE,
-    label="LatticeAI_기획서.pdf",
-    attrs={"mime": "application/pdf", "pageCount": 24, "lang": "ko"},
-    owner_id="user_seoljun",
-)
-n2 = Node(type=NodeType.CONCEPT, label="MCP")
-store.upsert_node(n1)
-store.upsert_node(n2)
-
-store.upsert_edge(Edge(
-    source=n1.id, target=n2.id,
-    type=EdgeType.MENTIONS,
-    weight=0.82, confidence=0.91,
-    evidence=["chunk:01HX7K…#p3", "chunk:01HX7K…#p11"],
-    created_by="extractor:llm-gemma-3-12b",
-))
+store.init_schema()        # nodes_v2 / edges_v2 생성 + 컬럼 drift self-heal
+print(store.stats())       # {"nodes": ..., "by_node_type": {...}, ...}
 ```
 """
 
@@ -62,17 +44,11 @@ from __future__ import annotations
 
 import json
 import os
-import re
 import logging
 import sqlite3
-import struct
-import time
-import uuid
 from contextlib import contextmanager
-from dataclasses import dataclass, field, asdict
-from datetime import datetime, timezone
 from enum import Enum
-from typing import Any, Dict, Iterable, List, Optional, Sequence, Tuple
+from typing import Any, Dict, Optional
 
 
 # ── Schema version ──────────────────────────────────────────────────────────
@@ -280,197 +256,6 @@ _LEGACY_EDGE_MAP: Dict[str, EdgeType] = {
     "발전함":        EdgeType.EVOLVES_FROM,
 }
 
-# 노드 타입별로 허용되는 source / target 조합 (PPT 카탈로그 그대로)
-# None == 모든 타입 허용
-EDGE_ENDPOINT_RULES: Dict[EdgeType, Tuple[Optional[Sequence[NodeType]], Optional[Sequence[NodeType]]]] = {
-    EdgeType.CONTAINS:      ((NodeType.FILE, NodeType.DOCUMENT),
-                             (NodeType.CHUNK,)),
-    EdgeType.MENTIONS:      ((NodeType.MESSAGE, NodeType.FILE, NodeType.CHUNK, NodeType.DOCUMENT),
-                             (NodeType.CONCEPT, NodeType.PERSON, NodeType.MODEL, NodeType.TOOL)),
-    EdgeType.REFERENCES:    ((NodeType.FILE, NodeType.MESSAGE, NodeType.CHUNK),
-                             (NodeType.FILE, NodeType.MESSAGE, NodeType.CHUNK)),
-    EdgeType.REPLIES_TO:    ((NodeType.MESSAGE,),         (NodeType.MESSAGE,)),
-    EdgeType.AUTHORED_BY:   ((NodeType.FILE, NodeType.MESSAGE, NodeType.CONVERSATION, NodeType.DOCUMENT),
-                             (NodeType.PERSON,)),
-    EdgeType.USES:          ((NodeType.PROJECT, NodeType.CONVERSATION),
-                             (NodeType.TOOL, NodeType.MODEL)),
-    EdgeType.DERIVED_FROM:  ((NodeType.CHUNK, NodeType.FILE),
-                             (NodeType.CHUNK, NodeType.FILE)),
-    EdgeType.SIMILAR_TO:    (None, None),
-    EdgeType.DEPENDS_ON:    ((NodeType.CODE_SYMBOL,), (NodeType.CODE_SYMBOL,)),
-    EdgeType.TAGGED_AS:     (None, (NodeType.CONCEPT,)),
-    EdgeType.VERSION_OF:    ((NodeType.FILE,), (NodeType.FILE,)),
-    EdgeType.GRANTS_ACCESS: ((NodeType.PERSON,),
-                             (NodeType.FILE, NodeType.CONVERSATION, NodeType.PROJECT)),
-    EdgeType.USED_IN:       ((NodeType.CONCEPT,),
-                             (NodeType.DOCUMENT, NodeType.FILE)),
-    EdgeType.INSPIRED_BY:   ((NodeType.DOCUMENT, NodeType.FILE),
-                             (NodeType.DOCUMENT, NodeType.FILE)),
-    EdgeType.CONTRADICTS:   ((NodeType.DOCUMENT, NodeType.FILE),
-                             (NodeType.DOCUMENT, NodeType.FILE)),
-    EdgeType.EVOLVES_FROM:  ((NodeType.DOCUMENT, NodeType.FILE),
-                             (NodeType.DOCUMENT, NodeType.FILE)),
-}
-
-
-# ── Models ──────────────────────────────────────────────────────────────────
-class Visibility(str, Enum):
-    PRIVATE = "private"        # 소유자만
-    INTERNAL = "internal"      # 같은 조직
-    SHARED  = "shared"         # 명시 공유
-    PUBLIC  = "public"         # 누구나
-
-
-def _ulid() -> str:
-    """간이 ULID (timestamp + uuid4 base32). 외부 의존성 없이."""
-    ts = int(time.time() * 1000)
-    rand = uuid.uuid4().int & ((1 << 80) - 1)
-    encoded = (ts << 80) | rand
-    chars = "0123456789ABCDEFGHJKMNPQRSTVWXYZ"   # Crockford
-    out: List[str] = []
-    for _ in range(26):
-        encoded, r = divmod(encoded, 32)
-        out.append(chars[r])
-    return "".join(reversed(out))
-
-
-def _now_iso() -> str:
-    return datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
-
-
-def encode_embedding(vec: Sequence[float]) -> Optional[bytes]:
-    """list[float] → SQLite BLOB. ``None`` 입력은 None 반환."""
-    if vec is None:
-        return None
-    if len(vec) != EMBED_DIM:
-        raise ValueError(
-            f"embedding dim mismatch: got {len(vec)}, expected {EMBED_DIM} "
-            f"(set LATTICEAI_EMBED_DIM to override)"
-        )
-    return struct.pack(f"<{EMBED_DIM}f", *vec)
-
-
-def decode_embedding(blob: Optional[bytes]) -> Optional[List[float]]:
-    if not blob:
-        return None
-    return list(struct.unpack(f"<{EMBED_DIM}f", blob))
-
-
-def cosine(a: Sequence[float], b: Sequence[float]) -> float:
-    """단순 코사인 유사도. numpy 없이."""
-    if not a or not b:
-        return 0.0
-    s = sum(x * y for x, y in zip(a, b))
-    na = sum(x * x for x in a) ** 0.5
-    nb = sum(y * y for y in b) ** 0.5
-    return s / (na * nb) if na and nb else 0.0
-
-
-@dataclass
-class Node:
-    """PPT 슬라이드 20 의 노드 정의.
-
-    ``summary`` 와 ``legacy_type`` 은 1급 칼럼이다. (이전엔 summary·metadata 를
-    ``attrs._kg`` 패스스루 blob 에 숨겨 넣었지만 정규화 스키마에서는 ``summary`` 는
-    전용 칼럼, metadata 는 ``attrs`` 자체로 직접 보존한다.)
-    """
-    type: NodeType
-    label: str
-    id: str = field(default_factory=lambda: f"node:{_ulid()}")
-    attrs: Dict[str, Any] = field(default_factory=dict)
-    summary: str = ""
-    legacy_type: Optional[str] = None   # 원본 legacy 타입 문자열(무손실 보존)
-    embedding: Optional[List[float]] = None
-    owner_id: Optional[str] = None
-    visibility: Visibility = Visibility.PRIVATE
-    created_at: str = field(default_factory=_now_iso)
-    updated_at: str = field(default_factory=_now_iso)
-    style: Optional[str] = None
-    tone: Optional[str] = None
-    importance_score: float = 0.0
-    last_used: Optional[str] = None
-
-    def validate(self) -> None:
-        if not isinstance(self.type, NodeType):
-            raise TypeError(f"Node.type must be NodeType, got {type(self.type)!r}")
-        if not self.label or not self.label.strip():
-            raise ValueError("Node.label is required and non-empty")
-        if len(self.label) > 240:
-            raise ValueError("Node.label max length is 240 chars")
-        if not isinstance(self.attrs, dict):
-            raise TypeError("Node.attrs must be a dict")
-        if not isinstance(self.visibility, Visibility):
-            raise TypeError("Node.visibility must be Visibility enum")
-        if self.embedding is not None and len(self.embedding) != EMBED_DIM:
-            raise ValueError(f"Node.embedding dim must be {EMBED_DIM}")
-
-    def to_json(self) -> Dict[str, Any]:
-        d = asdict(self)
-        d["type"] = self.type.value
-        d["visibility"] = self.visibility.value
-        # embedding 은 JSON 직렬화시 length 만 노출 (가독성)
-        if self.embedding is not None:
-            d["embedding"] = f"[…{len(self.embedding)} dims]"
-        return d
-
-
-@dataclass
-class Edge:
-    """PPT 슬라이드 21 의 엣지 정의.
-
-    ``metadata`` 와 ``legacy_type`` 은 1급 칼럼이다. (이전 프로젝션은 엣지
-    metadata_json 을 ``evidence`` 칼럼에 우겨넣었지만, 정규화 스키마에서는 전용
-    ``metadata`` 칼럼에 보존하고 ``evidence`` 는 본래 의미(근거 ID 목록)로 되돌린다.)
-    """
-    source: str
-    target: str
-    type: EdgeType
-    id: str = field(default_factory=lambda: f"edge:{_ulid()}")
-    weight: float = 1.0           # 강도 0..1
-    confidence: float = 1.0       # 추출 신뢰도 0..1
-    evidence: List[str] = field(default_factory=list)   # 근거(노드/청크 ID)
-    metadata: Dict[str, Any] = field(default_factory=dict)  # legacy metadata_json 보존
-    legacy_type: Optional[str] = None   # 원본 legacy 타입 문자열(무손실 보존)
-    created_by: str = "user"      # extractor 식별자
-    created_at: str = field(default_factory=_now_iso)
-
-    def validate(self) -> None:
-        if not isinstance(self.type, EdgeType):
-            raise TypeError("Edge.type must be EdgeType")
-        if not self.source or not self.target:
-            raise ValueError("Edge.source and Edge.target are required")
-        if self.source == self.target and self.type is not EdgeType.SIMILAR_TO:
-            # SIMILAR_TO 외에는 자기참조 금지
-            raise ValueError(f"self-loop not allowed for {self.type.value}")
-        if not (0.0 <= self.weight <= 1.0):
-            raise ValueError("Edge.weight must be in [0, 1]")
-        if not (0.0 <= self.confidence <= 1.0):
-            raise ValueError("Edge.confidence must be in [0, 1]")
-
-    def to_json(self) -> Dict[str, Any]:
-        d = asdict(self)
-        d["type"] = self.type.value
-        return d
-
-
-def validate_endpoints(edge_type: EdgeType, src_type: NodeType, tgt_type: NodeType) -> None:
-    """엣지가 허용된 source/target 타입을 잇고 있는지 검증."""
-    rule = EDGE_ENDPOINT_RULES.get(edge_type)
-    if rule is None:
-        return
-    src_allowed, tgt_allowed = rule
-    if src_allowed is not None and src_type not in src_allowed:
-        raise ValueError(
-            f"{edge_type.value}: source must be one of "
-            f"{[t.value for t in src_allowed]}, got {src_type.value}"
-        )
-    if tgt_allowed is not None and tgt_type not in tgt_allowed:
-        raise ValueError(
-            f"{edge_type.value}: target must be one of "
-            f"{[t.value for t in tgt_allowed]}, got {tgt_type.value}"
-        )
-
-
 # ── SQLite v2 store ─────────────────────────────────────────────────────────
 SCHEMA_SQL = """
 CREATE TABLE IF NOT EXISTS kg_meta (
@@ -540,12 +325,15 @@ def _exec_script(conn: sqlite3.Connection, script: str) -> None:
 
 
 class KGStoreV2:
-    """가벼운 SQLite 기반 v2 스토어. sqlite-vec 가 있으면 벡터 인덱스도 활용,
-    없으면 Python cosine 으로 폴백."""
+    """가벼운 SQLite 기반 v2 스토어 — **스키마/초기화 지원 전용**.
+
+    ``init_schema`` 으로 ``nodes_v2``/``edges_v2`` 를 생성·heal 하고 ``stats`` 로
+    집계를 노출한다. 데이터 read/write 는 ``knowledge_graph.KnowledgeGraphStore``
+    프로젝션이 담당하므로 native upsert/get/search API 는 두지 않는다.
+    """
 
     def __init__(self, db_path: str):
         self.db_path = db_path
-        self._has_vec: Optional[bool] = None
 
     @contextmanager
     def _conn(self):
@@ -624,156 +412,6 @@ class KGStoreV2:
             ("embed_dim", str(EMBED_DIM)),
         )
 
-    # ── Upsert ───────────────────────────────────────────────
-    def upsert_node(self, node: Node) -> str:
-        node.validate()
-        node.updated_at = _now_iso()
-        with self._conn() as conn:
-            conn.execute(
-                """
-                INSERT INTO nodes_v2(id, type, legacy_type, label, summary, attrs,
-                                     embedding, owner_id, visibility, created_at,
-                                     updated_at, style, tone, importance_score, last_used)
-                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-                ON CONFLICT(id) DO UPDATE SET
-                  type=excluded.type,
-                  legacy_type=excluded.legacy_type,
-                  label=excluded.label,
-                  summary=excluded.summary,
-                  attrs=excluded.attrs,
-                  embedding=COALESCE(excluded.embedding, nodes_v2.embedding),
-                  owner_id=excluded.owner_id,
-                  visibility=excluded.visibility,
-                  updated_at=excluded.updated_at,
-                  style=COALESCE(excluded.style, nodes_v2.style),
-                  tone=COALESCE(excluded.tone, nodes_v2.tone),
-                  importance_score=MAX(excluded.importance_score, nodes_v2.importance_score),
-                  last_used=COALESCE(excluded.last_used, nodes_v2.last_used)
-                """,
-                (
-                    node.id, node.type.value, node.legacy_type or node.type.value,
-                    node.label, node.summary,
-                    json.dumps(node.attrs, ensure_ascii=False),
-                    encode_embedding(node.embedding),
-                    node.owner_id, node.visibility.value,
-                    node.created_at, node.updated_at,
-                    node.style, node.tone,
-                    float(node.importance_score), node.last_used,
-                ),
-            )
-        return node.id
-
-    def upsert_edge(self, edge: Edge, *, check_endpoints: bool = True) -> str:
-        edge.validate()
-        if check_endpoints:
-            src = self.get_node(edge.source)
-            tgt = self.get_node(edge.target)
-            if src is None or tgt is None:
-                raise ValueError("Edge endpoints must exist as nodes")
-            validate_endpoints(edge.type, src.type, tgt.type)
-        with self._conn() as conn:
-            conn.execute(
-                """
-                INSERT INTO edges_v2(id, source, target, type, legacy_type, weight,
-                                     confidence, evidence, metadata, created_by, created_at)
-                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-                ON CONFLICT(source, target, legacy_type) DO UPDATE SET
-                  type=excluded.type,
-                  weight=excluded.weight,
-                  confidence=excluded.confidence,
-                  evidence=excluded.evidence,
-                  metadata=excluded.metadata,
-                  created_by=excluded.created_by
-                """,
-                (
-                    edge.id, edge.source, edge.target, edge.type.value,
-                    edge.legacy_type or edge.type.value,
-                    float(edge.weight), float(edge.confidence),
-                    json.dumps(edge.evidence, ensure_ascii=False),
-                    json.dumps(edge.metadata, ensure_ascii=False),
-                    edge.created_by, edge.created_at,
-                ),
-            )
-        return edge.id
-
-    # ── Read ─────────────────────────────────────────────────
-    def get_node(self, node_id: str) -> Optional[Node]:
-        with self._conn() as conn:
-            row = conn.execute(
-                "SELECT * FROM nodes_v2 WHERE id = ?", (node_id,)
-            ).fetchone()
-        return _row_to_node(row) if row else None
-
-    def list_nodes(self, *, type: Optional[NodeType] = None,
-                   owner_id: Optional[str] = None,
-                   limit: int = 100) -> List[Node]:
-        sql = "SELECT * FROM nodes_v2 WHERE 1=1"
-        args: List[Any] = []
-        if type is not None:
-            sql += " AND type = ?"
-            args.append(type.value)
-        if owner_id is not None:
-            sql += " AND owner_id = ?"
-            args.append(owner_id)
-        sql += " ORDER BY updated_at DESC LIMIT ?"
-        args.append(int(limit))
-        with self._conn() as conn:
-            rows = conn.execute(sql, args).fetchall()
-        return [_row_to_node(r) for r in rows]
-
-    def neighbors(self, node_id: str, *,
-                  edge_type: Optional[EdgeType] = None,
-                  direction: str = "both",
-                  limit: int = 50) -> List[Tuple[Edge, Node]]:
-        """node_id 에 인접한 (edge, other_node) 페어를 반환."""
-        if direction not in ("out", "in", "both"):
-            raise ValueError("direction must be 'out' | 'in' | 'both'")
-        clauses, args = [], []
-        if direction in ("out", "both"):
-            clauses.append("source = ?"); args.append(node_id)
-        if direction in ("in", "both"):
-            clauses.append("target = ?"); args.append(node_id)
-        sql = f"SELECT * FROM edges_v2 WHERE ({' OR '.join(clauses)})"
-        if edge_type:
-            sql += " AND type = ?"; args.append(edge_type.value)
-        sql += " ORDER BY weight DESC, confidence DESC LIMIT ?"
-        args.append(int(limit))
-        with self._conn() as conn:
-            edges = [_row_to_edge(r) for r in conn.execute(sql, args).fetchall()]
-            out: List[Tuple[Edge, Node]] = []
-            for e in edges:
-                other_id = e.target if e.source == node_id else e.source
-                row = conn.execute(
-                    "SELECT * FROM nodes_v2 WHERE id = ?", (other_id,)
-                ).fetchone()
-                if row:
-                    out.append((e, _row_to_node(row)))
-        return out
-
-    def search_similar(self, vec: Sequence[float], *,
-                       top_k: int = 8,
-                       type: Optional[NodeType] = None,
-                       owner_id: Optional[str] = None) -> List[Tuple[Node, float]]:
-        """코사인 기반 semantic search. sqlite-vec 가 없을 때의 폴백 구현."""
-        if len(vec) != EMBED_DIM:
-            raise ValueError(f"query embedding dim must be {EMBED_DIM}")
-        sql = "SELECT * FROM nodes_v2 WHERE embedding IS NOT NULL"
-        args: List[Any] = []
-        if type is not None:
-            sql += " AND type = ?"; args.append(type.value)
-        if owner_id is not None:
-            sql += " AND owner_id = ?"; args.append(owner_id)
-        with self._conn() as conn:
-            rows = conn.execute(sql, args).fetchall()
-        scored = []
-        for r in rows:
-            emb = decode_embedding(r["embedding"])
-            if emb is None:
-                continue
-            scored.append((_row_to_node(r), cosine(vec, emb)))
-        scored.sort(key=lambda x: x[1], reverse=True)
-        return scored[:top_k]
-
     # ── Maintenance ──────────────────────────────────────────
     def stats(self) -> Dict[str, Any]:
         with self._conn() as conn:
@@ -799,45 +437,6 @@ class KGStoreV2:
             "by_node_type":   per_type,
             "by_edge_type":   per_edge,
         }
-
-
-# ── Row → model helpers ────────────────────────────────────────────────────
-def _row_to_node(row: sqlite3.Row) -> Node:
-    keys = row.keys() if hasattr(row, "keys") else []
-    return Node(
-        id=row["id"],
-        type=NodeType(row["type"]),
-        legacy_type=row["legacy_type"] if "legacy_type" in keys else None,
-        label=row["label"],
-        summary=row["summary"] if "summary" in keys else "",
-        attrs=json.loads(row["attrs"] or "{}"),
-        embedding=decode_embedding(row["embedding"]),
-        owner_id=row["owner_id"],
-        visibility=Visibility(row["visibility"]),
-        created_at=row["created_at"],
-        updated_at=row["updated_at"],
-        style=row["style"] if "style" in keys else None,
-        tone=row["tone"] if "tone" in keys else None,
-        importance_score=float(row["importance_score"]) if "importance_score" in keys else 0.0,
-        last_used=row["last_used"] if "last_used" in keys else None,
-    )
-
-
-def _row_to_edge(row: sqlite3.Row) -> Edge:
-    keys = row.keys() if hasattr(row, "keys") else []
-    return Edge(
-        id=row["id"],
-        source=row["source"],
-        target=row["target"],
-        type=EdgeType(row["type"]),
-        legacy_type=row["legacy_type"] if "legacy_type" in keys else None,
-        weight=float(row["weight"]),
-        confidence=float(row["confidence"]),
-        evidence=json.loads(row["evidence"] or "[]"),
-        metadata=json.loads(row["metadata"]) if "metadata" in keys and row["metadata"] else {},
-        created_by=row["created_by"],
-        created_at=row["created_at"],
-    )
 
 
 # NOTE: legacy → v2 reprojection lives in ``knowledge_graph.py``

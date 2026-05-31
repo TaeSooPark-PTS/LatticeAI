@@ -1,5 +1,40 @@
 # Changelog
 
+## [0.5.1] - 2026-05-31
+
+> KGStoreV2 정규화 스키마 + 마이그레이션 하드닝 + native API 정리(릴리스).
+
+### Changed
+
+- **KGStoreV2 정규화 스키마** — `attrs._kg` 패스스루 제거. legacy 자유문자열
+  노드/엣지 타입을 무손실 `NodeType`/`EdgeType` superset으로 정규화해 `type`에
+  저장하고 원본은 신규 `legacy_type` 칼럼에 보존. summary/metadata는 1급 칼럼으로
+  승격. 엣지 정체성은 `(source,target,legacy_type)`로 키잉해 정규화 충돌로 인한
+  엣지 소실 방지. `kgv2_*` 재구성 뷰가 legacy read를 byte-identical하게 유지.
+- **마이그레이션 하드닝** — `_init_v2_schema`의 DROP→CREATE→VIEWS→BACKFILL→
+  version-stamp 전 과정을 단일 트랜잭션(`BEGIN` + statement 단위 `_exec_script`)으로
+  원자화. 중간 실패 시 전부 롤백되어 이전 프로젝션·`projection_version` 보존, 다음
+  기동에서 재시도. 마이그레이션은 권위적 legacy `nodes`/`edges`를 절대 건드리지
+  않음. 프로젝션은 legacy `title`/`summary`/`metadata_json`을 verbatim 저장해
+  byte-faithful(절단·키 재정렬 제거, NULL summary round-trip).
+- **KGStoreV2 native API 정리** — production 미사용인 native 데이터 API
+  (`upsert_node`/`upsert_edge`/`get_node`/`list_nodes`/`neighbors`/`search_similar`)와
+  `Node`/`Edge`/`Visibility` 모델, 관련 헬퍼(`validate_endpoints`,
+  `EDGE_ENDPOINT_RULES`, `encode/decode_embedding`, `cosine`, row→model 변환)를
+  제거. `KGStoreV2`는 스키마/초기화/heal/stats 지원 역할만 유지. `kg_schema.py`
+  ~870→475줄. `test_document_generation`의 직접 `KGStoreV2` 의존을 제거하고
+  스키마/production 경로 검증으로 전환.
+
+### Removed
+
+- dead code: `migrate_legacy_to_v2()` 및 관련 헬퍼/CLI `migrate` 서브커맨드,
+  native KGStoreV2 데이터 API 및 모델, 미사용 import(`struct`/`uuid`/`dataclasses`
+  /`datetime` 등).
+
+### Internal
+
+- dual-write 불변식 런타임 진단 `_v2_sync_report()` 추가. 단위 테스트 192 통과.
+
 ## [0.5.0] - 2026-05-31
 
 > MLX 샘플링 API 호환성 버그 수정 + 릴리스 워크플로 build-only 전환.

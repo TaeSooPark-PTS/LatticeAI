@@ -1121,7 +1121,7 @@ async def lifespan(app: FastAPI):
             except Exception:
                 pass
 
-app = FastAPI(title=f"Lattice AI Server ({APP_MODE})", version="0.5.0", lifespan=lifespan)
+app = FastAPI(title=f"Lattice AI Server ({APP_MODE})", version="0.5.1", lifespan=lifespan)
 
 CORS_ALLOWED_ORIGINS = [
     f"http://localhost:{DEFAULT_PORT}",
@@ -3466,7 +3466,7 @@ async def verify_cloud_models(force: bool = False, provider_filter: Optional[str
 
 @app.get("/health")
 async def health(request: Request):
-    base = {"status": "ok", "version": "0.5.0", "mode": APP_MODE}
+    base = {"status": "ok", "version": "0.5.1", "mode": APP_MODE}
     if not get_current_user(request) and REQUIRE_AUTH:
         return base
     engines = await asyncio.to_thread(engine_status)
