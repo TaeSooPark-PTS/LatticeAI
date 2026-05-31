@@ -1,5 +1,46 @@
 # Changelog
 
+## [1.3.0] - 2026-05-31
+
+> Server app decomposition (phase 3) — safety-net suite first, then model & MCP router extraction.
+
+### Added
+
+- **Route-compatibility safety net** — `tests/unit/test_route_compatibility.py`
+  freezes the full public route surface (209 paths) plus import/startup,
+  streaming-contract, model/engine, and MCP/KG presence checks. Any dropped or
+  renamed endpoint, broken import, or removed `StreamingResponse` now fails the
+  suite immediately. This was built **before** moving code, per the decomposition
+  plan.
+- **Model / engine router** — `latticeai/api/models.py` (`create_models_router`)
+  now owns `/models*`, `/engines*` (install / verify-cloud / pull-model /
+  prepare-model[/stream]) and `/setup/set-api-key`. Heavy provider/runtime
+  helpers remain injected from server_app (no import cycle, no new import-time
+  side effects).
+- **MCP / skills / plugins router** — `latticeai/api/mcp.py` (`create_mcp_router`)
+  now owns `/mcp/*`, `/skills/*`, `/plugins/directory*`, and `/mcp/call`.
+  Registry/tool symbols are imported directly from `mcp_registry` / `tools` /
+  `tool_registry`; server_app-defined helpers are injected.
+
+### Changed
+
+- **server_app.py decomposition** — reduced from ~5,948 to ~5,382 lines by
+  extracting the model/engine and MCP/skills/plugins clusters (and their
+  request models) into the routers above. All API paths, request/response
+  schemas, the `server:app` import path, CLI, UI, KG/Admin/Security routers, and
+  VS Code integration are unchanged (asserted by the route snapshot test).
+- Release metadata aligned to `1.3.0`; `/health` reports `1.3.0`.
+
+### Notes
+
+- The chat/streaming cluster, the `/tools/*` · `/cu/*` · `/local/*` ·
+  `/upload` · `/permissions` clusters, and the ~1,700-line model/engine
+  *provider helper* block remain in server_app and are scheduled for the next
+  decomposition pass (the safety net now de-risks those moves). server_app.py is
+  not yet under the 2,000-line target.
+- CI hardening from 1.0.1/1.1.0 retained (VSIX compile guard, Node.js 24,
+  version-scoped artifact validation — no `dist/*` glob).
+
 ## [1.2.0] - 2026-05-31
 
 > Server app modularization (routers + service layer) and workspace/org guardrail hardening.

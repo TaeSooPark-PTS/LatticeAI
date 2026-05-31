@@ -9,6 +9,25 @@
 > PyPI / npm / VS Code Marketplace / Open VSX 배포는 아래 수동 절차로 로컬에서
 > 직접 인증 후 진행합니다. GitHub Secrets에 배포 토큰을 저장하지 않습니다.
 
+## v1.3.0 릴리스 노트 (2026-05-31)
+
+server_app.py 추가 분해(phase 3) — 안전망 우선 구축 후 model/MCP 라우터 추출.
+자세한 내용은 [`docs/CHANGELOG.md`](docs/CHANGELOG.md)의 `[1.3.0]` 항목 참고.
+
+- **Added**: route-compatibility 안전망(`tests/unit/test_route_compatibility.py`) —
+  209개 public path + import/startup + streaming/model/MCP/KG contract를 동결.
+  코드 이동 **전에** 구축해 누락/리네임/깨진 import를 즉시 검출.
+- **Added**: `latticeai/api/models.py`(`create_models_router`) — `/models*`,
+  `/engines*`, `/setup/set-api-key`. `latticeai/api/mcp.py`(`create_mcp_router`) —
+  `/mcp/*`, `/skills/*`, `/plugins/directory*`, `/mcp/call`.
+- **Changed**: server_app.py ~5,948 → ~5,382줄. API path/schema, `server:app`
+  import path, CLI/UI/KG/Admin/Security/VS Code 호환 전부 유지(route snapshot로 검증).
+- **Note**: chat/streaming, `/tools/*`·`/cu/*`·`/local/*`·`/upload`·`/permissions`,
+  ~1,700줄 model/engine provider helper 블록은 다음 패스로 이월(안전망이 이미
+  해당 이동을 de-risk). 2,000줄 목표는 아직 미달성.
+- CI 하드닝(VSIX compile guard, Node.js 24, 버전 한정 validator) 유지.
+- 테스트/빌드/패키징 산출물만 생성 — 어떤 배포도 수행하지 않음.
+
 ## v1.2.0 릴리스 노트 (2026-05-31)
 
 server_app.py 모듈화(routers + service layer) + workspace/org guardrail 강화.

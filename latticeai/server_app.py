@@ -106,6 +106,8 @@ from latticeai.services.model_service import ModelService
 from latticeai.services.chat_service import ChatService
 from latticeai.api.workspace import create_workspace_router
 from latticeai.api.health import create_health_router
+from latticeai.api.models import create_models_router
+from latticeai.api.mcp import create_mcp_router
 from latticeai.core.agent import (
     AgentState,
     AgentRunContext,
@@ -463,25 +465,7 @@ def save_sso_config(update: Dict[str, object]) -> Dict[str, object]:
     _sso_discovery_cache_url = ""
     return current
 
-class McpRecommendRequest(BaseModel):
-    query: str
-    limit: int = 5
-
-class McpInstallRequest(BaseModel):
-    mcp_id: str
-
-class McpCustomRequest(BaseModel):
-    name: str
-    package: str
-    description: str = ""
-    category: str = "custom"
-    icon: str = "🔌"
-    env_vars: List[Dict] = []
-
-class SkillInstallRequest(BaseModel):
-    plugin: str
-    skill: str
-
+# MCP/skill request models moved to latticeai.api.mcp (v1.3.0).
 DEFAULT_VPC_CONFIG = {
     "provider": "AWS",
     "region": "ap-northeast-2",
@@ -1404,36 +1388,7 @@ class ChatRequest(BaseModel):
     image_data: Optional[str] = None     # Base64 이미지 데이터 (VLM용)
 
 
-class LoadModelRequest(BaseModel):
-    model_id: str                         # HuggingFace repo id 또는 로컬 경로
-    adapter_path: Optional[str] = None   # LoRA adapter (선택)
-    draft_model_id: Optional[str] = None # Speculative decoding draft model (선택)
-    engine: Optional[str] = None
-    user_email: Optional[str] = None
-
-
-class InstallEngineRequest(BaseModel):
-    engine: str
-
-
-class SetApiKeyRequest(BaseModel):
-    provider: str
-    key: str
-    user_email: Optional[str] = None
-
-
-class PullModelRequest(BaseModel):
-    model: str
-
-class PrepareModelRequest(BaseModel):
-    model: str
-    engine: Optional[str] = None
-    user_email: Optional[str] = None
-
-class VerifyCloudRequest(BaseModel):
-    force: bool = False
-    provider: Optional[str] = None
-
+# Model/engine request models moved to latticeai.api.models (v1.3.0).
 
 # Workspace request models moved to latticeai.api.workspace (v1.2.0 modularization).
 
@@ -1589,10 +1544,6 @@ class LocalWriteRequest(BaseModel):
     approved: bool = False
     approval_token: Optional[str] = None
 
-
-class McpCallRequest(BaseModel):
-    action: str
-    args: Dict = {}
 
 
 class ToolGitDiffRequest(BaseModel):
@@ -3578,251 +3529,33 @@ app.include_router(create_health_router(
 ))
 
 
-@app.post("/engines/install")
-async def engines_install(req: InstallEngineRequest, request: Request):
-    require_user(request)
-    return install_engine(req.engine)
-
-@app.post("/engines/verify-cloud")
-async def engines_verify_cloud(req: VerifyCloudRequest, request: Request):
-    require_user(request)
-    results = await verify_cloud_models(force=req.force, provider_filter=req.provider)
-    return {"verified": results, "ttl_seconds": CLOUD_VERIFY_TTL_SECONDS}
-
-
-@app.post("/engines/pull-model")
-async def pull_ollama_model(req: PullModelRequest, request: Request):
-    require_user(request)
-    model_ref = normalize_local_model_request(req.model, None)
-    if not model_ref:
-        raise HTTPException(status_code=400, detail="모델 식별자가 비어 있습니다.")
-
-    if ":" in model_ref and model_ref.split(":", 1)[0].strip().lower() in {"ollama", "vllm", "lmstudio", "llamacpp", "local_mlx", "mlx"}:
-        provider, model_name = model_ref.split(":", 1)
-        provider = provider.strip().lower()
-        model_name = model_name.strip()
-    else:
-        provider, model_name = "local_mlx", model_ref
-
-    if not model_name:
-        raise HTTPException(status_code=400, detail="모델 이름이 비어 있습니다.")
-
-    if provider == "ollama":
-        ensure_ollama_server()
-        ollama = local_binary("ollama")
-        if not ollama:
-            raise HTTPException(status_code=400, detail="Ollama가 설치되지 않았습니다.")
-        try:
-            completed = subprocess.run(
-                [ollama, "pull", model_name],
-                capture_output=True, text=True, timeout=900, check=False,
-            )
-        except subprocess.TimeoutExpired:
-            raise HTTPException(status_code=408, detail="모델 다운로드 시간이 초과되었습니다.")
-        if completed.returncode != 0:
-            raise HTTPException(status_code=500, detail=completed.stderr[-2000:] or "pull 실패")
-        return {"provider": provider, "model": model_name, "returncode": completed.returncode}
-
-    if provider == "lmstudio":
-        raise HTTPException(
-            status_code=400,
-            detail=(
-                "LM Studio 모델은 Lattice에서 Hugging Face로 pull하지 않습니다. "
-                "LM Studio 앱에서 모델을 다운로드하고 Local Server를 켠 뒤 모델을 로드하세요. "
-                "그러면 모델 선택창에 실제 /v1/models 항목이 표시됩니다."
-            ),
-        )
-
-    if provider in {"vllm", "llamacpp", "local_mlx", "mlx"}:
-        download_provider = "local_mlx" if provider == "mlx" else provider
-        result = download_hf_model(model_name, download_provider)
-        return {"provider": provider, "model": model_name, "returncode": 0, **result}
-
-    raise HTTPException(status_code=400, detail=f"{provider} 엔진 모델 다운로드는 아직 자동화되지 않았습니다.")
-
-
-@app.post("/engines/prepare-model")
-async def engines_prepare_model(req: PrepareModelRequest, request: Request):
-    require_user(request)
-    return await prepare_and_load_model(
-        req.model,
-        request,
-        engine=req.engine,
-        user_email=req.user_email,
-    )
-
-
-@app.post("/engines/prepare-model/stream")
-async def engines_prepare_model_stream(req: PrepareModelRequest, request: Request):
-    require_user(request)
-
-    async def event_stream():
-        try:
-            async for chunk in prepare_and_load_model_stream(
-                req.model,
-                request,
-                engine=req.engine,
-                user_email=req.user_email,
-            ):
-                yield chunk
-        except HTTPException as exc:
-            yield sse_event("error", {
-                "status_code": exc.status_code,
-                "detail": exc.detail or "모델 준비에 실패했습니다.",
-            })
-        except Exception as exc:
-            logging.exception("model prepare stream failed")
-            yield sse_event("error", {
-                "status_code": 500,
-                "detail": str(exc)[-1000:] or "모델 준비에 실패했습니다.",
-            })
-
-    return StreamingResponse(
-        event_stream(),
-        media_type="text/event-stream",
-        headers={"Cache-Control": "no-cache", "X-Accel-Buffering": "no"},
-    )
-
-
-@app.post("/setup/set-api-key")
-async def set_api_key(req: SetApiKeyRequest, request: Request):
-    from llm_router import OPENAI_COMPATIBLE_PROVIDERS
-    config = OPENAI_COMPATIBLE_PROVIDERS.get(req.provider)
-    if not config:
-        raise HTTPException(status_code=400, detail="알 수 없는 프로바이더입니다.")
-    if not req.key.strip():
-        raise HTTPException(status_code=400, detail="API 키가 비어있습니다.")
-    current_user = get_current_user(request)
-    if REQUIRE_AUTH and not current_user:
-        raise HTTPException(status_code=401, detail="인증이 필요합니다.")
-    # req.user_email 을 통한 타 계정 위조를 방지: 관리자가 아니면 본인 이메일만 허용
-    if req.user_email and req.user_email != current_user:
-        users = load_users()
-        if get_user_role(current_user or "", users) != "admin":
-            raise HTTPException(status_code=403, detail="다른 사용자의 API 키를 설정할 권한이 없습니다.")
-    target_email = (req.user_email or current_user or "").strip()
-    if not target_email:
-        raise HTTPException(status_code=400, detail="사용자 식별이 필요합니다. 로그인 후 다시 시도하세요.")
-    set_user_api_key(target_email, req.provider, req.key.strip())
-    return {"ok": True, "provider": req.provider, "user_email": target_email, "scope": "user"}
-
-
-def _recommended_with_engine_options(items: List[Dict[str, object]]) -> List[Dict[str, object]]:
-    """피드백 #1: 추천 모델에 엔진별 선택지(engine_options)를 붙여 내려준다.
-
-    프론트에서 추천 카드를 누르는 순간 어느 엔진/실제 모델로 다운로드/로드할지가
-    이미 확정되도록 한다.
-    """
-    out: List[Dict[str, object]] = []
-    for item in items:
-        base = {
-            "id": item["id"],
-            "name": item["name"],
-            "tag": item["tag"],
-            "size": item["size"],
-            "display_name": item.get("name") or item.get("id"),
-        }
-        short_id = str(item["id"]).lower()
-        aliases = MODEL_ENGINE_ALIASES.get(short_id) or {}
-        options: List[Dict[str, str]] = []
-        for engine_name in ("local_mlx", "ollama", "lmstudio", "llamacpp", "vllm"):
-            real = aliases.get(engine_name)
-            if not real:
-                continue
-            options.append({
-                "engine": engine_name,
-                "model_id": real,
-                "load_id": real if engine_name == "local_mlx" else f"{engine_name}:{real}",
-            })
-        # 어느 엔진도 alias가 없으면 local_mlx 카탈로그 자체를 사용한다.
-        if not options:
-            options.append({
-                "engine": "local_mlx",
-                "model_id": item["id"],
-                "load_id": item["id"],
-            })
-        base["engine_options"] = options
-        base["recommended_engine"] = options[0]["engine"]
-        out.append(base)
-    return out
-
-
-@app.get("/models")
-async def list_models():
-    """HuggingFace 추천 모델 목록 및 로드 상태 반환"""
-    recommended = _recommended_with_engine_options(
-        list(filter_lower_family_versions(ENGINE_MODEL_CATALOG.get("local_mlx", [])))
-    )
-    return {
-        "recommended": recommended,
-        "cloud": router.detected_cloud_models(),
-        "engines": await asyncio.to_thread(engine_status),
-        "loaded": router.loaded_model_ids,
-        "current": router.current_model_id,
-        "compat_profiles": _list_compat_profiles(),
-    }
-
-
-@app.get("/models/compat-profiles")
-async def list_model_compat_profiles(request: Request):
-    """피드백 #3: Model Compatibility Layer 캐시 상태를 조회한다."""
-    require_user(request)
-    return {"profiles": _list_compat_profiles()}
-
-
-# ── Model Management ───────────────────────────────────────────────────────────
-
-@app.post("/models/load")
-async def load_model(req: LoadModelRequest, request: Request):
-    """모델 로드 (이미 로드됐으면 캐시에서 즉시 반환)"""
-    try:
-        model_id = req.model_id
-        requested_engine = req.engine or (model_id.split(":", 1)[0] if ":" in model_id else "local_mlx")
-        if IS_PUBLIC_MODE and not ALLOW_LOCAL_MODELS and requested_engine in {"local_mlx", "mlx"}:
-            raise HTTPException(
-                status_code=400,
-                detail="Public mode blocks local MLX model loading. Use openai:, openrouter:, groq:, together:, or set LATTICEAI_ALLOW_LOCAL_MODELS=true.",
-            )
-        return await prepare_and_load_model(
-            model_id,
-            request,
-            engine=req.engine,
-            user_email=req.user_email,
-            adapter_path=req.adapter_path,
-            draft_model_id=req.draft_model_id,
-        )
-    except HTTPException:
-        raise
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
-
-
-@app.post("/models/switch/{model_id:path}")
-async def switch_model(model_id: str, request: Request):
-    """이미 로드된 모델 중 활성 모델 전환 (즉시, 재로드 없음)"""
-    require_user(request)
-    try:
-        router.switch_model(model_id)
-        return {"status": "ok", "current": router.current_model_id}
-    except KeyError:
-        raise HTTPException(status_code=404, detail=f"Model '{model_id}' not loaded. Call /models/load first.")
-
-
-@app.delete("/models/unload/{model_id:path}")
-async def unload_model(model_id: str, request: Request):
-    """모델 언로드 → 메모리 해제"""
-    require_user(request)
-    router.unload_model(model_id)
-    return {"status": "ok", "unloaded": model_id}
-
-
-@app.delete("/models/unload-all")
-async def unload_all_models(request: Request):
-    """로드된 모든 모델 언로드 → 메모리 해제"""
-    require_user(request)
-    unloaded = router.loaded_model_ids
-    router.unload_all()
-    return {"status": "ok", "unloaded": unloaded}
+# ── Model / Engine router (latticeai.api.models, v1.3.0) ─────────────────────
+app.include_router(create_models_router(
+    model_router=router,
+    require_user=require_user,
+    get_current_user=get_current_user,
+    load_users=load_users,
+    get_user_role=get_user_role,
+    install_engine=install_engine,
+    verify_cloud_models=verify_cloud_models,
+    normalize_local_model_request=normalize_local_model_request,
+    download_hf_model=download_hf_model,
+    prepare_and_load_model=prepare_and_load_model,
+    prepare_and_load_model_stream=prepare_and_load_model_stream,
+    sse_event=sse_event,
+    ensure_ollama_server=ensure_ollama_server,
+    local_binary=local_binary,
+    engine_status=engine_status,
+    filter_lower_family_versions=filter_lower_family_versions,
+    list_compat_profiles=_list_compat_profiles,
+    set_user_api_key=set_user_api_key,
+    engine_model_catalog=ENGINE_MODEL_CATALOG,
+    model_engine_aliases=MODEL_ENGINE_ALIASES,
+    cloud_verify_ttl_seconds=CLOUD_VERIFY_TTL_SECONDS,
+    is_public_mode=IS_PUBLIC_MODE,
+    allow_local_models=ALLOW_LOCAL_MODELS,
+    require_auth=REQUIRE_AUTH,
+))
 
 
 # ── Chat / Completion ──────────────────────────────────────────────────────────
@@ -5466,324 +5199,24 @@ async def tools_permissions(request: Request):
     return {"status": "ok", "permissions": list_tool_permissions()}
 
 
-@app.get("/mcp/tools")
-async def mcp_tools():
-    installed = load_mcp_installs().get("installed", {})
-    registry = await _get_combined_registry()
-    tools = []
-    for name, description in MCP_TOOL_DESCRIPTIONS.items():
-        policy = TOOL_GOVERNANCE.get(name, _TOOL_GOVERNANCE_DEFAULT)
-        tools.append({
-            "name": name,
-            "description": description,
-            "permission": get_tool_permission(name),
-            "governance": {
-                "risk":         policy["risk"],
-                "destructive":  policy["destructive"],
-                "shell":        policy["shell"],
-                "network":      policy["network"],
-                "auto_approve": policy["auto_approve"],
-                "sandbox":      policy["sandbox"],
-                "rollback":     policy["rollback"],
-            },
-        })
-    return {
-        "status": "ok",
-        "workspace": str(AGENT_ROOT),
-        "installed_mcps": [mcp_public_item(item, installed) for item in registry],
-        "tools": tools,
-    }
-
-
-@app.post("/mcp/recommend")
-async def mcp_recommend(req: McpRecommendRequest, request: Request):
-    require_user(request)
-    return {"recommendations": await recommend_mcps(req.query, req.limit)}
-
-
-@app.post("/mcp/install")
-async def mcp_install(req: McpInstallRequest, request: Request):
-    admin_email, _ = require_admin(request)
-    append_audit_event("mcp_install", user_email=admin_email, mcp_id=req.mcp_id)
-    return await install_mcp(req.mcp_id)
-
-
-@app.get("/mcp/installed")
-async def mcp_installed(request: Request):
-    require_user(request)
-    installed = load_mcp_installs().get("installed", {})
-    registry = await _get_combined_registry()
-    return {"installed": [mcp_public_item(item, installed) for item in registry]}
-
-
-@app.get("/mcp/connectors/{mcp_id}")
-async def mcp_connector(mcp_id: str, request: Request):
-    require_user(request)
-    registry = await _get_combined_registry()
-    item = next((e for e in registry if e["id"] == mcp_id), None)
-    if not item or item.get("install_mode") != "connector":
-        raise HTTPException(status_code=404, detail="커넥터를 찾을 수 없습니다.")
-    installed = load_mcp_installs().get("installed", {})
-    public = mcp_public_item(item, installed)
-    public["instructions"] = [
-        "Codex 또는 ChatGPT 앱의 Connectors 설정을 엽니다.",
-        f"{item['name']} 항목을 선택하고 계정을 인증합니다.",
-        "인증 후 Lattice AI에서 이 MCP를 다시 활성화하면 작업에 사용할 수 있습니다.",
-    ]
-    return public
-
-
-@app.post("/mcp/registry/refresh")
-async def mcp_registry_refresh(request: Request):
-    require_user(request)
-    mcp_registry._REMOTE_REGISTRY_FETCHED_AT = None
-    registry = await _get_combined_registry()
-    return {"status": "ok", "total": len(registry), "remote": len(mcp_registry._REMOTE_REGISTRY_CACHE)}
-
-
-@app.get("/mcp/claude-code-servers")
-async def mcp_claude_code_servers(request: Request):
-    """Read ~/.claude/settings.json mcpServers and return them as Lattice MCP items."""
-    require_user(request)
-    settings_path = Path.home() / ".claude" / "settings.json"
-    if not settings_path.exists():
-        return {"servers": []}
-    try:
-        with open(settings_path, "r", encoding="utf-8") as f:
-            settings = json.load(f)
-        mcp_servers = settings.get("mcpServers", {})
-        servers = []
-        for name, cfg in mcp_servers.items():
-            cmd = cfg.get("command", "")
-            args = cfg.get("args", [])
-            package = " ".join([cmd] + args) if args else cmd
-            env = cfg.get("env", {})
-            env_vars = [{"name": k, "value": v} for k, v in env.items()]
-            servers.append({
-                "id": f"claude-code:{name}",
-                "name": name,
-                "description": f"Claude Code MCP: {package}",
-                "package": package,
-                "icon": "🤖",
-                "category": "Claude Code",
-                "source": "claude-code",
-                "installed": True,
-                "env_vars": env_vars,
-            })
-        return {"servers": servers}
-    except Exception as e:
-        logging.warning("mcp_claude_code_servers failed: %s", e)
-        return {"servers": []}
-
-
-_CUSTOM_MCP_FILE = DATA_DIR / "custom_mcps.json"
-
-def _load_custom_mcps() -> List[Dict]:
-    if not _CUSTOM_MCP_FILE.exists():
-        return []
-    try:
-        with open(_CUSTOM_MCP_FILE, "r", encoding="utf-8") as f:
-            return json.load(f)
-    except Exception:
-        return []
-
-def _save_custom_mcps(items: List[Dict]):
-    with open(_CUSTOM_MCP_FILE, "w", encoding="utf-8") as f:
-        json.dump(items, f, ensure_ascii=False, indent=2)
-
-
-@app.get("/mcp/custom")
-async def mcp_custom_list(request: Request):
-    """Return user-added custom MCP entries."""
-    require_user(request)
-    return {"custom": _load_custom_mcps()}
-
-
-@app.post("/mcp/custom")
-async def mcp_custom_add(req: McpCustomRequest, request: Request):
-    """Save a custom MCP entry (admin-only)."""
-    admin_email, _ = require_admin(request)
-    append_audit_event("mcp_custom_add", user_email=admin_email, name=req.name, package=req.package)
-    if not req.name.strip():
-        raise HTTPException(status_code=400, detail="name은 필수입니다.")
-    if not req.package.strip():
-        raise HTTPException(status_code=400, detail="package는 필수입니다.")
-    items = _load_custom_mcps()
-    entry = {
-        "id": f"custom:{req.name.strip().lower().replace(' ', '-')}",
-        "name": req.name.strip(),
-        "package": req.package.strip(),
-        "description": req.description.strip(),
-        "category": req.category or "custom",
-        "icon": req.icon or "🔌",
-        "env_vars": req.env_vars or [],
-        "install_mode": "npm",
-        "source": "custom",
-        "installed": False,
-        "added_at": datetime.now().isoformat(),
-    }
-    # overwrite if same id
-    items = [e for e in items if e["id"] != entry["id"]]
-    items.append(entry)
-    _save_custom_mcps(items)
-    return {"status": "ok", "entry": entry}
-
-
-@app.delete("/mcp/custom/{mcp_id:path}")
-async def mcp_custom_delete(mcp_id: str, request: Request):
-    """Remove a custom MCP entry."""
-    require_admin(request)
-    items = _load_custom_mcps()
-    before = len(items)
-    items = [e for e in items if e["id"] != mcp_id]
-    if len(items) == before:
-        raise HTTPException(status_code=404, detail="항목을 찾을 수 없습니다.")
-    _save_custom_mcps(items)
-    return {"status": "ok"}
-
-
-# ── Skills & Plugin Directory endpoints ───────────────────────────────────────
-
-@app.get("/skills/marketplace")
-async def skills_marketplace(request: Request, category: Optional[str] = None, author: Optional[str] = None):
-    """Skills 마켓플레이스 (Anthropic Apache-2.0 + 검증된 서드파티 MIT/Apache-2.0)"""
-    require_user(request)
-    skills = await _fetch_skills_marketplace()
-    installed_names = {d.name for d in SKILLS_DIR.iterdir() if d.is_dir()} if SKILLS_DIR.exists() else set()
-    filtered = skills
-    if category:
-        filtered = [s for s in filtered if s.get("category", "").lower() == category.lower()]
-    if author:
-        filtered = [s for s in filtered if s.get("author", "").lower() == author.lower()]
-    return {
-        "skills": [{**s, "installed": s["skill"] in installed_names} for s in filtered],
-        "total": len(filtered),
-        "authors": sorted({s["author"] for s in skills}),
-        "categories": sorted({s["category"] for s in skills}),
-    }
-
-
-@app.post("/skills/install")
-async def skills_install(req: SkillInstallRequest, request: Request):
-    """skill을 로컬 skills 디렉터리에 설치 (Apache-2.0 / MIT, 관리자 전용)"""
-    admin_email, _ = require_admin(request)
-    append_audit_event("skill_install", user_email=admin_email, plugin=req.plugin, skill=req.skill)
-    return await install_skill(req.plugin, req.skill)
-
-
-@app.get("/skills/list")
-async def skills_list(request: Request):
-    """로컬에 설치된 skills 목록"""
-    require_user(request)
-    if not SKILLS_DIR.exists():
-        return {"skills": []}
-    skills = []
-    for skill_dir in sorted(SKILLS_DIR.iterdir()):
-        if not skill_dir.is_dir():
-            continue
-        skill_md = skill_dir / "SKILL.md"
-        if not skill_md.exists():
-            continue
-        lines = skill_md.read_text(encoding="utf-8").splitlines()
-        desc = next((l.split(":", 1)[1].strip() for l in lines if l.startswith("description:")), "")
-        comment = lines[0] if lines else ""
-        if "anthropics/claude-plugins-official" in comment:
-            source = "anthropic"
-        elif "Source:" in comment:
-            source = "third-party"
-        else:
-            source = "local"
-        skills.append({"name": skill_dir.name, "description": desc, "source": source})
-    return {"skills": skills, "total": len(skills)}
-
-
-@app.post("/skills/marketplace/refresh")
-async def skills_marketplace_refresh(request: Request):
-    """Skills 마켓플레이스 캐시 강제 갱신"""
-    require_user(request)
-    mcp_registry._SKILLS_MARKETPLACE_FETCHED_AT = None
-    skills = await _fetch_skills_marketplace()
-    by_author = {}
-    for s in skills:
-        by_author[s["author"]] = by_author.get(s["author"], 0) + 1
-    return {"status": "ok", "total": len(skills), "by_author": by_author}
-
-
-@app.get("/plugins/directory")
-async def plugins_directory(
-    request: Request,
-    category: Optional[str] = None,
-    license: Optional[str] = None,
-    q: Optional[str] = None,
-):
-    """오픈소스 플러그인 디렉터리 (Apache-2.0 / MIT / MIT-0, 런타임 fetch)"""
-    require_user(request)
-    plugins = await _fetch_plugin_directory()
-    filtered = plugins
-    if category:
-        filtered = [p for p in filtered if p.get("category", "").lower() == category.lower()]
-    if license:
-        filtered = [p for p in filtered if p.get("license", "").lower() == license.lower()]
-    if q:
-        q_lower = q.lower()
-        filtered = [
-            p for p in filtered
-            if q_lower in p.get("name", "").lower()
-            or q_lower in p.get("description", "").lower()
-            or q_lower in p.get("author", "").lower()
-        ]
-    return {
-        "plugins": filtered,
-        "total": len(filtered),
-        "categories": sorted({p["category"] for p in plugins if p.get("category")}),
-        "licenses": sorted({p["license"] for p in plugins if p.get("license")}),
-    }
-
-
-@app.post("/plugins/directory/refresh")
-async def plugins_directory_refresh(request: Request):
-    """플러그인 디렉터리 캐시 강제 갱신"""
-    require_user(request)
-    mcp_registry._PLUGIN_DIRECTORY_FETCHED_AT = None
-    plugins = await _fetch_plugin_directory()
-    by_license = {}
-    for p in plugins:
-        lic = p.get("license", "unknown")
-        by_license[lic] = by_license.get(lic, 0) + 1
-    return {"status": "ok", "total": len(plugins), "by_license": by_license}
-
-
-@app.post("/mcp/call")
-async def mcp_call(req: McpCallRequest, request: Request):
-    current_user = require_user(request)
-    args = req.args or {}
-    if req.action == "knowledge_graph_ingest":
-        _require_graph()
-        return KNOWLEDGE_GRAPH.ingest_message(
-            args.get("role") or ("assistant" if args.get("type") == "ai_response" else "user"),
-            args.get("content") or "",
-            user_email=args.get("user_email") or current_user,
-            user_nickname=args.get("user_nickname"),
-            source=args.get("source") or "mcp",
-            conversation_id=args.get("conversation_id"),
-            raw=args,
-        )
-    if req.action == "knowledge_graph_search":
-        _require_graph()
-        return KNOWLEDGE_GRAPH.search(args.get("query") or args.get("q") or "", args.get("limit", 30))
-    if req.action == "knowledge_graph_graph":
-        _require_graph()
-        return KNOWLEDGE_GRAPH.graph(args.get("limit", 300))
-    if req.action == "knowledge_graph_context":
-        _require_graph()
-        return {
-            "context": KNOWLEDGE_GRAPH.context_for_query(
-                args.get("query") or args.get("q") or "",
-                args.get("limit", 6),
-            )
-        }
-    _check_tool_role(req.action, current_user)
-    return _tool_response(execute_tool, req.action, req.args or {})
+# ── MCP / skills / plugins router (latticeai.api.mcp, v1.3.0) ────────────────
+app.include_router(create_mcp_router(
+    require_user=require_user,
+    require_admin=require_admin,
+    append_audit_event=append_audit_event,
+    load_mcp_installs=load_mcp_installs,
+    recommend_mcps=recommend_mcps,
+    install_mcp=install_mcp,
+    mcp_public_item=mcp_public_item,
+    get_tool_permission=get_tool_permission,
+    tool_governance=TOOL_GOVERNANCE,
+    tool_governance_default=_TOOL_GOVERNANCE_DEFAULT,
+    check_tool_role=_check_tool_role,
+    tool_response=_tool_response,
+    require_graph=_require_graph,
+    knowledge_graph=KNOWLEDGE_GRAPH,
+    data_dir=DATA_DIR,
+))
 
 
 # ── P-Reinforce Knowledge Gardener ────────────────────────────────────────────

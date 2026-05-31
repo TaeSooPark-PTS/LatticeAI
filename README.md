@@ -36,6 +36,18 @@ Automatic knowledge graph
 Graph-aware chat, snapshots, memory, agents, workflows, skills, and timeline
 ```
 
+### New in 1.3.0: Server App Decomposition
+
+- **server_app.py decomposition** — model/engine and MCP/skills/plugins
+  endpoints extracted into `latticeai/api/models.py` and `latticeai/api/mcp.py`
+  (~5,948 → ~5,382 lines)
+- **Safety validation suite** — a route-compatibility snapshot (209 paths) plus
+  import/startup, streaming-contract, and model/MCP/KG checks, built before the
+  move so no endpoint can silently change
+- **Compatibility preserved** — all API paths, request/response schemas, the
+  `server:app` import path, CLI, UI, KG/Admin/Security routers, and VS Code
+  integration are unchanged
+
 ### New in 1.2.0: Server App Modularization
 
 - **server_app.py modularized** — Workspace/Organization and health/engine
