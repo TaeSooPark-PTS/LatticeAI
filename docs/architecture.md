@@ -1,156 +1,260 @@
-# Lattice AI — 아키텍처
+# Lattice AI v2.1 Architecture
 
-## 전체 구조
+Lattice AI v2.1.0 is a local-first Agentic Workspace Platform. The current
+architecture is no longer the older v1.x "single `server.py` owns everything"
+shape; `server.py` remains only a compatibility shim while
+`latticeai.server_app.app` assembles focused routers, services, and core runtime
+modules.
 
-```
-┌─────────────────────────────────────────────────────────┐
-│                    클라이언트 레이어                      │
-│  웹 UI (chat.html)  │  VS Code 확장  │  Telegram 봇     │
-└──────────────────────────┬──────────────────────────────┘
-                           │ HTTP / SSE
-┌──────────────────────────▼──────────────────────────────┐
-│               server.py — FastAPI (port 4825)            │
-│                                                          │
-│  /chat  /agent  /models  /tools/*  /mcp/*  /garden      │
-│  /account  /admin  /auth/sso  /knowledge-graph  /graph   │
-└────┬──────────┬──────────┬──────────┬───────────────────┘
-     │          │          │          │
-     ▼          ▼          ▼          ▼
-llm_router  tools.py  knowledge_  p_reinforce
-  .py               graph.py      .py
-     │
-     ├── MLX (mlx_lm / mlx_vlm)   ← Apple Silicon 로컬
-     ├── OpenAI SDK                ← openai / groq / together / openrouter
-     └── Ollama / vLLM REST        ← 로컬 서버 연동
-```
+The current platform centers on these layers:
 
-## 파일별 역할
+- **Workspace OS**: local-first state, workspace scopes, timeline, memory,
+  agent/workflow run history, handoffs, snapshots, and marketplace registry.
+- **Knowledge Graph**: graph ingestion and relationship lookup for chats,
+  files, workflows, agent runs, memories, and workspace events.
+- **PlatformRuntime**: the service layer that gates requests and wires
+  workflows, agents, plugins, tools, skills, realtime, and graph persistence.
+- **Plugin SDK**: local `plugin.json` manifests, permission grants, lifecycle,
+  bundled skills, and permissioned action execution.
+- **Workflow Designer / Workflow Engine**: bounded node graphs that run tools,
+  skills, plugins, agents, conditions, and outputs.
+- **Multi-Agent Runtime**: role orchestration, handoffs, context packets,
+  review/retry loops, planning records, memory snapshots, and replay frames.
+- **Realtime Collaboration**: SSE activity feed, presence, scoped event replay,
+  and timeline-driven execution observability.
+- **Marketplace Foundation**: local plugin, workflow, and agent templates with
+  export/import/install hooks.
 
-| 파일 | 역할 |
-|------|------|
-| `server.py` | FastAPI 앱, 모든 HTTP 엔드포인트, 인증/세션/CORS/rate limit |
-| `ltcai_cli.py` | CLI 엔트리포인트 (`LTCAI` 명령), `doctor` 서브커맨드, uvicorn 실행 |
-| `llm_router.py` | 로컬(MLX/Ollama) ↔ 클라우드(OpenAI/Groq/…) 라우팅, 스트리밍 SSE |
-| `tools.py` | 에이전트 도구 구현: read_file, edit_file, grep, run_command, todo_write/read, 스크린샷 등 |
-| `knowledge_graph.py` | SQLite 지식 그래프 (노드/엣지/청크), Graph RAG 컨텍스트 주입 |
-| `p_reinforce.py` | P-Reinforce 지식 정원 엔진, `~/.ltcai-brain/` 분류 저장 |
-| `telegram_bot.py` | 로컬 AI Telegram 미러 봇 |
-| `codex_telegram_bot.py` | 클라우드 Codex Telegram 봇 (GPT + GitHub 이슈) |
-| `vscode-extension/` | TypeScript VS Code 확장 |
-| `static/` | 웹 UI HTML (chat, account, admin, graph), PWA manifest/SW |
-| `bin/ltcai.js` | npm CLI 엔트리포인트 (Python 환경 자동 부트스트랩) |
+`docs/V2_ARCHITECTURE.md` is the deeper design note for these subsystems. This
+file is the concise current architecture map and compatibility/security boundary
+reference.
 
-## 데이터 흐름
+## Current Architecture Diagram
 
-### 채팅 요청
+```mermaid
+flowchart TB
+    subgraph Clients["Clients and Compatibility Entrypoints"]
+        Web["Web UI"]
+        VSCode["VS Code / Cursor extension"]
+        CLI["CLI / npm bin"]
+        MCP["MCP / Telegram / local integrations"]
+        ServerCompat["server:app compatibility"]
+    end
 
-```
-브라우저 → POST /chat
-  → server.py: 인증 확인, rate limit
-  → llm_router.py: 모델 선택 (로컬/클라우드)
-  → knowledge_graph.py: Graph RAG 컨텍스트 조회 + 주입
-  → LLM 스트리밍 응답 (SSE)
-  → knowledge_graph.py: 메시지/응답 인제스트
-```
+    ServerCompat --> App["latticeai.server_app.app"]
+    CLI --> App
+    Web --> App
+    VSCode --> App
+    MCP --> App
 
-### 에이전트 요청
+    subgraph API["FastAPI Routers"]
+        Legacy["v1.x routes: chat, agent, models, tools, workspace, KG, MCP"]
+        PlatformRoutes["v2.1 routes: plugins, workflows, agents, marketplace, realtime"]
+        Static["static UI pages"]
+    end
 
-```
-브라우저/VS Code → POST /agent
-  → server.py: 인증 확인, rate limit (6/분)
-  → llm_router.py: Discover→Plan→Implement→Verify 루프 (max 25스텝)
-  → tools.py: read_file / edit_file / grep / run_command / todo_*
-  → 각 스텝 결과 스트리밍
-```
+    App --> API
 
-### 문서 업로드
+    subgraph Services["Service Layer"]
+        Runtime["PlatformRuntime"]
+        WorkspaceService["WorkspaceService"]
+        ModelRuntime["Model / tool / upload services"]
+    end
 
-```
-브라우저 → POST /upload
-  → server.py: magic-number 검증, rate limit (12/분)
-  → tools.py: PDF/DOCX/XLSX/PPTX 파싱
-  → knowledge_graph.py: Chunk/Page/Sheet/Slide 노드 인제스트
-  → blob 저장: ~/.ltcai/knowledge_graph_blobs/
-```
+    API --> Runtime
+    API --> WorkspaceService
+    API --> ModelRuntime
 
-## 데이터 저장소
+    subgraph Core["Core Platform"]
+        WorkspaceOS["Workspace OS Store"]
+        KG["Knowledge Graph"]
+        Plugins["PluginRegistry"]
+        Workflow["WorkflowEngine"]
+        Agents["MultiAgentOrchestrator"]
+        Realtime["RealtimeBus (SSE)"]
+        Marketplace["TemplateCatalog"]
+    end
 
-```
-~/.ltcai/
-├── users.json                   # 사용자 계정 (scrypt 해시)
-├── sessions.json                # 세션 토큰 (24h TTL)
-├── chat_history.json            # 채팅 히스토리
-├── knowledge_graph.sqlite       # Graph RAG SQLite DB
-├── knowledge_graph_blobs/       # 원본 업로드 파일
-├── mcp_installs.json            # MCP 서버 설치 목록
-└── todos.json                   # 에이전트 TODO 리스트
+    Runtime --> WorkspaceOS
+    Runtime --> KG
+    Runtime --> Plugins
+    Runtime --> Workflow
+    Runtime --> Agents
+    Runtime --> Realtime
+    Runtime --> Marketplace
 
-~/.ltcai-brain/
-├── INDEX.md
-├── 00_Raw/
-├── 10_Wiki/
-├── 20_Skills/
-├── 30_Projects/
-└── 40_Log/
-```
+    subgraph LocalData["Local-first Data"]
+        State["~/.ltcai/workspace_os.json"]
+        GraphDB["~/.ltcai/knowledge_graph.sqlite"]
+        Blobs["~/.ltcai/knowledge_graph_blobs/"]
+        Snapshots["~/.ltcai/workspace_snapshots/"]
+        Brain["~/.ltcai-brain/"]
+        PluginDirs["plugins/ and skills/"]
+    end
 
-## 인증 흐름
-
-```
-POST /login (username + password)
-  → scrypt 검증
-  → 세션 토큰 생성 (UUID, 24h TTL)
-  → Set-Cookie: session=<token>; HttpOnly; SameSite=Lax
-
-모든 민감 엔드포인트:
-  → _require_auth(): 쿠키 검증 → User 반환 또는 401
+    WorkspaceOS --> State
+    WorkspaceOS --> Snapshots
+    WorkspaceOS --> Brain
+    KG --> GraphDB
+    KG --> Blobs
+    Plugins --> PluginDirs
+    Marketplace --> State
+    Realtime --> Web
+    Realtime --> VSCode
 ```
 
-SSO (OIDC):
+## Source Of Truth
 
-```
-GET /auth/sso/login → 리디렉션 (Entra ID / Okta)
-GET /auth/sso/callback?code=... → 토큰 교환 → 세션 생성
-```
+| Surface | Current source |
+| --- | --- |
+| ASGI app assembly | `latticeai/server_app.py` |
+| Compatibility entrypoint | `server.py` exposes `server:app` |
+| Cross-subsystem wiring | `latticeai/services/platform_runtime.py` |
+| Workspace OS and timeline | `latticeai/core/workspace_os.py` |
+| Knowledge Graph | `knowledge_graph.py` plus Workspace OS graph hooks |
+| Plugin SDK | `latticeai/core/plugins.py`, `latticeai/api/plugins.py` |
+| Workflow Designer / Engine | `latticeai/core/workflow_engine.py`, `latticeai/api/workflow_designer.py` |
+| Multi-Agent Runtime | `latticeai/core/multi_agent.py`, `latticeai/api/agents.py` |
+| Realtime SSE | `latticeai/core/realtime.py`, `latticeai/api/realtime.py` |
+| Marketplace Foundation | `latticeai/core/marketplace.py`, `latticeai/api/marketplace.py` |
+| CLI | `ltcai_cli.py`, `bin/ltcai.js` |
+| VS Code extension | `vscode-extension/` |
 
-## MCP 연동
+## Execution Flow
 
-`/mcp/tools` — 에이전트 도구 카탈로그를 MCP 형식으로 노출  
-Claude Desktop / Cursor의 MCP 설정에 `http://localhost:4825/mcp` 추가 시 직접 도구 사용 가능.
+The v2.1 execution flow is:
 
-자세한 내용: [mcp-tools.md](mcp-tools.md)
-
----
-
-## PPT 명세와의 정렬 (2026-05 추가)
-
-`lattice_ai_full_spec.pptx` (UI 명세서) 에 맞춰 세 가지 보강 모듈이 추가됐다.
-어떤 슬라이드가 어떤 파일에 매핑되는지 한눈에:
-
-| PPT 슬라이드 | 의미 | 구현 파일 |
-|--------------|------|-----------|
-| 14 (세 가지 약속) | Cross-platform · Auto-setup · Graph 원칙 | (전체 아키텍처) |
-| 15·19 (크로스플랫폼·디자인 토큰) | 공유 토큰 = 단일 진실 근원 | [`static/css/tokens.css`](../static/css/tokens.css) |
-| 16·17 (자동 환경 매트릭스·5단계) | OS·HW 감지 → 모델 추천 → 설치 → 검증 → 프리셋 | [`auto_setup.py`](../auto_setup.py) |
-| 20·21·22 (KG 노드·엣지·데이터 모델) | 10 NodeType / 12 EdgeType + embedding + confidence | [`kg_schema.py`](../kg_schema.py), [`docs/kg-schema.md`](kg-schema.md) |
-| 24 (통합 아키텍처) | 6 레이어 (UI / Logic / AI Core / KG / Storage / Auto-Setup) | 이 문서 + 위 파일들 |
-
-### 신규 모듈 빠른 참조
-
-```bash
-# 자동 환경 세팅 5단계
-python3 auto_setup.py probe          # ① 시스템 감지
-python3 auto_setup.py recommend      # ② 모델 추천
-python3 auto_setup.py plan           # ③ 설치 계획 (실행 안 함)
-python3 auto_setup.py plan --apply   # ③ 실제 설치 (위험)
-python3 auto_setup.py verify         # ④ 검증
-python3 auto_setup.py preset         # ⑤ 프리셋
-python3 auto_setup.py all            # 전체 흐름
-
-# KG v2 스키마
-python3 kg_schema.py init  ~/.ltcai/kg_v2.db
-python3 kg_schema.py migrate ~/.ltcai/knowledge_graph.db    # legacy → v2
-python3 kg_schema.py stats ~/.ltcai/knowledge_graph.db
+```text
+Workspace -> Workflow -> Agent -> Handoff -> Plugin -> Realtime -> Timeline
 ```
 
-전체 명세 ↔ 구현 매핑은 [`spec-vs-impl.md`](spec-vs-impl.md) 참고.
+```mermaid
+sequenceDiagram
+    participant Workspace as Workspace OS
+    participant Workflow as Workflow Engine
+    participant Runtime as PlatformRuntime
+    participant Agent as Multi-Agent Runtime
+    participant Handoff as Agent Handoff
+    participant Plugin as Plugin SDK
+    participant Realtime as Realtime SSE
+    participant Timeline as Timeline / Replay
+
+    Workspace->>Workflow: run workflow definition with workspace scope
+    Workflow->>Runtime: dispatch tool / skill / plugin / agent node
+    Runtime->>Agent: run agent role pipeline when an agent node is reached
+    Agent->>Handoff: create context packet and target-agent handoff
+    Agent->>Plugin: execute plugin action through permission boundary
+    Plugin-->>Agent: return PluginExecutionResult
+    Agent->>Workspace: persist run, handoffs, review, retry, memory, plan
+    Workspace->>Timeline: record replayable execution events
+    Timeline->>Realtime: publish workspace-scoped SSE events
+```
+
+In practice, the chain is bidirectional where the product needs it:
+
+- A workflow can run a tool, skill, plugin, or agent node through
+  `PlatformRuntime.build_workflow_runners`.
+- An agent executor can call a plugin or workflow through injected runners.
+- A plugin action can call a skill, tool, workflow, or agent when its manifest
+  declares the capability and the user/admin has granted the permission.
+- Every persisted activity becomes a timeline event. The Workspace OS `event_sink`
+  publishes those events to the `RealtimeBus`, so activity pages and SSE clients
+  observe the same state mutations that are stored for replay.
+
+Recursion is bounded by construction: workflow-to-agent runs do not receive a
+workflow runner, and agent-to-workflow runs do not receive an agent runner.
+Separately, workflows have a hard step cap and agent review retries are bounded.
+
+## Workspace OS And Knowledge Graph
+
+Workspace OS is the local state authority. It stores workspaces, users' current
+workspace context, skill and plugin registries, workflow definitions and runs,
+agent runs, handoffs, memory snapshots, marketplace templates, timeline events,
+and feature flags. v2.1.0 state additions are additive and deep-merged on load,
+so older `workspace_os.json` files are upgraded in memory without destructive
+migration.
+
+The Knowledge Graph remains the relationship layer. Chats, files, uploads,
+workflow runs, agent runs, memories, snapshots, and other workspace events are
+linked through graph ingestion. v2.1.0 adds more graph linkage; it does not
+replace legacy graph APIs or rewrite existing graph content.
+
+## PlatformRuntime
+
+`PlatformRuntime` is the only intended cross-wiring point for v2.1 subsystems.
+Routers ask it for:
+
+- workspace read/write gates and allowed realtime scopes;
+- plugin lifecycle hooks that register bundled skills in the existing skill
+  registry;
+- workflow runners for tools, skills, plugins, and agents;
+- agent orchestrators with workspace context, plugin runners, workflow runners,
+  memory, handoff, and review/retry persistence;
+- graph linkage for workflow and agent runs;
+- bounded cross-system execution so workflows, agents, and plugins can compose
+  without unbounded recursion.
+
+Keeping this wiring in the service layer keeps `server_app.py` as assembly code
+and preserves testable core modules with explicit interfaces.
+
+## Compatibility Boundaries
+
+v2.1.0 is additive. These boundaries are intentionally stable:
+
+- **`server:app`**: `server.py` continues to expose the ASGI app for uvicorn,
+  scripts, tests, and existing deployment commands. The canonical app is
+  `latticeai.server_app.app`.
+- **CLI**: `LTCAI`, `ltcai_cli.py`, and `bin/ltcai.js` continue to start the
+  local server and point at the same FastAPI app.
+- **VS Code extension**: the extension keeps using the local server integration;
+  v2.1 adds platform surfaces without removing existing chat, command, or send
+  flows.
+- **v1.x workspaces**: Workspace OS uses deep-merge backfill for new state keys
+  and non-destructive workspace migration. Existing chats, snapshots, memories,
+  skills, workflows, agent history, and graph data remain readable.
+- **Existing skills and workflows**: standalone skills stay in the skill
+  registry. Plugins extend that surface instead of replacing it. Legacy workflow
+  `steps` definitions are normalized into node graphs at runtime without
+  rewriting historical records.
+- **Existing route families**: chat, single-agent, model, MCP, workspace,
+  account, admin, tools, and Knowledge Graph routes remain in their established
+  namespaces. v2.1 routes are additive under `/plugins`, `/workflows`,
+  `/agents`, `/marketplace`, and `/realtime`.
+
+## Security Boundaries
+
+The security model is local-first but scoped:
+
+- **Workspace scoping**: API routers use `PlatformRuntime.gate_read`,
+  `gate_write`, and `allowed_scopes`, backed by `WorkspaceService`, before
+  exposing workspace data or realtime streams. Records carry `workspace_id`
+  wherever cross-workspace visibility matters.
+- **Plugin permissions**: plugins declare an allow-listed permission set in
+  `plugin.json`; install/lifecycle state records granted permissions; execution
+  returns `blocked` when a plugin tries to use an undeclared or ungranted
+  capability.
+- **Workflow permissions**: workflow nodes execute only through injected runners.
+  Missing runners are skipped safely, condition nodes use a fixed comparison set
+  instead of `eval`, and step counts are capped.
+- **Agent context packets**: handoffs carry structured context packets and
+  obvious secret fields are redacted before persistence.
+- **Realtime event scoping**: every realtime event can carry `workspace_id`.
+  Subscribers receive only events inside their allowed workspace scope; the feed
+  is bounded and publishing is best-effort so event delivery cannot break a
+  state write.
+- **Local data boundary**: package publishing, cloud marketplace service, and
+  deployment are outside the v2.1 runtime path. Local artifacts and state remain
+  under the configured Lattice AI data directories unless the user opts into
+  external services.
+
+## Related Documents
+
+- `docs/V2_ARCHITECTURE.md`: deeper subsystem design, integration seams, route
+  surface, compatibility notes, and test coverage.
+- `docs/PLUGIN_SDK.md`: plugin manifest, permissions, lifecycle, and examples.
+- `docs/WORKFLOW_DESIGNER.md`: workflow definition schema and execution model.
+- `docs/MULTI_AGENT_RUNTIME.md`: role pipeline, handoffs, review/retry, memory,
+  and replay details.
+- `docs/REALTIME_COLLABORATION.md`: SSE bus, presence, feed, and scope behavior.
+- `docs/CHANGELOG.md`: historical release entries. Historical v1.x references are
+  preserved and should not be rewritten as current architecture.

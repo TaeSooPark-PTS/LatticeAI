@@ -7,7 +7,7 @@ planning records, replay, marketplace templates, and realtime execution
 observability all compose over the same local-first JSON store and Knowledge
 Graph.
 
-This document describes how the four v2.0 pillars fit together, the small set of
+This document describes how the v2 platform pillars fit together, the small set of
 **additive integration seams** that wire them, the cross-integration matrix that
 results, and the compatibility surfaces that v1.x callers and data keep relying
 on. Every claim below is grounded in the shipping source:
@@ -22,14 +22,14 @@ on. Every claim below is grounded in the shipping source:
 - Marketplace foundation: `latticeai/core/marketplace.py`, `latticeai/api/marketplace.py`
 - Project conventions: `AGENTS.md`
 
-All four subsystems share the same design rules from `AGENTS.md`: dependency
+All v2 subsystems share the same design rules from `AGENTS.md`: dependency
 injection, explicit interfaces, small focused modules, registry-based dispatch,
 and composition over global state. None of them import the FastAPI app; each is
 constructed by `server_app.py` and exposed through a router factory.
 
 ---
 
-## 1. The Four v2 Pillars
+## 1. The v2 Platform Pillars
 
 The platform version is the single source of truth `WORKSPACE_OS_VERSION =
 "2.1.0"` (`latticeai/core/workspace_os.py`). Each pillar module re-declares the
@@ -176,6 +176,13 @@ drive an injected `workflow_runner` / `plugin_runner`), and the `reviewer`
 returns `pass` / `retry`. The reviewer can rewind the pipeline to the executor up
 to `max_retries` times; the final `status` is `ok`, `retried_ok`, or `failed`.
 
+v2.1.0 matures that orchestration with first-class `AgentHandoff` and
+`AgentContextPacket` records, structured plan review, retry history, memory
+snapshots, and replay frames. Handoffs are workspace-scoped and persisted with
+source/target agents, task summary, reason, status, timestamps, and redacted
+context so a run can be inspected after the fact instead of inferred from a flat
+log.
+
 ### 1.4 Realtime Collaboration (`latticeai.core.realtime`)
 
 An in-process pub/sub bus, presence registry, and activity feed delivered over
@@ -201,21 +208,34 @@ class RealtimeBus:
         return self.publish(event)
 ```
 
+### 1.5 Marketplace Foundation (`latticeai.core.marketplace`)
+
+v2.1.0 adds a local marketplace foundation rather than a cloud marketplace
+service. `TemplateCatalog` manages Plugin, Workflow, and Agent templates with
+metadata, export/import, install hooks, and a template registry stored through
+Workspace OS. Marketplace templates are local extension points for the existing
+Plugin SDK, Workflow Engine, and Multi-Agent Runtime; they do not bypass plugin
+permissions, workflow execution guards, or workspace scoping.
+
 ---
 
 ## 2. How the Pillars Compose Into One Platform
 
-The four pillars are not parallel silos. They are stitched into one platform by
+The v2 platform pillars are not parallel silos. They are stitched into one platform by
 exactly **three additive seams**, all introduced without changing any existing
 behavior.
 
-### Seam 1 — Two new state keys with deep-merge backfill
+### Seam 1 — Additive state keys with deep-merge backfill
 
-`WorkspaceOSStore._default_state()` adds two new top-level keys to the local-first
-JSON state: **`plugin_registry`** (an object, mirroring `skill_registry`) and
-**`workflow_runs`** (a list, alongside the existing `workflows`). The default
-state also adds v2.0 feature flags (`plugin_sdk`, `workflow_designer`,
-`multi_agent_runtime`, `realtime_collaboration`) and a `plugins` navigation area.
+`WorkspaceOSStore._default_state()` adds new top-level keys to the local-first
+JSON state, including **`plugin_registry`** (an object, mirroring
+`skill_registry`), **`workflow_runs`** (a list, alongside the existing
+`workflows`), **`handoffs`**, **`memory_snapshots`**, and
+**`template_registry`**. The default state also adds v2 feature flags
+(`plugin_sdk`, `workflow_designer`, `multi_agent_runtime`,
+`realtime_collaboration`, `agent_handoff`, `agent_context_packets`,
+`review_retry_loop`, `timeline_replay`, `marketplace_foundation`, and related
+agent memory/planning flags) plus platform navigation areas.
 
 These are safe for existing data because `load_state()` runs `_deep_merge(default,
 loaded)` on every load. `_deep_merge` walks the default tree and fills in any key
@@ -234,14 +254,14 @@ def _deep_merge(default: Any, loaded: Any) -> Any:
     return loaded
 ```
 
-A v1.x `workspace_os.json` that has no `plugin_registry` / `workflow_runs` is
-therefore upgraded *in memory* on first load — the new keys are backfilled with
-their defaults, every pre-existing snapshot, trace, memory, agent run, workflow,
-and skill entry is preserved, and the file is only rewritten on the next normal
-`save_state`. The Plugin SDK lifecycle helpers (`list_plugin_registry`,
-`set_plugin_enabled`, `mark_plugin_installed`, `mark_plugin_uninstalled`) and
-workflow-run helpers (`record_workflow_run`, `list_workflow_runs`) operate on
-these keys, deliberately mirroring the existing skill-registry contract.
+A v1.x `workspace_os.json` that has none of these newer keys is therefore
+upgraded *in memory* on first load — the new keys are backfilled with their
+defaults, every pre-existing snapshot, trace, memory, agent run, workflow, and
+skill entry is preserved, and the file is only rewritten on the next normal
+`save_state`. Plugin lifecycle helpers, workflow-run helpers, handoff helpers,
+memory snapshot helpers, and marketplace template helpers operate on these keys,
+deliberately mirroring the existing skill-registry and workflow-history
+contracts.
 
 ### Seam 2 — A single `event_sink` on `record_timeline_event`
 
@@ -281,7 +301,7 @@ behavior change.
 
 ### Seam 3 — `PlatformRuntime` as the one cross-wiring point
 
-`latticeai/services/platform_runtime.py` is the single place the four subsystems
+`latticeai/services/platform_runtime.py` is the single place the v2 subsystems
 cross-wire to one another and to the workspace. Keeping it out of `server_app`
 honours the `AGENTS.md` preference for small, composable, independently testable
 modules; `server_app` only constructs it and mounts routers.
@@ -315,7 +335,7 @@ PLATFORM = PlatformRuntime(
   factories `build_workflow_runners`, `build_orchestrator`, and
   `plugin_capability_runners` that are handed to the routers.
 
-The four routers are wired entirely through `PLATFORM`:
+The v2 routers are wired entirely through `PLATFORM`:
 
 ```python
 app.include_router(create_plugins_router(
