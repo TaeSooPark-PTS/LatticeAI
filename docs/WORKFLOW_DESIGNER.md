@@ -1,11 +1,11 @@
 # Lattice AI Workflow Designer
 
-The Workflow Designer (introduced in **v2.0.0**) lets you build, validate, run,
-inspect, export, and import automations as a small **directed graph of typed
-nodes**. A workflow starts from a single `trigger` node and walks node-to-node
-to an `output`, dispatching each executable node to an injected *runner* that
-calls the real tool registry, skill registry, plugin registry, or multi-agent
-orchestrator.
+The Workflow Designer (introduced in **v2.0.0** and hardened in **v2.1.0**) lets
+you build, validate, run, inspect, replay, export, and import automations as a
+small **directed graph of typed nodes**. A workflow starts from a single
+`trigger` node and walks node-to-node to an `output`, dispatching each executable
+node to an injected *runner* that calls the real tool registry, skill registry,
+plugin registry, or multi-agent orchestrator.
 
 The execution model lives in
 [`latticeai/core/workflow_engine.py`](../latticeai/core/workflow_engine.py)
@@ -17,8 +17,18 @@ is preserved.
 The engine version is exported as:
 
 ```python
-WORKFLOW_ENGINE_VERSION = "2.0.0"
+WORKFLOW_ENGINE_VERSION = "2.1.0"
 ```
+
+## v2.1 hardening
+
+- Agent node output is captured in workflow context and can flow into a later
+  plugin or output node through `last_output`.
+- Plugin node failures mark the run failed and emit realtime execution events.
+- Workflow runs are replayable via `/workflows/api/runs/{run_id}/replay`, with
+  frames for actor, time, reason, input, output, and decision.
+- `record_workflow_run` emits `workflow_started`, `workflow_completed`, and
+  `execution_failed` events over the existing SSE activity feed.
 
 ---
 
@@ -439,7 +449,7 @@ or scope), stamped with the engine version and stripped of the internal
 
 ```json
 {
-  "lattice_workflow_export": "2.0.0",
+  "lattice_workflow_export": "2.1.0",
   "name": "Daily digest",
   "nodes": [ /* ... */ ],
   "metadata": {}

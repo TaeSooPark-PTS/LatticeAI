@@ -1,5 +1,59 @@
 # Changelog
 
+## [2.1.0] - 2026-06-01
+
+> Agent Platform Maturity Release — v2.1 operationalizes the v2.0 platform
+> without redesigning it. Agent handoff, context packets, review/retry loops,
+> timeline replay, memory snapshots, planning records, marketplace templates,
+> and realtime execution observability are now first-class and additive.
+
+### Added
+
+- **Explicit agent handoff** — handoff records now include `handoff_id`,
+  source/target agent ids, reason, task summary, context packet, status, and
+  timestamps. Handoffs are workspace-scoped, persisted, inspectable, and replayable.
+- **Agent context packets** — structured transfer packets include objective,
+  task summary, workspace/graph/memory/workflow context, plugin outputs,
+  constraints, reviewer notes, and retry metadata with obvious secret fields
+  redacted before persistence.
+- **Review / retry loops** — Planner -> Executor -> Reviewer records plan review,
+  reviewer outcomes (`approve`, `reject`, `retry`), retry history, retry limits,
+  reviewer notes, and failure propagation.
+- **Timeline / replay** — agent and workflow runs expose replay support through
+  persisted frames that show actor, time, reason, input, output, and decision.
+  UI pages add replay viewers for agent and workflow runs.
+- **Agent memory and planning** — `short_term`, `workspace`, and `long_term`
+  memory scopes are supported, memory snapshots are workspace-scoped and
+  replayable, and agent plans persist with plan-review metadata.
+- **Workflow / agent / plugin hardening** — plugin output enters agent context,
+  agent output enters workflow output, retry paths are bounded, and failures
+  propagate into run status and realtime events.
+- **Marketplace foundation** — local Plugin, Workflow, and Agent templates with
+  metadata, export/import, install hooks, and a template registry. No cloud
+  marketplace service is introduced.
+- **Realtime execution observability** — existing SSE feed emits
+  `agent_started`, `handoff_created`, `handoff_accepted`, `handoff_completed`,
+  `review_requested`, `review_approved`, `retry_requested`,
+  `workflow_started`, `plugin_started`, `plugin_completed`, `execution_failed`,
+  and related workspace-scoped events.
+
+### Changed
+
+- Python package, npm package, VS Code extension, Workspace OS, FastAPI app, and
+  `/health` version metadata aligned at `2.1.0`.
+- Multi-Agent Runtime, Plugin SDK, Workflow Engine, and Realtime surface
+  versions now report `2.1.0`.
+- Platform UI pages for agents, workflows, plugins, and activity now expose
+  handoff chains, review panels, retry history, replay, templates, and plugin
+  execution visibility.
+
+### Validation
+
+- Unit coverage added for handoff/context persistence, review/retry history,
+  memory snapshots, replay, workflow-agent-plugin output propagation,
+  marketplace template install, and realtime execution events.
+- Package-store publishing remains manual; release artifacts are version-scoped.
+
 ## [2.0.0] - 2026-06-01
 
 > Agentic Workspace Platform — Lattice AI becomes a local-first **Agentic

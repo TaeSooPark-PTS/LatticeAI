@@ -18,7 +18,7 @@ from pathlib import Path
 from typing import Any, Callable, Dict, Iterable, List, Optional
 
 
-WORKSPACE_OS_VERSION = "2.0.0"
+WORKSPACE_OS_VERSION = "2.1.0"
 
 # Workspace types separate single-user Personal workspaces from shared
 # Organization workspaces. Both keep the same local-first JSON store; the type
@@ -51,6 +51,7 @@ WORKSPACE_AREAS = [
     "workflow",
     "plugins",
     "skills",
+    "marketplace",
     "timeline",
 ]
 
@@ -67,11 +68,30 @@ ONBOARDING_STEPS = [
 ]
 
 MEMORY_KINDS = {
+    "short_term",
+    "workspace",
     "preferences",
     "decisions",
     "working_style",
     "frequently_used_tools",
     "long_term",
+}
+
+EXECUTION_EVENT_TYPES = {
+    "agent_started",
+    "handoff_created",
+    "handoff_accepted",
+    "handoff_completed",
+    "review_requested",
+    "review_approved",
+    "review_rejected",
+    "retry_requested",
+    "workflow_started",
+    "workflow_completed",
+    "plugin_started",
+    "plugin_completed",
+    "execution_failed",
+    "execution_cancelled",
 }
 
 DEFAULT_AGENTS = [
@@ -174,7 +194,7 @@ class WorkspaceOSStore:
         self.snapshots_dir.mkdir(parents=True, exist_ok=True)
         self.exports_dir.mkdir(parents=True, exist_ok=True)
         # Optional realtime hook: fired on every timeline event so the Realtime
-        # bus (v2.0) receives all workspace activity without per-call wiring.
+        # bus receives all workspace activity without per-call wiring.
         # Defaults to None → zero behavior change for existing callers/tests.
         self.event_sink = event_sink
 
@@ -282,6 +302,14 @@ class WorkspaceOSStore:
                 "workflow_designer": True,
                 "multi_agent_runtime": True,
                 "realtime_collaboration": True,
+                "agent_handoff": True,
+                "agent_context_packets": True,
+                "review_retry_loops": True,
+                "timeline_replay": True,
+                "agent_memory": True,
+                "agent_planning": True,
+                "marketplace_foundation": True,
+                "realtime_execution_observability": True,
             },
             "onboarding": {
                 "completed": False,
@@ -300,12 +328,15 @@ class WorkspaceOSStore:
             "snapshots": [],
             "traces": [],
             "memories": [],
+            "memory_snapshots": [],
             "agents": list(DEFAULT_AGENTS),
             "agent_runs": [],
+            "handoffs": [],
             "workflows": [],
             "workflow_runs": [],
             "skill_registry": {},
             "plugin_registry": {},
+            "template_registry": {},
             "computer_memory": {
                 "enabled": False,
                 "approved": False,
@@ -361,6 +392,38 @@ class WorkspaceOSStore:
                 pass
         return event
 
+    def _emit_execution_event(
+        self,
+        *,
+        area: str,
+        event_type: str,
+        payload: Dict[str, Any],
+        workspace_id: Optional[str],
+    ) -> None:
+        """Best-effort execution observability event for the realtime feed."""
+        if event_type not in EXECUTION_EVENT_TYPES:
+            return
+        try:
+            self.record_timeline_event(area, event_type, payload, workspace_id=workspace_id)
+        except Exception:
+            pass
+
+    def _emit_replayable_timeline_events(
+        self,
+        *,
+        area: str,
+        run_id: str,
+        timeline: List[Dict[str, Any]],
+        workspace_id: Optional[str],
+    ) -> None:
+        for index, item in enumerate(timeline or []):
+            event_type = item.get("event") or item.get("event_type")
+            if event_type in EXECUTION_EVENT_TYPES:
+                payload = {k: v for k, v in item.items() if k not in {"context_packet"}}
+                payload["run_id"] = run_id
+                payload["timeline_index"] = index
+                self._emit_execution_event(area=area, event_type=event_type, payload=payload, workspace_id=workspace_id)
+
     def summary(self) -> Dict[str, Any]:
         state = self.load_state()
         return {
@@ -375,11 +438,14 @@ class WorkspaceOSStore:
                 "snapshots": len(_listify(state.get("snapshots"))),
                 "traces": len(_listify(state.get("traces"))),
                 "memories": len(_listify(state.get("memories"))),
+                "memory_snapshots": len(_listify(state.get("memory_snapshots"))),
                 "agent_runs": len(_listify(state.get("agent_runs"))),
+                "handoffs": len(_listify(state.get("handoffs"))),
                 "workflows": len(_listify(state.get("workflows"))),
                 "workflow_runs": len(_listify(state.get("workflow_runs"))),
                 "skills": len(state.get("skill_registry") or {}),
                 "plugins": len(state.get("plugin_registry") or {}),
+                "templates": len(state.get("template_registry") or {}),
                 "timeline": len(_listify(state.get("timeline"))),
             },
             "onboarding": state.get("onboarding"),
@@ -646,7 +712,9 @@ class WorkspaceOSStore:
         public["counts"] = {
             "snapshots": len(self._scoped(_listify(state.get("snapshots")), workspace_id)),
             "memories": len(self._scoped(_listify(state.get("memories")), workspace_id)),
+            "memory_snapshots": len(self._scoped(_listify(state.get("memory_snapshots")), workspace_id)),
             "agent_runs": len(self._scoped(_listify(state.get("agent_runs")), workspace_id)),
+            "handoffs": len(self._scoped(_listify(state.get("handoffs")), workspace_id)),
             "workflows": len(self._scoped(_listify(state.get("workflows")), workspace_id)),
             "workflow_runs": len(self._scoped(_listify(state.get("workflow_runs")), workspace_id)),
             "traces": len(self._scoped(_listify(state.get("traces")), workspace_id)),
@@ -1118,7 +1186,7 @@ class WorkspaceOSStore:
             "content": content,
             "user_email": user_email,
             "tags": tags or [],
-            "metadata": metadata or {},
+            "metadata": {**(metadata or {}), "memory_scope": kind},
             "workspace_id": self._resolve_scope(workspace_id, state) if existing is None else self._record_workspace(record),
             "updated_at": now,
         })
@@ -1138,7 +1206,7 @@ class WorkspaceOSStore:
             memories.append(record)
         state["memories"] = memories[-500:]
         self.save_state(state)
-        self.record_timeline_event("memory", "memory_upserted", {"memory_id": memory_id, "kind": kind})
+        self.record_timeline_event("memory", "memory_upserted", {"memory_id": memory_id, "kind": kind}, workspace_id=record.get("workspace_id"))
         return record
 
     def list_memories(self, user_email: Optional[str] = None, kind: Optional[str] = None, workspace_id: Optional[str] = None) -> Dict[str, Any]:
@@ -1172,6 +1240,44 @@ class WorkspaceOSStore:
         self.record_timeline_event("memory", "memory_deleted", {"memory_id": memory_id})
         return {"status": "ok", "memory_id": memory_id}
 
+    def create_memory_snapshot(
+        self,
+        *,
+        label: str = "memory snapshot",
+        user_email: Optional[str] = None,
+        workspace_id: Optional[str] = None,
+        memory_ids: Optional[List[str]] = None,
+        reason: str = "",
+    ) -> Dict[str, Any]:
+        """Persist a replayable point-in-time memory view without mutation."""
+        state = self.load_state()
+        scope = self._resolve_scope(workspace_id, state)
+        memories = self._scoped(_listify(state.get("memories")), scope)
+        if user_email:
+            memories = [item for item in memories if item.get("user_email") in {None, user_email}]
+        if memory_ids:
+            allowed = set(memory_ids)
+            memories = [item for item in memories if item.get("id") in allowed]
+        snapshot = {
+            "id": f"memory-snapshot-{_json_hash([label, scope, memories, _now()])[:16]}",
+            "label": label,
+            "reason": reason,
+            "workspace_id": scope,
+            "user_email": user_email,
+            "memory_count": len(memories),
+            "memories": memories,
+            "created_at": _now(),
+        }
+        state.setdefault("memory_snapshots", []).append(snapshot)
+        state["memory_snapshots"] = state["memory_snapshots"][-200:]
+        self.save_state(state)
+        self.record_timeline_event("memory", "memory_snapshot", {"snapshot_id": snapshot["id"], "memory_count": len(memories)}, workspace_id=scope)
+        return snapshot
+
+    def list_memory_snapshots(self, workspace_id: Optional[str] = None, limit: int = 50) -> Dict[str, Any]:
+        snapshots = self._scoped(_listify(self.load_state().get("memory_snapshots")), workspace_id)
+        return {"snapshots": list(reversed(snapshots[-max(1, min(limit, 200)):]))}
+
     # ------------------------------------------------------------------
     # Agent and workflow graph
     # ------------------------------------------------------------------
@@ -1191,10 +1297,18 @@ class WorkspaceOSStore:
         user_email: Optional[str],
         timeline: Optional[List[Dict[str, Any]]] = None,
         relationships: Optional[List[str]] = None,
+        handoffs: Optional[List[Dict[str, Any]]] = None,
+        context_packets: Optional[List[Dict[str, Any]]] = None,
+        plan: Optional[List[Dict[str, Any]]] = None,
+        plan_review: Optional[Dict[str, Any]] = None,
+        review_history: Optional[List[Dict[str, Any]]] = None,
+        retry_history: Optional[List[Dict[str, Any]]] = None,
+        memory_snapshots: Optional[List[Dict[str, Any]]] = None,
         graph: Any = None,
         workspace_id: Optional[str] = None,
     ) -> Dict[str, Any]:
         state = self.load_state()
+        resolved_workspace = self._resolve_scope(workspace_id, state)
         run = {
             "id": f"agent-run-{_json_hash([agent_id, input_text, output_text, _now()])[:16]}",
             "agent_id": agent_id,
@@ -1202,9 +1316,16 @@ class WorkspaceOSStore:
             "input": input_text,
             "output_preview": output_text[:1000],
             "user_email": user_email,
-            "workspace_id": self._resolve_scope(workspace_id, state),
+            "workspace_id": resolved_workspace,
             "relationships": relationships or [],
             "timeline": timeline or [],
+            "handoffs": handoffs or [],
+            "context_packets": context_packets or [],
+            "plan": plan or [],
+            "plan_review": plan_review or {},
+            "review_history": review_history or [],
+            "retry_history": retry_history or [],
+            "memory_snapshots": memory_snapshots or [],
             "created_at": _now(),
         }
         if graph is not None:
@@ -1219,11 +1340,36 @@ class WorkspaceOSStore:
                 run["graph_node_id"] = ingested.get("node_id")
             except Exception as exc:
                 run["graph_error"] = str(exc)
+        if handoffs:
+            stored_handoffs = state.setdefault("handoffs", [])
+            for handoff in handoffs:
+                stored = {
+                    **handoff,
+                    "run_id": run["id"],
+                    "workspace_id": resolved_workspace,
+                }
+                stored_handoffs.append(stored)
+            state["handoffs"] = stored_handoffs[-500:]
         state.setdefault("agent_runs", []).append(run)
         state["agent_runs"] = state["agent_runs"][-300:]
         self.save_state(state)
-        self.record_timeline_event("agent", "agent_run", {"run_id": run["id"], "agent_id": agent_id, "status": status})
+        self._emit_replayable_timeline_events(area="agent", run_id=run["id"], timeline=run["timeline"], workspace_id=resolved_workspace)
+        if status == "failed":
+            self._emit_execution_event(area="agent", event_type="execution_failed", payload={"run_id": run["id"], "agent_id": agent_id, "status": status}, workspace_id=resolved_workspace)
+        self.record_timeline_event("agent", "agent_run", {"run_id": run["id"], "agent_id": agent_id, "status": status}, workspace_id=resolved_workspace)
         return run
+
+    def get_agent_run(self, run_id: str, workspace_id: Optional[str] = None) -> Dict[str, Any]:
+        run = next((item for item in _listify(self.load_state().get("agent_runs")) if item.get("id") == run_id), None)
+        if not run or (workspace_id and self._record_workspace(run) != str(workspace_id)):
+            raise FileNotFoundError(run_id)
+        return run
+
+    def list_handoffs(self, workspace_id: Optional[str] = None, run_id: Optional[str] = None) -> Dict[str, Any]:
+        handoffs = self._scoped(_listify(self.load_state().get("handoffs")), workspace_id)
+        if run_id:
+            handoffs = [item for item in handoffs if item.get("run_id") == run_id]
+        return {"handoffs": list(reversed(handoffs[-200:]))}
 
     def create_workflow(
         self,
@@ -1248,7 +1394,7 @@ class WorkspaceOSStore:
             "created_at": _now(),
             "updated_at": _now(),
         }
-        # v2.0 Workflow Designer stores a typed-node graph alongside the legacy
+        # Workflow Designer stores a typed-node graph alongside the legacy
         # ``steps`` list so older history keeps working and new editors get nodes.
         if nodes is not None:
             workflow["nodes"] = nodes
@@ -1284,6 +1430,7 @@ class WorkspaceOSStore:
     ) -> Dict[str, Any]:
         """Persist a Workflow Designer execution into local-first run history."""
         state = self.load_state()
+        resolved_workspace = self._resolve_scope(workspace_id, state)
         run = {
             "id": f"workflow-run-{_json_hash([workflow_id, name, status, _now()])[:16]}",
             "workflow_id": workflow_id,
@@ -1292,7 +1439,7 @@ class WorkspaceOSStore:
             "timeline": timeline or [],
             "outputs": outputs or {},
             "user_email": user_email,
-            "workspace_id": self._resolve_scope(workspace_id, state),
+            "workspace_id": resolved_workspace,
             "created_at": _now(),
         }
         if graph is not None:
@@ -1316,7 +1463,13 @@ class WorkspaceOSStore:
                 wf["updated_at"] = _now()
                 break
         self.save_state(state)
-        self.record_timeline_event("workflow", "workflow_run", {"run_id": run["id"], "workflow_id": workflow_id, "status": status})
+        self._emit_execution_event(area="workflow", event_type="workflow_started", payload={"run_id": run["id"], "workflow_id": workflow_id, "name": name}, workspace_id=resolved_workspace)
+        self._emit_replayable_timeline_events(area="workflow", run_id=run["id"], timeline=run["timeline"], workspace_id=resolved_workspace)
+        if status == "failed":
+            self._emit_execution_event(area="workflow", event_type="execution_failed", payload={"run_id": run["id"], "workflow_id": workflow_id, "status": status}, workspace_id=resolved_workspace)
+        elif status in {"ok", "partial"}:
+            self._emit_execution_event(area="workflow", event_type="workflow_completed", payload={"run_id": run["id"], "workflow_id": workflow_id, "status": status}, workspace_id=resolved_workspace)
+        self.record_timeline_event("workflow", "workflow_run", {"run_id": run["id"], "workflow_id": workflow_id, "status": status}, workspace_id=resolved_workspace)
         return run
 
     def list_workflow_runs(self, workflow_id: Optional[str] = None, limit: int = 50, workspace_id: Optional[str] = None) -> Dict[str, Any]:
@@ -1324,6 +1477,67 @@ class WorkspaceOSStore:
         if workflow_id:
             runs = [run for run in runs if run.get("workflow_id") == workflow_id]
         return {"runs": list(reversed(runs[-max(1, min(limit, 300)):]))}
+
+    def get_workflow_run(self, run_id: str, workspace_id: Optional[str] = None) -> Dict[str, Any]:
+        run = next((item for item in _listify(self.load_state().get("workflow_runs")) if item.get("id") == run_id), None)
+        if not run or (workspace_id and self._record_workspace(run) != str(workspace_id)):
+            raise FileNotFoundError(run_id)
+        return run
+
+    @staticmethod
+    def _replay_frames(run: Dict[str, Any], *, kind: str) -> List[Dict[str, Any]]:
+        frames = []
+        for index, item in enumerate(run.get("timeline") or []):
+            event = item.get("event") or item.get("event_type") or item.get("type") or "event"
+            actor = (
+                item.get("agent_id")
+                or item.get("role")
+                or item.get("source_agent")
+                or item.get("target_agent")
+                or item.get("node")
+                or kind
+            )
+            result = item.get("result") if "result" in item else item.get("output")
+            decision = item.get("outcome") or item.get("verdict") or item.get("status")
+            frames.append({
+                "index": index,
+                "event": event,
+                "actor": actor,
+                "when": item.get("timestamp") or item.get("started_at") or run.get("created_at"),
+                "why": item.get("reason") or item.get("note") or item.get("name") or "",
+                "input": item.get("context_packet") or item.get("trigger") or run.get("input"),
+                "output": result,
+                "decision": decision,
+                "raw": item,
+            })
+        return frames
+
+    def replay_agent_run(self, run_id: str, workspace_id: Optional[str] = None) -> Dict[str, Any]:
+        run = self.get_agent_run(run_id, workspace_id=workspace_id)
+        return {
+            "kind": "agent",
+            "run_id": run_id,
+            "status": run.get("status"),
+            "workspace_id": self._record_workspace(run),
+            "replayable": True,
+            "frames": self._replay_frames(run, kind="agent"),
+            "handoffs": run.get("handoffs") or [],
+            "context_packets": run.get("context_packets") or [],
+            "review_history": run.get("review_history") or [],
+            "retry_history": run.get("retry_history") or [],
+        }
+
+    def replay_workflow_run(self, run_id: str, workspace_id: Optional[str] = None) -> Dict[str, Any]:
+        run = self.get_workflow_run(run_id, workspace_id=workspace_id)
+        return {
+            "kind": "workflow",
+            "run_id": run_id,
+            "status": run.get("status"),
+            "workspace_id": self._record_workspace(run),
+            "replayable": True,
+            "frames": self._replay_frames(run, kind="workflow"),
+            "outputs": run.get("outputs") or {},
+        }
 
     def get_workflow(self, workflow_id: str, workspace_id: Optional[str] = None) -> Dict[str, Any]:
         workflow = next((wf for wf in _listify(self.load_state().get("workflows")) if wf.get("id") == workflow_id), None)
@@ -1603,7 +1817,7 @@ class WorkspaceOSStore:
         return entry
 
     # ------------------------------------------------------------------
-    # Plugin SDK registry (v2.0) — mirrors the skill registry contract.
+    # Plugin SDK registry — mirrors the skill registry contract.
     # ------------------------------------------------------------------
 
     def list_plugin_registry(self) -> Dict[str, Any]:
@@ -1642,6 +1856,39 @@ class WorkspaceOSStore:
         self.save_state(state)
         self.record_timeline_event("plugins", "plugin_uninstalled", {"plugin": plugin_id})
         return {"status": "ok", "plugin_id": plugin_id, "registry": entry}
+
+    # ------------------------------------------------------------------
+    # Marketplace template registry (v2.1 foundation)
+    # ------------------------------------------------------------------
+
+    def list_template_registry(self) -> Dict[str, Any]:
+        return dict(self.load_state().get("template_registry") or {})
+
+    def mark_template_installed(
+        self,
+        *,
+        kind: str,
+        template_id: str,
+        version: str = "1.0.0",
+        metadata: Optional[Dict[str, Any]] = None,
+        workspace_id: Optional[str] = None,
+    ) -> Dict[str, Any]:
+        state = self.load_state()
+        scope = self._resolve_scope(workspace_id, state)
+        key = f"{kind}:{template_id}"
+        entry = state.setdefault("template_registry", {}).setdefault(key, {"id": template_id, "kind": kind})
+        entry.update({
+            "id": template_id,
+            "kind": kind,
+            "version": version,
+            "installed": True,
+            "workspace_id": scope,
+            "metadata": metadata or entry.get("metadata") or {},
+            "updated_at": _now(),
+        })
+        self.save_state(state)
+        self.record_timeline_event("marketplace", "template_installed", {"kind": kind, "template_id": template_id}, workspace_id=scope)
+        return entry
 
     # ------------------------------------------------------------------
     # Audit timeline

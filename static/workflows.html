@@ -35,6 +35,11 @@
       <h3>Run history</h3>
       <div id="runs"><div class="empty">No runs yet.</div></div>
     </div>
+
+    <div class="section">
+      <h3>Replay viewer</h3>
+      <div id="replay"><div class="empty">Select a workflow run.</div></div>
+    </div>
   </main>
 
   <script type="module">
@@ -109,9 +114,26 @@
         <div class="card" style="margin-bottom:10px">
           <div class="row"><h3>${escapeHtml(r.name)}</h3><div class="spacer"></div>${badge(r.status)}</div>
           <div class="meta">${escapeHtml(r.created_at)} · ${ (r.timeline||[]).length } steps</div>
+          <div class="row" style="margin-top:10px"><button class="ghost" data-replay="${r.id}">Replay</button></div>
           <pre>${escapeHtml(JSON.stringify(r.timeline, null, 2))}</pre>
         </div>`).join("");
     }
+
+    document.getElementById("runs").addEventListener("click", async (e) => {
+      const btn = e.target.closest("button[data-replay]");
+      if (!btn) return;
+      const out = document.getElementById("replay");
+      out.innerHTML = `<div class="empty">Loading replay…</div>`;
+      try {
+        const data = await api(`/workflows/api/runs/${btn.dataset.replay}/replay`);
+        const frames = data.replay.frames || [];
+        out.innerHTML = frames.map((f) => `<div class="timeline-item">
+          <div class="row"><strong>${escapeHtml(f.event)}</strong><div class="spacer"></div>${badge(f.decision || "event")}</div>
+          <div class="t-meta">${escapeHtml(String(f.actor||""))} · ${escapeHtml(f.when||"")}</div>
+          <pre>${escapeHtml(JSON.stringify({ why: f.why, input: f.input, output: f.output }, null, 2))}</pre>
+        </div>`).join("") || `<div class="empty">No replay frames.</div>`;
+      } catch (err) { out.innerHTML = `<div class="empty">${escapeHtml(err.message)}</div>`; }
+    });
 
     loadTemplate();
     loadList().catch((e) => toast(e.message));

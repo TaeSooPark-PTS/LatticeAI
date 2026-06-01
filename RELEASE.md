@@ -9,6 +9,47 @@
 > PyPI / npm / VS Code Marketplace / Open VSX 배포는 아래 수동 절차로 로컬에서
 > 직접 인증 후 진행합니다. GitHub Secrets에 배포 토큰을 저장하지 않습니다.
 
+## v2.1.0 릴리스 노트 (2026-06-01)
+
+Agent Platform Maturity Release — v2.0에서 도입한 Plugin SDK, Workflow
+Designer, Multi-Agent Runtime, Realtime 기반을 유지하면서 실행 품질,
+관찰성, 메모리, 계획, 재생 가능성, 에이전트 협업을 성숙화합니다. 모든 변경은
+additive이며 v1.x/v2.0 workspace, workflow, agent history, Plugin Registry,
+CLI, VS Code extension, `server:app`, `latticeai.server_app.app` 호환성을
+유지합니다.
+
+- **Added (Agent Handoff)**: `handoff_id`, source/target agent, reason, task
+  summary, context packet, status, timestamps를 갖는 first-class handoff.
+  handoff는 workspace-scoped, inspectable, replayable, testable입니다.
+- **Added (Agent Context Packets)**: objective, task summary, workspace/graph/
+  memory/workflow context, plugin outputs, constraints, reviewer notes, retry
+  metadata를 구조화하고 obvious secret fields를 redaction합니다.
+- **Added (Review / Retry)**: Planner -> Executor -> Reviewer review cycle,
+  `approve`/`reject`/`retry` outcomes, retry reason/history/limits, reviewer
+  notes, timeline integration, infinite retry 방지.
+- **Added (Timeline / Replay)**: agent/workflow replay frames가 actor, time,
+  reason, input, output, decision을 노출. `/agents/api/runs/{id}/replay`,
+  `/workflows/api/runs/{id}/replay` 및 UI replay viewer 추가.
+- **Added (Agent Memory / Planning)**: `short_term`, `workspace`, `long_term`
+  memory scopes, workspace-scoped memory snapshots, plan persistence, plan review.
+- **Changed (Workflow-Agent-Plugin hardening)**: plugin output이 agent context에,
+  agent output이 workflow output에 들어가며 failures/retries가 run status와
+  realtime feed에 전파됩니다.
+- **Added (Marketplace Foundation)**: Plugin/Workflow/Agent template metadata,
+  export/import, install hooks, template registry. Cloud marketplace service는
+  구현하지 않았습니다.
+- **Changed (Realtime Observability)**: 기존 SSE 인프라로 `agent_started`,
+  `handoff_created`, `handoff_accepted`, `handoff_completed`,
+  `review_requested`, `review_approved`, `retry_requested`,
+  `workflow_started`, `plugin_started`, `plugin_completed`,
+  `execution_failed` 등 workspace-scoped execution events를 emit합니다.
+- **Changed (Version sync)**: Python/npm/VS Code/Workspace OS/FastAPI `/health`
+  version metadata aligned at `2.1.0`.
+- **Validation**: handoff/context/retry/replay/memory/planning/marketplace/
+  realtime unit coverage, full unit/integration/startup/import/route/plugin/
+  workflow/agent/visual/VSIX/release artifact checks 대상. 패키지 스토어
+  publish는 수동 절차로만 진행.
+
 ## v2.0.0 릴리스 노트 (2026-06-01)
 
 Agentic Workspace Platform — Lattice AI는 local-first AI *workspace*에서
@@ -393,11 +434,11 @@ Knowledge Graph v2 read/write cutover. 자세한 내용은
 3. 업로드
    - `npm run publish:pypi`
    - 직접 실행 시:
-     `python3 -m twine upload dist/ltcai-2.0.0-py3-none-any.whl dist/ltcai-2.0.0.tar.gz`
+     `python3 -m twine upload dist/ltcai-2.1.0-py3-none-any.whl dist/ltcai-2.1.0.tar.gz`
 
 참고:
 - TestPyPI 먼저 쓰려면:
-  - `python3 -m twine upload --skip-existing --repository testpypi dist/ltcai-2.0.0.tar.gz dist/ltcai-2.0.0-py3-none-any.whl`
+  - `python3 -m twine upload --skip-existing --repository testpypi dist/ltcai-2.1.0.tar.gz dist/ltcai-2.1.0-py3-none-any.whl`
 
 ## 4) VS Code / Cursor / Antigravity 확장 배포
 
@@ -411,11 +452,11 @@ Knowledge Graph v2 read/write cutover. 자세한 내용은
 3. VS Code Marketplace 배포
    - `npm run publish:vscode`
    - 직접 실행 시:
-     `npx vsce publish --packagePath dist/ltcai-2.0.0.vsix`
+     `npx vsce publish --packagePath dist/ltcai-2.1.0.vsix`
 4. Open VSX 배포 (Cursor/일부 포크 호환)
    - `npm run publish:openvsx`
    - 직접 실행 시:
-     `npx ovsx publish dist/ltcai-2.0.0.vsix`
+     `npx ovsx publish dist/ltcai-2.1.0.vsix`
 5. 로컬 설치 (VS Code/Cursor/Antigravity)
    - `npm run install:all`
 

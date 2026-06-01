@@ -353,29 +353,29 @@ Supported routes include OpenAI-compatible APIs, OpenRouter, Groq, Together, xAI
 
 ## Current release
 
-**2.0.0 — Agentic Workspace Platform.** Lattice AI graduates from a local-first
-AI *workspace* to a local-first **Agentic Workspace Platform**: four new
-subsystems land as one cohesive, fully integrated platform — all additive, with
-every v1.x surface preserved.
+**2.1.0 — Agent Platform Maturity Release.** Lattice AI operationalizes the
+v2.0 platform without replacing it: agent handoff, context packets, review/retry,
+planning, memory, replay, marketplace templates, and realtime execution
+observability are now first-class and still additive.
 
-- **Plugin SDK** — versioned, permissioned plugins (`plugin.json` manifest,
-  allow-listed permissions, lifecycle, validation, and a safe execution
-  boundary) that **extend** existing skills/tools/workflows rather than replace
-  them. Ships two example plugins. See [docs/PLUGIN_SDK.md](docs/PLUGIN_SDK.md).
-- **Workflow Designer** — node-based workflows (trigger · tool · skill · plugin ·
-  agent · condition · output) with validation, execution, run history, and
-  export/import. Pre-2.0 workflow history keeps working.
-  See [docs/WORKFLOW_DESIGNER.md](docs/WORKFLOW_DESIGNER.md).
-- **Multi-Agent Runtime 2.0** — Planner · Executor · Reviewer · Researcher ·
-  Release roles with handoff, retry, and an observable timeline, connected to
-  workspace, memory, graph, and workflow runs.
-  See [docs/MULTI_AGENT_RUNTIME.md](docs/MULTI_AGENT_RUNTIME.md).
-- **Realtime Collaboration** — presence + an activity feed over SSE, fed
-  automatically from every workspace timeline event; single-user local mode and
-  workspace isolation preserved. See [docs/REALTIME_COLLABORATION.md](docs/REALTIME_COLLABORATION.md).
-- **Cross-system integration** — workflows run plugins/skills/agents, agent runs
-  run plugins/workflows, and all activity surfaces in the realtime feed, the
-  knowledge graph, and the workspace timeline. See [docs/V2_ARCHITECTURE.md](docs/V2_ARCHITECTURE.md).
+- **Agent handoff + context packets** — handoffs now carry `handoff_id`,
+  source/target agent ids, reason, status, timestamps, and safe structured
+  context packets for replayable role transfer.
+- **Review / retry loops** — Planner -> Executor -> Reviewer records plan
+  review, reviewer notes, retry history, retry limits, and failure propagation.
+- **Timeline / replay** — agent and workflow runs expose replay frames showing
+  who acted, when, why, input, output, and decisions.
+- **Agent memory + planning** — short-term, workspace, and long-term memory
+  kinds are supported with workspace-scoped snapshots; plans are persisted with
+  run history and plan-review metadata.
+- **Workflow / agent / plugin hardening** — plugin outputs enter agent context,
+  agent outputs enter workflow outputs, and plugin/workflow/agent failures emit
+  observable execution events.
+- **Marketplace foundation** — local Plugin, Workflow, and Agent templates have
+  metadata, export/import, install hooks, and a registry. No cloud marketplace
+  service is introduced.
+- **Realtime execution observability** — existing SSE feed now emits agent,
+  handoff, review, retry, workflow, plugin, and execution failure events.
 - **Compatibility preserved** — API schemas, `server:app`,
   `latticeai.server_app.app`, CLI, MCP, model, workspace, chat, KG, existing
   skills/snapshots/memories/agent history, and the VS Code extension remain
@@ -383,7 +383,8 @@ every v1.x surface preserved.
 
 | Version | Theme |
 |---|---|
-| **2.0.0** | Agentic Workspace Platform (Plugin SDK, Workflow Designer, Multi-Agent Runtime, Realtime) |
+| **2.1.0** | Agent Platform Maturity Release (handoff, context packets, review/retry, replay, memory, planning, marketplace foundation) |
+| 2.0.0 | Agentic Workspace Platform (Plugin SDK, Workflow Designer, Multi-Agent Runtime, Realtime) |
 | 1.7.0 | Graph & Collaboration Release |
 | 1.6.0 | Product Experience Deepening (UX + real screenshots) |
 | 1.5.0 | Unified Product Release (CI/VSIX recovery, model recommendation, Enterprise PoC) |

@@ -1,9 +1,11 @@
-# Lattice AI v2.0 Architecture — Agentic Workspace Platform
+# Lattice AI v2 Architecture — Agentic Workspace Platform
 
-Lattice AI v2.0.0 turns the local-first Workspace OS into a full **Agentic
-Workspace Platform**: a single FastAPI application in which plugins, designed
-workflows, multi-agent runs, and a realtime collaboration feed all compose over
-the same local-first JSON store and Knowledge Graph.
+Lattice AI v2.0.0 turned the local-first Workspace OS into a full **Agentic
+Workspace Platform**. v2.1.0 keeps that architecture and matures the operational
+layer: explicit handoffs, context packets, review/retry loops, memory snapshots,
+planning records, replay, marketplace templates, and realtime execution
+observability all compose over the same local-first JSON store and Knowledge
+Graph.
 
 This document describes how the four v2.0 pillars fit together, the small set of
 **additive integration seams** that wire them, the cross-integration matrix that
@@ -17,6 +19,7 @@ on. Every claim below is grounded in the shipping source:
 - Workflow engine: `latticeai/core/workflow_engine.py`, `latticeai/api/workflow_designer.py`
 - Multi-Agent runtime: `latticeai/core/multi_agent.py`, `latticeai/api/agents.py`
 - Realtime bus: `latticeai/core/realtime.py`, `latticeai/api/realtime.py`
+- Marketplace foundation: `latticeai/core/marketplace.py`, `latticeai/api/marketplace.py`
 - Project conventions: `AGENTS.md`
 
 All four subsystems share the same design rules from `AGENTS.md`: dependency
@@ -26,12 +29,13 @@ constructed by `server_app.py` and exposed through a router factory.
 
 ---
 
-## 1. The Four v2.0 Pillars
+## 1. The Four v2 Pillars
 
 The platform version is the single source of truth `WORKSPACE_OS_VERSION =
-"2.0.0"` (`latticeai/core/workspace_os.py`). Each pillar module re-declares the
+"2.1.0"` (`latticeai/core/workspace_os.py`). Each pillar module re-declares the
 same version for its own surface (`PLUGIN_SDK_VERSION`, `WORKFLOW_ENGINE_VERSION`,
-`MULTI_AGENT_VERSION`, `REALTIME_VERSION`).
+`MULTI_AGENT_VERSION`, `REALTIME_VERSION`) and the marketplace foundation exposes
+`MARKETPLACE_VERSION`.
 
 ### 1.1 Plugin SDK (`latticeai.core.plugins`)
 
@@ -418,9 +422,9 @@ guarantee every cross-system run terminates.
 
 ---
 
-## 5. HTTP Surface (v2.0 additions)
+## 5. HTTP Surface (v2 additions)
 
-All v2.0 routes are namespaced so they never collide with existing paths
+All v2 routes are namespaced so they never collide with existing paths
 (`/plugins/registry` vs. the marketplace `/plugins/directory`; `/workflows` vs.
 `/workspace/workflows`; `/agents` plural vs. the single-agent `/agent`).
 
@@ -435,10 +439,18 @@ All v2.0 routes are namespaced so they never collide with existing paths
 /workflows/api/definitions/{id}`, `POST /workflows/api/validate`,
 `POST /workflows/api/definitions/{id}/run`,
 `GET /workflows/api/definitions/{id}/runs`, `GET /workflows/api/runs`,
+`GET /workflows/api/runs/{run_id}/replay`,
 `GET /workflows/api/export/{id}`, `POST /workflows/api/import`.
 
 **Multi-Agent Runtime** (`latticeai/api/agents.py`): `GET /agents`,
-`GET /agents/api/roles`, `GET /agents/api/runs`, `POST /agents/api/run`.
+`GET /agents/api/roles`, `GET /agents/api/runs`,
+`GET /agents/api/runs/{run_id}/replay`, `GET /agents/api/handoffs`,
+`GET|POST /agents/api/memory/snapshots`, `POST /agents/api/run`.
+
+**Marketplace foundation** (`latticeai/api/marketplace.py`):
+`GET /marketplace/templates`, `GET /marketplace/templates/{kind}/{id}/export`,
+`POST /marketplace/templates/import`, `POST /marketplace/templates/install`,
+`GET /marketplace/templates/registry`.
 
 **Realtime Collaboration** (`latticeai/api/realtime.py`): `GET /activity`,
 `GET /realtime/stream` (SSE), `GET /realtime/feed`, `GET /realtime/presence`,
@@ -460,7 +472,7 @@ Representative run request/response (Workflow Designer):
 
 ```json
 // POST /agents/api/run
-{ "goal": "Draft v2.0 release notes", "roles": ["planner", "executor", "reviewer"], "max_retries": 2 }
+{ "goal": "Draft v2.1 release notes", "roles": ["planner", "executor", "reviewer"], "max_retries": 2 }
 ```
 
 ```json
@@ -474,7 +486,7 @@ Representative run request/response (Workflow Designer):
 
 ## 6. Compatibility
 
-> **Compatibility note.** v2.0.0 is **additive**. All v1.x data and APIs are
+> **Compatibility note.** v2.1.0 is **additive**. All v1.x and v2.0 data and APIs are
 > preserved; the platform layers new capabilities on top of unchanged surfaces.
 
 Preserved surfaces, verified against source:
@@ -482,7 +494,7 @@ Preserved surfaces, verified against source:
 - **ASGI entrypoints.** `server:app` and `latticeai.server_app.app` remain the
   application objects. `server_app.py` still exposes the module-level `app =
   FastAPI(...)` plus the `main()` / `uvicorn.run(app, ...)` entry point.
-- **Version wiring.** `WORKSPACE_OS_VERSION = "2.0.0"` drives both
+- **Version wiring.** `WORKSPACE_OS_VERSION = "2.1.0"` drives both
   `APP_VERSION` (and thus the FastAPI `app.version`) and the `/health`
   response — the health router is constructed with `app_version=APP_VERSION`.
 - **Existing routes.** Every v1.x router (`auth`, `admin`, `security_dashboard`,

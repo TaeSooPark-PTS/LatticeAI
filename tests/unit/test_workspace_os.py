@@ -2,7 +2,7 @@ from pathlib import Path
 
 import pytest
 
-from latticeai.core.workspace_os import WorkspaceOSStore
+from latticeai.core.workspace_os import WORKSPACE_OS_VERSION, WorkspaceOSStore
 
 
 class FakeGraph:
@@ -131,7 +131,7 @@ def test_workspace_summary_exposes_health_timestamp(tmp_path: Path):
 
     summary = store.summary()
 
-    assert summary["version"] == "2.0.0"
+    assert summary["version"] == WORKSPACE_OS_VERSION
     assert summary["updated_at"]
 
 

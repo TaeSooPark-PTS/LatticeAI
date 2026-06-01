@@ -6,7 +6,8 @@
 
 | 버전 | 지원 여부 |
 |------|-----------|
-| 2.0.x (latest) | ✅ 지원 |
+| 2.1.x (latest) | ✅ 지원 |
+| 2.0.x | ✅ 보안 패치 범위 내 지원 |
 | 1.7.x | ✅ 보안 패치 범위 내 지원 |
 | 1.6.x 이하 | ❌ 미지원 |
 
@@ -27,7 +28,7 @@
 
 ## 보안 모델
 
-Lattice AI v2.0.0은 local-first Agentic Workspace Platform으로, 아래 보안 모델을 따릅니다:
+Lattice AI v2.1.0은 local-first Agentic Workspace Platform으로, 아래 보안 모델을 따릅니다:
 
 ### 기본 안전 설정 (Default Secure)
 
@@ -64,6 +65,10 @@ Lattice AI v2.0.0은 local-first Agentic Workspace Platform으로, 아래 보안
 - `run_command()`: 위험 플래그(`--rm -rf`, `sudo` 등) 차단
 - `edit_file()`: `old_string` 유일성 검증, 샌드박스 이탈 차단
 - `grep()`, `read_file()`: `node_modules`, `.git`, `venv`, `dist` 자동 제외
+- Agent context packets redact obvious secret fields (`token`, `password`,
+  `api_key`, `credential`) before persistence/replay.
+- Agent handoff, review/retry, workflow, plugin, and execution-failure events
+  are workspace-scoped in the existing SSE activity feed.
 
 ### 텔레메트리
 

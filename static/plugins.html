@@ -13,6 +13,16 @@
     <div id="list" class="grid"><div class="empty">Loading plugins…</div></div>
 
     <div class="section">
+      <h3>Template foundation</h3>
+      <div id="templates" class="grid"><div class="empty">Loading templates…</div></div>
+    </div>
+
+    <div class="section">
+      <h3>Plugin execution viewer</h3>
+      <div id="pluginEvents"><div class="empty">Loading plugin events…</div></div>
+    </div>
+
+    <div class="section">
       <h3>Validate a manifest</h3>
       <p class="sub">Paste a <code>plugin.json</code> to check it against the SDK schema and permission allow-list.</p>
       <textarea id="manifest" spellcheck="false">{
@@ -55,6 +65,45 @@
         </div>`).join("");
     }
 
+    async function loadTemplates() {
+      const data = await api("/marketplace/templates");
+      const box = document.getElementById("templates");
+      if (!data.templates.length) { box.innerHTML = `<div class="empty">No templates available.</div>`; return; }
+      box.innerHTML = data.templates.map((t) => `
+        <div class="card">
+          <div class="row"><h3>${escapeHtml(t.name)}</h3><div class="spacer"></div>${badge(t.kind)}</div>
+          <div class="meta">v${escapeHtml(t.version)} · ${escapeHtml((t.metadata||{}).category || "foundation")}</div>
+          <p style="font-size:13px;color:#cbd5e1">${escapeHtml(t.description || "")}</p>
+          <div class="row" style="margin-top:12px">
+            <a class="btn ghost" target="_blank" href="/marketplace/templates/${t.kind}/${t.id}/export">Export</a>
+            <button data-template="${t.kind}:${t.id}">Install</button>
+          </div>
+        </div>`).join("");
+    }
+
+    async function loadPluginEvents() {
+      const data = await api("/realtime/feed?limit=80");
+      const events = (data.events || []).filter((e) => e.area === "plugins" || e.event_type?.startsWith("plugin_"));
+      const box = document.getElementById("pluginEvents");
+      if (!events.length) { box.innerHTML = `<div class="empty">No plugin executions yet.</div>`; return; }
+      box.innerHTML = events.slice(0, 20).map((ev) => `<div class="timeline-item">
+        <div class="row"><strong>${escapeHtml(ev.event_type)}</strong><div class="spacer"></div>${badge((ev.payload||{}).status || ev.area)}</div>
+        <div class="t-meta">${escapeHtml((ev.payload||{}).plugin_id || (ev.payload||{}).plugin || "")} · ${escapeHtml(ev.received_at || ev.timestamp || "")}</div>
+      </div>`).join("");
+    }
+
+    document.getElementById("templates").addEventListener("click", async (e) => {
+      const btn = e.target.closest("button[data-template]");
+      if (!btn) return;
+      btn.disabled = true;
+      const [kind, id] = btn.dataset.template.split(":");
+      try {
+        const exported = await api(`/marketplace/templates/${kind}/${id}/export`);
+        await api("/marketplace/templates/install", { method: "POST", body: JSON.stringify({ data: exported }) });
+        toast(`Installed template: ${id}`);
+      } catch (err) { toast(err.message); } finally { btn.disabled = false; }
+    });
+
     document.getElementById("list").addEventListener("click", async (e) => {
       const btn = e.target.closest("button[data-act]");
       if (!btn) return;
@@ -77,6 +126,8 @@
     });
 
     load().catch((e) => toast(e.message));
+    loadTemplates().catch((e) => toast(e.message));
+    loadPluginEvents().catch(() => {});
   </script>
 </body>
 </html>

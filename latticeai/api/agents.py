@@ -1,4 +1,4 @@
-"""Multi-Agent Runtime 2.0 API router (v2.0).
+"""Multi-Agent Runtime API router (v2).
 
 Exposes the built-in agent roles and an orchestrated run endpoint that connects
 to Workspace, Memory, Knowledge Graph, Workflow runs, and the Timeline. Paths
@@ -20,6 +20,12 @@ class AgentRunRequest(BaseModel):
     roles: List[str] = []
     inputs: Dict[str, Any] = {}
     max_retries: int = 2
+
+
+class MemorySnapshotRequest(BaseModel):
+    label: str = "agent memory snapshot"
+    reason: str = ""
+    memory_ids: List[str] = []
 
 
 def create_agents_router(
@@ -66,6 +72,49 @@ def create_agents_router(
         scope = gate_read(request)
         return store.list_agents(workspace_id=scope)
 
+    @router.get("/agents/api/handoffs")
+    async def agent_handoffs(request: Request, run_id: str = ""):
+        require_user(request)
+        scope = gate_read(request)
+        return store.list_handoffs(workspace_id=scope, run_id=run_id or None)
+
+    @router.get("/agents/api/runs/{run_id}")
+    async def agent_run_detail(run_id: str, request: Request):
+        require_user(request)
+        scope = gate_read(request)
+        try:
+            return {"run": store.get_agent_run(run_id, workspace_id=scope)}
+        except FileNotFoundError as exc:
+            raise HTTPException(status_code=404, detail=f"Agent run not found: {run_id}") from exc
+
+    @router.get("/agents/api/runs/{run_id}/replay")
+    async def agent_run_replay(run_id: str, request: Request):
+        require_user(request)
+        scope = gate_read(request)
+        try:
+            return {"replay": store.replay_agent_run(run_id, workspace_id=scope)}
+        except FileNotFoundError as exc:
+            raise HTTPException(status_code=404, detail=f"Agent run not found: {run_id}") from exc
+
+    @router.get("/agents/api/memory/snapshots")
+    async def agent_memory_snapshots(request: Request, limit: int = 50):
+        require_user(request)
+        scope = gate_read(request)
+        return store.list_memory_snapshots(workspace_id=scope, limit=limit)
+
+    @router.post("/agents/api/memory/snapshots")
+    async def agent_memory_snapshot(req: MemorySnapshotRequest, request: Request):
+        current_user = require_user(request)
+        scope = gate_write(request)
+        snapshot = store.create_memory_snapshot(
+            label=req.label,
+            reason=req.reason,
+            memory_ids=req.memory_ids or None,
+            user_email=current_user or None,
+            workspace_id=scope,
+        )
+        return {"snapshot": snapshot}
+
     @router.post("/agents/api/run")
     async def agent_run(req: AgentRunRequest, request: Request):
         current_user = require_user(request)
@@ -88,6 +137,13 @@ def create_agents_router(
             output_text=result.output,
             timeline=result.timeline,
             relationships=[ROLE_AGENT_IDS.get(r, f"agent:{r}") for r in result.roles_run],
+            handoffs=result.handoffs,
+            context_packets=result.context_packets,
+            plan=result.plan,
+            plan_review=result.plan_review,
+            review_history=result.review_history,
+            retry_history=result.retry_history,
+            memory_snapshots=result.memory_snapshots,
             user_email=current_user or None,
             graph=workspace_graph(),
             workspace_id=scope,

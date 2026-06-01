@@ -12,12 +12,12 @@ Connects to a running [Lattice AI](https://github.com/TaeSooPark-PTS/LatticeAI) 
 
 ## Current Release
 
-**2.0.0 — Agentic Workspace Platform.** The server graduates to a local-first
-Agentic Workspace Platform: a **Plugin SDK**, a node-based **Workflow Designer**,
-**Multi-Agent Runtime 2.0** (Planner/Executor/Reviewer/Researcher/Release), and
-**Realtime Collaboration** (presence + activity feed over SSE) — all integrated
-and additive. The extension command surface remains backward compatible; `Send
-To Lattice` continues to feed Workspace OS workflows.
+**2.1.0 — Agent Platform Maturity Release.** The server keeps the v2.0 Plugin
+SDK, Workflow Designer, Multi-Agent Runtime, and Realtime systems, then makes
+agent handoff, context packets, review/retry, planning, memory snapshots,
+timeline replay, marketplace templates, and realtime execution observability
+first-class. The extension command surface remains backward compatible; `Send To
+Lattice` continues to feed Workspace OS workflows.
 
 ---
 

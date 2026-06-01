@@ -1,18 +1,36 @@
-# Lattice AI Multi-Agent Runtime 2.0
+# Lattice AI Multi-Agent Runtime 2.1
 
-The Multi-Agent Runtime is the **orchestration layer** introduced in v2.0.0. It sits
+The Multi-Agent Runtime is the **orchestration layer** introduced in v2.0.0 and
+operationalized in v2.1.0. It sits
 *above* the v1.x single-agent state machine ([`AgentRuntime`](../latticeai/core/agent.py))
 and coordinates a pipeline of named **roles** that hand off work to one another,
-retry on a failing review, and emit a fully observable timeline.
+retry on a failing review, and emit a fully observable, replayable timeline.
 
 - **Source of truth:** `latticeai/core/multi_agent.py`
 - **HTTP surface:** `latticeai/api/agents.py`
 - **Persistence / Knowledge Graph integration:** `latticeai/core/workspace_os.py`
-  (`WorkspaceOSStore.record_agent_run`)
+  (`WorkspaceOSStore.record_agent_run`, `replay_agent_run`, `list_handoffs`)
 
 ```python
-MULTI_AGENT_VERSION = "2.0.0"
+MULTI_AGENT_VERSION = "2.1.0"
 ```
+
+## What v2.1 adds
+
+v2.1 does not replace the v2.0 runtime; it makes the runtime's operational
+objects durable and inspectable:
+
+- **Explicit handoff records**: `handoff_id`, source/target agent ids, reason,
+  task summary, context packet, status, and timestamps.
+- **Agent context packets**: objective, task summary, workspace/graph/memory/
+  workflow context, plugin outputs, constraints, reviewer notes, and retry
+  metadata with obvious secret keys redacted.
+- **Review / retry history**: reviewer outcomes normalize to `approve`,
+  `reject`, or `retry`; retry reasons, notes, counts, and limits are persisted.
+- **Planning records**: plans include a `plan_id`, ordered executable steps, and
+  plan-review metadata.
+- **Replay**: persisted runs can be replayed as frames showing actor, time,
+  reason, input, output, and decision via `/agents/api/runs/{run_id}/replay`.
 
 ## How it relates to the v1 single-agent runtime
 

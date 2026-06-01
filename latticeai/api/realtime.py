@@ -1,4 +1,4 @@
-"""Realtime Collaboration API router (v2.0).
+"""Realtime Collaboration API router (v2).
 
 Server-Sent-Events stream + presence + activity feed over
 :class:`latticeai.core.realtime.RealtimeBus`. Workspace isolation is enforced by

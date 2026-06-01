@@ -1,6 +1,6 @@
-"""v2.0 Agentic Workspace Platform runtime — cross-system wiring.
+"""v2 Agentic Workspace Platform runtime — cross-system wiring.
 
-This is the single place the four v2.0 subsystems (Plugin SDK, Workflow
+This is the single place the v2 subsystems (Plugin SDK, Workflow
 Designer, Multi-Agent Runtime, Realtime) connect to one another and to the
 workspace. Keeping it out of ``server_app`` honours the AGENTS.md preference for
 small, composable modules and keeps the wiring independently testable.
@@ -132,7 +132,7 @@ class PlatformRuntime:
             plugin_id = cfg.get("plugin_id") or cfg.get("plugin") or ""
             action = cfg.get("action") or "run_skill"
             result = self.registry.execute_action(
-                plugin_id, action, cfg.get("args") or {}, runners=self.plugin_capability_runners(user, scope)
+                plugin_id, action, cfg.get("args") or {}, runners=self.plugin_capability_runners(user, scope), workspace_id=scope
             )
             return result.as_dict()
         return runner
@@ -169,7 +169,7 @@ class PlatformRuntime:
     def run_agent(self, goal, user, scope, *, with_workflow: bool, roles=None, inputs=None) -> Dict[str, Any]:
         role_runner = default_role_runner(
             workflow_runner=(lambda wf_ref, ctx: self.run_workflow_by_id(wf_ref, user, scope, with_agent=False, inputs=ctx.inputs)) if with_workflow else None,
-            plugin_runner=lambda pid, ctx: self.registry.execute_action(pid, "run_skill", {}, runners=self.plugin_capability_runners(user, scope)).as_dict(),
+            plugin_runner=lambda pid, ctx: self.registry.execute_action(pid, "run_skill", {}, runners=self.plugin_capability_runners(user, scope), workspace_id=scope).as_dict(),
             context_provider=self._context_provider(user, scope),
         )
         result = MultiAgentOrchestrator(role_runner=role_runner).run(
@@ -178,6 +178,10 @@ class PlatformRuntime:
         run = self.store.record_agent_run(
             agent_id=result.agent_id, status=result.status, input_text=goal,
             output_text=result.output, timeline=result.timeline, relationships=[],
+            handoffs=result.handoffs, context_packets=result.context_packets,
+            plan=result.plan, plan_review=result.plan_review,
+            review_history=result.review_history, retry_history=result.retry_history,
+            memory_snapshots=result.memory_snapshots,
             user_email=user, graph=self.workspace_graph(), workspace_id=scope,
         )
         return {"agent_run_id": run["id"], "status": result.status, "output": result.output}
@@ -195,6 +199,6 @@ class PlatformRuntime:
     def build_orchestrator(self, user, scope) -> MultiAgentOrchestrator:
         return MultiAgentOrchestrator(role_runner=default_role_runner(
             workflow_runner=lambda wf_ref, ctx: self.run_workflow_by_id(wf_ref, user, scope, with_agent=False, inputs=ctx.inputs),
-            plugin_runner=lambda pid, ctx: self.registry.execute_action(pid, "run_skill", {}, runners=self.plugin_capability_runners(user, scope)).as_dict(),
+            plugin_runner=lambda pid, ctx: self.registry.execute_action(pid, "run_skill", {}, runners=self.plugin_capability_runners(user, scope), workspace_id=scope).as_dict(),
             context_provider=self._context_provider(user, scope),
         ))

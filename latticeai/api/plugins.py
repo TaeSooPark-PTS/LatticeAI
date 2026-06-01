@@ -1,4 +1,4 @@
-"""Plugin SDK API router (v2.0).
+"""Plugin SDK API router (v2).
 
 Surfaces the :class:`latticeai.core.plugins.PluginRegistry` over HTTP using the
 same router-factory convention as the rest of ``latticeai.api`` (server_app

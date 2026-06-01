@@ -1,4 +1,4 @@
-"""Workflow Designer API router (v2.0).
+"""Workflow Designer API router (v2).
 
 Create / edit / validate / execute / inspect / export / import workflows plus
 run history, layered on :mod:`latticeai.core.workflow_engine` and the existing
@@ -173,6 +173,15 @@ def create_workflow_designer_router(
         require_user(request)
         scope = gate_read(request)
         return store.list_workflow_runs(limit=limit, workspace_id=scope)
+
+    @router.get("/workflows/api/runs/{run_id}/replay")
+    async def workflow_run_replay(run_id: str, request: Request):
+        require_user(request)
+        scope = gate_read(request)
+        try:
+            return {"replay": store.replay_workflow_run(run_id, workspace_id=scope)}
+        except FileNotFoundError as exc:
+            raise HTTPException(status_code=404, detail=f"Workflow run not found: {run_id}") from exc
 
     @router.get("/workflows/api/export/{workflow_id}")
     async def export_definition(workflow_id: str, request: Request):

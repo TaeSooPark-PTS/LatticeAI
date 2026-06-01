@@ -1,7 +1,7 @@
 """Plugin SDK — manifest, registry, lifecycle, permissions, validation, and a
 safe execution boundary.
 
-The Plugin SDK is the v2.0.0 extension layer. It is intentionally additive:
+The Plugin SDK is the v2 extension layer. It is intentionally additive:
 a plugin is a directory under the configured ``plugins`` root that ships a
 ``plugin.json`` manifest and *extends* the existing Skill / Tool / Workflow
 surfaces rather than replacing them. Installed standalone skills keep working
@@ -30,7 +30,7 @@ from pathlib import Path
 from typing import Any, Callable, Dict, List, Optional, Tuple
 
 
-PLUGIN_SDK_VERSION = "2.0.0"
+PLUGIN_SDK_VERSION = "2.1.0"
 
 # Capability-style permissions a plugin can request. Kept deliberately small so
 # the Enterprise seam can layer finer-grained policy on top without changing the
@@ -348,6 +348,7 @@ class PluginRegistry:
         args: Optional[Dict[str, Any]] = None,
         *,
         runners: Optional[Dict[str, Callable[..., Any]]] = None,
+        workspace_id: Optional[str] = None,
     ) -> PluginExecutionResult:
         """Run a plugin-provided action through the permission boundary.
 
@@ -355,17 +356,32 @@ class PluginRegistry:
         "agents") to a callable the host injects. The boundary refuses any
         capability the plugin did not *declare in its manifest*; without a
         matching runner the action is reported ``skipped`` (never crashes the
-        caller). This keeps v2.0.0 plugins safe-by-default.
+        caller). This keeps plugins safe-by-default.
         """
         args = args or {}
         runners = runners or {}
+
+        def emit(event_type: str, payload: Dict[str, Any]) -> None:
+            if self.store is not None and hasattr(self.store, "record_timeline_event"):
+                try:
+                    self.store.record_timeline_event("plugins", event_type, payload, workspace_id=workspace_id)
+                except Exception:
+                    pass
+
+        emit("plugin_started", {"plugin_id": plugin_id, "action": action})
+
+        def finish(result: PluginExecutionResult) -> PluginExecutionResult:
+            event_type = "plugin_completed" if result.status in {"ok", "skipped"} else "execution_failed"
+            emit(event_type, {"plugin_id": plugin_id, "action": action, "status": result.status, "reason": result.reason})
+            return result
+
         manifest = self.get_manifest(plugin_id)
         if manifest is None:
-            return PluginExecutionResult(plugin_id, action, "error", reason="plugin not found or invalid")
+            return finish(PluginExecutionResult(plugin_id, action, "error", reason="plugin not found or invalid"))
 
         registry_state = self.store.list_plugin_registry().get(plugin_id, {}) if self.store else {}
         if self.store is not None and not registry_state.get("enabled", registry_state.get("installed")):
-            return PluginExecutionResult(plugin_id, action, "blocked", reason="plugin is not enabled")
+            return finish(PluginExecutionResult(plugin_id, action, "blocked", reason="plugin is not enabled"))
 
         # Map an action to the capability + permission it needs.
         capability_for: Dict[str, Tuple[str, str]] = {
@@ -377,24 +393,24 @@ class PluginRegistry:
         capability, permission = capability_for.get(action, ("actions", ""))
 
         if permission and permission not in manifest.permissions:
-            return PluginExecutionResult(
+            return finish(PluginExecutionResult(
                 plugin_id, action, "blocked",
                 reason=f"plugin did not declare required permission '{permission}'",
-            )
+            ))
         if permission and self.store is not None and permission not in self._granted_permissions(plugin_id):
-            return PluginExecutionResult(
+            return finish(PluginExecutionResult(
                 plugin_id, action, "blocked",
                 reason=f"permission '{permission}' not granted at install time",
-            )
+            ))
 
         runner = runners.get(capability)
         if runner is None:
-            return PluginExecutionResult(
+            return finish(PluginExecutionResult(
                 plugin_id, action, "skipped",
                 reason=f"no host runner for capability '{capability}'",
-            )
+            ))
         try:
             output = runner(plugin_id=plugin_id, action=action, args=args, manifest=manifest)
-            return PluginExecutionResult(plugin_id, action, "ok", output=output)
+            return finish(PluginExecutionResult(plugin_id, action, "ok", output=output))
         except Exception as exc:
-            return PluginExecutionResult(plugin_id, action, "error", reason=str(exc))
+            return finish(PluginExecutionResult(plugin_id, action, "error", reason=str(exc)))
