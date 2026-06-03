@@ -97,9 +97,8 @@ def doctor() -> int:
         ("FastAPI", _has_module("fastapi"), "required server dependency", True),
         ("Uvicorn", _has_module("uvicorn"), "required server dependency", True),
         ("OpenAI SDK", _has_module("openai"), "required for cloud providers", False),
-        ("MLX", _has_module("mlx"), "required for Apple Silicon local models", False),
-        ("MLX-LM", _has_module("mlx_lm"), "required for local text models", False),
-        ("MLX-VLM", _has_module("mlx_vlm"), "required for Gemma/VLM models", False),
+        ("MLX", _has_module("mlx"), "required for Apple Silicon multimodal models", False),
+        ("MLX-VLM", _has_module("mlx_vlm"), "required for Gemma-4/VLM models", False),
         ("Ollama binary", shutil.which("ollama") is not None, "optional local-server engine", False),
     ]
     data_dir = Path(os.getenv("LATTICEAI_DATA_DIR") or Path.home() / ".ltcai")

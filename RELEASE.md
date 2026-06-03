@@ -9,6 +9,29 @@
 > PyPI / npm / VS Code Marketplace / Open VSX 배포는 아래 수동 절차로 로컬에서
 > 직접 인증 후 진행합니다. GitHub Secrets에 배포 토큰을 저장하지 않습니다.
 
+## v2.2.0 릴리스 노트 (2026-06-04)
+
+Multimodal-First Knowledge OS Release — Lattice AI를 단순 채팅 앱이나 모델
+런처가 아니라 파일, 문서, 이미지, 스크린샷, 대화, 판단, 작업 기록을 지식화하는
+AI Knowledge OS로 정렬합니다.
+
+- **Changed (Product direction)**: README, architecture, release notes, model
+  policy, AI philosophy, Knowledge Graph principles를 v2.2.0 철학에 맞춰 갱신.
+- **Changed (Multimodal-first)**: local model recommendation catalog가
+  Gemma 4, Qwen3-VL, Llama 4 중심의 멀티모달 모델만 추천합니다.
+- **Removed (Text-only path)**: MLX-LM 추천/설치 경로와 text-only local
+  fallback 모델을 제거하고 MLX-VLM 중심으로 전환.
+- **Removed (Old generations)**: Gemma 2/3, Qwen2.5-VL, SmolLM, Phi, Mistral,
+  DeepSeek, GPT-OSS, Llama 3.x 현재 추천 항목 제거.
+- **Added (Source disclosure)**: 모델 카탈로그와 추천 응답에 제작 국가,
+  제작 회사, 실행 방식, 인터넷 사용 여부, 모델명을 포함.
+- **Changed (Modes)**: 기본/고급 모드는 기능 차이가 아니라 설명 밀도 차이로
+  정리. 관리자 모드만 사용자/권한/감사/정책 권한을 가짐.
+- **Changed (Version sync)**: Python/npm/VS Code extension/Workspace OS/FastAPI
+  `/health` version metadata aligned at `2.2.0`.
+- **Validation target**: unit/integration/build/VSIX/Python/npm artifact checks.
+  패키지 스토어 publish는 수동 절차로만 진행.
+
 ## v2.1.0 릴리스 노트 (2026-06-01)
 
 Agent Platform Maturity Release — v2.0에서 도입한 Plugin SDK, Workflow
@@ -434,11 +457,11 @@ Knowledge Graph v2 read/write cutover. 자세한 내용은
 3. 업로드
    - `npm run publish:pypi`
    - 직접 실행 시:
-     `python3 -m twine upload dist/ltcai-2.1.0-py3-none-any.whl dist/ltcai-2.1.0.tar.gz`
+     `python3 -m twine upload dist/ltcai-2.2.0-py3-none-any.whl dist/ltcai-2.2.0.tar.gz`
 
 참고:
 - TestPyPI 먼저 쓰려면:
-  - `python3 -m twine upload --skip-existing --repository testpypi dist/ltcai-2.1.0.tar.gz dist/ltcai-2.1.0-py3-none-any.whl`
+  - `python3 -m twine upload --skip-existing --repository testpypi dist/ltcai-2.2.0.tar.gz dist/ltcai-2.2.0-py3-none-any.whl`
 
 ## 4) VS Code / Cursor / Antigravity 확장 배포
 
@@ -452,11 +475,11 @@ Knowledge Graph v2 read/write cutover. 자세한 내용은
 3. VS Code Marketplace 배포
    - `npm run publish:vscode`
    - 직접 실행 시:
-     `npx vsce publish --packagePath dist/ltcai-2.1.0.vsix`
+     `npx vsce publish --packagePath dist/ltcai-2.2.0.vsix`
 4. Open VSX 배포 (Cursor/일부 포크 호환)
    - `npm run publish:openvsx`
    - 직접 실행 시:
-     `npx ovsx publish dist/ltcai-2.1.0.vsix`
+     `npx ovsx publish dist/ltcai-2.2.0.vsix`
 5. 로컬 설치 (VS Code/Cursor/Antigravity)
    - `npm run install:all`
 

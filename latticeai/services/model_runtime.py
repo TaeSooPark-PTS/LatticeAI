@@ -64,7 +64,7 @@ INVITE_GATE_ENABLED = False
 ALLOW_PLAINTEXT_API_KEYS = False
 CORS_ALLOW_NETWORK = False
 PUBLIC_MODEL = "openai:gpt-4o-mini"
-LOCAL_MODEL = "mlx-community/SmolLM-1.7B-Instruct-4bit"
+LOCAL_MODEL = "mlx-community/gemma-4-12b-it-4bit"
 IS_PUBLIC_MODE = False
 keyring = None
 
@@ -889,7 +889,7 @@ def ensure_llamacpp_server(model_name: str) -> None:
 
 def engine_installed(engine: str) -> bool:
     if engine == "local_mlx":
-        return bool(importlib.util.find_spec("mlx") and importlib.util.find_spec("mlx_lm"))
+        return bool(importlib.util.find_spec("mlx") and importlib.util.find_spec("mlx_vlm"))
     if engine == "ollama":
         return local_binary("ollama") is not None
     if engine == "vllm":

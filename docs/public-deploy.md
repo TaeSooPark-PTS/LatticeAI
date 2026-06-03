@@ -131,7 +131,6 @@ yourdomain.com {
 openai:gpt-4o-mini
 openai:gpt-4o
 openrouter:openai/gpt-4o-mini
-groq:llama-3.1-8b-instant
-groq:llama-3.3-70b-versatile
-together:meta-llama/Llama-3.3-70B-Instruct-Turbo
+openrouter:qwen/qwen3-vl-235b-a22b-instruct
+together:Qwen/Qwen3-VL-32B-Instruct
 ```

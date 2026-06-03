@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "ltcai"
-version = "2.1.0"
+version = "2.2.0"
 description = "Lattice AI Workspace OS for local-first graph, memory, agent, workflow, and skill operations"
 readme = "README.md"
 requires-python = ">=3.11"
@@ -46,9 +46,9 @@ dependencies = [
 ]
 
 [project.optional-dependencies]
-local = ["mlx-lm", "mlx-vlm"]
+local = ["mlx-vlm"]
 voice = ["openai-whisper", "SpeechRecognition", "pydub"]
-all = ["mlx-lm", "mlx-vlm", "openai-whisper", "SpeechRecognition", "pydub"]
+all = ["mlx-vlm", "openai-whisper", "SpeechRecognition", "pydub"]
 
 [project.scripts]
 LTCAI = "ltcai_cli:main"

@@ -1,7 +1,7 @@
 # Lattice AI Multi-Agent Runtime 2.1
 
 The Multi-Agent Runtime is the **orchestration layer** introduced in v2.0.0 and
-operationalized in v2.1.0. It sits
+operationalized in v2.2.0. It sits
 *above* the v1.x single-agent state machine ([`AgentRuntime`](../latticeai/core/agent.py))
 and coordinates a pipeline of named **roles** that hand off work to one another,
 retry on a failing review, and emit a fully observable, replayable timeline.
@@ -12,12 +12,12 @@ retry on a failing review, and emit a fully observable, replayable timeline.
   (`WorkspaceOSStore.record_agent_run`, `replay_agent_run`, `list_handoffs`)
 
 ```python
-MULTI_AGENT_VERSION = "2.1.0"
+MULTI_AGENT_VERSION = "2.2.0"
 ```
 
-## What v2.1 adds
+## What v2.2 adds
 
-v2.1 does not replace the v2.0 runtime; it makes the runtime's operational
+v2.2 does not replace the v2.0 runtime; it makes the runtime's operational
 objects durable and inspectable:
 
 - **Explicit handoff records**: `handoff_id`, source/target agent ids, reason,

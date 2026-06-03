@@ -26,7 +26,7 @@ export class ChatPanel {
 
     const panel = vscode.window.createWebviewPanel(
       ChatPanel.viewType,
-      "Lattice AI MLX",
+      "Lattice AI",
       column,
       { enableScripts: true, retainContextWhenHidden: true }
     );

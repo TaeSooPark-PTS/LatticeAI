@@ -523,7 +523,7 @@ def _extract_concepts_rules(text: str, limit: int = 12) -> List[str]:
     2. Multi-word proper nouns (Lattice AI, GPT-4o, Claude Sonnet)
     3. Single capitalized proper nouns not at sentence start (Claude, Python, FastAPI)
     4. Korean compound technical terms (멀티모달, 에이전트, 그래프RAG)
-    5. Hyphenated / versioned identifiers (gpt-4o, mlx-lm, llama-3.3)
+    5. Hyphenated / versioned identifiers (gpt-4o, mlx-vlm, gemma-4)
     """
     text = str(text or "")
     seen: dict = {}  # concept_lower → original form
@@ -586,7 +586,7 @@ def _extract_concepts_rules(text: str, limit: int = 12) -> List[str]:
             if len(m) >= 3 or cnt >= 2:
                 _add(m)
 
-    # 6. Hyphenated / versioned identifiers (gpt-4o, llama-3.3, mlx-lm)
+    # 6. Hyphenated / versioned identifiers (gpt-4o, gemma-4, mlx-vlm)
     for m in re.findall(r'\b([a-zA-Z][a-zA-Z0-9]*(?:-[a-zA-Z0-9.]+)+)\b', text):
         if len(m) >= 4:
             _add(m)

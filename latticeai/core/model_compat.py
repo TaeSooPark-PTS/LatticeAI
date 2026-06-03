@@ -25,18 +25,13 @@ logger = logging.getLogger(__name__)
 # ── Model family detection ────────────────────────────────────────────────────
 
 FAMILY_PATTERNS: List[Tuple[str, re.Pattern]] = [
-    ("gpt-oss", re.compile(r"gpt[-_]?oss", re.I)),
     ("gemma", re.compile(r"gemma", re.I)),
     ("qwen", re.compile(r"qwen", re.I)),
     ("llama", re.compile(r"\bllama|meta[-_]?llama", re.I)),
-    ("mistral", re.compile(r"mistral|mixtral", re.I)),
-    ("phi", re.compile(r"\bphi[-_]?\d", re.I)),
-    ("deepseek", re.compile(r"deepseek", re.I)),
-    ("yi", re.compile(r"\byi[-_]?\d", re.I)),
     ("claude", re.compile(r"claude", re.I)),
-    ("gpt-4", re.compile(r"gpt[-_]?4", re.I)),
-    ("gpt-3.5", re.compile(r"gpt[-_]?3\.?5", re.I)),
-    ("o1", re.compile(r"\bo1[-_]?", re.I)),
+    ("gpt", re.compile(r"gpt[-_]?(?:4|5)|openai", re.I)),
+    ("gemini", re.compile(r"gemini", re.I)),
+    ("grok", re.compile(r"grok|x[-_]?ai", re.I)),
 ]
 
 
@@ -59,20 +54,6 @@ def detect_model_family(model_id: str) -> str:
 DEFAULT_STOP = ["<|im_end|>", "<|endoftext|>", "</s>", "<|user|>", "<|assistant|>"]
 
 FAMILY_PROFILES: Dict[str, Dict[str, Any]] = {
-    "gpt-oss": {
-        "family": "gpt-oss",
-        "supports_system": True,
-        "supports_vision": False,
-        "chat_template": "gpt_oss",
-        "preferred_engines": ["ollama", "llamacpp", "vllm", "local_mlx"],
-        "temperature": 0.1,
-        "top_p": 0.9,
-        "max_tokens": 2048,
-        "stop_sequences": ["<|im_end|>", "<|end|>", "</s>", "<|user|>", "<|assistant|>"],
-        "disable_draft": True,
-        # trim_after_user_marker는 <|user|>가 살아있어야 동작하므로 strip_role_tokens보다 먼저 실행.
-        "postprocess": ["trim_after_user_marker", "strip_role_tokens"],
-    },
     "gemma": {
         "family": "gemma",
         "supports_system": True,
@@ -89,7 +70,7 @@ FAMILY_PROFILES: Dict[str, Dict[str, Any]] = {
     "qwen": {
         "family": "qwen",
         "supports_system": True,
-        "supports_vision": False,
+        "supports_vision": True,
         "chat_template": "qwen_chatml",
         "preferred_engines": ["ollama", "local_mlx", "vllm"],
         "temperature": 0.2,
@@ -102,52 +83,13 @@ FAMILY_PROFILES: Dict[str, Dict[str, Any]] = {
     "llama": {
         "family": "llama",
         "supports_system": True,
-        "supports_vision": False,
+        "supports_vision": True,
         "chat_template": "tokenizer_default",
         "preferred_engines": ["ollama", "local_mlx", "llamacpp", "vllm"],
         "temperature": 0.2,
         "top_p": 0.9,
         "max_tokens": 4096,
         "stop_sequences": ["</s>", "[INST]", "[/INST]"],
-        "disable_draft": False,
-        "postprocess": ["strip_role_tokens"],
-    },
-    "mistral": {
-        "family": "mistral",
-        "supports_system": False,
-        "supports_vision": False,
-        "chat_template": "tokenizer_default",
-        "preferred_engines": ["ollama", "local_mlx", "llamacpp"],
-        "temperature": 0.2,
-        "top_p": 0.9,
-        "max_tokens": 4096,
-        "stop_sequences": ["</s>", "[INST]", "[/INST]"],
-        "disable_draft": False,
-        "postprocess": ["strip_role_tokens"],
-    },
-    "phi": {
-        "family": "phi",
-        "supports_system": True,
-        "supports_vision": False,
-        "chat_template": "tokenizer_default",
-        "preferred_engines": ["ollama", "local_mlx"],
-        "temperature": 0.2,
-        "top_p": 0.9,
-        "max_tokens": 2048,
-        "stop_sequences": ["<|end|>", "<|endoftext|>"],
-        "disable_draft": False,
-        "postprocess": ["strip_role_tokens"],
-    },
-    "deepseek": {
-        "family": "deepseek",
-        "supports_system": True,
-        "supports_vision": False,
-        "chat_template": "tokenizer_default",
-        "preferred_engines": ["ollama", "local_mlx", "vllm"],
-        "temperature": 0.2,
-        "top_p": 0.9,
-        "max_tokens": 4096,
-        "stop_sequences": ["<|EOT|>", "</s>"],
         "disable_draft": False,
         "postprocess": ["strip_role_tokens"],
     },
@@ -316,6 +258,7 @@ class CompatProfile:
     engine: Optional[str]
     family: str
     template: str
+    supports_vision: bool
     stop: List[str]
     temperature: float
     top_p: float
@@ -362,6 +305,7 @@ def ensure_profile(model_id: str, engine: Optional[str] = None) -> CompatProfile
         engine=(engine or "").strip().lower() or None,
         family=base["family"],
         template=base["chat_template"],
+        supports_vision=bool(base.get("supports_vision", False)),
         stop=list(base["stop_sequences"]),
         temperature=float(base["temperature"]),
         top_p=float(base["top_p"]),

@@ -32,7 +32,7 @@ from datetime import datetime
 from typing import Any, AsyncIterator, Dict, List, Optional, Set
 
 
-REALTIME_VERSION = "2.1.0"
+REALTIME_VERSION = "2.2.0"
 _FEED_LIMIT = 200
 _QUEUE_MAX = 100
 

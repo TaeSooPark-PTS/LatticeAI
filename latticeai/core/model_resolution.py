@@ -120,7 +120,7 @@ class ModelResolution:
         if not provider:
             provider = engine_hint or "local_mlx"
 
-        # alias 테이블 (예: {"gpt-oss-20b": {"local_mlx": "mlx-community/...","ollama":"gpt-oss:20b"}})
+        # alias 테이블 (예: {"gemma-4-12b-it-4bit": {"local_mlx": "mlx-community/...", "ollama": "hf.co/..."}})
         resolved_model = model_name
         if engine_aliases:
             aliases = engine_aliases.get(model_name.lower())

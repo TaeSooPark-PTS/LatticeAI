@@ -1,5 +1,50 @@
 # Changelog
 
+## [2.2.0] - 2026-06-04
+
+> Multimodal-First Knowledge OS Release — Lattice AI is aligned around the
+> Knowledge Graph, multimodal inputs, source disclosure, and Gemma-4-first model
+> recommendations.
+
+### Added
+
+- **Source disclosure metadata** — recommended model catalog entries now include
+  maker country, maker company, execution method, internet requirement, and
+  model name.
+- **Principle documents** — added root-level `PROJECT_PRINCIPLES.md`,
+  `AI_PHILOSOPHY.md`, `MODEL_POLICY.md`, `KNOWLEDGE_GRAPH.md`,
+  `RELEASE_NOTES.md`, `ARCHITECTURE.md`, and `CHANGELOG.md`.
+- **Gemma-4 default path** — default local model configuration and recommendation
+  aliases now center on Gemma 4 12B/31B multimodal models.
+
+### Changed
+
+- **README / architecture rewrite** — current docs now describe Lattice AI as an
+  AI Knowledge OS rather than a chat app or model launcher.
+- **Multimodal recommendation logic** — local recommendation catalogs and setup
+  flows use current multimodal model families only: Gemma 4, Qwen3-VL, and
+  Llama 4.
+- **Mode language** — basic and advanced modes are feature-equivalent and differ
+  by explanation level; admin mode remains the authority boundary.
+- **Runtime policy** — Apple Silicon local execution now checks MLX-VLM instead
+  of MLX-LM.
+- **Version sync** — Python package, npm package, VS Code extension, Workspace
+  OS, runtime constants, FastAPI app, and `/health` metadata aligned at `2.2.0`.
+
+### Removed
+
+- MLX-LM as a current local text-only recommendation/install path.
+- Text-only low-spec fallback recommendations.
+- Current recommendation entries for Gemma 2, Gemma 3, Qwen2.5-VL, SmolLM,
+  Phi, Mistral, DeepSeek, GPT-OSS, and Llama 3.x.
+
+### Validation
+
+- Unit tests added/updated for multimodal catalog policy, source metadata,
+  Gemma-4 aliases, and version metadata.
+- Package-store publishing remains manual; release artifacts are version-scoped
+  and must use exact filenames.
+
 ## [2.1.0] - 2026-06-01
 
 > Agent Platform Maturity Release — v2.1 operationalizes the v2.0 platform

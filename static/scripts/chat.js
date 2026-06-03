@@ -227,7 +227,7 @@ const chatViewport = document.getElementById('chat-viewport');
                 my_status: '내 상태 보기', auto_setup: '자동 설정',
                 nav_home: '홈', nav_chat: '채팅', nav_workspace: 'Workspace OS', nav_knowledge: '지식 그래프',
                 nav_pipeline: '파이프라인', nav_files: '내 컴퓨터',
-                nav_model_status: '모델 상태', nav_runtime: '런타임 설정',
+                nav_model_status: '모델 상태', nav_runtime: '실행 방식 설정',
                 nav_advanced_settings: '고급 설정',
                 history_search_ph: '대화 검색...', new_chat: 'New Chat',
                 history_section: '대화', history_empty: '아직 저장된 대화가 없습니다.',
@@ -235,7 +235,7 @@ const chatViewport = document.getElementById('chat-viewport');
                 confirm_delete_chat: '이 대화를 삭제할까요?',
                 home_greeting: '안녕하세요, {name}님',
                 home_greeting_short: '안녕하세요',
-                ops_ai_model: 'AI 모델', ops_local_runtime: '로컬 런타임',
+                ops_ai_model: 'AI 모델', ops_local_runtime: '내 컴퓨터에서 실행',
                 ops_admin_network: '관리자 네트워크', ops_admin_security: '관리자 보안',
                 ops_pipeline_value: '멀티 LLM 파이프라인',
                 ops_pipeline_meta: 'Plan → Execute → Review 모델 설정',
@@ -248,7 +248,7 @@ const chatViewport = document.getElementById('chat-viewport');
                 home_recent_files: '최근 파일', home_open_files: '파일 열기', home_no_files: '파일이 없습니다',
                 chat_intro_title: 'Lattice AI',
                 chat_intro_desc: '로컬 모델, 파일, 지식 그래프, 멀티모달 작업을 한 대화 흐름에서 연결하는 개인 AI 워크스페이스입니다.',
-                chat_cap_file: '파일 생성', chat_cap_knowledge: '지식 정리', chat_cap_runtime: '로컬 런타임',
+                chat_cap_file: '파일 생성', chat_cap_knowledge: '지식 정리', chat_cap_runtime: '내 컴퓨터에서 실행',
                 // 계정 모달
                 tab_profile: '프로필', tab_password: '비밀번호',
                 label_name: '이름', label_nickname: '닉네임',
@@ -283,12 +283,12 @@ const chatViewport = document.getElementById('chat-viewport');
                 mode_default: '기본 모드',
                 mode_default_sub: '대화, 파일 생성, 지식 정리를 한 화면에서',
                 mode_advanced: '고급 모드',
-                mode_advanced_sub: '모델 상태, 런타임 설정, 고급 설정',
+                mode_advanced_sub: '같은 기능을 더 자세한 설명으로 표시',
                 mode_admin: '관리자 모드',
-                mode_admin_sub: '운영자용 관리자 대시보드',
+                mode_admin_sub: '사용자, 정책, 감사 로그 관리',
                 // 패널 제목
                 model_switcher: '모델 스위처',
-                model_switcher_sub: '실행 엔진을 설치하고, 엔진에 맞는 local/cloud LLM을 선택합니다.',
+                model_switcher_sub: '제작 국가, 제작 회사, 실행 방식, 인터넷 사용 여부를 확인하고 모델을 선택합니다.',
                 // 권한 다이얼로그
                 perm_title: '파일 접근 요청', btn_deny: '거부', btn_allow: '허용',
             },
@@ -306,7 +306,7 @@ const chatViewport = document.getElementById('chat-viewport');
                 my_status: 'My Status', auto_setup: 'Auto Setup',
                 nav_home: 'Home', nav_chat: 'Chat', nav_workspace: 'Workspace OS', nav_knowledge: 'Knowledge Graph',
                 nav_pipeline: 'Pipeline', nav_files: 'My Computer',
-                nav_model_status: 'Model Status', nav_runtime: 'Runtime Settings',
+                nav_model_status: 'Model Status', nav_runtime: 'Execution Settings',
                 nav_advanced_settings: 'Advanced Settings',
                 history_search_ph: 'Search chats...', new_chat: 'New Chat',
                 history_section: 'Chats', history_empty: 'No saved chats yet.',
@@ -314,7 +314,7 @@ const chatViewport = document.getElementById('chat-viewport');
                 confirm_delete_chat: 'Delete this chat?',
                 home_greeting: 'Hello, {name}',
                 home_greeting_short: 'Hello',
-                ops_ai_model: 'AI model', ops_local_runtime: 'Local runtime',
+                ops_ai_model: 'AI model', ops_local_runtime: 'Runs on this computer',
                 ops_admin_network: 'Admin Network', ops_admin_security: 'Admin Security',
                 ops_pipeline_value: 'Multi-LLM Pipeline',
                 ops_pipeline_meta: 'Plan → Execute → Review model setup',
@@ -327,7 +327,7 @@ const chatViewport = document.getElementById('chat-viewport');
                 home_recent_files: 'Recent Files', home_open_files: 'Open Files', home_no_files: 'No files yet',
                 chat_intro_title: 'Lattice AI',
                 chat_intro_desc: 'A personal AI workspace that connects local models, files, knowledge graphs, and multimodal work in one conversation flow.',
-                chat_cap_file: 'File creation', chat_cap_knowledge: 'Knowledge organizing', chat_cap_runtime: 'Local runtime',
+                chat_cap_file: 'File creation', chat_cap_knowledge: 'Knowledge organizing', chat_cap_runtime: 'Runs on this computer',
                 // Account modal
                 tab_profile: 'Profile', tab_password: 'Password',
                 label_name: 'Name', label_nickname: 'Nickname',
@@ -367,7 +367,7 @@ const chatViewport = document.getElementById('chat-viewport');
                 mode_admin_sub: 'Admin dashboard for operators',
                 // Panel titles
                 model_switcher: 'Model Switcher',
-                model_switcher_sub: 'Install a runtime engine and select a local/cloud LLM.',
+                model_switcher_sub: 'Check maker country, maker company, execution method, internet use, then select a model.',
                 // Permission dialog
                 perm_title: 'File Access Request', btn_deny: 'Deny', btn_allow: 'Allow',
             }
@@ -650,11 +650,8 @@ const chatViewport = document.getElementById('chat-viewport');
         }
 
         async function _loadHomeDashboard() {
-            const mode = getCurrentMode();
-
-            // 자동 설정 카드: 고급/관리자 모드만
             const setupCard = document.getElementById('home-setup-card');
-            if (setupCard) setupCard.style.display = (mode === 'advanced' || mode === 'admin') ? 'flex' : 'none';
+            if (setupCard) setupCard.style.display = 'flex';
 
             // 모델 + sysinfo 병렬 fetch
             try {
@@ -953,7 +950,7 @@ const chatViewport = document.getElementById('chat-viewport');
             const selected = models.find(item => item.checked && !item.disabled && (item.model_id || item.action?.model_id))
                 || models.find(item => !item.disabled && (item.model_id || item.action?.model_id));
             const zero = onboardingRecs?.summary?.zero_config || onboardingEnv?.zero_config?.recommend || {};
-            const modelId = selected?.model_id || selected?.action?.model_id || zero.model_id || 'mlx-community/Llama-3.2-3B-Instruct-4bit';
+            const modelId = selected?.model_id || selected?.action?.model_id || zero.model_id || 'mlx-community/gemma-4-12b-it-4bit';
             const engineItem = (onboardingRecs?.engines || []).find(item => item.checked && !item.disabled);
             const runtime = engineItem?.name || (zero.runtime === 'mlx' ? 'MLX' : zero.runtime) || 'MLX';
             return {
@@ -1351,7 +1348,7 @@ const chatViewport = document.getElementById('chat-viewport');
                     <button class="onboarding-mode" onclick="finishOnboarding('advanced')">
                         <i class="ti ti-terminal-2"></i>
                         <h3>고급 모드</h3>
-                        <p>모델 상태, 런타임 설정, 고급 설정까지 함께 다룹니다.</p>
+                        <p>같은 기능을 유지하면서 모델, 메모리, 실행 방식 설명을 더 자세히 표시합니다.</p>
                     </button>
                     ${adminCard}
                 </div>
@@ -1528,7 +1525,7 @@ const chatViewport = document.getElementById('chat-viewport');
             const isUnavailable = unsupported || (!isLocalEngine && engineMissing) || keyMissing || verifyFailed;
             const badge = unsupported ? '현재 환경 미지원'
                 : engineMissing && isLocalEngine ? '설치 후 자동 로드'
-                : engineMissing ? '엔진 설치 필요'
+                : engineMissing ? '실행 도구 설치 필요'
                 : needsPull ? '다운로드 후 자동 로드'
                 : keyMissing ? `필요: ${model.requires || 'API key'}`
                 : verifyFailed ? `실패: ${model.verify_reason || '검증 실패'}`
@@ -1539,11 +1536,19 @@ const chatViewport = document.getElementById('chat-viewport');
             const action = isLocalEngine
                 ? `selectModelByCard('${encodeURIComponent(model.id)}', '${engine?.id || ''}')`
                 : `loadSelectedModel('${encodeURIComponent(model.id)}', '${engine?.id || ''}')`;
+            const sourceLine = [
+                model.source_country,
+                model.source_company,
+                model.execution_method,
+                model.internet_requirement,
+                model.model_name || model.name,
+            ].filter(Boolean).join(' · ');
+            const detailLine = sourceLine || `${model.id} · ${badge}`;
             return `
                 <button class="model-option${cls}" ${isUnavailable ? 'disabled' : ''} onclick="${action}">
                     <div>
                         <strong>${escapeHtml(model.name || compactModelName(model.id))}</strong>
-                        <span>${escapeHtml(model.id)} · ${escapeHtml(badge)}</span>
+                        <span>${escapeHtml(detailLine)}${sourceLine ? `<br>${escapeHtml(model.id)} · ${escapeHtml(badge)}` : ''}</span>
                     </div>
                     <i class="ti ${icon}"></i>
                 </button>
@@ -1556,12 +1561,9 @@ const chatViewport = document.getElementById('chat-viewport');
             if (raw.includes('claude')) return 'Claude';
             if (raw.includes('grok')) return 'Grok';
             if (raw.includes('gemini')) return 'Gemini';
-            if (raw.includes('mistral') || raw.includes('mixtral')) return 'Mistral';
             if (raw.includes('qwen')) return 'Qwen';
             if (raw.includes('llama')) return 'Llama';
             if (raw.includes('gemma')) return 'Gemma';
-            if (raw.includes('phi')) return 'Phi';
-            if (raw.includes('deepseek')) return 'DeepSeek';
             return (model?.family || '기타');
         }
 
@@ -1642,17 +1644,17 @@ const chatViewport = document.getElementById('chat-viewport');
             const cloudEngines = cachedEngineList.filter(engine => engine.kind === 'cloud');
             const isLocal = modelPanelFilter === 'local';
             const target = isLocal ? localEngines : cloudEngines;
-            const emptyText = isLocal ? '등록된 로컬 엔진이 없습니다.' : '등록된 클라우드 엔진이 없습니다.';
+            const emptyText = isLocal ? '내 컴퓨터에서 실행할 수 있는 항목이 없습니다.' : '인터넷 연결 후 사용할 수 있는 항목이 없습니다.';
 
             modelList.innerHTML = `
-                <div class="model-group-title">EXECUTION ENGINES</div>
+                <div class="model-group-title">실행 방식</div>
                 <div class="model-filter">
-                    <button class="model-filter-btn ${isLocal ? 'active' : ''}" onclick="setModelPanelFilter('local')">Local LLM</button>
-                    <button class="model-filter-btn ${!isLocal ? 'active' : ''}" onclick="setModelPanelFilter('cloud')">Cloud LLM</button>
+                    <button class="model-filter-btn ${isLocal ? 'active' : ''}" onclick="setModelPanelFilter('local')">내 컴퓨터에서만 실행</button>
+                    <button class="model-filter-btn ${!isLocal ? 'active' : ''}" onclick="setModelPanelFilter('cloud')">인터넷 연결 후 사용</button>
                 </div>
                 ${!isLocal ? `
                     <div style="display:flex;justify-content:flex-end;margin:-2px 0 8px;">
-                        <button class="admin-action" onclick="verifyCloudModels(true)"><i class="ti ti-activity"></i> Cloud 실사용 테스트</button>
+                        <button class="admin-action" onclick="verifyCloudModels(true)"><i class="ti ti-activity"></i> 인터넷 모델 실사용 테스트</button>
                     </div>
                 ` : ''}
                 ${target.length ? target.map(engineCardHtml).join('') : `<div class="sensitivity-preview">${emptyText}</div>`}
@@ -1680,7 +1682,7 @@ const chatViewport = document.getElementById('chat-viewport');
 
         async function verifyCloudModels(force = true) {
             const modelList = document.getElementById('model-list');
-            modelList.innerHTML = `<div class="sensitivity-preview">Cloud 모델 실사용 테스트 중입니다... (provider별로 수 초~수십 초)</div>`;
+            modelList.innerHTML = `<div class="sensitivity-preview">인터넷 모델 실사용 테스트 중입니다... (연결 방식별로 수 초~수십 초)</div>`;
             try {
                 const res = await apiFetch('/engines/verify-cloud', {
                     method: 'POST',
@@ -1688,9 +1690,9 @@ const chatViewport = document.getElementById('chat-viewport');
                     body: JSON.stringify({ force })
                 });
                 const data = await res.json();
-                if (!res.ok) throw new Error(data.detail || 'Cloud 실사용 테스트 실패');
+                if (!res.ok) throw new Error(data.detail || '인터넷 모델 실사용 테스트 실패');
                 await openModelPanel();
-                addMessage('ai', `Cloud 모델 실사용 테스트를 완료했습니다. 실패한 모델은 잠금 상태로 표시됩니다.`);
+                addMessage('ai', `인터넷 모델 실사용 테스트를 완료했습니다. 실패한 모델은 잠금 상태로 표시됩니다.`);
             } catch (e) {
                 modelList.innerHTML = `
                     <div class="sensitivity-preview">${escapeHtml(e.message)}</div>
@@ -1832,7 +1834,7 @@ const chatViewport = document.getElementById('chat-viewport');
                         </div>
                     </div>
                     <div id="model-download-detail" class="model-download-detail">
-                        엔진 설치, 모델 다운로드, 서버 시작, 로드까지 자동으로 진행합니다. 첫 실행은 수 분이 걸릴 수 있습니다.
+                        실행 도구 설치, 모델 다운로드, 연결 준비, 로드까지 자동으로 진행합니다. 첫 실행은 수 분이 걸릴 수 있습니다.
                     </div>
                 </div>
             `;
@@ -4363,7 +4365,7 @@ const chatViewport = document.getElementById('chat-viewport');
         const keys = env.api_keys || {};
 
         const mlxLabel = mlx.available
-            ? (mlx.mlx_lm && mlx.mlx_vlm ? 'MLX-LM · MLX-VLM 설치됨' : mlx.mlx_lm ? 'MLX-LM 설치됨' : '부분 설치')
+            ? (mlx.mlx_vlm ? 'MLX-VLM 설치됨' : 'MLX 설치됨 · MLX-VLM 필요')
             : '미설치';
 
         const cloudKeys = Object.entries(keys).filter(([,v]) => v).map(([k]) => k.toUpperCase());
@@ -4378,7 +4380,7 @@ const chatViewport = document.getElementById('chat-viewport');
             { icon: mlx.available ? '✅' : '⚠️', label: 'MLX', value: mlxLabel, ok: mlx.available },
             { icon: tools.ollama ? '✅' : '○',  label: 'Ollama', value: tools.ollama ? '설치됨' : '미설치', ok: true },
             { icon: tools.brew   ? '✅' : '○',  label: 'Homebrew', value: tools.brew ? '설치됨' : '미설치', ok: true },
-            { icon: cloudKeys.length ? '✅' : '○', label: 'Cloud API',
+            { icon: cloudKeys.length ? '✅' : '○', label: '인터넷 AI',
               value: cloudKeys.length ? cloudKeys.join(', ') : '없음', ok: true },
             { icon: env.os === 'Darwin' ? '🍎' : '🐧',
               label: '운영체제',
@@ -4607,10 +4609,6 @@ const chatViewport = document.getElementById('chat-viewport');
     let _mcpCurrentTab = 'registry';
 
     async function openMcpModal() {
-        if (getCurrentMode() === 'default') {
-            showToast('고급 모드에서 사용할 수 있습니다.');
-            return;
-        }
         document.getElementById('mcp-modal-overlay').classList.add('open');
         await renderMcpModal(_mcpCurrentTab);
     }

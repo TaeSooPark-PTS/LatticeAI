@@ -80,7 +80,6 @@ WINDOWS_BINARY_CANDIDATES: Dict[str, List[str]] = {
 }
 
 PACKAGE_MODULES: Dict[str, str] = {
-    "mlx-lm": "mlx_lm",
     "mlx-vlm": "mlx_vlm",
     "huggingface_hub[cli]": "huggingface_hub",
     "openai-whisper": "whisper",
@@ -482,7 +481,6 @@ def _detect_tools() -> Dict[str, bool]:
 def _detect_mlx() -> Dict[str, Any]:
     return {
         "available": _module_available("mlx"),
-        "mlx_lm": _module_available("mlx_lm"),
         "mlx_vlm": _module_available("mlx_vlm"),
     }
 
@@ -524,7 +522,6 @@ def scan_environment() -> Dict[str, Any]:
             "cuda": {**_component_detail("cuda", "nvcc"), **cuda},
             "tesseract": _component_detail("tesseract", "tesseract"),
             "mlx": _component_detail("mlx", module="mlx"),
-            "mlx_lm": _component_detail("mlx", module="mlx_lm"),
             "mlx_vlm": _component_detail("mlx", module="mlx_vlm"),
         },
         "path": {
@@ -538,68 +535,46 @@ def scan_environment() -> Dict[str, Any]:
 # ── Model Catalog ─────────────────────────────────────────────────────────────
 # (model_id, display_name, size_gb, tag, description, min_ram_gb)
 _MODEL_CATALOG = [
-    ("mlx-community/gemma-3-1b-it-4bit",             "Gemma 3 1B",           0.8,  "초경량",  "가벼운 요약 · 빠른 응답",        4),
-    ("mlx-community/SmolLM-1.7B-Instruct-4bit",      "SmolLM 1.7B",          1.0,  "초경량",  "CPU/저사양 백업",               4),
-    ("mlx-community/Llama-3.2-1B-Instruct-4bit",     "Llama 3.2 1B",         1.3,  "경량",    "엣지 작업 · 빠른 응답",          4),
-    ("mlx-community/gemma-2-2b-it-4bit",             "Gemma 2 2B",           1.6,  "경량",    "간단한 작업 · 안정적",           4),
-    ("mlx-community/Llama-3.2-3B-Instruct-4bit",     "Llama 3.2 3B",         2.0,  "경량",    "일상 대화 · 빠름",              4),
-    ("mlx-community/Qwen3-VL-4B-Instruct-4bit",      "Qwen3-VL 4B",          2.7,  "VLM",     "최신 Qwen 멀티모달 · 저사양",     8),
-    ("mlx-community/Phi-4-mini-instruct-4bit",       "Phi 4 Mini",           2.2,  "코딩",    "가벼운 코딩 · 함수 호출",        8),
-    ("mlx-community/Mistral-7B-Instruct-v0.3-4bit",  "Mistral 7B v0.3",      4.1,  "범용",    "Apache 라이선스 · 안정적",       8),
-    ("mlx-community/Qwen3-VL-8B-Instruct-4bit",      "Qwen3-VL 8B",          4.8,  "VLM",     "최신 Qwen 멀티모달 · 균형 추천",  16),
-    ("mlx-community/Qwen2.5-VL-7B-Instruct-4bit",    "Qwen2.5-VL 7B",        4.4,  "VLM",     "검증된 Qwen 멀티모달 백업",       16),
-    ("mlx-community/Llama-3.1-8B-Instruct-4bit",     "Llama 3.1 8B",         4.7,  "범용",    "균형 잡힌 성능",                8),
-    ("mlx-community/gemma-2-9b-it-4bit",             "Gemma 2 9B",           5.4,  "정확도",  "높은 응답 품질",               10),
-    ("mlx-community/gemma-3-12b-it-4bit",            "Gemma 3 12B",          8.0,  "멀티모달", "이미지/텍스트 균형",            16),
-    ("mlx-community/phi-4-4bit",                     "Phi 4",                8.3,  "코딩+",   "Microsoft 코딩 · 수학",         16),
-    ("mlx-community/gpt-oss-20b-MXFP4-Q8",           "GPT-OSS 20B",         12.1,  "추론",    "OpenAI 오픈가중치 · 로컬 추론",   32),
-    ("mlx-community/Qwen2.5-Coder-32B-Instruct-4bit", "Qwen2.5 Coder 32B",   18.5, "코딩+",   "대형 코딩 · Qwen 계열",          36),
-    ("mlx-community/Mistral-Small-24B-Instruct-2501-4bit","Mistral Small 24B",13.3, "대형",    "고품질 범용 응답",              32),
+    ("mlx-community/Qwen3-VL-4B-Instruct-4bit",      "Qwen3-VL 4B",          2.7,  "VLM",     "최신 Qwen 멀티모달 · 저사양",       4),
+    ("mlx-community/gemma-4-e2b-it-4bit",            "Gemma 4 E2B",          3.6,  "VLM",     "Gemma 4 소형 멀티모달",            8),
+    ("mlx-community/Qwen3-VL-8B-Instruct-4bit",      "Qwen3-VL 8B",          4.8,  "VLM",     "최신 Qwen 멀티모달 · 균형 추천",    16),
+    ("mlx-community/gemma-4-12b-it-4bit",            "Gemma 4 12B",          7.6,  "VLM",     "Gemma 4 기본 추천 · 4bit",         16),
+    ("mlx-community/Llama-4-Scout-17B-16E-Instruct-4bit", "Llama 4 Scout",   11.8, "VLM",     "Meta 최신 멀티모달 Scout",          24),
     ("mlx-community/gemma-4-26b-a4b-it-4bit",        "Gemma 4 26B",         15.6,  "VLM",     "이미지 지원 · 대형 추천",        32),
     ("mlx-community/gemma-4-31b-it-4bit",            "Gemma 4 31B",         18.4,  "VLM+",    "Gemma 4 최신 31B instruct",      48),
     ("mlx-community/Qwen3-VL-30B-A3B-Instruct-4bit", "Qwen3-VL 30B A3B",    18.0,  "VLM+",    "최신 Qwen 대형 멀티모달",        48),
-    ("mlx-community/gemma-3-27b-it-4bit",            "Gemma 3 27B",         17.0,  "VLM+",    "대형 멀티모달",                 48),
-    ("mlx-community/Llama-3.3-70B-Instruct-4bit",    "Llama 3.3 70B",       40.0,  "최고급",  "충분한 RAM에서 고품질 대화",     64),
-    ("mlx-community/gpt-oss-120b-MXFP4-Q4",          "GPT-OSS 120B",        62.3,  "최고급",  "OpenAI 대형 오픈가중치 추론",    128),
 ]
 
 _CROSS_PLATFORM_MODEL_CATALOG: Dict[str, List[Tuple[str, str, float, str, str, int]]] = {
     "ollama": [
-        ("ollama:qwen3-vl:4b", "Qwen3-VL 4B", 2.7, "VLM", "Ollama 멀티모달 · 저사양", 8),
+        ("ollama:qwen3-vl:4b", "Qwen3-VL 4B", 2.7, "VLM", "Ollama 멀티모달 · 저사양", 4),
         ("ollama:qwen3-vl:8b", "Qwen3-VL 8B", 4.8, "VLM", "Ollama 멀티모달 · 균형 추천", 16),
-        ("ollama:gpt-oss:20b", "GPT-OSS 20B", 12.1, "추론", "Ollama OpenAI gpt-oss 로컬 추론", 32),
+        ("ollama:hf.co/ggml-org/gemma-4-12B-it-GGUF:Q4_K_M", "Gemma 4 12B Q4", 7.9, "VLM", "Hugging Face GGUF 기반 Gemma 4", 16),
         ("ollama:hf.co/ggml-org/gemma-4-31B-it-GGUF:Q4_K_M", "Gemma 4 31B Q4", 18.7, "VLM+", "Hugging Face GGUF 기반 Gemma 4", 48),
-        ("ollama:gpt-oss:120b", "GPT-OSS 120B", 62.3, "최고급", "Ollama 대형 gpt-oss", 128),
-        ("ollama:qwen3:8b", "Qwen3 8B", 4.8, "범용", "텍스트 추론 · Qwen 백업", 12),
-        ("ollama:gemma3:4b", "Gemma 3 4B", 3.3, "VLM", "검증된 멀티모달 대안", 8),
-        ("ollama:gemma3:12b", "Gemma 3 12B", 8.0, "VLM", "이미지/텍스트 균형", 16),
-        ("ollama:qwen2.5-coder:14b", "Qwen2.5 Coder 14B", 9.0, "코딩", "코딩 작업용 Qwen", 24),
+        ("ollama:hf.co/ggml-org/Llama-4-Scout-17B-16E-Instruct-GGUF:Q4_K_M", "Llama 4 Scout Q4", 12.0, "VLM", "Meta 최신 멀티모달 Scout", 24),
     ],
     "lmstudio": [
-        ("lmstudio:openai/gpt-oss-20b", "GPT-OSS 20B", 12.1, "추론", "LM Studio OpenAI gpt-oss", 32),
-        ("lmstudio:ggml-org/gemma-4-31B-it-GGUF", "Gemma 4 31B 4-bit", 18.7, "VLM+", "LM Studio GGUF Gemma 4", 48),
-        ("lmstudio:openai/gpt-oss-120b", "GPT-OSS 120B", 62.3, "최고급", "LM Studio 대형 gpt-oss", 128),
-        ("lmstudio:Qwen/Qwen3-VL-4B-Instruct", "Qwen3-VL 4B", 2.7, "VLM", "LM Studio 멀티모달 · 저사양", 8),
+        ("lmstudio:Qwen/Qwen3-VL-4B-Instruct", "Qwen3-VL 4B", 2.7, "VLM", "LM Studio 멀티모달 · 저사양", 4),
         ("lmstudio:Qwen/Qwen3-VL-8B-Instruct", "Qwen3-VL 8B", 4.8, "VLM", "LM Studio 멀티모달 · 균형 추천", 16),
+        ("lmstudio:ggml-org/gemma-4-12B-it-GGUF", "Gemma 4 12B 4-bit", 7.9, "VLM", "LM Studio GGUF Gemma 4", 16),
+        ("lmstudio:ggml-org/gemma-4-31B-it-GGUF", "Gemma 4 31B 4-bit", 18.7, "VLM+", "LM Studio GGUF Gemma 4", 48),
         ("lmstudio:Qwen/Qwen3-VL-30B-A3B-Instruct", "Qwen3-VL 30B A3B", 18.0, "VLM+", "대형 Qwen 멀티모달 · 24GB+ VRAM 권장", 32),
-        ("lmstudio:google/gemma-3-12b-it", "Gemma 3 12B", 8.0, "VLM", "검증된 멀티모달 대안", 16),
+        ("lmstudio:meta-llama/Llama-4-Scout-17B-16E-Instruct", "Llama 4 Scout", 12.0, "VLM", "Meta 최신 멀티모달 Scout", 24),
     ],
     "vllm": [
-        ("vllm:openai/gpt-oss-20b", "GPT-OSS 20B", 12.1, "추론", "vLLM OpenAI gpt-oss", 32),
-        ("vllm:openai/gpt-oss-120b", "GPT-OSS 120B", 62.3, "최고급", "vLLM 대형 gpt-oss", 128),
-        ("vllm:Qwen/Qwen3-VL-4B-Instruct", "Qwen3-VL 4B", 2.7, "VLM", "vLLM 멀티모달 · WSL/Linux 권장", 8),
-        ("vllm:Qwen/Qwen3-VL-8B-Instruct", "Qwen3-VL 8B", 4.8, "VLM", "vLLM 멀티모달 · NVIDIA 권장", 16),
+        ("vllm:Qwen/Qwen3-VL-4B-Instruct", "Qwen3-VL 4B", 2.7, "VLM", "내 컴퓨터 GPU 실행 도구 권장", 4),
+        ("vllm:Qwen/Qwen3-VL-8B-Instruct", "Qwen3-VL 8B", 4.8, "VLM", "내 컴퓨터 NVIDIA 실행 도구 권장", 16),
+        ("vllm:google/gemma-4-12b-it", "Gemma 4 12B", 7.6, "VLM", "Gemma 4 기본 추천 · 4bit", 16),
         ("vllm:Qwen/Qwen3-VL-30B-A3B-Instruct", "Qwen3-VL 30B A3B", 18.0, "VLM+", "대형 Qwen 멀티모달 · 24GB+ VRAM 권장", 32),
-        ("vllm:google/gemma-3-12b-it", "Gemma 3 12B", 8.0, "VLM", "검증된 멀티모달 대안", 16),
+        ("vllm:suitch/gemma-4-31B-it-4bit", "Gemma 4 31B", 18.7, "VLM+", "Gemma 4 최신 31B instruct", 48),
+        ("vllm:meta-llama/Llama-4-Scout-17B-16E-Instruct", "Llama 4 Scout", 12.0, "VLM", "Meta 최신 멀티모달 Scout", 24),
     ],
     "llamacpp": [
-        ("llamacpp:ggml-org/gpt-oss-20b-GGUF", "GPT-OSS 20B GGUF", 12.1, "GGUF", "llama.cpp gpt-oss Q4", 32),
-        ("llamacpp:ggml-org/gemma-4-31B-it-GGUF", "Gemma 4 31B GGUF", 18.7, "GGUF", "Gemma 4 31B Q4_K_M", 48),
-        ("llamacpp:ggml-org/gpt-oss-120b-GGUF", "GPT-OSS 120B GGUF", 62.3, "GGUF", "llama.cpp 대형 gpt-oss", 128),
-        ("llamacpp:Qwen/Qwen3-VL-4B-Instruct-GGUF", "Qwen3-VL 4B GGUF", 2.7, "GGUF", "CPU/Vulkan 백업 · 멀티모달 GGUF", 8),
+        ("llamacpp:Qwen/Qwen3-VL-4B-Instruct-GGUF", "Qwen3-VL 4B GGUF", 2.7, "GGUF", "CPU/Vulkan 백업 · 멀티모달 GGUF", 4),
         ("llamacpp:Qwen/Qwen3-VL-8B-Instruct-GGUF", "Qwen3-VL 8B GGUF", 4.8, "GGUF", "CPU/Vulkan 백업 · 균형형", 16),
-        ("llamacpp:unsloth/gemma-3-4b-it-GGUF", "Gemma 3 4B GGUF", 3.3, "GGUF", "검증된 CPU 백업", 8),
-        ("llamacpp:bartowski/Llama-3.2-3B-Instruct-GGUF", "Llama 3.2 3B GGUF", 2.0, "GGUF", "CPU-only 초경량 백업", 4),
+        ("llamacpp:ggml-org/gemma-4-12B-it-GGUF", "Gemma 4 12B GGUF", 7.9, "GGUF", "Gemma 4 12B Q4_K_M", 16),
+        ("llamacpp:ggml-org/gemma-4-31B-it-GGUF", "Gemma 4 31B GGUF", 18.7, "GGUF", "Gemma 4 31B Q4_K_M", 48),
+        ("llamacpp:ggml-org/Llama-4-Scout-17B-16E-Instruct-GGUF", "Llama 4 Scout GGUF", 12.0, "GGUF", "Meta 최신 멀티모달 Scout", 24),
     ],
 }
 
@@ -607,44 +582,39 @@ _VERSIONED_MODEL_PATTERNS = (
     ("gemma", re.compile(r"\bgemma[-\s]?(\d+(?:\.\d+)?)", re.IGNORECASE)),
     ("qwen", re.compile(r"\bqwen[-\s]?(\d+(?:\.\d+)?)", re.IGNORECASE)),
     ("llama", re.compile(r"\bllama[-\s]?(\d+(?:\.\d+)?)", re.IGNORECASE)),
-    ("phi", re.compile(r"\bphi[-\s]?(\d+(?:\.\d+)?)", re.IGNORECASE)),
 )
 
 _BEST_MODEL_TIERS: Dict[str, List[Tuple[int, str]]] = {
     "local_mlx": [
-        (128, "mlx-community/gpt-oss-120b-MXFP4-Q4"),
         (48, "mlx-community/gemma-4-31b-it-4bit"),
-        (32, "mlx-community/gpt-oss-20b-MXFP4-Q8"),
+        (32, "mlx-community/gemma-4-26b-a4b-it-4bit"),
+        (16, "mlx-community/gemma-4-12b-it-4bit"),
         (16, "mlx-community/Qwen3-VL-8B-Instruct-4bit"),
-        (8, "mlx-community/Qwen3-VL-4B-Instruct-4bit"),
-        (0, "mlx-community/SmolLM-1.7B-Instruct-4bit"),
+        (4, "mlx-community/Qwen3-VL-4B-Instruct-4bit"),
     ],
     "ollama": [
-        (128, "ollama:gpt-oss:120b"),
         (48, "ollama:hf.co/ggml-org/gemma-4-31B-it-GGUF:Q4_K_M"),
-        (32, "ollama:gpt-oss:20b"),
+        (16, "ollama:hf.co/ggml-org/gemma-4-12B-it-GGUF:Q4_K_M"),
         (16, "ollama:qwen3-vl:8b"),
-        (8, "ollama:qwen3-vl:4b"),
+        (4, "ollama:qwen3-vl:4b"),
     ],
     "lmstudio": [
-        (128, "lmstudio:openai/gpt-oss-120b"),
         (48, "lmstudio:ggml-org/gemma-4-31B-it-GGUF"),
-        (32, "lmstudio:openai/gpt-oss-20b"),
+        (16, "lmstudio:ggml-org/gemma-4-12B-it-GGUF"),
         (16, "lmstudio:Qwen/Qwen3-VL-8B-Instruct"),
-        (8, "lmstudio:Qwen/Qwen3-VL-4B-Instruct"),
+        (4, "lmstudio:Qwen/Qwen3-VL-4B-Instruct"),
     ],
     "vllm": [
-        (128, "vllm:openai/gpt-oss-120b"),
-        (32, "vllm:openai/gpt-oss-20b"),
+        (48, "vllm:suitch/gemma-4-31B-it-4bit"),
+        (16, "vllm:google/gemma-4-12b-it"),
         (16, "vllm:Qwen/Qwen3-VL-8B-Instruct"),
-        (8, "vllm:Qwen/Qwen3-VL-4B-Instruct"),
+        (4, "vllm:Qwen/Qwen3-VL-4B-Instruct"),
     ],
     "llamacpp": [
-        (128, "llamacpp:ggml-org/gpt-oss-120b-GGUF"),
         (48, "llamacpp:ggml-org/gemma-4-31B-it-GGUF"),
-        (32, "llamacpp:ggml-org/gpt-oss-20b-GGUF"),
+        (16, "llamacpp:ggml-org/gemma-4-12B-it-GGUF"),
         (16, "llamacpp:Qwen/Qwen3-VL-8B-Instruct-GGUF"),
-        (8, "llamacpp:Qwen/Qwen3-VL-4B-Instruct-GGUF"),
+        (4, "llamacpp:Qwen/Qwen3-VL-4B-Instruct-GGUF"),
     ],
 }
 
@@ -736,20 +706,20 @@ def get_recommendations(env: Dict[str, Any]) -> Dict[str, Any]:
     engines: List[Dict] = []
 
     if is_apple:
-        if mlx["available"] and mlx["mlx_lm"]:
+        if mlx["available"] and mlx["mlx_vlm"]:
             engines.append({
                 "id": "engine_mlx", "name": "MLX",
-                "subtitle": f"{chip['name']} GPU 가속 · 최고 성능",
+                "subtitle": f"{chip['name']} GPU 가속 · MLX-VLM 멀티모달 실행",
                 "status": "installed", "priority": "recommended",
                 "checked": True, "action": None, "badge": "설치됨",
             })
         else:
             engines.append({
                 "id": "engine_mlx", "name": "MLX",
-                "subtitle": f"{chip['name']} 전용 최고 성능 엔진",
+                "subtitle": f"{chip['name']} 전용 MLX-VLM 멀티모달 실행",
                 "status": "available", "priority": "recommended",
                 "checked": True,
-                "action": {"type": "pip", "packages": ["mlx-lm", "mlx-vlm"], "verify_modules": ["mlx", "mlx_lm", "mlx_vlm"]},
+                "action": {"type": "pip", "packages": ["mlx-vlm"], "verify_modules": ["mlx", "mlx_vlm"]},
                 "badge": "설치 필요",
             })
 

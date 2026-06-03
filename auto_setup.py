@@ -443,8 +443,6 @@ class Recommendation:
 _MODEL_CATALOG: List[Dict[str, Any]] = [
     # (min_ram_mb, min_vram_mb, model_id, quant, runtime_preference)
     # OS 오버헤드(~4-6 GB) + KV 캐시 여유를 감안한 보수적 RAM 임계값
-    {"ram": 128 * 1024, "vram": 48 * 1024,
-     "id": "mlx-community/gpt-oss-120b-MXFP4-Q4", "q": "mxfp4", "multimodal": False},
     {"ram": 64 * 1024, "vram": 32 * 1024,
      "id": "mlx-community/gemma-4-31b-it-4bit", "q": "4bit", "multimodal": True},
     {"ram": 64 * 1024, "vram": 32 * 1024,
@@ -452,9 +450,13 @@ _MODEL_CATALOG: List[Dict[str, Any]] = [
     {"ram": 48 * 1024, "vram": 24 * 1024,
      "id": "mlx-community/gemma-4-31b-it-4bit", "q": "4bit", "multimodal": True},
     {"ram": 32 * 1024, "vram": 16 * 1024,
-     "id": "mlx-community/gpt-oss-20b-MXFP4-Q8", "q": "mxfp4", "multimodal": False},
+     "id": "mlx-community/gemma-4-26b-a4b-it-4bit", "q": "4bit", "multimodal": True},
     {"ram": 48 * 1024, "vram": 24 * 1024,
      "id": "Qwen/Qwen3-VL-30B-A3B-Instruct", "q": "q4_K_M", "multimodal": True},
+    {"ram": 24 * 1024, "vram": 12 * 1024,
+     "id": "mlx-community/Llama-4-Scout-17B-16E-Instruct-4bit", "q": "4bit", "multimodal": True},
+    {"ram": 16 * 1024, "vram": 8 * 1024,
+     "id": "mlx-community/gemma-4-12b-it-4bit", "q": "4bit", "multimodal": True},
     {"ram": 32 * 1024, "vram": 16 * 1024,
      "id": "Qwen/Qwen3-VL-8B-Instruct", "q": "q5_K_M", "multimodal": True},
     {"ram": 24 * 1024, "vram": 12 * 1024,
@@ -466,7 +468,7 @@ _MODEL_CATALOG: List[Dict[str, Any]] = [
     {"ram":  8 * 1024, "vram": 4 * 1024,
      "id": "Qwen/Qwen3-VL-4B-Instruct", "q": "q4_K_M", "multimodal": True},
     {"ram":  4 * 1024, "vram": 0,
-     "id": "google/gemma-3-1b-it", "q": "q4_K_M", "multimodal": False},
+     "id": "Qwen/Qwen3-VL-4B-Instruct", "q": "q4_K_M", "multimodal": True},
 ]
 
 
@@ -477,8 +479,8 @@ def recommend(profile: SystemProfile) -> Recommendation:
     # backend / runtime
     if profile.os == "darwin" and profile.gpu.vendor == "apple":
         backend = "metal+mlx"
-        runtime = "mlx" if _has_module("mlx") else "llama.cpp"
-        rationale.append("Apple Silicon → Metal + MLX")
+        runtime = "mlx" if _has_module("mlx_vlm") else "llama.cpp"
+        rationale.append("Apple Silicon → Metal + MLX-VLM")
     elif profile.gpu.vendor == "nvidia" and profile.cuda_available and (profile.os == "linux" or profile.is_wsl):
         backend = "cuda"
         runtime = "vllm" if profile.gpu.vram_mb >= 12 * 1024 else "llama.cpp"
@@ -612,10 +614,10 @@ def plan(profile: SystemProfile, rec: Recommendation) -> InstallPlan:
         need("node20", "VSCode 확장 / npm CLI 부트스트랩에 필요")
 
     # 런타임별 추가
-    if rec.runtime == "mlx" and not _has_module("mlx_lm"):
+    if rec.runtime == "mlx" and not _has_module("mlx_vlm"):
         steps.append(InstallStep(
-            name="mlx-lm", why="Apple Silicon LLM 추론",
-            command=["pip3", "install", "--upgrade", "mlx-lm"],
+            name="mlx-vlm", why="Apple Silicon 멀티모달 추론",
+            command=["pip3", "install", "--upgrade", "mlx-vlm"],
         ))
     if rec.runtime in {"llama.cpp", "ollama"} and not _which("ollama"):
         need("ollama", "llama.cpp 가중치를 가장 쉽게 받는 경로")
@@ -638,18 +640,16 @@ def plan(profile: SystemProfile, rec: Recommendation) -> InstallPlan:
     model_command = ["huggingface-cli", "download", rec.model_id, "--quiet"]
     if rec.runtime == "ollama":
         lower = rec.model_id.lower()
-        if "gpt-oss-120b" in lower:
-            model_command = ["ollama", "pull", "gpt-oss:120b"]
-        elif "gpt-oss-20b" in lower:
-            model_command = ["ollama", "pull", "gpt-oss:20b"]
-        elif "gemma-4-31b" in lower:
+        if "gemma-4-31b" in lower:
             model_command = ["ollama", "pull", "hf.co/ggml-org/gemma-4-31B-it-GGUF:Q4_K_M"]
+        elif "gemma-4-12b" in lower:
+            model_command = ["ollama", "pull", "hf.co/ggml-org/gemma-4-12B-it-GGUF:Q4_K_M"]
+        elif "llama-4-scout" in lower:
+            model_command = ["ollama", "pull", "hf.co/ggml-org/Llama-4-Scout-17B-16E-Instruct-GGUF:Q4_K_M"]
         elif "qwen3-vl-8b" in lower:
             model_command = ["ollama", "pull", "qwen3-vl:8b"]
         elif "qwen3-vl-4b" in lower:
             model_command = ["ollama", "pull", "qwen3-vl:4b"]
-        elif "gemma-3-1b" in lower:
-            model_command = ["ollama", "pull", "gemma3:1b"]
     elif rec.runtime == "lmstudio":
         model_command = ["lms", "get", rec.model_id]
     steps.append(InstallStep(
@@ -696,7 +696,7 @@ def verify(profile: SystemProfile, rec: Recommendation) -> Dict[str, Any]:
         f"{profile.disk_free_mb} MB free")
 
     if rec.runtime == "mlx":
-        add("mlx_lm import", _has_module("mlx_lm"), "Apple Silicon 런타임")
+        add("mlx_vlm import", _has_module("mlx_vlm"), "Apple Silicon 멀티모달 런타임")
     if rec.runtime in {"llama.cpp", "ollama"}:
         add("ollama binary", _which("ollama") is not None,
             _which("ollama") or "not found")

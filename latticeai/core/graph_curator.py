@@ -231,9 +231,9 @@ def extract_topic_candidates(
 
 DEFAULT_ALIAS_GROUPS: List[List[str]] = [
     ["lattice ai", "latticeai", "래티스 ai", "래티스ai", "내 앱", "내 ai"],
-    ["gpt-oss", "gpt oss", "openai gpt-oss"],
+    ["gemma-4", "gemma 4", "google gemma"],
     ["gemma 4", "gemma4", "google gemma 4"],
-    ["llama 3", "llama3", "meta llama 3"],
+    ["llama 4", "llama4", "meta llama 4", "llama scout"],
 ]
 
 

@@ -280,7 +280,7 @@ export async function activate(context: vscode.ExtensionContext) {
     })
   );
 
-  console.log("Lattice AI MLX extension activated.");
+  console.log("Lattice AI Knowledge OS extension activated.");
 }
 
 // ── Helpers ──────────────────────────────────────────────────────────────────
@@ -313,10 +313,10 @@ async function loadModelWithProgress(modelId: string) {
 function updateStatusBar(modelId: string | null) {
   if (modelId) {
     statusBar.text = `$(brain) ${shortName(modelId)}`;
-    statusBar.tooltip = `Lattice AI MLX — ${modelId}\nClick to switch model`;
+    statusBar.tooltip = `Lattice AI — ${modelId}\nClick to switch model`;
   } else {
     statusBar.text = `$(brain) Lattice AI — No model`;
-    statusBar.tooltip = "Lattice AI MLX — Click to load a model";
+    statusBar.tooltip = "Lattice AI — Click to load a model";
   }
 }
 

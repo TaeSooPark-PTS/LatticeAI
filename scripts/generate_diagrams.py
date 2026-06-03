@@ -261,7 +261,7 @@ def diagram_model_recommendation():
          font(15, mono=True), fill=MUTED)
 
     # show top families per directive
-    want = ["Gemma 4", "Qwen3-VL", "Llama 3.x", "Llama 3.1", "Phi", "GPT-OSS", "Mistral"]
+    want = ["Gemma 4", "Qwen3-VL", "Llama 4"]
     fams = [f for f in rec["families"] if f["family"] in want][:6]
     y = 176
     fi = font(15)

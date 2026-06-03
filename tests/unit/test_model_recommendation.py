@@ -19,7 +19,7 @@ def test_parse_size_gb_units():
 
 def test_parse_size_gb_non_numeric():
     assert mr.parse_size_gb("pull required") is None
-    assert mr.parse_size_gb("server model") is None
+    assert mr.parse_size_gb("실행 도구에서 관리") is None
     assert mr.parse_size_gb(None) is None
 
 
@@ -54,10 +54,8 @@ def test_small_mac_recommends_small_models_only():
     result = mr.recommend_catalog(_mac(8), engine="local_mlx")
     assert result["engine_available"] is True
     by_id = {m["id"]: m for m in result["models"]}
-    # ~1 GB model fits comfortably on 8 GB
-    assert by_id["mlx-community/gemma-3-1b-it-4bit"]["status"] == mr.RECOMMENDED
-    # 40 GB+ model cannot run on 8 GB
-    assert by_id["mlx-community/Llama-3.3-70B-Instruct-4bit"]["status"] == mr.NOT_RECOMMENDED
+    assert by_id["mlx-community/Qwen3-VL-4B-Instruct-4bit"]["status"] == mr.RECOMMENDED
+    assert by_id["mlx-community/gemma-4-31b-it-4bit"]["status"] == mr.NOT_RECOMMENDED
 
 
 def test_large_mac_recommends_large_models():
@@ -76,7 +74,7 @@ def test_counts_sum_to_total():
     result = mr.recommend_catalog(_mac(32), engine="local_mlx")
     total = len(result["models"])
     assert sum(result["counts"].values()) == total
-    assert total > 10
+    assert total >= 10
 
 
 # ── family grouping ─────────────────────────────────────────────────────────--
@@ -85,23 +83,27 @@ def test_families_grouped_and_ordered():
     result = mr.recommend_catalog(_mac(64), engine="local_mlx")
     fam_names = [f["family"] for f in result["families"]]
     assert "Gemma 4" in fam_names
-    assert "Phi" in fam_names
-    # Gemma 4 should rank before Gemma 2 (newer first)
-    if "Gemma 4" in fam_names and "Gemma 2" in fam_names:
-        assert fam_names.index("Gemma 4") < fam_names.index("Gemma 2")
+    assert "Qwen3-VL" in fam_names
+    assert "Gemma 3" not in fam_names
+    assert "Gemma 2" not in fam_names
+    assert fam_names.index("Gemma 4") < fam_names.index("Qwen3-VL")
     # each family exposes a best pick structure
     for fam in result["families"]:
         assert "best" in fam and "models" in fam
 
 
 def test_server_models_compatible_without_size():
-    # vLLM/LM Studio entries advertise "server model" (no fixed size).
+    # vLLM/LM Studio entries advertise tool-managed models (no fixed size).
     result = mr.recommend_catalog(_mac(16), engine="vllm")
     assert result["models"]
     assert all(m["status"] in (mr.COMPATIBLE, mr.RECOMMENDED) for m in result["models"])
 
 
-def test_deepseek_family_present_for_ollama():
+def test_source_metadata_is_present_for_general_mode():
     result = mr.recommend_catalog(_mac(32), engine="ollama")
-    fam_names = [f["family"] for f in result["families"]]
-    assert "DeepSeek" in fam_names
+    sample = result["models"][0]
+    assert sample["modality"] == "multimodal"
+    assert sample["source_country"]
+    assert sample["source_company"]
+    assert sample["execution_method"]
+    assert sample["internet_requirement"]

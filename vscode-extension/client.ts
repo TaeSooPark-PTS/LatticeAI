@@ -3,8 +3,14 @@ import * as https from "https";
 
 export interface ModelInfo {
   id: string;
+  name?: string;
+  model_name?: string;
   tag: string;
   size: string;
+  source_country?: string;
+  source_company?: string;
+  execution_method?: string;
+  internet_requirement?: string;
 }
 
 export class LatticeAIClient {

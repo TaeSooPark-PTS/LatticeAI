@@ -83,7 +83,7 @@ const workspaceOs = {
   updated_at: "2026-06-01T12:00:00",
   counts: { snapshots: 2, traces: 3, memories: 7, agent_runs: 4, workflows: 2, skills: 3, timeline: 8 },
   graph: { nodes: { Topic: 1, Concept: 1, Task: 1, Decision: 1, File: 1 }, edges: { discusses: 1, mentions: 2, based_on: 2 } },
-  models: { current_model: "mlx-community/SmolLM-1.7B-Instruct-4bit", loaded_models: ["mlx-community/SmolLM-1.7B-Instruct-4bit"], local_model: "mlx-community/SmolLM-1.7B-Instruct-4bit" },
+  models: { current_model: "mlx-community/gemma-4-12b-it-4bit", loaded_models: ["mlx-community/gemma-4-12b-it-4bit"], local_model: "mlx-community/gemma-4-12b-it-4bit" },
   workspace_registry: {
     active_workspace: "personal",
     workspaces: [

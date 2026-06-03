@@ -1,6 +1,6 @@
 # Lattice AI Workflow Designer
 
-The Workflow Designer (introduced in **v2.0.0** and hardened in **v2.1.0**) lets
+The Workflow Designer (introduced in **v2.0.0** and hardened in **v2.2.0**) lets
 you build, validate, run, inspect, replay, export, and import automations as a
 small **directed graph of typed nodes**. A workflow starts from a single
 `trigger` node and walks node-to-node to an `output`, dispatching each executable
@@ -17,10 +17,10 @@ is preserved.
 The engine version is exported as:
 
 ```python
-WORKFLOW_ENGINE_VERSION = "2.1.0"
+WORKFLOW_ENGINE_VERSION = "2.2.0"
 ```
 
-## v2.1 hardening
+## v2.2 hardening
 
 - Agent node output is captured in workflow context and can flow into a later
   plugin or output node through `last_output`.
@@ -449,7 +449,7 @@ or scope), stamped with the engine version and stripped of the internal
 
 ```json
 {
-  "lattice_workflow_export": "2.1.0",
+  "lattice_workflow_export": "2.2.0",
   "name": "Daily digest",
   "nodes": [ /* ... */ ],
   "metadata": {}

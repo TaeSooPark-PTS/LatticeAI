@@ -33,6 +33,9 @@ def test_catalog_entries_have_required_keys():
         for model in models:
             for key in ("id", "name", "family", "tag"):
                 assert key in model, f"{engine} entry missing {key}: {model}"
+            for key in ("source_country", "source_company", "execution_method", "internet_requirement", "modality"):
+                assert model.get(key), f"{engine} entry missing source policy {key}: {model}"
+            assert model["modality"] == "multimodal"
 
 
 def test_catalog_ids_unique_per_engine():
@@ -48,3 +51,25 @@ def test_filter_lower_family_versions_never_grows_and_is_idempotent():
         assert len(once) <= len(models)
         # idempotent: filtering an already-filtered list is a no-op
         assert [m["id"] for m in fn(once)] == [m["id"] for m in once]
+
+
+def test_catalog_omits_text_only_and_legacy_generation_models():
+    all_ids = {
+        str(model["id"]).lower()
+        for models in model_catalog.ENGINE_MODEL_CATALOG.values()
+        for model in models
+    }
+    blocked_fragments = (
+        "gemma-3",
+        "gemma3",
+        "gemma-2",
+        "smollm",
+        "qwen2.5",
+        "gpt-oss",
+        "phi-",
+        "mistral",
+        "deepseek",
+        "llama-3",
+    )
+    for fragment in blocked_fragments:
+        assert not any(fragment in model_id for model_id in all_ids), fragment

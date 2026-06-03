@@ -100,9 +100,17 @@ def create_models_router(
             base = {
                 "id": item["id"],
                 "name": item["name"],
+                "model_name": item.get("model_name") or item.get("name"),
                 "tag": item["tag"],
                 "size": item["size"],
                 "display_name": item.get("name") or item.get("id"),
+                "modality": item.get("modality") or "multimodal",
+                "source_country": item.get("source_country"),
+                "source_company": item.get("source_company"),
+                "execution_method": item.get("execution_method"),
+                "run_location": item.get("run_location"),
+                "internet_requirement": item.get("internet_requirement"),
+                "source_display_order": item.get("source_display_order"),
             }
             short_id = str(item["id"]).lower()
             aliases = MODEL_ENGINE_ALIASES.get(short_id) or {}

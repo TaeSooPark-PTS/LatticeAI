@@ -3,7 +3,8 @@
 Given a detected system profile (from :func:`auto_setup.probe`) this module
 classifies every model in :data:`model_catalog.ENGINE_MODEL_CATALOG` into one of
 three states — **recommended**, **compatible**, or **not_recommended** — and
-groups the result by model family (Gemma, Qwen, Llama, Phi, DeepSeek, …).
+groups the result by current multimodal model family (Gemma 4, Qwen3-VL,
+Llama 4).
 
 It is intentionally pure and dependency-light: the only input is a plain dict
 describing the machine, so it is fully unit-testable without touching real
@@ -28,12 +29,11 @@ NOT_RECOMMENDED = "not_recommended"
 # Apple-Silicon only.  Used to decide platform availability before sizing.
 _APPLE_ONLY_ENGINES = {"local_mlx"}
 
-# Family display order for the grouped view (best/newest first within a brand).
+# Family display order for the grouped view (newest multimodal generations first).
 _FAMILY_ORDER = [
-    "Gemma 4", "Gemma 3", "Gemma 2", "Gemma",
-    "Qwen3-VL", "Qwen2.5-VL", "Qwen2.5", "Qwen",
-    "Llama 3.x", "Llama 3.1", "Llama",
-    "Mistral", "Phi", "GPT-OSS", "DeepSeek", "SmolLM",
+    "Gemma 4",
+    "Qwen3-VL",
+    "Llama 4",
 ]
 
 _SIZE_RE = re.compile(r"([\d.]+)\s*(TB|GB|MB)", re.IGNORECASE)
@@ -44,7 +44,7 @@ def parse_size_gb(size: Any) -> Optional[float]:
     """Parse a catalog ``size`` string (``"4.7GB"``, ``"963MB"``, ``"40GB+"``).
 
     Returns ``None`` when the size is non-numeric (e.g. ``"pull required"`` or
-    ``"server model"``) so callers can treat it as "size unknown".
+    ``"실행 도구에서 관리"``) so callers can treat it as "size unknown".
     """
     if not isinstance(size, str):
         return None
@@ -92,30 +92,38 @@ def _classify_one(
     need_gb = estimated_ram_gb(size_gb) if size_gb is not None else None
 
     if not engine_available:
-        status, reason = NOT_RECOMMENDED, "Requires Apple Silicon (MLX runtime)"
+        status, reason = NOT_RECOMMENDED, "Apple Silicon과 MLX-VLM이 필요합니다"
     elif need_gb is None:
-        # Server/pull models have no fixed on-disk size — treat as compatible
-        # (the engine streams/pulls weights on demand).
-        status, reason = COMPATIBLE, "Served/pulled on demand by the engine"
+        # Tool-managed/pull models have no fixed on-disk size, so treat them as
+        # compatible and let the execution tool validate the exact model.
+        status, reason = COMPATIBLE, "선택한 실행 방식에서 필요할 때 모델을 받습니다"
     elif ram_gb <= 0:
-        status, reason = COMPATIBLE, "Memory unknown — verify before loading"
-    elif need_gb <= ram_gb * 0.6:
-        status, reason = RECOMMENDED, f"Fits comfortably (~{need_gb:.0f} GB of {ram_gb:.0f} GB RAM)"
+        status, reason = COMPATIBLE, "메모리 정보를 확인하지 못했습니다. 불러오기 전에 검증합니다"
+    elif need_gb <= ram_gb * 0.75:
+        status, reason = RECOMMENDED, f"현재 메모리에서 안정적으로 사용할 가능성이 높습니다 (~{need_gb:.0f} GB / {ram_gb:.0f} GB)"
     elif need_gb <= ram_gb * 0.9:
-        status, reason = COMPATIBLE, f"Runs but tight (~{need_gb:.0f} GB of {ram_gb:.0f} GB RAM)"
+        status, reason = COMPATIBLE, f"사용 가능하지만 여유가 적습니다 (~{need_gb:.0f} GB / {ram_gb:.0f} GB)"
     else:
-        status, reason = NOT_RECOMMENDED, f"Needs ~{need_gb:.0f} GB RAM (have {ram_gb:.0f} GB)"
+        status, reason = NOT_RECOMMENDED, f"권장 메모리가 부족합니다 (~{need_gb:.0f} GB 필요, 현재 {ram_gb:.0f} GB)"
 
     return {
         "id": model.get("id"),
         "name": model.get("name"),
+        "model_name": model.get("model_name") or model.get("name"),
         "family": model.get("family"),
         "tag": model.get("tag"),
+        "modality": model.get("modality") or "multimodal",
         "size": model.get("size"),
         "size_gb": size_gb,
         "required_ram_gb": need_gb,
         "status": status,
         "reason": reason,
+        "source_country": model.get("source_country"),
+        "source_company": model.get("source_company"),
+        "execution_method": model.get("execution_method"),
+        "run_location": model.get("run_location"),
+        "internet_requirement": model.get("internet_requirement"),
+        "source_display_order": model.get("source_display_order"),
     }
 
 
@@ -132,7 +140,10 @@ def recommend_catalog(profile: Dict[str, Any], *, engine: str = "local_mlx") -> 
     ``profile`` is a dict shaped like ``auto_setup.SystemProfile.to_json()``
     (``os``, ``arch``, ``ram_mb``, ``gpu={vendor,vram_mb}`` …).
     """
-    models = ENGINE_MODEL_CATALOG.get(engine, [])
+    models = [
+        model for model in ENGINE_MODEL_CATALOG.get(engine, [])
+        if str(model.get("modality") or "").lower() == "multimodal"
+    ]
     engine_available = _engine_available(engine, profile)
     ram_gb = _ram_gb(profile)
 

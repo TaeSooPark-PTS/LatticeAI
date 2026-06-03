@@ -1,6 +1,6 @@
 """
 Lattice AI MLX — Local LLM Bridge Server
-Apple Silicon (M1-M5) 전용 | mlx-lm 기반
+Apple Silicon (M1-M5) 전용 | MLX-VLM 기반
 """
 
 import asyncio

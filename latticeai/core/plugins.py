@@ -30,7 +30,7 @@ from pathlib import Path
 from typing import Any, Callable, Dict, List, Optional, Tuple
 
 
-PLUGIN_SDK_VERSION = "2.1.0"
+PLUGIN_SDK_VERSION = "2.2.0"
 
 # Capability-style permissions a plugin can request. Kept deliberately small so
 # the Enterprise seam can layer finer-grained policy on top without changing the

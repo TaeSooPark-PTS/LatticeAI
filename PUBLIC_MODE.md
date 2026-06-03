@@ -4,7 +4,7 @@ Lattice AI now has two runtime modes.
 
 ## Local Mode
 
-Use this on your Mac when you want MLX, local files, Telegram mirroring, image analysis, and desktop-adjacent tools.
+Use this on your Mac when you want MLX-VLM, local files, Telegram mirroring, image analysis, and desktop-adjacent tools.
 
 ```bash
 LATTICEAI_MODE=local \
@@ -16,8 +16,8 @@ python server.py
 Defaults:
 
 - Telegram bridge: on
-- Local MLX models: on
-- Default model: `mlx-community/gemma-4-26b-a4b-it-4bit`
+- Local MLX-VLM models: on
+- Default model: `mlx-community/gemma-4-12b-it-4bit`
 - Port: `4825`
 
 ## Public Mode
@@ -41,8 +41,8 @@ Supported public model prefixes:
 
 - `openai:gpt-4o-mini`
 - `openrouter:openai/gpt-4o-mini`
-- `groq:llama-3.1-8b-instant`
-- `together:meta-llama/Llama-3.3-70B-Instruct-Turbo`
+- `openrouter:qwen/qwen3-vl-235b-a22b-instruct`
+- `together:Qwen/Qwen3-VL-32B-Instruct`
 
 ## Docker
 

@@ -840,7 +840,7 @@ async def handle_command(client, chat_id, command: str, args: str):
         await send_message(client, chat_id, HELP_TEXT)
     elif cmd == "agent":
         if not args:
-            await send_message(client, chat_id, "사용법: /agent <작업 내용>\n예: /agent 쇼핑몰 메인 페이지 HTML 만들어줘\n\n특정 LLM 지정:\n/agent <작업> --exec openai/gpt-4o --review deepseek/deepseek-chat")
+            await send_message(client, chat_id, "사용법: /agent <작업 내용>\n예: /agent 쇼핑몰 메인 페이지 HTML 만들어줘\n\n특정 AI 지정:\n/agent <작업> --exec openai/gpt-4o --review together:Qwen/Qwen3-VL-32B-Instruct")
             return
         # Parse optional --exec / --review flags
         exec_model = reviewing_model = None

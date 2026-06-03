@@ -131,7 +131,7 @@ class Config:
         admin_emails = [item.strip().lower() for item in _value(env, "LATTICEAI_ADMIN_EMAILS", "").split(",") if item.strip()]
 
         public_model = _value(env, "LATTICEAI_PUBLIC_MODEL", _value(env, "LATTICEAI_DEFAULT_MODEL", "openai:gpt-4o-mini"))
-        local_model = _value(env, "LATTICEAI_LOCAL_MODEL", "mlx-community/gemma-4-26b-a4b-it-4bit")
+        local_model = _value(env, "LATTICEAI_LOCAL_MODEL", "mlx-community/gemma-4-12b-it-4bit")
 
         data_dir = Path(_value(env, "LATTICEAI_DATA_DIR", str(Path.home() / ".ltcai")))
         static_dir = Path(_value(env, "LATTICEAI_STATIC_DIR", str(base_dir / "static")))

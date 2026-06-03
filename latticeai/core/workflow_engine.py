@@ -28,7 +28,7 @@ from datetime import datetime
 from typing import Any, Callable, Dict, List, Optional
 
 
-WORKFLOW_ENGINE_VERSION = "2.1.0"
+WORKFLOW_ENGINE_VERSION = "2.2.0"
 
 # The node vocabulary a workflow can be built from. ``trigger`` and ``output``
 # are structural; the rest dispatch to an injected runner of the same family.

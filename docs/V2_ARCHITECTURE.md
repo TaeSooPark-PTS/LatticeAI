@@ -1,7 +1,7 @@
 # Lattice AI v2 Architecture — Agentic Workspace Platform
 
 Lattice AI v2.0.0 turned the local-first Workspace OS into a full **Agentic
-Workspace Platform**. v2.1.0 keeps that architecture and matures the operational
+Workspace Platform**. v2.2.0 keeps that architecture and matures the operational
 layer: explicit handoffs, context packets, review/retry loops, memory snapshots,
 planning records, replay, marketplace templates, and realtime execution
 observability all compose over the same local-first JSON store and Knowledge
@@ -32,7 +32,7 @@ constructed by `server_app.py` and exposed through a router factory.
 ## 1. The v2 Platform Pillars
 
 The platform version is the single source of truth `WORKSPACE_OS_VERSION =
-"2.1.0"` (`latticeai/core/workspace_os.py`). Each pillar module re-declares the
+"2.2.0"` (`latticeai/core/workspace_os.py`). Each pillar module re-declares the
 same version for its own surface (`PLUGIN_SDK_VERSION`, `WORKFLOW_ENGINE_VERSION`,
 `MULTI_AGENT_VERSION`, `REALTIME_VERSION`) and the marketplace foundation exposes
 `MARKETPLACE_VERSION`.
@@ -176,7 +176,7 @@ drive an injected `workflow_runner` / `plugin_runner`), and the `reviewer`
 returns `pass` / `retry`. The reviewer can rewind the pipeline to the executor up
 to `max_retries` times; the final `status` is `ok`, `retried_ok`, or `failed`.
 
-v2.1.0 matures that orchestration with first-class `AgentHandoff` and
+v2.2.0 matures that orchestration with first-class `AgentHandoff` and
 `AgentContextPacket` records, structured plan review, retry history, memory
 snapshots, and replay frames. Handoffs are workspace-scoped and persisted with
 source/target agents, task summary, reason, status, timestamps, and redacted
@@ -210,7 +210,7 @@ class RealtimeBus:
 
 ### 1.5 Marketplace Foundation (`latticeai.core.marketplace`)
 
-v2.1.0 adds a local marketplace foundation rather than a cloud marketplace
+v2.2.0 adds a local marketplace foundation rather than a cloud marketplace
 service. `TemplateCatalog` manages Plugin, Workflow, and Agent templates with
 metadata, export/import, install hooks, and a template registry stored through
 Workspace OS. Marketplace templates are local extension points for the existing
@@ -492,7 +492,7 @@ Representative run request/response (Workflow Designer):
 
 ```json
 // POST /agents/api/run
-{ "goal": "Draft v2.1 release notes", "roles": ["planner", "executor", "reviewer"], "max_retries": 2 }
+{ "goal": "Draft v2.2 release notes", "roles": ["planner", "executor", "reviewer"], "max_retries": 2 }
 ```
 
 ```json
@@ -506,7 +506,7 @@ Representative run request/response (Workflow Designer):
 
 ## 6. Compatibility
 
-> **Compatibility note.** v2.1.0 is **additive**. All v1.x and v2.0 data and APIs are
+> **Compatibility note.** v2.2.0 is **additive**. All v1.x and v2.0 data and APIs are
 > preserved; the platform layers new capabilities on top of unchanged surfaces.
 
 Preserved surfaces, verified against source:
@@ -514,7 +514,7 @@ Preserved surfaces, verified against source:
 - **ASGI entrypoints.** `server:app` and `latticeai.server_app.app` remain the
   application objects. `server_app.py` still exposes the module-level `app =
   FastAPI(...)` plus the `main()` / `uvicorn.run(app, ...)` entry point.
-- **Version wiring.** `WORKSPACE_OS_VERSION = "2.1.0"` drives both
+- **Version wiring.** `WORKSPACE_OS_VERSION = "2.2.0"` drives both
   `APP_VERSION` (and thus the FastAPI `app.version`) and the `/health`
   response — the health router is constructed with `app_version=APP_VERSION`.
 - **Existing routes.** Every v1.x router (`auth`, `admin`, `security_dashboard`,

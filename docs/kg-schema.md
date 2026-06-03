@@ -56,7 +56,7 @@ Edge {
   weight       float [0..1]    // 관계의 ‘강도’
   confidence   float [0..1]    // 추출/추론의 ‘신뢰도’
   evidence     string[]        // 근거 (메시지/청크 ID 리스트)
-  created_by   string          // extractor:llm-gemma-3-12b | rule:regex | user
+  created_by   string          // extractor:llm-gemma-4-12b | rule:regex | user
   created_at   ISO8601 UTC
 }
 ```
@@ -106,7 +106,7 @@ Edge {
     "weight":     0.82,
     "confidence": 0.91,
     "evidence":   ["chunk:01HX7K…#p3", "chunk:01HX7K…#p11"],
-    "created_by": "extractor:llm-gemma-3-12b"
+    "created_by": "extractor:llm-gemma-4-12b"
   }
 }
 ```
@@ -197,7 +197,7 @@ store.upsert_edge(Edge(
     type=EdgeType.MENTIONS,
     weight=0.82, confidence=0.91,
     evidence=["chunk:01HX7K…#p3"],
-    created_by="extractor:llm-gemma-3-12b",
+    created_by="extractor:llm-gemma-4-12b",
 ))
 
 # 이웃 탐색

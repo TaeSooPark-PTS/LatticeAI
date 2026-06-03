@@ -1,7 +1,7 @@
 # Lattice AI Plugin SDK
 
 The Plugin SDK is the extension layer for the Lattice AI Agentic Workspace
-Platform. v2.1.0 keeps the v2.0 plugin model and adds execution observability plus
+Platform. v2.2.0 keeps the v2.0 plugin model and adds execution observability plus
 local marketplace-template foundations. It lets you package skills, tools,
 workflow templates, and actions into one versioned, permissioned unit — a
 *plugin*. A plugin is a directory under the configured `plugins` root that ships
@@ -22,10 +22,10 @@ through the existing skill registry rather than owning a parallel one.
 The host SDK version is exposed as:
 
 ```python
-PLUGIN_SDK_VERSION = "2.1.0"
+PLUGIN_SDK_VERSION = "2.2.0"
 ```
 
-## v2.1 additions
+## v2.2 additions
 
 - `execute_action(...)` emits `plugin_started`, `plugin_completed`, and
   `execution_failed` through the existing Workspace OS timeline/realtime feed.
@@ -51,7 +51,7 @@ parsed and validated into an immutable `PluginManifest`.
 | `version` | string | yes | Semantic version (`^\d+\.\d+\.\d+([.-][0-9A-Za-z.]+)?$`). |
 | `description` | string | no | Short summary. |
 | `author` | string | no | Author or organization. |
-| `lattice_version` | string | no | Minimum host version this plugin requires. May be bare (`"2.1.0"`) or prefixed (`">=2.1.0"`). Empty means "any host". |
+| `lattice_version` | string | no | Minimum host version this plugin requires. May be bare (`"2.2.0"`) or prefixed (`">=2.2.0"`). Empty means "any host". |
 | `permissions` | string[] | no | Must be a subset of the [permission allow-list](#permissions). Unknown values are rejected. |
 | `provides` | object | no | What the plugin contributes. Keys must be in `("skills", "tools", "workflows", "actions")`; each value is a list of names. |
 | `entrypoint` | string | no | Reserved for an optional code entrypoint. |
@@ -205,14 +205,14 @@ identically:
 { "lattice_version": ">=2.0.0" }
 ```
 
-Examples against a host of `2.1.0`:
+Examples against a host of `2.2.0`:
 
 | Required | Compatible | Why |
 | --- | --- | --- |
 | `""` (missing) | yes | Any host. |
 | `2.0.0` / `>=2.0.0` | yes | Same major, host `>=` required. |
-| `2.1.0` / `>=2.1.0` | yes | Same major, exact current host. |
-| `2.1.0` | no | Host is lower than the required minimum. |
+| `2.2.0` / `>=2.2.0` | yes | Same major, exact current host. |
+| `2.3.0` | no | Host is lower than the required minimum. |
 | `1.0.0` | no | Major mismatch. |
 | `3.0.0` | no | Major mismatch. |
 

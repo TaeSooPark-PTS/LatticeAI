@@ -29,16 +29,14 @@ executor = ThreadPoolExecutor(max_workers=1)
 
 try:
     import mlx.core as mx
-    from mlx_lm import load as lm_load
     from mlx_vlm import load as vlm_load
     VLM_AVAILABLE = True
-    print("✅ MLX-VLM and MLX-LM are ready for Gemma 4.")
+    print("✅ MLX-VLM is ready for multimodal models.")
 except Exception as e:
     mx = None
-    lm_load = None
     vlm_load = None
     VLM_AVAILABLE = False
-    print(f"⚠️ MLX libraries unavailable: {e}")
+    print(f"⚠️ MLX-VLM unavailable: {e}")
 
 BRAND_NAME = "Lattice AI"
 LEGACY_BRAND_PATTERNS = [
@@ -77,12 +75,12 @@ OPENAI_COMPATIBLE_PROVIDERS = {
     "groq": {
         "env_key": "GROQ_API_KEY",
         "base_url": "https://api.groq.com/openai/v1",
-        "default_model": "llama-3.1-8b-instant",
+        "default_model": "meta-llama/llama-4-scout-17b-16e-instruct",
     },
     "together": {
         "env_key": "TOGETHER_API_KEY",
         "base_url": "https://api.together.xyz/v1",
-        "default_model": "meta-llama/Llama-3.3-70B-Instruct-Turbo",
+        "default_model": "Qwen/Qwen3-VL-32B-Instruct",
     },
     "xai": {
         "env_key": "XAI_API_KEY",
@@ -93,14 +91,14 @@ OPENAI_COMPATIBLE_PROVIDERS = {
         "env_key": "OLLAMA_API_KEY",
         "base_url_env": "OLLAMA_BASE_URL",
         "base_url": "http://localhost:11434/v1",
-        "default_model": "llama3.1",
+        "default_model": "hf.co/ggml-org/gemma-4-12B-it-GGUF:Q4_K_M",
         "api_key_fallback": "ollama",
     },
     "vllm": {
         "env_key": "VLLM_API_KEY",
         "base_url_env": "VLLM_BASE_URL",
         "base_url": "http://localhost:8000/v1",
-        "default_model": "meta-llama/Llama-3.1-8B-Instruct",
+        "default_model": "Qwen/Qwen3-VL-8B-Instruct",
         "api_key_fallback": "vllm",
     },
     "lmstudio": {
@@ -137,26 +135,58 @@ PROVIDER_MODEL_CATALOG = {
         {"id": "anthropic/claude-sonnet-4.6", "name": "Claude Sonnet 4.6 via OpenRouter", "family": "Claude"},
         {"id": "anthropic/claude-haiku-4.5", "name": "Claude Haiku 4.5 via OpenRouter", "family": "Claude"},
         {"id": "qwen/qwen3-vl-235b-a22b-instruct", "name": "Qwen3-VL 235B A22B via OpenRouter", "family": "Qwen"},
-        {"id": "qwen/qwen3-coder", "name": "Qwen3 Coder via OpenRouter", "family": "Qwen"},
+        {"id": "google/gemma-4-12b-it", "name": "Gemma 4 12B via OpenRouter", "family": "Gemma"},
         {"id": "x-ai/grok-2", "name": "Grok 2 via OpenRouter", "family": "Grok"},
-        {"id": "meta-llama/llama-3.3-70b-instruct", "name": "Llama 3.3 70B via OpenRouter", "family": "Llama"},
+        {"id": "meta-llama/llama-4-scout-17b-16e-instruct", "name": "Llama 4 Scout via OpenRouter", "family": "Llama"},
         {"id": "google/gemini-2.5-flash", "name": "Gemini 2.5 Flash via OpenRouter", "family": "Gemini"},
     ],
     "groq": [
-        {"id": "qwen/qwen3-32b", "name": "Qwen3 32B", "family": "Qwen"},
-        {"id": "llama-3.1-8b-instant", "name": "Llama 3.1 8B Instant", "family": "Llama"},
-        {"id": "llama-3.3-70b-versatile", "name": "Llama 3.3 70B Versatile", "family": "Llama"},
+        {"id": "meta-llama/llama-4-scout-17b-16e-instruct", "name": "Llama 4 Scout", "family": "Llama"},
     ],
     "together": [
         {"id": "Qwen/Qwen3-VL-32B-Instruct", "name": "Qwen3-VL 32B", "family": "Qwen"},
-        {"id": "meta-llama/Llama-3.3-70B-Instruct-Turbo", "name": "Llama 3.3 70B Turbo", "family": "Llama"},
-        {"id": "mistralai/Mixtral-8x22B-Instruct-v0.1", "name": "Mixtral 8x22B", "family": "Mistral"},
+        {"id": "google/gemma-4-12b-it", "name": "Gemma 4 12B", "family": "Gemma"},
+        {"id": "meta-llama/Llama-4-Scout-17B-16E-Instruct", "name": "Llama 4 Scout", "family": "Llama"},
     ],
     "xai": [
         {"id": "grok-beta", "name": "Grok Beta", "family": "Grok"},
         {"id": "grok-vision-beta", "name": "Grok Vision Beta", "family": "Grok"},
     ],
 }
+
+MODEL_SOURCE_BY_FAMILY = {
+    "GPT": ("미국", "OpenAI"),
+    "Claude": ("미국", "Anthropic"),
+    "Qwen": ("중국", "Alibaba"),
+    "Llama": ("미국", "Meta"),
+    "Gemini": ("미국", "Google"),
+    "Grok": ("미국", "xAI"),
+}
+
+
+def source_metadata_for_model(provider: str, model: Dict[str, str], *, local_server: bool) -> Dict[str, str]:
+    family = str(model.get("family") or "")
+    country, company = MODEL_SOURCE_BY_FAMILY.get(family, ("미상", provider.title()))
+    if local_server:
+        execution_method = "내 컴퓨터에서만 실행"
+        internet_requirement = "모델을 다운로드할 때만 인터넷 필요; 실행 중에는 필요 없음"
+    else:
+        execution_method = "인터넷 연결 후 사용"
+        internet_requirement = "내 파일이 인터넷으로 전송될 수 있음"
+    return {
+        "source_country": country,
+        "source_company": company,
+        "execution_method": execution_method,
+        "internet_requirement": internet_requirement,
+        "model_name": model.get("name") or model.get("id") or "",
+        "source_display_order": [
+            "source_country",
+            "source_company",
+            "execution_method",
+            "internet_requirement",
+            "model_name",
+        ],
+    }
 
 @dataclass
 class CloudModel:
@@ -207,37 +237,29 @@ def _resolve_local_hf_model(model_id: str) -> str:
     return model_id
 
 def ensure_mlx_runtime() -> None:
-    global mx, lm_load, vlm_load, VLM_AVAILABLE
-    if mx is not None and lm_load is not None:
+    global mx, vlm_load, VLM_AVAILABLE
+    if mx is not None and vlm_load is not None:
         return
     try:
         import mlx.core as mlx_core
-        from mlx_lm import load as mlx_lm_load
+        from mlx_vlm import load as mlx_vlm_load
 
         mx = mlx_core
-        lm_load = mlx_lm_load
-        try:
-            from mlx_vlm import load as mlx_vlm_load
-            vlm_load = mlx_vlm_load
-            VLM_AVAILABLE = True
-        except Exception:
-            vlm_load = None
-            VLM_AVAILABLE = False
+        vlm_load = mlx_vlm_load
+        VLM_AVAILABLE = True
         mx.set_default_device(mx.gpu)
     except Exception as e:
-        raise RuntimeError(f"MLX runtime is not available after install: {e}") from e
+        raise RuntimeError(f"MLX-VLM runtime is not available after install: {e}") from e
 
 def _mlx_sampler(temperature: float):
     """Build an MLX sampler callable for the given temperature.
 
-    mlx_lm >= 0.20 removed the ``temp`` keyword from generate_step in favour of a
-    ``sampler`` callable, and mlx_vlm follows the same convention. Passing
-    ``temp=`` to generate/stream_generate now raises
-    ``generate_step() got an unexpected keyword argument 'temp'``. Both libraries
-    accept ``sampler=`` and share make_sampler from mlx_lm.sample_utils.
+    Lattice v2.2 keeps local execution on MLX-VLM only. Returning ``None`` lets
+    MLX-VLM use its bundled default sampler without pulling another generation
+    package into the runtime contract.
     """
-    from mlx_lm.sample_utils import make_sampler
-    return make_sampler(temp=temperature)
+    _ = temperature
+    return None
 
 class LLMRouter:
     def __init__(self):
@@ -331,8 +353,8 @@ class LLMRouter:
             return self._load_cloud_model(provider, provider_model, api_key_override=api_key_override, owner=owner)
 
         ensure_mlx_runtime()
-        if mx is None or lm_load is None:
-            raise RuntimeError("MLX is not available in this process. Run on Apple Silicon with Metal access.")
+        if mx is None or vlm_load is None:
+            raise RuntimeError("MLX-VLM is not available in this process. Run on Apple Silicon with Metal access.")
 
         cache_key = f"{model_id}_{draft_model_id}" if draft_model_id else model_id
         if cache_key in self._cache:
@@ -348,24 +370,13 @@ class LLMRouter:
         
         def _load():
             mx.set_default_device(mx.gpu)
-            is_gemma4 = "gemma-4" in model_id.lower() or "gemma4" in model_id.lower()
-            
-            # 1. Target 로드 (Gemma 4는 항상 vlm_load 사용)
-            if is_gemma4 and VLM_AVAILABLE:
-                print(f"🔄 Loading Target (VLM Mode): {target_model_id}...")
-                model, tokenizer = vlm_load(target_model_id)
-            else:
-                print(f"🔄 Loading Target (LM Mode): {target_model_id}...")
-                model, tokenizer = lm_load(target_model_id)
+            print(f"🔄 Loading Target (VLM Mode): {target_model_id}...")
+            model, tokenizer = vlm_load(target_model_id)
 
-            # 2. Draft 로드 (Gemma 4는 항상 vlm_load 사용)
             draft_model = None
             if target_draft_model_id:
                 print(f"🔄 Loading Assistant (VLM Mode): {target_draft_model_id}...")
-                if is_gemma4 and VLM_AVAILABLE:
-                    draft_model, _ = vlm_load(target_draft_model_id)
-                else:
-                    draft_model, _ = lm_load(target_draft_model_id)
+                draft_model, _ = vlm_load(target_draft_model_id)
                 print(f"✅ Assistant Ready.")
 
             return model, tokenizer, draft_model
@@ -418,14 +429,16 @@ class LLMRouter:
             }]
             for model in provider_models:
                 model_id = model["id"]
+                local_server = provider in local_server_providers
                 items.append({
                     "id": f"{provider}:{model_id}",
                     "name": model.get("name") or f"{provider.title()} · {model_id}",
                     "provider": provider,
                     "family": model.get("family"),
-                    "tag": "local-server" if provider in local_server_providers else "cloud",
+                    "tag": "local-server" if local_server else "cloud",
                     "available": has_key,
                     "requires": config["env_key"] if not has_key else None,
+                    **source_metadata_for_model(provider, model, local_server=local_server),
                 })
         custom = os.getenv("LATTICEAI_CLOUD_MODELS") or ""
         for raw in [item.strip() for item in custom.split(",") if item.strip()]:
@@ -439,6 +452,11 @@ class LLMRouter:
                     "tag": "cloud",
                     "available": bool(os.getenv(config["env_key"]) or config.get("api_key_fallback")),
                     "requires": None,
+                    **source_metadata_for_model(
+                        provider,
+                        {"id": model, "name": f"{provider.title()} · {model}", "family": provider.title()},
+                        local_server=provider in local_server_providers,
+                    ),
                 })
         return items
 
@@ -511,25 +529,15 @@ class LLMRouter:
             return await self._cloud_generate(cached, message, context, max_tokens, temperature)
 
         model, tokenizer, draft_model = self._cache[self._current]
-        is_gemma4 = "gemma-4" in self._current.lower() or "gemma4" in self._current.lower()
-        prompt = (
-            self._build_vlm_prompt(model, tokenizer, message, context, 1)
-            if image_data and is_gemma4 and VLM_AVAILABLE
-            else self._build_prompt(message, context, tokenizer)
-        )
+        prompt = self._build_vlm_prompt(model, tokenizer, message, context, 1 if image_data else 0)
         
         loop = asyncio.get_event_loop()
         
         def _gen():
             import mlx.core as mx
             mx.set_default_device(mx.gpu)
-            is_gemma4 = "gemma-4" in self._current.lower() or "gemma4" in self._current.lower()
-            if is_gemma4 and VLM_AVAILABLE:
-                from mlx_vlm import generate as vlm_gen
-                return vlm_gen(model, tokenizer, prompt=prompt, image=self._prep_image(image_data), max_tokens=max_tokens, sampler=_mlx_sampler(temperature), draft_model=draft_model, draft_kind="mtp")
-            else:
-                from mlx_lm import generate as lm_gen
-                return lm_gen(model, tokenizer, prompt=prompt, max_tokens=max_tokens, sampler=_mlx_sampler(temperature), draft_model=draft_model)
+            from mlx_vlm import generate as vlm_gen
+            return vlm_gen(model, tokenizer, prompt=prompt, image=self._prep_image(image_data) if image_data else None, max_tokens=max_tokens, sampler=_mlx_sampler(temperature), draft_model=draft_model, draft_kind="mtp")
         result = await loop.run_in_executor(executor, _gen)
         # mlx-vlm might return a GenerationResult object; extract the text
         if hasattr(result, "text"):
@@ -567,12 +575,7 @@ class LLMRouter:
             return
 
         model, tokenizer, draft_model = self._cache[self._current]
-        is_gemma4 = "gemma-4" in self._current.lower() or "gemma4" in self._current.lower()
-        prompt = (
-            self._build_vlm_prompt(model, tokenizer, message, context, 1)
-            if image_data and is_gemma4 and VLM_AVAILABLE
-            else self._build_prompt(message, context, tokenizer)
-        )
+        prompt = self._build_vlm_prompt(model, tokenizer, message, context, 1 if image_data else 0)
         loop = asyncio.get_event_loop()
         queue = asyncio.Queue()
 
@@ -580,13 +583,8 @@ class LLMRouter:
             import mlx.core as mx
             mx.set_default_device(mx.gpu)
             try:
-                is_gemma4 = "gemma-4" in self._current.lower() or "gemma4" in self._current.lower()
-                if is_gemma4 and VLM_AVAILABLE:
-                    from mlx_vlm import stream_generate as vlm_stream
-                    gen = vlm_stream(model, tokenizer, prompt=prompt, image=self._prep_image(image_data), max_tokens=max_tokens, sampler=_mlx_sampler(temperature), draft_model=draft_model, draft_kind="mtp")
-                else:
-                    from mlx_lm import stream_generate as lm_stream
-                    gen = lm_stream(model, tokenizer, prompt=prompt, max_tokens=max_tokens, sampler=_mlx_sampler(temperature), draft_model=draft_model)
+                from mlx_vlm import stream_generate as vlm_stream
+                gen = vlm_stream(model, tokenizer, prompt=prompt, image=self._prep_image(image_data) if image_data else None, max_tokens=max_tokens, sampler=_mlx_sampler(temperature), draft_model=draft_model, draft_kind="mtp")
                 
                 for chunk in gen:
                     text = chunk.text if hasattr(chunk, "text") else (chunk[0] if isinstance(chunk, tuple) else str(chunk))
@@ -675,13 +673,8 @@ class LLMRouter:
         def _gen():
             import mlx.core as mx
             mx.set_default_device(mx.gpu)
-            is_gemma4 = "gemma-4" in self._current.lower() or "gemma4" in self._current.lower()
-            if is_gemma4 and VLM_AVAILABLE:
-                from mlx_vlm import generate as vlm_gen
-                return vlm_gen(model, tokenizer, prompt=prompt, image=None, max_tokens=max_tokens, sampler=_mlx_sampler(temperature), draft_model=draft_model, draft_kind="mtp")
-            else:
-                from mlx_lm import generate as lm_gen
-                return lm_gen(model, tokenizer, prompt=prompt, max_tokens=max_tokens, sampler=_mlx_sampler(temperature), draft_model=draft_model)
+            from mlx_vlm import generate as vlm_gen
+            return vlm_gen(model, tokenizer, prompt=prompt, image=None, max_tokens=max_tokens, sampler=_mlx_sampler(temperature), draft_model=draft_model, draft_kind="mtp")
         result = await loop.run_in_executor(executor, _gen)
         if hasattr(result, "text"):
             return normalize_branding(result.text)
@@ -742,13 +735,8 @@ class LLMRouter:
             import mlx.core as mx
             mx.set_default_device(mx.gpu)
             try:
-                is_gemma4 = "gemma-4" in self._current.lower() or "gemma4" in self._current.lower()
-                if is_gemma4 and VLM_AVAILABLE:
-                    from mlx_vlm import stream_generate as vlm_stream
-                    gen = vlm_stream(model, tokenizer, prompt=prompt, image=None, max_tokens=max_tokens, sampler=_mlx_sampler(temperature), draft_model=draft_model, draft_kind="mtp")
-                else:
-                    from mlx_lm import stream_generate as lm_stream
-                    gen = lm_stream(model, tokenizer, prompt=prompt, max_tokens=max_tokens, sampler=_mlx_sampler(temperature), draft_model=draft_model)
+                from mlx_vlm import stream_generate as vlm_stream
+                gen = vlm_stream(model, tokenizer, prompt=prompt, image=None, max_tokens=max_tokens, sampler=_mlx_sampler(temperature), draft_model=draft_model, draft_kind="mtp")
                 for chunk in gen:
                     text = chunk.text if hasattr(chunk, "text") else (chunk[0] if isinstance(chunk, tuple) else str(chunk))
                     loop.call_soon_threadsafe(queue.put_nowait, text)

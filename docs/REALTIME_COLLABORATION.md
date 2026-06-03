@@ -1,7 +1,7 @@
 # Lattice AI Realtime Collaboration
 
 Realtime Collaboration is the subsystem that gives a Lattice AI workspace a live
-**presence** registry and an **activity feed**. In v2.1.0 it also carries
+**presence** registry and an **activity feed**. In v2.2.0 it also carries
 workspace-scoped execution observability for agents, handoffs, reviews,
 workflows, plugins, retries, and failures. It is delivered over Server-Sent
 Events (SSE) by an in-process pub/sub bus, the
@@ -15,10 +15,10 @@ event system.
 The bus version is:
 
 ```python
-REALTIME_VERSION = "2.1.0"
+REALTIME_VERSION = "2.2.0"
 ```
 
-v2.1 execution event types include `agent_started`, `handoff_created`,
+v2.2 execution event types include `agent_started`, `handoff_created`,
 `handoff_accepted`, `handoff_completed`, `review_requested`, `review_approved`,
 `retry_requested`, `workflow_started`, `workflow_completed`, `plugin_started`,
 `plugin_completed`, `execution_failed`, and `execution_cancelled`.
@@ -301,7 +301,7 @@ defaults to `50` and is clamped to the `200`-entry buffer. Returns newest-first:
 {
   "events": [ /* enriched events, newest first */ ],
   "stats": {
-    "version": "2.1.0",
+    "version": "2.2.0",
     "subscribers": 1,
     "presence": 2,
     "feed_size": 17,
@@ -325,7 +325,7 @@ Returns the scope-filtered presence registry plus the same `stats` block:
       "last_seen": "2026-06-01T10:15:30"
     }
   ],
-  "stats": { "version": "2.1.0", "subscribers": 1, "presence": 1, "feed_size": 17, "transport": "sse" }
+  "stats": { "version": "2.2.0", "subscribers": 1, "presence": 1, "feed_size": 17, "transport": "sse" }
 }
 ```
 
@@ -419,5 +419,5 @@ no client-side filtering is needed.
   on top of it, not a replacement.
 - **Single process.** The bus is in-process by design for the local-first
   deployment; it does not coordinate across multiple server processes.
-- **`stats()`** reports `version` (`2.1.0`), live `subscribers`, `presence`
+- **`stats()`** reports `version` (`2.2.0`), live `subscribers`, `presence`
   count, `feed_size`, and the `transport` (`"sse"`) for health/observability.

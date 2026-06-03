@@ -11,7 +11,7 @@ from copy import deepcopy
 from typing import Any, Dict, List, Optional
 
 
-MARKETPLACE_VERSION = "2.1.0"
+MARKETPLACE_VERSION = "2.2.0"
 TEMPLATE_KINDS = ("plugin", "workflow", "agent")
 
 
@@ -33,7 +33,7 @@ BUILTIN_TEMPLATES: Dict[str, List[Dict[str, Any]]] = {
                     "id": "plugin-review-action",
                     "name": "Plugin Review Action",
                     "version": "1.0.0",
-                    "lattice_version": ">=2.1.0",
+                    "lattice_version": ">=2.2.0",
                     "permissions": ["read_workspace", "run_skills"],
                     "provides": {"skills": ["review_action"]},
                 }

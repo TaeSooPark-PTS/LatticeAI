@@ -40,7 +40,7 @@ export class ModelPicker {
     }
 
     // 추천 모델 (다운로드/로드 필요)
-    items.push({ label: "── Recommended (will download if needed) ──", kind: vscode.QuickPickItemKind.Separator, modelId: "" });
+    items.push({ label: "── Recommended multimodal models ──", kind: vscode.QuickPickItemKind.Separator, modelId: "" });
 
     const tagIcons: Record<string, string> = {
       coding: "$(code)",
@@ -50,10 +50,17 @@ export class ModelPicker {
 
     for (const m of recommended) {
       if (loaded.includes(m.id)) continue; // 위에 이미 표시됨
+      const sourceDetail = [
+        m.source_country,
+        m.source_company,
+        m.execution_method,
+        m.internet_requirement,
+        m.model_name ?? m.name,
+      ].filter(Boolean).join(" · ");
       items.push({
         label: `${tagIcons[m.tag] ?? "$(cloud)"} ${shortName(m.id)}`,
         description: `${m.size} · ${m.tag}`,
-        detail: m.id,
+        detail: sourceDetail || m.id,
         modelId: m.id,
       });
     }
@@ -62,13 +69,13 @@ export class ModelPicker {
     items.push({ label: "── Custom ──", kind: vscode.QuickPickItemKind.Separator, modelId: "" });
     items.push({
       label: "$(add) Enter HuggingFace model ID...",
-      description: "any mlx-community model",
+      description: "multimodal model only",
       detail: "__custom__",
       modelId: "__custom__",
     });
 
     const pick = await vscode.window.showQuickPick(items, {
-      title: "Lattice AI MLX — Select Model",
+      title: "Lattice AI — Select Model",
       placeHolder: "Search models...",
       matchOnDescription: true,
       matchOnDetail: true,
@@ -79,7 +86,7 @@ export class ModelPicker {
     if (pick.modelId === "__custom__") {
       return vscode.window.showInputBox({
         prompt: "Enter HuggingFace model ID",
-        placeHolder: "e.g. mlx-community/Llama-3.1-8B-Instruct-4bit",
+        placeHolder: "e.g. mlx-community/gemma-4-12b-it-4bit",
         validateInput: (v) => (v.includes("/") ? null : "Format: org/model-name"),
       });
     }
