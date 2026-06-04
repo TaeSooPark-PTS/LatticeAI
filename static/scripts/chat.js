@@ -14,17 +14,133 @@ const chatViewport = document.getElementById('chat-viewport');
         let telegramHistorySyncEnabled = false;
         let telegramHistorySyncInFlight = false;
 
-        // ── 멀티 LLM 파이프라인 상태 ──
-        let pipelineConfig = { planning: null, executing: null, reviewing: null };
-        let pipelineActive = false; // true이면 전송 시 pipeline 모드
+	        // ── 멀티 LLM 파이프라인 상태 ──
+	        let pipelineConfig = { planning: null, executing: null, reviewing: null };
+	        let pipelineActive = false; // true이면 전송 시 pipeline 모드
+	        const MODAL_LAYER_IDS = [
+	            'acct-modal-overlay',
+	            'mcp-modal-overlay',
+	            'workspace-modal-overlay',
+	            'mode-modal-overlay',
+	            'model-overlay',
+	            'pipeline-overlay',
+	            'admin-overlay',
+	            'vpc-overlay',
+	            'status-overlay',
+	            'file-create-overlay',
+	            'file-editor-overlay',
+	            'local-browser-overlay',
+	            'advanced-settings-overlay',
+	            'cu-overlay',
+	            'setup-overlay',
+	            'onboarding-overlay',
+	            'perm-overlay',
+	        ];
+	        const MODAL_LAYER_SET = new Set(MODAL_LAYER_IDS);
+	        let activeModalLayerId = null;
+	        let restoreModalLayerId = null;
+	        let bodyOverflowBeforeModal = '';
 
-        function openPipelineModal() {
-            document.getElementById('pipeline-overlay').style.display = 'flex';
-            loadPipelineModelOptions();
-        }
-        function closePipelineModal() {
-            document.getElementById('pipeline-overlay').style.display = 'none';
-        }
+	        function modalLayerEl(id) {
+	            return document.getElementById(id);
+	        }
+
+	        function isModalLayerVisible(el) {
+	            if (!el) return false;
+	            return el.classList.contains('open') || getComputedStyle(el).display !== 'none';
+	        }
+
+	        function refreshBodyModalLock() {
+	            const hasOpen = MODAL_LAYER_IDS.some(id => isModalLayerVisible(modalLayerEl(id)));
+	            if (hasOpen) {
+	                if (!document.body.classList.contains('modal-open')) {
+	                    bodyOverflowBeforeModal = document.body.style.overflow || '';
+	                }
+	                document.body.classList.add('modal-open');
+	                document.body.style.overflow = 'hidden';
+	            } else {
+	                document.body.classList.remove('modal-open');
+	                document.body.style.overflow = bodyOverflowBeforeModal;
+	                bodyOverflowBeforeModal = '';
+	            }
+	        }
+
+	        function hideModalElement(id) {
+	            const el = modalLayerEl(id);
+	            if (!el) return;
+	            el.classList.remove('open');
+	            el.style.display = 'none';
+	            el.setAttribute('aria-hidden', 'true');
+	            if ('inert' in el) el.inert = true;
+	        }
+
+	        function showModalLayer(id, options = {}) {
+	            const el = modalLayerEl(id);
+	            if (!el) return;
+	            const current = activeModalLayerId && activeModalLayerId !== id ? activeModalLayerId : null;
+	            MODAL_LAYER_IDS.forEach(otherId => {
+	                if (otherId !== id) hideModalElement(otherId);
+	            });
+	            if (options.restorePrevious && current) restoreModalLayerId = current;
+	            else if (!options.keepRestore) restoreModalLayerId = null;
+	            el.removeAttribute('aria-hidden');
+	            if ('inert' in el) el.inert = false;
+	            el.classList.add('open');
+	            el.style.display = 'flex';
+	            activeModalLayerId = id;
+	            refreshBodyModalLock();
+	        }
+
+	        function closeModalLayer(id, options = {}) {
+	            hideModalElement(id);
+	            if (activeModalLayerId === id) activeModalLayerId = null;
+	            const restoreId = restoreModalLayerId;
+	            if (!options.skipRestore) restoreModalLayerId = null;
+	            refreshBodyModalLock();
+	            if (!options.skipRestore && restoreId && restoreId !== id) {
+	                showModalLayer(restoreId, { keepRestore: true });
+	            }
+	        }
+
+	        function closeAllModalLayers() {
+	            MODAL_LAYER_IDS.forEach(hideModalElement);
+	            activeModalLayerId = null;
+	            restoreModalLayerId = null;
+	            refreshBodyModalLock();
+	        }
+
+	        function dismissModalLayer(id) {
+	            if (id === 'perm-overlay') {
+	                resolvePermission(false);
+	                return;
+	            }
+	            closeModalLayer(id);
+	        }
+
+	        document.addEventListener('keydown', (event) => {
+	            if (event.key !== 'Escape') return;
+	            const visible = [...MODAL_LAYER_IDS].reverse().find(id => isModalLayerVisible(modalLayerEl(id)));
+	            if (!visible) return;
+	            event.preventDefault();
+	            dismissModalLayer(visible);
+	        });
+
+	        document.addEventListener('click', (event) => {
+	            const target = event.target;
+	            if (target && target.id && MODAL_LAYER_SET.has(target.id)) dismissModalLayer(target.id);
+	        });
+
+	        window.addEventListener('pagehide', closeAllModalLayers);
+	        window.addEventListener('popstate', closeAllModalLayers);
+	        window.addEventListener('hashchange', closeAllModalLayers);
+
+	        function openPipelineModal() {
+	            showModalLayer('pipeline-overlay');
+	            loadPipelineModelOptions();
+	        }
+	        function closePipelineModal() {
+	            closeModalLayer('pipeline-overlay');
+	        }
         function resetPipeline() {
             pipelineConfig = { planning: null, executing: null, reviewing: null };
             pipelineActive = false;
@@ -731,12 +847,12 @@ const chatViewport = document.getElementById('chat-viewport');
             focusChatInput();
         }
 
-        function openAdvancedSettingsPanel() {
-            document.getElementById('advanced-settings-overlay')?.classList.add('open');
-        }
+	        function openAdvancedSettingsPanel() {
+	            showModalLayer('advanced-settings-overlay');
+	        }
 
-        function closeAdvancedSettingsPanel() {
-            document.getElementById('advanced-settings-overlay')?.classList.remove('open');
+	        function closeAdvancedSettingsPanel() {
+	            closeModalLayer('advanced-settings-overlay');
         }
 
         function updateWorkspaceModeUi() {
@@ -778,19 +894,19 @@ const chatViewport = document.getElementById('chat-viewport');
         }
 
         function selectWorkspace(kind) {
-            setWorkspacePreference(kind);
-            document.getElementById('workspace-modal-overlay')?.classList.remove('open');
-            updateWorkspaceModeUi();
-            openModeSelector();
-        }
+	            setWorkspacePreference(kind);
+	            closeModalLayer('workspace-modal-overlay');
+	            updateWorkspaceModeUi();
+	            openModeSelector();
+	        }
 
-        function openModeSelector() {
-            updateWorkspaceModeUi();
-            document.getElementById('mode-modal-overlay')?.classList.add('open');
-        }
+	        function openModeSelector() {
+	            updateWorkspaceModeUi();
+	            showModalLayer('mode-modal-overlay');
+	        }
 
-        function closeModeSelector() {
-            document.getElementById('mode-modal-overlay')?.classList.remove('open');
+	        function closeModeSelector() {
+	            closeModalLayer('mode-modal-overlay');
         }
 
         function selectMode(mode) {
@@ -829,12 +945,12 @@ const chatViewport = document.getElementById('chat-viewport');
         async function startOnboardingIfNeeded(force = false) {
             updateWorkspaceModeUi();
             const forceAfterLogin = consumeSetupAfterLoginFlag();
-            const hasLoadedModel = await modelLoadedForChat();
-            if (!force && !forceAfterLogin && onboardingComplete() && hasLoadedModel) {
-                document.getElementById('onboarding-overlay')?.classList.remove('open');
-                return;
-            }
-            document.getElementById('onboarding-overlay')?.classList.add('open');
+	            const hasLoadedModel = await modelLoadedForChat();
+	            if (!force && !forceAfterLogin && onboardingComplete() && hasLoadedModel) {
+	                closeModalLayer('onboarding-overlay');
+	                return;
+	            }
+	            showModalLayer('onboarding-overlay');
             if (forceAfterLogin || !hasLoadedModel) {
                 renderPcAnalysis();
             } else {
@@ -1362,12 +1478,12 @@ const chatViewport = document.getElementById('chat-viewport');
             `);
         }
 
-        function finishOnboarding(mode) {
-            selectMode(mode);
-            setOnboardingComplete();
-            document.getElementById('onboarding-overlay')?.classList.remove('open');
-            showChat();
-        }
+	        function finishOnboarding(mode) {
+	            selectMode(mode);
+	            setOnboardingComplete();
+	            closeModalLayer('onboarding-overlay');
+	            showChat();
+	        }
 
         function switchAcctTab(tab) {
             ['profile', 'password'].forEach(t => {
@@ -1390,10 +1506,10 @@ const chatViewport = document.getElementById('chat-viewport');
                     document.getElementById('profile-nickname').value = data.nickname || '';
                 }
             } catch {}
-            document.getElementById('acct-modal-overlay').classList.add('open');
+            showModalLayer('acct-modal-overlay');
         }
         function closeAcctModal() {
-            document.getElementById('acct-modal-overlay').classList.remove('open');
+            closeModalLayer('acct-modal-overlay');
         }
         document.addEventListener('click', (e) => {
             const overlay = document.getElementById('acct-modal-overlay');
@@ -1707,7 +1823,7 @@ const chatViewport = document.getElementById('chat-viewport');
         }
 
         async function openModelPanel() {
-            document.getElementById('model-overlay').style.display = 'flex';
+            showModalLayer('model-overlay');
             document.getElementById('model-list').innerHTML = '<div class="sensitivity-preview">실행 엔진과 모델 목록을 불러오는 중입니다...</div>';
             try {
                 const res = await apiFetch('/engines');
@@ -1742,7 +1858,7 @@ const chatViewport = document.getElementById('chat-viewport');
         }
 
         function closeModelPanel() {
-            document.getElementById('model-overlay').style.display = 'none';
+            closeModalLayer('model-overlay');
         }
 
         async function installEngine(engineId) {
@@ -2206,7 +2322,7 @@ const chatViewport = document.getElementById('chat-viewport');
         }
 
         function closeAdminPanel() {
-            document.getElementById('admin-overlay').style.display = 'none';
+            closeModalLayer('admin-overlay');
         }
 
         // ── VPC Panel ────────────────────────────────────────
@@ -2237,7 +2353,7 @@ const chatViewport = document.getElementById('chat-viewport');
         }
 
         async function openVpcPanel() {
-            document.getElementById('vpc-overlay').style.display = 'flex';
+            showModalLayer('vpc-overlay');
             try {
                 const res = await apiFetch('/vpc/status');
                 if (res.ok) fillVpcPanelForm(await res.json());
@@ -2245,7 +2361,7 @@ const chatViewport = document.getElementById('chat-viewport');
         }
 
         function closeVpcPanel() {
-            document.getElementById('vpc-overlay').style.display = 'none';
+            closeModalLayer('vpc-overlay');
         }
 
         function selectVpcProvider(name, btn) {
@@ -2295,7 +2411,7 @@ const chatViewport = document.getElementById('chat-viewport');
 
         // ── Status Summary Panel ─────────────────────────────
         async function openStatusPanel() {
-            document.getElementById('status-overlay').style.display = 'flex';
+            showModalLayer('status-overlay');
             document.getElementById('status-panel-body').innerHTML = '<div class="sensitivity-preview">상태를 불러오는 중...</div>';
             try {
                 const mode = getCurrentMode();
@@ -2364,7 +2480,7 @@ const chatViewport = document.getElementById('chat-viewport');
         }
 
         function closeStatusPanel() {
-            document.getElementById('status-overlay').style.display = 'none';
+            closeModalLayer('status-overlay');
         }
 
         // ── 파일 생성 패널 ────────────────────────────────────
@@ -2417,11 +2533,11 @@ const chatViewport = document.getElementById('chat-viewport');
                 </div>`;
             }
             document.getElementById('file-create-form').innerHTML = formHtml;
-            document.getElementById('file-create-overlay').style.display = 'flex';
+            showModalLayer('file-create-overlay');
         }
 
         function closeFileCreate() {
-            document.getElementById('file-create-overlay').style.display = 'none';
+            closeModalLayer('file-create-overlay');
         }
 
         function _formatBytes(b) {
@@ -2509,24 +2625,24 @@ const chatViewport = document.getElementById('chat-viewport');
                 document.getElementById('perm-title').textContent = '파일 접근 요청';
                 document.getElementById('perm-path').textContent = path;
                 document.getElementById('perm-desc').textContent = `AI가 아래 경로에 대한 "${actionLabel}" 작업을 요청합니다. 허용하시겠습니까?`;
-                document.getElementById('perm-overlay').style.display = 'flex';
+                showModalLayer('perm-overlay', { restorePrevious: true });
             });
         }
 
         function resolvePermission(allowed) {
-            document.getElementById('perm-overlay').style.display = 'none';
+            closeModalLayer('perm-overlay');
             if (_permResolve) { _permResolve(allowed); _permResolve = null; }
         }
 
         let _localCurrentPath = '~';
 
         async function openLocalBrowser() {
-            document.getElementById('local-browser-overlay').style.display = 'flex';
+            showModalLayer('local-browser-overlay');
             await localNav(_localCurrentPath || '~');
         }
 
         function closeLocalBrowser() {
-            document.getElementById('local-browser-overlay').style.display = 'none';
+            closeModalLayer('local-browser-overlay');
         }
 
         async function localNav(path) {
@@ -2712,8 +2828,8 @@ const chatViewport = document.getElementById('chat-viewport');
                     document.getElementById('editor-filepath').textContent = path;
                     document.getElementById('file-editor-content').value = text;
                     document.getElementById('editor-status').textContent = '';
-                    document.getElementById('local-browser-overlay').style.display = 'none';
-                    document.getElementById('file-editor-overlay').style.display = 'flex';
+                    closeModalLayer('local-browser-overlay', { skipRestore: true });
+                    showModalLayer('file-editor-overlay');
                 } catch(e) {
                     resultEl.innerHTML = `
                         <div class="sensitivity-preview">⚠️ 문서 읽기 실패: ${escapeHtml(e.message)}<br>
@@ -2763,15 +2879,15 @@ const chatViewport = document.getElementById('chat-viewport');
                 document.getElementById('editor-filepath').textContent = path;
                 document.getElementById('file-editor-content').value = content;
                 document.getElementById('editor-status').textContent = '';
-                document.getElementById('local-browser-overlay').style.display = 'none';
-                document.getElementById('file-editor-overlay').style.display = 'flex';
+                closeModalLayer('local-browser-overlay', { skipRestore: true });
+                showModalLayer('file-editor-overlay');
             } catch(e) {
                 resultEl.innerHTML = `<div class="sensitivity-preview">${escapeHtml(e.message)}</div>`;
             }
         }
 
         function closeFileEditor() {
-            document.getElementById('file-editor-overlay').style.display = 'none';
+            closeModalLayer('file-editor-overlay');
         }
 
         async function saveLocalFile() {
@@ -2862,8 +2978,8 @@ const chatViewport = document.getElementById('chat-viewport');
                 document.getElementById('file-editor-content').value = text;
                 document.getElementById('editor-status').textContent = '⚠️ 이미지/표 등 비텍스트 요소는 표시되지 않을 수 있습니다';
                 document.getElementById('editor-status').style.color = 'var(--accent-2)';
-                document.getElementById('local-browser-overlay').style.display = 'none';
-                document.getElementById('file-editor-overlay').style.display = 'flex';
+                closeModalLayer('local-browser-overlay', { skipRestore: true });
+                showModalLayer('file-editor-overlay');
             } catch(e) {
                 resultEl.innerHTML = `<div class="sensitivity-preview">텍스트 추출 실패: ${escapeHtml(e.message)}</div>`;
             }
@@ -4188,12 +4304,12 @@ const chatViewport = document.getElementById('chat-viewport');
         let cuAgentAbort = null;
 
         async function openCuPanel() {
-            document.getElementById('cu-overlay').style.display = 'flex';
+            showModalLayer('cu-overlay');
             await cuRefreshStatus();
         }
 
         function closeCuPanel() {
-            document.getElementById('cu-overlay').style.display = 'none';
+            closeModalLayer('cu-overlay');
         }
 
         async function cuRefreshStatus() {
@@ -4360,12 +4476,12 @@ const chatViewport = document.getElementById('chat-viewport');
     let _wizItems = [];   // items selected by user in step 2
 
     function openSetupWizard() {
-        document.getElementById('setup-overlay').classList.add('open');
+        showModalLayer('setup-overlay');
         _runStep1();
     }
 
     function closeSetupWizard() {
-        document.getElementById('setup-overlay').classList.remove('open');
+        closeModalLayer('setup-overlay');
     }
 
     // Prevent click-through on overlay background
@@ -4680,12 +4796,12 @@ const chatViewport = document.getElementById('chat-viewport');
     let _mcpCurrentTab = 'registry';
 
     async function openMcpModal() {
-        document.getElementById('mcp-modal-overlay').classList.add('open');
+        showModalLayer('mcp-modal-overlay');
         await renderMcpModal(_mcpCurrentTab);
     }
 
     function closeMcpModal() {
-        document.getElementById('mcp-modal-overlay').classList.remove('open');
+        closeModalLayer('mcp-modal-overlay');
     }
 
     function switchMcpTab(tab, btn) {

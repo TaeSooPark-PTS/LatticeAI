@@ -1,5 +1,5 @@
 /* ============================================================================
- * Lattice AI — Responsive / Accessibility / Theme Foundation  (v2.2.2)
+ * Lattice AI — Responsive / Accessibility / Theme Foundation  (v2.2.5)
  *
  * 이 파일은 모든 페이지에서 가장 마지막에 로드된다 (lattice-reference.css /
  * workspace.css / platform.css 다음). 따라서 기존 규칙을 "덮어쓰는" 레이어로
@@ -887,3 +887,279 @@ body.graph-card-view .stage > canvas#graph { visibility: hidden; }
 :root[data-lt-theme="dark"] .onboarding-choice:hover,
 :root[data-lt-theme="dark"] .onboarding-mode:hover,
 :root[data-lt-theme="dark"] .onboarding-model-option:hover { border-color: var(--accent); }
+
+/* ============================================================================
+ * 14. v2.2.5 modal stack, scrim, and hardcoded-light surface cleanup
+ * ========================================================================== */
+:root {
+  --z-app-layout: 0;
+  --z-sidebar: 100;
+  --z-drawer: 800;
+  --z-modal-backdrop: 1400;
+  --z-modal-content: 1410;
+  --z-tooltip: 9600;
+  --z-toast: 9700;
+}
+
+body.modal-open {
+  overflow: hidden;
+  overscroll-behavior: contain;
+}
+
+.acct-modal-overlay,
+.mcp-modal-overlay,
+.workspace-modal-overlay,
+.mode-modal-overlay,
+.model-overlay,
+.admin-overlay,
+.advanced-settings-overlay,
+.perm-overlay,
+.onboarding-overlay,
+#setup-overlay {
+  background: var(--overlay-scrim, var(--overlay, rgba(0, 0, 0, 0.52)));
+  -webkit-backdrop-filter: none;
+  backdrop-filter: none;
+}
+
+.acct-modal-overlay,
+.mcp-modal-overlay,
+.workspace-modal-overlay,
+.mode-modal-overlay,
+.model-overlay,
+.admin-overlay,
+.advanced-settings-overlay {
+  z-index: var(--z-modal-backdrop);
+}
+
+#setup-overlay { z-index: 1500; }
+.onboarding-overlay { z-index: 1600; }
+.perm-overlay { z-index: 1700; }
+#tooltip { z-index: var(--z-tooltip); }
+#ltcai-toast { z-index: var(--z-toast); }
+
+.acct-modal-overlay[aria-hidden="true"],
+.mcp-modal-overlay[aria-hidden="true"],
+.workspace-modal-overlay[aria-hidden="true"],
+.mode-modal-overlay[aria-hidden="true"],
+.model-overlay[aria-hidden="true"],
+.admin-overlay[aria-hidden="true"],
+.advanced-settings-overlay[aria-hidden="true"],
+.perm-overlay[aria-hidden="true"],
+.onboarding-overlay[aria-hidden="true"],
+#setup-overlay[aria-hidden="true"] {
+  pointer-events: none;
+}
+
+.acct-modal,
+.mcp-modal,
+.workspace-modal,
+.mode-modal,
+.model-panel,
+.admin-panel,
+.advanced-settings-panel,
+.perm-dialog,
+.onboarding-card,
+.wizard-card {
+  background: var(--modal, var(--surface));
+  border-color: var(--border);
+  color: var(--text);
+}
+
+.workspace-card,
+.mode-card,
+.onboarding-choice,
+.onboarding-mode,
+.recommendation-card,
+.analysis-row,
+.onboarding-model-card,
+.onboarding-model-option,
+.setup-log-row,
+.mcp-item,
+.model-card,
+.engine-card,
+.sensitivity-panel,
+.status-section,
+.file-download-card {
+  background: var(--surface-elevated, var(--surface));
+  border-color: var(--border);
+  color: var(--text);
+}
+
+.admin-input,
+.admin-textarea,
+.pipeline-select,
+.acct-modal input,
+.mcp-modal input,
+.mcp-modal textarea,
+.auth-input,
+.input,
+textarea,
+select {
+  background-color: var(--input, var(--surface-2));
+  border-color: var(--border);
+  color: var(--text);
+}
+
+.admin-input::placeholder,
+.admin-textarea::placeholder,
+.acct-modal input::placeholder,
+.mcp-modal input::placeholder,
+.mcp-modal textarea::placeholder,
+textarea::placeholder {
+  color: var(--faint);
+}
+
+:root[data-lt-theme="dark"] body.lattice-ref-chat,
+:root[data-lt-theme="dark"] body.lattice-ref-admin,
+:root[data-lt-theme="dark"] body.lattice-ref-graph {
+  background: var(--app-bg);
+  color: var(--text);
+}
+
+:root[data-lt-theme="dark"] body.lattice-ref-chat .app-layout,
+:root[data-lt-theme="dark"] body.lattice-ref-chat .main-chat {
+  background: transparent;
+  color: var(--text);
+}
+
+:root[data-lt-theme="dark"] body.lattice-ref-chat .sidebar,
+:root[data-lt-theme="dark"] body.lattice-ref-chat .chat-header,
+:root[data-lt-theme="dark"] body.lattice-ref-admin .admin-rail,
+:root[data-lt-theme="dark"] body.lattice-ref-admin .topbar,
+:root[data-lt-theme="dark"] body.lattice-ref-graph .reference-rail {
+  background: var(--sidebar);
+  border-color: var(--border);
+  box-shadow: var(--shadow-sm);
+}
+
+:root[data-lt-theme="dark"] body.lattice-ref-chat .ops-card,
+:root[data-lt-theme="dark"] body.lattice-ref-chat .home-dash-cards > *,
+:root[data-lt-theme="dark"] body.lattice-ref-chat .home-summary-panel,
+:root[data-lt-theme="dark"] body.lattice-ref-chat .home-action-card,
+:root[data-lt-theme="dark"] body.lattice-ref-chat .ai .bubble,
+:root[data-lt-theme="dark"] body.lattice-ref-chat .input-box,
+:root[data-lt-theme="dark"] body.lattice-ref-chat .user-strip,
+:root[data-lt-theme="dark"] body.lattice-ref-admin .panel,
+:root[data-lt-theme="dark"] body.lattice-ref-admin .card,
+:root[data-lt-theme="dark"] body.lattice-ref-graph .stage,
+:root[data-lt-theme="dark"] body.lattice-ref-graph .search-shell,
+:root[data-lt-theme="dark"] body.lattice-ref-graph .graph-minimap {
+  background: var(--surface);
+  border-color: var(--border);
+  color: var(--text);
+  box-shadow: var(--shadow-sm);
+}
+
+:root[data-lt-theme="dark"] body.lattice-ref-chat .logout-btn,
+:root[data-lt-theme="dark"] body.lattice-ref-chat .status-btn,
+:root[data-lt-theme="dark"] body.lattice-ref-chat .new-chat-btn,
+:root[data-lt-theme="dark"] body.lattice-ref-chat .setup-wizard-sidebar-btn,
+:root[data-lt-theme="dark"] body.lattice-ref-chat .admin-btn,
+:root[data-lt-theme="dark"] body.lattice-ref-chat .mode-segmented,
+:root[data-lt-theme="dark"] body.lattice-ref-chat .mode-segmented button:not(.active),
+:root[data-lt-theme="dark"] body.lattice-ref-chat .action-btn,
+:root[data-lt-theme="dark"] body.lattice-ref-admin .table-btn {
+  background: var(--surface-2);
+  border-color: var(--border);
+  color: var(--text);
+}
+
+:root[data-lt-theme="dark"] body.lattice-ref-chat .logout-btn:hover,
+:root[data-lt-theme="dark"] body.lattice-ref-chat .status-btn:hover,
+:root[data-lt-theme="dark"] body.lattice-ref-chat .history-item:hover,
+:root[data-lt-theme="dark"] body.lattice-ref-chat .reference-nav-item:hover,
+:root[data-lt-theme="dark"] body.lattice-ref-chat .reference-nav-item.active {
+  background: var(--surface-3);
+  color: var(--text);
+}
+
+:root[data-lt-theme="dark"] body.lattice-ref-chat .workspace-modal,
+:root[data-lt-theme="dark"] body.lattice-ref-chat .mode-modal,
+:root[data-lt-theme="dark"] body.lattice-ref-chat .onboarding-card {
+  background: var(--modal);
+  color: var(--text);
+}
+
+:root[data-lt-theme="dark"] body.lattice-ref-chat .workspace-card,
+:root[data-lt-theme="dark"] body.lattice-ref-chat .onboarding-choice,
+:root[data-lt-theme="dark"] body.lattice-ref-chat .onboarding-mode,
+:root[data-lt-theme="dark"] body.lattice-ref-chat .recommendation-card,
+:root[data-lt-theme="dark"] body.lattice-ref-chat .analysis-row,
+:root[data-lt-theme="dark"] body.lattice-ref-chat .onboarding-model-card,
+:root[data-lt-theme="dark"] body.lattice-ref-chat .setup-log-row {
+  background: var(--surface-2);
+  border-color: var(--border);
+}
+
+:root[data-lt-theme="dark"] body.lattice-ref-chat .onboarding-model-option,
+:root[data-lt-theme="dark"] body.lattice-ref-chat .mcp-item,
+:root[data-lt-theme="dark"] body.lattice-ref-chat .model-filter,
+:root[data-lt-theme="dark"] body.lattice-ref-chat .model-filter-btn,
+:root[data-lt-theme="dark"] body.lattice-ref-chat .status-row {
+  background: var(--surface-3);
+  border-color: var(--border);
+  color: var(--text);
+}
+
+:root[data-lt-theme="dark"] body.lattice-ref-chat .workspace-modal p,
+:root[data-lt-theme="dark"] body.lattice-ref-chat .mode-modal p,
+:root[data-lt-theme="dark"] body.lattice-ref-chat .onboarding-body > p,
+:root[data-lt-theme="dark"] body.lattice-ref-chat .recommendation-card p,
+:root[data-lt-theme="dark"] body.lattice-ref-chat .analysis-row p,
+:root[data-lt-theme="dark"] body.lattice-ref-chat .mcp-item-desc,
+:root[data-lt-theme="dark"] body.lattice-ref-chat .status-row-label,
+:root[data-lt-theme="dark"] body.lattice-ref-chat .ops-meta {
+  color: var(--muted);
+}
+
+:root[data-lt-theme="dark"] body.lattice-ref-chat .lang-picker-menu,
+:root[data-lt-theme="dark"] body.lattice-ref-chat .sidebar-search-wrap,
+:root[data-lt-theme="dark"] body.lattice-ref-chat .pipeline-phase-row,
+:root[data-lt-theme="dark"] body.lattice-ref-chat .perm-path,
+:root[data-lt-theme="dark"] body.lattice-ref-chat #local-browser-result,
+:root[data-lt-theme="dark"] body.lattice-ref-chat #cu-log,
+:root[data-lt-theme="dark"] body.lattice-ref-chat #cu-screenshot-container {
+  background: var(--surface-2);
+  border-color: var(--border);
+}
+
+:root[data-lt-theme="dark"] body.lattice-ref-chat .sidebar-overlay {
+  background: var(--overlay-scrim);
+  -webkit-backdrop-filter: none;
+  backdrop-filter: none;
+}
+
+#cu-panel .cu-controls-panel {
+  width: 280px;
+  max-width: 100%;
+}
+
+@media (max-width: 760px) {
+  .admin-overlay,
+  .model-overlay,
+  .perm-overlay,
+  .onboarding-overlay,
+  #setup-overlay {
+    align-items: flex-end;
+    justify-content: center;
+    padding: max(12px, env(safe-area-inset-top)) 12px max(12px, env(safe-area-inset-bottom));
+  }
+
+  .admin-panel,
+  .model-panel,
+  .perm-dialog,
+  .wizard-card,
+  .onboarding-card {
+    width: 100%;
+    max-width: none;
+    max-height: 92dvh;
+  }
+
+  #cu-panel .admin-body > div[style*="display:flex"] {
+    flex-direction: column;
+  }
+
+  #cu-panel .cu-controls-panel {
+    width: 100%;
+  }
+}

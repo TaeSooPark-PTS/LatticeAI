@@ -15,7 +15,7 @@
 [![npm version](https://img.shields.io/npm/v/ltcai?label=npm)](https://www.npmjs.com/package/ltcai)
 [![VS Code Marketplace](https://vsmarketplacebadges.dev/version-short/parktaesoo.ltcai.svg)](https://marketplace.visualstudio.com/items?itemName=parktaesoo.ltcai)
 [![Open VSX](https://img.shields.io/open-vsx/v/parktaesoo/ltcai?label=Open%20VSX)](https://open-vsx.org/extension/parktaesoo/ltcai)
-[![GitHub release](https://img.shields.io/github/v/release/TaeSooPark-PTS/LatticeAI?label=GitHub%20release)](https://github.com/TaeSooPark-PTS/LatticeAI/releases/tag/v2.2.2)
+[![GitHub release](https://img.shields.io/github/v/release/TaeSooPark-PTS/LatticeAI?label=GitHub%20release)](https://github.com/TaeSooPark-PTS/LatticeAI/releases/tag/v2.2.5)
 [![License: MIT](https://img.shields.io/badge/license-MIT-green)](LICENSE)
 [![Python 3.11+](https://img.shields.io/badge/python-3.11%2B-blue)](https://www.python.org/)
 [![VS Code extension](https://img.shields.io/badge/VS%20Code-extension-blue?logo=visualstudiocode)](https://marketplace.visualstudio.com/items?itemName=parktaesoo.ltcai)
@@ -48,7 +48,7 @@ Install the coding extension:
 
 - [VS Code Marketplace: parktaesoo.ltcai](https://marketplace.visualstudio.com/items?itemName=parktaesoo.ltcai)
 - [Open VSX: parktaesoo.ltcai](https://open-vsx.org/extension/parktaesoo/ltcai)
-- [GitHub Release v2.2.2](https://github.com/TaeSooPark-PTS/LatticeAI/releases/tag/v2.2.2)
+- [GitHub Release v2.2.5](https://github.com/TaeSooPark-PTS/LatticeAI/releases/tag/v2.2.5)
 
 ## Quick Start
 
@@ -114,22 +114,22 @@ and disconnected automations. Lattice AI keeps those parts together:
 - multi-agent workflows leave behind replayable plans, reviews, retries, and
   outcomes.
 
-## v2.2.2 QA & Stability Highlights
+## v2.2.5 Hotfix Highlights
 
-A no-features stabilization release that hardens the v2.2.x UI. Every fix keeps
-the existing design-token structure and adds no `!important`.
+A no-features release-prep hotfix that finishes dark-mode, overlay, cache,
+favicon, and Telegram logging hygiene while keeping the design-token structure
+intact.
 
-- Mobile hamburger navigation on the Knowledge Graph and Admin pages is
-  reachable again (a CSS source-order bug had kept the toggles hidden).
-- Admin top-bar actions (Refresh, Logout) are clickable again — a graph-only
-  toolbar rule that floated over the header was scoped back off the graph page.
-- Removed latent horizontal overflow on the Workspace page.
-- Verified across the full viewport matrix (375px phone → 3440px ultrawide):
-  light/dark theme parity, button hit-testing, no horizontal scroll, mobile
-  drawer open/close, and Escape-to-close — all covered by an expanded
-  Playwright suite.
+- Dark-mode overlays now use `--overlay-scrim` and modal/surface tokens instead
+  of translucent light backdrops or blur-heavy full-screen layers.
+- Chat modal behavior is centralized: one blocking modal at a time, Escape and
+  backdrop close, stale overlays cleared on navigation, and body scroll restored.
+- Static frontend asset cache-busting is normalized to `?v=2.2.5`, including
+  `/static/scripts/chat.js?v=2.2.5`.
+- `/favicon.ico` is served from the packaged static assets.
+- Telegram bot tokens are masked before exception, HTTP, and response logging.
 
-Carried forward from v2.2.1: mobile-first responsive layout, design-token
+Carried forward from v2.2.x: mobile-first responsive layout, design-token
 light/dark themes, keyboard-safe chat composer, Knowledge Graph responsive UX,
 Admin mobile card layout, drag-and-drop file attachment, and model-card source
 disclosure.
@@ -227,7 +227,10 @@ Core areas:
 
 | Version | Theme |
 | --- | --- |
-| **2.2.2** | Frontend QA stabilization — mobile nav, admin actions, overflow fixes, and expanded visual tests |
+| **2.2.5** | Release hygiene hotfix — dark overlays, modal stack, cache-busting, favicon, and Telegram log masking |
+| 2.2.4 | Chat dark-mode completion |
+| 2.2.3 | Frontend stability and UX fixes |
+| 2.2.2 | Frontend QA stabilization — mobile nav, admin actions, overflow fixes, and expanded visual tests |
 | 2.2.1 | Frontend and UX overhaul for responsive workspace, themes, graph UX, admin reflow, and file attachment |
 | 2.2.0 | Multimodal-first Knowledge Graph and local model source disclosure |
 | 2.1.0 | Multi-agent workflow maturity |

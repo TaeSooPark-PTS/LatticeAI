@@ -82,6 +82,16 @@ def create_static_routes_router(
         if not p.exists():
             raise HTTPException(status_code=404)
         return FileResponse(str(p), media_type="application/manifest+json")
+
+    @api_router.api_route("/favicon.ico", methods=["GET", "HEAD"])
+    async def favicon():
+        ico = STATIC_DIR / "favicon.ico"
+        png = STATIC_DIR / "icons" / "favicon-32.png"
+        if ico.exists():
+            return FileResponse(str(ico), media_type="image/x-icon")
+        if png.exists():
+            return FileResponse(str(png), media_type="image/png")
+        raise HTTPException(status_code=404)
     
     
     @api_router.get("/sw.js")

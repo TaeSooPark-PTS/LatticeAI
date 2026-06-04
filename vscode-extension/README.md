@@ -13,10 +13,9 @@ editor.
 
 ## Current Release
 
-**2.2.1 — Frontend & UX Overhaul Release.** The workspace adds mobile-first
-responsive layouts, light/dark theme persistence, accessibility improvements,
-Knowledge Graph controls, admin table reflow, and drag-and-drop /
-screenshot-paste file attachment.
+**2.2.5 — Release Hygiene Hotfix.** The workspace tightens dark-mode overlays,
+modal stack handling, static cache-busting, favicon routing, and Telegram log
+redaction while preserving the local-first UX introduced across v2.2.x.
 
 ## Quick Start
 
@@ -98,7 +97,7 @@ Remote or tunnel server example:
 - [Project README](https://github.com/TaeSooPark-PTS/LatticeAI)
 - [PyPI](https://pypi.org/project/ltcai/)
 - [npm](https://www.npmjs.com/package/ltcai)
-- [GitHub Release v2.2.1](https://github.com/TaeSooPark-PTS/LatticeAI/releases/tag/v2.2.1)
+- [GitHub Release v2.2.5](https://github.com/TaeSooPark-PTS/LatticeAI/releases/tag/v2.2.5)
 - [Changelog](https://github.com/TaeSooPark-PTS/LatticeAI/blob/main/docs/CHANGELOG.md)
 - [Security Policy](https://github.com/TaeSooPark-PTS/LatticeAI/blob/main/SECURITY.md)
 

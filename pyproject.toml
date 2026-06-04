@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "ltcai"
-version = "2.2.4"
+version = "2.2.5"
 description = "Lattice AI Workspace OS for local-first graph, memory, agent, workflow, and skill operations"
 readme = "README.md"
 requires-python = ">=3.11"
@@ -83,6 +83,7 @@ include-package-data = true
 "*" = [
   "static/*.html",
   "static/*.css",
+  "static/*.ico",
   "static/scripts/*.js",
   "static/manifest.json",
   "static/sw.js",
@@ -95,7 +96,7 @@ include-package-data = true
 ]
 
 [tool.setuptools.data-files]
-"static" = ["static/account.html", "static/chat.html", "static/admin.html", "static/graph.html", "static/workspace.html", "static/plugins.html", "static/workflows.html", "static/agents.html", "static/activity.html", "static/manifest.json", "static/sw.js", "static/lattice-reference.css", "static/workspace.css", "static/platform.css"]
+"static" = ["static/account.html", "static/chat.html", "static/admin.html", "static/graph.html", "static/workspace.html", "static/plugins.html", "static/workflows.html", "static/agents.html", "static/activity.html", "static/favicon.ico", "static/manifest.json", "static/sw.js", "static/lattice-reference.css", "static/workspace.css", "static/platform.css"]
 "static/scripts" = ["static/scripts/account.js", "static/scripts/admin.js", "static/scripts/chat.js", "static/scripts/graph.js", "static/scripts/workspace.js", "static/scripts/platform.js", "static/scripts/ux.js"]
 "static/css" = ["static/css/tokens.css", "static/css/responsive.css"]
 "static/icons" = ["static/icons/icon-192.png", "static/icons/icon-512.png", "static/icons/apple-touch-icon.png", "static/icons/favicon-32.png"]

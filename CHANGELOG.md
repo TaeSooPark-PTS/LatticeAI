@@ -2,6 +2,30 @@
 
 The detailed historical changelog lives in [docs/CHANGELOG.md](docs/CHANGELOG.md).
 
+## [2.2.5] - 2026-06-04
+
+Release hygiene hotfix for dark-mode overlays, modal state, cache-busting,
+favicon serving, and Telegram token logging.
+
+- **Overlay root cause** — multiple full-screen overlays mixed translucent light
+  violet/white backdrops with `backdrop-filter`, which made dark mode look
+  foggy and washed out. Overlay backdrops now resolve through `--overlay-scrim`
+  and disable blur for crisp dark contrast.
+- **Modal state** — Chat overlays now go through a shared modal manager that
+  enforces one blocking modal at a time, handles Escape and backdrop dismissal,
+  clears stale overlays on navigation/pagehide, and restores body scroll lock.
+- **Dark token cleanup** — added `--surface-muted`, `--surface-elevated`,
+  `--text-muted`, `--overlay-scrim`, and input aliases, then mapped modal,
+  drawer, local file, onboarding, model, pipeline, admin, and My Computer
+  surfaces back to semantic tokens.
+- **Release hygiene** — all versioned static assets now use `?v=2.2.5`;
+  `/static/scripts/chat.js` is loaded as `/static/scripts/chat.js?v=2.2.5`.
+- **Favicon** — added `static/favicon.ico` and a `/favicon.ico` route.
+- **Telegram logging** — added token redaction so `bot123:secret` is logged as
+  `bot123:REDACTED` across Telegram HTTP/exception logging.
+- **Tests** — added unit tests for token masking, favicon/static asset hygiene,
+  and Playwright coverage for modal stack/scroll-lock/permission restore.
+
 ## [2.2.4] - 2026-06-04
 
 Chat dark-mode completion. Resolves the v2.2.3 known issue where the entire Chat

@@ -1,5 +1,41 @@
 # Changelog
 
+## [2.2.5] - 2026-06-04
+
+> Release Hygiene Hotfix — dark-mode overlay clarity, modal state protection,
+> static asset version alignment, favicon routing, and Telegram log redaction.
+
+### Added
+
+- **Modal manager** — Chat overlays now share one blocking-modal controller with
+  Escape close, backdrop close, pagehide/navigation cleanup, and body scroll-lock
+  restoration.
+- **Favicon asset** — `static/favicon.ico` is packaged and served by
+  `/favicon.ico`.
+- **Sensitive-log helper** — Telegram bot tokens are normalized to
+  `bot123:REDACTED` before HTTP, exception, or response text reaches logs.
+- **Validation coverage** — unit tests for token masking and static release
+  hygiene, plus Playwright checks for modal stack behavior and favicon response.
+
+### Changed
+
+- **Overlay theme tokens** — full-screen overlays use `--overlay-scrim` and no
+  blur-heavy backdrop, preventing washed-out dark-mode UI.
+- **Surface token coverage** — modal, drawer, file manager, My Computer,
+  onboarding, model switcher, pipeline, and admin surfaces are remapped to
+  semantic tokens (`--modal`, `--surface`, `--surface-elevated`, `--input`).
+- **Cache-busting** — all versioned frontend assets now use `?v=2.2.5`, including
+  `/static/scripts/chat.js?v=2.2.5`.
+- **Version sync** — Python package, npm package, VS Code extension, Workspace
+  OS, lockfiles, and runtime metadata aligned at `2.2.5`.
+
+### Validation
+
+- Release target includes Python compile/pytest, npm lint/typecheck/test/build,
+  Python build + twine check, npm pack, VSIX package, and Playwright visual QA.
+- Package-store publishing remains manual; release artifacts are version-scoped
+  and must use exact `2.2.5` filenames.
+
 ## [2.2.1] - 2026-06-04
 
 > Frontend / UX Overhaul Release — Lattice AI keeps feature behavior stable

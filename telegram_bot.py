@@ -11,6 +11,10 @@ import zipfile
 import json
 from pathlib import Path
 
+from latticeai.core.logging_safety import install_sensitive_log_filter, safe_log_text
+
+install_sensitive_log_filter()
+
 def load_env_file(path=".env"):
     env_path = Path(path)
     if not env_path.exists():
@@ -98,7 +102,7 @@ def load_chat_ids():
             data = json.loads(CHAT_IDS_FILE.read_text(encoding="utf-8"))
             return {int(cid) for cid in data.get("chat_ids", [])}
     except Exception as e:
-        logger.error("텔레그램 채팅 목록 로드 실패: %s", e)
+        logger.error("텔레그램 채팅 목록 로드 실패: %s", safe_log_text(e))
     return set()
 
 def save_chat_ids(chat_ids):
@@ -108,7 +112,7 @@ def save_chat_ids(chat_ids):
             encoding="utf-8",
         )
     except Exception as e:
-        logger.error("텔레그램 채팅 목록 저장 실패: %s", e)
+        logger.error("텔레그램 채팅 목록 저장 실패: %s", safe_log_text(e))
 
 def register_chat_id(chat_id):
     chat_ids = load_chat_ids()
@@ -129,7 +133,7 @@ async def send_message(client, chat_id, text, reply_markup=None):
                 payload["reply_markup"] = reply_markup
             await client.post(url, json=payload)
     except Exception as e:
-        logger.error("메시지 전송 실패: %s", e)
+        logger.error("메시지 전송 실패: %s", safe_log_text(e))
 
 async def send_photo(client, chat_id, file_path: Path, caption: str = ""):
     url = f"{API_URL}/sendPhoto"
@@ -140,8 +144,8 @@ async def send_photo(client, chat_id, file_path: Path, caption: str = ""):
         if res.status_code != 200:
             await send_message(client, chat_id, f"사진 전송 실패 ({res.status_code})")
     except Exception as e:
-        logger.error("사진 전송 실패: %s", e)
-        await send_message(client, chat_id, f"사진 전송 오류: {e}")
+        logger.error("사진 전송 실패: %s", safe_log_text(e))
+        await send_message(client, chat_id, f"사진 전송 오류: {safe_log_text(e)}")
 
 async def send_document(client, chat_id, file_path, caption=None, filename=None):
     url = f"{API_URL}/sendDocument"
@@ -154,9 +158,9 @@ async def send_document(client, chat_id, file_path, caption=None, filename=None)
                 timeout=300.0,
             )
             if res.status_code != 200:
-                logger.error("파일 전송 실패 (%s): %s", res.status_code, res.text)
+                logger.error("파일 전송 실패 (%s): %s", res.status_code, safe_log_text(res.text))
     except Exception as e:
-        logger.error("파일 전송 실패: %s", e)
+        logger.error("파일 전송 실패: %s", safe_log_text(e))
 
 async def send_chat_action(client, chat_id, action="typing"):
     try:
@@ -247,7 +251,7 @@ async def download_telegram_file(client, file_id) -> bytes | None:
         dl = await client.get(f"https://api.telegram.org/file/bot{TOKEN}/{file_path}")
         return dl.content if dl.status_code == 200 else None
     except Exception as e:
-        logger.error("파일 다운로드 실패: %s", e)
+        logger.error("파일 다운로드 실패: %s", safe_log_text(e))
         return None
 
 async def download_as_base64(client, file_id) -> str | None:
@@ -509,7 +513,7 @@ async def send_web_link(client, chat_id):
         async with _server_client() as lc:
             await lc.post(f"{API_URL}/sendMessage", json=payload)
     except Exception as e:
-        logger.error("웹 링크 전송 실패: %s", e)
+        logger.error("웹 링크 전송 실패: %s", safe_log_text(e))
 
 # ── MCP tools ─────────────────────────────────────────────────────────────────
 
@@ -760,7 +764,7 @@ async def handle_plan_callback(client, chat_id, data: str) -> None:
 async def process_ai_request(client, chat_id, user_text, image_data=None):
     try:
         await send_chat_action(client, chat_id, "upload_photo" if image_data else "typing")
-        logger.info("ask_ai 호출 시작: chat_id=%s text=%r", chat_id, user_text[:30])
+        logger.info("ask_ai 호출 시작: chat_id=%s text=%r", chat_id, safe_log_text(user_text[:30]))
         data  = await ask_ai(client, user_text, image_data, agent_mode=not image_data)
         logger.info("ask_ai 완료: chat_id=%s result_keys=%s", chat_id, list(data.keys()) if isinstance(data, dict) else type(data))
 
@@ -777,7 +781,7 @@ async def process_ai_request(client, chat_id, user_text, image_data=None):
             await send_generated_files(client, chat_id, collect_generated_files(data))
             await send_preview_links(client, chat_id, collect_preview_urls(data))
     except Exception as e:
-        logger.error("process_ai_request 실패 (chat_id=%s): %s", chat_id, e, exc_info=True)
+        logger.error("process_ai_request 실패 (chat_id=%s): %s", chat_id, safe_log_text(e), exc_info=True)
         try:
             await send_message(client, chat_id, "⚠️ 처리 중 오류가 발생했습니다. 잠시 후 다시 시도해 주세요.")
         except Exception:
@@ -916,7 +920,7 @@ async def run_bot():
                 updates = await get_updates(client, last_update_id)
                 retry_delay = 1
             except Exception as e:
-                logger.error("get_updates 실패: %s", e)
+                logger.error("get_updates 실패: %s", safe_log_text(e))
                 await asyncio.sleep(min(retry_delay, 30))
                 retry_delay = min(retry_delay * 2, 30)
                 continue
@@ -997,13 +1001,13 @@ async def run_bot():
                     task.add_done_callback(_log_task_exception)
 
                 except Exception as e:
-                    logger.error("업데이트 처리 중 예외: %s", e)
+                    logger.error("업데이트 처리 중 예외: %s", safe_log_text(e))
 
             await asyncio.sleep(0.5)
 
 def _log_task_exception(task):
     if not task.cancelled() and task.exception():
-        logger.error("백그라운드 태스크 예외: %s", task.exception())
+        logger.error("백그라운드 태스크 예외: %s", safe_log_text(task.exception()))
 
 if __name__ == "__main__":
     try:

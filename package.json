@@ -1,6 +1,6 @@
 {
   "name": "ltcai",
-  "version": "2.2.4",
+  "version": "2.2.5",
   "description": "Local-first AI workspace for knowledge graphs, AI pipelines, and multi-agent coding workflows.",
   "homepage": "https://github.com/TaeSooPark-PTS/LatticeAI#readme",
   "repository": {
@@ -20,6 +20,8 @@
     "build": "npm run build:python",
     "build:python": "python3 -m build",
     "check:python": "python3 -m py_compile ltcai_cli.py server.py latticeai/server_app.py latticeai/api/chat.py latticeai/api/computer_use.py latticeai/api/deps.py latticeai/api/garden.py latticeai/api/local_files.py latticeai/api/permissions.py latticeai/api/setup.py latticeai/api/static_routes.py latticeai/api/tools.py latticeai/api/plugins.py latticeai/api/workflow_designer.py latticeai/api/agents.py latticeai/api/realtime.py latticeai/api/marketplace.py latticeai/services/app_context.py latticeai/services/model_runtime.py latticeai/services/model_catalog.py latticeai/services/model_recommendation.py latticeai/services/tool_dispatch.py latticeai/services/upload_service.py latticeai/core/tool_registry.py latticeai/core/enterprise.py latticeai/core/enterprise_admin.py latticeai/core/agent_prompts.py latticeai/core/workspace_os.py latticeai/core/plugins.py latticeai/core/marketplace.py latticeai/core/workflow_engine.py latticeai/core/multi_agent.py latticeai/core/realtime.py knowledge_graph.py knowledge_graph_api.py local_knowledge_api.py llm_router.py p_reinforce.py telegram_bot.py tools.py codex_telegram_bot.py",
+    "lint": "node --check static/scripts/account.js && node --check static/scripts/admin.js && node --check static/scripts/chat.js && node --check static/scripts/graph.js && node --check static/scripts/platform.js && node --check static/scripts/ux.js && node --check static/scripts/workspace.js && node --check tests/visual/mock_server.cjs",
+    "typecheck": "cd vscode-extension && npm run build",
     "test": "python3 -m pytest tests/ -v",
     "test:unit": "python3 -m pytest tests/unit/ -v",
     "test:integration": "python3 -m pytest tests/integration/ -v",
@@ -80,6 +82,7 @@
     "static/workflows.html",
     "static/agents.html",
     "static/activity.html",
+    "static/favicon.ico",
     "static/manifest.json",
     "static/sw.js",
     "static/lattice-reference.css",

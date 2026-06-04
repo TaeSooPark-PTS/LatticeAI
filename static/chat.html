@@ -5,7 +5,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, interactive-widget=resizes-content">
     <title>Lattice AI — All-in-One Multimodal Workspace</title>
-    <script src="/static/scripts/ux.js?v=2.2.4"></script>
+    <script src="/static/scripts/ux.js?v=2.2.5"></script>
 
     <!-- PWA -->
     <link rel="manifest" href="/manifest.json">
@@ -24,8 +24,8 @@
     <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
 
     <!-- ── Setup Wizard Styles ──────────────────────────────────────────── -->
-    <link rel="stylesheet" href="/static/lattice-reference.css?v=0.3.3">
-    <link rel="stylesheet" href="/static/css/responsive.css?v=2.2.4">
+    <link rel="stylesheet" href="/static/lattice-reference.css?v=2.2.5">
+    <link rel="stylesheet" href="/static/css/responsive.css?v=2.2.5">
 </head>
 
 <body class="lattice-ref-chat">
@@ -501,7 +501,7 @@
                     <button class="admin-action" onclick="sendFileToChat()" style="flex:1;background:rgba(111,66,232,0.12);border-color:rgba(111,66,232,0.28)">
                         <i class="ti ti-send"></i> AI에게 보내기
                     </button>
-                    <button class="status-btn" onclick="closeFileEditor();document.getElementById('local-browser-overlay').style.display='flex'" style="flex:1">
+                    <button class="status-btn" onclick="closeFileEditor();showModalLayer('local-browser-overlay')" style="flex:1">
                         <i class="ti ti-arrow-left"></i> 탐색기로
                     </button>
                 </div>
@@ -736,7 +736,7 @@
                         <div id="cu-screenshot-meta" style="font-size:11px;color:var(--faint);text-align:center"></div>
                     </div>
                     <!-- Controls panel -->
-                    <div style="width:280px;padding:14px;display:flex;flex-direction:column;gap:12px;overflow-y:auto">
+                    <div class="cu-controls-panel" style="padding:14px;display:flex;flex-direction:column;gap:12px;overflow-y:auto">
                         <!-- Agent task input -->
                         <div>
                             <div style="font-size:11px;font-weight:600;color:var(--muted);text-transform:uppercase;letter-spacing:.06em;margin-bottom:8px">AI 자동 작업</div>
@@ -833,7 +833,7 @@
     </div>
 
 
-    <script src="/static/scripts/chat.js?v=0.3.4"></script>
+    <script src="/static/scripts/chat.js?v=2.2.5"></script>
 </body>
 
 </html>

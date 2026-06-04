@@ -9,6 +9,33 @@
 > (`PYPI_TOKEN`, `NPM_TOKEN`, `VSCE_TOKEN`, `OVSX_TOKEN`)가 설정된 경우에만
 > 실행됩니다. 필요한 경우 아래 수동 절차로 로컬에서도 진행할 수 있습니다.
 
+## v2.2.5 릴리스 노트 (2026-06-04)
+
+Release Hygiene Hotfix — v2.2.4 이후 남아 있던 다크모드 foggy/washed-out
+표면, 모달 스택, 정적 자산 버전 드리프트, `/favicon.ico` 404, Telegram 토큰
+로그 노출 위험을 정리한다. 기능 추가 없음. 패키지 스토어 publish 는 수동 절차로만.
+
+- **Fixed (Overlay scrim)**: 전체 화면 오버레이가 라이트 보라/흰색 반투명
+  backdrops와 blur를 섞어 다크모드에서 흐릿하고 탁해 보이던 문제를
+  `--overlay-scrim` 토큰 기반 스크림으로 정리.
+- **Fixed (Modal stack)**: Chat의 계정/MCP/모드/모델/파이프라인/VPC/상태/파일/
+  권한/온보딩/설정/내 컴퓨터 오버레이를 중앙 modal manager로 통과시켜 한 번에
+  하나의 blocking modal만 활성화. Escape 닫기, backdrop 닫기, route/pagehide 정리,
+  body scroll-lock 복원을 공통화.
+- **Fixed (Dark surfaces)**: 모달, drawer, admin panel, local file manager, My
+  Computer, onboarding, model switcher, pipeline settings 등 하드코딩 라이트 표면을
+  `--modal`/`--surface`/`--surface-2`/`--surface-elevated`/`--input` 토큰으로 보정.
+- **Fixed (Cache-busting)**: 모든 versioned frontend asset query를 `?v=2.2.5`로
+  정규화. 특히 Chat는 `/static/scripts/chat.js?v=2.2.5` 로 로드.
+- **Fixed (Favicon)**: `static/favicon.ico`를 추가하고 `/favicon.ico` route가
+  packaged asset을 서빙하도록 구성.
+- **Fixed (Telegram logs)**: Telegram API URL/HTTP/exception/response 로그에
+  `bot123:secret` 형태의 토큰이 남지 않도록 `bot123:REDACTED` 마스킹 도입.
+- **Added (Tests)**: Telegram token masking, static cache/favicon hygiene, modal
+  stack/scroll-lock/permission restore, favicon availability 검증 추가.
+- **Validation target**: Python compile/pytest, npm lint/typecheck/test/build,
+  Python build + twine check, npm pack, VSIX package, Playwright visual suite.
+
 ## v2.2.4 릴리스 노트 (2026-06-04)
 
 Chat Dark Mode Fix — v2.2.3 Known Issue(채팅 페이지가 다크모드에서 통째로 라이트로
@@ -554,13 +581,13 @@ Knowledge Graph v2 read/write cutover. 자세한 내용은
    - `npm run release:artifacts`
    - `npm run release:validate`
 
-현재 `v2.2.4` 기준 필수 산출물:
+현재 `v2.2.5` 기준 필수 산출물:
 
 ```text
-dist/ltcai-2.2.4-py3-none-any.whl
-dist/ltcai-2.2.4.tar.gz
-dist/ltcai-2.2.4.vsix
-ltcai-2.2.4.tgz
+dist/ltcai-2.2.5-py3-none-any.whl
+dist/ltcai-2.2.5.tar.gz
+dist/ltcai-2.2.5.vsix
+ltcai-2.2.5.tgz
 ```
 
 ## 2) npm 배포

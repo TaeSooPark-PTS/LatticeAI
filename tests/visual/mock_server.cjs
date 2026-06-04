@@ -47,6 +47,7 @@ function serveFile(res, filePath) {
     ".js": "application/javascript; charset=utf-8",
     ".json": "application/json; charset=utf-8",
     ".png": "image/png",
+    ".ico": "image/x-icon",
     ".svg": "image/svg+xml",
   };
   res.writeHead(200, { "content-type": types[ext] || "application/octet-stream", "cache-control": "no-store" });
@@ -155,6 +156,7 @@ const server = http.createServer((req, res) => {
   if (pathname.startsWith("/static/")) return serveFile(res, path.join(repoRoot, pathname.slice(1)));
   if (pathname.startsWith("/icons/")) return serveFile(res, path.join(repoRoot, "static", pathname));
   if (pathname === "/manifest.json") return serveFile(res, path.join(repoRoot, "static/manifest.json"));
+  if (pathname === "/favicon.ico") return serveFile(res, path.join(repoRoot, "static/favicon.ico"));
   if (pathname === "/sw.js") return serveFile(res, path.join(repoRoot, "static/sw.js"));
 
   // Keep the login page on /account: account.js redirects to /chat when

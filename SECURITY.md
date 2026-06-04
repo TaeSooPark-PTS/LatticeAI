@@ -28,7 +28,7 @@
 
 ## 보안 모델
 
-Lattice AI v2.2.1은 local-first AI 워크스페이스 / 지식 그래프 플랫폼으로, 아래 보안 모델을 따릅니다:
+Lattice AI v2.2.5는 local-first AI 워크스페이스 / 지식 그래프 플랫폼으로, 아래 보안 모델을 따릅니다:
 
 ### 기본 안전 설정 (Default Secure)
 
@@ -67,6 +67,8 @@ Lattice AI v2.2.1은 local-first AI 워크스페이스 / 지식 그래프 플랫
 - `grep()`, `read_file()`: `node_modules`, `.git`, `venv`, `dist` 자동 제외
 - Agent context packets redact obvious secret fields (`token`, `password`,
   `api_key`, `credential`) before persistence/replay.
+- Telegram bot tokens are masked before HTTP, exception, or response text is
+  written to logs (`bot123:REDACTED`).
 - Agent handoff, review/retry, workflow, plugin, and execution-failure events
   are workspace-scoped in the existing SSE activity feed.
 

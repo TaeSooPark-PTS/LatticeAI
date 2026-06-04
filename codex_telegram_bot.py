@@ -7,6 +7,10 @@ from pathlib import Path
 import httpx
 from openai import AsyncOpenAI
 
+from latticeai.core.logging_safety import install_sensitive_log_filter, safe_log_text
+
+install_sensitive_log_filter()
+
 
 def load_env_file(path=".env"):
     env_path = Path(path)
@@ -72,7 +76,7 @@ async def get_updates(client, offset=None):
         res = await client.get(f"{TELEGRAM_API_URL}/getUpdates", params=params, timeout=35)
         return res.json()
     except Exception as exc:
-        logger.error("Telegram update failed: %s", exc)
+        logger.error("Telegram update failed: %s", safe_log_text(exc))
         return None
 
 
@@ -161,7 +165,7 @@ async def handle_message(client, chat_id, text):
         answer = await ask_codex(chat_id, text)
     except Exception as exc:
         logger.exception("OpenAI request failed")
-        answer = f"OpenAI 요청 실패: {exc}"
+        answer = f"OpenAI 요청 실패: {safe_log_text(exc)}"
     await send_message(client, chat_id, answer)
 
 

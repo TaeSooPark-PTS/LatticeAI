@@ -1,5 +1,31 @@
 # Release Notes
 
+## v2.2.5 - Release Hygiene Hotfix
+
+Lattice AI v2.2.5 finishes the release-prep cleanup for dark-mode overlays,
+modal state, cache-busting, favicon routing, and Telegram log safety.
+
+### Fixes
+
+- Full-screen overlays now use the shared `--overlay-scrim` token and avoid
+  blur-heavy backdrops, preventing foggy or washed-out dark mode.
+- Chat modal state is centralized so one blocking modal is active at a time,
+  Escape/backdrop close works, route changes clear stale layers, and body scroll
+  lock restores.
+- Static asset query strings are aligned to `?v=2.2.5`; Chat loads
+  `/static/scripts/chat.js?v=2.2.5`.
+- `/favicon.ico` is served from a packaged `static/favicon.ico` asset.
+- Telegram bot tokens are redacted as `bot123:REDACTED` before logging.
+
+### Expected Artifacts
+
+```text
+dist/ltcai-2.2.5-py3-none-any.whl
+dist/ltcai-2.2.5.tar.gz
+dist/ltcai-2.2.5.vsix
+ltcai-2.2.5.tgz
+```
+
 ## v2.2.4 - Chat Dark Mode Fix
 
 Lattice AI v2.2.4 completes the dark theme. It fixes the v2.2.3 known issue where
