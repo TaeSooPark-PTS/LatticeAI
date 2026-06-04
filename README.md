@@ -15,7 +15,7 @@
 [![npm version](https://img.shields.io/npm/v/ltcai?label=npm)](https://www.npmjs.com/package/ltcai)
 [![VS Code Marketplace](https://vsmarketplacebadges.dev/version-short/parktaesoo.ltcai.svg)](https://marketplace.visualstudio.com/items?itemName=parktaesoo.ltcai)
 [![Open VSX](https://img.shields.io/open-vsx/v/parktaesoo/ltcai?label=Open%20VSX)](https://open-vsx.org/extension/parktaesoo/ltcai)
-[![GitHub release](https://img.shields.io/github/v/release/TaeSooPark-PTS/LatticeAI?label=GitHub%20release)](https://github.com/TaeSooPark-PTS/LatticeAI/releases/tag/v2.2.1)
+[![GitHub release](https://img.shields.io/github/v/release/TaeSooPark-PTS/LatticeAI?label=GitHub%20release)](https://github.com/TaeSooPark-PTS/LatticeAI/releases/tag/v2.2.2)
 [![License: MIT](https://img.shields.io/badge/license-MIT-green)](LICENSE)
 [![Python 3.11+](https://img.shields.io/badge/python-3.11%2B-blue)](https://www.python.org/)
 [![VS Code extension](https://img.shields.io/badge/VS%20Code-extension-blue?logo=visualstudiocode)](https://marketplace.visualstudio.com/items?itemName=parktaesoo.ltcai)
@@ -48,7 +48,7 @@ Install the coding extension:
 
 - [VS Code Marketplace: parktaesoo.ltcai](https://marketplace.visualstudio.com/items?itemName=parktaesoo.ltcai)
 - [Open VSX: parktaesoo.ltcai](https://open-vsx.org/extension/parktaesoo/ltcai)
-- [GitHub Release v2.2.1](https://github.com/TaeSooPark-PTS/LatticeAI/releases/tag/v2.2.1)
+- [GitHub Release v2.2.2](https://github.com/TaeSooPark-PTS/LatticeAI/releases/tag/v2.2.2)
 
 ## Quick Start
 
@@ -114,18 +114,25 @@ and disconnected automations. Lattice AI keeps those parts together:
 - multi-agent workflows leave behind replayable plans, reviews, retries, and
   outcomes.
 
-## v2.2.1 Highlights
+## v2.2.2 QA & Stability Highlights
 
-- Mobile-first responsive UI for phone, tablet, laptop, desktop, ultrawide, and
-  4K layouts.
-- Light/Dark themes via design tokens.
-- Zero `!important` CSS in the theme system.
-- Keyboard-safe chat composer with mobile viewport handling.
-- Knowledge Graph responsive UX with resize fit, zoom controls, fullscreen,
-  minimap, filters, and mobile graph/card views.
-- Admin table mobile card layout.
-- Drag-and-drop and screenshot paste file attachment.
-- Model cards with source disclosure.
+A no-features stabilization release that hardens the v2.2.x UI. Every fix keeps
+the existing design-token structure and adds no `!important`.
+
+- Mobile hamburger navigation on the Knowledge Graph and Admin pages is
+  reachable again (a CSS source-order bug had kept the toggles hidden).
+- Admin top-bar actions (Refresh, Logout) are clickable again — a graph-only
+  toolbar rule that floated over the header was scoped back off the graph page.
+- Removed latent horizontal overflow on the Workspace page.
+- Verified across the full viewport matrix (375px phone → 3440px ultrawide):
+  light/dark theme parity, button hit-testing, no horizontal scroll, mobile
+  drawer open/close, and Escape-to-close — all covered by an expanded
+  Playwright suite.
+
+Carried forward from v2.2.1: mobile-first responsive layout, design-token
+light/dark themes, keyboard-safe chat composer, Knowledge Graph responsive UX,
+Admin mobile card layout, drag-and-drop file attachment, and model-card source
+disclosure.
 
 ## Screenshots
 
@@ -220,7 +227,8 @@ Core areas:
 
 | Version | Theme |
 | --- | --- |
-| **2.2.1** | Frontend and UX overhaul for responsive workspace, themes, graph UX, admin reflow, and file attachment |
+| **2.2.2** | Frontend QA stabilization — mobile nav, admin actions, overflow fixes, and expanded visual tests |
+| 2.2.1 | Frontend and UX overhaul for responsive workspace, themes, graph UX, admin reflow, and file attachment |
 | 2.2.0 | Multimodal-first Knowledge Graph and local model source disclosure |
 | 2.1.0 | Multi-agent workflow maturity |
 | 2.0.0 | AI pipeline, workflow, and plugin platform foundation |

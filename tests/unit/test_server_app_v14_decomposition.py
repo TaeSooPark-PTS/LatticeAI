@@ -35,14 +35,14 @@ def test_version_metadata_matches_release():
     from latticeai import __version__
     from latticeai.core.workspace_os import WORKSPACE_OS_VERSION
 
-    assert __version__ == "2.2.1"
-    assert WORKSPACE_OS_VERSION == "2.2.1"
+    assert __version__ == "2.2.2"
+    assert WORKSPACE_OS_VERSION == "2.2.2"
 
 
 def test_markdown_current_release_references_match_release():
     readme = (ROOT / "README.md").read_text(encoding="utf-8")
     history = readme.split("## Release history", 1)[1]
-    assert "2.2.1" in history
+    assert "2.2.2" in history
     assert "New in 1.3.0" not in readme
     security = (ROOT / "SECURITY.md").read_text(encoding="utf-8")
     assert "2.2.x (latest)" in security

@@ -149,6 +149,7 @@ const server = http.createServer((req, res) => {
   if (pathname === "/" || pathname === "/workspace" || pathname === "/onboarding") return serveFile(res, path.join(repoRoot, "static/workspace.html"));
   if (pathname === "/graph" || pathname === "/knowledge-graph") return serveFile(res, path.join(repoRoot, "static/graph.html"));
   if (pathname === "/admin") return serveFile(res, path.join(repoRoot, "static/admin.html"));
+  if (pathname === "/chat") return serveFile(res, path.join(repoRoot, "static/chat.html"));
   if (pathname.startsWith("/static/")) return serveFile(res, path.join(repoRoot, pathname.slice(1)));
   if (pathname.startsWith("/icons/")) return serveFile(res, path.join(repoRoot, "static", pathname));
   if (pathname === "/manifest.json") return serveFile(res, path.join(repoRoot, "static/manifest.json"));

@@ -1,5 +1,42 @@
 # Release Notes
 
+## v2.2.2 - Frontend QA Stabilization Release
+
+Lattice AI v2.2.2 is a stabilization release for the local-first AI workspace.
+It contains no new features. It hardens the v2.2.x responsive UI, fixes
+interaction defects found in a full frontend QA pass, strengthens the automated
+visual test suite, and finalizes the README and release documentation. All
+fixes preserve the existing design-token structure and add no `!important`.
+
+### QA fixes
+
+- **Mobile navigation reachable again** — the Knowledge Graph and Admin
+  hamburger toggles were hidden on phones/tablets due to a CSS source-order
+  bug; their drawers are now reachable across the mobile/tablet breakpoints.
+- **Admin actions clickable** — a graph-only absolute `.toolbar` rule leaked
+  onto Admin/Chat and floated a panel over the header, blocking the Refresh and
+  Logout buttons. Scoped off the graph page.
+- **No horizontal overflow on Workspace** — a visually-hidden toggle checkbox
+  was stretching to viewport width; constrained to a 1px hit-box.
+
+### QA coverage (automated)
+
+- Light/dark theme parity (computed colors actually invert).
+- Button clickability / hit-testing (no overlay or `pointer-events` blockers).
+- No horizontal scroll across 375px phone → 3440px ultrawide (10 viewports).
+- Mobile hamburger drawers open and close (graph + admin).
+- Escape closes open drawers (keyboard a11y).
+- Long surfaces scroll instead of clipping.
+
+### Expected Artifacts
+
+```text
+dist/ltcai-2.2.2-py3-none-any.whl
+dist/ltcai-2.2.2.tar.gz
+dist/ltcai-2.2.2.vsix
+ltcai-2.2.2.tgz
+```
+
 ## v2.2.1 - Frontend / UX Overhaul Release
 
 Lattice AI v2.2.1 is a frontend and UX release for the local-first AI

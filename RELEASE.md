@@ -9,6 +9,30 @@
 > (`PYPI_TOKEN`, `NPM_TOKEN`, `VSCE_TOKEN`, `OVSX_TOKEN`)가 설정된 경우에만
 > 실행됩니다. 필요한 경우 아래 수동 절차로 로컬에서도 진행할 수 있습니다.
 
+## v2.2.2 릴리스 노트 (2026-06-04)
+
+Frontend QA Stabilization Release — 기능 추가 없이 v2.2.x 반응형 UI를 안정화하고,
+전체 프론트엔드 QA에서 발견한 인터랙션 결함을 수정하며, Playwright 시각 테스트를
+강화하고 README/릴리스 문서를 마무리합니다. 모든 수정은 기존 디자인 토큰 구조를
+유지하고 `!important`를 추가하지 않습니다.
+
+- **Fixed (Mobile nav)**: Knowledge Graph / Admin 햄버거 토글이 소스 순서 버그로
+  모바일·태블릿에서 숨겨져 드로어 접근이 막혀 있던 문제 수정. 기본 숨김 규칙을
+  노출 규칙보다 먼저 선언하도록 재배치.
+- **Fixed (Admin actions)**: graph 전용 `.toolbar { position:absolute; z-index:20 }`
+  규칙의 선택자가 과넓어 Admin/Chat 폼 툴바까지 새어 헤더 위로 떠오르며 새로고침/
+  로그아웃 버튼 클릭을 가로막던 문제 수정. graph 외 페이지에서는 정상 흐름으로 환원.
+- **Fixed (Horizontal overflow)**: Workspace 의 시각적 숨김 체크박스
+  (`#computer-memory-toggle`)가 뷰포트 폭만큼 늘어나 가로 오버플로우를 만들던 문제
+  수정. 1px 히트박스로 가둠.
+- **Added (QA coverage)**: 라이트/다크 테마 패리티, 버튼 hit-testing, 가로 스크롤
+  없음(375px~3440px 10개 뷰포트), 모바일 드로어 열기/닫기, Escape 닫기, 카드뷰
+  스크롤을 자동 검증하는 Playwright 스위트 확장.
+- **Changed (Cache-busting)**: 변경된 CSS/JS 가 기존 설치에도 반영되도록 정적 자산
+  쿼리 스트링을 `?v=2.2.2` 로 갱신.
+- **Validation target**: responsive/theme/accessibility/visual/VSIX/Python/npm
+  artifact 검증 대상. 패키지 스토어 publish 는 수동 절차로만 진행.
+
 ## v2.2.1 릴리스 노트 (2026-06-04)
 
 Frontend / UX Overhaul Release — Lattice AI를 local-first AI workspace,
@@ -475,13 +499,13 @@ Knowledge Graph v2 read/write cutover. 자세한 내용은
    - `npm run release:artifacts`
    - `npm run release:validate`
 
-현재 `v2.2.1` 기준 필수 산출물:
+현재 `v2.2.2` 기준 필수 산출물:
 
 ```text
-dist/ltcai-2.2.1-py3-none-any.whl
-dist/ltcai-2.2.1.tar.gz
-dist/ltcai-2.2.1.vsix
-ltcai-2.2.1.tgz
+dist/ltcai-2.2.2-py3-none-any.whl
+dist/ltcai-2.2.2.tar.gz
+dist/ltcai-2.2.2.vsix
+ltcai-2.2.2.tgz
 ```
 
 ## 2) npm 배포

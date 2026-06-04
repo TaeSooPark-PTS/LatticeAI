@@ -445,6 +445,11 @@ textarea {
   position: absolute;
   opacity: 0;
   pointer-events: none;
+  /* 절대배치 + width:auto 인 체크박스는 컨테이닝 블록(뷰포트) 폭만큼 늘어나
+   * 가로 오버플로우를 만든다. 1px 박스로 가둬 레이아웃에 영향 없게 한다. */
+  width: 1px;
+  height: 1px;
+  margin: 0;
 }
 
 .toggle-row span {
