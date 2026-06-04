@@ -4,28 +4,7 @@
 /* Lattice AI PPT reference skin.
    The deck uses a bright basic workspace and a dark administrator workspace. */
 
-:root {
-  --ref-purple: #6f42e8;
-  --ref-purple-2: #8b6cff;
-  --ref-indigo: #2f73ff;
-  --ref-ink: #14162c;
-  --ref-muted: #6b6885;
-  --ref-faint: #9b96b5;
-  --ref-line: #e6e1f3;
-  --ref-soft: #f5f1ff;
-  --ref-card: rgba(255, 255, 255, 0.92);
-  --ref-shadow: 0 18px 54px rgba(88, 72, 150, 0.14);
-  --ref-dark: #071329;
-  --ref-dark-2: #0d1c34;
-  --ref-dark-card: rgba(19, 38, 68, 0.76);
-  --ref-dark-line: rgba(151, 179, 231, 0.18);
-}
-
-.lattice-ref-auth,
-.lattice-ref-chat,
-.lattice-ref-graph {
-  color-scheme: light;
-}
+/* 색 토큰(--ref-*, color-scheme 포함)은 tokens.css 가 라이트/다크 모두 제공한다. */
 
 .lattice-ref-auth,
 .lattice-ref-chat {
@@ -37,15 +16,15 @@
     radial-gradient(circle at 74% 25%, rgba(255,255,255,0.70), transparent 16%),
     radial-gradient(circle at 80% 58%, rgba(111,66,232,0.15), transparent 28%),
     radial-gradient(circle at 15% 72%, rgba(111,66,232,0.13), transparent 34%),
-    linear-gradient(135deg, #fbfaff 0%, #f2edff 48%, #ffffff 100%) !important;
+    linear-gradient(135deg, #fbfaff 0%, #f2edff 48%, #ffffff 100%);
   min-height: 100dvh;
   /* 타이틀바(58px)를 제외한 나머지 영역의 수직 중앙에 카드 배치 */
-  flex-direction: column !important;
-  align-items: center !important;
-  justify-content: center !important;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
   /* padding-top: 타이틀바 높이만큼만 → justify-content가 나머지 공간에서 중앙 정렬 */
-  padding: 58px 18px clamp(72px, 8dvh, 90px) !important;
-  overflow: auto !important;
+  padding: 58px 18px clamp(72px, 8dvh, 90px);
+  overflow: auto;
 }
 
 .lattice-ref-auth .login-shell {
@@ -66,7 +45,7 @@
   border-radius: 16px;
   padding: clamp(40px, 4.6dvh, 50px) clamp(28px, 3.6vw, 40px) clamp(20px, 2.4dvh, 28px);
   background: rgba(255,255,255,0.76);
-  border-color: rgba(111,66,232,0.12);
+  border-color: var(--accent-soft);
   box-shadow: 0 20px 64px rgba(102, 82, 168, 0.20), inset 0 1px 0 rgba(255,255,255,0.86);
   backdrop-filter: blur(26px);
 }
@@ -250,7 +229,7 @@
     linear-gradient(30deg, transparent 42%, rgba(255,255,255,0.55) 42% 47%, transparent 47%),
     linear-gradient(90deg, transparent 42%, rgba(255,255,255,0.48) 42% 47%, transparent 47%),
     linear-gradient(150deg, transparent 42%, rgba(255,255,255,0.48) 42% 47%, transparent 47%),
-    conic-gradient(from 30deg, #4f7dff, #6f42e8, #8b6cff, #4f7dff);
+    conic-gradient(from 30deg, #4f7dff, var(--accent), var(--accent-2), #4f7dff);
   clip-path: polygon(50% 0, 88% 20%, 88% 67%, 50% 100%, 12% 67%, 12% 20%);
   border-radius: 18px;
   box-shadow: inset 0 0 0 8px rgba(255,255,255,0.16), 0 14px 28px rgba(111,66,232,0.24);
@@ -285,7 +264,7 @@
 .lattice-ref-chat .send-btn,
 .lattice-ref-chat .workspace-icon,
 .lattice-ref-chat .mode-icon {
-  background: linear-gradient(135deg, var(--ref-purple), #7b61ff) !important;
+  background: linear-gradient(135deg, var(--ref-purple), #7b61ff);
 }
 
 .lattice-ref-auth .input {
@@ -478,11 +457,11 @@
   display: inline-flex;
   align-items: center;
   gap: 10px;
-  height: 42px !important;
-  border-radius: 11px !important;
-  border: 1px solid rgba(111,66,232,0.12) !important;
-  font-size: 16px !important;
-  color: #4f5068 !important;
+  height: 42px;
+  border-radius: 11px;
+  border: 1px solid var(--accent-soft);
+  font-size: 16px;
+  color: #4f5068;
   box-shadow: 0 8px 22px rgba(88,72,150,0.06);
   cursor: pointer;
 }
@@ -540,8 +519,8 @@
 
 @media (max-height: 760px) {
   .lattice-ref-auth {
-    padding-top: 58px !important;
-    padding-bottom: 16px !important;
+    padding-top: 58px;
+    padding-bottom: 16px;
   }
 
   .auth-footer {
@@ -613,7 +592,7 @@
   }
 
   .lattice-ref-auth {
-    padding: 18px !important;
+    padding: 18px;
   }
 
   .lattice-ref-auth .card {
@@ -692,7 +671,7 @@
   gap: 12px;
   border-radius: 10px;
   padding: 13px 16px;
-  color: #14162c;
+  color: var(--text);
   font: inherit;
   font-size: 15px;
   font-weight: 700;
@@ -706,7 +685,7 @@
 .reference-nav-item.active,
 .reference-nav-item:hover {
   color: var(--ref-purple);
-  background: linear-gradient(90deg, rgba(111,66,232,0.14), rgba(111,66,232,0.05));
+  background: linear-gradient(90deg, var(--border), rgba(111,66,232,0.05));
 }
 
 .reference-rail i,
@@ -737,34 +716,20 @@
 
 /* Chat and home dashboard */
 .lattice-ref-chat {
-  --bg: #f3ecff;
-  --surface: #f6f0ff;
-  --surface-2: #efe8ff;
-  --surface-3: #e8dfff;
-  --accent: var(--ref-purple);
-  --accent-3: var(--ref-purple-2);
-  --text: var(--ref-ink);
-  --muted: var(--ref-muted);
-  --faint: var(--ref-faint);
-  --border: rgba(111,66,232,0.14);
-  --shadow: 0 18px 54px rgba(88,72,150,0.15);
-  background:
-    radial-gradient(circle at 82% 12%, rgba(111,66,232,0.14), transparent 30%),
-    radial-gradient(circle at 10% 80%, rgba(180,160,255,0.16), transparent 35%),
-    linear-gradient(180deg, #f3ecff 0%, #efe8ff 52%, #f2ecff 100%) !important;
+  background: var(--app-bg);
 }
 
 .lattice-ref-chat .sidebar {
   width: 280px;
   min-width: 280px;
-  background: rgba(244,237,255,0.96) !important;
-  border-right: 1px solid rgba(111,66,232,0.13) !important;
-  box-shadow: 12px 0 46px rgba(88,72,150,0.08) !important;
+  background: rgba(244,237,255,0.96);
+  border-right: 1px solid rgba(111,66,232,0.13);
+  box-shadow: 12px 0 46px rgba(88,72,150,0.08);
 }
 
 .lattice-ref-chat .sidebar-header {
   padding: 30px 24px 18px;
-  border-bottom: 0 !important;
+  border-bottom: 0;
 }
 
 .lattice-ref-chat .logo-box {
@@ -774,9 +739,9 @@
 }
 
 .lattice-ref-chat .brand-title {
-  color: var(--ref-ink) !important;
+  color: var(--ref-ink);
   font-size: 23px;
-  letter-spacing: -0.04em !important;
+  letter-spacing: -0.04em;
 }
 
 .lattice-ref-chat .brand-subtitle {
@@ -784,7 +749,7 @@
   margin-top: 6px;
   padding: 3px 10px;
   border-radius: 999px;
-  color: var(--ref-purple) !important;
+  color: var(--ref-purple);
   background: rgba(111,66,232,0.10);
   font-size: 12px;
   font-weight: 700;
@@ -792,7 +757,7 @@
 
 .lattice-ref-chat .user-strip {
   margin: 0 18px 16px;
-  border: 1px solid var(--ref-line) !important;
+  border: 1px solid var(--ref-line);
   border-radius: 14px;
   background: rgba(255,255,255,0.72);
   order: 20;
@@ -825,24 +790,24 @@
 .lattice-ref-chat .logout-btn,
 .lattice-ref-chat .status-pill,
 .lattice-ref-chat .model-badge {
-  border: 1px solid rgba(111,66,232,0.16) !important;
-  border-radius: 10px !important;
-  background: rgba(244,238,255,0.88) !important;
-  color: var(--ref-ink) !important;
+  border: 1px solid rgba(111,66,232,0.16);
+  border-radius: 10px;
+  background: rgba(244,238,255,0.88);
+  color: var(--ref-ink);
 }
 
 .lattice-ref-chat .new-chat-btn:first-child {
-  border-color: rgba(111,66,232,0.28) !important;
-  color: var(--ref-purple) !important;
+  border-color: rgba(111,66,232,0.28);
+  color: var(--ref-purple);
 }
 
 .lattice-ref-chat .chat-header {
   min-height: 88px;
   padding: 18px 28px;
-  background: rgba(244,238,255,0.92) !important;
-  border-bottom: 1px solid rgba(111,66,232,0.11) !important;
-  box-shadow: 0 2px 12px rgba(88,72,150,0.06) !important;
-  backdrop-filter: blur(14px) !important;
+  background: rgba(244,238,255,0.92);
+  border-bottom: 1px solid rgba(111,66,232,0.11);
+  box-shadow: 0 2px 12px rgba(88,72,150,0.06);
+  backdrop-filter: blur(14px);
 }
 
 .lattice-ref-chat .messages-viewport {
@@ -1039,32 +1004,32 @@
 .lattice-ref-chat .empty-chip {
   border-radius: 999px;
   padding: 12px 16px;
-  box-shadow: none !important;
+  box-shadow: none;
 }
 
 .lattice-ref-chat .input-area {
-  background: linear-gradient(0deg, rgba(243,237,255,0.99), rgba(243,237,255,0.86), transparent) !important;
+  background: linear-gradient(0deg, rgba(243,237,255,0.99), rgba(243,237,255,0.86), transparent);
 }
 
 .lattice-ref-chat .input-box {
   max-width: 1120px;
   border-radius: 18px;
-  background: rgba(248,243,255,0.97) !important;
-  border-color: rgba(111,66,232,0.17) !important;
-  box-shadow: 0 8px 32px rgba(88,72,150,0.10) !important;
+  background: rgba(248,243,255,0.97);
+  border-color: rgba(111,66,232,0.17);
+  box-shadow: 0 8px 32px rgba(88,72,150,0.10);
 }
 
 .lattice-ref-chat .user .bubble {
-  background: linear-gradient(135deg, var(--ref-purple), #6536d9) !important;
+  background: linear-gradient(135deg, var(--ref-purple), #6536d9);
   border-radius: 16px 16px 4px 16px;
 }
 
 .lattice-ref-chat .ai .bubble {
-  background: rgba(250,246,255,0.97) !important;
-  color: var(--ref-ink) !important;
-  border-color: rgba(111,66,232,0.12) !important;
+  background: rgba(250,246,255,0.97);
+  color: var(--ref-ink);
+  border-color: var(--accent-soft);
   border-radius: 16px 16px 16px 4px;
-  box-shadow: 0 4px 18px rgba(88,72,150,0.08) !important;
+  box-shadow: 0 4px 18px rgba(88,72,150,0.08);
 }
 
 .lattice-ref-chat .workspace-modal,
@@ -1093,7 +1058,7 @@
 .lattice-ref-graph .stage {
   border-right: 0;
   background:
-    radial-gradient(circle, rgba(111,66,232,0.14) 1px, transparent 1.8px),
+    radial-gradient(circle, var(--border) 1px, transparent 1.8px),
     linear-gradient(180deg, #fff 0%, #fbfaff 100%);
   background-size: 28px 28px, 100% 100%;
   margin: 98px 14px 40px 24px;
@@ -1233,10 +1198,10 @@
   min-height: 100vh;
   overflow: hidden;
   background:
-    radial-gradient(circle at 82% 12%, rgba(111,66,232,0.14), transparent 30%),
+    radial-gradient(circle at 82% 12%, var(--border), transparent 30%),
     radial-gradient(circle at 10% 80%, rgba(180,160,255,0.16), transparent 35%),
-    linear-gradient(180deg, #f3ecff 0%, #efe8ff 52%, #f2ecff 100%) !important;
-  color: #14162c;
+    linear-gradient(180deg, var(--bg) 0%, var(--surface-2) 52%, #f2ecff 100%);
+  color: var(--text);
 }
 
 .lattice-ref-admin::before {
@@ -1244,10 +1209,10 @@
 }
 
 .lattice-ref-admin .admin-rail {
-  background: rgba(244,237,255,0.96) !important;
-  border-right: 1px solid rgba(111,66,232,0.13) !important;
-  color: #14162c !important;
-  box-shadow: 12px 0 46px rgba(88,72,150,0.08) !important;
+  background: rgba(244,237,255,0.96);
+  border-right: 1px solid rgba(111,66,232,0.13);
+  color: var(--text);
+  box-shadow: 12px 0 46px rgba(88,72,150,0.08);
 }
 
 .lattice-ref-admin .admin-rail .rail-brand {
@@ -1255,35 +1220,35 @@
   flex-direction: column;
   gap: 4px;
   font-size: 25px;
-  color: #14162c !important;
+  color: var(--text);
 }
 
 .lattice-ref-admin .admin-rail .rail-brand i {
   font-size: 34px;
-  color: var(--ref-purple) !important;
+  color: var(--ref-purple);
 }
 
 .lattice-ref-admin .admin-rail a {
-  color: #14162c !important;
+  color: var(--text);
 }
 
 .lattice-ref-admin .admin-rail a.active,
 .lattice-ref-admin .admin-rail a:hover {
-  background: linear-gradient(90deg, rgba(111,66,232,0.14), rgba(111,66,232,0.05)) !important;
-  color: #14162c !important;
+  background: linear-gradient(90deg, var(--border), rgba(111,66,232,0.05));
+  color: var(--text);
 }
 
 .lattice-ref-admin .admin-rail .rail-project {
-  background: rgba(255,255,255,0.72) !important;
-  border-color: rgba(111,66,232,0.13) !important;
+  background: rgba(255,255,255,0.72);
+  border-color: rgba(111,66,232,0.13);
 }
 
 .lattice-ref-admin .admin-rail .rail-project strong {
-  color: #14162c !important;
+  color: var(--text);
 }
 
 .lattice-ref-admin .admin-rail .rail-project span {
-  color: #4a4668 !important;
+  color: var(--muted);
 }
 
 .lattice-ref-admin .page {
@@ -1293,9 +1258,9 @@
 
 .lattice-ref-admin .topbar {
   height: 96px;
-  background: rgba(244,237,255,0.92) !important;
-  border-bottom: 1px solid rgba(111,66,232,0.10) !important;
-  backdrop-filter: blur(14px) !important;
+  background: rgba(244,237,255,0.92);
+  border-bottom: 1px solid rgba(111,66,232,0.10);
+  backdrop-filter: blur(14px);
   padding: 22px 34px 8px;
   position: sticky;
 }
@@ -1307,30 +1272,30 @@
 .lattice-ref-admin .brand h1 {
   font-size: 36px;
   letter-spacing: -0.05em;
-  color: #14162c !important;
+  color: var(--text);
 }
 
 .lattice-ref-admin .brand p {
-  color: #4a4668 !important;
+  color: var(--muted);
   font-size: 15px;
 }
 
 .lattice-ref-admin .top-actions .btn {
-  background: rgba(244,238,255,0.88) !important;
-  border-color: rgba(111,66,232,0.18) !important;
-  color: #14162c !important;
+  background: rgba(244,238,255,0.88);
+  border-color: rgba(111,66,232,0.18);
+  color: var(--text);
 }
 
 .lattice-ref-admin .top-actions .btn:hover {
-  background: rgba(111,66,232,0.10) !important;
-  border-color: rgba(111,66,232,0.32) !important;
-  color: #6f42e8 !important;
+  background: rgba(111,66,232,0.10);
+  border-color: rgba(111,66,232,0.32);
+  color: var(--accent);
 }
 
 .lattice-ref-admin #admin-lang-btn {
   min-width: 180px;
   justify-content: center;
-  border-color: rgba(111,66,232,0.26) !important;
+  border-color: var(--border-strong);
 }
 
 .lattice-ref-admin .content {
@@ -1364,10 +1329,10 @@
 .lattice-ref-admin .session-card,
 .lattice-ref-admin .table-wrap,
 .lattice-ref-admin .audit-metric {
-  background: rgba(248,243,255,0.88) !important;
-  border-color: rgba(111,66,232,0.12) !important;
-  box-shadow: 0 8px 28px rgba(88,72,150,0.08) !important;
-  color: #14162c !important;
+  background: rgba(248,243,255,0.88);
+  border-color: var(--accent-soft);
+  box-shadow: 0 8px 28px rgba(88,72,150,0.08);
+  color: var(--text);
   border-radius: 12px;
 }
 
@@ -1384,7 +1349,7 @@
 
 .lattice-ref-admin .summary-card:hover {
   transform: translateY(-2px);
-  box-shadow: 0 14px 40px rgba(88,72,150,0.14) !important;
+  box-shadow: 0 14px 40px rgba(88,72,150,0.14);
 }
 
 .lattice-ref-admin .summary-card::before {
@@ -1399,7 +1364,7 @@
   place-items: center;
   border-radius: 8px;
   color: #fff;
-  background: linear-gradient(135deg, #6f42e8, #5332b8);
+  background: linear-gradient(135deg, var(--accent), #5332b8);
   font-size: 24px;
   transform: translateY(-50%);
   box-shadow: 0 12px 24px rgba(111,66,232,0.16);
@@ -1415,7 +1380,7 @@
 .lattice-ref-admin .summary-card .label,
 .lattice-ref-admin .panel-header p,
 .lattice-ref-admin .summary-card .meta {
-  color: #4a4668 !important;
+  color: var(--muted);
 }
 
 .lattice-ref-admin .summary-card .label {
@@ -1428,11 +1393,11 @@
 
 .lattice-ref-admin td,
 .lattice-ref-admin th {
-  color: #14162c !important;
+  color: var(--text);
 }
 
 .lattice-ref-admin .summary-card .value {
-  color: #6f42e8 !important;
+  color: var(--accent);
   font-size: clamp(24px, 2.15vw, 34px);
   line-height: 1.05;
   letter-spacing: 0;
@@ -1454,77 +1419,77 @@
 }
 
 .lattice-ref-admin .panel-header {
-  border-bottom-color: rgba(111,66,232,0.10) !important;
+  border-bottom-color: rgba(111,66,232,0.10);
 }
 
 .lattice-ref-admin .panel-header h3,
 .lattice-ref-admin .subpanel h4 {
-  color: #14162c !important;
+  color: var(--text);
 }
 
 .lattice-ref-admin table {
-  color: #14162c !important;
-  background: transparent !important;
+  color: var(--text);
+  background: transparent;
 }
 
 .lattice-ref-admin tr,
 .lattice-ref-admin th,
 .lattice-ref-admin td {
-  border-color: rgba(111,66,232,0.10) !important;
+  border-color: rgba(111,66,232,0.10);
 }
 
 .lattice-ref-admin th {
-  background: rgba(111,66,232,0.05) !important;
-  color: #4a4668 !important;
+  background: rgba(111,66,232,0.05);
+  color: var(--muted);
 }
 
 .lattice-ref-admin input,
 .lattice-ref-admin textarea,
 .lattice-ref-admin select {
-  background: rgba(255,255,255,0.80) !important;
-  border-color: rgba(111,66,232,0.16) !important;
-  color: #14162c !important;
+  background: rgba(255,255,255,0.80);
+  border-color: rgba(111,66,232,0.16);
+  color: var(--text);
 }
 
 .lattice-ref-admin input:focus,
 .lattice-ref-admin textarea:focus,
 .lattice-ref-admin select:focus {
-  border-color: rgba(111,66,232,0.44) !important;
-  box-shadow: 0 0 0 3px rgba(111,66,232,0.08) !important;
+  border-color: rgba(111,66,232,0.44);
+  box-shadow: 0 0 0 3px rgba(111,66,232,0.08);
 }
 
 .lattice-ref-admin label {
-  color: #4a4668 !important;
+  color: var(--muted);
 }
 
 .lattice-ref-admin .item {
-  background: rgba(255,255,255,0.70) !important;
-  border-color: rgba(111,66,232,0.10) !important;
-  color: #14162c !important;
+  background: rgba(255,255,255,0.70);
+  border-color: rgba(111,66,232,0.10);
+  color: var(--text);
 }
 
 .lattice-ref-admin .preview {
-  color: #4a4668 !important;
+  color: var(--muted);
 }
 
 .lattice-ref-admin .tag {
-  color: #4a4668 !important;
-  border-color: rgba(111,66,232,0.15) !important;
-  background: rgba(255,255,255,0.60) !important;
+  color: var(--muted);
+  border-color: rgba(111,66,232,0.15);
+  background: rgba(255,255,255,0.60);
 }
 
 .lattice-ref-admin .muted {
-  color: #4a4668 !important;
+  color: var(--muted);
 }
 
 .lattice-ref-admin .notice {
-  background: rgba(111,66,232,0.08) !important;
-  border-color: rgba(111,66,232,0.20) !important;
-  color: #4a4668 !important;
+  background: rgba(111,66,232,0.08);
+  border-color: rgba(111,66,232,0.20);
+  color: var(--muted);
 }
 
 .lattice-ref-admin .status-copy {
-  color: #4a4668 !important;
+  color: var(--muted);
 }
 
 .lattice-ref-admin .inline-control {
@@ -1547,10 +1512,10 @@
 .lattice-ref-admin .sso-template-help {
   margin-top: 12px;
   padding: 11px 12px;
-  border: 1px solid rgba(111,66,232,0.14);
+  border: 1px solid var(--border);
   border-radius: 8px;
   background: rgba(111,66,232,0.06);
-  color: #4a4668;
+  color: var(--muted);
   font-size: 12px;
   line-height: 1.5;
 }
@@ -1566,14 +1531,14 @@
   align-items: center;
   gap: 10px;
   min-width: 0;
-  border: 1px solid rgba(111,66,232,0.12);
+  border: 1px solid var(--accent-soft);
   border-radius: 8px;
   background: rgba(255,255,255,0.70);
   padding: 11px 12px;
 }
 
 .lattice-ref-admin .enterprise-cap-card i {
-  color: #7a74a0;
+  color: var(--faint);
   font-size: 18px;
 }
 
@@ -1584,7 +1549,7 @@
 .lattice-ref-admin .enterprise-cap-card span {
   flex: 1;
   min-width: 0;
-  color: #14162c;
+  color: var(--text);
   font-size: 13px;
   font-weight: 800;
   overflow: hidden;
@@ -1594,7 +1559,7 @@
 }
 
 .lattice-ref-admin .enterprise-cap-card strong {
-  color: #4a4668;
+  color: var(--muted);
   font-size: 11px;
 }
 
@@ -1615,13 +1580,13 @@
 }
 
 .lattice-ref-admin .enterprise-kv span {
-  color: #4a4668;
+  color: var(--muted);
   font-size: 12px;
   font-weight: 800;
 }
 
 .lattice-ref-admin .enterprise-kv strong {
-  color: #14162c;
+  color: var(--text);
   font-size: 12px;
   line-height: 1.45;
   overflow-wrap: anywhere;
@@ -1634,7 +1599,7 @@
   border: 1px solid rgba(111,66,232,0.10);
   border-radius: 8px;
   background: rgba(20,22,44,0.05);
-  color: #14162c;
+  color: var(--text);
   padding: 12px;
   font-size: 12px;
   white-space: pre-wrap;
@@ -1662,25 +1627,12 @@
    Light lavender theme — unified with chat/graph/admin pages.
    ============================================================ */
 
-        body.lattice-ref-auth {
-            --bg: #f7f3ff;
-            --text: #1f2140;
-            --faint: #8a86a8;
-            --muted: #66627f;
-            --accent: #6f4bf6;
-            --accent-2: #7b6dff;
-            --shadow: 0 26px 80px rgba(86, 70, 160, 0.22);
-        }
-
         * { box-sizing: border-box; margin: 0; padding: 0; }
         html, body.lattice-ref-auth { height: 100%; }
         body.lattice-ref-auth {
             font-family: Inter, -apple-system, BlinkMacSystemFont, sans-serif;
             color: var(--text);
-            background:
-                radial-gradient(circle at 74% 22%, rgba(111,75,246,0.16), transparent 28%),
-                radial-gradient(circle at 16% 18%, rgba(196,181,253,0.32), transparent 26%),
-                linear-gradient(135deg, #fbf9ff 0%, #f4efff 48%, #ffffff 100%);
+            background: var(--app-bg);
             display: flex;
             align-items: center;
             justify-content: center;
@@ -1969,20 +1921,6 @@
    ============================================================ */
 
         body.lattice-ref-admin {
-            --bg: #f3ecff;
-            --panel: rgba(248,243,255,0.92);
-            --panel-2: rgba(244,238,255,0.88);
-            --panel-3: rgba(240,233,255,0.84);
-            --text: #14162c;
-            --muted: #4a4668;
-            --faint: #7a74a0;
-            --accent: #6f42e8;
-            --accent-2: #22c4a0;
-            --accent-3: #a78bfa;
-            --danger: #e53935;
-            --border: rgba(111,66,232,0.14);
-            --border-strong: rgba(111,66,232,0.26);
-            --shadow: 0 18px 54px rgba(88,72,150,0.14);
             --radius: 8px;
             --radius-sm: 8px;
         }
@@ -1994,9 +1932,9 @@
             font-family: Inter, -apple-system, BlinkMacSystemFont, sans-serif;
             color: var(--text);
             background:
-                radial-gradient(circle at 82% 12%, rgba(111,66,232,0.14), transparent 30%),
+                radial-gradient(circle at 82% 12%, var(--border), transparent 30%),
                 radial-gradient(circle at 10% 80%, rgba(180,160,255,0.16), transparent 35%),
-                linear-gradient(180deg, #f3ecff 0%, #efe8ff 52%, #f2ecff 100%);
+                linear-gradient(180deg, var(--bg) 0%, var(--surface-2) 52%, #f2ecff 100%);
         }
 
         body::before {
@@ -2098,14 +2036,14 @@
         }
 
         .btn.primary {
-            background: rgba(111,66,232,0.12);
+            background: var(--accent-soft);
             border-color: rgba(111,66,232,0.28);
         }
 
         .btn.danger:hover {
             background: rgba(229,57,53,0.08);
             border-color: rgba(229,57,53,0.22);
-            color: #e53935;
+            color: var(--danger);
         }
 
         .content {
@@ -2171,7 +2109,7 @@
         .notice {
             border: 1px solid rgba(111,66,232,0.18);
             background: rgba(111,66,232,0.07);
-            color: #4a4668;
+            color: var(--muted);
             border-radius: 12px;
             padding: 12px 14px;
             font-size: 13px;
@@ -2368,7 +2306,7 @@
             font-weight: 600;
         }
 
-        .tag.high { border-color: rgba(229,57,53,0.32); color: #e53935; background: rgba(229,57,53,0.07); }
+        .tag.high { border-color: rgba(229,57,53,0.32); color: var(--danger); background: rgba(229,57,53,0.07); }
         .tag.medium { border-color: rgba(216,165,74,0.34); color: #b07a00; background: rgba(216,165,74,0.08); }
         .tag.low { border-color: rgba(34,196,160,0.34); color: #0d8f72; background: rgba(34,196,160,0.08); }
 
@@ -2509,13 +2447,13 @@
         .table-btn:hover {
             border-color: rgba(111,66,232,0.32);
             background: rgba(111,66,232,0.08);
-            color: #6f42e8;
+            color: var(--accent);
         }
 
         .table-btn.danger:hover {
             border-color: rgba(229,57,53,0.24);
             background: rgba(229,57,53,0.08);
-            color: #e53935;
+            color: var(--danger);
         }
 
         .role {
@@ -2536,7 +2474,7 @@
         }
 
         .error {
-            color: #e53935;
+            color: var(--danger);
         }
 
         @media (max-width: 1100px) {
@@ -2572,7 +2510,7 @@
             top: calc(100% + 6px);
             right: 0;
             background: rgba(247,242,255,0.98);
-            border: 1px solid rgba(111,66,232,0.14);
+            border: 1px solid var(--border);
             border-radius: 8px;
             padding: 4px;
             min-width: 130px;
@@ -2593,33 +2531,13 @@
 /* ============================================================
    GRAPH PAGE  (graph.html)
    ============================================================ */
-body.lattice-ref-graph {
-      color-scheme: light;
-      --bg: #f3ecff;
-      --bg-soft: #ede6ff;
-      --panel: rgba(255, 252, 255, 0.88);
-      --panel-strong: rgba(250, 246, 255, 0.96);
-      --line: rgba(111, 66, 232, 0.12);
-      --line-strong: rgba(111, 66, 232, 0.22);
-      --text: #14162c;
-      --muted: #4a4668;
-      --faint: #7a74a0;
-      --accent: #6f42e8;
-      --accent-2: #22c4a0;
-      --danger: #e53935;
-      --shadow: 0 18px 60px rgba(88, 72, 150, 0.14);
-    }
-
     * { box-sizing: border-box; }
     html, body.lattice-ref-graph { height: 100%; }
     body.lattice-ref-graph {
       margin: 0;
       overflow: hidden;
       color: var(--text);
-      background:
-        radial-gradient(circle at 50% 42%, rgba(111,66,232,0.08), transparent 34%),
-        radial-gradient(circle at 70% 22%, rgba(180,160,255,0.10), transparent 28%),
-        linear-gradient(180deg, #f3ecff, #ede6ff 62%, #f0ebff);
+      background: var(--app-bg);
       font-family: "SF Pro Display", "Inter", ui-sans-serif, system-ui, -apple-system, sans-serif;
     }
 
@@ -2720,7 +2638,7 @@ body.lattice-ref-graph {
       flex-shrink: 0;
       font-size: 11px;
       color: #fff;
-      background: linear-gradient(135deg, #6f42e8, #9a78f0);
+      background: linear-gradient(135deg, var(--accent), #9a78f0);
       border-radius: 999px;
       padding: 5px 10px;
       font-weight: 700;
@@ -2807,7 +2725,7 @@ body.lattice-ref-graph {
       border: 1px solid rgba(111,66,232,0.10);
       border-radius: 8px;
       background: rgba(255,255,255,0.72);
-      color: #14162c;
+      color: var(--text);
       padding: 12px 12px 13px;
       cursor: pointer;
       transition: 140ms ease;
@@ -2903,7 +2821,7 @@ body.lattice-ref-graph {
       display: flex;
       flex-direction: column;
       background: rgba(248, 244, 255, 0.96);
-      border-left: 1px solid rgba(111,66,232,0.12);
+      border-left: 1px solid var(--accent-soft);
       overflow: hidden;
     }
 
@@ -2947,7 +2865,7 @@ body.lattice-ref-graph {
       border-radius: 8px;
       background: rgba(255,255,255,0.80);
       padding: 12px 13px;
-      color: #14162c;
+      color: var(--text);
     }
 
     .stat strong {
@@ -2971,7 +2889,7 @@ body.lattice-ref-graph {
     }
 
     .section-label {
-      color: #6f42e8;
+      color: var(--accent);
       font-size: 11px;
       text-transform: uppercase;
       letter-spacing: 0.08em;
@@ -3120,7 +3038,7 @@ body.lattice-ref-graph {
 
     .local-source-btn.primary {
       grid-column: 1 / -1;
-      background: linear-gradient(135deg, #6f42e8, #7b61ff);
+      background: linear-gradient(135deg, var(--accent), #7b61ff);
       color: #fff;
       border-color: rgba(111,66,232,0.3);
     }
@@ -3180,7 +3098,7 @@ body.lattice-ref-graph {
       border-color: rgba(111,66,232,0.48);
       background: rgba(111,66,232,0.11);
       color: var(--accent);
-      box-shadow: inset 0 0 0 1px rgba(111,66,232,0.12);
+      box-shadow: inset 0 0 0 1px var(--accent-soft);
     }
 
     .local-audit-grid {
@@ -3275,7 +3193,7 @@ body.lattice-ref-graph {
     .legend-name {
       flex: 1;
       min-width: 0;
-      color: #14162c;
+      color: var(--text);
       font-size: 13px;
       font-weight: 500;
       overflow-wrap: anywhere;
@@ -3283,7 +3201,7 @@ body.lattice-ref-graph {
 
     .filter-count,
     .legend-meta {
-      color: #6b6885;
+      color: var(--muted);
       font-size: 12px;
       font-weight: 600;
       text-align: right;
@@ -3334,11 +3252,11 @@ body.lattice-ref-graph {
     }
 
     .metric-card {
-      border: 1px solid rgba(111,66,232,0.14);
+      border: 1px solid var(--border);
       border-radius: 8px;
       padding: 11px 12px;
       background: rgba(255,255,255,0.82);
-      color: #14162c;
+      color: var(--text);
     }
 
     .metric-card strong {
@@ -3357,11 +3275,11 @@ body.lattice-ref-graph {
     }
 
     .meta-block {
-      border: 1px solid rgba(111,66,232,0.12);
+      border: 1px solid var(--accent-soft);
       border-radius: 8px;
       background: rgba(255,255,255,0.74);
       padding: 12px;
-      color: #4a4668;
+      color: var(--muted);
       font-size: 12px;
       line-height: 1.65;
       white-space: pre-wrap;
@@ -3382,7 +3300,7 @@ body.lattice-ref-graph {
       font-size: 12px;
       font-weight: 700;
       color: #fff;
-      background: linear-gradient(135deg, #6f42e8, #8b6cff);
+      background: linear-gradient(135deg, var(--accent), var(--accent-2));
       box-shadow: 0 8px 22px rgba(111,66,232,0.22);
     }
 
@@ -3577,36 +3495,11 @@ body.lattice-ref-graph {
    CHAT PAGE  (chat.html)
    ============================================================ */
 
-        body.lattice-ref-chat {
-            --bg: #f3ecff;
-            --surface: #f6f0ff;
-            --surface-2: #efe8ff;
-            --surface-3: #e8dfff;
-            --accent: #6f42e8;
-            --accent-2: #8b6cff;
-            --accent-3: #a78fff;
-            --accent-pink: #c084fc;
-            --accent-soft: rgba(111,66,232,0.12);
-            --danger: #e53935;
-            --text: #14162c;
-            --muted: #4a4668;
-            --faint: #7a74a0;
-            --border: rgba(111,66,232,0.14);
-            --border-strong: rgba(111,66,232,0.26);
-            --shadow: 0 18px 54px rgba(88,72,150,0.15);
-            --shadow-sm: 0 6px 20px rgba(88,72,150,0.10);
-            --glow-green: 0 0 34px rgba(111,66,232,0.14);
-            --glow-blue: 0 0 34px rgba(139,108,255,0.14);
-            --content-width: 900px;
-            --radius: 14px;
-            --radius-sm: 8px;
-        }
-
         * { box-sizing: border-box; margin: 0; padding: 0; }
 
         body.lattice-ref-chat {
             font-family: 'Inter', -apple-system, sans-serif;
-            background: var(--bg);
+            background: var(--app-bg);
             color: var(--text);
             overflow: hidden;
         }
@@ -3619,9 +3512,9 @@ body.lattice-ref-graph {
             pointer-events: none;
             z-index: 0;
             background:
-                radial-gradient(circle at 82% 12%, rgba(111,66,232,0.14), transparent 30%),
+                radial-gradient(circle at 82% 12%, var(--border), transparent 30%),
                 radial-gradient(circle at 10% 80%, rgba(180,160,255,0.16), transparent 35%),
-                linear-gradient(180deg, #f3ecff 0%, #efe8ff 52%, #f2ecff 100%);
+                linear-gradient(180deg, var(--bg) 0%, var(--surface-2) 52%, #f2ecff 100%);
         }
 
         .bg-shapes {
@@ -3699,7 +3592,7 @@ body.lattice-ref-graph {
         .logo-box {
             width: 38px;
             height: 38px;
-            background: linear-gradient(135deg, #6f42e8 0%, #9a78f0 100%);
+            background: linear-gradient(135deg, var(--accent) 0%, #9a78f0 100%);
             border-radius: 10px;
             display: flex;
             align-items: center;
@@ -3715,11 +3608,11 @@ body.lattice-ref-graph {
             font-size: 15px;
             font-weight: 800;
             letter-spacing: -0.02em;
-            color: #14162c;
+            color: var(--text);
         }
 
         .brand-subtitle {
-            color: #6f42e8;
+            color: var(--accent);
             font-size: 10.5px;
             margin-top: 1px;
             letter-spacing: 0.03em;
@@ -3738,7 +3631,7 @@ body.lattice-ref-graph {
         .user-avatar {
             width: 26px; height: 26px;
             border-radius: 50%;
-            background: linear-gradient(135deg, #6f42e8, #9a78f0);
+            background: linear-gradient(135deg, var(--accent), #9a78f0);
             display: flex; align-items: center; justify-content: center;
             font-size: 11px; font-weight: 700; color: #fff;
             flex-shrink: 0;
@@ -3752,7 +3645,7 @@ body.lattice-ref-graph {
             width: 100%;
             padding: 7px 10px 7px 30px;
             background: rgba(255,255,255,0.60);
-            border: 1px solid rgba(111,66,232,0.14);
+            border: 1px solid var(--border);
             border-radius: 8px;
             color: var(--text);
             font-size: 12px;
@@ -3876,7 +3769,7 @@ body.lattice-ref-graph {
         .new-chat-btn:hover {
             background: rgba(111,66,232,0.10);
             border-color: rgba(111,66,232,0.36);
-            box-shadow: 0 0 16px rgba(111,66,232,0.12);
+            box-shadow: 0 0 16px var(--accent-soft);
         }
 
         .sidebar-primary-actions {
@@ -3975,7 +3868,7 @@ body.lattice-ref-graph {
             display: inline-flex;
             align-items: center;
             gap: 6px;
-            border: 1px solid rgba(111,66,232,0.14);
+            border: 1px solid var(--border);
             background: rgba(255,255,255,0.60);
             border-radius: 999px;
             padding: 5px 11px;
@@ -4058,7 +3951,7 @@ body.lattice-ref-graph {
         }
         .mcp-modal-header {
             padding: 18px 20px;
-            border-bottom: 1px solid rgba(111,66,232,0.12);
+            border-bottom: 1px solid var(--accent-soft);
             display: flex; align-items: center; justify-content: space-between;
         }
         .mcp-modal-header h3 { font-size: 15px; font-weight: 700; color: var(--text); }
@@ -4086,7 +3979,7 @@ body.lattice-ref-graph {
             color: var(--accent); cursor: pointer; transition: all .15s; flex-shrink: 0;
         }
         .mcp-install-btn:hover { background: rgba(111,66,232,0.16); }
-        .mcp-install-btn.installed { border-color: rgba(111,66,232,0.12); background: rgba(255,255,255,0.60); color: var(--faint); }
+        .mcp-install-btn.installed { border-color: var(--accent-soft); background: rgba(255,255,255,0.60); color: var(--faint); }
         /* MCP 소스 배지 */
         .mcp-source-badge {
             font-size: 9.5px; font-weight: 700; padding: 2px 6px; border-radius: 4px;
@@ -4095,7 +3988,7 @@ body.lattice-ref-graph {
         .mcp-source-badge.claude-code { background: rgba(100,180,255,0.12); color: #64b4ff; border: 1px solid rgba(100,180,255,0.2); }
         .mcp-source-badge.custom { background: rgba(255,180,60,0.12); color: #ffb43c; border: 1px solid rgba(255,180,60,0.2); }
         /* MCP 탭 */
-        .mcp-tabs { display: flex; gap: 4px; padding: 12px 20px 0; border-bottom: 1px solid rgba(111,66,232,0.14); }
+        .mcp-tabs { display: flex; gap: 4px; padding: 12px 20px 0; border-bottom: 1px solid var(--border); }
         .mcp-tab {
             padding: 7px 14px; border-radius: 8px 8px 0 0; font-size: 12px; font-weight: 600;
             color: var(--faint); cursor: pointer; border: none; background: none;
@@ -4115,7 +4008,7 @@ body.lattice-ref-graph {
         .mcp-add-form .field-hint { font-size: 10.5px; color: var(--faint); margin-top: -6px; }
         .mcp-submit-btn {
             padding: 9px 18px; border-radius: 8px; font-size: 13px; font-weight: 700;
-            background: rgba(111,66,232,0.12); border: 1px solid rgba(111,66,232,0.30);
+            background: var(--accent-soft); border: 1px solid rgba(111,66,232,0.30);
             color: var(--accent); cursor: pointer; transition: all .15s; align-self: flex-end;
         }
         .mcp-submit-btn:hover { background: rgba(111,66,232,0.22); }
@@ -4138,14 +4031,14 @@ body.lattice-ref-graph {
         }
         .acct-tabs {
             display: flex;
-            border-bottom: 1px solid rgba(111,66,232,0.12);
+            border-bottom: 1px solid var(--accent-soft);
         }
         .acct-tab {
             flex: 1; padding: 14px; font-size: 13px; font-weight: 500;
             background: none; border: none; color: var(--muted); cursor: pointer;
             transition: all .15s; border-bottom: 2px solid transparent;
         }
-        .acct-tab.active { color: var(--text, #14162c); border-bottom-color: var(--accent, #6366f1); }
+        .acct-tab.active { color: var(--text, var(--text)); border-bottom-color: var(--accent, #6366f1); }
         .acct-body.lattice-ref-chat { padding: 24px; display: flex; flex-direction: column; gap: 14px; }
         .acct-tab-panel { display: none; flex-direction: column; gap: 14px; }
         .acct-tab-panel.active { display: flex; }
@@ -4155,7 +4048,7 @@ body.lattice-ref-graph {
             background: rgba(255,255,255,0.88);
             border: 1px solid rgba(111,66,232,0.18);
             border-radius: 8px;
-            color: var(--text, #14162c);
+            color: var(--text, var(--text));
             padding: 8px 12px;
             font-size: 13px;
             outline: none;
@@ -4195,7 +4088,7 @@ body.lattice-ref-graph {
             padding: 9px 14px; font-size: 13px; cursor: pointer;
             color: var(--muted); transition: background .12s;
         }
-        .lang-option:hover { background: rgba(111,66,232,0.07); color: var(--text, #14162c); }
+        .lang-option:hover { background: rgba(111,66,232,0.07); color: var(--text, var(--text)); }
         .lang-option.active { color: var(--accent, #6366f1); font-weight: 600; }
 
         .auth-lang-picker {
@@ -4253,8 +4146,8 @@ body.lattice-ref-graph {
         .ops-card.interactive:hover {
             transform: translateY(-2px);
             border-color: rgba(111,66,232,0.32);
-            background: linear-gradient(135deg, rgba(111,66,232,0.14) 0%, rgba(248,243,255,0.96) 60%);
-            box-shadow: var(--shadow), 0 0 30px rgba(111,66,232,0.14);
+            background: linear-gradient(135deg, var(--border) 0%, rgba(248,243,255,0.96) 60%);
+            box-shadow: var(--shadow), 0 0 30px var(--border);
         }
 
         .ops-label {
@@ -4303,7 +4196,7 @@ body.lattice-ref-graph {
 
         .ops-card:not(.primary) .ops-icon {
             background: rgba(255,255,255,0.60);
-            border: 1px solid rgba(111,66,232,0.14);
+            border: 1px solid var(--border);
             color: var(--accent-3);
         }
 
@@ -4375,7 +4268,7 @@ body.lattice-ref-graph {
         }
 
         .user .bubble {
-            background: linear-gradient(135deg, #6f42e8 0%, #5832c8 70%, #7b61ff 100%);
+            background: linear-gradient(135deg, var(--accent) 0%, #5832c8 70%, #7b61ff 100%);
             color: #fff;
             border-bottom-right-radius: 4px;
             box-shadow: 0 6px 24px rgba(111,66,232,0.28);
@@ -4385,7 +4278,7 @@ body.lattice-ref-graph {
         .ai .bubble {
             background: rgba(250,246,255,0.97);
             color: var(--text);
-            border: 1px solid rgba(111,66,232,0.12);
+            border: 1px solid var(--accent-soft);
             border-bottom-left-radius: 4px;
             box-shadow: 0 4px 18px rgba(88,72,150,0.08);
         }
@@ -4571,7 +4464,7 @@ body.lattice-ref-graph {
         }
 
         .send-btn {
-            background: linear-gradient(135deg, #6f42e8, #7b61ff);
+            background: linear-gradient(135deg, var(--accent), #7b61ff);
             color: #fff;
             border: none;
             width: 38px; height: 38px;
@@ -4665,7 +4558,7 @@ body.lattice-ref-graph {
             background: rgba(99,102,241,0.07); border: 1px solid rgba(99,102,241,0.2);
             border-radius: 12px; padding: 16px; margin-top: 4px;
         }
-        .plan-approval-card h4 { margin: 0 0 10px; color: #6f42e8; font-size: 14px; }
+        .plan-approval-card h4 { margin: 0 0 10px; color: var(--accent); font-size: 14px; }
         .plan-approval-card ol { margin: 0 0 12px; padding-left: 20px; color: var(--text); font-size: 13px; line-height: 1.8; }
         .plan-approval-card .plan-meta { font-size: 11px; color: var(--muted); margin-bottom: 12px; }
         .plan-approval-actions { display: flex; gap: 8px; }
@@ -4894,7 +4787,7 @@ body.lattice-ref-graph {
             position: absolute;
             inset: 0;
             background:
-                radial-gradient(ellipse 70% 60% at 20% 20%, rgba(111,66,232,0.14) 0%, transparent 55%),
+                radial-gradient(ellipse 70% 60% at 20% 20%, var(--border) 0%, transparent 55%),
                 radial-gradient(ellipse 50% 50% at 80% 80%, rgba(129,140,248,0.12) 0%, transparent 55%);
             pointer-events: none;
         }
@@ -4908,7 +4801,7 @@ body.lattice-ref-graph {
         .auth-orb-1 {
             width: 400px; height: 400px;
             top: -150px; left: -100px;
-            background: rgba(111,66,232,0.14);
+            background: var(--border);
         }
         .auth-orb-2 {
             width: 350px; height: 350px;
@@ -4939,7 +4832,7 @@ body.lattice-ref-graph {
 
         .auth-logo {
             width: 52px; height: 52px;
-            background: linear-gradient(135deg, #6f42e8, #9a78f0);
+            background: linear-gradient(135deg, var(--accent), #9a78f0);
             border-radius: 14px;
             display: flex; align-items: center; justify-content: center;
             font-size: 24px; color: #fff;
@@ -4952,7 +4845,7 @@ body.lattice-ref-graph {
             text-align: center;
             font-size: 22px;
             font-weight: 800;
-            background: linear-gradient(135deg, #14162c 35%, #6f42e8 82%);
+            background: linear-gradient(135deg, var(--text) 35%, var(--accent) 82%);
             -webkit-background-clip: text;
             -webkit-text-fill-color: transparent;
             background-clip: text;
@@ -4989,7 +4882,7 @@ body.lattice-ref-graph {
         .auth-submit {
             width: 100%;
             padding: 13px;
-            background: linear-gradient(135deg, #6f42e8, #5832c8);
+            background: linear-gradient(135deg, var(--accent), #5832c8);
             color: #030d09;
             border: none;
             border-radius: 10px;
@@ -5002,7 +4895,7 @@ body.lattice-ref-graph {
         }
 
         .auth-submit:hover {
-            background: linear-gradient(135deg, #6f42e8, #9a78f0);
+            background: linear-gradient(135deg, var(--accent), #9a78f0);
             box-shadow: 0 0 30px rgba(111,66,232,0.32), 0 4px 14px rgba(0,0,0,0.3);
             transform: translateY(-1px);
         }
@@ -5938,7 +5831,7 @@ body.lattice-ref-graph {
         }
 
         .empty-chip {
-            border: 1px solid rgba(111,66,232,0.12);
+            border: 1px solid var(--accent-soft);
             background: linear-gradient(135deg, rgba(111,66,232,0.06), rgba(129,140,248,0.04));
             border-radius: var(--radius);
             padding: 14px;
@@ -6043,7 +5936,7 @@ body.lattice-ref-graph {
                 transition: transform 0.25s cubic-bezier(0.4,0,0.2,1);
                 border-right: 1px solid var(--border-strong);
                 box-shadow: 4px 0 32px rgba(88,72,150,0.18);
-                background: #f6f0ff;
+                background: var(--surface);
                 backdrop-filter: none;
                 -webkit-backdrop-filter: none;
             }
@@ -6354,38 +6247,38 @@ body.lattice-ref-graph {
 
         /* ── 패널 공통 ── */
         .admin-panel {
-            background: rgba(246,240,255,0.98) !important;
-            border-left: 1px solid rgba(111,66,232,0.14) !important;
-            backdrop-filter: blur(24px) !important;
-            color: #14162c !important;
+            background: rgba(246,240,255,0.98);
+            border-left: 1px solid var(--border);
+            backdrop-filter: blur(24px);
+            color: var(--text);
         }
         .admin-header {
-            background: rgba(244,237,255,0.95) !important;
-            border-bottom: 1px solid rgba(111,66,232,0.12) !important;
+            background: rgba(244,237,255,0.95);
+            border-bottom: 1px solid var(--accent-soft);
         }
         .admin-form-field label {
-            color: var(--faint) !important;
-            font-size: 11px !important;
-            letter-spacing: 0.05em !important;
+            color: var(--faint);
+            font-size: 11px;
+            letter-spacing: 0.05em;
         }
         .admin-form-field input, .admin-form-field select, .admin-form-field textarea {
-            background: rgba(255,255,255,0.90) !important;
-            border-color: rgba(111,66,232,0.18) !important;
-            border-radius: 9px !important;
-            color: #14162c !important;
+            background: rgba(255,255,255,0.90);
+            border-color: rgba(111,66,232,0.18);
+            border-radius: 9px;
+            color: var(--text);
         }
         .admin-form-field input:focus, .admin-form-field select:focus, .admin-form-field textarea:focus {
-            border-color: rgba(111,66,232,0.50) !important;
-            box-shadow: 0 0 0 3px rgba(111,66,232,0.08) !important;
+            border-color: rgba(111,66,232,0.50);
+            box-shadow: 0 0 0 3px rgba(111,66,232,0.08);
         }
         .admin-action {
-            background: linear-gradient(135deg, rgba(111,66,232,0.14), rgba(139,108,255,0.10)) !important;
-            border-color: rgba(111,66,232,0.28) !important;
-            color: #6f42e8 !important;
+            background: linear-gradient(135deg, var(--border), rgba(139,108,255,0.10));
+            border-color: rgba(111,66,232,0.28);
+            color: var(--accent);
         }
         .admin-action:hover {
-            background: linear-gradient(135deg, rgba(111,66,232,0.22), rgba(139,108,255,0.16)) !important;
-            box-shadow: 0 0 16px rgba(111,66,232,0.16) !important;
+            background: linear-gradient(135deg, rgba(111,66,232,0.22), rgba(139,108,255,0.16));
+            box-shadow: 0 0 16px rgba(111,66,232,0.16);
         }
 
         /* ── 빈 채팅 화면 ── */
@@ -6401,13 +6294,13 @@ body.lattice-ref-graph {
         }
         .empty-icon {
             width: 72px; height: 72px;
-            background: linear-gradient(135deg, rgba(111,66,232,0.14), rgba(129,140,248,0.12));
-            border: 1px solid rgba(111,66,232,0.14);
+            background: linear-gradient(135deg, var(--border), rgba(129,140,248,0.12));
+            border: 1px solid var(--border);
             border-radius: 20px;
             display: flex; align-items: center; justify-content: center;
             font-size: 32px;
             color: var(--accent);
-            box-shadow: 0 0 30px rgba(111,66,232,0.12);
+            box-shadow: 0 0 30px var(--accent-soft);
         }
         .empty-title {
             font-size: 20px; font-weight: 800;
@@ -6421,18 +6314,18 @@ body.lattice-ref-graph {
 
         /* ── 파일 다운로드 카드 개선 ── */
         .file-download-card {
-            border: 1px solid rgba(111,66,232,0.16) !important;
-            background: linear-gradient(135deg, rgba(111,66,232,0.07), rgba(129,140,248,0.04)) !important;
-            border-radius: var(--radius) !important;
-            box-shadow: 0 4px 16px rgba(111,66,232,0.08) !important;
+            border: 1px solid rgba(111,66,232,0.16);
+            background: linear-gradient(135deg, rgba(111,66,232,0.07), rgba(129,140,248,0.04));
+            border-radius: var(--radius);
+            box-shadow: 0 4px 16px rgba(111,66,232,0.08);
         }
         .file-dl-btn {
-            background: linear-gradient(135deg, rgba(111,66,232,0.14), rgba(129,140,248,0.08)) !important;
-            border-color: rgba(111,66,232,0.24) !important;
+            background: linear-gradient(135deg, var(--border), rgba(129,140,248,0.08));
+            border-color: rgba(111,66,232,0.24);
         }
         .file-dl-btn:hover {
-            background: linear-gradient(135deg, rgba(111,66,232,0.20), rgba(129,140,248,0.14)) !important;
-            box-shadow: 0 0 12px rgba(111,66,232,0.16) !important;
+            background: linear-gradient(135deg, rgba(111,66,232,0.20), rgba(129,140,248,0.14));
+            box-shadow: 0 0 12px rgba(111,66,232,0.16);
         }
 
         /* ── setup wizard 버튼 ── */
@@ -6459,43 +6352,43 @@ body.lattice-ref-graph {
 
         /* ── MCP 드롭다운 개선 ── */
         .mcp-dropdown {
-            background: rgba(255,255,255,0.96) !important;
-            border: 1px solid rgba(111,66,232,0.16) !important;
-            border-radius: var(--radius) !important;
-            box-shadow: var(--shadow), 0 0 20px rgba(111,66,232,0.08) !important;
+            background: rgba(255,255,255,0.96);
+            border: 1px solid rgba(111,66,232,0.16);
+            border-radius: var(--radius);
+            box-shadow: var(--shadow), 0 0 20px rgba(111,66,232,0.08);
         }
         .mcp-recommend-btn {
-            background: linear-gradient(135deg, rgba(111,66,232,0.10), rgba(129,140,248,0.07)) !important;
-            border: 1px solid rgba(111,66,232,0.16) !important;
-            border-radius: 999px !important;
-            color: var(--accent) !important;
+            background: linear-gradient(135deg, rgba(111,66,232,0.10), rgba(129,140,248,0.07));
+            border: 1px solid rgba(111,66,232,0.16);
+            border-radius: 999px;
+            color: var(--accent);
         }
 
 /* Lattice AI workspace — light lavender theme. */
         .app-layout {
-            --bg: #f3ecff;
-            --surface: #f6f0ff;
-            --surface-2: #efe8ff;
-            --surface-3: #e8dfff;
-            --accent: #6f42e8;
-            --accent-2: #8b6cff;
-            --accent-3: #a78fff;
-            --accent-pink: #c084fc;
-            --accent-soft: rgba(111, 66, 232, 0.12);
-            --text: #14162c;
-            --muted: #4a4668;
-            --faint: #7a74a0;
-            --border: rgba(111, 66, 232, 0.14);
-            --border-strong: rgba(111, 66, 232, 0.26);
+            --bg: var(--bg);
+            --surface: var(--surface);
+            --surface-2: var(--surface-2);
+            --surface-3: var(--surface-3);
+            --accent: var(--accent);
+            --accent-2: var(--accent-2);
+            --accent-3: var(--accent-3);
+            --accent-pink: var(--accent-pink);
+            --accent-soft: var(--accent-soft);
+            --text: var(--text);
+            --muted: var(--muted);
+            --faint: var(--faint);
+            --border: var(--border);
+            --border-strong: var(--border-strong);
             --shadow: 0 18px 54px rgba(88, 72, 150, 0.15);
             --shadow-sm: 0 6px 20px rgba(88, 72, 150, 0.10);
-            --glow-green: 0 0 30px rgba(111, 66, 232, 0.14);
+            --glow-green: 0 0 30px var(--border);
             position: relative;
             isolation: isolate;
             background:
-                radial-gradient(circle at 82% 12%, rgba(111,66,232,0.14), transparent 30%),
+                radial-gradient(circle at 82% 12%, var(--border), transparent 30%),
                 radial-gradient(circle at 10% 80%, rgba(180,160,255,0.16), transparent 35%),
-                linear-gradient(180deg, #f3ecff 0%, #efe8ff 52%, #f2ecff 100%);
+                linear-gradient(180deg, var(--bg) 0%, var(--surface-2) 52%, #f2ecff 100%);
         }
 
         .app-layout::before {
@@ -6640,10 +6533,10 @@ body.lattice-ref-graph {
         .app-layout .ops-card.primary .ops-icon,
         .app-layout .empty-icon,
         .app-layout .empty-state > div[style] {
-            background: rgba(167,124,255,0.12) !important;
-            border-color: rgba(167,124,255,0.24) !important;
-            color: var(--accent) !important;
-            box-shadow: none !important;
+            background: rgba(167,124,255,0.12);
+            border-color: rgba(167,124,255,0.24);
+            color: var(--accent);
+            box-shadow: none;
         }
 
         .app-layout .ops-card:not(.primary) .ops-icon {
@@ -6725,7 +6618,7 @@ body.lattice-ref-graph {
         }
 
         .app-layout .send-btn {
-            background: linear-gradient(135deg, #6f42e8, #7b61ff);
+            background: linear-gradient(135deg, var(--accent), #7b61ff);
             color: #fff;
             box-shadow: 0 8px 20px rgba(111,66,232,0.24);
         }
@@ -6870,9 +6763,9 @@ body.lattice-ref-graph {
         .app-layout .ops-card.primary .ops-icon,
         .app-layout .ops-card:not(.primary) .ops-icon,
         .app-layout .empty-state > div[style] {
-            background: linear-gradient(135deg, rgba(111,75,246,0.14), rgba(155,135,255,0.12)) !important;
-            border-color: rgba(111,75,246,0.18) !important;
-            color: var(--accent) !important;
+            background: linear-gradient(135deg, rgba(111,75,246,0.14), rgba(155,135,255,0.12));
+            border-color: rgba(111,75,246,0.18);
+            color: var(--accent);
         }
         .app-layout .messages-viewport {
             background: transparent;
@@ -6931,7 +6824,7 @@ body.lattice-ref-graph {
             width: min(520px, 100%);
             background:
                 radial-gradient(circle at 18% 8%, rgba(111,75,246,0.18), transparent 32%),
-                linear-gradient(180deg, #ffffff, #f6f0ff);
+                linear-gradient(180deg, #ffffff, var(--surface));
             color: var(--text);
             border-color: rgba(111,66,232,0.16);
         }
@@ -7055,9 +6948,9 @@ body.lattice-ref-graph {
             .mode-modal { padding: 24px 18px; }
         }
 
-.ux-hidden { display: none !important; }
+.ux-hidden { display: none; }
 
-        .app-layout .ops-strip { display: none !important; }
+        .app-layout .ops-strip { display: none; }
 
         .app-layout .chat-header {
             min-height: 64px;
@@ -7126,7 +7019,7 @@ body.lattice-ref-graph {
             min-height: 38px;
             border: 1px solid transparent;
             background: transparent;
-            color: #14162c;
+            color: var(--text);
             border-radius: 8px;
             padding: 0 12px;
             display: flex;
@@ -7252,7 +7145,7 @@ body.lattice-ref-graph {
             font-size: 26px;
             font-weight: 750;
             letter-spacing: -0.03em;
-            color: #14162c;
+            color: var(--text);
             margin: 0 0 4px;
         }
         .home-dash-head p {
@@ -7274,7 +7167,7 @@ body.lattice-ref-graph {
         /* 개별 카드 */
         .hdc-card {
             background: rgba(255,255,255,0.92);
-            border: 1px solid rgba(111,66,232,0.14);
+            border: 1px solid var(--border);
             border-radius: 14px;
             padding: 18px;
             display: flex;
@@ -7287,12 +7180,12 @@ body.lattice-ref-graph {
             font-weight: 700;
             text-transform: uppercase;
             letter-spacing: 0.07em;
-            color: #6f42e8;
+            color: var(--accent);
         }
         .hdc-model-badge {
             font-size: 15px;
             font-weight: 650;
-            color: #14162c;
+            color: var(--text);
             white-space: nowrap;
             overflow: hidden;
             text-overflow: ellipsis;
@@ -7307,7 +7200,7 @@ body.lattice-ref-graph {
             gap: 8px;
         }
         .hdc-stat-label { font-size: 11px; color: var(--muted); }
-        .hdc-stat-val { font-size: 12px; font-weight: 700; color: #14162c; text-align: right; }
+        .hdc-stat-val { font-size: 12px; font-weight: 700; color: var(--text); text-align: right; }
         .hdc-bar {
             height: 6px;
             border-radius: 99px;
@@ -7317,7 +7210,7 @@ body.lattice-ref-graph {
         .hdc-bar-fill {
             height: 100%;
             border-radius: 99px;
-            background: #6f42e8;
+            background: var(--accent);
             transition: width 0.6s ease;
         }
         .hdc-bar-fill.hdc-cpu { background: #22c4a0; }
@@ -7331,13 +7224,13 @@ body.lattice-ref-graph {
             flex: 1;
         }
         .hdc-count-item { display: flex; flex-direction: column; align-items: center; gap: 2px; }
-        .hdc-count-item span { font-size: 28px; font-weight: 750; color: #14162c; letter-spacing: -0.03em; line-height: 1; }
+        .hdc-count-item span { font-size: 28px; font-weight: 750; color: var(--text); letter-spacing: -0.03em; line-height: 1; }
         .hdc-count-item label { font-size: 11px; color: var(--muted); }
-        .hdc-count-sep { width: 1px; height: 36px; background: rgba(111,66,232,0.14); }
+        .hdc-count-sep { width: 1px; height: 36px; background: var(--border); }
 
         /* Setup card */
         .hdc-setup .hdc-setup-count { flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 4px; }
-        .hdc-setup .hdc-setup-count span { font-size: 40px; font-weight: 750; color: #6f42e8; letter-spacing: -0.04em; line-height: 1; }
+        .hdc-setup .hdc-setup-count span { font-size: 40px; font-weight: 750; color: var(--accent); letter-spacing: -0.04em; line-height: 1; }
         .hdc-setup .hdc-setup-count label { font-size: 12px; color: var(--muted); }
 
         /* 카드 버튼 */
@@ -7346,7 +7239,7 @@ body.lattice-ref-graph {
             border-radius: 9px;
             border: 1px solid rgba(111,66,232,0.22);
             background: rgba(111,66,232,0.07);
-            color: #6f42e8;
+            color: var(--accent);
             font-size: 12px;
             font-weight: 600;
             cursor: pointer;
@@ -7357,7 +7250,7 @@ body.lattice-ref-graph {
             transition: all 0.15s;
         }
         .hdc-btn:hover {
-            background: rgba(111,66,232,0.14);
+            background: var(--border);
             border-color: rgba(111,66,232,0.35);
         }
 
@@ -7369,7 +7262,7 @@ body.lattice-ref-graph {
         }
         .hdr-panel {
             background: rgba(255,255,255,0.92);
-            border: 1px solid rgba(111,66,232,0.14);
+            border: 1px solid var(--border);
             border-radius: 14px;
             overflow: hidden;
             box-shadow: 0 4px 18px rgba(88,72,150,0.07);
@@ -7382,7 +7275,7 @@ body.lattice-ref-graph {
             border-bottom: 1px solid rgba(111,66,232,0.10);
             font-size: 12px;
             font-weight: 700;
-            color: #6f42e8;
+            color: var(--accent);
             text-transform: uppercase;
             letter-spacing: 0.07em;
         }
@@ -7394,7 +7287,7 @@ body.lattice-ref-graph {
             cursor: pointer;
             padding: 0;
         }
-        .hdr-head button:hover { color: #6f42e8; }
+        .hdr-head button:hover { color: var(--accent); }
         .hdr-list { padding: 6px 0; min-height: 120px; max-height: 200px; overflow-y: auto; }
         .hdr-item {
             display: grid;
@@ -7403,12 +7296,12 @@ body.lattice-ref-graph {
             gap: 8px;
             padding: 8px 16px;
             font-size: 13px;
-            color: #14162c;
+            color: var(--text);
             cursor: pointer;
             transition: background 0.1s;
         }
         .hdr-item:hover { background: rgba(111,66,232,0.06); }
-        .hdr-item i { color: #6f42e8; font-size: 14px; }
+        .hdr-item i { color: var(--accent); font-size: 14px; }
         .hdr-item span { overflow: hidden; white-space: nowrap; text-overflow: ellipsis; }
         .hdr-item small { color: var(--muted); font-size: 11px; white-space: nowrap; }
         .hdr-empty { padding: 24px 16px; text-align: center; color: var(--muted); font-size: 13px; }
@@ -7730,7 +7623,7 @@ body.lattice-ref-graph {
         }
 
         body[data-mode="default"] .cu-dev-controls {
-            display: none !important;
+            display: none;
         }
 
         body.lattice-ref-chat .app-layout .sidebar,
@@ -7757,7 +7650,7 @@ body.lattice-ref-graph {
         body.lattice-ref-chat .app-layout .sidebar-search-wrap i,
         body.lattice-ref-chat .app-layout .sidebar-search input,
         body.lattice-ref-chat .app-layout .sidebar-search input::placeholder {
-            color: #9b8af0 !important;
+            color: #9b8af0;
             -webkit-text-fill-color: currentColor;
         }
 
@@ -7769,27 +7662,27 @@ body.lattice-ref-graph {
         body.lattice-ref-chat .app-layout .status-btn,
         body.lattice-ref-chat .app-layout .setup-wizard-sidebar-btn,
         body.lattice-ref-chat .app-layout .admin-btn {
-            color: #7b5ff0 !important;
+            color: #7b5ff0;
         }
 
         body.lattice-ref-chat .app-layout .chat-header,
         body.lattice-ref-chat .app-layout .mode-segmented button,
         body.lattice-ref-chat .app-layout .header-pills .logout-btn,
         body.lattice-ref-chat .app-layout .sidebar-toggle {
-            color: #8f7bf7 !important;
+            color: #8f7bf7;
         }
 
         body.lattice-ref-chat .app-layout .mode-segmented button:not(.active) {
-            color: #b0a4ee !important;
+            color: #b0a4ee;
         }
 
         body.lattice-ref-chat .app-layout .mode-segmented button.active {
-            color: #ffffff !important;
+            color: #ffffff;
         }
 
         body.lattice-ref-chat .app-layout .header-pills .logout-btn i,
         body.lattice-ref-chat .app-layout .sidebar-toggle i {
-            color: inherit !important;
+            color: inherit;
         }
 
         @media (max-width: 900px) {
@@ -7819,65 +7712,65 @@ body.lattice-ref-graph {
            Soft Lavender Theme (4/10) — full override for .app-layout
            ========================================================= */
         body.lattice-ref-chat .app-layout {
-            --bg: #f3ecff;
-            --surface: #f6f0ff;
-            --surface-2: #efe8ff;
+            --bg: var(--bg);
+            --surface: var(--surface);
+            --surface-2: var(--surface-2);
             --surface-3: #e8e0ff;
-            --accent: #6f42e8;
+            --accent: var(--accent);
             --accent-2: #ffb84d;
-            --accent-3: #8b6cff;
-            --accent-soft: rgba(111,66,232,0.12);
-            --text: #14162c;
-            --muted: #4a4668;
-            --faint: #7a74a0;
+            --accent-3: var(--accent-2);
+            --accent-soft: var(--accent-soft);
+            --text: var(--text);
+            --muted: var(--muted);
+            --faint: var(--faint);
             --border: rgba(111,66,232,0.15);
-            --border-strong: rgba(111,66,232,0.26);
+            --border-strong: var(--border-strong);
             --shadow: 0 18px 54px rgba(88,72,150,0.15);
             --shadow-sm: 0 8px 24px rgba(88,72,150,0.11);
             background:
-                radial-gradient(circle at 82% 12%, rgba(111,66,232,0.14), transparent 30%),
+                radial-gradient(circle at 82% 12%, var(--border), transparent 30%),
                 radial-gradient(circle at 10% 80%, rgba(180,160,255,0.16), transparent 35%),
-                linear-gradient(180deg, #f3ecff 0%, #efe8ff 52%, #f2ecff 100%) !important;
+                linear-gradient(180deg, var(--bg) 0%, var(--surface-2) 52%, #f2ecff 100%);
         }
         body.lattice-ref-chat .app-layout::before,
         body.lattice-ref-chat .app-layout::after {
-            display: none !important;
+            display: none;
         }
 
         /* Sidebar */
         body.lattice-ref-chat .app-layout .sidebar {
-            background: rgba(244, 237, 255, 0.96) !important;
-            border-right: 1px solid rgba(111,66,232,0.13) !important;
-            box-shadow: 12px 0 46px rgba(88,72,150,0.08) !important;
+            background: rgba(244, 237, 255, 0.96);
+            border-right: 1px solid rgba(111,66,232,0.13);
+            box-shadow: 12px 0 46px rgba(88,72,150,0.08);
         }
 
         /* Chat header */
         body.lattice-ref-chat .app-layout .chat-header {
-            background: rgba(244, 238, 255, 0.92) !important;
-            border-bottom: 1px solid rgba(111,66,232,0.11) !important;
-            box-shadow: 0 2px 12px rgba(88,72,150,0.06) !important;
-            backdrop-filter: blur(14px) !important;
+            background: rgba(244, 238, 255, 0.92);
+            border-bottom: 1px solid rgba(111,66,232,0.11);
+            box-shadow: 0 2px 12px rgba(88,72,150,0.06);
+            backdrop-filter: blur(14px);
         }
 
         /* Messages viewport */
         body.lattice-ref-chat .app-layout .messages-viewport {
-            background: transparent !important;
+            background: transparent;
         }
 
         /* AI 채팅 버블 */
         body.lattice-ref-chat .app-layout .ai .bubble {
-            background: rgba(250, 246, 255, 0.97) !important;
-            border: 1px solid rgba(111,66,232,0.12) !important;
-            color: #14162c !important;
-            box-shadow: 0 4px 18px rgba(88,72,150,0.08) !important;
+            background: rgba(250, 246, 255, 0.97);
+            border: 1px solid var(--accent-soft);
+            color: var(--text);
+            box-shadow: 0 4px 18px rgba(88,72,150,0.08);
         }
 
         /* 사용자 채팅 버블 */
         body.lattice-ref-chat .app-layout .user .bubble {
-            background: linear-gradient(135deg, #6f42e8, #8b6cff) !important;
-            border: 1px solid rgba(111,66,232,0.24) !important;
-            color: #ffffff !important;
-            box-shadow: 0 8px 28px rgba(111,66,232,0.26) !important;
+            background: linear-gradient(135deg, var(--accent), var(--accent-2));
+            border: 1px solid rgba(111,66,232,0.24);
+            color: #ffffff;
+            box-shadow: 0 8px 28px var(--border-strong);
         }
 
         /* 버블 내 헤딩, 코드 언어 레이블 */
@@ -7885,18 +7778,18 @@ body.lattice-ref-graph {
         body.lattice-ref-chat .app-layout .ai .bubble h2,
         body.lattice-ref-chat .app-layout .ai .bubble h3,
         body.lattice-ref-chat .app-layout .ai .bubble .code-lang {
-            color: #6f42e8 !important;
+            color: var(--accent);
         }
 
         /* 코드 블록 */
         body.lattice-ref-chat .app-layout .code-container,
         body.lattice-ref-chat .app-layout pre {
-            background: #ede7ff !important;
-            border-color: rgba(111,66,232,0.14) !important;
+            background: #ede7ff;
+            border-color: var(--border);
         }
         body.lattice-ref-chat .app-layout .code-header {
-            background: #e5dcff !important;
-            border-bottom-color: rgba(111,66,232,0.13) !important;
+            background: #e5dcff;
+            border-bottom-color: rgba(111,66,232,0.13);
         }
 
         /* 입력창 영역 */
@@ -7904,402 +7797,136 @@ body.lattice-ref-graph {
             background: linear-gradient(0deg,
                 rgba(243,237,255,0.99) 0%,
                 rgba(243,237,255,0.86) 64%,
-                transparent 100%) !important;
+                transparent 100%);
         }
         body.lattice-ref-chat .app-layout .input-box {
-            background: rgba(248, 243, 255, 0.97) !important;
-            border: 1px solid rgba(111,66,232,0.17) !important;
-            box-shadow: 0 8px 32px rgba(88,72,150,0.10) !important;
+            background: rgba(248, 243, 255, 0.97);
+            border: 1px solid rgba(111,66,232,0.17);
+            box-shadow: 0 8px 32px rgba(88,72,150,0.10);
         }
         body.lattice-ref-chat .app-layout .input-box:focus-within {
-            border-color: rgba(111,66,232,0.44) !important;
-            box-shadow: 0 8px 32px rgba(88,72,150,0.10), 0 0 0 3px rgba(111,66,232,0.09) !important;
+            border-color: rgba(111,66,232,0.44);
+            box-shadow: 0 8px 32px rgba(88,72,150,0.10), 0 0 0 3px rgba(111,66,232,0.09);
         }
 
         /* 전송 버튼 */
         body.lattice-ref-chat .app-layout .send-btn {
-            background: linear-gradient(135deg, #6f42e8, #8b6cff) !important;
-            color: #ffffff !important;
-            box-shadow: 0 8px 20px rgba(111,66,232,0.28) !important;
+            background: linear-gradient(135deg, var(--accent), var(--accent-2));
+            color: #ffffff;
+            box-shadow: 0 8px 20px rgba(111,66,232,0.28);
         }
         body.lattice-ref-chat .app-layout .send-btn:hover {
-            box-shadow: 0 10px 26px rgba(111,66,232,0.38) !important;
-            opacity: 0.92 !important;
+            box-shadow: 0 10px 26px rgba(111,66,232,0.38);
+            opacity: 0.92;
         }
 
         /* 빈 상태 카드/칩 */
         body.lattice-ref-chat .app-layout .empty-chip {
-            background: rgba(246, 241, 255, 0.94) !important;
-            border-color: rgba(111,66,232,0.15) !important;
-            color: #4a4668 !important;
-            box-shadow: 0 2px 10px rgba(88,72,150,0.08) !important;
+            background: rgba(246, 241, 255, 0.94);
+            border-color: rgba(111,66,232,0.15);
+            color: var(--muted);
+            box-shadow: 0 2px 10px rgba(88,72,150,0.08);
         }
         body.lattice-ref-chat .app-layout .empty-chip:hover {
-            background: rgba(111,66,232,0.08) !important;
-            border-color: rgba(111,66,232,0.26) !important;
+            background: rgba(111,66,232,0.08);
+            border-color: var(--border-strong);
         }
         body.lattice-ref-chat .app-layout .ops-card {
-            background: rgba(247, 242, 255, 0.94) !important;
-            border-color: rgba(111,66,232,0.13) !important;
-            box-shadow: 0 6px 22px rgba(88,72,150,0.08) !important;
+            background: rgba(247, 242, 255, 0.94);
+            border-color: rgba(111,66,232,0.13);
+            box-shadow: 0 6px 22px rgba(88,72,150,0.08);
         }
         body.lattice-ref-chat .app-layout .ops-card.primary {
-            background: linear-gradient(135deg, rgba(111,66,232,0.10), rgba(247,242,255,0.94) 58%) !important;
-            border-color: rgba(111,66,232,0.22) !important;
+            background: linear-gradient(135deg, rgba(111,66,232,0.10), rgba(247,242,255,0.94) 58%);
+            border-color: rgba(111,66,232,0.22);
         }
 
         /* 배지/버튼 */
         body.lattice-ref-chat .app-layout .model-badge {
-            background: rgba(243, 237, 255, 0.90) !important;
-            border-color: rgba(111,66,232,0.15) !important;
-            color: #14162c !important;
+            background: rgba(243, 237, 255, 0.90);
+            border-color: rgba(111,66,232,0.15);
+            color: var(--text);
         }
         body.lattice-ref-chat .app-layout .status-pill {
-            background: rgba(241, 236, 255, 0.86) !important;
-            border-color: rgba(111,66,232,0.13) !important;
-            color: #4a4668 !important;
+            background: rgba(241, 236, 255, 0.86);
+            border-color: rgba(111,66,232,0.13);
+            color: var(--muted);
         }
         body.lattice-ref-chat .app-layout .status-dot {
-            background: #6f42e8 !important;
-            box-shadow: 0 0 8px rgba(111,66,232,0.5), 0 0 16px rgba(111,66,232,0.2) !important;
+            background: var(--accent);
+            box-shadow: 0 0 8px rgba(111,66,232,0.5), 0 0 16px rgba(111,66,232,0.2);
         }
         body.lattice-ref-chat .app-layout .new-chat-btn,
         body.lattice-ref-chat .app-layout .status-btn,
         body.lattice-ref-chat .app-layout .admin-btn,
         body.lattice-ref-chat .app-layout .setup-wizard-sidebar-btn {
-            background: rgba(111,66,232,0.10) !important;
-            border-color: rgba(111,66,232,0.22) !important;
-            color: #6f42e8 !important;
-            box-shadow: none !important;
+            background: rgba(111,66,232,0.10);
+            border-color: rgba(111,66,232,0.22);
+            color: var(--accent);
+            box-shadow: none;
         }
 
         /* ── 네비 버튼 글씨 검정 ── */
         body.lattice-ref-chat .app-layout .reference-nav-item,
         body.lattice-ref-chat .app-layout .reference-nav-item i {
-            color: #14162c !important;
-            -webkit-text-fill-color: #14162c !important;
+            color: var(--text);
+            -webkit-text-fill-color: var(--text);
         }
         body.lattice-ref-chat .app-layout .reference-nav-item:hover,
         body.lattice-ref-chat .app-layout .reference-nav-item.active {
-            color: #14162c !important;
-            -webkit-text-fill-color: #14162c !important;
-            background: rgba(111,66,232,0.12) !important;
-            border-color: rgba(111,66,232,0.24) !important;
+            color: var(--text);
+            -webkit-text-fill-color: var(--text);
+            background: var(--accent-soft);
+            border-color: rgba(111,66,232,0.24);
         }
         /* 채팅 기록 목록도 검정 */
         body.lattice-ref-chat .app-layout .history-item {
-            color: #2a2744 !important;
-            -webkit-text-fill-color: #2a2744 !important;
+            color: #2a2744;
+            -webkit-text-fill-color: #2a2744;
         }
         body.lattice-ref-chat .app-layout .history-item:hover,
         body.lattice-ref-chat .app-layout .history-item.active {
-            color: #14162c !important;
-            -webkit-text-fill-color: #14162c !important;
+            color: var(--text);
+            -webkit-text-fill-color: var(--text);
         }
         /* 브랜드 타이틀 / 서브타이틀 */
         body.lattice-ref-chat .app-layout .brand-title {
-            color: #14162c !important;
-            -webkit-text-fill-color: #14162c !important;
+            color: var(--text);
+            -webkit-text-fill-color: var(--text);
         }
         /* 사이드바 검색 입력 */
         body.lattice-ref-chat .app-layout .sidebar-search input {
-            color: #14162c !important;
-            background: rgba(111,66,232,0.06) !important;
-            border-color: rgba(111,66,232,0.16) !important;
+            color: var(--text);
+            background: rgba(111,66,232,0.06);
+            border-color: rgba(111,66,232,0.16);
         }
         body.lattice-ref-chat .app-layout .sidebar-search input::placeholder {
-            color: #7a74a0 !important;
-            -webkit-text-fill-color: #7a74a0 !important;
+            color: var(--faint);
+            -webkit-text-fill-color: var(--faint);
         }
         /* 상단 모드 세그멘트 배경도 라벤더로 */
         body.lattice-ref-chat .app-layout .mode-segmented {
-            background: rgba(241, 236, 255, 0.84) !important;
-            border-color: rgba(111,66,232,0.16) !important;
+            background: rgba(241, 236, 255, 0.84);
+            border-color: rgba(111,66,232,0.16);
         }
         body.lattice-ref-chat .app-layout .mode-segmented button:not(.active) {
-            color: #3d3860 !important;
-        }
-
-        /* ================================================================
-           GLOBAL DARK-MODE PURGE — 남은 모든 다크/그린 요소를 라벤더로
-           ================================================================ */
-
-        /* ── CSS 변수 최상위 재정의 ── */
-        body.lattice-ref-chat {
-            --bg: #f3ecff !important;
-            --surface: #f0eaff !important;
-            --surface-2: #e8dfff !important;
-            --surface-3: #e0d5ff !important;
-            --accent: #6f42e8 !important;
-            --accent-2: #a78bfa !important;
-            --accent-3: #8b6cff !important;
-            --accent-soft: rgba(111,66,232,0.12) !important;
-            --text: #14162c !important;
-            --muted: #4a4668 !important;
-            --faint: #7a74a0 !important;
-            --border: rgba(111,66,232,0.15) !important;
-            --border-strong: rgba(111,66,232,0.26) !important;
-            --shadow: 0 18px 54px rgba(88,72,150,0.15) !important;
-            --shadow-sm: 0 8px 24px rgba(88,72,150,0.11) !important;
-            --danger: #e53935 !important;
-        }
-
-        /* ── 모달 배경 ── */
-        body.lattice-ref-chat .mcp-modal,
-        body.lattice-ref-chat .acct-modal,
-        body.lattice-ref-chat .mode-modal,
-        body.lattice-ref-chat .workspace-modal,
-        body.lattice-ref-chat .advanced-settings-panel,
-        body.lattice-ref-chat .perm-card {
-            background: rgba(247,242,255,0.98) !important;
-            border-color: rgba(111,66,232,0.14) !important;
-            color: #14162c !important;
-        }
-
-        /* ── 모달 내 모든 텍스트 검정 ── */
-        body.lattice-ref-chat .mcp-modal *,
-        body.lattice-ref-chat .acct-modal *,
-        body.lattice-ref-chat .mode-modal *,
-        body.lattice-ref-chat .workspace-modal *,
-        body.lattice-ref-chat .advanced-settings-panel *,
-        body.lattice-ref-chat .perm-card * {
-            color: inherit;
-        }
-        body.lattice-ref-chat .mcp-modal-header h3,
-        body.lattice-ref-chat .mcp-item-name,
-        body.lattice-ref-chat .detail-title,
-        body.lattice-ref-chat .perm-title,
-        body.lattice-ref-chat .workspace-modal h2,
-        body.lattice-ref-chat .mode-modal h2,
-        body.lattice-ref-chat .advanced-settings-panel header span,
-        body.lattice-ref-chat .onboarding-card * {
-            color: #14162c !important;
-        }
-
-        /* ── 모달 헤더/탭 구분선 ── */
-        body.lattice-ref-chat .mcp-modal-header,
-        body.lattice-ref-chat .mcp-tabs,
-        body.lattice-ref-chat .acct-tabs {
-            border-bottom-color: rgba(111,66,232,0.10) !important;
-        }
-
-        /* ── MCP 탭 ── */
-        body.lattice-ref-chat .mcp-tab { color: #4a4668 !important; }
-        body.lattice-ref-chat .mcp-tab.active {
-            color: #6f42e8 !important;
-            border-bottom-color: #6f42e8 !important;
-            background: rgba(111,66,232,0.07) !important;
-        }
-
-        /* ── MCP 아이템 ── */
-        body.lattice-ref-chat .mcp-item {
-            background: rgba(255,255,255,0.72) !important;
-            border-color: rgba(111,66,232,0.10) !important;
-        }
-        body.lattice-ref-chat .mcp-item-name { color: #14162c !important; }
-        body.lattice-ref-chat .mcp-item-desc { color: #4a4668 !important; }
-        body.lattice-ref-chat .mcp-item-status { color: #6f42e8 !important; }
-        body.lattice-ref-chat .mcp-install-btn {
-            border-color: rgba(111,66,232,0.28) !important;
-            background: rgba(111,66,232,0.08) !important;
-            color: #6f42e8 !important;
-        }
-        body.lattice-ref-chat .mcp-install-btn:hover {
-            background: rgba(111,66,232,0.16) !important;
-        }
-        body.lattice-ref-chat .mcp-section-label { color: #7a74a0 !important; }
-        body.lattice-ref-chat .mcp-source-badge.claude-code {
-            background: rgba(111,66,232,0.10) !important;
-            color: #6f42e8 !important;
-            border-color: rgba(111,66,232,0.20) !important;
-        }
-
-        /* ── MCP 폼 입력 ── */
-        body.lattice-ref-chat .mcp-add-form input,
-        body.lattice-ref-chat .mcp-add-form textarea,
-        body.lattice-ref-chat .mcp-add-form select {
-            background: rgba(255,255,255,0.82) !important;
-            border-color: rgba(111,66,232,0.16) !important;
-            color: #14162c !important;
-        }
-        body.lattice-ref-chat .mcp-add-form label { color: #7a74a0 !important; }
-        body.lattice-ref-chat .mcp-add-form .field-hint { color: #7a74a0 !important; }
-        body.lattice-ref-chat .mcp-submit-btn {
-            background: rgba(111,66,232,0.10) !important;
-            border-color: rgba(111,66,232,0.26) !important;
-            color: #6f42e8 !important;
-        }
-        body.lattice-ref-chat .mcp-submit-btn:hover {
-            background: rgba(111,66,232,0.18) !important;
-        }
-        body.lattice-ref-chat .mcp-delete-btn {
-            background: rgba(229,57,53,0.08) !important;
-            border-color: rgba(229,57,53,0.18) !important;
-            color: #e53935 !important;
-        }
-        body.lattice-ref-chat .mcp-modal-close { color: #7a74a0 !important; }
-        body.lattice-ref-chat .mcp-modal-close:hover {
-            color: #14162c !important;
-            background: rgba(111,66,232,0.07) !important;
-        }
-
-        /* ── 계정 모달 ── */
-        body.lattice-ref-chat .acct-tab { color: #4a4668 !important; }
-        body.lattice-ref-chat .acct-tab.active {
-            color: #14162c !important;
-            border-bottom-color: #6f42e8 !important;
-        }
-        body.lattice-ref-chat .pw-field label { color: #4a4668 !important; }
-        body.lattice-ref-chat .pw-field input {
-            background: rgba(255,255,255,0.80) !important;
-            border-color: rgba(111,66,232,0.16) !important;
-            color: #14162c !important;
-        }
-        body.lattice-ref-chat .pw-field input:focus {
-            border-color: rgba(111,66,232,0.42) !important;
-        }
-        body.lattice-ref-chat .pw-submit {
-            background: #6f42e8 !important;
-            color: #fff !important;
-        }
-        body.lattice-ref-chat .pw-cancel {
-            background: rgba(111,66,232,0.08) !important;
-            color: #4a4668 !important;
-        }
-        body.lattice-ref-chat .pw-msg.error { color: #e53935 !important; }
-        body.lattice-ref-chat .pw-msg.success { color: #059669 !important; }
-
-        /* ── 언어 선택 메뉴 ── */
-        body.lattice-ref-chat .lang-picker-menu {
-            background: rgba(247,242,255,0.98) !important;
-            border-color: rgba(111,66,232,0.16) !important;
-        }
-        body.lattice-ref-chat .lang-option { color: #14162c !important; }
-        body.lattice-ref-chat .lang-option:hover {
-            background: rgba(111,66,232,0.07) !important;
-            color: #14162c !important;
-        }
-        body.lattice-ref-chat .lang-option.active { color: #6f42e8 !important; }
-
-        /* ── 고급 설정 패널 버튼 ── */
-        body.lattice-ref-chat .advanced-settings-action {
-            background: rgba(244,239,255,0.92) !important;
-            border-color: rgba(111,66,232,0.13) !important;
-            color: #14162c !important;
-        }
-        body.lattice-ref-chat .advanced-settings-action:hover {
-            background: rgba(111,66,232,0.10) !important;
-            border-color: rgba(111,66,232,0.28) !important;
-        }
-
-        /* ── 홈 액션 카드 ── */
-        body.lattice-ref-chat .home-action-card {
-            background: rgba(255,255,255,0.88) !important;
-            border-color: rgba(111,66,232,0.14) !important;
-            color: #14162c !important;
-        }
-        body.lattice-ref-chat .home-action-card h3 { color: #14162c !important; }
-        body.lattice-ref-chat .home-action-card p { color: #4a4668 !important; }
-
-        /* ── 모델 선택 ── */
-        body.lattice-ref-chat .model-option {
-            background: rgba(244,239,255,0.90) !important;
-            border-color: rgba(111,66,232,0.12) !important;
-            color: #14162c !important;
-        }
-        body.lattice-ref-chat .model-option:hover {
-            border-color: rgba(111,66,232,0.32) !important;
-            background: rgba(111,66,232,0.08) !important;
-        }
-
-        /* ── 퍼미션/파일접근 모달 ── */
-        body.lattice-ref-chat .perm-btn-allow {
-            background: #6f42e8 !important;
-            color: #fff !important;
-        }
-        body.lattice-ref-chat .perm-btn-deny {
-            background: rgba(111,66,232,0.08) !important;
-            color: #4a4668 !important;
-            border-color: rgba(111,66,232,0.16) !important;
-        }
-
-        /* ── 온보딩 카드 ── */
-        body.lattice-ref-chat .onboarding-card {
-            background: rgba(247,242,255,0.98) !important;
-            border-color: rgba(111,66,232,0.14) !important;
-        }
-
-        /* ── 워크스페이스/모드 옵션 ── */
-        body.lattice-ref-chat .workspace-option,
-        body.lattice-ref-chat .mode-option {
-            background: rgba(255,255,255,0.82) !important;
-            border-color: rgba(111,66,232,0.12) !important;
-            color: #14162c !important;
-        }
-        body.lattice-ref-chat .workspace-option:hover,
-        body.lattice-ref-chat .mode-option:hover,
-        body.lattice-ref-chat .workspace-option.selected,
-        body.lattice-ref-chat .mode-option.selected {
-            border-color: rgba(111,66,232,0.38) !important;
-            background: rgba(111,66,232,0.08) !important;
-        }
-
-        /* ── 툴팁 ── */
-        body.lattice-ref-chat #tooltip,
-        body.lattice-ref-chat .tooltip {
-            background: rgba(247,242,255,0.97) !important;
-            border-color: rgba(111,66,232,0.16) !important;
-            color: #14162c !important;
-        }
-
-        /* ── 로그아웃 버튼 ── */
-        body.lattice-ref-chat .logout-btn { color: #4a4668 !important; }
-        body.lattice-ref-chat .logout-btn:hover {
-            color: #14162c !important;
-            background: rgba(111,66,232,0.07) !important;
-            border-color: rgba(111,66,232,0.14) !important;
-        }
-
-        /* ── 스크롤바 (WebKit) ── */
-        body.lattice-ref-chat ::-webkit-scrollbar { width: 5px; }
-        body.lattice-ref-chat ::-webkit-scrollbar-track { background: rgba(111,66,232,0.05); }
-        body.lattice-ref-chat ::-webkit-scrollbar-thumb {
-            background: rgba(111,66,232,0.22);
-            border-radius: 4px;
-        }
-
-        /* ── action-btn (첨부파일 등) ── */
-        body.lattice-ref-chat .app-layout .action-btn {
-            color: #4a4668 !important;
-        }
-        body.lattice-ref-chat .app-layout .action-btn:hover {
-            background: rgba(111,66,232,0.09) !important;
-            color: #6f42e8 !important;
-            border-color: rgba(111,66,232,0.22) !important;
-        }
-
-        /* ── 채팅 인풋 placeholder ── */
-        body.lattice-ref-chat .app-layout #user-input::placeholder {
-            color: #7a74a0 !important;
-        }
-        body.lattice-ref-chat .app-layout #user-input {
-            color: #14162c !important;
+            color: #3d3860;
         }
 
         /* ── 홈 뷰: 채팅 전용 사이드바 섹션 숨기기 ── */
         body.lattice-ref-chat .app-layout[data-view="home"] .sidebar-search,
         body.lattice-ref-chat .app-layout[data-view="home"] .sidebar-primary-actions,
         body.lattice-ref-chat .app-layout[data-view="home"] .history-container {
-            display: none !important;
+            display: none;
         }
         /* 채팅 뷰: 다시 표시 (기본값이므로 명시) */
         body.lattice-ref-chat .app-layout[data-view="chat"] .sidebar-search,
         body.lattice-ref-chat .app-layout[data-view="chat"] .sidebar-primary-actions,
         body.lattice-ref-chat .app-layout[data-view="chat"] .history-container {
-            display: flex !important;
+            display: flex;
         }
         body.lattice-ref-chat .app-layout[data-view="chat"] .history-container {
-            display: block !important;
+            display: block;
         }
 
         /* ── 홈 뷰: 홈 대시보드 보임, 채팅 힌트 숨김 ── */
@@ -8307,12 +7934,12 @@ body.lattice-ref-graph {
         body.lattice-ref-chat .app-layout[data-view="home"] .message,
         body.lattice-ref-chat .app-layout[data-view="home"] .mcp-recommend-wrap,
         body.lattice-ref-chat .app-layout[data-view="home"] .file-card {
-            display: none !important;
+            display: none;
         }
         body.lattice-ref-chat .app-layout[data-view="home"] .home-dash { display: flex; }
 
         /* ── 채팅 뷰: 홈 대시보드 숨김, 채팅 힌트 보임 ── */
-        body.lattice-ref-chat .app-layout[data-view="chat"] .home-dash { display: none !important; }
+        body.lattice-ref-chat .app-layout[data-view="chat"] .home-dash { display: none; }
         body.lattice-ref-chat .app-layout[data-view="chat"] .chat-empty-hint {
             display: flex;
             flex-direction: column;
@@ -8332,7 +7959,7 @@ body.lattice-ref-graph {
         }
         body.lattice-ref-chat .app-layout[data-view="chat"] .chat-empty-hint h2 {
             margin: 0;
-            color: #14162c;
+            color: var(--text);
             font-size: 22px;
             line-height: 1.2;
         }
@@ -8350,7 +7977,7 @@ body.lattice-ref-graph {
         body.lattice-ref-chat .app-layout[data-view="chat"] .chat-capability-row span {
             border: 1px solid rgba(111,66,232,0.16);
             background: rgba(255,255,255,0.72);
-            color: #4a4668;
+            color: var(--muted);
             border-radius: 999px;
             padding: 6px 10px;
             font-size: 12px;

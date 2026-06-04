@@ -27,6 +27,10 @@ vscode-extension/node_modules/
 vscode-extension/out/
 vscode-extension/*.vsix
 *.tgz
+
+# Playwright / test artifacts
+playwright-report/
+test-results/
 docs/images/tmp_frames/
 scripts/capture_*.js
 scripts/capture_*.mjs

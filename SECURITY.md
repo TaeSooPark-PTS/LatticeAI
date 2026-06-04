@@ -28,7 +28,7 @@
 
 ## 보안 모델
 
-Lattice AI v2.2.0은 local-first AI Knowledge OS으로, 아래 보안 모델을 따릅니다:
+Lattice AI v2.2.1은 local-first AI 워크스페이스 / 지식 그래프 플랫폼으로, 아래 보안 모델을 따릅니다:
 
 ### 기본 안전 설정 (Default Secure)
 

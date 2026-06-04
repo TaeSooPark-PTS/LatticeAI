@@ -1,9 +1,9 @@
 # Lattice AI Architecture
 
-Lattice AI v2.2.0 is a local-first **AI Knowledge OS**. The architecture is
-organized around one durable center: the Knowledge Graph. Models, tools,
-agents, workflows, and UI modes are replaceable layers that operate on top of
-the graph.
+Lattice AI is a local-first **AI Workspace and Knowledge Graph platform**. The
+architecture is organized around one durable center: the Knowledge Graph.
+Models, tools, agents, workflows, and UI modes are replaceable layers that
+operate on top of the graph.
 
 ## Architecture Goals
 

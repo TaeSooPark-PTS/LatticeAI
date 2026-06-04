@@ -9,6 +9,34 @@
 > PyPI / npm / VS Code Marketplace / Open VSX 배포는 아래 수동 절차로 로컬에서
 > 직접 인증 후 진행합니다. GitHub Secrets에 배포 토큰을 저장하지 않습니다.
 
+## v2.2.1 릴리스 노트 (2026-06-04)
+
+Frontend / UX Overhaul Release — 기능 동작은 그대로 유지하면서 Lattice AI의
+화면 레이아웃과 표현을 전면 정비합니다. 모든 화면 크기에서 콘텐츠를 숨기지 않고
+재배치하며, 라이트/다크 테마, 접근성, Knowledge Graph 뷰, 관리자 테이블, 파일
+첨부 경험을 개선합니다.
+
+- **Changed (Responsive UI)**: phone/tablet/laptop/desktop/ultrawide/4K 전반에
+  mobile-first 반응형 레이아웃 적용. 작은 화면에서도 콘텐츠를 숨기지 않고
+  재배치만 합니다.
+- **Added (Light/Dark mode)**: OS 감지 + 수동 토글 + 상태 persistence 기반의
+  라이트/다크 모드 추가.
+- **Changed (Design tokens)**: `static/css/tokens.css`를 단일 진실 공급원으로
+  하는 design-token 시스템 재구축. `!important` 기반 테마 처리를 제거했습니다.
+- **Added (Accessibility)**: 44px 터치 타깃, `:focus-visible` 포커스 링,
+  keyboard-safe chat composer(visualViewport inset), iOS no-zoom 입력,
+  reduced-motion 지원.
+- **Changed (Knowledge Graph UX)**: 리사이즈 시 re-fit하는 반응형 canvas,
+  zoom 버튼, fullscreen, minimap, relationship filter, 모바일 graph/card 뷰,
+  theme-aware 팔레트.
+- **Changed (Admin UX)**: 넓은 admin 테이블이 모바일에서 카드로 reflow되며
+  반응형 레이아웃, 다크/라이트, 더 큰 터치 타깃을 갖습니다.
+- **Added (File UX)**: drag & drop 및 스크린샷 paste로 파일 첨부.
+- **Changed (Model cards)**: 제작 국가, 제작 회사, 실행 방식, 인터넷 사용
+  여부를 plain language로 표시.
+- **Validation target**: responsive/theme/accessibility/visual/VSIX/Python/npm
+  artifact 검증 대상. 패키지 스토어 publish는 수동 절차로만 진행.
+
 ## v2.2.0 릴리스 노트 (2026-06-04)
 
 Multimodal-First Knowledge OS Release — Lattice AI를 단순 채팅 앱이나 모델

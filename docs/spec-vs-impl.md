@@ -20,7 +20,7 @@
 PPT 명세는 "한 코드·다섯 화면" — Shared Core(Design Tokens, UI Components, Business Logic, AI/Graph Core) 위에서 Tauri(데스크탑) / Capacitor·RN(모바일) 렌더러가 같은 결과를 낸다.
 
 **현재 구현**
-- `static/chat.html`, `static/graph.html`, `static/admin.html`, `static/account.html` 4개 HTML — 각자 자체 CSS 변수 보유
+- `static/chat.html`, `static/graph.html`, `static/admin.html`, `static/account.html` 4개 HTML — `static/css/tokens.css` 단일 토큰을 공유 (v2.2.1)
 - `vscode-extension/` — TypeScript VSCode 통합
 - `static/manifest.json` + `static/sw.js` — PWA 부분 지원 (iOS/Android 홈 화면 추가는 됨)
 - `telegram_bot.py` — Telegram 미러
@@ -28,11 +28,11 @@ PPT 명세는 "한 코드·다섯 화면" — Shared Core(Design Tokens, UI Comp
 **갭**
 - 데스크탑 네이티브 셸 (Tauri) 미구현
 - 모바일 네이티브 (Capacitor / RN) 미구현
-- 4개 HTML이 각자 다른 색 토큰 사용 → 같은 화면이 같게 안 보임
 - 다국어(i18n) 시스템화 안 됨 (HTML에 한글 하드코딩)
 
-**보강 결과물**
-- `static/css/tokens.css` (이번 PR에서 추가) — 4개 HTML이 공유할 단일 진실 토큰
+**보강 결과물 (완료, v2.2.1)**
+- `static/css/tokens.css` — 4개 HTML이 공유하는 단일 진실 토큰 (`:root` = 라이트, `[data-lt-theme="dark"]` = 다크)
+- `static/css/responsive.css` + `static/scripts/ux.js` — 반응형 레이아웃 / 라이트·다크 토글 + OS 감지 + 지속화
 - 로드맵: `apps/desktop/` (Tauri 셸) · `apps/mobile/` (Capacitor 셸) 차후 단계
 
 ---
@@ -91,7 +91,9 @@ chunks ( id, source_node, text, metadata_json, created_at )
 
 ## 4. 디자인 일관성
 
-| 파일 | 현재 --bg | 현재 --accent |
+기존(v2.2.1 이전)에는 4개 HTML 이 각자 다른 색 토큰을 갖고 있었다:
+
+| 파일 | 이전 --bg | 이전 --accent |
 |------|-----------|---------------|
 | `chat.html`   | `#182332` 다크 블루그린 | `#22d3a0` 민트 |
 | `graph.html`  | `#282a36` 다크 그레이   | `#a77cff` 라일락 |
@@ -100,9 +102,10 @@ chunks ( id, source_node, text, metadata_json, created_at )
 | `lattice-reference.css` | (라이트, PPT) | `#6f42e8` Lattice 보라 |
 | **PPT 명세** | `#FFFFFF` 또는 `#0B0B16` | `#6E4AE6` Lattice 보라 |
 
-**보강 결과물**
-- `static/css/tokens.css` — 단일 토큰 (PPT 명세 그대로)
-- 4개 HTML 의 `:root {}` 블록을 `@import` 한 줄로 대체 가능하도록 토큰 명 호환
+**보강 결과물 (완료, v2.2.1)**
+- `static/css/tokens.css` — 단일 토큰을 모든 화면이 공유. `:root` 가 라이트 값,
+  `[data-lt-theme="dark"]` 가 다크 값을 정의하는 단일 진실 소스
+- 라이트/다크 토글 + OS 다크모드 감지 + 지속화는 `static/scripts/ux.js` 가 담당
 
 ---
 
@@ -124,9 +127,9 @@ PPT 화면 1, 13 (login, security) 에 한국어 / Microsoft Entra ID / Okta SSO
 | 순위 | 파일 | 무엇 |
 |------|------|------|
 | 1 | `docs/kg-schema.md`, `kg_schema.py` | KG 스키마 정식화 (10 노드 · 12 엣지 · embedding · confidence) |
-| 2 | `static/css/tokens.css` | 디자인 토큰 통합 (PPT 색팔레트) |
+| 2 | `static/css/tokens.css` (+ `responsive.css`, `ux.js`) | 디자인 토큰 통합 + 라이트/다크 — v2.2.1 완료 |
 | 3 | `auto_setup.py` | OS 프로빙 + 모델 추천 + 설치 어댑터 |
 | 4 | `docs/architecture.md` 보강 | 위 변경 반영 |
 | 5 | (차후) `apps/desktop`, `apps/mobile` 스캐폴딩 | Tauri/Capacitor |
 
-각 항목은 이번 PR 에 함께 들어간다 (1~3은 코드, 4는 문서, 5는 청사진만).
+1~4 는 구현/문서로 반영되었고 (디자인 토큰·라이트/다크는 v2.2.1 에서 완료), 5 는 청사진만 유지한다.

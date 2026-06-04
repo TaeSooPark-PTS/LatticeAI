@@ -2,7 +2,7 @@
   "name": "ltcai",
   "displayName": "Lattice AI",
   "description": "AI Workspace OS extension for local-first graph, memory, workflow, and coding actions.",
-  "version": "2.2.0",
+  "version": "2.2.1",
   "publisher": "parktaesoo",
   "license": "MIT",
   "homepage": "https://github.com/TaeSooPark-PTS/LatticeAI#readme",

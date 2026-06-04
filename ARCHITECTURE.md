@@ -1,7 +1,8 @@
 # Lattice AI Architecture
 
-Lattice AI v2.2.0 is an AI Knowledge OS. The durable core is the Knowledge
-Graph; models are replaceable multimodal workers that operate on graph context.
+Lattice AI v2.2.1 is a local-first AI workspace and Knowledge Graph platform.
+The durable core is the Knowledge Graph; models are replaceable multimodal
+workers that operate on graph context.
 
 See [docs/architecture.md](docs/architecture.md) for the full architecture.
 

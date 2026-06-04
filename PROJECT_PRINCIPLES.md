@@ -1,7 +1,8 @@
 # Project Principles
 
-Lattice AI is an AI Knowledge OS. It should help users build and use knowledge,
-not force them to study AI infrastructure before they can get work done.
+Lattice AI is a local-first AI workspace and Knowledge Graph platform. It should
+help users build and use knowledge, not force them to study AI infrastructure
+before they can get work done.
 
 ## User Agency
 

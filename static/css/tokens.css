@@ -1,195 +1,254 @@
-/* ============================================================
- * Lattice AI — Design Tokens (Single Source of Truth)
+/* ============================================================================
+ * Lattice AI — Design Tokens (Single Source of Truth)  v2.2.1
  *
- * 명세: lattice_ai_full_spec.pptx 슬라이드 19 (디자인 토큰)
+ * 이 파일이 색·면·테두리·그림자·포커스의 단일 출처다.
+ *   :root                      → 라이트 테마 값
+ *   :root[data-lt-theme="dark"] → 동일 토큰명의 다크 값
+ *   @media (prefers-color-scheme: dark) → 사용자가 명시 선택 안 했을 때 OS 추종
  *
- * 이 파일이 모든 화면의 색·간격·타이포·반경·모션의 기준이다.
- * chat.html / graph.html / admin.html / account.html 의 :root {}
- * 블록은 점차 이 파일의 변수만 참조하도록 정리할 것.
+ * 컴포넌트 CSS 는 항상 var(--token) 만 사용한다. 따라서 이 파일의 값만 바꾸면
+ * 전체 UI 가 자연스럽게 전환된다. (컴포넌트별 다크 오버라이드 / !important 금지)
  *
- * 토큰 명명 규칙:
- *   --lt-{category}-{scale}      (예: --lt-color-primary-600)
- *   --lt-bg / --lt-ink / --lt-accent-* 는 의미 토큰 (semantic)
- *   기존 --bg / --text 등은 이 파일의 의미 토큰으로 alias
- * ============================================================ */
+ * 토큰 카테고리(요청 범위): background · surface · card · sidebar · modal · table ·
+ *   graph · text · muted-text · border · accent · success · warning · danger ·
+ *   input · overlay · shadow · focus-ring
+ * ========================================================================== */
 
 :root {
-  /* ── Brand · Color (raw scale) ────────────────────────────── */
+  color-scheme: light;
+
+  /* ── Brand raw scale (불변, 테마 무관 기준점) ───────────────────────────── */
   --lt-color-primary-100: #EAE2FD;
   --lt-color-primary-200: #D3C2FB;
   --lt-color-primary-400: #9A78F0;
-  --lt-color-primary-600: #6E4AE6;   /* PRIMARY — Lattice 보라 */
-  --lt-color-primary-800: #3B1F8E;   /* PRIMARY_DEEP */
-
-  --lt-color-ink-900: #0E102A;       /* 본문/제목 텍스트 (딥 네이비) */
-  --lt-color-ink-700: #2A2D4A;
-  --lt-color-ink-600: #4A4F6D;       /* 보조 텍스트 */
-  --lt-color-ink-400: #8A90A7;       /* 캡션 */
-  --lt-color-ink-200: #C8CCDC;
-  --lt-color-line:    #E3E3F0;       /* 경계선 */
-
-  --lt-color-surface-0:  #FFFFFF;    /* 페이지 배경 (라이트) */
-  --lt-color-surface-50: #F7F5FD;    /* 카드 면 */
-  --lt-color-surface-100:#EEE7FE;    /* 보조 면 */
-
-  --lt-color-dark-0:  #0B0B1E;       /* 페이지 배경 (다크) */
-  --lt-color-dark-50: #151539;
-  --lt-color-dark-card: #181A35;
-  --lt-color-dark-line: rgba(151,179,231,0.18);
-
-  /* Accents */
+  --lt-color-primary-600: #6E4AE6;
+  --lt-color-primary-800: #3B1F8E;
+  --lt-color-ink-900: #0E102A;
   --lt-color-accent-cyan:  #18C6D9;
   --lt-color-accent-green: #2FC28E;
   --lt-color-accent-amber: #F1A52A;
   --lt-color-accent-pink:  #F060B8;
-  --lt-color-danger:       #F47171;
 
-  /* ── Spacing · 4px grid ──────────────────────────────────── */
-  --lt-space-1: 4px;
-  --lt-space-2: 8px;
-  --lt-space-3: 12px;
-  --lt-space-4: 16px;
-  --lt-space-5: 24px;
-  --lt-space-6: 32px;
-  --lt-space-7: 48px;
-  --lt-space-8: 64px;
+  /* ╔══════════════════════════════════════════════════════════════════════╗
+     ║  SEMANTIC TOKENS — LIGHT (현재 라벤더 룩 보존)                          ║
+     ╚══════════════════════════════════════════════════════════════════════╝ */
 
-  /* ── Radius ──────────────────────────────────────────────── */
-  --lt-radius-sm: 8px;
-  --lt-radius-md: 12px;
-  --lt-radius-lg: 16px;
-  --lt-radius-xl: 24px;
-  --lt-radius-pill: 9999px;
+  /* background / surfaces */
+  --bg:          #f3ecff;
+  --bg-soft:     #ede6ff;
+  --surface:     #f6f0ff;
+  --surface-2:   #efe8ff;
+  --surface-3:   #e8dfff;
+  --card:        rgba(255, 255, 255, 0.90);
+  --sidebar:     rgba(244, 237, 255, 0.96);
+  --modal:       rgba(247, 242, 255, 0.98);
+  --table:       rgba(255, 255, 255, 0.72);
+  --input:       rgba(255, 255, 255, 0.80);
+  --overlay:     rgba(20, 16, 40, 0.42);
+  /* decorative page background (그라데이션 한 토큰) */
+  --app-bg:
+    radial-gradient(circle at 82% 12%, rgba(111, 66, 232, 0.14), transparent 30%),
+    radial-gradient(circle at 10% 80%, rgba(180, 160, 255, 0.16), transparent 35%),
+    linear-gradient(180deg, #f3ecff 0%, #efe8ff 52%, #f2ecff 100%);
 
-  /* ── Typography ──────────────────────────────────────────── */
-  --lt-font-head: "Pretendard", "Inter", -apple-system, BlinkMacSystemFont,
-                  "Apple SD Gothic Neo", "Malgun Gothic", "Noto Sans KR",
-                  system-ui, sans-serif;
-  --lt-font-body: var(--lt-font-head);
-  --lt-font-mono: "JetBrains Mono", "SF Mono", Menlo, Consolas,
-                  "Liberation Mono", monospace;
+  /* text */
+  --text:        #14162c;
+  --muted:       #4a4668;   /* muted-text */
+  --faint:       #7a74a0;
 
-  --lt-fs-display: 32px;
-  --lt-fs-title:   22px;
-  --lt-fs-section: 18px;
-  --lt-fs-body:    14px;
-  --lt-fs-caption: 11px;
-  --lt-fs-mono:    12px;
+  /* border / line */
+  --border:        rgba(111, 66, 232, 0.14);
+  --border-strong: rgba(111, 66, 232, 0.26);
+  --line:          rgba(111, 66, 232, 0.12);
+  --line-strong:   rgba(111, 66, 232, 0.22);
 
-  --lt-fw-regular: 400;
-  --lt-fw-medium:  500;
-  --lt-fw-semibold:600;
-  --lt-fw-bold:    700;
+  /* accent */
+  --accent:       #6f42e8;
+  --accent-2:     #8b6cff;
+  --accent-3:     #a78fff;
+  --accent-pink:  #c084fc;
+  --accent-soft:  rgba(111, 66, 232, 0.12);
+  --accent-deep:  #3B1F8E;
 
-  --lt-lh-tight:   1.15;
-  --lt-lh-normal:  1.4;
-  --lt-lh-relaxed: 1.55;
+  /* status */
+  --success: #1f9d6b;
+  --warning: #b4690e;
+  --danger:  #e53935;
 
-  /* ── Motion ──────────────────────────────────────────────── */
-  --lt-motion-fast:   120ms;
-  --lt-motion-normal: 200ms;
-  --lt-motion-slow:   280ms;
-  --lt-motion-ease:   cubic-bezier(0.22, 1, 0.36, 1);   /* ease-out-quint */
+  /* graph */
+  --graph-bg:   #fbfaff;
+  --graph-grid: rgba(111, 66, 232, 0.06);
+  --graph-pill: rgba(255, 255, 255, 0.90);
 
-  /* ── Shadow ──────────────────────────────────────────────── */
-  --lt-shadow-sm: 0 4px 12px rgba(14, 16, 42, 0.06);
-  --lt-shadow-md: 0 12px 32px rgba(14, 16, 42, 0.10);
-  --lt-shadow-lg: 0 24px 64px rgba(14, 16, 42, 0.14);
+  /* shadow */
+  --shadow:    0 18px 54px rgba(88, 72, 150, 0.15);
+  --shadow-sm: 0 8px 24px rgba(88, 72, 150, 0.11);
 
-  /* ── Semantic aliases — LIGHT mode (default) ──────────────── */
-  --lt-bg:        var(--lt-color-surface-0);
-  --lt-surface:   var(--lt-color-surface-50);
-  --lt-surface-2: var(--lt-color-surface-100);
-  --lt-ink:       var(--lt-color-ink-900);
-  --lt-ink-soft:  var(--lt-color-ink-600);
-  --lt-muted:     var(--lt-color-ink-400);
-  --lt-line:      var(--lt-color-line);
-  --lt-accent:    var(--lt-color-primary-600);
-  --lt-accent-deep: var(--lt-color-primary-800);
+  /* focus ring */
+  --focus-ring: rgba(110, 74, 230, 0.55);
+
+  /* ── 구조 토큰(색 아님) ─────────────────────────────────────────────── */
+  --radius:    14px;
+  --radius-sm: 8px;
+  --content-width: 900px;
+
+  /* ── 레거시/별칭 — 코드가 참조하는 모든 변수를 의미 토큰으로 매핑 ──────── */
+  --ink:        var(--text);
+  --blue:       var(--accent);
+  --green:      var(--success);
+  --amber:      var(--warning);
+  --red:        var(--danger);
+  --pink:       var(--accent-pink);
+  --ok:         var(--success);
+  --warn:       var(--warning);
+  --err:        var(--danger);
+  --panel:      var(--surface);
+  --panel-2:    var(--surface-2);
+  --panel-3:    var(--surface-3);
+  --panel-strong: var(--surface);
+  --glow-green: 0 0 34px rgba(111, 66, 232, 0.14);
+  --glow-blue:  0 0 34px rgba(139, 108, 255, 0.14);
+  /* PPT reference 스킨 별칭 */
+  --ref-purple:   var(--accent);
+  --ref-purple-2: var(--accent-2);
+  --ref-indigo:   #2f73ff;
+  --ref-ink:      var(--text);
+  --ref-muted:    var(--muted);
+  --ref-faint:    var(--faint);
+  --ref-line:     var(--border);
+  --ref-soft:     var(--surface);
+  --ref-card:     var(--card);
+  --ref-shadow:   var(--shadow);
+
+  /* ── --lt-* 별칭 (workspace.css / platform.css 가 참조) — LIGHT ──────────
+     순환참조를 피하려 구체값으로 둔다(소비자가 --bg 등을 --lt-* 로 재정의해도 안전). */
+  --lt-bg:        #f3ecff;
+  --lt-surface:   #f6f0ff;
+  --lt-surface-2: #efe8ff;
+  --lt-ink:       #14162c;
+  --lt-ink-soft:  #4a4668;
+  --lt-muted:     #7a74a0;
+  --lt-line:      rgba(111, 66, 232, 0.14);
+  --lt-accent:    #6f42e8;
+  --lt-shadow-md: 0 18px 54px rgba(88, 72, 150, 0.15);
+
+  /* ── 모션 / 타이포 ─────────────────────────────────────────────────── */
+  --lt-motion-ease: cubic-bezier(0.22, 1, 0.36, 1);
 }
 
-/* ── Semantic aliases — DARK mode ──────────────────────────── */
-:root[data-lt-theme="dark"],
-.lt-theme-dark {
-  --lt-bg:        var(--lt-color-dark-0);
-  --lt-surface:   var(--lt-color-dark-50);
-  --lt-surface-2: var(--lt-color-dark-card);
-  --lt-ink:       #FFFFFF;
-  --lt-ink-soft:  var(--lt-color-ink-200);
+/* ╔════════════════════════════════════════════════════════════════════════╗
+   ║  SEMANTIC TOKENS — DARK (값만 교체, 같은 토큰명)                          ║
+   ╚════════════════════════════════════════════════════════════════════════╝ */
+:root[data-lt-theme="dark"] {
+  color-scheme: dark;
+
+  --bg:          #0B0B1E;
+  --bg-soft:     #0e0e26;
+  --surface:     #16163a;
+  --surface-2:   #1b1d42;
+  --surface-3:   #23264f;
+  --card:        rgba(255, 255, 255, 0.05);
+  --sidebar:     rgba(18, 18, 46, 0.96);
+  --modal:       rgba(22, 22, 58, 0.98);
+  --table:       rgba(255, 255, 255, 0.04);
+  --input:       rgba(255, 255, 255, 0.06);
+  --overlay:     rgba(0, 0, 0, 0.58);
+  --app-bg:
+    radial-gradient(circle at 82% 12%, rgba(110, 74, 230, 0.22), transparent 32%),
+    radial-gradient(circle at 10% 80%, rgba(24, 198, 217, 0.10), transparent 38%),
+    linear-gradient(180deg, #0B0B1E 0%, #0e0e24 52%, #0B0B1E 100%);
+
+  --text:        #F4F5FB;
+  --muted:       #C2C7DC;
+  --faint:       #8B92AC;
+
+  --border:        rgba(160, 170, 230, 0.20);
+  --border-strong: rgba(160, 170, 230, 0.32);
+  --line:          rgba(160, 170, 230, 0.16);
+  --line-strong:   rgba(160, 170, 230, 0.28);
+
+  --accent:       #A78BFA;
+  --accent-2:     #c4b5fd;
+  --accent-3:     #ddd6fe;
+  --accent-pink:  #e0b0ff;
+  --accent-soft:  rgba(167, 139, 250, 0.18);
+  --accent-deep:  #ddd6fe;
+
+  --success: #34d399;
+  --warning: #fbbf24;
+  --danger:  #F47171;
+
+  --graph-bg:   #0B0B1E;
+  --graph-grid: rgba(160, 170, 230, 0.08);
+  --graph-pill: rgba(24, 26, 53, 0.92);
+
+  --shadow:    0 18px 54px rgba(0, 0, 0, 0.50);
+  --shadow-sm: 0 8px 24px rgba(0, 0, 0, 0.42);
+
+  --focus-ring: rgba(167, 139, 250, 0.70);
+
+  --lt-bg:        #0B0B1E;
+  --lt-surface:   #16163a;
+  --lt-surface-2: #1b1d42;
+  --lt-ink:       #F4F5FB;
+  --lt-ink-soft:  #C2C7DC;
   --lt-muted:     #8B92AC;
-  --lt-line:      var(--lt-color-dark-line);
-  --lt-accent:    var(--lt-color-primary-400);
-  --lt-accent-deep:var(--lt-color-primary-200);
+  --lt-line:      rgba(160, 170, 230, 0.20);
+  --lt-accent:    #A78BFA;
+  --lt-shadow-md: 0 18px 54px rgba(0, 0, 0, 0.50);
+
+  --ref-indigo: #6f93ff;
+  --glow-green: 0 0 34px rgba(110, 74, 230, 0.22);
+  --glow-blue:  0 0 34px rgba(24, 198, 217, 0.18);
 }
 
-/* Auto dark mode (respects OS preference unless overridden) */
+/* OS 다크 추종 — 사용자가 명시적으로 라이트를 고르지 않은 경우에만 */
 @media (prefers-color-scheme: dark) {
-  :root:not([data-lt-theme="light"]) {
-    --lt-bg:        var(--lt-color-dark-0);
-    --lt-surface:   var(--lt-color-dark-50);
-    --lt-surface-2: var(--lt-color-dark-card);
-    --lt-ink:       #FFFFFF;
-    --lt-ink-soft:  var(--lt-color-ink-200);
-    --lt-muted:     #8B92AC;
-    --lt-line:      var(--lt-color-dark-line);
-    --lt-accent:    var(--lt-color-primary-400);
-    --lt-accent-deep:var(--lt-color-primary-200);
+  :root:not([data-lt-theme="light"]):not([data-lt-theme="dark"]) {
+    color-scheme: dark;
+    --bg: #0B0B1E; --bg-soft: #0e0e26;
+    --surface: #16163a; --surface-2: #1b1d42; --surface-3: #23264f;
+    --card: rgba(255,255,255,0.05); --sidebar: rgba(18,18,46,0.96);
+    --modal: rgba(22,22,58,0.98); --table: rgba(255,255,255,0.04);
+    --input: rgba(255,255,255,0.06); --overlay: rgba(0,0,0,0.58);
+    --app-bg:
+      radial-gradient(circle at 82% 12%, rgba(110,74,230,0.22), transparent 32%),
+      radial-gradient(circle at 10% 80%, rgba(24,198,217,0.10), transparent 38%),
+      linear-gradient(180deg, #0B0B1E 0%, #0e0e24 52%, #0B0B1E 100%);
+    --text: #F4F5FB; --muted: #C2C7DC; --faint: #8B92AC;
+    --border: rgba(160,170,230,0.20); --border-strong: rgba(160,170,230,0.32);
+    --line: rgba(160,170,230,0.16); --line-strong: rgba(160,170,230,0.28);
+    --accent: #A78BFA; --accent-2: #c4b5fd; --accent-3: #ddd6fe;
+    --accent-pink: #e0b0ff; --accent-soft: rgba(167,139,250,0.18); --accent-deep: #ddd6fe;
+    --success: #34d399; --warning: #fbbf24; --danger: #F47171;
+    --graph-bg: #0B0B1E; --graph-grid: rgba(160,170,230,0.08); --graph-pill: rgba(24,26,53,0.92);
+    --shadow: 0 18px 54px rgba(0,0,0,0.50); --shadow-sm: 0 8px 24px rgba(0,0,0,0.42);
+    --focus-ring: rgba(167,139,250,0.70);
+    --lt-bg: #0B0B1E; --lt-surface: #16163a; --lt-surface-2: #1b1d42;
+    --lt-ink: #F4F5FB; --lt-ink-soft: #C2C7DC; --lt-muted: #8B92AC;
+    --lt-line: rgba(160,170,230,0.20); --lt-accent: #A78BFA;
+    --lt-shadow-md: 0 18px 54px rgba(0,0,0,0.50);
   }
 }
 
-/* ============================================================
- * Backward-compat aliases for legacy --bg / --text / --accent.
- * 기존 HTML 들이 자체 :root 를 가지고 있어도, 이 파일을 import 한
- * 뒤 자체 :root 의 값을 지우면 자연히 토큰을 따라간다.
- * ============================================================ */
-:root {
-  --bg:           var(--lt-bg);
-  --surface:      var(--lt-surface);
-  --surface-2:    var(--lt-surface-2);
-  --text:         var(--lt-ink);
-  --muted:        var(--lt-ink-soft);
-  --faint:        var(--lt-muted);
-  --border:       var(--lt-line);
-  --accent:       var(--lt-accent);
-  --accent-2:     var(--lt-color-accent-amber);
-  --accent-3:     var(--lt-color-accent-cyan);
-  --accent-pink:  var(--lt-color-accent-pink);
-  --danger:       var(--lt-color-danger);
-  --radius:       var(--lt-radius-lg);
-  --radius-sm:    var(--lt-radius-sm);
-}
-
-/* ── Global polish ─────────────────────────────────────────── */
-::selection {
-  background: rgba(110, 74, 230, 0.18);
-  color: var(--lt-color-ink-900);
-}
+/* ── 전역 폴리시 ───────────────────────────────────────────────────────── */
+::selection { background: var(--accent-soft); color: var(--text); }
 
 :focus-visible {
-  outline: 2px solid rgba(110, 74, 230, 0.40);
+  outline: 2px solid var(--focus-ring);
   outline-offset: 2px;
 }
 
-::-webkit-scrollbar {
-  width: 6px;
-  height: 6px;
-}
-::-webkit-scrollbar-track {
-  background: transparent;
-}
-::-webkit-scrollbar-thumb {
-  background: rgba(110, 74, 230, 0.16);
-  border-radius: 99px;
-}
-::-webkit-scrollbar-thumb:hover {
-  background: rgba(110, 74, 230, 0.28);
-}
+::-webkit-scrollbar { width: 6px; height: 6px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb { background: var(--accent-soft); border-radius: 99px; }
+::-webkit-scrollbar-thumb:hover { background: var(--border-strong); }
 
-/* ── Reduced motion (a11y) ─────────────────────────────────── */
 @media (prefers-reduced-motion: reduce) {
-  :root {
-    --lt-motion-fast:   1ms;
-    --lt-motion-normal: 1ms;
-    --lt-motion-slow:   1ms;
+  *, *::before, *::after {
+    animation-duration: 0.001ms;
+    animation-iteration-count: 1;
+    transition-duration: 0.001ms;
+    scroll-behavior: auto;
   }
 }

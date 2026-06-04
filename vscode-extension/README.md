@@ -1,6 +1,6 @@
 # Lattice AI — VS Code Extension
 
-**AI Knowledge OS coding assistant** — Knowledge Graph · multimodal files · source-disclosed models · zero telemetry
+**Local-first AI workspace coding assistant** — Knowledge Graph · multimodal files · source-disclosed models · zero telemetry
 
 [![VS Code Marketplace](https://img.shields.io/badge/VS%20Code%20Marketplace-Install-blue?logo=visualstudiocode)](https://marketplace.visualstudio.com/items?itemName=parktaesoo.ltcai)
 [![Open VSX](https://img.shields.io/open-vsx/v/parktaesoo/ltcai?label=Open%20VSX)](https://open-vsx.org/extension/parktaesoo/ltcai)
