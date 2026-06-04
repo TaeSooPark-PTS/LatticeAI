@@ -467,7 +467,17 @@ Knowledge Graph v2 read/write cutover. 자세한 내용은
    - `vscode-extension/package.json`
 2. 루트에서 빌드/기본 검증
    - `npm run check:python`
-   - `npm run build:python`
+   - `npm run release:artifacts`
+   - `npm run release:validate`
+
+현재 `v2.2.1` 기준 필수 산출물:
+
+```text
+dist/ltcai-2.2.1-py3-none-any.whl
+dist/ltcai-2.2.1.tar.gz
+dist/ltcai-2.2.1.vsix
+ltcai-2.2.1.tgz
+```
 
 ## 2) npm 배포
 
@@ -475,6 +485,12 @@ Knowledge Graph v2 read/write cutover. 자세한 내용은
    - `npm login`
 2. 배포
    - `npm run publish:npm`
+   - 직접 실행 시:
+     ```
+     VERSION=$(node -e "console.log(require('./package.json').version)")
+     npm pack
+     npm publish "ltcai-${VERSION}.tgz" --access public
+     ```
 
 ## 3) PyPI 배포
 
@@ -512,14 +528,14 @@ Knowledge Graph v2 read/write cutover. 자세한 내용은
    - 직접 실행 시 (`VERSION`을 실제 버전으로 치환):
      ```
      VERSION=$(node -e "console.log(require('./package.json').version)")
-     npx vsce publish --packagePath "dist/ltcai-${VERSION}.vsix"
+     npx vsce publish --packagePath "../dist/ltcai-${VERSION}.vsix"
      ```
 4. Open VSX 배포 (Cursor/일부 포크 호환)
    - `npm run publish:openvsx`  ← 권장 (`$npm_package_version` 자동 사용)
    - 직접 실행 시:
      ```
      VERSION=$(node -e "console.log(require('./package.json').version)")
-     npx ovsx publish "dist/ltcai-${VERSION}.vsix"
+     npx ovsx publish "../dist/ltcai-${VERSION}.vsix"
      ```
 5. 로컬 설치 (VS Code/Cursor/Antigravity)
    - `npm run install:all`

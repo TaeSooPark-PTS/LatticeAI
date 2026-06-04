@@ -29,11 +29,13 @@
     "capture:skills": "node scripts/capture/capture_skills.js",
     "capture:enterprise": "node scripts/capture/capture_enterprise.js",
     "capture:onboarding": "node scripts/capture/capture_onboarding.js",
-    "publish:npm": "npm publish --access public",
-    "publish:pypi": "python3 -m twine upload --skip-existing dist/ltcai-$npm_package_version.tar.gz dist/ltcai-$npm_package_version-py3-none-any.whl",
-    "publish:vscode": "cd vscode-extension && npm run publish:vscode",
-    "publish:openvsx": "cd vscode-extension && npm run publish:openvsx",
-    "publish:all": "npm run publish:npm && npm run publish:pypi && npm run publish:vscode && npm run publish:openvsx"
+    "release:artifacts": "npm run build:python && npm pack && cd vscode-extension && npm run package:vsix",
+    "release:validate": "python3 scripts/validate_release_artifacts.py $npm_package_version --require-vsix --require-tgz",
+    "publish:npm": "npm pack && npm publish ltcai-$npm_package_version.tgz --access public",
+    "publish:pypi": "npm run build:python && python3 -m twine upload --skip-existing dist/ltcai-$npm_package_version.tar.gz dist/ltcai-$npm_package_version-py3-none-any.whl",
+    "publish:vscode": "cd vscode-extension && npm run package:vsix && npm run publish:vscode",
+    "publish:openvsx": "cd vscode-extension && npm run package:vsix && npm run publish:openvsx",
+    "publish:all": "npm run release:artifacts && npm run release:validate && npm publish ltcai-$npm_package_version.tgz --access public && python3 -m twine upload --skip-existing dist/ltcai-$npm_package_version.tar.gz dist/ltcai-$npm_package_version-py3-none-any.whl && cd vscode-extension && npm run publish:vscode && npm run publish:openvsx"
   },
   "keywords": [
     "ltcai",

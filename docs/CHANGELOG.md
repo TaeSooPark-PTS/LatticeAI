@@ -1,5 +1,43 @@
 # Changelog
 
+## [2.2.1] - 2026-06-04
+
+> Frontend / UX Overhaul Release — Lattice AI keeps feature behavior stable
+> while improving responsive layout, theme handling, accessibility, graph UX,
+> admin tables, file attachment, and release packaging readiness.
+
+### Added
+
+- **Light/dark mode** — OS detection, manual theme toggle, and persisted theme
+  state.
+- **File attachment UX** — drag-and-drop and screenshot paste support for
+  attachments.
+- **Knowledge Graph controls** — zoom buttons, fullscreen, minimap,
+  relationship filter, mobile graph/card view, and theme-aware palette.
+
+### Changed
+
+- **Responsive UI** — phone/tablet/laptop/desktop/ultrawide/4K layouts now use
+  mobile-first reflow. Content is not hidden on smaller screens.
+- **Design tokens** — `static/css/tokens.css` is the single source of truth for
+  UI tokens, and theme styling no longer depends on `!important`.
+- **Accessibility** — 44px touch targets, `:focus-visible` focus rings,
+  keyboard-safe chat composer behavior, iOS no-zoom inputs, and reduced-motion
+  support.
+- **Admin UX** — wide admin tables reflow to mobile cards with larger touch
+  targets and light/dark support.
+- **Model cards** — country, company, run mode, and internet usage are shown in
+  plain language.
+- **Manual release scripts** — local publish scripts now build exact-version
+  artifacts before upload and validate the same artifact set used by CI.
+
+### Validation
+
+- Unit/integration suites, Python build, npm pack, VSIX package, and
+  exact-version release artifact validation are the release targets.
+- Package-store publishing remains manual and must use the exact 2.2.1
+  filenames.
+
 ## [2.2.0] - 2026-06-04
 
 > Multimodal-First Knowledge OS Release — Lattice AI is aligned around the

@@ -12,9 +12,10 @@ Connects to a running [Lattice AI](https://github.com/TaeSooPark-PTS/LatticeAI) 
 
 ## Current Release
 
-**2.2.0 — Multimodal-First Knowledge OS Release.** The server now centers
-multimodal file ingestion, source-disclosed model selection, Gemma-4-first local
-recommendations, and Knowledge Graph workflows. The extension command surface
+**2.2.1 — Frontend & UX Overhaul Release.** The workspace now has mobile-first
+responsive layouts, light/dark theme persistence, stronger accessibility
+defaults, improved Knowledge Graph controls, better admin table reflow, and
+drag-and-drop / screenshot-paste file attachment. The extension command surface
 remains backward compatible; `Send To Lattice` continues to feed Workspace OS
 and graph workflows.
 
