@@ -318,7 +318,7 @@ h2 {
 
 .list-item {
   border: 1px solid var(--line);
-  background: #fbfcfe;
+  background: var(--surface-2);
   border-radius: 8px;
   padding: 12px;
   display: grid;
@@ -355,8 +355,9 @@ h2 {
 .tag {
   font-size: 11px;
   font-weight: 800;
-  color: #344054;
-  background: #edf2f7;
+  color: var(--ink);
+  background: var(--surface-2);
+  border: 1px solid var(--line);
   border-radius: 999px;
   padding: 3px 8px;
 }
@@ -598,10 +599,10 @@ textarea {
 .quickswitch-row { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 14px; }
 .switch-chip {
   display: inline-flex; align-items: center; gap: 6px;
-  border: 1px solid var(--line); background: #fbfcfe; color: var(--ink);
+  border: 1px solid var(--line); background: var(--surface-2); color: var(--ink);
   border-radius: 999px; padding: 6px 12px; font-weight: 700; font-size: 13px; cursor: pointer;
 }
-.switch-chip.active { border-color: var(--blue); background: #eef2ff; color: var(--blue); }
+.switch-chip.active { border-color: var(--blue); background: var(--accent-soft, #eef2ff); color: var(--blue); }
 
 /* Entity explorer */
 .entity-card { text-align: left; cursor: pointer; width: 100%; font: inherit; }
@@ -616,10 +617,10 @@ textarea {
 /* Skill marketplace tabs */
 .tab-bar { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 12px; }
 .tab {
-  border: 1px solid var(--line); background: #fbfcfe; color: var(--muted);
+  border: 1px solid var(--line); background: var(--surface-2); color: var(--muted);
   border-radius: 999px; padding: 6px 14px; font-weight: 700; font-size: 13px; cursor: pointer;
 }
-.tab.active { border-color: var(--blue); background: #eef2ff; color: var(--blue); }
+.tab.active { border-color: var(--blue); background: var(--accent-soft, #eef2ff); color: var(--blue); }
 .tab-count {
   display: inline-block; min-width: 16px; padding: 0 5px; margin-left: 4px;
   border-radius: 999px; background: var(--red); color: #fff; font-size: 11px;
@@ -634,7 +635,7 @@ textarea {
 }
 .capability-card {
   display: flex; align-items: center; gap: 10px;
-  border: 1px solid var(--line); border-radius: 8px; padding: 10px 12px; background: #fbfcfe;
+  border: 1px solid var(--line); border-radius: 8px; padding: 10px 12px; background: var(--surface-2);
 }
 .capability-card i { font-size: 18px; }
 .capability-card.off i { color: var(--muted); }
@@ -651,7 +652,7 @@ textarea {
   min-width: 0;
   border: 1px solid var(--line);
   border-radius: 8px;
-  background: #fbfcfe;
+  background: var(--surface-2);
   padding: 14px;
   display: grid;
   gap: 7px;
@@ -692,7 +693,7 @@ textarea {
 .skill-progress-track {
   height: 7px;
   border-radius: 999px;
-  background: #e5eaf2;
+  background: var(--surface-3, var(--surface-2));
   overflow: hidden;
 }
 .skill-progress-track span {
@@ -725,4 +726,58 @@ textarea {
   .icon-action { min-width: 44px; min-height: 44px; }
   .small-action { min-height: 44px; }
   .workspace-rail a { min-height: 44px; display: flex; align-items: center; }
+}
+
+:root[data-lt-theme="dark"] main {
+  background:
+    radial-gradient(circle at 80% 14%, rgba(167, 139, 250, 0.12), transparent 30%),
+    linear-gradient(180deg, var(--bg) 0%, #10122c 100%);
+}
+
+:root[data-lt-theme="dark"] .workspace-band,
+:root[data-lt-theme="dark"] .workspace-panel,
+:root[data-lt-theme="dark"] .metric-card {
+  background: rgba(22, 22, 58, 0.92);
+  border-color: rgba(160, 170, 230, 0.22);
+  box-shadow: 0 18px 44px rgba(0, 0, 0, 0.38);
+}
+
+:root[data-lt-theme="dark"] input,
+:root[data-lt-theme="dark"] select,
+:root[data-lt-theme="dark"] textarea,
+:root[data-lt-theme="dark"] .list-item,
+:root[data-lt-theme="dark"] .health-card,
+:root[data-lt-theme="dark"] .capability-card,
+:root[data-lt-theme="dark"] .switch-chip,
+:root[data-lt-theme="dark"] .tab,
+:root[data-lt-theme="dark"] .tag {
+  background: rgba(255, 255, 255, 0.06);
+  border-color: rgba(160, 170, 230, 0.22);
+  color: var(--ink);
+}
+
+:root[data-lt-theme="dark"] input::placeholder,
+:root[data-lt-theme="dark"] textarea::placeholder {
+  color: rgba(226, 232, 255, 0.48);
+}
+
+:root[data-lt-theme="dark"] .status-pill,
+:root[data-lt-theme="dark"] .workspace-role-pill {
+  background: rgba(255, 255, 255, 0.10);
+  color: var(--blue);
+}
+
+:root[data-lt-theme="dark"] .status-complete {
+  background: rgba(52, 211, 153, 0.16);
+  color: #86efac;
+}
+
+:root[data-lt-theme="dark"] .status-running {
+  background: rgba(251, 191, 36, 0.16);
+  color: #fbbf24;
+}
+
+:root[data-lt-theme="dark"] .status-failed {
+  background: rgba(244, 113, 113, 0.16);
+  color: #fca5a5;
 }

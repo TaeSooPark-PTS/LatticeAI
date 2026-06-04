@@ -1,5 +1,41 @@
 # Changelog
 
+## [2.2.7] - 2026-06-05
+
+> Visual Stabilization Release — browser-rendered screens were reviewed and
+> polished until Chat, onboarding, graph, Workspace OS, and operational panels
+> felt like one product.
+
+### Fixed
+
+- **Chat composer haze** — removed the dark-mode white/milky bottom composer
+  effect and the legacy inner textarea border; the shell now owns the focus
+  state and the attachment/send controls stay readable.
+- **Knowledge Graph canvas** — replaced the washed-out light graph work surface
+  with an intentional dark canvas treatment.
+- **Workspace OS dark surfaces** — relationship/list cards, inputs, tags,
+  health cards, and capability cards no longer fall back to hardcoded white.
+- **Onboarding/modals** — workspace select, PC environment analysis,
+  recommendation result, auto setup, mode select, pipeline, My Computer,
+  profile, settings, Private VPC, and model-state panels now share the same
+  dark panel language.
+- **Account dark contrast** — account/register logo text, inputs, and window
+  controls remain readable in dark mode.
+
+### Changed
+
+- **Cache-busting** — all versioned frontend assets now use `?v=2.2.7`,
+  including `/static/scripts/chat.js?v=2.2.7`.
+- **Version sync** — Python package, npm package, VS Code extension, Workspace
+  OS, lockfiles, and runtime metadata aligned at `2.2.7`.
+
+### Validation
+
+- Release target includes Python compile/pytest, npm lint/typecheck/test/build,
+  Python build + twine check, npm pack, VSIX package, and Playwright visual QA.
+- Package-store publishing remains manual; release artifacts are version-scoped
+  and must use exact `2.2.7` filenames.
+
 ## [2.2.5] - 2026-06-04
 
 > Release Hygiene Hotfix — dark-mode overlay clarity, modal state protection,

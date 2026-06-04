@@ -52,6 +52,59 @@
       background-position: 10px 10px, 0 0, 0 0;
     }
 
+    body.lattice-ref-graph .stage {
+      background:
+        radial-gradient(circle, var(--graph-grid) 1px, transparent 1.9px),
+        linear-gradient(116deg, transparent 0 43%, rgba(111,66,232,0.05) 43.1%, transparent 43.28% 100%),
+        linear-gradient(180deg, var(--graph-bg) 0%, var(--surface) 100%);
+      background-size: 32px 32px, 100% 100%, 100% 100%;
+      background-position: 10px 10px, 0 0, 0 0;
+    }
+
+    :root[data-lt-theme="dark"] body.lattice-ref-graph {
+      background: var(--bg);
+    }
+
+    :root[data-lt-theme="dark"] body.lattice-ref-graph .app,
+    :root[data-lt-theme="dark"] body.lattice-ref-graph .app > aside:not(.reference-rail) {
+      background: var(--bg);
+    }
+
+    :root[data-lt-theme="dark"] body.lattice-ref-graph .stage {
+      background:
+        radial-gradient(circle, rgba(160, 170, 230, 0.11) 1px, transparent 1.9px),
+        linear-gradient(116deg, transparent 0 43%, rgba(167,139,250,0.08) 43.1%, transparent 43.28% 100%),
+        radial-gradient(circle at 72% 18%, rgba(34, 211, 238, 0.08), transparent 28%),
+        linear-gradient(180deg, #0b0b1e 0%, #10122c 100%);
+      border-color: rgba(160, 170, 230, 0.20);
+      box-shadow: inset 0 0 0 1px rgba(167, 139, 250, 0.05), 0 18px 52px rgba(0, 0, 0, 0.40);
+    }
+
+    :root[data-lt-theme="dark"] body.lattice-ref-graph .stage::before {
+      color: var(--text);
+    }
+
+    :root[data-lt-theme="dark"] body.lattice-ref-graph .search-shell,
+    :root[data-lt-theme="dark"] body.lattice-ref-graph .toolbar,
+    :root[data-lt-theme="dark"] body.lattice-ref-graph .graph-minimap,
+    :root[data-lt-theme="dark"] body.lattice-ref-graph .detail-wrap {
+      background: rgba(22, 22, 58, 0.96);
+      border-color: rgba(160, 170, 230, 0.22);
+      box-shadow: 0 18px 46px rgba(0, 0, 0, 0.46);
+    }
+
+    :root[data-lt-theme="dark"] body.lattice-ref-graph .search-input,
+    :root[data-lt-theme="dark"] body.lattice-ref-graph .local-source-input input {
+      background: rgba(255, 255, 255, 0.06);
+      border-color: rgba(160, 170, 230, 0.22);
+      color: var(--text);
+    }
+
+    :root[data-lt-theme="dark"] body.lattice-ref-graph .search-input::placeholder,
+    :root[data-lt-theme="dark"] body.lattice-ref-graph .local-source-input input::placeholder {
+      color: rgba(226, 232, 255, 0.48);
+    }
+
     canvas {
       display: block;
       width: 100%;
@@ -961,4 +1014,3 @@
         right: 16px;
       }
     }
-

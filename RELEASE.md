@@ -9,6 +9,32 @@
 > (`PYPI_TOKEN`, `NPM_TOKEN`, `VSCE_TOKEN`, `OVSX_TOKEN`)가 설정된 경우에만
 > 실행됩니다. 필요한 경우 아래 수동 절차로 로컬에서도 진행할 수 있습니다.
 
+## v2.2.7 릴리스 노트 (2026-06-05)
+
+Visual System Stabilization — 실제 브라우저 화면 기준으로 Home, Chat,
+Workspace Select, Onboarding, PC Environment Analysis, Recommendation Result,
+Auto Setup, Mode Select, Knowledge Graph, Pipeline, My Computer, Admin/Profile/
+Settings/VPC/Model State 계열 화면을 재검토하고 다크/라이트 시각 언어를 정리한다.
+기능 추가 없음. 패키지 스토어 publish 는 수동 절차로만.
+
+- **Fixed (Chat composer)**: 하단 입력 컨테이너/textarea/첨부/전송 버튼의
+  흰 haze와 legacy inner border를 제거하고, outer composer shell 중심의 선명한
+  다크 포커스 상태로 통일.
+- **Fixed (Knowledge Graph)**: 다크모드에서 그래프 캔버스가 밝은 사각형으로
+  떠 보이던 문제를 `--graph-bg` 기반 작업면으로 정리.
+- **Fixed (Workspace OS)**: 관계 카드, 리스트, 입력, 태그, health/capability 카드가
+  다크모드에서 흰색 표면으로 회귀하지 않도록 토큰화.
+- **Fixed (Onboarding / modals)**: Workspace Select, 환경 분석, 추천 결과, 자동 설정,
+  모드 선택, Pipeline, My Computer, Profile, Settings, Private VPC, Model State,
+  Model Switcher를 같은 panel/modal 언어로 정리.
+- **Fixed (Account contrast)**: 로그인/회원가입 카드의 제목, 입력, 창 컨트롤이
+  다크모드에서 읽히도록 보정.
+- **Changed (Cache-busting)**: 정적 자산 쿼리 스트링을 `?v=2.2.7` 로 갱신.
+- **Added (Tests)**: `tests/visual/v227.spec.js` — Chat composer, 모바일 composer,
+  Knowledge Graph canvas, Workspace OS dark inputs/cards 회귀 방지.
+- **Validation target**: Python compile/pytest, npm lint/typecheck/test/build,
+  Python build + twine check, npm pack, VSIX package, Playwright visual suite.
+
 ## v2.2.5 릴리스 노트 (2026-06-04)
 
 Release Hygiene Hotfix — v2.2.4 이후 남아 있던 다크모드 foggy/washed-out
@@ -581,13 +607,13 @@ Knowledge Graph v2 read/write cutover. 자세한 내용은
    - `npm run release:artifacts`
    - `npm run release:validate`
 
-현재 `v2.2.5` 기준 필수 산출물:
+현재 `v2.2.7` 기준 필수 산출물:
 
 ```text
-dist/ltcai-2.2.5-py3-none-any.whl
-dist/ltcai-2.2.5.tar.gz
-dist/ltcai-2.2.5.vsix
-ltcai-2.2.5.tgz
+dist/ltcai-2.2.7-py3-none-any.whl
+dist/ltcai-2.2.7.tar.gz
+dist/ltcai-2.2.7.vsix
+ltcai-2.2.7.tgz
 ```
 
 ## 2) npm 배포

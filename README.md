@@ -15,7 +15,7 @@
 [![npm version](https://img.shields.io/npm/v/ltcai?label=npm)](https://www.npmjs.com/package/ltcai)
 [![VS Code Marketplace](https://vsmarketplacebadges.dev/version-short/parktaesoo.ltcai.svg)](https://marketplace.visualstudio.com/items?itemName=parktaesoo.ltcai)
 [![Open VSX](https://img.shields.io/open-vsx/v/parktaesoo/ltcai?label=Open%20VSX)](https://open-vsx.org/extension/parktaesoo/ltcai)
-[![GitHub release](https://img.shields.io/github/v/release/TaeSooPark-PTS/LatticeAI?label=GitHub%20release)](https://github.com/TaeSooPark-PTS/LatticeAI/releases/tag/v2.2.5)
+[![GitHub release](https://img.shields.io/github/v/release/TaeSooPark-PTS/LatticeAI?label=GitHub%20release)](https://github.com/TaeSooPark-PTS/LatticeAI/releases/tag/v2.2.7)
 [![License: MIT](https://img.shields.io/badge/license-MIT-green)](LICENSE)
 [![Python 3.11+](https://img.shields.io/badge/python-3.11%2B-blue)](https://www.python.org/)
 [![VS Code extension](https://img.shields.io/badge/VS%20Code-extension-blue?logo=visualstudiocode)](https://marketplace.visualstudio.com/items?itemName=parktaesoo.ltcai)
@@ -48,7 +48,7 @@ Install the coding extension:
 
 - [VS Code Marketplace: parktaesoo.ltcai](https://marketplace.visualstudio.com/items?itemName=parktaesoo.ltcai)
 - [Open VSX: parktaesoo.ltcai](https://open-vsx.org/extension/parktaesoo/ltcai)
-- [GitHub Release v2.2.5](https://github.com/TaeSooPark-PTS/LatticeAI/releases/tag/v2.2.5)
+- [GitHub Release v2.2.7](https://github.com/TaeSooPark-PTS/LatticeAI/releases/tag/v2.2.7)
 
 ## Quick Start
 
@@ -114,20 +114,23 @@ and disconnected automations. Lattice AI keeps those parts together:
 - multi-agent workflows leave behind replayable plans, reviews, retries, and
   outcomes.
 
-## v2.2.5 Hotfix Highlights
+## v2.2.7 Visual Stabilization Highlights
 
-A no-features release-prep hotfix that finishes dark-mode, overlay, cache,
-favicon, and Telegram logging hygiene while keeping the design-token structure
-intact.
+Lattice AI v2.2.7 is a visual stabilization release driven by rendered browser
+screens, not stylesheet cleanup alone. It keeps the existing design-token
+structure while making the app feel like one cohesive product.
 
-- Dark-mode overlays now use `--overlay-scrim` and modal/surface tokens instead
-  of translucent light backdrops or blur-heavy full-screen layers.
-- Chat modal behavior is centralized: one blocking modal at a time, Escape and
-  backdrop close, stale overlays cleared on navigation, and body scroll restored.
-- Static frontend asset cache-busting is normalized to `?v=2.2.5`, including
-  `/static/scripts/chat.js?v=2.2.5`.
-- `/favicon.ico` is served from the packaged static assets.
-- Telegram bot tokens are masked before exception, HTTP, and response logging.
+- The dark chat composer is now an intentional dark surface with a crisp outer
+  focus state, no white haze, and no legacy inner textarea box.
+- Knowledge Graph canvas and Workspace OS panels no longer fall back to
+  washed-out light surfaces in dark mode.
+- Workspace select, onboarding, recommendation, auto setup, mode select,
+  pipeline, My Computer, profile, settings, VPC, and model-state surfaces use a
+  shared modal/panel language.
+- Static frontend asset cache-busting is normalized to `?v=2.2.7`, including
+  `/static/scripts/chat.js?v=2.2.7`.
+- Playwright visual coverage now locks the v2.2.7 composer, graph canvas,
+  Workspace OS dark inputs/cards, and mobile composer behavior.
 
 Carried forward from v2.2.x: mobile-first responsive layout, design-token
 light/dark themes, keyboard-safe chat composer, Knowledge Graph responsive UX,
@@ -227,7 +230,9 @@ Core areas:
 
 | Version | Theme |
 | --- | --- |
-| **2.2.5** | Release hygiene hotfix — dark overlays, modal stack, cache-busting, favicon, and Telegram log masking |
+| **2.2.7** | Visual system stabilization — cohesive dark/light screens, crisp chat composer, dark graph canvas, Workspace OS polish |
+| 2.2.6 | Token-native CSS foundation |
+| 2.2.5 | Release hygiene hotfix — dark overlays, modal stack, cache-busting, favicon, and Telegram log masking |
 | 2.2.4 | Chat dark-mode completion |
 | 2.2.3 | Frontend stability and UX fixes |
 | 2.2.2 | Frontend QA stabilization — mobile nav, admin actions, overflow fixes, and expanded visual tests |

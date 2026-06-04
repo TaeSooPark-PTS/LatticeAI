@@ -2,6 +2,29 @@
 
 The detailed historical changelog lives in [docs/CHANGELOG.md](docs/CHANGELOG.md).
 
+## [2.2.7] - 2026-06-05
+
+Visual system stabilization. The rendered browser UI was reviewed screen by
+screen and tightened so dark mode, light mode, modals, drawers, graph canvas,
+Workspace OS, and Chat feel like one finished product.
+
+- **Chat composer stabilized** — the bottom composer now renders as a crisp dark
+  surface with a dark input shell, clear attachment/send controls, and no white
+  haze or legacy inner textarea border.
+- **Graph and Workspace surfaces corrected** — Knowledge Graph canvas uses the
+  dark graph work-surface token, and Workspace OS list/input/card surfaces no
+  longer revert to hardcoded white in dark mode.
+- **Onboarding and modal language unified** — workspace select, onboarding,
+  recommendation, auto setup, mode select, pipeline, My Computer, profile,
+  settings, Private VPC, and model-state panels use the same dark modal/panel
+  treatment.
+- **Auth contrast sharpened** — account/register titles and inputs retain
+  readable contrast in dark mode without glass haze.
+- **Visual regression coverage** — added `tests/visual/v227.spec.js` to lock the
+  composer, mobile composer, graph canvas, and Workspace OS dark surfaces.
+- **Release sync** — package/runtime metadata and frontend cache-busting are
+  aligned at `2.2.7`.
+
 ## [2.2.6] - 2026-06-05
 
 Token-native CSS foundation. Eliminates the root cause of foggy/washed-out dark

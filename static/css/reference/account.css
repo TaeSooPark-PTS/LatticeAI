@@ -293,3 +293,11 @@
             .brand-preview { display: none; }
         }
 
+:root[data-lt-theme="dark"] body.lattice-ref-auth .title,
+:root[data-lt-theme="dark"] body.lattice-ref-auth #register-section .title {
+    background: none;
+    -webkit-background-clip: border-box;
+    background-clip: border-box;
+    -webkit-text-fill-color: currentColor;
+    color: var(--text);
+}

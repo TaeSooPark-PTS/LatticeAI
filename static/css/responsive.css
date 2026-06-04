@@ -768,6 +768,21 @@ textarea::placeholder {
   color: var(--faint);
 }
 
+body.lattice-ref-chat .app-layout #user-input {
+  background: transparent;
+  border: 0;
+  box-shadow: none;
+  outline: none;
+  color: var(--text);
+}
+
+body.lattice-ref-chat .app-layout #user-input:focus {
+  background: transparent;
+  border: 0;
+  box-shadow: none;
+  outline: none;
+}
+
 #cu-panel .cu-controls-panel {
   width: 280px;
   max-width: 100%;

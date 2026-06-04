@@ -13,9 +13,9 @@ editor.
 
 ## Current Release
 
-**2.2.5 — Release Hygiene Hotfix.** The workspace tightens dark-mode overlays,
-modal stack handling, static cache-busting, favicon routing, and Telegram log
-redaction while preserving the local-first UX introduced across v2.2.x.
+**2.2.7 — Visual System Stabilization.** The workspace tightens the rendered UI
+across Chat, onboarding, Knowledge Graph, Workspace OS, and operational panels
+so dark mode feels intentional and the product reads as one cohesive system.
 
 ## Quick Start
 
@@ -97,7 +97,7 @@ Remote or tunnel server example:
 - [Project README](https://github.com/TaeSooPark-PTS/LatticeAI)
 - [PyPI](https://pypi.org/project/ltcai/)
 - [npm](https://www.npmjs.com/package/ltcai)
-- [GitHub Release v2.2.5](https://github.com/TaeSooPark-PTS/LatticeAI/releases/tag/v2.2.5)
+- [GitHub Release v2.2.7](https://github.com/TaeSooPark-PTS/LatticeAI/releases/tag/v2.2.7)
 - [Changelog](https://github.com/TaeSooPark-PTS/LatticeAI/blob/main/docs/CHANGELOG.md)
 - [Security Policy](https://github.com/TaeSooPark-PTS/LatticeAI/blob/main/SECURITY.md)
 

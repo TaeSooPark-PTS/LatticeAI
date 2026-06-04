@@ -1,5 +1,34 @@
 # Release Notes
 
+## v2.2.7 - Visual System Stabilization
+
+Lattice AI v2.2.7 stabilizes the rendered browser UI across the major product
+screens. The focus is visual completion: dark mode no longer looks foggy, Chat
+uses the same product language as the operational panels, and Workspace OS /
+Knowledge Graph no longer carry washed-out legacy surfaces.
+
+### Fixes
+
+- Chat composer, textarea, attachment controls, send button, and bottom dock now
+  render as a cohesive dark surface with no white haze.
+- Knowledge Graph dark canvas is a dark work surface instead of a light/milky
+  rectangle.
+- Workspace OS list/input/card surfaces use theme tokens in dark mode.
+- Workspace select, onboarding, environment analysis, recommendation result,
+  auto setup, mode select, pipeline, My Computer, profile, settings, Private
+  VPC, model state, and model switcher panels share a consistent modal/panel
+  treatment.
+- Account/register dark titles and inputs retain strong contrast.
+
+### Expected Artifacts
+
+```text
+dist/ltcai-2.2.7-py3-none-any.whl
+dist/ltcai-2.2.7.tar.gz
+dist/ltcai-2.2.7.vsix
+ltcai-2.2.7.tgz
+```
+
 ## v2.2.5 - Release Hygiene Hotfix
 
 Lattice AI v2.2.5 finishes the release-prep cleanup for dark-mode overlays,

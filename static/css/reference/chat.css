@@ -4494,3 +4494,136 @@
             font-size: 12px;
             font-weight: 650;
         }
+
+/* v2.2.7 visual stabilization: rendered dark mode must be crisp, not glassy. */
+:root[data-lt-theme="dark"] body.lattice-ref-chat .app-layout .input-area {
+    background:
+        linear-gradient(0deg,
+            rgba(11, 11, 30, 0.98) 0%,
+            rgba(11, 11, 30, 0.92) 58%,
+            rgba(11, 11, 30, 0.30) 82%,
+            transparent 100%);
+}
+
+:root[data-lt-theme="dark"] body.lattice-ref-chat .app-layout .input-box {
+    background: linear-gradient(180deg, rgba(33, 36, 78, 0.98), rgba(18, 20, 48, 0.98));
+    border-color: rgba(167, 139, 250, 0.30);
+    box-shadow: 0 18px 46px rgba(0, 0, 0, 0.56), 0 0 0 1px rgba(167, 139, 250, 0.07);
+}
+
+:root[data-lt-theme="dark"] body.lattice-ref-chat .app-layout .input-box:focus-within {
+    border-color: rgba(196, 181, 253, 0.56);
+    box-shadow: 0 20px 50px rgba(0, 0, 0, 0.62), 0 0 0 3px rgba(167, 139, 250, 0.18);
+}
+
+:root[data-lt-theme="dark"] body.lattice-ref-chat .app-layout textarea {
+    color: var(--text);
+}
+
+:root[data-lt-theme="dark"] body.lattice-ref-chat .app-layout textarea::placeholder {
+    color: rgba(226, 232, 255, 0.50);
+}
+
+:root[data-lt-theme="dark"] body.lattice-ref-chat .app-layout .action-btn {
+    color: rgba(226, 232, 255, 0.62);
+}
+
+:root[data-lt-theme="dark"] body.lattice-ref-chat .app-layout .action-btn:hover {
+    background: rgba(167, 139, 250, 0.14);
+    color: var(--accent-2);
+}
+
+:root[data-lt-theme="dark"] body.lattice-ref-chat .app-layout .file-toolbar {
+    border-top-color: rgba(167, 139, 250, 0.16);
+}
+
+:root[data-lt-theme="dark"] body.lattice-ref-chat .app-layout .send-btn,
+:root[data-lt-theme="dark"] body.lattice-ref-chat .app-layout .send-btn:hover {
+    background: linear-gradient(135deg, #8b5cf6, #22d3ee);
+    color: #ffffff;
+    box-shadow: 0 12px 28px rgba(34, 211, 238, 0.18), 0 10px 28px rgba(139, 92, 246, 0.28);
+    opacity: 1;
+}
+
+:root[data-lt-theme="dark"] body.lattice-ref-chat .app-layout .send-btn:hover {
+    transform: translateY(-1px);
+}
+
+:root[data-lt-theme="dark"] body.lattice-ref-chat .workspace-modal-overlay,
+:root[data-lt-theme="dark"] body.lattice-ref-chat .mode-modal-overlay,
+:root[data-lt-theme="dark"] body.lattice-ref-chat .model-overlay,
+:root[data-lt-theme="dark"] body.lattice-ref-chat .admin-overlay,
+:root[data-lt-theme="dark"] body.lattice-ref-chat .advanced-settings-overlay,
+:root[data-lt-theme="dark"] body.lattice-ref-chat .onboarding-overlay,
+:root[data-lt-theme="dark"] body.lattice-ref-chat #setup-overlay {
+    background: rgba(2, 4, 18, 0.74);
+    backdrop-filter: none;
+    -webkit-backdrop-filter: none;
+}
+
+:root[data-lt-theme="dark"] body.lattice-ref-chat .workspace-modal,
+:root[data-lt-theme="dark"] body.lattice-ref-chat .mode-modal,
+:root[data-lt-theme="dark"] body.lattice-ref-chat .onboarding-card,
+:root[data-lt-theme="dark"] body.lattice-ref-chat .wizard-card {
+    background: linear-gradient(180deg, rgba(25, 25, 62, 0.99), rgba(18, 19, 48, 0.99));
+    border-color: rgba(167, 139, 250, 0.24);
+    box-shadow: 0 30px 90px rgba(0, 0, 0, 0.60);
+}
+
+:root[data-lt-theme="dark"] body.lattice-ref-chat .workspace-card,
+:root[data-lt-theme="dark"] body.lattice-ref-chat .mode-card,
+:root[data-lt-theme="dark"] body.lattice-ref-chat .onboarding-choice,
+:root[data-lt-theme="dark"] body.lattice-ref-chat .onboarding-mode,
+:root[data-lt-theme="dark"] body.lattice-ref-chat .recommendation-card,
+:root[data-lt-theme="dark"] body.lattice-ref-chat .analysis-row,
+:root[data-lt-theme="dark"] body.lattice-ref-chat .scan-row,
+:root[data-lt-theme="dark"] body.lattice-ref-chat .rec-item,
+:root[data-lt-theme="dark"] body.lattice-ref-chat .install-row,
+:root[data-lt-theme="dark"] body.lattice-ref-chat .setup-log-row {
+    background: rgba(35, 38, 79, 0.78);
+    border-color: rgba(167, 139, 250, 0.20);
+    color: var(--text);
+}
+
+:root[data-lt-theme="dark"] body.lattice-ref-chat .rec-item.checked {
+    background: linear-gradient(135deg, rgba(52, 211, 153, 0.16), rgba(35, 38, 79, 0.86));
+    border-color: rgba(52, 211, 153, 0.52);
+}
+
+:root[data-lt-theme="dark"] body.lattice-ref-chat .onboarding-step {
+    color: rgba(226, 232, 255, 0.66);
+    border-top-color: rgba(167, 139, 250, 0.20);
+}
+
+:root[data-lt-theme="dark"] body.lattice-ref-chat .onboarding-step.active,
+:root[data-lt-theme="dark"] body.lattice-ref-chat .onboarding-step.done {
+    color: var(--accent-2);
+    border-top-color: var(--accent-2);
+}
+
+:root[data-lt-theme="dark"] body.lattice-ref-chat .wbtn-primary {
+    background: linear-gradient(135deg, #8b5cf6, #22d3ee);
+    color: #ffffff;
+}
+
+:root[data-lt-theme="dark"] body.lattice-ref-chat .wbtn-primary:hover {
+    background: linear-gradient(135deg, #7c3aed, #06b6d4);
+}
+
+:root[data-lt-theme="dark"] body.lattice-ref-chat .mode-close,
+:root[data-lt-theme="dark"] body.lattice-ref-chat .wizard-close {
+    background: rgba(255, 255, 255, 0.06);
+    border-color: rgba(167, 139, 250, 0.22);
+    color: var(--muted);
+}
+
+@media (max-width: 760px) {
+    :root[data-lt-theme="dark"] body.lattice-ref-chat .app-layout .input-area {
+        background:
+            linear-gradient(0deg,
+                rgba(11, 11, 30, 0.99) 0%,
+                rgba(11, 11, 30, 0.94) 64%,
+                rgba(11, 11, 30, 0.36) 86%,
+                transparent 100%);
+    }
+}
