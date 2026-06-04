@@ -217,6 +217,21 @@ select {
   overflow-y: auto;
 }
 
+/* #onboarding-body 는 .onboarding-card(flex column · overflow:hidden) 안의
+ * 스크롤 영역이다. lattice-reference.css 의 `.onboarding-body.lattice-ref-chat`
+ * 는 *복합* 선택자(두 클래스가 같은 엘리먼트)인데 lattice-ref-chat 는 <body> 에만
+ * 있고 .onboarding-body 엘리먼트에는 없어 영영 매치되지 않았다 → onboarding-body
+ * 에 overflow/padding 이 적용되지 않아 추천 결과 같은 긴 콘텐츠가 카드에 잘리고
+ * 모델 아코디언(Gemma 4·Qwen3-VL·Llama 4)과 하단 액션 버튼에 접근 불가.
+ * 올바른 단일 클래스 선택자로 스크롤 영역과 패딩을 복원한다(명시도 트릭 아님). */
+.onboarding-body {
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
+  padding: 28px 30px;
+}
+
 /* 드롭다운/팝오버: 뷰포트 안에 가둠 */
 .lang-picker-menu,
 .mcp-dropdown,
@@ -612,3 +627,173 @@ body.graph-card-view .stage > canvas#graph { visibility: hidden; }
   cursor: pointer;
 }
 .theme-toggle:hover { background: var(--accent-soft, rgba(110,74,230,0.1)); }
+
+/* ============================================================================
+ * 12. 로그인(account.html · body.lattice-ref-auth) 다크 테마
+ *
+ * 로그인 화면은 라이트 글래스 디자인으로 하드코딩돼 있었다: 카드/타이틀바/입력
+ * 필드/SSO 버튼 배경 = 흰색, 타이틀·서브타이틀·창 컨트롤 아이콘 = 어두운 색.
+ * 반면 입력 텍스트는 var(--ref-ink)=var(--text) 라 다크에서 거의 흰색으로 뒤집혀
+ * "흰 배경 위 흰 글자" 가 되어 이메일/비밀번호 입력 텍스트가 보이지 않았다(회귀).
+ *
+ * 아래는 data-lt-theme="dark" 로 스코프된 정식 다크 변형이다 — tokens.css 의 다크
+ * 팔레트를 사용하며, !important·임시 땜질·명시도 트릭이 아니라 테마 속성으로 스코프된
+ * 올바른 테마 분기다(tokens.css 가 :root[data-lt-theme="dark"] 로 스코프하는 방식과
+ * 동일). 라이트 테마 규칙은 전혀 건드리지 않는다.
+ * ========================================================================== */
+:root[data-lt-theme="dark"] .lattice-ref-auth {
+  background:
+    radial-gradient(circle at 74% 25%, rgba(167,139,250,0.16), transparent 18%),
+    radial-gradient(circle at 80% 58%, rgba(110,74,230,0.18), transparent 30%),
+    radial-gradient(circle at 15% 72%, rgba(24,198,217,0.10), transparent 36%),
+    linear-gradient(135deg, #0B0B1E 0%, #11122e 48%, #0B0B1E 100%);
+}
+
+:root[data-lt-theme="dark"] .lattice-ref-auth .card {
+  background: linear-gradient(180deg, rgba(28,30,68,0.92), rgba(20,21,52,0.90));
+  border-color: var(--border-strong);
+  box-shadow: 0 24px 70px rgba(0,0,0,0.55), inset 0 1px 0 rgba(255,255,255,0.06);
+}
+
+:root[data-lt-theme="dark"] .auth-titlebar {
+  background: rgba(16,16,40,0.62);
+  border-bottom-color: var(--border);
+  color: var(--text);
+}
+
+/* 창 컨트롤(―, □, ×) 아이콘: 어두운 #202033 → 밝게 */
+:root[data-lt-theme="dark"] .auth-window-controls span:nth-child(1)::before,
+:root[data-lt-theme="dark"] .auth-window-controls span:nth-child(2)::before,
+:root[data-lt-theme="dark"] .auth-window-controls span:nth-child(3)::before,
+:root[data-lt-theme="dark"] .auth-window-controls span:nth-child(3)::after {
+  background: var(--muted);
+  border-color: var(--muted);
+}
+
+/* 그라데이션 타이틀: 어두운 잉크(#10142b) → 밝은 잉크 */
+:root[data-lt-theme="dark"] .lattice-ref-auth .title {
+  background: linear-gradient(90deg, #F4F5FB 0 68%, var(--accent) 69% 100%);
+  -webkit-background-clip: text;
+  background-clip: text;
+}
+
+:root[data-lt-theme="dark"] .lattice-ref-auth .subtitle,
+:root[data-lt-theme="dark"] .lattice-ref-auth .subtitle::first-line {
+  color: var(--text);
+}
+
+/* 입력 필드: 흰색 배경 → 다크 입력 배경 (입력 텍스트는 var(--text) 라 이미 밝음) */
+:root[data-lt-theme="dark"] .auth-field {
+  background: var(--input);
+  border-color: var(--border);
+  color: var(--muted);
+}
+:root[data-lt-theme="dark"] .auth-field:focus-within {
+  border-color: var(--accent);
+  box-shadow: 0 0 0 3px var(--accent-soft), inset 0 1px 0 rgba(255,255,255,0.04);
+}
+:root[data-lt-theme="dark"] .field-eye { color: var(--muted); }
+
+/* SSO 버튼: 흰색 배경/어두운 글자 → 다크 표면/밝은 글자 */
+:root[data-lt-theme="dark"] .lattice-ref-auth .sso-btn {
+  background: var(--surface-2);
+  border-color: var(--border-strong);
+  color: var(--text);
+  box-shadow: 0 6px 16px rgba(0,0,0,0.40);
+}
+:root[data-lt-theme="dark"] .lattice-ref-auth .sso-divider { color: var(--faint); }
+:root[data-lt-theme="dark"] .lattice-ref-auth .sso-divider::before,
+:root[data-lt-theme="dark"] .lattice-ref-auth .sso-divider::after { background: var(--border); }
+
+/* 회원가입 입력 + CTA */
+:root[data-lt-theme="dark"] .lattice-ref-auth #register-section .input {
+  background: var(--input);
+  border-color: var(--border);
+  color: var(--text);
+}
+:root[data-lt-theme="dark"] .lattice-ref-auth .register-cta { background: var(--accent-soft); }
+
+/* 언어 선택 버튼/메뉴 */
+:root[data-lt-theme="dark"] .lattice-ref-auth .lang-btn {
+  background: var(--surface-2);
+  border-color: var(--border-strong);
+  color: var(--text);
+}
+:root[data-lt-theme="dark"] .lattice-ref-auth .lang-menu {
+  background: var(--surface);
+  border: 1px solid var(--border);
+}
+
+/* 푸터 링크 */
+:root[data-lt-theme="dark"] .auth-footer a,
+:root[data-lt-theme="dark"] .auth-footer button { color: var(--muted); }
+
+/* Chrome/Safari 자동완성(autofill): 브라우저가 강제하는 흰 배경/검은 글자를 다크로
+ * 보정. autofill 배경은 inset box-shadow 로만 덮을 수 있고 글자색은 text-fill-color 로
+ * 지정한다. 라이트 테마는 브라우저 기본 autofill(밝은 배경+어두운 글자)로 충분히 읽힘. */
+:root[data-lt-theme="dark"] .lattice-ref-auth input:-webkit-autofill,
+:root[data-lt-theme="dark"] .lattice-ref-auth input:-webkit-autofill:hover,
+:root[data-lt-theme="dark"] .lattice-ref-auth input:-webkit-autofill:focus {
+  -webkit-text-fill-color: var(--text);
+  caret-color: var(--text);
+  -webkit-box-shadow: 0 0 0 1000px var(--surface-2) inset;
+  transition: background-color 9999s ease-out 0s;
+}
+
+/* ============================================================================
+ * 13. 온보딩 / 추천 결과 오버레이(#onboarding-overlay) 다크 테마
+ *
+ * 온보딩 카드와 그 안의 카드(.recommendation-card·.onboarding-choice·
+ * .analysis-row·.onboarding-model-card/option·.onboarding-secondary)는 배경이
+ * 흰색(#fff/#fbfaff/라이트 그라데이션)으로 하드코딩됐는데 텍스트는 var(--text)/
+ * var(--muted) 라 다크에서 거의 흰색으로 뒤집힌다 → 추천 결과 화면 전체가
+ * "흰 카드 위 흰 글자" 로 안 보였다. 토큰 팔레트 기반 다크 표면으로 교체한다.
+ *
+ * 단, 온보딩 오버레이는 body.lattice-ref-chat 안에 있는데 그 body 가 색 토큰을
+ * 라이트 리터럴로 *재정의*(--surface-2:#f3f0ff, --text:#24223d …)해 :root 의 다크
+ * 토큰을 가린다. 그래서 오버레이(카드보다 가까운 조상)에서 토큰을 다크로 다시
+ * 가리켜(custom property 는 가장 가까운 조상값 사용) 오버레이 내부의 var(--text)/
+ * var(--surface-2)/var(--border) 등이 다크로 해석되게 한다. 범위가 오버레이로
+ * 한정되므로 채팅 본문 렌더링에는 영향이 없다. */
+:root[data-lt-theme="dark"] .onboarding-overlay {
+  --bg: #0B0B1E;
+  --surface: #16163a;
+  --surface-2: #1b1d42;
+  --surface-3: #23264f;
+  --text: #F4F5FB;
+  --muted: #C2C7DC;
+  --faint: #8B92AC;
+  --border: rgba(160, 170, 230, 0.20);
+  --border-strong: rgba(160, 170, 230, 0.32);
+  --accent: #A78BFA;
+  --accent-soft: rgba(167, 139, 250, 0.18);
+}
+
+:root[data-lt-theme="dark"] .onboarding-card {
+  background: linear-gradient(180deg, rgba(28,30,68,0.98), rgba(20,21,52,0.97));
+  border-color: var(--border-strong);
+}
+:root[data-lt-theme="dark"] .onboarding-top,
+:root[data-lt-theme="dark"] .onboarding-actions { border-color: var(--border); }
+:root[data-lt-theme="dark"] .onboarding-step { border-top-color: var(--border); }
+
+:root[data-lt-theme="dark"] .onboarding-choice,
+:root[data-lt-theme="dark"] .onboarding-mode,
+:root[data-lt-theme="dark"] .recommendation-card,
+:root[data-lt-theme="dark"] .analysis-row,
+:root[data-lt-theme="dark"] .onboarding-model-card {
+  background: var(--surface-2);
+  border-color: var(--border);
+}
+:root[data-lt-theme="dark"] .onboarding-model-option {
+  background: var(--surface-3);
+  border-color: var(--border);
+}
+:root[data-lt-theme="dark"] .onboarding-secondary {
+  background: var(--surface-2);
+  border-color: var(--border);
+  color: var(--text);
+}
+:root[data-lt-theme="dark"] .onboarding-choice:hover,
+:root[data-lt-theme="dark"] .onboarding-mode:hover,
+:root[data-lt-theme="dark"] .onboarding-model-option:hover { border-color: var(--accent); }

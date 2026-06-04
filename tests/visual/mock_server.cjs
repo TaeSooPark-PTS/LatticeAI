@@ -150,10 +150,17 @@ const server = http.createServer((req, res) => {
   if (pathname === "/graph" || pathname === "/knowledge-graph") return serveFile(res, path.join(repoRoot, "static/graph.html"));
   if (pathname === "/admin") return serveFile(res, path.join(repoRoot, "static/admin.html"));
   if (pathname === "/chat") return serveFile(res, path.join(repoRoot, "static/chat.html"));
+  if (pathname === "/account" || pathname === "/login") return serveFile(res, path.join(repoRoot, "static/account.html"));
+  if (pathname === "/onboarding-fixture") return serveFile(res, path.join(repoRoot, "tests/visual/fixtures/onboarding.html"));
   if (pathname.startsWith("/static/")) return serveFile(res, path.join(repoRoot, pathname.slice(1)));
   if (pathname.startsWith("/icons/")) return serveFile(res, path.join(repoRoot, "static", pathname));
   if (pathname === "/manifest.json") return serveFile(res, path.join(repoRoot, "static/manifest.json"));
   if (pathname === "/sw.js") return serveFile(res, path.join(repoRoot, "static/sw.js"));
+
+  // Keep the login page on /account: account.js redirects to /chat when
+  // /account/profile is ok, so the visual mock returns 401 to stay on login.
+  if (pathname === "/account/profile") return json(res, { detail: "unauthorized" }, 401);
+  if (pathname === "/auth/sso/config") return json(res, { enabled: false, providers: [] });
 
   if (pathname === "/health") return json(res, { status: "ok", version: "1.7.0", mode: "visual" });
   if (pathname === "/vpc/status") return json(res, { provider: "local", region: "visual", vpn_status: "standby", peering_status: "not_configured", private_subnets: [] });

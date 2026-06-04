@@ -9,6 +9,34 @@
 > (`PYPI_TOKEN`, `NPM_TOKEN`, `VSCE_TOKEN`, `OVSX_TOKEN`)가 설정된 경우에만
 > 실행됩니다. 필요한 경우 아래 수동 절차로 로컬에서도 진행할 수 있습니다.
 
+## v2.2.3 릴리스 노트 (2026-06-04)
+
+Frontend Stability & UX Fixes — 기능 추가 없이 v2.2.1 이후 발견된 실제 사용성
+문제를 수정하고 전체 UI/UX 품질 감사를 수행한 안정화 릴리스. 모든 수정은 기존
+디자인 토큰 시스템을 유지하고 `!important`·명시도 트릭·임시 땜질을 쓰지 않는다.
+
+- **Fixed (로그인 입력 가독성)**: 로그인 화면 입력 필드 배경이 흰색으로
+  하드코딩됐는데 입력 텍스트는 다크에서 거의 흰색으로 뒤집히는 토큰이라
+  이메일/비밀번호가 "흰 배경 위 흰 글자"로 안 보였다. `[data-lt-theme="dark"]`로
+  스코프된 정식 다크 로그인 테마(다크 글래스 카드/타이틀바/입력/ SSO 버튼, 밝은
+  타이틀·서브타이틀)와 Chrome/Safari autofill 보정을 추가. 라이트 테마는 그대로.
+- **Fixed (추천 결과 클릭 불가)**: 추천 결과의 모델 그룹(Gemma 4·Qwen3-VL·Llama 4)
+  아코디언과 액션 버튼이 `#onboarding-body` 에 들어가는데, 스크롤 영역을 만들려던
+  규칙이 *복합* 선택자(`.onboarding-body.lattice-ref-chat`)라 영영 매치되지 않아
+  카드가 콘텐츠를 잘라 접근 불가였다. 스크롤 영역을 복원해 아코디언/버튼 도달 가능.
+- **Fixed (추천 결과 스크롤 불가)**: 위와 동일 원인. `#onboarding-body` 가
+  `flex:1·min-height:0·overflow-y:auto` 스크롤 영역이 되어 긴 목록을 끝까지 스크롤.
+- **Fixed (추천 결과 다크 가독성)**: 온보딩 카드/내부 카드가 흰색 하드코딩이라
+  다크에서 안 보였다. 오버레이 토큰을 다크 팔레트로 다시 가리키고 "Best for this
+  PC" 콜아웃을 토큰화.
+- **Changed (버튼 상호작용 안정화)**: 로그인·온보딩·그래프·관리자 컨트롤의
+  클릭 가능 여부를 hit-testing 으로 검증(overlay/pointer-events/z-index 차단 없음).
+- **Added (Playwright QA)**: 로그인 가독성(라이트/다크), 추천 결과 스크롤·아코디언·
+  버튼 도달, 다크 가독성, 미처리 페이지 에러 테스트 추가(시각 스위트 38개).
+- **Changed (Cache-busting)**: 정적 자산 쿼리 스트링을 `?v=2.2.3` 로 갱신.
+- **Validation target**: responsive/theme/accessibility/visual/VSIX/Python/npm
+  artifact 검증 대상. 패키지 스토어 publish 는 수동 절차로만 진행.
+
 ## v2.2.2 릴리스 노트 (2026-06-04)
 
 Frontend QA Stabilization Release — 기능 추가 없이 v2.2.x 반응형 UI를 안정화하고,
@@ -499,13 +527,13 @@ Knowledge Graph v2 read/write cutover. 자세한 내용은
    - `npm run release:artifacts`
    - `npm run release:validate`
 
-현재 `v2.2.2` 기준 필수 산출물:
+현재 `v2.2.3` 기준 필수 산출물:
 
 ```text
-dist/ltcai-2.2.2-py3-none-any.whl
-dist/ltcai-2.2.2.tar.gz
-dist/ltcai-2.2.2.vsix
-ltcai-2.2.2.tgz
+dist/ltcai-2.2.3-py3-none-any.whl
+dist/ltcai-2.2.3.tar.gz
+dist/ltcai-2.2.3.vsix
+ltcai-2.2.3.tgz
 ```
 
 ## 2) npm 배포

@@ -1,5 +1,51 @@
 # Release Notes
 
+## v2.2.3 - Frontend Stability & UX Fixes
+
+Lattice AI v2.2.3 is a frontend stabilization release. It contains no new
+features. It fixes real usability problems reported after v2.2.1, runs a full
+UI/UX quality pass, and strengthens the automated visual tests. Every fix keeps
+the existing design-token system and adds no `!important` or specificity-only
+overrides.
+
+### Fixes
+
+- **Login inputs are readable in dark mode.** Email and password text was
+  invisible in dark mode (light field background + theme text that flips to
+  near-white = "white on white"). The login screen now has a proper dark theme
+  (dark glass card, titlebar, fields, SSO buttons; light title/subtitle) and a
+  Chrome/Safari autofill correction. Light mode is unchanged.
+- **The recommendation result is clickable and scrollable again.** The model
+  groups (Gemma 4, Qwen3-VL, Llama 4) and the action buttons were clipped and
+  unreachable because the recommendation body had no working scroll region
+  (a CSS selector that never matched its element). Long content now scrolls to
+  the bottom, the accordions expand/collapse, and the action buttons are
+  reachable.
+- **The recommendation screen is readable in dark mode** (dark cards, light
+  text), including the "Best for this PC" callout.
+- **Button interactions are stable** across login, onboarding, the Knowledge
+  Graph, and Admin — verified clickable with no overlay, `pointer-events`, or
+  `z-index` blockers.
+
+### Quality
+
+- Light/Dark theme readability pass across login, onboarding, workspace, graph,
+  and admin.
+- Responsive checks from 375 px phones to 3440 px ultrawide.
+- Accessibility: focus rings, keyboard operation, and Escape-to-close.
+- Playwright visual suite expanded to 38 tests (login readability, recommendation
+  scroll + accordions + reachable actions, dark-mode readability, and
+  uncaught-page-error coverage).
+
+### Expected Artifacts
+
+```text
+dist/ltcai-2.2.3-py3-none-any.whl
+dist/ltcai-2.2.3.tar.gz
+dist/ltcai-2.2.3.vsix
+ltcai-2.2.3.tgz
+```
+
 ## v2.2.2 - Frontend QA Stabilization Release
 
 Lattice AI v2.2.2 is a stabilization release for the local-first AI workspace.

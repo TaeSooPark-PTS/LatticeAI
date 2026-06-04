@@ -2,6 +2,37 @@
 
 The detailed historical changelog lives in [docs/CHANGELOG.md](docs/CHANGELOG.md).
 
+## [2.2.3] - 2026-06-04
+
+Frontend Stability & UX Fixes. A no-features stabilization release that fixes
+real usability regressions found after v2.2.1 and hardens the UI. All fixes keep
+the existing design-token system, add no `!important`, and avoid
+specificity-only overrides.
+
+- **Login input readability (dark theme)** — on the login screen the input field
+  backgrounds were hardcoded light while the input text used a theme token that
+  flips to near-white in dark mode, so email/password text was invisible
+  ("white on white"). Added a proper `[data-lt-theme="dark"]`-scoped auth theme
+  (dark glass card/titlebar/fields, light title/subtitle, dark SSO buttons) plus
+  a Chrome/Safari autofill correction. Light theme is unchanged.
+- **Recommendation result not clickable / not scrollable** — the onboarding
+  recommendation step put its content (the Gemma 4 / Qwen3-VL / Llama 4 model
+  accordions and the action buttons) in `#onboarding-body`, but the rule meant
+  to make it scroll used a compound selector (`.onboarding-body.lattice-ref-chat`)
+  that never matched, so the body had no scroll region and the card clipped it.
+  Long content and the bottom buttons were unreachable. Fixed the scroll region;
+  the accordions and actions are now reachable and clickable.
+- **Recommendation dark readability** — the onboarding card and its inner cards
+  were hardcoded light; re-pointed the overlay's tokens to the dark palette and
+  tokenized the "Best for this PC" callout so the screen is readable in dark.
+- **Button interaction stability** — verified clickability/hit-testing for login,
+  onboarding, graph, and admin controls (no overlay/`pointer-events`/`z-index`
+  blockers).
+- **Playwright QA strengthened** — added login readability (light/dark),
+  recommendation scroll + accordion + reachable-actions, dark-mode readability,
+  and uncaught-page-error tests; total visual suite now 38 tests.
+- Asset cache-busting query strings bumped to `?v=2.2.3`.
+
 ## [2.2.2] - 2026-06-04
 
 Frontend QA stabilization release. No new features — this hardens the v2.2.x

@@ -1051,7 +1051,7 @@ const chatViewport = document.getElementById('chat-viewport');
                 // Top pick callout
                 const top = rec.top_pick;
                 const topHtml = top ? `
-                    <div style="border:1px solid #16a34a;background:#f0fdf4;border-radius:10px;padding:10px 12px;margin:8px 0">
+                    <div style="border:1px solid var(--success);background:var(--accent-soft);color:var(--text);border-radius:10px;padding:10px 12px;margin:8px 0">
                         <div style="font-weight:700">⭐ Best for this PC — ${escapeHtml(top.name || top.id)} ${badge('recommended')}</div>
                         <div style="font-size:12px;opacity:0.8;margin-top:3px">${escapeHtml(top.reason || '')}</div>
                         <div style="font-size:12px;margin-top:4px">${escapeHtml(top.size || '')} · ${escapeHtml(ram(top))} · ${escapeHtml(nextStep(rec.engine))}</div>
