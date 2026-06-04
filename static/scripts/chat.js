@@ -2194,7 +2194,9 @@ const chatViewport = document.getElementById('chat-viewport');
             if (!t) {
                 t = document.createElement('div');
                 t.id = 'ltcai-toast';
-                t.style.cssText = 'position:fixed;bottom:28px;left:50%;transform:translateX(-50%);background:rgba(255,255,255,0.96);color:#14162c;border:1px solid rgba(111,66,232,0.16);border-radius:10px;padding:10px 18px;font-size:13px;font-weight:600;z-index:9999;box-shadow:0 8px 24px rgba(88,72,150,0.16);pointer-events:none;transition:opacity .2s;';
+                // Styling lives in static/css/responsive.css (#ltcai-toast) so the
+                // toast is token-driven and adapts to light/dark. Only the opacity
+                // animation state is toggled inline below.
                 document.body.appendChild(t);
             }
             t.textContent = msg;

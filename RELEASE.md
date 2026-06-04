@@ -9,6 +9,33 @@
 > (`PYPI_TOKEN`, `NPM_TOKEN`, `VSCE_TOKEN`, `OVSX_TOKEN`)가 설정된 경우에만
 > 실행됩니다. 필요한 경우 아래 수동 절차로 로컬에서도 진행할 수 있습니다.
 
+## v2.2.4 릴리스 노트 (2026-06-04)
+
+Chat Dark Mode Fix — v2.2.3 Known Issue(채팅 페이지가 다크모드에서 통째로 라이트로
+렌더링되던 문제)를 완전히 해결한다. 기능 추가 없음. 모든 수정은 디자인 토큰 체계를
+유지하고 `!important`·인라인 스타일 땜질을 쓰지 않으며 라이트 모드를 회귀시키지 않는다.
+
+- **원인**: `lattice-reference.css` 의 `body.lattice-ref-chat` 가 색 토큰 16개
+  (`--bg`/`--surface`/`--text`/`--border` …)를 *라이트 리터럴*로 재정의한다. body 는
+  :root 의 자손이라 이 body-level 값이 `:root[data-lt-theme="dark"]` 다크 토큰을
+  가려서, 채팅 페이지의 모든 `var(--token)` 이 다크에서도 라이트로 해석됐다.
+- **Fixed (토큰 플립)**: `:root[data-lt-theme="dark"] body.lattice-ref-chat` 에서
+  같은 16개 토큰을 `tokens.css` 다크 팔레트로 다시 가리킨다(명시도 트릭이 아닌 정식
+  테마 분기). 토큰 기반 채팅 표면(본문·버블·사이드바·헤더·입력창 등)이 한 번에 다크로.
+- **Fixed (하드코딩 라이트 표면)**: 토큰 대신 라이트 색을 직접 박은 표면(사이드바,
+  user-strip, 헤더, mode-segmented, logout/lang 버튼, 계정/MCP/모드/워크스페이스
+  모달, 모달 입력, 입력 박스, 워크스페이스 카드)을 `[data-lt-theme="dark"]` 스코프
+  오버라이드로 다크 토큰(`--sidebar`/`--modal`/`--input` …)에 매핑. 모든 가시 요소의
+  opaque-light 배경을 훑는 데이터 기반 스캔으로 식별.
+- **Fixed (토스트)**: chat.js 인라인 cssText(라이트 하드코딩)를 토큰 기반
+  `#ltcai-toast` CSS 규칙으로 이동 → 라이트/다크 자동 대응.
+- **Added (테스트)**: `tests/visual/v224.spec.js`(14개) — 다크 zero-light-surface
+  스캔, 다크 표면/텍스트, 라이트 비회귀 가드, 토스트, 10폭(375~3440) 가로 스크롤/
+  입력창 잘림 검증. 시각 스위트 52개.
+- **Changed (Cache-busting)**: 정적 자산 쿼리 스트링 `?v=2.2.4`.
+- **Validation target**: responsive/theme/accessibility/visual/VSIX/Python/npm
+  artifact 검증 대상. 패키지 스토어 publish 는 수동 절차로만.
+
 ## v2.2.3 릴리스 노트 (2026-06-04)
 
 Frontend Stability & UX Fixes — 기능 추가 없이 v2.2.1 이후 발견된 실제 사용성
@@ -527,13 +554,13 @@ Knowledge Graph v2 read/write cutover. 자세한 내용은
    - `npm run release:artifacts`
    - `npm run release:validate`
 
-현재 `v2.2.3` 기준 필수 산출물:
+현재 `v2.2.4` 기준 필수 산출물:
 
 ```text
-dist/ltcai-2.2.3-py3-none-any.whl
-dist/ltcai-2.2.3.tar.gz
-dist/ltcai-2.2.3.vsix
-ltcai-2.2.3.tgz
+dist/ltcai-2.2.4-py3-none-any.whl
+dist/ltcai-2.2.4.tar.gz
+dist/ltcai-2.2.4.vsix
+ltcai-2.2.4.tgz
 ```
 
 ## 2) npm 배포

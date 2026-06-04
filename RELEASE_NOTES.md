@@ -1,5 +1,41 @@
 # Release Notes
 
+## v2.2.4 - Chat Dark Mode Fix
+
+Lattice AI v2.2.4 completes the dark theme. It fixes the v2.2.3 known issue where
+the entire Chat page rendered light even in dark mode. No new features. Every fix
+keeps the existing design-token system, adds no `!important`, uses no inline-style
+band-aids, and does not regress light mode.
+
+### Fix
+
+- **Chat dark mode works everywhere.** The chat skin redefined its color tokens as
+  light literals on `<body>`, which shadowed the dark theme tokens, so the chat
+  body, message bubbles, composer, sidebar, header, modals, drawers, toast, and
+  the recommendation/onboarding entry all stayed light in dark mode. The tokens
+  now flip to the dark palette under `[data-lt-theme="dark"]`, and the few
+  surfaces that baked in light colors instead of tokens were corrected with
+  proper dark theme branches. Light mode is unchanged.
+- **Toast** is now theme-aware (was a hardcoded light toast).
+
+### Quality
+
+- A data-driven dark scan walks every visible chat element and asserts there are
+  **zero** opaque-light surfaces in dark mode (shell + all overlays + bubbles).
+- Light-mode non-regression is guarded by test.
+- Responsive checks at 375 / 390 / 430 / 768 / 1024 / 1280 / 1440 / 1920 / 2560 /
+  3440 px: no horizontal scroll and the composer is never clipped below the fold.
+- Playwright visual suite expanded to 52 tests.
+
+### Expected Artifacts
+
+```text
+dist/ltcai-2.2.4-py3-none-any.whl
+dist/ltcai-2.2.4.tar.gz
+dist/ltcai-2.2.4.vsix
+ltcai-2.2.4.tgz
+```
+
 ## v2.2.3 - Frontend Stability & UX Fixes
 
 Lattice AI v2.2.3 is a frontend stabilization release. It contains no new

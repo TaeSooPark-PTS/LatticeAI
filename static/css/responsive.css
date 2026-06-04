@@ -599,6 +599,96 @@ body.graph-card-view .stage > canvas#graph { visibility: hidden; }
   }
 }
 
+/* ============================================================================
+ * 11.5  Chat 페이지 다크모드 토큰 패리티 (근본 원인 수정)
+ *
+ * 원인: lattice-reference.css 의 `body.lattice-ref-chat { --bg/--surface/--text/
+ *   --border/... }` 가 색 토큰 16개를 *라이트 리터럴*로 재정의한다. body 는
+ *   :root 의 자손이라 이 body-level 값이 :root[data-lt-theme="dark"] 의 다크
+ *   토큰을 가린다(custom property 는 가장 가까운 조상값을 사용). 그래서 채팅
+ *   페이지는 data-lt-theme="dark" 여도 var(--token) 이 전부 라이트로 해석돼
+ *   다크모드가 통째로 깨졌다.
+ *
+ * 해결: 같은 body 컨텍스트에서, 단 data-lt-theme="dark" 일 때만 동일 토큰들을
+ *   tokens.css 의 다크 팔레트 값으로 다시 가리킨다. 정식 테마 분기이며(명시도
+ *   트릭/!important/인라인 땜질 아님), 라이트 모드(=속성 없음/"light")는 위
+ *   레거시 규칙 그대로라 회귀가 없다. 토큰만 바꾸므로 var(--token) 을 쓰는 모든
+ *   채팅 표면(본문·버블·사이드바·헤더·입력창 등)이 한 번에 다크로 전환된다.
+ * ========================================================================== */
+:root[data-lt-theme="dark"] body.lattice-ref-chat {
+  --bg: #0B0B1E;
+  --surface: #16163a;
+  --surface-2: #1b1d42;
+  --surface-3: #23264f;
+  --accent: #A78BFA;
+  --accent-2: #c4b5fd;
+  --accent-3: #ddd6fe;
+  --accent-soft: rgba(167, 139, 250, 0.18);
+  --danger: #F47171;
+  --text: #F4F5FB;
+  --muted: #C2C7DC;
+  --faint: #8B92AC;
+  --border: rgba(160, 170, 230, 0.20);
+  --border-strong: rgba(160, 170, 230, 0.32);
+  --shadow: 0 18px 54px rgba(0, 0, 0, 0.50);
+  --shadow-sm: 0 8px 24px rgba(0, 0, 0, 0.42);
+}
+
+/* ----------------------------------------------------------------------------
+ * 11.6  Chat 하드코딩 라이트 표면의 다크 보정
+ *
+ * 토큰을 쓰지 않고 라이트 색을 *직접* 박아둔 채팅 표면들(사이드바/헤더/입력 박스/
+ * 모달/세그먼트 등)은 11.5 토큰 플립으로도 안 바뀐다 → 다크에서 "밝은 패널 위
+ * 밝은 글자". 데이터 기반 스캔으로 식별한 표면을 다크 토큰/값으로 보정한다.
+ * 가능한 한 :root 토큰(--sidebar/--modal/--input — body 가 가리지 않는 토큰이라
+ * 다크에서 정상)으로 매핑한다. !important·인라인 없음, 라이트는 그대로.
+ * -------------------------------------------------------------------------- */
+:root[data-lt-theme="dark"] body.lattice-ref-chat .sidebar { background: var(--sidebar); }
+:root[data-lt-theme="dark"] body.lattice-ref-chat .user-strip { background: rgba(255, 255, 255, 0.04); }
+:root[data-lt-theme="dark"] body.lattice-ref-chat .chat-header { background: var(--sidebar); }
+:root[data-lt-theme="dark"] body.lattice-ref-chat .mode-segmented { background: var(--surface-2); }
+:root[data-lt-theme="dark"] body.lattice-ref-chat .logout-btn { background: var(--surface-2); }
+:root[data-lt-theme="dark"] body.lattice-ref-chat .input-box { background: var(--surface-2); }
+
+/* 모달/패널 컨테이너 family → 다크 모달 토큰 */
+:root[data-lt-theme="dark"] body.lattice-ref-chat .acct-modal,
+:root[data-lt-theme="dark"] body.lattice-ref-chat .mcp-modal,
+:root[data-lt-theme="dark"] body.lattice-ref-chat .mode-modal,
+:root[data-lt-theme="dark"] body.lattice-ref-chat .workspace-modal,
+:root[data-lt-theme="dark"] body.lattice-ref-chat .advanced-settings-panel,
+:root[data-lt-theme="dark"] body.lattice-ref-chat .model-panel,
+:root[data-lt-theme="dark"] body.lattice-ref-chat .status-panel { background: var(--modal); }
+
+/* 모달 내부 입력/카드 */
+:root[data-lt-theme="dark"] body.lattice-ref-chat .acct-modal input,
+:root[data-lt-theme="dark"] body.lattice-ref-chat .mcp-modal input,
+:root[data-lt-theme="dark"] body.lattice-ref-chat .mcp-modal textarea {
+  background: var(--input);
+  color: var(--text);
+}
+:root[data-lt-theme="dark"] body.lattice-ref-chat .workspace-card { background: var(--surface-2); }
+
+/* 토스트 — 기존엔 chat.js 인라인 cssText 로 라이트 색을 박아 다크에서 밝은 토스트가
+ * 떴다. 토큰 기반 CSS 규칙으로 옮겨 라이트/다크 모두 자동 대응한다. */
+#ltcai-toast {
+  position: fixed;
+  bottom: 28px;
+  left: 50%;
+  transform: translateX(-50%);
+  background: var(--surface);
+  color: var(--text);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  padding: 10px 18px;
+  font-size: 13px;
+  font-weight: 600;
+  z-index: 9999;
+  box-shadow: var(--shadow-sm);
+  pointer-events: none;
+  opacity: 0;
+  transition: opacity 0.2s;
+}
+
 /* 다크에서 테마 토글 아이콘 상태 */
 :root[data-lt-theme="dark"] .theme-toggle .ti-sun { display: inline-flex; }
 :root[data-lt-theme="dark"] .theme-toggle .ti-moon { display: none; }

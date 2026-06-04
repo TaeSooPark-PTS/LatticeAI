@@ -2,6 +2,35 @@
 
 The detailed historical changelog lives in [docs/CHANGELOG.md](docs/CHANGELOG.md).
 
+## [2.2.4] - 2026-06-04
+
+Chat dark-mode completion. Resolves the v2.2.3 known issue where the entire Chat
+page rendered light in dark mode. All fixes keep the design-token system, add no
+`!important`, use no inline-style band-aids, and do not regress light mode.
+
+- **Root cause** — `body.lattice-ref-chat` (in `lattice-reference.css`) redefines
+  16 color tokens (`--bg`, `--surface`, `--text`, `--border`, …) as *light
+  literals*. Because `<body>` is a descendant of `:root`, those body-level values
+  shadowed the `:root[data-lt-theme="dark"]` tokens, so every `var(--token)` on
+  the chat page resolved light even in dark mode.
+- **Fix** — added a `:root[data-lt-theme="dark"] body.lattice-ref-chat` block that
+  re-points the same 16 tokens to the `tokens.css` dark palette (a proper theme
+  branch, not a specificity trick), so all token-driven chat surfaces (body,
+  bubbles, sidebar, header, composer, …) switch to dark at once.
+- **Hardcoded-light surfaces** — surfaces that baked in light colors instead of
+  tokens (sidebar, user strip, chat header, mode segmented control, logout/lang
+  button, account/MCP/mode/workspace modals, modal inputs, composer box,
+  workspace cards) were corrected with `[data-lt-theme="dark"]`-scoped overrides
+  mapped to dark tokens (`--sidebar`, `--modal`, `--input`, …). Identified via a
+  data-driven scan that walks every visible element for opaque-light backgrounds.
+- **Toast** — moved off an inline `cssText` with hardcoded light colors to a
+  token-driven `#ltcai-toast` CSS rule, so it adapts to light/dark.
+- **Tests** — new `tests/visual/v224.spec.js` (14 tests): a zero-light-surface
+  dark scan across shell + overlays + bubbles, dark surface/text checks, a
+  light-mode non-regression guard, theme-aware toast, and 10-width responsive
+  (375→3440) horizontal-scroll / composer-clip checks. Visual suite now 52 tests.
+- Asset cache-busting bumped to `?v=2.2.4`.
+
 ## [2.2.3] - 2026-06-04
 
 Frontend Stability & UX Fixes. A no-features stabilization release that fixes
