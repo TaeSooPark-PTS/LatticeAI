@@ -587,12 +587,12 @@ function renderUsers(users) {
             <tbody>
                 ${latestUsers.map(user => `
                     <tr>
-                        <td>${esc(user.email)}</td>
-                        <td>${esc(user.name || '-')}</td>
-                        <td>${esc(user.nickname || '-')}</td>
-                        <td><span class="role">${esc(roleLabel(user.role))}</span></td>
-                        <td>${permissionTag(statusLabel(user), user.disabled ? 'medium' : 'low')}</td>
-                        <td>
+                        <td data-label="${t('label_email')}">${esc(user.email)}</td>
+                        <td data-label="${t('label_name')}">${esc(user.name || '-')}</td>
+                        <td data-label="${t('label_nickname')}">${esc(user.nickname || '-')}</td>
+                        <td data-label="${t('label_perm')}"><span class="role">${esc(roleLabel(user.role))}</span></td>
+                        <td data-label="${t('label_status')}">${permissionTag(statusLabel(user), user.disabled ? 'medium' : 'low')}</td>
+                        <td data-label="${t('label_actions')}">
                             <div class="actions">
                                 <button class="table-btn" data-action="role" data-email="${esc(user.email)}" data-next-role="${user.role === 'admin' ? 'user' : 'admin'}">
                                     ${user.role === 'admin' ? t('btn_revoke_admin') : t('btn_grant_admin')}
@@ -635,15 +635,15 @@ function renderPermissions(users) {
                     const isAdmin = user.role === 'admin';
                     return `
                         <tr>
-                            <td>
+                            <td data-label="${t('label_user')}">
                                 <strong>${esc(user.nickname || user.name || user.email)}</strong>
                                 <div class="preview">${esc(user.email)}</div>
                             </td>
-                            <td>${permissionTag(statusLabel(user), active ? 'low' : 'medium')}</td>
-                            <td>${permissionTag(active ? t('permission_allowed') : t('permission_blocked'), active ? 'low' : 'medium')}</td>
-                            <td>${permissionTag(active ? t('permission_allowed') : t('permission_blocked'), active ? 'low' : 'medium')}</td>
-                            <td>${permissionTag(isAdmin && active ? t('permission_granted') : t('permission_not_granted'), isAdmin && active ? 'low' : 'medium')}</td>
-                            <td>
+                            <td data-label="${t('label_status')}">${permissionTag(statusLabel(user), active ? 'low' : 'medium')}</td>
+                            <td data-label="${t('permission_default')}">${permissionTag(active ? t('permission_allowed') : t('permission_blocked'), active ? 'low' : 'medium')}</td>
+                            <td data-label="${t('permission_advanced')}">${permissionTag(active ? t('permission_allowed') : t('permission_blocked'), active ? 'low' : 'medium')}</td>
+                            <td data-label="${t('permission_admin')}">${permissionTag(isAdmin && active ? t('permission_granted') : t('permission_not_granted'), isAdmin && active ? 'low' : 'medium')}</td>
+                            <td data-label="${t('label_actions')}">
                                 <div class="actions">
                                     <button class="table-btn" data-action="role" data-email="${esc(user.email)}" data-next-role="${isAdmin ? 'user' : 'admin'}">
                                         ${isAdmin ? t('btn_revoke_admin') : t('btn_grant_admin')}
@@ -773,12 +773,12 @@ function renderAudit(audit) {
             <tbody>
                 ${users.map(user => `
                     <tr>
-                        <td><strong>${esc(user.nickname || user.email || 'Unknown')}</strong><div class="preview">${esc(user.email || '')}</div></td>
-                        <td>${esc(user.user_messages || 0)} / ${esc(user.assistant_messages || 0)}</td>
-                        <td>${esc(user.document_uploads || 0)}</td>
-                        <td>${permissionTag(user.sensitive_events || 0, (user.high_sensitive_events || 0) ? 'high' : ((user.sensitive_events || 0) ? 'medium' : 'low'))}</td>
-                        <td>${esc(user.clear_events || 0)} / ${esc(user.delete_events || 0)}</td>
-                        <td>${esc(formatTime(user.last_activity_at))}</td>
+                        <td data-label="${t('label_user')}"><strong>${esc(user.nickname || user.email || 'Unknown')}</strong><div class="preview">${esc(user.email || '')}</div></td>
+                        <td data-label="AI Use">${esc(user.user_messages || 0)} / ${esc(user.assistant_messages || 0)}</td>
+                        <td data-label="Uploads">${esc(user.document_uploads || 0)}</td>
+                        <td data-label="Sensitive">${permissionTag(user.sensitive_events || 0, (user.high_sensitive_events || 0) ? 'high' : ((user.sensitive_events || 0) ? 'medium' : 'low'))}</td>
+                        <td data-label="Clear/Delete">${esc(user.clear_events || 0)} / ${esc(user.delete_events || 0)}</td>
+                        <td data-label="Last Active">${esc(formatTime(user.last_activity_at))}</td>
                     </tr>
                 `).join('')}
             </tbody>
@@ -800,11 +800,11 @@ function renderAudit(audit) {
             <tbody>
                 ${events.map(event => `
                     <tr>
-                        <td>${esc(formatTime(event.timestamp))}</td>
-                        <td>${esc(auditEventLabel(event))}</td>
-                        <td>${esc(event.user_nickname || event.user_email || 'Unknown')}</td>
-                        <td>${esc(auditTarget(event))}</td>
-                        <td>${permissionTag(event.sensitivity || 'none', event.sensitivity === 'high' ? 'high' : (event.sensitivity && event.sensitivity !== 'none' ? 'medium' : 'low'))}</td>
+                        <td data-label="Time">${esc(formatTime(event.timestamp))}</td>
+                        <td data-label="Event">${esc(auditEventLabel(event))}</td>
+                        <td data-label="${t('label_user')}">${esc(event.user_nickname || event.user_email || 'Unknown')}</td>
+                        <td data-label="Target/Data">${esc(auditTarget(event))}</td>
+                        <td data-label="Risk">${permissionTag(event.sensitivity || 'none', event.sensitivity === 'high' ? 'high' : (event.sensitivity && event.sensitivity !== 'none' ? 'medium' : 'low'))}</td>
                     </tr>
                 `).join('')}
             </tbody>
@@ -1377,16 +1377,16 @@ function renderCcUsersTable(users) {
     }
     const rows = users.slice(0, 25).map(u => `
         <tr data-cc-user="${ccEscape(u.email)}" style="cursor:pointer">
-            <td>${ccEscape(u.user)}</td>
-            <td>${ccEscape(u.total_chats)}</td>
-            <td style="color:#2c8a3f">${ccEscape(u.compliant_chats)}</td>
-            <td style="color:#b13030">${ccEscape(u.risky_chats)}</td>
-            <td>${ccEscape(u.uploaded_files)}</td>
-            <td style="color:#2c8a3f">${ccEscape(u.compliant_files)}</td>
-            <td style="color:#b13030">${ccEscape(u.risky_files)}</td>
-            <td>${ccEscape(u.high_risk_events)}</td>
-            <td>${ccEscape(u.risk_rate)}%</td>
-            <td>${ccEscape((u.last_activity_at || '').slice(0, 19).replace('T', ' '))}</td>
+            <td data-label="사용자">${ccEscape(u.user)}</td>
+            <td data-label="총 채팅">${ccEscape(u.total_chats)}</td>
+            <td data-label="준수 채팅" style="color:#2c8a3f">${ccEscape(u.compliant_chats)}</td>
+            <td data-label="위험 채팅" style="color:#b13030">${ccEscape(u.risky_chats)}</td>
+            <td data-label="총 파일">${ccEscape(u.uploaded_files)}</td>
+            <td data-label="준수 파일" style="color:#2c8a3f">${ccEscape(u.compliant_files)}</td>
+            <td data-label="위험 파일" style="color:#b13030">${ccEscape(u.risky_files)}</td>
+            <td data-label="High">${ccEscape(u.high_risk_events)}</td>
+            <td data-label="위험률">${ccEscape(u.risk_rate)}%</td>
+            <td data-label="마지막 활동">${ccEscape((u.last_activity_at || '').slice(0, 19).replace('T', ' '))}</td>
         </tr>
     `).join('');
     wrap.innerHTML = `

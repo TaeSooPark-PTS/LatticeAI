@@ -181,6 +181,7 @@ const API_BASE = window.location.protocol === 'file:' ? 'http://localhost:4825' 
     let rawGraph = { nodes: [], edges: [] };
     let graph = { nodes: [], edges: [] };
     let hiddenTypes = new Set();
+    let hiddenEdgeTypes = new Set();
     let selected = null;
     let hovered = null;
     let dragging = null;
@@ -500,6 +501,21 @@ const API_BASE = window.location.protocol === 'file:' ? 'http://localhost:4825' 
     window.runLocalIndex = runLocalIndex;
     window.approveLocalPermission = approveLocalPermission;
 
+    /* 테마 색상 — CSS 변수에서 캔버스 배경/텍스트를 읽어 다크모드 대응 */
+    let themeColors = { bg: '#ffffff', text: '#14162c', surface: '#ffffff' };
+    function refreshThemeColors() {
+      const cs = getComputedStyle(document.documentElement);
+      const read = (name, fallback) => {
+        const v = (cs.getPropertyValue(name) || '').trim();
+        return v || fallback;
+      };
+      themeColors = {
+        bg: read('--bg', '#ffffff'),
+        text: read('--text', '#14162c'),
+        surface: read('--surface', read('--surface-2', '#ffffff')),
+      };
+    }
+
     function nodeColor(type) {
       return (TYPE_CONFIG[type] || {}).color || '#8fa8bb';
     }
@@ -641,6 +657,7 @@ const API_BASE = window.location.protocol === 'file:' ? 'http://localhost:4825' 
       const byId = Object.fromEntries(rawGraph.nodes.map(node => [node.id, node]));
       graph.edges = rawGraph.edges
         .filter(edge => nodeSet.has(edge.from) && nodeSet.has(edge.to))
+        .filter(edge => !hiddenEdgeTypes.has(edge.type))
         .map(edge => ({ ...edge, source: byId[edge.from], target: byId[edge.to] }));
       renderFocusChip();
     }
@@ -808,15 +825,25 @@ const API_BASE = window.location.protocol === 'file:' ? 'http://localhost:4825' 
       }
       container.innerHTML = ordered.map(type => {
         const style = edgeStyle(type);
+        const checked = hiddenEdgeTypes.has(type) ? '' : 'checked';
         return `
-          <div class="legend-item">
+          <label class="filter-item">
+            <input type="checkbox" ${checked} onchange="toggleEdgeType(decodeURIComponent('${encodeURIComponent(type)}'), this.checked)">
             <span class="legend-line" style="border-top-color:${style.color}; border-top-width:${Math.max(2, style.width)}px;"></span>
-            <span class="legend-name">${escapeHtml(style.label || type)}</span>
-            <span class="legend-meta">${edgeCounts[type] || 0}</span>
-          </div>
+            <span class="filter-name">${escapeHtml(style.label || type)}</span>
+            <span class="filter-count">${edgeCounts[type] || 0}</span>
+          </label>
         `;
       }).join('');
     }
+
+    function toggleEdgeType(type, visible) {
+      if (visible) hiddenEdgeTypes.delete(type);
+      else hiddenEdgeTypes.add(type);
+      applyFilter();
+      wakeUp();
+    }
+    window.toggleEdgeType = toggleEdgeType;
 
     function toggleType(type, visible) {
       if (visible) hiddenTypes.delete(type);
@@ -929,6 +956,9 @@ const API_BASE = window.location.protocol === 'file:' ? 'http://localhost:4825' 
       ctx.translate(cam.tx, cam.ty);
       ctx.scale(cam.scale, cam.scale);
 
+      // LOD: 줌이 너무 작거나 노드가 많으면 레이블 생략 (모바일 성능)
+      const showLabels = cam.scale >= 0.5 && graph.nodes.length <= 220;
+
       const active = hovered || selected;
       const neighborSet = active ? neighborIds(active) : null;
 
@@ -997,8 +1027,8 @@ const API_BASE = window.location.protocol === 'file:' ? 'http://localhost:4825' 
           ctx.globalAlpha = alpha;
         }
 
-        // 레이블 항상 노드 아래에 표시
-        {
+        // 레이블 표시 (LOD: 줌이 작거나 노드가 많으면 생략 — 모바일 성능)
+        if (showLabels || isSelected || isHovered || isSearchHit) {
           const label = node.title.slice(0, 24);
           const fs = Math.max(9.5, 12 / cam.scale);
           ctx.font = `600 ${fs}px "SF Pro Display","Inter",system-ui`;
@@ -1008,8 +1038,9 @@ const API_BASE = window.location.protocol === 'file:' ? 'http://localhost:4825' 
           const ly = node.y + gap + fs;
           const pad = 4 / cam.scale;
           const br  = 5 / cam.scale;
-          // 흰 배경 pill
-          ctx.fillStyle = alpha > 0.5 ? 'rgba(255,255,255,0.88)' : 'rgba(255,255,255,0.22)';
+          // 테마 대응 배경 pill (라이트=흰색, 다크=surface)
+          ctx.globalAlpha = alpha > 0.5 ? alpha * 0.88 : alpha * 0.22;
+          ctx.fillStyle = themeColors.surface;
           ctx.beginPath();
           if (ctx.roundRect) {
             ctx.roundRect(lx - pad, ly - fs, lw + pad * 2, fs + pad * 1.6, br);
@@ -1017,14 +1048,17 @@ const API_BASE = window.location.protocol === 'file:' ? 'http://localhost:4825' 
             ctx.rect(lx - pad, ly - fs, lw + pad * 2, fs + pad * 1.6);
           }
           ctx.fill();
-          ctx.fillStyle = alpha > 0.5 ? '#14162c' : 'rgba(20,22,44,0.3)';
+          ctx.globalAlpha = alpha > 0.5 ? alpha : alpha * 0.3;
+          ctx.fillStyle = themeColors.text;
           ctx.fillText(label, lx, ly);
+          ctx.globalAlpha = alpha;
         }
 
         ctx.globalAlpha = 1;
       });
 
       ctx.restore();
+      drawMinimap();
       if (kineticEnergy > 0.04 || dragging) animFrameId = requestAnimationFrame(draw);
     }
 
@@ -1627,10 +1661,134 @@ const API_BASE = window.location.protocol === 'file:' ? 'http://localhost:4825' 
       });
     });
 
-    window.addEventListener('resize', () => {
+    // 리사이즈/회전/키보드(visualViewport) 시 캔버스 재측정 + 자동 재맞춤
+    // (기존엔 backing store만 리사이즈해서 모바일에서 그래프가 화면 밖으로 나갔음)
+    let resizeFitTimer = null;
+    function handleViewportChange() {
       resize();
       wakeUp();
-    });
+      clearTimeout(resizeFitTimer);
+      resizeFitTimer = setTimeout(() => { resize(); fitToScreen(); }, 180);
+    }
+    window.addEventListener('resize', handleViewportChange);
+    window.addEventListener('orientationchange', handleViewportChange);
+    if (window.visualViewport) {
+      window.visualViewport.addEventListener('resize', handleViewportChange);
+    }
+
+    /* ──────────────────────────────────────────────────────────────────
+       v2.2.1 그래프 1급 UI: 줌 버튼 · 전체화면 · 미니맵 · 카드뷰 · 테마대응
+       ────────────────────────────────────────────────────────────────── */
+    // 캔버스가 터치를 직접 소유 (브라우저 기본 제스처와 충돌 방지)
+    if (canvas && canvas.style) canvas.style.touchAction = 'none';
+
+    function zoomBy(factor) {
+      const px = width / 2, py = height / 2;
+      const next = clamp(cam.scale * factor, 0.07, 6);
+      cam.tx = px - (px - cam.tx) * (next / cam.scale);
+      cam.ty = py - (py - cam.ty) * (next / cam.scale);
+      cam.scale = next;
+      wakeUp();
+    }
+
+    const stageEl = document.querySelector('.stage');
+    function toggleFullscreen() {
+      const fsEl = document.fullscreenElement || document.webkitFullscreenElement;
+      if (!fsEl && stageEl) {
+        (stageEl.requestFullscreen || stageEl.webkitRequestFullscreen || function () {}).call(stageEl);
+      } else {
+        (document.exitFullscreen || document.webkitExitFullscreen || function () {}).call(document);
+      }
+    }
+    document.addEventListener('fullscreenchange', handleViewportChange);
+    document.addEventListener('webkitfullscreenchange', handleViewportChange);
+
+    // 미니맵 — 전체 노드 개요 + 현재 뷰포트 사각형 (클릭 시 그 지점으로 이동)
+    const minimap = document.getElementById('minimap');
+    const mmCtx = minimap ? minimap.getContext('2d') : null;
+    function drawMinimap() {
+      if (!mmCtx || !minimap || minimap.offsetParent === null) return;
+      const W = minimap.width, H = minimap.height;
+      mmCtx.clearRect(0, 0, W, H);
+      if (!graph.nodes.length) return;
+      let x0 = Infinity, x1 = -Infinity, y0 = Infinity, y1 = -Infinity;
+      graph.nodes.forEach(n => { x0 = Math.min(x0, n.x); x1 = Math.max(x1, n.x); y0 = Math.min(y0, n.y); y1 = Math.max(y1, n.y); });
+      const pad = 8, gw = Math.max(1, x1 - x0), gh = Math.max(1, y1 - y0);
+      const s = Math.min((W - pad * 2) / gw, (H - pad * 2) / gh);
+      const ox = pad - x0 * s + (W - pad * 2 - gw * s) / 2;
+      const oy = pad - y0 * s + (H - pad * 2 - gh * s) / 2;
+      graph.nodes.forEach(n => {
+        mmCtx.fillStyle = nodeColor(n.type);
+        mmCtx.beginPath();
+        mmCtx.arc(ox + n.x * s, oy + n.y * s, 1.6, 0, Math.PI * 2);
+        mmCtx.fill();
+      });
+      const vx0 = (0 - cam.tx) / cam.scale, vy0 = (0 - cam.ty) / cam.scale;
+      const vx1 = (width - cam.tx) / cam.scale, vy1 = (height - cam.ty) / cam.scale;
+      mmCtx.strokeStyle = 'rgba(110,74,230,0.95)';
+      mmCtx.lineWidth = 1.2;
+      mmCtx.strokeRect(ox + vx0 * s, oy + vy0 * s, (vx1 - vx0) * s, (vy1 - vy0) * s);
+      minimap._map = { ox, oy, s };
+    }
+    if (minimap) {
+      minimap.addEventListener('click', (event) => {
+        const m = minimap._map; if (!m) return;
+        const rect = minimap.getBoundingClientRect();
+        const mx = (event.clientX - rect.left) * (minimap.width / rect.width);
+        const my = (event.clientY - rect.top) * (minimap.height / rect.height);
+        cam.tx = width / 2 - ((mx - m.ox) / m.s) * cam.scale;
+        cam.ty = height / 2 - ((my - m.oy) / m.s) * cam.scale;
+        wakeUp();
+      });
+    }
+
+    // 모바일 카드 뷰 — 노드를 탭 가능한 카드 목록으로 (캔버스가 너무 빽빽할 때)
+    const graphCardList = document.getElementById('graph-card-list');
+    function renderGraphCards() {
+      if (!graphCardList) return;
+      if (!graph.nodes.length) {
+        graphCardList.innerHTML = `<p class="search-empty">${t('search_empty')}</p>`;
+        return;
+      }
+      graphCardList.innerHTML = '<div class="search-list">' + graph.nodes.slice(0, 400).map(n => `
+        <button class="search-item" data-node-id="${escapeHtml(n.id)}">
+          <div class="search-item-top">
+            <span class="type-badge" style="background:${nodeColor(n.type)}">${escapeHtml(n.type || '')}</span>
+            <span class="search-item-title">${escapeHtml(n.title || n.id)}</span>
+          </div>
+          ${n.summary ? `<p class="search-item-summary">${escapeHtml(n.summary)}</p>` : ''}
+        </button>
+      `).join('') + '</div>';
+    }
+    function toggleGraphCardView() {
+      document.body.classList.toggle('graph-card-view');
+      if (document.body.classList.contains('graph-card-view')) renderGraphCards();
+    }
+    if (graphCardList) {
+      graphCardList.addEventListener('click', (event) => {
+        const target = event.target.closest('[data-node-id]');
+        if (!target) return;
+        const node = graph.nodes.find(n => n.id === target.dataset.nodeId);
+        if (!node) return;
+        document.body.classList.remove('graph-card-view');
+        selected = node;
+        showDetail(node);
+        centerOnNode(node, Math.max(cam.scale, 1));
+      });
+    }
+
+    // 테마(라이트/다크) 변경 시 캔버스 색상 갱신
+    refreshThemeColors();
+    try {
+      const themeObserver = new MutationObserver(() => { refreshThemeColors(); wakeUp(); });
+      themeObserver.observe(document.documentElement, { attributes: true, attributeFilter: ['data-lt-theme'] });
+    } catch (e) { /* noop */ }
+
+    const bindClick = (id, fn) => { const el = document.getElementById(id); if (el) el.addEventListener('click', fn); };
+    bindClick('zoom-in-btn', () => zoomBy(1.25));
+    bindClick('zoom-out-btn', () => zoomBy(1 / 1.25));
+    bindClick('fullscreen-btn', toggleFullscreen);
+    bindClick('view-toggle-btn', toggleGraphCardView);
 
     resize();
     applyI18n();

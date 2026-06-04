@@ -3,8 +3,9 @@
 
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, interactive-widget=resizes-content">
     <title>Lattice AI Admin</title>
+    <script src="/static/scripts/ux.js?v=2.2.1"></script>
     <link rel="manifest" href="/manifest.json">
     <meta name="theme-color" content="#f3ecff">
     <meta name="apple-mobile-web-app-capable" content="yes">
@@ -15,10 +16,13 @@
     <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap">
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@latest/tabler-icons.min.css">
     <link rel="stylesheet" href="/static/lattice-reference.css?v=0.3.3">
+    <link rel="stylesheet" href="/static/css/responsive.css?v=2.2.1">
     <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
 </head>
 
 <body class="lattice-ref-admin">
+    <div class="sidebar-overlay" onclick="closeAdminRail&&closeAdminRail()"></div>
+    <button class="admin-rail-toggle graph-nav-toggle" onclick="toggleAdminRail&&toggleAdminRail()" title="메뉴" aria-label="관리자 메뉴 열기"><i class="ti ti-menu-2"></i></button>
     <aside class="reference-rail admin-rail">
         <div class="rail-brand"><i class="ti ti-shield-lock"></i><strong>LATTICE AI</strong><span>Administrator</span></div>
         <nav>

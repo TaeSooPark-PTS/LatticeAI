@@ -1055,15 +1055,22 @@ const chatViewport = document.getElementById('chat-viewport');
                         <div style="font-weight:700">⭐ Best for this PC — ${escapeHtml(top.name || top.id)} ${badge('recommended')}</div>
                         <div style="font-size:12px;opacity:0.8;margin-top:3px">${escapeHtml(top.reason || '')}</div>
                         <div style="font-size:12px;margin-top:4px">${escapeHtml(top.size || '')} · ${escapeHtml(ram(top))} · ${escapeHtml(nextStep(rec.engine))}</div>
+                        ${modelSourceLine(top) ? `<div style="font-size:11px;opacity:0.7;margin-top:3px">${escapeHtml(modelSourceLine(top))}</div>` : ''}
                     </div>` : '';
 
                 const rows = families.map((fam) => {
                     const best = fam.best;
-                    const items = (fam.models || []).map((m) => `
-                        <div style="display:flex;justify-content:space-between;gap:8px;padding:3px 0;font-size:12px;opacity:${m.status === 'not_recommended' ? 0.55 : 1}">
-                            <span>${escapeHtml(m.name || m.id)}</span>
-                            <span style="white-space:nowrap">${escapeHtml(m.size || '')} · ${escapeHtml(ram(m))} ${badge(m.status)}</span>
-                        </div>`).join('');
+                    const items = (fam.models || []).map((m) => {
+                        const src = modelSourceLine(m);
+                        return `
+                        <div style="padding:4px 0;font-size:12px;opacity:${m.status === 'not_recommended' ? 0.55 : 1}">
+                            <div style="display:flex;justify-content:space-between;gap:8px">
+                                <span>${escapeHtml(m.name || m.id)}</span>
+                                <span style="white-space:nowrap">${escapeHtml(m.size || '')} · ${escapeHtml(ram(m))} ${badge(m.status)}</span>
+                            </div>
+                            ${src ? `<div style="font-size:11px;opacity:0.65;margin-top:2px">${escapeHtml(src)}</div>` : ''}
+                        </div>`;
+                    }).join('');
                     return `
                         <details style="margin:6px 0;border:1px solid var(--border,#e5e7eb);border-radius:8px;padding:8px 10px">
                             <summary style="cursor:pointer;font-weight:600">${escapeHtml(fam.family)} ${best ? badge(best.status) : ''}${best ? ` <span style="font-weight:400;opacity:0.7">${escapeHtml(best.name || '')}</span>` : ''}</summary>
@@ -1536,23 +1543,56 @@ const chatViewport = document.getElementById('chat-viewport');
             const action = isLocalEngine
                 ? `selectModelByCard('${encodeURIComponent(model.id)}', '${engine?.id || ''}')`
                 : `loadSelectedModel('${encodeURIComponent(model.id)}', '${engine?.id || ''}')`;
-            const sourceLine = [
-                model.source_country,
-                model.source_company,
-                model.execution_method,
-                model.internet_requirement,
-                model.model_name || model.name,
-            ].filter(Boolean).join(' · ');
-            const detailLine = sourceLine || `${model.id} · ${badge}`;
+            const chipsHtml = modelSourceChipsHtml(model);
+            const detailLine = chipsHtml ? `${model.id} · ${badge}` : `${model.id} · ${badge}`;
             return `
                 <button class="model-option${cls}" ${isUnavailable ? 'disabled' : ''} onclick="${action}">
                     <div>
                         <strong>${escapeHtml(model.name || compactModelName(model.id))}</strong>
-                        <span>${escapeHtml(detailLine)}${sourceLine ? `<br>${escapeHtml(model.id)} · ${escapeHtml(badge)}` : ''}</span>
+                        ${chipsHtml}
+                        <span>${escapeHtml(detailLine)}</span>
                     </div>
                     <i class="ti ${icon}"></i>
                 </button>
             `;
+        }
+
+        // 모델 출처 정보를 비전문가도 읽기 쉬운 라벨 칩으로 렌더링한다.
+        // 필드: source_country / source_company / execution_method / internet_requirement / model_name
+        // 누락된 필드는 자동으로 생략(graceful degrade)한다.
+        function modelSourceChips(model) {
+            if (!model) return [];
+            return [
+                ['국가', model.source_country],
+                ['회사', model.source_company],
+                ['실행', model.execution_method],
+                ['인터넷', model.internet_requirement],
+                ['모델명', model.model_name || model.name],
+            ].filter(([, value]) => value != null && String(value).trim() !== '');
+        }
+
+        function modelSourceChipsHtml(model) {
+            const chips = modelSourceChips(model);
+            if (!chips.length) return '';
+            const chipStyle = 'display:inline-flex;align-items:center;gap:3px;padding:2px 8px;'
+                + 'border:1px solid var(--border,#e5e7eb);border-radius:999px;'
+                + 'background:var(--surface-2,#f3f4f6);color:var(--text,#111);'
+                + 'font-size:11px;line-height:1.4;white-space:nowrap;';
+            const inner = chips.map(([label, value]) =>
+                `<span class="model-source-chip" style="${chipStyle}"><b style="font-weight:700;opacity:0.7">${escapeHtml(label)}:</b> ${escapeHtml(String(value))}</span>`
+            ).join('');
+            return `<span class="model-source-chips" style="display:flex;flex-wrap:wrap;gap:4px;margin:4px 0 2px">${inner}</span>`;
+        }
+
+        // 한 줄짜리 평문 출처(국가 · 회사 · 실행 · 인터넷) — 좁은 행/요약용.
+        function modelSourceLine(model) {
+            if (!model) return '';
+            return [
+                model.source_country,
+                model.source_company,
+                model.execution_method,
+                model.internet_requirement,
+            ].filter(value => value != null && String(value).trim() !== '').join(' · ');
         }
 
         function normalizedFamily(model) {
@@ -3569,9 +3609,17 @@ const chatViewport = document.getElementById('chat-viewport');
         function attachDocument(input) {
             const file = input.files[0];
             if (!file) return;
+            attachDocumentFile(file);
+            input.value = '';
+        }
+
+        // 파일을 직접 첨부 (드래그앤드롭 / 붙여넣기 / 파일 선택 공용 경로)
+        function attachDocumentFile(file) {
+            if (!file) return;
             attachedDocFile = file;
             attachedDocContent = null;
             const row = document.getElementById('attach-preview-row');
+            if (!row) return;
             row.style.display = 'flex';
             row.innerHTML = `
                 <div class="attach-chip">
@@ -3580,8 +3628,29 @@ const chatViewport = document.getElementById('chat-viewport');
                     <button onclick="removeAttachedDoc()" title="제거">×</button>
                 </div>
                 <span style="font-size:11px;color:var(--muted);align-self:center">첨부됨 — 전송 시 AI가 파일을 읽습니다</span>`;
-            input.value = '';
         }
+
+        // 채팅 영역에 파일을 끌어다 놓으면 첨부 (Drag & Drop)
+        (function setupChatDropZone() {
+            const zone = document.querySelector('.main-chat') || document.body;
+            if (!zone) return;
+            const hasFiles = (e) => e.dataTransfer && Array.prototype.indexOf.call(e.dataTransfer.types || [], 'Files') !== -1;
+            ['dragenter', 'dragover'].forEach(ev => zone.addEventListener(ev, (e) => {
+                if (!hasFiles(e)) return;
+                e.preventDefault();
+                zone.classList.add('drag-over');
+            }));
+            zone.addEventListener('dragleave', (e) => {
+                if (e.target === zone) zone.classList.remove('drag-over');
+            });
+            zone.addEventListener('drop', (e) => {
+                zone.classList.remove('drag-over');
+                if (!hasFiles(e)) return;
+                e.preventDefault();
+                const file = e.dataTransfer.files && e.dataTransfer.files[0];
+                if (file) attachDocumentFile(file);
+            });
+        })();
 
         function removeAttachedDoc() {
             attachedDocFile = null;

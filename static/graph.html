@@ -2,15 +2,19 @@
 <html lang="ko">
 <head>
   <meta charset="utf-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, interactive-widget=resizes-content">
   <title>Lattice AI - 지식 그래프</title>
+  <script src="/static/scripts/ux.js?v=2.2.1"></script>
       <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap">
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@latest/tabler-icons.min.css">
   <link rel="stylesheet" href="/static/lattice-reference.css?v=0.3.3">
+  <link rel="stylesheet" href="/static/css/responsive.css?v=2.2.1">
 </head>
 <body class="lattice-ref-graph">
+  <div class="sidebar-overlay" onclick="closeGraphNav&&closeGraphNav()"></div>
+  <button class="graph-nav-toggle icon-btn" onclick="toggleGraphNav&&toggleGraphNav()" title="메뉴" aria-label="네비게이션 열기"><i class="ti ti-menu-2"></i></button>
   <aside class="reference-rail graph-rail">
     <div class="rail-brand"><i class="ti ti-chart-dots-3"></i><strong>Lattice AI</strong></div>
     <nav>
@@ -30,6 +34,8 @@
   <div class="app">
     <main class="stage">
       <canvas id="graph"></canvas>
+      <canvas id="minimap" class="graph-minimap" width="180" height="120" title="미니맵"></canvas>
+      <div id="graph-card-list" class="graph-card-list"></div>
 
       <section class="search-shell">
         <div class="search-head">
@@ -50,7 +56,11 @@
         </div>
       </section>
 
-      <div class="toolbar">
+      <div class="toolbar graph-toolbar">
+        <button class="tb-btn" id="zoom-out-btn" title="축소" aria-label="축소"><i class="ti ti-minus"></i></button>
+        <button class="tb-btn" id="zoom-in-btn" title="확대" aria-label="확대"><i class="ti ti-plus"></i></button>
+        <button class="tb-btn" id="fullscreen-btn" title="전체화면" aria-label="전체화면"><i class="ti ti-maximize"></i></button>
+        <button class="tb-btn graph-view-toggle" id="view-toggle-btn" title="그래프/카드 보기 전환" aria-label="그래프/카드 보기 전환"><i class="ti ti-layout-cards"></i></button>
         <button class="tb-btn" id="refresh-btn"><i class="ti ti-refresh"></i> Refresh</button>
         <button class="tb-btn" id="fit-btn" title="Fit graph"><i class="ti ti-arrows-maximize"></i> Fit</button>
         <button class="tb-btn" id="expand-btn" title="Expand selected node"><i class="ti ti-circle-plus"></i> Expand</button>

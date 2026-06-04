@@ -1,19 +1,40 @@
 :root {
-  color-scheme: light;
-  --bg: #f6f7f9;
-  --surface: #ffffff;
-  --surface-2: #f0f4f8;
-  --ink: #101828;
-  --muted: #667085;
-  --line: #d9e0e8;
-  --blue: #2563eb;
+  /* Map the local palette onto the shared design tokens so this page
+     inverts cleanly under :root[data-lt-theme="dark"]. Light defaults
+     stay visually close to the original hand-tuned values. */
+  --bg: var(--lt-bg, #f6f7f9);
+  --surface: var(--lt-surface, #ffffff);
+  --surface-2: var(--lt-surface-2, #f0f4f8);
+  --ink: var(--lt-ink, #101828);
+  --muted: var(--lt-muted, #667085);
+  --line: var(--lt-line, #d9e0e8);
+  --blue: var(--lt-accent, #2563eb);
   --green: #12805c;
   --amber: #b45309;
   --pink: #be185d;
   --red: #c2410c;
   --radius: 8px;
-  --shadow: 0 12px 34px rgba(16, 24, 40, 0.08);
+  --shadow: var(--lt-shadow-md, 0 12px 34px rgba(16, 24, 40, 0.08));
+  /* Rail keeps its dark-navy identity in light mode; dark mode remaps it
+     to a shared surface token below so it inverts coherently. */
+  --rail-bg: #111827;
+  --rail-ink: #e5e7eb;
+  --rail-ink-soft: #b8c0cc;
+  --rail-ink-strong: #fff;
+  --rail-hover: rgba(255, 255, 255, 0.08);
+  --rail-line: rgba(255, 255, 255, 0.12);
   font-family: Inter, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+}
+
+/* Dark theme: remap the rail to the shared surface tokens so it inverts
+   instead of staying permanently navy. */
+:root[data-lt-theme="dark"] {
+  --rail-bg: var(--lt-surface-2);
+  --rail-ink: var(--lt-ink);
+  --rail-ink-soft: var(--lt-ink-soft);
+  --rail-ink-strong: var(--lt-ink);
+  --rail-hover: rgba(255, 255, 255, 0.06);
+  --rail-line: var(--lt-line);
 }
 
 * { box-sizing: border-box; }
@@ -40,14 +61,16 @@ button {
   display: grid;
   grid-template-columns: 248px minmax(0, 1fr);
   min-height: 100vh;
+  min-height: 100dvh;
 }
 
 .workspace-rail {
   position: sticky;
   top: 0;
   height: 100vh;
-  background: #111827;
-  color: #e5e7eb;
+  height: 100dvh;
+  background: var(--rail-bg);
+  color: var(--rail-ink);
   padding: 18px 14px;
   display: flex;
   flex-direction: column;
@@ -58,7 +81,7 @@ button {
   display: flex;
   align-items: center;
   gap: 10px;
-  color: #fff;
+  color: var(--rail-ink-strong);
   text-decoration: none;
   font-weight: 800;
   padding: 8px;
@@ -77,7 +100,7 @@ button {
 }
 
 .workspace-rail a {
-  color: #b8c0cc;
+  color: var(--rail-ink-soft);
   text-decoration: none;
 }
 
@@ -94,12 +117,12 @@ button {
 .workspace-rail nav a.active,
 .workspace-rail nav a:hover,
 .rail-links a:hover {
-  background: rgba(255,255,255,0.08);
-  color: #fff;
+  background: var(--rail-hover);
+  color: var(--rail-ink-strong);
 }
 
 .rail-links {
-  border-top: 1px solid rgba(255,255,255,0.12);
+  border-top: 1px solid var(--rail-line);
   padding-top: 12px;
   margin-top: auto;
 }
@@ -521,8 +544,8 @@ textarea {
   gap: 8px;
   padding: 6px 10px;
   border-radius: 10px;
-  background: rgba(255, 255, 255, 0.06);
-  border: 1px solid rgba(255, 255, 255, 0.12);
+  background: var(--rail-hover);
+  border: 1px solid var(--rail-line);
 }
 .workspace-switcher select {
   background: transparent;
@@ -600,7 +623,7 @@ textarea {
 /* Enterprise capability grid */
 .capability-grid {
   display: grid; gap: 10px;
-  grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+  grid-template-columns: repeat(auto-fill, minmax(min(100%, 200px), 1fr));
   margin-top: 12px;
 }
 .capability-card {
@@ -683,4 +706,17 @@ textarea {
   .health-grid {
     grid-template-columns: 1fr;
   }
+}
+
+/* v2.2.1 — 태블릿(761~1024) 레일 슬림화로 본문 공간 확보 */
+@media (min-width: 761px) and (max-width: 1024px) {
+  .workspace-shell { grid-template-columns: 196px minmax(0, 1fr); }
+  .workspace-rail { padding: 14px 10px; }
+}
+
+/* v2.2.1 — 터치 영역 44px 보장 */
+@media (hover: none), (max-width: 760px) {
+  .icon-action { min-width: 44px; min-height: 44px; }
+  .small-action { min-height: 44px; }
+  .workspace-rail a { min-height: 44px; display: flex; align-items: center; }
 }

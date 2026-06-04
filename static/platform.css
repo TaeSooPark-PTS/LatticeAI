@@ -1,19 +1,23 @@
 /* Lattice AI v2.0 — shared styling for the Agentic Workspace Platform pages
    (Plugin SDK, Workflow Designer, Multi-Agent Runtime, Realtime Activity). */
 :root {
-  --bg: #0f1115;
-  --panel: #16191f;
-  --panel-2: #1c2027;
-  --border: rgba(255, 255, 255, 0.08);
-  --text: #e7ecf3;
-  --muted: #94a3b8;
-  --accent: #378ADD;
-  --accent-2: #5ea7ec;
+  /* Consume tokens.css semantic tokens so these pages follow light & dark themes.
+     tokens.css is linked before platform.css, so var() resolves at runtime. */
+  --bg: var(--lt-bg, #0f1115);
+  --panel: var(--lt-surface, #16191f);
+  --panel-2: var(--lt-surface-2, #1c2027);
+  --border: var(--lt-line, rgba(255, 255, 255, 0.08));
+  --text: var(--lt-ink, #e7ecf3);
+  --muted: var(--lt-ink-soft, #64748b);
+  --accent: var(--lt-accent, #6E4AE6);
+  --accent-2: var(--lt-accent, #5ea7ec);
   --ok: #34d399;
   --warn: #fbbf24;
   --err: #f87171;
 }
 * { box-sizing: border-box; }
+html, body { overflow-x: hidden; }
+body { min-width: 320px; }
 body {
   margin: 0;
   background: var(--bg);
@@ -27,15 +31,15 @@ header.app {
   padding: 14px 24px; border-bottom: 1px solid var(--border);
   background: rgba(22, 25, 31, 0.8); position: sticky; top: 0; backdrop-filter: blur(8px); z-index: 5;
 }
-header.app .brand { font-weight: 700; font-size: 16px; color: #fff; letter-spacing: .3px; }
+header.app .brand { font-weight: 700; font-size: 16px; color: var(--text); letter-spacing: .3px; }
 header.app .brand small { color: var(--accent); font-weight: 600; margin-left: 6px; }
 header.app nav { display: flex; gap: 14px; flex-wrap: wrap; }
-header.app nav a { color: var(--muted); font-size: 13px; padding: 4px 6px; border-radius: 6px; }
-header.app nav a:hover, header.app nav a.active { color: #fff; background: var(--panel-2); }
+header.app nav a { color: var(--muted); font-size: 13px; padding: 4px 6px; border-radius: 6px; min-height: 44px; display: inline-flex; align-items: center; }
+header.app nav a:hover, header.app nav a.active { color: var(--text); background: var(--panel-2); }
 main { max-width: 1080px; margin: 0 auto; padding: 28px 24px 80px; }
 h1 { font-size: 22px; margin: 0 0 4px; }
 .sub { color: var(--muted); font-size: 13px; margin: 0 0 24px; }
-.grid { display: grid; gap: 14px; grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); }
+.grid { display: grid; gap: 14px; grid-template-columns: repeat(auto-fill, minmax(min(100%, 260px), 1fr)); }
 .card {
   background: var(--panel); border: 1px solid var(--border); border-radius: 14px;
   padding: 16px 18px;
@@ -54,22 +58,47 @@ h1 { font-size: 22px; margin: 0 0 4px; }
 button, .btn {
   background: var(--accent); color: #fff; border: none; border-radius: 8px;
   padding: 7px 14px; font-size: 13px; cursor: pointer; font-weight: 600;
+  min-height: 44px;
 }
 button.ghost { background: var(--panel-2); color: var(--text); border: 1px solid var(--border); }
 button:hover { filter: brightness(1.08); }
 button:disabled { opacity: .5; cursor: not-allowed; }
 textarea, input, select {
   width: 100%; background: var(--panel-2); color: var(--text); border: 1px solid var(--border);
-  border-radius: 8px; padding: 9px 11px; font-size: 13px; font-family: inherit;
+  border-radius: 8px; padding: 9px 11px; font-size: 16px; font-family: inherit;
+  min-height: 44px;
 }
 textarea { min-height: 90px; resize: vertical; }
 label { display: block; font-size: 12px; color: var(--muted); margin: 10px 0 4px; }
 pre {
-  background: #0b0d11; border: 1px solid var(--border); border-radius: 10px;
-  padding: 12px; overflow: auto; font-size: 12px; color: #cbd5e1; max-height: 360px;
+  background: var(--panel-2); border: 1px solid var(--border); border-radius: 10px;
+  padding: 12px; overflow: auto; font-size: 12px; color: var(--text); max-height: 360px;
+  max-width: 100%; overflow-wrap: anywhere;
 }
 .empty { color: var(--muted); text-align: center; padding: 50px 0; }
 .section { margin-top: 28px; }
 .timeline-item { border-left: 2px solid var(--border); padding: 6px 0 6px 14px; margin-left: 6px; font-size: 13px; }
 .timeline-item .t-meta { color: var(--muted); font-size: 11px; }
-.toast { position: fixed; bottom: 20px; right: 20px; background: var(--panel-2); border: 1px solid var(--border); padding: 12px 16px; border-radius: 10px; font-size: 13px; max-width: 360px; }
+.toast {
+  position: fixed;
+  bottom: max(20px, env(safe-area-inset-bottom));
+  left: auto;
+  right: max(12px, env(safe-area-inset-right));
+  background: var(--panel-2); border: 1px solid var(--border);
+  padding: 12px 16px; border-radius: 10px; font-size: 13px;
+  max-width: min(360px, calc(100vw - 24px));
+}
+
+/* 키보드 포커스 링 (tokens.css 의 :focus-visible 와 별개로 이 페이지에서도 보장) */
+:focus-visible {
+  outline: 2px solid var(--accent, #6E4AE6);
+  outline-offset: 2px;
+}
+
+/* 폰: 패딩 축소 + 단일 열 + 헤더 컴팩트 */
+@media (max-width: 600px) {
+  header.app { padding: 12px 14px; }
+  main { padding: 18px 14px 64px; }
+  .grid { grid-template-columns: 1fr; }
+  h1 { font-size: 20px; }
+}
