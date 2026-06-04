@@ -2,6 +2,31 @@
 
 The detailed historical changelog lives in [docs/CHANGELOG.md](docs/CHANGELOG.md).
 
+## [2.2.6] - 2026-06-05
+
+Token-native CSS foundation. Eliminates the root cause of foggy/washed-out dark
+mode instead of patching it with loaded-last overrides.
+
+- **Legacy monolith removed** — the 7,985-line `static/lattice-reference.css` is
+  split into token-native modules under `static/css/reference/`
+  (`base`/`account`/`admin`/`graph`/`chat`) and deleted. The split is byte-for-byte
+  concatenation-equivalent to the original cascade, so no layout regressed.
+- **Dark mode fixed at source** — the chat skin no longer redefines color tokens
+  with light literals; it is gated to the light theme, so dark mode inherits the
+  `tokens.css` dark palette. Every active surface (canvas, sidebar, header, chat
+  input, cards, modals, drawers, admin/VPC panels, onboarding) now uses
+  `var(--token)`. ~180 hardcoded `#fff`/`white`/`rgba(255,255,255,…)`/lavender
+  literals were converted to tokens; status/brand colors flip via semantic tokens.
+- **Loading-order dependency gone** — the `:root[data-lt-theme="dark"]` override
+  stack in `responsive.css` (~360 lines) is removed; theme correctness no longer
+  depends on which stylesheet loads last. Active `!important` declarations: 0.
+- **No full-screen blur / white scrims** — `backdrop-filter: blur` removed from
+  full-screen overlays; page backgrounds route through the theme-aware `--app-bg`.
+- **Stronger visual tests** — new `tests/visual/v226.spec.js` data-drives dark +
+  light scans across account/admin/graph/chat (+ mobile, overlays open): no
+  opaque-light surface in dark, WCAG text-contrast ≥ 2.2 in both themes, and no
+  full-page backdrop blur.
+
 ## [2.2.5] - 2026-06-04
 
 Release hygiene hotfix for dark-mode overlays, modal state, cache-busting,

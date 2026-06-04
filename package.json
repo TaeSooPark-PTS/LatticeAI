@@ -1,6 +1,6 @@
 {
   "name": "ltcai",
-  "version": "2.2.5",
+  "version": "2.2.6",
   "description": "Local-first AI workspace for knowledge graphs, AI pipelines, and multi-agent coding workflows.",
   "homepage": "https://github.com/TaeSooPark-PTS/LatticeAI#readme",
   "repository": {
@@ -85,7 +85,6 @@
     "static/favicon.ico",
     "static/manifest.json",
     "static/sw.js",
-    "static/lattice-reference.css",
     "static/workspace.css",
     "static/platform.css",
     "static/scripts/",
