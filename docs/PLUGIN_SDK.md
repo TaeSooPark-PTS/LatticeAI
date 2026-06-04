@@ -14,7 +14,7 @@ through the existing skill registry rather than owning a parallel one.
 
 > **Compatibility.** v1.x data and APIs are preserved. The Plugin SDK adds new
 > code (`latticeai/core/plugins.py`, `latticeai/api/plugins.py`) and new
-> persisted state (`plugin_registry` inside the Workspace OS store). Nothing in
+> persisted state (`plugin_registry` inside the workspace store). Nothing in
 > the v1.x contract changes. The new HTTP routes live under `/plugins/registry`
 > and friends, which do **not** collide with the pre-existing
 > `/plugins/directory` marketplace routes.
@@ -28,7 +28,7 @@ PLUGIN_SDK_VERSION = "2.2.0"
 ## v2.2 additions
 
 - `execute_action(...)` emits `plugin_started`, `plugin_completed`, and
-  `execution_failed` through the existing Workspace OS timeline/realtime feed.
+  `execution_failed` through the existing workspace timeline/realtime feed.
 - Plugin outputs can be carried inside agent context packets and replayed from
   agent/workflow run history.
 - The local template catalog (`latticeai.core.marketplace`) adds Plugin,
@@ -228,7 +228,7 @@ discover  ->  validate  ->  install  ->  enable / disable  ->  uninstall
 ```
 
 Lifecycle *state* (installed / enabled / version / status) is delegated to the
-Workspace OS store via a small `store` port, so plugins reuse the same
+workspace store via a small `store` port, so plugins reuse the same
 local-first JSON persistence, workspace scoping, and timeline events as skills.
 The registry itself owns only manifest parsing and the execution boundary.
 
@@ -355,7 +355,7 @@ A persisted entry looks like:
 }
 ```
 
-Each lifecycle mutation also records a Workspace OS timeline event
+Each lifecycle mutation also records a workspace timeline event
 (`plugin_installed`, `plugin_uninstalled`, `plugin_enabled`, `plugin_disabled`)
 under the `plugins` channel.
 

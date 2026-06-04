@@ -1,7 +1,7 @@
 {
   "name": "ltcai",
   "version": "2.2.1",
-  "description": "Lattice AI Workspace OS for local-first graph, memory, agent, workflow, and skill operations",
+  "description": "Local-first AI workspace for knowledge graphs, AI pipelines, and multi-agent coding workflows.",
   "homepage": "https://github.com/TaeSooPark-PTS/LatticeAI#readme",
   "repository": {
     "type": "git",
@@ -39,11 +39,14 @@
   },
   "keywords": [
     "ltcai",
-    "ai-assistant",
+    "ai-workspace",
+    "ai-pipeline",
+    "knowledge-graph",
     "llm",
     "mlx",
     "local-ai",
-    "agent",
+    "multi-agent",
+    "workflow",
     "mcp",
     "rag",
     "vscode"

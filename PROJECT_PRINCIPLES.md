@@ -1,8 +1,9 @@
 # Project Principles
 
-Lattice AI is a local-first AI workspace and Knowledge Graph platform. It should
-help users build and use knowledge, not force them to study AI infrastructure
-before they can get work done.
+Lattice AI is a local-first AI workspace for knowledge graphs, AI pipelines,
+local model management, and multi-agent workflows. It should help users build
+and use knowledge without forcing them to study AI infrastructure before they
+can get work done.
 
 ## User Agency
 
@@ -14,6 +15,8 @@ before they can get work done.
 ## Product Shape
 
 - Knowledge Graph first.
+- AI pipelines first.
+- Multi-agent workflows first.
 - Multimodal input first.
 - Local-first by default.
 - Models are replaceable.
@@ -30,8 +33,7 @@ before they can get work done.
 ## Engineering Policy
 
 - Prefer explicit interfaces and dependency injection.
-- Keep model catalogs and runtime policy centralized.
+- Keep model catalogs and model workflow policy centralized.
 - Avoid hidden global state and silent fallbacks.
 - Preserve graph data and migration safety.
 - Add tests for product-policy behavior, not just implementation details.
-

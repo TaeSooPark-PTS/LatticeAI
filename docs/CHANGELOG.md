@@ -30,6 +30,11 @@
   plain language.
 - **Manual release scripts** — local publish scripts now build exact-version
   artifacts before upload and validate the same artifact set used by CI.
+- **Marketplace positioning** — README, VS Code Marketplace/Open VSX README,
+  npm metadata, VSIX metadata, and release copy now use the local-first AI
+  workspace / AI pipeline / Knowledge Graph / multi-agent workflow positioning.
+- **Release media refresh** — v2.2.1 screenshots and demo GIF regenerated from
+  the live local app under `docs/images/`.
 
 ### Validation
 
@@ -58,7 +63,7 @@
 ### Changed
 
 - **README / architecture rewrite** — current docs now describe Lattice AI as an
-  AI Knowledge OS rather than a chat app or model launcher.
+  AI Knowledge Graph workspace rather than a chat app or model launcher.
 - **Multimodal recommendation logic** — local recommendation catalogs and setup
   flows use current multimodal model families only: Gemma 4, Qwen3-VL, and
   Llama 4.
@@ -122,7 +127,7 @@
 
 ### Changed
 
-- Python package, npm package, VS Code extension, Workspace OS, FastAPI app, and
+- Python package, npm package, VS Code extension, workspace, FastAPI app, and
   `/health` version metadata aligned at `2.1.0`.
 - Multi-Agent Runtime, Plugin SDK, Workflow Engine, and Realtime surface
   versions now report `2.1.0`.
@@ -139,13 +144,13 @@
 
 ## [2.0.0] - 2026-06-01
 
-> Agentic Workspace Platform — Lattice AI becomes a local-first **Agentic
+> Multi-Agent Workflow Platform — Lattice AI becomes a local-first **Agentic
 > Workspace Platform** with four integrated subsystems: Plugin SDK, Workflow
 > Designer, Multi-Agent Runtime 2.0, and Realtime Collaboration. Backward
 > compatible and additive: API paths/schemas, `server:app`,
 > `latticeai.server_app.app`, CLI, Workspace/Chat/Model/MCP/KG APIs, existing
 > skills/snapshots/memories/agent & workflow history, and VS Code extension
-> commands remain stable. New Workspace OS state keys (`plugin_registry`,
+> commands remain stable. New workspace state keys (`plugin_registry`,
 > `workflow_runs`) are backfilled on load via deep-merge — no destructive
 > migration.
 
@@ -173,7 +178,7 @@
   `/agents/api/*`, page `/agents`.
 - **Realtime Collaboration** (`latticeai/core/realtime.py`,
   `latticeai/api/realtime.py`) — in-process pub/sub bus, presence, and an
-  activity feed over SSE. Wired as the Workspace OS `event_sink`, so every
+  activity feed over SSE. Wired as the workspace `event_sink`, so every
   timeline event flows to the feed automatically. Workspace isolation enforced;
   single-user local mode preserved. Routes `/realtime/stream` (SSE),
   `/realtime/feed`, `/realtime/presence*`, page `/activity`.
@@ -191,7 +196,7 @@
 
 ### Changed
 
-- Python package, npm package, VS Code extension, Workspace OS, FastAPI app, and
+- Python package, npm package, VS Code extension, workspace, FastAPI app, and
   `/health` version metadata aligned at `2.0.0`.
 - `server_app` cross-system wiring extracted into
   `latticeai/services/platform_runtime.py` to keep the assembly file lean.
@@ -234,7 +239,7 @@
 
 ### Changed
 
-- Python package, npm package, VS Code extension, Workspace OS, FastAPI app, and
+- Python package, npm package, VS Code extension, workspace, FastAPI app, and
   `/health` version metadata aligned at `1.7.0`.
 - CI package validation is version-scoped instead of a broad `dist/*` check.
 
@@ -255,7 +260,7 @@
 
 ### Added
 
-- **Knowledge Graph Explorer (Workspace OS)** — an Entity Explorer (importance-
+- **Knowledge Graph Explorer (workspace)** — an Entity Explorer (importance-
   ranked entity cards + search) with a detail panel showing inbound/outbound
   relationships, related entities, and the shortest path back to you; plus a
   Recent Activity feed and a Workspace Memory feed. Built entirely on the existing
@@ -271,7 +276,7 @@
 - **Skill Marketplace tabs** — Recommended / Popular / Installed / Updates tabs
   with version, category, and source, plus install / enable / disable actions on
   the existing skill lifecycle API.
-- **Enterprise capability panel** — a 12-capability status matrix in Workspace OS
+- **Enterprise capability panel** — a 12-capability status matrix in the workspace
   (Community reports all disabled; nothing gates a Community feature).
 
 ### Changed
@@ -373,7 +378,7 @@
   lines. The file now owns FastAPI construction, lifespan, middleware, static
   mount, router wiring, and compatibility globals only.
 - **Chat/history/agent extracted** — `/chat`, `/history*`, `/agent*`, streaming
-  generator, document-generation session handling, Graph RAG trace recording,
+  generator, document-generation session handling, Knowledge Graph context trace recording,
   and AgentRuntime wiring moved to `latticeai/api/chat.py` with behavior and
   SSE chunk format preserved.
 - **Model runtime/provider extracted** — provider catalogs, engine aliases,
@@ -449,7 +454,7 @@
 
 - **server_app.py modularization (phase 2)** — reduced
   `latticeai/server_app.py` from ~6,585 to ~5,948 lines by extracting the
-  Workspace OS / Organization API and the health/engine-summary endpoints into
+  workspace / Organization API and the health/engine-summary endpoints into
   dedicated routers backed by a new service layer. `server_app` now focuses on
   app assembly, lifespan, middleware, and router include. The historical
   `server:app` import path, all API paths, and request/response shapes are
@@ -496,7 +501,7 @@
 
 ### Added
 
-- **Organization Workspace foundation** — Workspace OS now distinguishes
+- **Organization Workspace foundation** — workspace now distinguishes
   `personal` and `organization` workspace types. A full workspace model
   (`workspace_id`, `name`, `type`, `owner_user_id`, `members`, `roles`,
   `settings`, `created_at`, `updated_at`, `status`) is stored in the existing
@@ -524,9 +529,9 @@
   verifies that exactly the expected `whl`/`tar.gz`/`vsix`/`tgz` exist for a
   single version, that internal versions match, that the VSIX contains
   `extension/out/extension.js`, and warns when `dist/` mixes other versions.
-- **Workspace OS UI** — Personal/Organization workspace switcher, current
+- **workspace UI** — Personal/Organization workspace switcher, current
   workspace indicator, and a minimal organization create / member / role panel
-  wired into the existing Workspace OS command center.
+  wired into the existing workspace command center.
 
 ### Changed
 
@@ -535,7 +540,7 @@
   `actions/setup-node@v5`, `actions/setup-python@v6`. Artifact upload and
   `twine check` are now scoped to the tagged version only — never a `dist/*`
   glob — and the build runs the release artifact validator before upload.
-- Existing 1.0.x Workspace OS state is migrated non-destructively to the v1.1
+- Existing 1.0.x workspace state is migrated non-destructively to the v1.1
   workspace model on load; legacy records map to the Personal workspace.
 - Release metadata aligned to `1.1.0` across Python, npm, VS Code extension,
   FastAPI app metadata, and `/health`.
@@ -563,18 +568,18 @@
 
 ## [1.0.0] - 2026-05-31
 
-> AI Workspace OS integration release.
+> AI workspace integration release.
 
 ### Added
 
-- **Workspace OS foundation** — new `/workspace` UI and `/workspace/*` API surface
+- **workspace foundation** — new `/workspace` UI and `/workspace/*` API surface
   organize LatticeAI around Graph, Snapshot, Memory, Agent, Workflow, Skills,
   and Timeline areas while preserving existing chat, graph, admin, CLI, and MCP
   compatibility.
 - **First-run onboarding wizard** — reentrant step state, completion API,
   hardware scan, model recommendations, folder connection state, and recovery
   from failed/skipped steps.
-- **Graph RAG answer trace** — each generated answer records source files,
+- **Knowledge Graph context answer trace** — each generated answer records source files,
   graph nodes, graph edges, confidence, retrieval metadata, graph jumps, and
   source jumps.
 - **Local indexing dashboard** — indexed folder status, watcher state, success
@@ -594,7 +599,7 @@
 - **Local Computer Memory** — defaults OFF, requires explicit approval, tracks
   activity summaries only after consent, and links approved records to graph.
 - **Skill Marketplace registry** — install, uninstall, update, enable, disable,
-  version tracking, and metadata state surfaced in Workspace OS.
+  version tracking, and metadata state surfaced in the workspace.
 - **Workflow Graph** — stores workflow timelines and searchable workflow graphs
   for repeatable actions such as Upload -> Summarize -> Generate -> Export.
 - **VS Code workflow** — added Refactor Selection, Generate Tests, Send To
@@ -1142,7 +1147,7 @@ latticeai/
 `언급함` · `포함함` · `해결함` · `의존함` · `설명함` · `비교함` · `사용함` · `연결함` · `확장함` · `생성함` · `대체함` · `지원함` · `발생함` · `관련됨` · `작성함` · `업로드함`
 
 **핵심 개선**
-- `_extract_concepts()` — 고유명사·복합어·기술 용어 추출 (Lattice AI, Graph RAG, VS Code 등)
+- `_extract_concepts()` — 고유명사·복합어·기술 용어 추출 (Lattice AI, Knowledge Graph context, VS Code 등)
 - `_classify_node_type()` — 개념별 노드 타입 자동 분류 (윈도우 컨텍스트 기반)
 - `_infer_edge()` — 문장 내 동사·조사 패턴으로 엣지 레이블 자동 결정
 - `_extract_triples()` — 문장 단위 개념 쌍 → (주어, 동사, 목적어) 트리플 추출
@@ -1230,7 +1235,7 @@ latticeai/
 #### VS Code 익스텐션 메타데이터 개선
 - **카테고리** `Other` → `AI, Machine Learning, Chat, Other` (Marketplace 검색 노출 증가)
 - **키워드** 8개 → 16개 추가 (`copilot`, `apple-silicon`, `groq`, `graph-rag` 등)
-- **설명 문구** 구체화 — 핵심 차별점(MLX, MCP, Graph RAG, zero telemetry) 명시
+- **설명 문구** 구체화 — 핵심 차별점(MLX, MCP, Knowledge Graph context, local-first data handling) 명시
 - **익스텐션 README 전면 재작성** — 기능표 · 빠른 시작 · 단축키 · 지원 모델 · 설정 · 비교표 포함
 
 #### 리포지터리 정리
@@ -1290,7 +1295,7 @@ latticeai/
   - clear 동작을 `ClearEvent` 노드로 그래프에 기록 (언제 누가 clear 했는지 감사 추적)
 - **민감정보 검사** — 문서 업로드 텍스트를 감사 로그에 기록
 
-### Graph RAG / Data Graph
+### Knowledge Graph context / Data Graph
 
 - **한국어 단어 검색 개선** — 2글자 키워드(`문서`, `모델` 등) RAG 검색 누락 문제 수정
 - **`graph.html` 독립 페이지 유지** — 채팅 사이드바 `Data Graph` 버튼으로 연결, New Chat 버튼은 대화 검색 아래로 이동
@@ -1587,7 +1592,7 @@ latticeai/
 
 ### Added
 - **Data Graph** — 채팅·AI 답변·업로드 문서를 SQLite 지식 그래프로 자동 구조화, `/graph`에서 Canvas 기반 Force-directed 시각화
-- **Graph RAG** — 그래프 검색 결과를 채팅 컨텍스트에 자동 주입하여 이전 대화·문서 참조 능력 강화
+- **Knowledge Graph context** — 그래프 검색 결과를 채팅 컨텍스트에 자동 주입하여 이전 대화·문서 참조 능력 강화
 - **Telegram 원격 제어** — 인라인 키보드 메뉴로 상태 조회, 모델 관리, 스크린샷, 그래프 통계, 문서 업로드 등 원격 제어
 - `knowledge_graph.py` — KnowledgeGraphStore (node/edge/chunk/event), `ingest_message()`, `ingest_document()`, `context_for_query()`, `search()`, `neighbors()`
 - `static/graph.html` — 타입별 색상, 줌/패닝, 핀치 줌, 이웃 하이라이트, 노드 상세 정보, 채팅 연결 링크

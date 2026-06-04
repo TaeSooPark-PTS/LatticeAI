@@ -11,10 +11,12 @@
 
 ## v2.2.1 릴리스 노트 (2026-06-04)
 
-Frontend / UX Overhaul Release — 기능 동작은 그대로 유지하면서 Lattice AI의
-화면 레이아웃과 표현을 전면 정비합니다. 모든 화면 크기에서 콘텐츠를 숨기지 않고
-재배치하며, 라이트/다크 테마, 접근성, Knowledge Graph 뷰, 관리자 테이블, 파일
-첨부 경험을 개선합니다.
+Frontend / UX Overhaul Release — Lattice AI를 local-first AI workspace,
+AI pipeline platform, Knowledge Graph platform, multi-agent workflow platform,
+local model management workspace, 그리고 Personal / Organization workspace
+중심으로 정리합니다. 기능 동작은 그대로 유지하면서 모든 화면 크기에서 콘텐츠를
+숨기지 않고 재배치하며, 라이트/다크 테마, 접근성, Knowledge Graph 뷰, 관리자
+테이블, 파일 첨부 경험을 개선합니다.
 
 - **Changed (Responsive UI)**: phone/tablet/laptop/desktop/ultrawide/4K 전반에
   mobile-first 반응형 레이아웃 적용. 작은 화면에서도 콘텐츠를 숨기지 않고
@@ -34,6 +36,9 @@ Frontend / UX Overhaul Release — 기능 동작은 그대로 유지하면서 La
 - **Added (File UX)**: drag & drop 및 스크린샷 paste로 파일 첨부.
 - **Changed (Model cards)**: 제작 국가, 제작 회사, 실행 방식, 인터넷 사용
   여부를 plain language로 표시.
+- **Changed (Positioning)**: README, Marketplace/Open VSX 노출 문구, release
+  copy를 "Local-first AI workspace for knowledge graphs, AI pipelines, and
+  multi-agent coding workflows" 계열로 정렬.
 - **Validation target**: responsive/theme/accessibility/visual/VSIX/Python/npm
   artifact 검증 대상. 패키지 스토어 publish는 수동 절차로만 진행.
 
@@ -41,7 +46,7 @@ Frontend / UX Overhaul Release — 기능 동작은 그대로 유지하면서 La
 
 Multimodal-First Knowledge OS Release — Lattice AI를 단순 채팅 앱이나 모델
 런처가 아니라 파일, 문서, 이미지, 스크린샷, 대화, 판단, 작업 기록을 지식화하는
-AI Knowledge OS로 정렬합니다.
+AI Knowledge Graph workspace로 정렬합니다.
 
 - **Changed (Product direction)**: README, architecture, release notes, model
   policy, AI philosophy, Knowledge Graph principles를 v2.2.0 철학에 맞춰 갱신.
@@ -55,7 +60,7 @@ AI Knowledge OS로 정렬합니다.
   제작 회사, 실행 방식, 인터넷 사용 여부, 모델명을 포함.
 - **Changed (Modes)**: 기본/고급 모드는 기능 차이가 아니라 설명 밀도 차이로
   정리. 관리자 모드만 사용자/권한/감사/정책 권한을 가짐.
-- **Changed (Version sync)**: Python/npm/VS Code extension/Workspace OS/FastAPI
+- **Changed (Version sync)**: Python/npm/VS Code extension/workspace/FastAPI
   `/health` version metadata aligned at `2.2.0`.
 - **Validation target**: unit/integration/build/VSIX/Python/npm artifact checks.
   패키지 스토어 publish는 수동 절차로만 진행.
@@ -94,7 +99,7 @@ CLI, VS Code extension, `server:app`, `latticeai.server_app.app` 호환성을
   `review_requested`, `review_approved`, `retry_requested`,
   `workflow_started`, `plugin_started`, `plugin_completed`,
   `execution_failed` 등 workspace-scoped execution events를 emit합니다.
-- **Changed (Version sync)**: Python/npm/VS Code/Workspace OS/FastAPI `/health`
+- **Changed (Version sync)**: Python/npm/VS Code/workspace/FastAPI `/health`
   version metadata aligned at `2.1.0`.
 - **Validation**: handoff/context/retry/replay/memory/planning/marketplace/
   realtime unit coverage, full unit/integration/startup/import/route/plugin/
@@ -103,12 +108,12 @@ CLI, VS Code extension, `server:app`, `latticeai.server_app.app` 호환성을
 
 ## v2.0.0 릴리스 노트 (2026-06-01)
 
-Agentic Workspace Platform — Lattice AI는 local-first AI *workspace*에서
-local-first **Agentic Workspace Platform**으로 확장됩니다. 네 개의 신규
+Multi-Agent Workflow Platform — Lattice AI는 local-first AI *workspace*에서
+local-first **Multi-Agent Workflow Platform**으로 확장됩니다. 네 개의 신규
 서브시스템이 하나의 통합 플랫폼으로 추가되며, 모든 변경은 additive이고 v1.x
 호환성(API path/schema, `server:app`, `latticeai.server_app.app`, CLI,
 Workspace/Chat/Model/MCP/KG API, 기존 skills/snapshots/memories/agent·workflow
-history, VS Code 확장)을 유지합니다. Workspace OS의 신규 state key
+history, VS Code 확장)을 유지합니다. workspace의 신규 state key
 (`plugin_registry`, `workflow_runs`)는 load 시 deep-merge로 backfill되어
 파괴적 마이그레이션이 없습니다.
 
@@ -130,7 +135,7 @@ history, VS Code 확장)을 유지합니다. Workspace OS의 신규 state key
   동작하는 결정적 runner이며 LLM runner를 주입할 수 있습니다. `/agents/api/*`,
   page `/agents`.
 - **Added (Realtime Collaboration)**: in-process pub/sub bus, presence,
-  SSE 기반 activity feed. Workspace OS `event_sink`로 연결되어 모든 timeline
+  SSE 기반 activity feed. workspace `event_sink`로 연결되어 모든 timeline
   이벤트가 자동으로 feed에 흐릅니다. workspace isolation 유지, single-user
   local mode 보존. `/realtime/stream`(SSE), `/realtime/feed`,
   `/realtime/presence*`, page `/activity`.
@@ -138,7 +143,7 @@ history, VS Code 확장)을 유지합니다. Workspace OS의 신규 state key
   — 워크플로가 tool/skill/plugin/agent를 실행, agent run이 plugin/workflow를
   실행, graph 엔티티가 workflow run·agent run과 연결, 모든 활동이 통합
   timeline·realtime feed에 표시. 재귀는 구조적으로 제한됩니다.
-- **Changed (Version sync)**: Python/npm/VS Code/Workspace OS/FastAPI `/health`
+- **Changed (Version sync)**: Python/npm/VS Code/workspace/FastAPI `/health`
   version metadata aligned at `2.0.0`.
 - **Validation**: unit(신규 plugin/workflow/multi-agent/realtime 포함)/
   integration smoke/startup/import/route compatibility/release artifact 검증.
@@ -172,7 +177,7 @@ visual smoke coverage. 모든 변경은 additive이며 API path/schema, `server:
   tests(`tests/visual/*`)와 nightly/PR/push GitHub Actions workflow. Workspace,
   Graph, Skills, Organization, Enterprise 화면을 검증하고 실패 report artifact를
   업로드.
-- **Changed (Version sync)**: Python/npm/VS Code/Workspace OS/FastAPI `/health`
+- **Changed (Version sync)**: Python/npm/VS Code/workspace/FastAPI `/health`
   version metadata aligned at `1.7.0`.
 - **Validation**: unit/integration/startup/import/route compatibility/MCP/model/
   visual smoke/VSIX/release artifact checks 대상. 패키지 스토어 publish는 수동
@@ -184,7 +189,7 @@ Product Experience Deepening — 구조 리팩토링이 아니라 사용자가 �
 **실제 UI 스크린샷** 갱신에 집중. API path/schema/호환성은 그대로 유지.
 자세한 내용은 [`docs/CHANGELOG.md`](docs/CHANGELOG.md)의 `[1.6.0]` 항목 참고.
 
-- **Added (Knowledge Graph UX)**: Workspace OS에 Entity Explorer — 중요도순 엔터티
+- **Added (Knowledge Graph UX)**: workspace에 Entity Explorer — 중요도순 엔터티
   카드 + 검색, 선택 시 inbound/outbound 관계·related entities·shortest path를 보여주는
   detail 패널, Recent Activity 피드, Workspace Memory 피드. 기존
   `/knowledge-graph/graph`·`/workspace/relationships/*` API만 사용(additive UI).
@@ -195,7 +200,7 @@ Product Experience Deepening — 구조 리팩토링이 아니라 사용자가 �
   추정치는 "estimated"로 보수적으로 표시.
 - **Added (Skill Marketplace UX)**: Recommended / Popular / Installed / Updates 탭과
   버전/카테고리/소스 표시, install·enable·disable 액션. 기존 skill lifecycle API 사용.
-- **Added (Enterprise surface)**: Workspace OS에 Enterprise Capability 패널 — 12개
+- **Added (Enterprise surface)**: workspace에 Enterprise Capability 패널 — 12개
   capability 상태 매트릭스(Community=모두 disabled, 게이트 없음).
 - **Changed (Visuals)**: `docs/images/*`를 Playwright + 실제 서버 캡처 기반의 **실제 UI
   스크린샷**으로 교체(onboarding, model-recommendation, workspace, graph, organization,
@@ -283,7 +288,7 @@ server_app.py 추가 분해(phase 3) — 안전망 우선 구축 후 model/MCP �
 server_app.py 모듈화(routers + service layer) + workspace/org guardrail 강화.
 자세한 내용은 [`docs/CHANGELOG.md`](docs/CHANGELOG.md)의 `[1.2.0]` 항목 참고.
 
-- **Changed**: `latticeai/server_app.py`를 ~6,585 → ~5,948줄로 축소. Workspace OS/
+- **Changed**: `latticeai/server_app.py`를 ~6,585 → ~5,948줄로 축소. workspace/
   Organization API와 health/engine summary endpoint를 전용 router(+service layer)로
   추출. `server_app`은 app assembly/lifespan/middleware/router include 중심.
   `server:app` import path·API path·schema 모두 유지.
@@ -318,7 +323,7 @@ Organization Workspace foundation + open-core Enterprise seam + CI/release
 - **Changed**: `release.yml` Node.js 24 대응(`FORCE_JAVASCRIPT_ACTIONS_TO_NODE24`),
   `actions/checkout@v5`/`setup-node@v5`/`setup-python@v6`로 갱신. 산출물 업로드와
   `twine check`를 태그 버전으로만 한정 — **`dist/*` 글롭 업로드 금지**.
-- **Changed**: 1.0.x Workspace OS state는 로드 시 비파괴 마이그레이션으로 v1.1
+- **Changed**: 1.0.x workspace state는 로드 시 비파괴 마이그레이션으로 v1.1
   모델로 승격(레거시 레코드는 Personal workspace로 매핑).
 - 테스트/빌드/패키징 산출물만 생성 — 어떤 배포도 수행하지 않음.
 
@@ -346,12 +351,12 @@ CI packaging 회귀 수정 patch. 자세한 내용은
 
 ## v1.0.0 릴리스 노트 (2026-05-31)
 
-AI Workspace OS integration release. 자세한 내용은
+AI workspace integration release. 자세한 내용은
 [`docs/CHANGELOG.md`](docs/CHANGELOG.md)의 `[1.0.0]` 항목 참고.
 
 - **Added**: `/workspace` command center and `/workspace/*` APIs for Graph,
   Snapshot, Memory, Agent, Workflow, Skills, and Timeline.
-- **Added**: reentrant first-run onboarding, Graph RAG answer traces, indexing
+- **Added**: reentrant first-run onboarding, Knowledge Graph context answer traces, indexing
   dashboard, snapshots, Time Machine, Knowledge Diff, Personal Memory,
   Multi-Agent Graph, Relationship Explorer, approval-gated Local Computer
   Memory, Skill Marketplace state, and Workflow Graph.

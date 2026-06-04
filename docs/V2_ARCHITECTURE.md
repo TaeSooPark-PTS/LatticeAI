@@ -1,11 +1,11 @@
-# Lattice AI v2 Architecture — Agentic Workspace Platform
+# Lattice AI v2 Architecture — AI Workspace, Pipeline, and Workflow Platform
 
-Lattice AI v2.0.0 turned the local-first Workspace OS into a full **Agentic
-Workspace Platform**. v2.2.0 keeps that architecture and matures the operational
-layer: explicit handoffs, context packets, review/retry loops, memory snapshots,
-planning records, replay, marketplace templates, and realtime execution
-observability all compose over the same local-first JSON store and Knowledge
-Graph.
+Lattice AI v2.0.0 introduced the local-first AI workspace, AI pipeline,
+Knowledge Graph, and multi-agent workflow foundation. v2.2.1 keeps that
+architecture and matures the operational layer: explicit handoffs, context
+packets, review/retry loops, durable context snapshots, planning records,
+replay, marketplace templates, and realtime workflow observability all compose
+over the same local-first JSON store and Knowledge Graph.
 
 This document describes how the v2 platform pillars fit together, the small set of
 **additive integration seams** that wire them, the cross-integration matrix that
@@ -47,7 +47,7 @@ templates / actions under one versioned, permissioned unit.
 
 Design rules enforced by the module: no import-time I/O (the filesystem is only
 touched on `discover()`), no FastAPI and no globals (lifecycle state lives in the
-Workspace OS store), and permissions are an allow-list — the execution boundary
+workspace store), and permissions are an allow-list — the execution boundary
 refuses any capability a plugin did not declare *and* was not granted.
 
 A validated `plugin.json` manifest:
@@ -213,7 +213,7 @@ class RealtimeBus:
 v2.2.0 adds a local marketplace foundation rather than a cloud marketplace
 service. `TemplateCatalog` manages Plugin, Workflow, and Agent templates with
 metadata, export/import, install hooks, and a template registry stored through
-Workspace OS. Marketplace templates are local extension points for the existing
+workspace. Marketplace templates are local extension points for the existing
 Plugin SDK, Workflow Engine, and Multi-Agent Runtime; they do not bypass plugin
 permissions, workflow execution guards, or workspace scoping.
 

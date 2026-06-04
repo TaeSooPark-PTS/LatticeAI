@@ -3,122 +3,59 @@
 
   # Lattice AI
 
-  **A local-first AI workspace** — Plan → Execute → Review with multiple LLMs,
-  on top of a durable Knowledge Graph.
+  **Local-first AI workspace for knowledge graphs, AI pipelines, and multi-agent coding workflows.**
 
-  Apple Silicon (MLX) local model management · Personal & Organization workspaces ·
-  Multi-agent workflows · SSO for teams
+  Plan, execute, review, and remember work across local models, cloud models,
+  files, and team workflows.
 </div>
 
----
+<div align="center">
 
-Lattice AI turns your files, documents, images, screenshots, conversations,
-decisions, notes, and work history into linked knowledge. AI then works on top of
-that Knowledge Graph to advise, analyze, generate documents, and automate work.
+[![PyPI version](https://img.shields.io/pypi/v/ltcai?label=PyPI)](https://pypi.org/project/ltcai/)
+[![npm version](https://img.shields.io/npm/v/ltcai?label=npm)](https://www.npmjs.com/package/ltcai)
+[![VS Code Marketplace](https://vsmarketplacebadges.dev/version-short/parktaesoo.ltcai.svg)](https://marketplace.visualstudio.com/items?itemName=parktaesoo.ltcai)
+[![Open VSX](https://img.shields.io/open-vsx/v/parktaesoo/ltcai?label=Open%20VSX)](https://open-vsx.org/extension/parktaesoo/ltcai)
+[![GitHub release](https://img.shields.io/github/v/release/TaeSooPark-PTS/LatticeAI?label=GitHub%20release)](https://github.com/TaeSooPark-PTS/LatticeAI/releases/tag/v2.2.1)
+[![License: MIT](https://img.shields.io/badge/license-MIT-green)](LICENSE)
+[![Python 3.11+](https://img.shields.io/badge/python-3.11%2B-blue)](https://www.python.org/)
+[![VS Code extension](https://img.shields.io/badge/VS%20Code-extension-blue?logo=visualstudiocode)](https://marketplace.visualstudio.com/items?itemName=parktaesoo.ltcai)
 
-It is built around a simple product rule:
+</div>
 
-> Do not control the user in the name of protection. Explain clearly, disclose
-> sources and risks, then let the user decide.
+![Lattice AI demo](docs/images/lattice-ai-demo.gif)
 
-## What Lattice AI is
+## Install
 
-Lattice AI is four things working together, not an operating system and not a
-simple chat front-end:
-
-- **Local-first AI Workspace** — runs on your machine first; your data and graph
-  stay local by default.
-- **AI Pipeline Platform** — a Plan → Execute → Review loop that can route across
-  multiple LLMs for each stage.
-- **Knowledge Graph Platform** — multimodal inputs become entities,
-  relationships, evidence, and artifacts that outlive any single model.
-- **Workspace Platform** — Personal and Organization workspaces, role-based
-  access, and SSO for teams.
-
-## Highlights
-
-- **Multimodal ingestion** — accepts PDFs, Word, spreadsheets, slide decks,
-  images, screenshots, notes, code, web content, conversations, and work logs
-  without asking you to pre-convert them.
-- **Knowledge Graph core** — extracts entities, relationships, evidence,
-  decisions, and artifacts so your work memory survives model changes.
-- **Multi-agent workflow** — agents hand off work with structured context
-  packets, review/retry loops, and replayable timelines.
-- **Local model management** — MLX-VLM on Apple Silicon, with current-generation
-  multimodal model recommendations based on your CPU, GPU, RAM, storage, and OS.
-- **Source disclosure** — every recommended model shows its facts in plain
-  language before use: maker country, maker company, run mode (local/cloud),
-  internet requirement, and model name.
-- **Basic / Advanced / Admin modes** — the same features everywhere; the modes
-  differ only in how much is explained. Admin mode adds authority
-  (user management, permissions, audit logs, org/security policy, model approval).
-
-## v2.2.1 — Frontend & UX overhaul
-
-v2.2.1 is a UX-focused release. No features were removed; the interface was
-re-laid out and re-themed.
-
-- **Responsive, mobile-first UI** — phone, tablet, laptop, desktop, ultrawide,
-  and 4K. Content is re-laid out for each size, never hidden.
-- **Light / Dark themes via design tokens** — a single source of truth in
-  [`static/css/tokens.css`](static/css/tokens.css). `:root` holds light values,
-  `[data-lt-theme="dark"]` holds dark values. The theme toggle, OS preference
-  detection, and persistence live in
-  [`static/scripts/ux.js`](static/scripts/ux.js).
-- **Accessibility** — 44px touch targets, `:focus-visible` rings, a
-  keyboard-safe chat composer (uses `visualViewport` insets), iOS no-zoom inputs,
-  and reduced-motion support.
-- **Knowledge Graph UX** — responsive canvas that re-fits on resize, zoom
-  buttons, fullscreen, minimap, relationship filtering, a mobile graph↔card
-  view, and a theme-aware palette.
-- **Admin UX** — wide tables reflow to cards on mobile, with larger touch targets
-  and full dark/light support.
-- **File UX** — drag & drop and screenshot paste to attach. Model cards explain
-  country, company, run mode, and internet use in plain language.
-
-## Knowledge Graph flow
-
-```text
-files / documents / images / conversations / work history
-  -> multimodal understanding
-  -> entity extraction
-  -> relationship extraction
-  -> evidence storage
-  -> Knowledge Graph update
-  -> advice / analysis / document generation / automation
-```
-
-The graph preserves your work memory even when the model changes.
-
-## Local model policy
-
-Lattice AI recommends current-generation **multimodal** models for local use and
-keeps text-only recommendation paths out of the product:
-
-| Family | Default role | Example current recommendation |
-| --- | --- | --- |
-| Gemma 4 | Default Google multimodal family | `mlx-community/gemma-4-12b-it-4bit` |
-| Gemma 4 large | Higher-quality local multimodal work | `mlx-community/gemma-4-31b-it-4bit` |
-| Qwen3-VL | Smaller, balanced multimodal options | `mlx-community/Qwen3-VL-4B-Instruct-4bit` |
-| Llama 4 | Meta multimodal option | `mlx-community/Llama-4-Scout-17B-16E-Instruct-4bit` |
-
-Low-spec machines use smaller or quantized multimodal models rather than older
-text-only models. See [MODEL_POLICY.md](MODEL_POLICY.md) for the full policy.
-
-## Requirements
-
-- Python **3.11+**
-- macOS, Windows, or Linux for the workspace server
-- Apple Silicon for local MLX-VLM model execution (optional; cloud models work
-  without it)
-
-## Quick start
-
-Lattice AI is a Python + FastAPI app. The CLI entry point is `ltcai_cli.py`.
+Install the local workspace:
 
 ```bash
-npm install        # installs the npm package and dev tooling
-npm run dev        # runs: python3 ltcai_cli.py --reload
+pip install ltcai
+```
+
+Add Apple Silicon local model support:
+
+```bash
+pip install "ltcai[local]"
+```
+
+Install the npm CLI:
+
+```bash
+npm install -g ltcai
+```
+
+Install the coding extension:
+
+- [VS Code Marketplace: parktaesoo.ltcai](https://marketplace.visualstudio.com/items?itemName=parktaesoo.ltcai)
+- [Open VSX: parktaesoo.ltcai](https://open-vsx.org/extension/parktaesoo/ltcai)
+- [GitHub Release v2.2.1](https://github.com/TaeSooPark-PTS/LatticeAI/releases/tag/v2.2.1)
+
+## Quick Start
+
+Start the workspace:
+
+```bash
+LTCAI
 ```
 
 Then open:
@@ -127,76 +64,166 @@ Then open:
 http://127.0.0.1:4825
 ```
 
-Prefer Python directly?
+Development checkout:
 
 ```bash
-python3 ltcai_cli.py
-# host/port: --host 127.0.0.1 --port 4825
-```
-
-For local model execution on Apple Silicon, install the optional extra:
-
-```bash
-pip install "ltcai[local]"   # adds mlx-vlm
-```
-
-Useful commands:
-
-```bash
-npm test                # python3 -m pytest tests/ -v
-npm run check:python    # py_compile across core modules
-npm run build           # python3 -m build
-```
-
-## VS Code extension
-
-A companion VS Code extension lives in [`vscode-extension/`](vscode-extension).
-
-```bash
-cd vscode-extension
 npm install
-npm run build
-npm run package:vsix
+npm run dev
 ```
 
-## Build & packaging
-
-Lattice AI ships as a Python package (`ltcai`), an npm package (`ltcai`), and a
-VS Code extension.
+Useful validation commands:
 
 ```bash
-python3 -m build        # Python wheel + sdist
-npm pack                # npm tarball
+npm run check:python
+npm run test:unit
+npm run build
 ```
 
-Publishing is intentionally manual — no glob uploads. See [RELEASE.md](RELEASE.md)
-for the exact, version-scoped publish steps for PyPI, npm, the VS Code
-Marketplace, and Open VSX.
+## What Is Lattice AI?
+
+Lattice AI is a local-first AI workspace for people and teams who want their
+files, models, graph context, and agent workflows in one place.
+
+- **Local-first AI Workspace**: work starts on your machine, with local data and
+  workspace state by default.
+- **AI Pipeline Platform**: plan, execute, review, retry, and replay work across
+  local models, cloud models, tools, files, and generated artifacts.
+- **Knowledge Graph Platform**: documents, images, screenshots, notes,
+  conversations, and decisions become linked entities, relationships, evidence,
+  and reusable context.
+- **Multi-Agent Workflow Platform**: agents hand off structured context, review
+  work, retry with reasons, and keep timelines inspectable.
+- **Personal / Organization Workspace**: move between personal work and team
+  workspaces with role-aware views.
+- **Local Model Management**: choose current multimodal local models with source
+  disclosure, hardware-aware recommendations, and cloud fallback options.
+- **SSO for teams**: organization workspaces can be paired with Okta or
+  Microsoft Entra ID patterns for team access.
+
+## Why Lattice AI?
+
+Most AI tools split your work across a chat window, a model picker, loose files,
+and disconnected automations. Lattice AI keeps those parts together:
+
+- files and conversations become graph context;
+- graph context feeds pipelines and coding actions;
+- model cards disclose country, company, run mode, internet usage, and model
+  identity;
+- personal and organization workspaces keep team workflows separate from local
+  work;
+- multi-agent workflows leave behind replayable plans, reviews, retries, and
+  outcomes.
+
+## v2.2.1 Highlights
+
+- Mobile-first responsive UI for phone, tablet, laptop, desktop, ultrawide, and
+  4K layouts.
+- Light/Dark themes via design tokens.
+- Zero `!important` CSS in the theme system.
+- Keyboard-safe chat composer with mobile viewport handling.
+- Knowledge Graph responsive UX with resize fit, zoom controls, fullscreen,
+  minimap, filters, and mobile graph/card views.
+- Admin table mobile card layout.
+- Drag-and-drop and screenshot paste file attachment.
+- Model cards with source disclosure.
+
+## Screenshots
+
+### Workspace
+
+![Workspace light theme](docs/images/workspace-light.png)
+
+![Workspace dark theme](docs/images/workspace-dark.png)
+
+### Knowledge Graph
+
+![Knowledge Graph](docs/images/knowledge-graph.png)
+
+### AI Pipeline
+
+![AI Pipeline designer](docs/images/pipeline.png)
+
+### Admin Dashboard
+
+![Admin dashboard](docs/images/admin-dashboard.png)
+
+### Mobile Responsive
+
+![Mobile responsive layout](docs/images/mobile-responsive.png)
+
+## Knowledge Graph Flow
+
+```text
+files / documents / images / screenshots / conversations / decisions
+  -> multimodal understanding
+  -> entity and relationship extraction
+  -> evidence and artifact storage
+  -> Knowledge Graph update
+  -> AI pipeline context
+  -> coding actions / analysis / documents / team workflows
+```
+
+The graph keeps useful workspace context available even when you change models.
+
+## Local Model Policy
+
+Lattice AI recommends current-generation multimodal models for local use and
+keeps local model choices explicit.
+
+| Family | Default role | Example recommendation |
+| --- | --- | --- |
+| Gemma 4 | Default Google multimodal family | `mlx-community/gemma-4-12b-it-4bit` |
+| Gemma 4 large | Higher-quality local multimodal work | `mlx-community/gemma-4-31b-it-4bit` |
+| Qwen3-VL | Smaller, balanced multimodal options | `mlx-community/Qwen3-VL-4B-Instruct-4bit` |
+| Llama 4 | Meta multimodal option | `mlx-community/Llama-4-Scout-17B-16E-Instruct-4bit` |
+
+Every recommended model card shows maker country, maker company, run mode,
+internet requirement, and model name. See [MODEL_POLICY.md](MODEL_POLICY.md).
+
+## Architecture
+
+```text
+Personal / Organization Workspace
+  -> files, chats, screenshots, model choices, workflow events
+  -> Knowledge Graph
+  -> AI Pipeline
+  -> Multi-Agent Workflow
+  -> coding actions, documents, analysis, team handoffs
+```
+
+Core areas:
+
+- FastAPI local workspace app
+- Knowledge Graph storage and graph APIs
+- AI pipeline and workflow designer
+- Multi-agent handoff, review, retry, and replay records
+- Local model management and model recommendation catalog
+- VS Code / Cursor / VSCodium extension surface
+- Personal and organization workspace boundaries
 
 ## Documentation
 
-- [ARCHITECTURE.md](ARCHITECTURE.md) — system shape and runtime policy
+- [ARCHITECTURE.md](ARCHITECTURE.md) — workspace, graph, pipeline, and model-management overview
 - [docs/architecture.md](docs/architecture.md) — full architecture reference
 - [PROJECT_PRINCIPLES.md](PROJECT_PRINCIPLES.md) — product principles
-- [AI_PHILOSOPHY.md](AI_PHILOSOPHY.md) — how AI is used here
+- [AI_PHILOSOPHY.md](AI_PHILOSOPHY.md) — how AI is used in the workspace
 - [MODEL_POLICY.md](MODEL_POLICY.md) — local model recommendation policy
 - [KNOWLEDGE_GRAPH.md](KNOWLEDGE_GRAPH.md) — graph model and behavior
-- [docs/MULTI_AGENT_RUNTIME.md](docs/MULTI_AGENT_RUNTIME.md) — multi-agent runtime
-- [docs/WORKFLOW_DESIGNER.md](docs/WORKFLOW_DESIGNER.md) — workflow designer
-- [docs/REALTIME_COLLABORATION.md](docs/REALTIME_COLLABORATION.md) — realtime collaboration
-- [docs/ENTERPRISE.md](docs/ENTERPRISE.md) — Organization workspaces & SSO (Okta / Microsoft Entra ID)
-- [docs/security-model.md](docs/security-model.md) — security model
+- [docs/MULTI_AGENT_RUNTIME.md](docs/MULTI_AGENT_RUNTIME.md) — multi-agent workflow runtime
+- [docs/WORKFLOW_DESIGNER.md](docs/WORKFLOW_DESIGNER.md) — AI pipeline designer
+- [docs/REALTIME_COLLABORATION.md](docs/REALTIME_COLLABORATION.md) — realtime workspace events
+- [docs/ENTERPRISE.md](docs/ENTERPRISE.md) — organization workspaces and SSO
 - [docs/PLUGIN_SDK.md](docs/PLUGIN_SDK.md) — plugin SDK
-- [RELEASE_NOTES.md](RELEASE_NOTES.md) · [docs/CHANGELOG.md](docs/CHANGELOG.md)
+- [RELEASE_NOTES.md](RELEASE_NOTES.md) and [docs/CHANGELOG.md](docs/CHANGELOG.md)
 
 ## Release history
 
 | Version | Theme |
 | --- | --- |
-| **2.2.1** | Frontend & UX overhaul — responsive, design-token theming, accessibility, graph/admin UX |
-| 2.2.0 | Multimodal-first Knowledge Graph, source disclosure, Gemma-4 recommendation policy |
-| 2.1.0 | Agent platform maturity |
-| 2.0.0 | Agentic workspace platform |
+| **2.2.1** | Frontend and UX overhaul for responsive workspace, themes, graph UX, admin reflow, and file attachment |
+| 2.2.0 | Multimodal-first Knowledge Graph and local model source disclosure |
+| 2.1.0 | Multi-agent workflow maturity |
+| 2.0.0 | AI pipeline, workflow, and plugin platform foundation |
 | 1.7.0 | Graph and collaboration |
 | 1.6.0 | Product experience deepening |
 

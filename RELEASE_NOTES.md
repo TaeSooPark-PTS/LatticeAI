@@ -2,11 +2,10 @@
 
 ## v2.2.1 - Frontend / UX Overhaul Release
 
-Lattice AI v2.2.1 is a frontend and UX release. It makes the workspace usable
-across every screen size, adds a proper light/dark theme, and improves
-accessibility, the Knowledge Graph view, admin tables, and file attachment.
-Feature behavior is unchanged; this release focuses on how the product is laid
-out and presented.
+Lattice AI v2.2.1 is a frontend and UX release for the local-first AI
+workspace. It makes knowledge graph, AI pipeline, model workflow, and
+multi-agent coding surfaces easier to use across screen sizes while preserving
+feature behavior.
 
 ### Highlights
 
@@ -27,6 +26,25 @@ out and presented.
 - Model cards show country, company, run mode, and internet usage in plain
   language.
 
+### GitHub Release Copy
+
+Local-first AI workspace for knowledge graphs, AI pipelines, and multi-agent
+coding workflows.
+
+Plan, execute, review, and remember work across local models, cloud models,
+files, and team workflows.
+
+This release refreshes the v2.2.1 workspace UI and marketplace-facing
+positioning around:
+
+- Local-first AI Workspace
+- AI Pipeline Platform
+- Knowledge Graph Platform
+- Multi-Agent Workflow
+- Personal / Organization Workspace
+- Local Model Management
+- SSO for teams
+
 ### Expected Artifacts
 
 ```text
@@ -38,13 +56,13 @@ ltcai-2.2.1.tgz
 
 ## v2.2.0 - Multimodal-First Knowledge OS Release
 
-Lattice AI v2.2.0 reframes the product as an AI Knowledge OS. The release moves
+Lattice AI v2.2.0 reframes the product as an AI Knowledge Graph workspace. The release moves
 model policy, documentation, UI copy, and recommendation logic toward a
 multimodal-first Knowledge Graph architecture.
 
 ### Highlights
 
-- README and architecture docs rewritten around AI Knowledge OS direction.
+- README and architecture docs rewritten around AI Knowledge Graph workspace direction.
 - New principle docs added for AI philosophy, model policy, and Knowledge Graph
   behavior.
 - Local model catalogs now recommend current multimodal families only.
@@ -64,4 +82,3 @@ dist/ltcai-2.2.0.tar.gz
 dist/ltcai-2.2.0.vsix
 ltcai-2.2.0.tgz
 ```
-

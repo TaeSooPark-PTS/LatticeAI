@@ -1,12 +1,12 @@
 # Lattice AI Architecture
 
-Lattice AI v2.2.1 is a local-first AI workspace and Knowledge Graph platform.
-The durable core is the Knowledge Graph; models are replaceable multimodal
-workers that operate on graph context.
+Lattice AI v2.2.1 is a local-first AI workspace for knowledge graphs, AI
+pipelines, local model management, and multi-agent workflows. The durable core
+is the Knowledge Graph; model workflows operate on graph and workspace context.
 
 See [docs/architecture.md](docs/architecture.md) for the full architecture.
 
-## v2.2.0 Shape
+## v2.2.1 Shape
 
 ```text
 files / images / documents / chats / work history
@@ -14,11 +14,12 @@ files / images / documents / chats / work history
   -> entity, relation, and evidence extraction
   -> Knowledge Graph
   -> graph context
-  -> multimodal model runtime
-  -> advice, analysis, documents, automation
+  -> local or cloud model workflow
+  -> AI pipeline output
+  -> coding actions, analysis, documents, team workflows
 ```
 
-## Current Runtime Policy
+## Current Model Workflow Policy
 
 - Local recommendations are multimodal-only.
 - Gemma 4 is the default recommendation family.
@@ -41,4 +42,3 @@ Every recommended model must expose:
 
 Basic mode and advanced mode show the same capabilities. Admin mode is the only
 mode with additional authority.
-

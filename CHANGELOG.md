@@ -21,10 +21,13 @@ The detailed historical changelog lives in [docs/CHANGELOG.md](docs/CHANGELOG.md
 - Added file attach by drag & drop and screenshot paste.
 - Model cards now describe country, company, run mode, and internet usage in
   plain language.
+- README, marketplace metadata, and release copy now present Lattice AI as a
+  local-first AI workspace for knowledge graphs, AI pipelines, model workflows,
+  and multi-agent coding workflows.
 
 ## [2.2.0] - 2026-06-04
 
-- Reframed Lattice AI as a multimodal-first AI Knowledge OS.
+- Reframed Lattice AI as a multimodal-first AI Knowledge Graph workspace.
 - Removed current text-only local model recommendations and MLX-LM execution
   recommendation paths.
 - Removed current Gemma 2, Gemma 3, Qwen2.5-VL, GPT-OSS, Phi, Mistral,
@@ -32,4 +35,3 @@ The detailed historical changelog lives in [docs/CHANGELOG.md](docs/CHANGELOG.md
 - Added source disclosure metadata to recommended model catalog entries.
 - Updated README, architecture, release notes, and model/graph policy docs.
 - Bumped Python, npm, VS Code extension, and runtime version metadata to 2.2.0.
-

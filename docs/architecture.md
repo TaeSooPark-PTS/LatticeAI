@@ -1,9 +1,10 @@
 # Lattice AI Architecture
 
-Lattice AI is a local-first **AI Workspace and Knowledge Graph platform**. The
-architecture is organized around one durable center: the Knowledge Graph.
-Models, tools, agents, workflows, and UI modes are replaceable layers that
-operate on top of the graph.
+Lattice AI is a local-first **AI workspace, AI pipeline platform, Knowledge
+Graph platform, and multi-agent workflow platform**. The architecture is
+organized around one durable center: the Knowledge Graph. Models, tools,
+agents, workflows, and UI modes are replaceable layers that operate on top of
+workspace and graph context.
 
 ## Architecture Goals
 
@@ -15,7 +16,7 @@ operate on top of the graph.
 - Keep basic and advanced modes feature-equivalent.
 - Keep admin-only capabilities explicit and auditable.
 
-## System View
+## Workspace View
 
 ```mermaid
 flowchart TD
@@ -24,9 +25,9 @@ flowchart TD
     Extract["Entity, relation, evidence extraction"]
     Graph["Knowledge Graph"]
     Context["Graph context builder"]
-    Models["Multimodal model runtime"]
-    Agents["Agent runtime and workflows"]
-    Outputs["Advice, analysis, documents, automation"]
+    Models["Local or cloud model workflow"]
+    Agents["Multi-agent workflow"]
+    Outputs["Coding actions, analysis, documents, team workflows"]
     Admin["Admin policy and audit"]
 
     User --> Ingestion
@@ -42,7 +43,7 @@ flowchart TD
 
 ## Durable Core
 
-The Knowledge Graph stores the durable user and organization memory:
+The Knowledge Graph stores durable personal and organization workspace context:
 
 - files and document evidence
 - images and screenshots
@@ -52,8 +53,8 @@ The Knowledge Graph stores the durable user and organization memory:
 - generated artifacts
 - agent and workflow events
 
-The LLM is not the product core. It is an execution worker that can be replaced
-when hardware, policy, or user preference changes.
+The model is not the product core. It is a replaceable participant in the
+workspace pipeline.
 
 ## Multimodal Ingestion
 
@@ -75,9 +76,9 @@ input set includes:
 The architecture must not ask users to convert these to plain text before AI can
 work on them.
 
-## Model Runtime Policy
+## Local Model Management Policy
 
-Local recommended models must be multimodal. The v2.2 local runtime policy is:
+Local recommended models must be multimodal. The v2.2 local model workflow policy is:
 
 - macOS Apple Silicon: MLX-VLM first
 - Windows: llama.cpp multimodal path, with LM Studio as a user-friendly option
@@ -130,11 +131,11 @@ Basic mode and advanced mode have the same feature access.
 | --- | --- |
 | `latticeai/services/model_catalog.py` | Multimodal model catalog, source metadata, aliases |
 | `latticeai/services/model_recommendation.py` | Hardware-aware multimodal recommendation |
-| `latticeai/services/model_runtime.py` | Download, load, server, and runtime orchestration |
+| `latticeai/services/model_runtime.py` | Download, load, server, and model workflow orchestration |
 | `llm_router.py` | MLX-VLM and OpenAI-compatible model routing |
-| `knowledge_graph.py` | Graph storage, extraction, local folder graph RAG |
+| `knowledge_graph.py` | Graph storage, extraction, local folder knowledge graph context |
 | `latticeai/core/context_builder.py` | Graph context for generation |
-| `latticeai/core/workspace_os.py` | Workspace state, timeline, snapshots, memory |
+| `latticeai/core/workspace_os.py` | Workspace state, timeline, snapshots, durable context |
 | `latticeai/core/multi_agent.py` | Planner/executor/reviewer/researcher orchestration |
 | `latticeai/core/workflow_engine.py` | Workflow definitions and run history |
 | `latticeai/core/plugins.py` | Plugin manifest, registry, permission boundary |
@@ -142,7 +143,7 @@ Basic mode and advanced mode have the same feature access.
 
 ## Compatibility
 
-v2.2.0 preserves the additive Workspace OS and API compatibility posture from
+v2.2.1 preserves the additive workspace and API compatibility posture from
 v2.x. Existing graph/workspace data is migrated non-destructively. The release
 does remove current recommendation entries for old or text-only model paths, but
 it does not destructively mutate existing user graph data.

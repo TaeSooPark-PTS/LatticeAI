@@ -8,10 +8,10 @@
 Lattice AI follows an **open-core** model:
 
 - **Community** (this repository, MIT) is fully functional on its own: local
-  LLMs, knowledge graph, Personal and Organization workspaces, roles, snapshots,
-  memory, agents, workflows, skills, the auditable timeline, and the full v2.0
-  Agentic Workspace Platform (Plugin SDK, Workflow Designer, Multi-Agent Runtime
-  2.0, Realtime Collaboration).
+  models, knowledge graph, Personal and Organization workspaces, roles,
+  snapshots, durable context, AI pipelines, multi-agent workflows, skills, the
+  auditable timeline, and the full v2 workspace platform (Plugin SDK, Workflow
+  Designer, Multi-Agent Runtime, Realtime Collaboration).
 - **Enterprise** is a separately-distributed plugin that attaches advanced,
   organization-scale governance and deployment capabilities through a stable
   runtime seam. It is never bundled into the Community build.
@@ -36,7 +36,7 @@ Community code consults the seam at extension points via
 always `False`, so the Community code path is taken and nothing is gated off.
 
 The live edition + capability matrix is exposed at `GET /workspace/editions`,
-surfaced in the Workspace OS summary (`GET /workspace/os` → `edition`), and
+surfaced in the workspace summary (`GET /workspace/os` → `edition`), and
 shown in the Enterprise Admin UI at `/admin#enterprise`.
 
 Community also exposes descriptive admin surfaces at `GET /admin/enterprise`

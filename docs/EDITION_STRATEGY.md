@@ -5,12 +5,12 @@ the boundary stays predictable for contributors and users.
 
 ## Editions
 
-- **Community** — this repository, MIT licensed. Local-first **Agentic Workspace
-  Platform**: local LLMs, knowledge graph, Personal **and** Organization
-  workspaces, role-based membership, snapshots, memory, agents, workflows,
-  skills, the auditable timeline, and the full v2.0 platform — **Plugin SDK**,
-  **Workflow Designer**, **Multi-Agent Runtime 2.0**, and **Realtime
-  Collaboration**. Community is a complete product.
+- **Community** — this repository, MIT licensed. Local-first **AI workspace
+  platform**: local models, knowledge graph, Personal **and** Organization
+  workspaces, role-based membership, snapshots, durable context, AI pipelines,
+  multi-agent workflows, skills, the auditable timeline, and the full v2
+  platform — **Plugin SDK**, **Workflow Designer**, **Multi-Agent Runtime**, and
+  **Realtime Collaboration**. Community is a complete product.
 - **Enterprise** — a separately-distributed plugin adding organization-scale
   governance, identity, compliance, and deployment capabilities. Distributed and
   licensed separately. See [ENTERPRISE.md](ENTERPRISE.md).
@@ -40,7 +40,7 @@ the boundary stays predictable for contributors and users.
 |--------|------------------------|------------------------|
 | Personal & Organization workspaces | ✅ | — |
 | Base roles (owner/admin/member/viewer) | ✅ | — |
-| Snapshots / memory / agents / workflows / skills | ✅ | — |
+| Snapshots / durable context / AI pipelines / multi-agent workflows / skills | ✅ | — |
 | Plugin SDK (manifest, lifecycle, permission boundary) | ✅ | RBAC/ABAC over plugin permissions |
 | Workflow Designer (build/run/run-history) | ✅ | Org approval gates, scheduled triggers |
 | Multi-Agent Runtime 2.0 (roles/handoff/retry) | ✅ | Policy-bounded autonomous runs |
@@ -55,7 +55,7 @@ the boundary stays predictable for contributors and users.
 ## Detecting edition at runtime
 
 - `GET /workspace/editions` → edition + per-capability matrix.
-- `GET /workspace/os` → `edition` block in the Workspace OS summary.
+- `GET /workspace/os` → `edition` block in the workspace summary.
 - `/admin#enterprise` → Admin policy, audit export, SIEM preview,
   organization settings, and capability status UI.
 - `GET /admin/enterprise` and `GET /admin/enterprise/siem-export` → descriptive
