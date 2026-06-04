@@ -30,7 +30,10 @@
     "capture:enterprise": "node scripts/capture/capture_enterprise.js",
     "capture:onboarding": "node scripts/capture/capture_onboarding.js",
     "publish:npm": "npm publish --access public",
-    "publish:pypi": "python3 -m twine upload --skip-existing dist/ltcai-$npm_package_version.tar.gz dist/ltcai-$npm_package_version-py3-none-any.whl"
+    "publish:pypi": "python3 -m twine upload --skip-existing dist/ltcai-$npm_package_version.tar.gz dist/ltcai-$npm_package_version-py3-none-any.whl",
+    "publish:vscode": "cd vscode-extension && npm run publish:vscode",
+    "publish:openvsx": "cd vscode-extension && npm run publish:openvsx",
+    "publish:all": "npm run publish:npm && npm run publish:pypi && npm run publish:vscode && npm run publish:openvsx"
   },
   "keywords": [
     "ltcai",

@@ -3,11 +3,11 @@
 이 문서는 `npm`, `PyPI`, `VS Code`, `Cursor`, `Antigravity`, `Open VSX` 배포를
 한 번에 처리하기 위한 체크리스트입니다.
 
-> **v0.5.0부터 `.github/workflows/release.yml`은 build-only입니다.** v* 태그를
-> push하면 단위 테스트와 빌드 산출물(`python -m build`, `twine check`,
-> `npm pack`, `vsce package`)만 생성하고 **어떤 배포도 수행하지 않습니다**.
-> PyPI / npm / VS Code Marketplace / Open VSX 배포는 아래 수동 절차로 로컬에서
-> 직접 인증 후 진행합니다. GitHub Secrets에 배포 토큰을 저장하지 않습니다.
+> **v2.2.1부터 `.github/workflows/release.yml`이 완전한 배포 파이프라인을 포함합니다.**
+> v* 태그를 push하면 빌드 → 검증 → PyPI / npm / VS Code Marketplace / Open VSX
+> 배포가 자동으로 순서대로 실행됩니다.  배포 단계는 GitHub Secrets
+> (`PYPI_TOKEN`, `NPM_TOKEN`, `VSCE_TOKEN`, `OVSX_TOKEN`)가 설정된 경우에만
+> 실행됩니다. 필요한 경우 아래 수동 절차로 로컬에서도 진행할 수 있습니다.
 
 ## v2.2.1 릴리스 노트 (2026-06-04)
 
@@ -483,13 +483,20 @@ Knowledge Graph v2 read/write cutover. 자세한 내용은
 2. 빌드
    - `npm run build:python`
 3. 업로드
-   - `npm run publish:pypi`
-   - 직접 실행 시:
-     `python3 -m twine upload dist/ltcai-2.2.0-py3-none-any.whl dist/ltcai-2.2.0.tar.gz`
+   - `npm run publish:pypi`  ← 권장 (`$npm_package_version` 자동 사용)
+   - 직접 실행 시 (`VERSION`을 실제 버전으로 치환):
+     ```
+     VERSION=$(python3 -c "import tomllib; print(tomllib.load(open('pyproject.toml','rb'))['project']['version'])")
+     python3 -m twine upload "dist/ltcai-${VERSION}-py3-none-any.whl" "dist/ltcai-${VERSION}.tar.gz"
+     ```
 
 참고:
 - TestPyPI 먼저 쓰려면:
-  - `python3 -m twine upload --skip-existing --repository testpypi dist/ltcai-2.2.0.tar.gz dist/ltcai-2.2.0-py3-none-any.whl`
+  ```
+  VERSION=$(python3 -c "import tomllib; print(tomllib.load(open('pyproject.toml','rb'))['project']['version'])")
+  python3 -m twine upload --skip-existing --repository testpypi \
+    "dist/ltcai-${VERSION}.tar.gz" "dist/ltcai-${VERSION}-py3-none-any.whl"
+  ```
 
 ## 4) VS Code / Cursor / Antigravity 확장 배포
 
@@ -501,13 +508,19 @@ Knowledge Graph v2 read/write cutover. 자세한 내용은
 2. VSIX 생성
    - `npm run package:vsix`
 3. VS Code Marketplace 배포
-   - `npm run publish:vscode`
-   - 직접 실행 시:
-     `npx vsce publish --packagePath dist/ltcai-2.2.0.vsix`
+   - `npm run publish:vscode`  ← 권장 (`$npm_package_version` 자동 사용)
+   - 직접 실행 시 (`VERSION`을 실제 버전으로 치환):
+     ```
+     VERSION=$(node -e "console.log(require('./package.json').version)")
+     npx vsce publish --packagePath "dist/ltcai-${VERSION}.vsix"
+     ```
 4. Open VSX 배포 (Cursor/일부 포크 호환)
-   - `npm run publish:openvsx`
+   - `npm run publish:openvsx`  ← 권장 (`$npm_package_version` 자동 사용)
    - 직접 실행 시:
-     `npx ovsx publish dist/ltcai-2.2.0.vsix`
+     ```
+     VERSION=$(node -e "console.log(require('./package.json').version)")
+     npx ovsx publish "dist/ltcai-${VERSION}.vsix"
+     ```
 5. 로컬 설치 (VS Code/Cursor/Antigravity)
    - `npm run install:all`
 

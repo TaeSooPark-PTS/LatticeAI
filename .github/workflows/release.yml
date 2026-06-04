@@ -1,13 +1,17 @@
-name: Release (build-only)
+name: Release
 
-# Build-only workflow: runs tests and produces release artifacts when a v* tag
-# is pushed. It NEVER publishes to npm, PyPI, the VS Code Marketplace, or Open VSX.
-# Publishing is done manually from a local machine after authenticating there, so
-# no npm/PyPI/Marketplace/Open VSX tokens are stored in GitHub Secrets.
+# Runs on v* tag pushes. Builds all release artifacts, validates them, then
+# publishes to PyPI / npm / VS Code Marketplace / Open VSX when the respective
+# secrets are present in the repository.
 #
-# Artifacts are uploaded for the tagged version ONLY. We never upload `dist/*`
-# with a glob: a clean CI checkout regenerates dist/, but the explicit filenames
-# keep the policy unambiguous and mirror the local release checklist (RELEASE.md).
+# Required secrets (add in Settings → Secrets and variables → Actions):
+#   PYPI_TOKEN  — PyPI API token (scope: entire account or project)
+#   NPM_TOKEN   — npm access token (Automation type, scope: publish)
+#   VSCE_TOKEN  — VS Code Marketplace personal access token (Marketplace → PAT)
+#   OVSX_TOKEN  — Open VSX access token (open-vsx.org → User Settings → Tokens)
+#
+# If a secret is absent the corresponding publish step is skipped automatically.
+# Build, validate, and artifact-upload steps always run regardless of secrets.
 
 on:
   push:
@@ -15,14 +19,15 @@ on:
       - 'v*'
 
 # GitHub is migrating JS actions to Node.js 24 (Node 20 removed 2026-09-16).
-# Opt in now so the build is forward-compatible and free of deprecation noise.
 env:
   FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: "true"
 
 jobs:
   build:
-    name: Test and build artifacts
+    name: Build and validate artifacts
     runs-on: ubuntu-latest
+    outputs:
+      version: ${{ steps.meta.outputs.version }}
     steps:
       - uses: actions/checkout@v5
 
@@ -48,16 +53,17 @@ jobs:
           pip install pytest
 
       - name: Run unit tests
-        # Integration tests in tests/integration require a live server, so only
-        # the unit suite runs here.
         run: python -m pytest tests/unit/ -v
 
       - name: Build Python sdist + wheel
         run: python -m build
 
       - name: Validate Python distribution
-        # Scope to the tagged version — never `twine check dist/*`.
-        run: twine check "dist/ltcai-${{ steps.meta.outputs.version }}"*
+        # Explicit filenames — more reliable than a glob on all shells/CI runners.
+        run: |
+          twine check \
+            "dist/ltcai-${{ steps.meta.outputs.version }}-py3-none-any.whl" \
+            "dist/ltcai-${{ steps.meta.outputs.version }}.tar.gz"
 
       - name: Pack npm tarball
         run: npm pack
@@ -88,3 +94,60 @@ jobs:
             dist/ltcai-${{ steps.meta.outputs.version }}.tar.gz
             dist/ltcai-${{ steps.meta.outputs.version }}.vsix
             ltcai-${{ steps.meta.outputs.version }}.tgz
+
+  publish:
+    name: Publish release artifacts
+    needs: build
+    runs-on: ubuntu-latest
+    # Download the artifacts produced by the build job so each publish step
+    # can reference dist/ without re-running the build.
+    steps:
+      - name: Download build artifacts
+        uses: actions/download-artifact@v4
+        with:
+          name: release-artifacts
+
+      # ── PyPI ──────────────────────────────────────────────────────────────
+      - name: Publish to PyPI
+        if: ${{ secrets.PYPI_TOKEN != '' }}
+        env:
+          TWINE_USERNAME: __token__
+          TWINE_PASSWORD: ${{ secrets.PYPI_TOKEN }}
+        run: |
+          pip install --quiet twine
+          twine upload \
+            "dist/ltcai-${{ needs.build.outputs.version }}-py3-none-any.whl" \
+            "dist/ltcai-${{ needs.build.outputs.version }}.tar.gz"
+
+      # ── npm ───────────────────────────────────────────────────────────────
+      - name: Publish to npm
+        if: ${{ secrets.NPM_TOKEN != '' }}
+        env:
+          NPM_TOKEN: ${{ secrets.NPM_TOKEN }}
+        run: |
+          echo "//registry.npmjs.org/:_authToken=${NPM_TOKEN}" > ~/.npmrc
+          npm publish "ltcai-${{ needs.build.outputs.version }}.tgz" --access public
+
+      # ── VS Code Marketplace ───────────────────────────────────────────────
+      - name: Set up Node for Marketplace publish
+        if: ${{ secrets.VSCE_TOKEN != '' || secrets.OVSX_TOKEN != '' }}
+        uses: actions/setup-node@v5
+        with:
+          node-version: "20"
+
+      - name: Publish to VS Code Marketplace
+        if: ${{ secrets.VSCE_TOKEN != '' }}
+        run: |
+          npm install -g @vscode/vsce
+          vsce publish \
+            --packagePath "dist/ltcai-${{ needs.build.outputs.version }}.vsix" \
+            --pat "${{ secrets.VSCE_TOKEN }}"
+
+      # ── Open VSX ─────────────────────────────────────────────────────────
+      - name: Publish to Open VSX
+        if: ${{ secrets.OVSX_TOKEN != '' }}
+        run: |
+          npm install -g ovsx
+          ovsx publish \
+            "dist/ltcai-${{ needs.build.outputs.version }}.vsix" \
+            -p "${{ secrets.OVSX_TOKEN }}"
