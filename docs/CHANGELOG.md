@@ -1,5 +1,31 @@
 # Changelog
 
+## [Unreleased]
+
+> Frontend Product Shell Redesign — workspace navigation, auth entry, and shared
+> product surfaces were realigned around the local-first AI workspace model
+> without changing backend contracts.
+
+### Changed
+
+- **Workspace IA** — the workspace shell now separates primary user workflows,
+  admin controls, and runtime tooling, with Basic, Advanced, and Admin modes.
+- **Navigation** — Chat and Workspace navigation now use consistent labels for
+  Home, Chat, Knowledge Graph, Files, Pipeline, My Computer, Search, and
+  organization administration.
+- **Design tokens** — shared product surfaces moved away from the prior
+  lavender-heavy treatment toward neutral work surfaces with blue, teal, and
+  amber accents.
+- **Auth surface** — account screens use the same token-native product shell as
+  the workspace experience and hide decorative background elements.
+
+### Validation
+
+- Frontend validation includes lint, Python checks, browser-rendered workspace
+  smoke checks, and Playwright visual regression coverage.
+- Production build output was intentionally not generated for this frontend-only
+  redesign pass.
+
 ## [2.2.7] - 2026-06-05
 
 > Visual Stabilization Release — browser-rendered screens were reviewed and

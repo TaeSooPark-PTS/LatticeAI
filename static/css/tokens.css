@@ -18,78 +18,75 @@
   color-scheme: light;
 
   /* ── Brand raw scale (불변, 테마 무관 기준점) ───────────────────────────── */
-  --lt-color-primary-100: #EAE2FD;
-  --lt-color-primary-200: #D3C2FB;
-  --lt-color-primary-400: #9A78F0;
-  --lt-color-primary-600: #6E4AE6;
-  --lt-color-primary-800: #3B1F8E;
-  --lt-color-ink-900: #0E102A;
-  --lt-color-accent-cyan:  #18C6D9;
-  --lt-color-accent-green: #2FC28E;
-  --lt-color-accent-amber: #F1A52A;
-  --lt-color-accent-pink:  #F060B8;
+  --lt-color-primary-100: #dbeafe;
+  --lt-color-primary-200: #bfdbfe;
+  --lt-color-primary-400: #60a5fa;
+  --lt-color-primary-600: #2563eb;
+  --lt-color-primary-800: #1e3a8a;
+  --lt-color-ink-900: #111827;
+  --lt-color-accent-cyan:  #0891b2;
+  --lt-color-accent-green: #0f9f8f;
+  --lt-color-accent-amber: #b7791f;
+  --lt-color-accent-pink:  #b83280;
 
   /* ╔══════════════════════════════════════════════════════════════════════╗
-     ║  SEMANTIC TOKENS — LIGHT (현재 라벤더 룩 보존)                          ║
+     ║  SEMANTIC TOKENS — LIGHT (neutral workspace palette)                 ║
      ╚══════════════════════════════════════════════════════════════════════╝ */
 
   /* background / surfaces */
-  --bg:          #f3ecff;
-  --bg-soft:     #ede6ff;
-  --surface:     #f6f0ff;
-  --surface-2:   #efe8ff;
-  --surface-3:   #e8dfff;
-  --surface-muted: #efe8ff;
-  --surface-elevated: rgba(255, 255, 255, 0.92);
-  --card:        rgba(255, 255, 255, 0.90);
-  --sidebar:     rgba(244, 237, 255, 0.96);
-  --modal:       rgba(247, 242, 255, 0.98);
-  --table:       rgba(255, 255, 255, 0.72);
-  --input:       rgba(255, 255, 255, 0.80);
-  --overlay:     rgba(20, 16, 40, 0.42);
+  --bg:          #f6f8f7;
+  --bg-soft:     #eef3f2;
+  --surface:     #ffffff;
+  --surface-2:   #f0f5f4;
+  --surface-3:   #e4ecea;
+  --surface-muted: #edf3f2;
+  --surface-elevated: rgba(255, 255, 255, 0.94);
+  --card:        rgba(255, 255, 255, 0.92);
+  --sidebar:     rgba(255, 255, 255, 0.94);
+  --modal:       rgba(255, 255, 255, 0.98);
+  --table:       rgba(255, 255, 255, 0.78);
+  --input:       rgba(255, 255, 255, 0.86);
+  --overlay:     rgba(15, 23, 42, 0.44);
   --overlay-scrim: var(--overlay);
-  /* decorative page background (그라데이션 한 토큰) */
   --app-bg:
-    radial-gradient(circle at 82% 12%, rgba(111, 66, 232, 0.14), transparent 30%),
-    radial-gradient(circle at 10% 80%, rgba(180, 160, 255, 0.16), transparent 35%),
-    linear-gradient(180deg, #f3ecff 0%, #efe8ff 52%, #f2ecff 100%);
+    linear-gradient(180deg, #f8faf9 0%, #eef4f2 54%, #f7faf9 100%);
 
   /* text */
-  --text:        #14162c;
-  --muted:       #4a4668;   /* muted-text */
-  --faint:       #7a74a0;
+  --text:        #24223d;
+  --muted:       #475569;   /* muted-text */
+  --faint:       #70818f;
   --text-muted:  var(--muted);
 
   /* border / line */
-  --border:        rgba(111, 66, 232, 0.14);
-  --border-strong: rgba(111, 66, 232, 0.26);
-  --line:          rgba(111, 66, 232, 0.12);
-  --line-strong:   rgba(111, 66, 232, 0.22);
+  --border:        rgba(15, 23, 42, 0.12);
+  --border-strong: rgba(15, 23, 42, 0.22);
+  --line:          rgba(15, 23, 42, 0.10);
+  --line-strong:   rgba(15, 23, 42, 0.18);
 
   /* accent */
-  --accent:       #6f42e8;
-  --accent-2:     #8b6cff;
-  --accent-3:     #a78fff;
-  --accent-pink:  #c084fc;
-  --accent-soft:  rgba(111, 66, 232, 0.12);
-  --accent-deep:  #3B1F8E;
+  --accent:       #2563eb;
+  --accent-2:     #0f9f8f;
+  --accent-3:     #b7791f;
+  --accent-pink:  #b83280;
+  --accent-soft:  rgba(37, 99, 235, 0.10);
+  --accent-deep:  #1d4ed8;
 
   /* status */
-  --success: #1f9d6b;
-  --warning: #b4690e;
-  --danger:  #e53935;
+  --success: #0f8f6d;
+  --warning: #a16207;
+  --danger:  #c2410c;
 
   /* graph */
-  --graph-bg:   #fbfaff;
-  --graph-grid: rgba(111, 66, 232, 0.06);
-  --graph-pill: rgba(255, 255, 255, 0.90);
+  --graph-bg:   #f8faf9;
+  --graph-grid: rgba(12, 92, 115, 0.08);
+  --graph-pill: rgba(255, 255, 255, 0.92);
 
   /* shadow */
-  --shadow:    0 18px 54px rgba(88, 72, 150, 0.15);
-  --shadow-sm: 0 8px 24px rgba(88, 72, 150, 0.11);
+  --shadow:    0 18px 50px rgba(15, 23, 42, 0.10);
+  --shadow-sm: 0 8px 22px rgba(15, 23, 42, 0.08);
 
   /* focus ring */
-  --focus-ring: rgba(110, 74, 230, 0.55);
+  --focus-ring: rgba(37, 99, 235, 0.55);
 
   /* ── 구조 토큰(색 아님) ─────────────────────────────────────────────── */
   --radius:    14px;
@@ -110,12 +107,12 @@
   --panel-2:    var(--surface-2);
   --panel-3:    var(--surface-3);
   --panel-strong: var(--surface);
-  --glow-green: 0 0 34px rgba(111, 66, 232, 0.14);
-  --glow-blue:  0 0 34px rgba(139, 108, 255, 0.14);
+  --glow-green: 0 0 34px rgba(15, 159, 143, 0.14);
+  --glow-blue:  0 0 34px rgba(37, 99, 235, 0.14);
   /* PPT reference 스킨 별칭 */
   --ref-purple:   var(--accent);
   --ref-purple-2: var(--accent-2);
-  --ref-indigo:   #2f73ff;
+  --ref-indigo:   #2563eb;
   --ref-ink:      var(--text);
   --ref-muted:    var(--muted);
   --ref-faint:    var(--faint);
@@ -126,16 +123,17 @@
 
   /* ── --lt-* 별칭 (workspace.css / platform.css 가 참조) — LIGHT ──────────
      순환참조를 피하려 구체값으로 둔다(소비자가 --bg 등을 --lt-* 로 재정의해도 안전). */
-  --lt-bg:        #f3ecff;
-  --lt-surface:   #f6f0ff;
-  --lt-surface-2: #efe8ff;
-  --lt-input:     rgba(255, 255, 255, 0.80);
-  --lt-ink:       #14162c;
-  --lt-ink-soft:  #4a4668;
-  --lt-muted:     #7a74a0;
-  --lt-line:      rgba(111, 66, 232, 0.14);
-  --lt-accent:    #6f42e8;
-  --lt-shadow-md: 0 18px 54px rgba(88, 72, 150, 0.15);
+  --lt-bg:        #f6f8f7;
+  --lt-surface:   #ffffff;
+  --lt-surface-2: #f0f5f4;
+  --lt-input:     rgba(255, 255, 255, 0.86);
+  --lt-ink:       #24223d;
+  --lt-ink-soft:  #475569;
+  --lt-muted:     #70818f;
+  --lt-line:      rgba(15, 23, 42, 0.12);
+  --lt-accent:    #2563eb;
+  --lt-accent-2:  #0f9f8f;
+  --lt-shadow-md: 0 18px 50px rgba(15, 23, 42, 0.10);
 
   /* ── 모션 / 타이포 ─────────────────────────────────────────────────── */
   --lt-motion-ease: cubic-bezier(0.22, 1, 0.36, 1);
@@ -147,97 +145,94 @@
 :root[data-lt-theme="dark"] {
   color-scheme: dark;
 
-  --bg:          #0B0B1E;
-  --bg-soft:     #0e0e26;
-  --surface:     #16163a;
-  --surface-2:   #1b1d42;
-  --surface-3:   #23264f;
-  --surface-muted: #11132f;
-  --surface-elevated: #20234d;
-  --card:        rgba(255, 255, 255, 0.05);
-  --sidebar:     rgba(18, 18, 46, 0.96);
-  --modal:       rgba(22, 22, 58, 0.98);
-  --table:       rgba(255, 255, 255, 0.04);
-  --input:       rgba(255, 255, 255, 0.06);
-  --overlay:     rgba(0, 0, 0, 0.62);
+  --bg:          #101418;
+  --bg-soft:     #151b20;
+  --surface:     #1b2328;
+  --surface-2:   #202b31;
+  --surface-3:   #29363d;
+  --surface-muted: #151d22;
+  --surface-elevated: #253139;
+  --card:        rgba(255, 255, 255, 0.055);
+  --sidebar:     #11191d;
+  --modal:       rgba(27, 35, 40, 0.98);
+  --table:       rgba(255, 255, 255, 0.045);
+  --input:       rgba(255, 255, 255, 0.065);
+  --overlay:     rgba(0, 0, 0, 0.64);
   --overlay-scrim: var(--overlay);
   --app-bg:
-    radial-gradient(circle at 82% 12%, rgba(110, 74, 230, 0.22), transparent 32%),
-    radial-gradient(circle at 10% 80%, rgba(24, 198, 217, 0.10), transparent 38%),
-    linear-gradient(180deg, #0B0B1E 0%, #0e0e24 52%, #0B0B1E 100%);
+    linear-gradient(180deg, #101418 0%, #151d22 54%, #101418 100%);
 
-  --text:        #F4F5FB;
-  --muted:       #C2C7DC;
-  --faint:       #8B92AC;
+  --text:        #edf3f2;
+  --muted:       #b8c5c2;
+  --faint:       #849894;
   --text-muted:  var(--muted);
 
-  --border:        rgba(160, 170, 230, 0.20);
-  --border-strong: rgba(160, 170, 230, 0.32);
-  --line:          rgba(160, 170, 230, 0.16);
-  --line-strong:   rgba(160, 170, 230, 0.28);
+  --border:        rgba(196, 213, 208, 0.18);
+  --border-strong: rgba(196, 213, 208, 0.30);
+  --line:          rgba(196, 213, 208, 0.14);
+  --line-strong:   rgba(196, 213, 208, 0.24);
 
-  --accent:       #A78BFA;
-  --accent-2:     #c4b5fd;
-  --accent-3:     #ddd6fe;
-  --accent-pink:  #e0b0ff;
-  --accent-soft:  rgba(167, 139, 250, 0.18);
-  --accent-deep:  #ddd6fe;
+  --accent:       #0284c7;
+  --accent-2:     #0f766e;
+  --accent-3:     #facc15;
+  --accent-pink:  #f0abfc;
+  --accent-soft:  rgba(2, 132, 199, 0.20);
+  --accent-deep:  #0369a1;
 
   --success: #34d399;
   --warning: #fbbf24;
-  --danger:  #F47171;
+  --danger:  #fb923c;
 
-  --graph-bg:   #0B0B1E;
-  --graph-grid: rgba(160, 170, 230, 0.08);
-  --graph-pill: rgba(24, 26, 53, 0.92);
+  --graph-bg:   #0f1518;
+  --graph-grid: rgba(94, 234, 212, 0.08);
+  --graph-pill: rgba(27, 35, 40, 0.92);
 
   --shadow:    0 18px 54px rgba(0, 0, 0, 0.50);
   --shadow-sm: 0 8px 24px rgba(0, 0, 0, 0.42);
 
-  --focus-ring: rgba(167, 139, 250, 0.70);
+  --focus-ring: rgba(125, 211, 252, 0.70);
 
-  --lt-bg:        #0B0B1E;
-  --lt-surface:   #16163a;
-  --lt-surface-2: #1b1d42;
-  --lt-input:     rgba(255, 255, 255, 0.06);
-  --lt-ink:       #F4F5FB;
-  --lt-ink-soft:  #C2C7DC;
-  --lt-muted:     #8B92AC;
-  --lt-line:      rgba(160, 170, 230, 0.20);
-  --lt-accent:    #A78BFA;
+  --lt-bg:        #101418;
+  --lt-surface:   #1b2328;
+  --lt-surface-2: #202b31;
+  --lt-input:     rgba(255, 255, 255, 0.065);
+  --lt-ink:       #edf3f2;
+  --lt-ink-soft:  #b8c5c2;
+  --lt-muted:     #849894;
+  --lt-line:      rgba(196, 213, 208, 0.18);
+  --lt-accent:    #0284c7;
+  --lt-accent-2:  #0f766e;
   --lt-shadow-md: 0 18px 54px rgba(0, 0, 0, 0.50);
 
-  --ref-indigo: #6f93ff;
-  --glow-green: 0 0 34px rgba(110, 74, 230, 0.22);
-  --glow-blue:  0 0 34px rgba(24, 198, 217, 0.18);
+  --ref-indigo: #93c5fd;
+  --glow-green: 0 0 34px rgba(94, 234, 212, 0.18);
+  --glow-blue:  0 0 34px rgba(125, 211, 252, 0.18);
 }
 
 /* OS 다크 추종 — 사용자가 명시적으로 라이트를 고르지 않은 경우에만 */
 @media (prefers-color-scheme: dark) {
   :root:not([data-lt-theme="light"]):not([data-lt-theme="dark"]) {
     color-scheme: dark;
-    --bg: #0B0B1E; --bg-soft: #0e0e26;
-    --surface: #16163a; --surface-2: #1b1d42; --surface-3: #23264f;
-    --surface-muted: #11132f; --surface-elevated: #20234d;
-    --card: rgba(255,255,255,0.05); --sidebar: rgba(18,18,46,0.96);
-    --modal: rgba(22,22,58,0.98); --table: rgba(255,255,255,0.04);
-    --input: rgba(255,255,255,0.06); --overlay: rgba(0,0,0,0.62); --overlay-scrim: var(--overlay);
+    --bg: #101418; --bg-soft: #151b20;
+    --surface: #1b2328; --surface-2: #202b31; --surface-3: #29363d;
+    --surface-muted: #151d22; --surface-elevated: #253139;
+    --card: rgba(255,255,255,0.055); --sidebar: #11191d;
+    --modal: rgba(27,35,40,0.98); --table: rgba(255,255,255,0.045);
+    --input: rgba(255,255,255,0.065); --overlay: rgba(0,0,0,0.64); --overlay-scrim: var(--overlay);
     --app-bg:
-      radial-gradient(circle at 82% 12%, rgba(110,74,230,0.22), transparent 32%),
-      radial-gradient(circle at 10% 80%, rgba(24,198,217,0.10), transparent 38%),
-      linear-gradient(180deg, #0B0B1E 0%, #0e0e24 52%, #0B0B1E 100%);
-    --text: #F4F5FB; --muted: #C2C7DC; --faint: #8B92AC; --text-muted: var(--muted);
-    --border: rgba(160,170,230,0.20); --border-strong: rgba(160,170,230,0.32);
-    --line: rgba(160,170,230,0.16); --line-strong: rgba(160,170,230,0.28);
-    --accent: #A78BFA; --accent-2: #c4b5fd; --accent-3: #ddd6fe;
-    --accent-pink: #e0b0ff; --accent-soft: rgba(167,139,250,0.18); --accent-deep: #ddd6fe;
-    --success: #34d399; --warning: #fbbf24; --danger: #F47171;
-    --graph-bg: #0B0B1E; --graph-grid: rgba(160,170,230,0.08); --graph-pill: rgba(24,26,53,0.92);
+      linear-gradient(180deg, #101418 0%, #151d22 54%, #101418 100%);
+    --text: #edf3f2; --muted: #b8c5c2; --faint: #849894; --text-muted: var(--muted);
+    --border: rgba(196,213,208,0.18); --border-strong: rgba(196,213,208,0.30);
+    --line: rgba(196,213,208,0.14); --line-strong: rgba(196,213,208,0.24);
+    --accent: #0284c7; --accent-2: #0f766e; --accent-3: #facc15;
+    --accent-pink: #f0abfc; --accent-soft: rgba(2,132,199,0.20); --accent-deep: #0369a1;
+    --success: #34d399; --warning: #fbbf24; --danger: #fb923c;
+    --graph-bg: #0f1518; --graph-grid: rgba(94,234,212,0.08); --graph-pill: rgba(27,35,40,0.92);
     --shadow: 0 18px 54px rgba(0,0,0,0.50); --shadow-sm: 0 8px 24px rgba(0,0,0,0.42);
-    --focus-ring: rgba(167,139,250,0.70);
-    --lt-bg: #0B0B1E; --lt-surface: #16163a; --lt-surface-2: #1b1d42; --lt-input: rgba(255,255,255,0.06);
-    --lt-ink: #F4F5FB; --lt-ink-soft: #C2C7DC; --lt-muted: #8B92AC;
-    --lt-line: rgba(160,170,230,0.20); --lt-accent: #A78BFA;
+    --focus-ring: rgba(125,211,252,0.70);
+    --lt-bg: #101418; --lt-surface: #1b2328; --lt-surface-2: #202b31; --lt-input: rgba(255,255,255,0.065);
+    --lt-ink: #edf3f2; --lt-ink-soft: #b8c5c2; --lt-muted: #849894;
+    --lt-line: rgba(196,213,208,0.18); --lt-accent: #0284c7; --lt-accent-2: #0f766e;
     --lt-shadow-md: 0 18px 54px rgba(0,0,0,0.50);
   }
 }
