@@ -2,10 +2,12 @@
 
 ## [Unreleased]
 
-> v3 Backend Architecture — Knowledge Graph, local vector indexing, and hybrid
-> retrieval now share one backend contract while preserving existing graph data.
+> v3 — Backend retrieval + native app shell, integrated. The hybrid-search
+> backend and the token-native `/app` workspace shell now ship together: the
+> shell's adapters call the real v3 retrieval APIs, and Chat is a first-class
+> native view (no link-out to the legacy page).
 
-### Added
+### Added — Backend retrieval
 
 - **Hybrid search API** — added `/api/search/hybrid`, `/api/search/keyword`,
   `/api/search/vector`, `/api/graph`, `/api/graph/node`,
@@ -18,10 +20,33 @@
 - **Backend architecture doc** — added `docs/V3_BACKEND_ARCHITECTURE.md` with
   storage, search, API, and migration details.
 
+### Added — Native app shell (`/app`)
+
+- **Unified app shell** (`static/v3/`) — nav rail, command palette (⌘K),
+  workspace switcher (Personal/Organization), and mode switcher
+  (Basic/Advanced/Admin); hash-routed views for every primary and admin area
+  (Home, Chat, Knowledge Graph, Hybrid Search, Files, Pipeline, Agents, Models,
+  My Computer, Settings, and Admin · Users/Permissions/Audit/Security/Policies/
+  Private VPC).
+- **Native Chat view** — a first-class 3-pane chat (conversations · thread ·
+  retrieval context) wired to the real backend (`POST /chat` SSE + `/history/*`)
+  with streaming, empty/error/loading states; surfaces Knowledge Graph, Vector,
+  Hybrid Search, and indexed-file context per answer. The legacy `/chat` page
+  stays reachable but is no longer the primary chat experience.
+- **Retrieval identity** — Knowledge Graph + Vector Index + Hybrid Search are
+  surfaced as a first-class "retrieval lattice" on Home and a live index chip.
+- **Token-native design system** — `static/v3/css/lattice.*.css` built on top of
+  `tokens.css` with no dependency on the legacy override layers; full light/dark
+  and desktop/tablet/mobile support.
+- **Integration adapters** — `static/v3/js/core/api.js` calls the real v3
+  endpoints and degrades to clearly-badged sample data; no backend logic in the UI.
+
 ### Validation
 
-- Backend coverage now includes v3 indexing, migration status, vector retrieval,
+- Backend coverage includes v3 indexing, migration status, vector retrieval,
   graph relationship traversal, hybrid result fusion, and API contract tests.
+- Frontend coverage: `tests/visual/v3.spec.js` and `scripts/lint_v3.mjs` (wired
+  into `npm run lint`); see `docs/V3_FRONTEND.md` for IA + design decisions.
 
 > Frontend Product Shell Redesign — workspace navigation, auth entry, and shared
 > product surfaces were realigned around the local-first AI workspace model

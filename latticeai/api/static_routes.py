@@ -107,8 +107,17 @@ def create_static_routes_router(
     @api_router.get("/chat")
     async def chat_page(request: Request):
         return ui_file_response(STATIC_DIR / "chat.html")
-    
-    
+
+
+    @api_router.get("/app")
+    async def app_shell(request: Request):
+        """v3 single-page workspace shell (token-native design system)."""
+        page = STATIC_DIR / "v3" / "index.html"
+        if not page.exists():
+            raise HTTPException(status_code=404, detail="v3 shell not found.")
+        return ui_file_response(page)
+
+
     @api_router.get("/admin")
     async def admin_page():
         admin_path = STATIC_DIR / "admin.html"

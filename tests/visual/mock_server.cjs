@@ -147,9 +147,37 @@ const server = http.createServer((req, res) => {
   const url = new URL(req.url, `http://127.0.0.1:${port}`);
   const pathname = decodeURIComponent(url.pathname);
 
+  if (pathname === "/app" || pathname === "/v3") return serveFile(res, path.join(repoRoot, "static/v3/index.html"));
   if (pathname === "/" || pathname === "/workspace" || pathname === "/onboarding") return serveFile(res, path.join(repoRoot, "static/workspace.html"));
   if (pathname === "/graph" || pathname === "/knowledge-graph") return serveFile(res, path.join(repoRoot, "static/graph.html"));
   if (pathname === "/admin") return serveFile(res, path.join(repoRoot, "static/admin.html"));
+  // v3 native Chat: POST /chat streams SSE; GET /chat still serves the legacy page.
+  if (pathname === "/chat" && req.method === "POST") {
+    res.writeHead(200, { "content-type": "text/event-stream; charset=utf-8", "cache-control": "no-store", connection: "keep-alive" });
+    const send = (obj) => res.write(`data: ${JSON.stringify(obj)}\n\n`);
+    send({ chunk: "Hybrid retrieval ", model: "mock-local-model" });
+    send({ chunk: "fuses the knowledge graph with the vector index, then reconciles the two ranked lists.", model: "mock-local-model" });
+    send({ chunk: "", model: "mock-local-model", trace_id: "trace-mock", trace: {
+      question: "", confidence: 0.9,
+      graph_nodes: graphNodes.slice(0, 3).map((n) => ({ id: n.id, title: n.title, type: n.type })),
+      source_files: [{ source: "notes/retrieval.md" }, { source: "config/index.yaml" }],
+      vector_matches: [{ path: "notes/retrieval.md", score: 0.91 }, { path: "config/index.yaml", score: 0.74 }],
+    } });
+    res.write("data: [DONE]\n\n");
+    return res.end();
+  }
+  if (pathname === "/history/conversations") return json(res, [
+    { id: "conv-hybrid", title: "How hybrid search ranks", updated_at: "2026-06-06T13:20:00" },
+    { id: "conv-reindex", title: "Reindex the workspace", updated_at: "2026-06-06T11:05:00" },
+  ]);
+  if (pathname.startsWith("/history/conversations/")) {
+    if (req.method === "DELETE") return json(res, { removed: 1, kept: 0 });
+    const id = pathname.slice("/history/conversations/".length);
+    return json(res, { id, messages: [
+      { role: "user", content: "How does hybrid search rank results?", timestamp: "2026-06-06T13:19:00" },
+      { role: "assistant", content: "It fuses the vector index and the knowledge graph with reciprocal-rank fusion, so a strong hit in either modality surfaces.", timestamp: "2026-06-06T13:20:00" },
+    ] });
+  }
   if (pathname === "/chat") return serveFile(res, path.join(repoRoot, "static/chat.html"));
   if (pathname === "/account" || pathname === "/login") return serveFile(res, path.join(repoRoot, "static/account.html"));
   if (pathname === "/onboarding-fixture") return serveFile(res, path.join(repoRoot, "tests/visual/fixtures/onboarding.html"));
@@ -189,6 +217,29 @@ const server = http.createServer((req, res) => {
     const id = pathname.replace("/workspace/relationships/", "");
     return json(res, { node_id: id, node: graphNodes.find((node) => node.id === id) || { id }, inbound: graphEdges.filter((edge) => edge.to === id), outbound: graphEdges.filter((edge) => edge.from === id), related_entities: graphNodes, shortest_path: shortestPath(id, url.searchParams.get("target_id")) });
   }
+  // ── v3 future API surfaces (integration targets) ──────────────────────────
+  if (pathname === "/api/index/status") return json(res, {
+    generated_at: "2026-06-06T12:00:00",
+    pipelines: {
+      knowledge_graph: { state: "ready", entities: graphNodes.length, relations: graphEdges.length, coverage: 0.9 },
+      vector_index: { state: "ready", vectors: 48230, dimensions: 1024, model: "bge-local", coverage: 0.87 },
+      hybrid: { state: "ready", strategy: "reciprocal-rank-fusion", alpha: 0.5 },
+    },
+    sources: [
+      { id: "src-notes", label: "Workspace Notes", files: 312, state: "indexed", progress: 1 },
+      { id: "src-repo", label: "Connected Repo", files: 1840, state: "indexing", progress: 0.62 },
+    ],
+  });
+  if (pathname === "/api/graph") return json(res, { nodes: graphNodes, edges: graphEdges });
+  if (pathname === "/api/search/hybrid") return json(res, {
+    query: (url.searchParams.get("query") || "retrieval"),
+    results: graphNodes.slice(0, 4).map((n, i) => ({
+      id: n.id, title: n.title, path: (n.metadata && n.metadata.relative_path) || `graph://${n.id}`,
+      snippet: n.summary, vector: 0.9 - i * 0.1, lexical: 0.6 - i * 0.08, graph: 0.8 - i * 0.05,
+      score: 0.85 - i * 0.09,
+    })),
+  });
+
   if (pathname === "/knowledge-graph/graph") return json(res, { nodes: graphNodes, edges: graphEdges });
   if (pathname === "/knowledge-graph/stats") return json(res, workspaceOs.graph);
   if (pathname === "/knowledge-graph/search") return json(res, { query: url.searchParams.get("q"), matches: graphNodes });
@@ -199,7 +250,13 @@ const server = http.createServer((req, res) => {
   if (pathname === "/admin/sensitivity") return json(res, { summary: { risky_messages: 1, compliant_messages: 41, risk_rate: 2, severity_counts: { high: 0 }, field_counts: {}, user_counts: {} }, risk_fields: [], compliance_fields: [] });
   if (pathname === "/admin/invite-link") return json(res, { invite_url: `http://127.0.0.1:${port}/`, invite_code: "visual", gate_enabled: false });
   if (pathname === "/admin/stats") return json(res, { daily: [{ date: "2026-06-01", user: 8, assistant: 8 }] });
-  if (pathname === "/admin/audit") return json(res, { summary: { total_events: 12, chat_events: 6, user_messages: 3, assistant_messages: 3, document_uploads: 2, clear_events: 1, sensitive_events: 1, high_sensitive_events: 0 }, graph: workspaceOs.graph, per_user: [], recent_events: [] });
+  if (pathname === "/admin/audit") return json(res, { summary: { total_events: 12, chat_events: 6, user_messages: 3, assistant_messages: 3, document_uploads: 2, clear_events: 1, sensitive_events: 1, high_sensitive_events: 0 }, graph: workspaceOs.graph, per_user: [], recent_events: [
+    { ts: "2026-06-06T09:12:00", actor: "admin@example.com", action: "policy.update", target: "local_file_access", severity: "notice" },
+    { ts: "2026-06-06T10:40:00", actor: "member@example.com", action: "search.hybrid", target: "q: retrieval design", severity: "informational" },
+    { ts: "2026-06-06T11:05:00", actor: "admin@example.com", action: "user.invite", target: "guest@example.com", severity: "notice" },
+    { ts: "2026-06-06T12:30:00", actor: "system", action: "index.rebuild", target: "vector_index", severity: "informational" },
+    { ts: "2026-06-06T13:15:00", actor: "member@example.com", action: "file.access.denied", target: "secrets/.env", severity: "warning" },
+  ] });
   if (pathname === "/admin/sso") return json(res, { enabled: false, provider_name: "Okta", discovery_url: "", client_id: "", redirect_uri: "", scopes: "openid email profile" });
   if (pathname === "/admin/enterprise") return json(res, enterpriseOverview);
   if (pathname === "/admin/enterprise/siem-export") return json(res, enterpriseOverview.siem_export);
