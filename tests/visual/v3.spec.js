@@ -92,6 +92,25 @@ test("hybrid search returns fused results", async ({ page }) => {
   expect(await page.locator(".lt3-result").count()).toBeGreaterThan(0);
 });
 
+test("chat is a native v3 view (no redirect) with conversations, context and streaming", async ({ page }) => {
+  await page.goto("/app#/chat");
+  await page.waitForSelector(".lt3-chat");
+  // Must NOT redirect to the legacy /chat page.
+  expect(page.url()).toContain("/app#/chat");
+  expect(await page.locator(".lt3-chat__main").count()).toBe(1);
+  // Conversation rail + the four retrieval-context sections.
+  await expect(page.locator(".lt3-convo").first()).toBeVisible();
+  await expect(page.locator(".lt3-ctx-sec__title")).toHaveCount(4);
+  // Sending a message streams an assistant reply.
+  await page.locator(".lt3-composer textarea").fill("How does hybrid search rank results?");
+  await page.locator(".lt3-composer textarea").press("Enter");
+  await page.waitForFunction(() => {
+    const b = document.querySelectorAll(".lt3-msg--ai .lt3-msg__bubble");
+    return b.length && b[b.length - 1].textContent.trim().length > 0;
+  }, { timeout: 8000 });
+  expect(await page.locator(".lt3-msg--user").count()).toBeGreaterThan(0);
+});
+
 test("mobile: no horizontal overflow and the nav drawer toggles", async ({ page }) => {
   await page.setViewportSize({ width: 390, height: 780 });
   for (const route of ["home", "knowledge-graph", "hybrid-search", "settings", "admin/users"]) {

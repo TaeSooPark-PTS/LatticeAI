@@ -102,6 +102,38 @@ export const FILES = [
 
 export const SYSINFO = { cpu_pct: 28.4, ram_pct: 61.2, gpu_mem_pct: 44.0, gpu_mem_gb: 12.6 };
 
+export const CHAT = {
+  conversations: [
+    { id: "conv-hybrid", title: "How hybrid search ranks", updated_at: "2026-06-06T13:20:00", messages: [
+      { role: "user", content: "How does hybrid search rank results?", timestamp: "2026-06-06T13:19:00" },
+      { role: "assistant", content: "It fuses two signals: the vector index scores semantic similarity, while the knowledge graph scores structural proximity. Reciprocal-rank fusion merges the two ranked lists so a strong hit in either modality surfaces.", timestamp: "2026-06-06T13:20:00" },
+    ] },
+    { id: "conv-reindex", title: "Reindex the workspace", updated_at: "2026-06-06T11:05:00", messages: [
+      { role: "user", content: "How do I rebuild the vector index?", timestamp: "2026-06-06T11:04:00" },
+      { role: "assistant", content: "Trigger a rebuild from the Pipeline view, or call the index rebuild endpoint. The embedding model re-encodes every chunk and the graph is relinked.", timestamp: "2026-06-06T11:05:00" },
+    ] },
+    { id: "conv-entities", title: "Entities in retrieval.md", updated_at: "2026-06-05T18:40:00", messages: [
+      { role: "user", content: "What entities were extracted from retrieval.md?", timestamp: "2026-06-05T18:39:00" },
+      { role: "assistant", content: "Hybrid Search, Vector Index, and Rank Fusion, each linked back to Lattice AI in the knowledge graph.", timestamp: "2026-06-05T18:40:00" },
+    ] },
+  ],
+};
+
+/** Build a sample graph-RAG trace (mirrors the backend /chat trace shape). */
+export function sampleTrace(query) {
+  return {
+    question: query || "",
+    confidence: 0.86,
+    graph_nodes: GRAPH.nodes.slice(0, 4).map((n) => ({ id: n.id, title: n.label, type: n.type })),
+    source_files: FILES.slice(0, 3).map((f) => ({ source: f.path })),
+    vector_matches: [
+      { path: "notes/retrieval.md", score: 0.91 },
+      { path: "config/index.yaml", score: 0.78 },
+      { path: "memory/decisions.md", score: 0.66 },
+    ],
+  };
+}
+
 export const ADMIN = {
   summary: { total_users: 6, active_users: 5, admin_users: 2, total_messages: 1284 },
   users: [

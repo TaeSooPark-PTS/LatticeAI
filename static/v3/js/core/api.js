@@ -107,6 +107,113 @@ export const api = {
   adminUsers() { return withFallback("/admin/users", {}, fx.ADMIN.users); },
   adminAudit() { return withFallback("/admin/audit", {}, { recent_events: fx.ADMIN.audit }); },
   vpcStatus() { return withFallback("/vpc/status", {}, fx.ADMIN.vpc); },
+
+  /* ── Chat (real backend: SSE /chat + /history/*) ────────────────────── */
+
+  /** GET /history/conversations — conversation list. */
+  async chatHistory() {
+    const res = await raw("/history/conversations");
+    const list = res.ok && Array.isArray(res.data) ? res.data
+      : res.ok && res.data && Array.isArray(res.data.conversations) ? res.data.conversations
+      : null;
+    if (list) return { ok: true, status: res.status, data: list, source: "live" };
+    return { ok: true, status: res.status, data: fx.CHAT.conversations, source: "placeholder" };
+  },
+
+  /** GET /history/conversations/{id} — messages for one conversation. */
+  async conversation(id) {
+    const res = await raw(`/history/conversations/${encodeURIComponent(id)}`);
+    if (res.ok && res.data && Array.isArray(res.data.messages)) {
+      return { ok: true, status: res.status, data: res.data.messages, source: "live" };
+    }
+    const sample = (fx.CHAT.conversations.find((c) => c.id === id) || {}).messages || [];
+    return { ok: true, status: res.status, data: sample, source: "placeholder" };
+  },
+
+  deleteConversation(id) {
+    return raw(`/history/conversations/${encodeURIComponent(id)}`, { method: "DELETE" });
+  },
+
+  /**
+   * POST /chat — streams the assistant reply over SSE.
+   * Parses `data: {chunk, model, trace}` events (terminator `[DONE]`), calling
+   * onChunk(delta, fullText) and onTrace(trace). If the endpoint is missing or
+   * not an event-stream, degrades to a clearly-labeled SAMPLE stream (no real
+   * generation is invented). Resolves { source, text, trace, model, aborted }.
+   */
+  async streamChat(body, { onChunk, onTrace, signal } = {}) {
+    const ws = store.get().workspaceId;
+    let res;
+    try {
+      res = await fetch("/chat", {
+        method: "POST",
+        credentials: "same-origin",
+        signal,
+        headers: {
+          "Content-Type": "application/json",
+          "Accept": "text/event-stream",
+          ...(ws ? { "X-Workspace-Id": ws } : {}),
+        },
+        body: JSON.stringify({ stream: true, max_tokens: 2048, temperature: 0.2, ...body }),
+      });
+    } catch (err) {
+      if (err && err.name === "AbortError") return { source: "live", text: "", aborted: true };
+      return simulateChat(body, { onChunk, onTrace, signal });
+    }
+    const ctype = res.headers.get("content-type") || "";
+    if (!res.ok || !res.body || !ctype.includes("text/event-stream")) {
+      return simulateChat(body, { onChunk, onTrace, signal });
+    }
+    const reader = res.body.getReader();
+    const decoder = new TextDecoder();
+    let buf = "", text = "", trace = null, model = null;
+    try {
+      for (;;) {
+        const { value, done } = await reader.read();
+        if (done) break;
+        buf += decoder.decode(value, { stream: true });
+        const parts = buf.split("\n\n");
+        buf = parts.pop();
+        for (const part of parts) {
+          const line = part.split("\n").find((l) => l.startsWith("data:"));
+          if (!line) continue;
+          const rawData = line.slice(5).trim();
+          if (rawData === "[DONE]") return { source: "live", text, trace, model };
+          let data; try { data = JSON.parse(rawData); } catch { continue; }
+          if (data.chunk) { text += data.chunk; onChunk && onChunk(data.chunk, text); }
+          if (data.model) model = data.model;
+          if (data.trace) { trace = data.trace; onTrace && onTrace(trace); }
+        }
+      }
+    } catch (err) {
+      if (err && err.name === "AbortError") return { source: "live", text, trace, model, aborted: true };
+      if (!text) return simulateChat(body, { onChunk, onTrace, signal });
+    }
+    return { source: "live", text, trace, model };
+  },
 };
+
+const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
+
+/** Transparent SAMPLE stream — used only when no chat backend is available. */
+async function simulateChat(body, { onChunk, onTrace, signal } = {}) {
+  const q = (body && body.message) || "your question";
+  const reply =
+    `This is a sample response. Connect a local model and the v3 retrieval backend ` +
+    `(/api/search/hybrid, /api/graph) to ground answers to “${q}” in your workspace. ` +
+    `The context panel shows the knowledge-graph entities, vector matches, and indexed ` +
+    `files that would be used to answer — this preview does not run a model.`;
+  let text = "";
+  for (const word of reply.split(" ")) {
+    if (signal && signal.aborted) return { source: "placeholder", text, aborted: true };
+    const delta = (text ? " " : "") + word;
+    text += delta;
+    onChunk && onChunk(delta, text);
+    await sleep(16);
+  }
+  const trace = fx.sampleTrace(q);
+  onTrace && onTrace(trace);
+  return { source: "placeholder", text, trace };
+}
 
 export { fx };

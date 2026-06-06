@@ -151,6 +151,33 @@ const server = http.createServer((req, res) => {
   if (pathname === "/" || pathname === "/workspace" || pathname === "/onboarding") return serveFile(res, path.join(repoRoot, "static/workspace.html"));
   if (pathname === "/graph" || pathname === "/knowledge-graph") return serveFile(res, path.join(repoRoot, "static/graph.html"));
   if (pathname === "/admin") return serveFile(res, path.join(repoRoot, "static/admin.html"));
+  // v3 native Chat: POST /chat streams SSE; GET /chat still serves the legacy page.
+  if (pathname === "/chat" && req.method === "POST") {
+    res.writeHead(200, { "content-type": "text/event-stream; charset=utf-8", "cache-control": "no-store", connection: "keep-alive" });
+    const send = (obj) => res.write(`data: ${JSON.stringify(obj)}\n\n`);
+    send({ chunk: "Hybrid retrieval ", model: "mock-local-model" });
+    send({ chunk: "fuses the knowledge graph with the vector index, then reconciles the two ranked lists.", model: "mock-local-model" });
+    send({ chunk: "", model: "mock-local-model", trace_id: "trace-mock", trace: {
+      question: "", confidence: 0.9,
+      graph_nodes: graphNodes.slice(0, 3).map((n) => ({ id: n.id, title: n.title, type: n.type })),
+      source_files: [{ source: "notes/retrieval.md" }, { source: "config/index.yaml" }],
+      vector_matches: [{ path: "notes/retrieval.md", score: 0.91 }, { path: "config/index.yaml", score: 0.74 }],
+    } });
+    res.write("data: [DONE]\n\n");
+    return res.end();
+  }
+  if (pathname === "/history/conversations") return json(res, [
+    { id: "conv-hybrid", title: "How hybrid search ranks", updated_at: "2026-06-06T13:20:00" },
+    { id: "conv-reindex", title: "Reindex the workspace", updated_at: "2026-06-06T11:05:00" },
+  ]);
+  if (pathname.startsWith("/history/conversations/")) {
+    if (req.method === "DELETE") return json(res, { removed: 1, kept: 0 });
+    const id = pathname.slice("/history/conversations/".length);
+    return json(res, { id, messages: [
+      { role: "user", content: "How does hybrid search rank results?", timestamp: "2026-06-06T13:19:00" },
+      { role: "assistant", content: "It fuses the vector index and the knowledge graph with reciprocal-rank fusion, so a strong hit in either modality surfaces.", timestamp: "2026-06-06T13:20:00" },
+    ] });
+  }
   if (pathname === "/chat") return serveFile(res, path.join(repoRoot, "static/chat.html"));
   if (pathname === "/account" || pathname === "/login") return serveFile(res, path.join(repoRoot, "static/account.html"));
   if (pathname === "/onboarding-fixture") return serveFile(res, path.join(repoRoot, "tests/visual/fixtures/onboarding.html"));
