@@ -2,6 +2,27 @@
 
 ## [Unreleased]
 
+> v3 Backend Architecture — Knowledge Graph, local vector indexing, and hybrid
+> retrieval now share one backend contract while preserving existing graph data.
+
+### Added
+
+- **Hybrid search API** — added `/api/search/hybrid`, `/api/search/keyword`,
+  `/api/search/vector`, `/api/graph`, `/api/graph/node`,
+  `/api/graph/relationship`, `/api/index/status`, and `/api/index/rebuild`.
+- **SQLite vector index** — added local deterministic embeddings,
+  `vector_embeddings`, and `vector_index_operations` for incremental indexing,
+  rebuilds, and status monitoring.
+- **Graph retrieval helpers** — added node lookup, relationship search, bounded
+  traversal, neighbor expansion, and service-level result fusion.
+- **Backend architecture doc** — added `docs/V3_BACKEND_ARCHITECTURE.md` with
+  storage, search, API, and migration details.
+
+### Validation
+
+- Backend coverage now includes v3 indexing, migration status, vector retrieval,
+  graph relationship traversal, hybrid result fusion, and API contract tests.
+
 > Frontend Product Shell Redesign — workspace navigation, auth entry, and shared
 > product surfaces were realigned around the local-first AI workspace model
 > without changing backend contracts.

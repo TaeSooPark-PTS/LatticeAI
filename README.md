@@ -175,6 +175,26 @@ files / documents / images / screenshots / conversations / decisions
 
 The graph keeps useful workspace context available even when you change models.
 
+## v3 Backend Retrieval
+
+The v3 backend adds a local-first retrieval stack that combines the Knowledge
+Graph, a SQLite vector index, and hybrid result fusion. It preserves existing
+graph data while adding derived vector rows that can be rebuilt at any time.
+
+Core API contracts:
+
+- `POST /api/search/hybrid`
+- `GET /api/search/keyword?q=...`
+- `GET /api/search/vector?q=...`
+- `GET /api/graph`
+- `GET /api/graph/node?node_id=...`
+- `GET /api/graph/relationship`
+- `GET /api/index/status`
+- `POST /api/index/rebuild`
+
+See [docs/V3_BACKEND_ARCHITECTURE.md](docs/V3_BACKEND_ARCHITECTURE.md) for the
+storage model, search model, migration behavior, and API response shape.
+
 ## Local Model Policy
 
 Lattice AI recommends current-generation multimodal models for local use and

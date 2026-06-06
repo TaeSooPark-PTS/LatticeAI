@@ -16,6 +16,7 @@ import platform
 import re
 import shutil
 import sqlite3
+import time
 import zipfile
 from collections import Counter
 from datetime import datetime
@@ -29,6 +30,8 @@ except Exception:  # pragma: no cover - v2 schema is optional at import time
     NodeType = None   # type: ignore[assignment]
     EdgeType = None   # type: ignore[assignment]
     _exec_script = None  # type: ignore[assignment]
+
+from latticeai.core.local_embeddings import LocalEmbeddingModel
 
 # Default read source for the graph queries: v2 reconstruction views.
 # Override with LATTICEAI_KG_READ_V2=0 to fall back to the legacy tables.
@@ -811,6 +814,7 @@ class KnowledgeGraphStore:
         self.blob_dir = Path(blob_dir)
         self.db_path.parent.mkdir(parents=True, exist_ok=True)
         self.blob_dir.mkdir(parents=True, exist_ok=True)
+        self._embedding_model = LocalEmbeddingModel()
         self._init_db()
         # Read graph queries from the v2 projection (kgv2_* views) when available.
         # Toggle off (e.g. in tests) to compare against the legacy tables.
@@ -909,6 +913,31 @@ class KnowledgeGraphStore:
                   UNIQUE(source_id, relative_path),
                   FOREIGN KEY(source_id) REFERENCES knowledge_sources(id) ON DELETE CASCADE
                 );
+                CREATE TABLE IF NOT EXISTS vector_embeddings (
+                  item_id TEXT PRIMARY KEY,
+                  item_type TEXT NOT NULL,
+                  source_node TEXT NOT NULL,
+                  text_hash TEXT NOT NULL,
+                  embedding BLOB NOT NULL,
+                  embedding_dim INTEGER NOT NULL,
+                  embedding_model TEXT NOT NULL,
+                  metadata_json TEXT NOT NULL CHECK (json_valid(metadata_json)),
+                  indexed_at TEXT NOT NULL,
+                  FOREIGN KEY(source_node) REFERENCES nodes(id) ON DELETE CASCADE
+                );
+                CREATE TABLE IF NOT EXISTS vector_index_operations (
+                  id TEXT PRIMARY KEY,
+                  operation TEXT NOT NULL,
+                  status TEXT NOT NULL,
+                  requested_at TEXT NOT NULL,
+                  started_at TEXT,
+                  completed_at TEXT,
+                  items_total INTEGER NOT NULL DEFAULT 0,
+                  items_indexed INTEGER NOT NULL DEFAULT 0,
+                  items_skipped INTEGER NOT NULL DEFAULT 0,
+                  error_message TEXT,
+                  metadata_json TEXT NOT NULL CHECK (json_valid(metadata_json))
+                );
                 CREATE INDEX IF NOT EXISTS idx_nodes_type ON nodes(type);
                 CREATE INDEX IF NOT EXISTS idx_edges_from ON edges(from_node);
                 CREATE INDEX IF NOT EXISTS idx_edges_to ON edges(to_node);
@@ -917,6 +946,10 @@ class KnowledgeGraphStore:
                 CREATE INDEX IF NOT EXISTS idx_local_file_index_source ON local_file_index(source_id);
                 CREATE INDEX IF NOT EXISTS idx_local_file_index_status ON local_file_index(status);
                 CREATE INDEX IF NOT EXISTS idx_local_file_index_graph_node ON local_file_index(graph_node_id);
+                CREATE INDEX IF NOT EXISTS idx_vector_embeddings_type ON vector_embeddings(item_type);
+                CREATE INDEX IF NOT EXISTS idx_vector_embeddings_source ON vector_embeddings(source_node);
+                CREATE INDEX IF NOT EXISTS idx_vector_embeddings_model ON vector_embeddings(embedding_model);
+                CREATE INDEX IF NOT EXISTS idx_vector_index_operations_requested ON vector_index_operations(requested_at);
                 """
             )
             conn.execute(
@@ -1198,6 +1231,15 @@ class KnowledgeGraphStore:
         # dual-write: project into the v2 graph on the same transaction
         self._v2_project_node(conn, node_id, node_type, title_s, summary_s, meta_json,
                               created_at=now, updated_at=now)
+        if node_type != "Chunk":
+            self._upsert_vector_item(
+                conn,
+                item_id=node_id,
+                item_type="node",
+                source_node=node_id,
+                text=self._vector_text_for_node(title=title_s, summary=summary_s, metadata=metadata),
+                metadata={"node_type": node_type, **(metadata or {})},
+            )
         return node_id
 
     def _upsert_edge(
@@ -1226,6 +1268,110 @@ class KnowledgeGraphStore:
         self._v2_project_edge(conn, from_node, to_node, edge_type, float(weight), meta_json,
                               edge_id=edge_id, created_at=now)
         return edge_id
+
+    def _vector_text_for_node(
+        self,
+        *,
+        title: str,
+        summary: str = "",
+        metadata: Optional[Dict[str, Any]] = None,
+    ) -> str:
+        metadata = metadata or {}
+        meta_parts = []
+        for key in (
+            "filename", "relative_path", "file_path", "conversation_id", "source",
+            "category", "ext", "role",
+        ):
+            value = metadata.get(key)
+            if value:
+                meta_parts.append(str(value))
+        return _clean_text("\n".join([str(title or ""), str(summary or ""), " ".join(meta_parts)]))
+
+    def _upsert_vector_item(
+        self,
+        conn: sqlite3.Connection,
+        *,
+        item_id: str,
+        item_type: str,
+        source_node: str,
+        text: str,
+        metadata: Optional[Dict[str, Any]] = None,
+    ) -> bool:
+        text = _clean_text(text)
+        if len(text) < 2:
+            conn.execute("DELETE FROM vector_embeddings WHERE item_id=?", (item_id,))
+            return False
+        text_hash = _sha256_text(text)
+        existing = conn.execute(
+            """
+            SELECT text_hash, embedding_dim, embedding_model
+            FROM vector_embeddings
+            WHERE item_id=?
+            """,
+            (item_id,),
+        ).fetchone()
+        if (
+            existing
+            and existing["text_hash"] == text_hash
+            and existing["embedding_dim"] == self._embedding_model.dim
+            and existing["embedding_model"] == self._embedding_model.model_id
+        ):
+            return False
+        embedding = self._embedding_model.encode(self._embedding_model.embed(text[:50_000]))
+        conn.execute(
+            """
+            INSERT INTO vector_embeddings(
+              item_id, item_type, source_node, text_hash, embedding,
+              embedding_dim, embedding_model, metadata_json, indexed_at
+            )
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+            ON CONFLICT(item_id) DO UPDATE SET
+              item_type=excluded.item_type,
+              source_node=excluded.source_node,
+              text_hash=excluded.text_hash,
+              embedding=excluded.embedding,
+              embedding_dim=excluded.embedding_dim,
+              embedding_model=excluded.embedding_model,
+              metadata_json=excluded.metadata_json,
+              indexed_at=excluded.indexed_at
+            """,
+            (
+                item_id,
+                item_type,
+                source_node,
+                text_hash,
+                embedding,
+                self._embedding_model.dim,
+                self._embedding_model.model_id,
+                _json(metadata),
+                _now(),
+            ),
+        )
+        return True
+
+    def _upsert_chunk(
+        self,
+        conn: sqlite3.Connection,
+        *,
+        chunk_id: str,
+        source_node: str,
+        text: str,
+        metadata: Optional[Dict[str, Any]] = None,
+    ) -> None:
+        metadata = metadata or {}
+        conn.execute(
+            "INSERT OR REPLACE INTO chunks(id, source_node, text, metadata_json, created_at) "
+            "VALUES (?, ?, ?, ?, ?)",
+            (chunk_id, source_node, text, _json(metadata), _now()),
+        )
+        self._upsert_vector_item(
+            conn,
+            item_id=chunk_id,
+            item_type="chunk",
+            source_node=chunk_id,
+            text=text,
+            metadata={**metadata, "parent_source_node": source_node},
+        )
 
     # ── Local folder sources → Graph RAG ──────────────────────────────────
 
@@ -2052,16 +2198,12 @@ class KnowledgeGraphStore:
                 summary=chunk[:500],
                 metadata={"index": index, "source_node": file_node_id, "source_id": source_id},
             )
-            conn.execute(
-                "INSERT OR REPLACE INTO chunks(id, source_node, text, metadata_json, created_at) "
-                "VALUES (?, ?, ?, ?, ?)",
-                (
-                    chunk_id,
-                    file_node_id,
-                    chunk,
-                    _json({"index": index, "source_node": file_node_id, "source_id": source_id}),
-                    _now(),
-                ),
+            self._upsert_chunk(
+                conn,
+                chunk_id=chunk_id,
+                source_node=file_node_id,
+                text=chunk,
+                metadata={"index": index, "source_node": file_node_id, "source_id": source_id},
             )
             self._upsert_edge(conn, file_node_id, chunk_id, "포함함", weight=0.7, metadata={"source": "local_scan"})
 
@@ -2494,11 +2636,12 @@ class KnowledgeGraphStore:
                     summary=chunk[:500],
                     metadata={"index": index, "source_node": node_id},
                 )
-                conn.execute(
-                    "INSERT OR REPLACE INTO chunks(id, source_node, text, metadata_json, created_at) "
-                    "VALUES (?, ?, ?, ?, ?)",
-                    (chunk_id, node_id, chunk,
-                     _json({"index": index, "source_node": node_id}), _now()),
+                self._upsert_chunk(
+                    conn,
+                    chunk_id=chunk_id,
+                    source_node=node_id,
+                    text=chunk,
+                    metadata={"index": index, "source_node": node_id},
                 )
                 self._upsert_edge(conn, node_id, chunk_id, "포함함")
 
@@ -2621,11 +2764,12 @@ class KnowledgeGraphStore:
                     summary=chunk[:500],
                     metadata={"index": index, "source_node": file_id},
                 )
-                conn.execute(
-                    "INSERT OR REPLACE INTO chunks(id, source_node, text, metadata_json, created_at) "
-                    "VALUES (?, ?, ?, ?, ?)",
-                    (chunk_id, file_id, chunk,
-                     _json({"index": index, "source_node": file_id}), _now()),
+                self._upsert_chunk(
+                    conn,
+                    chunk_id=chunk_id,
+                    source_node=file_id,
+                    text=chunk,
+                    metadata={"index": index, "source_node": file_id},
                 )
                 self._upsert_edge(conn, file_id, chunk_id, "포함함")
 
@@ -3167,6 +3311,486 @@ class KnowledgeGraphStore:
                     )
                 ]
         return {"node_id": node_id, "neighbors": nodes, "edges": edges}
+
+    def get_node(self, node_id: str) -> Dict[str, Any]:
+        node_id = str(node_id or "").strip()
+        if not node_id:
+            raise ValueError("node_id required")
+        nt, et = self._read_tables()
+        with self._connect() as conn:
+            row = conn.execute(
+                f"""
+                SELECT id, type, title, summary, metadata_json, updated_at
+                FROM {nt}
+                WHERE id=?
+                """,
+                (node_id,),
+            ).fetchone()
+            if not row:
+                raise ValueError(f"graph node not found: {node_id}")
+            degree = conn.execute(
+                f"SELECT COUNT(*) AS c FROM {et} WHERE from_node=? OR to_node=?",
+                (node_id, node_id),
+            ).fetchone()["c"]
+        return {
+            "id": row["id"],
+            "type": row["type"],
+            "title": row["title"],
+            "summary": row["summary"],
+            "metadata": _safe_loads(row["metadata_json"]),
+            "updated_at": row["updated_at"],
+            "degree": degree,
+        }
+
+    def relationship_search(
+        self,
+        *,
+        query: str = "",
+        node_id: str = "",
+        relationship_type: str = "",
+        limit: int = 30,
+    ) -> Dict[str, Any]:
+        query = str(query or "").strip()
+        node_id = str(node_id or "").strip()
+        relationship_type = str(relationship_type or "").strip()
+        limit = max(1, min(int(limit or 30), 200))
+        nt, et = self._read_tables()
+        where = []
+        params: List[Any] = []
+        if node_id:
+            where.append("(e.from_node=? OR e.to_node=?)")
+            params.extend([node_id, node_id])
+        if relationship_type:
+            where.append("e.type LIKE ?")
+            params.append(f"%{relationship_type}%")
+        if query:
+            where.append(
+                "(e.type LIKE ? OR e.metadata_json LIKE ? OR src.title LIKE ? OR dst.title LIKE ? OR src.summary LIKE ? OR dst.summary LIKE ?)"
+            )
+            params.extend([f"%{query}%"] * 6)
+        where_sql = "WHERE " + " AND ".join(where) if where else ""
+        with self._connect() as conn:
+            rows = conn.execute(
+                f"""
+                SELECT
+                  e.id, e.from_node, e.to_node, e.type, e.weight, e.metadata_json, e.created_at,
+                  src.type AS source_type, src.title AS source_title, src.summary AS source_summary,
+                  src.metadata_json AS source_metadata,
+                  dst.type AS target_type, dst.title AS target_title, dst.summary AS target_summary,
+                  dst.metadata_json AS target_metadata
+                FROM {et} e
+                JOIN {nt} src ON src.id=e.from_node
+                JOIN {nt} dst ON dst.id=e.to_node
+                {where_sql}
+                ORDER BY e.weight DESC, e.created_at DESC, e.id ASC
+                LIMIT ?
+                """,
+                (*params, limit),
+            ).fetchall()
+        return {
+            "query": query,
+            "node_id": node_id,
+            "relationship_type": relationship_type,
+            "relationships": [
+                {
+                    "id": row["id"],
+                    "type": row["type"],
+                    "weight": row["weight"],
+                    "metadata": _safe_loads(row["metadata_json"]),
+                    "created_at": row["created_at"],
+                    "source": {
+                        "id": row["from_node"],
+                        "type": row["source_type"],
+                        "title": row["source_title"],
+                        "summary": row["source_summary"],
+                        "metadata": _safe_loads(row["source_metadata"]),
+                    },
+                    "target": {
+                        "id": row["to_node"],
+                        "type": row["target_type"],
+                        "title": row["target_title"],
+                        "summary": row["target_summary"],
+                        "metadata": _safe_loads(row["target_metadata"]),
+                    },
+                }
+                for row in rows
+            ],
+        }
+
+    def traverse(self, node_id: str, *, depth: int = 1, limit: int = 100) -> Dict[str, Any]:
+        node_id = str(node_id or "").strip()
+        if not node_id:
+            raise ValueError("node_id required")
+        depth = max(0, min(int(depth or 1), 4))
+        limit = max(1, min(int(limit or 100), 500))
+        nt, et = self._read_tables()
+        visited = {node_id}
+        frontier = {node_id}
+        edges_by_id: Dict[str, Dict[str, Any]] = {}
+        with self._connect() as conn:
+            for _ in range(depth):
+                if not frontier or len(visited) >= limit:
+                    break
+                placeholders = ",".join("?" * len(frontier))
+                rows = conn.execute(
+                    f"""
+                    SELECT id, from_node, to_node, type, weight, metadata_json
+                    FROM {et}
+                    WHERE from_node IN ({placeholders}) OR to_node IN ({placeholders})
+                    ORDER BY weight DESC, id ASC
+                    LIMIT ?
+                    """,
+                    (*frontier, *frontier, limit * 3),
+                ).fetchall()
+                next_frontier = set()
+                for row in rows:
+                    edges_by_id[row["id"]] = {
+                        "id": row["id"],
+                        "from": row["from_node"],
+                        "to": row["to_node"],
+                        "type": row["type"],
+                        "weight": row["weight"],
+                        "metadata": _safe_loads(row["metadata_json"]),
+                    }
+                    for candidate in (row["from_node"], row["to_node"]):
+                        if candidate not in visited and len(visited) < limit:
+                            visited.add(candidate)
+                            next_frontier.add(candidate)
+                frontier = next_frontier
+            placeholders = ",".join("?" * len(visited))
+            node_rows = conn.execute(
+                f"""
+                SELECT id, type, title, summary, metadata_json, updated_at
+                FROM {nt}
+                WHERE id IN ({placeholders})
+                ORDER BY updated_at DESC, id ASC
+                """,
+                list(visited),
+            ).fetchall()
+        return {
+            "root": node_id,
+            "depth": depth,
+            "nodes": [
+                {
+                    "id": row["id"],
+                    "type": row["type"],
+                    "title": row["title"],
+                    "summary": row["summary"],
+                    "metadata": _safe_loads(row["metadata_json"]),
+                    "updated_at": row["updated_at"],
+                }
+                for row in node_rows
+            ],
+            "edges": list(edges_by_id.values()),
+        }
+
+    def _iter_vector_source_items(
+        self,
+        conn: sqlite3.Connection,
+        *,
+        include_nodes: bool = True,
+        include_chunks: bool = True,
+    ) -> List[Dict[str, Any]]:
+        items: List[Dict[str, Any]] = []
+        if include_nodes:
+            for row in conn.execute(
+                """
+                SELECT id, type, title, summary, metadata_json
+                FROM nodes
+                WHERE type <> 'Chunk'
+                ORDER BY updated_at DESC, id ASC
+                """
+            ).fetchall():
+                metadata = _safe_loads(row["metadata_json"])
+                text = self._vector_text_for_node(
+                    title=row["title"],
+                    summary=row["summary"] or "",
+                    metadata=metadata,
+                )
+                if text:
+                    items.append({
+                        "item_id": row["id"],
+                        "item_type": "node",
+                        "source_node": row["id"],
+                        "text": text,
+                        "metadata": {"node_type": row["type"], **metadata},
+                    })
+        if include_chunks:
+            for row in conn.execute(
+                """
+                SELECT c.id, c.source_node AS parent_source_node, c.text, c.metadata_json
+                FROM chunks c
+                JOIN nodes n ON n.id=c.id
+                ORDER BY c.created_at DESC, c.id ASC
+                """
+            ).fetchall():
+                metadata = _safe_loads(row["metadata_json"])
+                text = _clean_text(row["text"] or "")
+                if text:
+                    items.append({
+                        "item_id": row["id"],
+                        "item_type": "chunk",
+                        "source_node": row["id"],
+                        "text": text,
+                        "metadata": {**metadata, "parent_source_node": row["parent_source_node"]},
+                    })
+        return items
+
+    def rebuild_vector_index(
+        self,
+        *,
+        full: bool = False,
+        include_nodes: bool = True,
+        include_chunks: bool = True,
+    ) -> Dict[str, Any]:
+        """Rebuild the derived vector index without mutating graph content."""
+        op_id = f"vector-op:{_sha256_text(f'{time.time()}:{os.getpid()}')[:24]}"
+        requested_at = _now()
+        started = time.perf_counter()
+        try:
+            with self._connect() as conn:
+                conn.execute(
+                    """
+                    INSERT INTO vector_index_operations(
+                      id, operation, status, requested_at, started_at, metadata_json
+                    )
+                    VALUES (?, ?, 'running', ?, ?, ?)
+                    """,
+                    (
+                        op_id,
+                        "rebuild_full" if full else "rebuild_incremental",
+                        requested_at,
+                        requested_at,
+                        _json({"include_nodes": include_nodes, "include_chunks": include_chunks}),
+                    ),
+                )
+                if full:
+                    filters = []
+                    if include_nodes:
+                        filters.append("'node'")
+                    if include_chunks:
+                        filters.append("'chunk'")
+                    if filters:
+                        conn.execute(f"DELETE FROM vector_embeddings WHERE item_type IN ({','.join(filters)})")
+                items = self._iter_vector_source_items(
+                    conn,
+                    include_nodes=include_nodes,
+                    include_chunks=include_chunks,
+                )
+                indexed = skipped = 0
+                for item in items:
+                    changed = self._upsert_vector_item(conn, **item)
+                    if changed:
+                        indexed += 1
+                    else:
+                        skipped += 1
+                duration_ms = round((time.perf_counter() - started) * 1000, 2)
+                conn.execute(
+                    """
+                    UPDATE vector_index_operations
+                    SET status='completed', completed_at=?, items_total=?,
+                        items_indexed=?, items_skipped=?, metadata_json=?
+                    WHERE id=?
+                    """,
+                    (
+                        _now(),
+                        len(items),
+                        indexed,
+                        skipped,
+                        _json({
+                            "include_nodes": include_nodes,
+                            "include_chunks": include_chunks,
+                            "duration_ms": duration_ms,
+                            "embedding_model": self._embedding_model.model_id,
+                            "embedding_dim": self._embedding_model.dim,
+                        }),
+                        op_id,
+                    ),
+                )
+            return {
+                "status": "completed",
+                "operation_id": op_id,
+                "full": bool(full),
+                "items_total": len(items),
+                "items_indexed": indexed,
+                "items_skipped": skipped,
+                "duration_ms": duration_ms,
+                "embedding_model": self._embedding_model.model_id,
+                "embedding_dim": self._embedding_model.dim,
+            }
+        except Exception as exc:
+            duration_ms = round((time.perf_counter() - started) * 1000, 2)
+            with self._connect() as conn:
+                conn.execute(
+                    """
+                    INSERT INTO vector_index_operations(
+                      id, operation, status, requested_at, started_at, completed_at,
+                      error_message, metadata_json
+                    )
+                    VALUES (?, ?, 'failed', ?, ?, ?, ?, ?)
+                    ON CONFLICT(id) DO UPDATE SET
+                      status='failed',
+                      completed_at=excluded.completed_at,
+                      error_message=excluded.error_message,
+                      metadata_json=excluded.metadata_json
+                    """,
+                    (
+                        op_id,
+                        "rebuild_full" if full else "rebuild_incremental",
+                        requested_at,
+                        requested_at,
+                        _now(),
+                        str(exc),
+                        _json({"duration_ms": duration_ms}),
+                    ),
+                )
+            raise
+
+    def index_status(self) -> Dict[str, Any]:
+        with self._connect() as conn:
+            vector_counts = {
+                row["item_type"]: row["count"]
+                for row in conn.execute(
+                    "SELECT item_type, COUNT(*) AS count FROM vector_embeddings GROUP BY item_type"
+                )
+            }
+            source_items = self._iter_vector_source_items(conn)
+            vector_rows = {
+                row["item_id"]: row
+                for row in conn.execute(
+                    """
+                    SELECT item_id, text_hash, embedding_dim, embedding_model, indexed_at
+                    FROM vector_embeddings
+                    """
+                ).fetchall()
+            }
+            latest_rows = conn.execute(
+                """
+                SELECT id, operation, status, requested_at, started_at, completed_at,
+                       items_total, items_indexed, items_skipped, error_message, metadata_json
+                FROM vector_index_operations
+                ORDER BY requested_at DESC, id DESC
+                LIMIT 5
+                """
+            ).fetchall()
+        missing = stale = ready = 0
+        for item in source_items:
+            vector_row = vector_rows.get(item["item_id"])
+            expected_hash = _sha256_text(_clean_text(item["text"]))
+            if not vector_row:
+                missing += 1
+            elif (
+                vector_row["text_hash"] != expected_hash
+                or vector_row["embedding_dim"] != self._embedding_model.dim
+                or vector_row["embedding_model"] != self._embedding_model.model_id
+            ):
+                stale += 1
+            else:
+                ready += 1
+        pending = missing + stale
+        return {
+            "status": "ready" if pending == 0 else "needs_reindex",
+            "storage": {
+                "db_path": str(self.db_path),
+                "backend": "sqlite",
+                "embedding_model": self._embedding_model.model_id,
+                "embedding_dim": self._embedding_model.dim,
+            },
+            "source_items": len(source_items),
+            "indexed_items": sum(vector_counts.values()),
+            "ready_items": ready,
+            "missing_items": missing,
+            "stale_items": stale,
+            "pending_items": pending,
+            "by_item_type": vector_counts,
+            "operations": [
+                {
+                    "id": row["id"],
+                    "operation": row["operation"],
+                    "status": row["status"],
+                    "requested_at": row["requested_at"],
+                    "started_at": row["started_at"],
+                    "completed_at": row["completed_at"],
+                    "items_total": row["items_total"],
+                    "items_indexed": row["items_indexed"],
+                    "items_skipped": row["items_skipped"],
+                    "error_message": row["error_message"],
+                    "metadata": _safe_loads(row["metadata_json"]),
+                }
+                for row in latest_rows
+            ],
+        }
+
+    def vector_search(
+        self,
+        query: str,
+        *,
+        limit: int = 30,
+        min_score: float = 0.0,
+        max_candidates: int = 10_000,
+    ) -> Dict[str, Any]:
+        query = str(query or "").strip()
+        limit = max(1, min(int(limit or 30), 100))
+        min_score = float(min_score or 0.0)
+        if not query:
+            return {"query": query, "matches": []}
+        query_vector = self._embedding_model.embed(query)
+        max_candidates = max(limit, min(int(max_candidates or 10_000), 50_000))
+        with self._connect() as conn:
+            rows = conn.execute(
+                """
+                SELECT
+                  ve.item_id, ve.item_type, ve.source_node, ve.embedding,
+                  ve.embedding_dim, ve.embedding_model, ve.metadata_json AS vector_metadata,
+                  n.type AS node_type, n.title AS node_title, n.summary AS node_summary,
+                  n.metadata_json AS node_metadata, n.updated_at AS node_updated_at,
+                  c.text AS chunk_text, c.source_node AS parent_node_id,
+                  pn.type AS parent_type, pn.title AS parent_title,
+                  pn.summary AS parent_summary, pn.metadata_json AS parent_metadata,
+                  pn.updated_at AS parent_updated_at
+                FROM vector_embeddings ve
+                LEFT JOIN nodes n ON n.id=ve.source_node
+                LEFT JOIN chunks c ON c.id=ve.item_id
+                LEFT JOIN nodes pn ON pn.id=c.source_node
+                WHERE ve.embedding_model=? AND ve.embedding_dim=?
+                ORDER BY ve.indexed_at DESC
+                LIMIT ?
+                """,
+                (self._embedding_model.model_id, self._embedding_model.dim, max_candidates),
+            ).fetchall()
+        scored = []
+        for row in rows:
+            vector = self._embedding_model.decode(row["embedding"], row["embedding_dim"])
+            score = self._embedding_model.similarity(query_vector, vector)
+            if score < min_score:
+                continue
+            is_chunk = row["item_type"] == "chunk"
+            summary = row["chunk_text"] if is_chunk and row["chunk_text"] else row["node_summary"]
+            parent_metadata = _safe_loads(row["parent_metadata"])
+            node_metadata = _safe_loads(row["node_metadata"])
+            scored.append({
+                "id": row["item_id"],
+                "node_id": row["parent_node_id"] if is_chunk and row["parent_node_id"] else row["source_node"],
+                "item_type": row["item_type"],
+                "type": "Chunk" if is_chunk else row["node_type"],
+                "title": row["parent_title"] if is_chunk and row["parent_title"] else row["node_title"],
+                "summary": _clean_text(summary or "")[:1000],
+                "score": round(float(score), 6),
+                "metadata": {
+                    **(parent_metadata if is_chunk else node_metadata),
+                    "vector": _safe_loads(row["vector_metadata"]),
+                    "parent_node_id": row["parent_node_id"],
+                    "parent_type": row["parent_type"],
+                },
+                "updated_at": row["parent_updated_at"] if is_chunk and row["parent_updated_at"] else row["node_updated_at"],
+            })
+        scored.sort(key=lambda item: (item["score"], item.get("updated_at") or ""), reverse=True)
+        return {
+            "query": query,
+            "embedding_model": self._embedding_model.model_id,
+            "embedding_dim": self._embedding_model.dim,
+            "matches": scored[:limit],
+        }
 
     def delete_conversation(self, conversation_id: str) -> Dict[str, Any]:
         conversation_id = str(conversation_id or "").strip()

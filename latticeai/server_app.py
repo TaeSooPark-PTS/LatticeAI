@@ -72,6 +72,7 @@ from latticeai.core.enterprise import (
 from latticeai.services.workspace_service import WorkspaceService
 from latticeai.services.model_service import ModelService
 from latticeai.services.chat_service import ChatService
+from latticeai.services.search_service import SearchService
 from latticeai.services.model_runtime import (
     CLOUD_VERIFY_TTL_SECONDS,
     ENGINE_MODEL_CATALOG,
@@ -105,6 +106,7 @@ from latticeai.api.realtime import create_realtime_router
 from latticeai.api.marketplace import create_marketplace_router
 from latticeai.api.models import create_models_router
 from latticeai.api.chat import create_chat_router
+from latticeai.api.search import create_search_router
 from latticeai.api.tools import create_tools_router
 from latticeai.api.static_routes import create_static_routes_router
 from latticeai.api.garden import create_garden_router
@@ -1171,6 +1173,9 @@ def _workspace_graph():
     return KNOWLEDGE_GRAPH if (ENABLE_GRAPH and KNOWLEDGE_GRAPH) else None
 
 
+SEARCH_SERVICE = SearchService(graph_store=_workspace_graph())
+
+
 # ── Workspace OS + Organization router (latticeai.api.workspace, v1.2.0) ──────
 app.include_router(create_workspace_router(
     service=WORKSPACE_SERVICE,
@@ -1349,6 +1354,11 @@ app.include_router(create_chat_router(
     knowledge_graph=KNOWLEDGE_GRAPH,
     public_model=PUBLIC_MODEL,
     base_dir=BASE_DIR,
+))
+
+app.include_router(create_search_router(
+    service=SEARCH_SERVICE,
+    require_user=require_user,
 ))
 
 app.include_router(create_tools_router(
