@@ -2,6 +2,29 @@
 
 ## [Unreleased]
 
+> v3 Frontend Shell — a ground-up, token-native single-page workspace shell
+> served at `/app`. Frontend-only and integration-ready for the v3 retrieval
+> APIs (`/api/index/status`, `/api/graph`, `/api/search/hybrid`); the legacy
+> screens remain unchanged and reachable.
+
+### Added
+
+- **Unified app shell** (`static/v3/`) — nav rail, command palette (⌘K),
+  workspace switcher (Personal/Organization), and mode switcher
+  (Basic/Advanced/Admin); hash-routed views for every primary and admin area
+  (Home, Chat, Knowledge Graph, Hybrid Search, Files, Pipeline, Agents, Models,
+  My Computer, Settings, and Admin · Users/Permissions/Audit/Security/Policies/
+  Private VPC).
+- **Retrieval identity** — Knowledge Graph + Vector Index + Hybrid Search are
+  surfaced as a first-class "retrieval lattice" on Home and a live index chip.
+- **Token-native design system** — `static/v3/css/lattice.*.css` built on top of
+  `tokens.css` with no dependency on the legacy override layers; full light/dark
+  and desktop/tablet/mobile support.
+- **Integration adapters** — `static/v3/js/core/api.js` calls the real endpoints
+  and degrades to clearly-badged sample data; no backend logic is implemented.
+- **Validation** — `tests/visual/v3.spec.js` and `scripts/lint_v3.mjs` (wired
+  into `npm run lint`); see `docs/V3_FRONTEND.md` for IA + design decisions.
+
 > Frontend Product Shell Redesign — workspace navigation, auth entry, and shared
 > product surfaces were realigned around the local-first AI workspace model
 > without changing backend contracts.
