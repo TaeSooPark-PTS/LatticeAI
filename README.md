@@ -3,10 +3,11 @@
 
   # Lattice AI
 
-  **Local-first AI workspace for knowledge graphs, AI pipelines, and multi-agent coding workflows.**
+  **Lattice AI v3 — Local-First AI Workspace Platform.**
 
-  Plan, execute, review, and remember work across local models, cloud models,
-  files, and team workflows.
+  Work across Personal and Organization workspaces with Knowledge Graph,
+  Vector Index, Hybrid Search, Native Chat, agents, files, models, and
+  Basic / Advanced / Admin modes.
 </div>
 
 <div align="center">
@@ -15,7 +16,7 @@
 [![npm version](https://img.shields.io/npm/v/ltcai?label=npm)](https://www.npmjs.com/package/ltcai)
 [![VS Code Marketplace](https://vsmarketplacebadges.dev/version-short/parktaesoo.ltcai.svg)](https://marketplace.visualstudio.com/items?itemName=parktaesoo.ltcai)
 [![Open VSX](https://img.shields.io/open-vsx/v/parktaesoo/ltcai?label=Open%20VSX)](https://open-vsx.org/extension/parktaesoo/ltcai)
-[![GitHub release](https://img.shields.io/github/v/release/TaeSooPark-PTS/LatticeAI?label=GitHub%20release)](https://github.com/TaeSooPark-PTS/LatticeAI/releases/tag/v2.2.7)
+[![GitHub release](https://img.shields.io/github/v/release/TaeSooPark-PTS/LatticeAI?label=GitHub%20release)](https://github.com/TaeSooPark-PTS/LatticeAI/releases/tag/v3.0.0)
 [![License: MIT](https://img.shields.io/badge/license-MIT-green)](LICENSE)
 [![Python 3.11+](https://img.shields.io/badge/python-3.11%2B-blue)](https://www.python.org/)
 [![VS Code extension](https://img.shields.io/badge/VS%20Code-extension-blue?logo=visualstudiocode)](https://marketplace.visualstudio.com/items?itemName=parktaesoo.ltcai)
@@ -48,7 +49,7 @@ Install the coding extension:
 
 - [VS Code Marketplace: parktaesoo.ltcai](https://marketplace.visualstudio.com/items?itemName=parktaesoo.ltcai)
 - [Open VSX: parktaesoo.ltcai](https://open-vsx.org/extension/parktaesoo/ltcai)
-- [GitHub Release v2.2.7](https://github.com/TaeSooPark-PTS/LatticeAI/releases/tag/v2.2.7)
+- [GitHub Release v3.0.0](https://github.com/TaeSooPark-PTS/LatticeAI/releases/tag/v3.0.0)
 
 ## Quick Start
 
@@ -61,7 +62,7 @@ LTCAI
 Then open:
 
 ```text
-http://127.0.0.1:4825
+http://127.0.0.1:4825/app
 ```
 
 Development checkout:
@@ -81,9 +82,14 @@ npm run build
 
 ## What Is Lattice AI?
 
-Lattice AI is a local-first AI workspace for people and teams who want their
-files, models, graph context, and agent workflows in one place.
+Lattice AI v3 is a local-first AI workspace platform for people and teams who
+want their files, models, graph context, retrieval, and agent workflows in one
+place.
 
+- **Primary app shell**: `/app` is the default product experience with Native
+  Chat, Knowledge Graph, Hybrid Search, Files, Pipeline, Agents, Models, My
+  Computer, Settings, and Admin areas. Legacy `/chat` remains available as a
+  rollback/debug path.
 - **Local-first AI Workspace**: work starts on your machine, with local data and
   workspace state by default.
 - **AI Pipeline Platform**: plan, execute, review, retry, and replay work across
@@ -94,7 +100,9 @@ files, models, graph context, and agent workflows in one place.
 - **Multi-Agent Workflow Platform**: agents hand off structured context, review
   work, retry with reasons, and keep timelines inspectable.
 - **Personal / Organization Workspace**: move between personal work and team
-  workspaces with role-aware views.
+  workspaces with role-aware views and Basic / Advanced / Admin modes.
+- **Vector Index and Hybrid Search**: local vector rows are derived from the
+  Knowledge Graph and fused with keyword and graph signals.
 - **Local Model Management**: choose current multimodal local models with source
   disclosure, hardware-aware recommendations, and cloud fallback options.
 - **SSO for teams**: organization workspaces can be paired with Okta or
@@ -114,28 +122,23 @@ and disconnected automations. Lattice AI keeps those parts together:
 - multi-agent workflows leave behind replayable plans, reviews, retries, and
   outcomes.
 
-## v2.2.7 Visual Stabilization Highlights
+## v3.0.0 Highlights
 
-Lattice AI v2.2.7 is a visual stabilization release driven by rendered browser
-screens, not stylesheet cleanup alone. It keeps the existing design-token
-structure while making the app feel like one cohesive product.
+Lattice AI v3.0.0 makes `/app` the primary workspace shell and ships the v3
+backend retrieval stack together with the native frontend.
 
-- The dark chat composer is now an intentional dark surface with a crisp outer
-  focus state, no white haze, and no legacy inner textarea box.
-- Knowledge Graph canvas and Workspace OS panels no longer fall back to
-  washed-out light surfaces in dark mode.
-- Workspace select, onboarding, recommendation, auto setup, mode select,
-  pipeline, My Computer, profile, settings, VPC, and model-state surfaces use a
-  shared modal/panel language.
-- Static frontend asset cache-busting is normalized to `?v=2.2.7`, including
-  `/static/scripts/chat.js?v=2.2.7`.
-- Playwright visual coverage now locks the v2.2.7 composer, graph canvas,
-  Workspace OS dark inputs/cards, and mobile composer behavior.
-
-Carried forward from v2.2.x: mobile-first responsive layout, design-token
-light/dark themes, keyboard-safe chat composer, Knowledge Graph responsive UX,
-Admin mobile card layout, drag-and-drop file attachment, and model-card source
-disclosure.
+- Native v3 Chat lives inside `/app#/chat` and streams through the real
+  `POST /chat` backend while showing friendly setup guidance when no model is
+  loaded.
+- Knowledge Graph, Vector Index, and Hybrid Search are first-class retrieval
+  surfaces. Hybrid results show keyword, local vector, and graph scores.
+- Personal and Organization workspaces, plus Basic / Advanced / Admin modes,
+  are built into the shell.
+- Legacy `/chat` remains reachable for rollback and debugging.
+- The default embedding signal is `lattice-local-hash-v1`, a deterministic
+  local fallback. It is not described as a production semantic embedding model;
+  future providers may include Ollama, MLX, OpenAI-compatible endpoints, and
+  other local embedding runtimes.
 
 ## Screenshots
 
@@ -180,6 +183,12 @@ The graph keeps useful workspace context available even when you change models.
 The v3 backend adds a local-first retrieval stack that combines the Knowledge
 Graph, a SQLite vector index, and hybrid result fusion. It preserves existing
 graph data while adding derived vector rows that can be rebuilt at any time.
+
+Embedding status: the current default is `lattice-local-hash-v1`, a
+deterministic local fallback embedder for indexing and tests. It provides a
+stable vector signal without downloads or cloud calls; it is not a production
+semantic embedding model. Future provider support may include Ollama, MLX,
+OpenAI-compatible providers, and other local embedding runtimes.
 
 Core API contracts:
 
@@ -250,7 +259,8 @@ Core areas:
 
 | Version | Theme |
 | --- | --- |
-| **2.2.7** | Visual system stabilization — cohesive dark/light screens, crisp chat composer, dark graph canvas, Workspace OS polish |
+| **3.0.0** | v3 local-first AI workspace platform — `/app`, Native Chat, Knowledge Graph, Vector Index, Hybrid Search, workspace modes |
+| 2.2.7 | Visual system stabilization — cohesive dark/light screens, crisp chat composer, dark graph canvas, Workspace OS polish |
 | 2.2.6 | Token-native CSS foundation |
 | 2.2.5 | Release hygiene hotfix — dark overlays, modal stack, cache-busting, favicon, and Telegram log masking |
 | 2.2.4 | Chat dark-mode completion |

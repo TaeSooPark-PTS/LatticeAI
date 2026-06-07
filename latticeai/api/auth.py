@@ -167,7 +167,7 @@ def create_auth_router(
         if users[email].get("disabled"):
             raise HTTPException(status_code=403, detail="비활성화된 계정입니다.")
         token = create_session(email)
-        resp = RedirectResponse("/chat", status_code=302)
+        resp = RedirectResponse("/app", status_code=302)
         resp.set_cookie("session_token", token, httponly=True, samesite="lax", max_age=session_ttl)
         return resp
 

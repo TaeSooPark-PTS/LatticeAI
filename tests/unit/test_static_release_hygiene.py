@@ -32,7 +32,7 @@ def test_favicon_route_serves_existing_icon():
     assert response.content
 
 
-def test_release_asset_cache_busting_is_v227():
+def test_release_asset_cache_busting_is_v300():
     html_files = [
         *STATIC_DIR.glob("*.html"),
         REPO_ROOT / "tests" / "visual" / "fixtures" / "onboarding.html",
@@ -42,11 +42,11 @@ def test_release_asset_cache_busting_is_v227():
         text = path.read_text(encoding="utf-8")
         for match in re.finditer(r"/static/[^\"']+\?v=([^\"'&]+)", text):
             version = match.group(1)
-            if version != "2.2.7":
+            if version != "3.0.0":
                 stale.append(f"{path.relative_to(REPO_ROOT)}:{match.group(0)}")
 
     assert stale == []
-    assert "/static/scripts/chat.js?v=2.2.7" in (STATIC_DIR / "chat.html").read_text(encoding="utf-8")
+    assert "/static/scripts/chat.js?v=3.0.0" in (STATIC_DIR / "chat.html").read_text(encoding="utf-8")
 
 
 def test_legacy_monolith_is_removed_and_modules_present():

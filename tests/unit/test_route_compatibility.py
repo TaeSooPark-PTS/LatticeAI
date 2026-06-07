@@ -140,6 +140,10 @@ def test_model_and_engine_routes_present(app):
         assert p in paths, f"model/engine route missing: {p}"
 
 
+def test_v3_app_route_present(app):
+    assert "/app" in _paths(app), "v3 /app shell route missing"
+
+
 def test_mcp_and_kg_routes_present(app):
     paths = _paths(app)
     for p in ("/mcp/tools", "/mcp/call", "/mcp/installed",

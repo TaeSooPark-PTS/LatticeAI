@@ -1,12 +1,12 @@
 /* ============================================================================
  * Lattice AI v3 — Integration adapter
  *
- * Every adapter call hits the REAL endpoint first (including the documented
- * future surfaces /api/index/status, /api/graph, /api/search/hybrid). If that
+ * Every adapter call hits the real endpoint first (including /api/index/status,
+ * /api/graph, /api/search/hybrid, and /chat). If that
  * endpoint is missing/unavailable, it degrades to a clearly-labeled SAMPLE
  * payload from fixtures.js and reports `source: "placeholder"` so the UI can
  * badge it. No backend logic is implemented here — only transport + graceful
- * fallback, which is what keeps the v3 frontend integration-ready.
+ * fallback, which keeps the v3 frontend resilient during local setup.
  *
  * Return shape (never throws): { ok, status, data, source, error }
  *   source: "live"        → returned by a real backend endpoint
@@ -116,14 +116,36 @@ export const api = {
           graph: Number(ss.graph ?? m.graph) || 0,
         };
       });
-      return { ok: true, status: res.status, data: items, source: "live" };
+      return { ok: true, status: res.status, data: items, source: "live", weights: res.data.weights || null };
     }
     return { ok: true, status: res.status, data: fx.hybridResults(query), source: "placeholder", error: res.error };
   },
 
   /* ── Existing surfaces (used where helpful, all fallback-safe) ──────── */
   workspaceOs() { return withFallback("/workspace/os", {}, fx.WORKSPACE_OS); },
-  models() { return withFallback("/models", {}, fx.MODELS); },
+  async models() {
+    const res = await raw("/models");
+    if (res.ok && res.data && !res.data.raw) {
+      const data = res.data;
+      const loadedIds = Array.isArray(data.loaded) ? data.loaded : [];
+      const recommended = Array.isArray(data.recommended) ? data.recommended.map((m) => ({
+        ...m,
+        name: m.name || m.display_name || m.id,
+        family: m.family || m.modality || "local",
+        state: loadedIds.includes(m.id) || data.current === m.id ? "loaded" : "available",
+      })) : [];
+      const loadedOnly = loadedIds
+        .filter((id) => !recommended.some((m) => m.id === id))
+        .map((id) => ({ id, name: id, family: "local", state: data.current === id ? "loaded" : "available" }));
+      return {
+        ok: true,
+        status: res.status,
+        source: "live",
+        data: { ...data, catalog: Array.isArray(data.catalog) ? data.catalog : [...recommended, ...loadedOnly] },
+      };
+    }
+    return { ok: true, status: res.status, data: fx.MODELS, source: "placeholder", error: res.error };
+  },
   sysinfo() { return withFallback("/local/sysinfo", {}, fx.SYSINFO); },
 
   adminSummary() { return withFallback("/admin/summary", {}, fx.ADMIN.summary); },
@@ -184,7 +206,17 @@ export const api = {
       return simulateChat(body, { onChunk, onTrace, signal });
     }
     const ctype = res.headers.get("content-type") || "";
-    if (!res.ok || !res.body || !ctype.includes("text/event-stream")) {
+    if (!res.ok) {
+      let data = null;
+      try { data = await res.clone().json(); } catch {}
+      const detail = data && (data.detail || data.message || data.error);
+      const noModel = data && (data.error === "no_model_loaded" || /no .*model .*loaded/i.test(String(detail || "")));
+      if (noModel) {
+        return { source: "live", text: "", error: "no_model_loaded", errorMessage: String(detail || "No local model is loaded.") };
+      }
+      return simulateChat(body, { onChunk, onTrace, signal });
+    }
+    if (!res.body || !ctype.includes("text/event-stream")) {
       return simulateChat(body, { onChunk, onTrace, signal });
     }
     const reader = res.body.getReader();

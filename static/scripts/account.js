@@ -162,7 +162,7 @@ const API_BASE = window.location.protocol === 'file:' ? 'http://localhost:4825' 
                     localStorage.setItem('ltcai_user_nickname', data.nickname || data.name || data.email);
                     localStorage.setItem('ltcai_is_admin', data.is_admin ? 'true' : 'false');
                     requestSetupAfterLogin();
-                    window.location.href = '/chat?setup=1';
+                    window.location.href = '/app';
                 } else {
                     const data = await res.json().catch(() => ({}));
                     setMsg('login-msg', data.detail || t('err_login_fail'));
@@ -205,7 +205,7 @@ const API_BASE = window.location.protocol === 'file:' ? 'http://localhost:4825' 
                             localStorage.setItem('ltcai_user_nickname', data.nickname || data.name || data.email);
                             localStorage.setItem('ltcai_is_admin', data.is_admin ? 'true' : 'false');
                             requestSetupAfterLogin();
-                            window.location.href = '/chat?setup=1';
+                            window.location.href = '/app';
                         }
                     });
                 } else {
@@ -221,9 +221,9 @@ const API_BASE = window.location.protocol === 'file:' ? 'http://localhost:4825' 
             }
         }
 
-        // If already logged in, skip to chat
+        // If already logged in, skip to the v3 workspace shell.
         apiFetch('/account/profile').then(r => {
-            if (r.ok) window.location.href = '/chat';
+            if (r.ok) window.location.href = '/app';
         }).catch(() => {});
 
         initSSO();

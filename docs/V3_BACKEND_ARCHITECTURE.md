@@ -56,6 +56,10 @@ It provides:
 - a stable interface for replacing the implementation with a local model
   runtime later.
 
+It is a fallback vector signal, not a production semantic embedding model.
+Future provider support may include Ollama, MLX, OpenAI-compatible providers,
+and other local embedding providers behind the same vector-index interface.
+
 ## Search Model
 
 `latticeai/services/search_service.py` composes the retrieval layers.

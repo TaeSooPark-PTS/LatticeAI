@@ -6,7 +6,8 @@
 
 | 버전 | 지원 여부 |
 |------|-----------|
-| 2.2.x (latest) | ✅ 지원 |
+| 3.0.x (latest) | ✅ 지원 |
+| 2.2.x | ✅ 보안 패치 범위 내 지원 |
 | 2.0.x | ✅ 보안 패치 범위 내 지원 |
 | 1.7.x | ✅ 보안 패치 범위 내 지원 |
 | 1.6.x 이하 | ❌ 미지원 |
@@ -28,7 +29,9 @@
 
 ## 보안 모델
 
-Lattice AI v2.2.7는 local-first AI 워크스페이스 / 지식 그래프 플랫폼으로, 아래 보안 모델을 따릅니다:
+Lattice AI v3.0.0는 local-first AI workspace platform으로, Personal /
+Organization Workspace, Knowledge Graph, Vector Index, Hybrid Search, Native
+Chat, Basic / Advanced / Admin mode를 포함하며 아래 보안 모델을 따릅니다:
 
 ### 기본 안전 설정 (Default Secure)
 

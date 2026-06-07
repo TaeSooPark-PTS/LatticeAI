@@ -160,7 +160,7 @@ export function meter(value, variant = "") {
 /* ── Retrieval lattice (signature) ──────────────────────────────────────── */
 const PILLAR_DEFS = [
   { key: "knowledge_graph", kind: "graph", name: "Knowledge Graph", desc: "Entities & relations", icon: "chart-dots-3", unit: "entities", read: (p) => p?.entities },
-  { key: "vector_index", kind: "vector", name: "Vector Index", desc: "Dense embeddings field", icon: "grid-dots", unit: "vectors", read: (p) => p?.vectors },
+  { key: "vector_index", kind: "vector", name: "Vector Index", desc: "Local embedding vectors", icon: "grid-dots", unit: "vectors", read: (p) => p?.vectors },
   { key: "hybrid", kind: "hybrid", name: "Hybrid Search", desc: "Fused graph + vector", icon: "arrows-join", unit: "fusion", read: (p) => p?.strategy },
 ];
 

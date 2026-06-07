@@ -4,15 +4,15 @@
  * endpoint is not yet available. The UI always renders a "Sample data" badge
  * when these are used, so nothing here is presented as real backend output.
  * No backend logic is implemented — these are static shapes that mirror the
- * documented future API contracts so views are integration-ready.
+ * live API contracts so views remain usable during local setup.
  * ========================================================================== */
 
 export const INDEX_STATUS = {
   generated_at: null,
   pipelines: {
     knowledge_graph: { state: "ready", entities: 1284, relations: 3960, last_built: null, coverage: 0.91 },
-    vector_index: { state: "ready", vectors: 48230, dimensions: 1024, model: "bge-local", coverage: 0.87 },
-    hybrid: { state: "ready", strategy: "reciprocal-rank-fusion", alpha: 0.5, last_eval: null },
+    vector_index: { state: "ready", vectors: 48230, dimensions: 384, model: "lattice-local-hash-v1", coverage: 0.87 },
+    hybrid: { state: "ready", strategy: "weighted-rank-fusion", weights: { keyword: 0.35, vector: 0.40, graph: 0.25 }, last_eval: null },
   },
   sources: [
     { id: "src-notes", label: "Workspace Notes", files: 312, state: "indexed", progress: 1 },
@@ -27,7 +27,7 @@ export const GRAPH = {
     { id: "n:hybrid", label: "Hybrid Search", type: "Concept", weight: 0.86, x: 0.72, y: 0.30 },
     { id: "n:vector", label: "Vector Index", type: "Concept", weight: 0.84, x: 0.30, y: 0.28 },
     { id: "n:graph", label: "Knowledge Graph", type: "Concept", weight: 0.9, x: 0.5, y: 0.74 },
-    { id: "n:embed", label: "bge-local", type: "Model", weight: 0.6, x: 0.16, y: 0.5 },
+    { id: "n:embed", label: "lattice-local-hash-v1", type: "Model", weight: 0.6, x: 0.16, y: 0.5 },
     { id: "n:rrf", label: "Rank Fusion", type: "Method", weight: 0.58, x: 0.86, y: 0.54 },
     { id: "n:notes", label: "Workspace Notes", type: "File", weight: 0.52, x: 0.36, y: 0.9 },
     { id: "n:repo", label: "Connected Repo", type: "File", weight: 0.55, x: 0.66, y: 0.9 },
@@ -61,7 +61,7 @@ export function hybridResults(query) {
     { id: "doc-4", title: "Workspace memory — decisions", path: "memory/decisions.md", snippet: `…prior decision relevant to "${q}", retrieved via graph adjacency from the active answer…`, vector: 0.49, lexical: 0.58, graph: 0.71 },
     { id: "doc-5", title: "Connected repo: README", path: "repo/README.md", snippet: `…lexical hit on "${q}" reinforced by neighboring entities in the knowledge graph…`, vector: 0.4, lexical: 0.82, graph: 0.4 },
   ];
-  return base.map((r) => ({ ...r, score: Number((0.5 * r.vector + 0.2 * r.lexical + 0.3 * r.graph).toFixed(3)) }))
+  return base.map((r) => ({ ...r, score: Number((0.4 * r.vector + 0.35 * r.lexical + 0.25 * r.graph).toFixed(3)) }))
     .sort((a, b) => b.score - a.score);
 }
 
@@ -76,7 +76,7 @@ export const MODELS = {
   catalog: [
     { id: "mlx-community/local-model-4bit", name: "Local Model 4bit", family: "local", params: "12B", quant: "4bit", state: "loaded", context: 32768, recommended: true },
     { id: "mlx-community/reasoner-8bit", name: "Reasoner 8bit", family: "local", params: "8B", quant: "8bit", state: "available", context: 16384 },
-    { id: "mlx-community/embed-bge", name: "bge-local (embeddings)", family: "embedding", params: "335M", quant: "fp16", state: "loaded", context: 512 },
+    { id: "lattice-local-hash-v1", name: "lattice-local-hash-v1 (fallback vectors)", family: "embedding", params: "hash", quant: "local", state: "loaded", context: 384 },
   ],
 };
 

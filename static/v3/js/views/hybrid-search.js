@@ -1,8 +1,8 @@
 /* ============================================================================
  * View: Hybrid Search — the fused-retrieval surface (headline capability).
- * Runs api.hybridSearch(query, {mode}) and shows, per result, how the vector,
- * lexical and graph signals combined into the fused score. Integration-ready:
- * degrades to clearly-badged sample data when /api/search/hybrid isn't live.
+ * Runs api.hybridSearch(query, {weights}) and shows, per result, how keyword,
+ * local vector and graph signals combine into the fused score. Missing
+ * endpoints degrade to clearly-badged sample data.
  * ========================================================================== */
 
 const MODES = [
@@ -12,10 +12,17 @@ const MODES = [
   { key: "keyword", label: "Keyword" },
 ];
 
+const MODE_WEIGHTS = {
+  hybrid: { keyword: 0.35, vector: 0.40, graph: 0.25 },
+  vector: { keyword: 0, vector: 1, graph: 0 },
+  graph: { keyword: 0, vector: 0, graph: 1 },
+  keyword: { keyword: 1, vector: 0, graph: 0 },
+};
+
 const EXAMPLES = ["retrieval design", "vector index config", "rank fusion", "graph adjacency"];
 
 const SIGNALS = [
-  { key: "vector", label: "Vector", variant: "vector", icon: "grid-dots", desc: "Dense vector similarity from the local embedding index." },
+  { key: "vector", label: "Vector", variant: "vector", icon: "grid-dots", desc: "Local vector similarity from the configured embedding index." },
   { key: "keyword", label: "Keyword", variant: "", icon: "abc", desc: "Lexical overlap — exact terms and phrases." },
   { key: "graph", label: "Graph", variant: "graph", icon: "chart-dots-3", desc: "Structural proximity in the knowledge graph." },
 ];
@@ -25,21 +32,14 @@ export async function render(ctx) {
 
   const state = { query: "", mode: "hybrid", source: "pending" };
 
-  // Fusion alpha from the live/sample index status.
-  let alpha = 0.5;
-  store.get().indexStatus
-    ? (alpha = store.get().indexStatus?.pipelines?.hybrid?.alpha ?? 0.5)
-    : api.indexStatus().then((r) => {
-        store.setIndexStatus(r.data);
-        alpha = r.data?.pipelines?.hybrid?.alpha ?? 0.5;
-        alphaPill.replaceChildren(c.pill(`α ${alpha}`, "info"));
-      });
+  let activeWeights = MODE_WEIGHTS.hybrid;
+  api.indexStatus().then((r) => { if (r.data) store.setIndexStatus(r.data); });
 
   const input = h("input", {
     type: "text", placeholder: "Search your workspace…", "aria-label": "Search query",
     on: { keydown: (e) => { if (e.key === "Enter") run(input.value); } },
   });
-  const alphaPill = h("span", c.pill(`α ${alpha}`, "info"));
+  const weightPill = h("span", c.pill(weightLabel(activeWeights), "info"));
   const srcSlot = h("span", c.sourceBadge("pending"));
   const resultsHost = h("div.lt3-stack-6", introBlock());
 
@@ -62,7 +62,7 @@ export async function render(ctx) {
     c.viewHeader({
       eyebrow: "Retrieval · fusion",
       title: "Hybrid Search",
-      sub: "Fuse the knowledge graph's structure with the vector field's semantics — every match is scored across both, then reconciled into one ranked answer.",
+      sub: "Fuse keyword recall, local vector similarity, and knowledge-graph structure. Each result shows the contributing signals behind its rank.",
       actions: [srcSlot],
     }),
     h("section.lt3-search-hero",
@@ -72,7 +72,7 @@ export async function render(ctx) {
       ),
       h("div.lt3-row", { style: { "justify-content": "space-between", "flex-wrap": "wrap", gap: "var(--lt3-space-3)" } },
         seg,
-        h("div.lt3-row-2", h("span.lt3-faint", { style: { "font-size": "var(--lt3-text-2xs)" } }, "Fusion weight"), alphaPill),
+        h("div.lt3-row-2", h("span.lt3-faint", { style: { "font-size": "var(--lt3-text-2xs)" } }, "Weights"), weightPill),
       ),
       h("div.lt3-cluster",
         h("span.lt3-faint", { style: { "font-size": "var(--lt3-text-2xs)" } }, "Try"),
@@ -92,7 +92,13 @@ export async function render(ctx) {
       c.sectionHead(`Results for “${q}”`, srcSlot.cloneNode(true)),
       c.loading({ lines: 4 }),
     );
-    const res = await api.hybridSearch(q, { mode: state.mode });
+    activeWeights = MODE_WEIGHTS[state.mode] || MODE_WEIGHTS.hybrid;
+    weightPill.replaceChildren(c.pill(weightLabel(activeWeights), "info"));
+    const res = await api.hybridSearch(q, { weights: activeWeights });
+    if (res.weights) {
+      activeWeights = res.weights;
+      weightPill.replaceChildren(c.pill(weightLabel(activeWeights), "info"));
+    }
     state.source = res.source;
     srcSlot.replaceChildren(c.sourceBadge(res.source));
     renderResults(res);
@@ -151,8 +157,8 @@ export async function render(ctx) {
     return h("div.lt3-stack-6",
       c.emptyState({
         icon: "arrows-join",
-        title: "Search across structure and meaning",
-        body: "Enter a query above. Every result is scored on three independent signals, then fused into one ranking.",
+        title: "Search across structure and vector signals",
+        body: "Enter a query above. Results show keyword, local vector, and graph scores before fusion.",
       }),
       h("section",
         c.sectionHead("How fusion scores a match"),
@@ -181,4 +187,9 @@ export async function render(ctx) {
   }
 
   return root;
+}
+
+function weightLabel(weights) {
+  const w = { ...MODE_WEIGHTS.hybrid, ...(weights || {}) };
+  return `K ${Number(w.keyword || 0).toFixed(2)} · V ${Number(w.vector || 0).toFixed(2)} · G ${Number(w.graph || 0).toFixed(2)}`;
 }

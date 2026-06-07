@@ -1,11 +1,12 @@
 # Changelog
 
-## [Unreleased]
+## [3.0.0] - 2026-06-07
 
-> v3 — Backend retrieval + native app shell, integrated. The hybrid-search
+> v3 — Local-first AI Workspace Platform. The hybrid-search
 > backend and the token-native `/app` workspace shell now ship together: the
 > shell's adapters call the real v3 retrieval APIs, and Chat is a first-class
-> native view (no link-out to the legacy page).
+> native view (no link-out to the legacy page). Legacy `/chat` remains available
+> as a rollback/debug path.
 
 ### Added — Backend retrieval
 
@@ -15,6 +16,10 @@
 - **SQLite vector index** — added local deterministic embeddings,
   `vector_embeddings`, and `vector_index_operations` for incremental indexing,
   rebuilds, and status monitoring.
+- **Embedding status** — the default `lattice-local-hash-v1` embedder is a
+  deterministic local fallback, not a production semantic embedding model.
+  Future providers may include Ollama, MLX, OpenAI-compatible providers, and
+  other local embedding runtimes.
 - **Graph retrieval helpers** — added node lookup, relationship search, bounded
   traversal, neighbor expansion, and service-level result fusion.
 - **Backend architecture doc** — added `docs/V3_BACKEND_ARCHITECTURE.md` with
@@ -33,6 +38,8 @@
   with streaming, empty/error/loading states; surfaces Knowledge Graph, Vector,
   Hybrid Search, and indexed-file context per answer. The legacy `/chat` page
   stays reachable but is no longer the primary chat experience.
+- **Primary entry behavior** — `/app` is the product entry after login and SSO;
+  the PWA manifest starts at `/app`.
 - **Retrieval identity** — Knowledge Graph + Vector Index + Hybrid Search are
   surfaced as a first-class "retrieval lattice" on Home and a live index chip.
 - **Token-native design system** — `static/v3/css/lattice.*.css` built on top of
@@ -47,6 +54,9 @@
   graph relationship traversal, hybrid result fusion, and API contract tests.
 - Frontend coverage: `tests/visual/v3.spec.js` and `scripts/lint_v3.mjs` (wired
   into `npm run lint`); see `docs/V3_FRONTEND.md` for IA + design decisions.
+- Release preparation builds exact `3.0.0` Python, npm, and VSIX artifacts.
+  Package-store publication remains manual and is not triggered by pushing the
+  release tag.
 
 > Frontend Product Shell Redesign — workspace navigation, auth entry, and shared
 > product surfaces were realigned around the local-first AI workspace model

@@ -1,14 +1,14 @@
 # Lattice AI v3 — Frontend Product Shell
 
-> A ground-up rebuild of the Lattice AI workspace frontend as a single-page,
-> token-native application shell. This is a **frontend-only** surface: it ships
-> integration-ready UI for the future retrieval APIs and never implements
-> backend search, graph, or vector logic.
+> A token-native single-page workspace shell for Lattice AI v3. It ships as the
+> primary product experience and calls the real v3 retrieval/chat APIs while
+> keeping graceful, clearly-badged sample states for unavailable local services.
 
 Entry point: **`/app`** (served by `latticeai/api/static_routes.py` →
-`static/v3/index.html`). The legacy multi-page screens (`/workspace`, `/chat`,
-`/graph`, `/admin`, …) remain reachable and unchanged, so there is no product
-regression while v3 is on a feature branch.
+`static/v3/index.html`). Login, auto-login after registration, SSO callback, and
+the PWA manifest land on `/app`. The legacy multi-page screens (`/workspace`,
+`/chat`, `/graph`, `/admin`, …) remain reachable; `/chat` is the rollback/debug
+path for the native v3 Chat view.
 
 ---
 
@@ -88,7 +88,7 @@ export async function render(ctx) { /* … */ return singleDomNode; }
 
 ---
 
-## Integration readiness
+## Integration contract
 
 `core/api.js` is the only transport layer. Every call hits the **real** endpoint
 first and degrades to a clearly-badged sample payload (`core/fixtures.js`) when
@@ -96,15 +96,23 @@ the endpoint is absent — returning `{ ok, status, data, source }` where `sourc
 is `"live"` or `"placeholder"`. The UI always renders a **Sample data** badge for
 placeholder responses, so nothing fake is presented as backend output.
 
-Documented future surfaces wired and ready:
+Live surfaces wired in v3.0.0:
 
 | Adapter | Endpoint | Fallback |
 | --- | --- | --- |
 | `api.indexStatus()` | `GET /api/index/status` | sample KG/vector/hybrid pipeline state |
 | `api.graph(params)` | `GET /api/graph` → `GET /knowledge-graph/graph` | sample mesh |
 | `api.hybridSearch(q, opts)` | `POST /api/search/hybrid` | sample fused results |
+| `api.streamChat(body)` | `POST /chat` SSE | sample stream only when endpoint is unavailable |
 
-No backend logic is implemented here — only transport and graceful fallback.
+No backend retrieval logic is implemented in the frontend — only transport,
+normalization, clear provenance badges, and graceful fallback. When the live
+chat backend reports `no_model_loaded`, v3 Chat shows a setup message instead of
+falling back to sample generation.
+
+Embedding disclosure: the current default vector signal is
+`lattice-local-hash-v1`, a deterministic local fallback. The UI avoids calling
+it a production semantic embedding model.
 
 ---
 

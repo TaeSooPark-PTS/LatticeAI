@@ -3,8 +3,9 @@
  *
  * Native to the /app shell: shares the design system, tokens, command palette,
  * workspace switcher, and mode model. Talks to the REAL backend
- * (POST /chat SSE + /history/* ) through the v3 adapter, and degrades to a
- * clearly-badged sample stream when no chat backend is available.
+ * (POST /chat SSE + /history/* ) through the v3 adapter. Missing endpoints
+ * degrade to a clearly-badged sample stream; a live "no model loaded" response
+ * stays a user-facing setup message instead of pretending to generate.
  *
  * Layout (flush, 3-pane): conversations · thread+composer · retrieval context
  * (Knowledge Graph · Vector · Hybrid Search · indexed file references).
@@ -284,8 +285,12 @@ export async function render(ctx) {
       if (!result.text) { bubble.textContent = "(stopped)"; bubble.classList.add("lt3-faint"); }
       return;
     }
+    if (result.error === "no_model_loaded") {
+      aiNode.replaceWith(errorNode(text, result));
+      return;
+    }
     if (!result.text) {
-      aiNode.replaceWith(errorNode(text));
+      aiNode.replaceWith(errorNode(text, result));
       return;
     }
     bubble.textContent = result.text;
@@ -296,15 +301,21 @@ export async function render(ctx) {
     scrollToBottom();
   }
 
-  function errorNode(retryText) {
+  function errorNode(retryText, result = {}) {
+    const noModel = result.error === "no_model_loaded";
     return h("div.lt3-msg.lt3-msg--ai",
       h("div.lt3-msg__avatar", icon("alert-triangle")),
       h("div.lt3-msg__body",
         h("div.lt3-banner.lt3-banner--err",
           icon("alert-triangle"),
-          h("div", h("div", { style: { fontWeight: 600 } }, "Couldn't reach the model"),
-            h("div.lt3-faint", "The chat backend isn't responding. Check the local runtime and retry.")),
-          h("button.lt3-btn.lt3-btn--subtle.lt3-btn--sm", { style: { "margin-left": "auto" }, on: { click: () => { textarea.value = retryText; autogrow(); send(); } } }, icon("refresh"), "Retry"),
+          h("div", h("div", { style: { fontWeight: 600 } }, noModel ? "No local model loaded" : "Couldn't reach the model"),
+            h("div.lt3-faint", noModel
+              ? "Load a local or OpenAI-compatible model from Models, then retry this message."
+              : "The chat backend isn't responding. Check the local runtime and retry.")),
+          h("div.lt3-row-2", { style: { "margin-left": "auto" } },
+            noModel && h("button.lt3-btn.lt3-btn--subtle.lt3-btn--sm", { on: { click: () => navigate("models") } }, icon("cpu"), "Models"),
+            h("button.lt3-btn.lt3-btn--subtle.lt3-btn--sm", { on: { click: () => { textarea.value = retryText; autogrow(); send(); } } }, icon("refresh"), "Retry"),
+          ),
         ),
       ),
     );
@@ -399,9 +410,9 @@ export async function render(ctx) {
   /* ── misc ────────────────────────────────────────────────────────────── */
   async function loadModel() {
     const res = await api.models();
-    state.model = (res.data && res.data.current) || "local model";
+    state.model = (res.data && res.data.current) || "";
     state.modelSource = res.source;
-    modelPill.replaceChildren(c.pill(shortModel(state.model), "info", { dot: true }));
+    modelPill.replaceChildren(c.pill(state.model ? shortModel(state.model) : "No model", state.model ? "info" : "warn", { dot: true }));
     barSrc.replaceChildren(c.sourceBadge(res.source));
   }
 

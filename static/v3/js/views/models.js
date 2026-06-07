@@ -1,9 +1,9 @@
 /* ============================================================================
  * View: Models — the local MLX runtime.
- * Lists the language models and embedding models that live on this machine,
- * highlights the loaded one, and ties the embedding family back to the Vector
- * Index that powers retrieval. Integration-ready against /models; falls back to
- * clearly-badged sample data when the runtime endpoint isn't available.
+ * Lists the language models available to the runtime, highlights the loaded
+ * one, and shows the local embedding signal that backs the Vector Index.
+ * Falls back to clearly-badged sample data when the runtime endpoint isn't
+ * available.
  *
  * View contract (shared by all views):
  *   export async function render(ctx) -> single DOM node
@@ -25,7 +25,7 @@ export async function render(ctx) {
     c.viewHeader({
       eyebrow: "Compute",
       title: "Models",
-      sub: "Local MLX language models and embeddings — every token is generated on this machine, nothing leaves your computer.",
+      sub: "Local and OpenAI-compatible runtime choices. Local models keep generation on this machine; cloud-compatible providers are shown only when configured.",
       actions: [
         srcSlot,
         h("button.lt3-btn.lt3-btn--ghost", { on: { click: () => load() } }, icon("refresh"), "Refresh"),
@@ -36,7 +36,7 @@ export async function render(ctx) {
     c.panel({
       eyebrow: "Retrieval",
       title: "Embedding models",
-      sub: "These models build the dense vectors behind Hybrid Search. Keep one loaded to keep the Vector Index warm.",
+      sub: "The current default vector signal is lattice-local-hash-v1 fallback embeddings; future local providers can replace it behind the same index.",
       children: embedHost,
     }),
     c.panel({
@@ -65,7 +65,7 @@ export async function render(ctx) {
         c.emptyState({ icon: "cpu-off", title: "No models on this machine", body: "Pull an MLX model into the local runtime to get started." }),
       );
       statHost.replaceChildren();
-      embedHost.replaceChildren(c.emptyState({ icon: "grid-dots", title: "No embedding models", body: "The Vector Index needs an embedding model to build dense vectors." }));
+      embedHost.replaceChildren(c.emptyState({ icon: "grid-dots", title: "Fallback embeddings active", body: "lattice-local-hash-v1 can build deterministic local vectors without downloading a semantic embedding model." }));
       tableHost.replaceChildren(c.emptyState({ icon: "cpu-off", title: "Catalog is empty", body: "Connect the MLX runtime to list installed models." }));
       return;
     }
@@ -129,7 +129,7 @@ export async function render(ctx) {
   function renderEmbeddings(embeddings) {
     if (!embeddings.length) {
       embedHost.replaceChildren(
-        c.emptyState({ icon: "grid-dots", title: "No embedding models loaded", body: "The Vector Index pillar needs an embedding model to build dense vectors." }),
+        c.emptyState({ icon: "grid-dots", title: "Fallback embeddings active", body: "lattice-local-hash-v1 builds deterministic local vectors until a semantic embedding provider is configured." }),
       );
       return;
     }

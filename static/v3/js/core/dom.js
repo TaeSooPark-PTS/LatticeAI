@@ -96,7 +96,25 @@ export function icon(name, extra = "") {
   const i = document.createElement("i");
   i.className = `ti ti-${name}${extra ? " " + extra : ""}`;
   i.setAttribute("aria-hidden", "true");
+  i.setAttribute("data-fallback", iconFallback(name));
   return i;
+}
+
+function iconFallback(name) {
+  const map = {
+    home: "H", search: "?", menu: "=", x: "x", refresh: "R",
+    "arrow-up": "^", "arrow-up-right": ">", "arrows-join": "H",
+    "chart-dots-3": "G", "grid-dots": "V", message: "C", "message-2": "C",
+    "message-plus": "+", "message-off": "C", user: "U", users: "U",
+    settings: "S", files: "F", cpu: "M", "cpu-off": "M", "player-play": ">",
+    "player-stop": "s", "layout-sidebar": "<", "layout-sidebar-right": ">",
+    "external-link": "o", trash: "x", sparkles: "*", "alert-triangle": "!",
+    "alert-circle": "!", "info-circle": "i", "circle-check": "v",
+    "circle-filled": "*", "stack-2": "S", "ruler-2": "R", binary: "B",
+    category: "T", abc: "K", "search-off": "?"
+  };
+  if (map[name]) return map[name];
+  return String(name || "?").split("-").map((part) => part[0] || "").join("").slice(0, 2).toUpperCase() || "?";
 }
 
 /** Compact relative-time formatter. */
