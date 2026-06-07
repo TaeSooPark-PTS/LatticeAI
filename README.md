@@ -49,7 +49,7 @@ Install the coding extension:
 
 - [VS Code Marketplace: parktaesoo.ltcai](https://marketplace.visualstudio.com/items?itemName=parktaesoo.ltcai)
 - [Open VSX: parktaesoo.ltcai](https://open-vsx.org/extension/parktaesoo/ltcai)
-- [GitHub Release v3.1.0](https://github.com/TaeSooPark-PTS/LatticeAI/releases/tag/v3.1.0)
+- [GitHub Release v3.2.0](https://github.com/TaeSooPark-PTS/LatticeAI/releases/tag/v3.2.0)
 
 ## Quick Start
 
@@ -149,6 +149,9 @@ fabricated data).
 
 The earlier v3.1 work (Classic retired from normal workflows, retrieval wired
 through a shared service layer, hash-manifested assets) remains the foundation.
+
+Release audit: [docs/V3_2_AUDIT.md](docs/V3_2_AUDIT.md) records the v3.2.0
+claim audit, fixes, tests, real-app browser validation, and artifact checks.
 
 - Native v3 Chat lives inside `/app#/chat` and streams through the real
   `POST /chat` backend while showing friendly setup guidance when no model is

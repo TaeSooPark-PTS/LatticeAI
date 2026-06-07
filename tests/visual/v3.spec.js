@@ -4,8 +4,9 @@
 const { test, expect } = require("@playwright/test");
 
 const ROUTES = [
-  "home", "chat", "knowledge-graph", "hybrid-search", "files", "pipeline",
-  "agents", "models", "my-computer", "settings",
+  "home", "chat", "knowledge-graph", "hybrid-search", "memory", "files", "pipeline",
+  "agents", "workflows", "planning", "models", "my-computer",
+  "marketplace", "skills", "hooks", "tools", "mcp", "settings",
   "admin/users", "admin/permissions", "admin/audit", "admin/security",
   "admin/policies", "admin/private-vpc",
 ];
@@ -24,8 +25,8 @@ test("shell boots with rail, brand, topbar and mode switcher", async ({ page }) 
   await page.waitForSelector(".lt3-navitem");
   await expect(page.locator(".lt3-rail__word")).toContainText("Lattice AI");
   await expect(page.locator("#lt3-mode")).toBeVisible();
-  // Basic mode shows the core 7 primary items (no admin group).
-  expect(await page.locator(".lt3-navitem").count()).toBe(7);
+  // Basic mode shows the core workspace/retrieval/compute/system items (no admin group).
+  expect(await page.locator(".lt3-navitem").count()).toBe(8);
   expect(errors).toEqual([]);
 });
 
@@ -109,6 +110,20 @@ test("chat is a native v3 view (no redirect) with conversations, context and str
     return b.length && b[b.length - 1].textContent.trim().length > 0;
   }, { timeout: 8000 });
   expect(await page.locator(".lt3-msg--user").count()).toBeGreaterThan(0);
+});
+
+test("agents view exposes the live agent registry", async ({ page }) => {
+  await page.goto("/app#/agents");
+  await page.waitForSelector(".lt3-vhead");
+  await expect(page.locator("section", { hasText: "Agent Registry" })).toContainText("agent:planner");
+  await expect(page.locator("section", { hasText: "Agent Registry" })).toContainText("tool-use");
+});
+
+test("skills view renders installed and available registry entries", async ({ page }) => {
+  await page.goto("/app#/skills");
+  await page.waitForSelector(".lt3-vhead");
+  await expect(page.locator("body")).toContainText("code_review");
+  await expect(page.locator("body")).toContainText("visual_regression");
 });
 
 test("mobile: no horizontal overflow and the nav drawer toggles", async ({ page }) => {

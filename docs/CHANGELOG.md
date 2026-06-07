@@ -23,18 +23,34 @@
 - **Agent templates** — five named templates in `latticeai/core/marketplace.py`
   plus a `clone` endpoint; `MARKETPLACE_VERSION`/`PLUGIN_SDK_VERSION`/
   `MULTI_AGENT_VERSION` → `3.2.0`.
-- **MCP Manager surface** — `create_mcp_router` wired into `server_app`,
-  reviving `/mcp/*`, `/skills/marketplace`, `/plugins/directory`, `/mcp/call`.
+- **MCP Manager surface** — `create_mcp_router` mounted through the tools router
+  in `server_app`, reviving `/mcp/*`, `/skills/marketplace`,
+  `/plugins/directory`, `/mcp/call`.
 - **Eight `/app` views** — memory, planning, workflows, marketplace, skills,
   hooks, tools, mcp; a Platform nav group; fallback-safe `api.js` adapters.
+- **Release claim audit** — `docs/V3_2_AUDIT.md` records a strict 20-claim
+  PASS/PARTIAL/FAIL matrix with implementation evidence, fixes, validation,
+  artifact readiness, and release metadata policy.
 
 ### Changed
 
 - Version bumped to 3.2.0 across Python, npm, the VS Code extension, the v3
   asset manifest, and runtime version constants.
+- `/app#/agents` now exposes the Agent Registry API directly, including
+  registry metadata, capability discovery, enablement, and custom-agent
+  registration.
+- `/app#/skills` now normalizes the live `/workspace/skills` response shape
+  (`installed`, `available`, and object/array `registry`) instead of only a
+  legacy `skills` array.
+- MCP/skills/plugin-directory routes are mounted once through the tools router;
+  route compatibility tests now guard against duplicate public path/method
+  registrations.
 
 ### Notes
 
+- Validation covered lint, typecheck, Python compile, 365 unit tests, live
+  integration tests, 90 Playwright tests, real `/app` browser route validation,
+  Python/npm/VSIX builds, and exact-version release artifact validation.
 - No packages were published and nothing was deployed.
 
 ## [3.1.0] - 2026-06-07

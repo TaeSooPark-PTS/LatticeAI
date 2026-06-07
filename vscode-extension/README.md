@@ -13,11 +13,11 @@ editor.
 
 ## Current Release
 
-**3.1.0 — Mainline Product Platform Completion.** The main workspace lives at
-`/app` with Native Chat, Knowledge Graph, Vector Index, Hybrid Search, Models,
-Agents, Files, Pipeline, My Computer, Settings, Personal / Organization
-workspaces, and Basic / Advanced / Admin modes. Classic pages are compatibility
-routes only.
+**3.2.0 — Feature-Complete Platform.** The main workspace lives at `/app` with
+multi-agent collaboration, Agent Registry, marketplace templates, workflow
+agents, autonomous planning, long-term memory, Skills/Hooks/Tool registries,
+MCP Manager, and Basic / Advanced / Admin modes. Enterprise controls remain
+future work.
 
 ## Quick Start
 
@@ -100,7 +100,7 @@ Remote or tunnel server example:
 - [Project README](https://github.com/TaeSooPark-PTS/LatticeAI)
 - [PyPI](https://pypi.org/project/ltcai/)
 - [npm](https://www.npmjs.com/package/ltcai)
-- [GitHub Release v3.1.0](https://github.com/TaeSooPark-PTS/LatticeAI/releases/tag/v3.1.0)
+- [GitHub Release v3.2.0](https://github.com/TaeSooPark-PTS/LatticeAI/releases/tag/v3.2.0)
 - [Changelog](https://github.com/TaeSooPark-PTS/LatticeAI/blob/main/docs/CHANGELOG.md)
 - [Security Policy](https://github.com/TaeSooPark-PTS/LatticeAI/blob/main/SECURITY.md)
 

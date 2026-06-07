@@ -8,6 +8,7 @@ this test asserts the full path set is preserved.
 
 import importlib
 import inspect
+from collections import Counter
 
 import pytest
 
@@ -106,6 +107,17 @@ def test_all_baseline_routes_preserved(app):
 def test_route_count_does_not_collapse(app):
     # Guard against an extraction wiping a whole router include.
     assert len(app.routes) >= len(BASELINE_PATHS)
+
+
+def test_no_duplicate_public_method_routes(app):
+    pairs = []
+    for route in app.routes:
+        path = getattr(route, "path", "")
+        for method in getattr(route, "methods", set()) or set():
+            if method not in {"HEAD", "OPTIONS"}:
+                pairs.append((path, method))
+    duplicates = sorted(pair for pair, count in Counter(pairs).items() if count > 1)
+    assert not duplicates, f"duplicate route handlers registered: {duplicates}"
 
 
 def test_import_paths_and_identity():

@@ -23,6 +23,10 @@ capability is operable from `/app` with no Classic dependency.
   `/mcp/*`, `/skills/marketplace`, and `/plugins/directory`.
 - **Eight new `/app` views** (memory, planning, workflows, marketplace, skills,
   hooks, tools, mcp) with honest live/unavailable states.
+- **Release claim audit** — added `docs/V3_2_AUDIT.md`; wired Agent Registry
+  controls into `/app#/agents`; fixed `/app#/skills` live registry payload
+  handling; removed duplicate MCP route registration; expanded visual route
+  coverage.
 - Package publication and deployment were not performed.
 
 ## [3.1.0] - 2026-06-07

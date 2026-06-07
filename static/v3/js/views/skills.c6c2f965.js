@@ -78,10 +78,25 @@ export async function render(ctx) {
 
 function normalize(data) {
   if (!data) return [];
-  const list = Array.isArray(data.skills) ? data.skills
-    : Array.isArray(data.registry) ? data.registry
-    : Array.isArray(data) ? data : [];
-  return list.map((s) => ({
+  const raw = [];
+  if (Array.isArray(data.skills)) raw.push(...data.skills);
+  if (Array.isArray(data.installed)) raw.push(...data.installed);
+  if (Array.isArray(data.available)) raw.push(...data.available);
+  if (Array.isArray(data.registry)) raw.push(...data.registry);
+  else if (data.registry && typeof data.registry === "object") {
+    raw.push(...Object.entries(data.registry).map(([name, value]) => ({ name, ...(value || {}) })));
+  }
+  if (Array.isArray(data)) raw.push(...data);
+
+  const byName = new Map();
+  for (const item of raw) {
+    const name = item && (item.name || item.skill || item.id);
+    if (!name) continue;
+    const prior = byName.get(name) || {};
+    byName.set(name, { ...prior, ...item, name });
+  }
+
+  return [...byName.values()].map((s) => ({
     name: s.name || s.skill || s.id || "skill",
     description: s.description || "",
     version: s.version || "",

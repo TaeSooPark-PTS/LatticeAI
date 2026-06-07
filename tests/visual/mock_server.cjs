@@ -270,6 +270,82 @@ const server = http.createServer((req, res) => {
   });
   if (pathname === "/agents/api/runtime/health") return json(res, { status: "ok", checks: { run_store: { status: "ok" }, orchestrator: { status: "ok" } } });
   if (pathname === "/agents/api/runtime/config") return json(res, { version: "2.2.0", roles: ["researcher", "planner", "executor", "reviewer", "release"], default_pipeline: ["planner", "executor", "reviewer"], max_retries_cap: 5, execution_mode: "synchronous" });
+  if (pathname === "/agents/api/registry") return json(res, {
+    agents: [
+      { id: "agent:researcher", name: "Researcher", type: "researcher", version: "3.2.0", description: "Gathers workspace context.", capabilities: ["context-retrieval", "hybrid-search"], source: "builtin", enabled: true, removable: false, config: {} },
+      { id: "agent:planner", name: "Planner", type: "planner", version: "3.2.0", description: "Builds bounded plans.", capabilities: ["task-decomposition", "delegation"], source: "builtin", enabled: true, removable: false, config: {} },
+      { id: "agent:executor", name: "Executor", type: "executor", version: "3.2.0", description: "Executes tools and workflows.", capabilities: ["tool-use", "workflow-run"], source: "builtin", enabled: true, removable: false, config: {} },
+      { id: "agent:reviewer", name: "Reviewer", type: "reviewer", version: "3.2.0", description: "Reviews execution.", capabilities: ["verification", "approval"], source: "builtin", enabled: true, removable: false, config: {} },
+      { id: "agent:release", name: "Release", type: "release", version: "3.2.0", description: "Finalizes approved outcomes.", capabilities: ["summarize"], source: "builtin", enabled: true, removable: false, config: {} },
+    ],
+    types: ["planner", "researcher", "executor", "reviewer", "release", "custom"],
+    counts: { planner: 1, researcher: 1, executor: 1, reviewer: 1, release: 1 },
+    total: 5,
+    version: "3.2.0",
+    default_pipeline: ["planner", "executor", "reviewer"],
+  });
+  if (pathname === "/agents/api/registry/capabilities") return json(res, {
+    capabilities: {
+      "tool-use": ["agent:executor"],
+      "workflow-run": ["agent:executor"],
+      "verification": ["agent:reviewer"],
+      "task-decomposition": ["agent:planner"],
+      "hybrid-search": ["agent:researcher"],
+    },
+  });
+
+  if (pathname === "/marketplace/templates") return json(res, {
+    marketplace_version: "3.2.0",
+    kinds: ["plugin", "workflow", "agent"],
+    templates: [
+      { id: "agent-research-assistant", kind: "agent", name: "Research Assistant", version: "1.0.0", description: "Retrieves workspace context and synthesizes a reviewed answer.", metadata: { category: "research" }, definition: { roles: ["researcher", "planner", "reviewer"], capabilities: ["hybrid-search", "memory-recall"] } },
+      { id: "agent-coding-assistant", kind: "agent", name: "Coding Assistant", version: "1.0.0", description: "Plans a code change, executes it, and reviews the result.", metadata: { category: "coding" }, definition: { roles: ["planner", "executor", "reviewer"], capabilities: ["tool-use", "verification"] } },
+      { id: "workflow-agent-plugin-review", kind: "workflow", name: "Agent Plugin Review Workflow", version: "1.0.0", description: "Trigger into agent chain, plugin, and output.", metadata: { category: "agent-ops" }, definition: { roles: ["planner", "executor", "reviewer"] } },
+    ],
+    total: 3,
+  });
+  if (pathname === "/marketplace/templates/registry") return json(res, { registry: {} });
+  if (pathname === "/plugins/registry") return json(res, { plugins: [{ id: "hello-world", name: "Hello World", version: "1.0.0", description: "Demo plugin", installed: true, enabled: true }] });
+  if (pathname === "/plugins/directory") return json(res, { plugins: [{ id: "git-insights", name: "Git Insights", description: "Repository summary plugin", version: "1.0.0", author: "Lattice" }], categories: ["dev"] });
+  if (pathname === "/skills/marketplace") return json(res, { skills: [{ skill: "visual_regression", name: "visual_regression", description: "Capture and compare workspace UI", version: "1.2.0", author: "Lattice", category: "test", installed: false }], categories: ["test"] });
+  if (pathname === "/workflows/api/definitions") return json(res, { workflows: [{ id: "wf-agent-review", name: "Agent Review Workflow", nodes: [
+    { id: "trigger", type: "trigger", name: "Trigger", next: "agent" },
+    { id: "agent", type: "agent", name: "Agent chain", next: "tool" },
+    { id: "tool", type: "tool", name: "Tool", next: "output" },
+    { id: "output", type: "output", name: "Result", next: null },
+  ] }] });
+  if (pathname === "/workflows/api/runs") return json(res, { runs: [{ id: "wf-run-1", workflow_id: "wf-agent-review", workflow_name: "Agent Review Workflow", status: "ok", created_at: "2026-06-06T12:00:00" }] });
+  if (pathname === "/api/memory/manager") return json(res, {
+    sources: [
+      { id: "workspace", type: "workspace", label: "Workspace Memory", count: 3, size_bytes: 2048, health: "ok", detail: "Personal workspace memory." },
+      { id: "project", type: "project", label: "Project Memory", count: 1, size_bytes: 0, health: "ok", detail: "Organization memory." },
+      { id: "agent", type: "agent", label: "Agent Memory", count: 2, size_bytes: 0, health: "ok", detail: "Agent memory snapshots." },
+      { id: "conversation", type: "conversation", label: "Conversation Memory", count: 2, size_bytes: 1024, health: "ok", detail: "Chat history." },
+      { id: "graph", type: "graph", label: "Graph Memory", count: graphNodes.length, size_bytes: 4096, health: "ok", detail: "Knowledge graph entities.", edges: graphEdges.length },
+      { id: "vector", type: "vector", label: "Vector Memory", count: 8, size_bytes: 0, health: "ok", detail: "Vector index." },
+    ],
+    tiers: ["workspace", "project", "agent", "conversation", "graph", "vector"],
+    usage: { total_items: 21, total_bytes: 7168, sources: 6 },
+    health: "ok",
+  });
+  if (pathname === "/api/memory/inspect") return json(res, { source: url.searchParams.get("source"), items: [{ id: "mem-demo", kind: "workspace", title: "Demo memory", content: "Release memory" }], count: 1, available: true, stats: workspaceOs.graph, index: { status: "ready" } });
+  if (pathname === "/api/hooks") return json(res, { hooks: [
+    { id: "builtin:redact-secrets", name: "Redact secrets", kind: "pre_run", order: 10, description: "Redact secret-like fields.", binding: "multi_agent._redact", managed: "platform", source: "builtin", enabled: true, removable: false },
+    { id: "builtin:audit-agent-run", name: "Audit agent run", kind: "post_run", order: 10, description: "Audit completed agent runs.", binding: "AgentRuntime.start", managed: "platform", source: "builtin", enabled: true, removable: false },
+  ], kinds: ["pre_run", "post_run", "pre_tool", "post_tool", "agent", "pipeline", "workflow"], counts: { pre_run: { total: 1, enabled: 1 }, post_run: { total: 1, enabled: 1 } }, total: 2, enabled: 2 });
+  if (pathname === "/tools/permissions") return json(res, { status: "ok", permissions: [
+    { tool: "read_file", risk: "low", requires_approval: false, network: false },
+    { tool: "write_file", risk: "medium", requires_approval: true, network: false },
+    { tool: "run_command", risk: "high", requires_approval: true, network: false },
+  ] });
+  if (pathname === "/mcp/tools") return json(res, { status: "ok", installed_mcps: [{ id: "mcp-files", name: "Files", description: "File MCP", category: "local", installed: true }], tools: [
+    { name: "read_file", description: "Read workspace files.", permission: { tool: "read_file", risk: "low", requires_approval: false, network: false }, governance: { risk: "read", destructive: false, shell: false, network: false, auto_approve: true, sandbox: "workspace", rollback: "none" } },
+    { name: "write_file", description: "Write workspace files.", permission: { tool: "write_file", risk: "medium", requires_approval: true, network: false }, governance: { risk: "write", destructive: false, shell: false, network: false, auto_approve: false, sandbox: "workspace", rollback: "git" } },
+    { name: "run_command", description: "Run allowlisted commands.", permission: { tool: "run_command", risk: "high", requires_approval: true, network: false }, governance: { risk: "exec", destructive: false, shell: true, network: false, auto_approve: false, sandbox: "workspace", rollback: "none" } },
+  ] });
+  if (pathname === "/mcp/installed") return json(res, { installed: [{ id: "mcp-files", name: "Files", installed: true }] });
+  if (pathname === "/mcp/claude-code-servers") return json(res, { servers: [{ id: "claude-code:filesystem", name: "filesystem", description: "Claude Code MCP", package: "npx filesystem", category: "Claude Code", source: "claude-code", installed: true, env_vars: [] }] });
+  if (pathname === "/mcp/custom") return json(res, { custom: [{ id: "custom:docs", name: "Docs", description: "Docs MCP", package: "npx docs", category: "custom", source: "custom", installed: false, env_vars: [] }] });
 
   if (pathname === "/knowledge-graph/graph") return json(res, { nodes: graphNodes, edges: graphEdges });
   if (pathname === "/knowledge-graph/stats") return json(res, workspaceOs.graph);

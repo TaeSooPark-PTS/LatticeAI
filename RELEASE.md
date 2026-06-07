@@ -7,6 +7,32 @@
 > PyPI / npm / VS Code Marketplace / Open VSX 배포는 아래 수동 절차로만
 > 진행합니다. 태그 생성은 패키지 스토어 publish를 자동으로 트리거하지 않습니다.
 
+## v3.2.0 릴리스 노트 (2026-06-08)
+
+Lattice AI v3.2.0 — Feature-Complete Platform. non-enterprise use case 전체를
+`/app`에서 수행할 수 있으며, Enterprise(SSO/SCIM/RBAC/compliance/DLP/VPC/
+governance/multi-tenant controls)는 future work로 남긴다. 패키지 스토어
+publish 및 배포는 수행하지 않는다.
+
+- **Added (Agent platform completion)**: Multi-agent collaboration, Agent
+  Registry, offline Marketplace templates, Workflow Agents, Autonomous
+  Planning, Long-Term Memory + Memory Manager, Skills/Hooks/Tool/MCP
+  registries를 `/app`에서 노출한다.
+- **Fixed (Agent Registry UI wiring)**: `/agents/api/registry*`가 존재하지만
+  `/app#/agents`에서 보이지 않던 registry metadata/version/capability/
+  enablement/custom-agent registration surface를 연결했다.
+- **Fixed (Skills Registry UI wiring)**: `/workspace/skills`의 실제
+  `{ installed, available, registry }` payload를 `/app#/skills`가 정규화해
+  installed/available skill을 모두 표시한다.
+- **Fixed (Route hygiene)**: MCP/skills/plugin-directory router 중복 include를
+  제거하고 public path/method 중복 등록 방지 테스트를 추가했다.
+- **Added (Release audit)**: `docs/V3_2_AUDIT.md`에 20개 v3.2.0 claim의
+  PASS/PARTIAL/FAIL matrix, 수정 내역, 검증 결과, artifact readiness를 기록했다.
+- **Validation**: `npm run lint`, `npm run typecheck`, `npm run check:python`,
+  unit/integration tests, `npx playwright test`, real `/app` browser route sweep,
+  `python -m build`, `npm run build`, `npm pack`, VSIX package,
+  `npm run release:validate`.
+
 ## v3.1.0 릴리스 노트 (2026-06-07)
 
 Lattice AI v3.1.0 — Mainline Product Platform Completion. `/app`가
@@ -666,13 +692,13 @@ Knowledge Graph v2 read/write cutover. 자세한 내용은
    - `npm run release:artifacts`
    - `npm run release:validate`
 
-현재 `v3.1.0` 기준 필수 산출물:
+현재 `v3.2.0` 기준 필수 산출물:
 
 ```text
-dist/ltcai-3.1.0-py3-none-any.whl
-dist/ltcai-3.1.0.tar.gz
-dist/ltcai-3.1.0.vsix
-ltcai-3.1.0.tgz
+dist/ltcai-3.2.0-py3-none-any.whl
+dist/ltcai-3.2.0.tar.gz
+dist/ltcai-3.2.0.vsix
+ltcai-3.2.0.tgz
 ```
 
 ## 2) npm 배포

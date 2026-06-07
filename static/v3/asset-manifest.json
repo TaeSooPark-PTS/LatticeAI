@@ -33,7 +33,7 @@
     "static/v3/js/views/admin-private-vpc.js": "/static/v3/js/views/admin-private-vpc.7d342d36.js",
     "static/v3/js/views/admin-security.js": "/static/v3/js/views/admin-security.07c66b72.js",
     "static/v3/js/views/admin-users.js": "/static/v3/js/views/admin-users.03bac88c.js",
-    "static/v3/js/views/agents.js": "/static/v3/js/views/agents.14e48bdd.js",
+    "static/v3/js/views/agents.js": "/static/v3/js/views/agents.c373d48c.js",
     "static/v3/js/views/chat.js": "/static/v3/js/views/chat.718144ce.js",
     "static/v3/js/views/files.js": "/static/v3/js/views/files.4935197e.js",
     "static/v3/js/views/home.js": "/static/v3/js/views/home.cdde3b32.js",
@@ -48,7 +48,7 @@
     "static/v3/js/views/pipeline.js": "/static/v3/js/views/pipeline.c522f1ce.js",
     "static/v3/js/views/planning.js": "/static/v3/js/views/planning.9ac3e313.js",
     "static/v3/js/views/settings.js": "/static/v3/js/views/settings.4f777210.js",
-    "static/v3/js/views/skills.js": "/static/v3/js/views/skills.ada0f8dc.js",
+    "static/v3/js/views/skills.js": "/static/v3/js/views/skills.c6c2f965.js",
     "static/v3/js/views/tools.js": "/static/v3/js/views/tools.e4f11276.js",
     "static/v3/js/views/workflows.js": "/static/v3/js/views/workflows.26c57290.js"
   }

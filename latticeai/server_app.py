@@ -113,7 +113,6 @@ from latticeai.api.tools import create_tools_router
 from latticeai.api.static_routes import create_static_routes_router
 from latticeai.api.garden import create_garden_router
 from latticeai.api.setup import create_setup_router
-from latticeai.api.mcp import create_mcp_router
 from latticeai.api.hooks import create_hooks_router
 from latticeai.core.hooks import HooksRegistry
 from latticeai.api.agent_registry import create_agent_registry_router
@@ -1458,25 +1457,6 @@ app.include_router(create_tools_router(
     recommend_mcps=recommend_mcps,
     install_mcp=install_mcp,
     mcp_public_item=mcp_public_item,
-))
-
-# MCP / skills-marketplace / plugins-directory surface (revived in v3.2.0).
-app.include_router(create_mcp_router(
-    require_user=require_user,
-    require_admin=require_admin,
-    append_audit_event=append_audit_event,
-    load_mcp_installs=load_mcp_installs,
-    recommend_mcps=recommend_mcps,
-    install_mcp=install_mcp,
-    mcp_public_item=mcp_public_item,
-    get_tool_permission=get_tool_permission,
-    tool_governance=TOOL_GOVERNANCE,
-    tool_governance_default=_TOOL_GOVERNANCE_DEFAULT,
-    check_tool_role=_check_tool_role,
-    tool_response=_tool_response,
-    require_graph=_require_graph,
-    knowledge_graph=KNOWLEDGE_GRAPH,
-    data_dir=DATA_DIR,
 ))
 
 app.include_router(create_hooks_router(

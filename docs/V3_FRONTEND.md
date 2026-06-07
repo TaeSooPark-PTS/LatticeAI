@@ -98,7 +98,7 @@ first and returns `{ ok, status, data, source }` where `source` is `"live"` or
 `"unavailable"`. Unavailable responses carry empty data so primary surfaces do
 not invent counters, sample graphs, fake health, or fake run history.
 
-Live surfaces wired in v3.1.0:
+Core live surfaces established before v3.2.0:
 
 | Adapter | Endpoint | Unavailable state |
 | --- | --- | --- |

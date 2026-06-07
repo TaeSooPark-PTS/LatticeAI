@@ -9,8 +9,10 @@ export async function render(ctx) {
   const { h, icon, c } = ctx;
 
   const statHost = h("div.lt3-statrow", c.loading({ lines: 1 }));
+  const registryHost = h("div", c.loading({ lines: 3, block: true }));
   const rosterHost = h("div", c.loading({ lines: 2, block: true }));
   const runsHost = h("div", c.loading({ lines: 4 }));
+  const registrySrc = h("span", c.sourceBadge("pending"));
   const rosterSrc = h("span", c.sourceBadge("pending"));
   const runsSrc = h("span", c.sourceBadge("pending"));
   const healthSlot = h("span", c.sourceBadge("pending"));
@@ -23,6 +25,10 @@ export async function render(ctx) {
       actions: [healthSlot],
     }),
     statHost,
+    h("section",
+      c.sectionHead("Agent Registry", registrySrc),
+      registryHost,
+    ),
     h("section",
       c.sectionHead("Agent roster", rosterSrc),
       rosterHost,
@@ -40,6 +46,7 @@ export async function render(ctx) {
   );
 
   hydrate(ctx, { statHost, rosterHost, runsHost, rosterSrc, runsSrc, healthSlot });
+  loadRegistry(ctx, { registryHost, registrySrc });
   return root;
 }
 
@@ -109,6 +116,83 @@ async function hydrate(ctx, hosts) {
   );
 }
 
+async function loadRegistry(ctx, hosts) {
+  const { h, c } = ctx;
+  const { registryHost, registrySrc } = hosts;
+  const [registryRes, capsRes] = await Promise.all([ctx.api.agentRegistry(), ctx.api.agentCapabilities()]);
+  const agents = normalizeRegistry(registryRes.data);
+  const caps = (capsRes.data && capsRes.data.capabilities) || {};
+  registrySrc.replaceChildren(c.sourceBadge(registryRes.source === "live" || capsRes.source === "live" ? "live" : "unavailable"));
+
+  const nameInput = h("input.lt3-input", { type: "text", placeholder: "Custom agent name", "aria-label": "Custom agent name" });
+  const capsInput = h("input.lt3-input", { type: "text", placeholder: "capability-a, capability-b", "aria-label": "Custom agent capabilities" });
+  const registerBtn = h("button.lt3-btn.lt3-btn--primary.lt3-btn--sm", { on: { click: register } }, c.icon("plus"), "Register");
+
+  const capList = Object.keys(caps).sort();
+  const body = h("div.lt3-stack-4",
+    h("div.lt3-grid-2",
+      h("div.lt3-field", h("label", "Name"), nameInput),
+      h("div.lt3-field", h("label", "Capabilities"), capsInput),
+    ),
+    h("div.lt3-row-2", registerBtn,
+      h("span.lt3-faint", { style: { "font-size": "var(--lt3-text-xs)" } }, "Custom agents persist in the local registry.")),
+    capList.length
+      ? h("div.lt3-cluster", capList.slice(0, 18).map((cap) => h("span.lt3-chip", c.icon("sparkles"), `${cap} (${caps[cap].length})`)))
+      : h("p.lt3-faint", { style: { margin: 0 } }, "Capabilities appear here when the registry is live."),
+    agents.length
+      ? h("div.lt3-grid-auto", agents.map((agent) => registryCard(ctx, agent)))
+      : c.emptyState({ icon: "robot-off", title: "Agent registry unavailable", body: "Start the local server to register and configure agents." }),
+  );
+  registryHost.replaceChildren(c.panel({ title: "Registry controls", sub: "Register, discover, and configure built-in or custom agents.", children: body }));
+
+  async function register() {
+    const name = nameInput.value.trim();
+    if (!name) { ctx.toast("Enter an agent name", "info"); return; }
+    const capabilities = capsInput.value.split(",").map((s) => s.trim()).filter(Boolean);
+    registerBtn.disabled = true;
+    const res = await ctx.api.registerAgent({ name, type: "custom", capabilities });
+    registerBtn.disabled = false;
+    if (res && res.ok) {
+      ctx.toast(`Registered ${name}`, "ok");
+      loadRegistry(ctx, hosts);
+    } else {
+      ctx.toast("Register unavailable", "err");
+    }
+  }
+}
+
+function registryCard(ctx, agent) {
+  const { h, c } = ctx;
+  return c.card(h("div.lt3-stack-3",
+    h("div.lt3-row", { style: { "justify-content": "space-between", "align-items": "flex-start" } },
+      h("div",
+        h("b", agent.name),
+        h("div.lt3-faint", { style: { "font-size": "var(--lt3-text-2xs)", "font-family": "var(--lt3-font-mono)" } }, agent.id),
+      ),
+      c.pill(agent.source === "builtin" ? "built-in" : "custom", agent.source === "builtin" ? "info" : "warn"),
+    ),
+    h("p.lt3-muted", { style: { "font-size": "var(--lt3-text-sm)", margin: 0 } }, agent.description || "No description."),
+    h("div.lt3-cluster", [c.statePill(agent.enabled ? "ready" : "idle"), c.pill(agent.type), c.pill(`v${agent.version || "1.0.0"}`)]),
+    agent.capabilities.length ? h("div.lt3-cluster", agent.capabilities.slice(0, 8).map((cap) => h("span.lt3-chip", cap))) : null,
+    h("div.lt3-row-2",
+      h("button.lt3-btn.lt3-btn--subtle.lt3-btn--sm", { on: { click: () => toggleAgent(ctx, agent) } }, c.icon(agent.enabled ? "toggle-right" : "toggle-left"), agent.enabled ? "Disable" : "Enable"),
+      agent.removable ? h("button.lt3-btn.lt3-btn--ghost.lt3-btn--sm", { on: { click: () => removeAgent(ctx, agent) } }, c.icon("trash"), "Remove") : null,
+    ),
+  ), { interactive: false });
+}
+
+async function toggleAgent(ctx, agent) {
+  const res = await ctx.api.updateAgent(agent.id, { config: agent.config || {}, enabled: !agent.enabled });
+  ctx.toast(res && res.ok ? `${agent.name}: ${agent.enabled ? "disabled" : "enabled"}` : "Agent update unavailable", res && res.ok ? "ok" : "err");
+  if (res && res.ok) ctx.navigate("agents");
+}
+
+async function removeAgent(ctx, agent) {
+  const res = await ctx.api.removeAgent(agent.id);
+  ctx.toast(res && res.ok ? `Removed ${agent.name}` : "Agent remove unavailable", res && res.ok ? "ok" : "err");
+  if (res && res.ok) ctx.navigate("agents");
+}
+
 /* ── Agent card ──────────────────────────────────────────────────────────── */
 function agentCard(ctx, agent, byId) {
   const { h, icon, c } = ctx;
@@ -155,6 +239,22 @@ function normalize(data) {
     runs: a.runs ?? a.run_count ?? a.runs_count ?? 0,
     handoffs: Array.isArray(a.handoffs) ? a.handoffs
       : Array.isArray(a.relationships) ? a.relationships : [],
+  }));
+}
+
+function normalizeRegistry(data) {
+  const list = Array.isArray(data) ? data : (data && Array.isArray(data.agents) ? data.agents : []);
+  return list.map((agent, i) => ({
+    id: agent.id || `agent:${i}`,
+    name: agent.name || agent.id || `Agent ${i + 1}`,
+    type: agent.type || "custom",
+    version: agent.version || "1.0.0",
+    description: agent.description || "",
+    capabilities: Array.isArray(agent.capabilities) ? agent.capabilities : [],
+    source: agent.source || "user",
+    enabled: agent.enabled !== false,
+    removable: !!agent.removable,
+    config: agent.config || {},
   }));
 }
 

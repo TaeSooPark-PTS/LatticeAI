@@ -27,6 +27,24 @@ VPC, governance, multi-tenant controls) remains future work.
 - v3 fallback states are unavailable/empty instead of sample data or fake
   counters. Package publication and deployment were not performed.
 
+### Release Audit & Hardening
+
+- Added [docs/V3_2_AUDIT.md](docs/V3_2_AUDIT.md), a strict 20-claim audit
+  covering implementation, routes, adapters, views, tests, runtime validation,
+  artifacts, tag policy, and GitHub Release metadata.
+- Fixed `/app#/agents` so the Agent Registry is visible and actionable from the
+  product view, including built-in/custom registry metadata, capabilities,
+  enablement, and custom-agent registration.
+- Fixed `/app#/skills` so it renders the live `/workspace/skills` payload
+  (`installed`, `available`, and object/array `registry` forms) instead of
+  falling back to an empty state.
+- Removed duplicate MCP route registration and added a public route
+  path/method duplicate guard.
+- Expanded Playwright coverage for v3.2 platform views, Agent Registry, and
+  Skills Registry. The real `/app` browser sweep passed on desktop and mobile
+  routes with no app 404/500 responses, console/page errors, Classic dependency
+  text, or horizontal overflow.
+
 ### Expected Artifacts
 
 - `dist/ltcai-3.2.0-py3-none-any.whl`
