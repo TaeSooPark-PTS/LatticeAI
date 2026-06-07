@@ -151,7 +151,7 @@ for (const mod of modules.values()) {
 }
 
 const manifest = {
-  version: "3.1.0",
+  version: "3.2.0",
   generated_at: "deterministic",
   entrypoints: {
     app: assets[entry],

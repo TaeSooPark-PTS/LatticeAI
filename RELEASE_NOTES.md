@@ -1,5 +1,39 @@
 # Release Notes
 
+## v3.2.0 - Feature-Complete Platform
+
+Lattice AI v3.2.0 is the final major feature release before maintenance mode and
+is feature-complete for all non-enterprise use cases. A user can install Lattice
+AI, connect models, build knowledge graphs, use hybrid search, build memory, run
+agents, create agent workflows and multi-agent systems, create/install agents
+and skills, use MCP tools, build automations, and store long-term memory —
+without leaving `/app`. Enterprise (SSO, SCIM, RBAC, compliance, DLP, private
+VPC, governance, multi-tenant controls) remains future work.
+
+### Highlights
+
+- **Multi-agent collaboration** — Planner → Researcher → Executor → Reviewer
+  with handoffs, shared context, review/retry, and replayable timelines.
+- **Agent Registry** — registration, discovery, metadata, versioning,
+  capabilities, and configuration (`/agents/api/registry*`).
+- **Marketplace & Templates** — five named agent templates with clone / export /
+  import / install over an offline-capable local catalog.
+- **Workflow Agents & Autonomous Planning** — trigger → chain → tools → memory →
+  result, and goal → plan → execute → review → replan with inspect/replay.
+- **Long-Term Memory + Memory Manager** — six tiers unified with recall,
+  inspect, prune, compact, rebuild, and clear (`/api/memory/*`).
+- **Skills, Hooks, Tool Registry, MCP Manager** — manage skills; lifecycle hooks
+  (`/api/hooks/*`); governed tool registry; connected MCP servers/tools/health.
+- v3 fallback states are unavailable/empty instead of sample data or fake
+  counters. Package publication and deployment were not performed.
+
+### Expected Artifacts
+
+- `dist/ltcai-3.2.0-py3-none-any.whl`
+- `dist/ltcai-3.2.0.tar.gz`
+- `dist/ltcai-3.2.0.vsix`
+- `ltcai-3.2.0.tgz`
+
 ## v3.1.0 - Mainline Product Platform Completion
 
 Lattice AI v3.1.0 completes the non-enterprise Local-First AI Workspace

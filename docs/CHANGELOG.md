@@ -1,5 +1,42 @@
 # Changelog
 
+## [3.2.0] - 2026-06-08
+
+> v3.2 — Feature-Complete Platform. Multi-agent collaboration, an agent
+> registry, marketplace + templates, workflow agents, autonomous planning, a
+> long-term memory platform + manager, and skills/hooks/tool/MCP registries are
+> all operable from `/app`. Enterprise (SSO/SCIM/RBAC/compliance/DLP/VPC/
+> governance/multi-tenant controls) remains future work.
+
+### Added
+
+- **Agent Registry** — `latticeai/core/agent_registry.py` +
+  `/agents/api/registry*`: built-in roles projected from `multi_agent`,
+  persisted custom agents, capability discovery, and per-agent config.
+- **Hooks platform** — `latticeai/core/hooks.py` + `/api/hooks/*`: persisted
+  lifecycle registry (pre_run/post_run/pre_tool/post_tool/agent/pipeline/
+  workflow) with enable/disable/reorder/register/inspect.
+- **Long-term memory platform + Memory Manager** —
+  `latticeai/services/memory_service.py` + `/api/memory/*`: unifies workspace
+  memories, agent snapshots, conversation history, and KG graph/vector behind
+  one façade; recall/inspect/prune/compact/rebuild/clear + usage/sources/health.
+- **Agent templates** — five named templates in `latticeai/core/marketplace.py`
+  plus a `clone` endpoint; `MARKETPLACE_VERSION`/`PLUGIN_SDK_VERSION`/
+  `MULTI_AGENT_VERSION` → `3.2.0`.
+- **MCP Manager surface** — `create_mcp_router` wired into `server_app`,
+  reviving `/mcp/*`, `/skills/marketplace`, `/plugins/directory`, `/mcp/call`.
+- **Eight `/app` views** — memory, planning, workflows, marketplace, skills,
+  hooks, tools, mcp; a Platform nav group; fallback-safe `api.js` adapters.
+
+### Changed
+
+- Version bumped to 3.2.0 across Python, npm, the VS Code extension, the v3
+  asset manifest, and runtime version constants.
+
+### Notes
+
+- No packages were published and nothing was deployed.
+
 ## [3.1.0] - 2026-06-07
 
 > v3.1 — Mainline Product Platform Completion. `/app` is now the full

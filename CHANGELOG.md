@@ -2,6 +2,29 @@
 
 The detailed historical changelog lives in [docs/CHANGELOG.md](docs/CHANGELOG.md).
 
+## [3.2.0] - 2026-06-08
+
+Feature-complete release for all non-enterprise use cases. Every platform
+capability is operable from `/app` with no Classic dependency.
+
+- **Multi-agent collaboration** — Planner/Researcher/Executor/Reviewer with
+  handoffs, shared context packets, review/retry, and replayable timelines.
+- **Agent Registry** (`/agents/api/registry*`) — registration, discovery,
+  metadata, versioning, capabilities, configuration; no hardcoded agent lists.
+- **Marketplace & Agent Templates** — five named agent templates plus
+  clone/export/import/install over the local catalog.
+- **Workflow Agents & Autonomous Planning** — trigger → chain → tools → memory
+  → result; goal → plan → execute → review → replan with inspect/replay.
+- **Long-Term Memory + Memory Manager** (`/api/memory/*`) — workspace, project,
+  agent, conversation, graph, and vector tiers unified, with recall, inspect,
+  prune, compact, rebuild, and clear.
+- **Skills, Hooks, Tool Registry, MCP Manager** — skills enable/disable/install;
+  lifecycle Hooks registry (`/api/hooks/*`); governed tool registry; revived
+  `/mcp/*`, `/skills/marketplace`, and `/plugins/directory`.
+- **Eight new `/app` views** (memory, planning, workflows, marketplace, skills,
+  hooks, tools, mcp) with honest live/unavailable states.
+- Package publication and deployment were not performed.
+
 ## [3.1.0] - 2026-06-07
 
 Mainline v3.1 platform completion for the non-enterprise local-first workspace.

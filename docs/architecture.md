@@ -1,5 +1,11 @@
 # Lattice AI Architecture
 
+> v3.2.0 — feature-complete for non-enterprise use cases. The agent ecosystem
+> (registry, marketplace + templates, workflow agents, autonomous planning),
+> the long-term memory platform + manager, and the skills/hooks/tool/MCP
+> registries are all operable from `/app`. Enterprise controls remain future
+> work.
+
 Lattice AI is a local-first **AI workspace, AI pipeline platform, Knowledge
 Graph platform, and multi-agent workflow platform**. The architecture is
 organized around one durable center: the Knowledge Graph. Models, tools,

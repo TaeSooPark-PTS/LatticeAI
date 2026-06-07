@@ -16,7 +16,7 @@
 [![npm version](https://img.shields.io/npm/v/ltcai?label=npm)](https://www.npmjs.com/package/ltcai)
 [![VS Code Marketplace](https://vsmarketplacebadges.dev/version-short/parktaesoo.ltcai.svg)](https://marketplace.visualstudio.com/items?itemName=parktaesoo.ltcai)
 [![Open VSX](https://img.shields.io/open-vsx/v/parktaesoo/ltcai?label=Open%20VSX)](https://open-vsx.org/extension/parktaesoo/ltcai)
-[![GitHub release](https://img.shields.io/github/v/release/TaeSooPark-PTS/LatticeAI?label=GitHub%20release)](https://github.com/TaeSooPark-PTS/LatticeAI/releases/tag/v3.1.0)
+[![GitHub release](https://img.shields.io/github/v/release/TaeSooPark-PTS/LatticeAI?label=GitHub%20release)](https://github.com/TaeSooPark-PTS/LatticeAI/releases/tag/v3.2.0)
 [![License: MIT](https://img.shields.io/badge/license-MIT-green)](LICENSE)
 [![Python 3.11+](https://img.shields.io/badge/python-3.11%2B-blue)](https://www.python.org/)
 [![VS Code extension](https://img.shields.io/badge/VS%20Code-extension-blue?logo=visualstudiocode)](https://marketplace.visualstudio.com/items?itemName=parktaesoo.ltcai)
@@ -122,11 +122,33 @@ and disconnected automations. Lattice AI keeps those parts together:
 - multi-agent workflows leave behind replayable plans, reviews, retries, and
   outcomes.
 
-## v3.1.0 Highlights
+## v3.2.0 Highlights
 
-Lattice AI v3.1.0 completes the non-enterprise local-first workspace platform
-around `/app`: Classic is retired from normal workflows, retrieval is wired
-through a shared service layer, and browser assets are hash-manifested.
+Lattice AI v3.2.0 is the feature-complete release for all non-enterprise use
+cases. Every platform capability is operable from `/app` with no Classic
+dependency — built on real backends with honest live/unavailable states (never
+fabricated data).
+
+- **Multi-agent collaboration** — Planner → Researcher → Executor → Reviewer
+  with handoffs, shared context packets, and replayable timelines.
+- **Agent Registry** — every agent (built-in role + custom) carries registry
+  metadata: type, version, capabilities, and configuration. No hardcoded lists.
+- **Marketplace & Templates** — an offline catalog with five named agent
+  templates (Research Assistant, Coding Assistant, Knowledge Curator,
+  Documentation Writer, Workflow Builder) plus clone / export / import / install.
+- **Workflow Agents** — trigger → agent chain → tools → memory → result, with a
+  run ledger and replay.
+- **Autonomous Planning** — goal → plan → execute → review → replan, with
+  inspect/replay and bounded-retry safeguards.
+- **Long-Term Memory + Memory Manager** — workspace, project, agent,
+  conversation, graph, and vector tiers unified behind one service, with
+  recall, inspect, prune, compact, rebuild, and clear.
+- **Skills, Hooks, Tool Registry, and MCP Manager** — install/enable/disable
+  skills; lifecycle hooks across runs/tools/agents/pipelines/workflows; a
+  governed tool registry; and connected MCP servers, tools, and health.
+
+The earlier v3.1 work (Classic retired from normal workflows, retrieval wired
+through a shared service layer, hash-manifested assets) remains the foundation.
 
 - Native v3 Chat lives inside `/app#/chat` and streams through the real
   `POST /chat` backend while showing friendly setup guidance when no model is
@@ -265,7 +287,8 @@ Core areas:
 
 | Version | Theme |
 | --- | --- |
-| **3.1.0** | Mainline platform completion — native `/app` workflows, Classic retired from normal paths, production embedding profiles, AgentRuntime/registries, hashed v3 assets |
+| **3.2.0** | Feature-complete platform — multi-agent collaboration, agent registry, marketplace + templates, workflow agents, autonomous planning, long-term memory + manager, skills/hooks/tool registries, MCP manager, all operable from `/app` |
+| 3.1.0 | Mainline platform completion — native `/app` workflows, Classic retired from normal paths, production embedding profiles, AgentRuntime/registries, hashed v3 assets |
 | 3.0.1 | Release-blocker remediation — provider-backed embeddings (Hash/MLX/Ollama/OpenAI/Custom), unified AgentRuntime boundary, every v3 surface connected or clearly unavailable |
 | 3.0.0 | v3 local-first AI workspace platform — `/app`, Native Chat, Knowledge Graph, Vector Index, Hybrid Search, workspace modes |
 | 2.2.7 | Visual system stabilization — cohesive dark/light screens, crisp chat composer, dark graph canvas, Workspace OS polish |

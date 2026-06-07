@@ -1,23 +1,38 @@
 # Lattice AI Architecture
 
-Lattice AI v2.2.1 is a local-first AI workspace for knowledge graphs, AI
-pipelines, local model management, and multi-agent workflows. The durable core
-is the Knowledge Graph; model workflows operate on graph and workspace context.
+Lattice AI v3.2.0 is a feature-complete (non-enterprise), local-first AI
+workspace platform. The durable core is the Knowledge Graph; retrieval, memory,
+and the agent ecosystem operate on graph and workspace context. The entire
+platform is operable from `/app`.
 
 See [docs/architecture.md](docs/architecture.md) for the full architecture.
 
-## v2.2.1 Shape
+## v3.2 Platform Shape
 
 ```text
 files / images / documents / chats / work history
   -> multimodal ingestion
   -> entity, relation, and evidence extraction
-  -> Knowledge Graph
-  -> graph context
-  -> local or cloud model workflow
-  -> AI pipeline output
+  -> Knowledge Graph  +  Vector Index  ->  Hybrid Search
+  -> Long-Term Memory (workspace / project / agent / conversation / graph / vector)
+  -> Agent Runtime (Planner -> Researcher -> Executor -> Reviewer)
+       via Agent Registry, Tool Registry, Hooks, MCP, Skills, Marketplace templates
+  -> Workflow Agents + Autonomous Planning (goal -> plan -> execute -> review -> replan)
   -> coding actions, analysis, documents, team workflows
 ```
+
+## v3.2 Platform Components
+
+- **Core** — Workspace OS, Knowledge Graph, Vector Index, Hybrid Search,
+  Long-Term Memory + Memory Manager.
+- **Agents** — Agent Runtime (Planner / Researcher / Executor / Reviewer),
+  Agent Registry, Marketplace + Templates, Workflow Agents, Autonomous Planning.
+- **Extensibility** — Skills registry, Hooks registry, Tool Registry, MCP
+  Manager.
+- **Surfaces** — a single token-native `/app` SPA over a FastAPI router layer;
+  every surface reports live or unavailable state honestly (no fabricated data).
+- **Enterprise** — SSO, SCIM, RBAC, compliance, DLP, private VPC, governance,
+  and multi-tenant controls remain future work.
 
 ## Current Model Workflow Policy
 
