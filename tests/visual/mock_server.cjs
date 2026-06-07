@@ -272,16 +272,16 @@ const server = http.createServer((req, res) => {
   if (pathname === "/agents/api/runtime/config") return json(res, { version: "2.2.0", roles: ["researcher", "planner", "executor", "reviewer", "release"], default_pipeline: ["planner", "executor", "reviewer"], max_retries_cap: 5, execution_mode: "synchronous" });
   if (pathname === "/agents/api/registry") return json(res, {
     agents: [
-      { id: "agent:researcher", name: "Researcher", type: "researcher", version: "3.2.0", description: "Gathers workspace context.", capabilities: ["context-retrieval", "hybrid-search"], source: "builtin", enabled: true, removable: false, config: {} },
-      { id: "agent:planner", name: "Planner", type: "planner", version: "3.2.0", description: "Builds bounded plans.", capabilities: ["task-decomposition", "delegation"], source: "builtin", enabled: true, removable: false, config: {} },
-      { id: "agent:executor", name: "Executor", type: "executor", version: "3.2.0", description: "Executes tools and workflows.", capabilities: ["tool-use", "workflow-run"], source: "builtin", enabled: true, removable: false, config: {} },
-      { id: "agent:reviewer", name: "Reviewer", type: "reviewer", version: "3.2.0", description: "Reviews execution.", capabilities: ["verification", "approval"], source: "builtin", enabled: true, removable: false, config: {} },
-      { id: "agent:release", name: "Release", type: "release", version: "3.2.0", description: "Finalizes approved outcomes.", capabilities: ["summarize"], source: "builtin", enabled: true, removable: false, config: {} },
+      { id: "agent:researcher", name: "Researcher", type: "researcher", version: "3.3.0", description: "Gathers workspace context.", capabilities: ["context-retrieval", "hybrid-search"], source: "builtin", enabled: true, removable: false, config: {} },
+      { id: "agent:planner", name: "Planner", type: "planner", version: "3.3.0", description: "Builds bounded plans.", capabilities: ["task-decomposition", "delegation"], source: "builtin", enabled: true, removable: false, config: {} },
+      { id: "agent:executor", name: "Executor", type: "executor", version: "3.3.0", description: "Executes tools and workflows.", capabilities: ["tool-use", "workflow-run"], source: "builtin", enabled: true, removable: false, config: {} },
+      { id: "agent:reviewer", name: "Reviewer", type: "reviewer", version: "3.3.0", description: "Reviews execution.", capabilities: ["verification", "approval"], source: "builtin", enabled: true, removable: false, config: {} },
+      { id: "agent:release", name: "Release", type: "release", version: "3.3.0", description: "Finalizes approved outcomes.", capabilities: ["summarize"], source: "builtin", enabled: true, removable: false, config: {} },
     ],
     types: ["planner", "researcher", "executor", "reviewer", "release", "custom"],
     counts: { planner: 1, researcher: 1, executor: 1, reviewer: 1, release: 1 },
     total: 5,
-    version: "3.2.0",
+    version: "3.3.0",
     default_pipeline: ["planner", "executor", "reviewer"],
   });
   if (pathname === "/agents/api/registry/capabilities") return json(res, {
@@ -295,7 +295,7 @@ const server = http.createServer((req, res) => {
   });
 
   if (pathname === "/marketplace/templates") return json(res, {
-    marketplace_version: "3.2.0",
+    marketplace_version: "3.3.0",
     kinds: ["plugin", "workflow", "agent"],
     templates: [
       { id: "agent-research-assistant", kind: "agent", name: "Research Assistant", version: "1.0.0", description: "Retrieves workspace context and synthesizes a reviewed answer.", metadata: { category: "research" }, definition: { roles: ["researcher", "planner", "reviewer"], capabilities: ["hybrid-search", "memory-recall"] } },
