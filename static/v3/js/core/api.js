@@ -321,6 +321,70 @@ export const api = {
     }
     return { source: "live", text, trace, model };
   },
+
+  /* ── v3.2 platform surfaces (all fallback-safe; never fabricate) ─────── */
+
+  // Agent Registry (Part 2)
+  agentRegistry(type) { return withFallback(`/agents/api/registry${type ? "?type=" + encodeURIComponent(type) : ""}`, {}, { agents: [], counts: {}, types: [] }); },
+  agentCapabilities() { return withFallback("/agents/api/registry/capabilities", {}, { capabilities: {} }); },
+  registerAgent(body) { return raw("/agents/api/registry", { method: "POST", body }); },
+  updateAgent(id, body) { return raw(`/agents/api/registry/${encodeURIComponent(id)}`, { method: "PATCH", body }); },
+  removeAgent(id) { return raw(`/agents/api/registry/${encodeURIComponent(id)}`, { method: "DELETE" }); },
+  agentRunDetail(runId) { return raw(`/agents/api/runs/${encodeURIComponent(runId)}`); },
+  agentRunReplay(runId) { return raw(`/agents/api/runs/${encodeURIComponent(runId)}/replay`); },
+  stopAgentRun(runId) { return raw(`/agents/api/runs/${encodeURIComponent(runId)}/stop`, { method: "POST" }); },
+
+  // Marketplace + Templates (Parts 3, 4)
+  templates(kind) { return withFallback(`/marketplace/templates${kind ? "?kind=" + encodeURIComponent(kind) : ""}`, {}, { templates: [], kinds: [] }); },
+  templateRegistry() { return withFallback("/marketplace/templates/registry", {}, { registry: [] }); },
+  exportTemplate(kind, id) { return raw(`/marketplace/templates/${encodeURIComponent(kind)}/${encodeURIComponent(id)}/export`); },
+  importTemplate(data) { return raw("/marketplace/templates/import", { method: "POST", body: { data } }); },
+  installTemplate(data) { return raw("/marketplace/templates/install", { method: "POST", body: { data } }); },
+  cloneTemplate(kind, id, name) { return raw(`/marketplace/templates/${encodeURIComponent(kind)}/${encodeURIComponent(id)}/clone`, { method: "POST", body: { name } }); },
+  pluginsRegistry() { return withFallback("/plugins/registry", {}, { plugins: [] }); },
+  pluginsDirectory() { return withFallback("/plugins/directory", {}, { plugins: [], categories: [] }); },
+
+  // Workflow Agents (Part 5)
+  workflowDefinitions() { return withFallback("/workflows/api/definitions", {}, { workflows: [] }); },
+  createWorkflow(body) { return raw("/workflows/api/definitions", { method: "POST", body }); },
+  runWorkflow(id, body = {}) { return raw(`/workflows/api/definitions/${encodeURIComponent(id)}/run`, { method: "POST", body }); },
+  workflowRuns() { return withFallback("/workflows/api/runs", {}, { runs: [] }); },
+  workflowReplay(runId) { return raw(`/workflows/api/runs/${encodeURIComponent(runId)}/replay`); },
+
+  // Long-Term Memory + Memory Manager (Parts 7, 8)
+  memoryManager() { return withFallback("/api/memory/manager", {}, { sources: [], tiers: [], usage: {} }); },
+  memoryTiers() { return withFallback("/api/memory/tiers", {}, { tiers: [], workspace_kinds: [] }); },
+  memoryInspect(source, limit = 50) { return withFallback(`/api/memory/inspect?source=${encodeURIComponent(source)}&limit=${limit}`, {}, { items: [] }); },
+  memoryRecall(query, limit = 20) { return raw("/api/memory/recall", { method: "POST", body: { query, limit } }); },
+  memoryPrune(body) { return raw("/api/memory/prune", { method: "POST", body }); },
+  memoryCompact() { return raw("/api/memory/compact", { method: "POST", body: {} }); },
+  memoryRebuild(target = "vector") { return raw("/api/memory/rebuild", { method: "POST", body: { target } }); },
+  memoryClear(scope, confirm = true) { return raw("/api/memory/clear", { method: "POST", body: { scope, confirm } }); },
+  workspaceMemories(kind) { return withFallback(`/workspace/memories${kind ? "?kind=" + encodeURIComponent(kind) : ""}`, {}, { memories: [] }); },
+
+  // Skills Registry (Part 9)
+  skills() { return withFallback("/workspace/skills", {}, { skills: [] }); },
+  skillEnable(skill) { return raw("/workspace/skills/enable", { method: "POST", body: { skill } }); },
+  skillDisable(skill) { return raw("/workspace/skills/disable", { method: "POST", body: { skill } }); },
+  skillInstall(skill, plugin) { return raw("/workspace/skills/install", { method: "POST", body: { skill, plugin: plugin || "" } }); },
+  skillUninstall(skill) { return raw("/workspace/skills/uninstall", { method: "POST", body: { skill } }); },
+  skillsMarketplace() { return withFallback("/skills/marketplace", {}, { skills: [], categories: [] }); },
+
+  // Hooks Registry (Part 10)
+  hooks(kind) { return withFallback(`/api/hooks${kind ? "?kind=" + encodeURIComponent(kind) : ""}`, {}, { hooks: [], kinds: [], counts: {} }); },
+  hookEnable(hook_id, enabled = true) { return raw("/api/hooks/enable", { method: "POST", body: { hook_id, enabled } }); },
+  hookDisable(hook_id) { return raw("/api/hooks/disable", { method: "POST", body: { hook_id, enabled: false } }); },
+  hookReorder(kind, ordered_ids) { return raw("/api/hooks/reorder", { method: "POST", body: { kind, ordered_ids } }); },
+  hookRegister(body) { return raw("/api/hooks/register", { method: "POST", body }); },
+  hookRemove(hook_id) { return raw(`/api/hooks/${encodeURIComponent(hook_id)}`, { method: "DELETE" }); },
+
+  // Tool Registry + MCP (Parts 11, 12)
+  toolPermissions() { return withFallback("/tools/permissions", {}, { permissions: [] }); },
+  mcpTools() { return withFallback("/mcp/tools", {}, { tools: [], installed_mcps: [] }); },
+  mcpInstalled() { return withFallback("/mcp/installed", {}, { installed: [] }); },
+  mcpClaudeServers() { return withFallback("/mcp/claude-code-servers", {}, { servers: [] }); },
+  mcpCustom() { return withFallback("/mcp/custom", {}, { custom: [] }); },
+  mcpRecommend(query, limit = 6) { return raw("/mcp/recommend", { method: "POST", body: { query, limit } }); },
 };
 
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));

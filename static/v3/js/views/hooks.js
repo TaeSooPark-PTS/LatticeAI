@@ -1,0 +1,99 @@
+/* ============================================================================
+ * View: Hooks — the lifecycle hooks registry.
+ * Reads /api/hooks (built-in + user hooks across pre_run/post_run/pre_tool/
+ * post_tool/agent/pipeline/workflow), toggles enabled state, reorders, and
+ * registers custom hooks. Built-in hooks are platform-managed and labelled.
+ * ========================================================================== */
+
+const KIND_LABEL = {
+  pre_run: "Pre-run", post_run: "Post-run", pre_tool: "Pre-tool", post_tool: "Post-tool",
+  agent: "Agent", pipeline: "Pipeline", workflow: "Workflow",
+};
+
+export async function render(ctx) {
+  const { h, c } = ctx;
+  const src = h("span", c.sourceBadge("pending"));
+  const statHost = h("div.lt3-statrow", c.loading({ lines: 1 }));
+  const groupsHost = h("div", c.loading({ lines: 4, block: true }));
+
+  const nameInput = h("input.lt3-input", { type: "text", placeholder: "Hook name" });
+  const kindSelect = h("select.lt3-select", Object.keys(KIND_LABEL).map((k) => h("option", { value: k }, KIND_LABEL[k])));
+  const descInput = h("input.lt3-input", { type: "text", placeholder: "What it does (optional)" });
+
+  const root = h("div.lt3-stack-6",
+    c.viewHeader({
+      eyebrow: "Platform",
+      title: "Hooks",
+      sub: "Lifecycle extension points across runs, tools, agents, pipelines, and workflows — visible, ordered, and individually toggleable.",
+      actions: [src],
+    }),
+    statHost,
+    c.panel({
+      title: "Register a hook", sub: "Custom hooks are listed, ordered, and inspectable.",
+      children: h("div.lt3-stack-3",
+        h("div.lt3-grid-2", h("div.lt3-field", h("label", "Name"), nameInput), h("div.lt3-field", h("label", "Kind"), kindSelect)),
+        h("div.lt3-field", h("label", "Description"), descInput),
+        h("div.lt3-row-2", h("button.lt3-btn.lt3-btn--primary", { on: { click: register } }, c.icon("plus"), "Register hook")),
+      ),
+    }),
+    groupsHost,
+  );
+
+  load();
+  return root;
+
+  async function load() {
+    const res = await ctx.api.hooks();
+    src.replaceChildren(c.sourceBadge(res.source));
+    const hooks = (res.data && res.data.hooks) || [];
+    if (!hooks.length) {
+      statHost.replaceChildren(c.stat({ label: "Hooks", value: "—", icon: "webhook" }));
+      groupsHost.replaceChildren(c.emptyState({ icon: "webhook-off", title: "Hooks unavailable", body: "Start the backend to read the hooks registry." }));
+      return;
+    }
+    const en = hooks.filter((x) => x.enabled).length;
+    statHost.replaceChildren(
+      c.stat({ label: "Hooks", value: c.fmtNum(hooks.length), icon: "webhook" }),
+      c.stat({ label: "Enabled", value: c.fmtNum(en), icon: "circle-check" }),
+      c.stat({ label: "Kinds", value: c.fmtNum((res.data.kinds || []).length), icon: "layers" }),
+    );
+    const byKind = {};
+    for (const hk of hooks) (byKind[hk.kind] = byKind[hk.kind] || []).push(hk);
+    groupsHost.replaceChildren(h("div.lt3-stack-6", Object.keys(byKind).map((kind) =>
+      h("section", c.sectionHead(KIND_LABEL[kind] || kind, c.pill(String(byKind[kind].length))),
+        h("div.lt3-stack-2", byKind[kind].map((hk) => hookRow(ctx, hk)))))));
+  }
+
+  function hookRow(ctx2, hk) {
+    return c.card(h("div.lt3-row", { style: { "justify-content": "space-between", "align-items": "center", gap: "var(--lt3-space-3)" } },
+      h("div", { style: { "min-width": 0 } },
+        h("div.lt3-row-2", h("b", hk.name), c.pill(hk.source === "builtin" ? "built-in" : "custom", hk.source === "builtin" ? "info" : ""), hk.managed === "platform" ? c.pill("managed", "") : null),
+        h("p.lt3-muted", { style: { margin: "2px 0 0", "font-size": "var(--lt3-text-sm)" } }, hk.description || ""),
+        hk.binding ? h("div.lt3-faint", { style: { "font-size": "var(--lt3-text-2xs)", "font-family": "var(--lt3-font-mono)" } }, hk.binding) : null,
+      ),
+      h("div.lt3-row-2", { style: { "flex-shrink": 0 } },
+        h("span.lt3-faint", { style: { "font-size": "var(--lt3-text-2xs)" } }, `#${hk.order}`),
+        h("button.lt3-btn.lt3-btn--subtle.lt3-btn--sm", { on: { click: () => toggle(ctx2, hk) } }, c.icon(hk.enabled ? "toggle-right" : "toggle-left"), hk.enabled ? "On" : "Off"),
+        hk.removable ? h("button.lt3-btn.lt3-btn--ghost.lt3-btn--sm", { on: { click: () => remove(ctx2, hk) } }, c.icon("trash")) : null,
+      ),
+    ), { flat: true });
+  }
+
+  async function toggle(ctx2, hk) {
+    const res = hk.enabled ? await ctx2.api.hookDisable(hk.id) : await ctx2.api.hookEnable(hk.id, true);
+    ctx2.toast(res && res.ok ? `${hk.name}: ${hk.enabled ? "disabled" : "enabled"}` : "Action unavailable", res && res.ok ? "ok" : "err");
+    load();
+  }
+  async function remove(ctx2, hk) {
+    const res = await ctx2.api.hookRemove(hk.id);
+    ctx2.toast(res && res.ok ? `Removed ${hk.name}` : "Remove unavailable", res && res.ok ? "ok" : "err");
+    load();
+  }
+  async function register() {
+    const name = nameInput.value.trim();
+    if (!name) { ctx.toast("Enter a hook name", "info"); return; }
+    const res = await ctx.api.hookRegister({ name, kind: kindSelect.value, description: descInput.value.trim() });
+    if (res && res.ok) { ctx.toast(`Registered ${name}`, "ok"); nameInput.value = ""; descInput.value = ""; load(); }
+    else { ctx.toast("Register unavailable", "err"); }
+  }
+}

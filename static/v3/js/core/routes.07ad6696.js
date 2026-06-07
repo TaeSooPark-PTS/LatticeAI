@@ -14,6 +14,7 @@ export const GROUPS = [
   { id: "retrieval", label: "Retrieval" },
   { id: "data", label: "Data" },
   { id: "compute", label: "Compute" },
+  { id: "platform", label: "Platform" },
   { id: "system", label: "System" },
   { id: "admin", label: "Administration", adminOnly: true },
 ];
@@ -30,6 +31,7 @@ export const ROUTES = [
   // Retrieval (the product identity)
   { key: "knowledge-graph", label: "Knowledge Graph", icon: "chart-dots-3", group: "retrieval", minMode: "basic", view: "knowledge-graph", title: "Knowledge Graph", desc: "Entities and relations extracted from your workspace." },
   { key: "hybrid-search", label: "Hybrid Search", icon: "arrows-join", group: "retrieval", minMode: "basic", view: "hybrid-search", title: "Hybrid Search", desc: "Graph structure fused with vector similarity." },
+  { key: "memory", label: "Memory", icon: "brain", group: "retrieval", minMode: "basic", view: "memory", title: "Memory", desc: "Long-term workspace, project, agent, and conversation memory." },
 
   // Data
   { key: "files", label: "Files", icon: "folders", group: "data", minMode: "basic", view: "files", title: "Files", desc: "Connected sources and indexed documents." },
@@ -37,8 +39,17 @@ export const ROUTES = [
 
   // Compute
   { key: "agents", label: "Agents", icon: "robot", group: "compute", minMode: "advanced", view: "agents", title: "Agents", desc: "Multi-agent roles, runs, and handoffs." },
+  { key: "workflows", label: "Workflows", icon: "sitemap", group: "compute", minMode: "advanced", view: "workflows", title: "Workflow Agents", desc: "Trigger → agent chain → tools → memory → result." },
+  { key: "planning", label: "Planning", icon: "target-arrow", group: "compute", minMode: "advanced", view: "planning", title: "Autonomous Planning", desc: "Goal → plan → execute → review → replan." },
   { key: "models", label: "Models", icon: "cpu", group: "compute", minMode: "basic", view: "models", title: "Models", desc: "Local MLX models and embeddings." },
   { key: "my-computer", label: "My Computer", icon: "device-desktop-analytics", group: "compute", minMode: "advanced", view: "my-computer", title: "My Computer", desc: "Local hardware, memory, and runtime." },
+
+  // Platform (the agent ecosystem)
+  { key: "marketplace", label: "Marketplace", icon: "building-store", group: "platform", minMode: "advanced", view: "marketplace", title: "Marketplace", desc: "Agent templates, agents, plugins, and skills." },
+  { key: "skills", label: "Skills", icon: "puzzle", group: "platform", minMode: "advanced", view: "skills", title: "Skills", desc: "Install, enable, and manage skills." },
+  { key: "hooks", label: "Hooks", icon: "webhook", group: "platform", minMode: "advanced", view: "hooks", title: "Hooks", desc: "Lifecycle hooks across runs, tools, and workflows." },
+  { key: "tools", label: "Tools", icon: "tools", group: "platform", minMode: "advanced", view: "tools", title: "Tool Registry", desc: "Local, workspace, and MCP tools with governance." },
+  { key: "mcp", label: "MCP", icon: "plug-connected", group: "platform", minMode: "advanced", view: "mcp", title: "MCP Manager", desc: "Connected MCP servers, available tools, and health." },
 
   // System
   { key: "settings", label: "Settings", icon: "settings", group: "system", minMode: "basic", view: "settings", title: "Settings", desc: "Appearance, workspace, and integrations." },
