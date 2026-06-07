@@ -19,10 +19,7 @@
             inset: 0;
             pointer-events: none;
             z-index: 0;
-            background:
-                radial-gradient(circle at 82% 12%, var(--border), transparent 30%),
-                radial-gradient(circle at 10% 80%, rgba(180,160,255,0.16), transparent 35%),
-                linear-gradient(180deg, var(--bg) 0%, var(--surface-2) 52%, var(--surface) 100%);
+            background: var(--app-bg);
         }
 
         .bg-shapes {
@@ -2872,14 +2869,14 @@
             color: var(--accent);
         }
 
-/* Lattice AI workspace — light lavender theme. */
+/* Lattice AI workspace — product shell theme. */
         .app-layout {
             --bg: var(--bg);
             --surface: var(--surface);
             --surface-2: var(--surface-2);
             --surface-3: var(--surface-3);
             --accent: var(--accent);
-            --accent-2: var(--accent-2);
+            --accent-2: var(--lt-accent-2, #0f9f8f);
             --accent-3: var(--accent-3);
             --accent-pink: var(--accent-pink);
             --accent-soft: var(--accent-soft);
@@ -4220,7 +4217,7 @@
         }
 
         /* =========================================================
-           Soft Lavender Theme (4/10) — full override for .app-layout
+           Workspace product shell — full override for .app-layout
            ========================================================= */
         body.lattice-ref-chat .app-layout {
             --bg: var(--bg);
@@ -4228,7 +4225,7 @@
             --surface-2: var(--surface-2);
             --surface-3: var(--surface-3);
             --accent: var(--accent);
-            --accent-2: #ffb84d;
+            --accent-2: var(--lt-accent-2, #0f9f8f);
             --accent-3: var(--accent-2);
             --accent-soft: var(--accent-soft);
             --text: var(--text);
@@ -4238,10 +4235,7 @@
             --border-strong: var(--border-strong);
             --shadow: var(--shadow);
             --shadow-sm: var(--shadow-sm);
-            background:
-                radial-gradient(circle at 82% 12%, var(--border), transparent 30%),
-                radial-gradient(circle at 10% 80%, rgba(180,160,255,0.16), transparent 35%),
-                linear-gradient(180deg, var(--bg) 0%, var(--surface-2) 52%, var(--surface) 100%);
+            background: var(--app-bg);
         }
         body.lattice-ref-chat .app-layout::before,
         body.lattice-ref-chat .app-layout::after {
@@ -4251,15 +4245,15 @@
         /* Sidebar */
         body.lattice-ref-chat .app-layout .sidebar {
             background: var(--sidebar);
-            border-right: 1px solid rgba(111,66,232,0.13);
-            box-shadow: 12px 0 46px rgba(88,72,150,0.08);
+            border-right: 1px solid var(--line);
+            box-shadow: none;
         }
 
         /* Chat header */
         body.lattice-ref-chat .app-layout .chat-header {
             background: var(--sidebar);
-            border-bottom: 1px solid rgba(111,66,232,0.11);
-            box-shadow: 0 2px 12px rgba(88,72,150,0.06);
+            border-bottom: 1px solid var(--line);
+            box-shadow: none;
             backdrop-filter: blur(14px);
         }
 
@@ -4306,28 +4300,28 @@
         /* 입력창 영역 */
         body.lattice-ref-chat .app-layout .input-area {
             background: linear-gradient(0deg,
-                rgba(243,237,255,0.99) 0%,
-                rgba(243,237,255,0.86) 64%,
+                color-mix(in srgb, var(--bg) 98%, transparent) 0%,
+                color-mix(in srgb, var(--bg) 82%, transparent) 64%,
                 transparent 100%);
         }
         body.lattice-ref-chat .app-layout .input-box {
             background: var(--input);
-            border: 1px solid rgba(111,66,232,0.17);
-            box-shadow: 0 8px 32px rgba(88,72,150,0.10);
+            border: 1px solid var(--line);
+            box-shadow: var(--shadow-sm);
         }
         body.lattice-ref-chat .app-layout .input-box:focus-within {
-            border-color: rgba(111,66,232,0.44);
-            box-shadow: 0 8px 32px rgba(88,72,150,0.10), 0 0 0 3px rgba(111,66,232,0.09);
+            border-color: var(--accent);
+            box-shadow: var(--shadow-sm), 0 0 0 3px var(--accent-soft);
         }
 
         /* 전송 버튼 */
         body.lattice-ref-chat .app-layout .send-btn {
             background: linear-gradient(135deg, var(--accent), var(--accent-2));
             color: #ffffff;
-            box-shadow: 0 8px 20px rgba(111,66,232,0.28);
+            box-shadow: 0 8px 20px color-mix(in srgb, var(--accent) 24%, transparent);
         }
         body.lattice-ref-chat .app-layout .send-btn:hover {
-            box-shadow: 0 10px 26px rgba(111,66,232,0.38);
+            box-shadow: 0 10px 26px color-mix(in srgb, var(--accent) 34%, transparent);
             opacity: 0.92;
         }
 
@@ -4339,17 +4333,17 @@
             box-shadow: 0 2px 10px rgba(88,72,150,0.08);
         }
         body.lattice-ref-chat .app-layout .empty-chip:hover {
-            background: rgba(111,66,232,0.08);
+            background: var(--accent-soft);
             border-color: var(--border-strong);
         }
         body.lattice-ref-chat .app-layout .ops-card {
             background: var(--card);
-            border-color: rgba(111,66,232,0.13);
-            box-shadow: 0 6px 22px rgba(88,72,150,0.08);
+            border-color: var(--line);
+            box-shadow: var(--shadow-sm);
         }
         body.lattice-ref-chat .app-layout .ops-card.primary {
-            background: linear-gradient(135deg, rgba(111,66,232,0.10), var(--card) 58%);
-            border-color: rgba(111,66,232,0.22);
+            background: linear-gradient(135deg, var(--accent-soft), var(--card) 58%);
+            border-color: var(--border-strong);
         }
 
         /* 배지/버튼 */
@@ -4371,8 +4365,8 @@
         body.lattice-ref-chat .app-layout .status-btn,
         body.lattice-ref-chat .app-layout .admin-btn,
         body.lattice-ref-chat .app-layout .setup-wizard-sidebar-btn {
-            background: rgba(111,66,232,0.10);
-            border-color: rgba(111,66,232,0.22);
+            background: var(--accent-soft);
+            border-color: var(--border-strong);
             color: var(--accent);
             box-shadow: none;
         }
@@ -4388,7 +4382,7 @@
             color: var(--text);
             -webkit-text-fill-color: var(--text);
             background: var(--accent-soft);
-            border-color: rgba(111,66,232,0.24);
+            border-color: var(--border-strong);
         }
         /* 채팅 기록 목록도 검정 */
         body.lattice-ref-chat .app-layout .history-item {
@@ -4408,20 +4402,20 @@
         /* 사이드바 검색 입력 */
         body.lattice-ref-chat .app-layout .sidebar-search input {
             color: var(--text);
-            background: rgba(111,66,232,0.06);
-            border-color: rgba(111,66,232,0.16);
+            background: var(--input);
+            border-color: var(--line);
         }
         body.lattice-ref-chat .app-layout .sidebar-search input::placeholder {
             color: var(--faint);
             -webkit-text-fill-color: var(--faint);
         }
-        /* 상단 모드 세그멘트 배경도 라벤더로 */
+        /* 상단 모드 세그멘트 */
         body.lattice-ref-chat .app-layout .mode-segmented {
             background: var(--surface-2);
-            border-color: rgba(111,66,232,0.16);
+            border-color: var(--line);
         }
         body.lattice-ref-chat .app-layout .mode-segmented button:not(.active) {
-            color: #3d3860;
+            color: var(--muted);
         }
 
         /* ── 홈 뷰: 채팅 전용 사이드바 섹션 숨기기 ── */

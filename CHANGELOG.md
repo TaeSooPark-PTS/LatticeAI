@@ -2,6 +2,24 @@
 
 The detailed historical changelog lives in [docs/CHANGELOG.md](docs/CHANGELOG.md).
 
+## [3.0.0] - 2026-06-07
+
+Lattice AI v3 becomes the mainline local-first AI workspace platform. `/app` is
+the primary product shell after login, with Native Chat, Knowledge Graph, Vector
+Index, Hybrid Search, Files, Pipeline, Agents, Models, My Computer, Settings,
+and Admin modes. Legacy `/chat` remains available as a rollback/debug path.
+
+- **Integrated v3 retrieval** — Knowledge Graph, SQLite Vector Index, and Hybrid
+  Search ship together with API contracts under `/api/search/*`, `/api/graph*`,
+  and `/api/index/*`.
+- **Native v3 Chat** — `/app#/chat` streams through `POST /chat`, keeps retrieval
+  context in the shell, and shows a friendly no-model-loaded setup message.
+- **Honest embedding status** — default vectors use `lattice-local-hash-v1`
+  deterministic local fallback embeddings, not a production semantic embedding
+  model.
+- **Release safety** — tag builds validate exact `3.0.0` artifacts without
+  publishing packages; package publication remains manual.
+
 ## [2.2.7] - 2026-06-05
 
 Visual system stabilization. The rendered browser UI was reviewed screen by

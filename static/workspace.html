@@ -4,58 +4,77 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, interactive-widget=resizes-content">
   <title>Lattice AI Workspace OS</title>
-  <script src="/static/scripts/ux.js?v=2.2.7"></script>
+  <script src="/static/scripts/ux.js?v=3.0.0"></script>
   <link rel="manifest" href="/manifest.json">
   <link rel="icon" type="image/png" sizes="32x32" href="/icons/favicon-32.png">
   <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap">
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@latest/tabler-icons.min.css">
-  <link rel="stylesheet" href="/static/css/tokens.css?v=2.2.7">
-  <link rel="stylesheet" href="/static/workspace.css?v=2.2.7">
-  <link rel="stylesheet" href="/static/css/responsive.css?v=2.2.7">
+  <link rel="stylesheet" href="/static/css/tokens.css?v=3.0.0">
+  <link rel="stylesheet" href="/static/workspace.css?v=3.0.0">
+  <link rel="stylesheet" href="/static/css/responsive.css?v=3.0.0">
 </head>
-<body>
-  <div class="workspace-shell">
+<body class="workspace-page">
+  <div class="workspace-shell" data-workspace-mode="basic">
     <aside class="workspace-rail">
       <a class="rail-brand" href="/workspace" aria-label="Lattice AI Workspace OS">
         <img src="/static/icons/icon-192.png" alt="">
         <span>Lattice AI</span>
+        <small>Workspace OS</small>
       </a>
-      <nav>
-        <a class="active" href="#overview"><i class="ti ti-layout-dashboard"></i><span>Overview</span></a>
-        <a href="#health"><i class="ti ti-heartbeat"></i><span>Health</span></a>
-        <a href="#graph"><i class="ti ti-chart-dots-3"></i><span>Graph</span></a>
-        <a href="#graph-explorer"><i class="ti ti-affiliate"></i><span>Explorer</span></a>
-        <a href="#snapshots"><i class="ti ti-stack-2"></i><span>Snapshots</span></a>
-        <a href="#memory"><i class="ti ti-book-2"></i><span>Memory</span></a>
-        <a href="#agents"><i class="ti ti-route-alt-left"></i><span>Agents</span></a>
-        <a href="#workflows"><i class="ti ti-git-branch"></i><span>Workflow</span></a>
-        <a href="#skills"><i class="ti ti-puzzle"></i><span>Skills</span></a>
-        <a href="#timeline"><i class="ti ti-timeline-event"></i><span>Timeline</span></a>
-        <a href="#enterprise"><i class="ti ti-building-skyscraper"></i><span>Editions</span></a>
+      <nav aria-label="Primary workspace navigation">
+        <span class="rail-section-label">Primary</span>
+        <a class="active" href="#overview"><i class="ti ti-home"></i><span>Home</span></a>
+        <a href="/chat"><i class="ti ti-message-circle"></i><span>Chat</span></a>
+        <a href="/graph"><i class="ti ti-chart-dots-3"></i><span>Knowledge Graph</span></a>
+        <a href="#memory"><i class="ti ti-files"></i><span>Files</span></a>
+        <a href="#workflows"><i class="ti ti-git-branch"></i><span>Pipeline</span></a>
+        <a href="#memory"><i class="ti ti-device-desktop"></i><span>My Computer</span></a>
+        <a href="#graph-explorer"><i class="ti ti-search"></i><span>Search</span></a>
+        <a href="/chat?new=1"><i class="ti ti-plus"></i><span>New Chat</span></a>
+      </nav>
+      <nav class="admin-navigation" aria-label="Administration navigation">
+        <span class="rail-section-label">Admin</span>
+        <a href="/admin#users" data-admin-link><i class="ti ti-users"></i><span>User Management</span></a>
+        <a href="/admin#permissions" data-admin-link><i class="ti ti-key"></i><span>Permissions</span></a>
+        <a href="/admin#audit" data-admin-link><i class="ti ti-report-search"></i><span>Audit Logs</span></a>
+        <a href="/admin#security" data-admin-link><i class="ti ti-shield-check"></i><span>Security</span></a>
+        <a href="/admin#security" data-admin-link><i class="ti ti-radar"></i><span>Sensitive Data</span></a>
+        <a href="/admin#enterprise" data-admin-link><i class="ti ti-building-skyscraper"></i><span>Org Policies</span></a>
+        <a href="/admin#enterprise" data-admin-link><i class="ti ti-cloud-lock"></i><span>Private VPC</span></a>
       </nav>
       <div class="rail-links">
+        <span class="rail-section-label">Runtime</span>
         <a href="/plugins/sdk"><i class="ti ti-plug"></i><span>Plugins</span></a>
         <a href="/workflows"><i class="ti ti-sitemap"></i><span>Designer</span></a>
         <a href="/agents"><i class="ti ti-robot"></i><span>Agents</span></a>
         <a href="/activity"><i class="ti ti-broadcast"></i><span>Activity</span></a>
-        <a href="/chat"><i class="ti ti-message-circle"></i><span>Chat</span></a>
-        <a href="/graph"><i class="ti ti-network"></i><span>Graph Canvas</span></a>
-        <a href="/admin"><i class="ti ti-shield-lock"></i><span>Admin</span></a>
       </div>
     </aside>
 
     <main>
       <header class="workspace-topbar" id="overview">
         <div>
-          <div class="eyebrow">AI Workspace OS</div>
-          <h1>Workspace Command Center</h1>
+          <div class="eyebrow">Local-first AI Workspace</div>
+          <h1>Home</h1>
+          <p class="topbar-subtitle">Coordinate chat, graph context, files, pipelines, local models, and organization controls from one workspace surface.</p>
         </div>
         <div class="top-actions">
+          <div class="global-mode-switcher" role="tablist" aria-label="Workspace mode">
+            <button type="button" class="active" data-workspace-mode="basic" role="tab" aria-selected="true">Basic</button>
+            <button type="button" data-workspace-mode="advanced" role="tab" aria-selected="false">Advanced</button>
+            <button type="button" data-workspace-mode="admin" role="tab" aria-selected="false">Admin</button>
+          </div>
           <div class="workspace-switcher" title="Active workspace">
             <i class="ti ti-building-community"></i>
             <select id="workspace-select" aria-label="Active workspace"></select>
             <span class="workspace-role-pill" id="workspace-role"></span>
           </div>
+          <select class="chrome-select" id="workspace-language" aria-label="Language">
+            <option value="en">English</option>
+            <option value="ko">한국어</option>
+          </select>
+          <a class="icon-action" href="/account" title="User profile" aria-label="User profile"><i class="ti ti-user"></i></a>
+          <button class="icon-action" id="workspace-logout" title="Logout" aria-label="Logout"><i class="ti ti-logout"></i></button>
           <button class="icon-action" id="new-org-btn" title="New organization workspace"><i class="ti ti-plus"></i></button>
           <button class="icon-action" id="refresh-btn" title="Refresh"><i class="ti ti-refresh"></i></button>
           <button class="primary-action" id="snapshot-now"><i class="ti ti-device-floppy"></i><span>Snapshot</span></button>
@@ -333,6 +352,6 @@
   </div>
 
   <div class="toast" id="toast"></div>
-  <script src="/static/scripts/workspace.js?v=2.2.7"></script>
+  <script src="/static/scripts/workspace.js?v=3.0.0"></script>
 </body>
 </html>

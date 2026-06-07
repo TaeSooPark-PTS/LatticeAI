@@ -15,6 +15,8 @@ const state = {
 
 // Skills that match common workspace needs are surfaced under "Recommended".
 const RECOMMENDED_SKILL_HINTS = ["code", "review", "doc", "test", "security", "research", "changelog", "refactor", "debug"];
+const MODE_KEY = "ltcai_workspace_mode";
+const LANG_KEY = "ltcai_lang";
 
 function $(id) {
   return document.getElementById(id);
@@ -49,6 +51,61 @@ function toast(message) {
   node.classList.add("show");
   clearTimeout(node._timer);
   node._timer = setTimeout(() => node.classList.remove("show"), 2200);
+}
+
+function adminAvailableForWorkspace(workspace) {
+  const storedAdmin = (() => {
+    try { return localStorage.getItem("ltcai_is_admin") === "true"; } catch { return false; }
+  })();
+  const role = String(workspace?.your_role || "").toLowerCase();
+  return storedAdmin || role === "owner" || role === "admin";
+}
+
+function currentWorkspaceMode() {
+  try {
+    const mode = localStorage.getItem(MODE_KEY);
+    return ["basic", "advanced", "admin"].includes(mode) ? mode : "basic";
+  } catch {
+    return "basic";
+  }
+}
+
+function applyWorkspaceMode(mode, { adminAvailable = false } = {}) {
+  if (mode === "admin" && !adminAvailable) mode = "basic";
+  const shell = document.querySelector(".workspace-shell");
+  if (shell) shell.dataset.workspaceMode = mode;
+  document.querySelectorAll("[data-workspace-mode]").forEach((button) => {
+    if (button.matches("button")) {
+      const active = button.dataset.workspaceMode === mode;
+      button.classList.toggle("active", active);
+      button.setAttribute("aria-selected", active ? "true" : "false");
+      button.disabled = button.dataset.workspaceMode === "admin" && !adminAvailable;
+    }
+  });
+  try { localStorage.setItem(MODE_KEY, mode); } catch {}
+}
+
+function updateWorkspaceChrome(activeWorkspace) {
+  const shell = document.querySelector(".workspace-shell");
+  const adminAvailable = adminAvailableForWorkspace(activeWorkspace);
+  if (shell) shell.dataset.adminAvailable = adminAvailable ? "true" : "false";
+  applyWorkspaceMode(currentWorkspaceMode(), { adminAvailable });
+  const lang = (() => {
+    try { return localStorage.getItem(LANG_KEY) || "en"; } catch { return "en"; }
+  })();
+  document.documentElement.lang = lang;
+  const langSelect = $("workspace-language");
+  if (langSelect) langSelect.value = lang;
+}
+
+async function logoutWorkspace() {
+  try { await api("/logout", { method: "POST" }); } catch (_) {}
+  try {
+    localStorage.removeItem("ltcai_user_email");
+    localStorage.removeItem("ltcai_user_nickname");
+    localStorage.removeItem("ltcai_is_admin");
+  } catch (_) {}
+  window.location.href = "/account";
 }
 
 function renderMetrics(os) {
@@ -363,6 +420,7 @@ function renderWorkspaceRegistry(registry, edition) {
     `).join("");
   }
   const active = workspaces.find((ws) => ws.workspace_id === state.activeWorkspace);
+  updateWorkspaceChrome(active);
   const rolePill = $("workspace-role");
   if (rolePill) rolePill.textContent = active ? (active.your_role || "—") : "";
   if (edition) {
@@ -837,6 +895,26 @@ document.addEventListener("change", async (event) => {
 });
 
 document.addEventListener("DOMContentLoaded", () => {
+  document.querySelectorAll("[data-workspace-mode]").forEach((button) => {
+    if (!button.matches("button")) return;
+    button.addEventListener("click", () => {
+      const shell = document.querySelector(".workspace-shell");
+      const adminAvailable = shell?.dataset.adminAvailable === "true";
+      applyWorkspaceMode(button.dataset.workspaceMode, { adminAvailable });
+    });
+  });
+  const language = $("workspace-language");
+  if (language) {
+    language.value = (() => {
+      try { return localStorage.getItem(LANG_KEY) || "en"; } catch { return "en"; }
+    })();
+    language.addEventListener("change", () => {
+      try { localStorage.setItem(LANG_KEY, language.value); } catch (_) {}
+      document.documentElement.lang = language.value;
+    });
+  }
+  const logoutButton = $("workspace-logout");
+  if (logoutButton) logoutButton.addEventListener("click", () => logoutWorkspace());
   $("refresh-btn").addEventListener("click", () => refreshAll().catch((err) => toast(err.message)));
   $("snapshot-now").addEventListener("click", () => createSnapshot().catch((err) => toast(err.message)));
   $("create-snapshot").addEventListener("click", () => createSnapshot().catch((err) => toast(err.message)));

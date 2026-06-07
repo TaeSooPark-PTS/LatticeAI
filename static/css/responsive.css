@@ -817,3 +817,45 @@ body.lattice-ref-chat .app-layout #user-input:focus {
     width: 100%;
   }
 }
+
+/* Product workspace shell: this file loads last, so keep the mobile rail fluid. */
+@media (max-width: 860px) {
+  body.workspace-page .workspace-shell {
+    grid-template-columns: 1fr;
+    min-width: 0;
+    width: 100%;
+  }
+
+  body.workspace-page .workspace-rail {
+    height: auto;
+    min-height: 0;
+    min-width: 0;
+    max-width: 100vw;
+    position: relative;
+    width: 100%;
+  }
+
+  body.workspace-page main {
+    min-width: 0;
+    width: 100%;
+  }
+
+  body.workspace-page .workspace-rail nav,
+  body.workspace-page .rail-links {
+    min-width: 0;
+    width: 100%;
+  }
+
+  body.workspace-page .workspace-rail a span {
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+}
+
+@media (max-width: 520px) {
+  body.workspace-page .workspace-rail nav,
+  body.workspace-page .rail-links {
+    grid-template-columns: 1fr;
+  }
+}

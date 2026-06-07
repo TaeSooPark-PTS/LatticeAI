@@ -1,7 +1,7 @@
 /* Lattice AI — account / auth page (account.html, body.lattice-ref-auth). Token-native. */
 /* ============================================================
    ACCOUNT / AUTH PAGE  (account.html)
-   Light lavender theme — unified with chat/graph/admin pages.
+   Token-native product entry surface — unified with chat/graph/admin pages.
    ============================================================ */
 
         * { box-sizing: border-box; margin: 0; padding: 0; }
@@ -300,4 +300,140 @@
     background-clip: border-box;
     -webkit-text-fill-color: currentColor;
     color: var(--text);
+}
+
+/* Product-grade auth surface — functional entry point, token-native. */
+.lattice-ref-auth {
+  background: var(--app-bg);
+}
+
+.lattice-ref-auth::before {
+  background:
+    linear-gradient(90deg, rgba(12, 92, 115, 0.05) 1px, transparent 1px),
+    linear-gradient(180deg, rgba(12, 92, 115, 0.05) 1px, transparent 1px);
+  background-size: 42px 42px;
+  mask-image: linear-gradient(180deg, rgba(0, 0, 0, 0.32), transparent 76%);
+}
+
+.lattice-ref-auth::after,
+.lattice-ref-auth .orb,
+.auth-wave,
+.auth-network {
+  display: none;
+}
+
+.auth-titlebar {
+  background: var(--surface-elevated);
+  border-bottom-color: var(--line);
+  color: var(--text);
+}
+
+.auth-window-brand i,
+.lattice-ref-auth .hero-logo-mark {
+  color: var(--accent);
+}
+
+.auth-window-controls span::before,
+.auth-window-controls span::after {
+  background: var(--text);
+  border-color: var(--text);
+}
+
+.lattice-ref-auth .login-shell {
+  width: min(980px, calc(100vw - 36px));
+  grid-template-columns: minmax(300px, 430px) minmax(280px, 1fr);
+}
+
+.lattice-ref-auth .brand-preview {
+  display: block;
+  border-radius: 8px;
+  background:
+    linear-gradient(135deg, var(--accent-soft), transparent 58%),
+    var(--surface);
+  border-color: var(--line);
+  box-shadow: none;
+}
+
+.lattice-ref-auth .preview-node {
+  border-radius: 8px;
+  background: var(--surface-2);
+  border-color: var(--line);
+  box-shadow: none;
+}
+
+.lattice-ref-auth .preview-node::after {
+  background: linear-gradient(135deg, var(--accent), var(--accent-2));
+  border-radius: 8px;
+}
+
+.lattice-ref-auth .preview-line {
+  background: linear-gradient(90deg, transparent, var(--accent-2), transparent);
+}
+
+.lattice-ref-auth .card {
+  border-radius: 8px;
+  background: var(--surface-elevated);
+  border-color: var(--line);
+  box-shadow: var(--shadow);
+}
+
+.lattice-ref-auth .card::before {
+  background: linear-gradient(90deg, transparent, var(--accent), var(--accent-2), transparent);
+}
+
+.lattice-ref-auth .title {
+  background: none;
+  color: var(--text);
+  -webkit-text-fill-color: currentColor;
+}
+
+.lattice-ref-auth .subtitle {
+  color: var(--muted);
+  font-weight: 700;
+}
+
+.lattice-ref-auth .input,
+.lattice-ref-auth .auth-field,
+.lattice-ref-auth .sso-btn {
+  background: var(--input);
+  border-color: var(--line);
+  color: var(--text);
+}
+
+.lattice-ref-auth .input:focus,
+.lattice-ref-auth .auth-field:focus-within {
+  border-color: var(--accent);
+  box-shadow: 0 0 0 3px var(--accent-soft);
+}
+
+.lattice-ref-auth .submit {
+  background: var(--accent);
+  box-shadow: none;
+}
+
+.lattice-ref-auth .submit:hover {
+  background: var(--accent-deep);
+  box-shadow: none;
+}
+
+.lattice-ref-auth .local-start,
+.lattice-ref-auth .register-cta,
+.lattice-ref-auth .switch a {
+  color: var(--accent);
+}
+
+.lattice-ref-auth .lang-btn,
+.lattice-ref-auth .lang-menu {
+  border-color: var(--line);
+  box-shadow: none;
+}
+
+@media (max-width: 760px) {
+  .lattice-ref-auth .login-shell {
+    grid-template-columns: 1fr;
+  }
+
+  .lattice-ref-auth .brand-preview {
+    display: none;
+  }
 }

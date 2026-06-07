@@ -342,9 +342,17 @@ def create_chat_router(
     
         if not router.current_model_id:
             detail = "No model loaded. Call /models/load first."
-            if IS_PUBLIC_MODE:
+            if CONFIG.is_public:
                 detail = f"No public model loaded. Set OPENAI_API_KEY and LATTICEAI_PUBLIC_MODEL={PUBLIC_MODEL}, or call /models/load with an OpenAI-compatible model."
-            raise HTTPException(status_code=400, detail=detail)
+            return JSONResponse(
+                status_code=400,
+                content={
+                    "error": "no_model_loaded",
+                    "detail": detail,
+                    "message": detail,
+                    "action": "load_model",
+                },
+            )
     
         if req.model and req.model != router.current_model_id:
             if req.model not in router.loaded_model_ids:

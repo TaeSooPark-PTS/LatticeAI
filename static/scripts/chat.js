@@ -342,9 +342,13 @@ const chatViewport = document.getElementById('chat-viewport');
                 logout: '로그아웃', admin_dashboard: '관리자 대시보드',
                 my_status: '내 상태 보기', auto_setup: '자동 설정',
                 nav_home: '홈', nav_chat: '채팅', nav_workspace: 'Workspace OS', nav_knowledge: '지식 그래프',
-                nav_pipeline: '파이프라인', nav_files: '내 컴퓨터',
+                nav_pipeline: '파이프라인', nav_files: '파일', nav_computer: '내 컴퓨터',
+                nav_search: '검색', nav_new_chat: '새 대화',
                 nav_model_status: '모델 상태', nav_runtime: '실행 방식 설정',
                 nav_advanced_settings: '고급 설정',
+                nav_user_management: '사용자 관리', nav_permission_management: '권한 관리',
+                nav_audit_logs: '감사 로그', nav_security: '보안', nav_sensitive_data: '민감정보 감시',
+                nav_org_policies: '조직 정책', nav_private_vpc: 'Private VPC',
                 history_search_ph: '대화 검색...', new_chat: 'New Chat',
                 history_section: '대화', history_empty: '아직 저장된 대화가 없습니다.',
                 new_conversation: '새 대화', previous_history: '이전 대화 기록',
@@ -421,9 +425,13 @@ const chatViewport = document.getElementById('chat-viewport');
                 logout: 'Logout', admin_dashboard: 'Admin Dashboard',
                 my_status: 'My Status', auto_setup: 'Auto Setup',
                 nav_home: 'Home', nav_chat: 'Chat', nav_workspace: 'Workspace OS', nav_knowledge: 'Knowledge Graph',
-                nav_pipeline: 'Pipeline', nav_files: 'My Computer',
+                nav_pipeline: 'Pipeline', nav_files: 'Files', nav_computer: 'My Computer',
+                nav_search: 'Search', nav_new_chat: 'New Chat',
                 nav_model_status: 'Model Status', nav_runtime: 'Execution Settings',
                 nav_advanced_settings: 'Advanced Settings',
+                nav_user_management: 'User Management', nav_permission_management: 'Permissions',
+                nav_audit_logs: 'Audit Logs', nav_security: 'Security', nav_sensitive_data: 'Sensitive Data',
+                nav_org_policies: 'Org Policies', nav_private_vpc: 'Private VPC',
                 history_search_ph: 'Search chats...', new_chat: 'New Chat',
                 history_section: 'Chats', history_empty: 'No saved chats yet.',
                 new_conversation: 'New chat', previous_history: 'Previous chat history',
@@ -675,26 +683,37 @@ const chatViewport = document.getElementById('chat-viewport');
         const BASE_NAV_ITEMS = [
             { id: 'home', icon: 'ti-home', labelKey: 'nav_home' },
             { id: 'chat', icon: 'ti-message-circle', labelKey: 'nav_chat' },
-            { id: 'workspace-os', icon: 'ti-layout-dashboard', labelKey: 'nav_workspace' },
             { id: 'knowledge', icon: 'ti-chart-dots-3', labelKey: 'nav_knowledge' },
             { id: 'pipeline', icon: 'ti-git-branch', labelKey: 'nav_pipeline' },
-            { id: 'files', icon: 'ti-device-desktop', labelKey: 'nav_files' },
-            { id: 'status', icon: 'ti-info-circle', labelKey: 'my_status' },
+            { id: 'files', icon: 'ti-files', labelKey: 'nav_files' },
+            { id: 'my-computer', icon: 'ti-device-desktop', labelKey: 'nav_computer' },
+            { id: 'search', icon: 'ti-search', labelKey: 'nav_search' },
+            { id: 'new-chat', icon: 'ti-plus', labelKey: 'nav_new_chat' },
         ];
 
         const ADVANCED_NAV_ITEMS = [
+            { id: 'workspace-os', icon: 'ti-layout-dashboard', labelKey: 'nav_workspace' },
             { id: 'model-status', icon: 'ti-cpu-2', labelKey: 'nav_model_status' },
             { id: 'runtime', icon: 'ti-adjustments-cog', labelKey: 'nav_runtime' },
             { id: 'advanced-settings', icon: 'ti-settings', labelKey: 'nav_advanced_settings' },
         ];
 
+        const ADMIN_NAV_ITEMS = [
+            { id: 'admin-users', icon: 'ti-users', labelKey: 'nav_user_management' },
+            { id: 'admin-permissions', icon: 'ti-key', labelKey: 'nav_permission_management' },
+            { id: 'admin-audit', icon: 'ti-report-search', labelKey: 'nav_audit_logs' },
+            { id: 'admin-security', icon: 'ti-shield-check', labelKey: 'nav_security' },
+            { id: 'admin-sensitive-data', icon: 'ti-radar', labelKey: 'nav_sensitive_data' },
+            { id: 'admin-policies', icon: 'ti-building-skyscraper', labelKey: 'nav_org_policies' },
+            { id: 'private-vpc', icon: 'ti-cloud-lock', labelKey: 'nav_private_vpc' },
+        ];
+
         function navItemsForMode(mode) {
             if (mode === 'advanced') return [...BASE_NAV_ITEMS, ...ADVANCED_NAV_ITEMS];
-            // 관리자 모드: 내 상태 보기 뒤에 고급 3개 + 관리자 대시보드
             if (mode === 'admin') return [
                 ...BASE_NAV_ITEMS,
                 ...ADVANCED_NAV_ITEMS,
-                { id: 'admin-dashboard', icon: 'ti-shield-lock', labelKey: 'admin_dashboard' },
+                ...ADMIN_NAV_ITEMS,
             ];
             return BASE_NAV_ITEMS;
         }
@@ -743,12 +762,25 @@ const chatViewport = document.getElementById('chat-viewport');
             else if (id === 'knowledge') openDataGraph();
             else if (id === 'pipeline') openPipelineModal();
             else if (id === 'files') openLocalBrowser();
-            else if (id === 'computer') openCuPanel();
+            else if (id === 'my-computer') openCuPanel();
+            else if (id === 'search') {
+                showChat();
+                markActiveNav('search');
+                const search = document.getElementById('history-search-input');
+                if (search) search.focus();
+            }
+            else if (id === 'new-chat') startNewChat();
             else if (id === 'status') openStatusPanel();
             else if (id === 'model-status') openStatusPanel();
             else if (id === 'runtime') openModelPanel();
             else if (id === 'advanced-settings') openAdvancedSettingsPanel();
             else if (id === 'admin-dashboard') openAdminPanel();
+            else if (id === 'admin-users') window.location.href = `${API_BASE}/admin#users`;
+            else if (id === 'admin-permissions') window.location.href = `${API_BASE}/admin#permissions`;
+            else if (id === 'admin-audit') window.location.href = `${API_BASE}/admin#audit`;
+            else if (id === 'admin-security' || id === 'admin-sensitive-data') window.location.href = `${API_BASE}/admin#security`;
+            else if (id === 'admin-policies') window.location.href = `${API_BASE}/admin#enterprise`;
+            else if (id === 'private-vpc') openVpcPanel();
         }
 
         function focusChatInput() {

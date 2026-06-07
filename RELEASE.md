@@ -3,11 +3,43 @@
 이 문서는 `npm`, `PyPI`, `VS Code`, `Cursor`, `Antigravity`, `Open VSX` 배포를
 한 번에 처리하기 위한 체크리스트입니다.
 
-> **v2.2.1부터 `.github/workflows/release.yml`이 완전한 배포 파이프라인을 포함합니다.**
-> v* 태그를 push하면 빌드 → 검증 → PyPI / npm / VS Code Marketplace / Open VSX
-> 배포가 자동으로 순서대로 실행됩니다.  배포 단계는 GitHub Secrets
-> (`PYPI_TOKEN`, `NPM_TOKEN`, `VSCE_TOKEN`, `OVSX_TOKEN`)가 설정된 경우에만
-> 실행됩니다. 필요한 경우 아래 수동 절차로 로컬에서도 진행할 수 있습니다.
+> **v3.0.0부터 `.github/workflows/release.yml`은 태그 push에서 빌드와 검증만 수행합니다.**
+> PyPI / npm / VS Code Marketplace / Open VSX 배포는 아래 수동 절차로만
+> 진행합니다. 태그 생성은 패키지 스토어 publish를 자동으로 트리거하지 않습니다.
+
+## v3.0.0 릴리스 노트 (2026-06-07)
+
+Lattice AI v3 — Local-First AI Workspace Platform. `/app`가 기본 제품
+경험이며 로그인/SSO 후 `/app`로 진입한다. Legacy `/chat`은 rollback/debug
+경로로 계속 유지한다. 패키지 스토어 publish 및 배포는 수행하지 않는다.
+
+- **Added (/app primary shell)**: Native Chat, Knowledge Graph, Hybrid Search,
+  Files, Pipeline, Agents, Models, My Computer, Settings, Admin 화면을 하나의
+  v3 shell에서 제공. Personal / Organization Workspace와 Basic / Advanced /
+  Admin mode를 지원.
+- **Added (v3 retrieval backend)**: Knowledge Graph + SQLite Vector Index +
+  Hybrid Search를 `/api/search/*`, `/api/graph*`, `/api/index/*` API로 통합.
+- **Changed (Post-login routing)**: 계정 로그인, 회원가입 후 자동 로그인, SSO
+  callback, PWA start URL이 `/app`를 기본 제품 진입점으로 사용.
+- **Kept (Rollback path)**: `/chat` legacy page는 rollback/debug 용도로 유지.
+- **Fixed (No-model chat state)**: `POST /chat`은 모델이 없을 때
+  `{"error":"no_model_loaded", ...}` 형태의 명확한 JSON 400 응답을 반환하고,
+  v3 Chat은 사용자에게 모델 로드 안내를 표시.
+- **Changed (Hybrid Search display)**: alpha처럼 보이는 단일 값 대신 keyword /
+  vector / graph fusion weights와 per-signal 점수를 표시.
+- **Changed (Embedding disclosure)**: 기본 vector signal은
+  `lattice-local-hash-v1` deterministic local fallback embeddings임을 명확히
+  표기. Production semantic embedding model로 주장하지 않음. 향후 provider는
+  Ollama, MLX, OpenAI-compatible providers, 기타 local embedding runtime 가능.
+- **Fixed (CDN resilience)**: Tabler icon webfont CDN 실패 시 icon-only controls가
+  compact fallback glyph를 표시해 navigation/useability를 유지.
+- **Changed (Release workflow safety)**: v* tag push는 build/validation만 수행.
+  PyPI/npm/Marketplace/Open VSX publish job은 제거되어 tag push가 package
+  publication을 자동 실행하지 않음.
+- **Validation target**: `npm run lint`, `npm run typecheck`,
+  `npm run check:python`, backend unit tests, `npx playwright test`, real app
+  browser validation, `python -m build`, `npm run build`, `npm pack`, VSIX
+  package, release artifact validator.
 
 ## v2.2.7 릴리스 노트 (2026-06-05)
 
@@ -607,13 +639,13 @@ Knowledge Graph v2 read/write cutover. 자세한 내용은
    - `npm run release:artifacts`
    - `npm run release:validate`
 
-현재 `v2.2.7` 기준 필수 산출물:
+현재 `v3.0.0` 기준 필수 산출물:
 
 ```text
-dist/ltcai-2.2.7-py3-none-any.whl
-dist/ltcai-2.2.7.tar.gz
-dist/ltcai-2.2.7.vsix
-ltcai-2.2.7.tgz
+dist/ltcai-3.0.0-py3-none-any.whl
+dist/ltcai-3.0.0.tar.gz
+dist/ltcai-3.0.0.vsix
+ltcai-3.0.0.tgz
 ```
 
 ## 2) npm 배포

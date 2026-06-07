@@ -1,5 +1,33 @@
 # Release Notes
 
+## v3.0.0 - Local-First AI Workspace Platform
+
+Lattice AI v3.0.0 makes `/app` the primary product experience and ships the v3
+retrieval backend with the native workspace shell.
+
+### Highlights
+
+- `/app` is the default post-login workspace; legacy `/chat` remains available
+  as a rollback/debug path.
+- Native Chat streams through `POST /chat`, keeps retrieval context in the v3
+  shell, and shows a friendly no-model-loaded setup message.
+- Knowledge Graph, Vector Index, and Hybrid Search are first-class v3 surfaces.
+- Hybrid Search shows keyword, local vector, and graph signal weights instead of
+  a misleading alpha value.
+- Default embeddings are `lattice-local-hash-v1` deterministic local fallback
+  embeddings, not a production semantic embedding model.
+- Release workflow now builds and validates tag artifacts without publishing
+  packages automatically.
+
+### Expected Artifacts
+
+```text
+dist/ltcai-3.0.0-py3-none-any.whl
+dist/ltcai-3.0.0.tar.gz
+dist/ltcai-3.0.0.vsix
+ltcai-3.0.0.tgz
+```
+
 ## v2.2.7 - Visual System Stabilization
 
 Lattice AI v2.2.7 stabilizes the rendered browser UI across the major product

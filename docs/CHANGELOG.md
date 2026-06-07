@@ -1,5 +1,87 @@
 # Changelog
 
+## [3.0.0] - 2026-06-07
+
+> v3 — Local-first AI Workspace Platform. The hybrid-search
+> backend and the token-native `/app` workspace shell now ship together: the
+> shell's adapters call the real v3 retrieval APIs, and Chat is a first-class
+> native view (no link-out to the legacy page). Legacy `/chat` remains available
+> as a rollback/debug path.
+
+### Added — Backend retrieval
+
+- **Hybrid search API** — added `/api/search/hybrid`, `/api/search/keyword`,
+  `/api/search/vector`, `/api/graph`, `/api/graph/node`,
+  `/api/graph/relationship`, `/api/index/status`, and `/api/index/rebuild`.
+- **SQLite vector index** — added local deterministic embeddings,
+  `vector_embeddings`, and `vector_index_operations` for incremental indexing,
+  rebuilds, and status monitoring.
+- **Embedding status** — the default `lattice-local-hash-v1` embedder is a
+  deterministic local fallback, not a production semantic embedding model.
+  Future providers may include Ollama, MLX, OpenAI-compatible providers, and
+  other local embedding runtimes.
+- **Graph retrieval helpers** — added node lookup, relationship search, bounded
+  traversal, neighbor expansion, and service-level result fusion.
+- **Backend architecture doc** — added `docs/V3_BACKEND_ARCHITECTURE.md` with
+  storage, search, API, and migration details.
+
+### Added — Native app shell (`/app`)
+
+- **Unified app shell** (`static/v3/`) — nav rail, command palette (⌘K),
+  workspace switcher (Personal/Organization), and mode switcher
+  (Basic/Advanced/Admin); hash-routed views for every primary and admin area
+  (Home, Chat, Knowledge Graph, Hybrid Search, Files, Pipeline, Agents, Models,
+  My Computer, Settings, and Admin · Users/Permissions/Audit/Security/Policies/
+  Private VPC).
+- **Native Chat view** — a first-class 3-pane chat (conversations · thread ·
+  retrieval context) wired to the real backend (`POST /chat` SSE + `/history/*`)
+  with streaming, empty/error/loading states; surfaces Knowledge Graph, Vector,
+  Hybrid Search, and indexed-file context per answer. The legacy `/chat` page
+  stays reachable but is no longer the primary chat experience.
+- **Primary entry behavior** — `/app` is the product entry after login and SSO;
+  the PWA manifest starts at `/app`.
+- **Retrieval identity** — Knowledge Graph + Vector Index + Hybrid Search are
+  surfaced as a first-class "retrieval lattice" on Home and a live index chip.
+- **Token-native design system** — `static/v3/css/lattice.*.css` built on top of
+  `tokens.css` with no dependency on the legacy override layers; full light/dark
+  and desktop/tablet/mobile support.
+- **Integration adapters** — `static/v3/js/core/api.js` calls the real v3
+  endpoints and degrades to clearly-badged sample data; no backend logic in the UI.
+
+### Validation
+
+- Backend coverage includes v3 indexing, migration status, vector retrieval,
+  graph relationship traversal, hybrid result fusion, and API contract tests.
+- Frontend coverage: `tests/visual/v3.spec.js` and `scripts/lint_v3.mjs` (wired
+  into `npm run lint`); see `docs/V3_FRONTEND.md` for IA + design decisions.
+- Release preparation builds exact `3.0.0` Python, npm, and VSIX artifacts.
+  Package-store publication remains manual and is not triggered by pushing the
+  release tag.
+
+> Frontend Product Shell Redesign — workspace navigation, auth entry, and shared
+> product surfaces were realigned around the local-first AI workspace model
+> without changing backend contracts.
+
+### Changed
+
+- **Workspace IA** — the workspace shell now separates primary user workflows,
+  admin controls, and runtime tooling, with Basic, Advanced, and Admin modes.
+- **Navigation** — Chat and Workspace navigation now use consistent labels for
+  Home, Chat, Knowledge Graph, Files, Pipeline, My Computer, Search, and
+  organization administration.
+- **Design tokens** — shared product surfaces moved away from the prior
+  lavender-heavy treatment toward neutral work surfaces with blue, teal, and
+  amber accents.
+- **Auth surface** — account screens use the same token-native product shell as
+  the workspace experience and hide decorative background elements.
+
+### Validation
+
+- Frontend validation includes lint, Python checks, browser-rendered workspace
+  smoke checks, and Playwright visual regression coverage.
+- Production build output was intentionally not generated for this frontend-only
+  redesign pass.
+
 ## [2.2.7] - 2026-06-05
 
 > Visual Stabilization Release — browser-rendered screens were reviewed and

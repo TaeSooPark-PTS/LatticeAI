@@ -1,17 +1,11 @@
 name: Release
 
-# Runs on v* tag pushes. Builds all release artifacts, validates them, then
-# publishes to PyPI / npm / VS Code Marketplace / Open VSX when the respective
-# secrets are present in the repository.
+# Runs on v* tag pushes. Builds and validates all release artifacts only.
+# Package-store publication is intentionally manual so pushing a tag can never
+# publish to PyPI / npm / VS Code Marketplace / Open VSX by accident.
 #
-# Required secrets (add in Settings → Secrets and variables → Actions):
-#   PYPI_TOKEN  — PyPI API token (scope: entire account or project)
-#   NPM_TOKEN   — npm access token (Automation type, scope: publish)
-#   VSCE_TOKEN  — VS Code Marketplace personal access token (Marketplace → PAT)
-#   OVSX_TOKEN  — Open VSX access token (open-vsx.org → User Settings → Tokens)
-#
-# If a secret is absent the corresponding publish step is skipped automatically.
-# Build, validate, and artifact-upload steps always run regardless of secrets.
+# Local publish commands below must use exact version filenames. Never publish
+# with a broad dist/* glob.
 
 on:
   push:
@@ -83,71 +77,3 @@ jobs:
         run: |
           python scripts/validate_release_artifacts.py \
             "${{ steps.meta.outputs.version }}" --require-vsix --require-tgz
-
-      - name: Upload build artifacts
-        uses: actions/upload-artifact@v4
-        with:
-          name: release-artifacts
-          # Explicit per-version paths only — no `dist/*` glob.
-          path: |
-            dist/ltcai-${{ steps.meta.outputs.version }}-py3-none-any.whl
-            dist/ltcai-${{ steps.meta.outputs.version }}.tar.gz
-            dist/ltcai-${{ steps.meta.outputs.version }}.vsix
-            ltcai-${{ steps.meta.outputs.version }}.tgz
-
-  publish:
-    name: Publish release artifacts
-    needs: build
-    runs-on: ubuntu-latest
-    # Download the artifacts produced by the build job so each publish step
-    # can reference dist/ without re-running the build.
-    steps:
-      - name: Download build artifacts
-        uses: actions/download-artifact@v4
-        with:
-          name: release-artifacts
-
-      # ── PyPI ──────────────────────────────────────────────────────────────
-      - name: Publish to PyPI
-        if: ${{ secrets.PYPI_TOKEN != '' }}
-        env:
-          TWINE_USERNAME: __token__
-          TWINE_PASSWORD: ${{ secrets.PYPI_TOKEN }}
-        run: |
-          pip install --quiet twine
-          twine upload \
-            "dist/ltcai-${{ needs.build.outputs.version }}-py3-none-any.whl" \
-            "dist/ltcai-${{ needs.build.outputs.version }}.tar.gz"
-
-      # ── npm ───────────────────────────────────────────────────────────────
-      - name: Publish to npm
-        if: ${{ secrets.NPM_TOKEN != '' }}
-        env:
-          NPM_TOKEN: ${{ secrets.NPM_TOKEN }}
-        run: |
-          echo "//registry.npmjs.org/:_authToken=${NPM_TOKEN}" > ~/.npmrc
-          npm publish "ltcai-${{ needs.build.outputs.version }}.tgz" --access public
-
-      # ── VS Code Marketplace ───────────────────────────────────────────────
-      - name: Set up Node for Marketplace publish
-        if: ${{ secrets.VSCE_TOKEN != '' || secrets.OVSX_TOKEN != '' }}
-        uses: actions/setup-node@v5
-        with:
-          node-version: "20"
-
-      - name: Publish to VS Code Marketplace
-        if: ${{ secrets.VSCE_TOKEN != '' }}
-        run: |
-          npm install -g @vscode/vsce
-          vsce publish \
-            --packagePath "dist/ltcai-${{ needs.build.outputs.version }}.vsix" \
-            --pat "${{ secrets.VSCE_TOKEN }}"
-
-      # ── Open VSX ─────────────────────────────────────────────────────────
-      - name: Publish to Open VSX
-        if: ${{ secrets.OVSX_TOKEN != '' }}
-        run: |
-          npm install -g ovsx
-          ovsx publish \
-            "dist/ltcai-${{ needs.build.outputs.version }}.vsix" \
-            -p "${{ secrets.OVSX_TOKEN }}"

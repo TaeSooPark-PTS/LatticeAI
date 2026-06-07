@@ -1,8 +1,8 @@
 {
   "name": "Lattice AI",
   "short_name": "LatticeAI",
-  "description": "AI Workspace OS for local-first graph, memory, agents, workflows, and skills",
-  "start_url": "/workspace",
+  "description": "Local-first AI workspace platform for knowledge graphs, vector index, hybrid search, agents, and workspace modes",
+  "start_url": "/app",
   "id": "/",
   "display": "standalone",
   "orientation": "any",
@@ -28,7 +28,7 @@
     {
       "name": "새 대화",
       "short_name": "대화",
-      "url": "/",
+      "url": "/app#/chat",
       "icons": [{ "src": "/icons/icon-192.png", "sizes": "192x192" }]
     }
   ]
