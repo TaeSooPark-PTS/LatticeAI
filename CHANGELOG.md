@@ -2,6 +2,36 @@
 
 The detailed historical changelog lives in [docs/CHANGELOG.md](docs/CHANGELOG.md).
 
+## [3.0.1] - 2026-06-07
+
+Release-blocker remediation: every v3 surface now works, is connected to its real
+backend, or is clearly marked unavailable — nothing appears complete while
+disconnected.
+
+- **Provider-backed embeddings** — new `EmbeddingProvider` interface with
+  `Hash` (offline fallback), `MLX`, `Ollama`, `OpenAI-compatible`, and `Custom`
+  providers, selectable via `LATTICEAI_EMBEDDING_PROVIDER`. The knowledge graph
+  takes an injected embedder; a configured provider that is unreachable degrades
+  to the hash fallback and is reported as such (never silently faked). New
+  `GET /api/embeddings/status` and `/api/embeddings/providers` surface provider,
+  model, status, dimensions, and last index time in Settings → Models →
+  Embeddings and the Models view.
+- **AgentRuntime boundary** — agent execution, status, health, events, and
+  configuration are unified behind `latticeai/services/agent_runtime.py` with
+  `GET /agents/api/runtime/status|health|config`, `…/runs/{id}/events`, and
+  `…/runs/{id}/stop`. The Agents view now reads real runs from the runtime
+  instead of a fabricated ledger.
+- **Frontend ↔ backend connections** — Agents (real runs + health), My Computer
+  (local memory wired to `/workspace/computer-memory`, real activity), Admin
+  Security (`/admin/security/overview`), Admin Permissions (`/admin/roles`),
+  Admin Policies (`/admin/policies`, read-only enforced state), Settings
+  (create-organization via `/workspace/orgs`), and Pipeline (working **Rebuild
+  index** via `/api/index/rebuild`). Folder connect / per-file actions and other
+  features without a wired backend are now labeled clearly unavailable.
+- **Tests** — added `test_embedding_providers.py` and
+  `test_agent_runtime_service.py`; the visual mock server exercises the new
+  endpoints.
+
 ## [3.0.0] - 2026-06-07
 
 Lattice AI v3 becomes the mainline local-first AI workspace platform. `/app` is

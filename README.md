@@ -259,7 +259,8 @@ Core areas:
 
 | Version | Theme |
 | --- | --- |
-| **3.0.0** | v3 local-first AI workspace platform — `/app`, Native Chat, Knowledge Graph, Vector Index, Hybrid Search, workspace modes |
+| **3.0.1** | Release-blocker remediation — provider-backed embeddings (Hash/MLX/Ollama/OpenAI/Custom), unified AgentRuntime boundary, every v3 surface connected or clearly unavailable |
+| 3.0.0 | v3 local-first AI workspace platform — `/app`, Native Chat, Knowledge Graph, Vector Index, Hybrid Search, workspace modes |
 | 2.2.7 | Visual system stabilization — cohesive dark/light screens, crisp chat composer, dark graph canvas, Workspace OS polish |
 | 2.2.6 | Token-native CSS foundation |
 | 2.2.5 | Release hygiene hotfix — dark overlays, modal stack, cache-busting, favicon, and Telegram log masking |
