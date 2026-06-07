@@ -192,7 +192,7 @@ const server = http.createServer((req, res) => {
   if (pathname === "/account/profile") return json(res, { detail: "unauthorized" }, 401);
   if (pathname === "/auth/sso/config") return json(res, { enabled: false, providers: [] });
 
-  if (pathname === "/health") return json(res, { status: "ok", version: "1.7.0", mode: "visual" });
+  if (pathname === "/health") return json(res, { status: "ok", version: "3.3.0", mode: "visual" });
   if (pathname === "/vpc/status") return json(res, { provider: "local", region: "visual", vpn_status: "standby", peering_status: "not_configured", private_subnets: [] });
   if (pathname === "/workspace/os") return json(res, workspaceOs);
   if (pathname === "/workspace/onboarding/status") return json(res, { current_step: "complete", steps: ["account", "admin", "hardware", "model_recommendation", "folder_connection", "complete"].map((id) => ({ id, status: "complete" })) });

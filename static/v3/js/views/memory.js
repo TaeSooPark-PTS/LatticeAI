@@ -1,8 +1,9 @@
 /* ============================================================================
  * View: Memory — the long-term memory platform + Memory Manager.
  * Reads /api/memory/manager (usage / sources / health / size / type) and offers
- * recall, inspect, prune, compact, rebuild, and clear. Every number comes from a
- * real store; tiers with no backing report unavailable.
+ * recall, inspect, compact, and rebuild. Every number comes from a real store;
+ * tiers with no backing report unavailable. (Destructive prune/clear are
+ * available over the API but intentionally not surfaced as one-click UI here.)
  * ========================================================================== */
 
 const TIER_ICON = {
@@ -19,7 +20,7 @@ export async function render(ctx) {
   const recallHost = h("div");
   const inspectHost = h("div", h("p.lt3-faint", { style: { margin: 0 } }, "Pick a tier to inspect its contents."));
 
-  const recallInput = h("input.lt3-input", { type: "text", placeholder: "Recall across every memory tier…", "aria-label": "Recall memory" });
+  const recallInput = h("input.lt3-input", { type: "text", placeholder: "Recall from workspace + graph memory…", "aria-label": "Recall memory" });
 
   const root = h("div.lt3-stack-6",
     c.viewHeader({
@@ -30,7 +31,7 @@ export async function render(ctx) {
     }),
     statHost,
     c.panel({
-      title: "Recall", sub: "Unified retrieval across the memory tiers.",
+      title: "Recall", sub: "Searches your workspace and knowledge-graph memory.",
       children: h("div.lt3-stack-3",
         h("div.lt3-row-2",
           recallInput,

@@ -61,17 +61,71 @@ function normalize(data) {
   }));
 }
 
+/** Document types the backend accepts (latticeai/services/upload_service.py). */
+const UPLOAD_ACCEPT = ".pdf,.docx,.xlsx,.pptx,.txt,.md,.csv";
+
 export async function render(ctx) {
   const { h, icon, api, c, navigate, toast } = ctx;
 
-  // Folder connection/watch needs the desktop local-agent connector, which is
-  // not enabled in this build. Say so plainly rather than implying it's coming.
+  // Connecting/watching a *folder* needs the desktop local-agent connector,
+  // which is not enabled in this build. Say so plainly. Manual document upload
+  // below works without it.
   const unavailableToast = () =>
     toast("Connecting a folder requires the Lattice desktop local agent — not available in this build.", "warn");
 
   const statHost = h("div.lt3-statrow", c.loading({ lines: 1 }));
   const srcSlot = h("span", c.sourceBadge("pending"));
   const tableHost = h("div", c.loading({ lines: 4 }));
+
+  // ── Manual upload (works in this build; no desktop agent required) ─────────
+  let busy = false;
+  const fileInput = h("input", {
+    type: "file", multiple: true, accept: UPLOAD_ACCEPT,
+    style: { display: "none" }, "aria-hidden": "true",
+    on: { change: (e) => uploadFiles(e.target.files) },
+  });
+  const pickFiles = () => { if (!busy) fileInput.click(); };
+  const slots = { statHost, srcSlot, tableHost, pickFiles };
+
+  async function uploadFiles(fileList) {
+    const files = Array.from(fileList || []);
+    if (!files.length || busy) return;
+    busy = true;
+    let ok = 0;
+    for (const file of files) {
+      toast(`Uploading “${file.name}”…`, "info");
+      const res = await api.uploadDocument(file);
+      if (res.ok && res.data && !res.data.detail && !res.data.error) {
+        ok++;
+      } else {
+        const detail = (res.data && (res.data.detail || res.data.error)) || "the backend is unavailable";
+        toast(`Could not ingest “${file.name}” — ${detail}.`, "warn");
+      }
+    }
+    fileInput.value = "";
+    busy = false;
+    if (ok) {
+      toast(`Indexed ${ok} document${ok === 1 ? "" : "s"} into the knowledge graph — now searchable in Chat and Hybrid Search.`, "ok");
+    }
+    hydrate(ctx, slots);
+  }
+
+  const dropZone = h("div.lt3-drop", {
+    on: {
+      dragover: (e) => { e.preventDefault(); dropZone.classList.add("is-dragover"); },
+      dragleave: () => dropZone.classList.remove("is-dragover"),
+      drop: (e) => { e.preventDefault(); dropZone.classList.remove("is-dragover"); uploadFiles(e.dataTransfer && e.dataTransfer.files); },
+    },
+  },
+    fileInput,
+    h("div.lt3-pillar__icon", icon("cloud-upload")),
+    h("div",
+      h("div", { style: { "font-weight": "var(--lt3-weight-semi)" } }, "Drag documents here, or upload manually"),
+      h("p.lt3-faint", { style: { "font-size": "var(--lt3-text-sm)", "margin-top": "var(--lt3-space-1)" } },
+        "Lattice parses each file, chunks it, embeds it, and links it into the knowledge graph. PDF · DOCX · XLSX · PPTX · TXT · MD · CSV, up to 10 MB each."),
+    ),
+    h("button.lt3-btn.lt3-btn--primary", { type: "button", on: { click: pickFiles } }, icon("upload"), "Upload files"),
+  );
 
   const root = h("div.lt3-stack-6",
     c.viewHeader({
@@ -80,19 +134,12 @@ export async function render(ctx) {
       sub: "Connected sources and the documents Lattice has indexed for retrieval. Everything stays on this machine.",
       actions: [
         h("button.lt3-btn.lt3-btn--ghost", { on: { click: () => navigate("knowledge-graph") } }, icon("chart-dots-3"), "View graph"),
+        h("button.lt3-btn.lt3-btn--primary", { on: { click: pickFiles } }, icon("upload"), "Upload files"),
         h("button.lt3-btn.lt3-btn--ghost", { title: "Requires the desktop local agent (not in this build)", on: { click: unavailableToast } }, icon("folder-plus"), "Connect folder"),
       ],
     }),
     statHost,
-    h("div.lt3-drop",
-      h("div.lt3-pillar__icon", icon("cloud-upload")),
-      h("div",
-        h("div", { style: { "font-weight": "var(--lt3-weight-semi)" } }, "Drag files or connect a folder"),
-        h("p.lt3-faint", { style: { "font-size": "var(--lt3-text-sm)", "margin-top": "var(--lt3-space-1)" } },
-          "Lattice watches the source, chunks it, embeds it, and links it into the knowledge graph."),
-      ),
-      h("button.lt3-btn.lt3-btn--ghost", { title: "Requires the desktop local agent (not in this build)", on: { click: unavailableToast } }, icon("folder-plus"), "Choose folder"),
-    ),
+    dropZone,
     c.panel({
       head: h("div.lt3-row", { style: { "justify-content": "space-between", "align-items": "flex-start", width: "100%" } },
         h("div",
@@ -105,13 +152,13 @@ export async function render(ctx) {
     }),
   );
 
-  hydrate(ctx, { statHost, srcSlot, tableHost });
+  hydrate(ctx, slots);
   return root;
 }
 
 async function hydrate(ctx, slots) {
   const { h, icon, api, c, toast } = ctx;
-  const { statHost, srcSlot, tableHost } = slots;
+  const { statHost, srcSlot, tableHost, pickFiles } = slots;
 
   const probe = await api.get("/workspace/indexing", { sources: [], totals: {} });
   const liveFiles = probe.ok && probe.data ? normalize(probe.data) : null;
@@ -137,11 +184,10 @@ async function hydrate(ctx, slots) {
     tableHost.replaceChildren(c.emptyState({
       icon: "folder-off",
       title: "No documents indexed yet",
-      body: "Connect a folder and Lattice will index it for hybrid retrieval.",
-      action: h("button.lt3-btn.lt3-btn--ghost.lt3-btn--sm",
-        { title: "Requires the desktop local agent (not in this build)",
-          on: { click: () => toast("Connecting a folder requires the Lattice desktop local agent — not available in this build.", "warn") } },
-        icon("folder-plus"), "Connect folder"),
+      body: "Upload a document and Lattice will parse, embed, and link it into the knowledge graph for hybrid retrieval.",
+      action: h("button.lt3-btn.lt3-btn--primary.lt3-btn--sm",
+        { on: { click: () => (pickFiles ? pickFiles() : null) } },
+        icon("upload"), "Upload files"),
     }));
     return;
   }

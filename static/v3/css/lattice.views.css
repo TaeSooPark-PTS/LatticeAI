@@ -245,6 +245,11 @@
   border-radius: var(--lt3-radius-lg);
   background: var(--surface-2);
   text-align: center;
+  transition: border-color var(--lt3-dur-2) var(--lt3-ease), background var(--lt3-dur-2) var(--lt3-ease);
+}
+.lt3-drop.is-dragover {
+  border-color: var(--accent);
+  background: var(--accent-soft);
 }
 
 /* ── Pipeline ────────────────────────────────────────────────────────────── */

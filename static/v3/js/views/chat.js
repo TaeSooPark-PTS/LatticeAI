@@ -52,7 +52,7 @@ export async function render(ctx) {
 
   const groundChip = (key, label, icn) => h("button.lt3-chip", {
     type: "button", dataset: { active: String(state.grounding[key]) }, "aria-pressed": String(state.grounding[key]),
-    title: `Toggle ${label} grounding`,
+    title: `Show the ${label} signal in the retrieval-context panel`,
     on: { click: (e) => { state.grounding[key] = !state.grounding[key]; const b = e.currentTarget; b.dataset.active = String(state.grounding[key]); b.setAttribute("aria-pressed", String(state.grounding[key])); } },
   }, icon(icn), label);
 

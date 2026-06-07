@@ -228,7 +228,21 @@ async function probeEndpoints({ h, icon, api, c }, host) {
 }
 
 /* ── About ──────────────────────────────────────────────────────────────── */
-function aboutPanel({ h, icon, c }) {
+/* Version is read live from /health (which derives it from the backend's single
+ * source of truth, WORKSPACE_OS_VERSION) — never hard-coded in the frontend.
+ * If the backend is unreachable we say "unavailable" rather than inventing a
+ * number. */
+function aboutPanel({ h, icon, c, api }) {
+  const versionSlot = h("dd", h("span.lt3-mono.lt3-faint", "checking…"));
+  (async () => {
+    const res = await api.raw("/health");
+    const v = res && res.ok && res.data && res.data.version;
+    versionSlot.replaceChildren(
+      v
+        ? h("span.lt3-mono", `v${String(v).replace(/^v/i, "")}`)
+        : h("span.lt3-mono.lt3-faint", "unavailable"),
+    );
+  })();
   return c.panel({
     eyebrow: "About",
     title: "Lattice AI",
@@ -236,7 +250,7 @@ function aboutPanel({ h, icon, c }) {
     children: h("div.lt3-stack-4",
       h("dl.lt3-keyval",
         h("dt", "Application"), h("dd", "Lattice AI"),
-        h("dt", "Version"), h("dd", h("span.lt3-mono", "v3.1.0")),
+        h("dt", "Version"), versionSlot,
         h("dt", "Edition"), h("dd", "Local-first AI workspace"),
       ),
     ),

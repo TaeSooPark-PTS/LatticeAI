@@ -290,7 +290,8 @@ Core areas:
 
 | Version | Theme |
 | --- | --- |
-| **3.2.0** | Feature-complete platform — multi-agent collaboration, agent registry, marketplace + templates, workflow agents, autonomous planning, long-term memory + manager, skills/hooks/tool registries, MCP manager, all operable from `/app` |
+| **3.3.0** | Product quality & honesty release — evidence-based feature audit (`FEATURE_STATUS.md`), single-source version truth, working manual document upload in Files, fixed document-generation streaming, truthful Home retrieval status, documented design system (`STYLE_SYSTEM.md`) |
+| 3.2.0 | Feature-complete platform — multi-agent collaboration, agent registry, marketplace + templates, workflow agents, autonomous planning, long-term memory + manager, skills/hooks/tool registries, MCP manager, all operable from `/app` |
 | 3.1.0 | Mainline platform completion — native `/app` workflows, Classic retired from normal paths, production embedding profiles, AgentRuntime/registries, hashed v3 assets |
 | 3.0.1 | Release-blocker remediation — provider-backed embeddings (Hash/MLX/Ollama/OpenAI/Custom), unified AgentRuntime boundary, every v3 surface connected or clearly unavailable |
 | 3.0.0 | v3 local-first AI workspace platform — `/app`, Native Chat, Knowledge Graph, Vector Index, Hybrid Search, workspace modes |

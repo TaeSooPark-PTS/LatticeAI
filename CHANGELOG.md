@@ -2,6 +2,36 @@
 
 The detailed historical changelog lives in [docs/CHANGELOG.md](docs/CHANGELOG.md).
 
+## [3.3.0] - 2026-06-08
+
+Product-quality and honesty release. No new product areas — the focus is
+verifying what works, removing misleading states, and making the system
+truthful and maintainable. See [FEATURE_STATUS.md](FEATURE_STATUS.md) for the
+full evidence-based audit and [STYLE_SYSTEM.md](STYLE_SYSTEM.md) for the design
+system.
+
+- **Single source of version truth** — all runtime constants, `package.json`,
+  `pyproject.toml`, the VS Code extension, lockfiles, and the v3 asset manifest
+  report **3.3.0**. The build manifest now derives its version from
+  `package.json`, and the Settings → About panel reads the live version from
+  `/health` instead of a hard-coded string. New
+  `tests/unit/test_version_consistency.py` guards against drift.
+- **Working manual document upload (Files)** — the Files view drop zone is now a
+  real uploader (drag-and-drop or picker) wired to the existing
+  `/upload/document` parse → chunk → embed → knowledge-graph pipeline. PDF · DOCX
+  · XLSX · PPTX · TXT · MD · CSV, ≤10 MB. Connecting a *folder* remains honestly
+  disabled (it needs the desktop local agent, not in this build).
+- **Fixed document-generation streaming** — the v3 chat SSE parser now accepts
+  the document-generation event shape (`text`), so report/document requests
+  render instead of falsely reporting the backend as unreachable.
+- **Truthful Home retrieval status** — `/api/index/status` is normalized into the
+  pipelines shape the Home pillars and topbar chip expect, so a live, indexed
+  backend no longer shows a false "Retrieval status unavailable".
+- **Honest copy** — chat grounding chips relabeled to describe the
+  retrieval-context preview they actually drive; the Memory view no longer claims
+  prune/clear controls it doesn't surface, and its recall copy reflects the
+  workspace + graph scope it actually searches.
+
 ## [3.2.0] - 2026-06-08
 
 Feature-complete release for all non-enterprise use cases. Every platform
