@@ -50,6 +50,7 @@ def create_search_router(
     *,
     service: SearchService,
     require_user: Callable[[Request], str],
+    embedding_info: Optional[Callable[[], Dict[str, Any]]] = None,
 ) -> APIRouter:
     router = APIRouter()
 
@@ -198,5 +199,38 @@ def create_search_router(
             )
         except ValueError as exc:
             _raise_graph_error(exc)
+
+    @router.get("/api/embeddings/status")
+    async def embeddings_status(request: Request, refresh: bool = False) -> Dict[str, Any]:
+        require_user(request)
+        resolved = embedding_info() if embedding_info else {}
+        try:
+            return service.embeddings_status(resolved=resolved, refresh=refresh)
+        except ValueError as exc:
+            _raise_graph_error(exc)
+
+    @router.get("/api/embeddings/providers")
+    async def embeddings_providers(request: Request) -> Dict[str, Any]:
+        require_user(request)
+        resolved = embedding_info() if embedding_info else {}
+        return {
+            "active": resolved.get("active_provider"),
+            "requested": resolved.get("requested_provider"),
+            "providers": [
+                {"id": "hash", "label": "Local hash (fallback)", "grade": "fallback",
+                 "requires": [], "detail": "Deterministic offline vectors — always available."},
+                {"id": "mlx", "label": "MLX (Apple Silicon)", "grade": "production",
+                 "requires": ["LATTICEAI_EMBEDDING_MODEL"], "detail": "Local embedding model via MLX."},
+                {"id": "ollama", "label": "Ollama", "grade": "production",
+                 "requires": ["LATTICEAI_EMBEDDING_MODEL", "LATTICEAI_EMBEDDING_BASE_URL"],
+                 "detail": "Local/remote Ollama embedding server."},
+                {"id": "openai", "label": "OpenAI-compatible", "grade": "production",
+                 "requires": ["LATTICEAI_EMBEDDING_MODEL", "LATTICEAI_EMBEDDING_BASE_URL", "LATTICEAI_EMBEDDING_API_KEY"],
+                 "detail": "Any /v1/embeddings endpoint (OpenAI, LM Studio, vLLM, …)."},
+                {"id": "custom", "label": "Custom callable", "grade": "production",
+                 "requires": ["LATTICEAI_EMBEDDING_CUSTOM_TARGET"],
+                 "detail": "User-supplied module:callable returning vectors."},
+            ],
+        }
 
     return router

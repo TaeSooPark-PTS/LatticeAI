@@ -809,12 +809,16 @@ def _topic_candidates(text: str, limit: int = 8) -> List[str]:
 
 
 class KnowledgeGraphStore:
-    def __init__(self, db_path: Path, blob_dir: Path):
+    def __init__(self, db_path: Path, blob_dir: Path, embedder: Any = None):
         self.db_path = Path(db_path)
         self.blob_dir = Path(blob_dir)
         self.db_path.parent.mkdir(parents=True, exist_ok=True)
         self.blob_dir.mkdir(parents=True, exist_ok=True)
-        self._embedding_model = LocalEmbeddingModel()
+        # The embedder is swappable behind a fixed interface
+        # (model_id/dim/embed/encode/decode/similarity). Defaults to the
+        # deterministic, offline hash model so the store works with no config;
+        # server_app injects a provider-backed embedder from Config.
+        self._embedding_model = embedder if embedder is not None else LocalEmbeddingModel()
         self._init_db()
         # Read graph queries from the v2 projection (kgv2_* views) when available.
         # Toggle off (e.g. in tests) to compare against the legacy tables.

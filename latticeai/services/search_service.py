@@ -253,6 +253,91 @@ class SearchService:
     def index_status(self) -> Dict[str, Any]:
         return self._require_graph().index_status()
 
+    def embeddings_status(
+        self,
+        *,
+        resolved: Optional[Mapping[str, Any]] = None,
+        refresh: bool = False,
+    ) -> Dict[str, Any]:
+        """Report the active embedding provider for the Models → Embeddings UI.
+
+        Combines the resolved-provider info (requested vs active, fallback,
+        health) with the vector index's identity and last build time. The
+        ``state`` is one of ``production`` | ``fallback`` | ``unavailable`` so
+        the UI never shows a down provider as live.
+        """
+        resolved = dict(resolved or {})
+        graph = self.graph_store
+        embedder = getattr(graph, "_embedding_model", None)
+
+        meta: Dict[str, Any] = {}
+        if embedder is not None and hasattr(embedder, "metadata"):
+            try:
+                meta = dict(embedder.metadata())
+            except Exception:
+                meta = {}
+        else:  # legacy LocalEmbeddingModel
+            meta = {
+                "provider": "hash",
+                "model": getattr(embedder, "model_id", "lattice-local-hash-v1"),
+                "model_id": getattr(embedder, "model_id", "lattice-local-hash-v1"),
+                "dim": getattr(embedder, "dim", 384),
+                "grade": "fallback",
+            }
+
+        health = resolved.get("health") or {"status": "unknown", "detail": ""}
+        if refresh and embedder is not None and hasattr(embedder, "health"):
+            try:
+                health = embedder.health()
+            except Exception as exc:  # pragma: no cover - defensive
+                health = {"status": "unavailable", "detail": str(exc)}
+
+        fell_back = bool(resolved.get("fell_back"))
+        grade = str(meta.get("grade") or ("fallback" if fell_back else "production"))
+        if fell_back or health.get("status") == "unavailable":
+            state = "unavailable" if fell_back else "fallback"
+        else:
+            state = "fallback" if grade == "fallback" else "production"
+
+        index: Dict[str, Any] = {}
+        last_indexed_at = None
+        if graph is not None:
+            try:
+                status = graph.index_status()
+                index = {
+                    "status": status.get("status"),
+                    "source_items": status.get("source_items"),
+                    "indexed_items": status.get("indexed_items"),
+                    "ready_items": status.get("ready_items"),
+                    "pending_items": status.get("pending_items"),
+                    "stale_items": status.get("stale_items"),
+                    "embedding_model": (status.get("storage") or {}).get("embedding_model"),
+                    "embedding_dim": (status.get("storage") or {}).get("embedding_dim"),
+                }
+                for op in status.get("operations", []):
+                    if op.get("status") == "completed" and op.get("completed_at"):
+                        last_indexed_at = op.get("completed_at")
+                        break
+            except Exception as exc:  # pragma: no cover - defensive
+                index = {"error": str(exc)}
+
+        return {
+            "provider": meta.get("provider"),
+            "requested_provider": resolved.get("requested_provider") or meta.get("provider"),
+            "active_provider": resolved.get("active_provider") or meta.get("provider"),
+            "model": meta.get("model"),
+            "model_id": meta.get("model_id"),
+            "dimensions": meta.get("dim"),
+            "grade": grade,
+            "state": state,
+            "fell_back": fell_back,
+            "health": health,
+            "detail": resolved.get("detail", ""),
+            "last_indexed_at": last_indexed_at,
+            "index": index,
+            "available_providers": list(resolved.get("available_providers") or []),
+        }
+
     def rebuild_index(self, *, full: bool = False, include_nodes: bool = True, include_chunks: bool = True) -> Dict[str, Any]:
         return self._require_graph().rebuild_vector_index(
             full=full,

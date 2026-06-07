@@ -93,6 +93,15 @@ class Config:
     local_draft_model: str
     auto_read_chat_paths: bool
 
+    # ── embeddings (retrieval vector signal) ────────────────────────
+    embedding_provider: str
+    embedding_model: str
+    embedding_base_url: str
+    embedding_api_key: str
+    embedding_dim: int
+    embedding_timeout: int
+    embedding_custom_target: str
+
     # ── SSO / OIDC ──────────────────────────────────────────────────
     sso_discovery_url: str
     sso_client_id: str
@@ -164,6 +173,13 @@ class Config:
             local_model=local_model,
             local_draft_model=_value(env, "LATTICEAI_LOCAL_DRAFT_MODEL", ""),
             auto_read_chat_paths=_bool(env, "LATTICEAI_AUTO_READ_CHAT_PATHS", default=False),
+            embedding_provider=_value(env, "LATTICEAI_EMBEDDING_PROVIDER", "hash").strip().lower(),
+            embedding_model=_value(env, "LATTICEAI_EMBEDDING_MODEL", ""),
+            embedding_base_url=_value(env, "LATTICEAI_EMBEDDING_BASE_URL", ""),
+            embedding_api_key=_value(env, "LATTICEAI_EMBEDDING_API_KEY", ""),
+            embedding_dim=_int(env, "LATTICEAI_VECTOR_DIM", 0),
+            embedding_timeout=_int(env, "LATTICEAI_EMBEDDING_TIMEOUT", 30),
+            embedding_custom_target=_value(env, "LATTICEAI_EMBEDDING_CUSTOM_TARGET", ""),
             sso_discovery_url=_value(env, "OIDC_DISCOVERY_URL", ""),
             sso_client_id=_value(env, "OIDC_CLIENT_ID", ""),
             sso_client_secret=_value(env, "OIDC_CLIENT_SECRET", ""),
