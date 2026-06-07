@@ -40,10 +40,53 @@ def create_agents_router(
     append_audit_event: Callable[..., None],
     ui_file_response: Optional[Callable[[Path], Any]] = None,
     static_dir: Optional[Path] = None,
+    agent_runtime: Any = None,
 ) -> APIRouter:
     from latticeai.core.multi_agent import AGENT_ROLES, ROLE_AGENT_IDS
+    from latticeai.services.agent_runtime import AgentRuntime
+
+    # Single AgentRuntime boundary: the router (and via it, the frontend) talks
+    # to this façade instead of reaching into the orchestrator/store directly.
+    runtime = agent_runtime or AgentRuntime(
+        store=store,
+        orchestrator_factory=orchestrator_factory,
+        workspace_graph=workspace_graph,
+        append_audit_event=append_audit_event,
+    )
 
     router = APIRouter()
+
+    # ── AgentRuntime boundary endpoints ───────────────────────────────────
+    @router.get("/agents/api/runtime/status")
+    async def agent_runtime_status(request: Request):
+        require_user(request)
+        scope = gate_read(request)
+        return runtime.status(scope=scope)
+
+    @router.get("/agents/api/runtime/health")
+    async def agent_runtime_health(request: Request):
+        require_user(request)
+        return runtime.health()
+
+    @router.get("/agents/api/runtime/config")
+    async def agent_runtime_config(request: Request):
+        require_user(request)
+        return runtime.config()
+
+    @router.get("/agents/api/runs/{run_id}/events")
+    async def agent_run_events(run_id: str, request: Request):
+        require_user(request)
+        scope = gate_read(request)
+        try:
+            return runtime.events(run_id, scope=scope)
+        except FileNotFoundError as exc:
+            raise HTTPException(status_code=404, detail=f"Agent run not found: {run_id}") from exc
+
+    @router.post("/agents/api/runs/{run_id}/stop")
+    async def agent_run_stop(run_id: str, request: Request):
+        require_user(request)
+        scope = gate_write(request)
+        return runtime.stop(run_id, scope=scope)
 
     @router.get("/agents")
     async def agents_page(request: Request):
@@ -119,36 +162,16 @@ def create_agents_router(
     async def agent_run(req: AgentRunRequest, request: Request):
         current_user = require_user(request)
         scope = gate_write(request)
-        if not str(req.goal or "").strip():
-            raise HTTPException(status_code=400, detail="goal is required")
-        orchestrator = orchestrator_factory(current_user or None, scope)
-        result = orchestrator.run(
-            req.goal,
-            user_email=current_user or None,
-            workspace_id=scope,
-            inputs=req.inputs,
-            roles=req.roles or None,
-            max_retries=max(0, min(int(req.max_retries or 0), 5)),
-        )
-        run = store.record_agent_run(
-            agent_id=result.agent_id,
-            status=result.status,
-            input_text=req.goal,
-            output_text=result.output,
-            timeline=result.timeline,
-            relationships=[ROLE_AGENT_IDS.get(r, f"agent:{r}") for r in result.roles_run],
-            handoffs=result.handoffs,
-            context_packets=result.context_packets,
-            plan=result.plan,
-            plan_review=result.plan_review,
-            review_history=result.review_history,
-            retry_history=result.retry_history,
-            memory_snapshots=result.memory_snapshots,
-            user_email=current_user or None,
-            graph=workspace_graph(),
-            workspace_id=scope,
-        )
-        append_audit_event("multi_agent_run", user_email=current_user, agent_id=result.agent_id, status=result.status, retries=result.retries)
-        return {"run": run, "result": result.as_dict()}
+        try:
+            return runtime.start(
+                req.goal,
+                user_email=current_user or None,
+                scope=scope,
+                roles=req.roles or None,
+                inputs=req.inputs,
+                max_retries=req.max_retries,
+            )
+        except ValueError as exc:
+            raise HTTPException(status_code=400, detail=str(exc)) from exc
 
     return router
