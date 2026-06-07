@@ -82,9 +82,35 @@ export const api = {
 
   /* ── Documented future surfaces ─────────────────────────────────────── */
 
-  /** GET /api/index/status — KG + Vector + Hybrid pipeline state. */
-  indexStatus() {
-    return withFallback("/api/index/status", {}, EMPTY_INDEX_STATUS);
+  /** GET /api/index/status — KG + Vector + Hybrid pipeline state.
+   *  The backend endpoint is vector-centric (status/storage/source_items/…); the
+   *  home pillars + topbar chip want a `pipelines` view keyed by
+   *  knowledge_graph / vector_index / hybrid. Synthesize that shape from the real
+   *  index status (vectors) plus the KG stats endpoint (entities). Nothing is
+   *  fabricated: if the index endpoint is unavailable we report unavailable (so
+   *  the UI shows the honest empty state), and a missing graph-stats count yields
+   *  an "unavailable" graph pillar rather than a fake number. */
+  async indexStatus() {
+    const res = await raw("/api/index/status");
+    if (!(res.ok && res.data && !res.data.raw)) {
+      return { ok: false, status: res.status, data: EMPTY_INDEX_STATUS, source: "unavailable", error: res.error };
+    }
+    const idx = res.data;
+    let entities = null;
+    const gs = await raw("/knowledge-graph/stats");
+    if (gs.ok && gs.data && !gs.data.raw) {
+      const g = gs.data;
+      const n = g.total_nodes ?? g.nodes_total ?? (g.nodes && (g.nodes.total ?? g.nodes.count));
+      if (n !== undefined && n !== null) entities = Number(n) || 0;
+    }
+    const vectors = Number(idx.indexed_items ?? idx.ready_items) || 0;
+    const vstate = idx.status === "ready" ? "ready" : "pending";
+    const pipelines = {
+      knowledge_graph: { state: entities === null ? "unavailable" : "ready", entities: entities ?? 0 },
+      vector_index: { state: vstate, vectors },
+      hybrid: { state: vstate, strategy: vstate === "ready" ? "fused" : "pending" },
+    };
+    return { ok: true, status: res.status, data: { ...idx, pipelines }, source: "live" };
   },
 
   /** POST /api/index/rebuild — rebuild the derived vector index (real run). */
@@ -175,6 +201,31 @@ export const api = {
     return raw(`/models/unload/${encodeURIComponent(modelId)}`, { method: "DELETE" });
   },
   sysinfo() { return withFallback("/local/sysinfo", {}, EMPTY_SYSINFO); },
+
+  /** POST /upload/document — manual document ingest (multipart/form-data).
+   *  Real backend path: parse → chunk → embed → knowledge-graph ingest
+   *  (latticeai/api/tools.py:/upload/document). Returns { ok, status, data,
+   *  source }; never throws. FormData must NOT carry a JSON Content-Type — the
+   *  browser sets the multipart boundary itself. */
+  async uploadDocument(file) {
+    const ws = store.get().workspaceId;
+    const form = new FormData();
+    form.append("file", file);
+    try {
+      const res = await fetch("/upload/document", {
+        method: "POST",
+        credentials: "same-origin",
+        headers: { "Accept": "application/json", ...(ws ? { "X-Workspace-Id": ws } : {}) },
+        body: form,
+      });
+      let data = null;
+      const text = await res.text();
+      if (text) { try { data = JSON.parse(text); } catch { data = { raw: text }; } }
+      return { ok: res.ok, status: res.status, data, source: res.ok ? "live" : "unavailable" };
+    } catch (err) {
+      return { ok: false, status: 0, data: null, source: "unavailable", error: String(err) };
+    }
+  },
 
   adminSummary() { return withFallback("/admin/summary", {}, EMPTY_ADMIN.summary); },
   adminUsers() { return withFallback("/admin/users", {}, EMPTY_ADMIN.users); },
@@ -310,7 +361,11 @@ export const api = {
           const rawData = line.slice(5).trim();
           if (rawData === "[DONE]") return { source: "live", text, trace, model };
           let data; try { data = JSON.parse(rawData); } catch { continue; }
-          if (data.chunk) { text += data.chunk; onChunk && onChunk(data.chunk, text); }
+          // Standard chat streams `chunk`; the document-generation path streams
+          // `text` (report body + footnotes). Accept both so doc requests render
+          // instead of falsely reporting the backend as unreachable.
+          const delta = data.chunk || data.text;
+          if (delta) { text += delta; onChunk && onChunk(delta, text); }
           if (data.model) model = data.model;
           if (data.trace) { trace = data.trace; onTrace && onTrace(trace); }
         }

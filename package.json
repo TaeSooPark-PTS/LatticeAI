@@ -1,6 +1,6 @@
 {
   "name": "ltcai",
-  "version": "3.2.0",
+  "version": "3.3.0",
   "description": "Lattice AI v3 local-first AI workspace platform with knowledge graph, vector index, hybrid search, agents, and workspace modes.",
   "homepage": "https://github.com/TaeSooPark-PTS/LatticeAI#readme",
   "repository": {

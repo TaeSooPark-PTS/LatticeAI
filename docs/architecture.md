@@ -1,6 +1,6 @@
 # Lattice AI Architecture
 
-> v3.2.0 — feature-complete for non-enterprise use cases. The agent ecosystem
+> v3.3.0 — feature-complete for non-enterprise use cases. The agent ecosystem
 > (registry, marketplace + templates, workflow agents, autonomous planning),
 > the long-term memory platform + manager, and the skills/hooks/tool/MCP
 > registries are all operable from `/app`. Enterprise controls remain future

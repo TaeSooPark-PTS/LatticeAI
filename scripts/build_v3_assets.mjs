@@ -23,6 +23,12 @@ const repoRoot = join(dirname(fileURLToPath(import.meta.url)), "..");
 const staticRoot = join(repoRoot, "static");
 const manifestPath = join(staticRoot, "v3", "asset-manifest.json");
 
+// Version is sourced from package.json — the single source of truth for the
+// release. Never hard-code a version string in the generated manifest.
+const pkgVersion = JSON.parse(
+  readFileSync(join(repoRoot, "package.json"), "utf8"),
+).version;
+
 const cssSources = [
   "static/css/tokens.css",
   "static/v3/css/lattice.tokens.css",
@@ -151,7 +157,7 @@ for (const mod of modules.values()) {
 }
 
 const manifest = {
-  version: "3.2.0",
+  version: pkgVersion,
   generated_at: "deterministic",
   entrypoints: {
     app: assets[entry],
