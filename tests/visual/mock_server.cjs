@@ -240,6 +240,37 @@ const server = http.createServer((req, res) => {
     })),
   });
 
+  if (pathname === "/api/embeddings/status") return json(res, {
+    provider: "ollama", requested_provider: "ollama", active_provider: "ollama",
+    model: "nomic-embed-text", model_id: "ollama:nomic-embed-text:768", dimensions: 768,
+    grade: "production", state: "production", fell_back: false,
+    health: { status: "ok", detail: "Ollama reachable" },
+    last_indexed_at: "2026-06-06T12:30:00", index: { status: "ready", indexed_items: 48230 },
+  });
+  if (pathname === "/api/embeddings/providers") return json(res, { active: "ollama", requested: "ollama", providers: [
+    { id: "hash", label: "Local hash (fallback)", grade: "fallback" },
+    { id: "mlx", label: "MLX (Apple Silicon)", grade: "production" },
+    { id: "ollama", label: "Ollama", grade: "production" },
+    { id: "openai", label: "OpenAI-compatible", grade: "production" },
+    { id: "custom", label: "Custom", grade: "production" },
+  ] });
+  if (pathname === "/agents/api/runtime/status") return json(res, {
+    runtime: { ready: true, version: "2.2.0", execution_mode: "synchronous", default_pipeline: ["planner", "executor", "reviewer"], total_runs: 3, active_runs: 0 },
+    health: { status: "ok", checks: { run_store: { status: "ok" }, orchestrator: { status: "ok" } } },
+    roles: [{ role: "planner", agent_id: "agent:planner" }, { role: "executor", agent_id: "agent:executor" }, { role: "reviewer", agent_id: "agent:reviewer" }],
+    agents: [
+      { id: "agent:planner", name: "Planner", role: "Decomposes the goal into an ordered plan.", state: "available", runs: 2, handoffs: ["agent:executor"] },
+      { id: "agent:executor", name: "Executor", role: "Executes each planned step.", state: "available", runs: 1, handoffs: ["agent:reviewer"] },
+      { id: "agent:reviewer", name: "Reviewer", role: "Reviews and approves the work.", state: "available", runs: 1, handoffs: [] },
+    ],
+    runs: [
+      { id: "agent-run-1", agent_id: "agent:executor", status: "ok", input: "Summarize release", output: "Completed 3/3 steps", created_at: "2026-06-06T12:30:00" },
+      { id: "agent-run-2", agent_id: "agent:executor", status: "retried_ok", input: "Build index", output: "Completed after 1 retry", created_at: "2026-06-06T11:05:00" },
+    ],
+  });
+  if (pathname === "/agents/api/runtime/health") return json(res, { status: "ok", checks: { run_store: { status: "ok" }, orchestrator: { status: "ok" } } });
+  if (pathname === "/agents/api/runtime/config") return json(res, { version: "2.2.0", roles: ["researcher", "planner", "executor", "reviewer", "release"], default_pipeline: ["planner", "executor", "reviewer"], max_retries_cap: 5, execution_mode: "synchronous" });
+
   if (pathname === "/knowledge-graph/graph") return json(res, { nodes: graphNodes, edges: graphEdges });
   if (pathname === "/knowledge-graph/stats") return json(res, workspaceOs.graph);
   if (pathname === "/knowledge-graph/search") return json(res, { query: url.searchParams.get("q"), matches: graphNodes });
@@ -260,6 +291,21 @@ const server = http.createServer((req, res) => {
   if (pathname === "/admin/sso") return json(res, { enabled: false, provider_name: "Okta", discovery_url: "", client_id: "", redirect_uri: "", scopes: "openid email profile" });
   if (pathname === "/admin/enterprise") return json(res, enterpriseOverview);
   if (pathname === "/admin/enterprise/siem-export") return json(res, enterpriseOverview.siem_export);
+  if (pathname === "/admin/roles") return json(res, { roles: [
+    { role: "admin", members: 1, caps: ["users", "policies", "audit", "security", "chat", "search", "files", "pipeline"] },
+    { role: "user", members: 1, caps: ["chat", "search", "files", "pipeline"] },
+  ] });
+  if (pathname === "/admin/policies") return json(res, { policies: [
+    { id: "local_file_access", label: "Local file access", value: "Approval-token gated (per path/user/action)", enforced: true },
+    { id: "package_install", label: "Package install", value: "Admin-only with audit trail", enforced: true },
+    { id: "data_residency", label: "Data residency", value: "Single-tenant local storage (~/.ltcai)", enforced: true },
+    { id: "model_egress", label: "Model egress", value: "Local-only by default", enforced: true },
+  ] });
+  if (pathname === "/admin/security/overview") return json(res, {
+    generated_at: "2026-06-06T12:00:00", risk_rate: 2,
+    cards: { events_today: 5, high_risk_events: 0, risky_chats: 1, review_required: 1 },
+    severity_counts: { high: 0, medium: 1, low: 2 }, field_counts: { email: 4, api_key: 1 },
+  });
   if (pathname.startsWith("/admin/security/")) return json(res, { cards: {}, users: [], events: [], files: [], field_counts: {} });
 
   if (req.method === "POST" || req.method === "PATCH" || req.method === "DELETE") return json(res, { status: "ok" });

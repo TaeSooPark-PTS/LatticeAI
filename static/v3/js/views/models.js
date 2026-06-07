@@ -10,7 +10,7 @@
  *   ctx = { h, icon, api, store, c, route, params, navigate, toast }
  * ========================================================================== */
 
-const PENDING = "Model loading runs on the local MLX runtime — pending backend.";
+const PENDING = "Load and unload models from the classic runtime surface (/workspace → Models); this view is read-only.";
 
 export async function render(ctx) {
   const { h, icon, api, c } = ctx;
@@ -53,7 +53,7 @@ export async function render(ctx) {
     tableHost.replaceChildren(c.loading({ lines: 4 }));
     embedHost.replaceChildren(c.loading({ lines: 2 }));
 
-    const res = await api.models();
+    const [res, emb] = await Promise.all([api.models(), api.embeddingsStatus()]);
     const data = res.data || {};
     const catalog = Array.isArray(data.catalog) ? data.catalog : [];
 
@@ -65,7 +65,7 @@ export async function render(ctx) {
         c.emptyState({ icon: "cpu-off", title: "No models on this machine", body: "Pull an MLX model into the local runtime to get started." }),
       );
       statHost.replaceChildren();
-      embedHost.replaceChildren(c.emptyState({ icon: "grid-dots", title: "Fallback embeddings active", body: "lattice-local-hash-v1 can build deterministic local vectors without downloading a semantic embedding model." }));
+      renderEmbeddings([], emb);
       tableHost.replaceChildren(c.emptyState({ icon: "cpu-off", title: "Catalog is empty", body: "Connect the MLX runtime to list installed models." }));
       return;
     }
@@ -81,7 +81,7 @@ export async function render(ctx) {
 
     renderActive(active);
     renderStats(catalog, embeddings, loaded);
-    renderEmbeddings(embeddings);
+    renderEmbeddings(embeddings, emb);
     renderCatalog(language.length ? language : catalog);
   }
 
@@ -126,14 +126,17 @@ export async function render(ctx) {
     );
   }
 
-  function renderEmbeddings(embeddings) {
+  function renderEmbeddings(embeddings, emb) {
+    const statusCard = embeddingStatusCard(ctx, emb);
     if (!embeddings.length) {
-      embedHost.replaceChildren(
-        c.emptyState({ icon: "grid-dots", title: "Fallback embeddings active", body: "lattice-local-hash-v1 builds deterministic local vectors until a semantic embedding provider is configured." }),
-      );
+      embedHost.replaceChildren(h("div.lt3-stack-4",
+        statusCard,
+        c.emptyState({ icon: "grid-dots", title: "No catalog embedding models", body: "The active provider above powers the Vector Index. Pull a semantic embedding model to list it here." }),
+      ));
       return;
     }
-    embedHost.replaceChildren(
+    embedHost.replaceChildren(h("div.lt3-stack-4",
+      statusCard,
       h("div.lt3-grid-auto",
         embeddings.map((m) => c.card(
           h("div.lt3-stack-2",
@@ -155,7 +158,7 @@ export async function render(ctx) {
           { flat: true },
         )),
       ),
-    );
+    ));
   }
 
   function renderCatalog(rows) {
@@ -190,6 +193,43 @@ export async function render(ctx) {
 
   load();
   return root;
+}
+
+/* ── Active embedding provider status (real /api/embeddings/status) ──────── */
+function embeddingStatusCard(ctx, emb) {
+  const { h, icon, c } = ctx;
+  const d = (emb && emb.data) || {};
+  const state = String(d.state || d.grade || "fallback").toLowerCase();
+  const statusPill = state === "production" ? c.pill("Production", "ok")
+    : state === "unavailable" ? c.pill("Unavailable", "err")
+    : c.pill("Fallback", "warn");
+  const label = ({ hash: "Local hash (fallback)", mlx: "MLX (Apple Silicon)", ollama: "Ollama",
+    openai: "OpenAI-compatible", custom: "Custom" }[String(d.active_provider || d.provider || "hash")]) || String(d.active_provider || "—");
+  const lastIndexed = d.last_indexed_at ? new Date(d.last_indexed_at).toLocaleString() : "Never";
+  return c.card(
+    h("div.lt3-stack-3",
+      h("div.lt3-row", { style: { "justify-content": "space-between", "align-items": "center", "flex-wrap": "wrap", gap: "var(--lt3-space-3)" } },
+        h("div.lt3-row-2", { style: { "align-items": "center" } },
+          h("span", { style: { color: "var(--lt3-pillar-vector)", display: "inline-flex" } }, icon("grid-dots")),
+          h("div",
+            h("div.lt3-eyebrow", "Active provider"),
+            h("b", { style: { "font-size": "var(--lt3-text-md)" } }, label),
+          ),
+        ),
+        h("div.lt3-row-2", { style: { "align-items": "center" } }, statusPill, c.sourceBadge((emb && emb.source) || "pending")),
+      ),
+      d.fell_back
+        ? h("div.lt3-faint", { style: { "font-size": "var(--lt3-text-2xs)", color: "var(--lt3-warn, var(--muted))" } },
+            `Requested “${d.requested_provider}” is unavailable (${(d.health && d.health.detail) || "no detail"}); using hash fallback.`)
+        : null,
+      h("div.lt3-cluster",
+        specChip(ctx, "category", "Model", d.model || d.model_id || "—"),
+        specChip(ctx, "ruler-2", "Dimensions", String(d.dimensions || "—")),
+        specChip(ctx, "clock", "Last index", lastIndexed),
+      ),
+    ),
+    { attrs: { style: "border-color: color-mix(in srgb, var(--lt3-pillar-vector) 28%, var(--border)); background: var(--lt3-pillar-vector-soft, transparent)" } },
+  );
 }
 
 /* ── helpers ─────────────────────────────────────────────────────────────── */

@@ -8,7 +8,7 @@
 
 import { timeAgo } from "../core/dom.js";
 
-const PENDING = "User management write-side is pending backend integration.";
+const PENDING = "managed from the classic admin surface (/admin) in this build.";
 
 export async function render(ctx) {
   const { h, icon, api, c, toast } = ctx;

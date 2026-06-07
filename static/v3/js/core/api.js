@@ -70,6 +70,11 @@ export const api = {
     return withFallback("/api/index/status", {}, fx.INDEX_STATUS);
   },
 
+  /** POST /api/index/rebuild — rebuild the derived vector index (real run). */
+  rebuildIndex(opts = {}) {
+    return raw("/api/index/rebuild", { method: "POST", body: { full: false, include_nodes: true, include_chunks: true, ...opts } });
+  },
+
   /** GET /api/graph — knowledge graph (nodes + edges). Falls back through the
    *  current /knowledge-graph/graph route before the fixture. */
   async graph(params = {}) {
@@ -151,7 +156,55 @@ export const api = {
   adminSummary() { return withFallback("/admin/summary", {}, fx.ADMIN.summary); },
   adminUsers() { return withFallback("/admin/users", {}, fx.ADMIN.users); },
   adminAudit() { return withFallback("/admin/audit", {}, { recent_events: fx.ADMIN.audit }); },
+  adminSecurity() { return withFallback("/admin/security/overview", {}, fx.ADMIN.security); },
+  adminRoles() { return withFallback("/admin/roles", {}, { roles: fx.ADMIN.roles }); },
+  adminPolicies() { return withFallback("/admin/policies", {}, { policies: fx.ADMIN.policies }); },
   vpcStatus() { return withFallback("/vpc/status", {}, fx.ADMIN.vpc); },
+
+  /* ── Embeddings (real backend: /api/embeddings/*) ───────────────────── */
+  /** GET /api/embeddings/status — active provider, grade, dimensions, last index. */
+  async embeddingsStatus() {
+    const res = await raw("/api/embeddings/status");
+    if (res.ok && res.data && res.data.provider) {
+      return { ok: true, status: res.status, data: res.data, source: "live" };
+    }
+    // No backend → report unavailable honestly (never fabricate a provider).
+    return {
+      ok: true, status: res.status, source: "placeholder",
+      data: { provider: "hash", active_provider: "hash", model: "lattice-local-hash-v1",
+        model_id: "lattice-local-hash-v1:384", dimensions: 384, grade: "fallback",
+        state: "fallback", fell_back: false, health: { status: "unknown", detail: "backend unavailable" },
+        last_indexed_at: null },
+    };
+  },
+  embeddingsProviders() { return withFallback("/api/embeddings/providers", {}, { active: "hash", providers: [] }); },
+
+  /* ── Agents (real backend: AgentRuntime /agents/api/runtime/*) ───────── */
+  /** GET /agents/api/runtime/status — roles, roster, runs, health from the runtime. */
+  async agentRuntime() {
+    const res = await raw("/agents/api/runtime/status");
+    if (res.ok && res.data && res.data.runtime && Array.isArray(res.data.agents)) {
+      return { ok: true, status: res.status, data: res.data, source: "live" };
+    }
+    // Fallback: clearly-badged sample roster, no fabricated run ledger.
+    return {
+      ok: true, status: res.status, source: "placeholder",
+      data: { runtime: { ready: false, total_runs: 0, active_runs: 0 },
+        health: { status: "unknown", checks: {} }, roles: [],
+        agents: fx.AGENTS.map((a) => ({ ...a, last_status: null, last_at: null })), runs: [] },
+    };
+  },
+  /** POST /agents/api/run — execute the multi-agent pipeline for a goal. */
+  runAgent(goal, roles) { return raw("/agents/api/run", { method: "POST", body: { goal, roles: roles || [] } }); },
+
+  /* ── Local computer memory (real backend: /workspace/computer-memory) ── */
+  computerMemory() { return raw("/workspace/computer-memory"); },
+  setComputerMemory(enabled) {
+    return raw("/workspace/computer-memory", { method: "POST", body: { enabled, consent: { approved: !!enabled } } });
+  },
+
+  /* ── Organization workspaces (real backend: /workspace/orgs) ────────── */
+  createOrg(name) { return raw("/workspace/orgs", { method: "POST", body: { name } }); },
 
   /* ── Chat (real backend: SSE /chat + /history/*) ────────────────────── */
 

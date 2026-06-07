@@ -73,6 +73,8 @@ from latticeai.services.workspace_service import WorkspaceService
 from latticeai.services.model_service import ModelService
 from latticeai.services.chat_service import ChatService
 from latticeai.services.search_service import SearchService
+from latticeai.core.embedding_providers import resolve_embedder
+from latticeai.services.agent_runtime import AgentRuntime
 from latticeai.services.model_runtime import (
     CLOUD_VERIFY_TTL_SECONDS,
     ENGINE_MODEL_CATALOG,
@@ -246,7 +248,26 @@ VPC_FILE = DATA_DIR / "vpc_config.json"
 MCP_FILE = DATA_DIR / "mcp_installs.json"
 AUDIT_FILE = DATA_DIR / "audit_log.json"
 SSO_FILE = DATA_DIR / "sso_config.json"
-KNOWLEDGE_GRAPH = KnowledgeGraphStore(DATA_DIR / "knowledge_graph.sqlite", DATA_DIR / "knowledge_graph_blobs") if ENABLE_GRAPH else None
+# Resolve the configured embedding provider once at startup. Degrades to the
+# offline hash fallback when the requested provider is unavailable, while
+# recording the requested-vs-active provider for the Embeddings status surface.
+EMBEDDER = resolve_embedder(
+    CONFIG.embedding_provider,
+    model=CONFIG.embedding_model,
+    base_url=CONFIG.embedding_base_url,
+    api_key=CONFIG.embedding_api_key,
+    dim=CONFIG.embedding_dim,
+    timeout=CONFIG.embedding_timeout,
+    extra={"target": CONFIG.embedding_custom_target},
+    probe=CONFIG.embedding_provider not in {"", "hash", "local", "fallback"},
+)
+if EMBEDDER.fell_back:
+    logging.warning("Embedding provider %s unavailable: %s", EMBEDDER.requested, EMBEDDER.detail)
+KNOWLEDGE_GRAPH = KnowledgeGraphStore(
+    DATA_DIR / "knowledge_graph.sqlite",
+    DATA_DIR / "knowledge_graph_blobs",
+    embedder=EMBEDDER.provider,
+) if ENABLE_GRAPH else None
 LOCAL_KG_WATCHER = LocalKnowledgeWatcher(lambda: KNOWLEDGE_GRAPH) if ENABLE_GRAPH else None
 # ── v2 Realtime bus: constructed first so the store can fan every timeline
 # event into the realtime feed via a single additive sink (no per-call wiring).
@@ -1222,6 +1243,14 @@ PLATFORM = PlatformRuntime(
     get_tool_permission=get_tool_permission,
 )
 
+# Single AgentRuntime boundary over the orchestrator + run store.
+AGENT_RUNTIME = AgentRuntime(
+    store=WORKSPACE_OS,
+    orchestrator_factory=PLATFORM.build_orchestrator,
+    workspace_graph=_workspace_graph,
+    append_audit_event=append_audit_event,
+)
+
 app.include_router(create_plugins_router(
     registry=PLUGIN_REGISTRY,
     require_user=require_user,
@@ -1257,6 +1286,7 @@ app.include_router(create_agents_router(
     append_audit_event=append_audit_event,
     ui_file_response=ui_file_response,
     static_dir=STATIC_DIR,
+    agent_runtime=AGENT_RUNTIME,
 ))
 
 app.include_router(create_marketplace_router(
@@ -1356,9 +1386,17 @@ app.include_router(create_chat_router(
     base_dir=BASE_DIR,
 ))
 
+def _embedding_info() -> dict:
+    from latticeai.core.embedding_providers import PROVIDER_TYPES
+    info = EMBEDDER.as_dict()
+    info["available_providers"] = list(PROVIDER_TYPES)
+    return info
+
+
 app.include_router(create_search_router(
     service=SEARCH_SERVICE,
     require_user=require_user,
+    embedding_info=_embedding_info,
 ))
 
 app.include_router(create_tools_router(

@@ -50,8 +50,10 @@ function normalize(data) {
 export async function render(ctx) {
   const { h, icon, api, c, navigate, toast } = ctx;
 
-  const pendingToast = () =>
-    toast("Folder connection runs through the local agent — pending backend", "info");
+  // Folder connection/watch needs the desktop local-agent connector, which is
+  // not enabled in this build. Say so plainly rather than implying it's coming.
+  const unavailableToast = () =>
+    toast("Connecting a folder requires the Lattice desktop local agent — not available in this build.", "warn");
 
   const statHost = h("div.lt3-statrow", c.loading({ lines: 1 }));
   const srcSlot = h("span", c.sourceBadge("pending"));
@@ -64,7 +66,7 @@ export async function render(ctx) {
       sub: "Connected sources and the documents Lattice has indexed for retrieval. Everything stays on this machine.",
       actions: [
         h("button.lt3-btn.lt3-btn--ghost", { on: { click: () => navigate("knowledge-graph") } }, icon("chart-dots-3"), "View graph"),
-        h("button.lt3-btn.lt3-btn--primary", { on: { click: pendingToast } }, icon("folder-plus"), "Connect folder"),
+        h("button.lt3-btn.lt3-btn--ghost", { title: "Requires the desktop local agent (not in this build)", on: { click: unavailableToast } }, icon("folder-plus"), "Connect folder"),
       ],
     }),
     statHost,
@@ -75,7 +77,7 @@ export async function render(ctx) {
         h("p.lt3-faint", { style: { "font-size": "var(--lt3-text-sm)", "margin-top": "var(--lt3-space-1)" } },
           "Lattice watches the source, chunks it, embeds it, and links it into the knowledge graph."),
       ),
-      h("button.lt3-btn.lt3-btn--ghost", { on: { click: pendingToast } }, icon("folder-plus"), "Choose folder"),
+      h("button.lt3-btn.lt3-btn--ghost", { title: "Requires the desktop local agent (not in this build)", on: { click: unavailableToast } }, icon("folder-plus"), "Choose folder"),
     ),
     c.panel({
       head: h("div.lt3-row", { style: { "justify-content": "space-between", "align-items": "flex-start", width: "100%" } },
@@ -128,8 +130,9 @@ async function hydrate(ctx, slots) {
       icon: "folder-off",
       title: "No documents indexed yet",
       body: "Connect a folder and Lattice will index it for hybrid retrieval.",
-      action: h("button.lt3-btn.lt3-btn--primary.lt3-btn--sm",
-        { on: { click: () => toast("Folder connection runs through the local agent — pending backend", "info") } },
+      action: h("button.lt3-btn.lt3-btn--ghost.lt3-btn--sm",
+        { title: "Requires the desktop local agent (not in this build)",
+          on: { click: () => toast("Connecting a folder requires the Lattice desktop local agent — not available in this build.", "warn") } },
         icon("folder-plus"), "Connect folder"),
     }));
     return;
@@ -167,7 +170,8 @@ async function hydrate(ctx, slots) {
       key: "_actions", label: "", width: "44px",
       render: (row) => h("button.lt3-iconbtn.lt3-iconbtn--sm", {
         "aria-label": `Actions for ${row.name}`,
-        on: { click: () => toast(`Per-file actions for "${row.name}" run through the local agent — pending backend`, "info") },
+        title: "Requires the desktop local agent (not in this build)",
+        on: { click: () => toast(`Per-file actions require the Lattice desktop local agent — not available in this build.`, "warn") },
       }, icon("dots-vertical")),
     },
   ];

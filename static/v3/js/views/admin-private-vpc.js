@@ -9,7 +9,7 @@
 
 import * as fx from "../core/fixtures.js";
 
-const PENDING = "Peering configuration is pending backend integration.";
+const PENDING = "an Enterprise networking feature, not available in this build.";
 
 export async function render(ctx) {
   const { h, icon, api, c, toast } = ctx;

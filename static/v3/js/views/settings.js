@@ -23,6 +23,8 @@ export async function render(ctx) {
 
   const probesHost = h("div", c.loading({ lines: 3 }));
 
+  const embedHost = h("div", c.loading({ lines: 2 }));
+
   const root = h("div.lt3-stack-6",
     c.viewHeader({
       eyebrow: "System",
@@ -32,6 +34,13 @@ export async function render(ctx) {
 
     appearancePanel(ctx),
     workspacePanel(ctx),
+
+    c.panel({
+      eyebrow: "Models",
+      title: "Embeddings",
+      sub: "The vector signal behind retrieval. Configure the provider with LATTICEAI_EMBEDDING_PROVIDER (hash · mlx · ollama · openai · custom).",
+      children: embedHost,
+    }),
 
     c.panel({
       eyebrow: "Status",
@@ -48,7 +57,49 @@ export async function render(ctx) {
   );
 
   probeEndpoints(ctx, probesHost);
+  renderEmbeddings(ctx, embedHost);
   return root;
+}
+
+/* ── Embeddings (Settings → Models → Embeddings) ────────────────────────── */
+export function embeddingStatePill({ h, c }, st) {
+  const state = String(st.state || st.grade || "fallback").toLowerCase();
+  if (state === "production") return c.pill("Production", "ok");
+  if (state === "unavailable") return c.pill("Unavailable", "err");
+  return c.pill("Fallback", "warn");
+}
+
+async function renderEmbeddings(ctx, host) {
+  const { h, c } = ctx;
+  const res = await ctx.api.embeddingsStatus();
+  const d = res.data || {};
+  const lastIndexed = d.last_indexed_at ? new Date(d.last_indexed_at).toLocaleString() : "Never";
+  host.replaceChildren(
+    h("div.lt3-stack-4",
+      h("div.lt3-row", { style: { "justify-content": "space-between", "align-items": "center", "flex-wrap": "wrap", gap: "var(--lt3-space-3)" } },
+        h("div.lt3-row-2",
+          h("span", { style: { color: "var(--lt3-pillar-vector, var(--accent))", display: "inline-flex" } }, ctx.icon("grid-dots")),
+          h("b", { style: { "font-size": "var(--lt3-text-md)" } }, providerLabel(d.active_provider || d.provider)),
+        ),
+        h("div.lt3-row-2", embeddingStatePill(ctx, d), c.sourceBadge(res.source)),
+      ),
+      d.fell_back
+        ? c.banner(`Requested “${d.requested_provider}” is unavailable (${(d.health && d.health.detail) || "no detail"}); using the local hash fallback. Retrieval still works, but vectors are non-semantic until the provider is reachable.`, "warn", "alert-triangle")
+        : null,
+      h("dl.lt3-keyval",
+        h("dt", "Provider"), h("dd", providerLabel(d.active_provider || d.provider)),
+        h("dt", "Model"), h("dd", h("span.lt3-mono", d.model || d.model_id || "—")),
+        h("dt", "Dimensions"), h("dd", h("span.lt3-mono", String(d.dimensions || "—"))),
+        h("dt", "Status"), h("dd", embeddingStatePill(ctx, d)),
+        h("dt", "Last index"), h("dd", lastIndexed),
+      ),
+    ),
+  );
+}
+
+function providerLabel(p) {
+  return ({ hash: "Local hash (fallback)", mlx: "MLX (Apple Silicon)", ollama: "Ollama",
+    openai: "OpenAI-compatible", custom: "Custom" }[String(p || "hash")]) || String(p || "—");
 }
 
 /* ── Appearance ─────────────────────────────────────────────────────────── */
@@ -94,23 +145,38 @@ function appearancePanel({ h, icon, store, c }) {
 }
 
 /* ── Workspace ──────────────────────────────────────────────────────────── */
-function workspacePanel({ h, icon, store, c, toast }) {
+function workspacePanel({ h, icon, store, c, toast, api }) {
   const ws = store.activeWorkspace();
 
   const orgInput = h("input.lt3-input", {
     type: "text", placeholder: "Organization name…", "aria-label": "New organization name",
     style: { "flex": "1 1 220px" },
   });
-  const createOrg = () => {
+  const createBtn = h("button.lt3-btn.lt3-btn--primary", { type: "button" }, icon("plus"), "Create organization");
+  const createOrg = async () => {
     const name = (orgInput.value || "").trim();
-    toast(name
-      ? `“${name}” — organization workspaces are provisioned by the backend (pending).`
-      : "Organization workspaces are provisioned by the backend — pending.", "info");
+    if (!name) { toast("Enter an organization name first.", "info"); return; }
+    createBtn.disabled = true;
+    const res = await api.createOrg(name);
+    createBtn.disabled = false;
+    if (res && res.ok && res.data && !res.data.detail && !res.data.error) {
+      toast(`Organization “${name}” created.`, "ok");
+      orgInput.value = "";
+    } else {
+      const detail = (res && res.data && (res.data.detail || res.data.error)) || "the runtime is unavailable";
+      toast(`Could not create organization — ${detail}.`, "warn");
+    }
   };
+  createBtn.addEventListener("click", createOrg);
 
+  let savedLang = "en";
+  try { savedLang = localStorage.getItem("lt3-lang") || "en"; } catch {}
   const langSelect = h("select.lt3-select", {
-    "aria-label": "Interface language",
-    on: { change: (e) => toast(`Language preference (${e.target.selectedOptions[0].text}) will persist once the backend stores it — pending.`, "info") },
+    "aria-label": "Interface language", value: savedLang,
+    on: { change: (e) => {
+      try { localStorage.setItem("lt3-lang", e.target.value); } catch {}
+      toast(`Interface language set to ${e.target.selectedOptions[0].text} (saved on this device).`, "ok");
+    } },
   },
     h("option", { value: "en" }, "English"),
     h("option", { value: "ko" }, "한국어"),
@@ -131,9 +197,9 @@ function workspacePanel({ h, icon, store, c, toast }) {
         h("label.lt3-label", { style: { "display": "flex", "gap": "var(--lt3-space-2)", "align-items": "center" } }, icon("building-community"), "Create organization"),
         h("div.lt3-cluster",
           orgInput,
-          h("button.lt3-btn.lt3-btn--primary", { type: "button", on: { click: createOrg } }, icon("plus"), "Create organization"),
+          createBtn,
         ),
-        h("span.lt3-faint", { style: { "font-size": "var(--lt3-text-xs)" } }, "Shared organization workspaces require the backend — coming soon."),
+        h("span.lt3-faint", { style: { "font-size": "var(--lt3-text-xs)" } }, "Creates a shared organization workspace on this server."),
       ),
       h("div.lt3-field",
         h("label.lt3-label", { for: "lt3-set-lang", style: { "display": "flex", "gap": "var(--lt3-space-2)", "align-items": "center" } }, icon("language"), "Language"),
@@ -170,7 +236,7 @@ function aboutPanel({ h, icon, c }) {
     children: h("div.lt3-stack-4",
       h("dl.lt3-keyval",
         h("dt", "Application"), h("dd", "Lattice AI"),
-        h("dt", "Version"), h("dd", h("span.lt3-mono", "v3.0.0")),
+        h("dt", "Version"), h("dd", h("span.lt3-mono", "v3.0.1")),
         h("dt", "Edition"), h("dd", "Local-first AI workspace"),
       ),
       h("hr.lt3-divider"),

@@ -10,8 +10,6 @@
  *   ctx = { h, icon, api, store, c, route, params, navigate, toast }
  * ========================================================================== */
 
-import * as fx from "../core/fixtures.js";
-
 /* Capability columns, in product-area order. Each maps to a routable surface
  * and a Tabler icon so the matrix reads at a glance. */
 const CAPS = [
@@ -40,9 +38,11 @@ const capLabel = (key) => (CAPS.find((cc) => cc.key === key)?.label) || key;
 export async function render(ctx) {
   const { h, icon, c, navigate, toast } = ctx;
 
-  // Synchronous fixture — but still badged so sample vs live is explicit.
-  const roles = fx.ADMIN.roles || [];
-  const source = "placeholder";
+  // Live RBAC roles from /admin/roles; clearly-badged sample data on fallback.
+  const res = await ctx.api.adminRoles();
+  const roles = Array.isArray(res.data && res.data.roles) ? res.data.roles
+    : (Array.isArray(res.data) ? res.data : []);
+  const source = res.source;
   const totalMembers = roles.reduce((sum, r) => sum + (r.members || 0), 0);
 
   const root = h("div.lt3-stack-6",
@@ -174,5 +174,5 @@ function roleCard(ctx, r) {
 
 /* ── Pending-backend affordance ─────────────────────────────────────────── */
 function pendingToast(toast, what) {
-  toast(`${what} needs the admin RBAC backend — integration is pending.`, "info");
+  toast(`${what} is not available in this build — roles are a fixed RBAC model (owner · admin · member · viewer).`, "warn");
 }

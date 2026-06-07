@@ -6,8 +6,6 @@
  * and clearly defer their enforcement to the backend.
  * ========================================================================== */
 
-import * as fx from "../core/fixtures.js";
-
 // Governance capabilities that live behind the open-core Enterprise seam. These
 // are extension points, not implemented backend logic — labeled as sample data.
 const PACKS = [
@@ -19,21 +17,18 @@ const PACKS = [
 export async function render(ctx) {
   const { h, icon, c, toast } = ctx;
 
-  // Sourced from the documented admin contract; badged as sample until live.
-  const policies = fx.ADMIN.policies || [];
-  const source = "placeholder";
+  // Live governance posture from /admin/policies; sample data on fallback.
+  const res = await ctx.api.adminPolicies();
+  const policies = Array.isArray(res.data && res.data.policies) ? res.data.policies
+    : (Array.isArray(res.data) ? res.data : []);
+  const source = res.source;
 
   const root = h("div.lt3-stack-6",
     c.viewHeader({
       eyebrow: "Administration",
       title: "Policies",
       sub: "Governance and enforcement.",
-      actions: [
-        h("button.lt3-btn.lt3-btn--primary", {
-          type: "button",
-          on: { click: () => toast("New policy — drafting and persistence land with the backend (pending).", "info") },
-        }, icon("plus"), "New policy"),
-      ],
+      actions: [c.sourceBadge(source)],
     }),
 
     c.banner(
@@ -58,31 +53,23 @@ export async function render(ctx) {
   return root;
 }
 
-/* ── One policy row: description, live state, and an enforce toggle ───────── */
-function policyRow({ h, icon, c, toast }, p) {
-  const inputId = `lt3-pol-${p.id}`;
-  const stateSlot = h("div", c.statePill(p.enforced ? "active" : "idle"));
-
-  const onToggle = (e) => {
-    const enforced = e.target.checked;
-    stateSlot.replaceChildren(c.statePill(enforced ? "active" : "idle"));
-    toast(`Policy ${p.label} ${enforced ? "enforced" : "relaxed"} — pending backend`, "info");
-  };
-
+/* ── One policy row: description and its real, runtime-enforced state ─────── */
+// Policies are enforced by the runtime (approval gating, local-only egress,
+// local storage). They are reported read-only — not user-toggleable — so the UI
+// never implies a guardrail can be relaxed from the browser.
+function policyRow({ h, icon, c }, p) {
   return c.card(
     h("div.lt3-row", { style: { "justify-content": "space-between", "align-items": "flex-start", "gap": "var(--lt3-space-4)", "flex-wrap": "wrap" } },
       h("div.lt3-stack-2", { style: { "min-width": "0", "flex": "1 1 320px" } },
         h("div.lt3-row-2",
           h("span.lt3-card__icon", { style: { color: "var(--accent)" } }, icon("shield-check")),
           h("h3", { style: { "font-size": "var(--lt3-text-base)", "font-weight": "var(--lt3-weight-semibold)", "margin": "0" } }, p.label),
-          stateSlot,
         ),
         h("p.lt3-muted", { style: { "font-size": "var(--lt3-text-sm)", "margin": "0" } }, p.value),
       ),
-      // Token-native toggle (.lt3-switch markup: label > input + span).
-      h("label.lt3-switch", { for: inputId, title: p.enforced ? "Enforced" : "Relaxed" },
-        h("input", { id: inputId, type: "checkbox", checked: p.enforced, "aria-label": `Enforce policy: ${p.label}`, on: { change: onToggle } }),
-        h("span"),
+      h("div.lt3-row-2", { style: { "flex": "none", "align-items": "center" } },
+        c.statePill(p.enforced ? "active" : "idle"),
+        h("span.lt3-faint", { style: { "font-size": "var(--lt3-text-2xs)" } }, p.enforced ? "Enforced" : "Not enforced"),
       ),
     ),
   );

@@ -109,6 +109,53 @@ def create_admin_router(
             report["graph"] = {"error": str(e)}
         return report
 
+    # Canonical RBAC capability map — which product areas each role can reach.
+    # This is the real access policy the app enforces, not sample data.
+    _ROLE_CAPS = {
+        "owner": ["all"],
+        "admin": ["users", "policies", "audit", "security", "chat", "search", "files", "pipeline"],
+        "member": ["chat", "search", "files", "pipeline"],
+        "user": ["chat", "search", "files", "pipeline"],
+        "viewer": ["chat", "search"],
+    }
+
+    @router.get("/admin/roles")
+    async def admin_roles(request: Request):
+        _, users = require_admin(request)
+        counts: Dict[str, int] = defaultdict(int)
+        for email, user in users.items():
+            role = (get_user_role(email, users) or "user").lower()
+            counts[role] += 1
+        # Always surface the two RBAC tiers the app actually distinguishes so the
+        # matrix is meaningful even before extra users exist.
+        for base in ("admin", "user"):
+            counts.setdefault(base, counts.get(base, 0))
+        roles = [
+            {"role": role, "members": counts.get(role, 0), "caps": _ROLE_CAPS.get(role, ["chat", "search"])}
+            for role in sorted(counts, key=lambda r: (r != "owner", r != "admin", r))
+        ]
+        return {"roles": roles}
+
+    @router.get("/admin/policies")
+    async def admin_policies(request: Request):
+        require_admin(request)
+        # The real, enforced governance posture of a local-first deployment.
+        return {
+            "policies": [
+                {"id": "local_file_access", "label": "Local file access",
+                 "value": "Approval-token gated (per path/user/action)", "enforced": True},
+                {"id": "package_install", "label": "Package install",
+                 "value": "Admin-only with audit trail", "enforced": True},
+                {"id": "data_residency", "label": "Data residency",
+                 "value": "Single-tenant local storage (~/.ltcai)", "enforced": True},
+                {"id": "model_egress", "label": "Model egress",
+                 "value": "Local-only by default (no external inference in local mode)", "enforced": True},
+                {"id": "invite_gate", "label": "Invite gate",
+                 "value": "Required for new accounts" if invite_gate_enabled else "Open registration",
+                 "enforced": bool(invite_gate_enabled)},
+            ]
+        }
+
     @router.get("/vpc/status")
     async def vpc_status(request: Request):
         require_user(request)

@@ -11,16 +11,10 @@ const GAUGES = [
   { key: "gpu_mem_pct", label: "GPU (MLX)", icon: "brand-apple", variant: "hybrid", sub: (d) => `${fmtGb(d.gpu_mem_gb)} GB in use` },
 ];
 
-const RECENT_ACTIVITY = [
-  { icon: "search", title: "Hybrid search ran locally", meta: "MLX runtime · on-device", state: "ok" },
-  { icon: "vector-bezier-2", title: "Vector index refreshed", meta: "48k vectors · ~/.ltcai", state: "ok" },
-  { icon: "chart-dots-3", title: "Knowledge graph rebuilt", meta: "1.2k entities · on-device", state: "ok" },
-];
-
 export async function render(ctx) {
   const { h, icon, api, c } = ctx;
 
-  const state = { memoryOn: false };
+  const state = { memoryOn: false, activities: [], memSource: "pending" };
 
   // Hydrated after the async reads land.
   const srcSlot = h("span", c.sourceBadge("pending"));
@@ -67,7 +61,18 @@ export async function render(ctx) {
     runtimeHost.replaceChildren(buildRuntime(ctx, sys, models));
   }
 
+  // Reflect real local-memory state (enabled + recorded activity) from the backend.
+  async function loadMemory() {
+    const res = await api.computerMemory();
+    const cfg = (res && res.ok && res.data) ? res.data : null;
+    state.memSource = cfg ? "live" : "placeholder";
+    state.memoryOn = !!(cfg && cfg.enabled);
+    state.activities = (cfg && Array.isArray(cfg.activities)) ? cfg.activities.slice().reverse() : [];
+    if (state._refreshMemory) state._refreshMemory();
+  }
+
   load();
+  loadMemory();
   return root;
 }
 
@@ -124,34 +129,52 @@ function buildRuntime({ h, icon, c }, sys, models) {
   );
 }
 
-/* ── Local memory panel ──────────────────────────────────────────────────── */
+/* ── Local memory panel (wired to /workspace/computer-memory) ─────────────── */
 function buildMemoryPanel(ctx, state) {
   const { h, icon, c } = ctx;
   const notify = ctx.toast || c.toast;
 
-  const activityHost = h("div", renderActivity(ctx, state.memoryOn));
+  const activityHost = h("div", renderActivity(ctx, state));
+  const input = h("input", {
+    type: "checkbox",
+    "aria-label": "Enable local computer memory",
+    checked: state.memoryOn,
+    on: {
+      change: async (e) => {
+        const want = e.target.checked;
+        input.disabled = true;
+        const res = await ctx.api.setComputerMemory(want);
+        input.disabled = false;
+        if (res && res.ok) {
+          state.memoryOn = want;
+          state.memSource = "live";
+          const cfg = res.data || {};
+          state.activities = Array.isArray(cfg.activities) ? cfg.activities.slice().reverse() : state.activities;
+          refresh();
+          notify(
+            want
+              ? "Local memory enabled — context persists on this computer (~/.ltcai)."
+              : "Local memory disabled. Nothing will be persisted on this computer.",
+            want ? "ok" : "info",
+          );
+        } else {
+          // Revert the toggle; report the real reason (e.g. 403 consent, no backend).
+          e.target.checked = state.memoryOn;
+          const detail = (res && res.data && (res.data.detail || res.data.error)) || "the runtime is unavailable";
+          notify(`Could not change local memory — ${detail}.`, "warn");
+        }
+      },
+    },
+  });
 
   // Built from the frozen .lt3-switch markup (input + span); no shared file touched.
-  const sw = h("label.lt3-switch", { title: "Enable local computer memory" },
-    h("input", {
-      type: "checkbox",
-      "aria-label": "Enable local computer memory",
-      checked: state.memoryOn,
-      on: {
-        change: (e) => {
-          state.memoryOn = e.target.checked;
-          activityHost.replaceChildren(renderActivity(ctx, state.memoryOn));
-          notify(
-            state.memoryOn
-              ? "Local memory enabled — the assistant can persist context on this computer. Backend persistence integration is pending."
-              : "Local memory disabled. Nothing will be persisted on this computer.",
-            state.memoryOn ? "ok" : "info",
-          );
-        },
-      },
-    }),
-    h("span"),
-  );
+  const sw = h("label.lt3-switch", { title: "Enable local computer memory" }, input, h("span"));
+
+  function refresh() {
+    input.checked = state.memoryOn;
+    activityHost.replaceChildren(renderActivity(ctx, state));
+  }
+  state._refreshMemory = refresh;
 
   return c.panel({
     eyebrow: "On-device",
@@ -168,34 +191,41 @@ function buildMemoryPanel(ctx, state) {
         sw,
       ),
       h("div",
-        h("div.lt3-eyebrow", { style: { "margin-bottom": "var(--lt3-space-2)" } }, "Recent local activity"),
+        h("div.lt3-row", { style: { "justify-content": "space-between", "align-items": "center", "margin-bottom": "var(--lt3-space-2)" } },
+          h("div.lt3-eyebrow", "Recent local activity"),
+          h("span", { "data-mem-src": "1" }, c.sourceBadge(state.memSource)),
+        ),
         activityHost,
       ),
     ),
   });
 }
 
-function renderActivity({ h, icon, c }, on) {
-  if (!on) {
+function renderActivity({ h, icon, c }, state) {
+  if (!state.memoryOn) {
     return c.emptyState({
       icon: "database-off",
       title: "Memory is off",
       body: "Enable local memory to let the assistant retain context on this computer.",
     });
   }
-  return h("div.lt3-stack-2",
-    h("div.lt3-list",
-      RECENT_ACTIVITY.map((a) => h("div.lt3-list__item",
-        icon(a.icon),
-        h("div.lt3-list__body",
-          h("div.lt3-list__title", a.title),
-          h("div.lt3-list__meta", a.meta),
-        ),
-        c.statePill(a.state),
-      )),
-    ),
-    h("div.lt3-row-2", c.sourceBadge("placeholder"),
-      h("span.lt3-faint", { style: { "font-size": "var(--lt3-text-2xs)" } }, "Sample activity — local persistence pending")),
+  const items = Array.isArray(state.activities) ? state.activities : [];
+  if (!items.length) {
+    return c.emptyState({
+      icon: "history-off",
+      title: "No activity recorded yet",
+      body: "Once memory is on, on-device actions the assistant takes will be logged here.",
+    });
+  }
+  return h("div.lt3-list",
+    items.slice(0, 8).map((a) => h("div.lt3-list__item",
+      icon(a.icon || "activity"),
+      h("div.lt3-list__body",
+        h("div.lt3-list__title", a.title || a.action || a.kind || "Activity"),
+        h("div.lt3-list__meta", a.meta || a.detail || a.timestamp || ""),
+      ),
+      c.statePill(a.state || "ok"),
+    )),
   );
 }
 

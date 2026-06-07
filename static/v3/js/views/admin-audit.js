@@ -41,7 +41,7 @@ export async function render(ctx) {
       actions: [
         srcSlot,
         h("button.lt3-btn.lt3-btn--ghost", {
-          on: { click: () => ctx.toast("Audit export integration is pending.", "info") },
+          on: { click: () => ctx.toast("Audit export is not available in this build (SIEM export is an Enterprise feature).", "warn") },
         }, icon("download"), "Export"),
       ],
     }),

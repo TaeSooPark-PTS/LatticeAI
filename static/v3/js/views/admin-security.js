@@ -8,8 +8,6 @@
  * badges it as sample data until that endpoint is live.
  * ========================================================================== */
 
-import * as fx from "../core/fixtures.js";
-
 const SEVERITY = [
   { key: "high", label: "High", variant: "warn", icon: "alert-triangle", desc: "Strong sensitive-data match" },
   { key: "medium", label: "Medium", variant: "", icon: "alert-circle", desc: "Likely sensitive pattern" },
@@ -19,9 +17,11 @@ const SEVERITY = [
 export async function render(ctx) {
   const { h, icon, c, navigate } = ctx;
 
-  // Synchronous fixture (no backend endpoint yet) — still badged as sample data.
-  const sec = fx.ADMIN.security || {};
-  const source = "placeholder";
+  // Live DLP overview from /admin/security/overview; clearly-badged sample data
+  // when the endpoint is unavailable (e.g. the viewer is not an admin).
+  const res = await ctx.api.adminSecurity();
+  const sec = normalizeSecurity(res.data);
+  const source = res.source;
 
   const risky = num(sec.risky_messages);
   const compliant = num(sec.compliant_messages);
@@ -39,7 +39,7 @@ export async function render(ctx) {
       actions: [
         c.sourceBadge(source),
         h("button.lt3-btn.lt3-btn--ghost", {
-          on: { click: () => ctx.toast("DLP rule editing isn't wired to a backend yet — integration pending.", "info") },
+          on: { click: () => ctx.toast("DLP rule editing is not available in this build; rules are enforced by the runtime defaults.", "warn") },
         }, icon("adjustments"), "Tune rules"),
         h("button.lt3-btn.lt3-btn--primary", {
           on: { click: () => navigate("admin/audit") },
@@ -143,6 +143,31 @@ function buildDlpPanel(ctx, dlp, dlpMax, total, source) {
 }
 
 /* ── helpers ─────────────────────────────────────────────────────────────── */
+// Normalize the live /admin/security/overview payload and the fixture into one
+// shape: { risk_rate, risky_messages, compliant_messages, severity_counts, dlp_fields }.
+function normalizeSecurity(data) {
+  const d = data || {};
+  const cards = d.cards || {};
+  const risky = num(d.risky_messages != null ? d.risky_messages : cards.risky_chats);
+  const riskRate = num(d.risk_rate);
+  let compliant = num(d.compliant_messages);
+  if (d.compliant_messages == null && riskRate > 0) {
+    const total = Math.round(risky / (riskRate / 100));
+    compliant = Math.max(0, total - risky);
+  }
+  let dlp = Array.isArray(d.dlp_fields) ? d.dlp_fields : null;
+  if (!dlp && d.field_counts && typeof d.field_counts === "object") {
+    dlp = Object.entries(d.field_counts).map(([field, hits]) => ({ field, hits: num(hits) }));
+  }
+  return {
+    risk_rate: riskRate,
+    risky_messages: risky,
+    compliant_messages: compliant,
+    severity_counts: d.severity_counts || { high: 0, medium: 0, low: 0 },
+    dlp_fields: dlp || [],
+  };
+}
+
 function num(v) {
   const n = Number(v);
   return Number.isFinite(n) ? n : 0;

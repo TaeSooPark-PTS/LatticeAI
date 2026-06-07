@@ -12,23 +12,25 @@ import * as fx from "../core/fixtures.js";
 export async function render(ctx) {
   const { h, icon, api, c, toast } = ctx;
 
-  const pending = (label) => () => toast(`${label} runs on the local runtime — backend integration is pending.`, "info");
+  // Pipeline authoring (defining new multi-stage flows) is not available from
+  // this view in this build — say so plainly instead of implying it's coming.
+  const unavailable = (label) => () => toast(`${label} is managed from the classic workflow designer — not available from this view.`, "warn");
 
   const statHost = h("div.lt3-statrow", c.loading({ lines: 1 }));
   const srcSlot = h("span", c.sourceBadge("pending"));
   const flowsHost = h("div.lt3-stack-6", c.loading({ lines: 3, block: true }));
+
+  const rebuildBtn = h("button.lt3-btn.lt3-btn--primary", { on: { click: () => rebuild() } }, icon("refresh"), "Rebuild index");
 
   const root = h("div.lt3-stack-6",
     c.viewHeader({
       eyebrow: "Data",
       title: "Pipeline",
       sub: "Ingest, embed, and graph-build flows that turn your sources into the retrieval lattice — chunk, embed, extract entities, and link the graph.",
-      actions: [
-        h("button.lt3-btn.lt3-btn--primary", { on: { click: pending("New pipeline") } }, icon("plus"), "New pipeline"),
-      ],
+      actions: [rebuildBtn],
     }),
     c.banner(
-      "Pipelines execute on this machine's local runtime. This view is integration-ready against the index APIs — wire it to /workspace/workflows to drive real runs.",
+      "Pipelines execute on this machine's local runtime. Use Rebuild index to re-embed every chunk and relink the knowledge graph from your current sources.",
       "info",
       "server-bolt",
     ),
@@ -48,6 +50,23 @@ export async function render(ctx) {
     srcSlot.replaceChildren(c.sourceBadge(res.source));
     renderStats(pipelines);
     renderFlows(pipelines);
+  }
+
+  // Real pipeline run: rebuild the vector index (re-embed chunks, relink graph).
+  async function rebuild() {
+    rebuildBtn.disabled = true;
+    rebuildBtn.replaceChildren(icon("loader"), "Rebuilding…");
+    const res = await api.rebuildIndex();
+    rebuildBtn.disabled = false;
+    rebuildBtn.replaceChildren(icon("refresh"), "Rebuild index");
+    if (res && res.ok && res.data && res.data.status === "completed") {
+      const d = res.data;
+      toast(`Index rebuilt — ${d.items_indexed} indexed, ${d.items_skipped} unchanged (${d.embedding_model}).`, "ok");
+      load();
+    } else {
+      const detail = (res && res.data && (res.data.detail || res.data.error)) || "the knowledge graph is unavailable";
+      toast(`Could not rebuild the index — ${detail}.`, "warn");
+    }
   }
 
   function renderStats(pipelines) {
@@ -73,7 +92,7 @@ export async function render(ctx) {
           icon: "git-branch-deleted",
           title: "No pipelines yet",
           body: "Connect a source and create a pipeline to ingest, embed, and build the graph.",
-          action: h("button.lt3-btn.lt3-btn--primary.lt3-btn--sm", { on: { click: pending("New pipeline") } }, icon("plus"), "New pipeline"),
+          action: h("button.lt3-btn.lt3-btn--ghost.lt3-btn--sm", { on: { click: () => rebuild() } }, icon("refresh"), "Rebuild index"),
         }),
       );
       return;
@@ -117,7 +136,7 @@ export async function render(ctx) {
         h("span.lt3-faint.lt3-row-2", { style: { "font-size": "var(--lt3-text-xs)" } }, icon("history"), p.last_run ? timeAgo(p.last_run) : "—"),
         h("span.lt3-faint.lt3-row-2", { style: { "font-size": "var(--lt3-text-xs)" } }, icon("gauge"), p.throughput || "—"),
       ),
-      h("button.lt3-btn.lt3-btn--ghost.lt3-btn--sm", { on: { click: pending(`Running "${p.name}"`) } }, icon("player-play"), "Run"),
+      h("button.lt3-btn.lt3-btn--ghost.lt3-btn--sm", { on: { click: unavailable(`Running "${p.name}"`) } }, icon("player-play"), "Run"),
     );
   }
 }
