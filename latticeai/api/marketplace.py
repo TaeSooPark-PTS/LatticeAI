@@ -16,6 +16,10 @@ class TemplateInstallRequest(BaseModel):
     data: Dict[str, Any] = {}
 
 
+class TemplateCloneRequest(BaseModel):
+    name: Optional[str] = None
+
+
 def create_marketplace_router(
     *,
     store,
@@ -71,6 +75,15 @@ def create_marketplace_router(
         except MarketplaceError as exc:
             raise HTTPException(status_code=400, detail=str(exc)) from exc
         return {"installed": installed}
+
+    @router.post("/marketplace/templates/{kind}/{template_id}/clone")
+    async def clone_template(kind: str, template_id: str, req: TemplateCloneRequest, request: Request):
+        require_user(request)
+        gate_read(request)
+        try:
+            return {"template": catalog.clone_template(kind, template_id, req.name)}
+        except MarketplaceError as exc:
+            raise HTTPException(status_code=404, detail=str(exc)) from exc
 
     @router.get("/marketplace/templates/registry")
     async def template_registry(request: Request):

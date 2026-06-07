@@ -113,6 +113,13 @@ from latticeai.api.tools import create_tools_router
 from latticeai.api.static_routes import create_static_routes_router
 from latticeai.api.garden import create_garden_router
 from latticeai.api.setup import create_setup_router
+from latticeai.api.mcp import create_mcp_router
+from latticeai.api.hooks import create_hooks_router
+from latticeai.core.hooks import HooksRegistry
+from latticeai.api.agent_registry import create_agent_registry_router
+from latticeai.core.agent_registry import AgentRegistry
+from latticeai.api.memory import create_memory_router
+from latticeai.services.memory_service import MemoryService
 from latticeai.services.tool_dispatch import (
     LOCAL_WRITE_BLOCKED_PREFIXES as _LOCAL_WRITE_BLOCKED_PREFIXES,
     TOOL_GOVERNANCE,
@@ -122,6 +129,7 @@ from latticeai.services.tool_dispatch import (
     configure_tool_dispatch,
     get_tool_permission,
     list_tool_permissions,
+    tool_response as _tool_response,
 )
 from latticeai.core.tool_registry import TOOL_CATALOG_BRIEF as _TOOL_CATALOG_BRIEF
 from mcp_registry import (
@@ -291,6 +299,19 @@ WORKSPACE_SERVICE = WorkspaceService(WORKSPACE_OS)
 PLUGINS_DIR = Path(os.getenv("LATTICEAI_PLUGINS_DIR") or (BASE_DIR / "plugins"))
 PLUGIN_REGISTRY = PluginRegistry(PLUGINS_DIR, store=WORKSPACE_OS)
 TEMPLATE_CATALOG = TemplateCatalog()
+# ── v3.2 platform registries: lifecycle hooks + agent registry, persisted under
+# DATA_DIR so the /app Hooks and Agent Registry views read/write real state.
+HOOKS_REGISTRY = HooksRegistry(DATA_DIR / "hooks.json")
+AGENT_REGISTRY = AgentRegistry(DATA_DIR / "agent_registry.json")
+# Unified long-term memory platform fronting workspace memories, agent
+# snapshots, conversation history, and the KG graph/vector index.
+MEMORY_SERVICE = MemoryService(
+    store=WORKSPACE_OS,
+    data_dir=DATA_DIR,
+    knowledge_graph=KNOWLEDGE_GRAPH,
+    enable_graph=ENABLE_GRAPH,
+    history_file=HISTORY_FILE,
+)
 
 def _require_graph():
     if not ENABLE_GRAPH or KNOWLEDGE_GRAPH is None:
@@ -1437,6 +1458,46 @@ app.include_router(create_tools_router(
     recommend_mcps=recommend_mcps,
     install_mcp=install_mcp,
     mcp_public_item=mcp_public_item,
+))
+
+# MCP / skills-marketplace / plugins-directory surface (revived in v3.2.0).
+app.include_router(create_mcp_router(
+    require_user=require_user,
+    require_admin=require_admin,
+    append_audit_event=append_audit_event,
+    load_mcp_installs=load_mcp_installs,
+    recommend_mcps=recommend_mcps,
+    install_mcp=install_mcp,
+    mcp_public_item=mcp_public_item,
+    get_tool_permission=get_tool_permission,
+    tool_governance=TOOL_GOVERNANCE,
+    tool_governance_default=_TOOL_GOVERNANCE_DEFAULT,
+    check_tool_role=_check_tool_role,
+    tool_response=_tool_response,
+    require_graph=_require_graph,
+    knowledge_graph=KNOWLEDGE_GRAPH,
+    data_dir=DATA_DIR,
+))
+
+app.include_router(create_hooks_router(
+    registry=HOOKS_REGISTRY,
+    require_user=require_user,
+    append_audit_event=append_audit_event,
+))
+
+app.include_router(create_agent_registry_router(
+    registry=AGENT_REGISTRY,
+    require_user=require_user,
+    append_audit_event=append_audit_event,
+))
+
+app.include_router(create_memory_router(
+    service=MEMORY_SERVICE,
+    require_user=require_user,
+    get_current_user=get_current_user,
+    gate_read=PLATFORM.gate_read,
+    gate_write=PLATFORM.gate_write,
+    append_audit_event=append_audit_event,
 ))
 
 app.include_router(create_garden_router(gardener=gardener, require_user=require_user))

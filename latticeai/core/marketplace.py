@@ -11,8 +11,37 @@ from copy import deepcopy
 from typing import Any, Dict, List, Optional
 
 
-MARKETPLACE_VERSION = "2.2.0"
+MARKETPLACE_VERSION = "3.2.0"
 TEMPLATE_KINDS = ("plugin", "workflow", "agent")
+
+
+def _agent_template(
+    template_id: str,
+    name: str,
+    description: str,
+    *,
+    roles: List[str],
+    capabilities: List[str],
+    suggested_tools: List[str],
+    category: str,
+    max_retries: int = 2,
+) -> Dict[str, Any]:
+    """Build a portable agent template entry (Part 4 reusable templates)."""
+    return {
+        "id": template_id,
+        "kind": "agent",
+        "name": name,
+        "version": "1.0.0",
+        "description": description,
+        "metadata": {"category": category, "installable": True, "agent_template": True},
+        "definition": {
+            "roles": roles,
+            "max_retries": max_retries,
+            "capabilities": capabilities,
+            "suggested_tools": suggested_tools,
+            "constraints": ["workspace scoped", "no secret leakage", "replayable timeline"],
+        },
+    }
 
 
 class MarketplaceError(Exception):
@@ -73,7 +102,47 @@ BUILTIN_TEMPLATES: Dict[str, List[Dict[str, Any]]] = {
                 "max_retries": 2,
                 "constraints": ["workspace scoped", "no secret leakage", "replayable timeline"],
             },
-        }
+        },
+        _agent_template(
+            "agent-research-assistant", "Research Assistant",
+            "Retrieves workspace context, plans an inquiry, and synthesizes a reviewed answer.",
+            roles=["researcher", "planner", "reviewer"],
+            capabilities=["context-retrieval", "hybrid-search", "memory-recall", "synthesis"],
+            suggested_tools=["knowledge_search", "knowledge_graph_search", "read_file"],
+            category="research",
+        ),
+        _agent_template(
+            "agent-coding-assistant", "Coding Assistant",
+            "Plans a change, edits files, runs the build, and reviews the result before finishing.",
+            roles=["planner", "executor", "reviewer"],
+            capabilities=["task-decomposition", "tool-use", "file-write", "verification"],
+            suggested_tools=["edit_file", "write_file", "run_command", "build_project", "git_diff"],
+            category="coding",
+        ),
+        _agent_template(
+            "agent-knowledge-curator", "Knowledge Curator",
+            "Captures, structures, and saves knowledge into the graph and memory.",
+            roles=["researcher", "executor"],
+            capabilities=["context-retrieval", "graph-read", "knowledge-save"],
+            suggested_tools=["knowledge_save", "knowledge_graph_ingest", "knowledge_tree"],
+            category="knowledge",
+        ),
+        _agent_template(
+            "agent-documentation-writer", "Documentation Writer",
+            "Plans a document, drafts and writes it, and reviews for completeness.",
+            roles=["planner", "executor", "reviewer"],
+            capabilities=["task-decomposition", "file-write", "summarize", "verification"],
+            suggested_tools=["create_docx", "create_pdf", "write_file", "read_document"],
+            category="documentation",
+        ),
+        _agent_template(
+            "agent-workflow-builder", "Workflow Builder",
+            "Plans and assembles a multi-step workflow definition for repeatable automation.",
+            roles=["planner", "executor"],
+            capabilities=["task-decomposition", "workflow-run", "delegation"],
+            suggested_tools=["todo_write", "workspace_tree"],
+            category="automation",
+        ),
     ],
 }
 
@@ -109,6 +178,22 @@ class TemplateCatalog:
             if template.get("id") == template_id:
                 return deepcopy(template)
         raise MarketplaceError(f"template not found: {item_kind}/{template_id}")
+
+    def clone_template(self, kind: str, template_id: str, new_name: Optional[str] = None) -> Dict[str, Any]:
+        """Return an editable copy of a template with a fresh id (Part 4 clone)."""
+        template = self.get_template(kind, template_id)
+        name = (new_name or f"{template['name']} (Copy)").strip()
+        slug = name.lower().replace(" ", "-").replace("(", "").replace(")", "")
+        clone = deepcopy(template)
+        clone["id"] = f"{template['id']}-copy-{slug}"[:80]
+        clone["name"] = name
+        clone["version"] = "1.0.0"
+        clone["metadata"] = {
+            **(template.get("metadata") or {}),
+            "cloned_from": template_id,
+            "editable": True,
+        }
+        return clone
 
     def export_template(self, kind: str, template_id: str) -> Dict[str, Any]:
         template = self.get_template(kind, template_id)
