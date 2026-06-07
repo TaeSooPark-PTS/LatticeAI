@@ -97,9 +97,17 @@ async function hydrate(ctx, slots) {
   const { h, icon, api, c, toast } = ctx;
   const { statHost, srcSlot, tableHost } = slots;
 
-  const res = await api.get("/local/list", fx.FILES);
-  const files = normalize(res.data) || normalize(fx.FILES) || [];
-  srcSlot.replaceChildren(c.sourceBadge(res.source));
+  // /local/list is permission-gated: it requires a `path` query param and, in
+  // the browser, returns a permission-request object rather than a bare file
+  // list. Probe it with the required param (avoids a 422) and only treat an
+  // actual listing as live — otherwise show clearly-badged sample documents.
+  const probe = await api.raw("/local/list?path=" + encodeURIComponent("."));
+  const liveFiles = probe.ok && probe.data && !probe.data.permission_required
+    ? normalize(probe.data)
+    : null;
+  const source = liveFiles ? "live" : "placeholder";
+  const files = liveFiles || normalize(fx.FILES) || [];
+  srcSlot.replaceChildren(c.sourceBadge(source));
 
   // ── Stat roll-up ──────────────────────────────────────────────────────────
   const indexedCount = files.filter((f) => f.indexed).length;

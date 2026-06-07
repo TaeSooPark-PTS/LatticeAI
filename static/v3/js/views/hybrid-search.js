@@ -15,7 +15,7 @@ const MODES = [
 const EXAMPLES = ["retrieval design", "vector index config", "rank fusion", "graph adjacency"];
 
 const SIGNALS = [
-  { key: "vector", label: "Vector", variant: "vector", icon: "grid-dots", desc: "Dense embedding similarity — meaning, not keywords." },
+  { key: "vector", label: "Vector", variant: "vector", icon: "grid-dots", desc: "Dense vector similarity from the local embedding index." },
   { key: "keyword", label: "Keyword", variant: "", icon: "abc", desc: "Lexical overlap — exact terms and phrases." },
   { key: "graph", label: "Graph", variant: "graph", icon: "chart-dots-3", desc: "Structural proximity in the knowledge graph." },
 ];

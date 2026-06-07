@@ -89,11 +89,34 @@ export const api = {
     return withFallback("/knowledge-graph/stats", {}, fx.GRAPH_STATS);
   },
 
-  /** POST /api/search/hybrid — fused KG + vector retrieval. */
+  /** POST /api/search/hybrid — fused KG + vector retrieval.
+   *  The backend returns `{ matches: [...] }` where each match carries
+   *  `source_scores: { keyword, vector, graph }`. Normalize that into the flat
+   *  result shape the view renders (title/path/snippet/score + per-signal). A
+   *  legacy `results` array is also accepted defensively. */
   async hybridSearch(query, opts = {}) {
     const res = await raw("/api/search/hybrid", { method: "POST", body: { query, ...opts } });
-    if (res.ok && res.data && Array.isArray(res.data.results)) {
-      return { ...res, data: res.data.results, source: "live" };
+    const live = res.ok && res.data
+      ? (Array.isArray(res.data.matches) ? res.data.matches
+        : Array.isArray(res.data.results) ? res.data.results
+        : null)
+      : null;
+    if (live) {
+      const items = live.map((m) => {
+        const ss = m.source_scores || {};
+        const meta = m.metadata || {};
+        return {
+          id: m.id || m.node_id,
+          title: m.title || m.id || "Untitled",
+          path: meta.path || meta.source || m.path || m.type || "",
+          snippet: m.snippet || m.summary || "",
+          score: typeof m.score === "number" ? m.score : 0,
+          vector: Number(ss.vector ?? m.vector) || 0,
+          lexical: Number(ss.keyword ?? m.lexical) || 0,
+          graph: Number(ss.graph ?? m.graph) || 0,
+        };
+      });
+      return { ok: true, status: res.status, data: items, source: "live" };
     }
     return { ok: true, status: res.status, data: fx.hybridResults(query), source: "placeholder", error: res.error };
   },
