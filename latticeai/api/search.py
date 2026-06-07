@@ -7,6 +7,7 @@ from typing import Any, Callable, Dict, Optional
 from fastapi import APIRouter, HTTPException, Request
 from pydantic import BaseModel, Field
 
+from latticeai.core.embedding_providers import embedding_provider_profiles
 from latticeai.services.search_service import DEFAULT_HYBRID_WEIGHTS, SearchService
 
 
@@ -213,9 +214,12 @@ def create_search_router(
     async def embeddings_providers(request: Request) -> Dict[str, Any]:
         require_user(request)
         resolved = embedding_info() if embedding_info else {}
+        profiles = resolved.get("profiles") or embedding_provider_profiles()
         return {
             "active": resolved.get("active_provider"),
             "requested": resolved.get("requested_provider"),
+            "profile": resolved.get("profile") or "",
+            "profiles": profiles,
             "providers": [
                 {"id": "hash", "label": "Local hash (fallback)", "grade": "fallback",
                  "requires": [], "detail": "Deterministic offline vectors — always available."},

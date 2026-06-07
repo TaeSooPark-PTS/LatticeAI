@@ -57,6 +57,7 @@ def create_auth_router(
     public_sso_config: Callable[..., Dict],
     open_registration: bool,
     session_ttl: int,
+    require_auth: bool = True,
 ) -> APIRouter:
     router = APIRouter()
 
@@ -221,7 +222,9 @@ def create_auth_router(
     async def get_profile(request: Request):
         email = require_user(request)
         if not email:
-            raise HTTPException(status_code=401, detail="인증이 필요합니다.")
+            if require_auth:
+                raise HTTPException(status_code=401, detail="인증이 필요합니다.")
+            return {"email": "", "name": "Local User", "nickname": "You", "role": "admin", "is_admin": True}
         users = load_users()
         user = users.get(email)
         if not user:

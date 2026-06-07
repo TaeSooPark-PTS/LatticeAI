@@ -2,6 +2,29 @@
 
 The detailed historical changelog lives in [docs/CHANGELOG.md](docs/CHANGELOG.md).
 
+## [3.1.0] - 2026-06-07
+
+Mainline v3.1 platform completion for the non-enterprise local-first workspace.
+
+- **Classic retired from normal workflows** — `/app` is the complete native
+  surface for Chat, Models, Agents, Files, Pipeline, My Computer, Settings,
+  Knowledge Graph, Hybrid Search, and Admin views. Classic routes remain as
+  compatibility/debug surfaces only.
+- **Native Models actions** — the Models view now calls `/models/load` and
+  `/models/unload/{model_id}` directly instead of linking users to Classic.
+- **Production embedding profiles** — `/api/embeddings/providers` exposes
+  local, Ollama, MLX, and OpenAI-compatible production profiles for `bge-m3`,
+  `nomic-embed-text`, `e5-large`, `gte-large`, `mxbai-embed-large`,
+  BGE-M3-compatible providers, `text-embedding-3-small`, and
+  `text-embedding-3-large`. Hash embeddings remain fallback-only.
+- **No fake primary data** — v3 adapter fallbacks now render unavailable states
+  with empty data instead of sample counters, sample graphs, or sample runs.
+- **Hashed v3 assets** — added `npm run build:assets`, generated
+  `static/v3/asset-manifest.json`, and switched `/app` to manifest-loaded
+  hashed CSS/JS assets with no runtime `?v=` cache-busting.
+- **Release sync** — Python package, npm package, VS Code extension, Workspace
+  OS version, docs, and release artifact names are aligned at `3.1.0`.
+
 ## [3.0.1] - 2026-06-07
 
 Release-blocker remediation: every v3 surface now works, is connected to its real

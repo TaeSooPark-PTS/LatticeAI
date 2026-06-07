@@ -2,19 +2,15 @@
  * View: Pipeline — ingest / embed / graph-build flows.
  * Renders each workspace workflow as a horizontal stage flow (integration-ready
  * against /workspace/workflows and the index APIs). Pipelines execute on the
- * local runtime; this surface visualizes their stages and run state, falling
- * back to clearly-badged sample data until the backend route is available.
+ * local runtime; this surface visualizes their stages and run state.
  * ========================================================================== */
 
 import { timeAgo } from "../core/dom.js";
-import * as fx from "../core/fixtures.js";
 
 export async function render(ctx) {
   const { h, icon, api, c, toast } = ctx;
 
-  // Pipeline authoring (defining new multi-stage flows) is not available from
-  // this view in this build — say so plainly instead of implying it's coming.
-  const unavailable = (label) => () => toast(`${label} is managed from the classic workflow designer — not available from this view.`, "warn");
+  const unavailable = (label) => () => toast(`${label} is not available from this read-only pipeline view.`, "warn");
 
   const statHost = h("div.lt3-statrow", c.loading({ lines: 1 }));
   const srcSlot = h("span", c.sourceBadge("pending"));
@@ -45,7 +41,7 @@ export async function render(ctx) {
   return root;
 
   async function load() {
-    const res = await api.get("/workspace/workflows", { workflows: fx.PIPELINES });
+    const res = await api.get("/workspace/workflows", { workflows: [] });
     const pipelines = normalize(res.data);
     srcSlot.replaceChildren(c.sourceBadge(res.source));
     renderStats(pipelines);

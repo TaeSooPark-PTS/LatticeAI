@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "ltcai"
-version = "3.0.1"
+version = "3.1.0"
 description = "Lattice AI v3 local-first AI workspace platform with knowledge graph, vector index, hybrid search, agents, and workspace modes"
 readme = "README.md"
 requires-python = ">=3.11"
@@ -93,6 +93,7 @@ include-package-data = true
   "static/v3/**/*.html",
   "static/v3/**/*.css",
   "static/v3/**/*.js",
+  "static/v3/**/*.json",
   "docs/*.md",
   "skills/**/*.md",
   "plugins/**/*.json",
@@ -102,13 +103,13 @@ include-package-data = true
 [tool.setuptools.data-files]
 "static" = ["static/account.html", "static/chat.html", "static/admin.html", "static/graph.html", "static/workspace.html", "static/plugins.html", "static/workflows.html", "static/agents.html", "static/activity.html", "static/favicon.ico", "static/manifest.json", "static/sw.js", "static/workspace.css", "static/platform.css"]
 "static/scripts" = ["static/scripts/account.js", "static/scripts/admin.js", "static/scripts/chat.js", "static/scripts/graph.js", "static/scripts/workspace.js", "static/scripts/platform.js", "static/scripts/ux.js"]
-"static/css" = ["static/css/tokens.css", "static/css/responsive.css"]
+"static/css" = ["static/css/*.css"]
 "static/css/reference" = ["static/css/reference/base.css", "static/css/reference/account.css", "static/css/reference/admin.css", "static/css/reference/graph.css", "static/css/reference/chat.css"]
-"static/v3" = ["static/v3/index.html"]
-"static/v3/css" = ["static/v3/css/lattice.tokens.css", "static/v3/css/lattice.base.css", "static/v3/css/lattice.components.css", "static/v3/css/lattice.shell.css", "static/v3/css/lattice.views.css"]
-"static/v3/js" = ["static/v3/js/app.js"]
-"static/v3/js/core" = ["static/v3/js/core/api.js", "static/v3/js/core/components.js", "static/v3/js/core/dom.js", "static/v3/js/core/fixtures.js", "static/v3/js/core/router.js", "static/v3/js/core/routes.js", "static/v3/js/core/shell.js", "static/v3/js/core/store.js"]
-"static/v3/js/views" = ["static/v3/js/views/admin-audit.js", "static/v3/js/views/admin-permissions.js", "static/v3/js/views/admin-policies.js", "static/v3/js/views/admin-private-vpc.js", "static/v3/js/views/admin-security.js", "static/v3/js/views/admin-users.js", "static/v3/js/views/agents.js", "static/v3/js/views/chat.js", "static/v3/js/views/files.js", "static/v3/js/views/home.js", "static/v3/js/views/hybrid-search.js", "static/v3/js/views/knowledge-graph.js", "static/v3/js/views/models.js", "static/v3/js/views/my-computer.js", "static/v3/js/views/pipeline.js", "static/v3/js/views/settings.js"]
+"static/v3" = ["static/v3/index.html", "static/v3/asset-manifest.json"]
+"static/v3/css" = ["static/v3/css/*.css"]
+"static/v3/js" = ["static/v3/js/*.js"]
+"static/v3/js/core" = ["static/v3/js/core/*.js"]
+"static/v3/js/views" = ["static/v3/js/views/*.js"]
 "static/icons" = ["static/icons/icon-192.png", "static/icons/icon-512.png", "static/icons/apple-touch-icon.png", "static/icons/favicon-32.png"]
 "plugins" = ["plugins/README.md"]
 "plugins/hello-world" = ["plugins/hello-world/plugin.json"]

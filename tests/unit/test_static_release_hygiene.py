@@ -1,4 +1,7 @@
+import json
 import re
+import tomllib
+from fnmatch import fnmatch
 from pathlib import Path
 
 from fastapi import FastAPI
@@ -32,21 +35,41 @@ def test_favicon_route_serves_existing_icon():
     assert response.content
 
 
-def test_release_asset_cache_busting_is_v300():
+def test_runtime_assets_use_hashed_manifest_instead_of_query_versions():
     html_files = [
         *STATIC_DIR.glob("*.html"),
+        STATIC_DIR / "v3" / "index.html",
         REPO_ROOT / "tests" / "visual" / "fixtures" / "onboarding.html",
     ]
     stale = []
     for path in html_files:
         text = path.read_text(encoding="utf-8")
         for match in re.finditer(r"/static/[^\"']+\?v=([^\"'&]+)", text):
-            version = match.group(1)
-            if version != "3.0.0":
-                stale.append(f"{path.relative_to(REPO_ROOT)}:{match.group(0)}")
+            stale.append(f"{path.relative_to(REPO_ROOT)}:{match.group(0)}")
 
     assert stale == []
-    assert "/static/scripts/chat.js?v=3.0.0" in (STATIC_DIR / "chat.html").read_text(encoding="utf-8")
+    manifest = STATIC_DIR / "v3" / "asset-manifest.json"
+    assert manifest.exists()
+    text = manifest.read_text(encoding="utf-8")
+    assert '"static/v3/js/app.js"' in text
+    assert re.search(r"/static/v3/js/app\.[0-9a-f]{8}\.js", text)
+    assert "asset-manifest.json" in (STATIC_DIR / "v3" / "index.html").read_text(encoding="utf-8")
+    assert not (STATIC_DIR / "v3" / "js" / "core" / "fixtures.js").exists()
+
+
+def test_manifest_assets_are_in_python_wheel_data_files():
+    manifest = json.loads((STATIC_DIR / "v3" / "asset-manifest.json").read_text(encoding="utf-8"))
+    pyproject = tomllib.loads((REPO_ROOT / "pyproject.toml").read_text(encoding="utf-8"))
+    data_files = pyproject["tool"]["setuptools"]["data-files"]
+    packaged = {item for entries in data_files.values() for item in entries}
+
+    missing = []
+    for public_url in manifest["assets"].values():
+        rel = public_url.removeprefix("/")
+        if not any(fnmatch(rel, pattern) for pattern in packaged):
+            missing.append(rel)
+
+    assert missing == []
 
 
 def test_legacy_monolith_is_removed_and_modules_present():

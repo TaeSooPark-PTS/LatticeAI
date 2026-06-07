@@ -4,8 +4,8 @@
  * Native to the /app shell: shares the design system, tokens, command palette,
  * workspace switcher, and mode model. Talks to the REAL backend
  * (POST /chat SSE + /history/* ) through the v3 adapter. Missing endpoints
- * degrade to a clearly-badged sample stream; a live "no model loaded" response
- * stays a user-facing setup message instead of pretending to generate.
+ * report unavailable state; a live "no model loaded" response stays a
+ * user-facing setup message instead of pretending to generate.
  *
  * Layout (flush, 3-pane): conversations · thread+composer · retrieval context
  * (Knowledge Graph · Vector · Hybrid Search · indexed file references).
@@ -83,7 +83,6 @@ export async function render(ctx) {
         modelPill,
         barSrc,
         h("button.lt3-iconbtn.lt3-chat__toggle-context", { "aria-label": "Retrieval context", on: { click: () => togglePane("context") } }, icon("layout-sidebar-right")),
-        h("button.lt3-iconbtn", { "aria-label": "Open classic chat", title: "Open classic chat", on: { click: () => { window.location.href = "/chat"; } } }, icon("external-link")),
       ),
       thread,
       h("div.lt3-composer",

@@ -1,15 +1,14 @@
 /* ============================================================================
  * View: Files — connected sources & indexed documents.
- * Lists the documents the workspace has ingested, with a human-readable size
- * roll-up and per-file index state. Data comes from /local/list (live) and
- * degrades to clearly-badged sample files when the local agent isn't reachable.
+ * Lists the sources the workspace has indexed, with a human-readable status
+ * roll-up. Data comes from /workspace/indexing (live); when indexing is
+ * unavailable, the table renders an empty unavailable state.
  *
  * View contract (shared by all views):
  *   export async function render(ctx) -> single DOM node
  *   ctx = { h, icon, api, store, c, route, params, navigate, toast }
  * ========================================================================== */
 
-import * as fx from "../core/fixtures.js";
 import { timeAgo } from "../core/dom.js";
 
 /** Tabler glyph per file kind — keeps the table scannable. */
@@ -24,6 +23,7 @@ const iconForKind = (k) => KIND_ICON[k] || KIND_ICON.default;
 
 /** Bytes → compact human string (1.0 KB / 4.7 KB / 180 KB / 1.2 MB). */
 function humanSize(bytes) {
+  if (bytes === null || bytes === undefined || bytes === "") return "—";
   const n = Number(bytes);
   if (!Number.isFinite(n) || n < 0) return "—";
   if (n < 1024) return `${n} B`;
@@ -33,8 +33,20 @@ function humanSize(bytes) {
   return `${v.toFixed(v >= 100 || Number.isInteger(v) ? 0 : 1)} ${units[i]}`;
 }
 
-/** Live shape may be {files:[...]} or a bare array — normalize defensively. */
+/** Live shape is {sources:[...]}; legacy {files:[...]} payloads normalize too. */
 function normalize(data) {
+  if (data && Array.isArray(data.sources)) {
+    return data.sources.map((source) => ({
+      name: source.label || source.id || "local source",
+      kind: "default",
+      size: null,
+      path: source.root_path || source.id || "",
+      indexed: Number(source.success_count || 0) > 0,
+      updated: source.last_run_at || source.updated_at || null,
+      count: Number(source.success_count || 0),
+      status: source.status || (source.watch_active ? "watching" : "idle"),
+    }));
+  }
   const list = Array.isArray(data) ? data : (data && Array.isArray(data.files) ? data.files : null);
   if (!list) return null;
   return list.map((f) => ({
@@ -44,6 +56,8 @@ function normalize(data) {
     path: f.path || f.name || "",
     indexed: f.indexed === true,
     updated: f.updated || f.modified || f.mtime || null,
+    count: Number(f.count || 0),
+    status: f.status || null,
   }));
 }
 
@@ -99,16 +113,10 @@ async function hydrate(ctx, slots) {
   const { h, icon, api, c, toast } = ctx;
   const { statHost, srcSlot, tableHost } = slots;
 
-  // /local/list is permission-gated: it requires a `path` query param and, in
-  // the browser, returns a permission-request object rather than a bare file
-  // list. Probe it with the required param (avoids a 422) and only treat an
-  // actual listing as live — otherwise show clearly-badged sample documents.
-  const probe = await api.raw("/local/list?path=" + encodeURIComponent("."));
-  const liveFiles = probe.ok && probe.data && !probe.data.permission_required
-    ? normalize(probe.data)
-    : null;
-  const source = liveFiles ? "live" : "placeholder";
-  const files = liveFiles || normalize(fx.FILES) || [];
+  const probe = await api.get("/workspace/indexing", { sources: [], totals: {} });
+  const liveFiles = probe.ok && probe.data ? normalize(probe.data) : null;
+  const source = probe.source || (liveFiles ? "live" : "unavailable");
+  const files = liveFiles || [];
   srcSlot.replaceChildren(c.sourceBadge(source));
 
   // ── Stat roll-up ──────────────────────────────────────────────────────────
@@ -152,14 +160,12 @@ async function hydrate(ctx, slots) {
       render: (row) => h("span.lt3-mono.lt3-faint", row.path || "—"),
     },
     {
-      key: "size", label: "Size", width: "92px",
-      render: (row) => h("span.lt3-mono", humanSize(row.size)),
+      key: "count", label: "Indexed", width: "92px",
+      render: (row) => h("span.lt3-mono", row.count ? c.fmtNum(row.count) : humanSize(row.size)),
     },
     {
-      key: "indexed", label: "Indexed", width: "120px",
-      render: (row) => row.indexed
-        ? c.statePill("indexed")
-        : c.statePill("pending"),
+      key: "status", label: "Status", width: "120px",
+      render: (row) => c.statePill(row.indexed ? "indexed" : (row.status || "pending")),
     },
     {
       key: "updated", label: "Updated", width: "104px",

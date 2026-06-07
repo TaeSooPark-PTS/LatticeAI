@@ -2,21 +2,31 @@
  * Lattice AI v3 — Integration adapter
  *
  * Every adapter call hits the real endpoint first (including /api/index/status,
- * /api/graph, /api/search/hybrid, and /chat). If that
- * endpoint is missing/unavailable, it degrades to a clearly-labeled SAMPLE
- * payload from fixtures.js and reports `source: "placeholder"` so the UI can
- * badge it. No backend logic is implemented here — only transport + graceful
- * fallback, which keeps the v3 frontend resilient during local setup.
+ * /api/graph, /api/search/hybrid, and /chat). If that endpoint is
+ * missing/unavailable, it returns an unavailable source with empty data so the
+ * UI can render a clear unavailable state without inventing counters or health.
  *
  * Return shape (never throws): { ok, status, data, source, error }
  *   source: "live"        → returned by a real backend endpoint
- *           "placeholder" → fixture fallback (backend not yet available)
+ *           "unavailable" → endpoint missing/down; no fake payload
  * ========================================================================== */
 
 import { store } from "./store.js";
-import * as fx from "./fixtures.js";
 
 const TIMEOUT_MS = 8000;
+const EMPTY_INDEX_STATUS = { generated_at: null, pipelines: {}, sources: [] };
+const EMPTY_GRAPH_STATS = { nodes: {}, edges: {}, total_nodes: 0, total_edges: 0 };
+const EMPTY_WORKSPACE_OS = { counts: {}, models: {} };
+const EMPTY_SYSINFO = { cpu_pct: null, ram_pct: null, gpu_mem_pct: null, gpu_mem_gb: null };
+const EMPTY_ADMIN = {
+  summary: { total_users: null, active_users: null, admin_users: null, total_messages: null },
+  users: [],
+  audit: { recent_events: [] },
+  security: {},
+  roles: { roles: [] },
+  policies: { policies: [] },
+  vpc: {},
+};
 
 async function raw(path, { method = "GET", body, headers } = {}) {
   const ctrl = new AbortController();
@@ -46,28 +56,35 @@ async function raw(path, { method = "GET", body, headers } = {}) {
   }
 }
 
-/** Try the live endpoint; on any non-2xx/transport failure, use the fixture. */
-async function withFallback(path, opts, fixture) {
+function unavailableData(shape) {
+  const value = typeof shape === "function" ? shape() : shape;
+  if (Array.isArray(value)) return [];
+  if (value && typeof value === "object") return {};
+  return null;
+}
+
+/** Try the live endpoint; on any non-2xx/transport failure, return empty data. */
+async function withFallback(path, opts, shape) {
   const res = await raw(path, opts);
   if (res.ok && res.data && !res.data.raw) {
     return { ...res, source: "live" };
   }
-  return { ok: true, status: res.status, data: typeof fixture === "function" ? fixture() : fixture, source: "placeholder", error: res.error };
+  return { ok: false, status: res.status, data: unavailableData(shape), source: "unavailable", error: res.error };
 }
 
 export const api = {
   raw,
 
-  /** Generic GET with fixture fallback. */
-  async get(path, fixture = null) {
-    return withFallback(path, {}, fixture);
+  /** Generic GET with unavailable fallback. */
+  async get(path, shape = null) {
+    return withFallback(path, {}, shape);
   },
 
   /* ── Documented future surfaces ─────────────────────────────────────── */
 
   /** GET /api/index/status — KG + Vector + Hybrid pipeline state. */
   indexStatus() {
-    return withFallback("/api/index/status", {}, fx.INDEX_STATUS);
+    return withFallback("/api/index/status", {}, EMPTY_INDEX_STATUS);
   },
 
   /** POST /api/index/rebuild — rebuild the derived vector index (real run). */
@@ -76,7 +93,7 @@ export const api = {
   },
 
   /** GET /api/graph — knowledge graph (nodes + edges). Falls back through the
-   *  current /knowledge-graph/graph route before the fixture. */
+   *  current /knowledge-graph/graph route before reporting unavailable. */
   async graph(params = {}) {
     const qs = new URLSearchParams(params).toString();
     const primary = await raw(`/api/graph${qs ? "?" + qs : ""}`);
@@ -87,11 +104,11 @@ export const api = {
     if (legacy.ok && legacy.data && Array.isArray(legacy.data.nodes)) {
       return { ...legacy, source: "live" };
     }
-    return { ok: true, status: 200, data: fx.GRAPH, source: "placeholder" };
+    return { ok: false, status: primary.status || legacy.status || 0, data: { nodes: [], edges: [] }, source: "unavailable", error: primary.error || legacy.error };
   },
 
   graphStats() {
-    return withFallback("/knowledge-graph/stats", {}, fx.GRAPH_STATS);
+    return withFallback("/knowledge-graph/stats", {}, EMPTY_GRAPH_STATS);
   },
 
   /** POST /api/search/hybrid — fused KG + vector retrieval.
@@ -123,11 +140,11 @@ export const api = {
       });
       return { ok: true, status: res.status, data: items, source: "live", weights: res.data.weights || null };
     }
-    return { ok: true, status: res.status, data: fx.hybridResults(query), source: "placeholder", error: res.error };
+    return { ok: false, status: res.status, data: [], source: "unavailable", error: res.error };
   },
 
   /* ── Existing surfaces (used where helpful, all fallback-safe) ──────── */
-  workspaceOs() { return withFallback("/workspace/os", {}, fx.WORKSPACE_OS); },
+  workspaceOs() { return withFallback("/workspace/os", {}, EMPTY_WORKSPACE_OS); },
   async models() {
     const res = await raw("/models");
     if (res.ok && res.data && !res.data.raw) {
@@ -149,17 +166,23 @@ export const api = {
         data: { ...data, catalog: Array.isArray(data.catalog) ? data.catalog : [...recommended, ...loadedOnly] },
       };
     }
-    return { ok: true, status: res.status, data: fx.MODELS, source: "placeholder", error: res.error };
+    return { ok: false, status: res.status, data: { current: null, catalog: [] }, source: "unavailable", error: res.error };
   },
-  sysinfo() { return withFallback("/local/sysinfo", {}, fx.SYSINFO); },
+  loadModel(modelId, engine) {
+    return raw("/models/load", { method: "POST", body: { model_id: modelId, engine: engine || null } });
+  },
+  unloadModel(modelId) {
+    return raw(`/models/unload/${encodeURIComponent(modelId)}`, { method: "DELETE" });
+  },
+  sysinfo() { return withFallback("/local/sysinfo", {}, EMPTY_SYSINFO); },
 
-  adminSummary() { return withFallback("/admin/summary", {}, fx.ADMIN.summary); },
-  adminUsers() { return withFallback("/admin/users", {}, fx.ADMIN.users); },
-  adminAudit() { return withFallback("/admin/audit", {}, { recent_events: fx.ADMIN.audit }); },
-  adminSecurity() { return withFallback("/admin/security/overview", {}, fx.ADMIN.security); },
-  adminRoles() { return withFallback("/admin/roles", {}, { roles: fx.ADMIN.roles }); },
-  adminPolicies() { return withFallback("/admin/policies", {}, { policies: fx.ADMIN.policies }); },
-  vpcStatus() { return withFallback("/vpc/status", {}, fx.ADMIN.vpc); },
+  adminSummary() { return withFallback("/admin/summary", {}, EMPTY_ADMIN.summary); },
+  adminUsers() { return withFallback("/admin/users", {}, EMPTY_ADMIN.users); },
+  adminAudit() { return withFallback("/admin/audit", {}, EMPTY_ADMIN.audit); },
+  adminSecurity() { return withFallback("/admin/security/overview", {}, EMPTY_ADMIN.security); },
+  adminRoles() { return withFallback("/admin/roles", {}, EMPTY_ADMIN.roles); },
+  adminPolicies() { return withFallback("/admin/policies", {}, EMPTY_ADMIN.policies); },
+  vpcStatus() { return withFallback("/vpc/status", {}, EMPTY_ADMIN.vpc); },
 
   /* ── Embeddings (real backend: /api/embeddings/*) ───────────────────── */
   /** GET /api/embeddings/status — active provider, grade, dimensions, last index. */
@@ -170,10 +193,10 @@ export const api = {
     }
     // No backend → report unavailable honestly (never fabricate a provider).
     return {
-      ok: true, status: res.status, source: "placeholder",
-      data: { provider: "hash", active_provider: "hash", model: "lattice-local-hash-v1",
-        model_id: "lattice-local-hash-v1:384", dimensions: 384, grade: "fallback",
-        state: "fallback", fell_back: false, health: { status: "unknown", detail: "backend unavailable" },
+      ok: false, status: res.status, source: "unavailable",
+      data: { provider: null, active_provider: null, model: null,
+        model_id: null, dimensions: null, grade: "unavailable",
+        state: "unavailable", fell_back: false, health: { status: "unavailable", detail: "backend unavailable" },
         last_indexed_at: null },
     };
   },
@@ -186,12 +209,12 @@ export const api = {
     if (res.ok && res.data && res.data.runtime && Array.isArray(res.data.agents)) {
       return { ok: true, status: res.status, data: res.data, source: "live" };
     }
-    // Fallback: clearly-badged sample roster, no fabricated run ledger.
+    // Fallback: unavailable roster, no fabricated run ledger.
     return {
-      ok: true, status: res.status, source: "placeholder",
+      ok: false, status: res.status, source: "unavailable",
       data: { runtime: { ready: false, total_runs: 0, active_runs: 0 },
         health: { status: "unknown", checks: {} }, roles: [],
-        agents: fx.AGENTS.map((a) => ({ ...a, last_status: null, last_at: null })), runs: [] },
+        agents: [], runs: [] },
     };
   },
   /** POST /agents/api/run — execute the multi-agent pipeline for a goal. */
@@ -215,7 +238,7 @@ export const api = {
       : res.ok && res.data && Array.isArray(res.data.conversations) ? res.data.conversations
       : null;
     if (list) return { ok: true, status: res.status, data: list, source: "live" };
-    return { ok: true, status: res.status, data: fx.CHAT.conversations, source: "placeholder" };
+    return { ok: false, status: res.status, data: [], source: "unavailable" };
   },
 
   /** GET /history/conversations/{id} — messages for one conversation. */
@@ -224,8 +247,7 @@ export const api = {
     if (res.ok && res.data && Array.isArray(res.data.messages)) {
       return { ok: true, status: res.status, data: res.data.messages, source: "live" };
     }
-    const sample = (fx.CHAT.conversations.find((c) => c.id === id) || {}).messages || [];
-    return { ok: true, status: res.status, data: sample, source: "placeholder" };
+    return { ok: false, status: res.status, data: [], source: "unavailable" };
   },
 
   deleteConversation(id) {
@@ -236,8 +258,8 @@ export const api = {
    * POST /chat — streams the assistant reply over SSE.
    * Parses `data: {chunk, model, trace}` events (terminator `[DONE]`), calling
    * onChunk(delta, fullText) and onTrace(trace). If the endpoint is missing or
-   * not an event-stream, degrades to a clearly-labeled SAMPLE stream (no real
-   * generation is invented). Resolves { source, text, trace, model, aborted }.
+ * not an event-stream, reports that chat is unavailable (no generated answer is
+ * invented). Resolves { source, text, trace, model, aborted }.
    */
   async streamChat(body, { onChunk, onTrace, signal } = {}) {
     const ws = store.get().workspaceId;
@@ -303,25 +325,20 @@ export const api = {
 
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 
-/** Transparent SAMPLE stream — used only when no chat backend is available. */
+/** Transparent unavailable stream — used only when no chat backend is available. */
 async function simulateChat(body, { onChunk, onTrace, signal } = {}) {
   const q = (body && body.message) || "your question";
   const reply =
-    `This is a sample response. Connect a local model and the v3 retrieval backend ` +
-    `(/api/search/hybrid, /api/graph) to ground answers to “${q}” in your workspace. ` +
-    `The context panel shows the knowledge-graph entities, vector matches, and indexed ` +
-    `files that would be used to answer — this preview does not run a model.`;
+    `Chat is unavailable because the Lattice backend or active model is not reachable. ` +
+    `Start the server, load a model, and rebuild retrieval before sending “${q}”.`;
   let text = "";
   for (const word of reply.split(" ")) {
-    if (signal && signal.aborted) return { source: "placeholder", text, aborted: true };
+    if (signal && signal.aborted) return { source: "unavailable", text, aborted: true };
     const delta = (text ? " " : "") + word;
     text += delta;
     onChunk && onChunk(delta, text);
     await sleep(16);
   }
-  const trace = fx.sampleTrace(q);
-  onTrace && onTrace(trace);
-  return { source: "placeholder", text, trace };
+  onTrace && onTrace(null);
+  return { source: "unavailable", text, trace: null };
 }
-
-export { fx };

@@ -13,10 +13,11 @@ editor.
 
 ## Current Release
 
-**3.0.0 — v3 Local-First AI Workspace Platform.** The main workspace now lives
-at `/app` with Native Chat, Knowledge Graph, Vector Index, Hybrid Search,
-Personal / Organization workspaces, and Basic / Advanced / Admin modes. Legacy
-`/chat` remains available as a rollback/debug path.
+**3.1.0 — Mainline Product Platform Completion.** The main workspace lives at
+`/app` with Native Chat, Knowledge Graph, Vector Index, Hybrid Search, Models,
+Agents, Files, Pipeline, My Computer, Settings, Personal / Organization
+workspaces, and Basic / Advanced / Admin modes. Classic pages are compatibility
+routes only.
 
 ## Quick Start
 
@@ -51,7 +52,7 @@ The extension auto-connects to `http://localhost:4825`.
 | Knowledge Graph | Use graph-backed context from files, notes, screenshots, and conversations |
 | Multi-agent workflow | Start planner/executor/reviewer style coding workflows |
 | Local-first workspace | Keep personal work local while supporting organization workspace patterns |
-| Native v3 app | Use `/app` as the primary product shell; legacy `/chat` remains available |
+| Native v3 app | Use `/app` as the primary product shell |
 
 ## Commands
 
@@ -99,7 +100,7 @@ Remote or tunnel server example:
 - [Project README](https://github.com/TaeSooPark-PTS/LatticeAI)
 - [PyPI](https://pypi.org/project/ltcai/)
 - [npm](https://www.npmjs.com/package/ltcai)
-- [GitHub Release v3.0.0](https://github.com/TaeSooPark-PTS/LatticeAI/releases/tag/v3.0.0)
+- [GitHub Release v3.1.0](https://github.com/TaeSooPark-PTS/LatticeAI/releases/tag/v3.1.0)
 - [Changelog](https://github.com/TaeSooPark-PTS/LatticeAI/blob/main/docs/CHANGELOG.md)
 - [Security Policy](https://github.com/TaeSooPark-PTS/LatticeAI/blob/main/SECURITY.md)
 

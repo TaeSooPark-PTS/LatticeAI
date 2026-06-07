@@ -73,7 +73,7 @@ from latticeai.services.workspace_service import WorkspaceService
 from latticeai.services.model_service import ModelService
 from latticeai.services.chat_service import ChatService
 from latticeai.services.search_service import SearchService
-from latticeai.core.embedding_providers import resolve_embedder
+from latticeai.core.embedding_providers import resolve_embedder, resolve_embedding_profile
 from latticeai.services.agent_runtime import AgentRuntime
 from latticeai.services.model_runtime import (
     CLOUD_VERIFY_TTL_SECONDS,
@@ -251,15 +251,26 @@ SSO_FILE = DATA_DIR / "sso_config.json"
 # Resolve the configured embedding provider once at startup. Degrades to the
 # offline hash fallback when the requested provider is unavailable, while
 # recording the requested-vs-active provider for the Embeddings status surface.
+try:
+    EMBEDDING_PROFILE = resolve_embedding_profile(CONFIG.embedding_profile)
+except ValueError as exc:
+    logging.warning("Embedding profile ignored: %s", exc)
+    EMBEDDING_PROFILE = {}
+_embedding_provider = CONFIG.embedding_provider
+_embedding_model = CONFIG.embedding_model or str(EMBEDDING_PROFILE.get("model") or "")
+_embedding_dim = CONFIG.embedding_dim or int(EMBEDDING_PROFILE.get("dimensions") or 0)
+if CONFIG.embedding_profile and CONFIG.embedding_provider in {"", "hash", "local", "fallback"}:
+    _embedding_provider = str(EMBEDDING_PROFILE.get("provider") or CONFIG.embedding_provider)
+
 EMBEDDER = resolve_embedder(
-    CONFIG.embedding_provider,
-    model=CONFIG.embedding_model,
+    _embedding_provider,
+    model=_embedding_model,
     base_url=CONFIG.embedding_base_url,
     api_key=CONFIG.embedding_api_key,
-    dim=CONFIG.embedding_dim,
+    dim=_embedding_dim,
     timeout=CONFIG.embedding_timeout,
     extra={"target": CONFIG.embedding_custom_target},
-    probe=CONFIG.embedding_provider not in {"", "hash", "local", "fallback"},
+    probe=_embedding_provider not in {"", "hash", "local", "fallback"},
 )
 if EMBEDDER.fell_back:
     logging.warning("Embedding provider %s unavailable: %s", EMBEDDER.requested, EMBEDDER.detail)
@@ -805,6 +816,8 @@ def _require_local_approval(
 
 def require_admin(request: Request) -> tuple[str, Dict]:
     users = load_users()
+    if not REQUIRE_AUTH:
+        return "", users
     token = _extract_bearer_token(request)
     if token:
         email = get_session_email(token)
@@ -1100,6 +1113,7 @@ app.include_router(create_auth_router(
     get_sso_settings=get_sso_settings, get_sso_discovery=_get_sso_discovery,
     public_sso_config=public_sso_config,
     open_registration=OPEN_REGISTRATION, session_ttl=_SESSION_TTL,
+    require_auth=REQUIRE_AUTH,
 ))
 
 def _graph_stats_safe():
@@ -1387,9 +1401,11 @@ app.include_router(create_chat_router(
 ))
 
 def _embedding_info() -> dict:
-    from latticeai.core.embedding_providers import PROVIDER_TYPES
+    from latticeai.core.embedding_providers import PROVIDER_TYPES, embedding_provider_profiles
     info = EMBEDDER.as_dict()
     info["available_providers"] = list(PROVIDER_TYPES)
+    info["profile"] = CONFIG.embedding_profile or ""
+    info["profiles"] = embedding_provider_profiles()
     return info
 
 

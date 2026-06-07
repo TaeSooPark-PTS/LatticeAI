@@ -5,10 +5,11 @@ include static/sw.js
 recursive-include static/icons *.png
 recursive-include static/css *.css
 recursive-include static/scripts *.js
-recursive-include static/v3 *.html *.css *.js
+recursive-include static/v3 *.html *.css *.js *.json
 recursive-include skills *.md
 recursive-include docs *.md
 recursive-include plugins *.json *.md
+recursive-include scripts *.mjs *.py *.js
 include requirements.txt
 include README.md
 include auto_setup.py

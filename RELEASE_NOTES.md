@@ -1,5 +1,33 @@
 # Release Notes
 
+## v3.1.0 - Mainline Product Platform Completion
+
+Lattice AI v3.1.0 completes the non-enterprise Local-First AI Workspace
+Platform around `/app`. Classic remains a compatibility/debug path only.
+
+### Highlights
+
+- `/app` is the full native workspace for Chat, Models, Agents, Files, Pipeline,
+  My Computer, Settings, Knowledge Graph, Hybrid Search, and Admin views.
+- Models load/unload from `/app#/models` through real backend endpoints.
+- v3 fallback states are unavailable/empty instead of sample data or fake
+  counters.
+- Production embedding profiles cover local, Ollama, MLX, and
+  OpenAI-compatible semantic providers; hash embeddings are fallback-only.
+- `/app` loads build-generated hashed assets through
+  `static/v3/asset-manifest.json`; runtime HTML no longer uses `?v=` asset
+  cache-busting.
+- Package publication and deployment were not performed.
+
+### Expected Artifacts
+
+```text
+dist/ltcai-3.1.0-py3-none-any.whl
+dist/ltcai-3.1.0.tar.gz
+dist/ltcai-3.1.0.vsix
+ltcai-3.1.0.tgz
+```
+
 ## v3.0.0 - Local-First AI Workspace Platform
 
 Lattice AI v3.0.0 makes `/app` the primary product experience and ships the v3

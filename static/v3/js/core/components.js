@@ -75,10 +75,10 @@ export function statePill(state) {
   return pill(String(state || "unknown"), STATE_VARIANT[String(state).toLowerCase()] ?? "", { dot: true });
 }
 
-/** Provenance badge — makes placeholder vs live data explicit. */
+/** Provenance badge — makes live vs unavailable data explicit. */
 export function sourceBadge(source) {
   if (source === "live") return h("span.lt3-source.lt3-source--live", icon("circle-filled"), "Live");
-  if (source === "placeholder") return h("span.lt3-source.lt3-source--placeholder", icon("flask"), "Sample data");
+  if (source === "unavailable") return h("span.lt3-source.lt3-source--unavailable", icon("alert-circle"), "Unavailable");
   return h("span.lt3-source.lt3-source--pending", "—");
 }
 
@@ -166,6 +166,13 @@ const PILLAR_DEFS = [
 
 export function pillars(indexStatus) {
   const pipes = indexStatus?.pipelines || {};
+  if (!Object.keys(pipes).length) {
+    return emptyState({
+      icon: "database-off",
+      title: "Retrieval status unavailable",
+      body: "Start the backend with Knowledge Graph enabled to see live index state.",
+    });
+  }
   return h("div.lt3-pillars",
     PILLAR_DEFS.map((def) => {
       const p = pipes[def.key] || {};

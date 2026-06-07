@@ -95,6 +95,7 @@ class Config:
 
     # ── embeddings (retrieval vector signal) ────────────────────────
     embedding_provider: str
+    embedding_profile: str
     embedding_model: str
     embedding_base_url: str
     embedding_api_key: str
@@ -174,6 +175,7 @@ class Config:
             local_draft_model=_value(env, "LATTICEAI_LOCAL_DRAFT_MODEL", ""),
             auto_read_chat_paths=_bool(env, "LATTICEAI_AUTO_READ_CHAT_PATHS", default=False),
             embedding_provider=_value(env, "LATTICEAI_EMBEDDING_PROVIDER", "hash").strip().lower(),
+            embedding_profile=_value(env, "LATTICEAI_EMBEDDING_PROFILE", "").strip().lower(),
             embedding_model=_value(env, "LATTICEAI_EMBEDDING_MODEL", ""),
             embedding_base_url=_value(env, "LATTICEAI_EMBEDDING_BASE_URL", ""),
             embedding_api_key=_value(env, "LATTICEAI_EMBEDDING_API_KEY", ""),

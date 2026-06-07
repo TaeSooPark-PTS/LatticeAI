@@ -2,13 +2,13 @@
  * View: Admin · Users — workspace members and access.
  * Surfaces the membership roster and access summary for the active workspace.
  * Reads from /admin/summary + /admin/users (fallback-safe, badged) and never
- * invents backend mutations — actionable controls explain that the write side
- * is pending so the surface stays integration-ready.
+ * invents backend mutations — actionable controls report unavailable write
+ * operations when the backend does not expose them.
  * ========================================================================== */
 
 import { timeAgo } from "../core/dom.js";
 
-const PENDING = "managed from the classic admin surface (/admin) in this build.";
+const UNAVAILABLE = "not available from this read-only users view.";
 
 export async function render(ctx) {
   const { h, icon, api, c, toast } = ctx;
@@ -24,7 +24,7 @@ export async function render(ctx) {
       sub: "Workspace members and access.",
       actions: [
         h("button.lt3-btn.lt3-btn--primary",
-          { on: { click: () => toast("Invite user — " + PENDING, "info") } },
+          { on: { click: () => toast("Invite user is " + UNAVAILABLE, "info") } },
           icon("user-plus"), "Invite user"),
       ],
     }),
@@ -67,7 +67,7 @@ export async function render(ctx) {
         title: "No members yet",
         body: "Invite teammates to give them access to this workspace.",
         action: h("button.lt3-btn.lt3-btn--subtle.lt3-btn--sm",
-          { on: { click: () => toast("Invite user — " + PENDING, "info") } },
+          { on: { click: () => toast("Invite user is " + UNAVAILABLE, "info") } },
           icon("user-plus"), "Invite user"),
       }));
       return;
@@ -105,7 +105,7 @@ export async function render(ctx) {
         render: (r) => h("button.lt3-iconbtn.lt3-iconbtn--sm",
           {
             "aria-label": `Manage ${r.nickname || r.email}`,
-            on: { click: () => toast(`Manage ${r.nickname || r.email} — ` + PENDING, "info") },
+            on: { click: () => toast(`Manage ${r.nickname || r.email} is ` + UNAVAILABLE, "info") },
           },
           icon("dots-vertical")),
       },

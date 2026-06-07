@@ -23,18 +23,47 @@
   <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap">
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@latest/tabler-icons.min.css">
 
-  <!-- Color single-source (shared with the rest of Lattice AI) -->
-  <link rel="stylesheet" href="/static/css/tokens.css?v=3.0.0">
-  <!-- v3 design system (token-native, no legacy override layers) -->
-  <link rel="stylesheet" href="/static/v3/css/lattice.tokens.css?v=3.0.0">
-  <link rel="stylesheet" href="/static/v3/css/lattice.base.css?v=3.0.0">
-  <link rel="stylesheet" href="/static/v3/css/lattice.components.css?v=3.0.0">
-  <link rel="stylesheet" href="/static/v3/css/lattice.shell.css?v=3.0.0">
-  <link rel="stylesheet" href="/static/v3/css/lattice.views.css?v=3.0.0">
+  <script>
+    window.__LT_ASSET_SOURCES__ = {
+      styles: [
+        "static/css/tokens.css",
+        "static/v3/css/lattice.tokens.css",
+        "static/v3/css/lattice.base.css",
+        "static/v3/css/lattice.components.css",
+        "static/v3/css/lattice.shell.css",
+        "static/v3/css/lattice.views.css"
+      ],
+      entry: "static/v3/js/app.js"
+    };
+  </script>
 </head>
 <body>
   <div id="app"></div>
   <noscript style="display:block;padding:2rem;font-family:system-ui">Lattice AI requires JavaScript to run the workspace shell.</noscript>
-  <script type="module" src="/static/v3/js/app.js?v=3.0.0"></script>
+  <script>
+    (async function () {
+      var sources = window.__LT_ASSET_SOURCES__;
+      var manifest = { assets: {} };
+      function fallback(key) { return "/" + key; }
+      function asset(key) {
+        return (manifest.assets && manifest.assets[key]) || fallback(key);
+      }
+      try {
+        var res = await fetch("/static/v3/asset-manifest.json", { cache: "no-store" });
+        if (res.ok) manifest = await res.json();
+      } catch (e) {}
+      window.__LT_ASSET_MANIFEST__ = manifest;
+      sources.styles.forEach(function (key) {
+        var link = document.createElement("link");
+        link.rel = "stylesheet";
+        link.href = asset(key);
+        document.head.appendChild(link);
+      });
+      var script = document.createElement("script");
+      script.type = "module";
+      script.src = asset(sources.entry);
+      document.body.appendChild(script);
+    })();
+  </script>
 </body>
 </html>

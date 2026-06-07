@@ -1124,10 +1124,24 @@ async def _brew_install(package: str) -> Tuple[bool, str]:
         return False, str(e)
 
 
+def _discover_packaged_data_files() -> List[Tuple[str, List[str]]]:
+    """Include static/plugin assets generated before packaging."""
+    groups: List[Tuple[str, List[str]]] = []
+    for root_name in ("static", "plugins"):
+        root = Path(root_name)
+        if not root.exists():
+            continue
+        for directory in sorted([root, *[p for p in root.rglob("*") if p.is_dir()]]):
+            files = sorted(str(p) for p in directory.iterdir() if p.is_file() and not p.name.startswith("."))
+            if files:
+                groups.append((str(directory), files))
+    return groups
+
+
 if __name__ == "__main__":
     # Packaging entrypoint for legacy setuptools invocations used by `python -m build`.
     from setuptools import setup as _setuptools_setup
-    _setuptools_setup()
+    _setuptools_setup(data_files=_discover_packaged_data_files())
 
 
 def open_url(url: str) -> None:

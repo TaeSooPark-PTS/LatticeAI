@@ -1,8 +1,7 @@
 /* ============================================================================
  * View: Knowledge Graph — entity/relation explorer.
- * Renders the graph as an SVG mesh (integration-ready against /api/graph) with
- * a live inspector. Falls back to clearly-badged sample data when the backend
- * graph endpoint isn't available yet.
+ * Renders the graph as an SVG mesh against /api/graph with a live inspector.
+ * Missing graph data renders an empty unavailable state.
  * ========================================================================== */
 
 import { escapeHtml } from "../core/dom.js";

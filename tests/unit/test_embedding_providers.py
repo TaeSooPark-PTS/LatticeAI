@@ -17,6 +17,8 @@ from latticeai.core.embedding_providers import (
     HashEmbeddingProvider,
     PROVIDER_TYPES,
     build_embedding_provider,
+    embedding_provider_profiles,
+    resolve_embedding_profile,
     resolve_embedder,
 )
 from latticeai.services.search_service import SearchService
@@ -50,6 +52,25 @@ def test_factory_knows_every_provider_type():
     prov = build_embedding_provider("ollama", model="nomic-embed-text", base_url="http://127.0.0.1:1")
     assert prov.provider == "ollama"
     assert prov.model_id.startswith("ollama:")
+
+
+def test_production_embedding_profiles_cover_v310_matrix():
+    profiles = {p["id"]: p for p in embedding_provider_profiles()}
+    required = {
+        "local:bge-m3",
+        "local:nomic-embed-text",
+        "local:e5-large",
+        "local:gte-large",
+        "ollama:nomic-embed-text",
+        "ollama:mxbai-embed-large",
+        "ollama:bge-m3",
+        "mlx:bge-m3",
+        "openai:text-embedding-3-small",
+        "openai:text-embedding-3-large",
+    }
+    assert required <= set(profiles)
+    assert all(profiles[item]["grade"] == "production" for item in required)
+    assert resolve_embedding_profile("openai:text-embedding-3-large")["dimensions"] == 3072
 
 
 def test_unavailable_provider_degrades_to_hash_without_crashing():
@@ -134,3 +155,5 @@ def test_search_router_embeddings_endpoints(tmp_path):
     assert r2.status_code == 200
     ids = {p["id"] for p in r2.json()["providers"]}
     assert ids == {"hash", "mlx", "ollama", "openai", "custom"}
+    profile_ids = {p["id"] for p in r2.json()["profiles"]}
+    assert {"local:bge-m3", "ollama:mxbai-embed-large", "openai:text-embedding-3-small"} <= profile_ids

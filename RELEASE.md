@@ -7,6 +7,33 @@
 > PyPI / npm / VS Code Marketplace / Open VSX 배포는 아래 수동 절차로만
 > 진행합니다. 태그 생성은 패키지 스토어 publish를 자동으로 트리거하지 않습니다.
 
+## v3.1.0 릴리스 노트 (2026-06-07)
+
+Lattice AI v3.1.0 — Mainline Product Platform Completion. `/app`가
+non-enterprise Local-First AI Workspace Platform의 기본이자 완성된 제품
+경험이다. Classic 화면은 compatibility/debug route로만 유지한다. 패키지
+스토어 publish 및 배포는 수행하지 않는다.
+
+- **Changed (Classic retirement)**: Chat, Models, Agents, Files, Pipeline,
+  My Computer, Settings, Knowledge Graph, Hybrid Search, Admin workflow가
+  `/app`에서 완료된다. 정상 workflow는 Classic 진입이 필요 없다.
+- **Added (Native model lifecycle)**: `/app#/models`에서 `/models/load`,
+  `/models/unload/{model_id}`를 직접 호출한다.
+- **Added (Production embedding profiles)**: local `bge-m3`,
+  `nomic-embed-text`, `e5-large`, `gte-large`; Ollama `nomic-embed-text`,
+  `mxbai-embed-large`, BGE-M3-compatible providers; MLX; OpenAI-compatible
+  `text-embedding-3-small`/`text-embedding-3-large` profile을 제공. Hash
+  embedding은 fallback only로 유지.
+- **Changed (Frontend truth rule)**: v3 fallback adapter는 sample data/fake
+  counter/fake health 대신 unavailable empty state를 반환한다.
+- **Added (Hashed assets)**: `npm run build:assets`가
+  `static/v3/asset-manifest.json` 및 hashed CSS/JS를 생성하고 `/app`가
+  manifest를 통해 로드한다. Runtime HTML의 `?v=` cache-busting 제거.
+- **Validation target**: `npm run lint`, `npm run typecheck`,
+  `npm run check:python`, backend/integration tests, `npx playwright test`,
+  browser validation, `python -m build`, `npm run build`, `npm pack`, VSIX
+  package, release artifact validator.
+
 ## v3.0.0 릴리스 노트 (2026-06-07)
 
 Lattice AI v3 — Local-First AI Workspace Platform. `/app`가 기본 제품
@@ -639,13 +666,13 @@ Knowledge Graph v2 read/write cutover. 자세한 내용은
    - `npm run release:artifacts`
    - `npm run release:validate`
 
-현재 `v3.0.0` 기준 필수 산출물:
+현재 `v3.1.0` 기준 필수 산출물:
 
 ```text
-dist/ltcai-3.0.0-py3-none-any.whl
-dist/ltcai-3.0.0.tar.gz
-dist/ltcai-3.0.0.vsix
-ltcai-3.0.0.tgz
+dist/ltcai-3.1.0-py3-none-any.whl
+dist/ltcai-3.1.0.tar.gz
+dist/ltcai-3.1.0.vsix
+ltcai-3.1.0.tgz
 ```
 
 ## 2) npm 배포

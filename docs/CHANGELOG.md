@@ -1,5 +1,42 @@
 # Changelog
 
+## [3.1.0] - 2026-06-07
+
+> v3.1 — Mainline Product Platform Completion. `/app` is now the full
+> non-enterprise local-first workspace: Classic pages are compatibility routes,
+> production embedding profiles are explicit, AgentRuntime and registries are
+> the integration boundaries, and v3 runtime assets are hash-manifested.
+
+### Added
+
+- **Hashed asset pipeline** — `npm run build:assets` writes
+  `static/v3/asset-manifest.json`, hashed CSS/JS siblings, and import-rewritten
+  ES modules. `/app` reads the manifest and loads hashed assets automatically.
+- **Production embedding profiles** — local `bge-m3`, `nomic-embed-text`,
+  `e5-large`, `gte-large`; Ollama `nomic-embed-text`, `mxbai-embed-large`,
+  BGE-M3-compatible providers; MLX Apple Silicon profiles; and
+  OpenAI-compatible `text-embedding-3-small` / `text-embedding-3-large`.
+- **Native model lifecycle controls** — `/app#/models` now calls the real
+  `/models/load` and `/models/unload/{model_id}` endpoints.
+
+### Changed
+
+- **Classic retirement** — normal user workflows no longer link to Classic
+  Chat, Classic Runtime, or Classic Admin. Compatibility routes remain available
+  for rollback/debug.
+- **Truthful unavailable states** — v3 fallback adapters return empty
+  unavailable payloads instead of sample data, fake counters, or fabricated
+  health.
+- **Release metadata** — package, npm, VS Code extension, Workspace OS, docs,
+  and expected artifacts are aligned at `3.1.0`.
+
+### Validation
+
+- Release target: `npm run lint`, `npm run typecheck`, `npm run check:python`,
+  backend/integration tests, Playwright visual tests, `python -m build`,
+  `npm run build`, `npm pack`, VSIX package, and exact-version artifact
+  validation.
+
 ## [3.0.0] - 2026-06-07
 
 > v3 — Local-first AI Workspace Platform. The hybrid-search

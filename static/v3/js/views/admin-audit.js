@@ -1,6 +1,6 @@
 /* ============================================================================
  * View: Audit Logs — Administration · activity and access trail.
- * Reads /admin/audit (live) and degrades to a clearly-badged sample trail.
+ * Reads /admin/audit (live) and renders unavailable state when it cannot load.
  * Severity filter narrows the rendered events; a compact stat row summarizes
  * actors, volume and risk at a glance.
  * ========================================================================== */
