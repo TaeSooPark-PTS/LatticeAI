@@ -83,6 +83,61 @@ Edge {
 
 ---
 
+## v3.6.0 — Knowledge Graph First 엔티티/관계
+
+v3.6.0 은 "모든 데이터 소스가 Knowledge Graph 로 수렴한다"는 원칙을 1급 스키마로
+승격한다. 아래 타입은 **추가형(additive)**이다 — 기존 enum/legacy 매핑을 깨지 않고
+`from_legacy` 가 무손실로 정규화하며, 알 수 없는 타입은 여전히 `CONCEPT`/`MENTIONS` 로
+폴백한다. 스키마는 **확장 가능**하게 유지한다: 새 도메인 엔티티는 enum 멤버 1개 +
+`_LEGACY_NODE_MAP`/`_LEGACY_EDGE_MAP` 별칭만 추가하면 된다.
+
+### 추가 노드 타입
+
+| 타입 | 의미 | 대표 `attrs` / 출처 |
+|------|------|--------------------|
+| `SOURCE` | 수집 출처(파일/URL/브라우저 탭/git 등)의 **출처 노드** | `source_type`, `source_uri`, `content_hash`, `captured_at` |
+| `REPOSITORY` | git 저장소 | `remote`, `branch`, `head` |
+| `MEETING` | 회의 / 미팅 | `started_at`, `attendees[]` |
+| `ORGANIZATION` | 조직 / 회사 / 팀 | `domain`, `members[]` |
+| `WORKFLOW` | 워크플로우 정의/실행 | `workflow_id`, `status` |
+| `AGENT` | 에이전트(역할/실행 주체) | `role`, `model_id` |
+
+### 추가 엣지 타입
+
+| 타입 | 허용 source → target | 의미 |
+|------|---------------------|------|
+| `INDEXED_FROM` | ANY → `SOURCE` | 이 노드가 **어떤 출처에서 색인**됐는가 (provenance) |
+| `MODIFIED_BY` | ANY → `PERSON` | 마지막 수정자 |
+| `BELONGS_TO_PROJECT` | ANY → `PROJECT` | 프로젝트 귀속 |
+| `PART_OF` | ANY → ANY | 구성요소 관계 |
+| `DISCUSSED_IN` | `CONCEPT`·`DECISION` → `MEETING`·`CHAT` | 어디에서 논의됨 |
+| `DECIDED_BY` | `DECISION` → `PERSON` | 결정 주체 |
+| `GENERATED_BY` | ANY → `AGENT`·`MODEL`·`WORKFLOW` | 생성 주체 |
+| `USED_BY_AGENT` | ANY → `AGENT` | 에이전트가 사용함 |
+
+### 통합 수집 형태 (Unified Ingestion)
+
+모든 출처는 동일한 형태로 그래프에 들어온다:
+
+```
+SOURCE ──INDEXED_FROM◄── Document/File ──CONTAINS──► Chunk[]
+   ▲                          │
+   │                          └──(언급/포함)──► Concept / Task / Decision …
+provenance(source_type, source_uri, content_hash, captured_at, modified_at,
+           owner, workspace_id, permissions, pipeline, embedded, linked)
+```
+
+- **콘텐츠 노드**(Document/File/web 노드)는 `content_hash` 로 멱등(idempotent) 처리된다 —
+  같은 콘텐츠를 다시 수집하면 새 노드를 만들지 않고 갱신/링크한다.
+- 모든 콘텐츠 노드는 `SOURCE` 노드로 `INDEXED_FROM` 엣지를 가져 **출처를 항상 설명 가능**하다.
+- provenance 는 노드 `metadata.provenance` 에 임베드되며, 동시에 감사 가능한
+  `ingestion_provenance` 테이블에 기록된다 (`KnowledgeGraphStore.get_provenance(node_id)`).
+
+구현: `latticeai/services/ingestion.py` (`IngestionPipeline`) 가 단일 진입점이며,
+파일/로컬폴더/URL/브라우저 탭/텍스트를 모두 이 형태로 정규화한다.
+
+---
+
 ## 예시 (PPT 슬라이드 22 와 동일)
 
 ```json

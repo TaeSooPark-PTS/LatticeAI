@@ -3044,6 +3044,13 @@ class KnowledgeGraphStore:
         "Feature",    # 소프트웨어 기능
         "Task",       # 할 일
         "Decision",   # 결정 사항
+        # v3.6.0 Knowledge Graph First — 1급 엔티티를 그래프에 노출
+        "Source",       # 수집 출처 (파일/URL/브라우저 탭/git)
+        "Repository",   # git 저장소
+        "Meeting",      # 회의
+        "Organization", # 조직
+        "Workflow",     # 워크플로우
+        "Agent",        # 에이전트
     )
 
     def list_documents(self, limit: int = 200) -> Dict[str, Any]:

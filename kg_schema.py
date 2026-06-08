@@ -99,6 +99,15 @@ class NodeType(str, Enum):
     DECISION     = "DECISION"       # 결정 사항
     ERROR        = "ERROR"          # 오류 / 버그
     EVENT        = "EVENT"          # 분석/시스템 이벤트(동적 타입 폴백)
+    # v3.6.0 Knowledge Graph First — 모든 데이터 소스가 그래프로 수렴하기 위한
+    # 1급 엔티티. 추가형(additive)·확장 가능(extensible): 새 도메인 엔티티는
+    # 여기에 enum 멤버를 추가하고 _LEGACY_NODE_MAP 에 별칭만 등록하면 된다.
+    SOURCE       = "SOURCE"         # 수집 출처(파일/URL/브라우저 탭/git 등)의 출처 노드
+    REPOSITORY   = "REPOSITORY"     # git 저장소
+    MEETING      = "MEETING"        # 회의 / 미팅
+    ORGANIZATION = "ORGANIZATION"   # 조직 / 회사 / 팀
+    WORKFLOW     = "WORKFLOW"       # 워크플로우 정의/실행
+    AGENT        = "AGENT"          # 에이전트(역할/실행 주체)
 
     @classmethod
     def from_legacy(cls, label: str) -> "NodeType":
@@ -143,6 +152,16 @@ class EdgeType(str, Enum):
     DISCUSSES      = "DISCUSSES"      # SLIDE/PAGE → TOPIC (discusses)
     IMPLIES        = "IMPLIES"        # NODE → NODE (implies)
     RELATED_TO     = "RELATED_TO"     # ANY ↔ ANY (related_to)
+    # v3.6.0 Knowledge Graph First — 출처/소유/구성/결정 관계를 1급 엣지로 승격.
+    # 추가형: 새 관계는 enum 멤버 추가 + _LEGACY_EDGE_MAP 별칭 등록만으로 확장된다.
+    INDEXED_FROM       = "INDEXED_FROM"        # NODE → SOURCE (어떤 출처에서 색인됐는가)
+    MODIFIED_BY        = "MODIFIED_BY"         # NODE → PERSON (마지막 수정자)
+    BELONGS_TO_PROJECT = "BELONGS_TO_PROJECT"  # NODE → PROJECT
+    PART_OF            = "PART_OF"             # NODE → NODE (구성요소 관계)
+    DISCUSSED_IN       = "DISCUSSED_IN"        # CONCEPT/DECISION → MEETING/CHAT
+    DECIDED_BY         = "DECIDED_BY"          # DECISION → PERSON
+    GENERATED_BY       = "GENERATED_BY"        # NODE → AGENT/MODEL/WORKFLOW
+    USED_BY_AGENT      = "USED_BY_AGENT"       # NODE → AGENT (에이전트가 사용함)
 
     @classmethod
     def from_legacy(cls, label: str) -> "EdgeType":
@@ -199,6 +218,19 @@ _LEGACY_NODE_MAP: Dict[str, NodeType] = {
     "보고서":       NodeType.DOCUMENT,
     "계획서":       NodeType.DOCUMENT,
     "기획서":       NodeType.DOCUMENT,
+    # v3.6.0 Knowledge Graph First 엔티티
+    "source":       NodeType.SOURCE,
+    "ingestionsource": NodeType.SOURCE,
+    "repository":   NodeType.REPOSITORY,
+    "repo":         NodeType.REPOSITORY,
+    "gitrepo":      NodeType.REPOSITORY,
+    "meeting":      NodeType.MEETING,
+    "organization": NodeType.ORGANIZATION,
+    "org":          NodeType.ORGANIZATION,
+    "company":      NodeType.ORGANIZATION,
+    "team":         NodeType.ORGANIZATION,
+    "workflow":     NodeType.WORKFLOW,
+    "agent":        NodeType.AGENT,
 }
 
 _LEGACY_EDGE_MAP: Dict[str, EdgeType] = {
@@ -254,6 +286,20 @@ _LEGACY_EDGE_MAP: Dict[str, EdgeType] = {
     "영감받음":      EdgeType.INSPIRED_BY,
     "상충함":        EdgeType.CONTRADICTS,
     "발전함":        EdgeType.EVOLVES_FROM,
+    # v3.6.0 Knowledge Graph First 관계
+    "indexed_from":       EdgeType.INDEXED_FROM,
+    "modified_by":        EdgeType.MODIFIED_BY,
+    "belongs_to_project": EdgeType.BELONGS_TO_PROJECT,
+    "belongs_to":         EdgeType.BELONGS_TO_PROJECT,
+    "part_of":            EdgeType.PART_OF,
+    "discussed_in":       EdgeType.DISCUSSED_IN,
+    "decided_by":         EdgeType.DECIDED_BY,
+    "generated_by":       EdgeType.GENERATED_BY,
+    "used_by_agent":      EdgeType.USED_BY_AGENT,
+    "색인됨":             EdgeType.INDEXED_FROM,
+    "수정함":             EdgeType.MODIFIED_BY,
+    "결정함":             EdgeType.DECIDED_BY,
+    "구성요소":           EdgeType.PART_OF,
 }
 
 # ── SQLite v2 store ─────────────────────────────────────────────────────────
