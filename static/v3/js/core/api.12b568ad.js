@@ -440,6 +440,73 @@ export const api = {
   mcpClaudeServers() { return withFallback("/mcp/claude-code-servers", {}, { servers: [] }); },
   mcpCustom() { return withFallback("/mcp/custom", {}, { custom: [] }); },
   mcpRecommend(query, limit = 6) { return raw("/mcp/recommend", { method: "POST", body: { query, limit } }); },
+
+  /* ── v3.4 Platform Completion ───────────────────────────────────────────
+   * Uploaded documents in Files, Connect Folder + Folder Watch over the real
+   * on-device runtime, the Local Agent status, and Hooks dispatch/run-log.
+   * All endpoints are real (latticeai/api + knowledge_graph_api); fallback-safe. */
+
+  /** GET /knowledge-graph/documents — uploaded + indexed docs with index state. */
+  async documents(limit = 200) {
+    const res = await raw(`/knowledge-graph/documents?limit=${encodeURIComponent(limit)}`);
+    if (res.ok && res.data && Array.isArray(res.data.documents)) {
+      return { ok: true, status: res.status, data: res.data.documents, source: "live", total: res.data.total };
+    }
+    return { ok: false, status: res.status, data: [], source: "unavailable", error: res.error };
+  },
+
+  // Local Agent (the on-device Lattice runtime: real GET /api/local-agent/status)
+  async localAgent() {
+    const res = await raw("/api/local-agent/status");
+    if (res.ok && res.data && res.data.agent) {
+      return { ok: true, status: res.status, data: res.data, source: "live" };
+    }
+    return {
+      ok: false, status: res.status, source: "unavailable",
+      data: { agent: { online: false }, health: {}, folders: { connected: 0, watching: 0 }, watch: { available: false, active: {} }, sources: [] },
+    };
+  },
+
+  // Connect Folder + Folder Watch (real backend: /knowledge-graph/local/*)
+  localRoots() { return withFallback("/knowledge-graph/local/roots", {}, { roots: [] }); },
+  async localSources() {
+    const res = await raw("/knowledge-graph/local/sources");
+    if (res.ok && res.data && Array.isArray(res.data.sources)) {
+      return { ok: true, status: res.status, data: res.data, source: "live" };
+    }
+    return { ok: false, status: res.status, data: { sources: [], watch: { available: false, active: {} } }, source: "unavailable" };
+  },
+  localWatchStatus() { return raw("/knowledge-graph/local/watch/status"); },
+  localWatchStop(source_id) { return raw("/knowledge-graph/local/watch/stop", { method: "POST", body: { source_id } }); },
+  approvePermission(token) { return raw(`/permissions/approve/${encodeURIComponent(token)}`, { method: "POST" }); },
+  indexFolder(path, opts = {}) {
+    return raw("/knowledge-graph/local/index", { method: "POST", body: { path, ...opts } });
+  },
+  /** One-call Connect Folder: request → self-approve (the click is the consent)
+   *  → index (+ optional watch). Returns { ok, data, error }. */
+  async connectFolder(path, { watch = true, includeOcr = false } = {}) {
+    const probe = await raw("/knowledge-graph/local/index", { method: "POST", body: { path, approved: false } });
+    const token = probe.data && probe.data.approval_token;
+    if (!token) {
+      const detail = (probe.data && (probe.data.detail || probe.data.error)) || "the runtime did not return an approval token";
+      return { ok: false, error: detail, status: probe.status };
+    }
+    const approved = await raw(`/permissions/approve/${encodeURIComponent(token)}`, { method: "POST" });
+    if (!approved.ok) {
+      const detail = (approved.data && (approved.data.detail || approved.data.error)) || "approval failed";
+      return { ok: false, error: detail, status: approved.status };
+    }
+    const res = await raw("/knowledge-graph/local/index", {
+      method: "POST",
+      body: { path, approved: true, approval_token: token, watch_enabled: watch, include_ocr: includeOcr, consent: { approved: true, source: "files-ui" } },
+    });
+    if (res.ok && res.data && !res.data.detail) return { ok: true, data: res.data, status: res.status };
+    return { ok: false, error: (res.data && (res.data.detail || res.data.error)) || "indexing failed", status: res.status, data: res.data };
+  },
+
+  // Hooks dispatch (real backend: POST /api/hooks/run + GET /api/hooks/runs)
+  hookRun(body) { return raw("/api/hooks/run", { method: "POST", body }); },
+  hookRuns(limit = 50, kind) { return withFallback(`/api/hooks/runs?limit=${encodeURIComponent(limit)}${kind ? "&kind=" + encodeURIComponent(kind) : ""}`, {}, { runs: [], total: 0 }); },
 };
 
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));

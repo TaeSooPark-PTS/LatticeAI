@@ -192,7 +192,7 @@ const server = http.createServer((req, res) => {
   if (pathname === "/account/profile") return json(res, { detail: "unauthorized" }, 401);
   if (pathname === "/auth/sso/config") return json(res, { enabled: false, providers: [] });
 
-  if (pathname === "/health") return json(res, { status: "ok", version: "3.3.1", mode: "visual" });
+  if (pathname === "/health") return json(res, { status: "ok", version: "3.4.0", mode: "visual" });
   if (pathname === "/vpc/status") return json(res, { provider: "local", region: "visual", vpn_status: "standby", peering_status: "not_configured", private_subnets: [] });
   if (pathname === "/workspace/os") return json(res, workspaceOs);
   if (pathname === "/workspace/onboarding/status") return json(res, { current_step: "complete", steps: ["account", "admin", "hardware", "model_recommendation", "folder_connection", "complete"].map((id) => ({ id, status: "complete" })) });
@@ -254,6 +254,61 @@ const server = http.createServer((req, res) => {
     { id: "openai", label: "OpenAI-compatible", grade: "production" },
     { id: "custom", label: "Custom", grade: "production" },
   ] });
+  // ── v3.4.0 Platform Completion surfaces ───────────────────────────────────
+  if (pathname === "/models") return json(res, {
+    recommended: [
+      { id: "mlx-community/Qwen2.5-VL-7B-Instruct-4bit", name: "Qwen2.5-VL 7B", display_name: "Qwen2.5-VL 7B", family: "qwen-vl", modality: "multimodal", capabilities: ["vision", "text"], state: "loaded" },
+      { id: "mlx-community/gemma-4-12b-it-4bit", name: "Gemma 4 12B", display_name: "Gemma 4 12B", family: "gemma", capabilities: ["text"], state: "available" },
+    ],
+    cloud: [],
+    engines: [{ id: "local_mlx", name: "MLX", kind: "local", installed: true }],
+    loaded: ["mlx-community/Qwen2.5-VL-7B-Instruct-4bit"],
+    current: "mlx-community/Qwen2.5-VL-7B-Instruct-4bit",
+    compat_profiles: [],
+    vision: { current_model: "mlx-community/Qwen2.5-VL-7B-Instruct-4bit", current_supports_vision: true, engine_available: true, enabled: true },
+  });
+  if (pathname === "/local/sysinfo") return json(res, { cpu_pct: 34, ram_pct: 61, gpu_mem_pct: 48, gpu_mem_gb: 9.4 });
+  if (pathname === "/knowledge-graph/documents") return json(res, {
+    documents: [
+      { id: "file:a1b2c3", filename: "retrieval-design.pdf", ext: ".pdf", mime_type: "application/pdf", bytes: 184320, sha256: "a1b2c3d4e5f6", uploader: "you@local", chars: 18240, chunks: 24, indexed: true, ingest_state: "indexed", created_at: "2026-06-07T10:00:00", updated_at: "2026-06-07T10:00:05" },
+      { id: "file:d4e5f6", filename: "meeting-notes.md", ext: ".md", mime_type: "text/markdown", bytes: 4096, sha256: "d4e5f6a1b2c3", uploader: "you@local", chars: 3200, chunks: 4, indexed: true, ingest_state: "indexed", created_at: "2026-06-07T09:30:00", updated_at: "2026-06-07T09:30:02" },
+      { id: "file:g7h8i9", filename: "q3-budget.xlsx", ext: ".xlsx", mime_type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet", bytes: 20480, sha256: "g7h8i9j0k1l2", uploader: "you@local", chars: 980, chunks: 2, indexed: true, ingest_state: "indexed", created_at: "2026-06-06T16:10:00", updated_at: "2026-06-06T16:10:01" },
+      { id: "file:m3n4o5", filename: "onboarding.docx", ext: ".docx", mime_type: "application/vnd.openxmlformats-officedocument.wordprocessingml.document", bytes: 51200, sha256: "m3n4o5p6q7r8", uploader: "you@local", chars: 0, chunks: 0, indexed: false, ingest_state: "ingested", created_at: "2026-06-07T10:01:00", updated_at: "2026-06-07T10:01:00" },
+    ],
+    total: 4,
+    generated_at: "2026-06-07T10:00:10",
+  });
+  {
+    const localSources = {
+      sources: [
+        { id: "src-docs", label: "Documents", root_path: "/Users/you/Documents", success_count: 312, failure_count: 0, status: "indexed", last_run_at: "2026-06-07T09:00:00", watch_enabled: true, watch_active: true, watch_status: { last_event_at: 1717740000, last_indexed_at: 1717740300, last_error: null } },
+        { id: "src-proj", label: "lattice (project)", root_path: "/Users/you/code/lattice", success_count: 1840, failure_count: 2, status: "indexed", last_run_at: "2026-06-07T08:30:00", watch_enabled: false, watch_active: false, watch_status: null },
+      ],
+      watch: { available: true, error: "", debounce_seconds: 5, active: { "src-docs": { root_path: "/Users/you/Documents", last_event_at: 1717740000, last_indexed_at: 1717740300, last_error: null } } },
+    };
+    if (pathname === "/knowledge-graph/local/sources") return json(res, localSources);
+    if (pathname === "/knowledge-graph/local/roots") return json(res, { roots: [{ path: "/Users/you/Documents", label: "Documents" }, { path: "/Users/you/Desktop", label: "Desktop" }, { path: "/Users/you/code", label: "code" }] });
+    if (pathname === "/knowledge-graph/local/watch/status") return json(res, localSources.watch);
+    if (pathname === "/api/local-agent/status") return json(res, {
+      agent: { id: "lattice-local-runtime", name: "Lattice Local Agent", kind: "on-device-runtime", online: true, platform: "macOS-15.5-arm64-arm-64bit", machine: "arm64", python: "3.12.4" },
+      handshake: { ok: true, transport: "in-process", detail: "The local Lattice runtime serves this workspace on-device; no external agent is required." },
+      health: { status: "ok", filesystem_access: true, watcher_available: true },
+      folders: { connected: 2, watching: 1 },
+      watch: localSources.watch,
+      sources: localSources.sources,
+    });
+  }
+  if (pathname === "/api/hooks/runs") return json(res, {
+    runs: [
+      { hook_id: "builtin:redact-secrets", name: "Redact secrets", kind: "pre_run", status: "ok", detail: "", output: "redacted 1 field(s)", duration_ms: 1, blocked: false, target_event: "agent.run", target_kind: "pre_run", started_at: "2026-06-07T10:00:01" },
+      { hook_id: "builtin:audit-agent-run", name: "Audit agent run", kind: "post_run", status: "ok", detail: "", output: "audited run agent-run-9", duration_ms: 2, blocked: false, target_event: "agent.run", target_kind: "post_run", started_at: "2026-06-07T10:00:02" },
+      { hook_id: "builtin:pipeline-index-status", name: "Pipeline index status", kind: "pipeline", status: "ok", detail: "", output: "pipeline document.ingested: indexed=true", duration_ms: 0, blocked: false, target_event: "document.ingested", target_kind: "pipeline", started_at: "2026-06-07T09:58:00" },
+      { hook_id: "user:notify-slack", name: "Notify Slack on release", kind: "post_run", status: "ok", detail: "", output: "posted to #releases", duration_ms: 142, blocked: false, target_event: "agent.run", target_kind: "post_run", started_at: "2026-06-07T09:55:00" },
+      { hook_id: "user:policy-gate", name: "Policy gate", kind: "pre_tool", status: "blocked", detail: "write to /etc denied by policy", output: "", duration_ms: 8, blocked: true, target_event: "tool.write_file", target_kind: "pre_tool", started_at: "2026-06-07T09:50:00" },
+    ],
+    total: 5,
+    generated_at: "2026-06-07T10:00:10",
+  });
   if (pathname === "/agents/api/runtime/status") return json(res, {
     runtime: { ready: true, version: "2.2.0", execution_mode: "synchronous", default_pipeline: ["planner", "executor", "reviewer"], total_runs: 3, active_runs: 0 },
     health: { status: "ok", checks: { run_store: { status: "ok" }, orchestrator: { status: "ok" } } },
@@ -329,10 +384,22 @@ const server = http.createServer((req, res) => {
     health: "ok",
   });
   if (pathname === "/api/memory/inspect") return json(res, { source: url.searchParams.get("source"), items: [{ id: "mem-demo", kind: "workspace", title: "Demo memory", content: "Release memory" }], count: 1, available: true, stats: workspaceOs.graph, index: { status: "ready" } });
+  if (pathname === "/api/hooks/run" && req.method === "POST") return json(res, {
+    hook_id: "builtin:redact-secrets", name: "Redact secrets", kind: "pre_run",
+    status: "ok", detail: "", output: "redacted 1 field(s)", duration_ms: 1, blocked: false,
+    source: "builtin", binding: "multi_agent._redact", started_at: "2026-06-07T10:05:00",
+  });
+  if (pathname === "/api/hooks/fire" && req.method === "POST") return json(res, { kind: "pre_run", event: "manual", ran: 1, blocked: false, block_reason: "", results: [], generated_at: "2026-06-07T10:05:00" });
   if (pathname === "/api/hooks") return json(res, { hooks: [
-    { id: "builtin:redact-secrets", name: "Redact secrets", kind: "pre_run", order: 10, description: "Redact secret-like fields.", binding: "multi_agent._redact", managed: "platform", source: "builtin", enabled: true, removable: false },
-    { id: "builtin:audit-agent-run", name: "Audit agent run", kind: "post_run", order: 10, description: "Audit completed agent runs.", binding: "AgentRuntime.start", managed: "platform", source: "builtin", enabled: true, removable: false },
-  ], kinds: ["pre_run", "post_run", "pre_tool", "post_tool", "agent", "pipeline", "workflow"], counts: { pre_run: { total: 1, enabled: 1 }, post_run: { total: 1, enabled: 1 } }, total: 2, enabled: 2 });
+    { id: "builtin:redact-secrets", name: "Redact secrets", kind: "pre_run", order: 10, description: "Strip secret-like fields from agent context before a run.", binding: "multi_agent._redact", managed: "platform", source: "builtin", enabled: true, removable: false },
+    { id: "builtin:research-memory-snapshot", name: "Research memory snapshot", kind: "agent", order: 20, description: "Capture a short-term memory snapshot after the researcher stage.", binding: "multi_agent.default_role_runner", managed: "platform", source: "builtin", enabled: true, removable: false },
+    { id: "builtin:tool-permission-gate", name: "Tool permission gate", kind: "pre_tool", order: 10, description: "Require approval for tools whose policy is not auto-approve.", binding: "tool_registry.permission", managed: "platform", source: "builtin", enabled: true, removable: false },
+    { id: "builtin:sensitive-data-guard", name: "Sensitive-data guard", kind: "pre_tool", order: 20, description: "Classify outgoing content for sensitive data before tool execution.", binding: "server_app.classify_sensitive_message", managed: "platform", source: "builtin", enabled: true, removable: false },
+    { id: "builtin:audit-agent-run", name: "Audit agent run", kind: "post_run", order: 10, description: "Append every completed agent run to the workspace audit log.", binding: "AgentRuntime.start", managed: "platform", source: "builtin", enabled: true, removable: false },
+    { id: "builtin:pipeline-index-status", name: "Pipeline index status", kind: "pipeline", order: 10, description: "Publish ingest / embed / graph-build pipeline state.", binding: "api.search", managed: "platform", source: "builtin", enabled: true, removable: false },
+    { id: "builtin:workflow-replay-log", name: "Workflow replay log", kind: "workflow", order: 10, description: "Record each workflow run's timeline so it can be replayed.", binding: "api.workflow_designer", managed: "platform", source: "builtin", enabled: true, removable: false },
+    { id: "user:notify-slack", name: "Notify Slack on release", kind: "post_run", order: 100, description: "Posts a message to #releases after an agent run.", command: "python3 scripts/notify.py", managed: "user", source: "user", enabled: true, removable: true },
+  ], kinds: ["pre_run", "post_run", "pre_tool", "post_tool", "agent", "pipeline", "workflow"], counts: { pre_run: { total: 1, enabled: 1 }, post_run: { total: 2, enabled: 2 }, pre_tool: { total: 2, enabled: 2 }, agent: { total: 1, enabled: 1 }, pipeline: { total: 1, enabled: 1 }, workflow: { total: 1, enabled: 1 } }, total: 8, enabled: 8 });
   if (pathname === "/tools/permissions") return json(res, { status: "ok", permissions: [
     { tool: "read_file", risk: "low", requires_approval: false, network: false },
     { tool: "write_file", risk: "medium", requires_approval: true, network: false },

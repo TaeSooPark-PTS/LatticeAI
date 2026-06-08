@@ -27,6 +27,10 @@ export async function render(ctx) {
     model: "", modelSource: "pending",
     lastQuery: "", lastTrace: null,
     graphCache: null,
+    // VLM image input (per-message). state.image holds raw base64 with NO
+    // "data:image/...;base64," prefix (what /chat expects); state.imagePreview
+    // keeps the full data URL for the <img> thumbnail.
+    image: null, imagePreview: null, visionEnabled: false,
   };
 
   /* ── element hosts ───────────────────────────────────────────────────── */
@@ -46,9 +50,29 @@ export async function render(ctx) {
     on: {
       input: autogrow,
       keydown: (e) => { if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); send(); } },
+      paste: onPaste,
     },
   });
   const sendBtn = h("button.lt3-btn.lt3-btn--primary", { "aria-label": "Send", on: { click: () => state.streaming ? stopStreaming() : send() } }, icon("arrow-up"));
+
+  /* ── VLM image input (upload · drop · paste) ─────────────────────────── */
+  // Vision-capability badge — reflects whether the loaded model can read
+  // images. Honest by default ("Vision Disabled") until /models confirms.
+  const visionPill = h("span", {
+    title: "Load a vision-capable model to interpret images",
+  }, c.pill("Vision Disabled", "warn", { dot: true }));
+  // Hidden native picker, triggered by the "Attach image" button.
+  const fileInput = h("input", {
+    type: "file", accept: "image/*", style: { display: "none" },
+    "aria-hidden": "true", tabindex: "-1",
+    on: { change: (e) => { const f = e.target.files && e.target.files[0]; if (f) loadImageFile(f); e.target.value = ""; } },
+  });
+  const attachBtn = h("button.lt3-chip", {
+    type: "button", title: "Attach an image for a vision-capable model to read",
+    "aria-label": "Attach image", on: { click: () => fileInput.click() },
+  }, icon("photo"), "Image");
+  // Preview host, populated above the textarea inside .lt3-composer__inner.
+  const imagePreviewHost = h("div", { style: { display: "none" } });
 
   const groundChip = (key, label, icn) => h("button.lt3-chip", {
     type: "button", dataset: { active: String(state.grounding[key]) }, "aria-pressed": String(state.grounding[key]),
@@ -87,10 +111,16 @@ export async function render(ctx) {
       thread,
       h("div.lt3-composer",
         h("div.lt3-composer__inner",
-          h("div.lt3-composer__box", textarea, sendBtn),
+          imagePreviewHost,
+          h("div.lt3-composer__box", {
+            on: { dragover: onDragOver, dragleave: onDragLeave, drop: onDrop },
+          }, textarea, sendBtn),
           h("div.lt3-composer__tools",
             groundChip("graph", "Knowledge Graph", "chart-dots-3"),
             groundChip("vector", "Vector", "grid-dots"),
+            attachBtn,
+            visionPill,
+            fileInput,
             h("span.lt3-spacer"),
             h("span.lt3-kbd", "↵"),
           ),
@@ -152,6 +182,7 @@ export async function render(ctx) {
   async function selectConversation(id) {
     if (state.streaming) stopStreaming();
     closePanes();
+    clearImage();
     state.activeId = id;
     const conv = state.conversations.find((x) => x.id === id);
     state.title = conv ? conv.title : "Conversation";
@@ -174,6 +205,7 @@ export async function render(ctx) {
   function startNew(userInitiated) {
     if (state.streaming) stopStreaming();
     closePanes();
+    clearImage();
     state.activeId = null;
     state.title = "New chat";
     state.messages = [];
@@ -218,7 +250,13 @@ export async function render(ctx) {
   function messageNode(m) {
     const isUser = m.role === "user";
     const body = h("div.lt3-msg__body",
-      h("div.lt3-msg__bubble", m.content),
+      h("div.lt3-msg__bubble",
+        m.image && h("img", {
+          src: m.image, alt: "Attached image",
+          style: { display: "block", "max-height": "220px", "max-width": "100%", "border-radius": "var(--lt3-radius-2, 8px)", border: "1px solid var(--border)", "margin-bottom": m.content ? "var(--lt3-space-2)" : "0" },
+        }),
+        m.content,
+      ),
       m.role === "ai" && m.source && h("div.lt3-row-2", c.sourceBadge(m.source)),
     );
     return h(`div.lt3-msg.lt3-msg--${isUser ? "user" : "ai"}`,
@@ -234,18 +272,122 @@ export async function render(ctx) {
     textarea.style.height = Math.min(200, textarea.scrollHeight) + "px";
   }
 
+  /* ── image: read · preview · clear ───────────────────────────────────── */
+  // Read an image File as a data URL, then split off the raw base64 payload
+  // (/chat wants the bytes without the "data:...;base64," prefix).
+  function loadImageFile(file) {
+    if (!file || !/^image\//.test(file.type || "")) return;
+    const reader = new FileReader();
+    reader.onload = () => {
+      const dataUrl = String(reader.result || "");
+      const comma = dataUrl.indexOf(",");
+      if (comma < 0) return;
+      state.imagePreview = dataUrl;
+      state.image = dataUrl.slice(comma + 1);   // strip the data: prefix
+      renderImagePreview();
+    };
+    reader.onerror = () => toast("Couldn't read that image", "err");
+    reader.readAsDataURL(file);
+  }
+
+  function clearImage() {
+    state.image = null;
+    state.imagePreview = null;
+    renderImagePreview();
+  }
+
+  function renderImagePreview() {
+    if (!state.imagePreview) {
+      imagePreviewHost.replaceChildren();
+      imagePreviewHost.style.display = "none";
+      return;
+    }
+    imagePreviewHost.style.display = "flex";
+    imagePreviewHost.style.setProperty("align-items", "center");
+    imagePreviewHost.style.setProperty("gap", "var(--lt3-space-2)");
+    imagePreviewHost.style.setProperty("margin-bottom", "var(--lt3-space-2)");
+    imagePreviewHost.replaceChildren(
+      h("div", { style: { position: "relative", display: "inline-flex" } },
+        h("img", {
+          src: state.imagePreview, alt: "Attached image preview",
+          style: { height: "64px", "border-radius": "var(--lt3-radius-2, 8px)", border: "1px solid var(--border)" },
+        }),
+        h("button.lt3-iconbtn.lt3-iconbtn--sm", {
+          type: "button", "aria-label": "Remove image",
+          title: "Remove image",
+          style: {
+            position: "absolute", top: "-8px", right: "-8px",
+            background: "var(--surface-2)", border: "1px solid var(--border)",
+            "border-radius": "var(--lt3-radius-pill, 999px)",
+          },
+          on: { click: clearImage },
+        }, icon("x")),
+      ),
+      h("span.lt3-faint", { style: { "font-size": "var(--lt3-text-2xs)" } },
+        state.visionEnabled ? "Image attached" : "Image attached · load a vision-capable model to interpret it"),
+    );
+  }
+
+  /* ── drag & drop ─────────────────────────────────────────────────────── */
+  function hasImageDrag(e) {
+    const dt = e.dataTransfer;
+    return !!dt && Array.from(dt.types || []).includes("Files");
+  }
+  function onDragOver(e) {
+    if (!hasImageDrag(e)) return;
+    e.preventDefault();
+    e.currentTarget.style.setProperty("outline", "2px dashed var(--accent)");
+    e.currentTarget.style.setProperty("outline-offset", "2px");
+  }
+  function onDragLeave(e) {
+    e.currentTarget.style.removeProperty("outline");
+    e.currentTarget.style.removeProperty("outline-offset");
+  }
+  function onDrop(e) {
+    e.currentTarget.style.removeProperty("outline");
+    e.currentTarget.style.removeProperty("outline-offset");
+    const dt = e.dataTransfer;
+    if (!dt || !dt.files || !dt.files.length) return;
+    const file = Array.from(dt.files).find((f) => /^image\//.test(f.type || ""));
+    if (!file) return;
+    e.preventDefault();
+    loadImageFile(file);
+  }
+
+  /* ── paste ───────────────────────────────────────────────────────────── */
+  function onPaste(e) {
+    const items = e.clipboardData && e.clipboardData.items;
+    if (!items) return;
+    for (const item of items) {
+      if (item.kind === "file" && /^image\//.test(item.type || "")) {
+        const file = item.getAsFile();
+        if (file) { e.preventDefault(); loadImageFile(file); }
+        return;
+      }
+    }
+  }
+
   /* ── send + stream ───────────────────────────────────────────────────── */
   async function send() {
     const text = textarea.value.trim();
-    if (!text || state.streaming) return;
+    // An image alone is a valid message — only bail when there's nothing at all.
+    if ((!text && !state.image) || state.streaming) return;
     textarea.value = ""; autogrow();
 
+    // Snapshot the image for this message, then clear the composer (per-message).
+    const imageData = state.image || null;
+    const imagePreview = state.imagePreview || null;
+    clearImage();
+
     if (!state.messages.length) threadInner.replaceChildren();
-    const userMsg = { role: "user", content: text };
+    const userMsg = { role: "user", content: text, image: imagePreview };
     state.messages.push(userMsg);
     threadInner.append(messageNode(userMsg));
     state.lastQuery = text;
-    if (!state.activeId) { state.title = text.slice(0, 48); titleEl.textContent = state.title; }
+    if (!state.activeId) {
+      const seed = text || "Image";
+      state.title = seed.slice(0, 48); titleEl.textContent = state.title;
+    }
 
     // streaming AI bubble
     const bubble = h("div.lt3-msg__bubble");
@@ -264,7 +406,7 @@ export async function render(ctx) {
     let started = false;
 
     const result = await api.streamChat(
-      { message: text, conversation_id: state.activeId, grounding: state.grounding },
+      { message: text, conversation_id: state.activeId, grounding: state.grounding, image_data: imageData || undefined },
       {
         signal: state.abort.signal,
         onChunk: (_delta, full) => {
@@ -411,6 +553,18 @@ export async function render(ctx) {
     state.modelSource = res.source;
     modelPill.replaceChildren(c.pill(state.model ? shortModel(state.model) : "No model", state.model ? "info" : "warn", { dot: true }));
     barSrc.replaceChildren(c.sourceBadge(res.source));
+
+    // Vision capability — driven by the real /models.vision contract; stays
+    // honestly "Disabled" when the field is absent or the call is unavailable.
+    state.visionEnabled = !!(res.data && res.data.vision && res.data.vision.enabled);
+    visionPill.title = state.visionEnabled
+      ? "The loaded model can interpret attached images"
+      : "Load a vision-capable model to interpret images";
+    visionPill.replaceChildren(
+      c.pill(state.visionEnabled ? "Vision Enabled" : "Vision Disabled", state.visionEnabled ? "ok" : "warn", { dot: true }),
+    );
+    // Keep any open preview's helper text in sync with capability.
+    if (state.imagePreview) renderImagePreview();
   }
 
   function loadInitial() {

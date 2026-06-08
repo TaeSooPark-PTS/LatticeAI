@@ -70,6 +70,14 @@ const STATE_VARIANT = {
   ready: "ok", active: "ok", indexed: "ok", loaded: "ok", ok: "ok", available: "info",
   idle: "", standby: "", pending: "warn", indexing: "warn", building: "warn",
   failed: "err", error: "err", disabled: "err", not_configured: "",
+  // v3.4.0 platform-completion states (Files / Folder Watch / Local Agent /
+  // Agent runs / Hook dispatch). Keep these honest: amber for in-progress,
+  // green for healthy/active, red for blocked/failed, neutral for inert.
+  ingested: "warn", ingesting: "warn", watching: "ok", watched: "ok",
+  connected: "ok", online: "ok", offline: "err", synced: "ok",
+  queued: "warn", running: "warn", retrying: "warn", retried_ok: "ok",
+  rejected: "err", cancelled: "", stopped: "", blocked: "err",
+  advisory: "warn", skipped: "", complete: "ok", partial: "warn",
 };
 export function statePill(state) {
   return pill(String(state || "unknown"), STATE_VARIANT[String(state).toLowerCase()] ?? "", { dot: true });
