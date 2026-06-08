@@ -1,6 +1,9 @@
-# Lattice AI — Feature Status (v3.3.0)
+# Lattice AI — Feature Status (v3.4.0)
 
-**Release type:** product-quality / honesty audit (no new product areas).
+**Release type:** platform completion — closes the remaining non-enterprise
+functionality gaps the v3.3.0 audit flagged (hooks execution, uploads↔Files,
+VLM image input, agent run trigger, local agent, connect folder, folder watch).
+Every v3.4.0 change below is runtime-verified on a live server, not only traced.
 **Method:** every classification below is traced through source — UI view
 (`static/v3/js/views/*.js`) → API adapter (`static/v3/js/core/api.js`) → FastAPI
 router (`latticeai/api/*.py`) → service/core (`latticeai/services/*`,
@@ -27,29 +30,34 @@ superseded and not the audited surface; some legacy routes still resolve (e.g.
 unusually honest: the API adapter never fabricates data — it reports
 `source: "live"` vs `"unavailable"` (`api.js:59-73`) and the chat fallback says
 so in words (`api.js:393-408`). Most surfaces are **WORKING** or honestly
-**DISABLED**. v3.3.0 fixes the handful of real gaps found here (see
-[CHANGELOG](CHANGELOG.md)).
+**DISABLED**. v3.3.0 fixed the handful of real gaps found in the audit; **v3.4.0
+closes the remaining functionality gaps it had flagged** — hooks now execute,
+uploads appear in Files, the Chat composer accepts images, agents run from their
+own view, and the on-device local agent / connect-folder / folder-watch surfaces
+are live (see [CHANGELOG](CHANGELOG.md) and
+[RELEASE_NOTES_v3.4.0.md](RELEASE_NOTES_v3.4.0.md)). Enterprise features remain
+intentionally **DISABLED**.
 
 ---
 
 ## Summary table
 
-| Area | Headline status | v3.3.0 change |
+| Area | Headline status | v3.4.0 change |
 | --- | --- | --- |
-| Chat | WORKING (doc-gen was BROKEN) | Fixed doc-gen SSE; honest grounding-chip copy |
-| Models / Local Models | WORKING (local inference dep-gated) | — |
-| Files / File Ingestion | WORKING upload (was PLACEHOLDER UI) | Drop zone now uploads to `/upload/document` |
+| Chat | WORKING + **VLM image input now WORKING** | Composer image attach/drag/paste/preview + Vision badge; `image_data` → `/chat` |
+| Models / Local Models | WORKING (local inference dep-gated) | `/models` now reports a `vision` capability block |
+| Files / File Ingestion | WORKING — **uploads now appear in Files** | Documents table from `/knowledge-graph/documents`; Connect Folder enabled |
 | Retrieval / Hybrid Search / Search | WORKING | — |
-| Knowledge Graph | WORKING (config-dependent) | — |
-| Memory | WORKING (recall = workspace+graph) | Honest header/recall copy |
-| Agents | WORKING (deterministic runner) | — |
-| Workflows / Planning / Pipeline | WORKING (deterministic) | — |
+| Knowledge Graph | WORKING (config-dependent) | `list_documents()` + `/knowledge-graph/documents` |
+| Memory | WORKING (recall = workspace+graph) | — |
+| Agents | WORKING — **run trigger now in the Agents view** | Run/Stop/Status/Queue/Logs console; pre/post-run hooks fire |
+| Workflows / Planning / Pipeline | WORKING (deterministic) | Workflow start/end hooks fire |
 | Skills | WORKING (registry + filesystem) | — |
-| Hooks | PARTIAL — management works, **execution is PLACEHOLDER** | Documented honestly |
-| MCP / Tools / Marketplace | WORKING management; live MCP calls PARTIAL | — |
-| Settings / Home / My Computer | WORKING | Version from `/health`; Home retrieval status fixed |
+| Hooks | **WORKING — execution implemented** (was PLACEHOLDER) | `run_hook`/`run_hooks`/`fire_hook` + run log; fires from agents/workflows/tools/pipeline |
+| MCP / Tools / Marketplace | WORKING management; live MCP calls PARTIAL | Tool dispatch fires pre/post-tool hooks |
+| Settings / Home / My Computer | WORKING — **Local Agent + Connect Folder + Watch** | `/api/local-agent/status`; Folder Watch surfaced (watchdog) |
 | Authentication | WORKING | — |
-| Admin | WORKING read surfaces; Enterprise DISABLED | — |
+| Admin | WORKING read surfaces; Enterprise DISABLED | unchanged — Enterprise stays honestly disabled |
 
 ---
 
@@ -92,12 +100,22 @@ tooltip to "Show the … signal in the retrieval-context panel" so it no longer
 implies it gates generation. *Future option:* add `grounding` to `ChatRequest`
 and honor it.
 
+**WORKING in v3.4.0 (was PLACEHOLDER) — VLM image input.** The backend already
+accepted `image_data` (base64) on `/chat`, decoded it and injected screenshot
+context (`chat.py:187-210, 393-396`); v3.4.0 adds the composer affordance:
+attach button + hidden file input, drag-and-drop, clipboard paste, a thumbnail
+preview with remove, and `image_data` is sent on send (`chat.js`). A
+**Vision Enabled / Disabled** badge reads the new `vision` block from `/models`
+(`models.py` `_vision_capability`), which derives `supports_vision` from the
+active model's compat profile (`model_compat.get_model_profile`). *Live VLM
+inference output* still requires a loaded vision model (e.g. an MLX-VLM build) —
+runtime-pending, honestly badged when absent.
+
 **Notes / known minor gaps (not changed):** the side-panel retrieval context is
 real when `/api/search/hybrid` and `/api/graph` respond (PARTIAL, honest empty
 states otherwise); the `current URL` built-in command (`chat.py:328-341`) is
 dead from v3 (adapter never sends `client_url`); several command/agent responses
-are Korean-only while the SPA is English (i18n inconsistency); VLM image input is
-accepted by the backend but has no v3 composer affordance.
+are Korean-only while the SPA is English (i18n inconsistency).
 
 ---
 
@@ -140,24 +158,34 @@ with progress + result toasts and a table refresh. *Action done.*
 (`workspace.py:295`) → `WORKSPACE_OS.build_indexing_dashboard` reads real KG
 stats + `graph.local_sources()` (`knowledge_graph.py:1709-1743`).
 
-**DISABLED (honest) — Connect / watch a folder.** All connect entry points show
-"Connecting a folder requires the Lattice desktop local agent — not available in
-this build." (`files.js`). Backend folder-indexing (`/knowledge-graph/local/index`,
-`LocalKnowledgeWatcher`) exists but is intentionally not surfaced; the watcher
-honestly reports `available:false` when `watchdog` is absent
-(`local_knowledge_api.py:75-91`).
+**WORKING in v3.4.0 (was DISABLED) — Connect / watch a folder.** The "desktop
+local agent" framing was misleading: the Lattice server *is* the on-device agent
+(it runs locally with filesystem access). v3.4.0 surfaces the existing backend.
+Files (and My Computer) now expose **Connect folder** → `api.connectFolder(path)`
+which runs request → self-approve (the click is the consent) → index + watch
+against `/knowledge-graph/local/index` (`local_knowledge_api.py:289-317`). A
+Connected-folders panel lists sources with live **Folder Watch** state from
+`/knowledge-graph/local/sources` and a Stop-watching action. The watcher
+(`LocalKnowledgeWatcher`) genuinely fires debounced reindex on create/update/
+delete (verified) when `watchdog` is installed — it is a declared dependency
+(`requirements.txt`, `pyproject.toml`); when absent it honestly reports
+`available:false` (`local_knowledge_api.py:75-91`).
 
 **WORKING (API-only) — Indexing controls + local read/write/serve.**
 `/workspace/indexing/{id}/pause|resume|remove` (`workspace.py:302-318`),
 `/local/list|read|serve|write` with approval gating (`local_files.py:42-99`).
 
-**Known limitation (documented, not fixed):** uploaded documents create
-Document/Chunk/embedding nodes but **not** a `knowledge_sources` row, while the
-Files table lists only `local_sources`. So an uploaded file is searchable in
-Chat/Hybrid Search but does **not** appear in the Files table. The upload success
-toast states this ("now searchable in Chat and Hybrid Search") to set
-expectations. *Future option:* record a source row on upload, or add a
-"Documents" tab fed by Document nodes.
+**FIXED in v3.4.0 — uploaded documents now appear in Files.** The v3.3.0
+limitation (uploads created Document/Chunk nodes but the Files table only listed
+`local_sources`, so uploads were searchable but invisible) is resolved.
+`KnowledgeGraphStore.list_documents()` (`knowledge_graph.py`) surfaces every
+`Document` node with its ingest + index state (`ingested` → `indexed` once
+retrieval chunks exist), exposed at `GET /knowledge-graph/documents`
+(`knowledge_graph_api.py`). The Files "Uploaded documents" table reads it via
+`api.documents()` and **re-hydrates after every upload**, so a just-uploaded file
+appears immediately — completing the upload → Files → Knowledge Graph → Hybrid
+Search → Chat path. *Verified* end-to-end (ingest a doc → `list_documents` reports
+it `indexed` with chunk count).
 
 ---
 
@@ -239,9 +267,15 @@ call a model. Document this in release notes.
 (`agent_registry.py` API + core), persisted to `agent_registry.json`; builtin
 removal honestly blocked.
 
-**PLACEHOLDER — Run trigger from the Agents view.** `agents.js` never calls
-`runAgent`; execution is reachable from **Planning**. The Agents page is
-display + registry only. *Action:* add a Run affordance or adjust copy.
+**WORKING in v3.4.0 (was PLACEHOLDER) — Run trigger from the Agents view.** The
+Agents view now has a Run console: a goal field + role chips (seeded from
+`runtime.default_pipeline`) → `api.runAgent(goal, roles)` (`POST /agents/api/run`)
+with **Run / Stop / Status / Queue / Logs**. The run's `result.timeline` renders
+as logs, the final status + retries show inline, the Queue tile reflects
+`runtime.active_runs`, and Stop surfaces the synchronous runtime's honest
+`{stopped:false, reason}` rather than faking a cancel. *Verified* on a live
+server: a run completes (no model required) and **fires pre_run + post_run hooks**
+(`ran:1` each) recorded in the hook run log. No Planning-view dependency.
 
 **Design note (not a bug):** registry enable/disable is metadata — execution
 always runs `CORE_PIPELINE`; custom registered agents have no runner, so they are
@@ -278,19 +312,27 @@ none.
 
 ## Hooks
 
-**PARTIAL — management WORKING, execution PLACEHOLDER.** `HooksRegistry`
-(`core/hooks.py:116`) supports list/get/inspect/enable/reorder/register/remove,
-persisted, and the API (`/api/hooks*`, `hooks.py:46-101`) + view are fully
-wired — you can register and order hooks. **However, no runtime dispatch site
-exists:** a grep for `run_hooks` / `fire_hook` / `dispatch_hook` / `emit_hook` /
-`trigger_hooks` across the codebase returns nothing. Registered hooks are
-*inspectable* (which the module docstring claims, `core/hooks.py:6`) but are **not
-actually fired** during runs/tools/workflows. *User impact:* a user can configure
-hooks that never execute — the most significant remaining honesty gap.
-*Recommended action (next release, not v3.3.0):* either implement hook dispatch
-at the documented lifecycle points, or relabel the Hooks view as a
-"registry / preview" of where hooks *would* run. Flagged here rather than
-silently fixed to avoid scope expansion.
+**WORKING in v3.4.0 (was PARTIAL/PLACEHOLDER) — hooks now execute.** The v3.3.0
+honesty gap (registry-only, no dispatch site) is closed. `core/hooks.py` gains a
+real execution engine: `HookContext` / `HookResult`, `register_hook(id, runner)`,
+`run_hook`, `run_hooks(kind, …)`, and `fire_hook` (fire-and-forget). A hook runs
+either via an **in-process runner** bound by its owning subsystem (built-ins —
+`redact-secrets`, `audit-agent-run`, `pipeline-index-status` are bound at startup
+in `server_app.py`) or, for user hooks, by executing their `command` as a
+**subprocess** (context on stdin + `LATTICE_HOOK_CONTEXT` env). `pre_*` hooks
+**gate**: a blocking `pre_run` aborts an agent run, a blocking `pre_tool` aborts
+the tool call (a non-zero exit from a `pre_*` command hook blocks fail-closed).
+Every dispatch is recorded to a bounded, persisted **run log** (`hooks_runs.json`)
+exposed at `GET /api/hooks/runs`; `POST /api/hooks/run` fires on demand. Hooks
+fire from real lifecycle points: **Agents** (`agent_runtime.start` pre/post-run),
+**Workflows** (`workflow_engine.run` start/end), **Tools**
+(`api/tools._tool_response` pre/post-tool), and the **upload Pipeline**
+(`upload_service` `document.ingested`). *Verified* on a live server: firing
+`builtin:redact-secrets` redacted a `token` field; an agent run auto-fired
+pre_run + post_run hooks; the run log recorded all three. 17 unit tests cover the
+engine + AgentRuntime + WorkflowEngine integration (`tests/unit/test_hooks_dispatch.py`).
+*Honesty note:* built-in hooks with no bound runner and no command report
+`advisory` (listed/ordered only), never a fake success.
 
 ---
 
@@ -333,6 +375,17 @@ honest (unavailable stays unavailable; a missing entity count yields an
 **WORKING / PARTIAL — My Computer.** `/local/sysinfo` and
 `/workspace/computer-memory` (`api.js sysinfo/computerMemory`). Hardware stats are
 real where the host exposes them; consent-gated computer memory.
+
+**WORKING in v3.4.0 — Local Agent + Connect Folder + Folder Watch.** My Computer
+adds a **Local Agent** panel reading `GET /api/local-agent/status`
+(`local_files.py`): it reports the *real* on-device runtime state — online
+(true iff the endpoint responds), platform/machine/python, an in-process
+**handshake**, filesystem-access + watcher-availability health, and connected/
+watching folder counts. No fake readiness: a fresh instance honestly shows 0
+folders and `watcher_available:false` when `watchdog` is not installed. A
+Connect-Folder + Folder-Watch panel mirrors the Files surface (connect, list,
+stop-watch). The "Local Agent" is framed honestly as the on-device Lattice
+runtime — no separate desktop install is required for local-first operation.
 
 ---
 

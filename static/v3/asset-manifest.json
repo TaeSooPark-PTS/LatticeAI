@@ -1,5 +1,5 @@
 {
-  "version": "3.3.1",
+  "version": "3.4.0",
   "generated_at": "deterministic",
   "entrypoints": {
     "app": "/static/v3/js/app.c4acfdd8.js",

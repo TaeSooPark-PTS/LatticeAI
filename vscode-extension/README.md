@@ -13,11 +13,14 @@ editor.
 
 ## Current Release
 
-**3.2.0 — Feature-Complete Platform.** The main workspace lives at `/app` with
-multi-agent collaboration, Agent Registry, marketplace templates, workflow
-agents, autonomous planning, long-term memory, Skills/Hooks/Tool registries,
-MCP Manager, and Basic / Advanced / Admin modes. Enterprise controls remain
-future work.
+**3.4.0 — Platform Completion.** The main workspace at `/app` now closes the
+remaining core gaps: hooks that actually execute (with a run log), uploaded
+documents visible in Files, VLM image input in Chat, an agent Run console
+(Run/Stop/Status/Queue/Logs), and an on-device Local Agent with Connect Folder +
+Folder Watch — on top of the v3.2 platform (multi-agent collaboration, Agent
+Registry, marketplace templates, workflow agents, long-term memory,
+Skills/Hooks/Tool registries, MCP Manager, Basic / Advanced / Admin modes).
+Enterprise controls remain intentionally disabled.
 
 ## Quick Start
 
@@ -100,7 +103,7 @@ Remote or tunnel server example:
 - [Project README](https://github.com/TaeSooPark-PTS/LatticeAI)
 - [PyPI](https://pypi.org/project/ltcai/)
 - [npm](https://www.npmjs.com/package/ltcai)
-- [GitHub Release v3.2.0](https://github.com/TaeSooPark-PTS/LatticeAI/releases/tag/v3.2.0)
+- [GitHub Release v3.4.0](https://github.com/TaeSooPark-PTS/LatticeAI/releases/tag/v3.4.0)
 - [Changelog](https://github.com/TaeSooPark-PTS/LatticeAI/blob/main/docs/CHANGELOG.md)
 - [Security Policy](https://github.com/TaeSooPark-PTS/LatticeAI/blob/main/SECURITY.md)
 

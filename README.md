@@ -23,7 +23,7 @@
 
 </div>
 
-![Lattice AI demo](docs/images/lattice-ai-demo.gif)
+![Lattice AI — local-first AI workspace](docs/assets/v3.4.0/home.png)
 
 ## Install
 
@@ -122,6 +122,37 @@ and disconnected automations. Lattice AI keeps those parts together:
 - multi-agent workflows leave behind replayable plans, reviews, retries, and
   outcomes.
 
+## v3.4.0 Highlights
+
+Lattice AI v3.4.0 is the **platform completion** release: it closes the remaining
+non-enterprise functionality gaps the v3.3.0 honesty audit flagged, so the
+local-first workspace is complete and demonstrable end-to-end. Each item below is
+runtime-verified on a live server, not only wired in source.
+
+- **Hooks now execute.** A real dispatch engine (`run_hook` / `run_hooks` /
+  `fire_hook` + `HookContext` / `HookResult`) runs hooks at genuine lifecycle
+  points — agents (pre/post-run), workflows (start/end), tools (pre/post-tool),
+  and the upload pipeline. `pre_*` hooks can gate (block) an action; every
+  dispatch is recorded to a persisted run log surfaced in the Hooks view.
+- **Uploads appear in Files.** Uploaded documents are listed with live ingest →
+  index state (`/knowledge-graph/documents`), completing upload → Files →
+  Knowledge Graph → Hybrid Search → Chat.
+- **Vision (VLM) image input.** The Chat composer accepts images by attach,
+  drag-and-drop, or paste, with a preview and a **Vision Enabled / Disabled**
+  badge driven by the active model's capability.
+- **Run agents from the Agents view.** A Run console (goal + roles → Run / Stop /
+  Status / Queue / Logs) executes the multi-agent pipeline locally; it runs
+  without a model and fires its pre/post-run hooks.
+- **On-device Local Agent + Connect Folder + Folder Watch.** My Computer reports
+  the real local-runtime agent status and handshake; folders can be connected and
+  watched (debounced reindex on change) through the existing on-device endpoints.
+- **Enterprise stays honestly disabled.** SSO, SCIM, DLP, Private VPC, SIEM, and
+  enterprise RBAC remain off with honest "not available in this build" states.
+
+See [RELEASE_NOTES_v3.4.0.md](RELEASE_NOTES_v3.4.0.md),
+[PLATFORM_COMPLETION_REPORT_v3.4.0.md](PLATFORM_COMPLETION_REPORT_v3.4.0.md), and
+the evidence-traced [FEATURE_STATUS.md](FEATURE_STATUS.md).
+
 ## v3.3.1 Highlights
 
 Lattice AI v3.3.1 rebuilds the visible `/app` product experience while
@@ -151,27 +182,36 @@ Release audit: [docs/V3_2_AUDIT.md](docs/V3_2_AUDIT.md).
 
 ## Screenshots
 
-### Workspace
+All screenshots are the v3.4.0 `/app` shell. Live model output (VLM inference,
+agent-generated text) requires a loaded local model and is not depicted.
 
-![Workspace light theme](docs/images/workspace-light.png)
+### Home
 
-![Workspace dark theme](docs/images/workspace-dark.png)
+![Home — local-first workspace at a glance](docs/assets/v3.4.0/home.png)
+
+### Chat with Vision (VLM) image input
+
+![Chat — image attach + Vision Enabled badge](docs/assets/v3.4.0/chat.png)
+
+### Files — uploaded documents + Connect Folder
+
+![Files — uploaded documents with index state](docs/assets/v3.4.0/files.png)
+
+### Run agents from the Agents view
+
+![Agent run — goal, roles, and live timeline logs](docs/assets/v3.4.0/agent-run.png)
+
+### Hooks dispatch + run log
+
+![Hooks — per-hook Run and recent executions](docs/assets/v3.4.0/hooks-dispatch.png)
+
+### Local Agent (on-device runtime)
+
+![My Computer — Local Agent status and handshake](docs/assets/v3.4.0/local-agent.png)
 
 ### Knowledge Graph
 
-![Knowledge Graph](docs/images/knowledge-graph.png)
-
-### AI Pipeline
-
-![AI Pipeline designer](docs/images/pipeline.png)
-
-### Admin Dashboard
-
-![Admin dashboard](docs/images/admin-dashboard.png)
-
-### Mobile Responsive
-
-![Mobile responsive layout](docs/images/mobile-responsive.png)
+![Knowledge Graph](docs/assets/v3.4.0/knowledge-graph.png)
 
 ## Knowledge Graph Flow
 
@@ -267,7 +307,8 @@ Core areas:
 
 | Version | Theme |
 | --- | --- |
-| **3.3.1** | Visual product rebuild — rebuilt `/app` shell, Basic/Advanced/Admin navigation, cooler token palette, compact component system, Home readiness dashboard, Files local-agent truthfulness, Settings runtime status, and v3.3.1 design notes |
+| **3.4.0** | Platform completion — hooks execution engine, uploads visible in Files, VLM image input, agent run trigger, on-device Local Agent / Connect Folder / Folder Watch; Enterprise stays honestly disabled; refreshed v3.4.0 public assets |
+| 3.3.1 | Visual product rebuild — rebuilt `/app` shell, Basic/Advanced/Admin navigation, cooler token palette, compact component system, Home readiness dashboard, Files local-agent truthfulness, Settings runtime status, and v3.3.1 design notes |
 | **3.3.0** | Product quality & honesty release — evidence-based feature audit (`FEATURE_STATUS.md`), single-source version truth, working manual document upload in Files, fixed document-generation streaming, truthful Home retrieval status, documented design system (`STYLE_SYSTEM.md`) |
 | 3.2.0 | Feature-complete platform — multi-agent collaboration, agent registry, marketplace + templates, workflow agents, autonomous planning, long-term memory + manager, skills/hooks/tool registries, MCP manager, all operable from `/app` |
 | 3.1.0 | Mainline platform completion — native `/app` workflows, Classic retired from normal paths, production embedding profiles, AgentRuntime/registries, hashed v3 assets |
