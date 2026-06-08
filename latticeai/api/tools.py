@@ -197,8 +197,10 @@ def create_tools_router(
     recommend_mcps,
     install_mcp,
     mcp_public_item,
+    hooks=None,
 ) -> APIRouter:
     api_router = APIRouter()
+    HOOKS = hooks
     CONFIG = config
     DATA_DIR = data_dir
     STATIC_DIR = static_dir
@@ -219,10 +221,22 @@ def create_tools_router(
     # ── Direct Tool API ───────────────────────────────────────────────────────────
     
     def _tool_response(fn, *args):
+        tool_name = getattr(fn, "__name__", "tool")
+        # ── pre_tool hooks ── a blocking pre_tool hook (e.g. a permission gate)
+        # stops the tool call before it runs.
+        if HOOKS is not None:
+            pre = HOOKS.fire_hook("pre_tool", f"tool.{tool_name}", payload={"tool": tool_name, "argc": len(args)})
+            if pre.get("blocked"):
+                raise HTTPException(status_code=403, detail=pre.get("block_reason") or f"Tool '{tool_name}' blocked by a pre_tool hook.")
         try:
-            return {"status": "ok", "workspace": str(AGENT_ROOT), "result": fn(*args)}
+            result = fn(*args)
         except ToolError as exc:
+            if HOOKS is not None:
+                HOOKS.fire_hook("post_tool", f"tool.{tool_name}", payload={"tool": tool_name, "status": "error", "detail": str(exc)})
             raise HTTPException(status_code=400, detail=str(exc))
+        if HOOKS is not None:
+            HOOKS.fire_hook("post_tool", f"tool.{tool_name}", payload={"tool": tool_name, "status": "ok"})
+        return {"status": "ok", "workspace": str(AGENT_ROOT), "result": result}
     
     
     @api_router.post("/tools/list_dir")
@@ -431,6 +445,7 @@ def create_tools_router(
             classify_sensitive_message=classify_sensitive_message,
             append_audit_event=append_audit_event,
             enforce_rate_limit=enforce_rate_limit,
+            hooks=HOOKS,
         )
     
     

@@ -1283,7 +1283,45 @@ AGENT_RUNTIME = AgentRuntime(
     orchestrator_factory=PLATFORM.build_orchestrator,
     workspace_graph=_workspace_graph,
     append_audit_event=append_audit_event,
+    hooks=HOOKS_REGISTRY,
 )
+
+# ── Hooks dispatch: bind real built-in runners ───────────────────────────────
+# The registry lists built-in hooks; binding a runner here makes them *execute*
+# real platform behaviour when fired (not a placeholder). Runners take a
+# HookContext and may mutate its payload, return a status dict, or block.
+def _hook_redact_secrets(context):
+    """pre_run — strip secret-like keys from the agent context packet."""
+    secret_re = ("token", "password", "passwd", "secret", "api_key", "apikey",
+                 "authorization", "auth", "cookie", "session", "private_key")
+    redacted = []
+    payload = context.payload if isinstance(context.payload, dict) else {}
+    for key in list(payload.keys()):
+        if any(s in str(key).lower() for s in secret_re):
+            payload[key] = "***redacted***"
+            redacted.append(key)
+    return {"status": "ok", "output": f"redacted {len(redacted)} field(s)" if redacted else "no secrets present"}
+
+def _hook_audit_agent_run(context):
+    """post_run — append the completed agent run to the workspace audit log."""
+    p = context.payload if isinstance(context.payload, dict) else {}
+    append_audit_event(
+        "hook_post_run",
+        user_email=context.user_email,
+        run_id=p.get("run_id"),
+        agent_id=p.get("agent_id"),
+        status=p.get("status"),
+    )
+    return {"status": "ok", "output": f"audited run {p.get('run_id') or ''}".strip()}
+
+def _hook_pipeline_index_status(context):
+    """pipeline — record ingest/embed/graph-build pipeline state for the index."""
+    p = context.payload if isinstance(context.payload, dict) else {}
+    return {"status": "ok", "output": f"pipeline {context.event}: indexed={p.get('indexed')}"}
+
+HOOKS_REGISTRY.register_hook("builtin:redact-secrets", _hook_redact_secrets)
+HOOKS_REGISTRY.register_hook("builtin:audit-agent-run", _hook_audit_agent_run)
+HOOKS_REGISTRY.register_hook("builtin:pipeline-index-status", _hook_pipeline_index_status)
 
 app.include_router(create_plugins_router(
     registry=PLUGIN_REGISTRY,
@@ -1307,6 +1345,7 @@ app.include_router(create_workflow_designer_router(
     append_audit_event=append_audit_event,
     ui_file_response=ui_file_response,
     static_dir=STATIC_DIR,
+    hooks=HOOKS_REGISTRY,
 ))
 
 app.include_router(create_agents_router(
@@ -1457,6 +1496,7 @@ app.include_router(create_tools_router(
     recommend_mcps=recommend_mcps,
     install_mcp=install_mcp,
     mcp_public_item=mcp_public_item,
+    hooks=HOOKS_REGISTRY,
 ))
 
 app.include_router(create_hooks_router(

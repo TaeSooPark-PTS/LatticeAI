@@ -75,6 +75,16 @@ def create_knowledge_graph_router(
         require_user(request)
         return graph().graph(limit)
 
+    @router.get("/knowledge-graph/documents")
+    async def knowledge_graph_documents(request: Request, limit: int = 200):
+        """Ingested documents (uploads + indexed local docs) with index state.
+
+        Backs the Files view so uploaded content is visible end-to-end:
+        upload → Files → Knowledge Graph → Hybrid Search → Chat.
+        """
+        require_user(request)
+        return graph().list_documents(limit)
+
     @router.get("/knowledge-graph/search")
     async def knowledge_graph_search(q: str, request: Request, limit: int = 30):
         require_user(request)

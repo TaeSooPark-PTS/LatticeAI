@@ -20,6 +20,8 @@ export async function render(ctx) {
   const srcSlot = h("span", c.sourceBadge("pending"));
   const gaugeHost = h("div.lt3-grid-3", c.loading({ lines: 0, block: true }));
   const runtimeHost = h("div", c.loading({ lines: 4 }));
+  const agentHost = h("div", c.loading({ lines: 5 }));
+  const foldersHost = h("div", c.loading({ lines: 4 }));
 
   const root = h("div.lt3-stack-6",
     c.viewHeader({
@@ -28,7 +30,7 @@ export async function render(ctx) {
       sub: "The local hardware and MLX runtime powering this workspace. Inference and indexing run here — on Apple Silicon — never on an external server.",
       actions: [
         srcSlot,
-        h("button.lt3-btn.lt3-btn--ghost", { on: { click: () => load() } }, icon("refresh"), "Refresh"),
+        h("button.lt3-btn.lt3-btn--ghost", { on: { click: () => { load(); loadAgent(); } } }, icon("refresh"), "Refresh"),
       ],
     }),
 
@@ -38,6 +40,25 @@ export async function render(ctx) {
       c.sectionHead("Live utilization"),
       gaugeHost,
     ),
+
+    // Local Agent — the on-device Lattice runtime acting as the local agent.
+    c.panel({
+      eyebrow: "Local agent",
+      title: "Local agent",
+      sub: "The local agent is the on-device Lattice runtime; no separate desktop install is required.",
+      children: agentHost,
+    }),
+
+    // Connect Folder + Folder Watch — over the same on-device runtime.
+    c.panel({
+      eyebrow: "On-device",
+      title: "Connect folder & folder watch",
+      sub: "Index a folder on this computer and keep it in sync. Files never leave the machine.",
+      actions: [
+        h("button.lt3-btn.lt3-btn--primary.lt3-btn--sm", { on: { click: () => connectFolder() } }, icon("folder-plus"), "Connect folder"),
+      ],
+      children: foldersHost,
+    }),
 
     h("div.lt3-grid-2",
       c.panel({
@@ -61,6 +82,45 @@ export async function render(ctx) {
     runtimeHost.replaceChildren(buildRuntime(ctx, sys, models));
   }
 
+  // Hydrate the Local Agent + Connect Folder panels from the live runtime.
+  async function loadAgent() {
+    agentHost.replaceChildren(c.loading({ lines: 5 }));
+    foldersHost.replaceChildren(c.loading({ lines: 4 }));
+
+    const res = await api.localAgent();
+    agentHost.replaceChildren(buildAgent(ctx, res));
+    foldersHost.replaceChildren(buildFolders(ctx, res, { connectFolder, stopWatching }));
+  }
+
+  // stopWatching lives here so it can reach the real adapter + toast.
+  async function stopWatching(id) {
+    const notify = ctx.toast || c.toast;
+    const r = await api.localWatchStop(id);
+    if (r && r.ok) {
+      notify("Stopped watching that folder. It remains indexed.", "info");
+      loadAgent();
+      return true;
+    }
+    const detail = (r && r.data && (r.data.detail || r.data.error)) || "the runtime is unavailable";
+    notify(`Could not stop watching — ${detail}.`, "warn");
+    return false;
+  }
+
+  // Prompt for a path, connect (index + watch) it, then re-hydrate.
+  async function connectFolder() {
+    const notify = ctx.toast || c.toast;
+    const path = window.prompt("Connect a folder on this computer (it will be indexed and watched):", "~/Documents");
+    if (!path || !path.trim()) return;
+    notify(`Connecting ${path.trim()} — indexing on this computer…`, "info");
+    const res = await api.connectFolder(path.trim(), { watch: true });
+    if (res && res.ok) {
+      notify(`Connected ${path.trim()}. Indexing and folder watch are active.`, "ok");
+      loadAgent();
+    } else {
+      notify((res && res.error) || "Could not connect that folder.", "warn");
+    }
+  }
+
   // Reflect real local-memory state (enabled + recorded activity) from the backend.
   async function loadMemory() {
     const res = await api.computerMemory();
@@ -72,6 +132,7 @@ export async function render(ctx) {
   }
 
   load();
+  loadAgent();
   loadMemory();
   return root;
 }
@@ -125,6 +186,168 @@ function buildRuntime({ h, icon, c }, sys, models) {
     h("div.lt3-row-2", { style: { "margin-top": "var(--lt3-space-4)" } },
       c.sourceBadge((models && models.source) || (sys && sys.source)),
       h("span.lt3-faint", { style: { "font-size": "var(--lt3-text-2xs)" } }, "Derived from local runtime"),
+    ),
+  );
+}
+
+/* ── Local agent panel (wired to /api/local-agent/status) ─────────────────── */
+function buildAgent({ h, icon, c }, res) {
+  // Honesty: if the runtime isn't reachable, never imply a "ready" agent.
+  if (!res || !res.ok || res.source === "unavailable") {
+    return h("div.lt3-stack-3",
+      h("div.lt3-row-2", c.sourceBadge("unavailable")),
+      c.emptyState({
+        icon: "plug-connected-x",
+        title: "Local runtime not reachable",
+        body: "The on-device Lattice runtime is not responding, so the local agent's status can't be confirmed. Start the server, then Refresh.",
+      }),
+    );
+  }
+
+  const d = res.data || {};
+  const agent = d.agent || {};
+  const handshake = d.handshake || {};
+  const health = d.health || {};
+  const folders = d.folders || {};
+
+  const online = !!agent.online;
+
+  const rows = [
+    { k: "Platform", v: agent.platform || "—", icon: "device-desktop" },
+    { k: "Machine", v: agent.machine || "—", mono: true, icon: "cpu" },
+    { k: "Python", v: agent.python || "—", mono: true, icon: "code" },
+    { k: "Kind", v: agent.kind || "on-device runtime", icon: "robot" },
+  ];
+
+  return h("div.lt3-stack-3",
+    // Identity + live online state.
+    h("div.lt3-row", { style: { "justify-content": "space-between", "align-items": "center" } },
+      h("div.lt3-row-2",
+        icon("robot"),
+        h("div",
+          h("div", { style: { "font-weight": "var(--lt3-weight-semi)", "font-size": "var(--lt3-text-sm)" } },
+            agent.name || "Lattice local agent"),
+          agent.id && h("div.lt3-faint", { style: { "font-size": "var(--lt3-text-2xs)" } },
+            h("span.lt3-mono", agent.id)),
+        ),
+      ),
+      // online is reported by the live endpoint — never fabricated.
+      c.statePill(online ? "active" : "idle"),
+    ),
+
+    h("dl.lt3-keyval",
+      rows.flatMap((r) => [
+        h("dt", h("span.lt3-row-2", icon(r.icon), r.k)),
+        h("dd", r.mono ? h("span.lt3-mono", r.v) : r.v),
+      ]),
+    ),
+
+    // Handshake + health, read straight from the runtime.
+    h("div.lt3-stack-2", { style: { "margin-top": "var(--lt3-space-2)" } },
+      h("div.lt3-row", { style: { "justify-content": "space-between", "align-items": "center" } },
+        h("span.lt3-row-2", icon("plug-connected"),
+          handshake.ok
+            ? `Handshake OK · ${handshake.transport || "local"}`
+            : "Handshake not established"),
+        c.statePill(handshake.ok ? "active" : "idle"),
+      ),
+      handshake.detail && h("div.lt3-faint", { style: { "font-size": "var(--lt3-text-2xs)" } }, handshake.detail),
+      h("div.lt3-row", { style: { "justify-content": "space-between", "align-items": "center" } },
+        h("span.lt3-row-2", icon("folder-search"), "Filesystem access"),
+        c.statePill(health.filesystem_access ? "active" : "idle"),
+      ),
+      h("div.lt3-row", { style: { "justify-content": "space-between", "align-items": "center" } },
+        h("span.lt3-row-2", icon("eye"), "Watcher available"),
+        c.statePill(health.watcher_available ? "active" : "idle"),
+      ),
+    ),
+
+    // Folder counts as stats.
+    h("div.lt3-grid-2", { style: { "margin-top": "var(--lt3-space-2)" } },
+      c.stat({ label: "Folders connected", value: c.fmtNum(folders.connected ?? 0), icon: "folder" }),
+      c.stat({ label: "Folders watching", value: c.fmtNum(folders.watching ?? 0), icon: "eye" }),
+    ),
+
+    h("div.lt3-row-2", { style: { "margin-top": "var(--lt3-space-2)" } },
+      c.sourceBadge(res.source),
+      h("span.lt3-faint", { style: { "font-size": "var(--lt3-text-2xs)" } },
+        "On-device runtime — no separate desktop install"),
+    ),
+  );
+}
+
+/* ── Connect Folder + Folder Watch panel (wired to /knowledge-graph/local) ── */
+function buildFolders({ h, icon, c }, res, { connectFolder, stopWatching }) {
+  const d = (res && res.data) || {};
+  const watch = d.watch || {};
+  const sources = Array.isArray(d.sources) ? d.sources : [];
+
+  // Runtime unreachable → honest unavailable, no fabricated folder list.
+  if (!res || !res.ok || res.source === "unavailable") {
+    return h("div.lt3-stack-3",
+      h("div.lt3-row-2", c.sourceBadge("unavailable")),
+      c.emptyState({
+        icon: "folder-off",
+        title: "Connected folders unavailable",
+        body: "The on-device runtime is not reachable, so connected folders can't be listed. Start the server, then Refresh.",
+        action: h("button.lt3-btn.lt3-btn--ghost.lt3-btn--sm", { on: { click: () => connectFolder() } }, icon("folder-plus"), "Connect folder"),
+      }),
+    );
+  }
+
+  // Honest note when the watchdog dependency is missing.
+  const watchNote = watch.available === false
+    ? c.banner(
+        `Folder watch needs the watchdog dependency${watch.error ? ` — ${watch.error}` : ""}. Folders can still be indexed once; live sync is paused until it's installed.`,
+        "warn", "alert-triangle")
+    : null;
+
+  let body;
+  if (!sources.length) {
+    body = c.emptyState({
+      icon: "folder-plus",
+      title: "No folders connected yet",
+      body: "Connect a folder to index its files on this computer. Indexing and content stay local.",
+      action: h("button.lt3-btn.lt3-btn--primary.lt3-btn--sm", { on: { click: () => connectFolder() } }, icon("folder-plus"), "Connect folder"),
+    });
+  } else {
+    body = h("div.lt3-list",
+      sources.map((s) => {
+        const watching = !!s.watch_active;
+        const indexed = Number(s.success_count ?? s.indexed_count ?? 0) || 0;
+        const last = s.last_event_at || s.last_indexed_at;
+        const metaParts = [`${c.fmtNum(indexed)} indexed`];
+        if (last) metaParts.push(`last ${last}`);
+        return h("div.lt3-list__item",
+          icon(watching ? "folder-search" : "folder"),
+          h("div.lt3-list__body",
+            h("div.lt3-list__title", h("span.lt3-mono", s.root_path || s.path || s.id || "—")),
+            h("div.lt3-list__meta", metaParts.join(" · ")),
+          ),
+          h("div.lt3-row-2", { style: { "align-items": "center" } },
+            c.statePill(watching ? "watching" : "idle"),
+            watching && s.id && h("button.lt3-btn.lt3-btn--subtle.lt3-btn--sm", {
+              on: {
+                click: async (e) => {
+                  const btn = e.currentTarget;
+                  btn.disabled = true;
+                  const ok = await stopWatching(s.id);
+                  if (!ok) btn.disabled = false;
+                },
+              },
+            }, icon("player-stop"), "Stop watching"),
+          ),
+        );
+      }),
+    );
+  }
+
+  return h("div.lt3-stack-3",
+    watchNote,
+    body,
+    h("div.lt3-row-2", { style: { "margin-top": "var(--lt3-space-2)" } },
+      c.sourceBadge(res.source),
+      h("span.lt3-faint", { style: { "font-size": "var(--lt3-text-2xs)" } }, "Indexed and watched on this computer"),
     ),
   );
 }

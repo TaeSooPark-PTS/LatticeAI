@@ -2,6 +2,34 @@
 
 The detailed historical changelog lives in [docs/CHANGELOG.md](docs/CHANGELOG.md).
 
+## [3.4.0] - 2026-06-08
+
+Platform completion release — closes the remaining non-enterprise functionality
+gaps the v3.3.0 audit flagged. Every change is runtime-verified on a live server.
+Enterprise features remain intentionally disabled. See
+[RELEASE_NOTES_v3.4.0.md](RELEASE_NOTES_v3.4.0.md),
+[PLATFORM_COMPLETION_REPORT_v3.4.0.md](PLATFORM_COMPLETION_REPORT_v3.4.0.md), and
+[FEATURE_STATUS.md](FEATURE_STATUS.md).
+
+- **Hooks execute** — real dispatch engine (`run_hook`/`run_hooks`/`fire_hook` +
+  `HookContext`/`HookResult`), in-process runners for built-ins and subprocess
+  execution for user hooks, `pre_*` gate semantics, a persisted run log
+  (`/api/hooks/runs`), and on-demand `/api/hooks/run`. Fires from agents
+  (pre/post-run), workflows (start/end), tools (pre/post-tool), and the upload
+  pipeline. 17 new unit tests.
+- **Uploads appear in Files** — `KnowledgeGraphStore.list_documents()` +
+  `GET /knowledge-graph/documents`; the Files documents table re-hydrates after
+  upload (upload → Files → Knowledge Graph → Hybrid Search → Chat).
+- **VLM image input** — Chat composer attach/drag/paste/preview + a Vision
+  Enabled/Disabled badge from a new `vision` block on `/models`.
+- **Agent run trigger** — Run/Stop/Status/Queue/Logs console in the Agents view;
+  runs without a model and fires pre/post-run hooks.
+- **On-device Local Agent + Connect Folder + Folder Watch** —
+  `GET /api/local-agent/status` (real runtime/handshake/health), `connectFolder()`
+  self-approval flow, and `watchdog`-backed debounced reindex on change.
+- **Public assets** — refreshed v3.4.0 screenshots under `docs/assets/v3.4.0/`
+  (+ before/after), README + release history updated; stale screenshots removed.
+
 ## [3.3.1] - 2026-06-08
 
 Visual product rebuild for the `/app` frontend. No package publication,

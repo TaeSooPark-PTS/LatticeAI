@@ -3046,6 +3046,51 @@ class KnowledgeGraphStore:
         "Decision",   # 결정 사항
     )
 
+    def list_documents(self, limit: int = 200) -> Dict[str, Any]:
+        """List ingested ``Document`` nodes with their ingest + index state.
+
+        Powers the Files view: every accepted upload and every indexed local
+        document becomes a ``Document`` node. A document is reported ``indexed``
+        once its retrieval chunks exist (searchable in Chat / Hybrid Search).
+        """
+        limit = max(1, min(int(limit or 200), 1000))
+        nt, _ = self._read_tables()
+        documents: List[Dict[str, Any]] = []
+        with self._connect() as conn:
+            rows = conn.execute(
+                f"SELECT id, title, summary, metadata_json, created_at, updated_at "
+                f"FROM {nt} WHERE type='Document' ORDER BY updated_at DESC, id ASC LIMIT ?",
+                (limit,),
+            ).fetchall()
+            for row in rows:
+                meta = _safe_loads(row["metadata_json"]) or {}
+                extracted = meta.get("extracted") or {}
+                node_id = row["id"]
+                chunk_count = conn.execute(
+                    f"SELECT COUNT(*) AS c FROM {nt} WHERE type='Chunk' AND metadata_json LIKE ?",
+                    (f"%{node_id}%",),
+                ).fetchone()["c"]
+                documents.append({
+                    "id": node_id,
+                    "filename": meta.get("filename") or row["title"],
+                    "ext": meta.get("ext"),
+                    "mime_type": meta.get("mime_type"),
+                    "bytes": meta.get("bytes"),
+                    "sha256": meta.get("sha256"),
+                    "uploader": meta.get("uploader"),
+                    "chars": extracted.get("chars"),
+                    "chunks": int(chunk_count or 0),
+                    "indexed": int(chunk_count or 0) > 0,
+                    "ingest_state": "indexed" if int(chunk_count or 0) > 0 else "ingested",
+                    "created_at": row["created_at"],
+                    "updated_at": row["updated_at"],
+                })
+        return {
+            "documents": documents,
+            "total": len(documents),
+            "generated_at": datetime.now().isoformat(timespec="seconds"),
+        }
+
     def graph(self, limit: int = 300) -> Dict[str, Any]:
         limit = max(1, min(int(limit or 300), 2000))
         visible = ",".join(f"'{t}'" for t in self._GRAPH_VISIBLE_TYPES)

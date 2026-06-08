@@ -35,6 +35,13 @@ class HookRegisterRequest(BaseModel):
     enabled: bool = True
 
 
+class HookRunRequest(BaseModel):
+    kind: Optional[str] = None
+    hook_id: Optional[str] = None
+    event: str = ""
+    payload: dict = {}
+
+
 def create_hooks_router(
     *,
     registry: HooksRegistry,
@@ -47,6 +54,38 @@ def create_hooks_router(
     async def list_hooks(request: Request, kind: Optional[str] = None):
         require_user(request)
         return registry.list(kind=kind)
+
+    # NOTE: declared before the ``/{hook_id:path}`` catch-all so "runs" is not
+    # captured as a hook id.
+    @router.get("/api/hooks/runs")
+    async def hook_runs(request: Request, limit: int = 50, kind: Optional[str] = None):
+        require_user(request)
+        return registry.recent_runs(limit=limit, kind=kind)
+
+    @router.post("/api/hooks/run")
+    async def run_hooks(req: HookRunRequest, request: Request):
+        """Execute hooks now — by ``kind`` (all enabled hooks of that kind) or a
+        single ``hook_id``. Returns the dispatch record so callers can see what
+        ran, in what order, and whether the action was blocked."""
+        user = require_user(request)
+        try:
+            if req.hook_id:
+                result = registry.run_hook(req.hook_id, event=req.event or None, payload=req.payload, user_email=user)
+            elif req.kind:
+                result = registry.run_hooks(req.kind, event=req.event or None, payload=req.payload, user_email=user)
+            else:
+                raise HTTPException(status_code=400, detail="Provide a 'kind' or a 'hook_id' to run.")
+        except KeyError as exc:
+            raise HTTPException(status_code=404, detail=f"Hook not found: {exc}") from exc
+        except ValueError as exc:
+            raise HTTPException(status_code=400, detail=str(exc)) from exc
+        append_audit_event("hook_run", user_email=user, hook_id=req.hook_id, kind=req.kind, event=req.event)
+        return result
+
+    # Alias for the same dispatch action (fire == run).
+    @router.post("/api/hooks/fire")
+    async def fire_hooks(req: HookRunRequest, request: Request):
+        return await run_hooks(req, request)
 
     @router.get("/api/hooks/{hook_id:path}")
     async def inspect_hook(hook_id: str, request: Request):

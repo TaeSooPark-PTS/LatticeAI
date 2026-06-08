@@ -12,7 +12,7 @@
  *   ctx = { h, icon, api, store, c, route, params, navigate, toast }
  * ========================================================================== */
 
-import { timeAgo } from "../core/dom.js";
+import { timeAgo } from "../core/dom.a2773eb0.js";
 
 /** Tabler glyph per uploaded-document extension. */
 const EXT_ICON = {
