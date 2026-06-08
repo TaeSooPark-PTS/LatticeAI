@@ -5,8 +5,8 @@
  * Drives the real SPA (built hashed assets) against the visual mock server, so
  * every screenshot is the genuine v3.4.0 frontend rendering real view code with
  * representative-but-honest mock data. Live-model output (VLM inference, agent
- * LLM text) is NOT simulated here; those remain runtime-pending per the release
- * notes. Run `npm run build:assets` first so the manifest points at new code.
+ * LLM text) is NOT simulated; those remain runtime-pending per the release notes.
+ * Run `npm run build:assets` first so the manifest points at the new code.
  *
  *   node scripts/capture/capture_v340.js
  * Env: LTCAI_CAPTURE_BASE_URL (default http://127.0.0.1:4927 — the mock server)
@@ -22,53 +22,62 @@ const ROOT = path.resolve(__dirname, "..", "..");
 const OUT = path.join(ROOT, "docs", "assets", "v3.4.0");
 const BASE = process.env.LTCAI_CAPTURE_BASE_URL || "http://127.0.0.1:4927";
 
-// [hash route, output filename, theme]. Selector is the common view header
-// (.lt3-vhead) except Chat, which is a flush layout (.lt3-chat).
+// { route, file, [action] }. action: "agent-run" clicks Run and waits for logs;
+// "scroll-bottom" scrolls the view to reveal lower panels before the shot.
 const SHOTS = [
-  ["home", "home.png", "light"],
-  ["chat", "chat.png", "light"],
-  ["files", "files.png", "light"],
-  ["knowledge-graph", "knowledge-graph.png", "light"],
-  ["memory", "memory.png", "light"],
-  ["agents", "agents.png", "light"],
-  ["agents", "agent-run.png", "light"],
-  ["workflows", "workflows.png", "light"],
-  ["settings", "settings.png", "light"],
-  ["my-computer", "local-agent.png", "light"],
-  ["my-computer", "connect-folder.png", "light"],
-  ["chat", "vision-input.png", "light"],
-  ["hooks", "hooks-dispatch.png", "light"],
+  { route: "home", file: "home.png" },
+  { route: "chat", file: "chat.png" },
+  { route: "chat", file: "vision-input.png" },
+  { route: "files", file: "files.png" },
+  { route: "files", file: "connect-folder.png", action: "scroll-bottom" },
+  { route: "knowledge-graph", file: "knowledge-graph.png" },
+  { route: "memory", file: "memory.png" },
+  { route: "agents", file: "agents.png" },
+  { route: "agents", file: "agent-run.png", action: "agent-run" },
+  { route: "workflows", file: "workflows.png" },
+  { route: "settings", file: "settings.png" },
+  { route: "my-computer", file: "local-agent.png" },
+  { route: "hooks", file: "hooks-dispatch.png", action: "scroll-bottom" },
 ];
-
-async function prepare(page, theme) {
-  await page.addInitScript((mode) => {
-    localStorage.setItem("lt-theme", mode);
-    localStorage.setItem("ltcai_mode", "admin");
-    localStorage.setItem("ltcai_user_email", "demo@lattice.local");
-    localStorage.setItem("ltcai_is_admin", "true");
-  }, theme);
-}
 
 async function main() {
   fs.mkdirSync(OUT, { recursive: true });
   const { chromium } = await loadPlaywright();
   const browser = await chromium.launch({ headless: true });
-  const context = await browser.newContext({
-    viewport: { width: 1480, height: 940 },
-    deviceScaleFactor: 2,
+  const context = await browser.newContext({ viewport: { width: 1480, height: 940 }, deviceScaleFactor: 2 });
+  await context.addInitScript(() => {
+    localStorage.setItem("lt-theme", "light");
+    localStorage.setItem("ltcai_mode", "admin");
+    localStorage.setItem("ltcai_user_email", "demo@lattice.local");
+    localStorage.setItem("ltcai_is_admin", "true");
   });
   const page = await context.newPage();
-  await prepare(page, "light");
-  await page.goto(new URL("/app#/home", BASE).toString(), { waitUntil: "domcontentloaded", timeout: 30000 });
-  await page.waitForSelector("#app .lt3-shell, #app .lt3-vhead, #app", { timeout: 20000 }).catch(() => {});
 
-  for (const [routeKey, filename, theme] of SHOTS) {
-    await page.evaluate((mode) => document.documentElement.setAttribute("data-lt-theme", mode), theme);
-    await page.evaluate((key) => { location.hash = "#/" + key; }, routeKey);
-    // Wait for the view to mount: header for normal views, .lt3-chat for chat.
+  for (const shot of SHOTS) {
+    // Fresh full-page load per shot — avoids transient cross-view overlap that a
+    // same-page hash change can leave behind, so headers render crisp.
+    await page.goto(new URL("/app#/" + shot.route, BASE).toString(), { waitUntil: "domcontentloaded", timeout: 30000 });
+    await page.evaluate((mode) => document.documentElement.setAttribute("data-lt-theme", mode), "light");
     await page.waitForSelector("#app .lt3-vhead, #app .lt3-chat", { timeout: 15000 }).catch(() => {});
-    await page.waitForTimeout(Number(process.env.LTCAI_CAPTURE_SETTLE_MS || 1200));
-    const out = path.join(OUT, filename);
+    await page.waitForTimeout(1800);  // let the view hydrate fully (crisp, not mid-load)
+
+    if (shot.action === "agent-run") {
+      // Fill the goal and trigger a real run; wait for the logs/timeline to render.
+      const ta = page.locator("#app textarea").first();
+      await ta.fill("Summarize this week's release work and propose next steps.").catch(() => {});
+      const runBtn = page.getByRole("button", { name: /run agents/i }).first();
+      await runBtn.click({ timeout: 4000 }).catch(() => {});
+      await page.waitForTimeout(1500);
+      await page.evaluate(() => { const a = document.querySelector(".lt3-view"); if (a) a.scrollTop = 0; });
+    } else if (shot.action === "scroll-bottom") {
+      await page.evaluate(() => {
+        const sc = document.querySelector(".lt3-view") || document.scrollingElement;
+        if (sc) sc.scrollTop = sc.scrollHeight;
+      });
+      await page.waitForTimeout(700);
+    }
+
+    const out = path.join(OUT, shot.file);
     await page.screenshot({ path: out, fullPage: false });
     console.log(out);
   }

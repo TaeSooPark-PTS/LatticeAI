@@ -255,6 +255,27 @@ const server = http.createServer((req, res) => {
     { id: "custom", label: "Custom", grade: "production" },
   ] });
   // ── v3.4.0 Platform Completion surfaces ───────────────────────────────────
+  if (pathname === "/agents/api/run" && req.method === "POST") return json(res, {
+    run: { id: "agent-run-live", agent_id: "agent:executor", status: "ok", created_at: "2026-06-07T10:06:00" },
+    result: {
+      agent_id: "agent:executor", status: "ok", retries: 0,
+      output: "Completed the goal across planner -> executor -> reviewer. 3/3 steps approved.",
+      roles_run: ["planner", "executor", "reviewer"],
+      timeline: [
+        { event: "start", role: "planner", status: "ok", timestamp: "2026-06-07T10:06:00" },
+        { event: "role", role: "planner", status: "ok", result: "Decomposed the goal into 3 ordered steps.", timestamp: "2026-06-07T10:06:00" },
+        { event: "handoff", role: "executor", status: "ok", timestamp: "2026-06-07T10:06:01" },
+        { event: "role", role: "executor", status: "ok", result: "Executed 3/3 steps, invoking tools.", timestamp: "2026-06-07T10:06:01" },
+        { event: "handoff", role: "reviewer", status: "ok", timestamp: "2026-06-07T10:06:02" },
+        { event: "role", role: "reviewer", status: "ok", result: "Reviewed and approved the work.", timestamp: "2026-06-07T10:06:02" },
+        { event: "end", status: "ok", retries: 0, timestamp: "2026-06-07T10:06:02" },
+      ],
+      plan: { steps: [{ step: "Plan" }, { step: "Execute" }, { step: "Review" }] },
+      review: { verdict: "pass" }, handoffs: [],
+    },
+    pre_run_hooks: { ran: 1, blocked: false },
+    post_run_hooks: { ran: 1, blocked: false },
+  });
   if (pathname === "/models") return json(res, {
     recommended: [
       { id: "mlx-community/Qwen2.5-VL-7B-Instruct-4bit", name: "Qwen2.5-VL 7B", display_name: "Qwen2.5-VL 7B", family: "qwen-vl", modality: "multimodal", capabilities: ["vision", "text"], state: "loaded" },
