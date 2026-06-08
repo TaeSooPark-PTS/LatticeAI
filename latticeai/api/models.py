@@ -23,6 +23,39 @@ from fastapi.responses import StreamingResponse
 from pydantic import BaseModel
 
 
+def _vision_capability(current_model_id: Optional[str], engines: Any) -> Dict[str, Any]:
+    """Whether the active model can accept image input (VLM).
+
+    Honest, derived signal for the Chat 'Vision Enabled / Disabled' badge: a
+    model is vision-capable only when its compat profile reports
+    ``supports_vision``. The MLX-VLM engine availability is reported too so the
+    UI can explain a disabled badge ("load a vision model" vs "install MLX-VLM").
+    """
+    from latticeai.core.model_compat import get_model_profile
+
+    current_vision = False
+    if current_model_id:
+        try:
+            current_vision = bool(get_model_profile(current_model_id).get("supports_vision"))
+        except Exception:
+            current_vision = False
+    engine_available = False
+    try:
+        for eng in (engines or []):
+            if isinstance(eng, dict) and eng.get("id") in {"local_mlx", "mlx"} and eng.get("installed"):
+                engine_available = True
+                break
+    except Exception:
+        engine_available = False
+    return {
+        "current_model": current_model_id,
+        "current_supports_vision": current_vision,
+        "engine_available": engine_available,
+        # The badge is "enabled" only when a vision-capable model is active.
+        "enabled": bool(current_vision),
+    }
+
+
 class LoadModelRequest(BaseModel):
     model_id: str
     engine: Optional[str] = None
@@ -257,13 +290,15 @@ def create_models_router(
         recommended = _recommended_with_engine_options(
             list(filter_lower_family_versions(ENGINE_MODEL_CATALOG.get("local_mlx", [])))
         )
+        engines = await asyncio.to_thread(engine_status)
         return {
             "recommended": recommended,
             "cloud": _router.detected_cloud_models(),
-            "engines": await asyncio.to_thread(engine_status),
+            "engines": engines,
             "loaded": _router.loaded_model_ids,
             "current": _router.current_model_id,
             "compat_profiles": _list_compat_profiles(),
+            "vision": _vision_capability(_router.current_model_id, engines),
         }
 
     @router.get("/models/compat-profiles")
