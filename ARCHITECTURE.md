@@ -1,13 +1,13 @@
 # Lattice AI Architecture
 
-Lattice AI v3.3.0 is a feature-complete (non-enterprise), local-first AI
+Lattice AI v3.3.1 is a feature-complete (non-enterprise), local-first AI
 workspace platform. The durable core is the Knowledge Graph; retrieval, memory,
 and the agent ecosystem operate on graph and workspace context. The entire
 platform is operable from `/app`.
 
 See [docs/architecture.md](docs/architecture.md) for the full architecture.
 
-## v3.2 Platform Shape
+## v3.3 Platform Shape
 
 ```text
 files / images / documents / chats / work history
@@ -21,7 +21,7 @@ files / images / documents / chats / work history
   -> coding actions, analysis, documents, team workflows
 ```
 
-## v3.2 Platform Components
+## v3.3 Platform Components
 
 - **Core** — Workspace OS, Knowledge Graph, Vector Index, Hybrid Search,
   Long-Term Memory + Memory Manager.

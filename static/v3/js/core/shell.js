@@ -49,14 +49,17 @@ function buildRail() {
   return h("aside.lt3-rail", { id: "lt3-rail", "aria-label": "Primary" },
     h("div.lt3-rail__brand",
       h("div.lt3-rail__logo", { html: latticeMark() }),
-      h("div.lt3-rail__word", h("b", "Lattice AI"), h("small", "Local-First Workspace")),
+      h("div.lt3-rail__word", h("b", "Lattice AI"), h("small", "Private runtime")),
       h("button.lt3-iconbtn.lt3-iconbtn--sm.lt3-rail__close", { "aria-label": "Close menu", on: { click: closeDrawer } }, icon("x")),
     ),
     h("div.lt3-rail__scope", { id: "lt3-scope" }),
     h("nav.lt3-rail__nav", { id: "lt3-nav", "aria-label": "Sections" }),
     h("div.lt3-rail__foot",
-      h("button.lt3-rail__user", { id: "lt3-user", "aria-label": "Account", on: { click: () => router.navigate("settings") } }),
-      h("button.lt3-iconbtn", { id: "lt3-theme", "aria-label": "Toggle theme", title: "Toggle theme", on: { click: () => store.toggleTheme() } }, icon("moon")),
+      h("div.lt3-rail__status", { id: "lt3-rail-status" }),
+      h("div.lt3-rail__foot-row",
+        h("button.lt3-rail__user", { id: "lt3-user", "aria-label": "Account", on: { click: () => router.navigate("settings") } }),
+        h("button.lt3-iconbtn", { id: "lt3-theme", "aria-label": "Toggle theme", title: "Toggle theme", on: { click: () => store.toggleTheme() } }, icon("moon")),
+      ),
     ),
   );
 }
@@ -82,10 +85,14 @@ function navItem(route) {
   return h("a.lt3-navitem", {
     href: "#/" + route.key,
     dataset: { key: route.key },
+    title: route.title || route.label,
     on: { click: () => closeDrawer() },
   },
     icon(route.icon),
-    h("span.lt3-navitem__label", route.label),
+    h("span.lt3-navitem__copy",
+      h("span.lt3-navitem__label", route.label),
+      route.desc ? h("span.lt3-navitem__meta", route.desc) : null,
+    ),
     route.key === "hybrid-search" ? h("span.lt3-navitem__dot", { style: { background: "var(--lt3-pillar-hybrid)" } }) : null,
   );
 }
@@ -161,6 +168,23 @@ function renderCrumbs() {
 
 function renderIndexChip() {
   els.idxchip.replaceChildren(c.indexChip(store.get().indexStatus));
+  renderRailStatus();
+}
+
+function renderRailStatus() {
+  if (!els.railStatus) return;
+  const status = store.get().indexStatus;
+  const pipes = status?.pipelines || {};
+  const keys = ["knowledge_graph", "vector_index", "hybrid"];
+  const ready = keys.filter((key) => String(pipes[key]?.state || "").toLowerCase() === "ready").length;
+  const unavailable = !Object.keys(pipes).length;
+  els.railStatus.replaceChildren(
+    h("div.lt3-rail__status-top",
+      h("span.lt3-rail__status-dot", { dataset: { state: unavailable ? "pending" : ready === keys.length ? "ready" : "partial" } }),
+      h("span", unavailable ? "Local index pending" : `${ready}/${keys.length} retrieval signals ready`),
+    ),
+    h("div.lt3-rail__status-sub", unavailable ? "Start backend to sync live state" : "Graph · vector · hybrid"),
+  );
 }
 
 /* ── View rendering ─────────────────────────────────────────────────────── */
@@ -240,8 +264,10 @@ function closeDrawer() { delete els.root.dataset.drawer; }
 
 /* ── Command palette ────────────────────────────────────────────────────── */
 function paletteItems() {
-  const nav = ROUTES.map((r) => ({
-    group: "Go to", label: r.label, icon: r.icon, hint: r.group,
+  const mode = store.get().mode;
+  const currentRoutes = visibleRoutes(mode);
+  const nav = currentRoutes.map((r) => ({
+    group: "Go to", label: r.title || r.label, icon: r.icon, hint: r.label === r.title ? r.group : r.label,
     run: () => router.navigate(r.key),
   }));
   const actions = [
@@ -340,6 +366,7 @@ function cacheEls(root) {
     theme: $("#lt3-theme", root),
     crumbs: $("#lt3-crumbs", root),
     idxchip: $("#lt3-idxchip", root),
+    railStatus: $("#lt3-rail-status", root),
     outlet: $("#lt3-outlet", root),
     view: $("#lt3-view", root),
   };
@@ -349,6 +376,7 @@ function cacheEls(root) {
   renderMode();
   updateThemeIcon();
   renderIndexChip();
+  renderRailStatus();
 }
 
 function latticeMark() {

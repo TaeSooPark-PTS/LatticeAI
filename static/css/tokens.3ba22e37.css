@@ -1,5 +1,5 @@
 /* ============================================================================
- * Lattice AI — Design Tokens (Single Source of Truth)  v3.3.0
+ * Lattice AI — Design Tokens (Single Source of Truth)  v3.3.1
  *
  * 이 파일이 색·면·테두리·그림자·포커스의 단일 출처다.
  *   :root                      → 라이트 테마 값
@@ -18,75 +18,75 @@
   color-scheme: light;
 
   /* ── Brand raw scale (불변, 테마 무관 기준점) ───────────────────────────── */
-  --lt-color-primary-100: #dbeafe;
-  --lt-color-primary-200: #bfdbfe;
-  --lt-color-primary-400: #60a5fa;
-  --lt-color-primary-600: #2563eb;
-  --lt-color-primary-800: #1e3a8a;
-  --lt-color-ink-900: #111827;
-  --lt-color-accent-cyan:  #0891b2;
-  --lt-color-accent-green: #0f9f8f;
-  --lt-color-accent-amber: #b7791f;
-  --lt-color-accent-pink:  #b83280;
+  --lt-color-primary-100: #dfe7ff;
+  --lt-color-primary-200: #c8d6ff;
+  --lt-color-primary-400: #7f9cff;
+  --lt-color-primary-600: #3b63f4;
+  --lt-color-primary-800: #203a8d;
+  --lt-color-ink-900: #141923;
+  --lt-color-accent-cyan:  #0c9ca8;
+  --lt-color-accent-green: #0e9f91;
+  --lt-color-accent-amber: #c77d16;
+  --lt-color-accent-pink:  #c33fb3;
 
   /* ╔══════════════════════════════════════════════════════════════════════╗
      ║  SEMANTIC TOKENS — LIGHT (neutral workspace palette)                 ║
      ╚══════════════════════════════════════════════════════════════════════╝ */
 
   /* background / surfaces */
-  --bg:          #f6f8f7;
-  --bg-soft:     #eef3f2;
+  --bg:          #f5f7fb;
+  --bg-soft:     #edf1f7;
   --surface:     #ffffff;
-  --surface-2:   #f0f5f4;
-  --surface-3:   #e4ecea;
-  --surface-muted: #edf3f2;
-  --surface-elevated: rgba(255, 255, 255, 0.94);
-  --card:        rgba(255, 255, 255, 0.92);
-  --sidebar:     rgba(255, 255, 255, 0.94);
+  --surface-2:   #eef2f7;
+  --surface-3:   #e1e7ef;
+  --surface-muted: #e9eef6;
+  --surface-elevated: rgba(255, 255, 255, 0.96);
+  --card:        rgba(255, 255, 255, 0.94);
+  --sidebar:     rgba(249, 251, 255, 0.96);
   --modal:       rgba(255, 255, 255, 0.98);
   --table:       rgba(255, 255, 255, 0.78);
   --input:       rgba(255, 255, 255, 0.86);
-  --overlay:     rgba(15, 23, 42, 0.44);
+  --overlay:     rgba(20, 25, 35, 0.48);
   --overlay-scrim: var(--overlay);
   --app-bg:
-    linear-gradient(180deg, #f8faf9 0%, #eef4f2 54%, #f7faf9 100%);
+    linear-gradient(180deg, #f8faff 0%, #eef3fa 48%, #f5f7fb 100%);
 
   /* text */
-  --text:        #24223d;
-  --muted:       #475569;   /* muted-text */
-  --faint:       #70818f;
+  --text:        #1e2430;
+  --muted:       #526071;   /* muted-text */
+  --faint:       #7a8798;
   --text-muted:  var(--muted);
 
   /* border / line */
-  --border:        rgba(15, 23, 42, 0.12);
-  --border-strong: rgba(15, 23, 42, 0.22);
-  --line:          rgba(15, 23, 42, 0.10);
-  --line-strong:   rgba(15, 23, 42, 0.18);
+  --border:        rgba(30, 36, 48, 0.12);
+  --border-strong: rgba(30, 36, 48, 0.22);
+  --line:          rgba(30, 36, 48, 0.09);
+  --line-strong:   rgba(30, 36, 48, 0.18);
 
   /* accent */
-  --accent:       #2563eb;
-  --accent-2:     #0f9f8f;
-  --accent-3:     #b7791f;
-  --accent-pink:  #b83280;
-  --accent-soft:  rgba(37, 99, 235, 0.10);
-  --accent-deep:  #1d4ed8;
+  --accent:       #3b63f4;
+  --accent-2:     #0e9f91;
+  --accent-3:     #c77d16;
+  --accent-pink:  #c33fb3;
+  --accent-soft:  rgba(59, 99, 244, 0.11);
+  --accent-deep:  #2f4fd0;
 
   /* status */
-  --success: #0f8f6d;
-  --warning: #a16207;
-  --danger:  #c2410c;
+  --success: #0d8f70;
+  --warning: #a45f07;
+  --danger:  #bf3e2f;
 
   /* graph */
-  --graph-bg:   #f8faf9;
-  --graph-grid: rgba(12, 92, 115, 0.08);
+  --graph-bg:   #f8faff;
+  --graph-grid: rgba(59, 99, 244, 0.09);
   --graph-pill: rgba(255, 255, 255, 0.92);
 
   /* shadow */
-  --shadow:    0 18px 50px rgba(15, 23, 42, 0.10);
-  --shadow-sm: 0 8px 22px rgba(15, 23, 42, 0.08);
+  --shadow:    0 18px 48px rgba(30, 36, 48, 0.11);
+  --shadow-sm: 0 8px 20px rgba(30, 36, 48, 0.08);
 
   /* focus ring */
-  --focus-ring: rgba(37, 99, 235, 0.55);
+  --focus-ring: rgba(59, 99, 244, 0.56);
 
   /* ── 구조 토큰(색 아님) ─────────────────────────────────────────────── */
   --radius:    14px;
@@ -123,17 +123,17 @@
 
   /* ── --lt-* 별칭 (workspace.css / platform.css 가 참조) — LIGHT ──────────
      순환참조를 피하려 구체값으로 둔다(소비자가 --bg 등을 --lt-* 로 재정의해도 안전). */
-  --lt-bg:        #f6f8f7;
+  --lt-bg:        #f5f7fb;
   --lt-surface:   #ffffff;
-  --lt-surface-2: #f0f5f4;
+  --lt-surface-2: #eef2f7;
   --lt-input:     rgba(255, 255, 255, 0.86);
-  --lt-ink:       #24223d;
-  --lt-ink-soft:  #475569;
-  --lt-muted:     #70818f;
-  --lt-line:      rgba(15, 23, 42, 0.12);
-  --lt-accent:    #2563eb;
-  --lt-accent-2:  #0f9f8f;
-  --lt-shadow-md: 0 18px 50px rgba(15, 23, 42, 0.10);
+  --lt-ink:       #1e2430;
+  --lt-ink-soft:  #526071;
+  --lt-muted:     #7a8798;
+  --lt-line:      rgba(30, 36, 48, 0.12);
+  --lt-accent:    #3b63f4;
+  --lt-accent-2:  #0e9f91;
+  --lt-shadow-md: 0 18px 48px rgba(30, 36, 48, 0.11);
 
   /* ── 모션 / 타이포 ─────────────────────────────────────────────────── */
   --lt-motion-ease: cubic-bezier(0.22, 1, 0.36, 1);
@@ -145,63 +145,63 @@
 :root[data-lt-theme="dark"] {
   color-scheme: dark;
 
-  --bg:          #101418;
-  --bg-soft:     #151b20;
-  --surface:     #1b2328;
-  --surface-2:   #202b31;
-  --surface-3:   #29363d;
-  --surface-muted: #151d22;
-  --surface-elevated: #253139;
-  --card:        rgba(255, 255, 255, 0.055);
-  --sidebar:     #11191d;
-  --modal:       rgba(27, 35, 40, 0.98);
+  --bg:          #0d1017;
+  --bg-soft:     #111722;
+  --surface:     #151b26;
+  --surface-2:   #1b2330;
+  --surface-3:   #263142;
+  --surface-muted: #111925;
+  --surface-elevated: #202a38;
+  --card:        rgba(255, 255, 255, 0.06);
+  --sidebar:     #0f141d;
+  --modal:       rgba(21, 27, 38, 0.98);
   --table:       rgba(255, 255, 255, 0.045);
   --input:       rgba(255, 255, 255, 0.065);
-  --overlay:     rgba(0, 0, 0, 0.64);
+  --overlay:     rgba(0, 0, 0, 0.66);
   --overlay-scrim: var(--overlay);
   --app-bg:
-    linear-gradient(180deg, #101418 0%, #151d22 54%, #101418 100%);
+    linear-gradient(180deg, #0d1017 0%, #121a27 50%, #0d1017 100%);
 
-  --text:        #edf3f2;
-  --muted:       #b8c5c2;
-  --faint:       #849894;
+  --text:        #eef3fb;
+  --muted:       #b8c3d2;
+  --faint:       #8290a3;
   --text-muted:  var(--muted);
 
-  --border:        rgba(196, 213, 208, 0.18);
-  --border-strong: rgba(196, 213, 208, 0.30);
-  --line:          rgba(196, 213, 208, 0.14);
-  --line-strong:   rgba(196, 213, 208, 0.24);
+  --border:        rgba(207, 217, 231, 0.16);
+  --border-strong: rgba(207, 217, 231, 0.28);
+  --line:          rgba(207, 217, 231, 0.12);
+  --line-strong:   rgba(207, 217, 231, 0.22);
 
-  --accent:       #0284c7;
-  --accent-2:     #0f766e;
-  --accent-3:     #facc15;
-  --accent-pink:  #f0abfc;
-  --accent-soft:  rgba(2, 132, 199, 0.20);
-  --accent-deep:  #0369a1;
+  --accent:       #7f9cff;
+  --accent-2:     #4dd8c2;
+  --accent-3:     #f2bc57;
+  --accent-pink:  #f47ac2;
+  --accent-soft:  rgba(127, 156, 255, 0.18);
+  --accent-deep:  #a8bbff;
 
   --success: #34d399;
-  --warning: #fbbf24;
-  --danger:  #fb923c;
+  --warning: #f2bc57;
+  --danger:  #ff8a72;
 
-  --graph-bg:   #0f1518;
-  --graph-grid: rgba(94, 234, 212, 0.08);
-  --graph-pill: rgba(27, 35, 40, 0.92);
+  --graph-bg:   #0f141d;
+  --graph-grid: rgba(127, 156, 255, 0.10);
+  --graph-pill: rgba(21, 27, 38, 0.92);
 
   --shadow:    0 18px 54px rgba(0, 0, 0, 0.50);
   --shadow-sm: 0 8px 24px rgba(0, 0, 0, 0.42);
 
-  --focus-ring: rgba(125, 211, 252, 0.70);
+  --focus-ring: rgba(127, 156, 255, 0.70);
 
-  --lt-bg:        #101418;
-  --lt-surface:   #1b2328;
-  --lt-surface-2: #202b31;
+  --lt-bg:        #0d1017;
+  --lt-surface:   #151b26;
+  --lt-surface-2: #1b2330;
   --lt-input:     rgba(255, 255, 255, 0.065);
-  --lt-ink:       #edf3f2;
-  --lt-ink-soft:  #b8c5c2;
-  --lt-muted:     #849894;
-  --lt-line:      rgba(196, 213, 208, 0.18);
-  --lt-accent:    #0284c7;
-  --lt-accent-2:  #0f766e;
+  --lt-ink:       #eef3fb;
+  --lt-ink-soft:  #b8c3d2;
+  --lt-muted:     #8290a3;
+  --lt-line:      rgba(207, 217, 231, 0.16);
+  --lt-accent:    #7f9cff;
+  --lt-accent-2:  #4dd8c2;
   --lt-shadow-md: 0 18px 54px rgba(0, 0, 0, 0.50);
 
   --ref-indigo: #93c5fd;
@@ -213,26 +213,26 @@
 @media (prefers-color-scheme: dark) {
   :root:not([data-lt-theme="light"]):not([data-lt-theme="dark"]) {
     color-scheme: dark;
-    --bg: #101418; --bg-soft: #151b20;
-    --surface: #1b2328; --surface-2: #202b31; --surface-3: #29363d;
-    --surface-muted: #151d22; --surface-elevated: #253139;
-    --card: rgba(255,255,255,0.055); --sidebar: #11191d;
-    --modal: rgba(27,35,40,0.98); --table: rgba(255,255,255,0.045);
-    --input: rgba(255,255,255,0.065); --overlay: rgba(0,0,0,0.64); --overlay-scrim: var(--overlay);
+    --bg: #0d1017; --bg-soft: #111722;
+    --surface: #151b26; --surface-2: #1b2330; --surface-3: #263142;
+    --surface-muted: #111925; --surface-elevated: #202a38;
+    --card: rgba(255,255,255,0.06); --sidebar: #0f141d;
+    --modal: rgba(21,27,38,0.98); --table: rgba(255,255,255,0.045);
+    --input: rgba(255,255,255,0.065); --overlay: rgba(0,0,0,0.66); --overlay-scrim: var(--overlay);
     --app-bg:
-      linear-gradient(180deg, #101418 0%, #151d22 54%, #101418 100%);
-    --text: #edf3f2; --muted: #b8c5c2; --faint: #849894; --text-muted: var(--muted);
-    --border: rgba(196,213,208,0.18); --border-strong: rgba(196,213,208,0.30);
-    --line: rgba(196,213,208,0.14); --line-strong: rgba(196,213,208,0.24);
-    --accent: #0284c7; --accent-2: #0f766e; --accent-3: #facc15;
-    --accent-pink: #f0abfc; --accent-soft: rgba(2,132,199,0.20); --accent-deep: #0369a1;
-    --success: #34d399; --warning: #fbbf24; --danger: #fb923c;
-    --graph-bg: #0f1518; --graph-grid: rgba(94,234,212,0.08); --graph-pill: rgba(27,35,40,0.92);
+      linear-gradient(180deg, #0d1017 0%, #121a27 50%, #0d1017 100%);
+    --text: #eef3fb; --muted: #b8c3d2; --faint: #8290a3; --text-muted: var(--muted);
+    --border: rgba(207,217,231,0.16); --border-strong: rgba(207,217,231,0.28);
+    --line: rgba(207,217,231,0.12); --line-strong: rgba(207,217,231,0.22);
+    --accent: #7f9cff; --accent-2: #4dd8c2; --accent-3: #f2bc57;
+    --accent-pink: #f47ac2; --accent-soft: rgba(127,156,255,0.18); --accent-deep: #a8bbff;
+    --success: #34d399; --warning: #f2bc57; --danger: #ff8a72;
+    --graph-bg: #0f141d; --graph-grid: rgba(127,156,255,0.10); --graph-pill: rgba(21,27,38,0.92);
     --shadow: 0 18px 54px rgba(0,0,0,0.50); --shadow-sm: 0 8px 24px rgba(0,0,0,0.42);
-    --focus-ring: rgba(125,211,252,0.70);
-    --lt-bg: #101418; --lt-surface: #1b2328; --lt-surface-2: #202b31; --lt-input: rgba(255,255,255,0.065);
-    --lt-ink: #edf3f2; --lt-ink-soft: #b8c5c2; --lt-muted: #849894;
-    --lt-line: rgba(196,213,208,0.18); --lt-accent: #0284c7; --lt-accent-2: #0f766e;
+    --focus-ring: rgba(127,156,255,0.70);
+    --lt-bg: #0d1017; --lt-surface: #151b26; --lt-surface-2: #1b2330; --lt-input: rgba(255,255,255,0.065);
+    --lt-ink: #eef3fb; --lt-ink-soft: #b8c3d2; --lt-muted: #8290a3;
+    --lt-line: rgba(207,217,231,0.16); --lt-accent: #7f9cff; --lt-accent-2: #4dd8c2;
     --lt-shadow-md: 0 18px 54px rgba(0,0,0,0.50);
   }
 }

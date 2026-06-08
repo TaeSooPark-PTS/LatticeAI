@@ -38,8 +38,8 @@ def test_version_metadata_matches_release():
     from latticeai import __version__
     from latticeai.core.workspace_os import WORKSPACE_OS_VERSION
 
-    assert __version__ == "3.3.0"
-    assert WORKSPACE_OS_VERSION == "3.3.0"
+    assert __version__ == "3.3.1"
+    assert WORKSPACE_OS_VERSION == "3.3.1"
 
 
 def test_markdown_current_release_references_match_release():

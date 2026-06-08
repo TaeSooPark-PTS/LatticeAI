@@ -1,5 +1,5 @@
 /* ============================================================================
- * Lattice AI v3 — Structural Design Tokens
+ * Lattice AI v3.3.1 — Structural Design Tokens
  *
  * This layer sits ON TOP of /static/css/tokens.css (the color single-source).
  * It adds the NON-COLOR structure of the v3 system — spacing, type scale,
@@ -40,9 +40,9 @@
   --lt3-weight-bold:   700;
   --lt3-weight-black:  800;
 
-  --lt3-tracking-tight: -0.02em;
-  --lt3-tracking-wide:  0.02em;
-  --lt3-tracking-caps:  0.14em;   /* eyebrow / section labels */
+  --lt3-tracking-tight: 0;
+  --lt3-tracking-wide:  0;
+  --lt3-tracking-caps:  0;   /* eyebrow / section labels */
 
   /* ── Spacing scale (4pt base) ───────────────────────────────────────── */
   --lt3-space-0:  0;
@@ -57,18 +57,18 @@
   --lt3-space-9:  4rem;     /* 64 */
 
   /* ── Radii ──────────────────────────────────────────────────────────── */
-  --lt3-radius-xs: 6px;
-  --lt3-radius-sm: 9px;
-  --lt3-radius-md: 13px;
-  --lt3-radius-lg: 18px;
-  --lt3-radius-xl: 24px;
+  --lt3-radius-xs: 4px;
+  --lt3-radius-sm: 6px;
+  --lt3-radius-md: 8px;
+  --lt3-radius-lg: 8px;
+  --lt3-radius-xl: 8px;
   --lt3-radius-pill: 999px;
 
   /* ── Elevation (theme-aware via inherited --shadow*) ────────────────── */
   --lt3-elev-0: none;
   --lt3-elev-1: var(--shadow-sm);
   --lt3-elev-2: var(--shadow);
-  --lt3-elev-3: 0 28px 70px rgba(15, 23, 42, 0.16);
+  --lt3-elev-3: 0 28px 70px rgba(30, 36, 48, 0.18);
 
   /* ── Motion ─────────────────────────────────────────────────────────── */
   --lt3-ease: var(--lt-motion-ease, cubic-bezier(0.22, 1, 0.36, 1));
@@ -87,10 +87,10 @@
   --lt3-z-toast: 100;
 
   /* ── Layout rails ───────────────────────────────────────────────────── */
-  --lt3-rail-w: 268px;        /* expanded nav rail */
+  --lt3-rail-w: 292px;        /* expanded nav rail */
   --lt3-rail-w-collapsed: 76px;
-  --lt3-topbar-h: 60px;
-  --lt3-content-max: 1240px;
+  --lt3-topbar-h: 56px;
+  --lt3-content-max: 1360px;
   --lt3-content-pad: var(--lt3-space-6);
 
   /* ── Retrieval identity accents (mapped to themed accents) ──────────── */

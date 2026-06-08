@@ -2,6 +2,24 @@
 
 The detailed historical changelog lives in [docs/CHANGELOG.md](docs/CHANGELOG.md).
 
+## [3.3.1] - 2026-06-08
+
+Visual product rebuild for the `/app` frontend. No package publication,
+deployment, tag, or GitHub Release was performed.
+
+- **Rebuilt `/app` shell** — denser command rail, grouped Basic/Advanced/Admin
+  navigation, local index readiness footer, quieter topbar, and mode-aware
+  command palette.
+- **Rebuilt design system** — cooler neutral light/dark tokens, 8px card/panel
+  radii, compact controls, redesigned stat cards, denser tables, improved empty
+  states, and regenerated hashed v3 assets.
+- **Rebuilt primary views** — Home is now a truthful readiness dashboard; Files
+  separates manual upload from local-agent folder connection; Settings reports
+  backend/local-agent/model/telemetry readiness; Chat send/stop streaming uses a
+  stable handler.
+- **Documentation** — added `VISUAL_REBUILD_NOTES_v3.3.1.md` and
+  `FIGMA_SPEC.md`, and updated `STYLE_SYSTEM.md`.
+
 ## [3.3.0] - 2026-06-08
 
 Product-quality and honesty release. No new product areas — the focus is

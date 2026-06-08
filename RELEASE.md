@@ -7,6 +7,30 @@
 > PyPI / npm / VS Code Marketplace / Open VSX 배포는 아래 수동 절차로만
 > 진행합니다. 태그 생성은 패키지 스토어 publish를 자동으로 트리거하지 않습니다.
 
+## v3.3.1 릴리스 노트 (2026-06-08)
+
+Lattice AI v3.3.1 — Visual Product Rebuild. `/app`의 런타임 동작은 보존하고,
+제품의 시각 언어와 정보 구조를 재구성한다. 태그, GitHub Release, 패키지
+publish, 배포는 수행하지 않는다.
+
+- **Changed (`/app` shell)**: 더 조밀한 command rail, Basic/Advanced/Admin
+  navigation, local retrieval readiness footer, quiet topbar, mode-aware command
+  palette로 글로벌 앱 프레임을 재구축했다.
+- **Changed (Design system)**: v3.3.0 palette를 cooler neutral light/dark
+  token으로 교체하고, card/panel radius를 8px 중심으로 정리했다. Buttons,
+  inputs, tables, stats, empty states도 compact product UI로 재작성했다.
+- **Changed (Home)**: Home을 backend/model/retrieval/memory/source/activity
+  readiness dashboard로 재구성했다. 가짜 readiness는 표시하지 않는다.
+- **Changed (Files / Settings / Chat)**: Files는 manual upload와 desktop
+  local-agent folder connection을 명확히 분리한다. Settings는 backend,
+  local-agent, model runtime, host telemetry, embedding config를 보여준다.
+  Chat send/stop streaming button은 단일 handler로 안정화했다.
+- **Added (Design docs)**: `VISUAL_REBUILD_NOTES_v3.3.1.md`,
+  `FIGMA_SPEC.md`, updated `STYLE_SYSTEM.md`.
+- **Validation target**: `npm run lint`, `npm run typecheck`,
+  `npm run check:python`, unit tests, Playwright visual/runtime checks,
+  `npm run build`.
+
 ## v3.2.0 릴리스 노트 (2026-06-08)
 
 Lattice AI v3.2.0 — Feature-Complete Platform. non-enterprise use case 전체를
@@ -692,13 +716,13 @@ Knowledge Graph v2 read/write cutover. 자세한 내용은
    - `npm run release:artifacts`
    - `npm run release:validate`
 
-현재 `v3.2.0` 기준 필수 산출물:
+현재 `v3.3.1` 기준 필수 산출물:
 
 ```text
-dist/ltcai-3.2.0-py3-none-any.whl
-dist/ltcai-3.2.0.tar.gz
-dist/ltcai-3.2.0.vsix
-ltcai-3.2.0.tgz
+dist/ltcai-3.3.1-py3-none-any.whl
+dist/ltcai-3.3.1.tar.gz
+dist/ltcai-3.3.1.vsix
+ltcai-3.3.1.tgz
 ```
 
 ## 2) npm 배포
