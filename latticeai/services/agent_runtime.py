@@ -54,12 +54,16 @@ class AgentRuntime:
         workspace_graph: Callable[[], Any],
         append_audit_event: Callable[..., None],
         max_retries_cap: int = 5,
+        hooks: Any = None,
     ):
         self._store = store
         self._orchestrator_factory = orchestrator_factory
         self._workspace_graph = workspace_graph
         self._append_audit_event = append_audit_event
         self._max_retries_cap = int(max_retries_cap)
+        # Lifecycle hooks registry (optional). When present, ``start`` fires the
+        # ``pre_run`` / ``post_run`` hooks; a blocking ``pre_run`` aborts the run.
+        self._hooks = hooks
 
     # ── configuration ─────────────────────────────────────────────────────
     def config(self) -> Dict[str, Any]:
@@ -192,6 +196,26 @@ class AgentRuntime:
     ) -> Dict[str, Any]:
         if not str(goal or "").strip():
             raise ValueError("goal is required")
+
+        # ── pre_run hooks ─────────────────────────────────────────────────
+        # A blocking pre_run hook (e.g. a policy gate) aborts the run before any
+        # orchestration happens. Hook failures never crash the run (fire_hook
+        # swallows them); only an explicit block stops it.
+        pre_dispatch: Optional[Dict[str, Any]] = None
+        if self._hooks is not None:
+            pre_dispatch = self._hooks.fire_hook(
+                "pre_run", "agent.run",
+                payload={"goal": goal, "roles": roles or None, "max_retries": max_retries},
+                user_email=user_email, workspace_id=scope,
+            )
+            if pre_dispatch.get("blocked"):
+                self._append_audit_event(
+                    "multi_agent_run_blocked",
+                    user_email=user_email,
+                    reason=pre_dispatch.get("block_reason"),
+                )
+                raise PermissionError(pre_dispatch.get("block_reason") or "Agent run blocked by a pre_run hook.")
+
         orchestrator = self._orchestrator_factory(user_email or None, scope)
         result = orchestrator.run(
             goal,
@@ -226,7 +250,28 @@ class AgentRuntime:
             status=result.status,
             retries=result.retries,
         )
-        return {"run": run, "result": result.as_dict()}
+
+        # ── post_run hooks ────────────────────────────────────────────────
+        post_dispatch: Optional[Dict[str, Any]] = None
+        if self._hooks is not None:
+            run_id = run.get("id") or run.get("run_id") if isinstance(run, dict) else None
+            post_dispatch = self._hooks.fire_hook(
+                "post_run", "agent.run",
+                payload={
+                    "run_id": run_id,
+                    "agent_id": result.agent_id,
+                    "status": result.status,
+                    "retries": result.retries,
+                },
+                user_email=user_email, workspace_id=scope,
+            )
+
+        payload = {"run": run, "result": result.as_dict()}
+        if pre_dispatch is not None:
+            payload["pre_run_hooks"] = pre_dispatch
+        if post_dispatch is not None:
+            payload["post_run_hooks"] = post_dispatch
+        return payload
 
     def stop(self, run_id: str, *, scope: Optional[str] = None) -> Dict[str, Any]:
         """Best-effort stop.

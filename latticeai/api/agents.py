@@ -173,5 +173,8 @@ def create_agents_router(
             )
         except ValueError as exc:
             raise HTTPException(status_code=400, detail=str(exc)) from exc
+        except PermissionError as exc:
+            # A pre_run hook gated this run (e.g. a policy/permission hook).
+            raise HTTPException(status_code=403, detail=str(exc)) from exc
 
     return router

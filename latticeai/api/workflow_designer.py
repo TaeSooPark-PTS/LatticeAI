@@ -57,6 +57,7 @@ def create_workflow_designer_router(
     append_audit_event: Callable[..., None],
     ui_file_response: Optional[Callable[[Path], Any]] = None,
     static_dir: Optional[Path] = None,
+    hooks: Any = None,
 ) -> APIRouter:
     from latticeai.core.workflow_engine import (
         WorkflowEngine,
@@ -147,7 +148,7 @@ def create_workflow_designer_router(
         except FileNotFoundError as exc:
             raise HTTPException(status_code=404, detail=f"Workflow not found: {exc}") from exc
         runners = build_runners(current_user or None, scope)
-        engine = WorkflowEngine(runners)
+        engine = WorkflowEngine(runners, hooks=hooks)
         result = engine.run(workflow, inputs=req.inputs)
         run = store.record_workflow_run(
             workflow_id=workflow_id,

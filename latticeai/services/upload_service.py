@@ -23,6 +23,7 @@ async def process_uploaded_document(
     classify_sensitive_message,
     append_audit_event,
     enforce_rate_limit,
+    hooks=None,
 ) -> dict:
     enforce_rate_limit(current_user, "upload")
     suffix = Path(file.filename or "upload").suffix.lower()
@@ -91,6 +92,22 @@ async def process_uploaded_document(
             Path(tmp_path).unlink()
         except OSError:
             pass
+
+    # ── pipeline hooks ── the ingest → embed → graph-build pipeline just ran for
+    # this document; fire the pipeline lifecycle hooks so downstream automation
+    # (index-status publishing, custom reindex triggers) executes.
+    if hooks is not None:
+        kg = result.get("knowledge_graph") or {}
+        hooks.fire_hook(
+            "pipeline", "document.ingested",
+            payload={
+                "filename": file.filename,
+                "chars": result.get("chars"),
+                "graph_node": kg.get("node_id"),
+                "indexed": bool(kg.get("node_id")),
+            },
+            user_email=current_user,
+        )
 
     result["original_filename"] = file.filename
     return result

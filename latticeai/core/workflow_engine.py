@@ -214,17 +214,31 @@ class WorkflowEngine:
     gracefully (and the gap is visible in the timeline).
     """
 
-    def __init__(self, runners: Optional[Dict[str, Callable[..., Any]]] = None):
+    def __init__(self, runners: Optional[Dict[str, Callable[..., Any]]] = None, *, hooks: Any = None):
         self.runners = runners or {}
+        # Optional lifecycle hooks registry. When present, ``run`` fires the
+        # ``workflow`` hooks at workflow start and end so automation registered
+        # against the workflow lifecycle actually executes.
+        self.hooks = hooks
 
     def run(self, workflow: Dict[str, Any], *, inputs: Optional[Dict[str, Any]] = None) -> WorkflowRun:
         definition = normalize_definition(workflow)
         errors = validate_definition(definition)
         run = WorkflowRun(workflow_id=definition.get("id"), name=definition.get("name") or "workflow")
+        if self.hooks is not None:
+            self.hooks.fire_hook(
+                "workflow", "workflow.start",
+                payload={"workflow_id": definition.get("id"), "name": definition.get("name"), "valid": not errors},
+            )
         if errors:
             run.status = "failed"
             run.timeline.append({"node": None, "type": "validation", "status": "failed", "errors": errors, "timestamp": _now()})
             run.finished_at = _now()
+            if self.hooks is not None:
+                self.hooks.fire_hook(
+                    "workflow", "workflow.end",
+                    payload={"workflow_id": definition.get("id"), "status": run.status},
+                )
             return run
 
         nodes = {node["id"]: node for node in definition["nodes"]}
@@ -300,6 +314,12 @@ class WorkflowEngine:
 
         run.status = "failed" if had_error else ("partial" if had_skip else "ok")
         run.finished_at = _now()
+        if self.hooks is not None:
+            self.hooks.fire_hook(
+                "workflow", "workflow.end",
+                payload={"workflow_id": definition.get("id"), "name": definition.get("name"),
+                         "status": run.status, "steps": steps},
+            )
         return run
 
 
