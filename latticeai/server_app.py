@@ -120,7 +120,9 @@ from latticeai.core.builtin_hooks import register_builtin_hook_runners
 from latticeai.api.agent_registry import create_agent_registry_router
 from latticeai.core.agent_registry import AgentRegistry
 from latticeai.api.memory import create_memory_router
+from latticeai.api.browser import create_browser_router
 from latticeai.services.memory_service import MemoryService
+from latticeai.services.ingestion import IngestionPipeline
 from latticeai.services.tool_dispatch import (
     LOCAL_WRITE_BLOCKED_PREFIXES as _LOCAL_WRITE_BLOCKED_PREFIXES,
     TOOL_GOVERNANCE,
@@ -321,6 +323,16 @@ MEMORY_SERVICE = MemoryService(
     knowledge_graph=KNOWLEDGE_GRAPH,
     enable_graph=ENABLE_GRAPH,
     history_file=HISTORY_FILE,
+)
+# ── v3.6.0 unified ingestion pipeline: the single write-side seam into the
+# Knowledge Graph. Every new source (web URL, browser tab, …) flows through this
+# so pre_tool/post_tool hooks fire on ingestion and provenance is captured
+# uniformly. Existing direct ingest callers keep working; new paths converge here.
+INGESTION_PIPELINE = IngestionPipeline(
+    KNOWLEDGE_GRAPH,
+    hooks=HOOKS_REGISTRY,
+    enable_graph=ENABLE_GRAPH,
+    audit=lambda action, detail, user: append_audit_event(action, user_email=user, **detail),
 )
 
 def _require_graph():
@@ -1506,6 +1518,11 @@ app.include_router(create_memory_router(
     gate_read=PLATFORM.gate_read,
     gate_write=PLATFORM.gate_write,
     append_audit_event=append_audit_event,
+))
+
+app.include_router(create_browser_router(
+    pipeline=INGESTION_PIPELINE,
+    require_user=require_user,
 ))
 
 app.include_router(create_garden_router(gardener=gardener, require_user=require_user))
