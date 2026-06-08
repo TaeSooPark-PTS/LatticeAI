@@ -1,5 +1,5 @@
 {
-  "version": "3.4.1",
+  "version": "3.5.0",
   "generated_at": "deterministic",
   "entrypoints": {
     "app": "/static/v3/js/app.d086489d.js",
@@ -8,7 +8,7 @@
       "/static/v3/css/lattice.tokens.e7018963.css",
       "/static/v3/css/lattice.base.e4cdd05d.css",
       "/static/v3/css/lattice.components.9b49d614.css",
-      "/static/v3/css/lattice.shell.6ceea7c8.css",
+      "/static/v3/css/lattice.shell.8fcc9d33.css",
       "/static/v3/css/lattice.views.22f69117.css"
     ]
   },
@@ -17,7 +17,7 @@
     "static/v3/css/lattice.tokens.css": "/static/v3/css/lattice.tokens.e7018963.css",
     "static/v3/css/lattice.base.css": "/static/v3/css/lattice.base.e4cdd05d.css",
     "static/v3/css/lattice.components.css": "/static/v3/css/lattice.components.9b49d614.css",
-    "static/v3/css/lattice.shell.css": "/static/v3/css/lattice.shell.6ceea7c8.css",
+    "static/v3/css/lattice.shell.css": "/static/v3/css/lattice.shell.8fcc9d33.css",
     "static/v3/css/lattice.views.css": "/static/v3/css/lattice.views.22f69117.css",
     "static/v3/js/app.js": "/static/v3/js/app.d086489d.js",
     "static/v3/js/core/api.js": "/static/v3/js/core/api.12b568ad.js",

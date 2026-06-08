@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "ltcai"
-version = "3.4.1"
+version = "3.5.0"
 description = "Lattice AI v3 local-first AI workspace platform with knowledge graph, vector index, hybrid search, agents, and workspace modes"
 readme = "README.md"
 requires-python = ">=3.11"
@@ -40,6 +40,7 @@ dependencies = [
   "python-multipart",
   "keyring",
   "authlib",
+  "cryptography",
   "pdfplumber",
   "pypdfium2",
   "watchdog",
@@ -73,10 +74,9 @@ py-modules = [
   "llm_router",
   "p_reinforce",
   "telegram_bot",
-  "tools",
   "codex_telegram_bot",
 ]
-packages = ["latticeai", "latticeai.core", "latticeai.api", "latticeai.services"]
+packages = ["latticeai", "latticeai.core", "latticeai.api", "latticeai.services", "tools"]
 include-package-data = true
 
 [tool.setuptools.package-data]
