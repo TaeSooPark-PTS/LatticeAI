@@ -1,4 +1,27 @@
-# Lattice AI — Feature Status (v3.4.1)
+# Lattice AI — Feature Status (v3.5.0)
+
+**Release type:** foundation stabilization & verification — the last major
+hardening pass before Knowledge-Graph-First (v3.6.0) and the Digital Brain
+Platform (v4.0). No new product surface. Every v3.5.0 claim is backed by automated
+tests and a live server boot (`/health` → `3.5.0`).
+
+## v3.5.0 Stabilization — what hardened
+
+| Area | Before v3.5.0 | v3.5.0 (verified) |
+| --- | --- | --- |
+| **Auth / OIDC** | SSO callback **base64-decoded** the `id_token` and trusted its claims — no signature/issuer/audience/expiry/nonce check (forgeable login) | Fail-closed verifier (`core/oidc.py`, RSA/JWKS): signature + `iss`/`aud`/`exp`/`nonce`; `alg:none`/`HS*` rejected; per-login nonce + state enforced (`test_oidc.py`) |
+| **Proxy trust** | `client_ip` trusted `X-Forwarded-For`/`CF-Connecting-IP` unconditionally → per-IP rate limits spoofable | Forwarded headers honoured **only** from `LATTICEAI_TRUSTED_PROXIES`; else peer IP (`test_proxy_trust.py`, bypass proof) |
+| **Runtime hooks** | `read_file`/`edit_file`/`grep`/`clear_history`, computer-use loop, skill-eval bypassed `pre_tool`/`post_tool` | All routed through `dispatch_tool`; 100% of discovered tool/agent paths covered (`docs/RUNTIME_HOOK_COVERAGE_v3.5.0.md`, `test_runtime_coverage.py`) |
+| **`tools.py`** | one 1,525-line module | `tools/` package (computer/filesystem/documents/local_files/knowledge/network/commands + base + registry); flat imports preserved; no circular imports |
+| **CI syntax gate** | hand-maintained `py_compile` list (still referenced deleted `tools.py`) | `scripts/check_python.py` discovers + compiles 144 modules; auto-includes new files |
+| **UI surfaces** | command-palette scrim blur + 19 legacy `backdrop-filter: blur` surfaces | zero blur surfaces in active v3 CSS; solid/crisp; 13/13 visual tests pass |
+
+Validation: lint 64/64 · check:python 144 · unit 419 · integration 9 · visual 13 ·
+build (sdist+wheel, `tools/` included, twine PASSED).
+
+---
+
+## v3.4.1 Runtime Completion (prior release)
 
 **Release type:** runtime completion — makes the v3.4.0 runtime systems
 *verifiably* complete and corrects the v3.4.0 overclaims the implementation audit

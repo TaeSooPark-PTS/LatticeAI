@@ -2,6 +2,38 @@
 
 The detailed historical changelog lives in [docs/CHANGELOG.md](docs/CHANGELOG.md).
 
+## [3.5.0] - 2026-06-09
+
+Foundation stabilization & verification release — the last major hardening pass
+before Knowledge-Graph-First (v3.6.0) and the Digital Brain Platform (v4.0). No
+new product surface; every change is backed by automated tests + a live server
+boot (`/health` → `3.5.0`). See [RELEASE_NOTES_v3.5.0.md](RELEASE_NOTES_v3.5.0.md),
+[docs/RUNTIME_HOOK_COVERAGE_v3.5.0.md](docs/RUNTIME_HOOK_COVERAGE_v3.5.0.md), and
+[FEATURE_STATUS.md](FEATURE_STATUS.md).
+
+- **Security — OIDC verified, not decoded.** New fail-closed verifier
+  (`core/oidc.py`, RSA/JWKS) checks signature, `iss`, `aud`, `exp`, `nonce`; the
+  SSO callback no longer trusts a decoded `id_token` payload. `alg:none` / `HS*`
+  rejected. Per-login `nonce` issued + enforced; `state` still enforced.
+  (`test_oidc.py`, 15 cases.)
+- **Security — proxy trust.** `client_ip` honours `X-Forwarded-For` /
+  `CF-Connecting-IP` only from configured trusted proxies
+  (`LATTICEAI_TRUSTED_PROXIES`); otherwise the peer is used, so per-IP rate limits
+  can't be spoofed. (`test_proxy_trust.py`, incl. a bypass proof.)
+- **Runtime — hook bypasses closed.** `read_file`/`edit_file`/`grep`/
+  `clear_history`, the computer-use agent loop (`/cu/*`), and skill-eval now run
+  through `dispatch_tool` (`pre_tool`/`post_tool`). Full table in
+  `docs/RUNTIME_HOOK_COVERAGE_v3.5.0.md`. (`test_runtime_coverage.py`.)
+- **Refactor — `tools.py` → `tools/` package** (computer / filesystem / documents
+  / local_files / knowledge / network / commands + base + registry). Flat import
+  surface 100% preserved; 46/46 tools registered; no circular imports.
+- **CI — discover-based syntax gate.** `scripts/check_python.py` compiles all 144
+  first-party modules (excludes venv/build/cache/vendored), auto-including future
+  files. Wired into CI + `npm run check:python`.
+- **UI — glassmorphism removed.** The v3 SPA scrim blur and 19 legacy
+  `backdrop-filter: blur` surfaces removed; active v3 CSS has **zero** blur
+  surfaces (assets rebuilt). 13/13 Playwright visual tests pass.
+
 ## [3.4.1] - 2026-06-08
 
 Runtime completion release — makes the v3.4.0 runtime systems verifiably complete
