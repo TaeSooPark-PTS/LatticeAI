@@ -3,11 +3,10 @@
 
   # Lattice AI
 
-  **Lattice AI v3 — Local-First AI Workspace Platform.**
+  **Local-first AI workspace for your files, chats, knowledge, models, and agents.**
 
-  Work across Personal and Organization workspaces with Knowledge Graph,
-  Vector Index, Hybrid Search, Native Chat, agents, files, models, and
-  Basic / Advanced / Admin modes.
+  Keep your work context on your own machine. Connect documents, conversations,
+  local models, graph memory, and agent workflows in one self-hosted workspace.
 </div>
 
 <div align="center">
@@ -23,7 +22,96 @@
 
 </div>
 
-![Lattice AI — local-first AI workspace](docs/assets/v3.4.0/home.png)
+![Lattice AI — local-first AI workspace home](docs/assets/v3.4.0/home.png)
+
+> **Lattice AI is a self-hosted AI workspace that keeps your files, chats, knowledge, local models, and agents together on your own machine.**
+
+It isn't another chat window. It's a workspace built around your work — local-first
+by default, cloud only when you choose.
+
+## Why install Lattice AI?
+
+Most AI tools only answer questions in a chat window. Lattice AI gives you a
+workspace around the work itself:
+
+- **Keep everything in one place** — files, notes, chats, and decisions live
+  together instead of scattered across tabs and apps.
+- **Turn documents into knowledge** — uploads and connected folders become
+  searchable, linked context you can reuse.
+- **Search the way you think** — fuse keyword, vector, and knowledge-graph
+  signals in a single query.
+- **Stay private and offline-capable** — run local models through MLX, Ollama, or
+  LM Studio; nothing leaves your machine unless you opt in.
+- **Use cloud models only when you choose** — bring an API key for cloud LLMs
+  when you want them, not by default.
+- **Automate with agents you can inspect** — workflows leave behind plans,
+  reviews, retries, and results you can replay.
+
+Lattice AI is not a clone of ChatGPT, Claude, Cursor, Obsidian, or Notion. It
+sits in a different place: a **workspace** that ties local/self-hosted AI, your
+files, project knowledge, hybrid search, local and optional cloud models, agents,
+and workflows together — and runs on your own hardware.
+
+## What can you do with it?
+
+- Build a private AI workspace for a project, scoped to your machine.
+- Chat with your local files, images, and workspace memory.
+- Upload documents — or connect a folder — and turn them into searchable knowledge.
+- Explore how files, decisions, conversations, and entities connect in a
+  Knowledge Graph.
+- Run local models through MLX, Ollama, or LM Studio, and use cloud LLMs only when
+  you want to.
+- Create repeatable agent workflows for research, coding, analysis, and
+  documentation.
+- Separate personal work from organization work.
+- Switch between Basic, Advanced, and Admin modes depending on your role.
+
+## Product Tour
+
+### Start from the workspace home
+
+![Lattice AI workspace home — readiness, model state, and retrieval status](docs/assets/v3.4.0/home.png)
+
+The home view shows workspace readiness, model state, retrieval status, and the
+main entry points — derived from real local state, never placeholder counters.
+
+### Chat with files, images, and workspace context
+
+![Lattice AI chat connected to files, graph context, and vision input](docs/assets/v3.4.0/chat.png)
+
+Chat is wired to your files, graph context, memory, and model routing — including
+vision-capable image input by attach, drag-and-drop, or paste.
+
+### Bring documents into the workspace
+
+![Lattice AI files view — uploaded documents and connected folders](docs/assets/v3.4.0/files.png)
+
+Uploads and connected folders become indexed workspace context, searchable from
+chat and hybrid search.
+
+### Understand knowledge visually
+
+![Lattice AI knowledge graph of files, decisions, conversations, and entities](docs/assets/v3.4.0/knowledge-graph.png)
+
+The Knowledge Graph shows how files, decisions, conversations, and entities
+connect — context that stays useful even when you switch models.
+
+### Run agent workflows
+
+![Lattice AI agent run with roles, logs, review, and retry](docs/assets/v3.4.0/agent-run.png)
+
+Agents turn a goal into an inspectable run — roles, logs, review, and retry — that
+you can read back step by step.
+
+### Extend with hooks and the local runtime
+
+![Lattice AI hooks dispatch with a recent-execution log](docs/assets/v3.4.0/hooks-dispatch.png)
+
+![Lattice AI local agent status, handshake, and folder watching](docs/assets/v3.4.0/local-agent.png)
+
+Advanced users wire lifecycle hooks into runs, tools, workflows, uploads, and
+indexing — and see the on-device local runtime's real status, handshake, and
+folder-watch activity.
 
 ## Install
 
@@ -65,279 +153,116 @@ Then open:
 http://127.0.0.1:4825/app
 ```
 
-Development checkout:
+Working from a development checkout:
 
 ```bash
 npm install
 npm run dev
 ```
 
-Useful validation commands:
+## Core Features
 
-```bash
-npm run check:python
-npm run test:unit
-npm run build
-```
+- **Local-first workspace** — your data, models, and workspace state live on your
+  machine by default; cloud is opt-in.
+- **Files and connected folders** — upload documents or connect a local folder;
+  Lattice indexes them and watches connected folders for changes.
+- **Chat with workspace context** — conversations are grounded in your files,
+  knowledge graph, and memory, with vision-capable image input.
+- **Knowledge Graph** — files, images, notes, conversations, and decisions become
+  linked entities and relationships you can explore.
+- **Hybrid Search** — keyword, vector, and graph signals are fused into one ranked
+  result set.
+- **Local model support** — run multimodal models locally via MLX, Ollama, or LM
+  Studio, with hardware-aware recommendations and source disclosure.
+- **Optional cloud model routing** — add OpenAI-compatible or other cloud models
+  when you choose; model cards disclose origin, run mode, and internet use.
+- **Multi-agent workflows** — turn goals into runs with roles, handoffs, review,
+  retries, and replayable timelines.
+- **Skills, hooks, tools, and MCP** — extend the workspace with skills, lifecycle
+  hooks, a governed tool registry, and Model Context Protocol servers.
+- **Personal / Organization workspaces** — keep personal work separate from team
+  work with role-aware views.
+- **Basic / Advanced / Admin modes** — show only what each role needs, from core
+  workflows to agent tooling to administration.
 
-## What Is Lattice AI?
+## Latest Release
 
-Lattice AI v3 is a local-first AI workspace platform for people and teams who
-want their files, models, graph context, retrieval, and agent workflows in one
-place.
+### v3.4.1 — Runtime Completion
 
-- **Primary app shell**: `/app` is the default product experience with Chat,
-  Files, Hybrid Search, Knowledge Graph, Memory, Models, Settings, Advanced
-  agent/workflow tooling, and Admin areas. Classic pages remain compatibility
-  routes only; normal workflows stay in `/app`.
-- **Local-first AI Workspace**: work starts on your machine, with local data and
-  workspace state by default.
-- **AI Pipeline Platform**: plan, execute, review, retry, and replay work across
-  local models, cloud models, tools, files, and generated artifacts.
-- **Knowledge Graph Platform**: documents, images, screenshots, notes,
-  conversations, and decisions become linked entities, relationships, evidence,
-  and reusable context.
-- **Multi-Agent Workflow Platform**: agents hand off structured context, review
-  work, retry with reasons, and keep timelines inspectable.
-- **Personal / Organization Workspace**: move between personal work and team
-  workspaces with role-aware views and Basic / Advanced / Admin modes.
-- **Vector Index and Hybrid Search**: local vector rows are derived from the
-  Knowledge Graph and fused with keyword and graph signals.
-- **Local Model Management**: choose current multimodal local models with source
-  disclosure, hardware-aware recommendations, and cloud fallback options.
-- **Community-first workspaces**: Personal and Organization workspaces ship in
-  the local product; enterprise SSO/SCIM/governance remain future extensions.
+- Full hooks lifecycle across HTTP, agent, workflow, upload, and indexing paths.
+- Real Local Agent probes instead of hardcoded readiness.
+- Connect Folder verified end-to-end.
+- Folder Watch verified, including restore after restart.
 
-## Why Lattice AI?
-
-Most AI tools split your work across a chat window, a model picker, loose files,
-and disconnected automations. Lattice AI keeps those parts together:
-
-- files and conversations become graph context;
-- graph context feeds pipelines and coding actions;
-- model cards disclose country, company, run mode, internet usage, and model
-  identity;
-- personal and organization workspaces keep team workflows separate from local
-  work;
-- multi-agent workflows leave behind replayable plans, reviews, retries, and
-  outcomes.
-
-## v3.4.1 Highlights
-
-Lattice AI v3.4.1 is the **runtime completion** release: it makes the v3.4.0
-runtime systems verifiably complete and corrects the v3.4.0 overclaims an
-implementation audit found. Every item is verified by a **live end-to-end run**
-against a booted server (see `docs/assets/v3.4.1/e2e_runtime_log.txt`).
-
-- **Hooks — full lifecycle.** One shared tool-dispatch path fires `pre_tool`/
-  `post_tool` across the HTTP, agent, and workflow tool paths (v3.4.0 only fired
-  on the HTTP path); workflow hooks fire from both the designer and platform
-  paths; the upload pipeline fires granular upload + index hooks; **all 7
-  built-in hooks have real runners**, and non-executable hooks are flagged
-  `advisory`.
-- **Local Agent — real probes.** `online`/`handshake`/`health`/
-  `filesystem_access` are no longer hardcoded — they are probed (real filesystem
-  write, live graph reachability, derived `mode`, `pid`, handshake latency).
-- **Connect Folder — proven end-to-end.** A real local folder is connected,
-  indexed, and visible in the Files table, retrieval, and hybrid search.
-- **Folder Watch — proven end-to-end + restore.** Creating a file triggers a
-  debounced reindex (`watchdog` installed); the watch is restored after restart.
-
-See [RELEASE_NOTES_v3.4.1.md](RELEASE_NOTES_v3.4.1.md) and the evidence-traced
+See [RELEASE_NOTES_v3.4.1.md](RELEASE_NOTES_v3.4.1.md) and
 [FEATURE_STATUS.md](FEATURE_STATUS.md).
 
-## v3.4.0 Highlights
-
-Lattice AI v3.4.0 is the **platform completion** release: it closes the remaining
-non-enterprise functionality gaps the v3.3.0 honesty audit flagged, so the
-local-first workspace is complete and demonstrable end-to-end. Each item below is
-runtime-verified on a live server, not only wired in source.
-
-- **Hooks now execute.** A real dispatch engine (`run_hook` / `run_hooks` /
-  `fire_hook` + `HookContext` / `HookResult`) runs hooks at genuine lifecycle
-  points — agents (pre/post-run), workflows (start/end), tools (pre/post-tool),
-  and the upload pipeline. `pre_*` hooks can gate (block) an action; every
-  dispatch is recorded to a persisted run log surfaced in the Hooks view.
-- **Uploads appear in Files.** Uploaded documents are listed with live ingest →
-  index state (`/knowledge-graph/documents`), completing upload → Files →
-  Knowledge Graph → Hybrid Search → Chat.
-- **Vision (VLM) image input.** The Chat composer accepts images by attach,
-  drag-and-drop, or paste, with a preview and a **Vision Enabled / Disabled**
-  badge driven by the active model's capability.
-- **Run agents from the Agents view.** A Run console (goal + roles → Run / Stop /
-  Status / Queue / Logs) executes the multi-agent pipeline locally; it runs
-  without a model and fires its pre/post-run hooks.
-- **On-device Local Agent + Connect Folder + Folder Watch.** My Computer reports
-  the real local-runtime agent status and handshake; folders can be connected and
-  watched (debounced reindex on change) through the existing on-device endpoints.
-- **Enterprise stays honestly disabled.** SSO, SCIM, DLP, Private VPC, SIEM, and
-  enterprise RBAC remain off with honest "not available in this build" states.
-
-See [RELEASE_NOTES_v3.4.0.md](RELEASE_NOTES_v3.4.0.md),
-[PLATFORM_COMPLETION_REPORT_v3.4.0.md](PLATFORM_COMPLETION_REPORT_v3.4.0.md), and
-the evidence-traced [FEATURE_STATUS.md](FEATURE_STATUS.md).
-
-## v3.3.1 Highlights
-
-Lattice AI v3.3.1 rebuilds the visible `/app` product experience while
-preserving the existing local-first runtime. The app now presents Chat, Files,
-Search, Knowledge, Memory, Models, Settings, Advanced tooling, and Admin
-workflows with clearer navigation and honest live/unavailable states.
-
-- **Visual product rebuild** — compact rail navigation, quieter topbar,
-  command-palette search, retrieval readiness footer, and denser controls.
-- **Truthful Home dashboard** — backend, model, retrieval, memory, source, and
-  trace readiness are derived from real endpoints instead of fabricated counts.
-- **Basic / Advanced / Admin navigation** — Basic focuses on core workspace
-  workflows; Advanced exposes agents, workflows, skills, hooks, and MCP; Admin
-  keeps organization controls separate.
-- **Files and Settings clarity** — manual upload is available immediately,
-  folder watching is explicitly tied to the desktop local agent, and Settings
-  shows backend, agent, model, telemetry, and embedding readiness.
-- **Design system refresh** — cooler neutral light/dark tokens, tighter 8px
-  radius discipline, compact cards/tables/stats/buttons, and regenerated
-  hashed v3 assets.
-
-The v3.2.0 platform remains the feature-complete foundation: multi-agent
-collaboration, Agent Registry, Marketplace templates, Workflow Agents,
-Autonomous Planning, Long-Term Memory, Skills, Hooks, Tool Registry, MCP
-Manager, production embedding profiles, and hash-manifested `/app` assets.
-Release audit: [docs/V3_2_AUDIT.md](docs/V3_2_AUDIT.md).
-
-## Screenshots
-
-All screenshots are the v3.4.0 `/app` shell. Live model output (VLM inference,
-agent-generated text) requires a loaded local model and is not depicted.
-
-### Home
-
-![Home — local-first workspace at a glance](docs/assets/v3.4.0/home.png)
-
-### Chat with Vision (VLM) image input
-
-![Chat — image attach + Vision Enabled badge](docs/assets/v3.4.0/chat.png)
-
-### Files — uploaded documents + Connect Folder
-
-![Files — uploaded documents with index state](docs/assets/v3.4.0/files.png)
-
-### Run agents from the Agents view
-
-![Agent run — goal, roles, and live timeline logs](docs/assets/v3.4.0/agent-run.png)
-
-### Hooks dispatch + run log
-
-![Hooks — per-hook Run and recent executions](docs/assets/v3.4.0/hooks-dispatch.png)
-
-### Local Agent (on-device runtime)
-
-![My Computer — Local Agent status and handshake](docs/assets/v3.4.0/local-agent.png)
-
-### Knowledge Graph
-
-![Knowledge Graph](docs/assets/v3.4.0/knowledge-graph.png)
-
-## Knowledge Graph Flow
+## How it works
 
 ```text
-files / documents / images / screenshots / conversations / decisions
-  -> multimodal understanding
-  -> entity and relationship extraction
-  -> evidence and artifact storage
-  -> Knowledge Graph update
-  -> AI pipeline context
-  -> coding actions / analysis / documents / team workflows
+files / chats / notes / images / decisions
+  -> workspace memory
+  -> knowledge graph
+  -> hybrid search
+  -> chat / agents / workflows
+  -> reusable outputs
 ```
 
-The graph keeps useful workspace context available even when you change models.
+- Your content stays on your machine and becomes durable workspace memory.
+- Memory is organized into a knowledge graph of entities and relationships.
+- Hybrid search fuses keyword, vector, and graph signals over that context.
+- Chat, agents, and workflows draw on the same grounded context.
+- Outputs — documents, analysis, and decisions — feed back into the workspace.
 
-## v3 Backend Retrieval
-
-The v3 backend adds a local-first retrieval stack that combines the Knowledge
-Graph, a SQLite vector index, and hybrid result fusion. It preserves existing
-graph data while adding derived vector rows that can be rebuilt at any time.
-
-Embedding status: production profiles are exposed through
-`GET /api/embeddings/providers`, while `lattice-local-hash-v1` remains a
-deterministic fallback for offline indexing and tests. It is never presented as
-a production semantic embedding model.
-
-Core API contracts:
-
-- `POST /api/search/hybrid`
-- `GET /api/search/keyword?q=...`
-- `GET /api/search/vector?q=...`
-- `GET /api/graph`
-- `GET /api/graph/node?node_id=...`
-- `GET /api/graph/relationship`
-- `GET /api/index/status`
-- `POST /api/index/rebuild`
-
-See [docs/V3_BACKEND_ARCHITECTURE.md](docs/V3_BACKEND_ARCHITECTURE.md) for the
-storage model, search model, migration behavior, and API response shape.
-
-## Local Model Policy
-
-Lattice AI recommends current-generation multimodal models for local use and
-keeps local model choices explicit.
-
-| Family | Default role | Example recommendation |
-| --- | --- | --- |
-| Gemma 4 | Default Google multimodal family | `mlx-community/gemma-4-12b-it-4bit` |
-| Gemma 4 large | Higher-quality local multimodal work | `mlx-community/gemma-4-31b-it-4bit` |
-| Qwen3-VL | Smaller, balanced multimodal options | `mlx-community/Qwen3-VL-4B-Instruct-4bit` |
-| Llama 4 | Meta multimodal option | `mlx-community/Llama-4-Scout-17B-16E-Instruct-4bit` |
-
-Every recommended model card shows maker country, maker company, run mode,
-internet requirement, and model name. See [MODEL_POLICY.md](MODEL_POLICY.md).
-
-## Architecture
-
-```text
-Personal / Organization Workspace
-  -> files, chats, screenshots, model choices, workflow events
-  -> Knowledge Graph
-  -> AI Pipeline
-  -> Multi-Agent Workflow
-  -> coding actions, documents, analysis, team handoffs
-```
-
-Core areas:
-
-- FastAPI local workspace app
-- Knowledge Graph storage and graph APIs
-- AI pipeline and workflow designer
-- Multi-agent handoff, review, retry, and replay records
-- Local model management and model recommendation catalog
-- VS Code / Cursor / VSCodium extension surface
-- Personal and organization workspace boundaries
+For the deeper design, see [ARCHITECTURE.md](ARCHITECTURE.md) and
+[docs/architecture.md](docs/architecture.md).
 
 ## Documentation
 
-- [ARCHITECTURE.md](ARCHITECTURE.md) — workspace, graph, pipeline, and model-management overview
-- [docs/architecture.md](docs/architecture.md) — full architecture reference
+### Product and principles
+
 - [PROJECT_PRINCIPLES.md](PROJECT_PRINCIPLES.md) — product principles
 - [AI_PHILOSOPHY.md](AI_PHILOSOPHY.md) — how AI is used in the workspace
 - [MODEL_POLICY.md](MODEL_POLICY.md) — local model recommendation policy
+
+### Architecture
+
+- [ARCHITECTURE.md](ARCHITECTURE.md) — workspace, graph, pipeline, and model overview
+- [docs/architecture.md](docs/architecture.md) — full architecture reference
+- [docs/V3_BACKEND_ARCHITECTURE.md](docs/V3_BACKEND_ARCHITECTURE.md) — backend storage, search, and retrieval
+
+### Knowledge and retrieval
+
 - [KNOWLEDGE_GRAPH.md](KNOWLEDGE_GRAPH.md) — graph model and behavior
+
+### Agents and workflows
+
 - [docs/MULTI_AGENT_RUNTIME.md](docs/MULTI_AGENT_RUNTIME.md) — multi-agent workflow runtime
 - [docs/WORKFLOW_DESIGNER.md](docs/WORKFLOW_DESIGNER.md) — AI pipeline designer
-- [docs/REALTIME_COLLABORATION.md](docs/REALTIME_COLLABORATION.md) — realtime workspace events
-- [docs/ENTERPRISE.md](docs/ENTERPRISE.md) — organization workspaces and SSO
-- [docs/PLUGIN_SDK.md](docs/PLUGIN_SDK.md) — plugin SDK
-- [RELEASE_NOTES.md](RELEASE_NOTES.md) and [docs/CHANGELOG.md](docs/CHANGELOG.md)
 
-## Release history
+### Extensions
+
+- [docs/PLUGIN_SDK.md](docs/PLUGIN_SDK.md) — plugin SDK
+
+### Releases
+
+- [RELEASE_NOTES.md](RELEASE_NOTES.md) — current release notes
+- [RELEASE_NOTES_v3.4.1.md](RELEASE_NOTES_v3.4.1.md)
+- [RELEASE_NOTES_v3.4.0.md](RELEASE_NOTES_v3.4.0.md)
+- [RELEASE_NOTES_v3.3.0.md](RELEASE_NOTES_v3.3.0.md)
+- [CHANGELOG.md](CHANGELOG.md) and [docs/CHANGELOG.md](docs/CHANGELOG.md)
+
+## Release History
 
 | Version | Theme |
 | --- | --- |
-| **3.4.1** | Runtime completion — hooks full lifecycle (shared tool dispatch across HTTP/agent/workflow, all built-ins real), Local Agent real probes (no hardcoded readiness), Connect Folder + Folder Watch proven live end-to-end + restore-on-restart; corrects v3.4.0 overclaims |
-| 3.4.0 | Platform completion — hooks execution engine, uploads visible in Files, VLM image input, agent run trigger, on-device Local Agent / Connect Folder / Folder Watch; Enterprise stays honestly disabled; refreshed v3.4.0 public assets |
-| 3.3.1 | Visual product rebuild — rebuilt `/app` shell, Basic/Advanced/Admin navigation, cooler token palette, compact component system, Home readiness dashboard, Files local-agent truthfulness, Settings runtime status, and v3.3.1 design notes |
-| **3.3.0** | Product quality & honesty release — evidence-based feature audit (`FEATURE_STATUS.md`), single-source version truth, working manual document upload in Files, fixed document-generation streaming, truthful Home retrieval status, documented design system (`STYLE_SYSTEM.md`) |
-| 3.2.0 | Feature-complete platform — multi-agent collaboration, agent registry, marketplace + templates, workflow agents, autonomous planning, long-term memory + manager, skills/hooks/tool registries, MCP manager, all operable from `/app` |
-| 3.1.0 | Mainline platform completion — native `/app` workflows, Classic retired from normal paths, production embedding profiles, AgentRuntime/registries, hashed v3 assets |
-| 3.0.1 | Release-blocker remediation — provider-backed embeddings (Hash/MLX/Ollama/OpenAI/Custom), unified AgentRuntime boundary, every v3 surface connected or clearly unavailable |
+| **3.4.1** | Runtime completion — full hooks lifecycle, real Local Agent probes, Connect Folder and Folder Watch verified end-to-end |
+| 3.4.0 | Platform completion — hooks execution, uploads in Files, vision image input, agent run trigger, on-device Local Agent / Connect Folder / Folder Watch |
+| 3.3.1 | Visual product rebuild — rebuilt `/app` shell, Basic/Advanced/Admin navigation, refreshed design system |
+| **3.3.0** | Product quality & honesty release — evidence-based feature audit, single-source version truth, working document upload, documented design system |
+| 3.2.0 | Feature-complete platform — multi-agent collaboration, agent registry, marketplace + templates, workflow agents, long-term memory, skills/hooks/tool registries, MCP manager |
+| 3.1.0 | Mainline platform completion — native `/app` workflows, production embedding profiles, AgentRuntime/registries, hashed v3 assets |
+| 3.0.1 | Release-blocker remediation — provider-backed embeddings, unified AgentRuntime boundary, every v3 surface connected or clearly unavailable |
 | 3.0.0 | v3 local-first AI workspace platform — `/app`, Native Chat, Knowledge Graph, Vector Index, Hybrid Search, workspace modes |
 | 2.2.7 | Visual system stabilization — cohesive dark/light screens, crisp chat composer, dark graph canvas, Workspace OS polish |
 | 2.2.6 | Token-native CSS foundation |
