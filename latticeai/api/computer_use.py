@@ -11,6 +11,7 @@ from fastapi.responses import StreamingResponse
 from pydantic import BaseModel
 
 from latticeai.core.agent import extract_action as _extract_agent_action
+from latticeai.core.hooks import dispatch_tool
 from tools import (
     ToolError,
     computer_click,
@@ -105,8 +106,14 @@ class CuDragRequest(BaseModel):
     y2: int
 
 
-def create_computer_use_router(*, model_router, require_user, tool_response, save_to_history) -> APIRouter:
+def create_computer_use_router(*, model_router, require_user, tool_response, save_to_history, hooks=None) -> APIRouter:
     router = APIRouter()
+
+    def _dispatch(name, args, fn):
+        # Run a computer-use action through the unified pre_tool/post_tool
+        # lifecycle. With hooks=None this is a transparent pass-through, so the
+        # behaviour is unchanged when hooks are absent.
+        return dispatch_tool(hooks, name, dict(args or {}), fn, source="computer_use")
 
     @router.get("/tools/chrome_status")
     async def tools_chrome_status(request: Request):
@@ -122,7 +129,9 @@ def create_computer_use_router(*, model_router, require_user, tool_response, sav
     async def cu_status(request: Request):
         require_user(request)
         try:
-            return computer_status()
+            return _dispatch("computer_status", {}, computer_status)
+        except PermissionError as exc:
+            raise HTTPException(status_code=403, detail=str(exc))
         except ToolError as exc:
             raise HTTPException(status_code=400, detail=str(exc))
 
@@ -130,7 +139,9 @@ def create_computer_use_router(*, model_router, require_user, tool_response, sav
     async def cu_screenshot(request: Request):
         require_user(request)
         try:
-            return computer_screenshot()
+            return _dispatch("computer_screenshot", {}, computer_screenshot)
+        except PermissionError as exc:
+            raise HTTPException(status_code=403, detail=str(exc))
         except ToolError as exc:
             raise HTTPException(status_code=400, detail=str(exc))
 
@@ -196,7 +207,8 @@ def create_computer_use_router(*, model_router, require_user, tool_response, sav
                             "action",
                             {"step": 1, "action": "computer_open_url", "args": {"url": url, "app": "Google Chrome"}},
                         )
-                        result = computer_open_url(url, "Google Chrome")
+                        result = _dispatch("computer_open_url", {"url": url, "app": "Google Chrome"},
+                                           lambda: computer_open_url(url, "Google Chrome"))
                         yield _send("result", {"step": 1, "action": "computer_open_url", "result": result})
                         message = f"Google Chrome에서 {url}을 열었습니다."
                         action_name = "computer_open_url"
@@ -205,14 +217,15 @@ def create_computer_use_router(*, model_router, require_user, tool_response, sav
                             "action",
                             {"step": 1, "action": "computer_open_app", "args": {"app": "Google Chrome"}},
                         )
-                        result = computer_open_app("Google Chrome")
+                        result = _dispatch("computer_open_app", {"app": "Google Chrome"},
+                                           lambda: computer_open_app("Google Chrome"))
                         yield _send("result", {"step": 1, "action": "computer_open_app", "result": result})
                         message = "Google Chrome을 열었습니다."
                         action_name = "computer_open_app"
                     save_to_history("user", req.task, source="web", conversation_id=req.conversation_id)
                     save_to_history("assistant", message, source="web", conversation_id=req.conversation_id)
                     yield _send("final", {"message": message, "steps": [{"step": 1, "action": action_name, "result": result}]})
-                except ToolError as exc:
+                except (ToolError, PermissionError) as exc:
                     yield _send("tool_error", {"step": 1, "action": "computer_open_app", "error": str(exc)})
                 return
 
@@ -256,7 +269,7 @@ def create_computer_use_router(*, model_router, require_user, tool_response, sav
 
                 yield _send("action", {"step": step + 1, "action": name, "args": args})
                 try:
-                    result = execute_tool(name, args)
+                    result = _dispatch(name, args, lambda: execute_tool(name, args))
                     if name == "computer_screenshot" and "screenshot_b64" in result:
                         last_screenshot_b64 = result["screenshot_b64"]
                         result_summary = {k: v for k, v in result.items() if k != "screenshot_b64"}
@@ -275,7 +288,7 @@ def create_computer_use_router(*, model_router, require_user, tool_response, sav
                         last_screenshot_b64 = None
                         transcript.append({"step": step + 1, "action": name, "args": args, "result": result})
                         yield _send("result", {"step": step + 1, "action": name, "result": result})
-                except (ToolError, KeyError, TypeError) as exc:
+                except (ToolError, PermissionError, KeyError, TypeError) as exc:
                     error_str = str(exc)
                     transcript.append({"step": step + 1, "action": name, "args": args, "error": error_str})
                     yield _send("tool_error", {"step": step + 1, "action": name, "error": error_str})

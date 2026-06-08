@@ -24,6 +24,7 @@ from PIL import Image
 from latticeai.core.agent import AgentRunContext, AgentState
 from latticeai.core.context_builder import format_sources_footnote, retrieve_context_for_generation
 from latticeai.core.document_generator import DocumentGenerationSession, detect_document_intent
+from latticeai.core.hooks import dispatch_tool
 from latticeai.services.chat_service import ChatService
 from latticeai.services.tool_dispatch import build_agent_runtime, collect_created_files
 from telegram_bot import broadcast_web_chat
@@ -653,7 +654,9 @@ def create_chat_router(
         for case in eval_cases:
             case_id = case.get("id", "?")
             try:
-                result   = execute_tool(action_name, case.get("input", {}))
+                case_input = case.get("input", {})
+                result   = dispatch_tool(hooks, action_name, case_input,
+                                         lambda: execute_tool(action_name, case_input), source="eval")
                 criteria = case.get("pass_criteria", "")
                 if "success == true" in criteria:
                     passed = result.get("success") is True

@@ -221,17 +221,30 @@ def create_tools_router(
 
     # ── Direct Tool API ───────────────────────────────────────────────────────────
     
-    def _tool_response(fn, *args):
+    def _tool_response(fn, *args, **kwargs):
         # Shared tool lifecycle (same path as the agent + workflow tool calls):
-        # pre_tool (may block) → execute → post_tool.
+        # pre_tool (may block) → execute → post_tool. Keyword args are forwarded
+        # to the tool and surfaced in the hook payload so read_file / edit_file /
+        # grep (which need kwargs) run through the SAME lifecycle as every other
+        # tool instead of bypassing it.
         tool_name = getattr(fn, "__name__", "tool")
         try:
-            result = dispatch_tool(HOOKS, tool_name, {}, lambda: fn(*args), source="http")
+            result = dispatch_tool(HOOKS, tool_name, dict(kwargs), lambda: fn(*args, **kwargs), source="http")
         except PermissionError as exc:
             raise HTTPException(status_code=403, detail=str(exc))
         except ToolError as exc:
             raise HTTPException(status_code=400, detail=str(exc))
         return {"status": "ok", "workspace": str(AGENT_ROOT), "result": result}
+
+    def _dispatch(tool_name, args, fn):
+        # Lifecycle wrapper for callables that aren't a plain tools.* function
+        # (e.g. the server's clear_history). Same pre_tool/post_tool path.
+        try:
+            return dispatch_tool(HOOKS, tool_name, dict(args or {}), fn, source="http")
+        except PermissionError as exc:
+            raise HTTPException(status_code=403, detail=str(exc))
+        except ToolError as exc:
+            raise HTTPException(status_code=400, detail=str(exc))
     
     
     @api_router.post("/tools/list_dir")
@@ -249,11 +262,7 @@ def create_tools_router(
     @api_router.post("/tools/read_file")
     async def tools_read_file(req: ToolReadFileRequest, request: Request):
         require_user(request)
-        try:
-            return {"status": "ok", "workspace": str(AGENT_ROOT),
-                    "result": read_file(req.path, offset=req.offset, limit=req.limit, line_numbers=req.line_numbers)}
-        except ToolError as exc:
-            raise HTTPException(status_code=400, detail=str(exc))
+        return _tool_response(read_file, req.path, offset=req.offset, limit=req.limit, line_numbers=req.line_numbers)
     
     
     @api_router.post("/tools/write_file")
@@ -265,11 +274,7 @@ def create_tools_router(
     @api_router.post("/tools/edit_file")
     async def tools_edit_file(req: ToolEditFileRequest, request: Request):
         require_user(request)
-        try:
-            return {"status": "ok", "workspace": str(AGENT_ROOT),
-                    "result": edit_file(req.path, req.old_string, req.new_string, replace_all=req.replace_all)}
-        except ToolError as exc:
-            raise HTTPException(status_code=400, detail=str(exc))
+        return _tool_response(edit_file, req.path, req.old_string, req.new_string, replace_all=req.replace_all)
     
     
     @api_router.post("/tools/search_files")
@@ -281,18 +286,15 @@ def create_tools_router(
     @api_router.post("/tools/grep")
     async def tools_grep(req: ToolGrepRequest, request: Request):
         require_user(request)
-        try:
-            return {"status": "ok", "workspace": str(AGENT_ROOT),
-                    "result": grep(
-                        req.pattern,
-                        path=req.path,
-                        glob=req.glob,
-                        max_results=req.max_results,
-                        case_insensitive=req.case_insensitive,
-                        context_lines=req.context_lines,
-                    )}
-        except ToolError as exc:
-            raise HTTPException(status_code=400, detail=str(exc))
+        return _tool_response(
+            grep,
+            req.pattern,
+            path=req.path,
+            glob=req.glob,
+            max_results=req.max_results,
+            case_insensitive=req.case_insensitive,
+            context_lines=req.context_lines,
+        )
     
     
     @api_router.post("/tools/todo_read")
@@ -310,7 +312,7 @@ def create_tools_router(
     @api_router.post("/tools/clear_history")
     async def tools_clear_history(req: ToolClearHistoryRequest, request: Request):
         current_user = require_user(request)
-        result = clear_history(req.keep_last)
+        result = _dispatch("clear_history", {"keep_last": req.keep_last}, lambda: clear_history(req.keep_last))
         append_audit_event(
             "history_delete",
             user_email=current_user,
@@ -461,6 +463,7 @@ def create_tools_router(
         require_user=require_user,
         tool_response=_tool_response,
         save_to_history=save_to_history,
+        hooks=HOOKS,
     ))
 
     @api_router.post("/tools/knowledge_save")
