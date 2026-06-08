@@ -873,7 +873,7 @@ main {
   padding: 16px clamp(16px, 2vw, 28px);
   background: color-mix(in srgb, var(--surface-elevated) 94%, transparent);
   border-bottom: 1px solid var(--line);
-  backdrop-filter: blur(18px);
+  backdrop-filter: none; /* glass removed v3.5.0 */
 }
 
 .topbar-subtitle {

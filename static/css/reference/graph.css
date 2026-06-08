@@ -120,7 +120,7 @@
       z-index: 20;
       border: 1px solid var(--line);
       background: var(--panel);
-      backdrop-filter: blur(18px);
+      backdrop-filter: none; /* glass removed v3.5.0 */
       box-shadow: var(--shadow);
     }
 
@@ -904,7 +904,7 @@
       border-radius: 10px;
       background: var(--surface-2);
       box-shadow: var(--shadow);
-      backdrop-filter: blur(18px);
+      backdrop-filter: none; /* glass removed v3.5.0 */
     }
 
     .focus-chip span {

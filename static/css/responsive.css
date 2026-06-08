@@ -319,8 +319,8 @@ select {
     z-index: 99;
     display: none;
     background: rgba(15, 12, 30, 0.42);
-    -webkit-backdrop-filter: blur(2px);
-    backdrop-filter: blur(2px);
+    -webkit-backdrop-filter: none; /* glass removed v3.5.0 */
+    backdrop-filter: none; /* glass removed v3.5.0 */
   }
   body.sidebar-open .sidebar-overlay { display: block; }
 

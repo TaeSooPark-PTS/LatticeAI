@@ -45,7 +45,7 @@
             padding: 22px 28px;
             border-bottom: 1px solid rgba(111,66,232,0.10);
             background: var(--sidebar);
-            backdrop-filter: blur(20px);
+            backdrop-filter: none; /* glass removed v3.5.0 */
             position: sticky;
             top: 0;
             z-index: 2;

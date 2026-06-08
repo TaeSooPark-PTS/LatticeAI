@@ -117,7 +117,7 @@
             box-shadow: var(--shadow), inset 0 1px 0 rgba(255,255,255,0.9);
             position: relative;
             z-index: 1;
-            backdrop-filter: blur(28px);
+            backdrop-filter: none; /* glass removed v3.5.0 */
         }
 
         .card::before {

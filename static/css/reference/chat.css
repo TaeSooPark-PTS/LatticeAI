@@ -81,8 +81,8 @@
             display: flex;
             flex-direction: column;
             min-width: 240px;
-            backdrop-filter: blur(24px);
-            -webkit-backdrop-filter: blur(24px);
+            backdrop-filter: none; /* glass removed v3.5.0 */
+            -webkit-backdrop-filter: none; /* glass removed v3.5.0 */
         }
 
         .sidebar-header {
@@ -342,8 +342,8 @@
             padding: 10px 22px;
             border-bottom: 1px solid rgba(111,66,232,0.10);
             background: var(--sidebar);
-            backdrop-filter: blur(20px);
-            -webkit-backdrop-filter: blur(20px);
+            backdrop-filter: none; /* glass removed v3.5.0 */
+            -webkit-backdrop-filter: none; /* glass removed v3.5.0 */
             position: relative;
             z-index: 50;
         }
@@ -636,7 +636,7 @@
             justify-content: space-between;
             gap: 12px;
             box-shadow: var(--shadow-sm), inset 0 1px 0 rgba(255,255,255,0.80);
-            backdrop-filter: blur(10px);
+            backdrop-filter: none; /* glass removed v3.5.0 */
             transition: all .2s;
         }
 
@@ -1323,7 +1323,7 @@
             box-shadow: var(--shadow), 0 0 0 1px rgba(111,66,232,0.05);
             position: relative;
             z-index: 1;
-            backdrop-filter: blur(24px);
+            backdrop-filter: none; /* glass removed v3.5.0 */
         }
 
         .auth-card::before {
@@ -2754,7 +2754,7 @@
         .admin-panel {
             background: var(--card);
             border-left: 1px solid var(--border);
-            backdrop-filter: blur(24px);
+            backdrop-filter: none; /* glass removed v3.5.0 */
             color: var(--text);
         }
         .admin-header {
@@ -4254,7 +4254,7 @@
             background: var(--sidebar);
             border-bottom: 1px solid var(--line);
             box-shadow: none;
-            backdrop-filter: blur(14px);
+            backdrop-filter: none; /* glass removed v3.5.0 */
         }
 
         /* Messages viewport */

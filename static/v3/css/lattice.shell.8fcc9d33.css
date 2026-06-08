@@ -349,8 +349,9 @@
 .lt3-scrim {
   position: fixed; inset: 0;
   z-index: var(--lt3-z-scrim);
+  /* Solid dim scrim — no backdrop blur (glassmorphism removed in v3.5.0 for a
+     crisp, stable surface). */
   background: var(--overlay);
-  backdrop-filter: blur(2px);
   opacity: 0;
   animation: lt3-fade var(--lt3-dur-2) var(--lt3-ease) forwards;
 }

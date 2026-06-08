@@ -46,7 +46,7 @@
   background: var(--card);
   border-color: var(--accent-soft);
   box-shadow: 0 20px 64px rgba(102, 82, 168, 0.20), inset 0 1px 0 rgba(255,255,255,0.86);
-  backdrop-filter: blur(26px);
+  backdrop-filter: none; /* glass removed v3.5.0 */
 }
 
 .lattice-ref-auth .card::before {
@@ -65,7 +65,7 @@
   color: var(--ref-ink);
   background: var(--surface);
   border-bottom: 1px solid rgba(111,66,232,0.08);
-  backdrop-filter: blur(12px);
+  backdrop-filter: none; /* glass removed v3.5.0 */
 }
 
 .auth-window-brand {
@@ -845,7 +845,7 @@
   background: var(--sidebar);
   border-bottom: 1px solid rgba(111,66,232,0.11);
   box-shadow: 0 2px 12px rgba(88,72,150,0.06);
-  backdrop-filter: blur(14px);
+  backdrop-filter: none; /* glass removed v3.5.0 */
 }
 
 .lattice-ref-chat .messages-viewport {
@@ -1298,7 +1298,7 @@
   height: 96px;
   background: var(--sidebar);
   border-bottom: 1px solid rgba(111,66,232,0.10);
-  backdrop-filter: blur(14px);
+  backdrop-filter: none; /* glass removed v3.5.0 */
   padding: 22px 34px 8px;
   position: sticky;
 }
