@@ -35,12 +35,66 @@ def host_is_loopback(host: str) -> bool:
         return False
 
 
+# ── Trusted-proxy handling ────────────────────────────────────────────────────
+# ``client_ip`` is the key used for IP rate limiting (login / register) and for
+# audit logging. A forwarded header (``X-Forwarded-For`` / ``CF-Connecting-IP``)
+# is *client-controllable*, so honoring it unconditionally lets anyone spoof
+# their source IP and bypass per-IP rate limits. We therefore trust those headers
+# ONLY when the direct peer is a configured trusted proxy (e.g. the Cloudflare /
+# Vercel edge in front of the app). Default: no trusted proxies → use the peer
+# address, which is the safe, local-first behaviour.
+_FORWARDED_HEADERS = ("CF-Connecting-IP", "X-Forwarded-For")
+_trusted_proxies: List["ipaddress._BaseNetwork"] = []
+
+
+def configure_trusted_proxies(values) -> int:
+    """Set the trusted-proxy allowlist from IPs / CIDRs. Returns the count parsed.
+
+    Accepts a comma-separated string or an iterable of IPs/CIDRs. Invalid entries
+    are skipped. Passing an empty value disables forwarded-header trust entirely.
+    """
+    global _trusted_proxies
+    if isinstance(values, str):
+        items = [v.strip() for v in values.split(",")]
+    else:
+        items = [str(v).strip() for v in (values or [])]
+    networks: List["ipaddress._BaseNetwork"] = []
+    for item in items:
+        if not item:
+            continue
+        try:
+            networks.append(ipaddress.ip_network(item, strict=False))
+        except ValueError:
+            continue
+    _trusted_proxies = networks
+    return len(networks)
+
+
+def _peer_is_trusted_proxy(peer: str) -> bool:
+    if not peer or not _trusted_proxies:
+        return False
+    try:
+        addr = ipaddress.ip_address(peer)
+    except ValueError:
+        return False
+    return any(addr in net for net in _trusted_proxies)
+
+
 def client_ip(request) -> str:
-    for header in ("CF-Connecting-IP", "X-Forwarded-For"):
-        val = request.headers.get(header)
-        if val:
-            return val.split(",")[0].strip()
-    return request.client.host if request.client else "unknown"
+    peer = request.client.host if request.client else ""
+    # Only a trusted proxy's forwarded headers are honoured; otherwise the
+    # client-supplied header is ignored so per-IP rate limits cannot be spoofed.
+    if _peer_is_trusted_proxy(peer):
+        for header in _FORWARDED_HEADERS:
+            val = request.headers.get(header)
+            if val:
+                candidate = val.split(",")[0].strip()
+                try:
+                    ipaddress.ip_address(candidate)
+                    return candidate
+                except ValueError:
+                    continue
+    return peer or "unknown"
 
 
 _FILE_MAGIC: Dict[str, List[bytes]] = {

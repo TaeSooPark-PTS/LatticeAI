@@ -1,16 +1,20 @@
 """Authentication API router: register, login, logout, SSO, profile."""
 
-import base64
-import json
 import logging
 import secrets
 import time
-from typing import Any, Callable, Dict, Optional
+from typing import Any, Awaitable, Callable, Dict, Optional, Tuple
 from urllib.parse import urlencode
 
 from fastapi import APIRouter, HTTPException, Request
 from fastapi.responses import JSONResponse, RedirectResponse
 from pydantic import BaseModel
+
+from latticeai.core.oidc import (
+    OIDCValidationError,
+    fetch_jwks as _default_fetch_jwks,
+    verify_id_token as _default_verify_id_token,
+)
 
 
 class UserRegister(BaseModel):
@@ -35,7 +39,9 @@ class UpdateProfileRequest(BaseModel):
     nickname: Optional[str] = None
 
 
-_sso_states: Dict[str, float] = {}
+# state → (issued_at, nonce). The nonce binds the eventual ID token to *this*
+# login attempt (replay / token-injection defence); the timestamp expires it.
+_sso_states: Dict[str, Tuple[float, str]] = {}
 
 
 def create_auth_router(
@@ -58,6 +64,8 @@ def create_auth_router(
     open_registration: bool,
     session_ttl: int,
     require_auth: bool = True,
+    verify_id_token: Callable[..., Dict] = _default_verify_id_token,
+    fetch_jwks: Callable[[str], Awaitable[Dict]] = _default_fetch_jwks,
 ) -> APIRouter:
     router = APIRouter()
 
@@ -114,13 +122,15 @@ def create_auth_router(
         if not settings.get("enabled") or not discovery:
             raise HTTPException(status_code=503, detail="SSO가 설정되지 않았습니다.")
         state = secrets.token_urlsafe(16)
-        _sso_states[state] = time.time()
+        nonce = secrets.token_urlsafe(16)
+        _sso_states[state] = (time.time(), nonce)
         params = urlencode({
             "client_id": settings["client_id"],
             "response_type": "code",
             "redirect_uri": settings["redirect_uri"],
             "scope": settings.get("scopes") or "openid email profile",
             "state": state,
+            "nonce": nonce,
         })
         return RedirectResponse(f"{discovery['authorization_endpoint']}?{params}")
 
@@ -128,9 +138,10 @@ def create_auth_router(
     async def sso_callback(code: str = "", state: str = "", error: str = ""):
         if error:
             return RedirectResponse(f"/?sso_error={error}")
-        ts = _sso_states.pop(state, None)
-        if ts is None or time.time() - ts > 300:
+        entry = _sso_states.pop(state, None)
+        if entry is None or time.time() - entry[0] > 300:
             raise HTTPException(status_code=400, detail="유효하지 않은 SSO 상태입니다.")
+        _, nonce = entry
         settings = get_sso_settings()
         discovery = await get_sso_discovery()
         if not settings.get("enabled") or not discovery:
@@ -148,8 +159,25 @@ def create_auth_router(
         id_token = tokens.get("id_token")
         if not id_token:
             raise HTTPException(status_code=400, detail="ID 토큰을 받지 못했습니다.")
-        padded = id_token.split(".")[1] + "=="
-        payload = json.loads(base64.urlsafe_b64decode(padded))
+        # Never trust a decoded JWT payload: verify signature (against the
+        # provider JWKS), issuer, audience, expiry and the login nonce before
+        # using any claim. Any failure is fail-closed (401).
+        issuer = discovery.get("issuer") or ""
+        try:
+            jwks = await fetch_jwks(discovery.get("jwks_uri", ""))
+            payload = verify_id_token(
+                id_token,
+                jwks=jwks,
+                issuer=issuer,
+                audience=settings["client_id"],
+                nonce=nonce,
+            )
+        except OIDCValidationError as exc:
+            logging.warning("SSO ID token rejected: %s", exc)
+            raise HTTPException(status_code=401, detail="SSO 토큰 검증에 실패했습니다.")
+        except Exception as exc:  # discovery/JWKS fetch failure → fail closed
+            logging.warning("SSO token validation error: %s", exc)
+            raise HTTPException(status_code=502, detail="SSO 공급자 검증에 실패했습니다.")
         email = payload.get("email") or payload.get("preferred_username") or payload.get("upn") or ""
         if not email:
             raise HTTPException(status_code=400, detail="이메일을 확인할 수 없습니다.")

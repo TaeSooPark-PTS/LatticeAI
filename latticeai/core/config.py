@@ -86,6 +86,7 @@ class Config:
     invite_code: str
     invite_gate_enabled: bool
     admin_emails: List[str]
+    trusted_proxies: List[str]
 
     # ── models ──────────────────────────────────────────────────────
     public_model: str
@@ -139,6 +140,7 @@ class Config:
 
         cors_extra = [item.strip() for item in _value(env, "LATTICEAI_CORS_ALLOWED_ORIGINS", "").split(",") if item.strip()]
         admin_emails = [item.strip().lower() for item in _value(env, "LATTICEAI_ADMIN_EMAILS", "").split(",") if item.strip()]
+        trusted_proxies = [item.strip() for item in _value(env, "LATTICEAI_TRUSTED_PROXIES", "").split(",") if item.strip()]
 
         public_model = _value(env, "LATTICEAI_PUBLIC_MODEL", _value(env, "LATTICEAI_DEFAULT_MODEL", "openai:gpt-4o-mini"))
         local_model = _value(env, "LATTICEAI_LOCAL_MODEL", "mlx-community/gemma-4-12b-it-4bit")
@@ -170,6 +172,7 @@ class Config:
             invite_code=_value(env, "LATTICEAI_INVITE_CODE", "gemma-lattice-ai"),
             invite_gate_enabled=_bool(env, "LATTICEAI_INVITE_GATE_ENABLED", default=False),
             admin_emails=admin_emails,
+            trusted_proxies=trusted_proxies,
             public_model=public_model,
             local_model=local_model,
             local_draft_model=_value(env, "LATTICEAI_LOCAL_DRAFT_MODEL", ""),

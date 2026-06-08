@@ -40,6 +40,7 @@ from latticeai.core.security import (
     verify_password,
     host_is_loopback as _host_is_loopback_impl,
     client_ip as _client_ip_impl,
+    configure_trusted_proxies as _configure_trusted_proxies,
     bytes_match_extension as _bytes_match_extension_impl,
     redact_secret_text as _redact_secret_text,
     check_ip_rate_limit as _check_ip_rate_limit,
@@ -156,6 +157,12 @@ from datetime import datetime
 # of server.py; all of them are now derived from a single CONFIG instance.
 CONFIG = Config.from_env()
 APP_VERSION = WORKSPACE_OS_VERSION
+
+# Forwarded headers (X-Forwarded-For / CF-Connecting-IP) are only honoured for
+# IP rate limiting when the direct peer is one of these trusted proxies. Empty by
+# default (local-first): the peer address is used and client-supplied headers are
+# ignored, so per-IP rate limits cannot be spoofed.
+_configure_trusted_proxies(CONFIG.trusted_proxies)
 
 APP_MODE = CONFIG.app_mode
 IS_PUBLIC_MODE = CONFIG.is_public
