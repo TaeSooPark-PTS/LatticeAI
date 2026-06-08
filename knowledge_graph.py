@@ -942,6 +942,31 @@ class KnowledgeGraphStore:
                   error_message TEXT,
                   metadata_json TEXT NOT NULL CHECK (json_valid(metadata_json))
                 );
+                -- v3.6.0 Knowledge Graph First: per-ingestion provenance trail.
+                -- Append-only audit of where every graph node came from, when it
+                -- was captured, how it was processed, and whether it was embedded /
+                -- linked / used by an agent. get_provenance() returns the latest row.
+                CREATE TABLE IF NOT EXISTS ingestion_provenance (
+                  id TEXT PRIMARY KEY,
+                  node_id TEXT NOT NULL,
+                  source_type TEXT NOT NULL,
+                  source_uri TEXT,
+                  content_hash TEXT,
+                  title TEXT,
+                  pipeline TEXT NOT NULL,
+                  owner TEXT,
+                  workspace_id TEXT,
+                  captured_at TEXT,
+                  modified_at TEXT,
+                  embedded INTEGER NOT NULL DEFAULT 0,
+                  linked INTEGER NOT NULL DEFAULT 0,
+                  duplicate INTEGER NOT NULL DEFAULT 0,
+                  agent_used TEXT,
+                  chunk_count INTEGER NOT NULL DEFAULT 0,
+                  permissions_json TEXT NOT NULL DEFAULT '{}' CHECK (json_valid(permissions_json)),
+                  metadata_json TEXT NOT NULL DEFAULT '{}' CHECK (json_valid(metadata_json)),
+                  created_at TEXT NOT NULL
+                );
                 CREATE INDEX IF NOT EXISTS idx_nodes_type ON nodes(type);
                 CREATE INDEX IF NOT EXISTS idx_edges_from ON edges(from_node);
                 CREATE INDEX IF NOT EXISTS idx_edges_to ON edges(to_node);
@@ -954,6 +979,10 @@ class KnowledgeGraphStore:
                 CREATE INDEX IF NOT EXISTS idx_vector_embeddings_source ON vector_embeddings(source_node);
                 CREATE INDEX IF NOT EXISTS idx_vector_embeddings_model ON vector_embeddings(embedding_model);
                 CREATE INDEX IF NOT EXISTS idx_vector_index_operations_requested ON vector_index_operations(requested_at);
+                CREATE INDEX IF NOT EXISTS idx_provenance_node ON ingestion_provenance(node_id);
+                CREATE INDEX IF NOT EXISTS idx_provenance_source_type ON ingestion_provenance(source_type);
+                CREATE INDEX IF NOT EXISTS idx_provenance_hash ON ingestion_provenance(content_hash);
+                CREATE INDEX IF NOT EXISTS idx_provenance_created ON ingestion_provenance(created_at);
                 """
             )
             conn.execute(
@@ -2703,12 +2732,20 @@ class KnowledgeGraphStore:
         uploader: Optional[str] = None,
         conversation_id: Optional[str] = None,
         extracted: Optional[Dict[str, Any]] = None,
+        source_type: Optional[str] = None,
+        source_uri: Optional[str] = None,
+        captured_at: Optional[str] = None,
+        modified_at: Optional[str] = None,
+        owner: Optional[str] = None,
+        workspace_id: Optional[str] = None,
+        permissions: Optional[Dict[str, Any]] = None,
     ) -> Dict[str, Any]:
         path = Path(path)
         data = path.read_bytes()
         digest = _sha256_bytes(data)
         ext = path.suffix.lower()
         filename = original_filename or path.name
+        captured_at = captured_at or _now()
         blob_path = self.blob_dir / digest[:2] / f"{digest}{ext}"
         blob_path.parent.mkdir(parents=True, exist_ok=True)
         if not blob_path.exists():
@@ -2723,8 +2760,16 @@ class KnowledgeGraphStore:
             "mime_type": mime_type,
             "bytes": len(data),
             "sha256": digest,
+            "content_hash": digest,
             "blob_path": str(blob_path),
             "uploader": uploader,
+            "owner": owner or uploader,
+            "workspace_id": workspace_id,
+            "permissions": permissions or {},
+            "source_type": source_type or "file",
+            "source_uri": source_uri or str(path),
+            "captured_at": captured_at,
+            "modified_at": modified_at,
             "conversation_id": conversation_id,
             "extracted": {k: v for k, v in (extracted or {}).items() if k != "content"},
             "structure": doc_meta,
@@ -2732,8 +2777,11 @@ class KnowledgeGraphStore:
         full_text = f"{filename}\n{text}"
         concepts = _extract_concepts(full_text, limit=15)
         triples  = _extract_triples(full_text, concepts)
+        chunk_ids: List[str] = []
+        source_node_id: Optional[str] = None
 
         with self._connect() as conn:
+            duplicate = self._node_exists(conn, file_id)
             # ── Document 노드  (점: 명사 — 파일) ────────────────────────────────
             self._upsert_node(
                 conn, file_id, "Document", filename,
@@ -2741,6 +2789,15 @@ class KnowledgeGraphStore:
                 metadata=metadata, raw=metadata,
             )
             self._ingest_structure_nodes(conn, file_id, filename, doc_meta)
+
+            # ── SOURCE 노드 + indexed_from (v3.6.0, source_type 지정 시) ──────
+            if source_type:
+                source_node_id = self._attach_source_node(
+                    conn, file_id,
+                    source_type=source_type, source_uri=source_uri or str(path),
+                    title=filename, content_hash=digest, captured_at=captured_at,
+                    extra={"owner": owner or uploader, "workspace_id": workspace_id, "ext": ext},
+                )
 
             # ── Person 노드 + 동사형 엣지 ─────────────────────────────────────
             if uploader:
@@ -2762,6 +2819,7 @@ class KnowledgeGraphStore:
             # ── RAG chunks (검색용, 그래프 비표시) ────────────────────────────
             for index, chunk in enumerate(_chunks(text)):
                 chunk_id = f"chunk:{_sha256_text(f'{file_id}:{index}:{chunk}')[:24]}"
+                chunk_ids.append(chunk_id)
                 self._upsert_node(
                     conn, chunk_id, "Chunk",
                     f"{filename} chunk {index + 1}",
@@ -2816,7 +2874,18 @@ class KnowledgeGraphStore:
                 # 선: Document가 Task/Decision을 "포함함"
                 self._upsert_edge(conn, file_id, sem_id, "포함함", weight=0.9)
 
-        return {"node_id": file_id, "sha256": digest, "metadata": metadata}
+        return {
+            "node_id": file_id,
+            "type": "Document",
+            "sha256": digest,
+            "content_hash": digest,
+            "source_node_id": source_node_id,
+            "chunk_ids": chunk_ids,
+            "chunk_count": len(chunk_ids),
+            "duplicate": duplicate,
+            "captured_at": captured_at,
+            "metadata": metadata,
+        }
 
     def ingest_event(
         self,
@@ -2853,6 +2922,298 @@ class KnowledgeGraphStore:
                 self._upsert_node(conn, person_id, "Person", user_nickname or user_email or "Unknown user", metadata={"email": user_email})
                 self._upsert_edge(conn, person_id, event_id, "triggered", metadata={"event_type": event_type})
         return {"node_id": event_id, "type": event_type}
+
+    # ── v3.6.0 Knowledge Graph First: unified source ingestion + provenance ──────
+    def _node_exists(self, conn: sqlite3.Connection, node_id: str) -> bool:
+        row = conn.execute("SELECT 1 FROM nodes WHERE id = ?", (node_id,)).fetchone()
+        return row is not None
+
+    def node_is_embedded(self, node_id: str) -> bool:
+        """True when a vector embedding exists for ``node_id`` (RAG-ready)."""
+        with self._connect() as conn:
+            row = conn.execute(
+                "SELECT 1 FROM vector_embeddings WHERE item_id = ? LIMIT 1",
+                (node_id,),
+            ).fetchone()
+            return row is not None
+
+    def _attach_source_node(
+        self,
+        conn: sqlite3.Connection,
+        content_node_id: str,
+        *,
+        source_type: str,
+        source_uri: Optional[str] = None,
+        title: Optional[str] = None,
+        content_hash: Optional[str] = None,
+        captured_at: Optional[str] = None,
+        extra: Optional[Dict[str, Any]] = None,
+    ) -> str:
+        """Create the SOURCE node for an ingested item and link it via INDEXED_FROM.
+
+        Every ingested content node points at exactly one SOURCE node, so the
+        graph is always able to explain *where* a node came from. The source id
+        is derived from (source_type, source_uri | content_hash) so re-ingesting
+        the same origin reuses the same SOURCE node (idempotent).
+        """
+        key = source_uri or content_hash or content_node_id
+        source_id = f"source:{_sha256_text(f'{source_type}|{key}')[:24]}"
+        meta = {
+            "source_type": source_type,
+            "source_uri": source_uri,
+            "content_hash": content_hash,
+            "captured_at": captured_at or _now(),
+            **(extra or {}),
+        }
+        label = title or source_uri or source_type
+        self._upsert_node(
+            conn, source_id, "Source", label,
+            summary=str(source_uri or title or source_type)[:400],
+            metadata=meta,
+        )
+        # 선: 콘텐츠 노드가 "이 출처에서 색인됨" (indexed_from → SOURCE)
+        self._upsert_edge(conn, content_node_id, source_id, "indexed_from",
+                          weight=1.0, metadata={"source_type": source_type})
+        return source_id
+
+    def ingest_source(
+        self,
+        *,
+        source_type: str,
+        title: str,
+        text: str,
+        source_uri: Optional[str] = None,
+        owner: Optional[str] = None,
+        workspace_id: Optional[str] = None,
+        permissions: Optional[Dict[str, Any]] = None,
+        captured_at: Optional[str] = None,
+        modified_at: Optional[str] = None,
+        conversation_id: Optional[str] = None,
+        metadata: Optional[Dict[str, Any]] = None,
+    ) -> Dict[str, Any]:
+        """Unified text/web ingestion: one shape for URL, browser tab, note, text.
+
+        Creates a content ``Document`` node (idempotent by content hash), a
+        ``Source`` node linked via ``indexed_from``, RAG chunks, and extracted
+        Concept/Task/Decision nodes — mirroring ingest_document for non-file
+        sources. Returns the full set of ids the caller needs to record
+        provenance, including ``duplicate`` (was the content already indexed).
+        """
+        source_type = str(source_type or "text")
+        text = str(text or "")
+        title = _clean_text(str(title or source_uri or source_type))[:240] or source_type
+        captured_at = captured_at or _now()
+        content_hash = _sha256_text(f"{source_type}|{source_uri or ''}|{text}")
+        content_id = f"webdoc:{content_hash[:24]}"
+        full_text = f"{title}\n{text}"
+        node_meta = {
+            "source_type": source_type,
+            "source_uri": source_uri,
+            "content_hash": content_hash,
+            "title": title,
+            "captured_at": captured_at,
+            "modified_at": modified_at,
+            "owner": owner,
+            "workspace_id": workspace_id,
+            "permissions": permissions or {},
+            "chars": len(text),
+            **(metadata or {}),
+        }
+        concepts = _extract_concepts(full_text, limit=15)
+        triples = _extract_triples(full_text, concepts)
+        chunk_ids: List[str] = []
+
+        with self._connect() as conn:
+            duplicate = self._node_exists(conn, content_id)
+            # ── 콘텐츠 노드 (점: 명사 — 문서) ────────────────────────────────
+            self._upsert_node(
+                conn, content_id, "Document", title,
+                summary=(text or title)[:500],
+                metadata=node_meta, raw=node_meta,
+            )
+            # ── SOURCE 노드 + indexed_from 엣지 (출처 추적) ──────────────────
+            source_node_id = self._attach_source_node(
+                conn, content_id,
+                source_type=source_type, source_uri=source_uri, title=title,
+                content_hash=content_hash, captured_at=captured_at,
+                extra={"owner": owner, "workspace_id": workspace_id},
+            )
+            # ── 소유자(Person) + 동사형 엣지 ────────────────────────────────
+            if owner:
+                person_id = f"person:{_slug(owner)}"
+                self._upsert_node(conn, person_id, "Person", owner, metadata={"email": owner})
+                self._upsert_edge(conn, person_id, content_id, "업로드함", weight=1.0)
+            # ── 대화 연결 ───────────────────────────────────────────────────
+            if conversation_id:
+                conv_id = f"conversation:{_slug(conversation_id)}"
+                self._upsert_node(conn, conv_id, "Chat", conversation_id)
+                self._upsert_edge(conn, conv_id, content_id, "언급함", weight=0.8)
+            # ── RAG 청크 ────────────────────────────────────────────────────
+            for index, chunk in enumerate(_chunks(text)):
+                chunk_id = f"chunk:{_sha256_text(f'{content_id}:{index}:{chunk}')[:24]}"
+                chunk_ids.append(chunk_id)
+                self._upsert_node(
+                    conn, chunk_id, "Chunk", f"{title} chunk {index + 1}",
+                    summary=chunk[:500], metadata={"index": index, "source_node": content_id},
+                )
+                self._upsert_chunk(conn, chunk_id=chunk_id, source_node=content_id,
+                                   text=chunk, metadata={"index": index, "source_node": content_id})
+                self._upsert_edge(conn, content_id, chunk_id, "포함함")
+            # ── Concept / Feature / Error / Code 노드 + 엣지 ────────────────
+            concept_ids: Dict[str, str] = {}
+            for concept in concepts:
+                node_t = _classify_node_type(concept, full_text)
+                cid = f"{node_t.lower()}:{_slug(concept)}"
+                concept_ids[concept.lower()] = cid
+                self._upsert_node(conn, cid, node_t, concept,
+                                  metadata={"auto_extracted": True, "source_type": source_type})
+                self._upsert_edge(conn, content_id, cid, "포함함", weight=0.8)
+            for triple in triples:
+                subj_id = concept_ids.get(triple["subject"].lower())
+                obj_id = concept_ids.get(triple["object"].lower())
+                if subj_id and obj_id and subj_id != obj_id:
+                    self._upsert_edge(conn, subj_id, obj_id, triple["relation"],
+                                      weight=1.0, metadata={"context": triple.get("context", "")[:240]})
+            # ── Task / Decision 노드 ────────────────────────────────────────
+            for item in _semantic_items(text):
+                sem_type = item["type"]
+                sem_title = item["title"]
+                sem_id = f"{sem_type.lower()}:{_sha256_text(f'{content_id}:{sem_type}:{sem_title}')[:24]}"
+                self._upsert_node(conn, sem_id, sem_type, sem_title, summary=item["summary"],
+                                  metadata={"auto_extracted": True, "source_node": content_id}, raw=item)
+                self._upsert_edge(conn, content_id, sem_id, "포함함", weight=0.9)
+
+        return {
+            "node_id": content_id,
+            "type": "Document",
+            "source_node_id": source_node_id,
+            "content_hash": content_hash,
+            "chunk_ids": chunk_ids,
+            "chunk_count": len(chunk_ids),
+            "duplicate": duplicate,
+            "captured_at": captured_at,
+        }
+
+    def record_provenance(
+        self,
+        *,
+        node_id: str,
+        source_type: str,
+        pipeline: str = "unified-ingestion",
+        source_uri: Optional[str] = None,
+        content_hash: Optional[str] = None,
+        title: Optional[str] = None,
+        owner: Optional[str] = None,
+        workspace_id: Optional[str] = None,
+        captured_at: Optional[str] = None,
+        modified_at: Optional[str] = None,
+        embedded: bool = False,
+        linked: bool = False,
+        duplicate: bool = False,
+        agent_used: Optional[str] = None,
+        chunk_count: int = 0,
+        permissions: Optional[Dict[str, Any]] = None,
+        metadata: Optional[Dict[str, Any]] = None,
+    ) -> Dict[str, Any]:
+        """Append a provenance record for an ingested node (audit trail)."""
+        now = _now()
+        prov_id = f"prov:{_sha256_text(f'{node_id}|{content_hash or ''}|{now}')[:24]}"
+        with self._connect() as conn:
+            conn.execute(
+                """
+                INSERT OR REPLACE INTO ingestion_provenance(
+                  id, node_id, source_type, source_uri, content_hash, title, pipeline,
+                  owner, workspace_id, captured_at, modified_at, embedded, linked,
+                  duplicate, agent_used, chunk_count, permissions_json, metadata_json, created_at)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                """,
+                (
+                    prov_id, node_id, source_type, source_uri, content_hash, title, pipeline,
+                    owner, workspace_id, captured_at, modified_at, 1 if embedded else 0,
+                    1 if linked else 0, 1 if duplicate else 0, agent_used, int(chunk_count or 0),
+                    _json(permissions or {}), _json(metadata or {}), now,
+                ),
+            )
+        return {"id": prov_id, "node_id": node_id, "created_at": now}
+
+    @staticmethod
+    def _provenance_row(row: sqlite3.Row) -> Dict[str, Any]:
+        return {
+            "id": row["id"],
+            "node_id": row["node_id"],
+            "source_type": row["source_type"],
+            "source_uri": row["source_uri"],
+            "content_hash": row["content_hash"],
+            "title": row["title"],
+            "pipeline": row["pipeline"],
+            "owner": row["owner"],
+            "workspace_id": row["workspace_id"],
+            "captured_at": row["captured_at"],
+            "modified_at": row["modified_at"],
+            "embedded": bool(row["embedded"]),
+            "linked": bool(row["linked"]),
+            "duplicate": bool(row["duplicate"]),
+            "agent_used": row["agent_used"],
+            "chunk_count": row["chunk_count"],
+            "permissions": _safe_loads(row["permissions_json"]),
+            "metadata": _safe_loads(row["metadata_json"]),
+            "created_at": row["created_at"],
+        }
+
+    def get_provenance(self, node_id: str) -> Optional[Dict[str, Any]]:
+        """Return the most recent provenance record for a node, or None."""
+        with self._connect() as conn:
+            row = conn.execute(
+                "SELECT * FROM ingestion_provenance WHERE node_id = ? "
+                "ORDER BY created_at DESC, rowid DESC LIMIT 1",
+                (node_id,),
+            ).fetchone()
+            return self._provenance_row(row) if row else None
+
+    def list_provenance(self, *, limit: int = 100, source_type: Optional[str] = None) -> Dict[str, Any]:
+        """Recent provenance records (newest first), optionally by source_type."""
+        limit = max(1, min(int(limit or 100), 1000))
+        with self._connect() as conn:
+            if source_type:
+                rows = conn.execute(
+                    "SELECT * FROM ingestion_provenance WHERE source_type = ? "
+                    "ORDER BY created_at DESC, rowid DESC LIMIT ?",
+                    (source_type, limit),
+                ).fetchall()
+            else:
+                rows = conn.execute(
+                    "SELECT * FROM ingestion_provenance "
+                    "ORDER BY created_at DESC, rowid DESC LIMIT ?",
+                    (limit,),
+                ).fetchall()
+            return {"items": [self._provenance_row(r) for r in rows], "count": len(rows)}
+
+    def provenance_stats(self) -> Dict[str, Any]:
+        """Aggregate provenance counts for the Knowledge Graph status surface."""
+        with self._connect() as conn:
+            total = conn.execute("SELECT COUNT(*) AS c FROM ingestion_provenance").fetchone()["c"]
+            by_source = {
+                r["source_type"]: r["c"]
+                for r in conn.execute(
+                    "SELECT source_type, COUNT(*) AS c FROM ingestion_provenance GROUP BY source_type"
+                ).fetchall()
+            }
+            embedded = conn.execute(
+                "SELECT COUNT(*) AS c FROM ingestion_provenance WHERE embedded = 1"
+            ).fetchone()["c"]
+            duplicates = conn.execute(
+                "SELECT COUNT(*) AS c FROM ingestion_provenance WHERE duplicate = 1"
+            ).fetchone()["c"]
+            last = conn.execute(
+                "SELECT created_at FROM ingestion_provenance ORDER BY created_at DESC LIMIT 1"
+            ).fetchone()
+        return {
+            "total": total,
+            "by_source_type": by_source,
+            "embedded": embedded,
+            "duplicates": duplicates,
+            "last_ingested_at": last["created_at"] if last else None,
+        }
 
     def _ingest_structure_nodes(
         self,
