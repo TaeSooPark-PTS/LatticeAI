@@ -24,6 +24,7 @@ export async function render(ctx) {
   const probesHost = h("div", c.loading({ lines: 3 }));
 
   const embedHost = h("div", c.loading({ lines: 2 }));
+  const runtimeHost = h("div", c.loading({ lines: 3 }));
 
   const root = h("div.lt3-stack-6",
     c.viewHeader({
@@ -34,6 +35,13 @@ export async function render(ctx) {
 
     appearancePanel(ctx),
     workspacePanel(ctx),
+
+    c.panel({
+      eyebrow: "Runtime",
+      title: "Local readiness",
+      sub: "Backend, local-agent, and host signals used by Chat, Files, Search, and Models.",
+      children: runtimeHost,
+    }),
 
     c.panel({
       eyebrow: "Models",
@@ -58,7 +66,42 @@ export async function render(ctx) {
 
   probeEndpoints(ctx, probesHost);
   renderEmbeddings(ctx, embedHost);
+  renderRuntime(ctx, runtimeHost);
   return root;
+}
+
+async function renderRuntime(ctx, host) {
+  const { h, icon, api, c } = ctx;
+  const [health, sysinfo, models] = await Promise.all([
+    api.raw("/health"),
+    api.sysinfo(),
+    api.models(),
+  ]);
+  const backendLive = !!(health && health.ok);
+  const currentModel = models.data && models.data.current;
+  host.replaceChildren(
+    h("div.lt3-readiness",
+      runtimeRow(ctx, "server", "Backend API", backendLive ? `Live${health.data?.version ? ` · v${health.data.version}` : ""}` : "Unavailable", backendLive ? "ready" : "pending"),
+      runtimeRow(ctx, "folder-plus", "Desktop local agent", "Not available in this browser build; manual upload remains available", "idle"),
+      runtimeRow(ctx, "cpu", "Model runtime", currentModel ? shortModel(currentModel) : "No model loaded", currentModel ? "ready" : "pending"),
+      runtimeRow(ctx, "activity", "Host telemetry", sysinfo.source === "live" ? `CPU ${pct(sysinfo.data?.cpu_pct)} · RAM ${pct(sysinfo.data?.ram_pct)}` : "Unavailable", sysinfo.source === "live" ? "ready" : "idle"),
+    ),
+    h("div.lt3-code", { style: { "margin-top": "var(--lt3-space-4)" } },
+      [
+        "LATTICEAI_EMBEDDING_PROVIDER=hash | mlx | ollama | openai | custom",
+        "Folder watching requires the desktop local agent.",
+        "Cloud deployment is not reported as ready from this local-first shell.",
+      ].join("\n")),
+  );
+}
+
+function runtimeRow(ctx, ic, title, meta, state) {
+  const { h, icon, c } = ctx;
+  return h("div.lt3-readiness__row",
+    h("div.lt3-readiness__icon", icon(ic)),
+    h("div", h("div.lt3-readiness__title", title), h("div.lt3-readiness__meta", meta)),
+    c.statePill(state),
+  );
 }
 
 /* ── Embeddings (Settings → Models → Embeddings) ────────────────────────── */
@@ -261,4 +304,15 @@ function aboutPanel({ h, icon, c, api }) {
 function titleCase(s) {
   s = String(s || "");
   return s ? s.charAt(0).toUpperCase() + s.slice(1) : s;
+}
+
+function pct(value) {
+  const n = Number(value);
+  return Number.isFinite(n) ? `${Math.round(n)}%` : "—";
+}
+
+function shortModel(id) {
+  const s = String(id || "");
+  const tail = s.includes("/") ? s.split("/").pop() : s;
+  return tail.length > 30 ? tail.slice(0, 29) + "…" : tail;
 }

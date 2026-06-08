@@ -16,7 +16,7 @@
 [![npm version](https://img.shields.io/npm/v/ltcai?label=npm)](https://www.npmjs.com/package/ltcai)
 [![VS Code Marketplace](https://vsmarketplacebadges.dev/version-short/parktaesoo.ltcai.svg)](https://marketplace.visualstudio.com/items?itemName=parktaesoo.ltcai)
 [![Open VSX](https://img.shields.io/open-vsx/v/parktaesoo/ltcai?label=Open%20VSX)](https://open-vsx.org/extension/parktaesoo/ltcai)
-[![GitHub release](https://img.shields.io/github/v/release/TaeSooPark-PTS/LatticeAI?label=GitHub%20release)](https://github.com/TaeSooPark-PTS/LatticeAI/releases/tag/v3.2.0)
+[![GitHub release](https://img.shields.io/github/v/release/TaeSooPark-PTS/LatticeAI?label=GitHub%20release)](https://github.com/TaeSooPark-PTS/LatticeAI/releases)
 [![License: MIT](https://img.shields.io/badge/license-MIT-green)](LICENSE)
 [![Python 3.11+](https://img.shields.io/badge/python-3.11%2B-blue)](https://www.python.org/)
 [![VS Code extension](https://img.shields.io/badge/VS%20Code-extension-blue?logo=visualstudiocode)](https://marketplace.visualstudio.com/items?itemName=parktaesoo.ltcai)
@@ -49,7 +49,7 @@ Install the coding extension:
 
 - [VS Code Marketplace: parktaesoo.ltcai](https://marketplace.visualstudio.com/items?itemName=parktaesoo.ltcai)
 - [Open VSX: parktaesoo.ltcai](https://open-vsx.org/extension/parktaesoo/ltcai)
-- [GitHub Release v3.2.0](https://github.com/TaeSooPark-PTS/LatticeAI/releases/tag/v3.2.0)
+- [GitHub Releases](https://github.com/TaeSooPark-PTS/LatticeAI/releases)
 
 ## Quick Start
 
@@ -86,9 +86,9 @@ Lattice AI v3 is a local-first AI workspace platform for people and teams who
 want their files, models, graph context, retrieval, and agent workflows in one
 place.
 
-- **Primary app shell**: `/app` is the default product experience with Native
-  Chat, Knowledge Graph, Hybrid Search, Files, Pipeline, Agents, Models, My
-  Computer, Settings, and Admin areas. Classic pages remain compatibility
+- **Primary app shell**: `/app` is the default product experience with Chat,
+  Files, Hybrid Search, Knowledge Graph, Memory, Models, Settings, Advanced
+  agent/workflow tooling, and Admin areas. Classic pages remain compatibility
   routes only; normal workflows stay in `/app`.
 - **Local-first AI Workspace**: work starts on your machine, with local data and
   workspace state by default.
@@ -122,55 +122,32 @@ and disconnected automations. Lattice AI keeps those parts together:
 - multi-agent workflows leave behind replayable plans, reviews, retries, and
   outcomes.
 
-## v3.2.0 Highlights
+## v3.3.1 Highlights
 
-Lattice AI v3.2.0 is the feature-complete release for all non-enterprise use
-cases. Every platform capability is operable from `/app` with no Classic
-dependency — built on real backends with honest live/unavailable states (never
-fabricated data).
+Lattice AI v3.3.1 rebuilds the visible `/app` product experience while
+preserving the existing local-first runtime. The app now presents Chat, Files,
+Search, Knowledge, Memory, Models, Settings, Advanced tooling, and Admin
+workflows with clearer navigation and honest live/unavailable states.
 
-- **Multi-agent collaboration** — Planner → Researcher → Executor → Reviewer
-  with handoffs, shared context packets, and replayable timelines.
-- **Agent Registry** — every agent (built-in role + custom) carries registry
-  metadata: type, version, capabilities, and configuration. No hardcoded lists.
-- **Marketplace & Templates** — an offline catalog with five named agent
-  templates (Research Assistant, Coding Assistant, Knowledge Curator,
-  Documentation Writer, Workflow Builder) plus clone / export / import / install.
-- **Workflow Agents** — trigger → agent chain → tools → memory → result, with a
-  run ledger and replay.
-- **Autonomous Planning** — goal → plan → execute → review → replan, with
-  inspect/replay and bounded-retry safeguards.
-- **Long-Term Memory + Memory Manager** — workspace, project, agent,
-  conversation, graph, and vector tiers unified behind one service, with
-  recall, inspect, prune, compact, rebuild, and clear.
-- **Skills, Hooks, Tool Registry, and MCP Manager** — install/enable/disable
-  skills; lifecycle hooks across runs/tools/agents/pipelines/workflows; a
-  governed tool registry; and connected MCP servers, tools, and health.
+- **Visual product rebuild** — compact rail navigation, quieter topbar,
+  command-palette search, retrieval readiness footer, and denser controls.
+- **Truthful Home dashboard** — backend, model, retrieval, memory, source, and
+  trace readiness are derived from real endpoints instead of fabricated counts.
+- **Basic / Advanced / Admin navigation** — Basic focuses on core workspace
+  workflows; Advanced exposes agents, workflows, skills, hooks, and MCP; Admin
+  keeps organization controls separate.
+- **Files and Settings clarity** — manual upload is available immediately,
+  folder watching is explicitly tied to the desktop local agent, and Settings
+  shows backend, agent, model, telemetry, and embedding readiness.
+- **Design system refresh** — cooler neutral light/dark tokens, tighter 8px
+  radius discipline, compact cards/tables/stats/buttons, and regenerated
+  hashed v3 assets.
 
-The earlier v3.1 work (Classic retired from normal workflows, retrieval wired
-through a shared service layer, hash-manifested assets) remains the foundation.
-
-Release audit: [docs/V3_2_AUDIT.md](docs/V3_2_AUDIT.md) records the v3.2.0
-claim audit, fixes, tests, real-app browser validation, and artifact checks.
-
-- Native v3 Chat lives inside `/app#/chat` and streams through the real
-  `POST /chat` backend while showing friendly setup guidance when no model is
-  loaded.
-- Knowledge Graph, Vector Index, and Hybrid Search are first-class retrieval
-  surfaces. Hybrid results show keyword, local vector, and graph scores.
-- Personal and Organization workspaces, plus Basic / Advanced / Admin modes,
-  are built into the shell.
-- Models can load/unload from the native Models view; Agents read the
-  AgentRuntime boundary with run health, history, events, replay, and stop
-  affordances.
-- Production embedding profiles cover local `bge-m3`, `nomic-embed-text`,
-  `e5-large`, `gte-large`, Ollama `nomic-embed-text`, `mxbai-embed-large`,
-  BGE-M3-compatible providers, MLX, and OpenAI-compatible
-  `text-embedding-3-small` / `text-embedding-3-large`. Hash embeddings remain
-  fallback only.
-- `/app` loads `static/v3/asset-manifest.json` and build-generated hashed
-  assets such as `app.<hash>.js` and `lattice.base.<hash>.css`; manual `?v=`
-  cache-busting is no longer used by runtime HTML.
+The v3.2.0 platform remains the feature-complete foundation: multi-agent
+collaboration, Agent Registry, Marketplace templates, Workflow Agents,
+Autonomous Planning, Long-Term Memory, Skills, Hooks, Tool Registry, MCP
+Manager, production embedding profiles, and hash-manifested `/app` assets.
+Release audit: [docs/V3_2_AUDIT.md](docs/V3_2_AUDIT.md).
 
 ## Screenshots
 
@@ -290,6 +267,7 @@ Core areas:
 
 | Version | Theme |
 | --- | --- |
+| **3.3.1** | Visual product rebuild — rebuilt `/app` shell, Basic/Advanced/Admin navigation, cooler token palette, compact component system, Home readiness dashboard, Files local-agent truthfulness, Settings runtime status, and v3.3.1 design notes |
 | **3.3.0** | Product quality & honesty release — evidence-based feature audit (`FEATURE_STATUS.md`), single-source version truth, working manual document upload in Files, fixed document-generation streaming, truthful Home retrieval status, documented design system (`STYLE_SYSTEM.md`) |
 | 3.2.0 | Feature-complete platform — multi-agent collaboration, agent registry, marketplace + templates, workflow agents, autonomous planning, long-term memory + manager, skills/hooks/tool registries, MCP manager, all operable from `/app` |
 | 3.1.0 | Mainline platform completion — native `/app` workflows, Classic retired from normal paths, production embedding profiles, AgentRuntime/registries, hashed v3 assets |

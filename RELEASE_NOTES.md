@@ -1,5 +1,34 @@
 # Release Notes
 
+## v3.3.1 - Visual Product Rebuild
+
+Lattice AI v3.3.1 rebuilds the visible `/app` product experience while
+preserving the local-first runtime behavior. No packages were published, no tag
+was created, no GitHub Release was created, and nothing was deployed.
+
+### Highlights
+
+- Rebuilt the global shell with a denser command rail, grouped navigation, local
+  retrieval readiness footer, quiet topbar, and mode-aware command palette.
+- Reorganized production navigation into Basic, Advanced, and Admin surfaces,
+  while keeping compatibility-only pages deep-linkable.
+- Replaced the v3.3.0 palette with cooler neutral light/dark tokens and an 8px
+  card/panel component system.
+- Rebuilt Home as a truthful readiness dashboard for backend, model, retrieval,
+  memory, sources, stats, and recent activity.
+- Clarified Files manual upload versus desktop local-agent folder connection.
+- Added Settings runtime readiness and stabilized the Chat streaming send/stop
+  button handler.
+- Added `VISUAL_REBUILD_NOTES_v3.3.1.md`, `FIGMA_SPEC.md`, and updated
+  `STYLE_SYSTEM.md`.
+
+### Expected Artifacts
+
+- `dist/ltcai-3.3.1-py3-none-any.whl`
+- `dist/ltcai-3.3.1.tar.gz`
+- `dist/ltcai-3.3.1.vsix`
+- `ltcai-3.3.1.tgz`
+
 ## v3.2.0 - Feature-Complete Platform
 
 Lattice AI v3.2.0 is the final major feature release before maintenance mode and

@@ -124,6 +124,11 @@ export async function render(ctx) {
       h("p.lt3-faint", { style: { "font-size": "var(--lt3-text-sm)", "margin-top": "var(--lt3-space-1)" } },
         "Lattice parses each file, chunks it, embeds it, and links it into the knowledge graph. PDF · DOCX · XLSX · PPTX · TXT · MD · CSV, up to 10 MB each."),
     ),
+    h("div.lt3-drop__meta",
+      c.pill("Manual upload available", "ok", { dot: true }),
+      c.pill("Folder connection needs local agent", "warn", { dot: true }),
+      c.pill("Search + Chat ready after indexing", "info", { dot: true }),
+    ),
     h("button.lt3-btn.lt3-btn--primary", { type: "button", on: { click: pickFiles } }, icon("upload"), "Upload files"),
   );
 

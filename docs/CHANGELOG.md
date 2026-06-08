@@ -1,5 +1,41 @@
 # Changelog
 
+## [3.3.1] - 2026-06-08
+
+> v3.3.1 — Visual Product Rebuild. The `/app` frontend keeps the same runtime
+> behavior but receives a new product shell, navigation hierarchy, visual token
+> system, and readiness-focused primary views.
+
+### Changed
+
+- Rebuilt the global `/app` shell with a denser command rail, grouped
+  Basic/Advanced/Admin navigation, local retrieval readiness footer, quiet
+  topbar, and mode-aware command palette.
+- Reorganized production navigation to Basic (Home, Chat, Files, Search,
+  Knowledge, Memory, Models, Settings), Advanced (Agents, Workflows, Skills,
+  Hooks, MCP), and Admin (Users, Permissions, Audit Logs, Security, Policies,
+  Private VPC). Compatibility-only views remain deep-linkable.
+- Replaced the v3.3.0 palette with cooler neutral light/dark tokens, tightened
+  cards/panels to an 8px radius system, and compacted buttons, inputs, stats,
+  tables, segmented controls, and empty states.
+- Rebuilt Home as a local readiness dashboard for backend, model, retrieval,
+  memory, connected sources, stats, and recent activity when available.
+- Clarified Files manual upload versus desktop local-agent folder connection.
+- Added Settings runtime readiness for backend, desktop local agent, model
+  runtime, host telemetry, and embedding provider configuration.
+- Fixed Chat send/stop button wiring so streaming uses a stable handler.
+
+### Added
+
+- `VISUAL_REBUILD_NOTES_v3.3.1.md` with implementation and QA notes.
+- `FIGMA_SPEC.md` as the in-repo Figma-equivalent design spec for v3.3.1.
+
+### Validation
+
+- `npm run build:assets` regenerated content-hashed v3 assets at `3.3.1`.
+- Package publication, deployment, tags, and GitHub Release creation were not
+  performed.
+
 ## [3.2.0] - 2026-06-08
 
 > v3.2 — Feature-Complete Platform. Multi-agent collaboration, an agent

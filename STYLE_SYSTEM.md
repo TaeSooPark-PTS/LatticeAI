@@ -1,19 +1,16 @@
-# Lattice AI — Style System (v3.3.0)
+# Lattice AI — Style System (v3.3.1)
 
 This document is the single written reference for the Lattice AI `/app` design
-system, plus the mandatory MCP-inspection findings (Figma, Vercel) and the
-frontend-design audit that informed v3.3.0.
+system, plus the visual rebuild decisions that inform v3.3.1.
 
-> **Decision up front (evidence-based).** The v3 `/app` design system is already
-> a clean, token-first architecture. A from-scratch "rebuild" would be
-> destructive and would violate the v3.3.0 mandate ("no new scope; don't patch
-> for its own sake; if legacy CSS conflicts, delete — otherwise consolidate").
-> So v3.3.0 **documents and consolidates** the existing system and fixes
-> inconsistencies (a stale `v3.1.0` token-file comment; a drag-over state for the
-> new uploader), rather than replacing working CSS. The legacy static-page CSS
-> (`static/workspace.css`, `platform.css`, `css/responsive.css`,
-> `css/reference/*`) belongs to the superseded HTML pages, not `/app`, and was
-> left untouched (no conflict with the SPA).
+> **Decision up front.** v3.3.1 intentionally rebuilds the visible `/app`
+> product shell while preserving runtime behavior. The change is token-first:
+> the palette, radii, density, shell hierarchy, cards, tables, forms, empty
+> states, and primary Home/Files/Chat/Settings readiness surfaces changed in the
+> shared v3 design-system layers instead of through scattered overrides. Legacy
+> static-page CSS (`static/workspace.css`, `platform.css`, `css/responsive.css`,
+> `css/reference/*`) remains outside the `/app` SPA and was not used as the
+> product visual source.
 
 ---
 
@@ -23,9 +20,11 @@ Target quality bar: **Linear · Raycast · ChatGPT · modern AI workspace** —
 premium, focused, information-dense, strong hierarchy, excellent spacing.
 Explicitly *not* a legacy admin portal (Jira / ServiceNow).
 
-Identity motif: the **retrieval lattice** — three pillars (Knowledge Graph ·
-Vector Index · Hybrid Search) mapped to three accent hues and a subtle background
-mesh. This is encoded as semantic tokens, not ad-hoc colors.
+Identity motif: the **private retrieval lattice** — Knowledge Graph, Vector
+Index, and Hybrid Search presented as a local readiness system. v3.3.1 shifts
+the UI away from rounded dashboard cards toward a denser Linear/Raycast-like
+workspace: compact rail, quiet topbar, 8px card radii, cooler neutral surfaces,
+and explicit live/unavailable source markers.
 
 ---
 
@@ -58,7 +57,7 @@ overrides.
 
 `scripts/build_v3_assets.mjs` writes content-hashed siblings for every CSS/JS
 asset, rewrites ES-module imports to the hashed names, and emits
-`asset-manifest.json`. **v3.3.0:** the manifest `version` is now sourced from
+`asset-manifest.json`. Since v3.3.0, the manifest `version` is sourced from
 `package.json` (was a hardcoded literal). Run `npm run build:assets` after
 editing any `static/v3` source or `static/css/tokens.css`.
 
@@ -67,19 +66,20 @@ editing any `static/v3` source or `static/css/tokens.css`.
 ## 3. Token reference (key values)
 
 **Type scale** (`lattice.tokens.css`): `--lt3-text-2xs 11px` → `--lt3-text-4xl
-48px`, with `--lt3-text-md 15px` as body. Weights 400–800; tracking tokens for
-eyebrows/caps.
+48px`, with `--lt3-text-md 15px` as body. Weights 400–800; letter-spacing tokens
+are all `0` for predictable compact UI.
 
 **Spacing** (4pt base): `--lt3-space-1 4px` … `--lt3-space-9 64px`.
 
-**Radii:** `--lt3-radius-xs 6px` … `--lt3-radius-xl 24px`, `--lt3-radius-pill`.
+**Radii:** `--lt3-radius-xs 4px`, `--lt3-radius-sm 6px`,
+`--lt3-radius-md/lg/xl 8px`, `--lt3-radius-pill`.
 
 **Elevation:** `--lt3-elev-0..3`, theme-aware via inherited `--shadow*`.
 
 **Motion:** `--lt3-ease`, `--lt3-dur-1..4` (90–420ms).
 
-**Layout rails:** `--lt3-rail-w 268px` / collapsed `76px`, `--lt3-topbar-h 60px`,
-`--lt3-content-max 1240px`.
+**Layout rails:** `--lt3-rail-w 292px` / collapsed `76px`, `--lt3-topbar-h 56px`,
+`--lt3-content-max 1360px`.
 
 **Retrieval identity:** `--lt3-pillar-graph` (blue / `--accent`),
 `--lt3-pillar-vector` (teal / `--accent-2`), `--lt3-pillar-hybrid` (magenta /
@@ -96,16 +96,13 @@ Driven by one table, `static/v3/js/core/routes.js`, which feeds the rail, comman
 palette, router, and breadcrumbs. Modes escalate Basic < Advanced < Admin
 (`MODE_RANK`):
 
-- **Basic:** Home, Chat, Knowledge Graph, Hybrid Search, Memory, Files, Models,
-  Settings.
-- **Advanced:** adds Pipeline, Agents, Workflows, Planning, My Computer,
-  Marketplace, Skills, Hooks, Tools, MCP.
+- **Basic:** Home, Chat, Files, Search, Knowledge, Memory, Models, Settings.
+- **Advanced:** adds Agents, Workflows, Skills, Hooks, MCP.
 - **Admin:** adds Users, Permissions, Audit, Security, Policies, Private VPC.
 
-This already implements the brief's Basic/Advanced/Admin split. (The brief's
-strict Basic list omits Memory/Home; these are kept because Memory is core to the
-retrieval identity and Home is the shell dashboard — a documented, deliberate
-deviation, not an oversight.)
+Legacy/experimental pages such as Pipeline, Planning, My Computer, Marketplace,
+and Tools remain deep-linkable for compatibility but are not promoted in the
+production rail or command palette.
 
 ---
 
@@ -127,8 +124,8 @@ deviation, not an oversight.)
   direction is defined **in code** (this document + the token files). The
   practical reasoning: Lattice AI's design system already lives as CSS tokens
   that are the production source of truth; introducing a parallel Figma source
-  with a read-only seat would create drift, not alignment. All design decisions
-  in v3.3.0 are traceable to the token files and the frontend audit below.
+  with a read-only seat would create drift, not alignment. v3.3.1 design
+  decisions are traceable to the token files, this document, and `FIGMA_SPEC.md`.
 
 ### 5.2 Vercel MCP findings
 
@@ -166,7 +163,7 @@ Audited against hierarchy / spacing / typography / accessibility / responsivenes
   dense table 13px — appropriate for an information-dense workspace.
 - **Accessibility (good, with gaps):** inputs carry `aria-label`s; toggles use
   `aria-pressed`; command palette is labeled. **Gaps to track:** the
-  uploader/drag-over now has a visible focus/hover state (added v3.3.0); some
+  uploader/drag-over has a visible focus/hover state; some
   icon-only buttons rely on `title` only; color-contrast of `--faint` text on
   `--surface-2` should be re-checked in light mode. (No automated a11y suite runs
   in `npm test`; consider adding axe to the Playwright pass.)
@@ -182,26 +179,30 @@ Audited against hierarchy / spacing / typography / accessibility / responsivenes
 
 ## 6. Responsive & visual QA notes
 
-The audit was source- and runtime-evidence based (the app was not screenshotted
-in this pass — no Figma baseline exists to diff against, and the hosted Vercel
-build is broken). Verified by reading `lattice.shell.css` / `lattice.views.css`
-and the responsive rules:
+The v3.3.1 rebuild was verified against the local `/app` runtime with Playwright
+visual checks and source review:
 
-- **Desktop / laptop (≥1024px):** full rail + content max 1240px; intended layout.
-- **Tablet (~768px):** rail collapses to icons; drawers for chat list/context.
+- **Desktop / laptop (≥1024px):** full command rail, quiet topbar, content max
+  1360px, Home readiness dashboard, and native Chat/Files/Settings surfaces.
+- **Tablet (~768px):** rail collapses to icons; Chat uses drawer behavior for
+  conversation/context panes.
 - **Mobile (<640px):** rail becomes an off-canvas drawer with scrim; statrows
-  wrap via `auto-fit`. The new Files uploader is full-width and tap-friendly.
-- **Recommended follow-up (not done here):** regenerate the Playwright visual
-  baselines (`npm run test:visual`) after these changes — the Settings "About"
-  panel now renders the version from `/health` (mock returns `3.3.0`), and the
-  Files view gained an uploader, so existing snapshots will legitimately differ.
+  wrap via `auto-fit`; Files upload remains full-width and tap-friendly.
 
 ---
 
-## 7. v3.3.0 style-system changes
+## 7. v3.3.1 style-system changes
 
-- Fixed the stale `v3.1.0` comment in `static/css/tokens.css` → `v3.3.0`.
-- Added a `.lt3-drop.is-dragover` state (accent border + soft fill) for the new
-  Files uploader (`lattice.views.css`).
-- Asset-manifest version now derives from `package.json` (build script).
-- No legacy CSS was deleted (none conflicted with `/app`); no `!important` added.
+- Rebuilt the global shell: denser rail, grouped Basic/Advanced/Admin IA,
+  readiness footer, quieter topbar, and command palette filtering by active mode.
+- Replaced the v3.3.0 palette with a cooler neutral local-workspace palette and
+  updated light/dark parity tokens.
+- Tightened radii to an 8px card/panel system and removed negative
+  letter-spacing from structural tokens.
+- Reworked cards, stat tiles, tables, inputs, segmented controls, empty states,
+  and loading surfaces in `lattice.components.css`.
+- Rebuilt Home into a readiness dashboard with live backend/model/retrieval/
+  memory status and recent activity when available.
+- Clarified Files upload vs desktop local-agent folder connection.
+- Added Settings runtime readiness for backend, desktop local agent, model
+  runtime, host telemetry, and embedding provider configuration.

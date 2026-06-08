@@ -1,4 +1,4 @@
-"""v3.3.0 version-consistency guard.
+"""v3.3.1 version-consistency guard.
 
 Lattice AI keeps a single release version. The runtime canonical is
 ``latticeai.core.workspace_os.WORKSPACE_OS_VERSION``; everything user-facing

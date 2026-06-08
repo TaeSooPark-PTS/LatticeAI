@@ -48,7 +48,7 @@ export async function render(ctx) {
       keydown: (e) => { if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); send(); } },
     },
   });
-  const sendBtn = h("button.lt3-btn.lt3-btn--primary", { "aria-label": "Send", on: { click: send } }, icon("arrow-up"));
+  const sendBtn = h("button.lt3-btn.lt3-btn--primary", { "aria-label": "Send", on: { click: () => state.streaming ? stopStreaming() : send() } }, icon("arrow-up"));
 
   const groundChip = (key, label, icn) => h("button.lt3-chip", {
     type: "button", dataset: { active: String(state.grounding[key]) }, "aria-pressed": String(state.grounding[key]),
@@ -326,11 +326,9 @@ export async function render(ctx) {
     if (on) {
       sendBtn.replaceChildren(icon("player-stop"));
       sendBtn.setAttribute("aria-label", "Stop");
-      sendBtn.onclick = stopStreaming;
     } else {
       sendBtn.replaceChildren(icon("arrow-up"));
       sendBtn.setAttribute("aria-label", "Send");
-      sendBtn.onclick = send;
     }
   }
 
