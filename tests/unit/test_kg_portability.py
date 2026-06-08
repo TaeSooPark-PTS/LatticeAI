@@ -1,0 +1,152 @@
+"""v3.6.0 Knowledge Graph portability tests — export/import + backup/restore.
+
+The graph is the user's durable asset, so it must round-trip locally with no
+cloud. Covers: versioned logical export, dry-run, merge import equivalence,
+binary backup -> clear -> restore recovery, integrity check, and route auth
+(export = user, import/backup/restore = admin).
+"""
+from __future__ import annotations
+
+import sys
+from pathlib import Path
+
+import pytest
+from fastapi import FastAPI, HTTPException, Request
+from fastapi.testclient import TestClient
+
+sys.path.insert(0, str(Path(__file__).resolve().parents[2]))
+
+from knowledge_graph import GRAPH_SCHEMA_VERSION, KnowledgeGraphStore
+from latticeai.api.portability import create_portability_router
+from latticeai.services.ingestion import IngestionItem, IngestionPipeline
+from latticeai.services.kg_portability import KGPortabilityService
+
+
+def _seeded(tmp_path: Path, tag: str) -> KnowledgeGraphStore:
+    store = KnowledgeGraphStore(tmp_path / f"{tag}.sqlite", tmp_path / f"{tag}-blobs")
+    pipe = IngestionPipeline(store)
+    pipe.ingest(IngestionItem(source_type="web_url", title="A", text="alpha body about graphs", source_uri="u1"))
+    pipe.ingest(IngestionItem(source_type="note", title="B", text="beta body with a TODO decide"))
+    return store
+
+
+def _node_totals(store: KnowledgeGraphStore) -> int:
+    return sum(store.stats().get("nodes", {}).values())
+
+
+def test_export_has_versioned_header(tmp_path):
+    svc = KGPortabilityService(knowledge_graph=_seeded(tmp_path, "kg"), data_dir=tmp_path / "data")
+    art = svc.export()
+    h = art["header"]
+    assert h["format"] == "latticeai.kg.export"
+    assert h["graph_schema_version"] == GRAPH_SCHEMA_VERSION
+    assert "kg_v2_schema_version" in h and "projection_version" in h and "embed_dim" in h
+    assert h["exported_at"]
+    assert art["counts"]["nodes"] >= 1
+    assert len(art["provenance"]) >= 2
+
+
+def test_logical_export_import_roundtrip(tmp_path):
+    src = _seeded(tmp_path, "src")
+    art = KGPortabilityService(knowledge_graph=src, data_dir=tmp_path / "d1").export()
+
+    dst = KnowledgeGraphStore(tmp_path / "dst.sqlite", tmp_path / "dst-blobs")
+    svc2 = KGPortabilityService(knowledge_graph=dst, data_dir=tmp_path / "d2")
+
+    # dry-run writes nothing
+    plan = svc2.import_data(art, dry_run=True)
+    assert plan["nodes"] == art["counts"]["nodes"]
+    assert _node_totals(dst) == 0
+
+    res = svc2.import_data(art, mode="merge")
+    assert res.get("imported") is True
+    assert _node_totals(dst) == _node_totals(src)
+    # provenance survived the round-trip
+    src_node = src.export_graph_data()["provenance"][0]["node_id"]
+    assert dst.get_provenance(src_node) is not None
+
+
+def test_import_refuses_newer_schema(tmp_path):
+    src = _seeded(tmp_path, "src")
+    art = KGPortabilityService(knowledge_graph=src, data_dir=tmp_path / "d1").export()
+    art["header"]["graph_schema_version"] = GRAPH_SCHEMA_VERSION + 5
+    dst = KnowledgeGraphStore(tmp_path / "dst.sqlite", tmp_path / "dst-blobs")
+    svc = KGPortabilityService(knowledge_graph=dst, data_dir=tmp_path / "d2")
+    with pytest.raises(ValueError, match="newer"):
+        svc.import_data(art)
+
+
+def test_backup_clear_restore_recovers_graph(tmp_path):
+    store = _seeded(tmp_path, "kg")
+    svc = KGPortabilityService(knowledge_graph=store, data_dir=tmp_path / "data")
+    before = _node_totals(store)
+    assert before > 0
+
+    out = svc.backup()
+    assert Path(out["path"]).exists()
+    assert out["manifest"]["db_sha256"]
+
+    store.clear_all()
+    assert _node_totals(store) == 0
+
+    restored = svc.restore(out["path"])
+    assert restored["restored"] is True
+    assert _node_totals(store) == before
+
+
+def test_restore_integrity_check_rejects_tampered_archive(tmp_path):
+    store = _seeded(tmp_path, "kg")
+    svc = KGPortabilityService(knowledge_graph=store, data_dir=tmp_path / "data")
+    out = svc.backup()
+    # Tamper: rewrite the zip's db member so its sha no longer matches manifest.
+    import zipfile
+    archive = Path(out["path"])
+    raw = {}
+    with zipfile.ZipFile(archive) as zf:
+        for n in zf.namelist():
+            raw[n] = zf.read(n)
+    raw["knowledge_graph.sqlite"] = b"corrupted-db-bytes"
+    with zipfile.ZipFile(archive, "w") as zf:
+        for n, b in raw.items():
+            zf.writestr(n, b)
+    with pytest.raises(ValueError, match="integrity"):
+        svc.restore(out["path"])
+
+
+# ── route auth ───────────────────────────────────────────────────────────────
+def _app(tmp_path, *, admin_ok=True):
+    store = _seeded(tmp_path, "kg")
+    svc = KGPortabilityService(knowledge_graph=store, data_dir=tmp_path / "data")
+
+    def require_admin(request: Request):
+        if not admin_ok:
+            raise HTTPException(status_code=403, detail="admin only")
+        return ("admin@example.com", {})
+
+    app = FastAPI()
+    app.include_router(create_portability_router(
+        service=svc,
+        require_user=lambda request: "user@example.com",
+        require_admin=require_admin,
+    ))
+    return TestClient(app)
+
+
+def test_export_route_is_user_readable(tmp_path):
+    client = _app(tmp_path)
+    r = client.post("/api/knowledge-graph/export")
+    assert r.status_code == 200
+    assert r.json()["header"]["format"] == "latticeai.kg.export"
+
+
+def test_import_route_requires_admin(tmp_path):
+    client = _app(tmp_path, admin_ok=False)
+    r = client.post("/api/knowledge-graph/import", json={"artifact": {"nodes": []}, "mode": "merge"})
+    assert r.status_code == 403
+
+
+def test_portability_status_route(tmp_path):
+    client = _app(tmp_path)
+    r = client.get("/api/knowledge-graph/portability")
+    assert r.status_code == 200
+    assert r.json()["available"] is True

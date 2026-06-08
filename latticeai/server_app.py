@@ -121,8 +121,10 @@ from latticeai.api.agent_registry import create_agent_registry_router
 from latticeai.core.agent_registry import AgentRegistry
 from latticeai.api.memory import create_memory_router
 from latticeai.api.browser import create_browser_router
+from latticeai.api.portability import create_portability_router
 from latticeai.services.memory_service import MemoryService
 from latticeai.services.ingestion import IngestionPipeline
+from latticeai.services.kg_portability import KGPortabilityService
 from latticeai.services.tool_dispatch import (
     LOCAL_WRITE_BLOCKED_PREFIXES as _LOCAL_WRITE_BLOCKED_PREFIXES,
     TOOL_GOVERNANCE,
@@ -333,6 +335,13 @@ INGESTION_PIPELINE = IngestionPipeline(
     hooks=HOOKS_REGISTRY,
     enable_graph=ENABLE_GRAPH,
     audit=lambda action, detail, user: append_audit_event(action, user_email=user, **detail),
+)
+# ── v3.6.0 Knowledge Graph portability: local export / import / backup / restore.
+# The graph is the user's durable asset, so it must be portable with no cloud.
+KG_PORTABILITY = KGPortabilityService(
+    knowledge_graph=KNOWLEDGE_GRAPH,
+    data_dir=DATA_DIR,
+    enable_graph=ENABLE_GRAPH,
 )
 
 def _require_graph():
@@ -1523,6 +1532,12 @@ app.include_router(create_memory_router(
 app.include_router(create_browser_router(
     pipeline=INGESTION_PIPELINE,
     require_user=require_user,
+))
+
+app.include_router(create_portability_router(
+    service=KG_PORTABILITY,
+    require_user=require_user,
+    require_admin=require_admin,
 ))
 
 app.include_router(create_garden_router(gardener=gardener, require_user=require_user))

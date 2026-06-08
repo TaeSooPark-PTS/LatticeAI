@@ -3215,6 +3215,156 @@ class KnowledgeGraphStore:
             "last_ingested_at": last["created_at"] if last else None,
         }
 
+    # ── v3.6.0 portability: logical export / import + binary backup ──────────────
+    def schema_versions(self) -> Dict[str, Any]:
+        """Versions an exporter stamps and an importer validates against."""
+        try:
+            from kg_schema import EMBED_DIM as _EMBED_DIM, KG_SCHEMA_V2_VERSION as _V2
+        except Exception:  # pragma: no cover - kg_schema always importable in practice
+            _EMBED_DIM, _V2 = 1024, 2
+        return {
+            "graph_schema_version": GRAPH_SCHEMA_VERSION,
+            "kg_v2_schema_version": _V2,
+            "projection_version": _PROJECTION_VERSION,
+            "embed_dim": _EMBED_DIM,
+        }
+
+    def export_graph_data(self) -> Dict[str, Any]:
+        """Raw, lossless logical export of the graph (nodes/edges/chunks/sources/
+        provenance). Vector embeddings are intentionally omitted — they are
+        re-derived on import — so the artifact stays portable and small. Use
+        :meth:`backup_database` for a faithful binary copy incl. embeddings.
+        """
+        with self._connect() as conn:
+            def rows(table: str):
+                return [dict(r) for r in conn.execute(f"SELECT * FROM {table}").fetchall()]
+
+            data = {
+                "nodes": rows("nodes"),
+                "edges": rows("edges"),
+                "chunks": rows("chunks"),
+                "knowledge_sources": rows("knowledge_sources"),
+                "provenance": rows("ingestion_provenance"),
+            }
+        data["counts"] = {k: len(v) for k, v in data.items()}
+        return data
+
+    def import_graph_data(
+        self, data: Dict[str, Any], *, mode: str = "merge", dry_run: bool = False
+    ) -> Dict[str, Any]:
+        """Import a logical export back into the store.
+
+        ``mode='merge'`` upserts on top of existing data (id collisions update);
+        ``mode='replace'`` clears the graph first. ``dry_run=True`` reports the
+        plan without writing. Refuses artifacts from a NEWER graph schema than
+        this build.
+        """
+        nodes = data.get("nodes") or []
+        edges = data.get("edges") or []
+        chunks = data.get("chunks") or []
+        sources = data.get("knowledge_sources") or []
+        provenance = data.get("provenance") or []
+
+        header = data.get("header") or {}
+        incoming_schema = header.get("graph_schema_version")
+        if isinstance(incoming_schema, int) and incoming_schema > GRAPH_SCHEMA_VERSION:
+            raise ValueError(
+                f"Artifact graph_schema_version {incoming_schema} is newer than this "
+                f"build ({GRAPH_SCHEMA_VERSION}); refusing to import."
+            )
+
+        plan = {
+            "mode": mode,
+            "nodes": len(nodes),
+            "edges": len(edges),
+            "chunks": len(chunks),
+            "knowledge_sources": len(sources),
+            "provenance": len(provenance),
+        }
+        if dry_run:
+            plan["dry_run"] = True
+            return plan
+
+        if mode == "replace":
+            self.clear_all()
+
+        with self._connect() as conn:
+            for n in nodes:
+                self._upsert_node(
+                    conn, n["id"], n["type"], n.get("title") or "",
+                    summary=n.get("summary") or "",
+                    metadata=_safe_loads(n.get("metadata_json")),
+                    raw=_safe_loads(n.get("raw_json")),
+                )
+            for c in chunks:
+                self._upsert_chunk(
+                    conn, chunk_id=c["id"], source_node=c["source_node"],
+                    text=c.get("text") or "", metadata=_safe_loads(c.get("metadata_json")),
+                )
+            for e in edges:
+                self._upsert_edge(
+                    conn, e["from_node"], e["to_node"], e["type"],
+                    weight=float(e.get("weight") or 1.0),
+                    metadata=_safe_loads(e.get("metadata_json")),
+                )
+            for s in sources:
+                conn.execute(
+                    """
+                    INSERT OR REPLACE INTO knowledge_sources(
+                      id, root_path, os_type, drive_id, label, status, include_ocr,
+                      watch_enabled, consent_json, created_at, updated_at, last_scanned_at)
+                    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                    """,
+                    (
+                        s["id"], s["root_path"], s["os_type"], s.get("drive_id"), s.get("label"),
+                        s.get("status") or "active", int(s.get("include_ocr") or 0),
+                        int(s.get("watch_enabled") or 0), s.get("consent_json") or "{}",
+                        s.get("created_at") or _now(), s.get("updated_at") or _now(),
+                        s.get("last_scanned_at"),
+                    ),
+                )
+            for p in provenance:
+                conn.execute(
+                    """
+                    INSERT OR REPLACE INTO ingestion_provenance(
+                      id, node_id, source_type, source_uri, content_hash, title, pipeline,
+                      owner, workspace_id, captured_at, modified_at, embedded, linked,
+                      duplicate, agent_used, chunk_count, permissions_json, metadata_json, created_at)
+                    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                    """,
+                    (
+                        p["id"], p["node_id"], p["source_type"], p.get("source_uri"),
+                        p.get("content_hash"), p.get("title"), p.get("pipeline") or "import",
+                        p.get("owner"), p.get("workspace_id"), p.get("captured_at"),
+                        p.get("modified_at"), int(p.get("embedded") or 0), int(p.get("linked") or 0),
+                        int(p.get("duplicate") or 0), p.get("agent_used"), int(p.get("chunk_count") or 0),
+                        p.get("permissions_json") or "{}", p.get("metadata_json") or "{}",
+                        p.get("created_at") or _now(),
+                    ),
+                )
+        plan["imported"] = True
+        return plan
+
+    def backup_database(self, dest_path) -> Path:
+        """Write a clean, standalone snapshot of the live DB to ``dest_path``.
+
+        Uses ``VACUUM INTO`` (after a full WAL checkpoint) so the snapshot is a
+        defragmented, rollback-journal-mode database with no companion -wal/-shm
+        — which restores cleanly by a plain file copy. Captures all data incl.
+        the vector_embeddings BLOBs.
+        """
+        dest = Path(dest_path)
+        dest.parent.mkdir(parents=True, exist_ok=True)
+        if dest.exists():
+            dest.unlink()  # VACUUM INTO requires the target to not exist
+        conn = self._connect()
+        try:
+            conn.execute("PRAGMA wal_checkpoint(FULL)")
+            conn.execute("VACUUM INTO ?", (str(dest),))
+        finally:
+            conn.close()
+        return dest
+
     def _ingest_structure_nodes(
         self,
         conn: sqlite3.Connection,
