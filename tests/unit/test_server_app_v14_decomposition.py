@@ -44,7 +44,7 @@ def test_version_metadata_matches_release():
 
 def test_markdown_current_release_references_match_release():
     readme = (ROOT / "README.md").read_text(encoding="utf-8")
-    history = readme.split("## Release history", 1)[1]
+    history = readme.split("## Release History", 1)[1]
     assert "3.0.0" in history
     assert "New in 1.3.0" not in readme
     security = (ROOT / "SECURITY.md").read_text(encoding="utf-8")

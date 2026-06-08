@@ -712,7 +712,10 @@
   font-weight: 700;
   background: transparent;
   cursor: pointer;
-  transition: 160ms ease;
+  /* Animate surface affordances, but never `color`: a color transition on
+     theme switch would briefly render the rail link dark-on-dark (the v226
+     dark-mode contrast gate caught this on slow CI). Color flips instantly. */
+  transition: background-color 160ms ease, border-color 160ms ease, transform 160ms ease;
 }
 
 .reference-rail a.active,
