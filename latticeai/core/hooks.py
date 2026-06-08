@@ -36,10 +36,22 @@ HOOK_KINDS = (
     "post_run",
     "pre_tool",
     "post_tool",
+    "pre_workflow",
+    "post_workflow",
+    "pre_upload",
+    "post_upload",
+    "pre_index",
+    "post_index",
     "agent",
-    "pipeline",
-    "workflow",
 )
+
+# Kinds retired in v3.4.1 in favour of the explicit pre_/post_ lifecycle pairs.
+# Accepted on input and mapped forward so older callers / persisted custom hooks
+# never break.
+LEGACY_KIND_ALIASES = {
+    "workflow": "post_workflow",
+    "pipeline": "post_index",
+}
 
 # Hook statuses a dispatch can record.
 HOOK_STATUSES = ("ok", "blocked", "error", "skipped", "advisory")
@@ -172,6 +184,55 @@ def hook_result(**kwargs: Any) -> HookResult:
     return HookResult(**kwargs)
 
 
+def dispatch_tool(
+    hooks: Any,
+    tool_name: str,
+    args: Any,
+    run_fn: Callable[[], Any],
+    *,
+    user_email: Optional[str] = None,
+    workspace_id: Optional[str] = None,
+    source: str = "",
+) -> Any:
+    """Run a tool through the shared ``pre_tool`` → execute → ``post_tool`` lifecycle.
+
+    This is the single tool-dispatch path so every caller (the HTTP ``/tools/*``
+    routes, the single-agent runtime in :mod:`latticeai.core.agent`, and the
+    workflow tool node) fires the same hooks. A blocking ``pre_tool`` hook raises
+    :class:`PermissionError`; a tool error still fires ``post_tool`` (status
+    ``error``) before re-raising. With ``hooks=None`` it is a transparent
+    pass-through, so the tool path is unchanged when hooks are absent.
+    """
+    if hooks is None:
+        return run_fn()
+    try:
+        arg_keys = list(args.keys()) if isinstance(args, dict) else []
+    except Exception:
+        arg_keys = []
+    pre = hooks.fire_hook(
+        "pre_tool", f"tool.{tool_name}",
+        payload={"tool": tool_name, "args_keys": arg_keys, "source": source},
+        user_email=user_email, workspace_id=workspace_id,
+    )
+    if pre.get("blocked"):
+        raise PermissionError(pre.get("block_reason") or f"Tool '{tool_name}' blocked by a pre_tool hook.")
+    try:
+        result = run_fn()
+    except Exception as exc:
+        hooks.fire_hook(
+            "post_tool", f"tool.{tool_name}",
+            payload={"tool": tool_name, "status": "error", "detail": str(exc), "source": source},
+            user_email=user_email, workspace_id=workspace_id,
+        )
+        raise
+    hooks.fire_hook(
+        "post_tool", f"tool.{tool_name}",
+        payload={"tool": tool_name, "status": "ok", "source": source},
+        user_email=user_email, workspace_id=workspace_id,
+    )
+    return result
+
+
 # Built-in hooks describe lifecycle points the platform already exercises. They
 # are honest reflections of existing behaviour (see the `binding` field), made
 # visible and orderable here. Disabling a `managed="platform"` hook is recorded
@@ -243,6 +304,11 @@ BUILTIN_HOOKS: List[Dict[str, Any]] = [
     },
 ]
 
+# Built-in hooks now bucket onto the v3.4.1 lifecycle pairs.
+for _hook in BUILTIN_HOOKS:
+    _hook["kind"] = LEGACY_KIND_ALIASES.get(_hook["kind"], _hook["kind"])
+del _hook
+
 
 class HooksRegistry:
     """Persisted registry of lifecycle hooks (built-in + user-registered)."""
@@ -305,6 +371,12 @@ class HooksRegistry:
             hook["enabled"] = bool(custom.get("enabled", True))
             hook["removable"] = True
             hooks.append(hook)
+        # Honest execution flag: a hook actually runs only if a runner is bound
+        # (built-ins) or it carries a command (user hooks); otherwise it is
+        # advisory (listed + ordered, but a no-op when fired).
+        for hook in hooks:
+            hook["executable"] = self.has_runner(hook["id"]) or bool(str(hook.get("command") or "").strip())
+            hook["advisory"] = not hook["executable"]
         hooks.sort(key=lambda h: (HOOK_KINDS.index(h["kind"]) if h["kind"] in HOOK_KINDS else 99, h.get("order", 100), h["id"]))
         return hooks
 
@@ -389,6 +461,7 @@ class HooksRegistry:
     ) -> Dict[str, Any]:
         if not str(name).strip():
             raise ValueError("name is required")
+        kind = LEGACY_KIND_ALIASES.get(kind, kind)
         if kind not in HOOK_KINDS:
             raise ValueError(f"kind must be one of {', '.join(HOOK_KINDS)}")
         slug = str(name).strip().lower().replace(" ", "-")
@@ -466,6 +539,7 @@ class HooksRegistry:
         was blocked, and a per-hook result list. A ``pre_*`` hook that blocks
         short-circuits the remaining hooks (fail-closed gate semantics).
         """
+        kind = LEGACY_KIND_ALIASES.get(kind, kind)
         if kind not in HOOK_KINDS:
             raise ValueError(f"kind must be one of {', '.join(HOOK_KINDS)}")
         if context is None:

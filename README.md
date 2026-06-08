@@ -122,6 +122,30 @@ and disconnected automations. Lattice AI keeps those parts together:
 - multi-agent workflows leave behind replayable plans, reviews, retries, and
   outcomes.
 
+## v3.4.1 Highlights
+
+Lattice AI v3.4.1 is the **runtime completion** release: it makes the v3.4.0
+runtime systems verifiably complete and corrects the v3.4.0 overclaims an
+implementation audit found. Every item is verified by a **live end-to-end run**
+against a booted server (see `docs/assets/v3.4.1/e2e_runtime_log.txt`).
+
+- **Hooks — full lifecycle.** One shared tool-dispatch path fires `pre_tool`/
+  `post_tool` across the HTTP, agent, and workflow tool paths (v3.4.0 only fired
+  on the HTTP path); workflow hooks fire from both the designer and platform
+  paths; the upload pipeline fires granular upload + index hooks; **all 7
+  built-in hooks have real runners**, and non-executable hooks are flagged
+  `advisory`.
+- **Local Agent — real probes.** `online`/`handshake`/`health`/
+  `filesystem_access` are no longer hardcoded — they are probed (real filesystem
+  write, live graph reachability, derived `mode`, `pid`, handshake latency).
+- **Connect Folder — proven end-to-end.** A real local folder is connected,
+  indexed, and visible in the Files table, retrieval, and hybrid search.
+- **Folder Watch — proven end-to-end + restore.** Creating a file triggers a
+  debounced reindex (`watchdog` installed); the watch is restored after restart.
+
+See [RELEASE_NOTES_v3.4.1.md](RELEASE_NOTES_v3.4.1.md) and the evidence-traced
+[FEATURE_STATUS.md](FEATURE_STATUS.md).
+
 ## v3.4.0 Highlights
 
 Lattice AI v3.4.0 is the **platform completion** release: it closes the remaining
@@ -307,7 +331,8 @@ Core areas:
 
 | Version | Theme |
 | --- | --- |
-| **3.4.0** | Platform completion — hooks execution engine, uploads visible in Files, VLM image input, agent run trigger, on-device Local Agent / Connect Folder / Folder Watch; Enterprise stays honestly disabled; refreshed v3.4.0 public assets |
+| **3.4.1** | Runtime completion — hooks full lifecycle (shared tool dispatch across HTTP/agent/workflow, all built-ins real), Local Agent real probes (no hardcoded readiness), Connect Folder + Folder Watch proven live end-to-end + restore-on-restart; corrects v3.4.0 overclaims |
+| 3.4.0 | Platform completion — hooks execution engine, uploads visible in Files, VLM image input, agent run trigger, on-device Local Agent / Connect Folder / Folder Watch; Enterprise stays honestly disabled; refreshed v3.4.0 public assets |
 | 3.3.1 | Visual product rebuild — rebuilt `/app` shell, Basic/Advanced/Admin navigation, cooler token palette, compact component system, Home readiness dashboard, Files local-agent truthfulness, Settings runtime status, and v3.3.1 design notes |
 | **3.3.0** | Product quality & honesty release — evidence-based feature audit (`FEATURE_STATUS.md`), single-source version truth, working manual document upload in Files, fixed document-generation streaming, truthful Home retrieval status, documented design system (`STYLE_SYSTEM.md`) |
 | 3.2.0 | Feature-complete platform — multi-agent collaboration, agent registry, marketplace + templates, workflow agents, autonomous planning, long-term memory + manager, skills/hooks/tool registries, MCP manager, all operable from `/app` |

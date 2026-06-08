@@ -51,9 +51,10 @@ class _LocalWatchHandler:
 class LocalKnowledgeWatcher:
     """Debounced watchdog wrapper for approved local knowledge sources."""
 
-    def __init__(self, get_graph: Callable[[], Any], *, debounce_seconds: float = 5.0):
+    def __init__(self, get_graph: Callable[[], Any], *, debounce_seconds: float = 5.0, hooks: Any = None):
         self._get_graph = get_graph
         self._debounce_seconds = debounce_seconds
+        self._hooks = hooks
         self._lock = threading.Lock()
         self._watched: Dict[str, Dict[str, Any]] = {}
         self._observer_cls = None
@@ -187,6 +188,10 @@ class LocalKnowledgeWatcher:
         if graph is None:
             return
         consent = source.get("consent") or {}
+        root = source.get("root_path")
+        if self._hooks is not None:
+            self._hooks.fire_hook("pre_index", "folder.reindex",
+                                  payload={"source_id": source_id, "root_path": root, "trigger": "watch"})
         try:
             graph.index_local_folder(
                 Path(source["root_path"]),
@@ -199,11 +204,17 @@ class LocalKnowledgeWatcher:
                 if source_id in self._watched:
                     self._watched[source_id]["last_indexed_at"] = _now_seconds()
                     self._watched[source_id]["last_error"] = None
+            if self._hooks is not None:
+                self._hooks.fire_hook("post_index", "folder.reindex",
+                                      payload={"source_id": source_id, "root_path": root, "trigger": "watch", "status": "ok"})
         except Exception as exc:
             logging.warning("local knowledge watcher reindex failed for %s: %s", source_id, exc)
             with self._lock:
                 if source_id in self._watched:
                     self._watched[source_id]["last_error"] = str(exc)
+            if self._hooks is not None:
+                self._hooks.fire_hook("post_index", "folder.reindex",
+                                      payload={"source_id": source_id, "root_path": root, "trigger": "watch", "status": "error", "error": str(exc)})
 
 
 def _now_seconds() -> float:
@@ -221,6 +232,7 @@ def create_local_knowledge_router(
     local_permission_response: Callable[..., dict],
     require_local_approval: Callable[..., None],
     watcher: Optional[LocalKnowledgeWatcher] = None,
+    hooks: Any = None,
 ) -> APIRouter:
     router = APIRouter()
 
@@ -293,6 +305,10 @@ def create_local_knowledge_router(
         if not req.approved:
             return local_permission_response(req.path, "read", current_user)
         require_local_approval(token=req.approval_token, path=req.path, action="read", user_email=current_user)
+        if hooks is not None:
+            hooks.fire_hook("pre_index", "folder.index",
+                            payload={"root_path": req.path, "trigger": "connect", "watch": req.watch_enabled},
+                            user_email=current_user)
         try:
             result = kg.index_local_folder(
                 Path(req.path),
@@ -303,7 +319,17 @@ def create_local_knowledge_router(
                 max_files=req.max_files,
             )
         except ValueError as exc:
+            if hooks is not None:
+                hooks.fire_hook("post_index", "folder.index",
+                                payload={"root_path": req.path, "trigger": "connect", "status": "error", "error": str(exc)},
+                                user_email=current_user)
             raise HTTPException(status_code=400, detail=str(exc)) from exc
+        if hooks is not None:
+            _idx = (result.get("index") or {}) if isinstance(result, dict) else {}
+            hooks.fire_hook("post_index", "folder.index",
+                            payload={"root_path": req.path, "trigger": "connect", "status": "ok",
+                                     "indexed": _idx.get("indexed") or (result or {}).get("indexed")},
+                            user_email=current_user)
 
         if watcher:
             if req.watch_enabled:

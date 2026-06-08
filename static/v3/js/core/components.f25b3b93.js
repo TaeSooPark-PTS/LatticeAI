@@ -74,7 +74,7 @@ const STATE_VARIANT = {
   // Agent runs / Hook dispatch). Keep these honest: amber for in-progress,
   // green for healthy/active, red for blocked/failed, neutral for inert.
   ingested: "warn", ingesting: "warn", watching: "ok", watched: "ok",
-  connected: "ok", online: "ok", offline: "err", synced: "ok",
+  connected: "ok", online: "ok", offline: "err", degraded: "warn", starting: "warn", synced: "ok",
   queued: "warn", running: "warn", retrying: "warn", retried_ok: "ok",
   rejected: "err", cancelled: "", stopped: "", blocked: "err",
   advisory: "warn", skipped: "", complete: "ok", partial: "warn",

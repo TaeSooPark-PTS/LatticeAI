@@ -2,6 +2,31 @@
 
 The detailed historical changelog lives in [docs/CHANGELOG.md](docs/CHANGELOG.md).
 
+## [3.4.1] - 2026-06-08
+
+Runtime completion release — makes the v3.4.0 runtime systems verifiably complete
+and corrects the v3.4.0 overclaims an implementation audit found. Every change is
+verified by a live end-to-end run (`docs/assets/v3.4.1/e2e_runtime_log.txt`,
+7/7 PASS + restore-on-restart). See
+[RELEASE_NOTES_v3.4.1.md](RELEASE_NOTES_v3.4.1.md) and
+[FEATURE_STATUS.md](FEATURE_STATUS.md).
+
+- **Hooks — full lifecycle.** Shared `dispatch_tool` (`core/hooks.py`) fires
+  `pre_tool`/`post_tool` across the HTTP, agent (`core/agent.py`), and workflow
+  (`platform_runtime`) tool paths (v3.4.0 only fired on the HTTP path). Workflow
+  hooks fire from both the designer and platform paths. Explicit `pre_/post_` ×
+  `run/tool/workflow/upload/index` lifecycle. **All 7 built-in hooks have real
+  runners** (`core/builtin_hooks.py`); non-executable hooks are flagged
+  `advisory`. Legacy `workflow`/`pipeline` kinds mapped forward.
+- **Local Agent — real probes.** `/api/local-agent/status` no longer hardcodes
+  readiness; it probes the filesystem (write/read/delete), graph reachability,
+  and derives `mode` (online/degraded/error) + `pid`, `version`, handshake
+  `latency_ms`, `last_seen`, `error`.
+- **Connect Folder — proven end-to-end.** Real folder → approval → index → Files
+  table → retrieval → hybrid search.
+- **Folder Watch — proven end-to-end.** Create file → debounced reindex →
+  `post_index` hook; `watchdog` installed; restore-on-restart verified.
+
 ## [3.4.0] - 2026-06-08
 
 Platform completion release — closes the remaining non-enterprise functionality

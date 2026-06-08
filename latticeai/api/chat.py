@@ -144,6 +144,7 @@ def create_chat_router(
     knowledge_graph,
     public_model: str,
     base_dir: Path,
+    hooks=None,
 ) -> APIRouter:
     api_router = APIRouter()
     router = model_router
@@ -247,6 +248,7 @@ def create_chat_router(
         clear_history=clear_history,
         knowledge_save=knowledge_save,
         audit=append_audit_event,
+        hooks=hooks,
     )
 
     @api_router.post("/chat")

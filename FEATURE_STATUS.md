@@ -1,9 +1,23 @@
-# Lattice AI — Feature Status (v3.4.0)
+# Lattice AI — Feature Status (v3.4.1)
 
-**Release type:** platform completion — closes the remaining non-enterprise
-functionality gaps the v3.3.0 audit flagged (hooks execution, uploads↔Files,
-VLM image input, agent run trigger, local agent, connect folder, folder watch).
-Every v3.4.0 change below is runtime-verified on a live server, not only traced.
+**Release type:** runtime completion — makes the v3.4.0 runtime systems
+*verifiably* complete and corrects the v3.4.0 overclaims the implementation audit
+found. Every v3.4.1 claim below is verified by a **live end-to-end run** against a
+booted server (evidence: [`docs/assets/v3.4.1/e2e_runtime_log.txt`](docs/assets/v3.4.1/e2e_runtime_log.txt)),
+not by unit tests, mocks, or endpoint existence alone.
+
+## v3.4.1 Runtime Completion — what was partial in v3.4.0, now complete
+
+The v3.4.0 audit found four runtime gaps; v3.4.1 closes them and the overclaims:
+
+| Area | v3.4.0 reality (overclaim) | v3.4.1 (live-verified) |
+| --- | --- | --- |
+| **Hooks** | "fires from tools and workflows" — actually tool hooks fired from the **HTTP path only**; the agent + multi-agent + platform workflow paths bypassed hooks; 4/7 built-ins were advisory no-ops | One shared `dispatch_tool` lifecycle across **HTTP + agent + workflow** tool paths; workflow hooks fire from **both** the designer and platform paths; full `pre_/post_` × `run/tool/workflow/upload/index` lifecycle; **all 7 built-ins have real runners**; non-executable hooks are explicitly flagged `advisory` |
+| **Local Agent** | `online`/`handshake`/`health`/`filesystem_access` were **hardcoded constants** | All **probed**: real filesystem write/read/delete, live graph reachability, derived `mode` (online/degraded/error), `pid`, `version`, handshake `latency_ms`, `last_seen`, `error` |
+| **Connect Folder** | wired but **never run end-to-end** | Live: real folder → permission approval → index → Files table → retrieval → hybrid search |
+| **Folder Watch** | verified only in isolation; `watchdog` absent at runtime | `watchdog` installed + declared; live create→reindex→`post_index` hook; **restore-on-restart** verified |
+
+Live E2E result (booted server, isolated data dir): **7/7 PASS** + restore-on-restart PASS.
 **Method:** every classification below is traced through source — UI view
 (`static/v3/js/views/*.js`) → API adapter (`static/v3/js/core/api.js`) → FastAPI
 router (`latticeai/api/*.py`) → service/core (`latticeai/services/*`,
@@ -53,9 +67,9 @@ intentionally **DISABLED**.
 | Agents | WORKING — **run trigger now in the Agents view** | Run/Stop/Status/Queue/Logs console; pre/post-run hooks fire |
 | Workflows / Planning / Pipeline | WORKING (deterministic) | Workflow start/end hooks fire |
 | Skills | WORKING (registry + filesystem) | — |
-| Hooks | **WORKING — execution implemented** (was PLACEHOLDER) | `run_hook`/`run_hooks`/`fire_hook` + run log; fires from agents/workflows/tools/pipeline |
-| MCP / Tools / Marketplace | WORKING management; live MCP calls PARTIAL | Tool dispatch fires pre/post-tool hooks |
-| Settings / Home / My Computer | WORKING — **Local Agent + Connect Folder + Watch** | `/api/local-agent/status`; Folder Watch surfaced (watchdog) |
+| Hooks | **WORKING — full lifecycle (v3.4.1)** | Shared `dispatch_tool` across HTTP+agent+workflow tool paths; both workflow paths; upload+index granularity; all 7 built-ins have real runners; `advisory` flag |
+| MCP / Tools / Marketplace | WORKING management; live MCP calls PARTIAL | Tool hooks fire from **all** tool paths (v3.4.1), not just HTTP |
+| Settings / Home / My Computer | WORKING — **Local Agent real probes (v3.4.1)** | `/api/local-agent/status` probed (fs/graph/mode/pid/handshake-latency); was hardcoded in v3.4.0 |
 | Authentication | WORKING | — |
 | Admin | WORKING read surfaces; Enterprise DISABLED | unchanged — Enterprise stays honestly disabled |
 
@@ -323,16 +337,26 @@ in `server_app.py`) or, for user hooks, by executing their `command` as a
 **gate**: a blocking `pre_run` aborts an agent run, a blocking `pre_tool` aborts
 the tool call (a non-zero exit from a `pre_*` command hook blocks fail-closed).
 Every dispatch is recorded to a bounded, persisted **run log** (`hooks_runs.json`)
-exposed at `GET /api/hooks/runs`; `POST /api/hooks/run` fires on demand. Hooks
-fire from real lifecycle points: **Agents** (`agent_runtime.start` pre/post-run),
-**Workflows** (`workflow_engine.run` start/end), **Tools**
-(`api/tools._tool_response` pre/post-tool), and the **upload Pipeline**
-(`upload_service` `document.ingested`). *Verified* on a live server: firing
-`builtin:redact-secrets` redacted a `token` field; an agent run auto-fired
-pre_run + post_run hooks; the run log recorded all three. 17 unit tests cover the
-engine + AgentRuntime + WorkflowEngine integration (`tests/unit/test_hooks_dispatch.py`).
-*Honesty note:* built-in hooks with no bound runner and no command report
-`advisory` (listed/ordered only), never a fake success.
+exposed at `GET /api/hooks/runs`; `POST /api/hooks/run` fires on demand.
+
+**v3.4.1 — full lifecycle coverage (corrects the v3.4.0 scope).** A single shared
+`dispatch_tool` (`core/hooks.py`) drives `pre_tool → execute → post_tool` for
+**all three** tool paths — the HTTP `/tools/*` routes
+(`api/tools._tool_response`), the single-agent runtime (`core/agent.py` via
+`AgentDeps.hooks`), and the workflow tool node (`platform_runtime._tool_node_runner`).
+`pre_workflow`/`post_workflow` fire from **both** the designer endpoint and the
+platform path (`platform_runtime.run_workflow_by_id` now passes `hooks` to
+`WorkflowEngine`), so the multi-agent executor no longer bypasses workflow hooks.
+The upload pipeline fires granular `pre_upload`/`post_upload` + `pre_index`/
+`post_index`; the local-folder index and **folder-watch reindex** fire
+`pre_index`/`post_index` too. **All 7 built-in hooks have real runners**
+(`core/builtin_hooks.py`) — none is a silent no-op; a hook with no bound runner
+and no command is flagged `advisory` in the registry + UI. Legacy `workflow`/
+`pipeline` kinds are accepted and mapped forward. 19 unit tests
+(`tests/unit/test_hooks_dispatch.py`). *Live-verified* (`e2e_runtime_log.txt`):
+firing `builtin:redact-secrets` redacted a `token`; an HTTP tool call fired
+pre_tool (real `sensitivity`/`policy` output) + post_tool; an agent run auto-fired
+pre_run + post_run; an upload fired all four upload+index kinds.
 
 ---
 
@@ -376,16 +400,19 @@ honest (unavailable stays unavailable; a missing entity count yields an
 `/workspace/computer-memory` (`api.js sysinfo/computerMemory`). Hardware stats are
 real where the host exposes them; consent-gated computer memory.
 
-**WORKING in v3.4.0 — Local Agent + Connect Folder + Folder Watch.** My Computer
-adds a **Local Agent** panel reading `GET /api/local-agent/status`
-(`local_files.py`): it reports the *real* on-device runtime state — online
-(true iff the endpoint responds), platform/machine/python, an in-process
-**handshake**, filesystem-access + watcher-availability health, and connected/
-watching folder counts. No fake readiness: a fresh instance honestly shows 0
-folders and `watcher_available:false` when `watchdog` is not installed. A
-Connect-Folder + Folder-Watch panel mirrors the Files surface (connect, list,
-stop-watch). The "Local Agent" is framed honestly as the on-device Lattice
-runtime — no separate desktop install is required for local-first operation.
+**WORKING (v3.4.1 real probes; v3.4.0 was hardcoded) — Local Agent + Connect
+Folder + Folder Watch.** My Computer's **Local Agent** panel reads
+`GET /api/local-agent/status` (`local_files.py`). **v3.4.0 hardcoded**
+`online`/`handshake`/`health`/`filesystem_access` to `true`; **v3.4.1 probes them
+for real**: a filesystem write→read→delete in the data dir, a live
+`knowledge_graph.stats()` reachability call, and a derived `mode`
+(online/degraded/error) — plus `pid`, `version`, handshake `latency_ms`,
+`last_seen`, and an `error` string when a probe fails. No fake readiness: a fresh
+instance shows 0 folders and `watcher_available:false` when `watchdog` is absent.
+The Connect-Folder + Folder-Watch panel mirrors the Files surface (connect, list,
+stop-watch). *Live-verified* (`e2e_runtime_log.txt`): `mode=online`, real `pid`,
+`handshake.latency_ms`, `graph_reachable=true`, `error=null`. The "Local Agent"
+is honestly the on-device Lattice runtime — no separate desktop install.
 
 ---
 
