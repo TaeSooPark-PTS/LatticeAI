@@ -17,6 +17,7 @@ from typing import Any, Callable, Dict, Optional, Set
 
 from fastapi import HTTPException, Request
 
+from latticeai.core.hooks import dispatch_tool
 from latticeai.core.multi_agent import MultiAgentOrchestrator, default_role_runner
 from latticeai.core.workflow_engine import WorkflowEngine
 
@@ -32,6 +33,7 @@ class PlatformRuntime:
         workspace_graph: Callable[[], Any],
         workspace_scope_from_request: Callable[[Request], Optional[str]],
         get_tool_permission: Callable[..., Dict[str, Any]],
+        hooks: Any = None,
     ):
         self.store = store
         self.svc = workspace_service
@@ -40,6 +42,9 @@ class PlatformRuntime:
         self.workspace_graph = workspace_graph
         self.scope_from_request = workspace_scope_from_request
         self.get_tool_permission = get_tool_permission
+        # Lifecycle hooks registry — wires the workflow runtime + workflow tool
+        # nodes into the same pre_*/post_* lifecycle as the HTTP + agent paths.
+        self.hooks = hooks
 
     # ── request gating ────────────────────────────────────────────────────
 
@@ -77,11 +82,18 @@ class PlatformRuntime:
         def runner(*, node, context):
             cfg = node.get("config") or {}
             name = cfg.get("tool") or ""
-            try:
-                permission = dict(self.get_tool_permission(name))
-            except Exception:
-                permission = {"tool": name, "risk": "unknown"}
-            return {"tool": name, "args": cfg.get("args") or {}, "recorded": True, "permission": permission}
+            args = cfg.get("args") or {}
+
+            def _record():
+                try:
+                    permission = dict(self.get_tool_permission(name))
+                except Exception:
+                    permission = {"tool": name, "risk": "unknown"}
+                return {"tool": name, "args": args, "recorded": True, "permission": permission}
+
+            # Same tool lifecycle as the HTTP + agent paths (a pre_tool block
+            # raises PermissionError, surfaced as the node error by the engine).
+            return dispatch_tool(self.hooks, name or "tool", args, _record, source="workflow")
         return runner
 
     def _skill_node_runner(self):
@@ -158,7 +170,7 @@ class PlatformRuntime:
         }
         if with_agent:
             runners["agent"] = self._agent_node_runner(user, scope)
-        result = WorkflowEngine(runners).run(workflow, inputs=inputs or {})
+        result = WorkflowEngine(runners, hooks=self.hooks).run(workflow, inputs=inputs or {})
         run = self.store.record_workflow_run(
             workflow_id=workflow_id, name=workflow.get("name") or "workflow",
             status=result.status, timeline=result.timeline, outputs=result.outputs,

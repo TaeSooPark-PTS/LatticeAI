@@ -2,7 +2,11 @@
 
 from __future__ import annotations
 
+import os
 import platform
+import time
+import uuid
+from datetime import datetime
 from pathlib import Path
 from typing import Optional
 
@@ -13,6 +17,11 @@ from pydantic import BaseModel
 from knowledge_graph_api import create_knowledge_graph_router
 from local_knowledge_api import create_local_knowledge_router
 from tools import local_list, local_read, local_write
+
+try:
+    from latticeai import __version__ as _LATTICE_VERSION
+except Exception:  # pragma: no cover - defensive
+    _LATTICE_VERSION = "unknown"
 
 
 class LocalAccessRequest(BaseModel):
@@ -37,47 +46,103 @@ def create_local_files_router(
     require_graph,
     static_dir: Path,
     local_kg_watcher,
+    hooks=None,
+    data_dir: Optional[Path] = None,
 ) -> APIRouter:
     router = APIRouter()
 
     @router.get("/api/local-agent/status")
     async def local_agent_status(request: Request):
         """Real on-device runtime status — the 'Local Agent' is the Lattice
-        server running on this machine (filesystem access + folder watching +
-        local inference), not a separate desktop process. Everything reported
-        here is observed, never faked."""
+        server running on this machine. Every field below is *probed*, not
+        hardcoded: filesystem access is a real write/read/delete; the graph and
+        watcher are reached live; the mode/handshake are derived from those
+        probes. A failing subsystem yields ``degraded``/``error`` honestly.
+
+        Allowed modes: offline · starting · online · degraded · error.
+        """
         require_user(request)
+        started = time.perf_counter()
+        errors = []
+
+        # ── filesystem capability: a real write → read → delete probe ─────────
+        fs_ok = False
+        probe_dir = Path(data_dir) if data_dir else Path(static_dir).parent
+        try:
+            probe_dir.mkdir(parents=True, exist_ok=True)
+            probe = probe_dir / f".local_agent_probe_{uuid.uuid4().hex}"
+            token = uuid.uuid4().hex
+            probe.write_text(token, encoding="utf-8")
+            fs_ok = probe.read_text(encoding="utf-8") == token
+            probe.unlink()
+        except Exception as exc:
+            errors.append(f"filesystem: {exc}")
+
+        # ── graph subsystem reachability (real call) ──────────────────────────
+        graph_reachable = None
+        if knowledge_graph is not None:
+            try:
+                knowledge_graph.stats()
+                graph_reachable = True
+            except Exception as exc:
+                graph_reachable = False
+                errors.append(f"graph: {exc}")
+
+        # ── watcher + connected sources (real) ────────────────────────────────
         watch = local_kg_watcher.status() if local_kg_watcher else {"available": False, "active": {}}
         sources = []
         try:
             if knowledge_graph is not None:
                 sources = (knowledge_graph.local_sources() or {}).get("sources", [])
-        except Exception:
-            sources = []
+        except Exception as exc:
+            errors.append(f"sources: {exc}")
         watched = len(watch.get("active", {}) or {})
+
+        # ── derive mode + handshake from the probes (no constants) ────────────
+        if not fs_ok:
+            mode = "error"
+        elif graph_reachable is False:
+            mode = "degraded"
+        else:
+            mode = "online"
+        handshake_ok = fs_ok and graph_reachable is not False
+        latency_ms = round((time.perf_counter() - started) * 1000, 2)
+
         return {
             "agent": {
                 "id": "lattice-local-runtime",
                 "name": "Lattice Local Agent",
                 "kind": "on-device-runtime",
-                "online": True,
+                "online": mode == "online",
                 "platform": platform.platform(),
                 "machine": platform.machine(),
                 "python": platform.python_version(),
             },
+            "online": mode == "online",
+            "mode": mode,
+            "version": _LATTICE_VERSION,
+            "pid": os.getpid(),
             "handshake": {
-                "ok": True,
+                "ok": handshake_ok,
                 "transport": "in-process",
-                "detail": "The local Lattice runtime serves this workspace on-device; no external agent is required.",
+                "latency_ms": latency_ms,
+                "detail": "Probed the in-process runtime (filesystem + graph); the local Lattice server is the on-device agent — no separate desktop process.",
             },
             "health": {
-                "status": "ok",
-                "filesystem_access": True,
+                "status": mode,
+                "filesystem_access": fs_ok,
+                "graph_reachable": graph_reachable,
                 "watcher_available": bool(watch.get("available")),
             },
+            "filesystem_access": fs_ok,
+            "watcher_available": bool(watch.get("available")),
+            "connected_folders": len(sources),
+            "watched_folders": watched,
             "folders": {"connected": len(sources), "watching": watched},
             "watch": watch,
             "sources": sources,
+            "last_seen": datetime.now().isoformat(timespec="seconds"),
+            "error": "; ".join(errors) if errors else None,
         }
 
     @router.post("/local/list")
@@ -157,6 +222,7 @@ def create_local_files_router(
             local_permission_response=permission_gateway.local_permission_response,
             require_local_approval=permission_gateway.require_local_approval,
             watcher=local_kg_watcher,
+            hooks=hooks,
         )
     )
 

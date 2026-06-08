@@ -211,12 +211,15 @@ function buildAgent({ h, icon, c }, res) {
   const folders = d.folders || {};
 
   const online = !!agent.online;
+  const mode = d.mode || (online ? "online" : "offline");
 
   const rows = [
+    { k: "Mode", v: mode, icon: "activity" },
+    { k: "Version", v: d.version || "—", mono: true, icon: "tag" },
+    { k: "PID", v: d.pid != null ? String(d.pid) : "—", mono: true, icon: "hash" },
     { k: "Platform", v: agent.platform || "—", icon: "device-desktop" },
     { k: "Machine", v: agent.machine || "—", mono: true, icon: "cpu" },
     { k: "Python", v: agent.python || "—", mono: true, icon: "code" },
-    { k: "Kind", v: agent.kind || "on-device runtime", icon: "robot" },
   ];
 
   return h("div.lt3-stack-3",
@@ -231,8 +234,8 @@ function buildAgent({ h, icon, c }, res) {
             h("span.lt3-mono", agent.id)),
         ),
       ),
-      // online is reported by the live endpoint — never fabricated.
-      c.statePill(online ? "active" : "idle"),
+      // mode is probed by the live endpoint (online/degraded/error) — never faked.
+      c.statePill(mode),
     ),
 
     h("dl.lt3-keyval",
@@ -247,7 +250,7 @@ function buildAgent({ h, icon, c }, res) {
       h("div.lt3-row", { style: { "justify-content": "space-between", "align-items": "center" } },
         h("span.lt3-row-2", icon("plug-connected"),
           handshake.ok
-            ? `Handshake OK · ${handshake.transport || "local"}`
+            ? `Handshake OK · ${handshake.transport || "local"}${handshake.latency_ms != null ? " · " + handshake.latency_ms + "ms" : ""}`
             : "Handshake not established"),
         c.statePill(handshake.ok ? "active" : "idle"),
       ),

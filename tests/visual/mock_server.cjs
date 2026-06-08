@@ -312,18 +312,21 @@ const server = http.createServer((req, res) => {
     if (pathname === "/knowledge-graph/local/watch/status") return json(res, localSources.watch);
     if (pathname === "/api/local-agent/status") return json(res, {
       agent: { id: "lattice-local-runtime", name: "Lattice Local Agent", kind: "on-device-runtime", online: true, platform: "macOS-15.5-arm64-arm-64bit", machine: "arm64", python: "3.12.4" },
-      handshake: { ok: true, transport: "in-process", detail: "The local Lattice runtime serves this workspace on-device; no external agent is required." },
-      health: { status: "ok", filesystem_access: true, watcher_available: true },
+      online: true, mode: "online", version: "3.4.1", pid: 31166,
+      handshake: { ok: true, transport: "in-process", latency_ms: 0.7, detail: "Probed the in-process runtime (filesystem + graph); the local Lattice server is the on-device agent — no separate desktop process." },
+      health: { status: "online", filesystem_access: true, graph_reachable: true, watcher_available: true },
+      filesystem_access: true, watcher_available: true, connected_folders: 2, watched_folders: 1,
       folders: { connected: 2, watching: 1 },
       watch: localSources.watch,
       sources: localSources.sources,
+      last_seen: "2026-06-08T21:21:34", error: null,
     });
   }
   if (pathname === "/api/hooks/runs") return json(res, {
     runs: [
       { hook_id: "builtin:redact-secrets", name: "Redact secrets", kind: "pre_run", status: "ok", detail: "", output: "redacted 1 field(s)", duration_ms: 1, blocked: false, target_event: "agent.run", target_kind: "pre_run", started_at: "2026-06-07T10:00:01" },
       { hook_id: "builtin:audit-agent-run", name: "Audit agent run", kind: "post_run", status: "ok", detail: "", output: "audited run agent-run-9", duration_ms: 2, blocked: false, target_event: "agent.run", target_kind: "post_run", started_at: "2026-06-07T10:00:02" },
-      { hook_id: "builtin:pipeline-index-status", name: "Pipeline index status", kind: "pipeline", status: "ok", detail: "", output: "pipeline document.ingested: indexed=true", duration_ms: 0, blocked: false, target_event: "document.ingested", target_kind: "pipeline", started_at: "2026-06-07T09:58:00" },
+      { hook_id: "builtin:pipeline-index-status", name: "Pipeline index status", kind: "post_index", status: "ok", detail: "", output: "pipeline document.index: indexed=true", duration_ms: 0, blocked: false, target_event: "document.index", target_kind: "post_index", started_at: "2026-06-07T09:58:00" },
       { hook_id: "user:notify-slack", name: "Notify Slack on release", kind: "post_run", status: "ok", detail: "", output: "posted to #releases", duration_ms: 142, blocked: false, target_event: "agent.run", target_kind: "post_run", started_at: "2026-06-07T09:55:00" },
       { hook_id: "user:policy-gate", name: "Policy gate", kind: "pre_tool", status: "blocked", detail: "write to /etc denied by policy", output: "", duration_ms: 8, blocked: true, target_event: "tool.write_file", target_kind: "pre_tool", started_at: "2026-06-07T09:50:00" },
     ],
@@ -412,15 +415,15 @@ const server = http.createServer((req, res) => {
   });
   if (pathname === "/api/hooks/fire" && req.method === "POST") return json(res, { kind: "pre_run", event: "manual", ran: 1, blocked: false, block_reason: "", results: [], generated_at: "2026-06-07T10:05:00" });
   if (pathname === "/api/hooks") return json(res, { hooks: [
-    { id: "builtin:redact-secrets", name: "Redact secrets", kind: "pre_run", order: 10, description: "Strip secret-like fields from agent context before a run.", binding: "multi_agent._redact", managed: "platform", source: "builtin", enabled: true, removable: false },
-    { id: "builtin:research-memory-snapshot", name: "Research memory snapshot", kind: "agent", order: 20, description: "Capture a short-term memory snapshot after the researcher stage.", binding: "multi_agent.default_role_runner", managed: "platform", source: "builtin", enabled: true, removable: false },
-    { id: "builtin:tool-permission-gate", name: "Tool permission gate", kind: "pre_tool", order: 10, description: "Require approval for tools whose policy is not auto-approve.", binding: "tool_registry.permission", managed: "platform", source: "builtin", enabled: true, removable: false },
-    { id: "builtin:sensitive-data-guard", name: "Sensitive-data guard", kind: "pre_tool", order: 20, description: "Classify outgoing content for sensitive data before tool execution.", binding: "server_app.classify_sensitive_message", managed: "platform", source: "builtin", enabled: true, removable: false },
-    { id: "builtin:audit-agent-run", name: "Audit agent run", kind: "post_run", order: 10, description: "Append every completed agent run to the workspace audit log.", binding: "AgentRuntime.start", managed: "platform", source: "builtin", enabled: true, removable: false },
-    { id: "builtin:pipeline-index-status", name: "Pipeline index status", kind: "pipeline", order: 10, description: "Publish ingest / embed / graph-build pipeline state.", binding: "api.search", managed: "platform", source: "builtin", enabled: true, removable: false },
-    { id: "builtin:workflow-replay-log", name: "Workflow replay log", kind: "workflow", order: 10, description: "Record each workflow run's timeline so it can be replayed.", binding: "api.workflow_designer", managed: "platform", source: "builtin", enabled: true, removable: false },
-    { id: "user:notify-slack", name: "Notify Slack on release", kind: "post_run", order: 100, description: "Posts a message to #releases after an agent run.", command: "python3 scripts/notify.py", managed: "user", source: "user", enabled: true, removable: true },
-  ], kinds: ["pre_run", "post_run", "pre_tool", "post_tool", "agent", "pipeline", "workflow"], counts: { pre_run: { total: 1, enabled: 1 }, post_run: { total: 2, enabled: 2 }, pre_tool: { total: 2, enabled: 2 }, agent: { total: 1, enabled: 1 }, pipeline: { total: 1, enabled: 1 }, workflow: { total: 1, enabled: 1 } }, total: 8, enabled: 8 });
+    { id: "builtin:redact-secrets", name: "Redact secrets", kind: "pre_run", order: 10, description: "Strip secret-like fields from agent context before a run.", binding: "multi_agent._redact", managed: "platform", source: "builtin", enabled: true, removable: false, executable: true, advisory: false },
+    { id: "builtin:research-memory-snapshot", name: "Research memory snapshot", kind: "agent", order: 20, description: "Capture a short-term memory snapshot after the researcher stage.", binding: "multi_agent.default_role_runner", managed: "platform", source: "builtin", enabled: true, removable: false, executable: true, advisory: false },
+    { id: "builtin:tool-permission-gate", name: "Tool permission gate", kind: "pre_tool", order: 10, description: "Evaluate + record the governance policy for each tool call.", binding: "tool_registry.permission", managed: "platform", source: "builtin", enabled: true, removable: false, executable: true, advisory: false },
+    { id: "builtin:sensitive-data-guard", name: "Sensitive-data guard", kind: "pre_tool", order: 20, description: "Classify outgoing content for sensitive data before tool execution.", binding: "server_app.classify_sensitive_message", managed: "platform", source: "builtin", enabled: true, removable: false, executable: true, advisory: false },
+    { id: "builtin:audit-agent-run", name: "Audit agent run", kind: "post_run", order: 10, description: "Append every completed agent run to the workspace audit log.", binding: "AgentRuntime.start", managed: "platform", source: "builtin", enabled: true, removable: false, executable: true, advisory: false },
+    { id: "builtin:pipeline-index-status", name: "Pipeline index status", kind: "post_index", order: 10, description: "Publish ingest / embed / graph-build pipeline state.", binding: "api.search", managed: "platform", source: "builtin", enabled: true, removable: false, executable: true, advisory: false },
+    { id: "builtin:workflow-replay-log", name: "Workflow replay log", kind: "post_workflow", order: 10, description: "Record each workflow run's timeline so it can be replayed.", binding: "api.workflow_designer", managed: "platform", source: "builtin", enabled: true, removable: false, executable: true, advisory: false },
+    { id: "user:notify-slack", name: "Notify Slack on release", kind: "post_run", order: 100, description: "Posts a message to #releases after an agent run.", command: "python3 scripts/notify.py", managed: "user", source: "user", enabled: true, removable: true, executable: true, advisory: false },
+  ], kinds: ["pre_run", "post_run", "pre_tool", "post_tool", "pre_workflow", "post_workflow", "pre_upload", "post_upload", "pre_index", "post_index", "agent"], counts: { pre_run: { total: 1, enabled: 1 }, post_run: { total: 2, enabled: 2 }, pre_tool: { total: 2, enabled: 2 }, post_index: { total: 1, enabled: 1 }, post_workflow: { total: 1, enabled: 1 }, agent: { total: 1, enabled: 1 } }, total: 8, enabled: 8 });
   if (pathname === "/tools/permissions") return json(res, { status: "ok", permissions: [
     { tool: "read_file", risk: "low", requires_approval: false, network: false },
     { tool: "write_file", risk: "medium", requires_approval: true, network: false },

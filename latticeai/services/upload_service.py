@@ -37,6 +37,16 @@ async def process_uploaded_document(
     if not bytes_match_extension(contents, suffix):
         raise HTTPException(status_code=400, detail=f"파일 내용이 확장자({suffix})와 일치하지 않습니다.")
 
+    # ── pre_upload hook ── may gate the upload before any work happens.
+    if hooks is not None:
+        pre_up = hooks.fire_hook(
+            "pre_upload", "document.upload",
+            payload={"filename": file.filename, "ext": suffix, "bytes": len(contents)},
+            user_email=current_user,
+        )
+        if pre_up.get("blocked"):
+            raise HTTPException(status_code=403, detail=pre_up.get("block_reason") or "Upload blocked by a pre_upload hook.")
+
     with tempfile.NamedTemporaryFile(suffix=suffix, delete=False) as tmp:
         tmp.write(contents)
         tmp_path = tmp.name
@@ -52,6 +62,12 @@ async def process_uploaded_document(
             },
             -1,
         )
+        # ── pre_index / post_index hooks bracket the KG ingest (chunk → embed →
+        # graph-build), the actual indexing step.
+        if hooks is not None:
+            hooks.fire_hook("pre_index", "document.index",
+                            payload={"filename": file.filename, "chars": result.get("chars")},
+                            user_email=current_user)
         try:
             if not (enable_graph and knowledge_graph):
                 raise RuntimeError("graph disabled")
@@ -70,6 +86,12 @@ async def process_uploaded_document(
         except Exception as graph_error:
             logging.warning("knowledge graph document ingest failed: %s", graph_error)
             result["knowledge_graph"] = {"error": str(graph_error)}
+        if hooks is not None:
+            _kg = result.get("knowledge_graph") or {}
+            hooks.fire_hook("post_index", "document.index",
+                            payload={"filename": file.filename, "graph_node": _kg.get("node_id"),
+                                     "indexed": bool(_kg.get("node_id")), "error": _kg.get("error")},
+                            user_email=current_user)
 
         append_audit_event(
             "document_upload",
@@ -93,13 +115,11 @@ async def process_uploaded_document(
         except OSError:
             pass
 
-    # ── pipeline hooks ── the ingest → embed → graph-build pipeline just ran for
-    # this document; fire the pipeline lifecycle hooks so downstream automation
-    # (index-status publishing, custom reindex triggers) executes.
+    # ── post_upload hook ── the whole upload → parse → index pipeline finished.
     if hooks is not None:
         kg = result.get("knowledge_graph") or {}
         hooks.fire_hook(
-            "pipeline", "document.ingested",
+            "post_upload", "document.uploaded",
             payload={
                 "filename": file.filename,
                 "chars": result.get("chars"),

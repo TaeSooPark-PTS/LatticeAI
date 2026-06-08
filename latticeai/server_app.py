@@ -115,6 +115,7 @@ from latticeai.api.garden import create_garden_router
 from latticeai.api.setup import create_setup_router
 from latticeai.api.hooks import create_hooks_router
 from latticeai.core.hooks import HooksRegistry
+from latticeai.core.builtin_hooks import register_builtin_hook_runners
 from latticeai.api.agent_registry import create_agent_registry_router
 from latticeai.core.agent_registry import AgentRegistry
 from latticeai.api.memory import create_memory_router
@@ -286,7 +287,10 @@ KNOWLEDGE_GRAPH = KnowledgeGraphStore(
     DATA_DIR / "knowledge_graph_blobs",
     embedder=EMBEDDER.provider,
 ) if ENABLE_GRAPH else None
-LOCAL_KG_WATCHER = LocalKnowledgeWatcher(lambda: KNOWLEDGE_GRAPH) if ENABLE_GRAPH else None
+# Hooks registry is constructed here (ahead of the watcher) so folder-watch
+# reindexes can fire the pre_index/post_index lifecycle hooks.
+HOOKS_REGISTRY = HooksRegistry(DATA_DIR / "hooks.json")
+LOCAL_KG_WATCHER = LocalKnowledgeWatcher(lambda: KNOWLEDGE_GRAPH, hooks=HOOKS_REGISTRY) if ENABLE_GRAPH else None
 # ── v2 Realtime bus: constructed first so the store can fan every timeline
 # event into the realtime feed via a single additive sink (no per-call wiring).
 REALTIME_BUS = RealtimeBus()
@@ -300,7 +304,7 @@ PLUGIN_REGISTRY = PluginRegistry(PLUGINS_DIR, store=WORKSPACE_OS)
 TEMPLATE_CATALOG = TemplateCatalog()
 # ── v3.2 platform registries: lifecycle hooks + agent registry, persisted under
 # DATA_DIR so the /app Hooks and Agent Registry views read/write real state.
-HOOKS_REGISTRY = HooksRegistry(DATA_DIR / "hooks.json")
+# (HOOKS_REGISTRY is constructed earlier, before the local-knowledge watcher.)
 AGENT_REGISTRY = AgentRegistry(DATA_DIR / "agent_registry.json")
 # Unified long-term memory platform fronting workspace memories, agent
 # snapshots, conversation history, and the KG graph/vector index.
@@ -1275,6 +1279,7 @@ PLATFORM = PlatformRuntime(
     workspace_graph=_workspace_graph,
     workspace_scope_from_request=_workspace_scope_from_request,
     get_tool_permission=get_tool_permission,
+    hooks=HOOKS_REGISTRY,
 )
 
 # Single AgentRuntime boundary over the orchestrator + run store.
@@ -1290,38 +1295,13 @@ AGENT_RUNTIME = AgentRuntime(
 # The registry lists built-in hooks; binding a runner here makes them *execute*
 # real platform behaviour when fired (not a placeholder). Runners take a
 # HookContext and may mutate its payload, return a status dict, or block.
-def _hook_redact_secrets(context):
-    """pre_run — strip secret-like keys from the agent context packet."""
-    secret_re = ("token", "password", "passwd", "secret", "api_key", "apikey",
-                 "authorization", "auth", "cookie", "session", "private_key")
-    redacted = []
-    payload = context.payload if isinstance(context.payload, dict) else {}
-    for key in list(payload.keys()):
-        if any(s in str(key).lower() for s in secret_re):
-            payload[key] = "***redacted***"
-            redacted.append(key)
-    return {"status": "ok", "output": f"redacted {len(redacted)} field(s)" if redacted else "no secrets present"}
-
-def _hook_audit_agent_run(context):
-    """post_run — append the completed agent run to the workspace audit log."""
-    p = context.payload if isinstance(context.payload, dict) else {}
-    append_audit_event(
-        "hook_post_run",
-        user_email=context.user_email,
-        run_id=p.get("run_id"),
-        agent_id=p.get("agent_id"),
-        status=p.get("status"),
-    )
-    return {"status": "ok", "output": f"audited run {p.get('run_id') or ''}".strip()}
-
-def _hook_pipeline_index_status(context):
-    """pipeline — record ingest/embed/graph-build pipeline state for the index."""
-    p = context.payload if isinstance(context.payload, dict) else {}
-    return {"status": "ok", "output": f"pipeline {context.event}: indexed={p.get('indexed')}"}
-
-HOOKS_REGISTRY.register_hook("builtin:redact-secrets", _hook_redact_secrets)
-HOOKS_REGISTRY.register_hook("builtin:audit-agent-run", _hook_audit_agent_run)
-HOOKS_REGISTRY.register_hook("builtin:pipeline-index-status", _hook_pipeline_index_status)
+# Bind a real runner to every built-in hook so none is a silent no-op.
+register_builtin_hook_runners(
+    HOOKS_REGISTRY,
+    append_audit_event=append_audit_event,
+    get_tool_permission=get_tool_permission,
+    classify_sensitive_message=classify_sensitive_message,
+)
 
 app.include_router(create_plugins_router(
     registry=PLUGIN_REGISTRY,
@@ -1435,6 +1415,7 @@ app.include_router(create_models_router(
 
 app.include_router(create_chat_router(
     config=CONFIG,
+    hooks=HOOKS_REGISTRY,
     model_router=router,
     chat_service=CHAT_SERVICE,
     workspace_store=WORKSPACE_OS,

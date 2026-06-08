@@ -15,6 +15,7 @@ from pydantic import BaseModel
 
 from latticeai.api.computer_use import create_computer_use_router
 from latticeai.api.local_files import create_local_files_router
+from latticeai.core.hooks import dispatch_tool
 from latticeai.api.mcp import create_mcp_router
 from latticeai.api.permissions import create_permissions_router
 from latticeai.services.upload_service import process_uploaded_document
@@ -221,21 +222,15 @@ def create_tools_router(
     # ── Direct Tool API ───────────────────────────────────────────────────────────
     
     def _tool_response(fn, *args):
+        # Shared tool lifecycle (same path as the agent + workflow tool calls):
+        # pre_tool (may block) → execute → post_tool.
         tool_name = getattr(fn, "__name__", "tool")
-        # ── pre_tool hooks ── a blocking pre_tool hook (e.g. a permission gate)
-        # stops the tool call before it runs.
-        if HOOKS is not None:
-            pre = HOOKS.fire_hook("pre_tool", f"tool.{tool_name}", payload={"tool": tool_name, "argc": len(args)})
-            if pre.get("blocked"):
-                raise HTTPException(status_code=403, detail=pre.get("block_reason") or f"Tool '{tool_name}' blocked by a pre_tool hook.")
         try:
-            result = fn(*args)
+            result = dispatch_tool(HOOKS, tool_name, {}, lambda: fn(*args), source="http")
+        except PermissionError as exc:
+            raise HTTPException(status_code=403, detail=str(exc))
         except ToolError as exc:
-            if HOOKS is not None:
-                HOOKS.fire_hook("post_tool", f"tool.{tool_name}", payload={"tool": tool_name, "status": "error", "detail": str(exc)})
             raise HTTPException(status_code=400, detail=str(exc))
-        if HOOKS is not None:
-            HOOKS.fire_hook("post_tool", f"tool.{tool_name}", payload={"tool": tool_name, "status": "ok"})
         return {"status": "ok", "workspace": str(AGENT_ROOT), "result": result}
     
     
@@ -458,6 +453,8 @@ def create_tools_router(
         require_graph=_require_graph,
         static_dir=STATIC_DIR,
         local_kg_watcher=LOCAL_KG_WATCHER,
+        hooks=HOOKS,
+        data_dir=DATA_DIR,
     ))
     api_router.include_router(create_computer_use_router(
         model_router=router,

@@ -227,7 +227,7 @@ class WorkflowEngine:
         run = WorkflowRun(workflow_id=definition.get("id"), name=definition.get("name") or "workflow")
         if self.hooks is not None:
             self.hooks.fire_hook(
-                "workflow", "workflow.start",
+                "pre_workflow", "workflow.start",
                 payload={"workflow_id": definition.get("id"), "name": definition.get("name"), "valid": not errors},
             )
         if errors:
@@ -236,7 +236,7 @@ class WorkflowEngine:
             run.finished_at = _now()
             if self.hooks is not None:
                 self.hooks.fire_hook(
-                    "workflow", "workflow.end",
+                    "post_workflow", "workflow.end",
                     payload={"workflow_id": definition.get("id"), "status": run.status},
                 )
             return run
@@ -316,7 +316,7 @@ class WorkflowEngine:
         run.finished_at = _now()
         if self.hooks is not None:
             self.hooks.fire_hook(
-                "workflow", "workflow.end",
+                "post_workflow", "workflow.end",
                 payload={"workflow_id": definition.get("id"), "name": definition.get("name"),
                          "status": run.status, "steps": steps},
             )

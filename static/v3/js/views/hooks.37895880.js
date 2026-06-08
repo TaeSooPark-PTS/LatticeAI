@@ -1,13 +1,18 @@
 /* ============================================================================
- * View: Hooks — the lifecycle hooks registry.
- * Reads /api/hooks (built-in + user hooks across pre_run/post_run/pre_tool/
- * post_tool/agent/pipeline/workflow), toggles enabled state, reorders, and
- * registers custom hooks. Built-in hooks are platform-managed and labelled.
+ * View: Hooks — the lifecycle hooks registry + dispatch.
+ * Reads /api/hooks (built-in + user hooks across the pre_/post_ run, tool,
+ * workflow, upload, and index lifecycle pairs + agent), toggles enabled state,
+ * reorders, registers, runs hooks, and shows a recent-executions log. Built-in
+ * hooks are platform-managed; non-executable hooks are labelled "advisory".
  * ========================================================================== */
 
 const KIND_LABEL = {
-  pre_run: "Pre-run", post_run: "Post-run", pre_tool: "Pre-tool", post_tool: "Post-tool",
-  agent: "Agent", pipeline: "Pipeline", workflow: "Workflow",
+  pre_run: "Pre-run", post_run: "Post-run",
+  pre_tool: "Pre-tool", post_tool: "Post-tool",
+  pre_workflow: "Pre-workflow", post_workflow: "Post-workflow",
+  pre_upload: "Pre-upload", post_upload: "Post-upload",
+  pre_index: "Pre-index", post_index: "Post-index",
+  agent: "Agent",
 };
 
 export async function render(ctx) {
@@ -85,7 +90,7 @@ export async function render(ctx) {
   function hookRow(ctx2, hk) {
     return c.card(h("div.lt3-row", { style: { "justify-content": "space-between", "align-items": "center", gap: "var(--lt3-space-3)" } },
       h("div", { style: { "min-width": 0 } },
-        h("div.lt3-row-2", h("b", hk.name), c.pill(hk.source === "builtin" ? "built-in" : "custom", hk.source === "builtin" ? "info" : ""), hk.managed === "platform" ? c.pill("managed", "") : null),
+        h("div.lt3-row-2", h("b", hk.name), c.pill(hk.source === "builtin" ? "built-in" : "custom", hk.source === "builtin" ? "info" : ""), hk.managed === "platform" ? c.pill("managed", "") : null, hk.advisory ? c.pill("advisory", "warn") : c.pill("executable", "ok")),
         h("p.lt3-muted", { style: { margin: "2px 0 0", "font-size": "var(--lt3-text-sm)" } }, hk.description || ""),
         hk.binding ? h("div.lt3-faint", { style: { "font-size": "var(--lt3-text-2xs)", "font-family": "var(--lt3-font-mono)" } }, hk.binding) : null,
       ),

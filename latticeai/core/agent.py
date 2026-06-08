@@ -28,6 +28,7 @@ from enum import Enum
 from pathlib import Path
 from typing import Any, Awaitable, Callable, Dict, FrozenSet, List, Optional
 
+from latticeai.core.hooks import dispatch_tool
 from tools import ToolError
 
 
@@ -121,6 +122,11 @@ class AgentDeps:
     critic_prompt: str
     memory_updater_prompt: str
     agent_root: Path
+
+    # ── lifecycle hooks port (optional) ──────────────────────────────
+    # When present, every tool execution fires the shared pre_tool/post_tool
+    # lifecycle, so the agent tool path no longer bypasses hooks.
+    hooks: Any = None
 
 
 class AgentRuntime:
@@ -289,13 +295,18 @@ class AgentRuntime:
 
             try:
                 d.check_role(name, current_user)
-                result = d.execute_tool(name, args)
+                # Shared tool lifecycle: pre_tool (may block) → execute → post_tool.
+                result = dispatch_tool(
+                    d.hooks, name, args,
+                    lambda: d.execute_tool(name, args),
+                    user_email=current_user, source="agent",
+                )
                 ctx.transcript.append({
                     "state": AgentState.EXECUTING.value, "action": name,
                     "thoughts": thoughts, "args": args,
                     "risk": risk, "governance": dict(policy), "result": result,
                 })
-            except (ToolError, KeyError, TypeError) as exc:
+            except (ToolError, KeyError, TypeError, PermissionError) as exc:
                 ctx.transcript.append({
                     "state": AgentState.EXECUTING.value, "action": name,
                     "thoughts": thoughts, "args": args,

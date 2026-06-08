@@ -103,6 +103,7 @@ def build_agent_runtime(
     clear_history: Callable[[int], Dict[str, Any]],
     knowledge_save: Callable[..., Dict[str, Any]],
     audit: Callable[..., None],
+    hooks: Any = None,
 ) -> AgentRuntime:
     ensure_agent_root()
     deps = AgentDeps(
@@ -123,6 +124,7 @@ def build_agent_runtime(
         critic_prompt=CRITIC_PROMPT,
         memory_updater_prompt=MEMORY_UPDATER_PROMPT,
         agent_root=AGENT_ROOT,
+        hooks=hooks,
     )
     return AgentRuntime(deps)
 

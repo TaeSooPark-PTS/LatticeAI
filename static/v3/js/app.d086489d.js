@@ -3,7 +3,7 @@
  * Boots the shell. Views are lazy-loaded by the router (see core/routes.js).
  * ========================================================================== */
 
-import { boot } from "./core/shell.80a6ad82.js";
+import { boot } from "./core/shell.d05266f5.js";
 
 const root = document.getElementById("app");
 if (root) boot(root);

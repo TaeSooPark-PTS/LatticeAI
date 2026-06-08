@@ -146,10 +146,18 @@ def test_run_log_records_and_persists(tmp_path):
 
 def test_recent_runs_filter_by_kind(registry):
     registry.run_hooks("pre_run", event="agent.run")
-    registry.run_hooks("workflow", event="workflow.start")
-    only = registry.recent_runs(kind="workflow")
+    registry.run_hooks("post_workflow", event="workflow.end")
+    only = registry.recent_runs(kind="post_workflow")
     assert only["total"] >= 1
-    assert all(r.get("target_kind") == "workflow" for r in only["runs"])
+    assert all(r.get("target_kind") == "post_workflow" for r in only["runs"])
+
+
+def test_legacy_kind_aliases_map_forward(registry):
+    # Old "workflow"/"pipeline" kinds still accepted and mapped to the v3.4.1 pairs.
+    out = registry.run_hooks("workflow", event="legacy")
+    assert out["kind"] == "post_workflow"
+    custom = registry.register(name="legacy pipe", kind="pipeline")
+    assert custom["kind"] == "post_index"
 
 
 def test_hook_context_and_result_factories():
@@ -235,7 +243,10 @@ def test_workflow_engine_fires_lifecycle_hooks(registry):
     from latticeai.core.workflow_engine import WorkflowEngine
 
     events = []
-    registry.register_hook("builtin:workflow-replay-log", lambda ctx: events.append(ctx.event))
+    pre = registry.register(name="wf pre", kind="pre_workflow")
+    post = registry.register(name="wf post", kind="post_workflow")
+    registry.register_hook(pre["id"], lambda ctx: events.append(ctx.event))
+    registry.register_hook(post["id"], lambda ctx: events.append(ctx.event))
     engine = WorkflowEngine({}, hooks=registry)
     wf = {
         "id": "wf1",
@@ -247,5 +258,19 @@ def test_workflow_engine_fires_lifecycle_hooks(registry):
     }
     run = engine.run(wf)
     assert run.status == "ok"
-    assert "workflow.start" in events
-    assert "workflow.end" in events
+    assert "workflow.start" in events   # pre_workflow fired
+    assert "workflow.end" in events     # post_workflow fired
+
+
+def test_dispatch_tool_fires_and_blocks(registry):
+    from latticeai.core.hooks import dispatch_tool
+
+    seen = []
+    registry.register_hook("builtin:tool-permission-gate", lambda ctx: seen.append(ctx.event))
+    out = dispatch_tool(registry, "read_file", {"path": "x"}, lambda: "RESULT", source="test")
+    assert out == "RESULT"
+    assert "tool.read_file" in seen
+    # A blocking pre_tool hook makes dispatch_tool raise.
+    registry.register_hook("builtin:tool-permission-gate", lambda ctx: ctx.block("denied"))
+    with pytest.raises(PermissionError, match="denied"):
+        dispatch_tool(registry, "write_file", {"path": "y"}, lambda: "X", source="test")
