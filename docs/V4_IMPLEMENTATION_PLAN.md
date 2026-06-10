@@ -27,10 +27,19 @@ Companion to `docs/V4_BRAIN_ARCHITECTURE.md`. Audit evidence in
 
 ## Track sequence and ownership
 
-Tracks are sequenced by dependency; file ownership is disjoint per track so
-tracks can't conflict. T1/T2 unblock everything; T3→T6 are the brain spine;
-T7/T8 build on the spine; T9 (frontend) is independent of T3-T8 except for
-new API names; T10 closes.
+Tracks are sequenced by dependency and run **strictly serially** — several
+files have multiple owners across tracks (`api/chat.py`: T1/T2/T5;
+`server_app.py`: T2/T4/T6; `api/workspace.py`: T1/T9; `brain/store.py`:
+T3/T6/T8), so sequence, not disjointness, is the conflict protection.
+"Owns" below means: *during that track*, only that track touches the file,
+and only within the named scope. T1/T2 unblock everything; T3→T6 are the
+brain spine; T7/T8 build on the spine; T9 items 2-5 (canvas, vendoring,
+sw.js, build/lint) may run in parallel with backend tracks, but T9 items
+1/3/6 and all of T9b depend on the T3-T8 API contracts. T10 closes.
+
+> **NORMATIVE**: every track below is amended by §"Design-review amendments"
+> at the end of this document. Implementers must read both the track section
+> and its amendments — the amendments win on conflict.
 
 ---
 
@@ -82,9 +91,16 @@ Owns: root `setup.py`→`setup_wizard.py`, `pyproject.toml`, `requirements.txt`,
 3. Decouple telegram: `broadcast_web_chat` becomes a `RealtimeBus` subscriber
    registered only when `ENABLE_TELEGRAM`; `api/chat.py` drops the
    unconditional import.
-4. Delete dead modules: `codex_telegram_bot.py`, `perm_monitor.py`,
-   `knowledge_graph_api.py` (fold its one endpoint into
-   `api/local_files.py`); remove from packaging lists.
+4. Delete dead modules: `codex_telegram_bot.py`, `perm_monitor.py`; remove
+   from packaging lists. **`knowledge_graph_api.py` is NOT dead** — it serves
+   the `/knowledge-graph/*` data endpoints the v3 SPA consumes: migrate its
+   data router into `latticeai/api/knowledge_graph.py` with endpoint-parity
+   tests (stats/graph/documents/search/context/neighbors/ingest unchanged);
+   its legacy `/graph` page routes move to T9's redirect map. Also owned
+   here: relocate `llm_router.py` → `latticeai/models/router.py` and
+   `mcp_registry.py` → `latticeai/core/mcp_registry.py` with root shims, and
+   update their importers (`api/models.py`, `api/setup.py`,
+   `services/model_runtime.py`, `server_app.py`).
 5. ruff baseline (`[tool.ruff]`, pragmatic select set), fix violations or
    per-file-ignore legacy monoliths; CI gate. Bounded dependency constraints
    in pyproject; `requirements.txt` deleted or generated.
@@ -269,6 +285,167 @@ Owns: version files, `scripts/bump_version.py` (new), `README.md`,
    wheel smoke test, vsix build, npm pack dry-run size check.
 5. Push branch; RC summary + 13-deliverable final report. STOP for human
    review (no merge, no tag, no publish).
+
+## Design-review amendments (NORMATIVE — bind all tracks)
+
+Adversarial review verdicts: 3× approve_with_changes
+(`docs/v4-audit/v4_design_review.json`). Required changes, by track:
+
+**T1**
+- Run-record changes are versioned: add `record_schema_version` alongside
+  `mode`; simulated runs stop stamping `graph_node_id`. Rewrite the affected
+  legacy tests deliberately (`test_agent_platform_maturity`,
+  `test_v32_platform`, `test_multi_agent`, `test_workspace_os`) — do not
+  discover them broken mid-track.
+- The hybrid-search.js fix must reach the shipped bundle: T1 is granted a
+  one-off `scripts/build_v3_assets.mjs` run to regenerate the hashed
+  artifact + manifest.
+
+**T2**
+- `create_app` acceptance is NOT "TestClient works": the test must assert
+  that importing `latticeai.server_app` (or the new factory module) performs
+  no side effects — no MLX/GPU init, no singleton construction, no file
+  creation under a sandboxed `LATTICEAI_HOME`. A delegating wrapper around
+  the old import-time module fails this gate by construction.
+- Wizard-driven embedder provisioning (consent flow) is owned by T2's
+  `setup_wizard.py`/`api/setup.py` scope: expose a real provision endpoint
+  with explicit user consent, honest progress, and capability re-report.
+
+**T3**
+- **Edge identity**: post-flip canonical edges key on
+  `UNIQUE(source, target, type)`; migrated legacy rows keep their
+  `legacy_type` discriminator. SQLite migration = create-new → copy → swap
+  in one transaction, under the automatic pre-flip backup. Test: two
+  canonical-typed edges (e.g. MENTIONS + CONTAINS) between the same node
+  pair coexist.
+- **Equivalence contract**: byte-equivalence is asserted for pre-flip data
+  only; new canonical writes get a separate projection-correctness suite
+  (English enum strings on the legacy surface are correct there, not a bug).
+- **Downgrade guard**: set a DB format marker (`PRAGMA user_version` or
+  `kg_meta` key) at flip time; v4 refuses to open a newer-format DB than it
+  understands; document that v3.6 must not be pointed at a flipped DB and
+  provide the restore runbook for the automatic pre-flip backup. The
+  migrator is re-entrant, keyed on inspected data state, not a one-time
+  stamp. (Same downgrade-guard pattern applies to T4/T6 stores.)
+- **Migrated-row scope**: legacy rows get `visibility=NULL` semantics
+  (legacy-global) — the `DEFAULT 'private'` column default must not be
+  allowed to privatize pre-v4 shared data to its last writer.
+- **Store write API**: enum normalization is enforced *inside*
+  `brain/store.py` write methods (no caller can mint free strings);
+  owner/workspace/visibility are parameters defaulting to legacy-global
+  NULL — T4 (ingestion) and T6 (scope resolution) progressively supply real
+  values; a post-T6 acceptance check reports the % of new writes carrying
+  scope via the provenance coverage endpoint.
+- **Decomposition definition of done**: the split follows the class's real
+  method clusters — `store.py` (storage + v2 projection), `discovery.py`
+  (local roots/audit/watch), `ingest.py` (ingest paths), `provenance.py`,
+  `documents.py`, `extraction.py`, plus portability seam; no resulting
+  module exceeds ~1,500 lines; a pure mixin-shuffle that recreates the god
+  object across files fails review. `local_knowledge_api.py` disposition is
+  owned here too (absorb into `brain/discovery.py` + API shim).
+- **FTS5**: gate on `sqlite3` FTS5 availability with the same
+  capability-honest fallback as sqlite-vec (the LIKE path survives as
+  fallback); use the trigram tokenizer where available so Korean substring
+  recall does not regress — add a Korean-recall regression test
+  ('프로젝트' must match '프로젝트를').
+
+**T4**
+- **Chat history is imported, not dropped**: one-time idempotent import of
+  `chat_history.json` into the conversations store; messages lacking
+  user/conversation attribution land in a designated `legacy` conversation;
+  the `/history` API response contract is preserved (grant: `get_history`,
+  ChatService wiring in `server_app.py`, `/history` endpoints). Durability
+  test: pre-upgrade messages visible post-cutover.
+- **Garden**: continuous ingestion via the watched-source machinery (see
+  architecture §4.2), not a one-time import; API-created notes dual-write
+  (brain authoritative, vault markdown mirror); imported vault notes are
+  legacy-global scoped. The `graph_curator` wire-or-delete decision moves
+  here (it gates concept promotion at ingest time).
+- **Store co-location**: conversations live in the brain DB family covered
+  by `kg_portability` backup/restore — extend the backup manifest + restore
+  path to enumerate them, with a restore round-trip test.
+- The "chat context stops reading the vault" change in `api/chat.py:368`
+  belongs to **T5** (context assembly), not T4.
+
+**T5**
+- Token budgeting uses a documented approximation (chars/4) — named as such
+  in code and API responses (`approx_tokens`), never presented as a real
+  tokenizer count.
+
+**T6**
+- **Identity migration scope**: one migration rewrites email→UUID keys
+  across `users.json`, workspace state, sessions, AND
+  `nodes_v2`/`edges_v2` owner/created_by values (T3/T4 write emails until
+  then — the migration maps them). Atomic tmp+rename writes; timestamped
+  pre-migration copies of `users.json` and `workspace_os.json`; explicit
+  grant over `server_app.py`'s user-store functions (move them into a
+  T6-owned module first). Downgrade is a one-way door — say so in the
+  migration marker + docs, same pattern as T3.
+- Invitations API lives in new `latticeai/api/invitations.py`.
+- New workspace-state tables join the same backed-up DB family as T4
+  (one backup covers the whole brain).
+
+**T7**
+- Ownership expands to **full** `workflow_engine.py` and `core/realtime.py`
+  (thread-safe publish via `loop.call_soon_threadsafe`).
+- **Suspension model**: the engine returns/raises a `PausedRun` carrying the
+  node cursor + JSON-serializable context snapshot; runner exceptions are
+  partitioned (`ApprovalRequired` → pause; others → error-and-continue as
+  today); resume re-enters at the paused node and **never re-executes
+  completed nodes** (explicit test required).
+- **Execution model**: asyncio tasks on the server loop; sync orchestrator/
+  tool work via `asyncio.to_thread`; SSE over `/realtime/stream`;
+  the honesty boundaries (MLX generate non-interruptible; single inference
+  thread serializes agent + chat) are documented and surfaced.
+- **Startup reconciliation**: non-terminal runs → `interrupted` (reason +
+  timestamp) before workers start; restart test required.
+- **Missed-trigger policy**: missed interval/cron firings while down are
+  skipped with a recorded skip event (no silent gaps, no thundering
+  catch-up).
+- **LLM-output failure policy**: when a model responds but the plan/critique
+  cannot be parsed, the run FAILS with the raw output preserved in the run
+  record — it never silently falls back to fabricated deterministic
+  artifacts. Choosing simulation mode is explicit (no model loaded or
+  user-requested), never a parse-failure disguise.
+
+**T8**
+- Unsigned legacy bundles/backups import fine locally with
+  `origin='unsigned-legacy'` provenance; signatures mandatory only on the
+  peer path. Test: a v3.6.0-format export imports; a pre-v4 backup restores.
+- Peer-request auth: Ed25519 signature over (body digest + timestamp) against
+  the paired key; freshness window + seen-nonce replay protection.
+- Grant: the store's `export_graph_data`/`import_graph_data` functions for
+  scope-filtered export + provenance-stamped import.
+
+**T9 / T9b (new)**
+- **Capability-complete deletion rule**: a legacy page is deleted only when
+  its capabilities exist in `/app` and pass Playwright coverage — the
+  redirect map must be capability-complete, not URL-complete. Gap views that
+  must be BUILT first: workspace/org management (orgs, members, invitations,
+  activation), snapshots/time-machine (list/create/compare/restore),
+  activity feed, account profile. Chat parity explicitly includes doc-gen
+  sessions, image attach, and file-path injection rendering.
+- **T9b (sequenced after T7/T8)** — surfaces for the new APIs, with
+  Playwright coverage: Act runs inbox (live progress, cancel, mode badge,
+  approval pause→decide→resume), trigger configuration, System network view
+  (device fingerprint, peer registry, pairing), Ask context-trace panel
+  ("why is this in context"), Brain provenance-coverage stat. Until T9b
+  lands, these capabilities are explicitly labeled API-only in
+  FEATURE_STATUS.md — a labeled state, not an omission.
+- **i18n acceptance gate**: all strings in `routes.js`, the shared shell,
+  and every NEW v4 view are externalized; a checker script fails the build
+  on string literals in those files; remaining legacy-view strings are
+  inventoried in FEATURE_STATUS.md as labeled partial coverage.
+
+**T10**
+- Env-prefix canonicalization (`LATTICEAI_*` canonical, `LATTICE_*` read as
+  fallback aliases in `core/config.py`) and the CLI alias decision
+  (`ltcai` canonical, `LTCAI` deprecated) are owned here.
+- Delete the superseded C-queue from the recovery file (replaced by this
+  plan) to remove contradictory guidance.
+- Pre-flip migration backups: note in the restore runbook that backups live
+  on the same disk (exports dir) — recommend the user copy one off-disk at
+  upgrade time; the upgrade flow prints the backup path.
 
 ## Execution model
 

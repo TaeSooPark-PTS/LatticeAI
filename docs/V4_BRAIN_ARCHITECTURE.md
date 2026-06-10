@@ -115,20 +115,27 @@ The graph's edges, plus evidence/confidence threading from the extractors
 
 ## 4. One door in: the Ingestion Pipeline
 
-### 4.1 Coverage goes 1/4 → 4/4
-`services/ingestion.py` becomes the only KG write door: chat messages,
-document uploads, MCP messages, and workspace events are converted to
-`IngestionItem`s (new source types), giving every node provenance and the full
-pre/post hook lifecycle. The direct `ingest_message`/`ingest_document` call
-sites are rewired.
+### 4.1 Coverage goes 1 of 5 → 5 of 5
+`services/ingestion.py` becomes the only KG write door: alongside the
+already-covered browser/web path, chat messages, document uploads, MCP
+messages, and workspace events are converted to `IngestionItem`s (new source
+types), giving every node provenance and the full pre/post hook lifecycle.
+The direct `ingest_message`/`ingest_document` call sites are rewired.
 
-### 4.2 The garden is absorbed
-`p_reinforce` vault content is ingested through the pipeline
-(source_type=note); the `/garden` API and chat-context injection are
-re-implemented as views/queries over the brain. The vault directory is
-imported once (idempotent via content hash), then the gardener stops being a
-parallel store. **No capability is removed** — notes, classification, and
-"relevant context in chat" survive with strictly better retrieval.
+### 4.2 The garden is absorbed — as a living source, not a snapshot
+`p_reinforce` vault content enters the brain through the pipeline
+(source_type=note): an initial idempotent import (content-hash dedup), after
+which the vault directory is registered as a **watched knowledge source**
+using the existing discovery/watch machinery — Obsidian-style edits keep
+flowing into the brain continuously. Notes created through the API are
+written to the brain (authoritative) *and* mirrored as markdown into the
+vault, which remains the user-readable, user-owned artifact. The `/garden`
+API and chat-context injection are re-implemented as views/queries over the
+brain; the O(n) vault rglob at chat time dies. Imported vault notes carry
+legacy-global scope (NULL workspace), matching their pre-v4 visibility.
+**No capability is removed** — notes, classification, Obsidian
+interoperability, and "relevant context in chat" all survive with strictly
+better retrieval.
 
 ## 5. Personal Brain / Organization Brain
 
@@ -175,10 +182,18 @@ The workspace layer stops being a veneer:
   `{recorded: true}` success.
 - **Durable async execution** (in scope, not a gap): runs are persisted
   records (`queued → running → awaiting_approval → succeeded | failed |
-  cancelled`) executed on background workers; `stop()` performs real
-  cooperative cancellation (checked between steps/tool calls); progress
-  streams over SSE via the existing `core/realtime.py` bus, which the
-  `/agents` events endpoint is already shaped for.
+  cancelled | interrupted`) executed as asyncio tasks on the server loop
+  (synchronous tool/orchestrator work bridged via `asyncio.to_thread`;
+  cross-thread bus publishes via `loop.call_soon_threadsafe` — the
+  `RealtimeBus` is made thread-safe as part of this work). `stop()` performs
+  real cooperative cancellation, checked between steps/tool calls — it
+  cannot interrupt an in-flight MLX `generate()`, and agent generation
+  serializes with interactive chat on the single inference thread; both
+  limits are documented, surfaced honestly, never papered over. Progress
+  streams over the existing `/realtime/stream` SSE endpoint (the
+  `/agents/.../events` JSON snapshot remains as-is). On startup, any run
+  left non-terminal by a crash/restart is reconciled to `interrupted` with
+  reason + timestamp — no phantom "running" state survives a restart.
 - **Per-tool approval gate**: when a run hits a non-auto-approve tool it
   pauses into `awaiting_approval`, surfaces the pending decision through the
   API/UI, and resumes (or aborts) on the recorded human decision —
@@ -207,9 +222,18 @@ The workspace layer stops being a veneer:
   local-first, no cloud rendezvous, no relay service); the receiving brain
   verifies the signature against the *paired* key, imports through the normal
   ingestion/import path, and records origin-device provenance on every
-  imported node. Nothing is shared implicitly: exchange is per-workspace,
-  per-request, owner-initiated. Identity-aware sync/merge conflict resolution
-  beyond idempotent content-hash dedup is v1's documented boundary.
+  imported node. Peer requests authenticate independently of user sessions:
+  each request carries an Ed25519 signature over (body digest + timestamp),
+  verified against the paired key, with a freshness window + seen-nonce check
+  for replay protection. Nothing is shared implicitly: exchange is
+  per-workspace, per-request, owner-initiated. Identity-aware sync/merge
+  conflict resolution beyond idempotent content-hash dedup is v1's documented
+  boundary.
+- **Compatibility policy for unsigned artifacts**: pre-v4 export bundles and
+  backups have no signatures — local file imports/restores of them are
+  accepted and recorded with provenance `origin='unsigned-legacy'`.
+  Signatures are mandatory only on the Brain Network peer path. A v3.6
+  export must always import into a v4 brain.
 - **Agent collaboration across brains** inherits this substrate: an agent's
   Experience records travel inside bundles like any other knowledge, with
   provenance intact.
@@ -255,8 +279,11 @@ ends:
   `mcp_registry.py`, `kg_schema.py` move under `latticeai/`;
   `telegram_bot` decouples from `api/chat.py` by subscribing to the
   `RealtimeBus` instead of being imported unconditionally; dead modules
-  (`codex_telegram_bot.py`, `perm_monitor.py`, vestigial
-  `knowledge_graph_api.py`) are deleted (git history preserves them).
+  (`codex_telegram_bot.py`, `perm_monitor.py`) are deleted (git history
+  preserves them). `knowledge_graph_api.py` is **live, not dead** (it serves
+  the `/knowledge-graph/*` data endpoints the v3 SPA uses): its data router
+  migrates into `latticeai/api/` with endpoint-parity tests; its legacy page
+  routes join the frontend redirect work.
 - **`create_app(config)` factory**: `server_app.py`'s import-time singleton
   construction and GPU side effects move into an explicit factory that builds
   the dormant `AppContext` dataclass and hands it to router factories —

@@ -32,9 +32,17 @@
 ## 2. Current Phase
 
 **Phase A (Repository Audit) — COMPLETE (all 8 dimensions).**
-**Phase B (Brain Architecture Proposal + Implementation Plan) — docs authored
-(`docs/V4_BRAIN_ARCHITECTURE.md`, `docs/V4_IMPLEMENTATION_PLAN.md`);
-adversarial design review pending, then Phase B closes.**
+**Phase B (Brain Architecture Proposal + Implementation Plan) — COMPLETE.**
+Adversarial design review done: 3 critics (feasibility, data-safety,
+coherence), all `approve_with_changes`; 19 blocking issues integrated as the
+NORMATIVE "Design-review amendments" section of
+`docs/V4_IMPLEMENTATION_PLAN.md` + corrections in the architecture doc
+(knowledge_graph_api.py is LIVE not dead; edges_v2 identity redefined;
+chat-history import added; garden = watched source; T9b UI track added;
+T7 owns workflow_engine.py + realtime.py with suspension/reconciliation
+specs; tracks run strictly serially). Review record:
+`docs/v4-audit/v4_design_review.json`.
+**Phase C (Implementation) — NEXT: track T1 (Truth & safety floor).**
 
 Scope ruling (user directive, session 3): risk/effort/migration size are NOT
 valid exclusion reasons — only true technical blockers. Consequently the
