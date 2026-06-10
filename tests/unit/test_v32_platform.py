@@ -165,7 +165,7 @@ def test_marketplace_has_five_named_agent_templates():
         "Documentation Writer",
         "Workflow Builder",
     } <= names
-    assert MARKETPLACE_VERSION == "3.5.0"
+    assert MARKETPLACE_VERSION == "3.6.0"
 
 
 def test_marketplace_clone_and_roundtrip():
