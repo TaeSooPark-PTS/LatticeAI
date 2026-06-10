@@ -46,6 +46,13 @@ def create_portability_router(
         _require_service()
         return service.snapshot_metadata()
 
+    @router.get("/api/knowledge-graph/provenance")
+    async def recent_provenance(request: Request, limit: int = 50, source_type: Optional[str] = None):
+        """Recent ingestions (provenance trail) for the ingestion-sources UI."""
+        require_user(request)
+        _require_service()
+        return service.recent_ingestions(limit=limit, source_type=source_type)
+
     @router.post("/api/knowledge-graph/export")
     async def export_graph(request: Request):
         """Logical JSON export of the whole graph (read-only)."""

@@ -7,10 +7,10 @@
 
 import { h, icon, $, $$ } from "./dom.a2773eb0.js";
 import { store } from "./store.34ebd5e6.js";
-import { api } from "./api.12b568ad.js";
+import { api } from "./api.33d6320e.js";
 import * as c from "./components.f25b3b93.js";
 import { createRouter } from "./router.584570f2.js";
-import { GROUPS, ROUTES, ROUTE_BY_KEY, MODE_RANK, visibleRoutes, loadView } from "./routes.d214b399.js";
+import { GROUPS, ROUTES, ROUTE_BY_KEY, MODE_RANK, visibleRoutes, loadView } from "./routes.2ce3815a.js";
 
 const MODES = [
   { key: "basic", label: "Basic", icon: "circle" },

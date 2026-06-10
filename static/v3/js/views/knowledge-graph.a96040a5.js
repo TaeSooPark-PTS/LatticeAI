@@ -7,7 +7,7 @@
  * honest unavailable state — never fabricated counters.
  * ========================================================================== */
 
-import { escapeHtml } from "../core/dom.js";
+import { escapeHtml } from "../core/dom.a2773eb0.js";
 
 const TYPE_COLOR = {
   Topic: "var(--lt3-pillar-graph)",

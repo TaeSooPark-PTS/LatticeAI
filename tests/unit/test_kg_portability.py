@@ -150,3 +150,12 @@ def test_portability_status_route(tmp_path):
     r = client.get("/api/knowledge-graph/portability")
     assert r.status_code == 200
     assert r.json()["available"] is True
+
+
+def test_recent_provenance_route(tmp_path):
+    client = _app(tmp_path)
+    r = client.get("/api/knowledge-graph/provenance?limit=10")
+    assert r.status_code == 200
+    body = r.json()
+    assert "items" in body and body["count"] >= 2
+    assert all("source_type" in it for it in body["items"])

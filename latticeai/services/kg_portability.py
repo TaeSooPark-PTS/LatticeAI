@@ -169,3 +169,9 @@ class KGPortabilityService:
             "stats": self._kg.stats(),
             "provenance": self._kg.provenance_stats(),
         }
+
+    def recent_ingestions(self, *, limit: int = 50, source_type: Optional[str] = None) -> Dict[str, Any]:
+        """Recent provenance records (newest first) for the ingestion-sources UI."""
+        if not self.available():
+            return {"items": [], "count": 0}
+        return self._kg.list_provenance(limit=limit, source_type=source_type)

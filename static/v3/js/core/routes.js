@@ -33,7 +33,7 @@ export const ROUTES = [
 
   // Retrieval (the product identity)
   { key: "hybrid-search", label: "Search", icon: "arrows-join", group: "retrieval", minMode: "basic", view: "hybrid-search", title: "Hybrid Search", desc: "Graph structure fused with vector similarity." },
-  { key: "knowledge-graph", label: "Knowledge", icon: "chart-dots-3", group: "retrieval", minMode: "basic", view: "knowledge-graph", title: "Knowledge Graph", desc: "Entities and relations extracted from your workspace." },
+  { key: "knowledge-graph", label: "Knowledge", icon: "chart-dots-3", group: "retrieval", minMode: "basic", view: "knowledge-graph", title: "Knowledge Graph", desc: "Your digital brain — every source converges here. Explore, ingest, and export." },
   { key: "memory", label: "Memory", icon: "brain", group: "retrieval", minMode: "basic", view: "memory", title: "Memory", desc: "Long-term workspace, project, agent, and conversation memory." },
 
   // Compute

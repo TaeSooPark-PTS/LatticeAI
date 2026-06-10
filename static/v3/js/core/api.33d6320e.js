@@ -507,6 +507,44 @@ export const api = {
   // Hooks dispatch (real backend: POST /api/hooks/run + GET /api/hooks/runs)
   hookRun(body) { return raw("/api/hooks/run", { method: "POST", body }); },
   hookRuns(limit = 50, kind) { return withFallback(`/api/hooks/runs?limit=${encodeURIComponent(limit)}${kind ? "&kind=" + encodeURIComponent(kind) : ""}`, {}, { runs: [], total: 0 }); },
+
+  /* ── v3.6 Knowledge Graph First: ingestion provenance + portability ─────
+   * The graph is the durable asset; these surface its health, where every node
+   * came from, and local export/import/backup. All fallback-safe; never fake. */
+
+  /** GET /api/knowledge-graph/portability — schema versions + stats + provenance counts. */
+  async kgPortability() {
+    const res = await raw("/api/knowledge-graph/portability");
+    if (res.ok && res.data && res.data.available) {
+      return { ok: true, status: res.status, data: res.data, source: "live" };
+    }
+    return {
+      ok: false, status: res.status, source: "unavailable",
+      data: { available: false, graph_schema_version: null, embed_dim: null,
+        stats: { nodes: {}, edges: {} },
+        provenance: { total: 0, by_source_type: {}, embedded: 0, duplicates: 0, last_ingested_at: null } },
+    };
+  },
+
+  /** GET /api/knowledge-graph/provenance — recent ingestions (newest first). */
+  kgProvenance(limit = 50, sourceType) {
+    const qs = `?limit=${encodeURIComponent(limit)}${sourceType ? "&source_type=" + encodeURIComponent(sourceType) : ""}`;
+    return withFallback(`/api/knowledge-graph/provenance${qs}`, {}, { items: [], count: 0 });
+  },
+
+  /** POST /api/knowledge-graph/export — logical JSON export of the whole graph. */
+  graphExport() { return raw("/api/knowledge-graph/export", { method: "POST", body: {} }); },
+
+  /** POST /api/knowledge-graph/import — import an export artifact (merge|replace). */
+  graphImport(artifact, mode = "merge", dryRun = false) {
+    return raw("/api/knowledge-graph/import", { method: "POST", body: { artifact, mode, dry_run: dryRun } });
+  },
+
+  /** POST /api/knowledge-graph/backup — binary backup (sqlite + blobs) to a local zip. */
+  graphBackup() { return raw("/api/knowledge-graph/backup", { method: "POST", body: {} }); },
+
+  /** POST /api/browser/read-url — fetch a public URL locally into the graph. */
+  browserReadUrl(url) { return raw("/api/browser/read-url", { method: "POST", body: { url } }); },
 };
 
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
