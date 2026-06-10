@@ -1,0 +1,135 @@
+{
+  "key": "agent-workflow-runtime",
+  "summary": "The dimension is split between one genuinely real runtime and two demo-grade ones. The single-agent state machine (latticeai/core/agent.py, served at POST /agent via latticeai/api/chat.py) is real: LLM-driven PLAN→EXECUTE→VERIFY→ROLLBACK with actual tool execution, governance policies, git rollback, and optional human-in-the-loop. The hooks platform is also real as of v3.4+ (v3.3.0's \"registered but not executed\" gap is verifiably closed: bound runners, subprocess user hooks, blocking pre_* gates, persisted run log, fired from agent/workflow/tool/ingestion paths). But the headline \"Multi-Agent Runtime\" (/agents) is a deterministic LLM-free simulator that fabricates plans/reviews/handoffs without doing work, and Workflow Designer runs execute nothing — the production tool/skill/plugin node runners only record permissions, so a workflow that finishes \"ok\" performed zero actions. Everything is synchronous, manual-trigger-only, with no cancellation or scheduling.",
+  "strengths": [
+    "Real single-agent runtime: latticeai/core/agent.py drives LLM-backed PLAN/EXECUTE/VERIFY/ROLLBACK over injected AgentDeps, executes real tools via DEFAULT_TOOL_REGISTRY (tools/__init__.py:247-256), blocks destructive actions, detects repeat-action loops, does git-checkout rollback, and has a human-in-the-loop plan-approval pause (latticeai/api/chat.py:714-727)",
+    "Hooks actually fire now — the v3.3.0 gap is closed: HooksRegistry has a real execution engine (run_hooks/run_hook/fire_hook, latticeai/core/hooks.py:498-713), all 7 built-ins get real runners at startup (latticeai/core/builtin_hooks.py, wired at latticeai/server_app.py:1327), user hooks run their command as a subprocess with fail-closed pre_* gate semantics, and every dispatch is persisted to hooks_runs.json and exposed at GET /api/hooks/runs",
+    "Single shared tool lifecycle: dispatch_tool (latticeai/core/hooks.py:187-233) is used by the HTTP tools route (latticeai/api/tools.py:232,243), the agent executor (latticeai/core/agent.py:299), the workflow tool node (platform_runtime.py:96), and KG ingestion — documented with a per-path table in docs/RUNTIME_HOOK_COVERAGE_v3.6.0.md",
+    "Pre_run hook can genuinely block an agent run: latticeai/services/agent_runtime.py:204-217 raises PermissionError on a blocked pre_run, surfaced as HTTP 403 (latticeai/api/agents.py:176-178)",
+    "Clean, well-tested pure-logic cores: WorkflowEngine is a tidy interpreter with validation, cycle guard (_MAX_STEPS=100), eval-free condition evaluation, legacy steps lifting, and export/import; 57 unit tests across test_multi_agent/test_workflow_engine/test_hooks_dispatch/test_agent_runtime* pass in 0.24s",
+    "Tool governance is a single ownership point (latticeai/core/tool_registry.py): per-tool risk/sandbox/rollback policy, local_write escalation for system paths, derived admin-only set",
+    "Unusually honest self-documentation: FEATURE_STATUS.md labels Workflows 'WORKING (deterministic)', docs/WORKFLOW_DESIGNER.md:278 explicitly admits the tool node returns {recorded: true} instead of executing, and AgentRuntime.stop() honestly reports that synchronous runs cannot be cancelled (agent_runtime.py:276-290)"
+  ],
+  "problems": [
+    {
+      "title": "Multi-Agent Runtime is deterministic theater — no LLM, no work, fabricated artifacts",
+      "severity": "critical",
+      "detail": "Production always uses default_role_runner (platform_runtime.py:211-216 build_orchestrator); no LLM-backed role runner exists anywhere. The planner emits a canned 3-step plan ('Analyze/Execute/Verify the result', multi_agent.py:339-343) and self-approves it ('deterministic plan is bounded and executable', :350-355); the executor performs no work on any step unless a workflow/plugin ref is present — and those refs dispatch to record-only runners; the reviewer 'approves' whenever steps were marked done. Yet POST /agents/api/run persists rich-looking plans, handoffs, context packets, review histories, and replayable timelines to the workspace store and Knowledge Graph. The code docstring admits it ('deterministic and LLM-free', multi_agent.py:5-7) and FEATURE_STATUS says 'WORKING (deterministic)', but as a product surface this is a simulation generating fake provenance records in the user's durable knowledge store.",
+      "files": [
+        "latticeai/core/multi_agent.py",
+        "latticeai/services/platform_runtime.py",
+        "latticeai/services/agent_runtime.py",
+        "latticeai/api/agents.py"
+      ]
+    },
+    {
+      "title": "Workflow runs execute nothing — all production node runners are record-only",
+      "severity": "critical",
+      "detail": "platform_runtime._tool_node_runner (:79-97) never calls execute_tool; it returns {tool, args, recorded: true, permission} for every tool including read-only ones. _skill_node_runner (:99-105) only checks the skill exists in the registry. Plugin capability runners run_skill/run_tool (:118-127) return manifest lists/permission records. So a Workflow Designer run via POST /workflows/api/definitions/{id}/run completes with status 'ok', fires pre/post_workflow hooks, records a replayable timeline — and has done zero actual work. The 'agent' node recurses into the fake orchestrator above. Workflows are a definition editor plus a simulator, not an automation runtime.",
+      "files": [
+        "latticeai/services/platform_runtime.py",
+        "latticeai/core/workflow_engine.py",
+        "latticeai/api/workflow_designer.py"
+      ]
+    },
+    {
+      "title": "Custom agents in AgentRegistry are metadata-only and can never execute",
+      "severity": "major",
+      "detail": "AgentRegistry.register persists name/type/capabilities/config (agent_registry.py:174-206) and the API exposes register/discover, but the orchestrator filters requested roles to the 5 hardcoded AGENT_ROLES (multi_agent.py:476: pipeline = [r for r in roles if r in AGENT_ROLES]). Nothing reads a custom agent's config (model, prompt, tools) at run time — grep shows 'agent:custom' ids appear only inside the registry module. Registration is a UI illusion of extensibility.",
+      "files": [
+        "latticeai/core/agent_registry.py",
+        "latticeai/api/agent_registry.py",
+        "latticeai/core/multi_agent.py"
+      ]
+    },
+    {
+      "title": "No async execution, no cancellation, no triggers/scheduling",
+      "severity": "major",
+      "detail": "execution_mode is 'synchronous' (agent_runtime.py:76); stop() can never cancel anything (:276-290); _ACTIVE_STATUSES exists only 'if a future async runner lands' (:42-44). Workflow trigger nodes accept a config.trigger string but only 'manual' exists — there is no scheduler, cron, file-watch, or KG-event trigger anywhere (grep over workflow_engine.py/workflow_designer.py finds none). A long agent run blocks the request thread; the /agents events endpoint is shaped for streaming that does not exist.",
+      "files": [
+        "latticeai/services/agent_runtime.py",
+        "latticeai/core/workflow_engine.py",
+        "latticeai/api/agents.py"
+      ]
+    },
+    {
+      "title": "Tool approval is audit-only in agent mode; approve() always auto-approves",
+      "severity": "major",
+      "detail": "AgentRuntime.approve computes requires_approval then records decision 'auto_approved' unconditionally (agent.py:176-194, comment: 'future: UI prompt'). In execute(), tools whose policy is not auto_approve (all write/exec tools per tool_registry.py:95-120) are merely audited then executed (agent.py:286-303); only risk=='destructive' blocks. The builtin 'tool-permission-gate' hook's description claims 'Require explicit approval for tools whose governance policy is not auto-approve' (hooks.py:261-266) but its runner only blocks on policy deny (builtin_hooks.py:75-77). Human approval exists only for the plan as a whole when the client opts in via human_in_loop, not per-tool. The governance vocabulary (auto_approve, approval_token) promises a gate the runtime doesn't enforce.",
+      "files": [
+        "latticeai/core/agent.py",
+        "latticeai/core/builtin_hooks.py",
+        "latticeai/core/hooks.py"
+      ]
+    },
+    {
+      "title": "Two parallel agent systems with colliding names",
+      "severity": "minor",
+      "detail": "latticeai/core/agent.py:AgentRuntime (real, single-agent, /agent endpoint) and latticeai/services/agent_runtime.py:AgentRuntime (facade over the fake multi-agent orchestrator, /agents endpoints) share a class name and overlapping vocabulary (plan, review, retry, timeline) but share no code or data model. Runs from the real agent and the fake orchestrator are both persisted via record_agent_run under agent:executor, making real and simulated history indistinguishable in the store.",
+      "files": [
+        "latticeai/core/agent.py",
+        "latticeai/services/agent_runtime.py",
+        "latticeai/api/chat.py"
+      ]
+    },
+    {
+      "title": "Fail-open review default and unstable plan ids",
+      "severity": "minor",
+      "detail": "_review_outcome maps any unrecognized reviewer outcome to 'approve' (multi_agent.py:69-77) — a malformed review passes the run. plan_id is derived from abs(hash((goal, len(steps)))) (multi_agent.py:349), which is not stable across processes (PYTHONHASHSEED), undermining replay/provenance identity.",
+      "files": [
+        "latticeai/core/multi_agent.py"
+      ]
+    },
+    {
+      "title": "Doc drift: MULTI_AGENT_RUNTIME.md states version 2.2.0; code says 3.6.0",
+      "severity": "minor",
+      "detail": "docs/MULTI_AGENT_RUNTIME.md shows MULTI_AGENT_VERSION = \"2.2.0\" while latticeai/core/multi_agent.py:17 sets \"3.6.0\". The doc also implies role runners 'could be backed by the v1 AgentRuntime loop or an LLM' without stating that no such runner exists in the product.",
+      "files": [
+        "docs/MULTI_AGENT_RUNTIME.md",
+        "latticeai/core/multi_agent.py"
+      ]
+    }
+  ],
+  "opportunities": [
+    {
+      "title": "Make the multi-agent orchestrator real by backing roles with the existing single-agent runtime",
+      "detail": "Replace default_role_runner in production with an LLM-backed role runner: planner/reviewer roles call the model router with the existing PLANNER/CRITIC prompts (agent_prompts.py already has them), and the executor role drives core/agent.py's real EXECUTING loop with its governance and dispatch_tool path. The orchestration scaffolding (handoffs, context packets, retry loop, replay, persistence) is already solid — only the role brains are fake. Keep the deterministic runner for tests behind the existing injection seam.",
+      "effort": "large"
+    },
+    {
+      "title": "Make workflow nodes execute real work under governance",
+      "detail": "Rewrite platform_runtime._tool_node_runner to call tools.execute_tool through dispatch_tool with the real governance policy: auto-approve tools execute immediately; non-auto-approve tools either pause the run into a pending-approval state or fail with an explicit 'approval required' status instead of silently recording. Give skill and plugin nodes real execution against their registries. Until then, gate the Workflow run button behind an honest 'dry-run/simulation' label.",
+      "effort": "large"
+    },
+    {
+      "title": "Async durable run runtime with cancellation and live events",
+      "detail": "Persist run state (queued/running/step N) and execute agent and workflow runs in background tasks so stop() can actually cancel, long runs don't block requests, and /agents/api/runs/{id}/events streams real progress (SSE — the realtime module already exists). The seams are pre-built: _ACTIVE_STATUSES, events() shape, and the stop() contract all anticipate this.",
+      "effort": "large"
+    },
+    {
+      "title": "Trigger system: scheduled and event-driven workflows tied to the Knowledge Graph",
+      "detail": "Implement trigger types beyond 'manual': cron/interval scheduling, and KG-event triggers fired from the existing hooks lifecycle (post_index/post_tool on kg_ingest.* events from services/ingestion.py). This is the killer Digital Brain feature: 'when a new document is ingested, run summarize-and-link workflow'. The hook dispatch infrastructure and the unified ingestion pipeline already emit the right events to subscribe to.",
+      "effort": "medium"
+    },
+    {
+      "title": "Real per-tool approval flow",
+      "detail": "Turn the audit-only approval into an actual gate: when agent execute() hits a non-auto-approve tool, pause into a pending-approval state and surface it to the UI — the human_in_loop _pending_agents mechanism in api/chat.py:160-161,714-727 is the exact pattern to generalize from plan-level to tool-level. Make the builtin tool-permission-gate hook's behavior match its description, or fix the description.",
+      "effort": "medium"
+    },
+    {
+      "title": "Unify the two agent systems and make AgentRegistry executable",
+      "detail": "One AgentRuntime: registry entries (built-in roles and custom agents) carry executable config — model id, system prompt, allowed tool set, capabilities — that the runtime actually loads when that agent runs. Custom agents become real (a 'summarizer' agent with a restricted tool set), and real vs simulated history stops being conflated under agent:executor. Delete or demote the deterministic orchestrator to a test fixture.",
+      "effort": "large"
+    },
+    {
+      "title": "Route agent learnings into the Knowledge Graph with provenance",
+      "detail": "memory_update (agent.py:417-438) currently saves learnings as a markdown note via knowledge_save and silently swallows all failures. For the Digital Brain, route learnings through services/ingestion.py's IngestionPipeline so they become entities/relations with ingestion_provenance records (source='agent_run', linked to the run id), making agent knowledge durable, queryable, and exportable like every other source.",
+      "effort": "small"
+    },
+    {
+      "title": "Honest UI labeling until execution is real",
+      "detail": "Until the above lands, the Agents and Workflows views should label deterministic runs as 'simulation/dry-run' in the run record itself (a mode field persisted with the run), not only in docs — fabricated plans/reviews currently enter the same store and KG as real runs.",
+      "effort": "small"
+    }
+  ]
+}

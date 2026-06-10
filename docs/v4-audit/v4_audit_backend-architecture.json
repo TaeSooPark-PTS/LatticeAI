@@ -1,0 +1,167 @@
+{
+  "key": "backend-architecture",
+  "summary": "The backend is mid-migration between two architectures: a reasonably disciplined layered package (latticeai/api router factories + latticeai/services + latticeai/core, 455 passing tests) and a set of legacy root modules that the package still depends on — an inverted dependency where the clean layer imports the dirty one. The single most valuable asset for the \"Digital Brain\" (the knowledge graph) is a 4,633-line, ~79-method single-class monolith at the repo root (knowledge_graph.py) with a process-global LLM hook, half-migrated to a clean v2 schema (kg_schema.py). server_app.py remains a 1,555-line god assembly module with import-time side effects (MLX GPU init, singleton construction) and inline business logic (users, SSO, MCP pip/npm installs, history store), and the v3.6.0 \"unified ingestion pipeline\" actually covers only 1 of 4 KG write paths. The bones of a v4 Brain Core exist (kg_schema v2, IngestionPipeline, provenance, portability, hooks, realtime bus) but they are not yet the spine — they are bolted onto the legacy spine.",
+  "strengths": [
+    "Router-factory convention is real and consistently applied: 27 router modules in /Users/parktaesoo/Downloads/Lattice AI/latticeai/api/ all expose create_X_router(deps...) with zero app-module imports inside routers, making them unit-testable in isolation.",
+    "A genuine service layer exists (/Users/parktaesoo/Downloads/Lattice AI/latticeai/services/): IngestionPipeline, KGPortabilityService, MemoryService, WorkspaceService, AgentRuntime, SearchService — the right seams for a Brain Core already have names and tests.",
+    "kg_schema.py (KGStoreV2, NodeType/EdgeType enums, stdlib-sqlite-only, legacy-label normalization with legacy_type preservation) is a clean, well-documented v2 storage layer; knowledge_graph.py already dual-writes to it and reads from it by default (LATTICEAI_KG_READ_V2 defaults on, knowledge_graph.py:38,825) — the migration path is started, not hypothetical.",
+    "Provenance (ingestion_provenance), KG export/import/backup (services/kg_portability.py), and the hooks registry with real bound runners (server_app.py:1327-1332, core/builtin_hooks.py) are exactly the durable-knowledge primitives v4 needs, and they are tested.",
+    "Config is single-sourced (latticeai/core/config.py Config.from_env) and security primitives are centralized (core/security.py, core/oidc.py with cryptography-based verification, trusted-proxy handling).",
+    "The enterprise seam (latticeai/core/enterprise.py) is honest open-core: capabilities are declared but disabled by default, with explicit design rules that Community features are never gated.",
+    "server.py is a correct thin compat shim (27 lines) preserving the historical server:app uvicorn path while delegating to latticeai.server_app.",
+    "FEATURE_STATUS.md demonstrates an evidence-based honesty culture (explicit PLACEHOLDER/WORKING labels with file:line citations), which makes this audit's job tractable and the codebase trustworthy to refactor."
+  ],
+  "problems": [
+    {
+      "title": "Inverted dependency: the clean latticeai package imports legacy root modules everywhere",
+      "severity": "critical",
+      "detail": "The layering is upside down. latticeai/server_app.py imports knowledge_graph (line 36), llm_router (35), local_knowledge_api (37), mcp_registry (140-147), p_reinforce (148), setup (149); latticeai/api/chat.py:30 imports telegram_bot; latticeai/api/models.py:267 and api/setup.py:18 import llm_router; latticeai/services/model_runtime.py:32 imports llm_router; latticeai/api/setup.py:11 imports auto_setup; tools/__init__.py:30 imports p_reinforce. The package that is supposed to be the product depends on unpackaged top-level modules that only work because the repo root is on sys.path. Any v4 'Brain Core' must invert this: root modules become package modules or die.",
+      "files": [
+        "/Users/parktaesoo/Downloads/Lattice AI/latticeai/server_app.py",
+        "/Users/parktaesoo/Downloads/Lattice AI/latticeai/api/chat.py",
+        "/Users/parktaesoo/Downloads/Lattice AI/latticeai/services/model_runtime.py",
+        "/Users/parktaesoo/Downloads/Lattice AI/latticeai/api/setup.py"
+      ]
+    },
+    {
+      "title": "knowledge_graph.py is a 4,633-line single-class monolith holding the product's core asset",
+      "severity": "critical",
+      "detail": "KnowledgeGraphStore (knowledge_graph.py:811 onward, ~79 methods) mixes at least seven responsibilities: SQLite storage + v2 projection/backfill (_init_db, _backfill_v2_if_needed), filesystem discovery/audit/watch (discover_local_roots, audit_local_folder, set_local_source_watch), document parsing for pdf/pptx/docx/xlsx (_pdf_structure, _pptx_structure, _docx_structure, _xlsx_structure), concept/triple extraction with both rule-based and LLM paths (_extract_concepts, _llm_extract_triples), embedding/vector indexing, hybrid search + traversal + multi-hop context (search, traverse, multi_hop_context, context_for_query), and provenance/export/backup (get_provenance, export_graph_data, backup_database). Worse, LLM access is injected via a process-global mutable (set_llm_router, line 48) set from server_app.py:985 — the Brain's extraction quality silently depends on import-order side effects. This file is the v4 product and it is architecturally the worst file in the repo.",
+      "files": [
+        "/Users/parktaesoo/Downloads/Lattice AI/knowledge_graph.py",
+        "/Users/parktaesoo/Downloads/Lattice AI/kg_schema.py"
+      ]
+    },
+    {
+      "title": "The 'unified ingestion pipeline' covers only 1 of 4 KG write paths — provenance and hooks are not actually uniform",
+      "severity": "critical",
+      "detail": "v3.6.0's headline IngestionPipeline (latticeai/services/ingestion.py) is only used by the browser/web router (latticeai/api/browser.py:176,202). Chat messages write directly via KNOWLEDGE_GRAPH.ingest_message (server_app.py:670-679), MCP ingest calls KNOWLEDGE_GRAPH.ingest_message directly (latticeai/api/mcp.py:360), and document uploads call knowledge_graph.ingest_document directly (latticeai/services/upload_service.py:74). The comment at server_app.py:329-333 admits this ('Existing direct ingest callers keep working'). Consequence: pre_tool/post_tool hooks and uniform provenance capture — the marquee Digital Brain guarantees — fire only for browser ingestion. For a platform whose pitch is 'every piece of knowledge has provenance', this is a partially-implemented claim and must be flagged as such.",
+      "files": [
+        "/Users/parktaesoo/Downloads/Lattice AI/latticeai/services/ingestion.py",
+        "/Users/parktaesoo/Downloads/Lattice AI/latticeai/server_app.py",
+        "/Users/parktaesoo/Downloads/Lattice AI/latticeai/api/mcp.py",
+        "/Users/parktaesoo/Downloads/Lattice AI/latticeai/services/upload_service.py"
+      ]
+    },
+    {
+      "title": "server_app.py is still a 1,555-line god module with import-time side effects and no app factory",
+      "severity": "major",
+      "detail": "Despite router extraction, server_app.py retains: MLX GPU device init at import (lines 20-26, with print statements), construction of ~15 module-level singletons at import (KNOWLEDGE_GRAPH, EMBEDDER, WORKSPACE_OS, MEMORY_SERVICE, INGESTION_PIPELINE, etc., lines 162-345), inline user management (load_users/save_users on users.json, lines 458-466), SSO config CRUD (395-442), MCP installation that runs `pip install`/`npm install -g` subprocesses on packages named by a remote-fetched registry (install_mcp, lines 560-613 — a supply-chain-shaped surface living in the assembly file), chat history persistence (615-771), and local file-approval state (812-866). There is no create_app(config) factory; importing the module boots half the platform, which is why tests must use .venv side-effect-tolerant imports. llm_router.py compounds this: it mutates os.environ['MLX_VLM_DRAFT_KIND'] and attempts MLX import with prints at module import (llm_router.py:16,30-39).",
+      "files": [
+        "/Users/parktaesoo/Downloads/Lattice AI/latticeai/server_app.py",
+        "/Users/parktaesoo/Downloads/Lattice AI/llm_router.py"
+      ]
+    },
+    {
+      "title": "Chat history is hard-capped at 50 messages in a JSON file — contradicts 'knowledge is durable'",
+      "severity": "major",
+      "detail": "save_to_history truncates chat_history.json to the last 50 entries (server_app.py:663-664: `if len(history) > 50: history = history[-50:]`). The only durable record of conversations is the side-channel KG ingest, which (a) bypasses the ingestion pipeline and (b) stores extracted concepts, not the verbatim exchange. For a Digital Brain whose thesis is 'models are temporary; knowledge is durable', the platform silently discards the user's primary knowledge stream after 50 messages. MEMORY_SERVICE fronts this same truncated file (server_app.py:322-328).",
+      "files": [
+        "/Users/parktaesoo/Downloads/Lattice AI/latticeai/server_app.py",
+        "/Users/parktaesoo/Downloads/Lattice AI/latticeai/services/memory_service.py"
+      ]
+    },
+    {
+      "title": "Service-locator anti-pattern: mutable module globals configured post-import",
+      "severity": "major",
+      "detail": "latticeai/services/model_runtime.py defines ~20 module-level mutable globals (router=None, APP_MODE, REQUIRE_AUTH, keyring=None, get_current_user=_missing_current_user, lines 51-80) overwritten later by configure_model_runtime() called from server_app.py:1122. latticeai/services/tool_dispatch.py uses the same configure_tool_dispatch() pattern (server_app.py:986). knowledge_graph.set_llm_router is the same pattern again. This creates hidden temporal coupling: any code importing these modules before assembly sees dead defaults, and two app instances in one process are impossible.",
+      "files": [
+        "/Users/parktaesoo/Downloads/Lattice AI/latticeai/services/model_runtime.py",
+        "/Users/parktaesoo/Downloads/Lattice AI/latticeai/services/tool_dispatch.py",
+        "/Users/parktaesoo/Downloads/Lattice AI/knowledge_graph.py"
+      ]
+    },
+    {
+      "title": "telegram_bot.py is imported unconditionally by the chat router and self-configures at import",
+      "severity": "major",
+      "detail": "latticeai/api/chat.py:30 does `from telegram_bot import broadcast_web_chat` at module scope, so the 45KB Telegram integration loads even when ENABLE_TELEGRAM is false. telegram_bot.py executes load_env_file() (mutating os.environ) and install_sensitive_log_filter() at import, and hardcodes BASE_URL='http://127.0.0.1:4825', calling back into its own server over HTTP for chat/agent/history — an integration that should be an out-of-process client or a RealtimeBus subscriber is instead woven into the core chat path at 9 call sites (chat.py:276-631). codex_telegram_bot.py duplicates the same load_env_file/log-filter boilerplate.",
+      "files": [
+        "/Users/parktaesoo/Downloads/Lattice AI/telegram_bot.py",
+        "/Users/parktaesoo/Downloads/Lattice AI/latticeai/api/chat.py",
+        "/Users/parktaesoo/Downloads/Lattice AI/codex_telegram_bot.py"
+      ]
+    },
+    {
+      "title": "setup.py dual identity (52KB runtime module + setuptools entrypoint) and ~40% duplication with auto_setup.py",
+      "severity": "major",
+      "detail": "Root setup.py is simultaneously a runtime environment scanner/installer imported by the live server (server_app.py:149, latticeai/api/setup.py:19 — scan_environment, get_recommendations, install_stream) AND a legacy setuptools packaging entrypoint (`if __name__ == '__main__': _setuptools_setup(...)` near line 1143). The module name shadows Python packaging convention and collides conceptually with latticeai/api/setup.py. auto_setup.py (35KB) near-duplicates its hardware detection: _parse_windows_video_controllers, _detect_gpu, _detect_cuda, _detect_wsl, _detect_tools exist in both files with diverging implementations (diff shows they have already drifted). Two parallel environment-probing stacks are maintained for one feature.",
+      "files": [
+        "/Users/parktaesoo/Downloads/Lattice AI/setup.py",
+        "/Users/parktaesoo/Downloads/Lattice AI/auto_setup.py",
+        "/Users/parktaesoo/Downloads/Lattice AI/latticeai/api/setup.py"
+      ]
+    },
+    {
+      "title": "Router-factory convention has outgrown itself: 25-30 closure kwargs per factory; AppContext and deps.py exist but are dead",
+      "severity": "major",
+      "detail": "create_chat_router receives ~25 callables (server_app.py:1444-1469), create_workspace_router ~30 (1267-1296), create_tools_router ~24 (1486-1509). This is dependency injection by hand-rolled mega-kwargs; adding one dependency touches three files and nothing type-checks the wiring. The codebase already contains the fix — latticeai/services/app_context.py defines a frozen AppContext dataclass and latticeai/api/deps.py defines dependency aliases — but grep shows zero consumers of either. They are aspirational dead code documenting the architecture the code doesn't have.",
+      "files": [
+        "/Users/parktaesoo/Downloads/Lattice AI/latticeai/services/app_context.py",
+        "/Users/parktaesoo/Downloads/Lattice AI/latticeai/api/deps.py",
+        "/Users/parktaesoo/Downloads/Lattice AI/latticeai/server_app.py"
+      ]
+    },
+    {
+      "title": "Dead and demo-only root modules",
+      "severity": "minor",
+      "detail": "Confirmed zero importers anywhere (latticeai/, tests/, tools/, scripts/): codex_telegram_bot.py (standalone Codex-relay bot) and perm_monitor.py (standalone permission-queue CLI helper) — both are dev-tooling that belongs in scripts/ or deletion. knowledge_graph_api.py (4.7KB) is a vestigial one-endpoint router only re-exported through latticeai/api/local_files.py:17. The multi-agent runtime is explicitly 'deterministic and LLM-free' (latticeai/core/multi_agent.py:6-7) — the Agents Planner→Executor→Reviewer loop is a scripted state machine, honest in its docstring but it must not be marketed as real multi-agent reasoning in v4. The admin 'VPC config' (server_app.py:445-455 DEFAULT_VPC_CONFIG with vpn_status/peering_status fields) is a JSON notes profile with no enforcement behind it — cosmetic enterprise surface. Working-directory clutter (30+ ltcai-*.tgz up to 24MB, venv/ and .venv/, server.log, chat_history.json, 15MB pptx) is untracked by git but pollutes every developer checkout.",
+      "files": [
+        "/Users/parktaesoo/Downloads/Lattice AI/codex_telegram_bot.py",
+        "/Users/parktaesoo/Downloads/Lattice AI/perm_monitor.py",
+        "/Users/parktaesoo/Downloads/Lattice AI/knowledge_graph_api.py",
+        "/Users/parktaesoo/Downloads/Lattice AI/latticeai/core/multi_agent.py"
+      ]
+    },
+    {
+      "title": "KG storage is double-booked: legacy tables remain authoritative, v2 is a projection",
+      "severity": "minor",
+      "detail": "knowledge_graph.py dual-writes legacy nodes/edges plus a v2 projection (_backfill_v2_if_needed at line 1073, _v2_sync_report at 1206), with reads flipped to v2 by default (line 825) but writes still mastered in the legacy schema. Every ingest pays double-write cost and the legacy schema cannot be deleted until write-mastering flips. This is a sensible strangler-fig midpoint, but v4 must finish it — kg_schema.py's KGStoreV2 should become the single authoritative store, not a shadow.",
+      "files": [
+        "/Users/parktaesoo/Downloads/Lattice AI/knowledge_graph.py",
+        "/Users/parktaesoo/Downloads/Lattice AI/kg_schema.py"
+      ]
+    }
+  ],
+  "opportunities": [
+    {
+      "title": "Create latticeai/brain/ — decompose knowledge_graph.py into the v4 Brain Core package",
+      "detail": "Split KnowledgeGraphStore along its existing seams into a first-class package: brain/store.py (adopt kg_schema.KGStoreV2 as the authoritative write store, finish the v1→v2 migration, delete legacy tables behind a one-time migrator), brain/extraction.py (rule-based + LLM concept/triple extractors as injected strategies — kill the set_llm_router process global), brain/parsers/ (pdf/pptx/docx/xlsx structure extractors, currently _pdf_structure etc.), brain/sources/ (filesystem discovery/audit/watch, merging local_knowledge_api.py's LocalKnowledgeWatcher), brain/retrieval.py (hybrid search, traverse, multi_hop_context, context_for_query), and brain/provenance.py. The existing services (ingestion.py, kg_portability.py, memory_service.py) become the public API of this package. The 51 unit-test files already import KnowledgeGraphStore directly, so keep a thin compat re-export during the move.",
+      "effort": "large"
+    },
+    {
+      "title": "Make IngestionPipeline the only door into the Brain",
+      "detail": "Route the three bypassing write paths through latticeai/services/ingestion.py: chat ingest (server_app.save_to_history → pipeline.ingest with source='chat'), document uploads (upload_service.py:74), and MCP ingest (api/mcp.py:360), plus the folder-watcher reindex path. This makes the v3.6.0 provenance/hooks guarantee actually true for every knowledge write — the single highest-leverage change for the 'user owns their knowledge' promise, and it is mostly plumbing since the pipeline already exists and is tested.",
+      "effort": "medium"
+    },
+    {
+      "title": "Introduce create_app(config) factory and adopt the dormant AppContext",
+      "detail": "Convert server_app.py's import-time singleton construction into an explicit create_app(config: Config) -> FastAPI factory that builds an AppContext (the dataclass already exists at latticeai/services/app_context.py) and passes it to router factories, replacing the 25-30 kwarg closures. Move MLX device init and llm_router's os.environ mutation out of import time into runtime startup. Eliminate configure_model_runtime/configure_tool_dispatch module-global mutation by making those services classes constructed inside the factory. This unlocks parallel test apps, clean shutdown, and a non-side-effectful import graph.",
+      "effort": "large"
+    },
+    {
+      "title": "Absorb root modules into the package; delete the rest",
+      "detail": "Move: llm_router.py + services/model_runtime.py + core/model_compat/model_resolution/model_catalog → latticeai/models/ as one provider boundary; mcp_registry.py → latticeai/core/mcp_registry.py; local_knowledge_api.py and knowledge_graph_api.py → folded into latticeai/brain + latticeai/api; p_reinforce.py → latticeai/core/. Merge setup.py + auto_setup.py into latticeai/services/environment.py (one hardware-detection implementation) and reduce root setup.py to nothing — pyproject.toml already carries packaging; the _discover_packaged_data_files shim can move to a build script. Delete codex_telegram_bot.py and perm_monitor.py or relocate to scripts/. End state: the repo root contains no importable application code, only server.py as the compat shim.",
+      "effort": "large"
+    },
+    {
+      "title": "Durable conversation store inside the Brain DB",
+      "detail": "Replace the 50-message chat_history.json cap with an unbounded SQLite conversations/messages table in the same database family as the knowledge graph (with the existing redaction and sensitivity classification applied on write). MemoryService then reads one durable source instead of fronting a truncated JSON file, and conversations become exportable through the existing KGPortabilityService — fulfilling 'knowledge is durable' for the user's richest data stream.",
+      "effort": "medium"
+    },
+    {
+      "title": "Decouple integrations via the RealtimeBus",
+      "detail": "telegram_bot's broadcast_web_chat should be a subscriber on the existing RealtimeBus (latticeai/core/realtime.py) rather than a direct import in api/chat.py with 9 inline call sites. Define an outbound-integration interface (on_chat_message) and register Telegram only when ENABLE_TELEGRAM is true. This removes the import-time .env mutation from the chat path and makes future integrations (Discord, webhooks) additive.",
+      "effort": "small"
+    },
+    {
+      "title": "Flip KG write-mastering to v2 and retire the legacy schema",
+      "detail": "knowledge_graph.py already reads from v2 by default and dual-writes. The remaining step: master writes in KGStoreV2, generate the legacy projection only for any unmigrated reader (or drop it after a deprecation release), delete _backfill_v2_if_needed/_v2_sync_report machinery, and bump GRAPH_SCHEMA_VERSION with a migration note in the portability export format. Cuts double-write cost and removes ~500 lines of sync code from the monolith before decomposition.",
+      "effort": "medium"
+    },
+    {
+      "title": "Type the router boundary",
+      "detail": "Replace latticeai/api/deps.py's three unused Callable aliases with Protocol classes (AuthGateway, AuditSink, GraphAccess) consumed by router factories, so mypy/pyright can verify the server assembly wiring that today only fails at request time. Small, incremental, and compatible with the existing factory convention.",
+      "effort": "small"
+    }
+  ]
+}

@@ -5,7 +5,7 @@
 > completed analysis. **Update this file before ending any phase and before any
 > likely session/context/usage limit.**
 >
-> Last updated: 2026-06-11 (session 2, after Phase A interruption + recovery)
+> Last updated: 2026-06-11 (session 2 — Phase A COMPLETE, entering Phase B)
 
 ---
 
@@ -31,11 +31,14 @@
 
 ## 2. Current Phase
 
-**Phase A (Repository Audit) — partially complete, being resumed.**
+**Phase A (Repository Audit) — COMPLETE (all 8 dimensions).**
+**Phase B (Brain Architecture Proposal + Implementation Plan) — in progress.**
 
-- 8-dimension parallel audit workflow ran (run ID `wf_d690b8d1-60c`, task `wsspwl45x`).
-- 2 of 8 auditors completed; 6 failed on a session usage limit (resets 12am
-  Asia/Seoul — now past). The 6 failed dimensions are being re-run.
+Full structured audit findings for all 8 dimensions are committed at
+`docs/v4-audit/v4_audit_<dimension>.json` (summary / strengths / problems
+with severity+files / opportunities with effort). §4 below condenses the two
+that predate the JSON drop; **read the JSON files for the other six — they are
+the canonical Phase A record.**
 
 ## 3. Completed Work
 
@@ -147,17 +150,55 @@ provenance-stamped export bundles, selective sharing; visibility levels
 export + encryption at rest; harden edges (hash session tokens, PKCE, password
 policy).
 
-### 4.3 Six dimensions NOT yet audited (re-running)
+### 4.3 Remaining six dimensions — COMPLETE; headline findings
 
-product-identity, backend-architecture, knowledge-data-model, frontend-ux,
-memory-context, release-quality. **Do not treat these as audited.**
+Canonical record: `docs/v4-audit/*.json`. Cross-dimension headline synthesis:
 
-Known partial facts from inline scouting: `/app` SPA is primary surface
-(`api/static_routes.py:112-117`); FEATURE_STATUS.md is the honesty ledger;
-ARCHITECTURE.md already frames "Digital Brain Platform / KG-first";
-KG v2 write-side backfilled but read-path still legacy (memory note,
-verify in audit); version single-source spread across pyproject.toml,
-package.json, setup.py (verify).
+- **product-identity**: identity is skin-deep — only README/ARCHITECTURE say
+  "Digital Brain"; PROJECT_PRINCIPLES/pyproject/package.json/SPA IA still say
+  "AI workspace". **p_reinforce.py "garden" vault (`~/.ltcai-brain`) is a second
+  brain bypassing the KG**, injected into every chat (`api/chat.py:368`),
+  contradicting "no source bypasses the graph". README overclaims agents/
+  workflows that FEATURE_STATUS admits are LLM-free. Naming sprawl (9 ids,
+  2 env prefixes, uppercase `LTCAI` bin). FEATURE_STATUS.md honesty ledger is
+  the prize asset — institutionalize it.
+- **backend-architecture**: inverted dependency — clean `latticeai/` imports
+  legacy root modules everywhere. `knowledge_graph.py` = 4,633-line single
+  class w/ 7 responsibilities. **IngestionPipeline covers only 1 of 4 KG write
+  paths** (browser only; chat/uploads/MCP write directly, no provenance).
+  `server_app.py` 1,555-line god module, import-time side effects, dormant
+  AppContext/deps.py. Chat history hard-capped at 50 messages in JSON.
+  telegram_bot imported unconditionally by chat router. Dead: codex_telegram_bot,
+  perm_monitor, knowledge_graph_api (vestigial).
+- **knowledge-data-model**: KG v2 is **schema theater** — reads reconstruct
+  legacy Korean free-string types via COALESCE views; v2's owner_id/visibility/
+  evidence/created_by/embedding columns never populated; writes still mint
+  '업로드함'/'포함함'. No temporal/episodic dimension (edges UNIQUE collapse
+  history). No memory-type model. Search default = LIKE + brute-force cosine
+  over hash embeddings (grade='fallback'). graph_curator.py dead in production.
+  docs/kg-schema.md documents nonexistent APIs (validate_endpoints).
+- **frontend-ux**: TWO complete frontends in production (legacy ~17k lines at
+  /chat,/graph,/workspace,/admin… vs v3 SPA at /app); onboarding + /admin route
+  into the LEGACY stack. v3 KG explorer (static SVG) is weaker than legacy
+  force-directed canvas — backwards for KG-first. CDN fonts/icons contradict
+  privacy-first. sw.js stale (precaches legacy). Hashed build artifacts
+  committed beside sources. lint_v3.mjs is syntax-check only.
+- **memory-context**: memory IS injected at chat time but naively (string
+  concat of vault substring-scan + SQLite LIKE); workspace personal-memory tier
+  NEVER consumed at inference; **`MemoryService.recall` graph branch dead code**
+  (`.get("results")` vs actual `matches` key); fabricated recall scores
+  (hardcoded 0.6/0.5); recent-chat context **leaks other users' messages**
+  (filter passes any assistant reply); hybrid/vector search never used at
+  inference; agent learnings dumped to vault markdown w/ swallowed errors.
+- **release-quality**: **published wheel is broken** — `server_app.py:149`
+  imports root `setup` module which py-modules omits; root `setup.py` is
+  application code colliding with setuptools. Zero Python lint/typecheck.
+  Deps fully unpinned (pyproject + duplicated requirements.txt). npm tarball
+  24.8MB (ships docs images, bots). Version = 9 synchronized copies guarded by
+  a test. 15MB pptx tracked at HEAD. Root clutter (31 tgz, 2 venvs, logs) is
+  untracked (440 tracked files; 0 tgz tracked). Strong assets to keep:
+  validate_release_artifacts.py, version-consistency tests, CI matrix,
+  tag-driven release workflow.
 
 ## 5. Decisions Made
 
