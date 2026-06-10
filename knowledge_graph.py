@@ -3117,7 +3117,8 @@ class KnowledgeGraphStore:
     ) -> Dict[str, Any]:
         """Append a provenance record for an ingested node (audit trail)."""
         now = _now()
-        prov_id = f"prov:{_sha256_text(f'{node_id}|{content_hash or ''}|{now}')[:24]}"
+        prov_basis = f"{node_id}|{content_hash or ''}|{now}"
+        prov_id = f"prov:{_sha256_text(prov_basis)[:24]}"
         with self._connect() as conn:
             conn.execute(
                 """
