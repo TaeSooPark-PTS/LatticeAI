@@ -1,5 +1,31 @@
 # Release Notes
 
+## v3.6.0 - Knowledge Graph First
+
+Lattice AI is not a model-personalization system. It is a **Digital Brain
+Platform**: the Knowledge Graph is your durable asset, and models read it.
+v3.6.0 makes the graph the primary architecture — every source converges into it
+through one unified ingestion pipeline. Nothing was published to an external
+registry and Vercel remains landing/download/demo only (never the runtime).
+
+### Highlights
+
+- **Unified ingestion pipeline** — one entrypoint for files, folders, web URLs,
+  browser tabs, and text; idempotent by content hash; routed through the
+  `pre_tool`/`post_tool` hook lifecycle.
+- **Formalized entities/relationships** — `Source`/`Repository`/`Meeting`/
+  `Organization`/`Workflow`/`Agent` + `indexed_from`/`modified_by`/
+  `belongs_to_project`/`part_of`/`discussed_in`/`decided_by`/`generated_by`/
+  `used_by_agent`.
+- **Browser & web ingestion** — local URL fetch + browser-tab capture (Manifest V3
+  extension, `127.0.0.1` only).
+- **Portability** — local export/import (JSON) and binary backup/restore (DB +
+  blobs, integrity-checked); no cloud required.
+- **Provenance** — every node records where it came from; queryable audit trail.
+- **Knowledge Graph as the primary surface** — Status, Sources, Capture, Backup.
+
+Full detail: [RELEASE_NOTES_v3.6.0.md](RELEASE_NOTES_v3.6.0.md).
+
 ## v3.3.1 - Visual Product Rebuild
 
 Lattice AI v3.3.1 rebuilds the visible `/app` product experience while

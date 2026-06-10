@@ -3,10 +3,11 @@
 
   # Lattice AI
 
-  **Local-first AI workspace for your files, chats, knowledge, models, and agents.**
+  **A local-first Digital Brain Platform. Your Knowledge Graph is the durable asset; models just read it.**
 
-  Keep your work context on your own machine. Connect documents, conversations,
-  local models, graph memory, and agent workflows in one self-hosted workspace.
+  Every source — files, folders, web pages, browser tabs — converges into one
+  Knowledge Graph on your own machine. Connect models, agents, and search to that
+  graph instead of placing your work inside any single model.
 </div>
 
 <div align="center">
@@ -24,10 +25,21 @@
 
 ![Lattice AI — local-first AI workspace home](docs/assets/v3.4.0/home.png)
 
-> **Lattice AI is a self-hosted AI workspace that keeps your files, chats, knowledge, local models, and agents together on your own machine.**
+> **Lattice AI is not a model-personalization system. It is a Digital Brain Platform.**
+> The Knowledge Graph is your durable asset. **Models are replaceable. Knowledge is durable.**
 
-It isn't another chat window. It's a workspace built around your work — local-first
-by default, cloud only when you choose.
+It isn't another chat window, and it isn't a way to "fine-tune a model on you." The
+purpose of Lattice AI is to **connect models to your Knowledge Graph** — your digital
+brain — not to place you inside a model. AI reads your knowledge; you own it.
+
+- **Models are replaceable.** Swap MLX, Ollama, LM Studio, or a cloud LLM at will.
+- **Agents, RAG, and the UI are replaceable.** They are implementations, not the asset.
+- **Your Knowledge Graph is durable.** It outlives every model and is yours to export,
+  import, and back up locally — no cloud required.
+
+Local-first by default; cloud only when you choose. (The Vercel site is a
+landing/download/demo surface only — never the runtime. Lattice AI runs on your
+machine over local SQLite.)
 
 ## Why install Lattice AI?
 
@@ -187,32 +199,51 @@ npm run dev
 
 ## Latest Release
 
-### v3.4.1 — Runtime Completion
+### v3.6.0 — Knowledge Graph First
 
-- Full hooks lifecycle across HTTP, agent, workflow, upload, and indexing paths.
-- Real Local Agent probes instead of hardcoded readiness.
-- Connect Folder verified end-to-end.
-- Folder Watch verified, including restore after restart.
+- **Unified ingestion pipeline** — one entrypoint normalizes every source
+  (file, folder, web URL, browser tab, text/markdown/code) into the graph,
+  idempotent by content hash and bracketed by the `pre_tool`/`post_tool` hook
+  lifecycle.
+- **Formalized entity/relationship model** — first-class `Source`, `Repository`,
+  `Meeting`, `Organization`, `Workflow`, `Agent` entities and `indexed_from`,
+  `modified_by`, `belongs_to_project`, `part_of`, `discussed_in`, `decided_by`,
+  `generated_by`, `used_by_agent` relationships.
+- **Browser & web ingestion** — `POST /api/browser/read-url` and
+  `/ingest-current-tab`, plus a local Manifest V3 extension that posts only to
+  `127.0.0.1`.
+- **Portability** — local Knowledge Graph export/import (versioned JSON) and
+  binary backup/restore (DB + blobs, integrity-checked). No cloud required.
+- **Provenance** — every node records where it came from; a queryable audit trail
+  makes the graph explainable.
+- **Knowledge Graph as the primary surface** — the view becomes your digital brain
+  with Status, Sources, Capture, and Backup tabs.
 
-See [RELEASE_NOTES_v3.4.1.md](RELEASE_NOTES_v3.4.1.md) and
+See [RELEASE_NOTES_v3.6.0.md](RELEASE_NOTES_v3.6.0.md),
+[docs/kg-schema.md](docs/kg-schema.md),
+[docs/RUNTIME_HOOK_COVERAGE_v3.6.0.md](docs/RUNTIME_HOOK_COVERAGE_v3.6.0.md), and
 [FEATURE_STATUS.md](FEATURE_STATUS.md).
 
-## How it works
+## How it works — every source converges into the graph
+
+As of v3.6.0, all data sources flow through **one unified ingestion pipeline** into
+the Knowledge Graph — no source bypasses it, none becomes an isolated silo:
 
 ```text
-files / chats / notes / images / decisions
-  -> workspace memory
-  -> knowledge graph
-  -> hybrid search
-  -> chat / agents / workflows
-  -> reusable outputs
+source (file · folder · PDF · web URL · browser tab · text)
+  -> extraction -> normalization -> content hash (idempotent)
+  -> chunking -> entity detection -> relationship detection -> embedding
+  -> Knowledge Graph  (Source -[indexed_from]- content -[contains]- chunks)
+  -> RAG / agents / memory / hybrid search
 ```
 
-- Your content stays on your machine and becomes durable workspace memory.
-- Memory is organized into a knowledge graph of entities and relationships.
-- Hybrid search fuses keyword, vector, and graph signals over that context.
-- Chat, agents, and workflows draw on the same grounded context.
-- Outputs — documents, analysis, and decisions — feed back into the workspace.
+- **Every node is explainable.** Each ingested item carries provenance — where it
+  came from, when, how it was processed, whether it was embedded or linked.
+- **The graph is the asset.** Memory, search, and agents are views over it; models
+  read it. Swap a model and your knowledge is unchanged.
+- **Portable, no cloud.** Export/import the graph as JSON, or take a full local
+  binary backup (DB + blobs) and restore it.
+- **Local-first protects the graph.** It lives in local SQLite on your machine.
 
 For the deeper design, see [ARCHITECTURE.md](ARCHITECTURE.md) and
 [docs/architecture.md](docs/architecture.md).
@@ -247,16 +278,19 @@ For the deeper design, see [ARCHITECTURE.md](ARCHITECTURE.md) and
 ### Releases
 
 - [RELEASE_NOTES.md](RELEASE_NOTES.md) — current release notes
+- [RELEASE_NOTES_v3.6.0.md](RELEASE_NOTES_v3.6.0.md)
+- [RELEASE_NOTES_v3.5.0.md](RELEASE_NOTES_v3.5.0.md)
 - [RELEASE_NOTES_v3.4.1.md](RELEASE_NOTES_v3.4.1.md)
 - [RELEASE_NOTES_v3.4.0.md](RELEASE_NOTES_v3.4.0.md)
-- [RELEASE_NOTES_v3.3.0.md](RELEASE_NOTES_v3.3.0.md)
 - [CHANGELOG.md](CHANGELOG.md) and [docs/CHANGELOG.md](docs/CHANGELOG.md)
 
 ## Release History
 
 | Version | Theme |
 | --- | --- |
-| **3.4.1** | Runtime completion — full hooks lifecycle, real Local Agent probes, Connect Folder and Folder Watch verified end-to-end |
+| **3.6.0** | Knowledge Graph First — unified ingestion pipeline, formalized entity/relationship model, browser/web ingestion, local export/import/backup, provenance, KG as the primary surface |
+| 3.5.0 | Foundation stabilization & verification — OIDC verifier, trusted-proxy gating, runtime hook coverage, `tools/` package, reproducible artifacts |
+| 3.4.1 | Runtime completion — full hooks lifecycle, real Local Agent probes, Connect Folder and Folder Watch verified end-to-end |
 | 3.4.0 | Platform completion — hooks execution, uploads in Files, vision image input, agent run trigger, on-device Local Agent / Connect Folder / Folder Watch |
 | 3.3.1 | Visual product rebuild — rebuilt `/app` shell, Basic/Advanced/Admin navigation, refreshed design system |
 | **3.3.0** | Product quality & honesty release — evidence-based feature audit, single-source version truth, working document upload, documented design system |

@@ -1,5 +1,37 @@
 # Changelog
 
+## [3.6.0] - 2026-06-10
+
+> Knowledge Graph First. The Knowledge Graph becomes the primary architecture:
+> every data source converges into it through one unified ingestion pipeline, with
+> formalized entities/relationships, browser/web inputs, local portability, and
+> per-node provenance. Lattice AI is a Digital Brain Platform — the graph is the
+> durable asset; models read it and are replaceable.
+
+### Added
+
+- Unified ingestion pipeline (`latticeai/services/ingestion.py`): one entrypoint
+  for files, folders, web URLs, browser tabs, and text — idempotent by content
+  hash, bracketed by `pre_tool`/`post_tool`.
+- Knowledge Graph entities `Source`/`Repository`/`Meeting`/`Organization`/
+  `Workflow`/`Agent` and relationships `indexed_from`/`modified_by`/
+  `belongs_to_project`/`part_of`/`discussed_in`/`decided_by`/`generated_by`/
+  `used_by_agent` (additive, lossless `from_legacy`).
+- Browser & web ingestion routes (`/api/browser/read-url`, `/ingest-current-tab`)
+  and a Manifest V3 extension scaffold that posts only to `127.0.0.1`.
+- Knowledge Graph export/import (versioned JSON) and binary backup/restore
+  (`latticeai/services/kg_portability.py`,
+  `/api/knowledge-graph/{export,import,backup,restore,portability,provenance}`).
+- Provenance trail (`ingestion_provenance` table + query API) — every node is
+  explainable.
+- Knowledge Graph UI tabs: Status, Sources, Capture, Backup.
+
+### Changed
+
+- KG ingestion now fires the tool hook lifecycle (closes the v3.5.0 gap);
+  coverage documented in `docs/RUNTIME_HOOK_COVERAGE_v3.6.0.md`.
+- README repositioned as a Digital Brain Platform; Vercel remains landing-only.
+
 ## [3.3.1] - 2026-06-08
 
 > v3.3.1 — Visual Product Rebuild. The `/app` frontend keeps the same runtime

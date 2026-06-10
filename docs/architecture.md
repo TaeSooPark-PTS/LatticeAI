@@ -1,17 +1,18 @@
 # Lattice AI Architecture
 
-> v3.3.1 — feature-complete for non-enterprise use cases with a rebuilt `/app`
-> visual shell. The agent ecosystem
-> (registry, marketplace + templates, workflow agents, autonomous planning),
-> the long-term memory platform + manager, and the skills/hooks/tool/MCP
-> registries are all operable from `/app`. Enterprise controls remain future
-> work.
+> v3.6.0 — **Knowledge Graph First.** Every data source converges into the graph
+> through one unified ingestion pipeline (`latticeai/services/ingestion.py`), with
+> formalized entities/relationships (`docs/kg-schema.md`), browser/web inputs,
+> per-node provenance, and local export/import/backup
+> (`latticeai/services/kg_portability.py`). The agent ecosystem, long-term memory,
+> and skills/hooks/tool/MCP registries are all operable from `/app`. Enterprise
+> controls remain future work.
 
-Lattice AI is a local-first **AI workspace, AI pipeline platform, Knowledge
-Graph platform, and multi-agent workflow platform**. The architecture is
-organized around one durable center: the Knowledge Graph. Models, tools,
-agents, workflows, and UI modes are replaceable layers that operate on top of
-workspace and graph context.
+Lattice AI is a local-first **Digital Brain Platform**. The architecture is
+organized around one durable center and the user's asset: the **Knowledge
+Graph**. Models, tools, agents, RAG, workflows, and UI modes are replaceable
+layers that operate as views over graph context. Models are replaceable;
+knowledge is durable.
 
 ## Architecture Goals
 

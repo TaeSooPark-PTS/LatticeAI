@@ -1,25 +1,41 @@
 # Lattice AI Architecture
 
-Lattice AI v3.3.1 is a feature-complete (non-enterprise), local-first AI
-workspace platform. The durable core is the Knowledge Graph; retrieval, memory,
-and the agent ecosystem operate on graph and workspace context. The entire
-platform is operable from `/app`.
+Lattice AI is a local-first **Digital Brain Platform**. The durable core — and the
+user's asset — is the **Knowledge Graph**: every data source converges into it,
+and retrieval, memory, and the agent ecosystem operate as views over it. Models,
+agents, RAG, and the UI are replaceable implementations; the graph is durable.
+The entire platform is operable from `/app` and runs on local SQLite.
 
-See [docs/architecture.md](docs/architecture.md) for the full architecture.
+See [docs/architecture.md](docs/architecture.md) for the full architecture and
+[docs/kg-schema.md](docs/kg-schema.md) for the entity/relationship model.
 
-## v3.3 Platform Shape
+## Knowledge Graph First shape (v3.6.0)
+
+Every source flows through **one unified ingestion pipeline** into the graph — no
+source bypasses it, none becomes a silo:
 
 ```text
-files / images / documents / chats / work history
-  -> multimodal ingestion
-  -> entity, relation, and evidence extraction
-  -> Knowledge Graph  +  Vector Index  ->  Hybrid Search
+source (file · folder · PDF · web URL · browser tab · text/markdown/code)
+  -> extraction -> normalization -> metadata -> content hash (idempotent)
+  -> chunking -> entity detection -> relationship detection -> embedding
+  -> Knowledge Graph   (Source -[indexed_from]- content -[contains]- chunks)
+       + provenance (where / when / how / embedded / linked) per node
+  -> Vector Index -> Hybrid Search
   -> Long-Term Memory (workspace / project / agent / conversation / graph / vector)
   -> Agent Runtime (Planner -> Researcher -> Executor -> Reviewer)
        via Agent Registry, Tool Registry, Hooks, MCP, Skills, Marketplace templates
   -> Workflow Agents + Autonomous Planning (goal -> plan -> execute -> review -> replan)
   -> coding actions, analysis, documents, team workflows
 ```
+
+- **Unified ingestion** — `latticeai/services/ingestion.py` is the single
+  write-side seam; every source is normalized into one `IngestionItem` and
+  bracketed by the `pre_tool`/`post_tool` hook lifecycle (`dispatch_tool`).
+- **Provenance** — `ingestion_provenance` makes every node explainable.
+- **Portability** — `latticeai/services/kg_portability.py` exports/imports the
+  graph (versioned JSON) and takes binary backups (DB + blobs); local-only.
+- **Browser/web inputs** — `latticeai/api/browser.py` + a Manifest V3 extension
+  feed URLs and tabs into the same pipeline, posting only to `127.0.0.1`.
 
 ## v3.3 Platform Components
 

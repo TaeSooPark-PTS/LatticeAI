@@ -1,9 +1,27 @@
-# Lattice AI — Feature Status (v3.5.0)
+# Lattice AI — Feature Status (v3.6.0)
 
-**Release type:** foundation stabilization & verification — the last major
-hardening pass before Knowledge-Graph-First (v3.6.0) and the Digital Brain
-Platform (v4.0). No new product surface. Every v3.5.0 claim is backed by automated
-tests and a live server boot (`/health` → `3.5.0`).
+**Release type:** Knowledge Graph First — the Knowledge Graph becomes the primary
+architecture. Lattice AI is a Digital Brain Platform: the graph is the durable
+asset; models read it and are replaceable. Every v3.6.0 claim below is backed by
+automated tests.
+
+## v3.6.0 Knowledge Graph First — what's new
+
+| Area | Status | Evidence |
+| --- | --- | --- |
+| **Unified ingestion pipeline** | WORKING | `latticeai/services/ingestion.py` — one entrypoint normalizes file/folder/web/tab/text into the graph, idempotent by content hash, routed through `dispatch_tool` (`pre_tool`/`post_tool` fire). `test_ingestion_pipeline.py` (8). |
+| **Entity/relationship model** | WORKING | `kg_schema.py` +6 nodes (`Source`/`Repository`/`Meeting`/`Organization`/`Workflow`/`Agent`) +8 edges; additive, lossless `from_legacy`. `test_kg_schema_v36.py` (6). |
+| **Browser/web ingestion** | WORKING (backend + extension scaffold) | `latticeai/api/browser.py` (`/api/browser/read-url`, `/ingest-current-tab`); MV3 extension under `browser-extension/` (127.0.0.1-only). `test_browser_ingestion.py` (10). Live URL fetch is exercised via an injected fetcher in tests; real fetch depends on network. |
+| **Export/import/backup/restore** | WORKING | `latticeai/services/kg_portability.py` + `/api/knowledge-graph/{export,import,backup,restore,portability,provenance}`. Round-trip, dry-run, schema guard, backup→restore, integrity check. `test_kg_portability.py` (9). |
+| **Provenance** | WORKING | `ingestion_provenance` table + `record/get/list/provenance_stats`; every node explainable. Covered by `test_ingestion_pipeline.py`. |
+| **Hook coverage (ingestion)** | WORKING | KG ingestion now fires `pre_tool`/`post_tool` (closes the one v3.5.0 gap). `docs/RUNTIME_HOOK_COVERAGE_v3.6.0.md`, `test_runtime_coverage_v36.py`. |
+| **KG-first UI** | WORKING (lint/build-verified) | Knowledge Graph view recast with Status/Sources/Capture/Backup tabs; `api.js` fallback-safe methods. Frontend gate: `lint:v3` 64/64 + asset build. Visual behavior not unit-tested (static frontend). |
+
+Validation: unit suite green (incl. new v3.6.0 suites) · check:python · lint
+64/64 · build (sdist+wheel+VSIX) · release artifact validation. Carry-over audit:
+`docs/CARRYOVER_AUDIT_v3.6.0.md` (zero blocking items).
+
+---
 
 ## v3.5.0 Stabilization — what hardened
 

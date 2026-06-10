@@ -78,6 +78,23 @@ MAGIC_NUMBERS = {
 - 업로드 시 파일 첫 바이트와 확장자 매핑 검증
 - 불일치 시 400 에러
 
+## 수집 & 그래프 포터빌리티 보안 (v3.6.0)
+
+- **수집 라이프사이클**: 모든 수집은 `IngestionPipeline.ingest` → `dispatch_tool`
+  를 거쳐 `pre_tool`/`post_tool` 훅이 발화됩니다. `pre_tool`이 차단하면 수집은
+  정직하게 `status="blocked"`로 거부됩니다(권한 게이트·민감정보 가드 적용).
+- **웹 URL 읽기**(`/api/browser/read-url`): `http(s)` 스킴만 허용(파일/기타 스킴
+  거부), 12초 타임아웃, 4MB 응답 상한, HTML/text 컨텐츠 타입만 처리. 차단/로그인
+  필요 페이지는 5xx가 아닌 **422로 우아하게 실패**합니다. 로컬 런타임이 사용자가
+  명시한 URL만 가져옵니다(자동 크롤링 없음).
+- **브라우저 탭 수집**(`/api/browser/ingest-current-tab`): payload 정화(스크립트/
+  스타일 제거) + 페이로드 크기 상한(413). Manifest V3 확장은 **`127.0.0.1`로만**
+  전송하며 클라우드 엔드포인트가 없습니다.
+- **포터빌리티 권한**: 그래프 export/status 읽기는 로그인 사용자, **import /
+  backup / restore 는 admin 전용**(`require_admin`). 그래프는 머신-전역 자원입니다.
+- **복원 무결성**: 백업 아카이브는 `manifest.json`의 sha256과 대조 검증 후에만
+  복원되며, 불일치 시 거부됩니다.
+
 ## 에이전트 도구 샌드박스
 
 ### `run_command()` 위험 플래그 차단

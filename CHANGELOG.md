@@ -2,6 +2,51 @@
 
 The detailed historical changelog lives in [docs/CHANGELOG.md](docs/CHANGELOG.md).
 
+## [3.6.0] - 2026-06-10
+
+Knowledge Graph First release — the Knowledge Graph becomes the primary
+architecture. Lattice AI is not a model-personalization system; it is a Digital
+Brain Platform where the graph is the durable asset and models read it. Every
+change is backed by automated tests. See
+[RELEASE_NOTES_v3.6.0.md](RELEASE_NOTES_v3.6.0.md),
+[docs/kg-schema.md](docs/kg-schema.md),
+[docs/RUNTIME_HOOK_COVERAGE_v3.6.0.md](docs/RUNTIME_HOOK_COVERAGE_v3.6.0.md), and
+[docs/CARRYOVER_AUDIT_v3.6.0.md](docs/CARRYOVER_AUDIT_v3.6.0.md).
+
+### Added
+
+- **Unified ingestion pipeline** (`latticeai/services/ingestion.py`) — one
+  `IngestionPipeline.ingest()` entrypoint normalizes every source (file, folder,
+  web URL, browser tab, text/markdown/note/code) into the graph, idempotent by
+  content hash, bracketed by the `pre_tool`/`post_tool` lifecycle.
+  (`test_ingestion_pipeline.py`.)
+- **Entity/relationship model** — `Source`, `Repository`, `Meeting`,
+  `Organization`, `Workflow`, `Agent` node types and `indexed_from`,
+  `modified_by`, `belongs_to_project`, `part_of`, `discussed_in`, `decided_by`,
+  `generated_by`, `used_by_agent` edges; additive + lossless `from_legacy`.
+  (`test_kg_schema_v36.py`.)
+- **Browser & web ingestion** — `POST /api/browser/read-url` and
+  `/ingest-current-tab`, plus a Manifest V3 extension (`browser-extension/`) that
+  posts only to `127.0.0.1`. (`test_browser_ingestion.py`,
+  `test_runtime_coverage_v36.py`.)
+- **Portability** — logical JSON export/import (versioned, merge/replace/dry-run)
+  and binary backup/restore (DB + blobs, sha256-verified) via
+  `latticeai/services/kg_portability.py` and
+  `/api/knowledge-graph/{export,import,backup,restore,portability,provenance}`.
+  (`test_kg_portability.py`.)
+- **Provenance** — `ingestion_provenance` table + `record/get/list/
+  provenance_stats`, an append-only trail making every node explainable.
+- **UI** — Knowledge Graph view recast as the digital brain with Status, Sources,
+  Capture, and Backup tabs.
+
+### Changed
+
+- KG ingestion now fires `pre_tool`/`post_tool` hooks (closes the one honest
+  v3.5.0 carry-over gap). `docs/RUNTIME_HOOK_COVERAGE_v3.6.0.md` extends the v3.5.0
+  coverage with no regression.
+- README repositioned as a Digital Brain Platform (Knowledge Graph = durable
+  asset; models replaceable; Vercel landing-only).
+
 ## [3.5.0] - 2026-06-09
 
 Foundation stabilization & verification release — the last major hardening pass
