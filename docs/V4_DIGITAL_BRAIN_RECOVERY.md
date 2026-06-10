@@ -32,7 +32,22 @@
 ## 2. Current Phase
 
 **Phase A (Repository Audit) — COMPLETE (all 8 dimensions).**
-**Phase B (Brain Architecture Proposal + Implementation Plan) — in progress.**
+**Phase B (Brain Architecture Proposal + Implementation Plan) — docs authored
+(`docs/V4_BRAIN_ARCHITECTURE.md`, `docs/V4_IMPLEMENTATION_PLAN.md`);
+adversarial design review pending, then Phase B closes.**
+
+Scope ruling (user directive, session 3): risk/effort/migration size are NOT
+valid exclusion reasons — only true technical blockers. Consequently the
+architecture now INCLUDES: KG v2 write-mastering flip, durable async run
+engine + cancellation + SSE + triggers, per-tool approval gate, user-UUID
+identity + policy enforcement + invitations, transactional workspace state,
+FTS5 + optional sqlite-vec, Brain Network v1 peer exchange (signed bundles
+over LAN HTTP), knowledge_graph.py decomposition into latticeai/brain/,
+root-module absorption, create_app factory, legacy frontend deletion,
+token-native login, i18n. Only two exclusions remain (both true blockers):
+git history rewrite for the tracked pptx (force-push = owner decision at RC
+review; file IS deleted at HEAD in T10) and silent default download of a
+production embedder (consent violation; wizard-provisioned opt-in instead).
 
 Full structured audit findings for all 8 dimensions are committed at
 `docs/v4-audit/v4_audit_<dimension>.json` (summary / strengths / problems
@@ -227,10 +242,12 @@ Canonical record: `docs/v4-audit/*.json`. Cross-dimension headline synthesis:
 5. **Phase D**: full validation, version bump to 4.0.0 (RC), docs, release notes,
    push branch, final 13-deliverable report. STOP — wait for human review.
 
-## 7. Detailed Implementation Queue (provisional until Phase B finalizes)
+## 7. Detailed Implementation Queue
 
-Derived from completed audits; Phase B will refine/extend after the 6 remaining
-audits land. Ordered for dependency + risk:
+**SUPERSEDED by `docs/V4_IMPLEMENTATION_PLAN.md` (tracks T1–T10 with file
+ownership, migration strategies, tests, and risk register). That document is
+the execution contract for Phase C.** The original provisional queue below is
+retained for context only:
 
 - **C1. Truth & safety floor (small, do first)**
   - Close workspace by-id authz gaps; strip registry leak from `/workspace/os`.
