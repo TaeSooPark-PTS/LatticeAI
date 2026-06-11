@@ -38,6 +38,10 @@ TEXT_SOURCE_TYPES = frozenset(
 # pipeline, so they carry provenance and fire the hook lifecycle like every
 # other source.
 CHAT_SOURCE_TYPES = frozenset({"chat_message", "mcp_message"})
+# Typed memory records (read via ingest_event → Decision/Experience/Event
+# nodes). The Memory System writes through the same door as everything else.
+MEMORY_SOURCE_TYPES = frozenset({"decision", "experience", "workspace_event"})
+_MEMORY_NODE_TYPES = {"decision": "Decision", "experience": "Experience", "workspace_event": "Event"}
 
 DEFAULT_MAX_TEXT_BYTES = 5 * 1024 * 1024  # 5 MB of extracted text per item
 
@@ -150,6 +154,8 @@ class IngestionPipeline:
         def _run() -> Dict[str, Any]:
             if source_type in CHAT_SOURCE_TYPES:
                 return self._ingest_chat(item, source_type=source_type, owner=owner)
+            if source_type in MEMORY_SOURCE_TYPES:
+                return self._ingest_memory_record(item, source_type=source_type, owner=owner)
             if source_type in FILE_SOURCE_TYPES or (item.path and not item.text):
                 return self._ingest_file(item, source_type=source_type, owner=owner, captured_at=captured_at)
             return self._ingest_text(item, source_type=source_type, owner=owner, captured_at=captured_at)
@@ -267,6 +273,21 @@ class IngestionPipeline:
         # the provenance step expects.
         result.setdefault("node_id", result.get("node_id") or result.get("message_node_id") or result.get("id"))
         result.setdefault("title", item.title or text[:80])
+        return result
+
+    def _ingest_memory_record(self, item, *, source_type, owner) -> Dict[str, Any]:
+        node_type = _MEMORY_NODE_TYPES[source_type]
+        meta = item.metadata or {}
+        result = self._kg.ingest_event(
+            node_type,
+            item.title or (item.text or node_type)[:120],
+            user_email=owner,
+            source=meta.get("source") or source_type,
+            conversation_id=item.conversation_id,
+            metadata={**meta, "detail": (item.text or "")[:2000]},
+        )
+        result.setdefault("node_id", result.get("node_id") or result.get("id"))
+        result.setdefault("title", item.title)
         return result
 
     def _ingest_file(self, item, *, source_type, owner, captured_at) -> Dict[str, Any]:
