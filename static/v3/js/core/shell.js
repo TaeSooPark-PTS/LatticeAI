@@ -36,7 +36,7 @@ export function boot(rootEl) {
   cacheEls(rootEl);
   store.subscribe(onStateChange);
 
-  router = createRouter({ onRoute: renderRoute, fallback: "home" });
+  router = createRouter({ onRoute: renderRoute, fallback: "knowledge-graph" });
   wireGlobalKeys();
   router.start();
 

@@ -8,7 +8,7 @@ endpoints (install / verify-cloud / pull-model) stay in server_app for now.
 from __future__ import annotations
 
 import asyncio
-from typing import Any, Callable, List, Optional
+from typing import Callable, List, Optional
 
 from fastapi import APIRouter, Request
 

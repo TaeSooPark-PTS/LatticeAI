@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-import re
 import subprocess
 from dataclasses import dataclass
 from pathlib import Path
@@ -58,7 +57,7 @@ def create_static_routes_router(
             return response
     
         # 3. 인증 실패 시 차단 화면
-        return HTMLResponse(content=f"""
+        return HTMLResponse(content="""
             <body style="background:#0f1115; color:white; display:flex; flex-direction:column; align-items:center; justify-content:center; height:100vh; font-family:sans-serif;">
                 <div style="background:#16191f; padding:40px; border-radius:24px; border:1px solid rgba(255,255,255,0.1); text-align:center; box-shadow: 0 20px 40px rgba(0,0,0,0.5);">
                     <div style="font-size:48px; margin-bottom:20px;">🔒</div>
@@ -145,7 +144,7 @@ def create_static_routes_router(
     async def local_sysinfo(request: Request):
         """CPU / RAM / GPU(MLX) 사용량을 반환합니다."""
         require_user(request)
-        import subprocess, re as _re
+        import re as _re
         result = {"cpu_pct": 0.0, "ram_pct": 0.0, "gpu_mem_pct": 0.0, "gpu_mem_gb": 0.0}
         try:
             # CPU
@@ -157,7 +156,6 @@ def create_static_routes_router(
                         result["cpu_pct"] = round(float(m.group(1)) + float(m.group(2)), 1)
             # RAM
             vm_out = subprocess.run(["vm_stat"], capture_output=True, text=True, timeout=4).stdout
-            page_size = 16384
             pages: dict = {}
             for line in vm_out.splitlines():
                 for key in ["Pages free", "Pages active", "Pages inactive", "Pages wired down", "Pages occupied by compressor"]:

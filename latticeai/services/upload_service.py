@@ -9,6 +9,7 @@ from pathlib import Path
 
 from fastapi import HTTPException, Request, UploadFile
 
+from latticeai.services.ingestion import IngestionItem
 from tools import ToolError, read_document
 
 
@@ -19,6 +20,7 @@ async def process_uploaded_document(
     current_user: str,
     enable_graph: bool,
     knowledge_graph,
+    ingestion_pipeline=None,
     bytes_match_extension,
     classify_sensitive_message,
     append_audit_event,
@@ -71,18 +73,41 @@ async def process_uploaded_document(
         try:
             if not (enable_graph and knowledge_graph):
                 raise RuntimeError("graph disabled")
-            graph_result = knowledge_graph.ingest_document(
-                Path(tmp_path),
-                original_filename=file.filename,
-                mime_type=file.content_type,
-                uploader=current_user,
-                conversation_id=request.query_params.get("conversation_id"),
-                extracted=result,
-            )
-            result["knowledge_graph"] = {
-                "node_id": graph_result["node_id"],
-                "sha256": graph_result["sha256"],
-            }
+            if ingestion_pipeline is not None:
+                # v4: uploads enter the brain through the unified ingestion
+                # pipeline (provenance + kg_ingest hook lifecycle).
+                ingest = ingestion_pipeline.ingest(
+                    IngestionItem(
+                        source_type="upload",
+                        title=file.filename,
+                        path=tmp_path,
+                        mime_type=file.content_type,
+                        owner=current_user,
+                        conversation_id=request.query_params.get("conversation_id"),
+                        metadata={"extracted": result},
+                    ),
+                    user_email=current_user,
+                )
+                if ingest.status != "ok":
+                    raise RuntimeError(ingest.detail or f"ingestion {ingest.status}")
+                result["knowledge_graph"] = {
+                    "node_id": ingest.node_id,
+                    "sha256": ingest.content_hash,
+                    "provenance_id": ingest.provenance_id,
+                }
+            else:
+                graph_result = knowledge_graph.ingest_document(
+                    Path(tmp_path),
+                    original_filename=file.filename,
+                    mime_type=file.content_type,
+                    uploader=current_user,
+                    conversation_id=request.query_params.get("conversation_id"),
+                    extracted=result,
+                )
+                result["knowledge_graph"] = {
+                    "node_id": graph_result["node_id"],
+                    "sha256": graph_result["sha256"],
+                }
         except Exception as graph_error:
             logging.warning("knowledge graph document ingest failed: %s", graph_error)
             result["knowledge_graph"] = {"error": str(graph_error)}

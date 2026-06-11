@@ -6,7 +6,7 @@ import base64
 import os
 import platform
 import subprocess
-import time
+import tempfile
 from typing import Any, Dict
 
 from tools import ToolError

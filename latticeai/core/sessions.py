@@ -1,5 +1,12 @@
-"""File-backed session store with sliding-window TTL."""
+"""File-backed session store with sliding-window TTL.
 
+v4: bearer tokens are stored **hashed** (sha256) at rest — a process that can
+read ``sessions.json`` must not be able to hijack every session. Pre-v4 files
+holding raw tokens are migrated transparently on load (sessions survive the
+upgrade; the raw token never touches disk again).
+"""
+
+import hashlib
 import json
 import logging
 import os
@@ -13,6 +20,16 @@ SESSION_TTL = 60 * 60 * 24  # 24 hours
 SESSION_REFRESH_THRESHOLD = 60 * 15  # only persist if >15 min since last bump
 _lock = threading.Lock()
 
+_HEX64 = frozenset("0123456789abcdef")
+
+
+def _hash_token(token: str) -> str:
+    return hashlib.sha256((token or "").encode("utf-8")).hexdigest()
+
+
+def _looks_hashed(key: str) -> bool:
+    return len(key) == 64 and set(key) <= _HEX64
+
 
 def _sessions_file(data_dir: Optional[Path] = None) -> Path:
     d = data_dir or Path(os.getenv("LATTICEAI_DATA_DIR") or (Path.home() / ".ltcai"))
@@ -25,7 +42,19 @@ def load_sessions(data_dir: Optional[Path] = None) -> Dict[str, tuple]:
         f = _sessions_file(data_dir)
         if f.exists():
             raw = json.loads(f.read_text())
-            return {k: tuple(v) for k, v in raw.items()}
+            sessions: Dict[str, tuple] = {}
+            migrated = False
+            for key, value in raw.items():
+                if _looks_hashed(key):
+                    sessions[key] = tuple(value)
+                else:
+                    # Pre-v4 entry: the key IS the raw bearer token. Re-key it
+                    # under its hash so the plaintext stops living on disk.
+                    sessions[_hash_token(key)] = tuple(value)
+                    migrated = True
+            if migrated:
+                persist_sessions(sessions, data_dir)
+            return sessions
     except Exception as e:
         logging.warning("load_sessions failed (starting empty): %s", e)
     return {}
@@ -46,27 +75,28 @@ class SessionStore:
     def create(self, email: str) -> str:
         token = secrets.token_urlsafe(32)
         with _lock:
-            self._sessions[token] = (email, time.time())
+            self._sessions[_hash_token(token)] = (email, time.time())
             persist_sessions(self._sessions, self._data_dir)
         return token
 
     def get_email(self, token: str) -> Optional[str]:
         now = time.time()
+        key = _hash_token(token)
         with _lock:
-            entry = self._sessions.get(token)
+            entry = self._sessions.get(key)
             if entry is None:
                 return None
             email, created_at = entry
             if now - created_at > SESSION_TTL:
-                self._sessions.pop(token, None)
+                self._sessions.pop(key, None)
                 persist_sessions(self._sessions, self._data_dir)
                 return None
             if now - created_at > SESSION_REFRESH_THRESHOLD:
-                self._sessions[token] = (email, now)
+                self._sessions[key] = (email, now)
                 persist_sessions(self._sessions, self._data_dir)
             return email
 
     def invalidate(self, token: str) -> None:
         with _lock:
-            self._sessions.pop(token, None)
+            self._sessions.pop(_hash_token(token), None)
             persist_sessions(self._sessions, self._data_dir)

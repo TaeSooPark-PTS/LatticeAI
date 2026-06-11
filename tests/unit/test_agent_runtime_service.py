@@ -5,7 +5,7 @@ boundary (config/roles/health/status/start/events/stop) that the HTTP router —
 and through it, the frontend — depends on.
 """
 
-from fastapi import FastAPI, Request
+from fastapi import FastAPI
 from fastapi.testclient import TestClient
 
 from latticeai.api.agents import create_agents_router

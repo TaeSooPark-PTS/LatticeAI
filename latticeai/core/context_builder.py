@@ -7,9 +7,8 @@ retrieve_context_for_generation() 파이프라인:
   Step 3: Top-K 결과를 구조화된 Markdown Context로 변환
 """
 
-import logging
 import re
-from typing import Any, Dict, List, Optional
+from typing import Any, Dict, List
 
 _CLEAN_RE = re.compile(r"\s+")
 

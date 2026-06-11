@@ -1,7 +1,7 @@
 {
   "name": "ltcai",
-  "version": "3.6.0",
-  "description": "Lattice AI v3 local-first AI workspace platform with knowledge graph, vector index, hybrid search, agents, and workspace modes.",
+  "version": "4.0.0",
+  "description": "Lattice AI — local-first Digital Brain Platform (knowledge graph, durable memory, hybrid search, agents, signed brain exchange)",
   "homepage": "https://github.com/TaeSooPark-PTS/LatticeAI#readme",
   "repository": {
     "type": "git",
@@ -66,13 +66,11 @@
     "server.py",
     "kg_schema.py",
     "knowledge_graph.py",
-    "knowledge_graph_api.py",
     "local_knowledge_api.py",
     "llm_router.py",
     "p_reinforce.py",
     "telegram_bot.py",
     "tools/",
-    "codex_telegram_bot.py",
     "mcp_registry.py",
     "latticeai/**/*.py",
     "skills/",
@@ -96,12 +94,16 @@
     "static/icons/",
     "plugins/",
     "scripts/",
-    "docs/",
     "!docs/images/tmp_frames/",
     "!**/__pycache__/",
     "!**/*.pyc",
-    "requirements.txt",
-    "README.md"
+    "README.md",
+    "setup_wizard.py",
+    "knowledge_graph_api.py",
+    "static/vendor/",
+    "docs/*.md",
+    "!docs/assets/",
+    "!docs/images/"
   ],
   "publishConfig": {
     "access": "public"

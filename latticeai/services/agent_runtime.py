@@ -242,6 +242,7 @@ class AgentRuntime:
             user_email=user_email or None,
             graph=self._workspace_graph(),
             workspace_id=scope,
+            mode=getattr(result, "mode", "simulation"),
         )
         self._append_audit_event(
             "multi_agent_run",

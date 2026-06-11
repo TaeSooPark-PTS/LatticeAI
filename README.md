@@ -56,8 +56,10 @@ workspace around the work itself:
   LM Studio; nothing leaves your machine unless you opt in.
 - **Use cloud models only when you choose** — bring an API key for cloud LLMs
   when you want them, not by default.
-- **Automate with agents you can inspect** — workflows leave behind plans,
-  reviews, retries, and results you can replay.
+- **Inspect every agent run** — the built-in runner persists plans, reviews,
+  retries, and results as replayable run records. Today that runner is
+  deterministic and does not call a model; LLM-driven execution is the v4
+  runtime, in progress.
 
 Lattice AI is not a clone of ChatGPT, Claude, Cursor, Obsidian, or Notion. It
 sits in a different place: a **workspace** that ties local/self-hosted AI, your
@@ -73,8 +75,8 @@ and workflows together — and runs on your own hardware.
   Knowledge Graph.
 - Run local models through MLX, Ollama, or LM Studio, and use cloud LLMs only when
   you want to.
-- Create repeatable agent workflows for research, coding, analysis, and
-  documentation.
+- Define agent workflows and replay their run records step by step (execution
+  is deterministic scaffolding today — it does not yet call a model).
 - Separate personal work from organization work.
 - Switch between Basic, Advanced, and Admin modes depending on your role.
 
@@ -108,12 +110,14 @@ chat and hybrid search.
 The Knowledge Graph shows how files, decisions, conversations, and entities
 connect — context that stays useful even when you switch models.
 
-### Run agent workflows
+### Inspect agent run records
 
 ![Lattice AI agent run with roles, logs, review, and retry](docs/assets/v3.4.0/agent-run.png)
 
-Agents turn a goal into an inspectable run — roles, logs, review, and retry — that
-you can read back step by step.
+The agent runner turns a goal into an inspectable, replayable run record — roles,
+logs, review, and retry — that you can read back step by step. The runner shown
+here is deterministic and LLM-free; real model-driven execution is the v4
+runtime, currently in progress.
 
 ### Extend with hooks and the local runtime
 

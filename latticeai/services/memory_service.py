@@ -24,7 +24,7 @@ from __future__ import annotations
 import json
 from datetime import datetime
 from pathlib import Path
-from typing import Any, Callable, Dict, List, Optional
+from typing import Any, Dict, List, Optional
 
 # Personal workspace memory kinds (from WorkspaceOS.MEMORY_KINDS).
 WORKSPACE_KINDS = (
@@ -60,12 +60,16 @@ class MemoryService:
         knowledge_graph: Any = None,
         enable_graph: bool = True,
         history_file: Optional[Path] = None,
+        conversation_store: Any = None,
     ):
         self._store = store
         self._kg = knowledge_graph
         self._enable_graph = bool(enable_graph and knowledge_graph is not None)
         self._data_dir = Path(data_dir)
         self._history_file = Path(history_file) if history_file else (self._data_dir / "chat_history.json")
+        # v4: the durable SQLite conversation store supersedes the JSON file
+        # as the conversation tier's backing store when provided.
+        self._conversation_store = conversation_store
 
     # ── helpers over the underlying stores ────────────────────────────────
     def _workspace_memories(self, *, user_email: Optional[str], workspace_id: Optional[str]) -> List[Dict[str, Any]]:
@@ -87,6 +91,14 @@ class MemoryService:
             return []
 
     def _conversations(self) -> List[Dict[str, Any]]:
+        if self._conversation_store is not None:
+            try:
+                grouped: Dict[str, List[Dict[str, Any]]] = {}
+                for item in self._conversation_store.history():
+                    grouped.setdefault(item.get("conversation_id") or "legacy-previous-history", []).append(item)
+                return [{"id": conv_id, "messages": msgs} for conv_id, msgs in grouped.items()]
+            except Exception:
+                return []
         if not self._history_file.exists():
             return []
         try:
@@ -130,7 +142,10 @@ class MemoryService:
 
         ws_bytes = _file_size(self._data_dir / "workspace_os.json")
         kg_bytes = _file_size(self._data_dir / "knowledge_graph.sqlite")
-        conv_bytes = _file_size(self._history_file)
+        if self._conversation_store is not None:
+            conv_bytes = int(getattr(self._conversation_store, "size_bytes", lambda: 0)())
+        else:
+            conv_bytes = _file_size(self._history_file)
 
         node_total = sum((kg_stats or {}).get("nodes", {}).values()) if kg_stats else None
         edge_total = sum((kg_stats or {}).get("edges", {}).values()) if kg_stats else None
@@ -159,7 +174,7 @@ class MemoryService:
             {
                 "id": "conversation", "type": "conversation", "label": "Conversation Memory",
                 "count": len(convs), "size_bytes": conv_bytes,
-                "health": "ok" if self._history_file.exists() else "empty",
+                "health": "ok" if (self._conversation_store is not None or self._history_file.exists()) else "empty",
                 "detail": "Historical interaction memory from chat.",
             },
             {
@@ -202,6 +217,18 @@ class MemoryService:
         limit: int = 20,
     ) -> Dict[str, Any]:
         q = str(query or "").strip()
+        query_tokens = [tok for tok in q.lower().split() if tok]
+
+        def _lexical_score(*texts: Any) -> float:
+            # Honest, comparable relevance: fraction of query tokens present.
+            # Both tiers share this scorer so the cross-tier ranking is real,
+            # not an artifact of per-tier constants.
+            if not query_tokens:
+                return 0.0
+            haystack = " ".join(str(t or "") for t in texts).lower()
+            hits = sum(1 for tok in query_tokens if tok in haystack)
+            return round(hits / len(query_tokens), 4)
+
         results: List[Dict[str, Any]] = []
 
         try:
@@ -215,23 +242,24 @@ class MemoryService:
                 "title": (m.get("kind") or "memory"),
                 "snippet": str(m.get("content") or "")[:240],
                 "kind": m.get("kind"),
-                "score": 0.6,
+                "score": _lexical_score(m.get("content"), " ".join(m.get("tags") or []), m.get("kind")),
                 "tags": m.get("tags") or [],
             })
 
         if self._enable_graph and q:
             try:
-                hits = self._kg.search(q, limit).get("results", [])
+                # KnowledgeGraph.search returns {"query": ..., "matches": [...]}.
+                hits = self._kg.search(q, limit).get("matches", [])
             except Exception:
                 hits = []
-            for hsit in hits[:limit]:
+            for hit in hits[:limit]:
                 results.append({
                     "source": "graph",
-                    "id": hsit.get("id") or hsit.get("node_id"),
-                    "title": hsit.get("title") or hsit.get("name") or "node",
-                    "snippet": str(hsit.get("summary") or hsit.get("content") or "")[:240],
-                    "kind": hsit.get("type") or "node",
-                    "score": float(hsit.get("score") or 0.5),
+                    "id": hit.get("id") or hit.get("node_id"),
+                    "title": hit.get("title") or hit.get("name") or "node",
+                    "snippet": str(hit.get("summary") or hit.get("content") or "")[:240],
+                    "kind": hit.get("type") or "node",
+                    "score": _lexical_score(hit.get("title"), hit.get("name"), hit.get("summary"), hit.get("content")),
                 })
 
         results.sort(key=lambda r: r.get("score", 0), reverse=True)

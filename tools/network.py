@@ -2,11 +2,11 @@
 
 from __future__ import annotations
 
+import re
 import socket
 import subprocess
 from typing import Any, Dict, List
 
-from tools import ToolError
 
 
 def _run_network_command(parts: List[str], timeout: int = 5) -> str:
@@ -62,5 +62,3 @@ def network_status() -> Dict[str, Any]:
         "note": "local_ip은 같은 네트워크 안에서 보이는 내부 IP이고, public_ip는 인터넷에서 보이는 외부 IP입니다.",
     }
 
-
-_BLOCKED_FIND_FLAGS = {"-exec", "-execdir", "-delete", "-ok", "-okdir"}

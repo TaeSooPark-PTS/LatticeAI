@@ -7,7 +7,7 @@ operations (prune / compact / rebuild / clear). Full paths in decorators.
 
 from __future__ import annotations
 
-from typing import Any, Callable, List, Optional
+from typing import Callable, List, Optional
 
 from fastapi import APIRouter, HTTPException, Request
 from pydantic import BaseModel

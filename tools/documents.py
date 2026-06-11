@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-import json
 from pathlib import Path
 from typing import Any, Dict, List
 
@@ -116,7 +115,7 @@ def create_pptx(title: str, slides: List[Dict[str, Any]], filename: str = "prese
 def create_pdf(title: str, body, filename: str = "document.pdf") -> Dict[str, Any]:
     try:
         from reportlab.lib.pagesizes import A4
-        from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
+        from reportlab.lib.styles import ParagraphStyle
         from reportlab.lib.units import mm
         from reportlab.platypus import SimpleDocTemplate, Paragraph, Spacer
         from reportlab.pdfbase import pdfmetrics
@@ -139,7 +138,6 @@ def create_pdf(title: str, body, filename: str = "document.pdf") -> Dict[str, An
                 pass
             break
 
-    styles = getSampleStyleSheet()
     title_style = ParagraphStyle("Title", fontName=font_name, fontSize=18, spaceAfter=8, leading=24)
     body_style  = ParagraphStyle("Body",  fontName=font_name, fontSize=11, spaceAfter=6, leading=16)
 

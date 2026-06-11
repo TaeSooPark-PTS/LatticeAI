@@ -1,0 +1,143 @@
+{
+  "key": "workspace-enterprise",
+  "summary": "The workspace/identity layer is a well-intentioned but thin veneer: personal vs organization workspaces, a 4-role model, and an honest open-core enterprise seam exist and are tested, and the auth stack (scrypt, file sessions, fail-closed OIDC verification, trusted-proxy IP handling) is genuinely solid for local-first use. However, workspace isolation only covers auxiliary JSON records (memories, snapshots metadata, traces, runs) in one unlocked whole-file JSON store, while the actual \"brain\" — the knowledge graph, chat history, and skills — is explicitly machine-global, and the workspace router has multiple by-id endpoints that bypass workspace gating entirely. Identity is fragmented across three role vocabularies (users.json admin/user, workspace owner/admin/member/viewer, and an unenforced _ROLE_CAPS matrix presented as \"the real access policy\"), and nothing resembling federation, stable user IDs, invitations, or per-workspace knowledge partitioning exists yet for a v4 Personal Brain / Organization Brain / Brain Network model.",
+  "strengths": [
+    "latticeai/core/oidc.py is a genuinely strong, fail-closed OIDC ID-token verifier: rejects alg:none and HS* downgrade, verifies RSA signature against JWKS before parsing claims, validates iss/aud/azp/exp/iat/nbf/nonce, fully injectable and offline-testable (tests/unit/test_oidc.py)",
+    "The SSO callback in latticeai/api/auth.py:137-201 actually uses the verifier with a per-login nonce bound at /auth/sso/login (state->nonce map, 300s expiry) and fails closed on JWKS fetch errors — this is real, not placeholder",
+    "latticeai/core/enterprise.py + enterprise_admin.py is an honest open-core seam: every Enterprise capability reports enabled=False, stubs are explicitly labeled (siem_export_stub returns streamed=False with a COMMUNITY_NOTICE), no Community feature is gated, and docs/EDITION_STRATEGY.md / docs/ENTERPRISE.md accurately describe it as 'seam only, no shipped code'",
+    "latticeai/services/workspace_service.py centralizes scope resolution + permission gating (resolve_read_scope/resolve_write_scope) in one seam, with backward-compatible default-to-active-workspace behavior and a documented no-auth owner fallback for ownerless orgs only",
+    "latticeai/core/security.py has real, correct primitives: scrypt password hashing with constant-time compare, trusted-proxy-gated X-Forwarded-For handling (spoof-resistant per-IP rate limiting), token-bucket per-user limits, file-magic validation, secret redaction",
+    "WorkspaceOSStore._migrate_workspaces (workspace_os.py:232-273) does non-destructive state migration from 1.0.x records and always guarantees the default Personal workspace — good durability instinct",
+    "latticeai/api/permissions.py PermissionGateway binds local-file approvals to (path, action, user_email, content-hash, TTL) — a real consent model, not theater",
+    "Role permission checks (owner demotion/removal protections, manage_members/manage_workspace gates) are enforced in the store with PermissionError surfaced as 403 in the router, and covered by tests (test_workspace_os.py, test_workspace_service.py)"
+  ],
+  "problems": [
+    {
+      "title": "The knowledge graph, chat history, and skills — the actual 'brain' — are machine-global, so workspace isolation is illusory for the core product data",
+      "severity": "critical",
+      "detail": "latticeai/services/workspace_service.py:39 declares SHARED_GLOBAL_AREAS = ('graph', 'skills') and the docstring admits 'Graph and installed Skills are intentionally machine-global shared state'. latticeai/api/portability.py:5 says graph export/backup is 'not workspace-scoped'. KnowledgeGraphStore is constructed once per machine (server_app.py:296-300) with no workspace_id on nodes/edges. Workspace scoping only partitions auxiliary JSON records (memories, traces, snapshot metadata, agent runs, workflows) via a workspace_id tag (workspace_os.py:485-489). For a 'Digital Brain Platform' selling Personal vs Organization Brains, the brain itself has zero isolation: every org member and every personal user on the machine reads/writes one shared graph, and /workspace/indexing pause/resume/remove (workspace.py:295-318) operate on it with only require_user.",
+      "files": [
+        "latticeai/services/workspace_service.py",
+        "latticeai/api/portability.py",
+        "latticeai/server_app.py",
+        "latticeai/api/workspace.py"
+      ]
+    },
+    {
+      "title": "Cross-workspace authorization gaps: by-id endpoints bypass workspace gating entirely",
+      "severity": "critical",
+      "detail": "The router gates list endpoints with _gate_read/_gate_write but not by-id access: GET /workspace/snapshots/{id}, GET /workspace/snapshots/{id}/{area}, POST /workspace/snapshots/{id}/export, and POST /workspace/snapshots/compare (workspace.py:343-389) only call require_user — any authenticated user can read/export any workspace's snapshot, and snapshots embed the full machine-global chat history, settings, and graph (workspace_os.py:994-1048 create_snapshot uses get_history() unfiltered). DELETE /workspace/memories/{memory_id} (workspace.py:424-430) checks neither workspace scope nor ownership — any user can delete any other user's/org's memory. POST /workspace/workflows/{id}/events (workspace.py:512-518) and /workspace/relationships (457-461) are similarly ungated. Workspace 'isolation' fails the moment an id leaks (ids appear in timeline events).",
+      "files": [
+        "latticeai/api/workspace.py",
+        "latticeai/core/workspace_os.py"
+      ]
+    },
+    {
+      "title": "/workspace/os leaks the full workspace registry, including member lists of organizations the caller does not belong to",
+      "severity": "major",
+      "detail": "WorkspaceOSStore.summary() returns the raw state dict: '\"workspaces\": state.get(\"workspaces\")' (workspace_os.py:433) — every workspace record with full members arrays, settings, and owner ids. WorkspaceService.summary() (workspace_service.py:77-81) adds a properly membership-filtered 'workspace_registry' key but does not remove the unfiltered 'workspaces' key, and the router exposes it to any authenticated user at GET /workspace/os (workspace.py:220-227). A non-member can enumerate org names, membership rosters, and roles.",
+      "files": [
+        "latticeai/core/workspace_os.py",
+        "latticeai/services/workspace_service.py",
+        "latticeai/api/workspace.py"
+      ]
+    },
+    {
+      "title": "Single unlocked whole-file JSON store with silent truncation cannot support a multi-user Organization workspace",
+      "severity": "major",
+      "detail": "All workspace state (workspaces, members, memories, snapshots metadata, traces, runs, workflows, timeline) lives in one workspace_os.json. Every operation is load_state() → mutate → save_state() with zero locking (grep for 'lock' in workspace_os.py: 0 hits across 1959 lines / 93 functions) — concurrent requests from two org members lose writes (classic read-modify-write race; the atomic os.replace only prevents torn files, not lost updates). Worse for a 'knowledge is durable' platform: state silently truncates — timeline[-500:] (line 385), traces[-200:] (903), memories[-500:] (1207), snapshots[-200:] (1045) — durable memories are dropped oldest-first with no warning.",
+      "files": [
+        "latticeai/core/workspace_os.py"
+      ]
+    },
+    {
+      "title": "Fragmented identity model: three role vocabularies, freeform member ids with no validation or invitation flow, fragile admin fallback",
+      "severity": "major",
+      "detail": "(1) users.json roles are only admin|user (admin.py:183 rejects anything else); (2) workspace roles are owner/admin/member/viewer (workspace_os.py:32); (3) admin.py:114-120 _ROLE_CAPS lists owner/member/viewer caps that can never exist in the user store. add_member (workspace_os.py:640-658) accepts any non-empty user_id string — no check that the user exists in users.json, no invite/accept flow, so typos silently create phantom members and a real grant requires guessing the exact email. Identity is a mutable email string: renaming/changing email orphans all memberships, memories (user_email), and audit records. get_user_role (server_app.py:781-782) falls back to 'first key in users.json dict iteration order is admin' — fragile. There is no stable user UUID anywhere, which blocks any Brain Network/federation identity.",
+      "files": [
+        "latticeai/core/workspace_os.py",
+        "latticeai/api/admin.py",
+        "latticeai/server_app.py"
+      ]
+    },
+    {
+      "title": "/admin/roles claims _ROLE_CAPS is 'the real access policy the app enforces, not sample data' — but no code enforces it",
+      "severity": "major",
+      "detail": "admin.py:112-113 comments 'Canonical RBAC capability map … This is the real access policy the app enforces, not sample data.' In reality nothing maps capabilities like 'pipeline', 'files', 'search' to enforcement: actual enforcement is binary require_user/require_admin plus the separate workspace read/write gates. Roles 'owner', 'member', 'viewer' in the matrix cannot even be assigned via /admin/users (only admin|user allowed at line 183). This is a display-only matrix presented as enforced policy — exactly the kind of honesty gap the v3.3.0 audit was meant to eliminate. Similarly the VPC surface (/vpc/status, PATCH /admin/vpc, admin.py:159-173) stores freeform descriptive fields (vpn_status, peering_status, notes) that nothing consumes or enforces — demo-only governance theater.",
+      "files": [
+        "latticeai/api/admin.py"
+      ]
+    },
+    {
+      "title": "Session tokens persisted in plaintext and weak password policy",
+      "severity": "minor",
+      "detail": "core/sessions.py persists raw bearer tokens to sessions.json (persist_sessions writes token strings verbatim) — any process/user able to read ~/.ltcai can hijack every session; tokens should be stored hashed. /register (auth.py:72-90) has no password length/strength validation at all; /account/change-password requires only 4 characters (auth.py:217-218). Acceptable for loopback-only use, indefensible once an Organization Brain is reachable by multiple people.",
+      "files": [
+        "latticeai/core/sessions.py",
+        "latticeai/api/auth.py"
+      ]
+    },
+    {
+      "title": "Dead/no-op code in the identity stack",
+      "severity": "minor",
+      "detail": "detect_edition() (enterprise.py:137-147) is logically a no-op: the env branch requires capability_registry.edition() to already be ENTERPRISE, in which case the fallthrough returns the same value — LATTICE_EDITION does nothing. server_app.py:200 defines _sso_states 'CSRF protection' that is never used (the live one lives in api/auth.py:44). server_app.py:812-866 still carries a complete legacy copy of the local-approval gateway (_local_approvals, _require_local_approval) duplicating latticeai/api/permissions.py — two divergent implementations of the same security control (the legacy one lacks the expired-entry sweep and queue file).",
+      "files": [
+        "latticeai/core/enterprise.py",
+        "latticeai/server_app.py",
+        "latticeai/api/permissions.py"
+      ]
+    },
+    {
+      "title": "Workspace lifecycle events mis-scoped and SSO token exchange gaps",
+      "severity": "minor",
+      "detail": "create_organization_workspace records its timeline event without workspace_id (workspace_os.py:558), so 'workspace_created' is tagged to whatever workspace happens to be active, not the new org — audit trails for org creation land in Personal. SSO: no PKCE on the code exchange (auth.py:150-157) and client_secret round-trips through sso_config.json on disk; _sso_states is in-process only (breaks behind multiple workers). docs/security-model.md describes users.json hash format as '{\"hash\": \"<scrypt hex>\"}' but the code stores 'password': 'salt:hex' — doc drift.",
+      "files": [
+        "latticeai/core/workspace_os.py",
+        "latticeai/api/auth.py",
+        "docs/security-model.md"
+      ]
+    }
+  ],
+  "opportunities": [
+    {
+      "title": "Partition the knowledge graph by workspace (the prerequisite for Personal Brain vs Organization Brain)",
+      "detail": "Add workspace_id to KnowledgeGraphStore nodes/edges (or one sqlite + blob dir per workspace under ~/.ltcai/workspaces/<id>/), thread the resolved scope from WorkspaceService into graph reads/writes, ingestion (services/ingestion.py), search, and portability export/import. Retire SHARED_GLOBAL_AREAS for 'graph'; keep a migration that maps existing global graph data to the Personal workspace. Until this lands, every 'Organization Brain' claim is false advertising — this is the single highest-leverage v4 change.",
+      "effort": "large"
+    },
+    {
+      "title": "Close the by-id authorization gaps and add cross-workspace access tests",
+      "detail": "Gate snapshot get/area/export/compare, memory delete, workflow events, and relationship explorer through resolve_read_scope/resolve_write_scope using the record's own workspace_id (not the header); add ownership checks on delete_memory; strip the unfiltered 'workspaces' key from /workspace/os (filter through list_workspaces(user_id) instead); scope snapshot contents (chat history) to the target workspace. Add unit tests asserting a non-member 403s on every by-id route — currently no test covers cross-workspace by-id access.",
+      "effort": "small"
+    },
+    {
+      "title": "Unify identity: stable user UUIDs, single role/policy module, real invitations",
+      "detail": "Introduce a user record with immutable UUID (email as mutable attribute), key all memberships/memories/audit entries on it. Collapse the three role vocabularies (users.json admin|user, workspace 4-role, _ROLE_CAPS) into one policy module that WorkspaceService, require_admin, and the admin UI all consult — making /admin/roles honest by construction. Replace freeform add_member with an invite → accept flow (validates the user exists or creates a pending invitation). Wire EnterpriseCapability.RBAC_ABAC_ADVANCED as the extension point of this module.",
+      "effort": "medium"
+    },
+    {
+      "title": "Move WorkspaceOS state to transactional per-workspace storage",
+      "detail": "Replace the single workspace_os.json read-modify-write store with SQLite (one DB per workspace, matching the graph partitioning), eliminating lost-update races for multi-user orgs and removing the silent [-200:]/[-500:] truncation of memories/traces/timeline — a 'knowledge is durable' platform must never silently discard memories. Keep the JSON export shape for portability; ship a one-time migrator from workspace_os.json.",
+      "effort": "large"
+    },
+    {
+      "title": "Brain Network / federation foundations: device identity, signed bundles, selective sharing",
+      "detail": "Nothing federation-shaped exists today — build on the two real assets: v3.6.0 portability (export/import/backup with sha256 manifest verification) and ingestion_provenance. v4 foundations: (1) per-installation keypair (device identity) stored in keyring; (2) signed, provenance-stamped export bundles so a receiving brain can verify origin; (3) subgraph-level sharing ACLs (share a node set/topic with a peer or org, not the whole machine-global graph); (4) an append-only change log per workspace as the substrate for later sync/merge (full CRDT can come after). This sequencing turns existing export/import into asynchronous 'brain exchange' before attempting live sync.",
+      "effort": "large"
+    },
+    {
+      "title": "Organization Brain layering: shared vs private knowledge within an org workspace",
+      "detail": "The memory model already hints at this (list_memories returns user_email in {None, caller} — workspace_os.py:1212-1218): formalize visibility levels (private / workspace-shared / org-public) on memories and graph nodes, enforce viewer=read-only at the graph layer, and make workspace role changes/removals revoke access to shared layers. Add retention/audit per org workspace (currently audit timeline is global, admin-only).",
+      "effort": "medium"
+    },
+    {
+      "title": "Keep the auth stack and enterprise seam; harden the edges",
+      "detail": "Keep as-is: oidc.py, security.py, the enterprise.py seam, PermissionGateway, file-backed sessions architecture. Targeted fixes: hash session tokens at rest, add PKCE to the SSO code exchange, enforce a real password policy on /register, delete the dead _sso_states and legacy _local_approvals copies in server_app.py, fix or delete the no-op detect_edition env branch, and either wire the VPC config to something real (e.g. surfacing PRIVATE_VPC seam status) or delete the surface.",
+      "effort": "small"
+    },
+    {
+      "title": "Make personal data sovereignty tangible: per-user brain export and encryption at rest",
+      "detail": "Today portability export is admin-only and machine-global (portability.py). For 'user owns their knowledge', add a per-user/per-workspace export ('take your brain with you') that bundles the user's workspace graph partition, memories, snapshots, and provenance into one signed archive, plus optional passphrase-derived encryption at rest for personal workspace storage. This is also the import format Brain Network sharing reuses.",
+      "effort": "medium"
+    }
+  ]
+}

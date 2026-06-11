@@ -17,11 +17,12 @@ from datetime import datetime
 from pathlib import Path
 from typing import Any, Callable, Dict, List, Optional
 
+from latticeai.services.ingestion import IngestionItem
 from fastapi import APIRouter, HTTPException, Request
 from pydantic import BaseModel
 
-import mcp_registry
-from mcp_registry import (
+import latticeai.core.mcp_registry as mcp_registry
+from latticeai.core.mcp_registry import (
     _get_combined_registry,
     _fetch_skills_marketplace,
     _fetch_plugin_directory,
@@ -76,6 +77,7 @@ def create_mcp_router(
     tool_response: Callable[..., Any],
     require_graph: Callable[[], Any],
     knowledge_graph: Any,
+    ingestion_pipeline: Any,
     data_dir: Path,
 ) -> APIRouter:
     router = APIRouter()
@@ -290,7 +292,7 @@ def create_mcp_router(
             if not skill_md.exists():
                 continue
             lines = skill_md.read_text(encoding="utf-8").splitlines()
-            desc = next((l.split(":", 1)[1].strip() for l in lines if l.startswith("description:")), "")
+            desc = next((ln.split(":", 1)[1].strip() for ln in lines if ln.startswith("description:")), "")
             comment = lines[0] if lines else ""
             if "anthropics/claude-plugins-official" in comment:
                 source = "anthropic"
@@ -357,15 +359,25 @@ def create_mcp_router(
         args = req.args or {}
         if req.action == "knowledge_graph_ingest":
             _require_graph()
-            return KNOWLEDGE_GRAPH.ingest_message(
-                args.get("role") or ("assistant" if args.get("type") == "ai_response" else "user"),
-                args.get("content") or "",
-                user_email=args.get("user_email") or current_user,
-                user_nickname=args.get("user_nickname"),
-                source=args.get("source") or "mcp",
-                conversation_id=args.get("conversation_id"),
-                raw=args,
+            # v4: MCP messages enter the brain through the unified ingestion
+            # pipeline (provenance + hook lifecycle), not a direct store call.
+            owner = args.get("user_email") or current_user
+            result = ingestion_pipeline.ingest(
+                IngestionItem(
+                    source_type="mcp_message",
+                    text=args.get("content") or "",
+                    owner=owner,
+                    conversation_id=args.get("conversation_id"),
+                    metadata={
+                        "role": args.get("role") or ("assistant" if args.get("type") == "ai_response" else "user"),
+                        "user_nickname": args.get("user_nickname"),
+                        "source": args.get("source") or "mcp",
+                        "raw": args,
+                    },
+                ),
+                user_email=owner,
             )
+            return result.as_dict()
         if req.action == "knowledge_graph_search":
             _require_graph()
             return KNOWLEDGE_GRAPH.search(args.get("query") or args.get("q") or "", args.get("limit", 30))

@@ -16,7 +16,7 @@ import logging
 import re
 import threading
 import time
-from dataclasses import dataclass, field, asdict
+from dataclasses import dataclass, asdict
 from typing import Any, Dict, List, Optional, Tuple
 
 logger = logging.getLogger(__name__)

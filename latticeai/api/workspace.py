@@ -15,11 +15,12 @@ from __future__ import annotations
 import asyncio
 import logging
 from datetime import datetime
-from pathlib import Path
-from typing import Any, Callable, Dict, List, Optional
+from typing import Dict, List, Optional
 
 from fastapi import APIRouter, HTTPException, Request
 from pydantic import BaseModel
+
+from latticeai.services.app_context import AppContext
 
 
 # ── Request models (workspace-only; moved verbatim from server_app) ──────────
@@ -135,54 +136,47 @@ def _workspace_scope_from_request(request: Request) -> Optional[str]:
     return query.strip() if query and query.strip() else None
 
 
-def create_workspace_router(
-    *,
-    service,
-    require_user: Callable[[Request], str],
-    require_admin: Callable[[Request], Any],
-    get_current_user: Callable[[Request], Optional[str]],
-    append_audit_event: Callable[..., None],
-    graph_stats: Callable[[], Dict],
-    workspace_models: Callable[[], Dict],
-    workspace_settings: Callable[[], Dict],
-    get_history: Callable[[], List[Dict]],
-    get_audit_log: Callable[[], List[Dict]],
-    require_graph: Callable[[], Any],
-    workspace_graph: Callable[[], Any],
-    knowledge_graph: Any,
-    local_kg_watcher: Any,
-    load_users: Callable[[], Dict],
-    scan_environment: Callable[[], Any],
-    local_sysinfo: Callable[[Request], Any],
-    get_recommendations: Callable[[Any], Any],
-    fetch_skills_marketplace: Callable[..., Any],
-    install_skill: Callable[..., Any],
-    remove_skill_directory: Callable[..., Dict],
-    redact_secret_text: Callable[[str], str],
-    skills_dir: Path,
-    capability_registry: Any,
-    ui_file_response: Callable[[Path], Any],
-    static_dir: Path,
-    local_model: Optional[str],
-    public_model: Optional[str],
-) -> APIRouter:
+def create_workspace_router(context: AppContext) -> APIRouter:
+    """Build the workspace/org router from the typed application context.
+
+    Replaces the historical ~30-kwarg factory signature: ``context``
+    (:class:`latticeai.services.app_context.AppContext`) carries the same
+    dependencies as typed fields.
+    """
     router = APIRouter()
 
     # Bind injected deps to the names the moved handler bodies expect.
+    service = context.workspace_service
+    require_user = context.require_user
+    require_admin = context.require_admin
+    get_current_user = context.get_current_user
+    append_audit_event = context.append_audit_event
+    get_history = context.get_history
+    get_audit_log = context.get_audit_log
+    load_users = context.load_users
+    scan_environment = context.scan_environment
+    local_sysinfo = context.local_sysinfo
+    get_recommendations = context.get_recommendations
+    install_skill = context.install_skill
+    remove_skill_directory = context.remove_skill_directory
+    redact_secret_text = context.redact_secret_text
+    capability_registry = context.capability_registry
+    ui_file_response = context.ui_file_response
+
     svc = service
     WORKSPACE_OS = service.store
-    _workspace_graph = workspace_graph
-    _graph_stats_safe = graph_stats
-    _workspace_models_payload = workspace_models
-    _workspace_settings_payload = workspace_settings
-    _require_graph = require_graph
-    KNOWLEDGE_GRAPH = knowledge_graph
-    LOCAL_KG_WATCHER = local_kg_watcher
-    SKILLS_DIR = skills_dir
-    STATIC_DIR = static_dir
-    LOCAL_MODEL = local_model
-    PUBLIC_MODEL = public_model
-    _fetch_skills_marketplace = fetch_skills_marketplace
+    _workspace_graph = context.workspace_graph
+    _graph_stats_safe = context.graph_stats
+    _workspace_models_payload = context.workspace_models
+    _workspace_settings_payload = context.workspace_settings
+    _require_graph = context.require_graph
+    KNOWLEDGE_GRAPH = context.knowledge_graph
+    LOCAL_KG_WATCHER = context.local_kg_watcher
+    SKILLS_DIR = context.skills_dir
+    STATIC_DIR = context.static_dir
+    LOCAL_MODEL = context.local_model
+    PUBLIC_MODEL = context.public_model
+    _fetch_skills_marketplace = context.fetch_skills_marketplace
     _workspace_scope = _workspace_scope_from_request
 
     def _gate_read(request: Request):
@@ -196,6 +190,24 @@ def create_workspace_router(
             return svc.resolve_write_scope(_workspace_scope(request), get_current_user(request))
         except PermissionError as exc:
             raise HTTPException(status_code=403, detail=str(exc)) from exc
+
+    def _load_snapshot_authorized(request: Request, snapshot_id: str) -> dict:
+        """Fetch a snapshot and authorize against the RECORD'S own workspace.
+
+        By-id access must not bypass workspace gating: a snapshot belonging to
+        an organization workspace is readable only by its members. Snapshots
+        predating workspace scoping carry no workspace_id and stay readable
+        (legacy-global compatibility).
+        """
+        try:
+            snapshot = WORKSPACE_OS.get_snapshot(snapshot_id)
+        except FileNotFoundError as exc:
+            raise HTTPException(status_code=404, detail=f"Snapshot not found: {exc}") from exc
+        try:
+            svc.authorize_record_read(snapshot, get_current_user(request))
+        except PermissionError as exc:
+            raise HTTPException(status_code=403, detail=str(exc)) from exc
+        return snapshot
 
     # ── Workspace UI pages ────────────────────────────────────────────────
 
@@ -343,6 +355,8 @@ def create_workspace_router(
     @router.post("/workspace/snapshots/compare")
     async def workspace_snapshot_compare(req: WorkspaceSnapshotCompareRequest, request: Request):
         require_user(request)
+        _load_snapshot_authorized(request, req.before_id)
+        _load_snapshot_authorized(request, req.after_id)
         try:
             return WORKSPACE_OS.compare_snapshots(req.before_id, req.after_id)
         except FileNotFoundError as exc:
@@ -351,14 +365,12 @@ def create_workspace_router(
     @router.get("/workspace/snapshots/{snapshot_id}")
     async def workspace_snapshot_get(snapshot_id: str, request: Request):
         require_user(request)
-        try:
-            return WORKSPACE_OS.get_snapshot(snapshot_id)
-        except FileNotFoundError as exc:
-            raise HTTPException(status_code=404, detail=f"Snapshot not found: {exc}") from exc
+        return _load_snapshot_authorized(request, snapshot_id)
 
     @router.get("/workspace/snapshots/{snapshot_id}/{area}")
     async def workspace_snapshot_area(snapshot_id: str, area: str, request: Request):
         require_user(request)
+        _load_snapshot_authorized(request, snapshot_id)
         try:
             return WORKSPACE_OS.snapshot_view(snapshot_id, area)
         except FileNotFoundError as exc:
@@ -367,6 +379,7 @@ def create_workspace_router(
     @router.post("/workspace/snapshots/{snapshot_id}/export")
     async def workspace_snapshot_export(snapshot_id: str, request: Request):
         current_user = require_user(request)
+        _load_snapshot_authorized(request, snapshot_id)
         try:
             result = WORKSPACE_OS.export_snapshot(snapshot_id)
         except FileNotFoundError as exc:
@@ -383,6 +396,7 @@ def create_workspace_router(
     @router.get("/workspace/time-machine/{snapshot_id}/{area}")
     async def workspace_time_machine_view(snapshot_id: str, area: str, request: Request):
         require_user(request)
+        _load_snapshot_authorized(request, snapshot_id)
         try:
             return WORKSPACE_OS.snapshot_view(snapshot_id, area)
         except FileNotFoundError as exc:
@@ -424,6 +438,14 @@ def create_workspace_router(
     @router.delete("/workspace/memories/{memory_id}")
     async def workspace_memory_delete(memory_id: str, request: Request):
         require_user(request)
+        try:
+            record = WORKSPACE_OS.get_memory(memory_id)
+        except FileNotFoundError as exc:
+            raise HTTPException(status_code=404, detail=f"Memory not found: {exc}") from exc
+        try:
+            svc.authorize_memory_delete(record, get_current_user(request))
+        except PermissionError as exc:
+            raise HTTPException(status_code=403, detail=str(exc)) from exc
         try:
             return WORKSPACE_OS.delete_memory(memory_id)
         except FileNotFoundError as exc:

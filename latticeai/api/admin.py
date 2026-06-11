@@ -2,7 +2,7 @@
 
 import logging
 from collections import defaultdict
-from typing import Any, Callable, Dict, List, Optional
+from typing import Callable, Dict, List, Optional
 
 from fastapi import APIRouter, HTTPException, Request
 from pydantic import BaseModel

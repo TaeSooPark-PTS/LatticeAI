@@ -25,9 +25,8 @@ from latticeai.core.agent import AgentRunContext, AgentState
 from latticeai.core.context_builder import format_sources_footnote, retrieve_context_for_generation
 from latticeai.core.document_generator import DocumentGenerationSession, detect_document_intent
 from latticeai.core.hooks import dispatch_tool
-from latticeai.services.chat_service import ChatService
+from latticeai.services.app_context import AppContext
 from latticeai.services.tool_dispatch import build_agent_runtime, collect_created_files
-from telegram_bot import broadcast_web_chat
 from tools import AGENT_ROOT, ToolError, ensure_agent_root, execute_tool, knowledge_save, local_read, network_status
 
 class ChatRequest(BaseModel):
@@ -70,6 +69,28 @@ class AgentResumeRequest(BaseModel):
 class AgentEvalRequest(BaseModel):
     skill: str
     case_id: Optional[str] = None
+
+def pair_user_history(history: List[Dict], user_email: str) -> List[Dict]:
+    """Restrict history to one user's exchange.
+
+    Keeps the user's own messages plus assistant replies that directly follow
+    them. A bare role=="assistant" pass would leak every other user's replies
+    into this user's prompt context.
+    """
+    paired: List[Dict] = []
+    include_next_assistant = False
+    for item in history:
+        if item.get("role") == "assistant":
+            if include_next_assistant:
+                paired.append(item)
+                include_next_assistant = False
+        elif item.get("user_email") == user_email:
+            paired.append(item)
+            include_next_assistant = True
+        else:
+            include_next_assistant = False
+    return paired
+
 
 def detect_language(text: str) -> str:
     """Detect language: 'ko' (Korean) or 'en' (English)."""
@@ -120,45 +141,56 @@ async def single_text_stream(text: str, model: str = "system") -> AsyncIterator[
     yield "data: [DONE]\n\n"
 
 
-def create_chat_router(
-    *,
-    config,
-    model_router,
-    chat_service: ChatService,
-    workspace_store,
-    workspace_graph,
-    gardener,
-    require_user,
-    enforce_rate_limit,
-    get_history_user,
-    save_to_history,
-    append_audit_event,
-    clear_history,
-    clear_conversation,
-    get_history,
-    group_history_conversations,
-    get_conversation_messages,
-    conversation_title,
-    load_users,
-    get_user_role,
-    enable_graph: bool,
-    knowledge_graph,
-    public_model: str,
-    base_dir: Path,
-    hooks=None,
-) -> APIRouter:
+def create_chat_router(context: AppContext) -> APIRouter:
+    """Build the chat/history/agent router from the typed application context.
+
+    Replaces the historical ~25-kwarg factory signature: ``context``
+    (:class:`latticeai.services.app_context.AppContext`) carries the same
+    dependencies as typed fields.
+    """
     api_router = APIRouter()
-    router = model_router
-    CONFIG = config
-    CHAT_SERVICE = chat_service
-    WORKSPACE_OS = workspace_store
-    ENABLE_GRAPH = enable_graph
-    KNOWLEDGE_GRAPH = knowledge_graph
-    PUBLIC_MODEL = public_model
-    BASE_DIR = base_dir
+    router = context.model_router
+    hooks = context.hooks
+    workspace_graph = context.workspace_graph
+    context_assembler = context.context_assembler
+    require_user = context.require_user
+    enforce_rate_limit = context.enforce_rate_limit
+    get_history_user = context.get_history_user
+    save_to_history = context.save_to_history
+    append_audit_event = context.append_audit_event
+    clear_history = context.clear_history
+    clear_conversation = context.clear_conversation
+    get_history = context.get_history
+    group_history_conversations = context.group_history_conversations
+    get_conversation_messages = context.get_conversation_messages
+    conversation_title = context.conversation_title
+
+    CONFIG = context.config
+    CHAT_SERVICE = context.chat_service
+    WORKSPACE_OS = context.workspace_store
+    ENABLE_GRAPH = context.enable_graph
+    KNOWLEDGE_GRAPH = context.knowledge_graph
+    PUBLIC_MODEL = context.public_model
+    BASE_DIR = context.base_dir
     _doc_gen_sessions: dict = {}
     _pending_agents: dict[str, tuple] = {}
     _pending_agents_lock = threading.Lock()
+
+    on_chat_message = context.on_chat_message
+
+    def notify_chat_message(role: str, text: str, source: Optional[str]) -> None:
+        """Mirror a chat exchange to the injected external bridge, if any.
+
+        ``on_chat_message`` is registered by ``create_app`` only when
+        ENABLE_TELEGRAM is truthy; exchanges that originated *from* telegram
+        are never echoed back. No bridge registered → no-op.
+        """
+        if on_chat_message is None or source == "telegram":
+            return
+        try:
+            on_chat_message(role, text, source)
+        except Exception as exc:
+            logging.warning("chat message bridge failed: %s", exc)
 
     def build_recent_chat_context(
         limit: int = 10,
@@ -170,7 +202,7 @@ def create_chat_router(
         if conversation_id:
             history = [item for item in history if item.get("conversation_id") == conversation_id]
         if user_email:
-            history = [item for item in history if item.get("user_email") == user_email or item.get("role") == "assistant"]
+            history = pair_user_history(history, user_email)
         history = history[-limit:]
         lines = []
         for item in history:
@@ -250,6 +282,7 @@ def create_chat_router(
         knowledge_save=knowledge_save,
         audit=append_audit_event,
         hooks=hooks,
+        brain_memory=context.brain_memory,
     )
 
     @api_router.post("/chat")
@@ -272,9 +305,8 @@ def create_chat_router(
             except ToolError as exc:
                 answer = f"네트워크 정보를 확인하지 못했습니다: {exc}"
             save_to_history("assistant", answer, source=req.source or "web", conversation_id=req.conversation_id, **history_user)
-            if req.source != "telegram":
-                asyncio.create_task(broadcast_web_chat("user", req.message))
-                asyncio.create_task(broadcast_web_chat("assistant", answer))
+            notify_chat_message("user", req.message, req.source)
+            notify_chat_message("assistant", answer, req.source)
             if req.stream:
                 return StreamingResponse(
                     single_text_stream(answer),
@@ -332,9 +364,8 @@ def create_chat_router(
             answer = f"현재 페이지 URL: {req.client_url}"
             save_to_history("user", req.message, source=req.source or "web", conversation_id=req.conversation_id, **history_user)
             save_to_history("assistant", answer, source=req.source or "web", conversation_id=req.conversation_id, **history_user)
-            if req.source != "telegram":
-                asyncio.create_task(broadcast_web_chat("user", req.message))
-                asyncio.create_task(broadcast_web_chat("assistant", answer))
+            notify_chat_message("user", req.message, req.source)
+            notify_chat_message("assistant", answer, req.source)
             if req.stream:
                 return StreamingResponse(
                     single_text_stream(answer),
@@ -364,32 +395,38 @@ def create_chat_router(
     
         lang = detect_language(req.message)
         context = f"[LANGUAGE: {_LANG_HINT[lang]}]\n" + (req.context or "")
+        # v4 Context System: one budgeted, provenance-carrying assembly
+        # (workspace memories + hybrid search + garden notes) replaces the
+        # ad-hoc vault-scan + LIKE-search concatenation. The trace records
+        # why each section is in the prompt.
+        context_trace = None
         try:
-            knowledge_context = gardener.get_relevant_context(req.message)
-            if knowledge_context:
-                context += f"\n\n[LOCAL KNOWLEDGE BASE]\n{knowledge_context}"
-                print(f"📖 Context reinforced with local knowledge.")
+            if context_assembler is not None:
+                assembled = context_assembler.assemble(
+                    req.message,
+                    user_email=effective_email,
+                    conversation_id=req.conversation_id,
+                    budget=2000,
+                )
+                context_trace = assembled.trace()
+                if assembled.text:
+                    context += "\n\n" + assembled.text
         except Exception as e:
-            logging.warning("Knowledge reinforcement skipped: %s", e)
-    
+            logging.warning("Context assembly skipped: %s", e)
+
         is_doc_gen = detect_document_intent(req.message)
         doc_gen_context_result = None
-    
+
         try:
-            if ENABLE_GRAPH and KNOWLEDGE_GRAPH:
-                if is_doc_gen:
-                    doc_gen_context_result = retrieve_context_for_generation(
-                        KNOWLEDGE_GRAPH, req.message, max_results=10, max_hops=2,
-                    )
-                    graph_md = doc_gen_context_result.get("context_markdown", "")
-                    if graph_md:
-                        context += f"\n\n[KNOWLEDGE GRAPH — Document Generation Context]\n{graph_md}"
-                        print("📝 Document generation context retrieved from knowledge graph.")
-                else:
-                    graph_context = KNOWLEDGE_GRAPH.context_for_query(req.message)
-                    if graph_context:
-                        context += f"\n\n[KNOWLEDGE GRAPH]\n{graph_context}"
-                        print("🕸️ Context reinforced with knowledge graph.")
+            if ENABLE_GRAPH and KNOWLEDGE_GRAPH and is_doc_gen:
+                # Specialized multi-hop retrieval for document generation.
+                doc_gen_context_result = retrieve_context_for_generation(
+                    KNOWLEDGE_GRAPH, req.message, max_results=10, max_hops=2,
+                )
+                graph_md = doc_gen_context_result.get("context_markdown", "")
+                if graph_md:
+                    context += f"\n\n[KNOWLEDGE GRAPH — Document Generation Context]\n{graph_md}"
+                    print("📝 Document generation context retrieved from knowledge graph.")
         except Exception as e:
             logging.warning("Knowledge graph reinforcement skipped: %s", e)
     
@@ -416,11 +453,14 @@ def create_chat_router(
             KNOWLEDGE_GRAPH if (ENABLE_GRAPH and KNOWLEDGE_GRAPH) else None,
             context,
         )
+        if context_trace is not None and isinstance(trace_seed, dict):
+            # Persisted with the answer trace: 'why is this in my context?'
+            # is answerable from the stored record (UI surface lands in T9b).
+            trace_seed["context_assembly"] = context_trace
     
         history_message = f"{req.message}\n[Image attached]" if req.image_data else req.message
         save_to_history("user", history_message, source=req.source or "web", conversation_id=req.conversation_id, **history_user)
-        if req.source != "telegram":
-            asyncio.create_task(broadcast_web_chat("user", req.message))
+        notify_chat_message("user", req.message, req.source)
     
         if is_doc_gen and ENABLE_GRAPH and KNOWLEDGE_GRAPH:
             conv_key = req.conversation_id or "default"
@@ -456,8 +496,7 @@ def create_chat_router(
                         user_email=effective_email,
                         trace=trace_seed,
                     )
-                    if req.source != "telegram":
-                        asyncio.create_task(broadcast_web_chat("assistant", full_text))
+                    notify_chat_message("assistant", full_text, req.source)
                     yield f"data: {json.dumps({'text': '', 'trace_id': trace_record['id'], 'trace': trace_record}, ensure_ascii=False)}\n\n"
                     yield "data: [DONE]\n\n"
                 return StreamingResponse(
@@ -482,8 +521,7 @@ def create_chat_router(
                     user_email=effective_email,
                     trace=trace_seed,
                 )
-                if req.source != "telegram":
-                    asyncio.create_task(broadcast_web_chat("assistant", str(result)))
+                notify_chat_message("assistant", str(result), req.source)
                 return JSONResponse(content={"response": str(result), "trace_id": trace_record["id"], "trace": trace_record})
     
         if req.stream:
@@ -519,8 +557,7 @@ def create_chat_router(
                 user_email=effective_email,
                 trace=trace_seed,
             )
-            if req.source != "telegram":
-                asyncio.create_task(broadcast_web_chat("assistant", str(result)))
+            notify_chat_message("assistant", str(result), req.source)
     
             return JSONResponse(content={"response": str(result), "trace_id": trace_record["id"], "trace": trace_record})
     
@@ -627,8 +664,7 @@ def create_chat_router(
                 context,
             ),
         )
-        if req.source != "telegram":
-            asyncio.create_task(broadcast_web_chat("assistant", full_response))
+        notify_chat_message("assistant", full_response, req.source)
         yield f"data: {json.dumps({'chunk': '', 'model': router.current_model_id, 'trace_id': trace_record['id'], 'trace': trace_record}, ensure_ascii=False)}\n\n"
         yield "data: [DONE]\n\n"
 
@@ -751,7 +787,7 @@ def create_chat_router(
                 user_email=current_user or None,
                 timeline=ctx.transcript,
                 relationships=["agent:planner", "agent:reviewer"],
-                graph=_workspace_graph(),
+                graph=workspace_graph(),
             )
         except Exception as exc:
             logging.warning("workspace agent run record failed: %s", exc)

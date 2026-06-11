@@ -7,7 +7,7 @@ keyword search into UI-ready contracts without tying routers to store internals.
 from __future__ import annotations
 
 from dataclasses import dataclass
-from typing import Any, Dict, List, Mapping, Optional
+from typing import Any, Dict, Mapping, Optional
 
 
 DEFAULT_HYBRID_WEIGHTS = {
@@ -34,7 +34,15 @@ class SearchService:
             raise ValueError("knowledge graph is disabled")
         return self.graph_store
 
-    def keyword_search(self, query: str, *, limit: int = 30) -> Dict[str, Any]:
+    def _scope(self, matches, allowed_workspaces):
+        """Drop matches scoped to workspaces the caller is not a member of
+        (None = no scoping; legacy-global rows stay visible — documented)."""
+        if allowed_workspaces is None:
+            return matches
+        graph = self._require_graph()
+        return graph.filter_scoped_nodes(matches, allowed_workspaces)
+
+    def keyword_search(self, query: str, *, limit: int = 30, allowed_workspaces=None) -> Dict[str, Any]:
         graph = self._require_graph()
         payload = graph.search(query, limit)
         matches = []
@@ -53,9 +61,9 @@ class SearchService:
                 "metadata": match.get("metadata") or {},
                 "updated_at": match.get("updated_at"),
             })
-        return {"query": query, "mode": "keyword", "matches": matches}
+        return {"query": query, "mode": "keyword", "matches": self._scope(matches, allowed_workspaces)}
 
-    def vector_search(self, query: str, *, limit: int = 30, min_score: float = 0.0) -> Dict[str, Any]:
+    def vector_search(self, query: str, *, limit: int = 30, min_score: float = 0.0, allowed_workspaces=None) -> Dict[str, Any]:
         graph = self._require_graph()
         payload = graph.vector_search(query, limit=limit, min_score=min_score)
         matches = []
@@ -80,10 +88,10 @@ class SearchService:
             "mode": "vector",
             "embedding_model": payload.get("embedding_model"),
             "embedding_dim": payload.get("embedding_dim"),
-            "matches": matches,
+            "matches": self._scope(matches, allowed_workspaces),
         }
 
-    def graph_search(self, query: str, *, limit: int = 30, expand_depth: int = 1) -> Dict[str, Any]:
+    def graph_search(self, query: str, *, limit: int = 30, expand_depth: int = 1, allowed_workspaces=None) -> Dict[str, Any]:
         graph = self._require_graph()
         limit = max(1, min(int(limit or 30), 100))
         expand_depth = max(0, min(int(expand_depth or 1), 3))
@@ -157,7 +165,7 @@ class SearchService:
             match["rank"] = rank
             match["score"] = round(float(match["score"]), 6)
             match["source_scores"]["graph"] = round(float(match["source_scores"]["graph"]), 6)
-        return {"query": query, "mode": "graph", "expand_depth": expand_depth, "matches": matches}
+        return {"query": query, "mode": "graph", "expand_depth": expand_depth, "matches": self._scope(matches, allowed_workspaces)}
 
     def hybrid_search(
         self,
@@ -168,6 +176,7 @@ class SearchService:
         vector_limit: int = 30,
         graph_limit: int = 30,
         weights: Optional[Mapping[str, float]] = None,
+        allowed_workspaces=None,
     ) -> Dict[str, Any]:
         weights = {**DEFAULT_HYBRID_WEIGHTS, **dict(weights or {})}
         channels = {
@@ -202,7 +211,7 @@ class SearchService:
                     current.setdefault("graph_context", [])
                     current["graph_context"].extend(result.get("graph_context") or [])
 
-        matches = sorted(fused.values(), key=lambda item: item["score"], reverse=True)[: max(1, min(limit, 100))]
+        matches = self._scope(sorted(fused.values(), key=lambda item: item["score"], reverse=True), allowed_workspaces)[: max(1, min(limit, 100))]
         for rank, match in enumerate(matches, start=1):
             match["rank"] = rank
             match["score"] = round(float(match["score"]), 6)

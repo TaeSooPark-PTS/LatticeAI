@@ -990,6 +990,62 @@ class KnowledgeGraphStore:
                 ("schema_version", str(GRAPH_SCHEMA_VERSION)),
             )
         self._init_v2_schema()
+        self._init_fts()
+
+    # ── FTS5 keyword index (v4) ──────────────────────────────────────────
+    # Replaces LIKE '%q%' table scans for keyword search. The trigram
+    # tokenizer is required (not just FTS5): unicode61 indexes whole tokens
+    # and would silently break Korean substring recall ('프로젝트' must match
+    # '프로젝트를'). Without trigram support the store honestly reports
+    # fts_enabled=False and the LIKE path remains authoritative.
+    _FTS_SQL = """
+    CREATE VIRTUAL TABLE IF NOT EXISTS node_fts USING fts5(
+      node_id UNINDEXED, title, summary, metadata, tokenize='trigram'
+    );
+    CREATE TRIGGER IF NOT EXISTS node_fts_ai AFTER INSERT ON nodes BEGIN
+      INSERT INTO node_fts(node_id, title, summary, metadata)
+      VALUES (new.id, new.title, COALESCE(new.summary, ''), new.metadata_json);
+    END;
+    CREATE TRIGGER IF NOT EXISTS node_fts_au AFTER UPDATE ON nodes BEGIN
+      DELETE FROM node_fts WHERE node_id = old.id;
+      INSERT INTO node_fts(node_id, title, summary, metadata)
+      VALUES (new.id, new.title, COALESCE(new.summary, ''), new.metadata_json);
+    END;
+    CREATE TRIGGER IF NOT EXISTS node_fts_ad AFTER DELETE ON nodes BEGIN
+      DELETE FROM node_fts WHERE node_id = old.id;
+    END;
+    """
+
+    def _init_fts(self) -> None:
+        self._fts_enabled = False
+        try:
+            with self._connect() as conn:
+                conn.executescript(self._FTS_SQL)
+                fts_count = conn.execute("SELECT count(*) AS c FROM node_fts").fetchone()["c"]
+                if fts_count == 0:
+                    conn.execute(
+                        "INSERT INTO node_fts(node_id, title, summary, metadata) "
+                        "SELECT id, title, COALESCE(summary, ''), metadata_json FROM nodes"
+                    )
+            self._fts_enabled = True
+        except sqlite3.OperationalError as exc:
+            # FTS5/trigram not compiled into this SQLite build. LIKE search
+            # stays authoritative; the capability is reported, never faked.
+            logging.info("FTS5 trigram index unavailable (%s); keyword search uses LIKE scans.", exc)
+
+    def _fts_match_ids(self, conn: sqlite3.Connection, query: str, limit: int) -> List[str]:
+        """Ranked node ids for a trigram FTS query ('' on any failure)."""
+        if not getattr(self, "_fts_enabled", False) or len(query) < 3:
+            return []
+        escaped = query.replace('"', '""')
+        try:
+            rows = conn.execute(
+                'SELECT node_id FROM node_fts WHERE node_fts MATCH ? ORDER BY rank LIMIT ?',
+                (f'"{escaped}"', limit),
+            ).fetchall()
+        except sqlite3.OperationalError:
+            return []
+        return [row["node_id"] for row in rows]
 
     # SQL views that reconstruct the *exact* legacy row shape on top of the
     # normalized v2 tables, so the read methods run unchanged against either
@@ -1128,26 +1184,40 @@ class KnowledgeGraphStore:
         self, conn: sqlite3.Connection, node_id: str, node_type: str, title: str,
         summary: Optional[str], metadata_json: Optional[str],
         *, created_at: Optional[str] = None, updated_at: Optional[str] = None,
+        owner: Optional[str] = None, workspace_id: Optional[str] = None,
+        visibility: Optional[str] = None,
     ) -> None:
         if KGStoreV2 is None:
             return
         ts = updated_at or _now()
         norm_type = NodeType.from_legacy(node_type).value if NodeType is not None else node_type
+        # Scope resolution: explicit param > metadata hints > legacy-global.
+        # 'legacy' (not 'private') marks unscoped rows — the column default
+        # must never silently privatize previously machine-shared data.
+        meta = _safe_loads(metadata_json) if metadata_json else {}
+        owner = owner or meta.get("user_email") or meta.get("owner") or None
+        workspace_id = workspace_id or meta.get("workspace_id") or None
+        visibility = visibility or ("legacy" if workspace_id is None else "workspace")
         try:
             conn.execute(
                 """
                 INSERT INTO nodes_v2(id, type, legacy_type, label, summary, attrs,
-                                     owner_id, visibility, created_at, updated_at,
-                                     importance_score)
-                VALUES (?, ?, ?, ?, ?, ?, NULL, 'private', ?, ?, 0.0)
+                                     owner_id, workspace_id, visibility,
+                                     created_at, updated_at, importance_score)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 0.0)
                 ON CONFLICT(id) DO UPDATE SET
                   type=excluded.type, legacy_type=excluded.legacy_type,
                   label=excluded.label, summary=excluded.summary,
-                  attrs=excluded.attrs, updated_at=excluded.updated_at
+                  attrs=excluded.attrs, updated_at=excluded.updated_at,
+                  owner_id=COALESCE(excluded.owner_id, nodes_v2.owner_id),
+                  workspace_id=COALESCE(excluded.workspace_id, nodes_v2.workspace_id),
+                  visibility=CASE WHEN excluded.visibility != 'legacy'
+                                  THEN excluded.visibility
+                                  ELSE nodes_v2.visibility END
                 """,
                 (node_id, norm_type, node_type, title, summary,
                  metadata_json if metadata_json is not None else "{}",
-                 created_at or ts, ts),
+                 owner, workspace_id, visibility, created_at or ts, ts),
             )
         except Exception as ex:
             logging.debug("knowledge_graph: v2 node projection skipped (%s): %s", node_id, ex)
@@ -1169,8 +1239,7 @@ class KnowledgeGraphStore:
                 INSERT INTO edges_v2(id, source, target, type, legacy_type, weight,
                                      confidence, evidence, metadata, created_by, created_at)
                 VALUES (?, ?, ?, ?, ?, ?, ?, '[]', ?, 'legacy', ?)
-                ON CONFLICT(source, target, legacy_type) DO UPDATE SET
-                  type=excluded.type,
+                ON CONFLICT(source, target, type, legacy_type) DO UPDATE SET
                   weight=max(edges_v2.weight, excluded.weight),
                   confidence=excluded.confidence,
                   metadata=excluded.metadata
@@ -1178,8 +1247,124 @@ class KnowledgeGraphStore:
                 (eid, from_node, to_node, norm_type, edge_type, float(weight),
                  confidence, meta_str, created_at or _now()),
             )
+            # Temporal record: every observation of this relationship is kept
+            # (the UNIQUE upsert + weight=max alone would erase recurrence).
+            row = conn.execute(
+                "SELECT id FROM edges_v2 WHERE source=? AND target=? AND type=? AND legacy_type=?",
+                (from_node, to_node, norm_type, edge_type),
+            ).fetchone()
+            if row is not None:
+                conn.execute(
+                    "INSERT INTO edge_occurrences(edge_id, observed_at, weight, source) VALUES (?, ?, ?, ?)",
+                    (row["id"], created_at or _now(), float(weight),
+                     _safe_loads(meta_str).get("source")),
+                )
         except Exception as ex:
             logging.debug("knowledge_graph: v2 edge projection skipped (%s->%s): %s", from_node, to_node, ex)
+
+    def curate(self, *, max_documents: int = 200, max_new_nodes: int = 8) -> Dict[str, Any]:
+        """On-demand graph curation (T4.4 — graph_curator goes live).
+
+        Runs the curator's gated topic-promotion pipeline over recent content
+        nodes: candidates are clustered, secret-bearing labels are refused,
+        and only multi-source topics above the importance threshold become
+        Topic nodes (with MENTIONS edges back to their sources and a real
+        importance_score in nodes_v2). Explicit and observable — the result
+        reports everything promoted AND everything skipped, with reasons.
+        """
+        from latticeai.core.graph_curator import auto_build_graph_overlay
+
+        content_types = (
+            "Document", "File", "CodeFile", "Message", "AIResponse",
+            "Chat", "Page", "Slide", "Spreadsheet",
+        )
+        nt, _ = self._read_tables()
+        with self._connect() as conn:
+            placeholders = ",".join("?" for _ in content_types)
+            rows = conn.execute(
+                f"""
+                SELECT id, type, title, summary FROM {nt}
+                WHERE type IN ({placeholders})
+                ORDER BY updated_at DESC, id ASC LIMIT ?
+                """,
+                (*content_types, max(1, min(int(max_documents), 2000))),
+            ).fetchall()
+            existing_labels = {
+                str(row["title"] or "").strip().lower()
+                for row in conn.execute(
+                    f"SELECT title FROM {nt} WHERE type IN ('Topic', 'Concept')"
+                ).fetchall()
+            }
+        documents = [
+            {
+                "id": row["id"],
+                "text": f"{row['title']} {row['summary'] or ''}",
+                "kind": "file" if row["type"] in {"Document", "File", "CodeFile", "Spreadsheet"} else "chat",
+            }
+            for row in rows
+        ]
+        overlay = auto_build_graph_overlay(
+            documents,
+            existing_node_labels=existing_labels,
+            max_new_nodes=max(1, min(int(max_new_nodes), 50)),
+        )
+        promoted: List[Dict[str, Any]] = []
+        with self._connect() as conn:
+            valid_ids = {row["id"] for row in rows}
+            for promo in overlay["promotions"]:
+                topic_id = f"topic:{_slug(promo['label'])}"
+                self._upsert_node(
+                    conn, topic_id, "Topic", promo["label"],
+                    metadata={
+                        "curated": True,
+                        "importance": promo["importance"],
+                        "aliases": promo["aliases"],
+                        "source": "graph_curator",
+                    },
+                )
+                conn.execute(
+                    "UPDATE nodes_v2 SET importance_score=? WHERE id=?",
+                    (float(promo["importance"]), topic_id),
+                )
+                linked = 0
+                for source_id in promo["sources"][:10]:
+                    if source_id in valid_ids:
+                        self._upsert_edge(
+                            conn, source_id, topic_id, "MENTIONS",
+                            weight=0.6, metadata={"source": "graph_curator"},
+                        )
+                        linked += 1
+                promoted.append({
+                    "node_id": topic_id,
+                    "label": promo["label"],
+                    "importance": promo["importance"],
+                    "linked_sources": linked,
+                })
+        return {
+            "status": "ok",
+            "documents_scanned": len(documents),
+            "candidates_total": overlay["candidates_total"],
+            "promoted": promoted,
+            "skipped": overlay["skipped"][:50],
+            "skipped_total": len(overlay["skipped"]),
+        }
+
+    def mark_superseded(self, old_node_id: str, new_node_id: str) -> Dict[str, Any]:
+        """Record that ``old_node_id`` was replaced by ``new_node_id``.
+
+        The old node stays queryable (knowledge is durable); readers can follow
+        the revision chain via ``nodes_v2.superseded_by``.
+        """
+        with self._connect() as conn:
+            for node_id in (old_node_id, new_node_id):
+                exists = conn.execute("SELECT 1 FROM nodes_v2 WHERE id=?", (node_id,)).fetchone()
+                if not exists:
+                    raise FileNotFoundError(node_id)
+            conn.execute(
+                "UPDATE nodes_v2 SET superseded_by=?, updated_at=? WHERE id=?",
+                (new_node_id, _now(), old_node_id),
+            )
+        return {"status": "ok", "node_id": old_node_id, "superseded_by": new_node_id}
 
     def _v2_delete_nodes(self, conn: sqlite3.Connection, ids) -> None:
         """Mirror legacy node deletions into v2 (edges_v2 cascade on the FK)."""
@@ -1241,6 +1426,9 @@ class KnowledgeGraphStore:
         summary: str = "",
         metadata: Optional[Dict[str, Any]] = None,
         raw: Optional[Dict[str, Any]] = None,
+        owner: Optional[str] = None,
+        workspace_id: Optional[str] = None,
+        visibility: Optional[str] = None,
     ) -> str:
         now = _now()
         # Canonical stored values, computed once and shared with the v2
@@ -1263,7 +1451,8 @@ class KnowledgeGraphStore:
         )
         # dual-write: project into the v2 graph on the same transaction
         self._v2_project_node(conn, node_id, node_type, title_s, summary_s, meta_json,
-                              created_at=now, updated_at=now)
+                              created_at=now, updated_at=now,
+                              owner=owner, workspace_id=workspace_id, visibility=visibility)
         if node_type != "Chunk":
             self._upsert_vector_item(
                 conn,
@@ -1284,6 +1473,16 @@ class KnowledgeGraphStore:
         weight: float = 1.0,
         metadata: Optional[Dict[str, Any]] = None,
     ) -> str:
+        # v4 write door: every new edge stores the canonical EdgeType value —
+        # free-string types (e.g. '포함함', '언급함') are normalized here, so no
+        # caller can mint new legacy taxonomy. The original label survives in
+        # metadata.legacy_label for traceability.
+        if EdgeType is not None:
+            canonical = EdgeType.from_legacy(edge_type).value
+            if canonical != edge_type:
+                metadata = dict(metadata or {})
+                metadata.setdefault("legacy_label", edge_type)
+            edge_type = canonical
         edge_id = f"edge:{_sha256_text(f'{from_node}|{edge_type}|{to_node}')[:24]}"
         now = _now()
         meta_json = _json(metadata)   # canonical string shared with the projection
@@ -3189,6 +3388,41 @@ class KnowledgeGraphStore:
                 ).fetchall()
             return {"items": [self._provenance_row(r) for r in rows], "count": len(rows)}
 
+    def provenance_coverage(self) -> Dict[str, Any]:
+        """How much of the brain is explainable: nodes with vs without
+        provenance, per node type — the honesty metric for 'every source goes
+        through the pipeline'. Pre-v4 nodes ingested before provenance existed
+        legitimately count as uncovered."""
+        nt, _ = self._read_tables()
+        with self._connect() as conn:
+            total = conn.execute(f"SELECT COUNT(*) FROM {nt}").fetchone()[0]
+            covered = conn.execute(
+                f"SELECT COUNT(*) FROM {nt} WHERE id IN (SELECT DISTINCT node_id FROM ingestion_provenance)"
+            ).fetchone()[0]
+            uncovered_by_type = {
+                row["type"]: row["c"]
+                for row in conn.execute(
+                    f"""
+                    SELECT type, COUNT(*) AS c FROM {nt}
+                    WHERE id NOT IN (SELECT DISTINCT node_id FROM ingestion_provenance)
+                    GROUP BY type ORDER BY c DESC LIMIT 20
+                    """
+                ).fetchall()
+            }
+            by_source = {
+                row["source_type"]: row["c"]
+                for row in conn.execute(
+                    "SELECT source_type, COUNT(*) AS c FROM ingestion_provenance GROUP BY source_type"
+                ).fetchall()
+            }
+        return {
+            "total_nodes": total,
+            "nodes_with_provenance": covered,
+            "coverage_ratio": round(covered / total, 4) if total else None,
+            "uncovered_by_type": uncovered_by_type,
+            "provenance_by_source_type": by_source,
+        }
+
     def provenance_stats(self) -> Dict[str, Any]:
         """Aggregate provenance counts for the Knowledge Graph status surface."""
         with self._connect() as conn:
@@ -3230,23 +3464,52 @@ class KnowledgeGraphStore:
             "embed_dim": _EMBED_DIM,
         }
 
-    def export_graph_data(self) -> Dict[str, Any]:
+    def export_graph_data(self, *, workspace_id: Optional[str] = None) -> Dict[str, Any]:
         """Raw, lossless logical export of the graph (nodes/edges/chunks/sources/
         provenance). Vector embeddings are intentionally omitted — they are
         re-derived on import — so the artifact stays portable and small. Use
         :meth:`backup_database` for a faithful binary copy incl. embeddings.
+
+        ``workspace_id`` REALLY filters (v4): the artifact contains only nodes
+        scoped to that workspace plus legacy-global rows (NULL scope, readable
+        machine-wide by definition), with edges/chunks/provenance restricted to
+        the surviving nodes. Pre-v4 this parameter was stamped into the header
+        while the data exported everything — a header that lied.
         """
         with self._connect() as conn:
             def rows(table: str):
                 return [dict(r) for r in conn.execute(f"SELECT * FROM {table}").fetchall()]
 
-            data = {
-                "nodes": rows("nodes"),
-                "edges": rows("edges"),
-                "chunks": rows("chunks"),
-                "knowledge_sources": rows("knowledge_sources"),
-                "provenance": rows("ingestion_provenance"),
-            }
+            if workspace_id:
+                keep_ids = {
+                    row["id"]
+                    for row in conn.execute(
+                        "SELECT id FROM nodes_v2 WHERE workspace_id = ? OR workspace_id IS NULL",
+                        (workspace_id,),
+                    ).fetchall()
+                }
+                nodes = [n for n in rows("nodes") if n["id"] in keep_ids]
+                edges = [
+                    e for e in rows("edges")
+                    if e["from_node"] in keep_ids and e["to_node"] in keep_ids
+                ]
+                chunks = [c for c in rows("chunks") if c["source_node"] in keep_ids]
+                provenance = [p for p in rows("ingestion_provenance") if p["node_id"] in keep_ids]
+                data = {
+                    "nodes": nodes,
+                    "edges": edges,
+                    "chunks": chunks,
+                    "knowledge_sources": rows("knowledge_sources"),
+                    "provenance": provenance,
+                }
+            else:
+                data = {
+                    "nodes": rows("nodes"),
+                    "edges": rows("edges"),
+                    "chunks": rows("chunks"),
+                    "knowledge_sources": rows("knowledge_sources"),
+                    "provenance": rows("ingestion_provenance"),
+                }
         data["counts"] = {k: len(v) for k, v in data.items()}
         return data
 
@@ -3610,7 +3873,40 @@ class KnowledgeGraphStore:
             "generated_at": datetime.now().isoformat(timespec="seconds"),
         }
 
-    def graph(self, limit: int = 300) -> Dict[str, Any]:
+    def workspaces_of(self, node_ids) -> Dict[str, Optional[str]]:
+        """Map node ids to their workspace scope (None = legacy-global)."""
+        ids = [str(i) for i in node_ids if i]
+        if not ids:
+            return {}
+        placeholders = ",".join("?" for _ in ids)
+        with self._connect() as conn:
+            try:
+                return {
+                    row["id"]: row["workspace_id"]
+                    for row in conn.execute(
+                        f"SELECT id, workspace_id FROM nodes_v2 WHERE id IN ({placeholders})", ids
+                    ).fetchall()
+                }
+            except Exception:
+                return {}
+
+    def filter_scoped_nodes(self, items, allowed_workspaces, *, id_key: str = "id"):
+        """Drop items scoped to a workspace the caller is not a member of.
+
+        ``allowed_workspaces=None`` means no scoping (single-user / no-auth
+        mode). Legacy-global rows (no workspace) stay visible to everyone on
+        the machine — the documented pre-v4 compatibility behavior.
+        """
+        if allowed_workspaces is None:
+            return list(items)
+        allowed = set(allowed_workspaces)
+        scopes = self.workspaces_of([item.get(id_key) for item in items])
+        return [
+            item for item in items
+            if scopes.get(item.get(id_key)) is None or scopes.get(item.get(id_key)) in allowed
+        ]
+
+    def graph(self, limit: int = 300, *, allowed_workspaces=None) -> Dict[str, Any]:
         limit = max(1, min(int(limit or 300), 2000))
         visible = ",".join(f"'{t}'" for t in self._GRAPH_VISIBLE_TYPES)
         nt, et = self._read_tables()
@@ -3659,6 +3955,11 @@ class KnowledgeGraphStore:
                     }
                     for row in edge_rows
                 ]
+
+        if allowed_workspaces is not None:
+            nodes = self.filter_scoped_nodes(nodes, allowed_workspaces)
+            kept_ids = {node["id"] for node in nodes}
+            edges = [e for e in edges if e["from"] in kept_ids and e["to"] in kept_ids]
 
         degree_map: Dict[str, int] = {}
         now = datetime.now()
@@ -3735,16 +4036,32 @@ class KnowledgeGraphStore:
         with self._connect() as conn:
             rows = []
             if query:
-                rows = conn.execute(
-                    f"""
-                    SELECT id, type, title, summary, metadata_json, updated_at
-                    FROM {nt}
-                    WHERE title LIKE ? OR summary LIKE ? OR metadata_json LIKE ?
-                    ORDER BY updated_at DESC, id ASC
-                    LIMIT ?
-                    """,
-                    (q, q, q, limit),
-                ).fetchall()
+                fts_ids = self._fts_match_ids(conn, query, limit)
+                if fts_ids:
+                    placeholders = ",".join("?" for _ in fts_ids)
+                    by_id = {
+                        row["id"]: row
+                        for row in conn.execute(
+                            f"""
+                            SELECT id, type, title, summary, metadata_json, updated_at
+                            FROM {nt} WHERE id IN ({placeholders})
+                            """,
+                            fts_ids,
+                        ).fetchall()
+                    }
+                    # Preserve FTS bm25 rank order.
+                    rows = [by_id[i] for i in fts_ids if i in by_id]
+                else:
+                    rows = conn.execute(
+                        f"""
+                        SELECT id, type, title, summary, metadata_json, updated_at
+                        FROM {nt}
+                        WHERE title LIKE ? OR summary LIKE ? OR metadata_json LIKE ?
+                        ORDER BY updated_at DESC, id ASC
+                        LIMIT ?
+                        """,
+                        (q, q, q, limit),
+                    ).fetchall()
 
             if len(rows) < limit:
                 terms = _topic_candidates(query, limit=8)
@@ -3779,6 +4096,10 @@ class KnowledgeGraphStore:
                 } else 0
                 return (hits, type_boost, row["updated_at"] or "")
 
+            # Deterministic contract: rows with equal relevance order by id ASC
+            # (stable sort preserves the pre-sort under reverse=True), matching
+            # the legacy LIKE path regardless of FTS bm25 tie ordering.
+            rows = sorted(rows, key=lambda r: r["id"])
             rows = sorted(rows, key=score, reverse=True)[:limit]
         return {
             "query": query,
@@ -4263,6 +4584,9 @@ class KnowledgeGraphStore:
                 "backend": "sqlite",
                 "embedding_model": self._embedding_model.model_id,
                 "embedding_dim": self._embedding_model.dim,
+                # Honest capability report: trigram FTS5 keyword index, or
+                # LIKE-scan fallback when this SQLite build lacks it.
+                "fts_enabled": bool(getattr(self, "_fts_enabled", False)),
             },
             "source_items": len(source_items),
             "indexed_items": sum(vector_counts.values()),
@@ -4366,21 +4690,26 @@ class KnowledgeGraphStore:
             return {"status": "skipped", "removed_nodes": 0}
         conv_id = f"conversation:{_slug(conversation_id)}"
         with self._connect() as conn:
+            # Edge rows may carry the legacy lowercase label (pre-v4) or the
+            # canonical EdgeType value (v4 write door) — match both.
             direct_ids = [
                 row["to_node"]
                 for row in conn.execute(
-                    "SELECT to_node FROM edges WHERE from_node=? AND type='contains'",
+                    "SELECT to_node FROM edges WHERE from_node=? AND type IN ('contains', 'CONTAINS')",
                     (conv_id,),
                 )
             ]
             remove_ids = set(direct_ids)
+            child_types = [
+                "has_chunk", "implies", "contains_signal", "has_page",
+                "has_slide", "has_sheet", "contains_image",
+            ]
+            child_types += [t.upper() for t in child_types]
+            placeholders = ",".join("?" for _ in child_types)
             for source_id in list(direct_ids):
                 for row in conn.execute(
-                    """
-                    SELECT to_node FROM edges
-                    WHERE from_node=? AND type IN ('has_chunk', 'implies', 'contains_signal', 'has_page', 'has_slide', 'has_sheet', 'contains_image')
-                    """,
-                    (source_id,),
+                    f"SELECT to_node FROM edges WHERE from_node=? AND type IN ({placeholders})",
+                    (source_id, *child_types),
                 ):
                     remove_ids.add(row["to_node"])
             remove_ids.add(conv_id)

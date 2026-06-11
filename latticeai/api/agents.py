@@ -163,7 +163,13 @@ def create_agents_router(
         current_user = require_user(request)
         scope = gate_write(request)
         try:
-            return runtime.start(
+            # Worker thread: an LLM-backed run blocks on model generation and
+            # must not stall the event loop (the sync model bridge also
+            # requires a loop-free thread).
+            import asyncio
+
+            return await asyncio.to_thread(
+                runtime.start,
                 req.goal,
                 user_email=current_user or None,
                 scope=scope,

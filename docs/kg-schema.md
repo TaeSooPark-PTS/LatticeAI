@@ -78,8 +78,11 @@ Edge {
 | `VERSION_OF`    | `FILE → FILE` | 버전 히스토리 |
 | `GRANTS_ACCESS` | `PERSON → FILE`·`CONVERSATION`·`PROJECT` | 접근 권한 부여 |
 
-**엔드포인트 룰은 코드에서 강제된다** (`validate_endpoints` in `kg_schema.py`).
-잘못된 페어(예: `FILE → FILE` 에 `REPLIES_TO`)는 `upsert_edge` 가 거부한다.
+**엔드포인트 룰은 권고 사항이다 (스키마 문서 기준).** 코드에는 엔드포인트 페어
+검증기가 존재하지 않는다 — `validate_endpoints` 는 구현된 적이 없으며, 쓰기
+경로는 타입 페어를 거부하지 않는다. v4 의 쓰기 정규화는 *타입 어휘* 를
+강제한다: `_upsert_edge` 가 모든 엣지 타입을 canonical `EdgeType` 값으로
+정규화하므로 자유 문자열 타입은 더 이상 생성되지 않는다.
 
 ---
 
@@ -198,20 +201,12 @@ provenance(source_type, source_uri, content_hash, captured_at, modified_at,
 
 ### 실행
 
-```bash
-# 1) 현재 DB 의 어떤 row 가 어떻게 변환될지만 보기
-python3 kg_schema.py migrate ~/.ltcai/knowledge_graph.db --dry-run
-
-# 2) 실제 마이그레이션 (v2 테이블에 복사. 기존 테이블은 보존)
-python3 kg_schema.py migrate ~/.ltcai/knowledge_graph.db
-
-# 3) 결과 확인
-python3 kg_schema.py stats ~/.ltcai/knowledge_graph.db
-```
-
-마이그레이션은 **기존 `nodes` / `edges` 를 건드리지 않는다.** 신규 `nodes_v2` / `edges_v2`
-테이블에 복사할 뿐이다. 새 코드가 안정화되면 다음 메이저 릴리스에서 legacy 테이블을
-DROP 한다.
+마이그레이션은 별도 CLI 없이 **서버 기동 시 자동으로** 일어난다:
+`knowledge_graph.KnowledgeGraphStore` 가 열릴 때 v2 스키마를 생성/치유하고
+(`kg_schema.KGStoreV2.init_schema` — 추가 컬럼은 `ALTER` 로 in-place 치유,
+edges_v2 식별자 변경은 create→copy→swap 으로 재구축), legacy 데이터를
+v2 로 백필한다. 기존 `nodes` / `edges` 테이블은 건드리지 않는다 — v4 의
+write-mastering 전환(T3d) 전까지 legacy 가 쓰기 마스터다.
 
 ---
 
@@ -219,47 +214,46 @@ DROP 한다.
 
 - 차원: 환경 변수 `LATTICEAI_EMBED_DIM` (기본 `1024`)
 - 저장: SQLite `BLOB` 컬럼, `struct.pack('<{n}f', …)` 직렬화
-- 검색: `KGStoreV2.search_similar(vec, top_k=8)` — sqlite-vec 가 없는 환경에서도
-  순수 Python 코사인으로 동작. sqlite-vec 가 설치되면 인덱스 자동 활용 (추후).
-
-임베딩 모델은 LLM 라우터(`llm_router.py`) 가 결정한다 — 기본 `sentence-transformers/all-MiniLM-L12-v2`
-(384-d, dim 변경시 `LATTICEAI_EMBED_DIM` 도 함께 설정).
+- 검색: `knowledge_graph.KnowledgeGraphStore.vector_search` — 순수 Python
+  코사인 (sqlite-vec/ANN 인덱스는 아직 없음). 기본 임베더는 해시 기반
+  폴백(`grade='fallback'`)이며, 실제 임베딩 모델은 setup wizard 를 통해
+  사용자 동의 하에 프로비저닝한다.
+- 키워드 검색: v4 부터 FTS5 trigram 인덱스(`node_fts`) 가 LIKE 스캔을
+  대체한다 (한국어 부분 문자열 리콜 유지). FTS5/trigram 이 없는 SQLite
+  빌드에서는 LIKE 경로가 그대로 동작하며 `index_status().storage.fts_enabled`
+  로 정직하게 보고된다.
 
 ---
 
 ## 사용 (Python)
 
+`KGStoreV2` 는 **스키마/초기화/통계 전용**이다 — 과거 문서에 있던
+`Node`/`Edge` dataclass, `upsert_node`/`upsert_edge`/`neighbors`/
+`search_similar` native API 는 제거되었고 존재하지 않는다. 데이터
+read/write 는 `knowledge_graph.KnowledgeGraphStore` 가 담당한다:
+
 ```python
-from kg_schema import KGStoreV2, Node, Edge, NodeType, EdgeType, Visibility
+from kg_schema import KGStoreV2, NodeType, EdgeType
+from knowledge_graph import KnowledgeGraphStore
 
-store = KGStoreV2("/Users/me/.ltcai/kg_v2.db")
-store.init_schema()
+store = KnowledgeGraphStore(db_path, blob_dir)
 
-# 노드 만들기
-file_node = Node(
-    type=NodeType.FILE,
-    label="LatticeAI_기획서.pdf",
-    attrs={"mime": "application/pdf", "pageCount": 24, "lang": "ko"},
-    owner_id="user_seoljun",
-    visibility=Visibility.PRIVATE,
-)
-store.upsert_node(file_node)
+# 쓰기: 모든 ingest 경로가 내부적으로 _upsert_node/_upsert_edge 를 통과하며,
+# 엣지 타입은 canonical EdgeType 으로 정규화된다 (자유 문자열 차단).
+store.ingest_message("user", "프로젝트 일정 공유", user_email="me@example.com")
 
-# 관계 만들기
-store.upsert_edge(Edge(
-    source=file_node.id,
-    target=concept_node.id,
-    type=EdgeType.MENTIONS,
-    weight=0.82, confidence=0.91,
-    evidence=["chunk:01HX7K…#p3"],
-    created_by="extractor:llm-gemma-4-12b",
-))
+# 읽기: search (FTS5/LIKE), vector_search, graph, traverse
+matches = store.search("프로젝트")["matches"]
 
-# 이웃 탐색
-for edge, other in store.neighbors(file_node.id, edge_type=EdgeType.MENTIONS):
-    print(f"-[{edge.type.value}]-> {other.label}")
-
-# 의미 검색
-for node, score in store.search_similar(query_embedding, top_k=8):
-    print(f"{score:+.3f}  {node.type.value:>12}  {node.label}")
+# v2 통계 (정규화된 타입 분포)
+print(KGStoreV2(store.db_path).stats())
 ```
+
+### v4 컬럼 (T3b/T3c)
+
+- `nodes_v2.workspace_id` — `NULL` = legacy-global (스코프 도입 이전 데이터)
+- `nodes_v2.visibility` — 신규 스코프 쓰기는 `workspace`/`private`,
+  스코프 없는 쓰기는 `legacy` (기존 공유 데이터를 몰래 private 으로
+  만들지 않는다)
+- `nodes_v2.superseded_by` — 개정 체인 (`mark_superseded`)
+- `edge_occurrences` — 관계의 모든 관측 기록 (observed_at/weight/source)

@@ -39,3 +39,16 @@ ai_server.log
 sessions.json
 audit_log.json
 sso_config.json
+
+# wheel smoke build artifacts
+dist-smoke/
+
+# release tarballs and local artifacts (never tracked)
+ltcai-*.tgz
+ltcai-0.3.1/
+*.log
+chat_history.json
+telegram_chats.json
+venv/
+.build-venv/
+.npm-cache/

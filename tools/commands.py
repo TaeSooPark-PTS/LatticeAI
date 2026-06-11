@@ -2,11 +2,10 @@
 
 from __future__ import annotations
 
-import os
 import shlex
 import subprocess
 from pathlib import Path
-from typing import Any, Dict, Optional
+from typing import Any, Dict, List, Optional
 
 import tools
 from tools import (
@@ -24,6 +23,9 @@ from tools import (
     MAX_DEPLOY_SECONDS,
     MAX_COMMAND_OUTPUT,
 )
+
+# find(1) flags that execute or delete; checked in run_command.
+_BLOCKED_FIND_FLAGS = {"-exec", "-execdir", "-delete", "-ok", "-okdir"}
 
 
 def run_command(command: str, cwd: Optional[str] = None) -> Dict[str, Any]:

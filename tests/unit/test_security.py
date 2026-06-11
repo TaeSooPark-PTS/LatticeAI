@@ -1,6 +1,5 @@
 """Unit tests for security-sensitive helpers in server.py."""
 import sys
-import time
 import pytest
 from pathlib import Path
 

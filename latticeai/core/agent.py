@@ -21,6 +21,7 @@ only owns the state machine.
 from __future__ import annotations
 
 import json
+import logging
 import re
 import subprocess
 from dataclasses import dataclass
@@ -127,6 +128,12 @@ class AgentDeps:
     # When present, every tool execution fires the shared pre_tool/post_tool
     # lifecycle, so the agent tool path no longer bypasses hooks.
     hooks: Any = None
+
+    # ── brain memory port (optional) ─────────────────────────────────
+    # When present, completed-run learnings become typed Experience records
+    # through the unified ingestion pipeline (with provenance), replacing
+    # the vault markdown dump.
+    brain_memory: Any = None
 
 
 class AgentRuntime:
@@ -429,13 +436,30 @@ class AgentRuntime:
             )
             mem = extract_action(str(raw))
             if mem.get("save_to_knowledge") and mem.get("learnings"):
-                d.knowledge_save(
-                    "\n".join(mem["learnings"]),
-                    folder="30_Projects",
-                    title=f"Agent: {req.message[:60]}",
-                )
-        except Exception:
-            pass
+                learnings = "\n".join(mem["learnings"])
+                if d.brain_memory is not None:
+                    # This runtime is LLM-driven — its learnings are real
+                    # experiences and enter the brain with provenance.
+                    d.brain_memory.record_experience(
+                        f"Agent: {req.message[:60]}",
+                        learnings,
+                        run={
+                            "mode": "llm",
+                            "status": "ok",
+                            "agent_id": "agent:executor",
+                            "steps": len(ctx.transcript),
+                        },
+                        user_email=current_user or None,
+                    )
+                else:
+                    d.knowledge_save(
+                        learnings,
+                        folder="30_Projects",
+                        title=f"Agent: {req.message[:60]}",
+                    )
+        except Exception as exc:
+            # Never crash a completed run, but never swallow silently either.
+            logging.warning("agent memory update failed: %s", exc)
 
     # ── DRIVE LOOP ───────────────────────────────────────────────────
     async def run_to_completion(

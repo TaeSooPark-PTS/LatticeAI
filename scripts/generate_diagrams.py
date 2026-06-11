@@ -17,7 +17,6 @@ the hero GIF is assembled from via ffmpeg by the caller).
 
 from __future__ import annotations
 
-import os
 import sys
 from pathlib import Path
 

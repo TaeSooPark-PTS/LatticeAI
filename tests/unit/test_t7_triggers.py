@@ -1,0 +1,125 @@
+"""T7d: workflows fire beyond 'manual' — interval + brain-event triggers.
+
+Missed interval firings while down are recorded as skip events (never
+silently dropped, never replayed in a catch-up storm); brain events fan out
+to matching workflows; trigger-fired runs carry __trigger__ provenance.
+"""
+
+from latticeai.services.triggers import TriggerService
+
+
+class _Store:
+    def __init__(self, workflows):
+        self._workflows = workflows
+
+    def load_state(self):
+        return {"workflows": self._workflows}
+
+
+def _interval_wf(wf_id="wf-int", seconds=60):
+    return {
+        "id": wf_id, "name": "scheduled",
+        "nodes": [{"id": "t", "type": "trigger",
+                   "config": {"trigger": "interval", "interval_seconds": seconds}}],
+    }
+
+
+def _event_wf(wf_id="wf-evt", source_type=""):
+    cfg = {"trigger": "brain_event"}
+    if source_type:
+        cfg["source_type"] = source_type
+    return {"id": wf_id, "name": "on-ingest",
+            "nodes": [{"id": "t", "type": "trigger", "config": cfg}]}
+
+
+def _service(tmp_path, workflows, now):
+    fired = []
+    clock = {"now": now}
+    svc = TriggerService(
+        store=_Store(workflows),
+        run_workflow=lambda wf_id, inputs: fired.append((wf_id, inputs)) or {"status": "ok"},
+        data_dir=tmp_path,
+        clock=lambda: clock["now"],
+    )
+    return svc, fired, clock
+
+
+def _drain_threads():
+    import threading
+    for t in threading.enumerate():
+        if t.name.startswith("trigger-wf"):
+            t.join(timeout=2)
+
+
+def test_interval_fires_when_due(tmp_path):
+    svc, fired, clock = _service(tmp_path, [_interval_wf(seconds=60)], now=1000.0)
+    assert svc.tick_intervals() == 0, "first sighting arms the schedule, no immediate fire"
+    clock["now"] = 1059.0
+    assert svc.tick_intervals() == 0, "not due yet"
+    clock["now"] = 1061.0
+    assert svc.tick_intervals() == 1
+    _drain_threads()
+    wf_id, inputs = fired[0]
+    assert wf_id == "wf-int"
+    assert inputs["__trigger__"]["type"] == "interval", "trigger provenance must ride the inputs"
+
+
+def test_missed_firings_are_skipped_with_record(tmp_path):
+    svc, fired, clock = _service(tmp_path, [_interval_wf(seconds=60)], now=1000.0)
+    svc.tick_intervals()           # arm at t=1000
+    clock["now"] = 1000.0 + 60 * 10  # server "down" for 10 intervals
+    skipped = svc.reconcile_missed()
+    assert skipped >= 9, "missed firings must be counted"
+    assert svc.tick_intervals() == 0, "no catch-up storm after reconcile"
+    _drain_threads()
+    assert fired == []
+    status = svc.describe()
+    events = status["armed"][0]["recent_events"]
+    assert any(e["type"] == "skipped" for e in events), "skips must be visible"
+
+
+def test_brain_event_fires_matching_workflows(tmp_path):
+    svc, fired, clock = _service(
+        tmp_path,
+        [_event_wf("wf-any"), _event_wf("wf-notes", source_type="note"),
+         _event_wf("wf-uploads", source_type="upload"), _interval_wf("wf-int")],
+        now=1000.0,
+    )
+    count = svc.on_brain_event("kg_ingest.note", {"source_type": "note", "node_id": "n1"})
+    _drain_threads()
+    assert count == 2, "unfiltered + matching-filter workflows fire; others do not"
+    fired_ids = {wf_id for wf_id, _ in fired}
+    assert fired_ids == {"wf-any", "wf-notes"}
+    trig = dict(fired)["wf-notes"]["__trigger__"]
+    assert trig["source_type"] == "note" and trig["node_id"] == "n1"
+
+
+def test_hook_runner_ignores_non_ingest_events(tmp_path):
+    svc, fired, _ = _service(tmp_path, [_event_wf("wf-any")], now=1000.0)
+    runner = svc.hook_runner()
+
+    class _Ctx:
+        event = "agent.run"
+        payload = {}
+
+    out = runner(_Ctx())
+    _drain_threads()
+    assert fired == []
+    assert out["status"] == "ok"
+
+    class _Ingest:
+        event = "kg_ingest.upload"
+        payload = {"source_type": "upload", "node_id": "n9"}
+
+    out = runner(_Ingest())
+    _drain_threads()
+    assert len(fired) == 1
+    assert "fired 1" in out["output"]
+
+
+def test_describe_reports_armed_state_honestly(tmp_path):
+    svc, _, _ = _service(tmp_path, [_interval_wf(), _event_wf()], now=1000.0)
+    status = svc.describe()
+    assert status["running"] is False, "scheduler not started must say so"
+    kinds = {a["kind"] for a in status["armed"]}
+    assert kinds == {"interval", "brain_event"}
