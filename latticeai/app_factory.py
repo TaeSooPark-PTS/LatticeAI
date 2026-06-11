@@ -150,6 +150,7 @@ def _build(config: "Optional[Config]" = None) -> Dict[str, Any]:
     from latticeai.services.memory_service import MemoryService
     from latticeai.services.ingestion import IngestionItem, IngestionPipeline
     from latticeai.brain.conversations import ConversationStore
+    from latticeai.brain.context import ContextAssembler
     from latticeai.services.kg_portability import KGPortabilityService
     # The aliased names below look unused but are part of the legacy
     # ``server_app`` attribute surface: every local is exported via
@@ -1283,6 +1284,14 @@ def _build(config: "Optional[Config]" = None) -> Dict[str, Any]:
 
     SEARCH_SERVICE = SearchService(graph_store=_workspace_graph())
 
+    # ── v4 Context System: one budgeted, provenance-carrying assembly over the
+    # product's own retrieval stack (memories + hybrid search + garden notes).
+    CONTEXT_ASSEMBLER = ContextAssembler(
+        memory_recall=MEMORY_SERVICE.recall,
+        hybrid_search=lambda q, **kw: SEARCH_SERVICE.hybrid_search(q, **kw),
+        notes_context=gardener.get_relevant_context,
+    )
+
 
     # ── Telegram chat mirror: registered only when ENABLE_TELEGRAM is truthy.
     # latticeai.api.chat no longer imports telegram_bot (a 45KB module that
@@ -1308,6 +1317,7 @@ def _build(config: "Optional[Config]" = None) -> Dict[str, Any]:
         knowledge_graph=KNOWLEDGE_GRAPH,
         local_kg_watcher=LOCAL_KG_WATCHER,
         chat_service=CHAT_SERVICE,
+        context_assembler=CONTEXT_ASSEMBLER,
         gardener=gardener,
         hooks=HOOKS_REGISTRY,
         realtime_bus=REALTIME_BUS,

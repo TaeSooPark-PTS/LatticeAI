@@ -152,7 +152,7 @@ def create_chat_router(context: AppContext) -> APIRouter:
     router = context.model_router
     hooks = context.hooks
     workspace_graph = context.workspace_graph
-    gardener = context.gardener
+    context_assembler = context.context_assembler
     require_user = context.require_user
     enforce_rate_limit = context.enforce_rate_limit
     get_history_user = context.get_history_user
@@ -394,32 +394,38 @@ def create_chat_router(context: AppContext) -> APIRouter:
     
         lang = detect_language(req.message)
         context = f"[LANGUAGE: {_LANG_HINT[lang]}]\n" + (req.context or "")
+        # v4 Context System: one budgeted, provenance-carrying assembly
+        # (workspace memories + hybrid search + garden notes) replaces the
+        # ad-hoc vault-scan + LIKE-search concatenation. The trace records
+        # why each section is in the prompt.
+        context_trace = None
         try:
-            knowledge_context = gardener.get_relevant_context(req.message)
-            if knowledge_context:
-                context += f"\n\n[LOCAL KNOWLEDGE BASE]\n{knowledge_context}"
-                print("📖 Context reinforced with local knowledge.")
+            if context_assembler is not None:
+                assembled = context_assembler.assemble(
+                    req.message,
+                    user_email=effective_email,
+                    conversation_id=req.conversation_id,
+                    budget=2000,
+                )
+                context_trace = assembled.trace()
+                if assembled.text:
+                    context += "\n\n" + assembled.text
         except Exception as e:
-            logging.warning("Knowledge reinforcement skipped: %s", e)
-    
+            logging.warning("Context assembly skipped: %s", e)
+
         is_doc_gen = detect_document_intent(req.message)
         doc_gen_context_result = None
-    
+
         try:
-            if ENABLE_GRAPH and KNOWLEDGE_GRAPH:
-                if is_doc_gen:
-                    doc_gen_context_result = retrieve_context_for_generation(
-                        KNOWLEDGE_GRAPH, req.message, max_results=10, max_hops=2,
-                    )
-                    graph_md = doc_gen_context_result.get("context_markdown", "")
-                    if graph_md:
-                        context += f"\n\n[KNOWLEDGE GRAPH — Document Generation Context]\n{graph_md}"
-                        print("📝 Document generation context retrieved from knowledge graph.")
-                else:
-                    graph_context = KNOWLEDGE_GRAPH.context_for_query(req.message)
-                    if graph_context:
-                        context += f"\n\n[KNOWLEDGE GRAPH]\n{graph_context}"
-                        print("🕸️ Context reinforced with knowledge graph.")
+            if ENABLE_GRAPH and KNOWLEDGE_GRAPH and is_doc_gen:
+                # Specialized multi-hop retrieval for document generation.
+                doc_gen_context_result = retrieve_context_for_generation(
+                    KNOWLEDGE_GRAPH, req.message, max_results=10, max_hops=2,
+                )
+                graph_md = doc_gen_context_result.get("context_markdown", "")
+                if graph_md:
+                    context += f"\n\n[KNOWLEDGE GRAPH — Document Generation Context]\n{graph_md}"
+                    print("📝 Document generation context retrieved from knowledge graph.")
         except Exception as e:
             logging.warning("Knowledge graph reinforcement skipped: %s", e)
     
@@ -446,6 +452,10 @@ def create_chat_router(context: AppContext) -> APIRouter:
             KNOWLEDGE_GRAPH if (ENABLE_GRAPH and KNOWLEDGE_GRAPH) else None,
             context,
         )
+        if context_trace is not None and isinstance(trace_seed, dict):
+            # Persisted with the answer trace: 'why is this in my context?'
+            # is answerable from the stored record (UI surface lands in T9b).
+            trace_seed["context_assembly"] = context_trace
     
         history_message = f"{req.message}\n[Image attached]" if req.image_data else req.message
         save_to_history("user", history_message, source=req.source or "web", conversation_id=req.conversation_id, **history_user)
