@@ -990,6 +990,62 @@ class KnowledgeGraphStore:
                 ("schema_version", str(GRAPH_SCHEMA_VERSION)),
             )
         self._init_v2_schema()
+        self._init_fts()
+
+    # ── FTS5 keyword index (v4) ──────────────────────────────────────────
+    # Replaces LIKE '%q%' table scans for keyword search. The trigram
+    # tokenizer is required (not just FTS5): unicode61 indexes whole tokens
+    # and would silently break Korean substring recall ('프로젝트' must match
+    # '프로젝트를'). Without trigram support the store honestly reports
+    # fts_enabled=False and the LIKE path remains authoritative.
+    _FTS_SQL = """
+    CREATE VIRTUAL TABLE IF NOT EXISTS node_fts USING fts5(
+      node_id UNINDEXED, title, summary, metadata, tokenize='trigram'
+    );
+    CREATE TRIGGER IF NOT EXISTS node_fts_ai AFTER INSERT ON nodes BEGIN
+      INSERT INTO node_fts(node_id, title, summary, metadata)
+      VALUES (new.id, new.title, COALESCE(new.summary, ''), new.metadata_json);
+    END;
+    CREATE TRIGGER IF NOT EXISTS node_fts_au AFTER UPDATE ON nodes BEGIN
+      DELETE FROM node_fts WHERE node_id = old.id;
+      INSERT INTO node_fts(node_id, title, summary, metadata)
+      VALUES (new.id, new.title, COALESCE(new.summary, ''), new.metadata_json);
+    END;
+    CREATE TRIGGER IF NOT EXISTS node_fts_ad AFTER DELETE ON nodes BEGIN
+      DELETE FROM node_fts WHERE node_id = old.id;
+    END;
+    """
+
+    def _init_fts(self) -> None:
+        self._fts_enabled = False
+        try:
+            with self._connect() as conn:
+                conn.executescript(self._FTS_SQL)
+                fts_count = conn.execute("SELECT count(*) AS c FROM node_fts").fetchone()["c"]
+                if fts_count == 0:
+                    conn.execute(
+                        "INSERT INTO node_fts(node_id, title, summary, metadata) "
+                        "SELECT id, title, COALESCE(summary, ''), metadata_json FROM nodes"
+                    )
+            self._fts_enabled = True
+        except sqlite3.OperationalError as exc:
+            # FTS5/trigram not compiled into this SQLite build. LIKE search
+            # stays authoritative; the capability is reported, never faked.
+            logging.info("FTS5 trigram index unavailable (%s); keyword search uses LIKE scans.", exc)
+
+    def _fts_match_ids(self, conn: sqlite3.Connection, query: str, limit: int) -> List[str]:
+        """Ranked node ids for a trigram FTS query ('' on any failure)."""
+        if not getattr(self, "_fts_enabled", False) or len(query) < 3:
+            return []
+        escaped = query.replace('"', '""')
+        try:
+            rows = conn.execute(
+                'SELECT node_id FROM node_fts WHERE node_fts MATCH ? ORDER BY rank LIMIT ?',
+                (f'"{escaped}"', limit),
+            ).fetchall()
+        except sqlite3.OperationalError:
+            return []
+        return [row["node_id"] for row in rows]
 
     # SQL views that reconstruct the *exact* legacy row shape on top of the
     # normalized v2 tables, so the read methods run unchanged against either
@@ -3735,16 +3791,32 @@ class KnowledgeGraphStore:
         with self._connect() as conn:
             rows = []
             if query:
-                rows = conn.execute(
-                    f"""
-                    SELECT id, type, title, summary, metadata_json, updated_at
-                    FROM {nt}
-                    WHERE title LIKE ? OR summary LIKE ? OR metadata_json LIKE ?
-                    ORDER BY updated_at DESC, id ASC
-                    LIMIT ?
-                    """,
-                    (q, q, q, limit),
-                ).fetchall()
+                fts_ids = self._fts_match_ids(conn, query, limit)
+                if fts_ids:
+                    placeholders = ",".join("?" for _ in fts_ids)
+                    by_id = {
+                        row["id"]: row
+                        for row in conn.execute(
+                            f"""
+                            SELECT id, type, title, summary, metadata_json, updated_at
+                            FROM {nt} WHERE id IN ({placeholders})
+                            """,
+                            fts_ids,
+                        ).fetchall()
+                    }
+                    # Preserve FTS bm25 rank order.
+                    rows = [by_id[i] for i in fts_ids if i in by_id]
+                else:
+                    rows = conn.execute(
+                        f"""
+                        SELECT id, type, title, summary, metadata_json, updated_at
+                        FROM {nt}
+                        WHERE title LIKE ? OR summary LIKE ? OR metadata_json LIKE ?
+                        ORDER BY updated_at DESC, id ASC
+                        LIMIT ?
+                        """,
+                        (q, q, q, limit),
+                    ).fetchall()
 
             if len(rows) < limit:
                 terms = _topic_candidates(query, limit=8)
@@ -3779,6 +3851,10 @@ class KnowledgeGraphStore:
                 } else 0
                 return (hits, type_boost, row["updated_at"] or "")
 
+            # Deterministic contract: rows with equal relevance order by id ASC
+            # (stable sort preserves the pre-sort under reverse=True), matching
+            # the legacy LIKE path regardless of FTS bm25 tie ordering.
+            rows = sorted(rows, key=lambda r: r["id"])
             rows = sorted(rows, key=score, reverse=True)[:limit]
         return {
             "query": query,
@@ -4263,6 +4339,9 @@ class KnowledgeGraphStore:
                 "backend": "sqlite",
                 "embedding_model": self._embedding_model.model_id,
                 "embedding_dim": self._embedding_model.dim,
+                # Honest capability report: trigram FTS5 keyword index, or
+                # LIKE-scan fallback when this SQLite build lacks it.
+                "fts_enabled": bool(getattr(self, "_fts_enabled", False)),
             },
             "source_items": len(source_items),
             "indexed_items": sum(vector_counts.values()),
