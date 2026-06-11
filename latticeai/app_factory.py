@@ -152,6 +152,9 @@ def _build(config: "Optional[Config]" = None) -> Dict[str, Any]:
     from latticeai.brain.conversations import ConversationStore
     from latticeai.brain.context import ContextAssembler
     from latticeai.brain.memory import BrainMemory
+    from latticeai.brain.identity import DeviceIdentity
+    from latticeai.brain.network import BrainNetwork
+    from latticeai.api.network import create_network_router
     from latticeai.services.kg_portability import KGPortabilityService
     # The aliased names below look unused but are part of the legacy
     # ``server_app`` attribute surface: every local is exported via
@@ -373,10 +376,12 @@ def _build(config: "Optional[Config]" = None) -> Dict[str, Any]:
     )
     # ── v3.6.0 Knowledge Graph portability: local export / import / backup / restore.
     # The graph is the user's durable asset, so it must be portable with no cloud.
+    DEVICE_IDENTITY = DeviceIdentity(DATA_DIR)
     KG_PORTABILITY = KGPortabilityService(
         knowledge_graph=KNOWLEDGE_GRAPH,
         data_dir=DATA_DIR,
         enable_graph=ENABLE_GRAPH,
+        device_identity=DEVICE_IDENTITY,
     )
 
     def _require_graph():
@@ -1583,6 +1588,17 @@ def _build(config: "Optional[Config]" = None) -> Dict[str, Any]:
         service=KG_PORTABILITY,
         require_user=require_user,
         require_admin=require_admin,
+    ))
+
+    BRAIN_NETWORK = BrainNetwork(
+        identity=DEVICE_IDENTITY,
+        portability=KG_PORTABILITY,
+        data_dir=DATA_DIR,
+    )
+    app.include_router(create_network_router(
+        network=BRAIN_NETWORK,
+        identity=DEVICE_IDENTITY,
+        require_user=require_user,
     ))
 
     app.include_router(create_garden_router(gardener=gardener, require_user=require_user))

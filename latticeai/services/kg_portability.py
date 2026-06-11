@@ -44,11 +44,16 @@ def _sha256_file(path: Path) -> str:
 
 
 class KGPortabilityService:
-    def __init__(self, *, knowledge_graph: Any, data_dir, enable_graph: bool = True) -> None:
+    def __init__(self, *, knowledge_graph: Any, data_dir, enable_graph: bool = True, device_identity: Any = None) -> None:
         self._kg = knowledge_graph
         self._data_dir = Path(data_dir)
         self._enable = bool(enable_graph)
         self._exports_dir = self._data_dir / "workspace_exports"
+        # v4 sovereignty: when a DeviceIdentity is wired, exports are signed
+        # and imports record origin provenance. Pre-v4 unsigned bundles stay
+        # importable locally (origin='unsigned-legacy') — signatures are
+        # mandatory only on the Brain Network peer path.
+        self._identity = device_identity
 
     def available(self) -> bool:
         return self._enable and self._kg is not None
@@ -60,7 +65,7 @@ class KGPortabilityService:
     # ── logical export / import ──────────────────────────────────────────────
     def export(self, *, workspace_id: Optional[str] = None) -> Dict[str, Any]:
         self._require()
-        data = self._kg.export_graph_data()
+        data = self._kg.export_graph_data(workspace_id=workspace_id)
         header = {
             "format": FORMAT,
             "format_version": FORMAT_VERSION,
@@ -69,7 +74,10 @@ class KGPortabilityService:
             "workspace_id": workspace_id,
             "counts": data.get("counts"),
         }
-        return {"header": header, **data}
+        artifact = {"header": header, **data}
+        if self._identity is not None:
+            artifact["signature"] = self._identity.sign_manifest(header)
+        return artifact
 
     def export_to_file(self, path=None, *, workspace_id: Optional[str] = None) -> Dict[str, Any]:
         artifact = self.export(workspace_id=workspace_id)
@@ -84,8 +92,30 @@ class KGPortabilityService:
             raise ValueError("Invalid Knowledge Graph export artifact.")
         if mode not in ("merge", "replace"):
             raise ValueError("mode must be 'merge' or 'replace'.")
+        origin = "unsigned-legacy"
+        signature = artifact.get("signature")
+        if signature:
+            from latticeai.brain.identity import verify_manifest
+
+            if not verify_manifest(artifact.get("header") or {}, signature):
+                raise ValueError("Bundle signature verification failed — refusing to import.")
+            origin = f"device:{signature.get('fingerprint') or 'unknown'}"
         result = self._kg.import_graph_data(artifact, mode=mode, dry_run=dry_run)
         result["header"] = artifact.get("header")
+        result["origin"] = origin
+        result["signed"] = bool(signature)
+        if not dry_run:
+            try:
+                self._kg.record_provenance(
+                    node_id="import:" + str((artifact.get("header") or {}).get("exported_at") or _now_iso()),
+                    source_type="bundle_import",
+                    pipeline="kg-portability",
+                    owner=None,
+                    metadata={"origin": origin, "mode": mode,
+                              "counts": (artifact.get("header") or {}).get("counts")},
+                )
+            except Exception:
+                pass
         return result
 
     def import_from_file(self, path, *, mode: str = "merge", dry_run: bool = False) -> Dict[str, Any]:

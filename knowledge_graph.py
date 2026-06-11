@@ -3464,23 +3464,52 @@ class KnowledgeGraphStore:
             "embed_dim": _EMBED_DIM,
         }
 
-    def export_graph_data(self) -> Dict[str, Any]:
+    def export_graph_data(self, *, workspace_id: Optional[str] = None) -> Dict[str, Any]:
         """Raw, lossless logical export of the graph (nodes/edges/chunks/sources/
         provenance). Vector embeddings are intentionally omitted — they are
         re-derived on import — so the artifact stays portable and small. Use
         :meth:`backup_database` for a faithful binary copy incl. embeddings.
+
+        ``workspace_id`` REALLY filters (v4): the artifact contains only nodes
+        scoped to that workspace plus legacy-global rows (NULL scope, readable
+        machine-wide by definition), with edges/chunks/provenance restricted to
+        the surviving nodes. Pre-v4 this parameter was stamped into the header
+        while the data exported everything — a header that lied.
         """
         with self._connect() as conn:
             def rows(table: str):
                 return [dict(r) for r in conn.execute(f"SELECT * FROM {table}").fetchall()]
 
-            data = {
-                "nodes": rows("nodes"),
-                "edges": rows("edges"),
-                "chunks": rows("chunks"),
-                "knowledge_sources": rows("knowledge_sources"),
-                "provenance": rows("ingestion_provenance"),
-            }
+            if workspace_id:
+                keep_ids = {
+                    row["id"]
+                    for row in conn.execute(
+                        "SELECT id FROM nodes_v2 WHERE workspace_id = ? OR workspace_id IS NULL",
+                        (workspace_id,),
+                    ).fetchall()
+                }
+                nodes = [n for n in rows("nodes") if n["id"] in keep_ids]
+                edges = [
+                    e for e in rows("edges")
+                    if e["from_node"] in keep_ids and e["to_node"] in keep_ids
+                ]
+                chunks = [c for c in rows("chunks") if c["source_node"] in keep_ids]
+                provenance = [p for p in rows("ingestion_provenance") if p["node_id"] in keep_ids]
+                data = {
+                    "nodes": nodes,
+                    "edges": edges,
+                    "chunks": chunks,
+                    "knowledge_sources": rows("knowledge_sources"),
+                    "provenance": provenance,
+                }
+            else:
+                data = {
+                    "nodes": rows("nodes"),
+                    "edges": rows("edges"),
+                    "chunks": rows("chunks"),
+                    "knowledge_sources": rows("knowledge_sources"),
+                    "provenance": rows("ingestion_provenance"),
+                }
         data["counts"] = {k: len(v) for k, v in data.items()}
         return data
 
