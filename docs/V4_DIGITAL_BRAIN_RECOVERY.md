@@ -126,6 +126,14 @@ Track log (update at every track boundary):
   Agent learnings → Experience records via AgentDeps.brain_memory port
   (vault dump fallback only when port absent; no more bare-except).
   Suite 541.
+- **T8 COMPLETE** (commit b1e05f4): latticeai/brain/identity.py (Ed25519
+  device keypair, file 0600 default / keyring opt-in via
+  LATTICEAI_DEVICE_KEY_KEYRING=1 — keyring at startup blew test runtime
+  6s→237s, hence opt-in), signed export bundles + verified imports w/
+  origin provenance + unsigned-legacy local policy, export(workspace_id)
+  now REALLY filters (was header-only), latticeai/brain/network.py Brain
+  Network v1 (pairing, signed+replay-protected peer auth, push/receive,
+  signer-must-match-peer), /network API. Suite 548.
 - NOTE: T3d + T9-canvas agents died instantly on session limits twice
   (next reset 23:00 KST); both tasks remain queued with full contracts in
   this file + the plan.
