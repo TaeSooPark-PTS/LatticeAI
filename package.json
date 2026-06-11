@@ -66,7 +66,6 @@
     "server.py",
     "kg_schema.py",
     "knowledge_graph.py",
-    "knowledge_graph_api.py",
     "local_knowledge_api.py",
     "llm_router.py",
     "p_reinforce.py",
@@ -95,12 +94,16 @@
     "static/icons/",
     "plugins/",
     "scripts/",
-    "docs/",
     "!docs/images/tmp_frames/",
     "!**/__pycache__/",
     "!**/*.pyc",
-    "requirements.txt",
-    "README.md"
+    "README.md",
+    "setup_wizard.py",
+    "knowledge_graph_api.py",
+    "static/vendor/",
+    "docs/*.md",
+    "!docs/assets/",
+    "!docs/images/"
   ],
   "publishConfig": {
     "access": "public"
