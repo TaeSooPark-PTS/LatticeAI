@@ -1402,6 +1402,31 @@ def _build(config: "Optional[Config]" = None) -> Dict[str, Any]:
         llm_available=lambda: bool(getattr(router, "current_model_id", None)),
     )
 
+    # ── v4 Trigger system (T7d): interval + brain-event workflow triggers.
+    from latticeai.services.triggers import TRIGGER_HOOK_NAME, TriggerService
+
+    TRIGGER_SERVICE = TriggerService(
+        store=WORKSPACE_OS,
+        run_workflow=lambda wf_id, inputs: PLATFORM.run_workflow_by_id(
+            wf_id, None, None, with_agent=False, inputs=inputs,
+        ),
+        data_dir=DATA_DIR,
+    )
+    # Idempotent hook registration: ingestion post_tool events fan into triggers.
+    _trigger_hook_id = next(
+        (h.get("id") for h in HOOKS_REGISTRY._state.get("custom", [])
+         if h.get("name") == TRIGGER_HOOK_NAME),
+        None,
+    )
+    if _trigger_hook_id is None:
+        _trigger_hook_id = HOOKS_REGISTRY.register(
+            name=TRIGGER_HOOK_NAME,
+            kind="post_tool",
+            description="Fires brain_event workflow triggers when knowledge enters the brain.",
+        )["id"]
+    HOOKS_REGISTRY.register_hook(_trigger_hook_id, TRIGGER_SERVICE.hook_runner())
+    TRIGGER_SERVICE.start()
+
     # Single AgentRuntime boundary over the orchestrator + run store.
     AGENT_RUNTIME = AgentRuntime(
         store=WORKSPACE_OS,
