@@ -128,7 +128,7 @@ export async function render(ctx) {
   }
 
   function resultCard(r) {
-    const score = typeof r.score === "number" ? r.score : (0.5 * (r.vector || 0) + 0.2 * (r.lexical || 0) + 0.3 * (r.graph || 0));
+    const score = typeof r.score === "number" ? r.score : 0;
     return h("article.lt3-result",
       h("div.lt3-result__top",
         h("div.lt3-result__title", { style: { flex: "1", "min-width": "0" } }, String(r.title || "Untitled")),
@@ -180,7 +180,6 @@ export async function render(ctx) {
           h("b", s.label),
         ),
         h("p.lt3-muted", { style: { "font-size": "var(--lt3-text-sm)" } }, s.desc),
-        c.meter(s.key === "graph" ? 0.85 : s.key === "vector" ? 0.7 : 0.55, s.variant),
       ),
       { flat: true },
     );
