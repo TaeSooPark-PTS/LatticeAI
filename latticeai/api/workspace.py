@@ -197,6 +197,24 @@ def create_workspace_router(
         except PermissionError as exc:
             raise HTTPException(status_code=403, detail=str(exc)) from exc
 
+    def _load_snapshot_authorized(request: Request, snapshot_id: str) -> dict:
+        """Fetch a snapshot and authorize against the RECORD'S own workspace.
+
+        By-id access must not bypass workspace gating: a snapshot belonging to
+        an organization workspace is readable only by its members. Snapshots
+        predating workspace scoping carry no workspace_id and stay readable
+        (legacy-global compatibility).
+        """
+        try:
+            snapshot = WORKSPACE_OS.get_snapshot(snapshot_id)
+        except FileNotFoundError as exc:
+            raise HTTPException(status_code=404, detail=f"Snapshot not found: {exc}") from exc
+        try:
+            svc.authorize_record_read(snapshot, get_current_user(request))
+        except PermissionError as exc:
+            raise HTTPException(status_code=403, detail=str(exc)) from exc
+        return snapshot
+
     # ── Workspace UI pages ────────────────────────────────────────────────
 
     @router.get("/workspace")
@@ -343,6 +361,8 @@ def create_workspace_router(
     @router.post("/workspace/snapshots/compare")
     async def workspace_snapshot_compare(req: WorkspaceSnapshotCompareRequest, request: Request):
         require_user(request)
+        _load_snapshot_authorized(request, req.before_id)
+        _load_snapshot_authorized(request, req.after_id)
         try:
             return WORKSPACE_OS.compare_snapshots(req.before_id, req.after_id)
         except FileNotFoundError as exc:
@@ -351,14 +371,12 @@ def create_workspace_router(
     @router.get("/workspace/snapshots/{snapshot_id}")
     async def workspace_snapshot_get(snapshot_id: str, request: Request):
         require_user(request)
-        try:
-            return WORKSPACE_OS.get_snapshot(snapshot_id)
-        except FileNotFoundError as exc:
-            raise HTTPException(status_code=404, detail=f"Snapshot not found: {exc}") from exc
+        return _load_snapshot_authorized(request, snapshot_id)
 
     @router.get("/workspace/snapshots/{snapshot_id}/{area}")
     async def workspace_snapshot_area(snapshot_id: str, area: str, request: Request):
         require_user(request)
+        _load_snapshot_authorized(request, snapshot_id)
         try:
             return WORKSPACE_OS.snapshot_view(snapshot_id, area)
         except FileNotFoundError as exc:
@@ -367,6 +385,7 @@ def create_workspace_router(
     @router.post("/workspace/snapshots/{snapshot_id}/export")
     async def workspace_snapshot_export(snapshot_id: str, request: Request):
         current_user = require_user(request)
+        _load_snapshot_authorized(request, snapshot_id)
         try:
             result = WORKSPACE_OS.export_snapshot(snapshot_id)
         except FileNotFoundError as exc:
@@ -383,6 +402,7 @@ def create_workspace_router(
     @router.get("/workspace/time-machine/{snapshot_id}/{area}")
     async def workspace_time_machine_view(snapshot_id: str, area: str, request: Request):
         require_user(request)
+        _load_snapshot_authorized(request, snapshot_id)
         try:
             return WORKSPACE_OS.snapshot_view(snapshot_id, area)
         except FileNotFoundError as exc:
@@ -424,6 +444,14 @@ def create_workspace_router(
     @router.delete("/workspace/memories/{memory_id}")
     async def workspace_memory_delete(memory_id: str, request: Request):
         require_user(request)
+        try:
+            record = WORKSPACE_OS.get_memory(memory_id)
+        except FileNotFoundError as exc:
+            raise HTTPException(status_code=404, detail=f"Memory not found: {exc}") from exc
+        try:
+            svc.authorize_memory_delete(record, get_current_user(request))
+        except PermissionError as exc:
+            raise HTTPException(status_code=403, detail=str(exc)) from exc
         try:
             return WORKSPACE_OS.delete_memory(memory_id)
         except FileNotFoundError as exc:

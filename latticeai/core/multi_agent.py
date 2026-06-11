@@ -279,10 +279,13 @@ class AgentRunResult:
     retry_history: List[Dict[str, Any]] = field(default_factory=list)
     plan_review: Dict[str, Any] = field(default_factory=dict)
     memory_snapshots: List[Dict[str, Any]] = field(default_factory=list)
+    # "simulation" = deterministic LLM-free runner; "llm" = model-driven (v4 runtime).
+    mode: str = "simulation"
 
     def as_dict(self) -> Dict[str, Any]:
         return {
             "agent_id": self.agent_id,
+            "mode": self.mode,
             "status": self.status,
             "output": self.output,
             "timeline": self.timeline,
@@ -411,8 +414,16 @@ def default_role_runner(
 class MultiAgentOrchestrator:
     """Drives a role pipeline with handoff, planning, review, and retry."""
 
-    def __init__(self, role_runner: Optional[Callable[[str, OrchestrationContext], Dict[str, Any]]] = None):
+    def __init__(
+        self,
+        role_runner: Optional[Callable[[str, OrchestrationContext], Dict[str, Any]]] = None,
+        mode: str = "simulation",
+    ):
         self.role_runner = role_runner or default_role_runner()
+        # Honest execution-mode label persisted on every run record. The
+        # built-in runner never calls a model, so the default is "simulation";
+        # an LLM-backed runner must declare mode="llm" explicitly.
+        self.mode = mode
 
     def _run_role(self, role: str, ctx: OrchestrationContext) -> Dict[str, Any]:
         started = _now()
@@ -558,4 +569,5 @@ class MultiAgentOrchestrator:
             retry_history=ctx.retry_history,
             plan_review=ctx.plan_review,
             memory_snapshots=ctx.memory_snapshots,
+            mode=self.mode,
         )

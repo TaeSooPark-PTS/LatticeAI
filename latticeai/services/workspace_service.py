@@ -72,6 +72,37 @@ class WorkspaceService:
     def can_write(self, workspace_id: str, user_id: Optional[str]) -> bool:
         return self.store.has_permission(workspace_id, user_id, "write")
 
+    # ── record-level authorization (by-id access must not bypass gating) ──
+
+    def authorize_record_read(self, record: Dict[str, Any], user_id: Optional[str]) -> None:
+        """Authorize reading a record against ITS OWN workspace.
+
+        Records predating workspace scoping carry no workspace_id and remain
+        readable (legacy-global compatibility); a scoped record requires read
+        permission on its workspace regardless of any caller-supplied header.
+        """
+        workspace_id = (record or {}).get("workspace_id")
+        if workspace_id:
+            self._ensure_permission(workspace_id, user_id, "read")
+
+    def authorize_memory_delete(self, record: Dict[str, Any], user_id: Optional[str]) -> None:
+        """Delete requires owning the memory or write access to its workspace.
+
+        Ownerless records with no workspace keep their pre-v4 behaviour
+        (deletable by any authenticated local user).
+        """
+        owner = (record or {}).get("user_email")
+        workspace_id = (record or {}).get("workspace_id")
+        if owner and owner == user_id:
+            return
+        if workspace_id:
+            self._ensure_permission(workspace_id, user_id, "write")
+            return
+        if owner and owner != user_id:
+            raise PermissionError(
+                f"'{user_id or 'anonymous'}' is not the owner of memory '{record.get('id')}'"
+            )
+
     # ── workspace registry / summary ─────────────────────────────────────
 
     def summary(self, user_id: Optional[str]) -> Dict[str, Any]:

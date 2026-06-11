@@ -71,6 +71,28 @@ class AgentEvalRequest(BaseModel):
     skill: str
     case_id: Optional[str] = None
 
+def pair_user_history(history: List[Dict], user_email: str) -> List[Dict]:
+    """Restrict history to one user's exchange.
+
+    Keeps the user's own messages plus assistant replies that directly follow
+    them. A bare role=="assistant" pass would leak every other user's replies
+    into this user's prompt context.
+    """
+    paired: List[Dict] = []
+    include_next_assistant = False
+    for item in history:
+        if item.get("role") == "assistant":
+            if include_next_assistant:
+                paired.append(item)
+                include_next_assistant = False
+        elif item.get("user_email") == user_email:
+            paired.append(item)
+            include_next_assistant = True
+        else:
+            include_next_assistant = False
+    return paired
+
+
 def detect_language(text: str) -> str:
     """Detect language: 'ko' (Korean) or 'en' (English)."""
     total = max(len(text), 1)
@@ -170,7 +192,7 @@ def create_chat_router(
         if conversation_id:
             history = [item for item in history if item.get("conversation_id") == conversation_id]
         if user_email:
-            history = [item for item in history if item.get("user_email") == user_email or item.get("role") == "assistant"]
+            history = pair_user_history(history, user_email)
         history = history[-limit:]
         lines = []
         for item in history:

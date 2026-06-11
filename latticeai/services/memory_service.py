@@ -202,6 +202,18 @@ class MemoryService:
         limit: int = 20,
     ) -> Dict[str, Any]:
         q = str(query or "").strip()
+        query_tokens = [tok for tok in q.lower().split() if tok]
+
+        def _lexical_score(*texts: Any) -> float:
+            # Honest, comparable relevance: fraction of query tokens present.
+            # Both tiers share this scorer so the cross-tier ranking is real,
+            # not an artifact of per-tier constants.
+            if not query_tokens:
+                return 0.0
+            haystack = " ".join(str(t or "") for t in texts).lower()
+            hits = sum(1 for tok in query_tokens if tok in haystack)
+            return round(hits / len(query_tokens), 4)
+
         results: List[Dict[str, Any]] = []
 
         try:
@@ -215,23 +227,24 @@ class MemoryService:
                 "title": (m.get("kind") or "memory"),
                 "snippet": str(m.get("content") or "")[:240],
                 "kind": m.get("kind"),
-                "score": 0.6,
+                "score": _lexical_score(m.get("content"), " ".join(m.get("tags") or []), m.get("kind")),
                 "tags": m.get("tags") or [],
             })
 
         if self._enable_graph and q:
             try:
-                hits = self._kg.search(q, limit).get("results", [])
+                # KnowledgeGraph.search returns {"query": ..., "matches": [...]}.
+                hits = self._kg.search(q, limit).get("matches", [])
             except Exception:
                 hits = []
-            for hsit in hits[:limit]:
+            for hit in hits[:limit]:
                 results.append({
                     "source": "graph",
-                    "id": hsit.get("id") or hsit.get("node_id"),
-                    "title": hsit.get("title") or hsit.get("name") or "node",
-                    "snippet": str(hsit.get("summary") or hsit.get("content") or "")[:240],
-                    "kind": hsit.get("type") or "node",
-                    "score": float(hsit.get("score") or 0.5),
+                    "id": hit.get("id") or hit.get("node_id"),
+                    "title": hit.get("title") or hit.get("name") or "node",
+                    "snippet": str(hit.get("summary") or hit.get("content") or "")[:240],
+                    "kind": hit.get("type") or "node",
+                    "score": _lexical_score(hit.get("title"), hit.get("name"), hit.get("summary"), hit.get("content")),
                 })
 
         results.sort(key=lambda r: r.get("score", 0), reverse=True)

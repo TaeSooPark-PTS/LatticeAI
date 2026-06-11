@@ -430,7 +430,10 @@ class WorkspaceOSStore:
             "version": WORKSPACE_OS_VERSION,
             "identity": state.get("identity"),
             "active_workspace": state.get("active_workspace"),
-            "workspaces": state.get("workspaces"),
+            # The raw workspace registry (with member lists) must not leak to
+            # non-members; WorkspaceService.summary() adds a membership-filtered
+            # "workspace_registry" instead.
+            "workspace_count": len(state.get("workspaces") or {}),
             "navigation": list(WORKSPACE_AREAS),
             "feature_flags": state.get("feature_flags"),
             "updated_at": state.get("updated_at"),
@@ -1229,15 +1232,26 @@ class WorkspaceOSStore:
             ]
         return {"query": query, "memories": memories[: max(1, min(limit, 100))]}
 
+    def get_memory(self, memory_id: str) -> Dict[str, Any]:
+        record = next(
+            (item for item in _listify(self.load_state().get("memories")) if item.get("id") == memory_id),
+            None,
+        )
+        if record is None:
+            raise FileNotFoundError(memory_id)
+        return record
+
     def delete_memory(self, memory_id: str) -> Dict[str, Any]:
         state = self.load_state()
         memories = _listify(state.get("memories"))
-        kept = [item for item in memories if item.get("id") != memory_id]
-        if len(kept) == len(memories):
+        target = next((item for item in memories if item.get("id") == memory_id), None)
+        if target is None:
             raise FileNotFoundError(memory_id)
-        state["memories"] = kept
+        state["memories"] = [item for item in memories if item.get("id") != memory_id]
         self.save_state(state)
-        self.record_timeline_event("memory", "memory_deleted", {"memory_id": memory_id})
+        self.record_timeline_event(
+            "memory", "memory_deleted", {"memory_id": memory_id}, workspace_id=target.get("workspace_id")
+        )
         return {"status": "ok", "memory_id": memory_id}
 
     def create_memory_snapshot(
@@ -1306,12 +1320,15 @@ class WorkspaceOSStore:
         memory_snapshots: Optional[List[Dict[str, Any]]] = None,
         graph: Any = None,
         workspace_id: Optional[str] = None,
+        mode: str = "simulation",
     ) -> Dict[str, Any]:
         state = self.load_state()
         resolved_workspace = self._resolve_scope(workspace_id, state)
         run = {
             "id": f"agent-run-{_json_hash([agent_id, input_text, output_text, _now()])[:16]}",
+            "record_schema_version": 2,
             "agent_id": agent_id,
+            "mode": mode,
             "status": status,
             "input": input_text,
             "output_preview": output_text[:1000],
@@ -1328,14 +1345,19 @@ class WorkspaceOSStore:
             "memory_snapshots": memory_snapshots or [],
             "created_at": _now(),
         }
-        if graph is not None:
+        if mode == "simulation":
+            # Simulated runs are replay scaffolding, not experiences — they must
+            # never enter the knowledge graph as real provenance.
+            run["graph_node_id"] = None
+            run["graph_skipped"] = "simulation runs are not recorded in the knowledge graph"
+        elif graph is not None:
             try:
                 ingested = graph.ingest_event(
                     "AgentRun",
                     f"{agent_id} {status}",
                     user_email=user_email,
                     source="workspace_os",
-                    metadata={"run_id": run["id"], "agent_id": agent_id, "status": status},
+                    metadata={"run_id": run["id"], "agent_id": agent_id, "status": status, "mode": mode},
                 )
                 run["graph_node_id"] = ingested.get("node_id")
             except Exception as exc:
@@ -1427,14 +1449,17 @@ class WorkspaceOSStore:
         user_email: Optional[str] = None,
         graph: Any = None,
         workspace_id: Optional[str] = None,
+        mode: str = "simulation",
     ) -> Dict[str, Any]:
         """Persist a Workflow Designer execution into local-first run history."""
         state = self.load_state()
         resolved_workspace = self._resolve_scope(workspace_id, state)
         run = {
             "id": f"workflow-run-{_json_hash([workflow_id, name, status, _now()])[:16]}",
+            "record_schema_version": 2,
             "workflow_id": workflow_id,
             "name": name or "workflow",
+            "mode": mode,
             "status": status,
             "timeline": timeline or [],
             "outputs": outputs or {},
@@ -1442,14 +1467,19 @@ class WorkspaceOSStore:
             "workspace_id": resolved_workspace,
             "created_at": _now(),
         }
-        if graph is not None:
+        if mode == "simulation":
+            # Record-only node runners do no real work; their runs must not be
+            # written into the knowledge graph as if they were real executions.
+            run["graph_node_id"] = None
+            run["graph_skipped"] = "simulation runs are not recorded in the knowledge graph"
+        elif graph is not None:
             try:
                 ingested = graph.ingest_event(
                     "WorkflowRun",
                     f"{run['name']} {status}",
                     user_email=user_email,
                     source="workspace_os",
-                    metadata={"run_id": run["id"], "workflow_id": workflow_id, "status": status},
+                    metadata={"run_id": run["id"], "workflow_id": workflow_id, "status": status, "mode": mode},
                 )
                 run["graph_node_id"] = ingested.get("node_id")
             except Exception as exc:
