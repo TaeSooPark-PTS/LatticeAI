@@ -1247,8 +1247,37 @@ class KnowledgeGraphStore:
                 (eid, from_node, to_node, norm_type, edge_type, float(weight),
                  confidence, meta_str, created_at or _now()),
             )
+            # Temporal record: every observation of this relationship is kept
+            # (the UNIQUE upsert + weight=max alone would erase recurrence).
+            row = conn.execute(
+                "SELECT id FROM edges_v2 WHERE source=? AND target=? AND type=? AND legacy_type=?",
+                (from_node, to_node, norm_type, edge_type),
+            ).fetchone()
+            if row is not None:
+                conn.execute(
+                    "INSERT INTO edge_occurrences(edge_id, observed_at, weight, source) VALUES (?, ?, ?, ?)",
+                    (row["id"], created_at or _now(), float(weight),
+                     _safe_loads(meta_str).get("source")),
+                )
         except Exception as ex:
             logging.debug("knowledge_graph: v2 edge projection skipped (%s->%s): %s", from_node, to_node, ex)
+
+    def mark_superseded(self, old_node_id: str, new_node_id: str) -> Dict[str, Any]:
+        """Record that ``old_node_id`` was replaced by ``new_node_id``.
+
+        The old node stays queryable (knowledge is durable); readers can follow
+        the revision chain via ``nodes_v2.superseded_by``.
+        """
+        with self._connect() as conn:
+            for node_id in (old_node_id, new_node_id):
+                exists = conn.execute("SELECT 1 FROM nodes_v2 WHERE id=?", (node_id,)).fetchone()
+                if not exists:
+                    raise FileNotFoundError(node_id)
+            conn.execute(
+                "UPDATE nodes_v2 SET superseded_by=?, updated_at=? WHERE id=?",
+                (new_node_id, _now(), old_node_id),
+            )
+        return {"status": "ok", "node_id": old_node_id, "superseded_by": new_node_id}
 
     def _v2_delete_nodes(self, conn: sqlite3.Connection, ids) -> None:
         """Mirror legacy node deletions into v2 (edges_v2 cascade on the FK)."""

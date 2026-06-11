@@ -334,6 +334,8 @@ CREATE TABLE IF NOT EXISTS nodes_v2 (
   -- 'legacy' marks rows that predate scoping — the 'private' default must not
   -- silently privatize previously machine-shared data (design-review ruling).
   visibility       TEXT NOT NULL DEFAULT 'private',
+  -- Revision chain: a node replaced by a newer one points at its successor.
+  superseded_by    TEXT,
   created_at       TEXT NOT NULL,
   updated_at       TEXT NOT NULL,
   style            TEXT,
@@ -366,6 +368,20 @@ CREATE TABLE IF NOT EXISTS edges_v2 (
   FOREIGN KEY(source) REFERENCES nodes_v2(id) ON DELETE CASCADE,
   FOREIGN KEY(target) REFERENCES nodes_v2(id) ON DELETE CASCADE
 );
+
+-- Temporal dimension (v4): every repeated observation of a relationship is
+-- recorded — edges_v2's UNIQUE identity + weight=max would otherwise erase
+-- when something was learned, how often, and whether it still holds.
+CREATE TABLE IF NOT EXISTS edge_occurrences (
+  id          INTEGER PRIMARY KEY AUTOINCREMENT,
+  edge_id     TEXT NOT NULL,
+  observed_at TEXT NOT NULL,
+  weight      REAL NOT NULL DEFAULT 1.0,
+  source      TEXT,
+  FOREIGN KEY(edge_id) REFERENCES edges_v2(id) ON DELETE CASCADE
+);
+CREATE INDEX IF NOT EXISTS idx_edge_occurrences_edge ON edge_occurrences(edge_id);
+CREATE INDEX IF NOT EXISTS idx_edge_occurrences_time ON edge_occurrences(observed_at);
 
 CREATE INDEX IF NOT EXISTS idx_nodes_v2_type     ON nodes_v2(type);
 CREATE INDEX IF NOT EXISTS idx_nodes_v2_legacy   ON nodes_v2(legacy_type);
@@ -419,14 +435,14 @@ class KGStoreV2:
                      "confidence", "evidence", "metadata", "created_by", "created_at"},
         "nodes_v2": {"id", "type", "legacy_type", "label", "summary", "attrs",
                      "embedding", "owner_id", "workspace_id", "visibility",
-                     "created_at", "updated_at", "style", "tone",
-                     "importance_score", "last_used"},
+                     "superseded_by", "created_at", "updated_at", "style",
+                     "tone", "importance_score", "last_used"},
     }
 
     # Columns added after a table's first release that can be healed in place
     # with ALTER TABLE ADD COLUMN (nullable / defaulted only).
     _V2_ADDABLE_COLUMNS = {
-        "nodes_v2": {"workspace_id": "TEXT"},
+        "nodes_v2": {"workspace_id": "TEXT", "superseded_by": "TEXT"},
         "edges_v2": {},
     }
 
