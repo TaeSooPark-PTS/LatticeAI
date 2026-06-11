@@ -45,6 +45,20 @@ specs; tracks run strictly serially). Review record:
 **Phase C (Implementation) — T1 COMPLETE; next: T2 (Packaging & app factory).**
 
 Track log (update at every track boundary):
+- **T2 IN FLIGHT** (workflow `wklchl687`, run wf_88c50721-5de): implementer is
+  mid-refactor — setup.py→setup_wizard.py renamed, scripts/wheel_smoke.py
+  created, chat+workspace routers migrated to AppContext, server_app/
+  app_context/pyproject/CI being edited. Uncommitted in working tree. If the
+  agent dies: finish per T2 contract (incl. amendments — no-side-effect
+  import acceptance test is mandatory), verify, commit.
+- **T9 PARTIAL — vendoring half DONE** (commit `aa613ae`, parallel-safe per
+  amendments): all CDN references removed from every shipped page (Inter,
+  Tabler icons, chart.js, marked.js vendored under static/vendor);
+  --lt3-on-accent token added; sw.js rebuilt around the v3 manifest;
+  lint_v3.mjs now mechanically enforces token/inline-style/CDN rules;
+  6 guard tests. REMAINING T9: canvas graph port (item 2), IA regroup (1),
+  legacy deletion + redirects (3, needs parity views), login rebuild,
+  artifact ungitting, i18n, T9b surfaces (after T7/T8).
 - **T1 DONE** (commits `1cddc67` frontend + `c574eb6` backend). All 7 items:
   by-id snapshot/memory authz via new WorkspaceService.authorize_record_read/
   authorize_memory_delete; /workspace/os leak removed (workspace_count
