@@ -77,10 +77,11 @@ test("command palette opens and filters", async ({ page }) => {
   await expect(page.locator(".lt3-palette__item").first()).toContainText("Hybrid");
 });
 
-test("knowledge graph renders an SVG mesh of entities", async ({ page }) => {
+test("knowledge graph renders the force-directed canvas", async ({ page }) => {
   await page.goto("/app#/knowledge-graph");
-  await page.waitForSelector(".lt3-graph-canvas svg .lt3-gnode");
-  expect(await page.locator(".lt3-gnode").count()).toBeGreaterThan(0);
+  // v4: the explorer is a live <canvas> (zoom/pan/drag), not a static SVG.
+  await page.waitForSelector(".lt3-graph-canvas canvas");
+  await expect(page.locator(".lt3-graph-canvas canvas")).toBeVisible();
   await expect(page.locator(".lt3-entity").first()).toBeVisible();
 });
 

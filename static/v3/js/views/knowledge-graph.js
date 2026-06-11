@@ -8,6 +8,7 @@
  * ========================================================================== */
 
 import { escapeHtml } from "../core/dom.js";
+import { createGraphCanvas } from "./graph-canvas.js";
 
 const TYPE_COLOR = {
   Topic: "var(--lt3-pillar-graph)",
@@ -144,45 +145,40 @@ function buildExplore(ctx) {
     );
   }
 
+  // Live force-directed canvas (zoom / pan / drag / physics) — replaces the
+  // static SVG spiral. The renderer only draws the data it is given.
+  let graphCanvas = null;
+
+  function ensureGraphCanvas() {
+    if (graphCanvas) return graphCanvas;
+    graphCanvas = createGraphCanvas({
+      colorFor,
+      onSelect: (id) => {
+        state.selected = id;
+        renderInspector();
+      },
+    });
+    return graphCanvas;
+  }
+
   function renderCanvas() {
     const { nodes, edges } = state.data;
-    if (!nodes.length) { canvasHost.replaceChildren(c.emptyState({ icon: "chart-dots-3", title: "No entities yet", body: "Index a source to populate the graph." })); return; }
-    const laidOut = layout(nodes);
-    const pos = Object.fromEntries(laidOut.map((n) => [n.id, n]));
-    const W = 1000, H = 600;
-    const edgeSvg = edges.map((e) => {
-      const a = pos[e.from], b = pos[e.to];
-      if (!a || !b) return "";
-      return `<line class="lt3-gedge" x1="${a.px}" y1="${a.py}" x2="${b.px}" y2="${b.py}" stroke-width="${1 + (e.weight || 1) * 0.6}"></line>`;
-    }).join("");
-    const nodeSvg = laidOut.map((n) => {
-      const r = 10 + (n.weight || 0.5) * 16;
-      const sel = state.selected === n.id;
-      return `<g class="lt3-gnode" data-id="${escapeHtml(n.id)}" opacity="${state.selected && !sel && !isNeighbor(n.id) ? 0.35 : 1}">
-        <circle cx="${n.px}" cy="${n.py}" r="${sel ? r + 3 : r}" fill="${colorFor(n.type)}" stroke-width="${sel ? 3 : 2}"></circle>
-        <text x="${n.px}" y="${n.py + r + 13}" text-anchor="middle">${escapeHtml(truncate(n.label, 18))}</text>
-      </g>`;
-    }).join("");
-    canvasHost.replaceChildren(
-      h("div.lt3-graph-canvas", {
-        html: `<svg viewBox="0 0 ${W} ${H}" preserveAspectRatio="xMidYMid meet" role="img" aria-label="Knowledge graph">${edgeSvg}${nodeSvg}</svg>`,
-        on: { click: onCanvasClick },
-      }),
-    );
+    if (!nodes.length) {
+      if (graphCanvas) { graphCanvas.destroy(); graphCanvas = null; }
+      canvasHost.replaceChildren(c.emptyState({ icon: "chart-dots-3", title: "No entities yet", body: "Index a source to populate the graph." }));
+      return;
+    }
+    const gc = ensureGraphCanvas();
+    gc.setData({ nodes, edges });
+    gc.setSelected(state.selected);
+    if (!gc.el.isConnected || gc.el.parentElement !== canvasHost.querySelector(".lt3-graph-canvas")) {
+      canvasHost.replaceChildren(h("div.lt3-graph-canvas", gc.el));
+    }
   }
 
-  function onCanvasClick(e) {
-    const g = e.target.closest(".lt3-gnode");
-    if (!g) return;
-    state.selected = g.dataset.id === state.selected ? null : g.dataset.id;
-    renderCanvas();
+  function syncSelection() {
+    if (graphCanvas) graphCanvas.setSelected(state.selected);
     renderInspector();
-  }
-
-  function isNeighbor(id) {
-    if (!state.selected) return false;
-    return state.data.edges.some((e) =>
-      (e.from === state.selected && e.to === id) || (e.to === state.selected && e.from === id));
   }
 
   function renderInspector() {
@@ -199,7 +195,7 @@ function buildExplore(ctx) {
   }
 
   function entityRow(n) {
-    return h("button.lt3-entity", { on: { click: () => { state.selected = n.id; renderCanvas(); renderInspector(); } } },
+    return h("button.lt3-entity", { on: { click: () => { state.selected = n.id; syncSelection(); } } },
       h("div.lt3-entity__type", { style: { background: `color-mix(in srgb, ${colorFor(n.type)} 18%, transparent)`, color: colorFor(n.type) } }, icon(iconForType(n.type))),
       h("div.lt3-entity__body",
         h("div.lt3-entity__name", n.label),
@@ -220,7 +216,7 @@ function buildExplore(ctx) {
       })
       .filter((r) => r.other);
     return h("div.lt3-stack-4",
-      h("button.lt3-btn.lt3-btn--subtle.lt3-btn--sm", { on: { click: () => { state.selected = null; renderCanvas(); renderInspector(); } } }, icon("arrow-left"), "All entities"),
+      h("button.lt3-btn.lt3-btn--subtle.lt3-btn--sm", { on: { click: () => { state.selected = null; syncSelection(); } } }, icon("arrow-left"), "All entities"),
       h("div.lt3-card.lt3-card--flat",
         h("div.lt3-row-2", { style: { "margin-bottom": "var(--lt3-space-2)" } },
           h("span.lt3-pill", { style: { color: colorFor(n.type) } }, n.type || "Entity"),
@@ -231,7 +227,7 @@ function buildExplore(ctx) {
       h("div",
         h("div.lt3-eyebrow", { style: { "margin-bottom": "var(--lt3-space-2)" } }, `Relations (${rels.length})`),
         rels.length
-          ? h("div.lt3-stack-2", rels.map((r) => h("button.lt3-entity", { on: { click: () => { state.selected = r.other.id; renderCanvas(); renderInspector(); } } },
+          ? h("div.lt3-stack-2", rels.map((r) => h("button.lt3-entity", { on: { click: () => { state.selected = r.other.id; syncSelection(); } } },
               h("div.lt3-entity__type", { style: { background: "var(--surface-3)" } }, h("span.lt3-mono", { style: { "font-size": "var(--lt3-text-sm)" } }, r.dir)),
               h("div.lt3-entity__body",
                 h("div.lt3-entity__name", r.other.label),
