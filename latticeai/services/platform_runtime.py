@@ -18,7 +18,7 @@ from typing import Any, Callable, Dict, Optional, Set
 from fastapi import HTTPException, Request
 
 from latticeai.core.hooks import dispatch_tool
-from latticeai.core.multi_agent import MultiAgentOrchestrator, default_role_runner
+from latticeai.core.multi_agent import MultiAgentOrchestrator, default_role_runner, llm_role_runner
 from latticeai.core.workflow_engine import ApprovalRequired, WorkflowEngine
 from tools import execute_tool
 
@@ -35,6 +35,8 @@ class PlatformRuntime:
         workspace_scope_from_request: Callable[[Request], Optional[str]],
         get_tool_permission: Callable[..., Dict[str, Any]],
         hooks: Any = None,
+        llm_generate: Optional[Callable[..., str]] = None,
+        llm_available: Optional[Callable[[], bool]] = None,
     ):
         self.store = store
         self.svc = workspace_service
@@ -46,6 +48,11 @@ class PlatformRuntime:
         # Lifecycle hooks registry — wires the workflow runtime + workflow tool
         # nodes into the same pre_*/post_* lifecycle as the HTTP + agent paths.
         self.hooks = hooks
+        # v4 (T7b): a synchronous model bridge. When a model is loaded,
+        # build_orchestrator returns the REAL (mode='llm') runner; otherwise
+        # the deterministic runner, honestly labeled mode='simulation'.
+        self.llm_generate = llm_generate
+        self.llm_available = llm_available or (lambda: False)
 
     # ── request gating ────────────────────────────────────────────────────
 
@@ -249,8 +256,25 @@ class PlatformRuntime:
         }
 
     def build_orchestrator(self, user, scope) -> MultiAgentOrchestrator:
+        workflow_runner = lambda wf_ref, ctx: self.run_workflow_by_id(wf_ref, user, scope, with_agent=False, inputs=ctx.inputs)  # noqa: E731
+        plugin_runner = lambda pid, ctx: self.registry.execute_action(pid, "run_skill", {}, runners=self.plugin_capability_runners(user, scope), workspace_id=scope).as_dict()  # noqa: E731
+        context_provider = self._context_provider(user, scope)
+        if self.llm_generate is not None and self.llm_available():
+            from latticeai.core.agent_prompts import CRITIC_PROMPT, PLANNER_PROMPT
+
+            return MultiAgentOrchestrator(
+                role_runner=llm_role_runner(
+                    generate=self.llm_generate,
+                    planner_prompt=PLANNER_PROMPT,
+                    critic_prompt=CRITIC_PROMPT,
+                    context_provider=context_provider,
+                    workflow_runner=workflow_runner,
+                    plugin_runner=plugin_runner,
+                ),
+                mode="llm",
+            )
         return MultiAgentOrchestrator(role_runner=default_role_runner(
-            workflow_runner=lambda wf_ref, ctx: self.run_workflow_by_id(wf_ref, user, scope, with_agent=False, inputs=ctx.inputs),
-            plugin_runner=lambda pid, ctx: self.registry.execute_action(pid, "run_skill", {}, runners=self.plugin_capability_runners(user, scope), workspace_id=scope).as_dict(),
-            context_provider=self._context_provider(user, scope),
-        ))
+            workflow_runner=workflow_runner,
+            plugin_runner=plugin_runner,
+            context_provider=context_provider,
+        ), mode="simulation")

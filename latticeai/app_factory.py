@@ -1373,6 +1373,16 @@ def _build(config: "Optional[Config]" = None) -> Dict[str, Any]:
     # ── v2 Agentic Workspace Platform: cross-system wiring ───────────────────────
     # All cross-subsystem closures live in latticeai.services.platform_runtime to
     # keep this assembly file lean; server_app only constructs it and mounts routers.
+    def _llm_generate_sync(message: str, context: str = "", max_tokens: int = 1024, temperature: float = 0.1) -> str:
+        # Synchronous model bridge for the orchestrator's role runner. Safe
+        # because the agents run endpoint executes start() in a worker thread
+        # (asyncio.to_thread), where no event loop is running.
+        import asyncio as _asyncio
+
+        return str(_asyncio.run(router.generate(
+            message, context=context, max_tokens=max_tokens, temperature=temperature,
+        )))
+
     PLATFORM = PlatformRuntime(
         store=WORKSPACE_OS,
         workspace_service=WORKSPACE_SERVICE,
@@ -1382,6 +1392,8 @@ def _build(config: "Optional[Config]" = None) -> Dict[str, Any]:
         workspace_scope_from_request=_workspace_scope_from_request,
         get_tool_permission=get_tool_permission,
         hooks=HOOKS_REGISTRY,
+        llm_generate=_llm_generate_sync,
+        llm_available=lambda: bool(getattr(router, "current_model_id", None)),
     )
 
     # Single AgentRuntime boundary over the orchestrator + run store.
