@@ -1,5 +1,7 @@
 """Authentication API router: register, login, logout, SSO, profile."""
 
+import base64
+import hashlib
 import logging
 import secrets
 import time
@@ -69,11 +71,22 @@ def create_auth_router(
 ) -> APIRouter:
     router = APIRouter()
 
+    def _enforce_password_policy(password: str) -> None:
+        # Real policy (v4): length >= 8 with letters AND digits. A 4-char
+        # minimum was not a policy.
+        pw = str(password or "")
+        if len(pw) < 8 or not any(c.isalpha() for c in pw) or not any(c.isdigit() for c in pw):
+            raise HTTPException(
+                status_code=400,
+                detail="비밀번호는 8자 이상이며 영문자와 숫자를 모두 포함해야 합니다.",
+            )
+
     @router.post("/register")
     async def register(req: UserRegister, request: Request):
         check_ip_rate_limit(client_ip(request), "register", max_calls=5, window_secs=3600)
         if not open_registration:
             raise HTTPException(status_code=403, detail="회원가입이 비활성화되어 있습니다. 관리자에게 문의하세요.")
+        _enforce_password_policy(req.password)
         users = load_users()
         if req.email in users:
             raise HTTPException(status_code=400, detail="이미 존재하는 이메일입니다.")
@@ -123,7 +136,15 @@ def create_auth_router(
             raise HTTPException(status_code=503, detail="SSO가 설정되지 않았습니다.")
         state = secrets.token_urlsafe(16)
         nonce = secrets.token_urlsafe(16)
-        _sso_states[state] = (time.time(), nonce)
+        # PKCE (S256): bind the token exchange to this login, so an
+        # intercepted authorization code is useless without the verifier.
+        code_verifier = secrets.token_urlsafe(48)
+        code_challenge = (
+            base64.urlsafe_b64encode(hashlib.sha256(code_verifier.encode("ascii")).digest())
+            .rstrip(b"=")
+            .decode("ascii")
+        )
+        _sso_states[state] = (time.time(), nonce, code_verifier)
         params = urlencode({
             "client_id": settings["client_id"],
             "response_type": "code",
@@ -131,6 +152,8 @@ def create_auth_router(
             "scope": settings.get("scopes") or "openid email profile",
             "state": state,
             "nonce": nonce,
+            "code_challenge": code_challenge,
+            "code_challenge_method": "S256",
         })
         return RedirectResponse(f"{discovery['authorization_endpoint']}?{params}")
 
@@ -141,7 +164,7 @@ def create_auth_router(
         entry = _sso_states.pop(state, None)
         if entry is None or time.time() - entry[0] > 300:
             raise HTTPException(status_code=400, detail="유효하지 않은 SSO 상태입니다.")
-        _, nonce = entry
+        _, nonce, code_verifier = entry
         settings = get_sso_settings()
         discovery = await get_sso_discovery()
         if not settings.get("enabled") or not discovery:
@@ -154,6 +177,7 @@ def create_auth_router(
                 "redirect_uri": settings["redirect_uri"],
                 "client_id": settings["client_id"],
                 "client_secret": settings["client_secret"],
+                "code_verifier": code_verifier,
             }, headers={"Accept": "application/json"}, timeout=15)
             tokens = r.json()
         id_token = tokens.get("id_token")
@@ -214,8 +238,7 @@ def create_auth_router(
         email = require_user(request)
         if not email:
             raise HTTPException(status_code=401, detail="인증이 필요합니다.")
-        if len(req.new_password) < 4:
-            raise HTTPException(status_code=400, detail="새 비밀번호는 4자 이상이어야 합니다.")
+        _enforce_password_policy(req.new_password)
         users = load_users()
         user = users.get(email)
         if not user:
