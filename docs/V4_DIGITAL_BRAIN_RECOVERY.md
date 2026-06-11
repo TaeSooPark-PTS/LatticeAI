@@ -103,8 +103,21 @@ Track log (update at every track boundary):
   preserved incl. legacy bucket + started_at sweep; MemoryService
   conversation tier reads the store. latticeai.brain packaged. Suite 517.
   Branch pushed to origin/feat/v4-digital-brain.
-  REMAINING T4: T4.3 garden absorption (watched source + dual-write notes),
-  T4.4 graph_curator wire-or-delete, backup round-trip test.
+- **T4.3 DONE** (commit `17dbe0a`): gardener dual-writes (vault markdown
+  mirror + pipeline ingest w/ provenance source_type=note); idempotent
+  startup vault import; get_relevant_context = brain query (vault-scan
+  fallback only when graph disabled); get_tree() implemented (was a
+  latent 500). Suite 528.
+- **T4.4 DONE** (commit `e341f74`): graph_curator live — store.curate()
+  gated topic promotion w/ real nodes_v2.importance_score + POST
+  /knowledge-graph/curate. Suite 530. Backup round-trip test proves
+  conversations ride the KG backup. **T4 COMPLETE.**
+- **T6.5 DONE** (commits `84ca636`+`443a8ce`): hashed session tokens at
+  rest (transparent plaintext migration), 8+ alnum password policy on
+  register/change-password, S256 PKCE on SSO. Suite 523→531.
+- NOTE: T3d + T9-canvas agents died instantly on session limits twice
+  (next reset 23:00 KST); both tasks remain queued with full contracts in
+  this file + the plan.
   - **T3d** (agent task after limits reset 17:30 KST): latticeai/brain/
     decomposition (store/discovery/ingest/provenance/documents/extraction,
     ≤1,500 lines/module, no mixin god-object) + v2 write-mastering flip
