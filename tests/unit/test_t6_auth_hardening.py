@@ -8,7 +8,7 @@ S256 PKCE challenge and the exchange sends the verifier.
 
 import json
 
-from fastapi import FastAPI, HTTPException, Request
+from fastapi import FastAPI, Request
 from fastapi.testclient import TestClient
 
 from latticeai.api.auth import create_auth_router
