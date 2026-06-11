@@ -1400,6 +1400,7 @@ def _build(config: "Optional[Config]" = None) -> Dict[str, Any]:
         hooks=HOOKS_REGISTRY,
         llm_generate=_llm_generate_sync,
         llm_available=lambda: bool(getattr(router, "current_model_id", None)),
+        agent_registry=AGENT_REGISTRY,
     )
 
     # ── v4 Trigger system (T7d): interval + brain-event workflow triggers.

@@ -406,7 +406,11 @@ def default_role_runner(
             ctx.output = ctx.output or f"Released outcome for: {ctx.goal}"
             return {"role": role, "released": True, "summary": ctx.output}
 
-        return {"role": role, "status": "noop"}
+        return {
+            "role": role,
+            "status": "skipped",
+            "reason": "this role has no deterministic behaviour (custom agents require a loaded model)",
+        }
 
     return runner
 
@@ -438,6 +442,7 @@ def llm_role_runner(
     context_provider: Optional[Callable[[str], List[str]]] = None,
     workflow_runner: Optional[Callable[..., Any]] = None,
     plugin_runner: Optional[Callable[..., Any]] = None,
+    custom_agents: Optional[Dict[str, Dict[str, Any]]] = None,
 ) -> Callable[[str, OrchestrationContext], Dict[str, Any]]:
     """Model-driven role runner — the real Multi-Agent Runtime (T7b).
 
@@ -466,6 +471,29 @@ def llm_role_runner(
 
     def runner(role: str, ctx: OrchestrationContext) -> Dict[str, Any]:
         failure = ctx.inputs.get("__llm_failure__")
+
+        custom = (custom_agents or {}).get(role)
+        if custom is not None:
+            # Executable registry entry (T7e): the agent's persisted config
+            # (system_prompt, max_tokens, temperature) is actually loaded.
+            cfg = custom.get("config") or {}
+            system = str(
+                cfg.get("system_prompt")
+                or custom.get("description")
+                or f"You are {custom.get('name') or role}."
+            )
+            try:
+                out = str(generate(
+                    ctx.output or ctx.goal,
+                    context=system,
+                    max_tokens=int(cfg.get("max_tokens") or 1024),
+                    temperature=float(cfg.get("temperature") or 0.2),
+                ))
+            except Exception as exc:
+                return _fail(ctx, role, f"custom agent generation failed ({exc})", "")
+            ctx.output = out
+            return {"role": role, "agent": custom.get("name"), "status": "ok",
+                    "output": out[:2000]}
 
         if role == "planner":
             research = "\n".join(f"- {item}" for item in (ctx.research or [])[:8])
@@ -604,8 +632,13 @@ class MultiAgentOrchestrator:
         self,
         role_runner: Optional[Callable[[str, OrchestrationContext], Dict[str, Any]]] = None,
         mode: str = "simulation",
+        custom_agents: Optional[Dict[str, Dict[str, Any]]] = None,
     ):
         self.role_runner = role_runner or default_role_runner()
+        # Executable registry entries (T7e): a requested role may be a
+        # registered custom agent id; its config (system_prompt, …) is
+        # actually loaded at run time — registration is no longer a UI illusion.
+        self.custom_agents = dict(custom_agents or {})
         # Honest execution-mode label persisted on every run record. The
         # built-in runner never calls a model, so the default is "simulation";
         # an LLM-backed runner must declare mode="llm" explicitly.
@@ -670,7 +703,10 @@ class MultiAgentOrchestrator:
             workspace_id=workspace_id,
             inputs=inputs or {},
         )
-        pipeline = [r for r in (roles or list(CORE_PIPELINE)) if r in AGENT_ROLES]
+        pipeline = [
+            r for r in (roles or list(CORE_PIPELINE))
+            if r in AGENT_ROLES or r in self.custom_agents
+        ]
         if not pipeline:
             pipeline = list(CORE_PIPELINE)
         max_retries = max(0, int(max_retries or 0))

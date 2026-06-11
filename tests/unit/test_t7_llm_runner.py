@@ -69,6 +69,7 @@ def test_build_orchestrator_selects_mode_honestly():
     runtime.run_workflow_by_id = lambda *a, **k: {}
     runtime.plugin_capability_runners = lambda *a, **k: {}
     runtime._context_provider = lambda user, scope: (lambda goal: [])
+    runtime.agent_registry = None
 
     runtime.llm_generate = None
     runtime.llm_available = lambda: False
@@ -81,3 +82,43 @@ def test_build_orchestrator_selects_mode_honestly():
     # Model bridge wired but no model loaded → still honest simulation.
     runtime.llm_available = lambda: False
     assert runtime.build_orchestrator(None, None).mode == "simulation"
+
+
+def test_custom_registry_agents_execute():
+    """A registered custom agent id in the pipeline actually runs with its
+    persisted config — registration is no longer a UI illusion."""
+    entry = {
+        "id": "agent:custom:summarizer", "name": "Summarizer", "enabled": True,
+        "config": {"system_prompt": "You summarize text.", "max_tokens": 256},
+    }
+    seen = {}
+
+    def generate(message, context="", max_tokens=0, temperature=0.0):
+        seen["context"] = context
+        seen["max_tokens"] = max_tokens
+        return "a tight summary"
+
+    runner = llm_role_runner(
+        generate=generate, planner_prompt="P", critic_prompt="C",
+        custom_agents={entry["id"]: entry},
+    )
+    result = MultiAgentOrchestrator(
+        role_runner=runner, mode="llm", custom_agents={entry["id"]: entry},
+    ).run("summarize the doc", roles=["agent:custom:summarizer"])
+    assert result.roles_run == ["agent:custom:summarizer"]
+    assert seen["context"] == "You summarize text."
+    assert seen["max_tokens"] == 256
+    assert result.output == "a tight summary"
+
+
+def test_custom_agent_in_simulation_skips_honestly():
+    entry = {"id": "agent:custom:summarizer", "name": "Summarizer", "enabled": True, "config": {}}
+    from latticeai.core.multi_agent import default_role_runner
+
+    result = MultiAgentOrchestrator(
+        role_runner=default_role_runner(), mode="simulation",
+        custom_agents={entry["id"]: entry},
+    ).run("goal", roles=["agent:custom:summarizer"])
+    role_entries = [t for t in result.timeline if t.get("event") == "role"]
+    assert role_entries and role_entries[0]["result"]["status"] == "skipped"
+    assert "loaded model" in role_entries[0]["result"]["reason"]

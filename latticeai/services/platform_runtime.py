@@ -37,6 +37,7 @@ class PlatformRuntime:
         hooks: Any = None,
         llm_generate: Optional[Callable[..., str]] = None,
         llm_available: Optional[Callable[[], bool]] = None,
+        agent_registry: Any = None,
     ):
         self.store = store
         self.svc = workspace_service
@@ -53,6 +54,7 @@ class PlatformRuntime:
         # the deterministic runner, honestly labeled mode='simulation'.
         self.llm_generate = llm_generate
         self.llm_available = llm_available or (lambda: False)
+        self.agent_registry = agent_registry
 
     # ── request gating ────────────────────────────────────────────────────
 
@@ -259,6 +261,15 @@ class PlatformRuntime:
         workflow_runner = lambda wf_ref, ctx: self.run_workflow_by_id(wf_ref, user, scope, with_agent=False, inputs=ctx.inputs)  # noqa: E731
         plugin_runner = lambda pid, ctx: self.registry.execute_action(pid, "run_skill", {}, runners=self.plugin_capability_runners(user, scope), workspace_id=scope).as_dict()  # noqa: E731
         context_provider = self._context_provider(user, scope)
+        custom_agents = {}
+        if self.agent_registry is not None:
+            try:
+                custom_agents = {
+                    a["id"]: a for a in self.agent_registry.all()
+                    if str(a.get("id", "")).startswith("agent:custom:") and a.get("enabled", True)
+                }
+            except Exception:
+                custom_agents = {}
         if self.llm_generate is not None and self.llm_available():
             from latticeai.core.agent_prompts import CRITIC_PROMPT, PLANNER_PROMPT
 
@@ -270,11 +281,13 @@ class PlatformRuntime:
                     context_provider=context_provider,
                     workflow_runner=workflow_runner,
                     plugin_runner=plugin_runner,
+                    custom_agents=custom_agents,
                 ),
                 mode="llm",
+                custom_agents=custom_agents,
             )
         return MultiAgentOrchestrator(role_runner=default_role_runner(
             workflow_runner=workflow_runner,
             plugin_runner=plugin_runner,
             context_provider=context_provider,
-        ), mode="simulation")
+        ), mode="simulation", custom_agents=custom_agents)
