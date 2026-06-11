@@ -98,6 +98,9 @@
   --lt3-pillar-graph:  var(--accent);       /* blue — relational structure */
   --lt3-pillar-vector: var(--accent-2);     /* teal — embeddings field    */
   --lt3-pillar-hybrid: var(--accent-pink);  /* magenta — fusion of both   */
+
+  /* Text rendered on saturated accent fills (both themes keep accents dark-safe). */
+  --lt3-on-accent: #ffffff;
   --lt3-pillar-graph-soft:  color-mix(in srgb, var(--lt3-pillar-graph) 14%, transparent);
   --lt3-pillar-vector-soft: color-mix(in srgb, var(--lt3-pillar-vector) 16%, transparent);
   --lt3-pillar-hybrid-soft: color-mix(in srgb, var(--lt3-pillar-hybrid) 16%, transparent);

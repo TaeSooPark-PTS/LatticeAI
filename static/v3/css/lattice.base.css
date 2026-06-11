@@ -111,7 +111,7 @@ code, pre, kbd, samp { font-family: var(--lt3-font-mono); }
   z-index: var(--lt3-z-toast);
   padding: var(--lt3-space-2) var(--lt3-space-4);
   background: var(--accent);
-  color: #fff;
+  color: var(--lt3-on-accent);
   border-radius: var(--lt3-radius-sm);
   transform: translateY(-200%);
   transition: transform var(--lt3-dur-2) var(--lt3-ease);

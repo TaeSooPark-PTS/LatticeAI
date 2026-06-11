@@ -222,12 +222,12 @@
 .lt3-msg--user { align-self: flex-end; flex-direction: row-reverse; max-width: 90%; }
 .lt3-msg--ai { align-self: flex-start; max-width: 100%; }
 .lt3-msg__avatar { width: 32px; height: 32px; flex: none; border-radius: var(--lt3-radius-sm); display: grid; place-items: center; }
-.lt3-msg--ai .lt3-msg__avatar { background: linear-gradient(135deg, var(--lt3-pillar-graph), var(--lt3-pillar-vector)); color: #fff; }
+.lt3-msg--ai .lt3-msg__avatar { background: linear-gradient(135deg, var(--lt3-pillar-graph), var(--lt3-pillar-vector)); color: var(--lt3-on-accent); }
 .lt3-msg--user .lt3-msg__avatar { background: var(--surface-3); color: var(--muted); }
 .lt3-msg__body { min-width: 0; display: flex; flex-direction: column; gap: var(--lt3-space-2); }
 .lt3-msg__bubble { padding: var(--lt3-space-3) var(--lt3-space-4); border-radius: var(--lt3-radius-md); font-size: var(--lt3-text-md); line-height: var(--lt3-leading-normal); white-space: pre-wrap; overflow-wrap: anywhere; }
 .lt3-msg--ai .lt3-msg__bubble { background: var(--surface); border: 1px solid var(--border); }
-.lt3-msg--user .lt3-msg__bubble { background: var(--accent); color: #fff; }
+.lt3-msg--user .lt3-msg__bubble { background: var(--accent); color: var(--lt3-on-accent); }
 .lt3-msg__cites { display: flex; flex-wrap: wrap; gap: var(--lt3-space-2); }
 .lt3-typing { display: inline-flex; gap: 4px; align-items: center; padding: var(--lt3-space-1) 0; }
 .lt3-typing i { width: 6px; height: 6px; border-radius: 99px; background: var(--faint); animation: lt3-bounce 1s var(--lt3-ease) infinite; }

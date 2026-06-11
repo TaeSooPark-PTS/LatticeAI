@@ -87,7 +87,7 @@
 .lt3-btn[disabled] { opacity: 0.5; pointer-events: none; }
 .lt3-btn .ti { font-size: 1.05rem; }
 
-.lt3-btn--primary { background: var(--accent); color: #fff; box-shadow: var(--lt3-elev-1); }
+.lt3-btn--primary { background: var(--accent); color: var(--lt3-on-accent); box-shadow: var(--lt3-elev-1); }
 .lt3-btn--primary:hover { background: var(--accent-deep); }
 .lt3-btn--ghost { background: var(--surface-2); border-color: var(--border); color: var(--text); }
 .lt3-btn--ghost:hover { border-color: var(--border-strong); background: var(--surface-3); }
