@@ -1,7 +1,7 @@
 {
   "name": "ltcai",
   "version": "4.0.0",
-  "description": "Lattice AI v3 local-first AI workspace platform with knowledge graph, vector index, hybrid search, agents, and workspace modes.",
+  "description": "Lattice AI — local-first Digital Brain Platform (knowledge graph, durable memory, hybrid search, agents, signed brain exchange)",
   "homepage": "https://github.com/TaeSooPark-PTS/LatticeAI#readme",
   "repository": {
     "type": "git",

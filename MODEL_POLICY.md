@@ -1,6 +1,6 @@
 # Model Policy
 
-Lattice AI v2.2.0 uses a multimodal-first model policy.
+Lattice AI v4.0.0 uses a multimodal-first model policy.
 
 ## Recommendation Rules
 

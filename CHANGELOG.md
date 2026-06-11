@@ -2,6 +2,23 @@
 
 The detailed historical changelog lives in [docs/CHANGELOG.md](docs/CHANGELOG.md).
 
+## [4.0.0] - 2026-06-12 (release candidate)
+
+Digital Brain Platform transformation. Highlights: workflow nodes execute
+under governance with a real approval gate; LLM-backed multi-agent runtime
+(fail-closed on unparseable output) with honest simulation labeling; unified
+ingestion for chat/MCP/uploads with provenance coverage metric; unbounded
+conversation store; garden vault absorbed (brain authoritative, markdown
+mirror kept); typed Decision/Experience memory + budgeted provenance-traced
+context assembly; FTS5 keyword search; workspace-scoped reads; by-id authz
+fixes; hashed session tokens + PKCE; Ed25519 device identity, signed brain
+bundles, Brain Network v1 peer exchange; interval + brain-event workflow
+triggers; executable custom agents; packaging fixed (wheel smoke in CI),
+ruff baseline, bounded deps; zero-CDN frontend with a force-directed graph
+canvas as the brain-first landing surface. Remaining gaps are labeled in
+FEATURE_STATUS.md and RELEASE_NOTES_v4.0.0.md. See docs/v4-audit/ for the
+audit record and docs/V4_BRAIN_ARCHITECTURE.md for the design.
+
 ## [3.6.0] - 2026-06-10
 
 Knowledge Graph First release — the Knowledge Graph becomes the primary

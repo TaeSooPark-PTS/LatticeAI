@@ -1,7 +1,7 @@
 {
   "name": "ltcai",
   "displayName": "Lattice AI",
-  "description": "Local-first AI workspace extension for Lattice AI v3 knowledge graph, hybrid search, model workflows, and coding actions.",
+  "description": "Lattice AI Digital Brain extension — knowledge graph, hybrid search, model workflows, and coding actions, local-first.",
   "version": "4.0.0",
   "publisher": "parktaesoo",
   "license": "MIT",
