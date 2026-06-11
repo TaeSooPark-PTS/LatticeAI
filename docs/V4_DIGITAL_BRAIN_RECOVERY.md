@@ -146,7 +146,17 @@ Track log (update at every track boundary):
   preserved (fail-closed); build_orchestrator picks mode='llm' only when
   a model is loaded; agents run endpoint via asyncio.to_thread + sync
   model bridge (asyncio.run safe in worker thread). Suite 559.
-- T7 REMAINING: T7c async engine/cancel/SSE/reconciliation, T7d triggers,
+- **T6-scoped-reads DONE** (commit 7f58a57): workspaces_of/
+  filter_scoped_nodes on the store; all SearchService channels + kg.graph()
+  accept allowed_workspaces; search router scopes via _ScopedSearchService
+  proxy + PLATFORM.allowed_scopes; ContextAssembler hybrid seam scoped per
+  user. Legacy NULL rows machine-visible (documented). Suite 564.
+- **T7d DONE** (commit 235f9b6): latticeai/services/triggers.py —
+  interval scheduler (missed-while-down → recorded skip events, no
+  catch-up) + brain_event triggers via visible post_tool hook on
+  kg_ingest.*; __trigger__ provenance in run inputs; describe() honest
+  status; started in app factory w/ idempotent hook registration. Suite 569.
+- T7 REMAINING: T7c async engine/cancel/SSE/reconciliation,
   T7e executable registry entries.
 - T9-canvas agent left static/v3/js/views/graph-canvas.js (509 lines,
   node --check passes) but NEVER rewired knowledge-graph.js — file kept
