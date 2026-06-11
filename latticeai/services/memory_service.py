@@ -60,12 +60,16 @@ class MemoryService:
         knowledge_graph: Any = None,
         enable_graph: bool = True,
         history_file: Optional[Path] = None,
+        conversation_store: Any = None,
     ):
         self._store = store
         self._kg = knowledge_graph
         self._enable_graph = bool(enable_graph and knowledge_graph is not None)
         self._data_dir = Path(data_dir)
         self._history_file = Path(history_file) if history_file else (self._data_dir / "chat_history.json")
+        # v4: the durable SQLite conversation store supersedes the JSON file
+        # as the conversation tier's backing store when provided.
+        self._conversation_store = conversation_store
 
     # ── helpers over the underlying stores ────────────────────────────────
     def _workspace_memories(self, *, user_email: Optional[str], workspace_id: Optional[str]) -> List[Dict[str, Any]]:
@@ -87,6 +91,14 @@ class MemoryService:
             return []
 
     def _conversations(self) -> List[Dict[str, Any]]:
+        if self._conversation_store is not None:
+            try:
+                grouped: Dict[str, List[Dict[str, Any]]] = {}
+                for item in self._conversation_store.history():
+                    grouped.setdefault(item.get("conversation_id") or "legacy-previous-history", []).append(item)
+                return [{"id": conv_id, "messages": msgs} for conv_id, msgs in grouped.items()]
+            except Exception:
+                return []
         if not self._history_file.exists():
             return []
         try:
@@ -130,7 +142,10 @@ class MemoryService:
 
         ws_bytes = _file_size(self._data_dir / "workspace_os.json")
         kg_bytes = _file_size(self._data_dir / "knowledge_graph.sqlite")
-        conv_bytes = _file_size(self._history_file)
+        if self._conversation_store is not None:
+            conv_bytes = int(getattr(self._conversation_store, "size_bytes", lambda: 0)())
+        else:
+            conv_bytes = _file_size(self._history_file)
 
         node_total = sum((kg_stats or {}).get("nodes", {}).values()) if kg_stats else None
         edge_total = sum((kg_stats or {}).get("edges", {}).values()) if kg_stats else None
@@ -159,7 +174,7 @@ class MemoryService:
             {
                 "id": "conversation", "type": "conversation", "label": "Conversation Memory",
                 "count": len(convs), "size_bytes": conv_bytes,
-                "health": "ok" if self._history_file.exists() else "empty",
+                "health": "ok" if (self._conversation_store is not None or self._history_file.exists()) else "empty",
                 "detail": "Historical interaction memory from chat.",
             },
             {

@@ -149,6 +149,7 @@ def _build(config: "Optional[Config]" = None) -> Dict[str, Any]:
     from latticeai.api.portability import create_portability_router
     from latticeai.services.memory_service import MemoryService
     from latticeai.services.ingestion import IngestionItem, IngestionPipeline
+    from latticeai.brain.conversations import ConversationStore
     from latticeai.services.kg_portability import KGPortabilityService
     # The aliased names below look unused but are part of the legacy
     # ``server_app`` attribute surface: every local is exported via
@@ -323,6 +324,12 @@ def _build(config: "Optional[Config]" = None) -> Dict[str, Any]:
         DATA_DIR / "knowledge_graph_blobs",
         embedder=EMBEDDER.provider,
     ) if ENABLE_GRAPH else None
+    # ── v4 durable conversation store: unbounded episodic memory in the same
+    # SQLite file as the graph (kg_portability backup/restore covers it for
+    # free). Legacy chat_history.json is imported once, idempotently, and the
+    # file is left untouched on disk as the import source.
+    CONVERSATIONS = ConversationStore(DATA_DIR / "knowledge_graph.sqlite")
+    CONVERSATIONS.import_legacy_json(HISTORY_FILE)
     # Hooks registry is constructed here (ahead of the watcher) so folder-watch
     # reindexes can fire the pre_index/post_index lifecycle hooks.
     HOOKS_REGISTRY = HooksRegistry(DATA_DIR / "hooks.json")
@@ -350,6 +357,7 @@ def _build(config: "Optional[Config]" = None) -> Dict[str, Any]:
         knowledge_graph=KNOWLEDGE_GRAPH,
         enable_graph=ENABLE_GRAPH,
         history_file=HISTORY_FILE,
+        conversation_store=CONVERSATIONS,
     )
     # ── v3.6.0 unified ingestion pipeline: the single write-side seam into the
     # Knowledge Graph. Every new source (web URL, browser tab, …) flows through this
@@ -679,18 +687,9 @@ def _build(config: "Optional[Config]" = None) -> Dict[str, Any]:
                 sensitivity=sensitive.get("sensitivity"),
                 sensitive_labels=sensitive.get("labels") or [],
             )
-            with _history_lock:
-                history = []
-                if os.path.exists(HISTORY_FILE):
-                    with open(HISTORY_FILE, "r", encoding="utf-8") as f:
-                        history = json.load(f)
-                history.append(item)
-                if len(history) > 50:
-                    history = history[-50:]
-                tmp_path = str(HISTORY_FILE) + ".tmp"
-                with open(tmp_path, "w", encoding="utf-8") as f:
-                    json.dump(history, f, ensure_ascii=False, indent=2)
-                os.replace(tmp_path, HISTORY_FILE)
+            # v4: conversations are durable episodic memory — unbounded SQLite
+            # store (the 50-message chat_history.json cap is dead).
+            CONVERSATIONS.append(item)
             try:
                 if ENABLE_GRAPH and KNOWLEDGE_GRAPH:
                     # v4: chat messages enter the brain through the unified
@@ -720,11 +719,8 @@ def _build(config: "Optional[Config]" = None) -> Dict[str, Any]:
         return _redact_secret_text(text)
 
     def get_history():
-        if not os.path.exists(HISTORY_FILE):
-            return []
         try:
-            with open(HISTORY_FILE, "r", encoding="utf-8") as f:
-                return json.load(f)
+            return CONVERSATIONS.history()
         except Exception as e:
             logging.warning("get_history failed: %s", e)
             return []
@@ -776,33 +772,10 @@ def _build(config: "Optional[Config]" = None) -> Dict[str, Any]:
         return [item for item in history if item.get("conversation_id") == conversation_id]
 
     def clear_history(keep_last: int = 0) -> Dict:
-        keep_last = max(0, min(int(keep_last or 0), 20))
-        previous = get_history()
-        kept = previous[-keep_last:] if keep_last else []
-        with open(HISTORY_FILE, "w", encoding="utf-8") as f:
-            json.dump(kept, f, ensure_ascii=False, indent=2)
-        return {"status": "cleared", "removed": max(0, len(previous) - len(kept)), "kept": len(kept)}
+        return CONVERSATIONS.clear_all(keep_last=keep_last)
 
     def clear_conversation(conversation_id: str, started_at: Optional[str] = None) -> Dict:
-        previous = get_history()
-        kept = []
-        removed = 0
-        for item in previous:
-            item_conversation_id = item.get("conversation_id")
-            should_remove = item_conversation_id == conversation_id
-            if conversation_id == "legacy-previous-history":
-                should_remove = not item_conversation_id
-            elif started_at and not item_conversation_id:
-                should_remove = str(item.get("timestamp") or "") >= started_at
-
-            if should_remove:
-                removed += 1
-            else:
-                kept.append(item)
-
-        with open(HISTORY_FILE, "w", encoding="utf-8") as f:
-            json.dump(kept, f, ensure_ascii=False, indent=2)
-        return {"status": "cleared", "conversation_id": conversation_id, "removed": removed, "kept": len(kept)}
+        return CONVERSATIONS.clear_conversation(conversation_id, started_at=started_at)
 
     def get_user_role(email: str, users: Optional[Dict] = None) -> str:
         users = users or load_users()
