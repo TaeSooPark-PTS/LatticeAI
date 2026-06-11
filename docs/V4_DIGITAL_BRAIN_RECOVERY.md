@@ -89,6 +89,17 @@ Track log (update at every track boundary):
     agent-scale and limit-blocked until ~17:30 KST; T4 sub-units proceed
     inline meanwhile — safe because T4 rewires *callers* onto public store
     APIs which T3d preserves (suite-green gate).
+- **T4.1 DONE** (commits `427d6a3` + `a2a1445`): chat (app_factory
+  save_to_history), MCP (/mcp/call knowledge_graph_ingest), and uploads
+  (upload_service) all route through IngestionPipeline — new
+  CHAT_SOURCE_TYPES route calls ingest_message w/ role/conversation
+  semantics; provenance_coverage() store metric + GET
+  /knowledge-graph/provenance/coverage endpoint (parity baseline updated
+  deliberately). Coverage now 4/5 (workspace events land with T6 rebuild).
+  Suite 511. REMAINING T4: T4.2 durable conversations store (+
+  chat_history.json import, /history contract preserved), T4.3 garden
+  absorption (watched source + dual-write notes), T4.4 graph_curator
+  wire-or-delete, backup-manifest co-location test.
   - **T3d** (agent task after limits reset 17:30 KST): latticeai/brain/
     decomposition (store/discovery/ingest/provenance/documents/extraction,
     ≤1,500 lines/module, no mixin god-object) + v2 write-mastering flip
