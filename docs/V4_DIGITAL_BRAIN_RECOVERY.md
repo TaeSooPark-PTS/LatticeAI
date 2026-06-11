@@ -156,8 +156,19 @@ Track log (update at every track boundary):
   catch-up) + brain_event triggers via visible post_tool hook on
   kg_ingest.*; __trigger__ provenance in run inputs; describe() honest
   status; started in app factory w/ idempotent hook registration. Suite 569.
-- T7 REMAINING: T7c async engine/cancel/SSE/reconciliation,
-  T7e executable registry entries.
+- **T7e DONE** (commit 014ca91): custom registry agents executable
+  (config actually loaded; honest skip in simulation).
+- **T9-canvas DONE** (commit 2fee077): force-directed canvas explorer
+  (graph-canvas.js + Explore rewire; visual spec updated).
+- **T9-IA DONE** (commit 972d34c): brain-first nav (Brain/Ask/Capture/
+  Act/Library/System); knowledge-graph is the default landing route.
+- **PHASE D DECISION**: moving to T10 RC prep. REMAINING GAPS (honest,
+  labeled, not faked): T3d brain decomposition + v2 write-mastering flip;
+  T7c async run engine/cancellation/SSE/startup reconciliation; T6
+  remainder (user UUIDs, enforced policy module, invitations, workspace
+  SQLite state); T9 remainder (legacy page deletion + parity views, login
+  rebuild, artifact ungitting, i18n, T9b approval/network/trace surfaces).
+  All have full contracts in docs/V4_IMPLEMENTATION_PLAN.md + amendments.
 - T9-canvas agent left static/v3/js/views/graph-canvas.js (509 lines,
   node --check passes) but NEVER rewired knowledge-graph.js — file kept
   uncommitted in tree; integration outstanding.
