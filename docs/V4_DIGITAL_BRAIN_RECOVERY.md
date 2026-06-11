@@ -115,6 +115,17 @@ Track log (update at every track boundary):
 - **T6.5 DONE** (commits `84ca636`+`443a8ce`): hashed session tokens at
   rest (transparent plaintext migration), 8+ alnum password policy on
   register/change-password, S256 PKCE on SSO. Suite 523→531.
+- **T5 COMPLETE** (commits b12a68c, 4e8cd70, ca50d10): latticeai/brain/
+  memory.py (BrainMemory: Decision/Experience typed records via new
+  decision/experience/workspace_event pipeline source types; simulation
+  runs REFUSED at the memory boundary) + latticeai/brain/context.py
+  (ContextAssembler: budgeted chars/4 approx_tokens, per-section
+  provenance, honest absence, seam isolation). Chat context = assembler
+  (memories finally injected at inference + hybrid search replaces LIKE;
+  doc-gen branch preserved; trace persisted as trace_seed.context_assembly).
+  Agent learnings → Experience records via AgentDeps.brain_memory port
+  (vault dump fallback only when port absent; no more bare-except).
+  Suite 541.
 - NOTE: T3d + T9-canvas agents died instantly on session limits twice
   (next reset 23:00 KST); both tasks remain queued with full contracts in
   this file + the plan.
