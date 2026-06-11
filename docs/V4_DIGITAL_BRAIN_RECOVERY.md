@@ -45,12 +45,29 @@ specs; tracks run strictly serially). Review record:
 **Phase C (Implementation) — T1 COMPLETE; next: T2 (Packaging & app factory).**
 
 Track log (update at every track boundary):
-- **T2 IN FLIGHT** (workflow `wklchl687`, run wf_88c50721-5de): implementer is
-  mid-refactor — setup.py→setup_wizard.py renamed, scripts/wheel_smoke.py
-  created, chat+workspace routers migrated to AppContext, server_app/
-  app_context/pyproject/CI being edited. Uncommitted in working tree. If the
-  agent dies: finish per T2 contract (incl. amendments — no-side-effect
-  import acceptance test is mandatory), verify, commit.
+- **T2 DONE** (commit `5e8aa1b`, 74 files). Agent did ~90% then died on a
+  session limit; finished + verified inline. setup_wizard.py packaged & wheel
+  smoke (scripts/wheel_smoke.py, runs in release CI, verified locally: 19
+  modules import from clean-venv install); latticeai/app_factory.py
+  create_app + lazy server_app facade (subprocess no-side-effect acceptance
+  test in test_app_factory.py); AppContext chat+workspace routers; telegram
+  via injectable on_chat_message; knowledge_graph_api → api/knowledge_graph
+  (parity tests); llm_router → latticeai/models/router, mcp_registry →
+  latticeai/core/mcp_registry (root shims); dead bots deleted; [tool.ruff]
+  baseline — repo lints CLEAN, CI gate added; deps bounded;
+  requirements.txt retired (CI+Dockerfile install from pyproject).
+  Suite: 486 passed. Gotcha fixed inline: app_factory must keep the legacy
+  alias imports (_agent_risk etc.) as locals — they ARE the server_app
+  attribute surface via dict(locals()).
+- **NEXT: T3** sequenced as atomic sub-units (subagent limits reset 17:30
+  KST; localized pieces inline first): (a) FTS5 keyword index w/ honest
+  fallback + Korean-recall test; (b) canonical-enum normalization inside
+  store writes + owner/workspace/visibility params (NULL default);
+  (c) edge occurrence records + superseded_by; (d) THEN the
+  latticeai/brain/ decomposition + v2 write-mastering flip + downgrade
+  guard (agent task w/ full T3 contract incl. amendments — edges_v2
+  identity rebuild is mandatory before native canonical writes);
+  (e) kg-schema.md regen. graph_curator decision moved to T4.
 - **T9 PARTIAL — vendoring half DONE** (commit `aa613ae`, parallel-safe per
   amendments): all CDN references removed from every shipped page (Inter,
   Tabler icons, chart.js, marked.js vendored under static/vendor);
