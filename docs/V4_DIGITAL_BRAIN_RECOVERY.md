@@ -42,7 +42,22 @@ chat-history import added; garden = watched source; T9b UI track added;
 T7 owns workflow_engine.py + realtime.py with suspension/reconciliation
 specs; tracks run strictly serially). Review record:
 `docs/v4-audit/v4_design_review.json`.
-**Phase C (Implementation) — NEXT: track T1 (Truth & safety floor).**
+**Phase C (Implementation) — T1 COMPLETE; next: T2 (Packaging & app factory).**
+
+Track log (update at every track boundary):
+- **T1 DONE** (commits `1cddc67` frontend + `c574eb6` backend). All 7 items:
+  by-id snapshot/memory authz via new WorkspaceService.authorize_record_read/
+  authorize_memory_delete; /workspace/os leak removed (workspace_count
+  replaces raw registry; legacy+v3 UI only read workspace_registry — checked);
+  chat context pairing fix (pair_user_history, module-level in api/chat.py);
+  recall matches-key fix + shared lexical scorer (no constants); run records
+  carry mode/record_schema_version=2 and simulation runs skip KG ingestion
+  (record_agent_run/record_workflow_run mode param; orchestrator declares
+  mode; agent_runtime threads it); fake fusion meters removed (hashed bundle
+  regenerated, manifest updated); README overclaims corrected.
+  Suite: 469 passed (455 baseline + 3 static guards + 11 T1 tests).
+  Note: T1 ran inline (main session) after the workflow implementer hit a
+  usage limit; only the frontend half came from the workflow agent.
 
 Scope ruling (user directive, session 3): risk/effort/migration size are NOT
 valid exclusion reasons — only true technical blockers. Consequently the
