@@ -145,17 +145,25 @@ def test_edge_reupsert_tracks_confidence_and_updates_in_place(store):
     assert json.loads(rows[0]["metadata"])["confidence"] == pytest.approx(0.3)
 
 
-def test_edge_distinct_legacy_type_adds_row_on_reupsert(store):
-    """A different raw legacy type between the same pair is a NEW edge even when it
-    normalizes to the same EdgeType as an existing one."""
+def test_edge_synonym_labels_dedupe_at_write_door(store):
+    """v4 write-door contract: synonymous labels normalize to ONE canonical
+    edge ('mentions' and '관련됨' are both MENTIONS — new writes dedupe), while
+    two genuinely different canonical types between the same pair coexist.
+    (Distinct legacy rows from pre-v4 data keep their separate identities via
+    the backfill path — covered in test_kg_v4_edge_identity.)"""
     with store._connect() as conn:
         store._upsert_node(conn, "a", "Concept", "A", "", {})
         store._upsert_node(conn, "b", "Concept", "B", "", {})
         store._upsert_edge(conn, "a", "b", "mentions", 1.0, {})   # → MENTIONS
-        store._upsert_edge(conn, "a", "b", "관련됨", 1.0, {})       # → MENTIONS, distinct legacy
+        store._upsert_edge(conn, "a", "b", "관련됨", 1.0, {})       # → MENTIONS (same edge)
+        store._upsert_edge(conn, "a", "b", "포함함", 1.0, {})       # → CONTAINS (new edge)
     with store._connect() as conn:
-        n = conn.execute("SELECT COUNT(*) FROM edges_v2 WHERE source='a' AND target='b'").fetchone()[0]
-    assert n == 2
+        rows = conn.execute(
+            "SELECT type, metadata FROM edges_v2 WHERE source='a' AND target='b' ORDER BY type"
+        ).fetchall()
+    assert [r["type"] for r in rows] == ["CONTAINS", "MENTIONS"]
+    # The original label is preserved for traceability.
+    assert "포함함" in rows[0]["metadata"]
 
 
 def test_view_is_byte_faithful_to_legacy(store):

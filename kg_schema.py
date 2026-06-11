@@ -329,6 +329,10 @@ CREATE TABLE IF NOT EXISTS nodes_v2 (
   attrs            TEXT NOT NULL DEFAULT '{}',
   embedding        BLOB,
   owner_id         TEXT,
+  -- NULL workspace_id = legacy-global (pre-scoping rows, readable machine-wide).
+  workspace_id     TEXT,
+  -- 'legacy' marks rows that predate scoping — the 'private' default must not
+  -- silently privatize previously machine-shared data (design-review ruling).
   visibility       TEXT NOT NULL DEFAULT 'private',
   created_at       TEXT NOT NULL,
   updated_at       TEXT NOT NULL,
@@ -414,8 +418,16 @@ class KGStoreV2:
         "edges_v2": {"id", "source", "target", "type", "legacy_type", "weight",
                      "confidence", "evidence", "metadata", "created_by", "created_at"},
         "nodes_v2": {"id", "type", "legacy_type", "label", "summary", "attrs",
-                     "embedding", "owner_id", "visibility", "created_at",
-                     "updated_at", "style", "tone", "importance_score", "last_used"},
+                     "embedding", "owner_id", "workspace_id", "visibility",
+                     "created_at", "updated_at", "style", "tone",
+                     "importance_score", "last_used"},
+    }
+
+    # Columns added after a table's first release that can be healed in place
+    # with ALTER TABLE ADD COLUMN (nullable / defaulted only).
+    _V2_ADDABLE_COLUMNS = {
+        "nodes_v2": {"workspace_id": "TEXT"},
+        "edges_v2": {},
     }
 
     def _drop_stale_empty_v2_tables(self, conn: sqlite3.Connection) -> None:
@@ -436,6 +448,13 @@ class KGStoreV2:
                 continue
             cols = {r[1] for r in conn.execute(f"PRAGMA table_info({table})").fetchall()}
             missing = self._V2_EXPECTED_COLUMNS[table] - cols
+            if not missing:
+                continue
+            # Additive columns heal in place without touching data.
+            addable = self._V2_ADDABLE_COLUMNS.get(table, {})
+            for col in sorted(missing & set(addable)):
+                conn.execute(f"ALTER TABLE {table} ADD COLUMN {col} {addable[col]}")
+            missing -= set(addable)
             if not missing:
                 continue
             count = conn.execute(f"SELECT COUNT(*) FROM {table}").fetchone()[0]

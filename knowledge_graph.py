@@ -1184,26 +1184,40 @@ class KnowledgeGraphStore:
         self, conn: sqlite3.Connection, node_id: str, node_type: str, title: str,
         summary: Optional[str], metadata_json: Optional[str],
         *, created_at: Optional[str] = None, updated_at: Optional[str] = None,
+        owner: Optional[str] = None, workspace_id: Optional[str] = None,
+        visibility: Optional[str] = None,
     ) -> None:
         if KGStoreV2 is None:
             return
         ts = updated_at or _now()
         norm_type = NodeType.from_legacy(node_type).value if NodeType is not None else node_type
+        # Scope resolution: explicit param > metadata hints > legacy-global.
+        # 'legacy' (not 'private') marks unscoped rows — the column default
+        # must never silently privatize previously machine-shared data.
+        meta = _safe_loads(metadata_json) if metadata_json else {}
+        owner = owner or meta.get("user_email") or meta.get("owner") or None
+        workspace_id = workspace_id or meta.get("workspace_id") or None
+        visibility = visibility or ("legacy" if workspace_id is None else "workspace")
         try:
             conn.execute(
                 """
                 INSERT INTO nodes_v2(id, type, legacy_type, label, summary, attrs,
-                                     owner_id, visibility, created_at, updated_at,
-                                     importance_score)
-                VALUES (?, ?, ?, ?, ?, ?, NULL, 'private', ?, ?, 0.0)
+                                     owner_id, workspace_id, visibility,
+                                     created_at, updated_at, importance_score)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 0.0)
                 ON CONFLICT(id) DO UPDATE SET
                   type=excluded.type, legacy_type=excluded.legacy_type,
                   label=excluded.label, summary=excluded.summary,
-                  attrs=excluded.attrs, updated_at=excluded.updated_at
+                  attrs=excluded.attrs, updated_at=excluded.updated_at,
+                  owner_id=COALESCE(excluded.owner_id, nodes_v2.owner_id),
+                  workspace_id=COALESCE(excluded.workspace_id, nodes_v2.workspace_id),
+                  visibility=CASE WHEN excluded.visibility != 'legacy'
+                                  THEN excluded.visibility
+                                  ELSE nodes_v2.visibility END
                 """,
                 (node_id, norm_type, node_type, title, summary,
                  metadata_json if metadata_json is not None else "{}",
-                 created_at or ts, ts),
+                 owner, workspace_id, visibility, created_at or ts, ts),
             )
         except Exception as ex:
             logging.debug("knowledge_graph: v2 node projection skipped (%s): %s", node_id, ex)
@@ -1296,6 +1310,9 @@ class KnowledgeGraphStore:
         summary: str = "",
         metadata: Optional[Dict[str, Any]] = None,
         raw: Optional[Dict[str, Any]] = None,
+        owner: Optional[str] = None,
+        workspace_id: Optional[str] = None,
+        visibility: Optional[str] = None,
     ) -> str:
         now = _now()
         # Canonical stored values, computed once and shared with the v2
@@ -1318,7 +1335,8 @@ class KnowledgeGraphStore:
         )
         # dual-write: project into the v2 graph on the same transaction
         self._v2_project_node(conn, node_id, node_type, title_s, summary_s, meta_json,
-                              created_at=now, updated_at=now)
+                              created_at=now, updated_at=now,
+                              owner=owner, workspace_id=workspace_id, visibility=visibility)
         if node_type != "Chunk":
             self._upsert_vector_item(
                 conn,
@@ -1339,6 +1357,16 @@ class KnowledgeGraphStore:
         weight: float = 1.0,
         metadata: Optional[Dict[str, Any]] = None,
     ) -> str:
+        # v4 write door: every new edge stores the canonical EdgeType value —
+        # free-string types (e.g. '포함함', '언급함') are normalized here, so no
+        # caller can mint new legacy taxonomy. The original label survives in
+        # metadata.legacy_label for traceability.
+        if EdgeType is not None:
+            canonical = EdgeType.from_legacy(edge_type).value
+            if canonical != edge_type:
+                metadata = dict(metadata or {})
+                metadata.setdefault("legacy_label", edge_type)
+            edge_type = canonical
         edge_id = f"edge:{_sha256_text(f'{from_node}|{edge_type}|{to_node}')[:24]}"
         now = _now()
         meta_json = _json(metadata)   # canonical string shared with the projection
@@ -4444,21 +4472,26 @@ class KnowledgeGraphStore:
             return {"status": "skipped", "removed_nodes": 0}
         conv_id = f"conversation:{_slug(conversation_id)}"
         with self._connect() as conn:
+            # Edge rows may carry the legacy lowercase label (pre-v4) or the
+            # canonical EdgeType value (v4 write door) — match both.
             direct_ids = [
                 row["to_node"]
                 for row in conn.execute(
-                    "SELECT to_node FROM edges WHERE from_node=? AND type='contains'",
+                    "SELECT to_node FROM edges WHERE from_node=? AND type IN ('contains', 'CONTAINS')",
                     (conv_id,),
                 )
             ]
             remove_ids = set(direct_ids)
+            child_types = [
+                "has_chunk", "implies", "contains_signal", "has_page",
+                "has_slide", "has_sheet", "contains_image",
+            ]
+            child_types += [t.upper() for t in child_types]
+            placeholders = ",".join("?" for _ in child_types)
             for source_id in list(direct_ids):
                 for row in conn.execute(
-                    """
-                    SELECT to_node FROM edges
-                    WHERE from_node=? AND type IN ('has_chunk', 'implies', 'contains_signal', 'has_page', 'has_slide', 'has_sheet', 'contains_image')
-                    """,
-                    (source_id,),
+                    f"SELECT to_node FROM edges WHERE from_node=? AND type IN ({placeholders})",
+                    (source_id, *child_types),
                 ):
                     remove_ids.add(row["to_node"])
             remove_ids.add(conv_id)
