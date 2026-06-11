@@ -991,7 +991,21 @@ def _build(config: "Optional[Config]" = None) -> Dict[str, Any]:
     router = LLMRouter()
     set_llm_router(router)
     configure_tool_dispatch(load_users=load_users, get_user_role=get_user_role)
-    gardener = PReinforceGardener()
+    # v4 garden absorption: the vault is the user-owned markdown mirror; the
+    # brain is authoritative. Existing notes import idempotently at startup
+    # (content-hash dedup — re-runs are no-ops), and garden context queries
+    # the brain instead of rescanning the vault per chat message.
+    gardener = PReinforceGardener(
+        ingestion_pipeline=INGESTION_PIPELINE if ENABLE_GRAPH else None,
+        knowledge_graph=KNOWLEDGE_GRAPH,
+    )
+    if ENABLE_GRAPH:
+        try:
+            _garden_import = gardener.import_vault()
+            if _garden_import.get("failed"):
+                logging.warning("garden vault import: %s notes failed to ingest", _garden_import["failed"])
+        except Exception as exc:
+            logging.warning("garden vault import skipped: %s", exc)
 
     async def autoload_default_model() -> None:
         if not AUTOLOAD_MODELS:
