@@ -80,7 +80,15 @@ Track log (update at every track boundary):
     Suite 503. NOTE for T4/T6: ingestion + workspace callers should now
     pass owner/workspace_id explicitly (metadata user_email/workspace_id
     hints already resolve).
-  - **T3c**: edge occurrence records (observed_at) + node superseded_by.
+  - **T3c DONE** (commit after b7de8d7): edge_occurrences table (every
+    observation recorded, cascades) + nodes_v2.superseded_by +
+    mark_superseded(). Suite 507.
+  - **T3e DONE**: docs/kg-schema.md rewritten to match code (false API
+    claims removed; FTS5/scope/temporal documented).
+  - RESEQUENCING DECISION: T3d (decomposition + write-mastering flip) is
+    agent-scale and limit-blocked until ~17:30 KST; T4 sub-units proceed
+    inline meanwhile — safe because T4 rewires *callers* onto public store
+    APIs which T3d preserves (suite-green gate).
   - **T3d** (agent task after limits reset 17:30 KST): latticeai/brain/
     decomposition (store/discovery/ingest/provenance/documents/extraction,
     ≤1,500 lines/module, no mixin god-object) + v2 write-mastering flip
