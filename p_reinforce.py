@@ -3,10 +3,8 @@ P-Reinforce Knowledge Gardener
 Raw 데이터를 자동으로 분석해서 구조화된 마크다운 위키로 정리
 """
 
-import json
 import os
 import re
-import time
 import shutil
 from datetime import datetime
 from pathlib import Path
@@ -112,7 +110,7 @@ class PReinforceGardener:
             "---\n",
             raw,
             "\n\n---",
-            f"*Auto-organized by P-Reinforce Gardener*",
+            "*Auto-organized by P-Reinforce Gardener*",
         ]
         return "\n".join(lines)
 

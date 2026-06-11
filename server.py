@@ -1,21 +1,25 @@
 """Thin compatibility entrypoint for the Lattice AI FastAPI app.
 
-The application assembly and route wiring live in ``latticeai.server_app``.
-This module keeps the historical ``server:app`` import path used by uvicorn,
-Docker, CLI scripts, and older tests.
+The application is built by ``latticeai.app_factory.create_app``; this module
+keeps the historical ``server:app`` import path used by uvicorn, Docker, CLI
+scripts, and older tests. Attribute access is proxied lazily so that simply
+importing ``server`` performs no construction — ``uvicorn server:app`` (or
+``from server import app``) triggers the factory on first access.
 """
 
 from __future__ import annotations
 
+from typing import Any, List
+
 from latticeai import server_app as _server_app
 
 
-for _name in dir(_server_app):
-    if not _name.startswith("__"):
-        globals()[_name] = getattr(_server_app, _name)
+def __getattr__(name: str) -> Any:
+    return getattr(_server_app, name)
 
 
-app = _server_app.app
+def __dir__() -> List[str]:
+    return sorted(set(globals()) | set(dir(_server_app)))
 
 
 def main() -> None:

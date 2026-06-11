@@ -7,7 +7,6 @@ whether served from legacy or v2. If this passes, the v2 cutover is safe.
 """
 
 import json
-import sqlite3
 
 import pytest
 

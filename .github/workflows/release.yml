@@ -43,7 +43,7 @@ jobs:
       - name: Install Python dependencies
         run: |
           pip install --upgrade build twine
-          pip install -r requirements.txt
+          pip install "."
           pip install pytest
 
       - name: Run unit tests
@@ -51,6 +51,9 @@ jobs:
 
       - name: Build Python sdist + wheel
         run: python -m build
+
+      - name: Installed-wheel smoke test (fresh venv, non-repo cwd)
+        run: python scripts/wheel_smoke.py --wheel "dist/ltcai-${{ steps.meta.outputs.version }}-py3-none-any.whl"
 
       - name: Validate Python distribution
         # Explicit filenames — more reliable than a glob on all shells/CI runners.

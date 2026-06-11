@@ -22,7 +22,7 @@ from __future__ import annotations
 
 import os
 from enum import Enum
-from typing import Dict, List, Optional, Protocol, runtime_checkable
+from typing import Dict, List, Protocol, runtime_checkable
 
 
 class Edition(str, Enum):

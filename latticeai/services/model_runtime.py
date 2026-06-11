@@ -18,7 +18,6 @@ import re
 import shutil
 import subprocess
 import sys
-import tempfile
 import threading
 import time
 import urllib.error
@@ -26,16 +25,14 @@ import urllib.request
 from pathlib import Path
 from typing import AsyncIterator, Dict, List, Optional
 
-import httpx
 from fastapi import HTTPException, Request
 
-from llm_router import (
+from latticeai.models.router import (
     AsyncOpenAI,
     HF_MODELS_ROOT,
     OPENAI_COMPATIBLE_PROVIDERS,
     ensure_mlx_runtime,
     hf_model_dir,
-    normalize_branding,
     parse_model_ref,
 )
 from latticeai.core.model_compat import (
@@ -89,7 +86,7 @@ def configure_model_runtime(**deps) -> None:
 # Catalog data + version-dedup helpers live in ``model_catalog``; re-exported
 # here so existing ``from ...model_runtime import ENGINE_MODEL_CATALOG`` imports
 # keep working.
-from latticeai.services.model_catalog import (  # noqa: F401  (re-export)
+from latticeai.services.model_catalog import (  # noqa: E402, F401 (re-export after the module globals it documents)
     ENGINE_INSTALLERS,
     ENGINE_MODEL_CATALOG,
     MODEL_ENGINE_ALIASES,

@@ -264,7 +264,7 @@ def create_models_router(
 
     @router.post("/setup/set-api-key")
     async def set_api_key(req: SetApiKeyRequest, request: Request):
-        from llm_router import OPENAI_COMPATIBLE_PROVIDERS
+        from latticeai.models.router import OPENAI_COMPATIBLE_PROVIDERS
         config = OPENAI_COMPATIBLE_PROVIDERS.get(req.provider)
         if not config:
             raise HTTPException(status_code=400, detail="알 수 없는 프로바이더입니다.")

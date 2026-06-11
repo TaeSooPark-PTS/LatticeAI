@@ -19,7 +19,7 @@ concept and are read dynamically at call time.
 from __future__ import annotations
 
 import sys
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 from pathlib import Path
 from typing import List, Mapping, Optional
 

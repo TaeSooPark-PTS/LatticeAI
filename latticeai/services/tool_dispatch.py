@@ -22,8 +22,16 @@ from latticeai.core.tool_registry import ToolPermission, ToolPolicy
 from tools import AGENT_ROOT, DEFAULT_TOOL_REGISTRY, ToolError, ensure_agent_root
 
 
-_load_users: Callable[[], Dict[str, Any]] = lambda: {}
-_get_user_role: Callable[..., str] = lambda _email, _users=None: "user"
+def _default_load_users() -> Dict[str, Any]:
+    return {}
+
+
+def _default_get_user_role(_email, _users=None) -> str:
+    return "user"
+
+
+_load_users: Callable[[], Dict[str, Any]] = _default_load_users
+_get_user_role: Callable[..., str] = _default_get_user_role
 
 FILE_CREATE_ACTIONS = set(DEFAULT_TOOL_REGISTRY.file_create_actions)
 TOOL_GOVERNANCE: Dict[str, ToolPolicy] = dict(DEFAULT_TOOL_REGISTRY.governance)

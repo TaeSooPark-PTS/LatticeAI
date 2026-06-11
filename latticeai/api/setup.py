@@ -15,8 +15,8 @@ from auto_setup import (
     recommend as auto_setup_recommend,
     verify as auto_setup_verify,
 )
-from llm_router import parse_model_ref
-from setup import get_recommendations, install_stream, open_url, scan_environment
+from latticeai.models.router import parse_model_ref
+from setup_wizard import get_recommendations, install_stream, open_url, scan_environment
 
 
 def create_setup_router(*, model_router, require_user) -> APIRouter:

@@ -4,7 +4,6 @@ import logging
 import base64
 import os
 import socket
-import subprocess
 import tempfile
 import time
 import zipfile
@@ -703,7 +702,7 @@ async def send_plan_for_approval(client, chat_id, data: dict) -> None:
     e_model = data.get("executing_model", "current")
     r_model = data.get("reviewing_model", "current")
 
-    lines = [f"📋 *플래닝 완료* — 실행 전 확인해주세요\n"]
+    lines = ["📋 *플래닝 완료* — 실행 전 확인해주세요\n"]
     if goal:
         lines.append(f"*목표:* {goal}\n")
     for i, step in enumerate(steps, 1):

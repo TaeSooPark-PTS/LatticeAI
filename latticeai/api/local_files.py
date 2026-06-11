@@ -14,7 +14,7 @@ from fastapi import APIRouter, HTTPException, Request
 from fastapi.responses import FileResponse
 from pydantic import BaseModel
 
-from knowledge_graph_api import create_knowledge_graph_router
+from latticeai.api.knowledge_graph import create_knowledge_graph_router
 from local_knowledge_api import create_local_knowledge_router
 from tools import local_list, local_read, local_write
 

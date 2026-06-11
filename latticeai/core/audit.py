@@ -5,7 +5,6 @@ import logging
 import os
 import re
 import threading
-from datetime import datetime
 from pathlib import Path
 from typing import Any, Callable, Dict, List, Optional
 
@@ -217,12 +216,6 @@ def build_admin_audit_report(
                 u["high_sensitive_events"] += 1
             sensitive_events.append(_public_audit_event(event))
 
-    allowed_keys = {
-        "event_type", "timestamp", "role", "user_email", "user_nickname", "source",
-        "conversation_id", "command", "scope", "target_email", "filename", "mime_type",
-        "ext", "bytes", "extracted_chars", "graph_node", "keep_last", "removed", "kept",
-        "started_at", "sensitivity", "sensitive_labels", "content_preview", "content_chars",
-    }
     recent = [_public_audit_event(e) for e in events[-50:]]
 
     result: Dict[str, Any] = {

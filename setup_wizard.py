@@ -2,6 +2,11 @@
 Smart Setup Wizard — Environment Scanner, Recommender & Auto-Installer
 Detects hardware, tools, and API keys; returns tailored recommendations;
 streams SSE installation progress.
+
+Formerly the root ``setup.py``; renamed in v4 so it no longer collides with
+the setuptools build entrypoint and actually ships in the wheel
+(``pyproject.toml`` py-modules). Packaging is owned entirely by
+``pyproject.toml`` — there is deliberately no root ``setup.py``.
 """
 
 import asyncio
@@ -1065,7 +1070,7 @@ async def install_stream(items: List[Dict], router: Any) -> AsyncIterator[str]:
         elif atype == "url":
             url = action.get("url", "")
             yield _sse({"id": item_id, "status": "auth",
-                        "msg": f"설치 페이지를 브라우저에서 엽니다...", "auth_url": url})
+                        "msg": "설치 페이지를 브라우저에서 엽니다...", "auth_url": url})
             open_url(url)
             binary = action.get("binary")
             if binary:
@@ -1122,26 +1127,6 @@ async def _brew_install(package: str) -> Tuple[bool, str]:
         return False, "설치 시간 초과 (5분)"
     except Exception as e:
         return False, str(e)
-
-
-def _discover_packaged_data_files() -> List[Tuple[str, List[str]]]:
-    """Include static/plugin assets generated before packaging."""
-    groups: List[Tuple[str, List[str]]] = []
-    for root_name in ("static", "plugins"):
-        root = Path(root_name)
-        if not root.exists():
-            continue
-        for directory in sorted([root, *[p for p in root.rglob("*") if p.is_dir()]]):
-            files = sorted(str(p) for p in directory.iterdir() if p.is_file() and not p.name.startswith("."))
-            if files:
-                groups.append((str(directory), files))
-    return groups
-
-
-if __name__ == "__main__":
-    # Packaging entrypoint for legacy setuptools invocations used by `python -m build`.
-    from setuptools import setup as _setuptools_setup
-    _setuptools_setup(data_files=_discover_packaged_data_files())
 
 
 def open_url(url: str) -> None:

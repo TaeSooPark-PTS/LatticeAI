@@ -15,11 +15,12 @@ from __future__ import annotations
 import asyncio
 import logging
 from datetime import datetime
-from pathlib import Path
-from typing import Any, Callable, Dict, List, Optional
+from typing import Dict, List, Optional
 
 from fastapi import APIRouter, HTTPException, Request
 from pydantic import BaseModel
+
+from latticeai.services.app_context import AppContext
 
 
 # ── Request models (workspace-only; moved verbatim from server_app) ──────────
@@ -135,54 +136,47 @@ def _workspace_scope_from_request(request: Request) -> Optional[str]:
     return query.strip() if query and query.strip() else None
 
 
-def create_workspace_router(
-    *,
-    service,
-    require_user: Callable[[Request], str],
-    require_admin: Callable[[Request], Any],
-    get_current_user: Callable[[Request], Optional[str]],
-    append_audit_event: Callable[..., None],
-    graph_stats: Callable[[], Dict],
-    workspace_models: Callable[[], Dict],
-    workspace_settings: Callable[[], Dict],
-    get_history: Callable[[], List[Dict]],
-    get_audit_log: Callable[[], List[Dict]],
-    require_graph: Callable[[], Any],
-    workspace_graph: Callable[[], Any],
-    knowledge_graph: Any,
-    local_kg_watcher: Any,
-    load_users: Callable[[], Dict],
-    scan_environment: Callable[[], Any],
-    local_sysinfo: Callable[[Request], Any],
-    get_recommendations: Callable[[Any], Any],
-    fetch_skills_marketplace: Callable[..., Any],
-    install_skill: Callable[..., Any],
-    remove_skill_directory: Callable[..., Dict],
-    redact_secret_text: Callable[[str], str],
-    skills_dir: Path,
-    capability_registry: Any,
-    ui_file_response: Callable[[Path], Any],
-    static_dir: Path,
-    local_model: Optional[str],
-    public_model: Optional[str],
-) -> APIRouter:
+def create_workspace_router(context: AppContext) -> APIRouter:
+    """Build the workspace/org router from the typed application context.
+
+    Replaces the historical ~30-kwarg factory signature: ``context``
+    (:class:`latticeai.services.app_context.AppContext`) carries the same
+    dependencies as typed fields.
+    """
     router = APIRouter()
 
     # Bind injected deps to the names the moved handler bodies expect.
+    service = context.workspace_service
+    require_user = context.require_user
+    require_admin = context.require_admin
+    get_current_user = context.get_current_user
+    append_audit_event = context.append_audit_event
+    get_history = context.get_history
+    get_audit_log = context.get_audit_log
+    load_users = context.load_users
+    scan_environment = context.scan_environment
+    local_sysinfo = context.local_sysinfo
+    get_recommendations = context.get_recommendations
+    install_skill = context.install_skill
+    remove_skill_directory = context.remove_skill_directory
+    redact_secret_text = context.redact_secret_text
+    capability_registry = context.capability_registry
+    ui_file_response = context.ui_file_response
+
     svc = service
     WORKSPACE_OS = service.store
-    _workspace_graph = workspace_graph
-    _graph_stats_safe = graph_stats
-    _workspace_models_payload = workspace_models
-    _workspace_settings_payload = workspace_settings
-    _require_graph = require_graph
-    KNOWLEDGE_GRAPH = knowledge_graph
-    LOCAL_KG_WATCHER = local_kg_watcher
-    SKILLS_DIR = skills_dir
-    STATIC_DIR = static_dir
-    LOCAL_MODEL = local_model
-    PUBLIC_MODEL = public_model
-    _fetch_skills_marketplace = fetch_skills_marketplace
+    _workspace_graph = context.workspace_graph
+    _graph_stats_safe = context.graph_stats
+    _workspace_models_payload = context.workspace_models
+    _workspace_settings_payload = context.workspace_settings
+    _require_graph = context.require_graph
+    KNOWLEDGE_GRAPH = context.knowledge_graph
+    LOCAL_KG_WATCHER = context.local_kg_watcher
+    SKILLS_DIR = context.skills_dir
+    STATIC_DIR = context.static_dir
+    LOCAL_MODEL = context.local_model
+    PUBLIC_MODEL = context.public_model
+    _fetch_skills_marketplace = context.fetch_skills_marketplace
     _workspace_scope = _workspace_scope_from_request
 
     def _gate_read(request: Request):

@@ -10,7 +10,7 @@ from __future__ import annotations
 
 import secrets
 from pathlib import Path
-from typing import Any, Callable, Dict, Optional, Set
+from typing import Any, Callable, Optional, Set
 
 from fastapi import APIRouter, HTTPException, Request
 from fastapi.responses import StreamingResponse

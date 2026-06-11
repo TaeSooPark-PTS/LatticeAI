@@ -7,11 +7,7 @@ Path resolution reads ``tools.AGENT_ROOT`` so tests can redirect the sandbox.
 from __future__ import annotations
 
 import json
-import os
 import re
-import shlex
-import subprocess
-import tempfile
 from html.parser import HTMLParser
 from pathlib import Path
 from typing import Any, Dict, List, Optional

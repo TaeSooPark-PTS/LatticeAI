@@ -1,11 +1,10 @@
 """Tests for the document generation pipeline: intent detection, context builder, hybrid retrieval."""
-import os
 import sys
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).parent.parent.parent))
 
-from knowledge_graph import KnowledgeGraphStore, _extract_concepts, _extract_concepts_rules, _extract_triples, _extract_triples_rules
+from knowledge_graph import KnowledgeGraphStore, _extract_concepts, _extract_concepts_rules, _extract_triples_rules
 from latticeai.core.document_generator import detect_document_intent, DocumentGenerationSession, build_document_system_prompt
 from latticeai.core.context_builder import retrieve_context_for_generation, format_sources_footnote
 

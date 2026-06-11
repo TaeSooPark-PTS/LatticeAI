@@ -1,6 +1,5 @@
 """Unit tests for latticeai.core.timezones (item 7)."""
 
-import importlib
 from datetime import datetime, timezone
 
 from latticeai.core import timezones

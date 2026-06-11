@@ -20,8 +20,8 @@ from typing import Any, Callable, Dict, List, Optional
 from fastapi import APIRouter, HTTPException, Request
 from pydantic import BaseModel
 
-import mcp_registry
-from mcp_registry import (
+import latticeai.core.mcp_registry as mcp_registry
+from latticeai.core.mcp_registry import (
     _get_combined_registry,
     _fetch_skills_marketplace,
     _fetch_plugin_directory,
@@ -290,7 +290,7 @@ def create_mcp_router(
             if not skill_md.exists():
                 continue
             lines = skill_md.read_text(encoding="utf-8").splitlines()
-            desc = next((l.split(":", 1)[1].strip() for l in lines if l.startswith("description:")), "")
+            desc = next((ln.split(":", 1)[1].strip() for ln in lines if ln.startswith("description:")), "")
             comment = lines[0] if lines else ""
             if "anthropics/claude-plugins-official" in comment:
                 source = "anthropic"

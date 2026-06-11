@@ -7,7 +7,7 @@ keyword search into UI-ready contracts without tying routers to store internals.
 from __future__ import annotations
 
 from dataclasses import dataclass
-from typing import Any, Dict, List, Mapping, Optional
+from typing import Any, Dict, Mapping, Optional
 
 
 DEFAULT_HYBRID_WEIGHTS = {

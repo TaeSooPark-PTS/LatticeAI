@@ -2,12 +2,10 @@
 
 from __future__ import annotations
 
-from datetime import datetime
-from pathlib import Path
 from typing import Any, Dict, List, Optional
 
 from p_reinforce import BRAIN_DIR, STRUCTURE
-from tools import ToolError
+from tools import MAX_FILE_BYTES, ToolError
 
 
 def _safe_brain_folder(folder: str) -> str:

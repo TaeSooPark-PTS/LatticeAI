@@ -24,7 +24,7 @@ from __future__ import annotations
 import json
 from datetime import datetime
 from pathlib import Path
-from typing import Any, Callable, Dict, List, Optional
+from typing import Any, Dict, List, Optional
 
 # Personal workspace memory kinds (from WorkspaceOS.MEMORY_KINDS).
 WORKSPACE_KINDS = (

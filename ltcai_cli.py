@@ -149,7 +149,7 @@ def _ensure_cloudflared() -> str:
         return str(dest)
     dest.parent.mkdir(parents=True, exist_ok=True)
     url = _cloudflared_url()
-    print(f"  cloudflared not found — downloading from GitHub...")
+    print("  cloudflared not found — downloading from GitHub...")
     try:
         urllib.request.urlretrieve(url, dest)
         if sys.platform != "win32":
@@ -175,7 +175,6 @@ def _send_telegram(token: str, chat_id: str, text: str) -> None:
 
 
 def _start_tunnel(port: int) -> str | None:
-    import urllib.parse
 
     bin_path = _ensure_cloudflared()
     if not bin_path:
