@@ -1225,8 +1225,7 @@ class KnowledgeGraphStore:
                 INSERT INTO edges_v2(id, source, target, type, legacy_type, weight,
                                      confidence, evidence, metadata, created_by, created_at)
                 VALUES (?, ?, ?, ?, ?, ?, ?, '[]', ?, 'legacy', ?)
-                ON CONFLICT(source, target, legacy_type) DO UPDATE SET
-                  type=excluded.type,
+                ON CONFLICT(source, target, type, legacy_type) DO UPDATE SET
                   weight=max(edges_v2.weight, excluded.weight),
                   confidence=excluded.confidence,
                   metadata=excluded.metadata

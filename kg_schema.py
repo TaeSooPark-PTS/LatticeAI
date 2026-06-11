@@ -116,8 +116,14 @@ class NodeType(str, Enum):
         매핑이 없는(동적 이벤트 등) 타입은 ``CONCEPT`` 로 폴백하지만, 호출부는
         원본 문자열을 ``legacy_type`` 칼럼에 별도 보존하므로 정보 손실은 없다.
         """
-        m = (label or "").strip().lower()
-        return _LEGACY_NODE_MAP.get(m, cls.CONCEPT)
+        m = (label or "").strip()
+        # Canonical values round-trip exactly (v4 native writes use them);
+        # without this, CODE_FILE/AI_RESPONSE etc. would degrade to CONCEPT.
+        try:
+            return cls(m.upper())
+        except ValueError:
+            pass
+        return _LEGACY_NODE_MAP.get(m.lower(), cls.CONCEPT)
 
 
 class EdgeType(str, Enum):
@@ -170,8 +176,13 @@ class EdgeType(str, Enum):
         매핑이 없는 동적 타입은 ``MENTIONS`` 로 폴백하지만, 호출부는 원본 문자열을
         ``edges_v2.legacy_type`` 에 보존하므로 정보 손실은 없다.
         """
-        m = (label or "").strip().lower()
-        return _LEGACY_EDGE_MAP.get(m, cls.MENTIONS)
+        m = (label or "").strip()
+        # Canonical values round-trip exactly (v4 native writes use them).
+        try:
+            return cls(m.upper())
+        except ValueError:
+            pass
+        return _LEGACY_EDGE_MAP.get(m.lower(), cls.MENTIONS)
 
 
 # legacy(자유 문자열 / 한글 동사) → enum 매핑 표.
@@ -339,10 +350,15 @@ CREATE TABLE IF NOT EXISTS edges_v2 (
   metadata     TEXT NOT NULL DEFAULT '{}',
   created_by   TEXT NOT NULL DEFAULT 'user',
   created_at   TEXT NOT NULL,
-  -- Edge identity follows the *raw* legacy type, not the normalized type:
-  -- two distinct legacy types between the same pair (e.g. "mentions" and
-  -- "관련됨") must stay distinct edges even though both normalize to MENTIONS.
-  UNIQUE(source, target, legacy_type),
+  -- Edge identity (v4): the normalized type AND the raw legacy type.
+  -- Migrated rows keep their legacy_type discriminator, so two distinct
+  -- legacy strings between one pair (e.g. "mentions" / "관련됨") stay
+  -- distinct even though both normalize to MENTIONS. Native canonical
+  -- writes carry legacy_type='' so their identity is effectively
+  -- (source, target, type) — two canonical types between the same pair
+  -- (e.g. MENTIONS + CONTAINS) never collide. The pre-v4
+  -- UNIQUE(source, target, legacy_type) would have silently merged them.
+  UNIQUE(source, target, type, legacy_type),
   FOREIGN KEY(source) REFERENCES nodes_v2(id) ON DELETE CASCADE,
   FOREIGN KEY(target) REFERENCES nodes_v2(id) ON DELETE CASCADE
 );
@@ -446,8 +462,40 @@ class KGStoreV2:
         with self._conn() as own:
             self._init_schema_on(own)
 
+    def _rebuild_edges_identity(self, conn: sqlite3.Connection) -> None:
+        """Migrate edges_v2 from the pre-v4 UNIQUE(source, target, legacy_type)
+        identity to UNIQUE(source, target, type, legacy_type).
+
+        SQLite cannot alter constraints, so this is a create→copy→swap inside
+        the caller's transaction. Data-preserving: every existing row keeps its
+        legacy_type discriminator. Re-entrant: keyed on the actual constraint
+        in sqlite_master, not a one-time stamp.
+        """
+        row = conn.execute(
+            "SELECT sql FROM sqlite_master WHERE type='table' AND name='edges_v2'"
+        ).fetchone()
+        if not row or "UNIQUE(source, target, type, legacy_type)" in (row["sql"] or ""):
+            return
+        conn.execute("ALTER TABLE edges_v2 RENAME TO edges_v2_old")
+        # Recreate from the canonical DDL (edges_v2 portion of SCHEMA_SQL).
+        start = SCHEMA_SQL.index("CREATE TABLE IF NOT EXISTS edges_v2")
+        end = SCHEMA_SQL.index(");", start) + 2
+        conn.execute(SCHEMA_SQL[start:end].rstrip(";"))
+        conn.execute(
+            """
+            INSERT INTO edges_v2 (id, source, target, type, legacy_type, weight,
+                                  confidence, evidence, metadata, created_by, created_at)
+            SELECT id, source, target, type, legacy_type, weight,
+                   confidence, evidence, metadata, created_by, created_at
+            FROM edges_v2_old
+            """
+        )
+        conn.execute("DROP TABLE edges_v2_old")
+        logging.info("kg_schema: rebuilt edges_v2 with (source, target, type, legacy_type) identity")
+
     def _init_schema_on(self, conn: sqlite3.Connection) -> None:
         self._drop_stale_empty_v2_tables(conn)
+        self._rebuild_edges_identity(conn)
         _exec_script(conn, SCHEMA_SQL)
         conn.execute(
             "INSERT OR REPLACE INTO kg_meta(key, value) VALUES (?, ?)",
