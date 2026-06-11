@@ -59,15 +59,30 @@ Track log (update at every track boundary):
   Suite: 486 passed. Gotcha fixed inline: app_factory must keep the legacy
   alias imports (_agent_risk etc.) as locals — they ARE the server_app
   attribute surface via dict(locals()).
-- **NEXT: T3** sequenced as atomic sub-units (subagent limits reset 17:30
-  KST; localized pieces inline first): (a) FTS5 keyword index w/ honest
-  fallback + Korean-recall test; (b) canonical-enum normalization inside
-  store writes + owner/workspace/visibility params (NULL default);
-  (c) edge occurrence records + superseded_by; (d) THEN the
-  latticeai/brain/ decomposition + v2 write-mastering flip + downgrade
-  guard (agent task w/ full T3 contract incl. amendments — edges_v2
-  identity rebuild is mandatory before native canonical writes);
-  (e) kg-schema.md regen. graph_curator decision moved to T4.
+- **T3 IN PROGRESS as atomic sub-units**:
+  - **T3a DONE** (commit `d7f8291`): FTS5 trigram index (node_fts + triggers
+    + backfill), search() FTS-first w/ deterministic id-ASC ties, LIKE
+    fallback (short queries + builds w/o trigram), capability reported in
+    index_status().storage.fts_enabled. 7 tests; suite 493.
+    Learned: search() reads the kgv2 views — direct legacy-table SQL is not
+    a valid way to test read-path behavior; KnowledgeGraphStore ctor is
+    (db_path, blob_dir); ingest_message(role, content, ...).
+  - **T3b NEXT**: canonical-enum normalization inside store writes (stop
+    minting '업로드함'/'포함함'/'언급함' free strings at
+    knowledge_graph.py ~3045-3084 ingest_source/ingest_document) +
+    owner/workspace_id/visibility write params defaulting to NULL
+    legacy-global. NOTE: per design-review amendment, native canonical
+    edge writes REQUIRE the edges_v2 identity rebuild first
+    (UNIQUE(source,target,type) for canonical rows) or two canonical
+    edge types between one pair collide — sequence the rebuild inside T3b.
+  - **T3c**: edge occurrence records (observed_at) + node superseded_by.
+  - **T3d** (agent task after limits reset 17:30 KST): latticeai/brain/
+    decomposition (store/discovery/ingest/provenance/documents/extraction,
+    ≤1,500 lines/module, no mixin god-object) + v2 write-mastering flip
+    (backup-first, re-entrant migrator keyed on data state, downgrade
+    marker via PRAGMA user_version, equivalence scoped to pre-flip data).
+  - **T3e**: docs/kg-schema.md regenerated from enums.
+  - graph_curator decision moved to T4.
 - **T9 PARTIAL — vendoring half DONE** (commit `aa613ae`, parallel-safe per
   amendments): all CDN references removed from every shipped page (Inter,
   Tabler icons, chart.js, marked.js vendored under static/vendor);
