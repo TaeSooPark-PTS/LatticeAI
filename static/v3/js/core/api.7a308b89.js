@@ -11,7 +11,7 @@
  *           "unavailable" → endpoint missing/down; no fake payload
  * ========================================================================== */
 
-import { store } from "./store.34ebd5e6.js";
+import { store } from "./store.204a08b2.js";
 
 const TIMEOUT_MS = 8000;
 const EMPTY_INDEX_STATUS = { generated_at: null, pipelines: {}, sources: [] };

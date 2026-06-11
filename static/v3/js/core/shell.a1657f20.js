@@ -6,11 +6,11 @@
  * ========================================================================== */
 
 import { h, icon, $, $$ } from "./dom.a2773eb0.js";
-import { store } from "./store.34ebd5e6.js";
-import { api } from "./api.33d6320e.js";
+import { store } from "./store.204a08b2.js";
+import { api } from "./api.7a308b89.js";
 import * as c from "./components.f25b3b93.js";
 import { createRouter } from "./router.584570f2.js";
-import { GROUPS, ROUTES, ROUTE_BY_KEY, MODE_RANK, visibleRoutes, loadView } from "./routes.2ce3815a.js";
+import { GROUPS, ROUTES, ROUTE_BY_KEY, MODE_RANK, visibleRoutes, loadView } from "./routes.7222343d.js";
 
 const MODES = [
   { key: "basic", label: "Basic", icon: "circle" },
@@ -36,7 +36,7 @@ export function boot(rootEl) {
   cacheEls(rootEl);
   store.subscribe(onStateChange);
 
-  router = createRouter({ onRoute: renderRoute, fallback: "home" });
+  router = createRouter({ onRoute: renderRoute, fallback: "knowledge-graph" });
   wireGlobalKeys();
   router.start();
 

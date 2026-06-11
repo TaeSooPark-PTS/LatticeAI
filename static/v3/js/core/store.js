@@ -30,7 +30,7 @@ const state = {
   ],
   user: { email: "", nickname: "You", role: "user" },
   indexStatus: null,
-  route: { key: "home", params: {} },
+  route: { key: "knowledge-graph", params: {} },
 };
 
 const subscribers = new Set();
