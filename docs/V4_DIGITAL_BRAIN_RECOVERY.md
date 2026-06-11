@@ -5,9 +5,22 @@
 > completed analysis. **Update this file before ending any phase and before any
 > likely session/context/usage limit.**
 >
-> Last updated: 2026-06-11 (session 2 — Phase A COMPLETE, entering Phase B)
+> Last updated: 2026-06-12 — RELEASE CANDIDATE PREPARED (Phase D complete; awaiting human review)
 
 ---
+
+## 0. RC STATUS (final)
+
+**v4.0.0 release candidate is on `origin/feat/v4-digital-brain`.**
+Validation: 571 unit tests pass · ruff clean · check:python 186 modules ·
+lint_v3 all checks · installed-wheel smoke (19 modules from clean venv) ·
+release artifacts validated (wheel + sdist + npm tgz, 2.0MB).
+NO merge, NO tag, NO publish — awaiting review.
+Remaining gaps (labeled in FEATURE_STATUS.md §v4.0.0 + RELEASE_NOTES_v4.0.0.md):
+T3d decomposition/v2-flip, T7c async engine, T6 remainder (UUIDs/policy/
+invitations/SQLite state), T9 remainder (legacy deletion + parity views,
+login, i18n, T9b surfaces), pptx history rewrite (owner), consent-gated
+embedder provisioning. All contracts live in docs/V4_IMPLEMENTATION_PLAN.md.
 
 ## 1. Program Charter (from the user's v4.0.0 directive)
 
