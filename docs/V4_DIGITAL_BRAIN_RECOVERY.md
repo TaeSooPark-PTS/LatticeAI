@@ -96,10 +96,15 @@ Track log (update at every track boundary):
   semantics; provenance_coverage() store metric + GET
   /knowledge-graph/provenance/coverage endpoint (parity baseline updated
   deliberately). Coverage now 4/5 (workspace events land with T6 rebuild).
-  Suite 511. REMAINING T4: T4.2 durable conversations store (+
-  chat_history.json import, /history contract preserved), T4.3 garden
-  absorption (watched source + dual-write notes), T4.4 graph_curator
-  wire-or-delete, backup-manifest co-location test.
+  Suite 511.
+- **T4.2 DONE** (commit `34ba891`): latticeai/brain/conversations.py
+  ConversationStore (same SQLite file as the KG → backup co-location free);
+  idempotent chat_history.json import; get_history/clear_* contracts
+  preserved incl. legacy bucket + started_at sweep; MemoryService
+  conversation tier reads the store. latticeai.brain packaged. Suite 517.
+  Branch pushed to origin/feat/v4-digital-brain.
+  REMAINING T4: T4.3 garden absorption (watched source + dual-write notes),
+  T4.4 graph_curator wire-or-delete, backup round-trip test.
   - **T3d** (agent task after limits reset 17:30 KST): latticeai/brain/
     decomposition (store/discovery/ingest/provenance/documents/extraction,
     ≤1,500 lines/module, no mixin god-object) + v2 write-mastering flip
