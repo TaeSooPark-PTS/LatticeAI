@@ -20,6 +20,8 @@ BASELINE_ROUTES = {
     ("/graph", "GET"),
     ("/knowledge-graph", "GET"),
     ("/knowledge-graph/stats", "GET"),
+    # v4 T4.1 addition: the provenance coverage honesty metric.
+    ("/knowledge-graph/provenance/coverage", "GET"),
     ("/knowledge-graph/schema", "GET"),
     ("/knowledge-graph/graph", "GET"),
     ("/knowledge-graph/documents", "GET"),
