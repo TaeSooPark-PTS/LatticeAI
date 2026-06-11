@@ -19,7 +19,8 @@ from fastapi import HTTPException, Request
 
 from latticeai.core.hooks import dispatch_tool
 from latticeai.core.multi_agent import MultiAgentOrchestrator, default_role_runner
-from latticeai.core.workflow_engine import WorkflowEngine
+from latticeai.core.workflow_engine import ApprovalRequired, WorkflowEngine
+from tools import execute_tool
 
 
 class PlatformRuntime:
@@ -77,31 +78,57 @@ class PlatformRuntime:
     # ── shared node runners ───────────────────────────────────────────────
 
     def _tool_node_runner(self):
-        """Workflow tool node: records the invocation + governance decision but
-        never silently executes exec/destructive tools (those need approval)."""
+        """Workflow tool node: EXECUTES the tool under governance (v4).
+
+        Auto-approve tools run immediately through the shared dispatch_tool
+        lifecycle. Tools whose policy requires approval raise
+        :class:`ApprovalRequired` so the engine pauses the run into
+        ``awaiting_approval`` — never a silent ``{recorded: true}`` success,
+        never an unapproved execution. A resumed run carries the approved
+        node id in ``context['__approved_nodes__']``.
+        """
         def runner(*, node, context):
             cfg = node.get("config") or {}
             name = cfg.get("tool") or ""
             args = cfg.get("args") or {}
+            if not name:
+                raise ValueError("tool node has no tool configured")
+            try:
+                permission = dict(self.get_tool_permission(name, args))
+            except TypeError:
+                permission = dict(self.get_tool_permission(name))
+            approved_nodes = set(context.get("__approved_nodes__") or [])
+            if permission.get("requires_approval") and node.get("id") not in approved_nodes:
+                raise ApprovalRequired(
+                    f"tool '{name}' requires explicit approval before a workflow may run it",
+                    tool=name, args=args, permission=permission,
+                )
 
-            def _record():
-                try:
-                    permission = dict(self.get_tool_permission(name))
-                except Exception:
-                    permission = {"tool": name, "risk": "unknown"}
-                return {"tool": name, "args": args, "recorded": True, "permission": permission}
+            def _execute():
+                return execute_tool(name, args)
 
             # Same tool lifecycle as the HTTP + agent paths (a pre_tool block
             # raises PermissionError, surfaced as the node error by the engine).
-            return dispatch_tool(self.hooks, name or "tool", args, _record, source="workflow")
+            result = dispatch_tool(self.hooks, name, args, _execute, source="workflow")
+            return {"tool": name, "args": args, "executed": True,
+                    "permission": permission, "result": result}
         return runner
 
     def _skill_node_runner(self):
+        """Skill nodes refuse honestly: a skill is an instruction package for
+        an LLM; without a model-driven executor there is nothing to run, and
+        pretending otherwise (the pre-v4 existence check that reported 'ok')
+        is exactly the fake functionality v4 bans."""
         def runner(*, node, context):
             cfg = node.get("config") or {}
             name = cfg.get("skill") or ""
             entry = self.store.load_state().get("skill_registry", {}).get(name) or {}
-            return {"skill": name, "found": bool(entry), "enabled": bool(entry.get("enabled"))}
+            if not entry:
+                raise ValueError(f"skill '{name}' is not installed")
+            raise RuntimeError(
+                f"skill '{name}' requires LLM-driven execution, which workflow "
+                "skill nodes do not provide in this build — refusing to fake a result"
+            )
         return runner
 
     def _context_provider(self, user, scope):
@@ -116,15 +143,25 @@ class PlatformRuntime:
     def plugin_capability_runners(self, user, scope) -> Dict[str, Callable[..., Any]]:
         """Runners the Plugin SDK boundary dispatches to (one per capability)."""
         def run_skill(*, plugin_id, action, args, manifest):
-            return {"plugin": plugin_id, "ran_skills": manifest.provides.get("skills", [])}
+            raise RuntimeError(
+                f"plugin '{plugin_id}' skill execution requires an LLM-driven "
+                "runner, which this build does not provide — refusing to fake a result"
+            )
 
         def run_tool(*, plugin_id, action, args, manifest):
             tool = args.get("tool") or (manifest.provides.get("tools") or [None])[0]
-            try:
-                permission = dict(self.get_tool_permission(tool)) if tool else {}
-            except Exception:
-                permission = {}
-            return {"plugin": plugin_id, "tool": tool, "permission": permission, "recorded": True}
+            if not tool:
+                raise ValueError(f"plugin '{plugin_id}' run_tool needs a tool name")
+            permission = dict(self.get_tool_permission(tool))
+            if permission.get("requires_approval"):
+                raise ApprovalRequired(
+                    f"plugin tool '{tool}' requires explicit approval",
+                    tool=tool, args=args, permission=permission,
+                )
+            result = dispatch_tool(self.hooks, tool, args, lambda: execute_tool(tool, args),
+                                   source=f"plugin:{plugin_id}")
+            return {"plugin": plugin_id, "tool": tool, "permission": permission,
+                    "executed": True, "result": result}
 
         def run_workflow(*, plugin_id, action, args, manifest):
             wf_id = args.get("workflow_id")
@@ -175,6 +212,9 @@ class PlatformRuntime:
             workflow_id=workflow_id, name=workflow.get("name") or "workflow",
             status=result.status, timeline=result.timeline, outputs=result.outputs,
             user_email=user, graph=self.workspace_graph(), workspace_id=scope,
+            mode="live",
+            pause={"node": result.paused_node, "pending": result.pending_approval,
+                   "context": result.paused_context} if result.status == "awaiting_approval" else None,
         )
         return {"workflow_run_id": run["id"], "status": result.status}
 

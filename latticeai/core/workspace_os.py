@@ -1450,6 +1450,7 @@ class WorkspaceOSStore:
         graph: Any = None,
         workspace_id: Optional[str] = None,
         mode: str = "simulation",
+        pause: Optional[Dict[str, Any]] = None,
     ) -> Dict[str, Any]:
         """Persist a Workflow Designer execution into local-first run history."""
         state = self.load_state()
@@ -1467,6 +1468,8 @@ class WorkspaceOSStore:
             "workspace_id": resolved_workspace,
             "created_at": _now(),
         }
+        if pause:
+            run["pause"] = pause
         if mode == "simulation":
             # Record-only node runners do no real work; their runs must not be
             # written into the knowledge graph as if they were real executions.
@@ -1507,6 +1510,21 @@ class WorkspaceOSStore:
         if workflow_id:
             runs = [run for run in runs if run.get("workflow_id") == workflow_id]
         return {"runs": list(reversed(runs[-max(1, min(limit, 300)):]))}
+
+    def mark_workflow_run_resolved(
+        self, run_id: str, *, resumed_run_id: str, approved: bool,
+        workspace_id: Optional[str] = None,
+    ) -> Dict[str, Any]:
+        """Close out a paused run after its approval decision (one decision only)."""
+        state = self.load_state()
+        run = next((item for item in _listify(state.get("workflow_runs")) if item.get("id") == run_id), None)
+        if run is None or (workspace_id and self._record_workspace(run) != str(workspace_id)):
+            raise FileNotFoundError(run_id)
+        run["status"] = "resumed" if approved else "denied"
+        run["resolved_at"] = _now()
+        run["resumed_run_id"] = resumed_run_id
+        self.save_state(state)
+        return run
 
     def get_workflow_run(self, run_id: str, workspace_id: Optional[str] = None) -> Dict[str, Any]:
         run = next((item for item in _listify(self.load_state().get("workflow_runs")) if item.get("id") == run_id), None)

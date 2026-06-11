@@ -185,11 +185,17 @@ def _evaluate_condition(config: Dict[str, Any], context: Dict[str, Any]) -> bool
 class WorkflowRun:
     workflow_id: Optional[str]
     name: str
-    status: str = "ok"  # ok | failed | partial
+    status: str = "ok"  # ok | failed | partial | awaiting_approval
     timeline: List[Dict[str, Any]] = field(default_factory=list)
     outputs: Dict[str, Any] = field(default_factory=dict)
     started_at: str = field(default_factory=_now)
     finished_at: Optional[str] = None
+    # Suspension cursor (status == awaiting_approval): the paused node, what
+    # it is waiting for, and a JSON-serializable context snapshot resume()
+    # re-enters with — completed nodes are never re-executed.
+    paused_node: Optional[str] = None
+    pending_approval: Optional[Dict[str, Any]] = None
+    paused_context: Optional[Dict[str, Any]] = None
 
     def as_dict(self) -> Dict[str, Any]:
         return {
@@ -201,7 +207,34 @@ class WorkflowRun:
             "started_at": self.started_at,
             "finished_at": self.finished_at,
             "step_count": len(self.timeline),
+            "paused_node": self.paused_node,
+            "pending_approval": self.pending_approval,
+            "paused_context": self.paused_context,
         }
+
+
+class ApprovalRequired(Exception):
+    """A node needs an explicit human decision before it may execute.
+
+    Raised by governed runners (e.g. a non-auto-approve tool). The engine
+    pauses the run into ``awaiting_approval`` with a serializable cursor —
+    it never records a fake success and never silently skips the node.
+    """
+
+    def __init__(self, message: str, *, tool: Optional[str] = None,
+                 args: Optional[Dict[str, Any]] = None,
+                 permission: Optional[Dict[str, Any]] = None):
+        super().__init__(message)
+        self.tool = tool
+        self.args = args or {}
+        self.permission = permission or {}
+
+
+def _json_safe(value: Any) -> Any:
+    """Round-trip through JSON so paused context is durably serializable."""
+    import json as _json
+
+    return _json.loads(_json.dumps(value, ensure_ascii=False, default=str))
 
 
 class WorkflowEngine:
@@ -212,6 +245,11 @@ class WorkflowEngine:
     node as ``skipped`` with a reason rather than failing the whole run, so a
     workflow that references a capability the host has not wired degrades
     gracefully (and the gap is visible in the timeline).
+
+    Suspension model (v4): a runner raising :class:`ApprovalRequired` pauses
+    the run (status ``awaiting_approval``) with the node cursor and a
+    JSON-serializable context snapshot. :meth:`resume` re-enters at the
+    paused node — completed nodes are NEVER re-executed.
     """
 
     def __init__(self, runners: Optional[Dict[str, Callable[..., Any]]] = None, *, hooks: Any = None):
@@ -243,8 +281,60 @@ class WorkflowEngine:
 
         nodes = {node["id"]: node for node in definition["nodes"]}
         context: Dict[str, Any] = {"inputs": inputs or {}, **(inputs or {})}
-
         current = _entry_node(definition["nodes"])
+        return self._execute(definition, run, nodes, context, current)
+
+    def resume(
+        self,
+        workflow: Dict[str, Any],
+        *,
+        paused_node: str,
+        paused_context: Dict[str, Any],
+        approved: bool,
+        prior_timeline: Optional[List[Dict[str, Any]]] = None,
+    ) -> WorkflowRun:
+        """Re-enter a paused run at its cursor; completed nodes never re-run.
+
+        ``approved=True`` marks the paused node as human-approved (its runner
+        sees the node id in ``context['__approved_nodes__']``); ``False``
+        records an explicit denial and fails the run honestly.
+        """
+        definition = normalize_definition(workflow)
+        nodes = {node["id"]: node for node in definition["nodes"]}
+        node = nodes.get(paused_node)
+        run = WorkflowRun(workflow_id=definition.get("id"), name=definition.get("name") or "workflow")
+        if prior_timeline:
+            run.timeline.extend(prior_timeline)
+        if node is None:
+            run.status = "failed"
+            run.timeline.append({"node": paused_node, "type": "resume", "status": "failed",
+                                 "reason": "paused node no longer exists in the definition",
+                                 "timestamp": _now()})
+            run.finished_at = _now()
+            return run
+        context: Dict[str, Any] = dict(paused_context or {})
+        if not approved:
+            run.status = "failed"
+            run.timeline.append({"node": paused_node, "type": node.get("type"),
+                                 "name": node.get("name") or paused_node,
+                                 "status": "denied",
+                                 "reason": "approval denied by the user",
+                                 "timestamp": _now()})
+            run.finished_at = _now()
+            return run
+        approvals = set(context.get("__approved_nodes__") or [])
+        approvals.add(paused_node)
+        context["__approved_nodes__"] = sorted(approvals)
+        return self._execute(definition, run, nodes, context, node)
+
+    def _execute(
+        self,
+        definition: Dict[str, Any],
+        run: WorkflowRun,
+        nodes: Dict[str, Dict[str, Any]],
+        context: Dict[str, Any],
+        current: Optional[Dict[str, Any]],
+    ) -> WorkflowRun:
         steps = 0
         had_error = False
         had_skip = False
@@ -301,6 +391,28 @@ class WorkflowEngine:
                 entry["result"] = result
                 context["last_output"] = result
                 context[nid] = result
+            except ApprovalRequired as pause:
+                # Suspend — never a fake success, never a silent skip.
+                entry["status"] = "awaiting_approval"
+                entry["pending"] = {
+                    "tool": pause.tool, "args": pause.args,
+                    "permission": pause.permission, "reason": str(pause),
+                }
+                run.timeline.append(entry)
+                run.status = "awaiting_approval"
+                run.paused_node = nid
+                run.pending_approval = entry["pending"]
+                try:
+                    run.paused_context = _json_safe(context)
+                except Exception:
+                    run.paused_context = {"inputs": context.get("inputs") or {}}
+                if self.hooks is not None:
+                    self.hooks.fire_hook(
+                        "post_workflow", "workflow.paused",
+                        payload={"workflow_id": definition.get("id"),
+                                 "status": run.status, "node": nid},
+                    )
+                return run
             except Exception as exc:
                 entry["status"] = "error"
                 entry["reason"] = str(exc)

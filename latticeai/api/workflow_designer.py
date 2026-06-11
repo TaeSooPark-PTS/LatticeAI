@@ -32,6 +32,10 @@ class WorkflowUpdateRequest(BaseModel):
     metadata: Optional[Dict[str, Any]] = None
 
 
+class WorkflowResumeRequest(BaseModel):
+    approved: bool = True
+
+
 class WorkflowRunRequest(BaseModel):
     inputs: Dict[str, Any] = {}
 
@@ -159,9 +163,51 @@ def create_workflow_designer_router(
             user_email=current_user or None,
             graph=workspace_graph(),
             workspace_id=scope,
+            mode="live",
+            pause={"node": result.paused_node, "pending": result.pending_approval,
+                   "context": result.paused_context} if result.status == "awaiting_approval" else None,
         )
         append_audit_event("workflow_run", user_email=current_user, workflow_id=workflow_id, status=result.status)
         return {"run": run, "result": result.as_dict()}
+
+    @router.post("/workflows/api/runs/{run_id}/resume")
+    async def resume_run(run_id: str, req: WorkflowResumeRequest, request: Request):
+        """Decide a paused (awaiting_approval) run: approve → the paused node
+        executes and the run continues; deny → the run fails honestly."""
+        current_user = require_user(request)
+        scope = gate_write(request)
+        run_record = store.get_workflow_run(run_id, workspace_id=scope)
+        pause = run_record.get("pause") or {}
+        if run_record.get("status") != "awaiting_approval" or not pause.get("node"):
+            raise HTTPException(status_code=409, detail="run is not awaiting approval")
+        workflow = store.get_workflow(run_record.get("workflow_id"), workspace_id=scope)
+        runners = build_runners(current_user or None, scope)
+        engine = WorkflowEngine(runners, hooks=hooks)
+        result = engine.resume(
+            workflow,
+            paused_node=pause["node"],
+            paused_context=pause.get("context") or {},
+            approved=bool(req.approved),
+            prior_timeline=run_record.get("timeline") or [],
+        )
+        resumed = store.record_workflow_run(
+            workflow_id=run_record.get("workflow_id"),
+            name=run_record.get("name") or "workflow",
+            status=result.status,
+            timeline=result.timeline,
+            outputs=result.outputs,
+            user_email=current_user or None,
+            graph=workspace_graph(),
+            workspace_id=scope,
+            mode="live",
+            pause={"node": result.paused_node, "pending": result.pending_approval,
+                   "context": result.paused_context} if result.status == "awaiting_approval" else None,
+        )
+        store.mark_workflow_run_resolved(run_id, resumed_run_id=resumed["id"],
+                                         approved=bool(req.approved), workspace_id=scope)
+        append_audit_event("workflow_run_resume", user_email=current_user,
+                           run_id=run_id, approved=bool(req.approved), status=result.status)
+        return {"run": resumed, "result": result.as_dict(), "resumed_from": run_id}
 
     @router.get("/workflows/api/definitions/{workflow_id}/runs")
     async def list_runs(workflow_id: str, request: Request, limit: int = 50):
