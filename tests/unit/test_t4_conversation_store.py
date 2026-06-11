@@ -101,3 +101,28 @@ def test_per_conversation_history(tmp_path):
     store.append(_item(1, conv="a"))
     store.append(_item(2, conv="b"))
     assert [m["content"] for m in store.history(conversation_id="a")] == ["message 1"]
+
+
+def test_backup_restore_round_trip_carries_conversations(tmp_path):
+    """Conversations share the KG database file, so the existing
+    kg_portability backup/restore covers them — prove it end-to-end."""
+    from knowledge_graph import KnowledgeGraphStore
+    from latticeai.services.kg_portability import KGPortabilityService
+
+    db = tmp_path / "knowledge_graph.sqlite"
+    kg = KnowledgeGraphStore(db, tmp_path / "blobs")
+    conv = ConversationStore(db)
+    conv.append(_item(1))
+    conv.append(_item(2))
+
+    portability = KGPortabilityService(knowledge_graph=kg, data_dir=tmp_path, enable_graph=True)
+    backup = portability.backup()
+    assert backup["path"]
+
+    conv.clear_all()
+    assert conv.count() == 0
+
+    portability.restore(backup["path"])
+    restored = ConversationStore(db)
+    assert restored.count() == 2, "restore must bring conversations back"
+    assert [m["content"] for m in restored.history()] == ["message 1", "message 2"]
