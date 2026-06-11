@@ -112,7 +112,7 @@ class ContextAssembler:
         if self._memory_recall is not None:
             sections.append(self._memories_section(query, user_email, workspace_id, memory_limit))
         if self._hybrid_search is not None:
-            sections.append(self._knowledge_section(query, knowledge_limit))
+            sections.append(self._knowledge_section(query, knowledge_limit, user_email))
         if self._notes_context is not None:
             sections.append(self._notes_section(query))
         if self._recent_chat is not None:
@@ -141,9 +141,9 @@ class ContextAssembler:
             ],
         )
 
-    def _knowledge_section(self, query, limit) -> ContextSection:
+    def _knowledge_section(self, query, limit, user_email=None) -> ContextSection:
         try:
-            hybrid = self._hybrid_search(query, limit=limit)
+            hybrid = self._hybrid_search(query, limit=limit, user_email=user_email)
             matches = hybrid.get("matches", [])[:limit]
         except Exception as exc:
             logging.debug("context: hybrid search failed: %s", exc)

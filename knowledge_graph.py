@@ -3873,7 +3873,40 @@ class KnowledgeGraphStore:
             "generated_at": datetime.now().isoformat(timespec="seconds"),
         }
 
-    def graph(self, limit: int = 300) -> Dict[str, Any]:
+    def workspaces_of(self, node_ids) -> Dict[str, Optional[str]]:
+        """Map node ids to their workspace scope (None = legacy-global)."""
+        ids = [str(i) for i in node_ids if i]
+        if not ids:
+            return {}
+        placeholders = ",".join("?" for _ in ids)
+        with self._connect() as conn:
+            try:
+                return {
+                    row["id"]: row["workspace_id"]
+                    for row in conn.execute(
+                        f"SELECT id, workspace_id FROM nodes_v2 WHERE id IN ({placeholders})", ids
+                    ).fetchall()
+                }
+            except Exception:
+                return {}
+
+    def filter_scoped_nodes(self, items, allowed_workspaces, *, id_key: str = "id"):
+        """Drop items scoped to a workspace the caller is not a member of.
+
+        ``allowed_workspaces=None`` means no scoping (single-user / no-auth
+        mode). Legacy-global rows (no workspace) stay visible to everyone on
+        the machine — the documented pre-v4 compatibility behavior.
+        """
+        if allowed_workspaces is None:
+            return list(items)
+        allowed = set(allowed_workspaces)
+        scopes = self.workspaces_of([item.get(id_key) for item in items])
+        return [
+            item for item in items
+            if scopes.get(item.get(id_key)) is None or scopes.get(item.get(id_key)) in allowed
+        ]
+
+    def graph(self, limit: int = 300, *, allowed_workspaces=None) -> Dict[str, Any]:
         limit = max(1, min(int(limit or 300), 2000))
         visible = ",".join(f"'{t}'" for t in self._GRAPH_VISIBLE_TYPES)
         nt, et = self._read_tables()
@@ -3922,6 +3955,11 @@ class KnowledgeGraphStore:
                     }
                     for row in edge_rows
                 ]
+
+        if allowed_workspaces is not None:
+            nodes = self.filter_scoped_nodes(nodes, allowed_workspaces)
+            kept_ids = {node["id"] for node in nodes}
+            edges = [e for e in edges if e["from"] in kept_ids and e["to"] in kept_ids]
 
         degree_map: Dict[str, int] = {}
         now = datetime.now()

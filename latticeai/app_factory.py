@@ -1293,9 +1293,15 @@ def _build(config: "Optional[Config]" = None) -> Dict[str, Any]:
     # ── v4 Context System: one budgeted, provenance-carrying assembly over the
     # product's own retrieval stack (memories + hybrid search + garden notes).
     BRAIN_MEMORY = BrainMemory(INGESTION_PIPELINE)
+    def _scoped_hybrid_search(q, user_email=None, **kw):
+        allowed = None
+        if REQUIRE_AUTH and user_email:
+            allowed = PLATFORM.allowed_scopes(user_email)
+        return SEARCH_SERVICE.hybrid_search(q, allowed_workspaces=allowed, **kw)
+
     CONTEXT_ASSEMBLER = ContextAssembler(
         memory_recall=MEMORY_SERVICE.recall,
-        hybrid_search=lambda q, **kw: SEARCH_SERVICE.hybrid_search(q, **kw),
+        hybrid_search=_scoped_hybrid_search,
         notes_context=gardener.get_relevant_context,
     )
 
@@ -1538,8 +1544,16 @@ def _build(config: "Optional[Config]" = None) -> Dict[str, Any]:
         return info
 
 
+    def _allowed_workspaces_for(user):
+        # No-auth local mode is single-user: no scoping. With auth, scope
+        # reads to the caller's memberships (legacy-global rows stay visible).
+        if not REQUIRE_AUTH or not user:
+            return None
+        return PLATFORM.allowed_scopes(user)
+
     app.include_router(create_search_router(
         service=SEARCH_SERVICE,
+        allowed_workspaces_for=_allowed_workspaces_for,
         require_user=require_user,
         embedding_info=_embedding_info,
     ))
