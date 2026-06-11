@@ -282,6 +282,7 @@ def create_chat_router(context: AppContext) -> APIRouter:
         knowledge_save=knowledge_save,
         audit=append_audit_event,
         hooks=hooks,
+        brain_memory=context.brain_memory,
     )
 
     @api_router.post("/chat")

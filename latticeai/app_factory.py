@@ -151,6 +151,7 @@ def _build(config: "Optional[Config]" = None) -> Dict[str, Any]:
     from latticeai.services.ingestion import IngestionItem, IngestionPipeline
     from latticeai.brain.conversations import ConversationStore
     from latticeai.brain.context import ContextAssembler
+    from latticeai.brain.memory import BrainMemory
     from latticeai.services.kg_portability import KGPortabilityService
     # The aliased names below look unused but are part of the legacy
     # ``server_app`` attribute surface: every local is exported via
@@ -1286,6 +1287,7 @@ def _build(config: "Optional[Config]" = None) -> Dict[str, Any]:
 
     # ── v4 Context System: one budgeted, provenance-carrying assembly over the
     # product's own retrieval stack (memories + hybrid search + garden notes).
+    BRAIN_MEMORY = BrainMemory(INGESTION_PIPELINE)
     CONTEXT_ASSEMBLER = ContextAssembler(
         memory_recall=MEMORY_SERVICE.recall,
         hybrid_search=lambda q, **kw: SEARCH_SERVICE.hybrid_search(q, **kw),
@@ -1318,6 +1320,7 @@ def _build(config: "Optional[Config]" = None) -> Dict[str, Any]:
         local_kg_watcher=LOCAL_KG_WATCHER,
         chat_service=CHAT_SERVICE,
         context_assembler=CONTEXT_ASSEMBLER,
+        brain_memory=BRAIN_MEMORY,
         gardener=gardener,
         hooks=HOOKS_REGISTRY,
         realtime_bus=REALTIME_BUS,

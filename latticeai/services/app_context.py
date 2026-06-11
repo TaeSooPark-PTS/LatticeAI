@@ -33,6 +33,7 @@ class AppContext:
     local_kg_watcher: Any = None
     chat_service: Any = None
     context_assembler: Any = None
+    brain_memory: Any = None
     gardener: Any = None
     hooks: Any = None
     realtime_bus: Any = None

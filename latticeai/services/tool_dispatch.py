@@ -112,6 +112,7 @@ def build_agent_runtime(
     knowledge_save: Callable[..., Dict[str, Any]],
     audit: Callable[..., None],
     hooks: Any = None,
+    brain_memory: Any = None,
 ) -> AgentRuntime:
     ensure_agent_root()
     deps = AgentDeps(
@@ -133,6 +134,7 @@ def build_agent_runtime(
         memory_updater_prompt=MEMORY_UPDATER_PROMPT,
         agent_root=AGENT_ROOT,
         hooks=hooks,
+        brain_memory=brain_memory,
     )
     return AgentRuntime(deps)
 

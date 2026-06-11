@@ -127,3 +127,44 @@ def test_failing_seam_is_isolated():
 def test_approx_tokens_is_documented_chars_over_four():
     assert approx_tokens("abcd" * 10) == 10
     assert approx_tokens("") == 0
+
+
+def test_agent_learnings_become_experience_records(tmp_path):
+    """The agent memory-update path records Experiences through the brain
+    port instead of dumping vault markdown with swallowed errors."""
+    import asyncio
+    from latticeai.core.agent import AgentRunContext
+
+    kg, pipe = _brain(tmp_path)
+    memory = BrainMemory(pipe)
+
+    captured = {}
+
+    class _Deps:
+        memory_updater_prompt = "extract"
+        brain_memory = memory
+
+        @staticmethod
+        async def generate(**kwargs):
+            return '{"action": "memory", "save_to_knowledge": true, "learnings": ["always run tests"]}'
+
+        @staticmethod
+        def knowledge_save(*a, **kw):
+            captured["vault_dump"] = True
+
+    from latticeai.core.agent import AgentRuntime
+
+    runtime = AgentRuntime.__new__(AgentRuntime)
+    runtime.deps = _Deps()
+    ctx = AgentRunContext()
+    ctx.transcript = [{"state": "DONE"}]
+
+    class _Req:
+        message = "refactor the auth module"
+
+    asyncio.run(runtime.memory_update(ctx, _Req(), "a@b.c"))
+    assert "vault_dump" not in captured, "brain port must take precedence over vault dump"
+    exp = [m for m in kg.search("refactor")["matches"] if m.get("type") == "Experience"]
+    assert exp, "the learning must land as a typed Experience node"
+    prov = kg.get_provenance(exp[0]["id"])
+    assert prov is not None and prov["source_type"] == "experience"
