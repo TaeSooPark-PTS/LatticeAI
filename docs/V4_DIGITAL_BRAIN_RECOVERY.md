@@ -134,7 +134,25 @@ Track log (update at every track boundary):
   now REALLY filters (was header-only), latticeai/brain/network.py Brain
   Network v1 (pairing, signed+replay-protected peer auth, push/receive,
   signer-must-match-peer), /network API. Suite 548.
-- NOTE: T3d + T9-canvas agents died instantly on session limits twice
+- **T7a DONE** (commit 1fc96ec): workflow tool nodes EXECUTE via
+  dispatch_tool under governance; ApprovalRequired pauses runs into
+  awaiting_approval w/ JSON cursor (WorkflowEngine.resume re-enters at the
+  paused node, never re-executing; denial fails honestly); skill +
+  plugin-skill nodes refuse honestly; plugin run_tool executes governed;
+  live runs persist mode='live' + pause cursor; POST
+  /workflows/api/runs/{id}/resume (one decision; record resolves).
+- **T7b DONE** (commit 3064fa3): llm_role_runner — planner/executor/
+  reviewer call the loaded model; parse failure FAILS the run w/ raw
+  preserved (fail-closed); build_orchestrator picks mode='llm' only when
+  a model is loaded; agents run endpoint via asyncio.to_thread + sync
+  model bridge (asyncio.run safe in worker thread). Suite 559.
+- T7 REMAINING: T7c async engine/cancel/SSE/reconciliation, T7d triggers,
+  T7e executable registry entries.
+- T9-canvas agent left static/v3/js/views/graph-canvas.js (509 lines,
+  node --check passes) but NEVER rewired knowledge-graph.js — file kept
+  uncommitted in tree; integration outstanding.
+- NOTE: T3d + T9-canvas agents died instantly on session limits THREE times
+  (latest reset 4:10am KST)
   (next reset 23:00 KST); both tasks remain queued with full contracts in
   this file + the plan.
   - **T3d** (agent task after limits reset 17:30 KST): latticeai/brain/
