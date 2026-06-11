@@ -67,14 +67,15 @@ Track log (update at every track boundary):
     Learned: search() reads the kgv2 views — direct legacy-table SQL is not
     a valid way to test read-path behavior; KnowledgeGraphStore ctor is
     (db_path, blob_dir); ingest_message(role, content, ...).
-  - **T3b NEXT**: canonical-enum normalization inside store writes (stop
-    minting '업로드함'/'포함함'/'언급함' free strings at
-    knowledge_graph.py ~3045-3084 ingest_source/ingest_document) +
-    owner/workspace_id/visibility write params defaulting to NULL
-    legacy-global. NOTE: per design-review amendment, native canonical
-    edge writes REQUIRE the edges_v2 identity rebuild first
-    (UNIQUE(source,target,type) for canonical rows) or two canonical
-    edge types between one pair collide — sequence the rebuild inside T3b.
+  - **T3b-1 DONE** (commit `650d4df`): edges_v2 rebuilt to
+    UNIQUE(source,target,type,legacy_type) (create→copy→swap, re-entrant,
+    data-preserving; projection ON CONFLICT updated); from_legacy()
+    round-trips canonical values on both enums (was degrading
+    CODE_FILE/AI_RESPONSE/… to CONCEPT). Suite 498.
+  - **T3b-2 NEXT**: canonical-enum writes at ingest sites (stop minting
+    '업로드함'/'포함함'/'언급함' at knowledge_graph.py ingest_source/
+    ingest_document ~3045-3084) + owner/workspace_id/visibility write
+    params (NULL legacy-global default) threaded into nodes_v2 columns.
   - **T3c**: edge occurrence records (observed_at) + node superseded_by.
   - **T3d** (agent task after limits reset 17:30 KST): latticeai/brain/
     decomposition (store/discovery/ingest/provenance/documents/extraction,
