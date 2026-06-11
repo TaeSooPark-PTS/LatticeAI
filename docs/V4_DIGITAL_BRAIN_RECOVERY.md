@@ -72,10 +72,14 @@ Track log (update at every track boundary):
     data-preserving; projection ON CONFLICT updated); from_legacy()
     round-trips canonical values on both enums (was degrading
     CODE_FILE/AI_RESPONSE/… to CONCEPT). Suite 498.
-  - **T3b-2 NEXT**: canonical-enum writes at ingest sites (stop minting
-    '업로드함'/'포함함'/'언급함' at knowledge_graph.py ingest_source/
-    ingest_document ~3045-3084) + owner/workspace_id/visibility write
-    params (NULL legacy-global default) threaded into nodes_v2 columns.
+  - **T3b-2 DONE** (commit `b7de8d7`): _upsert_edge normalizes ALL edge
+    writes to canonical EdgeType (legacy label → metadata.legacy_label;
+    synonyms dedupe; delete_conversation filters accept both vocabularies);
+    nodes_v2 += workspace_id (additive ALTER heal), unscoped visibility =
+    'legacy' sentinel, scope params threaded w/ COALESCE no-strip upserts.
+    Suite 503. NOTE for T4/T6: ingestion + workspace callers should now
+    pass owner/workspace_id explicitly (metadata user_email/workspace_id
+    hints already resolve).
   - **T3c**: edge occurrence records (observed_at) + node superseded_by.
   - **T3d** (agent task after limits reset 17:30 KST): latticeai/brain/
     decomposition (store/discovery/ingest/provenance/documents/extraction,
