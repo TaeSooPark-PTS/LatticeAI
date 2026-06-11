@@ -1262,6 +1262,93 @@ class KnowledgeGraphStore:
         except Exception as ex:
             logging.debug("knowledge_graph: v2 edge projection skipped (%s->%s): %s", from_node, to_node, ex)
 
+    def curate(self, *, max_documents: int = 200, max_new_nodes: int = 8) -> Dict[str, Any]:
+        """On-demand graph curation (T4.4 — graph_curator goes live).
+
+        Runs the curator's gated topic-promotion pipeline over recent content
+        nodes: candidates are clustered, secret-bearing labels are refused,
+        and only multi-source topics above the importance threshold become
+        Topic nodes (with MENTIONS edges back to their sources and a real
+        importance_score in nodes_v2). Explicit and observable — the result
+        reports everything promoted AND everything skipped, with reasons.
+        """
+        from latticeai.core.graph_curator import auto_build_graph_overlay
+
+        content_types = (
+            "Document", "File", "CodeFile", "Message", "AIResponse",
+            "Chat", "Page", "Slide", "Spreadsheet",
+        )
+        nt, _ = self._read_tables()
+        with self._connect() as conn:
+            placeholders = ",".join("?" for _ in content_types)
+            rows = conn.execute(
+                f"""
+                SELECT id, type, title, summary FROM {nt}
+                WHERE type IN ({placeholders})
+                ORDER BY updated_at DESC, id ASC LIMIT ?
+                """,
+                (*content_types, max(1, min(int(max_documents), 2000))),
+            ).fetchall()
+            existing_labels = {
+                str(row["title"] or "").strip().lower()
+                for row in conn.execute(
+                    f"SELECT title FROM {nt} WHERE type IN ('Topic', 'Concept')"
+                ).fetchall()
+            }
+        documents = [
+            {
+                "id": row["id"],
+                "text": f"{row['title']} {row['summary'] or ''}",
+                "kind": "file" if row["type"] in {"Document", "File", "CodeFile", "Spreadsheet"} else "chat",
+            }
+            for row in rows
+        ]
+        overlay = auto_build_graph_overlay(
+            documents,
+            existing_node_labels=existing_labels,
+            max_new_nodes=max(1, min(int(max_new_nodes), 50)),
+        )
+        promoted: List[Dict[str, Any]] = []
+        with self._connect() as conn:
+            valid_ids = {row["id"] for row in rows}
+            for promo in overlay["promotions"]:
+                topic_id = f"topic:{_slug(promo['label'])}"
+                self._upsert_node(
+                    conn, topic_id, "Topic", promo["label"],
+                    metadata={
+                        "curated": True,
+                        "importance": promo["importance"],
+                        "aliases": promo["aliases"],
+                        "source": "graph_curator",
+                    },
+                )
+                conn.execute(
+                    "UPDATE nodes_v2 SET importance_score=? WHERE id=?",
+                    (float(promo["importance"]), topic_id),
+                )
+                linked = 0
+                for source_id in promo["sources"][:10]:
+                    if source_id in valid_ids:
+                        self._upsert_edge(
+                            conn, source_id, topic_id, "MENTIONS",
+                            weight=0.6, metadata={"source": "graph_curator"},
+                        )
+                        linked += 1
+                promoted.append({
+                    "node_id": topic_id,
+                    "label": promo["label"],
+                    "importance": promo["importance"],
+                    "linked_sources": linked,
+                })
+        return {
+            "status": "ok",
+            "documents_scanned": len(documents),
+            "candidates_total": overlay["candidates_total"],
+            "promoted": promoted,
+            "skipped": overlay["skipped"][:50],
+            "skipped_total": len(overlay["skipped"]),
+        }
+
     def mark_superseded(self, old_node_id: str, new_node_id: str) -> Dict[str, Any]:
         """Record that ``old_node_id`` was replaced by ``new_node_id``.
 

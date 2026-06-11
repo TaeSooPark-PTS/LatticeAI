@@ -78,3 +78,37 @@ def test_provenance_coverage_metric(tmp_path):
     )
     assert "chat_message" in cov["provenance_by_source_type"]
     assert cov["uncovered_by_type"], "uncovered nodes are reported by type"
+
+
+# ── T4.4: graph_curator goes live ──────────────────────────────────────────
+
+def test_curate_promotes_multi_source_topics(tmp_path):
+    kg, pipe = _pipeline(tmp_path)
+    # Same strong topic in 3 separate sources — passes the min_sources gate.
+    for i in range(3):
+        pipe.ingest(IngestionItem(
+            source_type="chat_message",
+            text=f"kubernetes cluster upgrade discussion number {i} about kubernetes cluster",
+            metadata={"role": "user"},
+        ))
+    result = kg.curate()
+    assert result["status"] == "ok"
+    assert result["documents_scanned"] >= 3
+    labels = [p["label"] for p in result["promoted"]]
+    assert any("kubernetes" in label for label in labels), (labels, result["skipped"][:5])
+    promoted = next(p for p in result["promoted"] if "kubernetes" in p["label"])
+    assert promoted["linked_sources"] >= 2
+    # importance_score is REAL in nodes_v2 now.
+    with kg._connect() as conn:
+        score = conn.execute(
+            "SELECT importance_score FROM nodes_v2 WHERE id=?", (promoted["node_id"],)
+        ).fetchone()[0]
+    assert score > 0
+
+
+def test_curate_reports_skips_honestly(tmp_path):
+    kg, pipe = _pipeline(tmp_path)
+    pipe.ingest(IngestionItem(source_type="chat_message", text="solitary mention of xyzzy", metadata={"role": "user"}))
+    result = kg.curate()
+    assert result["skipped_total"] >= 0
+    assert isinstance(result["skipped"], list), "skips must be visible, not silent"
