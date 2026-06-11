@@ -33,6 +33,11 @@ FILE_SOURCE_TYPES = frozenset({"file", "local_file", "upload", "pdf"})
 TEXT_SOURCE_TYPES = frozenset(
     {"web_url", "browser_tab", "text", "markdown", "note", "code", "clipboard"}
 )
+# Conversational exchanges (read via ingest_message — role/content semantics,
+# conversation chaining). v4: chat and MCP messages stop bypassing the
+# pipeline, so they carry provenance and fire the hook lifecycle like every
+# other source.
+CHAT_SOURCE_TYPES = frozenset({"chat_message", "mcp_message"})
 
 DEFAULT_MAX_TEXT_BYTES = 5 * 1024 * 1024  # 5 MB of extracted text per item
 
@@ -143,6 +148,8 @@ class IngestionPipeline:
         }
 
         def _run() -> Dict[str, Any]:
+            if source_type in CHAT_SOURCE_TYPES:
+                return self._ingest_chat(item, source_type=source_type, owner=owner)
             if source_type in FILE_SOURCE_TYPES or (item.path and not item.text):
                 return self._ingest_file(item, source_type=source_type, owner=owner, captured_at=captured_at)
             return self._ingest_text(item, source_type=source_type, owner=owner, captured_at=captured_at)
@@ -242,6 +249,25 @@ class IngestionPipeline:
             conversation_id=item.conversation_id,
             metadata={"mime_type": item.mime_type, **(item.metadata or {})},
         )
+
+    def _ingest_chat(self, item, *, source_type, owner) -> Dict[str, Any]:
+        text = item.text or ""
+        meta = item.metadata or {}
+        role = str(meta.get("role") or "user")
+        result = self._kg.ingest_message(
+            role,
+            text,
+            user_email=owner,
+            user_nickname=meta.get("user_nickname"),
+            source=meta.get("source") or source_type,
+            conversation_id=item.conversation_id,
+            raw=meta.get("raw"),
+        )
+        # ingest_message reports message/response node ids; normalize the keys
+        # the provenance step expects.
+        result.setdefault("node_id", result.get("node_id") or result.get("message_node_id") or result.get("id"))
+        result.setdefault("title", item.title or text[:80])
+        return result
 
     def _ingest_file(self, item, *, source_type, owner, captured_at) -> Dict[str, Any]:
         if not item.path:

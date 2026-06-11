@@ -17,6 +17,7 @@ from datetime import datetime
 from pathlib import Path
 from typing import Any, Callable, Dict, List, Optional
 
+from latticeai.services.ingestion import IngestionItem
 from fastapi import APIRouter, HTTPException, Request
 from pydantic import BaseModel
 
@@ -76,6 +77,7 @@ def create_mcp_router(
     tool_response: Callable[..., Any],
     require_graph: Callable[[], Any],
     knowledge_graph: Any,
+    ingestion_pipeline: Any,
     data_dir: Path,
 ) -> APIRouter:
     router = APIRouter()
@@ -357,15 +359,25 @@ def create_mcp_router(
         args = req.args or {}
         if req.action == "knowledge_graph_ingest":
             _require_graph()
-            return KNOWLEDGE_GRAPH.ingest_message(
-                args.get("role") or ("assistant" if args.get("type") == "ai_response" else "user"),
-                args.get("content") or "",
-                user_email=args.get("user_email") or current_user,
-                user_nickname=args.get("user_nickname"),
-                source=args.get("source") or "mcp",
-                conversation_id=args.get("conversation_id"),
-                raw=args,
+            # v4: MCP messages enter the brain through the unified ingestion
+            # pipeline (provenance + hook lifecycle), not a direct store call.
+            owner = args.get("user_email") or current_user
+            result = ingestion_pipeline.ingest(
+                IngestionItem(
+                    source_type="mcp_message",
+                    text=args.get("content") or "",
+                    owner=owner,
+                    conversation_id=args.get("conversation_id"),
+                    metadata={
+                        "role": args.get("role") or ("assistant" if args.get("type") == "ai_response" else "user"),
+                        "user_nickname": args.get("user_nickname"),
+                        "source": args.get("source") or "mcp",
+                        "raw": args,
+                    },
+                ),
+                user_email=owner,
             )
+            return result.as_dict()
         if req.action == "knowledge_graph_search":
             _require_graph()
             return KNOWLEDGE_GRAPH.search(args.get("query") or args.get("q") or "", args.get("limit", 30))

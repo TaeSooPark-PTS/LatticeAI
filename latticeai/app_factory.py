@@ -148,7 +148,7 @@ def _build(config: "Optional[Config]" = None) -> Dict[str, Any]:
     from latticeai.api.browser import create_browser_router
     from latticeai.api.portability import create_portability_router
     from latticeai.services.memory_service import MemoryService
-    from latticeai.services.ingestion import IngestionPipeline
+    from latticeai.services.ingestion import IngestionItem, IngestionPipeline
     from latticeai.services.kg_portability import KGPortabilityService
     # The aliased names below look unused but are part of the legacy
     # ``server_app`` attribute surface: every local is exported via
@@ -693,14 +693,23 @@ def _build(config: "Optional[Config]" = None) -> Dict[str, Any]:
                 os.replace(tmp_path, HISTORY_FILE)
             try:
                 if ENABLE_GRAPH and KNOWLEDGE_GRAPH:
-                    KNOWLEDGE_GRAPH.ingest_message(
-                        role,
-                        message,
+                    # v4: chat messages enter the brain through the unified
+                    # ingestion pipeline (provenance + hook lifecycle), not by
+                    # bypassing it with a direct store call.
+                    INGESTION_PIPELINE.ingest(
+                        IngestionItem(
+                            source_type="chat_message",
+                            text=message,
+                            owner=user_email,
+                            conversation_id=conversation_id,
+                            metadata={
+                                "role": role,
+                                "user_nickname": user_nickname,
+                                "source": source,
+                                "raw": item,
+                            },
+                        ),
                         user_email=user_email,
-                        user_nickname=user_nickname,
-                        source=source,
-                        conversation_id=conversation_id,
-                        raw=item,
                     )
             except Exception as graph_error:
                 logging.warning("knowledge graph message ingest failed: %s", graph_error)
@@ -1519,6 +1528,7 @@ def _build(config: "Optional[Config]" = None) -> Dict[str, Any]:
     ))
 
     app.include_router(create_tools_router(
+        ingestion_pipeline=INGESTION_PIPELINE,
         config=CONFIG,
         data_dir=DATA_DIR,
         static_dir=STATIC_DIR,

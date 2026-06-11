@@ -3301,6 +3301,41 @@ class KnowledgeGraphStore:
                 ).fetchall()
             return {"items": [self._provenance_row(r) for r in rows], "count": len(rows)}
 
+    def provenance_coverage(self) -> Dict[str, Any]:
+        """How much of the brain is explainable: nodes with vs without
+        provenance, per node type — the honesty metric for 'every source goes
+        through the pipeline'. Pre-v4 nodes ingested before provenance existed
+        legitimately count as uncovered."""
+        nt, _ = self._read_tables()
+        with self._connect() as conn:
+            total = conn.execute(f"SELECT COUNT(*) FROM {nt}").fetchone()[0]
+            covered = conn.execute(
+                f"SELECT COUNT(*) FROM {nt} WHERE id IN (SELECT DISTINCT node_id FROM ingestion_provenance)"
+            ).fetchone()[0]
+            uncovered_by_type = {
+                row["type"]: row["c"]
+                for row in conn.execute(
+                    f"""
+                    SELECT type, COUNT(*) AS c FROM {nt}
+                    WHERE id NOT IN (SELECT DISTINCT node_id FROM ingestion_provenance)
+                    GROUP BY type ORDER BY c DESC LIMIT 20
+                    """
+                ).fetchall()
+            }
+            by_source = {
+                row["source_type"]: row["c"]
+                for row in conn.execute(
+                    "SELECT source_type, COUNT(*) AS c FROM ingestion_provenance GROUP BY source_type"
+                ).fetchall()
+            }
+        return {
+            "total_nodes": total,
+            "nodes_with_provenance": covered,
+            "coverage_ratio": round(covered / total, 4) if total else None,
+            "uncovered_by_type": uncovered_by_type,
+            "provenance_by_source_type": by_source,
+        }
+
     def provenance_stats(self) -> Dict[str, Any]:
         """Aggregate provenance counts for the Knowledge Graph status surface."""
         with self._connect() as conn:

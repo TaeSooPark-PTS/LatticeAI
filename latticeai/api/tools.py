@@ -178,6 +178,7 @@ class ToolGitShowRequest(BaseModel):
 def create_tools_router(
     *,
     config,
+    ingestion_pipeline,
     data_dir: Path,
     static_dir: Path,
     model_router,
@@ -438,6 +439,7 @@ def create_tools_router(
             current_user=current_user,
             enable_graph=ENABLE_GRAPH,
             knowledge_graph=KNOWLEDGE_GRAPH,
+            ingestion_pipeline=ingestion_pipeline,
             bytes_match_extension=_bytes_match_extension,
             classify_sensitive_message=classify_sensitive_message,
             append_audit_event=append_audit_event,
@@ -588,6 +590,7 @@ def create_tools_router(
         tool_response=_tool_response,
         require_graph=_require_graph,
         knowledge_graph=KNOWLEDGE_GRAPH,
+        ingestion_pipeline=ingestion_pipeline,
         data_dir=DATA_DIR,
     ))
 

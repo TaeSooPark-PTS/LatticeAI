@@ -61,6 +61,11 @@ def create_knowledge_graph_router(
         response.headers["Expires"] = "0"
         return response
 
+    @router.get("/knowledge-graph/provenance/coverage")
+    async def knowledge_graph_provenance_coverage(request: Request):
+        require_user(request)
+        return graph().provenance_coverage()
+
     @router.get("/knowledge-graph/stats")
     async def knowledge_graph_stats(request: Request):
         require_user(request)
