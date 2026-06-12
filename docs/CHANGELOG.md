@@ -1,5 +1,41 @@
 # Changelog
 
+## [4.0.1] - 2026-06-12
+
+> Digital Brain Platform maintenance release for commits on `main` after tag
+> `v4.0.0`. This release does not publish to PyPI, npm, the VS Code
+> Marketplace, or Open VSX; artifacts are built and attached to GitHub Release
+> `v4.0.1` only.
+
+### Added
+
+- Durable async run executor for agent/workflow runs, including persisted
+  queued/running/final states, realtime SSE progress, cooperative cancellation,
+  and startup reconciliation of orphaned active runs.
+- Stable user UUID migration, centralized policy enforcement, local invitation
+  tokens, and SQLite-backed Workspace OS state with JSON compatibility
+  mirroring.
+- Complete `/app` SPA parity surfaces for account/profile/password, workspace
+  and organization administration, invitations, snapshots/time-machine with
+  merge-restore, activity/presence, run approvals/cancellation, workflow
+  triggers, Brain Network pairing/push, chat context trace, and Knowledge Graph
+  provenance coverage.
+
+### Changed
+
+- Retired legacy static HTML/CSS/JS UI pages and legacy visual specs. Legacy GET
+  routes now redirect into the matching `/app` surface.
+- Added en/ko i18n runtime coverage for the shell, routes, and new parity views,
+  guarded by `scripts/lint_v3.mjs`.
+- Bumped synchronized package/runtime versions to `4.0.1`.
+
+### Expected Artifacts
+
+- `dist/ltcai-4.0.1-py3-none-any.whl`
+- `dist/ltcai-4.0.1.tar.gz`
+- `dist/ltcai-4.0.1.vsix`
+- `ltcai-4.0.1.tgz`
+
 ## [4.0.0] - 2026-06-12
 
 > Digital Brain Platform. The Knowledge Graph is now the durable brain store

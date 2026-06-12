@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "ltcai"
-version = "4.0.0"
+version = "4.0.1"
 description = "Lattice AI — local-first Digital Brain Platform: knowledge graph with provenance, durable memory, hybrid search, real agent/workflow runtimes, and signed brain exchange"
 readme = "README.md"
 requires-python = ">=3.11"

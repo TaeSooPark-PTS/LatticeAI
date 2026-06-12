@@ -1,5 +1,36 @@
 # Release Notes
 
+## v4.0.1 - Digital Brain Platform Maintenance
+
+Lattice AI v4.0.1 packages the commits on `main` after tag `v4.0.0`. It closes
+the post-tag implementation gaps without reusing the `v4.0.0` version number.
+No external package registries are published as part of this release.
+
+### Highlights
+
+- Durable async agent/workflow runs: queued/running/final rows, realtime SSE
+  progress, cooperative cancellation, and startup reconciliation.
+- Durable identity and workspace state: stable user UUIDs, centralized policy,
+  local invitation tokens, and SQLite Workspace OS state with JSON
+  compatibility.
+- `/app` is the only shipped product UI: legacy static pages are removed and
+  compatibility routes redirect into the SPA.
+- SPA parity is complete for account/profile/password, workspace/org
+  administration, invitations, snapshots/time-machine, activity/presence,
+  run approvals/cancellation, workflow triggers, Brain Network, chat context
+  trace, and Knowledge Graph provenance coverage.
+- en/ko i18n runtime coverage is wired through the shell, routes, and parity
+  views.
+
+### Expected Artifacts
+
+- `dist/ltcai-4.0.1-py3-none-any.whl`
+- `dist/ltcai-4.0.1.tar.gz`
+- `dist/ltcai-4.0.1.vsix`
+- `ltcai-4.0.1.tgz`
+
+Full detail: [RELEASE_NOTES_v4.0.1.md](RELEASE_NOTES_v4.0.1.md).
+
 ## v3.6.0 - Knowledge Graph First
 
 Lattice AI is not a model-personalization system. It is a **Digital Brain

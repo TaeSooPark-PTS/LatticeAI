@@ -1,6 +1,6 @@
 {
   "name": "ltcai",
-  "version": "4.0.0",
+  "version": "4.0.1",
   "description": "Lattice AI — local-first Digital Brain Platform (knowledge graph, durable memory, hybrid search, agents, signed brain exchange)",
   "homepage": "https://github.com/TaeSooPark-PTS/LatticeAI#readme",
   "repository": {

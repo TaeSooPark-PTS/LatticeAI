@@ -7,6 +7,31 @@
 > PyPI / npm / VS Code Marketplace / Open VSX 배포는 아래 수동 절차로만
 > 진행합니다. 태그 생성은 패키지 스토어 publish를 자동으로 트리거하지 않습니다.
 
+## v4.0.1 릴리스 노트 (2026-06-12)
+
+Lattice AI v4.0.1 — Digital Brain Platform Maintenance. `v4.0.0` 태그 이후
+`main`에 포함된 검증된 변경을 패키징한다. GitHub Release에는 검증된 산출물만
+첨부하며 PyPI, npm Registry, VS Code Marketplace, Open VSX에는 publish하지
+않는다.
+
+- **Added (Async runtime)**: agent/workflow run은 durable queued/running/final
+  row, realtime SSE progress, cooperative cancellation, startup reconciliation을
+  사용한다.
+- **Added (Identity/workspace state)**: stable user UUID, centralized policy,
+  local invitation token, SQLite-backed Workspace OS state + JSON compatibility
+  mirror를 포함한다.
+- **Changed (Frontend of record)**: legacy static HTML/CSS/JS UI를 제거하고
+  compatibility route는 `/app` SPA로 redirect한다.
+- **Added (SPA parity)**: account/profile/password, workspace/org admin,
+  invitations, snapshots/time-machine merge-restore, activity/presence,
+  run approvals/cancel, workflow triggers, Brain Network, chat context trace,
+  KG provenance coverage, en/ko i18n을 포함한다.
+- **Expected artifacts**:
+  - `dist/ltcai-4.0.1-py3-none-any.whl`
+  - `dist/ltcai-4.0.1.tar.gz`
+  - `dist/ltcai-4.0.1.vsix`
+  - `ltcai-4.0.1.tgz`
+
 ## v3.3.1 릴리스 노트 (2026-06-08)
 
 Lattice AI v3.3.1 — Visual Product Rebuild. `/app`의 런타임 동작은 보존하고,
@@ -716,13 +741,13 @@ Knowledge Graph v2 read/write cutover. 자세한 내용은
    - `npm run release:artifacts`
    - `npm run release:validate`
 
-현재 `v3.3.1` 기준 필수 산출물:
+현재 `v4.0.1` 기준 필수 산출물:
 
 ```text
-dist/ltcai-3.3.1-py3-none-any.whl
-dist/ltcai-3.3.1.tar.gz
-dist/ltcai-3.3.1.vsix
-ltcai-3.3.1.tgz
+dist/ltcai-4.0.1-py3-none-any.whl
+dist/ltcai-4.0.1.tar.gz
+dist/ltcai-4.0.1.vsix
+ltcai-4.0.1.tgz
 ```
 
 ## 2) npm 배포

@@ -1,9 +1,7 @@
 # Lattice AI v4.0.0 — Digital Brain Platform (Release Candidate)
 
-> Status: **implementation on `main`** — not tagged or published. Validation is
-> rerun at each verified milestone; T9 SPA parity is covered by full unit tests,
-> ruff, Python compile, `npm run lint`, asset build, Playwright v3 visual
-> coverage, Python package build, installed-wheel smoke, and npm pack dry-run.
+> Status: historical `v4.0.0` tag baseline. Commits after this tag are packaged
+> as `v4.0.1`; no external package registry publish is implied by this note.
 
 v4.0.0 is a product transformation, not a feature release: the "Digital
 Brain" identity v3.6.0 claimed becomes true in the implementation. The

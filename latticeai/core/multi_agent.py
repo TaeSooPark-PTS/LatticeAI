@@ -14,7 +14,7 @@ from datetime import datetime
 from typing import Any, Callable, Dict, List, Optional
 
 
-MULTI_AGENT_VERSION = "4.0.0"
+MULTI_AGENT_VERSION = "4.0.1"
 
 AGENT_ROLES = ("researcher", "planner", "executor", "reviewer", "release")
 CORE_PIPELINE = ("planner", "executor", "reviewer")

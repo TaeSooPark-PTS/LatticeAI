@@ -2,6 +2,20 @@
 
 The detailed historical changelog lives in [docs/CHANGELOG.md](docs/CHANGELOG.md).
 
+## [4.0.1] - 2026-06-12
+
+Maintenance release for changes on `main` after tag `v4.0.0`.
+
+- Added the durable async agent/workflow run executor with realtime progress,
+  cooperative cancellation, and startup reconciliation.
+- Added stable user UUID migration, policy-backed admin authorization,
+  invitation tokens, and SQLite-backed Workspace OS state mirroring.
+- Closed the v4 SPA parity remainder: legacy static UI pages are removed,
+  compatibility routes redirect into `/app`, token-native account/profile
+  flows and en/ko i18n are live, and parity views cover workspaces,
+  snapshots, activity, run approvals, workflow triggers, Brain Network, chat
+  context trace, and KG provenance coverage.
+
 ## [4.0.0] - 2026-06-12 (release candidate)
 
 Digital Brain Platform transformation. Highlights: workflow nodes execute
@@ -15,9 +29,9 @@ fixes; hashed session tokens + PKCE; Ed25519 device identity, signed brain
 bundles, Brain Network v1 peer exchange; interval + brain-event workflow
 triggers; executable custom agents; packaging fixed (wheel smoke in CI),
 ruff baseline, bounded deps; zero-CDN frontend with a force-directed graph
-canvas as the brain-first landing surface. Remaining gaps are labeled in
-FEATURE_STATUS.md and RELEASE_NOTES_v4.0.0.md. See docs/v4-audit/ for the
-audit record and docs/V4_BRAIN_ARCHITECTURE.md for the design.
+canvas as the brain-first landing surface. Post-tag implementation gaps are
+closed in v4.0.1. See docs/v4-audit/ for the audit record and
+docs/V4_BRAIN_ARCHITECTURE.md for the design.
 
 ## [3.6.0] - 2026-06-10
 

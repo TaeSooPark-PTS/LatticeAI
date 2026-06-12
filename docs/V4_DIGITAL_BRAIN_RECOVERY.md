@@ -5,18 +5,24 @@
 > completed analysis. **Update this file before ending any phase and before any
 > likely session/context/usage limit.**
 >
-> Last updated: 2026-06-12 — T9 remainder closed and fully verified on main; only owner-only blockers remain
+> Last updated: 2026-06-12 — v4.0.1 maintenance release prep; T9 remainder remains closed
 
 ---
 
 ## 0. RC STATUS (final)
 
-**v4.0.0 implementation is on `main` / `origin/main`.**
-Latest verified milestone: T9 remainder closed with full unit coverage
+**v4.0.1 packages the `main` commits after tag `v4.0.0`; implementation gaps are empty.**
+Latest verified implementation milestone: T9 remainder closed with full unit coverage
 (`585 passed`), ruff, Python compile, `npm run lint`, `npm run build:assets`,
 Playwright v3 visual coverage, Python sdist/wheel build, installed-wheel smoke,
 and `npm pack --dry-run`.
-No tag, package publish, release upload, or production deployment was performed.
+The v4.0.1 release process builds and validates artifacts for GitHub Release
+attachment only. It does not publish to PyPI, npm Registry, VS Code Marketplace,
+Open VSX, or production deployment targets.
+v4.0.1 validation completed: Python compile, ruff, 585 unit tests, 9 live
+integration tests, frontend lint, VS Code typecheck, 16 Playwright visual tests,
+Python wheel/sdist build, npm tgz build, VSIX build, release artifact
+validation, wheel smoke, and npm pack dry-run all passed.
 Remaining implementation gaps: **none**.
 Owner-only blockers: pptx history rewrite (requires force-push/owner decision)
 and consent-gated production embedder provisioning (silent default download is

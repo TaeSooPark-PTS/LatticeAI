@@ -203,7 +203,7 @@ npm run dev
 
 ## Latest Release
 
-### v4.0.0 — Digital Brain Platform
+### v4.0.1 — Digital Brain Platform Maintenance
 
 - **Brain store architecture** — `knowledge_graph.py` is now a compatibility
   shim over focused `latticeai/brain/` modules.
@@ -220,14 +220,17 @@ npm run dev
   workspace history without destructive migration.
 - **Local sovereignty** — signed exports, device identity, scoped graph export,
   and Brain Network peer exchange are implemented at the API layer.
+- **Post-v4 parity closure** — durable async runs, stable identity/workspace
+  state, and the complete `/app` SPA parity/legacy-retirement work are included
+  in this maintenance release.
 
-See [RELEASE_NOTES_v4.0.0.md](RELEASE_NOTES_v4.0.0.md),
+See [RELEASE_NOTES_v4.0.1.md](RELEASE_NOTES_v4.0.1.md),
 [docs/kg-schema.md](docs/kg-schema.md),
 [FEATURE_STATUS.md](FEATURE_STATUS.md).
 
 ## How it works — every source converges into the graph
 
-As of v4.0.0, data sources flow through the brain ingestion pipeline into
+As of v4.0.1, data sources flow through the brain ingestion pipeline into
 the Knowledge Graph — no source bypasses it, none becomes an isolated silo:
 
 ```text
@@ -279,6 +282,7 @@ For the deeper design, see [ARCHITECTURE.md](ARCHITECTURE.md) and
 ### Releases
 
 - [RELEASE_NOTES.md](RELEASE_NOTES.md) — current release notes
+- [RELEASE_NOTES_v4.0.1.md](RELEASE_NOTES_v4.0.1.md)
 - [RELEASE_NOTES_v4.0.0.md](RELEASE_NOTES_v4.0.0.md)
 - [RELEASE_NOTES_v3.6.0.md](RELEASE_NOTES_v3.6.0.md)
 - [RELEASE_NOTES_v3.5.0.md](RELEASE_NOTES_v3.5.0.md)
@@ -290,6 +294,7 @@ For the deeper design, see [ARCHITECTURE.md](ARCHITECTURE.md) and
 
 | Version | Theme |
 | --- | --- |
+| **4.0.1** | Digital Brain Platform maintenance — closes post-tag v4 gaps with durable async runs, stable identity/workspace state, full `/app` parity, and legacy UI retirement |
 | **4.0.0** | Digital Brain Platform — decomposed brain store, v2 write-mastered Knowledge Graph, durable memory/context, real workflow/agent foundations, signed brain exchange |
 | 3.6.0 | Knowledge Graph First — unified ingestion pipeline, formalized entity/relationship model, browser/web ingestion, local export/import/backup, provenance, KG as the primary surface |
 | 3.5.0 | Foundation stabilization & verification — OIDC verifier, trusted-proxy gating, runtime hook coverage, `tools/` package, reproducible artifacts |
