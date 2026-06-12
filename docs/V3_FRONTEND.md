@@ -6,9 +6,9 @@
 
 Entry point: **`/app`** (served by `latticeai/api/static_routes.py` →
 `static/v3/index.html`). Login, auto-login after registration, SSO callback, and
-the PWA manifest land on `/app`. The legacy multi-page screens (`/workspace`,
-`/chat`, `/graph`, `/admin`, …) remain reachable only as compatibility/debug
-routes; normal user workflows stay in `/app`.
+the PWA manifest land on `/app`. Legacy multi-page static screens have been
+deleted; compatibility routes (`/workspace`, `/chat`, `/graph`, `/admin`, …)
+redirect into their `/app#/...` views.
 
 ---
 
@@ -31,11 +31,12 @@ One declarative table (`static/v3/js/core/routes.js`) drives the nav rail, the
 command palette, the router, breadcrumbs, and lazy view loading.
 
 ```
-Workspace      Home · Chat
-Retrieval      Knowledge Graph · Hybrid Search
-Data           Files · Pipeline*
-Compute        Agents* · Models · My Computer*
-System         Settings
+Brain          Knowledge Graph · Hybrid Search · Memory
+Ask            Chat
+Capture        Files · Pipeline*
+Act            Agents* · Runs* · Workflows* · Planning* · Hooks*
+Library        Models · Skills* · MCP* · Marketplace*
+System         Overview · Account · Workspaces · Snapshots · Activity · Network* · Settings · My Computer*
 Administration Users · Permissions · Audit Logs · Security · Policies · Private VPC   (admin mode)
 ```
 

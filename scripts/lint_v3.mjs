@@ -8,6 +8,8 @@
  *     style.color = "#…" literals).
  *  4. Privacy: zero CDN/external URLs in shipped static HTML/CSS/JS —
  *     fonts/icons/libs are vendored under static/vendor.
+ *  5. i18n: routes, shell, and new v4 parity views must use the SPA i18n
+ *     runtime instead of inert localStorage-only language toggles.
  * Exits non-zero on any failure. */
 import { readdirSync, statSync, readFileSync } from "node:fs";
 import { join, dirname, relative } from "node:path";
@@ -89,6 +91,27 @@ for (const file of walk(staticRoot, [".html", ".css", ".js"]).sort()) {
   });
 }
 console.log(`privacy: ${shippedChecked} shipped static files scanned for CDN URLs`);
+
+// ── 5. i18n acceptance for T9 surfaces ──────────────────────────────────
+const i18nRequired = [
+  "static/v3/js/core/routes.js",
+  "static/v3/js/core/shell.js",
+  "static/v3/js/views/account.js",
+  "static/v3/js/views/workspace-admin.js",
+  "static/v3/js/views/snapshots.js",
+  "static/v3/js/views/activity.js",
+  "static/v3/js/views/runs.js",
+  "static/v3/js/views/network.js",
+];
+let i18nChecked = 0;
+for (const rel of i18nRequired) {
+  const file = join(repo, rel);
+  const text = readFileSync(file, "utf8");
+  i18nChecked++;
+  if (!/i18n\.js/.test(text)) fail(`${rel}: missing i18n runtime import`);
+  if (!/\bt\(/.test(text)) fail(`${rel}: no translation lookup found`);
+}
+console.log(`i18n: ${i18nChecked} route/shell/parity modules checked`);
 
 if (failed) {
   console.error(`\nv3 frontend lint: ${failed} failure(s)`);

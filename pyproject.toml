@@ -83,15 +83,11 @@ include-package-data = true
 
 [tool.setuptools.package-data]
 "*" = [
-  "static/*.html",
-  "static/*.css",
   "static/*.ico",
-  "static/scripts/*.js",
   "static/manifest.json",
   "static/sw.js",
   "static/icons/*.png",
   "static/css/*.css",
-  "static/css/reference/*.css",
   "static/v3/**/*.html",
   "static/v3/**/*.css",
   "static/v3/**/*.js",
@@ -106,10 +102,8 @@ include-package-data = true
 ]
 
 [tool.setuptools.data-files]
-"static" = ["static/account.html", "static/chat.html", "static/admin.html", "static/graph.html", "static/workspace.html", "static/plugins.html", "static/workflows.html", "static/agents.html", "static/activity.html", "static/favicon.ico", "static/manifest.json", "static/sw.js", "static/workspace.css", "static/platform.css"]
-"static/scripts" = ["static/scripts/account.js", "static/scripts/admin.js", "static/scripts/chat.js", "static/scripts/graph.js", "static/scripts/workspace.js", "static/scripts/platform.js", "static/scripts/ux.js"]
+"static" = ["static/favicon.ico", "static/manifest.json", "static/sw.js"]
 "static/css" = ["static/css/*.css"]
-"static/css/reference" = ["static/css/reference/base.css", "static/css/reference/account.css", "static/css/reference/admin.css", "static/css/reference/graph.css", "static/css/reference/chat.css"]
 "static/v3" = ["static/v3/index.html", "static/v3/asset-manifest.json"]
 "static/v3/css" = ["static/v3/css/*.css"]
 "static/v3/js" = ["static/v3/js/*.js"]

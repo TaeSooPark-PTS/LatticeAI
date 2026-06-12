@@ -7,9 +7,9 @@
  * honest unavailable state — never fabricated counters.
  * ========================================================================== */
 
-import { escapeHtml } from "../core/dom.js";
-import { createGraphCanvas } from "./graph-canvas.js";
-import { t } from "../core/i18n.js";
+import { escapeHtml } from "../core/dom.a2773eb0.js";
+import { createGraphCanvas } from "./graph-canvas.17c15d65.js";
+import { t } from "../core/i18n.880e1fec.js";
 
 const TYPE_COLOR = {
   Topic: "var(--lt3-pillar-graph)",

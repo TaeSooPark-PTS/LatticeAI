@@ -8,7 +8,7 @@ automated tests.
 ## v4.0.0 Digital Brain Platform — what changed
 
 v4 makes the v3.6.0 identity true in the implementation. Honesty ledger for
-the transformation (every line cites code + tests; suite: **583 unit tests**):
+the transformation (every line cites code + tests; suite: **585 unit tests**):
 
 | Area | Status | Evidence |
 | --- | --- | --- |
@@ -26,18 +26,18 @@ the transformation (every line cites code + tests; suite: **583 unit tests**):
 | **By-id authorization** | FIXED | Snapshot get/area/export/compare + memory delete authorize against the record's own workspace; `/workspace/os` registry leak closed; chat context user isolation. `test_truth_floor_t1.py` (11). |
 | **Auth hardening** | WORKING | Hashed session tokens at rest (transparent migration), 8+ alnum password policy, PKCE on SSO. `test_t6_auth_hardening.py` (6). |
 | **Identity, policy, invitations, workspace state** | WORKING | Users migrate to stable UUIDs while sessions preserve email compatibility; workspace memberships and KG identity columns re-key non-destructively; `core/policy.py` backs admin enforcement and `/admin/roles`; local invitation tokens create/list/accept/expire; Workspace OS state imports into `knowledge_graph.sqlite`, mirrors JSON for compatibility, and no longer truncates durable collections. `test_t6_identity_policy_invitations.py` (4). |
-| **Device identity + Brain Network v1** | WORKING (API-only UI) | Ed25519 device keys; signed exports (tamper refused; unsigned-legacy local imports allowed); workspace-filtered export (header no longer lies); paired-peer push/receive with replay protection; `/network/*`. UI surface is a labeled T9b gap. `test_t8_brain_network.py` (7). |
+| **Device identity + Brain Network v1** | WORKING | Ed25519 device keys; signed exports (tamper refused; unsigned-legacy local imports allowed); workspace-filtered export (header no longer lies); paired-peer push/receive with replay protection; `/network/*`; `/app#/network` surfaces device fingerprint, peer pairing, unpair, and signed push. `test_t8_brain_network.py` (7), `tests/visual/v3.spec.js`. |
 | **Graph curation** | WORKING | `curate()` gated topic promotion + real `importance_score`; `POST /knowledge-graph/curate`. `test_t4_ingestion_unification.py`. |
 | **Packaging** | FIXED | Wheel ships `setup_wizard.py` (root setup.py collision resolved); installed-wheel smoke test (`scripts/wheel_smoke.py`) in release CI; side-effect-free `create_app` factory (subprocess-verified). `test_app_factory.py`, `test_setup_wizard.py`. |
 | **Privacy (frontend)** | WORKING | Zero CDN references in shipped pages (fonts/icons/chart.js/marked vendored); sw.js precaches the v3 bundle; mechanical lint gates (raw colors, inline styles, CDN). `test_t9_privacy_vendoring.py` (6). |
 | **Graph explorer** | WORKING | Force-directed canvas (drag/zoom/pan/physics, token-colored) replaces the static SVG; Knowledge Graph is the landing view; brain-first navigation. lint:v3 all checks. |
+| **v4 SPA parity + legacy retirement** | WORKING | Legacy static HTML/CSS/JS pages are deleted and compatibility GET routes redirect into `/app`; parity views cover token-native account/profile/password, workspaces/org members/invitations/activation, snapshots/time-machine/compare/export/merge-restore, activity/presence, run approvals/cancel/progress, workflow trigger config/status, Brain Network pairing/push, chat context trace, and KG provenance coverage. en/ko i18n is wired through `static/v3/js/core/i18n.js` and gated by `scripts/lint_v3.mjs`. `test_static_release_hygiene.py`, `test_workspace_os.py`, `tests/visual/v3.spec.js`. |
 | **Honest numbers** | FIXED | Fabricated fusion meters removed; recall scores real (shared lexical scorer); recall graph branch fixed (`matches` key). |
 
-### Known gaps (labeled, contracted — not faked)
+### Known owner-only blockers (not implementation gaps)
 
 | Gap | State today | Contract |
 | --- | --- | --- |
-| Legacy page deletion + parity views, login rebuild, i18n, T9b surfaces (approval inbox, peer pairing, context trace) | legacy pages still served; new APIs labeled API-only | T9/T9b |
 | pptx history rewrite | deleted at HEAD only | owner decision (force-push) |
 | Default production embedder | hash fallback, honestly reported | consent-gated wizard provisioning |
 
@@ -104,10 +104,9 @@ router (`latticeai/api/*.py`) → service/core (`latticeai/services/*`,
 without a `file:line` citation. Where a path was verified by grep rather than a
 full trace, that is stated.
 
-**Frontend of record:** the v3 SPA at `/app` (`static/v3/`). The legacy static
-pages (`static/chat.html`, `admin.html`, `graph.html`, `workspace.html`, …) are
-superseded and not the audited surface; some legacy routes still resolve (e.g.
-`GET /agents` serves `static/agents.html`).
+**Frontend of record:** the v4 SPA at `/app` (`static/v3/`). The legacy static
+pages have been removed; compatibility GET routes redirect into the matching
+`/app#/...` surface.
 
 **Status legend**
 

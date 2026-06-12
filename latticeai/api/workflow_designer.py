@@ -19,6 +19,8 @@ from typing import Any, Callable, Dict, List, Optional
 from fastapi import APIRouter, HTTPException, Request
 from pydantic import BaseModel
 
+from latticeai.api.ui_redirects import app_redirect
+
 
 class WorkflowDefinitionRequest(BaseModel):
     name: str
@@ -63,6 +65,7 @@ def create_workflow_designer_router(
     static_dir: Optional[Path] = None,
     hooks: Any = None,
     run_executor: Any = None,
+    trigger_service: Any = None,
 ) -> APIRouter:
     from latticeai.core.workflow_engine import (
         WorkflowEngine,
@@ -77,12 +80,7 @@ def create_workflow_designer_router(
     @router.get("/workflows")
     async def workflows_page(request: Request):
         require_user(request)
-        if ui_file_response is None or static_dir is None:
-            raise HTTPException(status_code=404, detail="Workflow Designer UI not available.")
-        page = static_dir / "workflows.html"
-        if not page.exists():
-            raise HTTPException(status_code=404, detail="Workflow Designer UI not found.")
-        return ui_file_response(page)
+        return app_redirect("workflows", request)
 
     @router.get("/workflows/api/definitions")
     async def list_definitions(request: Request, q: str = ""):
@@ -248,6 +246,13 @@ def create_workflow_designer_router(
         require_user(request)
         scope = gate_read(request)
         return store.list_workflow_runs(limit=limit, workspace_id=scope)
+
+    @router.get("/workflows/api/triggers")
+    async def trigger_status(request: Request):
+        require_user(request)
+        if trigger_service is None:
+            return {"running": False, "tick_seconds": None, "armed": []}
+        return trigger_service.describe()
 
     @router.get("/workflows/api/runs/{run_id}/replay")
     async def workflow_run_replay(run_id: str, request: Request):

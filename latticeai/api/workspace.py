@@ -20,6 +20,7 @@ from typing import Dict, List, Optional
 from fastapi import APIRouter, HTTPException, Request
 from pydantic import BaseModel
 
+from latticeai.api.ui_redirects import app_redirect
 from latticeai.services.app_context import AppContext
 
 
@@ -161,7 +162,6 @@ def create_workspace_router(context: AppContext) -> APIRouter:
     remove_skill_directory = context.remove_skill_directory
     redact_secret_text = context.redact_secret_text
     capability_registry = context.capability_registry
-    ui_file_response = context.ui_file_response
 
     svc = service
     WORKSPACE_OS = service.store
@@ -173,7 +173,6 @@ def create_workspace_router(context: AppContext) -> APIRouter:
     KNOWLEDGE_GRAPH = context.knowledge_graph
     LOCAL_KG_WATCHER = context.local_kg_watcher
     SKILLS_DIR = context.skills_dir
-    STATIC_DIR = context.static_dir
     LOCAL_MODEL = context.local_model
     PUBLIC_MODEL = context.public_model
     _fetch_skills_marketplace = context.fetch_skills_marketplace
@@ -214,18 +213,12 @@ def create_workspace_router(context: AppContext) -> APIRouter:
     @router.get("/workspace")
     async def workspace_page(request: Request):
         require_user(request)
-        workspace_path = STATIC_DIR / "workspace.html"
-        if not workspace_path.exists():
-            raise HTTPException(status_code=404, detail="Workspace OS UI not found.")
-        return ui_file_response(workspace_path)
+        return app_redirect("workspace-admin", request)
 
     @router.get("/onboarding")
     async def onboarding_page(request: Request):
         require_user(request)
-        workspace_path = STATIC_DIR / "workspace.html"
-        if not workspace_path.exists():
-            raise HTTPException(status_code=404, detail="Workspace OS UI not found.")
-        return ui_file_response(workspace_path)
+        return app_redirect("workspace-admin", request)
 
     # ── Workspace OS summary / onboarding ─────────────────────────────────
 
@@ -385,6 +378,27 @@ def create_workspace_router(context: AppContext) -> APIRouter:
         except FileNotFoundError as exc:
             raise HTTPException(status_code=404, detail=f"Snapshot not found: {exc}") from exc
         append_audit_event("workspace_snapshot_export", user_email=current_user, snapshot_id=snapshot_id, path=result.get("export_path"))
+        return result
+
+    @router.post("/workspace/snapshots/{snapshot_id}/restore")
+    async def workspace_snapshot_restore(snapshot_id: str, request: Request):
+        current_user = require_user(request)
+        snapshot = _load_snapshot_authorized(request, snapshot_id)
+        scope = _gate_write(request)
+        if snapshot.get("workspace_id") and snapshot.get("workspace_id") != scope:
+            raise HTTPException(status_code=403, detail="snapshot belongs to a different workspace")
+        try:
+            result = WORKSPACE_OS.restore_snapshot(
+                snapshot_id,
+                graph=_workspace_graph(),
+                workspace_id=scope,
+                user_email=current_user or None,
+            )
+        except FileNotFoundError as exc:
+            raise HTTPException(status_code=404, detail=f"Snapshot not found: {exc}") from exc
+        except ValueError as exc:
+            raise HTTPException(status_code=409, detail=str(exc)) from exc
+        append_audit_event("workspace_snapshot_restore", user_email=current_user, snapshot_id=snapshot_id, restore_id=result.get("restore", {}).get("id"))
         return result
 
     @router.get("/workspace/time-machine")

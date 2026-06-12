@@ -1541,6 +1541,7 @@ def _build(config: "Optional[Config]" = None) -> Dict[str, Any]:
         static_dir=STATIC_DIR,
         hooks=HOOKS_REGISTRY,
         run_executor=RUN_EXECUTOR,
+        trigger_service=TRIGGER_SERVICE,
     ))
 
     app.include_router(create_agents_router(

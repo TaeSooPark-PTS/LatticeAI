@@ -9,7 +9,7 @@
 
 | 약속 | 목표 (PPT) | 현재 (repo) | 갭 |
 |------|-----------|-------------|----|
-| Cross-Platform Parity | Win·macOS·Linux·iOS·Android, 같은 디자인 토큰·컴포넌트 | Web(static) + VSCode ext + Telegram (브라우저 어디서나) | 네이티브 데스크탑/모바일 셸 없음 (PWA 부분 지원) |
+| Cross-Platform Parity | Win·macOS·Linux·iOS·Android, 같은 디자인 토큰·컴포넌트 | `/app` SPA + VSCode ext + Telegram (브라우저 어디서나) | 네이티브 데스크탑/모바일 셸 없음 (PWA 부분 지원) |
 | Zero-Config Auto Setup | PROBE → RECOMMEND → INSTALL → VERIFY → PRESET, 90초 내 | `LTCAI doctor` (의존성만 체크 = PROBE의 일부) | GPU/RAM 프로빙, 추천, 설치, 벤치마크, 프리셋 미구현 |
 | Everything is a Graph | 10 노드 타입 / 12 엣지 타입 / 임베딩 / 신뢰도+증거 | nodes·edges·chunks 테이블 + 한글 동사 엣지(EDGE_VERB) | 명시 enum·embedding·confidence/evidence·owner 결손 |
 
@@ -20,7 +20,7 @@
 PPT 명세는 "한 코드·다섯 화면" — Shared Core(Design Tokens, UI Components, Business Logic, AI/Graph Core) 위에서 Tauri(데스크탑) / Capacitor·RN(모바일) 렌더러가 같은 결과를 낸다.
 
 **현재 구현**
-- `static/chat.html`, `static/graph.html`, `static/admin.html`, `static/account.html` 4개 HTML — `static/css/tokens.css` 단일 토큰을 공유 (v2.2.1)
+- `static/v3/` `/app` SPA — 단일 토큰과 컴포넌트를 공유하며 legacy HTML 페이지는 v4에서 삭제됨
 - `vscode-extension/` — TypeScript VSCode 통합
 - `static/manifest.json` + `static/sw.js` — PWA 부분 지원 (iOS/Android 홈 화면 추가는 됨)
 - `telegram_bot.py` — Telegram 미러
@@ -28,11 +28,11 @@ PPT 명세는 "한 코드·다섯 화면" — Shared Core(Design Tokens, UI Comp
 **갭**
 - 데스크탑 네이티브 셸 (Tauri) 미구현
 - 모바일 네이티브 (Capacitor / RN) 미구현
-- 다국어(i18n) 시스템화 안 됨 (HTML에 한글 하드코딩)
+- `/app` SPA i18n(en/ko) 런타임은 구현됨; 네이티브 데스크탑/모바일 셸은 아직 없음
 
 **보강 결과물 (완료, v2.2.1)**
-- `static/css/tokens.css` — 4개 HTML이 공유하는 단일 진실 토큰 (`:root` = 라이트, `[data-lt-theme="dark"]` = 다크)
-- `static/css/responsive.css` + `static/scripts/ux.js` — 반응형 레이아웃 / 라이트·다크 토글 + OS 감지 + 지속화
+- `static/css/tokens.css` + `static/v3/css/` — `/app` SPA가 공유하는 단일 진실 토큰
+- `static/v3/js/core/store.js` + `shell.js` — 반응형 레이아웃 / 라이트·다크 토글 + OS 감지 + 지속화
 - 로드맵: `apps/desktop/` (Tauri 셸) · `apps/mobile/` (Capacitor 셸) 차후 단계
 
 ---
@@ -103,9 +103,9 @@ chunks ( id, source_node, text, metadata_json, created_at )
 | **PPT 명세** | `#FFFFFF` 또는 `#0B0B16` | `#6E4AE6` Lattice 보라 |
 
 **보강 결과물 (완료, v2.2.1)**
-- `static/css/tokens.css` — 단일 토큰을 모든 화면이 공유. `:root` 가 라이트 값,
+- `static/css/tokens.css` — 단일 토큰을 `/app` 화면이 공유. `:root` 가 라이트 값,
   `[data-lt-theme="dark"]` 가 다크 값을 정의하는 단일 진실 소스
-- 라이트/다크 토글 + OS 다크모드 감지 + 지속화는 `static/scripts/ux.js` 가 담당
+- 라이트/다크 토글 + OS 다크모드 감지 + 지속화는 `static/v3/js/core/store.js` 와 `shell.js` 가 담당
 
 ---
 
@@ -115,10 +115,10 @@ PPT 화면 1, 13 (login, security) 에 한국어 / Microsoft Entra ID / Okta SSO
 
 **현재**
 - `server.py` 의 `/auth/sso` 엔드포인트 존재 (architecture.md 언급) — Entra/Okta 둘 다 명시되어 있는지 확인 필요
-- 다국어 — HTML 하드코딩 (`lang="ko"`)
+- 다국어 — `/app` SPA en/ko 런타임(`static/v3/js/core/i18n.js`)과 언어 선택이 구현됨
 
 **갭 / 다음 단계**
-- i18n 사전 (`static/i18n/{ko,en,ja}.json`) 추출 → PPT 명세 그대로 토큰화
+- i18n 사전 런타임은 `static/v3/js/core/i18n.js` 로 구현됨; 추가 언어는 이 사전에 확장
 
 ---
 
@@ -127,7 +127,7 @@ PPT 화면 1, 13 (login, security) 에 한국어 / Microsoft Entra ID / Okta SSO
 | 순위 | 파일 | 무엇 |
 |------|------|------|
 | 1 | `docs/kg-schema.md`, `kg_schema.py` | KG 스키마 정식화 (10 노드 · 12 엣지 · embedding · confidence) |
-| 2 | `static/css/tokens.css` (+ `responsive.css`, `ux.js`) | 디자인 토큰 통합 + 라이트/다크 — v2.2.1 완료 |
+| 2 | `static/css/tokens.css` + `static/v3/` | 디자인 토큰 통합 + 라이트/다크 + en/ko i18n |
 | 3 | `auto_setup.py` | OS 프로빙 + 모델 추천 + 설치 어댑터 |
 | 4 | `docs/architecture.md` 보강 | 위 변경 반영 |
 | 5 | (차후) `apps/desktop`, `apps/mobile` 스캐폴딩 | Tauri/Capacitor |

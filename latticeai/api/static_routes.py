@@ -10,6 +10,8 @@ from typing import Callable, Optional
 from fastapi import APIRouter, Cookie, HTTPException, Request
 from fastapi.responses import FileResponse, HTMLResponse
 
+from latticeai.api.ui_redirects import app_redirect
+
 def ui_file_response(path: Path) -> FileResponse:
     response = FileResponse(path)
     response.headers["Cache-Control"] = "no-cache, no-store, must-revalidate"
@@ -44,15 +46,15 @@ def create_static_routes_router(
     async def root(request: Request, code: Optional[str] = None, authorized: Optional[str] = Cookie(None)):
         """로그인/회원가입 페이지. 초대 게이트 활성화 시 코드 검증 후 진입."""
         if not INVITE_GATE_ENABLED:
-            return ui_file_response(STATIC_DIR / "account.html")
+            return app_redirect("account", request)
     
         # 1. 이미 쿠키로 인증된 경우
         if authorized == "true":
-            return ui_file_response(STATIC_DIR / "account.html")
+            return app_redirect("account", request)
     
         # 2. 초대 코드가 일치하는 경우 (최초 진입)
         if code == INVITE_CODE:
-            response = ui_file_response(STATIC_DIR / "account.html")
+            response = app_redirect("account", request)
             response.set_cookie(key="authorized", value="true", httponly=True, samesite="lax", max_age=60*60*24*7)
             return response
     
@@ -72,7 +74,7 @@ def create_static_routes_router(
     @api_router.get("/account")
     async def account_page():
         """Direct login/register page route used by logout and manual navigation."""
-        return ui_file_response(STATIC_DIR / "account.html")
+        return app_redirect("account")
     
     
     @api_router.get("/manifest.json")
@@ -105,7 +107,7 @@ def create_static_routes_router(
     
     @api_router.get("/chat")
     async def chat_page(request: Request):
-        return ui_file_response(STATIC_DIR / "chat.html")
+        return app_redirect("chat", request)
 
 
     @api_router.get("/app")
@@ -118,13 +120,8 @@ def create_static_routes_router(
 
 
     @api_router.get("/admin")
-    async def admin_page():
-        admin_path = STATIC_DIR / "admin.html"
-        if not admin_path.exists():
-            raise HTTPException(status_code=404, detail="Admin UI not found.")
-        response = FileResponse(admin_path)
-        response.headers["Cache-Control"] = "no-cache, no-store, must-revalidate"
-        return response
+    async def admin_page(request: Request):
+        return app_redirect("admin/users", request)
     
     # /workspace and /onboarding UI pages are served by the workspace router
     # (latticeai.api.workspace), included below after its dependencies are defined.

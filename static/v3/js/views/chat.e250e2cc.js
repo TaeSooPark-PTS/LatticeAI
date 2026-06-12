@@ -11,8 +11,8 @@
  * (Knowledge Graph · Vector · Hybrid Search · indexed file references).
  * ========================================================================== */
 
-import { timeAgo } from "../core/dom.js";
-import { t } from "../core/i18n.js";
+import { timeAgo } from "../core/dom.a2773eb0.js";
+import { t } from "../core/i18n.880e1fec.js";
 
 export const layout = "flush";
 

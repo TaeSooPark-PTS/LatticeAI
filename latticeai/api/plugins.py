@@ -15,6 +15,8 @@ from typing import Any, Callable, Dict, Optional
 from fastapi import APIRouter, HTTPException, Request
 from pydantic import BaseModel
 
+from latticeai.api.ui_redirects import app_redirect
+
 
 class PluginActionRequest(BaseModel):
     plugin_id: str
@@ -50,12 +52,7 @@ def create_plugins_router(
     @router.get("/plugins/sdk")
     async def plugins_sdk_page(request: Request):
         require_user(request)
-        if ui_file_response is None or static_dir is None:
-            raise HTTPException(status_code=404, detail="Plugin SDK UI not available.")
-        page = static_dir / "plugins.html"
-        if not page.exists():
-            raise HTTPException(status_code=404, detail="Plugin SDK UI not found.")
-        return ui_file_response(page)
+        return app_redirect("marketplace", request)
 
     @router.get("/plugins/registry")
     async def plugins_registry(request: Request):

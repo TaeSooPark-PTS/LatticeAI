@@ -14,6 +14,8 @@ from typing import Any, Callable, Dict, List, Optional
 from fastapi import APIRouter, HTTPException, Request
 from pydantic import BaseModel
 
+from latticeai.api.ui_redirects import app_redirect
+
 
 class AgentRunRequest(BaseModel):
     goal: str
@@ -92,12 +94,7 @@ def create_agents_router(
     @router.get("/agents")
     async def agents_page(request: Request):
         require_user(request)
-        if ui_file_response is None or static_dir is None:
-            raise HTTPException(status_code=404, detail="Multi-Agent UI not available.")
-        page = static_dir / "agents.html"
-        if not page.exists():
-            raise HTTPException(status_code=404, detail="Multi-Agent UI not found.")
-        return ui_file_response(page)
+        return app_redirect("agents", request)
 
     @router.get("/agents/api/roles")
     async def agent_roles(request: Request):

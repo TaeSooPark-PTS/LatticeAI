@@ -4,8 +4,9 @@
 const { test, expect } = require("@playwright/test");
 
 const ROUTES = [
-  "home", "chat", "knowledge-graph", "hybrid-search", "memory", "files", "pipeline",
-  "agents", "workflows", "planning", "models", "my-computer",
+  "home", "account", "chat", "knowledge-graph", "hybrid-search", "memory", "files", "pipeline",
+  "agents", "runs", "workflows", "planning", "models", "my-computer",
+  "workspace-admin", "snapshots", "activity", "network",
   "marketplace", "skills", "hooks", "tools", "mcp", "settings",
   "admin/users", "admin/permissions", "admin/audit", "admin/security",
   "admin/policies", "admin/private-vpc",
@@ -26,7 +27,7 @@ test("shell boots with rail, brand, topbar and mode switcher", async ({ page }) 
   await expect(page.locator(".lt3-rail__word")).toContainText("Lattice AI");
   await expect(page.locator("#lt3-mode")).toBeVisible();
   // Basic mode shows the core workspace/retrieval/compute/system items (no admin group).
-  expect(await page.locator(".lt3-navitem").count()).toBe(8);
+  expect(await page.locator(".lt3-navitem").count()).toBe(12);
   expect(errors).toEqual([]);
 });
 
@@ -100,9 +101,9 @@ test("chat is a native v3 view (no redirect) with conversations, context and str
   // Must NOT redirect to the legacy /chat page.
   expect(page.url()).toContain("/app#/chat");
   expect(await page.locator(".lt3-chat__main").count()).toBe(1);
-  // Conversation rail + the four retrieval-context sections.
+  // Conversation rail + the five retrieval-context sections, including trace.
   await expect(page.locator(".lt3-convo").first()).toBeVisible();
-  await expect(page.locator(".lt3-ctx-sec__title")).toHaveCount(4);
+  await expect(page.locator(".lt3-ctx-sec__title")).toHaveCount(5);
   // Sending a message streams an assistant reply.
   await page.locator(".lt3-composer textarea").fill("How does hybrid search rank results?");
   await page.locator(".lt3-composer textarea").press("Enter");
@@ -111,6 +112,62 @@ test("chat is a native v3 view (no redirect) with conversations, context and str
     return b.length && b[b.length - 1].textContent.trim().length > 0;
   }, { timeout: 8000 });
   expect(await page.locator(".lt3-msg--user").count()).toBeGreaterThan(0);
+});
+
+test("legacy page URLs redirect into the v3 app", async ({ page }) => {
+  await page.goto("/chat");
+  await expect(page).toHaveURL(/\/app#\/chat$/);
+  await page.goto("/workspace");
+  await expect(page).toHaveURL(/\/app#\/workspace-admin$/);
+  await page.goto("/graph");
+  await expect(page).toHaveURL(/\/app#\/knowledge-graph$/);
+});
+
+test("account profile, workspace invites, snapshots, activity, runs, and network render real controls", async ({ page }) => {
+  await page.goto("/app#/account");
+  await page.waitForSelector(".lt3-vhead");
+  await expect(page.locator("body")).toContainText("admin@example.com");
+
+  await page.goto("/app#/workspace-admin");
+  await page.waitForSelector(".lt3-vhead");
+  await expect(page.locator("body")).toContainText("Design Org");
+  await expect(page.locator("body")).toContainText("invite-token-demo");
+
+  await page.goto("/app#/snapshots");
+  await page.waitForSelector(".lt3-vhead");
+  await expect(page.locator("body")).toContainText("v4 checkpoint");
+  await expect(page.locator("body")).toContainText("Merge restore");
+
+  await page.goto("/app#/activity");
+  await page.waitForSelector(".lt3-vhead");
+  await expect(page.locator("body")).toContainText("workflow_started");
+
+  await page.goto("/app#/runs");
+  await page.waitForSelector(".lt3-vhead");
+  await expect(page.locator("body")).toContainText("Approval pause");
+  await expect(page.locator("body")).toContainText("perm-token");
+
+  await page.goto("/app#/network");
+  await page.waitForSelector(".lt3-vhead");
+  await expect(page.locator("body")).toContainText("device-visual");
+  await expect(page.locator("body")).toContainText("Studio Mac");
+});
+
+test("workflow triggers, chat trace, and graph provenance coverage are visible", async ({ page }) => {
+  await page.goto("/app#/workflows");
+  await page.waitForSelector(".lt3-vhead");
+  await expect(page.locator("body")).toContainText("Trigger configuration");
+  await expect(page.locator("body")).toContainText("brain_event");
+
+  await page.goto("/app#/chat");
+  await page.waitForSelector(".lt3-chat");
+  await expect(page.locator("body")).toContainText("Why this context");
+
+  await page.goto("/app#/knowledge-graph");
+  await page.waitForSelector(".lt3-graph-canvas canvas");
+  await page.locator("button", { hasText: "Status" }).click();
+  await expect(page.locator("body")).toContainText("Provenance coverage");
+  await expect(page.locator("body")).toContainText("80%");
 });
 
 test("agents view exposes the live agent registry", async ({ page }) => {

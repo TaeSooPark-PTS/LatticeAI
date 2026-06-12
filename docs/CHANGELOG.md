@@ -21,6 +21,12 @@
 - Added stable user UUID migration, centralized RBAC policy enforcement, local
   invitation tokens, and SQLite-backed Workspace OS state with JSON compatibility
   mirroring and no durable-history truncation.
+- Retired the legacy static UI pages in favor of the v4 `/app` SPA. Legacy GET
+  routes redirect into `/app`; new parity views cover token-native account,
+  workspace/org management, invitations, snapshots/time-machine with
+  merge-restore, activity/presence, run approvals/cancellation, workflow
+  triggers, Brain Network peer pairing/push, chat context trace, and Knowledge
+  Graph provenance coverage, with en/ko i18n gated by frontend lint.
 
 ## [3.6.0] - 2026-06-10
 

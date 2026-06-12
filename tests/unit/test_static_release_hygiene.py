@@ -37,9 +37,7 @@ def test_favicon_route_serves_existing_icon():
 
 def test_runtime_assets_use_hashed_manifest_instead_of_query_versions():
     html_files = [
-        *STATIC_DIR.glob("*.html"),
         STATIC_DIR / "v3" / "index.html",
-        REPO_ROOT / "tests" / "visual" / "fixtures" / "onboarding.html",
     ]
     stale = []
     for path in html_files:
@@ -72,13 +70,30 @@ def test_manifest_assets_are_in_python_wheel_data_files():
     assert missing == []
 
 
-def test_legacy_monolith_is_removed_and_modules_present():
-    # v2.2.6 replaced static/lattice-reference.css with token-native modules.
+def test_legacy_pages_are_deleted_and_spa_assets_remain():
     assert not (STATIC_DIR / "lattice-reference.css").exists()
-    ref = STATIC_DIR / "css" / "reference"
-    for module in ("base.css", "account.css", "admin.css", "graph.css", "chat.css"):
-        assert (ref / module).exists(), f"missing token-native module: {module}"
-    for page in ("account.html", "admin.html", "graph.html", "chat.html"):
-        text = (STATIC_DIR / page).read_text(encoding="utf-8")
-        assert "lattice-reference.css" not in text, f"{page} still links the legacy monolith"
-        assert "/static/css/reference/base.css" in text, f"{page} does not load the base module"
+    for page in ("account.html", "activity.html", "admin.html", "agents.html", "chat.html", "graph.html", "plugins.html", "workflows.html", "workspace.html"):
+        assert not (STATIC_DIR / page).exists(), f"legacy page still shipped: {page}"
+    assert not (STATIC_DIR / "scripts").exists() or not list((STATIC_DIR / "scripts").glob("*.js"))
+    assert not (STATIC_DIR / "css" / "reference").exists() or not list((STATIC_DIR / "css" / "reference").glob("*.css"))
+    assert (STATIC_DIR / "v3" / "index.html").exists()
+    assert (STATIC_DIR / "css" / "tokens.css").exists()
+
+
+def test_legacy_routes_redirect_to_app_shell():
+    bundle = create_static_routes_router(
+        static_dir=STATIC_DIR,
+        invite_gate_enabled=False,
+        invite_code="test",
+        app_mode="test",
+        model_router=type("Router", (), {"_current": None})(),
+        require_user=lambda request: None,
+    )
+    app = FastAPI()
+    app.include_router(bundle.router)
+    client = TestClient(app, follow_redirects=False)
+
+    assert client.get("/").headers["location"] == "/app#/account"
+    assert client.get("/account").headers["location"] == "/app#/account"
+    assert client.get("/chat").headers["location"] == "/app#/chat"
+    assert client.get("/admin").headers["location"] == "/app#/admin/users"

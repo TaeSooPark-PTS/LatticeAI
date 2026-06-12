@@ -49,6 +49,10 @@ class FakeGraph:
         self.events.append({"node_id": node_id, "event_type": event_type, "title": title, **kwargs})
         return {"node_id": node_id}
 
+    def import_graph_data(self, data, *, mode="merge", dry_run=False):
+        self.imported = {"data": data, "mode": mode, "dry_run": dry_run}
+        return {"imported": True, "mode": mode, "nodes": len(data.get("nodes") or []), "edges": len(data.get("edges") or [])}
+
 
 def test_onboarding_state_is_reentrant(tmp_path: Path):
     store = WorkspaceOSStore(tmp_path)
@@ -83,6 +87,22 @@ def test_snapshot_compare_reports_knowledge_diff(tmp_path: Path):
     assert diff["summary"]["nodes_added"] == 1
     assert diff["summary"]["edges_added"] == 1
     assert diff["summary"]["decisions_changed"] == 1
+
+
+def test_snapshot_restore_merges_graph_without_deleting_state(tmp_path: Path):
+    store = WorkspaceOSStore(tmp_path)
+    graph = FakeGraph()
+    snapshot_id = store.create_snapshot(name="restore-me", graph=graph, history=[], settings={"theme": "dark"}, models={})["snapshot"]["id"]
+    store.upsert_memory(kind="preferences", content="keep current memory", user_email="user@example.com")
+
+    result = store.restore_snapshot(snapshot_id, graph=graph, workspace_id="personal", user_email="user@example.com")
+
+    assert result["restored"] is True
+    assert graph.imported["mode"] == "merge"
+    assert graph.imported["data"]["counts"] == {"nodes": 2, "edges": 1}
+    assert store.list_memories(workspace_id="personal")["memories"][0]["content"] == "keep current memory"
+    timeline = store.timeline(workspace_id="personal")["events"]
+    assert any(event["event_type"] == "snapshot_restored" for event in timeline)
 
 
 def test_memory_requires_known_kind_and_links_graph(tmp_path: Path):

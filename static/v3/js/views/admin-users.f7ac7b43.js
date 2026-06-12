@@ -6,7 +6,7 @@
  * operations when the backend does not expose them.
  * ========================================================================== */
 
-import { timeAgo } from "../core/dom.js";
+import { timeAgo } from "../core/dom.a2773eb0.js";
 
 export async function render(ctx) {
   const { h, icon, api, c, toast, navigate } = ctx;

@@ -1,8 +1,9 @@
 # Lattice AI v4.0.0 — Digital Brain Platform (Release Candidate)
 
-> Status: **release candidate on `feat/v4-digital-brain`** — not merged, not
-> tagged, not published. Validation: 571 unit tests pass, ruff clean,
-> lint_v3 all checks pass, installed-wheel smoke verified.
+> Status: **implementation on `main`** — not tagged or published. Validation is
+> rerun at each verified milestone; T9 SPA parity is covered by full unit tests,
+> ruff, Python compile, `npm run lint`, asset build, Playwright v3 visual
+> coverage, Python package build, installed-wheel smoke, and npm pack dry-run.
 
 v4.0.0 is a product transformation, not a feature release: the "Digital
 Brain" identity v3.6.0 claimed becomes true in the implementation. The
@@ -100,6 +101,16 @@ release was driven by an 8-dimension evidence-based audit
 - The Knowledge Graph explorer is a real force-directed canvas (drag, zoom,
   pan, physics) and **the landing surface**; navigation is brain-first
   (Brain · Ask · Capture · Act · Library · System).
+- The v4 `/app` SPA is now the only shipped product UI: legacy static pages
+  are deleted, compatibility GET routes redirect into `/app`, token-native
+  account/profile/password flows live in the shell, and en/ko i18n is wired
+  through a shared runtime.
+- Parity/T9b surfaces are first-class views: Workspaces (orgs, members,
+  invitations, activation), Snapshots/Time Machine (create, compare, export,
+  merge-restore), Activity/presence, Run Inbox (progress, cancellation,
+  approval pause decisions, local permission decisions), Workflow trigger
+  configuration/status, Brain Network pairing/push, chat context trace, and
+  Knowledge Graph provenance coverage.
 - Agent and workflow runs use the durable async executor: queued/running/final
   lifecycle rows, realtime SSE progress, cooperative cancellation, and startup
   reconciliation for orphaned active runs.
@@ -109,15 +120,11 @@ release was driven by an 8-dimension evidence-based audit
   imports into the shared SQLite database while retaining a JSON compatibility
   mirror.
 
-## Remaining gaps (honest, labeled, contracted)
+## Owner-only blockers
 
-Tracked with full implementation contracts in
-`docs/V4_IMPLEMENTATION_PLAN.md` + amendments and
-`docs/V4_DIGITAL_BRAIN_RECOVERY.md`:
+No implementation gaps remain in `docs/V4_DIGITAL_BRAIN_RECOVERY.md`.
 
-1. Legacy page deletion (requires parity views: org management, snapshots,
-   activity, profile), token-native login, i18n, and the T9b surfaces
-   (approval inbox, peer pairing UI, context-trace panel) — the new
-   capabilities are API-complete and labeled API-only.
-2. Git history rewrite for the removed pptx (owner decision; force-push).
-3. Default production embedder (consent-gated wizard provisioning instead).
+1. Git history rewrite for the removed pptx requires an owner decision and
+   force-push.
+2. Default production embedder remains consent-gated wizard provisioning; a
+   silent default model download is not permitted.

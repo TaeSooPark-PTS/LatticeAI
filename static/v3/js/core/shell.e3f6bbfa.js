@@ -5,13 +5,13 @@
  * drawer. Renders views by lazy-loading their module and calling render(ctx).
  * ========================================================================== */
 
-import { h, icon, $, $$ } from "./dom.js";
-import { store } from "./store.js";
-import { api } from "./api.js";
-import * as c from "./components.js";
-import { createRouter } from "./router.js";
-import { GROUPS, ROUTE_BY_KEY, MODE_RANK, visibleRoutes, loadView, groupLabel, localizeRoute } from "./routes.js";
-import { setI18nLanguage, t } from "./i18n.js";
+import { h, icon, $, $$ } from "./dom.a2773eb0.js";
+import { store } from "./store.7b2aa044.js";
+import { api } from "./api.ba0fbf14.js";
+import * as c from "./components.f25b3b93.js";
+import { createRouter } from "./router.584570f2.js";
+import { GROUPS, ROUTE_BY_KEY, MODE_RANK, visibleRoutes, loadView, groupLabel, localizeRoute } from "./routes.37522821.js";
+import { setI18nLanguage, t } from "./i18n.880e1fec.js";
 
 const MODES = [
   { key: "basic", labelKey: "shell.mode.basic", icon: "circle" },

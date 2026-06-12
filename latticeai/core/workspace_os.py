@@ -178,6 +178,52 @@ def _listify(value: Any) -> List[Any]:
     return value if isinstance(value, list) else []
 
 
+def _snapshot_graph_import_payload(graph_payload: Dict[str, Any], *, workspace_id: Optional[str]) -> Dict[str, Any]:
+    """Convert the UI graph snapshot shape into the logical import artifact."""
+
+    nodes = []
+    for node in _listify((graph_payload or {}).get("nodes")):
+        node_id = node.get("id")
+        if not node_id:
+            continue
+        metadata = node.get("metadata") if isinstance(node.get("metadata"), dict) else {}
+        raw = node.get("raw") if isinstance(node.get("raw"), dict) else {}
+        if workspace_id and not metadata.get("workspace_id"):
+            metadata = {**metadata, "workspace_id": workspace_id}
+        nodes.append({
+            "id": node_id,
+            "type": node.get("type") or "Concept",
+            "title": node.get("title") or node.get("label") or node_id,
+            "summary": node.get("summary") or "",
+            "metadata_json": json.dumps(metadata, ensure_ascii=False),
+            "raw_json": json.dumps(raw, ensure_ascii=False),
+        })
+
+    edges = []
+    for edge in _listify((graph_payload or {}).get("edges")):
+        source = edge.get("from_node") or edge.get("from") or edge.get("source")
+        target = edge.get("to_node") or edge.get("to") or edge.get("target")
+        if not source or not target:
+            continue
+        edges.append({
+            "from_node": source,
+            "to_node": target,
+            "type": edge.get("type") or "related_to",
+            "weight": edge.get("weight") or 1.0,
+            "metadata_json": json.dumps(edge.get("metadata") or {}, ensure_ascii=False),
+        })
+
+    return {
+        "header": {"graph_schema_version": 1, "workspace_id": workspace_id, "source": "workspace_snapshot"},
+        "nodes": nodes,
+        "edges": edges,
+        "chunks": [],
+        "knowledge_sources": [],
+        "provenance": [],
+        "counts": {"nodes": len(nodes), "edges": len(edges)},
+    }
+
+
 def _parse_iso(value: Optional[str]) -> Optional[datetime]:
     if not value:
         return None
@@ -1183,6 +1229,52 @@ class WorkspaceOSStore:
             zf.writestr("models.json", json.dumps(snapshot.get("models") or {}, ensure_ascii=False, indent=2))
         self.record_timeline_event("snapshot", "snapshot_exported", {"snapshot_id": snapshot_id, "path": str(export_path)})
         return {"snapshot_id": snapshot_id, "export_path": str(export_path), "bytes": export_path.stat().st_size}
+
+    def restore_snapshot(
+        self,
+        snapshot_id: str,
+        *,
+        graph: Any,
+        workspace_id: Optional[str] = None,
+        user_email: Optional[str] = None,
+    ) -> Dict[str, Any]:
+        """Restore a snapshot additively, preserving all current user data.
+
+        v4 snapshots are immutable checkpoints. Restoring one must not delete
+        newer graph nodes, chat history, memories, workspaces, or settings, so
+        this operation imports the snapshot graph in ``merge`` mode and records a
+        durable restore event. It is a real restore path for lost/missing graph
+        data, with rollback safety because current state remains intact.
+        """
+
+        snapshot = self.get_snapshot(snapshot_id)
+        scope = self._resolve_scope(workspace_id or snapshot.get("workspace_id"))
+        if graph is None or not hasattr(graph, "import_graph_data"):
+            raise ValueError("knowledge graph import is required for snapshot restore")
+        artifact = _snapshot_graph_import_payload(snapshot.get("graph") or {}, workspace_id=scope)
+        import_result = graph.import_graph_data(artifact, mode="merge", dry_run=False)
+        restore_id = f"restore-{datetime.now().strftime('%Y%m%d%H%M%S')}-{_json_hash([snapshot_id, scope, user_email, _now()])[:10]}"
+        record = {
+            "id": restore_id,
+            "snapshot_id": snapshot_id,
+            "workspace_id": scope,
+            "restored_at": _now(),
+            "restored_by": user_email,
+            "mode": "merge",
+            "graph": import_result,
+            "settings_preserved": True,
+            "chat_preserved": True,
+        }
+        state = self.load_state()
+        state.setdefault("snapshot_restores", []).append(record)
+        self.save_state(state)
+        self.record_timeline_event(
+            "snapshot",
+            "snapshot_restored",
+            {"snapshot_id": snapshot_id, "restore_id": restore_id, "mode": "merge", "graph": import_result},
+            workspace_id=scope,
+        )
+        return {"restored": True, "restore": record}
 
     def compare_snapshots(self, before_id: str, after_id: str) -> Dict[str, Any]:
         before = self.get_snapshot(before_id)

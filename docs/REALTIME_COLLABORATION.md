@@ -41,7 +41,7 @@ The bus is **in-process** (one server, local-first) and fans events out to
 in-memory subscriber queues.
 
 > **Compatibility.** This subsystem is purely additive. It introduces new
-> `/realtime/*` endpoints and an `/activity` page, and it attaches to the
+> `/realtime/*` endpoints and an `/app#/activity` page, and it attaches to the
 > existing `WorkspaceOSStore` through an optional `event_sink` hook. No v1.x
 > data shape, API, or behavior changes. With zero subscribers the bus is a
 > no-op, so single-user local mode behaves exactly as before.
@@ -274,8 +274,8 @@ router is mounted in `server_app.py` with the live bus, the auth helpers, and
 
 ### `GET /activity`
 
-Serves the Activity UI page (`static/activity.html`). Returns `404` if the UI
-file or static directory is not available.
+Compatibility redirect to `/app#/activity`. The Activity UI is part of the v4
+SPA and reads `/realtime/feed`, `/realtime/presence`, and `/workspace/time-machine`.
 
 ### `GET /realtime/stream`
 

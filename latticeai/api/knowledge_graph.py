@@ -10,8 +10,9 @@ from pathlib import Path
 from typing import Any, Callable, Dict, Optional
 
 from fastapi import APIRouter, HTTPException, Request
-from fastapi.responses import FileResponse
 from pydantic import BaseModel
+
+from latticeai.api.ui_redirects import app_redirect
 
 
 class KnowledgeGraphIngestRequest(BaseModel):
@@ -44,22 +45,14 @@ def create_knowledge_graph_router(
         """Serve the interactive knowledge graph canvas UI."""
         graph()
         require_user(request)
-        response = FileResponse(static_dir / "graph.html")
-        response.headers["Cache-Control"] = "no-cache, no-store, must-revalidate"
-        response.headers["Pragma"] = "no-cache"
-        response.headers["Expires"] = "0"
-        return response
+        return app_redirect("knowledge-graph", request)
 
     @router.get("/knowledge-graph")
     async def knowledge_graph_legacy_page(request: Request):
         """Backward-compatible route for the graph page."""
         graph()
         require_user(request)
-        response = FileResponse(static_dir / "graph.html")
-        response.headers["Cache-Control"] = "no-cache, no-store, must-revalidate"
-        response.headers["Pragma"] = "no-cache"
-        response.headers["Expires"] = "0"
-        return response
+        return app_redirect("knowledge-graph", request)
 
     @router.post("/knowledge-graph/curate")
     async def knowledge_graph_curate(request: Request):

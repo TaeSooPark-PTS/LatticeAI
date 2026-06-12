@@ -12,9 +12,11 @@ import secrets
 from pathlib import Path
 from typing import Any, Callable, Optional, Set
 
-from fastapi import APIRouter, HTTPException, Request
+from fastapi import APIRouter, Request
 from fastapi.responses import StreamingResponse
 from pydantic import BaseModel
+
+from latticeai.api.ui_redirects import app_redirect
 
 
 class PresenceRequest(BaseModel):
@@ -36,12 +38,7 @@ def create_realtime_router(
     @router.get("/activity")
     async def activity_page(request: Request):
         require_user(request)
-        if ui_file_response is None or static_dir is None:
-            raise HTTPException(status_code=404, detail="Activity UI not available.")
-        page = static_dir / "activity.html"
-        if not page.exists():
-            raise HTTPException(status_code=404, detail="Activity UI not found.")
-        return ui_file_response(page)
+        return app_redirect("activity", request)
 
     @router.get("/realtime/stream")
     async def realtime_stream(request: Request):

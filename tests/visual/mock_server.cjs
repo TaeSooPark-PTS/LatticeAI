@@ -35,6 +35,11 @@ function text(res, value, contentType = "text/plain; charset=utf-8") {
   res.end(value);
 }
 
+function redirect(res, target) {
+  res.writeHead(308, { location: target, "cache-control": "no-store" });
+  res.end();
+}
+
 function serveFile(res, filePath) {
   if (!filePath.startsWith(repoRoot) || !fs.existsSync(filePath) || !fs.statSync(filePath).isFile()) {
     json(res, { detail: "not found" }, 404);
@@ -111,6 +116,15 @@ const workspaceOs = {
   },
 };
 
+const snapshots = [
+  { id: "snapshot-demo", name: "v4 checkpoint", created_at: "2026-06-01T12:00:00", node_count: 5, edge_count: 5, chat_count: 2, workspace_id: "personal" },
+  { id: "snapshot-prev", name: "previous checkpoint", created_at: "2026-05-30T12:00:00", node_count: 3, edge_count: 2, chat_count: 1, workspace_id: "personal" },
+];
+
+const peers = [
+  { peer_id: "peer-studio", name: "Studio Mac", base_url: "http://studio.local:8765", fingerprint: "sha256:VISUAL", public_key: "-----BEGIN PUBLIC KEY-----\\nvisual\\n-----END PUBLIC KEY-----" },
+];
+
 const enterpriseOverview = {
   edition: workspaceOs.edition,
   admin_policies: {
@@ -148,9 +162,14 @@ const server = http.createServer((req, res) => {
   const pathname = decodeURIComponent(url.pathname);
 
   if (pathname === "/app" || pathname === "/v3") return serveFile(res, path.join(repoRoot, "static/v3/index.html"));
-  if (pathname === "/" || pathname === "/workspace" || pathname === "/onboarding") return serveFile(res, path.join(repoRoot, "static/workspace.html"));
-  if (pathname === "/graph" || pathname === "/knowledge-graph") return serveFile(res, path.join(repoRoot, "static/graph.html"));
-  if (pathname === "/admin") return serveFile(res, path.join(repoRoot, "static/admin.html"));
+  if (pathname === "/") return redirect(res, "/app#/account");
+  if (pathname === "/workspace" || pathname === "/onboarding") return redirect(res, "/app#/workspace-admin");
+  if (pathname === "/graph" || pathname === "/knowledge-graph") return redirect(res, "/app#/knowledge-graph");
+  if (pathname === "/admin") return redirect(res, "/app#/admin/users");
+  if (pathname === "/agents") return redirect(res, "/app#/agents");
+  if (pathname === "/workflows") return redirect(res, "/app#/workflows");
+  if (pathname === "/activity") return redirect(res, "/app#/activity");
+  if (pathname === "/plugins/sdk") return redirect(res, "/app#/marketplace");
   // v3 native Chat: POST /chat streams SSE; GET /chat still serves the legacy page.
   if (pathname === "/chat" && req.method === "POST") {
     res.writeHead(200, { "content-type": "text/event-stream; charset=utf-8", "cache-control": "no-store", connection: "keep-alive" });
@@ -178,27 +197,42 @@ const server = http.createServer((req, res) => {
       { role: "assistant", content: "It fuses the vector index and the knowledge graph with reciprocal-rank fusion, so a strong hit in either modality surfaces.", timestamp: "2026-06-06T13:20:00" },
     ] });
   }
-  if (pathname === "/chat") return serveFile(res, path.join(repoRoot, "static/chat.html"));
-  if (pathname === "/account" || pathname === "/login") return serveFile(res, path.join(repoRoot, "static/account.html"));
-  if (pathname === "/onboarding-fixture") return serveFile(res, path.join(repoRoot, "tests/visual/fixtures/onboarding.html"));
+  if (pathname === "/chat") return redirect(res, "/app#/chat");
+  if (pathname === "/account") return redirect(res, "/app#/account");
   if (pathname.startsWith("/static/")) return serveFile(res, path.join(repoRoot, pathname.slice(1)));
   if (pathname.startsWith("/icons/")) return serveFile(res, path.join(repoRoot, "static", pathname));
   if (pathname === "/manifest.json") return serveFile(res, path.join(repoRoot, "static/manifest.json"));
   if (pathname === "/favicon.ico") return serveFile(res, path.join(repoRoot, "static/favicon.ico"));
   if (pathname === "/sw.js") return serveFile(res, path.join(repoRoot, "static/sw.js"));
 
-  // Keep the login page on /account: account.js redirects to /chat when
-  // /account/profile is ok, so the visual mock returns 401 to stay on login.
-  if (pathname === "/account/profile") return json(res, { detail: "unauthorized" }, 401);
+  if (pathname === "/account/profile") {
+    if (req.method === "PATCH") return json(res, { email: "admin@example.com", nickname: "Admin", name: "Admin", role: "admin" });
+    return json(res, { email: "admin@example.com", nickname: "Admin", name: "Admin", role: "admin" });
+  }
+  if (pathname === "/login" && req.method === "POST") return json(res, { status: "ok", email: "admin@example.com", nickname: "Admin", role: "admin" });
+  if (pathname === "/register" && req.method === "POST") return json(res, { status: "ok", message: "registered", role: "user" });
+  if (pathname === "/logout" && req.method === "POST") return json(res, { status: "ok" });
+  if (pathname === "/account/change-password" && req.method === "POST") return json(res, { status: "ok" });
   if (pathname === "/auth/sso/config") return json(res, { enabled: false, providers: [] });
 
   if (pathname === "/health") return json(res, { status: "ok", version: "3.4.0", mode: "visual" });
   if (pathname === "/vpc/status") return json(res, { provider: "local", region: "visual", vpn_status: "standby", peering_status: "not_configured", private_subnets: [] });
   if (pathname === "/workspace/os") return json(res, workspaceOs);
+  if (pathname === "/workspace/registry") return json(res, workspaceOs.workspace_registry);
+  if (pathname === "/workspace/activate" && req.method === "POST") return json(res, { workspace: workspaceOs.workspace_registry.workspaces[0] });
+  if (pathname.startsWith("/workspace/orgs/") && pathname.endsWith("/archive") && req.method === "POST") return json(res, { workspace: { workspace_id: pathname.split("/")[3], status: "archived" } });
+  if (pathname.startsWith("/workspace/orgs/") && pathname.endsWith("/members") && req.method === "POST") return json(res, { workspace: workspaceOs.workspace_registry.workspaces[1] });
+  if (pathname.startsWith("/workspace/orgs/") && (req.method === "PATCH" || req.method === "DELETE")) return json(res, { workspace: workspaceOs.workspace_registry.workspaces[1] });
   if (pathname === "/workspace/onboarding/status") return json(res, { current_step: "complete", steps: ["account", "admin", "hardware", "model_recommendation", "folder_connection", "complete"].map((id) => ({ id, status: "complete" })) });
   if (pathname === "/workspace/traces") return json(res, { traces: [{ question: "What changed in v1.7.0?", confidence: 0.92, created_at: "2026-06-01T12:00:00", graph_nodes: graphNodes.slice(0, 2), source_files: [{ source: "README.md" }] }] });
   if (pathname === "/workspace/indexing") return json(res, { sources: [{ id: "source-demo", label: "Demo Repo", root_path: repoRoot, status: "indexed", success_count: 128, failure_count: 0, last_run_at: "2026-06-01T12:00:00", watch_active: true, file_status: { indexed: 128 } }] });
-  if (pathname === "/workspace/snapshots") return json(res, { snapshots: [{ id: "snapshot-demo", name: "v1.7.0 checkpoint", created_at: "2026-06-01T12:00:00", node_count: 5 }] });
+  if (pathname === "/workspace/snapshots") {
+    if (req.method === "POST") return json(res, { snapshot: snapshots[0] });
+    return json(res, { snapshots });
+  }
+  if (pathname === "/workspace/snapshots/compare" && req.method === "POST") return json(res, { summary: { nodes_added: 2, nodes_removed: 0, edges_added: 3, edges_removed: 0, decisions_changed: 1 } });
+  if (pathname.startsWith("/workspace/snapshots/") && pathname.endsWith("/export") && req.method === "POST") return json(res, { snapshot_id: pathname.split("/")[3], export_path: "/tmp/snapshot.zip", bytes: 4096 });
+  if (pathname.startsWith("/workspace/snapshots/") && pathname.endsWith("/restore") && req.method === "POST") return json(res, { restored: true, restore: { id: "restore-demo", mode: "merge", graph: { imported: true, nodes: 5, edges: 5 } } });
   if (pathname === "/workspace/memories") return json(res, { memories: [{ id: "mem-demo", kind: "decisions", content: "Ship graph and collaboration UX", updated_at: "2026-06-01T12:00:00", tags: ["release"] }] });
   if (pathname === "/workspace/computer-memory") return json(res, { enabled: false, approved: false, scopes: [], activities: [], notice: "disabled" });
   if (pathname === "/workspace/agents") return json(res, { agents: [{ id: "agent:planner", name: "Planner", role: "Plans release work", status: "available", relationships: ["agent:reviewer"] }] });
@@ -213,6 +247,23 @@ const server = http.createServer((req, res) => {
     total_available: 2,
   });
   if (pathname === "/workspace/time-machine") return json(res, { events: [{ event_type: "release_ready", area: "workspace", timestamp: "2026-06-01T12:00:00" }] });
+  if (pathname === "/invitations") {
+    if (req.method === "POST") return json(res, { invitation: { id: "invite-demo", token: "invite-token-demo", email: "new@example.com", role: "member", status: "pending" } });
+    return json(res, { invitations: [{ id: "invite-demo", token: "invite-token-demo", email: "new@example.com", role: "member", status: "pending" }] });
+  }
+  if (pathname.startsWith("/invitations/") && pathname.endsWith("/accept") && req.method === "POST") return json(res, { invitation: { id: "invite-demo", status: "accepted" } });
+  if (pathname === "/realtime/feed") return json(res, { events: [{ id: "evt-1", area: "workflow", event_type: "workflow_started", timestamp: "2026-06-01T12:00:00", payload: { run_id: "wf-run-approval" } }], stats: { events: 1 } });
+  if (pathname === "/realtime/presence") return json(res, { presence: [{ client_id: "visual-client", user: "admin@example.com", workspace_id: "personal", last_seen: "2026-06-01T12:00:00" }], stats: { subscribers: 1 } });
+  if (pathname === "/permissions/pending") return json(res, { pending: { "perm-token": { path: "/tmp/report.md", action: "read", action_label: "read file", user_email: "admin@example.com", approved: false, expires_in: 300 } }, count: 1 });
+  if (pathname.startsWith("/permissions/approve/") && req.method === "POST") return json(res, { ok: true, token: pathname.split("/").pop() });
+  if (pathname.startsWith("/permissions/deny/") && req.method === "POST") return json(res, { ok: true, denied: true, token: pathname.split("/").pop() });
+  if (pathname === "/network/identity") return json(res, { device_id: "device-visual", fingerprint: "sha256:LOCAL", public_key: "-----BEGIN PUBLIC KEY-----\\nlocal\\n-----END PUBLIC KEY-----" });
+  if (pathname === "/network/peers") {
+    if (req.method === "POST") return json(res, { status: "paired", peer: peers[0] });
+    return json(res, { peers });
+  }
+  if (pathname.startsWith("/network/peers/") && req.method === "DELETE") return json(res, { removed: true, peer_id: pathname.split("/").pop() });
+  if (pathname.startsWith("/network/push/") && req.method === "POST") return json(res, { status: "ok", pushed: true, peer_id: pathname.split("/").pop() });
   if (pathname.startsWith("/workspace/relationships/")) {
     const id = pathname.replace("/workspace/relationships/", "");
     return json(res, { node_id: id, node: graphNodes.find((node) => node.id === id) || { id }, inbound: graphEdges.filter((edge) => edge.to === id), outbound: graphEdges.filter((edge) => edge.from === id), related_entities: graphNodes, shortest_path: shortestPath(id, url.searchParams.get("target_id")) });
@@ -388,12 +439,19 @@ const server = http.createServer((req, res) => {
   if (pathname === "/plugins/directory") return json(res, { plugins: [{ id: "git-insights", name: "Git Insights", description: "Repository summary plugin", version: "1.0.0", author: "Lattice" }], categories: ["dev"] });
   if (pathname === "/skills/marketplace") return json(res, { skills: [{ skill: "visual_regression", name: "visual_regression", description: "Capture and compare workspace UI", version: "1.2.0", author: "Lattice", category: "test", installed: false }], categories: ["test"] });
   if (pathname === "/workflows/api/definitions") return json(res, { workflows: [{ id: "wf-agent-review", name: "Agent Review Workflow", nodes: [
-    { id: "trigger", type: "trigger", name: "Trigger", next: "agent" },
+    { id: "trigger", type: "trigger", name: "Trigger", config: { trigger: "manual" }, next: "agent" },
     { id: "agent", type: "agent", name: "Agent chain", next: "tool" },
     { id: "tool", type: "tool", name: "Tool", next: "output" },
     { id: "output", type: "output", name: "Result", next: null },
   ] }] });
-  if (pathname === "/workflows/api/runs") return json(res, { runs: [{ id: "wf-run-1", workflow_id: "wf-agent-review", workflow_name: "Agent Review Workflow", status: "ok", created_at: "2026-06-06T12:00:00" }] });
+  if (pathname.startsWith("/workflows/api/definitions/") && req.method === "PATCH") return json(res, { workflow: { id: "wf-agent-review", name: "Agent Review Workflow" } });
+  if (pathname === "/workflows/api/triggers") return json(res, { running: true, tick_seconds: 5, armed: [{ workflow_id: "wf-agent-review", name: "Agent Review Workflow", kind: "brain_event", config: { source_type: "upload" }, last_fired_at: 1780300800, recent_events: [{ type: "fired", trigger: "brain_event" }] }] });
+  if (pathname === "/workflows/api/runs") return json(res, { runs: [
+    { id: "wf-run-approval", workflow_id: "wf-agent-review", workflow_name: "Agent Review Workflow", status: "awaiting_approval", mode: "live", pause: { node: "tool" }, timeline: [{ event: "workflow_started", status: "running" }, { event: "approval_required", status: "awaiting_approval" }], created_at: "2026-06-06T12:05:00" },
+    { id: "wf-run-1", workflow_id: "wf-agent-review", workflow_name: "Agent Review Workflow", status: "ok", mode: "live", created_at: "2026-06-06T12:00:00" },
+  ] });
+  if (pathname.startsWith("/workflows/api/runs/") && pathname.endsWith("/stop") && req.method === "POST") return json(res, { stopped: true, run_id: pathname.split("/")[4] });
+  if (pathname.startsWith("/workflows/api/runs/") && pathname.endsWith("/resume") && req.method === "POST") return json(res, { run: { id: "wf-run-resumed", status: "ok" }, result: { status: "ok" }, resumed_from: pathname.split("/")[4] });
   if (pathname === "/api/memory/manager") return json(res, {
     sources: [
       { id: "workspace", type: "workspace", label: "Workspace Memory", count: 3, size_bytes: 2048, health: "ok", detail: "Personal workspace memory." },
@@ -440,6 +498,7 @@ const server = http.createServer((req, res) => {
 
   if (pathname === "/knowledge-graph/graph") return json(res, { nodes: graphNodes, edges: graphEdges });
   if (pathname === "/knowledge-graph/stats") return json(res, workspaceOs.graph);
+  if (pathname === "/knowledge-graph/provenance/coverage") return json(res, { total_nodes: 5, nodes_with_provenance: 4, coverage_ratio: 0.8, provenance_by_source_type: { upload: 2, note: 2 }, uncovered_by_type: { Concept: 1 } });
   if (pathname === "/knowledge-graph/search") return json(res, { query: url.searchParams.get("q"), matches: graphNodes });
   if (pathname.startsWith("/knowledge-graph/neighbors/")) return json(res, { node_id: pathname.replace("/knowledge-graph/neighbors/", ""), neighbors: graphNodes, edges: graphEdges });
 

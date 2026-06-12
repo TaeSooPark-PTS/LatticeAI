@@ -5,21 +5,30 @@
 > completed analysis. **Update this file before ending any phase and before any
 > likely session/context/usage limit.**
 >
-> Last updated: 2026-06-12 — T6/T7c closed on main; T9 gaps still active
+> Last updated: 2026-06-12 — T9 remainder closed and fully verified on main; only owner-only blockers remain
 
 ---
 
 ## 0. RC STATUS (final)
 
-**v4.0.0 release candidate is on `origin/feat/v4-digital-brain`.**
-Validation: 571 unit tests pass · ruff clean · check:python 186 modules ·
-lint_v3 all checks · installed-wheel smoke (19 modules from clean venv) ·
-release artifacts validated (wheel + sdist + npm tgz, 2.0MB).
-NO merge, NO tag, NO publish — awaiting review.
-Remaining gaps (labeled in FEATURE_STATUS.md §v4.0.0 + RELEASE_NOTES_v4.0.0.md):
-T9 remainder (legacy deletion + parity views, login, i18n, T9b surfaces),
-pptx history rewrite (owner), consent-gated embedder provisioning. All
-contracts live in docs/V4_IMPLEMENTATION_PLAN.md.
+**v4.0.0 implementation is on `main` / `origin/main`.**
+Latest verified milestone: T9 remainder closed with full unit coverage
+(`585 passed`), ruff, Python compile, `npm run lint`, `npm run build:assets`,
+Playwright v3 visual coverage, Python sdist/wheel build, installed-wheel smoke,
+and `npm pack --dry-run`.
+No tag, package publish, release upload, or production deployment was performed.
+Remaining implementation gaps: **none**.
+Owner-only blockers: pptx history rewrite (requires force-push/owner decision)
+and consent-gated production embedder provisioning (silent default download is
+not permitted).
+
+## Remaining Gaps
+
+None. The T9 remainder was closed on main with legacy page deletion, `/app`
+parity views, token-native account UI, en/ko i18n, approval/run inbox,
+workflow-trigger controls, Brain Network UI, chat context-trace panel, and
+Knowledge Graph provenance coverage surfaced in the SPA. Owner-only blockers
+above are intentionally not implementation gaps.
 
 ## 1. Program Charter (from the user's v4.0.0 directive)
 
@@ -54,7 +63,7 @@ chat-history import added; garden = watched source; T9b UI track added;
 T7 owns workflow_engine.py + realtime.py with suspension/reconciliation
 specs; tracks run strictly serially). Review record:
 `docs/v4-audit/v4_design_review.json`.
-**Phase C (Implementation) — T1 COMPLETE; next: T2 (Packaging & app factory).**
+**Phase C (Implementation) — COMPLETE on main. Remaining implementation gaps are empty.**
 
 Track log (update at every track boundary):
 - **T2 DONE** (commit `5e8aa1b`, 74 files). Agent did ~90% then died on a
@@ -197,11 +206,14 @@ Track log (update at every track boundary):
   (graph-canvas.js + Explore rewire; visual spec updated).
 - **T9-IA DONE** (commit 972d34c): brain-first nav (Brain/Ask/Capture/
   Act/Library/System); knowledge-graph is the default landing route.
-- **PHASE D DECISION**: moving to T10 RC prep. REMAINING GAPS (honest,
-  labeled, not faked): T9 remainder (legacy page deletion + parity views,
-  login rebuild, artifact ungitting, i18n, T9b approval/network/trace
-  surfaces).
-  All have full contracts in docs/V4_IMPLEMENTATION_PLAN.md + amendments.
+- **T9 REMAINDER DONE**: legacy static pages and scripts deleted; legacy GET
+  routes redirect into `/app`; parity views added for account/profile,
+  workspaces/org members/invitations/activation, snapshots/time-machine with
+  merge-restore, activity/presence, run approvals/cancellation, workflow
+  trigger configuration/status, Brain Network pairing/push, chat context trace,
+  and KG provenance coverage. en/ko i18n runtime backs routes, shell, and new
+  parity views; `scripts/lint_v3.mjs` gates it. Visual coverage moved to the
+  v3 surface and legacy-page specs were retired.
 - T9-canvas agent left static/v3/js/views/graph-canvas.js (509 lines,
   node --check passes) but NEVER rewired knowledge-graph.js — file kept
   uncommitted in tree; integration outstanding.
@@ -214,9 +226,7 @@ Track log (update at every track boundary):
   Tabler icons, chart.js, marked.js vendored under static/vendor);
   --lt3-on-accent token added; sw.js rebuilt around the v3 manifest;
   lint_v3.mjs now mechanically enforces token/inline-style/CDN rules;
-  6 guard tests. REMAINING T9: canvas graph port (item 2), IA regroup (1),
-  legacy deletion + redirects (3, needs parity views), login rebuild,
-  artifact ungitting, i18n, T9b surfaces (after T7/T8).
+  6 guard tests. Closed later by T9-canvas, T9-IA, and T9 remainder.
 - **T1 DONE** (commits `1cddc67` frontend + `c574eb6` backend). All 7 items:
   by-id snapshot/memory authz via new WorkspaceService.authorize_record_read/
   authorize_memory_delete; /workspace/os leak removed (workspace_count
@@ -262,8 +272,9 @@ the canonical Phase A record.**
      services, 27 API routers + `server_app.py` at 1,554 lines). Legacy root
      modules ~6,720 lines incl. `knowledge_graph.py` **4,633 lines**,
      `kg_schema.py` 521, `llm_router.py` 775, `mcp_registry.py` 791.
-   - Frontend: `/app` v3 SPA (`static/v3/`, 22 views, token-native) is primary;
-     legacy static HTML pages (`static/*.html`) still shipped in parallel.
+   - Frontend: `/app` v3 SPA (`static/v3/`, token-native) is primary; legacy
+     static HTML pages were later removed and compatibility routes redirect
+     into `/app`.
    - Repo root clutter: ~30 `ltcai-*.tgz` tarballs, `ltcai-0.3.1/` extracted copy,
      logs, `chat_history.json`, 15MB pptx — most likely untracked; verify with
      `git ls-files` before cleaning.
@@ -508,15 +519,28 @@ retained for context only:
 
 ## 11. Branch Status
 
-- `feat/v4-digital-brain` exists locally, based on main @ 5889195 (v3.6.0).
-- Not yet pushed to origin. No implementation commits yet.
+- `main` contains the v4 implementation through T9 remainder closure and is
+  pushed to `origin/main` at every verified milestone.
+- No tag, package publish, release upload, production deployment, force-push, or
+  history rewrite has been performed.
 
 ## 12. Validation Status
 
-- main baseline: 455 unit pass / 9 pre-existing integration failures
-  (ConnectError, need live server). Nothing run on the branch yet beyond this.
+- Full unit suite: `.venv/bin/python -m pytest tests/unit -q` → **585 passed,
+  2 warnings**.
+- Focused T9 tests: `tests/unit/test_workspace_os.py`,
+  `tests/unit/test_static_release_hygiene.py`, and `tests/visual/v3.spec.js`
+  passed after the parity/legacy-retirement changes.
+- Static and code gates: `.venv/bin/python -m ruff check .`,
+  `.venv/bin/python scripts/check_python.py`, `npm run lint`,
+  `npm run build:assets`, and `node --check` on changed/new v3 JS passed.
+- Build/package gates: `.venv/bin/python -m build`,
+  `.venv/bin/python scripts/wheel_smoke.py`, and `npm pack --dry-run` passed.
 
 ## 13. Files Modified (branch vs main)
 
-- `docs/V4_DIGITAL_BRAIN_RECOVERY.md` (this file) — NEW.
-- (none else yet)
+- T9 remainder changed backend compatibility redirects and SPA-facing APIs,
+  Workspace OS snapshot restore, v3 shell/routing/store/i18n/API modules, new
+  parity views, asset manifests, package/static inclusion rules, unit and visual
+  tests, mocks, release/status documentation, and removed retired legacy static
+  pages/scripts/CSS/tests.

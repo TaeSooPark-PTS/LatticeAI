@@ -5,7 +5,7 @@
  * breadcrumbs, and lazy view loading. Labels are translated at render time.
  * ========================================================================== */
 
-import { t } from "./i18n.js";
+import { t } from "./i18n.880e1fec.js";
 
 export const MODE_RANK = { basic: 0, advanced: 1, admin: 2 };
 

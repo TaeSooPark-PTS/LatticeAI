@@ -5,7 +5,7 @@
  * is talking to a live backend or an unavailable surface.
  * ========================================================================== */
 
-import { getI18nLanguage, languageOptions, t } from "../core/i18n.js";
+import { getI18nLanguage, languageOptions, t } from "../core/i18n.880e1fec.js";
 
 const MODE_DEFS = [
   { key: "basic", label: "Basic", desc: "Chat, search, and files — the essentials, nothing else." },
