@@ -22,6 +22,13 @@ from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any, Dict, Optional
 
+from lattice_brain.archive import BrainArchivePaths, EncryptedBrainArchive
+from lattice_brain.storage import (
+    DockerPostgresWizard,
+    PostgresEngine,
+    SQLiteToPostgresMigrator,
+)
+
 FORMAT = "latticeai.kg.export"
 FORMAT_VERSION = 1
 BACKUP_FORMAT = "latticeai.kg.backup"
@@ -95,7 +102,7 @@ class KGPortabilityService:
         origin = "unsigned-legacy"
         signature = artifact.get("signature")
         if signature:
-            from latticeai.brain.identity import verify_manifest
+            from lattice_brain.identity import verify_manifest
 
             if not verify_manifest(artifact.get("header") or {}, signature):
                 raise ValueError("Bundle signature verification failed — refusing to import.")
@@ -189,6 +196,36 @@ class KGPortabilityService:
             "nodes": sum(stats.get("nodes", {}).values()),
         }
 
+    # ── encrypted .latticebrain archive ───────────────────────────────────
+    def encrypted_archive(self, dest_path=None, *, passphrase: str) -> Dict[str, Any]:
+        self._require()
+        self._exports_dir.mkdir(parents=True, exist_ok=True)
+        dest = Path(dest_path) if dest_path else self._exports_dir / f"brain-{_stamp()}.latticebrain"
+        archive = EncryptedBrainArchive(
+            BrainArchivePaths(
+                db_path=Path(self._kg.db_path),
+                blob_dir=Path(self._kg.blob_dir),
+            )
+        )
+        return archive.create(dest, passphrase=passphrase)
+
+    def restore_encrypted_archive(self, archive_path, *, passphrase: str) -> Dict[str, Any]:
+        self._require()
+        archive = EncryptedBrainArchive(
+            BrainArchivePaths(
+                db_path=Path(self._kg.db_path),
+                blob_dir=Path(self._kg.blob_dir),
+            )
+        )
+        return archive.restore(
+            Path(archive_path),
+            passphrase=passphrase,
+            target=BrainArchivePaths(
+                db_path=Path(self._kg.db_path),
+                blob_dir=Path(self._kg.blob_dir),
+            ),
+        )
+
     # ── status surface ───────────────────────────────────────────────────────
     def snapshot_metadata(self) -> Dict[str, Any]:
         if not self.available():
@@ -198,7 +235,51 @@ class KGPortabilityService:
             **self._kg.schema_versions(),
             "stats": self._kg.stats(),
             "provenance": self._kg.provenance_stats(),
+            "storage": (
+                self._kg.storage_engine.capabilities().as_dict()
+                if getattr(self._kg, "storage_engine", None) is not None
+                else {"engine": "sqlite", "available": True}
+            ),
         }
+
+    def storage_status(self) -> Dict[str, Any]:
+        if not self.available():
+            return {"available": False}
+        return {
+            "available": True,
+            "active": (
+                self._kg.storage_engine.capabilities().as_dict()
+                if getattr(self._kg, "storage_engine", None) is not None
+                else {"engine": "sqlite", "available": True}
+            ),
+            "postgres": PostgresEngine("", schema="lattice_brain").capabilities().as_dict(),
+        }
+
+    def postgres_docker_setup(
+        self,
+        *,
+        consent: bool,
+        dry_run: bool = False,
+        port: int = 5432,
+    ) -> Dict[str, Any]:
+        wizard = DockerPostgresWizard(self._data_dir / "postgres", port=port)
+        return wizard.start(consent=consent, dry_run=dry_run)
+
+    def migrate_sqlite_to_postgres(
+        self,
+        *,
+        dsn: str,
+        schema: str = "lattice_brain",
+        dry_run: bool = True,
+    ) -> Dict[str, Any]:
+        self._require()
+        if not dsn:
+            raise ValueError("Postgres DSN is required for SQLite to Postgres migration.")
+        migrator = SQLiteToPostgresMigrator(
+            Path(self._kg.db_path),
+            PostgresEngine(dsn, schema=schema),
+        )
+        return migrator.migrate(dry_run=dry_run)
 
     def recent_ingestions(self, *, limit: int = 50, source_type: Optional[str] = None) -> Dict[str, Any]:
         """Recent provenance records (newest first) for the ingestion-sources UI."""

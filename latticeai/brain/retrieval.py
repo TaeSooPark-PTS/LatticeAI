@@ -813,6 +813,15 @@ class KnowledgeGraphRetrievalMixin:
             raise
 
     def index_status(self) -> Dict[str, Any]:
+        storage_capabilities = None
+        try:
+            storage_capabilities = self.storage_engine.capabilities().as_dict()
+        except Exception as exc:
+            storage_capabilities = {
+                "engine": "sqlite",
+                "available": False,
+                "reason": str(exc),
+            }
         with self._connect() as conn:
             vector_counts = {
                 row["item_type"]: row["count"]
@@ -864,6 +873,12 @@ class KnowledgeGraphRetrievalMixin:
                 # Honest capability report: trigram FTS5 keyword index, or
                 # LIKE-scan fallback when this SQLite build lacks it.
                 "fts_enabled": bool(getattr(self, "_fts_enabled", False)),
+                "engine": storage_capabilities,
+                "vector_search_backend": (
+                    storage_capabilities.get("vector_backend")
+                    if isinstance(storage_capabilities, dict)
+                    else "bruteforce-cosine"
+                ),
             },
             "source_items": len(source_items),
             "indexed_items": sum(vector_counts.values()),

@@ -33,6 +33,9 @@ REPO_ROOT = Path(__file__).resolve().parents[1]
 # Every importable module the wheel ships (pyproject py-modules + packages).
 WHEEL_MODULES = [
     "setup_wizard",
+    "lattice_brain",
+    "lattice_brain.storage",
+    "lattice_brain.archive",
     "latticeai",
     "latticeai.server_app",
     "latticeai.app_factory",

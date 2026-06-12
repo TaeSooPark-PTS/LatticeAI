@@ -39,11 +39,13 @@ def _canonical() -> str:
 
 def test_python_constants_agree():
     from latticeai import __version__
+    from lattice_brain import __version__ as brain_version
     from latticeai.core.marketplace import MARKETPLACE_VERSION
     from latticeai.core.multi_agent import MULTI_AGENT_VERSION
 
     v = _canonical()
     assert __version__ == v
+    assert brain_version == v
     assert MARKETPLACE_VERSION == v
     assert MULTI_AGENT_VERSION == v
 
@@ -58,6 +60,13 @@ def test_package_json_versions_agree():
     v = _canonical()
     assert _json("package.json")["version"] == v
     assert _json("vscode-extension/package.json")["version"] == v
+    assert _json("src-tauri/tauri.conf.json")["version"] == v
+
+
+def test_tauri_cargo_version_agrees():
+    m = re.search(r'(?m)^version\s*=\s*"([^"]+)"', _read("src-tauri/Cargo.toml"))
+    assert m, "version not found in src-tauri/Cargo.toml"
+    assert m.group(1) == _canonical()
 
 
 def test_npm_lockfiles_agree():

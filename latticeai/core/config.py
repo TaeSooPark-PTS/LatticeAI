@@ -104,6 +104,11 @@ class Config:
     embedding_timeout: int
     embedding_custom_target: str
 
+    # ── brain storage ───────────────────────────────────────────────
+    storage_engine: str
+    postgres_dsn: str
+    postgres_schema: str
+
     # ── SSO / OIDC ──────────────────────────────────────────────────
     sso_discovery_url: str
     sso_client_id: str
@@ -185,6 +190,9 @@ class Config:
             embedding_dim=_int(env, "LATTICEAI_VECTOR_DIM", 0),
             embedding_timeout=_int(env, "LATTICEAI_EMBEDDING_TIMEOUT", 30),
             embedding_custom_target=_value(env, "LATTICEAI_EMBEDDING_CUSTOM_TARGET", ""),
+            storage_engine=_value(env, "LATTICEAI_STORAGE_ENGINE", "sqlite").strip().lower() or "sqlite",
+            postgres_dsn=_value(env, "LATTICEAI_POSTGRES_DSN", ""),
+            postgres_schema=_value(env, "LATTICEAI_POSTGRES_SCHEMA", "lattice_brain"),
             sso_discovery_url=_value(env, "OIDC_DISCOVERY_URL", ""),
             sso_client_id=_value(env, "OIDC_CLIENT_ID", ""),
             sso_client_secret=_value(env, "OIDC_CLIENT_SECRET", ""),

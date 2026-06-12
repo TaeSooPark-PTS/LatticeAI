@@ -1,5 +1,45 @@
 # Changelog
 
+## [4.2.0] - 2026-06-12
+
+> Brain Core & Storage Rebuild release candidate. The backend Digital Brain
+> boundary is available through the independent `lattice_brain` package, while
+> the v4.1.0 frontend, FastAPI contracts, and SQLite user data remain
+> compatible.
+
+### Added
+
+- `lattice_brain` import package with `BrainCore`, Knowledge Graph,
+  conversation, memory/context, identity/network, archive, and storage facades.
+- Pluggable storage layer: `StorageEngine`, `SQLiteEngine`, `PostgresEngine`,
+  `DockerPostgresWizard`, and `SQLiteToPostgresMigrator`.
+- sqlite-vec capability detection with honest `bruteforce-cosine` local vector
+  search fallback.
+- Opt-in Postgres/pgvector scale setup and non-destructive SQLite-to-Postgres
+  migration planning/copy tooling.
+- Encrypted `.latticebrain` archive create/restore support for the SQLite brain
+  database and blob directory.
+- FastAPI routes for storage status, consent-gated Docker setup,
+  SQLite-to-Postgres migration, and encrypted archive create/restore.
+
+### Changed
+
+- FastAPI constructs the graph/conversation runtime through
+  `lattice_brain.BrainCore`; root and `latticeai.brain.*` imports remain
+  compatibility shims.
+- OpenAPI client regenerated with 313 paths.
+- System settings exposes API-backed storage status, Docker setup consent, and
+  migration planning controls.
+- Synchronized package/runtime versions to `4.2.0`, including Tauri config and
+  `lattice_brain.__version__`.
+
+### Expected Artifacts
+
+- `dist/ltcai-4.2.0-py3-none-any.whl`
+- `dist/ltcai-4.2.0.tar.gz`
+- `dist/ltcai-4.2.0.vsix`
+- `ltcai-4.2.0.tgz`
+
 ## [4.1.0] - 2026-06-12
 
 > Frontend & Desktop Rebuild release candidate. The existing FastAPI backend,

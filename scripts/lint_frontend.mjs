@@ -72,6 +72,11 @@ const requiredPaths = [
   "/workflows/api/definitions",
   "/workspace/os",
   "/models",
+  "/api/brain/storage",
+  "/api/brain/storage/postgres/docker",
+  "/api/brain/storage/migrate-postgres",
+  "/api/knowledge-graph/archive",
+  "/api/knowledge-graph/archive/restore",
 ];
 if (openapiPaths.length < 300) fail(`OpenAPI path count too low: ${openapiPaths.length}`);
 for (const path of requiredPaths) {

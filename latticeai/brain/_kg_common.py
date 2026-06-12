@@ -33,7 +33,7 @@ except Exception:  # pragma: no cover - v2 schema is optional at import time
     EdgeType = None  # type: ignore[assignment]
     _exec_script = None  # type: ignore[assignment]
 
-from latticeai.core.local_embeddings import LocalEmbeddingModel
+from lattice_brain.embeddings import LocalEmbeddingModel
 
 # Default read source for the graph queries: v2 reconstruction views.
 # Override with LATTICEAI_KG_READ_V2=0 to fall back to the legacy tables.

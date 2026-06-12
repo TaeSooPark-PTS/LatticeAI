@@ -23,6 +23,7 @@ REPO = Path(__file__).resolve().parents[1]
 # (path, kind, pattern) — pattern groups: (prefix, version)
 TARGETS = [
     ("latticeai/__init__.py", "regex", r'(__version__ = ")([^"]+)(")'),
+    ("lattice_brain/__init__.py", "regex", r'(__version__ = ")([^"]+)(")'),
     ("latticeai/core/workspace_os.py", "regex", r'(WORKSPACE_OS_VERSION = ")([^"]+)(")'),
     ("latticeai/core/marketplace.py", "regex", r'(MARKETPLACE_VERSION = ")([^"]+)(")'),
     ("latticeai/core/multi_agent.py", "regex", r'(MULTI_AGENT_VERSION = ")([^"]+)(")'),
@@ -31,6 +32,8 @@ TARGETS = [
     ("package-lock.json", "package-lock", None),
     ("vscode-extension/package.json", "json", "version"),
     ("vscode-extension/package-lock.json", "package-lock", None),
+    ("src-tauri/Cargo.toml", "regex", r'(^version = ")([^"]+)(")'),
+    ("src-tauri/tauri.conf.json", "json", "version"),
     ("static/app/asset-manifest.json", "json", "version"),
 ]
 

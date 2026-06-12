@@ -892,6 +892,57 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/brain/storage": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Brain Storage Status */
+        get: operations["brain_storage_status_api_brain_storage_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/brain/storage/migrate-postgres": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Migrate Sqlite To Postgres */
+        post: operations["migrate_sqlite_to_postgres_api_brain_storage_migrate_postgres_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/brain/storage/postgres/docker": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Setup Postgres Docker */
+        post: operations["setup_postgres_docker_api_brain_storage_postgres_docker_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/browser/ingest-current-tab": {
         parameters: {
             query?: never;
@@ -1206,6 +1257,40 @@ export interface paths {
         get: operations["index_status_api_index_status_get"];
         put?: never;
         post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/knowledge-graph/archive": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Encrypted Archive */
+        post: operations["encrypted_archive_api_knowledge_graph_archive_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/knowledge-graph/archive/restore": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Restore Encrypted Archive */
+        post: operations["restore_encrypted_archive_api_knowledge_graph_archive_restore_post"];
         delete?: never;
         options?: never;
         head?: never;
@@ -5712,6 +5797,38 @@ export interface components {
             /** Text */
             text: string;
         };
+        /** DockerPostgresRequest */
+        DockerPostgresRequest: {
+            /**
+             * Consent
+             * @default false
+             */
+            consent: boolean;
+            /**
+             * Dry Run
+             * @default false
+             */
+            dry_run: boolean;
+            /**
+             * Port
+             * @default 5432
+             */
+            port: number;
+        };
+        /** EncryptedArchiveRequest */
+        EncryptedArchiveRequest: {
+            /** Passphrase */
+            passphrase: string;
+            /** Path */
+            path?: string | null;
+        };
+        /** EncryptedRestoreRequest */
+        EncryptedRestoreRequest: {
+            /** Passphrase */
+            passphrase: string;
+            /** Path */
+            path: string;
+        };
         /** ExportRequest */
         ExportRequest: {
             /** Filters */
@@ -6279,6 +6396,21 @@ export interface components {
              * @default true
              */
             verify: boolean;
+        };
+        /** SQLiteToPostgresRequest */
+        SQLiteToPostgresRequest: {
+            /**
+             * Dry Run
+             * @default true
+             */
+            dry_run: boolean;
+            /** Dsn */
+            dsn: string;
+            /**
+             * Schema Name
+             * @default lattice_brain
+             */
+            schema_name: string;
         };
         /** SearchRequest */
         SearchRequest: {
@@ -8576,6 +8708,92 @@ export interface operations {
             };
         };
     };
+    brain_storage_status_api_brain_storage_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": unknown;
+                };
+            };
+        };
+    };
+    migrate_sqlite_to_postgres_api_brain_storage_migrate_postgres_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["SQLiteToPostgresRequest"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": unknown;
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    setup_postgres_docker_api_brain_storage_postgres_docker_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["DockerPostgresRequest"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": unknown;
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
     ingest_current_tab_api_browser_ingest_current_tab_post: {
         parameters: {
             query?: never;
@@ -9248,6 +9466,72 @@ export interface operations {
                     "application/json": {
                         [key: string]: unknown;
                     };
+                };
+            };
+        };
+    };
+    encrypted_archive_api_knowledge_graph_archive_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["EncryptedArchiveRequest"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": unknown;
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    restore_encrypted_archive_api_knowledge_graph_archive_restore_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["EncryptedRestoreRequest"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": unknown;
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
                 };
             };
         };

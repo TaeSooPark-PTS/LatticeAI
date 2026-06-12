@@ -23,7 +23,7 @@ import uuid
 from pathlib import Path
 from typing import Any, Dict, List, Optional
 
-from latticeai.brain.identity import DeviceIdentity, fingerprint_of, verify_signature
+from lattice_brain.identity import DeviceIdentity, fingerprint_of, verify_signature
 
 PEER_AUTH_WINDOW_SECONDS = 300
 _NONCE_CACHE_MAX = 4096

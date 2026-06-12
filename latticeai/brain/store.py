@@ -21,11 +21,31 @@ class KnowledgeGraphStore(
     KnowledgeGraphDocumentsMixin,
     KnowledgeGraphRetrievalMixin,
 ):
-    def __init__(self, db_path: Path, blob_dir: Path, embedder: Any = None):
+    def __init__(
+        self,
+        db_path: Path,
+        blob_dir: Path,
+        embedder: Any = None,
+        storage_engine: Any = None,
+    ):
         self.db_path = Path(db_path)
         self.blob_dir = Path(blob_dir)
         self.db_path.parent.mkdir(parents=True, exist_ok=True)
         self.blob_dir.mkdir(parents=True, exist_ok=True)
+        if storage_engine is None:
+            from lattice_brain.storage import SQLiteEngine
+
+            storage_engine = SQLiteEngine(self.db_path)
+        storage_caps = storage_engine.capabilities()
+        if not storage_caps.available:
+            raise RuntimeError(storage_caps.reason or "Brain storage is unavailable.")
+        if storage_caps.engine != "sqlite":
+            raise RuntimeError(
+                "KnowledgeGraphStore currently requires SQLiteEngine. "
+                "Explicit non-SQLite storage must use the migration/scale tooling; "
+                "no SQLite fallback is attempted."
+            )
+        self.storage_engine = storage_engine
         # The embedder is swappable behind a fixed interface
         # (model_id/dim/embed/encode/decode/similarity). Defaults to the
         # deterministic, offline hash model so the store works with no config;
@@ -49,11 +69,7 @@ class KnowledgeGraphStore(
         return ("nodes", "edges")
 
     def _connect(self) -> sqlite3.Connection:
-        conn = sqlite3.connect(str(self.db_path))
-        conn.row_factory = sqlite3.Row
-        conn.execute("PRAGMA journal_mode=WAL")
-        conn.execute("PRAGMA foreign_keys=ON")
-        return conn
+        return self.storage_engine.connect()
 
     def _init_db(self) -> None:
         with self._connect() as conn:

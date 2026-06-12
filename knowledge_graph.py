@@ -1,10 +1,10 @@
-"""Compatibility shim for the v4 brain store.
+"""Compatibility shim for the v4.2 lattice-brain store.
 
-The implementation now lives under :mod:`latticeai.brain`. Root imports are
+The implementation now lives under :mod:`lattice_brain`. Root imports are
 kept for older integrations and tests.
 """
 
-from latticeai.brain._kg_common import (  # noqa: F401
+from lattice_brain._kg_common import (  # noqa: F401
     EDGE_VERB,
     GRAPH_SCHEMA_VERSION,
     LOCAL_CODE_EXTENSIONS,
@@ -24,7 +24,7 @@ from latticeai.brain._kg_common import (  # noqa: F401
     _slug,
     set_llm_router,
 )
-from latticeai.brain.store import KnowledgeGraphStore
+from lattice_brain.store import KnowledgeGraphStore
 
 __all__ = [
     "KnowledgeGraphStore",

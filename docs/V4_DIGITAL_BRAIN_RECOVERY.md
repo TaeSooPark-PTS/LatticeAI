@@ -5,30 +5,24 @@
 > completed analysis. **Update this file before ending any phase and before any
 > likely session/context/usage limit.**
 >
-> Last updated: 2026-06-12 — v4.1.0 frontend/desktop rebuild RC; Remaining Gaps remain empty
+> Last updated: 2026-06-12 — v4.2.0 Brain Core/storage rebuild RC; Remaining Gaps remain empty
 
 ---
 
-## 0. RC STATUS (v4.1.0 RC)
+## 0. RC STATUS (v4.2.0 RC)
 
-**v4.1.0 replaces the frontend implementation and desktop shell on top of
-`main @ v4.0.1`; implementation gaps remain empty.**
-Latest implementation milestone: `/app` is now a React + TypeScript + Vite SPA
-with TanStack Query, Zustand, generated OpenAPI client usage, Cytoscape.js
-Brain graph, React Flow Act graph, Tailwind CSS, and local shadcn-style
-primitives. Tauri 2.0 is the primary desktop shell; Electron is fallback only.
-The existing FastAPI backend, Brain Core, storage architecture, and
-agent/workflow runtime remain the source of truth.
-The v4.1.0 RC process builds and validates local artifacts only. It does not
-publish to PyPI, npm Registry, VS Code Marketplace, Open VSX, or production
-deployment targets.
-v4.1.0 validation completed: OpenAPI generation (308 paths), Python compile,
-ruff, 585 unit tests, 9 live integration tests, frontend lint/no-CDN/API
-compatibility, TypeScript build, 12 Playwright visual/offline tests, Tauri
-cargo check, Tauri `.app` + DMG build, Electron fallback syntax/version check,
-Python wheel/sdist build, npm tgz build, VSIX build, release artifact
-validation, wheel smoke, and npm pack dry-run all passed. See
-`docs/V4_1_VALIDATION_REPORT.md`.
+**v4.2.0 extracts Brain Core into `lattice_brain` and adds the pluggable
+storage layer on top of `main` after v4.1.0; implementation gaps remain empty.**
+Latest implementation milestone: FastAPI now constructs the Knowledge Graph and
+durable conversation runtime through `lattice_brain.BrainCore`. The new
+`lattice_brain.storage` package provides `StorageEngine`, `SQLiteEngine`,
+`PostgresEngine`, explicit-consent Docker Postgres setup, SQLite-to-Postgres
+migration tooling, sqlite-vec capability reporting with honest cosine fallback,
+and encrypted `.latticebrain` archive create/restore.
+The v4.2.0 RC process builds and validates local artifacts only. It does not
+tag, create a GitHub Release, publish to PyPI, npm Registry, VS Code
+Marketplace, Open VSX, or deploy to production targets.
+v4.2.0 validation report: `docs/V4_2_VALIDATION_REPORT.md`.
 Remaining implementation gaps: **none**.
 Owner-only blockers: pptx history rewrite (requires force-push/owner decision)
 and consent-gated production embedder provisioning (silent default download is
@@ -36,12 +30,13 @@ not permitted).
 
 ## Remaining Gaps
 
-None. v4.1.0 closes the frontend/desktop rebuild on top of the already-empty
-v4.0.1 gap list: legacy static v3 frontend assets are removed, `/app` is served
-from `static/app`, Brain/Ask/Capture/Act/Library/System cover the existing
-capability surface, and every visible control either calls an existing backend
-API or presents an honest unavailable/error state. Owner-only blockers above
-are intentionally not implementation gaps.
+None. v4.2.0 closes the backend Brain Core/storage rebuild on top of the
+already-empty v4.1.0 gap list: `lattice_brain` is the independent package
+boundary, SQLite remains the default engine, Postgres/pgvector is opt-in and
+honestly unavailable when dependencies or DSN are missing, Docker setup is
+consent-gated, migration planning is non-destructive, and encrypted
+`.latticebrain` archives round-trip the SQLite brain DB plus blobs. Owner-only
+blockers above are intentionally not implementation gaps.
 
 ## 1. Program Charter (from the user's v4.0.0 directive)
 
@@ -227,9 +222,9 @@ Track log (update at every track boundary):
   and KG provenance coverage. en/ko i18n runtime backs routes, shell, and new
   parity views; `scripts/lint_v3.mjs` gates it. Visual coverage moved to the
   v3 surface and legacy-page specs were retired.
-- T9-canvas agent left static/v3/js/views/graph-canvas.js (509 lines,
-  node --check passes) but NEVER rewired knowledge-graph.js — file kept
-  uncommitted in tree; integration outstanding.
+- Superseded note: an early T9-canvas handoff left a static v3 graph-canvas file
+  unrewired, but this is no longer active work. v4.1.0 removed `static/v3` and
+  replaced the graph surface with the React/Vite/Cytoscape Brain view.
 - NOTE: The old T3d queue is closed. T9 parity surfaces remain active with
   full contracts in this file + the plan.
   - **T3e**: docs/kg-schema.md regenerated from enums.
@@ -285,9 +280,9 @@ the canonical Phase A record.**
      services, 27 API routers + `server_app.py` at 1,554 lines). Legacy root
      modules ~6,720 lines incl. `knowledge_graph.py` **4,633 lines**,
      `kg_schema.py` 521, `llm_router.py` 775, `mcp_registry.py` 791.
-   - Frontend: `/app` v3 SPA (`static/v3/`, token-native) is primary; legacy
-     static HTML pages were later removed and compatibility routes redirect
-     into `/app`.
+  - Historical frontend baseline: `/app` static v3 SPA (`static/v3/`,
+     token-native) was primary at v3.6.0. v4.1.0 later replaced it with the
+     React/Vite SPA in `frontend/` and `static/app/`.
    - Repo root clutter: ~30 `ltcai-*.tgz` tarballs, `ltcai-0.3.1/` extracted copy,
      logs, `chat_history.json`, 15MB pptx — most likely untracked; verify with
      `git ls-files` before cleaning.

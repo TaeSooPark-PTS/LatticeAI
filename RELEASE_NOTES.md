@@ -1,5 +1,35 @@
 # Release Notes
 
+## v4.2.0 RC - Brain Core & Storage Rebuild
+
+Lattice AI v4.2.0 extracts the backend Digital Brain boundary into the
+independent `lattice_brain` package and adds a pluggable storage layer while
+preserving v4.1.0 APIs, frontend behavior, and SQLite user data. No external
+package registries are published as part of this release candidate.
+
+### Highlights
+
+- `lattice_brain.BrainCore` is the FastAPI construction boundary for the
+  Knowledge Graph and durable conversation store.
+- `StorageEngine`, `SQLiteEngine`, and `PostgresEngine` define the storage
+  layer; SQLite remains the default.
+- sqlite-vec is detected honestly when available; otherwise local hash-vector
+  cosine search remains the real fallback.
+- Postgres/pgvector setup and SQLite-to-Postgres migration are opt-in and
+  fail closed when DSN/dependencies are missing.
+- Docker Postgres setup requires explicit user consent.
+- Encrypted `.latticebrain` archives can back up and restore the local brain DB
+  and blobs.
+
+### Expected Artifacts
+
+- `dist/ltcai-4.2.0-py3-none-any.whl`
+- `dist/ltcai-4.2.0.tar.gz`
+- `dist/ltcai-4.2.0.vsix`
+- `ltcai-4.2.0.tgz`
+
+Full detail: [RELEASE_NOTES_v4.2.0.md](RELEASE_NOTES_v4.2.0.md).
+
 ## v4.0.1 - Digital Brain Platform Maintenance
 
 Lattice AI v4.0.1 packages the commits on `main` after tag `v4.0.0`. It closes

@@ -6,7 +6,8 @@
 
 | 버전 | 지원 여부 |
 |------|-----------|
-| 4.1.x (latest) | ✅ 지원 |
+| 4.2.x (latest) | ✅ 지원 |
+| 4.1.x | ✅ 보안 패치 범위 내 지원 |
 | 4.0.x | ✅ 보안 패치 범위 내 지원 |
 | 3.6.x | ✅ 보안 패치 범위 내 지원 |
 | 3.5.x | ✅ 보안 패치 범위 내 지원 |
@@ -37,10 +38,11 @@
 
 ## 보안 모델
 
-Lattice AI v4.1.0는 local-first Digital Brain Platform으로, Personal /
+Lattice AI v4.2.0는 local-first Digital Brain Platform으로, Personal /
 Organization Workspace, Knowledge Graph, Vector Index, Hybrid Search, Native
-Chat, Basic / Advanced / Admin mode, durable workspace governance를 포함하며
-아래 보안 모델을 따릅니다:
+Chat, Basic / Advanced / Admin mode, durable workspace governance, independent
+Brain Core package boundary, pluggable storage, and encrypted `.latticebrain`
+archives를 포함하며 아래 보안 모델을 따릅니다:
 
 ### 기본 안전 설정 (Default Secure)
 
@@ -51,6 +53,8 @@ Chat, Basic / Advanced / Admin mode, durable workspace governance를 포함하�
 | CORS | localhost만 허용 | 외부 도메인 허용 시 `LATTICEAI_CORS_ALLOW_NETWORK=true` |
 | 세션 TTL | 24시간 (sliding) | 비활동 시 자동 만료 |
 | API 키 저장 | OS keyring | 평문 디스크 저장 없음 |
+| 기본 Brain storage | SQLite | 로컬 파일. Postgres는 명시적 opt-in |
+| Docker Postgres setup | 비활성 | API/UI에서 명시적 consent 없이는 시작하지 않음 |
 
 ### 인증 및 세션
 

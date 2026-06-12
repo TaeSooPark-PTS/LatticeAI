@@ -28,6 +28,28 @@ class RestoreRequest(BaseModel):
     verify: bool = True
 
 
+class EncryptedArchiveRequest(BaseModel):
+    path: Optional[str] = None
+    passphrase: str
+
+
+class EncryptedRestoreRequest(BaseModel):
+    path: str
+    passphrase: str
+
+
+class DockerPostgresRequest(BaseModel):
+    consent: bool = False
+    dry_run: bool = False
+    port: int = 5432
+
+
+class SQLiteToPostgresRequest(BaseModel):
+    dsn: str
+    schema_name: str = "lattice_brain"
+    dry_run: bool = True
+
+
 def create_portability_router(
     *,
     service: Any,
@@ -45,6 +67,12 @@ def create_portability_router(
         require_user(request)
         _require_service()
         return service.snapshot_metadata()
+
+    @router.get("/api/brain/storage")
+    async def brain_storage_status(request: Request):
+        require_user(request)
+        _require_service()
+        return service.storage_status()
 
     @router.get("/api/knowledge-graph/provenance")
     async def recent_provenance(request: Request, limit: int = 50, source_type: Optional[str] = None):
@@ -88,6 +116,47 @@ def create_portability_router(
         try:
             return service.restore(req.path, verify=req.verify)
         except (ValueError, FileNotFoundError) as exc:
+            raise HTTPException(status_code=400, detail=str(exc))
+
+    @router.post("/api/knowledge-graph/archive")
+    async def encrypted_archive(req: EncryptedArchiveRequest, request: Request):
+        require_admin(request)
+        _require_service()
+        try:
+            return service.encrypted_archive(req.path, passphrase=req.passphrase)
+        except (ValueError, FileNotFoundError) as exc:
+            raise HTTPException(status_code=400, detail=str(exc))
+
+    @router.post("/api/knowledge-graph/archive/restore")
+    async def restore_encrypted_archive(req: EncryptedRestoreRequest, request: Request):
+        require_admin(request)
+        _require_service()
+        try:
+            return service.restore_encrypted_archive(req.path, passphrase=req.passphrase)
+        except (ValueError, FileNotFoundError) as exc:
+            raise HTTPException(status_code=400, detail=str(exc))
+
+    @router.post("/api/brain/storage/postgres/docker")
+    async def setup_postgres_docker(req: DockerPostgresRequest, request: Request):
+        require_admin(request)
+        _require_service()
+        return service.postgres_docker_setup(
+            consent=req.consent,
+            dry_run=req.dry_run,
+            port=req.port,
+        )
+
+    @router.post("/api/brain/storage/migrate-postgres")
+    async def migrate_sqlite_to_postgres(req: SQLiteToPostgresRequest, request: Request):
+        require_admin(request)
+        _require_service()
+        try:
+            return service.migrate_sqlite_to_postgres(
+                dsn=req.dsn,
+                schema=req.schema_name,
+                dry_run=req.dry_run,
+            )
+        except (ValueError, FileNotFoundError, RuntimeError) as exc:
             raise HTTPException(status_code=400, detail=str(exc))
 
     return router

@@ -7,6 +7,33 @@
 > PyPI / npm / VS Code Marketplace / Open VSX 배포는 아래 수동 절차로만
 > 진행합니다. 태그 생성은 패키지 스토어 publish를 자동으로 트리거하지 않습니다.
 
+## v4.2.0 RC 릴리스 노트 (2026-06-12)
+
+Lattice AI v4.2.0 — Brain Core & Storage Rebuild. `main` after v4.1.0 위에서
+backend Digital Brain boundary를 독립 import package `lattice_brain`으로
+분리하고 pluggable storage layer를 추가한다. SQLite는 기본값으로 유지하며,
+Postgres/pgvector, Docker setup, SQLite→Postgres migration은 모두 명시적 opt-in
+mode이다. PyPI, npm Registry, VS Code Marketplace, Open VSX에는 publish하지
+않는다.
+
+- **Added (Brain Core package)**: FastAPI가 `lattice_brain.BrainCore`를 통해
+  Knowledge Graph와 durable conversation store를 구성한다. 기존
+  `knowledge_graph.py`, `kg_schema.py`, `latticeai.brain.*` import는
+  compatibility shim으로 유지한다.
+- **Added (Storage abstraction)**: `StorageEngine`, `SQLiteEngine`,
+  `PostgresEngine`, `DockerPostgresWizard`, `SQLiteToPostgresMigrator`.
+- **Added (Archives)**: AES-256-GCM encrypted `.latticebrain` archive
+  create/restore support.
+- **Changed (API/UI)**: OpenAPI 313 paths; System settings에서 storage status,
+  consent-gated Docker setup, migration planning을 실제 API로 호출한다.
+- **Preserved**: v4.1.0 frontend/desktop architecture, existing FastAPI
+  contracts, SQLite user data, local-first/privacy-first/offline operation.
+- **Expected artifacts**:
+  - `dist/ltcai-4.2.0-py3-none-any.whl`
+  - `dist/ltcai-4.2.0.tar.gz`
+  - `dist/ltcai-4.2.0.vsix`
+  - `ltcai-4.2.0.tgz`
+
 ## v4.1.0 RC 릴리스 노트 (2026-06-12)
 
 Lattice AI v4.1.0 — Frontend & Desktop Rebuild. `main @ v4.0.1` 위에서
@@ -766,13 +793,13 @@ Knowledge Graph v2 read/write cutover. 자세한 내용은
    - `npm run release:artifacts`
    - `npm run release:validate`
 
-현재 `v4.1.0` 기준 필수 산출물:
+현재 `v4.2.0` 기준 필수 산출물:
 
 ```text
-dist/ltcai-4.1.0-py3-none-any.whl
-dist/ltcai-4.1.0.tar.gz
-dist/ltcai-4.1.0.vsix
-ltcai-4.1.0.tgz
+dist/ltcai-4.2.0-py3-none-any.whl
+dist/ltcai-4.2.0.tar.gz
+dist/ltcai-4.2.0.vsix
+ltcai-4.2.0.tgz
 ```
 
 ## 2) npm 배포

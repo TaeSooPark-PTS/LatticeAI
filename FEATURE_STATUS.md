@@ -1,9 +1,26 @@
-# Lattice AI — Feature Status (v4.1.0)
+# Lattice AI — Feature Status (v4.2.0)
 
 **Release type:** Knowledge Graph First — the Knowledge Graph becomes the primary
 architecture. Lattice AI is a Digital Brain Platform: the graph is the durable
 asset; models read it and are replaceable. Every v3.6.0 claim below is backed by
 automated tests.
+
+## v4.2.0 Brain Core & Storage Rebuild — what changed
+
+v4.2.0 extracts the backend Digital Brain boundary into the independent
+`lattice_brain` package and adds a pluggable storage layer while preserving
+v4.1.0 APIs, data, and frontend behavior:
+
+| Area | Status | Evidence |
+| --- | --- | --- |
+| **Brain Core package** | WORKING | `lattice_brain` exposes `BrainCore`, `KnowledgeGraphStore`, memory/context/conversation facades, archive support, and storage engines. FastAPI constructs the graph/conversation runtime through `BrainCore`; root modules remain compatibility shims. `test_v42_brain_storage.py`. |
+| **StorageEngine abstraction** | WORKING | `lattice_brain.storage.StorageEngine` defines the contract; `SQLiteEngine` is the default and owns SQLite connection/backup/restore/capability reporting. `test_v42_brain_storage.py`. |
+| **sqlite-vec / vector search honesty** | WORKING | `SQLiteEngine` detects sqlite-vec when installed and otherwise reports `bruteforce-cosine`; existing vector search continues as real local cosine retrieval, not fake availability. `test_v42_brain_storage.py`, `test_kg_fts5.py`. |
+| **Postgres / pgvector scale mode** | WORKING (opt-in) | `PostgresEngine` requires explicit DSN + optional dependency support, initializes schema and pgvector structures, and reports unavailable states honestly. SQLite remains default; explicit Postgres selection does not silently fall back. |
+| **Docker setup wizard** | WORKING (consent-gated) | `DockerPostgresWizard` writes a local Compose file and starts Docker only when consent is true; API route `/api/brain/storage/postgres/docker` exposes the same behavior. `test_v42_brain_storage.py`. |
+| **SQLite to Postgres migration** | WORKING | `SQLiteToPostgresMigrator` plans/copies all user tables, preserves rows, and is idempotent through `id` or `__source_rowid` conflict keys. API route defaults to dry-run planning. `test_v42_brain_storage.py`. |
+| **Encrypted .latticebrain archives** | WORKING | AES-256-GCM encrypted archive create/restore over the SQLite brain DB and blob directory; wrong passphrase fails closed. API routes `/api/knowledge-graph/archive*`. `test_v42_brain_storage.py`. |
+| **API + UI storage controls** | WORKING | OpenAPI regenerated to 313 paths; System settings exposes storage status, Docker plan/start with explicit consent, and migration planning through real FastAPI APIs. |
 
 ## v4.1.0 Frontend & Desktop Rebuild — what changed
 
@@ -119,7 +136,7 @@ service/core (`latticeai/services/*`, `latticeai/core/*`, top-level
 `knowledge_graph.py`). Historical v3 sections retain their original audit
 context when describing retired implementation paths.
 
-**Frontend of record:** the v4.1.0 React/Vite SPA at `/app` (`frontend/` source,
+**Frontend of record:** the v4.2.0 React/Vite SPA at `/app` (`frontend/` source,
 `static/app/` build output). The legacy static pages have been removed;
 compatibility GET/hash routes land in the matching `/app#/...` surface.
 

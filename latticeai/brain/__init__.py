@@ -1,18 +1,18 @@
-"""latticeai.brain — the durable substrate of the Digital Brain.
+"""Compatibility namespace for the standalone :mod:`lattice_brain` package."""
 
-v4 home for the brain's storage modules. The knowledge-graph store itself
-still lives in the root ``knowledge_graph`` module pending its decomposition
-(T3d); new brain components land here first.
-"""
-
+from lattice_brain.core import BrainCore, BrainCoreConfig
 from latticeai.brain.context import AssembledContext, ContextAssembler, ContextSection
 from latticeai.brain.conversations import ConversationStore
 from latticeai.brain.memory import BrainMemory
+from latticeai.brain.store import KnowledgeGraphStore
 
 __all__ = [
     "AssembledContext",
+    "BrainCore",
+    "BrainCoreConfig",
     "BrainMemory",
     "ContextAssembler",
     "ContextSection",
     "ConversationStore",
+    "KnowledgeGraphStore",
 ]

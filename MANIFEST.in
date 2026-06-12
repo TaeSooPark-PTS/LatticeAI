@@ -7,7 +7,6 @@ recursive-include skills *.md
 recursive-include docs *.md
 recursive-include plugins *.json *.md
 recursive-include scripts *.mjs *.py *.js
-include requirements.txt
 include README.md
 include auto_setup.py
 include kg_schema.py

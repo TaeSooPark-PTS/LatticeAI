@@ -60,7 +60,7 @@ def _build(config: "Optional[Config]" = None) -> Dict[str, Any]:
     from pydantic import BaseModel
 
     from latticeai.models.router import LLMRouter, normalize_branding
-    from knowledge_graph import KnowledgeGraphStore, set_llm_router
+    from knowledge_graph import set_llm_router
     from local_knowledge_api import LocalKnowledgeWatcher
     from latticeai.core.security import (
         hash_password,
@@ -161,11 +161,12 @@ def _build(config: "Optional[Config]" = None) -> Dict[str, Any]:
     from latticeai.api.portability import create_portability_router
     from latticeai.services.memory_service import MemoryService
     from latticeai.services.ingestion import IngestionItem, IngestionPipeline
-    from latticeai.brain.conversations import ConversationStore
-    from latticeai.brain.context import ContextAssembler
-    from latticeai.brain.memory import BrainMemory
-    from latticeai.brain.identity import DeviceIdentity
-    from latticeai.brain.network import BrainNetwork
+    from lattice_brain import BrainCore, ConversationStore
+    from lattice_brain.storage import storage_from_env
+    from lattice_brain.context import ContextAssembler
+    from lattice_brain.memory import BrainMemory
+    from lattice_brain.identity import DeviceIdentity
+    from lattice_brain.network import BrainNetwork
     from latticeai.api.network import create_network_router
     from latticeai.services.kg_portability import KGPortabilityService
     # The aliased names below look unused but are part of the legacy
@@ -342,16 +343,22 @@ def _build(config: "Optional[Config]" = None) -> Dict[str, Any]:
     )
     if EMBEDDER.fell_back:
         logging.warning("Embedding provider %s unavailable: %s", EMBEDDER.requested, EMBEDDER.detail)
-    KNOWLEDGE_GRAPH = KnowledgeGraphStore(
-        DATA_DIR / "knowledge_graph.sqlite",
-        DATA_DIR / "knowledge_graph_blobs",
+    STORAGE_ENGINE = storage_from_env(os.environ, data_dir=DATA_DIR) if ENABLE_GRAPH else None
+    BRAIN_CORE = BrainCore.from_paths(
+        DATA_DIR,
         embedder=EMBEDDER.provider,
+        storage_engine=STORAGE_ENGINE,
     ) if ENABLE_GRAPH else None
+    KNOWLEDGE_GRAPH = BRAIN_CORE.knowledge if BRAIN_CORE is not None else None
     # ── v4 durable conversation store: unbounded episodic memory in the same
     # SQLite file as the graph (kg_portability backup/restore covers it for
     # free). Legacy chat_history.json is imported once, idempotently, and the
     # file is left untouched on disk as the import source.
-    CONVERSATIONS = ConversationStore(DATA_DIR / "knowledge_graph.sqlite")
+    CONVERSATIONS = (
+        BRAIN_CORE.conversations
+        if BRAIN_CORE is not None
+        else ConversationStore(DATA_DIR / "knowledge_graph.sqlite")
+    )
     CONVERSATIONS.import_legacy_json(HISTORY_FILE)
     # Hooks registry is constructed here (ahead of the watcher) so folder-watch
     # reindexes can fire the pre_index/post_index lifecycle hooks.

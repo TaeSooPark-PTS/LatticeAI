@@ -203,34 +203,31 @@ npm run dev
 
 ## Latest Release
 
-### v4.1.0 RC — Frontend & Desktop Rebuild
+### v4.2.0 RC — Brain Core & Storage Rebuild
 
-- **React desktop SPA** — `/app` is now a React + TypeScript + Vite application
-  with TanStack Query, Zustand, React Flow, Cytoscape.js, Tailwind CSS, and
-  local shadcn-style primitives.
-- **Generated API client** — frontend JSON calls consume the existing FastAPI
-  contract through a generated OpenAPI TypeScript client; streaming chat and
-  multipart upload remain honest fetch special cases.
-- **Tauri-first desktop shell** — Tauri 2.0 is the primary desktop target,
-  launching the local backend by default; Electron is retained as a fallback
-  shell only.
-- **Graph-first navigation** — the primary surfaces are Brain, Ask, Capture,
-  Act, Library, and System, with old `/app#...` routes mapped into the new
-  capability groups.
-- **No CDN / offline-capable** — shipped app assets are built into
-  `static/app`, service-worker precached, and verified to avoid CDN
-  dependencies.
-- **v4.0.1 capability preservation** — Brain Core, storage, agent/workflow
-  runtime, privacy model, local-first operation, and backend API contracts are
-  preserved.
+- **Independent Brain Core package** — `lattice_brain` exposes the Knowledge
+  Graph, durable conversations, memory/context, signed exchange, archives, and
+  storage tools for FastAPI, CLI, tests, and future tools.
+- **Pluggable storage layer** — `StorageEngine`, `SQLiteEngine`, and
+  `PostgresEngine` give the backend an explicit storage boundary. SQLite stays
+  the default.
+- **Honest vector search** — sqlite-vec is detected when available; otherwise
+  the real local hash-embedding cosine path remains active and reported.
+- **Postgres scale mode** — pgvector setup and SQLite-to-Postgres migration are
+  opt-in. Explicit Postgres selection fails loudly when DSN/dependencies are
+  missing; it never hides failure with a SQLite fallback.
+- **Consent-gated Docker setup** — Docker Compose setup is generated locally
+  and only starts Docker after explicit user consent.
+- **Encrypted `.latticebrain` archives** — local encrypted backup/restore over
+  the brain DB and blobs, with bad passphrases failing closed.
 
-See [RELEASE_NOTES_v4.1.0.md](RELEASE_NOTES_v4.1.0.md),
+See [RELEASE_NOTES_v4.2.0.md](RELEASE_NOTES_v4.2.0.md),
 [docs/kg-schema.md](docs/kg-schema.md),
 [FEATURE_STATUS.md](FEATURE_STATUS.md).
 
 ## How it works — every source converges into the graph
 
-As of v4.1.0, data sources flow through the brain ingestion pipeline into
+As of v4.2.0, data sources flow through the brain ingestion pipeline into
 the Knowledge Graph — no source bypasses it, none becomes an isolated silo:
 
 ```text
@@ -246,7 +243,8 @@ source (file · folder · PDF · web URL · browser tab · text)
 - **The graph is the asset.** Memory, search, and agents are views over it; models
   read it. Swap a model and your knowledge is unchanged.
 - **Portable, no cloud.** Export/import the graph as JSON, or take a full local
-  binary backup (DB + blobs) and restore it.
+  binary backup (DB + blobs), encrypted `.latticebrain` archive, or explicit
+  SQLite-to-Postgres migration plan and restore it.
 - **Local-first protects the graph.** It lives in local SQLite on your machine.
 
 For the deeper design, see [ARCHITECTURE.md](ARCHITECTURE.md) and
@@ -264,6 +262,9 @@ For the deeper design, see [ARCHITECTURE.md](ARCHITECTURE.md) and
 
 - [ARCHITECTURE.md](ARCHITECTURE.md) — workspace, graph, pipeline, and model overview
 - [docs/architecture.md](docs/architecture.md) — full architecture reference
+- [docs/V4_2_BRAIN_CORE_ARCHITECTURE.md](docs/V4_2_BRAIN_CORE_ARCHITECTURE.md) — v4.2.0 Brain Core package and storage architecture
+- [docs/V4_2_STORAGE_MIGRATION_REPORT.md](docs/V4_2_STORAGE_MIGRATION_REPORT.md) — v4.2.0 storage migration and archive report
+- [docs/V4_2_VALIDATION_REPORT.md](docs/V4_2_VALIDATION_REPORT.md) — v4.2.0 validation report
 - [docs/V4_1_FRONTEND_ARCHITECTURE_REVIEW.md](docs/V4_1_FRONTEND_ARCHITECTURE_REVIEW.md) — v4.1.0 frontend and desktop architecture review
 - [docs/V4_1_FRONTEND_MIGRATION_REPORT.md](docs/V4_1_FRONTEND_MIGRATION_REPORT.md) — v4.1.0 capability migration report
 - [docs/V4_1_VALIDATION_REPORT.md](docs/V4_1_VALIDATION_REPORT.md) — v4.1.0 validation report
@@ -285,6 +286,7 @@ For the deeper design, see [ARCHITECTURE.md](ARCHITECTURE.md) and
 ### Releases
 
 - [RELEASE_NOTES.md](RELEASE_NOTES.md) — current release notes
+- [RELEASE_NOTES_v4.2.0.md](RELEASE_NOTES_v4.2.0.md)
 - [RELEASE_NOTES_v4.1.0.md](RELEASE_NOTES_v4.1.0.md)
 - [RELEASE_NOTES_v4.0.1.md](RELEASE_NOTES_v4.0.1.md)
 - [RELEASE_NOTES_v4.0.0.md](RELEASE_NOTES_v4.0.0.md)
@@ -298,6 +300,7 @@ For the deeper design, see [ARCHITECTURE.md](ARCHITECTURE.md) and
 
 | Version | Theme |
 | --- | --- |
+| **4.2.0** | Brain Core & Storage Rebuild RC — independent `lattice_brain` package, pluggable storage layer, sqlite-vec/pgvector capability reporting, explicit Postgres migration, consent-gated Docker setup, encrypted `.latticebrain` archives |
 | **4.1.0** | Frontend & Desktop Rebuild RC — React/Vite/OpenAPI desktop SPA, Tauri 2.0 primary shell, graph-first navigation, and legacy static frontend removal |
 | **4.0.1** | Digital Brain Platform maintenance — closes post-tag v4 gaps with durable async runs, stable identity/workspace state, full `/app` parity, and legacy UI retirement |
 | **4.0.0** | Digital Brain Platform — decomposed brain store, v2 write-mastered Knowledge Graph, durable memory/context, real workflow/agent foundations, signed brain exchange |

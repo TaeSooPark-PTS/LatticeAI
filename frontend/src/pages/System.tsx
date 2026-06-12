@@ -279,6 +279,14 @@ function SettingsPanel() {
   const health = useQuery({ queryKey: ["health"], queryFn: latticeApi.health });
   const sys = useQuery({ queryKey: ["sysinfo"], queryFn: latticeApi.sysinfo });
   const comp = useQuery({ queryKey: ["computerMemory"], queryFn: latticeApi.computerMemory });
+  const storage = useQuery({ queryKey: ["brainStorage"], queryFn: latticeApi.brainStorage });
+  const [dsn, setDsn] = React.useState("");
+  const [schema, setSchema] = React.useState("lattice_brain");
+  const [dockerConsent, setDockerConsent] = React.useState(false);
+  const docker = useMutation({ mutationFn: (consent: boolean) => latticeApi.dockerPostgres({ consent, dry_run: !consent, port: 5432 }) });
+  const migration = useMutation({
+    mutationFn: () => latticeApi.migratePostgres({ dsn, schema_name: schema || "lattice_brain", dry_run: true }),
+  });
   return (
     <div className="grid gap-4 xl:grid-cols-3">
       <Card>
@@ -300,6 +308,32 @@ function SettingsPanel() {
       <DataPanel title="Host telemetry" result={sys.data}>
         {(data) => <JsonView value={data} />}
       </DataPanel>
+      <DataPanel title="Brain storage" result={storage.data} className="xl:col-span-3">
+        {(data) => <JsonView value={data} />}
+      </DataPanel>
+      <Card className="xl:col-span-3">
+        <CardHeader>
+          <CardTitle>Postgres scale mode</CardTitle>
+          <CardDescription>Opt-in migration and Docker setup; SQLite remains the default.</CardDescription>
+        </CardHeader>
+        <CardContent className="grid gap-3">
+          <div className="grid gap-2 sm:grid-cols-[1fr_220px]">
+            <Input value={dsn} onChange={(e) => setDsn(e.target.value)} placeholder="postgresql://user:pass@127.0.0.1:5432/lattice_brain" />
+            <Input value={schema} onChange={(e) => setSchema(e.target.value)} placeholder="schema" />
+          </div>
+          <div className="flex flex-wrap gap-2">
+            <Button variant="outline" onClick={() => docker.mutate(false)} disabled={docker.isPending}>Docker plan</Button>
+            <label className="flex items-center gap-2 rounded-md border border-border px-3 py-2 text-sm">
+              <input type="checkbox" checked={dockerConsent} onChange={(e) => setDockerConsent(e.target.checked)} />
+              Consent to start Docker
+            </label>
+            <Button onClick={() => docker.mutate(true)} disabled={!dockerConsent || docker.isPending}>Start Docker</Button>
+            <Button variant="outline" onClick={() => migration.mutate()} disabled={!dsn || migration.isPending}>Plan migration</Button>
+          </div>
+          {docker.data ? <JsonView value={docker.data.data || docker.data.error} /> : null}
+          {migration.data ? <JsonView value={migration.data.data || migration.data.error} /> : null}
+        </CardContent>
+      </Card>
       <DataPanel title="Computer memory" result={comp.data} className="xl:col-span-3">
         {(data) => (
           <div className="space-y-3">

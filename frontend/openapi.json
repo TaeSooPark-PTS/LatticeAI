@@ -686,6 +686,69 @@
         "title": "CuTypeRequest",
         "type": "object"
       },
+      "DockerPostgresRequest": {
+        "properties": {
+          "consent": {
+            "default": false,
+            "title": "Consent",
+            "type": "boolean"
+          },
+          "dry_run": {
+            "default": false,
+            "title": "Dry Run",
+            "type": "boolean"
+          },
+          "port": {
+            "default": 5432,
+            "title": "Port",
+            "type": "integer"
+          }
+        },
+        "title": "DockerPostgresRequest",
+        "type": "object"
+      },
+      "EncryptedArchiveRequest": {
+        "properties": {
+          "passphrase": {
+            "title": "Passphrase",
+            "type": "string"
+          },
+          "path": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Path"
+          }
+        },
+        "required": [
+          "passphrase"
+        ],
+        "title": "EncryptedArchiveRequest",
+        "type": "object"
+      },
+      "EncryptedRestoreRequest": {
+        "properties": {
+          "passphrase": {
+            "title": "Passphrase",
+            "type": "string"
+          },
+          "path": {
+            "title": "Path",
+            "type": "string"
+          }
+        },
+        "required": [
+          "path",
+          "passphrase"
+        ],
+        "title": "EncryptedRestoreRequest",
+        "type": "object"
+      },
       "ExportRequest": {
         "properties": {
           "filters": {
@@ -1897,6 +1960,29 @@
           "path"
         ],
         "title": "RestoreRequest",
+        "type": "object"
+      },
+      "SQLiteToPostgresRequest": {
+        "properties": {
+          "dry_run": {
+            "default": true,
+            "title": "Dry Run",
+            "type": "boolean"
+          },
+          "dsn": {
+            "title": "Dsn",
+            "type": "string"
+          },
+          "schema_name": {
+            "default": "lattice_brain",
+            "title": "Schema Name",
+            "type": "string"
+          }
+        },
+        "required": [
+          "dsn"
+        ],
+        "title": "SQLiteToPostgresRequest",
         "type": "object"
       },
       "SearchRequest": {
@@ -3395,7 +3481,7 @@
   },
   "info": {
     "title": "Lattice AI Server (local)",
-    "version": "4.1.0"
+    "version": "4.2.0"
   },
   "openapi": "3.1.0",
   "paths": {
@@ -5102,6 +5188,94 @@
         "summary": "Agent Runtime Status"
       }
     },
+    "/api/brain/storage": {
+      "get": {
+        "operationId": "brain_storage_status_api_brain_storage_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": "Brain Storage Status"
+      }
+    },
+    "/api/brain/storage/migrate-postgres": {
+      "post": {
+        "operationId": "migrate_sqlite_to_postgres_api_brain_storage_migrate_postgres_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SQLiteToPostgresRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Migrate Sqlite To Postgres"
+      }
+    },
+    "/api/brain/storage/postgres/docker": {
+      "post": {
+        "operationId": "setup_postgres_docker_api_brain_storage_postgres_docker_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/DockerPostgresRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Setup Postgres Docker"
+      }
+    },
     "/api/browser/ingest-current-tab": {
       "post": {
         "description": "Ingest a payload captured from the local browser extension.",
@@ -5944,6 +6118,78 @@
           }
         },
         "summary": "Index Status"
+      }
+    },
+    "/api/knowledge-graph/archive": {
+      "post": {
+        "operationId": "encrypted_archive_api_knowledge_graph_archive_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/EncryptedArchiveRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Encrypted Archive"
+      }
+    },
+    "/api/knowledge-graph/archive/restore": {
+      "post": {
+        "operationId": "restore_encrypted_archive_api_knowledge_graph_archive_restore_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/EncryptedRestoreRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Restore Encrypted Archive"
       }
     },
     "/api/knowledge-graph/backup": {
