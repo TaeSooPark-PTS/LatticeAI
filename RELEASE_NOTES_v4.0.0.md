@@ -107,15 +107,13 @@ Tracked with full implementation contracts in
 `docs/V4_IMPLEMENTATION_PLAN.md` + amendments and
 `docs/V4_DIGITAL_BRAIN_RECOVERY.md`:
 
-1. `knowledge_graph.py` decomposition into `latticeai/brain/` + the v2
-   write-mastering flip (T3d).
-2. Durable async run engine: cancellation, SSE progress, startup
+1. Durable async run engine: cancellation, SSE progress, startup
    reconciliation (T7c) — runs remain synchronous and say so.
-3. Identity unification (user UUIDs, enforced policy module, invitations)
+2. Identity unification (user UUIDs, enforced policy module, invitations)
    and transactional workspace state (T6 remainder).
-4. Legacy page deletion (requires parity views: org management, snapshots,
+3. Legacy page deletion (requires parity views: org management, snapshots,
    activity, profile), token-native login, i18n, and the T9b surfaces
    (approval inbox, peer pairing UI, context-trace panel) — the new
    capabilities are API-complete and labeled API-only.
-5. Git history rewrite for the removed pptx (owner decision; force-push).
-6. Default production embedder (consent-gated wizard provisioning instead).
+4. Git history rewrite for the removed pptx (owner decision; force-push).
+5. Default production embedder (consent-gated wizard provisioning instead).

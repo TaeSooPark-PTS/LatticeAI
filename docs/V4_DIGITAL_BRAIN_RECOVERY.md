@@ -5,7 +5,7 @@
 > completed analysis. **Update this file before ending any phase and before any
 > likely session/context/usage limit.**
 >
-> Last updated: 2026-06-12 — RELEASE CANDIDATE PREPARED (Phase D complete; awaiting human review)
+> Last updated: 2026-06-12 — T3d closed on main; remaining gaps still active
 
 ---
 
@@ -17,7 +17,7 @@ lint_v3 all checks · installed-wheel smoke (19 modules from clean venv) ·
 release artifacts validated (wheel + sdist + npm tgz, 2.0MB).
 NO merge, NO tag, NO publish — awaiting review.
 Remaining gaps (labeled in FEATURE_STATUS.md §v4.0.0 + RELEASE_NOTES_v4.0.0.md):
-T3d decomposition/v2-flip, T7c async engine, T6 remainder (UUIDs/policy/
+T7c async engine, T6 remainder (UUIDs/policy/
 invitations/SQLite state), T9 remainder (legacy deletion + parity views,
 login, i18n, T9b surfaces), pptx history rewrite (owner), consent-gated
 embedder provisioning. All contracts live in docs/V4_IMPLEMENTATION_PLAN.md.
@@ -98,10 +98,15 @@ Track log (update at every track boundary):
     mark_superseded(). Suite 507.
   - **T3e DONE**: docs/kg-schema.md rewritten to match code (false API
     claims removed; FTS5/scope/temporal documented).
-  - RESEQUENCING DECISION: T3d (decomposition + write-mastering flip) is
-    agent-scale and limit-blocked until ~17:30 KST; T4 sub-units proceed
-    inline meanwhile — safe because T4 rewires *callers* onto public store
-    APIs which T3d preserves (suite-green gate).
+  - **T3d DONE**: `knowledge_graph.py` is now a root compatibility shim;
+    implementation moved under `latticeai/brain/` (`store`, `schema`,
+    `projection`, `write_master`, `discovery`, `ingest`, `provenance`,
+    `documents`, `retrieval`), with every module under 1,500 lines. v2 is
+    the authoritative write door; legacy tables are maintained as the
+    compatibility projection. Startup creates a one-time pre-flip SQLite
+    backup for existing graph data, stamps `PRAGMA user_version=4`, refuses
+    newer DB formats, and preserves legacy read/import compatibility.
+    Focused KG validation: 43 passed.
 - **T4.1 DONE** (commits `427d6a3` + `a2a1445`): chat (app_factory
   save_to_history), MCP (/mcp/call knowledge_graph_ingest), and uploads
   (upload_service) all route through IngestionPipeline — new
@@ -176,8 +181,7 @@ Track log (update at every track boundary):
 - **T9-IA DONE** (commit 972d34c): brain-first nav (Brain/Ask/Capture/
   Act/Library/System); knowledge-graph is the default landing route.
 - **PHASE D DECISION**: moving to T10 RC prep. REMAINING GAPS (honest,
-  labeled, not faked): T3d brain decomposition + v2 write-mastering flip;
-  T7c async run engine/cancellation/SSE/startup reconciliation; T6
+  labeled, not faked): T7c async run engine/cancellation/SSE/startup reconciliation; T6
   remainder (user UUIDs, enforced policy module, invitations, workspace
   SQLite state); T9 remainder (legacy page deletion + parity views, login
   rebuild, artifact ungitting, i18n, T9b approval/network/trace surfaces).
@@ -185,15 +189,8 @@ Track log (update at every track boundary):
 - T9-canvas agent left static/v3/js/views/graph-canvas.js (509 lines,
   node --check passes) but NEVER rewired knowledge-graph.js — file kept
   uncommitted in tree; integration outstanding.
-- NOTE: T3d + T9-canvas agents died instantly on session limits THREE times
-  (latest reset 4:10am KST)
-  (next reset 23:00 KST); both tasks remain queued with full contracts in
-  this file + the plan.
-  - **T3d** (agent task after limits reset 17:30 KST): latticeai/brain/
-    decomposition (store/discovery/ingest/provenance/documents/extraction,
-    ≤1,500 lines/module, no mixin god-object) + v2 write-mastering flip
-    (backup-first, re-entrant migrator keyed on data state, downgrade
-    marker via PRAGMA user_version, equivalence scoped to pre-flip data).
+- NOTE: The old T3d queue is closed. T9 parity surfaces remain active with
+  full contracts in this file + the plan.
   - **T3e**: docs/kg-schema.md regenerated from enums.
   - graph_curator decision moved to T4.
 - **T9 PARTIAL — vendoring half DONE** (commit `aa613ae`, parallel-safe per

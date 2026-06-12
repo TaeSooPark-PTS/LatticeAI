@@ -35,7 +35,6 @@ the transformation (every line cites code + tests; suite: **571 unit tests**):
 
 | Gap | State today | Contract |
 | --- | --- | --- |
-| brain/store decomposition + v2 write-mastering flip | legacy tables write-master; v2 projection + new columns live | T3d in `docs/V4_IMPLEMENTATION_PLAN.md` |
 | Async run engine (cancel/SSE/reconciliation) | runs synchronous; `stop()` says so | T7c |
 | User UUIDs / enforced policy map / invitations / SQLite workspace state | email-keyed; `_ROLE_CAPS` advisory | T6 remainder |
 | Legacy page deletion + parity views, login rebuild, i18n, T9b surfaces (approval inbox, peer pairing, context trace) | legacy pages still served; new APIs labeled API-only | T9/T9b |

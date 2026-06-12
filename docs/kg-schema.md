@@ -205,8 +205,12 @@ provenance(source_type, source_uri, content_hash, captured_at, modified_at,
 `knowledge_graph.KnowledgeGraphStore` 가 열릴 때 v2 스키마를 생성/치유하고
 (`kg_schema.KGStoreV2.init_schema` — 추가 컬럼은 `ALTER` 로 in-place 치유,
 edges_v2 식별자 변경은 create→copy→swap 으로 재구축), legacy 데이터를
-v2 로 백필한다. 기존 `nodes` / `edges` 테이블은 건드리지 않는다 — v4 의
-write-mastering 전환(T3d) 전까지 legacy 가 쓰기 마스터다.
+v2 로 백필한다. 기존 `nodes` / `edges` 테이블은 삭제하지 않는다. v4 에서는
+`nodes_v2` / `edges_v2` 가 쓰기 마스터이며, legacy 테이블은 이전 import/API
+소비자를 위한 compatibility projection 으로 같은 트랜잭션에서 갱신된다.
+기존 그래프 데이터가 있는 DB는 전환 전 `backups/*.pre-v2-write-master.*.sqlite`
+스냅샷을 한 번 생성하고, `PRAGMA user_version=4` 와 `kg_meta.db_format_version=4`
+를 기록한다. 더 높은 포맷의 DB는 fail-closed 로 열리지 않는다.
 
 ---
 

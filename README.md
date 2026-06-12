@@ -203,34 +203,27 @@ npm run dev
 
 ## Latest Release
 
-### v3.6.0 — Knowledge Graph First
+### v4.0.0 — Digital Brain Platform
 
-- **Unified ingestion pipeline** — one entrypoint normalizes every source
-  (file, folder, web URL, browser tab, text/markdown/code) into the graph,
-  idempotent by content hash and bracketed by the `pre_tool`/`post_tool` hook
-  lifecycle.
-- **Formalized entity/relationship model** — first-class `Source`, `Repository`,
-  `Meeting`, `Organization`, `Workflow`, `Agent` entities and `indexed_from`,
-  `modified_by`, `belongs_to_project`, `part_of`, `discussed_in`, `decided_by`,
-  `generated_by`, `used_by_agent` relationships.
-- **Browser & web ingestion** — `POST /api/browser/read-url` and
-  `/ingest-current-tab`, plus a local Manifest V3 extension that posts only to
-  `127.0.0.1`.
-- **Portability** — local Knowledge Graph export/import (versioned JSON) and
-  binary backup/restore (DB + blobs, integrity-checked). No cloud required.
-- **Provenance** — every node records where it came from; a queryable audit trail
-  makes the graph explainable.
-- **Knowledge Graph as the primary surface** — the view becomes your digital brain
-  with Status, Sources, Capture, and Backup tabs.
+- **Brain store architecture** — `knowledge_graph.py` is now a compatibility
+  shim over focused `latticeai/brain/` modules.
+- **v2 write-mastered graph** — `nodes_v2` / `edges_v2` are authoritative;
+  legacy tables stay as a compatibility projection, with pre-flip backup and
+  DB-format guard.
+- **Durable memory and context** — conversations, decisions, experiences, and
+  context traces live in the brain database family.
+- **Real act/runtime foundation** — workflows execute governed tools, pause for
+  approval, and LLM-backed agent runs fail closed instead of fabricating output.
+- **Local sovereignty** — signed exports, device identity, scoped graph export,
+  and Brain Network peer exchange are implemented at the API layer.
 
-See [RELEASE_NOTES_v3.6.0.md](RELEASE_NOTES_v3.6.0.md),
+See [RELEASE_NOTES_v4.0.0.md](RELEASE_NOTES_v4.0.0.md),
 [docs/kg-schema.md](docs/kg-schema.md),
-[docs/RUNTIME_HOOK_COVERAGE_v3.6.0.md](docs/RUNTIME_HOOK_COVERAGE_v3.6.0.md), and
 [FEATURE_STATUS.md](FEATURE_STATUS.md).
 
 ## How it works — every source converges into the graph
 
-As of v3.6.0, all data sources flow through **one unified ingestion pipeline** into
+As of v4.0.0, data sources flow through the brain ingestion pipeline into
 the Knowledge Graph — no source bypasses it, none becomes an isolated silo:
 
 ```text
@@ -282,6 +275,7 @@ For the deeper design, see [ARCHITECTURE.md](ARCHITECTURE.md) and
 ### Releases
 
 - [RELEASE_NOTES.md](RELEASE_NOTES.md) — current release notes
+- [RELEASE_NOTES_v4.0.0.md](RELEASE_NOTES_v4.0.0.md)
 - [RELEASE_NOTES_v3.6.0.md](RELEASE_NOTES_v3.6.0.md)
 - [RELEASE_NOTES_v3.5.0.md](RELEASE_NOTES_v3.5.0.md)
 - [RELEASE_NOTES_v3.4.1.md](RELEASE_NOTES_v3.4.1.md)
@@ -292,7 +286,8 @@ For the deeper design, see [ARCHITECTURE.md](ARCHITECTURE.md) and
 
 | Version | Theme |
 | --- | --- |
-| **3.6.0** | Knowledge Graph First — unified ingestion pipeline, formalized entity/relationship model, browser/web ingestion, local export/import/backup, provenance, KG as the primary surface |
+| **4.0.0** | Digital Brain Platform — decomposed brain store, v2 write-mastered Knowledge Graph, durable memory/context, real workflow/agent foundations, signed brain exchange |
+| 3.6.0 | Knowledge Graph First — unified ingestion pipeline, formalized entity/relationship model, browser/web ingestion, local export/import/backup, provenance, KG as the primary surface |
 | 3.5.0 | Foundation stabilization & verification — OIDC verifier, trusted-proxy gating, runtime hook coverage, `tools/` package, reproducible artifacts |
 | 3.4.1 | Runtime completion — full hooks lifecycle, real Local Agent probes, Connect Folder and Folder Watch verified end-to-end |
 | 3.4.0 | Platform completion — hooks execution, uploads in Files, vision image input, agent run trigger, on-device Local Agent / Connect Folder / Folder Watch |

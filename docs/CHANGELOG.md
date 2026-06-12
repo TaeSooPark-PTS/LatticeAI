@@ -1,5 +1,21 @@
 # Changelog
 
+## [4.0.0] - 2026-06-12
+
+> Digital Brain Platform. The Knowledge Graph is now the durable brain store
+> spine: focused `latticeai/brain/` modules own graph storage, schema, ingestion,
+> provenance, retrieval, and document structure, while root modules remain
+> compatibility shims.
+
+### Changed
+
+- Decomposed the monolithic Knowledge Graph implementation into focused
+  `latticeai/brain/` modules, with every new module kept below 1,500 lines.
+- Flipped graph writes to `nodes_v2` / `edges_v2` as the authoritative write
+  path; legacy tables are maintained as a compatibility projection.
+- Added one-time pre-flip SQLite backup, `PRAGMA user_version=4`, schema-version
+  reporting, and fail-closed protection for newer DB formats.
+
 ## [3.6.0] - 2026-06-10
 
 > Knowledge Graph First. The Knowledge Graph becomes the primary architecture:
