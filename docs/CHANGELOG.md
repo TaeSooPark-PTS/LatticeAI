@@ -2,10 +2,9 @@
 
 ## [4.2.0] - 2026-06-12
 
-> Brain Core & Storage Rebuild release candidate. The backend Digital Brain
-> boundary is available through the independent `lattice_brain` package, while
-> the v4.1.0 frontend, FastAPI contracts, and SQLite user data remain
-> compatible.
+> Brain Core & Storage Rebuild release. The backend Digital Brain boundary is
+> available through the independent `lattice_brain` package, while the v4.1.0
+> frontend, FastAPI contracts, and SQLite user data remain compatible.
 
 ### Added
 
@@ -17,6 +16,9 @@
   search fallback.
 - Opt-in Postgres/pgvector scale setup and non-destructive SQLite-to-Postgres
   migration planning/copy tooling.
+- Live Docker-backed pgvector migration validation, including rowid-less FTS5
+  shadow tables, row-count integrity, idempotent reruns, and fail-closed
+  Postgres behavior.
 - Encrypted `.latticebrain` archive create/restore support for the SQLite brain
   database and blob directory.
 - FastAPI routes for storage status, consent-gated Docker setup,

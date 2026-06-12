@@ -1,6 +1,6 @@
-# Lattice AI v4.2.0 RC — Brain Core Architecture
+# Lattice AI v4.2.0 — Brain Core Architecture
 
-Status: implemented release candidate
+Status: released validation complete
 
 v4.2.0 extracts the Digital Brain backend boundary into the importable
 `lattice_brain` package while preserving the existing FastAPI contracts and the
@@ -40,7 +40,8 @@ Python directly.
 - `SQLiteEngine` default engine
 - `PostgresEngine` opt-in engine with pgvector extension setup
 - `DockerPostgresWizard` explicit-consent local Docker setup
-- `SQLiteToPostgresMigrator` idempotent migration planner/runner
+- `SQLiteToPostgresMigrator` idempotent migration planner/runner, including
+  rowid-less FTS5 shadow table support through declared primary keys
 
 SQLite remains the default. Postgres is never required. If
 `LATTICEAI_STORAGE_ENGINE=postgres` is selected without a DSN or optional
@@ -94,4 +95,3 @@ request explicitly carries consent.
 - Existing FastAPI routes remain available.
 - Existing release artifacts still build.
 - No data-loss migration is performed automatically.
-

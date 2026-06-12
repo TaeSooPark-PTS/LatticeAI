@@ -203,7 +203,7 @@ npm run dev
 
 ## Latest Release
 
-### v4.2.0 RC — Brain Core & Storage Rebuild
+### v4.2.0 — Brain Core & Storage Rebuild
 
 - **Independent Brain Core package** — `lattice_brain` exposes the Knowledge
   Graph, durable conversations, memory/context, signed exchange, archives, and
@@ -214,8 +214,9 @@ npm run dev
 - **Honest vector search** — sqlite-vec is detected when available; otherwise
   the real local hash-embedding cosine path remains active and reported.
 - **Postgres scale mode** — pgvector setup and SQLite-to-Postgres migration are
-  opt-in. Explicit Postgres selection fails loudly when DSN/dependencies are
-  missing; it never hides failure with a SQLite fallback.
+  opt-in. Live Docker validation covers migration integrity, idempotence, and
+  pgvector distance search. Explicit Postgres selection fails loudly when
+  DSN/dependencies are missing; it never hides failure with a SQLite fallback.
 - **Consent-gated Docker setup** — Docker Compose setup is generated locally
   and only starts Docker after explicit user consent.
 - **Encrypted `.latticebrain` archives** — local encrypted backup/restore over
@@ -300,7 +301,7 @@ For the deeper design, see [ARCHITECTURE.md](ARCHITECTURE.md) and
 
 | Version | Theme |
 | --- | --- |
-| **4.2.0** | Brain Core & Storage Rebuild RC — independent `lattice_brain` package, pluggable storage layer, sqlite-vec/pgvector capability reporting, explicit Postgres migration, consent-gated Docker setup, encrypted `.latticebrain` archives |
+| **4.2.0** | Brain Core & Storage Rebuild — independent `lattice_brain` package, pluggable storage layer, sqlite-vec/pgvector capability reporting, explicit Postgres migration, consent-gated Docker setup, encrypted `.latticebrain` archives |
 | **4.1.0** | Frontend & Desktop Rebuild RC — React/Vite/OpenAPI desktop SPA, Tauri 2.0 primary shell, graph-first navigation, and legacy static frontend removal |
 | **4.0.1** | Digital Brain Platform maintenance — closes post-tag v4 gaps with durable async runs, stable identity/workspace state, full `/app` parity, and legacy UI retirement |
 | **4.0.0** | Digital Brain Platform — decomposed brain store, v2 write-mastered Knowledge Graph, durable memory/context, real workflow/agent foundations, signed brain exchange |

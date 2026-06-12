@@ -1,8 +1,8 @@
-# Lattice AI v4.2.0 RC — Brain Core & Storage Rebuild
+# Lattice AI v4.2.0 — Brain Core & Storage Rebuild
 
-> Status: release candidate. This release builds from `main` after v4.1.0.
-> It does not tag, create a GitHub Release, publish packages, or deploy to any
-> external registry.
+> Status: release. This release builds from `main` after v4.1.0. It creates a
+> GitHub Release with validated artifacts only; it does not publish packages or
+> deploy to any external registry.
 
 v4.2.0 extracts the backend Digital Brain boundary into the independent
 `lattice_brain` Python package and introduces a pluggable storage layer while
@@ -18,6 +18,8 @@ preserving v4.1.0 APIs, data, frontend behavior, and local-first defaults.
 - `PostgresEngine` opt-in pgvector scale target.
 - Explicit-consent Docker Postgres setup wizard.
 - SQLite to Postgres migration planner/runner.
+- Live Docker-backed pgvector migration validation, including rowid-less FTS5
+  shadow tables and idempotent reruns.
 - Encrypted `.latticebrain` archive create/restore support.
 - API-backed System storage status, Docker setup, and migration-plan controls.
 - Generated OpenAPI client updated to 313 paths.
@@ -37,7 +39,7 @@ preserving v4.1.0 APIs, data, frontend behavior, and local-first defaults.
 - Docker never auto-starts without explicit user consent.
 - Explicit Postgres selection fails honestly if DSN or dependencies are missing.
 - No startup migration rewrites or deletes user data.
-- No external package registry publish step is part of this release candidate.
+- No external package registry publish step is part of this release.
 
 ## Expected Artifacts
 
@@ -52,6 +54,7 @@ preserving v4.1.0 APIs, data, frontend behavior, and local-first defaults.
 - Ruff.
 - Unit tests.
 - Live integration tests.
+- Live Docker/Postgres pgvector migration test.
 - Migration idempotence and dry-run tests.
 - SQLite backup/restore and encrypted archive tests.
 - Vector search tests.
@@ -66,5 +69,4 @@ preserving v4.1.0 APIs, data, frontend behavior, and local-first defaults.
 ## External Registries
 
 No PyPI, npm Registry, VS Code Marketplace, Open VSX, or other external
-registry publish step is part of this release candidate.
-
+registry publish step is part of this release.

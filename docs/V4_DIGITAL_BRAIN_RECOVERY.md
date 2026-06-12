@@ -5,11 +5,11 @@
 > completed analysis. **Update this file before ending any phase and before any
 > likely session/context/usage limit.**
 >
-> Last updated: 2026-06-12 — v4.2.0 Brain Core/storage rebuild RC; Remaining Gaps remain empty
+> Last updated: 2026-06-12 — v4.2.0 Brain Core/storage release; Remaining Gaps remain empty
 
 ---
 
-## 0. RC STATUS (v4.2.0 RC)
+## 0. RELEASE STATUS (v4.2.0)
 
 **v4.2.0 extracts Brain Core into `lattice_brain` and adds the pluggable
 storage layer on top of `main` after v4.1.0; implementation gaps remain empty.**
@@ -18,10 +18,13 @@ durable conversation runtime through `lattice_brain.BrainCore`. The new
 `lattice_brain.storage` package provides `StorageEngine`, `SQLiteEngine`,
 `PostgresEngine`, explicit-consent Docker Postgres setup, SQLite-to-Postgres
 migration tooling, sqlite-vec capability reporting with honest cosine fallback,
-and encrypted `.latticebrain` archive create/restore.
-The v4.2.0 RC process builds and validates local artifacts only. It does not
-tag, create a GitHub Release, publish to PyPI, npm Registry, VS Code
-Marketplace, Open VSX, or deploy to production targets.
+and encrypted `.latticebrain` archive create/restore. Owner-granted Docker
+validation covered live `pgvector/pgvector:pg16` migration integrity,
+rowid-less FTS5 shadow tables, idempotent reruns, pgvector distance search,
+and fail-closed Postgres behavior.
+The v4.2.0 release process builds validated artifacts, tags `v4.2.0`, and
+creates a GitHub Release only. It does not publish to PyPI, npm Registry,
+VS Code Marketplace, Open VSX, or deploy to production targets.
 v4.2.0 validation report: `docs/V4_2_VALIDATION_REPORT.md`.
 Remaining implementation gaps: **none**.
 Owner-only blockers: pptx history rewrite (requires force-push/owner decision)

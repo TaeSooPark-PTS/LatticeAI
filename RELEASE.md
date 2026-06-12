@@ -7,14 +7,14 @@
 > PyPI / npm / VS Code Marketplace / Open VSX 배포는 아래 수동 절차로만
 > 진행합니다. 태그 생성은 패키지 스토어 publish를 자동으로 트리거하지 않습니다.
 
-## v4.2.0 RC 릴리스 노트 (2026-06-12)
+## v4.2.0 릴리스 노트 (2026-06-12)
 
 Lattice AI v4.2.0 — Brain Core & Storage Rebuild. `main` after v4.1.0 위에서
 backend Digital Brain boundary를 독립 import package `lattice_brain`으로
 분리하고 pluggable storage layer를 추가한다. SQLite는 기본값으로 유지하며,
 Postgres/pgvector, Docker setup, SQLite→Postgres migration은 모두 명시적 opt-in
-mode이다. PyPI, npm Registry, VS Code Marketplace, Open VSX에는 publish하지
-않는다.
+mode이다. GitHub Release에는 검증된 artifact만 첨부하며 PyPI, npm Registry,
+VS Code Marketplace, Open VSX에는 publish하지 않는다.
 
 - **Added (Brain Core package)**: FastAPI가 `lattice_brain.BrainCore`를 통해
   Knowledge Graph와 durable conversation store를 구성한다. 기존
@@ -22,6 +22,10 @@ mode이다. PyPI, npm Registry, VS Code Marketplace, Open VSX에는 publish하�
   compatibility shim으로 유지한다.
 - **Added (Storage abstraction)**: `StorageEngine`, `SQLiteEngine`,
   `PostgresEngine`, `DockerPostgresWizard`, `SQLiteToPostgresMigrator`.
+- **Validated (live Postgres)**: explicit Docker consent 하에서
+  `pgvector/pgvector:pg16`으로 SQLite→Postgres migration integrity,
+  rowid-less FTS5 shadow table handling, pgvector distance search, idempotent
+  rerun, fail-closed behavior를 검증했다.
 - **Added (Archives)**: AES-256-GCM encrypted `.latticebrain` archive
   create/restore support.
 - **Changed (API/UI)**: OpenAPI 313 paths; System settings에서 storage status,

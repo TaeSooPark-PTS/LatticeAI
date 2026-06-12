@@ -1,11 +1,12 @@
 # Release Notes
 
-## v4.2.0 RC - Brain Core & Storage Rebuild
+## v4.2.0 - Brain Core & Storage Rebuild
 
 Lattice AI v4.2.0 extracts the backend Digital Brain boundary into the
 independent `lattice_brain` package and adds a pluggable storage layer while
-preserving v4.1.0 APIs, frontend behavior, and SQLite user data. No external
-package registries are published as part of this release candidate.
+preserving v4.1.0 APIs, frontend behavior, and SQLite user data. GitHub Release
+artifacts are created from validated local builds only; no external package
+registries are published as part of this release.
 
 ### Highlights
 
@@ -17,7 +18,8 @@ package registries are published as part of this release candidate.
   cosine search remains the real fallback.
 - Postgres/pgvector setup and SQLite-to-Postgres migration are opt-in and
   fail closed when DSN/dependencies are missing.
-- Docker Postgres setup requires explicit user consent.
+- Docker Postgres setup requires explicit user consent; live v4.2.0 validation
+  covered pgvector migration integrity, idempotence, and fail-closed behavior.
 - Encrypted `.latticebrain` archives can back up and restore the local brain DB
   and blobs.
 

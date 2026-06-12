@@ -1,6 +1,6 @@
-# Lattice AI v4.2.0 RC — Storage Migration Report
+# Lattice AI v4.2.0 — Storage Migration Report
 
-Status: implemented release candidate
+Status: released validation complete
 
 v4.2.0 adds a pluggable storage layer without changing the default local-first
 runtime. Existing users continue on SQLite. Postgres is an explicit opt-in
@@ -60,12 +60,21 @@ database into Postgres:
 - Introspects non-internal SQLite tables.
 - Preserves every row.
 - Uses table `id` as the idempotence key when present.
-- Uses preserved `__source_rowid` when no `id` column exists.
+- Uses declared primary keys, including composite keys on rowid-less FTS5 shadow
+  tables.
+- Uses preserved `__source_rowid` when no declared key exists and SQLite rowid
+  is available.
 - Upserts rows on repeated runs.
 - Leaves the source SQLite database untouched.
 
 The API defaults to dry-run migration planning. Actual copy requires an
 explicit DSN and `dry_run=false`.
+
+Live v4.2.0 validation used explicit Docker consent to start
+`pgvector/pgvector:pg16`, copy a seeded v4 SQLite brain database into
+Postgres, verify source and destination row counts, rerun the migration
+idempotently, query pgvector distance ordering, and tear down the test Compose
+stack with volumes.
 
 ## Encrypted Archives
 
@@ -80,4 +89,3 @@ explicit DSN and `dry_run=false`.
 
 No v4.1.0 capability is removed. SQLite remains the default and does not depend
 on Docker, Postgres, pgvector, or network access.
-

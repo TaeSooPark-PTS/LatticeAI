@@ -33,6 +33,8 @@ class TablePlan:
     columns: List[Dict[str, str]]
     rows: int
     conflict_key: str
+    conflict_columns: List[str]
+    rowid_available: bool
 
 
 class SQLiteToPostgresMigrator:
@@ -70,12 +72,36 @@ class SQLiteToPostgresMigrator:
                 ]
                 row_count = conn.execute(f"SELECT COUNT(*) FROM {_quote_sqlite_ident(table)}").fetchone()[0]
                 names = {c["name"] for c in cols}
+                rowid_available = _rowid_available(conn, table)
+                pk_columns = [
+                    row["name"]
+                    for row in sorted(
+                        conn.execute(f"PRAGMA table_info({_quote_sqlite_ident(table)})"),
+                        key=lambda item: int(item["pk"] or 0),
+                    )
+                    if int(row["pk"] or 0) > 0
+                ]
+                conflict_columns = (
+                    ["id"]
+                    if "id" in names
+                    else pk_columns
+                    if pk_columns
+                    else ["__source_rowid"]
+                    if rowid_available
+                    else []
+                )
+                if not conflict_columns:
+                    raise RuntimeError(
+                        f"Cannot safely migrate rowid-less SQLite table without a primary key: {table}"
+                    )
                 tables.append(
                     TablePlan(
                         name=table,
                         columns=cols,
                         rows=int(row_count),
-                        conflict_key="id" if "id" in names else "__source_rowid",
+                        conflict_key=conflict_columns[0],
+                        conflict_columns=conflict_columns,
+                        rowid_available=rowid_available,
                     )
                 )
         return {
@@ -99,32 +125,39 @@ class SQLiteToPostgresMigrator:
                 for table in plan["tables"]:
                     name = str(table["name"])
                     cols = list(table["columns"])
-                    conflict_key = str(table["conflict_key"])
+                    conflict_columns = list(table.get("conflict_columns") or [table["conflict_key"]])
+                    rowid_available = bool(table.get("rowid_available", True))
                     pg_table = f"{schema}.{_quote_ident(name)}"
-                    defs = ["__source_rowid bigint NOT NULL"]
+                    defs = ["__source_rowid bigint NOT NULL"] if rowid_available else []
                     for col in cols:
                         defs.append(f"{_quote_ident(col['name'])} {_pg_type(col['type'])}")
-                    pk = _quote_ident(conflict_key)
+                    pk = ", ".join(_quote_ident(c) for c in conflict_columns)
                     cur.execute(
                         f"CREATE TABLE IF NOT EXISTS {pg_table} ({', '.join(defs)}, PRIMARY KEY ({pk}))"
                     )
-                    rows = src.execute(
-                        f"SELECT rowid AS __source_rowid, * FROM {_quote_sqlite_ident(name)} ORDER BY rowid"
-                    ).fetchall()
+                    if rowid_available:
+                        select_sql = (
+                            f"SELECT rowid AS __source_rowid, * FROM {_quote_sqlite_ident(name)} ORDER BY rowid"
+                        )
+                    else:
+                        order_by = ", ".join(_quote_sqlite_ident(c) for c in conflict_columns)
+                        select_sql = f"SELECT * FROM {_quote_sqlite_ident(name)} ORDER BY {order_by}"
+                    rows = src.execute(select_sql).fetchall()
                     if not rows:
                         copied[name] = 0
                         continue
-                    columns = ["__source_rowid", *[c["name"] for c in cols]]
+                    columns = (["__source_rowid"] if rowid_available else []) + [c["name"] for c in cols]
                     placeholders = ", ".join(["%s"] * len(columns))
                     quoted_columns = ", ".join(_quote_ident(c) for c in columns)
                     updates = ", ".join(
                         f"{_quote_ident(c)} = EXCLUDED.{_quote_ident(c)}"
                         for c in columns
-                        if c != conflict_key
+                        if c not in conflict_columns
                     )
+                    conflict_action = f"DO UPDATE SET {updates}" if updates else "DO NOTHING"
                     sql = (
                         f"INSERT INTO {pg_table} ({quoted_columns}) VALUES ({placeholders}) "
-                        f"ON CONFLICT ({pk}) DO UPDATE SET {updates}"
+                        f"ON CONFLICT ({pk}) {conflict_action}"
                     )
                     cur.executemany(
                         sql,
@@ -144,6 +177,14 @@ class SQLiteToPostgresMigrator:
 
 def _quote_sqlite_ident(value: str) -> str:
     return '"' + str(value).replace('"', '""') + '"'
+
+
+def _rowid_available(conn: sqlite3.Connection, table: str) -> bool:
+    try:
+        conn.execute(f"SELECT rowid FROM {_quote_sqlite_ident(table)} LIMIT 1").fetchall()
+        return True
+    except sqlite3.OperationalError:
+        return False
 
 
 __all__ = ["SQLiteToPostgresMigrator", "TablePlan"]

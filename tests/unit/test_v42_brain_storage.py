@@ -68,15 +68,19 @@ def test_sqlite_to_postgres_migration_plan_preserves_all_user_tables(tmp_path: P
         conn.execute("INSERT INTO nodes(id, title, metadata_json) VALUES ('n1', 'Node', '{}')")
         conn.execute("CREATE TABLE conversation_messages(role TEXT, content TEXT)")
         conn.execute("INSERT INTO conversation_messages(role, content) VALUES ('user', 'hello')")
+        conn.execute("CREATE TABLE rowidless_idx(segid, term, pgno, PRIMARY KEY(segid, term)) WITHOUT ROWID")
+        conn.execute("INSERT INTO rowidless_idx(segid, term, pgno) VALUES (1, 'brain', 1)")
 
     migrator = SQLiteToPostgresMigrator(db, PostgresEngine("postgresql://example.invalid/db"))
     plan = migrator.migrate(dry_run=True)
 
     assert plan["status"] == "planned"
-    assert plan["total_rows"] == 2
+    assert plan["total_rows"] == 3
     tables = {table["name"]: table for table in plan["tables"]}
     assert tables["nodes"]["conflict_key"] == "id"
     assert tables["conversation_messages"]["conflict_key"] == "__source_rowid"
+    assert tables["rowidless_idx"]["conflict_columns"] == ["segid", "term"]
+    assert tables["rowidless_idx"]["rowid_available"] is False
 
 
 def test_docker_postgres_wizard_never_starts_without_consent(tmp_path: Path):
