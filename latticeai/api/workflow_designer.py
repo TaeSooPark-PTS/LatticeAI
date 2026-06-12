@@ -62,6 +62,7 @@ def create_workflow_designer_router(
     ui_file_response: Optional[Callable[[Path], Any]] = None,
     static_dir: Optional[Path] = None,
     hooks: Any = None,
+    run_executor: Any = None,
 ) -> APIRouter:
     from latticeai.core.workflow_engine import (
         WorkflowEngine,
@@ -151,6 +152,16 @@ def create_workflow_designer_router(
             workflow = store.get_workflow(workflow_id, workspace_id=scope)
         except FileNotFoundError as exc:
             raise HTTPException(status_code=404, detail=f"Workflow not found: {exc}") from exc
+        if run_executor is not None:
+            result = await run_executor.start_workflow(
+                workflow,
+                workflow_id=workflow_id,
+                user_email=current_user or None,
+                scope=scope,
+                inputs=req.inputs,
+            )
+            append_audit_event("workflow_run_queued", user_email=current_user, workflow_id=workflow_id, status="queued")
+            return result
         runners = build_runners(current_user or None, scope)
         engine = WorkflowEngine(runners, hooks=hooks)
         result = engine.run(workflow, inputs=req.inputs)
@@ -169,6 +180,23 @@ def create_workflow_designer_router(
         )
         append_audit_event("workflow_run", user_email=current_user, workflow_id=workflow_id, status=result.status)
         return {"run": run, "result": result.as_dict()}
+
+    @router.post("/workflows/api/runs/{run_id}/stop")
+    async def stop_run(run_id: str, request: Request):
+        require_user(request)
+        scope = gate_write(request)
+        if run_executor is None:
+            try:
+                run = store.get_workflow_run(run_id, workspace_id=scope)
+            except FileNotFoundError as exc:
+                raise HTTPException(status_code=404, detail=f"Workflow run not found: {run_id}") from exc
+            return {
+                "stopped": False,
+                "reason": "asynchronous cancellation is not supported by the synchronous runtime",
+                "run_id": run_id,
+                "status": run.get("status"),
+            }
+        return run_executor.cancel(run_id, kind="workflow", scope=scope)
 
     @router.post("/workflows/api/runs/{run_id}/resume")
     async def resume_run(run_id: str, req: WorkflowResumeRequest, request: Request):

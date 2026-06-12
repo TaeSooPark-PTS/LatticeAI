@@ -92,7 +92,11 @@ EXECUTION_EVENT_TYPES = {
     "plugin_completed",
     "execution_failed",
     "execution_cancelled",
+    "execution_interrupted",
 }
+
+RUN_ACTIVE_STATUSES = {"queued", "running", "in_progress", "retrying", "cancelling"}
+RUN_TERMINAL_STATUSES = {"ok", "retried_ok", "failed", "rejected", "cancelled", "interrupted", "partial"}
 
 DEFAULT_AGENTS = [
     {
@@ -1381,6 +1385,93 @@ class WorkspaceOSStore:
         self.record_timeline_event("agent", "agent_run", {"run_id": run["id"], "agent_id": agent_id, "status": status}, workspace_id=resolved_workspace)
         return run
 
+    def update_agent_run(
+        self,
+        run_id: str,
+        *,
+        workspace_id: Optional[str] = None,
+        graph: Any = None,
+        patch: Optional[Dict[str, Any]] = None,
+        **fields: Any,
+    ) -> Dict[str, Any]:
+        """Patch a persisted agent run without changing its id.
+
+        Async execution creates a durable queued/running row before work starts,
+        then updates that same row as progress, cancellation, or a terminal
+        result arrives. This keeps old run lists/read APIs compatible while
+        avoiding duplicate "placeholder + final" records.
+        """
+        updates = {**(patch or {}), **fields}
+        state = self.load_state()
+        run = next((item for item in _listify(state.get("agent_runs")) if item.get("id") == run_id), None)
+        if run is None or (workspace_id and self._record_workspace(run) != str(workspace_id)):
+            raise FileNotFoundError(run_id)
+        resolved_workspace = self._record_workspace(run)
+        old_timeline_len = len(run.get("timeline") or [])
+
+        output_text = updates.pop("output_text", None)
+        if output_text is not None:
+            run["output_preview"] = str(output_text)[:1000]
+        for key, value in updates.items():
+            run[key] = value
+        status = str(run.get("status") or "")
+        run["updated_at"] = _now()
+        if status in RUN_TERMINAL_STATUSES:
+            run.setdefault("completed_at", _now())
+
+        handoffs = updates.get("handoffs")
+        if isinstance(handoffs, list):
+            stored_handoffs = [
+                item for item in _listify(state.get("handoffs"))
+                if item.get("run_id") != run_id
+            ]
+            for handoff in handoffs:
+                if isinstance(handoff, dict):
+                    stored_handoffs.append({**handoff, "run_id": run_id, "workspace_id": resolved_workspace})
+            state["handoffs"] = stored_handoffs[-500:]
+
+        if (
+            status in RUN_TERMINAL_STATUSES
+            and run.get("mode") != "simulation"
+            and graph is not None
+            and not run.get("graph_node_id")
+        ):
+            try:
+                ingested = graph.ingest_event(
+                    "AgentRun",
+                    f"{run.get('agent_id')} {status}",
+                    user_email=run.get("user_email"),
+                    source="workspace_os",
+                    metadata={
+                        "run_id": run_id,
+                        "agent_id": run.get("agent_id"),
+                        "status": status,
+                        "mode": run.get("mode"),
+                    },
+                )
+                run["graph_node_id"] = ingested.get("node_id")
+            except Exception as exc:
+                run["graph_error"] = str(exc)
+
+        self.save_state(state)
+
+        timeline = run.get("timeline") or []
+        if len(timeline) > old_timeline_len:
+            self._emit_replayable_timeline_events(
+                area="agent",
+                run_id=run_id,
+                timeline=timeline[old_timeline_len:],
+                workspace_id=resolved_workspace,
+            )
+        if status == "failed":
+            self._emit_execution_event(area="agent", event_type="execution_failed", payload={"run_id": run_id, "agent_id": run.get("agent_id"), "status": status}, workspace_id=resolved_workspace)
+        elif status == "cancelled":
+            self._emit_execution_event(area="agent", event_type="execution_cancelled", payload={"run_id": run_id, "agent_id": run.get("agent_id"), "status": status}, workspace_id=resolved_workspace)
+        elif status == "interrupted":
+            self._emit_execution_event(area="agent", event_type="execution_interrupted", payload={"run_id": run_id, "agent_id": run.get("agent_id"), "status": status}, workspace_id=resolved_workspace)
+        self.record_timeline_event("agent", "agent_run_update", {"run_id": run_id, "agent_id": run.get("agent_id"), "status": status}, workspace_id=resolved_workspace)
+        return run
+
     def get_agent_run(self, run_id: str, workspace_id: Optional[str] = None) -> Dict[str, Any]:
         run = next((item for item in _listify(self.load_state().get("agent_runs")) if item.get("id") == run_id), None)
         if not run or (workspace_id and self._record_workspace(run) != str(workspace_id)):
@@ -1505,6 +1596,85 @@ class WorkspaceOSStore:
         self.record_timeline_event("workflow", "workflow_run", {"run_id": run["id"], "workflow_id": workflow_id, "status": status}, workspace_id=resolved_workspace)
         return run
 
+    def update_workflow_run(
+        self,
+        run_id: str,
+        *,
+        workspace_id: Optional[str] = None,
+        graph: Any = None,
+        patch: Optional[Dict[str, Any]] = None,
+        **fields: Any,
+    ) -> Dict[str, Any]:
+        """Patch a persisted workflow run in place for async execution."""
+        updates = {**(patch or {}), **fields}
+        state = self.load_state()
+        run = next((item for item in _listify(state.get("workflow_runs")) if item.get("id") == run_id), None)
+        if run is None or (workspace_id and self._record_workspace(run) != str(workspace_id)):
+            raise FileNotFoundError(run_id)
+        resolved_workspace = self._record_workspace(run)
+        old_timeline_len = len(run.get("timeline") or [])
+
+        for key, value in updates.items():
+            if value is None and key == "pause":
+                run.pop("pause", None)
+            else:
+                run[key] = value
+        status = str(run.get("status") or "")
+        run["updated_at"] = _now()
+        if status in RUN_TERMINAL_STATUSES:
+            run.setdefault("completed_at", _now())
+
+        workflow_id = run.get("workflow_id")
+        for wf in _listify(state.get("workflows")):
+            if wf.get("id") == workflow_id:
+                wf.setdefault("events", []).append({"type": "run_update", "timestamp": _now(), "payload": {"run_id": run_id, "status": status}})
+                wf["updated_at"] = _now()
+                break
+
+        if (
+            status in RUN_TERMINAL_STATUSES
+            and run.get("mode") != "simulation"
+            and graph is not None
+            and not run.get("graph_node_id")
+        ):
+            try:
+                ingested = graph.ingest_event(
+                    "WorkflowRun",
+                    f"{run.get('name')} {status}",
+                    user_email=run.get("user_email"),
+                    source="workspace_os",
+                    metadata={
+                        "run_id": run_id,
+                        "workflow_id": workflow_id,
+                        "status": status,
+                        "mode": run.get("mode"),
+                    },
+                )
+                run["graph_node_id"] = ingested.get("node_id")
+            except Exception as exc:
+                run["graph_error"] = str(exc)
+
+        self.save_state(state)
+
+        timeline = run.get("timeline") or []
+        if len(timeline) > old_timeline_len:
+            self._emit_replayable_timeline_events(
+                area="workflow",
+                run_id=run_id,
+                timeline=timeline[old_timeline_len:],
+                workspace_id=resolved_workspace,
+            )
+        if status == "failed":
+            self._emit_execution_event(area="workflow", event_type="execution_failed", payload={"run_id": run_id, "workflow_id": workflow_id, "status": status}, workspace_id=resolved_workspace)
+        elif status in {"ok", "partial"}:
+            self._emit_execution_event(area="workflow", event_type="workflow_completed", payload={"run_id": run_id, "workflow_id": workflow_id, "status": status}, workspace_id=resolved_workspace)
+        elif status == "cancelled":
+            self._emit_execution_event(area="workflow", event_type="execution_cancelled", payload={"run_id": run_id, "workflow_id": workflow_id, "status": status}, workspace_id=resolved_workspace)
+        elif status == "interrupted":
+            self._emit_execution_event(area="workflow", event_type="execution_interrupted", payload={"run_id": run_id, "workflow_id": workflow_id, "status": status}, workspace_id=resolved_workspace)
+        self.record_timeline_event("workflow", "workflow_run_update", {"run_id": run_id, "workflow_id": workflow_id, "status": status}, workspace_id=resolved_workspace)
+        return run
+
     def list_workflow_runs(self, workflow_id: Optional[str] = None, limit: int = 50, workspace_id: Optional[str] = None) -> Dict[str, Any]:
         runs = self._scoped(_listify(self.load_state().get("workflow_runs")), workspace_id)
         if workflow_id:
@@ -1531,6 +1701,58 @@ class WorkspaceOSStore:
         if not run or (workspace_id and self._record_workspace(run) != str(workspace_id)):
             raise FileNotFoundError(run_id)
         return run
+
+    def reconcile_interrupted_runs(self, *, reason: str = "server_startup") -> Dict[str, Any]:
+        """Mark durable active runs as interrupted after a process restart.
+
+        Queued/running/cancelling rows cannot have an owning asyncio task after
+        startup. Paused approval runs are intentionally left untouched so their
+        durable human decision cursor remains resumable.
+        """
+        state = self.load_state()
+        interrupted: List[Dict[str, Any]] = []
+        now = _now()
+        collections = (("agent_runs", "agent"), ("workflow_runs", "workflow"))
+        for key, area in collections:
+            for run in _listify(state.get(key)):
+                status = str(run.get("status") or "")
+                if status not in RUN_ACTIVE_STATUSES:
+                    continue
+                run["status"] = "interrupted"
+                run["interrupted_at"] = now
+                run["interrupt_reason"] = reason
+                run["updated_at"] = now
+                run.setdefault("timeline", []).append({
+                    "event": "execution_interrupted",
+                    "status": "interrupted",
+                    "reason": reason,
+                    "timestamp": now,
+                })
+                interrupted.append({
+                    "kind": area,
+                    "run_id": run.get("id"),
+                    "workspace_id": self._record_workspace(run),
+                    "previous_status": status,
+                })
+        if not interrupted:
+            return {"count": 0, "interrupted": []}
+        self.save_state(state)
+        for item in interrupted:
+            area = item["kind"]
+            run_id = item["run_id"]
+            workspace = item.get("workspace_id")
+            self._emit_execution_event(
+                area=area,
+                event_type="execution_interrupted",
+                payload={"run_id": run_id, "reason": reason, "previous_status": item.get("previous_status")},
+                workspace_id=workspace,
+            )
+        self.record_timeline_event(
+            "system",
+            "startup_reconciliation",
+            {"interrupted_runs": len(interrupted), "reason": reason},
+        )
+        return {"count": len(interrupted), "interrupted": interrupted}
 
     @staticmethod
     def _replay_frames(run: Dict[str, Any], *, kind: str) -> List[Dict[str, Any]]:

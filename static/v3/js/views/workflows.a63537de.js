@@ -118,7 +118,8 @@ function mapStatus(s) {
   const v = String(s || "").toLowerCase();
   if (v === "ok" || v === "completed" || v === "success") return "ready";
   if (v === "failed" || v === "error") return "failed";
-  if (v === "running") return "active";
+  if (v === "running" || v === "queued" || v === "cancelling") return "active";
+  if (v === "cancelled" || v === "interrupted") return "warn";
   return v || "idle";
 }
 function fmtTime(ts) {

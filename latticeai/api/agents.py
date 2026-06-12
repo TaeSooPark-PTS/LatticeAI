@@ -41,6 +41,7 @@ def create_agents_router(
     ui_file_response: Optional[Callable[[Path], Any]] = None,
     static_dir: Optional[Path] = None,
     agent_runtime: Any = None,
+    run_executor: Any = None,
 ) -> APIRouter:
     from latticeai.core.multi_agent import AGENT_ROLES, ROLE_AGENT_IDS
     from latticeai.services.agent_runtime import AgentRuntime
@@ -163,6 +164,15 @@ def create_agents_router(
         current_user = require_user(request)
         scope = gate_write(request)
         try:
+            if run_executor is not None:
+                return await run_executor.start_agent(
+                    req.goal,
+                    user_email=current_user or None,
+                    scope=scope,
+                    roles=req.roles or None,
+                    inputs=req.inputs,
+                    max_retries=req.max_retries,
+                )
             # Worker thread: an LLM-backed run blocks on model generation and
             # must not stall the event loop (the sync model bridge also
             # requires a loop-free thread).

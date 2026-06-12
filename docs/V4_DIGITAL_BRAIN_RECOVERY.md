@@ -5,7 +5,7 @@
 > completed analysis. **Update this file before ending any phase and before any
 > likely session/context/usage limit.**
 >
-> Last updated: 2026-06-12 — T3d closed on main; remaining gaps still active
+> Last updated: 2026-06-12 — T7c closed on main; T6/T9 gaps still active
 
 ---
 
@@ -17,10 +17,10 @@ lint_v3 all checks · installed-wheel smoke (19 modules from clean venv) ·
 release artifacts validated (wheel + sdist + npm tgz, 2.0MB).
 NO merge, NO tag, NO publish — awaiting review.
 Remaining gaps (labeled in FEATURE_STATUS.md §v4.0.0 + RELEASE_NOTES_v4.0.0.md):
-T7c async engine, T6 remainder (UUIDs/policy/
-invitations/SQLite state), T9 remainder (legacy deletion + parity views,
-login, i18n, T9b surfaces), pptx history rewrite (owner), consent-gated
-embedder provisioning. All contracts live in docs/V4_IMPLEMENTATION_PLAN.md.
+T6 remainder (UUIDs/policy/invitations/SQLite state), T9 remainder (legacy
+deletion + parity views, login, i18n, T9b surfaces), pptx history rewrite
+(owner), consent-gated embedder provisioning. All contracts live in
+docs/V4_IMPLEMENTATION_PLAN.md.
 
 ## 1. Program Charter (from the user's v4.0.0 directive)
 
@@ -176,15 +176,23 @@ Track log (update at every track boundary):
   status; started in app factory w/ idempotent hook registration. Suite 569.
 - **T7e DONE** (commit 014ca91): custom registry agents executable
   (config actually loaded; honest skip in simulation).
+- **T7c DONE**: `latticeai/services/run_executor.py` owns durable asyncio
+  server-loop tasks for agent/workflow runs. `/agents/api/run` and workflow
+  definition runs now persist queued rows, execute sync orchestrator/tool work
+  via `asyncio.to_thread`, update the same run row through running/final states,
+  publish progress through the existing realtime SSE feed, support cooperative
+  cancellation, and reconcile orphaned active runs to `interrupted` at startup
+  while preserving `awaiting_approval` pause cursors. `RealtimeBus.publish` is
+  thread-safe via subscriber-loop `call_soon_threadsafe`. Suite: 579.
 - **T9-canvas DONE** (commit 2fee077): force-directed canvas explorer
   (graph-canvas.js + Explore rewire; visual spec updated).
 - **T9-IA DONE** (commit 972d34c): brain-first nav (Brain/Ask/Capture/
   Act/Library/System); knowledge-graph is the default landing route.
 - **PHASE D DECISION**: moving to T10 RC prep. REMAINING GAPS (honest,
-  labeled, not faked): T7c async run engine/cancellation/SSE/startup reconciliation; T6
-  remainder (user UUIDs, enforced policy module, invitations, workspace
-  SQLite state); T9 remainder (legacy page deletion + parity views, login
-  rebuild, artifact ungitting, i18n, T9b approval/network/trace surfaces).
+  labeled, not faked): T6 remainder (user UUIDs, enforced policy module,
+  invitations, workspace SQLite state); T9 remainder (legacy page deletion +
+  parity views, login rebuild, artifact ungitting, i18n, T9b
+  approval/network/trace surfaces).
   All have full contracts in docs/V4_IMPLEMENTATION_PLAN.md + amendments.
 - T9-canvas agent left static/v3/js/views/graph-canvas.js (509 lines,
   node --check passes) but NEVER rewired knowledge-graph.js — file kept

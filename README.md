@@ -56,10 +56,10 @@ workspace around the work itself:
   LM Studio; nothing leaves your machine unless you opt in.
 - **Use cloud models only when you choose** — bring an API key for cloud LLMs
   when you want them, not by default.
-- **Inspect every agent run** — the built-in runner persists plans, reviews,
-  retries, and results as replayable run records. Today that runner is
-  deterministic and does not call a model; LLM-driven execution is the v4
-  runtime, in progress.
+- **Inspect every agent run** — runs persist queued/running/final state, plans,
+  reviews, retries, cancellation, and replayable logs. With a loaded model the
+  v4 runner uses it; without one, deterministic simulation mode is explicitly
+  labeled and does not call a model.
 
 Lattice AI is not a clone of ChatGPT, Claude, Cursor, Obsidian, or Notion. It
 sits in a different place: a **workspace** that ties local/self-hosted AI, your
@@ -75,8 +75,8 @@ and workflows together — and runs on your own hardware.
   Knowledge Graph.
 - Run local models through MLX, Ollama, or LM Studio, and use cloud LLMs only when
   you want to.
-- Define agent workflows and replay their run records step by step (execution
-  is deterministic scaffolding today — it does not yet call a model).
+- Define agent workflows and replay their run records step by step, including
+  live tool execution, approval pauses, and cooperative cancellation.
 - Separate personal work from organization work.
 - Switch between Basic, Advanced, and Admin modes depending on your role.
 
@@ -115,9 +115,9 @@ connect — context that stays useful even when you switch models.
 ![Lattice AI agent run with roles, logs, review, and retry](docs/assets/v3.4.0/agent-run.png)
 
 The agent runner turns a goal into an inspectable, replayable run record — roles,
-logs, review, and retry — that you can read back step by step. The runner shown
-here is deterministic and LLM-free; real model-driven execution is the v4
-runtime, currently in progress.
+logs, review, retry, and cancellation state — that you can read back step by
+step. Runs execute asynchronously and use the loaded model when one is available;
+otherwise they are labeled as simulation.
 
 ### Extend with hooks and the local runtime
 
@@ -213,7 +213,8 @@ npm run dev
 - **Durable memory and context** — conversations, decisions, experiences, and
   context traces live in the brain database family.
 - **Real act/runtime foundation** — workflows execute governed tools, pause for
-  approval, and LLM-backed agent runs fail closed instead of fabricating output.
+  approval, run asynchronously with SSE progress/cancellation, and LLM-backed
+  agent runs fail closed instead of fabricating output.
 - **Local sovereignty** — signed exports, device identity, scoped graph export,
   and Brain Network peer exchange are implemented at the API layer.
 

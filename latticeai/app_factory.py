@@ -127,6 +127,7 @@ def _build(config: "Optional[Config]" = None) -> Dict[str, Any]:
     from latticeai.core.realtime import RealtimeBus
     from latticeai.core.marketplace import TemplateCatalog
     from latticeai.services.platform_runtime import PlatformRuntime
+    from latticeai.services.run_executor import RunExecutor
     from latticeai.api.plugins import create_plugins_router
     from latticeai.api.workflow_designer import create_workflow_designer_router
     from latticeai.api.agents import create_agents_router
@@ -1426,7 +1427,6 @@ def _build(config: "Optional[Config]" = None) -> Dict[str, Any]:
             description="Fires brain_event workflow triggers when knowledge enters the brain.",
         )["id"]
     HOOKS_REGISTRY.register_hook(_trigger_hook_id, TRIGGER_SERVICE.hook_runner())
-    TRIGGER_SERVICE.start()
 
     # Single AgentRuntime boundary over the orchestrator + run store.
     AGENT_RUNTIME = AgentRuntime(
@@ -1436,6 +1436,18 @@ def _build(config: "Optional[Config]" = None) -> Dict[str, Any]:
         append_audit_event=append_audit_event,
         hooks=HOOKS_REGISTRY,
     )
+    RUN_EXECUTOR = RunExecutor(
+        store=WORKSPACE_OS,
+        agent_runtime=AGENT_RUNTIME,
+        build_workflow_runners=PLATFORM.build_workflow_runners,
+        workspace_graph=_workspace_graph,
+        append_audit_event=append_audit_event,
+        hooks=HOOKS_REGISTRY,
+    )
+    AGENT_RUNTIME.attach_executor(RUN_EXECUTOR)
+    app.state.run_executor = RUN_EXECUTOR
+    app.state.run_reconciliation = RUN_EXECUTOR.reconcile_startup()
+    TRIGGER_SERVICE.start()
 
     # ── Hooks dispatch: bind real built-in runners ───────────────────────────────
     # The registry lists built-in hooks; binding a runner here makes them *execute*
@@ -1472,6 +1484,7 @@ def _build(config: "Optional[Config]" = None) -> Dict[str, Any]:
         ui_file_response=ui_file_response,
         static_dir=STATIC_DIR,
         hooks=HOOKS_REGISTRY,
+        run_executor=RUN_EXECUTOR,
     ))
 
     app.include_router(create_agents_router(
@@ -1486,6 +1499,7 @@ def _build(config: "Optional[Config]" = None) -> Dict[str, Any]:
         ui_file_response=ui_file_response,
         static_dir=STATIC_DIR,
         agent_runtime=AGENT_RUNTIME,
+        run_executor=RUN_EXECUTOR,
     ))
 
     app.include_router(create_marketplace_router(

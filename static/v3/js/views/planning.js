@@ -59,8 +59,26 @@ export async function render(ctx) {
       resultHost.replaceChildren(c.banner("Planning is unavailable — start the local server and load a model.", "warn"));
       return;
     }
-    resultHost.replaceChildren(renderResult(ctx, res.data.result || res.data));
+    if (res.data.accepted && res.data.run) {
+      resultHost.replaceChildren(renderResult(ctx, res.data.run));
+      pollRun(res.data.run.id || res.data.run.run_id);
+    } else {
+      resultHost.replaceChildren(renderResult(ctx, res.data.result || res.data));
+    }
     loadRuns();
+  }
+
+  async function pollRun(runId) {
+    if (!runId) return;
+    for (let i = 0; i < 80; i += 1) {
+      await sleep(i < 10 ? 400 : 1200);
+      const res = await ctx.api.agentRunDetail(runId);
+      const run = res && res.data && res.data.run;
+      if (!res || !res.ok || !run) return;
+      resultHost.replaceChildren(renderResult(ctx, run));
+      loadRuns();
+      if (!["queued", "running", "in_progress", "cancelling"].includes(String(run.status || "").toLowerCase())) return;
+    }
   }
 
   async function loadRuns() {
@@ -98,13 +116,14 @@ export async function render(ctx) {
 function renderResult(ctx, result) {
   const { h, c } = ctx;
   const plan = result.plan || [];
-  const review = result.review || {};
+  const review = result.review || result.plan_review || {};
   const retries = result.retry_history || [];
-  const ok = (review.outcome || "").toLowerCase() === "approve" || (review.verdict || "").toLowerCase() === "pass";
+  const status = mapStatus(result.status);
+  const ok = status === "ready" || (review.outcome || "").toLowerCase() === "approve" || (review.verdict || "").toLowerCase() === "pass";
   return c.panel({
     head: h("div.lt3-row", { style: { "justify-content": "space-between", width: "100%" } },
       h("div", h("div.lt3-eyebrow", "Result"), h("h3.lt3-panel__title", "Plan & execution")),
-      c.statePill(ok ? "ready" : "warn")),
+      c.statePill(ok ? "ready" : status || "warn")),
     children: h("div.lt3-stack-3",
       h("div",
         h("div.lt3-eyebrow", c.icon("list-check"), "Plan"),
@@ -146,8 +165,10 @@ function mapStatus(s) {
   const v = String(s || "").toLowerCase();
   if (v === "ok" || v === "retried_ok") return "ready";
   if (v === "failed" || v === "rejected") return "failed";
-  if (v === "running" || v === "in_progress") return "active";
+  if (v === "running" || v === "in_progress" || v === "queued" || v === "cancelling") return "active";
+  if (v === "cancelled" || v === "interrupted") return "warn";
   return v || "idle";
 }
 
 function trunc(s, n) { s = String(s || ""); return s.length > n ? s.slice(0, n) + "…" : s; }
+function sleep(ms) { return new Promise((resolve) => setTimeout(resolve, ms)); }

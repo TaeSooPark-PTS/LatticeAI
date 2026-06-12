@@ -15,6 +15,9 @@
   path; legacy tables are maintained as a compatibility projection.
 - Added one-time pre-flip SQLite backup, `PRAGMA user_version=4`, schema-version
   reporting, and fail-closed protection for newer DB formats.
+- Added the durable async run executor for agent/workflow runs: persisted
+  queued/running/final states, realtime SSE progress, cooperative cancellation,
+  and startup reconciliation of orphaned active runs.
 
 ## [3.6.0] - 2026-06-10
 

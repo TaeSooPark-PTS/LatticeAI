@@ -4,7 +4,7 @@
  * role roster enriched with real run counts, the live recent-runs ledger, and
  * runtime health. Reports unavailable state when the runtime is unreachable.
  * Also drives runs directly: a goal + role selection → POST /agents/api/run →
- * a real timeline (logs), final status/output, queue/status, and stop.
+ * a durable async run, live logs, final status/output, queue/status, and stop.
  * ========================================================================== */
 
 import { timeAgo } from "../core/dom.a2773eb0.js";
@@ -37,7 +37,7 @@ export async function render(ctx) {
         h("div",
           h("div.lt3-eyebrow", "Run"),
           h("h3.lt3-panel__title", "Run agents"),
-          h("p.lt3-panel__sub", "Give the pipeline a goal. Planner → executor → reviewer run synchronously and locally — no model required."),
+          h("p.lt3-panel__sub", "Give the pipeline a goal. Planner → executor → reviewer run locally with durable progress and cooperative cancellation."),
         ),
         runSrc,
       ),
@@ -134,7 +134,7 @@ function makeRunConsole(ctx, hosts) {
     if (!roles.length) { ctx.toast("Select at least one role", "info"); return; }
 
     runBtn.disabled = true;
-    runBtn.replaceChildren(c.icon("loader-2"), "Running…");
+    runBtn.replaceChildren(c.icon("loader-2"), "Starting…");
     runSrc.replaceChildren(c.sourceBadge("pending"));
     logsHost.replaceChildren(h("div", { style: { "margin-top": "var(--lt3-space-3)" } }, c.loading({ lines: 4 })));
 
@@ -157,18 +157,40 @@ function makeRunConsole(ctx, hosts) {
     const run = data.run || {};
     const result = data.result || {};
     logsHost.replaceChildren(renderRunResult(run, result));
-    ctx.toast(`Run ${mapStatus(result.status) === "failed" ? "completed with failure" : "complete"}`, mapStatus(result.status) === "failed" ? "warn" : "ok");
+    if (data.accepted && (run.id || run.run_id)) {
+      ctx.toast("Run queued", "ok");
+      pollRun(run.id || run.run_id);
+    } else {
+      ctx.toast(`Run ${mapStatus(result.status) === "failed" ? "completed with failure" : "complete"}`, mapStatus(result.status) === "failed" ? "warn" : "ok");
+    }
 
     // Refresh runtime so queue/total/recent-runs reflect this run.
     hydrate();
+  }
+
+  async function pollRun(runId) {
+    for (let i = 0; i < 80; i += 1) {
+      await sleep(i < 10 ? 400 : 1200);
+      const res = await ctx.api.agentRunDetail(runId);
+      const data = (res && res.data) || {};
+      if (!res || !res.ok) return;
+      const run = data.run || {};
+      logsHost.replaceChildren(renderRunResult(run, run));
+      hydrate();
+      if (!isActiveStatus(run.status)) {
+        const mapped = mapStatus(run.status);
+        ctx.toast(`Run ${mapped === "failed" ? "completed with failure" : "finished"}`, mapped === "failed" ? "warn" : "ok");
+        return;
+      }
+    }
   }
 
   /* ── Render a run's result as logs + summary ───────────────────────────── */
   function renderRunResult(run, result) {
     const runId = run.id || run.run_id || result.run_id || result.id;
     const status = mapStatus(result.status || run.status);
-    const timeline = Array.isArray(result.timeline) ? result.timeline : [];
-    const output = result.output != null ? String(result.output) : "";
+    const timeline = Array.isArray(result.timeline) ? result.timeline : (Array.isArray(run.timeline) ? run.timeline : []);
+    const output = result.output != null ? String(result.output) : String(run.output_preview || "");
     const retries = Number(result.retries) || 0;
     const active = isActiveStatus(result.status || run.status);
 
@@ -183,9 +205,6 @@ function makeRunConsole(ctx, hosts) {
         ),
         runId
           ? h("button.lt3-btn.lt3-btn--danger.lt3-btn--sm", {
-              // The synchronous runtime finishes inline; Stop is offered but
-              // reports honestly (stopped:false + reason) when there's nothing
-              // left to interrupt.
               title: active ? "Stop this run" : "This run has already finished",
               on: { click: (e) => stopRun(runId, e.currentTarget) },
             }, c.icon("player-stop"), "Stop")
@@ -242,7 +261,6 @@ function makeRunConsole(ctx, hosts) {
       return;
     }
     if (data.stopped === false || data.stopped == null) {
-      // The synchronous runtime cannot interrupt an already-finished run.
       ctx.toast(String(data.reason || "Run already finished — nothing to stop"), "warn");
     } else {
       ctx.toast("Run stopped", "ok");
@@ -510,14 +528,19 @@ function mapStatus(status) {
   const s = String(status || "").toLowerCase();
   if (s === "ok" || s === "retried_ok") return "ready";
   if (s === "failed" || s === "rejected") return "failed";
-  if (s === "running" || s === "in_progress") return "active";
+  if (s === "running" || s === "in_progress" || s === "queued" || s === "cancelling") return "active";
+  if (s === "cancelled" || s === "interrupted") return "warn";
   return s || "idle";
 }
 
 // An active run is one that could (in principle) still be stopped.
-const ACTIVE_STATES = new Set(["running", "in_progress", "queued", "pending", "active"]);
+const ACTIVE_STATES = new Set(["running", "in_progress", "queued", "pending", "active", "cancelling"]);
 function isActiveStatus(status) {
   return ACTIVE_STATES.has(String(status || "").toLowerCase());
+}
+
+function sleep(ms) {
+  return new Promise((resolve) => setTimeout(resolve, ms));
 }
 
 function runNote(r) {

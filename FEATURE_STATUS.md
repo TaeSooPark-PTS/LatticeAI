@@ -8,12 +8,13 @@ automated tests.
 ## v4.0.0 Digital Brain Platform — what changed
 
 v4 makes the v3.6.0 identity true in the implementation. Honesty ledger for
-the transformation (every line cites code + tests; suite: **571 unit tests**):
+the transformation (every line cites code + tests; suite: **579 unit tests**):
 
 | Area | Status | Evidence |
 | --- | --- | --- |
 | **Workflow execution** | WORKING (live) | Tool nodes EXECUTE via `dispatch_tool` under governance; approval-requiring tools pause runs (`awaiting_approval`) with a durable cursor; `WorkflowEngine.resume` re-enters without re-running completed nodes; denial fails honestly. The pre-v4 `{recorded:true}` runners are gone; skill nodes refuse explicitly. `test_t7_workflow_execution.py` (6). |
 | **Multi-Agent Runtime** | WORKING (llm) / labeled simulation | `llm_role_runner` calls the loaded model (planner/executor/reviewer); unparseable output FAILS the run with raw preserved; `mode` persisted on every run record; simulations never write into the KG. `test_t7_llm_runner.py` (7), `test_truth_floor_t1.py`. |
+| **Async run engine** | WORKING | Agent/workflow run endpoints persist queued rows, execute on server-loop tasks via `asyncio.to_thread`, stream progress through the realtime SSE feed, support cooperative cancellation, and mark orphaned active runs `interrupted` on startup while preserving approval pauses. `test_t7_async_run_executor.py` (4), `test_realtime.py`. |
 | **Custom agents** | WORKING | Registry config (system_prompt/max_tokens/temperature) actually loaded at run time; honest skip in simulation. `test_t7_llm_runner.py`. |
 | **Triggers** | WORKING | Interval scheduler (missed firings → recorded skips) + brain-event triggers on `kg_ingest.*`; `__trigger__` provenance on fired runs. `test_t7_triggers.py` (5). |
 | **Ingestion coverage** | WORKING (4/5 paths) | Chat, MCP, uploads, browser/notes all route through `services/ingestion.py` with provenance; `GET /knowledge-graph/provenance/coverage` reports the honest ratio. Workspace events remain direct until the T6 state rebuild. `test_t4_ingestion_unification.py` (6). |
@@ -35,7 +36,6 @@ the transformation (every line cites code + tests; suite: **571 unit tests**):
 
 | Gap | State today | Contract |
 | --- | --- | --- |
-| Async run engine (cancel/SSE/reconciliation) | runs synchronous; `stop()` says so | T7c |
 | User UUIDs / enforced policy map / invitations / SQLite workspace state | email-keyed; `_ROLE_CAPS` advisory | T6 remainder |
 | Legacy page deletion + parity views, login rebuild, i18n, T9b surfaces (approval inbox, peer pairing, context trace) | legacy pages still served; new APIs labeled API-only | T9/T9b |
 | pptx history rewrite | deleted at HEAD only | owner decision (force-push) |
@@ -363,12 +363,13 @@ removal honestly blocked.
 **WORKING in v3.4.0 (was PLACEHOLDER) — Run trigger from the Agents view.** The
 Agents view now has a Run console: a goal field + role chips (seeded from
 `runtime.default_pipeline`) → `api.runAgent(goal, roles)` (`POST /agents/api/run`)
-with **Run / Stop / Status / Queue / Logs**. The run's `result.timeline` renders
-as logs, the final status + retries show inline, the Queue tile reflects
-`runtime.active_runs`, and Stop surfaces the synchronous runtime's honest
-`{stopped:false, reason}` rather than faking a cancel. *Verified* on a live
-server: a run completes (no model required) and **fires pre_run + post_run hooks**
-(`ran:1` each) recorded in the hook run log. No Planning-view dependency.
+with **Run / Stop / Status / Queue / Logs**. Runs are queued durably, then
+completed by the async executor; logs poll the persisted row, the Queue tile
+reflects `runtime.active_runs`, and Stop requests cooperative cancellation
+(sync model/tool calls finish their current step before the final cancelled
+status lands). *Verified* on a live server: a run completes (no model required)
+and **fires pre_run + post_run hooks** (`ran:1` each) recorded in the hook run
+log. No Planning-view dependency.
 
 **Design note (not a bug):** registry enable/disable is metadata — execution
 always runs `CORE_PIPELINE`; custom registered agents have no runner, so they are

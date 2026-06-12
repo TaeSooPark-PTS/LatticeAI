@@ -21,6 +21,7 @@ it, the frontend) now depends on this boundary instead of internal paths.
 
 from __future__ import annotations
 
+from datetime import datetime
 from typing import Any, Callable, Dict, List, Optional
 
 from latticeai.core.multi_agent import (
@@ -41,8 +42,12 @@ ROLE_DESCRIPTIONS = {
 # Run statuses the orchestrator can emit that mean "still working". The default
 # orchestrator runs synchronously, so persisted runs are always terminal; this
 # set lets the runtime report live work if a future async runner lands.
-_ACTIVE_STATUSES = {"running", "in_progress", "queued", "retrying"}
-_TERMINAL_STATUSES = {"ok", "retried_ok", "failed", "rejected", "cancelled"}
+_ACTIVE_STATUSES = {"running", "in_progress", "queued", "retrying", "cancelling"}
+_TERMINAL_STATUSES = {"ok", "retried_ok", "failed", "rejected", "cancelled", "interrupted", "partial"}
+
+
+def _now() -> str:
+    return datetime.now().isoformat(timespec="seconds")
 
 
 class AgentRuntime:
@@ -64,6 +69,13 @@ class AgentRuntime:
         # Lifecycle hooks registry (optional). When present, ``start`` fires the
         # ``pre_run`` / ``post_run`` hooks; a blocking ``pre_run`` aborts the run.
         self._hooks = hooks
+        self._run_executor: Any = None
+
+    def attach_executor(self, executor: Any) -> None:
+        self._run_executor = executor
+
+    def _execution_mode(self) -> str:
+        return "async" if self._run_executor is not None else "synchronous"
 
     # ── configuration ─────────────────────────────────────────────────────
     def config(self) -> Dict[str, Any]:
@@ -72,7 +84,12 @@ class AgentRuntime:
             "roles": list(AGENT_ROLES),
             "default_pipeline": list(CORE_PIPELINE),
             "max_retries_cap": self._max_retries_cap,
-            "execution_mode": "synchronous",
+            "execution_mode": self._execution_mode(),
+            "cancellation": (
+                "cooperative; running synchronous model/tool calls finish their current step before a cancelled status is persisted"
+                if self._run_executor is not None else
+                "not supported for the synchronous runtime"
+            ),
         }
 
     def roles(self) -> List[Dict[str, Any]]:
@@ -150,7 +167,7 @@ class AgentRuntime:
             "runtime": {
                 "ready": True,
                 "version": MULTI_AGENT_VERSION,
-                "execution_mode": "synchronous",
+                "execution_mode": self._execution_mode(),
                 "default_pipeline": list(CORE_PIPELINE),
                 "total_runs": len(runs),
                 "active_runs": active,
@@ -184,6 +201,225 @@ class AgentRuntime:
         }
 
     # ── execution ─────────────────────────────────────────────────────────
+    def _fire_pre_run(
+        self,
+        *,
+        goal: str,
+        roles: Optional[List[str]],
+        max_retries: int,
+        user_email: Optional[str],
+        scope: Optional[str],
+    ) -> Optional[Dict[str, Any]]:
+        pre_dispatch: Optional[Dict[str, Any]] = None
+        if self._hooks is not None:
+            pre_dispatch = self._hooks.fire_hook(
+                "pre_run", "agent.run",
+                payload={"goal": goal, "roles": roles or None, "max_retries": max_retries},
+                user_email=user_email, workspace_id=scope,
+            )
+            if pre_dispatch.get("blocked"):
+                self._append_audit_event(
+                    "multi_agent_run_blocked",
+                    user_email=user_email,
+                    reason=pre_dispatch.get("block_reason"),
+                )
+                raise PermissionError(pre_dispatch.get("block_reason") or "Agent run blocked by a pre_run hook.")
+        return pre_dispatch
+
+    @staticmethod
+    def _result_patch(result: Any, goal: str) -> Dict[str, Any]:
+        return {
+            "agent_id": result.agent_id,
+            "status": result.status,
+            "input": goal,
+            "output_text": result.output,
+            "timeline": result.timeline,
+            "relationships": [ROLE_AGENT_IDS.get(r, f"agent:{r}") for r in result.roles_run],
+            "handoffs": result.handoffs,
+            "context_packets": result.context_packets,
+            "plan": result.plan,
+            "plan_review": result.plan_review,
+            "review_history": result.review_history,
+            "retry_history": result.retry_history,
+            "memory_snapshots": result.memory_snapshots,
+            "mode": getattr(result, "mode", "simulation"),
+            "current_role": None,
+        }
+
+    def _post_run_hooks(
+        self,
+        *,
+        run_id: Optional[str],
+        result: Any,
+        user_email: Optional[str],
+        scope: Optional[str],
+        status: Optional[str] = None,
+    ) -> Optional[Dict[str, Any]]:
+        if self._hooks is None:
+            return None
+        return self._hooks.fire_hook(
+            "post_run", "agent.run",
+            payload={
+                "run_id": run_id,
+                "agent_id": result.agent_id,
+                "status": status or result.status,
+                "retries": result.retries,
+            },
+            user_email=user_email, workspace_id=scope,
+        )
+
+    def reserve_run(
+        self,
+        goal: str,
+        *,
+        user_email: Optional[str],
+        scope: Optional[str],
+        roles: Optional[List[str]] = None,
+        inputs: Optional[Dict[str, Any]] = None,
+        max_retries: int = 2,
+    ) -> Dict[str, Any]:
+        """Create the durable queued row used by the async executor."""
+        if not str(goal or "").strip():
+            raise ValueError("goal is required")
+        pre_dispatch = self._fire_pre_run(
+            goal=goal,
+            roles=roles,
+            max_retries=max_retries,
+            user_email=user_email,
+            scope=scope,
+        )
+        try:
+            orchestrator = self._orchestrator_factory(user_email or None, scope)
+            mode = getattr(orchestrator, "mode", "simulation")
+        except Exception:
+            mode = "simulation"
+        run = self._store.record_agent_run(
+            agent_id=ROLE_AGENT_IDS.get("executor", "agent:executor"),
+            status="queued",
+            input_text=goal,
+            output_text="",
+            timeline=[{"event": "agent_started", "status": "queued", "timestamp": _now()}],
+            relationships=[],
+            handoffs=[],
+            context_packets=[],
+            plan=[],
+            plan_review={},
+            review_history=[],
+            retry_history=[],
+            memory_snapshots=[],
+            user_email=user_email or None,
+            graph=None,
+            workspace_id=scope,
+            mode=mode,
+        )
+        run = self._store.update_agent_run(
+            run.get("id"),
+            workspace_id=scope,
+            execution_mode="async",
+            requested_roles=roles or None,
+            inputs=inputs or {},
+            max_retries=max_retries,
+        )
+        payload: Dict[str, Any] = {"run": run}
+        if pre_dispatch is not None:
+            payload["pre_run_hooks"] = pre_dispatch
+        return payload
+
+    def complete_reserved_run(
+        self,
+        run_id: str,
+        goal: str,
+        *,
+        user_email: Optional[str],
+        scope: Optional[str],
+        roles: Optional[List[str]] = None,
+        inputs: Optional[Dict[str, Any]] = None,
+        max_retries: int = 2,
+        pre_dispatch: Optional[Dict[str, Any]] = None,
+        cancel_requested: Optional[Callable[[], bool]] = None,
+    ) -> Dict[str, Any]:
+        """Execute orchestration and update an existing durable async row."""
+        run = self._store.get_agent_run(run_id, workspace_id=scope)
+        base_timeline = list(run.get("timeline") or [])
+        self._store.update_agent_run(
+            run_id,
+            workspace_id=scope,
+            status="running",
+            current_role=(roles or list(CORE_PIPELINE))[0] if (roles or CORE_PIPELINE) else None,
+            started_at=run.get("started_at") or _now(),
+        )
+        try:
+            orchestrator = self._orchestrator_factory(user_email or None, scope)
+            result = orchestrator.run(
+                goal,
+                user_email=user_email or None,
+                workspace_id=scope,
+                inputs=inputs or {},
+                roles=roles or None,
+                max_retries=max(0, min(int(max_retries or 0), self._max_retries_cap)),
+            )
+        except Exception as exc:
+            failed = self._store.update_agent_run(
+                run_id,
+                workspace_id=scope,
+                graph=self._workspace_graph(),
+                status="failed",
+                current_role=None,
+                error=str(exc),
+                output_text=str(exc),
+                timeline=base_timeline + [{
+                    "event": "execution_failed",
+                    "status": "failed",
+                    "detail": str(exc),
+                    "timestamp": _now(),
+                }],
+            )
+            self._append_audit_event("multi_agent_run", user_email=user_email, agent_id=failed.get("agent_id"), status="failed", retries=0)
+            return {"run": failed, "result": {"status": "failed", "error": str(exc)}}
+
+        patch = self._result_patch(result, goal)
+        patch["timeline"] = base_timeline + list(result.timeline or [])
+        if cancel_requested is not None and cancel_requested():
+            patch["status"] = "cancelled"
+            patch["current_role"] = None
+            patch["cancel_reason"] = "cancelled after the current synchronous step completed"
+            patch["cancelled_at"] = _now()
+            patch["timeline"] = patch["timeline"] + [{
+                "event": "execution_cancelled",
+                "status": "cancelled",
+                "reason": patch["cancel_reason"],
+                "timestamp": _now(),
+            }]
+        updated = self._store.update_agent_run(
+            run_id,
+            workspace_id=scope,
+            graph=self._workspace_graph(),
+            patch=patch,
+        )
+        self._append_audit_event(
+            "multi_agent_run",
+            user_email=user_email,
+            agent_id=result.agent_id,
+            status=updated.get("status") or result.status,
+            retries=result.retries,
+        )
+        post_dispatch = self._post_run_hooks(
+            run_id=run_id,
+            result=result,
+            user_email=user_email,
+            scope=scope,
+            status=updated.get("status") or result.status,
+        )
+        result_payload = result.as_dict()
+        if updated.get("status") == "cancelled":
+            result_payload = {"status": "cancelled", "reason": updated.get("cancel_reason"), "completed_result": result_payload}
+        payload = {"run": updated, "result": result_payload}
+        if pre_dispatch is not None:
+            payload["pre_run_hooks"] = pre_dispatch
+        if post_dispatch is not None:
+            payload["post_run_hooks"] = post_dispatch
+        return payload
+
     def start(
         self,
         goal: str,
@@ -281,6 +517,8 @@ class AgentRuntime:
         exists the run has already completed. Report that honestly rather than
         pretending a cancellation occurred.
         """
+        if self._run_executor is not None:
+            return self._run_executor.cancel(run_id, kind="agent", scope=scope)
         try:
             run = self._store.get_agent_run(run_id, workspace_id=scope)
         except FileNotFoundError:

@@ -100,6 +100,9 @@ release was driven by an 8-dimension evidence-based audit
 - The Knowledge Graph explorer is a real force-directed canvas (drag, zoom,
   pan, physics) and **the landing surface**; navigation is brain-first
   (Brain · Ask · Capture · Act · Library · System).
+- Agent and workflow runs use the durable async executor: queued/running/final
+  lifecycle rows, realtime SSE progress, cooperative cancellation, and startup
+  reconciliation for orphaned active runs.
 
 ## Remaining gaps (honest, labeled, contracted)
 
@@ -107,13 +110,11 @@ Tracked with full implementation contracts in
 `docs/V4_IMPLEMENTATION_PLAN.md` + amendments and
 `docs/V4_DIGITAL_BRAIN_RECOVERY.md`:
 
-1. Durable async run engine: cancellation, SSE progress, startup
-   reconciliation (T7c) — runs remain synchronous and say so.
-2. Identity unification (user UUIDs, enforced policy module, invitations)
+1. Identity unification (user UUIDs, enforced policy module, invitations)
    and transactional workspace state (T6 remainder).
-3. Legacy page deletion (requires parity views: org management, snapshots,
+2. Legacy page deletion (requires parity views: org management, snapshots,
    activity, profile), token-native login, i18n, and the T9b surfaces
    (approval inbox, peer pairing UI, context-trace panel) — the new
    capabilities are API-complete and labeled API-only.
-4. Git history rewrite for the removed pptx (owner decision; force-push).
-5. Default production embedder (consent-gated wizard provisioning instead).
+3. Git history rewrite for the removed pptx (owner decision; force-push).
+4. Default production embedder (consent-gated wizard provisioning instead).
