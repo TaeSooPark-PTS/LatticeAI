@@ -25,6 +25,8 @@ sidecar startup/shutdown.
 | First startup | PASS | `output/audits/v4.3.2-rc/screenshots/01-first-startup.png` |
 | Graph exploration baseline | PASS | `output/audits/v4.3.2-rc/screenshots/02-graph-explorer-before.png` |
 | Graph search/collapse/focus | PASS | `output/audits/v4.3.2-rc/screenshots/03-graph-search.png`, `04-graph-collapse-group.png`, `05-graph-focus-neighborhood.png` |
+| Ask no-model honesty and graph context | PASS | `output/audits/v4.3.2-rc/screenshots/14-ask-context.png` |
+| Capture document ingestion | PASS | `output/audits/v4.3.2-rc/screenshots/15-capture-ingestion.png` |
 | Brain backup and graph portability | PASS | `output/audits/v4.3.2-rc/screenshots/06-brain-portability-backup.png` |
 | System archive export/inspect/verify/import/restore dry-run | PASS | `output/audits/v4.3.2-rc/screenshots/07-system-archive-flows.png` |
 | Storage and Postgres optional status | PASS | `output/audits/v4.3.2-rc/screenshots/08-system-storage-status.png` |
@@ -38,6 +40,7 @@ sidecar startup/shutdown.
 ## Runtime Logs
 
 - Upload result: `output/audits/v4.3.2-rc/logs/upload-note.json`
+- README evidence upload: `output/audits/v4.3.2-rc/logs/readme-upload-note.json`
 - Graph after upload: `output/audits/v4.3.2-rc/logs/graph-after-upload.json`
 - Archive create: `output/audits/v4.3.2-rc/logs/archive-create.json`
 - Archive verify: `output/audits/v4.3.2-rc/logs/archive-verify.json`

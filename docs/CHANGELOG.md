@@ -1,5 +1,8 @@
 # Changelog
 
+The top entry is the current release-preparation target. Older entries are
+historical and may describe behavior as it existed at that release.
+
 ## [4.3.2] - 2026-06-13
 
 > Product Polish & Graph UX Overhaul release candidate after v4.3.1.

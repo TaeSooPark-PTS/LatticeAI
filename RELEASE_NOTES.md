@@ -1,5 +1,8 @@
 # Release Notes
 
+The current release-preparation target is v4.3.2. Older sections are historical
+release notes and should not be read as newer product claims.
+
 ## v4.3.2 RC - Product Polish & Graph UX Overhaul
 
 Lattice AI v4.3.2 polishes the v4.3.1 desktop product and overhauls the Brain

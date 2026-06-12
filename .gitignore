@@ -42,6 +42,7 @@ sso_config.json
 
 # wheel smoke build artifacts
 dist-smoke/
+vercel-static/
 
 # release tarballs and local artifacts (never tracked)
 ltcai-*.tgz

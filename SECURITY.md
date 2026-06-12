@@ -39,12 +39,12 @@
 
 ## 보안 모델
 
-Lattice AI v4.3.1는 local-first Digital Brain Platform으로, Personal /
+Lattice AI v4.3.2는 local-first Digital Brain Platform으로, Personal /
 Organization Workspace, Knowledge Graph, Vector Index, Hybrid Search, Native
 Chat, Basic / Advanced / Admin mode, durable workspace governance, independent
 Brain Core package boundary, pluggable storage, encrypted `.latticebrain`
 archives, confirmed restore/import, local-only startup hardening, desktop
-sidecar status, and default-off model downloads/runtime installs를
+sidecar status, product-readable graph/system surfaces, and default-off model downloads/runtime installs를
 포함하며 아래 보안 모델을 따릅니다:
 
 ### 기본 안전 설정 (Default Secure)
@@ -91,9 +91,14 @@ sidecar status, and default-off model downloads/runtime installs를
 - Agent handoff, review/retry, workflow, plugin, and execution-failure events
   are workspace-scoped in the existing SSE activity feed.
 
-### 텔레메트리
+### 텔레메트리 및 외부 통신
 
-없음. 모든 데이터(채팅, 모델, 설정, 지식 그래프)는 로컬(`~/.ltcai/`, `~/.ltcai-brain/`)에만 저장됩니다. 외부 서버로 어떠한 데이터도 전송되지 않습니다. (단, 사용자가 직접 클라우드 API 키를 설정한 경우, 해당 클라우드 제공업체에 프롬프트가 전송됩니다.)
+기본 telemetry는 없습니다. 모든 데이터(채팅, 모델, 설정, 지식 그래프)는
+로컬(`~/.ltcai/`, `~/.ltcai-brain/`)에 저장됩니다. 기본 시작 시 외부 서버로
+데이터를 전송하지 않습니다. 사용자가 직접 클라우드 API 키를 설정하고 클라우드
+모델 실행을 선택한 경우 해당 제공업체에 프롬프트가 전송될 수 있습니다.
+Telegram, Brain Network, Docker setup, model downloads, cloud model calls, and
+update checks는 명시적 opt-in 경로를 요구합니다.
 
 ## 퍼블릭 배포 시 권고사항
 

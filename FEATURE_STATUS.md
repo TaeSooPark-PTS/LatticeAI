@@ -1,9 +1,9 @@
 # Lattice AI — Feature Status (v4.3.2)
 
-**Release type:** Knowledge Graph First — the Knowledge Graph becomes the primary
-architecture. Lattice AI is a Digital Brain Platform: the graph is the durable
-asset; models read it and are replaceable. Every v3.6.0 claim below is backed by
-automated tests.
+**Current release line:** v4.3.2 Product Polish & Graph UX Overhaul. Lattice AI
+is a Digital Brain Platform: the graph is the durable asset; models read it and
+are replaceable. Sections below v4.3.2 are historical release-status records and
+should not override the current README, ARCHITECTURE.md, or v4.3.2 reports.
 
 ## v4.3.2 Product Polish & Graph UX Overhaul — what changed
 

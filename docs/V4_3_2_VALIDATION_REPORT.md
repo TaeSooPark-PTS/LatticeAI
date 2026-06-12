@@ -24,6 +24,8 @@ shutdown, and exact-version release artifacts.
 | `node scripts/run_python.mjs scripts/wheel_smoke.py --wheel dist/ltcai-4.3.2-py3-none-any.whl` | PASS |
 | `npm pack --dry-run` | PASS |
 | Rebuilt desktop app startup/shutdown verification | PASS |
+| `npm run vercel:build` | PASS |
+| Markdown link check for README-linked docs | PASS |
 
 ## Artifact Validation
 
@@ -60,6 +62,11 @@ only the exact filenames above and never a wildcard over the `dist/` directory.
   passed imports and `/health`.
 - Rust reported a future-incompatibility warning from transitive crate
   `block v0.1.6`; `cargo check` passed.
+- GitHub Actions for the v4.3.2 RC commit were green before release-prep doc
+  cleanup: `CI` and `Visual Smoke` both completed successfully for
+  `8f3d182ee81bb395722ebab792dfd70f35e19e96`.
+- Vercel config is intentionally documentation-only: it builds
+  `vercel-static/index.html` and does not attempt to host the desktop runtime.
 
 ## Result
 
