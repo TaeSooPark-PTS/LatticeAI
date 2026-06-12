@@ -1,6 +1,6 @@
 [package]
 name = "lattice-ai-desktop"
-version = "4.3.2"
+version = "4.3.3"
 description = "Lattice AI Digital Brain desktop shell"
 authors = ["TaeSoo Park"]
 edition = "2021"

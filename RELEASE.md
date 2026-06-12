@@ -7,6 +7,32 @@
 > PyPI / npm / VS Code Marketplace / Open VSX 배포는 아래 수동 절차로만
 > 진행합니다. 태그 생성은 패키지 스토어 publish를 자동으로 트리거하지 않습니다.
 
+## v4.3.3 릴리스 노트 (2026-06-13)
+
+Lattice AI v4.3.3 — Dead-Code Cleanup Release. v4.3.2 RC 이후 독립 dead-code /
+architecture / runtime audit cleanup과 documentation fixes가 tracked tree를
+변경했으므로 v4.3.2 artifacts를 재사용하지 않고 exact-current-main
+artifacts를 다시 빌드한다.
+
+- **Changed (Cleanup release)**: post-audit dead code and obsolete release/doc
+  drift are removed while preserving compatibility shims, user data paths, and
+  package boundaries.
+- **Fixed (Architecture docs)**: README, ARCHITECTURE.md, release notes, feature
+  status, and changelog now identify v4.3.3 as the current release while keeping
+  v4.3.2 reports as historical evidence.
+- **Fixed (Vercel/static docs)**: Vercel remains static documentation-only and
+  must not auto-detect or deploy `server.py` as a hosted FastAPI app.
+- **Fixed (README badges)**: PyPI, npm, VS Code Marketplace, Open VSX, CI, and
+  license badges remain restored with owner-published registry caveats.
+- **Behavior**: no feature behavior changes beyond cleanup, safety, and
+  documentation alignment.
+- **Expected artifacts**:
+  - `dist/ltcai-4.3.3-py3-none-any.whl`
+  - `dist/ltcai-4.3.3.tar.gz`
+  - `dist/ltcai-4.3.3.vsix`
+  - `ltcai-4.3.3.tgz`
+  - `src-tauri/target/release/bundle/dmg/Lattice AI_4.3.3_aarch64.dmg`
+
 ## v4.3.2 RC 릴리스 노트 (2026-06-13)
 
 Lattice AI v4.3.2 — Product Polish & Graph UX Overhaul. `main` after v4.3.1
@@ -889,14 +915,14 @@ Knowledge Graph v2 read/write cutover. 자세한 내용은
    - `npm run release:artifacts`
    - `npm run release:validate`
 
-현재 `v4.3.2` 기준 필수 산출물:
+현재 `v4.3.3` 기준 필수 산출물:
 
 ```text
-dist/ltcai-4.3.2-py3-none-any.whl
-dist/ltcai-4.3.2.tar.gz
-dist/ltcai-4.3.2.vsix
-ltcai-4.3.2.tgz
-src-tauri/target/release/bundle/dmg/Lattice AI_4.3.2_aarch64.dmg
+dist/ltcai-4.3.3-py3-none-any.whl
+dist/ltcai-4.3.3.tar.gz
+dist/ltcai-4.3.3.vsix
+ltcai-4.3.3.tgz
+src-tauri/target/release/bundle/dmg/Lattice AI_4.3.3_aarch64.dmg
 ```
 
 ## 2) npm 배포
@@ -907,9 +933,7 @@ src-tauri/target/release/bundle/dmg/Lattice AI_4.3.2_aarch64.dmg
    - `npm run publish:npm`
    - 직접 실행 시:
      ```
-     VERSION=$(node -e "console.log(require('./package.json').version)")
-     npm pack
-     npm publish "ltcai-${VERSION}.tgz" --access public
+     npm publish "ltcai-4.3.3.tgz" --access public
      ```
 
 ## 3) PyPI 배포
@@ -920,18 +944,16 @@ src-tauri/target/release/bundle/dmg/Lattice AI_4.3.2_aarch64.dmg
    - `npm run build:python`
 3. 업로드
    - `npm run publish:pypi`  ← 권장 (`$npm_package_version` 자동 사용)
-   - 직접 실행 시 (`VERSION`을 실제 버전으로 치환):
+   - 직접 실행 시:
      ```
-     VERSION=$(python3 -c "import tomllib; print(tomllib.load(open('pyproject.toml','rb'))['project']['version'])")
-     python3 -m twine upload "dist/ltcai-${VERSION}-py3-none-any.whl" "dist/ltcai-${VERSION}.tar.gz"
+     python3 -m twine upload "dist/ltcai-4.3.3-py3-none-any.whl" "dist/ltcai-4.3.3.tar.gz"
      ```
 
 참고:
 - TestPyPI 먼저 쓰려면:
   ```
-  VERSION=$(python3 -c "import tomllib; print(tomllib.load(open('pyproject.toml','rb'))['project']['version'])")
   python3 -m twine upload --skip-existing --repository testpypi \
-    "dist/ltcai-${VERSION}.tar.gz" "dist/ltcai-${VERSION}-py3-none-any.whl"
+    "dist/ltcai-4.3.3.tar.gz" "dist/ltcai-4.3.3-py3-none-any.whl"
   ```
 
 ## 4) VS Code / Cursor / Antigravity 확장 배포
@@ -945,17 +967,15 @@ src-tauri/target/release/bundle/dmg/Lattice AI_4.3.2_aarch64.dmg
    - `npm run package:vsix`
 3. VS Code Marketplace 배포
    - `npm run publish:vscode`  ← 권장 (`$npm_package_version` 자동 사용)
-   - 직접 실행 시 (`VERSION`을 실제 버전으로 치환):
+   - 직접 실행 시:
      ```
-     VERSION=$(node -e "console.log(require('./package.json').version)")
-     npx vsce publish --packagePath "../dist/ltcai-${VERSION}.vsix"
+     npx vsce publish --packagePath "../dist/ltcai-4.3.3.vsix"
      ```
 4. Open VSX 배포 (Cursor/일부 포크 호환)
    - `npm run publish:openvsx`  ← 권장 (`$npm_package_version` 자동 사용)
    - 직접 실행 시:
      ```
-     VERSION=$(node -e "console.log(require('./package.json').version)")
-     npx ovsx publish "../dist/ltcai-${VERSION}.vsix"
+     npx ovsx publish "../dist/ltcai-4.3.3.vsix"
      ```
 5. 로컬 설치 (VS Code/Cursor/Antigravity)
    - `npm run install:all`

@@ -39,7 +39,7 @@
 
 ## 보안 모델
 
-Lattice AI v4.3.2는 local-first Digital Brain Platform으로, Personal /
+Lattice AI v4.3.3는 local-first Digital Brain Platform으로, Personal /
 Organization Workspace, Knowledge Graph, Vector Index, Hybrid Search, Native
 Chat, Basic / Advanced / Admin mode, durable workspace governance, independent
 Brain Core package boundary, pluggable storage, encrypted `.latticebrain`

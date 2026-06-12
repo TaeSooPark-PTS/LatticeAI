@@ -3,6 +3,47 @@
 The top entry is the current release-preparation target. Older entries are
 historical and may describe behavior as it existed at that release.
 
+## [4.3.3] - 2026-06-13
+
+> Dead-Code Cleanup release after the independent audit cleanup on top of
+> v4.3.2 release preparation.
+
+### Changed
+
+- Promoted the post-cleanup `main` tree to v4.3.3 so release artifacts are
+  exact-current-main after dead-code cleanup and documentation fixes.
+- Synchronized Python, npm, VS Code extension, Tauri, runtime constants,
+  generated OpenAPI metadata, visual mock metadata, and release docs to
+  `4.3.3`.
+- Updated README, architecture, feature status, release notes, and release guide
+  to describe v4.3.3 as the current release while preserving v4.3.2 audit
+  reports as historical evidence.
+
+### Fixed
+
+- Corrected architecture/documentation drift discovered by the independent
+  dead-code, architecture, and runtime audit.
+- Preserved Vercel/static-docs readiness so Vercel remains documentation-only
+  and does not auto-detect or deploy the localhost FastAPI runtime.
+- Kept README badge restoration and owner-published registry caveats aligned
+  with the release flow.
+
+### Validation
+
+- Python compile check, ruff, unit tests, live integration tests, frontend lint,
+  TypeScript typecheck, VS Code extension build, Playwright visual tests, Tauri
+  check/build, release artifact validation, wheel smoke, npm pack dry-run,
+  Markdown link check, Python package metadata check, and Vercel static build
+  passed for this release.
+
+### Artifacts
+
+- `dist/ltcai-4.3.3-py3-none-any.whl`
+- `dist/ltcai-4.3.3.tar.gz`
+- `dist/ltcai-4.3.3.vsix`
+- `ltcai-4.3.3.tgz`
+- `src-tauri/target/release/bundle/dmg/Lattice AI_4.3.3_aarch64.dmg`
+
 ## [4.3.2] - 2026-06-13
 
 > Product Polish & Graph UX Overhaul release candidate after v4.3.1.

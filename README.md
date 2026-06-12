@@ -7,16 +7,15 @@
 [![CI Status](https://github.com/TaeSooPark-PTS/LatticeAI/actions/workflows/ci.yml/badge.svg?branch=main)](https://github.com/TaeSooPark-PTS/LatticeAI/actions/workflows/ci.yml)
 [![License](https://img.shields.io/badge/license-MIT-green)](LICENSE)
 
-**Lattice AI v4.3.2 is a local-first Digital Brain desktop workspace.** It runs
+**Lattice AI v4.3.3 is a local-first Digital Brain desktop workspace.** It runs
 as a Tauri desktop app with a localhost FastAPI sidecar, stores the user's brain
 locally by default, and presents the Knowledge Graph as the durable asset.
 
-This README describes only behavior observed in the v4.3.2 release-candidate
-self-audit and validation run. External package registries are owner-published;
-the badges above link to package pages and may show the most recently published
-owner-controlled registry version, which can lag behind this repository
-preparation. This work does not tag, create a GitHub Release, or publish to
-PyPI, npm, VS Code Marketplace, or Open VSX.
+This README describes the v4.3.3 release tree, which promotes the post-cleanup
+main branch after the v4.3.2 self-audit and independent dead-code/runtime audit.
+External package registries are owner-published; the badges above link to
+package pages and may show the most recently published owner-controlled registry
+version, which can lag behind the GitHub Release.
 
 ## What Was Verified
 
@@ -41,7 +40,7 @@ PyPI, npm, VS Code Marketplace, or Open VSX.
 
 ### Desktop Startup
 
-The v4.3.2 DMG build launches a visible Tauri app, starts the FastAPI sidecar on
+The v4.3.3 DMG build launches a visible Tauri app, starts the FastAPI sidecar on
 localhost, and shuts that sidecar down on normal macOS quit.
 
 ![Desktop startup and local sidecar](output/audits/v4.3.2-rc/screenshots/13-desktop-sidecar-startup.png)
@@ -112,7 +111,7 @@ integrations remain opt-in.
 ### Backup / Restore
 
 Backup and restore flows are backed by the knowledge-graph portability APIs.
-The v4.3.2 audit exercised backup health, backup creation, restore dry-run, and
+The retained v4.3.2 product audit exercised backup health, backup creation, restore dry-run, and
 archive restore surfaces.
 
 ![Brain backup and portability controls](output/audits/v4.3.2-rc/screenshots/06-brain-portability-backup.png)
@@ -146,17 +145,17 @@ Archive evidence:
 - **Privacy**: local-first by default; cloud models, Telegram, Brain Network,
   Docker, model downloads, and update checks require explicit opt-in paths.
 
-See [ARCHITECTURE.md](ARCHITECTURE.md) for the detailed v4.3.2 architecture.
+See [ARCHITECTURE.md](ARCHITECTURE.md) for the detailed v4.3.3 architecture.
 
 ## Installation And Release Artifacts
 
-Validated v4.3.2 artifacts exist locally from the RC build:
+Validated v4.3.3 artifacts are produced from the post-cleanup tree:
 
-- `dist/ltcai-4.3.2-py3-none-any.whl`
-- `dist/ltcai-4.3.2.tar.gz`
-- `ltcai-4.3.2.tgz`
-- `dist/ltcai-4.3.2.vsix`
-- `src-tauri/target/release/bundle/dmg/Lattice AI_4.3.2_aarch64.dmg`
+- `dist/ltcai-4.3.3-py3-none-any.whl`
+- `dist/ltcai-4.3.3.tar.gz`
+- `ltcai-4.3.3.tgz`
+- `dist/ltcai-4.3.3.vsix`
+- `src-tauri/target/release/bundle/dmg/Lattice AI_4.3.3_aarch64.dmg`
 
 For a public release, attach only those exact artifacts to the GitHub Release.
 Package-registry publishing is reserved for the owner.
@@ -192,25 +191,27 @@ npm run test:unit
 LTCAI_TEST_BASE_URL=http://127.0.0.1:4932 npm run test:integration
 npm run test:visual
 npm run desktop:tauri:check
-node scripts/run_python.mjs scripts/wheel_smoke.py --wheel dist/ltcai-4.3.2-py3-none-any.whl
+node scripts/run_python.mjs scripts/wheel_smoke.py --wheel dist/ltcai-4.3.3-py3-none-any.whl
 npm pack --dry-run
 ```
 
 ## Known Limitations
 
-- v4.3.2 is prepared but not tagged or published by this work.
+- External package registries are owner-published and can lag behind the GitHub
+  Release.
 - PostgreSQL/pgvector is optional scale mode and is not required for default
   local use.
 - Docker is never auto-started by default.
 - Model downloads and cloud model calls require explicit user action/consent.
 - Ask does not fabricate answers when no model is loaded.
 - Historical artifacts may remain in `dist/`; release uploads must use exact
-  v4.3.2 filenames.
+  v4.3.3 filenames.
 
 ## Release History
 
 | Version | Theme |
 | --- | --- |
+| 4.3.3 | Dead-Code Cleanup Release: post-audit cleanup, architecture documentation correction, Vercel/static-docs readiness, README badge restoration, exact-current artifacts |
 | 4.3.2 | Product Polish & Graph UX Overhaul RC: evidence-based README, graph UX, structured product state, archive UX, desktop sidecar cleanup, publishing readiness |
 | 4.3.1 | End-User Audit Repair RC: desktop sidecar startup, npm clean install, default-off downloads, honest agent/workflow states |
 | 4.3.0 | Portability & Product Hardening RC: encrypted `.latticebrain` archives, backup/restore hardening, local-only startup guards |
@@ -222,14 +223,16 @@ npm pack --dry-run
 
 ## Current Documentation
 
-- [ARCHITECTURE.md](ARCHITECTURE.md) - v4.3.2 architecture.
+- [ARCHITECTURE.md](ARCHITECTURE.md) - v4.3.3 architecture.
 - [FEATURE_STATUS.md](FEATURE_STATUS.md) - current feature status and historical
   status ledger.
 - [RELEASE_NOTES.md](RELEASE_NOTES.md) - current release notes index.
-- [RELEASE_NOTES_v4.3.2.md](RELEASE_NOTES_v4.3.2.md) - v4.3.2 release notes.
+- [RELEASE_NOTES_v4.3.3.md](RELEASE_NOTES_v4.3.3.md) - v4.3.3 release notes.
 - [RELEASE.md](RELEASE.md) - release checklist and exact artifact guidance.
 - [SECURITY.md](SECURITY.md) - security posture.
 - [docs/CHANGELOG.md](docs/CHANGELOG.md) - changelog.
+- [docs/V4_3_2_DEADCODE_AUDIT_REPORT.md](docs/V4_3_2_DEADCODE_AUDIT_REPORT.md) - v4.3.3 cleanup basis.
+- [docs/V4_3_3_VALIDATION_REPORT.md](docs/V4_3_3_VALIDATION_REPORT.md) - v4.3.3 validation report.
 - [docs/V4_3_2_GRAPH_UX_REPORT.md](docs/V4_3_2_GRAPH_UX_REPORT.md) - graph UX report.
 - [docs/V4_3_2_PRODUCT_POLISH_REPORT.md](docs/V4_3_2_PRODUCT_POLISH_REPORT.md) - product polish report.
 - [docs/V4_3_2_SELF_AUDIT_REPORT.md](docs/V4_3_2_SELF_AUDIT_REPORT.md) - self-audit evidence.

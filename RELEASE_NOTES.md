@@ -1,7 +1,36 @@
 # Release Notes
 
-The current release-preparation target is v4.3.2. Older sections are historical
+The current release target is v4.3.3. Older sections are historical
 release notes and should not be read as newer product claims.
+
+## v4.3.3 - Dead-Code Cleanup Release
+
+Lattice AI v4.3.3 promotes the post-cleanup `main` tree after the independent
+dead-code, architecture, and runtime audit. It preserves the v4.3.2 product
+behavior while refreshing exact-current release artifacts and documentation.
+
+### Highlights
+
+- Removed post-audit dead code and obsolete release/doc drift without changing
+  user-facing feature behavior.
+- Corrected architecture and release documentation so the current tree is
+  described as v4.3.3 while v4.3.2 reports remain historical audit evidence.
+- Kept Vercel/static-docs readiness: Vercel builds a documentation-only static
+  page and must not deploy the localhost FastAPI runtime.
+- Preserved README badges for PyPI, npm, VS Code Marketplace, Open VSX, CI, and
+  license while keeping owner-controlled registry caveats explicit.
+- No feature behavior changes are included beyond cleanup, safety, and
+  documentation alignment.
+
+### Expected Artifacts
+
+- `dist/ltcai-4.3.3-py3-none-any.whl`
+- `dist/ltcai-4.3.3.tar.gz`
+- `dist/ltcai-4.3.3.vsix`
+- `ltcai-4.3.3.tgz`
+- `src-tauri/target/release/bundle/dmg/Lattice AI_4.3.3_aarch64.dmg`
+
+Full detail: [RELEASE_NOTES_v4.3.3.md](RELEASE_NOTES_v4.3.3.md).
 
 ## v4.3.2 RC - Product Polish & Graph UX Overhaul
 

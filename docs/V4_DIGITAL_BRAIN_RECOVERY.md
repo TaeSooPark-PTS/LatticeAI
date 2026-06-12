@@ -5,21 +5,21 @@
 > completed analysis. **Update this file before ending any phase and before any
 > likely session/context/usage limit.**
 >
-> Last updated: 2026-06-13 — v4.3.2 Product Polish & Graph UX Overhaul RC; Remaining Gaps remain empty
+> Last updated: 2026-06-13 — v4.3.3 Dead-Code Cleanup Release; Remaining Gaps remain empty
 
 ---
 
-## 0. RELEASE STATUS (v4.3.2 RC)
+## 0. RELEASE STATUS (v4.3.3)
 
-**v4.3.2 polishes the v4.3.1 desktop product and overhauls Brain graph UX without
-redesigning the Digital Brain frontend, Brain Core, storage, or agent/workflow
-architecture.** Latest implementation milestone: Brain semantic graph explorer,
-structured product state replacing raw JSON surfaces, archive import/restore UX,
-System storage/backup/device identity readability, and Tauri app-level sidecar
-shutdown on normal macOS quit.
-The v4.3.2 RC process builds validated artifacts only. It does not tag, create a
-GitHub Release, publish to PyPI, npm Registry, VS Code Marketplace, Open VSX, or
-deploy to production targets.
+**v4.3.3 promotes the post-cleanup main tree after the independent dead-code,
+architecture, and runtime audit without redesigning the Digital Brain frontend,
+Brain Core, storage, or agent/workflow architecture.** Latest implementation
+milestone: v4.3.2 product polish plus post-audit cleanup, architecture
+documentation correction, Vercel/static-docs readiness, README badge
+restoration, and exact-current-main release artifacts.
+The v4.3.3 process creates a GitHub Release from locally validated artifacts.
+PyPI, npm Registry, VS Code Marketplace, Open VSX, and production deployments
+remain owner-only external publishing steps.
 Remaining implementation gaps: **none**.
 Owner-only blockers: pptx history rewrite (requires force-push/owner decision)
 and consent-gated production embedder provisioning (silent default download is
@@ -27,12 +27,12 @@ not permitted).
 
 ## Remaining Gaps
 
-None. v4.3.2 preserves the already-empty v4.3.1 gap list and closes the product
-polish work: Brain graph exploration is real and API-backed, raw product JSON
-dumps are replaced with readable state, archive import/restore flows are exposed
-through existing APIs, desktop sidecar startup/shutdown was revalidated from the
-rebuilt app, and exact v4.3.2 release artifacts are validated. Owner-only
-blockers above are intentionally not implementation gaps.
+None. v4.3.3 preserves the already-empty v4.3.2 gap list and promotes the
+post-cleanup tree: Brain graph exploration remains real and API-backed, raw
+product JSON dumps remain replaced with readable state, archive import/restore
+flows remain exposed through existing APIs, desktop sidecar behavior remains
+validated, and exact v4.3.3 release artifacts are the release target.
+Owner-only blockers above are intentionally not implementation gaps.
 
 ## 1. Program Charter (from the user's v4.0.0 directive)
 

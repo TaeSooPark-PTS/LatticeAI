@@ -1,9 +1,24 @@
-# Lattice AI — Feature Status (v4.3.2)
+# Lattice AI — Feature Status (v4.3.3)
 
-**Current release line:** v4.3.2 Product Polish & Graph UX Overhaul. Lattice AI
+**Current release line:** v4.3.3 Dead-Code Cleanup Release. Lattice AI
 is a Digital Brain Platform: the graph is the durable asset; models read it and
-are replaceable. Sections below v4.3.2 are historical release-status records and
-should not override the current README, ARCHITECTURE.md, or v4.3.2 reports.
+are replaceable. Sections below v4.3.3 are historical release-status records and
+should not override the current README, ARCHITECTURE.md, or v4.3.3 release
+notes.
+
+## v4.3.3 Dead-Code Cleanup Release — what changed
+
+v4.3.3 promotes the post-cleanup main branch after the independent dead-code,
+architecture, and runtime audit. It does not introduce feature behavior changes
+beyond cleanup, safety, and documentation alignment:
+
+| Area | Status | Evidence |
+| --- | --- | --- |
+| **Dead-code cleanup** | WORKING | The independent audit cleanup removed unused legacy/static/doc drift paths while preserving compatibility shims, user data paths, and release packaging boundaries. `docs/V4_3_2_DEADCODE_AUDIT_REPORT.md`. |
+| **Architecture documentation correction** | WORKING | README, architecture, release notes, and changelog now describe the post-cleanup v4.3.3 release target while preserving v4.3.2 audit reports as historical evidence. |
+| **Vercel/static-docs readiness** | WORKING | Vercel remains configured as a static documentation-only check through `vercel.json` and `scripts/build_vercel_static.mjs`; it must not deploy the localhost FastAPI runtime. |
+| **README badges** | WORKING | PyPI, npm, VS Code Marketplace, Open VSX, CI, and license badges remain restored with explicit owner-published registry caveats. |
+| **Release artifacts** | WORKING | Exact v4.3.3 wheel, sdist, npm tgz, VSIX, and Tauri DMG are the release target artifacts. |
 
 ## v4.3.2 Product Polish & Graph UX Overhaul — what changed
 
@@ -181,7 +196,7 @@ service/core (`latticeai/services/*`, `latticeai/core/*`, top-level
 `knowledge_graph.py`). Historical v3 sections retain their original audit
 context when describing retired implementation paths.
 
-**Frontend of record:** the v4.3.2 React/Vite SPA at `/app` (`frontend/` source,
+**Frontend of record:** the v4.3.3 React/Vite SPA at `/app` (`frontend/` source,
 `static/app/` build output). The legacy static pages have been removed;
 compatibility GET/hash routes land in the matching `/app#/...` surface.
 
@@ -615,7 +630,7 @@ user management (`admin-users.js:11`), and permission editing
 ## Deployment readiness (evidence)
 
 Lattice AI is a **local-first desktop product**, not a hosted Vercel FastAPI
-application. v4.3.2 release prep pins Vercel to a static documentation-only
+application. v4.3.3 release prep keeps Vercel pinned to a static documentation-only
 build through `vercel.json` and `scripts/build_vercel_static.mjs` so Git
 integration checks do not auto-detect or deploy `server.py`. The Vercel output
 is `vercel-static/index.html`; the real product runtime remains the Tauri
