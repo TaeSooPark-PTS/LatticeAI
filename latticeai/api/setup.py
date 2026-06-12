@@ -19,15 +19,16 @@ from latticeai.models.router import parse_model_ref
 from setup_wizard import get_recommendations, install_stream, open_url, scan_environment
 
 
+class SetupInstallRequest(BaseModel):
+    items: List[Dict]
+
+
 def create_setup_router(*, model_router, require_user) -> APIRouter:
     api_router = APIRouter()
     router = model_router
 
     # ── Setup Wizard ─────────────────────────────────────────────────────────────
-    
-    class SetupInstallRequest(BaseModel):
-        items: List[Dict]
-    
+
     def setup_auto_state() -> Dict[str, object]:
         """Return the PPT-aligned zero-config setup state used by setup UI/API."""
         profile = auto_setup_probe()

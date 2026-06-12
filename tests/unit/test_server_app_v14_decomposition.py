@@ -2,6 +2,7 @@
 
 from pathlib import Path
 import importlib
+import json
 
 
 ROOT = Path(__file__).resolve().parents[2]
@@ -34,12 +35,12 @@ def test_v14_router_and_service_modules_import_independently():
 
 
 def test_version_metadata_matches_release():
-    # Rolling release-version guard — bumped each release.
+    release = json.loads((ROOT / "package.json").read_text(encoding="utf-8"))["version"]
     from latticeai import __version__
     from latticeai.core.workspace_os import WORKSPACE_OS_VERSION
 
-    assert __version__ == "4.0.1"
-    assert WORKSPACE_OS_VERSION == "4.0.1"
+    assert __version__ == release
+    assert WORKSPACE_OS_VERSION == release
 
 
 def test_markdown_current_release_references_match_release():
@@ -48,4 +49,6 @@ def test_markdown_current_release_references_match_release():
     assert "3.0.0" in history
     assert "New in 1.3.0" not in readme
     security = (ROOT / "SECURITY.md").read_text(encoding="utf-8")
-    assert "4.0.x (latest)" in security
+    release = json.loads((ROOT / "package.json").read_text(encoding="utf-8"))["version"]
+    release_minor = ".".join(release.split(".")[:2])
+    assert f"{release_minor}.x (latest)" in security

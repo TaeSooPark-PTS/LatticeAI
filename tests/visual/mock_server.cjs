@@ -161,7 +161,7 @@ const server = http.createServer((req, res) => {
   const url = new URL(req.url, `http://127.0.0.1:${port}`);
   const pathname = decodeURIComponent(url.pathname);
 
-  if (pathname === "/app" || pathname === "/v3") return serveFile(res, path.join(repoRoot, "static/v3/index.html"));
+  if (pathname === "/app" || pathname === "/v3") return serveFile(res, path.join(repoRoot, "static/app/index.html"));
   if (pathname === "/") return redirect(res, "/app#/account");
   if (pathname === "/workspace" || pathname === "/onboarding") return redirect(res, "/app#/workspace-admin");
   if (pathname === "/graph" || pathname === "/knowledge-graph") return redirect(res, "/app#/knowledge-graph");

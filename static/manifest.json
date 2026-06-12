@@ -1,7 +1,7 @@
 {
   "name": "Lattice AI",
   "short_name": "LatticeAI",
-  "description": "Local-first AI workspace platform for knowledge graphs, vector index, hybrid search, agents, and workspace modes",
+  "description": "Local-first Digital Brain desktop platform for knowledge graphs, durable memory, hybrid search, agents, and signed brain exchange",
   "start_url": "/app",
   "id": "/",
   "display": "standalone",
@@ -28,7 +28,7 @@
     {
       "name": "새 대화",
       "short_name": "대화",
-      "url": "/app#/chat",
+      "url": "/app#/ask",
       "icons": [{ "src": "/icons/icon-192.png", "sizes": "192x192" }]
     }
   ]

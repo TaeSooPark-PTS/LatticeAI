@@ -1,8 +1,8 @@
 // Lattice Service Worker — PWA install + offline shell for the /app SPA.
-// Strategy: precache the v3 bundle from its asset manifest (hashed files),
+// Strategy: precache the Vite app bundle from its asset manifest,
 // cache-first for static assets, network-only for everything dynamic.
-const CACHE = "lattice-v4";
-const MANIFEST_URL = "/static/v3/asset-manifest.json";
+const CACHE = "lattice-v410";
+const MANIFEST_URL = "/static/app/asset-manifest.json";
 
 // Non-manifest assets the shell needs offline.
 const SHELL = [
@@ -29,7 +29,7 @@ async function precache() {
     const res = await fetch(MANIFEST_URL, { cache: "no-cache" });
     const manifest = await res.json();
     const entry = manifest.entrypoints || {};
-    manifestPaths = [entry.app, ...(entry.styles || []), ...Object.values(manifest.assets || {})]
+    manifestPaths = [entry.app, ...Object.values(manifest.assets || {})]
       .filter(Boolean);
   } catch (err) {
     // Offline install: shell precache below still applies.

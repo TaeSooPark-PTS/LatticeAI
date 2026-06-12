@@ -1,120 +1,141 @@
-// Lattice AI v3 — frontend shell visual + behavioural checks.
-// Runs against tests/visual/mock_server.cjs which serves /app and mocks the
-// future API surfaces (/api/index/status, /api/graph, /api/search/hybrid).
 const { test, expect } = require("@playwright/test");
 
 const ROUTES = [
-  "home", "account", "chat", "knowledge-graph", "hybrid-search", "memory", "files", "pipeline",
-  "agents", "runs", "workflows", "planning", "models", "my-computer",
-  "workspace-admin", "snapshots", "activity", "network",
-  "marketplace", "skills", "hooks", "tools", "mcp", "settings",
-  "admin/users", "admin/permissions", "admin/audit", "admin/security",
+  "brain", "knowledge-graph", "hybrid-search", "memory",
+  "ask", "chat",
+  "capture", "files", "pipeline", "my-computer",
+  "act", "agents", "runs", "workflows", "hooks", "tools",
+  "library", "models", "skills", "mcp", "marketplace",
+  "system", "account", "workspace-admin", "snapshots", "activity", "network",
+  "settings", "admin/users", "admin/permissions", "admin/audit", "admin/security",
   "admin/policies", "admin/private-vpc",
 ];
 
-// Uncaught JS exceptions fail a view; network 401s (best-effort identity probe)
-// are expected under the mock and are ignored.
 function trackPageErrors(page) {
   const errors = [];
   page.on("pageerror", (e) => errors.push(String(e.message || e)));
   return errors;
 }
 
-test("shell boots with rail, brand, topbar and mode switcher", async ({ page }) => {
+test("React desktop shell boots with six primary navigation groups", async ({ page }) => {
   const errors = trackPageErrors(page);
   await page.goto("/app");
-  await page.waitForSelector(".lt3-navitem");
-  await expect(page.locator(".lt3-rail__word")).toContainText("Lattice AI");
-  await expect(page.locator("#lt3-mode")).toBeVisible();
-  // Basic mode shows the core workspace/retrieval/compute/system items (no admin group).
-  expect(await page.locator(".lt3-navitem").count()).toBe(12);
+  await page.waitForSelector("text=Digital Brain Desktop");
+  for (const label of ["Brain", "Ask", "Capture", "Act", "Library", "System"]) {
+    await expect(page.getByRole("button", { name: new RegExp(label) })).toBeVisible();
+  }
+  await expect(page.locator("body")).toContainText("v4.1.0 Release Candidate");
   expect(errors).toEqual([]);
 });
 
-test("home leads with the retrieval lattice (3 pillars)", async ({ page }) => {
-  await page.goto("/app#/home");
-  await page.waitForSelector(".lt3-pillar");
-  await expect(page.locator(".lt3-pillar")).toHaveCount(3);
-  await expect(page.locator(".lt3-pillars")).toContainText("Knowledge Graph");
-  await expect(page.locator(".lt3-pillars")).toContainText("Vector Index");
-  await expect(page.locator(".lt3-pillars")).toContainText("Hybrid Search");
-});
-
-test("every primary + admin view renders without JS errors", async ({ page }) => {
+test("old hash routes resolve into the replacement SPA without JS errors", async ({ page }) => {
   for (const route of ROUTES) {
     const errors = trackPageErrors(page);
     await page.goto(`/app#/${route}`);
-    // Each view renders either a standard view header or the flush chat surface.
-    await page.waitForSelector(".lt3-vhead, .lt3-chat", { timeout: 8000 });
-    expect(errors, `route ${route} threw`).toEqual([]);
+    await page.waitForSelector("main h1, main h2", { timeout: 10000 });
+    expect(errors, `${route} threw`).toEqual([]);
   }
 });
 
-test("admin mode reveals the six administration areas", async ({ page }) => {
-  await page.goto("/app#/home");
-  await page.waitForSelector(".lt3-navitem");
-  await page.locator('#lt3-mode button[data-mode="admin"]').click();
-  await page.waitForSelector('.lt3-navgroup__label:has-text("Administration")');
-  const adminItems = page.locator(".lt3-navgroup", { has: page.locator('.lt3-navgroup__label:has-text("Administration")') }).locator(".lt3-navitem");
-  await expect(adminItems).toHaveCount(6);
-});
-
-test("theme toggle flips light/dark", async ({ page }) => {
-  await page.goto("/app");
-  await page.waitForSelector("#lt3-theme");
-  await page.evaluate(() => { try { localStorage.setItem("lt-theme", "light"); } catch (e) {} });
-  await page.reload();
-  await page.waitForSelector("#lt3-theme");
-  await page.locator("#lt3-theme").click();
-  await expect(page.locator("html")).toHaveAttribute("data-lt-theme", "dark");
-});
-
-test("command palette opens and filters", async ({ page }) => {
-  await page.goto("/app");
-  await page.waitForSelector(".lt3-cmd-trigger");
-  await page.locator(".lt3-cmd-trigger").click();
-  await page.waitForSelector("#lt3-palette");
-  await page.locator("#lt3-palette input").fill("hybrid");
-  await expect(page.locator(".lt3-palette__item").first()).toContainText("Hybrid");
-});
-
-test("knowledge graph renders the force-directed canvas", async ({ page }) => {
+test("knowledge graph renders a Cytoscape canvas and provenance coverage", async ({ page }) => {
   await page.goto("/app#/knowledge-graph");
-  // v4: the explorer is a live <canvas> (zoom/pan/drag), not a static SVG.
-  await page.waitForSelector(".lt3-graph-canvas canvas");
-  await expect(page.locator(".lt3-graph-canvas canvas")).toBeVisible();
-  await expect(page.locator(".lt3-entity").first()).toBeVisible();
+  await page.waitForSelector("[data-testid='brain-cytoscape']");
+  await expect(page.locator("body")).toContainText("Provenance coverage");
+  await expect(page.locator("[data-testid='brain-cytoscape'] canvas").first()).toBeVisible();
 });
 
-test("hybrid search returns fused results", async ({ page }) => {
+test("offline startup loads local assets and shows honest unavailable state", async ({ page }) => {
+  const errors = trackPageErrors(page);
+  await page.route("**/*", async (route) => {
+    const url = new URL(route.request().url());
+    const localAsset = url.pathname === "/app"
+      || url.pathname.startsWith("/static/")
+      || url.pathname === "/manifest.json"
+      || url.pathname === "/favicon.ico"
+      || url.pathname === "/sw.js";
+    if (localAsset) {
+      await route.continue();
+      return;
+    }
+    await route.abort();
+  });
+  await page.goto("/app#/brain");
+  await page.waitForSelector("text=Digital Brain Desktop");
+  await expect(page.locator("body")).toContainText("Server: unavailable");
+  await expect(page.getByRole("button", { name: /Brain/ })).toBeVisible();
+  expect(errors).toEqual([]);
+});
+
+test("hybrid search calls the API and renders returned records", async ({ page }) => {
   await page.goto("/app#/hybrid-search");
-  await page.waitForSelector(".lt3-search input");
-  await page.locator(".lt3-search input").fill("retrieval");
-  await page.locator(".lt3-search input").press("Enter");
-  await page.waitForSelector(".lt3-result", { timeout: 8000 });
-  expect(await page.locator(".lt3-result").count()).toBeGreaterThan(0);
+  await page.getByPlaceholder("lattice brain").fill("retrieval");
+  await page.locator("section").getByRole("button", { name: "Search" }).click();
+  await expect(page.locator("body")).toContainText("Lattice AI");
 });
 
-test("chat is a native v3 view (no redirect) with conversations, context and streaming", async ({ page }) => {
+test("Ask streams chat and shows context trace", async ({ page }) => {
   await page.goto("/app#/chat");
-  await page.waitForSelector(".lt3-chat");
-  // Must NOT redirect to the legacy /chat page.
-  expect(page.url()).toContain("/app#/chat");
-  expect(await page.locator(".lt3-chat__main").count()).toBe(1);
-  // Conversation rail + the five retrieval-context sections, including trace.
-  await expect(page.locator(".lt3-convo").first()).toBeVisible();
-  await expect(page.locator(".lt3-ctx-sec__title")).toHaveCount(5);
-  // Sending a message streams an assistant reply.
-  await page.locator(".lt3-composer textarea").fill("How does hybrid search rank results?");
-  await page.locator(".lt3-composer textarea").press("Enter");
-  await page.waitForFunction(() => {
-    const b = document.querySelectorAll(".lt3-msg--ai .lt3-msg__bubble");
-    return b.length && b[b.length - 1].textContent.trim().length > 0;
-  }, { timeout: 8000 });
-  expect(await page.locator(".lt3-msg--user").count()).toBeGreaterThan(0);
+  await page.getByPlaceholder("Ask the brain...").fill("How does hybrid search rank results?");
+  await page.getByRole("button", { name: /Send/ }).click();
+  await expect(page.locator("body")).toContainText("Hybrid retrieval");
+  await expect(page.locator("body")).toContainText("Why this context");
 });
 
-test("legacy page URLs redirect into the v3 app", async ({ page }) => {
+test("Capture exposes upload, local folder, URL, and pipeline controls", async ({ page }) => {
+  await page.goto("/app#/files");
+  await expect(page.locator("body")).toContainText("retrieval-design.pdf");
+  await page.goto("/app#/my-computer");
+  await expect(page.locator("body")).toContainText("Local runtime probe");
+  await page.goto("/app#/capture");
+  await page.getByRole("button", { name: "Web capture" }).click();
+  await expect(page.locator("body")).toContainText("Capture URL");
+  await page.goto("/app#/pipeline");
+  await expect(page.locator("body")).toContainText("Rebuild retrieval index");
+});
+
+test("Act surfaces agents, runs, workflow graph, triggers, hooks, and tools", async ({ page }) => {
+  await page.goto("/app#/agents");
+  await expect(page.locator("body")).toContainText("agent:planner");
+  await page.goto("/app#/runs");
+  await expect(page.locator("body")).toContainText("Approval inbox");
+  await page.goto("/app#/workflows");
+  await expect(page.locator(".react-flow")).toBeVisible();
+  await expect(page.locator("body")).toContainText("Trigger configuration");
+  await page.goto("/app#/hooks");
+  await expect(page.locator("body")).toContainText("Redact secrets");
+  await page.goto("/app#/tools");
+  await expect(page.locator("body")).toContainText("write_file");
+});
+
+test("Library renders models, skills, MCP, and marketplace registries", async ({ page }) => {
+  await page.goto("/app#/models");
+  await expect(page.locator("body")).toContainText("Qwen2.5-VL 7B");
+  await page.goto("/app#/skills");
+  await expect(page.locator("body")).toContainText("visual_regression");
+  await page.goto("/app#/mcp");
+  await expect(page.locator("body")).toContainText("read_file");
+  await page.goto("/app#/marketplace");
+  await expect(page.locator("body")).toContainText("Research Assistant");
+});
+
+test("System renders account, workspaces, snapshots, activity, network, settings, and admin", async ({ page }) => {
+  await page.goto("/app#/account");
+  await expect(page.locator("body")).toContainText("admin@example.com");
+  await page.goto("/app#/workspace-admin");
+  await expect(page.locator("body")).toContainText("Design Org");
+  await page.goto("/app#/snapshots");
+  await expect(page.locator("body")).toContainText("v4 checkpoint");
+  await page.goto("/app#/activity");
+  await expect(page.locator("body")).toContainText("workflow_started");
+  await page.goto("/app#/network");
+  await expect(page.locator("body")).toContainText("device-visual");
+  await page.goto("/app#/settings");
+  await expect(page.locator("body")).toContainText("Computer memory");
+  await page.goto("/app#/admin/security");
+  await expect(page.locator("body")).toContainText("Security overview");
+});
+
+test("legacy page URLs redirect into the replacement app", async ({ page }) => {
   await page.goto("/chat");
   await expect(page).toHaveURL(/\/app#\/chat$/);
   await page.goto("/workspace");
@@ -123,90 +144,13 @@ test("legacy page URLs redirect into the v3 app", async ({ page }) => {
   await expect(page).toHaveURL(/\/app#\/knowledge-graph$/);
 });
 
-test("account profile, workspace invites, snapshots, activity, runs, and network render real controls", async ({ page }) => {
-  await page.goto("/app#/account");
-  await page.waitForSelector(".lt3-vhead");
-  await expect(page.locator("body")).toContainText("admin@example.com");
-
-  await page.goto("/app#/workspace-admin");
-  await page.waitForSelector(".lt3-vhead");
-  await expect(page.locator("body")).toContainText("Design Org");
-  await expect(page.locator("body")).toContainText("invite-token-demo");
-
-  await page.goto("/app#/snapshots");
-  await page.waitForSelector(".lt3-vhead");
-  await expect(page.locator("body")).toContainText("v4 checkpoint");
-  await expect(page.locator("body")).toContainText("Merge restore");
-
-  await page.goto("/app#/activity");
-  await page.waitForSelector(".lt3-vhead");
-  await expect(page.locator("body")).toContainText("workflow_started");
-
-  await page.goto("/app#/runs");
-  await page.waitForSelector(".lt3-vhead");
-  await expect(page.locator("body")).toContainText("Approval pause");
-  await expect(page.locator("body")).toContainText("perm-token");
-
-  await page.goto("/app#/network");
-  await page.waitForSelector(".lt3-vhead");
-  await expect(page.locator("body")).toContainText("device-visual");
-  await expect(page.locator("body")).toContainText("Studio Mac");
-});
-
-test("workflow triggers, chat trace, and graph provenance coverage are visible", async ({ page }) => {
-  await page.goto("/app#/workflows");
-  await page.waitForSelector(".lt3-vhead");
-  await expect(page.locator("body")).toContainText("Trigger configuration");
-  await expect(page.locator("body")).toContainText("brain_event");
-
-  await page.goto("/app#/chat");
-  await page.waitForSelector(".lt3-chat");
-  await expect(page.locator("body")).toContainText("Why this context");
-
-  await page.goto("/app#/knowledge-graph");
-  await page.waitForSelector(".lt3-graph-canvas canvas");
-  await page.locator("button", { hasText: "Status" }).click();
-  await expect(page.locator("body")).toContainText("Provenance coverage");
-  await expect(page.locator("body")).toContainText("80%");
-});
-
-test("agents view exposes the live agent registry", async ({ page }) => {
-  await page.goto("/app#/agents");
-  await page.waitForSelector(".lt3-vhead");
-  await expect(page.locator("section", { hasText: "Agent Registry" })).toContainText("agent:planner");
-  await expect(page.locator("section", { hasText: "Agent Registry" })).toContainText("tool-use");
-});
-
-test("skills view renders installed and available registry entries", async ({ page }) => {
-  await page.goto("/app#/skills");
-  await page.waitForSelector(".lt3-vhead");
-  await expect(page.locator("body")).toContainText("code_review");
-  await expect(page.locator("body")).toContainText("visual_regression");
-});
-
-test("mobile: no horizontal overflow and the nav drawer toggles", async ({ page }) => {
+test("mobile layout has no horizontal overflow and nav opens", async ({ page }) => {
   await page.setViewportSize({ width: 390, height: 780 });
-  for (const route of ["home", "knowledge-graph", "hybrid-search", "settings", "admin/users"]) {
-    await page.goto(`/app#/${route}`);
-    await page.waitForSelector(".lt3-vhead, .lt3-chat");
-    const overflow = await page.evaluate(() => document.documentElement.scrollWidth - document.documentElement.clientWidth);
-    expect(overflow, `route ${route} overflows`).toBeLessThanOrEqual(1);
-  }
-  await page.goto("/app#/home");
-  await page.waitForSelector(".lt3-topbar__menu");
-  // Rail starts off-canvas, opens on the hamburger, closes via scrim.
-  expect(await page.locator(".lt3-rail").evaluate((el) => el.getBoundingClientRect().left)).toBeLessThan(-10);
-  await page.locator(".lt3-topbar__menu").click();
-  await page.waitForTimeout(350);
-  expect(await page.locator(".lt3-rail").evaluate((el) => el.getBoundingClientRect().left)).toBeGreaterThanOrEqual(-1);
-});
-
-test("dark-mode home screenshot is non-blank", async ({ page }) => {
-  await page.evaluate(() => {}).catch(() => {});
-  await page.goto("/app");
-  await page.evaluate(() => { try { localStorage.setItem("lt-theme", "dark"); } catch (e) {} });
-  await page.goto("/app#/home");
-  await page.waitForSelector(".lt3-pillar");
-  const shot = await page.screenshot();
-  expect(shot.length).toBeGreaterThan(20_000);
+  await page.goto("/app#/brain");
+  await page.waitForSelector("main h1");
+  const overflow = await page.evaluate(() => document.documentElement.scrollWidth - document.documentElement.clientWidth);
+  expect(overflow).toBeLessThanOrEqual(1);
+  await page.getByLabel("Toggle theme").waitFor();
+  await page.getByRole("button").first().click();
+  await expect(page.getByText("Digital Brain Desktop").nth(1)).toBeVisible();
 });

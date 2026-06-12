@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "ltcai"
-version = "4.0.1"
+version = "4.1.0"
 description = "Lattice AI — local-first Digital Brain Platform: knowledge graph with provenance, durable memory, hybrid search, real agent/workflow runtimes, and signed brain exchange"
 readme = "README.md"
 requires-python = ">=3.11"
@@ -88,10 +88,11 @@ include-package-data = true
   "static/sw.js",
   "static/icons/*.png",
   "static/css/*.css",
-  "static/v3/**/*.html",
-  "static/v3/**/*.css",
-  "static/v3/**/*.js",
-  "static/v3/**/*.json",
+  "static/app/**/*.html",
+  "static/app/**/*.css",
+  "static/app/**/*.js",
+  "static/app/**/*.json",
+  "static/app/**/*.map",
   "static/vendor/**/*.css",
   "static/vendor/**/*.js",
   "static/vendor/**/*.woff2",
@@ -104,11 +105,8 @@ include-package-data = true
 [tool.setuptools.data-files]
 "static" = ["static/favicon.ico", "static/manifest.json", "static/sw.js"]
 "static/css" = ["static/css/*.css"]
-"static/v3" = ["static/v3/index.html", "static/v3/asset-manifest.json"]
-"static/v3/css" = ["static/v3/css/*.css"]
-"static/v3/js" = ["static/v3/js/*.js"]
-"static/v3/js/core" = ["static/v3/js/core/*.js"]
-"static/v3/js/views" = ["static/v3/js/views/*.js"]
+"static/app" = ["static/app/index.html", "static/app/asset-manifest.json"]
+"static/app/assets" = ["static/app/assets/*"]
 "static/icons" = ["static/icons/icon-192.png", "static/icons/icon-512.png", "static/icons/apple-touch-icon.png", "static/icons/favicon-32.png"]
 "static/vendor" = ["static/vendor/chart.umd.min.js", "static/vendor/marked.min.js"]
 "static/vendor/fonts" = ["static/vendor/fonts/inter.css", "static/vendor/fonts/inter-latin-300-normal.woff2", "static/vendor/fonts/inter-latin-400-normal.woff2", "static/vendor/fonts/inter-latin-500-normal.woff2", "static/vendor/fonts/inter-latin-600-normal.woff2", "static/vendor/fonts/inter-latin-700-normal.woff2", "static/vendor/fonts/inter-latin-800-normal.woff2"]

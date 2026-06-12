@@ -1,9 +1,24 @@
-# Lattice AI — Feature Status (v4.0.1)
+# Lattice AI — Feature Status (v4.1.0)
 
 **Release type:** Knowledge Graph First — the Knowledge Graph becomes the primary
 architecture. Lattice AI is a Digital Brain Platform: the graph is the durable
 asset; models read it and are replaceable. Every v3.6.0 claim below is backed by
 automated tests.
+
+## v4.1.0 Frontend & Desktop Rebuild — what changed
+
+v4.1.0 replaces the frontend implementation and desktop shell while preserving
+the v4.0.1 backend contracts and Digital Brain capabilities:
+
+| Area | Status | Evidence |
+| --- | --- | --- |
+| **Desktop shell** | WORKING | Tauri 2.0 primary shell in `src-tauri/` launches the local FastAPI backend and exposes its origin to the SPA; Electron fallback shell lives in `desktop/electron/`. `npm run desktop:tauri:check`, `node --check desktop/electron/main.cjs`. |
+| **React SPA** | WORKING | `/app` serves the React + TypeScript + Vite build from `static/app`; source lives in `frontend/`. TypeScript, Vite build, frontend lint, and Playwright visual coverage validate the shell. |
+| **Generated API client** | WORKING | `scripts/export_openapi.py` exports 308 FastAPI paths; `openapi-typescript` generates `frontend/src/api/openapi.ts`; `frontend/src/api/client.ts` routes JSON calls through the generated client. |
+| **Primary navigation** | WORKING | Brain, Ask, Capture, Act, Library, System are the only primary navigation groups; legacy hash routes map to those capability groups. |
+| **Graph-first experience** | WORKING | Brain uses Cytoscape.js for the Knowledge Graph; Act uses React Flow for workflow/agent graph surfaces. |
+| **No CDN / offline app assets** | WORKING | Vite output is packaged under `static/app`, service worker precaches the app manifest/assets, and frontend lint scans active static/frontend files for CDN references. |
+| **Capability preservation** | WORKING | Brain Core, storage, Knowledge Graph, chat, capture, agents/workflows, tools/MCP, models, workspaces, snapshots, network, and admin/security surfaces call existing backend APIs or show honest unavailable states. |
 
 ## v4.0.1 Digital Brain Platform — what changed
 
@@ -29,9 +44,9 @@ the transformation (every line cites code + tests; suite: **585 unit tests**):
 | **Device identity + Brain Network v1** | WORKING | Ed25519 device keys; signed exports (tamper refused; unsigned-legacy local imports allowed); workspace-filtered export (header no longer lies); paired-peer push/receive with replay protection; `/network/*`; `/app#/network` surfaces device fingerprint, peer pairing, unpair, and signed push. `test_t8_brain_network.py` (7), `tests/visual/v3.spec.js`. |
 | **Graph curation** | WORKING | `curate()` gated topic promotion + real `importance_score`; `POST /knowledge-graph/curate`. `test_t4_ingestion_unification.py`. |
 | **Packaging** | FIXED | Wheel ships `setup_wizard.py` (root setup.py collision resolved); installed-wheel smoke test (`scripts/wheel_smoke.py`) in release CI; side-effect-free `create_app` factory (subprocess-verified). `test_app_factory.py`, `test_setup_wizard.py`. |
-| **Privacy (frontend)** | WORKING | Zero CDN references in shipped pages (fonts/icons/chart.js/marked vendored); sw.js precaches the v3 bundle; mechanical lint gates (raw colors, inline styles, CDN). `test_t9_privacy_vendoring.py` (6). |
-| **Graph explorer** | WORKING | Force-directed canvas (drag/zoom/pan/physics, token-colored) replaces the static SVG; Knowledge Graph is the landing view; brain-first navigation. lint:v3 all checks. |
-| **v4 SPA parity + legacy retirement** | WORKING | Legacy static HTML/CSS/JS pages are deleted and compatibility GET routes redirect into `/app`; parity views cover token-native account/profile/password, workspaces/org members/invitations/activation, snapshots/time-machine/compare/export/merge-restore, activity/presence, run approvals/cancel/progress, workflow trigger config/status, Brain Network pairing/push, chat context trace, and KG provenance coverage. en/ko i18n is wired through `static/v3/js/core/i18n.js` and gated by `scripts/lint_v3.mjs`. `test_static_release_hygiene.py`, `test_workspace_os.py`, `tests/visual/v3.spec.js`. |
+| **Privacy (frontend)** | WORKING | Zero CDN references in shipped pages (fonts/icons/chart.js/marked vendored); sw.js precaches the React/Vite app manifest; frontend lint gates CDN and stale frontend references. `test_t9_privacy_vendoring.py` (6). |
+| **Graph explorer** | WORKING | Cytoscape.js canvas (pan/zoom/fit, typed graph elements) replaces the retired static SVG/v3 canvas implementation; Knowledge Graph is the Brain landing view; graph-first navigation. `npm run lint:frontend`. |
+| **v4 SPA parity + legacy retirement** | WORKING | Legacy static HTML/CSS/JS pages are deleted and compatibility GET/hash routes land in `/app`; parity views cover token-native account/profile/password, workspaces/org members/invitations/activation, snapshots/time-machine/compare/export/merge-restore, activity/presence, run approvals/cancel/progress, workflow trigger config/status, Brain Network pairing/push, chat context trace, and KG provenance coverage. `test_static_release_hygiene.py`, `test_workspace_os.py`, `tests/visual/v3.spec.js`. |
 | **Honest numbers** | FIXED | Fabricated fusion meters removed; recall scores real (shared lexical scorer); recall graph branch fixed (`matches` key). |
 
 ### Known owner-only blockers (not implementation gaps)
@@ -97,16 +112,16 @@ The v3.4.0 audit found four runtime gaps; v3.4.1 closes them and the overclaims:
 | **Folder Watch** | verified only in isolation; `watchdog` absent at runtime | `watchdog` installed + declared; live create→reindex→`post_index` hook; **restore-on-restart** verified |
 
 Live E2E result (booted server, isolated data dir): **7/7 PASS** + restore-on-restart PASS.
-**Method:** every classification below is traced through source — UI view
-(`static/v3/js/views/*.js`) → API adapter (`static/v3/js/core/api.js`) → FastAPI
-router (`latticeai/api/*.py`) → service/core (`latticeai/services/*`,
-`latticeai/core/*`, top-level `knowledge_graph.py`). No status is asserted
-without a `file:line` citation. Where a path was verified by grep rather than a
-full trace, that is stated.
+**Method:** current classifications are traced through React views
+(`frontend/src/pages/*.tsx`) → generated-client adapter
+(`frontend/src/api/client.ts`) → FastAPI router (`latticeai/api/*.py`) →
+service/core (`latticeai/services/*`, `latticeai/core/*`, top-level
+`knowledge_graph.py`). Historical v3 sections retain their original audit
+context when describing retired implementation paths.
 
-**Frontend of record:** the v4 SPA at `/app` (`static/v3/`). The legacy static
-pages have been removed; compatibility GET routes redirect into the matching
-`/app#/...` surface.
+**Frontend of record:** the v4.1.0 React/Vite SPA at `/app` (`frontend/` source,
+`static/app/` build output). The legacy static pages have been removed;
+compatibility GET/hash routes land in the matching `/app#/...` surface.
 
 **Status legend**
 

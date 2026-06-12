@@ -1,0 +1,344 @@
+import * as React from "react";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { Activity, KeyRound, Network, ShieldCheck, UserCircle, Users } from "lucide-react";
+import { latticeApi } from "@/api/client";
+import { ActionButton, DataPanel, EntityList, JsonView, KeyValueList, Tabs } from "@/components/primitives";
+import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Input } from "@/components/ui/input";
+import { useAppStore } from "@/store/appStore";
+import { asArray, titleize } from "@/lib/utils";
+
+type SystemTab = "account" | "workspaces" | "snapshots" | "activity" | "network" | "settings" | "admin";
+
+const tabs: Array<{ id: SystemTab; label: string }> = [
+  { id: "account", label: "Account" },
+  { id: "workspaces", label: "Workspaces" },
+  { id: "snapshots", label: "Snapshots" },
+  { id: "activity", label: "Activity" },
+  { id: "network", label: "Network" },
+  { id: "settings", label: "Settings" },
+  { id: "admin", label: "Admin" },
+];
+
+export function SystemPage({ initialTab }: { initialTab?: string }) {
+  const [tab, setTab] = React.useState<SystemTab>((initialTab as SystemTab) || "account");
+  React.useEffect(() => {
+    if (tabs.some((item) => item.id === initialTab)) setTab(initialTab as SystemTab);
+  }, [initialTab]);
+  return (
+    <div className="space-y-4">
+      <header>
+        <div className="flex items-center gap-2 text-sm text-primary"><ShieldCheck className="h-4 w-4" /> Local-first control plane</div>
+        <h1 className="mt-2 text-3xl font-semibold">System</h1>
+        <p className="mt-2 max-w-3xl text-sm text-muted-foreground">Identity, workspaces, snapshots, activity, network exchange, runtime settings, and admin status.</p>
+      </header>
+      <Tabs tabs={tabs} value={tab} onChange={(id) => setTab(id as SystemTab)} />
+      {tab === "account" ? <AccountPanel /> : null}
+      {tab === "workspaces" ? <WorkspacePanel /> : null}
+      {tab === "snapshots" ? <SnapshotsPanel /> : null}
+      {tab === "activity" ? <ActivityPanel /> : null}
+      {tab === "network" ? <NetworkPanel /> : null}
+      {tab === "settings" ? <SettingsPanel /> : null}
+      {tab === "admin" ? <AdminPanel /> : null}
+    </div>
+  );
+}
+
+function AccountPanel() {
+  const qc = useQueryClient();
+  const profile = useQuery({ queryKey: ["profile"], queryFn: latticeApi.profile });
+  const sso = useQuery({ queryKey: ["sso"], queryFn: latticeApi.ssoConfig });
+  const [email, setEmail] = React.useState("");
+  const [password, setPassword] = React.useState("");
+  const [name, setName] = React.useState("");
+  const [nickname, setNickname] = React.useState("");
+  const [newPassword, setNewPassword] = React.useState("");
+  const login = useMutation({ mutationFn: () => latticeApi.login(email, password), onSuccess: () => qc.invalidateQueries({ queryKey: ["profile"] }) });
+  const register = useMutation({ mutationFn: () => latticeApi.register({ email, password, name, nickname }), onSuccess: () => qc.invalidateQueries({ queryKey: ["profile"] }) });
+  const saveProfile = useMutation({ mutationFn: () => latticeApi.updateProfile({ name, nickname }), onSuccess: () => qc.invalidateQueries({ queryKey: ["profile"] }) });
+  const changePassword = useMutation({ mutationFn: () => latticeApi.changePassword(password, newPassword) });
+  return (
+    <div className="grid gap-4 xl:grid-cols-2">
+      <DataPanel title="Profile" result={profile.data}>
+        {(data) => <KeyValueList data={data as Record<string, unknown>} />}
+      </DataPanel>
+      <Card>
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2"><UserCircle className="h-4 w-4" /> Token-native account</CardTitle>
+          <CardDescription>Login, registration, profile update, and password change all call existing auth endpoints.</CardDescription>
+        </CardHeader>
+        <CardContent className="grid gap-3">
+          <Input value={email} onChange={(e) => setEmail(e.target.value)} placeholder="email" />
+          <Input type="password" value={password} onChange={(e) => setPassword(e.target.value)} placeholder="current password" />
+          <div className="grid gap-2 sm:grid-cols-2">
+            <Input value={name} onChange={(e) => setName(e.target.value)} placeholder="name" />
+            <Input value={nickname} onChange={(e) => setNickname(e.target.value)} placeholder="nickname" />
+          </div>
+          <Input type="password" value={newPassword} onChange={(e) => setNewPassword(e.target.value)} placeholder="new password" />
+          <div className="flex flex-wrap gap-2">
+            <Button onClick={() => login.mutate()} disabled={!email || !password || login.isPending}>Login</Button>
+            <Button variant="outline" onClick={() => register.mutate()} disabled={!email || !password || register.isPending}>Register</Button>
+            <Button variant="outline" onClick={() => saveProfile.mutate()} disabled={saveProfile.isPending}>Save profile</Button>
+            <Button variant="outline" onClick={() => changePassword.mutate()} disabled={!password || !newPassword || changePassword.isPending}>Change password</Button>
+            <ActionButton label="Logout" action={() => latticeApi.logout()} invalidate={["profile"]} />
+          </div>
+          {[login.data, register.data, saveProfile.data, changePassword.data].filter(Boolean).map((item, i) => <JsonView key={i} value={item?.data || item?.error} />)}
+        </CardContent>
+      </Card>
+      <DataPanel title="SSO config" result={sso.data} className="xl:col-span-2">
+        {(data) => <JsonView value={data} />}
+      </DataPanel>
+    </div>
+  );
+}
+
+function WorkspacePanel() {
+  const qc = useQueryClient();
+  const { setWorkspaceId } = useAppStore();
+  const registry = useQuery({ queryKey: ["workspaceRegistry"], queryFn: latticeApi.workspaceRegistry });
+  const invites = useQuery({ queryKey: ["invitations"], queryFn: latticeApi.invitations });
+  const [orgName, setOrgName] = React.useState("");
+  const [inviteEmail, setInviteEmail] = React.useState("");
+  const [inviteToken, setInviteToken] = React.useState("");
+  const createOrg = useMutation({ mutationFn: () => latticeApi.createOrg(orgName), onSuccess: () => qc.invalidateQueries({ queryKey: ["workspaceRegistry"] }) });
+  const createInvite = useMutation({ mutationFn: () => latticeApi.createInvitation({ email: inviteEmail || null, role: "member", expires_hours: 168 }), onSuccess: () => qc.invalidateQueries({ queryKey: ["invitations"] }) });
+  const accept = useMutation({ mutationFn: () => latticeApi.acceptInvitation(inviteToken), onSuccess: () => qc.invalidateQueries({ queryKey: ["workspaceRegistry"] }) });
+  const workspaces = asArray<Record<string, unknown>>((registry.data?.data as Record<string, unknown>)?.workspaces);
+  return (
+    <div className="grid gap-4 xl:grid-cols-[1.1fr_0.9fr]">
+      <DataPanel title="Workspace registry" result={registry.data}>
+        {() => (
+          <div className="grid gap-2">
+            {workspaces.map((workspace) => {
+              const id = String(workspace.workspace_id || workspace.id);
+              return (
+                <div key={id} className="rounded-md border border-border p-3">
+                  <div className="flex flex-wrap items-center justify-between gap-2">
+                    <div>
+                      <div className="font-medium">{String(workspace.name || id)}</div>
+                      <div className="text-sm text-muted-foreground">{String(workspace.type || "")} · {String(workspace.your_role || workspace.role || "")}</div>
+                    </div>
+                    <div className="flex flex-wrap gap-2">
+                      <Button variant="outline" onClick={() => setWorkspaceId(id)}>Use</Button>
+                      <ActionButton label="Activate" action={() => latticeApi.activateWorkspace(id)} invalidate={["workspaceRegistry"]} />
+                      <ActionButton label="Archive" action={() => latticeApi.archiveWorkspace(id)} invalidate={["workspaceRegistry"]} variant="destructive" />
+                    </div>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        )}
+      </DataPanel>
+      <Card>
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2"><Users className="h-4 w-4" /> Organizations and invitations</CardTitle>
+          <CardDescription>Local invite tokens and workspace creation are backend-owned.</CardDescription>
+        </CardHeader>
+        <CardContent className="grid gap-3">
+          <Input value={orgName} onChange={(e) => setOrgName(e.target.value)} placeholder="New organization name" />
+          <Button disabled={!orgName.trim() || createOrg.isPending} onClick={() => createOrg.mutate()}>Create organization</Button>
+          <Input value={inviteEmail} onChange={(e) => setInviteEmail(e.target.value)} placeholder="invitee email" />
+          <Button variant="outline" disabled={createInvite.isPending} onClick={() => createInvite.mutate()}>Create invitation</Button>
+          <Input value={inviteToken} onChange={(e) => setInviteToken(e.target.value)} placeholder="invitation token" />
+          <Button variant="outline" disabled={!inviteToken.trim() || accept.isPending} onClick={() => accept.mutate()}>Accept invitation</Button>
+          <DataPanel title="Invitations" result={invites.data}>
+            {(data) => <EntityList items={(data as Record<string, unknown>).invitations} titleKey="token" metaKey="role" />}
+          </DataPanel>
+        </CardContent>
+      </Card>
+    </div>
+  );
+}
+
+function SnapshotsPanel() {
+  const snaps = useQuery({ queryKey: ["snapshots"], queryFn: latticeApi.snapshots });
+  const timeline = useQuery({ queryKey: ["timeMachine"], queryFn: latticeApi.timeMachine });
+  const [name, setName] = React.useState("");
+  const [before, setBefore] = React.useState("");
+  const [after, setAfter] = React.useState("");
+  const create = useMutation({ mutationFn: () => latticeApi.createSnapshot(name || "desktop checkpoint") });
+  const compare = useMutation({ mutationFn: () => latticeApi.compareSnapshots(before, after) });
+  const rows = asArray<Record<string, unknown>>((snaps.data?.data as Record<string, unknown>)?.snapshots);
+  return (
+    <div className="grid gap-4 xl:grid-cols-2">
+      <DataPanel title="Snapshots" result={snaps.data}>
+        {() => (
+          <div className="space-y-2">
+            {rows.map((snap) => {
+              const id = String(snap.id || snap.snapshot_id);
+              return (
+                <div key={id} className="rounded-md border border-border p-3">
+                  <div className="font-medium">{String(snap.name || id)}</div>
+                  <div className="mt-2 flex flex-wrap gap-2">
+                    <ActionButton label="Export" action={() => latticeApi.exportSnapshot(id)} />
+                    <ActionButton label="Merge restore" action={() => latticeApi.restoreSnapshot(id)} variant="outline" />
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        )}
+      </DataPanel>
+      <Card>
+        <CardHeader>
+          <CardTitle>Snapshot actions</CardTitle>
+          <CardDescription>Create and compare through Workspace OS endpoints.</CardDescription>
+        </CardHeader>
+        <CardContent className="grid gap-3">
+          <Input value={name} onChange={(e) => setName(e.target.value)} placeholder="snapshot name" />
+          <Button onClick={() => create.mutate()} disabled={create.isPending}>Create snapshot</Button>
+          <div className="grid gap-2 sm:grid-cols-2">
+            <Input value={before} onChange={(e) => setBefore(e.target.value)} placeholder="before id" />
+            <Input value={after} onChange={(e) => setAfter(e.target.value)} placeholder="after id" />
+          </div>
+          <Button variant="outline" onClick={() => compare.mutate()} disabled={!before || !after || compare.isPending}>Compare</Button>
+          {compare.data ? <JsonView value={compare.data.data || compare.data.error} /> : null}
+        </CardContent>
+      </Card>
+      <DataPanel title="Time machine" result={timeline.data} className="xl:col-span-2">
+        {(data) => <EntityList items={(data as Record<string, unknown>).events || data} titleKey="event" metaKey="type" limit={14} />}
+      </DataPanel>
+    </div>
+  );
+}
+
+function ActivityPanel() {
+  const feed = useQuery({ queryKey: ["realtimeFeed"], queryFn: latticeApi.realtimeFeed });
+  const presence = useQuery({ queryKey: ["presence"], queryFn: latticeApi.presence });
+  return (
+    <div className="grid gap-4 xl:grid-cols-2">
+      <DataPanel title="Realtime feed" result={feed.data}>
+        {(data) => <EntityList items={(data as Record<string, unknown>).events} titleKey="event_type" metaKey="area" limit={14} />}
+      </DataPanel>
+      <DataPanel title="Presence" result={presence.data}>
+        {(data) => <JsonView value={data} />}
+      </DataPanel>
+    </div>
+  );
+}
+
+function NetworkPanel() {
+  const qc = useQueryClient();
+  const identity = useQuery({ queryKey: ["networkIdentity"], queryFn: latticeApi.networkIdentity });
+  const peers = useQuery({ queryKey: ["networkPeers"], queryFn: latticeApi.networkPeers });
+  const [name, setName] = React.useState("");
+  const [baseUrl, setBaseUrl] = React.useState("");
+  const [publicKey, setPublicKey] = React.useState("");
+  const pair = useMutation({
+    mutationFn: () => latticeApi.pairPeer({ name, base_url: baseUrl, public_key: publicKey }),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ["networkPeers"] }),
+  });
+  return (
+    <div className="grid gap-4 xl:grid-cols-[0.8fr_1.2fr]">
+      <DataPanel title="Device identity" result={identity.data}>
+        {(data) => <JsonView value={data} />}
+      </DataPanel>
+      <Card>
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2"><Network className="h-4 w-4" /> Pair peer</CardTitle>
+          <CardDescription>Manual peer pairing for signed workspace bundle exchange.</CardDescription>
+        </CardHeader>
+        <CardContent className="grid gap-3">
+          <Input value={name} onChange={(e) => setName(e.target.value)} placeholder="peer name" />
+          <Input value={baseUrl} onChange={(e) => setBaseUrl(e.target.value)} placeholder="http://peer.local:8765" />
+          <Input value={publicKey} onChange={(e) => setPublicKey(e.target.value)} placeholder="trusted public key" />
+          <Button disabled={!name || !baseUrl || !publicKey || pair.isPending} onClick={() => pair.mutate()}>Pair</Button>
+          {pair.data ? <JsonView value={pair.data.data || pair.data.error} /> : null}
+        </CardContent>
+      </Card>
+      <DataPanel title="Peers" result={peers.data} className="xl:col-span-2">
+        {(data) => (
+          <div className="grid gap-2">
+            {asArray<Record<string, unknown>>((data as Record<string, unknown>).peers).map((peer) => {
+              const id = String(peer.peer_id || peer.id);
+              return (
+                <div key={id} className="flex flex-wrap items-center justify-between gap-3 rounded-md border border-border p-3">
+                  <div>
+                    <div className="font-medium">{String(peer.name || id)}</div>
+                    <div className="text-sm text-muted-foreground">{String(peer.base_url || "")}</div>
+                  </div>
+                  <div className="flex flex-wrap gap-2">
+                    <ActionButton label="Push workspace" action={() => latticeApi.pushPeer(id, useAppStore.getState().workspaceId)} />
+                    <ActionButton label="Unpair" action={() => latticeApi.unpairPeer(id)} invalidate={["networkPeers"]} variant="destructive" />
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        )}
+      </DataPanel>
+    </div>
+  );
+}
+
+function SettingsPanel() {
+  const { theme, setTheme, mode, setMode } = useAppStore();
+  const health = useQuery({ queryKey: ["health"], queryFn: latticeApi.health });
+  const sys = useQuery({ queryKey: ["sysinfo"], queryFn: latticeApi.sysinfo });
+  const comp = useQuery({ queryKey: ["computerMemory"], queryFn: latticeApi.computerMemory });
+  return (
+    <div className="grid gap-4 xl:grid-cols-3">
+      <Card>
+        <CardHeader>
+          <CardTitle>Appearance</CardTitle>
+          <CardDescription>Local browser settings only.</CardDescription>
+        </CardHeader>
+        <CardContent className="flex flex-wrap gap-2">
+          <Button variant={theme === "dark" ? "default" : "outline"} onClick={() => setTheme("dark")}>Dark</Button>
+          <Button variant={theme === "light" ? "default" : "outline"} onClick={() => setTheme("light")}>Light</Button>
+          {(["basic", "advanced", "admin"] as const).map((item) => (
+            <Button key={item} variant={mode === item ? "default" : "outline"} onClick={() => setMode(item)}>{titleize(item)}</Button>
+          ))}
+        </CardContent>
+      </Card>
+      <DataPanel title="Server health" result={health.data}>
+        {(data) => <JsonView value={data} />}
+      </DataPanel>
+      <DataPanel title="Host telemetry" result={sys.data}>
+        {(data) => <JsonView value={data} />}
+      </DataPanel>
+      <DataPanel title="Computer memory" result={comp.data} className="xl:col-span-3">
+        {(data) => (
+          <div className="space-y-3">
+            <JsonView value={data} />
+            <div className="flex gap-2">
+              <ActionButton label="Enable memory" action={() => latticeApi.setComputerMemory(true)} invalidate={["computerMemory"]} />
+              <ActionButton label="Disable memory" action={() => latticeApi.setComputerMemory(false)} invalidate={["computerMemory"]} variant="destructive" />
+            </div>
+          </div>
+        )}
+      </DataPanel>
+    </div>
+  );
+}
+
+function AdminPanel() {
+  const summary = useQuery({ queryKey: ["adminSummary"], queryFn: latticeApi.adminSummary });
+  const users = useQuery({ queryKey: ["adminUsers"], queryFn: latticeApi.adminUsers });
+  const audit = useQuery({ queryKey: ["adminAudit"], queryFn: latticeApi.adminAudit });
+  const roles = useQuery({ queryKey: ["adminRoles"], queryFn: latticeApi.adminRoles });
+  const policies = useQuery({ queryKey: ["adminPolicies"], queryFn: latticeApi.adminPolicies });
+  const security = useQuery({ queryKey: ["adminSecurity"], queryFn: latticeApi.adminSecurity });
+  const vpc = useQuery({ queryKey: ["vpcStatus"], queryFn: latticeApi.vpcStatus });
+  return (
+    <div className="grid gap-4 xl:grid-cols-2">
+      <DataPanel title="Admin summary" result={summary.data}>{(data) => <KeyValueList data={data as Record<string, unknown>} />}</DataPanel>
+      <DataPanel title="Users" result={users.data}>{(data) => <EntityList items={data} titleKey="email" metaKey="role" />}</DataPanel>
+      <DataPanel title="Audit" result={audit.data}>{(data) => <EntityList items={(data as Record<string, unknown>).recent_events || data} titleKey="act" metaKey="sev" />}</DataPanel>
+      <DataPanel title="Roles" result={roles.data}>{(data) => <JsonView value={data} />}</DataPanel>
+      <DataPanel title="Policies" result={policies.data}>{(data) => <JsonView value={data} />}</DataPanel>
+      <DataPanel title="Security overview" result={security.data}>{(data) => <JsonView value={data} />}</DataPanel>
+      <DataPanel title="Private VPC" result={vpc.data} className="xl:col-span-2">
+        {(data) => (
+          <div className="space-y-2">
+            <Badge variant="muted">Community-disabled features remain honest unavailable states.</Badge>
+            <JsonView value={data} />
+          </div>
+        )}
+      </DataPanel>
+    </div>
+  );
+}

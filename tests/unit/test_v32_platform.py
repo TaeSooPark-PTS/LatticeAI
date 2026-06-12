@@ -7,12 +7,17 @@ no FastAPI / MLX dependency, mirroring the existing unit-test style.
 
 from __future__ import annotations
 
+import json
+from pathlib import Path
+
 import pytest
 
 from latticeai.core.hooks import HooksRegistry, HOOK_KINDS, BUILTIN_HOOKS
 from latticeai.core.agent_registry import AgentRegistry, AGENT_TYPES
 from latticeai.core.marketplace import TemplateCatalog, MARKETPLACE_VERSION
 from latticeai.services.memory_service import MemoryService, TIERS
+
+ROOT = Path(__file__).resolve().parents[2]
 
 
 # ── Hooks registry ─────────────────────────────────────────────────────────
@@ -156,6 +161,7 @@ def test_memory_clear_requires_confirm(tmp_path):
 
 # ── Marketplace agent templates ────────────────────────────────────────────
 def test_marketplace_has_five_named_agent_templates():
+    release = json.loads((ROOT / "package.json").read_text(encoding="utf-8"))["version"]
     catalog = TemplateCatalog()
     names = {t["name"] for t in catalog.list_templates(kind="agent")["templates"]}
     assert {
@@ -165,7 +171,7 @@ def test_marketplace_has_five_named_agent_templates():
         "Documentation Writer",
         "Workflow Builder",
     } <= names
-    assert MARKETPLACE_VERSION == "4.0.1"
+    assert MARKETPLACE_VERSION == release
 
 
 def test_marketplace_clone_and_roundtrip():

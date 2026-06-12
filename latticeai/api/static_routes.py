@@ -84,7 +84,7 @@ def create_static_routes_router(
             raise HTTPException(status_code=404)
         return FileResponse(str(p), media_type="application/manifest+json")
 
-    @api_router.api_route("/favicon.ico", methods=["GET", "HEAD"])
+    @api_router.api_route("/favicon.ico", methods=["GET", "HEAD"], include_in_schema=False)
     async def favicon():
         ico = STATIC_DIR / "favicon.ico"
         png = STATIC_DIR / "icons" / "favicon-32.png"
@@ -112,10 +112,10 @@ def create_static_routes_router(
 
     @api_router.get("/app")
     async def app_shell(request: Request):
-        """v3 single-page workspace shell (token-native design system)."""
-        page = STATIC_DIR / "v3" / "index.html"
+        """React desktop single-page workspace shell."""
+        page = STATIC_DIR / "app" / "index.html"
         if not page.exists():
-            raise HTTPException(status_code=404, detail="v3 shell not found.")
+            raise HTTPException(status_code=404, detail="React shell not found.")
         return ui_file_response(page)
 
 

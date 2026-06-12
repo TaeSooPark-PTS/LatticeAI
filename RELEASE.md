@@ -7,6 +7,31 @@
 > PyPI / npm / VS Code Marketplace / Open VSX 배포는 아래 수동 절차로만
 > 진행합니다. 태그 생성은 패키지 스토어 publish를 자동으로 트리거하지 않습니다.
 
+## v4.1.0 RC 릴리스 노트 (2026-06-12)
+
+Lattice AI v4.1.0 — Frontend & Desktop Rebuild. `main @ v4.0.1` 위에서
+frontend와 desktop shell을 React/Vite/Tauri 2.0 기반 Digital Brain desktop
+architecture로 교체한다. Backend, Brain Core, storage, agent/workflow runtime은
+기존 FastAPI contract를 source of truth로 유지한다. PyPI, npm Registry, VS
+Code Marketplace, Open VSX에는 publish하지 않는다.
+
+- **Added (React desktop SPA)**: React, TypeScript, Vite, TanStack Query,
+  Zustand, React Flow, Cytoscape.js, Tailwind CSS, local shadcn-style primitives,
+  generated OpenAPI client를 사용하는 `/app` SPA.
+- **Added (Desktop shell)**: Tauri 2.0 primary shell (`src-tauri/`)과 Electron
+  fallback-only shell (`desktop/electron/`).
+- **Changed (Navigation)**: Brain, Ask, Capture, Act, Library, System 중심의
+  graph-first primary navigation.
+- **Changed (Frontend assets)**: legacy static v3 frontend와 build/lint scripts를
+  제거하고 `static/app` Vite build output을 package/release 대상에 포함한다.
+- **Preserved**: local-first/privacy-first/offline operation, v4.0.1 backend API
+  contracts, Brain Core, storage compatibility, durable agents/workflows, user data.
+- **Expected artifacts**:
+  - `dist/ltcai-4.1.0-py3-none-any.whl`
+  - `dist/ltcai-4.1.0.tar.gz`
+  - `dist/ltcai-4.1.0.vsix`
+  - `ltcai-4.1.0.tgz`
+
 ## v4.0.1 릴리스 노트 (2026-06-12)
 
 Lattice AI v4.0.1 — Digital Brain Platform Maintenance. `v4.0.0` 태그 이후
@@ -741,13 +766,13 @@ Knowledge Graph v2 read/write cutover. 자세한 내용은
    - `npm run release:artifacts`
    - `npm run release:validate`
 
-현재 `v4.0.1` 기준 필수 산출물:
+현재 `v4.1.0` 기준 필수 산출물:
 
 ```text
-dist/ltcai-4.0.1-py3-none-any.whl
-dist/ltcai-4.0.1.tar.gz
-dist/ltcai-4.0.1.vsix
-ltcai-4.0.1.tgz
+dist/ltcai-4.1.0-py3-none-any.whl
+dist/ltcai-4.1.0.tar.gz
+dist/ltcai-4.1.0.vsix
+ltcai-4.1.0.tgz
 ```
 
 ## 2) npm 배포

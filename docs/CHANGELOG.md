@@ -1,5 +1,47 @@
 # Changelog
 
+## [4.1.0] - 2026-06-12
+
+> Frontend & Desktop Rebuild release candidate. The existing FastAPI backend,
+> Brain Core, storage architecture, and agent/workflow runtime remain the
+> source of truth; the frontend and desktop shell are replaced by a React/Vite
+> desktop architecture.
+
+### Added
+
+- React + TypeScript + Vite SPA under `frontend/`, using TanStack Query,
+  Zustand, React Flow, Cytoscape.js, Tailwind CSS, local shadcn-style
+  primitives, and a generated OpenAPI TypeScript client.
+- Tauri 2.0 desktop shell under `src-tauri/` that launches the local backend
+  and exposes the backend origin to the SPA; Electron fallback shell retained
+  under `desktop/electron/`.
+- Primary graph-first navigation: Brain, Ask, Capture, Act, Library, System.
+- OpenAPI export/generation script and frontend lint guard for generated-client
+  usage, no-CDN static assets, and stale frontend references.
+
+### Changed
+
+- `/app` now serves the built React/Vite bundle from `static/app`.
+- Legacy static v3 frontend assets and v3 build/lint scripts are removed after
+  capability parity was migrated into the new React surfaces.
+- Release/build scripts now build Vite app assets and preserve Python, npm, and
+  VSIX packaging flows at version `4.1.0`.
+- npm Python-backed scripts use `scripts/run_python.mjs` to prefer
+  `LTCAI_PYTHON` or the repo virtualenv before falling back to system Python.
+
+### Validation Scope
+
+- Python compile check, ruff, unit tests, live integration tests, frontend lint,
+  TypeScript build, Playwright visual tests, desktop shell checks, no-CDN
+  verification, release artifact validation, wheel smoke, and npm pack dry-run.
+
+### Expected Artifacts
+
+- `dist/ltcai-4.1.0-py3-none-any.whl`
+- `dist/ltcai-4.1.0.tar.gz`
+- `dist/ltcai-4.1.0.vsix`
+- `ltcai-4.1.0.tgz`
+
 ## [4.0.1] - 2026-06-12
 
 > Digital Brain Platform maintenance release for commits on `main` after tag

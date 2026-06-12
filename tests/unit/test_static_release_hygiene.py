@@ -37,7 +37,7 @@ def test_favicon_route_serves_existing_icon():
 
 def test_runtime_assets_use_hashed_manifest_instead_of_query_versions():
     html_files = [
-        STATIC_DIR / "v3" / "index.html",
+        STATIC_DIR / "app" / "index.html",
     ]
     stale = []
     for path in html_files:
@@ -46,17 +46,16 @@ def test_runtime_assets_use_hashed_manifest_instead_of_query_versions():
             stale.append(f"{path.relative_to(REPO_ROOT)}:{match.group(0)}")
 
     assert stale == []
-    manifest = STATIC_DIR / "v3" / "asset-manifest.json"
+    manifest = STATIC_DIR / "app" / "asset-manifest.json"
     assert manifest.exists()
     text = manifest.read_text(encoding="utf-8")
-    assert '"static/v3/js/app.js"' in text
-    assert re.search(r"/static/v3/js/app\.[0-9a-f]{8}\.js", text)
-    assert "asset-manifest.json" in (STATIC_DIR / "v3" / "index.html").read_text(encoding="utf-8")
-    assert not (STATIC_DIR / "v3" / "js" / "core" / "fixtures.js").exists()
+    assert '"/static/app/assets/' in text
+    assert re.search(r"/static/app/assets/index-[A-Za-z0-9_-]+\.js", text)
+    assert not (STATIC_DIR / "v3").exists()
 
 
 def test_manifest_assets_are_in_python_wheel_data_files():
-    manifest = json.loads((STATIC_DIR / "v3" / "asset-manifest.json").read_text(encoding="utf-8"))
+    manifest = json.loads((STATIC_DIR / "app" / "asset-manifest.json").read_text(encoding="utf-8"))
     pyproject = tomllib.loads((REPO_ROOT / "pyproject.toml").read_text(encoding="utf-8"))
     data_files = pyproject["tool"]["setuptools"]["data-files"]
     packaged = {item for entries in data_files.values() for item in entries}
@@ -76,7 +75,8 @@ def test_legacy_pages_are_deleted_and_spa_assets_remain():
         assert not (STATIC_DIR / page).exists(), f"legacy page still shipped: {page}"
     assert not (STATIC_DIR / "scripts").exists() or not list((STATIC_DIR / "scripts").glob("*.js"))
     assert not (STATIC_DIR / "css" / "reference").exists() or not list((STATIC_DIR / "css" / "reference").glob("*.css"))
-    assert (STATIC_DIR / "v3" / "index.html").exists()
+    assert (STATIC_DIR / "app" / "index.html").exists()
+    assert not (STATIC_DIR / "v3").exists()
     assert (STATIC_DIR / "css" / "tokens.css").exists()
 
 

@@ -52,3 +52,7 @@ telegram_chats.json
 venv/
 .build-venv/
 .npm-cache/
+
+# Tauri build outputs
+src-tauri/target/
+src-tauri/gen/

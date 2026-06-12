@@ -203,34 +203,34 @@ npm run dev
 
 ## Latest Release
 
-### v4.0.1 — Digital Brain Platform Maintenance
+### v4.1.0 RC — Frontend & Desktop Rebuild
 
-- **Brain store architecture** — `knowledge_graph.py` is now a compatibility
-  shim over focused `latticeai/brain/` modules.
-- **v2 write-mastered graph** — `nodes_v2` / `edges_v2` are authoritative;
-  legacy tables stay as a compatibility projection, with pre-flip backup and
-  DB-format guard.
-- **Durable memory and context** — conversations, decisions, experiences, and
-  context traces live in the brain database family.
-- **Real act/runtime foundation** — workflows execute governed tools, pause for
-  approval, run asynchronously with SSE progress/cancellation, and LLM-backed
-  agent runs fail closed instead of fabricating output.
-- **Durable workspace governance** — stable user UUIDs, enforced policy,
-  invitations, and SQLite-backed Workspace OS state preserve identity and
-  workspace history without destructive migration.
-- **Local sovereignty** — signed exports, device identity, scoped graph export,
-  and Brain Network peer exchange are implemented at the API layer.
-- **Post-v4 parity closure** — durable async runs, stable identity/workspace
-  state, and the complete `/app` SPA parity/legacy-retirement work are included
-  in this maintenance release.
+- **React desktop SPA** — `/app` is now a React + TypeScript + Vite application
+  with TanStack Query, Zustand, React Flow, Cytoscape.js, Tailwind CSS, and
+  local shadcn-style primitives.
+- **Generated API client** — frontend JSON calls consume the existing FastAPI
+  contract through a generated OpenAPI TypeScript client; streaming chat and
+  multipart upload remain honest fetch special cases.
+- **Tauri-first desktop shell** — Tauri 2.0 is the primary desktop target,
+  launching the local backend by default; Electron is retained as a fallback
+  shell only.
+- **Graph-first navigation** — the primary surfaces are Brain, Ask, Capture,
+  Act, Library, and System, with old `/app#...` routes mapped into the new
+  capability groups.
+- **No CDN / offline-capable** — shipped app assets are built into
+  `static/app`, service-worker precached, and verified to avoid CDN
+  dependencies.
+- **v4.0.1 capability preservation** — Brain Core, storage, agent/workflow
+  runtime, privacy model, local-first operation, and backend API contracts are
+  preserved.
 
-See [RELEASE_NOTES_v4.0.1.md](RELEASE_NOTES_v4.0.1.md),
+See [RELEASE_NOTES_v4.1.0.md](RELEASE_NOTES_v4.1.0.md),
 [docs/kg-schema.md](docs/kg-schema.md),
 [FEATURE_STATUS.md](FEATURE_STATUS.md).
 
 ## How it works — every source converges into the graph
 
-As of v4.0.1, data sources flow through the brain ingestion pipeline into
+As of v4.1.0, data sources flow through the brain ingestion pipeline into
 the Knowledge Graph — no source bypasses it, none becomes an isolated silo:
 
 ```text
@@ -264,6 +264,9 @@ For the deeper design, see [ARCHITECTURE.md](ARCHITECTURE.md) and
 
 - [ARCHITECTURE.md](ARCHITECTURE.md) — workspace, graph, pipeline, and model overview
 - [docs/architecture.md](docs/architecture.md) — full architecture reference
+- [docs/V4_1_FRONTEND_ARCHITECTURE_REVIEW.md](docs/V4_1_FRONTEND_ARCHITECTURE_REVIEW.md) — v4.1.0 frontend and desktop architecture review
+- [docs/V4_1_FRONTEND_MIGRATION_REPORT.md](docs/V4_1_FRONTEND_MIGRATION_REPORT.md) — v4.1.0 capability migration report
+- [docs/V4_1_VALIDATION_REPORT.md](docs/V4_1_VALIDATION_REPORT.md) — v4.1.0 validation report
 - [docs/V3_BACKEND_ARCHITECTURE.md](docs/V3_BACKEND_ARCHITECTURE.md) — backend storage, search, and retrieval
 
 ### Knowledge and retrieval
@@ -282,6 +285,7 @@ For the deeper design, see [ARCHITECTURE.md](ARCHITECTURE.md) and
 ### Releases
 
 - [RELEASE_NOTES.md](RELEASE_NOTES.md) — current release notes
+- [RELEASE_NOTES_v4.1.0.md](RELEASE_NOTES_v4.1.0.md)
 - [RELEASE_NOTES_v4.0.1.md](RELEASE_NOTES_v4.0.1.md)
 - [RELEASE_NOTES_v4.0.0.md](RELEASE_NOTES_v4.0.0.md)
 - [RELEASE_NOTES_v3.6.0.md](RELEASE_NOTES_v3.6.0.md)
@@ -294,6 +298,7 @@ For the deeper design, see [ARCHITECTURE.md](ARCHITECTURE.md) and
 
 | Version | Theme |
 | --- | --- |
+| **4.1.0** | Frontend & Desktop Rebuild RC — React/Vite/OpenAPI desktop SPA, Tauri 2.0 primary shell, graph-first navigation, and legacy static frontend removal |
 | **4.0.1** | Digital Brain Platform maintenance — closes post-tag v4 gaps with durable async runs, stable identity/workspace state, full `/app` parity, and legacy UI retirement |
 | **4.0.0** | Digital Brain Platform — decomposed brain store, v2 write-mastered Knowledge Graph, durable memory/context, real workflow/agent foundations, signed brain exchange |
 | 3.6.0 | Knowledge Graph First — unified ingestion pipeline, formalized entity/relationship model, browser/web ingestion, local export/import/backup, provenance, KG as the primary surface |

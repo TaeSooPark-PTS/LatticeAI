@@ -1,0 +1,36 @@
+{
+  "$schema": "https://schema.tauri.app/config/2",
+  "productName": "Lattice AI",
+  "version": "4.1.0",
+  "identifier": "ai.lattice.desktop",
+  "build": {
+    "beforeDevCommand": "npm run frontend:dev",
+    "beforeBuildCommand": "npm run build:assets",
+    "devUrl": "http://127.0.0.1:5173",
+    "frontendDist": "../static/app"
+  },
+  "app": {
+    "windows": [
+      {
+        "title": "Lattice AI",
+        "label": "main",
+        "width": 1440,
+        "height": 920,
+        "minWidth": 1024,
+        "minHeight": 720,
+        "resizable": true
+      }
+    ],
+    "security": {
+      "csp": null
+    }
+  },
+  "bundle": {
+    "active": true,
+    "targets": ["dmg", "app"],
+    "icon": [
+      "../static/icons/icon-192.png",
+      "../static/icons/icon-512.png"
+    ]
+  }
+}

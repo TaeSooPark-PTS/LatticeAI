@@ -31,7 +31,7 @@ TARGETS = [
     ("package-lock.json", "package-lock", None),
     ("vscode-extension/package.json", "json", "version"),
     ("vscode-extension/package-lock.json", "package-lock", None),
-    ("static/v3/asset-manifest.json", "json", "version"),
+    ("static/app/asset-manifest.json", "json", "version"),
 ]
 
 

@@ -1,0 +1,25 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+    <meta name="color-scheme" content="dark light" />
+    <title>Lattice AI · Digital Brain</title>
+    <link rel="manifest" href="/manifest.json" />
+    <link rel="icon" type="image/png" sizes="32x32" href="/icons/favicon-32.png" />
+    <script>
+      (function () {
+        try {
+          var theme = localStorage.getItem("lattice.theme");
+          if (theme === "light" || theme === "dark") document.documentElement.dataset.theme = theme;
+        } catch (e) {}
+      })();
+    </script>
+    <script type="module" crossorigin src="/static/app/assets/index-CJRAzNnf.js"></script>
+    <link rel="stylesheet" crossorigin href="/static/app/assets/index-CSwBBgf4.css">
+  </head>
+  <body>
+    <div id="root"></div>
+    <noscript>Lattice AI requires JavaScript for the local Digital Brain desktop shell.</noscript>
+  </body>
+</html>

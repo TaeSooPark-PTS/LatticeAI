@@ -5,24 +5,30 @@
 > completed analysis. **Update this file before ending any phase and before any
 > likely session/context/usage limit.**
 >
-> Last updated: 2026-06-12 — v4.0.1 maintenance release prep; T9 remainder remains closed
+> Last updated: 2026-06-12 — v4.1.0 frontend/desktop rebuild RC; Remaining Gaps remain empty
 
 ---
 
-## 0. RC STATUS (final)
+## 0. RC STATUS (v4.1.0 RC)
 
-**v4.0.1 packages the `main` commits after tag `v4.0.0`; implementation gaps are empty.**
-Latest verified implementation milestone: T9 remainder closed with full unit coverage
-(`585 passed`), ruff, Python compile, `npm run lint`, `npm run build:assets`,
-Playwright v3 visual coverage, Python sdist/wheel build, installed-wheel smoke,
-and `npm pack --dry-run`.
-The v4.0.1 release process builds and validates artifacts for GitHub Release
-attachment only. It does not publish to PyPI, npm Registry, VS Code Marketplace,
-Open VSX, or production deployment targets.
-v4.0.1 validation completed: Python compile, ruff, 585 unit tests, 9 live
-integration tests, frontend lint, VS Code typecheck, 16 Playwright visual tests,
+**v4.1.0 replaces the frontend implementation and desktop shell on top of
+`main @ v4.0.1`; implementation gaps remain empty.**
+Latest implementation milestone: `/app` is now a React + TypeScript + Vite SPA
+with TanStack Query, Zustand, generated OpenAPI client usage, Cytoscape.js
+Brain graph, React Flow Act graph, Tailwind CSS, and local shadcn-style
+primitives. Tauri 2.0 is the primary desktop shell; Electron is fallback only.
+The existing FastAPI backend, Brain Core, storage architecture, and
+agent/workflow runtime remain the source of truth.
+The v4.1.0 RC process builds and validates local artifacts only. It does not
+publish to PyPI, npm Registry, VS Code Marketplace, Open VSX, or production
+deployment targets.
+v4.1.0 validation completed: OpenAPI generation (308 paths), Python compile,
+ruff, 585 unit tests, 9 live integration tests, frontend lint/no-CDN/API
+compatibility, TypeScript build, 12 Playwright visual/offline tests, Tauri
+cargo check, Tauri `.app` + DMG build, Electron fallback syntax/version check,
 Python wheel/sdist build, npm tgz build, VSIX build, release artifact
-validation, wheel smoke, and npm pack dry-run all passed.
+validation, wheel smoke, and npm pack dry-run all passed. See
+`docs/V4_1_VALIDATION_REPORT.md`.
 Remaining implementation gaps: **none**.
 Owner-only blockers: pptx history rewrite (requires force-push/owner decision)
 and consent-gated production embedder provisioning (silent default download is
@@ -30,11 +36,12 @@ not permitted).
 
 ## Remaining Gaps
 
-None. The T9 remainder was closed on main with legacy page deletion, `/app`
-parity views, token-native account UI, en/ko i18n, approval/run inbox,
-workflow-trigger controls, Brain Network UI, chat context-trace panel, and
-Knowledge Graph provenance coverage surfaced in the SPA. Owner-only blockers
-above are intentionally not implementation gaps.
+None. v4.1.0 closes the frontend/desktop rebuild on top of the already-empty
+v4.0.1 gap list: legacy static v3 frontend assets are removed, `/app` is served
+from `static/app`, Brain/Ask/Capture/Act/Library/System cover the existing
+capability surface, and every visible control either calls an existing backend
+API or presents an honest unavailable/error state. Owner-only blockers above
+are intentionally not implementation gaps.
 
 ## 1. Program Charter (from the user's v4.0.0 directive)
 
