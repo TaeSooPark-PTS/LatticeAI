@@ -1,6 +1,8 @@
 # Changelog
 
-The detailed historical changelog lives in [docs/CHANGELOG.md](docs/CHANGELOG.md).
+The detailed and current changelog lives in [docs/CHANGELOG.md](docs/CHANGELOG.md);
+its top entry is the current release-preparation target (v4.3.2). Entries below
+are an older root-level snapshot kept for reference and stop at 4.0.1.
 
 ## [4.0.1] - 2026-06-12
 

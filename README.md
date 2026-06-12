@@ -237,6 +237,7 @@ npm pack --dry-run
 - [docs/V4_3_2_DOCUMENTATION_CLEANUP_REPORT.md](docs/V4_3_2_DOCUMENTATION_CLEANUP_REPORT.md) - release-prep documentation cleanup report.
 - [docs/V4_3_2_GITHUB_VERCEL_CHECK_REPORT.md](docs/V4_3_2_GITHUB_VERCEL_CHECK_REPORT.md) - GitHub/Vercel readiness report.
 - [docs/V4_3_2_INDEPENDENT_AUDIT_PACKAGE.md](docs/V4_3_2_INDEPENDENT_AUDIT_PACKAGE.md) - package for an independent reviewer.
+- [docs/V4_3_2_DEADCODE_AUDIT_REPORT.md](docs/V4_3_2_DEADCODE_AUDIT_REPORT.md) - independent dead-code, architecture, and runtime audit.
 - [docs/V4_DIGITAL_BRAIN_RECOVERY.md](docs/V4_DIGITAL_BRAIN_RECOVERY.md) - transformation recovery file.
 
 ## License

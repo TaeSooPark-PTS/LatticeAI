@@ -182,6 +182,14 @@ flowchart LR
 shims remain for older imports, but new runtime construction flows through the
 package and application services.
 
+Packaging note (verified v4.3.2): `lattice_brain.core`, `lattice_brain.archive`,
+and `lattice_brain.storage.*` are standalone implementations. The knowledge
+graph, memory, context, conversation, and ingestion modules are physically
+hosted in `latticeai/brain/` and re-exported through `lattice_brain.*` module
+paths, so importing those `lattice_brain` modules currently pulls in
+`latticeai.brain`. The Brain Core boundary is therefore an import-path contract,
+not yet a fully independent distribution.
+
 ## StorageEngine
 
 ```mermaid
