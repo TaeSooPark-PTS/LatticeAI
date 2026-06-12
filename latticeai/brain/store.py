@@ -53,10 +53,15 @@ class KnowledgeGraphStore(
         self._embedding_model = (
             embedder if embedder is not None else LocalEmbeddingModel()
         )
+        self._v2_projection_available = False
         self._init_db()
         # Read graph queries from the v2 projection (kgv2_* views) when available.
         # Toggle off (e.g. in tests) to compare against the legacy tables.
-        self._read_from_v2 = KGStoreV2 is not None and _READ_FROM_V2_DEFAULT
+        self._read_from_v2 = (
+            KGStoreV2 is not None
+            and _READ_FROM_V2_DEFAULT
+            and self._v2_projection_available
+        )
 
     def _read_tables(self) -> tuple:
         """Return (nodes_table, edges_table) for read queries.

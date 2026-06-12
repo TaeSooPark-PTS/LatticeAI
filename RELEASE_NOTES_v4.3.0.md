@@ -10,8 +10,8 @@ API, and user-data compatibility.
 ## Highlights
 
 - `.latticebrain` archives are now the primary portable brain format, with
-  encrypted DB, blobs, workspace state, settings, signed bundles, storage
-  metadata, provenance, and public device identity metadata.
+  encrypted DB, blobs, workspace state, settings, workspace export bundles when
+  present, storage metadata, provenance, and public device identity metadata.
 - Archive inspect, verify, import, restore, and restore dry-run are exposed
   through real FastAPI routes and the System settings view.
 - Destructive archive restore/import requires explicit admin confirmation.

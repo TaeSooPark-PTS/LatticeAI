@@ -82,6 +82,12 @@ export default function App() {
   const [drawer, setDrawer] = React.useState(false);
   const [palette, setPalette] = React.useState(false);
   const health = useQuery({ queryKey: ["health"], queryFn: latticeApi.health });
+  const desktop = useQuery({
+    queryKey: ["desktopBackendStatus"],
+    queryFn: latticeApi.desktopBackendStatus,
+    enabled: Boolean(window.__TAURI_INTERNALS__),
+    refetchInterval: 5000,
+  });
   const workspace = useQuery({ queryKey: ["workspaceOs"], queryFn: latticeApi.workspaceOs });
 
   React.useEffect(() => {
@@ -97,6 +103,11 @@ export default function App() {
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
   }, []);
+
+  const healthData = (health.data?.data || {}) as Record<string, unknown>;
+  const appVersion = typeof healthData.version === "string" ? healthData.version : null;
+  const desktopData = (desktop.data?.data || {}) as Record<string, unknown>;
+  const desktopError = typeof desktopData.last_error === "string" ? desktopData.last_error : desktop.data?.error;
 
   const rail = (
     <aside className="flex h-full w-64 shrink-0 flex-col border-r border-border bg-card">
@@ -134,6 +145,9 @@ export default function App() {
       </nav>
       <div className="border-t border-border p-3 text-xs text-muted-foreground">
         <div>Server: {health.data?.ok ? "online" : "unavailable"}</div>
+        {window.__TAURI_INTERNALS__ ? (
+          <div>Sidecar: {desktopData.running ? "running" : desktopError ? `unavailable (${desktopError})` : "starting"}</div>
+        ) : null}
         <div>Workspace: {String((workspace.data?.data as Record<string, unknown>)?.active_workspace || "local")}</div>
       </div>
     </aside>
@@ -154,7 +168,7 @@ export default function App() {
           <div className="flex min-w-0 items-center gap-2">
             <Button variant="ghost" size="icon" className="lg:hidden" onClick={() => setDrawer(true)}><Menu className="h-5 w-5" /></Button>
             <div className="min-w-0">
-              <div className="truncate text-sm text-muted-foreground">v4.1.0 Release Candidate</div>
+              <div className="truncate text-sm text-muted-foreground">{appVersion ? `v${appVersion}` : "Version unavailable"}</div>
               <div className="truncate font-medium">{primaryRoutes.find((item) => item.id === route.primary)?.label}</div>
             </div>
           </div>

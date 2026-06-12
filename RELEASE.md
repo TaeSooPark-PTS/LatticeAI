@@ -7,6 +7,33 @@
 > PyPI / npm / VS Code Marketplace / Open VSX 배포는 아래 수동 절차로만
 > 진행합니다. 태그 생성은 패키지 스토어 publish를 자동으로 트리거하지 않습니다.
 
+## v4.3.1 RC 릴리스 노트 (2026-06-12)
+
+Lattice AI v4.3.1 — End-User Audit Repair RC. v4.3.0 published artifact
+experience에서 확인된 P0/P1 blocker를 architecture redesign 없이 수정한다.
+GitHub Release, tag, external package registry publish는 이 RC 작업에
+포함하지 않는다.
+
+- **Fixed (Desktop)**: Tauri shell resolves and starts the FastAPI sidecar from
+  installed or bundled runtime paths, records sidecar logs/errors, surfaces
+  status, and shuts down the sidecar on close.
+- **Fixed (npm)**: npm clean install includes `requirements.txt` and fails
+  honestly if dependency bootstrap cannot complete.
+- **Fixed (Privacy/model load)**: Model Load refuses implicit runtime installs
+  and model downloads by default; token/model presence alone cannot start
+  outbound communication.
+- **Fixed (Act)**: agent simulation is an unavailable state rather than a
+  recorded success; workflows expose real create/import/export/run paths.
+- **Fixed (Status honesty)**: stale RC label, configured port/SSO defaults,
+  Postgres dependency status, sqlite-vec fallback reporting, and `.latticebrain`
+  bundle-section claims now match runtime behavior.
+- **Expected artifacts**:
+  - `dist/ltcai-4.3.1-py3-none-any.whl`
+  - `dist/ltcai-4.3.1.tar.gz`
+  - `dist/ltcai-4.3.1.vsix`
+  - `ltcai-4.3.1.tgz`
+  - `src-tauri/target/release/bundle/dmg/Lattice AI_4.3.1_aarch64.dmg`
+
 ## v4.3.0 RC 릴리스 노트 (2026-06-12)
 
 Lattice AI v4.3.0 — Portability & Product Hardening. `main` after v4.2.0 위에서
@@ -17,8 +44,8 @@ validation을 추가한다. GitHub Release, tag, external package registry publi
 이 RC 작업에 포함하지 않는다.
 
 - **Added (Portable archive)**: encrypted `.latticebrain` archives include the
-  brain DB, blobs, portable JSON state, signed bundles, storage metadata,
-  provenance, and public device identity metadata.
+  brain DB, blobs, portable JSON state, workspace export bundles when present,
+  storage metadata, provenance, and public device identity metadata.
 - **Added (Backup/restore safety)**: archive inspect/verify/import/restore and
   restore dry-run APIs; destructive restore/import requires explicit admin
   confirmation.
@@ -826,14 +853,14 @@ Knowledge Graph v2 read/write cutover. 자세한 내용은
    - `npm run release:artifacts`
    - `npm run release:validate`
 
-현재 `v4.3.0` 기준 필수 산출물:
+현재 `v4.3.1` 기준 필수 산출물:
 
 ```text
-dist/ltcai-4.3.0-py3-none-any.whl
-dist/ltcai-4.3.0.tar.gz
-dist/ltcai-4.3.0.vsix
-ltcai-4.3.0.tgz
-src-tauri/target/release/bundle/dmg/Lattice AI_4.3.0_aarch64.dmg
+dist/ltcai-4.3.1-py3-none-any.whl
+dist/ltcai-4.3.1.tar.gz
+dist/ltcai-4.3.1.vsix
+ltcai-4.3.1.tgz
+src-tauri/target/release/bundle/dmg/Lattice AI_4.3.1_aarch64.dmg
 ```
 
 ## 2) npm 배포

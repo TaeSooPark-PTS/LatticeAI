@@ -12,6 +12,7 @@ import shutil
 from pathlib import Path
 from typing import Any, Dict, Mapping, Optional
 
+from latticeai import __version__
 from latticeai.core.config import Config
 
 
@@ -160,7 +161,7 @@ def build_product_hardening_status(
         identity = device_identity.describe()
     data_dir = Path(config.data_dir)
     return {
-        "version": "4.3.0",
+        "version": __version__,
         "startup": {
             "local_only_default": default_startup_local_only(config, env=env),
             "host": config.host,

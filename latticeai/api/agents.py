@@ -46,7 +46,7 @@ def create_agents_router(
     run_executor: Any = None,
 ) -> APIRouter:
     from latticeai.core.multi_agent import AGENT_ROLES, ROLE_AGENT_IDS
-    from latticeai.services.agent_runtime import AgentRuntime
+    from latticeai.services.agent_runtime import AgentRuntime, AgentRuntimeUnavailable
 
     # Single AgentRuntime boundary: the router (and via it, the frontend) talks
     # to this façade instead of reaching into the orchestrator/store directly.
@@ -186,6 +186,8 @@ def create_agents_router(
             )
         except ValueError as exc:
             raise HTTPException(status_code=400, detail=str(exc)) from exc
+        except AgentRuntimeUnavailable as exc:
+            raise HTTPException(status_code=409, detail=str(exc)) from exc
         except PermissionError as exc:
             # A pre_run hook gated this run (e.g. a policy/permission hook).
             raise HTTPException(status_code=403, detail=str(exc)) from exc

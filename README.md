@@ -203,31 +203,31 @@ npm run dev
 
 ## Latest Release
 
-### v4.3.0 RC — Portability & Product Hardening
+### v4.3.1 RC — End-User Audit Repair
 
-- **Portable `.latticebrain` archives** — encrypted archives now include the
-  brain DB, blobs, workspace state, settings, signed bundles, storage metadata,
-  provenance, and public device identity metadata.
-- **Safe backup/restore flows** — archive inspect, verify, import, restore, and
-  restore dry-run are real API-backed operations; destructive restore requires
-  explicit admin confirmation.
-- **Migration safety** — live SQLite-to-Postgres migration creates and verifies
-  a pre-migration backup before copying data.
-- **Desktop hardening** — Tauri sidecar startup, status, restart, shutdown, and
-  loopback-only/default-off guards are hardened.
-- **Privacy audit surface** — token presence alone no longer enables Telegram or
-  external connectors; admin status reports storage, backup health, device
-  identity, permissions, and opt-in integration state.
+- **Desktop startup repair** — Tauri launches a visible app, resolves the
+  FastAPI sidecar from installed or bundled runtime paths, reports sidecar
+  status, and shuts it down on close.
+- **Clean npm install repair** — npm bootstrap ships the required Python
+  requirements file and fails honestly if dependencies cannot be installed.
+- **No default outbound model work** — Model Load refuses implicit downloads or
+  runtime installs unless the user gives explicit download/install consent.
+- **Honest Act surfaces** — agent simulation is not recorded as real success,
+  and workflow create/import/export/run controls call the existing workflow API.
+- **Storage/portability honesty** — sqlite-vec fallback, Postgres dependency
+  status, configured ports, and `.latticebrain` bundle sections match runtime
+  behavior.
 - **Release hardening** — exact-version validation covers wheel, sdist, npm tgz,
   VSIX, and Tauri DMG artifacts.
 
-See [RELEASE_NOTES_v4.3.0.md](RELEASE_NOTES_v4.3.0.md),
+See [RELEASE_NOTES_v4.3.1.md](RELEASE_NOTES_v4.3.1.md),
+[RELEASE_NOTES_v4.3.0.md](RELEASE_NOTES_v4.3.0.md),
 [docs/kg-schema.md](docs/kg-schema.md),
 [FEATURE_STATUS.md](FEATURE_STATUS.md).
 
 ## How it works — every source converges into the graph
 
-As of v4.3.0, data sources flow through the brain ingestion pipeline into
+As of v4.3.1, data sources flow through the brain ingestion pipeline into
 the Knowledge Graph — no source bypasses it, none becomes an isolated silo:
 
 ```text
@@ -290,6 +290,7 @@ For the deeper design, see [ARCHITECTURE.md](ARCHITECTURE.md) and
 ### Releases
 
 - [RELEASE_NOTES.md](RELEASE_NOTES.md) — current release notes
+- [RELEASE_NOTES_v4.3.1.md](RELEASE_NOTES_v4.3.1.md)
 - [RELEASE_NOTES_v4.3.0.md](RELEASE_NOTES_v4.3.0.md)
 - [RELEASE_NOTES_v4.2.0.md](RELEASE_NOTES_v4.2.0.md)
 - [RELEASE_NOTES_v4.1.0.md](RELEASE_NOTES_v4.1.0.md)
@@ -305,6 +306,7 @@ For the deeper design, see [ARCHITECTURE.md](ARCHITECTURE.md) and
 
 | Version | Theme |
 | --- | --- |
+| **4.3.1** | End-User Audit Repair RC — desktop sidecar startup, npm clean install, default-off model downloads, honest agent/workflow unavailable states, configured port reporting, storage/portable archive honesty |
 | **4.3.0** | Portability & Product Hardening RC — portable `.latticebrain` archives, confirmed restore/import, pre-migration backup verification, Tauri sidecar hardening, local-only/default-off integration guards, exact-version DMG validation |
 | **4.2.0** | Brain Core & Storage Rebuild — independent `lattice_brain` package, pluggable storage layer, sqlite-vec/pgvector capability reporting, explicit Postgres migration, consent-gated Docker setup, encrypted `.latticebrain` archives |
 | **4.1.0** | Frontend & Desktop Rebuild RC — React/Vite/OpenAPI desktop SPA, Tauri 2.0 primary shell, graph-first navigation, and legacy static frontend removal |

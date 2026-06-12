@@ -60,9 +60,13 @@ function ensureManagedPython() {
 
   if (!canImport(managedPython, "fastapi")) {
     const requirements = path.join(root, "requirements.txt");
+    if (!fs.existsSync(requirements)) {
+      console.error(`[LTCAI] Missing ${requirements}. The npm package is incomplete and cannot start the Python server.`);
+      process.exit(1);
+    }
     console.log("[LTCAI] Installing Python dependencies. This can take a few minutes on first run.");
-    if (!runSync(managedPython, ["-m", "pip", "install", "--upgrade", "pip"])) return null;
-    if (!runSync(managedPython, ["-m", "pip", "install", "-r", requirements])) return null;
+    if (!runSync(managedPython, ["-m", "pip", "install", "--upgrade", "pip"])) process.exit(1);
+    if (!runSync(managedPython, ["-m", "pip", "install", "-r", requirements])) process.exit(1);
   }
 
   return managedPython;

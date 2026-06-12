@@ -40,7 +40,6 @@ export function LibraryPage({ initialTab }: { initialTab?: string }) {
 }
 
 function ModelsPanel() {
-  const qc = useQueryClient();
   const models = useQuery({ queryKey: ["models"], queryFn: latticeApi.models });
   const emb = useQuery({ queryKey: ["embeddings"], queryFn: latticeApi.embeddingsStatus });
   const catalog = [
@@ -55,18 +54,25 @@ function ModelsPanel() {
             {(catalog.length ? catalog : asArray<Record<string, unknown>>((data as Record<string, unknown>).loaded)).slice(0, 14).map((model, index) => {
               const id = String(model.id || model.model_id || model.name || index);
               const loaded = asArray<string>((data as Record<string, unknown>).loaded).includes(id) || (data as Record<string, unknown>).current === id || model.state === "loaded";
+              const loadId = String(model.recommended_load_id || id);
+              const engine = String(model.recommended_engine || model.engine || "");
+              const loadAvailable = Boolean(model.load_available) || loaded;
+              const loadStatus = String(model.load_status || (loaded ? "loaded" : "unavailable"));
+              const unavailableReason = String(model.unavailable_reason || "Unavailable until the backend reports a local model/runtime ready.");
               return (
                 <div key={id} className="flex flex-wrap items-center justify-between gap-3 rounded-md border border-border bg-background p-3">
                   <div>
                     <div className="font-medium">{String(model.name || id)}</div>
                     <div className="text-sm text-muted-foreground">{String(model.family || model.engine || model.recommended_engine || "local")}</div>
+                    {!loaded && !loadAvailable ? <div className="mt-1 text-xs text-muted-foreground">{unavailableReason}</div> : null}
                   </div>
                   <div className="flex items-center gap-2">
-                    <Badge variant={loaded ? "success" : "muted"}>{loaded ? "loaded" : "available"}</Badge>
+                    <Badge variant={loaded ? "success" : loadAvailable ? "muted" : "warning"}>{loaded ? "loaded" : loadStatus}</Badge>
                     <ActionButton
                       label={loaded ? "Unload" : "Load"}
-                      action={() => loaded ? latticeApi.unloadModel(id) : latticeApi.loadModel(id, String(model.recommended_engine || model.engine || ""))}
+                      action={() => loaded ? latticeApi.unloadModel(loadId) : latticeApi.loadModel(loadId, engine, false)}
                       invalidate={["models"]}
+                      disabled={!loaded && !loadAvailable}
                     />
                   </div>
                 </div>

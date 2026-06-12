@@ -1,0 +1,27 @@
+{
+  "lattice_workflow_export": "2.2.0",
+  "name": "Audit manual workflow",
+  "nodes": [
+    {
+      "id": "trigger",
+      "type": "trigger",
+      "name": "Manual start",
+      "config": {
+        "trigger": "manual"
+      },
+      "next": "output"
+    },
+    {
+      "id": "output",
+      "type": "output",
+      "name": "Output",
+      "config": {
+        "value": "Workflow completed"
+      },
+      "next": null
+    }
+  ],
+  "metadata": {
+    "audit": "v4.3.1"
+  }
+}

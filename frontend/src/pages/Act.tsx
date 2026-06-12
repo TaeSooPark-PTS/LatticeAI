@@ -58,6 +58,11 @@ function AgentsPanel() {
     mutationFn: () => latticeApi.registerAgent({ name: agentName, type: "custom", capabilities: [] }),
     onSuccess: () => qc.invalidateQueries({ queryKey: ["agentRegistry"] }),
   });
+  const runtimeData = (runtime.data?.data || {}) as Record<string, unknown>;
+  const runtimeMeta = (runtimeData.runtime || {}) as Record<string, unknown>;
+  const runtimeReady = Boolean(runtimeMeta.ready);
+  const runtimeReason = String(runtimeMeta.unavailable_reason || "Load an LLM-backed model before running agents.");
+  const canRunAgent = Boolean(goal.trim()) && runtimeReady && !run.isPending;
   return (
     <div className="grid gap-4 xl:grid-cols-[0.9fr_1.1fr]">
       <Card>
@@ -67,7 +72,15 @@ function AgentsPanel() {
         </CardHeader>
         <CardContent className="space-y-3">
           <Textarea value={goal} onChange={(e) => setGoal(e.target.value)} placeholder="Describe the objective..." />
-          <Button disabled={!goal.trim() || run.isPending} onClick={() => run.mutate()}><Play className="h-4 w-4" /> Run planner/executor/reviewer</Button>
+          {!runtimeReady ? <Badge variant="warning">{runtimeReason}</Badge> : null}
+          <Button
+            className="w-full"
+            variant={runtimeReady ? "default" : "outline"}
+            disabled={!canRunAgent}
+            onClick={() => run.mutate()}
+          >
+            <Play className="h-4 w-4" /> {runtimeReady ? "Run pipeline" : "Agent execution unavailable"}
+          </Button>
           {run.data ? <JsonView value={run.data.data || run.data.error} /> : null}
         </CardContent>
       </Card>
@@ -162,8 +175,26 @@ function RunList({ runs, kind }: { runs: Array<Record<string, unknown>>; kind: "
 }
 
 function WorkflowsPanel() {
+  const qc = useQueryClient();
   const defs = useQuery({ queryKey: ["workflowDefinitions"], queryFn: latticeApi.workflowDefinitions });
   const triggers = useQuery({ queryKey: ["workflowTriggers"], queryFn: latticeApi.workflowTriggers });
+  const [name, setName] = React.useState("Manual workflow");
+  const [importText, setImportText] = React.useState("");
+  const create = useMutation({
+    mutationFn: () => latticeApi.createWorkflow({
+      name: name.trim() || "Manual workflow",
+      nodes: manualWorkflowNodes(),
+      metadata: { created_from: "desktop-act-ui" },
+    }),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ["workflowDefinitions"] }),
+  });
+  const importWorkflow = useMutation({
+    mutationFn: () => latticeApi.importWorkflow(JSON.parse(importText) as Record<string, unknown>),
+    onSuccess: () => {
+      setImportText("");
+      qc.invalidateQueries({ queryKey: ["workflowDefinitions"] });
+    },
+  });
   const workflows = asArray<Record<string, unknown>>((defs.data?.data as Record<string, unknown>)?.workflows);
   const nodes: Node[] = workflows.slice(0, 12).map((workflow, index) => ({
     id: String(workflow.id || workflow.workflow_id || index),
@@ -189,7 +220,17 @@ function WorkflowsPanel() {
       </Card>
       <DataPanel title="Definitions" result={defs.data}>
         {() => (
-          <div className="space-y-2">
+          <div className="space-y-3">
+            <div className="grid gap-2 rounded-md border border-border p-3">
+              <div className="flex flex-wrap gap-2">
+                <Input value={name} onChange={(event) => setName(event.target.value)} placeholder="Workflow name" />
+                <Button disabled={create.isPending} onClick={() => create.mutate()}>Create</Button>
+              </div>
+              <Textarea value={importText} onChange={(event) => setImportText(event.target.value)} placeholder="Paste exported workflow JSON" />
+              <Button variant="outline" disabled={!importText.trim() || importWorkflow.isPending} onClick={() => importWorkflow.mutate()}>Import</Button>
+              {create.data ? <JsonView value={create.data.data || create.data.error} /> : null}
+              {importWorkflow.data ? <JsonView value={importWorkflow.data.data || importWorkflow.data.error} /> : null}
+            </div>
             {workflows.length ? workflows.map((workflow) => {
               const id = String(workflow.id || workflow.workflow_id);
               return (
@@ -197,6 +238,7 @@ function WorkflowsPanel() {
                   <div className="font-medium">{String(workflow.name || id)}</div>
                   <div className="mt-2 flex gap-2">
                     <ActionButton label="Run" action={() => latticeApi.runWorkflow(id)} invalidate={["workflowRuns"]} />
+                    <ActionButton label="Export" action={() => latticeApi.exportWorkflow(id)} />
                   </div>
                 </div>
               );
@@ -209,6 +251,25 @@ function WorkflowsPanel() {
       </DataPanel>
     </div>
   );
+}
+
+function manualWorkflowNodes(): Array<Record<string, unknown>> {
+  return [
+    {
+      id: "trigger",
+      type: "trigger",
+      name: "Manual start",
+      config: { trigger: "manual" },
+      next: "output",
+    },
+    {
+      id: "output",
+      type: "output",
+      name: "Output",
+      config: { value: "Workflow completed" },
+      next: null,
+    },
+  ];
 }
 
 function HooksPanel() {

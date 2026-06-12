@@ -6183,6 +6183,11 @@ export interface components {
         LoadModelRequest: {
             /** Adapter Path */
             adapter_path?: string | null;
+            /**
+             * Allow Download
+             * @default false
+             */
+            allow_download: boolean;
             /** Draft Model Id */
             draft_model_id?: string | null;
             /** Engine */
@@ -6416,6 +6421,11 @@ export interface components {
         };
         /** PrepareModelRequest */
         PrepareModelRequest: {
+            /**
+             * Allow Download
+             * @default false
+             */
+            allow_download: boolean;
             /** Engine */
             engine?: string | null;
             /** Model */

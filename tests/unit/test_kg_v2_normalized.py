@@ -126,6 +126,106 @@ def test_edge_identity_survives_normalization_collision(store):
     assert legacy == v2
 
 
+def test_v2_read_views_self_heal_after_edge_identity_rebuild(tmp_path):
+    """Startup recreates read views before rebuilding an older edges_v2 table."""
+
+    db = tmp_path / "kg.sqlite"
+    with sqlite3.connect(db) as conn:
+        conn.executescript(
+            """
+            CREATE TABLE kg_meta (key TEXT PRIMARY KEY, value TEXT NOT NULL);
+            INSERT INTO kg_meta(key, value) VALUES ('projection_version', '4');
+
+            CREATE TABLE nodes (
+              id TEXT PRIMARY KEY,
+              type TEXT NOT NULL,
+              title TEXT NOT NULL,
+              summary TEXT,
+              metadata_json TEXT NOT NULL CHECK (json_valid(metadata_json)),
+              raw_json TEXT NOT NULL CHECK (json_valid(raw_json)),
+              created_at TEXT NOT NULL,
+              updated_at TEXT NOT NULL
+            );
+            CREATE TABLE edges (
+              id TEXT PRIMARY KEY,
+              from_node TEXT NOT NULL,
+              to_node TEXT NOT NULL,
+              type TEXT NOT NULL,
+              weight REAL NOT NULL DEFAULT 1.0,
+              metadata_json TEXT NOT NULL CHECK (json_valid(metadata_json)),
+              created_at TEXT NOT NULL
+            );
+            INSERT INTO nodes(id,type,title,summary,metadata_json,raw_json,created_at,updated_at)
+              VALUES ('a','Computer','Mac','local machine','{}','{}','t','t'),
+                     ('b','Concept','Brain','workspace','{}','{}','t','t');
+            INSERT INTO edges(id,from_node,to_node,type,weight,metadata_json,created_at)
+              VALUES ('e1','a','b','mentions',1.0,'{}','t');
+
+            CREATE TABLE nodes_v2 (
+              id TEXT PRIMARY KEY,
+              type TEXT NOT NULL,
+              legacy_type TEXT,
+              label TEXT NOT NULL,
+              summary TEXT,
+              attrs TEXT NOT NULL DEFAULT '{}',
+              embedding BLOB,
+              owner_id TEXT,
+              visibility TEXT NOT NULL DEFAULT 'private',
+              created_at TEXT NOT NULL,
+              updated_at TEXT NOT NULL,
+              style TEXT,
+              tone TEXT,
+              importance_score REAL NOT NULL DEFAULT 0.0,
+              last_used TEXT
+            );
+            CREATE TABLE edges_v2 (
+              id TEXT PRIMARY KEY,
+              source TEXT NOT NULL,
+              target TEXT NOT NULL,
+              type TEXT NOT NULL,
+              legacy_type TEXT NOT NULL DEFAULT '',
+              weight REAL NOT NULL DEFAULT 1.0,
+              confidence REAL NOT NULL DEFAULT 1.0,
+              evidence TEXT NOT NULL DEFAULT '[]',
+              metadata TEXT NOT NULL DEFAULT '{}',
+              created_by TEXT NOT NULL DEFAULT 'user',
+              created_at TEXT NOT NULL,
+              UNIQUE(source, target, legacy_type),
+              FOREIGN KEY(source) REFERENCES nodes_v2(id) ON DELETE CASCADE,
+              FOREIGN KEY(target) REFERENCES nodes_v2(id) ON DELETE CASCADE
+            );
+            INSERT INTO nodes_v2(id,type,legacy_type,label,summary,attrs,created_at,updated_at)
+              VALUES ('a','COMPUTER','Computer','Mac','local machine','{}','t','t'),
+                     ('b','CONCEPT','Concept','Brain','workspace','{}','t','t');
+            INSERT INTO edges_v2(id,source,target,type,legacy_type,weight,created_at)
+              VALUES ('e1','a','b','MENTIONS','mentions',1.0,'t');
+
+            CREATE VIEW kgv2_nodes AS
+              SELECT id, COALESCE(legacy_type, type) AS type, label AS title,
+                     summary, attrs AS metadata_json, created_at, updated_at
+              FROM nodes_v2;
+            CREATE VIEW kgv2_edges AS
+              SELECT id, source AS from_node, target AS to_node,
+                     COALESCE(legacy_type, type) AS type, weight,
+                     metadata AS metadata_json, created_at
+              FROM edges_v2;
+            """
+        )
+
+    healed = kg.KnowledgeGraphStore(db, tmp_path / "blobs")
+    assert healed._read_from_v2 is True
+    graph = healed.graph(limit=10)
+    assert {node["id"] for node in graph["nodes"]} == {"a", "b"}
+    assert [(edge["from"], edge["to"], edge["type"]) for edge in graph["edges"]] == [
+        ("a", "b", "mentions")
+    ]
+    with healed._connect() as conn:
+        view_sql = conn.execute(
+            "SELECT sql FROM sqlite_master WHERE type='view' AND name='kgv2_edges'"
+        ).fetchone()[0]
+    assert "edges_v2_old" not in view_sql
+
+
 def test_edge_reupsert_tracks_confidence_and_updates_in_place(store):
     """Re-upserting the same (source,target,legacy_type) edge updates in place and
     refreshes the dedicated confidence column (kept in sync with metadata)."""

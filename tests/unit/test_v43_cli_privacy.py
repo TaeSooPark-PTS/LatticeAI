@@ -28,3 +28,16 @@ def test_cli_telegram_token_presence_does_not_start_notification(monkeypatch):
     ltcai_cli.main()
 
     assert calls == []
+
+
+def test_cli_tunnel_env_presence_does_not_start_cloudflare(monkeypatch):
+    tunnel_calls = []
+
+    monkeypatch.setenv("LATTICEAI_TUNNEL", "true")
+    monkeypatch.setattr(sys, "argv", ["LTCAI", "--host", "127.0.0.1", "--port", "8998"])
+    monkeypatch.setitem(sys.modules, "uvicorn", types.SimpleNamespace(run=lambda *args, **kwargs: None))
+    monkeypatch.setattr(ltcai_cli, "_start_tunnel", lambda port: tunnel_calls.append(port))
+
+    ltcai_cli.main()
+
+    assert tunnel_calls == []

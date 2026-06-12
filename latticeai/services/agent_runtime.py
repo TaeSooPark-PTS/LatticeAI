@@ -50,6 +50,10 @@ def _now() -> str:
     return datetime.now().isoformat(timespec="seconds")
 
 
+class AgentRuntimeUnavailable(RuntimeError):
+    """Raised when a product run would otherwise persist simulation output."""
+
+
 class AgentRuntime:
     def __init__(
         self,
@@ -60,6 +64,7 @@ class AgentRuntime:
         append_audit_event: Callable[..., None],
         max_retries_cap: int = 5,
         hooks: Any = None,
+        allow_simulation_runs: bool = False,
     ):
         self._store = store
         self._orchestrator_factory = orchestrator_factory
@@ -69,6 +74,7 @@ class AgentRuntime:
         # Lifecycle hooks registry (optional). When present, ``start`` fires the
         # ``pre_run`` / ``post_run`` hooks; a blocking ``pre_run`` aborts the run.
         self._hooks = hooks
+        self._allow_simulation_runs = bool(allow_simulation_runs)
         self._run_executor: Any = None
 
     def attach_executor(self, executor: Any) -> None:
@@ -85,6 +91,7 @@ class AgentRuntime:
             "default_pipeline": list(CORE_PIPELINE),
             "max_retries_cap": self._max_retries_cap,
             "execution_mode": self._execution_mode(),
+            "simulation_runs_allowed": self._allow_simulation_runs,
             "cancellation": (
                 "cooperative; running synchronous model/tool calls finish their current step before a cancelled status is persisted"
                 if self._run_executor is not None else
@@ -107,6 +114,7 @@ class AgentRuntime:
     def health(self) -> Dict[str, Any]:
         checks: Dict[str, Any] = {}
         ok = True
+        ready = True
         try:
             self._store.list_agents(workspace_id=None)
             checks["run_store"] = {"status": "ok"}
@@ -114,12 +122,42 @@ class AgentRuntime:
             ok = False
             checks["run_store"] = {"status": "error", "detail": str(exc)}
         try:
-            self._orchestrator_factory(None, None)
-            checks["orchestrator"] = {"status": "ok"}
+            orchestrator = self._orchestrator_factory(None, None)
+            mode = getattr(orchestrator, "mode", "simulation")
+            if mode == "simulation":
+                if self._allow_simulation_runs:
+                    checks["orchestrator"] = {
+                        "status": "ok",
+                        "mode": mode,
+                        "detail": "Simulation runs are explicitly enabled for this non-product runtime.",
+                    }
+                else:
+                    ready = False
+                    checks["orchestrator"] = {
+                        "status": "unavailable",
+                        "mode": mode,
+                        "detail": "No LLM-backed model is loaded; product execution API refuses simulation runs.",
+                    }
+            else:
+                checks["orchestrator"] = {"status": "ok", "mode": mode}
         except Exception as exc:  # pragma: no cover - defensive
             ok = False
             checks["orchestrator"] = {"status": "error", "detail": str(exc)}
-        return {"status": "ok" if ok else "degraded", "checks": checks}
+        return {
+            "status": "ok" if ok and ready else "unavailable" if ok else "degraded",
+            "ready": bool(ok and ready),
+            "checks": checks,
+        }
+
+    def _live_orchestrator(self, user_email: Optional[str], scope: Optional[str]) -> Any:
+        orchestrator = self._orchestrator_factory(user_email or None, scope)
+        mode = getattr(orchestrator, "mode", "simulation")
+        if mode == "simulation" and not self._allow_simulation_runs:
+            raise AgentRuntimeUnavailable(
+                "Agent execution is unavailable because no LLM-backed model is loaded. "
+                "Simulation mode is disabled in the product execution API so it cannot be recorded as real success."
+            )
+        return orchestrator
 
     # ── roster + status ───────────────────────────────────────────────────
     def _roster(self, runs: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
@@ -163,16 +201,21 @@ class AgentRuntime:
             listing = {"agents": [], "runs": [], "error": str(exc)}
         runs = list(listing.get("runs") or [])
         active = sum(1 for r in runs if str(r.get("status")) in _ACTIVE_STATUSES)
+        health = self.health()
+        orchestrator_status = (health.get("checks") or {}).get("orchestrator") or {}
+        ready = bool(health.get("ready"))
         return {
             "runtime": {
-                "ready": True,
+                "ready": ready,
                 "version": MULTI_AGENT_VERSION,
                 "execution_mode": self._execution_mode(),
+                "mode": orchestrator_status.get("mode", "unknown"),
+                "unavailable_reason": None if ready else orchestrator_status.get("detail"),
                 "default_pipeline": list(CORE_PIPELINE),
                 "total_runs": len(runs),
                 "active_runs": active,
             },
-            "health": self.health(),
+            "health": health,
             "roles": self.roles(),
             "agents": self._roster(runs),
             "runs": runs[:25],
@@ -288,11 +331,8 @@ class AgentRuntime:
             user_email=user_email,
             scope=scope,
         )
-        try:
-            orchestrator = self._orchestrator_factory(user_email or None, scope)
-            mode = getattr(orchestrator, "mode", "simulation")
-        except Exception:
-            mode = "simulation"
+        orchestrator = self._live_orchestrator(user_email, scope)
+        mode = getattr(orchestrator, "mode", "llm")
         run = self._store.record_agent_run(
             agent_id=ROLE_AGENT_IDS.get("executor", "agent:executor"),
             status="queued",
@@ -349,7 +389,7 @@ class AgentRuntime:
             started_at=run.get("started_at") or _now(),
         )
         try:
-            orchestrator = self._orchestrator_factory(user_email or None, scope)
+            orchestrator = self._live_orchestrator(user_email, scope)
             result = orchestrator.run(
                 goal,
                 user_email=user_email or None,
@@ -452,7 +492,7 @@ class AgentRuntime:
                 )
                 raise PermissionError(pre_dispatch.get("block_reason") or "Agent run blocked by a pre_run hook.")
 
-        orchestrator = self._orchestrator_factory(user_email or None, scope)
+        orchestrator = self._live_orchestrator(user_email, scope)
         result = orchestrator.run(
             goal,
             user_email=user_email or None,

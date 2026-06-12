@@ -1,0 +1,50 @@
+{
+  "workflow": {
+    "id": "workflow-fd0857f330951fcd",
+    "name": "Audit manual workflow",
+    "steps": [
+      {
+        "action": "trigger",
+        "node": "trigger"
+      },
+      {
+        "action": "output",
+        "node": "output"
+      }
+    ],
+    "user_email": null,
+    "workspace_id": "personal",
+    "metadata": {
+      "audit": "v4.3.1"
+    },
+    "events": [
+      {
+        "type": "created",
+        "timestamp": "2026-06-12T23:11:34"
+      }
+    ],
+    "created_at": "2026-06-12T23:11:34",
+    "updated_at": "2026-06-12T23:11:34",
+    "nodes": [
+      {
+        "id": "trigger",
+        "type": "trigger",
+        "name": "Manual start",
+        "config": {
+          "trigger": "manual"
+        },
+        "next": "output"
+      },
+      {
+        "id": "output",
+        "type": "output",
+        "name": "Output",
+        "config": {
+          "value": "Workflow completed"
+        },
+        "next": null
+      }
+    ],
+    "graph_node_id": "event:5c8fe11f1267ebde986401be"
+  }
+}

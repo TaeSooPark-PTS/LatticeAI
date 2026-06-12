@@ -5,28 +5,22 @@
 > completed analysis. **Update this file before ending any phase and before any
 > likely session/context/usage limit.**
 >
-> Last updated: 2026-06-12 — v4.3.0 Portability/Product Hardening RC; Remaining Gaps remain empty
+> Last updated: 2026-06-12 — v4.3.1 End-User Audit Repair RC; Remaining Gaps remain empty
 
 ---
 
-## 0. RELEASE STATUS (v4.3.0 RC)
+## 0. RELEASE STATUS (v4.3.1 RC)
 
-**v4.3.0 hardens the v4.2 Brain Core/storage architecture into a portable,
-user-safe desktop release candidate; implementation gaps remain empty.**
-Latest implementation milestone: `.latticebrain` archive format v2 is the
-primary portable brain format and carries encrypted graph DB, blobs, portable
-JSON state, signed bundles, storage metadata, provenance, public device identity
-metadata, manifest hashes, inspect, verify, import, restore, and dry-run restore.
-Restore/import requires explicit confirmation unless dry-run. Live
-SQLite-to-Postgres migration now creates and verifies a pre-migration backup
-before copying data. Tauri exposes backend status/restart/shutdown and starts
-the sidecar with loopback/default-off guards. Admin product hardening status
-reports local-only startup posture, storage, backup health, device identity,
-permissions, and opt-in external integration state.
-The v4.3.0 RC process builds validated artifacts only. It does not tag, create a
+**v4.3.1 repairs the v4.3.0 end-user audit blockers without redesigning the
+Digital Brain frontend, Brain Core, storage, or agent/workflow architecture.**
+Latest implementation milestone: desktop sidecar startup/status/shutdown,
+npm clean install bootstrap, default-off model downloads/engine installs,
+agent simulation refusal, workflow create/import/export/run UI, configured
+port reporting, Postgres dependency status, sqlite-vec fallback honesty, and
+`.latticebrain` bundle-section claims now match observed runtime behavior.
+The v4.3.1 RC process builds validated artifacts only. It does not tag, create a
 GitHub Release, publish to PyPI, npm Registry, VS Code Marketplace, Open VSX, or
 deploy to production targets.
-v4.3.0 validation report: `docs/V4_3_VALIDATION_REPORT.md`.
 Remaining implementation gaps: **none**.
 Owner-only blockers: pptx history rewrite (requires force-push/owner decision)
 and consent-gated production embedder provisioning (silent default download is
@@ -34,11 +28,11 @@ not permitted).
 
 ## Remaining Gaps
 
-None. v4.3.0 preserves the already-empty v4.2.0 gap list and closes the
-portability/product-hardening work: `.latticebrain` archives are verified,
-inspectable, dry-runnable, and confirmation-gated; default startup is local-only
-and token-inert; backup health and product hardening are admin-visible; release
-artifact validation includes the exact Tauri DMG. Owner-only blockers above are
+None. v4.3.1 preserves the already-empty v4.3.0 gap list and closes the audit
+repair work: desktop sidecar startup is visible/statused, npm clean install is
+packaged, Model Load is local-only by default, agent simulation is refused as a
+product success state, workflows have real create/import/export/run paths, and
+storage/archive status surfaces are honest. Owner-only blockers above are
 intentionally not implementation gaps.
 
 ## 1. Program Charter (from the user's v4.0.0 directive)

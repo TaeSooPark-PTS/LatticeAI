@@ -1,9 +1,23 @@
-# Lattice AI — Feature Status (v4.3.0)
+# Lattice AI — Feature Status (v4.3.1)
 
 **Release type:** Knowledge Graph First — the Knowledge Graph becomes the primary
 architecture. Lattice AI is a Digital Brain Platform: the graph is the durable
 asset; models read it and are replaceable. Every v3.6.0 claim below is backed by
 automated tests.
+
+## v4.3.1 End-User Audit Repair — what changed
+
+v4.3.1 repairs the v4.3.0 end-user audit blockers without redesigning the
+frontend, Brain Core, storage, or agent/workflow architecture:
+
+| Area | Status | Evidence |
+| --- | --- | --- |
+| **Desktop sidecar startup** | WORKING | Tauri resolves installed/bundled backend launch paths, writes sidecar logs, exposes backend status, and shuts the child process down on close. |
+| **npm clean install** | WORKING | `requirements.txt` is shipped in npm and sdist packaging; npm bootstrap fails closed when dependency install cannot complete. |
+| **Model load privacy** | WORKING | `/models/load` and prepare streams refuse implicit engine installs or model downloads unless explicit consent is provided. |
+| **Agent honesty** | WORKING | `/agents/api/run` returns unavailable when the orchestrator is simulation-only; simulation output is not recorded as real success. |
+| **Workflow usability** | WORKING | Act workflows expose create, import, export, and run controls backed by existing `/workflows/api/*` endpoints. |
+| **Storage/archive honesty** | WORKING | Configured ports, Postgres dependency status, sqlite-vec fallback, and `.latticebrain` bundle sections are reported from runtime state. |
 
 ## v4.3.0 Portability & Product Hardening — what changed
 
@@ -13,7 +27,7 @@ and user data:
 
 | Area | Status | Evidence |
 | --- | --- | --- |
-| **Portable `.latticebrain` archive** | WORKING | Archive format v2 includes the brain DB, blobs, portable JSON state, signed bundles, storage metadata, provenance, public device identity metadata, manifest hashes, inspect, verify, import, restore, and dry-run restore. Private device keys are excluded. `test_v42_brain_storage.py`. |
+| **Portable `.latticebrain` archive** | WORKING | Archive format v2 includes the brain DB, blobs, portable JSON state, workspace export bundles when present, storage metadata, provenance, public device identity metadata, manifest hashes, inspect, verify, import, restore, and dry-run restore. Private device keys are excluded. `test_v42_brain_storage.py`. |
 | **Backup / restore safety** | WORKING | Backup restore and archive restore/import require explicit confirmation unless dry-run; corrupt, partial, tampered, wrong-passphrase, and unsupported-version archives fail closed. `test_kg_portability.py`, `test_v42_brain_storage.py`. |
 | **Pre-migration backup verification** | WORKING | Non-dry-run SQLite→Postgres migration creates and verifies a SQLite backup before copying data; failure stops migration before Postgres writes. `KGPortabilityService.migrate_sqlite_to_postgres`. |
 | **Tauri desktop hardening** | WORKING | Tauri exposes backend origin/status/restart/shutdown, records missing-runtime errors, kills the sidecar on close, and starts with loopback/default-off environment guards. `src-tauri/src/main.rs`, `npm run desktop:tauri:check`. |
@@ -153,7 +167,7 @@ service/core (`latticeai/services/*`, `latticeai/core/*`, top-level
 `knowledge_graph.py`). Historical v3 sections retain their original audit
 context when describing retired implementation paths.
 
-**Frontend of record:** the v4.3.0 React/Vite SPA at `/app` (`frontend/` source,
+**Frontend of record:** the v4.3.1 React/Vite SPA at `/app` (`frontend/` source,
 `static/app/` build output). The legacy static pages have been removed;
 compatibility GET/hash routes land in the matching `/app#/...` surface.
 

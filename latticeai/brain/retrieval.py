@@ -879,6 +879,16 @@ class KnowledgeGraphRetrievalMixin:
                     if isinstance(storage_capabilities, dict)
                     else "bruteforce-cosine"
                 ),
+                "vector_search_mode": (
+                    (storage_capabilities.get("metadata") or {}).get("vector_mode")
+                    if isinstance(storage_capabilities, dict)
+                    else "fallback"
+                ),
+                "sqlite_vec_ann_available": (
+                    bool((storage_capabilities.get("metadata") or {}).get("sqlite_vec_ann_available"))
+                    if isinstance(storage_capabilities, dict)
+                    else False
+                ),
             },
             "source_items": len(source_items),
             "indexed_items": sum(vector_counts.values()),

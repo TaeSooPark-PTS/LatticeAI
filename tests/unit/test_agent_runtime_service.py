@@ -10,7 +10,7 @@ from fastapi.testclient import TestClient
 
 from latticeai.api.agents import create_agents_router
 from latticeai.core.multi_agent import CORE_PIPELINE, MultiAgentOrchestrator
-from latticeai.services.agent_runtime import AgentRuntime
+from latticeai.services.agent_runtime import AgentRuntime, AgentRuntimeUnavailable
 
 
 class FakeStore:
@@ -37,12 +37,13 @@ class FakeStore:
         return {"run_id": run_id, "frames": []}
 
 
-def _runtime():
+def _runtime(*, allow_simulation_runs=True):
     return AgentRuntime(
         store=FakeStore(),
         orchestrator_factory=lambda user, scope: MultiAgentOrchestrator(),
         workspace_graph=lambda: None,
         append_audit_event=lambda *a, **k: None,
+        allow_simulation_runs=allow_simulation_runs,
     )
 
 
@@ -57,6 +58,18 @@ def test_config_and_roles():
 
 def test_health_ok():
     assert _runtime().health()["status"] == "ok"
+
+
+def test_product_runtime_refuses_simulation_runs():
+    rt = _runtime(allow_simulation_runs=False)
+    health = rt.health()
+    assert health["status"] == "unavailable"
+    assert health["ready"] is False
+    try:
+        rt.start("Validate the runtime", user_email="dev@example.com", scope=None)
+        assert False, "expected AgentRuntimeUnavailable"
+    except AgentRuntimeUnavailable as exc:
+        assert "Simulation mode is disabled" in str(exc)
 
 
 def test_start_records_run_and_status_reflects_it():
@@ -124,21 +137,18 @@ def _router_client():
 def test_router_runtime_endpoints():
     client = _router_client()
     assert client.get("/agents/api/runtime/status").status_code == 200
-    assert client.get("/agents/api/runtime/health").json()["status"] == "ok"
+    health = client.get("/agents/api/runtime/health").json()
+    assert health["status"] == "unavailable"
+    assert health["ready"] is False
     assert client.get("/agents/api/runtime/config").json()["default_pipeline"] == list(CORE_PIPELINE)
 
     run = client.post("/agents/api/run", json={"goal": "router run", "roles": ["planner", "executor", "reviewer"]})
-    assert run.status_code == 200
-    rid = run.json()["run"]["id"]
-
-    ev = client.get(f"/agents/api/runs/{rid}/events")
-    assert ev.status_code == 200 and ev.json()["is_final"] is True
-
-    stop = client.post(f"/agents/api/runs/{rid}/stop")
-    assert stop.status_code == 200 and stop.json()["stopped"] is False
+    assert run.status_code == 409
+    assert "Simulation mode is disabled" in run.text
 
     status = client.get("/agents/api/runtime/status").json()
-    assert status["runtime"]["total_runs"] == 1
+    assert status["runtime"]["ready"] is False
+    assert status["runtime"]["total_runs"] == 0
 
 
 def test_router_run_requires_goal():

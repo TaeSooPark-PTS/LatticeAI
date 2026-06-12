@@ -157,6 +157,8 @@ class Config:
             if packaged_static.exists():
                 static_dir = packaged_static
 
+        default_sso_redirect = f"http://localhost:{port}/auth/sso/callback"
+
         return cls(
             app_mode=app_mode,
             is_public=is_public,
@@ -196,7 +198,7 @@ class Config:
             sso_discovery_url=_value(env, "OIDC_DISCOVERY_URL", ""),
             sso_client_id=_value(env, "OIDC_CLIENT_ID", ""),
             sso_client_secret=_value(env, "OIDC_CLIENT_SECRET", ""),
-            sso_redirect_uri=_value(env, "OIDC_REDIRECT_URI", "http://localhost:4825/auth/sso/callback"),
+            sso_redirect_uri=_value(env, "OIDC_REDIRECT_URI", default_sso_redirect),
             sso_provider_name=_value(env, "OIDC_PROVIDER_NAME", "SSO"),
             discord_permission_webhook=_value(env, "LATTICEAI_DISCORD_PERMISSION_WEBHOOK", ""),
             discord_bot_token=_value(env, "LATTICEAI_DISCORD_BOT_TOKEN", ""),

@@ -1,5 +1,35 @@
 # Changelog
 
+## [4.3.1] - 2026-06-12
+
+> End-user audit repair release candidate for v4.3.0 artifacts.
+
+### Fixed
+
+- Tauri desktop startup now launches a visible shell, resolves the FastAPI
+  sidecar through installed or bundled runtime paths, reports backend status,
+  writes sidecar logs, and shuts down the child process on close.
+- npm clean install now ships `requirements.txt` and fails honestly when Python
+  dependency bootstrap cannot complete.
+- Model Load refuses implicit runtime installation and model downloads by
+  default, returning actionable unavailable states instead of hanging or making
+  unauthorized outbound requests.
+- Agent runtime API refuses simulation-mode execution when no LLM-backed model
+  is loaded, preventing fake success records.
+- Workflow UI exposes real create, import, export, and run paths backed by the
+  existing workflow API.
+- Runtime version labels, configured port reporting, SSO default redirect URI,
+  Postgres dependency status, sqlite-vec fallback reporting, and `.latticebrain`
+  bundle claims now match observed behavior.
+
+### Artifacts
+
+- `dist/ltcai-4.3.1-py3-none-any.whl`
+- `dist/ltcai-4.3.1.tar.gz`
+- `dist/ltcai-4.3.1.vsix`
+- `ltcai-4.3.1.tgz`
+- `src-tauri/target/release/bundle/dmg/Lattice AI_4.3.1_aarch64.dmg`
+
 ## [4.3.0] - 2026-06-12
 
 > Portability & Product Hardening release candidate. v4.3.0 preserves the
@@ -10,9 +40,9 @@
 ### Added
 
 - `.latticebrain` archive format v2 with encrypted graph DB, blobs, portable
-  JSON state, signed bundles, storage metadata, provenance, public device
-  identity metadata, manifest hashes, inspect, verify, import, restore, and
-  restore dry-run.
+  JSON state, workspace export bundles when present, storage metadata,
+  provenance, public device identity metadata, manifest hashes, inspect,
+  verify, import, restore, and restore dry-run.
 - FastAPI routes for archive inspect/verify/import, backup health, and admin
   product-hardening status.
 - Product-hardening status for local-only startup, storage mode, backup health,

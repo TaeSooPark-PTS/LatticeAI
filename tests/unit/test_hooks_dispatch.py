@@ -214,6 +214,7 @@ def _make_runtime(registry):
         workspace_graph=lambda: None,
         append_audit_event=lambda *a, **k: None,
         hooks=registry,
+        allow_simulation_runs=True,
     )
 
 

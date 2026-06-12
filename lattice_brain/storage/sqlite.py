@@ -77,7 +77,12 @@ class SQLiteEngine(StorageEngine):
                 backup_restore=True,
                 migrations=True,
                 encrypted_archives=True,
-                metadata={"db_path": str(self.db_path), "sqlite_vec_loaded": False},
+                metadata={
+                    "db_path": str(self.db_path),
+                    "sqlite_vec_loaded": False,
+                    "vector_mode": "fallback",
+                    "honest_fallback": "sqlite-vec has not been probed yet; vector search uses the real brute-force cosine fallback until sqlite-vec is loaded.",
+                },
             )
         # Probe on demand so status is accurate even before the graph opens.
         try:
@@ -94,7 +99,11 @@ class SQLiteEngine(StorageEngine):
         return StorageCapabilities(
             engine=self.name,
             available=True,
-            reason=None if self._sqlite_vec_loaded else self._sqlite_vec_reason,
+            reason=None if self._sqlite_vec_loaded else (
+                f"{self._sqlite_vec_reason}; using real brute-force cosine fallback, not sqlite-vec ANN"
+                if self._sqlite_vec_reason
+                else "sqlite-vec unavailable; using real brute-force cosine fallback, not sqlite-vec ANN"
+            ),
             vector_backend=vector_backend,
             vector_available=True,
             backup_restore=True,
@@ -103,6 +112,10 @@ class SQLiteEngine(StorageEngine):
             metadata={
                 "db_path": str(self.db_path),
                 "sqlite_vec_loaded": self._sqlite_vec_loaded,
+                "sqlite_vec_ann_available": self._sqlite_vec_loaded,
+                "vector_mode": "sqlite-vec" if self._sqlite_vec_loaded else "fallback",
+                "degraded": not self._sqlite_vec_loaded,
+                "honest_fallback": None if self._sqlite_vec_loaded else "Vector search is available through the deterministic brute-force cosine backend. sqlite-vec ANN is unavailable.",
             },
         )
 

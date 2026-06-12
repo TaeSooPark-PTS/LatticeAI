@@ -1,0 +1,43 @@
+{
+  "available": true,
+  "active": {
+    "engine": "sqlite",
+    "available": true,
+    "reason": "sqlite-vec Python package not installed: No module named 'sqlite_vec'; using real brute-force cosine fallback, not sqlite-vec ANN",
+    "vector_backend": "bruteforce-cosine",
+    "vector_available": true,
+    "backup_restore": true,
+    "migrations": true,
+    "encrypted_archives": true,
+    "metadata": {
+      "db_path": "/tmp/ltcai-v431-audit-final/knowledge_graph.sqlite",
+      "sqlite_vec_loaded": false,
+      "sqlite_vec_ann_available": false,
+      "vector_mode": "fallback",
+      "degraded": true,
+      "honest_fallback": "Vector search is available through the deterministic brute-force cosine backend. sqlite-vec ANN is unavailable."
+    }
+  },
+  "postgres": {
+    "engine": "postgres",
+    "available": false,
+    "reason": "Postgres storage requires LATTICEAI_POSTGRES_DSN; no SQLite fallback is attempted.",
+    "vector_backend": "pgvector",
+    "vector_available": false,
+    "backup_restore": false,
+    "migrations": false,
+    "encrypted_archives": false,
+    "metadata": {
+      "schema": "lattice_brain"
+    }
+  },
+  "backup_health": {
+    "available": true,
+    "directory": "/tmp/ltcai-v431-audit-final/workspace_exports",
+    "count": 1,
+    "latest": "/tmp/ltcai-v431-audit-final/workspace_exports/brain-20260612T141134.latticebrain",
+    "latest_bytes": 49062,
+    "encrypted_archives": 1,
+    "zip_backups": 0
+  }
+}

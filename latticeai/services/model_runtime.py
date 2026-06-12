@@ -66,6 +66,51 @@ IS_PUBLIC_MODE = False
 keyring = None
 
 
+def _env_bool(key: str, default: bool = False) -> bool:
+    raw = os.getenv(key)
+    if raw is None:
+        return default
+    return raw.strip().lower() in {"1", "true", "yes", "on"}
+
+
+def _download_allowed(allow_download: bool = False) -> bool:
+    return bool(allow_download) or _env_bool("LATTICEAI_ALLOW_MODEL_DOWNLOADS", default=False) or bool(AUTOLOAD_MODELS)
+
+
+def _download_block(provider: str, model_name: str) -> None:
+    raise HTTPException(
+        status_code=409,
+        detail={
+            "status": "unavailable",
+            "capability": "model_download",
+            "provider": provider,
+            "model": model_name,
+            "reason": (
+                "Model files are not present locally. Lattice AI does not start "
+                "outbound model downloads by default, and token/model presence "
+                "alone never authorizes network activity."
+            ),
+            "action": "Use the explicit pull/prepare flow with download consent, or set LATTICEAI_ALLOW_MODEL_DOWNLOADS=true.",
+        },
+    )
+
+
+def _engine_install_block(engine: str) -> None:
+    raise HTTPException(
+        status_code=409,
+        detail={
+            "status": "unavailable",
+            "capability": "engine_install",
+            "engine": engine,
+            "reason": (
+                "The requested local runtime is not installed. Lattice AI does not "
+                "run package-manager or installer commands from Model Load by default."
+            ),
+            "action": "Install the runtime explicitly from Library/System setup, or enable explicit download/install consent for this request.",
+        },
+    )
+
+
 def _missing_current_user(_request: Request) -> Optional[str]:
     return None
 
@@ -1307,6 +1352,7 @@ async def prepare_and_load_model(
     user_email: Optional[str] = None,
     adapter_path: Optional[str] = None,
     draft_model_id: Optional[str] = None,
+    allow_download: bool = False,
 ) -> Dict[str, object]:
     model_id = normalize_local_model_request(model_id, engine)
     if not model_id:
@@ -1329,11 +1375,15 @@ async def prepare_and_load_model(
     download_result: Optional[Dict[str, object]] = None
 
     if parsed_provider in local_engines:
+        if not engine_installed(parsed_provider) and not _download_allowed(allow_download):
+            _engine_install_block(parsed_provider)
         install_result = ensure_engine_ready(parsed_provider)
 
     if parsed_provider == "local_mlx":
         explicit_path = Path(parsed_model).expanduser()
         if not explicit_path.exists() and not hf_model_ready(parsed_model, "local_mlx"):
+            if not _download_allowed(allow_download):
+                _download_block(parsed_provider, parsed_model)
             download_result = download_hf_model(parsed_model, "local_mlx")
     elif parsed_provider == "ollama":
         ensure_ollama_server()
@@ -1341,6 +1391,8 @@ async def prepare_and_load_model(
         if not ollama:
             raise HTTPException(status_code=400, detail="Ollama가 설치되지 않았습니다.")
         if parsed_model not in get_ollama_pulled_models():
+            if not _download_allowed(allow_download):
+                _download_block(parsed_provider, parsed_model)
             completed = subprocess.run(
                 [ollama, "pull", parsed_model],
                 capture_output=True,
@@ -1352,12 +1404,23 @@ async def prepare_and_load_model(
                 raise HTTPException(status_code=500, detail=completed.stderr[-2000:] or "Ollama 모델 다운로드 실패")
             download_result = {"provider": "ollama", "model": parsed_model, "returncode": completed.returncode}
     elif parsed_provider == "vllm":
+        if not hf_model_ready(parsed_model, "vllm") and not _download_allowed(allow_download):
+            _download_block(parsed_provider, parsed_model)
         ensure_vllm_server(parsed_model)
         download_result = {"provider": "vllm", "model": parsed_model, "server_ready": True}
     elif parsed_provider == "llamacpp":
+        if not hf_model_ready(parsed_model, "llamacpp") and not _download_allowed(allow_download):
+            _download_block(parsed_provider, parsed_model)
         ensure_llamacpp_server(parsed_model)
         download_result = {"provider": "llamacpp", "model": parsed_model, "server_ready": True}
     elif parsed_provider == "lmstudio":
+        downloaded = {
+            str(item.get("key") or "").strip()
+            for item in get_lmstudio_models()
+            if isinstance(item, dict)
+        }
+        if parsed_model not in downloaded and not _download_allowed(allow_download):
+            _download_block(parsed_provider, parsed_model)
         ensured = ensure_lmstudio_model(parsed_model)
         resolved_model = str(
             ensured.get("instance_id")
@@ -1399,7 +1462,7 @@ async def prepare_and_load_model(
         "installed_now": bool(install_result.get("installed_now")),
         "download": download_result,
         "resolution": resolution.to_dict(),
-        "downloaded": True,
+        "downloaded": bool(download_result and not (isinstance(download_result, dict) and download_result.get("cached"))),
         "loaded": True,
         "ready_to_chat": ready_to_chat,
         "compatibility_status": compat_status,
@@ -1416,6 +1479,7 @@ async def prepare_and_load_model_stream(
     request: Request,
     engine: Optional[str] = None,
     user_email: Optional[str] = None,
+    allow_download: bool = False,
 ) -> AsyncIterator[str]:
     model_id = normalize_local_model_request(model_id, engine)
     if not model_id:
@@ -1446,6 +1510,8 @@ async def prepare_and_load_model_stream(
                     percent=2,
                     indeterminate=True,
                 ))
+                if not engine_installed(parsed_provider) and not _download_allowed(allow_download):
+                    _engine_install_block(parsed_provider)
                 install_result = ensure_engine_ready(parsed_provider)
                 emit_progress(model_download_progress_payload(
                     "engine",
@@ -1466,6 +1532,8 @@ async def prepare_and_load_model_stream(
                         eta_seconds=0,
                     ))
                 elif not hf_model_ready(parsed_model, "local_mlx"):
+                    if not _download_allowed(allow_download):
+                        _download_block(parsed_provider, parsed_model)
                     download_result = download_hf_model(parsed_model, "local_mlx", progress_emit=emit_progress)
                 else:
                     download_result = {"model": parsed_model, "path": str(hf_model_dir(parsed_model)), "cached": True}
@@ -1484,6 +1552,8 @@ async def prepare_and_load_model_stream(
                 ))
                 ensure_ollama_server()
                 if parsed_model not in get_ollama_pulled_models():
+                    if not _download_allowed(allow_download):
+                        _download_block(parsed_provider, parsed_model)
                     download_result = pull_ollama_model_with_progress(parsed_model, progress_emit=emit_progress)
                 else:
                     download_result = {"provider": "ollama", "model": parsed_model, "cached": True}
@@ -1496,6 +1566,8 @@ async def prepare_and_load_model_stream(
                     ))
             elif parsed_provider == "vllm":
                 if not hf_model_ready(parsed_model, "vllm"):
+                    if not _download_allowed(allow_download):
+                        _download_block(parsed_provider, parsed_model)
                     download_result = download_hf_model(parsed_model, "vllm", progress_emit=emit_progress)
                 else:
                     download_result = {"provider": "vllm", "model": parsed_model, "cached": True}
@@ -1516,6 +1588,8 @@ async def prepare_and_load_model_stream(
                 download_result = {**(download_result or {}), "provider": "vllm", "model": parsed_model, "server_ready": True}
             elif parsed_provider == "llamacpp":
                 if not hf_model_ready(parsed_model, "llamacpp"):
+                    if not _download_allowed(allow_download):
+                        _download_block(parsed_provider, parsed_model)
                     download_result = download_hf_model(parsed_model, "llamacpp", progress_emit=emit_progress)
                 else:
                     download_result = {"provider": "llamacpp", "model": parsed_model, "cached": True}
@@ -1535,6 +1609,13 @@ async def prepare_and_load_model_stream(
                 ensure_llamacpp_server(parsed_model)
                 download_result = {**(download_result or {}), "provider": "llamacpp", "model": parsed_model, "server_ready": True}
             elif parsed_provider == "lmstudio":
+                downloaded = {
+                    str(item.get("key") or "").strip()
+                    for item in get_lmstudio_models()
+                    if isinstance(item, dict)
+                }
+                if parsed_model not in downloaded and not _download_allowed(allow_download):
+                    _download_block(parsed_provider, parsed_model)
                 emit_progress(model_download_progress_payload(
                     "download",
                     "LM Studio 모델을 확인하는 중입니다.",
@@ -1643,7 +1724,7 @@ async def prepare_and_load_model_stream(
         "installed_now": bool(isinstance(install_result, dict) and install_result.get("installed_now")),
         "download": download_result,
         "resolution": resolution_stream.to_dict(),
-        "downloaded": True,
+        "downloaded": bool(download_result and not (isinstance(download_result, dict) and download_result.get("cached"))),
         "loaded": True,
         "ready_to_chat": ready_to_chat,
         "compatibility_status": compat_status,

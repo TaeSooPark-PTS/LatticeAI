@@ -1,9 +1,9 @@
 """Encrypted .latticebrain archive support.
 
 The archive is intentionally self-contained and local-only: the encrypted
-payload holds the SQLite brain, blob store, portable JSON state, signed export
-bundles, and public metadata needed to inspect/verify/restore on another
-machine without contacting a service.
+payload holds the SQLite brain, blob store, portable JSON state, workspace
+export bundles when present, and public metadata needed to inspect/verify/
+restore on another machine without contacting a service.
 """
 
 from __future__ import annotations

@@ -1,39 +1,35 @@
 # Release Notes
 
-## v4.3.0 RC - Portability & Product Hardening
+## v4.3.1 RC - End-User Audit Repair
 
-Lattice AI v4.3.0 hardens the v4.2 Digital Brain architecture into a portable,
-user-safe desktop product while preserving Brain Core, storage, frontend,
-agent/workflow, API, and user-data compatibility. This RC builds validated
-artifacts only; it does not tag, create a GitHub Release, publish packages, or
-deploy.
+Lattice AI v4.3.1 repairs the v4.3.0 end-user audit blockers while preserving
+the v4.3 frontend, Brain Core, storage, agent/workflow, API, and user-data
+architecture. This RC builds validated artifacts only; it does not tag, create a
+GitHub Release, publish packages, or deploy.
 
 ### Highlights
 
-- `.latticebrain` archives now include the encrypted graph DB, blobs, workspace
-  state, settings, signed bundles, storage metadata, provenance, and public
-  device identity metadata.
-- Archive inspect, verify, import, restore, and restore dry-run are real
-  FastAPI-backed operations surfaced in System settings.
-- Destructive restore/import requires explicit admin confirmation.
-- SQLite-to-Postgres migration creates and verifies a pre-migration backup
-  before copying data.
-- Tauri sidecar startup, status, restart, shutdown, and local-only guards are
-  hardened.
-- Admin product-hardening status reports storage mode, backup health, external
-  integration opt-in state, permissions, and device identity.
-- Release validation covers exact-version wheel, sdist, npm tgz, VSIX, and Tauri
-  DMG artifacts.
+- Tauri desktop startup resolves the FastAPI sidecar, reports sidecar status and
+  errors, writes logs, and shuts the sidecar down on close.
+- npm clean install ships `requirements.txt` and fails honestly if dependency
+  bootstrap cannot complete.
+- Model Load refuses implicit runtime installs and model downloads by default.
+- Agent simulation is reported unavailable instead of being recorded as real
+  success when no LLM-backed model is loaded.
+- Workflow create, import, export, and run paths are exposed in Act through the
+  existing workflow API.
+- Runtime labels, configured ports, Postgres dependency status, sqlite-vec
+  fallback status, and `.latticebrain` bundle sections match runtime behavior.
 
 ### Expected Artifacts
 
-- `dist/ltcai-4.3.0-py3-none-any.whl`
-- `dist/ltcai-4.3.0.tar.gz`
-- `dist/ltcai-4.3.0.vsix`
-- `ltcai-4.3.0.tgz`
-- `src-tauri/target/release/bundle/dmg/Lattice AI_4.3.0_aarch64.dmg`
+- `dist/ltcai-4.3.1-py3-none-any.whl`
+- `dist/ltcai-4.3.1.tar.gz`
+- `dist/ltcai-4.3.1.vsix`
+- `ltcai-4.3.1.tgz`
+- `src-tauri/target/release/bundle/dmg/Lattice AI_4.3.1_aarch64.dmg`
 
-Full detail: [RELEASE_NOTES_v4.3.0.md](RELEASE_NOTES_v4.3.0.md).
+Full detail: [RELEASE_NOTES_v4.3.1.md](RELEASE_NOTES_v4.3.1.md).
 
 ## v4.2.0 - Brain Core & Storage Rebuild
 

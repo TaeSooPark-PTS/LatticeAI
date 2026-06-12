@@ -38,6 +38,16 @@ async function tauriBackendOrigin(): Promise<string | null> {
   return desktopBase;
 }
 
+async function tauriInvoke<T>(command: string): Promise<T | null> {
+  if (!window.__TAURI_INTERNALS__) return null;
+  try {
+    const { invoke } = await import("@tauri-apps/api/core");
+    return await invoke<T>(command);
+  } catch {
+    return null;
+  }
+}
+
 async function apiBase() {
   const stateBase = useAppStore.getState().apiBase;
   if (stateBase) return stateBase;
@@ -203,6 +213,11 @@ async function streamChat(body: Record<string, unknown>, handlers: ChatEventHand
 
 export const latticeApi = {
   raw: get,
+  desktopBackendStatus: async (): Promise<ApiResult<Record<string, unknown>>> => {
+    const status = await tauriInvoke<Record<string, unknown>>("backend_status");
+    if (status) return { ok: true, status: 200, data: status, source: "live" };
+    return { ok: false, status: 0, data: {}, source: "unavailable", error: "Desktop backend status is available only inside the Tauri shell." };
+  },
   health: () => get("/health", {}),
   workspaceOs: () => get("/workspace/os", { counts: {}, models: {}, workspace_registry: { workspaces: [] } }),
   indexStatus: () => get("/api/index/status", {}),
@@ -248,7 +263,7 @@ export const latticeApi = {
   connectFolder: (path: string) => post("/knowledge-graph/local/index", { path, approved: true, watch_enabled: true, consent: { approved: true, source: "desktop-spa" } }, {}),
   localWatchStop: (source_id: string) => post("/knowledge-graph/local/watch/stop", { source_id }, {}),
   models: () => get("/models", { catalog: [], loaded: [], recommended: [] }),
-  loadModel: (model_id: string, engine?: string) => post("/models/load", { model_id, engine: engine || null }, {}),
+  loadModel: (model_id: string, engine?: string, allow_download = false) => post("/models/load", { model_id, engine: engine || null, allow_download }, {}),
   unloadModel: (model_id: string) => del(`/models/unload/${encodeURIComponent(model_id)}`, {}),
   embeddingsStatus: () => get("/api/embeddings/status", {}),
   agentRuntime: () => get("/agents/api/runtime/status", { runtime: {}, agents: [], runs: [] }),
@@ -263,6 +278,9 @@ export const latticeApi = {
   workflowDefinitions: () => get("/workflows/api/definitions", { workflows: [] }),
   workflowRuns: () => get("/workflows/api/runs", { runs: [] }),
   workflowTriggers: () => get("/workflows/api/triggers", { armed: [] }),
+  createWorkflow: (body: { name: string; nodes: Array<Record<string, unknown>>; metadata?: Record<string, unknown> }) => post("/workflows/api/definitions", body, {}),
+  importWorkflow: (data: Record<string, unknown>) => post("/workflows/api/import", { data }, {}),
+  exportWorkflow: (id: string) => get(`/workflows/api/export/${encodeURIComponent(id)}`, {}),
   runWorkflow: (id: string) => post(`/workflows/api/definitions/${encodeURIComponent(id)}/run`, {}, {}),
   updateWorkflow: (id: string, body: unknown) => patch(`/workflows/api/definitions/${encodeURIComponent(id)}`, body, {}),
   stopWorkflowRun: (id: string) => post(`/workflows/api/runs/${encodeURIComponent(id)}/stop`, {}, {}),

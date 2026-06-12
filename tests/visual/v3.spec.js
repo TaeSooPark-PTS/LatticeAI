@@ -24,7 +24,8 @@ test("React desktop shell boots with six primary navigation groups", async ({ pa
   for (const label of ["Brain", "Ask", "Capture", "Act", "Library", "System"]) {
     await expect(page.getByRole("button", { name: new RegExp(label) })).toBeVisible();
   }
-  await expect(page.locator("body")).toContainText("v4.1.0 Release Candidate");
+  await expect(page.locator("body")).not.toContainText("v4.1.0 Release Candidate");
+  await expect(page.locator("body")).toContainText(/v\d+\.\d+\.\d+/);
   expect(errors).toEqual([]);
 });
 

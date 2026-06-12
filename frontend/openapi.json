@@ -1349,6 +1349,11 @@
             ],
             "title": "Adapter Path"
           },
+          "allow_download": {
+            "default": false,
+            "title": "Allow Download",
+            "type": "boolean"
+          },
           "draft_model_id": {
             "anyOf": [
               {
@@ -1820,6 +1825,11 @@
       },
       "PrepareModelRequest": {
         "properties": {
+          "allow_download": {
+            "default": false,
+            "title": "Allow Download",
+            "type": "boolean"
+          },
           "engine": {
             "anyOf": [
               {
@@ -3543,7 +3553,7 @@
   },
   "info": {
     "title": "Lattice AI Server (local)",
-    "version": "4.3.0"
+    "version": "4.3.1"
   },
   "openapi": "3.1.0",
   "paths": {

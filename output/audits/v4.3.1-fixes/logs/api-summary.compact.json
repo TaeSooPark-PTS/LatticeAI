@@ -1,0 +1,20 @@
+{
+  "health_version": "4.3.1",
+  "mode_host": "127.0.0.1",
+  "mode_port": 8911,
+  "graph_nodes": 10,
+  "graph_edges": 14,
+  "model_load_http": "HTTP/1.1 409 Conflict",
+  "agent_run_http": "HTTP/1.1 409 Conflict",
+  "workflow_run_status": "queued",
+  "postgres_available": false,
+  "postgres_reason": "Postgres storage requires LATTICEAI_POSTGRES_DSN; no SQLite fallback is attempted.",
+  "sqlite_vec_mode": "fallback",
+  "sqlite_vec_ann": false,
+  "archive_sections": {
+    "graph": true,
+    "blobs": false,
+    "workspace_state": true,
+    "signed_bundles": false
+  }
+}

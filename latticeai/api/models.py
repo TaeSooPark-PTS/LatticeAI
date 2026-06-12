@@ -62,6 +62,7 @@ class LoadModelRequest(BaseModel):
     user_email: Optional[str] = None
     adapter_path: Optional[str] = None
     draft_model_id: Optional[str] = None
+    allow_download: bool = False
 
 
 class InstallEngineRequest(BaseModel):
@@ -82,6 +83,7 @@ class PrepareModelRequest(BaseModel):
     model: str
     engine: Optional[str] = None
     user_email: Optional[str] = None
+    allow_download: bool = False
 
 
 class VerifyCloudRequest(BaseModel):
@@ -127,24 +129,22 @@ def create_models_router(
     REQUIRE_AUTH = require_auth
     _list_compat_profiles = list_compat_profiles
 
-    def _recommended_with_engine_options(items: List[Dict[str, object]]) -> List[Dict[str, object]]:
+    def _recommended_with_engine_options(
+        items: List[Dict[str, object]],
+        engines: Optional[List[Dict[str, object]]] = None,
+        loaded_ids: Optional[List[str]] = None,
+        current_id: Optional[str] = None,
+    ) -> List[Dict[str, object]]:
+        engine_lookup = {str(engine.get("id") or ""): engine for engine in engines or []}
+        model_lookup: Dict[str, Dict[str, object]] = {}
+        for engine in engines or []:
+            engine_id = str(engine.get("id") or "")
+            for model in engine.get("models") or []:
+                if isinstance(model, dict):
+                    model_lookup[str(model.get("id") or "")] = {**model, "_engine": engine_id}
+        loaded = set(loaded_ids or [])
         out: List[Dict[str, object]] = []
         for item in items:
-            base = {
-                "id": item["id"],
-                "name": item["name"],
-                "model_name": item.get("model_name") or item.get("name"),
-                "tag": item["tag"],
-                "size": item["size"],
-                "display_name": item.get("name") or item.get("id"),
-                "modality": item.get("modality") or "multimodal",
-                "source_country": item.get("source_country"),
-                "source_company": item.get("source_company"),
-                "execution_method": item.get("execution_method"),
-                "run_location": item.get("run_location"),
-                "internet_requirement": item.get("internet_requirement"),
-                "source_display_order": item.get("source_display_order"),
-            }
             short_id = str(item["id"]).lower()
             aliases = MODEL_ENGINE_ALIASES.get(short_id) or {}
             options: List[Dict[str, str]] = []
@@ -159,8 +159,50 @@ def create_models_router(
                 })
             if not options:
                 options.append({"engine": "local_mlx", "model_id": item["id"], "load_id": item["id"]})
+            recommended_engine = options[0]["engine"]
+            load_id = options[0]["load_id"]
+            engine_info = engine_lookup.get(recommended_engine) or {}
+            model_info = model_lookup.get(load_id) or model_lookup.get(str(item["id"])) or {}
+            pulled = bool(model_info.get("pulled"))
+            is_loaded = load_id in loaded or str(item["id"]) in loaded or current_id in {load_id, str(item["id"])}
+            engine_installed = bool(engine_info.get("installed"))
+            pullable = bool(item.get("pullable", True))
+            download_required = bool(pullable and not pulled and not is_loaded)
+            if is_loaded:
+                load_status = "loaded"
+                unavailable_reason = None
+            elif not engine_installed:
+                load_status = "unavailable"
+                unavailable_reason = f"{engine_info.get('name') or recommended_engine} runtime is not installed."
+            elif download_required:
+                load_status = "download_required"
+                unavailable_reason = "Model files are not present locally. Downloads are opt-in and never start from token/model presence alone."
+            else:
+                load_status = "ready"
+                unavailable_reason = None
+            base = {
+                "id": item["id"],
+                "name": item["name"],
+                "model_name": item.get("model_name") or item.get("name"),
+                "tag": item["tag"],
+                "size": item["size"],
+                "display_name": item.get("name") or item.get("id"),
+                "modality": item.get("modality") or "multimodal",
+                "source_country": item.get("source_country"),
+                "source_company": item.get("source_company"),
+                "execution_method": item.get("execution_method"),
+                "run_location": item.get("run_location"),
+                "internet_requirement": item.get("internet_requirement"),
+                "source_display_order": item.get("source_display_order"),
+                "pulled": pulled,
+                "download_required": download_required,
+                "load_available": is_loaded or (engine_installed and not download_required),
+                "load_status": load_status,
+                "unavailable_reason": unavailable_reason,
+            }
             base["engine_options"] = options
-            base["recommended_engine"] = options[0]["engine"]
+            base["recommended_engine"] = recommended_engine
+            base["recommended_load_id"] = load_id
             out.append(base)
         return out
 
@@ -232,6 +274,7 @@ def create_models_router(
         require_user(request)
         return await prepare_and_load_model(
             req.model, request, engine=req.engine, user_email=req.user_email,
+            allow_download=req.allow_download,
         )
 
     @router.post("/engines/prepare-model/stream")
@@ -242,6 +285,7 @@ def create_models_router(
             try:
                 async for chunk in prepare_and_load_model_stream(
                     req.model, request, engine=req.engine, user_email=req.user_email,
+                    allow_download=req.allow_download,
                 ):
                     yield chunk
             except HTTPException as exc:
@@ -287,10 +331,13 @@ def create_models_router(
 
     @router.get("/models")
     async def list_models():
-        recommended = _recommended_with_engine_options(
-            list(filter_lower_family_versions(ENGINE_MODEL_CATALOG.get("local_mlx", [])))
-        )
         engines = await asyncio.to_thread(engine_status)
+        recommended = _recommended_with_engine_options(
+            list(filter_lower_family_versions(ENGINE_MODEL_CATALOG.get("local_mlx", []))),
+            engines=engines,
+            loaded_ids=_router.loaded_model_ids,
+            current_id=_router.current_model_id,
+        )
         return {
             "recommended": recommended,
             "cloud": _router.detected_cloud_models(),
@@ -319,6 +366,7 @@ def create_models_router(
             return await prepare_and_load_model(
                 model_id, request, engine=req.engine, user_email=req.user_email,
                 adapter_path=req.adapter_path, draft_model_id=req.draft_model_id,
+                allow_download=req.allow_download,
             )
         except HTTPException:
             raise

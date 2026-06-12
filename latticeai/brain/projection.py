@@ -94,17 +94,24 @@ class KnowledgeGraphProjectionMixin:
         """
         if KGStoreV2 is None or _exec_script is None:
             return
+        self._v2_projection_available = False
         try:
             self._backup_before_v2_flip()
             with self._connect() as conn:
                 conn.execute("BEGIN")
                 stale = self._projection_version(conn) != _PROJECTION_VERSION
+                # Reconstruction views are non-authoritative. Recreate them on
+                # every startup so older SQLite rename migrations cannot strand
+                # a view against a temporary table such as edges_v2_old.
+                for stmt in (
+                    "DROP VIEW IF EXISTS kgv2_edges",
+                    "DROP VIEW IF EXISTS kgv2_nodes",
+                ):
+                    conn.execute(stmt)
                 if stale:
                     # The projection is non-authoritative; drop it so init_schema
                     # recreates the tables with the current normalized columns.
                     for stmt in (
-                        "DROP VIEW IF EXISTS kgv2_edges",
-                        "DROP VIEW IF EXISTS kgv2_nodes",
                         "DROP TABLE IF EXISTS edges_v2",
                         "DROP TABLE IF EXISTS nodes_v2",
                     ):
@@ -128,6 +135,9 @@ class KnowledgeGraphProjectionMixin:
                     (_V2_WRITE_MASTER_KEY, _V2_WRITE_MASTER_KEY, mastered_at),
                 )
                 conn.execute(f"PRAGMA user_version={_KG_DB_FORMAT_VERSION}")
+                conn.execute("SELECT 1 FROM kgv2_nodes LIMIT 1").fetchone()
+                conn.execute("SELECT 1 FROM kgv2_edges LIMIT 1").fetchone()
+            self._v2_projection_available = True
         except Exception as e:
             logging.warning("knowledge_graph: v2 schema init/backfill skipped: %s", e)
 

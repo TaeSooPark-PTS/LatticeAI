@@ -4,8 +4,8 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "ltcai"
-version = "4.3.0"
-description = "Lattice AI — local-first Digital Brain Platform: knowledge graph with provenance, durable memory, hybrid search, real agent/workflow runtimes, and signed brain exchange"
+version = "4.3.1"
+description = "Lattice AI — local-first Digital Brain Platform: knowledge graph with provenance, durable memory, hybrid search, real agent/workflow runtimes, and portable encrypted brain archives"
 readme = "README.md"
 requires-python = ">=3.11"
 license = "MIT"
@@ -46,6 +46,7 @@ dependencies = [
   "pdfplumber>=0.11,<0.12",
   "pypdfium2>=4.30,<6",
   "watchdog>=4,<7",
+  "psycopg[binary]>=3.2,<4",
 ]
 
 [project.optional-dependencies]

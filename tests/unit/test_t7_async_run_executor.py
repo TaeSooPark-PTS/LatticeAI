@@ -19,6 +19,7 @@ def _runtime(store, orchestrator_factory=None):
         orchestrator_factory=orchestrator_factory or (lambda user, scope: MultiAgentOrchestrator()),
         workspace_graph=lambda: None,
         append_audit_event=lambda *a, **k: None,
+        allow_simulation_runs=True,
     )
     executor = RunExecutor(
         store=store,

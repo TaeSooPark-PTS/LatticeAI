@@ -215,7 +215,7 @@ const server = http.createServer((req, res) => {
   if (pathname === "/account/change-password" && req.method === "POST") return json(res, { status: "ok" });
   if (pathname === "/auth/sso/config") return json(res, { enabled: false, providers: [] });
 
-  if (pathname === "/health") return json(res, { status: "ok", version: "3.4.0", mode: "visual" });
+  if (pathname === "/health") return json(res, { status: "ok", version: "4.3.1", mode: "visual" });
   if (pathname === "/vpc/status") return json(res, { provider: "local", region: "visual", vpn_status: "standby", peering_status: "not_configured", private_subnets: [] });
   if (pathname === "/workspace/os") return json(res, workspaceOs);
   if (pathname === "/workspace/registry") return json(res, workspaceOs.workspace_registry);

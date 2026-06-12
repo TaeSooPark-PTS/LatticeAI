@@ -246,9 +246,15 @@ def main() -> None:
 
     os.chdir(app_dir)
 
-    # LATTICEAI_TUNNEL=true in .env acts like --tunnel flag
-    if not args.tunnel and os.getenv("LATTICEAI_TUNNEL", "").lower() in ("1", "true", "yes"):
-        args.tunnel = True
+    if not args.tunnel and os.getenv("LATTICEAI_TUNNEL", "").lower() in (
+        "1",
+        "true",
+        "yes",
+    ):
+        print(
+            "  LATTICEAI_TUNNEL is ignored during default local startup; "
+            "restart with --tunnel to expose this server."
+        )
 
     # --tunnel forces 0.0.0.0 so cloudflared can reach the server
     if args.tunnel and args.host == "127.0.0.1":
@@ -256,6 +262,11 @@ def main() -> None:
         os.environ.setdefault("LATTICEAI_HOST", "0.0.0.0")
         os.environ.setdefault("LATTICEAI_CORS_ALLOW_NETWORK", "true")
         os.environ.setdefault("LATTICEAI_REQUIRE_AUTH", "true")
+
+    # Keep the app config in sync with CLI flags. ``Config.from_env`` is the
+    # source of truth for /mode, /health.features, SSO defaults, and routers.
+    os.environ["LATTICEAI_HOST"] = str(args.host)
+    os.environ["LATTICEAI_PORT"] = str(args.port)
 
     tunnel_url: str | None = None
     if args.tunnel:
