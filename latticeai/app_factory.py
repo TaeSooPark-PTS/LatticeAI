@@ -94,6 +94,16 @@ def _build(config: "Optional[Config]" = None) -> Dict[str, Any]:
     from latticeai.core.enterprise import (
         capability_registry,
     )
+    from latticeai.core.invitations import InvitationStore
+    from latticeai.core.policy import normalize_role, policy_matrix, require_capability
+    from latticeai.core.users import (
+        ensure_user_identity,
+        load_users_file,
+        migrate_knowledge_graph_identity,
+        normalize_email,
+        save_users_file,
+        user_id_for_email as _user_id_for_email,
+    )
     from latticeai.services.app_context import AppContext
     from latticeai.services.workspace_service import WorkspaceService
     from latticeai.services.model_service import ModelService
@@ -132,6 +142,7 @@ def _build(config: "Optional[Config]" = None) -> Dict[str, Any]:
     from latticeai.api.workflow_designer import create_workflow_designer_router
     from latticeai.api.agents import create_agents_router
     from latticeai.api.realtime import create_realtime_router
+    from latticeai.api.invitations import create_invitations_router
     from latticeai.api.marketplace import create_marketplace_router
     from latticeai.api.models import create_models_router
     from latticeai.api.chat import create_chat_router
@@ -278,11 +289,17 @@ def _build(config: "Optional[Config]" = None) -> Dict[str, Any]:
     def _client_ip(request: Request) -> str:
         return _client_ip_impl(request)
 
+    def user_id_for_email(email: Optional[str]) -> Optional[str]:
+        return _user_id_for_email(load_users(), email)
+
     def create_session(email: str) -> str:
-        return _session_store.create(email)
+        return _session_store.create(user_id_for_email(email) or email, email=email)
 
     def get_session_email(token: str) -> Optional[str]:
         return _session_store.get_email(token)
+
+    def get_session_user_id(token: str) -> Optional[str]:
+        return _session_store.get_subject(token)
 
     def invalidate_session(token: str) -> None:
         _session_store.invalidate(token)
@@ -346,7 +363,8 @@ def _build(config: "Optional[Config]" = None) -> Dict[str, Any]:
     WORKSPACE_OS = WorkspaceOSStore(DATA_DIR, event_sink=REALTIME_BUS)
     # Service layer (latticeai.services) wraps the store with scope/permission
     # guardrails; routers and the app assembly share this single instance.
-    WORKSPACE_SERVICE = WorkspaceService(WORKSPACE_OS)
+    WORKSPACE_SERVICE = WorkspaceService(WORKSPACE_OS, resolve_user_id=user_id_for_email)
+    INVITATION_STORE = InvitationStore(DATA_DIR / "invitations.json")
     # ── v2 Plugin SDK registry (extends skills; discovers plugins/<id>/plugin.json)
     PLUGINS_DIR = Path(os.getenv("LATTICEAI_PLUGINS_DIR") or (BASE_DIR / "plugins"))
     PLUGIN_REGISTRY = PluginRegistry(PLUGINS_DIR, store=WORKSPACE_OS)
@@ -497,14 +515,24 @@ def _build(config: "Optional[Config]" = None) -> Dict[str, Any]:
 
 
     def load_users():
-        if not os.path.exists(USERS_FILE):
-            return {}
-        with open(USERS_FILE, "r", encoding="utf-8") as f:
-            return json.load(f)
+        users = load_users_file(USERS_FILE)
+        email_to_id = {
+            email: user.get("id")
+            for email, user in users.items()
+            if isinstance(user, dict) and user.get("id")
+        }
+        try:
+            migrate_knowledge_graph_identity(DATA_DIR / "knowledge_graph.sqlite", email_to_id)
+        except Exception as exc:
+            logging.warning("knowledge graph identity migration skipped: %s", exc)
+        try:
+            WORKSPACE_OS.migrate_workspace_identities(email_to_id)
+        except Exception as exc:
+            logging.warning("workspace identity migration skipped: %s", exc)
+        return users
 
     def save_users(users):
-        with open(USERS_FILE, "w", encoding="utf-8") as f:
-            json.dump(users, f, ensure_ascii=False, indent=2)
+        save_users_file(USERS_FILE, users)
 
     def load_vpc_config() -> Dict:
         if not os.path.exists(VPC_FILE):
@@ -787,14 +815,22 @@ def _build(config: "Optional[Config]" = None) -> Dict[str, Any]:
 
     def get_user_role(email: str, users: Optional[Dict] = None) -> str:
         users = users or load_users()
-        user = users.get(email) or {}
-        if user.get("role") in {"admin", "user"}:
-            return user["role"]
-        admin_emails = set(CONFIG.admin_emails)
-        if email.lower() in admin_emails:
+        identity = str(email or "")
+        normalized_email = normalize_email(identity)
+        user = users.get(normalized_email) or users.get(identity) or next(
+            (
+                item for item in users.values()
+                if isinstance(item, dict) and item.get("id") == identity
+            ),
+            {},
+        )
+        if isinstance(user, dict) and user.get("role"):
+            return normalize_role(user["role"])
+        admin_emails = {normalize_email(item) for item in CONFIG.admin_emails}
+        if normalized_email in admin_emails:
             return "admin"
         first_email = next(iter(users), None)
-        return "admin" if first_email == email else "user"
+        return "admin" if first_email == normalized_email else "user"
 
     def _extract_bearer_token(request: Request) -> Optional[str]:
         auth = request.headers.get("Authorization", "")
@@ -889,16 +925,24 @@ def _build(config: "Optional[Config]" = None) -> Dict[str, Any]:
         if token:
             email = get_session_email(token)
             if email:
-                if get_user_role(email, users) == "admin":
+                role = get_user_role(email, users)
+                try:
+                    require_capability(role, "admin:users")
                     return email, users
+                except PermissionError:
+                    pass
         raise HTTPException(status_code=403, detail="관리자 권한이 필요합니다.")
 
     def public_user(email: str, user: Dict, users: Dict) -> Dict:
+        role = get_user_role(email, users)
+        user_id = user.get("id") or _user_id_for_email(users, email)
         return {
+            "id": user_id,
             "email": email,
+            "identity": user_id,
             "name": user.get("name", ""),
             "nickname": user.get("nickname", ""),
-            "role": get_user_role(email, users),
+            "role": role,
             "disabled": bool(user.get("disabled", False)),
         }
 
@@ -969,6 +1013,7 @@ def _build(config: "Optional[Config]" = None) -> Dict[str, Any]:
                 "role": "user",
                 "disabled": False,
             }
+        ensure_user_identity(email, user)
         api_keys = user.get("api_keys") or {}
         api_keys[provider] = key
         user["api_keys"] = api_keys
@@ -1195,6 +1240,7 @@ def _build(config: "Optional[Config]" = None) -> Dict[str, Any]:
         public_sso_config=public_sso_config,
         open_registration=OPEN_REGISTRATION, session_ttl=_SESSION_TTL,
         require_auth=REQUIRE_AUTH,
+        ensure_identity=ensure_user_identity,
     ))
 
     def _graph_stats_safe():
@@ -1216,6 +1262,16 @@ def _build(config: "Optional[Config]" = None) -> Dict[str, Any]:
         get_graph_stats=_graph_stats_safe, enable_graph=ENABLE_GRAPH,
         invite_code=INVITE_CODE, invite_gate_enabled=INVITE_GATE_ENABLED,
         default_port=DEFAULT_PORT,
+        policy_matrix=policy_matrix,
+    ))
+
+    app.include_router(create_invitations_router(
+        invitation_store=INVITATION_STORE,
+        workspace_service=WORKSPACE_SERVICE,
+        require_admin=require_admin,
+        require_user=require_user,
+        user_id_for_email=user_id_for_email,
+        append_audit_event=append_audit_event,
     ))
 
     # ── Security & Audit Command Center (피드백 #5) ──────────────────────────────

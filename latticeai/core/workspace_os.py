@@ -11,6 +11,7 @@ from __future__ import annotations
 import json
 import os
 import shutil
+import sqlite3
 import zipfile
 from collections import deque
 from datetime import datetime
@@ -192,6 +193,7 @@ class WorkspaceOSStore:
     def __init__(self, data_dir: Path | str, *, event_sink: Optional[Callable[[Dict[str, Any]], Any]] = None):
         self.data_dir = Path(data_dir).expanduser()
         self.state_path = self.data_dir / "workspace_os.json"
+        self.sqlite_path = self.data_dir / "knowledge_graph.sqlite"
         self.snapshots_dir = self.data_dir / "workspace_snapshots"
         self.exports_dir = self.data_dir / "workspace_exports"
         self.data_dir.mkdir(parents=True, exist_ok=True)
@@ -201,6 +203,59 @@ class WorkspaceOSStore:
         # bus receives all workspace activity without per-call wiring.
         # Defaults to None → zero behavior change for existing callers/tests.
         self.event_sink = event_sink
+
+    def _connect_state_db(self) -> sqlite3.Connection:
+        conn = sqlite3.connect(self.sqlite_path)
+        conn.execute("PRAGMA journal_mode=WAL")
+        conn.execute(
+            "CREATE TABLE IF NOT EXISTS workspace_os_state ("
+            "id TEXT PRIMARY KEY, state_json TEXT NOT NULL, updated_at TEXT NOT NULL)"
+        )
+        conn.execute(
+            "CREATE TABLE IF NOT EXISTS workspace_os_meta ("
+            "key TEXT PRIMARY KEY, value TEXT NOT NULL)"
+        )
+        return conn
+
+    def _load_sqlite_state(self) -> Optional[Dict[str, Any]]:
+        try:
+            with self._connect_state_db() as conn:
+                row = conn.execute(
+                    "SELECT state_json FROM workspace_os_state WHERE id='current'"
+                ).fetchone()
+            if not row:
+                return None
+            data = json.loads(row[0])
+            return data if isinstance(data, dict) else None
+        except Exception:
+            return None
+
+    def _save_sqlite_state(self, state: Dict[str, Any]) -> None:
+        payload = json.dumps(state, ensure_ascii=False)
+        with self._connect_state_db() as conn:
+            conn.execute(
+                "INSERT OR REPLACE INTO workspace_os_state(id, state_json, updated_at) VALUES('current', ?, ?)",
+                (payload, state.get("updated_at") or _now()),
+            )
+
+    def _import_json_state_once(self, default: Dict[str, Any]) -> Dict[str, Any]:
+        if not self.state_path.exists():
+            return default
+        try:
+            loaded = json.loads(self.state_path.read_text(encoding="utf-8"))
+            if not isinstance(loaded, dict):
+                return default
+        except Exception:
+            return default
+        try:
+            backup = self.state_path.with_name(
+                f"{self.state_path.name}.pre-sqlite.{_now().replace(':', '-')}.json"
+            )
+            if not any(self.state_path.parent.glob(f"{self.state_path.name}.pre-sqlite.*.json")):
+                shutil.copy2(self.state_path, backup)
+        except Exception:
+            pass
+        return _deep_merge(default, loaded)
 
     @staticmethod
     def _new_workspace_record(
@@ -275,6 +330,47 @@ class WorkspaceOSStore:
         if active not in migrated:
             state["active_workspace"] = DEFAULT_WORKSPACE_ID
         return state
+
+    def migrate_workspace_identities(self, email_to_id: Dict[str, str]) -> int:
+        """Rewrite workspace membership identities from legacy emails to UUIDs.
+
+        The migration is additive and in-place: workspace records, memberships,
+        and owner fields keep their shape, only identity string values change.
+        """
+        if not email_to_id:
+            return 0
+        normalized = {str(email).strip().lower(): user_id for email, user_id in email_to_id.items() if user_id}
+        state = self.load_state()
+        changed = 0
+        for ws in (state.get("workspaces") or {}).values():
+            owner = str(ws.get("owner_user_id") or "").strip().lower()
+            if owner in normalized and ws.get("owner_user_id") != normalized[owner]:
+                ws["owner_user_id"] = normalized[owner]
+                changed += 1
+            for member in _listify(ws.get("members")):
+                member_id = str(member.get("user_id") or "").strip().lower()
+                if member_id in normalized and member.get("user_id") != normalized[member_id]:
+                    member["user_id"] = normalized[member_id]
+                    member["updated_at"] = _now()
+                    changed += 1
+            members = _listify(ws.get("members"))
+            deduped = []
+            seen_members = set()
+            for member in members:
+                member_id = member.get("user_id")
+                if member_id and member_id in seen_members:
+                    changed += 1
+                    continue
+                if member_id:
+                    seen_members.add(member_id)
+                deduped.append(member)
+            if len(deduped) != len(members):
+                ws["members"] = deduped
+        if changed:
+            state["updated_at"] = _now()
+            self.save_state(state)
+            self.record_timeline_event("workspace", "identity_uuid_migrated", {"records": changed})
+        return changed
 
     def _default_state(self) -> Dict[str, Any]:
         return {
@@ -355,23 +451,21 @@ class WorkspaceOSStore:
 
     def load_state(self) -> Dict[str, Any]:
         default = self._default_state()
-        if not self.state_path.exists():
-            self.save_state(default)
-            return default
-        try:
-            loaded = json.loads(self.state_path.read_text(encoding="utf-8"))
-            if not isinstance(loaded, dict):
-                loaded = {}
-        except Exception:
-            loaded = {}
+        loaded = self._load_sqlite_state()
+        imported = loaded is None
+        if loaded is None:
+            loaded = self._import_json_state_once(default)
         state = _deep_merge(default, loaded)
         state["version"] = WORKSPACE_OS_VERSION
         self._migrate_workspaces(state)
+        if imported:
+            self.save_state(state)
         return state
 
     def save_state(self, state: Dict[str, Any]) -> Dict[str, Any]:
         state["version"] = WORKSPACE_OS_VERSION
         state["updated_at"] = _now()
+        self._save_sqlite_state(state)
         _atomic_write_json(self.state_path, state)
         return state
 
@@ -386,7 +480,6 @@ class WorkspaceOSStore:
             "payload": payload,
         }
         state.setdefault("timeline", []).append(event)
-        state["timeline"] = state["timeline"][-500:]
         self.save_state(state)
         if self.event_sink is not None:
             try:
@@ -907,7 +1000,6 @@ class WorkspaceOSStore:
             **trace,
         }
         state.setdefault("traces", []).append(record)
-        state["traces"] = state["traces"][-200:]
         self.save_state(state)
         self.record_timeline_event("graph", "answer_trace", {"trace_id": trace_id, "conversation_id": conversation_id})
         return record
@@ -1049,7 +1141,6 @@ class WorkspaceOSStore:
             "indexed_folder_count": len(local_sources.get("sources") or []),
         }
         state.setdefault("snapshots", []).append(meta)
-        state["snapshots"] = state["snapshots"][-200:]
         self.save_state(state)
         self.record_timeline_event("snapshot", "snapshot_saved", {"snapshot_id": snapshot_id, "name": name})
         return {"snapshot": meta}
@@ -1211,7 +1302,7 @@ class WorkspaceOSStore:
                 record["graph_error"] = str(exc)
         if existing is None:
             memories.append(record)
-        state["memories"] = memories[-500:]
+        state["memories"] = memories
         self.save_state(state)
         self.record_timeline_event("memory", "memory_upserted", {"memory_id": memory_id, "kind": kind}, workspace_id=record.get("workspace_id"))
         return record
@@ -1287,7 +1378,6 @@ class WorkspaceOSStore:
             "created_at": _now(),
         }
         state.setdefault("memory_snapshots", []).append(snapshot)
-        state["memory_snapshots"] = state["memory_snapshots"][-200:]
         self.save_state(state)
         self.record_timeline_event("memory", "memory_snapshot", {"snapshot_id": snapshot["id"], "memory_count": len(memories)}, workspace_id=scope)
         return snapshot
@@ -1375,9 +1465,8 @@ class WorkspaceOSStore:
                     "workspace_id": resolved_workspace,
                 }
                 stored_handoffs.append(stored)
-            state["handoffs"] = stored_handoffs[-500:]
+            state["handoffs"] = stored_handoffs
         state.setdefault("agent_runs", []).append(run)
-        state["agent_runs"] = state["agent_runs"][-300:]
         self.save_state(state)
         self._emit_replayable_timeline_events(area="agent", run_id=run["id"], timeline=run["timeline"], workspace_id=resolved_workspace)
         if status == "failed":
@@ -1428,7 +1517,7 @@ class WorkspaceOSStore:
             for handoff in handoffs:
                 if isinstance(handoff, dict):
                     stored_handoffs.append({**handoff, "run_id": run_id, "workspace_id": resolved_workspace})
-            state["handoffs"] = stored_handoffs[-500:]
+            state["handoffs"] = stored_handoffs
 
         if (
             status in RUN_TERMINAL_STATUSES
@@ -1524,7 +1613,6 @@ class WorkspaceOSStore:
             except Exception as exc:
                 workflow["graph_error"] = str(exc)
         state.setdefault("workflows", []).append(workflow)
-        state["workflows"] = state["workflows"][-300:]
         self.save_state(state)
         self.record_timeline_event("workflow", "workflow_created", {"workflow_id": workflow["id"], "name": workflow["name"]})
         return workflow
@@ -1579,7 +1667,6 @@ class WorkspaceOSStore:
             except Exception as exc:
                 run["graph_error"] = str(exc)
         state.setdefault("workflow_runs", []).append(run)
-        state["workflow_runs"] = state["workflow_runs"][-300:]
         # Attach the run id to the workflow's event log for cross-linking.
         for wf in _listify(state.get("workflows")):
             if wf.get("id") == workflow_id:
@@ -1969,7 +2056,6 @@ class WorkspaceOSStore:
             **activity,
         }
         config.setdefault("activities", []).append(record)
-        config["activities"] = config["activities"][-500:]
         if graph is not None:
             try:
                 graph.ingest_event(

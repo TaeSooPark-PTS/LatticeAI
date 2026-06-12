@@ -215,6 +215,9 @@ npm run dev
 - **Real act/runtime foundation** — workflows execute governed tools, pause for
   approval, run asynchronously with SSE progress/cancellation, and LLM-backed
   agent runs fail closed instead of fabricating output.
+- **Durable workspace governance** — stable user UUIDs, enforced policy,
+  invitations, and SQLite-backed Workspace OS state preserve identity and
+  workspace history without destructive migration.
 - **Local sovereignty** — signed exports, device identity, scoped graph export,
   and Brain Network peer exchange are implemented at the API layer.
 

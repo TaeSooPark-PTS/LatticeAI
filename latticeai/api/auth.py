@@ -12,6 +12,7 @@ from fastapi import APIRouter, HTTPException, Request
 from fastapi.responses import JSONResponse, RedirectResponse
 from pydantic import BaseModel
 
+from latticeai.core.users import normalize_email
 from latticeai.core.oidc import (
     OIDCValidationError,
     fetch_jwks as _default_fetch_jwks,
@@ -66,6 +67,7 @@ def create_auth_router(
     open_registration: bool,
     session_ttl: int,
     require_auth: bool = True,
+    ensure_identity: Optional[Callable[[str, Dict], None]] = None,
     verify_id_token: Callable[..., Dict] = _default_verify_id_token,
     fetch_jwks: Callable[[str], Awaitable[Dict]] = _default_fetch_jwks,
 ) -> APIRouter:
@@ -87,17 +89,20 @@ def create_auth_router(
         if not open_registration:
             raise HTTPException(status_code=403, detail="회원가입이 비활성화되어 있습니다. 관리자에게 문의하세요.")
         _enforce_password_policy(req.password)
+        email = normalize_email(req.email)
         users = load_users()
-        if req.email in users:
+        if email in users:
             raise HTTPException(status_code=400, detail="이미 존재하는 이메일입니다.")
         role = "admin" if not users else "user"
-        users[req.email] = {
+        users[email] = {
             "password": hash_password(req.password),
             "name": req.name,
             "nickname": req.nickname,
             "role": role,
             "disabled": False,
         }
+        if ensure_identity is not None:
+            ensure_identity(email, users[email])
         save_users(users)
         msg = "회원가입 성공! 첫 번째 사용자로 관리자 권한이 부여되었습니다." if role == "admin" else "회원가입 성공!"
         return {"status": "ok", "message": msg, "role": role}
@@ -105,19 +110,20 @@ def create_auth_router(
     @router.post("/login")
     async def login(req: UserLogin, request: Request):
         check_ip_rate_limit(client_ip(request), "login", max_calls=10, window_secs=300)
+        email = normalize_email(req.email)
         users = load_users()
-        user = users.get(req.email)
-        if not user or not verify_and_migrate(req.email, req.password, user.get("password", ""), users):
+        user = users.get(email)
+        if not user or not verify_and_migrate(email, req.password, user.get("password", ""), users):
             raise HTTPException(status_code=401, detail="이메일 또는 비밀번호가 틀렸습니다.")
         if user.get("disabled"):
             raise HTTPException(status_code=403, detail="비활성화된 계정입니다.")
-        role = get_user_role(req.email, users)
-        token = create_session(req.email)
+        role = get_user_role(email, users)
+        token = create_session(email)
         response = JSONResponse(content={
             "status": "ok",
             "nickname": user["nickname"],
             "name": user["name"],
-            "email": req.email,
+            "email": email,
             "role": role,
             "is_admin": role == "admin",
         })
@@ -202,7 +208,7 @@ def create_auth_router(
         except Exception as exc:  # discovery/JWKS fetch failure → fail closed
             logging.warning("SSO token validation error: %s", exc)
             raise HTTPException(status_code=502, detail="SSO 공급자 검증에 실패했습니다.")
-        email = payload.get("email") or payload.get("preferred_username") or payload.get("upn") or ""
+        email = normalize_email(payload.get("email") or payload.get("preferred_username") or payload.get("upn") or "")
         if not email:
             raise HTTPException(status_code=400, detail="이메일을 확인할 수 없습니다.")
         users = load_users()
@@ -216,6 +222,8 @@ def create_auth_router(
                 "disabled": False,
                 "sso": True,
             }
+            if ensure_identity is not None:
+                ensure_identity(email, users[email])
             save_users(users)
         if users[email].get("disabled"):
             raise HTTPException(status_code=403, detail="비활성화된 계정입니다.")
@@ -235,7 +243,7 @@ def create_auth_router(
 
     @router.post("/account/change-password")
     async def change_password(req: ChangePasswordRequest, request: Request):
-        email = require_user(request)
+        email = normalize_email(require_user(request))
         if not email:
             raise HTTPException(status_code=401, detail="인증이 필요합니다.")
         _enforce_password_policy(req.new_password)
@@ -251,7 +259,7 @@ def create_auth_router(
 
     @router.patch("/account/profile")
     async def update_profile(req: UpdateProfileRequest, request: Request):
-        email = require_user(request)
+        email = normalize_email(require_user(request))
         if not email:
             raise HTTPException(status_code=401, detail="인증이 필요합니다.")
         if req.name is not None and not req.name.strip():
@@ -271,7 +279,7 @@ def create_auth_router(
 
     @router.get("/account/profile")
     async def get_profile(request: Request):
-        email = require_user(request)
+        email = normalize_email(require_user(request))
         if not email:
             if require_auth:
                 raise HTTPException(status_code=401, detail="인증이 필요합니다.")

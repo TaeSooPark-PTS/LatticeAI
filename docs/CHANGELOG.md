@@ -18,6 +18,9 @@
 - Added the durable async run executor for agent/workflow runs: persisted
   queued/running/final states, realtime SSE progress, cooperative cancellation,
   and startup reconciliation of orphaned active runs.
+- Added stable user UUID migration, centralized RBAC policy enforcement, local
+  invitation tokens, and SQLite-backed Workspace OS state with JSON compatibility
+  mirroring and no durable-history truncation.
 
 ## [3.6.0] - 2026-06-10
 

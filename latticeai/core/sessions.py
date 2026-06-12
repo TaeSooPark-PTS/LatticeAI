@@ -67,34 +67,60 @@ def persist_sessions(sessions: Dict[str, tuple], data_dir: Optional[Path] = None
         logging.warning("persist_sessions failed: %s", e)
 
 
+def _entry_subject(entry: tuple) -> Optional[str]:
+    return entry[0] if entry else None
+
+
+def _entry_email(entry: tuple) -> Optional[str]:
+    if len(entry) >= 3 and entry[2]:
+        return entry[2]
+    return entry[0] if entry else None
+
+
+def _entry_created_at(entry: tuple) -> float:
+    if len(entry) >= 2:
+        return float(entry[1])
+    return 0.0
+
+
 class SessionStore:
     def __init__(self, data_dir: Optional[Path] = None):
         self._data_dir = data_dir
         self._sessions: Dict[str, tuple] = load_sessions(data_dir)
 
-    def create(self, email: str) -> str:
+    def create(self, subject: str, *, email: Optional[str] = None) -> str:
         token = secrets.token_urlsafe(32)
         with _lock:
-            self._sessions[_hash_token(token)] = (email, time.time())
+            self._sessions[_hash_token(token)] = (subject, time.time(), email or subject)
             persist_sessions(self._sessions, self._data_dir)
         return token
 
     def get_email(self, token: str) -> Optional[str]:
+        entry = self._get_entry(token)
+        return _entry_email(entry) if entry else None
+
+    def get_subject(self, token: str) -> Optional[str]:
+        entry = self._get_entry(token)
+        return _entry_subject(entry) if entry else None
+
+    def _get_entry(self, token: str) -> Optional[tuple]:
         now = time.time()
         key = _hash_token(token)
         with _lock:
             entry = self._sessions.get(key)
             if entry is None:
                 return None
-            email, created_at = entry
+            created_at = _entry_created_at(entry)
             if now - created_at > SESSION_TTL:
                 self._sessions.pop(key, None)
                 persist_sessions(self._sessions, self._data_dir)
                 return None
             if now - created_at > SESSION_REFRESH_THRESHOLD:
-                self._sessions[key] = (email, now)
+                refreshed = (_entry_subject(entry), now, _entry_email(entry))
+                self._sessions[key] = refreshed
                 persist_sessions(self._sessions, self._data_dir)
-            return email
+                return refreshed
+            return entry
 
     def invalidate(self, token: str) -> None:
         with _lock:

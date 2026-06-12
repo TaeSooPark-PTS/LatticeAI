@@ -8,7 +8,7 @@ automated tests.
 ## v4.0.0 Digital Brain Platform — what changed
 
 v4 makes the v3.6.0 identity true in the implementation. Honesty ledger for
-the transformation (every line cites code + tests; suite: **579 unit tests**):
+the transformation (every line cites code + tests; suite: **583 unit tests**):
 
 | Area | Status | Evidence |
 | --- | --- | --- |
@@ -17,7 +17,7 @@ the transformation (every line cites code + tests; suite: **579 unit tests**):
 | **Async run engine** | WORKING | Agent/workflow run endpoints persist queued rows, execute on server-loop tasks via `asyncio.to_thread`, stream progress through the realtime SSE feed, support cooperative cancellation, and mark orphaned active runs `interrupted` on startup while preserving approval pauses. `test_t7_async_run_executor.py` (4), `test_realtime.py`. |
 | **Custom agents** | WORKING | Registry config (system_prompt/max_tokens/temperature) actually loaded at run time; honest skip in simulation. `test_t7_llm_runner.py`. |
 | **Triggers** | WORKING | Interval scheduler (missed firings → recorded skips) + brain-event triggers on `kg_ingest.*`; `__trigger__` provenance on fired runs. `test_t7_triggers.py` (5). |
-| **Ingestion coverage** | WORKING (4/5 paths) | Chat, MCP, uploads, browser/notes all route through `services/ingestion.py` with provenance; `GET /knowledge-graph/provenance/coverage` reports the honest ratio. Workspace events remain direct until the T6 state rebuild. `test_t4_ingestion_unification.py` (6). |
+| **Ingestion coverage** | WORKING (4/5 paths) | Chat, MCP, uploads, browser/notes all route through `services/ingestion.py` with provenance; `GET /knowledge-graph/provenance/coverage` reports the honest ratio. Workspace OS events remain direct and are not claimed as graph provenance. `test_t4_ingestion_unification.py` (6). |
 | **Durable conversations** | WORKING | `latticeai/brain/conversations.py` — unbounded SQLite in the KG db file (backup carries it); idempotent legacy import; the 50-message cap is dead. `test_t4_conversation_store.py` (7). |
 | **Garden absorption** | WORKING | Vault = user-owned markdown mirror; brain authoritative (dual-write + startup import); chat garden context = brain query; `/garden/tree` fixed (was a latent 500). `test_t4_garden_absorption.py` (5). |
 | **Memory & Context systems** | WORKING | Typed Decision/Experience nodes via the pipeline (simulations refused); `ContextAssembler` builds budgeted, provenance-traced chat context — workspace memories injected at inference for the first time; trace persists with the answer. `test_t5_memory_context.py` (10). |
@@ -25,6 +25,7 @@ the transformation (every line cites code + tests; suite: **579 unit tests**):
 | **Workspace scoping (reads)** | WORKING | Search channels + graph view filter by membership; `legacy` rows stay machine-visible (documented). `test_t6_scoped_reads.py` (5). |
 | **By-id authorization** | FIXED | Snapshot get/area/export/compare + memory delete authorize against the record's own workspace; `/workspace/os` registry leak closed; chat context user isolation. `test_truth_floor_t1.py` (11). |
 | **Auth hardening** | WORKING | Hashed session tokens at rest (transparent migration), 8+ alnum password policy, PKCE on SSO. `test_t6_auth_hardening.py` (6). |
+| **Identity, policy, invitations, workspace state** | WORKING | Users migrate to stable UUIDs while sessions preserve email compatibility; workspace memberships and KG identity columns re-key non-destructively; `core/policy.py` backs admin enforcement and `/admin/roles`; local invitation tokens create/list/accept/expire; Workspace OS state imports into `knowledge_graph.sqlite`, mirrors JSON for compatibility, and no longer truncates durable collections. `test_t6_identity_policy_invitations.py` (4). |
 | **Device identity + Brain Network v1** | WORKING (API-only UI) | Ed25519 device keys; signed exports (tamper refused; unsigned-legacy local imports allowed); workspace-filtered export (header no longer lies); paired-peer push/receive with replay protection; `/network/*`. UI surface is a labeled T9b gap. `test_t8_brain_network.py` (7). |
 | **Graph curation** | WORKING | `curate()` gated topic promotion + real `importance_score`; `POST /knowledge-graph/curate`. `test_t4_ingestion_unification.py`. |
 | **Packaging** | FIXED | Wheel ships `setup_wizard.py` (root setup.py collision resolved); installed-wheel smoke test (`scripts/wheel_smoke.py`) in release CI; side-effect-free `create_app` factory (subprocess-verified). `test_app_factory.py`, `test_setup_wizard.py`. |
@@ -36,7 +37,6 @@ the transformation (every line cites code + tests; suite: **579 unit tests**):
 
 | Gap | State today | Contract |
 | --- | --- | --- |
-| User UUIDs / enforced policy map / invitations / SQLite workspace state | email-keyed; `_ROLE_CAPS` advisory | T6 remainder |
 | Legacy page deletion + parity views, login rebuild, i18n, T9b surfaces (approval inbox, peer pairing, context trace) | legacy pages still served; new APIs labeled API-only | T9/T9b |
 | pptx history rewrite | deleted at HEAD only | owner decision (force-push) |
 | Default production embedder | hash fallback, honestly reported | consent-gated wizard provisioning |

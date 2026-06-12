@@ -103,6 +103,11 @@ release was driven by an 8-dimension evidence-based audit
 - Agent and workflow runs use the durable async executor: queued/running/final
   lifecycle rows, realtime SSE progress, cooperative cancellation, and startup
   reconciliation for orphaned active runs.
+- Identity and workspace governance are durable: users migrate to stable UUIDs,
+  sessions keep email compatibility, policy enforcement is centralized in
+  `core/policy.py`, invitations are real local tokens, and Workspace OS state
+  imports into the shared SQLite database while retaining a JSON compatibility
+  mirror.
 
 ## Remaining gaps (honest, labeled, contracted)
 
@@ -110,11 +115,9 @@ Tracked with full implementation contracts in
 `docs/V4_IMPLEMENTATION_PLAN.md` + amendments and
 `docs/V4_DIGITAL_BRAIN_RECOVERY.md`:
 
-1. Identity unification (user UUIDs, enforced policy module, invitations)
-   and transactional workspace state (T6 remainder).
-2. Legacy page deletion (requires parity views: org management, snapshots,
+1. Legacy page deletion (requires parity views: org management, snapshots,
    activity, profile), token-native login, i18n, and the T9b surfaces
    (approval inbox, peer pairing UI, context-trace panel) — the new
    capabilities are API-complete and labeled API-only.
-3. Git history rewrite for the removed pptx (owner decision; force-push).
-4. Default production embedder (consent-gated wizard provisioning instead).
+2. Git history rewrite for the removed pptx (owner decision; force-push).
+3. Default production embedder (consent-gated wizard provisioning instead).

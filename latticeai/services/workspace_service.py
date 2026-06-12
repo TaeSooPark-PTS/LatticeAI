@@ -26,7 +26,7 @@ Guardrail summary (v1.2.0):
 
 from __future__ import annotations
 
-from typing import Any, Dict, Optional
+from typing import Any, Callable, Dict, Optional
 
 from latticeai.core.workspace_os import WorkspaceOSStore
 
@@ -38,13 +38,20 @@ class WorkspaceService:
     # partitioned per workspace. Surfaced so the UI / docs can be explicit.
     SHARED_GLOBAL_AREAS = ("graph", "skills")
 
-    def __init__(self, store: WorkspaceOSStore):
+    def __init__(self, store: WorkspaceOSStore, *, resolve_user_id: Optional[Callable[[Optional[str]], Optional[str]]] = None):
         self.store = store
+        self._resolve_user_id = resolve_user_id or (lambda user_id: user_id)
+
+    def _identity(self, user_id: Optional[str]) -> Optional[str]:
+        if isinstance(user_id, str) and user_id.startswith("user:"):
+            return user_id
+        return self._resolve_user_id(user_id)
 
     # ── scope resolution + gating ────────────────────────────────────────
 
     def _ensure_permission(self, workspace_id: str, user_id: Optional[str], permission: str) -> None:
-        if not self.store.has_permission(workspace_id, user_id, permission):
+        resolved_user = self._identity(user_id)
+        if not self.store.has_permission(workspace_id, resolved_user, permission):
             raise PermissionError(
                 f"'{user_id or 'anonymous'}' lacks '{permission}' on workspace '{workspace_id}'"
             )
@@ -67,10 +74,10 @@ class WorkspaceService:
         return workspace_id
 
     def can_read(self, workspace_id: str, user_id: Optional[str]) -> bool:
-        return self.store.has_permission(workspace_id, user_id, "read")
+        return self.store.has_permission(workspace_id, self._identity(user_id), "read")
 
     def can_write(self, workspace_id: str, user_id: Optional[str]) -> bool:
-        return self.store.has_permission(workspace_id, user_id, "write")
+        return self.store.has_permission(workspace_id, self._identity(user_id), "write")
 
     # ── record-level authorization (by-id access must not bypass gating) ──
 
@@ -93,12 +100,13 @@ class WorkspaceService:
         """
         owner = (record or {}).get("user_email")
         workspace_id = (record or {}).get("workspace_id")
-        if owner and owner == user_id:
+        resolved_user = self._identity(user_id)
+        if owner and owner in {user_id, resolved_user}:
             return
         if workspace_id:
-            self._ensure_permission(workspace_id, user_id, "write")
+            self._ensure_permission(workspace_id, resolved_user, "write")
             return
-        if owner and owner != user_id:
+        if owner and owner not in {user_id, resolved_user}:
             raise PermissionError(
                 f"'{user_id or 'anonymous'}' is not the owner of memory '{record.get('id')}'"
             )
@@ -107,42 +115,42 @@ class WorkspaceService:
 
     def summary(self, user_id: Optional[str]) -> Dict[str, Any]:
         data = self.store.summary()
-        data["workspace_registry"] = self.store.list_workspaces(user_id=user_id)
+        data["workspace_registry"] = self.store.list_workspaces(user_id=self._identity(user_id))
         data["shared_global_areas"] = list(self.SHARED_GLOBAL_AREAS)
         return data
 
     def list_workspaces(self, user_id: Optional[str]) -> Dict[str, Any]:
-        return self.store.list_workspaces(user_id=user_id)
+        return self.store.list_workspaces(user_id=self._identity(user_id))
 
     def get_workspace(self, workspace_id: str, user_id: Optional[str]) -> Dict[str, Any]:
         # Reading workspace metadata requires read access to that workspace.
         self._ensure_permission(workspace_id, user_id, "read")
-        return self.store.get_workspace(workspace_id, user_id=user_id)
+        return self.store.get_workspace(workspace_id, user_id=self._identity(user_id))
 
     def workspace_summary(self, workspace_id: str, user_id: Optional[str]) -> Dict[str, Any]:
         self._ensure_permission(workspace_id, user_id, "read")
-        return self.store.workspace_summary(workspace_id, user_id=user_id)
+        return self.store.workspace_summary(workspace_id, user_id=self._identity(user_id))
 
     # ── organization workspace management (delegates with actor) ─────────
 
     def create_organization_workspace(self, *, name: str, owner_user_id: Optional[str], settings: Optional[Dict[str, Any]] = None) -> Dict[str, Any]:
-        return self.store.create_organization_workspace(name=name, owner_user_id=owner_user_id, settings=settings)
+        return self.store.create_organization_workspace(name=name, owner_user_id=self._identity(owner_user_id), settings=settings)
 
     def update_workspace(self, workspace_id: str, *, name=None, settings=None, actor=None) -> Dict[str, Any]:
-        return self.store.update_workspace(workspace_id, name=name, settings=settings, actor=actor)
+        return self.store.update_workspace(workspace_id, name=name, settings=settings, actor=self._identity(actor))
 
     def archive_workspace(self, workspace_id: str, *, actor=None) -> Dict[str, Any]:
-        return self.store.archive_workspace(workspace_id, actor=actor)
+        return self.store.archive_workspace(workspace_id, actor=self._identity(actor))
 
     def add_member(self, workspace_id: str, *, user_id: str, role: str = "member", actor=None) -> Dict[str, Any]:
-        return self.store.add_member(workspace_id, user_id=user_id, role=role, actor=actor)
+        return self.store.add_member(workspace_id, user_id=self._identity(user_id) or user_id, role=role, actor=self._identity(actor))
 
     def update_member_role(self, workspace_id: str, *, user_id: str, role: str, actor=None) -> Dict[str, Any]:
-        return self.store.update_member_role(workspace_id, user_id=user_id, role=role, actor=actor)
+        return self.store.update_member_role(workspace_id, user_id=self._identity(user_id) or user_id, role=role, actor=self._identity(actor))
 
     def remove_member(self, workspace_id: str, *, user_id: str, actor=None) -> Dict[str, Any]:
-        return self.store.remove_member(workspace_id, user_id=user_id, actor=actor)
+        return self.store.remove_member(workspace_id, user_id=self._identity(user_id) or user_id, actor=self._identity(actor))
 
     def set_active_workspace(self, workspace_id: str, user_id: Optional[str]) -> Dict[str, Any]:
         # Membership is enforced inside the store for organization workspaces.
-        return self.store.set_active_workspace(workspace_id, user_id=user_id)
+        return self.store.set_active_workspace(workspace_id, user_id=self._identity(user_id))

@@ -55,6 +55,7 @@ def create_admin_router(
     invite_code: str,
     invite_gate_enabled: bool,
     default_port: int,
+    policy_matrix: Optional[Callable[[], List[Dict[str, object]]]] = None,
 ) -> APIRouter:
     router = APIRouter()
 
@@ -109,16 +110,6 @@ def create_admin_router(
             report["graph"] = {"error": str(e)}
         return report
 
-    # Canonical RBAC capability map — which product areas each role can reach.
-    # This is the real access policy the app enforces, not sample data.
-    _ROLE_CAPS = {
-        "owner": ["all"],
-        "admin": ["users", "policies", "audit", "security", "chat", "search", "files", "pipeline"],
-        "member": ["chat", "search", "files", "pipeline"],
-        "user": ["chat", "search", "files", "pipeline"],
-        "viewer": ["chat", "search"],
-    }
-
     @router.get("/admin/roles")
     async def admin_roles(request: Request):
         _, users = require_admin(request)
@@ -126,13 +117,21 @@ def create_admin_router(
         for email, user in users.items():
             role = (get_user_role(email, users) or "user").lower()
             counts[role] += 1
-        # Always surface the two RBAC tiers the app actually distinguishes so the
-        # matrix is meaningful even before extra users exist.
-        for base in ("admin", "user"):
-            counts.setdefault(base, counts.get(base, 0))
+        matrix = policy_matrix() if policy_matrix else [
+            {"role": "admin", "caps": ["all"]},
+            {"role": "user", "caps": ["chat", "search"]},
+        ]
+        policy_caps = {
+            str(item.get("role") or "user"): list(item.get("caps") or [])
+            for item in matrix
+            if isinstance(item, dict)
+        }
+        for role in policy_caps:
+            counts.setdefault(role, 0)
+        order = {"owner": 0, "admin": 1, "member": 2, "user": 3, "viewer": 4}
         roles = [
-            {"role": role, "members": counts.get(role, 0), "caps": _ROLE_CAPS.get(role, ["chat", "search"])}
-            for role in sorted(counts, key=lambda r: (r != "owner", r != "admin", r))
+            {"role": role, "members": counts.get(role, 0), "caps": policy_caps.get(role, [])}
+            for role in sorted(counts, key=lambda r: (order.get(r, 99), r))
         ]
         return {"roles": roles}
 
