@@ -3,7 +3,7 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import ReactFlow, { Background, Controls, Edge, Node } from "reactflow";
 import { Bot, GitBranch, PauseCircle, Play, Workflow } from "lucide-react";
 import { latticeApi } from "@/api/client";
-import { ActionButton, DataPanel, EntityList, JsonView, Tabs } from "@/components/primitives";
+import { ActionButton, DataPanel, EntityList, KeyValueList, OperationResult, StructuredView, Tabs } from "@/components/primitives";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -81,11 +81,11 @@ function AgentsPanel() {
           >
             <Play className="h-4 w-4" /> {runtimeReady ? "Run pipeline" : "Agent execution unavailable"}
           </Button>
-          {run.data ? <JsonView value={run.data.data || run.data.error} /> : null}
+          {run.data ? <OperationResult result={run.data} successLabel="Agent run request completed" /> : null}
         </CardContent>
       </Card>
       <DataPanel title="Runtime status" result={runtime.data}>
-        {(data) => <JsonView value={data} />}
+        {(data) => <StructuredView value={data} />}
       </DataPanel>
       <DataPanel title="Agent registry" result={registry.data}>
         {(data) => (
@@ -99,7 +99,7 @@ function AgentsPanel() {
         )}
       </DataPanel>
       <DataPanel title="Agent capabilities" result={caps.data}>
-        {(data) => <JsonView value={data} />}
+        {(data) => <StructuredView value={data} />}
       </DataPanel>
     </div>
   );
@@ -129,7 +129,9 @@ function RunsPanel() {
                 <div key={token} className="flex flex-wrap items-center justify-between gap-3 rounded-md border border-border p-3">
                   <div>
                     <div className="font-medium">{shortId(token, 16)}</div>
-                    <div className="text-sm text-muted-foreground">{JSON.stringify(value)}</div>
+                    <div className="mt-2">
+                      <KeyValueList data={(value || {}) as Record<string, unknown>} limit={5} />
+                    </div>
                   </div>
                   <div className="flex gap-2">
                     <ActionButton label="Approve" action={() => latticeApi.approvePermission(token)} invalidate={["permissions"]} />
@@ -228,8 +230,8 @@ function WorkflowsPanel() {
               </div>
               <Textarea value={importText} onChange={(event) => setImportText(event.target.value)} placeholder="Paste exported workflow JSON" />
               <Button variant="outline" disabled={!importText.trim() || importWorkflow.isPending} onClick={() => importWorkflow.mutate()}>Import</Button>
-              {create.data ? <JsonView value={create.data.data || create.data.error} /> : null}
-              {importWorkflow.data ? <JsonView value={importWorkflow.data.data || importWorkflow.data.error} /> : null}
+              {create.data ? <OperationResult result={create.data} successLabel="Workflow created" /> : null}
+              {importWorkflow.data ? <OperationResult result={importWorkflow.data} successLabel="Workflow imported" /> : null}
             </div>
             {workflows.length ? workflows.map((workflow) => {
               const id = String(workflow.id || workflow.workflow_id);
@@ -247,7 +249,7 @@ function WorkflowsPanel() {
         )}
       </DataPanel>
       <DataPanel title="Trigger configuration" result={triggers.data} className="xl:col-span-2">
-        {(data) => <JsonView value={data} />}
+        {(data) => <StructuredView value={data} />}
       </DataPanel>
     </div>
   );
@@ -300,7 +302,7 @@ function ToolsPanel() {
   const tools = useQuery({ queryKey: ["toolPermissions"], queryFn: latticeApi.toolPermissions });
   return (
     <DataPanel title="Tool governance" result={tools.data}>
-      {(data) => <JsonView value={data} />}
+      {(data) => <EntityList items={(data as Record<string, unknown>).permissions || data} titleKey="tool" metaKey="risk" />}
     </DataPanel>
   );
 }

@@ -2,7 +2,7 @@ import * as React from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { Boxes, Cpu, PackagePlus, Plug, Puzzle } from "lucide-react";
 import { latticeApi } from "@/api/client";
-import { ActionButton, DataPanel, EntityList, JsonView, Tabs } from "@/components/primitives";
+import { ActionButton, DataPanel, EntityList, OperationResult, StructuredView, Tabs } from "@/components/primitives";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -82,7 +82,7 @@ function ModelsPanel() {
         )}
       </DataPanel>
       <DataPanel title="Embedding provider" result={emb.data}>
-        {(data) => <JsonView value={data} />}
+        {(data) => <StructuredView value={data} />}
       </DataPanel>
     </div>
   );
@@ -151,7 +151,7 @@ function McpPanel() {
             <Input value={query} onChange={(e) => setQuery(e.target.value)} />
             <Button onClick={() => rec.mutate()} disabled={!query.trim() || rec.isPending}>Recommend</Button>
           </div>
-          {rec.data ? <JsonView value={rec.data.data || rec.data.error} /> : null}
+          {rec.data ? <OperationResult result={rec.data} successLabel="Recommendation completed" /> : null}
         </CardContent>
       </Card>
     </div>

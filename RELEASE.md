@@ -7,6 +7,37 @@
 > PyPI / npm / VS Code Marketplace / Open VSX 배포는 아래 수동 절차로만
 > 진행합니다. 태그 생성은 패키지 스토어 publish를 자동으로 트리거하지 않습니다.
 
+## v4.3.2 RC 릴리스 노트 (2026-06-13)
+
+Lattice AI v4.3.2 — Product Polish & Graph UX Overhaul. `main` after v4.3.1
+위에서 frontend/desktop product surface를 다듬고 Brain graph explorer를 실제
+end-user workflow 중심으로 확장한다. Brain Core, storage, agent/workflow
+architecture는 redesign하지 않는다. GitHub Release, tag, external package
+registry publish는 이 RC 작업에 포함하지 않는다.
+
+- **Changed (Brain graph)**: Brain landing graph is a semantic Cytoscape
+  explorer with search, min-importance filter, type groups, group
+  collapse/expand, focused neighborhoods, label modes, node importance sizing,
+  and backend hybrid-search results.
+- **Changed (Product polish)**: Brain, Ask, Capture, Act, Library, and System
+  replace raw JSON dumps with structured result cards, entity lists, readable
+  status panels, and honest unavailable states backed by existing APIs.
+- **Changed (Portability UX)**: System exposes archive export, inspect, verify,
+  import dry-run, confirmed import, restore dry-run, confirmed restore, storage,
+  backup health, and Brain Network status through real FastAPI routes.
+- **Fixed (Desktop lifecycle)**: Tauri app-level exit handling now kills the
+  FastAPI sidecar on normal macOS quit as well as window close.
+- **Validated**: end-user self-audit screenshots/GIFs, Python compile, ruff,
+  unit tests, live integration tests, frontend lint/typecheck, Playwright
+  visual tests, Tauri check/build, release artifact validation, wheel smoke,
+  and npm pack dry-run.
+- **Expected artifacts**:
+  - `dist/ltcai-4.3.2-py3-none-any.whl`
+  - `dist/ltcai-4.3.2.tar.gz`
+  - `dist/ltcai-4.3.2.vsix`
+  - `ltcai-4.3.2.tgz`
+  - `src-tauri/target/release/bundle/dmg/Lattice AI_4.3.2_aarch64.dmg`
+
 ## v4.3.1 RC 릴리스 노트 (2026-06-12)
 
 Lattice AI v4.3.1 — End-User Audit Repair RC. v4.3.0 published artifact
@@ -853,14 +884,14 @@ Knowledge Graph v2 read/write cutover. 자세한 내용은
    - `npm run release:artifacts`
    - `npm run release:validate`
 
-현재 `v4.3.1` 기준 필수 산출물:
+현재 `v4.3.2` 기준 필수 산출물:
 
 ```text
-dist/ltcai-4.3.1-py3-none-any.whl
-dist/ltcai-4.3.1.tar.gz
-dist/ltcai-4.3.1.vsix
-ltcai-4.3.1.tgz
-src-tauri/target/release/bundle/dmg/Lattice AI_4.3.1_aarch64.dmg
+dist/ltcai-4.3.2-py3-none-any.whl
+dist/ltcai-4.3.2.tar.gz
+dist/ltcai-4.3.2.vsix
+ltcai-4.3.2.tgz
+src-tauri/target/release/bundle/dmg/Lattice AI_4.3.2_aarch64.dmg
 ```
 
 ## 2) npm 배포

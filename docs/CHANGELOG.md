@@ -1,5 +1,45 @@
 # Changelog
 
+## [4.3.2] - 2026-06-13
+
+> Product Polish & Graph UX Overhaul release candidate after v4.3.1.
+
+### Changed
+
+- Brain graph explorer now uses the existing Knowledge Graph and hybrid-search
+  APIs to provide semantic groups, type colors, importance/degree sizing,
+  search, min-importance filtering, focused neighborhoods, collapsible groups,
+  label modes, and query result panels.
+- Brain, Ask, Capture, Act, Library, and System product flows now render
+  structured cards, entity lists, readable status panels, and operation results
+  instead of normalizing user-facing runtime state into raw JSON dumps.
+- System portability controls now include `.latticebrain` import dry-run and
+  confirmed import alongside export, inspect, verify, restore dry-run, confirmed
+  restore, backup health, storage, Brain Network, and device identity status.
+- Static frontend assets, generated OpenAPI client, npm/Python/VSIX/Tauri
+  versions, and release artifacts are synchronized to `4.3.2`.
+
+### Fixed
+
+- Tauri now also kills the FastAPI sidecar on app-level exit events, so a normal
+  macOS quit releases port 8765 after the rebuilt desktop app closes.
+
+### Validation
+
+- Python compile check, ruff, frontend lint, TypeScript build, VS Code extension
+  build, unit tests, live integration tests, Playwright visual tests, Tauri
+  check/build, release artifact validation, wheel smoke, npm pack dry-run, and
+  desktop startup/shutdown verification passed.
+- End-user self-audit evidence is stored under `output/audits/v4.3.2-rc/`.
+
+### Artifacts
+
+- `dist/ltcai-4.3.2-py3-none-any.whl`
+- `dist/ltcai-4.3.2.tar.gz`
+- `dist/ltcai-4.3.2.vsix`
+- `ltcai-4.3.2.tgz`
+- `src-tauri/target/release/bundle/dmg/Lattice AI_4.3.2_aarch64.dmg`
+
 ## [4.3.1] - 2026-06-12
 
 > End-user audit repair release candidate for v4.3.0 artifacts.

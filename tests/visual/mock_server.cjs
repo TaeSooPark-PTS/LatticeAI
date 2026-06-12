@@ -215,7 +215,7 @@ const server = http.createServer((req, res) => {
   if (pathname === "/account/change-password" && req.method === "POST") return json(res, { status: "ok" });
   if (pathname === "/auth/sso/config") return json(res, { enabled: false, providers: [] });
 
-  if (pathname === "/health") return json(res, { status: "ok", version: "4.3.1", mode: "visual" });
+  if (pathname === "/health") return json(res, { status: "ok", version: "4.3.2", mode: "visual" });
   if (pathname === "/vpc/status") return json(res, { provider: "local", region: "visual", vpn_status: "standby", peering_status: "not_configured", private_subnets: [] });
   if (pathname === "/workspace/os") return json(res, workspaceOs);
   if (pathname === "/workspace/registry") return json(res, workspaceOs.workspace_registry);
@@ -578,7 +578,7 @@ const server = http.createServer((req, res) => {
     { id: "model_egress", label: "Model egress", value: "Local-only by default", enforced: true },
   ] });
   if (pathname === "/admin/product-hardening") return json(res, {
-    version: "4.3.0",
+    version: "4.3.2",
     startup: { local_only_default: true, host: "127.0.0.1", port: 4825, network_exposed: false },
     privacy: { local_only_default: true, integrations: { telegram: { enabled: false, credential_present: false, opt_in_required: true } } },
     storage: { active: { engine: "sqlite", available: true } },

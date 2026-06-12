@@ -203,31 +203,31 @@ npm run dev
 
 ## Latest Release
 
-### v4.3.1 RC — End-User Audit Repair
+### v4.3.2 RC — Product Polish & Graph UX Overhaul
 
-- **Desktop startup repair** — Tauri launches a visible app, resolves the
-  FastAPI sidecar from installed or bundled runtime paths, reports sidecar
-  status, and shuts it down on close.
-- **Clean npm install repair** — npm bootstrap ships the required Python
-  requirements file and fails honestly if dependencies cannot be installed.
-- **No default outbound model work** — Model Load refuses implicit downloads or
-  runtime installs unless the user gives explicit download/install consent.
-- **Honest Act surfaces** — agent simulation is not recorded as real success,
-  and workflow create/import/export/run controls call the existing workflow API.
-- **Storage/portability honesty** — sqlite-vec fallback, Postgres dependency
-  status, configured ports, and `.latticebrain` bundle sections match runtime
-  behavior.
+- **Graph explorer overhaul** — Brain now opens on a real Cytoscape explorer
+  with semantic groups, importance/degree sizing, search, focus neighborhoods,
+  collapsible groups, and backend hybrid-search results.
+- **Product-readable runtime state** — Brain, Ask, Capture, Act, Library, and
+  System replace raw JSON dumps with structured summaries, honest unavailable
+  states, and visible API-backed outcomes.
+- **Archive and restore usability** — System exposes `.latticebrain` export,
+  inspect, verify, import dry-run, confirmed import, restore dry-run, and
+  confirmed restore through the existing FastAPI archive APIs.
+- **Desktop lifecycle hardening** — the Tauri app starts the sidecar from the
+  rebuilt bundle and releases the localhost port after a normal macOS quit.
 - **Release hardening** — exact-version validation covers wheel, sdist, npm tgz,
-  VSIX, and Tauri DMG artifacts.
+  VSIX, and Tauri DMG artifacts for `4.3.2`.
 
-See [RELEASE_NOTES_v4.3.1.md](RELEASE_NOTES_v4.3.1.md),
+See [RELEASE_NOTES_v4.3.2.md](RELEASE_NOTES_v4.3.2.md),
+[RELEASE_NOTES_v4.3.1.md](RELEASE_NOTES_v4.3.1.md),
 [RELEASE_NOTES_v4.3.0.md](RELEASE_NOTES_v4.3.0.md),
 [docs/kg-schema.md](docs/kg-schema.md),
 [FEATURE_STATUS.md](FEATURE_STATUS.md).
 
 ## How it works — every source converges into the graph
 
-As of v4.3.1, data sources flow through the brain ingestion pipeline into
+As of v4.3.2, data sources flow through the brain ingestion pipeline into
 the Knowledge Graph — no source bypasses it, none becomes an isolated silo:
 
 ```text
@@ -262,6 +262,10 @@ For the deeper design, see [ARCHITECTURE.md](ARCHITECTURE.md) and
 
 - [ARCHITECTURE.md](ARCHITECTURE.md) — workspace, graph, pipeline, and model overview
 - [docs/architecture.md](docs/architecture.md) — full architecture reference
+- [docs/V4_3_2_GRAPH_UX_REPORT.md](docs/V4_3_2_GRAPH_UX_REPORT.md) — v4.3.2 graph explorer overhaul
+- [docs/V4_3_2_PRODUCT_POLISH_REPORT.md](docs/V4_3_2_PRODUCT_POLISH_REPORT.md) — v4.3.2 product polish report
+- [docs/V4_3_2_SELF_AUDIT_REPORT.md](docs/V4_3_2_SELF_AUDIT_REPORT.md) — v4.3.2 end-user self-audit evidence
+- [docs/V4_3_2_VALIDATION_REPORT.md](docs/V4_3_2_VALIDATION_REPORT.md) — v4.3.2 validation report
 - [docs/V4_3_PORTABILITY_ARCHITECTURE.md](docs/V4_3_PORTABILITY_ARCHITECTURE.md) — v4.3.0 portable brain archive architecture
 - [docs/V4_3_PRODUCT_HARDENING_REPORT.md](docs/V4_3_PRODUCT_HARDENING_REPORT.md) — v4.3.0 desktop/product hardening report
 - [docs/V4_3_PRIVACY_AUDIT.md](docs/V4_3_PRIVACY_AUDIT.md) — v4.3.0 privacy and local-first audit
@@ -290,6 +294,7 @@ For the deeper design, see [ARCHITECTURE.md](ARCHITECTURE.md) and
 ### Releases
 
 - [RELEASE_NOTES.md](RELEASE_NOTES.md) — current release notes
+- [RELEASE_NOTES_v4.3.2.md](RELEASE_NOTES_v4.3.2.md)
 - [RELEASE_NOTES_v4.3.1.md](RELEASE_NOTES_v4.3.1.md)
 - [RELEASE_NOTES_v4.3.0.md](RELEASE_NOTES_v4.3.0.md)
 - [RELEASE_NOTES_v4.2.0.md](RELEASE_NOTES_v4.2.0.md)
@@ -306,6 +311,7 @@ For the deeper design, see [ARCHITECTURE.md](ARCHITECTURE.md) and
 
 | Version | Theme |
 | --- | --- |
+| **4.3.2** | Product Polish & Graph UX Overhaul RC — semantic graph explorer, structured runtime state, archive import/restore UX, desktop sidecar quit cleanup, exact-version artifact validation |
 | **4.3.1** | End-User Audit Repair RC — desktop sidecar startup, npm clean install, default-off model downloads, honest agent/workflow unavailable states, configured port reporting, storage/portable archive honesty |
 | **4.3.0** | Portability & Product Hardening RC — portable `.latticebrain` archives, confirmed restore/import, pre-migration backup verification, Tauri sidecar hardening, local-only/default-off integration guards, exact-version DMG validation |
 | **4.2.0** | Brain Core & Storage Rebuild — independent `lattice_brain` package, pluggable storage layer, sqlite-vec/pgvector capability reporting, explicit Postgres migration, consent-gated Docker setup, encrypted `.latticebrain` archives |

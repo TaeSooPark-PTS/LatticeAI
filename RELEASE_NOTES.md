@@ -1,5 +1,40 @@
 # Release Notes
 
+## v4.3.2 RC - Product Polish & Graph UX Overhaul
+
+Lattice AI v4.3.2 polishes the v4.3.1 desktop product and overhauls the Brain
+graph UX while preserving the existing frontend architecture, Brain Core,
+storage, agent/workflow, API, and user-data contracts. This RC builds validated
+artifacts only; it does not tag, create a GitHub Release, publish packages, or
+deploy.
+
+### Highlights
+
+- Brain now opens on a semantic Cytoscape graph explorer with search,
+  importance filtering, type grouping, group collapse/expand, focus
+  neighborhoods, label modes, importance sizing, and backend hybrid-search
+  results.
+- Brain, Ask, Capture, Act, Library, and System replace raw JSON dumps with
+  structured summaries, operation results, readable status panels, and honest
+  unavailable states.
+- System exposes `.latticebrain` export, inspect, verify, import dry-run,
+  confirmed import, restore dry-run, confirmed restore, storage, backup health,
+  Brain Network, and device identity through real APIs.
+- Tauri app-level exit handling shuts down the FastAPI sidecar after normal
+  macOS quit and releases the localhost port.
+- v4.3.2 self-audit evidence includes screenshots and a graph walkthrough GIF
+  under `output/audits/v4.3.2-rc/`.
+
+### Expected Artifacts
+
+- `dist/ltcai-4.3.2-py3-none-any.whl`
+- `dist/ltcai-4.3.2.tar.gz`
+- `dist/ltcai-4.3.2.vsix`
+- `ltcai-4.3.2.tgz`
+- `src-tauri/target/release/bundle/dmg/Lattice AI_4.3.2_aarch64.dmg`
+
+Full detail: [RELEASE_NOTES_v4.3.2.md](RELEASE_NOTES_v4.3.2.md).
+
 ## v4.3.1 RC - End-User Audit Repair
 
 Lattice AI v4.3.1 repairs the v4.3.0 end-user audit blockers while preserving

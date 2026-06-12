@@ -405,6 +405,16 @@ fn main() {
                 }
             }
         })
-        .run(tauri::generate_context!())
-        .expect("failed to run Lattice AI desktop shell");
+        .build(tauri::generate_context!())
+        .expect("failed to build Lattice AI desktop shell")
+        .run(|app_handle, event| {
+            if matches!(
+                event,
+                tauri::RunEvent::ExitRequested { .. } | tauri::RunEvent::Exit
+            ) {
+                if let Some(state) = app_handle.try_state::<BackendState>() {
+                    kill_backend(&state);
+                }
+            }
+        });
 }

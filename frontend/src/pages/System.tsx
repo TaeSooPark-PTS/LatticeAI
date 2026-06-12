@@ -1,14 +1,14 @@
 import * as React from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { Activity, KeyRound, Network, ShieldCheck, UserCircle, Users } from "lucide-react";
+import { Network, ShieldCheck, UserCircle, Users } from "lucide-react";
 import { latticeApi } from "@/api/client";
-import { ActionButton, DataPanel, EntityList, JsonView, KeyValueList, Tabs } from "@/components/primitives";
+import { ActionButton, DataPanel, EmptyState, EntityList, KeyValueList, OperationResult, StatGrid, StructuredView, Tabs } from "@/components/primitives";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { useAppStore } from "@/store/appStore";
-import { asArray, titleize } from "@/lib/utils";
+import { asArray, shortId, titleize } from "@/lib/utils";
 
 type SystemTab = "account" | "workspaces" | "snapshots" | "activity" | "network" | "settings" | "admin";
 
@@ -84,11 +84,13 @@ function AccountPanel() {
             <Button variant="outline" onClick={() => changePassword.mutate()} disabled={!password || !newPassword || changePassword.isPending}>Change password</Button>
             <ActionButton label="Logout" action={() => latticeApi.logout()} invalidate={["profile"]} />
           </div>
-          {[login.data, register.data, saveProfile.data, changePassword.data].filter(Boolean).map((item, i) => <JsonView key={i} value={item?.data || item?.error} />)}
+          {[login.data, register.data, saveProfile.data, changePassword.data].filter(Boolean).map((item, i) => (
+            <OperationResult key={i} result={item} successLabel="Account request completed" />
+          ))}
         </CardContent>
       </Card>
       <DataPanel title="SSO config" result={sso.data} className="xl:col-span-2">
-        {(data) => <JsonView value={data} />}
+        {(data) => <StructuredView value={data} />}
       </DataPanel>
     </div>
   );
@@ -195,7 +197,7 @@ function SnapshotsPanel() {
             <Input value={after} onChange={(e) => setAfter(e.target.value)} placeholder="after id" />
           </div>
           <Button variant="outline" onClick={() => compare.mutate()} disabled={!before || !after || compare.isPending}>Compare</Button>
-          {compare.data ? <JsonView value={compare.data.data || compare.data.error} /> : null}
+          {compare.data ? <OperationResult result={compare.data} successLabel="Snapshot comparison completed" /> : null}
         </CardContent>
       </Card>
       <DataPanel title="Time machine" result={timeline.data} className="xl:col-span-2">
@@ -214,7 +216,7 @@ function ActivityPanel() {
         {(data) => <EntityList items={(data as Record<string, unknown>).events} titleKey="event_type" metaKey="area" limit={14} />}
       </DataPanel>
       <DataPanel title="Presence" result={presence.data}>
-        {(data) => <JsonView value={data} />}
+        {(data) => <PresenceView data={data as Record<string, unknown>} />}
       </DataPanel>
     </div>
   );
@@ -234,7 +236,7 @@ function NetworkPanel() {
   return (
     <div className="grid gap-4 xl:grid-cols-[0.8fr_1.2fr]">
       <DataPanel title="Device identity" result={identity.data}>
-        {(data) => <JsonView value={data} />}
+        {(data) => <DeviceIdentityView data={data as Record<string, unknown>} />}
       </DataPanel>
       <Card>
         <CardHeader>
@@ -246,7 +248,7 @@ function NetworkPanel() {
           <Input value={baseUrl} onChange={(e) => setBaseUrl(e.target.value)} placeholder="http://peer.local:8765" />
           <Input value={publicKey} onChange={(e) => setPublicKey(e.target.value)} placeholder="trusted public key" />
           <Button disabled={!name || !baseUrl || !publicKey || pair.isPending} onClick={() => pair.mutate()}>Pair</Button>
-          {pair.data ? <JsonView value={pair.data.data || pair.data.error} /> : null}
+          {pair.data ? <OperationResult result={pair.data} successLabel="Peer pairing request completed" /> : null}
         </CardContent>
       </Card>
       <DataPanel title="Peers" result={peers.data} className="xl:col-span-2">
@@ -289,6 +291,7 @@ function SettingsPanel() {
   const [restorePath, setRestorePath] = React.useState("");
   const [archivePassphrase, setArchivePassphrase] = React.useState("");
   const [restoreConfirm, setRestoreConfirm] = React.useState(false);
+  const [importConfirm, setImportConfirm] = React.useState(false);
   const docker = useMutation({ mutationFn: (consent: boolean) => latticeApi.dockerPostgres({ consent, dry_run: !consent, port: 5432 }) });
   const migration = useMutation({
     mutationFn: () => latticeApi.migratePostgres({ dsn, schema_name: schema || "lattice_brain", dry_run: true }),
@@ -313,6 +316,16 @@ function SettingsPanel() {
       qc.invalidateQueries({ queryKey: ["backupHealth"] });
     },
   });
+  const archiveImportDryRun = useMutation({
+    mutationFn: () => latticeApi.brainArchiveImport({ path: restorePath, passphrase: archivePassphrase, dry_run: true, confirm: false }),
+  });
+  const archiveImport = useMutation({
+    mutationFn: () => latticeApi.brainArchiveImport({ path: restorePath, passphrase: archivePassphrase, dry_run: false, confirm: importConfirm }),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["brainStorage"] });
+      qc.invalidateQueries({ queryKey: ["backupHealth"] });
+    },
+  });
   return (
     <div className="grid gap-4 xl:grid-cols-3">
       <Card>
@@ -329,16 +342,16 @@ function SettingsPanel() {
         </CardContent>
       </Card>
       <DataPanel title="Server health" result={health.data}>
-        {(data) => <JsonView value={data} />}
+        {(data) => <HealthView data={data as Record<string, unknown>} />}
       </DataPanel>
       <DataPanel title="Host telemetry" result={sys.data}>
-        {(data) => <JsonView value={data} />}
+        {(data) => <StructuredView value={data} />}
       </DataPanel>
       <DataPanel title="Brain storage" result={storage.data} className="xl:col-span-3">
-        {(data) => <JsonView value={data} />}
+        {(data) => <StorageView data={data as Record<string, unknown>} />}
       </DataPanel>
       <DataPanel title="Backup health" result={backupHealth.data} className="xl:col-span-3">
-        {(data) => <JsonView value={data} />}
+        {(data) => <BackupHealthView data={data as Record<string, unknown>} />}
       </DataPanel>
       <Card className="xl:col-span-3">
         <CardHeader>
@@ -356,14 +369,20 @@ function SettingsPanel() {
             <Button variant="outline" onClick={() => archiveInspect.mutate()} disabled={!restorePath || archiveInspect.isPending}>Inspect</Button>
             <Button variant="outline" onClick={() => archiveVerify.mutate()} disabled={!restorePath || !archivePassphrase || archiveVerify.isPending}>Verify</Button>
             <Button variant="outline" onClick={() => archiveDryRun.mutate()} disabled={!restorePath || !archivePassphrase || archiveDryRun.isPending}>Restore dry run</Button>
+            <Button variant="outline" onClick={() => archiveImportDryRun.mutate()} disabled={!restorePath || !archivePassphrase || archiveImportDryRun.isPending}>Import dry run</Button>
             <label className="flex items-center gap-2 rounded-md border border-border px-3 py-2 text-sm">
               <input type="checkbox" checked={restoreConfirm} onChange={(e) => setRestoreConfirm(e.target.checked)} />
               Confirm restore
             </label>
             <Button variant="destructive" onClick={() => archiveRestore.mutate()} disabled={!restorePath || !archivePassphrase || !restoreConfirm || archiveRestore.isPending}>Restore</Button>
+            <label className="flex items-center gap-2 rounded-md border border-border px-3 py-2 text-sm">
+              <input type="checkbox" checked={importConfirm} onChange={(e) => setImportConfirm(e.target.checked)} />
+              Confirm import
+            </label>
+            <Button variant="outline" onClick={() => archiveImport.mutate()} disabled={!restorePath || !archivePassphrase || !importConfirm || archiveImport.isPending}>Import</Button>
           </div>
-          {[archiveCreate.data, archiveInspect.data, archiveVerify.data, archiveDryRun.data, archiveRestore.data].filter(Boolean).map((item, i) => (
-            <JsonView key={i} value={item?.data || item?.error} />
+          {[archiveCreate.data, archiveInspect.data, archiveVerify.data, archiveDryRun.data, archiveRestore.data, archiveImportDryRun.data, archiveImport.data].filter(Boolean).map((item, i) => (
+            <OperationResult key={i} result={item} successLabel="Archive request completed" />
           ))}
         </CardContent>
       </Card>
@@ -386,14 +405,14 @@ function SettingsPanel() {
             <Button onClick={() => docker.mutate(true)} disabled={!dockerConsent || docker.isPending}>Start Docker</Button>
             <Button variant="outline" onClick={() => migration.mutate()} disabled={!dsn || migration.isPending}>Plan migration</Button>
           </div>
-          {docker.data ? <JsonView value={docker.data.data || docker.data.error} /> : null}
-          {migration.data ? <JsonView value={migration.data.data || migration.data.error} /> : null}
+          {docker.data ? <OperationResult result={docker.data} successLabel="Docker setup request completed" /> : null}
+          {migration.data ? <OperationResult result={migration.data} successLabel="Migration plan completed" /> : null}
         </CardContent>
       </Card>
       <DataPanel title="Computer memory" result={comp.data} className="xl:col-span-3">
         {(data) => (
           <div className="space-y-3">
-            <JsonView value={data} />
+            <StructuredView value={data} />
             <div className="flex gap-2">
               <ActionButton label="Enable memory" action={() => latticeApi.setComputerMemory(true)} invalidate={["computerMemory"]} />
               <ActionButton label="Disable memory" action={() => latticeApi.setComputerMemory(false)} invalidate={["computerMemory"]} variant="destructive" />
@@ -401,6 +420,150 @@ function SettingsPanel() {
           </div>
         )}
       </DataPanel>
+    </div>
+  );
+}
+
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return Boolean(value && typeof value === "object" && !Array.isArray(value));
+}
+
+function textValue(value: unknown, fallback = "not reported") {
+  if (value === null || value === undefined || value === "") return fallback;
+  if (typeof value === "boolean") return value ? "enabled" : "disabled";
+  return String(value);
+}
+
+function PresenceView({ data }: { data: Record<string, unknown> }) {
+  const rows = asArray<Record<string, unknown>>(data.presence || data.clients || data);
+  if (!rows.length) return <EmptyState title="No active presence" detail="No live collaborators or realtime clients are currently reported." />;
+  return <EntityList items={rows} titleKey="user" metaKey="workspace_id" />;
+}
+
+function DeviceIdentityView({ data }: { data: Record<string, unknown> }) {
+  const publicKey = textValue(data.public_key, "");
+  return (
+    <div className="space-y-3">
+      <div className="flex flex-wrap items-center gap-2">
+        <Badge variant="success">local device</Badge>
+        <Badge variant="muted">{textValue(data.algorithm, "identity key")}</Badge>
+      </div>
+      <KeyValueList data={{
+        device_id: data.device_id || data.id || "not reported",
+        fingerprint: data.fingerprint || "not reported",
+        public_key: publicKey ? shortId(publicKey.replace(/\s+/g, " "), 72) : "not reported",
+      }} />
+    </div>
+  );
+}
+
+function HealthView({ data }: { data: Record<string, unknown> }) {
+  return (
+    <div className="space-y-3">
+      <StatGrid stats={[
+        { label: "Status", value: data.status || data.ok || "reported" },
+        { label: "Version", value: data.version || "not reported" },
+        { label: "Mode", value: data.mode || data.environment || "local" },
+        { label: "Port", value: data.port || data.backend_port || "configured" },
+      ]} />
+      <StructuredView value={data} />
+    </div>
+  );
+}
+
+function StorageView({ data }: { data: Record<string, unknown> }) {
+  const active = isRecord(data.active) ? data.active : data;
+  const postgres = isRecord(data.postgres) ? data.postgres : {};
+  const backup = isRecord(data.backup_health) ? data.backup_health : {};
+  const vector = active.vector_search || active.vector || data.vector_search || data.sqlite_vec;
+  const postgresAvailable = Boolean(postgres.available || postgres.connected || postgres.enabled);
+  return (
+    <div className="space-y-4">
+      <StatGrid stats={[
+        { label: "Active engine", value: active.engine || data.engine || "sqlite" },
+        { label: "SQLite default", value: active.engine === "postgres" ? "scale mode" : "enabled" },
+        { label: "Vector search", value: vector || "not reported" },
+        { label: "Postgres", value: postgresAvailable ? "available" : "optional" },
+      ]} />
+      <div className="grid gap-3 md:grid-cols-3">
+        <StatusCard title="SQLite" status={active.available === false ? "unavailable" : "default"} detail={textValue(active.reason || active.path || data.path, "Local brain storage is active by default.")} />
+        <StatusCard title="Vector search" status={textValue(vector, "reported")} detail={textValue(active.vector_reason || active.sqlite_vec_reason || data.vector_reason, "Uses the configured local vector capability or reports why it is unavailable.")} />
+        <StatusCard title="Postgres" status={postgresAvailable ? "available" : "not enabled"} detail={textValue(postgres.reason || postgres.dsn || postgres.status, "Postgres scale mode is opt-in and never required for local use.")} />
+      </div>
+      {Object.keys(backup).length ? <StructuredView value={{ backup_health: backup }} /> : null}
+    </div>
+  );
+}
+
+function BackupHealthView({ data }: { data: Record<string, unknown> }) {
+  return (
+    <div className="space-y-3">
+      <StatGrid stats={[
+        { label: "Available", value: data.available === false ? "no" : "yes" },
+        { label: "Backups", value: data.count || data.backups || 0 },
+        { label: "Encrypted", value: data.encrypted_archives || 0 },
+        { label: "Zip backups", value: data.zip_backups || 0 },
+      ]} />
+      <KeyValueList data={{
+        directory: data.directory || "not reported",
+        latest: data.latest || "none reported",
+        last_verified: data.last_verified || data.verified_at || "not reported",
+        failure: data.error || data.reason || "none reported",
+      }} />
+    </div>
+  );
+}
+
+function StatusCard({ title, status, detail }: { title: string; status: string; detail: string }) {
+  const variant = /unavailable|failed|denied|disabled|not enabled/i.test(status) ? "warning" : "success";
+  return (
+    <div className="rounded-md border border-border bg-background p-3">
+      <div className="flex items-center justify-between gap-2">
+        <div className="font-medium">{title}</div>
+        <Badge variant={variant}>{status}</Badge>
+      </div>
+      <p className="mt-2 text-sm text-muted-foreground">{detail}</p>
+    </div>
+  );
+}
+
+function HardeningView({ data }: { data: Record<string, unknown> }) {
+  const startup = isRecord(data.startup) ? data.startup : {};
+  const privacy = isRecord(data.privacy) ? data.privacy : {};
+  const storage = isRecord(data.storage) ? data.storage : {};
+  const backup = isRecord(data.backup) ? data.backup : {};
+  const identity = isRecord(data.device_identity) ? data.device_identity : {};
+  const permissions = isRecord(data.permissions) ? data.permissions : {};
+  return (
+    <div className="space-y-3">
+      <StatGrid stats={[
+        { label: "Version", value: data.version || "reported" },
+        { label: "Local only", value: privacy.local_only_default ?? startup.local_only_default ?? "reported" },
+        { label: "Storage", value: isRecord(storage.active) ? (storage.active as Record<string, unknown>).engine : "reported" },
+        { label: "Backups", value: backup.count || backup.available || "reported" },
+      ]} />
+      <div className="grid gap-3 md:grid-cols-2">
+        <StatusCard title="Startup" status={startup.network_exposed ? "network exposed" : "local-only"} detail={`Host ${textValue(startup.host, "127.0.0.1")} on port ${textValue(startup.port, "configured")}.`} />
+        <StatusCard title="Integrations" status={privacy.local_only_default === false ? "review required" : "opt-in"} detail="External integrations remain disabled until the user explicitly enables them." />
+        <StatusCard title="Device identity" status={textValue(identity.algorithm || identity.fingerprint, "reported")} detail={textValue(identity.storage, "Stored locally and used for signed bundle exchange.")} />
+        <StatusCard title="Permissions" status={permissions.destructive_restore_requires_confirmation === false ? "review required" : "guarded"} detail="Export, import, and destructive restore permissions are surfaced through admin status." />
+      </div>
+    </div>
+  );
+}
+
+function SecurityView({ data }: { data: Record<string, unknown> }) {
+  const cards = isRecord(data.cards) ? data.cards : {};
+  const severities = isRecord(data.severity_counts) ? data.severity_counts : {};
+  return (
+    <div className="space-y-3">
+      <StatGrid stats={[
+        { label: "Events today", value: cards.events_today || 0 },
+        { label: "High risk", value: cards.high_risk_events || severities.high || 0 },
+        { label: "Review", value: cards.review_required || 0 },
+        { label: "Risk rate", value: data.risk_rate || 0 },
+      ]} />
+      <StructuredView value={{ severity_counts: severities, sensitive_fields: data.field_counts || {} }} />
     </div>
   );
 }
@@ -419,15 +582,15 @@ function AdminPanel() {
       <DataPanel title="Admin summary" result={summary.data}>{(data) => <KeyValueList data={data as Record<string, unknown>} />}</DataPanel>
       <DataPanel title="Users" result={users.data}>{(data) => <EntityList items={data} titleKey="email" metaKey="role" />}</DataPanel>
       <DataPanel title="Audit" result={audit.data}>{(data) => <EntityList items={(data as Record<string, unknown>).recent_events || data} titleKey="act" metaKey="sev" />}</DataPanel>
-      <DataPanel title="Roles" result={roles.data}>{(data) => <JsonView value={data} />}</DataPanel>
-      <DataPanel title="Policies" result={policies.data}>{(data) => <JsonView value={data} />}</DataPanel>
-      <DataPanel title="Product hardening" result={hardening.data}>{(data) => <JsonView value={data} />}</DataPanel>
-      <DataPanel title="Security overview" result={security.data}>{(data) => <JsonView value={data} />}</DataPanel>
+      <DataPanel title="Roles" result={roles.data}>{(data) => <EntityList items={(data as Record<string, unknown>).roles || data} titleKey="role" metaKey="members" />}</DataPanel>
+      <DataPanel title="Policies" result={policies.data}>{(data) => <EntityList items={(data as Record<string, unknown>).policies || data} titleKey="label" metaKey="enforced" />}</DataPanel>
+      <DataPanel title="Product hardening" result={hardening.data}>{(data) => <HardeningView data={data as Record<string, unknown>} />}</DataPanel>
+      <DataPanel title="Security overview" result={security.data}>{(data) => <SecurityView data={data as Record<string, unknown>} />}</DataPanel>
       <DataPanel title="Private VPC" result={vpc.data} className="xl:col-span-2">
         {(data) => (
           <div className="space-y-2">
             <Badge variant="muted">Community-disabled features remain honest unavailable states.</Badge>
-            <JsonView value={data} />
+            <StructuredView value={data} />
           </div>
         )}
       </DataPanel>

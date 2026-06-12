@@ -2,7 +2,7 @@ import * as React from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { ImagePlus, MessageSquare, Send, Trash2 } from "lucide-react";
 import { latticeApi } from "@/api/client";
-import { DataPanel, EmptyState, EntityList, JsonView, SourceBadge } from "@/components/primitives";
+import { DataPanel, EmptyState, EntityList, SourceBadge, StructuredView } from "@/components/primitives";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -193,7 +193,7 @@ function ContextPreview({ question, trace }: { question: string; trace: unknown 
           <CardTitle>Why this context</CardTitle>
           <CardDescription>Trace emitted by `/chat` when the backend includes it.</CardDescription>
         </CardHeader>
-        <CardContent>{trace ? <JsonView value={trace} /> : <EmptyState title="No trace yet" />}</CardContent>
+        <CardContent>{trace ? <StructuredView value={trace} /> : <EmptyState title="No trace yet" />}</CardContent>
       </Card>
     </>
   );

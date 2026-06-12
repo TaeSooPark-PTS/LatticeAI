@@ -5,7 +5,7 @@ import { ApiResult } from "@/api/client";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { cn, asArray, fmtNumber, titleize } from "@/lib/utils";
+import { cn, asArray, fmtNumber, shortId, titleize } from "@/lib/utils";
 
 export function SourceBadge({ result }: { result?: Pick<ApiResult, "source" | "ok" | "status"> }) {
   if (!result) return <Badge variant="muted">not loaded</Badge>;
@@ -81,12 +81,41 @@ export function StatGrid({ stats }: { stats: Array<{ label: string; value: unkno
   );
 }
 
-export function JsonView({ value }: { value: unknown }) {
-  return (
-    <pre className="max-h-80 overflow-auto rounded-md border border-border bg-muted/40 p-3 text-xs leading-relaxed text-muted-foreground">
-      {JSON.stringify(value, null, 2)}
-    </pre>
-  );
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return Boolean(value && typeof value === "object" && !Array.isArray(value));
+}
+
+function scalarText(value: unknown) {
+  if (value === null || value === undefined || value === "") return "-";
+  if (typeof value === "number") return Number.isFinite(value) ? fmtNumber(value) : "-";
+  if (typeof value === "boolean") return value ? "Enabled" : "Disabled";
+  return String(value);
+}
+
+export function ValuePreview({ value }: { value: unknown }) {
+  if (typeof value === "boolean") {
+    return <Badge variant={value ? "success" : "muted"}>{value ? "enabled" : "disabled"}</Badge>;
+  }
+  if (Array.isArray(value)) {
+    if (!value.length) return <span className="text-muted-foreground">None</span>;
+    const primitive = value.every((item) => item === null || ["string", "number", "boolean"].includes(typeof item));
+    if (primitive) {
+      return (
+        <span className="flex flex-wrap gap-1">
+          {value.slice(0, 5).map((item, index) => <Badge key={`${String(item)}-${index}`} variant="muted">{scalarText(item)}</Badge>)}
+          {value.length > 5 ? <Badge variant="muted">+{value.length - 5}</Badge> : null}
+        </span>
+      );
+    }
+    return <span className="text-muted-foreground">{fmtNumber(value.length)} records</span>;
+  }
+  if (isRecord(value)) {
+    const keys = Object.keys(value);
+    if (!keys.length) return <span className="text-muted-foreground">No fields</span>;
+    return <span className="text-muted-foreground">{keys.slice(0, 4).map(titleize).join(", ")}{keys.length > 4 ? ` +${keys.length - 4}` : ""}</span>;
+  }
+  const text = scalarText(value);
+  return <span className="break-words">{text.length > 96 ? shortId(text, 96) : text}</span>;
 }
 
 export function KeyValueList({ data, limit = 8 }: { data: Record<string, unknown>; limit?: number }) {
@@ -97,9 +126,59 @@ export function KeyValueList({ data, limit = 8 }: { data: Record<string, unknown
       {rows.map(([key, value]) => (
         <div key={key} className="grid grid-cols-[minmax(9rem,0.5fr)_1fr] gap-3 p-3 text-sm">
           <span className="font-medium text-muted-foreground">{titleize(key)}</span>
-          <span className="break-words">{typeof value === "object" ? JSON.stringify(value) : String(value ?? "-")}</span>
+          <span className="min-w-0 break-words"><ValuePreview value={value} /></span>
         </div>
       ))}
+    </div>
+  );
+}
+
+export function StructuredView({
+  value,
+  titleKey = "title",
+  metaKey = "status",
+  limit = 8,
+}: {
+  value: unknown;
+  titleKey?: string;
+  metaKey?: string;
+  limit?: number;
+}) {
+  if (Array.isArray(value)) {
+    if (!value.length) return <EmptyState title="No records" detail="The API returned an empty collection." />;
+    if (value.every((item) => isRecord(item))) {
+      return <EntityList items={value} titleKey={titleKey} metaKey={metaKey} limit={limit} />;
+    }
+    return (
+      <div className="flex flex-wrap gap-1 rounded-md border border-border bg-background p-3">
+        {value.slice(0, limit).map((item, index) => <Badge key={`${String(item)}-${index}`} variant="muted">{scalarText(item)}</Badge>)}
+        {value.length > limit ? <Badge variant="muted">+{value.length - limit}</Badge> : null}
+      </div>
+    );
+  }
+  if (isRecord(value)) return <KeyValueList data={value} limit={limit} />;
+  return (
+    <div className="rounded-md border border-border bg-background p-3 text-sm">
+      <ValuePreview value={value} />
+    </div>
+  );
+}
+
+export function OperationResult({
+  result,
+  successLabel = "Request completed",
+}: {
+  result?: ApiResult<unknown> | null;
+  successLabel?: string;
+}) {
+  if (!result) return null;
+  if (!result.ok) {
+    return <EmptyState title="Request unavailable" detail={result.error || <ValuePreview value={result.data} />} />;
+  }
+  return (
+    <div className="space-y-2 rounded-md border border-border bg-background p-3">
+      <Badge variant="success">{successLabel}</Badge>
+      <StructuredView value={result.data} />
     </div>
   );
 }
@@ -125,8 +204,11 @@ export function EntityList({
             <div className="font-medium">{String(item[titleKey] || item.name || item.id || `Record ${index + 1}`)}</div>
             <Badge variant="muted">{String(item[metaKey] || item.status || item.state || "record")}</Badge>
           </div>
-          {item.summary || item.description || item.path ? (
-            <p className="mt-1 text-sm text-muted-foreground">{String(item.summary || item.description || item.path)}</p>
+          {item.summary || item.description || item.path || (item.id && item[titleKey] !== item.id) ? (
+            <p className="mt-1 text-sm text-muted-foreground">{String(item.summary || item.description || item.path || item.id)}</p>
+          ) : null}
+          {item.id && item[titleKey] !== item.id ? (
+            <div className="mt-1 text-xs text-muted-foreground">{shortId(item.id, 48)}</div>
           ) : null}
         </div>
       ))}

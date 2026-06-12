@@ -1,9 +1,23 @@
-# Lattice AI — Feature Status (v4.3.1)
+# Lattice AI — Feature Status (v4.3.2)
 
 **Release type:** Knowledge Graph First — the Knowledge Graph becomes the primary
 architecture. Lattice AI is a Digital Brain Platform: the graph is the durable
 asset; models read it and are replaceable. Every v3.6.0 claim below is backed by
 automated tests.
+
+## v4.3.2 Product Polish & Graph UX Overhaul — what changed
+
+v4.3.2 polishes the v4.3.1 desktop product without redesigning the frontend,
+Brain Core, storage, or agent/workflow architecture:
+
+| Area | Status | Evidence |
+| --- | --- | --- |
+| **Brain graph explorer** | WORKING | Brain uses the existing `/knowledge-graph/graph` and hybrid-search APIs to render semantic groups, importance sizing, search, focus neighborhoods, collapsible groups, label modes, and real query results. `tests/visual/v3.spec.js`, `output/audits/v4.3.2-rc/screenshots/02-graph-explorer-before.png`. |
+| **Structured product state** | WORKING | Brain, Ask, Capture, Act, Library, and System no longer expose raw JSON dumps in normal product flows; nested state is rendered through structured cards, operation results, and readable status panels. |
+| **Archive import/restore UX** | WORKING | System exposes `.latticebrain` export, inspect, verify, import dry-run, confirmed import, restore dry-run, and confirmed restore through existing archive APIs. `output/audits/v4.3.2-rc/logs/archive-import-dry-run.json`. |
+| **Desktop lifecycle** | WORKING | Rebuilt Tauri app starts the FastAPI sidecar on `127.0.0.1`, serves `/app`, and releases port 8765 after normal macOS quit. `output/audits/v4.3.2-rc/logs/desktop-shutdown-after-fix.txt`. |
+| **Self-audit evidence** | WORKING | End-user flows were exercised with a real local backend, seeded upload, graph persistence, archive creation/verify/import dry-run, workflow create/run surfaces, device identity, storage status, screenshots, and a GIF walkthrough. `docs/V4_3_2_SELF_AUDIT_REPORT.md`. |
+| **Release artifacts** | WORKING | Exact v4.3.2 wheel, sdist, npm tgz, VSIX, and Tauri DMG built and validated. `docs/V4_3_2_VALIDATION_REPORT.md`. |
 
 ## v4.3.1 End-User Audit Repair — what changed
 
@@ -167,7 +181,7 @@ service/core (`latticeai/services/*`, `latticeai/core/*`, top-level
 `knowledge_graph.py`). Historical v3 sections retain their original audit
 context when describing retired implementation paths.
 
-**Frontend of record:** the v4.3.1 React/Vite SPA at `/app` (`frontend/` source,
+**Frontend of record:** the v4.3.2 React/Vite SPA at `/app` (`frontend/` source,
 `static/app/` build output). The legacy static pages have been removed;
 compatibility GET/hash routes land in the matching `/app#/...` surface.
 

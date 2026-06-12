@@ -1,0 +1,56 @@
+{
+  "baseURL": "http://127.0.0.1:4932",
+  "results": [
+    {
+      "name": "first startup",
+      "status": "PASS",
+      "ms": 590
+    },
+    {
+      "name": "graph exploration baseline",
+      "status": "PASS",
+      "ms": 443
+    },
+    {
+      "name": "graph search, collapse, focus",
+      "status": "PASS",
+      "ms": 2316
+    },
+    {
+      "name": "brain backup and graph portability",
+      "status": "PASS",
+      "ms": 1184
+    },
+    {
+      "name": "system archive export import restore dry run",
+      "status": "PASS",
+      "ms": 3189
+    },
+    {
+      "name": "storage and postgres optional status",
+      "status": "PASS",
+      "ms": 94
+    },
+    {
+      "name": "workflow create and run",
+      "status": "PASS",
+      "ms": 2258
+    },
+    {
+      "name": "agent runtime availability",
+      "status": "PASS",
+      "ms": 400
+    },
+    {
+      "name": "brain network and device identity",
+      "status": "PASS",
+      "ms": 396
+    },
+    {
+      "name": "library model unavailable honesty",
+      "status": "PASS",
+      "ms": 423
+    }
+  ],
+  "pageErrors": []
+}

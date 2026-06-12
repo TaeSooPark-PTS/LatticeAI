@@ -22,7 +22,7 @@ test("React desktop shell boots with six primary navigation groups", async ({ pa
   await page.goto("/app");
   await page.waitForSelector("text=Digital Brain Desktop");
   for (const label of ["Brain", "Ask", "Capture", "Act", "Library", "System"]) {
-    await expect(page.getByRole("button", { name: new RegExp(label) })).toBeVisible();
+    await expect(page.locator("aside nav").getByRole("button", { name: new RegExp(`^${label}\\b`) }).first()).toBeVisible();
   }
   await expect(page.locator("body")).not.toContainText("v4.1.0 Release Candidate");
   await expect(page.locator("body")).toContainText(/v\d+\.\d+\.\d+/);
@@ -69,7 +69,7 @@ test("offline startup loads local assets and shows honest unavailable state", as
 
 test("hybrid search calls the API and renders returned records", async ({ page }) => {
   await page.goto("/app#/hybrid-search");
-  await page.getByPlaceholder("lattice brain").fill("retrieval");
+  await page.getByPlaceholder("Search memories, graph nodes, and indexed documents").fill("retrieval");
   await page.locator("section").getByRole("button", { name: "Search" }).click();
   await expect(page.locator("body")).toContainText("Lattice AI");
 });

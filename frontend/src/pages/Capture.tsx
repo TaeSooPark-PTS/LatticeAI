@@ -2,7 +2,7 @@ import * as React from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { FolderPlus, Globe2, HardDrive, Upload } from "lucide-react";
 import { latticeApi } from "@/api/client";
-import { ActionButton, DataPanel, EntityList, JsonView, Tabs } from "@/components/primitives";
+import { ActionButton, DataPanel, EntityList, OperationResult, StructuredView, Tabs } from "@/components/primitives";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -59,7 +59,11 @@ function FilesPanel() {
             <span className="text-sm text-muted-foreground">PDF, DOCX, XLSX, PPTX, TXT, MD, CSV according to backend policy.</span>
             <input type="file" multiple className="sr-only" onChange={(e) => e.target.files && upload.mutate(e.target.files)} />
           </label>
-          {upload.data ? <JsonView value={upload.data.map((item) => item.data)} /> : null}
+          {upload.data ? (
+            <div className="mt-3 space-y-2">
+              {upload.data.map((item, index) => <OperationResult key={index} result={item} successLabel="Upload completed" />)}
+            </div>
+          ) : null}
         </CardContent>
       </Card>
       <DataPanel title="Uploaded documents" result={docs.data}>
@@ -88,7 +92,7 @@ function LocalPanel() {
         <CardContent className="space-y-3">
           <Input value={path} onChange={(e) => setPath(e.target.value)} placeholder="/Users/me/Documents/project" />
           <Button disabled={!path.trim() || connect.isPending} onClick={() => connect.mutate()}>Connect and watch</Button>
-          {connect.data ? <JsonView value={connect.data.data || connect.data.error} /> : null}
+          {connect.data ? <OperationResult result={connect.data} successLabel="Folder connection requested" /> : null}
         </CardContent>
       </Card>
       <DataPanel title="Connected sources" result={local.data}>
@@ -107,7 +111,7 @@ function LocalPanel() {
         )}
       </DataPanel>
       <DataPanel title="Local runtime probe" result={agent.data} className="xl:col-span-2">
-        {(data) => <JsonView value={data} />}
+        {(data) => <StructuredView value={data} />}
       </DataPanel>
     </div>
   );
@@ -127,7 +131,7 @@ function BrowserPanel() {
           <Input value={url} onChange={(e) => setUrl(e.target.value)} placeholder="https://example.com/article" />
           <Button disabled={!url.trim() || read.isPending} onClick={() => read.mutate()}>Capture URL</Button>
         </div>
-        {read.data ? <JsonView value={read.data.data || read.data.error} /> : null}
+        {read.data ? <OperationResult result={read.data} successLabel="URL capture requested" /> : null}
       </CardContent>
     </Card>
   );
@@ -139,10 +143,10 @@ function PipelinePanel() {
   return (
     <div className="grid gap-4 xl:grid-cols-2">
       <DataPanel title="Index pipeline" result={index.data}>
-        {(data) => <JsonView value={data} />}
+        {(data) => <StructuredView value={data} />}
       </DataPanel>
       <DataPanel title="Graph totals" result={stats.data}>
-        {(data) => <JsonView value={data} />}
+        {(data) => <StructuredView value={data} />}
       </DataPanel>
       <Card className="xl:col-span-2">
         <CardHeader>
