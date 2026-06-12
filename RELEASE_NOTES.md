@@ -25,6 +25,9 @@ deploy.
   Brain Network, and device identity through real APIs.
 - Tauri app-level exit handling shuts down the FastAPI sidecar after normal
   macOS quit and releases the localhost port.
+- README badges, a diagram-first architecture map, and a static-only Vercel
+  documentation build prepare the repository for owner-controlled publication
+  without claiming that v4.3.2 has reached external registries.
 - v4.3.2 self-audit evidence includes screenshots and a graph walkthrough GIF
   under `output/audits/v4.3.2-rc/`.
 

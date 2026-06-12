@@ -1,13 +1,22 @@
 # Lattice AI
 
+[![PyPI Version](https://img.shields.io/pypi/v/ltcai?label=PyPI)](https://pypi.org/project/ltcai/)
+[![npm Version](https://img.shields.io/npm/v/ltcai?label=npm)](https://www.npmjs.com/package/ltcai)
+[![VS Code Marketplace Version](https://vsmarketplacebadges.dev/version-short/parktaesoo.ltcai.svg)](https://marketplace.visualstudio.com/items?itemName=parktaesoo.ltcai)
+[![Open VSX Version](https://img.shields.io/open-vsx/v/parktaesoo/ltcai?label=Open%20VSX)](https://open-vsx.org/extension/parktaesoo/ltcai)
+[![CI Status](https://github.com/TaeSooPark-PTS/LatticeAI/actions/workflows/ci.yml/badge.svg?branch=main)](https://github.com/TaeSooPark-PTS/LatticeAI/actions/workflows/ci.yml)
+[![License](https://img.shields.io/badge/license-MIT-green)](LICENSE)
+
 **Lattice AI v4.3.2 is a local-first Digital Brain desktop workspace.** It runs
 as a Tauri desktop app with a localhost FastAPI sidecar, stores the user's brain
 locally by default, and presents the Knowledge Graph as the durable asset.
 
 This README describes only behavior observed in the v4.3.2 release-candidate
 self-audit and validation run. External package registries are owner-published;
-this repository preparation does not tag, create a GitHub Release, or publish
-to PyPI, npm, VS Code Marketplace, or Open VSX.
+the badges above link to package pages and may show the most recently published
+owner-controlled registry version, which can lag behind this repository
+preparation. This work does not tag, create a GitHub Release, or publish to
+PyPI, npm, VS Code Marketplace, or Open VSX.
 
 ## What Was Verified
 

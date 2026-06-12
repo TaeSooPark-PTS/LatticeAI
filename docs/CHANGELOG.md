@@ -21,11 +21,16 @@ historical and may describe behavior as it existed at that release.
   restore, backup health, storage, Brain Network, and device identity status.
 - Static frontend assets, generated OpenAPI client, npm/Python/VSIX/Tauri
   versions, and release artifacts are synchronized to `4.3.2`.
+- README publishing badges are restored for PyPI, npm, VS Code Marketplace,
+  Open VSX, CI, and license with explicit owner-controlled registry caveats.
+- `ARCHITECTURE.md` is rewritten as a diagram-first v4.3.2 system map.
 
 ### Fixed
 
 - Tauri now also kills the FastAPI sidecar on app-level exit events, so a normal
   macOS quit releases port 8765 after the rebuilt desktop app closes.
+- Vercel configuration now builds only a static documentation page and prevents
+  FastAPI auto-detection of `server.py`.
 
 ### Validation
 
@@ -33,6 +38,8 @@ historical and may describe behavior as it existed at that release.
   build, unit tests, live integration tests, Playwright visual tests, Tauri
   check/build, release artifact validation, wheel smoke, npm pack dry-run, and
   desktop startup/shutdown verification passed.
+- Markdown link check, README badge link validation, Mermaid structural sanity,
+  and Vercel static build/config validation passed.
 - End-user self-audit evidence is stored under `output/audits/v4.3.2-rc/`.
 
 ### Artifacts

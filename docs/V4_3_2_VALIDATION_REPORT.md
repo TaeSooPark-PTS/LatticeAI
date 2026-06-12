@@ -5,7 +5,30 @@ Date: 2026-06-13
 ## Summary
 
 v4.3.2 validation is green for the implemented product polish, graph UX, desktop
-shutdown, and exact-version release artifacts.
+shutdown, exact-version release artifacts, and the release-prep documentation /
+Vercel static-build fixes.
+
+## Release-Prep Fix Validation
+
+These checks were rerun after the README badge restore, diagram-first
+`ARCHITECTURE.md` rewrite, Vercel static-only configuration fix, and linked-doc
+cleanup.
+
+| Check | Result |
+| --- | --- |
+| `node -e "JSON.parse(require('fs').readFileSync('vercel.json','utf8'))"` | PASS |
+| `npm run vercel:build` | PASS, generated `vercel-static/index.html` |
+| `npm run docs:check-links` | PASS, README plus 15 README-linked Markdown files |
+| Mermaid structural sanity check for `ARCHITECTURE.md` | PASS, 13 Mermaid blocks; `mmdc` was not installed locally |
+| README badge link validation | PASS for PyPI, VS Code Marketplace, Open VSX, CI, license, and badge images; npm package page returned a CLI-only Cloudflare 403, so package identity was validated through `npm view ltcai` and `https://registry.npmjs.org/ltcai` |
+| Registry version check | PASS, PyPI/npm/VS Code Marketplace/Open VSX currently report `4.3.1`; README does not claim v4.3.2 external registry publication |
+| `node scripts/run_python.mjs -m pytest tests/unit/test_server_app_v14_decomposition.py::test_markdown_current_release_references_match_release tests/unit/test_truth_floor_t1_static.py::test_readme_does_not_overclaim_llm_driven_agents -v` | PASS, 2 passed |
+| `npm run lint` | PASS |
+| `npm pack --dry-run` | PASS, `ltcai-4.3.2.tgz`, 305 files, 2.9 MB |
+| `npx --yes vercel@54.12.2 build` | BLOCKED by local Vercel linkage only: `project_settings_required`; no `.vercel` project settings or credentials are present in this checkout. Static build/config validation above passed. |
+
+No product runtime code changed in this release-prep fix, and release artifacts
+were not rebuilt.
 
 ## Commands
 
@@ -66,7 +89,8 @@ only the exact filenames above and never a wildcard over the `dist/` directory.
   cleanup: `CI` and `Visual Smoke` both completed successfully for
   `8f3d182ee81bb395722ebab792dfd70f35e19e96`.
 - Vercel config is intentionally documentation-only: it builds
-  `vercel-static/index.html` and does not attempt to host the desktop runtime.
+  `vercel-static/index.html`, pins the Framework Preset to "Other", and does
+  not attempt to auto-detect or host `server.py` / the desktop runtime.
 
 ## Result
 

@@ -27,10 +27,15 @@ registry publish는 이 RC 작업에 포함하지 않는다.
   backup health, and Brain Network status through real FastAPI routes.
 - **Fixed (Desktop lifecycle)**: Tauri app-level exit handling now kills the
   FastAPI sidecar on normal macOS quit as well as window close.
+- **Fixed (Release prep)**: README badges were restored without claiming
+  v4.3.2 registry publication, `ARCHITECTURE.md` was rewritten as a
+  diagram-first system map, and Vercel is now static documentation-only so it
+  does not auto-detect `server.py` as a FastAPI deployment.
 - **Validated**: end-user self-audit screenshots/GIFs, Python compile, ruff,
   unit tests, live integration tests, frontend lint/typecheck, Playwright
   visual tests, Tauri check/build, release artifact validation, wheel smoke,
-  and npm pack dry-run.
+  npm pack dry-run, Markdown links, README badges, Mermaid diagrams, and Vercel
+  static build/config.
 - **Expected artifacts**:
   - `dist/ltcai-4.3.2-py3-none-any.whl`
   - `dist/ltcai-4.3.2.tar.gz`

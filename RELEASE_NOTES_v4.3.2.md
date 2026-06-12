@@ -25,6 +25,14 @@ part of this RC.
   backup health, Brain Network, and device identity through existing APIs.
 - Tauri app-level exit handling now shuts down the FastAPI sidecar on normal
   macOS quit and releases port 8765.
+- README publishing badges were restored for PyPI, npm, VS Code Marketplace,
+  Open VSX, CI, and license without claiming v4.3.2 external registry
+  publication.
+- `ARCHITECTURE.md` is now a diagram-first system map for the desktop shell,
+  frontend, localhost API, `lattice_brain`, storage, portability, privacy, and
+  release artifact boundaries.
+- Vercel is explicitly configured as a static documentation-only check and no
+  longer auto-detects or deploys `server.py` as a FastAPI app.
 
 ## Validation
 
@@ -43,6 +51,9 @@ part of this RC.
   - passed.
 - `npm pack --dry-run` - passed.
 - Rebuilt desktop app startup/shutdown verification - passed.
+- Markdown link check, README badge link validation, Mermaid structural sanity,
+  and Vercel static build validation - passed. Local `vercel build` CLI
+  validation requires project settings that are not present in this checkout.
 
 ## Artifacts
 

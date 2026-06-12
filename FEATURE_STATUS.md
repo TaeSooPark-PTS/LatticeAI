@@ -614,9 +614,10 @@ user management (`admin-users.js:11`), and permission editing
 
 ## Deployment readiness (evidence)
 
-The Vercel project `lattice-ai` (FastAPI framework) has a single production
-deployment that is **READY in build state but returns HTTP 500 on every route**
-(`could not import "server.py"`, runtime logs). `project.live = false`. Lattice
-AI is a **local-first** app requiring local MLX/filesystem/SQLite; it is **not
-production-ready on Vercel serverless** and should not be presented as a hosted
-product. See [STYLE_SYSTEM.md → Vercel MCP findings](STYLE_SYSTEM.md).
+Lattice AI is a **local-first desktop product**, not a hosted Vercel FastAPI
+application. v4.3.2 release prep pins Vercel to a static documentation-only
+build through `vercel.json` and `scripts/build_vercel_static.mjs` so Git
+integration checks do not auto-detect or deploy `server.py`. The Vercel output
+is `vercel-static/index.html`; the real product runtime remains the Tauri
+desktop app plus localhost FastAPI sidecar. See
+`docs/V4_3_2_GITHUB_VERCEL_CHECK_REPORT.md`.
