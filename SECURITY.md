@@ -6,7 +6,8 @@
 
 | 버전 | 지원 여부 |
 |------|-----------|
-| 4.2.x (latest) | ✅ 지원 |
+| 4.3.x (latest) | ✅ 지원 |
+| 4.2.x | ✅ 보안 패치 범위 내 지원 |
 | 4.1.x | ✅ 보안 패치 범위 내 지원 |
 | 4.0.x | ✅ 보안 패치 범위 내 지원 |
 | 3.6.x | ✅ 보안 패치 범위 내 지원 |
@@ -38,11 +39,12 @@
 
 ## 보안 모델
 
-Lattice AI v4.2.0는 local-first Digital Brain Platform으로, Personal /
+Lattice AI v4.3.0는 local-first Digital Brain Platform으로, Personal /
 Organization Workspace, Knowledge Graph, Vector Index, Hybrid Search, Native
 Chat, Basic / Advanced / Admin mode, durable workspace governance, independent
-Brain Core package boundary, pluggable storage, and encrypted `.latticebrain`
-archives를 포함하며 아래 보안 모델을 따릅니다:
+Brain Core package boundary, pluggable storage, encrypted `.latticebrain`
+archives, confirmed restore/import, and local-only startup hardening을
+포함하며 아래 보안 모델을 따릅니다:
 
 ### 기본 안전 설정 (Default Secure)
 

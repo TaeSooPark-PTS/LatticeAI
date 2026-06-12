@@ -1,5 +1,40 @@
 # Release Notes
 
+## v4.3.0 RC - Portability & Product Hardening
+
+Lattice AI v4.3.0 hardens the v4.2 Digital Brain architecture into a portable,
+user-safe desktop product while preserving Brain Core, storage, frontend,
+agent/workflow, API, and user-data compatibility. This RC builds validated
+artifacts only; it does not tag, create a GitHub Release, publish packages, or
+deploy.
+
+### Highlights
+
+- `.latticebrain` archives now include the encrypted graph DB, blobs, workspace
+  state, settings, signed bundles, storage metadata, provenance, and public
+  device identity metadata.
+- Archive inspect, verify, import, restore, and restore dry-run are real
+  FastAPI-backed operations surfaced in System settings.
+- Destructive restore/import requires explicit admin confirmation.
+- SQLite-to-Postgres migration creates and verifies a pre-migration backup
+  before copying data.
+- Tauri sidecar startup, status, restart, shutdown, and local-only guards are
+  hardened.
+- Admin product-hardening status reports storage mode, backup health, external
+  integration opt-in state, permissions, and device identity.
+- Release validation covers exact-version wheel, sdist, npm tgz, VSIX, and Tauri
+  DMG artifacts.
+
+### Expected Artifacts
+
+- `dist/ltcai-4.3.0-py3-none-any.whl`
+- `dist/ltcai-4.3.0.tar.gz`
+- `dist/ltcai-4.3.0.vsix`
+- `ltcai-4.3.0.tgz`
+- `src-tauri/target/release/bundle/dmg/Lattice AI_4.3.0_aarch64.dmg`
+
+Full detail: [RELEASE_NOTES_v4.3.0.md](RELEASE_NOTES_v4.3.0.md).
+
 ## v4.2.0 - Brain Core & Storage Rebuild
 
 Lattice AI v4.2.0 extracts the backend Digital Brain boundary into the

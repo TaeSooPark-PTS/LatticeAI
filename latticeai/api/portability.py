@@ -26,6 +26,8 @@ class BackupRequest(BaseModel):
 class RestoreRequest(BaseModel):
     path: str
     verify: bool = True
+    dry_run: bool = False
+    confirm: bool = False
 
 
 class EncryptedArchiveRequest(BaseModel):
@@ -34,6 +36,18 @@ class EncryptedArchiveRequest(BaseModel):
 
 
 class EncryptedRestoreRequest(BaseModel):
+    path: str
+    passphrase: str
+    dry_run: bool = False
+    confirm: bool = False
+
+
+class EncryptedInspectRequest(BaseModel):
+    path: str
+    passphrase: Optional[str] = None
+
+
+class EncryptedVerifyRequest(BaseModel):
     path: str
     passphrase: str
 
@@ -73,6 +87,12 @@ def create_portability_router(
         require_user(request)
         _require_service()
         return service.storage_status()
+
+    @router.get("/api/knowledge-graph/backup-health")
+    async def backup_health(request: Request):
+        require_user(request)
+        _require_service()
+        return service.backup_health()
 
     @router.get("/api/knowledge-graph/provenance")
     async def recent_provenance(request: Request, limit: int = 50, source_type: Optional[str] = None):
@@ -114,7 +134,7 @@ def create_portability_router(
         require_admin(request)
         _require_service()
         try:
-            return service.restore(req.path, verify=req.verify)
+            return service.restore(req.path, verify=req.verify, dry_run=req.dry_run, confirm=req.confirm)
         except (ValueError, FileNotFoundError) as exc:
             raise HTTPException(status_code=400, detail=str(exc))
 
@@ -127,12 +147,49 @@ def create_portability_router(
         except (ValueError, FileNotFoundError) as exc:
             raise HTTPException(status_code=400, detail=str(exc))
 
+    @router.post("/api/knowledge-graph/archive/inspect")
+    async def inspect_encrypted_archive(req: EncryptedInspectRequest, request: Request):
+        require_admin(request)
+        _require_service()
+        try:
+            return service.inspect_encrypted_archive(req.path, passphrase=req.passphrase)
+        except (ValueError, FileNotFoundError) as exc:
+            raise HTTPException(status_code=400, detail=str(exc))
+
+    @router.post("/api/knowledge-graph/archive/verify")
+    async def verify_encrypted_archive(req: EncryptedVerifyRequest, request: Request):
+        require_admin(request)
+        _require_service()
+        result = service.verify_encrypted_archive(req.path, passphrase=req.passphrase)
+        if not result.get("ok"):
+            raise HTTPException(status_code=400, detail="; ".join(result.get("errors") or ["Archive verification failed."]))
+        return result
+
+    @router.post("/api/knowledge-graph/archive/import")
+    async def import_encrypted_archive(req: EncryptedRestoreRequest, request: Request):
+        require_admin(request)
+        _require_service()
+        try:
+            return service.import_encrypted_archive(
+                req.path,
+                passphrase=req.passphrase,
+                dry_run=req.dry_run,
+                confirm=req.confirm,
+            )
+        except (ValueError, FileNotFoundError) as exc:
+            raise HTTPException(status_code=400, detail=str(exc))
+
     @router.post("/api/knowledge-graph/archive/restore")
     async def restore_encrypted_archive(req: EncryptedRestoreRequest, request: Request):
         require_admin(request)
         _require_service()
         try:
-            return service.restore_encrypted_archive(req.path, passphrase=req.passphrase)
+            return service.restore_encrypted_archive(
+                req.path,
+                passphrase=req.passphrase,
+                dry_run=req.dry_run,
+                confirm=req.confirm,
+            )
         except (ValueError, FileNotFoundError) as exc:
             raise HTTPException(status_code=400, detail=str(exc))
 

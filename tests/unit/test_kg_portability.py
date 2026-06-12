@@ -89,7 +89,14 @@ def test_backup_clear_restore_recovers_graph(tmp_path):
     store.clear_all()
     assert _node_totals(store) == 0
 
-    restored = svc.restore(out["path"])
+    dry_run = svc.restore(out["path"], dry_run=True)
+    assert dry_run["dry_run"] is True
+    assert _node_totals(store) == 0
+
+    with pytest.raises(ValueError, match="confirmation"):
+        svc.restore(out["path"])
+
+    restored = svc.restore(out["path"], confirm=True)
     assert restored["restored"] is True
     assert _node_totals(store) == before
 
@@ -110,7 +117,7 @@ def test_restore_integrity_check_rejects_tampered_archive(tmp_path):
         for n, b in raw.items():
             zf.writestr(n, b)
     with pytest.raises(ValueError, match="integrity"):
-        svc.restore(out["path"])
+        svc.restore(out["path"], confirm=True)
 
 
 # ── route auth ───────────────────────────────────────────────────────────────
@@ -159,3 +166,42 @@ def test_recent_provenance_route(tmp_path):
     body = r.json()
     assert "items" in body and body["count"] >= 2
     assert all("source_type" in it for it in body["items"])
+
+
+def test_archive_routes_verify_and_require_confirmed_restore(tmp_path):
+    client = _app(tmp_path)
+    archive = client.post(
+        "/api/knowledge-graph/archive",
+        json={"passphrase": "archive passphrase"},
+    )
+    assert archive.status_code == 200
+    path = archive.json()["path"]
+
+    inspected = client.post(
+        "/api/knowledge-graph/archive/inspect",
+        json={"path": path, "passphrase": "archive passphrase"},
+    )
+    assert inspected.status_code == 200
+    assert inspected.json()["verified"] is True
+
+    verified = client.post(
+        "/api/knowledge-graph/archive/verify",
+        json={"path": path, "passphrase": "archive passphrase"},
+    )
+    assert verified.status_code == 200
+    assert verified.json()["ok"] is True
+
+    blocked = client.post(
+        "/api/knowledge-graph/archive/restore",
+        json={"path": path, "passphrase": "archive passphrase"},
+    )
+    assert blocked.status_code == 400
+    assert "confirmation" in blocked.json()["detail"]
+
+    planned = client.post(
+        "/api/knowledge-graph/archive/import",
+        json={"path": path, "passphrase": "archive passphrase", "dry_run": True},
+    )
+    assert planned.status_code == 200
+    assert planned.json()["operation"] == "import"
+    assert planned.json()["dry_run"] is True

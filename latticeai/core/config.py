@@ -163,7 +163,7 @@ class Config:
             host=host,
             port=port,
             network_exposed=network_exposed,
-            enable_telegram=_bool(env, "LATTICEAI_ENABLE_TELEGRAM", default=not is_public),
+            enable_telegram=_bool(env, "LATTICEAI_ENABLE_TELEGRAM", default=False),
             enable_graph=_bool(env, "LATTICEAI_ENABLE_GRAPH", default=True),
             autoload_models=_bool(env, "LATTICEAI_AUTOLOAD_MODELS", default=is_public),
             model_idle_unload_seconds=_int(env, "LATTICEAI_MODEL_IDLE_UNLOAD_SECONDS", 0),

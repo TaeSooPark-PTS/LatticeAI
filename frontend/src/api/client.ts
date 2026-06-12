@@ -211,6 +211,7 @@ export const latticeApi = {
   graphStats: () => get("/knowledge-graph/stats", { nodes: {}, edges: {}, total_nodes: 0, total_edges: 0 }),
   graphPortability: () => get("/api/knowledge-graph/portability", {}),
   brainStorage: () => get("/api/brain/storage", {}),
+  backupHealth: () => get("/api/knowledge-graph/backup-health", {}),
   dockerPostgres: (body: { consent: boolean; dry_run?: boolean; port?: number }) => post("/api/brain/storage/postgres/docker", body, {}),
   migratePostgres: (body: { dsn: string; schema_name?: string; dry_run?: boolean }) => post("/api/brain/storage/migrate-postgres", body, {}),
   graphProvenance: (limit = 50) => get("/api/knowledge-graph/provenance", { items: [] }, { limit }),
@@ -218,6 +219,11 @@ export const latticeApi = {
   graphExport: () => post("/api/knowledge-graph/export", {}, {}),
   graphBackup: () => post("/api/knowledge-graph/backup", {}, {}),
   graphImport: (artifact: unknown, dry_run = true) => post("/api/knowledge-graph/import", { artifact, mode: "merge", dry_run }, {}),
+  brainArchive: (body: { path?: string | null; passphrase: string }) => post("/api/knowledge-graph/archive", body, {}),
+  brainArchiveInspect: (body: { path: string; passphrase?: string | null }) => post("/api/knowledge-graph/archive/inspect", body, {}),
+  brainArchiveVerify: (body: { path: string; passphrase: string }) => post("/api/knowledge-graph/archive/verify", body, {}),
+  brainArchiveRestore: (body: { path: string; passphrase: string; dry_run?: boolean; confirm?: boolean }) => post("/api/knowledge-graph/archive/restore", body, {}),
+  brainArchiveImport: (body: { path: string; passphrase: string; dry_run?: boolean; confirm?: boolean }) => post("/api/knowledge-graph/archive/import", body, {}),
   hybridSearch: async (query: string, weights?: unknown) => {
     const res = await post<Record<string, unknown>>("/api/search/hybrid", { query, ...(weights ? { weights } : {}) }, { matches: [] });
     const data = res.data as Record<string, unknown>;
@@ -314,6 +320,7 @@ export const latticeApi = {
   adminAudit: () => get("/admin/audit", { recent_events: [] }),
   adminRoles: () => get("/admin/roles", { roles: [] }),
   adminPolicies: () => get("/admin/policies", { policies: [] }),
+  adminProductHardening: () => get("/admin/product-hardening", {}),
   adminSecurity: () => get("/admin/security/overview", {}),
   vpcStatus: () => get("/vpc/status", {}),
   toolPermissions: () => get("/tools/permissions", { permissions: [] }),

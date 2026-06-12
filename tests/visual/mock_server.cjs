@@ -498,6 +498,56 @@ const server = http.createServer((req, res) => {
 
   if (pathname === "/knowledge-graph/graph") return json(res, { nodes: graphNodes, edges: graphEdges });
   if (pathname === "/knowledge-graph/stats") return json(res, workspaceOs.graph);
+  if (pathname === "/api/knowledge-graph/portability") return json(res, {
+    available: true,
+    graph_schema_version: 3,
+    stats: workspaceOs.graph,
+    provenance: { total: 8 },
+    storage: { engine: "sqlite", available: true },
+  });
+  if (pathname === "/api/brain/storage") return json(res, {
+    available: true,
+    active: { engine: "sqlite", available: true, vector_search: "sqlite-vec-or-bruteforce" },
+    postgres: { engine: "postgres", available: false, reason: "Postgres DSN not configured" },
+    backup_health: { available: true, count: 1, latest: "~/.ltcai/workspace_exports/brain-demo.latticebrain" },
+  });
+  if (pathname === "/api/knowledge-graph/backup-health") return json(res, {
+    available: true,
+    directory: "~/.ltcai/workspace_exports",
+    count: 1,
+    latest: "~/.ltcai/workspace_exports/brain-demo.latticebrain",
+    encrypted_archives: 1,
+    zip_backups: 0,
+  });
+  if (pathname === "/api/knowledge-graph/archive" && req.method === "POST") return json(res, {
+    path: "~/.ltcai/workspace_exports/brain-demo.latticebrain",
+    bytes: 4096,
+    encrypted: true,
+    format_version: 2,
+  });
+  if (pathname === "/api/knowledge-graph/archive/inspect" && req.method === "POST") return json(res, {
+    valid_envelope: true,
+    encrypted: true,
+    format_version: 2,
+    manifest_summary: { sections: { graph: true, workspace_state: true, signed_bundles: true } },
+  });
+  if (pathname === "/api/knowledge-graph/archive/verify" && req.method === "POST") return json(res, {
+    ok: true,
+    encrypted: true,
+    entries: 6,
+    errors: [],
+  });
+  if (pathname === "/api/knowledge-graph/archive/restore" && req.method === "POST") return json(res, {
+    restored: true,
+    encrypted: true,
+    verified: true,
+  });
+  if (pathname === "/api/knowledge-graph/archive/import" && req.method === "POST") return json(res, {
+    operation: "import",
+    restored: true,
+    encrypted: true,
+    verified: true,
+  });
   if (pathname === "/knowledge-graph/provenance/coverage") return json(res, { total_nodes: 5, nodes_with_provenance: 4, coverage_ratio: 0.8, provenance_by_source_type: { upload: 2, note: 2 }, uncovered_by_type: { Concept: 1 } });
   if (pathname === "/knowledge-graph/search") return json(res, { query: url.searchParams.get("q"), matches: graphNodes });
   if (pathname.startsWith("/knowledge-graph/neighbors/")) return json(res, { node_id: pathname.replace("/knowledge-graph/neighbors/", ""), neighbors: graphNodes, edges: graphEdges });
@@ -527,6 +577,15 @@ const server = http.createServer((req, res) => {
     { id: "data_residency", label: "Data residency", value: "Single-tenant local storage (~/.ltcai)", enforced: true },
     { id: "model_egress", label: "Model egress", value: "Local-only by default", enforced: true },
   ] });
+  if (pathname === "/admin/product-hardening") return json(res, {
+    version: "4.3.0",
+    startup: { local_only_default: true, host: "127.0.0.1", port: 4825, network_exposed: false },
+    privacy: { local_only_default: true, integrations: { telegram: { enabled: false, credential_present: false, opt_in_required: true } } },
+    storage: { active: { engine: "sqlite", available: true } },
+    backup: { available: true, count: 1 },
+    device_identity: { fingerprint: "sha256:LOCAL", algorithm: "ed25519", storage: "file" },
+    permissions: { export_requires_admin: true, import_requires_admin: true, destructive_restore_requires_confirmation: true },
+  });
   if (pathname === "/admin/security/overview") return json(res, {
     generated_at: "2026-06-06T12:00:00", risk_rate: 2,
     cards: { events_today: 5, high_risk_events: 0, risky_chats: 1, review_required: 1 },

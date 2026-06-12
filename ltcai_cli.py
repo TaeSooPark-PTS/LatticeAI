@@ -269,9 +269,10 @@ def main() -> None:
 
     # Telegram startup notification (local start, tunnel handled separately inside _start_tunnel)
     if not args.tunnel:
+        _tg_enabled = os.getenv("LATTICEAI_ENABLE_TELEGRAM", "").strip().lower() in ("1", "true", "yes", "on")
         _tg_token = os.getenv("LATTICEAI_TELEGRAM_BOT_TOKEN", "")
         _tg_chat  = os.getenv("LATTICEAI_TELEGRAM_CHAT_ID", "")
-        if _tg_token and _tg_chat:
+        if _tg_enabled and _tg_token and _tg_chat:
             _local_msg = (
                 f"✅ Lattice AI 시작됨\n\n"
                 f"🏠 로컬: http://localhost:{args.port}"

@@ -19,7 +19,7 @@ import shutil
 import tempfile
 import zipfile
 from datetime import datetime, timezone
-from pathlib import Path
+from pathlib import Path, PurePosixPath
 from typing import Any, Dict, Optional
 
 from lattice_brain.archive import BrainArchivePaths, EncryptedBrainArchive
@@ -48,6 +48,13 @@ def _sha256_file(path: Path) -> str:
         for block in iter(lambda: fh.read(65536), b""):
             h.update(block)
     return h.hexdigest()
+
+
+def _safe_zip_names(names) -> None:
+    for name in names:
+        path = PurePosixPath(name)
+        if path.is_absolute() or ".." in path.parts:
+            raise ValueError(f"Backup archive contains unsafe path: {name}")
 
 
 class KGPortabilityService:
@@ -156,13 +163,23 @@ class KGPortabilityService:
                             zf.write(f, f"blobs/{f.relative_to(blob_dir)}")
         return {"path": str(dest), "bytes": dest.stat().st_size, "manifest": manifest}
 
-    def restore(self, archive_path, *, verify: bool = True) -> Dict[str, Any]:
+    def restore(
+        self,
+        archive_path,
+        *,
+        verify: bool = True,
+        dry_run: bool = False,
+        confirm: bool = False,
+    ) -> Dict[str, Any]:
         self._require()
         archive = Path(archive_path)
         if not archive.exists():
             raise FileNotFoundError(f"Backup archive not found: {archive}")
+        if not dry_run and not confirm:
+            raise ValueError("Explicit confirmation is required before restoring a Knowledge Graph backup.")
         with zipfile.ZipFile(archive) as zf:
             names = zf.namelist()
+            _safe_zip_names(names)
             if "knowledge_graph.sqlite" not in names:
                 raise ValueError("Archive is missing knowledge_graph.sqlite.")
             manifest = json.loads(zf.read("manifest.json")) if "manifest.json" in names else {}
@@ -173,6 +190,18 @@ class KGPortabilityService:
                 if verify and manifest.get("db_sha256"):
                     if _sha256_file(db_src) != manifest["db_sha256"]:
                         raise ValueError("Backup integrity check failed (db sha256 mismatch).")
+                if dry_run:
+                    return {
+                        "restored": False,
+                        "dry_run": True,
+                        "verified": True,
+                        "manifest": manifest,
+                        "planned": {
+                            "database": str(self._kg.db_path),
+                            "blobs": str(self._kg.blob_dir),
+                            "archive": str(archive),
+                        },
+                    }
                 db_dest = Path(self._kg.db_path)
                 blob_dest = Path(self._kg.blob_dir)
                 db_dest.parent.mkdir(parents=True, exist_ok=True)
@@ -196,25 +225,82 @@ class KGPortabilityService:
             "nodes": sum(stats.get("nodes", {}).values()),
         }
 
+    def verify_backup(self, archive_path) -> Dict[str, Any]:
+        archive = Path(archive_path)
+        if not archive.exists():
+            return {"ok": False, "path": str(archive), "errors": [f"Backup archive not found: {archive}"]}
+        try:
+            with zipfile.ZipFile(archive) as zf:
+                names = zf.namelist()
+                _safe_zip_names(names)
+                if "knowledge_graph.sqlite" not in names:
+                    raise ValueError("Archive is missing knowledge_graph.sqlite.")
+                manifest = json.loads(zf.read("manifest.json")) if "manifest.json" in names else {}
+                with tempfile.TemporaryDirectory() as tmp_s:
+                    tmp = Path(tmp_s)
+                    zf.extract("knowledge_graph.sqlite", tmp)
+                    db_src = tmp / "knowledge_graph.sqlite"
+                    if manifest.get("db_sha256") and _sha256_file(db_src) != manifest["db_sha256"]:
+                        raise ValueError("Backup integrity check failed (db sha256 mismatch).")
+            return {"ok": True, "path": str(archive), "manifest": manifest, "errors": []}
+        except (ValueError, zipfile.BadZipFile, OSError, json.JSONDecodeError) as exc:
+            return {"ok": False, "path": str(archive), "errors": [str(exc)]}
+
     # ── encrypted .latticebrain archive ───────────────────────────────────
     def encrypted_archive(self, dest_path=None, *, passphrase: str) -> Dict[str, Any]:
         self._require()
         self._exports_dir.mkdir(parents=True, exist_ok=True)
         dest = Path(dest_path) if dest_path else self._exports_dir / f"brain-{_stamp()}.latticebrain"
+        metadata = {
+            "storage": self.storage_status().get("active", {}),
+            "snapshot": self.snapshot_metadata(),
+            "device_identity": self._identity.describe() if self._identity is not None else {},
+            "provenance": {"exported_at": _now_iso(), "source": "kg-portability"},
+        }
         archive = EncryptedBrainArchive(
             BrainArchivePaths(
                 db_path=Path(self._kg.db_path),
                 blob_dir=Path(self._kg.blob_dir),
+                data_dir=self._data_dir,
+                metadata=metadata,
             )
         )
         return archive.create(dest, passphrase=passphrase)
 
-    def restore_encrypted_archive(self, archive_path, *, passphrase: str) -> Dict[str, Any]:
+    def inspect_encrypted_archive(self, archive_path, *, passphrase: Optional[str] = None) -> Dict[str, Any]:
+        archive = EncryptedBrainArchive(
+            BrainArchivePaths(
+                db_path=Path(self._kg.db_path),
+                blob_dir=Path(self._kg.blob_dir),
+                data_dir=self._data_dir,
+            )
+        )
+        return archive.inspect(Path(archive_path), passphrase=passphrase)
+
+    def verify_encrypted_archive(self, archive_path, *, passphrase: str) -> Dict[str, Any]:
+        archive = EncryptedBrainArchive(
+            BrainArchivePaths(
+                db_path=Path(self._kg.db_path),
+                blob_dir=Path(self._kg.blob_dir),
+                data_dir=self._data_dir,
+            )
+        )
+        return archive.verify(Path(archive_path), passphrase=passphrase)
+
+    def restore_encrypted_archive(
+        self,
+        archive_path,
+        *,
+        passphrase: str,
+        dry_run: bool = False,
+        confirm: bool = False,
+    ) -> Dict[str, Any]:
         self._require()
         archive = EncryptedBrainArchive(
             BrainArchivePaths(
                 db_path=Path(self._kg.db_path),
                 blob_dir=Path(self._kg.blob_dir),
+                data_dir=self._data_dir,
             )
         )
         return archive.restore(
@@ -223,8 +309,28 @@ class KGPortabilityService:
             target=BrainArchivePaths(
                 db_path=Path(self._kg.db_path),
                 blob_dir=Path(self._kg.blob_dir),
+                data_dir=self._data_dir,
             ),
+            dry_run=dry_run,
+            confirm=confirm,
         )
+
+    def import_encrypted_archive(
+        self,
+        archive_path,
+        *,
+        passphrase: str,
+        dry_run: bool = False,
+        confirm: bool = False,
+    ) -> Dict[str, Any]:
+        result = self.restore_encrypted_archive(
+            archive_path,
+            passphrase=passphrase,
+            dry_run=dry_run,
+            confirm=confirm,
+        )
+        result["operation"] = "import"
+        return result
 
     # ── status surface ───────────────────────────────────────────────────────
     def snapshot_metadata(self) -> Dict[str, Any]:
@@ -253,6 +359,28 @@ class KGPortabilityService:
                 else {"engine": "sqlite", "available": True}
             ),
             "postgres": PostgresEngine("", schema="lattice_brain").capabilities().as_dict(),
+            "backup_health": self.backup_health(),
+        }
+
+    def backup_health(self) -> Dict[str, Any]:
+        self._exports_dir.mkdir(parents=True, exist_ok=True)
+        backups = sorted(
+            [
+                p for p in self._exports_dir.glob("*")
+                if p.is_file() and (p.suffix == ".zip" or p.suffix == ".latticebrain")
+            ],
+            key=lambda p: p.stat().st_mtime,
+            reverse=True,
+        )
+        latest = backups[0] if backups else None
+        return {
+            "available": True,
+            "directory": str(self._exports_dir),
+            "count": len(backups),
+            "latest": str(latest) if latest else None,
+            "latest_bytes": latest.stat().st_size if latest else 0,
+            "encrypted_archives": sum(1 for p in backups if p.suffix == ".latticebrain"),
+            "zip_backups": sum(1 for p in backups if p.suffix == ".zip"),
         }
 
     def postgres_docker_setup(
@@ -279,7 +407,22 @@ class KGPortabilityService:
             Path(self._kg.db_path),
             PostgresEngine(dsn, schema=schema),
         )
-        return migrator.migrate(dry_run=dry_run)
+        if dry_run:
+            return migrator.migrate(dry_run=True)
+        backup = self.backup()
+        verification = self.verify_backup(backup["path"])
+        if not verification.get("ok"):
+            raise RuntimeError(
+                "Pre-migration backup verification failed; Postgres migration was not started: "
+                + "; ".join(verification.get("errors") or [])
+            )
+        result = migrator.migrate(dry_run=False)
+        result["pre_migration_backup"] = {
+            "path": backup["path"],
+            "verified": True,
+            "manifest": backup.get("manifest"),
+        }
+        return result
 
     def recent_ingestions(self, *, limit: int = 50, source_type: Optional[str] = None) -> Dict[str, Any]:
         """Recent provenance records (newest first) for the ingestion-sources UI."""

@@ -731,8 +731,42 @@
         "title": "EncryptedArchiveRequest",
         "type": "object"
       },
+      "EncryptedInspectRequest": {
+        "properties": {
+          "passphrase": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Passphrase"
+          },
+          "path": {
+            "title": "Path",
+            "type": "string"
+          }
+        },
+        "required": [
+          "path"
+        ],
+        "title": "EncryptedInspectRequest",
+        "type": "object"
+      },
       "EncryptedRestoreRequest": {
         "properties": {
+          "confirm": {
+            "default": false,
+            "title": "Confirm",
+            "type": "boolean"
+          },
+          "dry_run": {
+            "default": false,
+            "title": "Dry Run",
+            "type": "boolean"
+          },
           "passphrase": {
             "title": "Passphrase",
             "type": "string"
@@ -747,6 +781,24 @@
           "passphrase"
         ],
         "title": "EncryptedRestoreRequest",
+        "type": "object"
+      },
+      "EncryptedVerifyRequest": {
+        "properties": {
+          "passphrase": {
+            "title": "Passphrase",
+            "type": "string"
+          },
+          "path": {
+            "title": "Path",
+            "type": "string"
+          }
+        },
+        "required": [
+          "path",
+          "passphrase"
+        ],
+        "title": "EncryptedVerifyRequest",
         "type": "object"
       },
       "ExportRequest": {
@@ -1946,6 +1998,16 @@
       },
       "RestoreRequest": {
         "properties": {
+          "confirm": {
+            "default": false,
+            "title": "Confirm",
+            "type": "boolean"
+          },
+          "dry_run": {
+            "default": false,
+            "title": "Dry Run",
+            "type": "boolean"
+          },
           "path": {
             "title": "Path",
             "type": "string"
@@ -3481,7 +3543,7 @@
   },
   "info": {
     "title": "Lattice AI Server (local)",
-    "version": "4.2.0"
+    "version": "4.3.0"
   },
   "openapi": "3.1.0",
   "paths": {
@@ -3761,6 +3823,22 @@
           }
         },
         "summary": "Admin Policies"
+      }
+    },
+    "/admin/product-hardening": {
+      "get": {
+        "operationId": "admin_product_hardening_admin_product_hardening_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": "Admin Product Hardening"
       }
     },
     "/admin/roles": {
@@ -6156,6 +6234,78 @@
         "summary": "Encrypted Archive"
       }
     },
+    "/api/knowledge-graph/archive/import": {
+      "post": {
+        "operationId": "import_encrypted_archive_api_knowledge_graph_archive_import_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/EncryptedRestoreRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Import Encrypted Archive"
+      }
+    },
+    "/api/knowledge-graph/archive/inspect": {
+      "post": {
+        "operationId": "inspect_encrypted_archive_api_knowledge_graph_archive_inspect_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/EncryptedInspectRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Inspect Encrypted Archive"
+      }
+    },
     "/api/knowledge-graph/archive/restore": {
       "post": {
         "operationId": "restore_encrypted_archive_api_knowledge_graph_archive_restore_post",
@@ -6192,6 +6342,42 @@
         "summary": "Restore Encrypted Archive"
       }
     },
+    "/api/knowledge-graph/archive/verify": {
+      "post": {
+        "operationId": "verify_encrypted_archive_api_knowledge_graph_archive_verify_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/EncryptedVerifyRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Verify Encrypted Archive"
+      }
+    },
     "/api/knowledge-graph/backup": {
       "post": {
         "operationId": "backup_graph_api_knowledge_graph_backup_post",
@@ -6226,6 +6412,22 @@
           }
         },
         "summary": "Backup Graph"
+      }
+    },
+    "/api/knowledge-graph/backup-health": {
+      "get": {
+        "operationId": "backup_health_api_knowledge_graph_backup_health_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": "Backup Health"
       }
     },
     "/api/knowledge-graph/export": {

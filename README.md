@@ -203,32 +203,31 @@ npm run dev
 
 ## Latest Release
 
-### v4.2.0 — Brain Core & Storage Rebuild
+### v4.3.0 RC — Portability & Product Hardening
 
-- **Independent Brain Core package** — `lattice_brain` exposes the Knowledge
-  Graph, durable conversations, memory/context, signed exchange, archives, and
-  storage tools for FastAPI, CLI, tests, and future tools.
-- **Pluggable storage layer** — `StorageEngine`, `SQLiteEngine`, and
-  `PostgresEngine` give the backend an explicit storage boundary. SQLite stays
-  the default.
-- **Honest vector search** — sqlite-vec is detected when available; otherwise
-  the real local hash-embedding cosine path remains active and reported.
-- **Postgres scale mode** — pgvector setup and SQLite-to-Postgres migration are
-  opt-in. Live Docker validation covers migration integrity, idempotence, and
-  pgvector distance search. Explicit Postgres selection fails loudly when
-  DSN/dependencies are missing; it never hides failure with a SQLite fallback.
-- **Consent-gated Docker setup** — Docker Compose setup is generated locally
-  and only starts Docker after explicit user consent.
-- **Encrypted `.latticebrain` archives** — local encrypted backup/restore over
-  the brain DB and blobs, with bad passphrases failing closed.
+- **Portable `.latticebrain` archives** — encrypted archives now include the
+  brain DB, blobs, workspace state, settings, signed bundles, storage metadata,
+  provenance, and public device identity metadata.
+- **Safe backup/restore flows** — archive inspect, verify, import, restore, and
+  restore dry-run are real API-backed operations; destructive restore requires
+  explicit admin confirmation.
+- **Migration safety** — live SQLite-to-Postgres migration creates and verifies
+  a pre-migration backup before copying data.
+- **Desktop hardening** — Tauri sidecar startup, status, restart, shutdown, and
+  loopback-only/default-off guards are hardened.
+- **Privacy audit surface** — token presence alone no longer enables Telegram or
+  external connectors; admin status reports storage, backup health, device
+  identity, permissions, and opt-in integration state.
+- **Release hardening** — exact-version validation covers wheel, sdist, npm tgz,
+  VSIX, and Tauri DMG artifacts.
 
-See [RELEASE_NOTES_v4.2.0.md](RELEASE_NOTES_v4.2.0.md),
+See [RELEASE_NOTES_v4.3.0.md](RELEASE_NOTES_v4.3.0.md),
 [docs/kg-schema.md](docs/kg-schema.md),
 [FEATURE_STATUS.md](FEATURE_STATUS.md).
 
 ## How it works — every source converges into the graph
 
-As of v4.2.0, data sources flow through the brain ingestion pipeline into
+As of v4.3.0, data sources flow through the brain ingestion pipeline into
 the Knowledge Graph — no source bypasses it, none becomes an isolated silo:
 
 ```text
@@ -263,6 +262,10 @@ For the deeper design, see [ARCHITECTURE.md](ARCHITECTURE.md) and
 
 - [ARCHITECTURE.md](ARCHITECTURE.md) — workspace, graph, pipeline, and model overview
 - [docs/architecture.md](docs/architecture.md) — full architecture reference
+- [docs/V4_3_PORTABILITY_ARCHITECTURE.md](docs/V4_3_PORTABILITY_ARCHITECTURE.md) — v4.3.0 portable brain archive architecture
+- [docs/V4_3_PRODUCT_HARDENING_REPORT.md](docs/V4_3_PRODUCT_HARDENING_REPORT.md) — v4.3.0 desktop/product hardening report
+- [docs/V4_3_PRIVACY_AUDIT.md](docs/V4_3_PRIVACY_AUDIT.md) — v4.3.0 privacy and local-first audit
+- [docs/V4_3_VALIDATION_REPORT.md](docs/V4_3_VALIDATION_REPORT.md) — v4.3.0 validation report
 - [docs/V4_2_BRAIN_CORE_ARCHITECTURE.md](docs/V4_2_BRAIN_CORE_ARCHITECTURE.md) — v4.2.0 Brain Core package and storage architecture
 - [docs/V4_2_STORAGE_MIGRATION_REPORT.md](docs/V4_2_STORAGE_MIGRATION_REPORT.md) — v4.2.0 storage migration and archive report
 - [docs/V4_2_VALIDATION_REPORT.md](docs/V4_2_VALIDATION_REPORT.md) — v4.2.0 validation report
@@ -287,6 +290,7 @@ For the deeper design, see [ARCHITECTURE.md](ARCHITECTURE.md) and
 ### Releases
 
 - [RELEASE_NOTES.md](RELEASE_NOTES.md) — current release notes
+- [RELEASE_NOTES_v4.3.0.md](RELEASE_NOTES_v4.3.0.md)
 - [RELEASE_NOTES_v4.2.0.md](RELEASE_NOTES_v4.2.0.md)
 - [RELEASE_NOTES_v4.1.0.md](RELEASE_NOTES_v4.1.0.md)
 - [RELEASE_NOTES_v4.0.1.md](RELEASE_NOTES_v4.0.1.md)
@@ -301,6 +305,7 @@ For the deeper design, see [ARCHITECTURE.md](ARCHITECTURE.md) and
 
 | Version | Theme |
 | --- | --- |
+| **4.3.0** | Portability & Product Hardening RC — portable `.latticebrain` archives, confirmed restore/import, pre-migration backup verification, Tauri sidecar hardening, local-only/default-off integration guards, exact-version DMG validation |
 | **4.2.0** | Brain Core & Storage Rebuild — independent `lattice_brain` package, pluggable storage layer, sqlite-vec/pgvector capability reporting, explicit Postgres migration, consent-gated Docker setup, encrypted `.latticebrain` archives |
 | **4.1.0** | Frontend & Desktop Rebuild RC — React/Vite/OpenAPI desktop SPA, Tauri 2.0 primary shell, graph-first navigation, and legacy static frontend removal |
 | **4.0.1** | Digital Brain Platform maintenance — closes post-tag v4 gaps with durable async runs, stable identity/workspace state, full `/app` parity, and legacy UI retirement |

@@ -207,6 +207,23 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/admin/product-hardening": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Admin Product Hardening */
+        get: operations["admin_product_hardening_admin_product_hardening_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/admin/roles": {
         parameters: {
             query?: never;
@@ -1280,6 +1297,40 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/knowledge-graph/archive/import": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Import Encrypted Archive */
+        post: operations["import_encrypted_archive_api_knowledge_graph_archive_import_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/knowledge-graph/archive/inspect": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Inspect Encrypted Archive */
+        post: operations["inspect_encrypted_archive_api_knowledge_graph_archive_inspect_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/knowledge-graph/archive/restore": {
         parameters: {
             query?: never;
@@ -1297,6 +1348,23 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/knowledge-graph/archive/verify": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Verify Encrypted Archive */
+        post: operations["verify_encrypted_archive_api_knowledge_graph_archive_verify_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/knowledge-graph/backup": {
         parameters: {
             query?: never;
@@ -1308,6 +1376,23 @@ export interface paths {
         put?: never;
         /** Backup Graph */
         post: operations["backup_graph_api_knowledge_graph_backup_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/knowledge-graph/backup-health": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Backup Health */
+        get: operations["backup_health_api_knowledge_graph_backup_health_get"];
+        put?: never;
+        post?: never;
         delete?: never;
         options?: never;
         head?: never;
@@ -5822,8 +5907,32 @@ export interface components {
             /** Path */
             path?: string | null;
         };
+        /** EncryptedInspectRequest */
+        EncryptedInspectRequest: {
+            /** Passphrase */
+            passphrase?: string | null;
+            /** Path */
+            path: string;
+        };
         /** EncryptedRestoreRequest */
         EncryptedRestoreRequest: {
+            /**
+             * Confirm
+             * @default false
+             */
+            confirm: boolean;
+            /**
+             * Dry Run
+             * @default false
+             */
+            dry_run: boolean;
+            /** Passphrase */
+            passphrase: string;
+            /** Path */
+            path: string;
+        };
+        /** EncryptedVerifyRequest */
+        EncryptedVerifyRequest: {
             /** Passphrase */
             passphrase: string;
             /** Path */
@@ -6389,6 +6498,16 @@ export interface components {
         };
         /** RestoreRequest */
         RestoreRequest: {
+            /**
+             * Confirm
+             * @default false
+             */
+            confirm: boolean;
+            /**
+             * Dry Run
+             * @default false
+             */
+            dry_run: boolean;
             /** Path */
             path: string;
             /**
@@ -7439,6 +7558,26 @@ export interface operations {
         };
     };
     admin_policies_admin_policies_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": unknown;
+                };
+            };
+        };
+    };
+    admin_product_hardening_admin_product_hardening_get: {
         parameters: {
             query?: never;
             header?: never;
@@ -9503,6 +9642,72 @@ export interface operations {
             };
         };
     };
+    import_encrypted_archive_api_knowledge_graph_archive_import_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["EncryptedRestoreRequest"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": unknown;
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    inspect_encrypted_archive_api_knowledge_graph_archive_inspect_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["EncryptedInspectRequest"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": unknown;
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
     restore_encrypted_archive_api_knowledge_graph_archive_restore_post: {
         parameters: {
             query?: never;
@@ -9513,6 +9718,39 @@ export interface operations {
         requestBody: {
             content: {
                 "application/json": components["schemas"]["EncryptedRestoreRequest"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": unknown;
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    verify_encrypted_archive_api_knowledge_graph_archive_verify_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["EncryptedVerifyRequest"];
             };
         };
         responses: {
@@ -9565,6 +9803,26 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    backup_health_api_knowledge_graph_backup_health_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": unknown;
                 };
             };
         };

@@ -10,6 +10,7 @@ effort) that the VSIX actually contains the compiled extension entrypoint.
 Usage:
     python scripts/validate_release_artifacts.py 1.1.0
     python scripts/validate_release_artifacts.py 1.1.0 --require-vsix
+    python scripts/validate_release_artifacts.py 1.1.0 --require-dmg
     python scripts/validate_release_artifacts.py 1.1.0 --dist dist --json
 
 Exit code is non-zero on any failure so CI can fail fast.
@@ -63,6 +64,7 @@ def validate(
     *,
     require_vsix: bool,
     require_tgz: bool,
+    require_dmg: bool = False,
 ) -> Dict[str, object]:
     errors: List[str] = []
     warnings: List[str] = []
@@ -105,6 +107,12 @@ def validate(
         else:
             warnings.append(f"npm tarball not found: {tgz.name} (run `npm pack`)")
 
+    dmg = dist_dir.parent / "src-tauri" / "target" / "release" / "bundle" / "dmg" / f"Lattice AI_{version}_aarch64.dmg"
+    if dmg.is_file():
+        found["dmg"] = str(dmg)
+    elif require_dmg:
+        errors.append(f"missing dmg: {dmg}")
+
     # Guard against stale-version mixing: warn loudly about other-version builds
     # so a `dist/*` glob upload is obviously unsafe.
     other_versions = set()
@@ -137,6 +145,7 @@ def main(argv: Optional[List[str]] = None) -> int:
     parser.add_argument("--dist", default="dist", help="dist directory (default: dist)")
     parser.add_argument("--require-vsix", action="store_true", help="fail if the VSIX is absent")
     parser.add_argument("--require-tgz", action="store_true", help="check for npm pack tarball at repo root")
+    parser.add_argument("--require-dmg", action="store_true", help="fail if the Tauri DMG is absent")
     parser.add_argument("--json", action="store_true", help="emit machine-readable JSON")
     args = parser.parse_args(argv)
 
@@ -145,6 +154,7 @@ def main(argv: Optional[List[str]] = None) -> int:
         Path(args.dist),
         require_vsix=args.require_vsix,
         require_tgz=args.require_tgz,
+        require_dmg=args.require_dmg,
     )
 
     if args.json:

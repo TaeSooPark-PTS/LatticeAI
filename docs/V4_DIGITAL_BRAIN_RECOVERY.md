@@ -5,27 +5,28 @@
 > completed analysis. **Update this file before ending any phase and before any
 > likely session/context/usage limit.**
 >
-> Last updated: 2026-06-12 — v4.2.0 Brain Core/storage release; Remaining Gaps remain empty
+> Last updated: 2026-06-12 — v4.3.0 Portability/Product Hardening RC; Remaining Gaps remain empty
 
 ---
 
-## 0. RELEASE STATUS (v4.2.0)
+## 0. RELEASE STATUS (v4.3.0 RC)
 
-**v4.2.0 extracts Brain Core into `lattice_brain` and adds the pluggable
-storage layer on top of `main` after v4.1.0; implementation gaps remain empty.**
-Latest implementation milestone: FastAPI now constructs the Knowledge Graph and
-durable conversation runtime through `lattice_brain.BrainCore`. The new
-`lattice_brain.storage` package provides `StorageEngine`, `SQLiteEngine`,
-`PostgresEngine`, explicit-consent Docker Postgres setup, SQLite-to-Postgres
-migration tooling, sqlite-vec capability reporting with honest cosine fallback,
-and encrypted `.latticebrain` archive create/restore. Owner-granted Docker
-validation covered live `pgvector/pgvector:pg16` migration integrity,
-rowid-less FTS5 shadow tables, idempotent reruns, pgvector distance search,
-and fail-closed Postgres behavior.
-The v4.2.0 release process builds validated artifacts, tags `v4.2.0`, and
-creates a GitHub Release only. It does not publish to PyPI, npm Registry,
-VS Code Marketplace, Open VSX, or deploy to production targets.
-v4.2.0 validation report: `docs/V4_2_VALIDATION_REPORT.md`.
+**v4.3.0 hardens the v4.2 Brain Core/storage architecture into a portable,
+user-safe desktop release candidate; implementation gaps remain empty.**
+Latest implementation milestone: `.latticebrain` archive format v2 is the
+primary portable brain format and carries encrypted graph DB, blobs, portable
+JSON state, signed bundles, storage metadata, provenance, public device identity
+metadata, manifest hashes, inspect, verify, import, restore, and dry-run restore.
+Restore/import requires explicit confirmation unless dry-run. Live
+SQLite-to-Postgres migration now creates and verifies a pre-migration backup
+before copying data. Tauri exposes backend status/restart/shutdown and starts
+the sidecar with loopback/default-off guards. Admin product hardening status
+reports local-only startup posture, storage, backup health, device identity,
+permissions, and opt-in external integration state.
+The v4.3.0 RC process builds validated artifacts only. It does not tag, create a
+GitHub Release, publish to PyPI, npm Registry, VS Code Marketplace, Open VSX, or
+deploy to production targets.
+v4.3.0 validation report: `docs/V4_3_VALIDATION_REPORT.md`.
 Remaining implementation gaps: **none**.
 Owner-only blockers: pptx history rewrite (requires force-push/owner decision)
 and consent-gated production embedder provisioning (silent default download is
@@ -33,13 +34,12 @@ not permitted).
 
 ## Remaining Gaps
 
-None. v4.2.0 closes the backend Brain Core/storage rebuild on top of the
-already-empty v4.1.0 gap list: `lattice_brain` is the independent package
-boundary, SQLite remains the default engine, Postgres/pgvector is opt-in and
-honestly unavailable when dependencies or DSN are missing, Docker setup is
-consent-gated, migration planning is non-destructive, and encrypted
-`.latticebrain` archives round-trip the SQLite brain DB plus blobs. Owner-only
-blockers above are intentionally not implementation gaps.
+None. v4.3.0 preserves the already-empty v4.2.0 gap list and closes the
+portability/product-hardening work: `.latticebrain` archives are verified,
+inspectable, dry-runnable, and confirmation-gated; default startup is local-only
+and token-inert; backup health and product hardening are admin-visible; release
+artifact validation includes the exact Tauri DMG. Owner-only blockers above are
+intentionally not implementation gaps.
 
 ## 1. Program Charter (from the user's v4.0.0 directive)
 

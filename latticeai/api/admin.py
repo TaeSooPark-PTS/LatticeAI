@@ -56,6 +56,7 @@ def create_admin_router(
     invite_gate_enabled: bool,
     default_port: int,
     policy_matrix: Optional[Callable[[], List[Dict[str, object]]]] = None,
+    product_hardening_status: Optional[Callable[[], Dict[str, object]]] = None,
 ) -> APIRouter:
     router = APIRouter()
 
@@ -154,6 +155,16 @@ def create_admin_router(
                  "enforced": bool(invite_gate_enabled)},
             ]
         }
+
+    @router.get("/admin/product-hardening")
+    async def admin_product_hardening(request: Request):
+        require_admin(request)
+        if product_hardening_status is None:
+            return {
+                "available": False,
+                "reason": "Product hardening status provider is not configured.",
+            }
+        return product_hardening_status()
 
     @router.get("/vpc/status")
     async def vpc_status(request: Request):

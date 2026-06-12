@@ -7,6 +7,35 @@
 > PyPI / npm / VS Code Marketplace / Open VSX 배포는 아래 수동 절차로만
 > 진행합니다. 태그 생성은 패키지 스토어 publish를 자동으로 트리거하지 않습니다.
 
+## v4.3.0 RC 릴리스 노트 (2026-06-12)
+
+Lattice AI v4.3.0 — Portability & Product Hardening. `main` after v4.2.0 위에서
+portable `.latticebrain` archive format, confirmed import/restore, pre-migration
+backup verification, desktop sidecar lifecycle hardening, local-only startup
+guards, admin product-hardening status, and exact-version release artifact
+validation을 추가한다. GitHub Release, tag, external package registry publish는
+이 RC 작업에 포함하지 않는다.
+
+- **Added (Portable archive)**: encrypted `.latticebrain` archives include the
+  brain DB, blobs, portable JSON state, signed bundles, storage metadata,
+  provenance, and public device identity metadata.
+- **Added (Backup/restore safety)**: archive inspect/verify/import/restore and
+  restore dry-run APIs; destructive restore/import requires explicit admin
+  confirmation.
+- **Changed (Migration safety)**: live SQLite→Postgres migration creates and
+  verifies a pre-migration backup before copying data.
+- **Changed (Desktop)**: Tauri sidecar status/restart/shutdown commands and
+  loopback-only/default-off environment guards.
+- **Changed (Privacy/admin)**: external integration status reports
+  `credential_present` separately from `enabled`; token presence alone does not
+  enable outbound communication.
+- **Expected artifacts**:
+  - `dist/ltcai-4.3.0-py3-none-any.whl`
+  - `dist/ltcai-4.3.0.tar.gz`
+  - `dist/ltcai-4.3.0.vsix`
+  - `ltcai-4.3.0.tgz`
+  - `src-tauri/target/release/bundle/dmg/Lattice AI_4.3.0_aarch64.dmg`
+
 ## v4.2.0 릴리스 노트 (2026-06-12)
 
 Lattice AI v4.2.0 — Brain Core & Storage Rebuild. `main` after v4.1.0 위에서
@@ -797,13 +826,14 @@ Knowledge Graph v2 read/write cutover. 자세한 내용은
    - `npm run release:artifacts`
    - `npm run release:validate`
 
-현재 `v4.2.0` 기준 필수 산출물:
+현재 `v4.3.0` 기준 필수 산출물:
 
 ```text
-dist/ltcai-4.2.0-py3-none-any.whl
-dist/ltcai-4.2.0.tar.gz
-dist/ltcai-4.2.0.vsix
-ltcai-4.2.0.tgz
+dist/ltcai-4.3.0-py3-none-any.whl
+dist/ltcai-4.3.0.tar.gz
+dist/ltcai-4.3.0.vsix
+ltcai-4.3.0.tgz
+src-tauri/target/release/bundle/dmg/Lattice AI_4.3.0_aarch64.dmg
 ```
 
 ## 2) npm 배포

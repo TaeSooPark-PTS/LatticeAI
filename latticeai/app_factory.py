@@ -154,6 +154,7 @@ def _build(config: "Optional[Config]" = None) -> Dict[str, Any]:
     from latticeai.api.hooks import create_hooks_router
     from latticeai.core.hooks import HooksRegistry
     from latticeai.core.builtin_hooks import register_builtin_hook_runners
+    from latticeai.core.product_hardening import build_product_hardening_status
     from latticeai.api.agent_registry import create_agent_registry_router
     from latticeai.core.agent_registry import AgentRegistry
     from latticeai.api.memory import create_memory_router
@@ -1256,6 +1257,13 @@ def _build(config: "Optional[Config]" = None) -> Dict[str, Any]:
         except Exception as e:
             return {"error": str(e)}
 
+    def _product_hardening_status():
+        return build_product_hardening_status(
+            config=CONFIG,
+            portability=KG_PORTABILITY,
+            device_identity=DEVICE_IDENTITY,
+        )
+
     app.include_router(create_admin_router(
         require_admin=require_admin, require_user=require_user,
         load_users=load_users, save_users=save_users,
@@ -1270,6 +1278,7 @@ def _build(config: "Optional[Config]" = None) -> Dict[str, Any]:
         invite_code=INVITE_CODE, invite_gate_enabled=INVITE_GATE_ENABLED,
         default_port=DEFAULT_PORT,
         policy_matrix=policy_matrix,
+        product_hardening_status=_product_hardening_status,
     ))
 
     app.include_router(create_invitations_router(

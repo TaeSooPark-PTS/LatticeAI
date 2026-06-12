@@ -275,17 +275,43 @@ function NetworkPanel() {
 }
 
 function SettingsPanel() {
+  const qc = useQueryClient();
   const { theme, setTheme, mode, setMode } = useAppStore();
   const health = useQuery({ queryKey: ["health"], queryFn: latticeApi.health });
   const sys = useQuery({ queryKey: ["sysinfo"], queryFn: latticeApi.sysinfo });
   const comp = useQuery({ queryKey: ["computerMemory"], queryFn: latticeApi.computerMemory });
   const storage = useQuery({ queryKey: ["brainStorage"], queryFn: latticeApi.brainStorage });
+  const backupHealth = useQuery({ queryKey: ["backupHealth"], queryFn: latticeApi.backupHealth });
   const [dsn, setDsn] = React.useState("");
   const [schema, setSchema] = React.useState("lattice_brain");
   const [dockerConsent, setDockerConsent] = React.useState(false);
+  const [archivePath, setArchivePath] = React.useState("");
+  const [restorePath, setRestorePath] = React.useState("");
+  const [archivePassphrase, setArchivePassphrase] = React.useState("");
+  const [restoreConfirm, setRestoreConfirm] = React.useState(false);
   const docker = useMutation({ mutationFn: (consent: boolean) => latticeApi.dockerPostgres({ consent, dry_run: !consent, port: 5432 }) });
   const migration = useMutation({
     mutationFn: () => latticeApi.migratePostgres({ dsn, schema_name: schema || "lattice_brain", dry_run: true }),
+  });
+  const archiveCreate = useMutation({
+    mutationFn: () => latticeApi.brainArchive({ path: archivePath.trim() || null, passphrase: archivePassphrase }),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ["backupHealth"] }),
+  });
+  const archiveInspect = useMutation({
+    mutationFn: () => latticeApi.brainArchiveInspect({ path: restorePath, passphrase: archivePassphrase || null }),
+  });
+  const archiveVerify = useMutation({
+    mutationFn: () => latticeApi.brainArchiveVerify({ path: restorePath, passphrase: archivePassphrase }),
+  });
+  const archiveDryRun = useMutation({
+    mutationFn: () => latticeApi.brainArchiveRestore({ path: restorePath, passphrase: archivePassphrase, dry_run: true, confirm: false }),
+  });
+  const archiveRestore = useMutation({
+    mutationFn: () => latticeApi.brainArchiveRestore({ path: restorePath, passphrase: archivePassphrase, dry_run: false, confirm: restoreConfirm }),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["brainStorage"] });
+      qc.invalidateQueries({ queryKey: ["backupHealth"] });
+    },
   });
   return (
     <div className="grid gap-4 xl:grid-cols-3">
@@ -311,6 +337,36 @@ function SettingsPanel() {
       <DataPanel title="Brain storage" result={storage.data} className="xl:col-span-3">
         {(data) => <JsonView value={data} />}
       </DataPanel>
+      <DataPanel title="Backup health" result={backupHealth.data} className="xl:col-span-3">
+        {(data) => <JsonView value={data} />}
+      </DataPanel>
+      <Card className="xl:col-span-3">
+        <CardHeader>
+          <CardTitle>.latticebrain portability</CardTitle>
+          <CardDescription>Encrypted export, inspect, verify, dry-run restore, and confirmed restore use the Brain portability API.</CardDescription>
+        </CardHeader>
+        <CardContent className="grid gap-3">
+          <div className="grid gap-2 sm:grid-cols-[1fr_1fr]">
+            <Input value={archivePath} onChange={(e) => setArchivePath(e.target.value)} placeholder="export path (optional)" />
+            <Input value={restorePath} onChange={(e) => setRestorePath(e.target.value)} placeholder="archive path for inspect/restore" />
+          </div>
+          <Input type="password" value={archivePassphrase} onChange={(e) => setArchivePassphrase(e.target.value)} placeholder="archive passphrase" />
+          <div className="flex flex-wrap gap-2">
+            <Button onClick={() => archiveCreate.mutate()} disabled={!archivePassphrase || archiveCreate.isPending}>Export archive</Button>
+            <Button variant="outline" onClick={() => archiveInspect.mutate()} disabled={!restorePath || archiveInspect.isPending}>Inspect</Button>
+            <Button variant="outline" onClick={() => archiveVerify.mutate()} disabled={!restorePath || !archivePassphrase || archiveVerify.isPending}>Verify</Button>
+            <Button variant="outline" onClick={() => archiveDryRun.mutate()} disabled={!restorePath || !archivePassphrase || archiveDryRun.isPending}>Restore dry run</Button>
+            <label className="flex items-center gap-2 rounded-md border border-border px-3 py-2 text-sm">
+              <input type="checkbox" checked={restoreConfirm} onChange={(e) => setRestoreConfirm(e.target.checked)} />
+              Confirm restore
+            </label>
+            <Button variant="destructive" onClick={() => archiveRestore.mutate()} disabled={!restorePath || !archivePassphrase || !restoreConfirm || archiveRestore.isPending}>Restore</Button>
+          </div>
+          {[archiveCreate.data, archiveInspect.data, archiveVerify.data, archiveDryRun.data, archiveRestore.data].filter(Boolean).map((item, i) => (
+            <JsonView key={i} value={item?.data || item?.error} />
+          ))}
+        </CardContent>
+      </Card>
       <Card className="xl:col-span-3">
         <CardHeader>
           <CardTitle>Postgres scale mode</CardTitle>
@@ -355,6 +411,7 @@ function AdminPanel() {
   const audit = useQuery({ queryKey: ["adminAudit"], queryFn: latticeApi.adminAudit });
   const roles = useQuery({ queryKey: ["adminRoles"], queryFn: latticeApi.adminRoles });
   const policies = useQuery({ queryKey: ["adminPolicies"], queryFn: latticeApi.adminPolicies });
+  const hardening = useQuery({ queryKey: ["adminProductHardening"], queryFn: latticeApi.adminProductHardening });
   const security = useQuery({ queryKey: ["adminSecurity"], queryFn: latticeApi.adminSecurity });
   const vpc = useQuery({ queryKey: ["vpcStatus"], queryFn: latticeApi.vpcStatus });
   return (
@@ -364,6 +421,7 @@ function AdminPanel() {
       <DataPanel title="Audit" result={audit.data}>{(data) => <EntityList items={(data as Record<string, unknown>).recent_events || data} titleKey="act" metaKey="sev" />}</DataPanel>
       <DataPanel title="Roles" result={roles.data}>{(data) => <JsonView value={data} />}</DataPanel>
       <DataPanel title="Policies" result={policies.data}>{(data) => <JsonView value={data} />}</DataPanel>
+      <DataPanel title="Product hardening" result={hardening.data}>{(data) => <JsonView value={data} />}</DataPanel>
       <DataPanel title="Security overview" result={security.data}>{(data) => <JsonView value={data} />}</DataPanel>
       <DataPanel title="Private VPC" result={vpc.data} className="xl:col-span-2">
         {(data) => (

@@ -122,7 +122,7 @@ def test_backup_restore_round_trip_carries_conversations(tmp_path):
     conv.clear_all()
     assert conv.count() == 0
 
-    portability.restore(backup["path"])
+    portability.restore(backup["path"], confirm=True)
     restored = ConversationStore(db)
     assert restored.count() == 2, "restore must bring conversations back"
     assert [m["content"] for m in restored.history()] == ["message 1", "message 2"]

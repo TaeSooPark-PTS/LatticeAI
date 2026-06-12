@@ -1,9 +1,26 @@
-# Lattice AI — Feature Status (v4.2.0)
+# Lattice AI — Feature Status (v4.3.0)
 
 **Release type:** Knowledge Graph First — the Knowledge Graph becomes the primary
 architecture. Lattice AI is a Digital Brain Platform: the graph is the durable
 asset; models read it and are replaceable. Every v3.6.0 claim below is backed by
 automated tests.
+
+## v4.3.0 Portability & Product Hardening — what changed
+
+v4.3.0 hardens the v4.2 Brain Core/storage architecture into a portable,
+user-safe desktop release candidate while preserving v4.2.0 capabilities, APIs,
+and user data:
+
+| Area | Status | Evidence |
+| --- | --- | --- |
+| **Portable `.latticebrain` archive** | WORKING | Archive format v2 includes the brain DB, blobs, portable JSON state, signed bundles, storage metadata, provenance, public device identity metadata, manifest hashes, inspect, verify, import, restore, and dry-run restore. Private device keys are excluded. `test_v42_brain_storage.py`. |
+| **Backup / restore safety** | WORKING | Backup restore and archive restore/import require explicit confirmation unless dry-run; corrupt, partial, tampered, wrong-passphrase, and unsupported-version archives fail closed. `test_kg_portability.py`, `test_v42_brain_storage.py`. |
+| **Pre-migration backup verification** | WORKING | Non-dry-run SQLite→Postgres migration creates and verifies a SQLite backup before copying data; failure stops migration before Postgres writes. `KGPortabilityService.migrate_sqlite_to_postgres`. |
+| **Tauri desktop hardening** | WORKING | Tauri exposes backend origin/status/restart/shutdown, records missing-runtime errors, kills the sidecar on close, and starts with loopback/default-off environment guards. `src-tauri/src/main.rs`, `npm run desktop:tauri:check`. |
+| **Privacy / local-first guard** | WORKING | Telegram is disabled by default; token presence alone does not enable Telegram or external connectors; product hardening status reports credentials separately from enabled egress. `test_config.py`, `test_v43_product_hardening.py`. |
+| **Enterprise/admin status** | WORKING | `/admin/product-hardening` reports startup posture, storage mode, backup health, device identity, permissions, external integration status, and fail-closed behavior. |
+| **API + UI portability controls** | WORKING | OpenAPI regenerated to 318 paths; System settings exposes archive export, inspect, verify, restore dry-run, confirmed restore, backup health, storage, Docker, and migration controls through FastAPI APIs. |
+| **Release hardening** | WORKING | Release artifact validation checks exact wheel, sdist, npm tgz, VSIX, and Tauri DMG paths; target-version artifact cleanup avoids stale RC rebuilds. |
 
 ## v4.2.0 Brain Core & Storage Rebuild — what changed
 
@@ -136,7 +153,7 @@ service/core (`latticeai/services/*`, `latticeai/core/*`, top-level
 `knowledge_graph.py`). Historical v3 sections retain their original audit
 context when describing retired implementation paths.
 
-**Frontend of record:** the v4.2.0 React/Vite SPA at `/app` (`frontend/` source,
+**Frontend of record:** the v4.3.0 React/Vite SPA at `/app` (`frontend/` source,
 `static/app/` build output). The legacy static pages have been removed;
 compatibility GET/hash routes land in the matching `/app#/...` surface.
 

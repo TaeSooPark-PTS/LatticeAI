@@ -3,6 +3,7 @@
 from pathlib import Path
 
 from latticeai.core.config import Config
+from latticeai.core.product_hardening import default_startup_local_only, external_integration_status
 
 
 def test_defaults_local_mode():
@@ -13,9 +14,11 @@ def test_defaults_local_mode():
     assert cfg.port == 4825
     assert cfg.network_exposed is False
     assert cfg.enable_graph is True
+    assert cfg.enable_telegram is False
     # loopback default ⇒ auth not forced on
     assert cfg.require_auth is False
     assert cfg.open_registration is True
+    assert default_startup_local_only(cfg) is True
 
 
 def test_public_mode_flips_dependent_defaults():
@@ -25,6 +28,23 @@ def test_public_mode_flips_dependent_defaults():
     assert cfg.autoload_models is True
     assert cfg.allow_local_models is False
     assert cfg.open_registration is False
+
+
+def test_external_tokens_do_not_enable_startup_egress():
+    env = {
+        "LATTICEAI_TELEGRAM_BOT_TOKEN": "token-present",
+        "OPENAI_API_KEY": "api-key-present",
+        "HF_TOKEN": "hf-present",
+    }
+    cfg = Config.from_env(env)
+    status = external_integration_status(cfg, env=env)
+
+    assert cfg.enable_telegram is False
+    assert status["local_only_default"] is True
+    assert status["integrations"]["telegram"]["credential_present"] is True
+    assert status["integrations"]["telegram"]["enabled"] is False
+    assert status["integrations"]["external_connectors"]["credential_present"] is True
+    assert status["integrations"]["external_connectors"]["enabled"] is False
 
 
 def test_non_loopback_host_forces_auth():

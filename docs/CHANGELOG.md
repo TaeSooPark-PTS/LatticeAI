@@ -1,5 +1,47 @@
 # Changelog
 
+## [4.3.0] - 2026-06-12
+
+> Portability & Product Hardening release candidate. v4.3.0 preserves the
+> v4.2 Brain Core/storage architecture and adds user-safe portable archives,
+> backup/restore hardening, desktop lifecycle status, and local-only privacy
+> guards.
+
+### Added
+
+- `.latticebrain` archive format v2 with encrypted graph DB, blobs, portable
+  JSON state, signed bundles, storage metadata, provenance, public device
+  identity metadata, manifest hashes, inspect, verify, import, restore, and
+  restore dry-run.
+- FastAPI routes for archive inspect/verify/import, backup health, and admin
+  product-hardening status.
+- Product-hardening status for local-only startup, storage mode, backup health,
+  device identity, import/export permissions, external integration opt-in state,
+  and fail-closed archive behavior.
+- Tauri sidecar `backend_status`, `restart_backend`, and `shutdown_backend`
+  commands.
+- Release cleaner and exact-version DMG validation.
+
+### Changed
+
+- Telegram is disabled by default; token presence alone no longer enables any
+  external integration.
+- SQLite-to-Postgres live migration creates and verifies a pre-migration backup
+  before copying data.
+- System settings exposes `.latticebrain` export/inspect/verify/dry-run
+  restore/confirmed restore through real APIs.
+- OpenAPI client regenerated with 318 paths.
+- Synchronized package/runtime versions to `4.3.0`, including Tauri config and
+  `lattice_brain.__version__`.
+
+### Expected Artifacts
+
+- `dist/ltcai-4.3.0-py3-none-any.whl`
+- `dist/ltcai-4.3.0.tar.gz`
+- `dist/ltcai-4.3.0.vsix`
+- `ltcai-4.3.0.tgz`
+- `src-tauri/target/release/bundle/dmg/Lattice AI_4.3.0_aarch64.dmg`
+
 ## [4.2.0] - 2026-06-12
 
 > Brain Core & Storage Rebuild release. The backend Digital Brain boundary is

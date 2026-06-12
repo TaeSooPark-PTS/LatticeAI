@@ -76,7 +76,12 @@ const requiredPaths = [
   "/api/brain/storage/postgres/docker",
   "/api/brain/storage/migrate-postgres",
   "/api/knowledge-graph/archive",
+  "/api/knowledge-graph/archive/inspect",
+  "/api/knowledge-graph/archive/verify",
+  "/api/knowledge-graph/archive/import",
   "/api/knowledge-graph/archive/restore",
+  "/api/knowledge-graph/backup-health",
+  "/admin/product-hardening",
 ];
 if (openapiPaths.length < 300) fail(`OpenAPI path count too low: ${openapiPaths.length}`);
 for (const path of requiredPaths) {
