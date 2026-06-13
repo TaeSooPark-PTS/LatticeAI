@@ -9,17 +9,23 @@ historical and may describe behavior as it existed at that release.
 
 ### Changed
 
-- Made Brain plus conversation the default `/app` and `/app#/brain` experience.
+- Added the required first-launch product flow: Login -> Environment Analysis
+  -> Recommended Models -> Install & Load -> Brain.
+- Made Brain plus conversation the post-model-load `/app` and `/app#/brain`
+  experience.
 - Added an animated living Brain presence that reacts to listening, memory
   recall, streaming/thinking, and agent/workflow activity.
 - Centralized chat streaming, model status, image attachment, conversation
   history, and memory previews in a reusable Brain conversation component.
-- Reduced visible primary navigation to Brain, Add, Automate, Library, and Care;
+- Reduced visible primary navigation to Brain, Memory, Files, Automations,
+  Models, and Settings;
   `/ask` and `/chat` remain route-compatible aliases into Brain.
 - Reordered Brain layers as Brain -> Memories -> Knowledge -> Relationships ->
   Graph, moving graph exploration to the deepest intentional layer.
 - Updated visual palette and copy so the product reads as a living digital
   Brain rather than a graph tool or dashboard.
+- Removed the first-run dashboard/setup-card panel from the app shell; setup is
+  now a full-screen product sequence before the Brain opens.
 
 ### Preserved
 

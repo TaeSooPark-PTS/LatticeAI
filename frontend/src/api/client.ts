@@ -341,6 +341,7 @@ export const latticeApi = {
   connectFolder: (path: string) => post("/knowledge-graph/local/index", { path, approved: true, watch_enabled: true, consent: { approved: true, source: "desktop-spa" } }, {}),
   localWatchStop: (source_id: string) => post("/knowledge-graph/local/watch/stop", { source_id }, {}),
   models: () => get("/models", { catalog: [], loaded: [], recommended: [] }),
+  setupScan: () => get("/setup/scan", { environment: {}, recommendations: {}, zero_config: {} }),
   modelRecommendations: (engine = "local_mlx") => get("/models/recommendations", { profile: {}, recommendations: { models: [], families: [], counts: {} } }, { engine }),
   installEngine: (engine: string) => post("/engines/install", { engine }, {}),
   prepareModel: (model: string, engine?: string, allow_download = false) => post("/engines/prepare-model", { model, engine: engine || null, allow_download }, {}),

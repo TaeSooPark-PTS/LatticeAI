@@ -1,11 +1,11 @@
 import * as React from "react";
 import { useQuery } from "@tanstack/react-query";
-import { BrainCircuit, CheckCircle2, Command, Menu, Moon, Search, Sparkles, Sun, X } from "lucide-react";
+import { BrainCircuit, Command, Menu, Moon, Search, Sun, X } from "lucide-react";
 import { latticeApi } from "@/api/client";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { FirstRunGuide } from "@/components/FirstRunGuide";
-import { useAppStore, WorkspaceMode } from "@/store/appStore";
+import { ProductFlow, readProductFlowComplete } from "@/components/ProductFlow";
+import { useAppStore } from "@/store/appStore";
 import { commandRoutes, go, parseHash, primaryRoutes, PrimaryRoute } from "@/routes";
 import { BrainPage } from "@/pages/Brain";
 import { CapturePage } from "@/pages/Capture";
@@ -13,12 +13,6 @@ import { ActPage } from "@/pages/Act";
 import { LibraryPage } from "@/pages/Library";
 import { SystemPage } from "@/pages/System";
 import { cn } from "@/lib/utils";
-
-const modes: Array<{ id: WorkspaceMode; label: string }> = [
-  { id: "basic", label: "Calm" },
-  { id: "advanced", label: "Deep" },
-  { id: "admin", label: "Admin" },
-];
 
 function useRoute() {
   const [route, setRoute] = React.useState(parseHash);
@@ -31,6 +25,7 @@ function useRoute() {
 }
 
 function Page({ primary, tab }: { primary: PrimaryRoute; tab?: string }) {
+  if (primary === "memory") return <BrainPage initialTab="memory" />;
   if (primary === "capture") return <CapturePage initialTab={tab} />;
   if (primary === "act") return <ActPage initialTab={tab} />;
   if (primary === "library") return <LibraryPage initialTab={tab} />;
@@ -127,36 +122,19 @@ function PrimaryDock({ active, onNavigate }: { active: PrimaryRoute; onNavigate?
   );
 }
 
-function ModeSwitch({ mode, setMode }: { mode: WorkspaceMode; setMode: (mode: WorkspaceMode) => void }) {
-  return (
-    <div className="mode-switch" aria-label="Experience mode">
-      {modes.map((item) => (
-        <button
-          key={item.id}
-          className={cn(mode === item.id && "is-active")}
-          onClick={() => setMode(item.id)}
-          aria-pressed={mode === item.id}
-        >
-          {item.label}
-        </button>
-      ))}
-    </div>
-  );
-}
-
 export default function App() {
   const route = useRoute();
-  const { theme, setTheme, mode, setMode } = useAppStore();
+  const { theme, setTheme } = useAppStore();
   const [drawer, setDrawer] = React.useState(false);
   const [palette, setPalette] = React.useState(false);
-  const health = useQuery({ queryKey: ["health"], queryFn: latticeApi.health });
+  const [flowComplete, setFlowComplete] = React.useState(readProductFlowComplete);
+  const health = useQuery({ queryKey: ["health"], queryFn: latticeApi.health, enabled: flowComplete });
   const desktop = useQuery({
     queryKey: ["desktopBackendStatus"],
     queryFn: latticeApi.desktopBackendStatus,
-    enabled: Boolean(window.__TAURI_INTERNALS__),
+    enabled: flowComplete && Boolean(window.__TAURI_INTERNALS__),
     refetchInterval: 5000,
   });
-  const workspace = useQuery({ queryKey: ["workspaceOs"], queryFn: latticeApi.workspaceOs });
 
   React.useEffect(() => {
     document.documentElement.dataset.theme = theme;
@@ -173,15 +151,17 @@ export default function App() {
     return () => window.removeEventListener("keydown", onKey);
   }, []);
 
+  if (!flowComplete) {
+    return <ProductFlow onComplete={() => {
+      setFlowComplete(true);
+      go("brain");
+    }} />;
+  }
+
   const healthData = (health.data?.data || {}) as Record<string, unknown>;
-  const workspaceData = (workspace.data?.data || {}) as Record<string, unknown>;
   const desktopData = (desktop.data?.data || {}) as Record<string, unknown>;
-  const appVersion = typeof healthData.version === "string" ? healthData.version : null;
-  const activeRoute = primaryRoutes.find((item) => item.id === route.primary);
-  const workspaceName = String(workspaceData.active_workspace || "Personal space");
   const backendReady = Boolean(health.data?.ok);
   const desktopReady = !window.__TAURI_INTERNALS__ || Boolean(desktopData.running);
-  const showWorkspaceRibbon = route.primary !== "brain";
 
   return (
     <div className="app-backdrop min-h-screen text-foreground">
@@ -233,26 +213,6 @@ export default function App() {
       ) : null}
 
       <main className="page-shell">
-        {showWorkspaceRibbon ? (
-          <section className="workspace-ribbon" aria-label="Current workspace">
-            <div className="min-w-0">
-              <div className="ribbon-kicker"><Sparkles className="h-4 w-4" /> {activeRoute?.label || "Brain"}</div>
-              <h1>{activeRoute?.description || "A calm place to think with your knowledge."}</h1>
-            </div>
-            <div className="ribbon-meta">
-              <div className="meta-card">
-                <CheckCircle2 className="h-4 w-4 text-primary" />
-                <span>{workspaceName}</span>
-              </div>
-              <div className="meta-card">
-                <span>{appVersion ? `v${appVersion}` : "Version checking"}</span>
-              </div>
-              <ModeSwitch mode={mode} setMode={setMode} />
-            </div>
-          </section>
-        ) : null}
-
-        {showWorkspaceRibbon ? <FirstRunGuide /> : null}
         <Page primary={route.primary} tab={route.tab} />
       </main>
     </div>

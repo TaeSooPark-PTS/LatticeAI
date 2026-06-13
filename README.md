@@ -15,8 +15,10 @@ experience.
 This README describes the v4.6.0 release-preparation tree, which preserves the
 v4.4.0 physical `lattice_brain` extraction, v4.5.0 capability recovery, and
 v4.5.1 product shell while repositioning the graph as a deep exploration layer.
-The home screen is now the living Brain conversation; memories, knowledge,
-relationships, and the advanced graph are progressively disclosed beneath it.
+First launch now follows a Brain-first product flow: Login, friendly environment
+analysis, recommended models, guided install/download/validate/load, then the
+living Brain conversation. Memories, knowledge, relationships, and the advanced
+graph are progressively disclosed beneath the Brain.
 External package registries are owner-published; the badges above link to
 package pages and may show the most recently published owner-controlled registry
 version, which can lag behind the GitHub Release.
@@ -25,8 +27,11 @@ version, which can lag behind the GitHub Release.
 
 - Desktop app starts and serves the React/Vite product shell from the FastAPI
   sidecar.
-- The home route opens directly to a living Brain presence plus durable
-  conversation, with the Brain always visible during the primary chat flow.
+- First launch opens to Login only, then guides environment analysis,
+  recommendations, install/download/validate/load, and finally the Brain.
+- After model loading, the home route opens to a living Brain presence plus
+  durable conversation, with the Brain always visible during the primary chat
+  flow.
 - The Brain presence reacts to conversation, recall, model readiness, and
   agent/workflow activity with neural movement, memory pulses, and status
   changes.
@@ -37,9 +42,8 @@ version, which can lag behind the GitHub Release.
 - Act exposes workflow create/run surfaces and agent runtime status without
   presenting simulation as real success. When no LLM-backed model is loaded,
   deterministic model-free agent simulation is reported honestly and does not call a model.
-- Library shows model/runtime availability honestly.
-- First-run setup remains available through setup/system routes without
-  displacing the Brain-first home experience.
+- Model setup recommends a short ranked list for the current computer instead
+  of exposing a catalog or runtime internals.
 - Gemma 4 MLX models are checked against their local `config.json` before load:
   Gemma 4 12B `gemma4_unified` now shows **Runtime update needed** when the
   installed MLX-VLM lacks `mlx_vlm.models.gemma4_unified`, while Gemma 4 26B

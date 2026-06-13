@@ -215,7 +215,7 @@ const server = http.createServer((req, res) => {
   if (pathname === "/account/change-password" && req.method === "POST") return json(res, { status: "ok" });
   if (pathname === "/auth/sso/config") return json(res, { enabled: false, providers: [] });
 
-  if (pathname === "/health") return json(res, { status: "ok", version: "4.5.0", mode: "visual" });
+  if (pathname === "/health") return json(res, { status: "ok", version: "4.6.0", mode: "visual" });
   if (pathname === "/vpc/status") return json(res, { provider: "local", region: "visual", vpn_status: "standby", peering_status: "not_configured", private_subnets: [] });
   if (pathname === "/workspace/os") return json(res, workspaceOs);
   if (pathname === "/workspace/registry") return json(res, workspaceOs.workspace_registry);
@@ -224,6 +224,27 @@ const server = http.createServer((req, res) => {
   if (pathname.startsWith("/workspace/orgs/") && pathname.endsWith("/members") && req.method === "POST") return json(res, { workspace: workspaceOs.workspace_registry.workspaces[1] });
   if (pathname.startsWith("/workspace/orgs/") && (req.method === "PATCH" || req.method === "DELETE")) return json(res, { workspace: workspaceOs.workspace_registry.workspaces[1] });
   if (pathname === "/workspace/onboarding/status") return json(res, { current_step: "complete", steps: ["account", "admin", "hardware", "model_recommendation", "folder_connection", "complete"].map((id) => ({ id, status: "complete" })) });
+  if (pathname === "/setup/scan") return json(res, {
+    environment: {
+      os: "darwin",
+      arch: "arm64",
+      ram_mb: 65536,
+      gpu: { vendor: "apple", vram_mb: 65536 },
+      installed_runtimes: ["local acceleration"],
+      local_models: ["mlx-community/Qwen3-VL-8B-Instruct-4bit"],
+    },
+    recommendations: {
+      summary: {
+        zero_config: {
+          model_id: "mlx-community/gemma-4-26b-a4b-it-4bit",
+          rationale: ["Apple Silicon and 64 GB memory detected."],
+        },
+      },
+    },
+    zero_config: {
+      recommend: { model_id: "mlx-community/gemma-4-26b-a4b-it-4bit" },
+    },
+  });
   if (pathname === "/workspace/traces") return json(res, { traces: [{ question: "What changed in v1.7.0?", confidence: 0.92, created_at: "2026-06-01T12:00:00", graph_nodes: graphNodes.slice(0, 2), source_files: [{ source: "README.md" }] }] });
   if (pathname === "/workspace/indexing") return json(res, { sources: [{ id: "source-demo", label: "Demo Repo", root_path: repoRoot, status: "indexed", success_count: 128, failure_count: 0, last_run_at: "2026-06-01T12:00:00", watch_active: true, file_status: { indexed: 128 } }] });
   if (pathname === "/workspace/snapshots") {

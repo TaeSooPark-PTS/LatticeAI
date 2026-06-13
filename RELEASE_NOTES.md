@@ -5,19 +5,23 @@ release notes and should not be read as newer product claims.
 
 ## v4.6.0 - Living Brain Experience
 
-Lattice AI v4.6.0 makes the Brain the product. The primary screen is now the
-living Brain plus conversation; memories, knowledge, relationships, and the
+Lattice AI v4.6.0 makes the Brain the product. First launch now moves through
+Login, environment analysis, recommended models, guided install/load, and then
+the living Brain conversation; memories, knowledge, relationships, and the
 advanced graph sit behind progressive disclosure.
 
 ### Highlights
 
-- Home opens directly into Brain plus conversation instead of a graph,
-  dashboard, or status surface.
+- First launch opens to Login only, then a friendly setup flow that recommends
+  models instead of exposing a catalog.
+- Home after model load opens directly into Brain plus conversation instead of
+  a graph, dashboard, or status surface.
 - The living Brain remains visible while chatting and reacts to listening,
   recall, thinking, planning, and agent/workflow activity.
 - `/ask` and `/chat` remain compatible routes but now land in the Brain
   conversation.
-- Primary navigation is reduced to Brain, Add, Automate, Library, and Care.
+- Primary navigation is reduced to Brain, Memory, Files, Automations, Models,
+  and Settings.
 - The graph is preserved as advanced exploration at the deepest Brain layer.
 
 ### Expected Artifacts

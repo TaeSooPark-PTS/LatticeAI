@@ -138,27 +138,9 @@ export function BrainConversation({ className }: { className?: string }) {
   return (
     <div className={className}>
       <div className="brain-conversation-grid">
-        <aside className="brain-presence-column">
+        <section className="brain-presence-column" aria-label="Living Brain presence">
           <LivingBrain activity={activity} vitals={vitals} />
-          <RecentConversations
-            conversations={historyItems}
-            result={history.data}
-            activeId={conversationId}
-            onNew={() => {
-              setConversationId(null);
-              setSelectedConversationId(null);
-              setMessages([]);
-              setTrace(null);
-            }}
-            onSelect={(id) => {
-              setConversationId(id);
-              setSelectedConversationId(id);
-              setTrace(null);
-            }}
-            onDelete={(id) => deleteMutation.mutate(id)}
-          />
-          <MemoryNearby question={draft || [...messages].reverse().find((msg) => msg.role === "user")?.content || ""} trace={trace} />
-        </aside>
+        </section>
 
         <section className="brain-chat-panel premium-surface" aria-label="Conversation with Lattice Brain">
           <div className="brain-chat-head">
@@ -167,7 +149,7 @@ export function BrainConversation({ className }: { className?: string }) {
               <h1>Talk to your Brain.</h1>
             </div>
             <div className="brain-chat-model">
-              <Badge variant="muted">{currentModelName(models.data?.data) || "no model loaded"}</Badge>
+              <Badge variant="muted">{currentModelName(models.data?.data) || "model readying"}</Badge>
               <SourceBadge result={models.data} />
             </div>
           </div>
@@ -223,6 +205,27 @@ export function BrainConversation({ className }: { className?: string }) {
             </div>
           </div>
         </section>
+
+        <aside className="brain-context-column" aria-label="Conversation memory">
+          <RecentConversations
+            conversations={historyItems}
+            result={history.data}
+            activeId={conversationId}
+            onNew={() => {
+              setConversationId(null);
+              setSelectedConversationId(null);
+              setMessages([]);
+              setTrace(null);
+            }}
+            onSelect={(id) => {
+              setConversationId(id);
+              setSelectedConversationId(id);
+              setTrace(null);
+            }}
+            onDelete={(id) => deleteMutation.mutate(id)}
+          />
+          <MemoryNearby question={draft || [...messages].reverse().find((msg) => msg.role === "user")?.content || ""} trace={trace} />
+        </aside>
       </div>
     </div>
   );

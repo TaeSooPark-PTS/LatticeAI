@@ -11,18 +11,25 @@
 
 Lattice AI v4.6.0 — Living Brain Experience. Brain Core extraction,
 StorageEngine, FastAPI, Tauri, backup/restore, model runtime, graph APIs, and
-portability capabilities는 유지하고 primary desktop experience를 Brain +
-Conversation 중심으로 재배치한다. graph는 제거하지 않고 가장 깊은 advanced
-exploration layer로 이동한다.
+portability capabilities는 유지하고 first-launch flow를 Login -> Environment
+Analysis -> Recommended Models -> Install & Load -> Brain으로 교체한다. primary
+desktop experience는 Brain + Conversation 중심이며, graph는 제거하지 않고 가장
+깊은 advanced exploration layer로 이동한다.
 
+- **Changed (First launch)**: `/app` opens to Login only until the product flow
+  completes; no dashboard, graph, setup cards, system status, or Brain metrics
+  are shown on the opening screen.
+- **Changed (Guided setup)**: environment analysis, model recommendations, and
+  install/download/validate/load are presented as consumer product steps without
+  runtime jargon.
 - **Changed (Primary experience)**: `/app` and `/app#/brain` now open directly
-  to the living Brain plus conversation instead of graph/status/dashboard
-  surfaces.
+  to the living Brain plus conversation after model loading instead of
+  graph/status/dashboard surfaces.
 - **Changed (Living Brain)**: animated Brain presence reacts to listening,
   memory recall, streaming/thinking, planning, and agent/workflow activity.
-- **Changed (Navigation)**: visible primary navigation is reduced to Brain, Add,
-  Automate, Library, and Care. `/ask` and `/chat` remain compatible aliases into
-  the Brain conversation.
+- **Changed (Navigation)**: visible primary navigation is reduced to Brain,
+  Memory, Files, Automations, Models, and Settings. `/ask` and `/chat` remain
+  compatible aliases into the Brain conversation.
 - **Changed (Progressive disclosure)**: Brain tabs now descend as Brain ->
   Memories -> Knowledge -> Relationships -> Graph -> Care.
 - **Changed (Graph positioning)**: graph exploration remains available at

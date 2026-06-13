@@ -9,13 +9,16 @@ notes.
 
 ## v4.6.0 Living Brain Experience — what changed
 
-v4.6.0 makes the Brain the product: the default app opens on a living Brain
-presence and conversation, while memories, knowledge, relationships, and the
-graph are progressively disclosed.
+v4.6.0 makes the Brain the product: first launch opens with Login only, setup
+guides environment analysis and model recommendation, model loading opens the
+living Brain conversation, and memories, knowledge, relationships, and the graph
+are progressively disclosed.
 
 | Feature | Status | Evidence |
 | --- | --- | --- |
-| **Brain-first home** | WORKING | `/app` and `/app#/brain` render the Brain conversation without a dashboard/onboarding panel above it. `frontend/src/pages/Brain.tsx`, `frontend/src/components/BrainConversation.tsx`. |
+| **Login-first entry** | WORKING | `/app` opens to Login only until the local product flow completes. `frontend/src/components/ProductFlow.tsx`, `tests/visual/v3.spec.js`. |
+| **Guided setup** | WORKING | Environment analysis, recommended models, and install/download/validate/load run as a full-screen consumer flow with runtime jargon hidden. `frontend/src/components/ProductFlow.tsx`, `frontend/src/api/client.ts`. |
+| **Brain-first home** | WORKING | After model loading, `/app` and `/app#/brain` render the Brain conversation without a dashboard/onboarding panel above it. `frontend/src/pages/Brain.tsx`, `frontend/src/components/BrainConversation.tsx`. |
 | **Living Brain presence** | WORKING | Animated Brain component reacts to listening, recall, thinking, planning, and activity states. `frontend/src/components/LivingBrain.tsx`, `frontend/src/styles.css`. |
 | **Conversation centralization** | WORKING | Chat streaming, image attachment, model status, memory preview, and history are shared through `BrainConversation`. |
 | **Graph repositioning** | WORKING | Brain tabs descend Brain -> Memories -> Knowledge -> Relationships -> Graph; `/app#/knowledge-graph` remains available for advanced exploration. `frontend/src/routes.ts`, `frontend/src/pages/Brain.tsx`. |

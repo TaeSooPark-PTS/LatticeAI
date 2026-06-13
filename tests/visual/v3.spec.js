@@ -17,12 +17,49 @@ function trackPageErrors(page) {
   return errors;
 }
 
-test("React desktop shell boots with the reimagined navigation dock", async ({ page }) => {
+async function bypassProductFlow(page) {
+  await page.addInitScript(() => {
+    localStorage.setItem("lattice.productFlow.complete", "true");
+  });
+}
+
+test("Brain-first product flow opens with login and guides setup before Brain", async ({ page }) => {
+  const errors = trackPageErrors(page);
+  await page.goto("/app");
+  await expect(page.locator("body")).toContainText("Enter your Brain");
+  await expect(page.getByRole("navigation", { name: "Primary navigation" })).toHaveCount(0);
+  await expect(page.locator("body")).not.toContainText("Source coverage");
+  await expect(page.locator("body")).not.toContainText("Knowledge map");
+
+  await page.getByLabel("Password").fill("Lattice123");
+  await page.getByRole("button", { name: "Continue" }).click();
+  await expect(page.locator("body")).toContainText("Environment Analysis");
+  await expect(page.locator("body")).toContainText("Apple Silicon Mac");
+  await expect(page.locator("body")).toContainText("Local Support");
+  await page.getByRole("button", { name: "See recommended models" }).click();
+  await expect(page.locator("body")).toContainText("Recommended for your computer");
+  await expect(page.locator("body")).toContainText("Best Experience");
+  await expect(page.locator("body")).not.toContainText("MLX");
+  await expect(page.locator("body")).not.toContainText("GGUF");
+  await expect(page.locator("body")).not.toContainText("Ollama");
+
+  await page.locator(".model-recommendation-card").first().click();
+  await expect(page.locator("body")).toContainText("Install & Load");
+  await page.getByRole("button", { name: "Install & Load" }).click();
+  await expect(page.locator("body")).toContainText("Your Brain is ready");
+  await page.waitForSelector("text=Lattice Brain");
+  await expect(page.locator("body")).toContainText("Talk to your Brain");
+  await expect(page.locator("body")).not.toContainText("Advanced relationship graph");
+  expect(errors).toEqual([]);
+});
+
+test("React desktop shell boots with compact Brain navigation", async ({ page }) => {
+  await bypassProductFlow(page);
   const errors = trackPageErrors(page);
   await page.goto("/app");
   await page.waitForSelector("text=Lattice Brain");
   const nav = page.getByRole("navigation", { name: "Primary navigation" });
-  for (const label of ["Brain", "Add", "Automate", "Library", "Care"]) {
+  for (const label of ["Brain", "Memory", "Files", "Automations", "Models", "Settings"]) {
     await expect(nav.getByRole("button", { name: label })).toBeVisible();
   }
   await expect(page.locator("body")).toContainText("Talk to your Brain");
@@ -30,25 +67,8 @@ test("React desktop shell boots with the reimagined navigation dock", async ({ p
   expect(errors).toEqual([]);
 });
 
-test("first-run journey explains the product without documentation", async ({ page }) => {
-  await page.goto("/app#/onboarding");
-  await expect(page.locator("body")).toContainText("First 10 minutes");
-  for (const label of [
-    "Make it yours",
-    "Choose a space",
-    "Meet your Mac",
-    "Pick a brain",
-    "Install locally",
-    "Talk to Brain",
-    "Set the pace",
-    "Explore deeply",
-  ]) {
-    await expect(page.locator("body")).toContainText(label);
-  }
-  await expect(page.getByRole("button", { name: "Set up model" })).toBeVisible();
-});
-
 test("old hash routes resolve into the replacement SPA without JS errors", async ({ page }) => {
+  await bypassProductFlow(page);
   for (const route of ROUTES) {
     const errors = trackPageErrors(page);
     await page.goto(`/app#/${route}`);
@@ -58,6 +78,7 @@ test("old hash routes resolve into the replacement SPA without JS errors", async
 });
 
 test("knowledge graph renders a Cytoscape canvas and provenance coverage", async ({ page }) => {
+  await bypassProductFlow(page);
   await page.goto("/app#/knowledge-graph");
   await page.waitForSelector("[data-testid='brain-cytoscape']");
   await expect(page.locator("body")).toContainText("Source coverage");
@@ -65,6 +86,7 @@ test("knowledge graph renders a Cytoscape canvas and provenance coverage", async
 });
 
 test("offline startup loads local assets and shows honest unavailable state", async ({ page }) => {
+  await bypassProductFlow(page);
   const errors = trackPageErrors(page);
   await page.route("**/*", async (route) => {
     const url = new URL(route.request().url());
@@ -87,6 +109,7 @@ test("offline startup loads local assets and shows honest unavailable state", as
 });
 
 test("hybrid search calls the API and renders returned records", async ({ page }) => {
+  await bypassProductFlow(page);
   await page.goto("/app#/hybrid-search");
   await page.getByPlaceholder("Search memories, indexed documents, and relationships").fill("retrieval");
   await page.locator("section").getByRole("button", { name: "Search" }).click();
@@ -94,6 +117,7 @@ test("hybrid search calls the API and renders returned records", async ({ page }
 });
 
 test("Ask streams chat and shows context trace", async ({ page }) => {
+  await bypassProductFlow(page);
   await page.goto("/app#/chat");
   await page.getByPlaceholder("Ask the Brain anything...").fill("How does hybrid search rank results?");
   await page.getByRole("button", { name: /Send/ }).click();
@@ -102,6 +126,7 @@ test("Ask streams chat and shows context trace", async ({ page }) => {
 });
 
 test("Capture exposes upload, local folder, URL, and processing controls", async ({ page }) => {
+  await bypassProductFlow(page);
   await page.goto("/app#/files");
   await expect(page.locator("body")).toContainText("retrieval-design.pdf");
   await page.goto("/app#/my-computer");
@@ -114,6 +139,7 @@ test("Capture exposes upload, local folder, URL, and processing controls", async
 });
 
 test("Act surfaces agents, runs, workflow graph, triggers, hooks, and tools", async ({ page }) => {
+  await bypassProductFlow(page);
   await page.goto("/app#/agents");
   await expect(page.locator("body")).toContainText("Planner");
   await page.goto("/app#/runs");
@@ -128,6 +154,7 @@ test("Act surfaces agents, runs, workflow graph, triggers, hooks, and tools", as
 });
 
 test("Library renders models, skills, tool connections, and marketplace registries", async ({ page }) => {
+  await bypassProductFlow(page);
   await page.goto("/app#/models");
   await expect(page.locator("body")).toContainText("Qwen3-VL 8B");
   await expect(page.locator("body")).toContainText("Analyze this Mac, recommend a model, install only with consent, validate it, then load it.");
@@ -146,6 +173,7 @@ test("Library renders models, skills, tool connections, and marketplace registri
 });
 
 test("Basic graph view hides developer endpoint leakage", async ({ page }) => {
+  await bypassProductFlow(page);
   await page.goto("/app#/knowledge-graph");
   await page.waitForSelector("[data-testid='brain-cytoscape']");
   await expect(page.locator("body")).toContainText("Open the deepest layer when you want to inspect the underlying relationships.");
@@ -154,6 +182,7 @@ test("Basic graph view hides developer endpoint leakage", async ({ page }) => {
 });
 
 test("System renders account, workspaces, snapshots, activity, network, settings, and admin", async ({ page }) => {
+  await bypassProductFlow(page);
   await page.goto("/app#/account");
   await expect(page.locator("body")).toContainText("admin@example.com");
   await page.goto("/app#/workspace-admin");
@@ -168,7 +197,7 @@ test("System renders account, workspaces, snapshots, activity, network, settings
   await expect(page.locator("body")).toContainText("Computer memory");
   await page.goto("/app#/admin/security");
   await expect(page.locator("body")).toContainText("Admin controls");
-  await page.getByLabel("Experience mode").getByRole("button", { name: "Admin" }).click();
+  await page.getByRole("button", { name: "Switch to Admin" }).click();
   await expect(page.locator("body")).toContainText("Security overview");
 });
 
@@ -182,6 +211,7 @@ test("legacy page URLs redirect into the replacement app", async ({ page }) => {
 });
 
 test("mobile layout has no horizontal overflow and nav opens", async ({ page }) => {
+  await bypassProductFlow(page);
   await page.setViewportSize({ width: 390, height: 780 });
   await page.goto("/app#/brain");
   await page.waitForSelector("main h1");

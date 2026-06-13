@@ -33,11 +33,13 @@ export function LivingBrain({
   activity = "idle",
   vitals,
   compact = false,
+  showVitals = false,
   className,
 }: {
   activity?: BrainActivity;
   vitals?: BrainVitals;
   compact?: boolean;
+  showVitals?: boolean;
   className?: string;
 }) {
   const state = vitals?.activityLabel || activityLabels[activity];
@@ -88,23 +90,25 @@ export function LivingBrain({
         </div>
       </div>
 
-      <div className="brain-vitals">
-        <div className="brain-vital">
-          <Sparkles className="h-4 w-4" />
-          <span>Memories</span>
-          <strong>{readable(vitals?.memories)}</strong>
+      {showVitals ? (
+        <div className="brain-vitals">
+          <div className="brain-vital">
+            <Sparkles className="h-4 w-4" />
+            <span>Memories</span>
+            <strong>{readable(vitals?.memories)}</strong>
+          </div>
+          <div className="brain-vital">
+            <Waves className="h-4 w-4" />
+            <span>Knowledge</span>
+            <strong>{readable(vitals?.knowledge)}</strong>
+          </div>
+          <div className="brain-vital">
+            <Activity className="h-4 w-4" />
+            <span>Activity</span>
+            <strong>{readable(vitals?.conversations)}</strong>
+          </div>
         </div>
-        <div className="brain-vital">
-          <Waves className="h-4 w-4" />
-          <span>Knowledge</span>
-          <strong>{readable(vitals?.knowledge)}</strong>
-        </div>
-        <div className="brain-vital">
-          <Activity className="h-4 w-4" />
-          <span>Activity</span>
-          <strong>{readable(vitals?.conversations)}</strong>
-        </div>
-      </div>
+      ) : null}
 
       {compact ? null : (
         <div className="brain-presence-foot">
