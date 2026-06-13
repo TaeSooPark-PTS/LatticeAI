@@ -44,7 +44,7 @@ test("first-run setup restores the original onboarding journey", async ({ page }
   ]) {
     await expect(page.locator("body")).toContainText(label);
   }
-  await expect(page.getByRole("button", { name: "Choose Model" })).toBeVisible();
+  await expect(page.getByRole("button", { name: "Model Setup" })).toBeVisible();
 });
 
 test("old hash routes resolve into the replacement SPA without JS errors", async ({ page }) => {
@@ -59,7 +59,7 @@ test("old hash routes resolve into the replacement SPA without JS errors", async
 test("knowledge graph renders a Cytoscape canvas and provenance coverage", async ({ page }) => {
   await page.goto("/app#/knowledge-graph");
   await page.waitForSelector("[data-testid='brain-cytoscape']");
-  await expect(page.locator("body")).toContainText("Provenance coverage");
+  await expect(page.locator("body")).toContainText("Source coverage");
   await expect(page.locator("[data-testid='brain-cytoscape'] canvas").first()).toBeVisible();
 });
 
@@ -97,10 +97,10 @@ test("Ask streams chat and shows context trace", async ({ page }) => {
   await page.getByPlaceholder("Ask anything about your work...").fill("How does hybrid search rank results?");
   await page.getByRole("button", { name: /Send/ }).click();
   await expect(page.locator("body")).toContainText("Hybrid retrieval");
-  await expect(page.locator("body")).toContainText("Why this context");
+  await expect(page.locator("body")).toContainText("Sources");
 });
 
-test("Capture exposes upload, local folder, URL, and pipeline controls", async ({ page }) => {
+test("Capture exposes upload, local folder, URL, and processing controls", async ({ page }) => {
   await page.goto("/app#/files");
   await expect(page.locator("body")).toContainText("retrieval-design.pdf");
   await page.goto("/app#/my-computer");
@@ -114,30 +114,32 @@ test("Capture exposes upload, local folder, URL, and pipeline controls", async (
 
 test("Act surfaces agents, runs, workflow graph, triggers, hooks, and tools", async ({ page }) => {
   await page.goto("/app#/agents");
-  await expect(page.locator("body")).toContainText("agent:planner");
+  await expect(page.locator("body")).toContainText("Planner");
   await page.goto("/app#/runs");
   await expect(page.locator("body")).toContainText("Approval inbox");
   await page.goto("/app#/workflows");
   await expect(page.locator(".react-flow")).toBeVisible();
-  await expect(page.locator("body")).toContainText("Trigger configuration");
+  await expect(page.locator("body")).toContainText("Automation triggers");
   await page.goto("/app#/hooks");
-  await expect(page.locator("body")).toContainText("Redact secrets");
+  await expect(page.locator("body")).toContainText("Redact Secrets");
   await page.goto("/app#/tools");
-  await expect(page.locator("body")).toContainText("write_file");
+  await expect(page.locator("body")).toContainText("Write File");
 });
 
-test("Library renders models, skills, MCP, and marketplace registries", async ({ page }) => {
+test("Library renders models, skills, tool connections, and marketplace registries", async ({ page }) => {
   await page.goto("/app#/models");
   await expect(page.locator("body")).toContainText("Qwen3-VL 8B");
-  await expect(page.locator("body")).toContainText("Check this Mac, choose a model, install only with consent, validate, then load.");
-  await expect(page.locator("body")).toContainText("Runtime update needed");
+  await expect(page.locator("body")).toContainText("Analyze this Mac, recommend a model, install only with consent, validate it, then load it.");
+  await expect(page.locator("body")).toContainText("Needs attention before loading");
+  await expect(page.locator("body")).not.toContainText("MLX");
+  await expect(page.locator("body")).not.toContainText("GGUF");
   await expect(page.locator("body")).toContainText("Gemma 4 26B A4B Instruct");
   await expect(page.locator("body")).toContainText("Qwen3-VL 8B");
   await expect(page.locator("body")).not.toContainText("No module named");
   await page.goto("/app#/skills");
   await expect(page.locator("body")).toContainText("visual_regression");
   await page.goto("/app#/mcp");
-  await expect(page.locator("body")).toContainText("read_file");
+  await expect(page.locator("body")).toContainText("Read File");
   await page.goto("/app#/marketplace");
   await expect(page.locator("body")).toContainText("Research Assistant");
 });
@@ -158,12 +160,14 @@ test("System renders account, workspaces, snapshots, activity, network, settings
   await page.goto("/app#/snapshots");
   await expect(page.locator("body")).toContainText("v4 checkpoint");
   await page.goto("/app#/activity");
-  await expect(page.locator("body")).toContainText("workflow_started");
+  await expect(page.locator("body")).toContainText("Workflow Started");
   await page.goto("/app#/network");
-  await expect(page.locator("body")).toContainText("device-visual");
+  await expect(page.locator("body")).toContainText("This Mac");
   await page.goto("/app#/settings");
   await expect(page.locator("body")).toContainText("Computer memory");
   await page.goto("/app#/admin/security");
+  await expect(page.locator("body")).toContainText("Admin controls");
+  await page.getByLabel("Experience mode").selectOption("admin");
   await expect(page.locator("body")).toContainText("Security overview");
 });
 

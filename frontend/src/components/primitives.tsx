@@ -1,6 +1,6 @@
 import * as React from "react";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
-import { AlertCircle, CheckCircle2, Loader2, Sparkles } from "lucide-react";
+import { AlertCircle, CheckCircle2, Loader2, LockKeyhole, Sparkles } from "lucide-react";
 import type { ApiResult } from "@/api/client";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -99,6 +99,32 @@ function scalarText(value: unknown) {
   return String(value);
 }
 
+const BASIC_HIDDEN_KEY = /(^id$|_id$|token|secret|passphrase|fingerprint|public_key|private_key|dsn|schema|endpoint|base_url|localhost|127\.0\.0\.1|stack|trace|raw|runtime|engine|module|port|host|api|internal)/i;
+
+function hideInBasic(key: string) {
+  return BASIC_HIDDEN_KEY.test(key);
+}
+
+function humanText(value: unknown) {
+  const text = scalarText(value);
+  if (text === "-") return text;
+  if (text.includes("/") || text.includes("@") || /\.[a-z0-9]{2,5}$/i.test(text)) return text;
+  return titleize(text.replace(/^agent:/i, "").replace(/^tool:/i, ""));
+}
+
+function firstRecordList(value: Record<string, unknown>) {
+  const preferred = [
+    "documents", "sources", "items", "agents", "workflows", "runs", "events",
+    "permissions", "models", "peers", "invitations", "roles", "policies",
+    "hooks", "tools", "templates", "plugins", "recent_events",
+  ];
+  for (const key of preferred) {
+    const rows = asArray<Record<string, unknown>>(value[key]);
+    if (rows.length) return rows;
+  }
+  return [];
+}
+
 export function ValuePreview({ value }: { value: unknown }) {
   if (typeof value === "boolean") {
     return <Badge variant={value ? "success" : "muted"}>{value ? "enabled" : "disabled"}</Badge>;
@@ -126,7 +152,10 @@ export function ValuePreview({ value }: { value: unknown }) {
 }
 
 export function KeyValueList({ data, limit = 8 }: { data: Record<string, unknown>; limit?: number }) {
-  const rows = Object.entries(data || {}).slice(0, limit);
+  const mode = useAppStore((state) => state.mode);
+  const rows = Object.entries(data || {})
+    .filter(([key]) => mode !== "basic" || !hideInBasic(key))
+    .slice(0, limit);
   if (!rows.length) return <EmptyState title="No values" />;
   return (
     <div className="divide-y divide-border rounded-md border border-border">
@@ -151,6 +180,8 @@ export function StructuredView({
   metaKey?: string;
   limit?: number;
 }) {
+  const mode = useAppStore((state) => state.mode);
+  if (mode === "basic") return <FriendlySummary value={value} titleKey={titleKey} metaKey={metaKey} limit={limit} />;
   if (Array.isArray(value)) {
     if (!value.length) return <EmptyState title="Nothing here yet" detail="New items will appear here when Lattice has something to show." />;
     if (value.every((item) => isRecord(item))) {
@@ -171,6 +202,46 @@ export function StructuredView({
   );
 }
 
+export function FriendlySummary({
+  value,
+  titleKey = "title",
+  metaKey = "status",
+  limit = 6,
+}: {
+  value: unknown;
+  titleKey?: string;
+  metaKey?: string;
+  limit?: number;
+}) {
+  if (Array.isArray(value)) {
+    if (!value.length) return <EmptyState title="Nothing here yet" detail="New items will appear here when Lattice has something to show." />;
+    if (value.every((item) => isRecord(item))) {
+      return <EntityList items={value} titleKey={titleKey} metaKey={metaKey} limit={limit} />;
+    }
+    return (
+      <div className="flex flex-wrap gap-1 rounded-md border border-border bg-background/55 p-3">
+        {value.slice(0, limit).map((item, index) => <Badge key={`${String(item)}-${index}`} variant="muted">{humanText(item)}</Badge>)}
+        {value.length > limit ? <Badge variant="muted">+{value.length - limit}</Badge> : null}
+      </div>
+    );
+  }
+  if (isRecord(value)) {
+    const list = firstRecordList(value);
+    if (list.length) return <EntityList items={list} titleKey={titleKey} metaKey={metaKey} limit={limit} />;
+    const friendly = Object.fromEntries(
+      Object.entries(value)
+        .filter(([key]) => !hideInBasic(key))
+        .map(([key, item]) => [key, Array.isArray(item) ? `${fmtNumber(item.length)} items` : isRecord(item) ? "available" : item]),
+    );
+    return <KeyValueList data={friendly} limit={limit} />;
+  }
+  return (
+    <div className="rounded-md border border-border bg-background/55 p-3 text-sm">
+      {humanText(value)}
+    </div>
+  );
+}
+
 export function OperationResult({
   result,
   successLabel = "Request completed",
@@ -178,6 +249,7 @@ export function OperationResult({
   result?: ApiResult<unknown> | null;
   successLabel?: string;
 }) {
+  const mode = useAppStore((state) => state.mode);
   if (!result) return null;
   if (!result.ok) {
     return <EmptyState title="Request unavailable" detail={result.error || <ValuePreview value={result.data} />} />;
@@ -185,7 +257,7 @@ export function OperationResult({
   return (
     <div className="space-y-2 rounded-md border border-border bg-background p-3">
       <Badge variant="success">{successLabel}</Badge>
-      <StructuredView value={result.data} />
+      {mode === "basic" ? <FriendlySummary value={result.data} /> : <StructuredView value={result.data} />}
     </div>
   );
 }
@@ -201,6 +273,7 @@ export function EntityList({
   metaKey?: string;
   limit?: number;
 }) {
+  const mode = useAppStore((state) => state.mode);
   const rows = asArray<Record<string, unknown>>(items).slice(0, limit);
   if (!rows.length) return <EmptyState title="Nothing here yet" detail="New items will appear here when Lattice has something to show." />;
   return (
@@ -208,18 +281,44 @@ export function EntityList({
       {rows.map((item, index) => (
         <div key={String(item.id || item.name || index)} className="rounded-lg border border-border bg-background/55 p-3">
           <div className="flex flex-wrap items-center justify-between gap-2">
-            <div className="font-medium">{String(item[titleKey] || item.name || item.id || `Record ${index + 1}`)}</div>
-            <Badge variant="muted">{String(item[metaKey] || item.status || item.state || "record")}</Badge>
+            <div className="font-medium">{mode === "basic" ? humanText(item[titleKey] || item.name || item.label || `Item ${index + 1}`) : String(item[titleKey] || item.name || item.id || `Record ${index + 1}`)}</div>
+            <Badge variant="muted">{mode === "basic" ? humanText(item[metaKey] || item.status || item.state || "ready") : String(item[metaKey] || item.status || item.state || "record")}</Badge>
           </div>
           {item.summary || item.description || item.path || (item.id && item[titleKey] !== item.id) ? (
             <p className="mt-1 text-sm text-muted-foreground">{String(item.summary || item.description || item.path || item.id)}</p>
           ) : null}
-          {item.id && item[titleKey] !== item.id ? (
+          {mode !== "basic" && item.id && item[titleKey] !== item.id ? (
             <div className="mt-1 text-xs text-muted-foreground">{shortId(item.id, 48)}</div>
           ) : null}
         </div>
       ))}
     </div>
+  );
+}
+
+export function ModeGate({
+  title = "Advanced controls",
+  detail = "Switch modes when you want diagnostics or administrative controls. Basic mode keeps the product focused on everyday use.",
+  target = "advanced",
+}: {
+  title?: string;
+  detail?: string;
+  target?: "advanced" | "admin";
+}) {
+  const setMode = useAppStore((state) => state.setMode);
+  return (
+    <Card>
+      <CardContent className="flex flex-col items-start gap-3 p-6">
+        <div className="grid h-10 w-10 place-items-center rounded-md border border-border bg-background/70">
+          <LockKeyhole className="h-5 w-5 text-primary" />
+        </div>
+        <div>
+          <div className="text-lg font-semibold">{title}</div>
+          <p className="mt-1 max-w-2xl text-sm leading-6 text-muted-foreground">{detail}</p>
+        </div>
+        <Button onClick={() => setMode(target)}>{target === "admin" ? "Switch to Admin" : "Switch to Advanced"}</Button>
+      </CardContent>
+    </Card>
   );
 }
 

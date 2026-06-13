@@ -62,10 +62,10 @@ type ExplorerModel = ParsedGraph & {
 
 const tabs: Array<{ id: BrainTab; label: string }> = [
   { id: "overview", label: "Overview" },
-  { id: "graph", label: "Graph" },
+  { id: "graph", label: "Map" },
   { id: "search", label: "Search" },
   { id: "memory", label: "Memory" },
-  { id: "provenance", label: "Provenance" },
+  { id: "provenance", label: "Sources" },
   { id: "portability", label: "Portability" },
 ];
 
@@ -435,7 +435,7 @@ export function BrainPage({ initialTab }: { initialTab?: string }) {
           </p>
         </div>
         <div className="rounded-lg border border-border bg-background/58 p-4">
-          <div className="text-xs uppercase text-muted-foreground">Provenance coverage</div>
+          <div className="text-xs uppercase text-muted-foreground">Source coverage</div>
           <div className="mt-2 text-3xl font-semibold">{pct((coverage.data?.data as Record<string, unknown>)?.coverage_ratio)}</div>
           <div className="mt-2 text-sm text-muted-foreground">{coverage.data?.ok ? "Sources are linked to graph records." : "Checking source coverage."}</div>
         </div>
@@ -453,7 +453,7 @@ export function BrainPage({ initialTab }: { initialTab?: string }) {
           <DataPanel title="Memory tiers" result={memory.data}>
             {(data) => <MemoryStatus data={data as Record<string, unknown>} />}
           </DataPanel>
-          <DataPanel title="Recent provenance" result={provenance.data}>
+          <DataPanel title="Recent sources" result={provenance.data}>
             {(data) => <EntityList items={(data as Record<string, unknown>).items || data} titleKey="source" metaKey="source_type" />}
           </DataPanel>
         </div>
@@ -461,7 +461,7 @@ export function BrainPage({ initialTab }: { initialTab?: string }) {
 
       {tab === "graph" ? (
         graph.isLoading ? <LoadingPanel title="Knowledge graph" /> : (
-          <DataPanel title="Brain map" description={mode === "basic" ? "Search, focus, and filter the ideas Lattice has learned from your workspace." : "Explore relationships, provenance, and graph structure."} result={graph.data}>
+          <DataPanel title="Brain map" description={mode === "basic" ? "Search, focus, and filter the ideas Lattice has learned from your workspace." : "Explore relationships, sources, and graph structure."} result={graph.data}>
             {(data) => <DigitalBrainExplorer data={data} />}
           </DataPanel>
         )
@@ -559,7 +559,7 @@ function DigitalBrainExplorer({ data }: { data: unknown }) {
     return (
       <EmptyState
         title="No graph records yet"
-        detail="Capture a document, note, or local folder to create graph nodes with provenance."
+        detail="Capture a document, note, or local folder to create connected ideas with sources."
       />
     );
   }
@@ -792,18 +792,18 @@ function PortabilityPanel() {
         </CardHeader>
         <CardContent className="space-y-3">
           <div className="flex flex-wrap gap-2">
-            <ActionButton label="Export graph artifact" action={() => latticeApi.graphExport()} />
+            <ActionButton label="Export brain map" action={() => latticeApi.graphExport()} />
             <ActionButton label="Create backup" action={() => latticeApi.graphBackup()} />
           </div>
-          <Textarea value={artifact} onChange={(e) => setArtifact(e.target.value)} placeholder="Paste an exported graph artifact for dry-run import" />
+          <Textarea value={artifact} onChange={(e) => setArtifact(e.target.value)} placeholder="Paste an exported brain map to preview import" />
           <Button
             variant="outline"
             disabled={!artifact.trim() || importMutation.isPending}
             onClick={() => importMutation.mutate()}
           >
-            Dry-run import
+            Preview import
           </Button>
-          {importMutation.data ? <OperationResult result={importMutation.data} successLabel="Dry run completed" /> : null}
+          {importMutation.data ? <OperationResult result={importMutation.data} successLabel="Import preview completed" /> : null}
         </CardContent>
       </Card>
     </div>

@@ -155,7 +155,7 @@ export default function App() {
         {window.__TAURI_INTERNALS__ ? (
           <div>Desktop bridge: {desktopData.running ? "ready" : desktopError ? "needs attention" : "starting"}</div>
         ) : null}
-        <div>Workspace: {String((workspace.data?.data as Record<string, unknown>)?.active_workspace || "local")}</div>
+          <div>Space: {String((workspace.data?.data as Record<string, unknown>)?.active_workspace || "Personal")}</div>
       </div>
     </aside>
   );
@@ -190,7 +190,7 @@ export default function App() {
               value={mode}
               onChange={(e) => setMode(e.target.value as "basic" | "advanced" | "admin")}
               className="h-10 rounded-md border border-border bg-card/70 px-3 text-sm font-semibold"
-              aria-label="Workspace mode"
+              aria-label="Experience mode"
             >
               <option value="basic">Basic</option>
               <option value="advanced">Advanced</option>

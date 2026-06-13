@@ -45,28 +45,46 @@ export function FirstRunGuide() {
     { label: "Mode Selection", done: Boolean(mode), icon: SlidersHorizontal, action: "settings" },
     { label: "Brain Usage", done: true, icon: Layers3, action: "knowledge-graph" },
   ];
+  const completed = steps.filter((step) => step.done).length;
+  const nextStep = steps.find((step) => !step.done) || steps[steps.length - 1];
+  const progress = Math.round((completed / steps.length) * 100);
 
   return (
-    <section className="mb-6 overflow-hidden rounded-lg border border-border bg-card/86">
-      <div className="flex flex-col gap-4 p-5 lg:flex-row lg:items-start lg:justify-between">
-        <div>
+    <section className="mb-6 overflow-hidden rounded-xl border border-border bg-card/86 shadow-[0_24px_80px_hsl(0_0%_0%/0.24)]">
+      <div className="grid gap-5 p-5 lg:grid-cols-[minmax(0,1fr)_20rem]">
+        <div className="space-y-4">
           <div className="page-kicker"><CheckCircle2 className="h-4 w-4" /> First run</div>
-          <h2 className="mt-2 text-2xl font-semibold tracking-normal">Set up your Digital Brain in a few clear steps.</h2>
-          <p className="mt-2 max-w-3xl text-sm leading-6 text-muted-foreground">
+          <h2 className="text-3xl font-semibold tracking-normal">Set up your Digital Brain without guessing.</h2>
+          <p className="max-w-3xl text-sm leading-6 text-muted-foreground">
             Start with a workspace, pick a local model, then begin capturing knowledge. Lattice will keep setup actions explicit.
           </p>
+          <div className="flex flex-wrap gap-2">
+            <Button size="sm" onClick={() => go(nextStep.action)}>{nextStep.done ? "Open Brain" : `Continue: ${nextStep.label}`}</Button>
+            <Button size="sm" variant="outline" onClick={() => go("models")}>Model Setup</Button>
+            <Button size="sm" variant="outline" onClick={() => go("knowledge-graph")}>Open Brain Map</Button>
+          </div>
         </div>
-        <div className="flex flex-wrap gap-2">
-          <Badge variant="muted">{mode === "basic" ? "Basic mode" : `${mode} mode`}</Badge>
+        <div className="rounded-lg border border-border bg-background/54 p-4">
+          <div className="flex items-center justify-between gap-3">
+            <div>
+              <div className="text-sm font-semibold">{completed} of {steps.length} ready</div>
+              <div className="mt-1 text-xs text-muted-foreground">{mode === "basic" ? "Basic mode" : `${mode} mode`}</div>
+            </div>
+            <Badge variant={progress === 100 ? "success" : "warning"}>{progress}%</Badge>
+          </div>
+          <div className="mt-4 h-2 overflow-hidden rounded-full bg-muted">
+            <div className="h-full rounded-full bg-primary" style={{ width: `${progress}%` }} />
+          </div>
           <Button
             variant="outline"
             size="sm"
+            className="mt-4 w-full"
             onClick={() => {
               try { localStorage.setItem("lattice.onboarding.dismissed", "true"); } catch {}
               setDismissed(true);
             }}
           >
-            Dismiss
+            Hide guide
           </Button>
         </div>
       </div>
@@ -81,21 +99,15 @@ export function FirstRunGuide() {
             >
               <div className="flex items-start justify-between gap-2">
                 <span className="grid h-8 w-8 place-items-center rounded-md bg-primary/12 text-primary"><Icon className="h-4 w-4" /></span>
-                <Badge variant={step.done ? "success" : "warning"}>{step.done ? "ready" : "next"}</Badge>
+                <Badge variant={step.done ? "success" : "warning"}>{step.done ? "ready" : step.label === nextStep.label ? "next" : "later"}</Badge>
               </div>
               <div className="mt-3 text-sm font-semibold">{step.label}</div>
               <div className="mt-2 flex items-center gap-1 text-xs text-muted-foreground">
-                Open <ArrowRight className="h-3 w-3 transition group-hover:translate-x-0.5" />
+                {step.done ? "Review" : "Start"} <ArrowRight className="h-3 w-3 transition group-hover:translate-x-0.5" />
               </div>
             </button>
           );
         })}
-      </div>
-      <div className="flex flex-wrap gap-2 border-t border-border p-5">
-        <Button size="sm" onClick={() => go("account")}>Login</Button>
-        <Button size="sm" variant="outline" onClick={() => go("workspace-admin")}>Choose Workspace</Button>
-        <Button size="sm" variant="outline" onClick={() => go("models")}>Choose Model</Button>
-        <Button size="sm" variant="outline" onClick={() => go("settings")}>Tune Preferences</Button>
       </div>
     </section>
   );

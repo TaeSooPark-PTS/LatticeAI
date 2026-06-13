@@ -14,7 +14,7 @@ const tabs: Array<{ id: CaptureTab; label: string }> = [
   { id: "files", label: "Files" },
   { id: "local", label: "Local folders" },
   { id: "browser", label: "Web capture" },
-  { id: "pipeline", label: "Pipeline" },
+  { id: "pipeline", label: "Processing" },
 ];
 
 export function CapturePage({ initialTab }: { initialTab?: string }) {
@@ -90,7 +90,7 @@ function LocalPanel() {
           <CardDescription>Point Lattice at a folder you want it to remember.</CardDescription>
         </CardHeader>
         <CardContent className="space-y-3">
-          <Input value={path} onChange={(e) => setPath(e.target.value)} placeholder="/Users/me/Documents/project" />
+          <Input value={path} onChange={(e) => setPath(e.target.value)} placeholder="Folder path on this Mac" />
           <Button disabled={!path.trim() || connect.isPending} onClick={() => connect.mutate()}>Connect Folder</Button>
           {connect.data ? <OperationResult result={connect.data} successLabel="Folder connection requested" /> : null}
         </CardContent>
@@ -142,15 +142,15 @@ function PipelinePanel() {
   const stats = useQuery({ queryKey: ["graphStats"], queryFn: latticeApi.graphStats });
   return (
     <div className="grid gap-4 xl:grid-cols-2">
-      <DataPanel title="Index pipeline" result={index.data}>
+      <DataPanel title="Processing status" result={index.data}>
         {(data) => <StructuredView value={data} />}
       </DataPanel>
-      <DataPanel title="Graph totals" result={stats.data}>
+      <DataPanel title="Brain growth" result={stats.data}>
         {(data) => <StructuredView value={data} />}
       </DataPanel>
       <Card className="xl:col-span-2">
         <CardHeader>
-          <CardTitle className="flex items-center gap-2"><HardDrive className="h-4 w-4" /> Rebuild controls</CardTitle>
+          <CardTitle className="flex items-center gap-2"><HardDrive className="h-4 w-4" /> Refresh memory</CardTitle>
           <CardDescription>Refresh search when you want Lattice to re-check captured material.</CardDescription>
         </CardHeader>
         <CardContent>

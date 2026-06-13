@@ -3,12 +3,13 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import ReactFlow, { Background, Controls, Edge, Node } from "reactflow";
 import { Bot, GitBranch, PauseCircle, Play, Workflow } from "lucide-react";
 import { latticeApi } from "@/api/client";
-import { ActionButton, DataPanel, EntityList, KeyValueList, OperationResult, StructuredView, Tabs } from "@/components/primitives";
+import { ActionButton, DataPanel, EntityList, KeyValueList, ModeGate, OperationResult, StructuredView, Tabs } from "@/components/primitives";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
+import { useAppStore } from "@/store/appStore";
 import { asArray, shortId } from "@/lib/utils";
 
 type ActTab = "agents" | "runs" | "workflows" | "hooks" | "tools";
@@ -17,11 +18,12 @@ const tabs: Array<{ id: ActTab; label: string }> = [
   { id: "agents", label: "Agents" },
   { id: "runs", label: "Runs" },
   { id: "workflows", label: "Workflows" },
-  { id: "hooks", label: "Hooks" },
-  { id: "tools", label: "Tools" },
+  { id: "hooks", label: "Safeguards" },
+  { id: "tools", label: "Permissions" },
 ];
 
 export function ActPage({ initialTab }: { initialTab?: string }) {
+  const mode = useAppStore((state) => state.mode);
   const [tab, setTab] = React.useState<ActTab>((initialTab as ActTab) || "agents");
   React.useEffect(() => {
     if (tabs.some((item) => item.id === initialTab)) setTab(initialTab as ActTab);
@@ -33,7 +35,7 @@ export function ActPage({ initialTab }: { initialTab?: string }) {
         <h1 className="page-title">Turn intentions into runs.</h1>
         <p className="page-copy">Give Lattice a goal, review durable runs, and approve sensitive actions before anything important changes.</p>
       </header>
-      <Tabs tabs={tabs} value={tab} onChange={(id) => setTab(id as ActTab)} />
+      <Tabs tabs={tabs.map((item) => mode === "basic" ? item : item.id === "hooks" ? { ...item, label: "Hooks" } : item.id === "tools" ? { ...item, label: "Tools" } : item)} value={tab} onChange={(id) => setTab(id as ActTab)} />
       {tab === "agents" ? <AgentsPanel /> : null}
       {tab === "runs" ? <RunsPanel /> : null}
       {tab === "workflows" ? <WorkflowsPanel /> : null}
@@ -45,6 +47,7 @@ export function ActPage({ initialTab }: { initialTab?: string }) {
 
 function AgentsPanel() {
   const qc = useQueryClient();
+  const mode = useAppStore((state) => state.mode);
   const [goal, setGoal] = React.useState("");
   const runtime = useQuery({ queryKey: ["agentRuntime"], queryFn: latticeApi.agentRuntime });
   const registry = useQuery({ queryKey: ["agentRegistry"], queryFn: latticeApi.agentRegistry });
@@ -61,7 +64,7 @@ function AgentsPanel() {
   const runtimeData = (runtime.data?.data || {}) as Record<string, unknown>;
   const runtimeMeta = (runtimeData.runtime || {}) as Record<string, unknown>;
   const runtimeReady = Boolean(runtimeMeta.ready);
-  const runtimeReason = String(runtimeMeta.unavailable_reason || "Load an LLM-backed model before running agents.");
+  const runtimeReason = mode === "basic" ? "Load a local model before running agents." : String(runtimeMeta.unavailable_reason || "Load an LLM-backed model before running agents.");
   const canRunAgent = Boolean(goal.trim()) && runtimeReady && !run.isPending;
   return (
     <div className="grid gap-4 xl:grid-cols-[0.9fr_1.1fr]">
@@ -85,7 +88,22 @@ function AgentsPanel() {
         </CardContent>
       </Card>
       <DataPanel title="Readiness" result={runtime.data}>
-        {(data) => <StructuredView value={data} />}
+        {(data) => mode === "basic" ? (
+          <div className="grid gap-3 sm:grid-cols-3">
+            <div className="rounded-lg border border-border bg-background/55 p-3">
+              <div className="text-sm font-medium">Model</div>
+              <Badge variant={runtimeReady ? "success" : "warning"}>{runtimeReady ? "ready" : "needed"}</Badge>
+            </div>
+            <div className="rounded-lg border border-border bg-background/55 p-3">
+              <div className="text-sm font-medium">Planner</div>
+              <Badge variant="muted">{runtimeReady ? "available" : "waiting"}</Badge>
+            </div>
+            <div className="rounded-lg border border-border bg-background/55 p-3">
+              <div className="text-sm font-medium">Review</div>
+              <Badge variant="success">approval required</Badge>
+            </div>
+          </div>
+        ) : <StructuredView value={data} />}
       </DataPanel>
       <DataPanel title="Agent team" result={registry.data}>
         {(data) => (
@@ -98,7 +116,7 @@ function AgentsPanel() {
           </div>
         )}
       </DataPanel>
-      <DataPanel title="What agents can do" result={caps.data}>
+      <DataPanel title={mode === "basic" ? "What Lattice can do" : "What agents can do"} result={caps.data}>
         {(data) => <StructuredView value={data} />}
       </DataPanel>
     </div>
@@ -106,6 +124,7 @@ function AgentsPanel() {
 }
 
 function RunsPanel() {
+  const mode = useAppStore((state) => state.mode);
   const runtime = useQuery({ queryKey: ["agentRuntime"], queryFn: latticeApi.agentRuntime });
   const workflows = useQuery({ queryKey: ["workflowRuns"], queryFn: latticeApi.workflowRuns });
   const pending = useQuery({ queryKey: ["permissions"], queryFn: latticeApi.permissionsPending });
@@ -125,10 +144,10 @@ function RunsPanel() {
           const rows = Object.entries(pendingMap);
           return rows.length ? (
             <div className="grid gap-2">
-              {rows.map(([token, value]) => (
+              {rows.map(([token, value], index) => (
                 <div key={token} className="flex flex-wrap items-center justify-between gap-3 rounded-md border border-border p-3">
                   <div>
-                    <div className="font-medium">{shortId(token, 16)}</div>
+                    <div className="font-medium">{mode === "basic" ? `Approval request ${index + 1}` : shortId(token, 16)}</div>
                     <div className="mt-2">
                       <KeyValueList data={(value || {}) as Record<string, unknown>} limit={5} />
                     </div>
@@ -228,7 +247,7 @@ function WorkflowsPanel() {
                 <Input value={name} onChange={(event) => setName(event.target.value)} placeholder="Workflow name" />
                 <Button disabled={create.isPending} onClick={() => create.mutate()}>Create</Button>
               </div>
-              <Textarea value={importText} onChange={(event) => setImportText(event.target.value)} placeholder="Paste exported workflow JSON" />
+              <Textarea value={importText} onChange={(event) => setImportText(event.target.value)} placeholder="Paste a workflow export" />
               <Button variant="outline" disabled={!importText.trim() || importWorkflow.isPending} onClick={() => importWorkflow.mutate()}>Import</Button>
               {create.data ? <OperationResult result={create.data} successLabel="Workflow created" /> : null}
               {importWorkflow.data ? <OperationResult result={importWorkflow.data} successLabel="Workflow imported" /> : null}
@@ -248,7 +267,7 @@ function WorkflowsPanel() {
           </div>
         )}
       </DataPanel>
-      <DataPanel title="Trigger configuration" result={triggers.data} className="xl:col-span-2">
+      <DataPanel title="Automation triggers" result={triggers.data} className="xl:col-span-2">
         {(data) => <StructuredView value={data} />}
       </DataPanel>
     </div>
@@ -275,8 +294,19 @@ function manualWorkflowNodes(): Array<Record<string, unknown>> {
 }
 
 function HooksPanel() {
+  const mode = useAppStore((state) => state.mode);
   const hooks = useQuery({ queryKey: ["hooks"], queryFn: latticeApi.hooks });
   const runs = useQuery({ queryKey: ["hookRuns"], queryFn: latticeApi.hookRuns });
+  if (mode === "basic") {
+    return (
+      <div className="grid gap-4 xl:grid-cols-2">
+        <DataPanel title="Safeguards" result={hooks.data}>
+          {(data) => <EntityList items={(data as Record<string, unknown>).hooks} titleKey="name" metaKey="kind" />}
+        </DataPanel>
+        <ModeGate title="Detailed hook logs" detail="Switch to Advanced when you need hook run logs and manual diagnostic controls." />
+      </div>
+    );
+  }
   return (
     <div className="grid gap-4 xl:grid-cols-2">
       <DataPanel title="Hooks" result={hooks.data}>
@@ -301,7 +331,7 @@ function HooksPanel() {
 function ToolsPanel() {
   const tools = useQuery({ queryKey: ["toolPermissions"], queryFn: latticeApi.toolPermissions });
   return (
-    <DataPanel title="Tool permissions" result={tools.data}>
+    <DataPanel title="Action permissions" result={tools.data}>
       {(data) => <EntityList items={(data as Record<string, unknown>).permissions || data} titleKey="tool" metaKey="risk" />}
     </DataPanel>
   );

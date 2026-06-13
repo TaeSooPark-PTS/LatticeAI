@@ -2,7 +2,7 @@ import * as React from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { Network, ShieldCheck, UserCircle, Users } from "lucide-react";
 import { latticeApi } from "@/api/client";
-import { ActionButton, DataPanel, EmptyState, EntityList, KeyValueList, OperationResult, StatGrid, StructuredView, Tabs } from "@/components/primitives";
+import { ActionButton, DataPanel, EmptyState, EntityList, KeyValueList, ModeGate, OperationResult, StatGrid, StructuredView, Tabs } from "@/components/primitives";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -16,13 +16,14 @@ const tabs: Array<{ id: SystemTab; label: string }> = [
   { id: "account", label: "Account" },
   { id: "workspaces", label: "Workspaces" },
   { id: "snapshots", label: "Snapshots" },
-  { id: "activity", label: "Activity" },
-  { id: "network", label: "Network" },
-  { id: "settings", label: "Settings" },
+  { id: "activity", label: "History" },
+  { id: "network", label: "Devices" },
+  { id: "settings", label: "Preferences" },
   { id: "admin", label: "Admin" },
 ];
 
 export function SystemPage({ initialTab }: { initialTab?: string }) {
+  const mode = useAppStore((state) => state.mode);
   const [tab, setTab] = React.useState<SystemTab>((initialTab as SystemTab) || "account");
   React.useEffect(() => {
     if (tabs.some((item) => item.id === initialTab)) setTab(initialTab as SystemTab);
@@ -34,7 +35,7 @@ export function SystemPage({ initialTab }: { initialTab?: string }) {
         <h1 className="page-title">Keep your brain local, safe, and portable.</h1>
         <p className="page-copy">Manage your account, workspaces, backups, local device, and advanced settings from one place.</p>
       </header>
-      <Tabs tabs={tabs} value={tab} onChange={(id) => setTab(id as SystemTab)} />
+      <Tabs tabs={mode === "basic" ? tabs.filter((item) => item.id !== "admin") : tabs} value={tab} onChange={(id) => setTab(id as SystemTab)} />
       {tab === "account" ? <AccountPanel /> : null}
       {tab === "workspaces" ? <WorkspacePanel /> : null}
       {tab === "snapshots" ? <SnapshotsPanel /> : null}
@@ -240,14 +241,14 @@ function NetworkPanel() {
       </DataPanel>
       <Card>
         <CardHeader>
-          <CardTitle className="flex items-center gap-2"><Network className="h-4 w-4" /> Pair peer</CardTitle>
+          <CardTitle className="flex items-center gap-2"><Network className="h-4 w-4" /> Pair device</CardTitle>
         <CardDescription>Pair a trusted device for workspace exchange.</CardDescription>
         </CardHeader>
         <CardContent className="grid gap-3">
-          <Input value={name} onChange={(e) => setName(e.target.value)} placeholder="peer name" />
-          <Input value={baseUrl} onChange={(e) => setBaseUrl(e.target.value)} placeholder="http://peer.local:8765" />
+          <Input value={name} onChange={(e) => setName(e.target.value)} placeholder="device name" />
+          <Input value={baseUrl} onChange={(e) => setBaseUrl(e.target.value)} placeholder="trusted device address" />
           <Input value={publicKey} onChange={(e) => setPublicKey(e.target.value)} placeholder="trusted public key" />
-          <Button disabled={!name || !baseUrl || !publicKey || pair.isPending} onClick={() => pair.mutate()}>Pair</Button>
+          <Button disabled={!name || !baseUrl || !publicKey || pair.isPending} onClick={() => pair.mutate()}>Pair device</Button>
           {pair.data ? <OperationResult result={pair.data} successLabel="Peer pairing request completed" /> : null}
         </CardContent>
       </Card>
@@ -393,15 +394,15 @@ function SettingsPanel() {
           ))}
         </CardContent>
       </Card>
-      <Card className="xl:col-span-3">
+      {mode !== "basic" ? <Card className="xl:col-span-3">
         <CardHeader>
           <CardTitle>Scale mode</CardTitle>
           <CardDescription>Optional advanced storage. Local SQLite remains the default.</CardDescription>
         </CardHeader>
         <CardContent className="grid gap-3">
           <div className="grid gap-2 sm:grid-cols-[1fr_220px]">
-            <Input value={dsn} onChange={(e) => setDsn(e.target.value)} placeholder="postgresql://user:pass@127.0.0.1:5432/lattice_brain" />
-            <Input value={schema} onChange={(e) => setSchema(e.target.value)} placeholder="schema" />
+            <Input value={dsn} onChange={(e) => setDsn(e.target.value)} placeholder="Postgres connection string" />
+            <Input value={schema} onChange={(e) => setSchema(e.target.value)} placeholder="database schema" />
           </div>
           <div className="flex flex-wrap gap-2">
             <Button variant="outline" onClick={() => docker.mutate(false)} disabled={docker.isPending}>Docker plan</Button>
@@ -415,7 +416,7 @@ function SettingsPanel() {
           {docker.data ? <OperationResult result={docker.data} successLabel="Docker setup request completed" /> : null}
           {migration.data ? <OperationResult result={migration.data} successLabel="Migration plan completed" /> : null}
         </CardContent>
-      </Card>
+      </Card> : null}
       <DataPanel title="Computer memory" result={comp.data} className="xl:col-span-3">
         {(data) => (
           <div className="space-y-3">
@@ -448,7 +449,16 @@ function PresenceView({ data }: { data: Record<string, unknown> }) {
 }
 
 function DeviceIdentityView({ data }: { data: Record<string, unknown> }) {
+  const mode = useAppStore((state) => state.mode);
   const publicKey = textValue(data.public_key, "");
+  if (mode === "basic") {
+    return (
+      <div className="space-y-3">
+        <StatusCard title="This Mac" status="trusted" detail="This device can participate in local workspace exchange when you pair another trusted device." />
+        <Badge variant="muted">{textValue(data.algorithm, "local identity")}</Badge>
+      </div>
+    );
+  }
   return (
     <div className="space-y-3">
       <div className="flex flex-wrap items-center gap-2">
@@ -465,15 +475,16 @@ function DeviceIdentityView({ data }: { data: Record<string, unknown> }) {
 }
 
 function HealthView({ data }: { data: Record<string, unknown> }) {
+  const mode = useAppStore((state) => state.mode);
   return (
     <div className="space-y-3">
       <StatGrid stats={[
         { label: "Status", value: data.status || data.ok || "reported" },
         { label: "Version", value: data.version || "not reported" },
         { label: "Mode", value: data.mode || data.environment || "local" },
-        { label: "Port", value: data.port || data.backend_port || "configured" },
+        ...(mode === "basic" ? [] : [{ label: "Port", value: data.port || data.backend_port || "configured" }]),
       ]} />
-      <StructuredView value={data} />
+      {mode === "basic" ? null : <StructuredView value={data} />}
     </div>
   );
 }
@@ -576,6 +587,7 @@ function SecurityView({ data }: { data: Record<string, unknown> }) {
 }
 
 function AdminPanel() {
+  const mode = useAppStore((state) => state.mode);
   const summary = useQuery({ queryKey: ["adminSummary"], queryFn: latticeApi.adminSummary });
   const users = useQuery({ queryKey: ["adminUsers"], queryFn: latticeApi.adminUsers });
   const audit = useQuery({ queryKey: ["adminAudit"], queryFn: latticeApi.adminAudit });
@@ -584,6 +596,9 @@ function AdminPanel() {
   const hardening = useQuery({ queryKey: ["adminProductHardening"], queryFn: latticeApi.adminProductHardening });
   const security = useQuery({ queryKey: ["adminSecurity"], queryFn: latticeApi.adminSecurity });
   const vpc = useQuery({ queryKey: ["vpcStatus"], queryFn: latticeApi.vpcStatus });
+  if (mode !== "admin") {
+    return <ModeGate title="Admin controls" detail="Switch to Admin mode to review users, audit events, policies, security posture, and private networking diagnostics." target="admin" />;
+  }
   return (
     <div className="grid gap-4 xl:grid-cols-2">
       <DataPanel title="Admin summary" result={summary.data}>{(data) => <KeyValueList data={data as Record<string, unknown>} />}</DataPanel>

@@ -7,6 +7,7 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Textarea } from "@/components/ui/textarea";
+import { useAppStore } from "@/store/appStore";
 import { asArray } from "@/lib/utils";
 
 type Msg = { role?: string; content?: string; timestamp?: string };
@@ -188,12 +189,29 @@ export function AskPage() {
 }
 
 function ContextPreview({ question, trace }: { question: string; trace: unknown }) {
+  const mode = useAppStore((state) => state.mode);
   const hybrid = useQuery({
     queryKey: ["askHybrid", question],
     queryFn: () => latticeApi.hybridSearch(question),
     enabled: question.trim().length > 2,
   });
   const graph = useQuery({ queryKey: ["graph"], queryFn: latticeApi.graph });
+  if (mode === "basic") {
+    return (
+      <>
+        <DataPanel title="Relevant memories" result={hybrid.data}>
+          {(data) => <EntityList items={(data as Record<string, unknown>).matches || data} titleKey="title" metaKey="type" limit={5} />}
+        </DataPanel>
+        <Card>
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2"><Sparkles className="h-4 w-4" /> Sources</CardTitle>
+            <CardDescription>Lattice shows supporting memories when an answer uses them.</CardDescription>
+          </CardHeader>
+          <CardContent>{trace ? <StructuredView value={trace} /> : <EmptyState title="Ask to see sources" />}</CardContent>
+        </Card>
+      </>
+    );
+  }
   return (
     <>
       <DataPanel title="Memory preview" result={hybrid.data}>

@@ -15,12 +15,12 @@ import {
 export type PrimaryRoute = "brain" | "ask" | "capture" | "act" | "library" | "system";
 
 export const primaryRoutes = [
-  { id: "brain", label: "Brain", icon: Brain, description: "Knowledge graph, retrieval, memory, provenance" },
-  { id: "ask", label: "Ask", icon: MessageSquare, description: "Chat, conversations, context trace" },
-  { id: "capture", label: "Capture", icon: FolderInput, description: "Documents, local folders, browser ingestion" },
-  { id: "act", label: "Act", icon: Workflow, description: "Agents, workflows, approvals, hooks" },
-  { id: "library", label: "Library", icon: Library, description: "Models, skills, MCP, templates" },
-  { id: "system", label: "System", icon: Settings, description: "Account, workspaces, snapshots, network, admin" },
+  { id: "brain", label: "Brain", icon: Brain, description: "Explore memories and connections" },
+  { id: "ask", label: "Ask", icon: MessageSquare, description: "Talk with remembered context" },
+  { id: "capture", label: "Capture", icon: FolderInput, description: "Add files, folders, and pages" },
+  { id: "act", label: "Act", icon: Workflow, description: "Run goals with approval" },
+  { id: "library", label: "Library", icon: Library, description: "Models, skills, and tool connections" },
+  { id: "system", label: "System", icon: Settings, description: "Account, backups, and safety" },
 ] as const;
 
 export const routeAliases: Record<string, { primary: PrimaryRoute; tab?: string }> = {
@@ -59,9 +59,9 @@ export const routeAliases: Record<string, { primary: PrimaryRoute; tab?: string 
 
 export const commandRoutes = [
   { key: "brain", label: "Brain", icon: Brain },
-  { key: "onboarding", label: "First-run Setup", icon: Settings },
-  { key: "knowledge-graph", label: "Knowledge Graph", icon: Network },
-  { key: "hybrid-search", label: "Hybrid Search", icon: Zap },
+  { key: "onboarding", label: "First Run", icon: Settings },
+  { key: "knowledge-graph", label: "Brain Map", icon: Network },
+  { key: "hybrid-search", label: "Brain Search", icon: Zap },
   { key: "memory", label: "Memory", icon: Database },
   { key: "chat", label: "Ask", icon: MessageSquare },
   { key: "files", label: "Capture Files", icon: FolderInput },
