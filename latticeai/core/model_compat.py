@@ -12,6 +12,7 @@
 
 from __future__ import annotations
 
+import importlib.util
 import logging
 import re
 import threading
@@ -117,6 +118,128 @@ def get_model_profile(model_id: str, engine: Optional[str] = None) -> Dict[str, 
     base["model_id"] = model_id
     base.setdefault("stop_sequences", list(DEFAULT_STOP))
     return base
+
+
+# ── Runtime compatibility checks ─────────────────────────────────────────────
+
+GEMMA4_MLX_DRAFTER_MODULE = "mlx_vlm.speculative.drafters.gemma4_unified"
+
+
+def _module_available(module: str) -> bool:
+    try:
+        return importlib.util.find_spec(module) is not None
+    except (ImportError, ModuleNotFoundError, AttributeError, ValueError):
+        return False
+
+
+def _is_gemma4(model_id: str) -> bool:
+    raw = str(model_id or "").lower()
+    return bool(re.search(r"gemma[-_/ ]?4", raw))
+
+
+def model_runtime_compatibility(model_id: str, engine: Optional[str] = None) -> Dict[str, Any]:
+    """Return a lightweight pre-load runtime compatibility signal.
+
+    This intentionally checks only known fast failure modes. The loader and
+    smoke test remain the final authority, but the UI must not present a model
+    as ready when the installed runtime is known to lack its required loader.
+    """
+    normalized_engine = (engine or "").strip().lower()
+    if normalized_engine in {"", "mlx"}:
+        normalized_engine = "local_mlx"
+    raw_model_id = str(model_id or "")
+    if raw_model_id.startswith(("local_mlx:", "mlx:")):
+        raw_model_id = raw_model_id.split(":", 1)[1]
+
+    payload: Dict[str, Any] = {
+        "model_id": raw_model_id,
+        "engine": normalized_engine or None,
+        "family": detect_model_family(raw_model_id),
+        "status": "supported",
+        "supported": True,
+        "checked": True,
+        "missing_components": [],
+        "user_message": None,
+        "recovery_guidance": [],
+        "alternatives": [],
+    }
+
+    if normalized_engine != "local_mlx" or not _is_gemma4(raw_model_id):
+        return payload
+
+    # If the MLX stack itself is absent, engine_status already reports the
+    # runtime as unavailable. The Gemma 4 regression happens when MLX-VLM is
+    # installed but the Gemma 4 drafter/loader module is missing.
+    if not (_module_available("mlx") and _module_available("mlx_vlm")):
+        payload["status"] = "runtime_not_installed"
+        payload["checked"] = False
+        return payload
+
+    if _module_available(GEMMA4_MLX_DRAFTER_MODULE):
+        return payload
+
+    payload.update({
+        "status": "unsupported",
+        "supported": False,
+        "reason_code": "mlx_vlm_missing_gemma4_unified",
+        "model_type": "gemma4_unified",
+        "missing_components": [GEMMA4_MLX_DRAFTER_MODULE],
+        "user_message": (
+            "This Gemma 4 MLX model needs a newer MLX-VLM Gemma 4 component "
+            "than the installed runtime provides, so it cannot be loaded safely."
+        ),
+        "recovery_guidance": [
+            "Update MLX-VLM, then re-open Models so Lattice can re-check compatibility.",
+            "Use a recommended Qwen3-VL local model while Gemma 4 MLX support is unavailable.",
+            "Use a Gemma 4 GGUF model through Ollama, LM Studio, or llama.cpp if you specifically need Gemma 4.",
+        ],
+        "alternatives": [
+            {"id": "mlx-community/Qwen3-VL-8B-Instruct-4bit", "name": "Qwen3-VL 8B", "engine": "local_mlx"},
+            {"id": "mlx-community/Qwen3-VL-4B-Instruct-4bit", "name": "Qwen3-VL 4B", "engine": "local_mlx"},
+            {"id": "ollama:hf.co/ggml-org/gemma-4-12B-it-GGUF:Q4_K_M", "name": "Gemma 4 12B GGUF", "engine": "ollama"},
+        ],
+    })
+    return payload
+
+
+def friendly_model_runtime_error(
+    error: BaseException | str,
+    *,
+    model_id: Optional[str] = None,
+    engine: Optional[str] = None,
+) -> Dict[str, Any]:
+    """Convert loader exceptions into end-user recoverable error payloads."""
+    raw = str(error or "")
+    compat = model_runtime_compatibility(model_id or raw, engine=engine)
+    if not compat.get("supported", True) or "gemma4_unified" in raw:
+        return {
+            "status": "unsupported",
+            "model_id": model_id,
+            "engine": engine,
+            "user_message": compat.get("user_message") or (
+                "The selected model is not supported by the installed local runtime."
+            ),
+            "recovery_guidance": compat.get("recovery_guidance") or [
+                "Choose a recommended alternative model.",
+                "Update the local runtime and try validation again.",
+            ],
+            "alternatives": compat.get("alternatives") or [],
+            "reason_code": compat.get("reason_code") or "runtime_model_type_unsupported",
+        }
+    return {
+        "status": "load_failed",
+        "model_id": model_id,
+        "engine": engine,
+        "user_message": (
+            "The model could not be loaded. Check that the runtime is installed, "
+            "the model files are present, and try a recommended alternative if the issue continues."
+        ),
+        "recovery_guidance": [
+            "Open Models and run the setup flow again.",
+            "Confirm downloads were explicitly allowed for models that are not on this computer.",
+            "Try a recommended smaller local model if memory is low.",
+        ],
+    }
 
 
 # ── Postprocessing ────────────────────────────────────────────────────────────
@@ -378,7 +501,9 @@ __all__ = [
     "FAMILY_PROFILES",
     "CompatProfile",
     "detect_model_family",
+    "friendly_model_runtime_error",
     "get_model_profile",
+    "model_runtime_compatibility",
     "fast_postprocess",
     "validate_smoke_response",
     "classify_smoke_response",

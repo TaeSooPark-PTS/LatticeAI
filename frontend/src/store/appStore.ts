@@ -30,10 +30,17 @@ function readMode(): WorkspaceMode {
   return "basic";
 }
 
+function readWorkspaceId(): string | null {
+  try {
+    return localStorage.getItem("lattice.workspace") || null;
+  } catch {}
+  return null;
+}
+
 export const useAppStore = create<AppState>((set) => ({
   theme: readTheme(),
   mode: readMode(),
-  workspaceId: null,
+  workspaceId: readWorkspaceId(),
   apiBase: null,
   setTheme: (theme) => {
     document.documentElement.dataset.theme = theme;

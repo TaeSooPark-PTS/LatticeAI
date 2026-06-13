@@ -5,21 +5,22 @@
 > completed analysis. **Update this file before ending any phase and before any
 > likely session/context/usage limit.**
 >
-> Last updated: 2026-06-13 — v4.3.3 Dead-Code Cleanup Release; Remaining Gaps remain empty
+> Last updated: 2026-06-13 — v4.5.0 Product Experience Recovery RC; Remaining Gaps remain empty
 
 ---
 
-## 0. RELEASE STATUS (v4.3.3)
+## 0. RELEASE STATUS (v4.5.0)
 
-**v4.3.3 promotes the post-cleanup main tree after the independent dead-code,
-architecture, and runtime audit without redesigning the Digital Brain frontend,
-Brain Core, storage, or agent/workflow architecture.** Latest implementation
-milestone: v4.3.2 product polish plus post-audit cleanup, architecture
-documentation correction, Vercel/static-docs readiness, README badge
-restoration, and exact-current-main release artifacts.
-The v4.3.3 process creates a GitHub Release from locally validated artifacts.
-PyPI, npm Registry, VS Code Marketplace, Open VSX, and production deployments
-remain owner-only external publishing steps.
+**v4.5.0 restores the first-run product experience after the v4.4.0 physical
+Brain extraction without redesigning the Digital Brain frontend architecture,
+Brain Core, storage, or agent/workflow architecture.** Current implementation
+milestone: first-run setup, workspace selection, environment analysis, model
+recommendation, explicit model install/download consent, model validation,
+Gemma 4 runtime compatibility gating, Basic/Advanced/Admin mode clarity, and
+graph readability.
+The v4.5.0 RC process builds locally validated artifacts only. Tagging, GitHub
+Release creation, PyPI, npm Registry, VS Code Marketplace, Open VSX, and
+production deployments remain out of scope for this RC.
 Remaining implementation gaps: **none**.
 Owner-only blockers: pptx history rewrite (requires force-push/owner decision)
 and consent-gated production embedder provisioning (silent default download is
@@ -27,11 +28,12 @@ not permitted).
 
 ## Remaining Gaps
 
-None. v4.3.3 preserves the already-empty v4.3.2 gap list and promotes the
-post-cleanup tree: Brain graph exploration remains real and API-backed, raw
-product JSON dumps remain replaced with readable state, archive import/restore
-flows remain exposed through existing APIs, desktop sidecar behavior remains
-validated, and exact v4.3.3 release artifacts are the release target.
+None. v4.5.0 preserves the already-empty v4.3.2/v4.3.3 gap list and promotes
+the product-recovery tree: Brain graph exploration remains real and API-backed,
+raw product JSON dumps remain replaced with readable state, archive
+import/restore flows remain exposed through existing APIs, desktop sidecar
+behavior remains validated, and exact v4.5.0 RC artifacts are the validation
+target.
 Owner-only blockers above are intentionally not implementation gaps.
 
 ## 1. Program Charter (from the user's v4.0.0 directive)

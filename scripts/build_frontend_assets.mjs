@@ -1,5 +1,5 @@
 #!/usr/bin/env node
-import { existsSync, readFileSync, writeFileSync } from "node:fs";
+import { existsSync, readFileSync, readdirSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 
 const repo = join(import.meta.dirname, "..");
@@ -7,6 +7,17 @@ const appDir = join(repo, "static", "app");
 const nestedViteManifest = join(appDir, ".vite", "asset-manifest.json");
 const publicManifest = join(appDir, "asset-manifest.json");
 const pkg = JSON.parse(readFileSync(join(repo, "package.json"), "utf8"));
+
+const assetsDir = join(appDir, "assets");
+if (existsSync(assetsDir)) {
+  for (const name of readdirSync(assetsDir)) {
+    if (!/\.(?:css|js)$/.test(name)) continue;
+    const file = join(assetsDir, name);
+    const text = readFileSync(file, "utf8");
+    const normalized = text.replace(/[ \t]+$/gm, "");
+    if (normalized !== text) writeFileSync(file, normalized, "utf8");
+  }
+}
 
 const viteManifest = existsSync(nestedViteManifest) ? nestedViteManifest : publicManifest;
 if (!existsSync(viteManifest)) {

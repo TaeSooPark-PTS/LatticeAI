@@ -1,16 +1,18 @@
 import * as React from "react";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { AlertCircle, CheckCircle2, Loader2 } from "lucide-react";
-import { ApiResult } from "@/api/client";
+import type { ApiResult } from "@/api/client";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { useAppStore } from "@/store/appStore";
 import { cn, asArray, fmtNumber, shortId, titleize } from "@/lib/utils";
 
 export function SourceBadge({ result }: { result?: Pick<ApiResult, "source" | "ok" | "status"> }) {
+  const mode = useAppStore((state) => state.mode);
   if (!result) return <Badge variant="muted">not loaded</Badge>;
-  if (result.source === "live" && result.ok) return <Badge variant="success">live API</Badge>;
-  return <Badge variant="warning">unavailable</Badge>;
+  if (result.source === "live" && result.ok) return <Badge variant="success">{mode === "basic" ? "connected" : "live API"}</Badge>;
+  return <Badge variant="warning">{mode === "basic" ? "needs setup" : "unavailable"}</Badge>;
 }
 
 export function EmptyState({ title = "Unavailable", detail }: { title?: string; detail?: React.ReactNode }) {
@@ -36,6 +38,7 @@ export function DataPanel<T>({
   children: (data: T) => React.ReactNode;
   className?: string;
 }) {
+  const mode = useAppStore((state) => state.mode);
   return (
     <Card className={className}>
       <CardHeader className="flex-row items-start justify-between gap-3">
@@ -46,7 +49,9 @@ export function DataPanel<T>({
         <SourceBadge result={result} />
       </CardHeader>
       <CardContent>
-        {result?.ok ? children(result.data) : <EmptyState detail={result?.error || "The backend did not return this capability."} />}
+        {result?.ok ? children(result.data) : (
+          <EmptyState detail={mode === "basic" ? "This area needs setup or is not available yet." : result?.error || "The backend did not return this capability."} />
+        )}
       </CardContent>
     </Card>
   );

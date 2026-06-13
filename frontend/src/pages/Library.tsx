@@ -1,12 +1,13 @@
 import * as React from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { Boxes, Cpu, PackagePlus, Plug, Puzzle } from "lucide-react";
+import { Boxes, CheckCircle2, Cpu, Download, PackagePlus, PlayCircle, Plug, ShieldAlert } from "lucide-react";
 import { latticeApi } from "@/api/client";
-import { ActionButton, DataPanel, EntityList, OperationResult, StructuredView, Tabs } from "@/components/primitives";
+import { ActionButton, DataPanel, EmptyState, EntityList, OperationResult, StatGrid, StructuredView, Tabs, ValuePreview } from "@/components/primitives";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
+import { useAppStore } from "@/store/appStore";
 import { asArray } from "@/lib/utils";
 
 type LibraryTab = "models" | "skills" | "mcp" | "marketplace";
@@ -40,15 +41,103 @@ export function LibraryPage({ initialTab }: { initialTab?: string }) {
 }
 
 function ModelsPanel() {
+  const qc = useQueryClient();
+  const mode = useAppStore((state) => state.mode);
   const models = useQuery({ queryKey: ["models"], queryFn: latticeApi.models });
+  const recs = useQuery({ queryKey: ["modelRecommendations", "local_mlx"], queryFn: () => latticeApi.modelRecommendations("local_mlx") });
   const emb = useQuery({ queryKey: ["embeddings"], queryFn: latticeApi.embeddingsStatus });
+  const [consent, setConsent] = React.useState(false);
+  const [activeModel, setActiveModel] = React.useState<string | null>(null);
+  const [progress, setProgress] = React.useState<Record<string, unknown>[]>([]);
+  const [lastResult, setLastResult] = React.useState<Record<string, unknown> | null>(null);
+  const [lastError, setLastError] = React.useState<Record<string, unknown> | null>(null);
+  const [busy, setBusy] = React.useState(false);
   const catalog = [
     ...asArray<Record<string, unknown>>((models.data?.data as Record<string, unknown>)?.catalog),
     ...asArray<Record<string, unknown>>((models.data?.data as Record<string, unknown>)?.recommended),
   ];
+  const recommendationRows = asArray<Record<string, unknown>>(
+    ((recs.data?.data as Record<string, unknown>)?.recommendations as Record<string, unknown> | undefined)?.models,
+  );
+  const recommendationById = new Map(recommendationRows.map((item) => [String(item.id), item]));
+  const loadedIds = asArray<string>((models.data?.data as Record<string, unknown> | undefined)?.loaded);
+  const currentId = String((models.data?.data as Record<string, unknown> | undefined)?.current || "");
+  const current = catalog.find((model) => loadedIds.includes(String(model.id)) || String(model.id) === currentId);
+  const topPick = (((recs.data?.data as Record<string, unknown> | undefined)?.recommendations as Record<string, unknown> | undefined)?.top_pick || null) as Record<string, unknown> | null;
+  const latestProgress = progress[progress.length - 1] || null;
+
+  async function prepareModel(loadId: string, engine: string, allowDownload: boolean) {
+    setBusy(true);
+    setActiveModel(loadId);
+    setProgress([]);
+    setLastResult(null);
+    setLastError(null);
+    const result = await latticeApi.streamModelPrepare(
+      { model: loadId, engine: engine || "local_mlx", allow_download: allowDownload },
+      {
+        onProgress: (event) => setProgress((items) => [...items.slice(-8), event]),
+        onDone: (event) => setLastResult(event),
+        onError: (event) => setLastError(event),
+      },
+    );
+    setBusy(false);
+    await qc.invalidateQueries({ queryKey: ["models"] });
+    await qc.invalidateQueries({ queryKey: ["modelRecommendations", "local_mlx"] });
+    if (!result.ok && !lastError) setLastError(result.data as Record<string, unknown>);
+  }
+
   return (
     <div className="grid gap-4 xl:grid-cols-[1.2fr_0.8fr]">
-      <DataPanel title="Model catalog" result={models.data}>
+      <div className="space-y-4">
+        <DataPanel title="Model setup flow" description="Environment Analysis -> Recommended Models -> Install -> Download Progress -> Validate -> Load -> Ready" result={recs.data}>
+          {(data) => {
+            const recommendation = (data as Record<string, unknown>).recommendations as Record<string, unknown> | undefined;
+            const profile = (data as Record<string, unknown>).profile as Record<string, unknown> | undefined;
+            return (
+              <div className="space-y-4">
+                <StatGrid stats={[
+                  { label: "Computer", value: profile?.os ? `${String(profile.os)} ${String(profile.arch || "")}` : "detected" },
+                  { label: "Memory", value: recommendation?.ram_gb ? `${String(recommendation.ram_gb)} GB` : "checking" },
+                  { label: "Top pick", value: topPick?.name || topPick?.id || "choose below" },
+                  { label: "Current", value: current?.name || currentId || "none" },
+                ]} />
+                <div className="grid gap-2 md:grid-cols-3 xl:grid-cols-6">
+                  {[
+                    ["Environment Analysis", true, Cpu],
+                    ["Recommended Models", Boolean(topPick || catalog.length), CheckCircle2],
+                    ["Install", Boolean(current || latestProgress?.stage === "engine"), PackagePlus],
+                    ["Download Progress", Boolean(current || latestProgress?.stage === "download"), Download],
+                    ["Validate", Boolean(current || latestProgress?.stage === "smoke_test"), ShieldAlert],
+                    ["Load / Ready", Boolean(current || lastResult), PlayCircle],
+                  ].map(([label, done, Icon]) => (
+                    <div key={String(label)} className="rounded-md border border-border bg-background p-3">
+                      {React.createElement(Icon as typeof Cpu, { className: "h-4 w-4 text-primary" })}
+                      <div className="mt-2 text-sm font-medium">{String(label)}</div>
+                      <Badge variant={done ? "success" : "muted"}>{done ? "ready" : "pending"}</Badge>
+                    </div>
+                  ))}
+                </div>
+                <label className="flex items-start gap-2 rounded-md border border-border bg-background p-3 text-sm">
+                  <input className="mt-1" type="checkbox" checked={consent} onChange={(event) => setConsent(event.target.checked)} />
+                  <span>
+                    Allow this model action to install a missing local runtime or download model files. Lattice AI will not start external downloads without this consent.
+                  </span>
+                </label>
+                {latestProgress ? (
+                  <div className="rounded-md border border-border bg-background p-3 text-sm">
+                    <div className="font-medium">{String(latestProgress.message || "Preparing model")}</div>
+                    <div className="mt-2 h-2 overflow-hidden rounded-full bg-muted">
+                      <div className="h-full bg-primary" style={{ width: `${Number(latestProgress.percent || 8)}%` }} />
+                    </div>
+                    {latestProgress.detail ? <div className="mt-2 text-xs text-muted-foreground">{String(latestProgress.detail)}</div> : null}
+                  </div>
+                ) : null}
+                {lastError ? <ModelRecovery error={lastError} /> : null}
+              </div>
+            );
+          }}
+        </DataPanel>
+        <DataPanel title="Recommended models" result={models.data}>
         {(data) => (
           <div className="grid gap-2">
             {(catalog.length ? catalog : asArray<Record<string, unknown>>((data as Record<string, unknown>).loaded)).slice(0, 14).map((model, index) => {
@@ -56,34 +145,99 @@ function ModelsPanel() {
               const loaded = asArray<string>((data as Record<string, unknown>).loaded).includes(id) || (data as Record<string, unknown>).current === id || model.state === "loaded";
               const loadId = String(model.recommended_load_id || id);
               const engine = String(model.recommended_engine || model.engine || "");
-              const loadAvailable = Boolean(model.load_available) || loaded;
+              const recommendation = recommendationById.get(id) || recommendationById.get(loadId) || {};
+              const compatibility = (model.runtime_compatibility || recommendation.runtime_compatibility || {}) as Record<string, unknown>;
+              const unsupported = model.load_status === "unsupported" || compatibility.supported === false;
+              const downloadRequired = Boolean(model.download_required);
+              const loadAvailable = (Boolean(model.load_available) || loaded) && !unsupported;
               const loadStatus = String(model.load_status || (loaded ? "loaded" : "unavailable"));
               const unavailableReason = String(model.unavailable_reason || "Unavailable until the backend reports a local model/runtime ready.");
+              const canPrepare = loadAvailable || downloadRequired;
               return (
-                <div key={id} className="flex flex-wrap items-center justify-between gap-3 rounded-md border border-border bg-background p-3">
-                  <div>
-                    <div className="font-medium">{String(model.name || id)}</div>
-                    <div className="text-sm text-muted-foreground">{String(model.family || model.engine || model.recommended_engine || "local")}</div>
-                    {!loaded && !loadAvailable ? <div className="mt-1 text-xs text-muted-foreground">{unavailableReason}</div> : null}
+                <div key={id} className="grid gap-3 rounded-md border border-border bg-background p-3 md:grid-cols-[1fr_auto]">
+                  <div className="min-w-0">
+                    <div className="flex flex-wrap items-center gap-2">
+                      <div className="font-medium">{String(model.name || id)}</div>
+                      {topPick?.id === id ? <Badge variant="success">recommended</Badge> : null}
+                    </div>
+                    <div className="mt-1 text-sm text-muted-foreground">
+                      {[model.family || recommendation.family || "local", model.size || recommendation.size].filter(Boolean).map(String).join(" · ")}
+                    </div>
+                    {unsupported ? (
+                      <div className="mt-2 rounded-md border border-amber-500/30 bg-amber-500/10 p-2 text-sm">
+                        <div className="font-medium">Runtime component missing</div>
+                        <div className="text-muted-foreground">{String(compatibility.user_message || unavailableReason)}</div>
+                      </div>
+                    ) : !loaded && !loadAvailable ? <div className="mt-1 text-xs text-muted-foreground">{unavailableReason}</div> : null}
+                    {mode !== "basic" ? (
+                      <div className="mt-2 text-xs text-muted-foreground">
+                        {engine || "local_mlx"} · {loadId}
+                      </div>
+                    ) : null}
+                    {unsupported ? <AlternativeModels compatibility={compatibility} /> : null}
                   </div>
-                  <div className="flex items-center gap-2">
+                  <div className="flex flex-wrap items-center gap-2 md:justify-end">
                     <Badge variant={loaded ? "success" : loadAvailable ? "muted" : "warning"}>{loaded ? "loaded" : loadStatus}</Badge>
-                    <ActionButton
-                      label={loaded ? "Unload" : "Load"}
-                      action={() => loaded ? latticeApi.unloadModel(loadId) : latticeApi.loadModel(loadId, engine, false)}
-                      invalidate={["models"]}
-                      disabled={!loaded && !loadAvailable}
-                    />
+                    {loaded ? (
+                      <ActionButton label="Unload" action={() => latticeApi.unloadModel(loadId)} invalidate={["models"]} />
+                    ) : (
+                      <Button
+                        variant="outline"
+                        disabled={busy || unsupported || !canPrepare || (downloadRequired && !consent)}
+                        onClick={() => prepareModel(loadId, engine || "local_mlx", consent)}
+                      >
+                        {activeModel === loadId && busy ? "Preparing" : downloadRequired ? "Install & Load" : "Validate & Load"}
+                      </Button>
+                    )}
                   </div>
                 </div>
               );
             })}
           </div>
         )}
-      </DataPanel>
-      <DataPanel title="Embedding provider" result={emb.data}>
-        {(data) => <StructuredView value={data} />}
-      </DataPanel>
+        </DataPanel>
+      </div>
+      <div className="space-y-4">
+        <DataPanel title="Embedding provider" result={emb.data}>
+          {(data) => mode === "basic" ? <ValuePreview value={(data as Record<string, unknown>).state || (data as Record<string, unknown>).provider || "ready"} /> : <StructuredView value={data} />}
+        </DataPanel>
+        <DataPanel title="Model validation" result={models.data}>
+          {(data) => {
+            const profiles = asArray<Record<string, unknown>>((data as Record<string, unknown>).compat_profiles);
+            return profiles.length ? (
+              <EntityList items={profiles} titleKey="model_id" metaKey="quality_status" limit={6} />
+            ) : (
+              <EmptyState title="No validation yet" detail="Load a model to run compatibility validation before using it." />
+            );
+          }}
+        </DataPanel>
+      </div>
+    </div>
+  );
+}
+
+function AlternativeModels({ compatibility }: { compatibility: Record<string, unknown> }) {
+  const alternatives = asArray<Record<string, unknown>>(compatibility.alternatives);
+  if (!alternatives.length) return null;
+  return (
+    <div className="mt-2 flex flex-wrap gap-1">
+      {alternatives.slice(0, 3).map((item) => (
+        <Badge key={String(item.id || item.name)} variant="muted">{String(item.name || item.id)}</Badge>
+      ))}
+    </div>
+  );
+}
+
+function ModelRecovery({ error }: { error: Record<string, unknown> }) {
+  const guidance = asArray<string>(error.recovery_guidance);
+  return (
+    <div className="rounded-md border border-amber-500/30 bg-amber-500/10 p-3 text-sm">
+      <div className="font-medium">{String(error.user_message || "Model setup needs attention.")}</div>
+      {guidance.length ? (
+        <ul className="mt-2 list-inside list-disc text-muted-foreground">
+          {guidance.slice(0, 3).map((item) => <li key={item}>{item}</li>)}
+        </ul>
+      ) : null}
     </div>
   );
 }

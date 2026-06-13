@@ -4,6 +4,7 @@ import { Command, Menu, Moon, Search, Sun, X } from "lucide-react";
 import { latticeApi } from "@/api/client";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { FirstRunGuide } from "@/components/FirstRunGuide";
 import { useAppStore } from "@/store/appStore";
 import { commandRoutes, go, parseHash, primaryRoutes, PrimaryRoute } from "@/routes";
 import { BrainPage } from "@/pages/Brain";
@@ -190,6 +191,7 @@ export default function App() {
           </div>
         </header>
         <main className="p-4 lg:p-6">
+          <FirstRunGuide />
           <Page primary={route.primary} tab={route.tab} />
         </main>
       </div>

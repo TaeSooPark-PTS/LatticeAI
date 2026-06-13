@@ -7,6 +7,39 @@
 > PyPI / npm / VS Code Marketplace / Open VSX 배포는 아래 수동 절차로만
 > 진행합니다. 태그 생성은 패키지 스토어 publish를 자동으로 트리거하지 않습니다.
 
+## v4.5.0 RC 릴리스 노트 (2026-06-13)
+
+Lattice AI v4.5.0 — Product Experience Recovery RC. `main` after v4.4.0 위에서
+Brain Core extraction, StorageEngine, FastAPI, Tauri, backup/restore, portability
+architecture는 redesign하지 않고 end-user setup/model/graph experience를 복구한다.
+이 RC 작업은 tag, GitHub Release, PyPI/npm/VS Code/Open VSX publish를 포함하지
+않는다.
+
+- **Restored (First-run journey)**: Login -> Workspace Selection ->
+  Environment Analysis -> Model Recommendation -> Model Installation -> Model
+  Validation -> Mode Selection -> Brain Usage 흐름을 app shell과 command
+  palette에서 다시 노출한다.
+- **Changed (Model setup UX)**: Library Models는 Environment Analysis ->
+  Recommended Models -> Install -> Download Progress -> Validate -> Load ->
+  Ready 상태를 명시하고, runtime install/model download는 checkbox consent 없이는
+  시작하지 않는다.
+- **Fixed (Gemma 4 runtime regression)**: Gemma 4 MLX models are marked
+  unsupported when installed MLX-VLM lacks the Gemma 4 `gemma4_unified`
+  component; raw `No module named ...` loader errors are replaced with friendly
+  recovery guidance and Qwen/GGUF alternatives.
+- **Changed (Basic mode)**: shared status badges, Brain graph copy, System
+  readiness, and model cards avoid endpoint/module leakage in Basic mode while
+  Advanced/Admin retain inspection detail.
+- **Changed (Graph UX)**: graph/search copy now focuses on ideas, relationships,
+  sources, focus, filtering, and readability rather than backend endpoint
+  implementation.
+- **Expected artifacts**:
+  - `dist/ltcai-4.5.0-py3-none-any.whl`
+  - `dist/ltcai-4.5.0.tar.gz`
+  - `dist/ltcai-4.5.0.vsix`
+  - `ltcai-4.5.0.tgz`
+  - `src-tauri/target/release/bundle/dmg/Lattice AI_4.5.0_aarch64.dmg`
+
 ## v4.4.0 릴리스 노트 (2026-06-13)
 
 Lattice AI v4.4.0 — Brain Engine Extraction Release. Brain Core implementation을
@@ -939,14 +972,14 @@ Knowledge Graph v2 read/write cutover. 자세한 내용은
    - `npm run release:artifacts`
    - `npm run release:validate`
 
-현재 `v4.4.0` 기준 필수 산출물:
+현재 `v4.5.0` 기준 필수 산출물:
 
 ```text
-dist/ltcai-4.4.0-py3-none-any.whl
-dist/ltcai-4.4.0.tar.gz
-dist/ltcai-4.4.0.vsix
-ltcai-4.4.0.tgz
-src-tauri/target/release/bundle/dmg/Lattice AI_4.4.0_aarch64.dmg
+dist/ltcai-4.5.0-py3-none-any.whl
+dist/ltcai-4.5.0.tar.gz
+dist/ltcai-4.5.0.vsix
+ltcai-4.5.0.tgz
+src-tauri/target/release/bundle/dmg/Lattice AI_4.5.0_aarch64.dmg
 ```
 
 ## 2) npm 배포
@@ -957,7 +990,7 @@ src-tauri/target/release/bundle/dmg/Lattice AI_4.4.0_aarch64.dmg
    - `npm run publish:npm`
    - 직접 실행 시:
      ```
-     npm publish "ltcai-4.4.0.tgz" --access public
+     npm publish "ltcai-4.5.0.tgz" --access public
      ```
 
 ## 3) PyPI 배포
@@ -970,14 +1003,14 @@ src-tauri/target/release/bundle/dmg/Lattice AI_4.4.0_aarch64.dmg
    - `npm run publish:pypi`  ← 권장 (`$npm_package_version` 자동 사용)
    - 직접 실행 시:
      ```
-     python3 -m twine upload "dist/ltcai-4.4.0-py3-none-any.whl" "dist/ltcai-4.4.0.tar.gz"
+     python3 -m twine upload "dist/ltcai-4.5.0-py3-none-any.whl" "dist/ltcai-4.5.0.tar.gz"
      ```
 
 참고:
 - TestPyPI 먼저 쓰려면:
   ```
   python3 -m twine upload --skip-existing --repository testpypi \
-    "dist/ltcai-4.4.0.tar.gz" "dist/ltcai-4.4.0-py3-none-any.whl"
+    "dist/ltcai-4.5.0.tar.gz" "dist/ltcai-4.5.0-py3-none-any.whl"
   ```
 
 ## 4) VS Code / Cursor / Antigravity 확장 배포
@@ -993,13 +1026,13 @@ src-tauri/target/release/bundle/dmg/Lattice AI_4.4.0_aarch64.dmg
    - `npm run publish:vscode`  ← 권장 (`$npm_package_version` 자동 사용)
    - 직접 실행 시:
      ```
-     npx vsce publish --packagePath "../dist/ltcai-4.4.0.vsix"
+     npx vsce publish --packagePath "../dist/ltcai-4.5.0.vsix"
      ```
 4. Open VSX 배포 (Cursor/일부 포크 호환)
    - `npm run publish:openvsx`  ← 권장 (`$npm_package_version` 자동 사용)
    - 직접 실행 시:
      ```
-     npx ovsx publish "../dist/ltcai-4.4.0.vsix"
+     npx ovsx publish "../dist/ltcai-4.5.0.vsix"
      ```
 5. 로컬 설치 (VS Code/Cursor/Antigravity)
    - `npm run install:all`

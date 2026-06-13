@@ -66,8 +66,8 @@ function AccountPanel() {
       </DataPanel>
       <Card>
         <CardHeader>
-          <CardTitle className="flex items-center gap-2"><UserCircle className="h-4 w-4" /> Token-native account</CardTitle>
-          <CardDescription>Login, registration, profile update, and password change all call existing auth endpoints.</CardDescription>
+          <CardTitle className="flex items-center gap-2"><UserCircle className="h-4 w-4" /> Account sign-in</CardTitle>
+          <CardDescription>Sign in, create a local account, and keep your profile current.</CardDescription>
         </CardHeader>
         <CardContent className="grid gap-3">
           <Input value={email} onChange={(e) => setEmail(e.target.value)} placeholder="email" />
@@ -137,7 +137,7 @@ function WorkspacePanel() {
       <Card>
         <CardHeader>
           <CardTitle className="flex items-center gap-2"><Users className="h-4 w-4" /> Organizations and invitations</CardTitle>
-          <CardDescription>Local invite tokens and workspace creation are backend-owned.</CardDescription>
+          <CardDescription>Create or join a workspace before connecting files and models.</CardDescription>
         </CardHeader>
         <CardContent className="grid gap-3">
           <Input value={orgName} onChange={(e) => setOrgName(e.target.value)} placeholder="New organization name" />
@@ -344,8 +344,15 @@ function SettingsPanel() {
       <DataPanel title="Server health" result={health.data}>
         {(data) => <HealthView data={data as Record<string, unknown>} />}
       </DataPanel>
-      <DataPanel title="Host telemetry" result={sys.data}>
-        {(data) => <StructuredView value={data} />}
+      <DataPanel title={mode === "basic" ? "Computer readiness" : "Host telemetry"} result={sys.data}>
+        {(data) => mode === "basic" ? (
+          <StatGrid stats={[
+            { label: "CPU", value: `${String((data as Record<string, unknown>).cpu_pct || "0")}%` },
+            { label: "Memory", value: `${String((data as Record<string, unknown>).ram_pct || "0")}%` },
+            { label: "GPU memory", value: `${String((data as Record<string, unknown>).gpu_mem_pct || "0")}%` },
+            { label: "Local status", value: "ready" },
+          ]} />
+        ) : <StructuredView value={data} />}
       </DataPanel>
       <DataPanel title="Brain storage" result={storage.data} className="xl:col-span-3">
         {(data) => <StorageView data={data as Record<string, unknown>} />}

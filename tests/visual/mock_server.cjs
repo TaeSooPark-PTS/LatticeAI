@@ -89,7 +89,7 @@ const workspaceOs = {
   updated_at: "2026-06-01T12:00:00",
   counts: { snapshots: 2, traces: 3, memories: 7, agent_runs: 4, workflows: 2, skills: 3, timeline: 8 },
   graph: { nodes: { Topic: 1, Concept: 1, Task: 1, Decision: 1, File: 1 }, edges: { discusses: 1, mentions: 2, based_on: 2 } },
-  models: { current_model: "mlx-community/gemma-4-12b-it-4bit", loaded_models: ["mlx-community/gemma-4-12b-it-4bit"], local_model: "mlx-community/gemma-4-12b-it-4bit" },
+  models: { current_model: "mlx-community/Qwen3-VL-8B-Instruct-4bit", loaded_models: ["mlx-community/Qwen3-VL-8B-Instruct-4bit"], local_model: "mlx-community/Qwen3-VL-8B-Instruct-4bit" },
   workspace_registry: {
     active_workspace: "personal",
     workspaces: [
@@ -215,7 +215,7 @@ const server = http.createServer((req, res) => {
   if (pathname === "/account/change-password" && req.method === "POST") return json(res, { status: "ok" });
   if (pathname === "/auth/sso/config") return json(res, { enabled: false, providers: [] });
 
-  if (pathname === "/health") return json(res, { status: "ok", version: "4.3.3", mode: "visual" });
+  if (pathname === "/health") return json(res, { status: "ok", version: "4.5.0", mode: "visual" });
   if (pathname === "/vpc/status") return json(res, { provider: "local", region: "visual", vpn_status: "standby", peering_status: "not_configured", private_subnets: [] });
   if (pathname === "/workspace/os") return json(res, workspaceOs);
   if (pathname === "/workspace/registry") return json(res, workspaceOs.workspace_registry);
@@ -329,16 +329,80 @@ const server = http.createServer((req, res) => {
   });
   if (pathname === "/models") return json(res, {
     recommended: [
-      { id: "mlx-community/Qwen2.5-VL-7B-Instruct-4bit", name: "Qwen2.5-VL 7B", display_name: "Qwen2.5-VL 7B", family: "qwen-vl", modality: "multimodal", capabilities: ["vision", "text"], state: "loaded" },
-      { id: "mlx-community/gemma-4-12b-it-4bit", name: "Gemma 4 12B", display_name: "Gemma 4 12B", family: "gemma", capabilities: ["text"], state: "available" },
+      {
+        id: "mlx-community/Qwen3-VL-8B-Instruct-4bit",
+        name: "Qwen3-VL 8B",
+        display_name: "Qwen3-VL 8B",
+        family: "Qwen3-VL",
+        size: "4.8GB",
+        modality: "multimodal",
+        capabilities: ["vision", "text"],
+        state: "loaded",
+        pulled: true,
+        download_required: false,
+        load_available: true,
+        load_status: "loaded",
+        recommended_engine: "local_mlx",
+        recommended_load_id: "mlx-community/Qwen3-VL-8B-Instruct-4bit",
+        runtime_compatibility: { supported: true, status: "supported" },
+      },
+      {
+        id: "mlx-community/gemma-4-12b-it-4bit",
+        name: "Gemma 4 12B Instruct",
+        display_name: "Gemma 4 12B Instruct",
+        family: "Gemma 4",
+        size: "7.6GB",
+        capabilities: ["text"],
+        state: "unsupported",
+        pulled: true,
+        download_required: false,
+        load_available: false,
+        load_status: "unsupported",
+        unavailable_reason: "This Gemma 4 MLX model needs a newer MLX-VLM Gemma 4 component than the installed runtime provides, so it cannot be loaded safely.",
+        recommended_engine: "local_mlx",
+        recommended_load_id: "mlx-community/gemma-4-12b-it-4bit",
+        runtime_compatibility: {
+          supported: false,
+          status: "unsupported",
+          reason_code: "mlx_vlm_missing_gemma4_unified",
+          user_message: "This Gemma 4 MLX model needs a newer MLX-VLM Gemma 4 component than the installed runtime provides, so it cannot be loaded safely.",
+          recovery_guidance: ["Use Qwen3-VL 8B while Gemma 4 MLX support is unavailable.", "Update MLX-VLM, then validate again."],
+          alternatives: [{ id: "mlx-community/Qwen3-VL-8B-Instruct-4bit", name: "Qwen3-VL 8B", engine: "local_mlx" }],
+        },
+      },
     ],
     cloud: [],
     engines: [{ id: "local_mlx", name: "MLX", kind: "local", installed: true }],
-    loaded: ["mlx-community/Qwen2.5-VL-7B-Instruct-4bit"],
-    current: "mlx-community/Qwen2.5-VL-7B-Instruct-4bit",
-    compat_profiles: [],
-    vision: { current_model: "mlx-community/Qwen2.5-VL-7B-Instruct-4bit", current_supports_vision: true, engine_available: true, enabled: true },
+    loaded: ["mlx-community/Qwen3-VL-8B-Instruct-4bit"],
+    current: "mlx-community/Qwen3-VL-8B-Instruct-4bit",
+    compat_profiles: [{ model_id: "mlx-community/Qwen3-VL-8B-Instruct-4bit", engine: "local_mlx", quality_status: "ok", chat_compatible: true }],
+    vision: { current_model: "mlx-community/Qwen3-VL-8B-Instruct-4bit", current_supports_vision: true, engine_available: true, enabled: true },
   });
+  if (pathname === "/models/recommendations") return json(res, {
+    profile: { os: "darwin", arch: "arm64", ram_mb: 65536, gpu: { vendor: "apple", vram_mb: 65536 } },
+    recommendations: {
+      engine: "local_mlx",
+      engine_available: true,
+      apple_silicon: true,
+      ram_gb: 64,
+      counts: { recommended: 1, compatible: 0, not_recommended: 1 },
+      top_pick: { id: "mlx-community/Qwen3-VL-8B-Instruct-4bit", name: "Qwen3-VL 8B", family: "Qwen3-VL", status: "recommended", size: "4.8GB" },
+      families: [],
+      models: [
+        { id: "mlx-community/Qwen3-VL-8B-Instruct-4bit", name: "Qwen3-VL 8B", family: "Qwen3-VL", status: "recommended", reason: "현재 메모리에서 안정적으로 사용할 가능성이 높습니다", size: "4.8GB", runtime_compatibility: { supported: true, status: "supported" } },
+        { id: "mlx-community/gemma-4-12b-it-4bit", name: "Gemma 4 12B Instruct", family: "Gemma 4", status: "not_recommended", reason: "This Gemma 4 MLX model needs a newer MLX-VLM Gemma 4 component than the installed runtime provides, so it cannot be loaded safely.", size: "7.6GB", runtime_compatibility: { supported: false, status: "unsupported", user_message: "This Gemma 4 MLX model needs a newer MLX-VLM Gemma 4 component than the installed runtime provides, so it cannot be loaded safely." } },
+      ],
+    },
+  });
+  if (pathname === "/engines/prepare-model/stream" && req.method === "POST") {
+    res.writeHead(200, { "content-type": "text/event-stream; charset=utf-8", "cache-control": "no-store", connection: "keep-alive" });
+    const send = (event, obj) => res.write(`event: ${event}\ndata: ${JSON.stringify(obj)}\n\n`);
+    send("progress", { stage: "engine", message: "Execution engine is ready.", percent: 10 });
+    send("progress", { stage: "download", message: "Already downloaded model files.", percent: 100 });
+    send("progress", { stage: "smoke_test", message: "Validating chat compatibility.", percent: 98 });
+    send("done", { status: "ok", model: "mlx-community/Qwen3-VL-8B-Instruct-4bit", current: "mlx-community/Qwen3-VL-8B-Instruct-4bit", ready_to_chat: true, compatibility_status: "ok" });
+    return res.end();
+  }
   if (pathname === "/local/sysinfo") return json(res, { cpu_pct: 34, ram_pct: 61, gpu_mem_pct: 48, gpu_mem_gb: 9.4 });
   if (pathname === "/knowledge-graph/documents") return json(res, {
     documents: [

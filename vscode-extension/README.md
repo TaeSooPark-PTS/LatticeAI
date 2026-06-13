@@ -1,6 +1,6 @@
 # Lattice AI — VS Code Extension
 
-**Local-first AI workspace extension for Lattice AI v3 knowledge graph, hybrid search, model workflows, and coding actions.**
+**Local-first AI workspace extension for Lattice AI v4 knowledge graph, hybrid search, model workflows, and coding actions.**
 
 [![VS Code Marketplace](https://img.shields.io/badge/VS%20Code%20Marketplace-Install-blue?logo=visualstudiocode)](https://marketplace.visualstudio.com/items?itemName=parktaesoo.ltcai)
 [![Open VSX](https://img.shields.io/open-vsx/v/parktaesoo/ltcai?label=Open%20VSX)](https://open-vsx.org/extension/parktaesoo/ltcai)
@@ -13,14 +13,11 @@ editor.
 
 ## Current Release
 
-**3.4.1 — Runtime Completion.** The main workspace at `/app` now closes the
-remaining core gaps: hooks that actually execute (with a run log), uploaded
-documents visible in Files, VLM image input in Chat, an agent Run console
-(Run/Stop/Status/Queue/Logs), and an on-device Local Agent with Connect Folder +
-Folder Watch — on top of the v3.2 platform (multi-agent collaboration, Agent
-Registry, marketplace templates, workflow agents, long-term memory,
-Skills/Hooks/Tool registries, MCP Manager, Basic / Advanced / Admin modes).
-Enterprise controls remain intentionally disabled.
+**4.5.0 — Product Experience Recovery RC.** The desktop workspace keeps the
+v4 Brain Core extraction and restores first-run setup, workspace selection,
+environment analysis, model recommendation, explicit model install/download
+consent, model validation, Basic / Advanced / Admin mode clarity, and graph
+readability. The extension connects to the same local workspace APIs.
 
 ## Quick Start
 
@@ -55,7 +52,7 @@ The extension auto-connects to `http://localhost:4825`.
 | Knowledge Graph | Use graph-backed context from files, notes, screenshots, and conversations |
 | Multi-agent workflow | Start planner/executor/reviewer style coding workflows |
 | Local-first workspace | Keep personal work local while supporting organization workspace patterns |
-| Native v3 app | Use `/app` as the primary product shell |
+| Native v4 app | Use `/app` as the primary product shell |
 
 ## Commands
 
@@ -103,7 +100,7 @@ Remote or tunnel server example:
 - [Project README](https://github.com/TaeSooPark-PTS/LatticeAI)
 - [PyPI](https://pypi.org/project/ltcai/)
 - [npm](https://www.npmjs.com/package/ltcai)
-- [GitHub Release v3.4.1](https://github.com/TaeSooPark-PTS/LatticeAI/releases/tag/v3.4.1)
+- [GitHub Releases](https://github.com/TaeSooPark-PTS/LatticeAI/releases)
 - [Changelog](https://github.com/TaeSooPark-PTS/LatticeAI/blob/main/docs/CHANGELOG.md)
 - [Security Policy](https://github.com/TaeSooPark-PTS/LatticeAI/blob/main/SECURITY.md)
 

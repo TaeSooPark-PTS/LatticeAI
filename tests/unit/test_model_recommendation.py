@@ -5,7 +5,43 @@ Uses synthetic system profiles so the tri-state classification
 without touching real hardware.
 """
 
+import pytest
+
 from latticeai.services import model_recommendation as mr
+
+
+def _runtime_supported(_model_id, *, engine=None):
+    return {
+        "model_id": _model_id,
+        "engine": engine,
+        "status": "supported",
+        "supported": True,
+        "checked": True,
+    }
+
+
+@pytest.fixture(autouse=True)
+def assume_runtime_supported(monkeypatch):
+    monkeypatch.setattr(mr, "model_runtime_compatibility", _runtime_supported)
+
+
+def test_runtime_incompatibility_marks_model_not_recommended(monkeypatch):
+    monkeypatch.setattr(
+        mr,
+        "model_runtime_compatibility",
+        lambda model_id, *, engine=None: {
+            "model_id": model_id,
+            "engine": engine,
+            "status": "unsupported",
+            "supported": False,
+            "user_message": "This model is not supported by the installed runtime.",
+        } if "gemma-4-12b" in model_id else _runtime_supported(model_id, engine=engine),
+    )
+
+    result = mr.recommend_catalog(_mac(64), engine="local_mlx")
+    by_id = {m["id"]: m for m in result["models"]}
+    assert by_id["mlx-community/gemma-4-12b-it-4bit"]["status"] == mr.NOT_RECOMMENDED
+    assert "installed runtime" in by_id["mlx-community/gemma-4-12b-it-4bit"]["reason"]
 
 
 # ── size parsing ──────────────────────────────────────────────────────────────

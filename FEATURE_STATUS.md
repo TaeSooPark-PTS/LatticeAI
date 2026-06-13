@@ -1,10 +1,25 @@
-# Lattice AI — Feature Status (v4.4.0)
+# Lattice AI — Feature Status (v4.5.0)
 
-**Current release line:** v4.4.0 Brain Engine Extraction Release. Lattice AI
-is a Digital Brain Platform: the graph is the durable asset; models read it and
-are replaceable. Sections below v4.4.0 are historical release-status records and
-should not override the current README, ARCHITECTURE.md, or v4.4.0 release
+**Current release line:** v4.5.0 Product Experience Recovery RC. Lattice AI is a
+Digital Brain Platform: the graph is the durable asset; models read it and are
+replaceable. Sections below v4.5.0 are historical release-status records and
+should not override the current README, ARCHITECTURE.md, or v4.5.0 release
 notes.
+
+## v4.5.0 Product Experience Recovery RC — what changed
+
+v4.5.0 restores first-run setup, workspace/model onboarding, model runtime
+validation, Basic/Advanced/Admin mode clarity, and graph readability while
+preserving the v4.4.0 physical Brain extraction and storage/runtime
+architecture.
+
+| Feature | Status | Evidence |
+| --- | --- | --- |
+| **First-run setup** | WORKING | App shell guide exposes Login -> Workspace Selection -> Environment Analysis -> Model Recommendation -> Model Installation -> Model Validation -> Mode Selection -> Brain Usage. `frontend/src/components/FirstRunGuide.tsx`, `tests/visual/v3.spec.js`. |
+| **Model setup flow** | WORKING | Library Models uses the existing streamed prepare/load path and visible consent for runtime install/model download. `frontend/src/pages/Library.tsx`, `frontend/src/api/client.ts`. |
+| **Gemma 4 runtime compatibility** | WORKING | Gemma 4 MLX models are marked unsupported when the installed MLX-VLM runtime lacks the Gemma 4 component; loader errors are converted into recovery guidance and alternatives. `latticeai/core/model_compat.py`, `tests/unit/test_model_compat.py`. |
+| **Basic-mode product polish** | WORKING | Basic mode hides endpoint/module leakage in status badges, graph copy, model cards, and computer readiness while Advanced/Admin retain detail. `tests/visual/v3.spec.js`. |
+| **Graph discoverability** | WORKING | Brain graph/search copy focuses on ideas, relationships, sources, focus, filtering, and readability without changing graph architecture. `docs/V4_5_0_GRAPH_UX_REPORT.md`. |
 
 ## v4.4.0 Brain Engine Extraction Release — what changed
 

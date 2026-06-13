@@ -3,6 +3,52 @@
 The top entry is the current release-preparation target. Older entries are
 historical and may describe behavior as it existed at that release.
 
+## [4.5.0] - 2026-06-13
+
+> Product Experience Recovery release candidate after the v4.4.0 physical Brain
+> extraction.
+
+### Changed
+
+- Restored the first-run product journey in the desktop shell: Login ->
+  Workspace Selection -> Environment Analysis -> Model Recommendation -> Model
+  Installation -> Model Validation -> Mode Selection -> Brain Usage.
+- Reworked Library Models around the existing prepare/load stream so model setup
+  visibly moves through Environment Analysis, Recommended Models, Install,
+  Download Progress, Validate, Load, and Ready.
+- Basic mode now uses friendlier connected/needs-setup status language and
+  hides endpoint/module details in the Brain graph, model cards, and computer
+  readiness panels while preserving Advanced/Admin inspection detail.
+- Brain graph/search copy now emphasizes ideas, relationships, sources, focus,
+  filtering, and readability instead of backend endpoint implementation.
+
+### Fixed
+
+- Gemma 4 MLX models are no longer marked ready when the installed MLX-VLM
+  runtime is missing the Gemma 4 `gemma4_unified` component.
+- Raw loader errors such as `No module named ...gemma4_unified` are converted
+  into friendly unsupported-model messages with recovery guidance and
+  alternatives such as Qwen3-VL local models or Gemma 4 GGUF via local servers.
+- Workspace selection now persists across reloads so the selected workspace is
+  used by API requests after restart.
+
+### Validation
+
+- Added unit coverage for Gemma 4 runtime compatibility and recommendation
+  gating.
+- Added Playwright coverage for first-run setup, model setup flow, Gemma
+  recovery guidance, and Basic graph developer-leakage prevention.
+- Full v4.5.0 RC validation is tracked in
+  `docs/V4_5_0_VALIDATION_REPORT.md`.
+
+### Artifacts
+
+- `dist/ltcai-4.5.0-py3-none-any.whl`
+- `dist/ltcai-4.5.0.tar.gz`
+- `dist/ltcai-4.5.0.vsix`
+- `ltcai-4.5.0.tgz`
+- `src-tauri/target/release/bundle/dmg/Lattice AI_4.5.0_aarch64.dmg`
+
 ## [4.4.0] - 2026-06-13
 
 > Brain Engine Extraction release: the Brain Core implementation physically

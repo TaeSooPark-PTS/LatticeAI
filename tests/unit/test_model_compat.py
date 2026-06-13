@@ -4,6 +4,8 @@ from latticeai.core.model_compat import (
     detect_model_family,
     ensure_profile,
     fast_postprocess,
+    friendly_model_runtime_error,
+    model_runtime_compatibility,
     validate_smoke_response,
     classify_smoke_response,
     record_smoke_result,
@@ -124,3 +126,36 @@ def test_list_cached_profiles_returns_dicts():
     record_smoke_result("model-z", "ollama", True, "ok")
     items = list_cached_profiles()
     assert any(item.get("model_id") == "model-z" for item in items)
+
+
+def test_gemma4_mlx_missing_drafter_is_not_supported(monkeypatch):
+    def fake_find_spec(name):
+        if name in {"mlx", "mlx_vlm"}:
+            return object()
+        return None
+
+    monkeypatch.setattr("latticeai.core.model_compat.importlib.util.find_spec", fake_find_spec)
+    result = model_runtime_compatibility("mlx-community/gemma-4-12b-it-4bit", "local_mlx")
+
+    assert result["supported"] is False
+    assert result["status"] == "unsupported"
+    assert "Gemma 4" in result["user_message"]
+    assert result["alternatives"]
+
+
+def test_gemma4_runtime_error_is_friendly(monkeypatch):
+    def fake_find_spec(name):
+        if name in {"mlx", "mlx_vlm"}:
+            return object()
+        return None
+
+    monkeypatch.setattr("latticeai.core.model_compat.importlib.util.find_spec", fake_find_spec)
+    detail = friendly_model_runtime_error(
+        "No module named mlx_vlm.speculative.drafters.gemma4_unified",
+        model_id="mlx-community/gemma-4-12b-it-4bit",
+        engine="local_mlx",
+    )
+
+    assert detail["status"] == "unsupported"
+    assert "No module named" not in detail["user_message"]
+    assert detail["recovery_guidance"]

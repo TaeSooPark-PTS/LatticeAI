@@ -135,6 +135,8 @@ def create_models_router(
         loaded_ids: Optional[List[str]] = None,
         current_id: Optional[str] = None,
     ) -> List[Dict[str, object]]:
+        from latticeai.core.model_compat import model_runtime_compatibility
+
         engine_lookup = {str(engine.get("id") or ""): engine for engine in engines or []}
         model_lookup: Dict[str, Dict[str, object]] = {}
         for engine in engines or []:
@@ -167,10 +169,15 @@ def create_models_router(
             is_loaded = load_id in loaded or str(item["id"]) in loaded or current_id in {load_id, str(item["id"])}
             engine_installed = bool(engine_info.get("installed"))
             pullable = bool(item.get("pullable", True))
+            runtime_compatibility = model_runtime_compatibility(load_id, engine=recommended_engine)
+            runtime_supported = runtime_compatibility.get("supported") is not False
             download_required = bool(pullable and not pulled and not is_loaded)
             if is_loaded:
                 load_status = "loaded"
                 unavailable_reason = None
+            elif not runtime_supported:
+                load_status = "unsupported"
+                unavailable_reason = str(runtime_compatibility.get("user_message") or "This model is not supported by the installed runtime.")
             elif not engine_installed:
                 load_status = "unavailable"
                 unavailable_reason = f"{engine_info.get('name') or recommended_engine} runtime is not installed."
@@ -196,9 +203,12 @@ def create_models_router(
                 "source_display_order": item.get("source_display_order"),
                 "pulled": pulled,
                 "download_required": download_required,
-                "load_available": is_loaded or (engine_installed and not download_required),
+                "load_available": is_loaded or (runtime_supported and engine_installed and not download_required),
                 "load_status": load_status,
                 "unavailable_reason": unavailable_reason,
+                "runtime_compatibility": runtime_compatibility,
+                "recovery_guidance": runtime_compatibility.get("recovery_guidance") or [],
+                "alternative_recommendations": runtime_compatibility.get("alternatives") or [],
             }
             base["engine_options"] = options
             base["recommended_engine"] = recommended_engine
@@ -272,10 +282,20 @@ def create_models_router(
     @router.post("/engines/prepare-model")
     async def engines_prepare_model(req: PrepareModelRequest, request: Request):
         require_user(request)
-        return await prepare_and_load_model(
-            req.model, request, engine=req.engine, user_email=req.user_email,
-            allow_download=req.allow_download,
-        )
+        try:
+            return await prepare_and_load_model(
+                req.model, request, engine=req.engine, user_email=req.user_email,
+                allow_download=req.allow_download,
+            )
+        except HTTPException:
+            raise
+        except Exception as exc:
+            from latticeai.core.model_compat import friendly_model_runtime_error
+
+            raise HTTPException(
+                status_code=500,
+                detail=friendly_model_runtime_error(exc, model_id=req.model, engine=req.engine),
+            )
 
     @router.post("/engines/prepare-model/stream")
     async def engines_prepare_model_stream(req: PrepareModelRequest, request: Request):
@@ -295,9 +315,11 @@ def create_models_router(
                 })
             except Exception as exc:
                 logging.exception("model prepare stream failed")
+                from latticeai.core.model_compat import friendly_model_runtime_error
+
                 yield sse_event("error", {
                     "status_code": 500,
-                    "detail": str(exc)[-1000:] or "모델 준비에 실패했습니다.",
+                    "detail": friendly_model_runtime_error(exc, model_id=req.model, engine=req.engine),
                 })
 
         return StreamingResponse(
@@ -356,6 +378,8 @@ def create_models_router(
     @router.post("/models/load")
     async def load_model(req: LoadModelRequest, request: Request):
         try:
+            from latticeai.core.model_compat import friendly_model_runtime_error, model_runtime_compatibility
+
             model_id = req.model_id
             requested_engine = req.engine or (model_id.split(":", 1)[0] if ":" in model_id else "local_mlx")
             if IS_PUBLIC_MODE and not ALLOW_LOCAL_MODELS and requested_engine in {"local_mlx", "mlx"}:
@@ -363,6 +387,9 @@ def create_models_router(
                     status_code=400,
                     detail="Public mode blocks local MLX model loading. Use openai:, openrouter:, groq:, together:, or set LATTICEAI_ALLOW_LOCAL_MODELS=true.",
                 )
+            compatibility = model_runtime_compatibility(model_id, engine=requested_engine)
+            if compatibility.get("supported") is False:
+                raise HTTPException(status_code=400, detail=compatibility)
             return await prepare_and_load_model(
                 model_id, request, engine=req.engine, user_email=req.user_email,
                 adapter_path=req.adapter_path, draft_model_id=req.draft_model_id,
@@ -371,7 +398,10 @@ def create_models_router(
         except HTTPException:
             raise
         except Exception as e:
-            raise HTTPException(status_code=500, detail=str(e))
+            raise HTTPException(
+                status_code=500,
+                detail=friendly_model_runtime_error(e, model_id=req.model_id, engine=req.engine),
+            )
 
     @router.post("/models/switch/{model_id:path}")
     async def switch_model(model_id: str, request: Request):

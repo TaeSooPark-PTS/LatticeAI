@@ -29,6 +29,24 @@ test("React desktop shell boots with six primary navigation groups", async ({ pa
   expect(errors).toEqual([]);
 });
 
+test("first-run setup restores the original onboarding journey", async ({ page }) => {
+  await page.goto("/app");
+  await expect(page.locator("body")).toContainText("First-run setup");
+  for (const label of [
+    "Login",
+    "Workspace Selection",
+    "Environment Analysis",
+    "Model Recommendation",
+    "Model Installation",
+    "Model Validation",
+    "Mode Selection",
+    "Brain Usage",
+  ]) {
+    await expect(page.locator("body")).toContainText(label);
+  }
+  await expect(page.getByRole("button", { name: "Set Up Model" })).toBeVisible();
+});
+
 test("old hash routes resolve into the replacement SPA without JS errors", async ({ page }) => {
   for (const route of ROUTES) {
     const errors = trackPageErrors(page);
@@ -63,7 +81,7 @@ test("offline startup loads local assets and shows honest unavailable state", as
   await page.goto("/app#/brain");
   await page.waitForSelector("text=Digital Brain Desktop");
   await expect(page.locator("body")).toContainText("Server: unavailable");
-  await expect(page.getByRole("button", { name: /Brain/ })).toBeVisible();
+  await expect(page.locator("aside nav").getByRole("button", { name: /^Brain\b/ }).first()).toBeVisible();
   expect(errors).toEqual([]);
 });
 
@@ -110,13 +128,25 @@ test("Act surfaces agents, runs, workflow graph, triggers, hooks, and tools", as
 
 test("Library renders models, skills, MCP, and marketplace registries", async ({ page }) => {
   await page.goto("/app#/models");
-  await expect(page.locator("body")).toContainText("Qwen2.5-VL 7B");
+  await expect(page.locator("body")).toContainText("Qwen3-VL 8B");
+  await expect(page.locator("body")).toContainText("Environment Analysis -> Recommended Models -> Install -> Download Progress -> Validate -> Load -> Ready");
+  await expect(page.locator("body")).toContainText("Runtime component missing");
+  await expect(page.locator("body")).toContainText("Qwen3-VL 8B");
+  await expect(page.locator("body")).not.toContainText("No module named");
   await page.goto("/app#/skills");
   await expect(page.locator("body")).toContainText("visual_regression");
   await page.goto("/app#/mcp");
   await expect(page.locator("body")).toContainText("read_file");
   await page.goto("/app#/marketplace");
   await expect(page.locator("body")).toContainText("Research Assistant");
+});
+
+test("Basic graph view hides developer endpoint leakage", async ({ page }) => {
+  await page.goto("/app#/knowledge-graph");
+  await page.waitForSelector("[data-testid='brain-cytoscape']");
+  await expect(page.locator("body")).toContainText("Search, focus, and filter the ideas Lattice has learned from your workspace.");
+  await expect(page.locator("body")).not.toContainText("/knowledge-graph/graph");
+  await expect(page.locator("body")).not.toContainText("Cytoscape.js");
 });
 
 test("System renders account, workspaces, snapshots, activity, network, settings, and admin", async ({ page }) => {

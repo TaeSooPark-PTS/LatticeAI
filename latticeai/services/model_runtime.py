@@ -40,6 +40,8 @@ from latticeai.core.model_compat import (
     classify_smoke_response as _classify_smoke_response,
     ensure_profile as _ensure_compat_profile,
     fast_postprocess as _compat_fast_postprocess,
+    friendly_model_runtime_error as _friendly_model_runtime_error,
+    model_runtime_compatibility as _model_runtime_compatibility,
     record_smoke_result as _record_smoke_result,
 )
 from latticeai.core.model_resolution import ModelResolution as _ModelResolution
@@ -1369,6 +1371,9 @@ async def prepare_and_load_model(
     parsed_provider, parsed_model = parse_model_ref(model_id)
     if parsed_provider == "mlx":
         parsed_provider = "local_mlx"
+    compatibility = _model_runtime_compatibility(parsed_model, engine=parsed_provider)
+    if compatibility.get("supported") is False:
+        raise HTTPException(status_code=400, detail=compatibility)
 
     local_engines = {"local_mlx", "ollama", "vllm", "lmstudio", "llamacpp"}
     install_result: Dict[str, object] = {}
@@ -1488,6 +1493,9 @@ async def prepare_and_load_model_stream(
     parsed_provider, parsed_model = parse_model_ref(model_id)
     if parsed_provider == "mlx":
         parsed_provider = "local_mlx"
+    compatibility = _model_runtime_compatibility(parsed_model, engine=parsed_provider)
+    if compatibility.get("supported") is False:
+        raise HTTPException(status_code=400, detail=compatibility)
 
     work_queue: "queue.Queue[Dict[str, object]]" = queue.Queue()
     work_result: Dict[str, object] = {}
@@ -1651,7 +1659,11 @@ async def prepare_and_load_model_stream(
             work_queue.put({"kind": "error", "status_code": exc.status_code, "detail": exc.detail})
         except Exception as exc:
             logging.exception("model prepare stream worker failed")
-            work_queue.put({"kind": "error", "status_code": 500, "detail": str(exc)[-2000:]})
+            work_queue.put({
+                "kind": "error",
+                "status_code": 500,
+                "detail": _friendly_model_runtime_error(exc, model_id=model_id, engine=parsed_provider),
+            })
 
     worker = threading.Thread(target=blocking_prepare, daemon=True)
     worker.start()

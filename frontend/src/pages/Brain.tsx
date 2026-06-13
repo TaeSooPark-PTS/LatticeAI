@@ -3,12 +3,13 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import cytoscape, { Core, ElementDefinition } from "cytoscape";
 import { BrainCircuit, DatabaseBackup, Filter, Focus, Layers3, LocateFixed, Search, Sparkles } from "lucide-react";
 import { latticeApi } from "@/api/client";
-import { ActionButton, DataPanel, EmptyState, EntityList, LoadingPanel, OperationResult, StatGrid, StructuredView, Tabs } from "@/components/primitives";
+import { ActionButton, DataPanel, EmptyState, EntityList, KeyValueList, LoadingPanel, OperationResult, StatGrid, StructuredView, Tabs } from "@/components/primitives";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
+import { useAppStore } from "@/store/appStore";
 import { asArray, fmtNumber, pct, shortId, titleize } from "@/lib/utils";
 
 type BrainTab = "overview" | "graph" | "search" | "memory" | "provenance" | "portability";
@@ -411,6 +412,7 @@ function CytoscapeGraph({
 }
 
 export function BrainPage({ initialTab }: { initialTab?: string }) {
+  const mode = useAppStore((state) => state.mode);
   const [tab, setTab] = React.useState<BrainTab>((initialTab as BrainTab) || "graph");
   React.useEffect(() => {
     if (initialTab && tabs.some((item) => item.id === initialTab)) setTab(initialTab as BrainTab);
@@ -429,7 +431,7 @@ export function BrainPage({ initialTab }: { initialTab?: string }) {
           <div className="flex items-center gap-2 text-sm text-primary"><BrainCircuit className="h-4 w-4" /> Graph-first Digital Brain</div>
           <h1 className="mt-2 text-3xl font-semibold tracking-normal">Brain</h1>
           <p className="mt-2 max-w-3xl text-sm text-muted-foreground">
-            Explore the knowledge graph, memory, provenance, retrieval, and portable brain state. Empty states reflect live API availability.
+            Explore what Lattice remembers, where it came from, and how ideas connect across your workspace.
           </p>
         </div>
         <div className="rounded-md border border-border bg-card p-4">
@@ -459,7 +461,7 @@ export function BrainPage({ initialTab }: { initialTab?: string }) {
 
       {tab === "graph" ? (
         graph.isLoading ? <LoadingPanel title="Knowledge graph" /> : (
-          <DataPanel title="Digital Brain explorer" description="Interactive Cytoscape.js explorer backed by /knowledge-graph/graph." result={graph.data}>
+          <DataPanel title="Digital Brain explorer" description={mode === "basic" ? "Search, focus, and filter the ideas Lattice has learned from your workspace." : "Interactive graph explorer with source-backed relationships and advanced inspection."} result={graph.data}>
             {(data) => <DigitalBrainExplorer data={data} />}
           </DataPanel>
         )
@@ -474,6 +476,7 @@ export function BrainPage({ initialTab }: { initialTab?: string }) {
 }
 
 function GraphStatus({ data }: { data: Record<string, unknown> }) {
+  const mode = useAppStore((state) => state.mode);
   const nodeTypes = Object.keys((data.nodes as Record<string, unknown>) || {});
   const edgeTypes = Object.keys((data.edges as Record<string, unknown>) || {});
   return (
@@ -484,7 +487,11 @@ function GraphStatus({ data }: { data: Record<string, unknown> }) {
         { label: "Node types", value: nodeTypes.length },
         { label: "Edge types", value: edgeTypes.length },
       ]} />
-      <StructuredView value={{ node_types: nodeTypes, edge_types: edgeTypes }} />
+      {mode === "basic" ? (
+        <div className="flex flex-wrap gap-1">
+          {[...nodeTypes, ...edgeTypes].slice(0, 10).map((item) => <Badge key={item} variant="muted">{titleize(item)}</Badge>)}
+        </div>
+      ) : <StructuredView value={{ node_types: nodeTypes, edge_types: edgeTypes }} />}
     </div>
   );
 }
@@ -515,10 +522,11 @@ function MemoryStatus({ data }: { data: Record<string, unknown> }) {
 }
 
 function DigitalBrainExplorer({ data }: { data: unknown }) {
+  const mode = useAppStore((state) => state.mode);
   const parsed = React.useMemo(() => parseGraph(data), [data]);
   const [search, setSearch] = React.useState("");
   const [groupFilter, setGroupFilter] = React.useState("all");
-  const [minImportance, setMinImportance] = React.useState(0);
+  const [minImportance, setMinImportance] = React.useState(mode === "basic" ? 0.1 : 0);
   const [labelMode, setLabelMode] = React.useState<LabelMode>("important");
   const [collapsedGroups, setCollapsedGroups] = React.useState<Set<string>>(new Set());
   const [selectedId, setSelectedId] = React.useState<string | null>(null);
@@ -544,6 +552,9 @@ function DigitalBrainExplorer({ data }: { data: unknown }) {
       return next;
     });
   };
+  React.useEffect(() => {
+    if (mode === "basic" && minImportance < 0.1) setMinImportance(0.1);
+  }, [mode, minImportance]);
   if (!parsed.nodes.length) {
     return (
       <EmptyState
@@ -557,7 +568,7 @@ function DigitalBrainExplorer({ data }: { data: unknown }) {
       <div className="grid gap-3 xl:grid-cols-[1fr_220px_180px_170px]">
         <div className="relative">
           <Search className="pointer-events-none absolute left-3 top-2.5 h-4 w-4 text-muted-foreground" />
-          <Input className="pl-9" value={search} onChange={(event) => setSearch(event.target.value)} placeholder="Search graph labels, types, provenance..." />
+          <Input className="pl-9" value={search} onChange={(event) => setSearch(event.target.value)} placeholder={mode === "basic" ? "Search ideas, files, people, and notes..." : "Search graph labels, types, provenance..."} />
         </div>
         <select className="h-9 rounded-md border border-border bg-background px-3 text-sm" value={groupFilter} onChange={(event) => setGroupFilter(event.target.value)}>
           <option value="all">All semantic groups</option>
@@ -576,7 +587,7 @@ function DigitalBrainExplorer({ data }: { data: unknown }) {
             <div>
               <CardTitle className="flex items-center gap-2"><Layers3 className="h-4 w-4" /> Semantic map</CardTitle>
               <CardDescription>
-                Showing {fmtNumber(model.visibleNodes.length)} nodes and {fmtNumber(model.visibleEdges.length)} relationships from {fmtNumber(model.totalNodes)} graph nodes.
+                Showing {fmtNumber(model.visibleNodes.length)} ideas and {fmtNumber(model.visibleEdges.length)} relationships from {fmtNumber(model.totalNodes)} saved items.
               </CardDescription>
             </div>
             <Badge variant={model.hiddenByFilters ? "warning" : "success"}>{model.hiddenByFilters ? `${fmtNumber(model.hiddenByFilters)} filtered` : "all in view"}</Badge>
@@ -634,11 +645,18 @@ function DigitalBrainExplorer({ data }: { data: unknown }) {
                     </div>
                   </div>
                   {selected.summary ? <p className="text-sm text-muted-foreground">{selected.summary}</p> : null}
-                  <StructuredView value={{
-                    id: selected.id,
-                    degree: selected.degree,
-                    source: selected.source || "not reported",
-                  }} />
+                  {mode === "basic" ? (
+                    <KeyValueList data={{
+                      connections: selected.degree,
+                      source: selected.source || "not reported",
+                    }} />
+                  ) : (
+                    <StructuredView value={{
+                      id: selected.id,
+                      degree: selected.degree,
+                      source: selected.source || "not reported",
+                    }} />
+                  )}
                 </>
               ) : selectedGroup ? (
                 <div className="space-y-2">
@@ -687,8 +705,8 @@ function HybridSearch() {
   return (
     <Card>
       <CardHeader>
-        <CardTitle className="flex items-center gap-2"><Search className="h-4 w-4" /> Hybrid search</CardTitle>
-        <CardDescription>Calls the backend fused search endpoint and renders records with returned source scores.</CardDescription>
+        <CardTitle className="flex items-center gap-2"><Search className="h-4 w-4" /> Brain search</CardTitle>
+        <CardDescription>Searches memories, graph connections, and indexed documents together.</CardDescription>
       </CardHeader>
       <CardContent className="space-y-3">
         <div className="flex flex-col gap-2 sm:flex-row">

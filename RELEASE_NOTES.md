@@ -1,7 +1,44 @@
 # Release Notes
 
-The current release target is v4.4.0. Older sections are historical
+The current release target is v4.5.0. Older sections are historical
 release notes and should not be read as newer product claims.
+
+## v4.5.0 RC - Product Experience Recovery
+
+Lattice AI v4.5.0 restores the original end-user setup and model experience on
+top of the v4.4.0 physical Brain extraction. It does not redesign
+`lattice_brain`, StorageEngine, FastAPI, Tauri, backup/restore, or portability
+architecture. This RC builds validated artifacts only; it does not tag, create a
+GitHub Release, publish packages, or deploy.
+
+### Highlights
+
+- First-run setup now surfaces Login -> Workspace Selection -> Environment
+  Analysis -> Model Recommendation -> Model Installation -> Model Validation ->
+  Mode Selection -> Brain Usage from the app shell and command palette.
+- Library Models exposes the existing prepare/load stream as a readable setup
+  flow: Environment Analysis, Recommended Models, Install, Download Progress,
+  Validate, Load, and Ready.
+- Runtime install/model download remains explicit-consent only. No model files
+  are downloaded and no local runtime installation starts from token/model
+  presence alone.
+- Gemma 4 MLX models are blocked from "ready" when installed MLX-VLM lacks the
+  Gemma 4 `gemma4_unified` component. Users see friendly recovery guidance and
+  alternatives such as Qwen3-VL local models or Gemma 4 GGUF through local
+  server runtimes.
+- Basic mode hides developer endpoint/module leakage in status badges, graph
+  copy, model cards, and computer readiness while Advanced/Admin retain
+  inspection detail.
+
+### Expected Artifacts
+
+- `dist/ltcai-4.5.0-py3-none-any.whl`
+- `dist/ltcai-4.5.0.tar.gz`
+- `dist/ltcai-4.5.0.vsix`
+- `ltcai-4.5.0.tgz`
+- `src-tauri/target/release/bundle/dmg/Lattice AI_4.5.0_aarch64.dmg`
+
+Full notes: [RELEASE_NOTES_v4.5.0.md](RELEASE_NOTES_v4.5.0.md)
 
 ## v4.4.0 - Brain Engine Extraction Release
 

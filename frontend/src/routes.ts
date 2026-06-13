@@ -25,6 +25,7 @@ export const primaryRoutes = [
 
 export const routeAliases: Record<string, { primary: PrimaryRoute; tab?: string }> = {
   home: { primary: "brain", tab: "overview" },
+  onboarding: { primary: "system", tab: "account" },
   "knowledge-graph": { primary: "brain", tab: "graph" },
   "hybrid-search": { primary: "brain", tab: "search" },
   memory: { primary: "brain", tab: "memory" },
@@ -58,6 +59,7 @@ export const routeAliases: Record<string, { primary: PrimaryRoute; tab?: string 
 
 export const commandRoutes = [
   { key: "brain", label: "Brain", icon: Brain },
+  { key: "onboarding", label: "First-run Setup", icon: Settings },
   { key: "knowledge-graph", label: "Knowledge Graph", icon: Network },
   { key: "hybrid-search", label: "Hybrid Search", icon: Zap },
   { key: "memory", label: "Memory", icon: Database },

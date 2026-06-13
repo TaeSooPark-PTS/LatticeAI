@@ -77,6 +77,21 @@ function workspaceHeaders(): Record<string, string> {
   return workspaceId ? { "X-Workspace-Id": workspaceId } : {};
 }
 
+function friendlyError(error: unknown, fallback: string) {
+  if (!error) return fallback;
+  const record = typeof error === "object" && error !== null ? error as Record<string, unknown> : null;
+  const detail = record?.detail;
+  if (typeof detail === "string") return detail;
+  const detailRecord = typeof detail === "object" && detail !== null ? detail as Record<string, unknown> : null;
+  if (detailRecord) {
+    const message = detailRecord.user_message || detailRecord.reason || detailRecord.action || detailRecord.status;
+    if (message) return String(message);
+  }
+  const message = record?.message || record?.error;
+  if (message) return String(message);
+  return fallback;
+}
+
 async function apiJson<T>(
   method: HttpMethod,
   path: string,
@@ -108,7 +123,7 @@ async function apiJson<T>(
       status: response.status,
       data: emptyFor(opts.shape),
       source: "unavailable",
-      error: error ? JSON.stringify(error) : response.statusText,
+      error: friendlyError(error, response.statusText),
     };
   } catch (err) {
     return {
@@ -162,6 +177,69 @@ export type ChatEventHandlers = {
   onTrace?: (trace: unknown) => void;
   signal?: AbortSignal;
 };
+
+export type ModelPrepareHandlers = {
+  onProgress?: (data: Record<string, unknown>) => void;
+  onDone?: (data: Record<string, unknown>) => void;
+  onError?: (data: Record<string, unknown>) => void;
+  signal?: AbortSignal;
+};
+
+async function streamModelPrepare(
+  body: { model: string; engine?: string; allow_download?: boolean },
+  handlers: ModelPrepareHandlers = {},
+) {
+  const base = await apiBase();
+  const res = await fetch(`${base}/engines/prepare-model/stream`, {
+    method: "POST",
+    credentials: "same-origin",
+    signal: handlers.signal,
+    headers: {
+      "Content-Type": "application/json",
+      Accept: "text/event-stream",
+      ...workspaceHeaders(),
+    } satisfies HeadersInit,
+    body: JSON.stringify({ engine: null, allow_download: false, ...body }),
+  });
+  if (!res.ok || !res.body || !(res.headers.get("content-type") || "").includes("text/event-stream")) {
+    const payload = await res.json().catch(() => null);
+    const detail = payload?.detail && typeof payload.detail === "object" ? payload.detail : payload;
+    const message = friendlyError(payload, res.statusText);
+    handlers.onError?.({ status: "error", user_message: message, ...(detail || {}) });
+    return { source: "live" as const, ok: false, status: res.status, data: detail || {}, error: message };
+  }
+  const reader = res.body.getReader();
+  const decoder = new TextDecoder();
+  let buffer = "";
+  let eventName = "message";
+  let finalData: Record<string, unknown> = {};
+  for (;;) {
+    const { done, value } = await reader.read();
+    if (done) break;
+    buffer += decoder.decode(value, { stream: true });
+    const parts = buffer.split("\n\n");
+    buffer = parts.pop() || "";
+    for (const part of parts) {
+      const lines = part.split("\n");
+      eventName = lines.find((item) => item.startsWith("event:"))?.slice(6).trim() || "message";
+      const dataLine = lines.find((item) => item.startsWith("data:"));
+      if (!dataLine) continue;
+      const raw = dataLine.slice(5).trim();
+      const data = raw ? JSON.parse(raw) as Record<string, unknown> : {};
+      if (eventName === "progress") handlers.onProgress?.(data);
+      if (eventName === "error") {
+        const detail = typeof data.detail === "object" && data.detail !== null ? data.detail as Record<string, unknown> : data;
+        handlers.onError?.(detail);
+        return { source: "live" as const, ok: false, status: Number(data.status_code || 500), data: detail, error: friendlyError({ detail }, "Model setup failed") };
+      }
+      if (eventName === "done") {
+        finalData = data;
+        handlers.onDone?.(data);
+      }
+    }
+  }
+  return { source: "live" as const, ok: true, status: 200, data: finalData };
+}
 
 async function streamChat(body: Record<string, unknown>, handlers: ChatEventHandlers = {}) {
   const base = await apiBase();
@@ -263,6 +341,10 @@ export const latticeApi = {
   connectFolder: (path: string) => post("/knowledge-graph/local/index", { path, approved: true, watch_enabled: true, consent: { approved: true, source: "desktop-spa" } }, {}),
   localWatchStop: (source_id: string) => post("/knowledge-graph/local/watch/stop", { source_id }, {}),
   models: () => get("/models", { catalog: [], loaded: [], recommended: [] }),
+  modelRecommendations: (engine = "local_mlx") => get("/models/recommendations", { profile: {}, recommendations: { models: [], families: [], counts: {} } }, { engine }),
+  installEngine: (engine: string) => post("/engines/install", { engine }, {}),
+  prepareModel: (model: string, engine?: string, allow_download = false) => post("/engines/prepare-model", { model, engine: engine || null, allow_download }, {}),
+  streamModelPrepare,
   loadModel: (model_id: string, engine?: string, allow_download = false) => post("/models/load", { model_id, engine: engine || null, allow_download }, {}),
   unloadModel: (model_id: string) => del(`/models/unload/${encodeURIComponent(model_id)}`, {}),
   embeddingsStatus: () => get("/api/embeddings/status", {}),

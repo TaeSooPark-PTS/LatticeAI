@@ -18,6 +18,7 @@ from __future__ import annotations
 import re
 from typing import Any, Dict, List, Optional
 
+from latticeai.core.model_compat import model_runtime_compatibility
 from latticeai.services.model_catalog import ENGINE_MODEL_CATALOG
 
 # ── status vocabulary ─────────────────────────────────────────────────────────
@@ -85,14 +86,19 @@ def _engine_available(engine: str, profile: Dict[str, Any]) -> bool:
 def _classify_one(
     model: Dict[str, Any],
     *,
+    engine: str,
     engine_available: bool,
     ram_gb: float,
 ) -> Dict[str, Any]:
     size_gb = parse_size_gb(model.get("size"))
     need_gb = estimated_ram_gb(size_gb) if size_gb is not None else None
+    runtime = model_runtime_compatibility(str(model.get("id") or ""), engine=engine)
 
     if not engine_available:
         status, reason = NOT_RECOMMENDED, "Apple Silicon과 MLX-VLM이 필요합니다"
+    elif runtime.get("supported") is False:
+        status = NOT_RECOMMENDED
+        reason = str(runtime.get("user_message") or "이 모델은 현재 설치된 실행 런타임에서 지원되지 않습니다")
     elif need_gb is None:
         # Tool-managed/pull models have no fixed on-disk size, so treat them as
         # compatible and let the execution tool validate the exact model.
@@ -124,6 +130,7 @@ def _classify_one(
         "run_location": model.get("run_location"),
         "internet_requirement": model.get("internet_requirement"),
         "source_display_order": model.get("source_display_order"),
+        "runtime_compatibility": runtime,
     }
 
 
@@ -148,7 +155,7 @@ def recommend_catalog(profile: Dict[str, Any], *, engine: str = "local_mlx") -> 
     ram_gb = _ram_gb(profile)
 
     classified = [
-        _classify_one(m, engine_available=engine_available, ram_gb=ram_gb)
+        _classify_one(m, engine=engine, engine_available=engine_available, ram_gb=ram_gb)
         for m in models
     ]
 
