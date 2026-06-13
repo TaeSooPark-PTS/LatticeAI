@@ -61,7 +61,7 @@ type ExplorerModel = ParsedGraph & {
 };
 
 const tabs: Array<{ id: BrainTab; label: string }> = [
-  { id: "overview", label: "Overview" },
+  { id: "overview", label: "Today" },
   { id: "graph", label: "Map" },
   { id: "search", label: "Search" },
   { id: "memory", label: "Memory" },
@@ -413,7 +413,7 @@ function CytoscapeGraph({
 
 export function BrainPage({ initialTab }: { initialTab?: string }) {
   const mode = useAppStore((state) => state.mode);
-  const [tab, setTab] = React.useState<BrainTab>((initialTab as BrainTab) || "graph");
+  const [tab, setTab] = React.useState<BrainTab>((initialTab as BrainTab) || "overview");
   React.useEffect(() => {
     if (initialTab && tabs.some((item) => item.id === initialTab)) setTab(initialTab as BrainTab);
   }, [initialTab]);
@@ -428,10 +428,10 @@ export function BrainPage({ initialTab }: { initialTab?: string }) {
     <div className="space-y-5">
       <header className="page-hero grid gap-4 xl:grid-cols-[1.4fr_0.6fr]">
         <div>
-          <div className="page-kicker"><BrainCircuit className="h-4 w-4" /> Digital Brain</div>
-          <h1 className="page-title">See how your knowledge connects.</h1>
+          <div className="page-kicker"><BrainCircuit className="h-4 w-4" /> Home</div>
+          <h1 className="page-title">Start from the shape of your work.</h1>
           <p className="page-copy">
-            Search memories, follow relationships, and inspect the source behind every idea.
+            Lattice turns what you add into a living memory map, then keeps every answer tied back to its source.
           </p>
         </div>
         <div className="rounded-lg border border-border bg-background/58 p-4">

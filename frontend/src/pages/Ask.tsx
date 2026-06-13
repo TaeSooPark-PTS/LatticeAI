@@ -85,8 +85,8 @@ export function AskPage() {
     <div className="space-y-5">
       <header className="page-hero">
         <div className="page-kicker"><MessageSquare className="h-4 w-4" /> Ask</div>
-        <h1 className="page-title">Talk to your Digital Brain.</h1>
-        <p className="page-copy">Ask a question, attach an image, and let Lattice bring your memories and sources into the conversation.</p>
+        <h1 className="page-title">Think out loud with Lattice.</h1>
+        <p className="page-copy">Ask in plain language, attach an image, and let your private memory shape the answer.</p>
       </header>
       <div className="grid min-h-[calc(100vh-13rem)] gap-4 xl:grid-cols-[18rem_minmax(0,1fr)_22rem]">
       <Card className="overflow-hidden">

@@ -36,78 +36,63 @@ export function FirstRunGuide() {
   const readyProfile = compatProfiles.some((item) => item.chat_compatible || item.quality_status === "ok" || item.quality_status === "degraded");
 
   const steps = [
-    { label: "Login", done: Boolean(profileData.email), icon: UserCircle, action: "account" },
-    { label: "Workspace Selection", done: Boolean(registry.active_workspace || workspaceData.active_workspace), icon: Users, action: "workspace-admin" },
-    { label: "Environment Analysis", done: recs.isSuccess, icon: Cpu, action: "models" },
-    { label: "Model Recommendation", done: Boolean(topPick || currentModel), icon: Library, action: "models" },
-    { label: "Model Installation", done: Boolean(currentModel || loadedModels.length), icon: Download, action: "models" },
-    { label: "Model Validation", done: Boolean(readyProfile || currentModel || loadedModels.length), icon: PlayCircle, action: "models" },
-    { label: "Mode Selection", done: Boolean(mode), icon: SlidersHorizontal, action: "settings" },
-    { label: "Brain Usage", done: true, icon: Layers3, action: "knowledge-graph" },
+    { label: "Make it yours", done: Boolean(profileData.email), icon: UserCircle, action: "account", detail: "Sign in or keep a local profile." },
+    { label: "Choose a space", done: Boolean(registry.active_workspace || workspaceData.active_workspace), icon: Users, action: "workspace-admin", detail: "Decide where memories belong." },
+    { label: "Meet your Mac", done: recs.isSuccess, icon: Cpu, action: "models", detail: "Let Lattice inspect what can run locally." },
+    { label: "Pick a brain", done: Boolean(topPick || currentModel), icon: Library, action: "models", detail: "Use the recommended local model." },
+    { label: "Install locally", done: Boolean(currentModel || loadedModels.length), icon: Download, action: "models", detail: "Download only with explicit consent." },
+    { label: "Try a question", done: Boolean(readyProfile || currentModel || loadedModels.length), icon: PlayCircle, action: "chat", detail: "Confirm the model can answer." },
+    { label: "Set the pace", done: Boolean(mode), icon: SlidersHorizontal, action: "settings", detail: "Stay Calm or switch deeper." },
+    { label: "Explore memory", done: true, icon: Layers3, action: "knowledge-graph", detail: "Open the living map." },
   ];
   const completed = steps.filter((step) => step.done).length;
   const nextStep = steps.find((step) => !step.done) || steps[steps.length - 1];
   const progress = Math.round((completed / steps.length) * 100);
 
   return (
-    <section className="mb-6 overflow-hidden rounded-xl border border-border bg-card/86 shadow-[0_24px_80px_hsl(0_0%_0%/0.24)]">
-      <div className="grid gap-5 p-5 lg:grid-cols-[minmax(0,1fr)_20rem]">
-        <div className="space-y-4">
-          <div className="page-kicker"><CheckCircle2 className="h-4 w-4" /> First run</div>
-          <h2 className="text-3xl font-semibold tracking-normal">Set up your Digital Brain without guessing.</h2>
-          <p className="max-w-3xl text-sm leading-6 text-muted-foreground">
-            Start with a workspace, pick a local model, then begin capturing knowledge. Lattice will keep setup actions explicit.
-          </p>
-          <div className="flex flex-wrap gap-2">
-            <Button size="sm" onClick={() => go(nextStep.action)}>{nextStep.done ? "Open Brain" : `Continue: ${nextStep.label}`}</Button>
-            <Button size="sm" variant="outline" onClick={() => go("models")}>Model Setup</Button>
-            <Button size="sm" variant="outline" onClick={() => go("knowledge-graph")}>Open Brain Map</Button>
-          </div>
-        </div>
-        <div className="rounded-lg border border-border bg-background/54 p-4">
-          <div className="flex items-center justify-between gap-3">
-            <div>
-              <div className="text-sm font-semibold">{completed} of {steps.length} ready</div>
-              <div className="mt-1 text-xs text-muted-foreground">{mode === "basic" ? "Basic mode" : `${mode} mode`}</div>
-            </div>
-            <Badge variant={progress === 100 ? "success" : "warning"}>{progress}%</Badge>
-          </div>
-          <div className="mt-4 h-2 overflow-hidden rounded-full bg-muted">
-            <div className="h-full rounded-full bg-primary" style={{ width: `${progress}%` }} />
-          </div>
-          <Button
-            variant="outline"
-            size="sm"
-            className="mt-4 w-full"
-            onClick={() => {
-              try { localStorage.setItem("lattice.onboarding.dismissed", "true"); } catch {}
-              setDismissed(true);
-            }}
-          >
-            Hide guide
+    <section className="arrival-panel" aria-label="First 10 minutes">
+      <div className="arrival-copy">
+        <div className="page-kicker"><CheckCircle2 className="h-4 w-4" /> First 10 minutes</div>
+        <h2>Build your Digital Brain without guessing.</h2>
+        <p>
+          Start with a space, let Lattice recommend a private local model, then add the first pieces of knowledge.
+          Every step keeps the next action visible.
+        </p>
+        <div className="arrival-actions">
+          <Button onClick={() => go(nextStep.action)}>{nextStep.done ? "Open memory map" : `Continue: ${nextStep.label}`}</Button>
+          <Button variant="outline" onClick={() => go("models")}>Set up model</Button>
+          <Button variant="ghost" onClick={() => {
+            try { localStorage.setItem("lattice.onboarding.dismissed", "true"); } catch {}
+            setDismissed(true);
+          }}>
+            Hide
           </Button>
         </div>
       </div>
-      <div className="grid gap-2 border-t border-border bg-background/28 p-3 md:grid-cols-2 xl:grid-cols-4">
-        {steps.map((step) => {
-          const Icon = step.icon;
-          return (
-            <button
-              key={step.label}
-              onClick={() => go(step.action)}
-              className="group min-h-28 rounded-lg border border-border bg-card/72 p-3 text-left transition hover:-translate-y-0.5 hover:bg-muted/70"
-            >
-              <div className="flex items-start justify-between gap-2">
-                <span className="grid h-8 w-8 place-items-center rounded-md bg-primary/12 text-primary"><Icon className="h-4 w-4" /></span>
-                <Badge variant={step.done ? "success" : "warning"}>{step.done ? "ready" : step.label === nextStep.label ? "next" : "later"}</Badge>
-              </div>
-              <div className="mt-3 text-sm font-semibold">{step.label}</div>
-              <div className="mt-2 flex items-center gap-1 text-xs text-muted-foreground">
-                {step.done ? "Review" : "Start"} <ArrowRight className="h-3 w-3 transition group-hover:translate-x-0.5" />
-              </div>
-            </button>
-          );
-        })}
+      <div className="journey-panel">
+        <div className="journey-head">
+          <div>
+            <div className="text-sm font-semibold">{completed} of {steps.length} ready</div>
+            <div className="text-xs text-muted-foreground">{mode === "basic" ? "Calm mode" : `${mode} mode`}</div>
+          </div>
+          <Badge variant={progress === 100 ? "success" : "warning"}>{progress}%</Badge>
+        </div>
+        <div className="journey-progress"><span style={{ width: `${progress}%` }} /></div>
+        <div className="journey-steps">
+          {steps.map((step) => {
+            const Icon = step.icon;
+            return (
+              <button key={step.label} onClick={() => go(step.action)} className="journey-step">
+                <span className="journey-icon"><Icon className="h-4 w-4" /></span>
+                <span className="min-w-0">
+                  <span className="block truncate text-sm font-semibold">{step.label}</span>
+                  <span className="block truncate text-xs text-muted-foreground">{step.detail}</span>
+                </span>
+                <ArrowRight className="h-3.5 w-3.5 text-muted-foreground" />
+              </button>
+            );
+          })}
+        </div>
       </div>
     </section>
   );

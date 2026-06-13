@@ -15,9 +15,9 @@ import { asArray, shortId } from "@/lib/utils";
 type ActTab = "agents" | "runs" | "workflows" | "hooks" | "tools";
 
 const tabs: Array<{ id: ActTab; label: string }> = [
-  { id: "agents", label: "Agents" },
+  { id: "agents", label: "Goals" },
   { id: "runs", label: "Runs" },
-  { id: "workflows", label: "Workflows" },
+  { id: "workflows", label: "Recipes" },
   { id: "hooks", label: "Safeguards" },
   { id: "tools", label: "Permissions" },
 ];
@@ -31,9 +31,9 @@ export function ActPage({ initialTab }: { initialTab?: string }) {
   return (
     <div className="space-y-5">
       <header className="page-hero">
-        <div className="page-kicker"><Workflow className="h-4 w-4" /> Act</div>
-        <h1 className="page-title">Turn intentions into runs.</h1>
-        <p className="page-copy">Give Lattice a goal, review durable runs, and approve sensitive actions before anything important changes.</p>
+        <div className="page-kicker"><Workflow className="h-4 w-4" /> Automate</div>
+        <h1 className="page-title">Make work move, with a hand on the door.</h1>
+        <p className="page-copy">Give Lattice a goal, review each run, and approve sensitive actions before anything important changes.</p>
       </header>
       <Tabs tabs={tabs.map((item) => mode === "basic" ? item : item.id === "hooks" ? { ...item, label: "Hooks" } : item.id === "tools" ? { ...item, label: "Tools" } : item)} value={tab} onChange={(id) => setTab(id as ActTab)} />
       {tab === "agents" ? <AgentsPanel /> : null}

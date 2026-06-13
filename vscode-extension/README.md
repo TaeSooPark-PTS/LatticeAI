@@ -13,11 +13,10 @@ editor.
 
 ## Current Release
 
-**4.5.0 — Product Experience Recovery RC.** The desktop workspace keeps the
-v4 Brain Core extraction and restores first-run setup, workspace selection,
-environment analysis, model recommendation, explicit model install/download
-consent, model validation, Basic / Advanced / Admin mode clarity, and graph
-readability. The extension connects to the same local workspace APIs.
+**4.5.1 — Product Reimagining RC.** The desktop workspace keeps the v4 Brain
+Core extraction and recovered capability baseline while replacing the visible
+product shell, onboarding, navigation, hierarchy, and visual language. The
+extension connects to the same local workspace APIs.
 
 ## Quick Start
 

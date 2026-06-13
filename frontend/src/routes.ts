@@ -15,12 +15,12 @@ import {
 export type PrimaryRoute = "brain" | "ask" | "capture" | "act" | "library" | "system";
 
 export const primaryRoutes = [
-  { id: "brain", label: "Brain", icon: Brain, description: "Explore memories and connections" },
-  { id: "ask", label: "Ask", icon: MessageSquare, description: "Talk with remembered context" },
-  { id: "capture", label: "Capture", icon: FolderInput, description: "Add files, folders, and pages" },
-  { id: "act", label: "Act", icon: Workflow, description: "Run goals with approval" },
-  { id: "library", label: "Library", icon: Library, description: "Models, skills, and tool connections" },
-  { id: "system", label: "System", icon: Settings, description: "Account, backups, and safety" },
+  { id: "brain", label: "Home", icon: Brain, description: "The living map of what Lattice knows" },
+  { id: "ask", label: "Ask", icon: MessageSquare, description: "Think with remembered context" },
+  { id: "capture", label: "Add", icon: FolderInput, description: "Bring in files, folders, and pages" },
+  { id: "act", label: "Automate", icon: Workflow, description: "Turn goals into supervised runs" },
+  { id: "library", label: "Library", icon: Library, description: "Choose models, skills, and tools" },
+  { id: "system", label: "Care", icon: Settings, description: "Keep your brain safe and portable" },
 ] as const;
 
 export const routeAliases: Record<string, { primary: PrimaryRoute; tab?: string }> = {
@@ -58,17 +58,17 @@ export const routeAliases: Record<string, { primary: PrimaryRoute; tab?: string 
 };
 
 export const commandRoutes = [
-  { key: "brain", label: "Brain", icon: Brain },
-  { key: "onboarding", label: "First Run", icon: Settings },
-  { key: "knowledge-graph", label: "Brain Map", icon: Network },
-  { key: "hybrid-search", label: "Brain Search", icon: Zap },
+  { key: "brain", label: "Home", icon: Brain },
+  { key: "onboarding", label: "First 10 Minutes", icon: Settings },
+  { key: "knowledge-graph", label: "Memory Map", icon: Network },
+  { key: "hybrid-search", label: "Search Everything", icon: Zap },
   { key: "memory", label: "Memory", icon: Database },
   { key: "chat", label: "Ask", icon: MessageSquare },
-  { key: "files", label: "Capture Files", icon: FolderInput },
-  { key: "agents", label: "Agents", icon: Workflow },
-  { key: "workflows", label: "Workflows", icon: Workflow },
+  { key: "files", label: "Add Files", icon: FolderInput },
+  { key: "agents", label: "Start a Run", icon: Workflow },
+  { key: "workflows", label: "Automations", icon: Workflow },
   { key: "models", label: "Models", icon: Library },
-  { key: "network", label: "Brain Network", icon: Network },
+  { key: "network", label: "Trusted Devices", icon: Network },
   { key: "activity", label: "Activity", icon: Activity },
   { key: "admin/security", label: "Security", icon: Shield },
 ];

@@ -1,7 +1,37 @@
 # Release Notes
 
-The current release target is v4.5.0. Older sections are historical
+The current release target is v4.5.1. Older sections are historical
 release notes and should not be read as newer product claims.
+
+## v4.5.1 RC - Product Reimagining
+
+Lattice AI v4.5.1 replaces the desktop product surface on top of the v4.5.0
+capability recovery. It preserves Brain Core, StorageEngine, FastAPI, Tauri,
+backup/restore, model runtime, and portability behavior while changing the
+visible shell, navigation, onboarding, hierarchy, and visual language.
+
+### Highlights
+
+- Home, Ask, Add, Automate, Library, and Care replace the prior dashboard
+  navigation as the primary product model.
+- First-run setup becomes a non-technical journey: Make it yours, Choose a
+  space, Meet your Mac, Pick a brain, Install locally, Try a question, Set the
+  pace, Explore memory.
+- The app shell now uses a compact premium desktop chrome, command palette,
+  responsive mobile drawer, and ambient brain canvas.
+- Global styling moves to a calmer Digital Brain palette with fixed responsive
+  type sizing and 8px-or-smaller card radii.
+- Legacy hash routes continue to resolve into the replacement SPA.
+
+### Expected Artifacts
+
+- `dist/ltcai-4.5.1-py3-none-any.whl`
+- `dist/ltcai-4.5.1.tar.gz`
+- `dist/ltcai-4.5.1.vsix`
+- `ltcai-4.5.1.tgz`
+- `src-tauri/target/release/bundle/dmg/Lattice AI_4.5.1_aarch64.dmg`
+
+Full notes: [RELEASE_NOTES_v4.5.1.md](RELEASE_NOTES_v4.5.1.md)
 
 ## v4.5.0 RC - Product Experience Recovery
 

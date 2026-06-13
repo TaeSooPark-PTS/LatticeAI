@@ -15,7 +15,7 @@ type LibraryTab = "models" | "skills" | "mcp" | "marketplace";
 const tabs: Array<{ id: LibraryTab; label: string }> = [
   { id: "models", label: "Models" },
   { id: "skills", label: "Skills" },
-  { id: "mcp", label: "Tool connections" },
+  { id: "mcp", label: "Connections" },
   { id: "marketplace", label: "Marketplace" },
 ];
 
@@ -30,8 +30,8 @@ export function LibraryPage({ initialTab }: { initialTab?: string }) {
     <div className="space-y-5">
       <header className="page-hero">
         <div className="page-kicker"><Boxes className="h-4 w-4" /> Library</div>
-        <h1 className="page-title">Choose what powers your brain.</h1>
-        <p className="page-copy">Install local models, add skills, and connect tools while keeping setup choices explicit.</p>
+        <h1 className="page-title">Choose what powers Lattice.</h1>
+        <p className="page-copy">Pick a private local model, add skills, and connect tools without learning runtime internals.</p>
       </header>
       <Tabs tabs={visibleTabs} value={tab} onChange={(id) => setTab(id as LibraryTab)} />
       {tab === "models" ? <ModelsPanel /> : null}

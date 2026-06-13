@@ -14,7 +14,7 @@ type SystemTab = "account" | "workspaces" | "snapshots" | "activity" | "network"
 
 const tabs: Array<{ id: SystemTab; label: string }> = [
   { id: "account", label: "Account" },
-  { id: "workspaces", label: "Workspaces" },
+  { id: "workspaces", label: "Spaces" },
   { id: "snapshots", label: "Snapshots" },
   { id: "activity", label: "History" },
   { id: "network", label: "Devices" },
@@ -31,9 +31,9 @@ export function SystemPage({ initialTab }: { initialTab?: string }) {
   return (
     <div className="space-y-5">
       <header className="page-hero">
-        <div className="page-kicker"><ShieldCheck className="h-4 w-4" /> System</div>
-        <h1 className="page-title">Keep your brain local, safe, and portable.</h1>
-        <p className="page-copy">Manage your account, workspaces, backups, local device, and advanced settings from one place.</p>
+        <div className="page-kicker"><ShieldCheck className="h-4 w-4" /> Care</div>
+        <h1 className="page-title">Keep your brain safe and portable.</h1>
+        <p className="page-copy">Manage identity, spaces, backups, trusted devices, and safeguards from one calm place.</p>
       </header>
       <Tabs tabs={mode === "basic" ? tabs.filter((item) => item.id !== "admin") : tabs} value={tab} onChange={(id) => setTab(id as SystemTab)} />
       {tab === "account" ? <AccountPanel /> : null}

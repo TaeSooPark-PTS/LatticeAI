@@ -7,14 +7,14 @@
 [![CI Status](https://github.com/TaeSooPark-PTS/LatticeAI/actions/workflows/ci.yml/badge.svg?branch=main)](https://github.com/TaeSooPark-PTS/LatticeAI/actions/workflows/ci.yml)
 [![License](https://img.shields.io/badge/license-MIT-green)](LICENSE)
 
-**Lattice AI v4.5.0 is a local-first Digital Brain desktop workspace.** It runs
+**Lattice AI v4.5.1 is a local-first Digital Brain desktop workspace.** It runs
 as a Tauri desktop app with a localhost FastAPI sidecar, stores the user's brain
 locally by default, and presents the Knowledge Graph as the durable asset.
 
-This README describes the v4.5.0 release-candidate tree, which preserves the
-v4.4.0 physical `lattice_brain` extraction and restores the product experience
-around first-run setup, workspace selection, model recommendation, model
-validation, Basic/Advanced/Admin modes, and graph readability.
+This README describes the v4.5.1 release-candidate tree, which preserves the
+v4.4.0 physical `lattice_brain` extraction and v4.5.0 capability recovery while
+reimagining the product surface from first principles: Home, Ask, Add,
+Automate, Library, and Care replace the prior dashboard-style presentation.
 External package registries are owner-published; the badges above link to
 package pages and may show the most recently published owner-controlled registry
 version, which can lag behind the GitHub Release.
@@ -33,9 +33,9 @@ version, which can lag behind the GitHub Release.
   presenting simulation as real success. When no LLM-backed model is loaded,
   deterministic model-free agent simulation is reported honestly and does not call a model.
 - Library shows model/runtime availability honestly.
-- First-run setup guides Login -> Workspace Selection -> Environment Analysis
-  -> Model Recommendation -> Model Installation -> Model Validation -> Mode
-  Selection -> Brain Usage.
+- First-run setup guides Make it yours -> Choose a space -> Meet your Mac ->
+  Pick a brain -> Install locally -> Try a question -> Set the pace -> Explore
+  memory.
 - Gemma 4 MLX models are checked against their local `config.json` before load:
   Gemma 4 12B `gemma4_unified` now shows **Runtime update needed** when the
   installed MLX-VLM lacks `mlx_vlm.models.gemma4_unified`, while Gemma 4 26B
@@ -49,7 +49,7 @@ version, which can lag behind the GitHub Release.
 
 ### Desktop Startup
 
-The v4.5.0 DMG build launches a visible Tauri app, starts the FastAPI sidecar on
+The v4.5.1 DMG build launches a visible Tauri app, starts the FastAPI sidecar on
 localhost, and shuts that sidecar down on normal macOS quit.
 
 ![Desktop startup and local sidecar](output/audits/v4.3.2-rc/screenshots/13-desktop-sidecar-startup.png)
@@ -159,19 +159,19 @@ Archive evidence:
 - **Privacy**: local-first by default; cloud models, Telegram, Brain Network,
   Docker, model downloads, and update checks require explicit opt-in paths.
 
-See [ARCHITECTURE.md](ARCHITECTURE.md) for the detailed v4 architecture. v4.5.0
+See [ARCHITECTURE.md](ARCHITECTURE.md) for the detailed v4 architecture. v4.5.1
 does not redesign the v4.4.0 Brain Core extraction, StorageEngine, FastAPI,
 Tauri, backup/restore, or portability architecture.
 
 ## Installation And Release Artifacts
 
-Validated v4.5.0 RC artifacts are produced from the product-recovery tree:
+Validated v4.5.1 RC artifacts are produced from the product-reimagining tree:
 
-- `dist/ltcai-4.5.0-py3-none-any.whl`
-- `dist/ltcai-4.5.0.tar.gz`
-- `ltcai-4.5.0.tgz`
-- `dist/ltcai-4.5.0.vsix`
-- `src-tauri/target/release/bundle/dmg/Lattice AI_4.5.0_aarch64.dmg`
+- `dist/ltcai-4.5.1-py3-none-any.whl`
+- `dist/ltcai-4.5.1.tar.gz`
+- `ltcai-4.5.1.tgz`
+- `dist/ltcai-4.5.1.vsix`
+- `src-tauri/target/release/bundle/dmg/Lattice AI_4.5.1_aarch64.dmg`
 
 For a public release, attach only those exact artifacts to the GitHub Release.
 Package-registry publishing is reserved for the owner.
@@ -221,12 +221,13 @@ npm pack --dry-run
 - Model downloads and cloud model calls require explicit user action/consent.
 - Ask does not fabricate answers when no model is loaded.
 - Historical artifacts may remain in `dist/`; release uploads must use exact
-  v4.5.0 filenames for this RC.
+  v4.5.1 filenames for this RC.
 
 ## Release History
 
 | Version | Theme |
 | --- | --- |
+| 4.5.1 | Product Reimagining RC: replaced the desktop shell, navigation model, onboarding journey, first-viewport hierarchy, and visual system while preserving capabilities and local-first architecture |
 | 4.5.0 | Product Experience Recovery RC: restored first-run setup, workspace/model onboarding, explicit model install/download/validate/load flow, Gemma 4 runtime compatibility gating, Basic-mode polish, and graph discoverability |
 | 4.4.0 | Brain Engine Extraction: Brain Core physically moved into `lattice_brain` (graph/memory/context/conversation/ingestion/runtime/workflow/portability), latticeai paths reduced to compatibility shims, isolation tests guaranteeing no `latticeai` imports |
 | 4.3.3 | Dead-Code Cleanup Release: post-audit cleanup, architecture documentation correction, Vercel/static-docs readiness, README badge restoration, exact-current artifacts |
@@ -245,6 +246,7 @@ npm pack --dry-run
 - [FEATURE_STATUS.md](FEATURE_STATUS.md) - current feature status and historical
   status ledger.
 - [RELEASE_NOTES.md](RELEASE_NOTES.md) - current release notes index.
+- [RELEASE_NOTES_v4.5.1.md](RELEASE_NOTES_v4.5.1.md) - v4.5.1 RC release notes.
 - [RELEASE_NOTES_v4.5.0.md](RELEASE_NOTES_v4.5.0.md) - v4.5.0 RC release notes.
 - [RELEASE_NOTES_v4.4.0.md](RELEASE_NOTES_v4.4.0.md) - v4.4.0 release notes.
 - [RELEASE_NOTES_v4.3.3.md](RELEASE_NOTES_v4.3.3.md) - v4.3.3 release notes.
@@ -255,6 +257,15 @@ npm pack --dry-run
 - [docs/V4_3_3_VALIDATION_REPORT.md](docs/V4_3_3_VALIDATION_REPORT.md) - v4.3.3 validation report.
 - [docs/V4_5_0_PRODUCT_EXPERIENCE_RECOVERY_REPORT.md](docs/V4_5_0_PRODUCT_EXPERIENCE_RECOVERY_REPORT.md) - v4.5.0 product recovery report.
 - [docs/V4_5_0_VALIDATION_REPORT.md](docs/V4_5_0_VALIDATION_REPORT.md) - v4.5.0 validation report.
+- [docs/V4_5_1_PRODUCT_REIMAGINING_REPORT.md](docs/V4_5_1_PRODUCT_REIMAGINING_REPORT.md) - v4.5.1 product reimagining report.
+- [docs/V4_5_1_UX_REPORT.md](docs/V4_5_1_UX_REPORT.md) - v4.5.1 UX report.
+- [docs/V4_5_1_VISUAL_DESIGN_REPORT.md](docs/V4_5_1_VISUAL_DESIGN_REPORT.md) - v4.5.1 visual design report.
+- [docs/V4_5_1_NAVIGATION_REPORT.md](docs/V4_5_1_NAVIGATION_REPORT.md) - v4.5.1 navigation report.
+- [docs/V4_5_1_ONBOARDING_REPORT.md](docs/V4_5_1_ONBOARDING_REPORT.md) - v4.5.1 onboarding report.
+- [docs/V4_5_1_MODEL_EXPERIENCE_REPORT.md](docs/V4_5_1_MODEL_EXPERIENCE_REPORT.md) - v4.5.1 model experience report.
+- [docs/V4_5_1_GRAPH_EXPERIENCE_REPORT.md](docs/V4_5_1_GRAPH_EXPERIENCE_REPORT.md) - v4.5.1 graph experience report.
+- [docs/V4_5_1_VALIDATION_REPORT.md](docs/V4_5_1_VALIDATION_REPORT.md) - v4.5.1 validation report.
+- [docs/V4_5_1_RC_ARTIFACTS.md](docs/V4_5_1_RC_ARTIFACTS.md) - v4.5.1 screenshot, GIF, and RC artifact manifest.
 - [docs/V4_3_2_GRAPH_UX_REPORT.md](docs/V4_3_2_GRAPH_UX_REPORT.md) - graph UX report.
 - [docs/V4_3_2_PRODUCT_POLISH_REPORT.md](docs/V4_3_2_PRODUCT_POLISH_REPORT.md) - product polish report.
 - [docs/V4_3_2_SELF_AUDIT_REPORT.md](docs/V4_3_2_SELF_AUDIT_REPORT.md) - self-audit evidence.

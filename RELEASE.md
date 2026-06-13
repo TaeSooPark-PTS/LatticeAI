@@ -7,6 +7,37 @@
 > PyPI / npm / VS Code Marketplace / Open VSX 배포는 아래 수동 절차로만
 > 진행합니다. 태그 생성은 패키지 스토어 publish를 자동으로 트리거하지 않습니다.
 
+## v4.5.1 RC 릴리스 노트 (2026-06-13)
+
+Lattice AI v4.5.1 — Product Reimagining RC. `main` after v4.5.0 위에서 Brain
+Core extraction, StorageEngine, FastAPI, Tauri, backup/restore, model runtime,
+and portability capabilities는 유지하고 desktop product surface, navigation,
+onboarding, information hierarchy, and visual language를 first-principles
+Digital Brain experience로 교체한다. 이 RC 작업은 tag, GitHub Release,
+PyPI/npm/VS Code/Open VSX publish를 포함하지 않는다.
+
+- **Changed (Product shell)**: left-rail dashboard presentation was replaced by
+  a compact premium desktop chrome, ambient brain canvas, command palette, and
+  six-room product model: Home, Ask, Add, Automate, Library, Care.
+- **Changed (Onboarding)**: first-run setup now reads as a user journey:
+  Make it yours -> Choose a space -> Meet your Mac -> Pick a brain -> Install
+  locally -> Try a question -> Set the pace -> Explore memory.
+- **Changed (Navigation)**: legacy hash routes remain compatible, but visible
+  navigation no longer exposes the old screen taxonomy as the primary product
+  model.
+- **Changed (Visual language)**: new carbon/warm-white base with jade, amber,
+  violet, blue, and coral accents; fixed responsive type sizing; card radii
+  remain 8px or smaller.
+- **Preserved**: Brain Core, FastAPI APIs, Tauri desktop shell, StorageEngine,
+  backup/restore, model runtimes, graph/search/chat/capture/automation/system
+  workflows, and compatibility route aliases.
+- **Expected artifacts**:
+  - `dist/ltcai-4.5.1-py3-none-any.whl`
+  - `dist/ltcai-4.5.1.tar.gz`
+  - `dist/ltcai-4.5.1.vsix`
+  - `ltcai-4.5.1.tgz`
+  - `src-tauri/target/release/bundle/dmg/Lattice AI_4.5.1_aarch64.dmg`
+
 ## v4.5.0 RC 릴리스 노트 (2026-06-13)
 
 Lattice AI v4.5.0 — Product Experience Recovery RC. `main` after v4.4.0 위에서
@@ -973,14 +1004,14 @@ Knowledge Graph v2 read/write cutover. 자세한 내용은
    - `npm run release:artifacts`
    - `npm run release:validate`
 
-현재 `v4.5.0` 기준 필수 산출물:
+현재 `v4.5.1` 기준 필수 산출물:
 
 ```text
-dist/ltcai-4.5.0-py3-none-any.whl
-dist/ltcai-4.5.0.tar.gz
-dist/ltcai-4.5.0.vsix
-ltcai-4.5.0.tgz
-src-tauri/target/release/bundle/dmg/Lattice AI_4.5.0_aarch64.dmg
+dist/ltcai-4.5.1-py3-none-any.whl
+dist/ltcai-4.5.1.tar.gz
+dist/ltcai-4.5.1.vsix
+ltcai-4.5.1.tgz
+src-tauri/target/release/bundle/dmg/Lattice AI_4.5.1_aarch64.dmg
 ```
 
 ## 2) npm 배포
@@ -991,7 +1022,7 @@ src-tauri/target/release/bundle/dmg/Lattice AI_4.5.0_aarch64.dmg
    - `npm run publish:npm`
    - 직접 실행 시:
      ```
-     npm publish "ltcai-4.5.0.tgz" --access public
+     npm publish "ltcai-4.5.1.tgz" --access public
      ```
 
 ## 3) PyPI 배포
@@ -1004,14 +1035,14 @@ src-tauri/target/release/bundle/dmg/Lattice AI_4.5.0_aarch64.dmg
    - `npm run publish:pypi`  ← 권장 (`$npm_package_version` 자동 사용)
    - 직접 실행 시:
      ```
-     python3 -m twine upload "dist/ltcai-4.5.0-py3-none-any.whl" "dist/ltcai-4.5.0.tar.gz"
+     python3 -m twine upload "dist/ltcai-4.5.1-py3-none-any.whl" "dist/ltcai-4.5.1.tar.gz"
      ```
 
 참고:
 - TestPyPI 먼저 쓰려면:
   ```
   python3 -m twine upload --skip-existing --repository testpypi \
-    "dist/ltcai-4.5.0.tar.gz" "dist/ltcai-4.5.0-py3-none-any.whl"
+    "dist/ltcai-4.5.1.tar.gz" "dist/ltcai-4.5.1-py3-none-any.whl"
   ```
 
 ## 4) VS Code / Cursor / Antigravity 확장 배포
@@ -1027,13 +1058,13 @@ src-tauri/target/release/bundle/dmg/Lattice AI_4.5.0_aarch64.dmg
    - `npm run publish:vscode`  ← 권장 (`$npm_package_version` 자동 사용)
    - 직접 실행 시:
      ```
-     npx vsce publish --packagePath "../dist/ltcai-4.5.0.vsix"
+     npx vsce publish --packagePath "../dist/ltcai-4.5.1.vsix"
      ```
 4. Open VSX 배포 (Cursor/일부 포크 호환)
    - `npm run publish:openvsx`  ← 권장 (`$npm_package_version` 자동 사용)
    - 직접 실행 시:
      ```
-     npx ovsx publish "../dist/ltcai-4.5.0.vsix"
+     npx ovsx publish "../dist/ltcai-4.5.1.vsix"
      ```
 5. 로컬 설치 (VS Code/Cursor/Antigravity)
    - `npm run install:all`

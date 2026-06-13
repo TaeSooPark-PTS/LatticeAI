@@ -3,6 +3,43 @@
 The top entry is the current release-preparation target. Older entries are
 historical and may describe behavior as it existed at that release.
 
+## [4.5.1] - 2026-06-13
+
+> Product Reimagining release candidate after the v4.5.0 capability recovery.
+
+### Changed
+
+- Replaced the desktop shell with a compact premium chrome, ambient brain
+  canvas, command palette, responsive mobile drawer, and six-room product model:
+  Home, Ask, Add, Automate, Library, Care.
+- Rewrote first-run onboarding as a non-technical journey: Make it yours ->
+  Choose a space -> Meet your Mac -> Pick a brain -> Install locally -> Try a
+  question -> Set the pace -> Explore memory.
+- Retained all compatibility hash routes while changing visible navigation,
+  information hierarchy, route labels, and page hero language.
+- Replaced the global visual system with a calmer Digital Brain palette,
+  fixed-size responsive typography, 8px-or-smaller card radii, and refined
+  shared controls.
+
+### Preserved
+
+- Brain Core, FastAPI APIs, Tauri shell, StorageEngine, backup/restore,
+  portability, model runtimes, graph/search/chat/capture/automation/system
+  workflows, and route aliases remain capability-compatible.
+
+### Validation
+
+- Full v4.5.1 RC validation is tracked in
+  `docs/V4_5_1_VALIDATION_REPORT.md`.
+
+### Artifacts
+
+- `dist/ltcai-4.5.1-py3-none-any.whl`
+- `dist/ltcai-4.5.1.tar.gz`
+- `dist/ltcai-4.5.1.vsix`
+- `ltcai-4.5.1.tgz`
+- `src-tauri/target/release/bundle/dmg/Lattice AI_4.5.1_aarch64.dmg`
+
 ## [4.5.0] - 2026-06-13
 
 > Product Experience Recovery release candidate after the v4.4.0 physical Brain

@@ -12,9 +12,9 @@ type CaptureTab = "files" | "local" | "browser" | "pipeline";
 
 const tabs: Array<{ id: CaptureTab; label: string }> = [
   { id: "files", label: "Files" },
-  { id: "local", label: "Local folders" },
-  { id: "browser", label: "Web capture" },
-  { id: "pipeline", label: "Processing" },
+  { id: "local", label: "Folders" },
+  { id: "browser", label: "Web" },
+  { id: "pipeline", label: "Flow" },
 ];
 
 export function CapturePage({ initialTab }: { initialTab?: string }) {
@@ -25,9 +25,9 @@ export function CapturePage({ initialTab }: { initialTab?: string }) {
   return (
     <div className="space-y-5">
       <header className="page-hero">
-        <div className="page-kicker"><Upload className="h-4 w-4" /> Capture</div>
-        <h1 className="page-title">Bring knowledge into Lattice.</h1>
-        <p className="page-copy">Drop in files, connect folders, or save a web page. Lattice keeps track of where each memory came from.</p>
+        <div className="page-kicker"><Upload className="h-4 w-4" /> Add</div>
+        <h1 className="page-title">Feed the brain what matters.</h1>
+        <p className="page-copy">Drop in files, connect folders, or save a page. Lattice remembers the origin of every idea it learns.</p>
       </header>
       <Tabs tabs={tabs} value={tab} onChange={(id) => setTab(id as CaptureTab)} />
       {tab === "files" ? <FilesPanel /> : null}

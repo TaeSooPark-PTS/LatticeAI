@@ -17,34 +17,35 @@ function trackPageErrors(page) {
   return errors;
 }
 
-test("React desktop shell boots with six primary navigation groups", async ({ page }) => {
+test("React desktop shell boots with the reimagined navigation dock", async ({ page }) => {
   const errors = trackPageErrors(page);
   await page.goto("/app");
-  await page.waitForSelector("text=Your Digital Brain");
-  for (const label of ["Brain", "Ask", "Capture", "Act", "Library", "System"]) {
-    await expect(page.locator("aside nav").getByRole("button", { name: new RegExp(`^${label}\\b`) }).first()).toBeVisible();
+  await page.waitForSelector("text=Digital Brain");
+  const nav = page.getByRole("navigation", { name: "Primary navigation" });
+  for (const label of ["Home", "Ask", "Add", "Automate", "Library", "Care"]) {
+    await expect(nav.getByRole("button", { name: label })).toBeVisible();
   }
   await expect(page.locator("body")).not.toContainText("v4.1.0 Release Candidate");
   await expect(page.locator("body")).toContainText(/v\d+\.\d+\.\d+/);
   expect(errors).toEqual([]);
 });
 
-test("first-run setup restores the original onboarding journey", async ({ page }) => {
+test("first-run journey explains the product without documentation", async ({ page }) => {
   await page.goto("/app");
-  await expect(page.locator("body")).toContainText("First run");
+  await expect(page.locator("body")).toContainText("First 10 minutes");
   for (const label of [
-    "Login",
-    "Workspace Selection",
-    "Environment Analysis",
-    "Model Recommendation",
-    "Model Installation",
-    "Model Validation",
-    "Mode Selection",
-    "Brain Usage",
+    "Make it yours",
+    "Choose a space",
+    "Meet your Mac",
+    "Pick a brain",
+    "Install locally",
+    "Try a question",
+    "Set the pace",
+    "Explore memory",
   ]) {
     await expect(page.locator("body")).toContainText(label);
   }
-  await expect(page.getByRole("button", { name: "Model Setup" })).toBeVisible();
+  await expect(page.getByRole("button", { name: "Set up model" })).toBeVisible();
 });
 
 test("old hash routes resolve into the replacement SPA without JS errors", async ({ page }) => {
@@ -79,9 +80,9 @@ test("offline startup loads local assets and shows honest unavailable state", as
     await route.abort();
   });
   await page.goto("/app#/brain");
-  await page.waitForSelector("text=Your Digital Brain");
-  await expect(page.locator("body")).toContainText("Starting up");
-  await expect(page.locator("aside nav").getByRole("button", { name: /^Brain\b/ }).first()).toBeVisible();
+  await page.waitForSelector("text=Digital Brain");
+  await expect(page.locator("body")).toContainText("Starting");
+  await expect(page.getByRole("navigation", { name: "Primary navigation" }).getByRole("button", { name: "Home" })).toBeVisible();
   expect(errors).toEqual([]);
 });
 
@@ -106,7 +107,7 @@ test("Capture exposes upload, local folder, URL, and processing controls", async
   await page.goto("/app#/my-computer");
   await expect(page.locator("body")).toContainText("Folder access");
   await page.goto("/app#/capture");
-  await page.getByRole("button", { name: "Web capture" }).click();
+  await page.getByRole("button", { name: "Web" }).click();
   await expect(page.locator("body")).toContainText("Capture URL");
   await page.goto("/app#/pipeline");
   await expect(page.locator("body")).toContainText("Rebuild retrieval index");
@@ -167,7 +168,7 @@ test("System renders account, workspaces, snapshots, activity, network, settings
   await expect(page.locator("body")).toContainText("Computer memory");
   await page.goto("/app#/admin/security");
   await expect(page.locator("body")).toContainText("Admin controls");
-  await page.getByLabel("Experience mode").selectOption("admin");
+  await page.getByLabel("Experience mode").getByRole("button", { name: "Admin" }).click();
   await expect(page.locator("body")).toContainText("Security overview");
 });
 
@@ -188,5 +189,5 @@ test("mobile layout has no horizontal overflow and nav opens", async ({ page }) 
   expect(overflow).toBeLessThanOrEqual(1);
   await page.getByLabel("Toggle theme").waitFor();
   await page.getByRole("button").first().click();
-  await expect(page.getByText("Your Digital Brain").nth(1)).toBeVisible();
+  await expect(page.getByText("Choose a room")).toBeVisible();
 });
