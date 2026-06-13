@@ -130,7 +130,7 @@ test("Library renders models, skills, MCP, and marketplace registries", async ({
   await page.goto("/app#/models");
   await expect(page.locator("body")).toContainText("Qwen3-VL 8B");
   await expect(page.locator("body")).toContainText("Environment Analysis -> Recommended Models -> Install -> Download Progress -> Validate -> Load -> Ready");
-  await expect(page.locator("body")).toContainText("Runtime component missing");
+  await expect(page.locator("body")).toContainText("Runtime fallback available");
   await expect(page.locator("body")).toContainText("Qwen3-VL 8B");
   await expect(page.locator("body")).not.toContainText("No module named");
   await page.goto("/app#/skills");

@@ -23,10 +23,10 @@ architecture는 redesign하지 않고 end-user setup/model/graph experience를 �
   Recommended Models -> Install -> Download Progress -> Validate -> Load ->
   Ready 상태를 명시하고, runtime install/model download는 checkbox consent 없이는
   시작하지 않는다.
-- **Fixed (Gemma 4 runtime regression)**: Gemma 4 MLX models are marked
-  unsupported when installed MLX-VLM lacks the Gemma 4 `gemma4_unified`
-  component; raw `No module named ...` loader errors are replaced with friendly
-  recovery guidance and Qwen/GGUF alternatives.
+- **Fixed (Gemma 4 runtime regression)**: Gemma 4 MLX models are not marked
+  unsupported merely because installed MLX-VLM lacks the optional Gemma 4
+  unified drafter. Lattice keeps the v3 MLX-VLM path, retries Gemma 4 through
+  MLX-LM when that route fails, and exposes Gemma 4 GGUF local-server options.
 - **Changed (Basic mode)**: shared status badges, Brain graph copy, System
   readiness, and model cards avoid endpoint/module leakage in Basic mode while
   Advanced/Admin retain inspection detail.

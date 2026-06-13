@@ -7,12 +7,14 @@ from latticeai.core.model_resolution import (
     PrepareState,
     PrepareReport,
 )
+from latticeai.services.model_catalog import MODEL_ENGINE_ALIASES
 
 
 ALIASES = {
     "gemma-4-12b-it-4bit": {
         "local_mlx": "mlx-community/gemma-4-12b-it-4bit",
         "ollama": "hf.co/ggml-org/gemma-4-12B-it-GGUF:Q4_K_M",
+        "lmstudio": "ggml-org/gemma-4-12B-it-GGUF",
         "llamacpp": "ggml-org/gemma-4-12B-it-GGUF",
     },
 }
@@ -37,6 +39,32 @@ def test_resolution_for_ollama_appends_user_in_expected_current():
     assert r.engine == "ollama"
     assert r.load_id == "ollama:hf.co/ggml-org/gemma-4-12B-it-GGUF:Q4_K_M"
     assert r.expected_current == "ollama:hf.co/ggml-org/gemma-4-12B-it-GGUF:Q4_K_M::taesoo@example.com"
+
+
+def test_gemma4_catalog_alias_can_route_to_gguf_runtime():
+    r = ModelResolution.from_request(
+        "gemma-4-12b-it-4bit", engine="lmstudio", engine_aliases=ALIASES, user_email="t@x"
+    )
+    assert r.engine == "lmstudio"
+    assert r.resolved_model == "ggml-org/gemma-4-12B-it-GGUF"
+    assert r.load_id == "lmstudio:ggml-org/gemma-4-12B-it-GGUF"
+    assert r.load_id != "mlx-community/gemma-4-12b-it-4bit"
+
+
+def test_gemma4_catalog_aliases_do_not_force_mlx_vlm():
+    aliases = MODEL_ENGINE_ALIASES["mlx-community/gemma-4-12b-it-4bit"]
+    assert aliases["local_mlx"] == "mlx-community/gemma-4-12b-it-4bit"
+    assert aliases["ollama"] == "hf.co/ggml-org/gemma-4-12B-it-GGUF:Q4_K_M"
+    assert aliases["lmstudio"] == "ggml-org/gemma-4-12B-it-GGUF"
+    assert aliases["llamacpp"] == "ggml-org/gemma-4-12B-it-GGUF"
+
+    ollama = ModelResolution.from_request(
+        "mlx-community/gemma-4-12b-it-4bit",
+        engine="ollama",
+        engine_aliases=MODEL_ENGINE_ALIASES,
+    )
+    assert ollama.engine == "ollama"
+    assert ollama.load_id == "ollama:hf.co/ggml-org/gemma-4-12B-it-GGUF:Q4_K_M"
 
 
 def test_resolution_for_explicit_prefix():

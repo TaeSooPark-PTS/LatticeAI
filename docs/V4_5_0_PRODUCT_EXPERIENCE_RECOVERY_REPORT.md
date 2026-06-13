@@ -32,7 +32,7 @@ After v4.5.0, the first-run path is visible from the app shell:
   used by API requests after restart.
 - Reworked Library Models around the existing streamed prepare/load path.
 - Kept model downloads and runtime installs behind explicit consent.
-- Added Gemma 4 MLX runtime compatibility gating and friendly recovery.
+- Added Gemma 4 MLX runtime fallback compatibility and friendly recovery.
 - Reduced Basic-mode developer leakage while keeping Advanced/Admin detail.
 - Updated graph/search copy for readability, focus, and source clarity.
 

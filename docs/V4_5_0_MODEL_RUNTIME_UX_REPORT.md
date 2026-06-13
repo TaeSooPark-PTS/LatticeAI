@@ -26,9 +26,9 @@ Library Models now presents the intended model flow:
 
 ## Failure UX
 
-Unsupported models show:
+Runtime failures show:
 
-- a clear unsupported/runtime-component state,
+- a clear fallback or unsupported runtime state,
 - friendly explanation,
 - recovery guidance,
 - alternatives,

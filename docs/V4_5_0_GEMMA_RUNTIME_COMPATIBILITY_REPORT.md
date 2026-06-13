@@ -4,29 +4,31 @@ Date: 2026-06-13
 
 ## Regression
 
-Gemma 4 12B Instruct could appear ready while load failed with an MLX-VLM
-module error for `gemma4_unified`.
+Gemma 4 12B Instruct regressed when the v4.5.0 compatibility preflight treated
+the missing MLX-VLM `gemma4_unified` drafter module as a blanket unsupported
+model verdict, even though Gemma 4 worked in v3 and the catalog includes
+compatible local fallback runtimes.
 
 ## Fix
 
-- Added a lightweight runtime compatibility check in
-  `latticeai.core.model_compat`.
-- Gemma 4 MLX models are marked unsupported when MLX and MLX-VLM are installed
-  but the Gemma 4 `gemma4_unified` runtime component is absent.
+- `latticeai.core.model_compat` now reports `fallback_available` for this
+  condition instead of `unsupported`.
+- The router keeps the v3 MLX-VLM path first, then retries Gemma 4 through
+  MLX-LM when MLX-VLM rejects the local metadata.
 - `/models`, `/models/load`, `/engines/prepare-model`, and streamed preparation
-  now agree on unsupported status.
-- Generic loader failures are converted into friendly recovery payloads.
-- Recommendation classification can mark known runtime-incompatible models as
-  `not_recommended`.
+  no longer block Gemma 4 solely because the optional drafter module is absent.
+- Generic loader failures are converted into friendly fallback payloads.
+- Recommendation classification no longer marks Gemma 4 `not_recommended`
+  when a compatible local fallback runtime remains available.
 
 ## User Guidance
 
 The UI recommends:
 
-- update MLX-VLM and re-check compatibility,
-- use Qwen3-VL 8B or Qwen3-VL 4B locally,
-- use Gemma 4 GGUF through Ollama, LM Studio, or llama.cpp when Gemma 4 is
-  required.
+- try the v3 MLX-VLM path first,
+- use the MLX-LM text fallback if MLX-VLM rejects the Gemma 4 metadata,
+- use Gemma 4 GGUF through Ollama, LM Studio, or llama.cpp if both MLX local
+  routes fail.
 
 ## Tests
 

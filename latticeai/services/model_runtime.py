@@ -933,7 +933,10 @@ def ensure_llamacpp_server(model_name: str) -> None:
 
 def engine_installed(engine: str) -> bool:
     if engine == "local_mlx":
-        return bool(importlib.util.find_spec("mlx") and importlib.util.find_spec("mlx_vlm"))
+        return bool(
+            importlib.util.find_spec("mlx")
+            and (importlib.util.find_spec("mlx_vlm") or importlib.util.find_spec("mlx_lm"))
+        )
     if engine == "ollama":
         return local_binary("ollama") is not None
     if engine == "vllm":
@@ -1044,7 +1047,7 @@ def engine_status() -> List[Dict]:
             "id": "local_mlx",
             "name": "MLX",
             "kind": "local",
-            "description": "Apple Silicon GPU에서 MLX/MLX-VLM 모델을 직접 실행합니다.",
+            "description": "Apple Silicon GPU에서 MLX-VLM 모델을 직접 실행하고, Gemma 4는 필요 시 MLX-LM 텍스트 경로로 재시도합니다.",
             "installed": engine_installed("local_mlx"),
             "installable": True,
             "install_label": ENGINE_INSTALLERS["local_mlx"]["label"],

@@ -52,9 +52,9 @@ dependencies = [
 [project.optional-dependencies]
 ann = ["sqlite-vec>=0.1,<1"]
 postgres = ["psycopg[binary]>=3.2,<4"]
-local = ["mlx-vlm"]
+local = ["mlx-vlm", "mlx-lm"]
 voice = ["openai-whisper", "SpeechRecognition", "pydub"]
-all = ["mlx-vlm", "openai-whisper", "SpeechRecognition", "pydub", "sqlite-vec>=0.1,<1", "psycopg[binary]>=3.2,<4"]
+all = ["mlx-vlm", "mlx-lm", "openai-whisper", "SpeechRecognition", "pydub", "sqlite-vec>=0.1,<1", "psycopg[binary]>=3.2,<4"]
 
 [project.scripts]
 LTCAI = "ltcai_cli:main"

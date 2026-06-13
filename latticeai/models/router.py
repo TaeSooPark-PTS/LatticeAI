@@ -29,14 +29,27 @@ executor = ThreadPoolExecutor(max_workers=1)
 
 try:
     import mlx.core as mx
+except Exception as e:
+    mx = None
+    print(f"⚠️ MLX core unavailable: {e}")
+
+try:
     from mlx_vlm import load as vlm_load
     VLM_AVAILABLE = True
     print("✅ MLX-VLM is ready for multimodal models.")
 except Exception as e:
-    mx = None
     vlm_load = None
     VLM_AVAILABLE = False
     print(f"⚠️ MLX-VLM unavailable: {e}")
+
+try:
+    from mlx_lm import load as lm_load
+    LM_AVAILABLE = True
+    print("✅ MLX-LM is ready for text fallback models.")
+except Exception as e:
+    lm_load = None
+    LM_AVAILABLE = False
+    print(f"⚠️ MLX-LM unavailable: {e}")
 
 BRAND_NAME = "Lattice AI"
 LEGACY_BRAND_PATTERNS = [
@@ -236,20 +249,43 @@ def _resolve_local_hf_model(model_id: str) -> str:
         return str(local_dir)
     return model_id
 
+def _is_gemma4_model_id(model_id: str) -> bool:
+    raw = str(model_id or "").lower()
+    return bool(re.search(r"gemma[-_/ ]?4|gemma4", raw))
+
 def ensure_mlx_runtime() -> None:
-    global mx, vlm_load, VLM_AVAILABLE
-    if mx is not None and vlm_load is not None:
+    global mx, vlm_load, lm_load, VLM_AVAILABLE, LM_AVAILABLE
+    if mx is not None and (vlm_load is not None or lm_load is not None):
         return
+    errors = []
     try:
         import mlx.core as mlx_core
-        from mlx_vlm import load as mlx_vlm_load
-
         mx = mlx_core
-        vlm_load = mlx_vlm_load
-        VLM_AVAILABLE = True
         mx.set_default_device(mx.gpu)
     except Exception as e:
-        raise RuntimeError(f"MLX-VLM runtime is not available after install: {e}") from e
+        errors.append(f"mlx: {e}")
+        mx = None
+
+    try:
+        from mlx_vlm import load as mlx_vlm_load
+        vlm_load = mlx_vlm_load
+        VLM_AVAILABLE = True
+    except Exception as e:
+        vlm_load = None
+        VLM_AVAILABLE = False
+        errors.append(f"mlx-vlm: {e}")
+
+    try:
+        from mlx_lm import load as mlx_lm_load
+        lm_load = mlx_lm_load
+        LM_AVAILABLE = True
+    except Exception as e:
+        lm_load = None
+        LM_AVAILABLE = False
+        errors.append(f"mlx-lm: {e}")
+
+    if mx is None or (vlm_load is None and lm_load is None):
+        raise RuntimeError(f"MLX runtime is not available after install: {'; '.join(errors)}")
 
 def _mlx_sampler(temperature: float):
     """Build an MLX sampler callable for the given temperature.
@@ -353,8 +389,8 @@ class LLMRouter:
             return self._load_cloud_model(provider, provider_model, api_key_override=api_key_override, owner=owner)
 
         ensure_mlx_runtime()
-        if mx is None or vlm_load is None:
-            raise RuntimeError("MLX-VLM is not available in this process. Run on Apple Silicon with Metal access.")
+        if mx is None or (vlm_load is None and lm_load is None):
+            raise RuntimeError("MLX is not available in this process. Run on Apple Silicon with Metal access.")
 
         cache_key = f"{model_id}_{draft_model_id}" if draft_model_id else model_id
         if cache_key in self._cache:
@@ -370,25 +406,42 @@ class LLMRouter:
         
         def _load():
             mx.set_default_device(mx.gpu)
-            print(f"🔄 Loading Target (VLM Mode): {target_model_id}...")
-            model, tokenizer = vlm_load(target_model_id)
+            is_gemma4 = _is_gemma4_model_id(model_id)
+            loader_kind = "mlx_vlm"
+
+            try:
+                if vlm_load is None:
+                    raise RuntimeError("MLX-VLM is not installed.")
+                print(f"🔄 Loading Target (VLM Mode): {target_model_id}...")
+                model, tokenizer = vlm_load(target_model_id)
+            except Exception as vlm_error:
+                if not (is_gemma4 and lm_load is not None):
+                    raise
+                print(f"⚠️ Gemma 4 MLX-VLM load failed; retrying MLX-LM text path: {vlm_error}")
+                print(f"🔄 Loading Target (LM Mode): {target_model_id}...")
+                model, tokenizer = lm_load(target_model_id)
+                loader_kind = "mlx_lm"
 
             draft_model = None
             if target_draft_model_id:
-                print(f"🔄 Loading Assistant (VLM Mode): {target_draft_model_id}...")
-                draft_model, _ = vlm_load(target_draft_model_id)
+                if loader_kind == "mlx_vlm":
+                    print(f"🔄 Loading Assistant (VLM Mode): {target_draft_model_id}...")
+                    draft_model, _ = vlm_load(target_draft_model_id)
+                elif lm_load is not None:
+                    print(f"🔄 Loading Assistant (LM Mode): {target_draft_model_id}...")
+                    draft_model, _ = lm_load(target_draft_model_id)
                 print("✅ Assistant Ready.")
 
-            return model, tokenizer, draft_model
+            return model, tokenizer, draft_model, loader_kind
 
         try:
             # Use the dedicated single-thread executor to ensure MLX GPU streams match during inference
-            model, tokenizer, draft_model = await loop.run_in_executor(executor, _load)
-            self._cache[cache_key] = (model, tokenizer, draft_model)
+            model, tokenizer, draft_model, loader_kind = await loop.run_in_executor(executor, _load)
+            self._cache[cache_key] = (model, tokenizer, draft_model, loader_kind)
             self._current = cache_key
             self._touch(cache_key)
-            print(f"✅ Fully Loaded: {cache_key}")
-            return f"Success: {cache_key}"
+            print(f"✅ Fully Loaded: {cache_key} ({loader_kind})")
+            return f"Success: {cache_key} ({loader_kind})"
         except Exception as e:
             print(f"❌ Load Error: {e}")
             raise e
@@ -510,6 +563,11 @@ class LLMRouter:
             print(f"⚠️ VLM chat template fallback: {e}")
             return self._build_prompt(message, context, processor)
 
+    def _unpack_local_cache(self, cached: Tuple) -> Tuple[object, object, object, str]:
+        model, tokenizer, draft_model = cached[:3]
+        loader_kind = str(cached[3]) if len(cached) > 3 else "mlx_vlm"
+        return model, tokenizer, draft_model, loader_kind
+
     async def generate_as(self, model_id: str | None, message: str, context: Optional[str] = None, max_tokens: int = 4096, temperature: float = 0.2) -> str:
         """Generate using a specific model, temporarily switching if needed. Falls back to current model if model_id is None or not loaded."""
         if not model_id or model_id == self._current:
@@ -531,16 +589,24 @@ class LLMRouter:
         if isinstance(cached, CloudModel):
             return await self._cloud_generate(cached, message, context, max_tokens, temperature)
 
-        model, tokenizer, draft_model = self._cache[self._current]
-        prompt = self._build_vlm_prompt(model, tokenizer, message, context, 1 if image_data else 0)
+        model, tokenizer, draft_model, loader_kind = self._unpack_local_cache(self._cache[self._current])
+        use_vlm = loader_kind == "mlx_vlm"
+        prompt = (
+            self._build_vlm_prompt(model, tokenizer, message, context, 1 if image_data else 0)
+            if use_vlm
+            else self._build_prompt(message, context, tokenizer)
+        )
         
         loop = asyncio.get_event_loop()
         
         def _gen():
             import mlx.core as mx
             mx.set_default_device(mx.gpu)
-            from mlx_vlm import generate as vlm_gen
-            return vlm_gen(model, tokenizer, prompt=prompt, image=self._prep_image(image_data) if image_data else None, max_tokens=max_tokens, sampler=_mlx_sampler(temperature), draft_model=draft_model, draft_kind="mtp")
+            if use_vlm:
+                from mlx_vlm import generate as vlm_gen
+                return vlm_gen(model, tokenizer, prompt=prompt, image=self._prep_image(image_data) if image_data else None, max_tokens=max_tokens, sampler=_mlx_sampler(temperature), draft_model=draft_model, draft_kind="mtp")
+            from mlx_lm import generate as lm_gen
+            return lm_gen(model, tokenizer, prompt=prompt, max_tokens=max_tokens, sampler=_mlx_sampler(temperature), draft_model=draft_model)
         result = await loop.run_in_executor(executor, _gen)
         # mlx-vlm might return a GenerationResult object; extract the text
         if hasattr(result, "text"):
@@ -577,8 +643,13 @@ class LLMRouter:
                 yield chunk
             return
 
-        model, tokenizer, draft_model = self._cache[self._current]
-        prompt = self._build_vlm_prompt(model, tokenizer, message, context, 1 if image_data else 0)
+        model, tokenizer, draft_model, loader_kind = self._unpack_local_cache(self._cache[self._current])
+        use_vlm = loader_kind == "mlx_vlm"
+        prompt = (
+            self._build_vlm_prompt(model, tokenizer, message, context, 1 if image_data else 0)
+            if use_vlm
+            else self._build_prompt(message, context, tokenizer)
+        )
         loop = asyncio.get_event_loop()
         queue = asyncio.Queue()
 
@@ -586,8 +657,12 @@ class LLMRouter:
             import mlx.core as mx
             mx.set_default_device(mx.gpu)
             try:
-                from mlx_vlm import stream_generate as vlm_stream
-                gen = vlm_stream(model, tokenizer, prompt=prompt, image=self._prep_image(image_data) if image_data else None, max_tokens=max_tokens, sampler=_mlx_sampler(temperature), draft_model=draft_model, draft_kind="mtp")
+                if use_vlm:
+                    from mlx_vlm import stream_generate as vlm_stream
+                    gen = vlm_stream(model, tokenizer, prompt=prompt, image=self._prep_image(image_data) if image_data else None, max_tokens=max_tokens, sampler=_mlx_sampler(temperature), draft_model=draft_model, draft_kind="mtp")
+                else:
+                    from mlx_lm import stream_generate as lm_stream
+                    gen = lm_stream(model, tokenizer, prompt=prompt, max_tokens=max_tokens, sampler=_mlx_sampler(temperature), draft_model=draft_model)
                 
                 for chunk in gen:
                     text = chunk.text if hasattr(chunk, "text") else (chunk[0] if isinstance(chunk, tuple) else str(chunk))
@@ -660,7 +735,7 @@ class LLMRouter:
         if isinstance(cached, CloudModel):
             return await self._cloud_generate_document(cached, message, system_prompt, max_tokens, temperature)
 
-        model, tokenizer, draft_model = cached
+        model, tokenizer, draft_model, loader_kind = self._unpack_local_cache(cached)
         if hasattr(tokenizer, "apply_chat_template"):
             try:
                 msgs = [
@@ -677,8 +752,11 @@ class LLMRouter:
         def _gen():
             import mlx.core as mx
             mx.set_default_device(mx.gpu)
-            from mlx_vlm import generate as vlm_gen
-            return vlm_gen(model, tokenizer, prompt=prompt, image=None, max_tokens=max_tokens, sampler=_mlx_sampler(temperature), draft_model=draft_model, draft_kind="mtp")
+            if loader_kind == "mlx_vlm":
+                from mlx_vlm import generate as vlm_gen
+                return vlm_gen(model, tokenizer, prompt=prompt, image=None, max_tokens=max_tokens, sampler=_mlx_sampler(temperature), draft_model=draft_model, draft_kind="mtp")
+            from mlx_lm import generate as lm_gen
+            return lm_gen(model, tokenizer, prompt=prompt, max_tokens=max_tokens, sampler=_mlx_sampler(temperature), draft_model=draft_model)
         result = await loop.run_in_executor(executor, _gen)
         if hasattr(result, "text"):
             return normalize_branding(result.text)
@@ -719,7 +797,7 @@ class LLMRouter:
                 yield chunk
             return
 
-        model, tokenizer, draft_model = cached
+        model, tokenizer, draft_model, loader_kind = self._unpack_local_cache(cached)
         if hasattr(tokenizer, "apply_chat_template"):
             try:
                 msgs = [
@@ -739,8 +817,12 @@ class LLMRouter:
             import mlx.core as mx
             mx.set_default_device(mx.gpu)
             try:
-                from mlx_vlm import stream_generate as vlm_stream
-                gen = vlm_stream(model, tokenizer, prompt=prompt, image=None, max_tokens=max_tokens, sampler=_mlx_sampler(temperature), draft_model=draft_model, draft_kind="mtp")
+                if loader_kind == "mlx_vlm":
+                    from mlx_vlm import stream_generate as vlm_stream
+                    gen = vlm_stream(model, tokenizer, prompt=prompt, image=None, max_tokens=max_tokens, sampler=_mlx_sampler(temperature), draft_model=draft_model, draft_kind="mtp")
+                else:
+                    from mlx_lm import stream_generate as lm_stream
+                    gen = lm_stream(model, tokenizer, prompt=prompt, max_tokens=max_tokens, sampler=_mlx_sampler(temperature), draft_model=draft_model)
                 for chunk in gen:
                     text = chunk.text if hasattr(chunk, "text") else (chunk[0] if isinstance(chunk, tuple) else str(chunk))
                     loop.call_soon_threadsafe(queue.put_nowait, text)

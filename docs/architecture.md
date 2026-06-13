@@ -88,13 +88,15 @@ work on them.
 
 Local recommended models must be multimodal. The v2.2 local model workflow policy is:
 
-- macOS Apple Silicon: MLX-VLM first
+- macOS Apple Silicon: MLX-VLM first, with MLX-LM retained as a Gemma 4 text
+  fallback when MLX-VLM rejects local metadata
 - Windows: llama.cpp multimodal path, with LM Studio as a user-friendly option
 - Linux: llama.cpp or vLLM multimodal path depending on GPU support
 - Ollama: kept as an option, not the default priority
 
-The removed path is the old text-only MLX-LM recommendation route. Low-spec
-machines use smaller or quantized multimodal models.
+The removed path is the old text-only MLX-LM recommendation lane for ordinary
+model selection. MLX-LM remains available as a targeted Gemma 4 recovery path.
+Low-spec machines use smaller or quantized multimodal models.
 
 ## Model Source Disclosure
 
@@ -140,7 +142,7 @@ Basic mode and advanced mode have the same feature access.
 | `latticeai/services/model_catalog.py` | Multimodal model catalog, source metadata, aliases |
 | `latticeai/services/model_recommendation.py` | Hardware-aware multimodal recommendation |
 | `latticeai/services/model_runtime.py` | Download, load, server, and model workflow orchestration |
-| `llm_router.py` | MLX-VLM and OpenAI-compatible model routing |
+| `llm_router.py` | MLX-VLM/MLX-LM and OpenAI-compatible model routing |
 | `knowledge_graph.py` | Graph storage, extraction, local folder knowledge graph context |
 | `latticeai/core/context_builder.py` | Graph context for generation |
 | `latticeai/core/workspace_os.py` | Workspace state, timeline, snapshots, durable context |

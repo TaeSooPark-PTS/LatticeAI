@@ -24,18 +24,19 @@ historical and may describe behavior as it existed at that release.
 
 ### Fixed
 
-- Gemma 4 MLX models are no longer marked ready when the installed MLX-VLM
-  runtime is missing the Gemma 4 `gemma4_unified` component.
+- Gemma 4 MLX models are no longer marked unsupported merely because the
+  installed MLX-VLM runtime lacks the optional Gemma 4 unified drafter.
 - Raw loader errors such as `No module named ...gemma4_unified` are converted
-  into friendly unsupported-model messages with recovery guidance and
-  alternatives such as Qwen3-VL local models or Gemma 4 GGUF via local servers.
+  into friendly fallback guidance while Lattice preserves the v3 MLX path,
+  retries Gemma 4 through MLX-LM when needed, and exposes Gemma 4 GGUF local
+  server routes.
 - Workspace selection now persists across reloads so the selected workspace is
   used by API requests after restart.
 
 ### Validation
 
-- Added unit coverage for Gemma 4 runtime compatibility and recommendation
-  gating.
+- Added unit coverage for Gemma 4 runtime compatibility, recommendation
+  fallback, and catalog routing away from forced MLX-VLM-only load IDs.
 - Added Playwright coverage for first-run setup, model setup flow, Gemma
   recovery guidance, and Basic graph developer-leakage prevention.
 - Full v4.5.0 RC validation is tracked in

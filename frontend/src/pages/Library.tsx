@@ -147,11 +147,13 @@ function ModelsPanel() {
               const engine = String(model.recommended_engine || model.engine || "");
               const recommendation = recommendationById.get(id) || recommendationById.get(loadId) || {};
               const compatibility = (model.runtime_compatibility || recommendation.runtime_compatibility || {}) as Record<string, unknown>;
+              const fallbackAvailable = String(compatibility.status || "") === "fallback_available";
               const unsupported = model.load_status === "unsupported" || compatibility.supported === false;
               const downloadRequired = Boolean(model.download_required);
               const loadAvailable = (Boolean(model.load_available) || loaded) && !unsupported;
               const loadStatus = String(model.load_status || (loaded ? "loaded" : "unavailable"));
               const unavailableReason = String(model.unavailable_reason || "Unavailable until the backend reports a local model/runtime ready.");
+              const runtimeLabel = String(model.runtime_label || compatibility.preferred_runtime || engine || "local_mlx");
               const canPrepare = loadAvailable || downloadRequired;
               return (
                 <div key={id} className="grid gap-3 rounded-md border border-border bg-background p-3 md:grid-cols-[1fr_auto]">
@@ -168,13 +170,18 @@ function ModelsPanel() {
                         <div className="font-medium">Runtime component missing</div>
                         <div className="text-muted-foreground">{String(compatibility.user_message || unavailableReason)}</div>
                       </div>
+                    ) : fallbackAvailable ? (
+                      <div className="mt-2 rounded-md border border-amber-500/30 bg-amber-500/10 p-2 text-sm">
+                        <div className="font-medium">Runtime fallback available</div>
+                        <div className="text-muted-foreground">{String(compatibility.user_message || "Lattice will try the compatible local runtime path before showing this model as unsupported.")}</div>
+                      </div>
                     ) : !loaded && !loadAvailable ? <div className="mt-1 text-xs text-muted-foreground">{unavailableReason}</div> : null}
                     {mode !== "basic" ? (
                       <div className="mt-2 text-xs text-muted-foreground">
-                        {engine || "local_mlx"} · {loadId}
+                        {runtimeLabel} · {loadId}
                       </div>
                     ) : null}
-                    {unsupported ? <AlternativeModels compatibility={compatibility} /> : null}
+                    {unsupported || fallbackAvailable ? <AlternativeModels compatibility={compatibility} /> : null}
                   </div>
                   <div className="flex flex-wrap items-center gap-2 md:justify-end">
                     <Badge variant={loaded ? "success" : loadAvailable ? "muted" : "warning"}>{loaded ? "loaded" : loadStatus}</Badge>

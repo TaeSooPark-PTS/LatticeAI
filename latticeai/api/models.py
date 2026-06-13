@@ -149,29 +149,69 @@ def create_models_router(
         for item in items:
             short_id = str(item["id"]).lower()
             aliases = MODEL_ENGINE_ALIASES.get(short_id) or {}
-            options: List[Dict[str, str]] = []
+            options: List[Dict[str, object]] = []
             for engine_name in ("local_mlx", "ollama", "lmstudio", "llamacpp", "vllm"):
                 real = aliases.get(engine_name)
                 if not real:
                     continue
+                load_id = real if engine_name == "local_mlx" else f"{engine_name}:{real}"
+                engine_info = engine_lookup.get(engine_name) or {}
+                model_info = model_lookup.get(load_id) or model_lookup.get(real) or {}
+                option_loaded = load_id in loaded or real in loaded or current_id in {load_id, real}
+                option_runtime = model_runtime_compatibility(load_id, engine=engine_name)
+                option_supported = option_runtime.get("supported") is not False
+                option_pulled = bool(model_info.get("pulled"))
+                option_download_required = bool(item.get("pullable", True) and not option_pulled and not option_loaded)
                 options.append({
                     "engine": engine_name,
                     "model_id": real,
-                    "load_id": real if engine_name == "local_mlx" else f"{engine_name}:{real}",
+                    "load_id": load_id,
+                    "installed": bool(engine_info.get("installed")),
+                    "pulled": option_pulled,
+                    "loaded": option_loaded,
+                    "download_required": option_download_required,
+                    "runtime_compatibility": option_runtime,
+                    "runtime_supported": option_supported,
+                    "runtime_label": str(option_runtime.get("preferred_runtime") or engine_info.get("name") or engine_name),
                 })
             if not options:
-                options.append({"engine": "local_mlx", "model_id": item["id"], "load_id": item["id"]})
-            recommended_engine = options[0]["engine"]
-            load_id = options[0]["load_id"]
-            engine_info = engine_lookup.get(recommended_engine) or {}
-            model_info = model_lookup.get(load_id) or model_lookup.get(str(item["id"])) or {}
-            pulled = bool(model_info.get("pulled"))
-            is_loaded = load_id in loaded or str(item["id"]) in loaded or current_id in {load_id, str(item["id"])}
-            engine_installed = bool(engine_info.get("installed"))
+                runtime_compatibility = model_runtime_compatibility(str(item["id"]), engine="local_mlx")
+                options.append({
+                    "engine": "local_mlx",
+                    "model_id": item["id"],
+                    "load_id": item["id"],
+                    "installed": bool((engine_lookup.get("local_mlx") or {}).get("installed")),
+                    "pulled": False,
+                    "loaded": str(item["id"]) in loaded or current_id == str(item["id"]),
+                    "download_required": bool(item.get("pullable", True)),
+                    "runtime_compatibility": runtime_compatibility,
+                    "runtime_supported": runtime_compatibility.get("supported") is not False,
+                    "runtime_label": str(runtime_compatibility.get("preferred_runtime") or "MLX"),
+                })
+
+            def option_rank(option: Dict[str, object]) -> tuple[int, int, int, int]:
+                runtime_supported = bool(option.get("runtime_supported"))
+                installed = bool(option.get("installed"))
+                loaded_option = bool(option.get("loaded"))
+                ready_without_download = installed and not bool(option.get("download_required"))
+                return (
+                    0 if runtime_supported else 1,
+                    0 if loaded_option or ready_without_download else 1,
+                    0 if installed else 1,
+                    ["local_mlx", "ollama", "lmstudio", "llamacpp", "vllm"].index(str(option.get("engine") or "vllm")),
+                )
+
+            selected_option = min(options, key=option_rank)
+            recommended_engine = str(selected_option["engine"])
+            load_id = str(selected_option["load_id"])
+            model_info = model_lookup.get(load_id) or model_lookup.get(str(selected_option.get("model_id") or "")) or {}
+            pulled = bool(selected_option.get("pulled") or model_info.get("pulled"))
+            is_loaded = bool(selected_option.get("loaded"))
+            engine_installed = bool(selected_option.get("installed"))
             pullable = bool(item.get("pullable", True))
-            runtime_compatibility = model_runtime_compatibility(load_id, engine=recommended_engine)
+            runtime_compatibility = dict(selected_option.get("runtime_compatibility") or {})
             runtime_supported = runtime_compatibility.get("supported") is not False
-            download_required = bool(pullable and not pulled and not is_loaded)
+            download_required = bool(selected_option.get("download_required") and pullable and not is_loaded)
             if is_loaded:
                 load_status = "loaded"
                 unavailable_reason = None
@@ -209,6 +249,7 @@ def create_models_router(
                 "runtime_compatibility": runtime_compatibility,
                 "recovery_guidance": runtime_compatibility.get("recovery_guidance") or [],
                 "alternative_recommendations": runtime_compatibility.get("alternatives") or [],
+                "runtime_label": selected_option.get("runtime_label"),
             }
             base["engine_options"] = options
             base["recommended_engine"] = recommended_engine

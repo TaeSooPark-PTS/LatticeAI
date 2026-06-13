@@ -128,24 +128,26 @@ def test_list_cached_profiles_returns_dicts():
     assert any(item.get("model_id") == "model-z" for item in items)
 
 
-def test_gemma4_mlx_missing_drafter_is_not_supported(monkeypatch):
+def test_gemma4_mlx_missing_drafter_keeps_fallback_runtime_available(monkeypatch):
     def fake_find_spec(name):
-        if name in {"mlx", "mlx_vlm"}:
+        if name in {"mlx", "mlx_vlm", "mlx_lm", "mlx_lm.models.gemma4"}:
             return object()
         return None
 
     monkeypatch.setattr("latticeai.core.model_compat.importlib.util.find_spec", fake_find_spec)
     result = model_runtime_compatibility("mlx-community/gemma-4-12b-it-4bit", "local_mlx")
 
-    assert result["supported"] is False
-    assert result["status"] == "unsupported"
+    assert result["supported"] is True
+    assert result["status"] == "fallback_available"
+    assert result["preferred_runtime"] == "MLX-VLM with MLX-LM fallback"
     assert "Gemma 4" in result["user_message"]
     assert result["alternatives"]
+    assert any(item["runtime"] == "MLX-LM" and item["available"] for item in result["runtime_candidates"])
 
 
 def test_gemma4_runtime_error_is_friendly(monkeypatch):
     def fake_find_spec(name):
-        if name in {"mlx", "mlx_vlm"}:
+        if name in {"mlx", "mlx_vlm", "mlx_lm", "mlx_lm.models.gemma4_text"}:
             return object()
         return None
 
@@ -156,6 +158,7 @@ def test_gemma4_runtime_error_is_friendly(monkeypatch):
         engine="local_mlx",
     )
 
-    assert detail["status"] == "unsupported"
+    assert detail["status"] == "fallback_available"
     assert "No module named" not in detail["user_message"]
     assert detail["recovery_guidance"]
+    assert detail["alternatives"]

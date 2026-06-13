@@ -44,6 +44,25 @@ def test_runtime_incompatibility_marks_model_not_recommended(monkeypatch):
     assert "installed runtime" in by_id["mlx-community/gemma-4-12b-it-4bit"]["reason"]
 
 
+def test_gemma4_fallback_available_is_not_marked_not_recommended(monkeypatch):
+    monkeypatch.setattr(
+        mr,
+        "model_runtime_compatibility",
+        lambda model_id, *, engine=None: {
+            "model_id": model_id,
+            "engine": engine,
+            "status": "fallback_available",
+            "supported": True,
+            "preferred_runtime": "MLX-VLM with MLX-LM fallback",
+        } if "gemma-4-12b" in model_id else _runtime_supported(model_id, engine=engine),
+    )
+
+    result = mr.recommend_catalog(_mac(64), engine="local_mlx")
+    by_id = {m["id"]: m for m in result["models"]}
+    assert by_id["mlx-community/gemma-4-12b-it-4bit"]["status"] != mr.NOT_RECOMMENDED
+    assert by_id["mlx-community/gemma-4-12b-it-4bit"]["runtime_compatibility"]["status"] == "fallback_available"
+
+
 # ── size parsing ──────────────────────────────────────────────────────────────
 
 def test_parse_size_gb_units():
