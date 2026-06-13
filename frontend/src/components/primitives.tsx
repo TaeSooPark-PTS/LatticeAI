@@ -1,6 +1,6 @@
 import * as React from "react";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
-import { AlertCircle, CheckCircle2, Loader2 } from "lucide-react";
+import { AlertCircle, CheckCircle2, Loader2, Sparkles } from "lucide-react";
 import type { ApiResult } from "@/api/client";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -11,16 +11,18 @@ import { cn, asArray, fmtNumber, shortId, titleize } from "@/lib/utils";
 export function SourceBadge({ result }: { result?: Pick<ApiResult, "source" | "ok" | "status"> }) {
   const mode = useAppStore((state) => state.mode);
   if (!result) return <Badge variant="muted">not loaded</Badge>;
-  if (result.source === "live" && result.ok) return <Badge variant="success">{mode === "basic" ? "connected" : "live API"}</Badge>;
+  if (result.source === "live" && result.ok) return <Badge variant="success">{mode === "basic" ? "ready" : "connected"}</Badge>;
   return <Badge variant="warning">{mode === "basic" ? "needs setup" : "unavailable"}</Badge>;
 }
 
 export function EmptyState({ title = "Unavailable", detail }: { title?: string; detail?: React.ReactNode }) {
   return (
-    <div className="flex min-h-28 flex-col items-center justify-center gap-2 rounded-md border border-dashed border-border bg-muted/30 p-5 text-center text-sm text-muted-foreground">
-      <AlertCircle className="h-5 w-5" />
-      <div className="font-medium text-foreground">{title}</div>
-      {detail ? <div>{detail}</div> : null}
+    <div className="flex min-h-36 flex-col items-center justify-center gap-2 rounded-lg border border-dashed border-border bg-muted/24 p-6 text-center text-sm text-muted-foreground">
+      <div className="grid h-10 w-10 place-items-center rounded-md border border-border bg-card">
+        <Sparkles className="h-5 w-5 text-primary" />
+      </div>
+      <div className="text-base font-semibold text-foreground">{title}</div>
+      {detail ? <div className="max-w-md leading-6">{detail}</div> : null}
     </div>
   );
 }
@@ -40,7 +42,7 @@ export function DataPanel<T>({
 }) {
   const mode = useAppStore((state) => state.mode);
   return (
-    <Card className={className}>
+    <Card className={cn("overflow-hidden", className)}>
       <CardHeader className="flex-row items-start justify-between gap-3">
         <div>
           <CardTitle>{title}</CardTitle>
@@ -50,7 +52,7 @@ export function DataPanel<T>({
       </CardHeader>
       <CardContent>
         {result?.ok ? children(result.data) : (
-          <EmptyState detail={mode === "basic" ? "This area needs setup or is not available yet." : result?.error || "The backend did not return this capability."} />
+          <EmptyState detail={mode === "basic" ? "This area needs setup or is not available yet." : result?.error || "This capability is not reporting right now."} />
         )}
       </CardContent>
     </Card>
@@ -76,10 +78,10 @@ export function StatGrid({ stats }: { stats: Array<{ label: string; value: unkno
   return (
     <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
       {stats.map((stat) => (
-        <div key={stat.label} className="rounded-md border border-border bg-background p-3">
-          <div className="text-xs uppercase tracking-wide text-muted-foreground">{stat.label}</div>
-          <div className="mt-1 text-2xl font-semibold">{typeof stat.value === "number" ? fmtNumber(stat.value) : String(stat.value ?? "-")}</div>
-          {stat.hint ? <div className="mt-1 text-xs text-muted-foreground">{stat.hint}</div> : null}
+        <div key={stat.label} className="rounded-lg border border-border bg-background/55 p-4">
+          <div className="text-xs uppercase text-muted-foreground">{stat.label}</div>
+          <div className="mt-2 text-2xl font-semibold leading-tight">{typeof stat.value === "number" ? fmtNumber(stat.value) : String(stat.value ?? "-")}</div>
+          {stat.hint ? <div className="mt-2 text-xs leading-5 text-muted-foreground">{stat.hint}</div> : null}
         </div>
       ))}
     </div>
@@ -150,7 +152,7 @@ export function StructuredView({
   limit?: number;
 }) {
   if (Array.isArray(value)) {
-    if (!value.length) return <EmptyState title="No records" detail="The API returned an empty collection." />;
+    if (!value.length) return <EmptyState title="Nothing here yet" detail="New items will appear here when Lattice has something to show." />;
     if (value.every((item) => isRecord(item))) {
       return <EntityList items={value} titleKey={titleKey} metaKey={metaKey} limit={limit} />;
     }
@@ -200,11 +202,11 @@ export function EntityList({
   limit?: number;
 }) {
   const rows = asArray<Record<string, unknown>>(items).slice(0, limit);
-  if (!rows.length) return <EmptyState title="No records" detail="The API returned an empty collection." />;
+  if (!rows.length) return <EmptyState title="Nothing here yet" detail="New items will appear here when Lattice has something to show." />;
   return (
     <div className="grid gap-2">
       {rows.map((item, index) => (
-        <div key={String(item.id || item.name || index)} className="rounded-md border border-border bg-background p-3">
+        <div key={String(item.id || item.name || index)} className="rounded-lg border border-border bg-background/55 p-3">
           <div className="flex flex-wrap items-center justify-between gap-2">
             <div className="font-medium">{String(item[titleKey] || item.name || item.id || `Record ${index + 1}`)}</div>
             <Badge variant="muted">{String(item[metaKey] || item.status || item.state || "record")}</Badge>
@@ -273,14 +275,14 @@ export function Tabs({
   onChange: (id: string) => void;
 }) {
   return (
-    <div className="flex flex-wrap gap-1 rounded-md border border-border bg-muted/30 p-1">
+    <div className="inline-flex max-w-full flex-wrap gap-1 rounded-lg border border-border bg-muted/28 p-1">
       {tabs.map((tab) => (
         <button
           key={tab.id}
           onClick={() => onChange(tab.id)}
           className={cn(
-            "h-8 rounded px-3 text-sm font-medium transition",
-            value === tab.id ? "bg-background text-foreground shadow-sm" : "text-muted-foreground hover:text-foreground",
+            "h-9 rounded-md px-3.5 text-sm font-semibold transition",
+            value === tab.id ? "bg-card text-foreground shadow-sm" : "text-muted-foreground hover:bg-card/60 hover:text-foreground",
           )}
         >
           {tab.label}

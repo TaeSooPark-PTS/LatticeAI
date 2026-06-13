@@ -3,46 +3,46 @@
 
 :root {
   color-scheme: dark;
-  --background: 220 18% 8%;
-  --foreground: 210 30% 96%;
-  --card: 220 16% 11%;
-  --card-foreground: 210 30% 96%;
-  --muted: 218 13% 18%;
-  --muted-foreground: 215 14% 66%;
-  --primary: 176 68% 48%;
-  --primary-foreground: 212 26% 8%;
-  --secondary: 221 14% 20%;
-  --secondary-foreground: 210 30% 96%;
-  --destructive: 355 78% 58%;
+  --background: 245 10% 6%;
+  --foreground: 42 28% 94%;
+  --card: 245 9% 10%;
+  --card-foreground: 42 28% 94%;
+  --muted: 244 8% 16%;
+  --muted-foreground: 36 8% 67%;
+  --primary: 166 72% 48%;
+  --primary-foreground: 240 12% 6%;
+  --secondary: 245 7% 18%;
+  --secondary-foreground: 42 28% 94%;
+  --destructive: 355 78% 60%;
   --destructive-foreground: 0 0% 100%;
-  --border: 218 13% 23%;
-  --input: 218 13% 24%;
-  --ring: 176 68% 48%;
-  --brain: 176 68% 48%;
-  --ask: 216 78% 66%;
-  --capture: 142 58% 56%;
-  --act: 33 92% 58%;
-  --library: 262 68% 70%;
-  --system: 350 72% 68%;
+  --border: 246 8% 22%;
+  --input: 246 8% 24%;
+  --ring: 166 72% 48%;
+  --brain: 166 72% 48%;
+  --ask: 210 88% 66%;
+  --capture: 139 64% 55%;
+  --act: 34 92% 60%;
+  --library: 270 70% 72%;
+  --system: 350 78% 68%;
 }
 
 :root[data-theme="light"] {
   color-scheme: light;
-  --background: 210 30% 98%;
-  --foreground: 222 38% 9%;
-  --card: 0 0% 100%;
-  --card-foreground: 222 38% 9%;
-  --muted: 213 24% 92%;
-  --muted-foreground: 219 11% 38%;
-  --primary: 178 72% 32%;
+  --background: 36 28% 97%;
+  --foreground: 250 14% 9%;
+  --card: 36 30% 99%;
+  --card-foreground: 250 14% 9%;
+  --muted: 35 14% 91%;
+  --muted-foreground: 250 8% 40%;
+  --primary: 170 72% 31%;
   --primary-foreground: 0 0% 100%;
-  --secondary: 211 24% 90%;
-  --secondary-foreground: 222 38% 9%;
+  --secondary: 36 17% 88%;
+  --secondary-foreground: 250 14% 9%;
   --destructive: 355 72% 48%;
   --destructive-foreground: 0 0% 100%;
-  --border: 214 20% 83%;
-  --input: 214 20% 78%;
-  --ring: 178 72% 32%;
+  --border: 35 13% 78%;
+  --input: 35 13% 72%;
+  --ring: 170 72% 31%;
 }
 
 @theme inline {
@@ -73,6 +73,11 @@ body {
   background: hsl(var(--background));
   color: hsl(var(--foreground));
   font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  letter-spacing: 0;
+}
+
+body::selection {
+  background: hsl(var(--primary) / 0.28);
 }
 
 button,
@@ -82,15 +87,97 @@ select {
   font: inherit;
 }
 
+.app-backdrop {
+  background:
+    linear-gradient(180deg, hsl(var(--background)) 0%, hsl(var(--background)) 48%, hsl(250 10% 4%) 100%);
+}
+
+:root[data-theme="light"] .app-backdrop {
+  background:
+    linear-gradient(180deg, hsl(var(--background)) 0%, hsl(37 24% 94%) 100%);
+}
+
+.premium-surface {
+  border: 1px solid hsl(var(--border) / 0.82);
+  background:
+    linear-gradient(180deg, hsl(var(--card) / 0.96), hsl(var(--card) / 0.9));
+  box-shadow: 0 18px 70px hsl(250 24% 2% / 0.28);
+}
+
+:root[data-theme="light"] .premium-surface {
+  box-shadow: 0 18px 60px hsl(30 18% 58% / 0.16);
+}
+
+.page-shell {
+  margin-inline: auto;
+  width: min(100%, 1280px);
+}
+
+.page-hero {
+  position: relative;
+  overflow: hidden;
+  border: 1px solid hsl(var(--border) / 0.8);
+  border-radius: 8px;
+  background:
+    linear-gradient(120deg, hsl(var(--card) / 0.94), hsl(var(--muted) / 0.52)),
+    linear-gradient(90deg, hsl(var(--primary) / 0.12), transparent 58%);
+  padding: clamp(1.1rem, 2vw, 1.6rem);
+}
+
+.page-kicker {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  color: hsl(var(--primary));
+  font-size: 0.8125rem;
+  font-weight: 650;
+}
+
+.page-title {
+  margin-top: 0.6rem;
+  max-width: 56rem;
+  font-size: clamp(2rem, 4vw, 4.15rem);
+  line-height: 0.96;
+  font-weight: 760;
+  letter-spacing: 0;
+}
+
+.page-copy {
+  margin-top: 0.8rem;
+  max-width: 48rem;
+  color: hsl(var(--muted-foreground));
+  font-size: 0.98rem;
+  line-height: 1.6;
+}
+
+.control-pill {
+  border: 1px solid hsl(var(--border));
+  border-radius: 999px;
+  background: hsl(var(--card) / 0.72);
+  color: hsl(var(--foreground));
+}
+
 .brain-grid {
   background-image:
-    linear-gradient(hsl(var(--border) / 0.34) 1px, transparent 1px),
-    linear-gradient(90deg, hsl(var(--border) / 0.34) 1px, transparent 1px);
-  background-size: 32px 32px;
+    linear-gradient(hsl(var(--border) / 0.24) 1px, transparent 1px),
+    linear-gradient(90deg, hsl(var(--border) / 0.24) 1px, transparent 1px);
+  background-size: 28px 28px;
 }
 
 .scrollbar-thin {
   scrollbar-width: thin;
+}
+
+.soft-scrollbar::-webkit-scrollbar {
+  height: 10px;
+  width: 10px;
+}
+
+.soft-scrollbar::-webkit-scrollbar-thumb {
+  background: hsl(var(--border));
+  border: 3px solid transparent;
+  border-radius: 999px;
+  background-clip: content-box;
 }
 
 .react-flow__node {

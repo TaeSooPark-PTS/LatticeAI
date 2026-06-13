@@ -406,7 +406,7 @@ function CytoscapeGraph({
     <div
       ref={hostRef}
       data-testid="brain-cytoscape"
-      className="h-[620px] min-h-[32rem] w-full overflow-hidden rounded-md border border-border bg-background brain-grid"
+      className="brain-grid h-[620px] min-h-[32rem] w-full overflow-hidden rounded-lg border border-border bg-background/80"
     />
   );
 }
@@ -425,19 +425,19 @@ export function BrainPage({ initialTab }: { initialTab?: string }) {
   const memory = useQuery({ queryKey: ["memoryManager"], queryFn: latticeApi.memoryManager });
 
   return (
-    <div className="space-y-4">
-      <header className="grid gap-4 xl:grid-cols-[1.4fr_0.6fr]">
+    <div className="space-y-5">
+      <header className="page-hero grid gap-4 xl:grid-cols-[1.4fr_0.6fr]">
         <div>
-          <div className="flex items-center gap-2 text-sm text-primary"><BrainCircuit className="h-4 w-4" /> Graph-first Digital Brain</div>
-          <h1 className="mt-2 text-3xl font-semibold tracking-normal">Brain</h1>
-          <p className="mt-2 max-w-3xl text-sm text-muted-foreground">
-            Explore what Lattice remembers, where it came from, and how ideas connect across your workspace.
+          <div className="page-kicker"><BrainCircuit className="h-4 w-4" /> Digital Brain</div>
+          <h1 className="page-title">See how your knowledge connects.</h1>
+          <p className="page-copy">
+            Search memories, follow relationships, and inspect the source behind every idea.
           </p>
         </div>
-        <div className="rounded-md border border-border bg-card p-4">
+        <div className="rounded-lg border border-border bg-background/58 p-4">
           <div className="text-xs uppercase text-muted-foreground">Provenance coverage</div>
           <div className="mt-2 text-3xl font-semibold">{pct((coverage.data?.data as Record<string, unknown>)?.coverage_ratio)}</div>
-          <div className="mt-2 text-sm text-muted-foreground">Source: {coverage.data?.source || "loading"}</div>
+          <div className="mt-2 text-sm text-muted-foreground">{coverage.data?.ok ? "Sources are linked to graph records." : "Checking source coverage."}</div>
         </div>
       </header>
       <Tabs tabs={tabs} value={tab} onChange={(id) => setTab(id as BrainTab)} />
@@ -461,7 +461,7 @@ export function BrainPage({ initialTab }: { initialTab?: string }) {
 
       {tab === "graph" ? (
         graph.isLoading ? <LoadingPanel title="Knowledge graph" /> : (
-          <DataPanel title="Digital Brain explorer" description={mode === "basic" ? "Search, focus, and filter the ideas Lattice has learned from your workspace." : "Interactive graph explorer with source-backed relationships and advanced inspection."} result={graph.data}>
+          <DataPanel title="Brain map" description={mode === "basic" ? "Search, focus, and filter the ideas Lattice has learned from your workspace." : "Explore relationships, provenance, and graph structure."} result={graph.data}>
             {(data) => <DigitalBrainExplorer data={data} />}
           </DataPanel>
         )
@@ -585,9 +585,9 @@ function DigitalBrainExplorer({ data }: { data: unknown }) {
         <Card>
           <CardHeader className="flex-row items-start justify-between gap-3">
             <div>
-              <CardTitle className="flex items-center gap-2"><Layers3 className="h-4 w-4" /> Semantic map</CardTitle>
+              <CardTitle className="flex items-center gap-2"><Layers3 className="h-4 w-4" /> Knowledge map</CardTitle>
               <CardDescription>
-                Showing {fmtNumber(model.visibleNodes.length)} ideas and {fmtNumber(model.visibleEdges.length)} relationships from {fmtNumber(model.totalNodes)} saved items.
+                Showing {fmtNumber(model.visibleNodes.length)} ideas and {fmtNumber(model.visibleEdges.length)} connections from {fmtNumber(model.totalNodes)} saved items.
               </CardDescription>
             </div>
             <Badge variant={model.hiddenByFilters ? "warning" : "success"}>{model.hiddenByFilters ? `${fmtNumber(model.hiddenByFilters)} filtered` : "all in view"}</Badge>
@@ -609,7 +609,7 @@ function DigitalBrainExplorer({ data }: { data: unknown }) {
               />
               <Badge variant="muted">{Math.round(minImportance * 100)}%+</Badge>
               {selectedId ? <Button variant="outline" size="sm" onClick={() => setSelectedId(null)}>Clear focus</Button> : null}
-              {search.trim() ? <Button variant="outline" size="sm" onClick={() => backendSearch.mutate()} disabled={backendSearch.isPending}>Search brain</Button> : null}
+              {search.trim() ? <Button variant="outline" size="sm" onClick={() => backendSearch.mutate()} disabled={backendSearch.isPending}>Search all memories</Button> : null}
             </div>
             <div className="flex flex-wrap gap-2">
               {model.groups.map((group) => (
@@ -631,7 +631,7 @@ function DigitalBrainExplorer({ data }: { data: unknown }) {
           <Card>
             <CardHeader>
               <CardTitle className="flex items-center gap-2"><Focus className="h-4 w-4" /> Focus</CardTitle>
-              <CardDescription>Click a node to inspect its neighborhood.</CardDescription>
+              <CardDescription>Click any idea to see why it matters.</CardDescription>
             </CardHeader>
             <CardContent className="space-y-3">
               {selected ? (
@@ -669,8 +669,8 @@ function DigitalBrainExplorer({ data }: { data: unknown }) {
           </Card>
           <Card>
             <CardHeader>
-              <CardTitle>Important nodes</CardTitle>
-              <CardDescription>Highest-ranked visible graph records.</CardDescription>
+              <CardTitle>Important ideas</CardTitle>
+              <CardDescription>What Lattice thinks is most connected right now.</CardDescription>
             </CardHeader>
             <CardContent className="space-y-2">
               {model.visibleNodes.slice(0, 8).map((node) => (
@@ -706,7 +706,7 @@ function HybridSearch() {
     <Card>
       <CardHeader>
         <CardTitle className="flex items-center gap-2"><Search className="h-4 w-4" /> Brain search</CardTitle>
-        <CardDescription>Searches memories, graph connections, and indexed documents together.</CardDescription>
+        <CardDescription>Find ideas across memories, documents, and connections.</CardDescription>
       </CardHeader>
       <CardContent className="space-y-3">
         <div className="flex flex-col gap-2 sm:flex-row">
@@ -735,7 +735,7 @@ function MemoryPanel() {
       <Card>
         <CardHeader>
           <CardTitle className="flex items-center gap-2"><Sparkles className="h-4 w-4" /> Recall</CardTitle>
-          <CardDescription>Searches the real memory recall endpoint.</CardDescription>
+          <CardDescription>Bring back related memories from your workspace.</CardDescription>
         </CardHeader>
         <CardContent className="space-y-3">
           <Input value={query} onChange={(e) => setQuery(e.target.value)} placeholder="Recall memories about..." />
@@ -759,7 +759,7 @@ function ProvenancePanel() {
       <DataPanel title="Coverage" result={coverage.data}>
         {(data) => <StructuredView value={data} />}
       </DataPanel>
-      <DataPanel title="Recent ingestion provenance" result={provenance.data}>
+      <DataPanel title="Recent sources" result={provenance.data}>
         {(data) => <EntityList items={(data as Record<string, unknown>).items || data} titleKey="source" metaKey="source_type" limit={14} />}
       </DataPanel>
     </div>
@@ -788,7 +788,7 @@ function PortabilityPanel() {
       <Card>
         <CardHeader>
           <CardTitle className="flex items-center gap-2"><DatabaseBackup className="h-4 w-4" /> Export, backup, import</CardTitle>
-          <CardDescription>Every control calls a real portability endpoint. Import is dry-run by default from a pasted export artifact.</CardDescription>
+          <CardDescription>Export, back up, or preview an import before changing your brain.</CardDescription>
         </CardHeader>
         <CardContent className="space-y-3">
           <div className="flex flex-wrap gap-2">
@@ -816,7 +816,7 @@ function PortabilityStatus({ data }: { data: Record<string, unknown> }) {
   return (
     <div className="space-y-3">
       <StatGrid stats={[
-        { label: "Schema", value: data.graph_schema_version || data.schema_version || "reported" },
+        { label: "Graph version", value: data.graph_schema_version || data.schema_version || "reported" },
         { label: "Nodes", value: (stats.total_nodes as number) || Object.values((stats.nodes as Record<string, unknown>) || {}).reduce((sum: number, value) => sum + Number(value || 0), 0) },
         { label: "Edges", value: (stats.total_edges as number) || Object.values((stats.edges as Record<string, unknown>) || {}).reduce((sum: number, value) => sum + Number(value || 0), 0) },
         { label: "Storage", value: storage.engine || "reported" },

@@ -23,11 +23,11 @@ export function CapturePage({ initialTab }: { initialTab?: string }) {
     if (initialTab === "pipeline" || initialTab === "local" || initialTab === "files") setTab(initialTab);
   }, [initialTab]);
   return (
-    <div className="space-y-4">
-      <header>
-        <div className="flex items-center gap-2 text-sm text-primary"><Upload className="h-4 w-4" /> One ingestion door</div>
-        <h1 className="mt-2 text-3xl font-semibold">Capture</h1>
-        <p className="mt-2 max-w-3xl text-sm text-muted-foreground">Documents, folders, and URLs enter the brain through existing ingestion endpoints with provenance.</p>
+    <div className="space-y-5">
+      <header className="page-hero">
+        <div className="page-kicker"><Upload className="h-4 w-4" /> Capture</div>
+        <h1 className="page-title">Bring knowledge into Lattice.</h1>
+        <p className="page-copy">Drop in files, connect folders, or save a web page. Lattice keeps track of where each memory came from.</p>
       </header>
       <Tabs tabs={tabs} value={tab} onChange={(id) => setTab(id as CaptureTab)} />
       {tab === "files" ? <FilesPanel /> : null}
@@ -49,14 +49,14 @@ function FilesPanel() {
     <div className="grid gap-4 xl:grid-cols-[0.75fr_1.25fr]">
       <Card>
         <CardHeader>
-          <CardTitle className="flex items-center gap-2"><Upload className="h-4 w-4" /> Upload documents</CardTitle>
-          <CardDescription>Multipart upload to `/upload/document`; accepted files are parsed and indexed by the backend.</CardDescription>
+          <CardTitle className="flex items-center gap-2"><Upload className="h-4 w-4" /> Add documents</CardTitle>
+          <CardDescription>Choose files and Lattice will prepare them for search and memory.</CardDescription>
         </CardHeader>
         <CardContent>
-          <label className="flex min-h-44 cursor-pointer flex-col items-center justify-center gap-3 rounded-lg border border-dashed border-border bg-muted/30 p-5 text-center">
+          <label className="flex min-h-56 cursor-pointer flex-col items-center justify-center gap-3 rounded-lg border border-dashed border-border bg-muted/30 p-6 text-center transition hover:bg-muted/50">
             <Upload className="h-7 w-7 text-primary" />
-            <span className="font-medium">Choose files</span>
-            <span className="text-sm text-muted-foreground">PDF, DOCX, XLSX, PPTX, TXT, MD, CSV according to backend policy.</span>
+            <span className="text-lg font-semibold">Choose files</span>
+            <span className="max-w-sm text-sm leading-6 text-muted-foreground">PDF, Office files, notes, markdown, text, and spreadsheets are all welcome.</span>
             <input type="file" multiple className="sr-only" onChange={(e) => e.target.files && upload.mutate(e.target.files)} />
           </label>
           {upload.data ? (
@@ -86,12 +86,12 @@ function LocalPanel() {
     <div className="grid gap-4 xl:grid-cols-[0.9fr_1.1fr]">
       <Card>
         <CardHeader>
-          <CardTitle className="flex items-center gap-2"><FolderPlus className="h-4 w-4" /> Connect folder</CardTitle>
-          <CardDescription>The click is explicit consent; the backend still enforces its permission workflow.</CardDescription>
+          <CardTitle className="flex items-center gap-2"><FolderPlus className="h-4 w-4" /> Connect a folder</CardTitle>
+          <CardDescription>Point Lattice at a folder you want it to remember.</CardDescription>
         </CardHeader>
         <CardContent className="space-y-3">
           <Input value={path} onChange={(e) => setPath(e.target.value)} placeholder="/Users/me/Documents/project" />
-          <Button disabled={!path.trim() || connect.isPending} onClick={() => connect.mutate()}>Connect and watch</Button>
+          <Button disabled={!path.trim() || connect.isPending} onClick={() => connect.mutate()}>Connect Folder</Button>
           {connect.data ? <OperationResult result={connect.data} successLabel="Folder connection requested" /> : null}
         </CardContent>
       </Card>
@@ -110,7 +110,7 @@ function LocalPanel() {
           </div>
         )}
       </DataPanel>
-      <DataPanel title="Local runtime probe" result={agent.data} className="xl:col-span-2">
+      <DataPanel title="Folder access" result={agent.data} className="xl:col-span-2">
         {(data) => <StructuredView value={data} />}
       </DataPanel>
     </div>
@@ -123,8 +123,8 @@ function BrowserPanel() {
   return (
     <Card>
       <CardHeader>
-        <CardTitle className="flex items-center gap-2"><Globe2 className="h-4 w-4" /> URL capture</CardTitle>
-        <CardDescription>Fetches a URL locally through `/api/browser/read-url` and ingests the content with provenance.</CardDescription>
+        <CardTitle className="flex items-center gap-2"><Globe2 className="h-4 w-4" /> Save a web page</CardTitle>
+        <CardDescription>Capture a page so Lattice can remember the useful parts.</CardDescription>
       </CardHeader>
       <CardContent className="space-y-3">
         <div className="flex flex-col gap-2 sm:flex-row">
@@ -151,7 +151,7 @@ function PipelinePanel() {
       <Card className="xl:col-span-2">
         <CardHeader>
           <CardTitle className="flex items-center gap-2"><HardDrive className="h-4 w-4" /> Rebuild controls</CardTitle>
-          <CardDescription>Rebuild calls the existing index endpoint. No background work is implied unless the API accepts it.</CardDescription>
+          <CardDescription>Refresh search when you want Lattice to re-check captured material.</CardDescription>
         </CardHeader>
         <CardContent>
           <ActionButton label="Rebuild retrieval index" action={() => latticeApi.rebuildIndex()} invalidate={["index"]} />

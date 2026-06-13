@@ -20,7 +20,7 @@ function trackPageErrors(page) {
 test("React desktop shell boots with six primary navigation groups", async ({ page }) => {
   const errors = trackPageErrors(page);
   await page.goto("/app");
-  await page.waitForSelector("text=Digital Brain Desktop");
+  await page.waitForSelector("text=Your Digital Brain");
   for (const label of ["Brain", "Ask", "Capture", "Act", "Library", "System"]) {
     await expect(page.locator("aside nav").getByRole("button", { name: new RegExp(`^${label}\\b`) }).first()).toBeVisible();
   }
@@ -31,7 +31,7 @@ test("React desktop shell boots with six primary navigation groups", async ({ pa
 
 test("first-run setup restores the original onboarding journey", async ({ page }) => {
   await page.goto("/app");
-  await expect(page.locator("body")).toContainText("First-run setup");
+  await expect(page.locator("body")).toContainText("First run");
   for (const label of [
     "Login",
     "Workspace Selection",
@@ -44,7 +44,7 @@ test("first-run setup restores the original onboarding journey", async ({ page }
   ]) {
     await expect(page.locator("body")).toContainText(label);
   }
-  await expect(page.getByRole("button", { name: "Set Up Model" })).toBeVisible();
+  await expect(page.getByRole("button", { name: "Choose Model" })).toBeVisible();
 });
 
 test("old hash routes resolve into the replacement SPA without JS errors", async ({ page }) => {
@@ -79,8 +79,8 @@ test("offline startup loads local assets and shows honest unavailable state", as
     await route.abort();
   });
   await page.goto("/app#/brain");
-  await page.waitForSelector("text=Digital Brain Desktop");
-  await expect(page.locator("body")).toContainText("Server: unavailable");
+  await page.waitForSelector("text=Your Digital Brain");
+  await expect(page.locator("body")).toContainText("Starting up");
   await expect(page.locator("aside nav").getByRole("button", { name: /^Brain\b/ }).first()).toBeVisible();
   expect(errors).toEqual([]);
 });
@@ -94,7 +94,7 @@ test("hybrid search calls the API and renders returned records", async ({ page }
 
 test("Ask streams chat and shows context trace", async ({ page }) => {
   await page.goto("/app#/chat");
-  await page.getByPlaceholder("Ask the brain...").fill("How does hybrid search rank results?");
+  await page.getByPlaceholder("Ask anything about your work...").fill("How does hybrid search rank results?");
   await page.getByRole("button", { name: /Send/ }).click();
   await expect(page.locator("body")).toContainText("Hybrid retrieval");
   await expect(page.locator("body")).toContainText("Why this context");
@@ -104,7 +104,7 @@ test("Capture exposes upload, local folder, URL, and pipeline controls", async (
   await page.goto("/app#/files");
   await expect(page.locator("body")).toContainText("retrieval-design.pdf");
   await page.goto("/app#/my-computer");
-  await expect(page.locator("body")).toContainText("Local runtime probe");
+  await expect(page.locator("body")).toContainText("Folder access");
   await page.goto("/app#/capture");
   await page.getByRole("button", { name: "Web capture" }).click();
   await expect(page.locator("body")).toContainText("Capture URL");
@@ -129,7 +129,7 @@ test("Act surfaces agents, runs, workflow graph, triggers, hooks, and tools", as
 test("Library renders models, skills, MCP, and marketplace registries", async ({ page }) => {
   await page.goto("/app#/models");
   await expect(page.locator("body")).toContainText("Qwen3-VL 8B");
-  await expect(page.locator("body")).toContainText("Environment Analysis -> Recommended Models -> Install -> Download Progress -> Validate -> Load -> Ready");
+  await expect(page.locator("body")).toContainText("Check this Mac, choose a model, install only with consent, validate, then load.");
   await expect(page.locator("body")).toContainText("Runtime update needed");
   await expect(page.locator("body")).toContainText("Gemma 4 26B A4B Instruct");
   await expect(page.locator("body")).toContainText("Qwen3-VL 8B");
@@ -184,5 +184,5 @@ test("mobile layout has no horizontal overflow and nav opens", async ({ page }) 
   expect(overflow).toBeLessThanOrEqual(1);
   await page.getByLabel("Toggle theme").waitFor();
   await page.getByRole("button").first().click();
-  await expect(page.getByText("Digital Brain Desktop").nth(1)).toBeVisible();
+  await expect(page.getByText("Your Digital Brain").nth(1)).toBeVisible();
 });

@@ -28,11 +28,11 @@ export function SystemPage({ initialTab }: { initialTab?: string }) {
     if (tabs.some((item) => item.id === initialTab)) setTab(initialTab as SystemTab);
   }, [initialTab]);
   return (
-    <div className="space-y-4">
-      <header>
-        <div className="flex items-center gap-2 text-sm text-primary"><ShieldCheck className="h-4 w-4" /> Local-first control plane</div>
-        <h1 className="mt-2 text-3xl font-semibold">System</h1>
-        <p className="mt-2 max-w-3xl text-sm text-muted-foreground">Identity, workspaces, snapshots, activity, network exchange, runtime settings, and admin status.</p>
+    <div className="space-y-5">
+      <header className="page-hero">
+        <div className="page-kicker"><ShieldCheck className="h-4 w-4" /> System</div>
+        <h1 className="page-title">Keep your brain local, safe, and portable.</h1>
+        <p className="page-copy">Manage your account, workspaces, backups, local device, and advanced settings from one place.</p>
       </header>
       <Tabs tabs={tabs} value={tab} onChange={(id) => setTab(id as SystemTab)} />
       {tab === "account" ? <AccountPanel /> : null}
@@ -66,7 +66,7 @@ function AccountPanel() {
       </DataPanel>
       <Card>
         <CardHeader>
-          <CardTitle className="flex items-center gap-2"><UserCircle className="h-4 w-4" /> Account sign-in</CardTitle>
+          <CardTitle className="flex items-center gap-2"><UserCircle className="h-4 w-4" /> Account</CardTitle>
           <CardDescription>Sign in, create a local account, and keep your profile current.</CardDescription>
         </CardHeader>
         <CardContent className="grid gap-3">
@@ -89,7 +89,7 @@ function AccountPanel() {
           ))}
         </CardContent>
       </Card>
-      <DataPanel title="SSO config" result={sso.data} className="xl:col-span-2">
+      <DataPanel title="Sign-in options" result={sso.data} className="xl:col-span-2">
         {(data) => <StructuredView value={data} />}
       </DataPanel>
     </div>
@@ -110,7 +110,7 @@ function WorkspacePanel() {
   const workspaces = asArray<Record<string, unknown>>((registry.data?.data as Record<string, unknown>)?.workspaces);
   return (
     <div className="grid gap-4 xl:grid-cols-[1.1fr_0.9fr]">
-      <DataPanel title="Workspace registry" result={registry.data}>
+      <DataPanel title="Your workspaces" result={registry.data}>
         {() => (
           <div className="grid gap-2">
             {workspaces.map((workspace) => {
@@ -137,7 +137,7 @@ function WorkspacePanel() {
       <Card>
         <CardHeader>
           <CardTitle className="flex items-center gap-2"><Users className="h-4 w-4" /> Organizations and invitations</CardTitle>
-          <CardDescription>Create or join a workspace before connecting files and models.</CardDescription>
+          <CardDescription>Create or join a workspace before adding knowledge.</CardDescription>
         </CardHeader>
         <CardContent className="grid gap-3">
           <Input value={orgName} onChange={(e) => setOrgName(e.target.value)} placeholder="New organization name" />
@@ -187,7 +187,7 @@ function SnapshotsPanel() {
       <Card>
         <CardHeader>
           <CardTitle>Snapshot actions</CardTitle>
-          <CardDescription>Create and compare through Workspace OS endpoints.</CardDescription>
+          <CardDescription>Create checkpoints and compare changes over time.</CardDescription>
         </CardHeader>
         <CardContent className="grid gap-3">
           <Input value={name} onChange={(e) => setName(e.target.value)} placeholder="snapshot name" />
@@ -241,7 +241,7 @@ function NetworkPanel() {
       <Card>
         <CardHeader>
           <CardTitle className="flex items-center gap-2"><Network className="h-4 w-4" /> Pair peer</CardTitle>
-          <CardDescription>Manual peer pairing for signed workspace bundle exchange.</CardDescription>
+        <CardDescription>Pair a trusted device for workspace exchange.</CardDescription>
         </CardHeader>
         <CardContent className="grid gap-3">
           <Input value={name} onChange={(e) => setName(e.target.value)} placeholder="peer name" />
@@ -363,7 +363,7 @@ function SettingsPanel() {
       <Card className="xl:col-span-3">
         <CardHeader>
           <CardTitle>.latticebrain portability</CardTitle>
-          <CardDescription>Encrypted export, inspect, verify, dry-run restore, and confirmed restore use the Brain portability API.</CardDescription>
+          <CardDescription>Create an encrypted portable brain file, verify one, or preview a restore before applying it.</CardDescription>
         </CardHeader>
         <CardContent className="grid gap-3">
           <div className="grid gap-2 sm:grid-cols-[1fr_1fr]">
@@ -395,8 +395,8 @@ function SettingsPanel() {
       </Card>
       <Card className="xl:col-span-3">
         <CardHeader>
-          <CardTitle>Postgres scale mode</CardTitle>
-          <CardDescription>Opt-in migration and Docker setup; SQLite remains the default.</CardDescription>
+          <CardTitle>Scale mode</CardTitle>
+          <CardDescription>Optional advanced storage. Local SQLite remains the default.</CardDescription>
         </CardHeader>
         <CardContent className="grid gap-3">
           <div className="grid gap-2 sm:grid-cols-[1fr_220px]">
@@ -550,7 +550,7 @@ function HardeningView({ data }: { data: Record<string, unknown> }) {
         { label: "Backups", value: backup.count || backup.available || "reported" },
       ]} />
       <div className="grid gap-3 md:grid-cols-2">
-        <StatusCard title="Startup" status={startup.network_exposed ? "network exposed" : "local-only"} detail={`Host ${textValue(startup.host, "127.0.0.1")} on port ${textValue(startup.port, "configured")}.`} />
+        <StatusCard title="Startup" status={startup.network_exposed ? "network exposed" : "local-only"} detail="Lattice starts locally by default and reports when network access is enabled." />
         <StatusCard title="Integrations" status={privacy.local_only_default === false ? "review required" : "opt-in"} detail="External integrations remain disabled until the user explicitly enables them." />
         <StatusCard title="Device identity" status={textValue(identity.algorithm || identity.fingerprint, "reported")} detail={textValue(identity.storage, "Stored locally and used for signed bundle exchange.")} />
         <StatusCard title="Permissions" status={permissions.destructive_restore_requires_confirmation === false ? "review required" : "guarded"} detail="Export, import, and destructive restore permissions are surfaced through admin status." />

@@ -25,11 +25,11 @@ export function LibraryPage({ initialTab }: { initialTab?: string }) {
     if (tabs.some((item) => item.id === initialTab)) setTab(initialTab as LibraryTab);
   }, [initialTab]);
   return (
-    <div className="space-y-4">
-      <header>
-        <div className="flex items-center gap-2 text-sm text-primary"><Boxes className="h-4 w-4" /> Replaceable runtime assets</div>
-        <h1 className="mt-2 text-3xl font-semibold">Library</h1>
-        <p className="mt-2 max-w-3xl text-sm text-muted-foreground">Models, skills, MCP servers, plugins, and templates are managed by local backend registries.</p>
+    <div className="space-y-5">
+      <header className="page-hero">
+        <div className="page-kicker"><Boxes className="h-4 w-4" /> Library</div>
+        <h1 className="page-title">Choose what powers your brain.</h1>
+        <p className="page-copy">Install local models, add skills, and connect tools while keeping setup choices explicit.</p>
       </header>
       <Tabs tabs={tabs} value={tab} onChange={(id) => setTab(id as LibraryTab)} />
       {tab === "models" ? <ModelsPanel /> : null}
@@ -89,7 +89,7 @@ function ModelsPanel() {
   return (
     <div className="grid gap-4 xl:grid-cols-[1.2fr_0.8fr]">
       <div className="space-y-4">
-        <DataPanel title="Model setup flow" description="Environment Analysis -> Recommended Models -> Install -> Download Progress -> Validate -> Load -> Ready" result={recs.data}>
+        <DataPanel title="Model setup" description="Check this Mac, choose a model, install only with consent, validate, then load." result={recs.data}>
           {(data) => {
             const recommendation = (data as Record<string, unknown>).recommendations as Record<string, unknown> | undefined;
             const profile = (data as Record<string, unknown>).profile as Record<string, unknown> | undefined;
@@ -110,21 +110,21 @@ function ModelsPanel() {
                     ["Validate", Boolean(current || latestProgress?.stage === "smoke_test"), ShieldAlert],
                     ["Load / Ready", Boolean(current || lastResult), PlayCircle],
                   ].map(([label, done, Icon]) => (
-                    <div key={String(label)} className="rounded-md border border-border bg-background p-3">
+                    <div key={String(label)} className="rounded-lg border border-border bg-background/55 p-3">
                       {React.createElement(Icon as typeof Cpu, { className: "h-4 w-4 text-primary" })}
                       <div className="mt-2 text-sm font-medium">{String(label)}</div>
                       <Badge variant={done ? "success" : "muted"}>{done ? "ready" : "pending"}</Badge>
                     </div>
                   ))}
                 </div>
-                <label className="flex items-start gap-2 rounded-md border border-border bg-background p-3 text-sm">
+                <label className="flex items-start gap-2 rounded-lg border border-border bg-background/55 p-3 text-sm leading-6">
                   <input className="mt-1" type="checkbox" checked={consent} onChange={(event) => setConsent(event.target.checked)} />
                   <span>
-                    Allow this model action to install a missing local runtime or download model files. Lattice AI will not start external downloads without this consent.
+                    Allow Lattice to install a missing local model component or download model files for this action.
                   </span>
                 </label>
                 {latestProgress ? (
-                  <div className="rounded-md border border-border bg-background p-3 text-sm">
+                  <div className="rounded-lg border border-border bg-background/55 p-3 text-sm">
                     <div className="font-medium">{String(latestProgress.message || "Preparing model")}</div>
                     <div className="mt-2 h-2 overflow-hidden rounded-full bg-muted">
                       <div className="h-full bg-primary" style={{ width: `${Number(latestProgress.percent || 8)}%` }} />
@@ -152,28 +152,28 @@ function ModelsPanel() {
               const downloadRequired = Boolean(model.download_required);
               const loadAvailable = (Boolean(model.load_available) || loaded) && !unsupported;
               const loadStatus = String(model.load_status || (loaded ? "loaded" : "unavailable"));
-              const unavailableReason = String(model.unavailable_reason || "Unavailable until the backend reports a local model/runtime ready.");
+              const unavailableReason = String(model.unavailable_reason || "This model is not ready to load yet.");
               const runtimeLabel = String(model.runtime_label || compatibility.preferred_runtime || engine || "local_mlx");
               const actionLabel = String(compatibility.action || loadStatus.replace(/_/g, " "));
               const badgeLabel = unsupported ? actionLabel : loadStatus;
               const canPrepare = loadAvailable || downloadRequired;
               return (
-                <div key={id} className="grid gap-3 rounded-md border border-border bg-background p-3 md:grid-cols-[1fr_auto]">
+                <div key={id} className="grid gap-3 rounded-lg border border-border bg-background/55 p-4 md:grid-cols-[1fr_auto]">
                   <div className="min-w-0">
                     <div className="flex flex-wrap items-center gap-2">
-                      <div className="font-medium">{String(model.name || id)}</div>
+                        <div className="text-base font-semibold">{String(model.name || id)}</div>
                       {topPick?.id === id ? <Badge variant="success">recommended</Badge> : null}
                     </div>
                     <div className="mt-1 text-sm text-muted-foreground">
                       {[model.family || recommendation.family || "local", model.size || recommendation.size].filter(Boolean).map(String).join(" · ")}
                     </div>
                     {unsupported ? (
-                      <div className="mt-2 rounded-md border border-amber-500/30 bg-amber-500/10 p-2 text-sm">
+                      <div className="mt-3 rounded-lg border border-amber-500/30 bg-amber-500/10 p-3 text-sm">
                         <div className="font-medium">{actionLabel}</div>
                         <div className="text-muted-foreground">{String(compatibility.user_message || unavailableReason)}</div>
                       </div>
                     ) : fallbackAvailable ? (
-                      <div className="mt-2 rounded-md border border-amber-500/30 bg-amber-500/10 p-2 text-sm">
+                      <div className="mt-3 rounded-lg border border-amber-500/30 bg-amber-500/10 p-3 text-sm">
                         <div className="font-medium">Runtime fallback available</div>
                         <div className="text-muted-foreground">{String(compatibility.user_message || "Lattice will try the compatible local runtime path before showing this model as unsupported.")}</div>
                       </div>
@@ -216,7 +216,7 @@ function ModelsPanel() {
             return profiles.length ? (
               <EntityList items={profiles} titleKey="model_id" metaKey="quality_status" limit={6} />
             ) : (
-              <EmptyState title="No validation yet" detail="Load a model to run compatibility validation before using it." />
+              <EmptyState title="No model checked yet" detail="Load a model to confirm it can answer before you start using it." />
             );
           }}
         </DataPanel>
@@ -240,7 +240,7 @@ function AlternativeModels({ compatibility }: { compatibility: Record<string, un
 function ModelRecovery({ error }: { error: Record<string, unknown> }) {
   const guidance = asArray<string>(error.recovery_guidance);
   return (
-    <div className="rounded-md border border-amber-500/30 bg-amber-500/10 p-3 text-sm">
+    <div className="rounded-lg border border-amber-500/30 bg-amber-500/10 p-3 text-sm">
       <div className="font-medium">{String(error.user_message || "Model setup needs attention.")}</div>
       {guidance.length ? (
         <ul className="mt-2 list-inside list-disc text-muted-foreground">
@@ -307,7 +307,7 @@ function McpPanel() {
       <Card>
         <CardHeader>
           <CardTitle className="flex items-center gap-2"><Plug className="h-4 w-4" /> Recommend connector</CardTitle>
-          <CardDescription>Calls `/mcp/recommend`; returned installability depends on available connectors.</CardDescription>
+          <CardDescription>Describe what you want to connect and Lattice will suggest a connector.</CardDescription>
         </CardHeader>
         <CardContent className="space-y-3">
           <div className="flex gap-2">
@@ -339,7 +339,7 @@ function MarketplacePanel() {
       <Card className="xl:col-span-3">
         <CardHeader>
           <CardTitle className="flex items-center gap-2"><PackagePlus className="h-4 w-4" /> Template install</CardTitle>
-          <CardDescription>Install controls are enabled only for template records returned by the backend.</CardDescription>
+          <CardDescription>Start from a reusable workspace pattern.</CardDescription>
         </CardHeader>
         <CardContent>
           {asArray<Record<string, unknown>>((templates.data?.data as Record<string, unknown>)?.templates).length ? (

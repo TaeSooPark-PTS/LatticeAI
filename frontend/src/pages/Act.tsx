@@ -27,11 +27,11 @@ export function ActPage({ initialTab }: { initialTab?: string }) {
     if (tabs.some((item) => item.id === initialTab)) setTab(initialTab as ActTab);
   }, [initialTab]);
   return (
-    <div className="space-y-4">
-      <header>
-        <div className="flex items-center gap-2 text-sm text-primary"><Workflow className="h-4 w-4" /> Durable execution</div>
-        <h1 className="mt-2 text-3xl font-semibold">Act</h1>
-        <p className="mt-2 max-w-3xl text-sm text-muted-foreground">Agents, workflows, approvals, hooks, and governed tools. Pauses and unavailable states are surfaced honestly.</p>
+    <div className="space-y-5">
+      <header className="page-hero">
+        <div className="page-kicker"><Workflow className="h-4 w-4" /> Act</div>
+        <h1 className="page-title">Turn intentions into runs.</h1>
+        <p className="page-copy">Give Lattice a goal, review durable runs, and approve sensitive actions before anything important changes.</p>
       </header>
       <Tabs tabs={tabs} value={tab} onChange={(id) => setTab(id as ActTab)} />
       {tab === "agents" ? <AgentsPanel /> : null}
@@ -67,11 +67,11 @@ function AgentsPanel() {
     <div className="grid gap-4 xl:grid-cols-[0.9fr_1.1fr]">
       <Card>
         <CardHeader>
-          <CardTitle className="flex items-center gap-2"><Bot className="h-4 w-4" /> Run agent pipeline</CardTitle>
-          <CardDescription>POST `/agents/api/run` creates a durable run; mode is determined by backend model availability.</CardDescription>
+          <CardTitle className="flex items-center gap-2"><Bot className="h-4 w-4" /> Start with a goal</CardTitle>
+          <CardDescription>Lattice will plan, execute, and review only when the local model is ready.</CardDescription>
         </CardHeader>
         <CardContent className="space-y-3">
-          <Textarea value={goal} onChange={(e) => setGoal(e.target.value)} placeholder="Describe the objective..." />
+          <Textarea value={goal} onChange={(e) => setGoal(e.target.value)} placeholder="What should Lattice help you accomplish?" />
           {!runtimeReady ? <Badge variant="warning">{runtimeReason}</Badge> : null}
           <Button
             className="w-full"
@@ -79,15 +79,15 @@ function AgentsPanel() {
             disabled={!canRunAgent}
             onClick={() => run.mutate()}
           >
-            <Play className="h-4 w-4" /> {runtimeReady ? "Run pipeline" : "Agent execution unavailable"}
+            <Play className="h-4 w-4" /> {runtimeReady ? "Start Run" : "Load a model first"}
           </Button>
           {run.data ? <OperationResult result={run.data} successLabel="Agent run request completed" /> : null}
         </CardContent>
       </Card>
-      <DataPanel title="Runtime status" result={runtime.data}>
+      <DataPanel title="Readiness" result={runtime.data}>
         {(data) => <StructuredView value={data} />}
       </DataPanel>
-      <DataPanel title="Agent registry" result={registry.data}>
+      <DataPanel title="Agent team" result={registry.data}>
         {(data) => (
           <div className="space-y-3">
             <EntityList items={(data as Record<string, unknown>).agents} titleKey="name" metaKey="type" />
@@ -98,7 +98,7 @@ function AgentsPanel() {
           </div>
         )}
       </DataPanel>
-      <DataPanel title="Agent capabilities" result={caps.data}>
+      <DataPanel title="What agents can do" result={caps.data}>
         {(data) => <StructuredView value={data} />}
       </DataPanel>
     </div>
@@ -209,7 +209,7 @@ function WorkflowsPanel() {
       <Card>
         <CardHeader>
           <CardTitle className="flex items-center gap-2"><GitBranch className="h-4 w-4" /> Workflow graph</CardTitle>
-          <CardDescription>React Flow view of workflow definitions. Running a workflow calls its backend run endpoint.</CardDescription>
+          <CardDescription>See your saved workflows as a simple map.</CardDescription>
         </CardHeader>
         <CardContent>
           <div className="h-[440px] rounded-lg border border-border">
@@ -287,8 +287,8 @@ function HooksPanel() {
       </DataPanel>
       <Card className="xl:col-span-2">
         <CardHeader>
-          <CardTitle className="flex items-center gap-2"><PauseCircle className="h-4 w-4" /> Manual hook fire</CardTitle>
-          <CardDescription>Uses `/api/hooks/run`; no hook is treated as successful unless the backend records it.</CardDescription>
+        <CardTitle className="flex items-center gap-2"><PauseCircle className="h-4 w-4" /> Run manual hooks</CardTitle>
+          <CardDescription>Trigger hooks deliberately and review the recorded result.</CardDescription>
         </CardHeader>
         <CardContent>
           <ActionButton label="Run all manual hooks" action={() => latticeApi.hookRun({ event: "manual" })} invalidate={["hookRuns"]} />
@@ -301,7 +301,7 @@ function HooksPanel() {
 function ToolsPanel() {
   const tools = useQuery({ queryKey: ["toolPermissions"], queryFn: latticeApi.toolPermissions });
   return (
-    <DataPanel title="Tool governance" result={tools.data}>
+    <DataPanel title="Tool permissions" result={tools.data}>
       {(data) => <EntityList items={(data as Record<string, unknown>).permissions || data} titleKey="tool" metaKey="risk" />}
     </DataPanel>
   );
