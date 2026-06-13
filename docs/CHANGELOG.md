@@ -3,6 +3,43 @@
 The top entry is the current release-preparation target. Older entries are
 historical and may describe behavior as it existed at that release.
 
+## [4.6.0] - 2026-06-13
+
+> Living Brain Experience release after the v4.5.1 product shell reset.
+
+### Changed
+
+- Made Brain plus conversation the default `/app` and `/app#/brain` experience.
+- Added an animated living Brain presence that reacts to listening, memory
+  recall, streaming/thinking, and agent/workflow activity.
+- Centralized chat streaming, model status, image attachment, conversation
+  history, and memory previews in a reusable Brain conversation component.
+- Reduced visible primary navigation to Brain, Add, Automate, Library, and Care;
+  `/ask` and `/chat` remain route-compatible aliases into Brain.
+- Reordered Brain layers as Brain -> Memories -> Knowledge -> Relationships ->
+  Graph, moving graph exploration to the deepest intentional layer.
+- Updated visual palette and copy so the product reads as a living digital
+  Brain rather than a graph tool or dashboard.
+
+### Preserved
+
+- Brain Core, FastAPI APIs, Tauri shell, StorageEngine, backup/restore,
+  portability, model runtimes, graph/search/chat/capture/automation/system
+  workflows, and route aliases remain capability-compatible.
+
+### Validation
+
+- v4.6.0 validation scope is tracked in
+  `docs/V4_6_0_LIVING_BRAIN_EXPERIENCE_REPORT.md`.
+
+### Artifacts
+
+- `dist/ltcai-4.6.0-py3-none-any.whl`
+- `dist/ltcai-4.6.0.tar.gz`
+- `dist/ltcai-4.6.0.vsix`
+- `ltcai-4.6.0.tgz`
+- `src-tauri/target/release/bundle/dmg/Lattice AI_4.6.0_aarch64.dmg`
+
 ## [4.5.1] - 2026-06-13
 
 > Product Reimagining release candidate after the v4.5.0 capability recovery.

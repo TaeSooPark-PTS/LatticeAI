@@ -5,21 +5,21 @@
 > completed analysis. **Update this file before ending any phase and before any
 > likely session/context/usage limit.**
 >
-> Last updated: 2026-06-13 — v4.5.1 Product Reimagining RC; Remaining Gaps remain empty
+> Last updated: 2026-06-13 — v4.6.0 Living Brain Experience; Remaining Gaps remain empty
 
 ---
 
-## 0. RELEASE STATUS (v4.5.1)
+## 0. RELEASE STATUS (v4.6.0)
 
-**v4.5.1 reimagines the desktop product surface after the v4.5.0 capability
-recovery without changing Brain Core, storage, API, model runtime, backup,
-portability, or agent/workflow behavior.** Current implementation milestone:
-new Home/Ask/Add/Automate/Library/Care navigation, compact desktop chrome,
-first-session journey, command palette, responsive mobile drawer, and refreshed
-Digital Brain visual system.
-The v4.5.1 RC process builds locally validated artifacts only. Tagging, GitHub
+**v4.6.0 makes the Brain the product after the v4.5.1 product-shell reset
+without changing Brain Core, storage, API, model runtime, backup, portability,
+or agent/workflow behavior.** Current implementation milestone: Brain plus
+conversation is the home screen, the living Brain is always visible during the
+primary conversation experience, and graph exploration is preserved as the
+deepest intentional layer behind Memories, Knowledge, and Relationships.
+The v4.6.0 process builds locally validated artifacts only. Tagging, GitHub
 Release creation, PyPI, npm Registry, VS Code Marketplace, Open VSX, and
-production deployments remain out of scope for this RC.
+production deployments remain out of scope unless explicitly requested.
 Remaining implementation gaps: **none**.
 Owner-only blockers: pptx history rewrite (requires force-push/owner decision)
 and consent-gated production embedder provisioning (silent default download is
@@ -27,11 +27,12 @@ not permitted).
 
 ## Remaining Gaps
 
-None. v4.5.1 preserves the already-empty v4.3.2/v4.3.3/v4.5.0 gap list and
-promotes the product-reimagining tree: Brain graph exploration remains real and
-API-backed, readable product state remains in place, archive import/restore
-flows remain exposed through existing APIs, desktop sidecar behavior remains
-validated, and exact v4.5.1 RC artifacts are the validation target.
+None. v4.6.0 preserves the already-empty v4.3.2/v4.3.3/v4.5.0/v4.5.1 gap list
+and promotes the Living Brain tree: Brain conversation is primary, graph
+exploration remains real and API-backed, readable product state remains in
+place, archive import/restore flows remain exposed through existing APIs,
+desktop sidecar behavior remains validated, and exact v4.6.0 artifacts are the
+validation target.
 Owner-only blockers above are intentionally not implementation gaps.
 
 ## 1. Program Charter (from the user's v4.0.0 directive)

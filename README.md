@@ -7,14 +7,16 @@
 [![CI Status](https://github.com/TaeSooPark-PTS/LatticeAI/actions/workflows/ci.yml/badge.svg?branch=main)](https://github.com/TaeSooPark-PTS/LatticeAI/actions/workflows/ci.yml)
 [![License](https://img.shields.io/badge/license-MIT-green)](LICENSE)
 
-**Lattice AI v4.5.1 is a local-first Digital Brain desktop workspace.** It runs
+**Lattice AI v4.6.0 is a local-first Living Brain desktop workspace.** It runs
 as a Tauri desktop app with a localhost FastAPI sidecar, stores the user's brain
-locally by default, and presents the Knowledge Graph as the durable asset.
+locally by default, and makes the Brain plus conversation the primary product
+experience.
 
-This README describes the v4.5.1 release-candidate tree, which preserves the
-v4.4.0 physical `lattice_brain` extraction and v4.5.0 capability recovery while
-reimagining the product surface from first principles: Home, Ask, Add,
-Automate, Library, and Care replace the prior dashboard-style presentation.
+This README describes the v4.6.0 release-preparation tree, which preserves the
+v4.4.0 physical `lattice_brain` extraction, v4.5.0 capability recovery, and
+v4.5.1 product shell while repositioning the graph as a deep exploration layer.
+The home screen is now the living Brain conversation; memories, knowledge,
+relationships, and the advanced graph are progressively disclosed beneath it.
 External package registries are owner-published; the badges above link to
 package pages and may show the most recently published owner-controlled registry
 version, which can lag behind the GitHub Release.
@@ -23,19 +25,21 @@ version, which can lag behind the GitHub Release.
 
 - Desktop app starts and serves the React/Vite product shell from the FastAPI
   sidecar.
-- Brain graph renders persisted local graph data with search, groups, focus,
-  filtering, and hybrid-search results.
-- Ask displays durable conversations, graph context, and honest unavailable
-  state when no model is loaded.
+- The home route opens directly to a living Brain presence plus durable
+  conversation, with the Brain always visible during the primary chat flow.
+- The Brain presence reacts to conversation, recall, model readiness, and
+  agent/workflow activity with neural movement, memory pulses, and status
+  changes.
+- Memories, Knowledge, Relationships, and Graph are ordered as progressive
+  disclosure layers; the graph is no longer the product's first impression.
 - Capture uploads a document through `/upload/document` and shows indexed
   documents from the backend.
 - Act exposes workflow create/run surfaces and agent runtime status without
   presenting simulation as real success. When no LLM-backed model is loaded,
   deterministic model-free agent simulation is reported honestly and does not call a model.
 - Library shows model/runtime availability honestly.
-- First-run setup guides Make it yours -> Choose a space -> Meet your Mac ->
-  Pick a brain -> Install locally -> Try a question -> Set the pace -> Explore
-  memory.
+- First-run setup remains available through setup/system routes without
+  displacing the Brain-first home experience.
 - Gemma 4 MLX models are checked against their local `config.json` before load:
   Gemma 4 12B `gemma4_unified` now shows **Runtime update needed** when the
   installed MLX-VLM lacks `mlx_vlm.models.gemma4_unified`, while Gemma 4 26B
@@ -49,7 +53,7 @@ version, which can lag behind the GitHub Release.
 
 ### Desktop Startup
 
-The v4.5.1 DMG build launches a visible Tauri app, starts the FastAPI sidecar on
+The v4.6.0 DMG build launches a visible Tauri app, starts the FastAPI sidecar on
 localhost, and shuts that sidecar down on normal macOS quit.
 
 ![Desktop startup and local sidecar](output/audits/v4.3.2-rc/screenshots/13-desktop-sidecar-startup.png)
@@ -59,23 +63,28 @@ Evidence:
 - Health log: `output/audits/v4.3.2-rc/logs/desktop-sidecar-health-after-shutdown-fix.json`
 - Shutdown log: `output/audits/v4.3.2-rc/logs/desktop-shutdown-after-fix.txt`
 
-### Brain Graph
+### Living Brain
 
-Brain opens on the graph-first workspace. The graph uses real persisted nodes
-and edges, then layers product controls for search, semantic grouping, focus
-neighborhoods, label modes, group collapse/expand, and importance filtering.
+Brain opens on a living presence and conversation. The visual Brain is not a
+logo or static decoration: it changes state while the user types, when memories
+are recalled, while a response streams, and when agent/workflow activity is
+reported.
+
+The advanced graph still exists, but it is intentionally opened from the Graph
+layer after the user moves through Brain, Memories, Knowledge, and
+Relationships.
 
 ![Brain graph explorer](output/audits/v4.3.2-rc/screenshots/02-graph-explorer-before.png)
 
 ![Graph product walkthrough](output/audits/v4.3.2-rc/gifs/graph-product-walkthrough.gif)
 
-### Ask
+### Conversation
 
-Ask uses backend conversation, model, and graph context APIs. In the audited
-state no model was loaded, so the UI showed a ready/unavailable state instead of
-fabricating an answer while still surfacing graph context from local data.
+Conversation uses backend conversation, model, and memory APIs. If no model is
+loaded, the UI shows a ready/unavailable state instead of fabricating an answer
+while still keeping nearby memory and source signals visible.
 
-![Ask with graph context and no-model honesty](output/audits/v4.3.2-rc/screenshots/14-ask-context.png)
+![Conversation with context and no-model honesty](output/audits/v4.3.2-rc/screenshots/14-ask-context.png)
 
 ### Capture
 
@@ -159,19 +168,19 @@ Archive evidence:
 - **Privacy**: local-first by default; cloud models, Telegram, Brain Network,
   Docker, model downloads, and update checks require explicit opt-in paths.
 
-See [ARCHITECTURE.md](ARCHITECTURE.md) for the detailed v4 architecture. v4.5.1
+See [ARCHITECTURE.md](ARCHITECTURE.md) for the detailed v4 architecture. v4.6.0
 does not redesign the v4.4.0 Brain Core extraction, StorageEngine, FastAPI,
 Tauri, backup/restore, or portability architecture.
 
 ## Installation And Release Artifacts
 
-Validated v4.5.1 RC artifacts are produced from the product-reimagining tree:
+Validated v4.6.0 artifacts are produced from the Living Brain tree:
 
-- `dist/ltcai-4.5.1-py3-none-any.whl`
-- `dist/ltcai-4.5.1.tar.gz`
-- `ltcai-4.5.1.tgz`
-- `dist/ltcai-4.5.1.vsix`
-- `src-tauri/target/release/bundle/dmg/Lattice AI_4.5.1_aarch64.dmg`
+- `dist/ltcai-4.6.0-py3-none-any.whl`
+- `dist/ltcai-4.6.0.tar.gz`
+- `ltcai-4.6.0.tgz`
+- `dist/ltcai-4.6.0.vsix`
+- `src-tauri/target/release/bundle/dmg/Lattice AI_4.6.0_aarch64.dmg`
 
 For a public release, attach only those exact artifacts to the GitHub Release.
 Package-registry publishing is reserved for the owner.
@@ -219,14 +228,15 @@ npm pack --dry-run
   local use.
 - Docker is never auto-started by default.
 - Model downloads and cloud model calls require explicit user action/consent.
-- Ask does not fabricate answers when no model is loaded.
+- Conversation does not fabricate answers when no model is loaded.
 - Historical artifacts may remain in `dist/`; release uploads must use exact
-  v4.5.1 filenames for this RC.
+  v4.6.0 filenames for this release.
 
 ## Release History
 
 | Version | Theme |
 | --- | --- |
+| 4.6.0 | Living Brain Experience: made Brain plus conversation the home product, added an animated living Brain presence, and moved graph exploration to the deepest intentional layer |
 | 4.5.1 | Product Reimagining RC: replaced the desktop shell, navigation model, onboarding journey, first-viewport hierarchy, and visual system while preserving capabilities and local-first architecture |
 | 4.5.0 | Product Experience Recovery RC: restored first-run setup, workspace/model onboarding, explicit model install/download/validate/load flow, Gemma 4 runtime compatibility gating, Basic-mode polish, and graph discoverability |
 | 4.4.0 | Brain Engine Extraction: Brain Core physically moved into `lattice_brain` (graph/memory/context/conversation/ingestion/runtime/workflow/portability), latticeai paths reduced to compatibility shims, isolation tests guaranteeing no `latticeai` imports |
@@ -246,6 +256,7 @@ npm pack --dry-run
 - [FEATURE_STATUS.md](FEATURE_STATUS.md) - current feature status and historical
   status ledger.
 - [RELEASE_NOTES.md](RELEASE_NOTES.md) - current release notes index.
+- [RELEASE_NOTES_v4.6.0.md](RELEASE_NOTES_v4.6.0.md) - v4.6.0 Living Brain release notes.
 - [RELEASE_NOTES_v4.5.1.md](RELEASE_NOTES_v4.5.1.md) - v4.5.1 RC release notes.
 - [RELEASE_NOTES_v4.5.0.md](RELEASE_NOTES_v4.5.0.md) - v4.5.0 RC release notes.
 - [RELEASE_NOTES_v4.4.0.md](RELEASE_NOTES_v4.4.0.md) - v4.4.0 release notes.
@@ -266,6 +277,7 @@ npm pack --dry-run
 - [docs/V4_5_1_GRAPH_EXPERIENCE_REPORT.md](docs/V4_5_1_GRAPH_EXPERIENCE_REPORT.md) - v4.5.1 graph experience report.
 - [docs/V4_5_1_VALIDATION_REPORT.md](docs/V4_5_1_VALIDATION_REPORT.md) - v4.5.1 validation report.
 - [docs/V4_5_1_RC_ARTIFACTS.md](docs/V4_5_1_RC_ARTIFACTS.md) - v4.5.1 screenshot, GIF, and RC artifact manifest.
+- [docs/V4_6_0_LIVING_BRAIN_EXPERIENCE_REPORT.md](docs/V4_6_0_LIVING_BRAIN_EXPERIENCE_REPORT.md) - v4.6.0 Living Brain design and validation notes.
 - [docs/V4_3_2_GRAPH_UX_REPORT.md](docs/V4_3_2_GRAPH_UX_REPORT.md) - graph UX report.
 - [docs/V4_3_2_PRODUCT_POLISH_REPORT.md](docs/V4_3_2_PRODUCT_POLISH_REPORT.md) - product polish report.
 - [docs/V4_3_2_SELF_AUDIT_REPORT.md](docs/V4_3_2_SELF_AUDIT_REPORT.md) - self-audit evidence.

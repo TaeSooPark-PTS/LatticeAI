@@ -1,10 +1,25 @@
-# Lattice AI — Feature Status (v4.5.0)
+# Lattice AI — Feature Status (v4.6.0)
 
-**Current release line:** v4.5.0 Product Experience Recovery RC. Lattice AI is a
-Digital Brain Platform: the graph is the durable asset; models read it and are
-replaceable. Sections below v4.5.0 are historical release-status records and
-should not override the current README, ARCHITECTURE.md, or v4.5.0 release
+**Current release line:** v4.6.0 Living Brain Experience. Lattice AI is a
+Living Brain platform whose primary experience is Brain plus conversation; the
+graph remains durable infrastructure and advanced exploration, not the home
+product identity. Sections below v4.6.0 are historical release-status records
+and should not override the current README, ARCHITECTURE.md, or v4.6.0 release
 notes.
+
+## v4.6.0 Living Brain Experience — what changed
+
+v4.6.0 makes the Brain the product: the default app opens on a living Brain
+presence and conversation, while memories, knowledge, relationships, and the
+graph are progressively disclosed.
+
+| Feature | Status | Evidence |
+| --- | --- | --- |
+| **Brain-first home** | WORKING | `/app` and `/app#/brain` render the Brain conversation without a dashboard/onboarding panel above it. `frontend/src/pages/Brain.tsx`, `frontend/src/components/BrainConversation.tsx`. |
+| **Living Brain presence** | WORKING | Animated Brain component reacts to listening, recall, thinking, planning, and activity states. `frontend/src/components/LivingBrain.tsx`, `frontend/src/styles.css`. |
+| **Conversation centralization** | WORKING | Chat streaming, image attachment, model status, memory preview, and history are shared through `BrainConversation`. |
+| **Graph repositioning** | WORKING | Brain tabs descend Brain -> Memories -> Knowledge -> Relationships -> Graph; `/app#/knowledge-graph` remains available for advanced exploration. `frontend/src/routes.ts`, `frontend/src/pages/Brain.tsx`. |
+| **Legacy route compatibility** | WORKING | `/ask` and `/chat` remain aliases into the Brain conversation. `frontend/src/routes.ts`, `tests/visual/v3.spec.js`. |
 
 ## v4.5.0 Product Experience Recovery RC — what changed
 

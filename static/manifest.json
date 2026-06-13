@@ -1,7 +1,7 @@
 {
   "name": "Lattice AI",
   "short_name": "LatticeAI",
-  "description": "Local-first Digital Brain desktop platform for knowledge graphs, durable memory, hybrid search, agents, and signed brain exchange",
+  "description": "Local-first Living Brain desktop workspace for conversation, durable memory, hybrid search, agents, and signed brain exchange",
   "start_url": "/app",
   "id": "/",
   "display": "standalone",

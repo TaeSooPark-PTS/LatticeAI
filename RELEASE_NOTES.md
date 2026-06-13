@@ -1,7 +1,34 @@
 # Release Notes
 
-The current release target is v4.5.1. Older sections are historical
+The current release target is v4.6.0. Older sections are historical
 release notes and should not be read as newer product claims.
+
+## v4.6.0 - Living Brain Experience
+
+Lattice AI v4.6.0 makes the Brain the product. The primary screen is now the
+living Brain plus conversation; memories, knowledge, relationships, and the
+advanced graph sit behind progressive disclosure.
+
+### Highlights
+
+- Home opens directly into Brain plus conversation instead of a graph,
+  dashboard, or status surface.
+- The living Brain remains visible while chatting and reacts to listening,
+  recall, thinking, planning, and agent/workflow activity.
+- `/ask` and `/chat` remain compatible routes but now land in the Brain
+  conversation.
+- Primary navigation is reduced to Brain, Add, Automate, Library, and Care.
+- The graph is preserved as advanced exploration at the deepest Brain layer.
+
+### Expected Artifacts
+
+- `dist/ltcai-4.6.0-py3-none-any.whl`
+- `dist/ltcai-4.6.0.tar.gz`
+- `dist/ltcai-4.6.0.vsix`
+- `ltcai-4.6.0.tgz`
+- `src-tauri/target/release/bundle/dmg/Lattice AI_4.6.0_aarch64.dmg`
+
+Full notes: [RELEASE_NOTES_v4.6.0.md](RELEASE_NOTES_v4.6.0.md)
 
 ## v4.5.1 RC - Product Reimagining
 

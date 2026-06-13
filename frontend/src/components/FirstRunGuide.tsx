@@ -41,9 +41,9 @@ export function FirstRunGuide() {
     { label: "Meet your Mac", done: recs.isSuccess, icon: Cpu, action: "models", detail: "Let Lattice inspect what can run locally." },
     { label: "Pick a brain", done: Boolean(topPick || currentModel), icon: Library, action: "models", detail: "Use the recommended local model." },
     { label: "Install locally", done: Boolean(currentModel || loadedModels.length), icon: Download, action: "models", detail: "Download only with explicit consent." },
-    { label: "Try a question", done: Boolean(readyProfile || currentModel || loadedModels.length), icon: PlayCircle, action: "chat", detail: "Confirm the model can answer." },
+    { label: "Talk to Brain", done: Boolean(readyProfile || currentModel || loadedModels.length), icon: PlayCircle, action: "chat", detail: "Confirm the model can answer." },
     { label: "Set the pace", done: Boolean(mode), icon: SlidersHorizontal, action: "settings", detail: "Stay Calm or switch deeper." },
-    { label: "Explore memory", done: true, icon: Layers3, action: "knowledge-graph", detail: "Open the living map." },
+    { label: "Explore deeply", done: true, icon: Layers3, action: "knowledge-graph", detail: "Open advanced relationships." },
   ];
   const completed = steps.filter((step) => step.done).length;
   const nextStep = steps.find((step) => !step.done) || steps[steps.length - 1];
@@ -53,13 +53,13 @@ export function FirstRunGuide() {
     <section className="arrival-panel" aria-label="First 10 minutes">
       <div className="arrival-copy">
         <div className="page-kicker"><CheckCircle2 className="h-4 w-4" /> First 10 minutes</div>
-        <h2>Build your Digital Brain without guessing.</h2>
+        <h2>Build your living Brain without guessing.</h2>
         <p>
           Start with a space, let Lattice recommend a private local model, then add the first pieces of knowledge.
           Every step keeps the next action visible.
         </p>
         <div className="arrival-actions">
-          <Button onClick={() => go(nextStep.action)}>{nextStep.done ? "Open memory map" : `Continue: ${nextStep.label}`}</Button>
+          <Button onClick={() => go(nextStep.action)}>{nextStep.done ? "Open relationships" : `Continue: ${nextStep.label}`}</Button>
           <Button variant="outline" onClick={() => go("models")}>Set up model</Button>
           <Button variant="ghost" onClick={() => {
             try { localStorage.setItem("lattice.onboarding.dismissed", "true"); } catch {}

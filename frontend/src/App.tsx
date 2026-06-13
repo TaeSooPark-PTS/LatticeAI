@@ -8,7 +8,6 @@ import { FirstRunGuide } from "@/components/FirstRunGuide";
 import { useAppStore, WorkspaceMode } from "@/store/appStore";
 import { commandRoutes, go, parseHash, primaryRoutes, PrimaryRoute } from "@/routes";
 import { BrainPage } from "@/pages/Brain";
-import { AskPage } from "@/pages/Ask";
 import { CapturePage } from "@/pages/Capture";
 import { ActPage } from "@/pages/Act";
 import { LibraryPage } from "@/pages/Library";
@@ -32,7 +31,6 @@ function useRoute() {
 }
 
 function Page({ primary, tab }: { primary: PrimaryRoute; tab?: string }) {
-  if (primary === "ask") return <AskPage />;
   if (primary === "capture") return <CapturePage initialTab={tab} />;
   if (primary === "act") return <ActPage initialTab={tab} />;
   if (primary === "library") return <LibraryPage initialTab={tab} />;
@@ -183,6 +181,7 @@ export default function App() {
   const workspaceName = String(workspaceData.active_workspace || "Personal space");
   const backendReady = Boolean(health.data?.ok);
   const desktopReady = !window.__TAURI_INTERNALS__ || Boolean(desktopData.running);
+  const showWorkspaceRibbon = route.primary !== "brain";
 
   return (
     <div className="app-backdrop min-h-screen text-foreground">
@@ -192,12 +191,12 @@ export default function App() {
       <header className="app-chrome">
         <div className="brand-lockup">
           <button className="mobile-menu" onClick={() => setDrawer(true)} aria-label="Open navigation"><Menu className="h-5 w-5" /></button>
-          <button className="brand-mark" onClick={() => go("brain")} aria-label="Open Lattice home">
+          <button className="brand-mark" onClick={() => go("brain")} aria-label="Open Lattice Brain">
             <BrainCircuit className="h-5 w-5" />
           </button>
           <div className="brand-copy">
             <div className="brand-name">Lattice</div>
-            <div className="brand-subtitle">Digital Brain</div>
+            <div className="brand-subtitle">Living Brain</div>
           </div>
         </div>
 
@@ -224,7 +223,7 @@ export default function App() {
             <div className="drawer-header">
               <div>
                 <div className="font-semibold">Lattice</div>
-                <div className="text-xs text-muted-foreground">Choose a room</div>
+                <div className="text-xs text-muted-foreground">Choose a layer</div>
               </div>
               <Button variant="ghost" size="icon" onClick={() => setDrawer(false)} aria-label="Close navigation"><X className="h-4 w-4" /></Button>
             </div>
@@ -234,24 +233,26 @@ export default function App() {
       ) : null}
 
       <main className="page-shell">
-        <section className="workspace-ribbon" aria-label="Current workspace">
-          <div className="min-w-0">
-            <div className="ribbon-kicker"><Sparkles className="h-4 w-4" /> {activeRoute?.label || "Home"}</div>
-            <h1>{activeRoute?.description || "A calm place to think with your knowledge."}</h1>
-          </div>
-          <div className="ribbon-meta">
-            <div className="meta-card">
-              <CheckCircle2 className="h-4 w-4 text-primary" />
-              <span>{workspaceName}</span>
+        {showWorkspaceRibbon ? (
+          <section className="workspace-ribbon" aria-label="Current workspace">
+            <div className="min-w-0">
+              <div className="ribbon-kicker"><Sparkles className="h-4 w-4" /> {activeRoute?.label || "Brain"}</div>
+              <h1>{activeRoute?.description || "A calm place to think with your knowledge."}</h1>
             </div>
-            <div className="meta-card">
-              <span>{appVersion ? `v${appVersion}` : "Version checking"}</span>
+            <div className="ribbon-meta">
+              <div className="meta-card">
+                <CheckCircle2 className="h-4 w-4 text-primary" />
+                <span>{workspaceName}</span>
+              </div>
+              <div className="meta-card">
+                <span>{appVersion ? `v${appVersion}` : "Version checking"}</span>
+              </div>
+              <ModeSwitch mode={mode} setMode={setMode} />
             </div>
-            <ModeSwitch mode={mode} setMode={setMode} />
-          </div>
-        </section>
+          </section>
+        ) : null}
 
-        <FirstRunGuide />
+        {showWorkspaceRibbon ? <FirstRunGuide /> : null}
         <Page primary={route.primary} tab={route.tab} />
       </main>
     </div>

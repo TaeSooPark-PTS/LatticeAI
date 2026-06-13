@@ -1,22 +1,21 @@
 # Lattice AI — VS Code Extension
 
-**Local-first AI workspace extension for Lattice AI v4 knowledge graph, hybrid search, model workflows, and coding actions.**
+**Local-first AI workspace extension for Lattice AI v4 Living Brain, hybrid search, model workflows, and coding actions.**
 
 [![VS Code Marketplace](https://img.shields.io/badge/VS%20Code%20Marketplace-Install-blue?logo=visualstudiocode)](https://marketplace.visualstudio.com/items?itemName=parktaesoo.ltcai)
 [![Open VSX](https://img.shields.io/open-vsx/v/parktaesoo/ltcai?label=Open%20VSX)](https://open-vsx.org/extension/parktaesoo/ltcai)
 [![License](https://img.shields.io/badge/license-MIT-green)](../LICENSE)
 
 Lattice AI connects VS Code, Cursor, and VSCodium to a running local-first AI
-workspace. Use it to send files into workspace context, work with Knowledge
-Graph-backed chat, run model workflows, and trigger coding actions from the
-editor.
+workspace. Use it to send files into workspace context, work with Brain-backed
+chat, run model workflows, and trigger coding actions from the editor.
 
 ## Current Release
 
-**4.5.1 — Product Reimagining RC.** The desktop workspace keeps the v4 Brain
-Core extraction and recovered capability baseline while replacing the visible
-product shell, onboarding, navigation, hierarchy, and visual language. The
-extension connects to the same local workspace APIs.
+**4.6.0 — Living Brain Experience.** The desktop workspace keeps the v4 Brain
+Core extraction and recovered capability baseline while making Brain plus
+conversation the home experience and moving graph exploration into an advanced
+layer. The extension connects to the same local workspace APIs.
 
 ## Quick Start
 

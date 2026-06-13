@@ -12,11 +12,10 @@ import {
   Zap,
 } from "lucide-react";
 
-export type PrimaryRoute = "brain" | "ask" | "capture" | "act" | "library" | "system";
+export type PrimaryRoute = "brain" | "capture" | "act" | "library" | "system";
 
 export const primaryRoutes = [
-  { id: "brain", label: "Home", icon: Brain, description: "The living map of what Lattice knows" },
-  { id: "ask", label: "Ask", icon: MessageSquare, description: "Think with remembered context" },
+  { id: "brain", label: "Brain", icon: Brain, description: "Talk with your living Brain" },
   { id: "capture", label: "Add", icon: FolderInput, description: "Bring in files, folders, and pages" },
   { id: "act", label: "Automate", icon: Workflow, description: "Turn goals into supervised runs" },
   { id: "library", label: "Library", icon: Library, description: "Choose models, skills, and tools" },
@@ -24,12 +23,13 @@ export const primaryRoutes = [
 ] as const;
 
 export const routeAliases: Record<string, { primary: PrimaryRoute; tab?: string }> = {
-  home: { primary: "brain", tab: "overview" },
+  home: { primary: "brain", tab: "conversation" },
   onboarding: { primary: "system", tab: "account" },
   "knowledge-graph": { primary: "brain", tab: "graph" },
-  "hybrid-search": { primary: "brain", tab: "search" },
+  "hybrid-search": { primary: "brain", tab: "knowledge" },
   memory: { primary: "brain", tab: "memory" },
-  chat: { primary: "ask", tab: "chat" },
+  ask: { primary: "brain", tab: "conversation" },
+  chat: { primary: "brain", tab: "conversation" },
   files: { primary: "capture", tab: "files" },
   pipeline: { primary: "capture", tab: "pipeline" },
   "my-computer": { primary: "capture", tab: "local" },
@@ -58,12 +58,12 @@ export const routeAliases: Record<string, { primary: PrimaryRoute; tab?: string 
 };
 
 export const commandRoutes = [
-  { key: "brain", label: "Home", icon: Brain },
+  { key: "brain", label: "Brain", icon: Brain },
   { key: "onboarding", label: "First 10 Minutes", icon: Settings },
-  { key: "knowledge-graph", label: "Memory Map", icon: Network },
-  { key: "hybrid-search", label: "Search Everything", icon: Zap },
-  { key: "memory", label: "Memory", icon: Database },
-  { key: "chat", label: "Ask", icon: MessageSquare },
+  { key: "chat", label: "Talk to Brain", icon: MessageSquare },
+  { key: "memory", label: "Memories", icon: Database },
+  { key: "hybrid-search", label: "Knowledge Search", icon: Zap },
+  { key: "knowledge-graph", label: "Advanced Graph", icon: Network },
   { key: "files", label: "Add Files", icon: FolderInput },
   { key: "agents", label: "Start a Run", icon: Workflow },
   { key: "workflows", label: "Automations", icon: Workflow },

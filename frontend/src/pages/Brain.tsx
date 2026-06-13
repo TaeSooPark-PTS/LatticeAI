@@ -3,6 +3,7 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import cytoscape, { Core, ElementDefinition } from "cytoscape";
 import { BrainCircuit, DatabaseBackup, Filter, Focus, Layers3, LocateFixed, Search, Sparkles } from "lucide-react";
 import { latticeApi } from "@/api/client";
+import { BrainConversation } from "@/components/BrainConversation";
 import { ActionButton, DataPanel, EmptyState, EntityList, KeyValueList, LoadingPanel, OperationResult, StatGrid, StructuredView, Tabs } from "@/components/primitives";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -12,7 +13,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { useAppStore } from "@/store/appStore";
 import { asArray, fmtNumber, pct, shortId, titleize } from "@/lib/utils";
 
-type BrainTab = "overview" | "graph" | "search" | "memory" | "provenance" | "portability";
+type BrainTab = "conversation" | "memory" | "knowledge" | "relationships" | "graph" | "portability";
 type LabelMode = "important" | "all" | "off";
 
 type GraphNode = {
@@ -61,12 +62,12 @@ type ExplorerModel = ParsedGraph & {
 };
 
 const tabs: Array<{ id: BrainTab; label: string }> = [
-  { id: "overview", label: "Today" },
-  { id: "graph", label: "Map" },
-  { id: "search", label: "Search" },
-  { id: "memory", label: "Memory" },
-  { id: "provenance", label: "Sources" },
-  { id: "portability", label: "Portability" },
+  { id: "conversation", label: "Brain" },
+  { id: "memory", label: "Memories" },
+  { id: "knowledge", label: "Knowledge" },
+  { id: "relationships", label: "Relationships" },
+  { id: "graph", label: "Graph" },
+  { id: "portability", label: "Care" },
 ];
 
 const groupDefinitions = [
@@ -413,9 +414,10 @@ function CytoscapeGraph({
 
 export function BrainPage({ initialTab }: { initialTab?: string }) {
   const mode = useAppStore((state) => state.mode);
-  const [tab, setTab] = React.useState<BrainTab>((initialTab as BrainTab) || "overview");
+  const normalizedInitialTab = normalizeBrainTab(initialTab);
+  const [tab, setTab] = React.useState<BrainTab>(normalizedInitialTab);
   React.useEffect(() => {
-    if (initialTab && tabs.some((item) => item.id === initialTab)) setTab(initialTab as BrainTab);
+    setTab(normalizeBrainTab(initialTab));
   }, [initialTab]);
   const graph = useQuery({ queryKey: ["graph"], queryFn: latticeApi.graph });
   const stats = useQuery({ queryKey: ["graphStats"], queryFn: latticeApi.graphStats });
@@ -426,31 +428,32 @@ export function BrainPage({ initialTab }: { initialTab?: string }) {
 
   return (
     <div className="space-y-5">
-      <header className="page-hero grid gap-4 xl:grid-cols-[1.4fr_0.6fr]">
-        <div>
-          <div className="page-kicker"><BrainCircuit className="h-4 w-4" /> Home</div>
-          <h1 className="page-title">Start from the shape of your work.</h1>
-          <p className="page-copy">
-            Lattice turns what you add into a living memory map, then keeps every answer tied back to its source.
-          </p>
-        </div>
-        <div className="rounded-lg border border-border bg-background/58 p-4">
-          <div className="text-xs uppercase text-muted-foreground">Source coverage</div>
-          <div className="mt-2 text-3xl font-semibold">{pct((coverage.data?.data as Record<string, unknown>)?.coverage_ratio)}</div>
-          <div className="mt-2 text-sm text-muted-foreground">{coverage.data?.ok ? "Sources are linked to graph records." : "Checking source coverage."}</div>
-        </div>
-      </header>
+      {tab === "conversation" ? null : (
+        <header className="brain-layer-header">
+          <div>
+            <div className="page-kicker"><BrainCircuit className="h-4 w-4" /> {tabLabel(tab)}</div>
+            <h1>{tabHeadline(tab)}</h1>
+          </div>
+          <div className="brain-layer-meter">
+            <span>Source coverage</span>
+            <strong>{pct((coverage.data?.data as Record<string, unknown>)?.coverage_ratio)}</strong>
+          </div>
+        </header>
+      )}
       <Tabs tabs={tabs} value={tab} onChange={(id) => setTab(id as BrainTab)} />
 
-      {tab === "overview" ? (
+      {tab === "conversation" ? <BrainConversation /> : null}
+      {tab === "memory" ? <MemoryPanel /> : null}
+      {tab === "knowledge" ? <HybridSearch /> : null}
+      {tab === "relationships" ? (
         <div className="grid gap-4 xl:grid-cols-2">
-          <DataPanel title="Brain status" result={stats.data}>
+          <DataPanel title="Brain activity" result={stats.data}>
             {(data) => <GraphStatus data={data as Record<string, unknown>} />}
           </DataPanel>
-          <DataPanel title="Retrieval index" result={index.data}>
+          <DataPanel title="Retrieval rhythm" result={index.data}>
             {(data) => <RetrievalStatus data={data as Record<string, unknown>} />}
           </DataPanel>
-          <DataPanel title="Memory tiers" result={memory.data}>
+          <DataPanel title="Memory layers" result={memory.data}>
             {(data) => <MemoryStatus data={data as Record<string, unknown>} />}
           </DataPanel>
           <DataPanel title="Recent sources" result={provenance.data}>
@@ -460,19 +463,35 @@ export function BrainPage({ initialTab }: { initialTab?: string }) {
       ) : null}
 
       {tab === "graph" ? (
-        graph.isLoading ? <LoadingPanel title="Knowledge graph" /> : (
-          <DataPanel title="Brain map" description={mode === "basic" ? "Search, focus, and filter the ideas Lattice has learned from your workspace." : "Explore relationships, sources, and graph structure."} result={graph.data}>
+        graph.isLoading ? <LoadingPanel title="Deep graph" /> : (
+          <DataPanel title="Advanced relationship graph" description={mode === "basic" ? "Open the deepest layer when you want to inspect the underlying relationships." : "Explore relationships, sources, and graph structure."} result={graph.data}>
             {(data) => <DigitalBrainExplorer data={data} />}
           </DataPanel>
         )
       ) : null}
-
-      {tab === "search" ? <HybridSearch /> : null}
-      {tab === "memory" ? <MemoryPanel /> : null}
-      {tab === "provenance" ? <ProvenancePanel /> : null}
       {tab === "portability" ? <PortabilityPanel /> : null}
     </div>
   );
+}
+
+function normalizeBrainTab(tab?: string): BrainTab {
+  if (tab === "overview" || tab === "chat" || tab === "ask") return "conversation";
+  if (tab === "search") return "knowledge";
+  if (tab === "provenance" || tab === "sources") return "relationships";
+  return tabs.some((item) => item.id === tab) ? tab as BrainTab : "conversation";
+}
+
+function tabLabel(tab: BrainTab) {
+  return tabs.find((item) => item.id === tab)?.label || "Brain";
+}
+
+function tabHeadline(tab: BrainTab) {
+  if (tab === "memory") return "Memories, before mechanics.";
+  if (tab === "knowledge") return "Knowledge, gathered into recall.";
+  if (tab === "relationships") return "Relationships, when you need the why.";
+  if (tab === "graph") return "The graph, intentionally opened.";
+  if (tab === "portability") return "Care for the Brain.";
+  return "Talk to your Brain.";
 }
 
 function GraphStatus({ data }: { data: Record<string, unknown> }) {
@@ -482,16 +501,16 @@ function GraphStatus({ data }: { data: Record<string, unknown> }) {
   return (
     <div className="space-y-3">
       <StatGrid stats={[
-        { label: "Nodes", value: data.total_nodes ?? nodeTypes.reduce((sum, key) => sum + Number(((data.nodes as Record<string, unknown>) || {})[key] || 0), 0) },
-        { label: "Edges", value: data.total_edges ?? edgeTypes.reduce((sum, key) => sum + Number(((data.edges as Record<string, unknown>) || {})[key] || 0), 0) },
-        { label: "Node types", value: nodeTypes.length },
-        { label: "Edge types", value: edgeTypes.length },
+        { label: "Memories", value: data.total_nodes ?? nodeTypes.reduce((sum, key) => sum + Number(((data.nodes as Record<string, unknown>) || {})[key] || 0), 0) },
+        { label: "Links", value: data.total_edges ?? edgeTypes.reduce((sum, key) => sum + Number(((data.edges as Record<string, unknown>) || {})[key] || 0), 0) },
+        { label: "Memory kinds", value: nodeTypes.length },
+        { label: "Link kinds", value: edgeTypes.length },
       ]} />
       {mode === "basic" ? (
         <div className="flex flex-wrap gap-1">
           {[...nodeTypes, ...edgeTypes].slice(0, 10).map((item) => <Badge key={item} variant="muted">{titleize(item)}</Badge>)}
         </div>
-      ) : <StructuredView value={{ node_types: nodeTypes, edge_types: edgeTypes }} />}
+      ) : <StructuredView value={{ memory_kinds: nodeTypes, link_kinds: edgeTypes }} />}
     </div>
   );
 }
@@ -558,8 +577,8 @@ function DigitalBrainExplorer({ data }: { data: unknown }) {
   if (!parsed.nodes.length) {
     return (
       <EmptyState
-        title="No graph records yet"
-        detail="Capture a document, note, or local folder to create connected ideas with sources."
+        title="No relationship records yet"
+        detail="Capture a document, note, or local folder to create connected memories with sources."
       />
     );
   }
@@ -585,7 +604,7 @@ function DigitalBrainExplorer({ data }: { data: unknown }) {
         <Card>
           <CardHeader className="flex-row items-start justify-between gap-3">
             <div>
-              <CardTitle className="flex items-center gap-2"><Layers3 className="h-4 w-4" /> Knowledge map</CardTitle>
+              <CardTitle className="flex items-center gap-2"><Layers3 className="h-4 w-4" /> Deep graph</CardTitle>
               <CardDescription>
                 Showing {fmtNumber(model.visibleNodes.length)} ideas and {fmtNumber(model.visibleEdges.length)} connections from {fmtNumber(model.totalNodes)} saved items.
               </CardDescription>
@@ -605,7 +624,7 @@ function DigitalBrainExplorer({ data }: { data: unknown }) {
                 value={minImportance}
                 onChange={(event) => setMinImportance(Number(event.target.value))}
                 className="w-44"
-                aria-label="Minimum graph importance"
+                aria-label="Minimum relationship importance"
               />
               <Badge variant="muted">{Math.round(minImportance * 100)}%+</Badge>
               {selectedId ? <Button variant="outline" size="sm" onClick={() => setSelectedId(null)}>Clear focus</Button> : null}
@@ -664,7 +683,7 @@ function DigitalBrainExplorer({ data }: { data: unknown }) {
                   <div className="text-lg font-semibold">{selectedGroup.label}</div>
                   <Button variant="outline" onClick={() => toggleGroup(selectedGroup.id)}>Expand group</Button>
                 </div>
-              ) : <EmptyState title="No node selected" detail="Select a node or collapsed group in the graph." />}
+              ) : <EmptyState title="Nothing selected" detail="Select an item or collapsed group in the graph." />}
             </CardContent>
           </Card>
           <Card>
@@ -710,7 +729,7 @@ function HybridSearch() {
       </CardHeader>
       <CardContent className="space-y-3">
         <div className="flex flex-col gap-2 sm:flex-row">
-          <Input placeholder="Search memories, graph nodes, and indexed documents" value={query} onChange={(e) => setQuery(e.target.value)} onKeyDown={(e) => e.key === "Enter" && search.mutate()} />
+          <Input placeholder="Search memories, indexed documents, and relationships" value={query} onChange={(e) => setQuery(e.target.value)} onKeyDown={(e) => e.key === "Enter" && search.mutate()} />
           <Button onClick={() => search.mutate()} disabled={!query.trim() || search.isPending}>Search</Button>
         </div>
         {search.data ? (
@@ -792,10 +811,10 @@ function PortabilityPanel() {
         </CardHeader>
         <CardContent className="space-y-3">
           <div className="flex flex-wrap gap-2">
-            <ActionButton label="Export brain map" action={() => latticeApi.graphExport()} />
+            <ActionButton label="Export Brain" action={() => latticeApi.graphExport()} />
             <ActionButton label="Create backup" action={() => latticeApi.graphBackup()} />
           </div>
-          <Textarea value={artifact} onChange={(e) => setArtifact(e.target.value)} placeholder="Paste an exported brain map to preview import" />
+          <Textarea value={artifact} onChange={(e) => setArtifact(e.target.value)} placeholder="Paste an exported Brain artifact to preview import" />
           <Button
             variant="outline"
             disabled={!artifact.trim() || importMutation.isPending}
@@ -816,9 +835,9 @@ function PortabilityStatus({ data }: { data: Record<string, unknown> }) {
   return (
     <div className="space-y-3">
       <StatGrid stats={[
-        { label: "Graph version", value: data.graph_schema_version || data.schema_version || "reported" },
-        { label: "Nodes", value: (stats.total_nodes as number) || Object.values((stats.nodes as Record<string, unknown>) || {}).reduce((sum: number, value) => sum + Number(value || 0), 0) },
-        { label: "Edges", value: (stats.total_edges as number) || Object.values((stats.edges as Record<string, unknown>) || {}).reduce((sum: number, value) => sum + Number(value || 0), 0) },
+        { label: "Brain format", value: data.graph_schema_version || data.schema_version || "reported" },
+        { label: "Memories", value: (stats.total_nodes as number) || Object.values((stats.nodes as Record<string, unknown>) || {}).reduce((sum: number, value) => sum + Number(value || 0), 0) },
+        { label: "Links", value: (stats.total_edges as number) || Object.values((stats.edges as Record<string, unknown>) || {}).reduce((sum: number, value) => sum + Number(value || 0), 0) },
         { label: "Storage", value: storage.engine || "reported" },
       ]} />
       <StructuredView value={data} />

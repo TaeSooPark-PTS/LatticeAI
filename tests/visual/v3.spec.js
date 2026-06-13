@@ -20,18 +20,18 @@ function trackPageErrors(page) {
 test("React desktop shell boots with the reimagined navigation dock", async ({ page }) => {
   const errors = trackPageErrors(page);
   await page.goto("/app");
-  await page.waitForSelector("text=Digital Brain");
+  await page.waitForSelector("text=Lattice Brain");
   const nav = page.getByRole("navigation", { name: "Primary navigation" });
-  for (const label of ["Home", "Ask", "Add", "Automate", "Library", "Care"]) {
+  for (const label of ["Brain", "Add", "Automate", "Library", "Care"]) {
     await expect(nav.getByRole("button", { name: label })).toBeVisible();
   }
+  await expect(page.locator("body")).toContainText("Talk to your Brain");
   await expect(page.locator("body")).not.toContainText("v4.1.0 Release Candidate");
-  await expect(page.locator("body")).toContainText(/v\d+\.\d+\.\d+/);
   expect(errors).toEqual([]);
 });
 
 test("first-run journey explains the product without documentation", async ({ page }) => {
-  await page.goto("/app");
+  await page.goto("/app#/onboarding");
   await expect(page.locator("body")).toContainText("First 10 minutes");
   for (const label of [
     "Make it yours",
@@ -39,9 +39,9 @@ test("first-run journey explains the product without documentation", async ({ pa
     "Meet your Mac",
     "Pick a brain",
     "Install locally",
-    "Try a question",
+    "Talk to Brain",
     "Set the pace",
-    "Explore memory",
+    "Explore deeply",
   ]) {
     await expect(page.locator("body")).toContainText(label);
   }
@@ -80,25 +80,25 @@ test("offline startup loads local assets and shows honest unavailable state", as
     await route.abort();
   });
   await page.goto("/app#/brain");
-  await page.waitForSelector("text=Digital Brain");
+  await page.waitForSelector("text=Lattice Brain");
   await expect(page.locator("body")).toContainText("Starting");
-  await expect(page.getByRole("navigation", { name: "Primary navigation" }).getByRole("button", { name: "Home" })).toBeVisible();
+  await expect(page.getByRole("navigation", { name: "Primary navigation" }).getByRole("button", { name: "Brain" })).toBeVisible();
   expect(errors).toEqual([]);
 });
 
 test("hybrid search calls the API and renders returned records", async ({ page }) => {
   await page.goto("/app#/hybrid-search");
-  await page.getByPlaceholder("Search memories, graph nodes, and indexed documents").fill("retrieval");
+  await page.getByPlaceholder("Search memories, indexed documents, and relationships").fill("retrieval");
   await page.locator("section").getByRole("button", { name: "Search" }).click();
   await expect(page.locator("body")).toContainText("Lattice AI");
 });
 
 test("Ask streams chat and shows context trace", async ({ page }) => {
   await page.goto("/app#/chat");
-  await page.getByPlaceholder("Ask anything about your work...").fill("How does hybrid search rank results?");
+  await page.getByPlaceholder("Ask the Brain anything...").fill("How does hybrid search rank results?");
   await page.getByRole("button", { name: /Send/ }).click();
   await expect(page.locator("body")).toContainText("Hybrid retrieval");
-  await expect(page.locator("body")).toContainText("Sources");
+  await expect(page.locator("body")).toContainText("Memory nearby");
 });
 
 test("Capture exposes upload, local folder, URL, and processing controls", async ({ page }) => {
@@ -148,7 +148,7 @@ test("Library renders models, skills, tool connections, and marketplace registri
 test("Basic graph view hides developer endpoint leakage", async ({ page }) => {
   await page.goto("/app#/knowledge-graph");
   await page.waitForSelector("[data-testid='brain-cytoscape']");
-  await expect(page.locator("body")).toContainText("Search, focus, and filter the ideas Lattice has learned from your workspace.");
+  await expect(page.locator("body")).toContainText("Open the deepest layer when you want to inspect the underlying relationships.");
   await expect(page.locator("body")).not.toContainText("/knowledge-graph/graph");
   await expect(page.locator("body")).not.toContainText("Cytoscape.js");
 });
@@ -189,5 +189,5 @@ test("mobile layout has no horizontal overflow and nav opens", async ({ page }) 
   expect(overflow).toBeLessThanOrEqual(1);
   await page.getByLabel("Toggle theme").waitFor();
   await page.getByRole("button").first().click();
-  await expect(page.getByText("Choose a room")).toBeVisible();
+  await expect(page.getByText("Choose a layer")).toBeVisible();
 });
