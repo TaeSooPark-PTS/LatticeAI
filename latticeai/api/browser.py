@@ -24,7 +24,7 @@ from urllib.parse import urlparse
 from fastapi import APIRouter, HTTPException, Request
 from pydantic import BaseModel
 
-from latticeai.services.ingestion import IngestionItem
+from lattice_brain.ingestion import IngestionItem
 
 MAX_TAB_BYTES = 4 * 1024 * 1024          # 4 MB per captured tab payload
 MAX_URL_FETCH_BYTES = 4 * 1024 * 1024    # 4 MB cap on a fetched page

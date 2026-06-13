@@ -6,7 +6,7 @@ web pages. provenance_coverage() is the honesty metric for the claim.
 """
 
 from knowledge_graph import KnowledgeGraphStore
-from latticeai.services.ingestion import IngestionItem, IngestionPipeline
+from lattice_brain.ingestion import IngestionItem, IngestionPipeline
 
 
 def _pipeline(tmp_path):

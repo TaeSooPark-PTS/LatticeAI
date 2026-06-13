@@ -2,7 +2,7 @@
 
 import pytest
 
-from latticeai.core.workflow_engine import (
+from lattice_brain.workflow import (
     WorkflowEngine,
     WorkflowError,
     export_workflow,

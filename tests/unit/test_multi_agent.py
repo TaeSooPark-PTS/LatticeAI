@@ -1,6 +1,6 @@
 """Unit tests for the v2.0 Multi-Agent Runtime orchestrator."""
 
-from latticeai.core.multi_agent import (
+from lattice_brain.runtime.multi_agent import (
     AGENT_ROLES,
     MultiAgentOrchestrator,
     OrchestrationContext,

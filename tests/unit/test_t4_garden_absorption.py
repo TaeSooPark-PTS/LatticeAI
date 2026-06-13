@@ -12,7 +12,7 @@ import pytest
 
 import p_reinforce
 from knowledge_graph import KnowledgeGraphStore
-from latticeai.services.ingestion import IngestionPipeline
+from lattice_brain.ingestion import IngestionPipeline
 from p_reinforce import PReinforceGardener
 
 

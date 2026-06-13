@@ -17,9 +17,9 @@ from typing import Any, Callable, Dict, Optional, Set
 
 from fastapi import HTTPException, Request
 
-from latticeai.core.hooks import dispatch_tool
-from latticeai.core.multi_agent import MultiAgentOrchestrator, default_role_runner, llm_role_runner
-from latticeai.core.workflow_engine import ApprovalRequired, WorkflowEngine
+from lattice_brain.runtime.hooks import dispatch_tool
+from lattice_brain.runtime.multi_agent import MultiAgentOrchestrator, default_role_runner, llm_role_runner
+from lattice_brain.workflow import ApprovalRequired, WorkflowEngine
 from tools import execute_tool
 
 

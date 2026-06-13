@@ -1,10 +1,28 @@
-"""Compatibility namespace for the standalone :mod:`lattice_brain` package."""
+"""Deprecated compatibility namespace for the standalone :mod:`lattice_brain` package.
 
-from lattice_brain.core import BrainCore, BrainCoreConfig
-from latticeai.brain.context import AssembledContext, ContextAssembler, ContextSection
-from latticeai.brain.conversations import ConversationStore
-from latticeai.brain.memory import BrainMemory
-from latticeai.brain.store import KnowledgeGraphStore
+The Brain Core implementation physically lives in ``lattice_brain`` as of
+v4.4.0. This package only re-exports the public surface for older imports;
+new code must import ``lattice_brain`` directly.
+"""
+
+import warnings
+
+from lattice_brain import (
+    AssembledContext,
+    BrainCore,
+    BrainCoreConfig,
+    BrainMemory,
+    ContextAssembler,
+    ContextSection,
+    ConversationStore,
+    KnowledgeGraphStore,
+)
+
+warnings.warn(
+    "latticeai.brain is deprecated; import lattice_brain instead",
+    DeprecationWarning,
+    stacklevel=2,
+)
 
 __all__ = [
     "AssembledContext",

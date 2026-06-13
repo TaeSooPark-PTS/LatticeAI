@@ -8,9 +8,9 @@ produces budgeted, provenance-carrying sections with honest absence.
 import pytest
 
 from knowledge_graph import KnowledgeGraphStore
-from latticeai.brain.context import ContextAssembler, approx_tokens
-from latticeai.brain.memory import BrainMemory
-from latticeai.services.ingestion import IngestionPipeline
+from lattice_brain.context import ContextAssembler, approx_tokens
+from lattice_brain.memory import BrainMemory
+from lattice_brain.ingestion import IngestionPipeline
 
 
 def _brain(tmp_path):

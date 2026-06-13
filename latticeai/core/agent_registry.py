@@ -8,7 +8,7 @@ first-class entry with stable metadata: ``id``, ``type``, ``version``,
 the /app views read this registry instead of any hardcoded list.
 
 Built-in role agents are projected from the single source of truth in
-:mod:`latticeai.core.multi_agent` (so adding a role there flows through here).
+:mod:`lattice_brain.runtime.multi_agent` (so adding a role there flows through here).
 Custom agents and config overrides are persisted to
 ``data_dir/agent_registry.json``.
 """
@@ -22,7 +22,7 @@ from datetime import datetime
 from pathlib import Path
 from typing import Any, Dict, List, Optional
 
-from latticeai.core.multi_agent import (
+from lattice_brain.runtime.multi_agent import (
     AGENT_ROLES,
     CORE_PIPELINE,
     MULTI_AGENT_VERSION,

@@ -1,6 +1,6 @@
-# Lattice AI v4.3.3 Architecture
+# Lattice AI v4.4.0 Architecture
 
-This is the current v4.3.3 system map. It describes the shipped local-first
+This is the current v4.4.0 system map. It describes the shipped local-first
 desktop product after the dead-code cleanup audit, not historical
 v3/v4.0/v4.1/v4.2 plans.
 
@@ -73,7 +73,7 @@ flowchart TB
 ```
 
 Tauri is the primary desktop shell. Electron exists as a fallback-only shell and
-is not the release target for v4.3.3.
+is not the release target for v4.4.0.
 
 ## React/Vite Frontend
 
@@ -112,7 +112,7 @@ flowchart LR
 ```
 
 Visible controls must either call real backend APIs or show an honest
-unavailable state. v4.3.3 keeps the graph-first navigation: Brain, Ask,
+unavailable state. v4.4.0 keeps the graph-first navigation: Brain, Ask,
 Capture, Act, Library, and System.
 
 ## FastAPI Localhost API
@@ -183,13 +183,17 @@ flowchart LR
 shims remain for older imports, but new runtime construction flows through the
 package and application services.
 
-Packaging note (verified v4.3.3): `lattice_brain.core`, `lattice_brain.archive`,
-and `lattice_brain.storage.*` are standalone implementations. The knowledge
-graph, memory, context, conversation, and ingestion modules are physically
-hosted in `latticeai/brain/` and re-exported through `lattice_brain.*` module
-paths, so importing those `lattice_brain` modules currently pulls in
-`latticeai.brain`. The Brain Core boundary is therefore an import-path contract,
-not yet a fully independent distribution.
+Packaging note (verified v4.4.0): the Brain Core is physically hosted inside
+`lattice_brain` — `core`, `graph/` (schema, store, write/retrieval/discovery/
+documents/ingest/projection/provenance mixins, identity, network, curator),
+`memory`, `context`, `conversations`, `ingestion`, `runtime/` (hooks,
+multi-agent orchestrator, agent runtime), `workflow`, `portability`,
+`archive`, `embeddings`, and `storage/`. `lattice_brain` never imports
+`latticeai`; an isolation test (`tests/unit/test_lattice_brain_isolation.py`)
+blocks `latticeai` imports with an import hook and exercises the package
+end-to-end without FastAPI. `latticeai.brain.*` and the moved
+`latticeai.core.*`/`latticeai.services.*` paths remain only as thin
+compatibility shims that alias the physical `lattice_brain` modules.
 
 ## StorageEngine
 
@@ -331,18 +335,18 @@ opt-in paths.
 
 ```mermaid
 flowchart TB
-  Source["Source Tree v4.3.3"] --> FrontendBuild["Vite Frontend Build"]
+  Source["Source Tree v4.4.0"] --> FrontendBuild["Vite Frontend Build"]
   Source --> PythonBuild["Python Build"]
   Source --> NpmPack["npm pack"]
   Source --> VsixBuild["VSIX Package"]
   Source --> TauriBuild["Tauri Build"]
 
   FrontendBuild --> StaticAssets["static/app Assets"]
-  PythonBuild --> Wheel["dist/ltcai-4.3.3-py3-none-any.whl"]
-  PythonBuild --> Sdist["dist/ltcai-4.3.3.tar.gz"]
-  NpmPack --> Tgz["ltcai-4.3.3.tgz"]
-  VsixBuild --> Vsix["dist/ltcai-4.3.3.vsix"]
-  TauriBuild --> Dmg["src-tauri/target/release/bundle/dmg/Lattice AI_4.3.3_aarch64.dmg"]
+  PythonBuild --> Wheel["dist/ltcai-4.4.0-py3-none-any.whl"]
+  PythonBuild --> Sdist["dist/ltcai-4.4.0.tar.gz"]
+  NpmPack --> Tgz["ltcai-4.4.0.tgz"]
+  VsixBuild --> Vsix["dist/ltcai-4.4.0.vsix"]
+  TauriBuild --> Dmg["src-tauri/target/release/bundle/dmg/Lattice AI_4.4.0_aarch64.dmg"]
   StaticAssets --> Wheel
   StaticAssets --> Tgz
   StaticAssets --> Dmg
@@ -368,14 +372,14 @@ auto-detect `server.py`, deploy FastAPI, or host a fake desktop product.
 
 ## Known Limitations
 
-- v4.3.3 is the GitHub Release target, but external registries are
+- v4.4.0 is the GitHub Release target, but external registries are
   owner-published and can lag behind repository release preparation.
 - PostgreSQL/pgvector is optional scale mode and needs explicit configuration.
 - Docker is consent-gated and never starts automatically.
 - Ask requires a loaded model for generated answers.
 - Optional cloud providers require explicit keys and user action.
 - Historical docs under `docs/` can describe older releases; use this file,
-  `README.md`, `FEATURE_STATUS.md`, and v4.3.3 release notes for current
+  `README.md`, `FEATURE_STATUS.md`, and v4.4.0 release notes for current
   behavior. v4.3.2 reports remain historical evidence for the product audit.
 
 ## Evidence Pointers
@@ -383,7 +387,7 @@ auto-detect `server.py`, deploy FastAPI, or host a fake desktop product.
 - Self-audit: `docs/V4_3_2_SELF_AUDIT_REPORT.md`
 - Validation: `docs/V4_3_2_VALIDATION_REPORT.md`
 - Cleanup audit: `docs/V4_3_2_DEADCODE_AUDIT_REPORT.md`
-- Release notes: `RELEASE_NOTES_v4.3.3.md`
+- Release notes: `RELEASE_NOTES_v4.4.0.md`
 - Graph UX: `docs/V4_3_2_GRAPH_UX_REPORT.md`
 - Product polish: `docs/V4_3_2_PRODUCT_POLISH_REPORT.md`
 - GitHub/Vercel status: `docs/V4_3_2_GITHUB_VERCEL_CHECK_REPORT.md`

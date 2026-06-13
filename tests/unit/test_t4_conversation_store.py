@@ -8,7 +8,7 @@ started_at handling) must mirror the JSON implementation.
 
 import json
 
-from latticeai.brain.conversations import ConversationStore
+from lattice_brain.conversations import ConversationStore
 
 
 def _store(tmp_path):
@@ -107,7 +107,7 @@ def test_backup_restore_round_trip_carries_conversations(tmp_path):
     """Conversations share the KG database file, so the existing
     kg_portability backup/restore covers them — prove it end-to-end."""
     from knowledge_graph import KnowledgeGraphStore
-    from latticeai.services.kg_portability import KGPortabilityService
+    from lattice_brain.portability import KGPortabilityService
 
     db = tmp_path / "knowledge_graph.sqlite"
     kg = KnowledgeGraphStore(db, tmp_path / "blobs")

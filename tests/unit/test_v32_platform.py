@@ -12,7 +12,7 @@ from pathlib import Path
 
 import pytest
 
-from latticeai.core.hooks import HooksRegistry, HOOK_KINDS, BUILTIN_HOOKS
+from lattice_brain.runtime.hooks import HooksRegistry, HOOK_KINDS, BUILTIN_HOOKS
 from latticeai.core.agent_registry import AgentRegistry, AGENT_TYPES
 from latticeai.core.marketplace import TemplateCatalog, MARKETPLACE_VERSION
 from latticeai.services.memory_service import MemoryService, TIERS

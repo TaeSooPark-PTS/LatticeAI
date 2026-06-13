@@ -29,7 +29,7 @@ from enum import Enum
 from pathlib import Path
 from typing import Any, Awaitable, Callable, Dict, FrozenSet, List, Optional
 
-from latticeai.core.hooks import dispatch_tool
+from lattice_brain.runtime.hooks import dispatch_tool
 from tools import ToolError
 
 

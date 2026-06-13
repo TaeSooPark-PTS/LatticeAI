@@ -1,11 +1,11 @@
 """Real runners for the built-in lifecycle hooks.
 
-Each built-in hook in :data:`latticeai.core.hooks.BUILTIN_HOOKS` is bound here to
+Each built-in hook in :data:`lattice_brain.runtime.hooks.BUILTIN_HOOKS` is bound here to
 an actual callable so dispatch performs real platform work rather than a silent
 no-op. Kept out of ``server_app`` to keep the assembly file lean; ``server_app``
 calls :func:`register_builtin_hook_runners` once with the platform dependencies.
 
-A runner receives a :class:`~latticeai.core.hooks.HookContext` and returns a
+A runner receives a :class:`~lattice_brain.runtime.hooks.HookContext` and returns a
 status dict (``{status, output, block?, detail?}``). It may mutate the context
 payload (e.g. redaction) or call ``context.block()`` to gate a ``pre_*`` action.
 """

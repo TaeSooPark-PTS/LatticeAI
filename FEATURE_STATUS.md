@@ -1,10 +1,22 @@
-# Lattice AI — Feature Status (v4.3.3)
+# Lattice AI — Feature Status (v4.4.0)
 
-**Current release line:** v4.3.3 Dead-Code Cleanup Release. Lattice AI
+**Current release line:** v4.4.0 Brain Engine Extraction Release. Lattice AI
 is a Digital Brain Platform: the graph is the durable asset; models read it and
-are replaceable. Sections below v4.3.3 are historical release-status records and
-should not override the current README, ARCHITECTURE.md, or v4.3.3 release
+are replaceable. Sections below v4.4.0 are historical release-status records and
+should not override the current README, ARCHITECTURE.md, or v4.4.0 release
 notes.
+
+## v4.4.0 Brain Engine Extraction Release — what changed
+
+v4.4.0 physically moves the Brain Core implementation into the standalone
+`lattice_brain` package. It does not change user-facing feature behavior,
+storage layouts, migrations, or the API surface.
+
+| Feature | Status | Evidence |
+| --- | --- | --- |
+| **Physical Brain Core extraction** | WORKING | Graph (`lattice_brain.graph`), memory, context, conversations, ingestion, hook/multi-agent/agent runtime (`lattice_brain.runtime`), workflow, and portability physically live in `lattice_brain`; `latticeai/brain` holds deprecation shims only. `tests/unit/test_lattice_brain_isolation.py`. |
+| **Isolation guarantee** | WORKING | Import-hook test fails on any `lattice_brain` → `latticeai` import; end-to-end Brain Core exercise runs without FastAPI. `tests/unit/test_lattice_brain_isolation.py`. |
+| **Compatibility shims** | WORKING | Old `latticeai.brain.*`, `latticeai.core.hooks/multi_agent/workflow_engine/graph_curator`, `latticeai.services.ingestion/agent_runtime/kg_portability`, and flat `lattice_brain.*` graph paths alias the physical modules with identity preserved. Full unit suite. |
 
 ## v4.3.3 Dead-Code Cleanup Release — what changed
 

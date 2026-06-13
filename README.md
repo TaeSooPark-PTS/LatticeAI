@@ -7,12 +7,12 @@
 [![CI Status](https://github.com/TaeSooPark-PTS/LatticeAI/actions/workflows/ci.yml/badge.svg?branch=main)](https://github.com/TaeSooPark-PTS/LatticeAI/actions/workflows/ci.yml)
 [![License](https://img.shields.io/badge/license-MIT-green)](LICENSE)
 
-**Lattice AI v4.3.3 is a local-first Digital Brain desktop workspace.** It runs
+**Lattice AI v4.4.0 is a local-first Digital Brain desktop workspace.** It runs
 as a Tauri desktop app with a localhost FastAPI sidecar, stores the user's brain
 locally by default, and presents the Knowledge Graph as the durable asset.
 
-This README describes the v4.3.3 release tree, which promotes the post-cleanup
-main branch after the v4.3.2 self-audit and independent dead-code/runtime audit.
+This README describes the v4.4.0 release tree, which completes the physical
+extraction of the Brain Core into the standalone `lattice_brain` package.
 External package registries are owner-published; the badges above link to
 package pages and may show the most recently published owner-controlled registry
 version, which can lag behind the GitHub Release.
@@ -40,7 +40,7 @@ version, which can lag behind the GitHub Release.
 
 ### Desktop Startup
 
-The v4.3.3 DMG build launches a visible Tauri app, starts the FastAPI sidecar on
+The v4.4.0 DMG build launches a visible Tauri app, starts the FastAPI sidecar on
 localhost, and shuts that sidecar down on normal macOS quit.
 
 ![Desktop startup and local sidecar](output/audits/v4.3.2-rc/screenshots/13-desktop-sidecar-startup.png)
@@ -136,8 +136,11 @@ Archive evidence:
 - **Frontend**: React, TypeScript, Vite, TanStack Query, Zustand, Cytoscape.js,
   React Flow, Tailwind/shadcn-style primitives, generated OpenAPI client.
 - **Backend**: FastAPI on localhost is the source of truth for the UI.
-- **Brain Core**: independent Python package `lattice_brain`, imported by
-  FastAPI, CLI, tests, and future tools.
+- **Brain Core**: independent Python package `lattice_brain` (graph, memory,
+  context, conversations, ingestion, agent/hook runtime, workflow,
+  portability, storage) physically hosted in the package, imported by FastAPI,
+  CLI, tests, and future tools, and guaranteed by tests to never import
+  `latticeai`.
 - **Storage**: `StorageEngine` abstraction with SQLite default and optional
   PostgreSQL/pgvector scale mode.
 - **Portability**: encrypted `.latticebrain` archive plus backup/restore and
@@ -145,17 +148,17 @@ Archive evidence:
 - **Privacy**: local-first by default; cloud models, Telegram, Brain Network,
   Docker, model downloads, and update checks require explicit opt-in paths.
 
-See [ARCHITECTURE.md](ARCHITECTURE.md) for the detailed v4.3.3 architecture.
+See [ARCHITECTURE.md](ARCHITECTURE.md) for the detailed v4.4.0 architecture.
 
 ## Installation And Release Artifacts
 
-Validated v4.3.3 artifacts are produced from the post-cleanup tree:
+Validated v4.4.0 artifacts are produced from the extraction tree:
 
-- `dist/ltcai-4.3.3-py3-none-any.whl`
-- `dist/ltcai-4.3.3.tar.gz`
-- `ltcai-4.3.3.tgz`
-- `dist/ltcai-4.3.3.vsix`
-- `src-tauri/target/release/bundle/dmg/Lattice AI_4.3.3_aarch64.dmg`
+- `dist/ltcai-4.4.0-py3-none-any.whl`
+- `dist/ltcai-4.4.0.tar.gz`
+- `ltcai-4.4.0.tgz`
+- `dist/ltcai-4.4.0.vsix`
+- `src-tauri/target/release/bundle/dmg/Lattice AI_4.4.0_aarch64.dmg`
 
 For a public release, attach only those exact artifacts to the GitHub Release.
 Package-registry publishing is reserved for the owner.
@@ -191,7 +194,7 @@ npm run test:unit
 LTCAI_TEST_BASE_URL=http://127.0.0.1:4932 npm run test:integration
 npm run test:visual
 npm run desktop:tauri:check
-node scripts/run_python.mjs scripts/wheel_smoke.py --wheel dist/ltcai-4.3.3-py3-none-any.whl
+node scripts/run_python.mjs scripts/wheel_smoke.py --wheel dist/ltcai-4.4.0-py3-none-any.whl
 npm pack --dry-run
 ```
 
@@ -205,12 +208,13 @@ npm pack --dry-run
 - Model downloads and cloud model calls require explicit user action/consent.
 - Ask does not fabricate answers when no model is loaded.
 - Historical artifacts may remain in `dist/`; release uploads must use exact
-  v4.3.3 filenames.
+  v4.4.0 filenames.
 
 ## Release History
 
 | Version | Theme |
 | --- | --- |
+| 4.4.0 | Brain Engine Extraction: Brain Core physically moved into `lattice_brain` (graph/memory/context/conversation/ingestion/runtime/workflow/portability), latticeai paths reduced to compatibility shims, isolation tests guaranteeing no `latticeai` imports |
 | 4.3.3 | Dead-Code Cleanup Release: post-audit cleanup, architecture documentation correction, Vercel/static-docs readiness, README badge restoration, exact-current artifacts |
 | 4.3.2 | Product Polish & Graph UX Overhaul RC: evidence-based README, graph UX, structured product state, archive UX, desktop sidecar cleanup, publishing readiness |
 | 4.3.1 | End-User Audit Repair RC: desktop sidecar startup, npm clean install, default-off downloads, honest agent/workflow states |
@@ -223,10 +227,11 @@ npm pack --dry-run
 
 ## Current Documentation
 
-- [ARCHITECTURE.md](ARCHITECTURE.md) - v4.3.3 architecture.
+- [ARCHITECTURE.md](ARCHITECTURE.md) - v4.4.0 architecture.
 - [FEATURE_STATUS.md](FEATURE_STATUS.md) - current feature status and historical
   status ledger.
 - [RELEASE_NOTES.md](RELEASE_NOTES.md) - current release notes index.
+- [RELEASE_NOTES_v4.4.0.md](RELEASE_NOTES_v4.4.0.md) - v4.4.0 release notes.
 - [RELEASE_NOTES_v4.3.3.md](RELEASE_NOTES_v4.3.3.md) - v4.3.3 release notes.
 - [RELEASE.md](RELEASE.md) - release checklist and exact artifact guidance.
 - [SECURITY.md](SECURITY.md) - security posture.

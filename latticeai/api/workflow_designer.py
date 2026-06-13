@@ -1,7 +1,7 @@
 """Workflow Designer API router (v2).
 
 Create / edit / validate / execute / inspect / export / import workflows plus
-run history, layered on :mod:`latticeai.core.workflow_engine` and the existing
+run history, layered on :mod:`lattice_brain.workflow` and the existing
 ``WorkspaceOSStore`` workflow persistence (so pre-2.0 workflow history is
 preserved). Paths are namespaced under ``/workflows`` to avoid colliding with
 ``/workspace/workflows``.
@@ -67,7 +67,7 @@ def create_workflow_designer_router(
     run_executor: Any = None,
     trigger_service: Any = None,
 ) -> APIRouter:
-    from latticeai.core.workflow_engine import (
+    from lattice_brain.workflow import (
         WorkflowEngine,
         validate_definition,
         export_workflow,

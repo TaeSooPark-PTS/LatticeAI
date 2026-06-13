@@ -14,8 +14,8 @@ from pathlib import Path
 sys.path.insert(0, str(Path(__file__).resolve().parents[2]))
 
 from knowledge_graph import KnowledgeGraphStore
-from latticeai.core.hooks import HooksRegistry
-from latticeai.services.ingestion import IngestionItem, IngestionPipeline
+from lattice_brain.runtime.hooks import HooksRegistry
+from lattice_brain.ingestion import IngestionItem, IngestionPipeline
 
 
 def _store(tmp_path: Path) -> KnowledgeGraphStore:

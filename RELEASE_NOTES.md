@@ -1,7 +1,39 @@
 # Release Notes
 
-The current release target is v4.3.3. Older sections are historical
+The current release target is v4.4.0. Older sections are historical
 release notes and should not be read as newer product claims.
+
+## v4.4.0 - Brain Engine Extraction Release
+
+Lattice AI v4.4.0 physically extracts the Brain Core into the standalone
+`lattice_brain` package. Graph, memory, context, conversations, ingestion,
+agent/hook runtime, workflow, and portability now physically live in
+`lattice_brain`; `latticeai` keeps only thin compatibility shims, and new
+isolation tests guarantee `lattice_brain` never imports `latticeai`.
+
+### Highlights
+
+- Moved the knowledge graph into `lattice_brain.graph` and the hook/multi-agent/
+  agent runtime into `lattice_brain.runtime`; ingestion, workflow, and
+  backup/restore portability moved to `lattice_brain.ingestion`,
+  `lattice_brain.workflow`, and `lattice_brain.portability`.
+- `latticeai.brain.*` is deprecation-shimmed; moved `latticeai.core.*` and
+  `latticeai.services.*` paths alias the physical modules with identity
+  preserved.
+- Added `tests/unit/test_lattice_brain_isolation.py`: an import-hook test that
+  fails if `lattice_brain` ever imports `latticeai`, plus an end-to-end
+  exercise of the Brain Core without FastAPI.
+- No user data, storage, migration, archive, or API behavior changes.
+
+### Expected Artifacts
+
+- `dist/ltcai-4.4.0-py3-none-any.whl`
+- `dist/ltcai-4.4.0.tar.gz`
+- `dist/ltcai-4.4.0.vsix`
+- `ltcai-4.4.0.tgz`
+- `src-tauri/target/release/bundle/dmg/Lattice AI_4.4.0_aarch64.dmg`
+
+Full notes: [RELEASE_NOTES_v4.4.0.md](RELEASE_NOTES_v4.4.0.md)
 
 ## v4.3.3 - Dead-Code Cleanup Release
 

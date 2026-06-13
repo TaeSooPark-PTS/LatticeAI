@@ -8,7 +8,7 @@ re-enters at the paused node without re-executing completed nodes; denial
 fails the run honestly; skills refuse instead of pretending.
 """
 
-from latticeai.core.workflow_engine import ApprovalRequired, WorkflowEngine
+from lattice_brain.workflow import ApprovalRequired, WorkflowEngine
 
 
 def _wf(nodes):

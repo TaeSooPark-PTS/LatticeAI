@@ -13,7 +13,7 @@ from dataclasses import dataclass
 from datetime import datetime
 from typing import Any, Callable, Dict, Optional
 
-from latticeai.core.workflow_engine import WorkflowEngine
+from lattice_brain.workflow import WorkflowEngine
 
 
 ACTIVE_STATUSES = {"queued", "running", "in_progress", "retrying", "cancelling"}

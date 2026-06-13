@@ -3,6 +3,43 @@
 The top entry is the current release-preparation target. Older entries are
 historical and may describe behavior as it existed at that release.
 
+## [4.4.0] - 2026-06-13
+
+> Brain Engine Extraction release: the Brain Core implementation physically
+> moves into the standalone `lattice_brain` package.
+
+### Changed
+
+- Physically moved the knowledge graph (schema, store, write/retrieval/
+  discovery/documents/ingest/projection/provenance mixins, identity, network,
+  curator) into `lattice_brain.graph`, and memory, context, conversations into
+  `lattice_brain` proper.
+- Physically moved the unified ingestion pipeline, hooks registry, multi-agent
+  orchestrator, agent runtime, workflow engine, and KG portability service into
+  `lattice_brain.ingestion`, `lattice_brain.runtime`, `lattice_brain.workflow`,
+  and `lattice_brain.portability`.
+- FastAPI app assembly, routers, and services now import `lattice_brain`
+  directly; `latticeai.brain.*` became deprecation shims and the moved
+  `latticeai.core.*`/`latticeai.services.*` paths became silent alias shims
+  with module identity preserved.
+- Synchronized all version copies to `4.4.0` and updated architecture/release
+  documentation to describe the physical extraction.
+
+### Added
+
+- `tests/unit/test_lattice_brain_isolation.py`: fails if `lattice_brain`
+  imports `latticeai` (import-hook enforced) and exercises the Brain Core
+  end-to-end (graph ingest/search, conversations, context, workflow, agent
+  runtime, encrypted archive round-trip) without FastAPI.
+- `lattice_brain.graph` and `lattice_brain.runtime` subpackages, shipped in the
+  wheel and covered by the wheel smoke check.
+
+### Fixed
+
+- The Brain Core boundary is no longer an import-path contract: importing
+  `lattice_brain` no longer pulls in `latticeai.brain`, and the package is
+  usable by CLI, tests, and future tools fully independently.
+
 ## [4.3.3] - 2026-06-13
 
 > Dead-Code Cleanup release after the independent audit cleanup on top of

@@ -17,7 +17,7 @@ from datetime import datetime
 from pathlib import Path
 from typing import Any, Callable, Dict, List, Optional
 
-from latticeai.services.ingestion import IngestionItem
+from lattice_brain.ingestion import IngestionItem
 from fastapi import APIRouter, HTTPException, Request
 from pydantic import BaseModel
 

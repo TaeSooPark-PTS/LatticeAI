@@ -26,7 +26,7 @@ TARGETS = [
     ("lattice_brain/__init__.py", "regex", r'(__version__ = ")([^"]+)(")'),
     ("latticeai/core/workspace_os.py", "regex", r'(WORKSPACE_OS_VERSION = ")([^"]+)(")'),
     ("latticeai/core/marketplace.py", "regex", r'(MARKETPLACE_VERSION = ")([^"]+)(")'),
-    ("latticeai/core/multi_agent.py", "regex", r'(MULTI_AGENT_VERSION = ")([^"]+)(")'),
+    ("lattice_brain/runtime/multi_agent.py", "regex", r'(MULTI_AGENT_VERSION = ")([^"]+)(")'),
     ("pyproject.toml", "regex", r'(^version = ")([^"]+)(")'),
     ("package.json", "json", "version"),
     ("package-lock.json", "package-lock", None),

@@ -45,8 +45,8 @@ def create_agents_router(
     agent_runtime: Any = None,
     run_executor: Any = None,
 ) -> APIRouter:
-    from latticeai.core.multi_agent import AGENT_ROLES, ROLE_AGENT_IDS
-    from latticeai.services.agent_runtime import AgentRuntime, AgentRuntimeUnavailable
+    from lattice_brain.runtime.multi_agent import AGENT_ROLES, ROLE_AGENT_IDS
+    from lattice_brain.runtime.agent_runtime import AgentRuntime, AgentRuntimeUnavailable
 
     # Single AgentRuntime boundary: the router (and via it, the frontend) talks
     # to this façade instead of reaching into the orchestrator/store directly.

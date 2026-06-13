@@ -41,7 +41,7 @@ def test_python_constants_agree():
     from latticeai import __version__
     from lattice_brain import __version__ as brain_version
     from latticeai.core.marketplace import MARKETPLACE_VERSION
-    from latticeai.core.multi_agent import MULTI_AGENT_VERSION
+    from lattice_brain.runtime.multi_agent import MULTI_AGENT_VERSION
 
     v = _canonical()
     assert __version__ == v

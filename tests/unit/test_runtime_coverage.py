@@ -13,7 +13,7 @@ import pytest
 from fastapi import FastAPI
 from fastapi.testclient import TestClient
 
-from latticeai.core.hooks import HooksRegistry, dispatch_tool
+from lattice_brain.runtime.hooks import HooksRegistry, dispatch_tool
 from latticeai.api.computer_use import create_computer_use_router
 
 

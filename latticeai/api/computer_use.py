@@ -11,7 +11,7 @@ from fastapi.responses import StreamingResponse
 from pydantic import BaseModel
 
 from latticeai.core.agent import extract_action as _extract_agent_action
-from latticeai.core.hooks import dispatch_tool
+from lattice_brain.runtime.hooks import dispatch_tool
 from tools import (
     ToolError,
     computer_click,

@@ -15,7 +15,7 @@ from pydantic import BaseModel
 
 from latticeai.api.computer_use import create_computer_use_router
 from latticeai.api.local_files import create_local_files_router
-from latticeai.core.hooks import dispatch_tool
+from lattice_brain.runtime.hooks import dispatch_tool
 from latticeai.api.mcp import create_mcp_router
 from latticeai.api.permissions import create_permissions_router
 from latticeai.services.upload_service import process_uploaded_document

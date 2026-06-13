@@ -12,12 +12,12 @@ import time
 import pytest
 
 from knowledge_graph import KnowledgeGraphStore
-from latticeai.brain.identity import DeviceIdentity
-from latticeai.brain.network import (
+from lattice_brain.graph.identity import DeviceIdentity
+from lattice_brain.graph.network import (
     HEADER_TIMESTAMP,
     BrainNetwork,
 )
-from latticeai.services.kg_portability import KGPortabilityService
+from lattice_brain.portability import KGPortabilityService
 
 
 def _stack(tmp_path, name):

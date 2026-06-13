@@ -18,8 +18,8 @@ sys.path.insert(0, str(Path(__file__).resolve().parents[2]))
 
 from knowledge_graph import KnowledgeGraphStore
 from latticeai.api.browser import create_browser_router
-from latticeai.core.hooks import HooksRegistry
-from latticeai.services.ingestion import IngestionPipeline
+from lattice_brain.runtime.hooks import HooksRegistry
+from lattice_brain.ingestion import IngestionPipeline
 
 
 @pytest.fixture()

@@ -20,7 +20,7 @@ from latticeai.api.browser import (
     create_browser_router,
     extract_readable_text,
 )
-from latticeai.services.ingestion import IngestionPipeline
+from lattice_brain.ingestion import IngestionPipeline
 
 
 def _client(tmp_path, *, fetch_url=None, require_user=None, enable_graph=True):

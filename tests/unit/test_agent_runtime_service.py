@@ -1,4 +1,4 @@
-"""AgentRuntime façade tests (latticeai.services.agent_runtime).
+"""AgentRuntime façade tests (lattice_brain.runtime.agent_runtime).
 
 The façade wraps the existing MultiAgentOrchestrator + run store behind one
 boundary (config/roles/health/status/start/events/stop) that the HTTP router —
@@ -9,8 +9,8 @@ from fastapi import FastAPI
 from fastapi.testclient import TestClient
 
 from latticeai.api.agents import create_agents_router
-from latticeai.core.multi_agent import CORE_PIPELINE, MultiAgentOrchestrator
-from latticeai.services.agent_runtime import AgentRuntime, AgentRuntimeUnavailable
+from lattice_brain.runtime.multi_agent import CORE_PIPELINE, MultiAgentOrchestrator
+from lattice_brain.runtime.agent_runtime import AgentRuntime, AgentRuntimeUnavailable
 
 
 class FakeStore:

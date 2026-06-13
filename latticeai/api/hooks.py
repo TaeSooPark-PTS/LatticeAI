@@ -1,6 +1,6 @@
 """Hooks platform API router (v3.2.0).
 
-Exposes the lifecycle :class:`~latticeai.core.hooks.HooksRegistry` over HTTP so
+Exposes the lifecycle :class:`~lattice_brain.runtime.hooks.HooksRegistry` over HTTP so
 the /app Hooks view can list, inspect, enable/disable, reorder, and register
 hooks. Full paths live in the decorators (no ``prefix=``), matching the rest of
 the API.
@@ -13,7 +13,7 @@ from typing import Callable, List, Optional
 from fastapi import APIRouter, HTTPException, Request
 from pydantic import BaseModel
 
-from latticeai.core.hooks import HooksRegistry
+from lattice_brain.runtime.hooks import HooksRegistry
 
 
 class HookToggleRequest(BaseModel):

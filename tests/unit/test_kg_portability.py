@@ -18,8 +18,8 @@ sys.path.insert(0, str(Path(__file__).resolve().parents[2]))
 
 from knowledge_graph import GRAPH_SCHEMA_VERSION, KnowledgeGraphStore
 from latticeai.api.portability import create_portability_router
-from latticeai.services.ingestion import IngestionItem, IngestionPipeline
-from latticeai.services.kg_portability import KGPortabilityService
+from lattice_brain.ingestion import IngestionItem, IngestionPipeline
+from lattice_brain.portability import KGPortabilityService
 
 
 def _seeded(tmp_path: Path, tag: str) -> KnowledgeGraphStore:

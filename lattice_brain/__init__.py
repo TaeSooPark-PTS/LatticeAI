@@ -1,7 +1,14 @@
 """lattice-brain — independent Brain Core package for Lattice AI.
 
-Heavy graph modules are lazy-loaded so storage and archive utilities remain
-usable without importing the FastAPI application or creating runtime globals.
+Physically hosts the knowledge graph (``lattice_brain.graph``), memory,
+context assembly, conversations, ingestion, agent/hook runtime
+(``lattice_brain.runtime``), workflow engine, portability (backup/restore and
+``.latticebrain`` archives), and the storage abstraction.
+
+The package never imports ``latticeai``; FastAPI and the desktop product
+import this package, not the other way around. Heavy graph modules are
+lazy-loaded so storage and archive utilities remain usable without creating
+runtime globals.
 """
 
 from .archive import BrainArchivePaths, EncryptedBrainArchive
@@ -19,9 +26,10 @@ from .storage import (
     storage_from_env,
 )
 
-__version__ = "4.3.3"
+__version__ = "4.4.0"
 
 __all__ = [
+    "AgentRuntime",
     "AssembledContext",
     "BrainArchivePaths",
     "BrainCore",
@@ -33,7 +41,11 @@ __all__ = [
     "DockerPostgresPlan",
     "DockerPostgresWizard",
     "EncryptedBrainArchive",
+    "IngestionItem",
+    "IngestionPipeline",
+    "KGPortabilityService",
     "KnowledgeGraphStore",
+    "MultiAgentOrchestrator",
     "PostgresConfig",
     "PostgresEngine",
     "SQLiteEngine",
@@ -41,30 +53,33 @@ __all__ = [
     "StorageCapabilities",
     "StorageEngine",
     "StorageUnavailable",
+    "WorkflowEngine",
     "storage_from_env",
     "__version__",
 ]
 
+_LAZY = {
+    "AssembledContext": ("context", "AssembledContext"),
+    "ContextAssembler": ("context", "ContextAssembler"),
+    "ContextSection": ("context", "ContextSection"),
+    "ConversationStore": ("conversations", "ConversationStore"),
+    "BrainMemory": ("memory", "BrainMemory"),
+    "KnowledgeGraphStore": ("graph.store", "KnowledgeGraphStore"),
+    "IngestionItem": ("ingestion", "IngestionItem"),
+    "IngestionPipeline": ("ingestion", "IngestionPipeline"),
+    "KGPortabilityService": ("portability", "KGPortabilityService"),
+    "WorkflowEngine": ("workflow", "WorkflowEngine"),
+    "AgentRuntime": ("runtime.agent_runtime", "AgentRuntime"),
+    "MultiAgentOrchestrator": ("runtime.multi_agent", "MultiAgentOrchestrator"),
+}
+
 
 def __getattr__(name: str):
-    if name in {"AssembledContext", "ContextAssembler", "ContextSection"}:
-        from .context import AssembledContext, ContextAssembler, ContextSection
+    target = _LAZY.get(name)
+    if target is None:
+        raise AttributeError(name)
+    module_path, attr = target
+    import importlib
 
-        return {
-            "AssembledContext": AssembledContext,
-            "ContextAssembler": ContextAssembler,
-            "ContextSection": ContextSection,
-        }[name]
-    if name == "ConversationStore":
-        from .conversations import ConversationStore
-
-        return ConversationStore
-    if name == "BrainMemory":
-        from .memory import BrainMemory
-
-        return BrainMemory
-    if name == "KnowledgeGraphStore":
-        from .store import KnowledgeGraphStore
-
-        return KnowledgeGraphStore
-    raise AttributeError(name)
+    module = importlib.import_module(f".{module_path}", __name__)
+    return getattr(module, attr)

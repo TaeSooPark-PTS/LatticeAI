@@ -16,7 +16,7 @@ from lattice_brain.storage import (
     StorageUnavailable,
     storage_from_env,
 )
-from latticeai.services.kg_portability import KGPortabilityService
+from lattice_brain.portability import KGPortabilityService
 
 
 def test_lattice_brain_package_exports_working_store(tmp_path: Path):

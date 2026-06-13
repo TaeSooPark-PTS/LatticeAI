@@ -118,7 +118,7 @@ class PReinforceGardener:
         if self._pipeline is None:
             return {"graph": "unavailable", "graph_detail": "ingestion pipeline not wired"}
         try:
-            from latticeai.services.ingestion import IngestionItem
+            from lattice_brain.ingestion import IngestionItem
 
             ingest = self._pipeline.ingest(
                 IngestionItem(

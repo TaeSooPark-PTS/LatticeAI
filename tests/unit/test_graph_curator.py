@@ -1,6 +1,6 @@
-"""Unit tests for latticeai.core.graph_curator (피드백 #4)."""
+"""Unit tests for lattice_brain.graph.curator (피드백 #4)."""
 
-from latticeai.core.graph_curator import (
+from lattice_brain.graph.curator import (
     contains_secret,
     mask_secrets,
     extract_topic_candidates,
@@ -68,7 +68,7 @@ def test_should_promote_rejects_secrets():
 
 
 def test_should_promote_rejects_duplicate():
-    from latticeai.core.graph_curator import TopicCandidate
+    from lattice_brain.graph.curator import TopicCandidate
     cand = TopicCandidate(label="Lattice AI", score=5.0, sources=["a", "b", "c"])
     decision = should_promote(cand, existing_node_labels={"Lattice AI"})
     assert decision.promote is False

@@ -7,6 +7,30 @@
 > PyPI / npm / VS Code Marketplace / Open VSX 배포는 아래 수동 절차로만
 > 진행합니다. 태그 생성은 패키지 스토어 publish를 자동으로 트리거하지 않습니다.
 
+## v4.4.0 릴리스 노트 (2026-06-13)
+
+Lattice AI v4.4.0 — Brain Engine Extraction Release. Brain Core implementation을
+standalone `lattice_brain` package로 물리적으로 이동하고, `latticeai` 경로는
+compatibility shim으로 유지한다. Storage, migration, backup/restore,
+`.latticebrain` archive, FastAPI API behavior는 변경하지 않는다.
+
+- **Changed (Physical extraction)**: knowledge graph, memory, context,
+  conversations, ingestion, hooks/multi-agent/agent runtime, workflow, and
+  KG portability implementations now live physically under `lattice_brain`.
+- **Changed (Compatibility)**: `latticeai.brain.*` warns as deprecated while
+  old `latticeai.core.*` and `latticeai.services.*` moved paths remain module
+  identity aliases.
+- **Added (Isolation validation)**: `tests/unit/test_lattice_brain_isolation.py`
+  blocks `latticeai` imports while importing/exercising `lattice_brain`.
+- **Behavior**: no user-data, storage-layout, migration, backup/restore,
+  archive, graph/search/ingestion, or API behavior changes.
+- **Expected artifacts**:
+  - `dist/ltcai-4.4.0-py3-none-any.whl`
+  - `dist/ltcai-4.4.0.tar.gz`
+  - `dist/ltcai-4.4.0.vsix`
+  - `ltcai-4.4.0.tgz`
+  - `src-tauri/target/release/bundle/dmg/Lattice AI_4.4.0_aarch64.dmg`
+
 ## v4.3.3 릴리스 노트 (2026-06-13)
 
 Lattice AI v4.3.3 — Dead-Code Cleanup Release. v4.3.2 RC 이후 독립 dead-code /
@@ -915,14 +939,14 @@ Knowledge Graph v2 read/write cutover. 자세한 내용은
    - `npm run release:artifacts`
    - `npm run release:validate`
 
-현재 `v4.3.3` 기준 필수 산출물:
+현재 `v4.4.0` 기준 필수 산출물:
 
 ```text
-dist/ltcai-4.3.3-py3-none-any.whl
-dist/ltcai-4.3.3.tar.gz
-dist/ltcai-4.3.3.vsix
-ltcai-4.3.3.tgz
-src-tauri/target/release/bundle/dmg/Lattice AI_4.3.3_aarch64.dmg
+dist/ltcai-4.4.0-py3-none-any.whl
+dist/ltcai-4.4.0.tar.gz
+dist/ltcai-4.4.0.vsix
+ltcai-4.4.0.tgz
+src-tauri/target/release/bundle/dmg/Lattice AI_4.4.0_aarch64.dmg
 ```
 
 ## 2) npm 배포
@@ -933,7 +957,7 @@ src-tauri/target/release/bundle/dmg/Lattice AI_4.3.3_aarch64.dmg
    - `npm run publish:npm`
    - 직접 실행 시:
      ```
-     npm publish "ltcai-4.3.3.tgz" --access public
+     npm publish "ltcai-4.4.0.tgz" --access public
      ```
 
 ## 3) PyPI 배포
@@ -946,14 +970,14 @@ src-tauri/target/release/bundle/dmg/Lattice AI_4.3.3_aarch64.dmg
    - `npm run publish:pypi`  ← 권장 (`$npm_package_version` 자동 사용)
    - 직접 실행 시:
      ```
-     python3 -m twine upload "dist/ltcai-4.3.3-py3-none-any.whl" "dist/ltcai-4.3.3.tar.gz"
+     python3 -m twine upload "dist/ltcai-4.4.0-py3-none-any.whl" "dist/ltcai-4.4.0.tar.gz"
      ```
 
 참고:
 - TestPyPI 먼저 쓰려면:
   ```
   python3 -m twine upload --skip-existing --repository testpypi \
-    "dist/ltcai-4.3.3.tar.gz" "dist/ltcai-4.3.3-py3-none-any.whl"
+    "dist/ltcai-4.4.0.tar.gz" "dist/ltcai-4.4.0-py3-none-any.whl"
   ```
 
 ## 4) VS Code / Cursor / Antigravity 확장 배포
@@ -969,13 +993,13 @@ src-tauri/target/release/bundle/dmg/Lattice AI_4.3.3_aarch64.dmg
    - `npm run publish:vscode`  ← 권장 (`$npm_package_version` 자동 사용)
    - 직접 실행 시:
      ```
-     npx vsce publish --packagePath "../dist/ltcai-4.3.3.vsix"
+     npx vsce publish --packagePath "../dist/ltcai-4.4.0.vsix"
      ```
 4. Open VSX 배포 (Cursor/일부 포크 호환)
    - `npm run publish:openvsx`  ← 권장 (`$npm_package_version` 자동 사용)
    - 직접 실행 시:
      ```
-     npx ovsx publish "../dist/ltcai-4.3.3.vsix"
+     npx ovsx publish "../dist/ltcai-4.4.0.vsix"
      ```
 5. 로컬 설치 (VS Code/Cursor/Antigravity)
    - `npm run install:all`

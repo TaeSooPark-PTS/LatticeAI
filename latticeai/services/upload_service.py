@@ -9,7 +9,7 @@ from pathlib import Path
 
 from fastapi import HTTPException, Request, UploadFile
 
-from latticeai.services.ingestion import IngestionItem
+from lattice_brain.ingestion import IngestionItem
 from tools import ToolError, read_document
 
 

@@ -6,7 +6,7 @@ a silent fall-back to fabricated deterministic artifacts); without a model
 the orchestrator stays deterministic and labeled mode='simulation'.
 """
 
-from latticeai.core.multi_agent import MultiAgentOrchestrator, llm_role_runner
+from lattice_brain.runtime.multi_agent import MultiAgentOrchestrator, llm_role_runner
 from latticeai.services.platform_runtime import PlatformRuntime
 
 PLAN = '{"goal": "g", "steps": [{"description": "analyze"}, {"description": "write summary"}]}'
@@ -113,7 +113,7 @@ def test_custom_registry_agents_execute():
 
 def test_custom_agent_in_simulation_skips_honestly():
     entry = {"id": "agent:custom:summarizer", "name": "Summarizer", "enabled": True, "config": {}}
-    from latticeai.core.multi_agent import default_role_runner
+    from lattice_brain.runtime.multi_agent import default_role_runner
 
     result = MultiAgentOrchestrator(
         role_runner=default_role_runner(), mode="simulation",

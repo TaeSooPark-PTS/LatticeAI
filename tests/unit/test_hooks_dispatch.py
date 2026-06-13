@@ -13,7 +13,7 @@ import sys
 
 import pytest
 
-from latticeai.core.hooks import HookContext, HookResult, HooksRegistry, hook_context
+from lattice_brain.runtime.hooks import HookContext, HookResult, HooksRegistry, hook_context
 
 # Quoted interpreter path — this checkout lives under a directory with a space,
 # so command strings must quote the executable (a real user command would too).
@@ -206,7 +206,7 @@ class _FakeStore:
 
 
 def _make_runtime(registry):
-    from latticeai.services.agent_runtime import AgentRuntime
+    from lattice_brain.runtime.agent_runtime import AgentRuntime
 
     return AgentRuntime(
         store=_FakeStore(),
@@ -240,7 +240,7 @@ def test_agent_runtime_pre_run_block_aborts(registry):
 
 # ── WorkflowEngine integration ───────────────────────────────────────────────
 def test_workflow_engine_fires_lifecycle_hooks(registry):
-    from latticeai.core.workflow_engine import WorkflowEngine
+    from lattice_brain.workflow import WorkflowEngine
 
     events = []
     pre = registry.register(name="wf pre", kind="pre_workflow")
@@ -263,7 +263,7 @@ def test_workflow_engine_fires_lifecycle_hooks(registry):
 
 
 def test_dispatch_tool_fires_and_blocks(registry):
-    from latticeai.core.hooks import dispatch_tool
+    from lattice_brain.runtime.hooks import dispatch_tool
 
     seen = []
     registry.register_hook("builtin:tool-permission-gate", lambda ctx: seen.append(ctx.event))

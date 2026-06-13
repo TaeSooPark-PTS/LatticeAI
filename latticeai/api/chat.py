@@ -24,7 +24,7 @@ from PIL import Image
 from latticeai.core.agent import AgentRunContext, AgentState
 from latticeai.core.context_builder import format_sources_footnote, retrieve_context_for_generation
 from latticeai.core.document_generator import DocumentGenerationSession, detect_document_intent
-from latticeai.core.hooks import dispatch_tool
+from lattice_brain.runtime.hooks import dispatch_tool
 from latticeai.services.app_context import AppContext
 from latticeai.services.tool_dispatch import build_agent_runtime, collect_created_files
 from tools import AGENT_ROOT, ToolError, ensure_agent_root, execute_tool, knowledge_save, local_read, network_status

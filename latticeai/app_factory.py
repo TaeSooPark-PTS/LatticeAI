@@ -110,7 +110,7 @@ def _build(config: "Optional[Config]" = None) -> Dict[str, Any]:
     from latticeai.services.chat_service import ChatService
     from latticeai.services.search_service import SearchService
     from latticeai.core.embedding_providers import resolve_embedder, resolve_embedding_profile
-    from latticeai.services.agent_runtime import AgentRuntime
+    from lattice_brain.runtime.agent_runtime import AgentRuntime
     from latticeai.services.model_runtime import (
         CLOUD_VERIFY_TTL_SECONDS,
         ENGINE_MODEL_CATALOG,
@@ -152,7 +152,7 @@ def _build(config: "Optional[Config]" = None) -> Dict[str, Any]:
     from latticeai.api.garden import create_garden_router
     from latticeai.api.setup import create_setup_router
     from latticeai.api.hooks import create_hooks_router
-    from latticeai.core.hooks import HooksRegistry
+    from lattice_brain.runtime.hooks import HooksRegistry
     from latticeai.core.builtin_hooks import register_builtin_hook_runners
     from latticeai.core.product_hardening import build_product_hardening_status
     from latticeai.api.agent_registry import create_agent_registry_router
@@ -161,7 +161,7 @@ def _build(config: "Optional[Config]" = None) -> Dict[str, Any]:
     from latticeai.api.browser import create_browser_router
     from latticeai.api.portability import create_portability_router
     from latticeai.services.memory_service import MemoryService
-    from latticeai.services.ingestion import IngestionItem, IngestionPipeline
+    from lattice_brain.ingestion import IngestionItem, IngestionPipeline
     from lattice_brain import BrainCore, ConversationStore
     from lattice_brain.storage import storage_from_env
     from lattice_brain.context import ContextAssembler
@@ -169,7 +169,7 @@ def _build(config: "Optional[Config]" = None) -> Dict[str, Any]:
     from lattice_brain.identity import DeviceIdentity
     from lattice_brain.network import BrainNetwork
     from latticeai.api.network import create_network_router
-    from latticeai.services.kg_portability import KGPortabilityService
+    from lattice_brain.portability import KGPortabilityService
     # The aliased names below look unused but are part of the legacy
     # ``server_app`` attribute surface: every local is exported via
     # ``dict(locals())`` and reached through ``server_app.__getattr__``
