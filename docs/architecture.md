@@ -89,13 +89,15 @@ work on them.
 Local recommended models must be multimodal. The v2.2 local model workflow policy is:
 
 - macOS Apple Silicon: MLX-VLM first, with MLX-LM retained as a Gemma 4 text
-  fallback when MLX-VLM rejects local metadata
+  fallback only for standard Gemma 4 metadata. Gemma 4 12B `gemma4_unified`
+  requires an MLX-VLM runtime that includes `mlx_vlm.models.gemma4_unified`.
 - Windows: llama.cpp multimodal path, with LM Studio as a user-friendly option
 - Linux: llama.cpp or vLLM multimodal path depending on GPU support
 - Ollama: kept as an option, not the default priority
 
 The removed path is the old text-only MLX-LM recommendation lane for ordinary
-model selection. MLX-LM remains available as a targeted Gemma 4 recovery path.
+model selection. MLX-LM remains available as a targeted recovery path for
+standard Gemma 4 metadata, but it is not used for `gemma4_unified`.
 Low-spec machines use smaller or quantized multimodal models.
 
 ## Model Source Disclosure

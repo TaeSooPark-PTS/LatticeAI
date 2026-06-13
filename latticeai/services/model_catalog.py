@@ -17,7 +17,7 @@ from typing import Dict, List, Optional
 
 ENGINE_INSTALLERS = {
     "local_mlx": {
-        "command": [sys.executable, "-m", "pip", "install", "--upgrade", "mlx-vlm", "mlx-lm", "huggingface_hub[cli]"],
+        "command": [sys.executable, "-m", "pip", "install", "--upgrade", "mlx-vlm>=0.6.3", "mlx-lm", "huggingface_hub[cli]"],
         "label": "Install MLX runtime",
     },
     "openai": {

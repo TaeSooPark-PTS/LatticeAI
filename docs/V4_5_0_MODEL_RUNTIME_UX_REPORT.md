@@ -28,7 +28,8 @@ Library Models now presents the intended model flow:
 
 Runtime failures show:
 
-- a clear fallback or unsupported runtime state,
+- a clear actionable state such as runtime update, repair, download, fallback,
+  or unsupported format,
 - friendly explanation,
 - recovery guidance,
 - alternatives,

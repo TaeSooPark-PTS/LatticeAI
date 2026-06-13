@@ -16,7 +16,7 @@ Brain extraction without redesigning the Digital Brain frontend architecture,
 Brain Core, storage, or agent/workflow architecture.** Current implementation
 milestone: first-run setup, workspace selection, environment analysis, model
 recommendation, explicit model install/download consent, model validation,
-Gemma 4 runtime fallback compatibility, Basic/Advanced/Admin mode clarity, and
+Gemma 4 runtime metadata compatibility, Basic/Advanced/Admin mode clarity, and
 graph readability.
 The v4.5.0 RC process builds locally validated artifacts only. Tagging, GitHub
 Release creation, PyPI, npm Registry, VS Code Marketplace, Open VSX, and

@@ -6,6 +6,7 @@ import asyncio
 import base64
 import gc
 import io
+import json
 import os
 import re
 import time
@@ -253,6 +254,26 @@ def _is_gemma4_model_id(model_id: str) -> bool:
     raw = str(model_id or "").lower()
     return bool(re.search(r"gemma[-_/ ]?4|gemma4", raw))
 
+
+def _local_model_type(path_or_model_id: str) -> Optional[str]:
+    raw = str(path_or_model_id or "").strip()
+    candidates = []
+    explicit = Path(raw).expanduser()
+    if raw and explicit.exists():
+        candidates.append(explicit / "config.json")
+    candidates.append(hf_model_dir(raw) / "config.json")
+    for config_path in candidates:
+        try:
+            if config_path.exists():
+                data = json.loads(config_path.read_text(encoding="utf-8"))
+                model_type = str(data.get("model_type") or "").strip().lower()
+                if model_type:
+                    return model_type
+        except Exception as e:
+            print(f"⚠️ Model config read skipped for {config_path}: {e}")
+    return None
+
+
 def ensure_mlx_runtime() -> None:
     global mx, vlm_load, lm_load, VLM_AVAILABLE, LM_AVAILABLE
     if mx is not None and (vlm_load is not None or lm_load is not None):
@@ -407,6 +428,7 @@ class LLMRouter:
         def _load():
             mx.set_default_device(mx.gpu)
             is_gemma4 = _is_gemma4_model_id(model_id)
+            model_type = _local_model_type(target_model_id) or _local_model_type(model_id)
             loader_kind = "mlx_vlm"
 
             try:
@@ -415,7 +437,7 @@ class LLMRouter:
                 print(f"🔄 Loading Target (VLM Mode): {target_model_id}...")
                 model, tokenizer = vlm_load(target_model_id)
             except Exception as vlm_error:
-                if not (is_gemma4 and lm_load is not None):
+                if not (is_gemma4 and model_type != "gemma4_unified" and lm_load is not None):
                     raise
                 print(f"⚠️ Gemma 4 MLX-VLM load failed; retrying MLX-LM text path: {vlm_error}")
                 print(f"🔄 Loading Target (LM Mode): {target_model_id}...")

@@ -13,11 +13,13 @@
 from __future__ import annotations
 
 import importlib.util
+import json
 import logging
 import re
 import threading
 import time
 from dataclasses import dataclass, asdict
+from pathlib import Path
 from typing import Any, Dict, List, Optional, Tuple
 
 logger = logging.getLogger(__name__)
@@ -122,8 +124,9 @@ def get_model_profile(model_id: str, engine: Optional[str] = None) -> Dict[str, 
 
 # ── Runtime compatibility checks ─────────────────────────────────────────────
 
-GEMMA4_MLX_DRAFTER_MODULE = "mlx_vlm.speculative.drafters.gemma4_unified"
+GEMMA4_MLX_UNIFIED_MODULE = "mlx_vlm.models.gemma4_unified"
 GEMMA4_MLX_LM_MODULES = ("mlx_lm.models.gemma4", "mlx_lm.models.gemma4_text")
+GEMMA4_UNIFIED_ID_PATTERN = re.compile(r"gemma[-_/ ]?4[-_/ ]?12b", re.I)
 
 
 def _module_available(module: str) -> bool:
@@ -138,9 +141,37 @@ def _is_gemma4(model_id: str) -> bool:
     return bool(re.search(r"gemma[-_/ ]?4", raw))
 
 
+def _hf_model_dir(repo_id: str) -> Path:
+    return Path.home() / ".ltcai" / "hf-models" / repo_id.replace("/", "__")
+
+
+def _local_model_type(model_id: str) -> Optional[str]:
+    raw = str(model_id or "").strip()
+    if "gemma4_unified" in raw.lower():
+        return "gemma4_unified"
+    candidates = []
+    explicit = Path(raw).expanduser()
+    if raw and explicit.exists():
+        candidates.append(explicit / "config.json")
+    candidates.append(_hf_model_dir(raw) / "config.json")
+    for config_path in candidates:
+        try:
+            if config_path.exists():
+                data = json.loads(config_path.read_text(encoding="utf-8"))
+                model_type = str(data.get("model_type") or "").strip().lower()
+                if model_type:
+                    return model_type
+        except Exception:
+            logger.debug("failed to read model config %s", config_path, exc_info=True)
+    if GEMMA4_UNIFIED_ID_PATTERN.search(raw):
+        return "gemma4_unified"
+    return None
+
+
 def _gemma4_runtime_candidates(raw_model_id: str) -> List[Dict[str, Any]]:
     mlx_available = _module_available("mlx")
     mlx_vlm_available = mlx_available and _module_available("mlx_vlm")
+    mlx_vlm_unified_available = mlx_vlm_available and _module_available(GEMMA4_MLX_UNIFIED_MODULE)
     mlx_lm_available = mlx_available and _module_available("mlx_lm")
     mlx_lm_gemma4_available = mlx_lm_available and any(_module_available(module) for module in GEMMA4_MLX_LM_MODULES)
     return [
@@ -149,6 +180,7 @@ def _gemma4_runtime_candidates(raw_model_id: str) -> List[Dict[str, Any]]:
             "runtime": "MLX-VLM",
             "load_id": raw_model_id,
             "available": mlx_vlm_available,
+            "supports_gemma4_unified": mlx_vlm_unified_available,
             "role": "v3_primary",
         },
         {
@@ -219,6 +251,9 @@ def model_runtime_compatibility(model_id: str, engine: Optional[str] = None) -> 
     payload["runtime_candidates"] = candidates
     payload["runtime"] = "MLX-VLM"
     payload["preferred_runtime"] = "MLX-VLM"
+    model_type = _local_model_type(raw_model_id)
+    if model_type:
+        payload["model_type"] = model_type
 
     mlx_available = _module_available("mlx")
     mlx_vlm_available = _module_available("mlx_vlm")
@@ -237,23 +272,46 @@ def model_runtime_compatibility(model_id: str, engine: Optional[str] = None) -> 
         })
         return payload
 
-    if _module_available(GEMMA4_MLX_DRAFTER_MODULE):
+    if model_type == "gemma4_unified" and not _module_available(GEMMA4_MLX_UNIFIED_MODULE):
+        payload.update({
+            "status": "runtime_update_needed",
+            "supported": False,
+            "reason_code": "mlx_vlm_missing_gemma4_unified_model",
+            "model_type": "gemma4_unified",
+            "missing_components": [GEMMA4_MLX_UNIFIED_MODULE],
+            "user_message": (
+                "Gemma 4 12B uses the gemma4_unified MLX format. The installed "
+                "MLX-VLM runtime does not include that loader, so this local "
+                "model cannot load until MLX-VLM is updated."
+            ),
+            "recovery_guidance": [
+                "Update the MLX runtime from Library/System setup, or run: pip install --upgrade 'mlx-vlm>=0.6.3'.",
+                "After the runtime update, re-open Models so Lattice can re-check this model.",
+                "Use Gemma 4 26B A4B locally or Gemma 4 12B GGUF through Ollama, LM Studio, or llama.cpp until then.",
+            ],
+            "alternatives": [
+                {"id": "mlx-community/gemma-4-26b-a4b-it-4bit", "name": "Gemma 4 26B A4B", "engine": "local_mlx"},
+                {"id": "ollama:hf.co/ggml-org/gemma-4-12B-it-GGUF:Q4_K_M", "name": "Gemma 4 12B GGUF", "engine": "ollama"},
+                {"id": "lmstudio:ggml-org/gemma-4-12B-it-GGUF", "name": "Gemma 4 12B GGUF", "engine": "lmstudio"},
+            ],
+            "action": "Runtime update needed",
+        })
+        return payload
+
+    if mlx_vlm_available:
         return payload
 
     payload.update({
         "status": "fallback_available",
         "supported": True,
-        "reason_code": "mlx_vlm_missing_optional_gemma4_unified_drafter",
-        "model_type": "gemma4_unified",
-        "missing_components": [GEMMA4_MLX_DRAFTER_MODULE],
+        "reason_code": "mlx_vlm_missing_gemma4_standard_runtime",
+        "missing_components": ["mlx_vlm"],
         "user_message": (
-            "The installed MLX-VLM runtime does not expose the optional Gemma 4 "
-            "unified drafter. Lattice will still try the v3 MLX load path and "
-            "can fall back to MLX-LM or Gemma 4 GGUF local runtimes if needed."
+            "MLX-VLM is not available for this Gemma 4 model. Lattice can use "
+            "the MLX-LM text fallback or a Gemma 4 GGUF local runtime."
         ),
         "recovery_guidance": [
-            "Try the MLX Gemma 4 load path first; this is the v3-compatible local route.",
-            "If MLX-VLM rejects the local model metadata, use the MLX-LM text fallback.",
+            "Use the MLX-LM text fallback for text chat.",
             "Use a Gemma 4 GGUF model through Ollama, LM Studio, or llama.cpp if the MLX route fails.",
         ],
         "alternatives": [
@@ -263,7 +321,7 @@ def model_runtime_compatibility(model_id: str, engine: Optional[str] = None) -> 
         ],
     })
     if mlx_lm_available:
-        payload["preferred_runtime"] = "MLX-VLM with MLX-LM fallback"
+        payload["preferred_runtime"] = "MLX-LM fallback"
     return payload
 
 
@@ -276,26 +334,9 @@ def friendly_model_runtime_error(
     """Convert loader exceptions into end-user recoverable error payloads."""
     raw = str(error or "")
     compat = model_runtime_compatibility(model_id or raw, engine=engine)
-    if "gemma4_unified" in raw and compat.get("supported", True):
-        return {
-            "status": "fallback_available",
-            "model_id": model_id,
-            "engine": engine,
-            "user_message": compat.get("user_message") or (
-                "The selected Gemma 4 route failed in the current runtime, but "
-                "compatible local fallback runtimes are still available."
-            ),
-            "recovery_guidance": compat.get("recovery_guidance") or [
-                "Try the MLX-LM text fallback.",
-                "Use Gemma 4 GGUF through Ollama, LM Studio, or llama.cpp.",
-            ],
-            "alternatives": compat.get("alternatives") or [],
-            "runtime_candidates": compat.get("runtime_candidates") or [],
-            "reason_code": compat.get("reason_code") or "runtime_fallback_available",
-        }
     if not compat.get("supported", True):
         return {
-            "status": "unsupported",
+            "status": compat.get("status") or "unsupported",
             "model_id": model_id,
             "engine": engine,
             "user_message": compat.get("user_message") or (
@@ -306,6 +347,8 @@ def friendly_model_runtime_error(
                 "Update the local runtime and try validation again.",
             ],
             "alternatives": compat.get("alternatives") or [],
+            "missing_components": compat.get("missing_components") or [],
+            "action": compat.get("action"),
             "reason_code": compat.get("reason_code") or "runtime_model_type_unsupported",
         }
     return {

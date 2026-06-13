@@ -36,10 +36,10 @@ version, which can lag behind the GitHub Release.
 - First-run setup guides Login -> Workspace Selection -> Environment Analysis
   -> Model Recommendation -> Model Installation -> Model Validation -> Mode
   Selection -> Brain Usage.
-- Gemma 4 MLX models are no longer marked unsupported merely because the
-  installed MLX-VLM runtime lacks the optional Gemma 4 unified drafter; Lattice
-  keeps the v3 MLX path, exposes MLX-LM/GGUF local fallbacks, and shows the
-  selected runtime honestly.
+- Gemma 4 MLX models are checked against their local `config.json` before load:
+  Gemma 4 12B `gemma4_unified` now shows **Runtime update needed** when the
+  installed MLX-VLM lacks `mlx_vlm.models.gemma4_unified`, while Gemma 4 26B
+  A4B stays on the working `gemma4` MLX-VLM path.
 - System exposes storage, backup health, archive, Brain Network, device
   identity, and admin status through real APIs.
 - Backup, restore dry-run, archive verify, archive import dry-run, and

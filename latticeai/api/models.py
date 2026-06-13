@@ -175,15 +175,20 @@ def create_models_router(
                     "runtime_label": str(option_runtime.get("preferred_runtime") or engine_info.get("name") or engine_name),
                 })
             if not options:
+                raw_id = str(item["id"])
+                engine_info = engine_lookup.get("local_mlx") or {}
+                model_info = model_lookup.get(raw_id) or {}
+                option_loaded = raw_id in loaded or current_id == raw_id
+                option_pulled = bool(model_info.get("pulled"))
                 runtime_compatibility = model_runtime_compatibility(str(item["id"]), engine="local_mlx")
                 options.append({
                     "engine": "local_mlx",
                     "model_id": item["id"],
                     "load_id": item["id"],
-                    "installed": bool((engine_lookup.get("local_mlx") or {}).get("installed")),
-                    "pulled": False,
-                    "loaded": str(item["id"]) in loaded or current_id == str(item["id"]),
-                    "download_required": bool(item.get("pullable", True)),
+                    "installed": bool(engine_info.get("installed")),
+                    "pulled": option_pulled,
+                    "loaded": option_loaded,
+                    "download_required": bool(item.get("pullable", True) and not option_pulled and not option_loaded),
                     "runtime_compatibility": runtime_compatibility,
                     "runtime_supported": runtime_compatibility.get("supported") is not False,
                     "runtime_label": str(runtime_compatibility.get("preferred_runtime") or "MLX"),
@@ -201,7 +206,20 @@ def create_models_router(
                     ["local_mlx", "ollama", "lmstudio", "llamacpp", "vllm"].index(str(option.get("engine") or "vllm")),
                 )
 
-            selected_option = min(options, key=option_rank)
+            primary_option = options[0]
+            primary_compatibility = dict(primary_option.get("runtime_compatibility") or {})
+            hard_primary_statuses = {
+                "runtime_update_needed",
+                "unsupported_format",
+                "repair_model",
+                "incomplete_download",
+            }
+            selected_option = (
+                primary_option
+                if primary_compatibility.get("supported") is False
+                and primary_compatibility.get("status") in hard_primary_statuses
+                else min(options, key=option_rank)
+            )
             recommended_engine = str(selected_option["engine"])
             load_id = str(selected_option["load_id"])
             model_info = model_lookup.get(load_id) or model_lookup.get(str(selected_option.get("model_id") or "")) or {}
@@ -216,7 +234,7 @@ def create_models_router(
                 load_status = "loaded"
                 unavailable_reason = None
             elif not runtime_supported:
-                load_status = "unsupported"
+                load_status = str(runtime_compatibility.get("status") or "unsupported")
                 unavailable_reason = str(runtime_compatibility.get("user_message") or "This model is not supported by the installed runtime.")
             elif not engine_installed:
                 load_status = "unavailable"

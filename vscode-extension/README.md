@@ -74,7 +74,7 @@ The extension auto-connects to `http://localhost:4825`.
 Lattice AI supports local and cloud model choices:
 
 - MLX-VLM on Apple Silicon for current multimodal local models, with MLX-LM
-  retained as a Gemma 4 text fallback when needed.
+  retained as a text fallback only for standard Gemma 4 metadata.
 - LM Studio, vLLM, llama.cpp, and Ollama-compatible local paths.
 - OpenAI, OpenRouter, Groq, Together AI, and OpenAI-compatible endpoints.
 - Model cards disclose maker country, maker company, run mode, internet usage,
