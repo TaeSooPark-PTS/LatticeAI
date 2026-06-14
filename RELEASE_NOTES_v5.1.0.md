@@ -42,6 +42,10 @@ boundary around local files, secrets, CSP, model downloads, and Brain ownership.
 - Added `docs/TRUST_MODEL.md`.
 - Updated README, ARCHITECTURE, SECURITY, FEATURE_STATUS, and CHANGELOG for
   v5.1.0.
+- Updated the GitHub repository About description to match the v5.1.0 product
+  position: a local-first private AI memory layer / Digital Brain.
+- Focused the Git-tracked release-note surface on v4.5.0 and newer by removing
+  older standalone release-note files and trimming current release-note indexes.
 
 ## Expected Artifacts
 
