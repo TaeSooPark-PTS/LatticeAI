@@ -425,6 +425,12 @@ def create_models_router(
             loaded_ids=_router.loaded_model_ids,
             current_id=_router.current_model_id,
         )
+        # 5.2.0: surface structured registry info (verified status, hf, hardware, strategies) for UX
+        try:
+            from latticeai.services.model_catalog import get_verified_models
+            verified = get_verified_models()
+        except Exception:
+            verified = []
         return {
             "recommended": recommended,
             "cloud": _router.detected_cloud_models(),
@@ -433,6 +439,12 @@ def create_models_router(
             "current": _router.current_model_id,
             "compat_profiles": _list_compat_profiles(),
             "vision": _vision_capability(_router.current_model_id, engines),
+            # 5.2+ transparent model capability registry
+            "registry": {
+                "version": "5.2.0",
+                "verified_count": len(verified),
+                "verified": verified[:12],  # compact; full via /models/recommendations or future dedicated
+            },
         }
 
     @router.get("/models/compat-profiles")
@@ -494,9 +506,8 @@ def create_models_router(
     async def model_recommendations(request: Request, engine: str = "local_mlx"):
         """Hardware-aware tri-state model recommendation for this machine.
 
-        Detects the system profile (OS/RAM/CPU/GPU/disk) and classifies the
-        ``engine`` catalog into recommended / compatible / not_recommended,
-        grouped by family. Used by the onboarding and model-picker UIs.
+        5.2.0: now includes rich capability fields (hf_repo_id, verification,
+        hardware, load_strategy, license, safety_notes) from the structured registry.
         """
         require_user(request)
         from auto_setup import probe as auto_setup_probe
@@ -504,6 +515,11 @@ def create_models_router(
 
         profile = await asyncio.to_thread(lambda: auto_setup_probe().to_json())
         catalog = recommend_catalog(profile, engine=engine)
-        return {"profile": profile, "recommendations": catalog}
+        try:
+            from latticeai.services.model_catalog import get_verified_models
+            reg_meta = {"version": "5.2.0", "verified_total": len(get_verified_models())}
+        except Exception:
+            reg_meta = {"version": "5.2.0"}
+        return {"profile": profile, "recommendations": catalog, "registry": reg_meta}
 
     return router

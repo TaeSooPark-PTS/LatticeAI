@@ -112,7 +112,7 @@ def _classify_one(
     else:
         status, reason = NOT_RECOMMENDED, f"권장 메모리가 부족합니다 (~{need_gb:.0f} GB 필요, 현재 {ram_gb:.0f} GB)"
 
-    return {
+    rich = {
         "id": model.get("id"),
         "name": model.get("name"),
         "model_name": model.get("model_name") or model.get("name"),
@@ -131,7 +131,18 @@ def _classify_one(
         "internet_requirement": model.get("internet_requirement"),
         "source_display_order": model.get("source_display_order"),
         "runtime_compatibility": runtime,
+        # 5.2+ user-focused transparency
+        "hf_repo_id": model.get("hf_repo_id"),
+        "quantization": model.get("quantization"),
+        "download_strategy": model.get("download_strategy"),
+        "load_strategy": model.get("load_strategy"),
+        "hardware": model.get("hardware"),
+        "license": model.get("license"),
+        "safety_notes": model.get("safety_notes"),
+        "verification": model.get("verification"),
+        "recommended_default": model.get("recommended_default", False),
     }
+    return rich
 
 
 def _family_rank(family: str) -> int:

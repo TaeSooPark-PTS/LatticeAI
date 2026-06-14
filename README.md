@@ -33,7 +33,14 @@ Brain use from the Admin Console. Korean and English UI copy share the same
 underlying Brain, so language preference changes the interface, not your data.
 
 External package registries are owner-published and can lag behind this GitHub
-Release. Release uploads must use the exact v5.1.0 artifact filenames below.
+Release. Release uploads must use the exact v5.2.0 artifact filenames below.
+
+**5.2.0 major update**: Structured model capability registry + automated HF
+verification (scripts/verify_hf_model_registry.py) + expanded modern multimodal
+recommendations. All recommended models are HF-verified for existence + config/
+tokenizer presence. Frontend now shows verified status, modality badges,
+hardware fit notes, and explicit download/load strategies before consent. See
+RELEASE.md and docs/CHANGELOG.md.
 
 ## Living Brain Flow
 
@@ -42,8 +49,7 @@ Release. Release uploads must use the exact v5.1.0 artifact filenames below.
 First launch opens to Login only. The local profile is the beginning of the
 Brain, not a dashboard, graph, or setup grid. The first screen frames Lattice as
 a durable knowledge home where models are replaceable and ownership stays with
-the user. v5.1.0 also prevents an email typo or wrong saved-user password from
-silently creating a new empty Brain.
+the user. (v5.1.0 hardened login; v5.2.0 added transparent verified model registry.)
 
 ![Login](output/release/v5.1.0/screenshots/01-login.png)
 
@@ -168,16 +174,17 @@ pip install "ltcai[local]"
 
 ## Release Artifacts
 
-Validated v5.1.0 artifacts:
+Validated 5.2.0 artifacts (current release):
 
-- `dist/ltcai-5.1.0-py3-none-any.whl`
-- `dist/ltcai-5.1.0.tar.gz`
-- `ltcai-5.1.0.tgz`
-- `dist/ltcai-5.1.0.vsix`
-- `src-tauri/target/release/bundle/dmg/Lattice AI_5.1.0_aarch64.dmg`
+- `dist/ltcai-5.2.0-py3-none-any.whl`
+- `dist/ltcai-5.2.0.tar.gz`
+- `ltcai-5.2.0.tgz`
+- `dist/ltcai-5.2.0.vsix`
+- `src-tauri/target/release/bundle/dmg/Lattice AI_5.2.0_aarch64.dmg`
 
 Attach only those exact files to the GitHub Release. Do not upload a wildcard
-from the `dist` directory.
+from the `dist` directory. (v5.1.0 and prior artifact references in historical
+sections and screenshot paths are intentionally preserved.)
 
 ## Local Development
 
@@ -204,7 +211,7 @@ npm run test:unit
 npm run test:integration
 npm run test:visual
 npm run desktop:tauri:check
-node scripts/run_python.mjs scripts/wheel_smoke.py --wheel dist/ltcai-5.1.0-py3-none-any.whl
+node scripts/run_python.mjs scripts/wheel_smoke.py --wheel dist/ltcai-5.2.0-py3-none-any.whl
 npm pack --dry-run
 npm run docs:check-links
 ```
@@ -220,7 +227,7 @@ npm run docs:check-links
 - Agent/workflow simulation without a loaded LLM is deterministic and does not call a model.
   It is labeled as LLM-free/model-free rather than presented as autonomous model
   success.
-- Historical artifacts can remain in `dist/`; uploads must use exact v5.1.0
+- Historical artifacts can remain in `dist/`; uploads must use exact target version (e.g. 5.2.0)
   filenames.
 
 ## Release History

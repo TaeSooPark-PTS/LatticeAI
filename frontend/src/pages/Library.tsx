@@ -103,7 +103,7 @@ function ModelsPanel() {
   return (
     <div className="grid gap-4 xl:grid-cols-[1.2fr_0.8fr]">
       <div className="space-y-4">
-        <DataPanel title="Guided model setup" description="Analyze this Mac, recommend a model, install only with consent, validate it, then load it." result={recs.data}>
+        <DataPanel title="Guided model setup" description="5.2 registry: hardware-fit multimodal models with HF verification, download/load strategies, and clear RAM notes. Analyze, consent, download only on click." result={recs.data}>
           {(data) => {
             const recommendation = (data as Record<string, unknown>).recommendations as Record<string, unknown> | undefined;
             const profile = (data as Record<string, unknown>).profile as Record<string, unknown> | undefined;
@@ -176,7 +176,9 @@ function ModelsPanel() {
                   <div className="min-w-0">
                     <div className="flex flex-wrap items-center gap-2">
                         <div className="text-base font-semibold">{String(model.name || id)}</div>
-                      {topPick?.id === id ? <Badge variant="success">recommended</Badge> : null}
+                      {topPick?.id === id || model.recommended_default ? <Badge variant="success">recommended</Badge> : null}
+                      {String(model.modality || recommendation.modality || "").includes("multi") || String(model.modality || "") === "multimodal" ? <Badge variant="muted">multimodal</Badge> : null}
+                      {model.verification?.verified || recommendation.verification?.verified ? <Badge variant="success" title="HF verified (config+tokenizer present)">✓ HF</Badge> : null}
                     </div>
                     <div className="mt-1 text-sm text-muted-foreground">
                       {mode === "basic"
@@ -186,6 +188,11 @@ function ModelsPanel() {
                         ].filter(Boolean).map(String).join(" · ")
                         : [model.family || recommendation.family || "local", model.size || recommendation.size].filter(Boolean).map(String).join(" · ")}
                     </div>
+                    {(model.hardware || recommendation.hardware) ? (
+                      <div className="mt-1 text-[11px] text-muted-foreground/80">
+                        {model.hardware?.notes || recommendation.hardware?.notes || (model.hardware?.recommended_ram_gb ? `~${model.hardware.recommended_ram_gb}GB RAM rec` : "")}
+                      </div>
+                    ) : null}
                     {unsupported ? (
                       <div className="mt-3 rounded-lg border border-amber-500/30 bg-amber-500/10 p-3 text-sm">
                         <div className="font-medium">{mode === "basic" ? "Needs attention before loading" : actionLabel}</div>
@@ -200,6 +207,8 @@ function ModelsPanel() {
                     {mode !== "basic" ? (
                       <div className="mt-2 text-xs text-muted-foreground">
                         {runtimeLabel} · {loadId}
+                        {model.load_strategy || recommendation.load_strategy ? ` · ${String(model.load_strategy || recommendation.load_strategy)}` : ""}
+                        {model.verification?.notes ? ` · ${String(model.verification.notes).slice(0,60)}` : ""}
                       </div>
                     ) : null}
                     {unsupported || fallbackAvailable ? <AlternativeModels compatibility={compatibility} /> : null}

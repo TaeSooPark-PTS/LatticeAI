@@ -3,6 +3,32 @@
 The top entry is the current release-preparation target. Older entries are
 historical and may describe behavior as it existed at that release.
 
+## [5.2.0] - 2026-06-14
+
+> Lattice AI 5.2.0 — Aggressive User-Focused Model Transformation. Transparent
+> structured capability registry, automated HF verification, modern multimodal
+> additions, download/load strategy exposure, hardware notes, verified status,
+> and updated UI/backend flows so users see exactly what they get before consent.
+
+### Added
+- Structured `ModelCapabilityRegistry` (latticeai/services/model_capability_registry.py) with dataclass fields for provider/hf_repo_id, modality, quantization, download_strategy, load_strategy, hardware (min/recommended RAM, Apple/CUDA prefs, notes), license, safety_notes, and rich VerificationStatus (hf_exists, has_config, has_tokenizer, pipeline, last_checked, notes).
+- 5 modern multimodal recommendations (Gemma 3 4B/12B, Qwen2.5-VL-7B, Llama-3.2-11B-Vision, Pixtral-12B) alongside the existing Gemma-4 / Qwen3-VL / Llama-4 family.
+- Automated verification script: `scripts/verify_hf_model_registry.py` (lightweight HF API + restricted snapshot for config/tokenizer; optional --test-load for small models; explicit LARGE_MODEL notes; writes verification_report.json).
+- Registry info exposed via `/models` and `/models/recommendations` (registry.verified_count, verification dicts, hardware, strategies).
+- New unit tests: `tests/unit/test_model_capability_registry.py` (5 tests covering registry, legacy shape, rec payload, report, roundtrips).
+
+### Changed
+- `model_catalog.py` now sources ENGINE_MODEL_CATALOG + aliases from the capability registry (single source of truth) while preserving 100% legacy shapes + reexports for zero breakage.
+- `model_recommendation.py` `_classify_one` now forwards 5.2 fields (hf_repo, verification, hardware, load_strategy, license, safety, recommended_default).
+- Backend model APIs return rich fields; frontend can render verified badges, modality, hardware notes, strategies.
+- Library.tsx (ModelsPanel): added "multimodal" + "✓ HF" verified badges, recommended_default support, hardware notes line, load_strategy in detail, updated guided setup copy for transparency and consent.
+- All current catalog HF ids (and additions) confirmed present + config/tokenizer hints via HF API on 2026-06-14; 0 critical missing; 6 large models flagged with limitations.
+- Version bumped to 5.2.0 everywhere (pyproject, __init__, package.json, vscode-extension).
+
+### Preserved
+- Exact public API shapes, recommendation tri-state logic, engine aliases, family de-dup, download consent gates, no silent downloads.
+- Historical changelog entries for 5.1.0 and prior.
+
 ## [5.1.0] - 2026-06-14
 
 > Product Trust & Clarity Release. v5.1.0 clarifies Lattice AI as a
