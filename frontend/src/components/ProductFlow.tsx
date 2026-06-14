@@ -43,6 +43,14 @@ export function readProductFlowComplete() {
   return false;
 }
 
+function readSavedFlowUser(): { email?: string; name?: string } | null {
+  try {
+    const raw = localStorage.getItem(FLOW_USER_KEY);
+    return raw ? JSON.parse(raw) : null;
+  } catch {}
+  return null;
+}
+
 export function ProductFlow({ onComplete }: { onComplete: () => void }) {
   const [step, setStep] = React.useState<FlowStep>("login");
   const [analysis, setAnalysis] = React.useState<FlowAnalysis | null>(null);
@@ -135,51 +143,67 @@ export function ProductFlow({ onComplete }: { onComplete: () => void }) {
 
 function LoginScreen({ onSuccess }: { onSuccess: () => void }) {
   const [email, setEmail] = React.useState(() => {
-    try {
-      const saved = localStorage.getItem(FLOW_USER_KEY);
-      return saved ? JSON.parse(saved).email || "you@local" : "you@local";
-    } catch {
-      return "you@local";
-    }
+    return readSavedFlowUser()?.email || "you@local";
   });
   const [password, setPassword] = React.useState("");
-  const [name, setName] = React.useState("You");
+  const [name, setName] = React.useState(() => readSavedFlowUser()?.name || "You");
   const [busy, setBusy] = React.useState(false);
   const [error, setError] = React.useState<string | null>(null);
 
   async function submit(event: React.FormEvent) {
     event.preventDefault();
+    const cleanEmail = email.trim();
+    const cleanPassword = password.trim();
+    const cleanName = name.trim() || cleanEmail.split("@")[0] || "You";
+    if (!cleanEmail || !cleanPassword) {
+      setError("이름과 이메일, 비밀번호를 입력하면 기존 Brain을 안전하게 확인합니다.");
+      return;
+    }
     setBusy(true);
     setError(null);
-    const safePassword = password || "Lattice123";
-    let result = await latticeApi.login(email, safePassword);
-    if (!result.ok) {
-      const registered = await latticeApi.register({
-        email,
-        password: safePassword,
-        name: name || email.split("@")[0] || "You",
-        nickname: name || "You",
-      });
-      if (registered.ok) result = await latticeApi.login(email, safePassword);
-    }
+    const savedUser = readSavedFlowUser();
+    let result = await latticeApi.login(cleanEmail, cleanPassword);
     if (!result.ok) {
       const profile = await latticeApi.profile();
-      if (!profile.ok) {
+      if (profile.ok && (!savedUser?.email || savedUser.email === cleanEmail)) {
+        try { localStorage.setItem(FLOW_USER_KEY, JSON.stringify({ email: cleanEmail, name: cleanName })); } catch {}
         setBusy(false);
-        setError("We could not open your local profile. Check your password or create the first local account.");
+        onSuccess();
         return;
       }
+      if (savedUser?.email && savedUser.email !== cleanEmail) {
+        setBusy(false);
+        setError("이 컴퓨터의 기존 Brain과 다른 이메일입니다. 오타인지 확인해 주세요.");
+        return;
+      }
+      if (savedUser?.email === cleanEmail) {
+        setBusy(false);
+        setError("기존 Brain 이메일은 맞지만 비밀번호가 다릅니다. 비밀번호를 다시 확인해 주세요.");
+        return;
+      }
+      const registered = await latticeApi.register({
+        email: cleanEmail,
+        password: cleanPassword,
+        name: cleanName,
+        nickname: cleanName,
+      });
+      if (registered.ok) result = await latticeApi.login(cleanEmail, cleanPassword);
     }
-    try { localStorage.setItem(FLOW_USER_KEY, JSON.stringify({ email, name })); } catch {}
+    if (!result.ok) {
+      setBusy(false);
+      setError("로컬 프로필을 열 수 없습니다. 이메일과 비밀번호를 확인해 주세요.");
+      return;
+    }
+    try { localStorage.setItem(FLOW_USER_KEY, JSON.stringify({ email: cleanEmail, name: cleanName })); } catch {}
     setBusy(false);
     onSuccess();
   }
 
   return (
     <div>
-      <div className="ritual-title">Welcome to your mind.</div>
+      <div className="ritual-title">내 Brain을 시작합니다.</div>
       <div className="ritual-subtitle">
-        Models will change. Your knowledge should not. Lattice keeps your documents, conversations, decisions, and context together as a private Brain you own.
+        모델은 바뀔 수 있지만, 내 문서와 대화, 결정, 기억은 사라지면 안 됩니다. Lattice는 이 지식을 내가 소유하는 개인 Brain으로 모읍니다.
       </div>
 
       <ProductPromise />
@@ -187,26 +211,26 @@ function LoginScreen({ onSuccess }: { onSuccess: () => void }) {
       <form onSubmit={submit} className="ritual-card" style={{ maxWidth: 420, margin: "0 auto" }}>
         <div style={{ display: "grid", gap: "0.85rem" }}>
           <div>
-            <div style={{ fontSize: "0.75rem", textTransform: "uppercase", letterSpacing: "1px", color: "hsl(var(--fg-muted))", marginBottom: 4 }}>Your name</div>
+            <div style={{ fontSize: "0.75rem", textTransform: "uppercase", letterSpacing: "1px", color: "hsl(var(--fg-muted))", marginBottom: 4 }}>이름</div>
             <Input value={name} onChange={(e) => setName(e.target.value)} placeholder="You" />
           </div>
           <div>
-            <div style={{ fontSize: "0.75rem", textTransform: "uppercase", letterSpacing: "1px", color: "hsl(var(--fg-muted))", marginBottom: 4 }}>Email (local only)</div>
+            <div style={{ fontSize: "0.75rem", textTransform: "uppercase", letterSpacing: "1px", color: "hsl(var(--fg-muted))", marginBottom: 4 }}>이메일</div>
             <Input value={email} onChange={(e) => setEmail(e.target.value)} type="email" placeholder="you@local" />
           </div>
           <div>
-            <div style={{ fontSize: "0.75rem", textTransform: "uppercase", letterSpacing: "1px", color: "hsl(var(--fg-muted))", marginBottom: 4 }}>Password</div>
-            <Input value={password} onChange={(e) => setPassword(e.target.value)} type="password" placeholder="Create a strong local password" />
+            <div style={{ fontSize: "0.75rem", textTransform: "uppercase", letterSpacing: "1px", color: "hsl(var(--fg-muted))", marginBottom: 4 }}>비밀번호</div>
+            <Input value={password} onChange={(e) => setPassword(e.target.value)} type="password" placeholder="로컬 Brain 비밀번호" />
           </div>
         </div>
 
         {error && <div style={{ marginTop: "0.85rem", padding: "0.6rem 0.85rem", background: "hsl(var(--destructive)/0.12)", border: "1px solid hsl(var(--destructive)/0.4)", borderRadius: 10, fontSize: "0.9rem" }}>{error}</div>}
 
-        <Button type="submit" disabled={busy || !email.trim()} style={{ width: "100%", marginTop: "1rem" }}>
-          {busy ? "Opening the Brain..." : "Open my Brain"} 
+        <Button type="submit" disabled={busy || !email.trim() || !password.trim()} style={{ width: "100%", marginTop: "1rem" }}>
+          {busy ? "Brain 여는 중..." : "내 Brain 시작하기"}
         </Button>
         <div style={{ fontSize: "0.75rem", color: "hsl(var(--fg-muted))", marginTop: "0.6rem" }}>
-          Local profile first. Model choice comes later.
+          기존 Brain과 다른 이메일이면 새로 만들지 않고 먼저 확인합니다.
         </div>
       </form>
     </div>
@@ -217,16 +241,16 @@ function ProductPromise() {
   return (
     <div className="ritual-promise" aria-label="Lattice AI product promise">
       <div>
-        <span>Durable knowledge</span>
-        <strong>Your work becomes long-lived context.</strong>
+        <span>오래 남는 지식</span>
+        <strong>내 일이 장기 기억이 됩니다.</strong>
       </div>
       <div>
-        <span>Replaceable models</span>
-        <strong>The model is a voice, not the asset.</strong>
+        <span>교체 가능한 모델</span>
+        <strong>모델은 목소리이고, 자산은 Brain입니다.</strong>
       </div>
       <div>
-        <span>User ownership</span>
-        <strong>Back up, restore, and move your Brain.</strong>
+        <span>사용자 소유</span>
+        <strong>백업, 복원, 이동이 가능합니다.</strong>
       </div>
     </div>
   );
@@ -244,9 +268,9 @@ function AnalysisScreen({
   const detected = buildDetectedFacts(analysis);
   return (
     <div>
-      <div className="ritual-title">Understanding your home.</div>
+      <div className="ritual-title">이 컴퓨터를 확인합니다.</div>
       <div className="ritual-subtitle">
-        Lattice is checking what this computer can support so your Brain can run locally instead of turning your memories into a cloud dependency.
+        Brain이 클라우드에 의존하지 않고 이 컴퓨터에서 편하게 돌아갈 수 있는지 확인합니다.
       </div>
 
       <div className="ritual-fact-grid">
@@ -263,9 +287,9 @@ function AnalysisScreen({
         <div style={{ display: "flex", alignItems: "center", gap: "0.6rem" }}>
           <Sparkles style={{ color: "hsl(var(--brain-core))" }} />
           <div>
-            <div style={{ fontWeight: 620 }}>{analysis ? recommendedSummary(analysis) : "Preparing the best fit..."}</div>
+            <div style={{ fontWeight: 620 }}>{analysis ? recommendedSummary(analysis) : "가장 편한 설정을 찾는 중..."}</div>
             <div style={{ fontSize: "0.9rem", color: "hsl(var(--fg-muted))" }}>
-              {analysis ? "A short, personal list of minds is ready for you to choose from." : "Reading your machine. This is gentle."}
+              {analysis ? "추천 모델을 바로 시작할 수 있게 준비했습니다." : "잠시만 기다리면 자동으로 정리됩니다."}
             </div>
           </div>
         </div>
@@ -275,7 +299,7 @@ function AnalysisScreen({
 
       <div style={{ marginTop: "1.25rem" }}>
         <Button onClick={onContinue} disabled={!analysis && !error} style={{ minWidth: 260 }}>
-          See how your Brain can think
+          추천 모델 보기
         </Button>
       </div>
     </div>
@@ -294,12 +318,17 @@ function RecommendationScreen({
   const items = recommendations.length ? recommendations : [fallbackModel()];
   return (
     <div>
-      <div className="ritual-title">How shall your mind think today?</div>
+      <div className="ritual-title">추천 모델로 시작하세요.</div>
       <div className="ritual-subtitle">
-        The model is the current voice of your Brain. You can replace it later; your knowledge stays.
+        모델은 Brain의 현재 목소리입니다. 나중에 바꿔도 기억과 지식은 그대로 남습니다.
       </div>
 
       <div style={{ maxWidth: 560, margin: "0 auto" }}>
+        {items[0]?.supported ? (
+          <Button onClick={() => onSelect(items[0])} style={{ width: "100%", marginBottom: "0.85rem" }}>
+            추천대로 시작하기
+          </Button>
+        ) : null}
         {items.slice(0, 3).map((model, index) => (
           <button
             key={`${model.role}-${model.id}`}
@@ -311,14 +340,14 @@ function RecommendationScreen({
             <div className="role">{rankLabel(model.role, index)}</div>
             <div className="name">{model.shortName}</div>
             <div className="reason">{model.reason} · {model.size || "ready"}</div>
-            {!model.supported && <div style={{ color: "hsl(var(--destructive))", marginTop: 6, fontSize: "0.85rem" }}>Needs attention on this machine</div>}
+            {!model.supported && <div style={{ color: "hsl(var(--destructive))", marginTop: 6, fontSize: "0.85rem" }}>이 컴퓨터에서 추가 확인이 필요합니다</div>}
           </button>
         ))}
       </div>
 
       <div style={{ marginTop: "1.1rem", display: "flex", justifyContent: "center", gap: "1rem", alignItems: "center" }}>
-        <Button variant="ghost" onClick={onBack}>Back</Button>
-        <div style={{ fontSize: "0.82rem", color: "hsl(var(--fg-muted))" }}>Your choice becomes the current voice of your Brain.</div>
+        <Button variant="ghost" onClick={onBack}>뒤로</Button>
+        <div style={{ fontSize: "0.82rem", color: "hsl(var(--fg-muted))" }}>잘 모르겠다면 추천대로 시작하면 됩니다.</div>
       </div>
     </div>
   );
@@ -336,7 +365,7 @@ function InstallScreen({
   const [busy, setBusy] = React.useState(false);
   const [stage, setStage] = React.useState<InstallStage>("idle");
   const [percent, setPercent] = React.useState(0);
-  const [message, setMessage] = React.useState("Your Brain is waiting for this mind.");
+  const [message, setMessage] = React.useState("Brain이 사용할 모델을 기다리고 있습니다.");
   const [error, setError] = React.useState<string | null>(null);
 
   async function start() {
@@ -344,7 +373,7 @@ function InstallScreen({
     setError(null);
     setStage("install");
     setPercent(8);
-    setMessage("Preparing the Brain.");
+    setMessage("Brain 준비 중입니다.");
     const result = await latticeApi.streamModelPrepare(
       { model: model.loadId, engine: model.engine || "local_mlx", allow_download: true },
       {
@@ -357,7 +386,7 @@ function InstallScreen({
         onDone: () => {
           setStage("done");
           setPercent(100);
-          setMessage("Your Brain is ready.");
+          setMessage("Brain이 준비되었습니다.");
         },
         onError: (event) => {
           setStage("error");
@@ -369,7 +398,7 @@ function InstallScreen({
     if (result.ok) {
       setStage("done");
       setPercent(100);
-      setMessage("Your Brain is ready.");
+      setMessage("Brain이 준비되었습니다.");
       window.setTimeout(onComplete, 700);
     } else {
       setStage("error");
@@ -385,10 +414,10 @@ function InstallScreen({
 
   return (
     <div>
-      <div className="ritual-title">Bring this mind home.</div>
+      <div className="ritual-title">모델을 설치하고 시작합니다.</div>
       <div className="ritual-subtitle">
         <strong>{model.shortName}</strong> — {model.reason}.<br />
-        This gives your Brain a local voice. Download, validation, and loading happen only with your consent.
+        이 모델이 Brain의 로컬 목소리가 됩니다. 다운로드, 확인, 로드는 사용자가 누른 뒤에만 진행됩니다.
       </div>
 
       {/* Living Brain reacts to the ceremony of installation */}
@@ -416,31 +445,34 @@ function InstallScreen({
       </div>
 
       <div className="ritual-status">{message}</div>
+      <div className="ritual-card" style={{ margin: "0.8rem auto 0", maxWidth: 540, fontSize: "0.86rem", color: "hsl(var(--fg-muted))" }}>
+        큰 모델은 다운로드에 몇 분 이상 걸릴 수 있습니다. 진행률은 모델 런타임이 알려주는 만큼 표시하고, 멈춘 것처럼 보여도 현재 단계가 유지됩니다.
+      </div>
 
       {error && (
         <div className="ritual-card" style={{ borderColor: "hsl(var(--destructive)/0.45)", background: "hsl(var(--destructive)/0.07)", marginBottom: "1rem" }}>
           {error}
-          <div style={{ marginTop: "0.5rem", fontSize: "0.85rem" }}>You can go back and choose a different mind, or try again.</div>
+          <div style={{ marginTop: "0.5rem", fontSize: "0.85rem" }}>다른 모델을 고르거나 다시 시도할 수 있습니다.</div>
         </div>
       )}
 
       <div style={{ display: "flex", gap: "0.75rem", justifyContent: "center", marginTop: "1rem" }}>
-        <Button variant="ghost" onClick={onBack} disabled={busy}>Choose differently</Button>
+        <Button variant="ghost" onClick={onBack} disabled={busy}>다른 모델 고르기</Button>
 
         {stage !== "done" ? (
           <Button 
             onClick={start} 
             disabled={busy || !model.supported}
           >
-            {busy ? "Waking the mind..." : "Yes — make this my Brain"}
+            {busy ? "모델 준비 중..." : "다운로드하고 시작하기"}
           </Button>
         ) : (
-          <Button onClick={onComplete}>Enter your Brain</Button>
+          <Button onClick={onComplete}>Brain으로 들어가기</Button>
         )}
       </div>
 
       <div style={{ fontSize: "0.72rem", color: "hsl(var(--fg-muted))", marginTop: "0.9rem" }}>
-        Explicit consent only. All work happens locally on your machine.
+        모든 작업은 이 컴퓨터에서 진행됩니다.
       </div>
     </div>
   );

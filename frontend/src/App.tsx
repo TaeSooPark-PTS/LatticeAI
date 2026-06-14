@@ -161,6 +161,7 @@ function BrainHome({
   const [explorationDepth, setExplorationDepth] = React.useState<BrainDepth>(1);
   const [graphSearch, setGraphSearch] = React.useState("");
   const [selectedGraphId, setSelectedGraphId] = React.useState<string | null>(null);
+  const [memoryFeedback, setMemoryFeedback] = React.useState<string | null>(null);
   const streamRef = React.useRef<HTMLDivElement>(null);
   const recallTimerRef = React.useRef<number | null>(null);
 
@@ -212,6 +213,7 @@ function BrainHome({
     setDraft("");
     setImageData(null);
     setStreaming(true);
+    setMemoryFeedback(null);
     onBrainChange("thinking", 0.96);
 
     try {
@@ -240,6 +242,8 @@ function BrainHome({
           next[next.length - 1] = { role: "assistant", content: `Unavailable: ${result.error}` };
           return next;
         });
+      } else {
+        setMemoryFeedback(`기억에 저장됨 · 연결된 주제 ${knowledgeConcepts.length}개 · 관련 기억 ${memoryFragments.length}개`);
       }
     } finally {
       setStreaming(false);
@@ -259,6 +263,13 @@ function BrainHome({
     });
   }
 
+  function jumpToDepth(next: BrainDepth) {
+    setExplorationDepth(next);
+    const nextDepth = DEPTHS[next - 1];
+    onBrainChange(nextDepth.state, next === 1 ? 0.58 : 0.66 + next * 0.06);
+    if (next >= 2) triggerBrainRecall();
+  }
+
   function surface() {
     setExplorationDepth(1);
     setSelectedGraphId(null);
@@ -271,7 +282,7 @@ function BrainHome({
     setExplorationDepth((depth) => Math.max(depth, 2) as BrainDepth);
     setMessages((items) => [
       ...items,
-      { role: "assistant", content: `I am recalling ${fragment.kind.toLowerCase()}: ${fragment.title}` },
+      { role: "assistant", content: `기억을 다시 꺼냈습니다: ${fragment.title}` },
     ]);
   }
 
@@ -291,6 +302,13 @@ function BrainHome({
           <div className="brain-depth-badge" aria-live="polite">
             <span>Level {explorationDepth}</span>
             <strong>{currentDepth.label}</strong>
+          </div>
+
+          <div className="brain-depth-actions" aria-label="Brain quick views">
+            <button type="button" className={explorationDepth === 2 ? "is-active" : ""} onClick={() => jumpToDepth(2)}>기억 보기</button>
+            <button type="button" className={explorationDepth === 3 ? "is-active" : ""} onClick={() => jumpToDepth(3)}>주제 보기</button>
+            <button type="button" className={explorationDepth === 4 ? "is-active" : ""} onClick={() => jumpToDepth(4)}>관계 보기</button>
+            <button type="button" className={explorationDepth === 5 ? "is-active" : ""} onClick={() => jumpToDepth(5)}>그래프로 보기</button>
           </div>
 
           <div className="brain-field-layer" aria-hidden={explorationDepth < 2}>
@@ -335,12 +353,17 @@ function BrainHome({
         </div>
 
         <div ref={streamRef} className="brain-stream">
+          <BrainOverviewPanel
+            memories={memoryFragments}
+            concepts={knowledgeConcepts}
+            onOpenDepth={jumpToDepth}
+          />
           {messages.length === 0 ? (
             <div className="mind-empty">
-              <div className="mind-empty-kicker">Your durable context</div>
-              <div className="mind-empty-title">Start with what should not be forgotten.</div>
+              <div className="mind-empty-kicker">내 오래가는 기억</div>
+              <div className="mind-empty-title">잊으면 안 되는 일부터 말해 주세요.</div>
               <p>
-                Lattice keeps your documents, conversations, projects, and decisions available while models can change around them.
+                문서, 대화, 프로젝트, 결정이 Brain에 쌓이고 나중에 주제와 관계로 다시 보입니다.
               </p>
               <div className="mind-empty-prompts" aria-label="Starter prompts">
                 {STARTER_PROMPTS.map((prompt) => (
@@ -358,6 +381,8 @@ function BrainHome({
             ))
           )}
         </div>
+
+        {memoryFeedback ? <div className="brain-save-feedback" role="status">{memoryFeedback}</div> : null}
 
         <BrainCarePanel />
 
@@ -838,6 +863,75 @@ function DepthEmergence({
   );
 }
 
+function BrainOverviewPanel({
+  memories,
+  concepts,
+  onOpenDepth,
+}: {
+  memories: MemoryFragment[];
+  concepts: KnowledgeConcept[];
+  onOpenDepth: (depth: BrainDepth) => void;
+}) {
+  const recent = memories.slice(0, 3);
+  const older = memories.slice(3, 6);
+  const topics = concepts.slice(0, 4);
+
+  return (
+    <section className="brain-overview-panel" aria-label="Brain overview">
+      <div className="brain-overview-head">
+        <div>
+          <span>Brain 한눈에 보기</span>
+          <strong>기억과 주제를 바로 확인하세요.</strong>
+        </div>
+        <button type="button" onClick={() => onOpenDepth(5)}>전체 그래프</button>
+      </div>
+      <div className="brain-overview-grid">
+        <BrainOverviewColumn
+          title="최근 기억"
+          empty="아직 최근 기억이 없습니다."
+          items={recent.map((memory) => memory.title)}
+          onOpen={() => onOpenDepth(2)}
+        />
+        <BrainOverviewColumn
+          title="이전 기억"
+          empty="대화가 쌓이면 과거 기억이 보입니다."
+          items={older.map((memory) => memory.title)}
+          onOpen={() => onOpenDepth(2)}
+        />
+        <BrainOverviewColumn
+          title="주요 주제"
+          empty="주제가 형성되는 중입니다."
+          items={topics.map((concept) => concept.label)}
+          onOpen={() => onOpenDepth(3)}
+        />
+      </div>
+    </section>
+  );
+}
+
+function BrainOverviewColumn({
+  title,
+  empty,
+  items,
+  onOpen,
+}: {
+  title: string;
+  empty: string;
+  items: string[];
+  onOpen: () => void;
+}) {
+  return (
+    <button type="button" className="brain-overview-column" onClick={onOpen}>
+      <span>{title}</span>
+      {items.length ? (
+        items.slice(0, 3).map((item) => <strong key={item}>{item}</strong>)
+      ) : (
+        <em>{empty}</em>
+      )}
+    </button>
+  );
+}
+
 function MemoryLayer({
   memories,
   depth,
@@ -1026,9 +1120,10 @@ function EmergentKnowledgeGraph({
             <span>{selected.type}</span>
             <strong>{selected.label}</strong>
             <p>{selected.summary || "This concept is part of the deepest knowledge layer."}</p>
+            <p>대화와 문서에서 함께 나온 내용이 선으로 이어집니다.</p>
           </>
         ) : (
-          <p>Capture documents, conversations, or projects to grow the graph.</p>
+          <p>대화, 문서, 프로젝트를 쌓으면 Brain 그래프가 자랍니다.</p>
         )}
       </div>
     </section>

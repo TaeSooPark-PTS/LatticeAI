@@ -1,7 +1,37 @@
 # Release Notes
 
-The current release target is v4.7.1. Older sections are historical
+The current release target is v4.7.2. Older sections are historical
 release notes and should not be read as newer product claims.
+
+## v4.7.2 - Intuitive Brain UX Release
+
+Lattice AI v4.7.2 keeps the user experience centered on the Living Brain while
+making it more direct for everyday users. First-run login no longer turns a
+saved-user typo into a new empty Brain, model setup has a one-click recommended
+path, and the Brain home exposes memory, topics, relationships, and the full
+graph without requiring repeated exploratory clicks.
+
+### Highlights
+
+- Added saved-profile guards for email mismatch and wrong saved-user password.
+- Added one-click recommended model setup and clearer large-download language.
+- Added direct Brain view buttons: Memory, Topic, Relationship, and Graph.
+- Added Brain overview cards for recent memories, older memories, and major
+  topics, plus saved-to-memory feedback after chat.
+- Refreshed visual validation and release evidence for the more intuitive Brain
+  flow.
+- Bumped synchronized Python, npm, VSIX, Tauri, runtime, and static metadata to
+  `4.7.2`.
+
+### Expected Artifacts
+
+- `dist/ltcai-4.7.2-py3-none-any.whl`
+- `dist/ltcai-4.7.2.tar.gz`
+- `dist/ltcai-4.7.2.vsix`
+- `ltcai-4.7.2.tgz`
+- `src-tauri/target/release/bundle/dmg/Lattice AI_4.7.2_aarch64.dmg`
+
+Full notes: [RELEASE_NOTES_v4.7.2.md](RELEASE_NOTES_v4.7.2.md)
 
 ## v4.7.1 - Admin Operations Release
 

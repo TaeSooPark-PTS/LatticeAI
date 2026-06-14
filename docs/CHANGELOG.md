@@ -3,6 +3,46 @@
 The top entry is the current release-preparation target. Older entries are
 historical and may describe behavior as it existed at that release.
 
+## [4.7.2] - 2026-06-14
+
+> Intuitive Brain UX Release. v4.7.2 makes the Living Brain easier for
+> non-technical users: first-run login is safer, recommended model setup is
+> one-click, Brain memory/topic/relationship/graph views are directly visible,
+> and conversation shows saved-to-memory feedback while Admin remains separate.
+
+### Changed
+
+- Prevented saved-user email mismatch or wrong saved-user password from silently
+  creating a new empty Brain during first-run login.
+- Added a primary `추천대로 시작하기` model recommendation path and clearer large
+  model download messaging without fake ETA.
+- Added visible `기억 보기`, `주제 보기`, `관계 보기`, and `그래프로 보기` actions
+  on the Brain surface so users can open the desired Brain depth directly.
+- Added a Brain overview panel with recent memories, older memories, major
+  topics, and saved-to-memory feedback after conversation.
+- Updated first-run and empty-Brain copy toward plain user language while
+  keeping the graph as the deepest advanced layer.
+- Bumped synchronized package/runtime/static versions to `4.7.2`, including
+  Python metadata, npm package metadata, VSIX metadata, Tauri metadata,
+  `latticeai`, `lattice_brain`, runtime constants, and static asset metadata.
+- Refreshed README, release notes, architecture, feature status, security,
+  recovery notes, VS Code extension docs, release report, and release evidence
+  paths for v4.7.2.
+
+### Preserved
+
+- v4.7.1 and older sections remain historical.
+- External package publishing remains owner-run; this release prepares exact
+  artifacts and GitHub Release assets without registry publish automation.
+
+### Artifacts
+
+- `dist/ltcai-4.7.2-py3-none-any.whl`
+- `dist/ltcai-4.7.2.tar.gz`
+- `dist/ltcai-4.7.2.vsix`
+- `ltcai-4.7.2.tgz`
+- `src-tauri/target/release/bundle/dmg/Lattice AI_4.7.2_aarch64.dmg`
+
 ## [4.7.1] - 2026-06-14
 
 > Admin Operations Release. v4.7.1 extends the separated Admin Console with

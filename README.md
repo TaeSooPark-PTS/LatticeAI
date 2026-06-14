@@ -7,23 +7,25 @@
 [![CI Status](https://github.com/TaeSooPark-PTS/LatticeAI/actions/workflows/ci.yml/badge.svg?branch=main)](https://github.com/TaeSooPark-PTS/LatticeAI/actions/workflows/ci.yml)
 [![License](https://img.shields.io/badge/license-MIT-green)](LICENSE)
 
-**Lattice AI v4.7.1 is the local-first Living Brain admin operations release.**
+**Lattice AI v4.7.2 is the local-first Living Brain intuitive UX release.**
 It keeps the v4 Brain Core, StorageEngine, FastAPI localhost API, Tauri shell,
 backup, restore, model runtime, graph, and portability architecture intact while
-making the normal user surface simpler and moving logs, role permissions,
-security events, retention posture, and Brain operations into a separate Admin
-Console.
+making the normal user surface easier for non-technical users: safer login,
+clearer model setup, one-click Memory/Topic/Relationship/Graph views, and
+visible feedback when conversation becomes Brain memory. Admin logs, role
+permissions, security events, retention posture, and Brain operations remain in
+the separate Admin Console.
 
 The product opens by stating the core reason to exist: models will change, but
 the user's knowledge should not. It creates a private local profile, studies the
 computer, recommends a replaceable model voice, asks before install/download/load
 work, then lands in Brain Chat with starter prompts for durable decisions,
-projects, documents, and context. The graph is still real and searchable, but it
-now grows out of the Brain as the deepest exploration layer instead of acting
-like a separate dashboard.
+projects, documents, and context. The Brain home now gives direct buttons for
+memory, topics, relationships, and the full graph, so the graph is still real
+and searchable without becoming the first screen or a separate dashboard.
 
 External package registries are owner-published and can lag behind this GitHub
-Release. Release uploads must use the exact v4.7.1 artifact filenames below.
+Release. Release uploads must use the exact v4.7.2 artifact filenames below.
 
 ## Living Brain Flow
 
@@ -32,37 +34,43 @@ Release. Release uploads must use the exact v4.7.1 artifact filenames below.
 First launch opens to Login only. The local profile is the beginning of the
 Brain, not a dashboard, graph, or setup grid. The first screen frames Lattice as
 a durable knowledge home where models are replaceable and ownership stays with
-the user.
+the user. v4.7.2 also prevents an email typo or wrong saved-user password from
+silently creating a new empty Brain.
 
-![Login](output/release/v4.7.1/screenshots/01-login.png)
+![Login](output/release/v4.7.2/screenshots/01-login.png)
 
 ### 2. Environment Analysis
 
 Lattice reads the machine locally and summarizes what kind of Brain this
 computer can support.
 
-![Environment Analysis](output/release/v4.7.1/screenshots/02-environment-analysis.png)
+![Environment Analysis](output/release/v4.7.2/screenshots/02-environment-analysis.png)
 
 ### 3. Recommended Models
 
 The model step is a short recommendation list. It avoids catalog noise and keeps
-runtime/install details behind clear user consent.
+runtime/install details behind clear user consent. Users who do not know which
+model to choose can start with the recommended model in one click.
 
-![Recommended Models](output/release/v4.7.1/screenshots/03-recommended-models.png)
+![Recommended Models](output/release/v4.7.2/screenshots/03-recommended-models.png)
 
 ### 4. Install And Load
 
 The install screen keeps consent visible and shows install, download, validate,
-and load progress. No model download or runtime install starts silently.
+and load progress. No model download or runtime install starts silently, and the
+screen explains that large downloads may take minutes without inventing fake ETA
+data.
 
-![Install and Load](output/release/v4.7.1/screenshots/04-install-load-progress.png)
+![Install and Load](output/release/v4.7.2/screenshots/04-install-load-progress.png)
 
 ### 5. Brain Chat
 
 After setup, the home experience is the living Brain plus conversation. The Brain
-stays present while the user types, recalls context, and receives responses.
+stays present while the user types, recalls context, and receives responses. The
+home now includes a compact Brain overview for recent memories, older memories,
+and major topics, plus saved-to-memory feedback after chat.
 
-![Brain Chat Home](output/release/v4.7.1/screenshots/05-brain-chat-home.png)
+![Brain Chat Home](output/release/v4.7.2/screenshots/05-brain-chat-home.png)
 
 ## Brain Depths
 
@@ -71,26 +79,26 @@ while revealing more structure.
 
 | Depth | Experience | Evidence |
 | --- | --- | --- |
-| Level 1 | Living Brain presence | ![Living Brain Level 1](output/release/v4.7.1/screenshots/06-living-brain-level-1.png) |
-| Level 2 | Memory Layer | ![Memory Layer](output/release/v4.7.1/screenshots/07-memory-layer.png) |
-| Level 3 | Knowledge Layer | ![Knowledge Layer](output/release/v4.7.1/screenshots/08-knowledge-layer.png) |
-| Level 4 | Relationship Layer | ![Relationship Layer](output/release/v4.7.1/screenshots/09-relationship-layer.png) |
-| Level 5 | Knowledge Graph with nodes, edges, search, and focus detail | ![Knowledge Graph Layer](output/release/v4.7.1/screenshots/10-knowledge-graph-layer.png) |
+| Level 1 | Living Brain presence | ![Living Brain Level 1](output/release/v4.7.2/screenshots/06-living-brain-level-1.png) |
+| Level 2 | Memory Layer | ![Memory Layer](output/release/v4.7.2/screenshots/07-memory-layer.png) |
+| Level 3 | Knowledge Layer | ![Knowledge Layer](output/release/v4.7.2/screenshots/08-knowledge-layer.png) |
+| Level 4 | Relationship Layer | ![Relationship Layer](output/release/v4.7.2/screenshots/09-relationship-layer.png) |
+| Level 5 | Knowledge Graph with nodes, edges, search, and focus detail | ![Knowledge Graph Layer](output/release/v4.7.2/screenshots/10-knowledge-graph-layer.png) |
 
 Walkthrough:
 
-![v4.7.1 Living Brain walkthrough](output/release/v4.7.1/gifs/v4.7.1-living-brain-walkthrough.gif)
+![v4.7.2 Living Brain walkthrough](output/release/v4.7.2/gifs/v4.7.2-living-brain-walkthrough.gif)
 
 Model setup status evidence:
 
-![Model setup status](output/release/v4.7.1/screenshots/11-model-setup-status.png)
+![Model setup status](output/release/v4.7.2/screenshots/11-model-setup-status.png)
 
 Separate admin console evidence:
 
-![Admin Console](output/release/v4.7.1/screenshots/12-admin-console.png)
+![Admin Console](output/release/v4.7.2/screenshots/12-admin-console.png)
 
 Screenshot index and capture notes:
-[output/release/v4.7.1/SCREENSHOT_INDEX.md](output/release/v4.7.1/SCREENSHOT_INDEX.md)
+[output/release/v4.7.2/SCREENSHOT_INDEX.md](output/release/v4.7.2/SCREENSHOT_INDEX.md)
 
 ## Architecture At A Glance
 
@@ -120,7 +128,7 @@ Screenshot index and capture notes:
   rebuild controls live under the separate `#/admin` console. Admin history,
   audit, stats, and sensitivity reads honor the active workspace when present.
 
-See [ARCHITECTURE.md](ARCHITECTURE.md) for the detailed v4.7.1 architecture.
+See [ARCHITECTURE.md](ARCHITECTURE.md) for the detailed v4.7.2 architecture.
 
 ## Installation
 
@@ -152,13 +160,13 @@ pip install "ltcai[local]"
 
 ## Release Artifacts
 
-Validated v4.7.1 artifacts:
+Validated v4.7.2 artifacts:
 
-- `dist/ltcai-4.7.1-py3-none-any.whl`
-- `dist/ltcai-4.7.1.tar.gz`
-- `ltcai-4.7.1.tgz`
-- `dist/ltcai-4.7.1.vsix`
-- `src-tauri/target/release/bundle/dmg/Lattice AI_4.7.1_aarch64.dmg`
+- `dist/ltcai-4.7.2-py3-none-any.whl`
+- `dist/ltcai-4.7.2.tar.gz`
+- `ltcai-4.7.2.tgz`
+- `dist/ltcai-4.7.2.vsix`
+- `src-tauri/target/release/bundle/dmg/Lattice AI_4.7.2_aarch64.dmg`
 
 Attach only those exact files to the GitHub Release. Do not upload `dist/*`.
 
@@ -187,7 +195,7 @@ npm run test:unit
 npm run test:integration
 npm run test:visual
 npm run desktop:tauri:check
-node scripts/run_python.mjs scripts/wheel_smoke.py --wheel dist/ltcai-4.7.1-py3-none-any.whl
+node scripts/run_python.mjs scripts/wheel_smoke.py --wheel dist/ltcai-4.7.2-py3-none-any.whl
 npm pack --dry-run
 npm run docs:check-links
 ```
@@ -203,14 +211,14 @@ npm run docs:check-links
 - Agent/workflow simulation without a loaded LLM is deterministic and does not call a model.
   It is labeled as LLM-free/model-free rather than presented as autonomous model
   success.
-- Historical artifacts can remain in `dist/`; uploads must use exact v4.7.1
+- Historical artifacts can remain in `dist/`; uploads must use exact v4.7.2
   filenames.
 
 ## Release History
 
 | Version | Theme |
 | --- | --- |
-| 4.7.1 | Admin Operations Release: adds role permissions, audit search/severity filters, log retention status, and separated Admin Console data loading while keeping the user Brain simple |
+| 4.7.2 | Intuitive Brain UX Release: adds role permissions, audit search/severity filters, log retention status, and separated Admin Console data loading while keeping the user Brain simple |
 | 4.7.0 | Admin Separation Release: added the separate Admin Console for users/logs/security/Brain operations, refreshed screenshots/GIFs, synchronized release docs, and built exact v4.7.0 artifacts |
 | 4.6.1 | Living Brain Release Refresh: publishable version bump after v4.6.0 PyPI immutability, refreshed README/screenshots/GIFs, synchronized release docs, and exact v4.6.1 artifacts |
 | 4.6.0 | Living Brain Experience: made Brain plus conversation the home product, added an animated living Brain presence, and moved graph exploration to the deepest intentional layer |
@@ -229,19 +237,19 @@ npm run docs:check-links
 
 ## Current Documentation
 
-- [ARCHITECTURE.md](ARCHITECTURE.md) - v4.7.1 architecture.
+- [ARCHITECTURE.md](ARCHITECTURE.md) - v4.7.2 architecture.
 - [docs/PRODUCT_DIRECTION_REVIEW.md](docs/PRODUCT_DIRECTION_REVIEW.md) -
   Brain-first product direction review.
 - [FEATURE_STATUS.md](FEATURE_STATUS.md) - current feature status and historical
   status ledger.
 - [RELEASE_NOTES.md](RELEASE_NOTES.md) - release notes index.
-- [RELEASE_NOTES_v4.7.1.md](RELEASE_NOTES_v4.7.1.md) - v4.7.1 admin operations release notes.
+- [RELEASE_NOTES_v4.7.2.md](RELEASE_NOTES_v4.7.2.md) - v4.7.2 intuitive Brain UX release notes.
 - [RELEASE_NOTES_v4.6.1.md](RELEASE_NOTES_v4.6.1.md) - v4.6.1 release refresh history.
 - [RELEASE_NOTES_v4.6.0.md](RELEASE_NOTES_v4.6.0.md) - v4.6.0 Living Brain history.
 - [RELEASE.md](RELEASE.md) - release checklist and exact artifact guidance.
 - [SECURITY.md](SECURITY.md) - security posture.
 - [docs/CHANGELOG.md](docs/CHANGELOG.md) - changelog.
-- [docs/V4_7_1_ADMIN_OPERATIONS_REPORT.md](docs/V4_7_1_ADMIN_OPERATIONS_REPORT.md) - v4.7.1 admin operations report.
+- [docs/V4_7_1_ADMIN_OPERATIONS_REPORT.md](docs/V4_7_1_ADMIN_OPERATIONS_REPORT.md) - v4.7.2 admin operations report.
 - [docs/V4_7_0_ADMIN_SEPARATION_REPORT.md](docs/V4_7_0_ADMIN_SEPARATION_REPORT.md) - v4.7.0 admin separation history.
 - [docs/V4_6_1_RELEASE_REFRESH_REPORT.md](docs/V4_6_1_RELEASE_REFRESH_REPORT.md) - v4.6.1 release refresh report.
 - [docs/V4_6_0_LIVING_BRAIN_EXPERIENCE_REPORT.md](docs/V4_6_0_LIVING_BRAIN_EXPERIENCE_REPORT.md) - v4.6.0 Living Brain design notes.

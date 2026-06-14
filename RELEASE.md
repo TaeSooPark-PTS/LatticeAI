@@ -7,6 +7,41 @@
 > PyPI / npm / VS Code Marketplace / Open VSX 배포는 아래 수동 절차로만
 > 진행합니다. 태그 생성은 패키지 스토어 publish를 자동으로 트리거하지 않습니다.
 
+## v4.7.2 릴리스 노트 (2026-06-14)
+
+Lattice AI v4.7.2 — Intuitive Brain UX Release. Living Brain을 일반 사용자 홈으로
+유지하면서 50대/60대 사용자가 봐도 더 직접적으로 이해할 수 있게 로그인,
+추천 모델 시작, 기억/주제/관계/그래프 탐색, 대화 저장 피드백을 다듬는다.
+Brain Core, StorageEngine, FastAPI, Tauri, backup/restore, model runtime, graph
+APIs, portability, and separated Admin Console capabilities는 유지한다.
+
+- **Changed (Safer first-run login)**: 저장된 로컬 Brain 이메일과 다른 이메일
+  또는 기존 이메일의 잘못된 비밀번호는 자동 회원가입으로 새 빈 Brain을 만들지
+  않고 확인 메시지를 보여준다.
+- **Changed (One-click recommended setup)**: Recommended Models 단계에
+  `추천대로 시작하기` primary action을 추가해 모델 선택을 모르는 사용자도 바로
+  시작할 수 있게 했다.
+- **Changed (Download trust)**: Install 단계는 큰 모델 다운로드가 오래 걸릴 수
+  있음을 설명하고, 런타임이 제공하는 진행률만 표시해 가짜 ETA를 만들지 않는다.
+- **Changed (Direct Brain views)**: Brain 홈에서 `기억 보기`, `주제 보기`,
+  `관계 보기`, `그래프로 보기` 버튼으로 반복 클릭 없이 원하는 깊이를 열 수
+  있다.
+- **Changed (Memory/topic overview)**: Brain Chat 상단에 최근 기억, 이전 기억,
+  주요 주제 요약과 대화 후 `기억에 저장됨` 피드백을 추가했다.
+- **Changed (Release metadata)**: Python, npm, VSIX, Tauri, runtime constants,
+  and static metadata are synchronized to `4.7.2`.
+- **Changed (Architecture/docs sync)**: README, ARCHITECTURE.md, release notes,
+  changelog, security posture, feature status, VS Code extension docs, recovery
+  doc, and release report are synchronized to v4.7.2.
+- **Preserved**: v4.7.1 and older entries remain historical. Package registry
+  publish remains owner-run.
+- **Expected artifacts**:
+  - `dist/ltcai-4.7.2-py3-none-any.whl`
+  - `dist/ltcai-4.7.2.tar.gz`
+  - `dist/ltcai-4.7.2.vsix`
+  - `ltcai-4.7.2.tgz`
+  - `src-tauri/target/release/bundle/dmg/Lattice AI_4.7.2_aarch64.dmg`
+
 ## v4.7.1 릴리스 노트 (2026-06-14)
 
 Lattice AI v4.7.1 — Admin Operations Release. Living Brain을 일반 사용자 홈으로
@@ -1144,14 +1179,14 @@ Knowledge Graph v2 read/write cutover. 자세한 내용은
    - `npm run release:artifacts`
    - `npm run release:validate`
 
-현재 `v4.7.1` 기준 필수 산출물:
+현재 `v4.7.2` 기준 필수 산출물:
 
 ```text
-dist/ltcai-4.7.1-py3-none-any.whl
-dist/ltcai-4.7.1.tar.gz
-dist/ltcai-4.7.1.vsix
-ltcai-4.7.1.tgz
-src-tauri/target/release/bundle/dmg/Lattice AI_4.7.1_aarch64.dmg
+dist/ltcai-4.7.2-py3-none-any.whl
+dist/ltcai-4.7.2.tar.gz
+dist/ltcai-4.7.2.vsix
+ltcai-4.7.2.tgz
+src-tauri/target/release/bundle/dmg/Lattice AI_4.7.2_aarch64.dmg
 ```
 
 ## 2) npm 배포
@@ -1162,7 +1197,7 @@ src-tauri/target/release/bundle/dmg/Lattice AI_4.7.1_aarch64.dmg
    - `npm run publish:npm`
    - 직접 실행 시:
      ```
-     npm publish "ltcai-4.7.1.tgz" --access public
+     npm publish "ltcai-4.7.2.tgz" --access public
      ```
 
 ## 3) PyPI 배포
@@ -1175,14 +1210,14 @@ src-tauri/target/release/bundle/dmg/Lattice AI_4.7.1_aarch64.dmg
    - `npm run publish:pypi`  ← 권장 (`$npm_package_version` 자동 사용)
    - 직접 실행 시:
      ```
-     python3 -m twine upload "dist/ltcai-4.7.1-py3-none-any.whl" "dist/ltcai-4.7.1.tar.gz"
+     python3 -m twine upload "dist/ltcai-4.7.2-py3-none-any.whl" "dist/ltcai-4.7.2.tar.gz"
      ```
 
 참고:
 - TestPyPI 먼저 쓰려면:
   ```
   python3 -m twine upload --skip-existing --repository testpypi \
-    "dist/ltcai-4.7.1.tar.gz" "dist/ltcai-4.7.1-py3-none-any.whl"
+    "dist/ltcai-4.7.2.tar.gz" "dist/ltcai-4.7.2-py3-none-any.whl"
   ```
 
 ## 4) VS Code / Cursor / Antigravity 확장 배포
@@ -1198,13 +1233,13 @@ src-tauri/target/release/bundle/dmg/Lattice AI_4.7.1_aarch64.dmg
    - `npm run publish:vscode`  ← 권장 (`$npm_package_version` 자동 사용)
    - 직접 실행 시:
      ```
-     npx vsce publish --packagePath "../dist/ltcai-4.7.1.vsix"
+     npx vsce publish --packagePath "../dist/ltcai-4.7.2.vsix"
      ```
 4. Open VSX 배포 (Cursor/일부 포크 호환)
    - `npm run publish:openvsx`  ← 권장 (`$npm_package_version` 자동 사용)
    - 직접 실행 시:
      ```
-     npx ovsx publish "../dist/ltcai-4.7.1.vsix"
+     npx ovsx publish "../dist/ltcai-4.7.2.vsix"
      ```
 5. 로컬 설치 (VS Code/Cursor/Antigravity)
    - `npm run install:all`

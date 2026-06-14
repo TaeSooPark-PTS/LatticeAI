@@ -1,6 +1,6 @@
 {
   "name": "ltcai",
-  "version": "4.7.1",
+  "version": "4.7.2",
   "description": "Lattice AI — local-first Living Brain workspace (conversation, durable memory, hybrid search, agents, advanced graph exploration, portable encrypted brain archives)",
   "homepage": "https://github.com/TaeSooPark-PTS/LatticeAI#readme",
   "repository": {
@@ -89,6 +89,7 @@
     "static/icons/",
     "plugins/",
     "scripts/",
+    "!scripts/launch-pts-grok.sh",
     "!docs/images/tmp_frames/",
     "!**/__pycache__/",
     "!**/*.pyc",
