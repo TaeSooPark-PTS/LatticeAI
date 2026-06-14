@@ -9,17 +9,18 @@
 
 ## v5.2.0 릴리스 노트 (2026-06-14)
 
-Lattice AI v5.2.0 — User-Focused Model Transformation (major). 5.2.0은 추천
-모델 목록을 구조화된 capability registry로 전면 개편하고, Hugging Face 실
-제 존재/설정/토크나이저 검증 자동화 스크립트를 추가하며, 최신 멀티모달
-(Gemma 3, Qwen2.5-VL, Llama-3.2 Vision, Pixtral 등)을 추천에 포함했다.
-사용자는 verified 상태, hardware fit(RAM), modality 배지, download/load
-전략, license/safety notes, large-model limitations을 투명하게 보고
-명시적 동의 후에만 다운로드한다. 레지스트리·API·프론트엔드 전반이
-사용자 중심으로 업데이트되었다.
+Lattice AI v5.2.0 — User-Focused Model Transformation (major). 5.2.0은 모델
+목록을 구조화된 capability registry로 전면 개편하고, Hugging Face 실제
+존재/설정/토크나이저 검증 자동화 스크립트를 추가하며, 최신 멀티모달 후보
+(Gemma 3, Qwen2.5-VL, Llama-3.2 Vision, Pixtral 등)는 검증 투명성용 registry에
+보존한다. 사용자-facing 추천/로드 목록은 현재 load-ready family 중심으로
+좁혀 catalog noise를 줄이고, verified 상태, hardware fit(RAM), modality 배지,
+download/load 전략, license/safety notes, large-model limitations을 명시적
+동의 전에 보여준다. 레지스트리·API·프론트엔드 전반이 사용자 중심으로
+업데이트되었다.
 
 - **Added (Registry & Verification)**: model_capability_registry.py (HardwareProfile, VerificationStatus, ModelCapability dataclass with hf_repo, modality, quant, strategies, hardware notes, license, safety). scripts/verify_hf_model_registry.py (HF API light + restricted deep config/tokenizer, --test-load for small, LARGE explicit notes, verification_report.json). 16 models (core+5 modern) all HF-present, 15 config+tok hints.
-- **Changed (Backend)**: model_catalog now delegates to registry (legacy shapes 100% preserved + rich fields). model_recommendation forwards verification/hardware/strategies. /models and /models/recommendations include registry.verified + per-model 5.2 metadata.
+- **Changed (Backend)**: model_catalog now delegates to registry (legacy shapes 100% preserved + rich fields) and finalizes the user-facing catalog to current load-ready families while keeping non-primary candidates in the registry. model_recommendation forwards verification/hardware/strategies. /models and /models/recommendations include registry.verified + per-model 5.2 metadata.
 - **Changed (Frontend)**: Library ModelsPanel now shows multimodal badges, ✓ HF verified, hardware notes, load_strategy, recommended_default. Guided setup copy updated for consent-first transparency.
 - **Changed (UX/Product)**: Users see clear "why this model fits my machine", "HF verified?", "how it will download/load", large-model warnings before any action. Bold expansion of real multimodal options while keeping Gemma4/Qwen3-VL/Llama4 family.
 - **Version**: 5.2.0 across pyproject, latticeai/__init__, npm, vscode-extension.

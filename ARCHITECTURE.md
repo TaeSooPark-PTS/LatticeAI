@@ -1,12 +1,14 @@
-# Lattice AI v5.1.0 Architecture
+# Lattice AI v5.2.0 Architecture
 
-This document describes the current v5.1.0 Product Trust & Clarity Release.
+This document describes the current v5.2.0 User-Focused Model Transformation.
 Lattice AI is a local-first private AI memory layer: the user's Brain is the
-durable asset, while models are replaceable voices. v5.1.0 keeps the user
+durable asset, while models are replaceable voices. v5.2.0 keeps the user
 experience centered on Brain plus conversation, keeps graph exploration
 available without making it the product identity, and hardens the trust boundary
 around CSP, local file reads, secret redaction, model downloads, and external
-communication opt-in.
+communication opt-in. It also adds a structured model capability registry so
+model recommendations expose HF verification, hardware fit, modality, download
+strategy, load strategy, license, and safety notes before consent.
 
 ## System Map
 
@@ -263,18 +265,18 @@ explicit opt-in paths.
 
 ```mermaid
 flowchart TB
-  Source["Source Tree v5.1.0"] --> FrontendBuild["Vite Frontend Build"]
+  Source["Source Tree v5.2.0"] --> FrontendBuild["Vite Frontend Build"]
   Source --> PythonBuild["Python Build"]
   Source --> NpmPack["npm pack"]
   Source --> VsixBuild["VSIX Package"]
   Source --> TauriBuild["Tauri Build"]
 
   FrontendBuild --> StaticAssets["static/app Assets"]
-  PythonBuild --> Wheel["dist/ltcai-5.1.0-py3-none-any.whl"]
-  PythonBuild --> Sdist["dist/ltcai-5.1.0.tar.gz"]
-  NpmPack --> Tgz["ltcai-5.1.0.tgz"]
-  VsixBuild --> Vsix["dist/ltcai-5.1.0.vsix"]
-  TauriBuild --> Dmg["src-tauri/target/release/bundle/dmg/Lattice AI_5.1.0_aarch64.dmg"]
+  PythonBuild --> Wheel["dist/ltcai-5.2.0-py3-none-any.whl"]
+  PythonBuild --> Sdist["dist/ltcai-5.2.0.tar.gz"]
+  NpmPack --> Tgz["ltcai-5.2.0.tgz"]
+  VsixBuild --> Vsix["dist/ltcai-5.2.0.vsix"]
+  TauriBuild --> Dmg["src-tauri/target/release/bundle/dmg/Lattice AI_5.2.0_aarch64.dmg"]
   StaticAssets --> Wheel
   StaticAssets --> Tgz
   StaticAssets --> Dmg
@@ -284,8 +286,8 @@ Release uploads must use exact filenames. Do not upload `dist/*`.
 
 ## Known Limitations
 
-- v5.1.0 adds bilingual user-facing surfaces without a backend security
-  redesign.
+- v5.2.0 adds a structured model capability registry and user-facing catalog
+  filtering without a backend security redesign.
 - External registries can lag behind the GitHub Release because package-store
   publishing is owner-controlled.
 - PostgreSQL/pgvector is opt-in scale mode; SQLite is the default.
@@ -294,4 +296,4 @@ Release uploads must use exact filenames. Do not upload `dist/*`.
 - Model-free states are reported honestly. The UI should not fabricate answers
   when no model is loaded.
 - Historical reports under `docs/` preserve older release behavior and should
-  not be rewritten as v5.1.0 claims.
+  not be rewritten as v5.2.0 claims.

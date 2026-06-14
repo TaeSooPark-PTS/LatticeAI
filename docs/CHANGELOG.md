@@ -12,17 +12,17 @@ historical and may describe behavior as it existed at that release.
 
 ### Added
 - Structured `ModelCapabilityRegistry` (latticeai/services/model_capability_registry.py) with dataclass fields for provider/hf_repo_id, modality, quantization, download_strategy, load_strategy, hardware (min/recommended RAM, Apple/CUDA prefs, notes), license, safety_notes, and rich VerificationStatus (hf_exists, has_config, has_tokenizer, pipeline, last_checked, notes).
-- 5 modern multimodal recommendations (Gemma 3 4B/12B, Qwen2.5-VL-7B, Llama-3.2-11B-Vision, Pixtral-12B) alongside the existing Gemma-4 / Qwen3-VL / Llama-4 family.
+- Modern multimodal candidates (Gemma 3 4B/12B, Qwen2.5-VL-7B, Llama-3.2-11B-Vision, Pixtral-12B) in the structured registry for HF verification transparency, alongside the user-facing Gemma-4 / Qwen3-VL / Llama-4 load-ready family.
 - Automated verification script: `scripts/verify_hf_model_registry.py` (lightweight HF API + restricted snapshot for config/tokenizer; optional --test-load for small models; explicit LARGE_MODEL notes; writes verification_report.json).
 - Registry info exposed via `/models` and `/models/recommendations` (registry.verified_count, verification dicts, hardware, strategies).
 - New unit tests: `tests/unit/test_model_capability_registry.py` (5 tests covering registry, legacy shape, rec payload, report, roundtrips).
 
 ### Changed
-- `model_catalog.py` now sources ENGINE_MODEL_CATALOG + aliases from the capability registry (single source of truth) while preserving 100% legacy shapes + reexports for zero breakage.
+- `model_catalog.py` now sources ENGINE_MODEL_CATALOG + aliases from the capability registry (single source of truth), preserves legacy shapes + reexports, and finalizes the user-facing catalog to current load-ready families so lower-generation or non-load-verified candidates do not become noisy primary choices.
 - `model_recommendation.py` `_classify_one` now forwards 5.2 fields (hf_repo, verification, hardware, load_strategy, license, safety, recommended_default).
 - Backend model APIs return rich fields; frontend can render verified badges, modality, hardware notes, strategies.
 - Library.tsx (ModelsPanel): added "multimodal" + "✓ HF" verified badges, recommended_default support, hardware notes line, load_strategy in detail, updated guided setup copy for transparency and consent.
-- All current catalog HF ids (and additions) confirmed present + config/tokenizer hints via HF API on 2026-06-14; 0 critical missing; 6 large models flagged with limitations.
+- All registry HF ids confirmed present via HF API on 2026-06-14; 15/16 expose config/tokenizer hints, Pixtral remains available-but-not-local-load-verified, and large models are flagged with explicit limitations.
 - Version bumped to 5.2.0 everywhere (pyproject, __init__, package.json, vscode-extension).
 
 ### Preserved

@@ -15,7 +15,9 @@ chat, run model workflows, and trigger coding actions from the editor.
 **5.2.0 — User-Focused Model Transformation.** The desktop workspace now exposes
 the same structured model capability registry as the main app: verified Hugging
 Face availability, local download/load readiness, multimodal support, runtime
-strategy, and hardware-fit notes. The extension connects to the same local
+strategy, and hardware-fit notes. Primary recommendations stay focused on
+current load-ready families while registry-only candidates remain transparent
+until load readiness is confirmed. The extension connects to the same local
 workspace APIs and remains compatible with the separated Brain user flow and
 Admin Console model.
 

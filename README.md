@@ -37,10 +37,11 @@ Release. Release uploads must use the exact v5.2.0 artifact filenames below.
 
 **5.2.0 major update**: Structured model capability registry + automated HF
 verification (scripts/verify_hf_model_registry.py) + expanded modern multimodal
-recommendations. All recommended models are HF-verified for existence + config/
-tokenizer presence. Frontend now shows verified status, modality badges,
-hardware fit notes, and explicit download/load strategies before consent. See
-RELEASE.md and docs/CHANGELOG.md.
+candidates. User-facing recommendations are narrowed to current load-ready
+families; registry-only candidates stay visible for verification transparency
+until config/tokenizer/load readiness is confirmed. Frontend now shows verified
+status, modality badges, hardware fit notes, and explicit download/load
+strategies before consent. See RELEASE.md and docs/CHANGELOG.md.
 
 ## Living Brain Flow
 
@@ -142,7 +143,7 @@ Screenshot index and capture notes:
   rebuild controls live under the separate `#/admin` console. Admin history,
   audit, stats, and sensitivity reads honor the active workspace when present.
 
-See [ARCHITECTURE.md](ARCHITECTURE.md) for the detailed v5.1.0 architecture.
+See [ARCHITECTURE.md](ARCHITECTURE.md) for the detailed v5.2.0 architecture.
 
 ## Installation
 
@@ -245,7 +246,7 @@ npm run docs:check-links
 
 ## Current Documentation
 
-- [ARCHITECTURE.md](ARCHITECTURE.md) - v5.1.0 architecture.
+- [ARCHITECTURE.md](ARCHITECTURE.md) - v5.2.0 architecture.
 - [docs/WHY_LATTICE.md](docs/WHY_LATTICE.md) - why Lattice AI exists.
 - [docs/TRUST_MODEL.md](docs/TRUST_MODEL.md) - local-first trust model.
 - [PRIVACY.md](PRIVACY.md) - privacy and external communication policy.

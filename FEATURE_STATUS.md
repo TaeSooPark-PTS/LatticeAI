@@ -1,11 +1,30 @@
-# Lattice AI — Feature Status (v5.1.0)
+# Lattice AI — Feature Status (v5.2.0)
 
-**Current release line:** v5.1.0 Product Trust & Clarity Release. Lattice AI is
+**Current release line:** v5.2.0 User-Focused Model Transformation. Lattice AI is
 a local-first private AI memory layer / Digital Brain. The primary experience is
 Brain plus conversation; the graph remains durable infrastructure and advanced
-exploration, not the home product identity. Sections below v5.1.0 are
+exploration, not the home product identity. v5.2.0 adds a structured model
+capability registry, HF verification transparency, hardware-fit recommendations,
+and explicit download/load strategies before consent. Sections below v5.2.0 are
 historical release-status records and should not override the current README,
-ARCHITECTURE.md, SECURITY.md, PRIVACY.md, or v5.1.0 release notes.
+ARCHITECTURE.md, SECURITY.md, PRIVACY.md, or v5.2.0 release notes.
+
+## v5.2.0 User-Focused Model Transformation — what changed
+
+v5.2.0 moves model choice from a loose recommendation list to a structured,
+verified capability registry. The user-facing catalog stays focused on current
+load-ready families, while registry-only candidates remain visible for
+verification transparency until load readiness is confirmed.
+
+| Area | Status | Evidence |
+| --- | --- | --- |
+| **Structured model capability registry** | WORKING | `latticeai/services/model_capability_registry.py` stores hf_repo_id, modality, quantization, hardware RAM notes, strategies, license, safety notes, and verification fields. |
+| **HF verification transparency** | WORKING | `scripts/verify_hf_model_registry.py` writes `verification_report.json`; latest run confirms 16/16 HF repos present, 15/16 config/tokenizer hints, Pixtral marked available-but-not-local-load-verified. |
+| **User-facing catalog filtering** | WORKING | `latticeai/services/model_catalog.py` keeps raw registry entries for transparency and finalizes `ENGINE_MODEL_CATALOG` to current load-ready families to reduce catalog noise. |
+| **Model recommendation metadata** | WORKING | `/models` and `/models/recommendations` expose verification, hardware, modality, load strategy, license, safety notes, and recommended_default. `latticeai/api/models.py`, `latticeai/services/model_recommendation.py`. |
+| **Library model UI** | WORKING | `frontend/src/pages/Library.tsx` renders multimodal and HF badges, hardware notes, load strategies, and consent-first setup copy without breaking TypeScript strict checks. |
+| **Package/runtime version sync** | WORKING | Python, npm, VS Code extension, Tauri, runtime constants, lock files, and release artifacts are synchronized to `5.2.0`. |
+| **Artifact exactness** | WORKING | `npm run release:validate` expects exact v5.2.0 wheel, sdist, npm tgz, VSIX, and Tauri DMG filenames and warns against `dist/*`. |
 
 ## v5.1.0 Product Trust & Clarity Release — what changed
 

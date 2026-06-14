@@ -160,6 +160,11 @@ function ModelsPanel() {
               const loadId = String(model.recommended_load_id || id);
               const engine = String(model.recommended_engine || model.engine || "");
               const recommendation = recommendationById.get(id) || recommendationById.get(loadId) || {};
+              const modelVerification = asRecord(model.verification);
+              const recommendationVerification = asRecord(recommendation.verification);
+              const modelHardware = asRecord(model.hardware);
+              const recommendationHardware = asRecord(recommendation.hardware);
+              const hardwareNote = modelHardware.notes || recommendationHardware.notes || (modelHardware.recommended_ram_gb ? `~${modelHardware.recommended_ram_gb}GB RAM rec` : "");
               const compatibility = (model.runtime_compatibility || recommendation.runtime_compatibility || {}) as Record<string, unknown>;
               const fallbackAvailable = String(compatibility.status || "") === "fallback_available";
               const unsupported = model.load_status === "unsupported" || compatibility.supported === false;
@@ -178,7 +183,7 @@ function ModelsPanel() {
                         <div className="text-base font-semibold">{String(model.name || id)}</div>
                       {topPick?.id === id || model.recommended_default ? <Badge variant="success">recommended</Badge> : null}
                       {String(model.modality || recommendation.modality || "").includes("multi") || String(model.modality || "") === "multimodal" ? <Badge variant="muted">multimodal</Badge> : null}
-                      {model.verification?.verified || recommendation.verification?.verified ? <Badge variant="success" title="HF verified (config+tokenizer present)">✓ HF</Badge> : null}
+                      {modelVerification.verified || recommendationVerification.verified ? <Badge variant="success" title="HF verified (config+tokenizer present)">✓ HF</Badge> : null}
                     </div>
                     <div className="mt-1 text-sm text-muted-foreground">
                       {mode === "basic"
@@ -190,7 +195,7 @@ function ModelsPanel() {
                     </div>
                     {(model.hardware || recommendation.hardware) ? (
                       <div className="mt-1 text-[11px] text-muted-foreground/80">
-                        {model.hardware?.notes || recommendation.hardware?.notes || (model.hardware?.recommended_ram_gb ? `~${model.hardware.recommended_ram_gb}GB RAM rec` : "")}
+                        {String(hardwareNote)}
                       </div>
                     ) : null}
                     {unsupported ? (
@@ -208,7 +213,7 @@ function ModelsPanel() {
                       <div className="mt-2 text-xs text-muted-foreground">
                         {runtimeLabel} · {loadId}
                         {model.load_strategy || recommendation.load_strategy ? ` · ${String(model.load_strategy || recommendation.load_strategy)}` : ""}
-                        {model.verification?.notes ? ` · ${String(model.verification.notes).slice(0,60)}` : ""}
+                        {modelVerification.notes ? ` · ${String(modelVerification.notes).slice(0,60)}` : ""}
                       </div>
                     ) : null}
                     {unsupported || fallbackAvailable ? <AlternativeModels compatibility={compatibility} /> : null}
@@ -284,6 +289,10 @@ function ModelRecovery({ error }: { error: Record<string, unknown> }) {
       ) : null}
     </div>
   );
+}
+
+function asRecord(value: unknown): Record<string, unknown> {
+  return value && typeof value === "object" && !Array.isArray(value) ? value as Record<string, unknown> : {};
 }
 
 function SkillsPanel() {

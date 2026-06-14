@@ -74,7 +74,16 @@ ENGINE_INSTALLERS = {
 # 5.2.0 delegation: the rich catalog (with verification, hf_repo_id, strategies, hardware, license etc)
 # is defined in model_capability_registry. We build the legacy-shaped ENGINE_MODEL_CATALOG here
 # at import time so every existing consumer (runtime, api, recommendation, tests) is unaffected.
-ENGINE_MODEL_CATALOG: Dict[str, List[Dict[str, object]]] = _build_engine_model_catalog()
+#
+# The *raw* registry projection keeps every capability (incl. legacy generations
+# like Gemma 3 / Qwen2.5-VL / Pixtral) for transparency + HF verification. The
+# user-facing ENGINE_MODEL_CATALOG below is then narrowed to the aggressive 5.2.0
+# policy (latest family generations only, no text-only/legacy weights) and the
+# engine-specific ids/sizes are normalised. See `_finalize_engine_catalog`.
+_RAW_ENGINE_MODEL_CATALOG: Dict[str, List[Dict[str, object]]] = _build_engine_model_catalog()
+# Filled in at module end once the blocklist, alias map and family-version filter
+# are all defined; declared here so the public name exists for static readers.
+ENGINE_MODEL_CATALOG: Dict[str, List[Dict[str, object]]] = {}
 
 # Historical aliases preserved (used by _recommended_with_engine_options and resolution).
 # These can be enriched later from registry if needed; kept verbatim for safety.
@@ -175,3 +184,61 @@ def filter_lower_family_versions(models: List[Dict[str, object]]) -> List[Dict[s
         model for model, version_info in detected
         if not version_info or version_info[1] >= max_versions.get(version_info[0], version_info[1])
     ]
+
+
+# ── 5.2.0 user-facing catalog assembly ────────────────────────────────────────
+# Legacy/text-only generations stay in the capability registry (for transparency
+# and HF verification) but must never be surfaced in the model picker. Anything
+# whose id contains one of these fragments is dropped from ENGINE_MODEL_CATALOG.
+_BLOCKED_CATALOG_FRAGMENTS = (
+    "gemma-3", "gemma3", "gemma-2", "gemma2",
+    "qwen2.5", "qwen-2.5", "qwen2-5",
+    "llama-3", "llama3.2", "llama-3.2",
+    "pixtral", "mistral",
+    "smollm", "gpt-oss", "phi-",
+)
+
+
+def _is_blocked_catalog_id(model: Dict[str, object]) -> bool:
+    ident = str(model.get("id") or "").lower()
+    return any(fragment in ident for fragment in _BLOCKED_CATALOG_FRAGMENTS)
+
+
+def _normalize_engine_entry(engine: str, model: Dict[str, object]) -> Dict[str, object]:
+    """Apply historical engine-specific id + size conventions to a raw entry.
+
+    * Non-MLX engines resolve to their canonical packaged id via
+      :data:`MODEL_ENGINE_ALIASES` (e.g. ollama → ``hf.co/ggml-org/...GGUF``).
+    * Server / tool-managed engines advertise no fixed on-disk size, so the
+      execution tool validates the exact weights at pull time.
+    """
+    if engine == "local_mlx":
+        return model
+    entry = dict(model)
+    hf_repo = str(entry.get("hf_repo_id") or "")
+    short = hf_repo.split("/")[-1].lower()
+    aliases = MODEL_ENGINE_ALIASES.get(short) or MODEL_ENGINE_ALIASES.get(hf_repo.lower())
+    mapped = aliases.get(engine) if aliases else None
+    if mapped:
+        entry["id"] = f"{engine}:{mapped}"
+    # Tool-managed engines (ollama/vllm/lmstudio/llamacpp) pull on demand; the
+    # registry's MLX on-disk size does not apply to them.
+    entry["size"] = "실행 도구에서 관리"
+    return entry
+
+
+def _finalize_engine_catalog(
+    raw: Dict[str, List[Dict[str, object]]],
+) -> Dict[str, List[Dict[str, object]]]:
+    final: Dict[str, List[Dict[str, object]]] = {}
+    for engine, models in raw.items():
+        kept = [
+            _normalize_engine_entry(engine, m)
+            for m in models
+            if not _is_blocked_catalog_id(m)
+        ]
+        final[engine] = filter_lower_family_versions(kept)
+    return final
+
+
+ENGINE_MODEL_CATALOG = _finalize_engine_catalog(_RAW_ENGINE_MODEL_CATALOG)
