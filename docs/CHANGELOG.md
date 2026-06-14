@@ -22,6 +22,9 @@ historical and may describe behavior as it existed at that release.
 - Refined the Brain home so conversation remains the primary surface and the
   "Care for my Brain" ownership controls open only when requested, with action
   results now reflecting the last completed ownership action.
+- Strengthened first-run and empty-Brain product messaging around the core
+  promise that models are replaceable while the user's knowledge, decisions,
+  projects, and context are durable.
 - Bumped synchronized package/runtime/static versions to `4.6.1`, including
   Python metadata, npm package metadata, VSIX metadata, Tauri metadata,
   `latticeai`, `lattice_brain`, runtime constants, and static asset metadata.

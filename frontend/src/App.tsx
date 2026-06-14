@@ -51,6 +51,12 @@ const DEPTHS: Array<{ level: BrainDepth; label: string; state: BrainState }> = [
   { level: 5, label: "Knowledge Graph", state: "synthesizing" },
 ];
 
+const STARTER_PROMPTS = [
+  "Remember this decision: ",
+  "What do I already know about ",
+  "Help me turn this project context into a plan: ",
+];
+
 export default function App() {
   const theme = useAppStore((state) => state.theme);
   const [flowComplete, setFlowComplete] = React.useState(readProductFlowComplete);
@@ -285,8 +291,18 @@ function BrainHome({
         <div ref={streamRef} className="brain-stream">
           {messages.length === 0 ? (
             <div className="mind-empty">
-              <div className="mind-empty-kicker">Begin</div>
-              <div>What are you thinking about?</div>
+              <div className="mind-empty-kicker">Your durable context</div>
+              <div className="mind-empty-title">Start with what should not be forgotten.</div>
+              <p>
+                Lattice keeps your documents, conversations, projects, and decisions available while models can change around them.
+              </p>
+              <div className="mind-empty-prompts" aria-label="Starter prompts">
+                {STARTER_PROMPTS.map((prompt) => (
+                  <button key={prompt} type="button" onClick={() => setDraft(prompt)}>
+                    {prompt}
+                  </button>
+                ))}
+              </div>
             </div>
           ) : (
             messages.map((message, index) => (

@@ -2249,8 +2249,52 @@ body {
 /* Gentle empty / loading for the mind */
 .mind-empty {
   text-align: center;
-  padding: 3rem 1rem;
+  padding: 2.4rem 1rem;
   color: hsl(var(--fg-muted));
+}
+
+.mind-empty-title {
+  max-width: 34rem;
+  margin: 0 auto 0.5rem;
+  color: hsl(var(--fg));
+  font-size: 1.1rem;
+  font-weight: 650;
+  line-height: 1.2;
+}
+
+.mind-empty p {
+  max-width: 39rem;
+  margin: 0 auto;
+  font-size: 0.9rem;
+  line-height: 1.45;
+}
+
+.mind-empty-prompts {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 0.48rem;
+  margin-top: 1rem;
+}
+
+.mind-empty-prompts button {
+  max-width: 100%;
+  border: 1px solid hsl(var(--border) / 0.62);
+  border-radius: 999px;
+  background: hsl(var(--bg) / 0.46);
+  color: hsl(var(--fg));
+  padding: 0.46rem 0.7rem;
+  font-size: 0.78rem;
+  line-height: 1.15;
+  transition: border-color 150ms ease, background 150ms ease, transform 150ms ease;
+}
+
+.mind-empty-prompts button:hover,
+.mind-empty-prompts button:focus-visible {
+  border-color: hsl(var(--memory) / 0.7);
+  background: hsl(var(--memory) / 0.08);
+  outline: none;
+  transform: translateY(-1px);
 }
 
 .mind-empty .icon {
@@ -2297,6 +2341,19 @@ body {
   .brain-care-archive-actions button {
     flex-basis: calc(50% - 0.25rem);
   }
+  .mind-empty {
+    padding-inline: 0.4rem;
+  }
+  .mind-empty-prompts {
+    display: grid;
+  }
+  .mind-empty-prompts button {
+    width: 100%;
+    text-align: left;
+  }
+  .ritual-promise {
+    grid-template-columns: 1fr;
+  }
   .brain-ownership-strip { order: 3; flex-basis: 100%; justify-content: flex-start; overflow-x: auto; }
   .depths { bottom: 0.9rem; }
 }
@@ -2333,6 +2390,39 @@ body {
   font-size: 1.02rem;
   max-width: 44ch;
   margin: 0 auto 1.5rem;
+}
+
+.ritual-promise {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 0.65rem;
+  margin: 0 auto 1.15rem;
+  max-width: 680px;
+}
+
+.ritual-promise div {
+  border: 1px solid hsl(var(--border) / 0.54);
+  border-radius: 8px;
+  background: hsl(var(--bg) / 0.42);
+  padding: 0.72rem 0.78rem;
+  text-align: left;
+}
+
+.ritual-promise span {
+  display: block;
+  color: hsl(var(--fg-muted));
+  font-size: 0.68rem;
+  font-weight: 800;
+  text-transform: uppercase;
+}
+
+.ritual-promise strong {
+  display: block;
+  margin-top: 0.18rem;
+  color: hsl(var(--fg));
+  font-size: 0.84rem;
+  font-weight: 620;
+  line-height: 1.25;
 }
 
 .ritual-card {

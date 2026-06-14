@@ -13,10 +13,13 @@ restore, model runtime, graph, and portability architecture intact while making
 the release/publishable version `4.6.1` after the v4.6.0 PyPI immutability
 block.
 
-The product opens with a private local profile, studies the computer, recommends
-models, asks before install/download/load work, then lands in Brain Chat. The
-graph is still real and searchable, but it now grows out of the Brain as the
-deepest exploration layer instead of acting like a separate dashboard.
+The product opens by stating the core reason to exist: models will change, but
+the user's knowledge should not. It creates a private local profile, studies the
+computer, recommends a replaceable model voice, asks before install/download/load
+work, then lands in Brain Chat with starter prompts for durable decisions,
+projects, documents, and context. The graph is still real and searchable, but it
+now grows out of the Brain as the deepest exploration layer instead of acting
+like a separate dashboard.
 
 External package registries are owner-published and can lag behind this GitHub
 Release. Release uploads must use the exact v4.6.1 artifact filenames below.
@@ -26,7 +29,9 @@ Release. Release uploads must use the exact v4.6.1 artifact filenames below.
 ### 1. Login
 
 First launch opens to Login only. The local profile is the beginning of the
-Brain, not a dashboard, graph, or setup grid.
+Brain, not a dashboard, graph, or setup grid. The first screen frames Lattice as
+a durable knowledge home where models are replaceable and ownership stays with
+the user.
 
 ![Login](output/release/v4.6.1/screenshots/01-login.png)
 

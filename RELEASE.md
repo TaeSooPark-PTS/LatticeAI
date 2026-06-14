@@ -26,6 +26,9 @@ runtime, graph APIs, and portability capabilities는 재설계하지 않는다.
   from the Brain home, but conversation stays first; export, backup, archive,
   inspect, and restore preview now live behind a collapsed "Care for my Brain"
   control.
+- **Changed (Product positioning UX)**: first-run and empty-Brain states now
+  explain why Lattice exists: models are replaceable, user knowledge is durable,
+  and the Brain is a private owned context layer.
 - **Changed (Architecture/docs sync)**: ARCHITECTURE.md, release notes,
   changelog, security posture, feature status, and VS Code extension docs are
   synchronized to v4.6.1.

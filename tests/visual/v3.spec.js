@@ -30,6 +30,8 @@ test("first-run ritual enters the living Brain", async ({ page }) => {
   await page.goto("/app");
 
   await expect(page.locator("body")).toContainText("Welcome to your mind.");
+  await expect(page.locator("body")).toContainText("Models will change. Your knowledge should not.");
+  await expect(page.locator("body")).toContainText("The model is a voice, not the asset.");
   await expect(page.getByRole("button", { name: "Travel deeper into your Brain" })).toBeVisible();
 
   await page.getByRole("textbox", { name: "You", exact: true }).fill("Codex");
@@ -101,6 +103,11 @@ test("deepest Brain layer supports graph search and returning to the surface", a
 test("conversation keeps the Brain alive while chat streams", async ({ page }) => {
   const errors = trackPageErrors(page);
   await openBrain(page);
+
+  await expect(page.locator("body")).toContainText("Start with what should not be forgotten.");
+  await page.getByRole("button", { name: /Remember this decision/ }).click();
+  await expect(page.getByPlaceholder("Talk to your Brain...")).toHaveValue("Remember this decision: ");
+  await page.getByPlaceholder("Talk to your Brain...").fill("");
 
   await expect(page.locator("section[aria-label='Care for my Brain']")).toBeVisible();
   await expect(page.getByRole("button", { name: /Export/ })).toHaveCount(0);

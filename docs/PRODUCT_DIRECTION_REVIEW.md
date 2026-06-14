@@ -74,6 +74,9 @@ Gaps corrected in this review:
 4. Improve the early model path until it feels like choosing a voice for the
    Brain rather than configuring inference infrastructure.
 5. Keep graph power available as the deepest layer for advanced inspection.
+6. Keep the product reason visible in the first experience: models are
+   replaceable, but the user's knowledge, decisions, projects, and context are
+   the durable asset.
 
 ## Product Answer
 

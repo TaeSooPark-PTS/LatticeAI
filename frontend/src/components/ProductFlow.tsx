@@ -178,7 +178,11 @@ function LoginScreen({ onSuccess }: { onSuccess: () => void }) {
   return (
     <div>
       <div className="ritual-title">Welcome to your mind.</div>
-      <div className="ritual-subtitle">This is private. Everything stays on your machine. Begin by opening a local profile for your Brain.</div>
+      <div className="ritual-subtitle">
+        Models will change. Your knowledge should not. Lattice keeps your documents, conversations, decisions, and context together as a private Brain you own.
+      </div>
+
+      <ProductPromise />
 
       <form onSubmit={submit} className="ritual-card" style={{ maxWidth: 420, margin: "0 auto" }}>
         <div style={{ display: "grid", gap: "0.85rem" }}>
@@ -202,9 +206,28 @@ function LoginScreen({ onSuccess }: { onSuccess: () => void }) {
           {busy ? "Opening the Brain..." : "Open my Brain"} 
         </Button>
         <div style={{ fontSize: "0.75rem", color: "hsl(var(--fg-muted))", marginTop: "0.6rem" }}>
-          Your first conversation will feel like coming home.
+          Local profile first. Model choice comes later.
         </div>
       </form>
+    </div>
+  );
+}
+
+function ProductPromise() {
+  return (
+    <div className="ritual-promise" aria-label="Lattice AI product promise">
+      <div>
+        <span>Durable knowledge</span>
+        <strong>Your work becomes long-lived context.</strong>
+      </div>
+      <div>
+        <span>Replaceable models</span>
+        <strong>The model is a voice, not the asset.</strong>
+      </div>
+      <div>
+        <span>User ownership</span>
+        <strong>Back up, restore, and move your Brain.</strong>
+      </div>
     </div>
   );
 }
@@ -223,7 +246,7 @@ function AnalysisScreen({
     <div>
       <div className="ritual-title">Understanding your home.</div>
       <div className="ritual-subtitle">
-        We are learning what kind of mind this computer can support. Your Brain will live here — quietly, privately, powerfully.
+        Lattice is checking what this computer can support so your Brain can run locally instead of turning your memories into a cloud dependency.
       </div>
 
       <div className="ritual-fact-grid">
@@ -273,7 +296,7 @@ function RecommendationScreen({
     <div>
       <div className="ritual-title">How shall your mind think today?</div>
       <div className="ritual-subtitle">
-        A short, honest list chosen for the computer you are on right now. Pick the one that feels right.
+        The model is the current voice of your Brain. You can replace it later; your knowledge stays.
       </div>
 
       <div style={{ maxWidth: 560, margin: "0 auto" }}>
@@ -365,7 +388,7 @@ function InstallScreen({
       <div className="ritual-title">Bring this mind home.</div>
       <div className="ritual-subtitle">
         <strong>{model.shortName}</strong> — {model.reason}.<br />
-        We will download (if needed), validate, and load it. Nothing happens without your explicit consent.
+        This gives your Brain a local voice. Download, validation, and loading happen only with your consent.
       </div>
 
       {/* Living Brain reacts to the ceremony of installation */}
