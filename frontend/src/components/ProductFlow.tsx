@@ -78,39 +78,58 @@ export function ProductFlow({ onComplete }: { onComplete: () => void }) {
   }, [analysis, step]);
 
   return (
-    <main className="product-flow-shell" aria-label="Lattice first run">
-      <div className="product-flow-orbit" aria-hidden="true" />
-      {step === "login" ? (
-        <LoginScreen onSuccess={() => setStep("analysis")} />
-      ) : null}
-      {step === "analysis" ? (
-        <AnalysisScreen
-          analysis={analysis}
-          error={analysisError}
-          onContinue={() => setStep("recommend")}
-        />
-      ) : null}
-      {step === "recommend" ? (
-        <RecommendationScreen
-          recommendations={recommendations}
-          onBack={() => setStep("analysis")}
-          onSelect={(model) => {
-            setSelected(model);
-            setStep("install");
-          }}
-        />
-      ) : null}
-      {step === "install" ? (
-        <InstallScreen
-          model={selected || recommendations[0] || fallbackModel()}
-          onBack={() => setStep("recommend")}
-          onComplete={() => {
-            try { localStorage.setItem(FLOW_COMPLETE_KEY, "true"); } catch {}
-            onComplete();
-          }}
-        />
-      ) : null}
-    </main>
+    <div className="ritual-shell" aria-label="Awaken your Brain">
+      <div className="ritual-container">
+        {/* The living presence participates in the ritual at every step */}
+        <div className="ritual-brain">
+          <LivingBrain
+            state={
+              step === "login" ? "idle" :
+              step === "analysis" ? "listening" :
+              step === "recommend" ? "recalling" :
+              "thinking"
+            }
+            intensity={step === "install" ? 0.92 : 0.7}
+            size="large"
+            showLabel={false}
+          />
+        </div>
+
+        {step === "login" && (
+          <LoginScreen onSuccess={() => setStep("analysis")} />
+        )}
+
+        {step === "analysis" && (
+          <AnalysisScreen
+            analysis={analysis}
+            error={analysisError}
+            onContinue={() => setStep("recommend")}
+          />
+        )}
+
+        {step === "recommend" && (
+          <RecommendationScreen
+            recommendations={recommendations}
+            onBack={() => setStep("analysis")}
+            onSelect={(model) => {
+              setSelected(model);
+              setStep("install");
+            }}
+          />
+        )}
+
+        {step === "install" && (
+          <InstallScreen
+            model={selected || recommendations[0] || fallbackModel()}
+            onBack={() => setStep("recommend")}
+            onComplete={() => {
+              try { localStorage.setItem(FLOW_COMPLETE_KEY, "true"); } catch {}
+              onComplete();
+            }}
+          />
+        )}
+      </div>
+    </div>
   );
 }
 
@@ -157,34 +176,36 @@ function LoginScreen({ onSuccess }: { onSuccess: () => void }) {
   }
 
   return (
-    <section className="login-screen" aria-label="Login">
-      <div className="login-mark" aria-hidden="true"><LockKeyhole className="h-5 w-5" /></div>
-      <div className="login-card">
-        <div>
-          <div className="login-kicker">Lattice AI</div>
-          <h1>Enter your Brain.</h1>
-          <p>Your private workspace starts with a local profile.</p>
+    <div>
+      <div className="ritual-title">Welcome to your mind.</div>
+      <div className="ritual-subtitle">This is private. Everything stays on your machine. Begin by opening a local profile for your Brain.</div>
+
+      <form onSubmit={submit} className="ritual-card" style={{ maxWidth: 420, margin: "0 auto" }}>
+        <div style={{ display: "grid", gap: "0.85rem" }}>
+          <div>
+            <div style={{ fontSize: "0.75rem", textTransform: "uppercase", letterSpacing: "1px", color: "hsl(var(--fg-muted))", marginBottom: 4 }}>Your name</div>
+            <Input value={name} onChange={(e) => setName(e.target.value)} placeholder="You" />
+          </div>
+          <div>
+            <div style={{ fontSize: "0.75rem", textTransform: "uppercase", letterSpacing: "1px", color: "hsl(var(--fg-muted))", marginBottom: 4 }}>Email (local only)</div>
+            <Input value={email} onChange={(e) => setEmail(e.target.value)} type="email" placeholder="you@local" />
+          </div>
+          <div>
+            <div style={{ fontSize: "0.75rem", textTransform: "uppercase", letterSpacing: "1px", color: "hsl(var(--fg-muted))", marginBottom: 4 }}>Password</div>
+            <Input value={password} onChange={(e) => setPassword(e.target.value)} type="password" placeholder="Create a strong local password" />
+          </div>
         </div>
-        <form className="login-form" onSubmit={submit}>
-          <label>
-            <span>Name</span>
-            <Input value={name} onChange={(event) => setName(event.target.value)} autoComplete="name" />
-          </label>
-          <label>
-            <span>Email</span>
-            <Input value={email} onChange={(event) => setEmail(event.target.value)} type="email" autoComplete="email" />
-          </label>
-          <label>
-            <span>Password</span>
-            <Input value={password} onChange={(event) => setPassword(event.target.value)} type="password" autoComplete="current-password" placeholder="Use your local password" />
-          </label>
-          {error ? <div className="flow-error">{error}</div> : null}
-          <Button className="login-submit" type="submit" disabled={busy || !email.trim()}>
-            {busy ? "Opening" : "Continue"} <ChevronRight className="h-4 w-4" />
-          </Button>
-        </form>
-      </div>
-    </section>
+
+        {error && <div style={{ marginTop: "0.85rem", padding: "0.6rem 0.85rem", background: "hsl(var(--destructive)/0.12)", border: "1px solid hsl(var(--destructive)/0.4)", borderRadius: 10, fontSize: "0.9rem" }}>{error}</div>}
+
+        <Button type="submit" disabled={busy || !email.trim()} style={{ width: "100%", marginTop: "1rem" }}>
+          {busy ? "Opening the Brain..." : "Open my Brain"} 
+        </Button>
+        <div style={{ fontSize: "0.75rem", color: "hsl(var(--fg-muted))", marginTop: "0.6rem" }}>
+          Your first conversation will feel like coming home.
+        </div>
+      </form>
+    </div>
   );
 }
 
@@ -199,36 +220,42 @@ function AnalysisScreen({
 }) {
   const detected = buildDetectedFacts(analysis);
   return (
-    <section className="flow-panel analysis-screen" aria-label="Environment Analysis">
-      <div className="flow-panel-head">
-        <div>
-          <div className="flow-kicker"><MonitorCog className="h-4 w-4" /> Environment Analysis</div>
-          <h1>Learning what your computer can do.</h1>
-          <p>Lattice checks the essentials, then recommends the best local Brain for this machine.</p>
-        </div>
-        <Badge variant={analysis ? "success" : "muted"}>{analysis ? "complete" : "analyzing"}</Badge>
+    <div>
+      <div className="ritual-title">Understanding your home.</div>
+      <div className="ritual-subtitle">
+        We are learning what kind of mind this computer can support. Your Brain will live here — quietly, privately, powerfully.
       </div>
-      <div className="analysis-grid">
-        {detected.map((item) => (
-          <div key={item.label} className="analysis-fact">
-            <span>{item.label}</span>
-            <strong>{item.value}</strong>
-            <small>{item.detail}</small>
+
+      <div className="ritual-fact-grid">
+        {detected.map((item, idx) => (
+          <div key={idx} className="ritual-fact">
+            <div className="ritual-fact-label">{item.label}</div>
+            <div className="ritual-fact-value">{item.value}</div>
+            <div style={{ fontSize: "0.8rem", color: "hsl(var(--fg-muted))", marginTop: 3 }}>{item.detail}</div>
           </div>
         ))}
       </div>
-      <div className="recommendation-callout">
-        <Sparkles className="h-5 w-5" />
-        <div>
-          <strong>{analysis ? recommendedSummary(analysis) : "Recommendation is being prepared."}</strong>
-          <span>{analysis ? "You will choose from a short, ranked list next." : "This usually takes a moment."}</span>
+
+      <div className="ritual-card" style={{ marginTop: "1rem" }}>
+        <div style={{ display: "flex", alignItems: "center", gap: "0.6rem" }}>
+          <Sparkles style={{ color: "hsl(var(--brain-core))" }} />
+          <div>
+            <div style={{ fontWeight: 620 }}>{analysis ? recommendedSummary(analysis) : "Preparing the best fit..."}</div>
+            <div style={{ fontSize: "0.9rem", color: "hsl(var(--fg-muted))" }}>
+              {analysis ? "A short, personal list of minds is ready for you to choose from." : "Reading your machine. This is gentle."}
+            </div>
+          </div>
         </div>
       </div>
-      {error ? <div className="flow-error">{error}</div> : null}
-      <div className="flow-actions">
-        <Button onClick={onContinue} disabled={!analysis && !error}>See recommended models</Button>
+
+      {error && <div className="ritual-card" style={{ borderColor: "hsl(var(--destructive)/0.4)", background: "hsl(var(--destructive)/0.06)" }}>{error}</div>}
+
+      <div style={{ marginTop: "1.25rem" }}>
+        <Button onClick={onContinue} disabled={!analysis && !error} style={{ minWidth: 260 }}>
+          See how your Brain can think
+        </Button>
       </div>
-    </section>
+    </div>
   );
 }
 
@@ -243,36 +270,34 @@ function RecommendationScreen({
 }) {
   const items = recommendations.length ? recommendations : [fallbackModel()];
   return (
-    <section className="flow-panel recommendation-screen" aria-label="Recommended Models">
-      <div className="flow-panel-head">
-        <div>
-          <div className="flow-kicker"><Cpu className="h-4 w-4" /> Recommended Models</div>
-          <h1>Recommended for your computer.</h1>
-          <p>A short list, ranked for this Mac. No catalog digging required.</p>
-        </div>
+    <div>
+      <div className="ritual-title">How shall your mind think today?</div>
+      <div className="ritual-subtitle">
+        A short, honest list chosen for the computer you are on right now. Pick the one that feels right.
       </div>
-      <div className="model-recommendation-list">
+
+      <div style={{ maxWidth: 560, margin: "0 auto" }}>
         {items.slice(0, 3).map((model, index) => (
           <button
             key={`${model.role}-${model.id}`}
-            className={cn("model-recommendation-card", model.role)}
-            onClick={() => onSelect(model)}
+            className="ritual-model-card"
+            onClick={() => model.supported && onSelect(model)}
             disabled={!model.supported}
+            style={{ width: "100%" }}
           >
-            <span className="model-rank">{rankLabel(model.role, index)}</span>
-            <span>
-              <strong>{model.shortName}</strong>
-              <small>{model.reason}</small>
-            </span>
-            <Badge variant={model.supported ? "success" : "warning"}>{model.supported ? model.size || "ready" : "needs update"}</Badge>
+            <div className="role">{rankLabel(model.role, index)}</div>
+            <div className="name">{model.shortName}</div>
+            <div className="reason">{model.reason} · {model.size || "ready"}</div>
+            {!model.supported && <div style={{ color: "hsl(var(--destructive))", marginTop: 6, fontSize: "0.85rem" }}>Needs attention on this machine</div>}
           </button>
         ))}
       </div>
-      <div className="flow-actions split">
+
+      <div style={{ marginTop: "1.1rem", display: "flex", justifyContent: "center", gap: "1rem", alignItems: "center" }}>
         <Button variant="ghost" onClick={onBack}>Back</Button>
-        <span>Choose one recommendation to continue.</span>
+        <div style={{ fontSize: "0.82rem", color: "hsl(var(--fg-muted))" }}>Your choice becomes the current voice of your Brain.</div>
       </div>
-    </section>
+    </div>
   );
 }
 
@@ -288,7 +313,7 @@ function InstallScreen({
   const [busy, setBusy] = React.useState(false);
   const [stage, setStage] = React.useState<InstallStage>("idle");
   const [percent, setPercent] = React.useState(0);
-  const [message, setMessage] = React.useState("Ready when you are.");
+  const [message, setMessage] = React.useState("Your Brain is waiting for this mind.");
   const [error, setError] = React.useState<string | null>(null);
 
   async function start() {
@@ -329,39 +354,72 @@ function InstallScreen({
     }
   }
 
+  const brainStateForStage: any = 
+    stage === "download" ? "thinking" :
+    stage === "validate" ? "recalling" :
+    stage === "load" ? "synthesizing" :
+    stage === "done" ? "idle" : "listening";
+
   return (
-    <section className="flow-panel install-screen" aria-label="Install and Load">
-      <div className="install-hero">
-        <LivingBrain state={busy ? "thinking" : stage === "done" ? "synthesizing" : "idle"} size="normal" showLabel={false} />
-        <div>
-          <div className="flow-kicker"><Download className="h-4 w-4" /> Install & Load</div>
-          <h1>{model.shortName}</h1>
-          <p>Lattice will install, download, validate, and load the selected Brain.</p>
+    <div>
+      <div className="ritual-title">Bring this mind home.</div>
+      <div className="ritual-subtitle">
+        <strong>{model.shortName}</strong> — {model.reason}.<br />
+        We will download (if needed), validate, and load it. Nothing happens without your explicit consent.
+      </div>
+
+      {/* Living Brain reacts to the ceremony of installation */}
+      <div style={{ margin: "0.6rem auto 1rem" }}>
+        <LivingBrain 
+          state={brainStateForStage} 
+          intensity={stage === "download" || stage === "load" ? 0.96 : 0.82} 
+          size="normal" 
+        />
+      </div>
+
+      <div className="ritual-progress">
+        <div className="ritual-stage-list">
+          {(["install", "download", "validate", "load"] as const).map((item) => (
+            <div key={item} className={`ritual-stage ${installStepState(stage, item)}`}>
+              <CheckCircle2 style={{ width: 15, height: 15 }} />
+              <span>{installLabel(item)}</span>
+            </div>
+          ))}
+        </div>
+
+        <div className="ritual-bar">
+          <span style={{ width: `${Math.max(4, Math.min(100, percent))}%` }} />
         </div>
       </div>
-      <div className="install-steps">
-        {(["install", "download", "validate", "load"] as const).map((item) => (
-          <div key={item} className={cn("install-step", installStepState(stage, item))}>
-            <CheckCircle2 className="h-4 w-4" />
-            <span>{installLabel(item)}</span>
-          </div>
-        ))}
-      </div>
-      <div className="install-progress">
-        <div>
-          <strong>{message}</strong>
-          <span>{stage === "error" ? "We will explain what to try next." : `${Math.round(percent)}%`}</span>
+
+      <div className="ritual-status">{message}</div>
+
+      {error && (
+        <div className="ritual-card" style={{ borderColor: "hsl(var(--destructive)/0.45)", background: "hsl(var(--destructive)/0.07)", marginBottom: "1rem" }}>
+          {error}
+          <div style={{ marginTop: "0.5rem", fontSize: "0.85rem" }}>You can go back and choose a different mind, or try again.</div>
         </div>
-        <div className="install-bar"><span style={{ width: `${Math.max(0, Math.min(100, percent))}%` }} /></div>
+      )}
+
+      <div style={{ display: "flex", gap: "0.75rem", justifyContent: "center", marginTop: "1rem" }}>
+        <Button variant="ghost" onClick={onBack} disabled={busy}>Choose differently</Button>
+
+        {stage !== "done" ? (
+          <Button 
+            onClick={start} 
+            disabled={busy || !model.supported}
+          >
+            {busy ? "Waking the mind..." : "Yes — make this my Brain"}
+          </Button>
+        ) : (
+          <Button onClick={onComplete}>Enter your Brain</Button>
+        )}
       </div>
-      {error ? <div className="flow-error">{error}</div> : null}
-      <div className="flow-actions split">
-        <Button variant="ghost" onClick={onBack} disabled={busy}>Back</Button>
-        <Button onClick={stage === "done" ? onComplete : start} disabled={busy || !model.supported}>
-          {stage === "done" ? "Enter Brain" : busy ? "Loading" : "Install & Load"}
-        </Button>
+
+      <div style={{ fontSize: "0.72rem", color: "hsl(var(--fg-muted))", marginTop: "0.9rem" }}>
+        Explicit consent only. All work happens locally on your machine.
       </div>
-    </section>
+    </div>
   );
 }
 

@@ -1433,6 +1433,185 @@ body {
   .depths { bottom: 0.9rem; }
 }
 
+/* Ritual / Onboarding flow — uses the same living language as the Brain experience */
+.ritual-shell {
+  min-height: 100vh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 2rem 1rem;
+  background: radial-gradient(120% 80% at 50% 15%, hsl(var(--bg-elevated)), hsl(var(--bg)));
+}
+
+.ritual-container {
+  width: min(100%, 720px);
+  text-align: center;
+}
+
+.ritual-brain {
+  margin: 0 auto 1.75rem;
+}
+
+.ritual-title {
+  font-size: clamp(1.85rem, 5vw, 2.85rem);
+  font-weight: 680;
+  letter-spacing: -0.3px;
+  line-height: 1.05;
+  margin-bottom: 0.5rem;
+}
+
+.ritual-subtitle {
+  color: hsl(var(--fg-muted));
+  font-size: 1.02rem;
+  max-width: 44ch;
+  margin: 0 auto 1.5rem;
+}
+
+.ritual-card {
+  background: hsl(var(--surface-glass));
+  border: 1px solid hsl(var(--border) / 0.65);
+  border-radius: 20px;
+  padding: 1.25rem 1.5rem;
+  text-align: left;
+  margin-bottom: 1rem;
+  transition: border-color 180ms ease, transform 180ms ease;
+}
+
+.ritual-card:hover {
+  border-color: hsl(var(--brain-core) / 0.55);
+  transform: translateY(-1px);
+}
+
+.ritual-card.selected {
+  border-color: hsl(var(--brain-core));
+  box-shadow: 0 0 0 1px hsl(var(--brain-core) / 0.25);
+}
+
+.ritual-fact-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+  gap: 0.75rem;
+  margin: 1.25rem 0;
+}
+
+.ritual-fact {
+  background: hsl(var(--bg) / 0.6);
+  border: 1px solid hsl(var(--border) / 0.5);
+  border-radius: 14px;
+  padding: 0.85rem 1rem;
+  text-align: left;
+}
+
+.ritual-fact-label {
+  font-size: 0.72rem;
+  text-transform: uppercase;
+  letter-spacing: 0.8px;
+  color: hsl(var(--fg-muted));
+  margin-bottom: 0.25rem;
+}
+
+.ritual-fact-value {
+  font-size: 1.05rem;
+  font-weight: 620;
+  color: hsl(var(--fg));
+}
+
+.ritual-model-card {
+  text-align: left;
+  padding: 1.15rem 1.35rem;
+  margin-bottom: 0.7rem;
+  cursor: pointer;
+  border: 1px solid hsl(var(--border) / 0.6);
+  border-radius: 18px;
+  background: hsl(var(--surface));
+  transition: all 160ms ease;
+}
+
+.ritual-model-card:hover {
+  border-color: hsl(var(--brain-core) / 0.5);
+  background: hsl(var(--surface) / 0.95);
+}
+
+.ritual-model-card .role {
+  font-size: 0.7rem;
+  letter-spacing: 1px;
+  text-transform: uppercase;
+  color: hsl(var(--brain-core));
+  margin-bottom: 0.3rem;
+}
+
+.ritual-model-card .name {
+  font-size: 1.25rem;
+  font-weight: 650;
+}
+
+.ritual-model-card .reason {
+  font-size: 0.92rem;
+  color: hsl(var(--fg-muted));
+  margin-top: 0.25rem;
+}
+
+.ritual-progress {
+  margin: 1.5rem 0;
+}
+
+.ritual-stage-list {
+  display: flex;
+  flex-direction: column;
+  gap: 0.4rem;
+  margin: 1rem 0;
+  text-align: left;
+  font-size: 0.95rem;
+}
+
+.ritual-stage {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  padding: 0.35rem 0.7rem;
+  border-radius: 10px;
+  color: hsl(var(--fg-muted));
+}
+
+.ritual-stage.is-active {
+  color: hsl(var(--fg));
+  background: hsl(var(--brain-core) / 0.08);
+}
+
+.ritual-stage.is-done {
+  color: hsl(var(--fg));
+}
+
+.ritual-bar {
+  height: 6px;
+  background: hsl(var(--border) / 0.6);
+  border-radius: 999px;
+  overflow: hidden;
+  margin-top: 0.6rem;
+}
+
+.ritual-bar > span {
+  display: block;
+  height: 100%;
+  background: linear-gradient(90deg, hsl(var(--brain-core)), hsl(var(--memory)));
+  transition: width 280ms ease;
+}
+
+.ritual-status {
+  font-size: 0.95rem;
+  color: hsl(var(--fg-muted));
+  margin: 0.8rem 0;
+}
+
+.ritual-success {
+  text-align: center;
+  padding: 1.5rem;
+}
+
+.ritual-success .brain {
+  margin-bottom: 1rem;
+}
+
 .drawer-panel .primary-dock {
   display: grid;
   align-items: stretch;
