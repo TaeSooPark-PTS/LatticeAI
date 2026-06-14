@@ -2309,8 +2309,22 @@ class WorkspaceOSStore:
     # Marketplace template registry (v2.1 foundation)
     # ------------------------------------------------------------------
 
-    def list_template_registry(self) -> Dict[str, Any]:
-        return dict(self.load_state().get("template_registry") or {})
+    @staticmethod
+    def _template_registry_key(kind: str, template_id: str, workspace_id: str) -> str:
+        base = f"{kind}:{template_id}"
+        return base if workspace_id == DEFAULT_WORKSPACE_ID else f"{workspace_id}:{base}"
+
+    def list_template_registry(self, workspace_id: Optional[str] = None) -> Dict[str, Any]:
+        state = self.load_state()
+        registry = dict(state.get("template_registry") or {})
+        if workspace_id is None:
+            return registry
+        scope = self._resolve_scope(workspace_id, state)
+        return {
+            key: value
+            for key, value in registry.items()
+            if self._record_workspace(value) == scope
+        }
 
     def mark_template_installed(
         self,
@@ -2323,7 +2337,7 @@ class WorkspaceOSStore:
     ) -> Dict[str, Any]:
         state = self.load_state()
         scope = self._resolve_scope(workspace_id, state)
-        key = f"{kind}:{template_id}"
+        key = self._template_registry_key(kind, template_id, scope)
         entry = state.setdefault("template_registry", {}).setdefault(key, {"id": template_id, "kind": kind})
         entry.update({
             "id": template_id,

@@ -23,6 +23,7 @@ verification transparency until load readiness is confirmed.
 | **User-facing catalog filtering** | WORKING | `latticeai/services/model_catalog.py` keeps raw registry entries for transparency and finalizes `ENGINE_MODEL_CATALOG` to current load-ready families to reduce catalog noise. |
 | **Model recommendation metadata** | WORKING | `/models` and `/models/recommendations` expose verification, hardware, modality, load strategy, license, safety notes, and recommended_default. `latticeai/api/models.py`, `latticeai/services/model_recommendation.py`. |
 | **Library model UI** | WORKING | `frontend/src/pages/Library.tsx` renders multimodal and HF badges, hardware notes, load strategies, and consent-first setup copy without breaking TypeScript strict checks. |
+| **Marketplace template workspace scoping** | WORKING | Template install registry entries are keyed per workspace and `/marketplace/templates/registry` filters through the authorized workspace scope. `latticeai/core/workspace_os.py`, `latticeai/api/marketplace.py`, `tests/unit/test_agent_platform_maturity.py`. |
 | **Package/runtime version sync** | WORKING | Python, npm, VS Code extension, Tauri, runtime constants, lock files, and release artifacts are synchronized to `5.2.0`. |
 | **Artifact exactness** | WORKING | `npm run release:validate` expects exact v5.2.0 wheel, sdist, npm tgz, VSIX, and Tauri DMG filenames and warns against `dist/*`. |
 

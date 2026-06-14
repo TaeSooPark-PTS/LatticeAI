@@ -107,6 +107,24 @@ def test_marketplace_template_export_import_and_install(tmp_path: Path):
     assert store.list_template_registry()["workflow:workflow-agent-plugin-review"]["installed"] is True
 
 
+def test_marketplace_template_registry_is_workspace_scoped(tmp_path: Path):
+    store = WorkspaceOSStore(tmp_path)
+    catalog = TemplateCatalog()
+    exported = catalog.export_template("workflow", "workflow-agent-plugin-review")
+    org = store.create_organization_workspace(name="Acme", owner_user_id="owner@example.com")
+    org_id = org["workspace_id"]
+
+    personal = catalog.install_template(exported, store=store, user_email="user@example.com", workspace_id="personal")
+    org_install = catalog.install_template(exported, store=store, user_email="owner@example.com", workspace_id=org_id)
+
+    assert personal["registry"]["workspace_id"] == "personal"
+    assert org_install["registry"]["workspace_id"] == org_id
+    assert "workflow:workflow-agent-plugin-review" in store.list_template_registry(workspace_id="personal")
+    assert f"{org_id}:workflow:workflow-agent-plugin-review" in store.list_template_registry(workspace_id=org_id)
+    assert f"{org_id}:workflow:workflow-agent-plugin-review" not in store.list_template_registry(workspace_id="personal")
+    assert "workflow:workflow-agent-plugin-review" not in store.list_template_registry(workspace_id=org_id)
+
+
 def test_execution_events_flow_to_realtime_feed(tmp_path: Path):
     events = []
     store = WorkspaceOSStore(tmp_path, event_sink=lambda event: events.append(event))

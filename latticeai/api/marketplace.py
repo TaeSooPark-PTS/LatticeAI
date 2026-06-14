@@ -88,7 +88,7 @@ def create_marketplace_router(
     @router.get("/marketplace/templates/registry")
     async def template_registry(request: Request):
         require_user(request)
-        gate_read(request)
-        return {"registry": store.list_template_registry()}
+        scope = gate_read(request)
+        return {"registry": store.list_template_registry(workspace_id=scope)}
 
     return router
