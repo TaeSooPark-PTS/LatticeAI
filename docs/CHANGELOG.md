@@ -19,6 +19,9 @@ historical and may describe behavior as it existed at that release.
   experience, surfacing local-first/private/portable guarantees plus existing
   export, backup, encrypted archive, inspect, and restore dry-run actions
   without making the Knowledge Graph the product center.
+- Refined the Brain home so conversation remains the primary surface and the
+  "Care for my Brain" ownership controls open only when requested, with action
+  results now reflecting the last completed ownership action.
 - Bumped synchronized package/runtime/static versions to `4.6.1`, including
   Python metadata, npm package metadata, VSIX metadata, Tauri metadata,
   `latticeai`, `lattice_brain`, runtime constants, and static asset metadata.

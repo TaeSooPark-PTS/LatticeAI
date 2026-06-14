@@ -1,6 +1,6 @@
 import * as React from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { Archive, DatabaseBackup, Download, Eye, ImagePlus, RotateCcw, Search, Send, ShieldCheck } from "lucide-react";
+import { Archive, ChevronDown, DatabaseBackup, Download, Eye, ImagePlus, RotateCcw, Search, Send, ShieldCheck } from "lucide-react";
 import { latticeApi, type ApiResult } from "@/api/client";
 import { Button } from "@/components/ui/button";
 import { type BrainState, LivingBrain, triggerBrainRecall } from "@/components/LivingBrain";
@@ -282,8 +282,6 @@ function BrainHome({
           <div>{modelName}</div>
         </div>
 
-        <BrainCarePanel />
-
         <div ref={streamRef} className="brain-stream">
           {messages.length === 0 ? (
             <div className="mind-empty">
@@ -298,6 +296,8 @@ function BrainHome({
             ))
           )}
         </div>
+
+        <BrainCarePanel />
 
         <div className="brain-composer">
           <textarea
@@ -338,118 +338,131 @@ function BrainHome({
 
 function BrainCarePanel() {
   const qc = useQueryClient();
+  const [expanded, setExpanded] = React.useState(false);
   const [archivePath, setArchivePath] = React.useState("");
   const [passphrase, setPassphrase] = React.useState("");
+  const [latestResult, setLatestResult] = React.useState<ApiResult | null>(null);
   const portabilityQ = useQuery({ queryKey: ["portability"], queryFn: latticeApi.graphPortability });
   const backupHealthQ = useQuery({ queryKey: ["backupHealth"], queryFn: latticeApi.backupHealth });
+  const rememberResult = React.useCallback((result: ApiResult) => setLatestResult(result), []);
 
-  const exportGraph = useCareMutation(() => latticeApi.graphExport());
+  const exportGraph = useCareMutation(() => latticeApi.graphExport(), undefined, rememberResult);
   const backupGraph = useCareMutation(() => latticeApi.graphBackup(), () => {
     void qc.invalidateQueries({ queryKey: ["backupHealth"] });
     void qc.invalidateQueries({ queryKey: ["portability"] });
-  });
+  }, rememberResult);
   const archiveBrain = useCareMutation(
     () => latticeApi.brainArchive({ path: archivePath.trim() || null, passphrase }),
     () => void qc.invalidateQueries({ queryKey: ["backupHealth"] }),
+    rememberResult,
   );
   const inspectArchive = useCareMutation(() => latticeApi.brainArchiveInspect({
     path: archivePath.trim(),
     passphrase: passphrase || null,
-  }));
+  }), undefined, rememberResult);
   const restorePreview = useCareMutation(() => latticeApi.brainArchiveRestore({
     path: archivePath.trim(),
     passphrase,
     dry_run: true,
     confirm: false,
-  }));
+  }), undefined, rememberResult);
 
-  const latestResult = [restorePreview.data, inspectArchive.data, archiveBrain.data, backupGraph.data, exportGraph.data]
-    .find(Boolean);
   const portableFormat = portabilityLabel(portabilityQ.data?.data);
   const backupStatus = backupHealthLabel(backupHealthQ.data?.data);
 
   return (
-    <section className="brain-care-panel" aria-label="Care for my Brain">
-      <div className="brain-care-head">
-        <div>
+    <section className={`brain-care-panel ${expanded ? "is-expanded" : "is-collapsed"}`} aria-label="Care for my Brain">
+      <button
+        className="brain-care-summary"
+        type="button"
+        aria-expanded={expanded}
+        aria-controls="brain-care-details"
+        onClick={() => setExpanded((value) => !value)}
+      >
+        <span className="brain-care-summary-main">
           <span><ShieldCheck className="h-3.5 w-3.5" /> Care for my Brain</span>
           <strong>Own it locally. Keep it portable.</strong>
-        </div>
+        </span>
         <div className="brain-care-proof" aria-label="Ownership model">
           <span>Private</span>
           <span>{portableFormat}</span>
           <span>{backupStatus}</span>
         </div>
-      </div>
+        <ChevronDown className="brain-care-toggle h-4 w-4" aria-hidden="true" />
+      </button>
 
-      <div className="brain-care-actions">
-        <CareButton
-          icon={<Download className="h-3.5 w-3.5" />}
-          label="Export"
-          detail="Readable graph"
-          pending={exportGraph.isPending}
-          onClick={() => exportGraph.mutate()}
-        />
-        <CareButton
-          icon={<DatabaseBackup className="h-3.5 w-3.5" />}
-          label="Backup"
-          detail="Local backup"
-          pending={backupGraph.isPending}
-          onClick={() => backupGraph.mutate()}
-        />
-        <CareButton
-          icon={<Archive className="h-3.5 w-3.5" />}
-          label="Archive"
-          detail=".latticebrain"
-          pending={archiveBrain.isPending}
-          disabled={!passphrase.trim()}
-          onClick={() => archiveBrain.mutate()}
-        />
-      </div>
+      {expanded ? (
+        <div id="brain-care-details" className="brain-care-details">
+          <div className="brain-care-actions">
+            <CareButton
+              icon={<Download className="h-3.5 w-3.5" />}
+              label="Export"
+              detail="Take it with you"
+              pending={exportGraph.isPending}
+              onClick={() => exportGraph.mutate()}
+            />
+            <CareButton
+              icon={<DatabaseBackup className="h-3.5 w-3.5" />}
+              label="Backup"
+              detail="Save a copy"
+              pending={backupGraph.isPending}
+              onClick={() => backupGraph.mutate()}
+            />
+            <CareButton
+              icon={<Archive className="h-3.5 w-3.5" />}
+              label="Archive"
+              detail="Encrypted Brain"
+              pending={archiveBrain.isPending}
+              disabled={!passphrase.trim()}
+              onClick={() => archiveBrain.mutate()}
+            />
+          </div>
 
-      <div className="brain-care-archive">
-        <input
-          value={archivePath}
-          onChange={(event) => setArchivePath(event.target.value)}
-          placeholder="Archive path for inspect or restore preview"
-          aria-label="Brain archive path"
-        />
-        <input
-          type="password"
-          value={passphrase}
-          onChange={(event) => setPassphrase(event.target.value)}
-          placeholder="Archive passphrase"
-          aria-label="Brain archive passphrase"
-        />
-        <div className="brain-care-archive-actions">
-          <Button
-            variant="outline"
-            size="sm"
-            disabled={!archivePath.trim() || inspectArchive.isPending}
-            onClick={() => inspectArchive.mutate()}
-          >
-            <Eye className="h-3.5 w-3.5" /> Inspect
-          </Button>
-          <Button
-            variant="outline"
-            size="sm"
-            disabled={!archivePath.trim() || !passphrase.trim() || restorePreview.isPending}
-            onClick={() => restorePreview.mutate()}
-          >
-            <RotateCcw className="h-3.5 w-3.5" /> Restore preview
-          </Button>
+          <div className="brain-care-archive">
+            <input
+              value={archivePath}
+              onChange={(event) => setArchivePath(event.target.value)}
+              placeholder="Paste an archive path to inspect or preview"
+              aria-label="Brain archive path"
+            />
+            <input
+              type="password"
+              value={passphrase}
+              onChange={(event) => setPassphrase(event.target.value)}
+              placeholder="Archive passphrase"
+              aria-label="Brain archive passphrase"
+            />
+            <div className="brain-care-archive-actions">
+              <Button
+                variant="outline"
+                size="sm"
+                disabled={!archivePath.trim() || inspectArchive.isPending}
+                onClick={() => inspectArchive.mutate()}
+              >
+                <Eye className="h-3.5 w-3.5" /> Inspect
+              </Button>
+              <Button
+                variant="outline"
+                size="sm"
+                disabled={!archivePath.trim() || !passphrase.trim() || restorePreview.isPending}
+                onClick={() => restorePreview.mutate()}
+              >
+                <RotateCcw className="h-3.5 w-3.5" /> Restore preview
+              </Button>
+            </div>
+          </div>
+
+          {latestResult ? (
+            <div className={`brain-care-result ${latestResult.ok ? "is-ok" : "is-error"}`} role="status">
+              {summarizeCareResult(latestResult)}
+            </div>
+          ) : (
+            <p className="brain-care-note">
+              Restore preview checks an archive without changing your Brain. Confirmed restore stays in Settings.
+            </p>
+          )}
         </div>
-      </div>
-
-      {latestResult ? (
-        <div className={`brain-care-result ${latestResult.ok ? "is-ok" : "is-error"}`} role="status">
-          {summarizeCareResult(latestResult)}
-        </div>
-      ) : (
-        <p className="brain-care-note">
-          Restore is surfaced as a dry-run preview here; confirmed restore stays in Settings.
-        </p>
-      )}
+      ) : null}
     </section>
   );
 }
@@ -457,10 +470,14 @@ function BrainCarePanel() {
 function useCareMutation<T extends ApiResult>(
   mutationFn: () => Promise<T>,
   onSuccess?: () => void,
+  onResult?: (result: T) => void,
 ) {
   return useMutation({
     mutationFn,
-    onSuccess,
+    onSuccess: (result) => {
+      onResult?.(result);
+      onSuccess?.();
+    },
   });
 }
 

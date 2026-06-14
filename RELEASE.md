@@ -22,6 +22,10 @@ runtime, graph APIs, and portability capabilities는 재설계하지 않는다.
 - **Changed (Brain depths evidence)**: screenshots/GIF cover Living Brain,
   Memory Layer, Knowledge Layer, Relationship Layer, and Knowledge Graph with
   nodes, edges, search, and focus details.
+- **Changed (Brain ownership UX)**: Brain ownership controls remain available
+  from the Brain home, but conversation stays first; export, backup, archive,
+  inspect, and restore preview now live behind a collapsed "Care for my Brain"
+  control.
 - **Changed (Architecture/docs sync)**: ARCHITECTURE.md, release notes,
   changelog, security posture, feature status, and VS Code extension docs are
   synchronized to v4.6.1.

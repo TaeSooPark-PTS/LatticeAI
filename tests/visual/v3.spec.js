@@ -102,7 +102,9 @@ test("conversation keeps the Brain alive while chat streams", async ({ page }) =
   const errors = trackPageErrors(page);
   await openBrain(page);
 
-  await expect(page.getByLabel("Care for my Brain")).toBeVisible();
+  await expect(page.locator("section[aria-label='Care for my Brain']")).toBeVisible();
+  await expect(page.getByRole("button", { name: /Export/ })).toHaveCount(0);
+  await page.getByRole("button", { name: /Care for my Brain/ }).click();
   await expect(page.getByRole("button", { name: /Export/ })).toBeVisible();
   await expect(page.getByRole("button", { name: /Backup/ })).toBeVisible();
   await expect(page.getByRole("button", { name: /Restore preview/ })).toBeVisible();

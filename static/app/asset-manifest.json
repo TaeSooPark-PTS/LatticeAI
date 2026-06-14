@@ -6,8 +6,8 @@
   },
   "assets": {
     "../node_modules/@tauri-apps/api/core.js": "/static/app/assets/core-CwxXejkd.js",
-    "index.html": "/static/app/assets/index-jYRer6qU.js",
-    "assets/index-CyzV3gz6.css": "/static/app/assets/index-CyzV3gz6.css"
+    "index.html": "/static/app/assets/index-DuYqIKGc.js",
+    "assets/index-B2sM7AFz.css": "/static/app/assets/index-B2sM7AFz.css"
   },
   "vite": {
     "../node_modules/@tauri-apps/api/core.js": {
@@ -17,7 +17,7 @@
       "isDynamicEntry": true
     },
     "index.html": {
-      "file": "assets/index-jYRer6qU.js",
+      "file": "assets/index-DuYqIKGc.js",
       "name": "index",
       "src": "index.html",
       "isEntry": true,
@@ -25,7 +25,7 @@
         "../node_modules/@tauri-apps/api/core.js"
       ],
       "css": [
-        "assets/index-CyzV3gz6.css"
+        "assets/index-B2sM7AFz.css"
       ]
     }
   }
