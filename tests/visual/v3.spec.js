@@ -123,6 +123,26 @@ test("conversation keeps the Brain alive while chat streams", async ({ page }) =
   expect(errors).toEqual([]);
 });
 
+test("admin console is separated from the user Brain surface", async ({ page }) => {
+  const errors = trackPageErrors(page);
+  await openBrain(page);
+
+  await expect(page.locator("main[aria-label='Lattice Brain']")).toBeVisible();
+  await expect(page.locator("main[aria-label='Lattice Admin']")).toHaveCount(0);
+
+  await page.getByRole("button", { name: "Admin" }).click();
+  await expect(page).toHaveURL(/#\/admin$/);
+  await expect(page.locator("main[aria-label='Lattice Admin']")).toBeVisible();
+  await expect(page.locator("body")).toContainText("Admin Console");
+  await expect(page.locator("body")).toContainText("Activity Logs");
+  await expect(page.locator("body")).toContainText("Security Events");
+
+  await page.getByRole("button", { name: "Brain" }).click();
+  await expect(page.locator("main[aria-label='Lattice Brain']")).toBeVisible();
+  await expect(page.locator("main[aria-label='Lattice Admin']")).toHaveCount(0);
+  expect(errors).toEqual([]);
+});
+
 test("mobile Brain surface has no horizontal overflow", async ({ page }) => {
   const errors = trackPageErrors(page);
   await page.setViewportSize({ width: 390, height: 780 });

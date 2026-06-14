@@ -1,7 +1,36 @@
 # Release Notes
 
-The current release target is v4.6.1. Older sections are historical
+The current release target is v4.7.0. Older sections are historical
 release notes and should not be read as newer product claims.
+
+## v4.7.0 - Admin Separation Release
+
+Lattice AI v4.7.0 keeps the user experience centered on the Living Brain while
+moving operational work into a separate Admin Console. Users get a simpler Brain
+home; administrators get users, logs, security events, policies, and Brain
+index operations without crowding the conversation surface.
+
+### Highlights
+
+- Added a dedicated `#/admin` console separate from the normal `/app` Brain
+  surface.
+- Grouped user directory, audit logs, security events, policy status, and Brain
+  index rebuild controls into the admin area.
+- Added frontend API helpers for `/admin/stats` and `/admin/security/events`.
+- Refreshed visual validation and release evidence for the separated admin
+  experience.
+- Bumped synchronized Python, npm, VSIX, Tauri, runtime, and static metadata to
+  `4.7.0`.
+
+### Expected Artifacts
+
+- `dist/ltcai-4.7.0-py3-none-any.whl`
+- `dist/ltcai-4.7.0.tar.gz`
+- `dist/ltcai-4.7.0.vsix`
+- `ltcai-4.7.0.tgz`
+- `src-tauri/target/release/bundle/dmg/Lattice AI_4.7.0_aarch64.dmg`
+
+Full notes: [RELEASE_NOTES_v4.7.0.md](RELEASE_NOTES_v4.7.0.md)
 
 ## v4.6.1 - Living Brain Release Refresh
 

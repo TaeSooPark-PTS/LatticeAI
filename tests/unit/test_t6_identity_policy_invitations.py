@@ -89,6 +89,7 @@ def test_policy_matrix_is_the_admin_roles_source():
         save_users=lambda _users: None,
         get_user_role=lambda email, all_users=None: (all_users or users).get(email, {}).get("role", "user"),
         get_history=lambda: [],
+        get_audit_log=lambda: [],
         public_user=lambda email, user, _users: {"email": email, "role": user.get("role", "user")},
         load_vpc_config=lambda: {},
         save_vpc_config=lambda _config: None,
@@ -110,6 +111,55 @@ def test_policy_matrix_is_the_admin_roles_source():
     assert "admin:users" in by_role["admin"]["caps"]
     assert "workspace:read" in by_role["viewer"]["caps"]
     assert by_role["member"]["members"] == 1
+
+
+def test_admin_history_and_audit_are_workspace_scoped():
+    users = {"admin@example.com": {"role": "admin"}}
+    history = [
+        {"role": "user", "content": "personal", "timestamp": "2026-06-01T00:00:00", "workspace_id": "personal"},
+        {"role": "user", "content": "org", "timestamp": "2026-06-01T00:01:00", "workspace_id": "org-a"},
+        {"role": "assistant", "content": "legacy", "timestamp": "2026-06-01T00:02:00"},
+    ]
+    audit = [
+        {"event_type": "chat_message", "role": "user", "timestamp": "2026-06-01T00:00:00", "workspace_id": "personal"},
+        {"event_type": "chat_message", "role": "user", "timestamp": "2026-06-01T00:01:00", "workspace_id": "org-a"},
+    ]
+
+    def require_admin(_request: Request):
+        return "admin@example.com", users
+
+    app = FastAPI()
+    app.include_router(create_admin_router(
+        require_admin=require_admin,
+        require_user=lambda _request: "admin@example.com",
+        load_users=lambda: users,
+        save_users=lambda _users: None,
+        get_user_role=lambda email, all_users=None: (all_users or users).get(email, {}).get("role", "user"),
+        get_history=lambda: history,
+        get_audit_log=lambda: audit,
+        public_user=lambda email, user, _users: {"email": email, "role": user.get("role", "user")},
+        load_vpc_config=lambda: {},
+        save_vpc_config=lambda _config: None,
+        build_admin_audit_report=lambda _users, events=None: {"recent_events": list(events or [])},
+        build_sensitivity_report=lambda scoped_history: {"total": len(scoped_history), "items": scoped_history},
+        append_audit_event=lambda *_args, **_kwargs: None,
+        public_sso_config=lambda *_args, **_kwargs: {},
+        save_sso_config=lambda _update: {},
+        get_graph_stats=lambda: {},
+        enable_graph=False,
+        invite_code="invite",
+        invite_gate_enabled=False,
+        default_port=3000,
+    ))
+
+    client = TestClient(app)
+    org_summary = client.get("/admin/summary", headers={"X-Workspace-Id": "org-a"}).json()
+    personal_summary = client.get("/admin/summary", headers={"X-Workspace-Id": "personal"}).json()
+    org_audit = client.get("/admin/audit", headers={"X-Workspace-Id": "org-a"}).json()
+
+    assert org_summary["total_messages"] == 1
+    assert personal_summary["total_messages"] == 2  # personal plus legacy-global compatibility
+    assert org_audit["recent_events"] == [audit[1]]
 
 
 def test_invitation_create_accept_and_expire(tmp_path: Path):

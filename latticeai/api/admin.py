@@ -7,6 +7,8 @@ from typing import Callable, Dict, List, Optional
 from fastapi import APIRouter, HTTPException, Request
 from pydantic import BaseModel
 
+from latticeai.core.workspace_os import DEFAULT_WORKSPACE_ID
+
 
 class AdminUserUpdate(BaseModel):
     role: Optional[str] = None
@@ -42,6 +44,7 @@ def create_admin_router(
     save_users: Callable,
     get_user_role: Callable,
     get_history: Callable,
+    get_audit_log: Callable,
     public_user: Callable,
     load_vpc_config: Callable,
     save_vpc_config: Callable,
@@ -60,10 +63,33 @@ def create_admin_router(
 ) -> APIRouter:
     router = APIRouter()
 
+    def _workspace_scope(request: Request) -> Optional[str]:
+        header = request.headers.get("X-Workspace-Id")
+        if header and header.strip():
+            return header.strip()
+        query = request.query_params.get("workspace_id")
+        return query.strip() if query and query.strip() else None
+
+    def _matches_scope(item: Dict[str, object], workspace_id: Optional[str]) -> bool:
+        if not workspace_id:
+            return True
+        item_scope = item.get("workspace_id")
+        if not item_scope and workspace_id == DEFAULT_WORKSPACE_ID:
+            return True
+        return str(item_scope or "") == str(workspace_id)
+
+    def _scoped_history(request: Request) -> List[Dict]:
+        scope = _workspace_scope(request)
+        return [item for item in get_history() if _matches_scope(item, scope)]
+
+    def _scoped_audit_log(request: Request) -> List[Dict]:
+        scope = _workspace_scope(request)
+        return [item for item in get_audit_log() if _matches_scope(item, scope)]
+
     @router.get("/admin/summary")
     async def admin_summary(request: Request):
         _, users = require_admin(request)
-        history = get_history()
+        history = _scoped_history(request)
         user_msgs = [i for i in history if i.get("role") == "user"]
         asst_msgs = [i for i in history if i.get("role") == "assistant"]
         return {
@@ -79,7 +105,7 @@ def create_admin_router(
     @router.get("/admin/stats")
     async def admin_stats(request: Request):
         require_admin(request)
-        history = get_history()
+        history = _scoped_history(request)
         daily: dict = defaultdict(lambda: {"user": 0, "assistant": 0})
         for item in history:
             ts = item.get("timestamp", "")
@@ -98,12 +124,12 @@ def create_admin_router(
     @router.get("/admin/sensitivity")
     async def admin_sensitivity(request: Request):
         require_admin(request)
-        return build_sensitivity_report(get_history())
+        return build_sensitivity_report(_scoped_history(request))
 
     @router.get("/admin/audit")
     async def admin_audit(request: Request):
         _, users = require_admin(request)
-        report = build_admin_audit_report(users)
+        report = build_admin_audit_report(users, _scoped_audit_log(request))
         try:
             report["graph"] = get_graph_stats() if enable_graph else {"disabled": True}
         except Exception as e:

@@ -1,9 +1,9 @@
-# Lattice AI v4.6.1 Architecture
+# Lattice AI v4.7.0 Architecture
 
-This document describes the current v4.6.1 Living Brain release refresh. v4.6.1
-does not redesign the backend architecture; it makes `4.6.1` the publishable
-release line after the v4.6.0 PyPI immutability block and synchronizes the
-Living Brain product evidence, release notes, and artifact names.
+This document describes the current v4.7.0 Admin Separation Release. v4.7.0
+does not redesign Brain Core or storage; it keeps the user experience centered
+on Brain plus conversation while moving users, logs, security events, policies,
+and Brain operations into a dedicated Admin Console.
 
 ## System Map
 
@@ -38,6 +38,7 @@ flowchart TD
   Recommend --> Consent["Explicit Install / Download Consent"]
   Consent --> Prepare["Install -> Download -> Validate -> Load"]
   Prepare --> BrainChat["Brain Chat Home"]
+  BrainChat -. operator path .-> Admin["Separate Admin Console"]
   BrainChat --> Depth1["Level 1: Living Brain"]
   Depth1 --> Depth2["Level 2: Memory Layer"]
   Depth2 --> Depth3["Level 3: Knowledge Layer"]
@@ -48,6 +49,10 @@ flowchart TD
 The graph is an implementation and exploration layer. It emerges from the Brain
 after the user travels through memory, knowledge, and relationships; it is not
 the first screen or a dashboard replacement.
+
+The Admin Console is also separate from the normal user flow. Operators reach it
+through `#/admin`; everyday users stay in the Brain surface unless they choose
+to open admin controls.
 
 ## Tauri Shell
 
@@ -245,18 +250,18 @@ explicit opt-in paths.
 
 ```mermaid
 flowchart TB
-  Source["Source Tree v4.6.1"] --> FrontendBuild["Vite Frontend Build"]
+  Source["Source Tree v4.7.0"] --> FrontendBuild["Vite Frontend Build"]
   Source --> PythonBuild["Python Build"]
   Source --> NpmPack["npm pack"]
   Source --> VsixBuild["VSIX Package"]
   Source --> TauriBuild["Tauri Build"]
 
   FrontendBuild --> StaticAssets["static/app Assets"]
-  PythonBuild --> Wheel["dist/ltcai-4.6.1-py3-none-any.whl"]
-  PythonBuild --> Sdist["dist/ltcai-4.6.1.tar.gz"]
-  NpmPack --> Tgz["ltcai-4.6.1.tgz"]
-  VsixBuild --> Vsix["dist/ltcai-4.6.1.vsix"]
-  TauriBuild --> Dmg["src-tauri/target/release/bundle/dmg/Lattice AI_4.6.1_aarch64.dmg"]
+  PythonBuild --> Wheel["dist/ltcai-4.7.0-py3-none-any.whl"]
+  PythonBuild --> Sdist["dist/ltcai-4.7.0.tar.gz"]
+  NpmPack --> Tgz["ltcai-4.7.0.tgz"]
+  VsixBuild --> Vsix["dist/ltcai-4.7.0.vsix"]
+  TauriBuild --> Dmg["src-tauri/target/release/bundle/dmg/Lattice AI_4.7.0_aarch64.dmg"]
   StaticAssets --> Wheel
   StaticAssets --> Tgz
   StaticAssets --> Dmg
@@ -266,8 +271,8 @@ Release uploads must use exact filenames. Do not upload `dist/*`.
 
 ## Known Limitations
 
-- v4.6.1 is a release refresh and publishable version bump, not a backend
-  redesign.
+- v4.7.0 separates admin operations from the user Brain surface without a
+  backend redesign.
 - External registries can lag behind the GitHub Release because package-store
   publishing is owner-controlled.
 - PostgreSQL/pgvector is opt-in scale mode; SQLite is the default.
@@ -276,4 +281,4 @@ Release uploads must use exact filenames. Do not upload `dist/*`.
 - Model-free states are reported honestly. The UI should not fabricate answers
   when no model is loaded.
 - Historical reports under `docs/` preserve older release behavior and should
-  not be rewritten as v4.6.1 claims.
+  not be rewritten as v4.7.0 claims.

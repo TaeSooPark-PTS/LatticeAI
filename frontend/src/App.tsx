@@ -1,6 +1,21 @@
 import * as React from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { Archive, ChevronDown, DatabaseBackup, Download, Eye, ImagePlus, RotateCcw, Search, Send, ShieldCheck } from "lucide-react";
+import {
+  Activity,
+  Archive,
+  ArrowLeft,
+  ChevronDown,
+  DatabaseBackup,
+  Download,
+  Eye,
+  ImagePlus,
+  RotateCcw,
+  Search,
+  Send,
+  ServerCog,
+  ShieldCheck,
+  Users,
+} from "lucide-react";
 import { latticeApi, type ApiResult } from "@/api/client";
 import { Button } from "@/components/ui/button";
 import { type BrainState, LivingBrain, triggerBrainRecall } from "@/components/LivingBrain";
@@ -60,6 +75,7 @@ const STARTER_PROMPTS = [
 export default function App() {
   const theme = useAppStore((state) => state.theme);
   const [flowComplete, setFlowComplete] = React.useState(readProductFlowComplete);
+  const route = useHashRoute();
   const { state: brainState, intensity, setBrain } = useBrainState();
 
   React.useEffect(() => {
@@ -84,9 +100,33 @@ export default function App() {
   return (
     <div className="brain-space">
       <div className="brain-field" />
-      <BrainHome brainState={brainState} intensity={intensity} onBrainChange={setBrain} />
+      {route.startsWith("/admin") ? (
+        <AdminConsole onBack={() => navigateHash("/brain")} />
+      ) : (
+        <BrainHome brainState={brainState} intensity={intensity} onBrainChange={setBrain} />
+      )}
     </div>
   );
+}
+
+function useHashRoute() {
+  const read = React.useCallback(() => {
+    const hash = window.location.hash.replace(/^#/, "");
+    return hash.startsWith("/") ? hash : "/brain";
+  }, []);
+  const [route, setRoute] = React.useState(read);
+
+  React.useEffect(() => {
+    const onHashChange = () => setRoute(read());
+    window.addEventListener("hashchange", onHashChange);
+    return () => window.removeEventListener("hashchange", onHashChange);
+  }, [read]);
+
+  return route;
+}
+
+function navigateHash(route: string) {
+  window.location.hash = route;
 }
 
 function useBrainState() {
@@ -286,6 +326,10 @@ function BrainHome({
             <span>Private</span>
           </div>
           <div>{modelName}</div>
+          <button className="brain-admin-link" type="button" onClick={() => navigateHash("/admin")}>
+            <ShieldCheck className="h-3.5 w-3.5" />
+            Admin
+          </button>
         </div>
 
         <div ref={streamRef} className="brain-stream">
@@ -350,6 +394,147 @@ function BrainHome({
       </section>
     </main>
   );
+}
+
+function AdminConsole({ onBack }: { onBack: () => void }) {
+  const qc = useQueryClient();
+  const summaryQ = useQuery({ queryKey: ["adminSummary"], queryFn: latticeApi.adminSummary });
+  const statsQ = useQuery({ queryKey: ["adminStats"], queryFn: latticeApi.adminStats });
+  const usersQ = useQuery({ queryKey: ["adminUsers"], queryFn: latticeApi.adminUsers });
+  const auditQ = useQuery({ queryKey: ["adminAudit"], queryFn: latticeApi.adminAudit });
+  const securityQ = useQuery({ queryKey: ["adminSecurity"], queryFn: latticeApi.adminSecurity });
+  const securityEventsQ = useQuery({ queryKey: ["adminSecurityEvents"], queryFn: () => latticeApi.adminSecurityEvents(50) });
+  const policiesQ = useQuery({ queryKey: ["adminPolicies"], queryFn: latticeApi.adminPolicies });
+  const indexQ = useQuery({ queryKey: ["indexStatus"], queryFn: latticeApi.indexStatus });
+  const rebuildIndex = useMutation({
+    mutationFn: latticeApi.rebuildIndex,
+    onSuccess: () => void qc.invalidateQueries({ queryKey: ["indexStatus"] }),
+  });
+
+  const users = asArray(usersQ.data?.data);
+  const auditEvents = asArray((auditQ.data?.data as ApiRecord | undefined)?.recent_events);
+  const securityEvents = asArray((securityEventsQ.data?.data as ApiRecord | undefined)?.events);
+  const policies = asArray((policiesQ.data?.data as ApiRecord | undefined)?.policies);
+
+  return (
+    <main className="admin-console" aria-label="Lattice Admin">
+      <header className="admin-console-header">
+        <button className="admin-back-button" type="button" onClick={onBack}>
+          <ArrowLeft className="h-4 w-4" />
+          Brain
+        </button>
+        <div>
+          <span>Separate admin workspace</span>
+          <h1>Admin Console</h1>
+          <p>Users, logs, security, and Brain health stay out of the normal user experience.</p>
+        </div>
+      </header>
+
+      <section className="admin-metrics" aria-label="Admin overview">
+        <AdminMetric icon={<Users className="h-4 w-4" />} label="Users" value={String(users.length)} detail={sourceLabel(usersQ.data)} />
+        <AdminMetric
+          icon={<Activity className="h-4 w-4" />}
+          label="Recent logs"
+          value={String(auditEvents.length + securityEvents.length)}
+          detail={sourceLabel(auditQ.data)}
+        />
+        <AdminMetric
+          icon={<ShieldCheck className="h-4 w-4" />}
+          label="Security"
+          value={adminStatusLabel(securityQ.data?.data, "status") || (securityQ.data?.ok ? "Ready" : "Unavailable")}
+          detail={sourceLabel(securityQ.data)}
+        />
+        <AdminMetric
+          icon={<ServerCog className="h-4 w-4" />}
+          label="Brain index"
+          value={adminStatusLabel(indexQ.data?.data, "status") || (indexQ.data?.ok ? "Indexed" : "Unknown")}
+          detail={indexDetail(indexQ.data?.data)}
+        />
+      </section>
+
+      <section className="admin-grid">
+        <AdminPanel title="User Directory" eyebrow="People">
+          <AdminList
+            items={users.slice(0, 8)}
+            empty="No users reported by the admin API."
+            render={(item) => {
+              const user = item as ApiRecord;
+              return (
+                <>
+                  <strong>{stringValue(user.name || user.email || user.id, "Local user")}</strong>
+                  <span>{stringValue(user.role || user.status || user.workspace_id, "member")}</span>
+                </>
+              );
+            }}
+          />
+        </AdminPanel>
+
+        <AdminPanel title="Activity Logs" eyebrow="Audit">
+          <AdminList
+            items={auditEvents.slice(0, 8)}
+            empty="No recent audit events."
+            render={(item) => renderLogRow(item as ApiRecord)}
+          />
+        </AdminPanel>
+
+        <AdminPanel title="Security Events" eyebrow="Protection">
+          <AdminList
+            items={securityEvents.slice(0, 8)}
+            empty="No security events reported."
+            render={(item) => renderLogRow(item as ApiRecord)}
+          />
+        </AdminPanel>
+
+        <AdminPanel title="Brain Operations" eyebrow="Maintenance">
+          <div className="admin-operation">
+            <div>
+              <strong>{indexDetail(indexQ.data?.data)}</strong>
+              <span>{summaryText(summaryQ.data?.data) || summaryText(statsQ.data?.data) || "Local Brain services are separated from user chat."}</span>
+            </div>
+            <Button variant="outline" size="sm" disabled={rebuildIndex.isPending} onClick={() => rebuildIndex.mutate()}>
+              <RotateCcw className="h-3.5 w-3.5" />
+              {rebuildIndex.isPending ? "Rebuilding" : "Rebuild index"}
+            </Button>
+          </div>
+          <div className="admin-policy-strip">
+            {policies.slice(0, 5).map((item, index) => {
+              const policy = item as ApiRecord;
+              return <span key={`${stringValue(policy.id || policy.name, "policy")}-${index}`}>{stringValue(policy.name || policy.id, "Policy")}</span>;
+            })}
+            {!policies.length ? <span>Policy API quiet</span> : null}
+          </div>
+        </AdminPanel>
+      </section>
+    </main>
+  );
+}
+
+function AdminMetric({ icon, label, value, detail }: { icon: React.ReactNode; label: string; value: string; detail: string }) {
+  return (
+    <div className="admin-metric">
+      <div>{icon}</div>
+      <span>{label}</span>
+      <strong>{value}</strong>
+      <small>{detail}</small>
+    </div>
+  );
+}
+
+function AdminPanel({ eyebrow, title, children }: { eyebrow: string; title: string; children: React.ReactNode }) {
+  return (
+    <section className="admin-panel">
+      <div className="admin-panel-head">
+        <span>{eyebrow}</span>
+        <h2>{title}</h2>
+      </div>
+      {children}
+    </section>
+  );
+}
+
+function AdminList({ items, empty, render }: { items: unknown[]; empty: string; render: (item: unknown) => React.ReactNode }) {
+  if (!items.length) return <div className="admin-empty">{empty}</div>;
+  return <div className="admin-list">{items.map((item, index) => <div key={index} className="admin-list-row">{render(item)}</div>)}</div>;
 }
 
 function BrainCarePanel() {
@@ -845,6 +1030,50 @@ function summarizeCareResult(result: ApiResult) {
   const directMessage = textValue(data, ["message", "status", "path", "archive_path", "backup_path", "export_path"]);
   if (directMessage) return directMessage;
   return "Brain care action completed.";
+}
+
+function renderLogRow(event: ApiRecord) {
+  const action = stringValue(event.action || event.event || event.type || event.name, "Event");
+  const actor = stringValue(event.actor || event.user || event.user_id || event.workspace_id, "system");
+  const when = stringValue(event.timestamp || event.time || event.created_at || event.ts, "recently");
+  return (
+    <>
+      <strong>{action}</strong>
+      <span>{actor} · {when}</span>
+    </>
+  );
+}
+
+function sourceLabel(result?: ApiResult<unknown>) {
+  if (!result) return "Loading";
+  return result.ok ? "Live" : result.error || "Unavailable";
+}
+
+function adminStatusLabel(data: unknown, key: string) {
+  const record = isRecord(data) ? data : {};
+  return textValue(record, [key, "health", "state", "overall_status"]);
+}
+
+function indexDetail(data: unknown) {
+  const record = isRecord(data) ? data : {};
+  const docs = record.documents ?? record.document_count ?? record.docs;
+  const chunks = record.chunks ?? record.chunk_count ?? record.vectors;
+  if (docs !== undefined || chunks !== undefined) {
+    return `${stringValue(docs, "0")} docs · ${stringValue(chunks, "0")} chunks`;
+  }
+  return textValue(record, ["message", "detail", "status"], "Index status ready");
+}
+
+function summaryText(data: unknown) {
+  const record = isRecord(data) ? data : {};
+  return textValue(record, ["summary", "message", "status", "detail"]);
+}
+
+function stringValue(value: unknown, fallback = "") {
+  if (typeof value === "string" && value.trim()) return value;
+  if (typeof value === "number" && Number.isFinite(value)) return String(value);
+  if (typeof value === "boolean") return value ? "true" : "false";
+  return fallback;
 }
 
 function fileToDataUrl(file: File) {

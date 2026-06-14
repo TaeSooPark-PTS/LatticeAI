@@ -12,11 +12,11 @@ chat, run model workflows, and trigger coding actions from the editor.
 
 ## Current Release
 
-**4.6.1 — Living Brain Release Refresh.** The desktop workspace keeps the v4
-Brain Core extraction and recovered capability baseline while making Brain plus
-conversation the home experience and moving graph exploration into an advanced
-layer. v4.6.1 is the publishable release-refresh version after the v4.6.0 PyPI
-immutability block; the extension connects to the same local workspace APIs.
+**4.7.0 — Admin Separation Release.** The desktop workspace keeps the v4 Brain
+Core extraction and recovered capability baseline while making Brain plus
+conversation the user home experience. Logs, users, security events, policies,
+and Brain operations now live in the separate Admin Console; the extension
+connects to the same local workspace APIs.
 
 ## Quick Start
 

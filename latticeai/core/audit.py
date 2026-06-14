@@ -141,8 +141,9 @@ def build_admin_audit_report(
     *,
     get_user_role: Callable[[str, Optional[Dict]], str],
     graph_stats: Optional[Dict] = None,
+    audit_events: Optional[List[Dict]] = None,
 ) -> Dict:
-    events = get_audit_log(audit_file)
+    events = audit_events if audit_events is not None else get_audit_log(audit_file)
 
     def _user_bucket(email: Optional[str], nickname: Optional[str] = None) -> Dict:
         user = users.get(email or "", {})
@@ -234,7 +235,7 @@ def build_admin_audit_report(
 def _public_audit_event(event: Dict) -> Dict:
     allowed = {
         "event_type", "timestamp", "role", "user_email", "user_nickname", "source",
-        "conversation_id", "command", "scope", "target_email", "filename", "mime_type",
+        "conversation_id", "workspace_id", "command", "scope", "target_email", "filename", "mime_type",
         "ext", "bytes", "extracted_chars", "graph_node", "keep_last", "removed", "kept",
         "started_at", "sensitivity", "sensitive_labels", "content_preview", "content_chars",
     }

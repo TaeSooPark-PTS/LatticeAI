@@ -15,7 +15,7 @@ lazily via module ``__getattr__`` for backwards compatibility.
 from __future__ import annotations
 
 import threading
-from typing import TYPE_CHECKING, Any, Dict, Optional
+from typing import TYPE_CHECKING, Any, Dict, List, Optional
 
 if TYPE_CHECKING:  # imports for annotations only — keep module import light
     from fastapi import FastAPI
@@ -704,6 +704,7 @@ def _build(config: "Optional[Config]" = None) -> Dict[str, Any]:
         user_nickname: Optional[str] = None,
         source: Optional[str] = None,
         conversation_id: Optional[str] = None,
+        workspace_id: Optional[str] = None,
     ):
         try:
             message = redact_secret_text(message)
@@ -718,6 +719,8 @@ def _build(config: "Optional[Config]" = None) -> Dict[str, Any]:
                 item["source"] = source
             if conversation_id:
                 item["conversation_id"] = conversation_id
+            if workspace_id:
+                item["workspace_id"] = workspace_id
             sensitive = classify_sensitive_message(item, -1)
             append_audit_event(
                 "chat_message",
@@ -726,6 +729,7 @@ def _build(config: "Optional[Config]" = None) -> Dict[str, Any]:
                 user_nickname=user_nickname,
                 source=source,
                 conversation_id=conversation_id,
+                workspace_id=workspace_id,
                 content_preview=sensitive.get("preview"),
                 content_chars=len(message or ""),
                 sensitivity=sensitive.get("sensitivity"),
@@ -1036,7 +1040,7 @@ def _build(config: "Optional[Config]" = None) -> Dict[str, Any]:
         return _build_sensitivity_report(history)
 
     # ── Admin audit report — delegated to latticeai.core.audit ───────────────────
-    def build_admin_audit_report(users: Dict) -> Dict:
+    def build_admin_audit_report(users: Dict, audit_events: Optional[List[Dict]] = None) -> Dict:
         graph_stats = None
         try:
             if ENABLE_GRAPH and KNOWLEDGE_GRAPH:
@@ -1047,6 +1051,7 @@ def _build(config: "Optional[Config]" = None) -> Dict[str, Any]:
             AUDIT_FILE, users,
             get_user_role=get_user_role,
             graph_stats=graph_stats,
+            audit_events=audit_events,
         )
 
     router = LLMRouter()
@@ -1268,6 +1273,7 @@ def _build(config: "Optional[Config]" = None) -> Dict[str, Any]:
         require_admin=require_admin, require_user=require_user,
         load_users=load_users, save_users=save_users,
         get_user_role=get_user_role, get_history=get_history,
+        get_audit_log=get_audit_log,
         public_user=public_user, load_vpc_config=load_vpc_config,
         save_vpc_config=save_vpc_config,
         build_admin_audit_report=build_admin_audit_report,

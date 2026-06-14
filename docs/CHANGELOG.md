@@ -3,6 +3,51 @@
 The top entry is the current release-preparation target. Older entries are
 historical and may describe behavior as it existed at that release.
 
+## [4.7.0] - 2026-06-14
+
+> Admin Separation Release. v4.7.0 keeps the Living Brain as the simple user
+> surface and moves users, logs, security events, policies, and Brain operations
+> into a dedicated Admin Console with synchronized release metadata and
+> publishable artifacts.
+
+### Changed
+
+- Added a separate `#/admin` Admin Console so the normal `/app` user experience
+  remains Brain + conversation instead of becoming an admin dashboard.
+- Added admin overview metrics, user directory, audit log rows, security event
+  rows, policy chips, and Brain index rebuild controls to the admin-only
+  surface.
+- Scoped admin history, audit, stats, and sensitivity endpoints by
+  `X-Workspace-Id` / `workspace_id` when a workspace is selected, while keeping
+  legacy global records visible in Personal workspace compatibility mode.
+- Added frontend API helpers for `/admin/stats` and `/admin/security/events`,
+  reusing the existing FastAPI admin/security backend rather than inventing a
+  parallel logging store.
+- Updated visual validation so the Admin Console route is checked separately
+  from the user Brain surface.
+- Bumped synchronized package/runtime/static versions to `4.7.0`, including
+  Python metadata, npm package metadata, VSIX metadata, Tauri metadata,
+  `latticeai`, `lattice_brain`, runtime constants, and static asset metadata.
+- Refreshed release screenshots/GIF paths and docs for v4.7.0, including Admin
+  Console evidence.
+- Updated README, RELEASE.md, ARCHITECTURE.md, SECURITY.md, FEATURE_STATUS.md,
+  VS Code extension docs, release notes, and release report for the current
+  v4.7.0 release line.
+
+### Preserved
+
+- v4.6.1 and older sections remain historical.
+- Local-first ownership, `.latticebrain` portability, rollback-safe restore,
+  and the deepest-layer Knowledge Graph behavior are preserved.
+
+### Artifacts
+
+- `dist/ltcai-4.7.0-py3-none-any.whl`
+- `dist/ltcai-4.7.0.tar.gz`
+- `dist/ltcai-4.7.0.vsix`
+- `ltcai-4.7.0.tgz`
+- `src-tauri/target/release/bundle/dmg/Lattice AI_4.7.0_aarch64.dmg`
+
 ## [4.6.1] - 2026-06-14
 
 > Living Brain release refresh and publishable version bump after the v4.6.0

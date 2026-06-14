@@ -6,7 +6,8 @@
 
 | 버전 | 지원 여부 |
 |------|-----------|
-| 4.6.x (latest) | ✅ 지원 |
+| 4.7.x (latest) | ✅ 지원 |
+| 4.6.x | ✅ 보안 패치 범위 내 지원 |
 | 4.5.x | ✅ 보안 패치 범위 내 지원 |
 | 4.4.x | ✅ 보안 패치 범위 내 지원 |
 | 4.3.x | ✅ 보안 패치 범위 내 지원 |
@@ -42,17 +43,16 @@
 
 ## 보안 모델
 
-Lattice AI v4.6.1는 local-first Living Brain Platform으로, Personal /
+Lattice AI v4.7.0는 local-first Living Brain Platform으로, Personal /
 Organization Workspace, Brain-first Conversation, Knowledge Graph, Vector
 Index, Hybrid Search, Basic / Advanced / Admin mode, durable workspace
 governance, independent Brain Core package boundary, pluggable storage,
 encrypted `.latticebrain` archives, confirmed restore/import, local-only
 startup hardening, desktop sidecar status, first-run setup, explicit model
 recommendation/install/validation flow, Gemma runtime compatibility gating, and
-default-off model downloads/runtime installs를 포함합니다. v4.6.1은 v4.6.0
-Living Brain 구현 위의 release-refresh/version-bump이며 backend security
-architecture를 재설계하지 않습니다. 아래 보안 모델을
-따릅니다:
+default-off model downloads/runtime installs를 포함합니다. v4.7.0은 일반 사용자
+Brain 화면과 관리자 로그/보안/운영 화면을 분리하지만 backend security
+architecture를 재설계하지 않습니다. 아래 보안 모델을 따릅니다:
 
 ### 기본 안전 설정 (Default Secure)
 

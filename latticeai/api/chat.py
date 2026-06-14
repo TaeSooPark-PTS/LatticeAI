@@ -52,6 +52,7 @@ class AgentRequest(BaseModel):
     temperature: float = 0.1
     user_email: Optional[str] = None
     user_nickname: Optional[str] = None
+    workspace_id: Optional[str] = None
     planning_model: Optional[str] = None
     executing_model: Optional[str] = None
     reviewing_model: Optional[str] = None
@@ -135,6 +136,13 @@ def format_network_status(info: Dict) -> str:
     if note:
         lines.extend(["", note])
     return "\n".join(lines)
+
+def workspace_scope_from_request(request: Request) -> Optional[str]:
+    header = request.headers.get("X-Workspace-Id")
+    if header and header.strip():
+        return header.strip()
+    query = request.query_params.get("workspace_id")
+    return query.strip() if query and query.strip() else None
 
 async def single_text_stream(text: str, model: str = "system") -> AsyncIterator[str]:
     yield f"data: {json.dumps({'chunk': text, 'model': model}, ensure_ascii=False)}\n\n"
@@ -296,15 +304,20 @@ def create_chat_router(context: AppContext) -> APIRouter:
         )
         effective_email = req.user_email or current_user or None
         history_user = get_history_user(effective_email, req.user_nickname)
+        history_meta = {
+            "source": req.source or "web",
+            "conversation_id": req.conversation_id,
+            "workspace_id": workspace_scope_from_request(request),
+        }
     
         if is_network_status_request(req.message):
             history_message = f"{req.message}\n[Image attached]" if req.image_data else req.message
-            save_to_history("user", history_message, source=req.source or "web", conversation_id=req.conversation_id, **history_user)
+            save_to_history("user", history_message, **history_meta, **history_user)
             try:
                 answer = format_network_status(network_status())
             except ToolError as exc:
                 answer = f"네트워크 정보를 확인하지 못했습니다: {exc}"
-            save_to_history("assistant", answer, source=req.source or "web", conversation_id=req.conversation_id, **history_user)
+            save_to_history("assistant", answer, **history_meta, **history_user)
             notify_chat_message("user", req.message, req.source)
             notify_chat_message("assistant", answer, req.source)
             if req.stream:
@@ -362,8 +375,8 @@ def create_chat_router(context: AppContext) -> APIRouter:
     
         if is_current_url_request(req.message) and req.client_url:
             answer = f"현재 페이지 URL: {req.client_url}"
-            save_to_history("user", req.message, source=req.source or "web", conversation_id=req.conversation_id, **history_user)
-            save_to_history("assistant", answer, source=req.source or "web", conversation_id=req.conversation_id, **history_user)
+            save_to_history("user", req.message, **history_meta, **history_user)
+            save_to_history("assistant", answer, **history_meta, **history_user)
             notify_chat_message("user", req.message, req.source)
             notify_chat_message("assistant", answer, req.source)
             if req.stream:
@@ -459,7 +472,7 @@ def create_chat_router(context: AppContext) -> APIRouter:
             trace_seed["context_assembly"] = context_trace
     
         history_message = f"{req.message}\n[Image attached]" if req.image_data else req.message
-        save_to_history("user", history_message, source=req.source or "web", conversation_id=req.conversation_id, **history_user)
+        save_to_history("user", history_message, **history_meta, **history_user)
         notify_chat_message("user", req.message, req.source)
     
         if is_doc_gen and ENABLE_GRAPH and KNOWLEDGE_GRAPH:
@@ -488,7 +501,7 @@ def create_chat_router(context: AppContext) -> APIRouter:
                         yield f"data: {json.dumps({'text': footnote}, ensure_ascii=False)}\n\n"
                         full_text += footnote
                     session.update(graph_md, full_text, req.conversation_id)
-                    save_to_history("assistant", full_text, source=req.source or "web", conversation_id=req.conversation_id, **history_user)
+                    save_to_history("assistant", full_text, **history_meta, **history_user)
                     trace_record = CHAT_SERVICE.record_trace(
                         question=req.message,
                         response=full_text,
@@ -513,7 +526,7 @@ def create_chat_router(context: AppContext) -> APIRouter:
                 if footnote:
                     result += footnote
                 session.update(graph_md, result, req.conversation_id)
-                save_to_history("assistant", str(result), source=req.source or "web", conversation_id=req.conversation_id, **history_user)
+                save_to_history("assistant", str(result), **history_meta, **history_user)
                 trace_record = CHAT_SERVICE.record_trace(
                     question=req.message,
                     response=str(result),
@@ -549,7 +562,7 @@ def create_chat_router(context: AppContext) -> APIRouter:
     
             result = await router.generate(req.message, full_context, req.max_tokens, req.temperature, req.image_data)
     
-            save_to_history("assistant", str(result), source=req.source or "web", conversation_id=req.conversation_id, **history_user)
+            save_to_history("assistant", str(result), **history_meta, **history_user)
             trace_record = CHAT_SERVICE.record_trace(
                 question=req.message,
                 response=str(result),
@@ -652,7 +665,7 @@ def create_chat_router(context: AppContext) -> APIRouter:
             full_response += str(clean_chunk)
             yield f"data: {json.dumps({'chunk': clean_chunk, 'model': router.current_model_id}, ensure_ascii=False)}\n\n"
         history_user = get_history_user(req.user_email, req.user_nickname)
-        save_to_history("assistant", full_response, source=req.source or "web", conversation_id=req.conversation_id, **history_user)
+        save_to_history("assistant", full_response, **history_meta, **history_user)
         trace_record = CHAT_SERVICE.record_trace(
             question=req.message,
             response=full_response,
@@ -728,6 +741,7 @@ def create_chat_router(context: AppContext) -> APIRouter:
         """
         current_user = require_user(request)
         enforce_rate_limit(current_user, "agent")
+        req.workspace_id = req.workspace_id or workspace_scope_from_request(request)
         if not router.current_model_id:
             raise HTTPException(status_code=400, detail="No model loaded. Call /models/load first.")
     
@@ -776,8 +790,8 @@ def create_chat_router(context: AppContext) -> APIRouter:
         asyncio.create_task(_AGENT_RUNTIME.memory_update(ctx, req, current_user))
     
         message = ctx.final_message or "작업을 완료했습니다."
-        save_to_history("user", req.message, source=req.source or "web", conversation_id=req.conversation_id)
-        save_to_history("assistant", message, source=req.source or "web", conversation_id=req.conversation_id)
+        save_to_history("user", req.message, source=req.source or "web", conversation_id=req.conversation_id, workspace_id=req.workspace_id)
+        save_to_history("assistant", message, source=req.source or "web", conversation_id=req.conversation_id, workspace_id=req.workspace_id)
         try:
             WORKSPACE_OS.record_agent_run(
                 agent_id="agent:executor",

@@ -7,6 +7,40 @@
 > PyPI / npm / VS Code Marketplace / Open VSX 배포는 아래 수동 절차로만
 > 진행합니다. 태그 생성은 패키지 스토어 publish를 자동으로 트리거하지 않습니다.
 
+## v4.7.0 릴리스 노트 (2026-06-14)
+
+Lattice AI v4.7.0 — Admin Separation Release. Living Brain을 일반 사용자 홈으로
+유지하면서 사용자/로그/보안/정책/인덱스 운영 기능을 별도 Admin Console로
+분리한다. Brain Core, StorageEngine, FastAPI, Tauri, backup/restore, model
+runtime, graph APIs, and portability capabilities는 유지한다.
+
+- **Changed (User/admin separation)**: `/app` remains the simple Brain +
+  conversation surface, while `#/admin` opens a separate console for operators.
+- **Changed (Admin logs UX)**: audit events, security events, user directory,
+  policy chips, and Brain index rebuild controls are grouped away from the user
+  chat experience.
+- **Changed (Workspace-safe admin reads)**: admin summary, stats, audit, and
+  sensitivity reads honor `X-Workspace-Id` / `workspace_id` when present.
+- **Changed (API client coverage)**: frontend API helpers now include
+  `/admin/stats` and `/admin/security/events` so the Admin Console can use the
+  existing FastAPI admin/security backend.
+- **Changed (Visual evidence)**: release screenshots/GIFs are refreshed for
+  v4.7.0 and include the dedicated Admin Console.
+- **Changed (Release metadata)**: Python, npm, VSIX, Tauri, runtime constants,
+  and static metadata are synchronized to `4.7.0`.
+- **Changed (Architecture/docs sync)**: README, ARCHITECTURE.md, release notes,
+  changelog, security posture, feature status, VS Code extension docs, and
+  release report are synchronized to v4.7.0.
+- **Preserved**: v4.6.1 and older entries remain historical. This release does
+  not remove local-first ownership, portability, rollback-safe restore, or the
+  deepest-layer Knowledge Graph.
+- **Expected artifacts**:
+  - `dist/ltcai-4.7.0-py3-none-any.whl`
+  - `dist/ltcai-4.7.0.tar.gz`
+  - `dist/ltcai-4.7.0.vsix`
+  - `ltcai-4.7.0.tgz`
+  - `src-tauri/target/release/bundle/dmg/Lattice AI_4.7.0_aarch64.dmg`
+
 ## v4.6.1 릴리스 노트 (2026-06-14)
 
 Lattice AI v4.6.1 — Living Brain Release Refresh. v4.6.0 PyPI upload가
@@ -1078,14 +1112,14 @@ Knowledge Graph v2 read/write cutover. 자세한 내용은
    - `npm run release:artifacts`
    - `npm run release:validate`
 
-현재 `v4.6.1` 기준 필수 산출물:
+현재 `v4.7.0` 기준 필수 산출물:
 
 ```text
-dist/ltcai-4.6.1-py3-none-any.whl
-dist/ltcai-4.6.1.tar.gz
-dist/ltcai-4.6.1.vsix
-ltcai-4.6.1.tgz
-src-tauri/target/release/bundle/dmg/Lattice AI_4.6.1_aarch64.dmg
+dist/ltcai-4.7.0-py3-none-any.whl
+dist/ltcai-4.7.0.tar.gz
+dist/ltcai-4.7.0.vsix
+ltcai-4.7.0.tgz
+src-tauri/target/release/bundle/dmg/Lattice AI_4.7.0_aarch64.dmg
 ```
 
 ## 2) npm 배포
@@ -1096,7 +1130,7 @@ src-tauri/target/release/bundle/dmg/Lattice AI_4.6.1_aarch64.dmg
    - `npm run publish:npm`
    - 직접 실행 시:
      ```
-     npm publish "ltcai-4.6.1.tgz" --access public
+     npm publish "ltcai-4.7.0.tgz" --access public
      ```
 
 ## 3) PyPI 배포
@@ -1109,14 +1143,14 @@ src-tauri/target/release/bundle/dmg/Lattice AI_4.6.1_aarch64.dmg
    - `npm run publish:pypi`  ← 권장 (`$npm_package_version` 자동 사용)
    - 직접 실행 시:
      ```
-     python3 -m twine upload "dist/ltcai-4.6.1-py3-none-any.whl" "dist/ltcai-4.6.1.tar.gz"
+     python3 -m twine upload "dist/ltcai-4.7.0-py3-none-any.whl" "dist/ltcai-4.7.0.tar.gz"
      ```
 
 참고:
 - TestPyPI 먼저 쓰려면:
   ```
   python3 -m twine upload --skip-existing --repository testpypi \
-    "dist/ltcai-4.6.1.tar.gz" "dist/ltcai-4.6.1-py3-none-any.whl"
+    "dist/ltcai-4.7.0.tar.gz" "dist/ltcai-4.7.0-py3-none-any.whl"
   ```
 
 ## 4) VS Code / Cursor / Antigravity 확장 배포
@@ -1132,13 +1166,13 @@ src-tauri/target/release/bundle/dmg/Lattice AI_4.6.1_aarch64.dmg
    - `npm run publish:vscode`  ← 권장 (`$npm_package_version` 자동 사용)
    - 직접 실행 시:
      ```
-     npx vsce publish --packagePath "../dist/ltcai-4.6.1.vsix"
+     npx vsce publish --packagePath "../dist/ltcai-4.7.0.vsix"
      ```
 4. Open VSX 배포 (Cursor/일부 포크 호환)
    - `npm run publish:openvsx`  ← 권장 (`$npm_package_version` 자동 사용)
    - 직접 실행 시:
      ```
-     npx ovsx publish "../dist/ltcai-4.6.1.vsix"
+     npx ovsx publish "../dist/ltcai-4.7.0.vsix"
      ```
 5. 로컬 설치 (VS Code/Cursor/Antigravity)
    - `npm run install:all`
