@@ -225,6 +225,11 @@ function WorkflowsPanel() {
     },
   });
   const workflows = asArray<Record<string, unknown>>((defs.data?.data as Record<string, unknown>)?.workflows);
+  const installedRecipeIds = new Set(
+    workflows
+      .filter((w: any) => w && w.metadata && w.metadata.created_from === "brain_automation_recipe" && w.metadata.recipe_id)
+      .map((w: any) => String(w.metadata.recipe_id))
+  );
   const nodes: Node[] = workflows.slice(0, 12).map((workflow, index) => ({
     id: String(workflow.id || workflow.workflow_id || index),
     position: { x: (index % 4) * 190, y: Math.floor(index / 4) * 120 },
@@ -259,14 +264,41 @@ function WorkflowsPanel() {
                       {consent.requires_user_enable ? <Badge variant="warning">draft first</Badge> : null}
                       {creates.slice(0, 2).map((item) => <Badge key={item} variant="muted">{item}</Badge>)}
                     </div>
-                    <Button
-                      className="mt-4 w-full"
-                      variant="outline"
-                      disabled={!id || installRecipe.isPending}
-                      onClick={() => installRecipe.mutate(id)}
-                    >
-                      Create reviewable draft
-                    </Button>
+                    {(() => {
+                      const isInstalling = installRecipe.isPending && installRecipe.variables === id;
+                      const last = installRecipe.data as any;
+                      const lastRid = last && last.recipe && last.recipe.recipe_id ? String(last.recipe.recipe_id) : "";
+                      const justSucceeded = !installRecipe.isPending && lastRid === id;
+                      const installed = installedRecipeIds.has(id);
+                      const btnLabel = isInstalling
+                        ? "Creating..."
+                        : justSucceeded
+                        ? "✓ Draft created"
+                        : installed
+                        ? "Draft already created"
+                        : "Create reviewable draft";
+                      return (
+                        <>
+                          <Button
+                            className="mt-4 w-full"
+                            variant={installed || justSucceeded ? "secondary" : "outline"}
+                            disabled={!id || isInstalling || installed}
+                            onClick={() => {
+                              if (installed || isInstalling) return;
+                              installRecipe.mutate(id);
+                            }}
+                          >
+                            {btnLabel}
+                          </Button>
+                          {justSucceeded ? (
+                            <p className="mt-1 text-[10px] text-green-600">Reviewable draft ready. Check Definitions below.</p>
+                          ) : null}
+                          {installed && !justSucceeded ? (
+                            <p className="mt-1 text-[10px] text-muted-foreground">Reviewable draft exists — see Definitions.</p>
+                          ) : null}
+                        </>
+                      );
+                    })()}
                   </div>
                 );
               })}

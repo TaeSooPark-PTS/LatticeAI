@@ -18,7 +18,7 @@ disabled drafts until the user explicitly enables a trigger.
 | --- | --- | --- |
 | **Brain automation recipes** | IN DEVELOPMENT | `latticeai/services/brain_automation.py` defines Daily Memory Digest, Weekly Project Review, and Follow-up Radar recipes with local-only consent metadata. |
 | **Consent-first scheduler boundary** | WORKING | `TriggerService` ignores trigger nodes with explicit `enabled: false`, so recipe drafts do not run silently. |
-| **Automate page recipe cards** | IN DEVELOPMENT | `frontend/src/pages/Act.tsx` shows recipe cards and creates disabled workflow drafts via `/workflows/api/automation/recipes/{recipe_id}`. |
+| **Automate page recipe cards** | WORKING | `frontend/src/pages/Act.tsx` shows recipe cards; "Create reviewable draft" now guards against duplicate recipe drafts (via metadata.recipe_id), prevents double-clicks during install, and shows immediate success feedback + updated button state. |
 
 ## v5.3.0 Product Clarity and Runtime Cleanup — what changed
 

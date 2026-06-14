@@ -16,6 +16,9 @@ historical and may describe behavior as it existed at that release.
   not include an `enabled` field.
 - The Automate page now surfaces Brain automation recipe cards with local-only,
   review-before-run consent copy.
+- Recipe install UX: success feedback on "Create reviewable draft", install-time
+  button disabled to block duplicates clicks, and if same recipe draft already
+  exists (by metadata), button state changes + guide text instead of re-creating.
 
 ## [5.3.0] - 2026-06-14
 

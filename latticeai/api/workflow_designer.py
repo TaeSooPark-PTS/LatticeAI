@@ -269,12 +269,25 @@ def create_workflow_designer_router(
     async def install_automation_recipe(recipe_id: str, req: WorkflowRecipeInstallRequest, request: Request):
         current_user = require_user(request)
         scope = gate_write(request)
-        from latticeai.services.brain_automation import build_brain_automation_workflow
+        from latticeai.services.brain_automation import (
+            build_brain_automation_workflow,
+            find_installed_recipe_workflow,
+        )
 
         try:
             definition = build_brain_automation_workflow(recipe_id, enabled=req.enabled)
         except KeyError as exc:
             raise HTTPException(status_code=404, detail=f"Automation recipe not found: {recipe_id}") from exc
+        existing = find_installed_recipe_workflow(
+            store.list_workflows(workspace_id=scope).get("workflows"), recipe_id
+        )
+        if existing is not None:
+            return {
+                "workflow": existing,
+                "recipe": existing.get("metadata") or definition["metadata"],
+                "enabled": bool((existing.get("metadata") or {}).get("automation_state") == "enabled"),
+                "already_installed": True,
+            }
         errors = validate_definition({"name": definition["name"], "nodes": definition["nodes"]})
         if errors:
             raise HTTPException(status_code=400, detail={"validation_errors": errors})
@@ -294,7 +307,12 @@ def create_workflow_designer_router(
             recipe_id=recipe_id,
             enabled=bool(req.enabled),
         )
-        return {"workflow": workflow, "recipe": definition["metadata"], "enabled": bool(req.enabled)}
+        return {
+            "workflow": workflow,
+            "recipe": definition["metadata"],
+            "enabled": bool(req.enabled),
+            "already_installed": False,
+        }
 
     @router.get("/workflows/api/runs/{run_id}/replay")
     async def workflow_run_replay(run_id: str, request: Request):

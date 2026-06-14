@@ -102,6 +102,26 @@ def list_brain_automation_recipes() -> Dict[str, Any]:
     }
 
 
+def find_installed_recipe_workflow(
+    workflows: Any, recipe_id: str
+) -> Dict[str, Any] | None:
+    """Return an existing draft installed from ``recipe_id``, if any.
+
+    Installing a recipe is idempotent: clicking "Create reviewable draft" twice
+    should surface the existing draft instead of accumulating duplicates. We
+    match on the ``brain_automation_recipe`` provenance metadata stamped by
+    :func:`build_brain_automation_workflow`.
+    """
+    for workflow in workflows or []:
+        metadata = (workflow or {}).get("metadata") or {}
+        if (
+            metadata.get("created_from") == "brain_automation_recipe"
+            and metadata.get("recipe_id") == recipe_id
+        ):
+            return workflow
+    return None
+
+
 def build_brain_automation_workflow(recipe_id: str, *, enabled: bool = False) -> Dict[str, Any]:
     """Build a workflow definition for a recipe.
 
