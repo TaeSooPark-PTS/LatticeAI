@@ -1238,11 +1238,31 @@ body {
   display: flex;
   align-items: center;
   justify-content: space-between;
+  gap: 0.75rem;
   padding-bottom: 0.65rem;
   color: hsl(var(--fg-muted));
   font-size: 0.75rem;
   letter-spacing: 0.4px;
   text-transform: uppercase;
+}
+
+.brain-ownership-strip {
+  display: flex;
+  flex: 1 1 auto;
+  justify-content: center;
+  gap: 0.45rem;
+  min-width: 0;
+}
+
+.brain-ownership-strip span {
+  border: 1px solid hsl(var(--border) / 0.58);
+  border-radius: 999px;
+  background: hsl(var(--surface-glass));
+  padding: 0.28rem 0.58rem;
+  color: hsl(var(--fg-muted));
+  font-size: 0.62rem;
+  font-weight: 780;
+  white-space: nowrap;
 }
 
 .brain-stream {
@@ -2045,6 +2065,8 @@ body {
   .brain-presence { padding-top: 1.4rem; }
   .brain-organism { width: 200px; height: 200px; }
   .brain-conversation { padding-bottom: 5.5rem; }
+  .brain-conversation-header { flex-wrap: wrap; }
+  .brain-ownership-strip { order: 3; flex-basis: 100%; justify-content: flex-start; overflow-x: auto; }
   .depths { bottom: 0.9rem; }
 }
 

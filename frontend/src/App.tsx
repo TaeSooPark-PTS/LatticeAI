@@ -274,6 +274,11 @@ function BrainHome({
             <h1>Lattice Brain</h1>
             <span>{currentDepth.label}</span>
           </div>
+          <div className="brain-ownership-strip" aria-label="Brain ownership guarantees">
+            <span>Local-first</span>
+            <span>Portable</span>
+            <span>Private</span>
+          </div>
           <div>{modelName}</div>
         </div>
 

@@ -209,6 +209,8 @@ npm run docs:check-links
 ## Current Documentation
 
 - [ARCHITECTURE.md](ARCHITECTURE.md) - v4.6.1 architecture.
+- [docs/PRODUCT_DIRECTION_REVIEW.md](docs/PRODUCT_DIRECTION_REVIEW.md) -
+  Brain-first product direction review.
 - [FEATURE_STATUS.md](FEATURE_STATUS.md) - current feature status and historical
   status ledger.
 - [RELEASE_NOTES.md](RELEASE_NOTES.md) - release notes index.
