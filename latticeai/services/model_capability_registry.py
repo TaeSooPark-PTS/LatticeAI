@@ -125,7 +125,9 @@ class ModelCapability:
 
 # ── Curated 5.2.0 registry (bold user-focused: transparent, multimodal-first, verified where practical) ──
 # Current Gemma-4 / Qwen3-VL / Llama-4 kept + modern additions (Gemma3, Qwen2.5-VL, Llama-3.2-Vision, Pixtral).
-# All verified via HF API (lightweight model_info) on 2026-06-14. Full weight download is user-consent only.
+# Presence verified via HF API (lightweight model_info) on 2026-06-14.
+# Full weight download is user-consent only; entries without config/tokenizer
+# hints are shown as available-but-not-load-verified.
 
 _REGISTRY: List[ModelCapability] = [
     # Gemma 4 family (mlx-community 4-bit, Apple-first, excellent local VLM)
@@ -396,7 +398,16 @@ _REGISTRY: List[ModelCapability] = [
         load_strategy="vllm",
         hardware=HardwareProfile(min_ram_gb=16.0, recommended_ram_gb=20.0, cuda_pref=True, notes="High quality vision-language. Best on CUDA / vLLM; GGUF for CPU/Apple via community ports."),
         source_country="프랑스", source_company="Mistral AI",
-        verification=VerificationStatus(hf_exists=True, has_config=True, has_tokenizer=True, has_weights_hint=True, pipeline_tag=None, license="mistral-research", verified_by="hf-api-light"),
+        verification=VerificationStatus(
+            hf_exists=True,
+            has_config=False,
+            has_tokenizer=False,
+            has_weights_hint=True,
+            pipeline_tag=None,
+            license="mistral-research",
+            notes="HF repo and weights are present, but config/tokenizer files were not visible in the lightweight HF tree check; treat as available but not local-load verified.",
+            verified_by="hf-api-light",
+        ),
         display_priority=45,
     ),
 ]
