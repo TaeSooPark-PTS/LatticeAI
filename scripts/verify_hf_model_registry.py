@@ -26,7 +26,6 @@ from __future__ import annotations
 
 import argparse
 import json
-import os
 import sys
 import time
 import urllib.error
@@ -43,7 +42,6 @@ try:
     from latticeai.services.model_capability_registry import (
         get_all_capabilities,
         ModelCapability,
-        VerificationStatus,
     )
 except Exception as e:
     print("ERROR: Could not import model_capability_registry:", e)
@@ -206,7 +204,7 @@ def main() -> int:
     args = parser.parse_args()
 
     caps = get_all_capabilities()
-    print(f"Lattice AI 5.2.0 HF Model Registry Verifier")
+    print("Lattice AI 5.2.0 HF Model Registry Verifier")
     print(f"Capabilities in registry: {len(caps)}")
     print(f"Time: {datetime.now(timezone.utc).isoformat()}")
     print("-" * 88)

@@ -9,7 +9,6 @@ import pytest
 
 from latticeai.services.model_capability_registry import (
     ModelCapability,
-    HardwareProfile,
     VerificationStatus,
     get_all_capabilities,
     build_engine_model_catalog,
