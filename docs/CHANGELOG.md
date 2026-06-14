@@ -3,6 +3,44 @@
 The top entry is the current release-preparation target. Older entries are
 historical and may describe behavior as it existed at that release.
 
+## [4.6.1] - 2026-06-14
+
+> Living Brain release refresh and publishable version bump after the v4.6.0
+> PyPI immutability block. v4.6.1 keeps the Living Brain implementation and
+> synchronizes release metadata, README evidence, architecture docs, artifacts,
+> and owner publishing commands to exact `4.6.1` filenames.
+
+### Changed
+
+- Bumped synchronized package/runtime/static versions to `4.6.1`, including
+  Python metadata, npm package metadata, VSIX metadata, Tauri metadata,
+  `latticeai`, `lattice_brain`, runtime constants, and static asset metadata.
+- Refreshed README around the current Living Brain flow: Login -> Environment
+  Analysis -> Recommended Models -> Install & Load -> Brain Chat.
+- Replaced stale README screenshot/GIF references with fresh v4.6.1 release
+  evidence for Login, setup, Brain Chat, Living Brain, Memory Layer, Knowledge
+  Layer, Relationship Layer, and Knowledge Graph.
+- Updated `ARCHITECTURE.md` for the current Tauri shell, React/Vite frontend,
+  FastAPI localhost API, independent `lattice_brain` Brain Core, StorageEngine,
+  SQLite default, PostgreSQL/pgvector opt-in, backup/restore, and
+  `.latticebrain` portability architecture.
+- Added `RELEASE_NOTES_v4.6.1.md` and the v4.6.1 release refresh report.
+
+### Preserved
+
+- v4.6.0 and older sections remain historical. They were not rewritten as
+  v4.6.1 claims.
+- No backend architecture redesign, package publishing, service deployment, or
+  registry upload is part of this refresh.
+
+### Artifacts
+
+- `dist/ltcai-4.6.1-py3-none-any.whl`
+- `dist/ltcai-4.6.1.tar.gz`
+- `dist/ltcai-4.6.1.vsix`
+- `ltcai-4.6.1.tgz`
+- `src-tauri/target/release/bundle/dmg/Lattice AI_4.6.1_aarch64.dmg`
+
 ## [4.6.x Brain Exploration Update] - 2026-06-14
 
 > The Brain is now the true interactive entry point to the user's knowledge.

@@ -1,7 +1,7 @@
 # Changelog
 
 The detailed and current changelog lives in [docs/CHANGELOG.md](docs/CHANGELOG.md);
-its top entry is the current release target (v4.4.0). Entries below
+its top entry is the current release target (v4.6.1). Entries below
 are an older root-level snapshot kept for reference and stop at 4.0.1.
 
 ## [4.0.1] - 2026-06-12

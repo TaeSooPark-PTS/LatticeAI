@@ -1,7 +1,36 @@
 # Release Notes
 
-The current release target is v4.6.0. Older sections are historical
+The current release target is v4.6.1. Older sections are historical
 release notes and should not be read as newer product claims.
+
+## v4.6.1 - Living Brain Release Refresh
+
+Lattice AI v4.6.1 is the publishable Living Brain release refresh. It preserves
+the v4.6.0 Living Brain implementation while moving the release artifacts and
+owner publishing commands to `4.6.1` because PyPI versions/files are immutable
+once published or reserved.
+
+### Highlights
+
+- Bumped synchronized Python, npm, VSIX, Tauri, runtime, and static metadata to
+  `4.6.1`.
+- Refreshed README around the current Login -> Environment Analysis ->
+  Recommended Models -> Install & Load -> Brain Chat flow.
+- Captured fresh Living Brain screenshots/GIF evidence for Brain Chat and the
+  five Brain depths.
+- Updated architecture and release docs without redesigning the backend
+  architecture.
+- Kept v4.6.0 and older notes as historical release records.
+
+### Expected Artifacts
+
+- `dist/ltcai-4.6.1-py3-none-any.whl`
+- `dist/ltcai-4.6.1.tar.gz`
+- `dist/ltcai-4.6.1.vsix`
+- `ltcai-4.6.1.tgz`
+- `src-tauri/target/release/bundle/dmg/Lattice AI_4.6.1_aarch64.dmg`
+
+Full notes: [RELEASE_NOTES_v4.6.1.md](RELEASE_NOTES_v4.6.1.md)
 
 ## v4.6.0 - Living Brain Experience
 

@@ -1,11 +1,26 @@
-# Lattice AI — Feature Status (v4.6.0)
+# Lattice AI — Feature Status (v4.6.1)
 
-**Current release line:** v4.6.0 Living Brain Experience. Lattice AI is a
+**Current release line:** v4.6.1 Living Brain Release Refresh. Lattice AI is a
 Living Brain platform whose primary experience is Brain plus conversation; the
 graph remains durable infrastructure and advanced exploration, not the home
-product identity. Sections below v4.6.0 are historical release-status records
-and should not override the current README, ARCHITECTURE.md, or v4.6.0 release
+product identity. Sections below v4.6.1 are historical release-status records
+and should not override the current README, ARCHITECTURE.md, or v4.6.1 release
 notes.
+
+## v4.6.1 Living Brain Release Refresh — what changed
+
+v4.6.1 is the publishable release refresh after the v4.6.0 PyPI immutability
+block. It keeps the Living Brain implementation, updates current-release
+metadata to `4.6.1`, refreshes README screenshots/GIFs, synchronizes release
+docs, and builds exact v4.6.1 artifacts. No backend architecture redesign was
+introduced.
+
+| Feature | Status | Evidence |
+| --- | --- | --- |
+| **Publishable version bump** | WORKING | Python, npm, VSIX, Tauri, runtime, and static metadata are synchronized to `4.6.1`. `scripts/bump_version.py`, `tests/unit/test_version_consistency.py`. |
+| **Release evidence refresh** | WORKING | README links point to fresh v4.6.1 screenshots/GIF and a screenshot index. `output/release/v4.6.1/SCREENSHOT_INDEX.md`. |
+| **Architecture/docs sync** | WORKING | README, ARCHITECTURE.md, release notes, changelog, security posture, and VS Code extension docs describe v4.6.1 current behavior while preserving v4.6.0 history. |
+| **Artifact exactness** | WORKING | Release validation expects exact v4.6.1 wheel, sdist, npm tgz, VSIX, and Tauri DMG filenames. `scripts/validate_release_artifacts.py`. |
 
 ## v4.6.0 Living Brain Experience — what changed
 

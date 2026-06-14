@@ -1,200 +1,152 @@
-# Lattice AI v4.5.0 Architecture
+# Lattice AI v4.6.1 Architecture
 
-This is the current v4.5.0 system map. It describes the shipped local-first
-desktop product after the v4.4.0 physical Brain extraction and v4.5.0 product
-experience recovery, not historical v3/v4.0/v4.1/v4.2 plans.
+This document describes the current v4.6.1 Living Brain release refresh. v4.6.1
+does not redesign the backend architecture; it makes `4.6.1` the publishable
+release line after the v4.6.0 PyPI immutability block and synchronizes the
+Living Brain product evidence, release notes, and artifact names.
 
-## High-Level System Map
+## System Map
 
 ```mermaid
 flowchart LR
-  User["User"] --> Desktop["Tauri 2 Desktop App"]
-  Desktop --> Shell["Desktop Shell"]
-  Desktop --> SPA["React + TypeScript + Vite SPA"]
-  Shell --> Sidecar["FastAPI Sidecar on localhost"]
-  SPA --> Client["Generated OpenAPI Client"]
+  User["User"] --> Tauri["Tauri 2 Desktop Shell"]
+  Tauri --> Assets["Packaged React/Vite Assets"]
+  Tauri --> Sidecar["FastAPI Sidecar on Localhost"]
+  Browser["Browser / Local App URL"] --> Assets
+  Assets --> Client["Generated OpenAPI Client"]
   Client --> Sidecar
-  Sidecar --> Brain["lattice_brain Package"]
-  Brain --> Storage["StorageEngine Interface"]
-  Storage --> SQLite["SQLiteEngine Default"]
-  Storage --> Postgres["PostgresEngine + pgvector Opt-In"]
+  Sidecar --> Services["latticeai Application Services"]
+  Services --> Brain["Independent lattice_brain Brain Core"]
+  Brain --> Storage["StorageEngine"]
+  Storage --> SQLite["SQLite Default"]
+  Storage --> Postgres["PostgreSQL + pgvector Opt-In"]
   Brain --> Archives["Encrypted .latticebrain Archives"]
   Brain --> Runtime["Models, Agents, Workflows, Skills"]
 ```
 
-The frontend never calls Python directly. The desktop app and browser UI talk to
-FastAPI over localhost APIs, and FastAPI imports `lattice_brain` as the Brain
-Core boundary.
+The frontend never imports Python. The desktop shell and browser UI call FastAPI
+over localhost APIs. FastAPI composes application services around the independent
+`lattice_brain` package.
 
-## Desktop Startup
+## Product Flow
+
+```mermaid
+flowchart TD
+  Start["Launch /app"] --> Login["Login: local profile"]
+  Login --> Analysis["Environment Analysis"]
+  Analysis --> Recommend["Recommended Models"]
+  Recommend --> Consent["Explicit Install / Download Consent"]
+  Consent --> Prepare["Install -> Download -> Validate -> Load"]
+  Prepare --> BrainChat["Brain Chat Home"]
+  BrainChat --> Depth1["Level 1: Living Brain"]
+  Depth1 --> Depth2["Level 2: Memory Layer"]
+  Depth2 --> Depth3["Level 3: Knowledge Layer"]
+  Depth3 --> Depth4["Level 4: Relationship Layer"]
+  Depth4 --> Depth5["Level 5: Knowledge Graph"]
+```
+
+The graph is an implementation and exploration layer. It emerges from the Brain
+after the user travels through memory, knowledge, and relationships; it is not
+the first screen or a dashboard replacement.
+
+## Tauri Shell
 
 ```mermaid
 sequenceDiagram
   actor User
-  participant App as Tauri Desktop App
+  participant App as Tauri App
   participant Sidecar as FastAPI Sidecar
   participant API as Localhost API
-  participant UI as React SPA
+  participant UI as React App
 
   User->>App: Launch Lattice AI
-  App->>Sidecar: Start bundled local backend
-  Sidecar->>API: Bind localhost port
-  App->>API: Poll health and runtime status
-  API-->>App: Ready with version and mode
-  App->>UI: Load static app assets
-  UI->>API: Fetch app state through OpenAPI client
+  App->>Sidecar: Start bundled backend
+  Sidecar->>API: Bind 127.0.0.1
+  App->>API: Poll health
+  API-->>App: Ready with version/mode
+  App->>UI: Load packaged assets
+  UI->>API: Fetch product state
   User->>App: Quit
   App->>Sidecar: Shutdown child process
-  Sidecar-->>App: Port released
 ```
 
-Startup is local-only. Missing dependencies surface as actionable unavailable
-states; they are not hidden behind fake success.
-
-## Tauri Shell And Sidecar
-
-```mermaid
-flowchart TB
-  subgraph Desktop["macOS Desktop Product"]
-    DMG["DMG Installer"]
-    Tauri["Tauri Shell"]
-    Assets["Packaged React Assets"]
-    Python["Bundled Python Runtime"]
-    FastAPI["FastAPI Sidecar Process"]
-  end
-
-  DMG --> Tauri
-  Tauri --> Assets
-  Tauri --> Python
-  Python --> FastAPI
-  Tauri --> Health["Sidecar Health / Status"]
-  Tauri --> Quit["Quit / Window Close Handler"]
-  Quit --> Stop["Stop Sidecar Cleanly"]
-```
-
-Tauri is the primary desktop shell. Electron exists as a fallback-only shell and
-is not the release target for v4.5.0.
+Tauri 2 is the release desktop shell. Electron remains fallback-only. The
+sidecar runs on localhost, reports health/version/mode, and is stopped by the
+desktop lifecycle handler.
 
 ## React/Vite Frontend
 
 ```mermaid
 flowchart LR
   subgraph UI["React + TypeScript + Vite"]
-    Nav["Primary Navigation"]
-    BrainPage["Brain"]
-    AskPage["Ask"]
-    CapturePage["Capture"]
-    ActPage["Act"]
-    LibraryPage["Library"]
-    SystemPage["System"]
+    ProductFlow["Login / Analysis / Recommendations / Install"]
+    Brain["Brain Chat"]
+    Depths["Living Brain Depths"]
+    Capture["Files / Capture"]
+    Automations["Agents / Workflows"]
+    Models["Model Setup"]
+    Settings["Care / Settings"]
     State["TanStack Query + Zustand"]
     Graphs["Cytoscape.js + React Flow"]
-    Components["Tailwind + shadcn-style Components"]
   end
 
-  Nav --> BrainPage
-  Nav --> AskPage
-  Nav --> CapturePage
-  Nav --> ActPage
-  Nav --> LibraryPage
-  Nav --> SystemPage
-  BrainPage --> Graphs
-  ActPage --> Graphs
-  BrainPage --> State
-  AskPage --> State
-  CapturePage --> State
-  ActPage --> State
-  LibraryPage --> State
-  SystemPage --> State
-  State --> OpenAPI["Generated OpenAPI Client"]
+  ProductFlow --> Brain
+  Brain --> Depths
+  Depths --> Graphs
+  Capture --> State
+  Automations --> State
+  Models --> State
+  Settings --> State
+  State --> OpenAPI["Generated OpenAPI Types"]
   OpenAPI --> Localhost["FastAPI localhost API"]
-  Components --> Nav
 ```
 
-Visible controls must either call real backend APIs or show an honest
-unavailable state. v4.5.0 keeps the graph-first navigation: Brain, Ask,
-Capture, Act, Library, and System, with first-run setup guiding account,
-workspace, environment analysis, model setup, mode selection, and Brain usage.
+Visible controls either call real backend APIs or show an honest unavailable
+state. Model install/download/load work remains explicit-consent only.
 
 ## FastAPI Localhost API
 
 ```mermaid
 flowchart TB
-  FastAPI["FastAPI App on localhost"]
-  Health["/health and runtime status"]
-  Graph["Knowledge Graph APIs"]
-  Search["Hybrid Search APIs"]
-  Conversations["Conversation and Memory APIs"]
-  Capture["Document Upload and Ingestion APIs"]
-  Models["Model Catalog and Runtime APIs"]
-  Agents["Agent Runtime APIs"]
-  Workflows["Workflow Runtime APIs"]
-  Admin["Workspace, Policy, Audit, Admin APIs"]
-  Portability["Backup, Restore, Archive APIs"]
-  Network["Brain Network and Device Identity APIs"]
-
-  FastAPI --> Health
-  FastAPI --> Graph
-  FastAPI --> Search
-  FastAPI --> Conversations
-  FastAPI --> Capture
-  FastAPI --> Models
-  FastAPI --> Agents
-  FastAPI --> Workflows
-  FastAPI --> Admin
-  FastAPI --> Portability
-  FastAPI --> Network
-  FastAPI --> BrainCore["lattice_brain"]
+  API["FastAPI App"]
+  API --> Health["/health and runtime status"]
+  API --> Accounts["Local account/session APIs"]
+  API --> Conversations["Conversation and memory APIs"]
+  API --> Graph["Knowledge Graph APIs"]
+  API --> Search["Hybrid search APIs"]
+  API --> Capture["Document upload and ingestion APIs"]
+  API --> Models["Model recommendation and runtime APIs"]
+  API --> Agents["Agent runtime APIs"]
+  API --> Workflows["Workflow runtime APIs"]
+  API --> Storage["Storage / backup / restore APIs"]
+  API --> Archive[".latticebrain archive APIs"]
+  API --> Network["Brain Network and device identity APIs"]
+  API --> BrainCore["lattice_brain"]
 ```
 
-FastAPI is the product API source of truth. The frontend consumes generated
-OpenAPI types and does not import or execute Python.
+FastAPI is the product API source of truth. The generated OpenAPI client keeps
+frontend calls aligned with backend routes.
 
-## `lattice_brain` Package
+## Brain Core
 
 ```mermaid
 flowchart LR
   Brain["lattice_brain"]
-  KG["Knowledge System"]
-  Memory["Memory System"]
-  Context["Context Assembler"]
-  Ingestion["Ingestion + Provenance"]
-  AgentRuntime["Agent Runtime"]
-  WorkflowRuntime["Workflow Runtime"]
-  Skills["Skills, Hooks, Plugins"]
-  Archive["Portability + Signed Bundles"]
-  StorageAbstraction["Storage Abstraction"]
-
-  Brain --> KG
-  Brain --> Memory
-  Brain --> Context
-  Brain --> Ingestion
-  Brain --> AgentRuntime
-  Brain --> WorkflowRuntime
-  Brain --> Skills
-  Brain --> Archive
-  Brain --> StorageAbstraction
-  KG --> StorageAbstraction
-  Memory --> StorageAbstraction
-  Ingestion --> StorageAbstraction
-  Archive --> StorageAbstraction
+  Brain --> GraphCore["Graph schema, projection, retrieval"]
+  Brain --> Memory["Memory and context"]
+  Brain --> Conversations["Conversations"]
+  Brain --> Ingestion["Ingestion and provenance"]
+  Brain --> Runtime["Hooks, agents, multi-agent runtime"]
+  Brain --> Workflow["Workflow runtime"]
+  Brain --> Storage["Storage abstraction"]
+  Brain --> Portability["Backup, restore, archives"]
 ```
 
-`lattice_brain` is usable by FastAPI, CLI, tests, and future tools. Compatibility
-shims remain for older imports, but new runtime construction flows through the
-package and application services.
-
-Packaging note (verified v4.5.0): the Brain Core remains physically hosted inside
-`lattice_brain` — `core`, `graph/` (schema, store, write/retrieval/discovery/
-documents/ingest/projection/provenance mixins, identity, network, curator),
-`memory`, `context`, `conversations`, `ingestion`, `runtime/` (hooks,
-multi-agent orchestrator, agent runtime), `workflow`, `portability`,
-`archive`, `embeddings`, and `storage/`. `lattice_brain` never imports
-`latticeai`; an isolation test (`tests/unit/test_lattice_brain_isolation.py`)
-blocks `latticeai` imports with an import hook and exercises the package
-end-to-end without FastAPI. `latticeai.brain.*` and the moved
-`latticeai.core.*`/`latticeai.services.*` paths remain only as thin
-compatibility shims that alias the physical `lattice_brain` modules.
+`lattice_brain` is the independent Brain Core used by FastAPI, CLI, tests, and
+future tools. It contains graph, memory, context, conversations, ingestion,
+agent/hook runtime, workflow, portability, archive, embeddings, and storage
+modules. Compatibility shims remain in `latticeai`, but isolation tests prevent
+`lattice_brain` from importing `latticeai`.
 
 ## StorageEngine
 
@@ -225,77 +177,34 @@ classDiagram
   StorageEngine <|.. PostgresEngine
 ```
 
-SQLite is the default local brain engine. PostgreSQL is optional scale mode and
-must be explicitly configured.
+SQLite is the default local brain store. PostgreSQL/pgvector is optional scale
+mode and requires explicit configuration. Docker/Postgres setup is consent-gated
+and never starts automatically.
 
-## SQLite Default And PostgreSQL Opt-In
+## Backup, Restore, And Portability
 
 ```mermaid
 flowchart TD
-  Start["Start App"] --> Config["Read Storage Configuration"]
-  Config --> Default["No opt-in scale config"]
-  Default --> SQLite["Use SQLiteEngine"]
-  SQLite --> LocalBrain["Local brain file and backups"]
-  SQLite --> VecCheck["Check sqlite-vec availability"]
-  VecCheck --> VecYes["Report sqlite-vec active"]
-  VecCheck --> VecNo["Report honest fallback"]
+  Backup["Create Backup"] --> VerifyBackup["Verify Backup"]
+  Restore["Restore Request"] --> DryRun["Restore Dry-Run"]
+  DryRun --> Confirm["Explicit Confirmation"]
+  Confirm --> Apply["Apply Restore"]
 
-  Config --> OptIn["Explicit PostgreSQL configuration"]
-  OptIn --> Consent["User/admin consent and DSN present"]
-  Consent --> Postgres["Use PostgresEngine"]
-  Postgres --> PgVector["Verify pgvector capability"]
-  PgVector --> PgReady["Report scale mode ready"]
-  PgVector --> PgFail["Fail closed with actionable error"]
-```
-
-Docker and PostgreSQL are never auto-started by default. SQLite remains required
-for normal local-first operation.
-
-## `.latticebrain` Portability
-
-```mermaid
-flowchart LR
-  Source["Current Brain"] --> Export["Export Archive"]
-  Export --> Manifest["Manifest + Version + Storage Metadata"]
-  Manifest --> Contents["Graph, Memories, Conversations, Settings, Provenance"]
-  Contents --> Sign["Signature / Signed Bundle Metadata"]
-  Sign --> Encrypt["Encrypted .latticebrain File"]
-
+  Export["Export .latticebrain"] --> Manifest["Manifest + hashes + metadata"]
+  Manifest --> Encrypt["Encrypted archive"]
   Encrypt --> Inspect["Inspect"]
   Encrypt --> Verify["Verify"]
-  Encrypt --> DryRun["Import Dry-Run"]
-  DryRun --> Confirm["Explicit User Confirmation"]
-  Confirm --> Import["Import / Restore"]
-  Verify --> Reject["Fail Closed on Mismatch or Corruption"]
+  Encrypt --> ImportDryRun["Import Dry-Run"]
+  ImportDryRun --> ImportConfirm["Explicit Confirmation"]
+  ImportConfirm --> Import["Import / Restore"]
 ```
 
-Archive import and restore do not destructively overwrite user data without
-explicit confirmation. Unsupported versions, corrupt files, wrong passphrases,
-and signature mismatches fail closed.
+`.latticebrain` archives are portable encrypted brain bundles. Inspect, verify,
+dry-run import, and confirmed import/restore keep rollback and safety paths
+available. Corrupt, partial, tampered, wrong-passphrase, or unsupported-version
+archives fail closed.
 
-## Backup And Restore
-
-```mermaid
-flowchart TD
-  BackupStart["User Requests Backup"] --> Preflight["Preflight Integrity Check"]
-  Preflight --> CreateBackup["Create Backup Artifact"]
-  CreateBackup --> VerifyBackup["Verify Backup"]
-  VerifyBackup --> Record["Record Backup Health"]
-
-  RestoreStart["User Requests Restore"] --> RestoreDryRun["Restore Dry-Run"]
-  RestoreDryRun --> RestoreReport["Integrity and Impact Report"]
-  RestoreReport --> ConfirmRestore["Explicit Confirmation"]
-  ConfirmRestore --> ApplyRestore["Apply Restore"]
-  ApplyRestore --> VerifyRestore["Post-Restore Integrity Check"]
-
-  Preflight --> BackupFail["Fail Closed on Corruption"]
-  RestoreDryRun --> RestoreFail["Fail Closed on Unsupported or Partial Archive"]
-```
-
-Restore dry-run and integrity checks are user-facing product flows, not only
-developer utilities.
-
-## Local-First Privacy Boundary
+## Local-First Boundary
 
 ```mermaid
 flowchart LR
@@ -303,92 +212,68 @@ flowchart LR
     Desktop["Tauri Desktop"]
     API["FastAPI localhost"]
     SQLite["SQLite Brain"]
-    Files["Local Files and Archives"]
-    LocalModels["Local Model Runtime when available"]
+    Files["Local files and archives"]
+    LocalModels["Local model runtime when available"]
   end
 
-  subgraph External["Opt-In External Boundary"]
-    CloudModels["Cloud Model Providers"]
+  subgraph External["Explicit Opt-In"]
+    CloudModels["Cloud model providers"]
     Telegram["Telegram"]
-    BrainNetwork["Brain Network Peers"]
-    Docker["Docker / PostgreSQL Setup"]
-    Downloads["Model Downloads"]
-    Updates["Update Checks"]
+    BrainNetwork["Brain Network"]
+    Docker["Docker / PostgreSQL setup"]
+    Downloads["Model downloads"]
+    Updates["Update checks"]
   end
 
   Desktop --> API
   API --> SQLite
   API --> Files
   API --> LocalModels
-  API -. explicit user action .-> CloudModels
-  API -. explicit user action .-> Telegram
-  API -. explicit user action .-> BrainNetwork
-  API -. explicit user action .-> Docker
-  API -. explicit user action .-> Downloads
+  API -. user action .-> CloudModels
+  API -. user action .-> Telegram
+  API -. user action .-> BrainNetwork
+  API -. user action .-> Docker
+  API -. user action .-> Downloads
   Desktop -. documented updater path .-> Updates
 ```
 
-Token presence alone must not start external communication. External connectors,
-Brain Network, Docker setup, downloads, and cloud model calls require explicit
-opt-in paths.
+Token presence alone must not start external communication. External
+connectors, downloads, Docker, Brain Network, and cloud model calls require
+explicit opt-in paths.
 
 ## Release Artifact Map
 
 ```mermaid
 flowchart TB
-  Source["Source Tree v4.5.0"] --> FrontendBuild["Vite Frontend Build"]
+  Source["Source Tree v4.6.1"] --> FrontendBuild["Vite Frontend Build"]
   Source --> PythonBuild["Python Build"]
   Source --> NpmPack["npm pack"]
   Source --> VsixBuild["VSIX Package"]
   Source --> TauriBuild["Tauri Build"]
 
   FrontendBuild --> StaticAssets["static/app Assets"]
-  PythonBuild --> Wheel["dist/ltcai-4.5.0-py3-none-any.whl"]
-  PythonBuild --> Sdist["dist/ltcai-4.5.0.tar.gz"]
-  NpmPack --> Tgz["ltcai-4.5.0.tgz"]
-  VsixBuild --> Vsix["dist/ltcai-4.5.0.vsix"]
-  TauriBuild --> Dmg["src-tauri/target/release/bundle/dmg/Lattice AI_4.5.0_aarch64.dmg"]
+  PythonBuild --> Wheel["dist/ltcai-4.6.1-py3-none-any.whl"]
+  PythonBuild --> Sdist["dist/ltcai-4.6.1.tar.gz"]
+  NpmPack --> Tgz["ltcai-4.6.1.tgz"]
+  VsixBuild --> Vsix["dist/ltcai-4.6.1.vsix"]
+  TauriBuild --> Dmg["src-tauri/target/release/bundle/dmg/Lattice AI_4.6.1_aarch64.dmg"]
   StaticAssets --> Wheel
   StaticAssets --> Tgz
   StaticAssets --> Dmg
 ```
 
-Release uploads must use exact filenames. Do not upload a broad `dist/`
-wildcard because historical artifacts can remain there.
-
-## Vercel Static Documentation Build
-
-```mermaid
-flowchart LR
-  Vercel["Vercel Git Check"] --> Config["vercel.json"]
-  Config --> Other["Framework Preset: Other"]
-  Config --> Build["node scripts/build_vercel_static.mjs"]
-  Build --> Output["vercel-static/index.html"]
-  Output --> DocsOnly["Documentation-only landing page"]
-  DocsOnly -. does not deploy .-> Server["server.py / FastAPI Runtime"]
-```
-
-Vercel is configured as a harmless static documentation check. It must not
-auto-detect `server.py`, deploy FastAPI, or host a fake desktop product.
+Release uploads must use exact filenames. Do not upload `dist/*`.
 
 ## Known Limitations
 
-- v4.5.0 is an RC validation target. Tagging, GitHub Release creation, and
-  external registry publishing are intentionally out of scope for this RC.
-- PostgreSQL/pgvector is optional scale mode and needs explicit configuration.
-- Docker is consent-gated and never starts automatically.
-- Ask requires a loaded model for generated answers.
-- Optional cloud providers require explicit keys and user action.
-- Historical docs under `docs/` can describe older releases; use this file,
-  `README.md`, `FEATURE_STATUS.md`, and v4.5.0 release notes for current
-  behavior. v4.3.2/v4.4.0 reports remain historical evidence.
-
-## Evidence Pointers
-
-- Product recovery: `docs/V4_5_0_PRODUCT_EXPERIENCE_RECOVERY_REPORT.md`
-- Validation: `docs/V4_5_0_VALIDATION_REPORT.md`
-- Cleanup audit: `docs/V4_3_2_DEADCODE_AUDIT_REPORT.md`
-- Release notes: `RELEASE_NOTES_v4.5.0.md`
-- Graph UX: `docs/V4_5_0_GRAPH_UX_REPORT.md`
-- Model runtime UX: `docs/V4_5_0_MODEL_RUNTIME_UX_REPORT.md`
-- GitHub/Vercel status: `docs/V4_3_2_GITHUB_VERCEL_CHECK_REPORT.md`
+- v4.6.1 is a release refresh and publishable version bump, not a backend
+  redesign.
+- External registries can lag behind the GitHub Release because package-store
+  publishing is owner-controlled.
+- PostgreSQL/pgvector is opt-in scale mode; SQLite is the default.
+- Docker, model downloads, cloud calls, Telegram, and Brain Network require
+  explicit user action.
+- Model-free states are reported honestly. The UI should not fabricate answers
+  when no model is loaded.
+- Historical reports under `docs/` preserve older release behavior and should
+  not be rewritten as v4.6.1 claims.

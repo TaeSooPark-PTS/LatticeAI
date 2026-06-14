@@ -215,7 +215,7 @@ const server = http.createServer((req, res) => {
   if (pathname === "/account/change-password" && req.method === "POST") return json(res, { status: "ok" });
   if (pathname === "/auth/sso/config") return json(res, { enabled: false, providers: [] });
 
-  if (pathname === "/health") return json(res, { status: "ok", version: "4.6.0", mode: "visual" });
+  if (pathname === "/health") return json(res, { status: "ok", version: "4.6.1", mode: "visual" });
   if (pathname === "/vpc/status") return json(res, { provider: "local", region: "visual", vpn_status: "standby", peering_status: "not_configured", private_subnets: [] });
   if (pathname === "/workspace/os") return json(res, workspaceOs);
   if (pathname === "/workspace/registry") return json(res, workspaceOs.workspace_registry);
@@ -450,10 +450,13 @@ const server = http.createServer((req, res) => {
     res.writeHead(200, { "content-type": "text/event-stream; charset=utf-8", "cache-control": "no-store", connection: "keep-alive" });
     const send = (event, obj) => res.write(`event: ${event}\ndata: ${JSON.stringify(obj)}\n\n`);
     send("progress", { stage: "engine", message: "Execution engine is ready.", percent: 10 });
-    send("progress", { stage: "download", message: "Already downloaded model files.", percent: 100 });
-    send("progress", { stage: "smoke_test", message: "Validating chat compatibility.", percent: 98 });
-    send("done", { status: "ok", model: "mlx-community/Qwen3-VL-8B-Instruct-4bit", current: "mlx-community/Qwen3-VL-8B-Instruct-4bit", ready_to_chat: true, compatibility_status: "ok" });
-    return res.end();
+    setTimeout(() => send("progress", { stage: "download", message: "Already downloaded model files.", percent: 55 }), 120);
+    setTimeout(() => send("progress", { stage: "smoke_test", message: "Validating chat compatibility.", percent: 88 }), 260);
+    setTimeout(() => {
+      send("done", { status: "ok", model: "mlx-community/Qwen3-VL-8B-Instruct-4bit", current: "mlx-community/Qwen3-VL-8B-Instruct-4bit", ready_to_chat: true, compatibility_status: "ok" });
+      res.end();
+    }, 420);
+    return;
   }
   if (pathname === "/local/sysinfo") return json(res, { cpu_pct: 34, ram_pct: 61, gpu_mem_pct: 48, gpu_mem_gb: 9.4 });
   if (pathname === "/knowledge-graph/documents") return json(res, {
