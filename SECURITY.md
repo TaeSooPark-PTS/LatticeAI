@@ -6,7 +6,8 @@
 
 | 버전 | 지원 여부 |
 |------|-----------|
-| 5.0.x (latest) | ✅ 지원 |
+| 5.1.x (latest) | ✅ 지원 |
+| 5.0.x | ✅ 보안 패치 범위 내 지원 |
 | 4.7.x | ✅ 보안 패치 범위 내 지원 |
 | 4.6.x | ✅ 보안 패치 범위 내 지원 |
 | 4.5.x | ✅ 보안 패치 범위 내 지원 |
@@ -44,19 +45,17 @@
 
 ## 보안 모델
 
-Lattice AI v5.0.0는 local-first Living Brain Platform으로, Personal /
+Lattice AI v5.1.0는 local-first private AI memory layer / Living Brain Platform으로, Personal /
 Organization Workspace, Brain-first Conversation, Knowledge Graph, Vector
 Index, Hybrid Search, Basic / Advanced / Admin mode, durable workspace
 governance, independent Brain Core package boundary, pluggable storage,
 encrypted `.latticebrain` archives, confirmed restore/import, local-only
-startup hardening, desktop sidecar status, first-run setup, saved-profile
-email/password mismatch guards, explicit model
-recommendation/install/validation flow, Gemma runtime compatibility gating, and
-default-off model downloads/runtime installs를 포함합니다. v5.0.0는 일반 사용자
-Brain 화면과 관리자 로그/보안/운영 화면을 분리하고, 로그인 오타가 새 빈
-Brain으로 이어지지 않게 막으며, 한국어/영어 언어 선택을 로컬 UI 상태로
-저장하지만 backend security
-architecture를 재설계하지 않습니다. 아래 보안 모델을 따릅니다:
+startup hardening, desktop sidecar status, strict packaged-app CSP, first-run
+setup, saved-profile email/password mismatch guards, explicit model
+recommendation/install/validation flow, and default-off model downloads/runtime
+installs를 포함합니다. v5.1.0는 일반 사용자 Brain 화면과 관리자 로그/보안/운영
+화면을 분리하고, 로컬 파일 자동 읽기 우회를 차단하며, secret redaction을
+로그/감사/보안 export/hook packet에 중앙 적용합니다. 아래 보안 모델을 따릅니다:
 
 ### 기본 안전 설정 (Default Secure)
 
@@ -69,6 +68,8 @@ architecture를 재설계하지 않습니다. 아래 보안 모델을 따릅니�
 | API 키 저장 | OS keyring | 평문 디스크 저장 없음 |
 | 기본 Brain storage | SQLite | 로컬 파일. Postgres는 명시적 opt-in |
 | Docker Postgres setup | 비활성 | API/UI에서 명시적 consent 없이는 시작하지 않음 |
+| Tauri production CSP | strict local-only policy | `csp:null` 금지, 외부 script/frame/object 기본 차단 |
+| Chat auto file read | 비활성 | `LATTICEAI_AUTO_READ_CHAT_PATHS` 기본 false, true여도 승인 없는 임의 경로 읽기 차단 |
 
 ### 인증 및 세션
 
@@ -97,8 +98,10 @@ architecture를 재설계하지 않습니다. 아래 보안 모델을 따릅니�
 - `grep()`, `read_file()`: `node_modules`, `.git`, `venv`, `dist` 자동 제외
 - Agent context packets redact obvious secret fields (`token`, `password`,
   `api_key`, `credential`) before persistence/replay.
-- Telegram bot tokens are masked before HTTP, exception, or response text is
-  written to logs (`bot123:REDACTED`).
+- Secret-like values are centrally redacted before logs, audit payloads,
+  security exports, frontend previews, and hook packets.
+- Telegram bot tokens, provider tokens, webhook URLs, client secrets, and
+  Postgres DSNs are masked before exception or response text is written to logs.
 - Agent handoff, review/retry, workflow, plugin, and execution-failure events
   are workspace-scoped in the existing SSE activity feed.
 
@@ -108,8 +111,9 @@ architecture를 재설계하지 않습니다. 아래 보안 모델을 따릅니�
 로컬(`~/.ltcai/`, `~/.ltcai-brain/`)에 저장됩니다. 기본 시작 시 외부 서버로
 데이터를 전송하지 않습니다. 사용자가 직접 클라우드 API 키를 설정하고 클라우드
 모델 실행을 선택한 경우 해당 제공업체에 프롬프트가 전송될 수 있습니다.
-Telegram, Brain Network, Docker setup, model downloads, cloud model calls, and
-update checks는 명시적 opt-in 경로를 요구합니다.
+Telegram, Brain Network, Docker setup, model downloads, cloud model calls,
+remote marketplace refreshes, and update checks는 명시적 opt-in 경로를
+요구합니다. Token/API key 존재만으로 외부 통신을 시작하지 않습니다.
 
 ## 퍼블릭 배포 시 권고사항
 
@@ -126,4 +130,7 @@ Render, Fly.io 등 퍼블릭 환경에 배포할 경우:
 ## 알려진 제한사항 (Out of Scope)
 
 - 에이전트가 `run_command()`를 통해 임의 셸 명령을 실행할 수 있음 (설계상 의도). 신뢰하지 않는 사용자에게 에이전트 접근 권한 부여 시 주의.
-- MLX 모델 파일 자체의 무결성 검증 미지원 (Hugging Face 등 신뢰할 수 있는 출처에서 다운로드 권장)
+- MLX 모델 파일 자체의 무결성 검증은 provider metadata에 의존합니다.
+- Cloud model prompts follow the selected provider's privacy and retention
+  policy once the user explicitly chooses that provider.
+- 로컬 파일 보안은 사용자 OS 계정, 디스크 암호화, 백업 정책에도 의존합니다.

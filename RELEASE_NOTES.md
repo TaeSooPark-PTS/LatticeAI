@@ -1,7 +1,40 @@
 # Release Notes
 
-The current release target is v5.0.0. Older sections are historical
+The current release target is v5.1.0. Older sections are historical
 release notes and should not be read as newer product claims.
+
+## v5.1.0 - Product Trust & Clarity Release
+
+Lattice AI v5.1.0 makes the product easier to understand and safer to trust:
+it is a local-first private AI memory layer / Digital Brain where knowledge is
+durable and models are replaceable.
+
+### Highlights
+
+- Rewrote the README first screen around the product reason to exist, practical
+  use cases, local ownership, and model-agnostic Brain portability.
+- Added `PRIVACY.md`, `docs/WHY_LATTICE.md`, and `docs/TRUST_MODEL.md`, and
+  refreshed `FEATURE_STATUS.md`, `SECURITY.md`, and `ARCHITECTURE.md`.
+- Removed `csp:null` from Tauri production config and added an app-shell CSP
+  header validation gate.
+- Centralized secret redaction for logs, audit payloads, security exports, and
+  builtin hook packets.
+- Disabled silent chat auto-file reads and required explicit consent for model
+  download requests.
+- Added `app_factory.py` builder seams for config, security, and Brain runtime
+  construction.
+- Bumped synchronized Python, npm, VSIX, Tauri, runtime, and static metadata to
+  `5.1.0`.
+
+### Expected Artifacts
+
+- `dist/ltcai-5.1.0-py3-none-any.whl`
+- `dist/ltcai-5.1.0.tar.gz`
+- `dist/ltcai-5.1.0.vsix`
+- `ltcai-5.1.0.tgz`
+- `src-tauri/target/release/bundle/dmg/Lattice AI_5.1.0_aarch64.dmg`
+
+Full notes: [RELEASE_NOTES_v5.1.0.md](RELEASE_NOTES_v5.1.0.md)
 
 ## v5.0.0 - Multilingual Brain Foundation Release
 

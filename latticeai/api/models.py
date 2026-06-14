@@ -77,6 +77,7 @@ class SetApiKeyRequest(BaseModel):
 
 class PullModelRequest(BaseModel):
     model: str
+    allow_download: bool = False
 
 
 class PrepareModelRequest(BaseModel):
@@ -291,6 +292,11 @@ def create_models_router(
     @router.post("/engines/pull-model")
     async def pull_ollama_model(req: PullModelRequest, request: Request):
         require_user(request)
+        if not req.allow_download:
+            raise HTTPException(
+                status_code=403,
+                detail="Model downloads require explicit user consent (allow_download=true).",
+            )
         model_ref = normalize_local_model_request(req.model, None)
         if not model_ref:
             raise HTTPException(status_code=400, detail="모델 식별자가 비어 있습니다.")

@@ -19,7 +19,7 @@ const tabs: Array<{ id: SystemTab; label: string }> = [
   { id: "activity", label: "History" },
   { id: "network", label: "Devices" },
   { id: "settings", label: "Preferences" },
-  { id: "admin", label: "Admin" },
+  { id: "admin", label: "Admin Console" },
 ];
 
 export function SystemPage({ initialTab }: { initialTab?: string }) {

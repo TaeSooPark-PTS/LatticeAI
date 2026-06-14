@@ -7,6 +7,39 @@
 > PyPI / npm / VS Code Marketplace / Open VSX 배포는 아래 수동 절차로만
 > 진행합니다. 태그 생성은 패키지 스토어 publish를 자동으로 트리거하지 않습니다.
 
+## v5.1.0 릴리스 노트 (2026-06-14)
+
+Lattice AI v5.1.0 — Product Trust & Clarity Release. 5.1.0은 Lattice AI를
+일반 AI 채팅앱, 모델 런처, 노트앱, 그래프 DB가 아니라 로컬 우선 private AI
+memory layer / Digital Brain으로 분명히 정리한다. 모델은 바뀌어도 사용자의
+문서, 대화, 결정, 관계, 프로젝트 맥락은 Brain에 남고, 사용자가 소유하고
+이동할 수 있어야 한다.
+
+- **Changed (Product positioning)**: README 첫 화면을 release-note 중심에서
+  `Your private AI memory layer. Keep your knowledge. Switch any model.` /
+  `모델은 바꿔도, 내 지식은 남는 로컬 AI 브레인.` 중심의 제품 설명으로 재작성했다.
+- **Changed (Trust docs)**: `PRIVACY.md`, `docs/WHY_LATTICE.md`,
+  `docs/TRUST_MODEL.md`, `FEATURE_STATUS.md`, `SECURITY.md`,
+  `ARCHITECTURE.md`를 v5.1.0 trust model에 맞춰 동기화했다.
+- **Changed (Security defaults)**: Tauri production CSP에서 `null`을 제거하고,
+  app shell CSP header, shared secret redaction, audit/log redaction,
+  auto local file read fail-closed, explicit model download consent gate를
+  추가했다.
+- **Changed (Architecture cleanup)**: `app_factory.py`에 config/security/Brain
+  runtime builder seams를 추가해 composition root를 단계적으로 줄일 수 있게 했다.
+- **Changed (Collaboration review)**: pts_claudecode는 자동 파일 읽기, 비밀값
+  중앙 redaction, CSP, 모델 다운로드 동의, app_factory 분리 지점을 검토했고,
+  pts_grok은 제품 포지셔닝, why-use-this, trust/privacy 문서, 사용자/관리자
+  계층 정리를 검토했다.
+- **Preserved**: v5.0.0 and older entries remain historical. Package registry
+  publish remains owner-run.
+- **Expected artifacts**:
+  - `dist/ltcai-5.1.0-py3-none-any.whl`
+  - `dist/ltcai-5.1.0.tar.gz`
+  - `dist/ltcai-5.1.0.vsix`
+  - `ltcai-5.1.0.tgz`
+  - `src-tauri/target/release/bundle/dmg/Lattice AI_5.1.0_aarch64.dmg`
+
 ## v5.0.0 릴리스 노트 (2026-06-14)
 
 Lattice AI v5.0.0 — Multilingual Brain Foundation Release. 5.0.0은 대격변
@@ -1209,14 +1242,14 @@ Knowledge Graph v2 read/write cutover. 자세한 내용은
    - `npm run release:artifacts`
    - `npm run release:validate`
 
-현재 `v5.0.0` 기준 필수 산출물:
+현재 `v5.1.0` 기준 필수 산출물:
 
 ```text
-dist/ltcai-5.0.0-py3-none-any.whl
-dist/ltcai-5.0.0.tar.gz
-dist/ltcai-5.0.0.vsix
-ltcai-5.0.0.tgz
-src-tauri/target/release/bundle/dmg/Lattice AI_5.0.0_aarch64.dmg
+dist/ltcai-5.1.0-py3-none-any.whl
+dist/ltcai-5.1.0.tar.gz
+dist/ltcai-5.1.0.vsix
+ltcai-5.1.0.tgz
+src-tauri/target/release/bundle/dmg/Lattice AI_5.1.0_aarch64.dmg
 ```
 
 ## 2) npm 배포
@@ -1227,7 +1260,7 @@ src-tauri/target/release/bundle/dmg/Lattice AI_5.0.0_aarch64.dmg
    - `npm run publish:npm`
    - 직접 실행 시:
      ```
-     npm publish "ltcai-5.0.0.tgz" --access public
+     npm publish "ltcai-5.1.0.tgz" --access public
      ```
 
 ## 3) PyPI 배포
@@ -1240,14 +1273,14 @@ src-tauri/target/release/bundle/dmg/Lattice AI_5.0.0_aarch64.dmg
    - `npm run publish:pypi`  ← 권장 (`$npm_package_version` 자동 사용)
    - 직접 실행 시:
      ```
-     python3 -m twine upload "dist/ltcai-5.0.0-py3-none-any.whl" "dist/ltcai-5.0.0.tar.gz"
+     python3 -m twine upload "dist/ltcai-5.1.0-py3-none-any.whl" "dist/ltcai-5.1.0.tar.gz"
      ```
 
 참고:
 - TestPyPI 먼저 쓰려면:
   ```
   python3 -m twine upload --skip-existing --repository testpypi \
-    "dist/ltcai-5.0.0.tar.gz" "dist/ltcai-5.0.0-py3-none-any.whl"
+    "dist/ltcai-5.1.0.tar.gz" "dist/ltcai-5.1.0-py3-none-any.whl"
   ```
 
 ## 4) VS Code / Cursor / Antigravity 확장 배포
@@ -1263,13 +1296,13 @@ src-tauri/target/release/bundle/dmg/Lattice AI_5.0.0_aarch64.dmg
    - `npm run publish:vscode`  ← 권장 (`$npm_package_version` 자동 사용)
    - 직접 실행 시:
      ```
-     npx vsce publish --packagePath "../dist/ltcai-5.0.0.vsix"
+     npx vsce publish --packagePath "../dist/ltcai-5.1.0.vsix"
      ```
 4. Open VSX 배포 (Cursor/일부 포크 호환)
    - `npm run publish:openvsx`  ← 권장 (`$npm_package_version` 자동 사용)
    - 직접 실행 시:
      ```
-     npx ovsx publish "../dist/ltcai-5.0.0.vsix"
+     npx ovsx publish "../dist/ltcai-5.1.0.vsix"
      ```
 5. 로컬 설치 (VS Code/Cursor/Antigravity)
    - `npm run install:all`

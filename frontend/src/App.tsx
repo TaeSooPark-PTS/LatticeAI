@@ -245,7 +245,7 @@ function BrainHome({
       if (result.error) {
         setMessages((items) => {
           const next = [...items];
-          next[next.length - 1] = { role: "assistant", content: `Unavailable: ${result.error}` };
+          next[next.length - 1] = { role: "assistant", content: `${t(language, "brain.unavailable")}: ${result.error}` };
           return next;
         });
       } else {

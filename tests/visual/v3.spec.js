@@ -136,7 +136,7 @@ test("admin console is separated from the user Brain surface", async ({ page }) 
   await expect(page.locator("main[aria-label='Lattice Brain']")).toBeVisible();
   await expect(page.locator("main[aria-label='Lattice Admin']")).toHaveCount(0);
 
-  await page.getByRole("button", { name: "관리자" }).click();
+  await page.getByRole("button", { name: "관리자 콘솔" }).click();
   await expect(page).toHaveURL(/#\/admin$/);
   await expect(page.locator("main[aria-label='Lattice Admin']")).toBeVisible();
   await expect(page.locator("body")).toContainText("Admin Console");

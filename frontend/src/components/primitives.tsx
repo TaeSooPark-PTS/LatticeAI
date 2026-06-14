@@ -316,7 +316,7 @@ export function ModeGate({
           <div className="text-lg font-semibold">{title}</div>
           <p className="mt-1 max-w-2xl text-sm leading-6 text-muted-foreground">{detail}</p>
         </div>
-        <Button onClick={() => setMode(target)}>{target === "admin" ? "Switch to Admin" : "Switch to Advanced"}</Button>
+        <Button onClick={() => setMode(target)}>{target === "admin" ? "Switch to Admin Console" : "Switch to Advanced"}</Button>
       </CardContent>
     </Card>
   );

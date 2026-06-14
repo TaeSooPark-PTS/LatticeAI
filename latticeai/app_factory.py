@@ -23,6 +23,84 @@ if TYPE_CHECKING:  # imports for annotations only — keep module import light
     from latticeai.core.config import Config
 
 
+def build_config_runtime(config: "Optional[Config]" = None) -> Dict[str, Any]:
+    """Build the app configuration runtime without importing heavy model code."""
+
+    from latticeai.core.config import Config
+
+    cfg = config if config is not None else Config.from_env()
+    return {
+        "CONFIG": cfg,
+        "APP_MODE": cfg.app_mode,
+        "IS_PUBLIC_MODE": cfg.is_public,
+        "DEFAULT_HOST": cfg.host,
+        "DEFAULT_PORT": cfg.port,
+        "NETWORK_EXPOSED": cfg.network_exposed,
+        "ENABLE_TELEGRAM": cfg.enable_telegram,
+        "ENABLE_GRAPH": cfg.enable_graph,
+        "AUTOLOAD_MODELS": cfg.autoload_models,
+        "MODEL_IDLE_UNLOAD_SECONDS": cfg.model_idle_unload_seconds,
+        "ALLOW_LOCAL_MODELS": cfg.allow_local_models,
+        "REQUIRE_AUTH": cfg.require_auth,
+        "ALLOW_PLAINTEXT_API_KEYS": cfg.allow_plaintext_api_keys,
+        "CORS_ALLOW_NETWORK": cfg.cors_allow_network,
+        "CORS_EXTRA_ORIGINS": cfg.cors_extra_origins,
+        "PUBLIC_MODEL": cfg.public_model,
+        "LOCAL_MODEL": cfg.local_model,
+        "LOCAL_DRAFT_MODEL": cfg.local_draft_model,
+    }
+
+
+def build_security_runtime(config: "Config") -> Dict[str, Any]:
+    """Build auth/security-derived runtime settings from the central config."""
+
+    from latticeai.core.security import configure_trusted_proxies
+
+    configure_trusted_proxies(config.trusted_proxies)
+    return {
+        "SSO_DISCOVERY_URL": config.sso_discovery_url,
+        "SSO_CLIENT_ID": config.sso_client_id,
+        "SSO_CLIENT_SECRET": config.sso_client_secret,
+        "SSO_REDIRECT_URI": config.sso_redirect_uri,
+        "SSO_PROVIDER_NAME": config.sso_provider_name,
+        "RATE_LIMIT_ENABLED": config.rate_limit_enabled,
+        "OPEN_REGISTRATION": config.open_registration,
+        "INVITE_CODE": config.invite_code,
+        "INVITE_GATE_ENABLED": config.invite_gate_enabled,
+    }
+
+
+def build_brain_runtime(
+    *,
+    data_dir: Any,
+    history_file: Any,
+    enable_graph: bool,
+    embedder: Any,
+    storage_engine: Any,
+) -> Dict[str, Any]:
+    """Construct Brain Core storage/conversation primitives behind one seam."""
+
+    from lattice_brain import BrainCore, ConversationStore
+
+    brain_core = BrainCore.from_paths(
+        data_dir,
+        embedder=embedder.provider,
+        storage_engine=storage_engine,
+    ) if enable_graph else None
+    knowledge_graph = brain_core.knowledge if brain_core is not None else None
+    conversations = (
+        brain_core.conversations
+        if brain_core is not None
+        else ConversationStore(data_dir / "knowledge_graph.sqlite")
+    )
+    conversations.import_legacy_json(history_file)
+    return {
+        "BRAIN_CORE": brain_core,
+        "KNOWLEDGE_GRAPH": knowledge_graph,
+        "CONVERSATIONS": conversations,
+    }
+
+
 def _build(config: "Optional[Config]" = None) -> Dict[str, Any]:
     """The legacy ``server_app`` assembly, moved verbatim into function scope.
 
@@ -58,14 +136,13 @@ def _build(config: "Optional[Config]" = None) -> Dict[str, Any]:
     from pydantic import BaseModel
 
     from latticeai.models.router import LLMRouter, normalize_branding
-    from knowledge_graph import set_llm_router
+    from lattice_brain._kg_common import set_llm_router
     from local_knowledge_api import LocalKnowledgeWatcher
     from latticeai.core.security import (
         hash_password,
         verify_password,
         host_is_loopback as _host_is_loopback_impl,
         client_ip as _client_ip_impl,
-        configure_trusted_proxies as _configure_trusted_proxies,
         bytes_match_extension as _bytes_match_extension_impl,
         redact_secret_text as _redact_secret_text,
         check_ip_rate_limit as _check_ip_rate_limit,
@@ -83,7 +160,6 @@ def _build(config: "Optional[Config]" = None) -> Dict[str, Any]:
     from latticeai.api.admin import create_admin_router
     from latticeai.api.security_dashboard import create_security_router as _create_security_router
     from latticeai.core.model_compat import list_cached_profiles as _list_compat_profiles
-    from latticeai.core.config import Config
     from latticeai.core.workspace_os import (
         WORKSPACE_OS_VERSION,
         WorkspaceOSStore,
@@ -160,7 +236,6 @@ def _build(config: "Optional[Config]" = None) -> Dict[str, Any]:
     from latticeai.api.portability import create_portability_router
     from latticeai.services.memory_service import MemoryService
     from lattice_brain.ingestion import IngestionItem, IngestionPipeline
-    from lattice_brain import BrainCore, ConversationStore
     from lattice_brain.storage import storage_from_env
     from lattice_brain.context import ContextAssembler
     from lattice_brain.memory import BrainMemory
@@ -202,42 +277,43 @@ def _build(config: "Optional[Config]" = None) -> Dict[str, Any]:
     # ── App-level config — parsed once, in one place (latticeai.core.config) ──────
     # The module-level names below are kept as a compatibility surface for the rest
     # of server.py; all of them are now derived from a single CONFIG instance.
-    CONFIG = config if config is not None else Config.from_env()
+    _config_runtime = build_config_runtime(config)
+    CONFIG = _config_runtime["CONFIG"]
     APP_VERSION = WORKSPACE_OS_VERSION
 
     # Forwarded headers (X-Forwarded-For / CF-Connecting-IP) are only honoured for
     # IP rate limiting when the direct peer is one of these trusted proxies. Empty by
     # default (local-first): the peer address is used and client-supplied headers are
     # ignored, so per-IP rate limits cannot be spoofed.
-    _configure_trusted_proxies(CONFIG.trusted_proxies)
-
-    APP_MODE = CONFIG.app_mode
-    IS_PUBLIC_MODE = CONFIG.is_public
-    DEFAULT_HOST = CONFIG.host
-    DEFAULT_PORT = CONFIG.port
+    APP_MODE = _config_runtime["APP_MODE"]
+    IS_PUBLIC_MODE = _config_runtime["IS_PUBLIC_MODE"]
+    DEFAULT_HOST = _config_runtime["DEFAULT_HOST"]
+    DEFAULT_PORT = _config_runtime["DEFAULT_PORT"]
     def _host_is_loopback(host: str) -> bool:
         return _host_is_loopback_impl(host)
 
-    NETWORK_EXPOSED = CONFIG.network_exposed
-    ENABLE_TELEGRAM = CONFIG.enable_telegram
-    ENABLE_GRAPH    = CONFIG.enable_graph
-    AUTOLOAD_MODELS = CONFIG.autoload_models
-    MODEL_IDLE_UNLOAD_SECONDS = CONFIG.model_idle_unload_seconds
-    ALLOW_LOCAL_MODELS = CONFIG.allow_local_models
-    REQUIRE_AUTH = CONFIG.require_auth
-    ALLOW_PLAINTEXT_API_KEYS = CONFIG.allow_plaintext_api_keys
-    CORS_ALLOW_NETWORK = CONFIG.cors_allow_network
-    CORS_EXTRA_ORIGINS = CONFIG.cors_extra_origins
-    PUBLIC_MODEL = CONFIG.public_model
-    LOCAL_MODEL = CONFIG.local_model
-    LOCAL_DRAFT_MODEL = CONFIG.local_draft_model
+    NETWORK_EXPOSED = _config_runtime["NETWORK_EXPOSED"]
+    ENABLE_TELEGRAM = _config_runtime["ENABLE_TELEGRAM"]
+    ENABLE_GRAPH    = _config_runtime["ENABLE_GRAPH"]
+    AUTOLOAD_MODELS = _config_runtime["AUTOLOAD_MODELS"]
+    MODEL_IDLE_UNLOAD_SECONDS = _config_runtime["MODEL_IDLE_UNLOAD_SECONDS"]
+    ALLOW_LOCAL_MODELS = _config_runtime["ALLOW_LOCAL_MODELS"]
+    REQUIRE_AUTH = _config_runtime["REQUIRE_AUTH"]
+    ALLOW_PLAINTEXT_API_KEYS = _config_runtime["ALLOW_PLAINTEXT_API_KEYS"]
+    CORS_ALLOW_NETWORK = _config_runtime["CORS_ALLOW_NETWORK"]
+    CORS_EXTRA_ORIGINS = _config_runtime["CORS_EXTRA_ORIGINS"]
+    PUBLIC_MODEL = _config_runtime["PUBLIC_MODEL"]
+    LOCAL_MODEL = _config_runtime["LOCAL_MODEL"]
+    LOCAL_DRAFT_MODEL = _config_runtime["LOCAL_DRAFT_MODEL"]
+
+    _security_runtime = build_security_runtime(CONFIG)
 
     # ── SSO / OIDC config ─────────────────────────────────────────────────────────
-    SSO_DISCOVERY_URL = CONFIG.sso_discovery_url
-    SSO_CLIENT_ID = CONFIG.sso_client_id
-    SSO_CLIENT_SECRET = CONFIG.sso_client_secret
-    SSO_REDIRECT_URI = CONFIG.sso_redirect_uri
-    SSO_PROVIDER_NAME = CONFIG.sso_provider_name
+    SSO_DISCOVERY_URL = _security_runtime["SSO_DISCOVERY_URL"]
+    SSO_CLIENT_ID = _security_runtime["SSO_CLIENT_ID"]
+    SSO_CLIENT_SECRET = _security_runtime["SSO_CLIENT_SECRET"]
+    SSO_REDIRECT_URI = _security_runtime["SSO_REDIRECT_URI"]
+    SSO_PROVIDER_NAME = _security_runtime["SSO_PROVIDER_NAME"]
     _sso_discovery_cache: Optional[Dict] = None
     _sso_discovery_cache_url: str = ""
     _sso_states: Dict[str, float] = {}  # state → timestamp (CSRF protection)
@@ -343,22 +419,20 @@ def _build(config: "Optional[Config]" = None) -> Dict[str, Any]:
     if EMBEDDER.fell_back:
         logging.warning("Embedding provider %s unavailable: %s", EMBEDDER.requested, EMBEDDER.detail)
     STORAGE_ENGINE = storage_from_env(os.environ, data_dir=DATA_DIR) if ENABLE_GRAPH else None
-    BRAIN_CORE = BrainCore.from_paths(
-        DATA_DIR,
-        embedder=EMBEDDER.provider,
+    _brain_runtime = build_brain_runtime(
+        data_dir=DATA_DIR,
+        history_file=HISTORY_FILE,
+        enable_graph=ENABLE_GRAPH,
+        embedder=EMBEDDER,
         storage_engine=STORAGE_ENGINE,
-    ) if ENABLE_GRAPH else None
-    KNOWLEDGE_GRAPH = BRAIN_CORE.knowledge if BRAIN_CORE is not None else None
+    )
+    BRAIN_CORE = _brain_runtime["BRAIN_CORE"]
+    KNOWLEDGE_GRAPH = _brain_runtime["KNOWLEDGE_GRAPH"]
     # ── v4 durable conversation store: unbounded episodic memory in the same
     # SQLite file as the graph (kg_portability backup/restore covers it for
     # free). Legacy chat_history.json is imported once, idempotently, and the
     # file is left untouched on disk as the import source.
-    CONVERSATIONS = (
-        BRAIN_CORE.conversations
-        if BRAIN_CORE is not None
-        else ConversationStore(DATA_DIR / "knowledge_graph.sqlite")
-    )
-    CONVERSATIONS.import_legacy_json(HISTORY_FILE)
+    CONVERSATIONS = _brain_runtime["CONVERSATIONS"]
     # Hooks registry is constructed here (ahead of the watcher) so folder-watch
     # reindexes can fire the pre_index/post_index lifecycle hooks.
     HOOKS_REGISTRY = HooksRegistry(DATA_DIR / "hooks.json")

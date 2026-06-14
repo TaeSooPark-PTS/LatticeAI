@@ -27,7 +27,7 @@ from latticeai.core.document_generator import DocumentGenerationSession, detect_
 from lattice_brain.runtime.hooks import dispatch_tool
 from latticeai.services.app_context import AppContext
 from latticeai.services.tool_dispatch import build_agent_runtime, collect_created_files
-from tools import AGENT_ROOT, ToolError, ensure_agent_root, execute_tool, knowledge_save, local_read, network_status
+from tools import AGENT_ROOT, ToolError, ensure_agent_root, execute_tool, knowledge_save, network_status
 
 class ChatRequest(BaseModel):
     message: str
@@ -42,6 +42,7 @@ class ChatRequest(BaseModel):
     user_email: Optional[str] = None
     user_nickname: Optional[str] = None
     image_data: Optional[str] = None
+    allow_file_context: bool = False
 
 
 class AgentRequest(BaseModel):
@@ -450,16 +451,23 @@ def create_chat_router(context: AppContext) -> APIRouter:
     
         if CONFIG.auto_read_chat_paths:
             _file_path_re = re.compile(r'(?:^|[\s\'\"(])((~|/[\w.])[^\s\'")\]]*)', re.MULTILINE)
-            for _m in _file_path_re.finditer(req.message or ""):
-                _fpath = _m.group(1).strip()
-                try:
-                    _result = local_read(_fpath)
-                    _fcontent = _result.get("content", "")
-                    if _fcontent:
-                        context += f"\n\n[FILE: {_fpath}]\n```\n{_fcontent[:6000]}\n```"
-                        print(f"📂 Auto-injected file context: {_fpath}")
-                except Exception:
-                    pass
+            requested_paths = [_m.group(1).strip() for _m in _file_path_re.finditer(req.message or "")]
+            if requested_paths:
+                append_audit_event(
+                    "auto_file_context_blocked",
+                    user_email=effective_email,
+                    path_count=len(requested_paths),
+                    allow_file_context=req.allow_file_context,
+                    reason="local file context requires an explicit approved file/tool flow",
+                )
+                if req.allow_file_context:
+                    raise HTTPException(
+                        status_code=400,
+                        detail=(
+                            "Automatic local file reads are disabled in chat. "
+                            "Attach the file, upload it, or use an approved local-file tool flow."
+                        ),
+                    )
     
         trace_seed = CHAT_SERVICE.build_graph_trace(
             req.message,

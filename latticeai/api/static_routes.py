@@ -12,11 +12,27 @@ from fastapi.responses import FileResponse, HTMLResponse
 
 from latticeai.api.ui_redirects import app_redirect
 
+PRODUCTION_CSP = (
+    "default-src 'self'; "
+    "script-src 'self'; "
+    "style-src 'self' 'unsafe-inline'; "
+    "img-src 'self' data: blob: http://127.0.0.1:*; "
+    "font-src 'self' data:; "
+    "connect-src 'self' http://127.0.0.1:* ws://127.0.0.1:*; "
+    "frame-src 'none'; "
+    "object-src 'none'; "
+    "base-uri 'none'; "
+    "form-action 'self'; "
+    "frame-ancestors 'none'"
+)
+
+
 def ui_file_response(path: Path) -> FileResponse:
     response = FileResponse(path)
     response.headers["Cache-Control"] = "no-cache, no-store, must-revalidate"
     response.headers["Pragma"] = "no-cache"
     response.headers["Expires"] = "0"
+    response.headers["Content-Security-Policy"] = PRODUCTION_CSP
     return response
 
 @dataclass(frozen=True)

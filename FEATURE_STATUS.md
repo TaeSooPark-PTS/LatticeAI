@@ -1,14 +1,34 @@
-# Lattice AI — Feature Status (v5.0.0)
+# Lattice AI — Feature Status (v5.1.0)
 
-**Current release line:** v5.0.0 Multilingual Brain Foundation Release. Lattice AI is a
-Living Brain platform whose primary experience is Brain plus conversation; the
-graph remains durable infrastructure and advanced exploration, not the home
-product identity. v5.0.0 adds Korean/English language choice across first-run,
-Brain, graph, and admin surfaces while preserving the v4 runtime foundations.
-Admin logs and operations remain in a separate console.
-Sections below v5.0.0 are historical release-status records
-and should not override the current README, ARCHITECTURE.md, or v5.0.0 release
-notes.
+**Current release line:** v5.1.0 Product Trust & Clarity Release. Lattice AI is
+a local-first private AI memory layer / Digital Brain. The primary experience is
+Brain plus conversation; the graph remains durable infrastructure and advanced
+exploration, not the home product identity. Sections below v5.1.0 are
+historical release-status records and should not override the current README,
+ARCHITECTURE.md, SECURITY.md, PRIVACY.md, or v5.1.0 release notes.
+
+## v5.1.0 Product Trust & Clarity Release — what changed
+
+v5.1.0 clarifies why Lattice AI exists and adds trust gates for CSP, local file
+auto-read, model downloads, secret redaction, Brain Core independence, and
+release documentation.
+
+| Area | Status | Evidence |
+| --- | --- | --- |
+| **Private Brain positioning** | WORKING | README first screen and `docs/WHY_LATTICE.md` explain "Your private AI memory layer. Keep your knowledge. Switch any model." |
+| **Local Brain chat and memory views** | WORKING | Brain Chat, recent/older memories, topic views, relationship view, and graph exploration remain the normal user flow. `frontend/src/App.tsx`, `tests/visual/v3.spec.js`. |
+| **Korean/English UI foundation** | WORKING | Language selection persists locally and drives first-run, Brain, graph, and key ownership copy. `frontend/src/i18n.ts`, `frontend/src/store/appStore.ts`. |
+| **Brain ownership and portability** | WORKING | Export, backup, archive, inspect, verify, restore preview, and confirmed restore remain local-first and model-independent. `lattice_brain/portability.py`, `tests/unit/test_kg_portability.py`, `tests/unit/test_v42_brain_storage.py`. |
+| **Tauri and app-shell CSP** | WORKING | Production Tauri CSP is non-null and `/app` responses include CSP headers. `src-tauri/tauri.conf.json`, `latticeai/api/static_routes.py`, `tests/unit/test_v51_trust_gates.py`. |
+| **Secret redaction** | WORKING | Shared redaction covers logs, audit payloads, security exports, and builtin hook packets. `latticeai/core/security.py`, `latticeai/core/logging_safety.py`, `latticeai/core/audit.py`, `tests/unit/test_v51_trust_gates.py`. |
+| **Auto local file read** | DISABLED BY DEFAULT / BLOCKED WITHOUT APPROVAL | `LATTICEAI_AUTO_READ_CHAT_PATHS` defaults false; even when true, chat does not silently read arbitrary local paths. `latticeai/api/chat.py`, `tests/unit/test_v51_trust_gates.py`. |
+| **Model downloads** | OPT-IN | `/engines/pull-model` requires `allow_download=true`; prepare/load download paths already carry explicit consent. `latticeai/api/models.py`. |
+| **Cloud models** | OPT-IN EXTERNAL | Cloud calls require configured keys and explicit model choice; no key/token alone starts a call. `latticeai/core/product_hardening.py`, `tests/unit/test_config.py`. |
+| **Telegram / Brain Network / update checks** | OPT-IN EXTERNAL | Disabled by default; token presence alone is inert. `latticeai/core/product_hardening.py`. |
+| **PostgreSQL / Docker scale mode** | OPT-IN LOCAL/NETWORK DEPENDENCY | SQLite is default; Postgres and Docker setup require explicit configuration/consent. `lattice_brain/storage/factory.py`, `lattice_brain/storage/docker.py`. |
+| **Admin Console** | ADMIN-ONLY | Users, roles, audit logs, security events, retention, and index operations remain separated from the Brain user surface. `frontend/src/App.tsx`, `latticeai/api/admin.py`. |
+| **Enterprise governance** | PREVIEW / PARTIAL | Community edition exposes descriptors and disabled capabilities honestly; Enterprise enforcement depends on provider implementation. `latticeai/core/enterprise.py`, `latticeai/core/enterprise_admin.py`. |
+| **app_factory decomposition** | PARTIAL FOUNDATION | Config, security, and Brain runtime builder seams now exist; full route/lifespan/persistence module split remains technical debt. `latticeai/app_factory.py`, `tests/unit/test_app_factory.py`. |
 
 ## v5.0.0 Multilingual Brain Foundation Release — what changed
 

@@ -12,12 +12,11 @@ chat, run model workflows, and trigger coding actions from the editor.
 
 ## Current Release
 
-**5.0.0 — Multilingual Brain Foundation Release.** The desktop workspace keeps
-the v4 Brain Core extraction, AgentRuntime, ToolRegistry, graph, and Admin
-Console foundations while adding Korean/English language choice across first-run
-onboarding and the Brain surface. The extension connects to the same local
-workspace APIs and remains compatible with the separated user/admin product
-model.
+**5.1.0 — Product Trust & Clarity Release.** The desktop workspace is positioned
+as a private AI memory layer / Digital Brain: keep your knowledge locally,
+switch models, and preserve Brain ownership. The extension connects to the same
+local workspace APIs and remains compatible with the separated Brain user flow
+and Admin Console model.
 
 ## Quick Start
 

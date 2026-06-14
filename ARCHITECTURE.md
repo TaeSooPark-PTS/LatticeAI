@@ -1,12 +1,12 @@
-# Lattice AI v5.0.0 Architecture
+# Lattice AI v5.1.0 Architecture
 
-This document describes the current v5.0.0 Multilingual Brain Foundation Release. v5.0.0
-does not redesign Brain Core or storage; it keeps the user experience centered
-on Brain plus conversation while making everyday Memory, Topic, Relationship,
-and Graph exploration directly reachable from the Brain. User login is guarded
-against accidental empty-Brain creation, model setup keeps consent explicit, and
-users, role permissions, filtered logs, retention posture, security events,
-policies, and Brain operations stay in a dedicated Admin Console. First-run, Brain, and Admin surfaces share a persisted Korean/English language preference so the same local Brain can be used comfortably by Korean and English users.
+This document describes the current v5.1.0 Product Trust & Clarity Release.
+Lattice AI is a local-first private AI memory layer: the user's Brain is the
+durable asset, while models are replaceable voices. v5.1.0 keeps the user
+experience centered on Brain plus conversation, keeps graph exploration
+available without making it the product identity, and hardens the trust boundary
+around CSP, local file reads, secret redaction, model downloads, and external
+communication opt-in.
 
 ## System Map
 
@@ -85,7 +85,9 @@ sequenceDiagram
 
 Tauri 2 is the release desktop shell. Electron remains fallback-only. The
 sidecar runs on localhost, reports health/version/mode, and is stopped by the
-desktop lifecycle handler.
+desktop lifecycle handler. Packaged production builds use a non-null CSP that
+defaults to local assets and localhost API/WebSocket endpoints, blocks external
+scripts/frames/objects, and keeps development CSP separate.
 
 ## React/Vite Frontend
 
@@ -138,7 +140,10 @@ flowchart TB
 ```
 
 FastAPI is the product API source of truth. The generated OpenAPI client keeps
-frontend calls aligned with backend routes.
+frontend calls aligned with backend routes. `app_factory.py` now exposes builder
+seams for config, security, and Brain runtime construction; future decomposition
+should continue by moving app composition into focused modules without restoring
+import-time side effects.
 
 ## Brain Core
 
@@ -258,18 +263,18 @@ explicit opt-in paths.
 
 ```mermaid
 flowchart TB
-  Source["Source Tree v5.0.0"] --> FrontendBuild["Vite Frontend Build"]
+  Source["Source Tree v5.1.0"] --> FrontendBuild["Vite Frontend Build"]
   Source --> PythonBuild["Python Build"]
   Source --> NpmPack["npm pack"]
   Source --> VsixBuild["VSIX Package"]
   Source --> TauriBuild["Tauri Build"]
 
   FrontendBuild --> StaticAssets["static/app Assets"]
-  PythonBuild --> Wheel["dist/ltcai-5.0.0-py3-none-any.whl"]
-  PythonBuild --> Sdist["dist/ltcai-5.0.0.tar.gz"]
-  NpmPack --> Tgz["ltcai-5.0.0.tgz"]
-  VsixBuild --> Vsix["dist/ltcai-5.0.0.vsix"]
-  TauriBuild --> Dmg["src-tauri/target/release/bundle/dmg/Lattice AI_5.0.0_aarch64.dmg"]
+  PythonBuild --> Wheel["dist/ltcai-5.1.0-py3-none-any.whl"]
+  PythonBuild --> Sdist["dist/ltcai-5.1.0.tar.gz"]
+  NpmPack --> Tgz["ltcai-5.1.0.tgz"]
+  VsixBuild --> Vsix["dist/ltcai-5.1.0.vsix"]
+  TauriBuild --> Dmg["src-tauri/target/release/bundle/dmg/Lattice AI_5.1.0_aarch64.dmg"]
   StaticAssets --> Wheel
   StaticAssets --> Tgz
   StaticAssets --> Dmg
@@ -279,7 +284,7 @@ Release uploads must use exact filenames. Do not upload `dist/*`.
 
 ## Known Limitations
 
-- v5.0.0 adds bilingual user-facing surfaces without a backend security
+- v5.1.0 adds bilingual user-facing surfaces without a backend security
   redesign.
 - External registries can lag behind the GitHub Release because package-store
   publishing is owner-controlled.
@@ -289,4 +294,4 @@ Release uploads must use exact filenames. Do not upload `dist/*`.
 - Model-free states are reported honestly. The UI should not fabricate answers
   when no model is loaded.
 - Historical reports under `docs/` preserve older release behavior and should
-  not be rewritten as v5.0.0 claims.
+  not be rewritten as v5.1.0 claims.

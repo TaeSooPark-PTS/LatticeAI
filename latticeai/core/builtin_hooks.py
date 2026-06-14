@@ -14,10 +14,7 @@ from __future__ import annotations
 
 from typing import Any, Callable
 
-_SECRET_KEY_HINTS = (
-    "token", "password", "passwd", "secret", "api_key", "apikey",
-    "authorization", "auth", "cookie", "session", "private_key",
-)
+from latticeai.core.security import SECRET_KEY_HINTS, redact_secrets as redact_secret_values
 
 
 def register_builtin_hook_runners(
@@ -32,11 +29,12 @@ def register_builtin_hook_runners(
     def redact_secrets(context):
         """pre_run — strip secret-like keys from the agent context packet."""
         payload = context.payload if isinstance(context.payload, dict) else {}
-        redacted = []
-        for key in list(payload.keys()):
-            if any(s in str(key).lower() for s in _SECRET_KEY_HINTS):
-                payload[key] = "***redacted***"
-                redacted.append(key)
+        before = dict(payload)
+        payload.update(redact_secret_values(payload))
+        redacted = [
+            key for key in payload.keys()
+            if payload.get(key) != before.get(key) or any(s in str(key).lower() for s in SECRET_KEY_HINTS)
+        ]
         return {"status": "ok", "output": f"redacted {len(redacted)} field(s)" if redacted else "no secrets present"}
 
     def audit_agent_run(context):

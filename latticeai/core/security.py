@@ -6,7 +6,7 @@ import re
 import secrets
 import threading
 import time
-from typing import Dict, List
+from typing import Any, Dict, List
 
 from fastapi import HTTPException
 
@@ -119,19 +119,77 @@ def bytes_match_extension(data: bytes, ext: str) -> bool:
     return any(head.startswith(sig) for sig in signatures)
 
 
+SECRET_KEY_HINTS = (
+    "api_key",
+    "apikey",
+    "secret",
+    "token",
+    "password",
+    "passwd",
+    "authorization",
+    "cookie",
+    "session",
+    "private_key",
+    "client_secret",
+    "webhook",
+    "dsn",
+    "credential",
+)
+
+SECRET_TEXT_PATTERNS = [
+    re.compile(r"(?i)\b(api[_ -]?key|secret|token|password|passwd|authorization|bearer|client[_ -]?secret|webhook|dsn)\s*[:=]\s*['\"]?([^\s'\",;]{8,})['\"]?"),
+    re.compile(r"\b(sk-[A-Za-z0-9_\-]{16,})\b"),
+    re.compile(r"\b(xai-[A-Za-z0-9_\-]{16,})\b"),
+    re.compile(r"\b(gsk_[A-Za-z0-9_\-]{16,})\b"),
+    re.compile(r"\b(ghp_[A-Za-z0-9_]{30,})\b"),
+    re.compile(r"\b(xox[baprs]-[A-Za-z0-9-]{10,})\b"),
+    re.compile(r"\b(AKIA[0-9A-Z]{16})\b"),
+    re.compile(r"(?i)\b(postgres(?:ql)?://[^@\s]+:[^@\s]+@[^\s]+)"),
+    re.compile(r"-----BEGIN [A-Z ]+PRIVATE KEY-----[\s\S]+?-----END [A-Z ]+PRIVATE KEY-----"),
+]
+
+TELEGRAM_TOKEN_WITH_BOT_RE = re.compile(r"\bbot(\d{5,20}):[A-Za-z0-9_-]{8,}\b")
+TELEGRAM_TOKEN_BARE_RE = re.compile(r"(?<![A-Za-z0-9_:-])(\d{5,20}):[A-Za-z0-9_-]{8,}(?![A-Za-z0-9_-])")
+
+
+def _is_secret_key(key: Any) -> bool:
+    lowered = str(key or "").lower().replace("-", "_")
+    return any(hint in lowered for hint in SECRET_KEY_HINTS)
+
+
 def redact_secret_text(text: str) -> str:
+    """Redact known secret shapes from user-visible text, logs, and audit data."""
+
     if not text:
         return ""
-    patterns = [
-        r"(?i)(api[_ -]?key|secret|token|password|passwd)\s*[:=]\s*['\"]?([A-Za-z0-9_\-\.]{12,})['\"]?",
-        r"\b(sk-[A-Za-z0-9_\-]{16,})\b",
-        r"\b(xai-[A-Za-z0-9_\-]{16,})\b",
-        r"\b(gsk_[A-Za-z0-9_\-]{16,})\b",
-    ]
     redacted = str(text)
-    for pattern in patterns:
-        redacted = re.sub(pattern, lambda m: f"{m.group(1)}=[REDACTED]" if len(m.groups()) > 1 else "[REDACTED]", redacted)
+    redacted = TELEGRAM_TOKEN_WITH_BOT_RE.sub(r"bot\1:REDACTED", redacted)
+    redacted = TELEGRAM_TOKEN_BARE_RE.sub(r"bot\1:REDACTED", redacted)
+    for pattern in SECRET_TEXT_PATTERNS:
+        def repl(match: re.Match) -> str:
+            if len(match.groups()) >= 2:
+                return f"{match.group(1)}=[REDACTED_SECRET]"
+            return "[REDACTED_SECRET]"
+
+        redacted = pattern.sub(repl, redacted)
     return redacted
+
+
+def redact_secrets(value: Any) -> Any:
+    """Recursively redact secret-like values before logs, audit, or API previews."""
+
+    if isinstance(value, str):
+        return redact_secret_text(value)
+    if isinstance(value, dict):
+        out: Dict[Any, Any] = {}
+        for key, item in value.items():
+            out[key] = "[REDACTED_SECRET]" if _is_secret_key(key) else redact_secrets(item)
+        return out
+    if isinstance(value, list):
+        return [redact_secrets(item) for item in value]
+    if isinstance(value, tuple):
+        return tuple(redact_secrets(item) for item in value)
+    return value
 
 
 # ── IP-based rate limiting (registration / login) ────────────────────────────

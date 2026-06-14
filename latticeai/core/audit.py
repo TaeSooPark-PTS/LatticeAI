@@ -9,6 +9,7 @@ from pathlib import Path
 from typing import Any, Callable, Dict, List, Optional
 
 from . import timezones
+from .security import redact_secrets
 
 _history_lock = threading.Lock()
 
@@ -40,11 +41,12 @@ def get_audit_log(audit_file: Path) -> List[Dict]:
 
 def append_audit_event(audit_file: Path, event_type: str, **payload) -> None:
     try:
+        safe_payload = redact_secrets(payload)
         event = {
             "event_type": event_type,
             # item 7: 대시보드 "오늘" 계산과 동일한 시간대 기준으로 기록한다.
             "timestamp": timezones.now_iso(),
-            **payload,
+            **safe_payload,
         }
         with _history_lock:
             events = get_audit_log(audit_file)

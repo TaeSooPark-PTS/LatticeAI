@@ -3,6 +3,58 @@
 The top entry is the current release-preparation target. Older entries are
 historical and may describe behavior as it existed at that release.
 
+## [5.1.0] - 2026-06-14
+
+> Product Trust & Clarity Release. v5.1.0 clarifies Lattice AI as a
+> local-first private AI memory layer / Digital Brain, then adds security,
+> privacy, honesty, and architecture gates so the product does not overclaim.
+
+### Changed
+
+- Rewrote the README first screen around the positioning lines
+  `Your private AI memory layer. Keep your knowledge. Switch any model.` and
+  `모델은 바꿔도, 내 지식은 남는 로컬 AI 브레인.`
+- Added practical use cases for preserving project decisions, switching models,
+  connecting documents/conversations/files/notes/decisions, encrypted Brain
+  archive portability, cloud lock-in avoidance, and honest no-model states.
+- Added and refreshed trust documentation: `PRIVACY.md`, `docs/WHY_LATTICE.md`,
+  `docs/TRUST_MODEL.md`, `SECURITY.md`, `ARCHITECTURE.md`, and
+  `FEATURE_STATUS.md`.
+- Removed `csp:null` from Tauri production config and added an app-shell CSP
+  response header.
+- Centralized secret redaction for logs, audit payloads, security exports, and
+  builtin hook packets.
+- Changed chat auto-file handling so `LATTICEAI_AUTO_READ_CHAT_PATHS` remains
+  off by default and does not silently read arbitrary local paths even if
+  enabled.
+- Added explicit `allow_download=true` consent for model download requests.
+- Added config, security, and Brain runtime builder seams in `app_factory.py`
+  while preserving the existing API shape.
+- Bumped synchronized package/runtime/static versions to `5.1.0`, including
+  Python metadata, npm package metadata, VSIX metadata, Tauri metadata,
+  `latticeai`, `lattice_brain`, runtime constants, and static asset metadata.
+
+### Added
+
+- v5.1 trust validation tests for CSP, secret redaction, audit redaction,
+  auto-file-read blocking, public/network auth posture, `shell=True`
+  production-path scanning, and Brain Core import isolation.
+- v5.1 release evidence paths under `output/release/v5.1.0`.
+
+### Preserved
+
+- v5.0.0 and older sections remain historical.
+- External package publishing remains owner-run; this release prepares exact
+  artifacts and GitHub Release assets without registry publish automation.
+
+### Artifacts
+
+- `dist/ltcai-5.1.0-py3-none-any.whl`
+- `dist/ltcai-5.1.0.tar.gz`
+- `dist/ltcai-5.1.0.vsix`
+- `ltcai-5.1.0.tgz`
+- `src-tauri/target/release/bundle/dmg/Lattice AI_5.1.0_aarch64.dmg`
+
 ## [5.0.0] - 2026-06-14
 
 > Multilingual Brain Foundation Release. v5.0.0 starts the major-version cleanup

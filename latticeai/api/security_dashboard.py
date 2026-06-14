@@ -26,7 +26,6 @@ from __future__ import annotations
 import io
 import json
 import logging
-import re
 from collections import defaultdict
 from datetime import datetime
 from typing import Any, Callable, Dict, List, Optional
@@ -36,6 +35,7 @@ from fastapi.responses import Response
 from pydantic import BaseModel
 
 from ..core import timezones
+from ..core.security import SECRET_TEXT_PATTERNS, redact_secret_text
 
 logger = logging.getLogger(__name__)
 
@@ -43,23 +43,11 @@ logger = logging.getLogger(__name__)
 # ── Hard secret patterns ──────────────────────────────────────────────────────
 # 이 값들은 관리자도 절대 원문으로 보면 안 된다.
 
-HARD_SECRET_PATTERNS = [
-    re.compile(r"(?i)(api[_-]?key|secret|access[_-]?token|password|passwd|bearer)\s*[:=]\s*\S+"),
-    re.compile(r"sk-[A-Za-z0-9]{20,}"),
-    re.compile(r"ghp_[A-Za-z0-9]{30,}"),
-    re.compile(r"xox[baprs]-[A-Za-z0-9-]{10,}"),
-    re.compile(r"AKIA[0-9A-Z]{16}"),
-    re.compile(r"-----BEGIN [A-Z ]+PRIVATE KEY-----[\s\S]+?-----END [A-Z ]+PRIVATE KEY-----"),
-]
+HARD_SECRET_PATTERNS = SECRET_TEXT_PATTERNS
 
 
 def redact_hard_secrets(text: str) -> str:
-    if not text:
-        return text or ""
-    out = text
-    for pat in HARD_SECRET_PATTERNS:
-        out = pat.sub("[REDACTED_SECRET]", out)
-    return out
+    return redact_secret_text(text)
 
 
 def soft_mask(text: str, *, keep: int = 4) -> str:
