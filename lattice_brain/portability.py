@@ -75,8 +75,8 @@ def _sqlite_siblings(db_path: Path) -> tuple[Path, Path, Path]:
 def _restore_sibling(path: Path, backup: Path) -> None:
     if backup.exists():
         shutil.copy2(backup, path)
-    elif path.exists():
-        path.unlink()
+    else:
+        path.unlink(missing_ok=True)
 
 
 def _replace_sqlite_atomically(src: Path, dest: Path, backup_dir: Path) -> None:
@@ -85,14 +85,18 @@ def _replace_sqlite_atomically(src: Path, dest: Path, backup_dir: Path) -> None:
     shutil.copyfile(src, tmp)
     backups: dict[Path, Path] = {}
     try:
+        # -wal/-shm are transient: another live connection can checkpoint and
+        # remove them between exists() and the copy/unlink. Treat a vanished
+        # sibling as "nothing to preserve" instead of crashing the restore.
         for sibling in _sqlite_siblings(dest):
-            if sibling.exists():
-                backup = backup_dir / sibling.name
+            backup = backup_dir / sibling.name
+            try:
                 shutil.copy2(sibling, backup)
-                backups[sibling] = backup
+            except FileNotFoundError:
+                continue
+            backups[sibling] = backup
         for sibling in _sqlite_siblings(dest)[1:]:
-            if sibling.exists():
-                sibling.unlink()
+            sibling.unlink(missing_ok=True)
         os.replace(tmp, dest)
     except Exception:
         if tmp.exists():

@@ -30,7 +30,7 @@
     "typecheck:frontend": "npx tsc -p tsconfig.json --noEmit",
     "test": "node scripts/run_python.mjs -m pytest tests/ -v",
     "test:unit": "node scripts/run_python.mjs -m pytest tests/unit/ -v",
-    "test:integration": "node scripts/run_python.mjs -m pytest tests/integration/ -v",
+    "test:integration": "node scripts/run_integration_tests.mjs",
     "test:visual": "playwright test",
     "vercel:build": "node scripts/build_vercel_static.mjs",
     "desktop:tauri": "tauri dev",

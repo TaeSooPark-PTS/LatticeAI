@@ -1,5 +1,5 @@
 #!/usr/bin/env node
-import { existsSync, rmSync } from "node:fs";
+import { existsSync, readdirSync, rmSync } from "node:fs";
 import { join } from "node:path";
 
 const repo = join(import.meta.dirname, "..");
@@ -18,6 +18,21 @@ const targets = [
   join(repo, "src-tauri", "target", "release", "bundle", "dmg", `Lattice AI_${version}_aarch64.dmg`),
   join(repo, "src-tauri", "target", "release", "bundle", "macos", "Lattice AI.app"),
 ];
+
+const distDir = join(repo, "dist");
+if (existsSync(distDir)) {
+  for (const name of readdirSync(distDir)) {
+    if (/^ltcai-\d+\.\d+\.\d+.*\.(whl|tar\.gz|vsix|tgz)$/.test(name)) {
+      targets.push(join(distDir, name));
+    }
+  }
+}
+
+for (const name of readdirSync(repo)) {
+  if (/^ltcai-\d+\.\d+\.\d+.*\.tgz$/.test(name)) {
+    targets.push(join(repo, name));
+  }
+}
 
 for (const target of targets) {
   if (existsSync(target)) {

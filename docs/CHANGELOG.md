@@ -30,6 +30,14 @@ historical and may describe behavior as it existed at that release.
 - Added explicit `allow_download=true` consent for model download requests.
 - Added config, security, and Brain runtime builder seams in `app_factory.py`
   while preserving the existing API shape.
+- Hardened release artifact cleanup so `release:artifacts` removes stale
+  `dist/ltcai-*` and root `ltcai-*.tgz` files before rebuilding exact v5.1.0
+  artifacts only.
+- Made `npm run test:integration` self-contained by starting a local uvicorn
+  server, waiting for `/health`, running the integration suite, and shutting the
+  server down.
+- Fixed a SQLite Brain restore TOCTOU race where transient `-wal` / `-shm`
+  siblings could disappear between probe and copy during archive restore.
 - Bumped synchronized package/runtime/static versions to `5.1.0`, including
   Python metadata, npm package metadata, VSIX metadata, Tauri metadata,
   `latticeai`, `lattice_brain`, runtime constants, and static asset metadata.
@@ -39,6 +47,7 @@ historical and may describe behavior as it existed at that release.
 - v5.1 trust validation tests for CSP, secret redaction, audit redaction,
   auto-file-read blocking, public/network auth posture, `shell=True`
   production-path scanning, and Brain Core import isolation.
+- A deterministic regression test for restore-time WAL sibling disappearance.
 - v5.1 release evidence paths under `output/release/v5.1.0`.
 
 ### Preserved

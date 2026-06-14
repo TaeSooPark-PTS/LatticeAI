@@ -121,6 +121,32 @@ def test_restore_integrity_check_rejects_tampered_archive(tmp_path):
         svc.restore(out["path"], confirm=True)
 
 
+def test_restore_tolerates_wal_sibling_vanishing_mid_swap(tmp_path, monkeypatch):
+    """A live connection can checkpoint away the -wal/-shm sibling between the
+    exists() probe and the copy. Restore must treat that as 'nothing to
+    preserve', not crash with FileNotFoundError (regression: TOCTOU race)."""
+    store = _seeded(tmp_path, "kg")
+    svc = KGPortabilityService(knowledge_graph=store, data_dir=tmp_path / "data")
+    out = svc.backup()
+    store.clear_all()
+
+    # Force a -wal sibling to exist at probe time, then vanish before copy2.
+    wal = Path(str(store.db_path) + "-wal")
+    wal.write_bytes(b"transient-wal")
+    real_copy2 = portability_module.shutil.copy2
+
+    def vanish_then_copy(src, dst, *a, **k):
+        if Path(src) == wal:
+            wal.unlink(missing_ok=True)  # checkpoint removed it underneath us
+        return real_copy2(src, dst, *a, **k)
+
+    monkeypatch.setattr(portability_module.shutil, "copy2", vanish_then_copy)
+
+    restored = svc.restore(out["path"], confirm=True)
+    assert restored["restored"] is True
+    assert _node_totals(store) > 0
+
+
 def test_restore_failure_preserves_current_brain_and_pre_restore_backup(tmp_path, monkeypatch):
     store = _seeded(tmp_path, "kg")
     svc = KGPortabilityService(knowledge_graph=store, data_dir=tmp_path / "data")

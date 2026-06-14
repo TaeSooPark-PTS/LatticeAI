@@ -163,7 +163,9 @@ client.on("messageCreate", async (message) => {
   if (!isMentioned(message, client.user.id)) return;
 
   if (busy) {
-    await message.reply("pts_claudecode 작업 중입니다. 현재 작업이 끝나면 이어서 보겠습니다.");
+    if (!message.author.bot) {
+      await message.reply("pts_claudecode 작업 중입니다. 현재 작업이 끝나면 이어서 보겠습니다.");
+    }
     return;
   }
 

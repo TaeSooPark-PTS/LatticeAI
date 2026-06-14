@@ -27,6 +27,13 @@ memory layer / Digital Brain으로 분명히 정리한다. 모델은 바뀌어�
   추가했다.
 - **Changed (Architecture cleanup)**: `app_factory.py`에 config/security/Brain
   runtime builder seams를 추가해 composition root를 단계적으로 줄일 수 있게 했다.
+- **Changed (Release hygiene)**: `release:artifacts`가 과거 `dist/ltcai-*`와
+  root `ltcai-*.tgz` 산출물을 먼저 정리한 뒤 5.1.0 정확한 파일만 다시 만들도록
+  강화했다. `npm run test:integration`은 이제 로컬 uvicorn 서버를 직접 띄우고
+  종료하므로 CI와 로컬 검증이 같은 방식으로 통과한다.
+- **Fixed (Brain portability)**: SQLite restore 중 `knowledge_graph.sqlite-wal`
+  또는 `-shm` sibling이 체크포인트로 사라지는 TOCTOU race를 안전하게 처리해
+  백업/복원 테스트가 플래키하게 실패하지 않게 했다.
 - **Changed (Collaboration review)**: pts_claudecode는 자동 파일 읽기, 비밀값
   중앙 redaction, CSP, 모델 다운로드 동의, app_factory 분리 지점을 검토했고,
   pts_grok은 제품 포지셔닝, why-use-this, trust/privacy 문서, 사용자/관리자
