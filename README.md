@@ -50,16 +50,17 @@ strategies before consent. See RELEASE.md and docs/CHANGELOG.md.
 First launch opens to Login only. The local profile is the beginning of the
 Brain, not a dashboard, graph, or setup grid. The first screen frames Lattice as
 a durable knowledge home where models are replaceable and ownership stays with
-the user. (v5.1.0 hardened login; v5.2.0 added transparent verified model registry.)
+the user. v5.2.0 adds a transparent verified model registry, load-ready catalog,
+and workspace-scoped marketplace install state.
 
-![Login](output/release/v5.1.0/screenshots/01-login.png)
+![Login](output/release/v5.2.0/screenshots/01-login.png)
 
 ### 2. Environment Analysis
 
 Lattice reads the machine locally and summarizes what kind of Brain this
 computer can support.
 
-![Environment Analysis](output/release/v5.1.0/screenshots/02-environment-analysis.png)
+![Environment Analysis](output/release/v5.2.0/screenshots/02-environment-analysis.png)
 
 ### 3. Recommended Models
 
@@ -67,7 +68,7 @@ The model step is a short recommendation list. It avoids catalog noise and keeps
 runtime/install details behind clear user consent. Users who do not know which
 model to choose can start with the recommended model in one click.
 
-![Recommended Models](output/release/v5.1.0/screenshots/03-recommended-models.png)
+![Recommended Models](output/release/v5.2.0/screenshots/03-recommended-models.png)
 
 ### 4. Install And Load
 
@@ -76,7 +77,7 @@ and load progress. No model download or runtime install starts silently, and the
 screen explains that large downloads may take minutes without inventing fake ETA
 data.
 
-![Install and Load](output/release/v5.1.0/screenshots/04-install-load-progress.png)
+![Install and Load](output/release/v5.2.0/screenshots/04-install-load-progress.png)
 
 ### 5. Brain Chat
 
@@ -85,7 +86,7 @@ stays present while the user types, recalls context, and receives responses. The
 home now includes a compact Brain overview for recent memories, older memories,
 and major topics, plus saved-to-memory feedback after chat.
 
-![Brain Chat Home](output/release/v5.1.0/screenshots/05-brain-chat-home.png)
+![Brain Chat Home](output/release/v5.2.0/screenshots/05-brain-chat-home.png)
 
 ## Brain Depths
 
@@ -94,26 +95,26 @@ while revealing more structure.
 
 | Depth | Experience | Evidence |
 | --- | --- | --- |
-| Level 1 | Living Brain presence | ![Living Brain Level 1](output/release/v5.1.0/screenshots/06-living-brain-level-1.png) |
-| Level 2 | Memory Layer | ![Memory Layer](output/release/v5.1.0/screenshots/07-memory-layer.png) |
-| Level 3 | Knowledge Layer | ![Knowledge Layer](output/release/v5.1.0/screenshots/08-knowledge-layer.png) |
-| Level 4 | Relationship Layer | ![Relationship Layer](output/release/v5.1.0/screenshots/09-relationship-layer.png) |
-| Level 5 | Knowledge Graph with nodes, edges, search, and focus detail | ![Knowledge Graph Layer](output/release/v5.1.0/screenshots/10-knowledge-graph-layer.png) |
+| Level 1 | Living Brain presence | ![Living Brain Level 1](output/release/v5.2.0/screenshots/06-living-brain-level-1.png) |
+| Level 2 | Memory Layer | ![Memory Layer](output/release/v5.2.0/screenshots/07-memory-layer.png) |
+| Level 3 | Knowledge Layer | ![Knowledge Layer](output/release/v5.2.0/screenshots/08-knowledge-layer.png) |
+| Level 4 | Relationship Layer | ![Relationship Layer](output/release/v5.2.0/screenshots/09-relationship-layer.png) |
+| Level 5 | Knowledge Graph with nodes, edges, search, and focus detail | ![Knowledge Graph Layer](output/release/v5.2.0/screenshots/10-knowledge-graph-layer.png) |
 
 Walkthrough:
 
-![v5.1.0 Living Brain walkthrough](output/release/v5.1.0/gifs/v5.1.0-living-brain-walkthrough.gif)
+![v5.2.0 Living Brain walkthrough](output/release/v5.2.0/gifs/v5.2.0-living-brain-walkthrough.gif)
 
 Model setup status evidence:
 
-![Model setup status](output/release/v5.1.0/screenshots/11-model-setup-status.png)
+![Model setup status](output/release/v5.2.0/screenshots/11-model-setup-status.png)
 
 Separate admin console evidence:
 
-![Admin Console](output/release/v5.1.0/screenshots/12-admin-console.png)
+![Admin Console](output/release/v5.2.0/screenshots/12-admin-console.png)
 
 Screenshot index and capture notes:
-[output/release/v5.1.0/SCREENSHOT_INDEX.md](output/release/v5.1.0/SCREENSHOT_INDEX.md)
+[output/release/v5.2.0/SCREENSHOT_INDEX.md](output/release/v5.2.0/SCREENSHOT_INDEX.md)
 
 ## Architecture At A Glance
 
@@ -184,8 +185,8 @@ Validated 5.2.0 artifacts (current release):
 - `src-tauri/target/release/bundle/dmg/Lattice AI_5.2.0_aarch64.dmg`
 
 Attach only those exact files to the GitHub Release. Do not upload a wildcard
-from the `dist` directory. (v5.1.0 and prior artifact references in historical
-sections and screenshot paths are intentionally preserved.)
+from the `dist` directory. Historical artifact references in release history are
+intentionally preserved.
 
 ## Local Development
 
@@ -255,7 +256,8 @@ npm run docs:check-links
 - [FEATURE_STATUS.md](FEATURE_STATUS.md) - current feature status and historical
   status ledger.
 - [RELEASE_NOTES.md](RELEASE_NOTES.md) - release notes index.
-- [RELEASE_NOTES_v5.1.0.md](RELEASE_NOTES_v5.1.0.md) - v5.1.0 Product Trust & Clarity release notes.
+- [RELEASE.md](RELEASE.md) - current v5.2.0 release notes and historical release history.
+- [RELEASE_NOTES_v5.2.0.md](RELEASE_NOTES_v5.2.0.md) - v5.2.0 user-focused model transformation release notes.
 - [RELEASE_NOTES_v5.0.0.md](RELEASE_NOTES_v5.0.0.md) - v5.0.0 multilingual foundation history.
 - [RELEASE_NOTES_v4.7.2.md](RELEASE_NOTES_v4.7.2.md) - v4.7.2 intuitive Brain UX history.
 - [RELEASE_NOTES_v4.7.1.md](RELEASE_NOTES_v4.7.1.md) - v4.7.1 admin operations history.

@@ -1,7 +1,41 @@
 # Release Notes
 
-The current release target is v5.1.0. The tracked release-note surface starts at
+The current release target is v5.2.0. The tracked release-note surface starts at
 v4.5.0 so the public Git tree stays focused on the current product era.
+
+## v5.2.0 - User-Focused Model Transformation
+
+Lattice AI v5.2.0 turns model choice into a transparent, user-facing capability
+system. Users see which local models are load-ready, what hardware they fit,
+what Hugging Face verification exists, and what download/load path will run
+before they consent.
+
+### Highlights
+
+- Added a structured model capability registry with modality, hardware,
+  download/load strategy, license, safety, and Hugging Face verification fields.
+- Added automated HF registry verification and preserved modern multimodal
+  candidates as registry entries while keeping the picker focused on load-ready
+  families.
+- Hardened the verification contract so `verified` requires HF presence plus
+  config and tokenizer hints, with weights hints reported separately.
+- Added workspace-scoped marketplace template install registry state to prevent
+  cross-workspace install-status bleed.
+- Updated the Library UI to show verified, multimodal, hardware, load strategy,
+  license, and safety details before download/load consent.
+- Captured fresh v5.2.0 screenshots, GIF, and WebM release evidence.
+- Bumped synchronized Python, npm, VSIX, Tauri, runtime, and static metadata to
+  `5.2.0`.
+
+### Expected Artifacts
+
+- `dist/ltcai-5.2.0-py3-none-any.whl`
+- `dist/ltcai-5.2.0.tar.gz`
+- `dist/ltcai-5.2.0.vsix`
+- `ltcai-5.2.0.tgz`
+- `src-tauri/target/release/bundle/dmg/Lattice AI_5.2.0_aarch64.dmg`
+
+Full notes: [RELEASE_NOTES_v5.2.0.md](RELEASE_NOTES_v5.2.0.md)
 
 ## v5.1.0 - Product Trust & Clarity Release
 
