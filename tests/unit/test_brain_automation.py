@@ -1,6 +1,7 @@
 from lattice_brain.workflow import validate_definition
 from latticeai.services.brain_automation import (
     build_brain_automation_workflow,
+    find_installed_recipe_workflow,
     list_brain_automation_recipes,
 )
 
@@ -40,3 +41,16 @@ def test_recipe_metadata_carries_recipe_id_for_draft_dedup():
         definition = build_brain_automation_workflow(recipe["id"])
         assert definition["metadata"]["recipe_id"] == recipe["id"]
         assert definition["metadata"]["created_from"] == "brain_automation_recipe"
+
+
+def test_find_installed_recipe_workflow_matches_only_same_recipe_drafts():
+    """Idempotent install: re-installing a recipe returns the existing draft."""
+    existing = {"id": "wf-1", "metadata": build_brain_automation_workflow("daily-memory-digest")["metadata"]}
+    manual = {"id": "wf-2", "metadata": {"created_from": "desktop-act-ui"}}
+    other_recipe = {"id": "wf-3", "metadata": build_brain_automation_workflow("weekly-project-review")["metadata"]}
+    workflows = [manual, other_recipe, existing]
+
+    assert find_installed_recipe_workflow(workflows, "daily-memory-digest") is existing
+    assert find_installed_recipe_workflow(workflows, "follow-up-radar") is None
+    assert find_installed_recipe_workflow([], "daily-memory-digest") is None
+    assert find_installed_recipe_workflow(None, "daily-memory-digest") is None

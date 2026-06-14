@@ -24,6 +24,8 @@ import { ProductFlow, readProductFlowComplete } from "@/components/ProductFlow";
 import { useAppStore } from "@/store/appStore";
 import { asArray } from "@/lib/utils";
 import { LANGUAGE_LABELS, t, type Language } from "@/i18n";
+import { parseHash } from "@/routes";
+import { ActPage } from "@/pages/Act";
 
 type ApiRecord = Record<string, unknown>;
 type BrainDepth = 1 | 2 | 3 | 4 | 5;
@@ -73,7 +75,8 @@ export default function App() {
   const theme = useAppStore((state) => state.theme);
   const language = useAppStore((state) => state.language);
   const [flowComplete, setFlowComplete] = React.useState(readProductFlowComplete);
-  const route = useHashRoute();
+  const rawRoute = useHashRoute();
+  const parsed = React.useMemo(() => parseHash(), [rawRoute]);
   const { state: brainState, intensity, setBrain } = useBrainState();
 
   React.useEffect(() => {
@@ -99,8 +102,10 @@ export default function App() {
   return (
     <div className="brain-space">
       <div className="brain-field" />
-      {route.startsWith("/admin") ? (
+      {rawRoute.startsWith("/admin") ? (
         <AdminConsole onBack={() => navigateHash("/brain")} />
+      ) : parsed.primary === "act" ? (
+        <ActPage initialTab={parsed.tab} />
       ) : (
         <BrainHome brainState={brainState} intensity={intensity} onBrainChange={setBrain} />
       )}
@@ -576,6 +581,7 @@ function AdminConsole({ onBack }: { onBack: () => void }) {
             <span>{stringValue(retention.retained_events, "0")} retained · {stringValue(retention.prune_candidates, "0")} ready for export/prune review</span>
           </div>
         </AdminPanel>
+
       </section>
     </main>
   );
