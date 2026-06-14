@@ -1,13 +1,29 @@
-# Lattice AI — Feature Status (v5.2.0)
+# Lattice AI — Feature Status (v5.3.0 target)
 
-**Current release line:** v5.2.0 User-Focused Model Transformation. Lattice AI is
-a local-first private AI memory layer / Digital Brain. The primary experience is
-Brain plus conversation; the graph remains durable infrastructure and advanced
-exploration, not the home product identity. v5.2.0 adds a structured model
-capability registry, HF verification transparency, hardware-fit recommendations,
-and explicit download/load strategies before consent. Sections below v5.2.0 are
-historical release-status records and should not override the current README,
-ARCHITECTURE.md, SECURITY.md, PRIVACY.md, or v5.2.0 release notes.
+**Current release-preparation line:** v5.3.0 Product Clarity and Runtime Cleanup.
+Lattice AI is a local-first Digital Brain that keeps your knowledge durable
+across any AI model. The primary experience is Brain plus conversation; the
+graph remains durable infrastructure and advanced exploration, not the home
+product identity. Sections below v5.3.0 are historical release-status records
+and should not override the current README, ARCHITECTURE.md, SECURITY.md,
+PRIVACY.md, or v5.3.0 release notes.
+
+## v5.3.0 Product Clarity and Runtime Cleanup — what changed
+
+v5.3.0 focuses on making the product easier to understand before adding more
+features. It clarifies the public identity, reorganizes README/docs around the
+user journey, improves onboarding/model setup copy, documents legacy shims, and
+moves app factory config/security/Brain runtime seams into dedicated modules.
+
+| Area | Status | Evidence |
+| --- | --- | --- |
+| **Product identity** | WORKING | README, package metadata, pyproject, architecture, feature status, release docs, and extension docs use the local-first Digital Brain definition. |
+| **User-first README** | WORKING | README starts with what Lattice is, why users need it, what they can do, one-minute flow, screenshots, then install/architecture/release details. |
+| **Onboarding copy** | WORKING | First-run copy frames login, environment analysis, recommendation, install/load, and Brain Chat around ownership, local storage, explicit consent, and durable memory. |
+| **Model UX simplification** | WORKING | Basic model setup starts with a short recommendation set while Advanced keeps registry, hardware, license, safety, and verification detail visible. |
+| **Runtime seam extraction** | WORKING | `latticeai.runtime.config_runtime`, `security_runtime`, and `brain_runtime` hold the first app factory extraction seams while preserving lazy import behavior. |
+| **Legacy compatibility map** | WORKING | `docs/LEGACY_COMPATIBILITY.md` explains root compatibility modules, migration direction, and removal checklist. |
+| **Development docs** | WORKING | `docs/DEVELOPMENT.md` separates contributor validation/runtime assembly guidance from README. |
 
 ## v5.2.0 User-Focused Model Transformation — what changed
 
@@ -19,13 +35,13 @@ verification transparency until load readiness is confirmed.
 | Area | Status | Evidence |
 | --- | --- | --- |
 | **Structured model capability registry** | WORKING | `latticeai/services/model_capability_registry.py` stores hf_repo_id, modality, quantization, hardware RAM notes, strategies, license, safety notes, and verification fields. |
-| **HF verification transparency** | WORKING | `scripts/verify_hf_model_registry.py` writes `verification_report.json`; latest run confirms 16/16 HF repos present, 15/16 config/tokenizer hints, Pixtral marked available-but-not-local-load-verified. |
+| **HF verification transparency** | WORKING | `scripts/verify_hf_model_registry.py` writes `verification_report.json`; the 5.2.0 verification run confirmed 16/16 HF repos present, 15/16 config/tokenizer hints, Pixtral marked available-but-not-local-load-verified. |
 | **User-facing catalog filtering** | WORKING | `latticeai/services/model_catalog.py` keeps raw registry entries for transparency and finalizes `ENGINE_MODEL_CATALOG` to current load-ready families to reduce catalog noise. |
 | **Model recommendation metadata** | WORKING | `/models` and `/models/recommendations` expose verification, hardware, modality, load strategy, license, safety notes, and recommended_default. `latticeai/api/models.py`, `latticeai/services/model_recommendation.py`. |
 | **Library model UI** | WORKING | `frontend/src/pages/Library.tsx` renders multimodal and HF badges, hardware notes, load strategies, and consent-first setup copy without breaking TypeScript strict checks. |
 | **Marketplace template workspace scoping** | WORKING | Template install registry entries are keyed per workspace and `/marketplace/templates/registry` filters through the authorized workspace scope. `latticeai/core/workspace_os.py`, `latticeai/api/marketplace.py`, `tests/unit/test_agent_platform_maturity.py`. |
-| **Package/runtime version sync** | WORKING | Python, npm, VS Code extension, Tauri, runtime constants, lock files, and release artifacts are synchronized to `5.2.0`. |
-| **Artifact exactness** | WORKING | `npm run release:validate` expects exact v5.2.0 wheel, sdist, npm tgz, VSIX, and Tauri DMG filenames and warns against `dist/*`. |
+| **Package/runtime version sync** | WORKING | Historical 5.2.0 package/runtime/static metadata was synchronized for that release. |
+| **Artifact exactness** | WORKING | Historical 5.2.0 validation expected exact wheel, sdist, npm tgz, VSIX, and Tauri DMG filenames and warned against `dist/*`. |
 
 ## v5.1.0 Product Trust & Clarity Release — what changed
 
@@ -35,7 +51,7 @@ release documentation.
 
 | Area | Status | Evidence |
 | --- | --- | --- |
-| **Private Brain positioning** | WORKING | README first screen and `docs/WHY_LATTICE.md` explain "Your private AI memory layer. Keep your knowledge. Switch any model." |
+| **Private Brain positioning** | WORKING | README first screen and `docs/WHY_LATTICE.md` explain the local-first Digital Brain promise. |
 | **Local Brain chat and memory views** | WORKING | Brain Chat, recent/older memories, topic views, relationship view, and graph exploration remain the normal user flow. `frontend/src/App.tsx`, `tests/visual/v3.spec.js`. |
 | **Korean/English UI foundation** | WORKING | Language selection persists locally and drives first-run, Brain, graph, and key ownership copy. `frontend/src/i18n.ts`, `frontend/src/store/appStore.ts`. |
 | **Brain ownership and portability** | WORKING | Export, backup, archive, inspect, verify, restore preview, and confirmed restore remain local-first and model-independent. `lattice_brain/portability.py`, `tests/unit/test_kg_portability.py`, `tests/unit/test_v42_brain_storage.py`. |

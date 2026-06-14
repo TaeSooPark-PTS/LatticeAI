@@ -1,8 +1,8 @@
 {
   "name": "ltcai",
   "displayName": "Lattice AI",
-  "description": "Lattice AI Digital Brain extension — knowledge graph, hybrid search, model workflows, and coding actions, local-first.",
-  "version": "5.2.0",
+  "description": "Lattice AI extension for the local-first Digital Brain that keeps your knowledge durable across any AI model.",
+  "version": "5.3.0",
   "publisher": "parktaesoo",
   "license": "MIT",
   "homepage": "https://github.com/TaeSooPark-PTS/LatticeAI#readme",

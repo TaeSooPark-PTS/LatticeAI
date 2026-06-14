@@ -1,7 +1,36 @@
 # Release Notes
 
-The current release target is v5.2.0. The tracked release-note surface starts at
+The current release target is v5.3.0. The tracked release-note surface starts at
 v4.5.0 so the public Git tree stays focused on the current product era.
+
+## v5.3.0 - Product Clarity and Runtime Cleanup
+
+Lattice AI v5.3.0 clarifies the product before adding more features: it is a
+local-first Digital Brain that keeps user knowledge durable across any AI model.
+The README, metadata, onboarding copy, docs, and first app factory runtime seams
+now point in that same direction.
+
+### Highlights
+
+- Reorganized README around product identity, user need, user actions, one-minute
+  flow, screenshots, install, architecture, and release preparation.
+- Unified product descriptions across public metadata and docs.
+- Improved onboarding/model setup copy around ownership, local storage,
+  explicit consent, and model-as-voice / Brain-as-asset framing.
+- Added `docs/DEVELOPMENT.md` and `docs/LEGACY_COMPATIBILITY.md`.
+- Moved config/security/Brain runtime assembly seams into `latticeai.runtime`.
+- Bumped synchronized Python, npm, VSIX, Tauri, runtime, and static metadata to
+  `5.3.0`.
+
+### Expected Artifacts
+
+- `dist/ltcai-5.3.0-py3-none-any.whl`
+- `dist/ltcai-5.3.0.tar.gz`
+- `dist/ltcai-5.3.0.vsix`
+- `ltcai-5.3.0.tgz`
+- `src-tauri/target/release/bundle/dmg/Lattice AI_5.3.0_aarch64.dmg`
+
+Full notes: [RELEASE_NOTES_v5.3.0.md](RELEASE_NOTES_v5.3.0.md)
 
 ## v5.2.0 - User-Focused Model Transformation
 

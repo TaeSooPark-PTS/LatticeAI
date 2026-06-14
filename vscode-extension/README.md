@@ -1,25 +1,22 @@
 # Lattice AI — VS Code Extension
 
-**Local-first AI workspace extension for Lattice AI v5 Living Brain, hybrid search, model workflows, and coding actions.**
+**Extension for the local-first Digital Brain that keeps your knowledge durable across any AI model.**
 
 [![VS Code Marketplace](https://img.shields.io/badge/VS%20Code%20Marketplace-Install-blue?logo=visualstudiocode)](https://marketplace.visualstudio.com/items?itemName=parktaesoo.ltcai)
 [![Open VSX](https://img.shields.io/open-vsx/v/parktaesoo/ltcai?label=Open%20VSX)](https://open-vsx.org/extension/parktaesoo/ltcai)
 [![License](https://img.shields.io/badge/license-MIT-green)](../LICENSE)
 
-Lattice AI connects VS Code, Cursor, and VSCodium to a running local-first AI
-workspace. Use it to send files into workspace context, work with Brain-backed
+Lattice AI connects VS Code, Cursor, and VSCodium to your local-first Digital
+Brain. Use it to send files into durable Brain context, work with Brain-backed
 chat, run model workflows, and trigger coding actions from the editor.
 
 ## Current Release
 
-**5.2.0 — User-Focused Model Transformation.** The desktop workspace now exposes
-the same structured model capability registry as the main app: verified Hugging
-Face availability, local download/load readiness, multimodal support, runtime
-strategy, and hardware-fit notes. Primary recommendations stay focused on
-current load-ready families while registry-only candidates remain transparent
-until load readiness is confirmed. The extension connects to the same local
-workspace APIs and remains compatible with the separated Brain user flow and
-Admin Console model.
+**5.3.0 — Product Clarity and Runtime Cleanup.** The extension follows the main
+app positioning: Lattice AI is a local-first Digital Brain, not just a model
+launcher or editor chat panel. It connects editor actions to the same durable
+Brain context, model registry, explicit consent gates, and separated Admin
+surface used by the desktop app.
 
 ## Quick Start
 

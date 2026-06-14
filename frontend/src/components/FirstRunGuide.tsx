@@ -36,11 +36,11 @@ export function FirstRunGuide() {
   const readyProfile = compatProfiles.some((item) => item.chat_compatible || item.quality_status === "ok" || item.quality_status === "degraded");
 
   const steps = [
-    { label: "Make it yours", done: Boolean(profileData.email), icon: UserCircle, action: "account", detail: "Sign in or keep a local profile." },
+    { label: "Make it yours", done: Boolean(profileData.email), icon: UserCircle, action: "account", detail: "Choose the owner of this local AI Brain." },
     { label: "Choose a space", done: Boolean(registry.active_workspace || workspaceData.active_workspace), icon: Users, action: "workspace-admin", detail: "Decide where memories belong." },
-    { label: "Meet your Mac", done: recs.isSuccess, icon: Cpu, action: "models", detail: "Let Lattice inspect what can run locally." },
-    { label: "Pick a brain", done: Boolean(topPick || currentModel), icon: Library, action: "models", detail: "Use the recommended local model." },
-    { label: "Install locally", done: Boolean(currentModel || loadedModels.length), icon: Download, action: "models", detail: "Download only with explicit consent." },
+    { label: "Meet your Mac", done: recs.isSuccess, icon: Cpu, action: "models", detail: "See what local Brain experience this computer can support." },
+    { label: "Pick a voice", done: Boolean(topPick || currentModel), icon: Library, action: "models", detail: "Use the recommended model without rebuilding memory later." },
+    { label: "Install with consent", done: Boolean(currentModel || loadedModels.length), icon: Download, action: "models", detail: "Download only after an explicit click." },
     { label: "Talk to Brain", done: Boolean(readyProfile || currentModel || loadedModels.length), icon: PlayCircle, action: "chat", detail: "Confirm the model can answer." },
     { label: "Set the pace", done: Boolean(mode), icon: SlidersHorizontal, action: "settings", detail: "Stay Calm or switch deeper." },
     { label: "Explore deeply", done: true, icon: Layers3, action: "knowledge-graph", detail: "Open advanced relationships." },
@@ -55,7 +55,7 @@ export function FirstRunGuide() {
         <div className="page-kicker"><CheckCircle2 className="h-4 w-4" /> First 10 minutes</div>
         <h2>Build your living Brain without guessing.</h2>
         <p>
-          Start with a space, let Lattice recommend a private local model, then add the first pieces of knowledge.
+          Start with a local Brain, let Lattice recommend a model voice, then add the first pieces of durable knowledge.
           Every step keeps the next action visible.
         </p>
         <div className="arrival-actions">

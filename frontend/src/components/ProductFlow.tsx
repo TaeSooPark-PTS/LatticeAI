@@ -531,7 +531,7 @@ function buildDetectedFacts(analysis: FlowAnalysis | null) {
     {
       label: "Computer",
       value: appleSilicon ? "Apple Silicon Mac" : friendlyOs(profile.os),
-      detail: "Ready for local AI workspace use",
+      detail: "Ready for local Digital Brain use",
     },
     {
       label: "Memory",
