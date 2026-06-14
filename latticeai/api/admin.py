@@ -2,9 +2,10 @@
 
 import logging
 from collections import defaultdict
+from datetime import datetime, timedelta
 from typing import Callable, Dict, List, Optional
 
-from fastapi import APIRouter, HTTPException, Request
+from fastapi import APIRouter, HTTPException, Query, Request
 from pydantic import BaseModel
 
 from latticeai.core.workspace_os import DEFAULT_WORKSPACE_ID
@@ -86,6 +87,62 @@ def create_admin_router(
         scope = _workspace_scope(request)
         return [item for item in get_audit_log() if _matches_scope(item, scope)]
 
+    def _filter_audit_log(
+        events: List[Dict],
+        *,
+        q: Optional[str] = None,
+        actor: Optional[str] = None,
+        action: Optional[str] = None,
+        severity: Optional[str] = None,
+        limit: int = 50,
+    ) -> List[Dict]:
+        needle = (q or "").strip().lower()
+        actor_filter = (actor or "").strip().lower()
+        action_filter = (action or "").strip().lower()
+        severity_filter = (severity or "").strip().lower()
+
+        def matches(event: Dict) -> bool:
+            public = _event_public_text(event)
+            if needle and needle not in public:
+                return False
+            if actor_filter and actor_filter not in str(event.get("user_email") or event.get("actor") or "").lower():
+                return False
+            event_action = str(event.get("event_type") or event.get("action") or "").lower()
+            if action_filter and action_filter not in event_action:
+                return False
+            event_severity = str(event.get("severity") or event.get("sev") or "").lower()
+            if severity_filter and event_severity != severity_filter:
+                return False
+            return True
+
+        capped_limit = max(1, min(int(limit or 50), 250))
+        return [event for event in events if matches(event)][-capped_limit:]
+
+    def _event_public_text(event: Dict) -> str:
+        parts = [
+            event.get("event_type"),
+            event.get("action"),
+            event.get("user_email"),
+            event.get("actor"),
+            event.get("target"),
+            event.get("target_email"),
+            event.get("workspace_id"),
+            event.get("severity"),
+            event.get("sev"),
+        ]
+        return " ".join(str(part).lower() for part in parts if part is not None)
+
+    def _parse_timestamp(value: object) -> Optional[datetime]:
+        if not value:
+            return None
+        try:
+            parsed = datetime.fromisoformat(str(value).replace("Z", "+00:00"))
+            if parsed.tzinfo is not None:
+                return parsed.astimezone().replace(tzinfo=None)
+            return parsed
+        except ValueError:
+            return None
+
     @router.get("/admin/summary")
     async def admin_summary(request: Request):
         _, users = require_admin(request)
@@ -127,9 +184,34 @@ def create_admin_router(
         return build_sensitivity_report(_scoped_history(request))
 
     @router.get("/admin/audit")
-    async def admin_audit(request: Request):
+    async def admin_audit(
+        request: Request,
+        q: Optional[str] = Query(None),
+        actor: Optional[str] = Query(None),
+        action: Optional[str] = Query(None),
+        severity: Optional[str] = Query(None),
+        limit: int = Query(50, ge=1, le=250),
+    ):
         _, users = require_admin(request)
-        report = build_admin_audit_report(users, _scoped_audit_log(request))
+        scoped_events = _scoped_audit_log(request)
+        filtered_events = _filter_audit_log(
+            scoped_events,
+            q=q,
+            actor=actor,
+            action=action,
+            severity=severity,
+            limit=limit,
+        )
+        report = build_admin_audit_report(users, filtered_events)
+        report["filters"] = {
+            "q": q or "",
+            "actor": actor or "",
+            "action": action or "",
+            "severity": severity or "",
+            "limit": limit,
+            "matched_events": len(filtered_events),
+            "scoped_events": len(scoped_events),
+        }
         try:
             report["graph"] = get_graph_stats() if enable_graph else {"disabled": True}
         except Exception as e:
@@ -179,7 +261,34 @@ def create_admin_router(
                 {"id": "invite_gate", "label": "Invite gate",
                  "value": "Required for new accounts" if invite_gate_enabled else "Open registration",
                  "enforced": bool(invite_gate_enabled)},
+                {"id": "log_retention", "label": "Log retention",
+                 "value": "90 day local audit window with manual export before pruning", "enforced": True},
             ]
+        }
+
+    @router.get("/admin/log-retention")
+    async def admin_log_retention(request: Request):
+        require_admin(request)
+        events = _scoped_audit_log(request)
+        retention_days = 90
+        cutoff = datetime.now() - timedelta(days=retention_days)
+        retained = 0
+        prune_candidates = 0
+        for event in events:
+            ts = _parse_timestamp(event.get("timestamp") or event.get("ts"))
+            if ts and ts < cutoff:
+                prune_candidates += 1
+            else:
+                retained += 1
+        return {
+            "mode": "local-first",
+            "retention_days": retention_days,
+            "total_events": len(events),
+            "retained_events": retained,
+            "prune_candidates": prune_candidates,
+            "export_before_prune": True,
+            "editable": False,
+            "reason": "Retention is reported in Community mode; destructive pruning requires an explicit export workflow.",
         }
 
     @router.get("/admin/product-hardening")

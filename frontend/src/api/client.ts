@@ -12,6 +12,13 @@ export type ApiResult<T = unknown> = {
 
 type HttpMethod = "GET" | "POST" | "PATCH" | "DELETE";
 type Query = Record<string, string | number | boolean | null | undefined>;
+export type AdminAuditFilters = {
+  q?: string;
+  actor?: string;
+  action?: string;
+  severity?: string;
+  limit?: number;
+};
 
 const TIMEOUT_MS = 10_000;
 const clients = new Map<string, ReturnType<typeof createClient<paths>>>();
@@ -419,9 +426,10 @@ export const latticeApi = {
   adminSummary: () => get("/admin/summary", {}),
   adminStats: () => get("/admin/stats", {}),
   adminUsers: () => get("/admin/users", []),
-  adminAudit: () => get("/admin/audit", { recent_events: [] }),
+  adminAudit: (filters?: AdminAuditFilters) => get("/admin/audit", { recent_events: [], filters: {} }, filters),
   adminRoles: () => get("/admin/roles", { roles: [] }),
   adminPolicies: () => get("/admin/policies", { policies: [] }),
+  adminLogRetention: () => get("/admin/log-retention", {}),
   adminProductHardening: () => get("/admin/product-hardening", {}),
   adminSecurity: () => get("/admin/security/overview", {}),
   adminSecurityEvents: (limit = 50) => get("/admin/security/events", { events: [] }, { limit }),

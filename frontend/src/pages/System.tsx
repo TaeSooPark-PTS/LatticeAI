@@ -590,7 +590,7 @@ function AdminPanel() {
   const mode = useAppStore((state) => state.mode);
   const summary = useQuery({ queryKey: ["adminSummary"], queryFn: latticeApi.adminSummary });
   const users = useQuery({ queryKey: ["adminUsers"], queryFn: latticeApi.adminUsers });
-  const audit = useQuery({ queryKey: ["adminAudit"], queryFn: latticeApi.adminAudit });
+  const audit = useQuery({ queryKey: ["adminAudit"], queryFn: () => latticeApi.adminAudit() });
   const roles = useQuery({ queryKey: ["adminRoles"], queryFn: latticeApi.adminRoles });
   const policies = useQuery({ queryKey: ["adminPolicies"], queryFn: latticeApi.adminPolicies });
   const hardening = useQuery({ queryKey: ["adminProductHardening"], queryFn: latticeApi.adminProductHardening });

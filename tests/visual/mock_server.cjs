@@ -676,7 +676,7 @@ const server = http.createServer((req, res) => {
   if (pathname === "/admin/sensitivity") return json(res, { summary: { risky_messages: 1, compliant_messages: 41, risk_rate: 2, severity_counts: { high: 0 }, field_counts: {}, user_counts: {} }, risk_fields: [], compliance_fields: [] });
   if (pathname === "/admin/invite-link") return json(res, { invite_url: `http://127.0.0.1:${port}/`, invite_code: "visual", gate_enabled: false });
   if (pathname === "/admin/stats") return json(res, { daily: [{ date: "2026-06-01", user: 8, assistant: 8 }] });
-  if (pathname === "/admin/audit") return json(res, { summary: { total_events: 12, chat_events: 6, user_messages: 3, assistant_messages: 3, document_uploads: 2, clear_events: 1, sensitive_events: 1, high_sensitive_events: 0 }, graph: workspaceOs.graph, per_user: [], recent_events: [
+  if (pathname === "/admin/audit") return json(res, { summary: { total_events: 12, chat_events: 6, user_messages: 3, assistant_messages: 3, document_uploads: 2, clear_events: 1, sensitive_events: 1, high_sensitive_events: 0 }, filters: { matched_events: 5, scoped_events: 12, limit: 50 }, graph: workspaceOs.graph, per_user: [], recent_events: [
     { ts: "2026-06-06T09:12:00", actor: "admin@example.com", action: "policy.update", target: "local_file_access", severity: "notice" },
     { ts: "2026-06-06T10:40:00", actor: "member@example.com", action: "search.hybrid", target: "q: retrieval design", severity: "informational" },
     { ts: "2026-06-06T11:05:00", actor: "admin@example.com", action: "user.invite", target: "guest@example.com", severity: "notice" },
@@ -695,7 +695,17 @@ const server = http.createServer((req, res) => {
     { id: "package_install", label: "Package install", value: "Admin-only with audit trail", enforced: true },
     { id: "data_residency", label: "Data residency", value: "Single-tenant local storage (~/.ltcai)", enforced: true },
     { id: "model_egress", label: "Model egress", value: "Local-only by default", enforced: true },
+    { id: "log_retention", label: "Log retention", value: "90 day local audit window", enforced: true },
   ] });
+  if (pathname === "/admin/log-retention") return json(res, {
+    mode: "local-first",
+    retention_days: 90,
+    total_events: 12,
+    retained_events: 12,
+    prune_candidates: 0,
+    export_before_prune: true,
+    editable: false,
+  });
   if (pathname === "/admin/product-hardening") return json(res, {
     version: "4.3.3",
     startup: { local_only_default: true, host: "127.0.0.1", port: 4825, network_exposed: false },

@@ -543,7 +543,14 @@ def create_chat_router(context: AppContext) -> APIRouter:
             if recent_context:
                 stream_context = f"[RECENT CONVERSATION]\n{recent_context}\n\n{context}".strip()
             return StreamingResponse(
-                _stream_chat(req, stream_context, req.image_data, trace_seed=trace_seed, effective_email=effective_email),
+                _stream_chat(
+                    req,
+                    stream_context,
+                    req.image_data,
+                    trace_seed=trace_seed,
+                    effective_email=effective_email,
+                    history_meta=history_meta,
+                ),
                 media_type="text/event-stream",
                 headers={"X-Model": router.current_model_id},
             )
@@ -650,6 +657,7 @@ def create_chat_router(context: AppContext) -> APIRouter:
         *,
         trace_seed: Optional[Dict] = None,
         effective_email: Optional[str] = None,
+        history_meta: Optional[Dict] = None,
     ) -> AsyncIterator[str]:
         full_response = ""
         async for chunk in router.stream_generate(req.message, context, req.max_tokens, req.temperature, image_data):
@@ -664,8 +672,8 @@ def create_chat_router(context: AppContext) -> APIRouter:
     
             full_response += str(clean_chunk)
             yield f"data: {json.dumps({'chunk': clean_chunk, 'model': router.current_model_id}, ensure_ascii=False)}\n\n"
-        history_user = get_history_user(req.user_email, req.user_nickname)
-        save_to_history("assistant", full_response, **history_meta, **history_user)
+        history_user = get_history_user(effective_email or req.user_email, req.user_nickname)
+        save_to_history("assistant", full_response, **(history_meta or {}), **history_user)
         trace_record = CHAT_SERVICE.record_trace(
             question=req.message,
             response=full_response,

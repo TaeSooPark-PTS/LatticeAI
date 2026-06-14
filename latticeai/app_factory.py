@@ -51,8 +51,6 @@ def _build(config: "Optional[Config]" = None) -> Dict[str, Any]:
     except Exception as e:
         print(f"⚠️ MLX Metal context unavailable: {e}")
         mx = None
-    from typing import List
-
     import uvicorn
     from fastapi import FastAPI, HTTPException, Request
     from fastapi.middleware.cors import CORSMiddleware

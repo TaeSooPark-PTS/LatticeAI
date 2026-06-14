@@ -2349,6 +2349,43 @@ body {
   gap: 0.45rem;
 }
 
+.admin-log-filters {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(8.5rem, 0.65fr) auto;
+  gap: 0.45rem;
+  align-items: center;
+}
+
+.admin-log-filters label {
+  display: flex;
+  min-width: 0;
+  align-items: center;
+  gap: 0.4rem;
+  border: 1px solid hsl(var(--border) / 0.54);
+  border-radius: 8px;
+  background: hsl(var(--bg) / 0.34);
+  padding: 0.44rem 0.52rem;
+  color: hsl(var(--fg-muted));
+}
+
+.admin-log-filters input,
+.admin-log-filters select {
+  min-width: 0;
+  width: 100%;
+  border: 0;
+  outline: 0;
+  background: transparent;
+  color: hsl(var(--fg));
+  font: inherit;
+  font-size: 0.78rem;
+}
+
+.admin-log-filters span,
+.admin-retention span {
+  color: hsl(var(--fg-muted));
+  font-size: 0.76rem;
+}
+
 .admin-list-row {
   display: flex;
   min-height: 3.15rem;
@@ -2425,6 +2462,20 @@ body {
   color: hsl(var(--fg-muted));
   padding: 0.32rem 0.56rem;
   font-size: 0.74rem;
+}
+
+.admin-retention {
+  display: grid;
+  gap: 0.18rem;
+  border: 1px solid hsl(var(--border) / 0.48);
+  border-radius: 8px;
+  background: hsl(var(--bg) / 0.35);
+  padding: 0.68rem;
+}
+
+.admin-retention strong {
+  color: hsl(var(--fg));
+  font-size: 0.88rem;
 }
 
 .brain-image-input {

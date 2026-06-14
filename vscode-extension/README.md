@@ -12,7 +12,7 @@ chat, run model workflows, and trigger coding actions from the editor.
 
 ## Current Release
 
-**4.7.0 — Admin Separation Release.** The desktop workspace keeps the v4 Brain
+**4.7.1 — Admin Operations Release.** The desktop workspace keeps the v4 Brain
 Core extraction and recovered capability baseline while making Brain plus
 conversation the user home experience. Logs, users, security events, policies,
 and Brain operations now live in the separate Admin Console; the extension

@@ -1,29 +1,32 @@
-# Lattice AI — Feature Status (v4.7.0)
+# Lattice AI — Feature Status (v4.7.1)
 
-**Current release line:** v4.7.0 Admin Separation Release. Lattice AI is a
+**Current release line:** v4.7.1 Admin Operations Release. Lattice AI is a
 Living Brain platform whose primary experience is Brain plus conversation; the
 graph remains durable infrastructure and advanced exploration, not the home
 product identity. Admin logs and operations now live in a separate console.
-Sections below v4.7.0 are historical release-status records
-and should not override the current README, ARCHITECTURE.md, or v4.7.0 release
+Sections below v4.7.1 are historical release-status records
+and should not override the current README, ARCHITECTURE.md, or v4.7.1 release
 notes.
 
-## v4.7.0 Admin Separation Release — what changed
+## v4.7.1 Admin Operations Release — what changed
 
-v4.7.0 keeps the Living Brain implementation and separates administrator
+v4.7.1 keeps the Living Brain implementation and separates administrator
 workflows from the normal user page. The Brain remains the home screen; users,
-logs, security events, policies, and Brain index operations move to `#/admin`.
+logs, role permissions, audit filters, retention status, security events,
+policies, and Brain index operations move to `#/admin`.
 Release metadata, screenshots/GIFs, docs, and artifacts are synchronized to
-`4.7.0`.
+`4.7.1`.
 
 | Feature | Status | Evidence |
 | --- | --- | --- |
 | **Admin Console separation** | WORKING | `#/admin` renders a separate admin surface while `/app` remains Brain + conversation. `frontend/src/App.tsx`, `tests/visual/v3.spec.js`. |
 | **Admin logs and security events** | WORKING | Audit events, security events, users, policies, and Brain index operations are grouped in the Admin Console. `frontend/src/App.tsx`, `frontend/src/api/client.ts`, `latticeai/api/admin.py`, `latticeai/api/security_dashboard.py`. |
-| **Publishable version bump** | WORKING | Python, npm, VSIX, Tauri, runtime, and static metadata are synchronized to `4.7.0`. `scripts/bump_version.py`, `tests/unit/test_version_consistency.py`. |
-| **Release evidence refresh** | WORKING | README links point to fresh v4.7.0 screenshots/GIF and a screenshot index. `output/release/v4.7.0/SCREENSHOT_INDEX.md`. |
-| **Architecture/docs sync** | WORKING | README, ARCHITECTURE.md, release notes, changelog, security posture, and VS Code extension docs describe v4.7.0 current behavior while preserving v4.6.0 history. |
-| **Artifact exactness** | WORKING | Release validation expects exact v4.7.0 wheel, sdist, npm tgz, VSIX, and Tauri DMG filenames. `scripts/validate_release_artifacts.py`. |
+| **Operator filters and retention** | WORKING | Admin audit supports search/severity filters and `/admin/log-retention` reports retained events, prune candidates, and export-before-prune posture. `latticeai/api/admin.py`, `tests/unit/test_t6_identity_policy_invitations.py`. |
+| **Admin runtime state separation** | WORKING | Admin Console API state is loaded through a dedicated hook instead of mixing with Brain chat state. `frontend/src/App.tsx`. |
+| **Publishable version bump** | WORKING | Python, npm, VSIX, Tauri, runtime, and static metadata are synchronized to `4.7.1`. `scripts/bump_version.py`, `tests/unit/test_version_consistency.py`. |
+| **Release evidence refresh** | WORKING | README links point to fresh v4.7.1 screenshots/GIF and a screenshot index. `output/release/v4.7.1/SCREENSHOT_INDEX.md`. |
+| **Architecture/docs sync** | WORKING | README, ARCHITECTURE.md, release notes, changelog, security posture, and VS Code extension docs describe v4.7.1 current behavior while preserving v4.6.0 history. |
+| **Artifact exactness** | WORKING | Release validation expects exact v4.7.1 wheel, sdist, npm tgz, VSIX, and Tauri DMG filenames. `scripts/validate_release_artifacts.py`. |
 
 ## v4.6.0 Living Brain Experience — what changed
 

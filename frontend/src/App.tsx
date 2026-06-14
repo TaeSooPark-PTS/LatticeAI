@@ -9,6 +9,7 @@ import {
   Download,
   Eye,
   ImagePlus,
+  ListFilter,
   RotateCcw,
   Search,
   Send,
@@ -16,7 +17,7 @@ import {
   ShieldCheck,
   Users,
 } from "lucide-react";
-import { latticeApi, type ApiResult } from "@/api/client";
+import { latticeApi, type AdminAuditFilters, type ApiResult } from "@/api/client";
 import { Button } from "@/components/ui/button";
 import { type BrainState, LivingBrain, triggerBrainRecall } from "@/components/LivingBrain";
 import { ProductFlow, readProductFlowComplete } from "@/components/ProductFlow";
@@ -25,6 +26,7 @@ import { asArray } from "@/lib/utils";
 
 type ApiRecord = Record<string, unknown>;
 type BrainDepth = 1 | 2 | 3 | 4 | 5;
+type AdminFilterState = Required<Pick<AdminAuditFilters, "q" | "actor" | "action" | "severity">> & { limit: number };
 
 type Message = {
   role: "user" | "assistant";
@@ -398,14 +400,8 @@ function BrainHome({
 
 function AdminConsole({ onBack }: { onBack: () => void }) {
   const qc = useQueryClient();
-  const summaryQ = useQuery({ queryKey: ["adminSummary"], queryFn: latticeApi.adminSummary });
-  const statsQ = useQuery({ queryKey: ["adminStats"], queryFn: latticeApi.adminStats });
-  const usersQ = useQuery({ queryKey: ["adminUsers"], queryFn: latticeApi.adminUsers });
-  const auditQ = useQuery({ queryKey: ["adminAudit"], queryFn: latticeApi.adminAudit });
-  const securityQ = useQuery({ queryKey: ["adminSecurity"], queryFn: latticeApi.adminSecurity });
-  const securityEventsQ = useQuery({ queryKey: ["adminSecurityEvents"], queryFn: () => latticeApi.adminSecurityEvents(50) });
-  const policiesQ = useQuery({ queryKey: ["adminPolicies"], queryFn: latticeApi.adminPolicies });
-  const indexQ = useQuery({ queryKey: ["indexStatus"], queryFn: latticeApi.indexStatus });
+  const [filters, setFilters] = React.useState<AdminFilterState>({ q: "", actor: "", action: "", severity: "", limit: 50 });
+  const { summaryQ, statsQ, usersQ, auditQ, securityQ, securityEventsQ, policiesQ, rolesQ, retentionQ, indexQ } = useAdminConsoleData(filters);
   const rebuildIndex = useMutation({
     mutationFn: latticeApi.rebuildIndex,
     onSuccess: () => void qc.invalidateQueries({ queryKey: ["indexStatus"] }),
@@ -415,6 +411,8 @@ function AdminConsole({ onBack }: { onBack: () => void }) {
   const auditEvents = asArray((auditQ.data?.data as ApiRecord | undefined)?.recent_events);
   const securityEvents = asArray((securityEventsQ.data?.data as ApiRecord | undefined)?.events);
   const policies = asArray((policiesQ.data?.data as ApiRecord | undefined)?.policies);
+  const roles = asArray((rolesQ.data?.data as ApiRecord | undefined)?.roles);
+  const retention = (retentionQ.data?.data || {}) as ApiRecord;
 
   return (
     <main className="admin-console" aria-label="Lattice Admin">
@@ -469,7 +467,24 @@ function AdminConsole({ onBack }: { onBack: () => void }) {
           />
         </AdminPanel>
 
+        <AdminPanel title="Role Permissions" eyebrow="Access">
+          <AdminList
+            items={roles.slice(0, 6)}
+            empty="No role matrix reported."
+            render={(item) => {
+              const role = item as ApiRecord;
+              return (
+                <>
+                  <strong>{stringValue(role.role, "role")} · {stringValue(role.members, "0")} users</strong>
+                  <span>{asArray(role.caps).slice(0, 4).map((cap) => stringValue(cap, "")).filter(Boolean).join(", ") || "No caps"}</span>
+                </>
+              );
+            }}
+          />
+        </AdminPanel>
+
         <AdminPanel title="Activity Logs" eyebrow="Audit">
+          <AdminLogFilters filters={filters} onChange={setFilters} matched={(auditQ.data?.data as ApiRecord | undefined)?.filters as ApiRecord | undefined} />
           <AdminList
             items={auditEvents.slice(0, 8)}
             empty="No recent audit events."
@@ -499,13 +514,79 @@ function AdminConsole({ onBack }: { onBack: () => void }) {
           <div className="admin-policy-strip">
             {policies.slice(0, 5).map((item, index) => {
               const policy = item as ApiRecord;
-              return <span key={`${stringValue(policy.id || policy.name, "policy")}-${index}`}>{stringValue(policy.name || policy.id, "Policy")}</span>;
+              return <span key={`${stringValue(policy.id || policy.name, "policy")}-${index}`}>{stringValue(policy.label || policy.name || policy.id, "Policy")}</span>;
             })}
             {!policies.length ? <span>Policy API quiet</span> : null}
+          </div>
+          <div className="admin-retention">
+            <strong>{stringValue(retention.retention_days, "90")} day retention</strong>
+            <span>{stringValue(retention.retained_events, "0")} retained · {stringValue(retention.prune_candidates, "0")} ready for export/prune review</span>
           </div>
         </AdminPanel>
       </section>
     </main>
+  );
+}
+
+function useAdminConsoleData(filters: AdminFilterState) {
+  const auditFilters = React.useMemo<AdminAuditFilters>(() => ({
+    q: filters.q || undefined,
+    actor: filters.actor || undefined,
+    action: filters.action || undefined,
+    severity: filters.severity || undefined,
+    limit: filters.limit,
+  }), [filters]);
+
+  return {
+    summaryQ: useQuery({ queryKey: ["adminSummary"], queryFn: latticeApi.adminSummary }),
+    statsQ: useQuery({ queryKey: ["adminStats"], queryFn: latticeApi.adminStats }),
+    usersQ: useQuery({ queryKey: ["adminUsers"], queryFn: latticeApi.adminUsers }),
+    auditQ: useQuery({ queryKey: ["adminAudit", auditFilters], queryFn: () => latticeApi.adminAudit(auditFilters) }),
+    securityQ: useQuery({ queryKey: ["adminSecurity"], queryFn: latticeApi.adminSecurity }),
+    securityEventsQ: useQuery({ queryKey: ["adminSecurityEvents"], queryFn: () => latticeApi.adminSecurityEvents(50) }),
+    policiesQ: useQuery({ queryKey: ["adminPolicies"], queryFn: latticeApi.adminPolicies }),
+    rolesQ: useQuery({ queryKey: ["adminRoles"], queryFn: latticeApi.adminRoles }),
+    retentionQ: useQuery({ queryKey: ["adminLogRetention"], queryFn: latticeApi.adminLogRetention }),
+    indexQ: useQuery({ queryKey: ["indexStatus"], queryFn: latticeApi.indexStatus }),
+  };
+}
+
+function AdminLogFilters({
+  filters,
+  matched,
+  onChange,
+}: {
+  filters: AdminFilterState;
+  matched?: ApiRecord;
+  onChange: React.Dispatch<React.SetStateAction<AdminFilterState>>;
+}) {
+  return (
+    <div className="admin-log-filters" aria-label="Audit log filters">
+      <label>
+        <Search className="h-3.5 w-3.5" />
+        <input
+          value={filters.q}
+          onChange={(event) => onChange((current) => ({ ...current, q: event.target.value }))}
+          placeholder="Search logs"
+          aria-label="Search audit logs"
+        />
+      </label>
+      <label>
+        <ListFilter className="h-3.5 w-3.5" />
+        <select
+          value={filters.severity}
+          onChange={(event) => onChange((current) => ({ ...current, severity: event.target.value }))}
+          aria-label="Filter by severity"
+        >
+          <option value="">All severities</option>
+          <option value="informational">Informational</option>
+          <option value="notice">Notice</option>
+          <option value="warning">Warning</option>
+          <option value="high">High</option>
+        </select>
+      </label>
+      <span>{stringValue(matched?.matched_events, "0")} matched</span>
+    </div>
   );
 }
 

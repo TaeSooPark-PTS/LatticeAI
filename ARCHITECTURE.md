@@ -1,9 +1,10 @@
-# Lattice AI v4.7.0 Architecture
+# Lattice AI v4.7.1 Architecture
 
-This document describes the current v4.7.0 Admin Separation Release. v4.7.0
+This document describes the current v4.7.1 Admin Operations Release. v4.7.1
 does not redesign Brain Core or storage; it keeps the user experience centered
-on Brain plus conversation while moving users, logs, security events, policies,
-and Brain operations into a dedicated Admin Console.
+on Brain plus conversation while moving users, role permissions, filtered logs,
+retention posture, security events, policies, and Brain operations into a
+dedicated Admin Console.
 
 ## System Map
 
@@ -250,18 +251,18 @@ explicit opt-in paths.
 
 ```mermaid
 flowchart TB
-  Source["Source Tree v4.7.0"] --> FrontendBuild["Vite Frontend Build"]
+  Source["Source Tree v4.7.1"] --> FrontendBuild["Vite Frontend Build"]
   Source --> PythonBuild["Python Build"]
   Source --> NpmPack["npm pack"]
   Source --> VsixBuild["VSIX Package"]
   Source --> TauriBuild["Tauri Build"]
 
   FrontendBuild --> StaticAssets["static/app Assets"]
-  PythonBuild --> Wheel["dist/ltcai-4.7.0-py3-none-any.whl"]
-  PythonBuild --> Sdist["dist/ltcai-4.7.0.tar.gz"]
-  NpmPack --> Tgz["ltcai-4.7.0.tgz"]
-  VsixBuild --> Vsix["dist/ltcai-4.7.0.vsix"]
-  TauriBuild --> Dmg["src-tauri/target/release/bundle/dmg/Lattice AI_4.7.0_aarch64.dmg"]
+  PythonBuild --> Wheel["dist/ltcai-4.7.1-py3-none-any.whl"]
+  PythonBuild --> Sdist["dist/ltcai-4.7.1.tar.gz"]
+  NpmPack --> Tgz["ltcai-4.7.1.tgz"]
+  VsixBuild --> Vsix["dist/ltcai-4.7.1.vsix"]
+  TauriBuild --> Dmg["src-tauri/target/release/bundle/dmg/Lattice AI_4.7.1_aarch64.dmg"]
   StaticAssets --> Wheel
   StaticAssets --> Tgz
   StaticAssets --> Dmg
@@ -271,7 +272,7 @@ Release uploads must use exact filenames. Do not upload `dist/*`.
 
 ## Known Limitations
 
-- v4.7.0 separates admin operations from the user Brain surface without a
+- v4.7.1 separates admin operations from the user Brain surface without a
   backend redesign.
 - External registries can lag behind the GitHub Release because package-store
   publishing is owner-controlled.
@@ -281,4 +282,4 @@ Release uploads must use exact filenames. Do not upload `dist/*`.
 - Model-free states are reported honestly. The UI should not fabricate answers
   when no model is loaded.
 - Historical reports under `docs/` preserve older release behavior and should
-  not be rewritten as v4.7.0 claims.
+  not be rewritten as v4.7.1 claims.

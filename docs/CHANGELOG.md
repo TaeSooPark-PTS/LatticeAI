@@ -3,6 +3,46 @@
 The top entry is the current release-preparation target. Older entries are
 historical and may describe behavior as it existed at that release.
 
+## [4.7.1] - 2026-06-14
+
+> Admin Operations Release. v4.7.1 extends the separated Admin Console with
+> role permission visibility, audit search/severity filters, local log retention
+> posture, and a dedicated Admin Console data-loading boundary while keeping the
+> user Brain surface simple.
+
+### Changed
+
+- Added role permission visibility to the Admin Console so operators can inspect
+  role member counts and capability summaries without entering the user Brain
+  surface.
+- Added server-backed audit filtering for search text, actor, action, severity,
+  and limit on `/admin/audit`.
+- Added `/admin/log-retention` to report local retention days, retained events,
+  prune candidates, and export-before-prune status without destructive pruning.
+- Split Admin Console data loading into a dedicated frontend hook so admin
+  observability state stays separate from Brain chat state.
+- Updated Admin Console visual mock data for filtered audit and retention
+  coverage.
+- Bumped synchronized package/runtime/static versions to `4.7.1`, including
+  Python metadata, npm package metadata, VSIX metadata, Tauri metadata,
+  `latticeai`, `lattice_brain`, runtime constants, and static asset metadata.
+- Refreshed README, release notes, architecture, feature status, security,
+  VS Code extension docs, release report, and release evidence paths for v4.7.1.
+
+### Preserved
+
+- v4.7.0 and older sections remain historical.
+- External package publishing remains owner-run; this release prepares exact
+  artifacts and GitHub Release assets without registry publish automation.
+
+### Artifacts
+
+- `dist/ltcai-4.7.1-py3-none-any.whl`
+- `dist/ltcai-4.7.1.tar.gz`
+- `dist/ltcai-4.7.1.vsix`
+- `ltcai-4.7.1.tgz`
+- `src-tauri/target/release/bundle/dmg/Lattice AI_4.7.1_aarch64.dmg`
+
 ## [4.7.0] - 2026-06-14
 
 > Admin Separation Release. v4.7.0 keeps the Living Brain as the simple user
