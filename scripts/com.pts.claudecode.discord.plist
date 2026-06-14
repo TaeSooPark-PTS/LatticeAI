@@ -1,0 +1,31 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN"
+  "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+  <key>Label</key>
+  <string>com.pts.claudecode.discord</string>
+  <key>ProgramArguments</key>
+  <array>
+    <string>/opt/homebrew/bin/node</string>
+    <string>/Users/parktaesoo/.claude/bin/pts-claudecode-discord-bridge.mjs</string>
+  </array>
+  <key>RunAtLoad</key>
+  <true/>
+  <key>KeepAlive</key>
+  <true/>
+  <key>EnvironmentVariables</key>
+  <dict>
+    <key>PATH</key>
+    <string>/Users/parktaesoo/.bun/bin:/opt/homebrew/bin:/usr/local/bin:/usr/bin:/bin:/usr/sbin:/sbin</string>
+    <key>DISCORD_STATE_DIR</key>
+    <string>/Users/parktaesoo/.claude/channels/discord</string>
+    <key>PTS_CLAUDECODE_PROJECT_DIR</key>
+    <string>/Users/parktaesoo/Downloads/Lattice AI</string>
+  </dict>
+  <key>StandardOutPath</key>
+  <string>/Users/parktaesoo/.claude/logs/pts_claudecode_bridge.out.log</string>
+  <key>StandardErrorPath</key>
+  <string>/Users/parktaesoo/.claude/logs/pts_claudecode_bridge.err.log</string>
+</dict>
+</plist>

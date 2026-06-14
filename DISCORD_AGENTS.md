@@ -61,6 +61,19 @@ Key fields for collaboration:
 
 If bot-to-bot mentions stop working after a plugin update, re-apply the `shouldAcceptBotAuthoredMessage` logic (see the version in `~/.grok/marketplace-cache/.../discord/server.ts` around the `messageCreate` handler) or copy from the working Claude cache under `~/.claude/plugins/cache/...`.
 
+`pts_claudecode` also has a durable headless bridge:
+
+- script: `scripts/pts-claudecode-discord-bridge.mjs`
+- launcher: `scripts/start-pts-claudecode-discord.sh`
+- launchd template: `scripts/com.pts.claudecode.discord.plist`
+- state: `~/.claude/channels/discord`
+- logs: `~/.claude/logs/pts_claudecode_bridge.*.log`
+
+The bridge listens for real mentions of `pts_claudecode`, accepts human messages
+and allowlisted `pts_*` bot messages, then runs `claude -p` in this repository
+with bypass permissions so code-focused implementation work can participate
+directly in the shared workspace.
+
 ## Tips
 
 - Use real mention syntax in prompts when one agent wants to delegate to another: `<@1506652866759360683>` (or the display name if it resolves).
