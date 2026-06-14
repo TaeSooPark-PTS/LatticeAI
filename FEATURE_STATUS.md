@@ -1,14 +1,31 @@
-# Lattice AI — Feature Status (v4.7.2)
+# Lattice AI — Feature Status (v5.0.0)
 
-**Current release line:** v4.7.2 Intuitive Brain UX Release. Lattice AI is a
+**Current release line:** v5.0.0 Multilingual Brain Foundation Release. Lattice AI is a
 Living Brain platform whose primary experience is Brain plus conversation; the
 graph remains durable infrastructure and advanced exploration, not the home
-product identity. v4.7.2 makes this understandable for everyday users with safe
-login, one-click recommended setup, direct Brain views, and visible memory-save
-feedback. Admin logs and operations remain in a separate console.
-Sections below v4.7.2 are historical release-status records
-and should not override the current README, ARCHITECTURE.md, or v4.7.2 release
+product identity. v5.0.0 adds Korean/English language choice across first-run,
+Brain, graph, and admin surfaces while preserving the v4 runtime foundations.
+Admin logs and operations remain in a separate console.
+Sections below v5.0.0 are historical release-status records
+and should not override the current README, ARCHITECTURE.md, or v5.0.0 release
 notes.
+
+## v5.0.0 Multilingual Brain Foundation Release — what changed
+
+v5.0.0 keeps the Living Brain implementation and adds the language foundation
+needed for Korean and English users. First-run onboarding, model setup, Brain
+home, graph fallback copy, memory-save feedback, and Admin header labels now
+react to a persisted language choice. Release metadata, docs, and artifacts are
+synchronized to `5.0.0`.
+
+| Feature | Status | Evidence |
+| --- | --- | --- |
+| **Korean/English language choice** | WORKING | Language selection persists in Zustand/localStorage and is visible on first-run, Brain, and Admin surfaces. `frontend/src/i18n.ts`, `frontend/src/store/appStore.ts`, `frontend/src/components/ProductFlow.tsx`, `frontend/src/App.tsx`. |
+| **Bilingual onboarding** | WORKING | Login, analysis, recommendation, install/download/load, and model progress copy use localized strings. `frontend/src/components/ProductFlow.tsx`. |
+| **Bilingual Brain exploration** | WORKING | Brain quick views, starter prompts, save feedback, overview cards, and graph fallback copy use localized strings. `frontend/src/App.tsx`. |
+| **Publishable version bump** | WORKING | Python, npm, VSIX, Tauri, runtime, and static metadata are synchronized to `5.0.0`. `scripts/bump_version.py`, `tests/unit/test_version_consistency.py`. |
+| **Collaboration-backed refactor order** | DOCUMENTED | pts_claudecode and pts_grok review notes define the next debt sequence: config, KG, ToolRegistry, AgentRuntime, app factory. `RELEASE_NOTES_v5.0.0.md`, `docs/CHANGELOG.md`. |
+| **Artifact exactness** | WORKING | Release validation expects exact v5.0.0 wheel, sdist, npm tgz, VSIX, and Tauri DMG filenames. `scripts/validate_release_artifacts.py`. |
 
 ## v4.7.2 Intuitive Brain UX Release — what changed
 

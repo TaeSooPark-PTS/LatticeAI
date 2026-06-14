@@ -1,7 +1,37 @@
 # Release Notes
 
-The current release target is v4.7.2. Older sections are historical
+The current release target is v5.0.0. Older sections are historical
 release notes and should not be read as newer product claims.
+
+## v5.0.0 - Multilingual Brain Foundation Release
+
+Lattice AI v5.0.0 starts the major-version cleanup line by making the product
+usable in Korean or English from first launch through Brain exploration, while
+preserving the existing AgentRuntime, ToolRegistry, Brain Core, Admin Console,
+and graph foundations.
+
+### Highlights
+
+- Added a persisted Korean/English language choice to first-run onboarding,
+  Brain home, graph exploration, and the Admin Console header.
+- Localized login, environment analysis, model recommendation, model
+  install/load, Brain quick views, starter prompts, save feedback, and graph
+  fallback copy.
+- Kept the technical-debt plan explicit: config centralization, KG
+  stabilization, ToolRegistry characterization, AgentRuntime extraction, then
+  app factory decomposition.
+- Bumped synchronized Python, npm, VSIX, Tauri, runtime, and static metadata to
+  `5.0.0`.
+
+### Expected Artifacts
+
+- `dist/ltcai-5.0.0-py3-none-any.whl`
+- `dist/ltcai-5.0.0.tar.gz`
+- `dist/ltcai-5.0.0.vsix`
+- `ltcai-5.0.0.tgz`
+- `src-tauri/target/release/bundle/dmg/Lattice AI_5.0.0_aarch64.dmg`
+
+Full notes: [RELEASE_NOTES_v5.0.0.md](RELEASE_NOTES_v5.0.0.md)
 
 ## v4.7.2 - Intuitive Brain UX Release
 

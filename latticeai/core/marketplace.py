@@ -11,7 +11,7 @@ from copy import deepcopy
 from typing import Any, Dict, List, Optional
 
 
-MARKETPLACE_VERSION = "4.7.2"
+MARKETPLACE_VERSION = "5.0.0"
 TEMPLATE_KINDS = ("plugin", "workflow", "agent")
 
 

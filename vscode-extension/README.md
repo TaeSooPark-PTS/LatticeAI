@@ -1,6 +1,6 @@
 # Lattice AI — VS Code Extension
 
-**Local-first AI workspace extension for Lattice AI v4 Living Brain, hybrid search, model workflows, and coding actions.**
+**Local-first AI workspace extension for Lattice AI v5 Living Brain, hybrid search, model workflows, and coding actions.**
 
 [![VS Code Marketplace](https://img.shields.io/badge/VS%20Code%20Marketplace-Install-blue?logo=visualstudiocode)](https://marketplace.visualstudio.com/items?itemName=parktaesoo.ltcai)
 [![Open VSX](https://img.shields.io/open-vsx/v/parktaesoo/ltcai?label=Open%20VSX)](https://open-vsx.org/extension/parktaesoo/ltcai)
@@ -12,12 +12,12 @@ chat, run model workflows, and trigger coding actions from the editor.
 
 ## Current Release
 
-**4.7.2 — Intuitive Brain UX Release.** The desktop workspace keeps the v4 Brain
-Core extraction and recovered capability baseline while making Brain plus
-conversation the user home experience. Memory, topics, relationships, and graph
-views are easier to reach from the app, while logs, users, security events,
-policies, and Brain operations remain in the separate Admin Console; the
-extension connects to the same local workspace APIs.
+**5.0.0 — Multilingual Brain Foundation Release.** The desktop workspace keeps
+the v4 Brain Core extraction, AgentRuntime, ToolRegistry, graph, and Admin
+Console foundations while adding Korean/English language choice across first-run
+onboarding and the Brain surface. The extension connects to the same local
+workspace APIs and remains compatible with the separated user/admin product
+model.
 
 ## Quick Start
 

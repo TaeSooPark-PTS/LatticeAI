@@ -7,6 +7,36 @@
 > PyPI / npm / VS Code Marketplace / Open VSX 배포는 아래 수동 절차로만
 > 진행합니다. 태그 생성은 패키지 스토어 publish를 자동으로 트리거하지 않습니다.
 
+## v5.0.0 릴리스 노트 (2026-06-14)
+
+Lattice AI v5.0.0 — Multilingual Brain Foundation Release. 5.0.0은 대격변
+릴리스의 첫 단계로, 이미 존재하는 AgentRuntime / ToolRegistry / Brain Core
+경계를 무리하게 흔들지 않고 사용자가 바로 체감하는 제품 기반을 정리한다.
+첫 실행부터 Brain 홈, Knowledge Graph, Admin Console까지 한국어/영어 선택을
+저장하고 즉시 반영해 50대/60대 일반 사용자도 자기 언어로 온보딩, 모델 준비,
+Brain 탐색을 진행할 수 있게 한다.
+
+- **Changed (Language choice)**: 첫 실행 화면에 한국어/English 선택기를 추가하고
+  선택 언어를 `lattice.language`에 저장한다.
+- **Changed (Bilingual onboarding)**: 로그인, 환경 분석, 추천 모델, 다운로드/로드
+  안내를 한국어/영어 문구로 전환한다.
+- **Changed (Bilingual Brain home)**: Brain 홈, 기억/주제/관계/그래프 버튼,
+  저장 피드백, 그래프 focus 문구, Admin 진입 라벨을 선택 언어에 맞춘다.
+- **Changed (Release metadata)**: Python, npm, VSIX, Tauri, runtime constants,
+  and static metadata are synchronized to `5.0.0`.
+- **Changed (Collaboration review)**: pts_claudecode는 5.0.0 기술부채 순서를
+  `config -> KG -> ToolRegistry -> AgentRuntime -> server decomposition`으로
+  권고했고, pts_grok은 언어 선택/모델 준비/Brain 탐색을 사용자 체감 대격변의
+  우선순위로 검토했다.
+- **Preserved**: v4.7.2 and older entries remain historical. Package registry
+  publish remains owner-run.
+- **Expected artifacts**:
+  - `dist/ltcai-5.0.0-py3-none-any.whl`
+  - `dist/ltcai-5.0.0.tar.gz`
+  - `dist/ltcai-5.0.0.vsix`
+  - `ltcai-5.0.0.tgz`
+  - `src-tauri/target/release/bundle/dmg/Lattice AI_5.0.0_aarch64.dmg`
+
 ## v4.7.2 릴리스 노트 (2026-06-14)
 
 Lattice AI v4.7.2 — Intuitive Brain UX Release. Living Brain을 일반 사용자 홈으로
@@ -1179,14 +1209,14 @@ Knowledge Graph v2 read/write cutover. 자세한 내용은
    - `npm run release:artifacts`
    - `npm run release:validate`
 
-현재 `v4.7.2` 기준 필수 산출물:
+현재 `v5.0.0` 기준 필수 산출물:
 
 ```text
-dist/ltcai-4.7.2-py3-none-any.whl
-dist/ltcai-4.7.2.tar.gz
-dist/ltcai-4.7.2.vsix
-ltcai-4.7.2.tgz
-src-tauri/target/release/bundle/dmg/Lattice AI_4.7.2_aarch64.dmg
+dist/ltcai-5.0.0-py3-none-any.whl
+dist/ltcai-5.0.0.tar.gz
+dist/ltcai-5.0.0.vsix
+ltcai-5.0.0.tgz
+src-tauri/target/release/bundle/dmg/Lattice AI_5.0.0_aarch64.dmg
 ```
 
 ## 2) npm 배포
@@ -1197,7 +1227,7 @@ src-tauri/target/release/bundle/dmg/Lattice AI_4.7.2_aarch64.dmg
    - `npm run publish:npm`
    - 직접 실행 시:
      ```
-     npm publish "ltcai-4.7.2.tgz" --access public
+     npm publish "ltcai-5.0.0.tgz" --access public
      ```
 
 ## 3) PyPI 배포
@@ -1210,14 +1240,14 @@ src-tauri/target/release/bundle/dmg/Lattice AI_4.7.2_aarch64.dmg
    - `npm run publish:pypi`  ← 권장 (`$npm_package_version` 자동 사용)
    - 직접 실행 시:
      ```
-     python3 -m twine upload "dist/ltcai-4.7.2-py3-none-any.whl" "dist/ltcai-4.7.2.tar.gz"
+     python3 -m twine upload "dist/ltcai-5.0.0-py3-none-any.whl" "dist/ltcai-5.0.0.tar.gz"
      ```
 
 참고:
 - TestPyPI 먼저 쓰려면:
   ```
   python3 -m twine upload --skip-existing --repository testpypi \
-    "dist/ltcai-4.7.2.tar.gz" "dist/ltcai-4.7.2-py3-none-any.whl"
+    "dist/ltcai-5.0.0.tar.gz" "dist/ltcai-5.0.0-py3-none-any.whl"
   ```
 
 ## 4) VS Code / Cursor / Antigravity 확장 배포
@@ -1233,13 +1263,13 @@ src-tauri/target/release/bundle/dmg/Lattice AI_4.7.2_aarch64.dmg
    - `npm run publish:vscode`  ← 권장 (`$npm_package_version` 자동 사용)
    - 직접 실행 시:
      ```
-     npx vsce publish --packagePath "../dist/ltcai-4.7.2.vsix"
+     npx vsce publish --packagePath "../dist/ltcai-5.0.0.vsix"
      ```
 4. Open VSX 배포 (Cursor/일부 포크 호환)
    - `npm run publish:openvsx`  ← 권장 (`$npm_package_version` 자동 사용)
    - 직접 실행 시:
      ```
-     npx ovsx publish "../dist/ltcai-4.7.2.vsix"
+     npx ovsx publish "../dist/ltcai-5.0.0.vsix"
      ```
 5. 로컬 설치 (VS Code/Cursor/Antigravity)
    - `npm run install:all`

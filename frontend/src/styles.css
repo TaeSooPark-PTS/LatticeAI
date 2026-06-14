@@ -1290,6 +1290,38 @@ body {
   outline: none;
 }
 
+.language-switcher {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.25rem;
+  border: 1px solid hsl(var(--border) / 0.58);
+  border-radius: 999px;
+  background: hsl(var(--surface-glass));
+  padding: 0.18rem;
+}
+
+.language-switcher button {
+  min-height: 1.65rem;
+  border: 0;
+  border-radius: 999px;
+  background: transparent;
+  color: hsl(var(--fg-muted));
+  padding: 0 0.56rem;
+  font-size: 0.68rem;
+  font-weight: 820;
+  letter-spacing: 0;
+  cursor: pointer;
+}
+
+.language-switcher button.is-active {
+  background: hsl(var(--brain-core) / 0.14);
+  color: hsl(var(--fg));
+}
+
+.language-switcher.compact {
+  flex: 0 0 auto;
+}
+
 .brain-stream {
   flex: 1 1 auto;
   overflow-y: auto;
@@ -2852,6 +2884,10 @@ body {
 .ritual-container {
   width: min(100%, 720px);
   text-align: center;
+}
+
+.ritual-language {
+  margin: 0 auto 1rem;
 }
 
 .ritual-brain {

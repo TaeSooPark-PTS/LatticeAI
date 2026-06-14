@@ -9,6 +9,7 @@ function trackPageErrors(page) {
 async function bypassProductFlow(page) {
   await page.addInitScript(() => {
     localStorage.setItem("lattice.productFlow.complete", "true");
+    localStorage.setItem("lattice.language", "ko");
   });
 }
 
@@ -28,6 +29,7 @@ async function travelDeeper(page, times = 1) {
 test("first-run ritual enters the living Brain", async ({ page }) => {
   const errors = trackPageErrors(page);
   await page.goto("/app");
+  await page.getByRole("button", { name: "한국어" }).click();
 
   await expect(page.locator("body")).toContainText("내 Brain을 시작합니다.");
   await expect(page.locator("body")).toContainText("모델은 바뀔 수 있지만");
@@ -57,7 +59,7 @@ test("Brain depths reveal memory, knowledge, relationships, then graph", async (
   const errors = trackPageErrors(page);
   await openBrain(page);
 
-  await expect(page.locator("body")).toContainText("Level 1");
+  await expect(page.locator("body")).toContainText("단계 1");
   await expect(page.locator("body")).toContainText("Living Brain");
   await expect(page.locator(".memory-fragment")).toHaveCount(0);
   await expect(page.locator("[data-testid='emergent-knowledge-graph']")).toHaveCount(0);
@@ -96,7 +98,7 @@ test("deepest Brain layer supports graph search and returning to the surface", a
   await expect(page.locator(".graph-node")).toHaveCount(2);
   await expect(page.locator(".brain-graph-focus")).toContainText("Lattice AI");
 
-  await page.getByRole("button", { name: "Surface" }).click();
+  await page.getByRole("button", { name: "돌아가기" }).click();
   await expect(page.locator("body")).toContainText("Living Brain");
   await expect(page.locator("[data-testid='emergent-knowledge-graph']")).toHaveCount(0);
   expect(errors).toEqual([]);
@@ -108,19 +110,19 @@ test("conversation keeps the Brain alive while chat streams", async ({ page }) =
 
   await expect(page.locator("body")).toContainText("잊으면 안 되는 일부터 말해 주세요.");
   await expect(page.locator("body")).toContainText("Brain 한눈에 보기");
-  await page.getByRole("button", { name: /Remember this decision/ }).click();
-  await expect(page.getByPlaceholder("Talk to your Brain...")).toHaveValue("Remember this decision: ");
-  await page.getByPlaceholder("Talk to your Brain...").fill("");
+  await page.getByRole("button", { name: /이 결정을 기억해줘/ }).click();
+  await expect(page.getByPlaceholder("Brain에게 말하기...")).toHaveValue("이 결정을 기억해줘: ");
+  await page.getByPlaceholder("Brain에게 말하기...").fill("");
 
-  await expect(page.locator("section[aria-label='Care for my Brain']")).toBeVisible();
-  await expect(page.getByRole("button", { name: /Export/ })).toHaveCount(0);
-  await page.getByRole("button", { name: /Care for my Brain/ }).click();
-  await expect(page.getByRole("button", { name: /Export/ })).toBeVisible();
-  await expect(page.getByRole("button", { name: /Backup/ })).toBeVisible();
-  await expect(page.getByRole("button", { name: /Restore preview/ })).toBeVisible();
+  await expect(page.locator("section[aria-label='내 Brain 돌보기']")).toBeVisible();
+  await expect(page.getByRole("button", { name: /내보내기/ })).toHaveCount(0);
+  await page.getByRole("button", { name: /내 Brain 돌보기/ }).click();
+  await expect(page.getByRole("button", { name: /내보내기/ })).toBeVisible();
+  await expect(page.getByRole("button", { name: /백업/ })).toBeVisible();
+  await expect(page.getByRole("button", { name: /복원 미리보기/ })).toBeVisible();
 
-  await page.getByPlaceholder("Talk to your Brain...").fill("How does hybrid search rank results?");
-  await page.getByRole("button", { name: "Send" }).click();
+  await page.getByPlaceholder("Brain에게 말하기...").fill("How does hybrid search rank results?");
+  await page.getByRole("button", { name: "보내기", exact: true }).click();
   await expect(page.locator("body")).toContainText("Hybrid retrieval");
   await expect(page.locator("body")).toContainText("기억에 저장됨");
   await expect(page.locator("body")).toContainText("Living Brain");
@@ -134,7 +136,7 @@ test("admin console is separated from the user Brain surface", async ({ page }) 
   await expect(page.locator("main[aria-label='Lattice Brain']")).toBeVisible();
   await expect(page.locator("main[aria-label='Lattice Admin']")).toHaveCount(0);
 
-  await page.getByRole("button", { name: "Admin" }).click();
+  await page.getByRole("button", { name: "관리자" }).click();
   await expect(page).toHaveURL(/#\/admin$/);
   await expect(page.locator("main[aria-label='Lattice Admin']")).toBeVisible();
   await expect(page.locator("body")).toContainText("Admin Console");

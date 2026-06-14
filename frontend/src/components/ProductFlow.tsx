@@ -6,6 +6,8 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { cn, asArray } from "@/lib/utils";
+import { LANGUAGE_LABELS, t, type Language } from "@/i18n";
+import { useAppStore } from "@/store/appStore";
 
 const FLOW_COMPLETE_KEY = "lattice.productFlow.complete";
 const FLOW_USER_KEY = "lattice.productFlow.user";
@@ -52,6 +54,7 @@ function readSavedFlowUser(): { email?: string; name?: string } | null {
 }
 
 export function ProductFlow({ onComplete }: { onComplete: () => void }) {
+  const language = useAppStore((state) => state.language);
   const [step, setStep] = React.useState<FlowStep>("login");
   const [analysis, setAnalysis] = React.useState<FlowAnalysis | null>(null);
   const [analysisError, setAnalysisError] = React.useState<string | null>(null);
@@ -78,16 +81,17 @@ export function ProductFlow({ onComplete }: { onComplete: () => void }) {
         sysinfo: sysinfo.ok ? sysinfo.data as ApiData : null,
       });
       if (!setup.ok && !recommendationsResult.ok && !models.ok) {
-        setAnalysisError("Lattice could not finish reading this computer. You can still continue with a safe default.");
+        setAnalysisError(t(language, "flow.analysis.error"));
       }
     }
     void runAnalysis();
     return () => { cancelled = true; };
-  }, [analysis, step]);
+  }, [analysis, language, step]);
 
   return (
-    <div className="ritual-shell" aria-label="Awaken your Brain">
+    <div className="ritual-shell" aria-label={t(language, "flow.shell")}>
       <div className="ritual-container">
+        <LanguageChooser />
         {/* The living presence participates in the ritual at every step */}
         <div className="ritual-brain">
           <LivingBrain
@@ -141,7 +145,29 @@ export function ProductFlow({ onComplete }: { onComplete: () => void }) {
   );
 }
 
+function LanguageChooser() {
+  const language = useAppStore((state) => state.language);
+  const setLanguage = useAppStore((state) => state.setLanguage);
+
+  return (
+    <div className="language-switcher ritual-language" aria-label={t(language, "language.label")}>
+      {(["ko", "en"] as Language[]).map((item) => (
+        <button
+          key={item}
+          type="button"
+          className={language === item ? "is-active" : ""}
+          onClick={() => setLanguage(item)}
+          aria-pressed={language === item}
+        >
+          {LANGUAGE_LABELS[item]}
+        </button>
+      ))}
+    </div>
+  );
+}
+
 function LoginScreen({ onSuccess }: { onSuccess: () => void }) {
+  const language = useAppStore((state) => state.language);
   const [email, setEmail] = React.useState(() => {
     return readSavedFlowUser()?.email || "you@local";
   });
@@ -156,7 +182,7 @@ function LoginScreen({ onSuccess }: { onSuccess: () => void }) {
     const cleanPassword = password.trim();
     const cleanName = name.trim() || cleanEmail.split("@")[0] || "You";
     if (!cleanEmail || !cleanPassword) {
-      setError("이름과 이메일, 비밀번호를 입력하면 기존 Brain을 안전하게 확인합니다.");
+      setError(t(language, "flow.login.missing"));
       return;
     }
     setBusy(true);
@@ -173,12 +199,12 @@ function LoginScreen({ onSuccess }: { onSuccess: () => void }) {
       }
       if (savedUser?.email && savedUser.email !== cleanEmail) {
         setBusy(false);
-        setError("이 컴퓨터의 기존 Brain과 다른 이메일입니다. 오타인지 확인해 주세요.");
+        setError(t(language, "flow.login.otherEmail"));
         return;
       }
       if (savedUser?.email === cleanEmail) {
         setBusy(false);
-        setError("기존 Brain 이메일은 맞지만 비밀번호가 다릅니다. 비밀번호를 다시 확인해 주세요.");
+        setError(t(language, "flow.login.wrongPassword"));
         return;
       }
       const registered = await latticeApi.register({
@@ -191,7 +217,7 @@ function LoginScreen({ onSuccess }: { onSuccess: () => void }) {
     }
     if (!result.ok) {
       setBusy(false);
-      setError("로컬 프로필을 열 수 없습니다. 이메일과 비밀번호를 확인해 주세요.");
+      setError(t(language, "flow.login.unavailable"));
       return;
     }
     try { localStorage.setItem(FLOW_USER_KEY, JSON.stringify({ email: cleanEmail, name: cleanName })); } catch {}
@@ -201,36 +227,34 @@ function LoginScreen({ onSuccess }: { onSuccess: () => void }) {
 
   return (
     <div>
-      <div className="ritual-title">내 Brain을 시작합니다.</div>
-      <div className="ritual-subtitle">
-        모델은 바뀔 수 있지만, 내 문서와 대화, 결정, 기억은 사라지면 안 됩니다. Lattice는 이 지식을 내가 소유하는 개인 Brain으로 모읍니다.
-      </div>
+      <div className="ritual-title">{t(language, "flow.login.title")}</div>
+      <div className="ritual-subtitle">{t(language, "flow.login.body")}</div>
 
       <ProductPromise />
 
       <form onSubmit={submit} className="ritual-card" style={{ maxWidth: 420, margin: "0 auto" }}>
         <div style={{ display: "grid", gap: "0.85rem" }}>
           <div>
-            <div style={{ fontSize: "0.75rem", textTransform: "uppercase", letterSpacing: "1px", color: "hsl(var(--fg-muted))", marginBottom: 4 }}>이름</div>
+            <div style={{ fontSize: "0.75rem", textTransform: "uppercase", letterSpacing: "1px", color: "hsl(var(--fg-muted))", marginBottom: 4 }}>{t(language, "flow.name")}</div>
             <Input value={name} onChange={(e) => setName(e.target.value)} placeholder="You" />
           </div>
           <div>
-            <div style={{ fontSize: "0.75rem", textTransform: "uppercase", letterSpacing: "1px", color: "hsl(var(--fg-muted))", marginBottom: 4 }}>이메일</div>
+            <div style={{ fontSize: "0.75rem", textTransform: "uppercase", letterSpacing: "1px", color: "hsl(var(--fg-muted))", marginBottom: 4 }}>{t(language, "flow.email")}</div>
             <Input value={email} onChange={(e) => setEmail(e.target.value)} type="email" placeholder="you@local" />
           </div>
           <div>
-            <div style={{ fontSize: "0.75rem", textTransform: "uppercase", letterSpacing: "1px", color: "hsl(var(--fg-muted))", marginBottom: 4 }}>비밀번호</div>
-            <Input value={password} onChange={(e) => setPassword(e.target.value)} type="password" placeholder="로컬 Brain 비밀번호" />
+            <div style={{ fontSize: "0.75rem", textTransform: "uppercase", letterSpacing: "1px", color: "hsl(var(--fg-muted))", marginBottom: 4 }}>{t(language, "flow.password")}</div>
+            <Input value={password} onChange={(e) => setPassword(e.target.value)} type="password" placeholder={t(language, "flow.password.placeholder")} />
           </div>
         </div>
 
         {error && <div style={{ marginTop: "0.85rem", padding: "0.6rem 0.85rem", background: "hsl(var(--destructive)/0.12)", border: "1px solid hsl(var(--destructive)/0.4)", borderRadius: 10, fontSize: "0.9rem" }}>{error}</div>}
 
         <Button type="submit" disabled={busy || !email.trim() || !password.trim()} style={{ width: "100%", marginTop: "1rem" }}>
-          {busy ? "Brain 여는 중..." : "내 Brain 시작하기"}
+          {busy ? t(language, "flow.login.busy") : t(language, "flow.login.submit")}
         </Button>
         <div style={{ fontSize: "0.75rem", color: "hsl(var(--fg-muted))", marginTop: "0.6rem" }}>
-          기존 Brain과 다른 이메일이면 새로 만들지 않고 먼저 확인합니다.
+          {t(language, "flow.login.note")}
         </div>
       </form>
     </div>
@@ -238,19 +262,20 @@ function LoginScreen({ onSuccess }: { onSuccess: () => void }) {
 }
 
 function ProductPromise() {
+  const language = useAppStore((state) => state.language);
   return (
     <div className="ritual-promise" aria-label="Lattice AI product promise">
       <div>
-        <span>오래 남는 지식</span>
-        <strong>내 일이 장기 기억이 됩니다.</strong>
+        <span>{t(language, "flow.promise.memory.k")}</span>
+        <strong>{t(language, "flow.promise.memory.v")}</strong>
       </div>
       <div>
-        <span>교체 가능한 모델</span>
-        <strong>모델은 목소리이고, 자산은 Brain입니다.</strong>
+        <span>{t(language, "flow.promise.model.k")}</span>
+        <strong>{t(language, "flow.promise.model.v")}</strong>
       </div>
       <div>
-        <span>사용자 소유</span>
-        <strong>백업, 복원, 이동이 가능합니다.</strong>
+        <span>{t(language, "flow.promise.ownership.k")}</span>
+        <strong>{t(language, "flow.promise.ownership.v")}</strong>
       </div>
     </div>
   );
@@ -265,13 +290,12 @@ function AnalysisScreen({
   error: string | null;
   onContinue: () => void;
 }) {
+  const language = useAppStore((state) => state.language);
   const detected = buildDetectedFacts(analysis);
   return (
     <div>
-      <div className="ritual-title">이 컴퓨터를 확인합니다.</div>
-      <div className="ritual-subtitle">
-        Brain이 클라우드에 의존하지 않고 이 컴퓨터에서 편하게 돌아갈 수 있는지 확인합니다.
-      </div>
+      <div className="ritual-title">{t(language, "flow.analysis.title")}</div>
+      <div className="ritual-subtitle">{t(language, "flow.analysis.body")}</div>
 
       <div className="ritual-fact-grid">
         {detected.map((item, idx) => (
@@ -287,9 +311,9 @@ function AnalysisScreen({
         <div style={{ display: "flex", alignItems: "center", gap: "0.6rem" }}>
           <Sparkles style={{ color: "hsl(var(--brain-core))" }} />
           <div>
-            <div style={{ fontWeight: 620 }}>{analysis ? recommendedSummary(analysis) : "가장 편한 설정을 찾는 중..."}</div>
+            <div style={{ fontWeight: 620 }}>{analysis ? recommendedSummary(analysis, language) : t(language, "flow.analysis.finding")}</div>
             <div style={{ fontSize: "0.9rem", color: "hsl(var(--fg-muted))" }}>
-              {analysis ? "추천 모델을 바로 시작할 수 있게 준비했습니다." : "잠시만 기다리면 자동으로 정리됩니다."}
+              {analysis ? t(language, "flow.analysis.ready") : t(language, "flow.analysis.wait")}
             </div>
           </div>
         </div>
@@ -299,7 +323,7 @@ function AnalysisScreen({
 
       <div style={{ marginTop: "1.25rem" }}>
         <Button onClick={onContinue} disabled={!analysis && !error} style={{ minWidth: 260 }}>
-          추천 모델 보기
+          {t(language, "flow.analysis.continue")}
         </Button>
       </div>
     </div>
@@ -315,18 +339,17 @@ function RecommendationScreen({
   onBack: () => void;
   onSelect: (model: RecommendedModel) => void;
 }) {
+  const language = useAppStore((state) => state.language);
   const items = recommendations.length ? recommendations : [fallbackModel()];
   return (
     <div>
-      <div className="ritual-title">추천 모델로 시작하세요.</div>
-      <div className="ritual-subtitle">
-        모델은 Brain의 현재 목소리입니다. 나중에 바꿔도 기억과 지식은 그대로 남습니다.
-      </div>
+      <div className="ritual-title">{t(language, "flow.recommend.title")}</div>
+      <div className="ritual-subtitle">{t(language, "flow.recommend.body")}</div>
 
       <div style={{ maxWidth: 560, margin: "0 auto" }}>
         {items[0]?.supported ? (
           <Button onClick={() => onSelect(items[0])} style={{ width: "100%", marginBottom: "0.85rem" }}>
-            추천대로 시작하기
+            {t(language, "flow.recommend.primary")}
           </Button>
         ) : null}
         {items.slice(0, 3).map((model, index) => (
@@ -337,17 +360,17 @@ function RecommendationScreen({
             disabled={!model.supported}
             style={{ width: "100%" }}
           >
-            <div className="role">{rankLabel(model.role, index)}</div>
+            <div className="role">{rankLabel(model.role, index, language)}</div>
             <div className="name">{model.shortName}</div>
             <div className="reason">{model.reason} · {model.size || "ready"}</div>
-            {!model.supported && <div style={{ color: "hsl(var(--destructive))", marginTop: 6, fontSize: "0.85rem" }}>이 컴퓨터에서 추가 확인이 필요합니다</div>}
+            {!model.supported && <div style={{ color: "hsl(var(--destructive))", marginTop: 6, fontSize: "0.85rem" }}>{t(language, "flow.recommend.unsupported")}</div>}
           </button>
         ))}
       </div>
 
       <div style={{ marginTop: "1.1rem", display: "flex", justifyContent: "center", gap: "1rem", alignItems: "center" }}>
-        <Button variant="ghost" onClick={onBack}>뒤로</Button>
-        <div style={{ fontSize: "0.82rem", color: "hsl(var(--fg-muted))" }}>잘 모르겠다면 추천대로 시작하면 됩니다.</div>
+        <Button variant="ghost" onClick={onBack}>{t(language, "flow.recommend.back")}</Button>
+        <div style={{ fontSize: "0.82rem", color: "hsl(var(--fg-muted))" }}>{t(language, "flow.recommend.hint")}</div>
       </div>
     </div>
   );
@@ -362,10 +385,11 @@ function InstallScreen({
   onBack: () => void;
   onComplete: () => void;
 }) {
+  const language = useAppStore((state) => state.language);
   const [busy, setBusy] = React.useState(false);
   const [stage, setStage] = React.useState<InstallStage>("idle");
   const [percent, setPercent] = React.useState(0);
-  const [message, setMessage] = React.useState("Brain이 사용할 모델을 기다리고 있습니다.");
+  const [message, setMessage] = React.useState(t(language, "flow.install.wait"));
   const [error, setError] = React.useState<string | null>(null);
 
   async function start() {
@@ -373,7 +397,7 @@ function InstallScreen({
     setError(null);
     setStage("install");
     setPercent(8);
-    setMessage("Brain 준비 중입니다.");
+    setMessage(t(language, "flow.install.prepare"));
     const result = await latticeApi.streamModelPrepare(
       { model: model.loadId, engine: model.engine || "local_mlx", allow_download: true },
       {
@@ -381,12 +405,12 @@ function InstallScreen({
           const nextStage = friendlyInstallStage(String(event.stage || ""));
           setStage(nextStage);
           setPercent(Number(event.percent || percentForStage(nextStage)));
-          setMessage(friendlyInstallMessage(event, nextStage));
+          setMessage(friendlyInstallMessage(event, nextStage, language));
         },
         onDone: () => {
           setStage("done");
           setPercent(100);
-          setMessage("Brain이 준비되었습니다.");
+          setMessage(t(language, "flow.install.done"));
         },
         onError: (event) => {
           setStage("error");
@@ -398,7 +422,7 @@ function InstallScreen({
     if (result.ok) {
       setStage("done");
       setPercent(100);
-      setMessage("Brain이 준비되었습니다.");
+      setMessage(t(language, "flow.install.done"));
       window.setTimeout(onComplete, 700);
     } else {
       setStage("error");
@@ -414,10 +438,10 @@ function InstallScreen({
 
   return (
     <div>
-      <div className="ritual-title">모델을 설치하고 시작합니다.</div>
+      <div className="ritual-title">{t(language, "flow.install.title")}</div>
       <div className="ritual-subtitle">
         <strong>{model.shortName}</strong> — {model.reason}.<br />
-        이 모델이 Brain의 로컬 목소리가 됩니다. 다운로드, 확인, 로드는 사용자가 누른 뒤에만 진행됩니다.
+        {t(language, "flow.install.body")}
       </div>
 
       {/* Living Brain reacts to the ceremony of installation */}
@@ -434,7 +458,7 @@ function InstallScreen({
           {(["install", "download", "validate", "load"] as const).map((item) => (
             <div key={item} className={`ritual-stage ${installStepState(stage, item)}`}>
               <CheckCircle2 style={{ width: 15, height: 15 }} />
-              <span>{installLabel(item)}</span>
+              <span>{installLabel(item, language)}</span>
             </div>
           ))}
         </div>
@@ -446,33 +470,33 @@ function InstallScreen({
 
       <div className="ritual-status">{message}</div>
       <div className="ritual-card" style={{ margin: "0.8rem auto 0", maxWidth: 540, fontSize: "0.86rem", color: "hsl(var(--fg-muted))" }}>
-        큰 모델은 다운로드에 몇 분 이상 걸릴 수 있습니다. 진행률은 모델 런타임이 알려주는 만큼 표시하고, 멈춘 것처럼 보여도 현재 단계가 유지됩니다.
+        {t(language, "flow.install.note")}
       </div>
 
       {error && (
         <div className="ritual-card" style={{ borderColor: "hsl(var(--destructive)/0.45)", background: "hsl(var(--destructive)/0.07)", marginBottom: "1rem" }}>
           {error}
-          <div style={{ marginTop: "0.5rem", fontSize: "0.85rem" }}>다른 모델을 고르거나 다시 시도할 수 있습니다.</div>
+          <div style={{ marginTop: "0.5rem", fontSize: "0.85rem" }}>{t(language, "flow.install.retry")}</div>
         </div>
       )}
 
       <div style={{ display: "flex", gap: "0.75rem", justifyContent: "center", marginTop: "1rem" }}>
-        <Button variant="ghost" onClick={onBack} disabled={busy}>다른 모델 고르기</Button>
+        <Button variant="ghost" onClick={onBack} disabled={busy}>{t(language, "flow.install.back")}</Button>
 
         {stage !== "done" ? (
           <Button 
             onClick={start} 
             disabled={busy || !model.supported}
           >
-            {busy ? "모델 준비 중..." : "다운로드하고 시작하기"}
+            {busy ? t(language, "flow.install.busy") : t(language, "flow.install.start")}
           </Button>
         ) : (
-          <Button onClick={onComplete}>Brain으로 들어가기</Button>
+          <Button onClick={onComplete}>{t(language, "flow.install.enter")}</Button>
         )}
       </div>
 
       <div style={{ fontSize: "0.72rem", color: "hsl(var(--fg-muted))", marginTop: "0.9rem" }}>
-        모든 작업은 이 컴퓨터에서 진행됩니다.
+        {t(language, "flow.install.local")}
       </div>
     </div>
   );
@@ -604,18 +628,21 @@ function fallbackModel(): RecommendedModel {
   };
 }
 
-function rankLabel(role: RecommendedModel["role"], index: number) {
-  if (role === "best") return "Best Experience";
-  if (role === "faster") return "Faster";
-  if (role === "advanced") return "Advanced";
+function rankLabel(role: RecommendedModel["role"], index: number, language: Language) {
+  if (role === "best") return language === "ko" ? "추천" : "Best Experience";
+  if (role === "faster") return language === "ko" ? "빠른 선택" : "Faster";
+  if (role === "advanced") return language === "ko" ? "고급 선택" : "Advanced";
   return `Choice ${index + 1}`;
 }
 
-function recommendedSummary(analysis: FlowAnalysis) {
+function recommendedSummary(analysis: FlowAnalysis, language: Language) {
   const recs = asRecord(analysis.recommendations?.recommendations);
   const topPick = asRecord(recs.top_pick);
-  if (topPick.name || topPick.id) return `${friendlyModelName(String(topPick.name || topPick.id))} looks like the best fit.`;
-  return "A private local Brain is recommended for this computer.";
+  if (topPick.name || topPick.id) {
+    const model = friendlyModelName(String(topPick.name || topPick.id));
+    return language === "ko" ? `${model}이 이 컴퓨터에 가장 잘 맞습니다.` : `${model} looks like the best fit.`;
+  }
+  return language === "ko" ? "이 컴퓨터에는 개인 로컬 Brain을 추천합니다." : "A private local Brain is recommended for this computer.";
 }
 
 function friendlyModelName(value: string) {
@@ -657,20 +684,26 @@ function percentForStage(stage: InstallStage) {
   return 8;
 }
 
-function friendlyInstallMessage(event: ApiData, stage: InstallStage) {
+function friendlyInstallMessage(event: ApiData, stage: InstallStage, language: Language) {
   const fallback = {
-    install: "Preparing the Brain.",
-    download: "Getting the model files.",
-    validate: "Checking that the Brain can answer.",
-    load: "Loading the Brain.",
-    done: "Your Brain is ready.",
-    idle: "Ready when you are.",
-    error: "Something needs attention.",
+    install: t(language, "flow.install.prepare"),
+    download: language === "ko" ? "모델 파일을 받는 중입니다." : "Getting the model files.",
+    validate: language === "ko" ? "Brain이 응답할 수 있는지 확인 중입니다." : "Checking that the Brain can answer.",
+    load: language === "ko" ? "Brain을 불러오는 중입니다." : "Loading the Brain.",
+    done: t(language, "flow.install.done"),
+    idle: t(language, "flow.install.wait"),
+    error: language === "ko" ? "확인이 필요한 일이 있습니다." : "Something needs attention.",
   }[stage];
   return cleanConsumerText(String(event.user_message || event.message || fallback));
 }
 
-function installLabel(stage: "install" | "download" | "validate" | "load") {
+function installLabel(stage: "install" | "download" | "validate" | "load", language: Language) {
+  if (language === "ko") {
+    if (stage === "install") return "준비";
+    if (stage === "download") return "다운로드";
+    if (stage === "validate") return "확인";
+    return "로드";
+  }
   if (stage === "install") return "Install";
   if (stage === "download") return "Download";
   if (stage === "validate") return "Validate";

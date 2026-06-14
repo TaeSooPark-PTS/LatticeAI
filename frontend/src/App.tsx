@@ -23,6 +23,7 @@ import { type BrainState, LivingBrain, triggerBrainRecall } from "@/components/L
 import { ProductFlow, readProductFlowComplete } from "@/components/ProductFlow";
 import { useAppStore } from "@/store/appStore";
 import { asArray } from "@/lib/utils";
+import { LANGUAGE_LABELS, t, type Language } from "@/i18n";
 
 type ApiRecord = Record<string, unknown>;
 type BrainDepth = 1 | 2 | 3 | 4 | 5;
@@ -68,21 +69,17 @@ const DEPTHS: Array<{ level: BrainDepth; label: string; state: BrainState }> = [
   { level: 5, label: "Knowledge Graph", state: "synthesizing" },
 ];
 
-const STARTER_PROMPTS = [
-  "Remember this decision: ",
-  "What do I already know about ",
-  "Help me turn this project context into a plan: ",
-];
-
 export default function App() {
   const theme = useAppStore((state) => state.theme);
+  const language = useAppStore((state) => state.language);
   const [flowComplete, setFlowComplete] = React.useState(readProductFlowComplete);
   const route = useHashRoute();
   const { state: brainState, intensity, setBrain } = useBrainState();
 
   React.useEffect(() => {
     document.documentElement.dataset.theme = theme;
-  }, [theme]);
+    document.documentElement.lang = language === "ko" ? "ko" : "en";
+  }, [theme, language]);
 
   React.useEffect(() => {
     const onKey = (event: KeyboardEvent) => {
@@ -153,6 +150,7 @@ function BrainHome({
   onBrainChange: (state: BrainState, intensity?: number) => void;
 }) {
   const qc = useQueryClient();
+  const language = useAppStore((state) => state.language);
   const [messages, setMessages] = React.useState<Message[]>([]);
   const [draft, setDraft] = React.useState("");
   const [imageData, setImageData] = React.useState<string | null>(null);
@@ -185,6 +183,14 @@ function BrainHome({
   );
   const modelName = React.useMemo(() => currentModelName(modelsQ.data?.data), [modelsQ.data]);
   const currentDepth = DEPTHS[explorationDepth - 1];
+  const starterPrompts = React.useMemo(
+    () => [
+      t(language, "brain.prompt.remember"),
+      t(language, "brain.prompt.know"),
+      t(language, "brain.prompt.plan"),
+    ],
+    [language],
+  );
 
   React.useEffect(() => {
     if (streaming) onBrainChange("thinking", 0.94);
@@ -243,7 +249,7 @@ function BrainHome({
           return next;
         });
       } else {
-        setMemoryFeedback(`기억에 저장됨 · 연결된 주제 ${knowledgeConcepts.length}개 · 관련 기억 ${memoryFragments.length}개`);
+        setMemoryFeedback(t(language, "brain.saved", { topics: knowledgeConcepts.length, memories: memoryFragments.length }));
       }
     } finally {
       setStreaming(false);
@@ -282,7 +288,7 @@ function BrainHome({
     setExplorationDepth((depth) => Math.max(depth, 2) as BrainDepth);
     setMessages((items) => [
       ...items,
-      { role: "assistant", content: `기억을 다시 꺼냈습니다: ${fragment.title}` },
+      { role: "assistant", content: t(language, "brain.recalled", { title: fragment.title }) },
     ]);
   }
 
@@ -300,15 +306,15 @@ function BrainHome({
           />
 
           <div className="brain-depth-badge" aria-live="polite">
-            <span>Level {explorationDepth}</span>
-            <strong>{currentDepth.label}</strong>
+            <span>{t(language, "brain.level")} {explorationDepth}</span>
+            <strong>{t(language, `brain.depth.${explorationDepth}`)}</strong>
           </div>
 
           <div className="brain-depth-actions" aria-label="Brain quick views">
-            <button type="button" className={explorationDepth === 2 ? "is-active" : ""} onClick={() => jumpToDepth(2)}>기억 보기</button>
-            <button type="button" className={explorationDepth === 3 ? "is-active" : ""} onClick={() => jumpToDepth(3)}>주제 보기</button>
-            <button type="button" className={explorationDepth === 4 ? "is-active" : ""} onClick={() => jumpToDepth(4)}>관계 보기</button>
-            <button type="button" className={explorationDepth === 5 ? "is-active" : ""} onClick={() => jumpToDepth(5)}>그래프로 보기</button>
+            <button type="button" className={explorationDepth === 2 ? "is-active" : ""} onClick={() => jumpToDepth(2)}>{t(language, "brain.view.memories")}</button>
+            <button type="button" className={explorationDepth === 3 ? "is-active" : ""} onClick={() => jumpToDepth(3)}>{t(language, "brain.view.topics")}</button>
+            <button type="button" className={explorationDepth === 4 ? "is-active" : ""} onClick={() => jumpToDepth(4)}>{t(language, "brain.view.relationships")}</button>
+            <button type="button" className={explorationDepth === 5 ? "is-active" : ""} onClick={() => jumpToDepth(5)}>{t(language, "brain.view.graph")}</button>
           </div>
 
           <div className="brain-field-layer" aria-hidden={explorationDepth < 2}>
@@ -328,7 +334,7 @@ function BrainHome({
 
           {explorationDepth > 1 ? (
             <button className="brain-surface-control" type="button" onClick={surface}>
-              Surface
+              {t(language, "brain.surface")}
             </button>
           ) : null}
         </div>
@@ -337,18 +343,19 @@ function BrainHome({
       <section className="brain-conversation" aria-label="Conversation">
         <div className="brain-conversation-header">
           <div>
-            <h1>Lattice Brain</h1>
-            <span>{currentDepth.label}</span>
+            <h1>{t(language, "brain.title")}</h1>
+            <span>{t(language, `brain.depth.${explorationDepth}`)}</span>
           </div>
+          <LanguageSwitcher compact />
           <div className="brain-ownership-strip" aria-label="Brain ownership guarantees">
-            <span>Local-first</span>
-            <span>Portable</span>
-            <span>Private</span>
+            <span>{t(language, "brain.local")}</span>
+            <span>{t(language, "brain.portable")}</span>
+            <span>{t(language, "brain.private")}</span>
           </div>
           <div>{modelName}</div>
           <button className="brain-admin-link" type="button" onClick={() => navigateHash("/admin")}>
             <ShieldCheck className="h-3.5 w-3.5" />
-            Admin
+            {t(language, "brain.admin")}
           </button>
         </div>
 
@@ -360,13 +367,11 @@ function BrainHome({
           />
           {messages.length === 0 ? (
             <div className="mind-empty">
-              <div className="mind-empty-kicker">내 오래가는 기억</div>
-              <div className="mind-empty-title">잊으면 안 되는 일부터 말해 주세요.</div>
-              <p>
-                문서, 대화, 프로젝트, 결정이 Brain에 쌓이고 나중에 주제와 관계로 다시 보입니다.
-              </p>
+              <div className="mind-empty-kicker">{t(language, "brain.empty.kicker")}</div>
+              <div className="mind-empty-title">{t(language, "brain.empty.title")}</div>
+              <p>{t(language, "brain.empty.body")}</p>
               <div className="mind-empty-prompts" aria-label="Starter prompts">
-                {STARTER_PROMPTS.map((prompt) => (
+                {starterPrompts.map((prompt) => (
                   <button key={prompt} type="button" onClick={() => setDraft(prompt)}>
                     {prompt}
                   </button>
@@ -384,7 +389,7 @@ function BrainHome({
 
         {memoryFeedback ? <div className="brain-save-feedback" role="status">{memoryFeedback}</div> : null}
 
-        <BrainCarePanel />
+        <BrainCarePanel language={language} />
 
         <div className="brain-composer">
           <textarea
@@ -396,12 +401,12 @@ function BrainHome({
                 void send();
               }
             }}
-            placeholder="Talk to your Brain..."
+            placeholder={t(language, "brain.placeholder")}
           />
           <div className="brain-composer-actions">
             <label className="brain-image-input">
               <ImagePlus className="h-3.5 w-3.5" />
-              <span>Image</span>
+              <span>{t(language, "brain.image")}</span>
               <input
                 type="file"
                 accept="image/*"
@@ -412,9 +417,9 @@ function BrainHome({
                 }}
               />
             </label>
-            {imageData ? <span className="brain-quiet-success">Image attached</span> : null}
+            {imageData ? <span className="brain-quiet-success">{t(language, "brain.imageAttached")}</span> : null}
             <Button onClick={() => void send()} disabled={!draft.trim() || streaming} className="rounded-full px-5">
-              <Send className="h-4 w-4" /> Send
+              <Send className="h-4 w-4" /> {t(language, "brain.send")}
             </Button>
           </div>
         </div>
@@ -423,8 +428,30 @@ function BrainHome({
   );
 }
 
+function LanguageSwitcher({ compact = false }: { compact?: boolean }) {
+  const language = useAppStore((state) => state.language);
+  const setLanguage = useAppStore((state) => state.setLanguage);
+
+  return (
+    <div className={compact ? "language-switcher compact" : "language-switcher"} aria-label={t(language, "language.label")}>
+      {(["ko", "en"] as Language[]).map((item) => (
+        <button
+          key={item}
+          type="button"
+          className={language === item ? "is-active" : ""}
+          onClick={() => setLanguage(item)}
+          aria-pressed={language === item}
+        >
+          {LANGUAGE_LABELS[item]}
+        </button>
+      ))}
+    </div>
+  );
+}
+
 function AdminConsole({ onBack }: { onBack: () => void }) {
   const qc = useQueryClient();
+  const language = useAppStore((state) => state.language);
   const [filters, setFilters] = React.useState<AdminFilterState>({ q: "", actor: "", action: "", severity: "", limit: 50 });
   const { summaryQ, statsQ, usersQ, auditQ, securityQ, securityEventsQ, policiesQ, rolesQ, retentionQ, indexQ } = useAdminConsoleData(filters);
   const rebuildIndex = useMutation({
@@ -444,13 +471,14 @@ function AdminConsole({ onBack }: { onBack: () => void }) {
       <header className="admin-console-header">
         <button className="admin-back-button" type="button" onClick={onBack}>
           <ArrowLeft className="h-4 w-4" />
-          Brain
+          {t(language, "admin.back")}
         </button>
         <div>
-          <span>Separate admin workspace</span>
-          <h1>Admin Console</h1>
-          <p>Users, logs, security, and Brain health stay out of the normal user experience.</p>
+          <span>{t(language, "admin.kicker")}</span>
+          <h1>{t(language, "admin.title")}</h1>
+          <p>{t(language, "admin.body")}</p>
         </div>
+        <LanguageSwitcher compact />
       </header>
 
       <section className="admin-metrics" aria-label="Admin overview">
@@ -643,7 +671,7 @@ function AdminList({ items, empty, render }: { items: unknown[]; empty: string; 
   return <div className="admin-list">{items.map((item, index) => <div key={index} className="admin-list-row">{render(item)}</div>)}</div>;
 }
 
-function BrainCarePanel() {
+function BrainCarePanel({ language }: { language: Language }) {
   const qc = useQueryClient();
   const [expanded, setExpanded] = React.useState(false);
   const [archivePath, setArchivePath] = React.useState("");
@@ -678,7 +706,7 @@ function BrainCarePanel() {
   const backupStatus = backupHealthLabel(backupHealthQ.data?.data);
 
   return (
-    <section className={`brain-care-panel ${expanded ? "is-expanded" : "is-collapsed"}`} aria-label="Care for my Brain">
+    <section className={`brain-care-panel ${expanded ? "is-expanded" : "is-collapsed"}`} aria-label={t(language, "care.title")}>
       <button
         className="brain-care-summary"
         type="button"
@@ -687,11 +715,11 @@ function BrainCarePanel() {
         onClick={() => setExpanded((value) => !value)}
       >
         <span className="brain-care-summary-main">
-          <span><ShieldCheck className="h-3.5 w-3.5" /> Care for my Brain</span>
-          <strong>Own it locally. Keep it portable.</strong>
+          <span><ShieldCheck className="h-3.5 w-3.5" /> {t(language, "care.title")}</span>
+          <strong>{t(language, "care.subtitle")}</strong>
         </span>
         <div className="brain-care-proof" aria-label="Ownership model">
-          <span>Private</span>
+          <span>{t(language, "care.private")}</span>
           <span>{portableFormat}</span>
           <span>{backupStatus}</span>
         </div>
@@ -703,22 +731,25 @@ function BrainCarePanel() {
           <div className="brain-care-actions">
             <CareButton
               icon={<Download className="h-3.5 w-3.5" />}
-              label="Export"
-              detail="Take it with you"
+              label={t(language, "care.export")}
+              detail={t(language, "care.export.detail")}
+              pendingLabel={t(language, "care.working")}
               pending={exportGraph.isPending}
               onClick={() => exportGraph.mutate()}
             />
             <CareButton
               icon={<DatabaseBackup className="h-3.5 w-3.5" />}
-              label="Backup"
-              detail="Save a copy"
+              label={t(language, "care.backup")}
+              detail={t(language, "care.backup.detail")}
+              pendingLabel={t(language, "care.working")}
               pending={backupGraph.isPending}
               onClick={() => backupGraph.mutate()}
             />
             <CareButton
               icon={<Archive className="h-3.5 w-3.5" />}
-              label="Archive"
-              detail="Encrypted Brain"
+              label={t(language, "care.archive")}
+              detail={t(language, "care.archive.detail")}
+              pendingLabel={t(language, "care.working")}
               pending={archiveBrain.isPending}
               disabled={!passphrase.trim()}
               onClick={() => archiveBrain.mutate()}
@@ -729,15 +760,15 @@ function BrainCarePanel() {
             <input
               value={archivePath}
               onChange={(event) => setArchivePath(event.target.value)}
-              placeholder="Paste an archive path to inspect or preview"
-              aria-label="Brain archive path"
+              placeholder={t(language, "care.path.placeholder")}
+              aria-label={t(language, "care.path.label")}
             />
             <input
               type="password"
               value={passphrase}
               onChange={(event) => setPassphrase(event.target.value)}
-              placeholder="Archive passphrase"
-              aria-label="Brain archive passphrase"
+              placeholder={t(language, "care.passphrase.placeholder")}
+              aria-label={t(language, "care.passphrase.label")}
             />
             <div className="brain-care-archive-actions">
               <Button
@@ -746,7 +777,7 @@ function BrainCarePanel() {
                 disabled={!archivePath.trim() || inspectArchive.isPending}
                 onClick={() => inspectArchive.mutate()}
               >
-                <Eye className="h-3.5 w-3.5" /> Inspect
+                <Eye className="h-3.5 w-3.5" /> {t(language, "care.inspect")}
               </Button>
               <Button
                 variant="outline"
@@ -754,7 +785,7 @@ function BrainCarePanel() {
                 disabled={!archivePath.trim() || !passphrase.trim() || restorePreview.isPending}
                 onClick={() => restorePreview.mutate()}
               >
-                <RotateCcw className="h-3.5 w-3.5" /> Restore preview
+                <RotateCcw className="h-3.5 w-3.5" /> {t(language, "care.restorePreview")}
               </Button>
             </div>
           </div>
@@ -765,7 +796,7 @@ function BrainCarePanel() {
             </div>
           ) : (
             <p className="brain-care-note">
-              Restore preview checks an archive without changing your Brain. Confirmed restore stays in Settings.
+              {t(language, "care.note")}
             </p>
           )}
         </div>
@@ -792,6 +823,7 @@ function CareButton({
   icon,
   label,
   detail,
+  pendingLabel,
   pending,
   disabled,
   onClick,
@@ -799,6 +831,7 @@ function CareButton({
   icon: React.ReactNode;
   label: string;
   detail: string;
+  pendingLabel: string;
   pending?: boolean;
   disabled?: boolean;
   onClick: () => void;
@@ -807,7 +840,7 @@ function CareButton({
     <button className="brain-care-button" type="button" disabled={disabled || pending} onClick={onClick}>
       {icon}
       <span>
-        <strong>{pending ? "Working" : label}</strong>
+        <strong>{pending ? pendingLabel : label}</strong>
         <small>{detail}</small>
       </span>
     </button>
@@ -872,6 +905,7 @@ function BrainOverviewPanel({
   concepts: KnowledgeConcept[];
   onOpenDepth: (depth: BrainDepth) => void;
 }) {
+  const language = useAppStore((state) => state.language);
   const recent = memories.slice(0, 3);
   const older = memories.slice(3, 6);
   const topics = concepts.slice(0, 4);
@@ -880,27 +914,27 @@ function BrainOverviewPanel({
     <section className="brain-overview-panel" aria-label="Brain overview">
       <div className="brain-overview-head">
         <div>
-          <span>Brain 한눈에 보기</span>
-          <strong>기억과 주제를 바로 확인하세요.</strong>
+          <span>{t(language, "brain.overview.kicker")}</span>
+          <strong>{t(language, "brain.overview.title")}</strong>
         </div>
-        <button type="button" onClick={() => onOpenDepth(5)}>전체 그래프</button>
+        <button type="button" onClick={() => onOpenDepth(5)}>{t(language, "brain.overview.graph")}</button>
       </div>
       <div className="brain-overview-grid">
         <BrainOverviewColumn
-          title="최근 기억"
-          empty="아직 최근 기억이 없습니다."
+          title={t(language, "brain.overview.recent")}
+          empty={t(language, "brain.overview.recentEmpty")}
           items={recent.map((memory) => memory.title)}
           onOpen={() => onOpenDepth(2)}
         />
         <BrainOverviewColumn
-          title="이전 기억"
-          empty="대화가 쌓이면 과거 기억이 보입니다."
+          title={t(language, "brain.overview.older")}
+          empty={t(language, "brain.overview.olderEmpty")}
           items={older.map((memory) => memory.title)}
           onOpen={() => onOpenDepth(2)}
         />
         <BrainOverviewColumn
-          title="주요 주제"
-          empty="주제가 형성되는 중입니다."
+          title={t(language, "brain.overview.topics")}
+          empty={t(language, "brain.overview.topicsEmpty")}
           items={topics.map((concept) => concept.label)}
           onOpen={() => onOpenDepth(3)}
         />
@@ -1044,6 +1078,7 @@ function EmergentKnowledgeGraph({
   onSearch: (value: string) => void;
   onSelect: (id: string | null) => void;
 }) {
+  const language = useAppStore((state) => state.language);
   const query = search.trim().toLowerCase();
   const visibleNodes = React.useMemo(() => {
     const filtered = model.nodes.filter((node) => {
@@ -1111,7 +1146,7 @@ function EmergentKnowledgeGraph({
           ))}
         </div>
       ) : (
-        <div className="brain-graph-empty">No matching knowledge yet</div>
+        <div className="brain-graph-empty">{t(language, "brain.graph.empty")}</div>
       )}
 
       <div className="brain-graph-focus">
@@ -1119,11 +1154,11 @@ function EmergentKnowledgeGraph({
           <>
             <span>{selected.type}</span>
             <strong>{selected.label}</strong>
-            <p>{selected.summary || "This concept is part of the deepest knowledge layer."}</p>
-            <p>대화와 문서에서 함께 나온 내용이 선으로 이어집니다.</p>
+            <p>{selected.summary || t(language, "brain.graph.summaryFallback")}</p>
+            <p>{t(language, "brain.graph.focused")}</p>
           </>
         ) : (
-          <p>대화, 문서, 프로젝트를 쌓으면 Brain 그래프가 자랍니다.</p>
+          <p>{t(language, "brain.graph.emptyFocus")}</p>
         )}
       </div>
     </section>
