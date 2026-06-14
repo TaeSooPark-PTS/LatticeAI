@@ -472,10 +472,10 @@ def build_engine_model_catalog() -> Dict[str, List[Dict[str, Any]]]:
 
 
 def get_verified_models() -> List[Dict[str, Any]]:
-    """Return only HF-verified entries with rich fields (for API/UI)."""
+    """Return only load-verified HF entries with rich fields (for API/UI)."""
     return [
         c.to_legacy_dict() for c in _REGISTRY
-        if c.verification.hf_exists and c.verification.has_config
+        if c.verification.hf_exists and c.verification.has_config and c.verification.has_tokenizer
     ]
 
 

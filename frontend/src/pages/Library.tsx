@@ -165,6 +165,8 @@ function ModelsPanel() {
               const modelHardware = asRecord(model.hardware);
               const recommendationHardware = asRecord(recommendation.hardware);
               const hardwareNote = modelHardware.notes || recommendationHardware.notes || (modelHardware.recommended_ram_gb ? `~${modelHardware.recommended_ram_gb}GB RAM rec` : "");
+              const safetyNotes = model.safety_notes || recommendation.safety_notes;
+              const licenseText = model.license || recommendation.license;
               const compatibility = (model.runtime_compatibility || recommendation.runtime_compatibility || {}) as Record<string, unknown>;
               const fallbackAvailable = String(compatibility.status || "") === "fallback_available";
               const unsupported = model.load_status === "unsupported" || compatibility.supported === false;
@@ -210,10 +212,15 @@ function ModelsPanel() {
                       </div>
                     ) : !loaded && !loadAvailable ? <div className="mt-1 text-xs text-muted-foreground">{unavailableReason}</div> : null}
                     {mode !== "basic" ? (
-                      <div className="mt-2 text-xs text-muted-foreground">
-                        {runtimeLabel} · {loadId}
-                        {model.load_strategy || recommendation.load_strategy ? ` · ${String(model.load_strategy || recommendation.load_strategy)}` : ""}
-                        {modelVerification.notes ? ` · ${String(modelVerification.notes).slice(0,60)}` : ""}
+                      <div className="mt-2 space-y-1 text-xs text-muted-foreground">
+                        <div>
+                          {runtimeLabel} · {loadId}
+                          {model.load_strategy || recommendation.load_strategy ? ` · ${String(model.load_strategy || recommendation.load_strategy)}` : ""}
+                          {modelVerification.notes ? ` · ${String(modelVerification.notes).slice(0,60)}` : ""}
+                        </div>
+                        {safetyNotes || licenseText ? (
+                          <div>{[licenseText ? `License: ${String(licenseText)}` : "", safetyNotes ? String(safetyNotes) : ""].filter(Boolean).join(" · ")}</div>
+                        ) : null}
                       </div>
                     ) : null}
                     {unsupported || fallbackAvailable ? <AlternativeModels compatibility={compatibility} /> : null}

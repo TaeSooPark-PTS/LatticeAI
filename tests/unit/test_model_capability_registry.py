@@ -108,6 +108,17 @@ def test_verified_badge_requires_config_and_tokenizer():
     assert verification["verified"] is False
 
 
+def test_verified_catalog_requires_same_contract_as_badge():
+    verified = get_verified_models()
+
+    assert verified
+    assert all(model["verification"]["verified"] is True for model in verified)
+    assert all(model["verification"]["hf_exists"] is True for model in verified)
+    assert all(model["verification"]["has_config"] is True for model in verified)
+    assert all(model["verification"]["has_tokenizer"] is True for model in verified)
+    assert all("has_weights_hint" in model["verification"] for model in verified)
+
+
 def test_registry_only_models_do_not_enter_user_facing_catalog():
     all_catalog_ids = {
         str(model.get("id") or "").lower()
