@@ -1,36 +1,39 @@
 # Release Notes
 
-The current release target is v5.3.0. The tracked release-note surface starts at
+The current release target is v5.4.0. The tracked release-note surface starts at
 v4.5.0 so the public Git tree stays focused on the current product era.
 
-## v5.3.0 - Product Clarity and Runtime Cleanup
+## v5.4.0 - Brain Automation Scheduler
 
-Lattice AI v5.3.0 clarifies the product before adding more features: it is a
-local-first Digital Brain that keeps user knowledge durable across any AI model.
-The README, metadata, onboarding copy, docs, and first app factory runtime seams
-now point in that same direction.
+Lattice AI v5.4.0 adds consent-first Brain automation scheduler. Daily Memory
+Digest, Weekly Project Review, and Follow-up Radar recipes can be created as
+reviewable disabled drafts from the Automate page. Triggers stay disarmed until
+explicitly enabled. Includes TriggerService hardening (dedup, LATTICE_TZ,
+degraded status, provenance), runtime dependency graph cleanup, and E2E coverage.
+All remote CI gates (Python 3.11/3.12, integration, visual, build, Vercel) passed
+for PR #4 before this release prep.
 
 ### Highlights
 
-- Reorganized README around product identity, user need, user actions, one-minute
-  flow, screenshots, install, architecture, and release preparation.
-- Unified product descriptions across public metadata and docs.
-- Improved onboarding/model setup copy around ownership, local storage,
-  explicit consent, and model-as-voice / Brain-as-asset framing.
-- Added `docs/DEVELOPMENT.md` and `docs/LEGACY_COMPATIBILITY.md`.
-- Moved config/security/Brain runtime assembly seams into `latticeai.runtime`.
+- Added consent-first Brain automation recipe drafts (Daily Memory Digest,
+  Weekly Project Review, Follow-up Radar) installed as disabled workflows.
+- Automate page recipe cards with duplicate-guard, no-dup-click, success feedback.
+- TriggerService: explicit enabled:false treated as disarmed, cooldown dedup
+  guards, LATTICE_TZ support, consecutive_failures + degraded per-trigger status.
+- lattice_brain/runtime 책임+의존성 그래프 정리 + entrypoint mapping docs.
+- A-direction E2E scenarios for draft install, trigger fire, review flow.
 - Bumped synchronized Python, npm, VSIX, Tauri, runtime, and static metadata to
-  `5.3.0`.
+  `5.4.0`.
 
 ### Expected Artifacts
 
-- `dist/ltcai-5.3.0-py3-none-any.whl`
-- `dist/ltcai-5.3.0.tar.gz`
-- `dist/ltcai-5.3.0.vsix`
-- `ltcai-5.3.0.tgz`
-- `src-tauri/target/release/bundle/dmg/Lattice AI_5.3.0_aarch64.dmg`
+- `dist/ltcai-5.4.0-py3-none-any.whl`
+- `dist/ltcai-5.4.0.tar.gz`
+- `dist/ltcai-5.4.0.vsix`
+- `ltcai-5.4.0.tgz`
+- `src-tauri/target/release/bundle/dmg/Lattice AI_5.4.0_aarch64.dmg`
 
-Full notes: [RELEASE_NOTES_v5.3.0.md](RELEASE_NOTES_v5.3.0.md)
+Full notes: [RELEASE_NOTES_v5.4.0.md](RELEASE_NOTES_v5.4.0.md)
 
 ## v5.2.0 - User-Focused Model Transformation
 

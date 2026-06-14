@@ -123,3 +123,18 @@ def test_describe_reports_armed_state_honestly(tmp_path):
     assert status["running"] is False, "scheduler not started must say so"
     kinds = {a["kind"] for a in status["armed"]}
     assert kinds == {"interval", "brain_event"}
+
+
+def test_disabled_trigger_recipe_drafts_are_not_armed(tmp_path):
+    disabled = _interval_wf("wf-draft")
+    disabled["nodes"][0]["config"]["enabled"] = False
+    svc, fired, clock = _service(tmp_path, [disabled, _interval_wf("wf-live")], now=1000.0)
+
+    status = svc.describe()
+    assert [item["workflow_id"] for item in status["armed"]] == ["wf-live"]
+
+    svc.tick_intervals()
+    clock["now"] = 1061.0
+    assert svc.tick_intervals() == 1
+    _drain_threads()
+    assert [wf_id for wf_id, _ in fired] == ["wf-live"]

@@ -368,6 +368,8 @@ export const latticeApi = {
   workflowDefinitions: () => get("/workflows/api/definitions", { workflows: [] }),
   workflowRuns: () => get("/workflows/api/runs", { runs: [] }),
   workflowTriggers: () => get("/workflows/api/triggers", { armed: [] }),
+  automationRecipes: () => get("/workflows/api/automation/recipes", { recipes: [], principles: {} }),
+  installAutomationRecipe: (recipeId: string, enabled = false) => post(`/workflows/api/automation/recipes/${encodeURIComponent(recipeId)}`, { enabled }, {}),
   createWorkflow: (body: { name: string; nodes: Array<Record<string, unknown>>; metadata?: Record<string, unknown> }) => post("/workflows/api/definitions", body, {}),
   importWorkflow: (data: Record<string, unknown>) => post("/workflows/api/import", { data }, {}),
   exportWorkflow: (id: string) => get(`/workflows/api/export/${encodeURIComponent(id)}`, {}),

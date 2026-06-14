@@ -1,5 +1,11 @@
 """Hooks platform — a persisted registry of lifecycle extension points.
 
+(lattice_brain/runtime/hooks.py)
+책임: HookContext/Result, HooksRegistry (persist+order+enable+builtin), dispatch_tool,
+      fire_hook (pre/post_run/tool/workflow), BUILTIN_HOOKS 등록.
+의존성: threading, subprocess (user hooks). dispatch_tool은 tool path 단일화.
+상위: agent_runtime.py (pre/post_run), tool_dispatch.py, api/tools, core/agent (shared).
+
 Lattice AI runs several behaviours at well-defined points in the agent / tool /
 workflow lifecycle (audit logging, secret redaction, sensitive-data
 classification, tool-permission gating, memory snapshots, workflow replay

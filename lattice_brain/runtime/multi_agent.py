@@ -1,4 +1,9 @@
-"""Multi-Agent Runtime 2.1.
+"""Multi-Agent Runtime 2.1. (lattice_brain/runtime/multi_agent.py)
+
+책임: 역할 파이프라인 실행, handoff/context_packet/timeline/review/retry 기록 생성,
+      OrchestrationContext, default/llm_role_runner, MultiAgentOrchestrator.
+의존성: 없음 (순수). runner 주입으로 simulation vs llm 분리.
+상위 호출자: agent_runtime.py (orchestrator_factory), platform_runtime.
 
 The runtime remains a small, dependency-injected orchestrator, but v2.1 makes
 the operational objects first-class: handoffs, context packets, review/retry
@@ -14,7 +19,7 @@ from datetime import datetime
 from typing import Any, Callable, Dict, List, Optional
 
 
-MULTI_AGENT_VERSION = "5.3.0"
+MULTI_AGENT_VERSION = "5.4.0"
 
 AGENT_ROLES = ("researcher", "planner", "executor", "reviewer", "release")
 CORE_PIPELINE = ("planner", "executor", "reviewer")

@@ -1,12 +1,24 @@
-# Lattice AI — Feature Status (v5.3.0 target)
+# Lattice AI — Feature Status (v5.4.0 target)
 
-**Current release-preparation line:** v5.3.0 Product Clarity and Runtime Cleanup.
+**Current release-preparation line:** v5.4.0 Brain Automation Scheduler.
 Lattice AI is a local-first Digital Brain that keeps your knowledge durable
 across any AI model. The primary experience is Brain plus conversation; the
 graph remains durable infrastructure and advanced exploration, not the home
 product identity. Sections below v5.3.0 are historical release-status records
 and should not override the current README, ARCHITECTURE.md, SECURITY.md,
-PRIVACY.md, or v5.3.0 release notes.
+PRIVACY.md, or v5.4.0 release notes.
+
+## v5.4.0 Brain Automation Scheduler — current development line
+
+The next product direction is a gentle Brain automation layer: Lattice suggests
+useful schedules and follow-up workflows, but installs them as reviewable,
+disabled drafts until the user explicitly enables a trigger.
+
+| Area | Status | Evidence |
+| --- | --- | --- |
+| **Brain automation recipes** | IN DEVELOPMENT | `latticeai/services/brain_automation.py` defines Daily Memory Digest, Weekly Project Review, and Follow-up Radar recipes with local-only consent metadata. |
+| **Consent-first scheduler boundary** | WORKING | `TriggerService` ignores trigger nodes with explicit `enabled: false`, so recipe drafts do not run silently. |
+| **Automate page recipe cards** | WORKING | `frontend/src/pages/Act.tsx` shows recipe cards; "Create reviewable draft" now guards against duplicate recipe drafts (via metadata.recipe_id), prevents double-clicks during install, and shows immediate success feedback + updated button state. |
 
 ## v5.3.0 Product Clarity and Runtime Cleanup — what changed
 
