@@ -89,6 +89,41 @@ def test_verification_report_exists_and_valid():
     assert any(r.get("hf_exists") for r in data.get("results", []))
 
 
+def test_verified_badge_requires_config_and_tokenizer():
+    cap = ModelCapability(
+        id="example/no-tokenizer",
+        hf_repo_id="example/no-tokenizer",
+        name="No Tokenizer",
+        family="Example",
+        tag="local-vlm",
+        size="1GB",
+        verification=VerificationStatus(hf_exists=True, has_config=True, has_tokenizer=False),
+    )
+
+    verification = cap.to_legacy_dict()["verification"]
+
+    assert verification["hf_exists"] is True
+    assert verification["has_config"] is True
+    assert verification["has_tokenizer"] is False
+    assert verification["verified"] is False
+
+
+def test_registry_only_models_do_not_enter_user_facing_catalog():
+    all_catalog_ids = {
+        str(model.get("id") or "").lower()
+        for models in ENGINE_MODEL_CATALOG.values()
+        for model in models
+    }
+    registry_only = get_capability("mistralai/Pixtral-12B-2409")
+
+    assert registry_only is not None
+    assert registry_only.verification.hf_exists is True
+    assert registry_only.verification.has_config is False
+    assert registry_only.verification.has_tokenizer is False
+    assert "mistralai/Pixtral-12B-2409" not in {m["id"] for m in catalog_get_verified()}
+    assert not any("pixtral" in model_id or "mistral" in model_id for model_id in all_catalog_ids)
+
+
 def test_get_capability_and_build_catalog_roundtrip():
     cap = get_capability("mlx-community/gemma-4-12b-it-4bit")
     assert cap is not None

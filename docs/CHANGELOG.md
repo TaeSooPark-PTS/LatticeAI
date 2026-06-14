@@ -20,6 +20,7 @@ historical and may describe behavior as it existed at that release.
 ### Changed
 - `model_catalog.py` now sources ENGINE_MODEL_CATALOG + aliases from the capability registry (single source of truth), preserves legacy shapes + reexports, and finalizes the user-facing catalog to current load-ready families so lower-generation or non-load-verified candidates do not become noisy primary choices.
 - `model_recommendation.py` `_classify_one` now forwards 5.2 fields (hf_repo, verification, hardware, load_strategy, license, safety, recommended_default).
+- `verification.verified` now requires HF presence plus config and tokenizer hints, with weights-hint detail exposed separately, so the UI badge matches the actual load-readiness contract.
 - Marketplace template installs now keep registry entries scoped per workspace, and `/marketplace/templates/registry` returns only the authorized workspace scope.
 - Backend model APIs return rich fields; frontend can render verified badges, modality, hardware notes, strategies.
 - Library.tsx (ModelsPanel): added "multimodal" + "✓ HF" verified badges, recommended_default support, hardware notes line, load_strategy in detail, updated guided setup copy for transparency and consent.

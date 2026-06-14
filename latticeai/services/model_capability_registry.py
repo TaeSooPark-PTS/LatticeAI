@@ -114,8 +114,13 @@ class ModelCapability:
                 "hf_last_checked": self.verification.hf_last_checked,
                 "has_config": self.verification.has_config,
                 "has_tokenizer": self.verification.has_tokenizer,
+                "has_weights_hint": self.verification.has_weights_hint,
                 "pipeline_tag": self.verification.pipeline_tag,
-                "verified": bool(self.verification.hf_exists and self.verification.has_config),
+                "verified": bool(
+                    self.verification.hf_exists
+                    and self.verification.has_config
+                    and self.verification.has_tokenizer
+                ),
                 "notes": self.verification.notes,
             },
             "recommended_default": self.recommended_default,
