@@ -1313,6 +1313,170 @@ body {
   position: relative;
 }
 
+/* Brain as living entry point — progressive revelation / travel into the mind */
+.brain-exploration {
+  position: relative;
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 320px;
+  transition: all 600ms cubic-bezier(0.23, 1, 0.32, 1);
+}
+
+.brain-field-layer {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  z-index: 1;
+}
+
+.brain-exploration[data-depth="1"] .brain-field-layer {
+  pointer-events: auto;
+}
+
+.memory-orb, .knowledge-node {
+  position: absolute;
+  background: hsl(var(--memory) / 0.85);
+  color: hsl(var(--bg));
+  border-radius: 999px;
+  font-size: 0.7rem;
+  padding: 0.25rem 0.6rem;
+  box-shadow: 0 2px 8px hsl(0 0% 0% / 0.3);
+  white-space: nowrap;
+  max-width: 160px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  cursor: pointer;
+  transition: transform 200ms ease, opacity 400ms ease, background 200ms ease;
+  pointer-events: auto;
+  transform-origin: center;
+}
+
+.memory-orb {
+  background: hsl(var(--memory));
+  font-size: 0.65rem;
+  padding: 0.2rem 0.5rem;
+}
+
+.knowledge-node {
+  background: hsl(var(--knowledge) / 0.9);
+  border-radius: 8px;
+  font-size: 0.72rem;
+}
+
+.brain-exploration[data-depth="2"] .memory-orb,
+.brain-exploration[data-depth="3"] .memory-orb {
+  animation: emerge-from-brain 800ms ease forwards;
+}
+
+.brain-exploration[data-depth="3"] .knowledge-node,
+.brain-exploration[data-depth="4"] .knowledge-node {
+  animation: emerge-from-brain 900ms ease forwards;
+}
+
+@keyframes emerge-from-brain {
+  from { transform: scale(0.2) translateY(40px); opacity: 0; }
+  to { transform: scale(1) translateY(0); opacity: 1; }
+}
+
+.relationship-edge {
+  position: absolute;
+  height: 1px;
+  background: linear-gradient(90deg, transparent, hsl(var(--connection) / 0.6), transparent);
+  pointer-events: none;
+  z-index: 0;
+  transition: opacity 400ms ease;
+}
+
+.brain-exploration[data-depth="0"] .brain-field-layer > * { opacity: 0; pointer-events: none; }
+.brain-exploration[data-depth="1"] .memory-orb { opacity: 0.9; }
+.brain-exploration[data-depth="2"] .memory-orb { opacity: 1; }
+.brain-exploration[data-depth="3"] .knowledge-node { opacity: 0.95; }
+.brain-exploration[data-depth="4"] .relationship-edge { opacity: 0.7; }
+.brain-exploration[data-depth="5"] .mind-core-graph { opacity: 1; pointer-events: auto; }
+
+.mind-core-graph {
+  position: absolute;
+  inset: 8%;
+  border-radius: 50%;
+  background: hsl(var(--bg) / 0.6);
+  border: 1px solid hsl(var(--brain-core) / 0.3);
+  overflow: hidden;
+  opacity: 0;
+  transition: opacity 500ms ease;
+  z-index: 2;
+}
+
+.brain-surface-control {
+  position: absolute;
+  top: 1rem;
+  right: 1rem;
+  z-index: 10;
+  font-size: 0.7rem;
+  padding: 0.25rem 0.6rem;
+  background: hsl(var(--surface-glass));
+  border: 1px solid hsl(var(--border) / 0.6);
+  border-radius: 999px;
+  cursor: pointer;
+  opacity: 0.7;
+  transition: opacity 150ms;
+}
+
+.brain-surface-control:hover { opacity: 1; }
+
+.brain-depth-indicator {
+  position: absolute;
+  bottom: -1.6rem;
+  left: 50%;
+  transform: translateX(-50%);
+  font-size: 0.65rem;
+  letter-spacing: 1px;
+  text-transform: uppercase;
+  color: hsl(var(--fg-muted));
+  white-space: nowrap;
+}
+
+.brain-organism.depth-1 .thought-particle { opacity: 0.7; }
+.brain-organism.depth-3 .thought-particle.resolving,
+.brain-organism.depth-4 .thought-particle.resolving,
+.brain-organism.depth-5 .thought-particle.resolving {
+  background: hsl(var(--knowledge));
+  box-shadow: 0 0 4px hsl(var(--knowledge));
+  animation-duration: 1.8s;
+}
+
+.brain-inner-structure {
+  position: absolute;
+  inset: 22%;
+  opacity: 0.45;
+  transition: opacity 400ms ease;
+}
+
+.brain-exploration.is-exploring .brain-inner-structure {
+  opacity: 0.75;
+}
+
+.brain-surface-control {
+  position: absolute;
+  top: 0.6rem;
+  right: 0.6rem;
+  z-index: 10;
+  font-size: 0.68rem;
+  padding: 0.2rem 0.55rem;
+  background: hsl(var(--surface-glass));
+  border: 1px solid hsl(var(--border) / 0.55);
+  border-radius: 999px;
+  cursor: pointer;
+  color: hsl(var(--fg-muted));
+  transition: all 150ms;
+}
+
+.brain-surface-control:hover {
+  color: hsl(var(--fg));
+  border-color: hsl(var(--brain-core) / 0.4);
+}
+
 .mind-map-frame::before {
   content: "The architecture of your mind";
   position: absolute;

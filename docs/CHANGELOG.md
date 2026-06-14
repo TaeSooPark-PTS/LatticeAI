@@ -3,9 +3,23 @@
 The top entry is the current release-preparation target. Older entries are
 historical and may describe behavior as it existed at that release.
 
-## [4.6.x Frontend Experience RC] - 2026-06-14
+## [4.6.x Brain Exploration Update] - 2026-06-14
 
-> Complete frontend replacement. The product is now experienced as a living Digital Brain.
+> The Brain is now the true interactive entry point to the user's knowledge. Clicking the living Brain progressively reveals deeper layers of the mind (Level 1 living presence → memories → concepts → relationships → the emergent full Knowledge Graph). The graph never appears abruptly; it grows out of the Brain as the user travels inward.
+
+### Changed
+- LivingBrain component now accepts `depth` (0-5) and `onInteract` callback. Visuals evolve: more particles, expanding halo/core, "resolving" structures, and proto-graph lines appear inside the organism at higher depths.
+- BrainHome now manages internal `explorationDepth`. Clicking the central living Brain advances the depth organically.
+- Layered emergence field renders real data around the Brain:
+  - Depth 1-2: Memory orbs (from memory manager) that "eject" from the presence; clicking one surfaces it into the conversation.
+  - Depth 3-4: Knowledge nodes and relationship edges (drawn from the graph API) positioned spatially around the Brain.
+  - Depth 5: "Core Lattice" panel with live concepts from the user's graph — the full graph has emerged from within the living mind.
+- The experience uses the existing data APIs (memory, graph, search) but presents them as layers unfolding from the single central Brain object rather than separate pages or a bottom nav.
+- Conversation remains available at all depths; the Brain presence scales and intensifies as you go deeper.
+- The previous separate chamber model and bottom depths bar remain as secondary access but the primary, intended path is "click the Brain to travel deeper."
+- Visual language: organic emergence animations, positioned orbs/nodes that scale and fade in from the brain core, no abrupt page swaps.
+
+The user should feel they are moving inward through their own mind, with the graph as the deepest, most structured layer that grew from the living presence.
 
 ### Changed (Frontend — full replacement of the previous prototype)
 - The entire post-onboarding surface is now a single immersive "Brain Space". The Brain presence is large, always visible, and the primary emotional and visual object.

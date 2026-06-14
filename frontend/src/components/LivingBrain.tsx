@@ -11,6 +11,8 @@ export interface LivingBrainProps {
   label?: string;
   className?: string;
   showLabel?: boolean;
+  depth?: number; // 0-5 progressive exploration depth; higher = more "open" / revealing
+  onInteract?: () => void; // called on click to advance exploration (travel deeper)
 }
 
 /**
@@ -26,6 +28,8 @@ export function LivingBrain({
   label,
   className,
   showLabel = true,
+  depth = 0,
+  onInteract,
 }: LivingBrainProps) {
   const [isPulsing, setIsPulsing] = React.useState(false);
   const organismRef = React.useRef<HTMLDivElement>(null);
@@ -66,6 +70,13 @@ export function LivingBrain({
   const isTrace = size === "trace";
 
   const dynamicIntensity = Math.max(0.35, Math.min(1, intensity));
+  const effectiveDepth = Math.max(0, Math.min(5, depth || 0));
+
+  const handleClick = () => {
+    if (state === "thinking") return;
+    firePulse();
+    onInteract?.();
+  };
 
   return (
     <div
@@ -73,57 +84,83 @@ export function LivingBrain({
         "brain-presence select-none",
         isLarge && "large",
         isTrace && "trace",
-        className
+        className,
+        effectiveDepth > 0 && "is-exploring"
       )}
-      aria-label="Your living Brain"
+      aria-label="Your living Brain — click to travel deeper"
       role="img"
+      data-depth={effectiveDepth}
     >
       <div
         ref={organismRef}
-        className={cn("brain-organism", `size-${size}`)}
+        className={cn("brain-organism", `size-${size}`, `depth-${effectiveDepth}`)}
         data-state={dataState}
         style={{
-          transform: `scale(${0.96 + (dynamicIntensity - 0.5) * 0.09})`,
+          transform: `scale(${0.96 + (dynamicIntensity - 0.5) * 0.09 + effectiveDepth * 0.015})`,
         }}
-        onClick={() => {
-          if (state !== "thinking") firePulse();
-        }}
-        title="Your Brain — tap to feel it respond"
+        onClick={handleClick}
+        title={effectiveDepth < 5 ? "Click to travel deeper into your mind" : "The core of your knowledge — the full Lattice"}
       >
-        {/* Core luminous presence */}
-        <div className="brain-core" />
+        {/* Core luminous presence — "opens" with depth */}
+        <div className="brain-core" style={{ transform: `scale(${1 + effectiveDepth * 0.06})` }} />
 
-        {/* Breathing halo */}
+        {/* Breathing halo — expands as we go deeper */}
         <div
           className="brain-halo"
-          style={{ animationDuration: state === "thinking" ? "1.65s" : state === "recalling" ? "2.4s" : "6.8s" }}
+          style={{
+            animationDuration: state === "thinking" ? "1.65s" : state === "recalling" ? "2.4s" : "6.8s",
+            transform: `scale(${1 + effectiveDepth * 0.12})`,
+            opacity: 0.65 + effectiveDepth * 0.05
+          }}
         />
 
-        {/* Subtle drifting thought activity */}
+        {/* Thought activity — increases and starts to "resolve" into structure at higher depths */}
         <div className="thought-activity" aria-hidden>
-          {Array.from({ length: isTrace ? 2 : 5 }).map((_, i) => (
+          {Array.from({ length: Math.min(12, 5 + effectiveDepth * 2) }).map((_, i) => (
             <div
               key={i}
-              className="thought-particle"
+              className={cn("thought-particle", effectiveDepth >= 3 && "resolving")}
               style={{
-                left: `${22 + ((i * 17) % 58)}%`,
-                top: `${28 + (i % 3) * 18}%`,
-                animationDelay: `-${i * 0.7 + (intensity * 1.1)}s`,
-                animationDuration: `${3.4 + (1 - dynamicIntensity) * 1.8}s`,
+                left: `${18 + ((i * 13 + effectiveDepth * 4) % 64)}%`,
+                top: `${22 + (i % 5) * 14}%`,
+                animationDelay: `-${i * 0.55 + (intensity * 1.1) - effectiveDepth * 0.2}s`,
+                animationDuration: `${2.8 + (1 - dynamicIntensity) * 1.6 - effectiveDepth * 0.15}s`,
               }}
             />
           ))}
         </div>
 
-        {/* Memory ripples (triggered) */}
-        <div className="memory-ripple" aria-hidden />
-        <div className="memory-ripple" style={{ inset: "28%", animationDelay: "180ms" }} aria-hidden />
+        {/* Memory ripples — more and stronger as depth increases (echoes surfacing) */}
+        {Array.from({ length: 1 + Math.floor(effectiveDepth / 1.5) }).map((_, i) => (
+          <div
+            key={i}
+            className="memory-ripple"
+            aria-hidden
+            style={{
+              inset: `${18 + i * 6}%`,
+              animationDelay: `${180 + i * 220}ms`,
+              opacity: 0.55 + effectiveDepth * 0.06
+            }}
+          />
+        ))}
+
+        {/* At higher depths, subtle inner structure lines start to appear inside the core (proto-graph) */}
+        {effectiveDepth >= 4 && (
+          <svg className="brain-inner-structure" viewBox="0 0 100 100" aria-hidden>
+            <g stroke="hsl(var(--brain-core) / 0.35)" strokeWidth="0.6" fill="none">
+              <circle cx="50" cy="50" r="18" />
+              <circle cx="50" cy="50" r="28" />
+              <path d="M32 50 Q50 32 68 50" />
+              <path d="M32 50 Q50 68 68 50" />
+            </g>
+          </svg>
+        )}
       </div>
 
       {showLabel && !isTrace && (
         <div className="brain-presence-label" data-state={state}>
           <span className="dot" />
-          {label || humanState(state)}
+          {label || (effectiveDepth > 0 ? `Depth ${effectiveDepth}` : humanState(state))}
         </div>
       )}
     </div>
