@@ -1,6 +1,6 @@
 {
   "summary": {
-    "generated_at": "2026-06-14T12:44:56.433309+00:00",
+    "generated_at": "2026-06-14T12:59:12.786475+00:00",
     "total": 16,
     "hf_present": 16,
     "config_hint_ok": 15,
@@ -36,7 +36,7 @@
         "license:apache-2.0"
       ],
       "notes": "",
-      "checked_at": "2026-06-14T12:44:47.729960+00:00"
+      "checked_at": "2026-06-14T12:59:04.345932+00:00"
     },
     {
       "id": "mlx-community/gemma-4-e2b-4bit",
@@ -61,7 +61,7 @@
         "4-bit"
       ],
       "notes": "",
-      "checked_at": "2026-06-14T12:44:48.200948+00:00"
+      "checked_at": "2026-06-14T12:59:04.818036+00:00"
     },
     {
       "id": "mlx-community/gemma-4-e2b-it-4bit",
@@ -86,7 +86,7 @@
         "4-bit"
       ],
       "notes": "",
-      "checked_at": "2026-06-14T12:44:48.976372+00:00"
+      "checked_at": "2026-06-14T12:59:05.268237+00:00"
     },
     {
       "id": "mlx-community/Qwen3-VL-8B-Instruct-4bit",
@@ -111,7 +111,7 @@
         "license:apache-2.0"
       ],
       "notes": "",
-      "checked_at": "2026-06-14T12:44:49.455037+00:00"
+      "checked_at": "2026-06-14T12:59:05.782658+00:00"
     },
     {
       "id": "mlx-community/gemma-4-12b-it-4bit",
@@ -136,7 +136,7 @@
         "en"
       ],
       "notes": "",
-      "checked_at": "2026-06-14T12:44:50.048724+00:00"
+      "checked_at": "2026-06-14T12:59:06.316100+00:00"
     },
     {
       "id": "mlx-community/Llama-4-Scout-17B-16E-Instruct-4bit",
@@ -161,7 +161,7 @@
         "meta"
       ],
       "notes": "LARGE_MODEL: local load practical only on high-RAM systems (32GB+ Apple Silicon or CUDA recommended). Expect long first download. ",
-      "checked_at": "2026-06-14T12:44:50.988165+00:00"
+      "checked_at": "2026-06-14T12:59:07.338666+00:00"
     },
     {
       "id": "google/gemma-3-4b-it",
@@ -186,7 +186,7 @@
         "arxiv:1905.07830"
       ],
       "notes": "",
-      "checked_at": "2026-06-14T12:44:51.492189+00:00"
+      "checked_at": "2026-06-14T12:59:07.865441+00:00"
     },
     {
       "id": "Qwen/Qwen2.5-VL-7B-Instruct",
@@ -211,7 +211,7 @@
         "conversational"
       ],
       "notes": "",
-      "checked_at": "2026-06-14T12:44:52.025427+00:00"
+      "checked_at": "2026-06-14T12:59:08.329003+00:00"
     },
     {
       "id": "meta-llama/Llama-3.2-11B-Vision-Instruct",
@@ -236,7 +236,7 @@
         "meta"
       ],
       "notes": "LARGE_MODEL: local load practical only on high-RAM systems (32GB+ Apple Silicon or CUDA recommended). Expect long first download. ",
-      "checked_at": "2026-06-14T12:44:52.474019+00:00"
+      "checked_at": "2026-06-14T12:59:08.817948+00:00"
     },
     {
       "id": "mistralai/Pixtral-12B-2409",
@@ -261,7 +261,7 @@
         "es"
       ],
       "notes": "No config.json visible in tree. No obvious tokenizer file. LARGE_MODEL: local load practical only on high-RAM systems (32GB+ Apple Silicon or CUDA recommended). Expect long first download. ",
-      "checked_at": "2026-06-14T12:44:52.967910+00:00"
+      "checked_at": "2026-06-14T12:59:09.409899+00:00"
     },
     {
       "id": "mlx-community/gemma-4-26b-a4b-it-4bit",
@@ -286,7 +286,7 @@
         "license:apache-2.0"
       ],
       "notes": "LARGE_MODEL: local load practical only on high-RAM systems (32GB+ Apple Silicon or CUDA recommended). Expect long first download. ",
-      "checked_at": "2026-06-14T12:44:53.428310+00:00"
+      "checked_at": "2026-06-14T12:59:09.873038+00:00"
     },
     {
       "id": "mlx-community/gemma-4-31b-it-4bit",
@@ -311,7 +311,7 @@
         "license:apache-2.0"
       ],
       "notes": "LARGE_MODEL: local load practical only on high-RAM systems (32GB+ Apple Silicon or CUDA recommended). Expect long first download. ",
-      "checked_at": "2026-06-14T12:44:53.914595+00:00"
+      "checked_at": "2026-06-14T12:59:10.381996+00:00"
     },
     {
       "id": "mlx-community/Qwen3-VL-30B-A3B-Instruct-4bit",
@@ -336,7 +336,7 @@
         "license:apache-2.0"
       ],
       "notes": "LARGE_MODEL: local load practical only on high-RAM systems (32GB+ Apple Silicon or CUDA recommended). Expect long first download. ",
-      "checked_at": "2026-06-14T12:44:54.389715+00:00"
+      "checked_at": "2026-06-14T12:59:10.876763+00:00"
     },
     {
       "id": "mlx-community/gemma-4-e4b-4bit",
@@ -361,7 +361,7 @@
         "4-bit"
       ],
       "notes": "",
-      "checked_at": "2026-06-14T12:44:54.889479+00:00"
+      "checked_at": "2026-06-14T12:59:11.340035+00:00"
     },
     {
       "id": "mlx-community/gemma-4-e4b-it-4bit",
@@ -386,7 +386,7 @@
         "4-bit"
       ],
       "notes": "",
-      "checked_at": "2026-06-14T12:44:55.465391+00:00"
+      "checked_at": "2026-06-14T12:59:11.800138+00:00"
     },
     {
       "id": "google/gemma-3-12b-it",
@@ -396,7 +396,7 @@
       "modality": "multimodal",
       "hf_exists": true,
       "pipeline_tag": "image-text-to-text",
-      "likes": 750,
+      "likes": 751,
       "lastModified": "2025-03-21T20:28:56.000Z",
       "license": "google / transformers",
       "has_config_hint": true,
@@ -411,7 +411,7 @@
         "arxiv:1905.07830"
       ],
       "notes": "LARGE_MODEL: local load practical only on high-RAM systems (32GB+ Apple Silicon or CUDA recommended). Expect long first download. ",
-      "checked_at": "2026-06-14T12:44:55.975910+00:00"
+      "checked_at": "2026-06-14T12:59:12.313903+00:00"
     }
   ],
   "recommendation": "All primary recommended models are present on HF with config+tokenizer hints. Large models (>12GB) have explicit LOCAL_LOAD_LIMITED notes. Use --deep or --test-load only when you have huggingface_hub/transformers and want to exercise small-model paths. Never use this script to pre-download production weights; respect user consent."

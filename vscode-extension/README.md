@@ -12,11 +12,12 @@ chat, run model workflows, and trigger coding actions from the editor.
 
 ## Current Release
 
-**5.1.0 — Product Trust & Clarity Release.** The desktop workspace is positioned
-as a private AI memory layer / Digital Brain: keep your knowledge locally,
-switch models, and preserve Brain ownership. The extension connects to the same
-local workspace APIs and remains compatible with the separated Brain user flow
-and Admin Console model.
+**5.2.0 — User-Focused Model Transformation.** The desktop workspace now exposes
+the same structured model capability registry as the main app: verified Hugging
+Face availability, local download/load readiness, multimodal support, runtime
+strategy, and hardware-fit notes. The extension connects to the same local
+workspace APIs and remains compatible with the separated Brain user flow and
+Admin Console model.
 
 ## Quick Start
 
@@ -77,7 +78,7 @@ Lattice AI supports local and cloud model choices:
 - LM Studio, vLLM, llama.cpp, and Ollama-compatible local paths.
 - OpenAI, OpenRouter, Groq, Together AI, and OpenAI-compatible endpoints.
 - Model cards disclose maker country, maker company, run mode, internet usage,
-  and model name.
+  model name, HF verification status, download/load strategy, and hardware fit.
 
 ## Settings
 
