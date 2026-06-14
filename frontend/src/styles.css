@@ -1954,6 +1954,187 @@ body {
   margin-top: 0.2rem;
 }
 
+.brain-care-panel {
+  display: grid;
+  gap: 0.75rem;
+  border: 1px solid hsl(var(--border) / 0.64);
+  border-radius: 8px;
+  background:
+    linear-gradient(135deg, hsl(var(--surface-glass)), hsl(var(--bg) / 0.68)),
+    linear-gradient(90deg, hsl(var(--memory) / 0.08), transparent 45%, hsl(var(--brain-core) / 0.08));
+  padding: 0.82rem;
+  box-shadow: 0 14px 36px hsl(200 30% 3% / 0.2);
+  backdrop-filter: blur(18px);
+}
+
+.brain-care-head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 0.75rem;
+}
+
+.brain-care-head span,
+.brain-care-proof span,
+.brain-care-button small,
+.brain-care-note,
+.brain-care-result {
+  color: hsl(var(--fg-muted));
+  font-size: 0.72rem;
+}
+
+.brain-care-head span {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.36rem;
+  font-weight: 800;
+  text-transform: uppercase;
+}
+
+.brain-care-head strong {
+  display: block;
+  margin-top: 0.16rem;
+  color: hsl(var(--fg));
+  font-size: 0.94rem;
+  line-height: 1.16;
+}
+
+.brain-care-proof {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: 0.35rem;
+}
+
+.brain-care-proof span {
+  border: 1px solid hsl(var(--border) / 0.58);
+  border-radius: 999px;
+  background: hsl(var(--bg) / 0.42);
+  padding: 0.25rem 0.48rem;
+  white-space: nowrap;
+}
+
+.brain-care-actions,
+.brain-care-archive,
+.brain-care-archive-actions {
+  display: flex;
+  gap: 0.5rem;
+}
+
+.brain-care-actions {
+  flex-wrap: wrap;
+}
+
+.brain-care-button {
+  display: inline-flex;
+  min-width: 7.2rem;
+  flex: 1 1 7.2rem;
+  align-items: center;
+  gap: 0.52rem;
+  border: 1px solid hsl(var(--border) / 0.68);
+  border-radius: 8px;
+  background: hsl(var(--bg) / 0.42);
+  padding: 0.58rem 0.62rem;
+  color: hsl(var(--fg));
+  text-align: left;
+  transition: border-color 150ms ease, background 150ms ease, transform 150ms ease;
+}
+
+.brain-care-button:hover:not(:disabled),
+.brain-care-button:focus-visible {
+  border-color: hsl(var(--memory) / 0.72);
+  background: hsl(var(--memory) / 0.08);
+  outline: none;
+  transform: translateY(-1px);
+}
+
+.brain-care-button:disabled {
+  cursor: not-allowed;
+  opacity: 0.52;
+}
+
+.brain-care-button svg {
+  flex: 0 0 auto;
+  color: hsl(var(--memory));
+}
+
+.brain-care-button span {
+  display: grid;
+  min-width: 0;
+  gap: 0.08rem;
+}
+
+.brain-care-button strong {
+  overflow: hidden;
+  font-size: 0.82rem;
+  line-height: 1.12;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.brain-care-button small {
+  overflow: hidden;
+  line-height: 1.1;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.brain-care-archive {
+  flex-wrap: wrap;
+}
+
+.brain-care-archive input {
+  min-width: 0;
+  min-height: 2.2rem;
+  flex: 1 1 12rem;
+  border: 1px solid hsl(var(--border) / 0.68);
+  border-radius: 8px;
+  background: hsl(var(--bg) / 0.5);
+  color: hsl(var(--fg));
+  outline: none;
+  padding: 0 0.68rem;
+  font-size: 0.82rem;
+}
+
+.brain-care-archive input:focus {
+  border-color: hsl(var(--brain-core) / 0.68);
+  box-shadow: 0 0 0 3px hsl(var(--brain-core) / 0.1);
+}
+
+.brain-care-archive-actions {
+  flex: 1 1 14rem;
+  flex-wrap: wrap;
+}
+
+.brain-care-archive-actions button {
+  flex: 1 1 6.6rem;
+  min-height: 2.2rem;
+  border-radius: 8px;
+}
+
+.brain-care-note,
+.brain-care-result {
+  margin: 0;
+  line-height: 1.35;
+}
+
+.brain-care-result {
+  border: 1px solid hsl(var(--border) / 0.58);
+  border-radius: 8px;
+  background: hsl(var(--bg) / 0.38);
+  padding: 0.48rem 0.58rem;
+}
+
+.brain-care-result.is-ok {
+  border-color: hsl(var(--memory) / 0.46);
+  color: hsl(var(--memory));
+}
+
+.brain-care-result.is-error {
+  border-color: hsl(var(--destructive) / 0.46);
+  color: hsl(var(--destructive));
+}
+
 .brain-image-input {
   display: inline-flex;
   cursor: pointer;
@@ -2066,6 +2247,20 @@ body {
   .brain-organism { width: 200px; height: 200px; }
   .brain-conversation { padding-bottom: 5.5rem; }
   .brain-conversation-header { flex-wrap: wrap; }
+  .brain-care-head {
+    display: grid;
+  }
+  .brain-care-proof {
+    justify-content: flex-start;
+  }
+  .brain-care-button,
+  .brain-care-archive input,
+  .brain-care-archive-actions {
+    flex-basis: 100%;
+  }
+  .brain-care-archive-actions button {
+    flex-basis: calc(50% - 0.25rem);
+  }
   .brain-ownership-strip { order: 3; flex-basis: 100%; justify-content: flex-start; overflow-x: auto; }
   .depths { bottom: 0.9rem; }
 }

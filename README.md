@@ -96,7 +96,10 @@ Screenshot index and capture notes:
 - **Storage**: `StorageEngine` abstraction with SQLite default and optional
   PostgreSQL/pgvector scale mode.
 - **Portability**: encrypted `.latticebrain` archives plus backup, restore,
-  inspect, verify, import dry-run, and confirmed restore/import flows.
+  inspect, verify, import dry-run, and confirmed restore/import flows. The
+  Brain home now surfaces the everyday "Care for my Brain" ownership path with
+  export, backup, archive, inspect, and restore preview actions while keeping
+  destructive confirmed restore in Settings.
 - **Privacy**: local-first and private-first by default. Cloud models, Telegram,
   Brain Network, Docker/Postgres setup, model downloads, and update checks are
   opt-in paths.

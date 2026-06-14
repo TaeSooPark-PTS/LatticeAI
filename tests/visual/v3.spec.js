@@ -102,6 +102,11 @@ test("conversation keeps the Brain alive while chat streams", async ({ page }) =
   const errors = trackPageErrors(page);
   await openBrain(page);
 
+  await expect(page.getByLabel("Care for my Brain")).toBeVisible();
+  await expect(page.getByRole("button", { name: /Export/ })).toBeVisible();
+  await expect(page.getByRole("button", { name: /Backup/ })).toBeVisible();
+  await expect(page.getByRole("button", { name: /Restore preview/ })).toBeVisible();
+
   await page.getByPlaceholder("Talk to your Brain...").fill("How does hybrid search rank results?");
   await page.getByRole("button", { name: "Send" }).click();
   await expect(page.locator("body")).toContainText("Hybrid retrieval");

@@ -15,8 +15,10 @@ historical and may describe behavior as it existed at that release.
 - Added a Brain-first product direction review and synchronized philosophy /
   Knowledge Graph docs so the graph is documented as infrastructure inside the
   Brain rather than the product center.
-- Added a small Local-first / Portable / Private ownership signal to the Brain
-  home header.
+- Added a compact "Care for my Brain" ownership panel to the Brain home
+  experience, surfacing local-first/private/portable guarantees plus existing
+  export, backup, encrypted archive, inspect, and restore dry-run actions
+  without making the Knowledge Graph the product center.
 - Bumped synchronized package/runtime/static versions to `4.6.1`, including
   Python metadata, npm package metadata, VSIX metadata, Tauri metadata,
   `latticeai`, `lattice_brain`, runtime constants, and static asset metadata.
