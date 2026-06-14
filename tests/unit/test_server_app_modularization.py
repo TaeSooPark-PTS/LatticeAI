@@ -49,7 +49,17 @@ def test_router_factories_present():
 
 
 def _paths(app):
-    return {getattr(r, "path", "") for r in app.routes}
+    return {getattr(r, "path", "") for r in _iter_routes(app.routes)}
+
+
+def _iter_routes(routes):
+    """Yield concrete routes across FastAPI's eager and lazy router layouts."""
+    for route in routes:
+        original_router = getattr(route, "original_router", None)
+        if original_router is not None:
+            yield from _iter_routes(getattr(original_router, "routes", []))
+            continue
+        yield route
 
 
 def test_health_routes_registered(app):

@@ -95,7 +95,17 @@ def app():
 
 
 def _paths(app):
-    return {getattr(r, "path", "") for r in app.routes}
+    return {getattr(r, "path", "") for r in _iter_routes(app.routes)}
+
+
+def _iter_routes(routes):
+    """Yield concrete routes across FastAPI's eager and lazy router layouts."""
+    for route in routes:
+        original_router = getattr(route, "original_router", None)
+        if original_router is not None:
+            yield from _iter_routes(getattr(original_router, "routes", []))
+            continue
+        yield route
 
 
 def test_all_baseline_routes_preserved(app):
@@ -106,12 +116,12 @@ def test_all_baseline_routes_preserved(app):
 
 def test_route_count_does_not_collapse(app):
     # Guard against an extraction wiping a whole router include.
-    assert len(app.routes) >= len(BASELINE_PATHS)
+    assert len(list(_iter_routes(app.routes))) >= len(BASELINE_PATHS)
 
 
 def test_no_duplicate_public_method_routes(app):
     pairs = []
-    for route in app.routes:
+    for route in _iter_routes(app.routes):
         path = getattr(route, "path", "")
         for method in getattr(route, "methods", set()) or set():
             if method not in {"HEAD", "OPTIONS"}:
@@ -136,7 +146,7 @@ def test_app_version_is_derived(app):
 def test_chat_streaming_contract(app):
     # The /chat POST endpoint must remain and the chat module must use a
     # StreamingResponse (chunked streaming contract preserved).
-    chat_routes = [r for r in app.routes if getattr(r, "path", "") == "/chat"
+    chat_routes = [r for r in _iter_routes(app.routes) if getattr(r, "path", "") == "/chat"
                    and "POST" in (getattr(r, "methods", set()) or set())]
     assert chat_routes, "/chat POST route missing"
     endpoint = chat_routes[0].endpoint
