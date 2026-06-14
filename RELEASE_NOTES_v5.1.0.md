@@ -26,6 +26,14 @@ boundary around local files, secrets, CSP, model downloads, and Brain ownership.
   runtime construction.
 - Brain Core wiring imports `set_llm_router` from `lattice_brain` internals
   instead of the deprecated root `knowledge_graph` shim.
+- Brain archive restore now tolerates transient SQLite `-wal` / `-shm` siblings
+  disappearing during checkpoint, removing a restore-time TOCTOU race.
+- `npm run test:integration` now starts a local uvicorn server, waits for
+  `/health`, runs integration tests, and shuts the server down.
+- Release artifact cleanup now removes stale historical `dist/ltcai-*` and root
+  `ltcai-*.tgz` files before rebuilding exact v5.1.0 artifacts.
+- The `pts_claudecode` Discord bridge avoids bot-to-bot busy-reply loops while
+  still allowing explicit collaboration mentions.
 
 ## Trust Documentation
 
@@ -42,4 +50,3 @@ boundary around local files, secrets, CSP, model downloads, and Brain ownership.
 - `dist/ltcai-5.1.0.vsix`
 - `ltcai-5.1.0.tgz`
 - `src-tauri/target/release/bundle/dmg/Lattice AI_5.1.0_aarch64.dmg`
-
