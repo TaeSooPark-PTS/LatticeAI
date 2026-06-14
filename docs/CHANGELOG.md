@@ -3,6 +3,41 @@
 The top entry is the current release-preparation target. Older entries are
 historical and may describe behavior as it existed at that release.
 
+## [5.3.0] - 2026-06-14
+
+> Product Clarity and Runtime Cleanup. Lattice AI is now presented consistently
+> as a local-first Digital Brain that keeps user knowledge durable across any AI
+> model, while the first runtime extraction seams move out of `app_factory.py`.
+
+### Added
+- `docs/DEVELOPMENT.md` for contributor setup, validation gates, runtime
+  assembly expectations, and documentation sync rules.
+- `docs/LEGACY_COMPATIBILITY.md` to explain root compatibility modules, their
+  current homes, why they remain packaged, and the safe removal checklist.
+- v5.3.0 release evidence index and copied screenshot/GIF paths under
+  `output/release/v5.3.0/`.
+
+### Changed
+- Reorganized README around product identity, user need, user actions,
+  one-minute flow, screenshots, installation, architecture, and release
+  preparation. Release artifacts no longer interrupt the first screen.
+- Unified public descriptions in README, package metadata, pyproject, feature
+  status, architecture, release notes, and VS Code extension docs.
+- Improved onboarding and model setup copy around local ownership, explicit
+  consent, model-as-voice, Brain-as-asset, and what happens before download/load.
+- Simplified Basic model setup to a shorter recommendation set while Advanced
+  keeps hardware, verification, load strategy, license, and safety detail.
+- Moved config, security, and Brain runtime builders from `latticeai.app_factory`
+  into `latticeai.runtime` modules while preserving lazy import compatibility.
+- Bumped synchronized package/runtime/static versions to `5.3.0`.
+
+### Preserved
+- No package registry publishing automation.
+- Local-first defaults and explicit consent gates for downloads, cloud calls,
+  Telegram, Brain Network, Docker/Postgres setup, and update checks.
+- `server_app.__getattr__` lazy compatibility and app factory import side-effect
+  boundaries.
+
 ## [5.2.0] - 2026-06-14
 
 > Lattice AI 5.2.0 — Aggressive User-Focused Model Transformation. Transparent

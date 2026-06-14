@@ -17,88 +17,14 @@ from __future__ import annotations
 import threading
 from typing import TYPE_CHECKING, Any, Dict, List, Optional
 
+from latticeai.runtime.brain_runtime import build_brain_runtime
+from latticeai.runtime.config_runtime import build_config_runtime
+from latticeai.runtime.security_runtime import build_security_runtime
+
 if TYPE_CHECKING:  # imports for annotations only — keep module import light
     from fastapi import FastAPI
 
     from latticeai.core.config import Config
-
-
-def build_config_runtime(config: "Optional[Config]" = None) -> Dict[str, Any]:
-    """Build the app configuration runtime without importing heavy model code."""
-
-    from latticeai.core.config import Config
-
-    cfg = config if config is not None else Config.from_env()
-    return {
-        "CONFIG": cfg,
-        "APP_MODE": cfg.app_mode,
-        "IS_PUBLIC_MODE": cfg.is_public,
-        "DEFAULT_HOST": cfg.host,
-        "DEFAULT_PORT": cfg.port,
-        "NETWORK_EXPOSED": cfg.network_exposed,
-        "ENABLE_TELEGRAM": cfg.enable_telegram,
-        "ENABLE_GRAPH": cfg.enable_graph,
-        "AUTOLOAD_MODELS": cfg.autoload_models,
-        "MODEL_IDLE_UNLOAD_SECONDS": cfg.model_idle_unload_seconds,
-        "ALLOW_LOCAL_MODELS": cfg.allow_local_models,
-        "REQUIRE_AUTH": cfg.require_auth,
-        "ALLOW_PLAINTEXT_API_KEYS": cfg.allow_plaintext_api_keys,
-        "CORS_ALLOW_NETWORK": cfg.cors_allow_network,
-        "CORS_EXTRA_ORIGINS": cfg.cors_extra_origins,
-        "PUBLIC_MODEL": cfg.public_model,
-        "LOCAL_MODEL": cfg.local_model,
-        "LOCAL_DRAFT_MODEL": cfg.local_draft_model,
-    }
-
-
-def build_security_runtime(config: "Config") -> Dict[str, Any]:
-    """Build auth/security-derived runtime settings from the central config."""
-
-    from latticeai.core.security import configure_trusted_proxies
-
-    configure_trusted_proxies(config.trusted_proxies)
-    return {
-        "SSO_DISCOVERY_URL": config.sso_discovery_url,
-        "SSO_CLIENT_ID": config.sso_client_id,
-        "SSO_CLIENT_SECRET": config.sso_client_secret,
-        "SSO_REDIRECT_URI": config.sso_redirect_uri,
-        "SSO_PROVIDER_NAME": config.sso_provider_name,
-        "RATE_LIMIT_ENABLED": config.rate_limit_enabled,
-        "OPEN_REGISTRATION": config.open_registration,
-        "INVITE_CODE": config.invite_code,
-        "INVITE_GATE_ENABLED": config.invite_gate_enabled,
-    }
-
-
-def build_brain_runtime(
-    *,
-    data_dir: Any,
-    history_file: Any,
-    enable_graph: bool,
-    embedder: Any,
-    storage_engine: Any,
-) -> Dict[str, Any]:
-    """Construct Brain Core storage/conversation primitives behind one seam."""
-
-    from lattice_brain import BrainCore, ConversationStore
-
-    brain_core = BrainCore.from_paths(
-        data_dir,
-        embedder=embedder.provider,
-        storage_engine=storage_engine,
-    ) if enable_graph else None
-    knowledge_graph = brain_core.knowledge if brain_core is not None else None
-    conversations = (
-        brain_core.conversations
-        if brain_core is not None
-        else ConversationStore(data_dir / "knowledge_graph.sqlite")
-    )
-    conversations.import_legacy_json(history_file)
-    return {
-        "BRAIN_CORE": brain_core,
-        "KNOWLEDGE_GRAPH": knowledge_graph,
-        "CONVERSATIONS": conversations,
-    }
 
 
 def _build(config: "Optional[Config]" = None) -> Dict[str, Any]:

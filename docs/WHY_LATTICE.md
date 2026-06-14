@@ -1,6 +1,6 @@
 # Why Lattice AI Exists
 
-**Your private AI memory layer. Keep your knowledge. Switch any model.**
+**Lattice AI is a local-first Digital Brain that keeps your knowledge durable across any AI model.**
 
 **모델은 바꿔도, 내 지식은 남는 로컬 AI 브레인.**
 
@@ -26,7 +26,9 @@ Lattice AI is a local-first private AI memory layer. It keeps conversations,
 documents, decisions, relationships, and project history in a Brain that belongs
 to the user. Models can be local, cloud, current, or future. The Brain remains.
 
-The graph is real, but it is not the product identity. Users start with Brain
+The graph is real, but it is not the product identity. Product category is
+local-first Digital Brain; core capability is a private AI memory layer; UX
+metaphor is the Living Brain. Users start with Brain
 Chat, memory, topics, relationships, ownership, backup, and graph exploration.
 Advanced admin logs, roles, hooks, workflows, Telegram, Brain Network, Docker,
 Postgres, and plugin details stay outside the normal user flow.
@@ -51,4 +53,3 @@ Postgres, and plugin details stay outside the normal user flow.
 - Not a ChatGPT or Claude clone.
 
 Lattice AI is for people who want their knowledge to survive model changes.
-

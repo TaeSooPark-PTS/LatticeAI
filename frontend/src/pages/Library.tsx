@@ -30,8 +30,8 @@ export function LibraryPage({ initialTab }: { initialTab?: string }) {
     <div className="space-y-5">
       <header className="page-hero">
         <div className="page-kicker"><Boxes className="h-4 w-4" /> Library</div>
-        <h1 className="page-title">Choose what powers Lattice.</h1>
-        <p className="page-copy">Pick a private local model, add skills, and connect tools without learning runtime internals.</p>
+        <h1 className="page-title">Choose your Brain's voice.</h1>
+        <p className="page-copy">Start with a short local model recommendation. Your Brain and memories stay durable when you switch later.</p>
       </header>
       <Tabs tabs={visibleTabs} value={tab} onChange={(id) => setTab(id as LibraryTab)} />
       {tab === "models" ? <ModelsPanel /> : null}
@@ -103,7 +103,7 @@ function ModelsPanel() {
   return (
     <div className="grid gap-4 xl:grid-cols-[1.2fr_0.8fr]">
       <div className="space-y-4">
-        <DataPanel title="Guided model setup" description="5.2 registry: hardware-fit multimodal models with HF verification, download/load strategies, and clear RAM notes. Analyze, consent, download only on click." result={recs.data}>
+        <DataPanel title="Guided model setup" description="Lattice recommends a small set first, explains internet/download needs, and keeps every model download behind consent." result={recs.data}>
           {(data) => {
             const recommendation = (data as Record<string, unknown>).recommendations as Record<string, unknown> | undefined;
             const profile = (data as Record<string, unknown>).profile as Record<string, unknown> | undefined;
@@ -134,7 +134,7 @@ function ModelsPanel() {
                 <label className="flex items-start gap-2 rounded-lg border border-border bg-background/55 p-3 text-sm leading-6">
                   <input className="mt-1" type="checkbox" checked={consent} onChange={(event) => setConsent(event.target.checked)} />
                   <span>
-                    Allow Lattice to install a missing local model component or download model files for this action.
+                    Allow Lattice to install a missing local model component or download model files for this action. Download uses the internet; running the model stays local.
                   </span>
                 </label>
                 {latestProgress ? (
@@ -151,10 +151,10 @@ function ModelsPanel() {
             );
           }}
         </DataPanel>
-        <DataPanel title="Recommended models" result={models.data}>
+        <DataPanel title={mode === "basic" ? "Recommended models" : "Recommended and advanced models"} result={models.data}>
         {(data) => (
           <div className="grid gap-2">
-            {(catalog.length ? catalog : asArray<Record<string, unknown>>((data as Record<string, unknown>).loaded)).slice(0, 14).map((model, index) => {
+            {(catalog.length ? catalog : asArray<Record<string, unknown>>((data as Record<string, unknown>).loaded)).slice(0, mode === "basic" ? 3 : 14).map((model, index) => {
               const id = String(model.id || model.model_id || model.name || index);
               const loaded = asArray<string>((data as Record<string, unknown>).loaded).includes(id) || (data as Record<string, unknown>).current === id || model.state === "loaded";
               const loadId = String(model.recommended_load_id || id);
@@ -178,6 +178,8 @@ function ModelsPanel() {
               const actionLabel = String(compatibility.action || loadStatus.replace(/_/g, " "));
               const badgeLabel = unsupported && mode === "basic" ? "needs attention" : unsupported ? actionLabel : loadStatus;
               const canPrepare = loadAvailable || downloadRequired;
+              const downloadSize = model.download_size || model.estimated_size || recommendation.download_size || recommendation.estimated_size || model.size || recommendation.size;
+              const maker = model.provider || recommendation.provider || model.organization || recommendation.organization;
               return (
                 <div key={id} className="grid gap-3 rounded-lg border border-border bg-background/55 p-4 md:grid-cols-[1fr_auto]">
                   <div className="min-w-0">
@@ -200,6 +202,11 @@ function ModelsPanel() {
                         {String(hardwareNote)}
                       </div>
                     ) : null}
+                    <div className="mt-2 flex flex-wrap gap-1 text-[11px] text-muted-foreground">
+                      <Badge variant="muted">{downloadRequired ? `Download: ${String(downloadSize || "required")}` : "No download needed now"}</Badge>
+                      <Badge variant="muted">{downloadRequired ? "Internet only during download" : "Runs locally when loaded"}</Badge>
+                      {maker ? <Badge variant="muted">{String(maker)}</Badge> : null}
+                    </div>
                     {unsupported ? (
                       <div className="mt-3 rounded-lg border border-amber-500/30 bg-amber-500/10 p-3 text-sm">
                         <div className="font-medium">{mode === "basic" ? "Needs attention before loading" : actionLabel}</div>
@@ -242,6 +249,11 @@ function ModelsPanel() {
                 </div>
               );
             })}
+            {mode === "basic" && catalog.length > 3 ? (
+              <div className="rounded-lg border border-border bg-background/55 p-3 text-sm text-muted-foreground">
+                Showing the safest short list. Switch to Advanced for the full registry, runtime details, licenses, and safety notes.
+              </div>
+            ) : null}
           </div>
         )}
         </DataPanel>

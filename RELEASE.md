@@ -7,6 +7,40 @@
 > PyPI / npm / VS Code Marketplace / Open VSX 배포는 아래 수동 절차로만
 > 진행합니다. 태그 생성은 패키지 스토어 publish를 자동으로 트리거하지 않습니다.
 
+## v5.3.0 릴리스 준비 노트 (2026-06-14)
+
+Lattice AI v5.3.0 — Product Clarity and Runtime Cleanup. 5.3.0은 기능 추가보다
+제품 정체성, 첫인상, 문서 구조, 앱 조립부 유지보수성을 정리한다. Lattice AI의
+중심 정의는 “local-first Digital Brain that keeps your knowledge durable
+across any AI model”이며, private AI memory layer는 core capability, Living
+Brain은 UX metaphor로 정리한다.
+
+- **Changed (README)**: README 첫 화면을 배지/릴리스/아티팩트 중심에서 제품
+  소개, 필요 이유, 사용자가 할 수 있는 일, 1분 흐름, 스크린샷 순서로 재구성했다.
+- **Changed (Product identity)**: package metadata, pyproject, architecture,
+  feature status, release docs, VS Code extension docs가 local-first Digital
+  Brain 정의를 공유하도록 정리했다.
+- **Changed (Onboarding copy)**: 첫 실행 Login, Environment Analysis,
+  Recommended Models, Install/Load, Brain Chat 문구를 사용자 가치, 로컬 보관,
+  모델 교체 가능성, 명시적 동의 중심으로 맞췄다.
+- **Changed (Model UX)**: Basic 모델 목록은 짧은 추천 세트로 시작하고,
+  Advanced에서 registry/verification/hardware/license/safety detail을 유지한다.
+- **Added (Docs)**: `docs/DEVELOPMENT.md`와
+  `docs/LEGACY_COMPATIBILITY.md`를 추가해 개발자 검증 흐름과 root legacy shim
+  유지 이유를 분리했다.
+- **Changed (Architecture)**: `app_factory.py`의 config/security/Brain runtime
+  assembly seam을 `latticeai.runtime` 모듈로 이동해 composition root를 줄였다.
+- **Preserved**: local-first 기본값, explicit external communication consent,
+  server_app lazy compatibility, Brain Core isolation, model download consent,
+  and package registry owner-run publishing.
+
+Expected artifacts (exact 5.3.0 names only):
+- dist/ltcai-5.3.0-py3-none-any.whl
+- dist/ltcai-5.3.0.tar.gz
+- dist/ltcai-5.3.0.vsix
+- ltcai-5.3.0.tgz
+- src-tauri/target/release/bundle/dmg/Lattice AI_5.3.0_aarch64.dmg
+
 ## v5.2.0 릴리스 노트 (2026-06-14)
 
 Lattice AI v5.2.0 — User-Focused Model Transformation (major). 5.2.0은 모델

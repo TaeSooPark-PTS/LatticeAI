@@ -1,5 +1,18 @@
 # Lattice AI
 
+**Lattice AI is a local-first Digital Brain that keeps your knowledge durable across any AI model.**
+
+**Lattice AI는 모델이 바뀌어도 내 지식과 맥락을 보존하는 로컬 우선 AI 브레인입니다.**
+
+Your model is the voice you use today. Your Brain is the asset you keep.
+Lattice AI preserves conversations, documents, decisions, project context,
+relationships, and workflows on your computer by default. Cloud models, model
+downloads, update checks, and other external communication happen only after
+explicit consent.
+
+It is not a ChatGPT clone, a model launcher, a graph database, or a note app.
+It is a private AI memory layer wrapped in a Living Brain experience.
+
 [![PyPI Version](https://img.shields.io/pypi/v/ltcai?label=PyPI)](https://pypi.org/project/ltcai/)
 [![npm Version](https://img.shields.io/npm/v/ltcai?label=npm)](https://www.npmjs.com/package/ltcai)
 [![VS Code Marketplace Version](https://vsmarketplacebadges.dev/version-short/parktaesoo.ltcai.svg)](https://marketplace.visualstudio.com/items?itemName=parktaesoo.ltcai)
@@ -7,146 +20,103 @@
 [![CI Status](https://github.com/TaeSooPark-PTS/LatticeAI/actions/workflows/ci.yml/badge.svg?branch=main)](https://github.com/TaeSooPark-PTS/LatticeAI/actions/workflows/ci.yml)
 [![License](https://img.shields.io/badge/license-MIT-green)](LICENSE)
 
-**Your private AI memory layer. Keep your knowledge. Switch any model.**
+## Why You Need It
 
-**모델은 바꿔도, 내 지식은 남는 로컬 AI 브레인.**
+You need Lattice AI when:
 
-Lattice AI is a local-first Digital Brain for your conversations, documents,
-decisions, project history, relationships, and workflows. It is not a ChatGPT
-clone, a model launcher, a graph database, or a note app. The model is the voice
-you use today. The Brain is the durable asset you keep.
+- you ask different AI models about the same project and lose the context each time;
+- your decisions are scattered across chats, notes, PDFs, folders, and tools;
+- you want to switch models without rebuilding memory from zero;
+- you want your AI Brain to stay on your computer by default;
+- you want backup, restore, inspect, and export paths for your Brain.
 
-Use Lattice AI when you want to:
+이런 사람에게 필요합니다:
 
-- remember project decisions across weeks or months and see the source later;
-- preserve context when switching between local, cloud, or future models;
-- connect documents, conversations, files, notes, and decisions into one Brain;
-- export, backup, inspect, verify, and move the Brain as an encrypted
-  `.latticebrain` archive;
-- avoid cloud lock-in and keep knowledge local by default;
-- get an honest unavailable state instead of a fake answer when no model or
-  evidence is available.
+- 매번 AI를 바꿀 때마다 프로젝트 맥락을 다시 설명하는 사람
+- 문서, 대화, 결정, 파일이 여기저기 흩어져 있는 사람
+- 내 지식을 특정 AI 서비스 안에 묶어두고 싶지 않은 사람
+- 로컬에 저장되는 개인 AI 브레인을 원하는 사람
 
-By default, Lattice binds to localhost, stores the Brain on your machine, keeps
-model downloads and cloud calls behind explicit consent, and separates normal
-Brain use from the Admin Console. Korean and English UI copy share the same
-underlying Brain, so language preference changes the interface, not your data.
+## What You Can Do
 
-External package registries are owner-published and can lag behind this GitHub
-Release. Release uploads must use the exact v5.2.0 artifact filenames below.
+- Chat with a Brain that remembers useful context instead of treating every
+  session as disposable.
+- Add documents, local folders, notes, screenshots, and conversations with
+  source-aware memory.
+- See recent memories, older memories, topics, relationships, and the full
+  knowledge graph when you want deeper structure.
+- Use a recommended local model without learning model internals first.
+- Keep advanced controls, audit logs, roles, and retention in a separate Admin
+  surface.
+- Export or back up your Brain as an encrypted `.latticebrain` archive.
 
-**5.2.0 major update**: Structured model capability registry + automated HF
-verification (scripts/verify_hf_model_registry.py) + expanded modern multimodal
-candidates. User-facing recommendations are narrowed to current load-ready
-families; registry-only candidates stay visible for verification transparency
-until config/tokenizer/load readiness is confirmed. Frontend now shows verified
-status, modality badges, hardware fit notes, and explicit download/load
-strategies before consent. See RELEASE.md and docs/CHANGELOG.md.
+## One-Minute Flow
+
+1. Launch the app.
+2. Create or open a local profile.
+3. Let Lattice explain what this computer can run.
+4. Start with the recommended model, or skip and choose later.
+5. Talk to your Brain.
+6. Watch memories, topics, relationships, and graph structure emerge from real use.
+7. Back up, inspect, export, or restore the Brain when you need ownership actions.
 
 ## Living Brain Flow
 
 ### 1. Login
 
-First launch opens to Login only. The local profile is the beginning of the
-Brain, not a dashboard, graph, or setup grid. The first screen frames Lattice as
-a durable knowledge home where models are replaceable and ownership stays with
-the user. v5.2.0 adds a transparent verified model registry, load-ready catalog,
-and workspace-scoped marketplace install state.
+Choose the owner of the Brain. The profile is not a SaaS account by default; it
+is the local identity for the knowledge you keep.
 
-![Login](output/release/v5.2.0/screenshots/01-login.png)
+![Login](output/release/v5.3.0/screenshots/01-login.png)
 
 ### 2. Environment Analysis
 
-Lattice reads the machine locally and summarizes what kind of Brain this
-computer can support.
+See what kind of local AI experience this computer can support before choosing a
+model.
 
-![Environment Analysis](output/release/v5.2.0/screenshots/02-environment-analysis.png)
+![Environment Analysis](output/release/v5.3.0/screenshots/02-environment-analysis.png)
 
 ### 3. Recommended Models
 
-The model step is a short recommendation list. It avoids catalog noise and keeps
-runtime/install details behind clear user consent. Users who do not know which
-model to choose can start with the recommended model in one click.
+Start with a short list: safest recommendation, faster model, stronger model.
+Advanced details stay available without overwhelming first-time users.
 
-![Recommended Models](output/release/v5.2.0/screenshots/03-recommended-models.png)
+![Recommended Models](output/release/v5.3.0/screenshots/03-recommended-models.png)
 
 ### 4. Install And Load
 
-The install screen keeps consent visible and shows install, download, validate,
-and load progress. No model download or runtime install starts silently, and the
-screen explains that large downloads may take minutes without inventing fake ETA
-data.
+Download and load only after consent. Lattice explains model size, local
+execution, and network use before work starts.
 
-![Install and Load](output/release/v5.2.0/screenshots/04-install-load-progress.png)
+![Install and Load](output/release/v5.3.0/screenshots/04-install-load-progress.png)
 
 ### 5. Brain Chat
 
-After setup, the home experience is the living Brain plus conversation. The Brain
-stays present while the user types, recalls context, and receives responses. The
-home now includes a compact Brain overview for recent memories, older memories,
-and major topics, plus saved-to-memory feedback after chat.
+Talk normally. Useful decisions and context become memory, then appear later as
+topics, relationships, and graph structure.
 
-![Brain Chat Home](output/release/v5.2.0/screenshots/05-brain-chat-home.png)
+![Brain Chat Home](output/release/v5.3.0/screenshots/05-brain-chat-home.png)
 
 ## Brain Depths
 
-The user travels inward through the Brain. Each depth keeps conversation nearby
-while revealing more structure.
+The user travels inward from everyday memory to deeper structure:
 
-| Depth | Experience | Evidence |
+| Level | User name | What the user gets |
 | --- | --- | --- |
-| Level 1 | Living Brain presence | ![Living Brain Level 1](output/release/v5.2.0/screenshots/06-living-brain-level-1.png) |
-| Level 2 | Memory Layer | ![Memory Layer](output/release/v5.2.0/screenshots/07-memory-layer.png) |
-| Level 3 | Knowledge Layer | ![Knowledge Layer](output/release/v5.2.0/screenshots/08-knowledge-layer.png) |
-| Level 4 | Relationship Layer | ![Relationship Layer](output/release/v5.2.0/screenshots/09-relationship-layer.png) |
-| Level 5 | Knowledge Graph with nodes, edges, search, and focus detail | ![Knowledge Graph Layer](output/release/v5.2.0/screenshots/10-knowledge-graph-layer.png) |
+| Level 1 | Now memory | The living Brain presence and current conversation context |
+| Level 2 | Older memory | Durable memories with source-aware recall |
+| Level 3 | Topics | Recurring themes across chats and documents |
+| Level 4 | Relationships | How decisions, people, files, and ideas connect |
+| Level 5 | Full knowledge graph | Nodes, edges, search, and focused detail for advanced exploration |
 
 Walkthrough:
 
-![v5.2.0 Living Brain walkthrough](output/release/v5.2.0/gifs/v5.2.0-living-brain-walkthrough.gif)
-
-Model setup status evidence:
-
-![Model setup status](output/release/v5.2.0/screenshots/11-model-setup-status.png)
-
-Separate admin console evidence:
-
-![Admin Console](output/release/v5.2.0/screenshots/12-admin-console.png)
+![v5.3.0 Living Brain walkthrough](output/release/v5.3.0/gifs/v5.3.0-living-brain-walkthrough.gif)
 
 Screenshot index and capture notes:
-[output/release/v5.2.0/SCREENSHOT_INDEX.md](output/release/v5.2.0/SCREENSHOT_INDEX.md)
+[output/release/v5.3.0/SCREENSHOT_INDEX.md](output/release/v5.3.0/SCREENSHOT_INDEX.md)
 
-## Architecture At A Glance
-
-- **Desktop shell**: Tauri 2 is the release desktop shell and starts the
-  localhost sidecar.
-- **Frontend**: React, TypeScript, Vite, TanStack Query, Zustand, Cytoscape.js,
-  React Flow, Tailwind/shadcn-style primitives, and generated OpenAPI types.
-- **Backend**: FastAPI on localhost is the UI source of truth.
-- **Brain Core**: independent `lattice_brain` package for graph, memory,
-  context, conversations, ingestion, runtime, workflow, storage, and
-  portability. Isolation tests prevent `lattice_brain` from importing
-  `latticeai`.
-- **Storage**: `StorageEngine` abstraction with SQLite default and optional
-  PostgreSQL/pgvector scale mode.
-- **Portability**: encrypted `.latticebrain` archives plus backup, restore,
-  inspect, verify, import dry-run, and confirmed restore/import flows. The
-  Brain home keeps conversation first and surfaces the everyday "Care for my
-  Brain" ownership path as a collapsed control with export, backup, archive,
-  inspect, and restore preview actions while keeping destructive confirmed
-  restore in Settings. Restore operations create pre-restore backups and roll
-  back failed DB/blob swaps so the current Brain is not left half-restored.
-- **Privacy**: local-first and private-first by default. Cloud models, Telegram,
-  Brain Network, Docker/Postgres setup, model downloads, and update checks are
-  opt-in paths.
-- **Admin separation**: user chat and Brain ownership stay in the main Brain
-  surface; user directory, audit logs, security events, policies, and index
-  rebuild controls live under the separate `#/admin` console. Admin history,
-  audit, stats, and sensitivity reads honor the active workspace when present.
-
-See [ARCHITECTURE.md](ARCHITECTURE.md) for the detailed v5.2.0 architecture.
-
-## Installation
+## Install
 
 Run from Python:
 
@@ -174,32 +144,33 @@ Apple Silicon local model extras:
 pip install "ltcai[local]"
 ```
 
-## Release Artifacts
+## Architecture At A Glance
 
-Validated 5.2.0 artifacts (current release):
+- **Product category**: local-first Digital Brain.
+- **Core capability**: private AI memory layer for conversations, documents,
+  decisions, relationships, workflows, and project context.
+- **UX metaphor**: Living Brain.
+- **Desktop shell**: Tauri 2 starts a localhost sidecar.
+- **Frontend**: React, TypeScript, Vite, TanStack Query, Zustand, Cytoscape.js,
+  React Flow, and generated OpenAPI types.
+- **Backend**: FastAPI on localhost is the UI source of truth.
+- **Brain Core**: independent `lattice_brain` package for graph, memory,
+  context, conversations, ingestion, runtime, workflow, storage, and portability.
+- **Storage**: SQLite default; PostgreSQL/pgvector is optional scale mode.
+- **Portability**: encrypted `.latticebrain` archives plus backup, restore,
+  inspect, verify, import dry-run, and confirmed restore/import flows.
+- **Trust boundary**: local-first by default; cloud calls, downloads, Telegram,
+  Brain Network, Docker/Postgres setup, and update checks are opt-in.
+- **Admin separation**: normal Brain use stays separate from users, audit logs,
+  policies, security events, retention, and index rebuilds.
 
-- `dist/ltcai-5.2.0-py3-none-any.whl`
-- `dist/ltcai-5.2.0.tar.gz`
-- `ltcai-5.2.0.tgz`
-- `dist/ltcai-5.2.0.vsix`
-- `src-tauri/target/release/bundle/dmg/Lattice AI_5.2.0_aarch64.dmg`
-
-Attach only those exact files to the GitHub Release. Do not upload a wildcard
-from the `dist` directory. Historical artifact references in release history are
-intentionally preserved.
+See [ARCHITECTURE.md](ARCHITECTURE.md) for the current architecture.
 
 ## Local Development
 
 ```bash
 npm install
 npm run dev
-```
-
-Build and validate release artifacts:
-
-```bash
-npm run release:artifacts
-npm run release:validate
 ```
 
 Main validation set:
@@ -213,66 +184,73 @@ npm run test:unit
 npm run test:integration
 npm run test:visual
 npm run desktop:tauri:check
-node scripts/run_python.mjs scripts/wheel_smoke.py --wheel dist/ltcai-5.2.0-py3-none-any.whl
-npm pack --dry-run
 npm run docs:check-links
 ```
 
+See [docs/DEVELOPMENT.md](docs/DEVELOPMENT.md) for developer workflow details.
+
+## Current Release Preparation
+
+The current development target is **5.3.0 Product Clarity and Runtime Cleanup**:
+
+- README and first-run copy are organized around the local-first Digital Brain.
+- Product descriptions are aligned across package metadata, architecture docs,
+  feature status, release notes, and extension metadata.
+- Release artifacts and exact filenames are kept in the release section instead
+  of interrupting the product introduction.
+- `app_factory.py` is being thinned by moving config, security, and Brain runtime
+  assembly seams into `latticeai.runtime`.
+- Legacy root modules are documented in
+  [docs/LEGACY_COMPATIBILITY.md](docs/LEGACY_COMPATIBILITY.md).
+
+Expected artifacts for a future 5.3.0 release must use exact filenames:
+
+- `dist/ltcai-5.3.0-py3-none-any.whl`
+- `dist/ltcai-5.3.0.tar.gz`
+- `ltcai-5.3.0.tgz`
+- `dist/ltcai-5.3.0.vsix`
+- `src-tauri/target/release/bundle/dmg/Lattice AI_5.3.0_aarch64.dmg`
+
+Do not upload `dist/*`. Package registry publishing remains owner-run.
+
 ## Known Limitations
 
-- External package registries are owner-published and can lag behind the GitHub
-  Release.
-- PostgreSQL/pgvector is optional scale mode. SQLite is the default local brain.
-- Docker, model downloads, cloud model calls, Telegram, Brain Network, and
-  update checks require explicit user action.
+- External package registries are owner-published and can lag behind GitHub.
+- PostgreSQL/pgvector is optional scale mode. SQLite is the default local Brain.
+- Docker, model downloads, cloud model calls, Telegram, Brain Network, and update
+  checks require explicit user action.
 - Conversation does not fabricate answers when no model is loaded.
-- Agent/workflow simulation without a loaded LLM is deterministic and does not call a model.
-  It is labeled as LLM-free/model-free rather than presented as autonomous model
-  success.
-- Historical artifacts can remain in `dist/`; uploads must use exact target version (e.g. 5.2.0)
-  filenames.
+- Agent/workflow simulation without a loaded LLM is deterministic and does not
+  call a model; it is labeled as LLM-free/model-free rather than presented as
+  autonomous model success.
 
 ## Release History
 
 | Version | Theme |
 | --- | --- |
-| 5.1.0 | Product Trust & Clarity Release: clarifies the private AI memory-layer promise, hardens CSP/secret/auto-read/download gates, adds trust/privacy docs, and refreshes v5.1.0 evidence |
-| 5.0.0 | Multilingual Brain Foundation Release: adds persisted Korean/English language choice across first-run onboarding, Brain home, graph exploration, and Admin Console while preserving the v4 runtime foundations |
-| 4.7.2 | Intuitive Brain UX Release: safer login, one-click recommended setup, direct Brain views, memory-save feedback, and exact v4.7.2 artifacts |
-| 4.7.0 | Admin Separation Release: added the separate Admin Console for users/logs/security/Brain operations, refreshed screenshots/GIFs, synchronized release docs, and built exact v4.7.0 artifacts |
-| 4.6.1 | Living Brain Release Refresh: publishable version bump after v4.6.0 PyPI immutability, refreshed README/screenshots/GIFs, synchronized release docs, and exact v4.6.1 artifacts |
-| 4.6.0 | Living Brain Experience: made Brain plus conversation the home product, added an animated living Brain presence, and moved graph exploration to the deepest intentional layer |
-| 4.5.1 | Product Reimagining RC: replaced the desktop shell, navigation model, onboarding journey, first-viewport hierarchy, and visual system while preserving capabilities and local-first architecture |
-| 4.5.0 | Product Experience Recovery RC: restored first-run setup, workspace/model onboarding, explicit model install/download/validate/load flow, Gemma 4 runtime compatibility gating, Basic-mode polish, and graph discoverability |
+| 5.3.0 | Product Clarity and Runtime Cleanup: user-first README/onboarding, unified Digital Brain identity, legacy compatibility map, and app factory runtime seams |
+| 5.2.0 | User-Focused Model Transformation: structured model capability registry, HF verification transparency, model recommendation UX, and workspace-scoped marketplace state |
+| 5.1.0 | Product Trust & Clarity Release: clarifies the private AI memory-layer promise, hardens CSP/secret/auto-read/download gates, adds trust/privacy docs, and refreshes evidence |
+| 5.0.0 | Multilingual Brain Foundation Release: adds persisted Korean/English language choice across first-run onboarding, Brain home, graph exploration, and Admin Console |
+| 4.7.2 | Intuitive Brain UX Release: safer login, one-click recommended setup, direct Brain views, memory-save feedback, and exact artifacts |
+| 4.7.0 | Admin Separation Release: adds the separate Admin Console for users/logs/security/Brain operations |
+| 4.6.1 | Living Brain Release Refresh: publishable version bump after v4.6.0 PyPI immutability |
+| 4.6.0 | Living Brain Experience: made Brain plus conversation the home product |
+| 4.5.1 | Product Reimagining RC: reset shell, navigation, onboarding, and visual system |
+| 4.5.0 | Product Experience Recovery RC: restored first-run setup, workspace/model onboarding, and graph discoverability |
 
-## Current Documentation
+## Documentation
 
-- [ARCHITECTURE.md](ARCHITECTURE.md) - v5.2.0 architecture.
-- [docs/WHY_LATTICE.md](docs/WHY_LATTICE.md) - why Lattice AI exists.
+- [docs/WHY_LATTICE.md](docs/WHY_LATTICE.md) - product philosophy.
 - [docs/TRUST_MODEL.md](docs/TRUST_MODEL.md) - local-first trust model.
 - [PRIVACY.md](PRIVACY.md) - privacy and external communication policy.
-- [docs/PRODUCT_DIRECTION_REVIEW.md](docs/PRODUCT_DIRECTION_REVIEW.md) -
-  Brain-first product direction review.
-- [FEATURE_STATUS.md](FEATURE_STATUS.md) - current feature status and historical
-  status ledger.
-- [RELEASE_NOTES.md](RELEASE_NOTES.md) - release notes index.
-- [RELEASE.md](RELEASE.md) - current v5.2.0 release notes and historical release history.
-- [RELEASE_NOTES_v5.2.0.md](RELEASE_NOTES_v5.2.0.md) - v5.2.0 user-focused model transformation release notes.
-- [RELEASE_NOTES_v5.0.0.md](RELEASE_NOTES_v5.0.0.md) - v5.0.0 multilingual foundation history.
-- [RELEASE_NOTES_v4.7.2.md](RELEASE_NOTES_v4.7.2.md) - v4.7.2 intuitive Brain UX history.
-- [RELEASE_NOTES_v4.7.1.md](RELEASE_NOTES_v4.7.1.md) - v4.7.1 admin operations history.
-- [RELEASE_NOTES_v4.7.0.md](RELEASE_NOTES_v4.7.0.md) - v4.7.0 admin separation history.
-- [RELEASE_NOTES_v4.6.1.md](RELEASE_NOTES_v4.6.1.md) - v4.6.1 release refresh history.
-- [RELEASE_NOTES_v4.6.0.md](RELEASE_NOTES_v4.6.0.md) - v4.6.0 Living Brain history.
-- [RELEASE_NOTES_v4.5.1.md](RELEASE_NOTES_v4.5.1.md) - v4.5.1 product reimagining history.
-- [RELEASE_NOTES_v4.5.0.md](RELEASE_NOTES_v4.5.0.md) - v4.5.0 product recovery history.
-- [RELEASE.md](RELEASE.md) - release checklist and exact artifact guidance.
+- [ARCHITECTURE.md](ARCHITECTURE.md) - current technical architecture.
+- [FEATURE_STATUS.md](FEATURE_STATUS.md) - current feature status and known limitations.
+- [docs/DEVELOPMENT.md](docs/DEVELOPMENT.md) - developer workflow.
+- [docs/LEGACY_COMPATIBILITY.md](docs/LEGACY_COMPATIBILITY.md) - root legacy shim map.
+- [RELEASE.md](RELEASE.md) - release guide and current release notes.
+- [docs/CHANGELOG.md](docs/CHANGELOG.md) - historical changes.
 - [SECURITY.md](SECURITY.md) - security posture.
-- [docs/CHANGELOG.md](docs/CHANGELOG.md) - changelog.
-- [docs/V4_7_1_ADMIN_OPERATIONS_REPORT.md](docs/V4_7_1_ADMIN_OPERATIONS_REPORT.md) - v4.7.1 admin operations history.
-- [docs/V4_7_0_ADMIN_SEPARATION_REPORT.md](docs/V4_7_0_ADMIN_SEPARATION_REPORT.md) - v4.7.0 admin separation history.
-- [docs/V4_6_1_RELEASE_REFRESH_REPORT.md](docs/V4_6_1_RELEASE_REFRESH_REPORT.md) - v4.6.1 release refresh report.
-- [docs/V4_6_0_LIVING_BRAIN_EXPERIENCE_REPORT.md](docs/V4_6_0_LIVING_BRAIN_EXPERIENCE_REPORT.md) - v4.6.0 Living Brain design notes.
 
 ## License
 

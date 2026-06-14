@@ -78,6 +78,9 @@ import json, os, sys
 
 import latticeai.server_app  # noqa: F401 — the import IS the test
 import latticeai.app_factory  # noqa: F401
+import latticeai.runtime.config_runtime  # noqa: F401
+import latticeai.runtime.security_runtime  # noqa: F401
+import latticeai.runtime.brain_runtime  # noqa: F401
 
 home = os.environ["HOME"]
 created = []
