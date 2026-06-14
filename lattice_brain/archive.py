@@ -14,6 +14,7 @@ import io
 import json
 import os
 import shutil
+import sqlite3
 import tempfile
 import zipfile
 from dataclasses import dataclass
@@ -111,6 +112,16 @@ def _sqlite_siblings(db_path: Path) -> tuple[Path, Path, Path]:
     return (db_path, Path(str(db_path) + "-wal"), Path(str(db_path) + "-shm"))
 
 
+def _checkpoint_sqlite(db_path: Path) -> None:
+    if not db_path.exists():
+        return
+    try:
+        with sqlite3.connect(str(db_path)) as conn:
+            conn.execute("PRAGMA wal_checkpoint(FULL)")
+    except sqlite3.Error:
+        return
+
+
 def _restore_sibling(path: Path, backup: Path) -> None:
     if backup.exists():
         shutil.copy2(backup, path)
@@ -124,6 +135,7 @@ def _replace_sqlite_atomically(src: Path, dest: Path, backup_dir: Path) -> None:
     shutil.copyfile(src, tmp)
     backups: dict[Path, Path] = {}
     try:
+        _checkpoint_sqlite(dest)
         for sibling in _sqlite_siblings(dest):
             if sibling.exists():
                 backup = backup_dir / sibling.name

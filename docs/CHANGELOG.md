@@ -22,6 +22,7 @@ historical and may describe behavior as it existed at that release.
 - `model_recommendation.py` `_classify_one` now forwards 5.2 fields (hf_repo, verification, hardware, load_strategy, license, safety, recommended_default).
 - `verification.verified` and verified-model API lists now require HF presence plus config and tokenizer hints, with weights-hint detail exposed separately, so the UI badge matches the actual load-readiness contract.
 - Marketplace template installs now keep registry entries scoped per workspace, and `/marketplace/templates/registry` returns only the authorized workspace scope.
+- SQLite restore now checkpoints WAL state before taking the pre-restore backup, keeping failed blob restores rollback-safe on Linux/Python 3.12 CI and local builds.
 - Backend model APIs return rich fields; frontend can render verified badges, modality, hardware notes, strategies.
 - Library.tsx (ModelsPanel): added "multimodal" + "✓ HF" verified badges, recommended_default support, hardware notes line, load_strategy plus license/safety notes in advanced detail, updated guided setup copy for transparency and consent.
 - All registry HF ids confirmed present via HF API on 2026-06-14; 15/16 expose config/tokenizer hints, Pixtral remains available-but-not-local-load-verified, and large models are flagged with explicit limitations.

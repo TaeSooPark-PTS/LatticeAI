@@ -19,6 +19,8 @@ details before any install or download action.
   with load-ready verification.
 - Added workspace-scoped marketplace template install registry state so personal
   and organization workspace installs do not overwrite each other.
+- Hardened SQLite restore rollback by checkpointing WAL state before
+  pre-restore backup capture.
 - Updated the Library UI with multimodal badges, HF verification, hardware
   notes, load strategy, license/safety details, and consent-first setup copy.
 - Captured fresh v5.2.0 release screenshots, GIF, and WebM evidence under

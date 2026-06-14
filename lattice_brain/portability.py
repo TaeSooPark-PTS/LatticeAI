@@ -17,6 +17,7 @@ import hashlib
 import json
 import os
 import shutil
+import sqlite3
 import tempfile
 import zipfile
 from datetime import datetime, timezone
@@ -72,6 +73,18 @@ def _sqlite_siblings(db_path: Path) -> tuple[Path, Path, Path]:
     return (db_path, Path(str(db_path) + "-wal"), Path(str(db_path) + "-shm"))
 
 
+def _checkpoint_sqlite(db_path: Path) -> None:
+    if not db_path.exists():
+        return
+    try:
+        with sqlite3.connect(str(db_path)) as conn:
+            conn.execute("PRAGMA wal_checkpoint(FULL)")
+    except sqlite3.Error:
+        # Best-effort only. Existing sibling backup/restore still preserves
+        # the WAL files if a live connection prevents a checkpoint.
+        return
+
+
 def _restore_sibling(path: Path, backup: Path) -> None:
     if backup.exists():
         shutil.copy2(backup, path)
@@ -85,6 +98,7 @@ def _replace_sqlite_atomically(src: Path, dest: Path, backup_dir: Path) -> None:
     shutil.copyfile(src, tmp)
     backups: dict[Path, Path] = {}
     try:
+        _checkpoint_sqlite(dest)
         # -wal/-shm are transient: another live connection can checkpoint and
         # remove them between exists() and the copy/unlink. Treat a vanished
         # sibling as "nothing to preserve" instead of crashing the restore.
