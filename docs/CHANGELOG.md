@@ -3,7 +3,12 @@
 The top entry is the current release-preparation target. Older entries are
 historical and may describe behavior as it existed at that release.
 
-## Unreleased
+## [5.4.0] - 2026-06-15
+
+> Brain Automation Scheduler. Consent-first recipe drafts (Daily Memory Digest,
+> Weekly Project Review, Follow-up Radar) install as disabled workflows.
+> Scheduler triggers (TriggerService) with dedup, LATTICE_TZ, degraded status,
+> and runtime graph cleanup.
 
 ### Added
 - Consent-first Brain automation recipe drafts for Daily Memory Digest, Weekly
@@ -22,6 +27,8 @@ historical and may describe behavior as it existed at that release.
 - lattice_brain/runtime dependency/responsibility graph 정리 + 실제 진입점 매핑 문서화 (runtime/* 모듈 헤더 + app_factory 주석). AgentRuntime (lattice_brain facade) vs latticeai/core/agent (single-agent state/plan/transcript) 분리 명확화.
 - TriggerService 스케줄러 엣지케이스 보강: LATTICE_TZ env 지원 (describe() 노출), last_attempt_at + cooldown dedup 가드로 중복 실행 방지 (interval/brain_event), consecutive_failures + "degraded" status per-trigger 서페이싱.
 - A방향 E2E 시나리오 초안 brain_automation.py 에 작성 (draft install, dedup, consent-first, trigger fire with provenance, LATTICE_TZ, degraded, review flow, RunExecutor 경로).
+
+## Unreleased
 
 ## [5.3.0] - 2026-06-14
 

@@ -193,25 +193,24 @@ See [docs/DEVELOPMENT.md](docs/DEVELOPMENT.md) for developer workflow details.
 
 ## Current Release Preparation
 
-The current development target is **5.3.0 Product Clarity and Runtime Cleanup**:
+The current development target is **5.4.0 Brain Automation Scheduler**:
 
-- README and first-run copy are organized around the local-first Digital Brain.
-- Product descriptions are aligned across package metadata, architecture docs,
-  feature status, release notes, and extension metadata.
-- Release artifacts and exact filenames are kept in the release section instead
-  of interrupting the product introduction.
-- `app_factory.py` is being thinned by moving config, security, and Brain runtime
-  assembly seams into `latticeai.runtime`.
-- Legacy root modules are documented in
-  [docs/LEGACY_COMPATIBILITY.md](docs/LEGACY_COMPATIBILITY.md).
+- Consent-first Brain automation recipes (Daily Memory Digest, Weekly Project Review,
+  Follow-up Radar) install from Automate page as reviewable disabled drafts.
+- TriggerService provides scheduler/brain-event triggers with dedup guards,
+  LATTICE_TZ support, consecutive failure degraded status, and explicit enabled:false
+  disarming.
+- lattice_brain/runtime dependency graph 정리 and entrypoint documentation added.
+- E2E scenarios for draft install + trigger execution with provenance.
+- All package/runtime/static versions synchronized to 5.4.0; PR #4 remote gates passed.
 
-Expected artifacts for a future 5.3.0 release must use exact filenames:
+Expected artifacts for 5.4.0 release must use exact filenames:
 
-- `dist/ltcai-5.3.0-py3-none-any.whl`
-- `dist/ltcai-5.3.0.tar.gz`
-- `ltcai-5.3.0.tgz`
-- `dist/ltcai-5.3.0.vsix`
-- `src-tauri/target/release/bundle/dmg/Lattice AI_5.3.0_aarch64.dmg`
+- `dist/ltcai-5.4.0-py3-none-any.whl`
+- `dist/ltcai-5.4.0.tar.gz`
+- `ltcai-5.4.0.tgz`
+- `dist/ltcai-5.4.0.vsix`
+- `src-tauri/target/release/bundle/dmg/Lattice AI_5.4.0_aarch64.dmg`
 
 Do not upload `dist/*`. Package registry publishing remains owner-run.
 
@@ -230,6 +229,7 @@ Do not upload `dist/*`. Package registry publishing remains owner-run.
 
 | Version | Theme |
 | --- | --- |
+| 5.4.0 | Brain Automation Scheduler: consent-first recipe drafts (Daily/Weekly/Follow-up), TriggerService with dedup/LATTICE_TZ/degraded, runtime graph cleanup, E2E scenarios |
 | 5.3.0 | Product Clarity and Runtime Cleanup: user-first README/onboarding, unified Digital Brain identity, legacy compatibility map, and app factory runtime seams |
 | 5.2.0 | User-Focused Model Transformation: structured model capability registry, HF verification transparency, model recommendation UX, and workspace-scoped marketplace state |
 | 5.1.0 | Product Trust & Clarity Release: clarifies the private AI memory-layer promise, hardens CSP/secret/auto-read/download gates, adds trust/privacy docs, and refreshes evidence |
