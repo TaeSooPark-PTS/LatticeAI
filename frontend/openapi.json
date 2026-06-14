@@ -215,6 +215,17 @@
               }
             ],
             "title": "User Nickname"
+          },
+          "workspace_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Workspace Id"
           }
         },
         "required": [
@@ -358,6 +369,11 @@
       },
       "ChatRequest": {
         "properties": {
+          "allow_file_context": {
+            "default": false,
+            "title": "Allow File Context",
+            "type": "boolean"
+          },
           "client_url": {
             "anyOf": [
               {
@@ -488,6 +504,44 @@
           "scope"
         ],
         "title": "ClearRequest",
+        "type": "object"
+      },
+      "CreateReviewItemRequest": {
+        "properties": {
+          "kind": {
+            "default": "suggestion",
+            "title": "Kind",
+            "type": "string"
+          },
+          "payload": {
+            "additionalProperties": true,
+            "title": "Payload",
+            "type": "object"
+          },
+          "provenance": {
+            "additionalProperties": true,
+            "title": "Provenance",
+            "type": "object"
+          },
+          "source": {
+            "default": "workflow_run",
+            "title": "Source",
+            "type": "string"
+          },
+          "summary": {
+            "default": "",
+            "title": "Summary",
+            "type": "string"
+          },
+          "title": {
+            "title": "Title",
+            "type": "string"
+          }
+        },
+        "required": [
+          "title"
+        ],
+        "title": "CreateReviewItemRequest",
         "type": "object"
       },
       "CuAgentRequest": {
@@ -1918,6 +1972,11 @@
       },
       "PullModelRequest": {
         "properties": {
+          "allow_download": {
+            "default": false,
+            "title": "Allow Download",
+            "type": "boolean"
+          },
           "model": {
             "title": "Model",
             "type": "string"
@@ -2034,6 +2093,127 @@
         "title": "RestoreRequest",
         "type": "object"
       },
+      "ReviewItem": {
+        "properties": {
+          "created_at": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Created At"
+          },
+          "effective_status": {
+            "title": "Effective Status",
+            "type": "string"
+          },
+          "id": {
+            "title": "Id",
+            "type": "string"
+          },
+          "kind": {
+            "default": "suggestion",
+            "title": "Kind",
+            "type": "string"
+          },
+          "payload": {
+            "additionalProperties": true,
+            "title": "Payload",
+            "type": "object"
+          },
+          "provenance": {
+            "additionalProperties": true,
+            "title": "Provenance",
+            "type": "object"
+          },
+          "snoozed_until": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Snoozed Until"
+          },
+          "source": {
+            "default": "workflow_run",
+            "title": "Source",
+            "type": "string"
+          },
+          "status": {
+            "title": "Status",
+            "type": "string"
+          },
+          "summary": {
+            "default": "",
+            "title": "Summary",
+            "type": "string"
+          },
+          "title": {
+            "title": "Title",
+            "type": "string"
+          },
+          "updated_at": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Updated At"
+          },
+          "user_email": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "User Email"
+          },
+          "workspace_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Workspace Id"
+          }
+        },
+        "required": [
+          "id",
+          "status",
+          "effective_status",
+          "title"
+        ],
+        "title": "ReviewItem",
+        "type": "object"
+      },
+      "ReviewItemList": {
+        "properties": {
+          "items": {
+            "items": {
+              "$ref": "#/components/schemas/ReviewItem"
+            },
+            "title": "Items",
+            "type": "array"
+          }
+        },
+        "title": "ReviewItemList",
+        "type": "object"
+      },
       "SQLiteToPostgresRequest": {
         "properties": {
           "dry_run": {
@@ -2138,6 +2318,19 @@
           "skill"
         ],
         "title": "SkillInstallRequest",
+        "type": "object"
+      },
+      "SnoozeRequest": {
+        "properties": {
+          "until": {
+            "title": "Until",
+            "type": "string"
+          }
+        },
+        "required": [
+          "until"
+        ],
+        "title": "SnoozeRequest",
         "type": "object"
       },
       "SsoConfigUpdate": {
@@ -3028,6 +3221,17 @@
         "title": "WorkflowImportRequest",
         "type": "object"
       },
+      "WorkflowRecipeInstallRequest": {
+        "properties": {
+          "enabled": {
+            "default": false,
+            "title": "Enabled",
+            "type": "boolean"
+          }
+        },
+        "title": "WorkflowRecipeInstallRequest",
+        "type": "object"
+      },
       "WorkflowResumeRequest": {
         "properties": {
           "approved": {
@@ -3553,7 +3757,7 @@
   },
   "info": {
     "title": "Lattice AI Server (local)",
-    "version": "4.3.3"
+    "version": "5.6.0"
   },
   "openapi": "3.1.0",
   "paths": {
@@ -3756,6 +3960,84 @@
     "/admin/audit": {
       "get": {
         "operationId": "admin_audit_admin_audit_get",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "q",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Q"
+            }
+          },
+          {
+            "in": "query",
+            "name": "actor",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Actor"
+            }
+          },
+          {
+            "in": "query",
+            "name": "action",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Action"
+            }
+          },
+          {
+            "in": "query",
+            "name": "severity",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Severity"
+            }
+          },
+          {
+            "in": "query",
+            "name": "limit",
+            "required": false,
+            "schema": {
+              "default": 50,
+              "maximum": 250,
+              "minimum": 1,
+              "title": "Limit",
+              "type": "integer"
+            }
+          }
+        ],
         "responses": {
           "200": {
             "content": {
@@ -3764,6 +4046,16 @@
               }
             },
             "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
           }
         },
         "summary": "Admin Audit"
@@ -3817,6 +4109,22 @@
           }
         },
         "summary": "Admin Invite Link"
+      }
+    },
+    "/admin/log-retention": {
+      "get": {
+        "operationId": "admin_log_retention_admin_log_retention_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": "Admin Log Retention"
       }
     },
     "/admin/policies": {
@@ -7256,6 +7564,309 @@
         "summary": "Sso Login"
       }
     },
+    "/automation/reviews": {
+      "get": {
+        "operationId": "list_items_automation_reviews_get",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "status",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Status"
+            }
+          },
+          {
+            "in": "query",
+            "name": "source",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Source"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ReviewItemList"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "List Items"
+      },
+      "post": {
+        "operationId": "create_item_automation_reviews_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateReviewItemRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ReviewItem"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Create Item"
+      }
+    },
+    "/automation/reviews/{item_id}": {
+      "get": {
+        "operationId": "get_item_automation_reviews__item_id__get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "item_id",
+            "required": true,
+            "schema": {
+              "title": "Item Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ReviewItem"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Get Item"
+      }
+    },
+    "/automation/reviews/{item_id}/approve": {
+      "post": {
+        "operationId": "approve_item_automation_reviews__item_id__approve_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "item_id",
+            "required": true,
+            "schema": {
+              "title": "Item Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ReviewItem"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Approve Item"
+      }
+    },
+    "/automation/reviews/{item_id}/dismiss": {
+      "post": {
+        "operationId": "dismiss_item_automation_reviews__item_id__dismiss_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "item_id",
+            "required": true,
+            "schema": {
+              "title": "Item Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ReviewItem"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Dismiss Item"
+      }
+    },
+    "/automation/reviews/{item_id}/run_now": {
+      "post": {
+        "operationId": "run_now_item_automation_reviews__item_id__run_now_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "item_id",
+            "required": true,
+            "schema": {
+              "title": "Item Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ReviewItem"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Run Now Item"
+      }
+    },
+    "/automation/reviews/{item_id}/snooze": {
+      "post": {
+        "operationId": "snooze_item_automation_reviews__item_id__snooze_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "item_id",
+            "required": true,
+            "schema": {
+              "title": "Item Id",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SnoozeRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ReviewItem"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Snooze Item"
+      }
+    },
     "/chat": {
       "get": {
         "operationId": "chat_page_chat_get",
@@ -9632,7 +10243,7 @@
     },
     "/models/recommendations": {
       "get": {
-        "description": "Hardware-aware tri-state model recommendation for this machine.\n\nDetects the system profile (OS/RAM/CPU/GPU/disk) and classifies the\n``engine`` catalog into recommended / compatible / not_recommended,\ngrouped by family. Used by the onboarding and model-picker UIs.",
+        "description": "Hardware-aware tri-state model recommendation for this machine.\n\n5.2.0: now includes rich capability fields (hf_repo_id, verification,\nhardware, load_strategy, license, safety_notes) from the structured registry.",
         "operationId": "model_recommendations_models_recommendations_get",
         "parameters": [
           {
@@ -12220,6 +12831,69 @@
           }
         },
         "summary": "Workflows Page"
+      }
+    },
+    "/workflows/api/automation/recipes": {
+      "get": {
+        "operationId": "automation_recipes_workflows_api_automation_recipes_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": "Automation Recipes"
+      }
+    },
+    "/workflows/api/automation/recipes/{recipe_id}": {
+      "post": {
+        "operationId": "install_automation_recipe_workflows_api_automation_recipes__recipe_id__post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "recipe_id",
+            "required": true,
+            "schema": {
+              "title": "Recipe Id",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/WorkflowRecipeInstallRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Install Automation Recipe"
       }
     },
     "/workflows/api/definitions": {

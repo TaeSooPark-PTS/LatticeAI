@@ -3,6 +3,37 @@
 The top entry is the current release-preparation target. Older entries are
 historical and may describe behavior as it existed at that release.
 
+## [5.6.0] - 2026-06-15
+
+> Brain Automation Review Center. Adds a workspace-scoped review inbox for
+> automation output so scheduled runs and Brain-event suggestions land as
+> inspectable items before the user approves, dismisses, snoozes, or reruns
+> them.
+
+### Added
+- Backend Review Queue service, store persistence, and `/automation/reviews`
+  API with explicit `source`, `status`, `effective_status`, payload, and
+  provenance fields.
+- Review item actions: approve, dismiss, snooze, and run_now. `run_now` is a
+  preview/regenerate action and does not mark the item approved.
+- Optional `review_queue: true` opt-in path for TriggerService and RunExecutor
+  to enqueue review items without changing legacy scheduler behavior.
+- Act page Review inbox under Runs with source filtering, pending review cards,
+  provenance details, and guarded actions.
+
+### Changed
+- Bumped synchronized Python, npm, VSIX, Tauri, runtime constants, lockfiles,
+  OpenAPI artifacts, and static metadata to `5.6.0`.
+- Updated release documentation and artifact names for exact 5.6.0 release
+  preparation.
+
+### Preserved
+- Snoozed items stay hidden until their `snoozed_until` time expires; expiry is
+  interpreted at read time through `effective_status` without scheduler mutation.
+- Existing v5.4/v5.5 automation and workflow behavior remains compatible unless
+  a workflow explicitly opts into review queue creation.
+- Package registry publishing and deployment remain owner-run only.
+
 ## [5.5.0] - 2026-06-15
 
 > Release Coordination. Synchronized package/runtime/static metadata and release

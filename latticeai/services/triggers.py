@@ -48,9 +48,13 @@ class TriggerService:
         data_dir: Path,
         clock: Callable[[], float] = time.time,
         tick_seconds: float = DEFAULT_TICK_SECONDS,
+        review_sink: Optional[Any] = None,
     ) -> None:
         self._store = store
         self._run_workflow = run_workflow
+        # Optional review-queue seam (5.6.0). When wired, fired runs can drop a
+        # reviewable suggestion into the queue. Default None keeps legacy behavior.
+        self._review_sink = review_sink
         self._state_file = Path(data_dir) / "triggers_state.json"
         self._clock = clock
         self._tick = float(tick_seconds)
@@ -250,13 +254,38 @@ class TriggerService:
     def _fire(self, workflow_id: str, trigger_info: Dict[str, Any]) -> None:
         def _run():
             try:
-                self._run_workflow(workflow_id, {"__trigger__": trigger_info})
+                result = self._run_workflow(workflow_id, {"__trigger__": trigger_info})
                 self._record_fire_outcome(workflow_id, ok=True)
+                self._maybe_enqueue_review(workflow_id, trigger_info, result)
             except Exception as exc:
                 logging.warning("trigger run failed for %s: %s", workflow_id, exc)
                 self._record_fire_outcome(workflow_id, ok=False, detail=str(exc))
 
         threading.Thread(target=_run, name=f"trigger-{workflow_id}", daemon=True).start()
+
+    def _maybe_enqueue_review(
+        self, workflow_id: str, trigger_info: Dict[str, Any], result: Dict[str, Any],
+    ) -> None:
+        if self._review_sink is None:
+            return
+        try:
+            from latticeai.services.review_queue import enqueue_from_automation
+
+            workflows = list(self._store.load_state().get("workflows") or [])
+            workflow = next((wf for wf in workflows if wf.get("id") == workflow_id), None)
+            if workflow is None:
+                return
+            trigger_type = str(trigger_info.get("type") or "")
+            source = "kg_change_digest" if trigger_type == "brain_event" else "trigger"
+            enqueue_from_automation(
+                self._review_sink,
+                workflow=workflow,
+                source=source,
+                run_result=result,
+                trigger_info=trigger_info,
+            )
+        except Exception as exc:
+            logging.warning("review_sink enqueue failed for %s: %s", workflow_id, exc)
 
     def _record_fire_outcome(self, wf_id: str, *, ok: bool, detail: str = "") -> None:
         """Track consecutive launch failures for degraded status in describe().

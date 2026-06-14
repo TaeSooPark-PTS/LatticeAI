@@ -7,6 +7,23 @@
 > PyPI / npm / VS Code Marketplace / Open VSX 배포는 아래 수동 절차로만
 > 진행합니다. 태그 생성은 패키지 스토어 publish를 자동으로 트리거하지 않습니다.
 
+## v5.6.0 릴리스 준비 노트 (2026-06-15)
+
+Lattice AI v5.6.0 — Brain Automation Review Center. 5.6.0은 v5.4.0에서 시작한
+Brain Automation Scheduler 위에 review-first 사용자 검토 계층을 추가한다.
+자동화 결과는 즉시 승인된 변경처럼 보이지 않고 `/automation/reviews` 기반
+Review inbox에 쌓이며, 사용자는 Act 화면의 Review 탭에서 provenance를 확인하고
+Approve, Dismiss, Snooze, Run now를 선택한다. Run now는 실행/재생성만 수행하고
+승인 상태로 바꾸지 않는다. TriggerService와 RunExecutor는 `review_queue: true`
+옵트인 workflow에 대해서만 review item을 만든다.
+
+Expected artifacts (exact 5.6.0 names only):
+- dist/ltcai-5.6.0-py3-none-any.whl
+- dist/ltcai-5.6.0.tar.gz
+- dist/ltcai-5.6.0.vsix
+- ltcai-5.6.0.tgz
+- src-tauri/target/release/bundle/dmg/Lattice AI_5.6.0_aarch64.dmg
+
 ## v5.5.0 릴리스 준비 노트 (2026-06-15)
 
 Lattice AI v5.5.0 — Release Coordination. 5.5.0은 v5.4.0 Brain Automation

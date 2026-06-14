@@ -1,7 +1,37 @@
 # Release Notes
 
-The current release target is v5.5.0. The tracked release-note surface starts at
+The current release target is v5.6.0. The tracked release-note surface starts at
 v4.5.0 so the public Git tree stays focused on the current product era.
+
+## v5.6.0 - Brain Automation Review Center
+
+Lattice AI v5.6.0 adds a Review Center for Brain automation. Scheduled and
+Brain-event workflow output can now become workspace-scoped review items instead
+of immediate user-visible decisions. Users inspect source, status, payload, and
+provenance, then approve, dismiss, snooze, or run the automation again.
+
+### Highlights
+
+- Added `/automation/reviews` API with explicit ReviewItem response models.
+- Added source-aware review items for `workflow_run`, `trigger`, and
+  `kg_change_digest` automation output.
+- Added guarded actions: approve, dismiss, snooze, and run_now.
+- Preserved `run_now != approve`; reruns only update run provenance.
+- Added TriggerService and RunExecutor opt-in enqueue via `review_queue: true`.
+- Added Act > Runs > Review inbox with source filters, provenance detail, and
+  empty/loading/error states.
+- Regenerated OpenAPI artifacts and synchronized package/runtime/static versions
+  to `5.6.0`.
+
+### Expected Artifacts
+
+- `dist/ltcai-5.6.0-py3-none-any.whl`
+- `dist/ltcai-5.6.0.tar.gz`
+- `dist/ltcai-5.6.0.vsix`
+- `ltcai-5.6.0.tgz`
+- `src-tauri/target/release/bundle/dmg/Lattice AI_5.6.0_aarch64.dmg`
+
+Full notes: [RELEASE_NOTES_v5.6.0.md](RELEASE_NOTES_v5.6.0.md)
 
 ## v5.5.0 - Release Coordination
 

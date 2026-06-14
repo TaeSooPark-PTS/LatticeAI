@@ -190,6 +190,23 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/admin/log-retention": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Admin Log Retention */
+        get: operations["admin_log_retention_admin_log_retention_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/admin/policies": {
         parameters: {
             query?: never;
@@ -1794,6 +1811,109 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/automation/reviews": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** List Items */
+        get: operations["list_items_automation_reviews_get"];
+        put?: never;
+        /** Create Item */
+        post: operations["create_item_automation_reviews_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/automation/reviews/{item_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Get Item */
+        get: operations["get_item_automation_reviews__item_id__get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/automation/reviews/{item_id}/approve": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Approve Item */
+        post: operations["approve_item_automation_reviews__item_id__approve_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/automation/reviews/{item_id}/dismiss": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Dismiss Item */
+        post: operations["dismiss_item_automation_reviews__item_id__dismiss_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/automation/reviews/{item_id}/run_now": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Run Now Item */
+        post: operations["run_now_item_automation_reviews__item_id__run_now_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/automation/reviews/{item_id}/snooze": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Snooze Item */
+        post: operations["snooze_item_automation_reviews__item_id__snooze_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/chat": {
         parameters: {
             query?: never;
@@ -3117,9 +3237,8 @@ export interface paths {
          * Model Recommendations
          * @description Hardware-aware tri-state model recommendation for this machine.
          *
-         *     Detects the system profile (OS/RAM/CPU/GPU/disk) and classifies the
-         *     ``engine`` catalog into recommended / compatible / not_recommended,
-         *     grouped by family. Used by the onboarding and model-picker UIs.
+         *     5.2.0: now includes rich capability fields (hf_repo_id, verification,
+         *     hardware, load_strategy, license, safety_notes) from the structured registry.
          */
         get: operations["model_recommendations_models_recommendations_get"];
         put?: never;
@@ -4566,6 +4685,40 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/workflows/api/automation/recipes": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Automation Recipes */
+        get: operations["automation_recipes_workflows_api_automation_recipes_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/workflows/api/automation/recipes/{recipe_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Install Automation Recipe */
+        post: operations["install_automation_recipe_workflows_api_automation_recipes__recipe_id__post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/workflows/api/definitions": {
         parameters: {
             query?: never;
@@ -5676,6 +5829,8 @@ export interface components {
             user_email?: string | null;
             /** User Nickname */
             user_nickname?: string | null;
+            /** Workspace Id */
+            workspace_id?: string | null;
         };
         /** AgentResumeRequest */
         AgentResumeRequest: {
@@ -5736,6 +5891,11 @@ export interface components {
         };
         /** ChatRequest */
         ChatRequest: {
+            /**
+             * Allow File Context
+             * @default false
+             */
+            allow_file_context: boolean;
             /** Client Url */
             client_url?: string | null;
             /** Context */
@@ -5779,6 +5939,34 @@ export interface components {
             confirm: boolean;
             /** Scope */
             scope: string;
+        };
+        /** CreateReviewItemRequest */
+        CreateReviewItemRequest: {
+            /**
+             * Kind
+             * @default suggestion
+             */
+            kind: string;
+            /** Payload */
+            payload?: {
+                [key: string]: unknown;
+            };
+            /** Provenance */
+            provenance?: {
+                [key: string]: unknown;
+            };
+            /**
+             * Source
+             * @default workflow_run
+             */
+            source: string;
+            /**
+             * Summary
+             * @default
+             */
+            summary: string;
+            /** Title */
+            title: string;
         };
         /** CuAgentRequest */
         CuAgentRequest: {
@@ -6452,6 +6640,11 @@ export interface components {
         };
         /** PullModelRequest */
         PullModelRequest: {
+            /**
+             * Allow Download
+             * @default false
+             */
+            allow_download: boolean;
             /** Model */
             model: string;
         };
@@ -6526,6 +6719,55 @@ export interface components {
              */
             verify: boolean;
         };
+        /** ReviewItem */
+        ReviewItem: {
+            /** Created At */
+            created_at?: string | null;
+            /** Effective Status */
+            effective_status: string;
+            /** Id */
+            id: string;
+            /**
+             * Kind
+             * @default suggestion
+             */
+            kind: string;
+            /** Payload */
+            payload?: {
+                [key: string]: unknown;
+            };
+            /** Provenance */
+            provenance?: {
+                [key: string]: unknown;
+            };
+            /** Snoozed Until */
+            snoozed_until?: string | null;
+            /**
+             * Source
+             * @default workflow_run
+             */
+            source: string;
+            /** Status */
+            status: string;
+            /**
+             * Summary
+             * @default
+             */
+            summary: string;
+            /** Title */
+            title: string;
+            /** Updated At */
+            updated_at?: string | null;
+            /** User Email */
+            user_email?: string | null;
+            /** Workspace Id */
+            workspace_id?: string | null;
+        };
+        /** ReviewItemList */
+        ReviewItemList: {
+            /** Items */
+            items?: components["schemas"]["ReviewItem"][];
+        };
         /** SQLiteToPostgresRequest */
         SQLiteToPostgresRequest: {
             /**
@@ -6573,6 +6815,11 @@ export interface components {
             plugin: string;
             /** Skill */
             skill: string;
+        };
+        /** SnoozeRequest */
+        SnoozeRequest: {
+            /** Until */
+            until: string;
         };
         /** SsoConfigUpdate */
         SsoConfigUpdate: {
@@ -7005,6 +7252,14 @@ export interface components {
             data: {
                 [key: string]: unknown;
             };
+        };
+        /** WorkflowRecipeInstallRequest */
+        WorkflowRecipeInstallRequest: {
+            /**
+             * Enabled
+             * @default false
+             */
+            enabled: boolean;
         };
         /** WorkflowResumeRequest */
         WorkflowResumeRequest: {
@@ -7489,7 +7744,13 @@ export interface operations {
     };
     admin_audit_admin_audit_get: {
         parameters: {
-            query?: never;
+            query?: {
+                q?: string | null;
+                actor?: string | null;
+                action?: string | null;
+                severity?: string | null;
+                limit?: number;
+            };
             header?: never;
             path?: never;
             cookie?: never;
@@ -7503,6 +7764,15 @@ export interface operations {
                 };
                 content: {
                     "application/json": unknown;
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
                 };
             };
         };
@@ -7548,6 +7818,26 @@ export interface operations {
         };
     };
     admin_invite_link_admin_invite_link_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": unknown;
+                };
+            };
+        };
+    };
+    admin_log_retention_admin_log_retention_get: {
         parameters: {
             query?: never;
             header?: never;
@@ -10536,6 +10826,230 @@ export interface operations {
                 };
                 content: {
                     "application/json": unknown;
+                };
+            };
+        };
+    };
+    list_items_automation_reviews_get: {
+        parameters: {
+            query?: {
+                status?: string | null;
+                source?: string | null;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ReviewItemList"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    create_item_automation_reviews_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CreateReviewItemRequest"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ReviewItem"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    get_item_automation_reviews__item_id__get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                item_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ReviewItem"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    approve_item_automation_reviews__item_id__approve_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                item_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ReviewItem"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    dismiss_item_automation_reviews__item_id__dismiss_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                item_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ReviewItem"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    run_now_item_automation_reviews__item_id__run_now_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                item_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ReviewItem"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    snooze_item_automation_reviews__item_id__snooze_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                item_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["SnoozeRequest"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ReviewItem"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
                 };
             };
         };
@@ -15165,6 +15679,61 @@ export interface operations {
                 };
                 content: {
                     "application/json": unknown;
+                };
+            };
+        };
+    };
+    automation_recipes_workflows_api_automation_recipes_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": unknown;
+                };
+            };
+        };
+    };
+    install_automation_recipe_workflows_api_automation_recipes__recipe_id__post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                recipe_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["WorkflowRecipeInstallRequest"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": unknown;
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
                 };
             };
         };

@@ -1,14 +1,28 @@
-# Lattice AI — Feature Status (v5.5.0 target)
+# Lattice AI — Feature Status (v5.6.0 target)
 
-**Current release-preparation line:** v5.5.0 Release Coordination.
+**Current release-preparation line:** v5.6.0 Brain Automation Review Center.
 Lattice AI is a local-first Digital Brain that keeps your knowledge durable
 across any AI model. The primary experience is Brain plus conversation; the
 graph remains durable infrastructure and advanced exploration, not the home
 product identity. Sections below v5.3.0 are historical release-status records
 and should not override the current README, ARCHITECTURE.md, SECURITY.md,
-PRIVACY.md, or v5.5.0 release notes.
+PRIVACY.md, or v5.6.0 release notes.
 
-## v5.5.0 Release Coordination — current development line
+## v5.6.0 Brain Automation Review Center — current development line
+
+v5.6.0 adds the user-facing review layer for Brain automation. Automation output
+is stored as workspace-scoped review items with source and provenance metadata,
+then shown in Act > Runs > Review for explicit user action.
+
+| Area | Status | Evidence |
+| --- | --- | --- |
+| **Review queue backend** | WORKING | `latticeai/services/review_queue.py`, `latticeai/api/review_queue.py`, and `WorkspaceOSStore` review item persistence expose `/automation/reviews`. |
+| **Automation opt-in enqueue** | WORKING | `TriggerService` and `RunExecutor` enqueue review items only for workflows with `review_queue: true`, preserving legacy behavior by default. |
+| **Review inbox UI** | WORKING | `frontend/src/pages/Act.tsx` adds Runs/Review tabs, source filters, review cards, provenance details, and guarded actions. |
+| **OpenAPI contract** | WORKING | `frontend/openapi.json` and `frontend/src/api/openapi.ts` include the review API contract. |
+| **Snooze semantics** | WORKING | Snoozed items are hidden until expiry and surface through read-time `effective_status` without scheduler mutation. |
+
+## v5.5.0 Release Coordination — what changed
 
 v5.5.0 completes the release coordination pass for the current product line:
 version metadata, lockfiles, static manifest, release documentation, and exact

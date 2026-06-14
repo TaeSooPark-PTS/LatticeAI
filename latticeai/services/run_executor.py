@@ -46,6 +46,7 @@ class RunExecutor:
         workspace_graph: Callable[[], Any],
         append_audit_event: Callable[..., None],
         hooks: Any = None,
+        review_sink: Any = None,
     ) -> None:
         self.store = store
         self.agent_runtime = agent_runtime
@@ -53,6 +54,8 @@ class RunExecutor:
         self.workspace_graph = workspace_graph
         self.append_audit_event = append_audit_event
         self.hooks = hooks
+        # Optional review-queue seam (5.6.0). Default None → no behavior change.
+        self.review_sink = review_sink
         self._handles: Dict[str, _RunHandle] = {}
         self._results: Dict[str, Dict[str, Any]] = {}
 
@@ -234,6 +237,12 @@ class RunExecutor:
                 workflow_id=workflow.get("id"),
                 status=result.status,
             )
+            self._maybe_enqueue_review(
+                workflow,
+                run_result={"run": updated, "result": result.as_dict()},
+                user_email=user_email,
+                workspace_id=handle.scope,
+            )
             self._results[run_id] = {"run": updated, "result": result.as_dict()}
         except Exception as exc:
             run = self.store.get_workflow_run(run_id, workspace_id=handle.scope)
@@ -251,6 +260,30 @@ class RunExecutor:
             self._results[run_id] = {"run": failed, "result": {"status": "failed", "error": str(exc)}}
         finally:
             self._handles.pop(run_id, None)
+
+    def _maybe_enqueue_review(
+        self,
+        workflow: Dict[str, Any],
+        *,
+        run_result: Dict[str, Any],
+        user_email: Optional[str],
+        workspace_id: Optional[str],
+    ) -> None:
+        if self.review_sink is None:
+            return
+        try:
+            from latticeai.services.review_queue import enqueue_from_automation
+
+            enqueue_from_automation(
+                self.review_sink,
+                workflow=workflow,
+                source="workflow_run",
+                run_result=run_result,
+                user_email=user_email,
+                workspace_id=workspace_id,
+            )
+        except Exception:
+            pass
 
     def _execute_workflow_sync(
         self,

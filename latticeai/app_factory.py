@@ -1480,6 +1480,11 @@ def _build(config: "Optional[Config]" = None) -> Dict[str, Any]:
         agent_registry=AGENT_REGISTRY,
     )
 
+    # ── Brain review queue (5.6.0): the suggestion inbox automation drops into.
+    from latticeai.services.review_queue import ReviewQueueService
+
+    REVIEW_QUEUE = ReviewQueueService(store=WORKSPACE_OS)
+
     # ── v4 Trigger system (T7d): interval + brain-event workflow triggers.
     from latticeai.services.triggers import TRIGGER_HOOK_NAME, TriggerService
 
@@ -1489,6 +1494,7 @@ def _build(config: "Optional[Config]" = None) -> Dict[str, Any]:
             wf_id, None, None, with_agent=False, inputs=inputs,
         ),
         data_dir=DATA_DIR,
+        review_sink=REVIEW_QUEUE,
     )
     # Idempotent hook registration: ingestion post_tool events fan into triggers.
     _trigger_hook_id = next(
@@ -1520,6 +1526,7 @@ def _build(config: "Optional[Config]" = None) -> Dict[str, Any]:
         workspace_graph=_workspace_graph,
         append_audit_event=append_audit_event,
         hooks=HOOKS_REGISTRY,
+        review_sink=REVIEW_QUEUE,
     )
     AGENT_RUNTIME.attach_executor(RUN_EXECUTOR)
     app.state.run_executor = RUN_EXECUTOR
@@ -1720,6 +1727,27 @@ def _build(config: "Optional[Config]" = None) -> Dict[str, Any]:
         get_current_user=get_current_user,
         gate_read=PLATFORM.gate_read,
         gate_write=PLATFORM.gate_write,
+        append_audit_event=append_audit_event,
+    ))
+
+    from latticeai.api.review_queue import create_review_queue_router
+
+    def _run_review_item(item, *, user_email, scope):
+        """run_now: re-execute the suggestion's source workflow (preview/regenerate)."""
+        wf_id = (item.get("payload") or {}).get("workflow_id") or (item.get("provenance") or {}).get("workflow_id")
+        if not wf_id:
+            raise HTTPException(status_code=409, detail="review item has no workflow to run")
+        return PLATFORM.run_workflow_by_id(
+            wf_id, user_email, scope, with_agent=False,
+            inputs={"__review_item__": item.get("id")},
+        )
+
+    app.include_router(create_review_queue_router(
+        service=REVIEW_QUEUE,
+        require_user=require_user,
+        gate_read=PLATFORM.gate_read,
+        gate_write=PLATFORM.gate_write,
+        run_review_item=_run_review_item,
         append_audit_event=append_audit_event,
     ))
 

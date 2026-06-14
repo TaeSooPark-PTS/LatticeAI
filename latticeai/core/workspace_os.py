@@ -19,7 +19,7 @@ from pathlib import Path
 from typing import Any, Callable, Dict, Iterable, List, Optional
 
 
-WORKSPACE_OS_VERSION = "5.5.0"
+WORKSPACE_OS_VERSION = "5.6.0"
 
 # Workspace types separate single-user Personal workspaces from shared
 # Organization workspaces. Both keep the same local-first JSON store; the type
@@ -480,6 +480,7 @@ class WorkspaceOSStore:
             "handoffs": [],
             "workflows": [],
             "workflow_runs": [],
+            "review_items": [],
             "skill_registry": {},
             "plugin_registry": {},
             "template_registry": {},
@@ -1880,6 +1881,90 @@ class WorkspaceOSStore:
         if not run or (workspace_id and self._record_workspace(run) != str(workspace_id)):
             raise FileNotFoundError(run_id)
         return run
+
+    # ── review queue (5.6.0) ─────────────────────────────────────────────
+    # Workspace-scoped suggestion inbox. Automation/trigger runs write drafts
+    # here for the user to approve/dismiss/snooze. Persistence only; the
+    # transition policy lives in ReviewQueueService (services/review_queue.py).
+
+    def create_review_item(
+        self,
+        *,
+        title: str,
+        summary: str = "",
+        source: str = "workflow_run",
+        kind: str = "suggestion",
+        payload: Optional[Dict[str, Any]] = None,
+        provenance: Optional[Dict[str, Any]] = None,
+        user_email: Optional[str] = None,
+        workspace_id: Optional[str] = None,
+    ) -> Dict[str, Any]:
+        if not str(title or "").strip():
+            raise ValueError("title is required")
+        state = self.load_state()
+        resolved_workspace = self._resolve_scope(workspace_id, state)
+        now = _now()
+        item = {
+            "id": f"review-{_json_hash([title, source, kind, user_email, now])[:16]}",
+            "status": "pending",
+            "title": title,
+            "summary": summary or "",
+            "source": source or "workflow_run",
+            "kind": kind or "suggestion",
+            "payload": dict(payload or {}),
+            "provenance": dict(provenance or {}),
+            "snoozed_until": None,
+            "user_email": user_email,
+            "workspace_id": resolved_workspace,
+            "created_at": now,
+            "updated_at": now,
+        }
+        state.setdefault("review_items", []).append(item)
+        self.save_state(state)
+        self.record_timeline_event(
+            "review", "review_item_created",
+            {"item_id": item["id"], "source": item["source"], "kind": item["kind"]},
+            workspace_id=resolved_workspace,
+        )
+        return item
+
+    def list_review_items(
+        self, *, workspace_id: Optional[str] = None, user_email: Optional[str] = None,
+        source: Optional[str] = None,
+    ) -> List[Dict[str, Any]]:
+        items = self._scoped(_listify(self.load_state().get("review_items")), workspace_id)
+        if user_email:
+            items = [item for item in items if item.get("user_email") in {None, user_email}]
+        if source:
+            items = [item for item in items if item.get("source") == source]
+        return list(reversed(items))
+
+    def get_review_item(self, item_id: str, *, workspace_id: Optional[str] = None) -> Dict[str, Any]:
+        item = next(
+            (it for it in _listify(self.load_state().get("review_items")) if it.get("id") == item_id),
+            None,
+        )
+        if item is None or (workspace_id and self._record_workspace(item) != str(workspace_id)):
+            raise FileNotFoundError(item_id)
+        return item
+
+    def update_review_item(
+        self, item_id: str, *, workspace_id: Optional[str] = None, **fields: Any,
+    ) -> Dict[str, Any]:
+        state = self.load_state()
+        item = next((it for it in _listify(state.get("review_items")) if it.get("id") == item_id), None)
+        if item is None or (workspace_id and self._record_workspace(item) != str(workspace_id)):
+            raise FileNotFoundError(item_id)
+        for key, value in fields.items():
+            item[key] = value
+        item["updated_at"] = _now()
+        self.save_state(state)
+        self.record_timeline_event(
+            "review", "review_item_updated",
+            {"item_id": item_id, "status": item.get("status")},
+            workspace_id=self._record_workspace(item),
+        )
+        return item
 
     def reconcile_interrupted_runs(self, *, reason: str = "server_startup") -> Dict[str, Any]:
         """Mark durable active runs as interrupted after a process restart.

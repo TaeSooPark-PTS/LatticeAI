@@ -161,6 +161,35 @@ function del<T>(path: string, shape: T) {
   return apiJson<T>("DELETE", path, { shape });
 }
 
+export type ReviewItem = {
+  id: string;
+  status: string;
+  effective_status: string;
+  title: string;
+  summary?: string;
+  source?: string;
+  kind?: string;
+  payload?: Record<string, unknown>;
+  provenance?: Record<string, unknown>;
+  snoozed_until?: string | null;
+  created_at?: string | null;
+  updated_at?: string | null;
+};
+
+function reviewItemShape(): ReviewItem {
+  return {
+    id: "",
+    status: "pending",
+    effective_status: "pending",
+    title: "",
+    summary: "",
+    source: "workflow_run",
+    kind: "suggestion",
+    payload: {},
+    provenance: {},
+  };
+}
+
 async function uploadDocument(file: File): Promise<ApiResult<Record<string, unknown> | null>> {
   const base = await apiBase();
   const form = new FormData();
@@ -380,6 +409,13 @@ export const latticeApi = {
   hooks: () => get("/api/hooks", { hooks: [] }),
   hookRuns: () => get("/api/hooks/runs", { runs: [] }, { limit: 50 }),
   hookRun: (body: unknown) => post("/api/hooks/run", body, {}),
+  automationReviews: (query?: { status?: string; source?: string }) =>
+    get("/automation/reviews", { items: [] }, query),
+  approveReviewItem: (id: string) => post(`/automation/reviews/${encodeURIComponent(id)}/approve`, {}, reviewItemShape()),
+  dismissReviewItem: (id: string) => post(`/automation/reviews/${encodeURIComponent(id)}/dismiss`, {}, reviewItemShape()),
+  snoozeReviewItem: (id: string, until: string) =>
+    post(`/automation/reviews/${encodeURIComponent(id)}/snooze`, { until }, reviewItemShape()),
+  runNowReviewItem: (id: string) => post(`/automation/reviews/${encodeURIComponent(id)}/run_now`, {}, reviewItemShape()),
   permissionsPending: () => get("/permissions/pending", { pending: {}, count: 0 }),
   approvePermission: (token: string) => post(`/permissions/approve/${encodeURIComponent(token)}`, {}, {}),
   denyPermission: (token: string) => post(`/permissions/deny/${encodeURIComponent(token)}`, {}, {}),

@@ -6,7 +6,8 @@
 
 | 버전 | 지원 여부 |
 |------|-----------|
-| 5.5.x (latest) | ✅ 지원 |
+| 5.6.x (latest) | ✅ 지원 |
+| 5.5.x | ✅ 보안 패치 범위 내 지원 |
 | 5.4.x | ✅ 보안 패치 범위 내 지원 |
 | 5.2.x | ✅ 보안 패치 범위 내 지원 |
 | 5.1.x | ✅ 보안 패치 범위 내 지원 |
@@ -48,7 +49,7 @@
 
 ## 보안 모델
 
-Lattice AI v5.5.0는 모델이 바뀌어도 사용자의 지식과 맥락을 보존하는 local-first Digital Brain입니다. Personal /
+Lattice AI v5.6.0는 모델이 바뀌어도 사용자의 지식과 맥락을 보존하는 local-first Digital Brain입니다. Personal /
 Organization Workspace, Brain-first Conversation, Knowledge Graph, Vector
 Index, Hybrid Search, Basic / Advanced / Admin mode, durable workspace
 governance, independent Brain Core package boundary, pluggable storage,
@@ -56,7 +57,7 @@ encrypted `.latticebrain` archives, confirmed restore/import, local-only
 startup hardening, desktop sidecar status, strict packaged-app CSP, first-run
 setup, saved-profile email/password mismatch guards, explicit model
 recommendation/install/validation flow, and default-off model downloads/runtime
-installs를 포함합니다. v5.5.0는 구조화된 모델 capability registry와
+installs를 포함합니다. v5.6.0는 구조화된 모델 capability registry와
 Hugging Face 검증 상태를 통해 모델 다운로드/로드 가능성, 하드웨어 요구사항,
 멀티모달 지원 여부를 사용자에게 더 투명하게 보여줍니다. 일반 사용자 Brain
 화면과 관리자 로그/보안/운영 화면을 분리하고, 로컬 파일 자동 읽기 우회를
