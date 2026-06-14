@@ -1,220 +1,217 @@
 import * as React from "react";
-import { useQuery } from "@tanstack/react-query";
-import { BrainCircuit, Command, Menu, Moon, Search, Sun, X } from "lucide-react";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { ArrowLeft, ImagePlus, Send, X } from "lucide-react";
 import { latticeApi } from "@/api/client";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
+import { LivingBrain, triggerBrainRecall } from "@/components/LivingBrain";
 import { ProductFlow, readProductFlowComplete } from "@/components/ProductFlow";
 import { useAppStore } from "@/store/appStore";
-import { commandRoutes, go, parseHash, primaryRoutes, PrimaryRoute } from "@/routes";
-import { BrainPage } from "@/pages/Brain";
-import { CapturePage } from "@/pages/Capture";
-import { ActPage } from "@/pages/Act";
-import { LibraryPage } from "@/pages/Library";
-import { SystemPage } from "@/pages/System";
-import { cn } from "@/lib/utils";
+import { asArray } from "@/lib/utils";
 
-function useRoute() {
-  const [route, setRoute] = React.useState(parseHash);
-  React.useEffect(() => {
-    const onHash = () => setRoute(parseHash());
-    window.addEventListener("hashchange", onHash);
-    return () => window.removeEventListener("hashchange", onHash);
-  }, []);
-  return route;
-}
 
-function Page({ primary, tab }: { primary: PrimaryRoute; tab?: string }) {
-  if (primary === "memory") return <BrainPage initialTab="memory" />;
-  if (primary === "capture") return <CapturePage initialTab={tab} />;
-  if (primary === "act") return <ActPage initialTab={tab} />;
-  if (primary === "library") return <LibraryPage initialTab={tab} />;
-  if (primary === "system") return <SystemPage initialTab={tab} />;
-  return <BrainPage initialTab={tab} />;
-}
 
-function AmbientBrain() {
-  return (
-    <div className="ambient-brain" aria-hidden="true">
-      <span className="signal-line signal-line-a" />
-      <span className="signal-line signal-line-b" />
-      <span className="signal-line signal-line-c" />
-      <span className="signal-tile signal-tile-a" />
-      <span className="signal-tile signal-tile-b" />
-      <span className="signal-tile signal-tile-c" />
-    </div>
-  );
-}
 
-function CommandPalette({ open, onClose }: { open: boolean; onClose: () => void }) {
-  const [query, setQuery] = React.useState("");
-  const normalized = query.trim().toLowerCase();
-  const matches = commandRoutes.filter((route) => (
-    route.label.toLowerCase().includes(normalized) || route.key.includes(normalized)
-  ));
 
-  React.useEffect(() => {
-    if (!open) return;
-    const onKey = (event: KeyboardEvent) => {
-      if (event.key === "Escape") onClose();
-    };
-    window.addEventListener("keydown", onKey);
-    return () => window.removeEventListener("keydown", onKey);
-  }, [open, onClose]);
 
-  if (!open) return null;
-  return (
-    <div className="command-scrim" role="dialog" aria-modal="true" aria-label="Lattice command palette">
-      <div className="command-panel">
-        <div className="command-search">
-          <Search className="h-4 w-4 text-muted-foreground" />
-          <Input value={query} onChange={(event) => setQuery(event.target.value)} autoFocus placeholder="Jump to anything in Lattice" />
-          <Button variant="ghost" size="icon" onClick={onClose} aria-label="Close command palette"><X className="h-4 w-4" /></Button>
-        </div>
-        <div className="command-list soft-scrollbar">
-          {matches.map((route) => {
-            const Icon = route.icon;
-            return (
-              <button
-                key={route.key}
-                onClick={() => {
-                  go(route.key);
-                  onClose();
-                }}
-                className="command-row"
-              >
-                <span className="command-icon"><Icon className="h-4 w-4" /></span>
-                <span>
-                  <span className="block text-sm font-semibold">{route.label}</span>
-                  <span className="block text-xs text-muted-foreground">Open {route.key.replace(/[-/]/g, " ")}</span>
-                </span>
-              </button>
-            );
-          })}
-        </div>
-      </div>
-    </div>
-  );
-}
 
-function PrimaryDock({ active, onNavigate }: { active: PrimaryRoute; onNavigate?: () => void }) {
-  return (
-    <nav className="primary-dock" aria-label="Primary navigation">
-      {primaryRoutes.map((item) => {
-        const Icon = item.icon;
-        const selected = active === item.id;
-        return (
-          <button
-            key={item.id}
-            className={cn("dock-button", selected && "is-active")}
-            onClick={() => {
-              go(item.id);
-              onNavigate?.();
-            }}
-            aria-current={selected ? "page" : undefined}
-          >
-            <Icon className="h-4 w-4" />
-            <span>{item.label}</span>
-          </button>
-        );
-      })}
-    </nav>
-  );
-}
+
 
 export default function App() {
-  const route = useRoute();
   const { theme, setTheme } = useAppStore();
-  const [drawer, setDrawer] = React.useState(false);
-  const [palette, setPalette] = React.useState(false);
   const [flowComplete, setFlowComplete] = React.useState(readProductFlowComplete);
-  const health = useQuery({ queryKey: ["health"], queryFn: latticeApi.health, enabled: flowComplete });
-  const desktop = useQuery({
-    queryKey: ["desktopBackendStatus"],
-    queryFn: latticeApi.desktopBackendStatus,
-    enabled: flowComplete && Boolean(window.__TAURI_INTERNALS__),
-    refetchInterval: 5000,
-  });
+  const [depth, setDepth] = React.useState<"home" | "memory" | "knowledge" | "relationships" | "map">("home");
+
+  const { state: brainState, intensity, setBrain } = useBrainState();
 
   React.useEffect(() => {
     document.documentElement.dataset.theme = theme;
   }, [theme]);
 
+  // ⌘K focuses the home composer; Esc leaves chambers
   React.useEffect(() => {
-    const onKey = (event: KeyboardEvent) => {
-      if ((event.metaKey || event.ctrlKey) && event.key.toLowerCase() === "k") {
-        event.preventDefault();
-        setPalette(true);
+    const onKey = (e: KeyboardEvent) => {
+      if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === "k") {
+        e.preventDefault();
+        const ta = document.querySelector<HTMLTextAreaElement>(".brain-composer textarea");
+        ta?.focus();
       }
+      if (e.key === "Escape" && depth !== "home") setDepth("home");
     };
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
-  }, []);
+  }, [depth]);
 
   if (!flowComplete) {
-    return <ProductFlow onComplete={() => {
-      setFlowComplete(true);
-      go("brain");
-    }} />;
+    return <ProductFlow onComplete={() => { setFlowComplete(true); setDepth("home"); }} />;
   }
 
-  const healthData = (health.data?.data || {}) as Record<string, unknown>;
-  const desktopData = (desktop.data?.data || {}) as Record<string, unknown>;
-  const backendReady = Boolean(health.data?.ok);
-  const desktopReady = !window.__TAURI_INTERNALS__ || Boolean(desktopData.running);
+  const goDepth = (d: any) => {
+    setDepth(d);
+    if (d !== "home") setBrain("recalling", 0.74);
+    else setBrain("idle", 0.6);
+  };
 
   return (
-    <div className="app-backdrop min-h-screen text-foreground">
-      <AmbientBrain />
-      <CommandPalette open={palette} onClose={() => setPalette(false)} />
+    <div className="brain-space" data-depth={depth}>
+      <div className="brain-field" />
 
-      <header className="app-chrome">
-        <div className="brand-lockup">
-          <button className="mobile-menu" onClick={() => setDrawer(true)} aria-label="Open navigation"><Menu className="h-5 w-5" /></button>
-          <button className="brand-mark" onClick={() => go("brain")} aria-label="Open Lattice Brain">
-            <BrainCircuit className="h-5 w-5" />
-          </button>
-          <div className="brand-copy">
-            <div className="brand-name">Lattice</div>
-            <div className="brand-subtitle">Living Brain</div>
-          </div>
+      {depth === "home" ? (
+        <BrainHome
+          brainState={brainState}
+          intensity={intensity}
+          onBrainChange={setBrain}
+          onEnterDepth={goDepth}
+        />
+      ) : (
+        <MindChamber depth={depth} onExit={() => setDepth("home")} brainState={brainState} />
+      )}
+    </div>
+  );
+}
+
+/* --------------------- Supporting hooks & tiny pieces (kept in-file for speed of this release) --------------------- */
+
+function useBrainState() {
+  const [state, setState] = React.useState<"idle" | "listening" | "thinking" | "recalling" | "synthesizing" | "resting">("idle");
+  const [intensity, setIntensity] = React.useState(0.58);
+  const setBrain = React.useCallback((next: any, i?: number) => {
+    setState(next);
+    if (i !== undefined) setIntensity(Math.max(0.38, Math.min(1, i)));
+  }, []);
+  return { state, intensity, setBrain };
+}
+
+function BrainHome({ brainState, intensity, onBrainChange, onEnterDepth }: any) {
+  const qc = useQueryClient();
+  const [messages, setMessages] = React.useState<any[]>([]);
+  const [draft, setDraft] = React.useState("");
+  const [imageData, setImageData] = React.useState<string | null>(null);
+  const [streaming, setStreaming] = React.useState(false);
+  const [conversationId, setConversationId] = React.useState<string | null>(null);
+  const streamRef = React.useRef<HTMLDivElement>(null);
+
+  const modelsQ = useQuery({ queryKey: ["models"], queryFn: latticeApi.models });
+  const modelName = React.useMemo(() => {
+    const d: any = modelsQ.data?.data;
+    if (!d) return "your mind";
+    const loaded = asArray(d.loaded || []);
+    return loaded[0]?.name || loaded[0]?.id || "local mind";
+  }, [modelsQ.data]);
+
+  React.useEffect(() => {
+    if (streaming) onBrainChange("thinking", 0.94);
+    else if (draft.trim().length > 4) onBrainChange("listening", 0.76);
+    else onBrainChange("idle", 0.58);
+  }, [streaming, draft, onBrainChange]);
+
+  async function send() {
+    const text = draft.trim();
+    if (!text || streaming) return;
+    const cid = conversationId || `brain-${Date.now()}`;
+    if (!conversationId) setConversationId(cid);
+
+    setMessages((m) => [...m, { role: "user", content: text }, { role: "assistant", content: "" }]);
+    setDraft("");
+    setImageData(null);
+    setStreaming(true);
+    onBrainChange("thinking", 0.96);
+
+    try {
+      await latticeApi.streamChat(
+        { message: text, conversation_id: cid, image_data: imageData || undefined },
+        {
+          onChunk: (_d, full) => {
+            setMessages((prev) => { const n = [...prev]; n[n.length - 1] = { role: "assistant", content: full }; return n; });
+          },
+          onTrace: (t) => { if (t) { onBrainChange("recalling", 0.9); triggerBrainRecall(); setTimeout(() => onBrainChange("thinking", 0.9), 900); } },
+        }
+      );
+    } finally {
+      setStreaming(false);
+      qc.invalidateQueries({ queryKey: ["chatHistory"] });
+      qc.invalidateQueries({ queryKey: ["memoryManager"] });
+      onBrainChange("idle", 0.61);
+    }
+  }
+
+  React.useEffect(() => { const el = streamRef.current; if (el) el.scrollTop = el.scrollHeight; }, [messages]);
+
+  return (
+    <>
+      <div className="brain-presence">
+        <LivingBrain state={brainState} intensity={intensity} size="large" />
+      </div>
+
+      <div className="brain-conversation">
+        <div className="brain-conversation-header">
+          <div style={{ opacity: 0.55 }}>with your mind</div>
+          <div style={{ fontSize: "0.68rem", opacity: 0.45 }}>{modelName}</div>
         </div>
 
-        <div className="desktop-dock">
-          <PrimaryDock active={route.primary} />
-        </div>
-
-        <div className="chrome-actions">
-          <button className="status-chip" onClick={() => go("settings")}>
-            <span className={cn("status-light", backendReady && desktopReady ? "is-ready" : "is-waiting")} />
-            <span>{backendReady && desktopReady ? "Ready" : "Starting"}</span>
-          </button>
-          <Button variant="outline" onClick={() => setPalette(true)}><Command className="h-4 w-4" /> Find</Button>
-          <Button variant="outline" size="icon" onClick={() => setTheme(theme === "dark" ? "light" : "dark")} aria-label="Toggle theme">
-            {theme === "dark" ? <Sun className="h-4 w-4" /> : <Moon className="h-4 w-4" />}
-          </Button>
-        </div>
-      </header>
-
-      {drawer ? (
-        <div className="mobile-drawer">
-          <button className="drawer-scrim" aria-label="Close navigation" onClick={() => setDrawer(false)} />
-          <div className="drawer-panel">
-            <div className="drawer-header">
-              <div>
-                <div className="font-semibold">Lattice</div>
-                <div className="text-xs text-muted-foreground">Choose a layer</div>
-              </div>
-              <Button variant="ghost" size="icon" onClick={() => setDrawer(false)} aria-label="Close navigation"><X className="h-4 w-4" /></Button>
+        <div ref={streamRef} className="brain-stream">
+          {messages.length === 0 ? (
+            <div className="mind-empty">
+              <div style={{ fontSize: "13px", letterSpacing: "1.5px", textTransform: "uppercase", opacity: 0.5, marginBottom: "6px" }}>BEGIN</div>
+              <div style={{ fontSize: "1.18rem" }}>What are you thinking about?</div>
             </div>
-            <PrimaryDock active={route.primary} onNavigate={() => setDrawer(false)} />
+          ) : messages.map((m, i) => (
+            <div key={i} className={`brain-message ${m.role === "user" ? "user" : "assistant"}`}>
+              <div className="brain-message-bubble">{m.content}</div>
+            </div>
+          ))}
+        </div>
+
+        <div className="brain-composer">
+          <textarea
+            value={draft}
+            onChange={(e) => setDraft(e.target.value)}
+            onKeyDown={(e) => { if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); void send(); } }}
+            placeholder="Talk to your Brain…"
+          />
+          <div className="brain-composer-actions">
+            <label className="inline-flex cursor-pointer items-center gap-1.5 rounded-full border border-border/60 px-3 py-1 text-xs active:bg-white/5">
+              <ImagePlus className="h-3.5 w-3.5" /> <span>Image</span>
+              <input type="file" accept="image/*" className="sr-only" onChange={async (e) => {
+                const f = e.target.files?.[0]; if (f) { const r = new FileReader(); r.onload = () => setImageData(r.result as string); r.readAsDataURL(f); }
+              }} />
+            </label>
+            <Button onClick={() => void send()} disabled={!draft.trim() || streaming} className="rounded-full px-5"><Send className="h-4 w-4" /> Send</Button>
           </div>
         </div>
-      ) : null}
+      </div>
 
-      <main className="page-shell">
-        <Page primary={route.primary} tab={route.tab} />
-      </main>
+      <div className="depths">
+        <button className="depth" onClick={() => onEnterDepth("memory")}>Memory</button>
+        <button className="depth" onClick={() => onEnterDepth("knowledge")}>Knowledge</button>
+        <button className="depth" onClick={() => onEnterDepth("relationships")}>Connections</button>
+        <button className="depth" onClick={() => onEnterDepth("map")}>The Map</button>
+      </div>
+    </>
+  );
+}
+
+function MindChamber({ depth, onExit, brainState }: any) {
+  const title = depth === "memory" ? "Memories" : depth === "knowledge" ? "What your Brain knows" : depth === "relationships" ? "How everything connects" : "The Map";
+  const sub = depth === "memory" ? "The life you have lived with your mind." : depth === "knowledge" ? "What has settled into understanding." : depth === "relationships" ? "The quiet threads between the things that matter." : "The architecture of what you know. Walk slowly.";
+
+  return (
+    <div className="mind-chamber">
+      <div className="chamber-head">
+        <button onClick={onExit} className="flex items-center gap-2 text-sm opacity-70 hover:opacity-100"><ArrowLeft className="h-4 w-4" /> Back to the Brain</button>
+        <div className="flex items-center gap-3"><div className="brain-trace" /> <div className="chamber-title">{title}</div></div>
+        <button onClick={onExit}><X className="h-5 w-5 opacity-60" /></button>
+      </div>
+      <div className="chamber-body">
+        <div style={{ fontSize: "1.32rem", fontWeight: 620, marginBottom: "1.4rem" }}>{title}<div style={{ fontSize: "0.95rem", color: "hsl(var(--fg-muted))", marginTop: "4px" }}>{sub}</div></div>
+
+        {depth === "map" && <div className="mind-map-frame"><div style={{ padding: "2.25rem", opacity: 0.75, fontSize: "13px" }}>The living structure of your knowledge. Every node is something you gave it. Every line is a connection it discovered or you lived.<br /><br />This is the deepest, most contemplative layer. It is not a tool for work. It is a place to understand the shape of your own mind.</div></div>}
+        {depth === "memory" && <div className="text-[15px] leading-relaxed opacity-85">Everything you have told it, every document you fed it, every decision made together. Over months and years this becomes a second, truer autobiography.</div>}
+        {depth === "knowledge" && <div className="text-[15px] leading-relaxed opacity-85">Not raw files. What the Brain has come to believe, prefer, and hold as true because of the life you have shared with it.</div>}
+        {depth === "relationships" && <div className="text-[15px] leading-relaxed opacity-85">Some ideas are close because they were born together. Others grew toward each other slowly. This is the living fabric of your thinking.</div>}
+      </div>
+      <div style={{ position: "fixed", bottom: 22, right: 22, zIndex: 70, opacity: 0.55 }}>
+        <LivingBrain state={brainState} size="trace" showLabel={false} />
+      </div>
     </div>
   );
 }

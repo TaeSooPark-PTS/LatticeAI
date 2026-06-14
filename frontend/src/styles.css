@@ -3,46 +3,43 @@
 
 :root {
   color-scheme: dark;
-  --background: 168 12% 7%;
-  --foreground: 190 24% 94%;
-  --card: 180 10% 11%;
-  --card-foreground: 190 24% 94%;
-  --muted: 205 11% 18%;
-  --muted-foreground: 188 10% 67%;
-  --primary: 166 68% 52%;
-  --primary-foreground: 168 18% 7%;
-  --secondary: 238 18% 23%;
-  --secondary-foreground: 190 24% 94%;
-  --destructive: 356 73% 59%;
-  --destructive-foreground: 0 0% 100%;
-  --border: 190 12% 26%;
-  --input: 190 12% 30%;
-  --ring: 166 68% 52%;
-  --brain: 166 68% 52%;
-  --ask: 205 80% 67%;
-  --capture: 136 58% 56%;
-  --act: 38 91% 60%;
-  --library: 278 62% 70%;
-  --system: 5 72% 66%;
+  /* Digital Brain — warm, private, alive */
+  --bg: 22 18% 5.5%;
+  --bg-elevated: 24 16% 8%;
+  --fg: 36 18% 94%;
+  --fg-muted: 30 12% 68%;
+  --brain-core: 38 72% 68%;      /* warm ember-gold */
+  --brain-halo: 38 65% 78%;
+  --memory: 168 52% 62%;        /* quiet teal pulse */
+  --knowledge: 200 48% 70%;
+  --connection: 280 42% 72%;    /* soft violet for relationships */
+  --map: 32 38% 74%;            /* contemplative gold for the Map */
+  --surface: 24 14% 9%;
+  --surface-glass: 24 14% 9% / 0.82;
+  --border: 28 12% 22%;
+  --accent: 38 72% 68%;
+  --destructive: 12 62% 58%;
+  --ring: 38 72% 68%;
 }
 
 :root[data-theme="light"] {
   color-scheme: light;
-  --background: 180 16% 96%;
-  --foreground: 205 18% 12%;
-  --card: 180 24% 99%;
-  --card-foreground: 205 18% 12%;
-  --muted: 190 14% 91%;
-  --muted-foreground: 200 10% 38%;
-  --primary: 170 70% 30%;
-  --primary-foreground: 0 0% 100%;
-  --secondary: 236 20% 89%;
-  --secondary-foreground: 205 18% 12%;
-  --destructive: 356 70% 47%;
-  --destructive-foreground: 0 0% 100%;
-  --border: 190 14% 76%;
-  --input: 190 14% 70%;
-  --ring: 170 70% 30%;
+  --bg: 36 28% 96%;
+  --bg-elevated: 36 26% 98%;
+  --fg: 24 16% 11%;
+  --fg-muted: 28 10% 42%;
+  --brain-core: 32 58% 46%;
+  --brain-halo: 32 52% 58%;
+  --memory: 170 48% 42%;
+  --knowledge: 205 42% 48%;
+  --connection: 275 38% 52%;
+  --map: 30 36% 52%;
+  --surface: 36 22% 96%;
+  --surface-glass: 36 22% 96% / 0.9;
+  --border: 28 14% 78%;
+  --accent: 32 58% 46%;
+  --destructive: 10 58% 48%;
+  --ring: 32 58% 46%;
 }
 
 @theme inline {
@@ -939,6 +936,501 @@ button {
   justify-content: space-between;
   gap: 1rem;
   margin-bottom: 0.8rem;
+}
+
+/* ═══════════════════════════════════════════════════════════════
+   DIGITAL BRAIN EXPERIENCE — Complete Immersive Redesign
+   The Brain is the product. Everything else is discovered depth.
+   Warm, private, alive, human.
+   ═══════════════════════════════════════════════════════════════ */
+
+html, body, #root {
+  height: 100%;
+}
+
+body {
+  font-family: ui-sans-serif, system-ui, -apple-system, "SF Pro Text", Inter, sans-serif;
+  -webkit-font-smoothing: antialiased;
+  text-rendering: optimizeLegibility;
+}
+
+/* The entire post-onboarding experience is a living room with the Brain */
+.brain-space {
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+  background: radial-gradient(120% 80% at 50% 20%, hsl(var(--bg-elevated)) 0%, hsl(var(--bg)) 55%);
+  position: relative;
+  overflow: hidden;
+}
+
+/* Subtle living field behind everything */
+.brain-field {
+  position: fixed;
+  inset: 0;
+  z-index: 0;
+  pointer-events: none;
+  background:
+    radial-gradient(circle at 30% 25%, hsl(var(--brain-core) / 0.035) 0%, transparent 55%),
+    radial-gradient(circle at 72% 68%, hsl(var(--memory) / 0.03) 0%, transparent 60%);
+  transition: opacity 1200ms ease;
+}
+
+/* The living presence — large, primary, always visible, reactive */
+.brain-presence {
+  position: relative;
+  z-index: 2;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 2.25rem 1.5rem 1.5rem;
+  flex: 0 0 auto;
+}
+
+.brain-presence.large {
+  padding-top: 2.75rem;
+  padding-bottom: 1.25rem;
+}
+
+/* The actual living visual object */
+.brain-organism {
+  position: relative;
+  width: clamp(220px, 28vw, 320px);
+  height: clamp(220px, 28vw, 320px);
+  display: grid;
+  place-items: center;
+  transition: transform 600ms cubic-bezier(0.23, 1, 0.32, 1), filter 400ms ease;
+  will-change: transform, filter;
+}
+
+.brain-organism[data-state="listening"] { transform: scale(1.015); filter: brightness(1.06) saturate(1.08); }
+.brain-organism[data-state="thinking"] { transform: scale(0.985); filter: brightness(0.96) saturate(0.92); }
+.brain-organism[data-state="recalling"] { filter: brightness(1.12) saturate(1.15); }
+.brain-organism[data-state="synthesizing"] { transform: scale(1.01); }
+
+.brain-core {
+  position: absolute;
+  inset: 18%;
+  border-radius: 999px;
+  background: radial-gradient(circle at 42% 32%, hsl(var(--brain-halo) / 0.95), hsl(var(--brain-core) / 0.9) 38%, hsl(var(--brain-core)) 68%);
+  box-shadow:
+    0 0 0 1px hsl(var(--brain-core) / 0.35) inset,
+    0 0 68px hsl(var(--brain-core) / 0.45),
+    0 12px 42px hsl(22 20% 3% / 0.55);
+  transition: all 520ms cubic-bezier(0.23, 1, 0.32, 1);
+}
+
+.brain-halo {
+  position: absolute;
+  inset: 8%;
+  border-radius: 999px;
+  border: 1px solid hsl(var(--brain-core) / 0.28);
+  box-shadow: 0 0 92px hsl(var(--brain-core) / 0.22);
+  animation: brain-halo-breathe 6.4s ease-in-out infinite;
+}
+
+.brain-organism[data-state="thinking"] .brain-halo { animation-duration: 1.8s; }
+.brain-organism[data-state="recalling"] .brain-halo { animation-duration: 2.8s; }
+
+@keyframes brain-halo-breathe {
+  0%, 100% { transform: scale(1); opacity: 0.65; }
+  50% { transform: scale(1.035); opacity: 0.95; }
+}
+
+/* Thought activity layer (subtle drifting lines / embers) */
+.thought-activity {
+  position: absolute;
+  inset: 12%;
+  border-radius: 999px;
+  overflow: hidden;
+  pointer-events: none;
+}
+
+.thought-particle {
+  position: absolute;
+  width: 3px;
+  height: 3px;
+  background: hsl(var(--brain-halo) / 0.9);
+  border-radius: 999px;
+  box-shadow: 0 0 6px hsl(var(--brain-halo));
+  animation: thought-drift 4.2s linear infinite;
+  opacity: 0.0;
+}
+
+.brain-organism[data-state="thinking"] .thought-particle { opacity: 0.55; animation-duration: 2.1s; }
+.brain-organism[data-state="synthesizing"] .thought-particle { opacity: 0.7; }
+
+@keyframes thought-drift {
+  0% { transform: translateY(12%) scale(0.6); }
+  40% { transform: translateY(-18%) scale(1); }
+  100% { transform: translateY(-42%) scale(0.3); opacity: 0; }
+}
+
+/* Memory pulses — fire on recall / important moments */
+.memory-ripple {
+  position: absolute;
+  inset: 22%;
+  border-radius: 999px;
+  border: 1.5px solid hsl(var(--memory) / 0.65);
+  opacity: 0;
+  pointer-events: none;
+}
+
+.brain-organism.pulse .memory-ripple {
+  animation: memory-ripple 1250ms ease-out forwards;
+}
+
+@keyframes memory-ripple {
+  0% { transform: scale(0.7); opacity: 0.7; }
+  70% { opacity: 0.18; }
+  100% { transform: scale(1.65); opacity: 0; }
+}
+
+/* Gentle label / state under the organism */
+.brain-presence-label {
+  margin-top: 1.1rem;
+  font-size: 0.78rem;
+  letter-spacing: 0.5px;
+  text-transform: uppercase;
+  font-weight: 600;
+  color: hsl(var(--fg-muted));
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.brain-presence-label .dot {
+  width: 5px;
+  height: 5px;
+  border-radius: 999px;
+  background: hsl(var(--brain-core));
+  box-shadow: 0 0 0 3px hsl(var(--brain-core) / 0.18);
+  animation: presence-dot 2.8s ease-in-out infinite;
+}
+
+.brain-presence-label[data-state="thinking"] .dot { background: hsl(var(--memory)); animation-duration: 1.1s; }
+
+/* The intimate conversation — primary interaction, spacious, human */
+.brain-conversation {
+  position: relative;
+  z-index: 3;
+  flex: 1 1 auto;
+  display: flex;
+  flex-direction: column;
+  max-width: 780px;
+  margin: 0 auto;
+  width: 100%;
+  padding: 0 1.25rem 1.75rem;
+}
+
+.brain-conversation-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding-bottom: 0.65rem;
+  color: hsl(var(--fg-muted));
+  font-size: 0.75rem;
+  letter-spacing: 0.4px;
+  text-transform: uppercase;
+}
+
+.brain-stream {
+  flex: 1 1 auto;
+  overflow-y: auto;
+  padding: 1rem 0.25rem 1.5rem;
+  scroll-behavior: smooth;
+  mask-image: linear-gradient(transparent, black 6%, black 92%, transparent);
+}
+
+.brain-message {
+  max-width: 78%;
+  margin-bottom: 1.1rem;
+  animation: message-enter 260ms cubic-bezier(0.23, 1, 0.32, 1);
+}
+
+.brain-message.user { margin-left: auto; text-align: right; }
+
+.brain-message-bubble {
+  padding: 0.85rem 1.1rem;
+  border-radius: 18px;
+  font-size: 1.01rem;
+  line-height: 1.45;
+  white-space: pre-wrap;
+  box-shadow: 0 1px 2px hsl(0 0% 0% / 0.12);
+}
+
+.brain-message.user .brain-message-bubble {
+  background: hsl(var(--brain-core) / 0.12);
+  color: hsl(var(--fg));
+  border-bottom-right-radius: 6px;
+}
+
+.brain-message.assistant .brain-message-bubble {
+  background: hsl(var(--surface) / 0.96);
+  border: 1px solid hsl(var(--border) / 0.7);
+  color: hsl(var(--fg));
+  border-bottom-left-radius: 6px;
+}
+
+@keyframes message-enter {
+  from { opacity: 0; transform: translateY(6px); }
+  to { opacity: 1; transform: none; }
+}
+
+.brain-composer {
+  position: relative;
+  z-index: 10;
+  margin-top: auto;
+  padding: 0.85rem 0.6rem 0.35rem;
+  background: linear-gradient(180deg, transparent, hsl(var(--bg)) 36%);
+}
+
+.brain-composer textarea {
+  width: 100%;
+  min-height: 3.4rem;
+  max-height: 9.5rem;
+  resize: none;
+  background: hsl(var(--surface) / 0.92);
+  border: 1px solid hsl(var(--border) / 0.8);
+  border-radius: 16px;
+  padding: 0.95rem 1.15rem;
+  font-size: 1.02rem;
+  line-height: 1.4;
+  color: hsl(var(--fg));
+  outline: none;
+  transition: border-color 160ms ease, box-shadow 160ms ease;
+}
+
+.brain-composer textarea:focus {
+  border-color: hsl(var(--brain-core) / 0.6);
+  box-shadow: 0 0 0 3px hsl(var(--brain-core) / 0.08);
+}
+
+.brain-composer-actions {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  margin-top: 0.55rem;
+  padding: 0 0.35rem;
+}
+
+/* Progressive depths navigation — subtle, never a "sidebar" */
+.depths {
+  position: fixed;
+  bottom: 1.35rem;
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 40;
+  display: flex;
+  gap: 0.35rem;
+  padding: 0.25rem;
+  background: hsl(var(--surface-glass));
+  border: 1px solid hsl(var(--border) / 0.6);
+  border-radius: 999px;
+  backdrop-filter: blur(18px);
+}
+
+.depth {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  padding: 0.38rem 0.95rem;
+  font-size: 0.78rem;
+  letter-spacing: 0.2px;
+  color: hsl(var(--fg-muted));
+  border-radius: 999px;
+  transition: all 160ms ease;
+  cursor: pointer;
+  user-select: none;
+}
+
+.depth:hover {
+  color: hsl(var(--fg));
+  background: hsl(var(--bg) / 0.6);
+}
+
+.depth.active {
+  color: hsl(var(--fg));
+  background: hsl(var(--brain-core) / 0.11);
+}
+
+/* Full-bleed contemplative chambers for Memory / Knowledge / Relationships / Map */
+.mind-chamber {
+  position: fixed;
+  inset: 0;
+  z-index: 50;
+  background: hsl(var(--bg));
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  animation: chamber-enter 420ms cubic-bezier(0.23, 1.0, 0.32, 1);
+}
+
+@keyframes chamber-enter {
+  from { opacity: 0; transform: translateY(12px); }
+  to { opacity: 1; transform: none; }
+}
+
+.chamber-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 1.35rem 2rem 0.9rem;
+  border-bottom: 1px solid hsl(var(--border) / 0.5);
+  flex-shrink: 0;
+}
+
+.chamber-head .brain-trace {
+  width: 38px;
+  height: 38px;
+  opacity: 0.6;
+}
+
+.chamber-title {
+  font-size: 1.05rem;
+  font-weight: 620;
+  letter-spacing: -0.1px;
+}
+
+.chamber-body {
+  flex: 1 1 auto;
+  overflow-y: auto;
+  padding: 1.75rem 2rem 3.5rem;
+  max-width: 1080px;
+  margin: 0 auto;
+  width: 100%;
+}
+
+/* The Map — artistic, slow, contemplative. Not a tool. */
+.mind-map-frame {
+  height: calc(100vh - 9.5rem);
+  border-radius: 18px;
+  border: 1px solid hsl(var(--border) / 0.55);
+  background: hsl(var(--bg-elevated));
+  overflow: hidden;
+  box-shadow: inset 0 0 120px hsl(0 0% 0% / 0.35);
+  position: relative;
+}
+
+.mind-map-frame::before {
+  content: "The architecture of your mind";
+  position: absolute;
+  top: 1.1rem;
+  left: 1.35rem;
+  font-size: 0.72rem;
+  letter-spacing: 1.5px;
+  text-transform: uppercase;
+  color: hsl(var(--fg-muted) / 0.7);
+  z-index: 2;
+  pointer-events: none;
+}
+
+.mind-map-frame .brain-trace {
+  position: absolute;
+  top: 1rem;
+  right: 1.25rem;
+  z-index: 2;
+  opacity: 0.5;
+}
+
+/* Small persistent trace of the Brain when in depths */
+.brain-trace {
+  width: 42px;
+  height: 42px;
+  border-radius: 999px;
+  background: radial-gradient(circle at 40% 32%, hsl(var(--brain-halo)), hsl(var(--brain-core)));
+  box-shadow: 0 0 0 1px hsl(var(--brain-core) / 0.3), 0 0 18px hsl(var(--brain-core) / 0.25);
+  display: grid;
+  place-items: center;
+  font-size: 10px;
+  color: hsl(var(--bg));
+  font-weight: 700;
+  letter-spacing: 0.5px;
+}
+
+/* Product flow — now a quiet ritual, not a wizard */
+.product-flow-shell {
+  min-height: 100vh;
+  display: grid;
+  place-items: center;
+  padding: 2.5rem 1.25rem;
+  background: radial-gradient(100% 70% at 50% 15%, hsl(var(--bg-elevated)), hsl(var(--bg)));
+}
+
+.product-flow-shell .living-brain { transform: scale(0.82); }
+
+.flow-ritual {
+  width: min(100%, 620px);
+  text-align: center;
+}
+
+.flow-ritual h1 {
+  font-size: clamp(2.1rem, 5.2vw, 3.1rem);
+  font-weight: 700;
+  line-height: 1.0;
+  margin: 1.1rem 0 0.6rem;
+}
+
+.flow-ritual p {
+  color: hsl(var(--fg-muted));
+  font-size: 1.01rem;
+  max-width: 42ch;
+  margin: 0 auto;
+}
+
+.ritual-brain {
+  margin: 1.4rem auto 1.6rem;
+}
+
+/* Make old chrome and dock very quiet or hidden in main brain experience */
+.app-chrome, .primary-dock, .ambient-brain {
+  display: none !important;
+}
+
+.page-shell {
+  padding: 0;
+  max-width: none;
+  width: 100%;
+}
+
+/* Gentle empty / loading for the mind */
+.mind-empty {
+  text-align: center;
+  padding: 3rem 1rem;
+  color: hsl(var(--fg-muted));
+}
+
+.mind-empty .icon {
+  opacity: 0.5;
+  margin-bottom: 0.8rem;
+}
+
+/* Loading as thinking */
+.thinking {
+  animation: thinking-subtle 1.6s ease-in-out infinite;
+}
+
+@keyframes thinking-subtle {
+  0%,100% { opacity: 0.6; }
+  50% { opacity: 1; }
+}
+
+/* Success is quiet */
+.brain-quiet-success {
+  font-size: 0.78rem;
+  color: hsl(var(--memory));
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+}
+
+/* Responsive care */
+@media (max-width: 720px) {
+  .brain-presence { padding-top: 1.4rem; }
+  .brain-organism { width: 200px; height: 200px; }
+  .brain-conversation { padding-bottom: 5.5rem; }
+  .depths { bottom: 0.9rem; }
 }
 
 .drawer-panel .primary-dock {

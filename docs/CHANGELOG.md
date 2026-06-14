@@ -3,9 +3,25 @@
 The top entry is the current release-preparation target. Older entries are
 historical and may describe behavior as it existed at that release.
 
+## [4.6.x Frontend Experience RC] - 2026-06-14
+
+> Complete frontend replacement. The product is now experienced as a living Digital Brain.
+
+### Changed (Frontend — full replacement of the previous prototype)
+- The entire post-onboarding surface is now a single immersive "Brain Space". The Brain presence is large, always visible, and the primary emotional and visual object.
+- Conversation is the central, intimate way you live with the Brain. No traditional app chrome, dock, or page shell in the primary experience.
+- LivingBrain component completely rewritten as a reactive, layered, breathing organism with memory ripples, thought particles, state-driven animation, and click-to-respond behavior.
+- Progressive discovery enforced in the UI: from the Brain you gently descend into Memory, Knowledge, Connections, and The Map (the graph). The graph is never the landing experience.
+- Onboarding (ProductFlow) reframed as a quiet, ceremonial awakening ritual with the Brain presence participating at every step.
+- New warm, private, organic visual language (deep ember-gold presence, soft teal memory pulses, generous space, contemplative typography). Old dashboard aesthetics and navigation chrome suppressed on the primary path.
+- Depth chambers are full-bleed, slow, human rooms — not feature pages. A small living trace of the Brain stays visible for continuity.
+- All backend functionality (chat streaming, memory, hybrid search, graph, model prepare/load, portability, agents, etc.) is preserved and reachable. The old navigation remains for deep-link compatibility but is not the product surface.
+
+The technology was already a Digital Brain. This release makes the *experience* one.
+
 ## [4.6.0] - 2026-06-13
 
-> Living Brain Experience release after the v4.5.1 product shell reset.
+> Living Brain Experience release after the v4.5.1 product shell reset. (Previous iteration — this RC supersedes the visual and structural approach while keeping the capability foundation.)
 
 ### Changed
 

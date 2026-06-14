@@ -332,7 +332,7 @@ function InstallScreen({
   return (
     <section className="flow-panel install-screen" aria-label="Install and Load">
       <div className="install-hero">
-        <LivingBrain activity={busy ? "thinking" : stage === "done" ? "listening" : "idle"} compact />
+        <LivingBrain state={busy ? "thinking" : stage === "done" ? "synthesizing" : "idle"} size="normal" showLabel={false} />
         <div>
           <div className="flow-kicker"><Download className="h-4 w-4" /> Install & Load</div>
           <h1>{model.shortName}</h1>
