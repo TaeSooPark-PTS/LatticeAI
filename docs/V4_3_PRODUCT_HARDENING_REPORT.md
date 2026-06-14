@@ -44,8 +44,8 @@ architecture.
 - Release artifact validation now checks the exact Tauri DMG path.
 - Release artifact build script cleans only target-version outputs before
   rebuilding.
-- Historical artifacts remain visible so `dist/*` upload mistakes are still
-  detectable.
+- Historical artifacts remain visible so wildcard upload mistakes from `dist`
+  are still detectable.
 
 ## Registry Policy
 

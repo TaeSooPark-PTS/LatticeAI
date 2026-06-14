@@ -327,9 +327,9 @@ so in words (`api.js:393-408`). Most surfaces are **WORKING** or honestly
 closes the remaining functionality gaps it had flagged** — hooks now execute,
 uploads appear in Files, the Chat composer accepts images, agents run from their
 own view, and the on-device local agent / connect-folder / folder-watch surfaces
-are live (see [CHANGELOG](CHANGELOG.md) and
-[RELEASE_NOTES_v3.4.0.md](RELEASE_NOTES_v3.4.0.md)). Enterprise features remain
-intentionally **DISABLED**.
+are live (see [CHANGELOG](CHANGELOG.md)). Release-note files older than v4.5.0
+are intentionally hidden from the Git-tracked public note surface. Enterprise
+features remain intentionally **DISABLED**.
 
 ---
 

@@ -43,5 +43,5 @@ FastAPI backend compatibility, release artifacts, and installed-wheel smoke.
   `block v0.1.6`; the current Tauri 2.0 build passes on Rust 1.96.
 - Release artifact validation warns that historical artifacts remain in
   `dist/`; this is expected and reinforces the rule to upload only exact
-  v4.1.0 filenames, never `dist/*`.
+  v4.1.0 filenames, never a wildcard from the `dist` directory.
 - No external registry publish was performed.

@@ -176,7 +176,8 @@ Validated v5.1.0 artifacts:
 - `dist/ltcai-5.1.0.vsix`
 - `src-tauri/target/release/bundle/dmg/Lattice AI_5.1.0_aarch64.dmg`
 
-Attach only those exact files to the GitHub Release. Do not upload `dist/*`.
+Attach only those exact files to the GitHub Release. Do not upload a wildcard
+from the `dist` directory.
 
 ## Local Development
 
@@ -234,16 +235,6 @@ npm run docs:check-links
 | 4.6.0 | Living Brain Experience: made Brain plus conversation the home product, added an animated living Brain presence, and moved graph exploration to the deepest intentional layer |
 | 4.5.1 | Product Reimagining RC: replaced the desktop shell, navigation model, onboarding journey, first-viewport hierarchy, and visual system while preserving capabilities and local-first architecture |
 | 4.5.0 | Product Experience Recovery RC: restored first-run setup, workspace/model onboarding, explicit model install/download/validate/load flow, Gemma 4 runtime compatibility gating, Basic-mode polish, and graph discoverability |
-| 4.4.0 | Brain Engine Extraction: Brain Core physically moved into `lattice_brain` with isolation tests |
-| 4.3.3 | Dead-Code Cleanup Release |
-| 4.3.2 | Product Polish & Graph UX Overhaul RC |
-| 4.3.1 | End-User Audit Repair RC |
-| 4.3.0 | Portability & Product Hardening RC |
-| 4.2.0 | Brain Core & Storage Rebuild |
-| 4.1.0 | Frontend & Desktop Rebuild |
-| 4.0.1 | Digital Brain maintenance |
-| 4.0.0 | Digital Brain Platform foundation |
-| 3.0.0 | v3 local-first AI workspace platform |
 
 ## Current Documentation
 
@@ -258,8 +249,13 @@ npm run docs:check-links
 - [RELEASE_NOTES.md](RELEASE_NOTES.md) - release notes index.
 - [RELEASE_NOTES_v5.1.0.md](RELEASE_NOTES_v5.1.0.md) - v5.1.0 Product Trust & Clarity release notes.
 - [RELEASE_NOTES_v5.0.0.md](RELEASE_NOTES_v5.0.0.md) - v5.0.0 multilingual foundation history.
+- [RELEASE_NOTES_v4.7.2.md](RELEASE_NOTES_v4.7.2.md) - v4.7.2 intuitive Brain UX history.
+- [RELEASE_NOTES_v4.7.1.md](RELEASE_NOTES_v4.7.1.md) - v4.7.1 admin operations history.
+- [RELEASE_NOTES_v4.7.0.md](RELEASE_NOTES_v4.7.0.md) - v4.7.0 admin separation history.
 - [RELEASE_NOTES_v4.6.1.md](RELEASE_NOTES_v4.6.1.md) - v4.6.1 release refresh history.
 - [RELEASE_NOTES_v4.6.0.md](RELEASE_NOTES_v4.6.0.md) - v4.6.0 Living Brain history.
+- [RELEASE_NOTES_v4.5.1.md](RELEASE_NOTES_v4.5.1.md) - v4.5.1 product reimagining history.
+- [RELEASE_NOTES_v4.5.0.md](RELEASE_NOTES_v4.5.0.md) - v4.5.0 product recovery history.
 - [RELEASE.md](RELEASE.md) - release checklist and exact artifact guidance.
 - [SECURITY.md](SECURITY.md) - security posture.
 - [docs/CHANGELOG.md](docs/CHANGELOG.md) - changelog.

@@ -51,4 +51,5 @@ Expected exact-version artifacts:
 
 `npm run release:validate` confirmed all exact-version RC artifacts are present.
 It also warned that historical artifacts remain in `dist/`, so publish commands
-must continue to use explicit v4.5.1 filenames rather than a `dist/*` glob.
+must continue to use explicit v4.5.1 filenames rather than a wildcard from the
+`dist` directory.
