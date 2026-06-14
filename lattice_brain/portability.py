@@ -15,6 +15,7 @@ from __future__ import annotations
 
 import hashlib
 import json
+import os
 import shutil
 import tempfile
 import zipfile
@@ -55,6 +56,78 @@ def _safe_zip_names(names) -> None:
         path = PurePosixPath(name)
         if path.is_absolute() or ".." in path.parts:
             raise ValueError(f"Backup archive contains unsafe path: {name}")
+
+
+def _pre_restore_backup_dir(anchor: Path) -> Path:
+    backup_dir = anchor.parent / f"{anchor.name}.pre-restore-{_stamp()}"
+    index = 1
+    while backup_dir.exists():
+        backup_dir = anchor.parent / f"{anchor.name}.pre-restore-{_stamp()}-{index}"
+        index += 1
+    backup_dir.mkdir(parents=True)
+    return backup_dir
+
+
+def _sqlite_siblings(db_path: Path) -> tuple[Path, Path, Path]:
+    return (db_path, Path(str(db_path) + "-wal"), Path(str(db_path) + "-shm"))
+
+
+def _restore_sibling(path: Path, backup: Path) -> None:
+    if backup.exists():
+        shutil.copy2(backup, path)
+    elif path.exists():
+        path.unlink()
+
+
+def _replace_sqlite_atomically(src: Path, dest: Path, backup_dir: Path) -> None:
+    dest.parent.mkdir(parents=True, exist_ok=True)
+    tmp = dest.parent / f".{dest.name}.restore-{_stamp()}-{os.getpid()}.tmp"
+    shutil.copyfile(src, tmp)
+    backups: dict[Path, Path] = {}
+    try:
+        for sibling in _sqlite_siblings(dest):
+            if sibling.exists():
+                backup = backup_dir / sibling.name
+                shutil.copy2(sibling, backup)
+                backups[sibling] = backup
+        for sibling in _sqlite_siblings(dest)[1:]:
+            if sibling.exists():
+                sibling.unlink()
+        os.replace(tmp, dest)
+    except Exception:
+        if tmp.exists():
+            tmp.unlink()
+        for sibling in _sqlite_siblings(dest):
+            _restore_sibling(sibling, backups.get(sibling, backup_dir / sibling.name))
+        raise
+
+
+def _rollback_sqlite_from_backup(dest: Path, backup_dir: Path) -> None:
+    for sibling in _sqlite_siblings(dest):
+        _restore_sibling(sibling, backup_dir / sibling.name)
+
+
+def _replace_tree_with_backup(src: Optional[Path], dest: Path, backup_dir: Path) -> None:
+    dest.parent.mkdir(parents=True, exist_ok=True)
+    staged = dest.parent / f".{dest.name}.restore-{_stamp()}-{os.getpid()}"
+    backup = backup_dir / dest.name
+    if src and src.exists():
+        shutil.copytree(src, staged)
+    else:
+        staged.mkdir(parents=True)
+    try:
+        if dest.exists():
+            shutil.copytree(dest, backup)
+            shutil.rmtree(dest)
+        os.replace(staged, dest)
+    except Exception:
+        if staged.exists():
+            shutil.rmtree(staged)
+        if dest.exists():
+            shutil.rmtree(dest)
+        if backup.exists():
+            shutil.copytree(backup, dest)
+        raise
 
 
 class KGPortabilityService:
@@ -204,24 +277,19 @@ class KGPortabilityService:
                     }
                 db_dest = Path(self._kg.db_path)
                 blob_dest = Path(self._kg.blob_dir)
-                db_dest.parent.mkdir(parents=True, exist_ok=True)
-                # Drop the live DB + stale WAL/SHM siblings so the restored copy
-                # is authoritative (no stale journal overlaying old pages).
-                for sib in (db_dest, Path(str(db_dest) + "-wal"), Path(str(db_dest) + "-shm")):
-                    if sib.exists():
-                        sib.unlink()
-                shutil.copyfile(db_src, db_dest)
-                blob_src = tmp / "blobs"
-                if blob_src.exists():
-                    if blob_dest.exists():
-                        shutil.rmtree(blob_dest)
-                    shutil.copytree(blob_src, blob_dest)
-                else:
-                    blob_dest.mkdir(parents=True, exist_ok=True)
+                backup_dir = _pre_restore_backup_dir(db_dest)
+                try:
+                    _replace_sqlite_atomically(db_src, db_dest, backup_dir)
+                    blob_src = tmp / "blobs"
+                    _replace_tree_with_backup(blob_src if blob_src.exists() else None, blob_dest, backup_dir)
+                except Exception:
+                    _rollback_sqlite_from_backup(db_dest, backup_dir)
+                    raise
         stats = self._kg.stats()
         return {
             "restored": True,
             "manifest": manifest,
+            "pre_restore_backup": str(backup_dir),
             "nodes": sum(stats.get("nodes", {}).values()),
         }
 

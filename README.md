@@ -105,7 +105,8 @@ Screenshot index and capture notes:
   Brain home keeps conversation first and surfaces the everyday "Care for my
   Brain" ownership path as a collapsed control with export, backup, archive,
   inspect, and restore preview actions while keeping destructive confirmed
-  restore in Settings.
+  restore in Settings. Restore operations create pre-restore backups and roll
+  back failed DB/blob swaps so the current Brain is not left half-restored.
 - **Privacy**: local-first and private-first by default. Cloud models, Telegram,
   Brain Network, Docker/Postgres setup, model downloads, and update checks are
   opt-in paths.

@@ -29,6 +29,9 @@ runtime, graph APIs, and portability capabilities는 재설계하지 않는다.
 - **Changed (Product positioning UX)**: first-run and empty-Brain states now
   explain why Lattice exists: models are replaceable, user knowledge is durable,
   and the Brain is a private owned context layer.
+- **Changed (Restore safety)**: backup restore and encrypted `.latticebrain`
+  restore now keep pre-restore backups and roll back failed DB/blob swaps so the
+  Brain is not left partially restored.
 - **Changed (Architecture/docs sync)**: ARCHITECTURE.md, release notes,
   changelog, security posture, feature status, and VS Code extension docs are
   synchronized to v4.6.1.

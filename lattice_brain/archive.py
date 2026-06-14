@@ -50,6 +50,10 @@ def _now() -> str:
     return datetime.now(timezone.utc).isoformat()
 
 
+def _stamp() -> str:
+    return _now().replace(":", "").replace("-", "").replace(".", "")[:15]
+
+
 def _derive_key(passphrase: str, salt: bytes) -> bytes:
     if not passphrase:
         raise ValueError("A passphrase is required for encrypted .latticebrain archives.")
@@ -91,6 +95,78 @@ def _assert_safe_member(name: str) -> PurePosixPath:
     if path.is_absolute() or ".." in path.parts:
         raise ValueError(f"Archive payload contains unsafe path: {name}")
     return path
+
+
+def _pre_restore_backup_dir(anchor: Path) -> Path:
+    backup_dir = anchor.parent / f"{anchor.name}.pre-restore-{_stamp()}"
+    index = 1
+    while backup_dir.exists():
+        backup_dir = anchor.parent / f"{anchor.name}.pre-restore-{_stamp()}-{index}"
+        index += 1
+    backup_dir.mkdir(parents=True)
+    return backup_dir
+
+
+def _sqlite_siblings(db_path: Path) -> tuple[Path, Path, Path]:
+    return (db_path, Path(str(db_path) + "-wal"), Path(str(db_path) + "-shm"))
+
+
+def _restore_sibling(path: Path, backup: Path) -> None:
+    if backup.exists():
+        shutil.copy2(backup, path)
+    elif path.exists():
+        path.unlink()
+
+
+def _replace_sqlite_atomically(src: Path, dest: Path, backup_dir: Path) -> None:
+    dest.parent.mkdir(parents=True, exist_ok=True)
+    tmp = dest.parent / f".{dest.name}.restore-{_stamp()}-{os.getpid()}.tmp"
+    shutil.copyfile(src, tmp)
+    backups: dict[Path, Path] = {}
+    try:
+        for sibling in _sqlite_siblings(dest):
+            if sibling.exists():
+                backup = backup_dir / sibling.name
+                shutil.copy2(sibling, backup)
+                backups[sibling] = backup
+        for sibling in _sqlite_siblings(dest)[1:]:
+            if sibling.exists():
+                sibling.unlink()
+        os.replace(tmp, dest)
+    except Exception:
+        if tmp.exists():
+            tmp.unlink()
+        for sibling in _sqlite_siblings(dest):
+            _restore_sibling(sibling, backups.get(sibling, backup_dir / sibling.name))
+        raise
+
+
+def _rollback_sqlite_from_backup(dest: Path, backup_dir: Path) -> None:
+    for sibling in _sqlite_siblings(dest):
+        _restore_sibling(sibling, backup_dir / sibling.name)
+
+
+def _replace_tree_with_backup(src: Optional[Path], dest: Path, backup_dir: Path) -> None:
+    dest.parent.mkdir(parents=True, exist_ok=True)
+    staged = dest.parent / f".{dest.name}.restore-{_stamp()}-{os.getpid()}"
+    backup = backup_dir / dest.name
+    if src and src.exists():
+        shutil.copytree(src, staged)
+    else:
+        staged.mkdir(parents=True)
+    try:
+        if dest.exists():
+            shutil.copytree(dest, backup)
+            shutil.rmtree(dest)
+        os.replace(staged, dest)
+    except Exception:
+        if staged.exists():
+            shutil.rmtree(staged)
+        if dest.exists():
+            shutil.rmtree(dest)
+        if backup.exists():
+            shutil.copytree(backup, dest)
+        raise
 
 
 @dataclass(frozen=True)
@@ -397,19 +473,15 @@ class EncryptedBrainArchive:
             db_src = out / "knowledge_graph.sqlite"
             if not db_src.exists():
                 raise ValueError("Archive payload is missing knowledge_graph.sqlite.")
-            target.db_path.parent.mkdir(parents=True, exist_ok=True)
-            for sibling in (target.db_path, Path(str(target.db_path) + "-wal"), Path(str(target.db_path) + "-shm")):
-                if sibling.exists():
-                    sibling.unlink()
-            shutil.copyfile(db_src, target.db_path)
-            blobs_src = out / "blobs"
-            if target.blob_dir:
-                if target.blob_dir.exists():
-                    shutil.rmtree(target.blob_dir)
-                if blobs_src.exists():
-                    shutil.copytree(blobs_src, target.blob_dir)
-                else:
-                    target.blob_dir.mkdir(parents=True, exist_ok=True)
+            backup_dir = _pre_restore_backup_dir(target.db_path)
+            try:
+                _replace_sqlite_atomically(db_src, target.db_path, backup_dir)
+                blobs_src = out / "blobs"
+                if target.blob_dir:
+                    _replace_tree_with_backup(blobs_src if blobs_src.exists() else None, target.blob_dir, backup_dir)
+            except Exception:
+                _rollback_sqlite_from_backup(target.db_path, backup_dir)
+                raise
             if target.data_dir:
                 data_src = out / "data"
                 exports_src = out / "workspace_exports"
@@ -439,6 +511,7 @@ class EncryptedBrainArchive:
             "path": str(target.db_path),
             "encrypted": True,
             "verified": True,
+            "pre_restore_backup": str(backup_dir),
             "manifest": manifest,
         }
 

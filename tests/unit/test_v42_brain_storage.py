@@ -6,6 +6,7 @@ from pathlib import Path
 
 import pytest
 
+import lattice_brain.archive as archive_module
 from lattice_brain import BrainCore, KnowledgeGraphStore
 from lattice_brain.archive import BrainArchivePaths, EncryptedBrainArchive
 from lattice_brain.storage import (
@@ -173,6 +174,85 @@ def test_encrypted_latticebrain_archive_round_trip(tmp_path: Path):
             target=BrainArchivePaths(db_path=tmp_path / "bad.sqlite"),
             confirm=True,
         )
+
+
+def test_encrypted_latticebrain_restore_failure_preserves_current_brain(tmp_path: Path, monkeypatch):
+    db = tmp_path / "knowledge_graph.sqlite"
+    blobs = tmp_path / "knowledge_graph_blobs"
+    blobs.mkdir()
+    with sqlite3.connect(db) as conn:
+        conn.execute("CREATE TABLE nodes(id TEXT PRIMARY KEY, title TEXT)")
+        conn.execute("INSERT INTO nodes(id, title) VALUES ('n1', 'Archived')")
+    (blobs / "note.txt").write_text("archived blob", encoding="utf-8")
+
+    archive = EncryptedBrainArchive(BrainArchivePaths(db_path=db, blob_dir=blobs))
+    out = archive.create(tmp_path / "backup.latticebrain", passphrase="correct horse battery staple")
+
+    with sqlite3.connect(db) as conn:
+        conn.execute("UPDATE nodes SET title='Current' WHERE id='n1'")
+    (blobs / "note.txt").write_text("current blob", encoding="utf-8")
+
+    original_replace = archive_module.os.replace
+
+    def fail_db_swap(src, dst):
+        if Path(dst) == db:
+            raise OSError("simulated archive restore swap failure")
+        return original_replace(src, dst)
+
+    monkeypatch.setattr(archive_module.os, "replace", fail_db_swap)
+
+    with pytest.raises(OSError, match="swap failure"):
+        archive.restore(
+            Path(out["path"]),
+            passphrase="correct horse battery staple",
+            target=BrainArchivePaths(db_path=db, blob_dir=blobs),
+            confirm=True,
+        )
+
+    with sqlite3.connect(db) as conn:
+        assert conn.execute("SELECT title FROM nodes WHERE id='n1'").fetchone()[0] == "Current"
+    assert (blobs / "note.txt").read_text(encoding="utf-8") == "current blob"
+    backups = list(db.parent.glob(f"{db.name}.pre-restore-*"))
+    assert backups
+    assert (backups[0] / db.name).exists()
+
+
+def test_encrypted_latticebrain_blob_failure_rolls_back_database(tmp_path: Path, monkeypatch):
+    db = tmp_path / "knowledge_graph.sqlite"
+    blobs = tmp_path / "knowledge_graph_blobs"
+    blobs.mkdir()
+    with sqlite3.connect(db) as conn:
+        conn.execute("CREATE TABLE nodes(id TEXT PRIMARY KEY, title TEXT)")
+        conn.execute("INSERT INTO nodes(id, title) VALUES ('n1', 'Archived')")
+    (blobs / "note.txt").write_text("archived blob", encoding="utf-8")
+
+    archive = EncryptedBrainArchive(BrainArchivePaths(db_path=db, blob_dir=blobs))
+    out = archive.create(tmp_path / "backup.latticebrain", passphrase="correct horse battery staple")
+
+    with sqlite3.connect(db) as conn:
+        conn.execute("UPDATE nodes SET title='Current' WHERE id='n1'")
+    (blobs / "note.txt").write_text("current blob", encoding="utf-8")
+
+    original_replace = archive_module.os.replace
+
+    def fail_blob_swap(src, dst):
+        if Path(dst) == blobs:
+            raise OSError("simulated archive blob restore swap failure")
+        return original_replace(src, dst)
+
+    monkeypatch.setattr(archive_module.os, "replace", fail_blob_swap)
+
+    with pytest.raises(OSError, match="blob restore"):
+        archive.restore(
+            Path(out["path"]),
+            passphrase="correct horse battery staple",
+            target=BrainArchivePaths(db_path=db, blob_dir=blobs),
+            confirm=True,
+        )
+
+    with sqlite3.connect(db) as conn:
+        assert conn.execute("SELECT title FROM nodes WHERE id='n1'").fetchone()[0] == "Current"
+    assert (blobs / "note.txt").read_text(encoding="utf-8") == "current blob"
 
 
 def test_portability_service_exposes_storage_and_archive_paths(tmp_path: Path):

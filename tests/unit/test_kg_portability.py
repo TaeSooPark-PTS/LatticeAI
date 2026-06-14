@@ -16,6 +16,7 @@ from fastapi.testclient import TestClient
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[2]))
 
+import lattice_brain.portability as portability_module
 from knowledge_graph import GRAPH_SCHEMA_VERSION, KnowledgeGraphStore
 from latticeai.api.portability import create_portability_router
 from lattice_brain.ingestion import IngestionItem, IngestionPipeline
@@ -118,6 +119,59 @@ def test_restore_integrity_check_rejects_tampered_archive(tmp_path):
             zf.writestr(n, b)
     with pytest.raises(ValueError, match="integrity"):
         svc.restore(out["path"], confirm=True)
+
+
+def test_restore_failure_preserves_current_brain_and_pre_restore_backup(tmp_path, monkeypatch):
+    store = _seeded(tmp_path, "kg")
+    svc = KGPortabilityService(knowledge_graph=store, data_dir=tmp_path / "data")
+    out = svc.backup()
+
+    store.clear_all()
+    assert _node_totals(store) == 0
+
+    original_replace = portability_module.os.replace
+
+    def fail_db_swap(src, dst):
+        if Path(dst) == Path(store.db_path):
+            raise OSError("simulated restore swap failure")
+        return original_replace(src, dst)
+
+    monkeypatch.setattr(portability_module.os, "replace", fail_db_swap)
+
+    with pytest.raises(OSError, match="swap failure"):
+        svc.restore(out["path"], confirm=True)
+
+    assert _node_totals(store) == 0
+    backups = list(Path(store.db_path).parent.glob(f"{Path(store.db_path).name}.pre-restore-*"))
+    assert backups
+    assert (backups[0] / Path(store.db_path).name).exists()
+
+
+def test_restore_blob_failure_rolls_back_database_and_blobs(tmp_path, monkeypatch):
+    store = _seeded(tmp_path, "kg")
+    Path(store.blob_dir).mkdir(parents=True, exist_ok=True)
+    (Path(store.blob_dir) / "note.txt").write_text("archived blob", encoding="utf-8")
+    svc = KGPortabilityService(knowledge_graph=store, data_dir=tmp_path / "data")
+    out = svc.backup()
+
+    store.clear_all()
+    Path(store.blob_dir).mkdir(parents=True, exist_ok=True)
+    (Path(store.blob_dir) / "note.txt").write_text("current blob", encoding="utf-8")
+
+    original_replace = portability_module.os.replace
+
+    def fail_blob_swap(src, dst):
+        if Path(dst) == Path(store.blob_dir):
+            raise OSError("simulated blob restore swap failure")
+        return original_replace(src, dst)
+
+    monkeypatch.setattr(portability_module.os, "replace", fail_blob_swap)
+
+    with pytest.raises(OSError, match="blob restore"):
+        svc.restore(out["path"], confirm=True)
+
+    assert _node_totals(store) == 0
+    assert (Path(store.blob_dir) / "note.txt").read_text(encoding="utf-8") == "current blob"
 
 
 # ── route auth ───────────────────────────────────────────────────────────────

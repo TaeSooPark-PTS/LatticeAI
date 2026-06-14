@@ -25,6 +25,9 @@ historical and may describe behavior as it existed at that release.
 - Strengthened first-run and empty-Brain product messaging around the core
   promise that models are replaceable while the user's knowledge, decisions,
   projects, and context are durable.
+- Hardened Knowledge Graph backup restore and encrypted `.latticebrain` restore
+  so DB/blob replacement is staged with pre-restore backups and rollback on
+  partial failure.
 - Bumped synchronized package/runtime/static versions to `4.6.1`, including
   Python metadata, npm package metadata, VSIX metadata, Tauri metadata,
   `latticeai`, `lattice_brain`, runtime constants, and static asset metadata.
