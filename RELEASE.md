@@ -13,8 +13,8 @@ Lattice AI v4.6.0 — Living Brain Experience. Brain Core extraction,
 StorageEngine, FastAPI, Tauri, backup/restore, model runtime, graph APIs, and
 portability capabilities는 유지하고 first-launch flow를 Login -> Environment
 Analysis -> Recommended Models -> Install & Load -> Brain으로 교체한다. primary
-desktop experience는 Brain + Conversation 중심이며, graph는 제거하지 않고 가장
-깊은 advanced exploration layer로 이동한다.
+desktop experience는 Brain + Conversation 중심이며, graph는 제거하지 않고 Brain
+안쪽의 가장 깊은 exploration layer로 이동한다.
 
 - **Changed (First launch)**: `/app` opens to Login only until the product flow
   completes; no dashboard, graph, setup cards, system status, or Brain metrics
@@ -22,19 +22,18 @@ desktop experience는 Brain + Conversation 중심이며, graph는 제거하지 �
 - **Changed (Guided setup)**: environment analysis, model recommendations, and
   install/download/validate/load are presented as consumer product steps without
   runtime jargon.
-- **Changed (Primary experience)**: `/app` and `/app#/brain` now open directly
-  to the living Brain plus conversation after model loading instead of
+- **Changed (Primary experience)**: `/app` and compatible legacy hash routes now
+  open to a single immersive Brain Space after model loading instead of
   graph/status/dashboard surfaces.
-- **Changed (Living Brain)**: animated Brain presence reacts to listening,
-  memory recall, streaming/thinking, planning, and agent/workflow activity.
-- **Changed (Navigation)**: visible primary navigation is reduced to Brain,
-  Memory, Files, Automations, Models, and Settings. `/ask` and `/chat` remain
-  compatible aliases into the Brain conversation.
-- **Changed (Progressive disclosure)**: Brain tabs now descend as Brain ->
-  Memories -> Knowledge -> Relationships -> Graph -> Care.
-- **Changed (Graph positioning)**: graph exploration remains available at
-  `/app#/knowledge-graph`, but it is no longer the home identity or primary
-  product surface.
+- **Changed (Living Brain)**: animated Brain presence is recognizable as a Brain
+  and reacts to listening, memory recall, streaming/thinking, planning, and
+  agent/workflow activity.
+- **Changed (Progressive disclosure)**: Brain exploration is now five levels:
+  Living Brain -> Memory Layer -> Knowledge Layer -> Relationship Layer ->
+  Knowledge Graph.
+- **Changed (Graph positioning)**: graph exploration appears only at the
+  deepest Brain level, where nodes, edges, search, and focus details emerge from
+  the Brain rather than opening as a separate graph page.
 - **Preserved**: Brain Core, FastAPI APIs, Tauri desktop shell, StorageEngine,
   backup/restore, model runtimes, graph/search/chat/capture/automation/system
   workflows, and compatibility route aliases.

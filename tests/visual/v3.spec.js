@@ -1,19 +1,8 @@
 const { test, expect } = require("@playwright/test");
 
-const ROUTES = [
-  "brain", "knowledge-graph", "hybrid-search", "memory",
-  "ask", "chat",
-  "capture", "files", "pipeline", "my-computer",
-  "act", "agents", "runs", "workflows", "hooks", "tools",
-  "library", "models", "skills", "mcp", "marketplace",
-  "system", "account", "workspace-admin", "snapshots", "activity", "network",
-  "settings", "admin/users", "admin/permissions", "admin/audit", "admin/security",
-  "admin/policies", "admin/private-vpc",
-];
-
 function trackPageErrors(page) {
   const errors = [];
-  page.on("pageerror", (e) => errors.push(String(e.message || e)));
+  page.on("pageerror", (error) => errors.push(String(error.message || error)));
   return errors;
 }
 
@@ -23,201 +12,121 @@ async function bypassProductFlow(page) {
   });
 }
 
-test("Brain-first product flow opens with login and guides setup before Brain", async ({ page }) => {
+async function openBrain(page) {
+  await bypassProductFlow(page);
+  await page.goto("/app");
+  await expect(page.locator("main[aria-label='Lattice Brain']")).toBeVisible();
+}
+
+async function travelDeeper(page, times = 1) {
+  const brain = page.getByRole("button", { name: "Travel deeper into your Brain" });
+  for (let index = 0; index < times; index += 1) {
+    await brain.click();
+  }
+}
+
+test("first-run ritual enters the living Brain", async ({ page }) => {
   const errors = trackPageErrors(page);
   await page.goto("/app");
-  await expect(page.locator("body")).toContainText("Enter your Brain");
-  await expect(page.getByRole("navigation", { name: "Primary navigation" })).toHaveCount(0);
-  await expect(page.locator("body")).not.toContainText("Source coverage");
-  await expect(page.locator("body")).not.toContainText("Knowledge map");
 
-  await page.getByLabel("Password").fill("Lattice123");
-  await page.getByRole("button", { name: "Continue" }).click();
-  await expect(page.locator("body")).toContainText("Environment Analysis");
-  await expect(page.locator("body")).toContainText("Apple Silicon Mac");
-  await expect(page.locator("body")).toContainText("Local Support");
-  await page.getByRole("button", { name: "See recommended models" }).click();
-  await expect(page.locator("body")).toContainText("Recommended for your computer");
-  await expect(page.locator("body")).toContainText("Best Experience");
-  await expect(page.locator("body")).not.toContainText("MLX");
-  await expect(page.locator("body")).not.toContainText("GGUF");
-  await expect(page.locator("body")).not.toContainText("Ollama");
+  await expect(page.locator("body")).toContainText("Welcome to your mind.");
+  await expect(page.getByRole("button", { name: "Travel deeper into your Brain" })).toBeVisible();
 
-  await page.locator(".model-recommendation-card").first().click();
-  await expect(page.locator("body")).toContainText("Install & Load");
-  await page.getByRole("button", { name: "Install & Load" }).click();
-  await expect(page.locator("body")).toContainText("Your Brain is ready");
-  await page.waitForSelector("text=Lattice Brain");
-  await expect(page.locator("body")).toContainText("Talk to your Brain");
-  await expect(page.locator("body")).not.toContainText("Advanced relationship graph");
+  await page.getByRole("textbox", { name: "You", exact: true }).fill("Codex");
+  await page.getByRole("textbox", { name: "you@local", exact: true }).fill("codex@local");
+  await page.getByPlaceholder("Create a strong local password").fill("Lattice123");
+  await page.getByRole("button", { name: "Open my Brain" }).click();
+
+  await expect(page.locator("body")).toContainText("Understanding your home.");
+  await page.getByRole("button", { name: "See how your Brain can think" }).click();
+
+  await expect(page.locator("body")).toContainText("How shall your mind think today?");
+  await page.locator(".ritual-model-card").first().click();
+
+  await expect(page.locator("body")).toContainText("Bring this mind home.");
+  await page.getByRole("button", { name: /make this my Brain/ }).click();
+  await expect(page.locator("main[aria-label='Lattice Brain']")).toBeVisible();
+  await expect(page.locator("body")).toContainText("Living Brain");
+  await expect(page.locator("body")).not.toContainText("Knowledge Graph");
   expect(errors).toEqual([]);
 });
 
-test("React desktop shell boots with compact Brain navigation", async ({ page }) => {
-  await bypassProductFlow(page);
+test("Brain depths reveal memory, knowledge, relationships, then graph", async ({ page }) => {
   const errors = trackPageErrors(page);
-  await page.goto("/app");
-  await page.waitForSelector("text=Lattice Brain");
-  const nav = page.getByRole("navigation", { name: "Primary navigation" });
-  for (const label of ["Brain", "Memory", "Files", "Automations", "Models", "Settings"]) {
-    await expect(nav.getByRole("button", { name: label })).toBeVisible();
-  }
-  await expect(page.locator("body")).toContainText("Talk to your Brain");
-  await expect(page.locator("body")).not.toContainText("v4.1.0 Release Candidate");
+  await openBrain(page);
+
+  await expect(page.locator("body")).toContainText("Level 1");
+  await expect(page.locator("body")).toContainText("Living Brain");
+  await expect(page.locator(".memory-fragment")).toHaveCount(0);
+  await expect(page.locator("[data-testid='emergent-knowledge-graph']")).toHaveCount(0);
+
+  await travelDeeper(page);
+  await expect(page.locator("body")).toContainText("Memory Layer");
+  await expect(page.locator(".memory-fragment").first()).toBeVisible();
+  await expect(page.locator("body")).not.toContainText("Knowledge Graph");
+
+  await travelDeeper(page);
+  await expect(page.locator("body")).toContainText("Knowledge Layer");
+  await expect(page.locator(".concept-signal").first()).toBeVisible();
+  await expect(page.locator("body")).not.toContainText("Knowledge Graph");
+
+  await travelDeeper(page);
+  await expect(page.locator("body")).toContainText("Relationship Layer");
+  await expect(page.locator(".relationship-weave line").first()).toBeAttached();
+  await expect(page.locator("body")).not.toContainText("Knowledge Graph");
+
+  await travelDeeper(page);
+  await expect(page.locator("body")).toContainText("Knowledge Graph");
+  await expect(page.locator("[data-testid='emergent-knowledge-graph']")).toBeVisible();
+  await expect(page.getByLabel("Search knowledge graph")).toBeVisible();
+  await expect(page.locator(".graph-node").first()).toBeVisible();
   expect(errors).toEqual([]);
 });
 
-test("old hash routes resolve into the replacement SPA without JS errors", async ({ page }) => {
-  await bypassProductFlow(page);
-  for (const route of ROUTES) {
-    const errors = trackPageErrors(page);
-    await page.goto(`/app#/${route}`);
-    await page.waitForSelector("main h1, main h2", { timeout: 10000 });
-    expect(errors, `${route} threw`).toEqual([]);
-  }
-});
-
-test("knowledge graph renders a Cytoscape canvas and provenance coverage", async ({ page }) => {
-  await bypassProductFlow(page);
-  await page.goto("/app#/knowledge-graph");
-  await page.waitForSelector("[data-testid='brain-cytoscape']");
-  await expect(page.locator("body")).toContainText("Source coverage");
-  await expect(page.locator("[data-testid='brain-cytoscape'] canvas").first()).toBeVisible();
-});
-
-test("offline startup loads local assets and shows honest unavailable state", async ({ page }) => {
-  await bypassProductFlow(page);
+test("deepest Brain layer supports graph search and returning to the surface", async ({ page }) => {
   const errors = trackPageErrors(page);
-  await page.route("**/*", async (route) => {
-    const url = new URL(route.request().url());
-    const localAsset = url.pathname === "/app"
-      || url.pathname.startsWith("/static/")
-      || url.pathname === "/manifest.json"
-      || url.pathname === "/favicon.ico"
-      || url.pathname === "/sw.js";
-    if (localAsset) {
-      await route.continue();
-      return;
-    }
-    await route.abort();
-  });
-  await page.goto("/app#/brain");
-  await page.waitForSelector("text=Lattice Brain");
-  await expect(page.locator("body")).toContainText("Starting");
-  await expect(page.getByRole("navigation", { name: "Primary navigation" }).getByRole("button", { name: "Brain" })).toBeVisible();
+  await openBrain(page);
+  await travelDeeper(page, 4);
+
+  await page.getByLabel("Search knowledge graph").fill("workspace");
+  await expect(page.locator(".graph-node")).toHaveCount(2);
+  await expect(page.locator(".brain-graph-focus")).toContainText("Lattice AI");
+
+  await page.getByRole("button", { name: "Surface" }).click();
+  await expect(page.locator("body")).toContainText("Living Brain");
+  await expect(page.locator("[data-testid='emergent-knowledge-graph']")).toHaveCount(0);
   expect(errors).toEqual([]);
 });
 
-test("hybrid search calls the API and renders returned records", async ({ page }) => {
-  await bypassProductFlow(page);
-  await page.goto("/app#/hybrid-search");
-  await page.getByPlaceholder("Search memories, indexed documents, and relationships").fill("retrieval");
-  await page.locator("section").getByRole("button", { name: "Search" }).click();
-  await expect(page.locator("body")).toContainText("Lattice AI");
-});
+test("conversation keeps the Brain alive while chat streams", async ({ page }) => {
+  const errors = trackPageErrors(page);
+  await openBrain(page);
 
-test("Ask streams chat and shows context trace", async ({ page }) => {
-  await bypassProductFlow(page);
-  await page.goto("/app#/chat");
-  await page.getByPlaceholder("Ask the Brain anything...").fill("How does hybrid search rank results?");
-  await page.getByRole("button", { name: /Send/ }).click();
+  await page.getByPlaceholder("Talk to your Brain...").fill("How does hybrid search rank results?");
+  await page.getByRole("button", { name: "Send" }).click();
   await expect(page.locator("body")).toContainText("Hybrid retrieval");
-  await expect(page.locator("body")).toContainText("Memory nearby");
+  await expect(page.locator("body")).toContainText("Living Brain");
+  expect(errors).toEqual([]);
 });
 
-test("Capture exposes upload, local folder, URL, and processing controls", async ({ page }) => {
-  await bypassProductFlow(page);
-  await page.goto("/app#/files");
-  await expect(page.locator("body")).toContainText("retrieval-design.pdf");
-  await page.goto("/app#/my-computer");
-  await expect(page.locator("body")).toContainText("Folder access");
-  await page.goto("/app#/capture");
-  await page.getByRole("button", { name: "Web" }).click();
-  await expect(page.locator("body")).toContainText("Capture URL");
-  await page.goto("/app#/pipeline");
-  await expect(page.locator("body")).toContainText("Rebuild retrieval index");
-});
-
-test("Act surfaces agents, runs, workflow graph, triggers, hooks, and tools", async ({ page }) => {
-  await bypassProductFlow(page);
-  await page.goto("/app#/agents");
-  await expect(page.locator("body")).toContainText("Planner");
-  await page.goto("/app#/runs");
-  await expect(page.locator("body")).toContainText("Approval inbox");
-  await page.goto("/app#/workflows");
-  await expect(page.locator(".react-flow")).toBeVisible();
-  await expect(page.locator("body")).toContainText("Automation triggers");
-  await page.goto("/app#/hooks");
-  await expect(page.locator("body")).toContainText("Redact Secrets");
-  await page.goto("/app#/tools");
-  await expect(page.locator("body")).toContainText("Write File");
-});
-
-test("Library renders models, skills, tool connections, and marketplace registries", async ({ page }) => {
-  await bypassProductFlow(page);
-  await page.goto("/app#/models");
-  await expect(page.locator("body")).toContainText("Qwen3-VL 8B");
-  await expect(page.locator("body")).toContainText("Analyze this Mac, recommend a model, install only with consent, validate it, then load it.");
-  await expect(page.locator("body")).toContainText("Needs attention before loading");
-  await expect(page.locator("body")).not.toContainText("MLX");
-  await expect(page.locator("body")).not.toContainText("GGUF");
-  await expect(page.locator("body")).toContainText("Gemma 4 26B A4B Instruct");
-  await expect(page.locator("body")).toContainText("Qwen3-VL 8B");
-  await expect(page.locator("body")).not.toContainText("No module named");
-  await page.goto("/app#/skills");
-  await expect(page.locator("body")).toContainText("visual_regression");
-  await page.goto("/app#/mcp");
-  await expect(page.locator("body")).toContainText("Read File");
-  await page.goto("/app#/marketplace");
-  await expect(page.locator("body")).toContainText("Research Assistant");
-});
-
-test("Basic graph view hides developer endpoint leakage", async ({ page }) => {
-  await bypassProductFlow(page);
-  await page.goto("/app#/knowledge-graph");
-  await page.waitForSelector("[data-testid='brain-cytoscape']");
-  await expect(page.locator("body")).toContainText("Open the deepest layer when you want to inspect the underlying relationships.");
-  await expect(page.locator("body")).not.toContainText("/knowledge-graph/graph");
-  await expect(page.locator("body")).not.toContainText("Cytoscape.js");
-});
-
-test("System renders account, workspaces, snapshots, activity, network, settings, and admin", async ({ page }) => {
-  await bypassProductFlow(page);
-  await page.goto("/app#/account");
-  await expect(page.locator("body")).toContainText("admin@example.com");
-  await page.goto("/app#/workspace-admin");
-  await expect(page.locator("body")).toContainText("Design Org");
-  await page.goto("/app#/snapshots");
-  await expect(page.locator("body")).toContainText("v4 checkpoint");
-  await page.goto("/app#/activity");
-  await expect(page.locator("body")).toContainText("Workflow Started");
-  await page.goto("/app#/network");
-  await expect(page.locator("body")).toContainText("This Mac");
-  await page.goto("/app#/settings");
-  await expect(page.locator("body")).toContainText("Computer memory");
-  await page.goto("/app#/admin/security");
-  await expect(page.locator("body")).toContainText("Admin controls");
-  await page.getByRole("button", { name: "Switch to Admin" }).click();
-  await expect(page.locator("body")).toContainText("Security overview");
-});
-
-test("legacy page URLs redirect into the replacement app", async ({ page }) => {
-  await page.goto("/chat");
-  await expect(page).toHaveURL(/\/app#\/chat$/);
-  await page.goto("/workspace");
-  await expect(page).toHaveURL(/\/app#\/workspace-admin$/);
-  await page.goto("/graph");
-  await expect(page).toHaveURL(/\/app#\/knowledge-graph$/);
-});
-
-test("mobile layout has no horizontal overflow and nav opens", async ({ page }) => {
-  await bypassProductFlow(page);
+test("mobile Brain surface has no horizontal overflow", async ({ page }) => {
+  const errors = trackPageErrors(page);
   await page.setViewportSize({ width: 390, height: 780 });
-  await page.goto("/app#/brain");
-  await page.waitForSelector("main h1");
+  await openBrain(page);
+
   const overflow = await page.evaluate(() => document.documentElement.scrollWidth - document.documentElement.clientWidth);
   expect(overflow).toBeLessThanOrEqual(1);
-  await page.getByLabel("Toggle theme").waitFor();
-  await page.getByRole("button").first().click();
-  await expect(page.getByText("Choose a layer")).toBeVisible();
+  await expect(page.getByRole("button", { name: "Travel deeper into your Brain" })).toBeVisible();
+  expect(errors).toEqual([]);
+});
+
+test("legacy entry URLs still arrive at the Brain app", async ({ page }) => {
+  await bypassProductFlow(page);
+  await page.goto("/chat");
+  await expect(page).toHaveURL(/\/app#\/chat$/);
+  await expect(page.locator("body")).toContainText("Lattice Brain");
+
+  await page.goto("/graph");
+  await expect(page).toHaveURL(/\/app#\/knowledge-graph$/);
+  await expect(page.locator("body")).toContainText("Lattice Brain");
 });

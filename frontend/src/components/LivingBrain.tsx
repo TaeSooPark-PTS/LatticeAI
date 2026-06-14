@@ -1,7 +1,7 @@
 import * as React from "react";
 import { cn } from "@/lib/utils";
 
-export type BrainState = "idle" | "listening" | "thinking" | "recalling" | "synthesizing" | "resting";
+export type BrainState = "idle" | "listening" | "thinking" | "recalling" | "synthesizing" | "planning" | "acting" | "resting";
 
 export interface LivingBrainProps {
   state?: BrainState;
@@ -32,7 +32,7 @@ export function LivingBrain({
   onInteract,
 }: LivingBrainProps) {
   const [isPulsing, setIsPulsing] = React.useState(false);
-  const organismRef = React.useRef<HTMLDivElement>(null);
+  const organismRef = React.useRef<HTMLButtonElement>(null);
 
   // External trigger for memory / important recall moments
   React.useEffect(() => {
@@ -71,9 +71,10 @@ export function LivingBrain({
 
   const dynamicIntensity = Math.max(0.35, Math.min(1, intensity));
   const effectiveDepth = Math.max(0, Math.min(5, depth || 0));
+  const canTravel = state !== "thinking";
 
   const handleClick = () => {
-    if (state === "thinking") return;
+    if (!canTravel) return;
     firePulse();
     onInteract?.();
   };
@@ -87,26 +88,49 @@ export function LivingBrain({
         className,
         effectiveDepth > 0 && "is-exploring"
       )}
-      aria-label="Your living Brain — click to travel deeper"
-      role="img"
+      aria-label="Your living Brain"
+      role="group"
       data-depth={effectiveDepth}
     >
-      <div
+      <button
+        type="button"
         ref={organismRef}
         className={cn("brain-organism", `size-${size}`, `depth-${effectiveDepth}`)}
         data-state={dataState}
+        aria-label={effectiveDepth < 5 ? "Travel deeper into your Brain" : "Rest inside the Knowledge Graph"}
+        aria-disabled={!canTravel}
         style={{
           transform: `scale(${0.96 + (dynamicIntensity - 0.5) * 0.09 + effectiveDepth * 0.015})`,
         }}
         onClick={handleClick}
-        title={effectiveDepth < 5 ? "Click to travel deeper into your mind" : "The core of your knowledge — the full Lattice"}
+        title={effectiveDepth < 5 ? "Travel deeper into your Brain" : "The core of your knowledge"}
       >
-        {/* Core luminous presence — "opens" with depth */}
-        <div className="brain-core" style={{ transform: `scale(${1 + effectiveDepth * 0.06})` }} />
+        {/* Living anatomical presence. The glow opens with depth; the folds make it unmistakably a Brain. */}
+        <div className="brain-core" style={{ transform: `scale(${1 + effectiveDepth * 0.045})` }}>
+          <svg className="brain-anatomy" viewBox="0 0 220 174" aria-hidden>
+            <path
+              className="brain-lobe brain-lobe-left"
+              d="M102 30c-13-20-44-19-55 1-18 1-29 16-28 33-13 8-18 25-11 39-9 16-1 36 17 42 5 19 27 26 43 15 13 10 33 8 43-5 5-7 8-16 8-27V52c0-8-6-17-17-22Z"
+            />
+            <path
+              className="brain-lobe brain-lobe-right"
+              d="M118 30c13-20 44-19 55 1 18 1 29 16 28 33 13 8 18 25 11 39 9 16 1 36-17 42-5 19-27 26-43 15-13 10-33 8-43-5-5-7-8-16-8-27V52c0-8 6-17 17-22Z"
+            />
+            <path className="brain-bridge" d="M103 48c9-8 24-8 33 0 7 6 9 16 5 25-5 11-16 15-31 12-15 3-26-1-31-12-4-9-2-19 5-25 5-4 12-6 19 0Z" />
+            <path className="brain-stem" d="M92 137c10 9 26 9 36 0 1 14 7 25 20 33H76c12-8 17-19 16-33Z" />
+            <path className="brain-fold fold-a" d="M48 50c18-11 38-8 47 8" />
+            <path className="brain-fold fold-b" d="M34 82c22-8 45-5 58 8" />
+            <path className="brain-fold fold-c" d="M43 119c18 5 35 2 49-11" />
+            <path className="brain-fold fold-d" d="M172 50c-18-11-38-8-47 8" />
+            <path className="brain-fold fold-e" d="M186 82c-22-8-45-5-58 8" />
+            <path className="brain-fold fold-f" d="M177 119c-18 5-35 2-49-11" />
+            <path className="brain-fold fold-mid" d="M110 38c-5 30-5 70 0 112" />
+          </svg>
+        </div>
 
-        {/* Breathing halo — expands as we go deeper */}
+        {/* Breathing field expands as we go deeper. */}
         <div
-          className="brain-halo"
+          className="brain-aura"
           style={{
             animationDuration: state === "thinking" ? "1.65s" : state === "recalling" ? "2.4s" : "6.8s",
             transform: `scale(${1 + effectiveDepth * 0.12})`,
@@ -144,7 +168,7 @@ export function LivingBrain({
           />
         ))}
 
-        {/* At higher depths, subtle inner structure lines start to appear inside the core (proto-graph) */}
+        {/* Relationship structure appears only near the deepest layers. */}
         {effectiveDepth >= 4 && (
           <svg className="brain-inner-structure" viewBox="0 0 100 100" aria-hidden>
             <g stroke="hsl(var(--brain-core) / 0.35)" strokeWidth="0.6" fill="none">
@@ -155,7 +179,7 @@ export function LivingBrain({
             </g>
           </svg>
         )}
-      </div>
+      </button>
 
       {showLabel && !isTrace && (
         <div className="brain-presence-label" data-state={state}>
@@ -173,6 +197,8 @@ function humanState(s: BrainState) {
     case "thinking": return "Thinking with you";
     case "recalling": return "Remembering";
     case "synthesizing": return "Making sense";
+    case "planning": return "Planning";
+    case "acting": return "Acting";
     case "resting": return "With you";
     default: return "Here";
   }

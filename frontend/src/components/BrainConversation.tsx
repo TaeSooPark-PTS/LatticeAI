@@ -3,13 +3,21 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { ImagePlus, MessageSquare, Plus, Send, Trash2 } from "lucide-react";
 import { latticeApi } from "@/api/client";
 import { EmptyState, EntityList, SourceBadge, StructuredView } from "@/components/primitives";
-import { LivingBrain } from "@/components/LivingBrain";
+import { type BrainState, LivingBrain } from "@/components/LivingBrain";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { asArray } from "@/lib/utils";
 
 type Msg = { role?: string; content?: string; timestamp?: string };
+type BrainActivity = BrainState;
+type BrainVitals = {
+  connected: boolean;
+  memories: number;
+  knowledge: number;
+  conversations: number;
+  model: string | null;
+};
 
 function fileToDataUrl(file: File) {
   return new Promise<string>((resolve, reject) => {
@@ -139,7 +147,7 @@ export function BrainConversation({ className }: { className?: string }) {
     <div className={className}>
       <div className="brain-conversation-grid">
         <section className="brain-presence-column" aria-label="Living Brain presence">
-          <LivingBrain state={activity as any} size="normal" />
+          <LivingBrain state={activity} size="normal" />
         </section>
 
         <section className="brain-chat-panel premium-surface" aria-label="Conversation with Lattice Brain">

@@ -14,11 +14,12 @@ experience.
 
 This README describes the v4.6.0 release-preparation tree, which preserves the
 v4.4.0 physical `lattice_brain` extraction, v4.5.0 capability recovery, and
-v4.5.1 product shell while repositioning the graph as a deep exploration layer.
+v4.5.1 product shell while making the Brain itself the exploration surface.
 First launch now follows a Brain-first product flow: Login, friendly environment
 analysis, recommended models, guided install/download/validate/load, then the
-living Brain conversation. Memories, knowledge, relationships, and the advanced
-graph are progressively disclosed beneath the Brain.
+living Brain conversation. Users travel through five depths inside the Brain:
+Living Brain, Memory Layer, Knowledge Layer, Relationship Layer, and finally the
+Knowledge Graph.
 External package registries are owner-published; the badges above link to
 package pages and may show the most recently published owner-controlled registry
 version, which can lag behind the GitHub Release.
@@ -32,11 +33,12 @@ version, which can lag behind the GitHub Release.
 - After model loading, the home route opens to a living Brain presence plus
   durable conversation, with the Brain always visible during the primary chat
   flow.
-- The Brain presence reacts to conversation, recall, model readiness, and
-  agent/workflow activity with neural movement, memory pulses, and status
-  changes.
-- Memories, Knowledge, Relationships, and Graph are ordered as progressive
-  disclosure layers; the graph is no longer the product's first impression.
+- The Brain presence is recognizable as an anatomical Brain and reacts to
+  conversation, recall, model readiness, planning, and agent/workflow activity
+  with neural movement, memory pulses, and status changes.
+- The Brain opens progressively: Level 1 shows only the living Brain, Level 2
+  reveals memories, Level 3 reveals concepts, Level 4 reveals relationships,
+  and Level 5 reveals the searchable Knowledge Graph.
 - Capture uploads a document through `/upload/document` and shows indexed
   documents from the backend.
 - Act exposes workflow create/run surfaces and agent runtime status without
@@ -74,9 +76,10 @@ logo or static decoration: it changes state while the user types, when memories
 are recalled, while a response streams, and when agent/workflow activity is
 reported.
 
-The advanced graph still exists, but it is intentionally opened from the Graph
-layer after the user moves through Brain, Memories, Knowledge, and
-Relationships.
+The advanced graph still exists, but it now emerges only at Level 5 after the
+user travels through the living Brain, memories, concepts, and relationships.
+The graph includes nodes, edges, search, and focus details without appearing as
+a separate first-stop page.
 
 ![Brain graph explorer](output/audits/v4.3.2-rc/screenshots/02-graph-explorer-before.png)
 

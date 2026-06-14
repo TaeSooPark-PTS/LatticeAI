@@ -1,23 +1,58 @@
 import * as React from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { ArrowLeft, ImagePlus, Send, X } from "lucide-react";
+import { ImagePlus, Search, Send } from "lucide-react";
 import { latticeApi } from "@/api/client";
 import { Button } from "@/components/ui/button";
-import { LivingBrain, triggerBrainRecall } from "@/components/LivingBrain";
+import { type BrainState, LivingBrain, triggerBrainRecall } from "@/components/LivingBrain";
 import { ProductFlow, readProductFlowComplete } from "@/components/ProductFlow";
 import { useAppStore } from "@/store/appStore";
 import { asArray } from "@/lib/utils";
 
+type ApiRecord = Record<string, unknown>;
+type BrainDepth = 1 | 2 | 3 | 4 | 5;
 
+type Message = {
+  role: "user" | "assistant";
+  content: string;
+};
 
+type MemoryFragment = {
+  id: string;
+  title: string;
+  kind: string;
+};
 
+type KnowledgeConcept = {
+  id: string;
+  label: string;
+  type: string;
+  summary: string;
+  importance: number;
+};
 
+type RelationshipThread = {
+  id: string;
+  source: string;
+  target: string;
+  label: string;
+  weight: number;
+};
 
+type KnowledgeGraphModel = {
+  nodes: KnowledgeConcept[];
+  edges: RelationshipThread[];
+};
 
-
+const DEPTHS: Array<{ level: BrainDepth; label: string; state: BrainState }> = [
+  { level: 1, label: "Living Brain", state: "idle" },
+  { level: 2, label: "Memory Layer", state: "recalling" },
+  { level: 3, label: "Knowledge Layer", state: "synthesizing" },
+  { level: 4, label: "Relationship Layer", state: "planning" },
+  { level: 5, label: "Knowledge Graph", state: "synthesizing" },
+];
 
 export default function App() {
-  const { theme, setTheme } = useAppStore();
+  const theme = useAppStore((state) => state.theme);
   const [flowComplete, setFlowComplete] = React.useState(readProductFlowComplete);
   const { state: brainState, intensity, setBrain } = useBrainState();
 
@@ -25,13 +60,11 @@ export default function App() {
     document.documentElement.dataset.theme = theme;
   }, [theme]);
 
-  // ⌘K focuses the home composer
   React.useEffect(() => {
-    const onKey = (e: KeyboardEvent) => {
-      if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === "k") {
-        e.preventDefault();
-        const ta = document.querySelector<HTMLTextAreaElement>(".brain-composer textarea");
-        ta?.focus();
+    const onKey = (event: KeyboardEvent) => {
+      if ((event.metaKey || event.ctrlKey) && event.key.toLowerCase() === "k") {
+        event.preventDefault();
+        document.querySelector<HTMLTextAreaElement>(".brain-composer textarea")?.focus();
       }
     };
     window.addEventListener("keydown", onKey);
@@ -39,335 +72,633 @@ export default function App() {
   }, []);
 
   if (!flowComplete) {
-    return <ProductFlow onComplete={() => { setFlowComplete(true); }} />;
+    return <ProductFlow onComplete={() => setFlowComplete(true)} />;
   }
 
   return (
     <div className="brain-space">
       <div className="brain-field" />
-
-      {/* The Brain is the interactive entry point.
-          Click it to travel deeper: living presence → memories → concepts/relationships → the emergent full Knowledge Graph.
-          The graph grows out of the living mind rather than being a separate destination. */}
-      <BrainHome
-        brainState={brainState}
-        intensity={intensity}
-        onBrainChange={setBrain}
-      />
+      <BrainHome brainState={brainState} intensity={intensity} onBrainChange={setBrain} />
     </div>
   );
 }
 
-/* --------------------- Supporting hooks & tiny pieces (kept in-file for speed of this release) --------------------- */
-
 function useBrainState() {
-  const [state, setState] = React.useState<"idle" | "listening" | "thinking" | "recalling" | "synthesizing" | "resting">("idle");
+  const [state, setState] = React.useState<BrainState>("idle");
   const [intensity, setIntensity] = React.useState(0.58);
-  const setBrain = React.useCallback((next: any, i?: number) => {
+
+  const setBrain = React.useCallback((next: BrainState, nextIntensity?: number) => {
     setState(next);
-    if (i !== undefined) setIntensity(Math.max(0.38, Math.min(1, i)));
+    if (nextIntensity !== undefined) setIntensity(clamp(nextIntensity, 0.38, 1));
   }, []);
+
   return { state, intensity, setBrain };
 }
 
-function BrainHome({ brainState, intensity, onBrainChange, onEnterDepth }: any) {
+function BrainHome({
+  brainState,
+  intensity,
+  onBrainChange,
+}: {
+  brainState: BrainState;
+  intensity: number;
+  onBrainChange: (state: BrainState, intensity?: number) => void;
+}) {
   const qc = useQueryClient();
-  const [messages, setMessages] = React.useState<any[]>([]);
+  const [messages, setMessages] = React.useState<Message[]>([]);
   const [draft, setDraft] = React.useState("");
   const [imageData, setImageData] = React.useState<string | null>(null);
   const [streaming, setStreaming] = React.useState(false);
   const [conversationId, setConversationId] = React.useState<string | null>(null);
+  const [explorationDepth, setExplorationDepth] = React.useState<BrainDepth>(1);
+  const [graphSearch, setGraphSearch] = React.useState("");
+  const [selectedGraphId, setSelectedGraphId] = React.useState<string | null>(null);
   const streamRef = React.useRef<HTMLDivElement>(null);
+  const recallTimerRef = React.useRef<number | null>(null);
 
-  // Progressive exploration depth (0 = pure living Brain + chat; 5 = full knowledge graph emerging from it)
-  const [explorationDepth, setExplorationDepth] = React.useState(0);
-
-  // Real data for emergence
   const memoriesQ = useQuery({ queryKey: ["memoryManager"], queryFn: latticeApi.memoryManager });
+  const historyQ = useQuery({ queryKey: ["chatHistory"], queryFn: latticeApi.chatHistory });
   const graphQ = useQuery({ queryKey: ["graph"], queryFn: latticeApi.graph });
-
-  const memoryItems = React.useMemo(() => {
-    const data: any = memoriesQ.data?.data;
-    const sources = asArray(data?.sources || data?.tiers || []);
-    return sources.slice(0, 7).map((s: any, idx: number) => ({
-      id: s.id || `mem-${idx}`,
-      title: s.title || s.label || s.source || "Memory",
-      type: s.type || s.source_type || "memory"
-    }));
-  }, [memoriesQ.data]);
-
-  const knowledgeItems = React.useMemo(() => {
-    // Use graph nodes as "concepts" for mid layers
-    const g: any = graphQ.data?.data;
-    const nodes = asArray(g?.nodes || []).slice(0, 8);
-    return nodes.map((n: any, idx: number) => ({
-      id: n.id || `concept-${idx}`,
-      label: n.title || n.label || n.name || "Concept",
-      group: n.group || n.type || "idea"
-    }));
-  }, [graphQ.data]);
-
-  const relationshipLinks = React.useMemo(() => {
-    const g: any = graphQ.data?.data;
-    const edges = asArray(g?.edges || []).slice(0, 5);
-    return edges.map((e: any, idx: number) => ({
-      id: `rel-${idx}`,
-      source: e.source || e.from,
-      target: e.target || e.to,
-      label: e.label || e.type || "relates"
-    }));
-  }, [graphQ.data]);
-
   const modelsQ = useQuery({ queryKey: ["models"], queryFn: latticeApi.models });
-  const modelName = React.useMemo(() => {
-    const d: any = modelsQ.data?.data;
-    if (!d) return "your mind";
-    const loaded = asArray(d.loaded || []);
-    return loaded[0]?.name || loaded[0]?.id || "local mind";
-  }, [modelsQ.data]);
+
+  const memoryFragments = React.useMemo(
+    () => buildMemoryFragments(memoriesQ.data?.data, historyQ.data?.data),
+    [memoriesQ.data, historyQ.data],
+  );
+  const graphModel = React.useMemo(() => parseKnowledgeGraph(graphQ.data?.data), [graphQ.data]);
+  const knowledgeConcepts = React.useMemo(
+    () => graphModel.nodes.slice(0, 10),
+    [graphModel.nodes],
+  );
+  const relationshipThreads = React.useMemo(
+    () => graphModel.edges.slice(0, 10),
+    [graphModel.edges],
+  );
+  const modelName = React.useMemo(() => currentModelName(modelsQ.data?.data), [modelsQ.data]);
+  const currentDepth = DEPTHS[explorationDepth - 1];
 
   React.useEffect(() => {
     if (streaming) onBrainChange("thinking", 0.94);
     else if (draft.trim().length > 4) onBrainChange("listening", 0.76);
-    else onBrainChange("idle", 0.58);
-  }, [streaming, draft, onBrainChange]);
+    else onBrainChange(currentDepth.state, explorationDepth === 1 ? 0.58 : 0.66 + explorationDepth * 0.06);
+  }, [streaming, draft, currentDepth.state, explorationDepth, onBrainChange]);
+
+  React.useEffect(() => {
+    const stream = streamRef.current;
+    if (stream) stream.scrollTop = stream.scrollHeight;
+  }, [messages]);
+
+  React.useEffect(() => {
+    return () => {
+      if (recallTimerRef.current !== null) window.clearTimeout(recallTimerRef.current);
+    };
+  }, []);
 
   async function send() {
     const text = draft.trim();
     if (!text || streaming) return;
-    const cid = conversationId || `brain-${Date.now()}`;
-    if (!conversationId) setConversationId(cid);
+    const activeConversationId = conversationId || `brain-${Date.now()}`;
+    if (!conversationId) setConversationId(activeConversationId);
 
-    setMessages((m) => [...m, { role: "user", content: text }, { role: "assistant", content: "" }]);
+    setMessages((items) => [...items, { role: "user", content: text }, { role: "assistant", content: "" }]);
     setDraft("");
     setImageData(null);
     setStreaming(true);
     onBrainChange("thinking", 0.96);
 
     try {
-      await latticeApi.streamChat(
-        { message: text, conversation_id: cid, image_data: imageData || undefined },
+      const result = await latticeApi.streamChat(
+        { message: text, conversation_id: activeConversationId, image_data: imageData || undefined },
         {
-          onChunk: (_d, full) => {
-            setMessages((prev) => { const n = [...prev]; n[n.length - 1] = { role: "assistant", content: full }; return n; });
+          onChunk: (_delta, fullText) => {
+            setMessages((items) => {
+              const next = [...items];
+              next[next.length - 1] = { role: "assistant", content: fullText };
+              return next;
+            });
           },
-          onTrace: (t) => { if (t) { onBrainChange("recalling", 0.9); triggerBrainRecall(); setTimeout(() => onBrainChange("thinking", 0.9), 900); } },
-        }
+          onTrace: (trace) => {
+            if (!trace) return;
+            onBrainChange("recalling", 0.9);
+            triggerBrainRecall();
+            if (recallTimerRef.current !== null) window.clearTimeout(recallTimerRef.current);
+            recallTimerRef.current = window.setTimeout(() => onBrainChange("thinking", 0.9), 900);
+          },
+        },
       );
+      if (result.error) {
+        setMessages((items) => {
+          const next = [...items];
+          next[next.length - 1] = { role: "assistant", content: `Unavailable: ${result.error}` };
+          return next;
+        });
+      }
     } finally {
       setStreaming(false);
-      qc.invalidateQueries({ queryKey: ["chatHistory"] });
-      qc.invalidateQueries({ queryKey: ["memoryManager"] });
-      onBrainChange("idle", 0.61);
+      void qc.invalidateQueries({ queryKey: ["chatHistory"] });
+      void qc.invalidateQueries({ queryKey: ["memoryManager"] });
+      void qc.invalidateQueries({ queryKey: ["graph"] });
     }
   }
 
-  React.useEffect(() => { const el = streamRef.current; if (el) el.scrollTop = el.scrollHeight; }, [messages]);
-
-  // Click the living Brain to travel deeper — progressive revelation
-  const deepen = () => {
-    setExplorationDepth(d => {
-      const next = Math.min(5, d + 1);
-      if (next >= 2) onBrainChange("recalling", 0.8);
-      if (next === 5) onBrainChange("synthesizing", 0.9);
+  function deepen() {
+    setExplorationDepth((depth) => {
+      const next = Math.min(5, depth + 1) as BrainDepth;
+      const nextDepth = DEPTHS[next - 1];
+      onBrainChange(nextDepth.state, 0.66 + next * 0.06);
+      if (next >= 2) triggerBrainRecall();
       return next;
     });
-  };
+  }
 
-  const surface = () => {
-    setExplorationDepth(0);
-    onBrainChange("idle", 0.6);
-  };
+  function surface() {
+    setExplorationDepth(1);
+    setSelectedGraphId(null);
+    setGraphSearch("");
+    onBrainChange("idle", 0.58);
+  }
 
-  // Derive positioned orbs/nodes for the current depth (emerge around the central Brain)
-  const layerElements = React.useMemo(() => {
-    const els: React.ReactNode[] = [];
-    const baseAngle = 28;
-
-    if (explorationDepth >= 1 && memoryItems.length) {
-      memoryItems.forEach((item, i) => {
-        const angle = (baseAngle * i) % 360;
-        const radius = 138 + (i % 3) * 11;
-        const style: React.CSSProperties = {
-          left: `calc(50% + ${Math.cos(angle * Math.PI / 180) * radius}px)`,
-          top: `calc(50% + ${Math.sin(angle * Math.PI / 180) * (radius * 0.72)}px)`,
-          transform: `translate(-50%, -50%) scale(${0.85 + (explorationDepth - 1) * 0.06})`
-        };
-        els.push(
-          <div
-            key={item.id}
-            className="memory-orb"
-            style={style}
-            onClick={(e) => {
-              e.stopPropagation();
-              triggerBrainRecall();
-              // Surface the memory gently into awareness
-              setMessages(m => [...m, { role: "assistant", content: `I am recalling: ${item.title}` }]);
-            }}
-            title={`Recall: ${item.title}`}
-          >
-            {item.title.slice(0, 28)}
-          </div>
-        );
-      });
-    }
-
-    if (explorationDepth >= 3 && knowledgeItems.length) {
-      knowledgeItems.forEach((item, i) => {
-        const angle = (baseAngle * 1.7 * i + 55) % 360;
-        const radius = 92 + (i % 2) * 18;
-        const style: React.CSSProperties = {
-          left: `calc(50% + ${Math.cos(angle * Math.PI / 180) * radius}px)`,
-          top: `calc(50% + ${Math.sin(angle * Math.PI / 180) * (radius * 0.68)}px)`,
-          transform: `translate(-50%, -50%)`
-        };
-        els.push(
-          <div
-            key={`k-${item.id}`}
-            className="knowledge-node"
-            style={style}
-            onClick={(e) => { e.stopPropagation(); triggerBrainRecall(); }}
-          >
-            {item.label.slice(0, 22)}
-          </div>
-        );
-      });
-    }
-
-    if (explorationDepth >= 4 && relationshipLinks.length && knowledgeItems.length) {
-      // Simple emerging relationship lines between a few positioned items
-      relationshipLinks.forEach((link, i) => {
-        // Approximate positions for demo (in real would use layout)
-        const sIdx = i % knowledgeItems.length;
-        const tIdx = (i + 2) % knowledgeItems.length;
-        const angleS = (baseAngle * 1.7 * sIdx + 55) % 360;
-        const angleT = (baseAngle * 1.7 * tIdx + 55) % 360;
-        const r = 105;
-        const x1 = 50 + Math.cos(angleS * Math.PI / 180) * (r / 220) * 100;
-        const y1 = 48 + Math.sin(angleS * Math.PI / 180) * (r / 300) * 100;
-        const x2 = 50 + Math.cos(angleT * Math.PI / 180) * (r / 220) * 100;
-        const y2 = 48 + Math.sin(angleT * Math.PI / 180) * (r / 300) * 100;
-
-        els.push(
-          <div
-            key={`edge-${i}`}
-            className="relationship-edge"
-            style={{
-              left: `${Math.min(x1, x2)}%`,
-              top: `${(y1 + y2) / 2}%`,
-              width: `${Math.abs(x2 - x1)}%`,
-              transform: `rotate(${Math.atan2(y2 - y1, x2 - x1) * 180 / Math.PI}deg)`,
-              transformOrigin: "left center"
-            }}
-          />
-        );
-      });
-    }
-
-    if (explorationDepth >= 5) {
-      els.push(
-        <div key="core-graph" className="mind-core-graph" onClick={e => e.stopPropagation()}>
-          <div style={{ padding: "1rem", fontSize: "0.78rem", color: "hsl(var(--fg-muted))" }}>
-            The living core of your mind.<br />
-            {knowledgeItems.length} concepts • {relationshipLinks.length} visible threads.<br />
-            <span style={{ opacity: 0.6 }}>Full search, traversal, and the complete Lattice live here.</span>
-          </div>
-          {/* Simple textual emergence of nodes for level 5 — real graph data */}
-          <div style={{ padding: "0 1rem 1rem", display: "flex", flexWrap: "wrap", gap: "0.3rem" }}>
-            {knowledgeItems.slice(0, 6).map((k: any) => (
-              <span key={k.id} style={{ fontSize: "0.7rem", background: "hsl(var(--brain-core)/0.15)", padding: "1px 6px", borderRadius: 4 }}>{k.label}</span>
-            ))}
-          </div>
-        </div>
-      );
-    }
-
-    return els;
-  }, [explorationDepth, memoryItems, knowledgeItems, relationshipLinks]);
-
-  const depthLabel = ["Surface", "Echoes", "Concepts", "Threads", "The Lattice", "Core Lattice"][Math.min(explorationDepth, 5)];
+  function recallMemory(fragment: MemoryFragment) {
+    triggerBrainRecall();
+    setExplorationDepth((depth) => Math.max(depth, 2) as BrainDepth);
+    setMessages((items) => [
+      ...items,
+      { role: "assistant", content: `I am recalling ${fragment.kind.toLowerCase()}: ${fragment.title}` },
+    ]);
+  }
 
   return (
-    <>
-      <div className="brain-presence">
-        <div
-          className="brain-exploration"
-          data-depth={explorationDepth}
-          onClick={() => { if (explorationDepth < 5) deepen(); }}
-        >
+    <main className="brain-home" aria-label="Lattice Brain">
+      <section className="brain-presence" aria-label="Brain exploration">
+        <div className="brain-exploration" data-depth={explorationDepth}>
           <LivingBrain
             state={brainState}
-            intensity={intensity + explorationDepth * 0.04}
+            intensity={intensity + explorationDepth * 0.035}
             size="large"
             depth={explorationDepth}
+            showLabel={false}
             onInteract={deepen}
           />
 
-          {/* The mind field — layers emerge from the living Brain when you travel deeper */}
-          <div className="brain-field-layer">
-            {layerElements}
+          <div className="brain-depth-badge" aria-live="polite">
+            <span>Level {explorationDepth}</span>
+            <strong>{currentDepth.label}</strong>
           </div>
 
-          {explorationDepth > 0 && (
-            <button className="brain-surface-control" onClick={(e) => { e.stopPropagation(); surface(); }}>
-              ↑ Surface
+          <div className="brain-field-layer" aria-hidden={explorationDepth < 2}>
+            <DepthEmergence
+              depth={explorationDepth}
+              memories={memoryFragments}
+              concepts={knowledgeConcepts}
+              relationships={relationshipThreads}
+              graphModel={graphModel}
+              graphSearch={graphSearch}
+              selectedGraphId={selectedGraphId}
+              onGraphSearch={setGraphSearch}
+              onSelectGraphNode={setSelectedGraphId}
+              onRecallMemory={recallMemory}
+            />
+          </div>
+
+          {explorationDepth > 1 ? (
+            <button className="brain-surface-control" type="button" onClick={surface}>
+              Surface
             </button>
-          )}
-
-          <div className="brain-depth-indicator">
-            {depthLabel} — click the Brain to go deeper
-          </div>
+          ) : null}
         </div>
-      </div>
+      </section>
 
-      <div className="brain-conversation">
+      <section className="brain-conversation" aria-label="Conversation">
         <div className="brain-conversation-header">
-          <div style={{ opacity: 0.55 }}>with your mind {explorationDepth > 0 ? `· exploring depth ${explorationDepth}` : ""}</div>
-          <div style={{ fontSize: "0.68rem", opacity: 0.45 }}>{modelName}</div>
+          <div>
+            <h1>Lattice Brain</h1>
+            <span>{currentDepth.label}</span>
+          </div>
+          <div>{modelName}</div>
         </div>
 
         <div ref={streamRef} className="brain-stream">
           {messages.length === 0 ? (
             <div className="mind-empty">
-              <div style={{ fontSize: "13px", letterSpacing: "1.5px", textTransform: "uppercase", opacity: 0.5, marginBottom: "6px" }}>BEGIN</div>
-              <div style={{ fontSize: "1.18rem" }}>What are you thinking about?</div>
-              <div style={{ marginTop: "0.4rem", fontSize: "0.85rem", opacity: 0.6 }}>Click the living Brain to begin travelling into your knowledge.</div>
+              <div className="mind-empty-kicker">Begin</div>
+              <div>What are you thinking about?</div>
             </div>
-          ) : messages.map((m, i) => (
-            <div key={i} className={`brain-message ${m.role === "user" ? "user" : "assistant"}`}>
-              <div className="brain-message-bubble">{m.content}</div>
-            </div>
-          ))}
+          ) : (
+            messages.map((message, index) => (
+              <div key={`${message.role}-${index}`} className={`brain-message ${message.role}`}>
+                <div className="brain-message-bubble">{message.content}</div>
+              </div>
+            ))
+          )}
         </div>
 
         <div className="brain-composer">
           <textarea
             value={draft}
-            onChange={(e) => setDraft(e.target.value)}
-            onKeyDown={(e) => { if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); void send(); } }}
-            placeholder="Talk to your Brain…"
+            onChange={(event) => setDraft(event.target.value)}
+            onKeyDown={(event) => {
+              if (event.key === "Enter" && !event.shiftKey) {
+                event.preventDefault();
+                void send();
+              }
+            }}
+            placeholder="Talk to your Brain..."
           />
           <div className="brain-composer-actions">
-            <label className="inline-flex cursor-pointer items-center gap-1.5 rounded-full border border-border/60 px-3 py-1 text-xs active:bg-white/5">
-              <ImagePlus className="h-3.5 w-3.5" /> <span>Image</span>
-              <input type="file" accept="image/*" className="sr-only" onChange={async (e) => {
-                const f = e.target.files?.[0]; if (f) { const r = new FileReader(); r.onload = () => setImageData(r.result as string); r.readAsDataURL(f); }
-              }} />
+            <label className="brain-image-input">
+              <ImagePlus className="h-3.5 w-3.5" />
+              <span>Image</span>
+              <input
+                type="file"
+                accept="image/*"
+                className="sr-only"
+                onChange={async (event) => {
+                  const file = event.target.files?.[0];
+                  if (file) setImageData(await fileToDataUrl(file));
+                }}
+              />
             </label>
-            <Button onClick={() => void send()} disabled={!draft.trim() || streaming} className="rounded-full px-5"><Send className="h-4 w-4" /> Send</Button>
+            {imageData ? <span className="brain-quiet-success">Image attached</span> : null}
+            <Button onClick={() => void send()} disabled={!draft.trim() || streaming} className="rounded-full px-5">
+              <Send className="h-4 w-4" /> Send
+            </Button>
           </div>
         </div>
-      </div>
+      </section>
+    </main>
+  );
+}
 
-      {/* Optional traditional depths still available but the primary path is through the Brain */}
-      <div className="depths">
-        <button className="depth" onClick={() => onEnterDepth("memory")}>Memory</button>
-        <button className="depth" onClick={() => onEnterDepth("knowledge")}>Knowledge</button>
-        <button className="depth" onClick={() => onEnterDepth("relationships")}>Connections</button>
-        <button className="depth" onClick={() => onEnterDepth("map")}>The Map</button>
-      </div>
+function DepthEmergence({
+  depth,
+  memories,
+  concepts,
+  relationships,
+  graphModel,
+  graphSearch,
+  selectedGraphId,
+  onGraphSearch,
+  onSelectGraphNode,
+  onRecallMemory,
+}: {
+  depth: BrainDepth;
+  memories: MemoryFragment[];
+  concepts: KnowledgeConcept[];
+  relationships: RelationshipThread[];
+  graphModel: KnowledgeGraphModel;
+  graphSearch: string;
+  selectedGraphId: string | null;
+  onGraphSearch: (value: string) => void;
+  onSelectGraphNode: (id: string | null) => void;
+  onRecallMemory: (fragment: MemoryFragment) => void;
+}) {
+  if (depth === 1) return null;
+
+  return (
+    <>
+      {depth >= 2 ? (
+        <MemoryLayer memories={memories} depth={depth} onRecallMemory={onRecallMemory} />
+      ) : null}
+      {depth >= 3 && depth < 5 ? (
+        <KnowledgeLayer concepts={concepts} depth={depth} />
+      ) : null}
+      {depth >= 4 && depth < 5 ? (
+        <RelationshipLayer concepts={concepts} relationships={relationships} />
+      ) : null}
+      {depth >= 5 ? (
+        <EmergentKnowledgeGraph
+          model={graphModel}
+          search={graphSearch}
+          selectedId={selectedGraphId}
+          onSearch={onGraphSearch}
+          onSelect={onSelectGraphNode}
+        />
+      ) : null}
     </>
   );
 }
 
-// (Old MindChamber removed. All progressive exploration now happens by interacting directly with the living Brain in the main view.)
+function MemoryLayer({
+  memories,
+  depth,
+  onRecallMemory,
+}: {
+  memories: MemoryFragment[];
+  depth: BrainDepth;
+  onRecallMemory: (fragment: MemoryFragment) => void;
+}) {
+  const visible = memories.slice(0, depth >= 3 ? 8 : 6);
+  if (!visible.length) return <div className="memory-fragment is-empty">Memory is quiet</div>;
+
+  return (
+    <>
+      {visible.map((memory, index) => {
+        const point = polarPoint(index, visible.length, depth >= 3 ? 39 : 31, depth >= 3 ? 24 : 18, -112);
+        return (
+          <button
+            key={memory.id}
+            type="button"
+            className="memory-fragment"
+            style={layerStyle({ "--x": `${point.x}%`, "--y": `${point.y}%`, "--delay": `${index * 55}ms` })}
+            onClick={() => onRecallMemory(memory)}
+          >
+            <span>{memory.kind}</span>
+            <strong>{memory.title}</strong>
+          </button>
+        );
+      })}
+    </>
+  );
+}
+
+function KnowledgeLayer({ concepts, depth }: { concepts: KnowledgeConcept[]; depth: BrainDepth }) {
+  const visible = concepts.slice(0, depth >= 4 ? 10 : 7);
+  if (!visible.length) return <div className="concept-signal is-empty">Knowledge is forming</div>;
+
+  return (
+    <>
+      {visible.map((concept, index) => {
+        const point = polarPoint(index, visible.length, 24, 15, -70);
+        return (
+          <button
+            key={concept.id}
+            type="button"
+            className="concept-signal"
+            style={layerStyle({ "--x": `${point.x}%`, "--y": `${point.y}%`, "--delay": `${index * 45}ms` })}
+            title={concept.summary || concept.type}
+          >
+            <span>{concept.type}</span>
+            {concept.label}
+          </button>
+        );
+      })}
+    </>
+  );
+}
+
+function RelationshipLayer({
+  concepts,
+  relationships,
+}: {
+  concepts: KnowledgeConcept[];
+  relationships: RelationshipThread[];
+}) {
+  const visibleConcepts = concepts.slice(0, 10);
+  const layout = layoutGraphNodes(visibleConcepts, 30, 20);
+  const positionById = new Map(layout.map((item) => [item.node.id, item]));
+  const visibleRelationships = relationships
+    .map((relationship, index) => {
+      const source = positionById.get(relationship.source) || layout[index % Math.max(layout.length, 1)];
+      const target = positionById.get(relationship.target) || layout[(index + 3) % Math.max(layout.length, 1)];
+      return source && target && source.node.id !== target.node.id ? { relationship, source, target } : null;
+    })
+    .filter(Boolean)
+    .slice(0, 8) as Array<{
+      relationship: RelationshipThread;
+      source: ReturnType<typeof layoutGraphNodes>[number];
+      target: ReturnType<typeof layoutGraphNodes>[number];
+    }>;
+
+  if (!visibleRelationships.length) return null;
+
+  return (
+    <svg className="relationship-weave" viewBox="0 0 100 100" aria-hidden>
+      {visibleRelationships.map(({ relationship, source, target }, index) => (
+        <line
+          key={`${relationship.id}-${index}`}
+          x1={source.x}
+          y1={source.y}
+          x2={target.x}
+          y2={target.y}
+          style={{ animationDelay: `${index * 80}ms` }}
+        />
+      ))}
+    </svg>
+  );
+}
+
+function EmergentKnowledgeGraph({
+  model,
+  search,
+  selectedId,
+  onSearch,
+  onSelect,
+}: {
+  model: KnowledgeGraphModel;
+  search: string;
+  selectedId: string | null;
+  onSearch: (value: string) => void;
+  onSelect: (id: string | null) => void;
+}) {
+  const query = search.trim().toLowerCase();
+  const visibleNodes = React.useMemo(() => {
+    const filtered = model.nodes.filter((node) => {
+      if (!query) return true;
+      return `${node.label} ${node.type} ${node.summary}`.toLowerCase().includes(query);
+    });
+    return filtered.slice(0, 18);
+  }, [model.nodes, query]);
+  const layout = React.useMemo(() => layoutGraphNodes(visibleNodes, 38, 24), [visibleNodes]);
+  const positionById = React.useMemo(() => new Map(layout.map((item) => [item.node.id, item])), [layout]);
+  const visibleEdges = React.useMemo(
+    () => model.edges.filter((edge) => positionById.has(edge.source) && positionById.has(edge.target)).slice(0, 36),
+    [model.edges, positionById],
+  );
+  const selected = visibleNodes.find((node) => node.id === selectedId) || visibleNodes[0] || null;
+
+  return (
+    <section className="mind-core-graph" data-testid="emergent-knowledge-graph" aria-label="Knowledge Graph">
+      <div className="brain-graph-head">
+        <div>
+          <span>Level 5</span>
+          <strong>Knowledge Graph</strong>
+        </div>
+        <label className="brain-graph-search">
+          <Search className="h-3.5 w-3.5" />
+          <input
+            value={search}
+            onChange={(event) => onSearch(event.target.value)}
+            placeholder="Search"
+            aria-label="Search knowledge graph"
+          />
+        </label>
+      </div>
+
+      {visibleNodes.length ? (
+        <div className="brain-graph-canvas">
+          <svg className="brain-graph-edges" viewBox="0 0 100 100" aria-hidden>
+            {visibleEdges.map((edge, index) => {
+              const source = positionById.get(edge.source);
+              const target = positionById.get(edge.target);
+              if (!source || !target) return null;
+              return (
+                <line
+                  key={`${edge.id}-${index}`}
+                  x1={source.x}
+                  y1={source.y}
+                  x2={target.x}
+                  y2={target.y}
+                  style={{ "--weight": String(clamp(edge.weight, 0.4, 2.8)) } as React.CSSProperties}
+                />
+              );
+            })}
+          </svg>
+          {layout.map(({ node, x, y }, index) => (
+            <button
+              key={node.id}
+              type="button"
+              className={`graph-node ${selected?.id === node.id ? "is-selected" : ""}`}
+              style={layerStyle({ "--x": `${x}%`, "--y": `${y}%`, "--delay": `${index * 35}ms` })}
+              onClick={() => onSelect(node.id)}
+            >
+              <span>{node.type}</span>
+              {node.label}
+            </button>
+          ))}
+        </div>
+      ) : (
+        <div className="brain-graph-empty">No matching knowledge yet</div>
+      )}
+
+      <div className="brain-graph-focus">
+        {selected ? (
+          <>
+            <span>{selected.type}</span>
+            <strong>{selected.label}</strong>
+            <p>{selected.summary || "This concept is part of the deepest knowledge layer."}</p>
+          </>
+        ) : (
+          <p>Capture documents, conversations, or projects to grow the graph.</p>
+        )}
+      </div>
+    </section>
+  );
+}
+
+function buildMemoryFragments(memoryData: unknown, historyData: unknown): MemoryFragment[] {
+  const memory = isRecord(memoryData) ? memoryData : {};
+  const sourceRows = asArray<ApiRecord>(memory.sources).length
+    ? asArray<ApiRecord>(memory.sources)
+    : asArray<ApiRecord>(memory.tiers);
+  const sourceFragments = sourceRows.map((item, index) => ({
+    id: textValue(item, ["id", "source", "label"], `memory-${index}`),
+    title: textValue(item, ["title", "label", "source", "path", "name"], "Workspace memory"),
+    kind: titleValue(item, ["type", "source_type", "kind", "health"], "Memory"),
+  }));
+  const conversationFragments = asArray<ApiRecord>(historyData).map((item, index) => ({
+    id: textValue(item, ["id", "conversation_id"], `conversation-${index}`),
+    title: textValue(item, ["title", "summary", "id"], "Conversation"),
+    kind: "Conversation",
+  }));
+
+  return uniqueById([...sourceFragments, ...conversationFragments]).slice(0, 10);
+}
+
+function parseKnowledgeGraph(data: unknown): KnowledgeGraphModel {
+  const graph = isRecord(data) ? data : {};
+  const rawNodes = asArray<ApiRecord>(graph.nodes);
+  const rawEdges = asArray<ApiRecord>(graph.edges);
+  const nodes = rawNodes.flatMap((node): KnowledgeConcept[] => {
+    const id = textValue(node, ["id", "node_id", "title", "label"]);
+    if (!id) return [];
+    const metadata = isRecord(node.metadata) ? node.metadata : {};
+    const type = titleValue(node, ["type", "kind", "category"], "Concept");
+    const label = textValue(node, ["title", "label", "name"], id.replace(/^[^:]+:/, ""));
+    const summary = textValue(node, ["summary", "description", "snippet"]) || textValue(metadata, ["summary", "description", "relative_path", "filename"]);
+    const importance = clamp(numberValue(node, ["importance_norm", "importance", "score"]) || 0.5, 0.08, 1);
+    return [{ id, label, type, summary, importance }];
+  }).sort((left, right) => right.importance - left.importance);
+  const ids = new Set(nodes.map((node) => node.id));
+  const edges = rawEdges.flatMap((edge, index): RelationshipThread[] => {
+    const source = textValue(edge, ["from", "source", "source_id"]);
+    const target = textValue(edge, ["to", "target", "target_id"]);
+    if (!source || !target || !ids.has(source) || !ids.has(target)) return [];
+    return [{
+      id: textValue(edge, ["id"], `edge-${index}`),
+      source,
+      target,
+      label: titleValue(edge, ["type", "label", "relationship"], "Relates"),
+      weight: numberValue(edge, ["weight", "score", "confidence"]) || 1,
+    }];
+  });
+  return { nodes, edges };
+}
+
+function currentModelName(data: unknown) {
+  const record = isRecord(data) ? data : {};
+  const current = textValue(record, ["current", "current_model", "local_model"]);
+  if (current) return current;
+  const loaded = asArray<ApiRecord>(record.loaded || record.loaded_models);
+  const firstLoaded = loaded.find((item) => item.id || item.name || item.model_id);
+  return firstLoaded ? textValue(firstLoaded, ["name", "id", "model_id"], "local mind") : "local mind";
+}
+
+function fileToDataUrl(file: File) {
+  return new Promise<string>((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = () => resolve(String(reader.result || ""));
+    reader.onerror = () => reject(reader.error);
+    reader.readAsDataURL(file);
+  });
+}
+
+function layoutGraphNodes(nodes: KnowledgeConcept[], radiusX: number, radiusY: number) {
+  return nodes.map((node, index) => {
+    const point = polarPoint(index, nodes.length, radiusX, radiusY, -88);
+    return { node, x: point.x, y: point.y };
+  });
+}
+
+function polarPoint(index: number, total: number, radiusX: number, radiusY: number, offsetDegrees = -90) {
+  const count = Math.max(total, 1);
+  const angle = ((360 / count) * index + offsetDegrees) * Math.PI / 180;
+  return {
+    x: 50 + Math.cos(angle) * radiusX,
+    y: 50 + Math.sin(angle) * radiusY,
+  };
+}
+
+function layerStyle(values: Record<string, string>) {
+  return values as React.CSSProperties;
+}
+
+function uniqueById<T extends { id: string }>(items: T[]) {
+  const seen = new Set<string>();
+  return items.filter((item) => {
+    if (seen.has(item.id)) return false;
+    seen.add(item.id);
+    return true;
+  });
+}
+
+function isRecord(value: unknown): value is ApiRecord {
+  return Boolean(value && typeof value === "object" && !Array.isArray(value));
+}
+
+function textValue(record: ApiRecord, keys: string[], fallback = "") {
+  for (const key of keys) {
+    const value = record[key];
+    if (typeof value === "string" && value.trim()) return value;
+    if (typeof value === "number" && Number.isFinite(value)) return String(value);
+  }
+  return fallback;
+}
+
+function titleValue(record: ApiRecord, keys: string[], fallback = "") {
+  const value = textValue(record, keys, fallback);
+  return value
+    .replace(/[_-]+/g, " ")
+    .replace(/\b\w/g, (character) => character.toUpperCase());
+}
+
+function numberValue(record: ApiRecord, keys: string[]) {
+  for (const key of keys) {
+    const value = Number(record[key]);
+    if (Number.isFinite(value)) return value;
+  }
+  return 0;
+}
+
+function clamp(value: number, min: number, max: number) {
+  return Math.max(min, Math.min(max, value));
+}

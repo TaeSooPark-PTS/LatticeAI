@@ -5,23 +5,26 @@
 v4.6.0 stops presenting Lattice AI as a graph product or dashboard. The
 first-run product flow is Login -> Environment Analysis -> Recommended Models
 -> Install & Load -> Brain. After setup, the Brain is the center of the desktop
-experience, and the graph is repositioned as an advanced layer for intentional
-relationship exploration.
+experience, and the graph is repositioned as the deepest layer inside Brain
+exploration rather than a separate destination.
 
 ## Product Changes
 
 - First launch opens to a premium minimal Login screen only.
 - Setup runs as a full-screen guided sequence: friendly environment analysis,
   short ranked model recommendations, and install/download/validate/load.
-- After model load, `/app` and `/app#/brain` open into Brain plus conversation.
-- The living Brain remains visible during primary conversation and reacts to
-  listening, recall, thinking, and active agent/workflow signals.
-- `/app#/ask` and `/app#/chat` remain compatible but route to the Brain
+- After model load, `/app` and compatible legacy entry URLs open into Brain plus
   conversation.
-- Primary navigation is reduced to Brain, Memory, Files, Automations, Models,
-  and Settings.
-- Brain tabs now follow the product ladder: Brain, Memories, Knowledge,
-  Relationships, Graph, Care.
+- The living Brain is an anatomical, recognizable Brain that remains visible
+  during primary conversation and reacts to listening, recall, thinking,
+  planning, and active agent/workflow signals.
+- Brain exploration now has five depths:
+  Living Brain, Memory Layer, Knowledge Layer, Relationship Layer, and
+  Knowledge Graph.
+- The Knowledge Graph appears only at Level 5 and includes nodes, edges, search,
+  and focus details.
+- `/chat`, `/ask`, `/graph`, and other legacy entry URLs remain compatible app
+  entry points, but the primary user path inward is through the Brain itself.
 - First-run setup no longer appears as dashboard cards above any app page; it
   gates the app before the Brain opens.
 
@@ -29,23 +32,25 @@ relationship exploration.
 
 - Added `frontend/src/components/LivingBrain.tsx` as the animated Brain
   presence component.
-- Added `frontend/src/components/BrainConversation.tsx` to centralize chat
-  streaming, history, image attachment, model status, memory previews, and
-  Brain activity state.
+- Updated `frontend/src/App.tsx` to own the five-depth Brain journey and the
+  emergent graph surface.
+- `frontend/src/components/BrainConversation.tsx` remains available for legacy
+  page compatibility and now shares the expanded Brain activity states.
 - Added `frontend/src/components/ProductFlow.tsx` to own Login, environment
   analysis, recommendation, install/download/validate/load, and Brain entry.
-- Kept graph parsing, Cytoscape rendering, search, provenance, portability, and
-  archive APIs intact.
+- Kept graph APIs, memory APIs, search, provenance, portability, and archive
+  APIs intact.
 - Kept FastAPI, Tauri, StorageEngine, Brain Core, backup/restore, and
   portability unchanged.
 
 ## Compatibility
 
 - Existing backend routes are unchanged.
-- Legacy hash routes continue to resolve through the SPA route alias table.
-- The advanced graph remains available at `/app#/knowledge-graph`.
-- The old Ask page imports the shared Brain conversation component to avoid
-  duplicate chat behavior.
+- Legacy hash routes and redirects continue to arrive inside the SPA.
+- The advanced graph capability remains available as Level 5 of Brain
+  exploration.
+- The older route components remain in source for compatibility while the
+  primary app surface is the Brain Space.
 
 ## Validation Scope
 
@@ -56,3 +61,12 @@ The v4.6.0 work should be validated with:
 - affected visual tests
 - unit tests covering version consistency and route compatibility
 - Tauri cargo check when the desktop toolchain is available
+
+Validated in this update:
+
+- `npm run lint`
+- `npm run test:visual`
+- `npm run check:python`
+- `npm run test:unit`
+- `npm run test:integration` with the local server on port 8899
+- `npm run build`

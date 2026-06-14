@@ -5,19 +5,28 @@ historical and may describe behavior as it existed at that release.
 
 ## [4.6.x Brain Exploration Update] - 2026-06-14
 
-> The Brain is now the true interactive entry point to the user's knowledge. Clicking the living Brain progressively reveals deeper layers of the mind (Level 1 living presence → memories → concepts → relationships → the emergent full Knowledge Graph). The graph never appears abruptly; it grows out of the Brain as the user travels inward.
+> The Brain is now the true interactive entry point to the user's knowledge.
+> Clicking the living Brain progressively reveals deeper layers of the mind:
+> Level 1 living presence -> memories -> concepts -> relationships -> the
+> emergent full Knowledge Graph. The graph never appears abruptly; it grows out
+> of the Brain as the user travels inward.
 
 ### Changed
-- LivingBrain component now accepts `depth` (0-5) and `onInteract` callback. Visuals evolve: more particles, expanding halo/core, "resolving" structures, and proto-graph lines appear inside the organism at higher depths.
-- BrainHome now manages internal `explorationDepth`. Clicking the central living Brain advances the depth organically.
-- Layered emergence field renders real data around the Brain:
-  - Depth 1-2: Memory orbs (from memory manager) that "eject" from the presence; clicking one surfaces it into the conversation.
-  - Depth 3-4: Knowledge nodes and relationship edges (drawn from the graph API) positioned spatially around the Brain.
-  - Depth 5: "Core Lattice" panel with live concepts from the user's graph — the full graph has emerged from within the living mind.
-- The experience uses the existing data APIs (memory, graph, search) but presents them as layers unfolding from the single central Brain object rather than separate pages or a bottom nav.
-- Conversation remains available at all depths; the Brain presence scales and intensifies as you go deeper.
-- The previous separate chamber model and bottom depths bar remain as secondary access but the primary, intended path is "click the Brain to travel deeper."
-- Visual language: organic emergence animations, positioned orbs/nodes that scale and fade in from the brain core, no abrupt page swaps.
+- Rebuilt `LivingBrain` as a recognizable anatomical Brain with animated
+  hemispheres, folds, memory ripples, thought particles, and state-specific
+  responses for listening, recalling, thinking, planning, and acting.
+- BrainHome now manages five progressive depths. Level 1 shows only the living
+  Brain; Level 2 reveals memory fragments; Level 3 reveals concepts; Level 4
+  reveals relationship threads; Level 5 reveals the searchable Knowledge Graph.
+- Layered emergence uses the existing memory and graph APIs but presents them
+  as unfolding layers inside one central Brain experience rather than separate
+  pages, tabs, or a bottom depth bar.
+- Level 5 now includes graph nodes, edges, search filtering, and focus details
+  in an emergent graph panel.
+- Conversation remains available at every depth; the Brain presence changes
+  intensity as the user travels inward or streams a response.
+- Updated visual validation to assert the new depth contract, graph emergence,
+  graph search, chat streaming, mobile overflow, and legacy entry compatibility.
 
 The user should feel they are moving inward through their own mind, with the graph as the deepest, most structured layer that grew from the living presence.
 
