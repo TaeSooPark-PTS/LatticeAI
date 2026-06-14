@@ -1,14 +1,27 @@
-# Lattice AI — Feature Status (v5.4.0 target)
+# Lattice AI — Feature Status (v5.5.0 target)
 
-**Current release-preparation line:** v5.4.0 Brain Automation Scheduler.
+**Current release-preparation line:** v5.5.0 Release Coordination.
 Lattice AI is a local-first Digital Brain that keeps your knowledge durable
 across any AI model. The primary experience is Brain plus conversation; the
 graph remains durable infrastructure and advanced exploration, not the home
 product identity. Sections below v5.3.0 are historical release-status records
 and should not override the current README, ARCHITECTURE.md, SECURITY.md,
-PRIVACY.md, or v5.4.0 release notes.
+PRIVACY.md, or v5.5.0 release notes.
 
-## v5.4.0 Brain Automation Scheduler — current development line
+## v5.5.0 Release Coordination — current development line
+
+v5.5.0 completes the release coordination pass for the current product line:
+version metadata, lockfiles, static manifest, release documentation, and exact
+artifact names are synchronized while preserving the v5.4.0 Brain Automation
+Scheduler behavior.
+
+| Area | Status | Evidence |
+| --- | --- | --- |
+| **Version synchronization** | WORKING | `scripts/bump_version.py` updates Python, npm, VSIX, Tauri, runtime constants, lockfiles, and static asset metadata to 5.5.0. |
+| **Release documentation** | WORKING | README, RELEASE.md, docs/CHANGELOG.md, RELEASE_NOTES.md, and vscode-extension/README.md point current release-preparation references at 5.5.0. |
+| **Behavior preservation** | WORKING | v5.4.0 consent-first automation, TriggerService safeguards, and runtime graph cleanup remain the functional baseline. |
+
+## v5.4.0 Brain Automation Scheduler — what changed
 
 The next product direction is a gentle Brain automation layer: Lattice suggests
 useful schedules and follow-up workflows, but installs them as reviewable,

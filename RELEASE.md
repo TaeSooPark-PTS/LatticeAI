@@ -7,6 +7,21 @@
 > PyPI / npm / VS Code Marketplace / Open VSX 배포는 아래 수동 절차로만
 > 진행합니다. 태그 생성은 패키지 스토어 publish를 자동으로 트리거하지 않습니다.
 
+## v5.5.0 릴리스 준비 노트 (2026-06-15)
+
+Lattice AI v5.5.0 — Release Coordination. 5.5.0은 v5.4.0 Brain Automation
+Scheduler 기능선을 유지하면서 패키지/런타임/정적 메타데이터와 릴리스 문서를
+5.5.0으로 동기화한다. consent-first Brain automation, TriggerService dedup,
+LATTICE_TZ, degraded 상태, enabled:false disarming, runtime graph cleanup은 그대로
+보존한다. 패키지 publish와 배포는 owner-run 절차로 남겨둔다.
+
+Expected artifacts (exact 5.5.0 names only):
+- dist/ltcai-5.5.0-py3-none-any.whl
+- dist/ltcai-5.5.0.tar.gz
+- dist/ltcai-5.5.0.vsix
+- ltcai-5.5.0.tgz
+- src-tauri/target/release/bundle/dmg/Lattice AI_5.5.0_aarch64.dmg
+
 ## v5.4.0 릴리스 준비 노트 (2026-06-15)
 
 Lattice AI v5.4.0 — Brain Automation Scheduler. 5.4.0은 consent-first Brain

@@ -1,7 +1,35 @@
 # Release Notes
 
-The current release target is v5.4.0. The tracked release-note surface starts at
+The current release target is v5.5.0. The tracked release-note surface starts at
 v4.5.0 so the public Git tree stays focused on the current product era.
+
+## v5.5.0 - Release Coordination
+
+Lattice AI v5.5.0 completes the release coordination pass for the current
+product line. It preserves the v5.4.0 Brain Automation Scheduler behavior while
+synchronizing package/runtime/static metadata, lockfiles, release documentation,
+and exact artifact names for the 5.5.0 line.
+
+### Highlights
+
+- Bumped synchronized Python, npm, VSIX, Tauri, runtime constants, lockfiles, and
+  static metadata to `5.5.0`.
+- Updated current-release README, RELEASE.md, docs/CHANGELOG.md,
+  FEATURE_STATUS.md, vscode-extension/README.md, and release notes.
+- Preserved consent-first Brain automation recipes, TriggerService dedup,
+  LATTICE_TZ, degraded status, enabled:false disarming, runtime graph cleanup,
+  and E2E scenario coverage from v5.4.0.
+- Kept package publish and deployment owner-run only.
+
+### Expected Artifacts
+
+- `dist/ltcai-5.5.0-py3-none-any.whl`
+- `dist/ltcai-5.5.0.tar.gz`
+- `dist/ltcai-5.5.0.vsix`
+- `ltcai-5.5.0.tgz`
+- `src-tauri/target/release/bundle/dmg/Lattice AI_5.5.0_aarch64.dmg`
+
+Full notes: [RELEASE_NOTES_v5.5.0.md](RELEASE_NOTES_v5.5.0.md)
 
 ## v5.4.0 - Brain Automation Scheduler
 

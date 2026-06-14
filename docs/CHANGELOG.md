@@ -3,6 +3,25 @@
 The top entry is the current release-preparation target. Older entries are
 historical and may describe behavior as it existed at that release.
 
+## [5.5.0] - 2026-06-15
+
+> Release Coordination. Synchronized package/runtime/static metadata and release
+> documentation for the 5.5.0 line while preserving v5.4.0 Brain Automation
+> Scheduler behavior.
+
+### Changed
+- Bumped synchronized Python, npm, VSIX, Tauri, runtime constants, lockfiles, and
+  static asset manifest metadata to `5.5.0`.
+- Updated README, RELEASE.md, RELEASE_NOTES.md, FEATURE_STATUS.md,
+  vscode-extension/README.md, and this changelog so current-release references
+  and expected artifact names point at exact 5.5.0 filenames.
+
+### Preserved
+- v5.4.0 consent-first Brain automation recipes, TriggerService dedup,
+  LATTICE_TZ, degraded status, enabled:false disarming, runtime graph cleanup,
+  and E2E scenario coverage remain the functional baseline.
+- Package registry publishing and deployment remain owner-run only.
+
 ## [5.4.0] - 2026-06-15
 
 > Brain Automation Scheduler. Consent-first recipe drafts (Daily Memory Digest,

@@ -12,13 +12,14 @@ chat, run model workflows, and trigger coding actions from the editor.
 
 ## Current Release
 
-**5.4.0 — Brain Automation Scheduler.** The extension follows the main
+**5.5.0 — Release Coordination.** The extension follows the main
 app positioning: Lattice AI is a local-first Digital Brain, not just a model
 launcher or editor chat panel. It connects editor actions to the same durable
 Brain context, model registry, explicit consent gates, and separated Admin
 surface used by the desktop app. Brain automation recipes (Daily Memory Digest,
 Weekly Project Review, Follow-up Radar) are now available as reviewable disabled
-drafts with scheduler triggers.
+drafts with scheduler triggers from the preserved v5.4.0 baseline, while
+extension package metadata is synchronized to 5.5.0.
 
 ## Quick Start
 

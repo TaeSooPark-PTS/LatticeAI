@@ -193,24 +193,23 @@ See [docs/DEVELOPMENT.md](docs/DEVELOPMENT.md) for developer workflow details.
 
 ## Current Release Preparation
 
-The current development target is **5.4.0 Brain Automation Scheduler**:
+The current development target is **5.5.0 Release Coordination**:
 
-- Consent-first Brain automation recipes (Daily Memory Digest, Weekly Project Review,
-  Follow-up Radar) install from Automate page as reviewable disabled drafts.
-- TriggerService provides scheduler/brain-event triggers with dedup guards,
-  LATTICE_TZ support, consecutive failure degraded status, and explicit enabled:false
-  disarming.
-- lattice_brain/runtime dependency graph 정리 and entrypoint documentation added.
-- E2E scenarios for draft install + trigger execution with provenance.
-- All package/runtime/static versions synchronized to 5.4.0; PR #4 remote gates passed.
+- Carries forward the v5.4.0 Brain Automation Scheduler as the release-ready
+  baseline for the 5.5.0 line.
+- Keeps consent-first automation, TriggerService dedup/LATTICE_TZ/degraded
+  behavior, and runtime graph cleanup intact.
+- Synchronizes Python, npm, VSIX, Tauri, runtime constants, lockfiles, and static
+  metadata to 5.5.0.
+- Updates release documentation and artifact naming to exact 5.5.0 filenames.
 
-Expected artifacts for 5.4.0 release must use exact filenames:
+Expected artifacts for 5.5.0 release must use exact filenames:
 
-- `dist/ltcai-5.4.0-py3-none-any.whl`
-- `dist/ltcai-5.4.0.tar.gz`
-- `ltcai-5.4.0.tgz`
-- `dist/ltcai-5.4.0.vsix`
-- `src-tauri/target/release/bundle/dmg/Lattice AI_5.4.0_aarch64.dmg`
+- `dist/ltcai-5.5.0-py3-none-any.whl`
+- `dist/ltcai-5.5.0.tar.gz`
+- `ltcai-5.5.0.tgz`
+- `dist/ltcai-5.5.0.vsix`
+- `src-tauri/target/release/bundle/dmg/Lattice AI_5.5.0_aarch64.dmg`
 
 Do not upload `dist/*`. Package registry publishing remains owner-run.
 
@@ -229,6 +228,7 @@ Do not upload `dist/*`. Package registry publishing remains owner-run.
 
 | Version | Theme |
 | --- | --- |
+| 5.5.0 | Release Coordination: synchronized package/runtime/static versions and release docs for the 5.5.0 line while preserving v5.4.0 Brain Automation Scheduler behavior |
 | 5.4.0 | Brain Automation Scheduler: consent-first recipe drafts (Daily/Weekly/Follow-up), TriggerService with dedup/LATTICE_TZ/degraded, runtime graph cleanup, E2E scenarios |
 | 5.3.0 | Product Clarity and Runtime Cleanup: user-first README/onboarding, unified Digital Brain identity, legacy compatibility map, and app factory runtime seams |
 | 5.2.0 | User-Focused Model Transformation: structured model capability registry, HF verification transparency, model recommendation UX, and workspace-scoped marketplace state |
