@@ -51,6 +51,10 @@ class WorkflowImportRequest(BaseModel):
     data: Dict[str, Any] = {}
 
 
+class WorkflowRecipeInstallRequest(BaseModel):
+    enabled: bool = False
+
+
 def create_workflow_designer_router(
     *,
     store,
@@ -253,6 +257,44 @@ def create_workflow_designer_router(
         if trigger_service is None:
             return {"running": False, "tick_seconds": None, "armed": []}
         return trigger_service.describe()
+
+    @router.get("/workflows/api/automation/recipes")
+    async def automation_recipes(request: Request):
+        require_user(request)
+        from latticeai.services.brain_automation import list_brain_automation_recipes
+
+        return list_brain_automation_recipes()
+
+    @router.post("/workflows/api/automation/recipes/{recipe_id}")
+    async def install_automation_recipe(recipe_id: str, req: WorkflowRecipeInstallRequest, request: Request):
+        current_user = require_user(request)
+        scope = gate_write(request)
+        from latticeai.services.brain_automation import build_brain_automation_workflow
+
+        try:
+            definition = build_brain_automation_workflow(recipe_id, enabled=req.enabled)
+        except KeyError as exc:
+            raise HTTPException(status_code=404, detail=f"Automation recipe not found: {recipe_id}") from exc
+        errors = validate_definition({"name": definition["name"], "nodes": definition["nodes"]})
+        if errors:
+            raise HTTPException(status_code=400, detail={"validation_errors": errors})
+        workflow = store.create_workflow(
+            name=definition["name"],
+            steps=[{"action": n.get("type"), "node": n.get("id")} for n in definition["nodes"]],
+            nodes=definition["nodes"],
+            metadata=definition["metadata"],
+            user_email=current_user or None,
+            graph=workspace_graph(),
+            workspace_id=scope,
+        )
+        append_audit_event(
+            "brain_automation_recipe_installed",
+            user_email=current_user,
+            workflow_id=workflow["id"],
+            recipe_id=recipe_id,
+            enabled=bool(req.enabled),
+        )
+        return {"workflow": workflow, "recipe": definition["metadata"], "enabled": bool(req.enabled)}
 
     @router.get("/workflows/api/runs/{run_id}/replay")
     async def workflow_run_replay(run_id: str, request: Request):

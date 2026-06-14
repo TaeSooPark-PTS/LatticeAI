@@ -3,6 +3,20 @@
 The top entry is the current release-preparation target. Older entries are
 historical and may describe behavior as it existed at that release.
 
+## Unreleased
+
+### Added
+- Consent-first Brain automation recipe drafts for Daily Memory Digest, Weekly
+  Project Review, and Follow-up Radar. Recipes install as disabled workflows so
+  users can inspect them before any scheduler or Brain-event trigger fires.
+
+### Changed
+- Workflow trigger scanning now treats explicit `enabled: false` trigger config
+  as disarmed while preserving legacy behavior for existing workflows that do
+  not include an `enabled` field.
+- The Automate page now surfaces Brain automation recipe cards with local-only,
+  review-before-run consent copy.
+
 ## [5.3.0] - 2026-06-14
 
 > Product Clarity and Runtime Cleanup. Lattice AI is now presented consistently

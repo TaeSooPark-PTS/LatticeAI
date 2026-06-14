@@ -8,6 +8,18 @@ product identity. Sections below v5.3.0 are historical release-status records
 and should not override the current README, ARCHITECTURE.md, SECURITY.md,
 PRIVACY.md, or v5.3.0 release notes.
 
+## Post-5.3.0 Brain Automation Drafts — current development line
+
+The next product direction is a gentle Brain automation layer: Lattice suggests
+useful schedules and follow-up workflows, but installs them as reviewable,
+disabled drafts until the user explicitly enables a trigger.
+
+| Area | Status | Evidence |
+| --- | --- | --- |
+| **Brain automation recipes** | IN DEVELOPMENT | `latticeai/services/brain_automation.py` defines Daily Memory Digest, Weekly Project Review, and Follow-up Radar recipes with local-only consent metadata. |
+| **Consent-first scheduler boundary** | WORKING | `TriggerService` ignores trigger nodes with explicit `enabled: false`, so recipe drafts do not run silently. |
+| **Automate page recipe cards** | IN DEVELOPMENT | `frontend/src/pages/Act.tsx` shows recipe cards and creates disabled workflow drafts via `/workflows/api/automation/recipes/{recipe_id}`. |
+
 ## v5.3.0 Product Clarity and Runtime Cleanup — what changed
 
 v5.3.0 focuses on making the product easier to understand before adding more

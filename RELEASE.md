@@ -7,6 +7,14 @@
 > PyPI / npm / VS Code Marketplace / Open VSX 배포는 아래 수동 절차로만
 > 진행합니다. 태그 생성은 패키지 스토어 publish를 자동으로 트리거하지 않습니다.
 
+## Post-5.3.0 development note
+
+The next development line adds consent-first Brain automation drafts. Daily
+Memory Digest, Weekly Project Review, and Follow-up Radar recipes can be
+created from the Automate page as disabled workflows; scheduler and Brain-event
+triggers remain disarmed until a user explicitly enables them. This is not a
+package-store release entry yet.
+
 ## v5.3.0 릴리스 준비 노트 (2026-06-14)
 
 Lattice AI v5.3.0 — Product Clarity and Runtime Cleanup. 5.3.0은 기능 추가보다

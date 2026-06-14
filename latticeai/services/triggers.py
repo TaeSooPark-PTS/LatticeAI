@@ -86,6 +86,8 @@ class TriggerService:
                     continue
                 cfg = node.get("config") or {}
                 kind = str(cfg.get("trigger") or "manual")
+                if cfg.get("enabled") is False:
+                    continue
                 if kind in ("interval", "brain_event"):
                     found.append({"workflow": wf, "node": node, "kind": kind, "config": cfg})
         return found

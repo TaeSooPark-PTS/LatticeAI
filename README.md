@@ -45,6 +45,8 @@ You need Lattice AI when:
   source-aware memory.
 - See recent memories, older memories, topics, relationships, and the full
   knowledge graph when you want deeper structure.
+- Create consent-first Brain automation drafts for memory digests, project
+  reviews, and follow-up suggestions before any schedule is enabled.
 - Use a recommended local model without learning model internals first.
 - Keep advanced controls, audit logs, roles, and retention in a separate Admin
   surface.

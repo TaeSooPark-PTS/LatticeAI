@@ -1,7 +1,7 @@
 import * as React from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import ReactFlow, { Background, Controls, Edge, Node } from "reactflow";
-import { Bot, GitBranch, PauseCircle, Play, Workflow } from "lucide-react";
+import { Bot, CalendarClock, GitBranch, PauseCircle, Play, ShieldCheck, Workflow } from "lucide-react";
 import { latticeApi } from "@/api/client";
 import { ActionButton, DataPanel, EntityList, KeyValueList, ModeGate, OperationResult, StructuredView, Tabs } from "@/components/primitives";
 import { Badge } from "@/components/ui/badge";
@@ -199,6 +199,7 @@ function WorkflowsPanel() {
   const qc = useQueryClient();
   const defs = useQuery({ queryKey: ["workflowDefinitions"], queryFn: latticeApi.workflowDefinitions });
   const triggers = useQuery({ queryKey: ["workflowTriggers"], queryFn: latticeApi.workflowTriggers });
+  const recipes = useQuery({ queryKey: ["automationRecipes"], queryFn: latticeApi.automationRecipes });
   const [name, setName] = React.useState("Manual workflow");
   const [importText, setImportText] = React.useState("");
   const create = useMutation({
@@ -216,6 +217,13 @@ function WorkflowsPanel() {
       qc.invalidateQueries({ queryKey: ["workflowDefinitions"] });
     },
   });
+  const installRecipe = useMutation({
+    mutationFn: (recipeId: string) => latticeApi.installAutomationRecipe(recipeId, false),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["workflowDefinitions"] });
+      qc.invalidateQueries({ queryKey: ["workflowTriggers"] });
+    },
+  });
   const workflows = asArray<Record<string, unknown>>((defs.data?.data as Record<string, unknown>)?.workflows);
   const nodes: Node[] = workflows.slice(0, 12).map((workflow, index) => ({
     id: String(workflow.id || workflow.workflow_id || index),
@@ -225,6 +233,47 @@ function WorkflowsPanel() {
   const edges: Edge[] = nodes.slice(1).map((node, index) => ({ id: `e-${index}`, source: nodes[index].id, target: node.id }));
   return (
     <div className="grid gap-4 xl:grid-cols-[1.2fr_0.8fr]">
+      <DataPanel title="Brain automations" result={recipes.data} className="xl:col-span-2">
+        {(data) => {
+          const items = asArray<Record<string, unknown>>((data as Record<string, unknown>).recipes);
+          return (
+            <div className="grid gap-3 lg:grid-cols-3">
+              {items.map((recipe) => {
+                const id = String(recipe.id || "");
+                const consent = (recipe.consent || {}) as Record<string, unknown>;
+                const creates = asArray<string>(recipe.creates);
+                return (
+                  <div key={id} className="rounded-lg border border-border bg-background/70 p-4">
+                    <div className="flex items-start justify-between gap-2">
+                      <div>
+                        <div className="flex items-center gap-2 font-medium">
+                          <CalendarClock className="h-4 w-4" /> {String(recipe.name || id)}
+                        </div>
+                        <p className="mt-2 text-sm text-muted-foreground">{String(recipe.summary || "")}</p>
+                      </div>
+                      <Badge variant="muted">{String(recipe.cadence || "draft")}</Badge>
+                    </div>
+                    <p className="mt-3 text-sm">{String(recipe.user_value || "")}</p>
+                    <div className="mt-3 flex flex-wrap gap-2">
+                      <Badge variant="success"><ShieldCheck className="h-3 w-3" /> local only</Badge>
+                      {consent.requires_user_enable ? <Badge variant="warning">draft first</Badge> : null}
+                      {creates.slice(0, 2).map((item) => <Badge key={item} variant="muted">{item}</Badge>)}
+                    </div>
+                    <Button
+                      className="mt-4 w-full"
+                      variant="outline"
+                      disabled={!id || installRecipe.isPending}
+                      onClick={() => installRecipe.mutate(id)}
+                    >
+                      Create reviewable draft
+                    </Button>
+                  </div>
+                );
+              })}
+            </div>
+          );
+        }}
+      </DataPanel>
       <Card>
         <CardHeader>
           <CardTitle className="flex items-center gap-2"><GitBranch className="h-4 w-4" /> Workflow graph</CardTitle>
