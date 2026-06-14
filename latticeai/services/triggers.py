@@ -20,10 +20,16 @@ from __future__ import annotations
 
 import json
 import logging
+import os
 import threading
 import time
 from pathlib import Path
 from typing import Any, Callable, Dict, List, Optional
+
+try:
+    from zoneinfo import ZoneInfo
+except Exception:  # pragma: no cover
+    ZoneInfo = None  # type: ignore
 
 DEFAULT_TICK_SECONDS = 5.0
 MIN_INTERVAL_SECONDS = 60
@@ -51,6 +57,15 @@ class TriggerService:
         self._stop_event = threading.Event()
         self._thread: Optional[threading.Thread] = None
         self._lock = threading.Lock()
+        # LATTICE_TZ: wall-clock / display 용. interval 계산은 여전히 unix seconds (duration 기반, drift 방지).
+        # describe()와 이벤트에 tz 정보 노출. calendar "daily at HH:MM" semantics 는 추후 cron 확장 시 사용.
+        self._tz_name = os.environ.get("LATTICE_TZ") or "UTC"
+        self._tz = None
+        if ZoneInfo is not None:
+            try:
+                self._tz = ZoneInfo(self._tz_name)
+            except Exception:
+                self._tz = ZoneInfo("UTC") if ZoneInfo else None
 
     # ── durable state ──────────────────────────────────────────────────────
     def _load_state(self) -> Dict[str, Any]:
@@ -93,22 +108,30 @@ class TriggerService:
         return found
 
     def describe(self) -> Dict[str, Any]:
-        """Honest status surface: what is armed, when it last fired/skipped."""
+        """Honest status surface: what is armed, when it last fired/skipped.
+        Includes LATTICE_TZ, per-trigger status (armed|degraded), consecutive_failures.
+        """
         state = self._load_state()
         armed = []
         for item in self._triggered_workflows():
             wf_id = item["workflow"].get("id")
+            entry = state.get(wf_id) or {}
+            fails = int(entry.get("consecutive_failures", 0))
+            status = "degraded" if fails >= 3 else "armed"
             armed.append({
                 "workflow_id": wf_id,
                 "name": item["workflow"].get("name"),
                 "kind": item["kind"],
                 "config": {k: v for k, v in item["config"].items() if k != "trigger"},
-                "last_fired_at": (state.get(wf_id) or {}).get("last_fired_at"),
-                "recent_events": (state.get(wf_id) or {}).get("events", [])[-5:],
+                "last_fired_at": entry.get("last_fired_at"),
+                "status": status,
+                "consecutive_failures": fails,
+                "recent_events": entry.get("events", [])[-5:],
             })
         return {
             "running": bool(self._thread and self._thread.is_alive()),
             "tick_seconds": self._tick,
+            "tz": self._tz_name,
             "armed": armed,
         }
 
@@ -135,6 +158,7 @@ class TriggerService:
                     skipped += missed
                 # Reset the cadence from now — no catch-up storm.
                 entry["last_fired_at"] = now if last is not None else entry.get("last_fired_at")
+                entry["last_attempt_at"] = now
             self._save_state(state)
         return skipped
 
@@ -154,9 +178,16 @@ class TriggerService:
                 if last is None:
                     # First sighting arms the schedule; it fires one interval later.
                     entry["last_fired_at"] = now
+                    entry["last_attempt_at"] = now
                     continue
                 if now - float(last) < interval:
                     continue
+                # Dedup guard (edge case): short cooldown + last_attempt prevents rapid re-fire on
+                # clock skew, tick jitter, or restart races. Interval 자체 + 이 가드로 중복 실행 방지.
+                last_attempt = float(entry.get("last_attempt_at") or 0)
+                if now - last_attempt < 10:
+                    continue
+                entry["last_attempt_at"] = now
                 entry["last_fired_at"] = now
                 self._record_event(state, wf_id, {"type": "fired", "trigger": "interval"})
                 fired += 1
@@ -183,7 +214,14 @@ class TriggerService:
                 if wanted and wanted != source_type:
                     continue
                 wf_id = item["workflow"].get("id")
-                state.setdefault(wf_id, {})["last_fired_at"] = self._clock()
+                entry = state.setdefault(wf_id, {})
+                now = self._clock()
+                # Dedup guard for brain_event too (rapid ingest burst 등).
+                last_attempt = float(entry.get("last_attempt_at") or 0)
+                if now - last_attempt < 5:
+                    continue
+                entry["last_attempt_at"] = now
+                entry["last_fired_at"] = now
                 self._record_event(state, wf_id, {
                     "type": "fired", "trigger": "brain_event", "source_type": source_type,
                 })
@@ -213,10 +251,27 @@ class TriggerService:
         def _run():
             try:
                 self._run_workflow(workflow_id, {"__trigger__": trigger_info})
+                self._record_fire_outcome(workflow_id, ok=True)
             except Exception as exc:
                 logging.warning("trigger run failed for %s: %s", workflow_id, exc)
+                self._record_fire_outcome(workflow_id, ok=False, detail=str(exc))
 
         threading.Thread(target=_run, name=f"trigger-{workflow_id}", daemon=True).start()
+
+    def _record_fire_outcome(self, wf_id: str, *, ok: bool, detail: str = "") -> None:
+        """Track consecutive launch failures for degraded status in describe().
+        (Deep execution failures are visible via workflow run records; 여기서는 scheduler fire 자체 실패를 카운트.)
+        """
+        with self._lock:
+            state = self._load_state()
+            entry = state.setdefault(wf_id, {})
+            if ok:
+                entry["consecutive_failures"] = 0
+            else:
+                fails = int(entry.get("consecutive_failures", 0)) + 1
+                entry["consecutive_failures"] = fails
+                self._record_event(state, wf_id, {"type": "failed", "detail": detail[:200]})
+            self._save_state(state)
 
     def start(self) -> None:
         if self._thread and self._thread.is_alive():

@@ -19,6 +19,9 @@ historical and may describe behavior as it existed at that release.
 - Recipe install UX: success feedback on "Create reviewable draft", install-time
   button disabled to block duplicates clicks, and if same recipe draft already
   exists (by metadata), button state changes + guide text instead of re-creating.
+- lattice_brain/runtime dependency/responsibility graph 정리 + 실제 진입점 매핑 문서화 (runtime/* 모듈 헤더 + app_factory 주석). AgentRuntime (lattice_brain facade) vs latticeai/core/agent (single-agent state/plan/transcript) 분리 명확화.
+- TriggerService 스케줄러 엣지케이스 보강: LATTICE_TZ env 지원 (describe() 노출), last_attempt_at + cooldown dedup 가드로 중복 실행 방지 (interval/brain_event), consecutive_failures + "degraded" status per-trigger 서페이싱.
+- A방향 E2E 시나리오 초안 brain_automation.py 에 작성 (draft install, dedup, consent-first, trigger fire with provenance, LATTICE_TZ, degraded, review flow, RunExecutor 경로).
 
 ## [5.3.0] - 2026-06-14
 

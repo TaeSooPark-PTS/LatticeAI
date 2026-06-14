@@ -1,5 +1,12 @@
 """AgentRuntime — the single boundary for agent execution and observability.
 
+(lattice_brain/runtime/agent_runtime.py)
+책임: 퍼사드. store/orchestrator/hooks/audit 주입 받아 start/reserve/complete,
+      status/health/config/events/replay/stop, pre/post_run hook firing.
+      RunExecutor와 /agents 라우터의 유일한 의존 대상.
+의존: .multi_agent (orchestrator), .hooks, store (WORKSPACE_OS).
+진입점: app_factory.py:AGENT_RUNTIME (wiring root), api/agents.py, RunExecutor.
+
 Before this module the agent concern was spread across three places: the
 :class:`~latticeai.core.multi_agent.MultiAgentOrchestrator` (role pipeline),
 the :class:`~latticeai.services.platform_runtime.PlatformRuntime` (cross-system

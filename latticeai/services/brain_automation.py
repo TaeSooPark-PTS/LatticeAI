@@ -187,3 +187,28 @@ def build_brain_automation_workflow(recipe_id: str, *, enabled: bool = False) ->
         },
     }
 
+
+# === A방향 (Act/automation + BrainAutomationPanel) E2E 시나리오 초안 ===
+# (backend 인터페이스 list_brain_automation_recipes / find_installed... / build_... 완료 후 즉시 작성)
+# 1. Recipe 목록 노출: frontend BrainAutomationPanel이 list_brain_automation_recipes() 호출 → recipes + consent metadata 표시.
+# 2. "Create reviewable draft" 클릭:
+#    - build_brain_automation_workflow(recipe_id, enabled=False) 로 draft 생성 (metadata.recipe_id + created_from=brain_automation_recipe)
+#    - find_installed_recipe_workflow 로 사전 dedup 체크 → 이미 있으면 기존 반환, UI disabled + "✓ Reviewable draft ready" 피드백.
+#    - 생성된 workflow는 automation_state="draft_disabled", trigger.enabled=False → TriggerService 무시.
+# 3. Dedup guard (UI + backend): metadata.recipe_id + created_from 기준. 중복 클릭 가드 (no-dup) 로 double submit 방지.
+# 4. User가 draft를 review/수정 후 enabled=True 로 전환 → TriggerService._triggered_workflows 에서 enabled True인 것만 arm.
+# 5. Interval trigger E2E:
+#    - reconcile_missed() : 다운타임 중 missed → "skipped" 이벤트 기록 (catch-up storm 없음).
+#    - tick_intervals() : last_fired_at + interval + last_attempt_at dedup 가드 (10s cooldown) 로 중복 실행 방지.
+#    - LATTICE_TZ 환경변수: describe()에 "tz" 노출, 이벤트 at 값은 epoch이지만 클라이언트가 LATTICE_TZ로 현지화.
+# 6. Brain event trigger E2E: kg_ingest.* post_tool hook → on_brain_event → matching source_type 필터 → _fire (dedup 5s).
+# 7. Failure degraded:
+#    - _fire 에서 run_workflow 예외 → _record_fire_outcome → consecutive_failures++ , describe() "status":"degraded" ( >=3 ).
+#    - 성공 시 reset. (실행 내부 실패는 workflow run record에 남음, scheduler는 launch health만).
+# 8. Run provenance: fired run의 inputs["__trigger__"] = {"type": "interval"|"brain_event", ...} 로 감사/디버그 가능.
+# 9. Consent-first: draft_disabled 기본, user enable 전까지 절대 실행 안 됨. "review_before_run": True.
+# 10. End-to-end Act: draft → enable → trigger fire → agent:planner "Draft Brain review" 노드 → output (requires_review) → user review → save or discard.
+#
+# 다음: 실제 API (e.g. POST /brain/automation/install-draft) 가 UI에서 호출되면 위 시나리오에 대한 통합 테스트 + RunExecutor 경로 검증 즉시 추가.
+# 현재 상태: backend recipe 인터페이스 + TriggerService edge 하드닝 + AgentRuntime wiring 완료. UI (App.tsx + styles) + test_brain_automation.py 는 별도 완료 보고됨.
+

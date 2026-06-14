@@ -1505,6 +1505,7 @@ def _build(config: "Optional[Config]" = None) -> Dict[str, Any]:
     HOOKS_REGISTRY.register_hook(_trigger_hook_id, TRIGGER_SERVICE.hook_runner())
 
     # Single AgentRuntime boundary over the orchestrator + run store.
+    # (lattice_brain/runtime.agent_runtime.AgentRuntime — see runtime/__init__.py for full dep graph + entry mapping)
     AGENT_RUNTIME = AgentRuntime(
         store=WORKSPACE_OS,
         orchestrator_factory=PLATFORM.build_orchestrator,
