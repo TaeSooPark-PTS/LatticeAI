@@ -31,7 +31,11 @@ from latticeai.runtime.platform_services_runtime import (
     build_brain_network,
     build_model_service,
 )
-from latticeai.runtime.router_registration import register_router, register_routers
+from latticeai.runtime.router_registration import (
+    register_review_and_brain_tail_routers,
+    register_router,
+    register_routers,
+)
 from latticeai.runtime.security_runtime import build_security_runtime
 from latticeai.runtime.web_runtime import build_web_runtime
 
@@ -1684,41 +1688,28 @@ def _build(config: "Optional[Config]" = None) -> Dict[str, Any]:
             inputs={"__review_item__": item.get("id")},
         )
 
-    register_routers(
+    BRAIN_NETWORK = register_review_and_brain_tail_routers(
         app,
-        create_review_queue_router(
-            service=REVIEW_QUEUE,
-            require_user=require_user,
-            gate_read=PLATFORM.gate_read,
-            gate_write=PLATFORM.gate_write,
-            run_review_item=_run_review_item,
-            append_audit_event=append_audit_event,
-        ),
-        create_browser_router(
-            pipeline=INGESTION_PIPELINE,
-            require_user=require_user,
-        ),
-        create_portability_router(
-            service=KG_PORTABILITY,
-            require_user=require_user,
-            require_admin=require_admin,
-        ),
-    )
-
-    BRAIN_NETWORK = build_brain_network(
-        identity=DEVICE_IDENTITY,
-        portability=KG_PORTABILITY,
+        create_review_queue_router=create_review_queue_router,
+        review_queue=REVIEW_QUEUE,
+        require_user=require_user,
+        gate_read=PLATFORM.gate_read,
+        gate_write=PLATFORM.gate_write,
+        run_review_item=_run_review_item,
+        append_audit_event=append_audit_event,
+        create_browser_router=create_browser_router,
+        ingestion_pipeline=INGESTION_PIPELINE,
+        create_portability_router=create_portability_router,
+        kg_portability=KG_PORTABILITY,
+        require_admin=require_admin,
+        build_brain_network=build_brain_network,
+        device_identity=DEVICE_IDENTITY,
         data_dir=DATA_DIR,
-    )
-    register_routers(
-        app,
-        create_network_router(
-            network=BRAIN_NETWORK,
-            identity=DEVICE_IDENTITY,
-            require_user=require_user,
-        ),
-        create_garden_router(gardener=gardener, require_user=require_user),
-        create_setup_router(model_router=router, require_user=require_user),
+        create_network_router=create_network_router,
+        create_garden_router=create_garden_router,
+        gardener=gardener,
+        create_setup_router=create_setup_router,
+        model_router=router,
     )
 
     # ── Entry Point ────────────────────────────────────────────────────────────────

@@ -42,7 +42,9 @@ Status:
   constructors such as ModelService and BrainNetwork.
 - `latticeai/runtime/router_registration.py` centralizes the individual
   `include_router` call behind `register_router()` / `register_routers()` while
-  preserving existing router construction call sites and include order.
+  preserving existing router construction call sites and include order. The
+  final review/browser/brain tail routes now use a dedicated registration
+  helper that preserves the legacy BrainNetwork construction point.
 - Router construction and include order remain in `app_factory.py` pending a
   route-snapshot-reviewed reorder step.
 
