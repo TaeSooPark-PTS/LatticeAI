@@ -17,6 +17,7 @@ from __future__ import annotations
 import threading
 from typing import TYPE_CHECKING, Any, Dict, List, Optional
 
+from latticeai.runtime.automation_runtime import build_automation_runtime
 from latticeai.runtime.bootstrap import build_session_runtime
 from latticeai.runtime.brain_runtime import build_brain_runtime
 from latticeai.runtime.config_runtime import build_config_runtime
@@ -113,7 +114,6 @@ def _build(config: "Optional[Config]" = None) -> Dict[str, Any]:
     from latticeai.services.chat_service import ChatService
     from latticeai.services.search_service import SearchService
     from latticeai.core.embedding_providers import resolve_embedder, resolve_embedding_profile
-    from lattice_brain.runtime.agent_runtime import AgentRuntime
     from latticeai.services.model_runtime import (
         CLOUD_VERIFY_TTL_SECONDS,
         ENGINE_MODEL_CATALOG,
@@ -140,7 +140,6 @@ def _build(config: "Optional[Config]" = None) -> Dict[str, Any]:
     from latticeai.core.realtime import RealtimeBus
     from latticeai.core.marketplace import TemplateCatalog
     from latticeai.services.platform_runtime import PlatformRuntime
-    from latticeai.services.run_executor import RunExecutor
     from latticeai.api.plugins import create_plugins_router
     from latticeai.api.workflow_designer import create_workflow_designer_router
     from latticeai.api.agents import create_agents_router
@@ -1466,43 +1465,19 @@ def _build(config: "Optional[Config]" = None) -> Dict[str, Any]:
         agent_registry=AGENT_REGISTRY,
     )
 
-    # ── Brain review queue (5.6.0): the suggestion inbox automation drops into.
-    from latticeai.services.review_queue import ReviewQueueService
-
-    REVIEW_QUEUE = ReviewQueueService(store=WORKSPACE_OS)
-
-    # ── v4 Trigger system (T7d): interval + brain-event workflow triggers.
-    from latticeai.services.triggers import TriggerService
-
-    TRIGGER_SERVICE = TriggerService(
+    _automation_runtime = build_automation_runtime(
         store=WORKSPACE_OS,
-        run_workflow=lambda wf_id, inputs: PLATFORM.run_workflow_by_id(
-            wf_id, None, None, with_agent=False, inputs=inputs,
-        ),
+        platform=PLATFORM,
         data_dir=DATA_DIR,
-        review_sink=REVIEW_QUEUE,
+        workspace_graph=_workspace_graph,
+        append_audit_event=append_audit_event,
+        hooks=HOOKS_REGISTRY,
     )
+    REVIEW_QUEUE = _automation_runtime["REVIEW_QUEUE"]
+    TRIGGER_SERVICE = _automation_runtime["TRIGGER_SERVICE"]
+    AGENT_RUNTIME = _automation_runtime["AGENT_RUNTIME"]
+    RUN_EXECUTOR = _automation_runtime["RUN_EXECUTOR"]
     bind_trigger_hook_runner(registry=HOOKS_REGISTRY, trigger_service=TRIGGER_SERVICE)
-
-    # Single AgentRuntime boundary over the orchestrator + run store.
-    # (lattice_brain/runtime.agent_runtime.AgentRuntime — see runtime/__init__.py for full dep graph + entry mapping)
-    AGENT_RUNTIME = AgentRuntime(
-        store=WORKSPACE_OS,
-        orchestrator_factory=PLATFORM.build_orchestrator,
-        workspace_graph=_workspace_graph,
-        append_audit_event=append_audit_event,
-        hooks=HOOKS_REGISTRY,
-    )
-    RUN_EXECUTOR = RunExecutor(
-        store=WORKSPACE_OS,
-        agent_runtime=AGENT_RUNTIME,
-        build_workflow_runners=PLATFORM.build_workflow_runners,
-        workspace_graph=_workspace_graph,
-        append_audit_event=append_audit_event,
-        hooks=HOOKS_REGISTRY,
-        review_sink=REVIEW_QUEUE,
-    )
-    AGENT_RUNTIME.attach_executor(RUN_EXECUTOR)
     app.state.run_executor = RUN_EXECUTOR
     app.state.run_reconciliation = RUN_EXECUTOR.reconcile_startup()
     TRIGGER_SERVICE.start()

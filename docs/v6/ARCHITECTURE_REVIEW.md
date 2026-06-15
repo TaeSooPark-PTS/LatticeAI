@@ -34,6 +34,8 @@ Status:
   trigger/builtin hook runner binding.
 - `latticeai/runtime/web_runtime.py` owns FastAPI shell creation, CORS
   middleware, and static asset mounts while preserving legacy mount order.
+- `latticeai/runtime/automation_runtime.py` owns Review Queue, TriggerService,
+  AgentRuntime, and RunExecutor construction behind one automation seam.
 - Router construction and include order remain in `app_factory.py` pending a
   route-snapshot-reviewed reorder step.
 
