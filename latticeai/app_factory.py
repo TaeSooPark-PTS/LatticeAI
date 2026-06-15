@@ -1253,32 +1253,34 @@ def _build(config: "Optional[Config]" = None) -> Dict[str, Any]:
             device_identity=DEVICE_IDENTITY,
         )
 
-    register_router(app, create_admin_router(
-        require_admin=require_admin, require_user=require_user,
-        load_users=load_users, save_users=save_users,
-        get_user_role=get_user_role, get_history=get_history,
-        get_audit_log=get_audit_log,
-        public_user=public_user, load_vpc_config=load_vpc_config,
-        save_vpc_config=save_vpc_config,
-        build_admin_audit_report=build_admin_audit_report,
-        build_sensitivity_report=build_sensitivity_report,
-        append_audit_event=append_audit_event,
-        public_sso_config=public_sso_config, save_sso_config=save_sso_config,
-        get_graph_stats=_graph_stats_safe, enable_graph=ENABLE_GRAPH,
-        invite_code=INVITE_CODE, invite_gate_enabled=INVITE_GATE_ENABLED,
-        default_port=DEFAULT_PORT,
-        policy_matrix=policy_matrix,
-        product_hardening_status=_product_hardening_status,
-    ))
-
-    register_router(app, create_invitations_router(
-        invitation_store=INVITATION_STORE,
-        workspace_service=WORKSPACE_SERVICE,
-        require_admin=require_admin,
-        require_user=require_user,
-        user_id_for_email=user_id_for_email,
-        append_audit_event=append_audit_event,
-    ))
+    register_routers(
+        app,
+        create_admin_router(
+            require_admin=require_admin, require_user=require_user,
+            load_users=load_users, save_users=save_users,
+            get_user_role=get_user_role, get_history=get_history,
+            get_audit_log=get_audit_log,
+            public_user=public_user, load_vpc_config=load_vpc_config,
+            save_vpc_config=save_vpc_config,
+            build_admin_audit_report=build_admin_audit_report,
+            build_sensitivity_report=build_sensitivity_report,
+            append_audit_event=append_audit_event,
+            public_sso_config=public_sso_config, save_sso_config=save_sso_config,
+            get_graph_stats=_graph_stats_safe, enable_graph=ENABLE_GRAPH,
+            invite_code=INVITE_CODE, invite_gate_enabled=INVITE_GATE_ENABLED,
+            default_port=DEFAULT_PORT,
+            policy_matrix=policy_matrix,
+            product_hardening_status=_product_hardening_status,
+        ),
+        create_invitations_router(
+            invitation_store=INVITATION_STORE,
+            workspace_service=WORKSPACE_SERVICE,
+            require_admin=require_admin,
+            require_user=require_user,
+            user_id_for_email=user_id_for_email,
+            append_audit_event=append_audit_event,
+        ),
+    )
 
     # ── Security & Audit Command Center (피드백 #5) ──────────────────────────────
     def _security_audit_events_safe() -> List[Dict]:
