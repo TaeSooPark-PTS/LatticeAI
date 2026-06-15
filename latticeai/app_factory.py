@@ -17,8 +17,10 @@ from __future__ import annotations
 import threading
 from typing import TYPE_CHECKING, Any, Dict, List, Optional
 
+from latticeai.runtime.bootstrap import build_session_runtime
 from latticeai.runtime.brain_runtime import build_brain_runtime
 from latticeai.runtime.config_runtime import build_config_runtime
+from latticeai.runtime.hooks_runtime import build_hooks_runtime
 from latticeai.runtime.security_runtime import build_security_runtime
 
 if TYPE_CHECKING:  # imports for annotations only — keep module import light
@@ -63,7 +65,6 @@ def _build(config: "Optional[Config]" = None) -> Dict[str, Any]:
 
     from latticeai.models.router import LLMRouter, normalize_branding
     from lattice_brain._kg_common import set_llm_router
-    from local_knowledge_api import LocalKnowledgeWatcher
     from latticeai.core.security import (
         hash_password,
         verify_password,
@@ -74,7 +75,6 @@ def _build(config: "Optional[Config]" = None) -> Dict[str, Any]:
         check_ip_rate_limit as _check_ip_rate_limit,
         enforce_rate_limit as _enforce_rate_limit,
     )
-    from latticeai.core.sessions import SessionStore as _SessionStore
     from latticeai.core.audit import (
         get_audit_log as _get_audit_log,
         append_audit_event as _append_audit_event,
@@ -152,7 +152,6 @@ def _build(config: "Optional[Config]" = None) -> Dict[str, Any]:
     from latticeai.api.garden import create_garden_router
     from latticeai.api.setup import create_setup_router
     from latticeai.api.hooks import create_hooks_router
-    from lattice_brain.runtime.hooks import HooksRegistry
     from latticeai.core.builtin_hooks import register_builtin_hook_runners
     from latticeai.core.product_hardening import build_product_hardening_status
     from latticeai.api.agent_registry import create_agent_registry_router
@@ -281,10 +280,7 @@ def _build(config: "Optional[Config]" = None) -> Dict[str, Any]:
             return True
         return False
 
-    # ── Session store — delegated to latticeai.core.sessions ──────────────────────
-    _SESSION_TTL = 60 * 60 * 24
-    _session_store = _SessionStore()
-
+    # ── Session store — delegated to latticeai.runtime.bootstrap ──────────────────
     def _check_rate_limit(ip: str, action: str, max_calls: int, window_secs: float) -> None:
         _check_ip_rate_limit(ip, action, max_calls=max_calls, window_secs=window_secs)
 
@@ -294,17 +290,15 @@ def _build(config: "Optional[Config]" = None) -> Dict[str, Any]:
     def user_id_for_email(email: Optional[str]) -> Optional[str]:
         return _user_id_for_email(load_users(), email)
 
-    def create_session(email: str) -> str:
-        return _session_store.create(user_id_for_email(email) or email, email=email)
-
-    def get_session_email(token: str) -> Optional[str]:
-        return _session_store.get_email(token)
-
-    def get_session_user_id(token: str) -> Optional[str]:
-        return _session_store.get_subject(token)
-
-    def invalidate_session(token: str) -> None:
-        _session_store.invalidate(token)
+    # Session token lifecycle (store + create/get/invalidate closures) lives in
+    # the bootstrap seam; user_id_for_email is injected as the subject resolver.
+    _session_runtime = build_session_runtime(user_id_resolver=user_id_for_email)
+    _SESSION_TTL = _session_runtime["_SESSION_TTL"]
+    _session_store = _session_runtime["_session_store"]
+    create_session = _session_runtime["create_session"]
+    get_session_email = _session_runtime["get_session_email"]
+    get_session_user_id = _session_runtime["get_session_user_id"]
+    invalidate_session = _session_runtime["invalidate_session"]
 
     # ── User Management Logic ──────────────────────────────────────────────────
     BASE_DIR = Path(__file__).resolve().parent.parent
@@ -360,9 +354,15 @@ def _build(config: "Optional[Config]" = None) -> Dict[str, Any]:
     # file is left untouched on disk as the import source.
     CONVERSATIONS = _brain_runtime["CONVERSATIONS"]
     # Hooks registry is constructed here (ahead of the watcher) so folder-watch
-    # reindexes can fire the pre_index/post_index lifecycle hooks.
-    HOOKS_REGISTRY = HooksRegistry(DATA_DIR / "hooks.json")
-    LOCAL_KG_WATCHER = LocalKnowledgeWatcher(lambda: KNOWLEDGE_GRAPH, hooks=HOOKS_REGISTRY) if ENABLE_GRAPH else None
+    # reindexes can fire the pre_index/post_index lifecycle hooks. The registry
+    # + watcher pair is assembled behind the hooks_runtime seam.
+    _hooks_runtime = build_hooks_runtime(
+        data_dir=DATA_DIR,
+        enable_graph=ENABLE_GRAPH,
+        knowledge_graph_getter=lambda: KNOWLEDGE_GRAPH,
+    )
+    HOOKS_REGISTRY = _hooks_runtime["HOOKS_REGISTRY"]
+    LOCAL_KG_WATCHER = _hooks_runtime["LOCAL_KG_WATCHER"]
     # ── v2 Realtime bus: constructed first so the store can fan every timeline
     # event into the realtime feed via a single additive sink (no per-call wiring).
     REALTIME_BUS = RealtimeBus()
