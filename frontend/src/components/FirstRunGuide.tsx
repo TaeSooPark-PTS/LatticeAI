@@ -53,10 +53,10 @@ export function FirstRunGuide() {
     <section className="arrival-panel" aria-label="First 10 minutes">
       <div className="arrival-copy">
         <div className="page-kicker"><CheckCircle2 className="h-4 w-4" /> First 10 minutes</div>
-        <h2>Build your living Brain without guessing.</h2>
+        <h2>Start locally, with clear consent at each step.</h2>
         <p>
-          Start with a local Brain, let Lattice recommend a model voice, then add the first pieces of durable knowledge.
-          Every step keeps the next action visible.
+          Create the local Brain first, choose when to download a model, then add durable knowledge when you are ready.
+          Nothing needs cloud access unless you explicitly choose it.
         </p>
         <div className="arrival-actions">
           <Button onClick={() => go(nextStep.action)}>{nextStep.done ? "Open relationships" : `Continue: ${nextStep.label}`}</Button>

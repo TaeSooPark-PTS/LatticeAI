@@ -1,8 +1,8 @@
 """Brain review queue (5.6.0) — the suggestion inbox.
 
-Automation/trigger runs drop drafts here; the user approves, dismisses, or
-snoozes them. This service owns the *policy* (legal status transitions, snooze
-expiry semantics, run_now back-linking); the store owns persistence.
+Automation/trigger runs drop drafts here; the user approves, dismisses, snoozes,
+or unsnoozes them. This service owns the *policy* (legal status transitions,
+snooze expiry semantics, run_now back-linking); the store owns persistence.
 
 Design decisions (agreed in #develop-with-openclaw):
 
@@ -19,7 +19,7 @@ Design decisions (agreed in #develop-with-openclaw):
 from __future__ import annotations
 
 from datetime import datetime
-from typing import Any, Callable, Dict, List, Optional
+from typing import Any, Callable, Dict, Optional
 
 # status: terminal vs. open. Open items can still be acted on.
 OPEN_STATUSES = {"pending", "snoozed"}
@@ -33,6 +33,8 @@ _ALLOWED_FROM: Dict[str, set] = {
     "approve": {"pending", "snoozed"},
     "dismiss": {"pending", "snoozed"},
     "snooze": {"pending", "snoozed"},
+    # unsnooze only makes sense from a *stored* snoozed state (not pending).
+    "unsnooze": {"snoozed"},
     # run_now is a preview, not a transition — only while still open.
     "run_now": {"pending", "snoozed"},
 }
@@ -132,6 +134,20 @@ class ReviewQueueService:
         self._guard("snooze", item)
         updated = self._store.update_review_item(
             item_id, workspace_id=workspace_id, status="snoozed", snoozed_until=until,
+        )
+        return self._view(updated)
+
+    def unsnooze(self, item_id: str, *, workspace_id: Optional[str] = None) -> Dict[str, Any]:
+        """Return a snoozed item to the pending queue.
+
+        Only legal from a *stored* ``status == "snoozed"`` (an expired snooze is
+        still stored as snoozed, so it remains unsnoozable). Clears the timer and
+        sets ``status = "pending"``; any other source status raises 409.
+        """
+        item = self._store.get_review_item(item_id, workspace_id=workspace_id)
+        self._guard("unsnooze", item)
+        updated = self._store.update_review_item(
+            item_id, workspace_id=workspace_id, status="pending", snoozed_until=None,
         )
         return self._view(updated)
 

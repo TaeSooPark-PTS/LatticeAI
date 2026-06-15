@@ -1,6 +1,6 @@
 """Brain review queue (5.6.0) — checkpoint #2.
 
-Covers create/list workspace scoping, approve/dismiss/snooze transitions,
+Covers create/list workspace scoping, approve/dismiss/snooze/unsnooze transitions,
 the 409 on illegal transitions, snooze-expiry read semantics, run_now's
 back-link (status untouched), ``/automation/reviews`` routes, ``source`` field
 filtering, and opt-in ``review_sink`` enqueue from TriggerService/RunExecutor.
@@ -173,6 +173,88 @@ def test_approve_clears_snooze_timer(tmp_path):
     svc.snooze(item["id"], until="2999-01-01T00:00:00")
     approved = svc.approve(item["id"])
     assert approved["snoozed_until"] is None
+
+
+# ── unsnooze (Lane A) ─────────────────────────────────────────────────────
+def test_unsnooze_returns_item_to_pending(tmp_path):
+    _, svc = _service(tmp_path)
+    item = svc.create(title="x")
+    svc.snooze(item["id"], until="2999-01-01T00:00:00")
+    restored = svc.unsnooze(item["id"])
+    assert restored["status"] == "pending"
+    assert restored["effective_status"] == "pending"
+    assert restored["snoozed_until"] is None
+
+
+def test_unsnooze_invalid_from_pending(tmp_path):
+    _, svc = _service(tmp_path)
+    item = svc.create(title="x")
+    with pytest.raises(InvalidReviewTransition):
+        svc.unsnooze(item["id"])
+
+
+def test_unsnooze_invalid_from_terminal(tmp_path):
+    _, svc = _service(tmp_path)
+    item = svc.create(title="x")
+    svc.dismiss(item["id"])
+    with pytest.raises(InvalidReviewTransition):
+        svc.unsnooze(item["id"])
+
+
+def test_unsnooze_valid_even_when_snooze_expired(tmp_path):
+    # An expired snooze is still *stored* as snoozed, so unsnooze stays legal.
+    now = {"t": datetime(2026, 1, 1, 9, 0, 0)}
+    _, svc = _service(tmp_path, clock=lambda: now["t"])
+    item = svc.create(title="x")
+    svc.snooze(item["id"], until=(now["t"] + timedelta(hours=1)).isoformat())
+    now["t"] = datetime(2026, 1, 1, 12, 0, 0)
+    restored = svc.unsnooze(item["id"])
+    assert restored["status"] == "pending"
+    assert restored["effective_status"] == "pending"
+    assert restored["snoozed_until"] is None
+
+
+def test_unsnooze_is_workspace_scoped(tmp_path):
+    store, svc = _service(tmp_path)
+    org = store.create_organization_workspace(name="Acme", owner_user_id="owner@acme.com")
+    wid = org["workspace"]["id"] if "workspace" in org else org["id"]
+    item = svc.create(title="scoped", workspace_id=wid)
+    svc.snooze(item["id"], until="2999-01-01T00:00:00", workspace_id=wid)
+    # Wrong scope can't see (404 at store level) → no cross-workspace unsnooze.
+    with pytest.raises(FileNotFoundError):
+        svc.unsnooze(item["id"], workspace_id="personal")
+    restored = svc.unsnooze(item["id"], workspace_id=wid)
+    assert restored["status"] == "pending"
+
+
+def test_api_unsnooze_roundtrip_and_409(tmp_path):
+    client, _svc = _api_client(tmp_path)
+    created = client.post(
+        "/automation/reviews",
+        json={"title": "API item", "source": "workflow_run", "payload": {"workflow_id": "wf-1"}},
+    )
+    item_id = created.json()["id"]
+    # 409: cannot unsnooze a pending item.
+    assert client.post(f"/automation/reviews/{item_id}/unsnooze").status_code == 409
+
+    snoozed = client.post(
+        f"/automation/reviews/{item_id}/snooze", json={"until": "2999-01-01T00:00:00"},
+    )
+    assert snoozed.json()["status"] == "snoozed"
+    restored = client.post(f"/automation/reviews/{item_id}/unsnooze")
+    assert restored.status_code == 200
+    assert restored.json()["status"] == "pending"
+    assert restored.json()["effective_status"] == "pending"
+    assert restored.json()["snoozed_until"] is None
+
+
+def test_openapi_includes_unsnooze_route(tmp_path):
+    client, _svc = _api_client(tmp_path)
+    schema = client.get("/openapi.json")
+    assert schema.status_code == 200
+    path = schema.json()["paths"]["/automation/reviews/{item_id}/unsnooze"]
+    assert "post" in path
+    assert path["post"]["responses"]["200"]["description"] == "Successful Response"
 
 
 # ── run_now back-link (NOT a status change) ──────────────────────────────

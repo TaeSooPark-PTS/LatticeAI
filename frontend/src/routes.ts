@@ -32,6 +32,7 @@ export const routeAliases: Record<string, { primary: PrimaryRoute; tab?: string 
   agents: { primary: "act", tab: "agents" },
   runs: { primary: "act", tab: "runs" },
   review: { primary: "act", tab: "review" },
+  "review-center": { primary: "act", tab: "review" },
   workflows: { primary: "act", tab: "workflows" },
   planning: { primary: "act", tab: "agents" },
   hooks: { primary: "act", tab: "hooks" },

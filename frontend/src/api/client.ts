@@ -1,5 +1,5 @@
 import createClient from "openapi-fetch";
-import type { paths } from "./openapi";
+import type { components, operations, paths } from "./openapi";
 import { useAppStore } from "@/store/appStore";
 
 export type ApiResult<T = unknown> = {
@@ -21,7 +21,19 @@ export type AdminAuditFilters = {
 };
 
 const TIMEOUT_MS = 10_000;
-const clients = new Map<string, ReturnType<typeof createClient<paths>>>();
+type OpenApiClient = ReturnType<typeof createClient<paths>>;
+type OperationJson200<Operation> = Operation extends {
+  responses: { 200: { content: { "application/json": infer Result } } };
+} ? Result : never;
+type ReviewListOperation = operations["list_items_automation_reviews_get"];
+type ReviewItemOperation =
+  | operations["approve_item_automation_reviews__item_id__approve_post"]
+  | operations["dismiss_item_automation_reviews__item_id__dismiss_post"]
+  | operations["run_now_item_automation_reviews__item_id__run_now_post"]
+  | operations["snooze_item_automation_reviews__item_id__snooze_post"]
+  | operations["unsnooze_item_automation_reviews__item_id__unsnooze_post"];
+
+const clients = new Map<string, OpenApiClient>();
 let desktopBase: Promise<string | null> | null = null;
 
 declare global {
@@ -145,6 +157,39 @@ async function apiJson<T>(
   }
 }
 
+async function openApiJson<T>(
+  shape: T,
+  execute: (client: OpenApiClient, signal: AbortSignal) => Promise<{ data?: T; error?: unknown; response: Response }>,
+): Promise<ApiResult<T>> {
+  const base = await apiBase();
+  const client = clientFor(base);
+  const ctrl = new AbortController();
+  const timer = window.setTimeout(() => ctrl.abort(), TIMEOUT_MS);
+  try {
+    const { data, error, response } = await execute(client, ctrl.signal);
+    if (response.ok && data !== undefined) {
+      return { ok: true, status: response.status, data, source: "live" };
+    }
+    return {
+      ok: false,
+      status: response.status,
+      data: emptyFor(shape),
+      source: "unavailable",
+      error: friendlyError(error, response.statusText),
+    };
+  } catch (err) {
+    return {
+      ok: false,
+      status: 0,
+      data: emptyFor(shape),
+      source: "unavailable",
+      error: err instanceof Error ? err.message : String(err),
+    };
+  } finally {
+    window.clearTimeout(timer);
+  }
+}
+
 function get<T>(path: string, shape: T, query?: Query) {
   return apiJson<T>("GET", path, { query, shape });
 }
@@ -161,20 +206,10 @@ function del<T>(path: string, shape: T) {
   return apiJson<T>("DELETE", path, { shape });
 }
 
-export type ReviewItem = {
-  id: string;
-  status: string;
-  effective_status: string;
-  title: string;
-  summary?: string;
-  source?: string;
-  kind?: string;
-  payload?: Record<string, unknown>;
-  provenance?: Record<string, unknown>;
-  snoozed_until?: string | null;
-  created_at?: string | null;
-  updated_at?: string | null;
-};
+export type ReviewItem = components["schemas"]["ReviewItem"];
+export type ReviewItemList = components["schemas"]["ReviewItemList"];
+export type ReviewStatusFilter = "pending" | "snoozed" | "approved" | "dismissed" | "all";
+export type ReviewSourceFilter = "workflow_run" | "trigger" | "kg_change_digest" | "all";
 
 function reviewItemShape(): ReviewItem {
   return {
@@ -188,6 +223,53 @@ function reviewItemShape(): ReviewItem {
     payload: {},
     provenance: {},
   };
+}
+
+function reviewItemListShape(): ReviewItemList {
+  return { items: [] };
+}
+
+function reviewList(query?: { status?: Exclude<ReviewStatusFilter, "all">; source?: Exclude<ReviewSourceFilter, "all"> }) {
+  return openApiJson<OperationJson200<ReviewListOperation>>(
+    reviewItemListShape(),
+    (client, signal) => client.GET("/automation/reviews", {
+      params: { query: query || {} },
+      headers: workspaceHeaders(),
+      signal,
+    }),
+  );
+}
+
+function reviewAction(
+  id: string,
+  action: "approve" | "dismiss" | "run_now" | "unsnooze",
+) {
+  return openApiJson<OperationJson200<ReviewItemOperation>>(
+    reviewItemShape(),
+    (client, signal) => {
+      const request = {
+        params: { path: { item_id: id } },
+        headers: workspaceHeaders(),
+        signal,
+      };
+      if (action === "approve") return client.POST("/automation/reviews/{item_id}/approve", request);
+      if (action === "dismiss") return client.POST("/automation/reviews/{item_id}/dismiss", request);
+      if (action === "run_now") return client.POST("/automation/reviews/{item_id}/run_now", request);
+      return client.POST("/automation/reviews/{item_id}/unsnooze", request);
+    },
+  );
+}
+
+function snoozeReview(id: string, until: string) {
+  return openApiJson<OperationJson200<operations["snooze_item_automation_reviews__item_id__snooze_post"]>>(
+    reviewItemShape(),
+    (client, signal) => client.POST("/automation/reviews/{item_id}/snooze", {
+      params: { path: { item_id: id } },
+      body: { until },
+      headers: workspaceHeaders(),
+      signal,
+    }),
+  );
 }
 
 async function uploadDocument(file: File): Promise<ApiResult<Record<string, unknown> | null>> {
@@ -409,13 +491,12 @@ export const latticeApi = {
   hooks: () => get("/api/hooks", { hooks: [] }),
   hookRuns: () => get("/api/hooks/runs", { runs: [] }, { limit: 50 }),
   hookRun: (body: unknown) => post("/api/hooks/run", body, {}),
-  automationReviews: (query?: { status?: string; source?: string }) =>
-    get("/automation/reviews", { items: [] }, query),
-  approveReviewItem: (id: string) => post(`/automation/reviews/${encodeURIComponent(id)}/approve`, {}, reviewItemShape()),
-  dismissReviewItem: (id: string) => post(`/automation/reviews/${encodeURIComponent(id)}/dismiss`, {}, reviewItemShape()),
-  snoozeReviewItem: (id: string, until: string) =>
-    post(`/automation/reviews/${encodeURIComponent(id)}/snooze`, { until }, reviewItemShape()),
-  runNowReviewItem: (id: string) => post(`/automation/reviews/${encodeURIComponent(id)}/run_now`, {}, reviewItemShape()),
+  automationReviews: reviewList,
+  approveReviewItem: (id: string) => reviewAction(id, "approve"),
+  dismissReviewItem: (id: string) => reviewAction(id, "dismiss"),
+  snoozeReviewItem: snoozeReview,
+  unsnoozeReviewItem: (id: string) => reviewAction(id, "unsnooze"),
+  runNowReviewItem: (id: string) => reviewAction(id, "run_now"),
   permissionsPending: () => get("/permissions/pending", { pending: {}, count: 0 }),
   approvePermission: (token: string) => post(`/permissions/approve/${encodeURIComponent(token)}`, {}, {}),
   denyPermission: (token: string) => post(`/permissions/deny/${encodeURIComponent(token)}`, {}, {}),

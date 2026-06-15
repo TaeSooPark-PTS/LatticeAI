@@ -12,14 +12,15 @@ chat, run model workflows, and trigger coding actions from the editor.
 
 ## Current Release
 
-**5.6.0 — Brain Automation Review Center.** The extension follows the main
+**6.0.0 — Product Reset / Review Center Completion.** The extension follows the main
 app positioning: Lattice AI is a local-first Digital Brain, not just a model
 launcher or editor chat panel. It connects editor actions to the same durable
 Brain context, model registry, explicit consent gates, and separated Admin
 surface used by the desktop app. Brain automation recipes (Daily Memory Digest,
 Weekly Project Review, Follow-up Radar) are now available as reviewable disabled
 drafts with scheduler triggers, and automation output now flows through the
-Review Center before users approve, dismiss, snooze, or rerun suggestions.
+Review Center before users approve, dismiss, snooze, unsnooze, or rerun
+suggestions.
 
 ## Quick Start
 

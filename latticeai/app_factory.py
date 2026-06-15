@@ -17,9 +17,34 @@ from __future__ import annotations
 import threading
 from typing import TYPE_CHECKING, Any, Dict, List, Optional
 
+from latticeai.runtime.automation_runtime import build_automation_runtime
+from latticeai.runtime.app_context_runtime import build_app_context
+from latticeai.runtime.bootstrap import build_session_runtime
 from latticeai.runtime.brain_runtime import build_brain_runtime
 from latticeai.runtime.config_runtime import build_config_runtime
+from latticeai.runtime.context_runtime import build_context_runtime
+from latticeai.runtime.hooks_runtime import (
+    bind_builtin_hook_runners,
+    bind_trigger_hook_runner,
+    build_hooks_runtime,
+)
+from latticeai.runtime.lifespan_runtime import build_lifespan_runtime
+from latticeai.runtime.platform_services_runtime import (
+    build_brain_network,
+    build_model_service,
+)
+from latticeai.runtime.persistence_runtime import build_persistence_runtime
+from latticeai.runtime.router_registration import (
+    build_auth_admin_security_router_bundle,
+    build_static_routes_bundle,
+    register_health_and_model_routers,
+    register_foundation_routers,
+    register_interaction_routers,
+    register_platform_feature_routers,
+    register_review_and_brain_tail_routers,
+)
 from latticeai.runtime.security_runtime import build_security_runtime
+from latticeai.runtime.web_runtime import build_web_runtime
 
 if TYPE_CHECKING:  # imports for annotations only — keep module import light
     from fastapi import FastAPI
@@ -34,7 +59,6 @@ def _build(config: "Optional[Config]" = None) -> Dict[str, Any]:
     deliberately *inside* this function so that importing the module performs
     no GPU init, no singleton construction, and no filesystem writes.
     """
-    import asyncio
     import hashlib
     import json
     import logging
@@ -45,7 +69,6 @@ def _build(config: "Optional[Config]" = None) -> Dict[str, Any]:
     import subprocess
     import sys
     import time
-    from contextlib import asynccontextmanager
     from pathlib import Path
 
     try:
@@ -56,14 +79,11 @@ def _build(config: "Optional[Config]" = None) -> Dict[str, Any]:
         print(f"⚠️ MLX Metal context unavailable: {e}")
         mx = None
     import uvicorn
-    from fastapi import FastAPI, HTTPException, Request
-    from fastapi.middleware.cors import CORSMiddleware
-    from fastapi.staticfiles import StaticFiles
+    from fastapi import HTTPException, Request
     from pydantic import BaseModel
 
     from latticeai.models.router import LLMRouter, normalize_branding
     from lattice_brain._kg_common import set_llm_router
-    from local_knowledge_api import LocalKnowledgeWatcher
     from latticeai.core.security import (
         hash_password,
         verify_password,
@@ -74,7 +94,6 @@ def _build(config: "Optional[Config]" = None) -> Dict[str, Any]:
         check_ip_rate_limit as _check_ip_rate_limit,
         enforce_rate_limit as _enforce_rate_limit,
     )
-    from latticeai.core.sessions import SessionStore as _SessionStore
     from latticeai.core.audit import (
         get_audit_log as _get_audit_log,
         append_audit_event as _append_audit_event,
@@ -88,13 +107,11 @@ def _build(config: "Optional[Config]" = None) -> Dict[str, Any]:
     from latticeai.core.model_compat import list_cached_profiles as _list_compat_profiles
     from latticeai.core.workspace_os import (
         WORKSPACE_OS_VERSION,
-        WorkspaceOSStore,
         remove_skill_directory,
     )
     from latticeai.core.enterprise import (
         capability_registry,
     )
-    from latticeai.core.invitations import InvitationStore
     from latticeai.core.policy import normalize_role, policy_matrix, require_capability
     from latticeai.core.users import (
         ensure_user_identity,
@@ -104,13 +121,8 @@ def _build(config: "Optional[Config]" = None) -> Dict[str, Any]:
         save_users_file,
         user_id_for_email as _user_id_for_email,
     )
-    from latticeai.services.app_context import AppContext
-    from latticeai.services.workspace_service import WorkspaceService
-    from latticeai.services.model_service import ModelService
     from latticeai.services.chat_service import ChatService
-    from latticeai.services.search_service import SearchService
     from latticeai.core.embedding_providers import resolve_embedder, resolve_embedding_profile
-    from lattice_brain.runtime.agent_runtime import AgentRuntime
     from latticeai.services.model_runtime import (
         CLOUD_VERIFY_TTL_SECONDS,
         ENGINE_MODEL_CATALOG,
@@ -133,11 +145,7 @@ def _build(config: "Optional[Config]" = None) -> Dict[str, Any]:
     from latticeai.api.workspace import create_workspace_router, _workspace_scope_from_request
     from latticeai.api.health import create_health_router
     # ── v2 Agentic Workspace Platform layers ─────────────────────────────────────
-    from latticeai.core.plugins import PluginRegistry
-    from latticeai.core.realtime import RealtimeBus
-    from latticeai.core.marketplace import TemplateCatalog
     from latticeai.services.platform_runtime import PlatformRuntime
-    from latticeai.services.run_executor import RunExecutor
     from latticeai.api.plugins import create_plugins_router
     from latticeai.api.workflow_designer import create_workflow_designer_router
     from latticeai.api.agents import create_agents_router
@@ -152,23 +160,14 @@ def _build(config: "Optional[Config]" = None) -> Dict[str, Any]:
     from latticeai.api.garden import create_garden_router
     from latticeai.api.setup import create_setup_router
     from latticeai.api.hooks import create_hooks_router
-    from lattice_brain.runtime.hooks import HooksRegistry
-    from latticeai.core.builtin_hooks import register_builtin_hook_runners
     from latticeai.core.product_hardening import build_product_hardening_status
     from latticeai.api.agent_registry import create_agent_registry_router
-    from latticeai.core.agent_registry import AgentRegistry
     from latticeai.api.memory import create_memory_router
     from latticeai.api.browser import create_browser_router
     from latticeai.api.portability import create_portability_router
-    from latticeai.services.memory_service import MemoryService
-    from lattice_brain.ingestion import IngestionItem, IngestionPipeline
+    from lattice_brain.ingestion import IngestionItem
     from lattice_brain.storage import storage_from_env
-    from lattice_brain.context import ContextAssembler
-    from lattice_brain.memory import BrainMemory
-    from lattice_brain.identity import DeviceIdentity
-    from lattice_brain.network import BrainNetwork
     from latticeai.api.network import create_network_router
-    from lattice_brain.portability import KGPortabilityService
     # The aliased names below look unused but are part of the legacy
     # ``server_app`` attribute surface: every local is exported via
     # ``dict(locals())`` and reached through ``server_app.__getattr__``
@@ -281,10 +280,7 @@ def _build(config: "Optional[Config]" = None) -> Dict[str, Any]:
             return True
         return False
 
-    # ── Session store — delegated to latticeai.core.sessions ──────────────────────
-    _SESSION_TTL = 60 * 60 * 24
-    _session_store = _SessionStore()
-
+    # ── Session store — delegated to latticeai.runtime.bootstrap ──────────────────
     def _check_rate_limit(ip: str, action: str, max_calls: int, window_secs: float) -> None:
         _check_ip_rate_limit(ip, action, max_calls=max_calls, window_secs=window_secs)
 
@@ -294,17 +290,15 @@ def _build(config: "Optional[Config]" = None) -> Dict[str, Any]:
     def user_id_for_email(email: Optional[str]) -> Optional[str]:
         return _user_id_for_email(load_users(), email)
 
-    def create_session(email: str) -> str:
-        return _session_store.create(user_id_for_email(email) or email, email=email)
-
-    def get_session_email(token: str) -> Optional[str]:
-        return _session_store.get_email(token)
-
-    def get_session_user_id(token: str) -> Optional[str]:
-        return _session_store.get_subject(token)
-
-    def invalidate_session(token: str) -> None:
-        _session_store.invalidate(token)
+    # Session token lifecycle (store + create/get/invalidate closures) lives in
+    # the bootstrap seam; user_id_for_email is injected as the subject resolver.
+    _session_runtime = build_session_runtime(user_id_resolver=user_id_for_email)
+    _SESSION_TTL = _session_runtime["_SESSION_TTL"]
+    _session_store = _session_runtime["_session_store"]
+    create_session = _session_runtime["create_session"]
+    get_session_email = _session_runtime["get_session_email"]
+    get_session_user_id = _session_runtime["get_session_user_id"]
+    invalidate_session = _session_runtime["invalidate_session"]
 
     # ── User Management Logic ──────────────────────────────────────────────────
     BASE_DIR = Path(__file__).resolve().parent.parent
@@ -360,54 +354,40 @@ def _build(config: "Optional[Config]" = None) -> Dict[str, Any]:
     # file is left untouched on disk as the import source.
     CONVERSATIONS = _brain_runtime["CONVERSATIONS"]
     # Hooks registry is constructed here (ahead of the watcher) so folder-watch
-    # reindexes can fire the pre_index/post_index lifecycle hooks.
-    HOOKS_REGISTRY = HooksRegistry(DATA_DIR / "hooks.json")
-    LOCAL_KG_WATCHER = LocalKnowledgeWatcher(lambda: KNOWLEDGE_GRAPH, hooks=HOOKS_REGISTRY) if ENABLE_GRAPH else None
-    # ── v2 Realtime bus: constructed first so the store can fan every timeline
-    # event into the realtime feed via a single additive sink (no per-call wiring).
-    REALTIME_BUS = RealtimeBus()
-    WORKSPACE_OS = WorkspaceOSStore(DATA_DIR, event_sink=REALTIME_BUS)
-    # Service layer (latticeai.services) wraps the store with scope/permission
-    # guardrails; routers and the app assembly share this single instance.
-    WORKSPACE_SERVICE = WorkspaceService(WORKSPACE_OS, resolve_user_id=user_id_for_email)
-    INVITATION_STORE = InvitationStore(DATA_DIR / "invitations.json")
-    # ── v2 Plugin SDK registry (extends skills; discovers plugins/<id>/plugin.json)
-    PLUGINS_DIR = Path(os.getenv("LATTICEAI_PLUGINS_DIR") or (BASE_DIR / "plugins"))
-    PLUGIN_REGISTRY = PluginRegistry(PLUGINS_DIR, store=WORKSPACE_OS)
-    TEMPLATE_CATALOG = TemplateCatalog()
-    # ── v3.2 platform registries: lifecycle hooks + agent registry, persisted under
-    # DATA_DIR so the /app Hooks and Agent Registry views read/write real state.
-    # (HOOKS_REGISTRY is constructed earlier, before the local-knowledge watcher.)
-    AGENT_REGISTRY = AgentRegistry(DATA_DIR / "agent_registry.json")
-    # Unified long-term memory platform fronting workspace memories, agent
-    # snapshots, conversation history, and the KG graph/vector index.
-    MEMORY_SERVICE = MemoryService(
-        store=WORKSPACE_OS,
+    # reindexes can fire the pre_index/post_index lifecycle hooks. The registry
+    # + watcher pair is assembled behind the hooks_runtime seam.
+    _hooks_runtime = build_hooks_runtime(
         data_dir=DATA_DIR,
-        knowledge_graph=KNOWLEDGE_GRAPH,
         enable_graph=ENABLE_GRAPH,
-        history_file=HISTORY_FILE,
-        conversation_store=CONVERSATIONS,
+        knowledge_graph_getter=lambda: KNOWLEDGE_GRAPH,
     )
-    # ── v3.6.0 unified ingestion pipeline: the single write-side seam into the
-    # Knowledge Graph. Every new source (web URL, browser tab, …) flows through this
-    # so pre_tool/post_tool hooks fire on ingestion and provenance is captured
-    # uniformly. Existing direct ingest callers keep working; new paths converge here.
-    INGESTION_PIPELINE = IngestionPipeline(
-        KNOWLEDGE_GRAPH,
-        hooks=HOOKS_REGISTRY,
+    HOOKS_REGISTRY = _hooks_runtime["HOOKS_REGISTRY"]
+    LOCAL_KG_WATCHER = _hooks_runtime["LOCAL_KG_WATCHER"]
+    # ── Persistence/service graph: workspace store, realtime feed, plugin/memory
+    # registries, ingestion pipeline, device identity, and portability services.
+    _persistence_runtime = build_persistence_runtime(
+        data_dir=DATA_DIR,
+        base_dir=BASE_DIR,
         enable_graph=ENABLE_GRAPH,
+        knowledge_graph=KNOWLEDGE_GRAPH,
+        hooks_registry=HOOKS_REGISTRY,
+        history_file=HISTORY_FILE,
+        conversations=CONVERSATIONS,
+        user_id_for_email=user_id_for_email,
         audit=lambda action, detail, user: append_audit_event(action, user_email=user, **detail),
     )
-    # ── v3.6.0 Knowledge Graph portability: local export / import / backup / restore.
-    # The graph is the user's durable asset, so it must be portable with no cloud.
-    DEVICE_IDENTITY = DeviceIdentity(DATA_DIR)
-    KG_PORTABILITY = KGPortabilityService(
-        knowledge_graph=KNOWLEDGE_GRAPH,
-        data_dir=DATA_DIR,
-        enable_graph=ENABLE_GRAPH,
-        device_identity=DEVICE_IDENTITY,
-    )
+    REALTIME_BUS = _persistence_runtime["REALTIME_BUS"]
+    WORKSPACE_OS = _persistence_runtime["WORKSPACE_OS"]
+    WORKSPACE_SERVICE = _persistence_runtime["WORKSPACE_SERVICE"]
+    INVITATION_STORE = _persistence_runtime["INVITATION_STORE"]
+    PLUGINS_DIR = _persistence_runtime["PLUGINS_DIR"]
+    PLUGIN_REGISTRY = _persistence_runtime["PLUGIN_REGISTRY"]
+    TEMPLATE_CATALOG = _persistence_runtime["TEMPLATE_CATALOG"]
+    AGENT_REGISTRY = _persistence_runtime["AGENT_REGISTRY"]
+    MEMORY_SERVICE = _persistence_runtime["MEMORY_SERVICE"]
+    INGESTION_PIPELINE = _persistence_runtime["INGESTION_PIPELINE"]
+    DEVICE_IDENTITY = _persistence_runtime["DEVICE_IDENTITY"]
+    KG_PORTABILITY = _persistence_runtime["KG_PORTABILITY"]
 
     def _require_graph():
         if not ENABLE_GRAPH or KNOWLEDGE_GRAPH is None:
@@ -1071,134 +1051,38 @@ def _build(config: "Optional[Config]" = None) -> Dict[str, Any]:
         except Exception as exc:
             logging.warning("garden vault import skipped: %s", exc)
 
-    async def autoload_default_model() -> None:
-        if not AUTOLOAD_MODELS:
-            print("⏭️ Model autoload disabled by LATTICEAI_AUTOLOAD_MODELS=false.")
-            return
-
-        if IS_PUBLIC_MODE:
-            model_id = PUBLIC_MODEL
-            provider = model_id.split(":", 1)[0] if ":" in model_id else "openai"
-            env_by_provider = {
-                "openai": "OPENAI_API_KEY",
-                "openrouter": "OPENROUTER_API_KEY",
-                "groq": "GROQ_API_KEY",
-                "together": "TOGETHER_API_KEY",
-                "ollama": "OLLAMA_API_KEY",
-            }
-            required_env = env_by_provider.get(provider)
-            if required_env and not os.getenv(required_env) and provider != "ollama":
-                print(f"🌐 Public mode ready. Set {required_env} to autoload {model_id}.")
-                return
-            print(f"🌐 Public mode autoload: {model_id}")
-            try:
-                msg = await router.load_model(model_id)
-                print(f"✅ {msg}")
-            except Exception as e:
-                print(f"⚠️ Public model autoload failed: {e}")
-            return
-
-        if not ALLOW_LOCAL_MODELS:
-            print("⏭️ Local model autoload skipped because LATTICEAI_ALLOW_LOCAL_MODELS=false.")
-            return
-
-        print("⏳ Auto-loading local model stack:")
-        print(f"   - Target: {LOCAL_MODEL}")
-        if LOCAL_DRAFT_MODEL:
-            print(f"   - Draft:  {LOCAL_DRAFT_MODEL}")
-        else:
-            print("   - Draft:  disabled (set LATTICEAI_LOCAL_DRAFT_MODEL to enable)")
-        try:
-            await router.load_model(LOCAL_MODEL, draft_model_id=LOCAL_DRAFT_MODEL or None)
-        except Exception as e:
-            print(f"⚠️ Local model autoload failed: {e}")
-
-    async def unload_idle_models_loop() -> None:
-        if MODEL_IDLE_UNLOAD_SECONDS <= 0:
-            print("⏭️ Model idle unload disabled.")
-            return
-        while True:
-            await asyncio.sleep(min(60, MODEL_IDLE_UNLOAD_SECONDS))
-            try:
-                unloaded = router.unload_idle_models(MODEL_IDLE_UNLOAD_SECONDS)
-                if unloaded:
-                    print(f"🧹 Idle model unload: {', '.join(unloaded)}")
-            except Exception as e:
-                logging.warning("Idle model unload failed: %s", e)
-
-    def _spawn(coro, *, name: str):
-        """Fire-and-forget asyncio task that logs exceptions instead of swallowing them."""
-        task = asyncio.create_task(coro, name=name)
-        def _on_done(t: asyncio.Task) -> None:
-            if t.cancelled():
-                return
-            exc = t.exception()
-            if exc is not None:
-                logging.warning("background task '%s' failed: %s", name, exc)
-        task.add_done_callback(_on_done)
-        return task
-
-
-    @asynccontextmanager
-    async def lifespan(app: FastAPI):
-        try:
-            print(f"🧭 Lattice AI mode: {APP_MODE}")
-            if ENABLE_TELEGRAM:
-                from telegram_bot import run_bot
-                _spawn(run_bot(), name="telegram_bot")
-                print("🚀 Telegram Bot Bridge activated!")
-            else:
-                print("⏭️ Telegram Bot Bridge disabled for this mode.")
-            _spawn(unload_idle_models_loop(), name="unload_idle_models")
-            _spawn(autoload_default_model(), name="autoload_default_model")
-            if LOCAL_KG_WATCHER:
-                restored = LOCAL_KG_WATCHER.restore_enabled_sources()
-                if restored.get("restored"):
-                    print(f"🕸️ Local knowledge watchers restored: {restored['restored']}")
-        except Exception as e:
-            print(f"⚠️ Startup sequence failed: {e}")
-        try:
-            yield
-        finally:
-            if LOCAL_KG_WATCHER:
-                LOCAL_KG_WATCHER.stop_all()
-            router.unload_all()
-            for proc in LOCAL_SERVER_PROCESSES.values():
-                try:
-                    if proc.poll() is None:
-                        proc.terminate()
-                        proc.wait(timeout=5)
-                except Exception:
-                    pass
-
-    app = FastAPI(title=f"Lattice AI Server ({APP_MODE})", version=APP_VERSION, lifespan=lifespan)
-
-    CORS_ALLOWED_ORIGINS = [
-        f"http://localhost:{DEFAULT_PORT}",
-        f"http://127.0.0.1:{DEFAULT_PORT}",
-        *CORS_EXTRA_ORIGINS,
-    ]
-    if CORS_ALLOW_NETWORK:
-        CORS_ALLOWED_ORIGINS = CORS_ALLOWED_ORIGINS + [
-            f"http://{DEFAULT_HOST}:{DEFAULT_PORT}",
-            f"https://{DEFAULT_HOST}:{DEFAULT_PORT}",
-        ]
-
-    app.add_middleware(
-        CORSMiddleware,
-        allow_origins=CORS_ALLOWED_ORIGINS,
-        allow_methods=["*"],
-        allow_headers=["*"],
-        allow_credentials=True,
+    _lifespan_runtime = build_lifespan_runtime(
+        app_mode=APP_MODE,
+        enable_telegram=ENABLE_TELEGRAM,
+        autoload_models=AUTOLOAD_MODELS,
+        is_public_mode=IS_PUBLIC_MODE,
+        public_model=PUBLIC_MODEL,
+        allow_local_models=ALLOW_LOCAL_MODELS,
+        local_model=LOCAL_MODEL,
+        local_draft_model=LOCAL_DRAFT_MODEL,
+        model_idle_unload_seconds=MODEL_IDLE_UNLOAD_SECONDS,
+        model_router=router,
+        local_kg_watcher=LOCAL_KG_WATCHER,
+        local_server_processes=LOCAL_SERVER_PROCESSES,
+        logger=logging,
     )
+    autoload_default_model = _lifespan_runtime["autoload_default_model"]
+    unload_idle_models_loop = _lifespan_runtime["unload_idle_models_loop"]
+    _spawn = _lifespan_runtime["_spawn"]
+    lifespan = _lifespan_runtime["lifespan"]
 
-    # UI 파일이 담길 static 폴더 연결
-    STATIC_DIR.mkdir(parents=True, exist_ok=True)
-    app.mount("/static", StaticFiles(directory=str(STATIC_DIR)), name="static")
-    # PWA icons served at /icons/*
-    _ICONS_DIR = STATIC_DIR / "icons"
-    if _ICONS_DIR.exists():
-        app.mount("/icons", StaticFiles(directory=str(_ICONS_DIR)), name="icons")
+    _web_runtime = build_web_runtime(
+        app_mode=APP_MODE,
+        app_version=APP_VERSION,
+        lifespan=lifespan,
+        default_host=DEFAULT_HOST,
+        default_port=DEFAULT_PORT,
+        cors_extra_origins=CORS_EXTRA_ORIGINS,
+        cors_allow_network=CORS_ALLOW_NETWORK,
+        static_dir=STATIC_DIR,
+    )
+    app = _web_runtime["app"]
+    CORS_ALLOWED_ORIGINS = _web_runtime["CORS_ALLOWED_ORIGINS"]
     ensure_agent_root()
 
     OPEN_REGISTRATION = CONFIG.open_registration
@@ -1227,7 +1111,8 @@ def _build(config: "Optional[Config]" = None) -> Dict[str, Any]:
         get_current_user=get_current_user,
         get_user_api_key=get_user_api_key,
     )
-    STATIC_ROUTES = create_static_routes_router(
+    _static_routes_bundle = build_static_routes_bundle(
+        create_static_routes_router=create_static_routes_router,
         static_dir=STATIC_DIR,
         invite_gate_enabled=INVITE_GATE_ENABLED,
         invite_code=INVITE_CODE,
@@ -1235,102 +1120,70 @@ def _build(config: "Optional[Config]" = None) -> Dict[str, Any]:
         model_router=router,
         require_user=require_user,
     )
-    ui_file_response = STATIC_ROUTES.ui_file_response
-    local_sysinfo = STATIC_ROUTES.local_sysinfo
-    app.include_router(STATIC_ROUTES.router)
+    STATIC_ROUTES = _static_routes_bundle["STATIC_ROUTES"]
+    ui_file_response = _static_routes_bundle["ui_file_response"]
+    local_sysinfo = _static_routes_bundle["local_sysinfo"]
 
     # ── Auth & Admin routers (latticeai.api) ─────────────────────────────────────
-    app.include_router(create_auth_router(
-        load_users=load_users, save_users=save_users,
-        hash_password=hash_password, verify_and_migrate=verify_and_migrate_password,
-        create_session=create_session, get_session_email=get_session_email,
-        invalidate_session=invalidate_session, extract_bearer_token=_extract_bearer_token,
-        get_user_role=get_user_role, require_user=require_user,
-        check_ip_rate_limit=_check_rate_limit, client_ip=_client_ip,
-        get_sso_settings=get_sso_settings, get_sso_discovery=_get_sso_discovery,
+    _foundation_router_bundle = build_auth_admin_security_router_bundle(
+        create_auth_router=create_auth_router,
+        load_users=load_users,
+        save_users=save_users,
+        hash_password=hash_password,
+        verify_and_migrate_password=verify_and_migrate_password,
+        create_session=create_session,
+        get_session_email=get_session_email,
+        invalidate_session=invalidate_session,
+        extract_bearer_token=_extract_bearer_token,
+        get_user_role=get_user_role,
+        require_user=require_user,
+        check_ip_rate_limit=_check_rate_limit,
+        client_ip=_client_ip,
+        get_sso_settings=get_sso_settings,
+        get_sso_discovery=_get_sso_discovery,
         public_sso_config=public_sso_config,
-        open_registration=OPEN_REGISTRATION, session_ttl=_SESSION_TTL,
+        open_registration=OPEN_REGISTRATION,
+        session_ttl=_SESSION_TTL,
         require_auth=REQUIRE_AUTH,
         ensure_identity=ensure_user_identity,
-    ))
-
-    def _graph_stats_safe():
-        try:
-            return KNOWLEDGE_GRAPH.stats() if (ENABLE_GRAPH and KNOWLEDGE_GRAPH) else {"disabled": True}
-        except Exception as e:
-            return {"error": str(e)}
-
-    def _product_hardening_status():
-        return build_product_hardening_status(
-            config=CONFIG,
-            portability=KG_PORTABILITY,
-            device_identity=DEVICE_IDENTITY,
-        )
-
-    app.include_router(create_admin_router(
-        require_admin=require_admin, require_user=require_user,
-        load_users=load_users, save_users=save_users,
-        get_user_role=get_user_role, get_history=get_history,
-        get_audit_log=get_audit_log,
-        public_user=public_user, load_vpc_config=load_vpc_config,
+        create_admin_router=create_admin_router,
+        require_admin=require_admin,
+        get_history=get_history,
+        get_audit_log=_get_audit_log,
+        audit_file=AUDIT_FILE,
+        public_user=public_user,
+        load_vpc_config=load_vpc_config,
         save_vpc_config=save_vpc_config,
         build_admin_audit_report=build_admin_audit_report,
         build_sensitivity_report=build_sensitivity_report,
         append_audit_event=append_audit_event,
-        public_sso_config=public_sso_config, save_sso_config=save_sso_config,
-        get_graph_stats=_graph_stats_safe, enable_graph=ENABLE_GRAPH,
-        invite_code=INVITE_CODE, invite_gate_enabled=INVITE_GATE_ENABLED,
+        save_sso_config=save_sso_config,
+        knowledge_graph=KNOWLEDGE_GRAPH,
+        enable_graph=ENABLE_GRAPH,
+        logger=logging,
+        invite_code=INVITE_CODE,
+        invite_gate_enabled=INVITE_GATE_ENABLED,
         default_port=DEFAULT_PORT,
         policy_matrix=policy_matrix,
-        product_hardening_status=_product_hardening_status,
-    ))
-
-    app.include_router(create_invitations_router(
+        build_product_hardening_status=build_product_hardening_status,
+        config=CONFIG,
+        kg_portability=KG_PORTABILITY,
+        device_identity=DEVICE_IDENTITY,
+        create_invitations_router=create_invitations_router,
         invitation_store=INVITATION_STORE,
         workspace_service=WORKSPACE_SERVICE,
-        require_admin=require_admin,
-        require_user=require_user,
         user_id_for_email=user_id_for_email,
-        append_audit_event=append_audit_event,
-    ))
-
-    # ── Security & Audit Command Center (피드백 #5) ──────────────────────────────
-    def _security_audit_events_safe() -> List[Dict]:
-        try:
-            return _get_audit_log(AUDIT_FILE)
-        except Exception as e:
-            logging.warning("security audit events load failed: %s", e)
-            return []
-
-    def _security_list_uploaded_files() -> List[Dict]:
-        """Audit log에서 document_upload 이벤트를 가공해서 file 목록으로 노출."""
-        files: List[Dict] = []
-        for idx, e in enumerate(_security_audit_events_safe()):
-            if e.get("event_type") != "document_upload":
-                continue
-            files.append({
-                "file_id": str(e.get("filename") or idx),
-                "filename": e.get("filename"),
-                "user_email": e.get("user_email"),
-                "user_nickname": e.get("user_nickname"),
-                "uploaded_at": e.get("timestamp"),
-                "ext": e.get("ext"),
-                "bytes": e.get("bytes"),
-                "sensitivity": e.get("sensitivity") or "none",
-                "sensitive_labels": e.get("sensitive_labels") or [],
-                "content_preview": e.get("content_preview"),
-            })
-        return files
-
-    app.include_router(_create_security_router(
-        require_admin=require_admin,
-        get_history=get_history,
-        get_audit_events=_security_audit_events_safe,
+        create_security_router=_create_security_router,
         classify_sensitive_message=classify_sensitive_message,
-        build_sensitivity_report=build_sensitivity_report,
-        list_uploaded_files=_security_list_uploaded_files,
-        append_audit_event=append_audit_event,
-    ))
+    )
+    auth_router = _foundation_router_bundle["auth_router"]
+    admin_router = _foundation_router_bundle["admin_router"]
+    invitations_router = _foundation_router_bundle["invitations_router"]
+    security_router = _foundation_router_bundle["security_router"]
+    _graph_stats_safe = _foundation_router_bundle["_graph_stats_safe"]
+    _product_hardening_status = _foundation_router_bundle["_product_hardening_status"]
+    _security_audit_events_safe = _foundation_router_bundle["_security_audit_events_safe"]
+    _security_list_uploaded_files = _foundation_router_bundle["_security_list_uploaded_files"]
 
     # ── Static UI/status routes moved to latticeai.api.static_routes ──
 
@@ -1365,22 +1218,18 @@ def _build(config: "Optional[Config]" = None) -> Dict[str, Any]:
         return KNOWLEDGE_GRAPH if (ENABLE_GRAPH and KNOWLEDGE_GRAPH) else None
 
 
-    SEARCH_SERVICE = SearchService(graph_store=_workspace_graph())
-
-    # ── v4 Context System: one budgeted, provenance-carrying assembly over the
-    # product's own retrieval stack (memories + hybrid search + garden notes).
-    BRAIN_MEMORY = BrainMemory(INGESTION_PIPELINE)
-    def _scoped_hybrid_search(q, user_email=None, **kw):
-        allowed = None
-        if REQUIRE_AUTH and user_email:
-            allowed = PLATFORM.allowed_scopes(user_email)
-        return SEARCH_SERVICE.hybrid_search(q, allowed_workspaces=allowed, **kw)
-
-    CONTEXT_ASSEMBLER = ContextAssembler(
-        memory_recall=MEMORY_SERVICE.recall,
-        hybrid_search=_scoped_hybrid_search,
-        notes_context=gardener.get_relevant_context,
+    _context_runtime = build_context_runtime(
+        graph_store=_workspace_graph(),
+        ingestion_pipeline=INGESTION_PIPELINE,
+        memory_service=MEMORY_SERVICE,
+        gardener=gardener,
+        require_auth=REQUIRE_AUTH,
+        allowed_scopes_for_user=lambda user_email: PLATFORM.allowed_scopes(user_email),
     )
+    SEARCH_SERVICE = _context_runtime["SEARCH_SERVICE"]
+    BRAIN_MEMORY = _context_runtime["BRAIN_MEMORY"]
+    CONTEXT_ASSEMBLER = _context_runtime["CONTEXT_ASSEMBLER"]
+    _scoped_hybrid_search = _context_runtime["_scoped_hybrid_search"]
 
 
     # ── Telegram chat mirror: registered only when ENABLE_TELEGRAM is truthy.
@@ -1395,7 +1244,7 @@ def _build(config: "Optional[Config]" = None) -> Dict[str, Any]:
 
     # ── Typed dependency context (latticeai.services.app_context) ────────────────
     # One context object replaces the historical 25-30-kwarg router wiring.
-    context = AppContext(
+    context = build_app_context(
         config=CONFIG,
         data_dir=DATA_DIR,
         static_dir=STATIC_DIR,
@@ -1449,8 +1298,16 @@ def _build(config: "Optional[Config]" = None) -> Dict[str, Any]:
     )
     app.state.context = context
 
-    # ── Workspace OS + Organization router (latticeai.api.workspace, v1.2.0) ──────
-    app.include_router(create_workspace_router(context))
+    register_foundation_routers(
+        app,
+        static_router=STATIC_ROUTES.router,
+        auth_router=auth_router,
+        admin_router=admin_router,
+        invitations_router=invitations_router,
+        security_router=security_router,
+        create_workspace_router=create_workspace_router,
+        context=context,
+    )
 
 
     # ── v2 Agentic Workspace Platform: cross-system wiring ───────────────────────
@@ -1480,130 +1337,55 @@ def _build(config: "Optional[Config]" = None) -> Dict[str, Any]:
         agent_registry=AGENT_REGISTRY,
     )
 
-    # ── Brain review queue (5.6.0): the suggestion inbox automation drops into.
-    from latticeai.services.review_queue import ReviewQueueService
-
-    REVIEW_QUEUE = ReviewQueueService(store=WORKSPACE_OS)
-
-    # ── v4 Trigger system (T7d): interval + brain-event workflow triggers.
-    from latticeai.services.triggers import TRIGGER_HOOK_NAME, TriggerService
-
-    TRIGGER_SERVICE = TriggerService(
+    _automation_runtime = build_automation_runtime(
         store=WORKSPACE_OS,
-        run_workflow=lambda wf_id, inputs: PLATFORM.run_workflow_by_id(
-            wf_id, None, None, with_agent=False, inputs=inputs,
-        ),
+        platform=PLATFORM,
         data_dir=DATA_DIR,
-        review_sink=REVIEW_QUEUE,
-    )
-    # Idempotent hook registration: ingestion post_tool events fan into triggers.
-    _trigger_hook_id = next(
-        (h.get("id") for h in HOOKS_REGISTRY._state.get("custom", [])
-         if h.get("name") == TRIGGER_HOOK_NAME),
-        None,
-    )
-    if _trigger_hook_id is None:
-        _trigger_hook_id = HOOKS_REGISTRY.register(
-            name=TRIGGER_HOOK_NAME,
-            kind="post_tool",
-            description="Fires brain_event workflow triggers when knowledge enters the brain.",
-        )["id"]
-    HOOKS_REGISTRY.register_hook(_trigger_hook_id, TRIGGER_SERVICE.hook_runner())
-
-    # Single AgentRuntime boundary over the orchestrator + run store.
-    # (lattice_brain/runtime.agent_runtime.AgentRuntime — see runtime/__init__.py for full dep graph + entry mapping)
-    AGENT_RUNTIME = AgentRuntime(
-        store=WORKSPACE_OS,
-        orchestrator_factory=PLATFORM.build_orchestrator,
         workspace_graph=_workspace_graph,
         append_audit_event=append_audit_event,
         hooks=HOOKS_REGISTRY,
     )
-    RUN_EXECUTOR = RunExecutor(
-        store=WORKSPACE_OS,
-        agent_runtime=AGENT_RUNTIME,
-        build_workflow_runners=PLATFORM.build_workflow_runners,
-        workspace_graph=_workspace_graph,
-        append_audit_event=append_audit_event,
-        hooks=HOOKS_REGISTRY,
-        review_sink=REVIEW_QUEUE,
-    )
-    AGENT_RUNTIME.attach_executor(RUN_EXECUTOR)
+    REVIEW_QUEUE = _automation_runtime["REVIEW_QUEUE"]
+    TRIGGER_SERVICE = _automation_runtime["TRIGGER_SERVICE"]
+    AGENT_RUNTIME = _automation_runtime["AGENT_RUNTIME"]
+    RUN_EXECUTOR = _automation_runtime["RUN_EXECUTOR"]
+    bind_trigger_hook_runner(registry=HOOKS_REGISTRY, trigger_service=TRIGGER_SERVICE)
     app.state.run_executor = RUN_EXECUTOR
     app.state.run_reconciliation = RUN_EXECUTOR.reconcile_startup()
     TRIGGER_SERVICE.start()
 
     # ── Hooks dispatch: bind real built-in runners ───────────────────────────────
-    # The registry lists built-in hooks; binding a runner here makes them *execute*
-    # real platform behaviour when fired (not a placeholder). Runners take a
-    # HookContext and may mutate its payload, return a status dict, or block.
-    # Bind a real runner to every built-in hook so none is a silent no-op.
-    register_builtin_hook_runners(
-        HOOKS_REGISTRY,
+    bind_builtin_hook_runners(
+        registry=HOOKS_REGISTRY,
         append_audit_event=append_audit_event,
         get_tool_permission=get_tool_permission,
         classify_sensitive_message=classify_sensitive_message,
     )
 
-    app.include_router(create_plugins_router(
-        registry=PLUGIN_REGISTRY,
+    register_platform_feature_routers(
+        app,
+        create_plugins_router=create_plugins_router,
+        plugin_registry=PLUGIN_REGISTRY,
         require_user=require_user,
         require_admin=require_admin,
         append_audit_event=append_audit_event,
-        register_skill=PLATFORM.register_plugin_skill,
-        plugin_runners_factory=lambda: PLATFORM.plugin_capability_runners(None, None),
+        platform=PLATFORM,
         ui_file_response=ui_file_response,
         static_dir=STATIC_DIR,
-    ))
-
-    app.include_router(create_workflow_designer_router(
+        create_workflow_designer_router=create_workflow_designer_router,
         store=WORKSPACE_OS,
-        require_user=require_user,
         get_current_user=get_current_user,
-        gate_read=PLATFORM.gate_read,
-        gate_write=PLATFORM.gate_write,
         workspace_graph=_workspace_graph,
-        build_runners=PLATFORM.build_workflow_runners,
-        append_audit_event=append_audit_event,
-        ui_file_response=ui_file_response,
-        static_dir=STATIC_DIR,
         hooks=HOOKS_REGISTRY,
         run_executor=RUN_EXECUTOR,
         trigger_service=TRIGGER_SERVICE,
-    ))
-
-    app.include_router(create_agents_router(
-        store=WORKSPACE_OS,
-        orchestrator_factory=PLATFORM.build_orchestrator,
-        require_user=require_user,
-        get_current_user=get_current_user,
-        gate_read=PLATFORM.gate_read,
-        gate_write=PLATFORM.gate_write,
-        workspace_graph=_workspace_graph,
-        append_audit_event=append_audit_event,
-        ui_file_response=ui_file_response,
-        static_dir=STATIC_DIR,
+        create_agents_router=create_agents_router,
         agent_runtime=AGENT_RUNTIME,
-        run_executor=RUN_EXECUTOR,
-    ))
-
-    app.include_router(create_marketplace_router(
-        store=WORKSPACE_OS,
-        catalog=TEMPLATE_CATALOG,
-        require_user=require_user,
-        gate_read=PLATFORM.gate_read,
-        gate_write=PLATFORM.gate_write,
-        workspace_graph=_workspace_graph,
-    ))
-
-    app.include_router(create_realtime_router(
-        bus=REALTIME_BUS,
-        require_user=require_user,
-        get_current_user=get_current_user,
-        allowed_scopes=PLATFORM.allowed_scopes,
-        ui_file_response=ui_file_response,
-        static_dir=STATIC_DIR,
-    ))
+        create_marketplace_router=create_marketplace_router,
+        template_catalog=TEMPLATE_CATALOG,
+        create_realtime_router=create_realtime_router,
+        realtime_bus=REALTIME_BUS,
+    )
 
 
     # ── Health & Info ──────────────────────────────────────────────────────────────
@@ -1612,26 +1394,23 @@ def _build(config: "Optional[Config]" = None) -> Dict[str, Any]:
     # ── Health / status / engine-summary router (latticeai.api.health, v1.2.0) ───
     # /health, /mode, /runtime_features, /engines(GET) now live in the health router.
     # Heavier engine mutation endpoints remain below in server_app.
-    MODEL_SERVICE = ModelService(
+    MODEL_SERVICE = build_model_service(
         model_router=router,
         runtime_features=runtime_features,
         is_public=IS_PUBLIC_MODE,
     )
-    app.include_router(create_health_router(
+    register_health_and_model_routers(
+        app,
+        create_health_router=create_health_router,
         model_service=MODEL_SERVICE,
         engine_status=engine_status,
         get_current_user=get_current_user,
         require_auth=REQUIRE_AUTH,
         app_version=APP_VERSION,
         app_mode=APP_MODE,
-    ))
-
-
-    # ── Model / Engine router (latticeai.api.models, v1.3.0) ─────────────────────
-    app.include_router(create_models_router(
+        create_models_router=create_models_router,
         model_router=router,
         require_user=require_user,
-        get_current_user=get_current_user,
         load_users=load_users,
         get_user_role=get_user_role,
         install_engine=install_engine,
@@ -1643,7 +1422,6 @@ def _build(config: "Optional[Config]" = None) -> Dict[str, Any]:
         sse_event=sse_event,
         ensure_ollama_server=ensure_ollama_server,
         local_binary=local_binary,
-        engine_status=engine_status,
         filter_lower_family_versions=filter_lower_family_versions,
         list_compat_profiles=_list_compat_profiles,
         set_user_api_key=set_user_api_key,
@@ -1652,13 +1430,10 @@ def _build(config: "Optional[Config]" = None) -> Dict[str, Any]:
         cloud_verify_ttl_seconds=CLOUD_VERIFY_TTL_SECONDS,
         is_public_mode=IS_PUBLIC_MODE,
         allow_local_models=ALLOW_LOCAL_MODELS,
-        require_auth=REQUIRE_AUTH,
-    ))
+    )
 
 
     # ── Chat / Completion ──────────────────────────────────────────────────────────
-
-    app.include_router(create_chat_router(context))
 
     def _embedding_info() -> dict:
         from latticeai.core.embedding_providers import PROVIDER_TYPES, embedding_provider_profiles
@@ -1676,20 +1451,21 @@ def _build(config: "Optional[Config]" = None) -> Dict[str, Any]:
             return None
         return PLATFORM.allowed_scopes(user)
 
-    app.include_router(create_search_router(
-        service=SEARCH_SERVICE,
+    register_interaction_routers(
+        app,
+        create_chat_router=create_chat_router,
+        context=context,
+        create_search_router=create_search_router,
+        search_service=SEARCH_SERVICE,
         allowed_workspaces_for=_allowed_workspaces_for,
         require_user=require_user,
         embedding_info=_embedding_info,
-    ))
-
-    app.include_router(create_tools_router(
+        create_tools_router=create_tools_router,
         ingestion_pipeline=INGESTION_PIPELINE,
         config=CONFIG,
         data_dir=DATA_DIR,
         static_dir=STATIC_DIR,
         model_router=router,
-        require_user=require_user,
         require_admin=require_admin,
         get_current_user=get_current_user,
         clear_history=clear_history,
@@ -1707,28 +1483,13 @@ def _build(config: "Optional[Config]" = None) -> Dict[str, Any]:
         install_mcp=install_mcp,
         mcp_public_item=mcp_public_item,
         hooks=HOOKS_REGISTRY,
-    ))
-
-    app.include_router(create_hooks_router(
-        registry=HOOKS_REGISTRY,
-        require_user=require_user,
-        append_audit_event=append_audit_event,
-    ))
-
-    app.include_router(create_agent_registry_router(
-        registry=AGENT_REGISTRY,
-        require_user=require_user,
-        append_audit_event=append_audit_event,
-    ))
-
-    app.include_router(create_memory_router(
-        service=MEMORY_SERVICE,
-        require_user=require_user,
-        get_current_user=get_current_user,
-        gate_read=PLATFORM.gate_read,
-        gate_write=PLATFORM.gate_write,
-        append_audit_event=append_audit_event,
-    ))
+        create_hooks_router=create_hooks_router,
+        create_agent_registry_router=create_agent_registry_router,
+        agent_registry=AGENT_REGISTRY,
+        create_memory_router=create_memory_router,
+        memory_service=MEMORY_SERVICE,
+        platform=PLATFORM,
+    )
 
     from latticeai.api.review_queue import create_review_queue_router
 
@@ -1742,39 +1503,29 @@ def _build(config: "Optional[Config]" = None) -> Dict[str, Any]:
             inputs={"__review_item__": item.get("id")},
         )
 
-    app.include_router(create_review_queue_router(
-        service=REVIEW_QUEUE,
+    BRAIN_NETWORK = register_review_and_brain_tail_routers(
+        app,
+        create_review_queue_router=create_review_queue_router,
+        review_queue=REVIEW_QUEUE,
         require_user=require_user,
         gate_read=PLATFORM.gate_read,
         gate_write=PLATFORM.gate_write,
         run_review_item=_run_review_item,
         append_audit_event=append_audit_event,
-    ))
-
-    app.include_router(create_browser_router(
-        pipeline=INGESTION_PIPELINE,
-        require_user=require_user,
-    ))
-
-    app.include_router(create_portability_router(
-        service=KG_PORTABILITY,
-        require_user=require_user,
+        create_browser_router=create_browser_router,
+        ingestion_pipeline=INGESTION_PIPELINE,
+        create_portability_router=create_portability_router,
+        kg_portability=KG_PORTABILITY,
         require_admin=require_admin,
-    ))
-
-    BRAIN_NETWORK = BrainNetwork(
-        identity=DEVICE_IDENTITY,
-        portability=KG_PORTABILITY,
+        build_brain_network=build_brain_network,
+        device_identity=DEVICE_IDENTITY,
         data_dir=DATA_DIR,
+        create_network_router=create_network_router,
+        create_garden_router=create_garden_router,
+        gardener=gardener,
+        create_setup_router=create_setup_router,
+        model_router=router,
     )
-    app.include_router(create_network_router(
-        network=BRAIN_NETWORK,
-        identity=DEVICE_IDENTITY,
-        require_user=require_user,
-    ))
-
-    app.include_router(create_garden_router(gardener=gardener, require_user=require_user))
-    app.include_router(create_setup_router(model_router=router, require_user=require_user))
 
     # ── Entry Point ────────────────────────────────────────────────────────────────
 

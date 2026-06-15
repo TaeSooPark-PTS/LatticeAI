@@ -1,7 +1,35 @@
 # Release Notes
 
-The current release target is v5.6.0. The tracked release-note surface starts at
+The current release target is v6.0.0. The tracked release-note surface starts at
 v4.5.0 so the public Git tree stays focused on the current product era.
+
+## v6.0.0 - Product Reset / Review Center Completion
+
+Lattice AI v6.0.0 starts the product-quality reset branch by completing the
+Review Center recovery loop: users can now see Snoozed automation suggestions,
+bring them back with Unsnooze, and rely on generated OpenAPI schemas for the
+review item contract.
+
+### Highlights
+
+- Added Pending, Snoozed, and All filters to the Review Center.
+- Added explicit Unsnooze backend policy and API.
+- Added frontend Unsnooze action and clearer `snoozed_until` copy.
+- Moved Review Center UI into `frontend/src/features/review/`.
+- Regenerated OpenAPI artifacts and switched ReviewItem client types to
+  generated component schemas.
+- Added v6 plan, architecture review, UX review, and quality scorecard docs.
+- Synchronized package/runtime/static versions to `6.0.0`.
+
+### Expected Artifacts
+
+- `dist/ltcai-6.0.0-py3-none-any.whl`
+- `dist/ltcai-6.0.0.tar.gz`
+- `dist/ltcai-6.0.0.vsix`
+- `ltcai-6.0.0.tgz`
+- `src-tauri/target/release/bundle/dmg/Lattice AI_6.0.0_aarch64.dmg`
+
+Full notes: [RELEASE_NOTES_v6.0.0.md](RELEASE_NOTES_v6.0.0.md)
 
 ## v5.6.0 - Brain Automation Review Center
 

@@ -7,6 +7,23 @@
 > PyPI / npm / VS Code Marketplace / Open VSX 배포는 아래 수동 절차로만
 > 진행합니다. 태그 생성은 패키지 스토어 publish를 자동으로 트리거하지 않습니다.
 
+## v6.0.0 릴리스 준비 노트 (2026-06-15)
+
+Lattice AI v6.0.0 — Product Reset / Review Center Completion. 6.0.0은 5.6.0
+Review Center 위에 Snoozed 필터, 명시적 Unsnooze 전이, OpenAPI 기반 Review
+타입/operation 호출, Review UI 모듈 분리, v6 품질 scorecard 문서를 얹는다.
+`app_factory.py`는 session/hooks/web/persistence/lifespan/automation/context/
+platform/app-context/router-registration runtime seam으로 분해됐고, 364-entry
+route/mount snapshot은 그대로 유지한다. `run_now`는 계속 승인이 아닌
+preview/regenerate 액션이며, snooze 만료는 read-time 해석으로 유지한다.
+
+Expected artifacts (exact 6.0.0 names only):
+- dist/ltcai-6.0.0-py3-none-any.whl
+- dist/ltcai-6.0.0.tar.gz
+- dist/ltcai-6.0.0.vsix
+- ltcai-6.0.0.tgz
+- src-tauri/target/release/bundle/dmg/Lattice AI_6.0.0_aarch64.dmg
+
 ## v5.6.0 릴리스 준비 노트 (2026-06-15)
 
 Lattice AI v5.6.0 — Brain Automation Review Center. 5.6.0은 v5.4.0에서 시작한
