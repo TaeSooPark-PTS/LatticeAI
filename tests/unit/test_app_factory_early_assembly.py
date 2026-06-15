@@ -54,7 +54,7 @@ def _iter_route_entries(routes: Iterable, *, prefix: str = "") -> List[RouteEntr
         if kind == "Mount":
             entries.append(("mount", full_path, getattr(route, "name", "") or ""))
             continue
-        if kind in {"APIRoute", "Route"}:
+        if getattr(route, "methods", None) is not None:
             methods = sorted(
                 method
                 for method in (getattr(route, "methods", None) or set())
