@@ -43,8 +43,9 @@ Status:
 - `latticeai/runtime/router_registration.py` centralizes the individual
   `include_router` call behind `register_router()` / `register_routers()` while
   preserving existing router construction call sites and include order. The
-  final review/browser/brain tail routes now use a dedicated registration
-  helper that preserves the legacy BrainNetwork construction point.
+  early static/auth/admin/security/workspace routes and final
+  review/browser/brain tail routes now use dedicated registration helpers while
+  preserving the legacy construction points.
 - Router construction and include order remain in `app_factory.py` pending a
   route-snapshot-reviewed reorder step.
 

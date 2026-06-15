@@ -32,6 +32,7 @@ from latticeai.runtime.platform_services_runtime import (
     build_model_service,
 )
 from latticeai.runtime.router_registration import (
+    register_foundation_routers,
     register_review_and_brain_tail_routers,
     register_router,
     register_routers,
@@ -1227,10 +1228,9 @@ def _build(config: "Optional[Config]" = None) -> Dict[str, Any]:
     )
     ui_file_response = STATIC_ROUTES.ui_file_response
     local_sysinfo = STATIC_ROUTES.local_sysinfo
-    register_router(app, STATIC_ROUTES.router)
 
     # ── Auth & Admin routers (latticeai.api) ─────────────────────────────────────
-    register_router(app, create_auth_router(
+    auth_router = create_auth_router(
         load_users=load_users, save_users=save_users,
         hash_password=hash_password, verify_and_migrate=verify_and_migrate_password,
         create_session=create_session, get_session_email=get_session_email,
@@ -1242,7 +1242,7 @@ def _build(config: "Optional[Config]" = None) -> Dict[str, Any]:
         open_registration=OPEN_REGISTRATION, session_ttl=_SESSION_TTL,
         require_auth=REQUIRE_AUTH,
         ensure_identity=ensure_user_identity,
-    ))
+    )
 
     def _graph_stats_safe():
         try:
@@ -1257,33 +1257,30 @@ def _build(config: "Optional[Config]" = None) -> Dict[str, Any]:
             device_identity=DEVICE_IDENTITY,
         )
 
-    register_routers(
-        app,
-        create_admin_router(
-            require_admin=require_admin, require_user=require_user,
-            load_users=load_users, save_users=save_users,
-            get_user_role=get_user_role, get_history=get_history,
-            get_audit_log=get_audit_log,
-            public_user=public_user, load_vpc_config=load_vpc_config,
-            save_vpc_config=save_vpc_config,
-            build_admin_audit_report=build_admin_audit_report,
-            build_sensitivity_report=build_sensitivity_report,
-            append_audit_event=append_audit_event,
-            public_sso_config=public_sso_config, save_sso_config=save_sso_config,
-            get_graph_stats=_graph_stats_safe, enable_graph=ENABLE_GRAPH,
-            invite_code=INVITE_CODE, invite_gate_enabled=INVITE_GATE_ENABLED,
-            default_port=DEFAULT_PORT,
-            policy_matrix=policy_matrix,
-            product_hardening_status=_product_hardening_status,
-        ),
-        create_invitations_router(
-            invitation_store=INVITATION_STORE,
-            workspace_service=WORKSPACE_SERVICE,
-            require_admin=require_admin,
-            require_user=require_user,
-            user_id_for_email=user_id_for_email,
-            append_audit_event=append_audit_event,
-        ),
+    admin_router = create_admin_router(
+        require_admin=require_admin, require_user=require_user,
+        load_users=load_users, save_users=save_users,
+        get_user_role=get_user_role, get_history=get_history,
+        get_audit_log=get_audit_log,
+        public_user=public_user, load_vpc_config=load_vpc_config,
+        save_vpc_config=save_vpc_config,
+        build_admin_audit_report=build_admin_audit_report,
+        build_sensitivity_report=build_sensitivity_report,
+        append_audit_event=append_audit_event,
+        public_sso_config=public_sso_config, save_sso_config=save_sso_config,
+        get_graph_stats=_graph_stats_safe, enable_graph=ENABLE_GRAPH,
+        invite_code=INVITE_CODE, invite_gate_enabled=INVITE_GATE_ENABLED,
+        default_port=DEFAULT_PORT,
+        policy_matrix=policy_matrix,
+        product_hardening_status=_product_hardening_status,
+    )
+    invitations_router = create_invitations_router(
+        invitation_store=INVITATION_STORE,
+        workspace_service=WORKSPACE_SERVICE,
+        require_admin=require_admin,
+        require_user=require_user,
+        user_id_for_email=user_id_for_email,
+        append_audit_event=append_audit_event,
     )
 
     # ── Security & Audit Command Center (피드백 #5) ──────────────────────────────
@@ -1314,7 +1311,7 @@ def _build(config: "Optional[Config]" = None) -> Dict[str, Any]:
             })
         return files
 
-    register_router(app, _create_security_router(
+    security_router = _create_security_router(
         require_admin=require_admin,
         get_history=get_history,
         get_audit_events=_security_audit_events_safe,
@@ -1322,7 +1319,7 @@ def _build(config: "Optional[Config]" = None) -> Dict[str, Any]:
         build_sensitivity_report=build_sensitivity_report,
         list_uploaded_files=_security_list_uploaded_files,
         append_audit_event=append_audit_event,
-    ))
+    )
 
     # ── Static UI/status routes moved to latticeai.api.static_routes ──
 
@@ -1438,7 +1435,16 @@ def _build(config: "Optional[Config]" = None) -> Dict[str, Any]:
     app.state.context = context
 
     # ── Workspace OS + Organization router (latticeai.api.workspace, v1.2.0) ──────
-    register_router(app, create_workspace_router(context))
+    workspace_router = create_workspace_router(context)
+    register_foundation_routers(
+        app,
+        static_router=STATIC_ROUTES.router,
+        auth_router=auth_router,
+        admin_router=admin_router,
+        invitations_router=invitations_router,
+        security_router=security_router,
+        workspace_router=workspace_router,
+    )
 
 
     # ── v2 Agentic Workspace Platform: cross-system wiring ───────────────────────

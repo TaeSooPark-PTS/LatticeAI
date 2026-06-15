@@ -26,6 +26,29 @@ def register_routers(app: Any, *routers: Any) -> tuple[Any, ...]:
     return routers
 
 
+def register_foundation_routers(
+    app: Any,
+    *,
+    static_router: Any,
+    auth_router: Any,
+    admin_router: Any,
+    invitations_router: Any,
+    security_router: Any,
+    workspace_router: Any,
+) -> tuple[Any, ...]:
+    """Register early static/auth/admin/security/workspace routers in order."""
+
+    return register_routers(
+        app,
+        static_router,
+        auth_router,
+        admin_router,
+        invitations_router,
+        security_router,
+        workspace_router,
+    )
+
+
 def register_review_and_brain_tail_routers(
     app: Any,
     *,
