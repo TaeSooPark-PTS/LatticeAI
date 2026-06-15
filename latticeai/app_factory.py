@@ -27,6 +27,10 @@ from latticeai.runtime.hooks_runtime import (
     bind_trigger_hook_runner,
     build_hooks_runtime,
 )
+from latticeai.runtime.platform_services_runtime import (
+    build_brain_network,
+    build_model_service,
+)
 from latticeai.runtime.security_runtime import build_security_runtime
 from latticeai.runtime.web_runtime import build_web_runtime
 
@@ -111,7 +115,6 @@ def _build(config: "Optional[Config]" = None) -> Dict[str, Any]:
     )
     from latticeai.services.app_context import AppContext
     from latticeai.services.workspace_service import WorkspaceService
-    from latticeai.services.model_service import ModelService
     from latticeai.services.chat_service import ChatService
     from latticeai.core.embedding_providers import resolve_embedder, resolve_embedding_profile
     from latticeai.services.model_runtime import (
@@ -164,7 +167,6 @@ def _build(config: "Optional[Config]" = None) -> Dict[str, Any]:
     from lattice_brain.ingestion import IngestionItem, IngestionPipeline
     from lattice_brain.storage import storage_from_env
     from lattice_brain.identity import DeviceIdentity
-    from lattice_brain.network import BrainNetwork
     from latticeai.api.network import create_network_router
     from lattice_brain.portability import KGPortabilityService
     # The aliased names below look unused but are part of the legacy
@@ -1551,7 +1553,7 @@ def _build(config: "Optional[Config]" = None) -> Dict[str, Any]:
     # ── Health / status / engine-summary router (latticeai.api.health, v1.2.0) ───
     # /health, /mode, /runtime_features, /engines(GET) now live in the health router.
     # Heavier engine mutation endpoints remain below in server_app.
-    MODEL_SERVICE = ModelService(
+    MODEL_SERVICE = build_model_service(
         model_router=router,
         runtime_features=runtime_features,
         is_public=IS_PUBLIC_MODE,
@@ -1701,7 +1703,7 @@ def _build(config: "Optional[Config]" = None) -> Dict[str, Any]:
         require_admin=require_admin,
     ))
 
-    BRAIN_NETWORK = BrainNetwork(
+    BRAIN_NETWORK = build_brain_network(
         identity=DEVICE_IDENTITY,
         portability=KG_PORTABILITY,
         data_dir=DATA_DIR,

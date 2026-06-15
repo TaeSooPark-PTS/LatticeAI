@@ -38,6 +38,8 @@ Status:
   AgentRuntime, and RunExecutor construction behind one automation seam.
 - `latticeai/runtime/context_runtime.py` owns SearchService, BrainMemory, and
   ContextAssembler construction behind one retrieval/context seam.
+- `latticeai/runtime/platform_services_runtime.py` owns small platform service
+  constructors such as ModelService and BrainNetwork.
 - Router construction and include order remain in `app_factory.py` pending a
   route-snapshot-reviewed reorder step.
 
