@@ -48,6 +48,10 @@ def app():
 def _iter_route_entries(routes: Iterable, *, prefix: str = "") -> List[RouteEntry]:
     entries: List[RouteEntry] = []
     for route in routes:
+        original_router = getattr(route, "original_router", None)
+        if original_router is not None:
+            entries.extend(_iter_route_entries(getattr(original_router, "routes", []), prefix=prefix))
+            continue
         kind = type(route).__name__
         path = getattr(route, "path", "")
         full_path = f"{prefix}{path}".replace("//", "/") if prefix else path
