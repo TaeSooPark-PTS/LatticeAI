@@ -18,6 +18,7 @@ import threading
 from typing import TYPE_CHECKING, Any, Dict, List, Optional
 
 from latticeai.runtime.automation_runtime import build_automation_runtime
+from latticeai.runtime.app_context_runtime import build_app_context
 from latticeai.runtime.bootstrap import build_session_runtime
 from latticeai.runtime.brain_runtime import build_brain_runtime
 from latticeai.runtime.config_runtime import build_config_runtime
@@ -122,7 +123,6 @@ def _build(config: "Optional[Config]" = None) -> Dict[str, Any]:
         save_users_file,
         user_id_for_email as _user_id_for_email,
     )
-    from latticeai.services.app_context import AppContext
     from latticeai.services.workspace_service import WorkspaceService
     from latticeai.services.chat_service import ChatService
     from latticeai.core.embedding_providers import resolve_embedder, resolve_embedding_profile
@@ -1354,7 +1354,7 @@ def _build(config: "Optional[Config]" = None) -> Dict[str, Any]:
 
     # ── Typed dependency context (latticeai.services.app_context) ────────────────
     # One context object replaces the historical 25-30-kwarg router wiring.
-    context = AppContext(
+    context = build_app_context(
         config=CONFIG,
         data_dir=DATA_DIR,
         static_dir=STATIC_DIR,

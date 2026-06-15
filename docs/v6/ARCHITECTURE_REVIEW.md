@@ -38,6 +38,8 @@ Status:
   AgentRuntime, and RunExecutor construction behind one automation seam.
 - `latticeai/runtime/context_runtime.py` owns SearchService, BrainMemory, and
   ContextAssembler construction behind one retrieval/context seam.
+- `latticeai/runtime/app_context_runtime.py` owns construction of the typed
+  `AppContext` dependency object consumed by API routers.
 - `latticeai/runtime/platform_services_runtime.py` owns small platform service
   constructors such as ModelService and BrainNetwork.
 - `latticeai/runtime/router_registration.py` centralizes the individual
@@ -48,9 +50,10 @@ Status:
   review/browser/brain tail routes now use dedicated helpers while preserving
   the legacy construction dependencies.
 - Router service construction still remains in `app_factory.py`, but router
-  generation is now grouped by dependency boundary. Further extraction should
-  move dependency bundles into typed context objects before changing include
-  order.
+  generation is now grouped by dependency boundary and the primary API
+  dependency object is built behind a dedicated seam. Further extraction should
+  move the remaining runtime service bundles into typed context objects before
+  changing include order.
 
 Recommended next steps:
 
