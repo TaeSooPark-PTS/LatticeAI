@@ -200,33 +200,31 @@ See [docs/DEVELOPMENT.md](docs/DEVELOPMENT.md) for developer workflow details.
 
 ## Current Release Preparation
 
-The current development target is **6.0.0 Product Reset / Review Center Completion**:
+The current development target is **6.1.0 Product Hardening / Digital Brain Completion**:
 
-- Review Center now includes Pending, Snoozed, and All filters so users can find
-  deferred automation suggestions without waiting for expiry.
-- `/automation/reviews` adds explicit `unsnooze` support while preserving
-  read-time snooze expiry and `run_now != approve` semantics.
-- Review Center frontend code is split into `frontend/src/features/review/`
-  modules instead of living inside the Act page.
-- Review item frontend types are derived from regenerated OpenAPI component
-- schemas, and Review Center API calls use generated operation paths for list
-  and state-transition actions.
-- `app_factory.py` is decomposed behind runtime seams for session, hooks, web
-  shell, persistence, lifespan, automation, context/search, platform services,
-  app context, and router registration while preserving the frozen 364-entry
-  route/mount snapshot.
-- First-run copy now states the local-first trust boundary more directly:
-  knowledge stays on this computer by default, downloads/external transfer start
-  only after user action, and models remain replaceable.
-- All package/runtime/static/OpenAPI versions are synchronized to 6.0.0.
+- First-run now lets users create or open the local Brain even when they defer
+  model setup, keeping the Brain durable while models stay replaceable.
+- Brain Home explains the first memory loop: save useful context, see it return
+  in the Brain state, then protect it with backup/export.
+- Review Center keeps Pending, Snoozed, and All filters while clarifying that
+  Run now is a preview/regenerate action, not approval.
+- `lattice_brain` has an AST import guard so Brain Core does not import
+  `latticeai` or `ltcai`.
+- Model download consent has a unit guard: token presence alone does not start
+  an external download path.
+- `ltcai_cli.py` keeps the root entrypoint while pure CLI runtime helpers live
+  under `latticeai.cli.runtime`.
+- v6.1 documentation tracks backend hardening, frontend UX hardening, and the
+  baseline scan for version metadata, root legacy modules, Brain Core boundary,
+  and local-first trust gates.
 
-Expected artifacts for 6.0.0 release must use exact filenames:
+Expected artifacts for 6.1.0 release must use exact filenames:
 
-- `dist/ltcai-6.0.0-py3-none-any.whl`
-- `dist/ltcai-6.0.0.tar.gz`
-- `ltcai-6.0.0.tgz`
-- `dist/ltcai-6.0.0.vsix`
-- `src-tauri/target/release/bundle/dmg/Lattice AI_6.0.0_aarch64.dmg`
+- `dist/ltcai-6.1.0-py3-none-any.whl`
+- `dist/ltcai-6.1.0.tar.gz`
+- `ltcai-6.1.0.tgz`
+- `dist/ltcai-6.1.0.vsix`
+- `src-tauri/target/release/bundle/dmg/Lattice AI_6.1.0_aarch64.dmg`
 
 Do not upload `dist/*`. Package registry publishing remains owner-run.
 

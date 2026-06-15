@@ -3,6 +3,36 @@
 The top entry is the current release-preparation target. Older entries are
 historical and may describe behavior as it existed at that release.
 
+## [6.1.0] - 2026-06-16
+
+> Product Hardening / Digital Brain Completion. Tightens the local-first Brain
+> flow, Brain Core boundary, backend trust gates, and release documentation
+> without adding broad new product surfaces.
+
+### Added
+- First-run path to open the Brain without installing or loading a model first.
+- Brain Home empty-state loop that shows first memory save, Brain state return,
+  and backup ownership.
+- AST import guard proving `lattice_brain` does not import `latticeai` or
+  `ltcai`.
+- Unit coverage for model download consent blocking in `model_runtime`.
+- `latticeai.cli.runtime` for pure CLI runtime helpers while preserving the root
+  `ltcai_cli.py` entrypoint.
+- v6.1 baseline, frontend UX, backend hardening, and instruction documents under
+  `docs/v6.1/`.
+
+### Changed
+- Review Center cards clarify that Run now previews/executes without approval.
+- Static app assets are refreshed for the v6.1 frontend hardening changes.
+- README and release notes now describe v6.1.0 as the current hardening target
+  with exact expected artifact filenames.
+
+### Preserved
+- Package publish, deployment, tag creation, and main merge remain out of scope
+  unless explicitly requested.
+- Package/runtime version metadata remains at the prior release line until the
+  final release-sync step.
+
 ## [6.0.0] - 2026-06-15
 
 > Product Reset / Review Center Completion. Raises the Review Center from a

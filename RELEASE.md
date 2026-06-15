@@ -7,6 +7,27 @@
 > PyPI / npm / VS Code Marketplace / Open VSX 배포는 아래 수동 절차로만
 > 진행합니다. 태그 생성은 패키지 스토어 publish를 자동으로 트리거하지 않습니다.
 
+## v6.1.0 릴리스 준비 노트 (2026-06-16)
+
+Lattice AI v6.1.0 — Product Hardening / Digital Brain Completion. 6.1.0은
+새로운 대형 기능보다 v6.0.0의 Digital Brain 정체성을 실제 제품 흐름에 더
+단단히 연결한다. 첫 실행은 모델 설치가 막혀도 로컬 Brain으로 진입할 수 있고,
+Brain Home은 첫 memory 저장/확인/backup 루프를 명시한다. Review Center는
+Pending/Snoozed/All, Unsnooze, Run now semantics를 유지하면서 액션 의미를 더
+분명히 표시한다.
+
+Backend hardening은 `lattice_brain`이 `latticeai`/`ltcai`를 실제 import하지
+않는 AST guard, model download consent unit guard, `ltcai_cli.py` root entrypoint
+유지와 `latticeai.cli.runtime` helper 분리를 포함한다. v6.1 문서는 baseline
+scan, frontend UX hardening, backend hardening evidence를 기록한다.
+
+Expected artifacts (exact 6.1.0 names only):
+- dist/ltcai-6.1.0-py3-none-any.whl
+- dist/ltcai-6.1.0.tar.gz
+- dist/ltcai-6.1.0.vsix
+- ltcai-6.1.0.tgz
+- src-tauri/target/release/bundle/dmg/Lattice AI_6.1.0_aarch64.dmg
+
 ## v6.0.0 릴리스 준비 노트 (2026-06-15)
 
 Lattice AI v6.0.0 — Product Reset / Review Center Completion. 6.0.0은 5.6.0
