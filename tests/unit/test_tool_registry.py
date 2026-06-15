@@ -8,7 +8,11 @@ These tests keep the three lists that used to drift in lock-step:
 
 import re
 
+from fastapi import HTTPException
+import pytest
 import tools
+
+from latticeai.services.tool_dispatch import ToolDispatchService
 
 
 def test_execute_tool_uses_registry():
@@ -36,6 +40,27 @@ def test_tool_registry_owns_permission_views():
     permission = tools.DEFAULT_TOOL_REGISTRY.permission("run_command", {"command": "ls"})
     assert permission["risk"] == "high"
     assert permission["requires_approval"] is True
+
+
+def test_tool_dispatch_service_isolates_role_callbacks():
+    service = ToolDispatchService(registry=tools.DEFAULT_TOOL_REGISTRY)
+    service.configure(
+        load_users=lambda: {"user@example.com": {"role": "user"}},
+        get_user_role=lambda email, users: users[email]["role"],
+    )
+
+    service.check_role("read_file", "user@example.com")
+
+    with pytest.raises(HTTPException) as exc:
+        service.check_role("run_command", "user@example.com")
+    assert exc.value.status_code == 403
+
+    admin_service = ToolDispatchService(registry=tools.DEFAULT_TOOL_REGISTRY)
+    admin_service.configure(
+        load_users=lambda: {"admin@example.com": {"role": "admin"}},
+        get_user_role=lambda email, users: users[email]["role"],
+    )
+    admin_service.check_role("run_command", "admin@example.com")
 
 
 def test_catalog_brief_tokens_are_all_dispatchable():

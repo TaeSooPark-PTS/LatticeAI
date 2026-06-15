@@ -6,8 +6,9 @@ tool-response shaping are owned outside ``server_app``.
 
 from __future__ import annotations
 
+from dataclasses import dataclass, field
 from pathlib import Path
-from typing import Any, Callable, Dict, Optional
+from typing import Any, Callable, Dict, Mapping, Optional
 
 from fastapi import HTTPException
 
@@ -30,9 +31,6 @@ def _default_get_user_role(_email, _users=None) -> str:
     return "user"
 
 
-_load_users: Callable[[], Dict[str, Any]] = _default_load_users
-_get_user_role: Callable[..., str] = _default_get_user_role
-
 FILE_CREATE_ACTIONS = set(DEFAULT_TOOL_REGISTRY.file_create_actions)
 TOOL_GOVERNANCE: Dict[str, ToolPolicy] = dict(DEFAULT_TOOL_REGISTRY.governance)
 TOOL_GOVERNANCE_DEFAULT: ToolPolicy = DEFAULT_TOOL_REGISTRY.default_policy
@@ -41,41 +39,100 @@ LOCAL_WRITE_BLOCKED_PREFIXES = DEFAULT_TOOL_REGISTRY.local_write_blocked_prefixe
 RISK_LEVEL_MAP = DEFAULT_TOOL_REGISTRY.risk_level_map
 
 
+@dataclass
+class ToolDispatchService:
+    """Runtime-facing tool policy and authorization boundary.
+
+    ``ToolRegistry`` owns the catalog and governance facts; this service owns
+    request/runtime authorization callbacks that must be configured during app
+    construction. Keeping those callbacks on an instance gives future runtime
+    assembly code an injectable seam while the module-level functions below
+    preserve the historical ``server_app`` surface.
+    """
+
+    registry: Any = field(default_factory=lambda: DEFAULT_TOOL_REGISTRY)
+    load_users: Callable[[], Dict[str, Any]] = field(default=_default_load_users)
+    get_user_role: Callable[..., str] = field(default=_default_get_user_role)
+
+    @property
+    def file_create_actions(self) -> frozenset[str]:
+        return self.registry.file_create_actions
+
+    @property
+    def tool_governance(self) -> Mapping[str, ToolPolicy]:
+        return self.registry.governance
+
+    @property
+    def risk_level_map(self) -> Mapping[str, str]:
+        return self.registry.risk_level_map
+
+    def configure(
+        self,
+        *,
+        load_users: Callable[[], Dict[str, Any]],
+        get_user_role: Callable[..., str],
+    ) -> None:
+        self.load_users = load_users
+        self.get_user_role = get_user_role
+
+    def policy_for(self, action_name: str, args: dict) -> ToolPolicy:
+        return self.registry.policy_for(action_name, args)
+
+    def risk_level(self, action_name: str, args: dict) -> str:
+        return self.registry.risk_level(action_name, args)
+
+    def risk_level_for_policy(self, policy: ToolPolicy) -> str:
+        return self.risk_level_map.get(policy["risk"], "medium")
+
+    def permission(self, name: str, args: Optional[dict] = None) -> ToolPermission:
+        return self.registry.permission(name, args or {})
+
+    def permissions(self) -> list[ToolPermission]:
+        return self.registry.permissions()
+
+    def check_role(self, tool_name: str, current_user: str) -> None:
+        if tool_name not in self.registry.admin_only_tools:
+            return
+        users = self.load_users()
+        if self.get_user_role(current_user, users) != "admin":
+            raise HTTPException(
+                status_code=403,
+                detail=f"'{tool_name}' 툴은 관리자 전용입니다.",
+            )
+
+
+DEFAULT_TOOL_DISPATCH_SERVICE = ToolDispatchService()
+
+
 def configure_tool_dispatch(
     *,
     load_users: Callable[[], Dict[str, Any]],
     get_user_role: Callable[..., str],
 ) -> None:
-    global _load_users, _get_user_role
-    _load_users = load_users
-    _get_user_role = get_user_role
+    DEFAULT_TOOL_DISPATCH_SERVICE.configure(
+        load_users=load_users,
+        get_user_role=get_user_role,
+    )
 
 
 def agent_policy(action_name: str, args: dict) -> ToolPolicy:
-    return DEFAULT_TOOL_REGISTRY.policy_for(action_name, args)
+    return DEFAULT_TOOL_DISPATCH_SERVICE.policy_for(action_name, args)
 
 
 def agent_risk(action_name: str, args: dict) -> str:
-    return DEFAULT_TOOL_REGISTRY.risk_level(action_name, args)
+    return DEFAULT_TOOL_DISPATCH_SERVICE.risk_level(action_name, args)
 
 
 def get_tool_permission(name: str, args: Optional[dict] = None) -> ToolPermission:
-    return DEFAULT_TOOL_REGISTRY.permission(name, args or {})
+    return DEFAULT_TOOL_DISPATCH_SERVICE.permission(name, args or {})
 
 
 def list_tool_permissions() -> list:
-    return DEFAULT_TOOL_REGISTRY.permissions()
+    return DEFAULT_TOOL_DISPATCH_SERVICE.permissions()
 
 
 def check_tool_role(tool_name: str, current_user: str) -> None:
-    if tool_name not in ADMIN_ONLY_TOOLS:
-        return
-    users = _load_users()
-    if _get_user_role(current_user, users) != "admin":
-        raise HTTPException(
-            status_code=403,
-            detail=f"'{tool_name}' 툴은 관리자 전용입니다.",
-        )
+    DEFAULT_TOOL_DISPATCH_SERVICE.check_role(tool_name, current_user)
 
 
 def collect_created_files(transcript: list) -> list:
@@ -113,17 +170,18 @@ def build_agent_runtime(
     audit: Callable[..., None],
     hooks: Any = None,
     brain_memory: Any = None,
+    dispatch_service: ToolDispatchService = DEFAULT_TOOL_DISPATCH_SERVICE,
 ) -> AgentRuntime:
     ensure_agent_root()
     deps = AgentDeps(
         generate_as=model_router.generate_as,
         generate=model_router.generate,
         execute_tool=execute_tool,
-        policy_for=agent_policy,
-        risk_level=lambda policy: RISK_LEVEL_MAP.get(policy["risk"], "medium"),
-        check_role=check_tool_role,
-        tool_governance=TOOL_GOVERNANCE,
-        file_create_actions=frozenset(FILE_CREATE_ACTIONS),
+        policy_for=dispatch_service.policy_for,
+        risk_level=dispatch_service.risk_level_for_policy,
+        check_role=dispatch_service.check_role,
+        tool_governance=dispatch_service.tool_governance,
+        file_create_actions=dispatch_service.file_create_actions,
         recent_chat_context=recent_chat_context,
         clear_history=clear_history,
         knowledge_save=knowledge_save,
@@ -144,4 +202,3 @@ def tool_response(fn, *args):
         return {"status": "ok", "workspace": str(AGENT_ROOT), "result": fn(*args)}
     except ToolError as exc:
         raise HTTPException(status_code=400, detail=str(exc))
-

@@ -18,8 +18,10 @@ Pending/Snoozed/All, Unsnooze, Run now semantics를 유지하면서 액션 의�
 
 Backend hardening은 `lattice_brain`이 `latticeai`/`ltcai`를 실제 import하지
 않는 AST guard, model download consent unit guard, `ltcai_cli.py` root entrypoint
-유지와 `latticeai.cli.runtime` helper 분리를 포함한다. v6.1 문서는 baseline
-scan, frontend UX hardening, backend hardening evidence를 기록한다.
+유지와 `latticeai.cli.runtime` helper 분리를 포함한다. Tool dispatch authorization은
+공유 ToolRegistry 위의 injectable service boundary로 분리되어 app-factory의
+module global 의존을 줄인다. v6.1 문서는 baseline scan, frontend UX hardening,
+backend hardening evidence를 기록한다.
 
 Expected artifacts (exact 6.1.0 names only):
 - dist/ltcai-6.1.0-py3-none-any.whl

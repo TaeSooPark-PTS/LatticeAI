@@ -214,6 +214,8 @@ The current development target is **6.1.0 Product Hardening / Digital Brain Comp
   an external download path.
 - `ltcai_cli.py` keeps the root entrypoint while pure CLI runtime helpers live
   under `latticeai.cli.runtime`.
+- Tool dispatch authorization now has an injectable service boundary around
+  the shared ToolRegistry, reducing app-factory reliance on module globals.
 - v6.1 documentation tracks backend hardening, frontend UX hardening, and the
   baseline scan for version metadata, root legacy modules, Brain Core boundary,
   and local-first trust gates.
