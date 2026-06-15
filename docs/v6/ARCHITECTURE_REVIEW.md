@@ -26,14 +26,21 @@ execution unless a workflow opts in.
 
 Status:
 
-- `app_factory.py` still performs broad assembly work.
-- The Review Queue wiring is explicit but contributes to factory size.
-- A full decomposition into runtime modules is not complete in this branch
-  checkpoint.
+- `app_factory.py` still performs broad assembly work, but the v6 follow-up
+  branch has started additive extraction behind runtime seams.
+- `latticeai/runtime/bootstrap.py` owns session store construction and token
+  lifecycle helper closures.
+- `latticeai/runtime/hooks_runtime.py` owns hook registry/watcher assembly plus
+  trigger/builtin hook runner binding.
+- `latticeai/runtime/web_runtime.py` owns FastAPI shell creation, CORS
+  middleware, and static asset mounts while preserving legacy mount order.
+- Router construction and include order remain in `app_factory.py` pending a
+  route-snapshot-reviewed reorder step.
 
 Recommended next steps:
 
-- Extract review/router assembly into a small runtime composition module.
+- Extract review/router assembly into a small runtime composition module after
+  route snapshot comparison.
 - Continue the existing runtime split pattern rather than introducing a new
   global registry.
 - Preserve lazy imports and current app bootstrap semantics.
@@ -74,5 +81,6 @@ Positive evidence:
 
 Remaining gaps:
 
-- `app_factory.py` decomposition remains incomplete.
+- `app_factory.py` decomposition remains incomplete; router assembly is the next
+  high-risk step and should preserve the frozen route/mount snapshot.
 - Strict generated client methods still sit behind the local `apiJson` wrapper.
