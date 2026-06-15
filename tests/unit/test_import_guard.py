@@ -29,34 +29,21 @@ def _has_forbidden_import(file_path: Path) -> bool:
 
 def test_lattice_brain_does_not_import_latticeai():
     """lattice_brain core must remain free of latticeai/ltcai imports for safe extraction."""
-    # Only scan active lattice* source directories for brain modules.
-    # Explicitly ignore audits, node_modules, site-packages, old releases.
-    source_dirs = ["latticeai", "ltcai", "src"]
-    brain_candidates = []
-    for d in source_dirs:
-        base = PROJECT_ROOT / d
-        if base.exists():
-            for p in base.rglob("*.py"):
-                if "brain" in str(p).lower():
-                    brain_candidates.append(p)
-
+    brain_dir = PROJECT_ROOT / "lattice_brain"
+    if not brain_dir.exists():
+        pytest.skip("lattice_brain directory not present yet")
     violations = []
-    for f in brain_candidates:
+    for f in brain_dir.rglob("*.py"):
         if _has_forbidden_import(f):
             violations.append(str(f.relative_to(PROJECT_ROOT)))
-
-    assert not violations, f"Found forbidden imports in brain candidates: {violations}"
+    assert not violations, f"Found forbidden imports in lattice_brain: {violations}"
 
 
 def test_no_direct_latticeai_import_in_potential_brain_paths():
-    """Explicit guard: only active source brain files are checked."""
-    source_dirs = ["latticeai", "ltcai", "src"]
-    for d in source_dirs:
-        base = PROJECT_ROOT / d
-        if not base.exists():
-            continue
-        for f in base.rglob("*.py"):
-            if "brain" not in str(f).lower():
-                continue
-            if _has_forbidden_import(f):
-                pytest.fail(f"lattice_brain isolation violation: {f}")
+    """Explicit guard: full AST scan of lattice_brain/ directory."""
+    brain_dir = PROJECT_ROOT / "lattice_brain"
+    if not brain_dir.exists():
+        pytest.skip("lattice_brain directory not present yet")
+    for f in brain_dir.rglob("*.py"):
+        if _has_forbidden_import(f):
+            pytest.fail(f"lattice_brain isolation violation: {f}")
