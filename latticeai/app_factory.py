@@ -32,6 +32,8 @@ from latticeai.runtime.platform_services_runtime import (
     build_model_service,
 )
 from latticeai.runtime.router_registration import (
+    build_auth_admin_security_router_bundle,
+    build_static_routes_bundle,
     register_health_and_model_routers,
     register_foundation_routers,
     register_interaction_routers,
@@ -1219,7 +1221,8 @@ def _build(config: "Optional[Config]" = None) -> Dict[str, Any]:
         get_current_user=get_current_user,
         get_user_api_key=get_user_api_key,
     )
-    STATIC_ROUTES = create_static_routes_router(
+    _static_routes_bundle = build_static_routes_bundle(
+        create_static_routes_router=create_static_routes_router,
         static_dir=STATIC_DIR,
         invite_gate_enabled=INVITE_GATE_ENABLED,
         invite_code=INVITE_CODE,
@@ -1227,100 +1230,70 @@ def _build(config: "Optional[Config]" = None) -> Dict[str, Any]:
         model_router=router,
         require_user=require_user,
     )
-    ui_file_response = STATIC_ROUTES.ui_file_response
-    local_sysinfo = STATIC_ROUTES.local_sysinfo
+    STATIC_ROUTES = _static_routes_bundle["STATIC_ROUTES"]
+    ui_file_response = _static_routes_bundle["ui_file_response"]
+    local_sysinfo = _static_routes_bundle["local_sysinfo"]
 
     # ── Auth & Admin routers (latticeai.api) ─────────────────────────────────────
-    auth_router = create_auth_router(
-        load_users=load_users, save_users=save_users,
-        hash_password=hash_password, verify_and_migrate=verify_and_migrate_password,
-        create_session=create_session, get_session_email=get_session_email,
-        invalidate_session=invalidate_session, extract_bearer_token=_extract_bearer_token,
-        get_user_role=get_user_role, require_user=require_user,
-        check_ip_rate_limit=_check_rate_limit, client_ip=_client_ip,
-        get_sso_settings=get_sso_settings, get_sso_discovery=_get_sso_discovery,
+    _foundation_router_bundle = build_auth_admin_security_router_bundle(
+        create_auth_router=create_auth_router,
+        load_users=load_users,
+        save_users=save_users,
+        hash_password=hash_password,
+        verify_and_migrate_password=verify_and_migrate_password,
+        create_session=create_session,
+        get_session_email=get_session_email,
+        invalidate_session=invalidate_session,
+        extract_bearer_token=_extract_bearer_token,
+        get_user_role=get_user_role,
+        require_user=require_user,
+        check_ip_rate_limit=_check_rate_limit,
+        client_ip=_client_ip,
+        get_sso_settings=get_sso_settings,
+        get_sso_discovery=_get_sso_discovery,
         public_sso_config=public_sso_config,
-        open_registration=OPEN_REGISTRATION, session_ttl=_SESSION_TTL,
+        open_registration=OPEN_REGISTRATION,
+        session_ttl=_SESSION_TTL,
         require_auth=REQUIRE_AUTH,
         ensure_identity=ensure_user_identity,
-    )
-
-    def _graph_stats_safe():
-        try:
-            return KNOWLEDGE_GRAPH.stats() if (ENABLE_GRAPH and KNOWLEDGE_GRAPH) else {"disabled": True}
-        except Exception as e:
-            return {"error": str(e)}
-
-    def _product_hardening_status():
-        return build_product_hardening_status(
-            config=CONFIG,
-            portability=KG_PORTABILITY,
-            device_identity=DEVICE_IDENTITY,
-        )
-
-    admin_router = create_admin_router(
-        require_admin=require_admin, require_user=require_user,
-        load_users=load_users, save_users=save_users,
-        get_user_role=get_user_role, get_history=get_history,
-        get_audit_log=get_audit_log,
-        public_user=public_user, load_vpc_config=load_vpc_config,
+        create_admin_router=create_admin_router,
+        require_admin=require_admin,
+        get_history=get_history,
+        get_audit_log=_get_audit_log,
+        audit_file=AUDIT_FILE,
+        public_user=public_user,
+        load_vpc_config=load_vpc_config,
         save_vpc_config=save_vpc_config,
         build_admin_audit_report=build_admin_audit_report,
         build_sensitivity_report=build_sensitivity_report,
         append_audit_event=append_audit_event,
-        public_sso_config=public_sso_config, save_sso_config=save_sso_config,
-        get_graph_stats=_graph_stats_safe, enable_graph=ENABLE_GRAPH,
-        invite_code=INVITE_CODE, invite_gate_enabled=INVITE_GATE_ENABLED,
+        save_sso_config=save_sso_config,
+        knowledge_graph=KNOWLEDGE_GRAPH,
+        enable_graph=ENABLE_GRAPH,
+        logger=logging,
+        invite_code=INVITE_CODE,
+        invite_gate_enabled=INVITE_GATE_ENABLED,
         default_port=DEFAULT_PORT,
         policy_matrix=policy_matrix,
-        product_hardening_status=_product_hardening_status,
-    )
-    invitations_router = create_invitations_router(
+        build_product_hardening_status=build_product_hardening_status,
+        config=CONFIG,
+        kg_portability=KG_PORTABILITY,
+        device_identity=DEVICE_IDENTITY,
+        create_invitations_router=create_invitations_router,
         invitation_store=INVITATION_STORE,
         workspace_service=WORKSPACE_SERVICE,
-        require_admin=require_admin,
-        require_user=require_user,
         user_id_for_email=user_id_for_email,
-        append_audit_event=append_audit_event,
-    )
-
-    # ── Security & Audit Command Center (피드백 #5) ──────────────────────────────
-    def _security_audit_events_safe() -> List[Dict]:
-        try:
-            return _get_audit_log(AUDIT_FILE)
-        except Exception as e:
-            logging.warning("security audit events load failed: %s", e)
-            return []
-
-    def _security_list_uploaded_files() -> List[Dict]:
-        """Audit log에서 document_upload 이벤트를 가공해서 file 목록으로 노출."""
-        files: List[Dict] = []
-        for idx, e in enumerate(_security_audit_events_safe()):
-            if e.get("event_type") != "document_upload":
-                continue
-            files.append({
-                "file_id": str(e.get("filename") or idx),
-                "filename": e.get("filename"),
-                "user_email": e.get("user_email"),
-                "user_nickname": e.get("user_nickname"),
-                "uploaded_at": e.get("timestamp"),
-                "ext": e.get("ext"),
-                "bytes": e.get("bytes"),
-                "sensitivity": e.get("sensitivity") or "none",
-                "sensitive_labels": e.get("sensitive_labels") or [],
-                "content_preview": e.get("content_preview"),
-            })
-        return files
-
-    security_router = _create_security_router(
-        require_admin=require_admin,
-        get_history=get_history,
-        get_audit_events=_security_audit_events_safe,
+        create_security_router=_create_security_router,
         classify_sensitive_message=classify_sensitive_message,
-        build_sensitivity_report=build_sensitivity_report,
-        list_uploaded_files=_security_list_uploaded_files,
-        append_audit_event=append_audit_event,
     )
+    auth_router = _foundation_router_bundle["auth_router"]
+    admin_router = _foundation_router_bundle["admin_router"]
+    invitations_router = _foundation_router_bundle["invitations_router"]
+    security_router = _foundation_router_bundle["security_router"]
+    _graph_stats_safe = _foundation_router_bundle["_graph_stats_safe"]
+    _product_hardening_status = _foundation_router_bundle["_product_hardening_status"]
+    _security_audit_events_safe = _foundation_router_bundle["_security_audit_events_safe"]
+    _security_list_uploaded_files = _foundation_router_bundle["_security_list_uploaded_files"]
 
     # ── Static UI/status routes moved to latticeai.api.static_routes ──
 
