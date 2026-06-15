@@ -29,6 +29,8 @@ historical and may describe behavior as it existed at that release.
 - First-run/onboarding copy now states local-first trust boundaries more
   directly: local knowledge by default, explicit downloads, and explicit
   external transfer.
+- README release evidence screenshots and walkthrough GIF are refreshed under
+  `output/release/v6.0.0/`, including the Review Center surface.
 - OpenAPI artifacts and synchronized package/runtime/static metadata now target
   `6.0.0`.
 

@@ -16,6 +16,8 @@ Review Center 위에 Snoozed 필터, 명시적 Unsnooze 전이, OpenAPI 기반 R
 platform/app-context/router-registration runtime seam으로 분해됐고, 364-entry
 route/mount snapshot은 그대로 유지한다. `run_now`는 계속 승인이 아닌
 preview/regenerate 액션이며, snooze 만료는 read-time 해석으로 유지한다.
+README 스크린샷/GIF release evidence는 `output/release/v6.0.0/` 경로로
+다시 캡처했고 Review Center 화면을 포함한다.
 
 Expected artifacts (exact 6.0.0 names only):
 - dist/ltcai-6.0.0-py3-none-any.whl

@@ -69,35 +69,42 @@ You need Lattice AI when:
 Choose the owner of the Brain. The profile is not a SaaS account by default; it
 is the local identity for the knowledge you keep.
 
-![Login](output/release/v5.3.0/screenshots/01-login.png)
+![Login](output/release/v6.0.0/screenshots/01-login.png)
 
 ### 2. Environment Analysis
 
 See what kind of local AI experience this computer can support before choosing a
 model.
 
-![Environment Analysis](output/release/v5.3.0/screenshots/02-environment-analysis.png)
+![Environment Analysis](output/release/v6.0.0/screenshots/02-environment-analysis.png)
 
 ### 3. Recommended Models
 
 Start with a short list: safest recommendation, faster model, stronger model.
 Advanced details stay available without overwhelming first-time users.
 
-![Recommended Models](output/release/v5.3.0/screenshots/03-recommended-models.png)
+![Recommended Models](output/release/v6.0.0/screenshots/03-recommended-models.png)
 
 ### 4. Install And Load
 
 Download and load only after consent. Lattice explains model size, local
 execution, and network use before work starts.
 
-![Install and Load](output/release/v5.3.0/screenshots/04-install-load-progress.png)
+![Install and Load](output/release/v6.0.0/screenshots/04-install-load-progress.png)
 
 ### 5. Brain Chat
 
 Talk normally. Useful decisions and context become memory, then appear later as
 topics, relationships, and graph structure.
 
-![Brain Chat Home](output/release/v5.3.0/screenshots/05-brain-chat-home.png)
+![Brain Chat Home](output/release/v6.0.0/screenshots/05-brain-chat-home.png)
+
+### 6. Review Center
+
+Automation results are staged for review before they become durable decisions.
+Snooze, unsnooze, run now, approve, and dismiss actions stay explicit.
+
+![Review Center](output/release/v6.0.0/screenshots/13-review-center.png)
 
 ## Brain Depths
 
@@ -113,10 +120,10 @@ The user travels inward from everyday memory to deeper structure:
 
 Walkthrough:
 
-![v5.3.0 Living Brain walkthrough](output/release/v5.3.0/gifs/v5.3.0-living-brain-walkthrough.gif)
+![v6.0.0 Living Brain walkthrough](output/release/v6.0.0/gifs/v6.0.0-living-brain-walkthrough.gif)
 
 Screenshot index and capture notes:
-[output/release/v5.3.0/SCREENSHOT_INDEX.md](output/release/v5.3.0/SCREENSHOT_INDEX.md)
+[output/release/v6.0.0/SCREENSHOT_INDEX.md](output/release/v6.0.0/SCREENSHOT_INDEX.md)
 
 ## Install
 
