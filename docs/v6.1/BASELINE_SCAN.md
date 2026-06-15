@@ -2,17 +2,17 @@
 
 Date: 2026-06-16
 Branch: `feat/v6.1.0-product-hardening`
-Current committed release line: `6.0.0`
+Current committed release line: `6.1.0`
 Target release line: `6.1.0`
 
-This scan is evidence for the v6.1.0 hardening work before broad implementation.
-It is intentionally descriptive. Version metadata should stay at `6.0.0` until
-the final release sync step.
+This scan started as evidence for the v6.1.0 hardening work before broad
+implementation. The final release sync step has now synchronized active version
+metadata and current-release documentation to `6.1.0`; historical `v6/` records
+and older changelog entries remain intentionally historical.
 
 ## Version References
 
-Current release metadata still points at `6.0.0` and must be synchronized late in
-the release flow:
+Current release metadata is synchronized to `6.1.0`:
 
 - `pyproject.toml:7` - Python package version.
 - `package.json:3` - root npm package version.
@@ -29,15 +29,14 @@ the release flow:
 - `vscode-extension/package-lock.json:3` and `:9` - extension lockfile package
   versions.
 
-Current-release docs and evidence paths still point at `6.0.0`:
+Current-release docs and evidence paths are synchronized to `6.1.0`:
 
 - `README.md:72`, `:79`, `:86`, `:93`, `:100`, `:107`, `:123`, `:126` -
-  screenshot/GIF/index paths under `output/release/v6.0.0/`.
+  screenshot/GIF/index paths under `output/release/v6.1.0/`.
 - `README.md:203`, `:221`, `:223-229` - current development target and exact
-  artifact names.
-- `RELEASE.md:10-27` - release title, notes, screenshot path, and exact artifact
-  names.
-- `SECURITY.md:53`, `:61` - current release security positioning.
+  `6.1.0` artifact names.
+- `RELEASE.md:10-27` - v6.1.0 release title, notes, and exact artifact names.
+- `SECURITY.md:53`, `:62` - current release security positioning.
 - `vscode-extension/README.md:15` - extension release summary.
 - `docs/CHANGELOG.md:6`, `:33`, `:35` - historical v6.0.0 entry. These should
   remain historical while a new v6.1.0 entry is added.
