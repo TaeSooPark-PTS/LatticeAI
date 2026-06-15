@@ -16,3 +16,11 @@ def register_router(app: Any, router: Any) -> Any:
 
     app.include_router(router)
     return router
+
+
+def register_routers(app: Any, *routers: Any) -> tuple[Any, ...]:
+    """Include routers in the given order and return them unchanged."""
+
+    for router in routers:
+        register_router(app, router)
+    return routers

@@ -41,8 +41,8 @@ Status:
 - `latticeai/runtime/platform_services_runtime.py` owns small platform service
   constructors such as ModelService and BrainNetwork.
 - `latticeai/runtime/router_registration.py` centralizes the individual
-  `include_router` call behind `register_router()` while preserving existing
-  router construction call sites and include order.
+  `include_router` call behind `register_router()` / `register_routers()` while
+  preserving existing router construction call sites and include order.
 - Router construction and include order remain in `app_factory.py` pending a
   route-snapshot-reviewed reorder step.
 

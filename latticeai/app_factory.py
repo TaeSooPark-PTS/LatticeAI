@@ -31,7 +31,7 @@ from latticeai.runtime.platform_services_runtime import (
     build_brain_network,
     build_model_service,
 )
-from latticeai.runtime.router_registration import register_router
+from latticeai.runtime.router_registration import register_router, register_routers
 from latticeai.runtime.security_runtime import build_security_runtime
 from latticeai.runtime.web_runtime import build_web_runtime
 
@@ -1487,65 +1487,64 @@ def _build(config: "Optional[Config]" = None) -> Dict[str, Any]:
         classify_sensitive_message=classify_sensitive_message,
     )
 
-    register_router(app, create_plugins_router(
-        registry=PLUGIN_REGISTRY,
-        require_user=require_user,
-        require_admin=require_admin,
-        append_audit_event=append_audit_event,
-        register_skill=PLATFORM.register_plugin_skill,
-        plugin_runners_factory=lambda: PLATFORM.plugin_capability_runners(None, None),
-        ui_file_response=ui_file_response,
-        static_dir=STATIC_DIR,
-    ))
-
-    register_router(app, create_workflow_designer_router(
-        store=WORKSPACE_OS,
-        require_user=require_user,
-        get_current_user=get_current_user,
-        gate_read=PLATFORM.gate_read,
-        gate_write=PLATFORM.gate_write,
-        workspace_graph=_workspace_graph,
-        build_runners=PLATFORM.build_workflow_runners,
-        append_audit_event=append_audit_event,
-        ui_file_response=ui_file_response,
-        static_dir=STATIC_DIR,
-        hooks=HOOKS_REGISTRY,
-        run_executor=RUN_EXECUTOR,
-        trigger_service=TRIGGER_SERVICE,
-    ))
-
-    register_router(app, create_agents_router(
-        store=WORKSPACE_OS,
-        orchestrator_factory=PLATFORM.build_orchestrator,
-        require_user=require_user,
-        get_current_user=get_current_user,
-        gate_read=PLATFORM.gate_read,
-        gate_write=PLATFORM.gate_write,
-        workspace_graph=_workspace_graph,
-        append_audit_event=append_audit_event,
-        ui_file_response=ui_file_response,
-        static_dir=STATIC_DIR,
-        agent_runtime=AGENT_RUNTIME,
-        run_executor=RUN_EXECUTOR,
-    ))
-
-    register_router(app, create_marketplace_router(
-        store=WORKSPACE_OS,
-        catalog=TEMPLATE_CATALOG,
-        require_user=require_user,
-        gate_read=PLATFORM.gate_read,
-        gate_write=PLATFORM.gate_write,
-        workspace_graph=_workspace_graph,
-    ))
-
-    register_router(app, create_realtime_router(
-        bus=REALTIME_BUS,
-        require_user=require_user,
-        get_current_user=get_current_user,
-        allowed_scopes=PLATFORM.allowed_scopes,
-        ui_file_response=ui_file_response,
-        static_dir=STATIC_DIR,
-    ))
+    register_routers(
+        app,
+        create_plugins_router(
+            registry=PLUGIN_REGISTRY,
+            require_user=require_user,
+            require_admin=require_admin,
+            append_audit_event=append_audit_event,
+            register_skill=PLATFORM.register_plugin_skill,
+            plugin_runners_factory=lambda: PLATFORM.plugin_capability_runners(None, None),
+            ui_file_response=ui_file_response,
+            static_dir=STATIC_DIR,
+        ),
+        create_workflow_designer_router(
+            store=WORKSPACE_OS,
+            require_user=require_user,
+            get_current_user=get_current_user,
+            gate_read=PLATFORM.gate_read,
+            gate_write=PLATFORM.gate_write,
+            workspace_graph=_workspace_graph,
+            build_runners=PLATFORM.build_workflow_runners,
+            append_audit_event=append_audit_event,
+            ui_file_response=ui_file_response,
+            static_dir=STATIC_DIR,
+            hooks=HOOKS_REGISTRY,
+            run_executor=RUN_EXECUTOR,
+            trigger_service=TRIGGER_SERVICE,
+        ),
+        create_agents_router(
+            store=WORKSPACE_OS,
+            orchestrator_factory=PLATFORM.build_orchestrator,
+            require_user=require_user,
+            get_current_user=get_current_user,
+            gate_read=PLATFORM.gate_read,
+            gate_write=PLATFORM.gate_write,
+            workspace_graph=_workspace_graph,
+            append_audit_event=append_audit_event,
+            ui_file_response=ui_file_response,
+            static_dir=STATIC_DIR,
+            agent_runtime=AGENT_RUNTIME,
+            run_executor=RUN_EXECUTOR,
+        ),
+        create_marketplace_router(
+            store=WORKSPACE_OS,
+            catalog=TEMPLATE_CATALOG,
+            require_user=require_user,
+            gate_read=PLATFORM.gate_read,
+            gate_write=PLATFORM.gate_write,
+            workspace_graph=_workspace_graph,
+        ),
+        create_realtime_router(
+            bus=REALTIME_BUS,
+            require_user=require_user,
+            get_current_user=get_current_user,
+            allowed_scopes=PLATFORM.allowed_scopes,
+            ui_file_response=ui_file_response,
+            static_dir=STATIC_DIR,
+        ),
+    )
 
 
     # ── Health & Info ──────────────────────────────────────────────────────────────
@@ -1559,43 +1558,43 @@ def _build(config: "Optional[Config]" = None) -> Dict[str, Any]:
         runtime_features=runtime_features,
         is_public=IS_PUBLIC_MODE,
     )
-    register_router(app, create_health_router(
-        model_service=MODEL_SERVICE,
-        engine_status=engine_status,
-        get_current_user=get_current_user,
-        require_auth=REQUIRE_AUTH,
-        app_version=APP_VERSION,
-        app_mode=APP_MODE,
-    ))
-
-
-    # ── Model / Engine router (latticeai.api.models, v1.3.0) ─────────────────────
-    register_router(app, create_models_router(
-        model_router=router,
-        require_user=require_user,
-        get_current_user=get_current_user,
-        load_users=load_users,
-        get_user_role=get_user_role,
-        install_engine=install_engine,
-        verify_cloud_models=verify_cloud_models,
-        normalize_local_model_request=normalize_local_model_request,
-        download_hf_model=download_hf_model,
-        prepare_and_load_model=prepare_and_load_model,
-        prepare_and_load_model_stream=prepare_and_load_model_stream,
-        sse_event=sse_event,
-        ensure_ollama_server=ensure_ollama_server,
-        local_binary=local_binary,
-        engine_status=engine_status,
-        filter_lower_family_versions=filter_lower_family_versions,
-        list_compat_profiles=_list_compat_profiles,
-        set_user_api_key=set_user_api_key,
-        engine_model_catalog=ENGINE_MODEL_CATALOG,
-        model_engine_aliases=MODEL_ENGINE_ALIASES,
-        cloud_verify_ttl_seconds=CLOUD_VERIFY_TTL_SECONDS,
-        is_public_mode=IS_PUBLIC_MODE,
-        allow_local_models=ALLOW_LOCAL_MODELS,
-        require_auth=REQUIRE_AUTH,
-    ))
+    register_routers(
+        app,
+        create_health_router(
+            model_service=MODEL_SERVICE,
+            engine_status=engine_status,
+            get_current_user=get_current_user,
+            require_auth=REQUIRE_AUTH,
+            app_version=APP_VERSION,
+            app_mode=APP_MODE,
+        ),
+        create_models_router(
+            model_router=router,
+            require_user=require_user,
+            get_current_user=get_current_user,
+            load_users=load_users,
+            get_user_role=get_user_role,
+            install_engine=install_engine,
+            verify_cloud_models=verify_cloud_models,
+            normalize_local_model_request=normalize_local_model_request,
+            download_hf_model=download_hf_model,
+            prepare_and_load_model=prepare_and_load_model,
+            prepare_and_load_model_stream=prepare_and_load_model_stream,
+            sse_event=sse_event,
+            ensure_ollama_server=ensure_ollama_server,
+            local_binary=local_binary,
+            engine_status=engine_status,
+            filter_lower_family_versions=filter_lower_family_versions,
+            list_compat_profiles=_list_compat_profiles,
+            set_user_api_key=set_user_api_key,
+            engine_model_catalog=ENGINE_MODEL_CATALOG,
+            model_engine_aliases=MODEL_ENGINE_ALIASES,
+            cloud_verify_ttl_seconds=CLOUD_VERIFY_TTL_SECONDS,
+            is_public_mode=IS_PUBLIC_MODE,
+            allow_local_models=ALLOW_LOCAL_MODELS,
+            require_auth=REQUIRE_AUTH,
+        ),
+    )
 
 
     # ── Chat / Completion ──────────────────────────────────────────────────────────
@@ -1618,59 +1617,58 @@ def _build(config: "Optional[Config]" = None) -> Dict[str, Any]:
             return None
         return PLATFORM.allowed_scopes(user)
 
-    register_router(app, create_search_router(
-        service=SEARCH_SERVICE,
-        allowed_workspaces_for=_allowed_workspaces_for,
-        require_user=require_user,
-        embedding_info=_embedding_info,
-    ))
-
-    register_router(app, create_tools_router(
-        ingestion_pipeline=INGESTION_PIPELINE,
-        config=CONFIG,
-        data_dir=DATA_DIR,
-        static_dir=STATIC_DIR,
-        model_router=router,
-        require_user=require_user,
-        require_admin=require_admin,
-        get_current_user=get_current_user,
-        clear_history=clear_history,
-        append_audit_event=append_audit_event,
-        enforce_rate_limit=enforce_rate_limit,
-        bytes_match_extension=_bytes_match_extension,
-        classify_sensitive_message=classify_sensitive_message,
-        save_to_history=save_to_history,
-        enable_graph=ENABLE_GRAPH,
-        knowledge_graph=KNOWLEDGE_GRAPH,
-        require_graph=_require_graph,
-        local_kg_watcher=LOCAL_KG_WATCHER,
-        load_mcp_installs=load_mcp_installs,
-        recommend_mcps=recommend_mcps,
-        install_mcp=install_mcp,
-        mcp_public_item=mcp_public_item,
-        hooks=HOOKS_REGISTRY,
-    ))
-
-    register_router(app, create_hooks_router(
-        registry=HOOKS_REGISTRY,
-        require_user=require_user,
-        append_audit_event=append_audit_event,
-    ))
-
-    register_router(app, create_agent_registry_router(
-        registry=AGENT_REGISTRY,
-        require_user=require_user,
-        append_audit_event=append_audit_event,
-    ))
-
-    register_router(app, create_memory_router(
-        service=MEMORY_SERVICE,
-        require_user=require_user,
-        get_current_user=get_current_user,
-        gate_read=PLATFORM.gate_read,
-        gate_write=PLATFORM.gate_write,
-        append_audit_event=append_audit_event,
-    ))
+    register_routers(
+        app,
+        create_search_router(
+            service=SEARCH_SERVICE,
+            allowed_workspaces_for=_allowed_workspaces_for,
+            require_user=require_user,
+            embedding_info=_embedding_info,
+        ),
+        create_tools_router(
+            ingestion_pipeline=INGESTION_PIPELINE,
+            config=CONFIG,
+            data_dir=DATA_DIR,
+            static_dir=STATIC_DIR,
+            model_router=router,
+            require_user=require_user,
+            require_admin=require_admin,
+            get_current_user=get_current_user,
+            clear_history=clear_history,
+            append_audit_event=append_audit_event,
+            enforce_rate_limit=enforce_rate_limit,
+            bytes_match_extension=_bytes_match_extension,
+            classify_sensitive_message=classify_sensitive_message,
+            save_to_history=save_to_history,
+            enable_graph=ENABLE_GRAPH,
+            knowledge_graph=KNOWLEDGE_GRAPH,
+            require_graph=_require_graph,
+            local_kg_watcher=LOCAL_KG_WATCHER,
+            load_mcp_installs=load_mcp_installs,
+            recommend_mcps=recommend_mcps,
+            install_mcp=install_mcp,
+            mcp_public_item=mcp_public_item,
+            hooks=HOOKS_REGISTRY,
+        ),
+        create_hooks_router(
+            registry=HOOKS_REGISTRY,
+            require_user=require_user,
+            append_audit_event=append_audit_event,
+        ),
+        create_agent_registry_router(
+            registry=AGENT_REGISTRY,
+            require_user=require_user,
+            append_audit_event=append_audit_event,
+        ),
+        create_memory_router(
+            service=MEMORY_SERVICE,
+            require_user=require_user,
+            get_current_user=get_current_user,
+            gate_read=PLATFORM.gate_read,
+            gate_write=PLATFORM.gate_write,
+            append_audit_event=append_audit_event,
+        ),
+    )
 
     from latticeai.api.review_queue import create_review_queue_router
 
@@ -1684,39 +1682,42 @@ def _build(config: "Optional[Config]" = None) -> Dict[str, Any]:
             inputs={"__review_item__": item.get("id")},
         )
 
-    register_router(app, create_review_queue_router(
-        service=REVIEW_QUEUE,
-        require_user=require_user,
-        gate_read=PLATFORM.gate_read,
-        gate_write=PLATFORM.gate_write,
-        run_review_item=_run_review_item,
-        append_audit_event=append_audit_event,
-    ))
-
-    register_router(app, create_browser_router(
-        pipeline=INGESTION_PIPELINE,
-        require_user=require_user,
-    ))
-
-    register_router(app, create_portability_router(
-        service=KG_PORTABILITY,
-        require_user=require_user,
-        require_admin=require_admin,
-    ))
+    register_routers(
+        app,
+        create_review_queue_router(
+            service=REVIEW_QUEUE,
+            require_user=require_user,
+            gate_read=PLATFORM.gate_read,
+            gate_write=PLATFORM.gate_write,
+            run_review_item=_run_review_item,
+            append_audit_event=append_audit_event,
+        ),
+        create_browser_router(
+            pipeline=INGESTION_PIPELINE,
+            require_user=require_user,
+        ),
+        create_portability_router(
+            service=KG_PORTABILITY,
+            require_user=require_user,
+            require_admin=require_admin,
+        ),
+    )
 
     BRAIN_NETWORK = build_brain_network(
         identity=DEVICE_IDENTITY,
         portability=KG_PORTABILITY,
         data_dir=DATA_DIR,
     )
-    register_router(app, create_network_router(
-        network=BRAIN_NETWORK,
-        identity=DEVICE_IDENTITY,
-        require_user=require_user,
-    ))
-
-    register_router(app, create_garden_router(gardener=gardener, require_user=require_user))
-    register_router(app, create_setup_router(model_router=router, require_user=require_user))
+    register_routers(
+        app,
+        create_network_router(
+            network=BRAIN_NETWORK,
+            identity=DEVICE_IDENTITY,
+            require_user=require_user,
+        ),
+        create_garden_router(gardener=gardener, require_user=require_user),
+        create_setup_router(model_router=router, require_user=require_user),
+    )
 
     # ── Entry Point ────────────────────────────────────────────────────────────────
 
