@@ -16,4 +16,20 @@ No safe small separation candidate found that preserves:
 
 Blocker recorded. Recommend dedicated `latticeai/cli/` package in later hardening phase after AgentRuntime stabilization.
 
-Next: wait for frontend/UX integration points or larger module boundary.
+## v6.1 Extraction Performed (2026-06-16)
+
+Pure helpers safely extracted despite initial conservative scan:
+- Created `latticeai/cli/` package with `__init__.py`
+- Moved to `latticeai/cli/runtime.py`:
+  - `_load_env_file(path: Path) -> None`
+  - `_apply_extra_path() -> None`
+  - `_has_module(name: str) -> bool`
+- `ltcai_cli.py` now imports from `latticeai.cli.runtime` (root entrypoint preserved, no behavior change)
+- Added unit tests in `tests/unit/test_import_guard.py`:
+  - import smoke test
+  - `_load_env_file` with temp `.env`
+  - verification that existing env vars are not overwritten
+
+This resolves the recorded blocker for the three pure helpers. Remaining helpers (`_local_ips`, banner, tunnel, telegram) stay in root entrypoint for now.
+
+Next: continue with `telegram_bot.py` analysis after cli package stabilization.

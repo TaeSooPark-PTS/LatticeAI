@@ -3,7 +3,9 @@
 Ensures lattice_brain (and future extracted cores) never imports latticeai/ltcai.
 """
 import ast
+import os
 from pathlib import Path
+
 import pytest
 
 PROJECT_ROOT = Path(__file__).parent.parent.parent
@@ -47,3 +49,37 @@ def test_no_direct_latticeai_import_in_potential_brain_paths():
     for f in brain_dir.rglob("*.py"):
         if _has_forbidden_import(f):
             pytest.fail(f"lattice_brain isolation violation: {f}")
+
+
+def test_cli_runtime_helpers_import_smoke():
+    """Smoke test: latticeai.cli.runtime helpers import cleanly."""
+    from latticeai.cli.runtime import (
+        _apply_extra_path,
+        _has_module,
+        _load_env_file,
+    )
+    assert callable(_load_env_file)
+    assert callable(_apply_extra_path)
+    assert callable(_has_module)
+
+
+def test_load_env_file_does_not_overwrite_existing(monkeypatch, tmp_path):
+    """_load_env_file respects existing env and does not overwrite."""
+    from latticeai.cli.runtime import _load_env_file
+    env_file = tmp_path / ".env"
+    env_file.write_text("EXISTING_VAR=from_file\nNEW_VAR=from_file\n")
+    monkeypatch.setenv("EXISTING_VAR", "already_set")
+    _load_env_file(env_file)
+    assert os.environ["EXISTING_VAR"] == "already_set"
+    assert os.environ.get("NEW_VAR") == "from_file"
+
+
+def test_load_env_file_loads_new_vars(tmp_path):
+    """_load_env_file loads vars from temp .env when not present."""
+    from latticeai.cli.runtime import _load_env_file
+    env_file = tmp_path / ".env.test"
+    env_file.write_text("LATTICE_TEST_VAR=hello_cli\n")
+    # ensure not preset
+    os.environ.pop("LATTICE_TEST_VAR", None)
+    _load_env_file(env_file)
+    assert os.environ["LATTICE_TEST_VAR"] == "hello_cli"
