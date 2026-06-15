@@ -32,7 +32,8 @@ test("first-run ritual enters the living Brain", async ({ page }) => {
   await page.getByRole("button", { name: "한국어" }).click();
 
   await expect(page.locator("body")).toContainText("내 AI 브레인의 주인을 정합니다.");
-  await expect(page.locator("body")).toContainText("모델이 바뀌어도 내 지식과 맥락을 보존");
+  await expect(page.locator("body")).toContainText("로컬 우선 AI 브레인입니다.");
+  await expect(page.locator("body")).toContainText("외부 전송은 사용자가 선택할 때만 시작됩니다.");
   await expect(page.locator("body")).toContainText("모델은 목소리이고, 자산은 Brain입니다.");
   await expect(page.getByRole("button", { name: "Travel deeper into your Brain" })).toBeVisible();
 
