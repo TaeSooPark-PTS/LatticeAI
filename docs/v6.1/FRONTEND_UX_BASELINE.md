@@ -41,6 +41,16 @@ Files:
 - `frontend/src/i18n.ts`
 - `frontend/src/styles.css`
 
+## v6.1 UX Patch 3
+
+Review Center cards now explain that Run now previews/executes without approving
+the item. This keeps the action semantics visible beside the controls instead of
+only in high-level documentation.
+
+Files:
+
+- `frontend/src/features/review/ReviewCard.tsx`
+
 Validation:
 
 - `npm run typecheck:frontend`

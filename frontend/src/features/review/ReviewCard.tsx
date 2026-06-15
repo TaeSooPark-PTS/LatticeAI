@@ -71,16 +71,21 @@ export function ReviewCard({ item, feedback, onAction }: ReviewCardProps) {
       ) : null}
 
       {actionable ? (
-        <div className="mt-4 flex flex-wrap gap-2">
-          <ActionButton
-            label="Run now"
-            successLabel={hadRun ? "Regenerated" : "Executed"}
-            action={() => onAction(item, "run_now", hadRun)}
-            invalidate={[]}
-          />
-          <ActionButton label="Approve" action={() => onAction(item, "approve")} invalidate={[]} />
-          {!snoozed ? <ActionButton label="Snooze 1 day" action={() => onAction(item, "snooze")} invalidate={[]} /> : null}
-          <ActionButton label="Dismiss" action={() => onAction(item, "dismiss")} invalidate={[]} variant="destructive" />
+        <div className="mt-4 grid gap-2">
+          <p className="text-xs leading-5 text-muted-foreground">
+            Run now previews the action without approving it. Approve or dismiss when the result looks right.
+          </p>
+          <div className="flex flex-wrap gap-2" aria-label="Review actions">
+            <ActionButton
+              label="Run now"
+              successLabel={hadRun ? "Regenerated" : "Executed"}
+              action={() => onAction(item, "run_now", hadRun)}
+              invalidate={[]}
+            />
+            <ActionButton label="Approve" action={() => onAction(item, "approve")} invalidate={[]} />
+            {!snoozed ? <ActionButton label="Snooze 1 day" action={() => onAction(item, "snooze")} invalidate={[]} /> : null}
+            <ActionButton label="Dismiss" action={() => onAction(item, "dismiss")} invalidate={[]} variant="destructive" />
+          </div>
         </div>
       ) : null}
       {feedback ? (
