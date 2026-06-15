@@ -153,7 +153,7 @@ def _build(config: "Optional[Config]" = None) -> Dict[str, Any]:
     from latticeai.api.invitations import create_invitations_router
     from latticeai.api.marketplace import create_marketplace_router
     from latticeai.api.models import create_models_router
-    from latticeai.api.chat import create_chat_router
+    from latticeai.api.chat import build_recent_chat_context, create_chat_router
     from latticeai.api.search import create_search_router
     from latticeai.api.tools import create_tools_router
     from latticeai.api.static_routes import create_static_routes_router
@@ -181,6 +181,7 @@ def _build(config: "Optional[Config]" = None) -> Dict[str, Any]:
         configure_tool_dispatch,
         get_tool_permission,
         list_tool_permissions,
+        build_agent_runtime,
         tool_response as _tool_response,
     )
     from latticeai.core.tool_registry import TOOL_CATALOG_BRIEF as _TOOL_CATALOG_BRIEF  # noqa: F401
@@ -190,7 +191,7 @@ def _build(config: "Optional[Config]" = None) -> Dict[str, Any]:
     )
     from p_reinforce import PReinforceGardener
     from setup_wizard import get_recommendations, scan_environment
-    from tools import ensure_agent_root
+    from tools import ensure_agent_root, execute_tool, knowledge_save
 
     try:
         import keyring
@@ -1242,6 +1243,31 @@ def _build(config: "Optional[Config]" = None) -> Dict[str, Any]:
             _spawn(broadcast_web_chat(role, text), name="telegram_broadcast")
         on_chat_message = _telegram_chat_mirror
 
+    def _recent_chat_context(
+        limit: int = 10,
+        include_image_missing_replies: bool = True,
+        user_email: Optional[str] = None,
+        conversation_id: Optional[str] = None,
+    ) -> str:
+        return build_recent_chat_context(
+            get_history=get_history,
+            limit=limit,
+            include_image_missing_replies=include_image_missing_replies,
+            user_email=user_email,
+            conversation_id=conversation_id,
+        )
+
+    CHAT_AGENT_RUNTIME = build_agent_runtime(
+        model_router=router,
+        execute_tool=execute_tool,
+        recent_chat_context=_recent_chat_context,
+        clear_history=clear_history,
+        knowledge_save=knowledge_save,
+        audit=append_audit_event,
+        hooks=HOOKS_REGISTRY,
+        brain_memory=BRAIN_MEMORY,
+    )
+
     # ── Typed dependency context (latticeai.services.app_context) ────────────────
     # One context object replaces the historical 25-30-kwarg router wiring.
     context = build_app_context(
@@ -1258,6 +1284,7 @@ def _build(config: "Optional[Config]" = None) -> Dict[str, Any]:
         chat_service=CHAT_SERVICE,
         context_assembler=CONTEXT_ASSEMBLER,
         brain_memory=BRAIN_MEMORY,
+        chat_agent_runtime=CHAT_AGENT_RUNTIME,
         gardener=gardener,
         hooks=HOOKS_REGISTRY,
         realtime_bus=REALTIME_BUS,

@@ -216,6 +216,9 @@ The current development target is **6.1.0 Product Hardening / Digital Brain Comp
   under `latticeai.cli.runtime`.
 - Tool dispatch authorization now has an injectable service boundary around
   the shared ToolRegistry, reducing app-factory reliance on module globals.
+- Chat agent runtime construction moved into app-factory assembly and is passed
+  through `AppContext`, so the chat router no longer owns production runtime
+  construction.
 - v6.1 documentation tracks backend hardening, frontend UX hardening, and the
   baseline scan for version metadata, root legacy modules, Brain Core boundary,
   and local-first trust gates.

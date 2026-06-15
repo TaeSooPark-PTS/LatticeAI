@@ -150,6 +150,35 @@ async def single_text_stream(text: str, model: str = "system") -> AsyncIterator[
     yield "data: [DONE]\n\n"
 
 
+def build_recent_chat_context(
+    *,
+    get_history,
+    limit: int = 10,
+    include_image_missing_replies: bool = True,
+    user_email: Optional[str] = None,
+    conversation_id: Optional[str] = None,
+) -> str:
+    history = get_history()
+    if conversation_id:
+        history = [item for item in history if item.get("conversation_id") == conversation_id]
+    if user_email:
+        history = pair_user_history(history, user_email)
+    history = history[-limit:]
+    lines = []
+    for item in history:
+        role = item.get("role", "user")
+        content = item.get("content", "")
+        if not include_image_missing_replies and role == "assistant":
+            if "이미지" in content and any(word in content for word in ["업로드", "제공", "올려"]):
+                continue
+        source = item.get("source")
+        label = role
+        if source:
+            label = f"{role} ({source})"
+        lines.append(f"{label}: {content}")
+    return "\n".join(lines)
+
+
 def create_chat_router(context: AppContext) -> APIRouter:
     """Build the chat/history/agent router from the typed application context.
 
@@ -201,31 +230,19 @@ def create_chat_router(context: AppContext) -> APIRouter:
         except Exception as exc:
             logging.warning("chat message bridge failed: %s", exc)
 
-    def build_recent_chat_context(
+    def recent_chat_context(
         limit: int = 10,
         include_image_missing_replies: bool = True,
         user_email: Optional[str] = None,
         conversation_id: Optional[str] = None,
     ) -> str:
-        history = get_history()
-        if conversation_id:
-            history = [item for item in history if item.get("conversation_id") == conversation_id]
-        if user_email:
-            history = pair_user_history(history, user_email)
-        history = history[-limit:]
-        lines = []
-        for item in history:
-            role = item.get("role", "user")
-            content = item.get("content", "")
-            if not include_image_missing_replies and role == "assistant":
-                if "이미지" in content and any(word in content for word in ["업로드", "제공", "올려"]):
-                    continue
-            source = item.get("source")
-            label = role
-            if source:
-                label = f"{role} ({source})"
-            lines.append(f"{label}: {content}")
-        return "\n".join(lines)
+        return build_recent_chat_context(
+            get_history=get_history,
+            limit=limit,
+            include_image_missing_replies=include_image_missing_replies,
+            user_email=user_email,
+            conversation_id=conversation_id,
+        )
     
     def extract_screenshot_context(image_data: Optional[str]) -> str:
         if not image_data:
@@ -283,16 +300,18 @@ def create_chat_router(context: AppContext) -> APIRouter:
     
         return "\n".join(lines)
 
-    _AGENT_RUNTIME = build_agent_runtime(
-        model_router=router,
-        execute_tool=execute_tool,
-        recent_chat_context=build_recent_chat_context,
-        clear_history=clear_history,
-        knowledge_save=knowledge_save,
-        audit=append_audit_event,
-        hooks=hooks,
-        brain_memory=context.brain_memory,
-    )
+    _AGENT_RUNTIME = context.chat_agent_runtime
+    if _AGENT_RUNTIME is None:
+        _AGENT_RUNTIME = build_agent_runtime(
+            model_router=router,
+            execute_tool=execute_tool,
+            recent_chat_context=recent_chat_context,
+            clear_history=clear_history,
+            knowledge_save=knowledge_save,
+            audit=append_audit_event,
+            hooks=hooks,
+            brain_memory=context.brain_memory,
+        )
 
     @api_router.post("/chat")
     async def chat(req: ChatRequest, request: Request):
@@ -546,7 +565,7 @@ def create_chat_router(context: AppContext) -> APIRouter:
                 return JSONResponse(content={"response": str(result), "trace_id": trace_record["id"], "trace": trace_record})
     
         if req.stream:
-            recent_context = build_recent_chat_context(user_email=effective_email, conversation_id=req.conversation_id)
+            recent_context = recent_chat_context(user_email=effective_email, conversation_id=req.conversation_id)
             stream_context = context
             if recent_context:
                 stream_context = f"[RECENT CONVERSATION]\n{recent_context}\n\n{context}".strip()
@@ -564,7 +583,7 @@ def create_chat_router(context: AppContext) -> APIRouter:
             )
         else:
             if req.image_data:
-                recent_context = build_recent_chat_context(
+                recent_context = recent_chat_context(
                     limit=6,
                     include_image_missing_replies=False,
                     user_email=effective_email,
@@ -572,7 +591,7 @@ def create_chat_router(context: AppContext) -> APIRouter:
                 )
                 full_context = f"[RECENT CONVERSATION]\n{recent_context}\n\n{context}".strip() if recent_context else context
             else:
-                history_context = build_recent_chat_context(user_email=effective_email, conversation_id=req.conversation_id)
+                history_context = recent_chat_context(user_email=effective_email, conversation_id=req.conversation_id)
                 full_context = f"{history_context}\n{context}" if context else history_context
     
             result = await router.generate(req.message, full_context, req.max_tokens, req.temperature, req.image_data)

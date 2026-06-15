@@ -20,8 +20,10 @@ Backend hardening은 `lattice_brain`이 `latticeai`/`ltcai`를 실제 import하�
 않는 AST guard, model download consent unit guard, `ltcai_cli.py` root entrypoint
 유지와 `latticeai.cli.runtime` helper 분리를 포함한다. Tool dispatch authorization은
 공유 ToolRegistry 위의 injectable service boundary로 분리되어 app-factory의
-module global 의존을 줄인다. v6.1 문서는 baseline scan, frontend UX hardening,
-backend hardening evidence를 기록한다.
+module global 의존을 줄인다. Chat agent runtime construction도 app-factory
+assembly로 이동해 chat router는 production runtime construction을 소유하지
+않고 `AppContext`로 주입받는다. v6.1 문서는 baseline scan, frontend UX
+hardening, backend hardening evidence를 기록한다.
 
 Expected artifacts (exact 6.1.0 names only):
 - dist/ltcai-6.1.0-py3-none-any.whl

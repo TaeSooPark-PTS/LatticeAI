@@ -26,6 +26,8 @@ historical and may describe behavior as it existed at that release.
 - Static app assets are refreshed for the v6.1 frontend hardening changes.
 - Tool dispatch authorization now uses an injectable service boundary around
   the shared ToolRegistry while preserving the legacy module-level API.
+- Chat agent runtime construction moved out of `create_chat_router` for
+  production app assembly and is now injected through `AppContext`.
 - README release evidence screenshots and walkthrough GIF are refreshed under
   `output/release/v6.1.0/`, including the Review Center surface.
 - README and release notes now describe v6.1.0 as the current hardening target

@@ -34,6 +34,7 @@ class AppContext:
     chat_service: Any = None
     context_assembler: Any = None
     brain_memory: Any = None
+    chat_agent_runtime: Any = None
     gardener: Any = None
     hooks: Any = None
     realtime_bus: Any = None

@@ -43,7 +43,13 @@ def test_importing_chat_router_does_not_import_telegram_bot():
     )
 
 
-def _chat_app(tmp_path: Path, recorded: list, *, on_chat_message=None) -> FastAPI:
+def _chat_app(
+    tmp_path: Path,
+    recorded: list,
+    *,
+    on_chat_message=None,
+    chat_agent_runtime=None,
+) -> FastAPI:
     app = FastAPI()
     context = AppContext(
         config=SimpleNamespace(is_public=False, auto_read_chat_paths=False),
@@ -73,6 +79,7 @@ def _chat_app(tmp_path: Path, recorded: list, *, on_chat_message=None) -> FastAP
         public_model="",
         base_dir=tmp_path,
         on_chat_message=on_chat_message,
+        chat_agent_runtime=chat_agent_runtime,
     )
     app.include_router(create_chat_router(context))
     return app
@@ -129,6 +136,26 @@ def test_telegram_originated_messages_are_not_echoed_back(tmp_path: Path):
 def test_no_bridge_registered_is_a_noop(tmp_path: Path):
     app = _chat_app(tmp_path, [], on_chat_message=None)
 
+    response = TestClient(app).post(
+        "/chat",
+        json={
+            "message": "현재 페이지 URL 알려줘",
+            "client_url": "http://localhost:4825/app",
+            "stream": False,
+            "source": "web",
+        },
+    )
+
+    assert response.status_code == 200
+
+
+def test_injected_chat_agent_runtime_skips_router_construction(tmp_path: Path, monkeypatch):
+    def fail_build_agent_runtime(**_kwargs):
+        raise AssertionError("create_chat_router should use the injected chat agent runtime")
+
+    monkeypatch.setattr("latticeai.api.chat.build_agent_runtime", fail_build_agent_runtime)
+
+    app = _chat_app(tmp_path, [], chat_agent_runtime=object())
     response = TestClient(app).post(
         "/chat",
         json={
