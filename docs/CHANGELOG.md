@@ -24,6 +24,8 @@ historical and may describe behavior as it existed at that release.
 ### Changed
 - Review Center cards clarify that Run now previews/executes without approval.
 - Static app assets are refreshed for the v6.1 frontend hardening changes.
+- README release evidence screenshots and walkthrough GIF are refreshed under
+  `output/release/v6.1.0/`, including the Review Center surface.
 - README and release notes now describe v6.1.0 as the current hardening target
   with exact expected artifact filenames.
 

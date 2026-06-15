@@ -14,8 +14,8 @@ Digital Brain Completion work.
   conversation, memory layers, relationship depth, and care panel.
 - Review Center lives under `Act` and is implemented in
   `frontend/src/features/review/`.
-- The active README screenshots still point at `output/release/v6.0.0/`, so
-  v6.1.0 evidence media must be regenerated near release sync.
+- The active README screenshots now point at fresh `output/release/v6.1.0/`
+  evidence generated from the built app.
 
 ## v6.1 UX Patch 1
 
@@ -59,4 +59,5 @@ Validation:
 
 - Tighten Brain Home empty states around first memory save, recall, and backup.
 - Verify Review Center light/dark and mobile wrapping after backend/docs work.
-- Regenerate v6.1.0 screenshots and GIFs after the full product flow stabilizes.
+- Keep v6.1.0 screenshots and GIFs current if additional UI copy changes land
+  before final release sync.
