@@ -117,7 +117,7 @@ release documentation.
 | **PostgreSQL / Docker scale mode** | OPT-IN LOCAL/NETWORK DEPENDENCY | SQLite is default; Postgres and Docker setup require explicit configuration/consent. `lattice_brain/storage/factory.py`, `lattice_brain/storage/docker.py`. |
 | **Admin Console** | ADMIN-ONLY | Users, roles, audit logs, security events, retention, and index operations remain separated from the Brain user surface. `frontend/src/App.tsx`, `latticeai/api/admin.py`. |
 | **Enterprise governance** | PREVIEW / PARTIAL | Community edition exposes descriptors and disabled capabilities honestly; Enterprise enforcement depends on provider implementation. `latticeai/core/enterprise.py`, `latticeai/core/enterprise_admin.py`. |
-| **app_factory decomposition** | PARTIAL FOUNDATION | Config, security, and Brain runtime builder seams now exist; full route/lifespan/persistence module split remains technical debt. `latticeai/app_factory.py`, `tests/unit/test_app_factory.py`. |
+| **app_factory decomposition** | PARTIAL FOUNDATION | Config, security, Brain, session, hooks, web shell, automation, context/search, platform services, app context, and router registration seams now exist with a frozen 364-entry route snapshot; lifespan/persistence module split remains technical debt. `latticeai/app_factory.py`, `latticeai/runtime/`, `tests/unit/test_app_factory.py`, `tests/unit/test_app_factory_early_assembly.py`. |
 
 ## v5.0.0 Multilingual Brain Foundation Release — what changed
 

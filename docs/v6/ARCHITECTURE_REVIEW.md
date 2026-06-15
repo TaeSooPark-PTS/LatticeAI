@@ -49,16 +49,14 @@ Status:
   feature routes, health/model routes, interaction routes, and final
   review/browser/brain tail routes now use dedicated helpers while preserving
   the legacy construction dependencies.
-- Router service construction still remains in `app_factory.py`, but router
-  generation is now grouped by dependency boundary and the primary API
-  dependency object is built behind a dedicated seam. Further extraction should
-  move the remaining runtime service bundles into typed context objects before
-  changing include order.
+- Router generation has moved behind dependency-boundary helpers, and
+  `app_factory.py` no longer directly calls `create_*router`,
+  `register_router`, or `register_routers`. Further extraction should focus on
+  lifespan and persistence assembly before changing include order.
 
 Recommended next steps:
 
-- Extract typed dependency context objects for router generation after route
-  snapshot comparison.
+- Extract lifespan and persistence assembly into focused runtime seams.
 - Continue the existing runtime split pattern rather than introducing a new
   global registry.
 - Preserve lazy imports and current app bootstrap semantics.
@@ -99,6 +97,7 @@ Positive evidence:
 
 Remaining gaps:
 
-- `app_factory.py` decomposition remains incomplete; router assembly is the next
-  high-risk step and should preserve the frozen route/mount snapshot.
+- `app_factory.py` decomposition remains incomplete, but router assembly is now
+  routed through helper seams with the frozen route/mount snapshot preserved.
+  Lifespan and persistence assembly are the next high-risk extraction targets.
 - Strict generated client methods still sit behind the local `apiJson` wrapper.

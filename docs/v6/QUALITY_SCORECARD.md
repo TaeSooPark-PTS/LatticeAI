@@ -28,7 +28,7 @@ Realistic branch target: **85-92/100**
 
 ## Current Actual
 
-Current evidence-supported estimate: **82/100**
+Current evidence-supported estimate: **88/100**
 
 This is a checkpoint estimate, not a final release claim.
 
@@ -41,13 +41,18 @@ This is a checkpoint estimate, not a final release claim.
 - Review item frontend types are driven by generated OpenAPI component schemas.
 - Backend Review Queue remains additive and workspace-scoped.
 - Version metadata is synchronized to `6.0.0`.
+- `app_factory.py` assembly is split across runtime seams for session,
+  hooks, web shell, automation, context/search, platform services, app
+  context construction, and router registration.
+- Route surface validation preserves the 364-entry route/mount snapshot.
+- Visual validation, release artifact validation, and wheel smoke validation
+  have passed for the v6.0.0 artifact set.
 
 ## Remaining Gaps
 
-- Full `app_factory.py` decomposition is not complete.
+- Full `app_factory.py` decomposition is smaller but not finished; lifespan
+  and persistence assembly still need follow-up extraction.
 - Brain Home/onboarding trust copy still needs a broader simplification pass.
-- Visual validation has not been run in this checkpoint.
-- Full release artifact validation has not yet been completed for 6.0.0.
 - Strict OpenAPI operation-level client wrappers are improved but not fully
   generated end-to-end.
 
