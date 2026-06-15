@@ -36,8 +36,8 @@ historical and may describe behavior as it existed at that release.
 ### Preserved
 - Package publish, deployment, tag creation, and main merge remain out of scope
   unless explicitly requested.
-- Package/runtime version metadata remains at the prior release line until the
-  final release-sync step.
+- Package/runtime version metadata is synchronized to 6.1.0; package publish,
+  deployment, tag creation, and main merge remain owner-run only.
 
 ## [6.0.0] - 2026-06-15
 

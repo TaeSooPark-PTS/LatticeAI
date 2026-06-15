@@ -1,7 +1,42 @@
 # Release Notes
 
-The current release target is v6.0.0. The tracked release-note surface starts at
+The current release target is v6.1.0. The tracked release-note surface starts at
 v4.5.0 so the public Git tree stays focused on the current product era.
+
+## v6.1.0 - Product Hardening / Digital Brain Completion
+
+Lattice AI v6.1.0 tightens the v6 Digital Brain experience without opening a
+new broad product surface. First-run can enter the local Brain before model
+setup, Brain Home explains the first memory/backup loop, Review Center actions
+are clearer, and backend hardening reinforces Brain Core isolation, model
+download consent, CLI packaging, and runtime construction seams.
+
+### Highlights
+
+- Added a first-run path to create or open the Brain when model setup is
+  deferred.
+- Clarified the Brain Home first memory loop and backup/export ownership path.
+- Clarified Review Center Run now semantics while preserving pending/snoozed
+  review behavior.
+- Added an AST import guard proving `lattice_brain` does not import
+  `latticeai` or `ltcai`.
+- Added model download consent unit coverage so token presence alone does not
+  start an external download path.
+- Moved pure CLI runtime helpers into `latticeai.cli.runtime` while preserving
+  the root `ltcai_cli.py` entrypoint and wheel packaging.
+- Added injectable ToolRegistry/ToolDispatch and chat AgentRuntime seams for
+  app-factory decomposition without changing route order.
+- Refreshed v6.1 release evidence under `output/release/v6.1.0/`.
+
+### Expected Artifacts
+
+- `dist/ltcai-6.1.0-py3-none-any.whl`
+- `dist/ltcai-6.1.0.tar.gz`
+- `dist/ltcai-6.1.0.vsix`
+- `ltcai-6.1.0.tgz`
+- `src-tauri/target/release/bundle/dmg/Lattice AI_6.1.0_aarch64.dmg`
+
+Full notes: [RELEASE_NOTES_v6.1.0.md](RELEASE_NOTES_v6.1.0.md)
 
 ## v6.0.0 - Product Reset / Review Center Completion
 
