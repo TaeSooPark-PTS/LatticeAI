@@ -21,6 +21,7 @@ from latticeai.runtime.automation_runtime import build_automation_runtime
 from latticeai.runtime.bootstrap import build_session_runtime
 from latticeai.runtime.brain_runtime import build_brain_runtime
 from latticeai.runtime.config_runtime import build_config_runtime
+from latticeai.runtime.context_runtime import build_context_runtime
 from latticeai.runtime.hooks_runtime import (
     bind_builtin_hook_runners,
     bind_trigger_hook_runner,
@@ -112,7 +113,6 @@ def _build(config: "Optional[Config]" = None) -> Dict[str, Any]:
     from latticeai.services.workspace_service import WorkspaceService
     from latticeai.services.model_service import ModelService
     from latticeai.services.chat_service import ChatService
-    from latticeai.services.search_service import SearchService
     from latticeai.core.embedding_providers import resolve_embedder, resolve_embedding_profile
     from latticeai.services.model_runtime import (
         CLOUD_VERIFY_TTL_SECONDS,
@@ -163,8 +163,6 @@ def _build(config: "Optional[Config]" = None) -> Dict[str, Any]:
     from latticeai.services.memory_service import MemoryService
     from lattice_brain.ingestion import IngestionItem, IngestionPipeline
     from lattice_brain.storage import storage_from_env
-    from lattice_brain.context import ContextAssembler
-    from lattice_brain.memory import BrainMemory
     from lattice_brain.identity import DeviceIdentity
     from lattice_brain.network import BrainNetwork
     from latticeai.api.network import create_network_router
@@ -1350,22 +1348,18 @@ def _build(config: "Optional[Config]" = None) -> Dict[str, Any]:
         return KNOWLEDGE_GRAPH if (ENABLE_GRAPH and KNOWLEDGE_GRAPH) else None
 
 
-    SEARCH_SERVICE = SearchService(graph_store=_workspace_graph())
-
-    # ── v4 Context System: one budgeted, provenance-carrying assembly over the
-    # product's own retrieval stack (memories + hybrid search + garden notes).
-    BRAIN_MEMORY = BrainMemory(INGESTION_PIPELINE)
-    def _scoped_hybrid_search(q, user_email=None, **kw):
-        allowed = None
-        if REQUIRE_AUTH and user_email:
-            allowed = PLATFORM.allowed_scopes(user_email)
-        return SEARCH_SERVICE.hybrid_search(q, allowed_workspaces=allowed, **kw)
-
-    CONTEXT_ASSEMBLER = ContextAssembler(
-        memory_recall=MEMORY_SERVICE.recall,
-        hybrid_search=_scoped_hybrid_search,
-        notes_context=gardener.get_relevant_context,
+    _context_runtime = build_context_runtime(
+        graph_store=_workspace_graph(),
+        ingestion_pipeline=INGESTION_PIPELINE,
+        memory_service=MEMORY_SERVICE,
+        gardener=gardener,
+        require_auth=REQUIRE_AUTH,
+        allowed_scopes_for_user=lambda user_email: PLATFORM.allowed_scopes(user_email),
     )
+    SEARCH_SERVICE = _context_runtime["SEARCH_SERVICE"]
+    BRAIN_MEMORY = _context_runtime["BRAIN_MEMORY"]
+    CONTEXT_ASSEMBLER = _context_runtime["CONTEXT_ASSEMBLER"]
+    _scoped_hybrid_search = _context_runtime["_scoped_hybrid_search"]
 
 
     # ── Telegram chat mirror: registered only when ENABLE_TELEGRAM is truthy.

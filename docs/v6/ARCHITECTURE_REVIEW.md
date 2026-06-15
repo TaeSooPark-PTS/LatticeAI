@@ -36,6 +36,8 @@ Status:
   middleware, and static asset mounts while preserving legacy mount order.
 - `latticeai/runtime/automation_runtime.py` owns Review Queue, TriggerService,
   AgentRuntime, and RunExecutor construction behind one automation seam.
+- `latticeai/runtime/context_runtime.py` owns SearchService, BrainMemory, and
+  ContextAssembler construction behind one retrieval/context seam.
 - Router construction and include order remain in `app_factory.py` pending a
   route-snapshot-reviewed reorder step.
 
