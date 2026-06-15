@@ -41,18 +41,20 @@ Status:
 - `latticeai/runtime/platform_services_runtime.py` owns small platform service
   constructors such as ModelService and BrainNetwork.
 - `latticeai/runtime/router_registration.py` centralizes the individual
-  `include_router` call behind `register_router()` / `register_routers()` while
-  preserving existing router construction call sites and include order. The
-  early static/auth/admin/security/workspace routes and final
-  review/browser/brain tail routes now use dedicated registration helpers while
-  preserving the legacy construction points.
-- Router construction and include order remain in `app_factory.py` pending a
-  route-snapshot-reviewed reorder step.
+  `include_router` call behind registration helpers while preserving existing
+  include order. The early static/auth/admin/security/workspace routes,
+  platform feature routes, health/model routes, interaction routes, and final
+  review/browser/brain tail routes now use dedicated helpers while preserving
+  the legacy construction dependencies.
+- Router service construction still remains in `app_factory.py`, but router
+  generation is now grouped by dependency boundary. Further extraction should
+  move dependency bundles into typed context objects before changing include
+  order.
 
 Recommended next steps:
 
-- Extract review/router assembly into a small runtime composition module after
-  route snapshot comparison.
+- Extract typed dependency context objects for router generation after route
+  snapshot comparison.
 - Continue the existing runtime split pattern rather than introducing a new
   global registry.
 - Preserve lazy imports and current app bootstrap semantics.
