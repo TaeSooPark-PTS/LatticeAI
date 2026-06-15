@@ -81,7 +81,7 @@ py-modules = [
   "p_reinforce",
   "telegram_bot",
 ]
-packages = ["lattice_brain", "lattice_brain.graph", "lattice_brain.runtime", "lattice_brain.storage", "latticeai", "latticeai.core", "latticeai.api", "latticeai.brain", "latticeai.models", "latticeai.runtime", "latticeai.services", "tools"]
+packages = ["lattice_brain", "lattice_brain.graph", "lattice_brain.runtime", "lattice_brain.storage", "latticeai", "latticeai.core", "latticeai.api", "latticeai.brain", "latticeai.cli", "latticeai.models", "latticeai.runtime", "latticeai.services", "tools"]
 include-package-data = true
 
 [tool.setuptools.package-data]
