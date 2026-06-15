@@ -29,6 +29,18 @@ Files:
 - `frontend/src/components/ProductFlow.tsx`
 - `frontend/src/i18n.ts`
 
+## v6.1 UX Patch 2
+
+Brain Home empty state now shows the first local Brain loop explicitly: save the
+first memory, see it in Brain Home, then protect it with backup. This makes the
+first-run promise visible at the exact moment the user enters an empty Brain.
+
+Files:
+
+- `frontend/src/App.tsx`
+- `frontend/src/i18n.ts`
+- `frontend/src/styles.css`
+
 Validation:
 
 - `npm run typecheck:frontend`

@@ -382,6 +382,11 @@ function BrainHome({
                   </button>
                 ))}
               </div>
+              <div className="mind-empty-trail" aria-label={t(language, "brain.empty.trail.label")}>
+                <span>{t(language, "brain.empty.trail.save")}</span>
+                <span>{t(language, "brain.empty.trail.recall")}</span>
+                <span>{t(language, "brain.empty.trail.backup")}</span>
+              </div>
             </div>
           ) : (
             messages.map((message, index) => (

@@ -2774,6 +2774,26 @@ body {
   transform: translateY(-1px);
 }
 
+.mind-empty-trail {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 0.45rem;
+  margin: 1rem auto 0;
+  max-width: 40rem;
+}
+
+.mind-empty-trail span {
+  border: 1px solid hsl(var(--border) / 0.55);
+  border-radius: 999px;
+  background: hsl(var(--surface-glass));
+  color: hsl(var(--fg-muted));
+  padding: 0.34rem 0.62rem;
+  font-size: 0.72rem;
+  font-weight: 720;
+  line-height: 1.15;
+}
+
 .mind-empty .icon {
   opacity: 0.5;
   margin-bottom: 0.8rem;
