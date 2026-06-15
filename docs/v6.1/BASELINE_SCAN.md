@@ -105,6 +105,9 @@ The trust boundary already has several explicit guard locations:
   presence not starting external services.
 - `tests/unit/test_v51_trust_gates.py:139` covers disabled automatic local file
   reads.
+- `tests/unit/test_model_runtime.py:1-32` adds `model_runtime` unit test verifying
+  that `_download_allowed(False)` blocks and `_download_block` raises 409 without
+  explicit model download consent (v6.1 trust gate hardening).
 
 ## Root Legacy Modules
 
