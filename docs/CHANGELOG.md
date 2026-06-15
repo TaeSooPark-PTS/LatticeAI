@@ -20,6 +20,15 @@ historical and may describe behavior as it existed at that release.
 - Review Center frontend moved from `Act.tsx` into
   `frontend/src/features/review/` components and helpers.
 - Review item frontend types now alias generated OpenAPI component schemas.
+- Review Center API calls now use generated OpenAPI operation paths for list,
+  approve, dismiss, snooze, unsnooze, and run_now actions.
+- `app_factory.py` runtime assembly moved behind session, hooks, web,
+  persistence, lifespan, automation, context/search, platform service, app
+  context, and router-registration seams while preserving the frozen 364-entry
+  route/mount snapshot.
+- First-run/onboarding copy now states local-first trust boundaries more
+  directly: local knowledge by default, explicit downloads, and explicit
+  external transfer.
 - OpenAPI artifacts and synchronized package/runtime/static metadata now target
   `6.0.0`.
 

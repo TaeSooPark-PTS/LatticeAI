@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import asyncio
 from contextlib import asynccontextmanager
 
 from latticeai.runtime.bootstrap import build_session_runtime
@@ -7,6 +8,8 @@ from latticeai.runtime.hooks_runtime import (
     bind_builtin_hook_runners,
     bind_trigger_hook_runner,
 )
+from latticeai.runtime.lifespan_runtime import build_lifespan_runtime
+from latticeai.runtime.persistence_runtime import build_persistence_runtime
 from latticeai.runtime.web_runtime import build_web_runtime
 from latticeai.services.triggers import TRIGGER_HOOK_NAME
 
@@ -147,3 +150,88 @@ def test_web_runtime_mounts_static_assets_in_legacy_order(tmp_path):
         "http://0.0.0.0:8080",
         "https://0.0.0.0:8080",
     ]
+
+
+def test_persistence_runtime_constructs_local_service_graph(tmp_path):
+    class FakeHooks:
+        def dispatch(self, *_args, **_kwargs):
+            return []
+
+    runtime = build_persistence_runtime(
+        data_dir=tmp_path,
+        base_dir=tmp_path,
+        enable_graph=False,
+        knowledge_graph=None,
+        hooks_registry=FakeHooks(),
+        history_file=tmp_path / "chat_history.json",
+        conversations=None,
+        user_id_for_email=lambda email: f"user:{email}" if email else None,
+        audit=lambda _action, _detail, _user: None,
+    )
+
+    assert runtime["REALTIME_BUS"] is not None
+    assert runtime["WORKSPACE_OS"] is not None
+    assert runtime["WORKSPACE_SERVICE"] is not None
+    assert runtime["MEMORY_SERVICE"] is not None
+    assert runtime["INGESTION_PIPELINE"] is not None
+    assert runtime["DEVICE_IDENTITY"] is not None
+    assert runtime["KG_PORTABILITY"] is not None
+
+
+def test_lifespan_runtime_runs_startup_and_shutdown_hooks():
+    class FakeRouter:
+        def __init__(self):
+            self.unloaded = False
+
+        async def load_model(self, *_args, **_kwargs):
+            return "loaded"
+
+        def unload_idle_models(self, *_args, **_kwargs):
+            return []
+
+        def unload_all(self):
+            self.unloaded = True
+
+    class FakeWatcher:
+        def __init__(self):
+            self.restored = False
+            self.stopped = False
+
+        def restore_enabled_sources(self):
+            self.restored = True
+            return {"restored": []}
+
+        def stop_all(self):
+            self.stopped = True
+
+    class FakeLogger:
+        def warning(self, *_args, **_kwargs):
+            pass
+
+    router = FakeRouter()
+    watcher = FakeWatcher()
+    runtime = build_lifespan_runtime(
+        app_mode="local",
+        enable_telegram=False,
+        autoload_models=False,
+        is_public_mode=False,
+        public_model="openai:test",
+        allow_local_models=True,
+        local_model="local:test",
+        local_draft_model="",
+        model_idle_unload_seconds=0,
+        model_router=router,
+        local_kg_watcher=watcher,
+        local_server_processes={},
+        logger=FakeLogger(),
+    )
+
+    async def run_lifespan():
+        async with runtime["lifespan"](object()):
+            await asyncio.sleep(0)
+
+    asyncio.run(run_lifespan())
+
+    assert watcher.restored is True
+    assert watcher.stopped is True
+    assert router.unloaded is True

@@ -202,7 +202,15 @@ The current development target is **6.0.0 Product Reset / Review Center Completi
 - Review Center frontend code is split into `frontend/src/features/review/`
   modules instead of living inside the Act page.
 - Review item frontend types are derived from regenerated OpenAPI component
-  schemas.
+- schemas, and Review Center API calls use generated operation paths for list
+  and state-transition actions.
+- `app_factory.py` is decomposed behind runtime seams for session, hooks, web
+  shell, persistence, lifespan, automation, context/search, platform services,
+  app context, and router registration while preserving the frozen 364-entry
+  route/mount snapshot.
+- First-run copy now states the local-first trust boundary more directly:
+  knowledge stays on this computer by default, downloads/external transfer start
+  only after user action, and models remain replaceable.
 - All package/runtime/static/OpenAPI versions are synchronized to 6.0.0.
 
 Expected artifacts for 6.0.0 release must use exact filenames:

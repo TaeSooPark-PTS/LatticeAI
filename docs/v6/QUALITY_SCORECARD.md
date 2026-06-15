@@ -28,7 +28,7 @@ Realistic branch target: **85-92/100**
 
 ## Current Actual
 
-Current evidence-supported estimate: **88/100**
+Current evidence-supported estimate: **91/100**
 
 This is a checkpoint estimate, not a final release claim.
 
@@ -42,19 +42,24 @@ This is a checkpoint estimate, not a final release claim.
 - Backend Review Queue remains additive and workspace-scoped.
 - Version metadata is synchronized to `6.0.0`.
 - `app_factory.py` assembly is split across runtime seams for session,
-  hooks, web shell, automation, context/search, platform services, app
-  context construction, and router registration.
+  hooks, web shell, persistence, lifespan, automation, context/search,
+  platform services, app context construction, and router registration.
 - Route surface validation preserves the 364-entry route/mount snapshot.
 - Visual validation, release artifact validation, and wheel smoke validation
   have passed for the v6.0.0 artifact set.
+- Review Center list and state-transition calls use generated OpenAPI operation
+  paths instead of hand-built encoded URLs.
+- First-run/onboarding trust copy now states local ownership, explicit
+  downloads, and explicit external transfer more plainly.
 
 ## Remaining Gaps
 
-- Full `app_factory.py` decomposition is smaller but not finished; lifespan
-  and persistence assembly still need follow-up extraction.
-- Brain Home/onboarding trust copy still needs a broader simplification pass.
-- Strict OpenAPI operation-level client wrappers are improved but not fully
-  generated end-to-end.
+- Full `app_factory.py` decomposition is smaller but not finished; remaining
+  work is lower-level orchestration cleanup.
+- Brain Home trust copy beyond first-run still needs a broader simplification
+  pass.
+- Strict OpenAPI operation-level wrappers are now applied to Review Center;
+  other API domains still use the generic client helper.
 
 ## No-Fake-100 Rule
 

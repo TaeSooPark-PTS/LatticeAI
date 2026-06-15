@@ -28,10 +28,12 @@ from latticeai.runtime.hooks_runtime import (
     bind_trigger_hook_runner,
     build_hooks_runtime,
 )
+from latticeai.runtime.lifespan_runtime import build_lifespan_runtime
 from latticeai.runtime.platform_services_runtime import (
     build_brain_network,
     build_model_service,
 )
+from latticeai.runtime.persistence_runtime import build_persistence_runtime
 from latticeai.runtime.router_registration import (
     build_auth_admin_security_router_bundle,
     build_static_routes_bundle,
@@ -57,7 +59,6 @@ def _build(config: "Optional[Config]" = None) -> Dict[str, Any]:
     deliberately *inside* this function so that importing the module performs
     no GPU init, no singleton construction, and no filesystem writes.
     """
-    import asyncio
     import hashlib
     import json
     import logging
@@ -68,7 +69,6 @@ def _build(config: "Optional[Config]" = None) -> Dict[str, Any]:
     import subprocess
     import sys
     import time
-    from contextlib import asynccontextmanager
     from pathlib import Path
 
     try:
@@ -107,13 +107,11 @@ def _build(config: "Optional[Config]" = None) -> Dict[str, Any]:
     from latticeai.core.model_compat import list_cached_profiles as _list_compat_profiles
     from latticeai.core.workspace_os import (
         WORKSPACE_OS_VERSION,
-        WorkspaceOSStore,
         remove_skill_directory,
     )
     from latticeai.core.enterprise import (
         capability_registry,
     )
-    from latticeai.core.invitations import InvitationStore
     from latticeai.core.policy import normalize_role, policy_matrix, require_capability
     from latticeai.core.users import (
         ensure_user_identity,
@@ -123,7 +121,6 @@ def _build(config: "Optional[Config]" = None) -> Dict[str, Any]:
         save_users_file,
         user_id_for_email as _user_id_for_email,
     )
-    from latticeai.services.workspace_service import WorkspaceService
     from latticeai.services.chat_service import ChatService
     from latticeai.core.embedding_providers import resolve_embedder, resolve_embedding_profile
     from latticeai.services.model_runtime import (
@@ -148,9 +145,6 @@ def _build(config: "Optional[Config]" = None) -> Dict[str, Any]:
     from latticeai.api.workspace import create_workspace_router, _workspace_scope_from_request
     from latticeai.api.health import create_health_router
     # ── v2 Agentic Workspace Platform layers ─────────────────────────────────────
-    from latticeai.core.plugins import PluginRegistry
-    from latticeai.core.realtime import RealtimeBus
-    from latticeai.core.marketplace import TemplateCatalog
     from latticeai.services.platform_runtime import PlatformRuntime
     from latticeai.api.plugins import create_plugins_router
     from latticeai.api.workflow_designer import create_workflow_designer_router
@@ -168,16 +162,12 @@ def _build(config: "Optional[Config]" = None) -> Dict[str, Any]:
     from latticeai.api.hooks import create_hooks_router
     from latticeai.core.product_hardening import build_product_hardening_status
     from latticeai.api.agent_registry import create_agent_registry_router
-    from latticeai.core.agent_registry import AgentRegistry
     from latticeai.api.memory import create_memory_router
     from latticeai.api.browser import create_browser_router
     from latticeai.api.portability import create_portability_router
-    from latticeai.services.memory_service import MemoryService
-    from lattice_brain.ingestion import IngestionItem, IngestionPipeline
+    from lattice_brain.ingestion import IngestionItem
     from lattice_brain.storage import storage_from_env
-    from lattice_brain.identity import DeviceIdentity
     from latticeai.api.network import create_network_router
-    from lattice_brain.portability import KGPortabilityService
     # The aliased names below look unused but are part of the legacy
     # ``server_app`` attribute surface: every local is exported via
     # ``dict(locals())`` and reached through ``server_app.__getattr__``
@@ -373,51 +363,31 @@ def _build(config: "Optional[Config]" = None) -> Dict[str, Any]:
     )
     HOOKS_REGISTRY = _hooks_runtime["HOOKS_REGISTRY"]
     LOCAL_KG_WATCHER = _hooks_runtime["LOCAL_KG_WATCHER"]
-    # ── v2 Realtime bus: constructed first so the store can fan every timeline
-    # event into the realtime feed via a single additive sink (no per-call wiring).
-    REALTIME_BUS = RealtimeBus()
-    WORKSPACE_OS = WorkspaceOSStore(DATA_DIR, event_sink=REALTIME_BUS)
-    # Service layer (latticeai.services) wraps the store with scope/permission
-    # guardrails; routers and the app assembly share this single instance.
-    WORKSPACE_SERVICE = WorkspaceService(WORKSPACE_OS, resolve_user_id=user_id_for_email)
-    INVITATION_STORE = InvitationStore(DATA_DIR / "invitations.json")
-    # ── v2 Plugin SDK registry (extends skills; discovers plugins/<id>/plugin.json)
-    PLUGINS_DIR = Path(os.getenv("LATTICEAI_PLUGINS_DIR") or (BASE_DIR / "plugins"))
-    PLUGIN_REGISTRY = PluginRegistry(PLUGINS_DIR, store=WORKSPACE_OS)
-    TEMPLATE_CATALOG = TemplateCatalog()
-    # ── v3.2 platform registries: lifecycle hooks + agent registry, persisted under
-    # DATA_DIR so the /app Hooks and Agent Registry views read/write real state.
-    # (HOOKS_REGISTRY is constructed earlier, before the local-knowledge watcher.)
-    AGENT_REGISTRY = AgentRegistry(DATA_DIR / "agent_registry.json")
-    # Unified long-term memory platform fronting workspace memories, agent
-    # snapshots, conversation history, and the KG graph/vector index.
-    MEMORY_SERVICE = MemoryService(
-        store=WORKSPACE_OS,
+    # ── Persistence/service graph: workspace store, realtime feed, plugin/memory
+    # registries, ingestion pipeline, device identity, and portability services.
+    _persistence_runtime = build_persistence_runtime(
         data_dir=DATA_DIR,
+        base_dir=BASE_DIR,
+        enable_graph=ENABLE_GRAPH,
         knowledge_graph=KNOWLEDGE_GRAPH,
-        enable_graph=ENABLE_GRAPH,
+        hooks_registry=HOOKS_REGISTRY,
         history_file=HISTORY_FILE,
-        conversation_store=CONVERSATIONS,
-    )
-    # ── v3.6.0 unified ingestion pipeline: the single write-side seam into the
-    # Knowledge Graph. Every new source (web URL, browser tab, …) flows through this
-    # so pre_tool/post_tool hooks fire on ingestion and provenance is captured
-    # uniformly. Existing direct ingest callers keep working; new paths converge here.
-    INGESTION_PIPELINE = IngestionPipeline(
-        KNOWLEDGE_GRAPH,
-        hooks=HOOKS_REGISTRY,
-        enable_graph=ENABLE_GRAPH,
+        conversations=CONVERSATIONS,
+        user_id_for_email=user_id_for_email,
         audit=lambda action, detail, user: append_audit_event(action, user_email=user, **detail),
     )
-    # ── v3.6.0 Knowledge Graph portability: local export / import / backup / restore.
-    # The graph is the user's durable asset, so it must be portable with no cloud.
-    DEVICE_IDENTITY = DeviceIdentity(DATA_DIR)
-    KG_PORTABILITY = KGPortabilityService(
-        knowledge_graph=KNOWLEDGE_GRAPH,
-        data_dir=DATA_DIR,
-        enable_graph=ENABLE_GRAPH,
-        device_identity=DEVICE_IDENTITY,
-    )
+    REALTIME_BUS = _persistence_runtime["REALTIME_BUS"]
+    WORKSPACE_OS = _persistence_runtime["WORKSPACE_OS"]
+    WORKSPACE_SERVICE = _persistence_runtime["WORKSPACE_SERVICE"]
+    INVITATION_STORE = _persistence_runtime["INVITATION_STORE"]
+    PLUGINS_DIR = _persistence_runtime["PLUGINS_DIR"]
+    PLUGIN_REGISTRY = _persistence_runtime["PLUGIN_REGISTRY"]
+    TEMPLATE_CATALOG = _persistence_runtime["TEMPLATE_CATALOG"]
+    AGENT_REGISTRY = _persistence_runtime["AGENT_REGISTRY"]
+    MEMORY_SERVICE = _persistence_runtime["MEMORY_SERVICE"]
+    INGESTION_PIPELINE = _persistence_runtime["INGESTION_PIPELINE"]
+    DEVICE_IDENTITY = _persistence_runtime["DEVICE_IDENTITY"]
+    KG_PORTABILITY = _persistence_runtime["KG_PORTABILITY"]
 
     def _require_graph():
         if not ENABLE_GRAPH or KNOWLEDGE_GRAPH is None:
@@ -1081,105 +1051,25 @@ def _build(config: "Optional[Config]" = None) -> Dict[str, Any]:
         except Exception as exc:
             logging.warning("garden vault import skipped: %s", exc)
 
-    async def autoload_default_model() -> None:
-        if not AUTOLOAD_MODELS:
-            print("⏭️ Model autoload disabled by LATTICEAI_AUTOLOAD_MODELS=false.")
-            return
-
-        if IS_PUBLIC_MODE:
-            model_id = PUBLIC_MODEL
-            provider = model_id.split(":", 1)[0] if ":" in model_id else "openai"
-            env_by_provider = {
-                "openai": "OPENAI_API_KEY",
-                "openrouter": "OPENROUTER_API_KEY",
-                "groq": "GROQ_API_KEY",
-                "together": "TOGETHER_API_KEY",
-                "ollama": "OLLAMA_API_KEY",
-            }
-            required_env = env_by_provider.get(provider)
-            if required_env and not os.getenv(required_env) and provider != "ollama":
-                print(f"🌐 Public mode ready. Set {required_env} to autoload {model_id}.")
-                return
-            print(f"🌐 Public mode autoload: {model_id}")
-            try:
-                msg = await router.load_model(model_id)
-                print(f"✅ {msg}")
-            except Exception as e:
-                print(f"⚠️ Public model autoload failed: {e}")
-            return
-
-        if not ALLOW_LOCAL_MODELS:
-            print("⏭️ Local model autoload skipped because LATTICEAI_ALLOW_LOCAL_MODELS=false.")
-            return
-
-        print("⏳ Auto-loading local model stack:")
-        print(f"   - Target: {LOCAL_MODEL}")
-        if LOCAL_DRAFT_MODEL:
-            print(f"   - Draft:  {LOCAL_DRAFT_MODEL}")
-        else:
-            print("   - Draft:  disabled (set LATTICEAI_LOCAL_DRAFT_MODEL to enable)")
-        try:
-            await router.load_model(LOCAL_MODEL, draft_model_id=LOCAL_DRAFT_MODEL or None)
-        except Exception as e:
-            print(f"⚠️ Local model autoload failed: {e}")
-
-    async def unload_idle_models_loop() -> None:
-        if MODEL_IDLE_UNLOAD_SECONDS <= 0:
-            print("⏭️ Model idle unload disabled.")
-            return
-        while True:
-            await asyncio.sleep(min(60, MODEL_IDLE_UNLOAD_SECONDS))
-            try:
-                unloaded = router.unload_idle_models(MODEL_IDLE_UNLOAD_SECONDS)
-                if unloaded:
-                    print(f"🧹 Idle model unload: {', '.join(unloaded)}")
-            except Exception as e:
-                logging.warning("Idle model unload failed: %s", e)
-
-    def _spawn(coro, *, name: str):
-        """Fire-and-forget asyncio task that logs exceptions instead of swallowing them."""
-        task = asyncio.create_task(coro, name=name)
-        def _on_done(t: asyncio.Task) -> None:
-            if t.cancelled():
-                return
-            exc = t.exception()
-            if exc is not None:
-                logging.warning("background task '%s' failed: %s", name, exc)
-        task.add_done_callback(_on_done)
-        return task
-
-
-    @asynccontextmanager
-    async def lifespan(app: FastAPI):
-        try:
-            print(f"🧭 Lattice AI mode: {APP_MODE}")
-            if ENABLE_TELEGRAM:
-                from telegram_bot import run_bot
-                _spawn(run_bot(), name="telegram_bot")
-                print("🚀 Telegram Bot Bridge activated!")
-            else:
-                print("⏭️ Telegram Bot Bridge disabled for this mode.")
-            _spawn(unload_idle_models_loop(), name="unload_idle_models")
-            _spawn(autoload_default_model(), name="autoload_default_model")
-            if LOCAL_KG_WATCHER:
-                restored = LOCAL_KG_WATCHER.restore_enabled_sources()
-                if restored.get("restored"):
-                    print(f"🕸️ Local knowledge watchers restored: {restored['restored']}")
-        except Exception as e:
-            print(f"⚠️ Startup sequence failed: {e}")
-        try:
-            yield
-        finally:
-            if LOCAL_KG_WATCHER:
-                LOCAL_KG_WATCHER.stop_all()
-            router.unload_all()
-            for proc in LOCAL_SERVER_PROCESSES.values():
-                try:
-                    if proc.poll() is None:
-                        proc.terminate()
-                        proc.wait(timeout=5)
-                except Exception:
-                    pass
+    _lifespan_runtime = build_lifespan_runtime(
+        app_mode=APP_MODE,
+        enable_telegram=ENABLE_TELEGRAM,
+        autoload_models=AUTOLOAD_MODELS,
+        is_public_mode=IS_PUBLIC_MODE,
+        public_model=PUBLIC_MODEL,
+        allow_local_models=ALLOW_LOCAL_MODELS,
+        local_model=LOCAL_MODEL,
+        local_draft_model=LOCAL_DRAFT_MODEL,
+        model_idle_unload_seconds=MODEL_IDLE_UNLOAD_SECONDS,
+        model_router=router,
+        local_kg_watcher=LOCAL_KG_WATCHER,
+        local_server_processes=LOCAL_SERVER_PROCESSES,
+        logger=logging,
+    )
+    autoload_default_model = _lifespan_runtime["autoload_default_model"]
+    unload_idle_models_loop = _lifespan_runtime["unload_idle_models_loop"]
+    _spawn = _lifespan_runtime["_spawn"]
+    lifespan = _lifespan_runtime["lifespan"]
 
     _web_runtime = build_web_runtime(
         app_mode=APP_MODE,

@@ -18,7 +18,7 @@ automation review workflow more reversible, typed, and maintainable.
 | --- | --- | --- |
 | **Snoozed review visibility** | WORKING | Review Center status filters include Pending, Snoozed, and All. |
 | **Unsnooze lifecycle** | WORKING | `ReviewQueueService.unsnooze` and `/automation/reviews/{item_id}/unsnooze` return stored snoozed items to pending and clear `snoozed_until`. |
-| **Strict review typing** | WORKING | `frontend/src/api/client.ts` aliases generated OpenAPI `ReviewItem` and `ReviewItemList` schemas. |
+| **Strict review typing** | WORKING | `frontend/src/api/client.ts` aliases generated OpenAPI `ReviewItem` and `ReviewItemList` schemas and uses generated operation paths for Review Center list/actions. |
 | **Frontend ownership split** | WORKING | Review UI lives in `frontend/src/features/review/` instead of inside `Act.tsx`. |
 | **v6 quality evidence** | IN REVIEW | `docs/v6/QUALITY_SCORECARD.md` records baseline, target, actual estimate, evidence, and remaining gaps without claiming 100/100. |
 
@@ -117,7 +117,7 @@ release documentation.
 | **PostgreSQL / Docker scale mode** | OPT-IN LOCAL/NETWORK DEPENDENCY | SQLite is default; Postgres and Docker setup require explicit configuration/consent. `lattice_brain/storage/factory.py`, `lattice_brain/storage/docker.py`. |
 | **Admin Console** | ADMIN-ONLY | Users, roles, audit logs, security events, retention, and index operations remain separated from the Brain user surface. `frontend/src/App.tsx`, `latticeai/api/admin.py`. |
 | **Enterprise governance** | PREVIEW / PARTIAL | Community edition exposes descriptors and disabled capabilities honestly; Enterprise enforcement depends on provider implementation. `latticeai/core/enterprise.py`, `latticeai/core/enterprise_admin.py`. |
-| **app_factory decomposition** | PARTIAL FOUNDATION | Config, security, Brain, session, hooks, web shell, automation, context/search, platform services, app context, and router registration seams now exist with a frozen 364-entry route snapshot; lifespan/persistence module split remains technical debt. `latticeai/app_factory.py`, `latticeai/runtime/`, `tests/unit/test_app_factory.py`, `tests/unit/test_app_factory_early_assembly.py`. |
+| **app_factory decomposition** | PARTIAL FOUNDATION | Config, security, Brain, session, hooks, web shell, persistence, lifespan, automation, context/search, platform services, app context, and router registration seams now exist with a frozen 364-entry route snapshot; lower-level orchestration cleanup remains technical debt. `latticeai/app_factory.py`, `latticeai/runtime/`, `tests/unit/test_app_factory.py`, `tests/unit/test_app_factory_early_assembly.py`, `tests/unit/test_runtime_seams.py`. |
 
 ## v5.0.0 Multilingual Brain Foundation Release — what changed
 

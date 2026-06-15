@@ -26,14 +26,20 @@ execution unless a workflow opts in.
 
 Status:
 
-- `app_factory.py` still performs broad assembly work, but the v6 follow-up
-  branch has started additive extraction behind runtime seams.
+- `app_factory.py` still owns final orchestration, but broad runtime
+  construction now sits behind additive runtime seams.
 - `latticeai/runtime/bootstrap.py` owns session store construction and token
   lifecycle helper closures.
 - `latticeai/runtime/hooks_runtime.py` owns hook registry/watcher assembly plus
   trigger/builtin hook runner binding.
 - `latticeai/runtime/web_runtime.py` owns FastAPI shell creation, CORS
   middleware, and static asset mounts while preserving legacy mount order.
+- `latticeai/runtime/persistence_runtime.py` owns WorkspaceOS, workspace
+  service, realtime bus, plugin/template/agent registries, memory service,
+  ingestion pipeline, device identity, and KG portability construction.
+- `latticeai/runtime/lifespan_runtime.py` owns startup/shutdown background
+  tasks, model autoload/idle unload loops, Telegram bridge startup, watcher
+  restore/stop, and local model process cleanup.
 - `latticeai/runtime/automation_runtime.py` owns Review Queue, TriggerService,
   AgentRuntime, and RunExecutor construction behind one automation seam.
 - `latticeai/runtime/context_runtime.py` owns SearchService, BrainMemory, and
@@ -52,11 +58,12 @@ Status:
 - Router generation has moved behind dependency-boundary helpers, and
   `app_factory.py` no longer directly calls `create_*router`,
   `register_router`, or `register_routers`. Further extraction should focus on
-  lifespan and persistence assembly before changing include order.
+  any remaining orchestration-only code before changing include order.
 
 Recommended next steps:
 
-- Extract lifespan and persistence assembly into focused runtime seams.
+- Extract any remaining app-factory orchestration-only code into focused
+  runtime seams where it improves testability without hiding bootstrap order.
 - Continue the existing runtime split pattern rather than introducing a new
   global registry.
 - Preserve lazy imports and current app bootstrap semantics.
@@ -93,11 +100,14 @@ Positive evidence:
 
 - Review Center policy is testable independently from the API.
 - Frontend Review Center is feature-owned instead of embedded inside `Act.tsx`.
-- OpenAPI-generated schemas now drive ReviewItem frontend typing.
+- OpenAPI-generated schemas and operation paths now drive ReviewItem frontend
+  typing and review action calls.
+- Lifespan and persistence assembly are tested behind focused runtime seams.
 
 Remaining gaps:
 
 - `app_factory.py` decomposition remains incomplete, but router assembly is now
   routed through helper seams with the frozen route/mount snapshot preserved.
-  Lifespan and persistence assembly are the next high-risk extraction targets.
-- Strict generated client methods still sit behind the local `apiJson` wrapper.
+  Remaining work is lower-level orchestration cleanup, not route generation.
+- Strict generated client methods are now in place for Review Center; other API
+  domains still use the local `apiJson` wrapper.

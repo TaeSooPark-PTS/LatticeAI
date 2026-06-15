@@ -11,9 +11,11 @@
 
 Lattice AI v6.0.0 — Product Reset / Review Center Completion. 6.0.0은 5.6.0
 Review Center 위에 Snoozed 필터, 명시적 Unsnooze 전이, OpenAPI 기반 Review
-타입, Review UI 모듈 분리, v6 품질 scorecard 문서를 얹는다. `run_now`는 계속
-승인이 아닌 preview/regenerate 액션이며, snooze 만료는 read-time 해석으로
-유지한다.
+타입/operation 호출, Review UI 모듈 분리, v6 품질 scorecard 문서를 얹는다.
+`app_factory.py`는 session/hooks/web/persistence/lifespan/automation/context/
+platform/app-context/router-registration runtime seam으로 분해됐고, 364-entry
+route/mount snapshot은 그대로 유지한다. `run_now`는 계속 승인이 아닌
+preview/regenerate 액션이며, snooze 만료는 read-time 해석으로 유지한다.
 
 Expected artifacts (exact 6.0.0 names only):
 - dist/ltcai-6.0.0-py3-none-any.whl

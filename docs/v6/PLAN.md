@@ -69,8 +69,9 @@ Current implementation status:
 
 - Review Center copy now emphasizes reviewable automation, reversible snoozing,
   and run-now-as-preview semantics.
-- Broader Brain Home/onboarding simplification remains follow-up unless more
-  branch time is allocated.
+- First-run/onboarding copy now states the trust boundary directly: local
+  knowledge by default, explicit downloads, explicit external transfer, and
+  replaceable models.
 
 ### Lane E — Backend Architecture Reset
 
@@ -80,8 +81,10 @@ Required:
 
 Current implementation status:
 
-- No large app-factory split is claimed yet. Review Queue remains in service/API
-  modules with thin router wiring.
+- `app_factory.py` is decomposed behind session, hooks, web shell, persistence,
+  lifespan, automation, context/search, platform services, app context, and
+  router registration runtime seams.
+- The frozen 364-entry route/mount snapshot remains exact after the split.
 
 ### Lane F — Brain Core Boundary Hardening
 
@@ -104,7 +107,8 @@ Required:
 Current implementation status:
 
 - Version metadata is synchronized to `6.0.0`.
-- Artifact build/validation still must run before final release-readiness claims.
+- Exact v6.0.0 artifacts have been built and validated locally:
+  wheel, sdist, npm tgz, VSIX, and Tauri DMG.
 
 ## Acceptance Gates
 
