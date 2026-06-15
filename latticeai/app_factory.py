@@ -34,7 +34,6 @@ from latticeai.runtime.platform_services_runtime import (
 from latticeai.runtime.router_registration import (
     register_foundation_routers,
     register_review_and_brain_tail_routers,
-    register_router,
     register_routers,
 )
 from latticeai.runtime.security_runtime import build_security_runtime
@@ -1611,8 +1610,6 @@ def _build(config: "Optional[Config]" = None) -> Dict[str, Any]:
 
     # ── Chat / Completion ──────────────────────────────────────────────────────────
 
-    register_router(app, create_chat_router(context))
-
     def _embedding_info() -> dict:
         from latticeai.core.embedding_providers import PROVIDER_TYPES, embedding_provider_profiles
         info = EMBEDDER.as_dict()
@@ -1631,6 +1628,7 @@ def _build(config: "Optional[Config]" = None) -> Dict[str, Any]:
 
     register_routers(
         app,
+        create_chat_router(context),
         create_search_router(
             service=SEARCH_SERVICE,
             allowed_workspaces_for=_allowed_workspaces_for,
