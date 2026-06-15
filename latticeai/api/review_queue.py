@@ -7,8 +7,8 @@ frontend without massaging.
 
 Action semantics live in :class:`~latticeai.services.review_queue.ReviewQueueService`:
 
-* ``approve`` / ``dismiss`` / ``snooze`` are status transitions; an illegal
-  transition returns **409**.
+* ``approve`` / ``dismiss`` / ``snooze`` / ``unsnooze`` are status transitions;
+  an illegal transition returns **409**.
 * ``run_now`` previews/regenerates without changing status (back-links the run).
 """
 
@@ -124,6 +124,10 @@ def create_review_queue_router(
             raise HTTPException(status_code=409, detail=str(exc)) from exc
         append_audit_event("review_item_snooze", user_email=user, item_id=item_id)
         return item
+
+    @router.post("/automation/reviews/{item_id}/unsnooze", response_model=ReviewItem)
+    async def unsnooze_item(item_id: str, request: Request):
+        return _act(request, item_id, "unsnooze")
 
     @router.post("/automation/reviews/{item_id}/run_now", response_model=ReviewItem)
     async def run_now_item(item_id: str, request: Request):
