@@ -1408,8 +1408,6 @@ def _build(config: "Optional[Config]" = None) -> Dict[str, Any]:
     )
     app.state.context = context
 
-    # ── Workspace OS + Organization router (latticeai.api.workspace, v1.2.0) ──────
-    workspace_router = create_workspace_router(context)
     register_foundation_routers(
         app,
         static_router=STATIC_ROUTES.router,
@@ -1417,7 +1415,8 @@ def _build(config: "Optional[Config]" = None) -> Dict[str, Any]:
         admin_router=admin_router,
         invitations_router=invitations_router,
         security_router=security_router,
-        workspace_router=workspace_router,
+        create_workspace_router=create_workspace_router,
+        context=context,
     )
 
 

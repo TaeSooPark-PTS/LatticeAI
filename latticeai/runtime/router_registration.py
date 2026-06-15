@@ -231,10 +231,12 @@ def register_foundation_routers(
     admin_router: Any,
     invitations_router: Any,
     security_router: Any,
-    workspace_router: Any,
+    create_workspace_router: Any,
+    context: Any,
 ) -> tuple[Any, ...]:
     """Register early static/auth/admin/security/workspace routers in order."""
 
+    workspace_router = create_workspace_router(context)
     return register_routers(
         app,
         static_router,

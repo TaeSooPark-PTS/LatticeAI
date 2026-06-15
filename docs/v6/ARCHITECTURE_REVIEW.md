@@ -42,7 +42,7 @@ Status:
   constructors such as ModelService and BrainNetwork.
 - `latticeai/runtime/router_registration.py` centralizes the individual
   `include_router` call behind registration helpers while preserving existing
-  include order. Static route support, auth/admin/security router generation,
+  include order. Static route support, auth/admin/security/workspace router generation,
   early static/auth/admin/security/workspace route registration, platform
   feature routes, health/model routes, interaction routes, and final
   review/browser/brain tail routes now use dedicated helpers while preserving
