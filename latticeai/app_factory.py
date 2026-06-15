@@ -20,8 +20,13 @@ from typing import TYPE_CHECKING, Any, Dict, List, Optional
 from latticeai.runtime.bootstrap import build_session_runtime
 from latticeai.runtime.brain_runtime import build_brain_runtime
 from latticeai.runtime.config_runtime import build_config_runtime
-from latticeai.runtime.hooks_runtime import build_hooks_runtime
+from latticeai.runtime.hooks_runtime import (
+    bind_builtin_hook_runners,
+    bind_trigger_hook_runner,
+    build_hooks_runtime,
+)
 from latticeai.runtime.security_runtime import build_security_runtime
+from latticeai.runtime.web_runtime import build_web_runtime
 
 if TYPE_CHECKING:  # imports for annotations only — keep module import light
     from fastapi import FastAPI
@@ -58,9 +63,7 @@ def _build(config: "Optional[Config]" = None) -> Dict[str, Any]:
         print(f"⚠️ MLX Metal context unavailable: {e}")
         mx = None
     import uvicorn
-    from fastapi import FastAPI, HTTPException, Request
-    from fastapi.middleware.cors import CORSMiddleware
-    from fastapi.staticfiles import StaticFiles
+    from fastapi import HTTPException, Request
     from pydantic import BaseModel
 
     from latticeai.models.router import LLMRouter, normalize_branding
@@ -152,7 +155,6 @@ def _build(config: "Optional[Config]" = None) -> Dict[str, Any]:
     from latticeai.api.garden import create_garden_router
     from latticeai.api.setup import create_setup_router
     from latticeai.api.hooks import create_hooks_router
-    from latticeai.core.builtin_hooks import register_builtin_hook_runners
     from latticeai.core.product_hardening import build_product_hardening_status
     from latticeai.api.agent_registry import create_agent_registry_router
     from latticeai.core.agent_registry import AgentRegistry
@@ -1171,34 +1173,18 @@ def _build(config: "Optional[Config]" = None) -> Dict[str, Any]:
                 except Exception:
                     pass
 
-    app = FastAPI(title=f"Lattice AI Server ({APP_MODE})", version=APP_VERSION, lifespan=lifespan)
-
-    CORS_ALLOWED_ORIGINS = [
-        f"http://localhost:{DEFAULT_PORT}",
-        f"http://127.0.0.1:{DEFAULT_PORT}",
-        *CORS_EXTRA_ORIGINS,
-    ]
-    if CORS_ALLOW_NETWORK:
-        CORS_ALLOWED_ORIGINS = CORS_ALLOWED_ORIGINS + [
-            f"http://{DEFAULT_HOST}:{DEFAULT_PORT}",
-            f"https://{DEFAULT_HOST}:{DEFAULT_PORT}",
-        ]
-
-    app.add_middleware(
-        CORSMiddleware,
-        allow_origins=CORS_ALLOWED_ORIGINS,
-        allow_methods=["*"],
-        allow_headers=["*"],
-        allow_credentials=True,
+    _web_runtime = build_web_runtime(
+        app_mode=APP_MODE,
+        app_version=APP_VERSION,
+        lifespan=lifespan,
+        default_host=DEFAULT_HOST,
+        default_port=DEFAULT_PORT,
+        cors_extra_origins=CORS_EXTRA_ORIGINS,
+        cors_allow_network=CORS_ALLOW_NETWORK,
+        static_dir=STATIC_DIR,
     )
-
-    # UI 파일이 담길 static 폴더 연결
-    STATIC_DIR.mkdir(parents=True, exist_ok=True)
-    app.mount("/static", StaticFiles(directory=str(STATIC_DIR)), name="static")
-    # PWA icons served at /icons/*
-    _ICONS_DIR = STATIC_DIR / "icons"
-    if _ICONS_DIR.exists():
-        app.mount("/icons", StaticFiles(directory=str(_ICONS_DIR)), name="icons")
+    app = _web_runtime["app"]
+    CORS_ALLOWED_ORIGINS = _web_runtime["CORS_ALLOWED_ORIGINS"]
     ensure_agent_root()
 
     OPEN_REGISTRATION = CONFIG.open_registration
@@ -1486,7 +1472,7 @@ def _build(config: "Optional[Config]" = None) -> Dict[str, Any]:
     REVIEW_QUEUE = ReviewQueueService(store=WORKSPACE_OS)
 
     # ── v4 Trigger system (T7d): interval + brain-event workflow triggers.
-    from latticeai.services.triggers import TRIGGER_HOOK_NAME, TriggerService
+    from latticeai.services.triggers import TriggerService
 
     TRIGGER_SERVICE = TriggerService(
         store=WORKSPACE_OS,
@@ -1496,19 +1482,7 @@ def _build(config: "Optional[Config]" = None) -> Dict[str, Any]:
         data_dir=DATA_DIR,
         review_sink=REVIEW_QUEUE,
     )
-    # Idempotent hook registration: ingestion post_tool events fan into triggers.
-    _trigger_hook_id = next(
-        (h.get("id") for h in HOOKS_REGISTRY._state.get("custom", [])
-         if h.get("name") == TRIGGER_HOOK_NAME),
-        None,
-    )
-    if _trigger_hook_id is None:
-        _trigger_hook_id = HOOKS_REGISTRY.register(
-            name=TRIGGER_HOOK_NAME,
-            kind="post_tool",
-            description="Fires brain_event workflow triggers when knowledge enters the brain.",
-        )["id"]
-    HOOKS_REGISTRY.register_hook(_trigger_hook_id, TRIGGER_SERVICE.hook_runner())
+    bind_trigger_hook_runner(registry=HOOKS_REGISTRY, trigger_service=TRIGGER_SERVICE)
 
     # Single AgentRuntime boundary over the orchestrator + run store.
     # (lattice_brain/runtime.agent_runtime.AgentRuntime — see runtime/__init__.py for full dep graph + entry mapping)
@@ -1534,12 +1508,8 @@ def _build(config: "Optional[Config]" = None) -> Dict[str, Any]:
     TRIGGER_SERVICE.start()
 
     # ── Hooks dispatch: bind real built-in runners ───────────────────────────────
-    # The registry lists built-in hooks; binding a runner here makes them *execute*
-    # real platform behaviour when fired (not a placeholder). Runners take a
-    # HookContext and may mutate its payload, return a status dict, or block.
-    # Bind a real runner to every built-in hook so none is a silent no-op.
-    register_builtin_hook_runners(
-        HOOKS_REGISTRY,
+    bind_builtin_hook_runners(
+        registry=HOOKS_REGISTRY,
         append_audit_event=append_audit_event,
         get_tool_permission=get_tool_permission,
         classify_sensitive_message=classify_sensitive_message,
