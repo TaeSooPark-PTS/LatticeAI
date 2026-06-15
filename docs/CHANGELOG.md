@@ -3,6 +3,33 @@
 The top entry is the current release-preparation target. Older entries are
 historical and may describe behavior as it existed at that release.
 
+## [6.0.0] - 2026-06-15
+
+> Product Reset / Review Center Completion. Raises the Review Center from a
+> pending-only inbox into a reversible automation review surface while
+> documenting the v6 quality uplift honestly.
+
+### Added
+- Review Center status filters for Pending, Snoozed, and All.
+- Explicit `POST /automation/reviews/{item_id}/unsnooze` API and backend policy.
+- Frontend Unsnooze action and clear `snoozed_until` presentation.
+- `docs/v6/PLAN.md`, `ARCHITECTURE_REVIEW.md`, `UX_REVIEW.md`, and
+  `QUALITY_SCORECARD.md`.
+
+### Changed
+- Review Center frontend moved from `Act.tsx` into
+  `frontend/src/features/review/` components and helpers.
+- Review item frontend types now alias generated OpenAPI component schemas.
+- OpenAPI artifacts and synchronized package/runtime/static metadata now target
+  `6.0.0`.
+
+### Preserved
+- `run_now` remains preview/regenerate and does not approve.
+- Snooze expiry remains read-time only; explicit unsnooze is the only immediate
+  return-to-pending mutation.
+- Package publishing, GitHub Release creation, artifact upload, and merge to
+  `main` remain out of scope for this branch.
+
 ## [5.6.0] - 2026-06-15
 
 > Brain Automation Review Center. Adds a workspace-scoped review inbox for

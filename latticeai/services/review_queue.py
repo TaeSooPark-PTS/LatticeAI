@@ -19,7 +19,7 @@ Design decisions (agreed in #develop-with-openclaw):
 from __future__ import annotations
 
 from datetime import datetime
-from typing import Any, Callable, Dict, List, Optional
+from typing import Any, Callable, Dict, Optional
 
 # status: terminal vs. open. Open items can still be acted on.
 OPEN_STATUSES = {"pending", "snoozed"}

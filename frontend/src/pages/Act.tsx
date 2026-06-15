@@ -2,30 +2,23 @@ import * as React from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import ReactFlow, { Background, Controls, Edge, Node } from "reactflow";
 import { Bot, CalendarClock, GitBranch, PauseCircle, Play, ShieldCheck, Workflow } from "lucide-react";
-import { latticeApi, type ReviewItem } from "@/api/client";
-import { ActionButton, DataPanel, EmptyState, EntityList, KeyValueList, LoadingPanel, ModeGate, OperationResult, StructuredView, Tabs } from "@/components/primitives";
+import { latticeApi } from "@/api/client";
+import { ActionButton, DataPanel, EntityList, KeyValueList, ModeGate, OperationResult, StructuredView, Tabs } from "@/components/primitives";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
+import { ReviewInbox } from "@/features/review/ReviewInbox";
 import { useAppStore } from "@/store/appStore";
 import { asArray, shortId } from "@/lib/utils";
 
 type ActTab = "agents" | "runs" | "workflows" | "hooks" | "tools";
 type RunsSubTab = "runs" | "review";
-type ReviewSourceFilter = "all" | "workflow_run" | "trigger" | "kg_change_digest";
 
 const runsSubTabs: Array<{ id: RunsSubTab; label: string }> = [
   { id: "runs", label: "Runs" },
-  { id: "review", label: "Review" },
-];
-
-const reviewSourceFilters: Array<{ id: ReviewSourceFilter; label: string }> = [
-  { id: "all", label: "All" },
-  { id: "workflow_run", label: "Workflow" },
-  { id: "trigger", label: "Trigger" },
-  { id: "kg_change_digest", label: "KG digest" },
+  { id: "review", label: "Review Center" },
 ];
 
 const tabs: Array<{ id: ActTab; label: string }> = [
@@ -150,7 +143,7 @@ function RunsPanel({ subTab, onSubTabChange }: { subTab: RunsSubTab; onSubTabCha
   return (
     <div className="space-y-4">
       <Tabs tabs={runsSubTabs} value={subTab} onChange={(id) => onSubTabChange(id as RunsSubTab)} />
-      {subTab === "runs" ? <RunsListPanel /> : <ReviewInboxPanel />}
+      {subTab === "runs" ? <RunsListPanel /> : <ReviewInbox />}
     </div>
   );
 }
@@ -195,171 +188,6 @@ function RunsListPanel() {
         }}
       </DataPanel>
     </div>
-  );
-}
-
-function reviewStatusVariant(status: string): React.ComponentProps<typeof Badge>["variant"] {
-  if (status === "pending") return "warning";
-  if (status === "snoozed") return "muted";
-  if (status === "approved") return "success";
-  if (status === "dismissed") return "danger";
-  return "muted";
-}
-
-function reviewSourceLabel(source?: string) {
-  if (source === "workflow_run") return "Workflow run";
-  if (source === "trigger") return "Trigger";
-  if (source === "kg_change_digest") return "KG digest";
-  return source || "Automation";
-}
-
-function reviewSourceDetail(provenance: Record<string, unknown>, source?: string) {
-  const detail = provenance.source_detail;
-  if (detail != null && String(detail).trim()) return String(detail);
-  const triggerId = provenance.trigger_id;
-  if (triggerId != null && String(triggerId).trim()) return String(triggerId);
-  return reviewSourceLabel(source);
-}
-
-function defaultSnoozeUntil() {
-  const until = new Date();
-  until.setDate(until.getDate() + 1);
-  return until.toISOString();
-}
-
-function ReviewInboxPanel() {
-  const mode = useAppStore((state) => state.mode);
-  const qc = useQueryClient();
-  const [sourceFilter, setSourceFilter] = React.useState<ReviewSourceFilter>("all");
-  const [runFeedback, setRunFeedback] = React.useState<Record<string, string>>({});
-  const reviews = useQuery({
-    queryKey: ["automationReviews", sourceFilter],
-    queryFn: () => latticeApi.automationReviews({
-      status: "pending",
-      ...(sourceFilter !== "all" ? { source: sourceFilter } : {}),
-    }),
-  });
-  const items = asArray<ReviewItem>((reviews.data?.data as { items?: ReviewItem[] })?.items);
-  const actionable = (item: ReviewItem) => item.effective_status === "pending" || item.effective_status === "snoozed";
-
-  const actOnReview = async (
-    item: ReviewItem,
-    action: "approve" | "dismiss" | "snooze" | "run_now",
-    hadRunBefore = false,
-  ) => {
-    const call =
-      action === "approve" ? () => latticeApi.approveReviewItem(item.id) :
-      action === "dismiss" ? () => latticeApi.dismissReviewItem(item.id) :
-      action === "snooze" ? () => latticeApi.snoozeReviewItem(item.id, defaultSnoozeUntil()) :
-      () => latticeApi.runNowReviewItem(item.id);
-    const result = await call();
-    if (result.ok) {
-      if (action === "run_now") {
-        setRunFeedback((prev) => ({
-          ...prev,
-          [item.id]: hadRunBefore ? "Regenerated" : "Executed",
-        }));
-      } else {
-        setRunFeedback((prev) => {
-          const next = { ...prev };
-          delete next[item.id];
-          return next;
-        });
-      }
-      await qc.invalidateQueries({ queryKey: ["automationReviews"] });
-    }
-    return result;
-  };
-
-  if (reviews.isLoading) return <LoadingPanel title="Review inbox" />;
-
-  return (
-    <Card>
-      <CardHeader className="gap-3">
-        <div className="flex flex-wrap items-start justify-between gap-3">
-          <div>
-            <CardTitle>Review inbox</CardTitle>
-            <CardDescription>Automation suggestions waiting for your decision. Run now previews without approving.</CardDescription>
-          </div>
-          {reviews.data ? (
-            <Badge variant={reviews.data.ok ? "success" : "warning"}>{reviews.data.ok ? "connected" : "unavailable"}</Badge>
-          ) : null}
-        </div>
-        <Tabs
-          tabs={reviewSourceFilters}
-          value={sourceFilter}
-          onChange={(id) => setSourceFilter(id as ReviewSourceFilter)}
-        />
-      </CardHeader>
-      <CardContent>
-        {reviews.isError || (reviews.data && !reviews.data.ok) ? (
-          <EmptyState
-            title="Could not load review inbox"
-            detail={reviews.data?.error || "The review queue is not available right now."}
-          />
-        ) : !items.length ? (
-          <EmptyState
-            title="Nothing to review"
-            detail="When automations opt into the review queue, new suggestions will appear here."
-          />
-        ) : (
-          <div className="grid gap-3">
-            {items.map((item) => {
-              const provenance = (item.provenance || {}) as Record<string, unknown>;
-              const payload = (item.payload || {}) as Record<string, unknown>;
-              const hadRunBefore = Boolean(payload.last_run_id || provenance.run_id);
-              const feedback = runFeedback[item.id];
-              return (
-                <div key={item.id} className="rounded-lg border border-border bg-background/55 p-4">
-                  <div className="flex flex-wrap items-start justify-between gap-3">
-                    <div className="min-w-0 flex-1">
-                      <div className="font-medium">{item.title}</div>
-                      {item.summary ? <p className="mt-1 text-sm text-muted-foreground">{item.summary}</p> : null}
-                    </div>
-                    <div className="flex flex-wrap items-center gap-2">
-                      <Badge variant="muted">{reviewSourceLabel(item.source)}</Badge>
-                      <Badge variant={reviewStatusVariant(item.effective_status)}>{item.effective_status}</Badge>
-                    </div>
-                  </div>
-                  {mode !== "basic" ? (
-                    <div className="mt-3">
-                      <KeyValueList
-                        data={{
-                          workflow: provenance.workflow_id,
-                          trigger: provenance.trigger_id,
-                          run: payload.last_run_id || provenance.run_id,
-                          source_detail: reviewSourceDetail(provenance, item.source),
-                          snoozed_until: item.snoozed_until,
-                          created_at: item.created_at,
-                          updated_at: item.updated_at,
-                        }}
-                        limit={8}
-                      />
-                    </div>
-                  ) : null}
-                  {actionable(item) ? (
-                    <div className="mt-4 flex flex-wrap gap-2">
-                      <ActionButton
-                        label="Run now"
-                        successLabel={hadRunBefore ? "Regenerated" : "Executed"}
-                        action={() => actOnReview(item, "run_now", hadRunBefore)}
-                        invalidate={[]}
-                      />
-                      <ActionButton label="Approve" action={() => actOnReview(item, "approve")} invalidate={[]} />
-                      <ActionButton label="Snooze" action={() => actOnReview(item, "snooze")} invalidate={[]} />
-                      <ActionButton label="Dismiss" action={() => actOnReview(item, "dismiss")} invalidate={[]} variant="destructive" />
-                    </div>
-                  ) : null}
-                  {feedback ? (
-                    <p className="mt-2 text-xs text-emerald-300">{feedback} — item stays open until you approve or dismiss.</p>
-                  ) : null}
-                </div>
-              );
-            })}
-          </div>
-        )}
-      </CardContent>
-    </Card>
   );
 }
 

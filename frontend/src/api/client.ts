@@ -1,5 +1,5 @@
 import createClient from "openapi-fetch";
-import type { paths } from "./openapi";
+import type { components, paths } from "./openapi";
 import { useAppStore } from "@/store/appStore";
 
 export type ApiResult<T = unknown> = {
@@ -161,20 +161,10 @@ function del<T>(path: string, shape: T) {
   return apiJson<T>("DELETE", path, { shape });
 }
 
-export type ReviewItem = {
-  id: string;
-  status: string;
-  effective_status: string;
-  title: string;
-  summary?: string;
-  source?: string;
-  kind?: string;
-  payload?: Record<string, unknown>;
-  provenance?: Record<string, unknown>;
-  snoozed_until?: string | null;
-  created_at?: string | null;
-  updated_at?: string | null;
-};
+export type ReviewItem = components["schemas"]["ReviewItem"];
+export type ReviewItemList = components["schemas"]["ReviewItemList"];
+export type ReviewStatusFilter = "pending" | "snoozed" | "approved" | "dismissed" | "all";
+export type ReviewSourceFilter = "workflow_run" | "trigger" | "kg_change_digest" | "all";
 
 function reviewItemShape(): ReviewItem {
   return {
@@ -188,6 +178,10 @@ function reviewItemShape(): ReviewItem {
     payload: {},
     provenance: {},
   };
+}
+
+function reviewItemListShape(): ReviewItemList {
+  return { items: [] };
 }
 
 async function uploadDocument(file: File): Promise<ApiResult<Record<string, unknown> | null>> {
@@ -409,12 +403,13 @@ export const latticeApi = {
   hooks: () => get("/api/hooks", { hooks: [] }),
   hookRuns: () => get("/api/hooks/runs", { runs: [] }, { limit: 50 }),
   hookRun: (body: unknown) => post("/api/hooks/run", body, {}),
-  automationReviews: (query?: { status?: string; source?: string }) =>
-    get("/automation/reviews", { items: [] }, query),
+  automationReviews: (query?: { status?: Exclude<ReviewStatusFilter, "all">; source?: Exclude<ReviewSourceFilter, "all"> }) =>
+    get<ReviewItemList>("/automation/reviews", reviewItemListShape(), query),
   approveReviewItem: (id: string) => post(`/automation/reviews/${encodeURIComponent(id)}/approve`, {}, reviewItemShape()),
   dismissReviewItem: (id: string) => post(`/automation/reviews/${encodeURIComponent(id)}/dismiss`, {}, reviewItemShape()),
   snoozeReviewItem: (id: string, until: string) =>
     post(`/automation/reviews/${encodeURIComponent(id)}/snooze`, { until }, reviewItemShape()),
+  unsnoozeReviewItem: (id: string) => post(`/automation/reviews/${encodeURIComponent(id)}/unsnooze`, {}, reviewItemShape()),
   runNowReviewItem: (id: string) => post(`/automation/reviews/${encodeURIComponent(id)}/run_now`, {}, reviewItemShape()),
   permissionsPending: () => get("/permissions/pending", { pending: {}, count: 0 }),
   approvePermission: (token: string) => post(`/permissions/approve/${encodeURIComponent(token)}`, {}, {}),

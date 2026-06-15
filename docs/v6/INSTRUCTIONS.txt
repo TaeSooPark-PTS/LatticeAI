@@ -1,0 +1,529 @@
+MISSION: Lattice AI v6.0.0 Product Reset / 100-Point Uplift
+
+Repository:
+TaeSooPark-PTS/LatticeAI
+
+Branch:
+feat/v6-product-reset-100-point-uplift
+
+Do not work on main.
+Do not merge to main.
+Do not publish packages.
+Do not create GitHub Releases.
+Do not upload dist artifacts.
+
+Goal:
+Aggressively raise Lattice AI from the current ~73/100 product-quality baseline toward a 100-point product target.
+
+This is intentionally high-risk and high-scope.
+
+Take calculated risks.
+
+Do not preserve weak structure simply because it currently works.
+
+However:
+- Do not fabricate completion.
+- Do not fake test results.
+- Do not fake validation.
+- Do not claim features work unless verified.
+- Do not claim a score improvement without evidence.
+
+100 is the aspiration.
+The goal is to move as close as possible to 100 while keeping the product functional and defensible.
+
+────────────────────────────────────
+0. Team Operating Model
+────────────────────────────────────
+
+Authority:
+
+pts_openclaw is the integration lead and final decision maker.
+
+pts_openclaw has final authority on:
+- integration decisions
+- conflict resolution
+- scope decisions
+- architecture decisions
+- task assignment
+- acceptance/rejection of work
+- final release readiness assessment
+
+All three agents are implementation agents.
+
+This is NOT a reviewer-only model.
+
+pts_openclaw, pts_claudecode, and pts_grok are all expected to:
+- write production code
+- modify frontend code
+- modify backend code
+- write tests
+- refactor architecture
+- update documentation
+- participate in design discussions
+- challenge weak decisions
+- propose alternatives
+
+No agent should limit itself to only frontend or only backend work.
+
+────────────────────────────────────
+Work Distribution
+────────────────────────────────────
+
+pts_grok:
+- Primary implementation agent.
+- Expected to perform the largest share of total work.
+- May modify frontend, backend, architecture, tests, and documentation.
+- Should aggressively identify weaknesses and propose large improvements.
+- Should not assume existing structure is correct.
+
+pts_claudecode:
+- Secondary implementation agent.
+- Expected to perform substantial frontend and backend work.
+- Should focus on correctness, maintainability, architecture quality, and regression prevention.
+- Should challenge weak implementations and propose cleaner alternatives.
+
+pts_openclaw:
+- Integration lead.
+- Must also contribute significant implementation work.
+- Must not act as a passive coordinator.
+- Expected to modify frontend, backend, architecture, tests, and documentation directly.
+- Responsible for merging competing proposals into a coherent product.
+- Responsible for final validation and integration.
+
+Approximate effort allocation:
+
+pts_grok:
+40–50%
+
+pts_claudecode:
+25–30%
+
+pts_openclaw:
+25–30%
+
+The best solution wins regardless of which agent proposes it.
+
+────────────────────────────────────
+1. Product Principles (Non-Negotiable)
+────────────────────────────────────
+
+Lattice AI is a local-first Digital Brain.
+
+Do NOT turn it into:
+- ChatGPT clone
+- Claude clone
+- Cursor clone
+- VS Code clone
+- Notion clone
+- Obsidian clone
+- plain model launcher
+- plain graph database UI
+
+Preserve:
+- Models are temporary. Knowledge is durable.
+- The Brain is the durable asset.
+- Local-first by default.
+- Explicit consent for external communication.
+- User ownership of memory, graph, archives, backups, and restore.
+- Separation of Brain use and Admin use.
+- Powerful features without overwhelming normal users.
+
+────────────────────────────────────
+2. Baseline Product Quality Scorecard
+────────────────────────────────────
+
+Current estimated scores:
+
+- Product direction / differentiation: 86
+- User experience / first impression: 74
+- Frontend structure: 68
+- Backend structure: 70
+- Brain Core structure: 78
+- Local-first / trust design: 82
+- Automation / agent functionality: 70
+- Packaging / release stability: 72
+- Maintainability: 64
+- Market clarity / user understanding: 76
+
+Overall:
+73
+
+Target:
+
+Push as close to 100 as realistically possible.
+
+Expected realistic outcome:
+85–92
+
+Do not claim 100 unless evidence truly supports it.
+
+────────────────────────────────────
+3. Major Work Lanes
+────────────────────────────────────
+
+Lane A — Review Center Completion (MANDATORY)
+
+This lane is required and must be completed.
+
+Review Center must become feature-complete and production-ready.
+
+Required:
+
+1. Snoozed Filter
+- Add Snoozed filter to Review Center.
+- Minimum filters:
+  - Pending
+  - Snoozed
+  - All
+- Optional:
+  - Approved
+  - Dismissed
+
+2. Unsnooze Support
+Backend:
+- Add explicit unsnooze policy transition.
+- Only valid from stored status "snoozed".
+- Must set:
+  - status = pending
+  - snoozed_until = null
+- Invalid transitions must return HTTP 409.
+
+API:
+- Expose unsnooze endpoint.
+
+Preferred endpoint:
+
+POST /automation/reviews/{item_id}/unsnooze
+
+Frontend:
+- Add Unsnooze action.
+- Display snoozed_until clearly.
+- Make Snoozed state understandable.
+
+3. Preserve Existing Semantics
+- run_now remains preview/regenerate.
+- run_now does NOT approve.
+- Snooze expiry remains read-time only.
+- No mutation on read.
+- Approve/dismiss behavior remains unchanged.
+
+4. Tests
+Required:
+- unsnooze success
+- unsnooze invalid transition
+- workspace isolation
+- effective_status behavior
+- API coverage
+- OpenAPI coverage
+
+5. Review Center UX
+Pending:
+- Approve
+- Dismiss
+- Snooze
+- Run now
+
+Snoozed:
+- Unsnooze
+- Dismiss
+- Run now
+
+Approved/Dismissed:
+- Read-only if shown
+
+Review Center must feel understandable and reversible.
+
+────────────────────────────────────
+
+Lane B — OpenAPI & Strict Typing (MANDATORY)
+
+This lane is required and must be completed.
+
+Review Center APIs must move to OpenAPI-derived typing.
+
+Required:
+
+Backend:
+- Regenerate OpenAPI schema.
+
+Frontend:
+- Regenerate OpenAPI TypeScript definitions.
+
+Target files:
+- frontend/openapi.json
+- frontend/src/api/openapi.ts
+- frontend/src/api/client.ts
+
+Review APIs must use generated types.
+
+Required wrappers:
+- automationReviews(...)
+- approveReviewItem(...)
+- dismissReviewItem(...)
+- snoozeReviewItem(...)
+- unsnoozeReviewItem(...)
+- runNowReviewItem(...)
+
+Goals:
+- remove unsafe casts
+- reduce manual ReviewItem duplication
+- improve strict typing
+- improve maintainability
+
+Do not fake typing by wrapping "any".
+
+TypeScript strict checks must pass.
+
+────────────────────────────────────
+
+Lane C — Frontend Architecture Reset
+
+Required:
+
+Break apart:
+- frontend/src/App.tsx
+- frontend/src/pages/Act.tsx
+
+Extract Review Center into dedicated modules.
+
+Suggested:
+frontend/src/features/review/
+
+Examples:
+- ReviewInbox.tsx
+- ReviewCard.tsx
+- reviewHelpers.ts
+
+Reduce responsibility concentration.
+
+Do not redesign the entire UI.
+
+────────────────────────────────────
+
+Lane D — UX/Product Simplification
+
+Required:
+
+Users must immediately understand:
+
+1. What is Lattice AI?
+2. Where is my data stored?
+3. What model is running?
+4. What leaves my machine?
+5. What should I do next?
+
+Improve:
+- onboarding
+- Brain Home
+- Review Center
+- empty states
+- workflow explanations
+- automation explanations
+
+Reduce jargon.
+
+────────────────────────────────────
+
+Lane E — Backend Architecture Reset
+
+Required:
+
+Decompose app_factory.py.
+
+Preserve:
+- lazy imports
+- no import-time heavy side effects
+- compatibility behavior
+
+Suggested:
+latticeai/runtime/
+  app_runtime.py
+  router_runtime.py
+  lifecycle_runtime.py
+  model_runtime.py
+  brain_runtime.py
+  security_runtime.py
+
+Keep routers thin.
+Keep business logic in services.
+
+────────────────────────────────────
+
+Lane F — Brain Core Boundary Hardening
+
+Required:
+
+Verify:
+- lattice_brain does not depend on latticeai
+
+Reduce:
+- legacy coupling
+- root-module dependencies
+
+Preserve:
+- archive compatibility
+- backup compatibility
+- restore compatibility
+- storage compatibility
+
+────────────────────────────────────
+
+Lane G — Packaging & Release Stability
+
+Synchronize:
+- pyproject.toml
+- package.json
+- package-lock.json
+- latticeai/__init__.py
+- lattice_brain/__init__.py
+- runtime version constants
+- workspace version constants
+- multi_agent version constants
+- Cargo.toml
+- tauri.conf.json
+- VS Code extension metadata
+- manifests
+- release docs
+
+Target version:
+6.0.0
+
+Expected artifacts:
+
+- dist/ltcai-6.0.0-py3-none-any.whl
+- dist/ltcai-6.0.0.tar.gz
+- ltcai-6.0.0.tgz
+- dist/ltcai-6.0.0.vsix
+- src-tauri/target/release/bundle/dmg/Lattice AI_6.0.0_aarch64.dmg
+
+────────────────────────────────────
+4. Explicitly Allowed Risks
+────────────────────────────────────
+
+Allowed:
+- Large frontend decomposition
+- Large app_factory decomposition
+- Review Center API expansion
+- OpenAPI typing refactors
+- UX simplification
+- Component extraction
+- Test restructuring
+- Documentation restructuring
+- Information architecture improvements
+
+Not allowed:
+- Breaking Brain archives
+- Removing backup/restore
+- Removing local-first guarantees
+- Silent cloud communication
+- Silent model downloads
+- Silent local file reads
+- Publishing packages
+- Merging to main
+- Fabricating results
+
+────────────────────────────────────
+5. Validation Gates
+────────────────────────────────────
+
+After each major lane:
+Run relevant validation.
+
+Before final report run:
+
+npm run check:python
+
+node scripts/run_python.mjs -m ruff check .
+
+npm run lint
+
+npm run typecheck
+
+npm run test:unit
+
+npm run test:integration
+
+npm run docs:check-links
+
+npm run desktop:tauri:check
+
+npm run build:assets
+
+npm run build:python
+
+python scripts/wheel_smoke.py --wheel dist/ltcai-6.0.0-py3-none-any.whl
+
+Also run if available:
+
+npm run release:validate
+
+npm run test:visual
+
+Do not claim any validation passed unless it actually passed.
+
+────────────────────────────────────
+6. Required Deliverables
+────────────────────────────────────
+
+Create or update:
+
+docs/v6/PLAN.md
+
+docs/v6/ARCHITECTURE_REVIEW.md
+
+docs/v6/UX_REVIEW.md
+
+docs/v6/QUALITY_SCORECARD.md
+
+RELEASE_NOTES.md
+
+docs/CHANGELOG.md
+
+FEATURE_STATUS.md
+
+QUALITY_SCORECARD.md must contain:
+- baseline score
+- target score
+- actual score
+- evidence
+- remaining gaps
+- no fake 100/100 claim
+
+────────────────────────────────────
+7. Final Report
+────────────────────────────────────
+
+Report:
+
+1. Branch
+2. Commit hashes
+3. Work split
+   - pts_openclaw
+   - pts_claudecode
+   - pts_grok
+4. Files changed summary
+5. Review Center changes
+   - Snoozed filter
+   - Unsnooze
+   - Review lifecycle
+6. OpenAPI and strict typing changes
+7. Frontend architecture changes
+8. Backend architecture changes
+9. Brain Core boundary changes
+10. UX/user journey changes
+11. Packaging/version sync changes
+12. Validation results
+13. Failed/skipped validation and exact reasons
+14. Before/after scorecard
+15. Remaining risks
+16. Follow-up work
+17. Confirmation:
+   - no publishing
+   - no GitHub Release
+   - no merge to main
+
+Tone:
+Be honest.
+Be aggressive but factual.
+Do not overclaim.
+Do not claim 100 unless it is genuinely defensible with evidence. 지시문 txt파일로 만들어줘

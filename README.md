@@ -193,24 +193,25 @@ See [docs/DEVELOPMENT.md](docs/DEVELOPMENT.md) for developer workflow details.
 
 ## Current Release Preparation
 
-The current development target is **5.6.0 Brain Automation Review Center**:
+The current development target is **6.0.0 Product Reset / Review Center Completion**:
 
-- Automation output now lands in a workspace-scoped Review inbox before users
-  approve, dismiss, snooze, or rerun suggestions.
-- `/automation/reviews` exposes source-aware review items with provenance,
-  `effective_status`, and guarded actions.
-- TriggerService and RunExecutor can enqueue review items only when workflows
-  explicitly opt in with `review_queue: true`.
-- Act now includes a Review tab under Runs for pending automation suggestions.
-- All package/runtime/static/OpenAPI versions are synchronized to 5.6.0.
+- Review Center now includes Pending, Snoozed, and All filters so users can find
+  deferred automation suggestions without waiting for expiry.
+- `/automation/reviews` adds explicit `unsnooze` support while preserving
+  read-time snooze expiry and `run_now != approve` semantics.
+- Review Center frontend code is split into `frontend/src/features/review/`
+  modules instead of living inside the Act page.
+- Review item frontend types are derived from regenerated OpenAPI component
+  schemas.
+- All package/runtime/static/OpenAPI versions are synchronized to 6.0.0.
 
-Expected artifacts for 5.6.0 release must use exact filenames:
+Expected artifacts for 6.0.0 release must use exact filenames:
 
-- `dist/ltcai-5.6.0-py3-none-any.whl`
-- `dist/ltcai-5.6.0.tar.gz`
-- `ltcai-5.6.0.tgz`
-- `dist/ltcai-5.6.0.vsix`
-- `src-tauri/target/release/bundle/dmg/Lattice AI_5.6.0_aarch64.dmg`
+- `dist/ltcai-6.0.0-py3-none-any.whl`
+- `dist/ltcai-6.0.0.tar.gz`
+- `ltcai-6.0.0.tgz`
+- `dist/ltcai-6.0.0.vsix`
+- `src-tauri/target/release/bundle/dmg/Lattice AI_6.0.0_aarch64.dmg`
 
 Do not upload `dist/*`. Package registry publishing remains owner-run.
 
@@ -229,6 +230,7 @@ Do not upload `dist/*`. Package registry publishing remains owner-run.
 
 | Version | Theme |
 | --- | --- |
+| 6.0.0 | Product Reset / Review Center Completion: Snoozed filter, Unsnooze, OpenAPI-derived Review typing, Review feature extraction, v6 docs and scorecard |
 | 5.6.0 | Brain Automation Review Center: workspace-scoped automation review inbox, source-aware provenance, guarded approve/dismiss/snooze/run_now actions, and Act Review tab |
 | 5.5.0 | Release Coordination: synchronized package/runtime/static versions and release docs for the 5.5.0 line while preserving v5.4.0 Brain Automation Scheduler behavior |
 | 5.4.0 | Brain Automation Scheduler: consent-first recipe drafts (Daily/Weekly/Follow-up), TriggerService with dedup/LATTICE_TZ/degraded, runtime graph cleanup, E2E scenarios |

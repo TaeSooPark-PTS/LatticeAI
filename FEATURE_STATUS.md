@@ -1,12 +1,26 @@
-# Lattice AI — Feature Status (v5.6.0 target)
+# Lattice AI — Feature Status (v6.0.0 target)
 
-**Current release-preparation line:** v5.6.0 Brain Automation Review Center.
+**Current release-preparation line:** v6.0.0 Product Reset / Review Center Completion.
 Lattice AI is a local-first Digital Brain that keeps your knowledge durable
 across any AI model. The primary experience is Brain plus conversation; the
 graph remains durable infrastructure and advanced exploration, not the home
 product identity. Sections below v5.3.0 are historical release-status records
 and should not override the current README, ARCHITECTURE.md, SECURITY.md,
-PRIVACY.md, or v5.6.0 release notes.
+PRIVACY.md, or v6.0.0 release notes.
+
+## v6.0.0 Product Reset / Review Center Completion — current development line
+
+v6.0.0 completes the first Review Center recovery loop and starts the broader
+product-quality reset branch. The goal is not to claim 100/100, but to make the
+automation review workflow more reversible, typed, and maintainable.
+
+| Area | Status | Evidence |
+| --- | --- | --- |
+| **Snoozed review visibility** | WORKING | Review Center status filters include Pending, Snoozed, and All. |
+| **Unsnooze lifecycle** | WORKING | `ReviewQueueService.unsnooze` and `/automation/reviews/{item_id}/unsnooze` return stored snoozed items to pending and clear `snoozed_until`. |
+| **Strict review typing** | WORKING | `frontend/src/api/client.ts` aliases generated OpenAPI `ReviewItem` and `ReviewItemList` schemas. |
+| **Frontend ownership split** | WORKING | Review UI lives in `frontend/src/features/review/` instead of inside `Act.tsx`. |
+| **v6 quality evidence** | IN REVIEW | `docs/v6/QUALITY_SCORECARD.md` records baseline, target, actual estimate, evidence, and remaining gaps without claiming 100/100. |
 
 ## v5.6.0 Brain Automation Review Center — current development line
 

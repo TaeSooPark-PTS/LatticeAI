@@ -1,16 +1,78 @@
-# v6.0.0 Architecture Review Groundwork
+# Lattice AI v6.0.0 Architecture Review
 
-## Lane E/F Boundary Findings
+## Current Direction
 
-- `lattice_brain` remains physically separate from `latticeai`; the existing isolation tests import every `lattice_brain` module with a `latticeai` import blocker installed.
-- Direct text scan command used for this pass: `rg -n "from latticeai|import latticeai" lattice_brain tests/unit/test_lattice_brain_isolation.py`.
-- Text scan result: `lattice_brain/runtime/__init__.py` contains historical architecture-map strings mentioning `latticeai` integration points, and `tests/unit/test_lattice_brain_isolation.py` contains the expected boundary-test strings. These are not executable imports.
-- Executable import verification used an AST import scan across `lattice_brain/**/*.py` plus `tests/unit/test_lattice_brain_isolation.py`; both passed with no runtime `latticeai` dependency detected.
-- No app factory decomposition was applied in this pass. The unsnooze work stayed inside the review queue service/router boundary, which is the safer v6 Lane A surface.
+The v6.0.0 branch keeps Lattice AI centered on a local-first Digital Brain:
+knowledge and provenance are durable, while models and automation runs are
+replaceable execution layers.
 
-## Lane A Backend Review Queue Notes
+## Review Center Boundary
 
-- Unsnooze is an explicit review queue policy transition, valid only from stored `status == "snoozed"`.
-- Unsnooze sets `status = "pending"` and `snoozed_until = None`.
-- Expired snoozes still use read-time `effective_status == "pending"` without mutating storage; because unsnooze checks stored status, an expired stored snooze remains valid for explicit unsnooze.
-- Invalid unsnooze transitions flow through `InvalidReviewTransition` and return HTTP 409 from the API router.
+Implemented boundaries:
+
+- `latticeai/services/review_queue.py` owns Review Center policy:
+  transitions, read-time `effective_status`, `run_now` back-linking, and
+  unsnooze semantics.
+- `latticeai/api/review_queue.py` is a thin FastAPI router with explicit
+  response models.
+- `WorkspaceOSStore` owns workspace-scoped persistence.
+- `TriggerService` and `RunExecutor` enqueue review items only through the
+  opt-in `review_queue: true` path.
+
+This keeps Review Center behavior additive and avoids changing legacy workflow
+execution unless a workflow opts in.
+
+## App Factory
+
+Status:
+
+- `app_factory.py` still performs broad assembly work.
+- The Review Queue wiring is explicit but contributes to factory size.
+- A full decomposition into runtime modules is not complete in this branch
+  checkpoint.
+
+Recommended next steps:
+
+- Extract review/router assembly into a small runtime composition module.
+- Continue the existing runtime split pattern rather than introducing a new
+  global registry.
+- Preserve lazy imports and current app bootstrap semantics.
+
+## Brain Core Boundary
+
+Expected rule:
+
+- `lattice_brain` must not import `latticeai`.
+
+Verification command:
+
+```bash
+rg "from latticeai|import latticeai" lattice_brain
+```
+
+Current finding:
+
+- AST import scan and `tests/unit/test_lattice_brain_isolation.py` pass.
+- `rg` reports `latticeai` strings in `lattice_brain/runtime/__init__.py`, but
+  those are architecture-map docstring references, not executable imports.
+
+## Compatibility Risks
+
+- Review queue persistence adds state but does not require destructive
+  migration.
+- `unsnooze` only mutates explicitly through an API action.
+- Snooze expiry remains read-time only, so no scheduler mutation or hidden
+  migration is introduced.
+
+## Architecture Score Evidence
+
+Positive evidence:
+
+- Review Center policy is testable independently from the API.
+- Frontend Review Center is feature-owned instead of embedded inside `Act.tsx`.
+- OpenAPI-generated schemas now drive ReviewItem frontend typing.
+
+Remaining gaps:
+
+- `app_factory.py` decomposition remains incomplete.
+- Strict generated client methods still sit behind the local `apiJson` wrapper.
