@@ -123,6 +123,10 @@ export function ProductFlow({ onComplete }: { onComplete: () => void }) {
           <RecommendationScreen
             recommendations={recommendations}
             onBack={() => setStep("analysis")}
+            onSkipModel={() => {
+              try { localStorage.setItem(FLOW_COMPLETE_KEY, "true"); } catch {}
+              onComplete();
+            }}
             onSelect={(model) => {
               setSelected(model);
               setStep("install");
@@ -333,10 +337,12 @@ function AnalysisScreen({
 function RecommendationScreen({
   recommendations,
   onBack,
+  onSkipModel,
   onSelect,
 }: {
   recommendations: RecommendedModel[];
   onBack: () => void;
+  onSkipModel: () => void;
   onSelect: (model: RecommendedModel) => void;
 }) {
   const language = useAppStore((state) => state.language);
@@ -370,6 +376,7 @@ function RecommendationScreen({
 
       <div style={{ marginTop: "1.1rem", display: "flex", justifyContent: "center", gap: "1rem", alignItems: "center" }}>
         <Button variant="ghost" onClick={onBack}>{t(language, "flow.recommend.back")}</Button>
+        <Button variant="outline" onClick={onSkipModel}>{t(language, "flow.recommend.skip")}</Button>
         <div style={{ fontSize: "0.82rem", color: "hsl(var(--fg-muted))" }}>{t(language, "flow.recommend.hint")}</div>
       </div>
     </div>
