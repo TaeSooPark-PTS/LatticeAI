@@ -31,6 +31,7 @@ from latticeai.runtime.platform_services_runtime import (
     build_brain_network,
     build_model_service,
 )
+from latticeai.runtime.router_registration import register_router
 from latticeai.runtime.security_runtime import build_security_runtime
 from latticeai.runtime.web_runtime import build_web_runtime
 
@@ -1222,10 +1223,10 @@ def _build(config: "Optional[Config]" = None) -> Dict[str, Any]:
     )
     ui_file_response = STATIC_ROUTES.ui_file_response
     local_sysinfo = STATIC_ROUTES.local_sysinfo
-    app.include_router(STATIC_ROUTES.router)
+    register_router(app, STATIC_ROUTES.router)
 
     # ── Auth & Admin routers (latticeai.api) ─────────────────────────────────────
-    app.include_router(create_auth_router(
+    register_router(app, create_auth_router(
         load_users=load_users, save_users=save_users,
         hash_password=hash_password, verify_and_migrate=verify_and_migrate_password,
         create_session=create_session, get_session_email=get_session_email,
@@ -1252,7 +1253,7 @@ def _build(config: "Optional[Config]" = None) -> Dict[str, Any]:
             device_identity=DEVICE_IDENTITY,
         )
 
-    app.include_router(create_admin_router(
+    register_router(app, create_admin_router(
         require_admin=require_admin, require_user=require_user,
         load_users=load_users, save_users=save_users,
         get_user_role=get_user_role, get_history=get_history,
@@ -1270,7 +1271,7 @@ def _build(config: "Optional[Config]" = None) -> Dict[str, Any]:
         product_hardening_status=_product_hardening_status,
     ))
 
-    app.include_router(create_invitations_router(
+    register_router(app, create_invitations_router(
         invitation_store=INVITATION_STORE,
         workspace_service=WORKSPACE_SERVICE,
         require_admin=require_admin,
@@ -1307,7 +1308,7 @@ def _build(config: "Optional[Config]" = None) -> Dict[str, Any]:
             })
         return files
 
-    app.include_router(_create_security_router(
+    register_router(app, _create_security_router(
         require_admin=require_admin,
         get_history=get_history,
         get_audit_events=_security_audit_events_safe,
@@ -1431,7 +1432,7 @@ def _build(config: "Optional[Config]" = None) -> Dict[str, Any]:
     app.state.context = context
 
     # ── Workspace OS + Organization router (latticeai.api.workspace, v1.2.0) ──────
-    app.include_router(create_workspace_router(context))
+    register_router(app, create_workspace_router(context))
 
 
     # ── v2 Agentic Workspace Platform: cross-system wiring ───────────────────────
@@ -1486,7 +1487,7 @@ def _build(config: "Optional[Config]" = None) -> Dict[str, Any]:
         classify_sensitive_message=classify_sensitive_message,
     )
 
-    app.include_router(create_plugins_router(
+    register_router(app, create_plugins_router(
         registry=PLUGIN_REGISTRY,
         require_user=require_user,
         require_admin=require_admin,
@@ -1497,7 +1498,7 @@ def _build(config: "Optional[Config]" = None) -> Dict[str, Any]:
         static_dir=STATIC_DIR,
     ))
 
-    app.include_router(create_workflow_designer_router(
+    register_router(app, create_workflow_designer_router(
         store=WORKSPACE_OS,
         require_user=require_user,
         get_current_user=get_current_user,
@@ -1513,7 +1514,7 @@ def _build(config: "Optional[Config]" = None) -> Dict[str, Any]:
         trigger_service=TRIGGER_SERVICE,
     ))
 
-    app.include_router(create_agents_router(
+    register_router(app, create_agents_router(
         store=WORKSPACE_OS,
         orchestrator_factory=PLATFORM.build_orchestrator,
         require_user=require_user,
@@ -1528,7 +1529,7 @@ def _build(config: "Optional[Config]" = None) -> Dict[str, Any]:
         run_executor=RUN_EXECUTOR,
     ))
 
-    app.include_router(create_marketplace_router(
+    register_router(app, create_marketplace_router(
         store=WORKSPACE_OS,
         catalog=TEMPLATE_CATALOG,
         require_user=require_user,
@@ -1537,7 +1538,7 @@ def _build(config: "Optional[Config]" = None) -> Dict[str, Any]:
         workspace_graph=_workspace_graph,
     ))
 
-    app.include_router(create_realtime_router(
+    register_router(app, create_realtime_router(
         bus=REALTIME_BUS,
         require_user=require_user,
         get_current_user=get_current_user,
@@ -1558,7 +1559,7 @@ def _build(config: "Optional[Config]" = None) -> Dict[str, Any]:
         runtime_features=runtime_features,
         is_public=IS_PUBLIC_MODE,
     )
-    app.include_router(create_health_router(
+    register_router(app, create_health_router(
         model_service=MODEL_SERVICE,
         engine_status=engine_status,
         get_current_user=get_current_user,
@@ -1569,7 +1570,7 @@ def _build(config: "Optional[Config]" = None) -> Dict[str, Any]:
 
 
     # ── Model / Engine router (latticeai.api.models, v1.3.0) ─────────────────────
-    app.include_router(create_models_router(
+    register_router(app, create_models_router(
         model_router=router,
         require_user=require_user,
         get_current_user=get_current_user,
@@ -1599,7 +1600,7 @@ def _build(config: "Optional[Config]" = None) -> Dict[str, Any]:
 
     # ── Chat / Completion ──────────────────────────────────────────────────────────
 
-    app.include_router(create_chat_router(context))
+    register_router(app, create_chat_router(context))
 
     def _embedding_info() -> dict:
         from latticeai.core.embedding_providers import PROVIDER_TYPES, embedding_provider_profiles
@@ -1617,14 +1618,14 @@ def _build(config: "Optional[Config]" = None) -> Dict[str, Any]:
             return None
         return PLATFORM.allowed_scopes(user)
 
-    app.include_router(create_search_router(
+    register_router(app, create_search_router(
         service=SEARCH_SERVICE,
         allowed_workspaces_for=_allowed_workspaces_for,
         require_user=require_user,
         embedding_info=_embedding_info,
     ))
 
-    app.include_router(create_tools_router(
+    register_router(app, create_tools_router(
         ingestion_pipeline=INGESTION_PIPELINE,
         config=CONFIG,
         data_dir=DATA_DIR,
@@ -1650,19 +1651,19 @@ def _build(config: "Optional[Config]" = None) -> Dict[str, Any]:
         hooks=HOOKS_REGISTRY,
     ))
 
-    app.include_router(create_hooks_router(
+    register_router(app, create_hooks_router(
         registry=HOOKS_REGISTRY,
         require_user=require_user,
         append_audit_event=append_audit_event,
     ))
 
-    app.include_router(create_agent_registry_router(
+    register_router(app, create_agent_registry_router(
         registry=AGENT_REGISTRY,
         require_user=require_user,
         append_audit_event=append_audit_event,
     ))
 
-    app.include_router(create_memory_router(
+    register_router(app, create_memory_router(
         service=MEMORY_SERVICE,
         require_user=require_user,
         get_current_user=get_current_user,
@@ -1683,7 +1684,7 @@ def _build(config: "Optional[Config]" = None) -> Dict[str, Any]:
             inputs={"__review_item__": item.get("id")},
         )
 
-    app.include_router(create_review_queue_router(
+    register_router(app, create_review_queue_router(
         service=REVIEW_QUEUE,
         require_user=require_user,
         gate_read=PLATFORM.gate_read,
@@ -1692,12 +1693,12 @@ def _build(config: "Optional[Config]" = None) -> Dict[str, Any]:
         append_audit_event=append_audit_event,
     ))
 
-    app.include_router(create_browser_router(
+    register_router(app, create_browser_router(
         pipeline=INGESTION_PIPELINE,
         require_user=require_user,
     ))
 
-    app.include_router(create_portability_router(
+    register_router(app, create_portability_router(
         service=KG_PORTABILITY,
         require_user=require_user,
         require_admin=require_admin,
@@ -1708,14 +1709,14 @@ def _build(config: "Optional[Config]" = None) -> Dict[str, Any]:
         portability=KG_PORTABILITY,
         data_dir=DATA_DIR,
     )
-    app.include_router(create_network_router(
+    register_router(app, create_network_router(
         network=BRAIN_NETWORK,
         identity=DEVICE_IDENTITY,
         require_user=require_user,
     ))
 
-    app.include_router(create_garden_router(gardener=gardener, require_user=require_user))
-    app.include_router(create_setup_router(model_router=router, require_user=require_user))
+    register_router(app, create_garden_router(gardener=gardener, require_user=require_user))
+    register_router(app, create_setup_router(model_router=router, require_user=require_user))
 
     # ── Entry Point ────────────────────────────────────────────────────────────────
 
