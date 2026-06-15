@@ -75,6 +75,8 @@ Reasons per candidate:
 - Moving would require significant DI refactor or new context object (post v6.1 scope).
 - Preserves zero behavior change and shim compatibility.
 
-Recorded in BACKEND_HARDENING.md. Recommend latticeai/telegram/ package in future phase after Knowledge Graph + AgentRuntime stabilization.
+Recorded in BACKEND_HARDENING.md. Recommend `latticeai/telegram/` package in a
+future phase after Knowledge Graph + AgentRuntime stabilization.
 
-Import smoke test: `python -c "import telegram_bot; print('import ok')" ` → planned next.
+Import smoke test:
+- `node scripts/run_python.mjs - <<'PY' ... import telegram_bot ... PY` -> `import ok`
