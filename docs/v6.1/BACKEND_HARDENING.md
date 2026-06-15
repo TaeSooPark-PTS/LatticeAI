@@ -25,10 +25,8 @@ Pure helpers safely extracted despite initial conservative scan:
   - `_apply_extra_path() -> None`
   - `_has_module(name: str) -> bool`
 - `ltcai_cli.py` now imports from `latticeai.cli.runtime` (root entrypoint preserved, no behavior change)
-- Added unit tests in `tests/unit/test_import_guard.py`:
-  - import smoke test
-  - `_load_env_file` with temp `.env`
-  - verification that existing env vars are not overwritten
+- Added unit tests in `tests/unit/test_cli_runtime.py` (CLI helper 전용)
+- `tests/unit/test_import_guard.py`는 BrainCore import guard 전용
 
 This resolves the recorded blocker for the three pure helpers. Remaining helpers (`_local_ips`, banner, tunnel, telegram) stay in root entrypoint for now.
 
