@@ -1,5 +1,7 @@
 const { test, expect } = require("@playwright/test");
 
+const GRAPH_SEARCH_LABEL = /Search knowledge graph|지식 그래프 검색/;
+
 function trackPageErrors(page) {
   const errors = [];
   page.on("pageerror", (error) => errors.push(String(error.message || error)));
@@ -37,8 +39,8 @@ test("first-run ritual enters the living Brain", async ({ page }) => {
   await expect(page.locator("body")).toContainText("모델은 목소리이고, 자산은 Brain입니다.");
   await expect(page.getByRole("button", { name: "Travel deeper into your Brain" })).toBeVisible();
 
-  await page.getByRole("textbox", { name: "You", exact: true }).fill("Codex");
-  await page.getByRole("textbox", { name: "you@local", exact: true }).fill("codex@local");
+  await page.getByPlaceholder(/You|나/).fill("Codex");
+  await page.getByPlaceholder("you@local").fill("codex@local");
   await page.getByPlaceholder("로컬 Brain 비밀번호").fill("Lattice123");
   await page.getByRole("button", { name: "내 Brain 시작하기" }).click();
 
@@ -85,7 +87,7 @@ test("Brain depths reveal memory, knowledge, relationships, then graph", async (
   await page.getByRole("button", { name: "그래프로 보기" }).click();
   await expect(page.locator("body")).toContainText("전체 지식 그래프");
   await expect(page.locator("[data-testid='emergent-knowledge-graph']")).toBeVisible();
-  await expect(page.getByLabel("Search knowledge graph")).toBeVisible();
+  await expect(page.getByLabel(GRAPH_SEARCH_LABEL)).toBeVisible();
   await expect(page.locator(".graph-node").first()).toBeVisible();
   expect(errors).toEqual([]);
 });
@@ -95,7 +97,7 @@ test("deepest Brain layer supports graph search and returning to the surface", a
   await openBrain(page);
   await travelDeeper(page, 4);
 
-  await page.getByLabel("Search knowledge graph").fill("workspace");
+  await page.getByLabel(GRAPH_SEARCH_LABEL).fill("workspace");
   await expect(page.locator(".graph-node")).toHaveCount(2);
   await expect(page.locator(".brain-graph-focus")).toContainText("Lattice AI");
 
@@ -135,18 +137,18 @@ test("admin console is separated from the user Brain surface", async ({ page }) 
   await openBrain(page);
 
   await expect(page.locator("main[aria-label='Lattice Brain']")).toBeVisible();
-  await expect(page.locator("main[aria-label='Lattice Admin']")).toHaveCount(0);
+  await expect(page.locator("main.admin-console")).toHaveCount(0);
 
   await page.getByRole("button", { name: "관리자 콘솔" }).click();
   await expect(page).toHaveURL(/#\/admin$/);
-  await expect(page.locator("main[aria-label='Lattice Admin']")).toBeVisible();
+  await expect(page.locator("main.admin-console")).toBeVisible();
   await expect(page.locator("body")).toContainText("Admin Console");
   await expect(page.locator("body")).toContainText(/Activity Logs|활동 로그/);
   await expect(page.locator("body")).toContainText(/Security Events|보안 이벤트/);
 
   await page.getByRole("button", { name: "Brain" }).click();
   await expect(page.locator("main[aria-label='Lattice Brain']")).toBeVisible();
-  await expect(page.locator("main[aria-label='Lattice Admin']")).toHaveCount(0);
+  await expect(page.locator("main.admin-console")).toHaveCount(0);
   expect(errors).toEqual([]);
 });
 
