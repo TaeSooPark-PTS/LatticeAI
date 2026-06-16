@@ -8,7 +8,7 @@ architecture or add unrelated product features.
 
 ## Completed Refresh Areas
 
-- Synchronized current-release version metadata to `4.6.1`.
+- Synchronized then-current release version metadata to `4.6.1`.
 - Reframed README around the current Living Brain flow:
   Login -> Environment Analysis -> Recommended Models -> Install & Load ->
   Brain Chat.

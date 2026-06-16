@@ -16,7 +16,7 @@ release documentation references to 5.5.0.
   to 5.5.0.
 - **Release docs sync**: README, RELEASE.md, docs/CHANGELOG.md,
   FEATURE_STATUS.md, RELEASE_NOTES.md, vscode-extension/README.md, and this root
-  release note now describe the 5.5.0 current release-preparation line.
+  release note described the 5.5.0 release-preparation line at that time.
 - **Artifact exactness**: Release guidance uses exact 5.5.0 artifact filenames
   and continues to forbid wildcard publish commands such as `dist/*`.
 - **Behavior preserved**: Consent-first Brain automation recipes, TriggerService

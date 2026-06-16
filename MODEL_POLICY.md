@@ -1,6 +1,6 @@
 # Model Policy
 
-Lattice AI v4.0.0 uses a multimodal-first model policy.
+Lattice AI v6.1.0 uses a multimodal-first model policy.
 
 ## Recommendation Rules
 
@@ -43,4 +43,3 @@ Every recommended model must expose these fields in this order:
 Existing user data is not deleted by this policy. The current recommendation
 surface changes so new users are not asked to choose between old and new model
 generations.
-

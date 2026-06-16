@@ -19,7 +19,7 @@ maintenance. This release does not redesign Brain Core or the storage layer.
 - Added frontend API helpers for `/admin/stats` and `/admin/security/events`.
 - Updated visual validation to confirm the admin console is separate from the
   user Brain surface.
-- Synchronized current-release version metadata to `4.7.0`.
+- Synchronized then-current release version metadata to `4.7.0`.
 - Updated README, RELEASE.md, release notes, changelog, architecture, security,
   feature status, VS Code extension docs, and release evidence references.
 

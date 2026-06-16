@@ -1,7 +1,7 @@
-# Lattice AI Figma-Equivalent Spec (v3.3.1)
+# Lattice AI Figma-Equivalent Spec (v6.1.0)
 
 This repository does not currently contain an editable Figma component library.
-For v3.3.1, this document is the implementation-grade product spec used in
+For v6.1.0, this document is the implementation-grade product spec used in
 place of a completed Figma library. The production source remains the tokenized
 `/app` implementation in `static/css/tokens.css` and `static/v3/css/*.css`.
 

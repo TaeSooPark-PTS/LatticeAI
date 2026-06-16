@@ -1,8 +1,8 @@
-# Lattice AI v6.0.0 Product Reset Plan
+# Lattice AI v6.1.0 Product Hardening Plan
 
 Branch: `feat/v6-product-reset-100-point-uplift`
 
-This plan tracks the v6.0.0 product-quality uplift. The target is aggressive,
+This plan tracks the v6.1.0 product-quality uplift. The target is aggressive,
 but completion claims must stay evidence-based.
 
 ## Non-negotiables
@@ -100,14 +100,14 @@ Current implementation status:
 
 Required:
 
-- Synchronize version constants and release docs to `6.0.0`.
+- Synchronize version constants and release docs to `6.1.0`.
 - Build and validate exact artifacts if the branch reaches release-candidate
   state.
 
 Current implementation status:
 
-- Version metadata is synchronized to `6.0.0`.
-- Exact v6.0.0 artifacts have been built and validated locally:
+- Version metadata is synchronized to `6.1.0`.
+- Exact v6.1.0 artifacts have been built and validated locally:
   wheel, sdist, npm tgz, VSIX, and Tauri DMG.
 
 ## Acceptance Gates
@@ -124,6 +124,6 @@ Before final report:
 - `npm run desktop:tauri:check`
 - `npm run build:assets`
 - `npm run build:python`
-- `python scripts/wheel_smoke.py --wheel dist/ltcai-6.0.0-py3-none-any.whl`
+- `python scripts/wheel_smoke.py --wheel dist/ltcai-6.1.0-py3-none-any.whl`
 - `npm run release:validate` if release artifacts are produced.
 - `npm run test:visual` if available.

@@ -1,8 +1,8 @@
-# Lattice AI v6.0.0 Architecture Review
+# Lattice AI v6.1.0 Architecture Review
 
 ## Current Direction
 
-The v6.0.0 branch keeps Lattice AI centered on a local-first Digital Brain:
+The v6.1.0 line keeps Lattice AI centered on a local-first Digital Brain:
 knowledge and provenance are durable, while models and automation runs are
 replaceable execution layers.
 

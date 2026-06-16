@@ -8,7 +8,7 @@ product identity. Sections below v5.3.0 are historical release-status records
 and should not override the current README, ARCHITECTURE.md, SECURITY.md,
 PRIVACY.md, or v6.1.0 release notes.
 
-## v6.1.0 Product Hardening / Digital Brain Completion — current development line
+## v6.1.0 Product Hardening / Digital Brain Completion — current release line
 
 v6.1.0 hardens the Digital Brain product loop without broad new surfaces. The
 goal is to make first-run, Brain Home, Review Center, Brain Core boundaries,
@@ -22,7 +22,7 @@ trust gates, and legacy-root cleanup feel coherent and testable.
 | **Brain Core boundary** | WORKING | AST guard verifies `lattice_brain` does not import `latticeai` or `ltcai`. |
 | **Model download consent** | WORKING | `model_runtime` unit test verifies download paths fail without explicit consent. |
 | **Root CLI cleanup** | PARTIAL | Pure `ltcai_cli.py` helpers moved into `latticeai.cli.runtime`; root entrypoint remains. |
-| **Release docs sync** | IN PROGRESS | README, RELEASE, CHANGELOG, v6.1 UX/backend docs are being aligned before final version sync. |
+| **Release docs sync** | WORKING | README, RELEASE, CHANGELOG, release notes, security, extension docs, and v6.1 UX/backend docs are aligned to 6.1.0. |
 
 ## v6.0.0 Product Reset / Review Center Completion — previous development line
 
@@ -38,7 +38,7 @@ automation review workflow more reversible, typed, and maintainable.
 | **Frontend ownership split** | WORKING | Review UI lives in `frontend/src/features/review/` instead of inside `Act.tsx`. |
 | **v6 quality evidence** | IN REVIEW | `docs/v6/QUALITY_SCORECARD.md` records baseline, target, actual estimate, evidence, and remaining gaps without claiming 100/100. |
 
-## v5.6.0 Brain Automation Review Center — current development line
+## v5.6.0 Brain Automation Review Center — historical development line
 
 v5.6.0 adds the user-facing review layer for Brain automation. Automation output
 is stored as workspace-scoped review items with source and provenance metadata,
@@ -54,7 +54,7 @@ then shown in Act > Runs > Review for explicit user action.
 
 ## v5.5.0 Release Coordination — what changed
 
-v5.5.0 completes the release coordination pass for the current product line:
+v5.5.0 completed the release coordination pass for that product line:
 version metadata, lockfiles, static manifest, release documentation, and exact
 artifact names are synchronized while preserving the v5.4.0 Brain Automation
 Scheduler behavior.
@@ -62,7 +62,7 @@ Scheduler behavior.
 | Area | Status | Evidence |
 | --- | --- | --- |
 | **Version synchronization** | WORKING | `scripts/bump_version.py` updates Python, npm, VSIX, Tauri, runtime constants, lockfiles, and static asset metadata to 5.5.0. |
-| **Release documentation** | WORKING | README, RELEASE.md, docs/CHANGELOG.md, RELEASE_NOTES.md, and vscode-extension/README.md point current release-preparation references at 5.5.0. |
+| **Release documentation** | WORKING | README, RELEASE.md, docs/CHANGELOG.md, RELEASE_NOTES.md, and vscode-extension/README.md pointed that historical line's release docs at 5.5.0. |
 | **Behavior preservation** | WORKING | v5.4.0 consent-first automation, TriggerService safeguards, and runtime graph cleanup remain the functional baseline. |
 
 ## v5.4.0 Brain Automation Scheduler — what changed

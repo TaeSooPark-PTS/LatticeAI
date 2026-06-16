@@ -26,7 +26,7 @@ maintenance. This release does not redesign Brain Core or the storage layer.
   admin observability state remain separate in the frontend runtime.
 - Updated visual validation to confirm the admin console is separate from the
   user Brain surface.
-- Synchronized current-release version metadata to `4.7.1`.
+- Synchronized then-current release version metadata to `4.7.1`.
 - Updated README, RELEASE.md, release notes, changelog, architecture, security,
   feature status, VS Code extension docs, and release evidence references.
 

@@ -1,4 +1,4 @@
-# Lattice AI v6.0.0 Quality Scorecard
+# Lattice AI v6.1.0 Quality Scorecard
 
 The score is evidence-based and intentionally conservative. This branch does
 not claim 100/100.
@@ -40,13 +40,13 @@ This is a checkpoint estimate, not a final release claim.
 - Review Center UI is extracted from `Act.tsx` into feature-owned modules.
 - Review item frontend types are driven by generated OpenAPI component schemas.
 - Backend Review Queue remains additive and workspace-scoped.
-- Version metadata is synchronized to `6.0.0`.
+- Version metadata is synchronized to `6.1.0`.
 - `app_factory.py` assembly is split across runtime seams for session,
   hooks, web shell, persistence, lifespan, automation, context/search,
   platform services, app context construction, and router registration.
 - Route surface validation preserves the 364-entry route/mount snapshot.
 - Visual validation, release artifact validation, and wheel smoke validation
-  have passed for the v6.0.0 artifact set.
+  have passed for the v6.1.0 artifact set.
 - Review Center list and state-transition calls use generated OpenAPI operation
   paths instead of hand-built encoded URLs.
 - First-run/onboarding trust copy now states local ownership, explicit

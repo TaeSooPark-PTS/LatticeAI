@@ -61,7 +61,7 @@ contracts, and local-first/offline operation.
 - Legacy frontend build pipeline.
 - Legacy v3 frontend lint script.
 - Static v3 asset tree in release packages.
-- Direct current-release references to v4.0.1 in latest docs.
+- Direct then-current release references to v4.0.1 in then-latest docs.
 
 ## Data Preservation
 

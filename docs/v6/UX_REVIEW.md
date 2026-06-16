@@ -1,4 +1,4 @@
-# Lattice AI v6.0.0 UX Review
+# Lattice AI v6.1.0 UX Review
 
 ## Product Promise
 
