@@ -11,19 +11,13 @@ import json
 from pathlib import Path
 
 from latticeai.core.logging_safety import install_sensitive_log_filter, safe_log_text
+from latticeai.cli.runtime import _load_env_file
 
 install_sensitive_log_filter()
 
 def load_env_file(path=".env"):
-    env_path = Path(path)
-    if not env_path.exists():
-        return
-    for raw_line in env_path.read_text(encoding="utf-8").splitlines():
-        line = raw_line.strip()
-        if not line or line.startswith("#") or "=" not in line:
-            continue
-        key, value = line.split("=", 1)
-        os.environ.setdefault(key.strip(), value.strip().strip('"').strip("'"))
+    # Single source of truth: shared with ltcai_cli via latticeai.cli.runtime.
+    _load_env_file(Path(path))
 
 load_env_file()
 

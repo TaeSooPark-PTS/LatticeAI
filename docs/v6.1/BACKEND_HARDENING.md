@@ -80,3 +80,17 @@ future phase after Knowledge Graph + AgentRuntime stabilization.
 
 Import smoke test:
 - `node scripts/run_python.mjs - <<'PY' ... import telegram_bot ... PY` -> `import ok`
+
+## Env loader de-duplication (2026-06-16, pts_claudecode)
+
+Resolved the one safe item from the telegram_bot breakdown: the duplicated
+`.env` parser. `telegram_bot.load_env_file` now delegates to the shared
+`latticeai.cli.runtime._load_env_file` (same source of truth as `ltcai_cli`),
+keeping its `(path=".env")` signature as a thin wrapper. Net effect: single
+parsing implementation, no behavior change for real `.env` files (shared helper
+additionally skips empty keys — a strict improvement). The remaining
+telegram_bot globals/handlers stay deferred per the breakdown above.
+
+Verified:
+- `import telegram_bot` -> `import ok`
+- `tests/unit/test_chat_telegram_decoupling.py`, `test_cli_runtime.py` pass
