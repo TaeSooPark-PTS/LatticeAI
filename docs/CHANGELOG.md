@@ -3,6 +3,37 @@
 The top entry is the current release-preparation target. Older entries are
 historical and may describe behavior as it existed at that release.
 
+## [6.2.0] - 2026-06-16
+
+> Product Decomposition / Release Smoke Automation. Splits the largest product
+> surfaces into feature modules, strengthens consent/i18n coverage, shrinks
+> legacy root modules, and automates release smoke validation.
+
+### Added
+- Feature-owned Brain Home and Admin Console modules behind the existing app
+  shell route surface.
+- Onboarding screen components for ProductFlow, backed by design-system CSS
+  instead of inline style layout.
+- Model download consent details for size, storage location, external target,
+  and a "do later" path.
+- Typed tool and interaction router context objects for app-factory route
+  registration without changing route order.
+- `npm run release:smoke` covering wheel install, npm tgz contents, static
+  assets, and Tauri artifact checks.
+
+### Changed
+- Historical root modules for CLI, Telegram, and P-Reinforce now delegate to
+  package modules while preserving import and script compatibility.
+- Admin Console and onboarding user-facing copy now route through shared i18n
+  keys for Korean/English coverage.
+- Package/runtime/static metadata is synchronized to 6.2.0; package publish,
+  deployment, tag creation, and GitHub Release creation remain owner-run only.
+
+### Preserved
+- v6.1 screenshots and validation reports remain historical evidence unless a
+  fresh 6.2 capture set is generated.
+- Package publish and deploy commands continue to require exact artifact names.
+
 ## [6.1.0] - 2026-06-16
 
 > Product Hardening / Digital Brain Completion. Tightens the local-first Brain
@@ -30,7 +61,7 @@ historical and may describe behavior as it existed at that release.
   production app assembly and is now injected through `AppContext`.
 - README release evidence screenshots and walkthrough GIF are refreshed under
   `output/release/v6.1.0/`, including the Review Center surface.
-- README and release notes now describe v6.1.0 as the current hardening target
+- README and release notes described v6.1.0 as the then-current hardening target
   with exact expected artifact filenames.
 
 ### Preserved

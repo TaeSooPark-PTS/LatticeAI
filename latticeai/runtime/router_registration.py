@@ -10,6 +10,8 @@ from __future__ import annotations
 
 from typing import Any
 
+from latticeai.services.router_context import InteractionRouterContext
+
 
 def build_static_routes_bundle(
     *,
@@ -412,44 +414,60 @@ def register_health_and_model_routers(
 def register_interaction_routers(
     app: Any,
     *,
+    interaction_context: InteractionRouterContext | None = None,
     create_chat_router: Any,
-    context: Any,
+    context: Any = None,
     create_search_router: Any,
-    search_service: Any,
-    allowed_workspaces_for: Any,
-    require_user: Any,
-    embedding_info: Any,
+    search_service: Any = None,
+    allowed_workspaces_for: Any = None,
+    require_user: Any = None,
+    embedding_info: Any = None,
     create_tools_router: Any,
-    ingestion_pipeline: Any,
-    config: Any,
-    data_dir: Any,
-    static_dir: Any,
-    model_router: Any,
-    require_admin: Any,
-    get_current_user: Any,
-    clear_history: Any,
-    append_audit_event: Any,
-    enforce_rate_limit: Any,
-    bytes_match_extension: Any,
-    classify_sensitive_message: Any,
-    save_to_history: Any,
-    enable_graph: bool,
-    knowledge_graph: Any,
-    require_graph: Any,
-    local_kg_watcher: Any,
-    load_mcp_installs: Any,
-    recommend_mcps: Any,
-    install_mcp: Any,
-    mcp_public_item: Any,
-    hooks: Any,
+    ingestion_pipeline: Any = None,
+    config: Any = None,
+    data_dir: Any = None,
+    static_dir: Any = None,
+    model_router: Any = None,
+    require_admin: Any = None,
+    get_current_user: Any = None,
+    clear_history: Any = None,
+    append_audit_event: Any = None,
+    enforce_rate_limit: Any = None,
+    bytes_match_extension: Any = None,
+    classify_sensitive_message: Any = None,
+    save_to_history: Any = None,
+    enable_graph: bool | None = None,
+    knowledge_graph: Any = None,
+    require_graph: Any = None,
+    local_kg_watcher: Any = None,
+    load_mcp_installs: Any = None,
+    recommend_mcps: Any = None,
+    install_mcp: Any = None,
+    mcp_public_item: Any = None,
+    hooks: Any = None,
     create_hooks_router: Any,
     create_agent_registry_router: Any,
-    agent_registry: Any,
+    agent_registry: Any = None,
     create_memory_router: Any,
-    memory_service: Any,
-    platform: Any,
+    memory_service: Any = None,
+    platform: Any = None,
 ) -> tuple[Any, ...]:
     """Register chat/search/tools/hooks/registry/memory routes in order."""
+
+    tool_context = None
+    if interaction_context is not None:
+        context = interaction_context.chat_context
+        search_service = interaction_context.search_service
+        allowed_workspaces_for = interaction_context.allowed_workspaces_for
+        require_user = interaction_context.require_user
+        embedding_info = interaction_context.embedding_info
+        tool_context = interaction_context.tool_context
+        get_current_user = tool_context.get_current_user
+        append_audit_event = tool_context.append_audit_event
+        hooks = interaction_context.hooks
+        agent_registry = interaction_context.agent_registry
+        memory_service = interaction_context.memory_service
+        platform = interaction_context.platform
 
     return register_routers(
         app,
@@ -461,6 +479,7 @@ def register_interaction_routers(
             embedding_info=embedding_info,
         ),
         create_tools_router(
+            tool_context=tool_context,
             ingestion_pipeline=ingestion_pipeline,
             config=config,
             data_dir=data_dir,

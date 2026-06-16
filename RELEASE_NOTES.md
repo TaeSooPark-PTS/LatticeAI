@@ -1,7 +1,39 @@
 # Release Notes
 
-The current release target is v6.1.0. The tracked release-note surface starts at
+The current release target is v6.2.0. The tracked release-note surface starts at
 v4.5.0 so the public Git tree stays focused on the current product era.
+
+## v6.2.0 - Product Decomposition / Release Smoke Automation
+
+Lattice AI v6.2.0 reduces the largest product and runtime composition surfaces
+while keeping the v6 Digital Brain behavior stable. The app shell, onboarding
+flow, root legacy modules, router assembly, model consent copy, and release
+smoke checks are split into smaller testable boundaries.
+
+### Highlights
+
+- Split Brain Home and Admin Console out of `App.tsx`.
+- Split ProductFlow onboarding screens into dedicated components and removed
+  inline layout styles from the onboarding surface.
+- Added download size, storage location, external target, and do-later consent
+  copy before model download starts.
+- Moved root CLI, Telegram, and P-Reinforce bodies behind package modules while
+  preserving root import/script compatibility shims.
+- Added typed tool/interaction router contexts for app-factory decomposition
+  without changing router registration order.
+- Added `npm run release:smoke` for wheel install, npm tgz, static asset, and
+  Tauri artifact smoke validation.
+- Synchronized package/runtime/static versions to `6.2.0`.
+
+### Expected Artifacts
+
+- `dist/ltcai-6.2.0-py3-none-any.whl`
+- `dist/ltcai-6.2.0.tar.gz`
+- `dist/ltcai-6.2.0.vsix`
+- `ltcai-6.2.0.tgz`
+- `src-tauri/target/release/bundle/dmg/Lattice AI_6.2.0_aarch64.dmg`
+
+Full notes: [RELEASE_NOTES_v6.2.0.md](RELEASE_NOTES_v6.2.0.md)
 
 ## v6.1.0 - Product Hardening / Digital Brain Completion
 

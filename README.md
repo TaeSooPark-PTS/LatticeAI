@@ -200,36 +200,31 @@ See [docs/DEVELOPMENT.md](docs/DEVELOPMENT.md) for developer workflow details.
 
 ## Current Release Preparation
 
-The current development target is **6.1.0 Product Hardening / Digital Brain Completion**:
+The current development target is **6.2.0 Product Decomposition / Release Smoke Automation**:
 
-- First-run now lets users create or open the local Brain even when they defer
-  model setup, keeping the Brain durable while models stay replaceable.
-- Brain Home explains the first memory loop: save useful context, see it return
-  in the Brain state, then protect it with backup/export.
-- Review Center keeps Pending, Snoozed, and All filters while clarifying that
-  Run now is a preview/regenerate action, not approval.
-- `lattice_brain` has an AST import guard so Brain Core does not import
-  `latticeai` or `ltcai`.
-- Model download consent has a unit guard: token presence alone does not start
-  an external download path.
-- `ltcai_cli.py` keeps the root entrypoint while pure CLI runtime helpers live
-  under `latticeai.cli.runtime`.
-- Tool dispatch authorization now has an injectable service boundary around
-  the shared ToolRegistry, reducing app-factory reliance on module globals.
-- Chat agent runtime construction moved into app-factory assembly and is passed
-  through `AppContext`, so the chat router no longer owns production runtime
-  construction.
-- v6.1 documentation tracks backend hardening, frontend UX hardening, and the
-  baseline scan for version metadata, root legacy modules, Brain Core boundary,
-  and local-first trust gates.
+- `App.tsx` now delegates the main Brain and Admin surfaces to focused feature
+  modules instead of owning the full product shell.
+- `ProductFlow.tsx` is an orchestration layer; onboarding screens live in
+  dedicated components, use design-system classes, and avoid inline style
+  layout.
+- Model download consent states download size, storage location, external
+  target, and a "do later" path before any model fetch starts.
+- Admin Console and onboarding copy use the shared i18n map for Korean/English
+  coverage instead of embedding user-facing English in component bodies.
+- Historical root modules now shrink into compatibility shims while runtime
+  code lives under package modules.
+- Interaction/tool router assembly uses typed context objects to reduce
+  app-factory parameter sprawl while preserving route order.
+- Release smoke automation now checks wheel install, npm tgz contents, static
+  assets, and Tauri artifacts after exact-version artifact validation.
 
-Expected artifacts for 6.1.0 release must use exact filenames:
+Expected artifacts for 6.2.0 release must use exact filenames:
 
-- `dist/ltcai-6.1.0-py3-none-any.whl`
-- `dist/ltcai-6.1.0.tar.gz`
-- `ltcai-6.1.0.tgz`
-- `dist/ltcai-6.1.0.vsix`
-- `src-tauri/target/release/bundle/dmg/Lattice AI_6.1.0_aarch64.dmg`
+- `dist/ltcai-6.2.0-py3-none-any.whl`
+- `dist/ltcai-6.2.0.tar.gz`
+- `ltcai-6.2.0.tgz`
+- `dist/ltcai-6.2.0.vsix`
+- `src-tauri/target/release/bundle/dmg/Lattice AI_6.2.0_aarch64.dmg`
 
 Do not upload `dist/*`. Package registry publishing remains owner-run.
 

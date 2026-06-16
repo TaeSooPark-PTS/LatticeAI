@@ -1,6 +1,6 @@
 # Lattice AI Current Architecture
 
-Last updated for the 6.1.0 Product Hardening / Digital Brain Completion target.
+Last updated for the 6.2.0 Product Decomposition / Release Smoke Automation target.
 
 Lattice AI is a local-first Digital Brain that keeps your knowledge durable
 across any AI model. Product category is the Digital Brain; core capability is
@@ -270,18 +270,18 @@ explicit opt-in paths.
 
 ```mermaid
 flowchart TB
-  Source["Source Tree 6.1.0"] --> FrontendBuild["Vite Frontend Build"]
+  Source["Source Tree 6.2.0"] --> FrontendBuild["Vite Frontend Build"]
   Source --> PythonBuild["Python Build"]
   Source --> NpmPack["npm pack"]
   Source --> VsixBuild["VSIX Package"]
   Source --> TauriBuild["Tauri Build"]
 
   FrontendBuild --> StaticAssets["static/app Assets"]
-  PythonBuild --> Wheel["dist/ltcai-6.1.0-py3-none-any.whl"]
-  PythonBuild --> Sdist["dist/ltcai-6.1.0.tar.gz"]
-  NpmPack --> Tgz["ltcai-6.1.0.tgz"]
-  VsixBuild --> Vsix["dist/ltcai-6.1.0.vsix"]
-  TauriBuild --> Dmg["src-tauri/target/release/bundle/dmg/Lattice AI_6.1.0_aarch64.dmg"]
+  PythonBuild --> Wheel["dist/ltcai-6.2.0-py3-none-any.whl"]
+  PythonBuild --> Sdist["dist/ltcai-6.2.0.tar.gz"]
+  NpmPack --> Tgz["ltcai-6.2.0.tgz"]
+  VsixBuild --> Vsix["dist/ltcai-6.2.0.vsix"]
+  TauriBuild --> Dmg["src-tauri/target/release/bundle/dmg/Lattice AI_6.2.0_aarch64.dmg"]
   StaticAssets --> Wheel
   StaticAssets --> Tgz
   StaticAssets --> Dmg
@@ -301,4 +301,4 @@ Release uploads must use exact filenames. Do not upload `dist/*`.
 - Model-free states are reported honestly. The UI should not fabricate answers
   when no model is loaded.
 - Historical reports under `docs/` preserve older release behavior and should
-  not be rewritten as 6.1.0 claims.
+  not be rewritten as 6.2.0 claims.

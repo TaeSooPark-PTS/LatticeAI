@@ -7,6 +7,29 @@
 > PyPI / npm / VS Code Marketplace / Open VSX 배포는 아래 수동 절차로만
 > 진행합니다. 태그 생성은 패키지 스토어 publish를 자동으로 트리거하지 않습니다.
 
+## v6.2.0 릴리스 준비 노트 (2026-06-16)
+
+Lattice AI v6.2.0 — Product Decomposition / Release Smoke Automation. 6.2.0은
+6.1.0에서 정리한 Digital Brain 제품 흐름을 유지하면서 가장 큰 frontend/backend
+composition surface를 줄인다. `App.tsx`는 Brain Home과 Admin Console feature
+module로 분리되고, `ProductFlow.tsx`는 onboarding screen component와
+design-system CSS를 조립하는 orchestrator로 축소된다.
+
+Model download consent UX는 다운로드 크기, 저장 위치, 외부 접속 대상, 나중에
+하기 경로를 명시한다. Admin Console과 onboarding copy는 공유 i18n map을 통해
+Korean/English coverage를 갖는다. Root legacy module은 package module 위의
+compatibility shim으로 축소되고, app-factory route registration은 typed
+tool/interaction context를 사용해 route order를 보존하면서 parameter surface를
+줄인다. Release smoke automation은 wheel 설치, npm tgz 내용, static asset
+manifest, Tauri artifact 검증을 exact-version artifact validator 뒤에 추가한다.
+
+Expected artifacts (exact 6.2.0 names only):
+- dist/ltcai-6.2.0-py3-none-any.whl
+- dist/ltcai-6.2.0.tar.gz
+- dist/ltcai-6.2.0.vsix
+- ltcai-6.2.0.tgz
+- src-tauri/target/release/bundle/dmg/Lattice AI_6.2.0_aarch64.dmg
+
 ## v6.1.0 릴리스 준비 노트 (2026-06-16)
 
 Lattice AI v6.1.0 — Product Hardening / Digital Brain Completion. 6.1.0은

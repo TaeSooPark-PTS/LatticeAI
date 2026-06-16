@@ -45,6 +45,7 @@ from latticeai.runtime.router_registration import (
 )
 from latticeai.runtime.security_runtime import build_security_runtime
 from latticeai.runtime.web_runtime import build_web_runtime
+from latticeai.services.router_context import InteractionRouterContext, ToolRouterContext
 
 if TYPE_CHECKING:  # imports for annotations only — keep module import light
     from fastapi import FastAPI
@@ -189,7 +190,7 @@ def _build(config: "Optional[Config]" = None) -> Dict[str, Any]:
         _get_combined_registry,
         _fetch_skills_marketplace, install_skill, SKILLS_DIR,
     )
-    from p_reinforce import PReinforceGardener
+    from latticeai.services.p_reinforce import PReinforceGardener
     from setup_wizard import get_recommendations, scan_environment
     from tools import ensure_agent_root, execute_tool, knowledge_save
 
@@ -1239,7 +1240,7 @@ def _build(config: "Optional[Config]" = None) -> Dict[str, Any]:
     on_chat_message = None
     if ENABLE_TELEGRAM:
         def _telegram_chat_mirror(role: str, text: str, source: Optional[str] = None) -> None:
-            from telegram_bot import broadcast_web_chat
+            from latticeai.integrations.telegram_bot import broadcast_web_chat
             _spawn(broadcast_web_chat(role, text), name="telegram_broadcast")
         on_chat_message = _telegram_chat_mirror
 
@@ -1478,21 +1479,13 @@ def _build(config: "Optional[Config]" = None) -> Dict[str, Any]:
             return None
         return PLATFORM.allowed_scopes(user)
 
-    register_interaction_routers(
-        app,
-        create_chat_router=create_chat_router,
-        context=context,
-        create_search_router=create_search_router,
-        search_service=SEARCH_SERVICE,
-        allowed_workspaces_for=_allowed_workspaces_for,
-        require_user=require_user,
-        embedding_info=_embedding_info,
-        create_tools_router=create_tools_router,
-        ingestion_pipeline=INGESTION_PIPELINE,
+    tool_router_context = ToolRouterContext(
         config=CONFIG,
+        ingestion_pipeline=INGESTION_PIPELINE,
         data_dir=DATA_DIR,
         static_dir=STATIC_DIR,
         model_router=router,
+        require_user=require_user,
         require_admin=require_admin,
         get_current_user=get_current_user,
         clear_history=clear_history,
@@ -1510,12 +1503,28 @@ def _build(config: "Optional[Config]" = None) -> Dict[str, Any]:
         install_mcp=install_mcp,
         mcp_public_item=mcp_public_item,
         hooks=HOOKS_REGISTRY,
-        create_hooks_router=create_hooks_router,
-        create_agent_registry_router=create_agent_registry_router,
+    )
+    interaction_router_context = InteractionRouterContext(
+        chat_context=context,
+        search_service=SEARCH_SERVICE,
+        allowed_workspaces_for=_allowed_workspaces_for,
+        require_user=require_user,
+        embedding_info=_embedding_info,
+        tool_context=tool_router_context,
+        hooks=HOOKS_REGISTRY,
         agent_registry=AGENT_REGISTRY,
-        create_memory_router=create_memory_router,
         memory_service=MEMORY_SERVICE,
         platform=PLATFORM,
+    )
+    register_interaction_routers(
+        app,
+        interaction_context=interaction_router_context,
+        create_chat_router=create_chat_router,
+        create_search_router=create_search_router,
+        create_tools_router=create_tools_router,
+        create_hooks_router=create_hooks_router,
+        create_agent_registry_router=create_agent_registry_router,
+        create_memory_router=create_memory_router,
     )
 
     from latticeai.api.review_queue import create_review_queue_router

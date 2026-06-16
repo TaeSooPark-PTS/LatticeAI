@@ -1,28 +1,34 @@
-# Lattice AI — Feature Status (v6.1.0 target)
+# Lattice AI — Feature Status (v6.2.0 target)
 
-**Current release-preparation line:** v6.1.0 Product Hardening / Digital Brain Completion.
+**Current release-preparation line:** v6.2.0 Product Decomposition / Release Smoke Automation.
 Lattice AI is a local-first Digital Brain that keeps your knowledge durable
 across any AI model. The primary experience is Brain plus conversation; the
 graph remains durable infrastructure and advanced exploration, not the home
 product identity. Sections below v5.3.0 are historical release-status records
 and should not override the current README, ARCHITECTURE.md, SECURITY.md,
-PRIVACY.md, or v6.1.0 release notes.
+PRIVACY.md, or v6.2.0 release notes.
 
-## v6.1.0 Product Hardening / Digital Brain Completion — current release line
+## v6.2.0 Product Decomposition / Release Smoke Automation — current release line
+
+v6.2.0 follows the 6.1 hardening release by reducing the largest frontend and
+backend composition surfaces while adding release smoke automation for the
+exact artifact set.
+
+| Area | Status | Evidence |
+| --- | --- | --- |
+| **App shell decomposition** | WORKING | Brain Home and Admin Console are split from `App.tsx` into feature modules. |
+| **Onboarding decomposition** | WORKING | `ProductFlow.tsx` delegates screen rendering to onboarding components using design-system CSS. |
+| **Model download consent UX** | WORKING | First-run model setup displays size, storage location, external target, and a do-later path. |
+| **Root module shrink** | WORKING | `ltcai_cli.py`, `telegram_bot.py`, and `p_reinforce.py` are compatibility shims over package modules. |
+| **Router context extraction** | WORKING | Tool and interaction router assembly use typed context objects while keeping route order stable. |
+| **Release smoke automation** | WORKING | `npm run release:smoke` validates wheel install, npm tgz, static assets, and Tauri artifacts. |
+| **Release docs sync** | WORKING | README, RELEASE, CHANGELOG, release notes, security, and extension docs align to 6.2.0. |
+
+## v6.1.0 Product Hardening / Digital Brain Completion — previous release line
 
 v6.1.0 hardens the Digital Brain product loop without broad new surfaces. The
 goal is to make first-run, Brain Home, Review Center, Brain Core boundaries,
 trust gates, and legacy-root cleanup feel coherent and testable.
-
-| Area | Status | Evidence |
-| --- | --- | --- |
-| **No-model Brain entry** | WORKING | First-run can open the local Brain without installing/loading a model. |
-| **First memory loop** | WORKING | Brain Home empty state explains save memory -> see Brain state -> backup. |
-| **Review action semantics** | WORKING | Review cards clarify that Run now previews/executes without approval. |
-| **Brain Core boundary** | WORKING | AST guard verifies `lattice_brain` does not import `latticeai` or `ltcai`. |
-| **Model download consent** | WORKING | `model_runtime` unit test verifies download paths fail without explicit consent. |
-| **Root CLI cleanup** | PARTIAL | Pure `ltcai_cli.py` helpers moved into `latticeai.cli.runtime`; root entrypoint remains. |
-| **Release docs sync** | WORKING | README, RELEASE, CHANGELOG, release notes, security, extension docs, and v6.1 UX/backend docs are aligned to 6.1.0. |
 
 ## v6.0.0 Product Reset / Review Center Completion — previous development line
 

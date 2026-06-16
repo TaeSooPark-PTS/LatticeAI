@@ -12,13 +12,14 @@ chat, run model workflows, and trigger coding actions from the editor.
 
 ## Current Release
 
-**6.1.0 — Product Hardening / Digital Brain Completion.** The extension follows
+**6.2.0 — Product Decomposition / Release Smoke Automation.** The extension follows
 the main app positioning: Lattice AI is a local-first Digital Brain, not just a
 model launcher or editor chat panel. It connects editor actions to the same
 durable Brain context, explicit consent gates, replaceable model workflow, and
-separated Admin surface used by the desktop app. The v6.1 line tightens first
-Brain entry, Brain Home memory ownership, Review Center action semantics, and
-backend Brain Core/trust-gate boundaries before final release sync.
+separated Admin surface used by the desktop app. The v6.2 line keeps the v6.1
+product hardening baseline while splitting large app/onboarding surfaces,
+strengthening consent/i18n coverage, shrinking root legacy modules, and adding
+release smoke automation.
 
 ## Quick Start
 

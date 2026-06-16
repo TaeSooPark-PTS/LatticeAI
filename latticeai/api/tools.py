@@ -26,7 +26,8 @@ from latticeai.services.tool_dispatch import (
     get_tool_permission,
     list_tool_permissions,
 )
-from p_reinforce import BRAIN_DIR
+from latticeai.services.router_context import ToolRouterContext
+from latticeai.services.p_reinforce import BRAIN_DIR
 from tools import (
     AGENT_ROOT,
     ToolError,
@@ -177,30 +178,56 @@ class ToolGitShowRequest(BaseModel):
 
 def create_tools_router(
     *,
-    config,
-    ingestion_pipeline,
-    data_dir: Path,
-    static_dir: Path,
-    model_router,
-    require_user,
-    require_admin,
-    get_current_user,
-    clear_history,
-    append_audit_event,
-    enforce_rate_limit,
-    bytes_match_extension,
-    classify_sensitive_message,
-    save_to_history,
-    enable_graph: bool,
-    knowledge_graph,
-    require_graph,
-    local_kg_watcher,
-    load_mcp_installs,
-    recommend_mcps,
-    install_mcp,
-    mcp_public_item,
+    tool_context: ToolRouterContext | None = None,
+    config=None,
+    ingestion_pipeline=None,
+    data_dir: Path | None = None,
+    static_dir: Path | None = None,
+    model_router=None,
+    require_user=None,
+    require_admin=None,
+    get_current_user=None,
+    clear_history=None,
+    append_audit_event=None,
+    enforce_rate_limit=None,
+    bytes_match_extension=None,
+    classify_sensitive_message=None,
+    save_to_history=None,
+    enable_graph: bool | None = None,
+    knowledge_graph=None,
+    require_graph=None,
+    local_kg_watcher=None,
+    load_mcp_installs=None,
+    recommend_mcps=None,
+    install_mcp=None,
+    mcp_public_item=None,
     hooks=None,
 ) -> APIRouter:
+    if tool_context is not None:
+        config = tool_context.config
+        ingestion_pipeline = tool_context.ingestion_pipeline
+        data_dir = tool_context.data_dir
+        static_dir = tool_context.static_dir
+        model_router = tool_context.model_router
+        require_user = tool_context.require_user
+        require_admin = tool_context.require_admin
+        get_current_user = tool_context.get_current_user
+        clear_history = tool_context.clear_history
+        append_audit_event = tool_context.append_audit_event
+        enforce_rate_limit = tool_context.enforce_rate_limit
+        bytes_match_extension = tool_context.bytes_match_extension
+        classify_sensitive_message = tool_context.classify_sensitive_message
+        save_to_history = tool_context.save_to_history
+        enable_graph = tool_context.enable_graph
+        knowledge_graph = tool_context.knowledge_graph
+        require_graph = tool_context.require_graph
+        local_kg_watcher = tool_context.local_kg_watcher
+        load_mcp_installs = tool_context.load_mcp_installs
+        recommend_mcps = tool_context.recommend_mcps
+        install_mcp = tool_context.install_mcp
+        mcp_public_item = tool_context.mcp_public_item
+        hooks = tool_context.hooks
+
     api_router = APIRouter()
     HOOKS = hooks
     CONFIG = config

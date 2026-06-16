@@ -102,7 +102,7 @@ def build_lifespan_runtime(
         try:
             print(f"🧭 Lattice AI mode: {app_mode}")
             if enable_telegram:
-                from telegram_bot import run_bot
+                from latticeai.integrations.telegram_bot import run_bot
 
                 spawn(run_bot(), name="telegram_bot")
                 print("🚀 Telegram Bot Bridge activated!")
