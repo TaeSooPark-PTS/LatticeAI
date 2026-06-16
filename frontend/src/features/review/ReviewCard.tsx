@@ -3,6 +3,7 @@ import type { ApiResult, ReviewItem } from "@/api/client";
 import { ActionButton, KeyValueList } from "@/components/primitives";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { t } from "@/i18n";
 import { useAppStore } from "@/store/appStore";
 import {
   formatSnoozedUntil,
@@ -22,6 +23,7 @@ type ReviewCardProps = {
 
 export function ReviewCard({ item, feedback, onAction }: ReviewCardProps) {
   const mode = useAppStore((state) => state.mode);
+  const language = useAppStore((state) => state.language);
   const provenance = item.provenance || {};
   const payload = item.payload || {};
   const hadRun = hasRunBefore(item);
@@ -45,10 +47,10 @@ export function ReviewCard({ item, feedback, onAction }: ReviewCardProps) {
         <div className="mt-3 flex flex-wrap items-center justify-between gap-3 rounded-md border border-border bg-muted/24 p-3 text-sm">
           <div>
             <div className="font-medium">{formatSnoozedUntil(item.snoozed_until)}</div>
-            <p className="mt-1 text-muted-foreground">This stays out of the pending queue until then. Unsnooze brings it back immediately.</p>
+            <p className="mt-1 text-muted-foreground">{t(language, "review.snoozed.detail")}</p>
           </div>
           <Button size="sm" variant="outline" onClick={() => onAction(item, "unsnooze")} disabled={!actionable}>
-            <RotateCcw className="h-3.5 w-3.5" /> Unsnooze
+            <RotateCcw className="h-3.5 w-3.5" /> {t(language, "review.unsnooze")}
           </Button>
         </div>
       ) : null}
@@ -73,24 +75,24 @@ export function ReviewCard({ item, feedback, onAction }: ReviewCardProps) {
       {actionable ? (
         <div className="mt-4 grid gap-2">
           <p className="text-xs leading-5 text-muted-foreground">
-            Run now previews the action without approving it. Approve or dismiss when the result looks right.
+            {t(language, "review.runNow.detail")}
           </p>
-          <div className="flex flex-wrap gap-2" aria-label="Review actions">
+          <div className="flex flex-wrap gap-2" aria-label={t(language, "review.actions.aria")}>
             <ActionButton
-              label="Run now"
-              successLabel={hadRun ? "Regenerated" : "Executed"}
+              label={t(language, "review.runNow")}
+              successLabel={hadRun ? t(language, "review.regenerated") : t(language, "review.executed")}
               action={() => onAction(item, "run_now", hadRun)}
               invalidate={[]}
             />
-            <ActionButton label="Approve" action={() => onAction(item, "approve")} invalidate={[]} />
-            {!snoozed ? <ActionButton label="Snooze 1 day" action={() => onAction(item, "snooze")} invalidate={[]} /> : null}
-            <ActionButton label="Dismiss" action={() => onAction(item, "dismiss")} invalidate={[]} variant="destructive" />
+            <ActionButton label={t(language, "review.approve")} action={() => onAction(item, "approve")} invalidate={[]} />
+            {!snoozed ? <ActionButton label={t(language, "review.snoozeDay")} action={() => onAction(item, "snooze")} invalidate={[]} /> : null}
+            <ActionButton label={t(language, "review.dismiss")} action={() => onAction(item, "dismiss")} invalidate={[]} variant="destructive" />
           </div>
         </div>
       ) : null}
       {feedback ? (
         <p className={`mt-2 text-xs ${/fail|error|unavailable/i.test(feedback) ? "text-amber-300" : "text-emerald-300"}`}>
-          {feedback} - item stays open until you approve or dismiss.
+          {feedback} - {t(language, "review.feedback.open")}
         </p>
       ) : null}
     </div>

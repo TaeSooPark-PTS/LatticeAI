@@ -3,6 +3,28 @@
 The top entry is the current release-preparation target. Older entries are
 historical and may describe behavior as it existed at that release.
 
+## [6.3.1] - 2026-06-17
+
+> Access Runtime / i18n Follow-up. Closes the next app-factory decomposition
+> slice and finishes Capture/Review Center localization coverage on top of the
+> v6.3.0 product-hardening line.
+
+### Changed
+- Moved app-factory access-control helper closures into
+  `latticeai.runtime.access_runtime` while preserving role lookup, token
+  extraction, user enforcement, admin enforcement, and public user projection
+  call signatures.
+- Capture tabs, headings, placeholders, action labels, upload details, folder
+  connection copy, browser capture copy, and pipeline controls now use the
+  shared Korean/English i18n map.
+- Review Center inbox/card copy, status badges, empty states, Run Now feedback,
+  snooze/unsnooze labels, and action aria labels now use the shared i18n map.
+- Package/runtime/static metadata is synchronized to 6.3.1; package publish and
+  deployment remain owner-run only.
+
+### Added
+- Focused unit coverage for the extracted access runtime auth/admin behavior.
+
 ## [6.3.0] - 2026-06-16
 
 > Product Hardening Completion. Completes the 6.2 decomposition follow-up by

@@ -12,11 +12,13 @@ chat, run model workflows, and trigger coding actions from the editor.
 
 ## Current Release
 
-**6.3.0 — Product Hardening Completion.** The extension follows
+**6.3.1 — Access Runtime / i18n Follow-up.** The extension follows
 the main app positioning: Lattice AI is a local-first Digital Brain, not just a
 model launcher or editor chat panel. It connects editor actions to the same
 durable Brain context, explicit consent gates, replaceable model workflow, and
-separated Admin surface used by the desktop app. The v6.3 line completes the product-hardening pass with deeper Brain archive, provenance, ingestion, Review Center, model runtime, backend wiring, i18n, and release validation coverage.
+separated Admin surface used by the desktop app. The v6.3.1 line continues the
+product-hardening pass with app-factory access runtime extraction and broader
+Capture/Review Center i18n coverage.
 
 ## Quick Start
 

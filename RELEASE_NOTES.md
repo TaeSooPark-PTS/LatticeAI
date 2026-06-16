@@ -1,7 +1,34 @@
 # Release Notes
 
-The current release target is v6.3.0. The tracked release-note surface starts at
+The current release target is v6.3.1. The tracked release-note surface starts at
 v4.5.0 so the public Git tree stays focused on the current product era.
+
+## v6.3.1 - Access Runtime / i18n Follow-up
+
+Lattice AI v6.3.1 follows the v6.3.0 hardening release with a focused
+architecture and localization pass. It extracts access-control helpers from
+`app_factory.py`, adds direct runtime tests, and routes Capture/Review Center
+copy through shared Korean/English i18n keys.
+
+### Highlights
+
+- Extracted role lookup, bearer/cookie token extraction, current-user checks,
+  admin checks, and public user projection into `latticeai.runtime.access_runtime`.
+- Added focused unit tests for user/admin auth behavior and public identity
+  projection.
+- Localized Capture and Review Center tabs, labels, placeholders, empty states,
+  feedback, and action copy.
+- Synchronized package/runtime/static versions to `6.3.1`.
+
+### Expected Artifacts
+
+- `dist/ltcai-6.3.1-py3-none-any.whl`
+- `dist/ltcai-6.3.1.tar.gz`
+- `dist/ltcai-6.3.1.vsix`
+- `ltcai-6.3.1.tgz`
+- `src-tauri/target/release/bundle/dmg/Lattice AI_6.3.1_aarch64.dmg`
+
+Full notes: [RELEASE_NOTES_v6.3.1.md](RELEASE_NOTES_v6.3.1.md)
 
 ## v6.3.0 - Product Hardening Completion
 

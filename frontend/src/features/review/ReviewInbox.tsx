@@ -4,6 +4,8 @@ import { latticeApi, type ReviewItem, type ReviewSourceFilter, type ReviewStatus
 import { EmptyState, LoadingPanel, Tabs } from "@/components/primitives";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { t } from "@/i18n";
+import { useAppStore } from "@/store/appStore";
 import { ReviewCard } from "./ReviewCard";
 import {
   defaultSnoozeUntil,
@@ -13,6 +15,7 @@ import {
 } from "./reviewHelpers";
 
 export function ReviewInbox() {
+  const language = useAppStore((state) => state.language);
   const qc = useQueryClient();
   const [statusFilter, setStatusFilter] = React.useState<ReviewStatusFilter>("pending");
   const [sourceFilter, setSourceFilter] = React.useState<ReviewSourceFilter>("all");
@@ -41,7 +44,7 @@ export function ReviewInbox() {
     if (!result.ok) {
       setRunFeedback((prev) => ({
         ...prev,
-        [item.id]: result.error || `${action} failed`,
+        [item.id]: result.error || t(language, "review.action.failed", { action }),
       }));
       return result;
     }
@@ -52,7 +55,9 @@ export function ReviewInbox() {
         const runId = String(payload.last_run_id || provenance.run_id || "");
         setRunFeedback((prev) => ({
           ...prev,
-          [item.id]: runId ? `${hadRunBefore ? "Regenerated" : "Executed"} · ${runId}` : hadRunBefore ? "Regenerated" : "Executed",
+          [item.id]: runId
+            ? `${hadRunBefore ? t(language, "review.regenerated") : t(language, "review.executed")} · ${runId}`
+            : hadRunBefore ? t(language, "review.regenerated") : t(language, "review.executed"),
         }));
       } else {
         setRunFeedback((prev) => {
@@ -66,18 +71,18 @@ export function ReviewInbox() {
     return result;
   };
 
-  if (reviews.isLoading) return <LoadingPanel title="Review inbox" />;
+  if (reviews.isLoading) return <LoadingPanel title={t(language, "review.inbox.title")} />;
 
   return (
     <Card>
       <CardHeader className="gap-3">
         <div className="flex flex-wrap items-start justify-between gap-3">
           <div>
-            <CardTitle>Review inbox</CardTitle>
-            <CardDescription>Automation suggestions waiting for your decision. Run now executes without approving.</CardDescription>
+            <CardTitle>{t(language, "review.inbox.title")}</CardTitle>
+            <CardDescription>{t(language, "review.inbox.description")}</CardDescription>
           </div>
           {reviews.data ? (
-            <Badge variant={reviews.data.ok ? "success" : "warning"}>{reviews.data.ok ? "connected" : "unavailable"}</Badge>
+            <Badge variant={reviews.data.ok ? "success" : "warning"}>{reviews.data.ok ? t(language, "review.status.connected") : t(language, "review.status.unavailable")}</Badge>
           ) : null}
         </div>
         <div className="grid gap-2">
@@ -96,13 +101,13 @@ export function ReviewInbox() {
       <CardContent>
         {reviews.isError || (reviews.data && !reviews.data.ok) ? (
           <EmptyState
-            title="Could not load review inbox"
-            detail={reviews.data?.error || "The review queue is not available right now."}
+            title={t(language, "review.inbox.loadError")}
+            detail={reviews.data?.error || t(language, "review.inbox.unavailable")}
           />
         ) : !items.length ? (
           <EmptyState
-            title="Nothing to review"
-            detail={statusFilter === "snoozed" ? "Snoozed items will appear here until they are unsnoozed or become pending again." : "When automations opt into the review queue, new suggestions will appear here."}
+            title={t(language, "review.inbox.empty")}
+            detail={statusFilter === "snoozed" ? t(language, "review.inbox.emptySnoozed") : t(language, "review.inbox.emptyPending")}
           />
         ) : (
           <div className="grid gap-3">

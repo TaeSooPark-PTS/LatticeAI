@@ -1,18 +1,18 @@
-# Lattice AI — Feature Status (v6.3.0 target)
+# Lattice AI — Feature Status (v6.3.1 target)
 
-**Current release-preparation line:** v6.3.0 Product Hardening Completion.
+**Current release-preparation line:** v6.3.1 Access Runtime / i18n Follow-up.
 Lattice AI is a local-first Digital Brain that keeps your knowledge durable
 across any AI model. The primary experience is Brain plus conversation; the
 graph remains durable infrastructure and advanced exploration, not the home
 product identity. Sections below v5.3.0 are historical release-status records
 and should not override the current README, ARCHITECTURE.md, SECURITY.md,
-PRIVACY.md, or v6.3.0 release notes.
+PRIVACY.md, or v6.3.1 release notes.
 
-## v6.3.0 Product Hardening Completion — current release line
+## v6.3.1 Access Runtime / i18n Follow-up — current release line
 
-v6.3.0 completes the product-hardening line by closing the remaining UX, Review
-Center, runtime wiring, i18n, and release-validation gaps on top of the 6.2
-decomposition work.
+v6.3.1 follows the product-hardening line by extracting access-control helpers
+from `app_factory.py` and closing Capture/Review Center i18n gaps on top of
+the 6.3.0 release.
 
 | Area | Status | Evidence |
 | --- | --- | --- |
@@ -22,10 +22,17 @@ decomposition work.
 | **Root module shrink** | WORKING | `ltcai_cli.py`, `telegram_bot.py`, and `p_reinforce.py` are compatibility shims over package modules. |
 | **Router context extraction** | WORKING | Tool and interaction router assembly use typed context objects while keeping route order stable. |
 | **App factory runtime wiring** | WORKING | Platform and automation runtime construction is isolated behind `latticeai.runtime.platform_runtime_wiring` while preserving lazy import behavior. |
+| **Access runtime extraction** | WORKING | User role lookup, session token extraction, require-user, require-admin, and public-user projection live in `latticeai.runtime.access_runtime` with focused tests. |
 | **Review Center run-now contract** | WORKING | Run Now remains preview/regenerate, keeps status unchanged, and has scoped backend contract tests. |
 | **Root shim smoke** | WORKING | Compatibility import smoke covers `server.py`, `knowledge_graph.py`, `ltcai_cli.py`, `telegram_bot.py`, and `p_reinforce.py`. |
 | **Release smoke automation** | WORKING | `npm run release:smoke` validates wheel install, npm tgz, static assets, and Tauri artifacts. |
-| **Release docs sync** | WORKING | README, RELEASE, CHANGELOG, release notes, security, and extension docs align to 6.3.0. |
+| **Release docs sync** | WORKING | README, RELEASE, CHANGELOG, release notes, security, and extension docs align to 6.3.1. |
+
+## v6.3.0 Product Hardening Completion — previous release line
+
+v6.3.0 completed the product-hardening line by closing the remaining UX, Review
+Center, runtime wiring, i18n, and release-validation gaps on top of the 6.2
+decomposition work.
 
 ## v6.1.0 Product Hardening / Digital Brain Completion — previous release line
 

@@ -1,12 +1,12 @@
 {
-  "version": "6.3.0",
+  "version": "6.3.1",
   "generated_at": "vite",
   "entrypoints": {
     "app": "/static/app/index.html"
   },
   "assets": {
     "../node_modules/@tauri-apps/api/core.js": "/static/app/assets/core-CwxXejkd.js",
-    "index.html": "/static/app/assets/index-D76dWuQk.js",
+    "index.html": "/static/app/assets/index-t1jx1BR9.js",
     "assets/index-Div5vMlq.css": "/static/app/assets/index-Div5vMlq.css"
   },
   "vite": {
@@ -17,7 +17,7 @@
       "isDynamicEntry": true
     },
     "index.html": {
-      "file": "assets/index-D76dWuQk.js",
+      "file": "assets/index-t1jx1BR9.js",
       "name": "index",
       "src": "index.html",
       "isEntry": true,

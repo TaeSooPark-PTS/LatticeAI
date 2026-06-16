@@ -7,6 +7,30 @@
 > PyPI / npm / VS Code Marketplace / Open VSX 배포는 아래 수동 절차로만
 > 진행합니다. 태그 생성은 패키지 스토어 publish를 자동으로 트리거하지 않습니다.
 
+## v6.3.1 릴리스 준비 노트 (2026-06-17)
+
+Lattice AI v6.3.1 — Access Runtime / i18n Follow-up. 6.3.1은 6.3.0의
+Product Hardening Completion 위에서 남은 app-factory access-control debt와
+Capture/Review Center localization gap을 닫는다.
+
+`app_factory.py` 안에 있던 user role lookup, bearer/cookie session extraction,
+current-user enforcement, admin enforcement, public user projection helper는
+`latticeai.runtime.access_runtime`으로 이동했다. 기존 closure call signature와
+HTTP status contract는 유지하며, 새 unit test가 admin/user/unauthenticated
+경로와 identity projection을 직접 고정한다.
+
+Capture와 Review Center는 tabs, headings, placeholders, action labels,
+empty/error states, Run Now feedback, snooze/unsnooze 설명을 공유 i18n map으로
+옮겨 Korean/English surface를 맞춘다. Package/runtime/static metadata는 6.3.1로
+동기화하고, package publish와 production deployment는 계속 owner-run이다.
+
+Expected artifacts (exact 6.3.1 names only):
+- dist/ltcai-6.3.1-py3-none-any.whl
+- dist/ltcai-6.3.1.tar.gz
+- dist/ltcai-6.3.1.vsix
+- ltcai-6.3.1.tgz
+- src-tauri/target/release/bundle/dmg/Lattice AI_6.3.1_aarch64.dmg
+
 ## v6.3.0 릴리스 준비 노트 (2026-06-16)
 
 Lattice AI v6.3.0 — Product Hardening Completion. 6.3.0은 6.2.0의 App /

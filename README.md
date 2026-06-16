@@ -200,7 +200,7 @@ See [docs/DEVELOPMENT.md](docs/DEVELOPMENT.md) for developer workflow details.
 
 ## Current Release Preparation
 
-The current development target is **6.3.0 Product Hardening Completion**:
+The current development target is **6.3.1 Access Runtime / i18n Follow-up**:
 
 - `App.tsx` now delegates the main Brain and Admin surfaces to focused feature
   modules instead of owning the full product shell.
@@ -220,14 +220,19 @@ The current development target is **6.3.0 Product Hardening Completion**:
 - Brain archive, memory provenance, document ingestion, Review Center Run Now,
   local model runtime, root-shim smoke, and app-factory review wiring now have
   dedicated UX/backend hardening coverage for the 6.3 line.
+- Access-control helper closures are extracted from `app_factory.py` into a
+  focused runtime module with direct unit coverage for role lookup, token
+  extraction, user enforcement, admin enforcement, and public user projection.
+- Capture and Review Center copy now route through the shared Korean/English
+  i18n map for tabs, placeholders, action labels, empty states, and feedback.
 
-Expected artifacts for 6.3.0 release must use exact filenames:
+Expected artifacts for 6.3.1 release must use exact filenames:
 
-- `dist/ltcai-6.3.0-py3-none-any.whl`
-- `dist/ltcai-6.3.0.tar.gz`
-- `ltcai-6.3.0.tgz`
-- `dist/ltcai-6.3.0.vsix`
-- `src-tauri/target/release/bundle/dmg/Lattice AI_6.3.0_aarch64.dmg`
+- `dist/ltcai-6.3.1-py3-none-any.whl`
+- `dist/ltcai-6.3.1.tar.gz`
+- `ltcai-6.3.1.tgz`
+- `dist/ltcai-6.3.1.vsix`
+- `src-tauri/target/release/bundle/dmg/Lattice AI_6.3.1_aarch64.dmg`
 
 Do not upload `dist/*`. Package registry publishing remains owner-run.
 
@@ -246,6 +251,7 @@ Do not upload `dist/*`. Package registry publishing remains owner-run.
 
 | Version | Theme |
 | --- | --- |
+| 6.3.1 | Access Runtime / i18n Follow-up: app-factory access-control extraction, focused access runtime tests, and Capture/Review Center i18n coverage |
 | 6.3.0 | Product Hardening Completion: Brain archive/provenance/ingestion UX polish, Review Center Run Now contract hardening, local model runtime status, app-factory review wiring, shim smoke, i18n guard, and exact release artifacts |
 | 6.2.0 | Product Decomposition / Release Smoke Automation: App and ProductFlow feature extraction, legacy root shim shrink, model download consent UX, typed router contexts, localized smoke tests, and wheel/npm/static/Tauri release smoke |
 | 6.1.0 | Product Hardening / Digital Brain Completion: local Brain entry without a loaded model, Brain memory/backup loop, Review Center semantics, ToolRegistry authorization boundary, and root CLI/runtime compatibility |

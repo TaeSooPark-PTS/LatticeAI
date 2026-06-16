@@ -18,6 +18,7 @@ import threading
 from typing import TYPE_CHECKING, Any, Dict, List, Optional
 
 from latticeai.runtime.app_context_runtime import build_app_context
+from latticeai.runtime.access_runtime import build_access_runtime
 from latticeai.runtime.bootstrap import build_session_runtime
 from latticeai.runtime.brain_runtime import build_brain_runtime
 from latticeai.runtime.chat_wiring import (
@@ -122,12 +123,11 @@ def _build(config: "Optional[Config]" = None) -> Dict[str, Any]:
     from latticeai.core.enterprise import (
         capability_registry,
     )
-    from latticeai.core.policy import normalize_role, policy_matrix, require_capability
+    from latticeai.core.policy import policy_matrix
     from latticeai.core.users import (
         ensure_user_identity,
         load_users_file,
         migrate_knowledge_graph_identity,
-        normalize_email,
         save_users_file,
         user_id_for_email as _user_id_for_email,
     )
@@ -813,42 +813,21 @@ def _build(config: "Optional[Config]" = None) -> Dict[str, Any]:
     def clear_conversation(conversation_id: str, started_at: Optional[str] = None) -> Dict:
         return CONVERSATIONS.clear_conversation(conversation_id, started_at=started_at)
 
-    def get_user_role(email: str, users: Optional[Dict] = None) -> str:
-        users = users or load_users()
-        identity = str(email or "")
-        normalized_email = normalize_email(identity)
-        user = users.get(normalized_email) or users.get(identity) or next(
-            (
-                item for item in users.values()
-                if isinstance(item, dict) and item.get("id") == identity
-            ),
-            {},
-        )
-        if isinstance(user, dict) and user.get("role"):
-            return normalize_role(user["role"])
-        admin_emails = {normalize_email(item) for item in CONFIG.admin_emails}
-        if normalized_email in admin_emails:
-            return "admin"
-        first_email = next(iter(users), None)
-        return "admin" if first_email == normalized_email else "user"
-
-    def _extract_bearer_token(request: Request) -> Optional[str]:
-        auth = request.headers.get("Authorization", "")
-        if auth.startswith("Bearer "):
-            return auth[7:].strip()
-        return request.cookies.get("session_token")
-
-    def get_current_user(request: Request) -> Optional[str]:
-        token = _extract_bearer_token(request)
-        if token:
-            return get_session_email(token)
-        return None
-
-    def require_user(request: Request) -> str:
-        email = get_current_user(request)
-        if REQUIRE_AUTH and not email:
-            raise HTTPException(status_code=401, detail="인증이 필요합니다.")
-        return email or ""
+    _access_runtime = build_access_runtime(
+        config=CONFIG,
+        require_auth=REQUIRE_AUTH,
+        http_exception=HTTPException,
+        request_type=Request,
+        load_users=load_users,
+        get_session_email=get_session_email,
+        user_id_for_email=_user_id_for_email,
+    )
+    get_user_role = _access_runtime["get_user_role"]
+    _extract_bearer_token = _access_runtime["_extract_bearer_token"]
+    get_current_user = _access_runtime["get_current_user"]
+    require_user = _access_runtime["require_user"]
+    require_admin = _access_runtime["require_admin"]
+    public_user = _access_runtime["public_user"]
 
 
     # ── Rate limiting & file validation — delegated to latticeai.core.security ────
@@ -916,35 +895,6 @@ def _build(config: "Optional[Config]" = None) -> Dict[str, Any]:
         if action == "write" and record.get("content_hash") != _content_fingerprint(content):
             raise HTTPException(status_code=403, detail="승인된 파일 내용과 요청 내용이 다릅니다.")
 
-
-    def require_admin(request: Request) -> tuple[str, Dict]:
-        users = load_users()
-        if not REQUIRE_AUTH:
-            return "", users
-        token = _extract_bearer_token(request)
-        if token:
-            email = get_session_email(token)
-            if email:
-                role = get_user_role(email, users)
-                try:
-                    require_capability(role, "admin:users")
-                    return email, users
-                except PermissionError:
-                    pass
-        raise HTTPException(status_code=403, detail="관리자 권한이 필요합니다.")
-
-    def public_user(email: str, user: Dict, users: Dict) -> Dict:
-        role = get_user_role(email, users)
-        user_id = user.get("id") or _user_id_for_email(users, email)
-        return {
-            "id": user_id,
-            "email": email,
-            "identity": user_id,
-            "name": user.get("name", ""),
-            "nickname": user.get("nickname", ""),
-            "role": role,
-            "disabled": bool(user.get("disabled", False)),
-        }
 
     def get_history_user(email: Optional[str], nickname: Optional[str] = None) -> Dict:
         if not email:

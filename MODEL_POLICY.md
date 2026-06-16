@@ -1,6 +1,6 @@
 # Model Policy
 
-Lattice AI v6.3.0 uses a multimodal-first model policy.
+Lattice AI v6.3.1 uses a multimodal-first model policy.
 
 ## Recommendation Rules
 
