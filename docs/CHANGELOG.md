@@ -3,6 +3,20 @@
 The top entry is the current release-preparation target. Older entries are
 historical and may describe behavior as it existed at that release.
 
+## [Unreleased] - v6.2 PR Hardening Follow-up
+
+### Changed
+- Brain Home and onboarding screens are split into finer feature-owned modules
+  while preserving the existing routes, CSS surface, and visual behavior.
+- Platform and automation runtime wiring moved behind a dedicated app-factory
+  seam, keeping construction side-effect free and route order unchanged.
+- Admin, Brain, and onboarding localized aria/placeholder surfaces now use the
+  shared i18n map.
+
+### Added
+- Frontend i18n literal check for localized aria/placeholder props in Brain,
+  Admin, and onboarding TSX surfaces.
+
 ## [6.2.0] - 2026-06-16
 
 > Product Decomposition / Release Smoke Automation. Splits the largest product

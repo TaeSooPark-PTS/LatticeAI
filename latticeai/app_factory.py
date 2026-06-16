@@ -17,7 +17,6 @@ from __future__ import annotations
 import threading
 from typing import TYPE_CHECKING, Any, Dict, List, Optional
 
-from latticeai.runtime.automation_runtime import build_automation_runtime
 from latticeai.runtime.app_context_runtime import build_app_context
 from latticeai.runtime.bootstrap import build_session_runtime
 from latticeai.runtime.brain_runtime import build_brain_runtime
@@ -33,6 +32,7 @@ from latticeai.runtime.platform_services_runtime import (
     build_brain_network,
     build_model_service,
 )
+from latticeai.runtime.platform_runtime_wiring import build_platform_automation_runtime
 from latticeai.runtime.persistence_runtime import build_persistence_runtime
 from latticeai.runtime.router_registration import (
     build_auth_admin_security_router_bundle,
@@ -146,7 +146,6 @@ def _build(config: "Optional[Config]" = None) -> Dict[str, Any]:
     from latticeai.api.workspace import create_workspace_router, _workspace_scope_from_request
     from latticeai.api.health import create_health_router
     # ── v2 Agentic Workspace Platform layers ─────────────────────────────────────
-    from latticeai.services.platform_runtime import PlatformRuntime
     from latticeai.api.plugins import create_plugins_router
     from latticeai.api.workflow_designer import create_workflow_designer_router
     from latticeai.api.agents import create_agents_router
@@ -1339,20 +1338,9 @@ def _build(config: "Optional[Config]" = None) -> Dict[str, Any]:
 
 
     # ── v2 Agentic Workspace Platform: cross-system wiring ───────────────────────
-    # All cross-subsystem closures live in latticeai.services.platform_runtime to
-    # keep this assembly file lean; server_app only constructs it and mounts routers.
-    def _llm_generate_sync(message: str, context: str = "", max_tokens: int = 1024, temperature: float = 0.1) -> str:
-        # Synchronous model bridge for the orchestrator's role runner. Safe
-        # because the agents run endpoint executes start() in a worker thread
-        # (asyncio.to_thread), where no event loop is running.
-        import asyncio as _asyncio
-
-        return str(_asyncio.run(router.generate(
-            message, context=context, max_tokens=max_tokens, temperature=temperature,
-        )))
-
-    PLATFORM = PlatformRuntime(
-        store=WORKSPACE_OS,
+    _platform_automation_runtime = build_platform_automation_runtime(
+        model_router=router,
+        workspace_store=WORKSPACE_OS,
         workspace_service=WORKSPACE_SERVICE,
         plugin_registry=PLUGIN_REGISTRY,
         get_current_user=get_current_user,
@@ -1360,23 +1348,17 @@ def _build(config: "Optional[Config]" = None) -> Dict[str, Any]:
         workspace_scope_from_request=_workspace_scope_from_request,
         get_tool_permission=get_tool_permission,
         hooks=HOOKS_REGISTRY,
-        llm_generate=_llm_generate_sync,
-        llm_available=lambda: bool(getattr(router, "current_model_id", None)),
         agent_registry=AGENT_REGISTRY,
-    )
-
-    _automation_runtime = build_automation_runtime(
-        store=WORKSPACE_OS,
-        platform=PLATFORM,
         data_dir=DATA_DIR,
-        workspace_graph=_workspace_graph,
         append_audit_event=append_audit_event,
-        hooks=HOOKS_REGISTRY,
     )
-    REVIEW_QUEUE = _automation_runtime["REVIEW_QUEUE"]
-    TRIGGER_SERVICE = _automation_runtime["TRIGGER_SERVICE"]
-    AGENT_RUNTIME = _automation_runtime["AGENT_RUNTIME"]
-    RUN_EXECUTOR = _automation_runtime["RUN_EXECUTOR"]
+    _llm_generate_sync = _platform_automation_runtime["_llm_generate_sync"]
+    PLATFORM = _platform_automation_runtime["PLATFORM"]
+    _automation_runtime = _platform_automation_runtime["_automation_runtime"]
+    REVIEW_QUEUE = _platform_automation_runtime["REVIEW_QUEUE"]
+    TRIGGER_SERVICE = _platform_automation_runtime["TRIGGER_SERVICE"]
+    AGENT_RUNTIME = _platform_automation_runtime["AGENT_RUNTIME"]
+    RUN_EXECUTOR = _platform_automation_runtime["RUN_EXECUTOR"]
     bind_trigger_hook_runner(registry=HOOKS_REGISTRY, trigger_service=TRIGGER_SERVICE)
     app.state.run_executor = RUN_EXECUTOR
     app.state.run_reconciliation = RUN_EXECUTOR.reconcile_startup()

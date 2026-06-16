@@ -1,6 +1,6 @@
 # Lattice AI Current Architecture
 
-Last updated for the 6.2.0 Product Decomposition / Release Smoke Automation target.
+Last updated for the 6.2.0 Product Decomposition / Release Smoke Automation target and PR hardening follow-up.
 
 Lattice AI is a local-first Digital Brain that keeps your knowledge durable
 across any AI model. Product category is the Digital Brain; core capability is

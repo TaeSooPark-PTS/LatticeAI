@@ -16,11 +16,12 @@ exact artifact set.
 
 | Area | Status | Evidence |
 | --- | --- | --- |
-| **App shell decomposition** | WORKING | Brain Home and Admin Console are split from `App.tsx` into feature modules. |
-| **Onboarding decomposition** | WORKING | `ProductFlow.tsx` delegates screen rendering to onboarding components using design-system CSS. |
+| **App shell decomposition** | WORKING | Brain Home and Admin Console are split from `App.tsx` into feature modules; Brain Home now delegates conversation, composer, depth, overview, care, memory, graph, and relationship layers. |
+| **Onboarding decomposition** | WORKING | `ProductFlow.tsx` delegates screen rendering to onboarding components using design-system CSS; ProductFlowScreens is now a compatibility barrel over per-screen modules. |
 | **Model download consent UX** | WORKING | First-run model setup displays size, storage location, external target, and a do-later path. |
 | **Root module shrink** | WORKING | `ltcai_cli.py`, `telegram_bot.py`, and `p_reinforce.py` are compatibility shims over package modules. |
 | **Router context extraction** | WORKING | Tool and interaction router assembly use typed context objects while keeping route order stable. |
+| **App factory runtime wiring** | WORKING | Platform and automation runtime construction is isolated behind `latticeai.runtime.platform_runtime_wiring` while preserving lazy import behavior. |
 | **Release smoke automation** | WORKING | `npm run release:smoke` validates wheel install, npm tgz, static assets, and Tauri artifacts. |
 | **Release docs sync** | WORKING | README, RELEASE, CHANGELOG, release notes, security, and extension docs align to 6.2.0. |
 
