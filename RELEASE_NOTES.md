@@ -24,6 +24,8 @@ smoke checks are split into smaller testable boundaries.
 - Added `npm run release:smoke` for wheel install, npm tgz, static asset, and
   Tauri artifact smoke validation.
 - Synchronized package/runtime/static versions to `6.2.0`.
+- Refreshed README screenshots and walkthrough GIF under
+  `output/release/v6.2.0/`.
 
 ### Expected Artifacts
 

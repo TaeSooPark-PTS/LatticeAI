@@ -30,5 +30,4 @@ post-release iteration without changing package publishing ownership.
 - `ltcai-6.2.0.tgz`
 - `src-tauri/target/release/bundle/dmg/Lattice AI_6.2.0_aarch64.dmg`
 
-Package registry publish, production deploy, GitHub Release creation, and tag
-creation remain owner-run steps.
+Package registry publish and production deploy remain owner-run steps.

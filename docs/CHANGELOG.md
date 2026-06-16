@@ -26,12 +26,13 @@ historical and may describe behavior as it existed at that release.
   package modules while preserving import and script compatibility.
 - Admin Console and onboarding user-facing copy now route through shared i18n
   keys for Korean/English coverage.
-- Package/runtime/static metadata is synchronized to 6.2.0; package publish,
-  deployment, tag creation, and GitHub Release creation remain owner-run only.
+- Package/runtime/static metadata is synchronized to 6.2.0; package publish
+  and deployment remain owner-run only.
+- README release evidence screenshots and walkthrough GIF are refreshed under
+  `output/release/v6.2.0/`.
 
 ### Preserved
-- v6.1 screenshots and validation reports remain historical evidence unless a
-  fresh 6.2 capture set is generated.
+- v6.1 screenshots and validation reports remain historical evidence.
 - Package publish and deploy commands continue to require exact artifact names.
 
 ## [6.1.0] - 2026-06-16
