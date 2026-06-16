@@ -246,6 +246,9 @@ Do not upload `dist/*`. Package registry publishing remains owner-run.
 
 | Version | Theme |
 | --- | --- |
+| 6.3.0 | Product Hardening Completion: Brain archive/provenance/ingestion UX polish, Review Center Run Now contract hardening, local model runtime status, app-factory review wiring, shim smoke, i18n guard, and exact release artifacts |
+| 6.2.0 | Product Decomposition / Release Smoke Automation: App and ProductFlow feature extraction, legacy root shim shrink, model download consent UX, typed router contexts, localized smoke tests, and wheel/npm/static/Tauri release smoke |
+| 6.1.0 | Product Hardening / Digital Brain Completion: local Brain entry without a loaded model, Brain memory/backup loop, Review Center semantics, ToolRegistry authorization boundary, and root CLI/runtime compatibility |
 | 6.0.0 | Product Reset / Review Center Completion: Snoozed filter, Unsnooze, OpenAPI-derived Review typing, Review feature extraction, v6 docs and scorecard |
 | 5.6.0 | Brain Automation Review Center: workspace-scoped automation review inbox, source-aware provenance, guarded approve/dismiss/snooze/run_now actions, and Act Review tab |
 | 5.5.0 | Release Coordination: synchronized package/runtime/static versions and release docs for the 5.5.0 line while preserving v5.4.0 Brain Automation Scheduler behavior |
