@@ -29,7 +29,7 @@ export function AdminConsole({ onBack }: { onBack: () => void }) {
   const retention = (retentionQ.data?.data || {}) as ApiRecord;
 
   return (
-    <main className="admin-console" aria-label="Lattice Admin">
+    <main className="admin-console" aria-label={t(language, "admin.aria.console")}>
       <header className="admin-console-header">
         <button className="admin-back-button" type="button" onClick={onBack}>
           <ArrowLeft className="h-4 w-4" />

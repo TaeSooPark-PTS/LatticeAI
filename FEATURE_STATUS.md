@@ -1,28 +1,31 @@
-# Lattice AI — Feature Status (v6.2.0 target)
+# Lattice AI — Feature Status (v6.3.0 target)
 
-**Current release-preparation line:** v6.2.0 Product Decomposition / Release Smoke Automation.
+**Current release-preparation line:** v6.3.0 Product Hardening Completion.
 Lattice AI is a local-first Digital Brain that keeps your knowledge durable
 across any AI model. The primary experience is Brain plus conversation; the
 graph remains durable infrastructure and advanced exploration, not the home
 product identity. Sections below v5.3.0 are historical release-status records
 and should not override the current README, ARCHITECTURE.md, SECURITY.md,
-PRIVACY.md, or v6.2.0 release notes.
+PRIVACY.md, or v6.3.0 release notes.
 
-## v6.2.0 Product Decomposition / Release Smoke Automation — current release line
+## v6.3.0 Product Hardening Completion — current release line
 
-v6.2.0 follows the 6.1 hardening release by reducing the largest frontend and
-backend composition surfaces while adding release smoke automation for the
-exact artifact set.
+v6.3.0 completes the product-hardening line by closing the remaining UX, Review
+Center, runtime wiring, i18n, and release-validation gaps on top of the 6.2
+decomposition work.
 
 | Area | Status | Evidence |
 | --- | --- | --- |
-| **App shell decomposition** | WORKING | Brain Home and Admin Console are split from `App.tsx` into feature modules. |
-| **Onboarding decomposition** | WORKING | `ProductFlow.tsx` delegates screen rendering to onboarding components using design-system CSS. |
+| **App shell decomposition** | WORKING | Brain Home and Admin Console are split from `App.tsx` into feature modules; Brain Home now delegates conversation, composer, depth, overview, care, memory, graph, and relationship layers. |
+| **Onboarding decomposition** | WORKING | `ProductFlow.tsx` delegates screen rendering to onboarding components using design-system CSS; ProductFlowScreens is now a compatibility barrel over per-screen modules. |
 | **Model download consent UX** | WORKING | First-run model setup displays size, storage location, external target, and a do-later path. |
 | **Root module shrink** | WORKING | `ltcai_cli.py`, `telegram_bot.py`, and `p_reinforce.py` are compatibility shims over package modules. |
 | **Router context extraction** | WORKING | Tool and interaction router assembly use typed context objects while keeping route order stable. |
+| **App factory runtime wiring** | WORKING | Platform and automation runtime construction is isolated behind `latticeai.runtime.platform_runtime_wiring` while preserving lazy import behavior. |
+| **Review Center run-now contract** | WORKING | Run Now remains preview/regenerate, keeps status unchanged, and has scoped backend contract tests. |
+| **Root shim smoke** | WORKING | Compatibility import smoke covers `server.py`, `knowledge_graph.py`, `ltcai_cli.py`, `telegram_bot.py`, and `p_reinforce.py`. |
 | **Release smoke automation** | WORKING | `npm run release:smoke` validates wheel install, npm tgz, static assets, and Tauri artifacts. |
-| **Release docs sync** | WORKING | README, RELEASE, CHANGELOG, release notes, security, and extension docs align to 6.2.0. |
+| **Release docs sync** | WORKING | README, RELEASE, CHANGELOG, release notes, security, and extension docs align to 6.3.0. |
 
 ## v6.1.0 Product Hardening / Digital Brain Completion — previous release line
 

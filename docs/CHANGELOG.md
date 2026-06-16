@@ -3,6 +3,48 @@
 The top entry is the current release-preparation target. Older entries are
 historical and may describe behavior as it existed at that release.
 
+## [6.3.0] - 2026-06-16
+
+> Product Hardening Completion. Completes the 6.2 decomposition follow-up by
+> tightening Brain archive, provenance, ingestion, Review Center, local model
+> runtime, app-factory wiring, compatibility shim, i18n, and release-validation
+> surfaces.
+
+### Changed
+- Brain Home and onboarding screens are split into finer feature-owned modules
+  while preserving the existing routes, CSS surface, and visual behavior.
+- Platform and automation runtime wiring moved behind a dedicated app-factory
+  seam, keeping construction side-effect free and route order unchanged.
+- Admin, Brain, and onboarding localized aria/placeholder surfaces now use the
+  shared i18n map.
+- Brain archive care now validates archive paths, confirms passphrases, gives
+  strength guidance, and summarizes inspect/restore-preview results without
+  dumping raw JSON.
+- Document capture now exposes a drop/choose ingest queue with progress,
+  failure reason, retry, source metadata, and post-ingest Brain/Graph
+  confirmation.
+- Brain memory and graph surfaces now show provenance/source type, created time,
+  source path/title/conversation fallback, and copy-source affordances.
+- Review Center cards now keep visible action result/error feedback for
+  run-now/approve/dismiss/snooze flows while preserving run-now as
+  preview/regenerate rather than approval.
+- Local model setup now reports loaded model, engine state, cache/storage path,
+  download/load progress, reload/unload controls, and an honest no-model state.
+- App factory model/chat/review-tail wiring moved into focused runtime wiring
+  modules while preserving route order.
+- Review Center run-now backend wiring moved into `latticeai.runtime.review_wiring`
+  and is covered by scoped runner/status-preservation tests.
+- Legacy root shim import smoke now covers server, knowledge graph, CLI,
+  Telegram, and P-Reinforce compatibility paths.
+- Package/runtime/static metadata is synchronized to 6.3.0; package publish and
+  deployment remain owner-run only.
+
+### Added
+- Frontend i18n literal check for localized aria/placeholder props in Brain,
+  Admin, and onboarding TSX surfaces.
+- Focused runtime wiring modules for model runtime, chat/interaction contexts,
+  and review/Brain tail registration.
+
 ## [6.2.0] - 2026-06-16
 
 > Product Decomposition / Release Smoke Automation. Splits the largest product

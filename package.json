@@ -1,6 +1,6 @@
 {
   "name": "ltcai",
-  "version": "6.2.0",
+  "version": "6.3.0",
   "description": "Lattice AI — local-first Digital Brain that keeps your knowledge durable across any AI model.",
   "homepage": "https://github.com/TaeSooPark-PTS/LatticeAI#readme",
   "repository": {
@@ -23,7 +23,7 @@
     "build:assets": "vite build && node scripts/build_frontend_assets.mjs",
     "build:python": "node scripts/run_python.mjs -m build",
     "check:python": "node scripts/run_python.mjs scripts/check_python.py",
-    "lint": "node --check tests/visual/mock_server.cjs && node --check tests/visual/v3.spec.js && npm run lint:frontend",
+    "lint": "node --check tests/visual/mock_server.cjs && node --check tests/visual/v3.spec.js && npm run lint:frontend && node scripts/check_i18n_literals.mjs",
     "lint:frontend": "node scripts/lint_frontend.mjs",
     "docs:check-links": "node scripts/check_markdown_links.mjs",
     "typecheck": "npm run typecheck:frontend && cd vscode-extension && npm run build",

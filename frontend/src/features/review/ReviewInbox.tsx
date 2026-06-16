@@ -38,11 +38,21 @@ export function ReviewInbox() {
       action === "unsnooze" ? () => latticeApi.unsnoozeReviewItem(item.id) :
       () => latticeApi.runNowReviewItem(item.id);
     const result = await call();
+    if (!result.ok) {
+      setRunFeedback((prev) => ({
+        ...prev,
+        [item.id]: result.error || `${action} failed`,
+      }));
+      return result;
+    }
     if (result.ok) {
       if (action === "run_now") {
+        const payload = result.data.payload || {};
+        const provenance = result.data.provenance || {};
+        const runId = String(payload.last_run_id || provenance.run_id || "");
         setRunFeedback((prev) => ({
           ...prev,
-          [item.id]: hadRunBefore ? "Regenerated" : "Executed",
+          [item.id]: runId ? `${hadRunBefore ? "Regenerated" : "Executed"} · ${runId}` : hadRunBefore ? "Regenerated" : "Executed",
         }));
       } else {
         setRunFeedback((prev) => {

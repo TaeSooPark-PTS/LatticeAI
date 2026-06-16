@@ -89,7 +89,9 @@ export function ReviewCard({ item, feedback, onAction }: ReviewCardProps) {
         </div>
       ) : null}
       {feedback ? (
-        <p className="mt-2 text-xs text-emerald-300">{feedback} - item stays open until you approve or dismiss.</p>
+        <p className={`mt-2 text-xs ${/fail|error|unavailable/i.test(feedback) ? "text-amber-300" : "text-emerald-300"}`}>
+          {feedback} - item stays open until you approve or dismiss.
+        </p>
       ) : null}
     </div>
   );
