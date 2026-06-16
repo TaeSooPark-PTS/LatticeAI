@@ -1,7 +1,36 @@
 # Release Notes
 
-The current release target is v6.2.0. The tracked release-note surface starts at
+The current release target is v6.3.0. The tracked release-note surface starts at
 v4.5.0 so the public Git tree stays focused on the current product era.
+
+## v6.3.0 - Product Hardening Completion
+
+Lattice AI v6.3.0 completes the hardening pass that followed the 6.2
+decomposition work. It closes remaining UX, Review Center, app-factory,
+compatibility-shim, i18n, and release-validation gaps while keeping package
+publish and production deployment owner-run.
+
+### Highlights
+
+- Hardened Brain archive, memory provenance, document ingestion, Review Center,
+  and local model runtime UX surfaces.
+- Preserved Review Center Run Now as preview/regenerate, with scoped backend
+  contract coverage and run id back-link assertions.
+- Moved Review Center run-now wiring out of `app_factory.py` into a focused
+  runtime helper.
+- Added legacy root shim smoke coverage for server, knowledge graph, CLI,
+  Telegram, and P-Reinforce compatibility paths.
+- Synchronized package/runtime/static versions to `6.3.0`.
+
+### Expected Artifacts
+
+- `dist/ltcai-6.3.0-py3-none-any.whl`
+- `dist/ltcai-6.3.0.tar.gz`
+- `dist/ltcai-6.3.0.vsix`
+- `ltcai-6.3.0.tgz`
+- `src-tauri/target/release/bundle/dmg/Lattice AI_6.3.0_aarch64.dmg`
+
+Full notes: [RELEASE_NOTES_v6.3.0.md](RELEASE_NOTES_v6.3.0.md)
 
 ## v6.2.0 - Product Decomposition / Release Smoke Automation
 

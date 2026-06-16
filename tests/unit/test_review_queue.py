@@ -287,6 +287,54 @@ def test_run_now_accepts_plain_run_id(tmp_path):
     assert updated["status"] == "pending"
 
 
+def test_run_now_api_contract_preserves_status_and_scopes_runner(tmp_path):
+    calls = []
+    store = _store(tmp_path)
+    service = ReviewQueueService(store=store)
+    app = FastAPI()
+
+    def run_review_item(stored, *, user_email, scope):
+        calls.append({
+            "id": stored["id"],
+            "workflow_id": stored["payload"]["workflow_id"],
+            "user_email": user_email,
+            "scope": scope,
+        })
+        return {"run": {"id": "run-scoped-preview"}}
+
+    app.include_router(create_review_queue_router(
+        service=service,
+        require_user=lambda _req: "u@x.com",
+        gate_read=lambda _req: "personal",
+        gate_write=lambda _req: "personal",
+        run_review_item=run_review_item,
+        append_audit_event=lambda *_a, **_k: None,
+    ))
+    client = TestClient(app)
+    created = client.post(
+        "/automation/reviews",
+        json={
+            "title": "Preview only",
+            "payload": {"workflow_id": "wf-preview"},
+            "provenance": {"workflow_id": "wf-preview", "run_id": "run-original"},
+        },
+    ).json()
+
+    response = client.post(f"/automation/reviews/{created['id']}/run_now")
+    assert response.status_code == 200
+    updated = response.json()
+    assert calls == [{
+        "id": created["id"],
+        "workflow_id": "wf-preview",
+        "user_email": "u@x.com",
+        "scope": "personal",
+    }]
+    assert updated["status"] == "pending"
+    assert updated["effective_status"] == "pending"
+    assert updated["payload"]["last_run_id"] == "run-scoped-preview"
+    assert updated["provenance"]["run_id"] == "run-scoped-preview"
+
+
 def test_run_now_illegal_on_dismissed(tmp_path):
     _, svc = _service(tmp_path)
     item = svc.create(title="x", payload={"workflow_id": "wf"})

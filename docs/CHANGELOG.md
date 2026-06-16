@@ -3,7 +3,12 @@
 The top entry is the current release-preparation target. Older entries are
 historical and may describe behavior as it existed at that release.
 
-## [Unreleased] - v6.2 PR Hardening Follow-up
+## [6.3.0] - 2026-06-16
+
+> Product Hardening Completion. Completes the 6.2 decomposition follow-up by
+> tightening Brain archive, provenance, ingestion, Review Center, local model
+> runtime, app-factory wiring, compatibility shim, i18n, and release-validation
+> surfaces.
 
 ### Changed
 - Brain Home and onboarding screens are split into finer feature-owned modules
@@ -27,6 +32,12 @@ historical and may describe behavior as it existed at that release.
   download/load progress, reload/unload controls, and an honest no-model state.
 - App factory model/chat/review-tail wiring moved into focused runtime wiring
   modules while preserving route order.
+- Review Center run-now backend wiring moved into `latticeai.runtime.review_wiring`
+  and is covered by scoped runner/status-preservation tests.
+- Legacy root shim import smoke now covers server, knowledge graph, CLI,
+  Telegram, and P-Reinforce compatibility paths.
+- Package/runtime/static metadata is synchronized to 6.3.0; package publish and
+  deployment remain owner-run only.
 
 ### Added
 - Frontend i18n literal check for localized aria/placeholder props in Brain,

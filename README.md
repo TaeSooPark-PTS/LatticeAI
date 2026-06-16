@@ -69,42 +69,42 @@ You need Lattice AI when:
 Choose the owner of the Brain. The profile is not a SaaS account by default; it
 is the local identity for the knowledge you keep.
 
-![Login](output/release/v6.2.0/screenshots/01-login.png)
+![Login](output/release/v6.3.0/screenshots/01-login.png)
 
 ### 2. Environment Analysis
 
 See what kind of local AI experience this computer can support before choosing a
 model.
 
-![Environment Analysis](output/release/v6.2.0/screenshots/02-environment-analysis.png)
+![Environment Analysis](output/release/v6.3.0/screenshots/02-environment-analysis.png)
 
 ### 3. Recommended Models
 
 Start with a short list: safest recommendation, faster model, stronger model.
 Advanced details stay available without overwhelming first-time users.
 
-![Recommended Models](output/release/v6.2.0/screenshots/03-recommended-models.png)
+![Recommended Models](output/release/v6.3.0/screenshots/03-recommended-models.png)
 
 ### 4. Install And Load
 
 Download and load only after consent. Lattice explains model size, local
 execution, and network use before work starts.
 
-![Install and Load](output/release/v6.2.0/screenshots/04-install-load-progress.png)
+![Install and Load](output/release/v6.3.0/screenshots/04-install-load-progress.png)
 
 ### 5. Brain Chat
 
 Talk normally. Useful decisions and context become memory, then appear later as
 topics, relationships, and graph structure.
 
-![Brain Chat Home](output/release/v6.2.0/screenshots/05-brain-chat-home.png)
+![Brain Chat Home](output/release/v6.3.0/screenshots/05-brain-chat-home.png)
 
 ### 6. Review Center
 
 Automation results are staged for review before they become durable decisions.
 Snooze, unsnooze, run now, approve, and dismiss actions stay explicit.
 
-![Review Center](output/release/v6.2.0/screenshots/13-review-center.png)
+![Review Center](output/release/v6.3.0/screenshots/13-review-center.png)
 
 ## Brain Depths
 
@@ -120,10 +120,10 @@ The user travels inward from everyday memory to deeper structure:
 
 Walkthrough:
 
-![v6.2.0 Living Brain walkthrough](output/release/v6.2.0/gifs/v6.2.0-living-brain-walkthrough.gif)
+![v6.3.0 Living Brain walkthrough](output/release/v6.3.0/gifs/v6.3.0-living-brain-walkthrough.gif)
 
 Screenshot index and capture notes:
-[output/release/v6.2.0/SCREENSHOT_INDEX.md](output/release/v6.2.0/SCREENSHOT_INDEX.md)
+[output/release/v6.3.0/SCREENSHOT_INDEX.md](output/release/v6.3.0/SCREENSHOT_INDEX.md)
 
 ## Install
 
@@ -200,7 +200,7 @@ See [docs/DEVELOPMENT.md](docs/DEVELOPMENT.md) for developer workflow details.
 
 ## Current Release Preparation
 
-The current development target is **6.2.0 Product Decomposition / Release Smoke Automation**:
+The current development target is **6.3.0 Product Hardening Completion**:
 
 - `App.tsx` now delegates the main Brain and Admin surfaces to focused feature
   modules instead of owning the full product shell.
@@ -217,14 +217,17 @@ The current development target is **6.2.0 Product Decomposition / Release Smoke 
   app-factory parameter sprawl while preserving route order.
 - Release smoke automation now checks wheel install, npm tgz contents, static
   assets, and Tauri artifacts after exact-version artifact validation.
+- Brain archive, memory provenance, document ingestion, Review Center Run Now,
+  local model runtime, root-shim smoke, and app-factory review wiring now have
+  dedicated UX/backend hardening coverage for the 6.3 line.
 
-Expected artifacts for 6.2.0 release must use exact filenames:
+Expected artifacts for 6.3.0 release must use exact filenames:
 
-- `dist/ltcai-6.2.0-py3-none-any.whl`
-- `dist/ltcai-6.2.0.tar.gz`
-- `ltcai-6.2.0.tgz`
-- `dist/ltcai-6.2.0.vsix`
-- `src-tauri/target/release/bundle/dmg/Lattice AI_6.2.0_aarch64.dmg`
+- `dist/ltcai-6.3.0-py3-none-any.whl`
+- `dist/ltcai-6.3.0.tar.gz`
+- `ltcai-6.3.0.tgz`
+- `dist/ltcai-6.3.0.vsix`
+- `src-tauri/target/release/bundle/dmg/Lattice AI_6.3.0_aarch64.dmg`
 
 Do not upload `dist/*`. Package registry publishing remains owner-run.
 

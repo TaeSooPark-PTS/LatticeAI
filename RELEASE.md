@@ -7,6 +7,29 @@
 > PyPI / npm / VS Code Marketplace / Open VSX 배포는 아래 수동 절차로만
 > 진행합니다. 태그 생성은 패키지 스토어 publish를 자동으로 트리거하지 않습니다.
 
+## v6.3.0 릴리스 준비 노트 (2026-06-16)
+
+Lattice AI v6.3.0 — Product Hardening Completion. 6.3.0은 6.2.0의 App /
+ProductFlow / root module decomposition 위에서 남은 hardening gap을 닫는다.
+Brain archive UX는 passphrase guidance, inspect/restore preview, portability
+status를 더 명확히 보여주고, memory provenance와 document ingestion 화면은 source
+type, created time, retry/failure reason, Brain/Graph routing 결과를 더 직접적으로
+표시한다.
+
+Review Center Run Now는 계속 approve가 아닌 preview/regenerate 계약으로 유지되며,
+backend runner는 scoped user/workspace context와 run id backlink를 테스트로
+고정한다. `app_factory.py`의 Review runtime wiring은 별도 runtime helper로 빠졌고,
+legacy root shim import path는 smoke test로 고정된다. Release validation은 6.3.0
+exact-version wheel, sdist, npm tgz, VSIX, static asset, Tauri artifact 경로를
+검증한다.
+
+Expected artifacts (exact 6.3.0 names only):
+- dist/ltcai-6.3.0-py3-none-any.whl
+- dist/ltcai-6.3.0.tar.gz
+- dist/ltcai-6.3.0.vsix
+- ltcai-6.3.0.tgz
+- src-tauri/target/release/bundle/dmg/Lattice AI_6.3.0_aarch64.dmg
+
 ## v6.2.0 릴리스 준비 노트 (2026-06-16)
 
 Lattice AI v6.2.0 — Product Decomposition / Release Smoke Automation. 6.2.0은

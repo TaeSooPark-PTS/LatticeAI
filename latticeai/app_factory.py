@@ -42,6 +42,7 @@ from latticeai.runtime.platform_services_runtime import (
 )
 from latticeai.runtime.platform_runtime_wiring import build_platform_automation_runtime
 from latticeai.runtime.persistence_runtime import build_persistence_runtime
+from latticeai.runtime.review_wiring import build_review_run_now_runner
 from latticeai.runtime.router_registration import (
     build_auth_admin_security_router_bundle,
     build_static_routes_bundle,
@@ -1509,16 +1510,7 @@ def _build(config: "Optional[Config]" = None) -> Dict[str, Any]:
     )
 
     from latticeai.api.review_queue import create_review_queue_router
-
-    def _run_review_item(item, *, user_email, scope):
-        """run_now: re-execute the suggestion's source workflow (preview/regenerate)."""
-        wf_id = (item.get("payload") or {}).get("workflow_id") or (item.get("provenance") or {}).get("workflow_id")
-        if not wf_id:
-            raise HTTPException(status_code=409, detail="review item has no workflow to run")
-        return PLATFORM.run_workflow_by_id(
-            wf_id, user_email, scope, with_agent=False,
-            inputs={"__review_item__": item.get("id")},
-        )
+    run_review_item = build_review_run_now_runner(PLATFORM, HTTPException)
 
     BRAIN_NETWORK = register_tail_runtime_routers(
         app=app,
@@ -1528,7 +1520,7 @@ def _build(config: "Optional[Config]" = None) -> Dict[str, Any]:
         require_user=require_user,
         gate_read=PLATFORM.gate_read,
         gate_write=PLATFORM.gate_write,
-        run_review_item=_run_review_item,
+        run_review_item=run_review_item,
         append_audit_event=append_audit_event,
         create_browser_router=create_browser_router,
         ingestion_pipeline=INGESTION_PIPELINE,
