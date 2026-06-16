@@ -109,12 +109,20 @@ function ModelsPanel() {
             const profile = (data as Record<string, unknown>).profile as Record<string, unknown> | undefined;
             return (
               <div className="space-y-4">
-                <StatGrid stats={[
-                  { label: "Computer", value: profile?.os ? `${String(profile.os)} ${String(profile.arch || "")}` : "detected" },
-                  { label: "Memory", value: recommendation?.ram_gb ? `${String(recommendation.ram_gb)} GB` : "checking" },
-                  { label: "Top pick", value: topPick?.name || topPick?.id || "choose below" },
-                  { label: "Current", value: current?.name || currentId || "none" },
-                ]} />
+                <ModelRuntimeSummary
+                  profile={profile || {}}
+                  recommendation={recommendation || {}}
+                  current={current}
+                  currentId={currentId}
+                  latestProgress={latestProgress}
+                  lastResult={lastResult}
+                  onReload={() => {
+                    if (current) void prepareModel(String(current.recommended_load_id || current.id || currentId), String(current.recommended_engine || current.engine || "local_mlx"), consent);
+                  }}
+                  onUnload={() => {
+                    if (currentId) void latticeApi.unloadModel(currentId).then(() => qc.invalidateQueries({ queryKey: ["models"] }));
+                  }}
+                />
                 <div className="grid gap-2 md:grid-cols-3 xl:grid-cols-6">
                   {[
                     ["Environment Analysis", true, Cpu],
@@ -292,6 +300,64 @@ function AlternativeModels({ compatibility }: { compatibility: Record<string, un
           {mode === "basic" && /mlx|gguf|ollama|lm studio/i.test(String(item.name || item.id)) ? "Compatible alternative" : String(item.name || item.id)}
         </Badge>
       ))}
+    </div>
+  );
+}
+
+function ModelRuntimeSummary({
+  profile,
+  recommendation,
+  current,
+  currentId,
+  latestProgress,
+  lastResult,
+  onReload,
+  onUnload,
+}: {
+  profile: Record<string, unknown>;
+  recommendation: Record<string, unknown>;
+  current?: Record<string, unknown>;
+  currentId: string;
+  latestProgress: Record<string, unknown> | null;
+  lastResult: Record<string, unknown> | null;
+  onReload: () => void;
+  onUnload: () => void;
+}) {
+  const loadedName = String(current?.name || current?.id || currentId || "");
+  const engine = String(current?.engine || current?.recommended_engine || latestProgress?.engine || "local_mlx");
+  const cachePath = String(current?.local_path || current?.storage_location || recommendation.cache_path || recommendation.storage_location || "~/.cache/huggingface / ~/.latticeai/models");
+  const progressStage = String(latestProgress?.stage || lastResult?.stage || (loadedName ? "ready" : "idle"));
+  return (
+    <div className="space-y-3">
+      <StatGrid stats={[
+        { label: "Computer", value: profile?.os ? `${String(profile.os)} ${String(profile.arch || "")}` : "detected" },
+        { label: "Engine", value: engine },
+        { label: "Loaded model", value: loadedName || "No local model loaded" },
+        { label: "Runtime state", value: progressStage },
+      ]} />
+      <div className="rounded-lg border border-border bg-background/55 p-3 text-sm">
+        <div className="flex flex-wrap items-start justify-between gap-3">
+          <div>
+            <div className="font-medium">{loadedName ? "Local model runtime is available" : "No model is loaded yet"}</div>
+            <div className="mt-1 text-muted-foreground">Cache/storage: {cachePath}</div>
+          </div>
+          <div className="flex flex-wrap gap-2">
+            <Button variant="outline" size="sm" disabled={!loadedName} onClick={onReload}>Reload</Button>
+            <Button variant="outline" size="sm" disabled={!loadedName} onClick={onUnload}>Unload</Button>
+          </div>
+        </div>
+        {latestProgress ? (
+          <div className="mt-3">
+            <div className="flex justify-between text-xs text-muted-foreground">
+              <span>{String(latestProgress.message || "Preparing model")}</span>
+              <span>{Number(latestProgress.percent || 0)}%</span>
+            </div>
+            <div className="mt-1 h-2 overflow-hidden rounded-full bg-muted">
+              <div className="h-full bg-primary" style={{ width: `${Number(latestProgress.percent || 8)}%` }} />
+            </div>
+          </div>
+        ) : null}
+      </div>
     </div>
   );
 }

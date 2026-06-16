@@ -22,11 +22,21 @@ function walk(dir) {
 }
 
 const rawLocalizedProps = /\b(?:aria-label|placeholder|title)=["'][^"'{]*[A-Za-z][^"']*["']/g;
+const rawJsxText = />\s*([A-Z][A-Za-z0-9][^<>{}\n]{2,})\s*</g;
+const rawComponentCopy = /\b(?:title|detail|description|successLabel|empty)=["'][^"'{]*[A-Za-z][^"']*["']/g;
 let failures = 0;
 
 for (const file of roots.flatMap(walk)) {
   const text = readFileSync(file, "utf8");
-  const matches = text.match(rawLocalizedProps) || [];
+  const matches = [
+    ...(text.match(rawLocalizedProps) || []),
+    ...(text.match(rawComponentCopy) || []),
+  ];
+  for (const match of text.matchAll(rawJsxText)) {
+    const literal = match[1].trim();
+    if (!literal || /^[A-Z][a-z]*$/.test(literal) || /^Lattice\b/.test(literal)) continue;
+    matches.push(`JSX text: ${literal}`);
+  }
   if (!matches.length) continue;
   failures += matches.length;
   for (const match of matches) {

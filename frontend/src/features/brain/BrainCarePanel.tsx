@@ -11,10 +11,16 @@ export function BrainCarePanel({ language }: { language: Language }) {
   const [expanded, setExpanded] = React.useState(false);
   const [archivePath, setArchivePath] = React.useState("");
   const [passphrase, setPassphrase] = React.useState("");
+  const [passphraseConfirm, setPassphraseConfirm] = React.useState("");
   const [latestResult, setLatestResult] = React.useState<ApiResult | null>(null);
   const portabilityQ = useQuery({ queryKey: ["portability"], queryFn: latticeApi.graphPortability });
   const backupHealthQ = useQuery({ queryKey: ["backupHealth"], queryFn: latticeApi.backupHealth });
   const rememberResult = React.useCallback((result: ApiResult) => setLatestResult(result), []);
+  const pathProblem = archivePath.trim() ? archivePathProblem(archivePath.trim(), language) : "";
+  const passphraseProblem = passphrase.trim() ? passphraseStrengthProblem(passphrase, language) : "";
+  const passphrasesMatch = !passphrase || passphrase === passphraseConfirm;
+  const canArchive = Boolean(passphrase.trim()) && passphrasesMatch && !passphraseProblem;
+  const canUseExistingArchive = Boolean(archivePath.trim()) && !pathProblem;
 
   const exportGraph = useCareMutation(() => latticeApi.graphExport(), undefined, rememberResult);
   const backupGraph = useCareMutation(() => latticeApi.graphBackup(), () => {
@@ -38,7 +44,7 @@ export function BrainCarePanel({ language }: { language: Language }) {
   }), undefined, rememberResult);
 
   const portableFormat = portabilityLabel(portabilityQ.data?.data);
-  const backupStatus = backupHealthLabel(backupHealthQ.data?.data);
+  const backupStatus = backupHealthLabel(backupHealthQ.data?.data, language);
 
   return (
     <section className={`brain-care-panel ${expanded ? "is-expanded" : "is-collapsed"}`} aria-label={t(language, "care.title")}>
@@ -86,7 +92,7 @@ export function BrainCarePanel({ language }: { language: Language }) {
               detail={t(language, "care.archive.detail")}
               pendingLabel={t(language, "care.working")}
               pending={archiveBrain.isPending}
-              disabled={!passphrase.trim()}
+              disabled={!canArchive}
               onClick={() => archiveBrain.mutate()}
             />
           </div>
@@ -105,11 +111,23 @@ export function BrainCarePanel({ language }: { language: Language }) {
               placeholder={t(language, "care.passphrase.placeholder")}
               aria-label={t(language, "care.passphrase.label")}
             />
+            <input
+              type="password"
+              value={passphraseConfirm}
+              onChange={(event) => setPassphraseConfirm(event.target.value)}
+              placeholder={t(language, "care.passphrase.confirmPlaceholder")}
+              aria-label={t(language, "care.passphrase.confirmLabel")}
+            />
+            <div className="brain-care-guidance" role="status">
+              {pathProblem ? <span className="is-error">{pathProblem}</span> : archivePath.trim() ? <span>{t(language, "care.path.ready")}</span> : null}
+              {passphraseProblem ? <span className="is-error">{passphraseProblem}</span> : passphrase ? <span>{t(language, "care.passphrase.strong")}</span> : null}
+              {!passphrasesMatch ? <span className="is-error">{t(language, "care.passphrase.mismatch")}</span> : null}
+            </div>
             <div className="brain-care-archive-actions">
               <Button
                 variant="outline"
                 size="sm"
-                disabled={!archivePath.trim() || inspectArchive.isPending}
+                disabled={!canUseExistingArchive || inspectArchive.isPending}
                 onClick={() => inspectArchive.mutate()}
               >
                 <Eye className="h-3.5 w-3.5" /> {t(language, "care.inspect")}
@@ -117,7 +135,7 @@ export function BrainCarePanel({ language }: { language: Language }) {
               <Button
                 variant="outline"
                 size="sm"
-                disabled={!archivePath.trim() || !passphrase.trim() || restorePreview.isPending}
+                disabled={!canUseExistingArchive || !passphrase.trim() || !passphrasesMatch || restorePreview.isPending}
                 onClick={() => restorePreview.mutate()}
               >
                 <RotateCcw className="h-3.5 w-3.5" /> {t(language, "care.restorePreview")}
@@ -127,7 +145,7 @@ export function BrainCarePanel({ language }: { language: Language }) {
 
           {latestResult ? (
             <div className={`brain-care-result ${latestResult.ok ? "is-ok" : "is-error"}`} role="status">
-              {summarizeCareResult(latestResult)}
+              <CareResultSummary result={latestResult} language={language} />
             </div>
           ) : (
             <p className="brain-care-note">
@@ -187,17 +205,50 @@ function portabilityLabel(data: unknown) {
   return textValue(record, ["archive_format", "format", "graph_schema_version", "schema_version"], ".latticebrain");
 }
 
-function backupHealthLabel(data: unknown) {
+function backupHealthLabel(data: unknown, language: Language) {
   const record = isRecord(data) ? data : {};
   const count = record.count || record.backups || record.available;
-  if (count !== undefined && count !== null && count !== "") return `${count} backups`;
-  return "Backups ready";
+  if (count !== undefined && count !== null && count !== "") return t(language, "care.backup.count", { count: String(count) });
+  return t(language, "care.backup.ready");
 }
 
-function summarizeCareResult(result: ApiResult) {
-  if (!result.ok) return result.error || "Brain care action could not complete.";
+function CareResultSummary({ result, language }: { result: ApiResult; language: Language }) {
+  if (!result.ok) return <>{result.error || t(language, "care.result.error")}</>;
   const data = isRecord(result.data) ? result.data : {};
-  const directMessage = textValue(data, ["message", "status", "path", "archive_path", "backup_path", "export_path"]);
-  if (directMessage) return directMessage;
-  return "Brain care action completed.";
+  const path = textValue(data, ["path", "archive_path", "backup_path", "export_path", "latest_backup"]);
+  const status = textValue(data, ["message", "status", "result"], t(language, "care.result.completed"));
+  const counts = {
+    memories: textValue(data, ["nodes", "total_nodes", "memories", "memory_count"]),
+    links: textValue(data, ["edges", "total_edges", "relationships", "relationship_count"]),
+    conversations: textValue(data, ["conversations", "conversation_count"]),
+  };
+  return (
+    <div className="brain-care-result-summary">
+      <strong>{status}</strong>
+      {path ? <span>{t(language, "care.result.path", { path })}</span> : null}
+      {counts.memories || counts.links || counts.conversations ? (
+        <span>
+          {t(language, "care.result.contents", {
+            memories: counts.memories || "0",
+            links: counts.links || "0",
+            conversations: counts.conversations || "0",
+          })}
+        </span>
+      ) : null}
+      {data.dry_run === true ? <span>{t(language, "care.result.dryRun")}</span> : null}
+    </div>
+  );
+}
+
+function archivePathProblem(path: string, language: Language) {
+  if (/[<>:"|?*]/.test(path)) return t(language, "care.path.invalidChars");
+  if (!/\.(latticebrain|zip|json)$/i.test(path)) return t(language, "care.path.extension");
+  return "";
+}
+
+function passphraseStrengthProblem(value: string, language: Language) {
+  if (value.length < 12) return t(language, "care.passphrase.tooShort");
+  const variety = [/[a-z]/, /[A-Z]/, /\d/, /[^A-Za-z0-9]/].filter((pattern) => pattern.test(value)).length;
+  if (variety < 3) return t(language, "care.passphrase.tooSimple");
+  return "";
 }

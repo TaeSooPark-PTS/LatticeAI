@@ -53,9 +53,9 @@ export function buildRecommendations(analysis: FlowAnalysis | null): Recommended
   const advanced = pool.find((item) => item.id !== best?.id && item.id !== faster?.id && /26b|32b|70b|advanced/i.test(`${item.name} ${item.id}`))
     || pool.find((item) => item.id !== best?.id && item.id !== faster?.id);
   return [
-    best ? { ...best, role: "best" as const, reason: best.reason || "Best Experience" } : null,
-    faster ? { ...faster, role: "faster" as const, reason: faster.reason || "Faster" } : null,
-    advanced ? { ...advanced, role: "advanced" as const, reason: advanced.reason || "Advanced" } : null,
+    best ? { ...best, role: "best" as const, reason: best.reason || "best" } : null,
+    faster ? { ...faster, role: "faster" as const, reason: faster.reason || "faster" } : null,
+    advanced ? { ...advanced, role: "advanced" as const, reason: advanced.reason || "advanced" } : null,
   ].filter(Boolean) as RecommendedModel[];
 }
 
@@ -69,7 +69,7 @@ export function fallbackModel(): RecommendedModel {
     family: "Qwen 3",
     size: "",
     role: "best",
-    reason: "Best Experience",
+    reason: "best",
     supported: true,
     downloadRequired: false,
     downloadSize: "",
@@ -82,7 +82,7 @@ function toRecommendedModel(row: ApiData): RecommendedModel {
   const compatibility = asRecord(row.runtime_compatibility);
   const id = String(row.id || row.model_id || row.recommended_load_id || "");
   const loadId = String(row.recommended_load_id || row.load_id || id);
-  const name = String(row.display_name || row.name || id || "Recommended Brain");
+  const name = String(row.display_name || row.name || id || "recommended_brain");
   const supported = row.load_status !== "unsupported"
     && row.load_status !== "runtime_update_needed"
     && row.status !== "not_recommended"
@@ -93,7 +93,7 @@ function toRecommendedModel(row: ApiData): RecommendedModel {
     engine: String(row.recommended_engine || row.engine || "local_mlx"),
     name,
     shortName: friendlyModelName(name || id),
-    family: friendlyModelName(String(row.family || name || "Local Brain")),
+    family: friendlyModelName(String(row.family || name || "local_brain")),
     size: String(row.size || ""),
     role: "best",
     reason: String(row.reason || ""),
@@ -108,13 +108,13 @@ function toRecommendedModel(row: ApiData): RecommendedModel {
 function externalHostLabel(row: ApiData) {
   const raw = String(row.source_url || row.download_url || row.repository || row.provider || row.id || "");
   if (!raw) return "";
-  if (/huggingface|hf\\.co|mlx-community/i.test(raw)) return "Hugging Face / model repository";
-  if (/ollama/i.test(raw)) return "Ollama registry";
+  if (/huggingface|hf\\.co|mlx-community/i.test(raw)) return "huggingface";
+  if (/ollama/i.test(raw)) return "ollama";
   return raw.replace(/^https?:\/\//, "").split("/")[0] || raw;
 }
 
 export function friendlyModelName(value: string) {
-  return String(value || "Recommended Brain")
+  return String(value || "recommended_brain")
     .replace(/^mlx-community\//i, "")
     .replace(/[-_]?Instruct/gi, "")
     .replace(/[-_]?4bit/gi, "")

@@ -12,10 +12,27 @@ historical and may describe behavior as it existed at that release.
   seam, keeping construction side-effect free and route order unchanged.
 - Admin, Brain, and onboarding localized aria/placeholder surfaces now use the
   shared i18n map.
+- Brain archive care now validates archive paths, confirms passphrases, gives
+  strength guidance, and summarizes inspect/restore-preview results without
+  dumping raw JSON.
+- Document capture now exposes a drop/choose ingest queue with progress,
+  failure reason, retry, source metadata, and post-ingest Brain/Graph
+  confirmation.
+- Brain memory and graph surfaces now show provenance/source type, created time,
+  source path/title/conversation fallback, and copy-source affordances.
+- Review Center cards now keep visible action result/error feedback for
+  run-now/approve/dismiss/snooze flows while preserving run-now as
+  preview/regenerate rather than approval.
+- Local model setup now reports loaded model, engine state, cache/storage path,
+  download/load progress, reload/unload controls, and an honest no-model state.
+- App factory model/chat/review-tail wiring moved into focused runtime wiring
+  modules while preserving route order.
 
 ### Added
 - Frontend i18n literal check for localized aria/placeholder props in Brain,
   Admin, and onboarding TSX surfaces.
+- Focused runtime wiring modules for model runtime, chat/interaction contexts,
+  and review/Brain tail registration.
 
 ## [6.2.0] - 2026-06-16
 

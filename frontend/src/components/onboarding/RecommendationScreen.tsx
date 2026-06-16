@@ -52,8 +52,8 @@ export function RecommendationScreen({
 }
 
 function rankLabel(role: RecommendedModel["role"], index: number, language: Language) {
-  if (role === "best") return language === "ko" ? "추천" : "Best Experience";
-  if (role === "faster") return language === "ko" ? "빠른 선택" : "Faster";
-  if (role === "advanced") return language === "ko" ? "고급 선택" : "Advanced";
-  return `Choice ${index + 1}`;
+  if (role === "best") return t(language, "flow.recommend.rank.best");
+  if (role === "faster") return t(language, "flow.recommend.rank.faster");
+  if (role === "advanced") return t(language, "flow.recommend.rank.advanced");
+  return t(language, "flow.recommend.rank.choice", { index: index + 1 });
 }

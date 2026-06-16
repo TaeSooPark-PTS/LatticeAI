@@ -113,15 +113,15 @@ function recommendedSummary(analysis: FlowAnalysis, language: Language) {
   const topPick = asRecord(recs.top_pick);
   if (topPick.name || topPick.id) {
     const model = friendlyModelName(String(topPick.name || topPick.id));
-    return language === "ko" ? `${model}이 이 컴퓨터에 가장 잘 맞습니다.` : `${model} looks like the best fit.`;
+    return t(language, "flow.analysis.bestFit", { model });
   }
-  return language === "ko" ? "이 컴퓨터에는 개인 로컬 Brain을 추천합니다." : "A private local Brain is recommended for this computer.";
+  return t(language, "flow.analysis.privateRecommended");
 }
 
 function friendlyOs(value: unknown, language: Language) {
-  const text = String(value || "Computer");
+  const text = String(value || t(language, "flow.analysis.fact.computer"));
   if (/darwin|mac/i.test(text)) return "Mac";
-  if (/win/i.test(text)) return "Windows PC";
-  if (/linux/i.test(text)) return "Linux computer";
+  if (/win/i.test(text)) return t(language, "flow.analysis.os.windows");
+  if (/linux/i.test(text)) return t(language, "flow.analysis.os.linux");
   return t(language, "flow.analysis.fact.computer");
 }

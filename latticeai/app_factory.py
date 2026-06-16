@@ -20,6 +20,11 @@ from typing import TYPE_CHECKING, Any, Dict, List, Optional
 from latticeai.runtime.app_context_runtime import build_app_context
 from latticeai.runtime.bootstrap import build_session_runtime
 from latticeai.runtime.brain_runtime import build_brain_runtime
+from latticeai.runtime.chat_wiring import (
+    build_chat_agent_runtime_from_context,
+    build_interaction_contexts,
+    maybe_build_telegram_chat_mirror,
+)
 from latticeai.runtime.config_runtime import build_config_runtime
 from latticeai.runtime.context_runtime import build_context_runtime
 from latticeai.runtime.hooks_runtime import (
@@ -28,9 +33,12 @@ from latticeai.runtime.hooks_runtime import (
     build_hooks_runtime,
 )
 from latticeai.runtime.lifespan_runtime import build_lifespan_runtime
+from latticeai.runtime.model_wiring import (
+    configure_model_runtime_from_context,
+    register_model_runtime_routers,
+)
 from latticeai.runtime.platform_services_runtime import (
     build_brain_network,
-    build_model_service,
 )
 from latticeai.runtime.platform_runtime_wiring import build_platform_automation_runtime
 from latticeai.runtime.persistence_runtime import build_persistence_runtime
@@ -44,8 +52,8 @@ from latticeai.runtime.router_registration import (
     register_review_and_brain_tail_routers,
 )
 from latticeai.runtime.security_runtime import build_security_runtime
+from latticeai.runtime.tail_wiring import register_tail_runtime_routers
 from latticeai.runtime.web_runtime import build_web_runtime
-from latticeai.services.router_context import InteractionRouterContext, ToolRouterContext
 
 if TYPE_CHECKING:  # imports for annotations only — keep module import light
     from fastapi import FastAPI
@@ -1089,7 +1097,8 @@ def _build(config: "Optional[Config]" = None) -> Dict[str, Any]:
     OPEN_REGISTRATION = CONFIG.open_registration
     INVITE_CODE = CONFIG.invite_code
     INVITE_GATE_ENABLED = CONFIG.invite_gate_enabled
-    configure_model_runtime(
+    configure_model_runtime_from_context(
+        configure_model_runtime=configure_model_runtime,
         router=router,
         APP_MODE=APP_MODE,
         DEFAULT_HOST=DEFAULT_HOST,
@@ -1236,12 +1245,10 @@ def _build(config: "Optional[Config]" = None) -> Dict[str, Any]:
     # ── Telegram chat mirror: registered only when ENABLE_TELEGRAM is truthy.
     # latticeai.api.chat no longer imports telegram_bot (a 45KB module that
     # mutates os.environ at import); it calls this injected callback instead.
-    on_chat_message = None
-    if ENABLE_TELEGRAM:
-        def _telegram_chat_mirror(role: str, text: str, source: Optional[str] = None) -> None:
-            from latticeai.integrations.telegram_bot import broadcast_web_chat
-            _spawn(broadcast_web_chat(role, text), name="telegram_broadcast")
-        on_chat_message = _telegram_chat_mirror
+    on_chat_message = maybe_build_telegram_chat_mirror(
+        enable_telegram=ENABLE_TELEGRAM,
+        spawn=_spawn,
+    )
 
     def _recent_chat_context(
         limit: int = 10,
@@ -1257,7 +1264,8 @@ def _build(config: "Optional[Config]" = None) -> Dict[str, Any]:
             conversation_id=conversation_id,
         )
 
-    CHAT_AGENT_RUNTIME = build_agent_runtime(
+    CHAT_AGENT_RUNTIME = build_chat_agent_runtime_from_context(
+        build_agent_runtime=build_agent_runtime,
         model_router=router,
         execute_tool=execute_tool,
         recent_chat_context=_recent_chat_context,
@@ -1404,22 +1412,19 @@ def _build(config: "Optional[Config]" = None) -> Dict[str, Any]:
     # ── Health / status / engine-summary router (latticeai.api.health, v1.2.0) ───
     # /health, /mode, /runtime_features, /engines(GET) now live in the health router.
     # Heavier engine mutation endpoints remain below in server_app.
-    MODEL_SERVICE = build_model_service(
+    MODEL_SERVICE = register_model_runtime_routers(
+        app=app,
+        create_health_router=create_health_router,
+        create_models_router=create_models_router,
+        register_health_and_model_routers=register_health_and_model_routers,
         model_router=router,
         runtime_features=runtime_features,
-        is_public=IS_PUBLIC_MODE,
-    )
-    register_health_and_model_routers(
-        app,
-        create_health_router=create_health_router,
-        model_service=MODEL_SERVICE,
+        is_public_mode=IS_PUBLIC_MODE,
         engine_status=engine_status,
         get_current_user=get_current_user,
         require_auth=REQUIRE_AUTH,
         app_version=APP_VERSION,
         app_mode=APP_MODE,
-        create_models_router=create_models_router,
-        model_router=router,
         require_user=require_user,
         load_users=load_users,
         get_user_role=get_user_role,
@@ -1438,7 +1443,6 @@ def _build(config: "Optional[Config]" = None) -> Dict[str, Any]:
         engine_model_catalog=ENGINE_MODEL_CATALOG,
         model_engine_aliases=MODEL_ENGINE_ALIASES,
         cloud_verify_ttl_seconds=CLOUD_VERIFY_TTL_SECONDS,
-        is_public_mode=IS_PUBLIC_MODE,
         allow_local_models=ALLOW_LOCAL_MODELS,
     )
 
@@ -1461,7 +1465,7 @@ def _build(config: "Optional[Config]" = None) -> Dict[str, Any]:
             return None
         return PLATFORM.allowed_scopes(user)
 
-    tool_router_context = ToolRouterContext(
+    tool_router_context, interaction_router_context = build_interaction_contexts(
         config=CONFIG,
         ingestion_pipeline=INGESTION_PIPELINE,
         data_dir=DATA_DIR,
@@ -1485,15 +1489,10 @@ def _build(config: "Optional[Config]" = None) -> Dict[str, Any]:
         install_mcp=install_mcp,
         mcp_public_item=mcp_public_item,
         hooks=HOOKS_REGISTRY,
-    )
-    interaction_router_context = InteractionRouterContext(
         chat_context=context,
         search_service=SEARCH_SERVICE,
         allowed_workspaces_for=_allowed_workspaces_for,
-        require_user=require_user,
         embedding_info=_embedding_info,
-        tool_context=tool_router_context,
-        hooks=HOOKS_REGISTRY,
         agent_registry=AGENT_REGISTRY,
         memory_service=MEMORY_SERVICE,
         platform=PLATFORM,
@@ -1521,9 +1520,10 @@ def _build(config: "Optional[Config]" = None) -> Dict[str, Any]:
             inputs={"__review_item__": item.get("id")},
         )
 
-    BRAIN_NETWORK = register_review_and_brain_tail_routers(
-        app,
+    BRAIN_NETWORK = register_tail_runtime_routers(
+        app=app,
         create_review_queue_router=create_review_queue_router,
+        register_review_and_brain_tail_routers=register_review_and_brain_tail_routers,
         review_queue=REVIEW_QUEUE,
         require_user=require_user,
         gate_read=PLATFORM.gate_read,

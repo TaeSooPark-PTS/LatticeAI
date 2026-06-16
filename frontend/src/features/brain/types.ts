@@ -35,10 +35,10 @@ export type KnowledgeGraphModel = {
   edges: RelationshipThread[];
 };
 
-export const DEPTHS: Array<{ level: BrainDepth; label: string; state: BrainState }> = [
-  { level: 1, label: "Living Brain", state: "idle" },
-  { level: 2, label: "Memory Layer", state: "recalling" },
-  { level: 3, label: "Knowledge Layer", state: "synthesizing" },
-  { level: 4, label: "Relationship Layer", state: "planning" },
-  { level: 5, label: "Knowledge Graph", state: "synthesizing" },
+export const DEPTHS: Array<{ level: BrainDepth; labelKey: string; state: BrainState }> = [
+  { level: 1, labelKey: "brain.depthLabel.1", state: "idle" },
+  { level: 2, labelKey: "brain.depthLabel.2", state: "recalling" },
+  { level: 3, labelKey: "brain.depthLabel.3", state: "synthesizing" },
+  { level: 4, labelKey: "brain.depthLabel.4", state: "planning" },
+  { level: 5, labelKey: "brain.depthLabel.5", state: "synthesizing" },
 ];

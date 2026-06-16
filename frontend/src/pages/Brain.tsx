@@ -457,7 +457,7 @@ export function BrainPage({ initialTab }: { initialTab?: string }) {
             {(data) => <MemoryStatus data={data as Record<string, unknown>} />}
           </DataPanel>
           <DataPanel title="Recent sources" result={provenance.data}>
-            {(data) => <EntityList items={(data as Record<string, unknown>).items || data} titleKey="source" metaKey="source_type" />}
+            {(data) => <SourceProvenanceList items={(data as Record<string, unknown>).items || data} />}
           </DataPanel>
         </div>
       ) : null}
@@ -527,6 +527,7 @@ function RetrievalStatus({ data }: { data: Record<string, unknown> }) {
 
 function MemoryStatus({ data }: { data: Record<string, unknown> }) {
   const usage = isRecord(data.usage) ? data.usage : {};
+  const sources = asArray<Record<string, unknown>>(data.sources || data.tiers);
   return (
     <div className="space-y-3">
       <StatGrid stats={[
@@ -535,7 +536,7 @@ function MemoryStatus({ data }: { data: Record<string, unknown> }) {
         { label: "Bytes", value: usage.total_bytes ?? 0 },
         { label: "Health", value: data.health || "reported" },
       ]} />
-      <EntityList items={data.sources || data.tiers} titleKey="label" metaKey="health" />
+      <SourceProvenanceList items={sources} limit={6} />
     </div>
   );
 }
@@ -667,15 +668,20 @@ function DigitalBrainExplorer({ data }: { data: unknown }) {
                   {mode === "basic" ? (
                     <KeyValueList data={{
                       connections: selected.degree,
-                      source: selected.source || "not reported",
+                      source: selected.source || "Source not recorded",
+                      source_type: sourceType(selected.raw),
+                      created_at: sourceCreatedAt(selected.raw) || "Created time not recorded",
                     }} />
                   ) : (
                     <StructuredView value={{
                       id: selected.id,
                       degree: selected.degree,
-                      source: selected.source || "not reported",
+                      source: selected.source || "Source not recorded",
+                      source_type: sourceType(selected.raw),
+                      created_at: sourceCreatedAt(selected.raw) || "Created time not recorded",
                     }} />
                   )}
+                  {selected.source ? <Button variant="outline" size="sm" onClick={() => void navigator.clipboard?.writeText(selected.source)}>Copy source</Button> : null}
                 </>
               ) : selectedGroup ? (
                 <div className="space-y-2">
@@ -779,10 +785,62 @@ function ProvenancePanel() {
         {(data) => <StructuredView value={data} />}
       </DataPanel>
       <DataPanel title="Recent sources" result={provenance.data}>
-        {(data) => <EntityList items={(data as Record<string, unknown>).items || data} titleKey="source" metaKey="source_type" limit={14} />}
+        {(data) => <SourceProvenanceList items={(data as Record<string, unknown>).items || data} limit={14} />}
       </DataPanel>
     </div>
   );
+}
+
+function SourceProvenanceList({ items, limit = 8 }: { items: unknown; limit?: number }) {
+  const rows = asArray<Record<string, unknown>>(items).slice(0, limit);
+  if (!rows.length) return <EmptyState title="No sources yet" detail="New memories will show their chat, manual, document, or import origin here." />;
+  return (
+    <div className="grid gap-2">
+      {rows.map((item, index) => {
+        const title = String(item.title || item.label || item.source_title || item.filename || item.path || item.source || `Source ${index + 1}`);
+        const path = String(item.path || item.source_path || item.source || item.conversation_id || "");
+        const type = sourceType(item);
+        const created = sourceCreatedAt(item);
+        return (
+          <div key={String(item.id || item.source_id || title)} className="rounded-lg border border-border bg-background/55 p-3">
+            <div className="flex flex-wrap items-start justify-between gap-2">
+              <div>
+                <div className="font-medium">{title}</div>
+                <div className="mt-1 text-xs text-muted-foreground">
+                  {type} · {created || "Created time not recorded"}
+                </div>
+              </div>
+              <Badge variant="muted">{path ? "inspectable" : "missing provenance"}</Badge>
+            </div>
+            {path ? (
+              <div className="mt-2 flex flex-wrap items-center gap-2 text-xs text-muted-foreground">
+                <span className="break-all">{path}</span>
+                <Button variant="outline" size="sm" onClick={() => void navigator.clipboard?.writeText(path)}>Copy source</Button>
+              </div>
+            ) : (
+              <p className="mt-2 text-xs text-muted-foreground">This older memory did not record a source path or conversation. It remains searchable, but provenance is incomplete.</p>
+            )}
+          </div>
+        );
+      })}
+    </div>
+  );
+}
+
+function sourceType(item: Record<string, unknown>) {
+  const metadata = isRecord(item.metadata) ? item.metadata : {};
+  const raw = String(item.source_type || item.type || item.kind || metadata.source_type || metadata.role || "").toLowerCase();
+  if (/chat|conversation|message/.test(raw)) return "chat";
+  if (/document|upload|file|pdf|markdown|text/.test(raw)) return "document";
+  if (/import|archive|restore/.test(raw)) return "import";
+  if (/manual|note/.test(raw)) return "manual";
+  return "source unknown";
+}
+
+function sourceCreatedAt(item: Record<string, unknown>) {
+  const metadata = isRecord(item.metadata) ? item.metadata : {};
+  const value = item.created_at || item.timestamp || item.updated_at || metadata.created_at || metadata.timestamp;
+  return value ? String(value) : "";
 }
 
 function PortabilityPanel() {

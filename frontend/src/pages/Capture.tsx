@@ -1,6 +1,6 @@
 import * as React from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { FolderPlus, Globe2, HardDrive, Upload } from "lucide-react";
+import { AlertCircle, CheckCircle2, FolderPlus, Globe2, HardDrive, Loader2, RotateCcw, Upload } from "lucide-react";
 import { latticeApi } from "@/api/client";
 import { ActionButton, DataPanel, EntityList, OperationResult, StructuredView, Tabs } from "@/components/primitives";
 import { Button } from "@/components/ui/button";
@@ -41,10 +41,20 @@ export function CapturePage({ initialTab }: { initialTab?: string }) {
 function FilesPanel() {
   const qc = useQueryClient();
   const docs = useQuery({ queryKey: ["documents"], queryFn: () => latticeApi.documents(200) });
+  const [queue, setQueue] = React.useState<UploadQueueItem[]>([]);
   const upload = useMutation({
-    mutationFn: (files: FileList) => Promise.all(Array.from(files).map((file) => latticeApi.uploadDocument(file))),
-    onSuccess: () => qc.invalidateQueries({ queryKey: ["documents"] }),
+    mutationFn: (files: File[]) => uploadFiles(files, setQueue),
+    onSuccess: () => {
+      void qc.invalidateQueries({ queryKey: ["documents"] });
+      void qc.invalidateQueries({ queryKey: ["graphStats"] });
+      void qc.invalidateQueries({ queryKey: ["memoryManager"] });
+    },
   });
+  const beginUpload = React.useCallback((files: FileList | File[]) => {
+    const nextFiles = Array.from(files);
+    if (!nextFiles.length) return;
+    upload.mutate(nextFiles);
+  }, [upload]);
   return (
     <div className="grid gap-4 xl:grid-cols-[0.75fr_1.25fr]">
       <Card>
@@ -53,24 +63,103 @@ function FilesPanel() {
           <CardDescription>Choose files and Lattice will prepare them for search and memory.</CardDescription>
         </CardHeader>
         <CardContent>
-          <label className="flex min-h-56 cursor-pointer flex-col items-center justify-center gap-3 rounded-lg border border-dashed border-border bg-muted/30 p-6 text-center transition hover:bg-muted/50">
+          <label
+            className="flex min-h-56 cursor-pointer flex-col items-center justify-center gap-3 rounded-lg border border-dashed border-border bg-muted/30 p-6 text-center transition hover:bg-muted/50"
+            onDragOver={(event) => event.preventDefault()}
+            onDrop={(event) => {
+              event.preventDefault();
+              beginUpload(event.dataTransfer.files);
+            }}
+          >
             <Upload className="h-7 w-7 text-primary" />
-            <span className="text-lg font-semibold">Choose files</span>
-            <span className="max-w-sm text-sm leading-6 text-muted-foreground">PDF, Office files, notes, markdown, text, and spreadsheets are all welcome.</span>
-            <input type="file" multiple className="sr-only" onChange={(e) => e.target.files && upload.mutate(e.target.files)} />
+            <span className="text-lg font-semibold">Drop files or choose documents</span>
+            <span className="max-w-sm text-sm leading-6 text-muted-foreground">Each file is queued, parsed, written to Memory, and linked into the Brain graph with source metadata.</span>
+            <input type="file" multiple className="sr-only" onChange={(e) => e.target.files && beginUpload(e.target.files)} />
           </label>
-          {upload.data ? (
-            <div className="mt-3 space-y-2">
-              {upload.data.map((item, index) => <OperationResult key={index} result={item} successLabel="Upload completed" />)}
-            </div>
-          ) : null}
+          <DocumentUploadQueue queue={queue} onRetry={(file) => beginUpload([file])} />
         </CardContent>
       </Card>
       <DataPanel title="Uploaded documents" result={docs.data}>
-        {(data) => <EntityList items={(data as Record<string, unknown>).documents || data} titleKey="filename" metaKey="ingest_state" limit={12} />}
+        {(data) => (
+          <div className="space-y-3">
+            <EntityList items={(data as Record<string, unknown>).documents || data} titleKey="filename" metaKey="ingest_state" limit={12} />
+            <div className="rounded-md border border-border bg-background/55 p-3 text-sm text-muted-foreground">
+              Completed uploads appear here after they enter Memory. Graph links may continue building briefly after parsing finishes.
+            </div>
+          </div>
+        )}
       </DataPanel>
     </div>
   );
+}
+
+type UploadQueueItem = {
+  id: string;
+  file: File;
+  name: string;
+  size: number;
+  status: "queued" | "uploading" | "done" | "failed";
+  result?: Awaited<ReturnType<typeof latticeApi.uploadDocument>>;
+};
+
+async function uploadFiles(files: File[], setQueue: React.Dispatch<React.SetStateAction<UploadQueueItem[]>>) {
+  const rows = files.map((file) => ({
+    id: `${file.name}-${file.size}-${file.lastModified}-${Date.now()}`,
+    file,
+    name: file.name,
+    size: file.size,
+    status: "queued" as const,
+  }));
+  setQueue((items) => [...rows, ...items].slice(0, 12));
+  const results = [];
+  for (const row of rows) {
+    setQueue((items) => items.map((item) => item.id === row.id ? { ...item, status: "uploading" } : item));
+    const result = await latticeApi.uploadDocument(row.file);
+    results.push(result);
+    setQueue((items) => items.map((item) => item.id === row.id ? { ...item, status: result.ok ? "done" : "failed", result } : item));
+  }
+  return results;
+}
+
+function DocumentUploadQueue({ queue, onRetry }: { queue: UploadQueueItem[]; onRetry: (file: File) => void }) {
+  if (!queue.length) return null;
+  return (
+    <div className="mt-4 space-y-2">
+      {queue.map((item) => {
+        const detail = uploadResultDetail(item);
+        return (
+          <div key={item.id} className="rounded-md border border-border bg-background/55 p-3 text-sm">
+            <div className="flex flex-wrap items-start justify-between gap-3">
+              <div>
+                <div className="flex items-center gap-2 font-medium">
+                  {item.status === "done" ? <CheckCircle2 className="h-4 w-4 text-emerald-400" /> : item.status === "failed" ? <AlertCircle className="h-4 w-4 text-amber-400" /> : <Loader2 className="h-4 w-4 animate-spin text-primary" />}
+                  {item.name}
+                </div>
+                <div className="mt-1 text-xs text-muted-foreground">
+                  {Math.max(1, Math.round(item.size / 1024))} KB · {detail}
+                </div>
+              </div>
+              {item.status === "failed" ? (
+                <Button size="sm" variant="outline" onClick={() => onRetry(item.file)}>
+                  <RotateCcw className="h-3.5 w-3.5" /> Retry
+                </Button>
+              ) : null}
+            </div>
+            {item.result ? <OperationResult result={item.result} successLabel="Entered Brain and graph queue" /> : null}
+          </div>
+        );
+      })}
+    </div>
+  );
+}
+
+function uploadResultDetail(item: UploadQueueItem) {
+  if (item.status === "queued") return "Waiting in the ingest queue";
+  if (item.status === "uploading") return "Parsing and sending to Memory";
+  if (!item.result?.ok) return item.result?.error || "Ingest failed before it entered the Brain";
+  const data = item.result.data || {};
+  const node = String(data.node_id || data.graph_node || data.provenance_id || "");
+  return node ? `Captured with source metadata · ${node}` : "Captured with source metadata";
 }
 
 function LocalPanel() {
