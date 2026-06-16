@@ -18,6 +18,8 @@ copy through shared Korean/English i18n keys.
   projection.
 - Localized Capture and Review Center tabs, labels, placeholders, empty states,
   feedback, and action copy.
+- Refreshed release screenshots, GIF, and evidence index under
+  `output/release/v6.3.1/`.
 - Synchronized package/runtime/static versions to `6.3.1`.
 
 ### Expected Artifacts

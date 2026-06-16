@@ -14,6 +14,8 @@ Capture/Review Center localization gaps without changing the core user flows.
   projection for the extracted runtime helper.
 - Capture and Review Center copy now use shared Korean/English i18n keys for
   tabs, headings, placeholders, actions, empty states, and feedback.
+- Release screenshots, GIF, and evidence index are refreshed under
+  `output/release/v6.3.1/`.
 - Package/runtime/static metadata is synchronized to `6.3.1`.
 
 ## Expected Artifacts

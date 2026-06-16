@@ -19,6 +19,8 @@ historical and may describe behavior as it existed at that release.
   shared Korean/English i18n map.
 - Review Center inbox/card copy, status badges, empty states, Run Now feedback,
   snooze/unsnooze labels, and action aria labels now use the shared i18n map.
+- README release evidence screenshots and walkthrough GIF are refreshed under
+  `output/release/v6.3.1/`.
 - Package/runtime/static metadata is synchronized to 6.3.1; package publish and
   deployment remain owner-run only.
 

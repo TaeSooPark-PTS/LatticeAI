@@ -21,8 +21,10 @@ HTTP status contract는 유지하며, 새 unit test가 admin/user/unauthenticate
 
 Capture와 Review Center는 tabs, headings, placeholders, action labels,
 empty/error states, Run Now feedback, snooze/unsnooze 설명을 공유 i18n map으로
-옮겨 Korean/English surface를 맞춘다. Package/runtime/static metadata는 6.3.1로
-동기화하고, package publish와 production deployment는 계속 owner-run이다.
+옮겨 Korean/English surface를 맞춘다. README release screenshots, GIF, evidence
+index는 `output/release/v6.3.1/` 경로로 갱신한다. Package/runtime/static
+metadata는 6.3.1로 동기화하고, package publish와 production deployment는 계속
+owner-run이다.
 
 Expected artifacts (exact 6.3.1 names only):
 - dist/ltcai-6.3.1-py3-none-any.whl
