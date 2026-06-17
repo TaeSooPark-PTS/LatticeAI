@@ -113,6 +113,8 @@ test("conversation keeps the Brain alive while chat streams", async ({ page }) =
 
   await expect(page.locator("body")).toContainText("잊으면 안 되는 맥락부터 말해 주세요.");
   await expect(page.locator("body")).toContainText("Brain 한눈에 보기");
+  await expect(page.locator("body")).toContainText("Brain 준비도");
+  await expect(page.locator("[aria-label='Brain 깊이 진행 상태']")).toBeVisible();
   await page.getByRole("button", { name: /지난 결정들을 나중에 찾을 수 있게 정리해줘/ }).click();
   await expect(page.getByPlaceholder("Brain에게 말하기...")).toHaveValue("지난 결정들을 나중에 찾을 수 있게 정리해줘: ");
   await page.getByPlaceholder("Brain에게 말하기...").fill("");
@@ -128,6 +130,7 @@ test("conversation keeps the Brain alive while chat streams", async ({ page }) =
   await page.getByRole("button", { name: "보내기", exact: true }).click();
   await expect(page.locator("body")).toContainText("Hybrid retrieval");
   await expect(page.locator("body")).toContainText("기억에 저장됨");
+  await expect(page.locator("body")).toContainText("출처와 함께 나중에 다시 불러올 수 있습니다.");
   await expect(page.locator("body")).toContainText("Lattice Brain");
   expect(errors).toEqual([]);
 });

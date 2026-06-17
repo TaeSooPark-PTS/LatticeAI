@@ -69,42 +69,42 @@ You need Lattice AI when:
 Choose the owner of the Brain. The profile is not a SaaS account by default; it
 is the local identity for the knowledge you keep.
 
-![Login](output/release/v6.4.0/screenshots/01-login.png)
+![Login](output/release/v6.5.0/screenshots/01-login.png)
 
 ### 2. Environment Analysis
 
 See what kind of local AI experience this computer can support before choosing a
 model.
 
-![Environment Analysis](output/release/v6.4.0/screenshots/02-environment-analysis.png)
+![Environment Analysis](output/release/v6.5.0/screenshots/02-environment-analysis.png)
 
 ### 3. Recommended Models
 
 Start with a short list: safest recommendation, faster model, stronger model.
 Advanced details stay available without overwhelming first-time users.
 
-![Recommended Models](output/release/v6.4.0/screenshots/03-recommended-models.png)
+![Recommended Models](output/release/v6.5.0/screenshots/03-recommended-models.png)
 
 ### 4. Install And Load
 
 Download and load only after consent. Lattice explains model size, local
 execution, and network use before work starts.
 
-![Install and Load](output/release/v6.4.0/screenshots/04-install-load-progress.png)
+![Install and Load](output/release/v6.5.0/screenshots/04-install-load-progress.png)
 
 ### 5. Brain Chat
 
 Talk normally. Useful decisions and context become memory, then appear later as
 topics, relationships, and graph structure.
 
-![Brain Chat Home](output/release/v6.4.0/screenshots/05-brain-chat-home.png)
+![Brain Chat Home](output/release/v6.5.0/screenshots/05-brain-chat-home.png)
 
 ### 6. Review Center
 
 Automation results are staged for review before they become durable decisions.
 Snooze, unsnooze, run now, approve, and dismiss actions stay explicit.
 
-![Review Center](output/release/v6.4.0/screenshots/13-review-center.png)
+![Review Center](output/release/v6.5.0/screenshots/13-review-center.png)
 
 ## Brain Depths
 
@@ -120,10 +120,10 @@ The user travels inward from everyday memory to deeper structure:
 
 Walkthrough:
 
-![v6.4.0 Living Brain walkthrough](output/release/v6.4.0/gifs/v6.4.0-living-brain-walkthrough.gif)
+![v6.5.0 Living Brain walkthrough](output/release/v6.5.0/gifs/v6.5.0-living-brain-walkthrough.gif)
 
 Screenshot index and capture notes:
-[output/release/v6.4.0/SCREENSHOT_INDEX.md](output/release/v6.4.0/SCREENSHOT_INDEX.md)
+[output/release/v6.5.0/SCREENSHOT_INDEX.md](output/release/v6.5.0/SCREENSHOT_INDEX.md)
 
 ## Install
 
@@ -200,31 +200,30 @@ See [docs/DEVELOPMENT.md](docs/DEVELOPMENT.md) for developer workflow details.
 
 ## Current Release Preparation
 
-The current development target is **6.4.0 Digital Brain Quality Hardening**:
+The current development target is **6.5.0 Brain Experience Readiness**:
 
-- `lattice_brain.quality` adds a non-destructive Brain quality layer for
-  embedding fallback labelling, drift/re-index planning, BM25 lexical scoring,
-  hybrid fusion, reranker fallback contracts, memory candidate quality,
-  graph-edge confidence/evidence scoring, structured context guardrails, and
-  retrieval benchmark metrics.
-- Graph/search API reads now carry workspace scope through graph, node,
-  neighborhood, relationship, keyword, vector, graph, and hybrid search paths.
-- Memory Manager prune, compact, and clear operations are scoped to the
-  caller's workspace and owner boundary; unscoped graph clearing from Memory
-  Manager is blocked until a workspace-safe graph delete path exists.
-- Digital Brain quality documentation now records the 6.4.0 baseline, risk
-  register, validation checklist, and intentionally deferred work.
+- Brain Home now gives normal users a readiness signal that explains whether
+  the Brain is waiting for its first memory, turning memories into topics, or
+  ready to explore as a connected map.
+- The Living Brain surface now includes a persistent depth progress rail, so
+  users can understand and reverse the path from conversation to memory,
+  topics, relationships, and the full knowledge graph.
+- Memory-save feedback now explicitly states that saved context is available
+  later with source-aware recall, closing the gap between "chat happened" and
+  "my Brain became more useful."
+- The release keeps the 6.4.0 quality hardening intact and focuses on
+  end-user comprehension rather than adding a new storage or graph schema.
 - The release remains local-first: no automatic web/email/calendar ingestion,
   no package publishing, no production deployment, and no external reranker or
   embedding API use without explicit opt-in.
 
-Expected artifacts for 6.4.0 release must use exact filenames:
+Expected artifacts for 6.5.0 release must use exact filenames:
 
-- `dist/ltcai-6.4.0-py3-none-any.whl`
-- `dist/ltcai-6.4.0.tar.gz`
-- `ltcai-6.4.0.tgz`
-- `dist/ltcai-6.4.0.vsix`
-- `src-tauri/target/release/bundle/dmg/Lattice AI_6.4.0_aarch64.dmg`
+- `dist/ltcai-6.5.0-py3-none-any.whl`
+- `dist/ltcai-6.5.0.tar.gz`
+- `ltcai-6.5.0.tgz`
+- `dist/ltcai-6.5.0.vsix`
+- `src-tauri/target/release/bundle/dmg/Lattice AI_6.5.0_aarch64.dmg`
 
 Do not upload `dist/*`. Package registry publishing remains owner-run.
 
@@ -243,6 +242,7 @@ Do not upload `dist/*`. Package registry publishing remains owner-run.
 
 | Version | Theme |
 | --- | --- |
+| 6.5.0 | Brain Experience Readiness: Brain readiness signal, depth progress rail, source-aware memory-save feedback, and visual coverage for the first-memory loop |
 | 6.4.0 | Digital Brain Quality Hardening: workspace-scoped graph/search/memory reads and mutations, Brain quality primitives, structured context guardrails, and retrieval benchmark coverage |
 | 6.3.1 | Access Runtime / i18n Follow-up: app-factory access-control extraction, focused access runtime tests, and Capture/Review Center i18n coverage |
 | 6.3.0 | Product Hardening Completion: Brain archive/provenance/ingestion UX polish, Review Center Run Now contract hardening, local model runtime status, app-factory review wiring, shim smoke, i18n guard, and exact release artifacts |

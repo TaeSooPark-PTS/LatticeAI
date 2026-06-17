@@ -7,6 +7,27 @@
 > PyPI / npm / VS Code Marketplace / Open VSX 배포는 아래 수동 절차로만
 > 진행합니다. 태그 생성은 패키지 스토어 publish를 자동으로 트리거하지 않습니다.
 
+## v6.5.0 릴리스 준비 노트 (2026-06-18)
+
+Lattice AI v6.5.0 — Brain Experience Readiness. 6.5.0은 6.4.0의 Digital
+Brain quality hardening 위에서 일반 사용자가 제품 상태를 더 빨리 이해하도록
+Brain Home의 피드백 루프를 정리한다. Grok/OpenClaw 감사와 로컬 코드 검토 결과,
+품질 경계는 단단해졌지만 "내 Brain이 지금 얼마나 자랐고 다음에 무엇을 해야
+하는지"가 표면에서 충분히 보이지 않는 점이 가장 큰 사용 경험 gap이었다.
+
+Brain Home은 이제 memories/concepts 상태로 Brain readiness를 설명하고, Living
+Brain에는 1단계 conversation에서 5단계 graph까지의 진행 rail이 계속 보인다.
+대화 후 memory-save feedback은 "출처와 함께 나중에 다시 불러올 수 있다"는
+source-aware recall 의미를 즉시 알려준다. 이 변경은 graph/storage schema를
+바꾸지 않고 사용자가 Digital Brain 방향성을 체감하도록 만드는 UX layer 개선이다.
+
+Expected artifacts (exact 6.5.0 names only):
+- dist/ltcai-6.5.0-py3-none-any.whl
+- dist/ltcai-6.5.0.tar.gz
+- dist/ltcai-6.5.0.vsix
+- ltcai-6.5.0.tgz
+- src-tauri/target/release/bundle/dmg/Lattice AI_6.5.0_aarch64.dmg
+
 ## v6.4.0 릴리스 준비 노트 (2026-06-17)
 
 Lattice AI v6.4.0 — Digital Brain Quality Hardening. 6.4.0은 새 제품

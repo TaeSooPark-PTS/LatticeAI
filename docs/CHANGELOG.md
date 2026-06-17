@@ -3,6 +3,28 @@
 The top entry is the current release-preparation target. Older entries are
 historical and may describe behavior as it existed at that release.
 
+## [6.5.0] - 2026-06-18
+
+> Brain Experience Readiness. Uses the 6.4.0 quality baseline to improve what
+> normal users can understand: how alive the Brain is, where they are in the
+> memory-to-graph journey, and what changed after a useful exchange is saved.
+
+### Added
+- Brain Home readiness strip that classifies the current Brain as waiting for
+  its first memory, forming topics, or ready for map exploration.
+- Persistent depth progress rail across the Living Brain surface so the
+  memory -> topics -> relationships -> graph journey is visible and reversible.
+- Source-aware memory-save detail under chat feedback, making the recall loop
+  explicit after a conversation enriches the Brain.
+- Visual regression assertions for Brain readiness, depth progress, and
+  source-aware memory-save feedback.
+
+### Changed
+- Brain overview empty states now guide first-memory use without exposing graph
+  internals or administrator language.
+- Package/runtime/static metadata is synchronized to 6.5.0; package publish and
+  deployment remain owner-run only.
+
 ## [6.4.0] - 2026-06-17
 
 > Digital Brain Quality Hardening. Tightens workspace-scoped Brain retrieval

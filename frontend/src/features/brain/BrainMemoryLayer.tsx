@@ -14,7 +14,14 @@ export function BrainMemoryLayer({
 }) {
   const language = useAppStore((state) => state.language);
   const visible = memories.slice(0, depth >= 3 ? 8 : 6);
-  if (!visible.length) return <div className="memory-fragment is-empty">{t(language, "brain.memory.empty")}</div>;
+  if (!visible.length) {
+    return (
+      <div className="memory-fragment is-empty">
+        <span>{t(language, "brain.memory.empty.kicker")}</span>
+        <strong>{t(language, "brain.memory.empty")}</strong>
+      </div>
+    );
+  }
 
   return (
     <>

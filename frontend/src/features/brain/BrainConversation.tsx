@@ -1,5 +1,5 @@
 import * as React from "react";
-import { ShieldCheck } from "lucide-react";
+import { DatabaseZap, ShieldCheck } from "lucide-react";
 import { LanguageSwitcher } from "@/components/LanguageSwitcher";
 import { t, type Language } from "@/i18n";
 import type { BrainDepth, KnowledgeConcept, MemoryFragment, Message } from "./types";
@@ -79,7 +79,13 @@ export function BrainConversation({
         )}
       </div>
 
-      {memoryFeedback ? <div className="brain-save-feedback" role="status">{memoryFeedback}</div> : null}
+      {memoryFeedback ? (
+        <div className="brain-save-feedback" role="status">
+          <DatabaseZap className="h-3.5 w-3.5" />
+          <span>{memoryFeedback}</span>
+          <small>{t(language, "brain.saved.detail")}</small>
+        </div>
+      ) : null}
 
       <BrainCarePanel language={language} />
 

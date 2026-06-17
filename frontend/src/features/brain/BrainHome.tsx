@@ -186,6 +186,21 @@ export function BrainHome({
             <button type="button" className={explorationDepth === 5 ? "is-active" : ""} onClick={() => jumpToDepth(5)}>{t(language, "brain.view.graph")}</button>
           </div>
 
+          <div className="brain-depth-rail" aria-label={t(language, "brain.depthRail.aria")}>
+            {DEPTHS.map((depth) => (
+              <button
+                key={depth.level}
+                type="button"
+                className={depth.level <= explorationDepth ? "is-revealed" : ""}
+                aria-current={depth.level === explorationDepth ? "step" : undefined}
+                onClick={() => jumpToDepth(depth.level)}
+              >
+                <span>{depth.level}</span>
+                <strong>{t(language, `brain.depth.${depth.level}`)}</strong>
+              </button>
+            ))}
+          </div>
+
           <div className="brain-field-layer" aria-hidden={explorationDepth < 2}>
             <DepthEmergence
               depth={explorationDepth}
