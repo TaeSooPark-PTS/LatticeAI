@@ -12,7 +12,7 @@
 - Brain Core 구조는 v6 QUALITY_SCORECARD에서 78점 수준으로 평가됨. provenance, archive, first-memory loop에 대한 명확한 UX/데이터 계약 필요
 - Review Center와 Brain Home 간의 Run Now / memory routing evidence가 부분적으로 존재하나, Digital Brain 품질 관점에서 end-to-end 검증 부족
 - Knowledge Graph reprojection 및 dual-write 보장 메커니즘이 legacy 호환을 유지하면서 v6.4에서 hardening 대상
-- 출력 증거(output/release/) 및 스크린샷/GIF가 v6.3.1까지는 갱신되었으나, Brain 품질 특화 시나리오(빈 Brain 상태, provenance 추적, Graph routing)는 미비
+- 출력 증거(output/release/) 및 스크린샷/GIF는 v6.4.0 release evidence로 갱신되었으며, Brain 품질 특화 시나리오(빈 Brain 상태, provenance 추적, Graph routing)는 후속 deep evidence 대상
 
 ## v6.4.0 작업 분해 (Work Breakdown)
 1. **Brain Quality Baseline 수립**
@@ -39,8 +39,8 @@
 ## 검증 항목 (Verification Items)
 - [ ] Knowledge Graph legacy compatibility 및 migration safety 테스트 결과 문서 첨부
 - [ ] Brain Home empty state + first memory save-recall-backup loop 시각 증거
-- [ ] Review Center → Brain routing provenance 표시 확인 (screenshot/GIF)
-- [ ] RELEASE.md 및 docs/v6.4/ 하위 문서의 Current release reference가 6.4.0으로 일치
+- [x] Review Center → Brain routing surface 확인 (screenshot/GIF)
+- [x] RELEASE.md 및 docs/v6.4/ 하위 문서의 Current release reference가 6.4.0으로 일치
 - [ ] No-Fake-100 규칙 준수: 모든 항목이 evidence-backed일 때만 완료 선언
 - [ ] Architecture Review / UX Review에서 Brain 품질 관련 피드백 반영 여부
 

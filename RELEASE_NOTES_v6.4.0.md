@@ -22,6 +22,8 @@ benchmarks.
 - Added `docs/v6.4/BRAIN_QUALITY_BASELINE.md` with baseline findings, risk
   register, validation items, and deferred work.
 - Synchronized package/runtime/static metadata to `6.4.0`.
+- Refreshed release screenshots and Living Brain walkthrough GIF under
+  `output/release/v6.4.0/`.
 
 ## Validation Focus
 

@@ -18,6 +18,8 @@ historical and may describe behavior as it existed at that release.
   benchmark metric calculation.
 - `docs/v6.4/BRAIN_QUALITY_BASELINE.md` documenting the 6.4.0 Digital Brain
   quality baseline, risk register, validation items, and deferred work.
+- Refreshed README release evidence screenshots and walkthrough GIF under
+  `output/release/v6.4.0/`.
 - Unit coverage for Brain quality primitives and workspace-scoped graph/search
   and memory-manager mutation boundaries.
 

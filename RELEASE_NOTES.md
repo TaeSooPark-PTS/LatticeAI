@@ -22,6 +22,8 @@ structured context guardrails, and benchmarkable recall quality.
 - Scoped Memory Manager prune/compact/clear operations to the caller's
   owner/workspace boundary and blocked unscoped graph clear.
 - Added 6.4.0 Brain quality baseline/risk documentation and regression tests.
+- Refreshed release screenshots and Living Brain walkthrough GIF under
+  `output/release/v6.4.0/`.
 - Synchronized package/runtime/static versions to `6.4.0`.
 
 ### Expected Artifacts
