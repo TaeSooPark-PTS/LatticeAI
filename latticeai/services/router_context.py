@@ -34,6 +34,10 @@ class ToolRouterContext:
     install_mcp: Any
     mcp_public_item: Any
     hooks: Any = None
+    # Resolves a caller email to their allowed workspace set (None = no scoping,
+    # i.e. single-user / no-auth mode). Threaded to the knowledge-graph router so
+    # its read endpoints enforce the same workspace boundary as /api/search.
+    allowed_workspaces_for: Any = None
 
 
 @dataclass(frozen=True)

@@ -88,6 +88,7 @@ def build_interaction_contexts(
         install_mcp=install_mcp,
         mcp_public_item=mcp_public_item,
         hooks=hooks,
+        allowed_workspaces_for=allowed_workspaces_for,
     )
     interaction_router_context = InteractionRouterContext(
         chat_context=chat_context,

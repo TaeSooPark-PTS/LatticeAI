@@ -179,10 +179,12 @@ class SearchService:
         allowed_workspaces=None,
     ) -> Dict[str, Any]:
         weights = {**DEFAULT_HYBRID_WEIGHTS, **dict(weights or {})}
+        # Scope each channel at the source so out-of-scope rows never enter the
+        # fusion set (defense-in-depth — the fused result is re-scoped below too).
         channels = {
-            "keyword": self.keyword_search(query, limit=keyword_limit),
-            "vector": self.vector_search(query, limit=vector_limit),
-            "graph": self.graph_search(query, limit=graph_limit),
+            "keyword": self.keyword_search(query, limit=keyword_limit, allowed_workspaces=allowed_workspaces),
+            "vector": self.vector_search(query, limit=vector_limit, allowed_workspaces=allowed_workspaces),
+            "graph": self.graph_search(query, limit=graph_limit, allowed_workspaces=allowed_workspaces),
         }
         fused: Dict[str, Dict[str, Any]] = {}
         for source, payload in channels.items():
@@ -234,14 +236,50 @@ class SearchService:
             "matches": matches,
         }
 
-    def graph(self, *, limit: int = 300) -> Dict[str, Any]:
-        return self._require_graph().graph(limit=limit)
-
-    def node(self, node_id: str, *, include_neighbors: bool = True, depth: int = 1, limit: int = 100) -> Dict[str, Any]:
+    def graph(self, *, limit: int = 300, allowed_workspaces=None) -> Dict[str, Any]:
         graph = self._require_graph()
-        payload = {"node": graph.get_node(node_id)}
+        try:
+            return graph.graph(limit=limit, allowed_workspaces=allowed_workspaces)
+        except TypeError:
+            payload = graph.graph(limit=limit)
+            if allowed_workspaces is not None:
+                nodes = graph.filter_scoped_nodes(payload.get("nodes", []), allowed_workspaces)
+                kept = {node.get("id") for node in nodes}
+                edges = [
+                    edge for edge in payload.get("edges", [])
+                    if edge.get("from") in kept and edge.get("to") in kept
+                ]
+                payload = {**payload, "nodes": nodes, "edges": edges}
+            return payload
+
+    def node(
+        self,
+        node_id: str,
+        *,
+        include_neighbors: bool = True,
+        depth: int = 1,
+        limit: int = 100,
+        allowed_workspaces=None,
+    ) -> Dict[str, Any]:
+        graph = self._require_graph()
+        node = graph.get_node(node_id)
+        if allowed_workspaces is not None:
+            visible = graph.filter_scoped_nodes([node], allowed_workspaces)
+            if not visible:
+                raise ValueError(f"graph node not found: {node_id}")
+            node = visible[0]
+        payload = {"node": node}
         if include_neighbors:
-            payload["neighborhood"] = graph.traverse(node_id, depth=depth, limit=limit)
+            neighborhood = graph.traverse(node_id, depth=depth, limit=limit)
+            if allowed_workspaces is not None:
+                nodes = graph.filter_scoped_nodes(neighborhood.get("nodes", []), allowed_workspaces)
+                kept = {item.get("id") for item in nodes}
+                edges = [
+                    edge for edge in neighborhood.get("edges", [])
+                    if edge.get("from") in kept and edge.get("to") in kept
+                ]
+                neighborhood = {**neighborhood, "nodes": nodes, "edges": edges}
+            payload["neighborhood"] = neighborhood
         return payload
 
     def relationships(
@@ -251,13 +289,26 @@ class SearchService:
         node_id: str = "",
         relationship_type: str = "",
         limit: int = 30,
+        allowed_workspaces=None,
     ) -> Dict[str, Any]:
-        return self._require_graph().relationship_search(
+        graph = self._require_graph()
+        payload = graph.relationship_search(
             query=query,
             node_id=node_id,
             relationship_type=relationship_type,
             limit=limit,
         )
+        if allowed_workspaces is not None:
+            kept = []
+            for rel in payload.get("relationships", []):
+                endpoints = [
+                    {"id": (rel.get("source") or {}).get("id")},
+                    {"id": (rel.get("target") or {}).get("id")},
+                ]
+                if len(graph.filter_scoped_nodes(endpoints, allowed_workspaces)) == 2:
+                    kept.append(rel)
+            payload = {**payload, "relationships": kept}
+        return payload
 
     def index_status(self) -> Dict[str, Any]:
         return self._require_graph().index_status()

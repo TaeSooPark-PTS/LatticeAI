@@ -1,18 +1,18 @@
-# Lattice AI — Feature Status (v6.3.1 target)
+# Lattice AI — Feature Status (v6.4.0 target)
 
-**Current release-preparation line:** v6.3.1 Access Runtime / i18n Follow-up.
+**Current release-preparation line:** v6.4.0 Digital Brain Quality Hardening.
 Lattice AI is a local-first Digital Brain that keeps your knowledge durable
 across any AI model. The primary experience is Brain plus conversation; the
 graph remains durable infrastructure and advanced exploration, not the home
 product identity. Sections below v5.3.0 are historical release-status records
 and should not override the current README, ARCHITECTURE.md, SECURITY.md,
-PRIVACY.md, or v6.3.1 release notes.
+PRIVACY.md, or v6.4.0 release notes.
 
-## v6.3.1 Access Runtime / i18n Follow-up — current release line
+## v6.4.0 Digital Brain Quality Hardening — current release line
 
-v6.3.1 follows the product-hardening line by extracting access-control helpers
-from `app_factory.py` and closing Capture/Review Center i18n gaps on top of
-the 6.3.0 release.
+v6.4.0 follows the product-hardening line by tightening Digital Brain quality:
+workspace-scoped graph/search/memory boundaries, non-destructive quality
+primitives, structured context guardrails, and recall benchmark coverage.
 
 | Area | Status | Evidence |
 | --- | --- | --- |
@@ -26,7 +26,16 @@ the 6.3.0 release.
 | **Review Center run-now contract** | WORKING | Run Now remains preview/regenerate, keeps status unchanged, and has scoped backend contract tests. |
 | **Root shim smoke** | WORKING | Compatibility import smoke covers `server.py`, `knowledge_graph.py`, `ltcai_cli.py`, `telegram_bot.py`, and `p_reinforce.py`. |
 | **Release smoke automation** | WORKING | `npm run release:smoke` validates wheel install, npm tgz, static assets, and Tauri artifacts. |
-| **Release docs sync** | WORKING | README, RELEASE, CHANGELOG, release notes, security, and extension docs align to 6.3.1. |
+| **Brain quality primitives** | WORKING | `lattice_brain.quality` covers fallback labels, drift/re-index plans, BM25/hybrid fusion, memory quality, graph metrics, structured context guardrails, and retrieval benchmarks. |
+| **Workspace-scoped Brain reads** | WORKING | Graph, node, relationship, keyword, vector, graph, and hybrid retrieval carry caller workspace scope. |
+| **Scoped memory mutations** | WORKING | Memory Manager prune/compact/clear intersect requests with the caller's owner/workspace boundary and block unscoped graph clear. |
+| **Release docs sync** | WORKING | README, RELEASE, CHANGELOG, release notes, security, and extension docs align to 6.4.0. |
+
+## v6.3.1 Access Runtime / i18n Follow-up — previous release line
+
+v6.3.1 follows the product-hardening line by extracting access-control helpers
+from `app_factory.py` and closing Capture/Review Center i18n gaps on top of
+the 6.3.0 release.
 
 ## v6.3.0 Product Hardening Completion — previous release line
 

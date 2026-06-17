@@ -51,7 +51,15 @@ class _ScopedSearchService:
     """Injects the caller's workspace scope into every search call —
     enforcement lives at this one chokepoint, not in each handler."""
 
-    _SCOPED = {"keyword_search", "vector_search", "graph_search", "hybrid_search"}
+    _SCOPED = {
+        "keyword_search",
+        "vector_search",
+        "graph_search",
+        "hybrid_search",
+        "graph",
+        "node",
+        "relationships",
+    }
 
     def __init__(self, service: SearchService, allowed):
         self._service = service

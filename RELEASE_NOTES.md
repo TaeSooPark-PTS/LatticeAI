@@ -1,7 +1,38 @@
 # Release Notes
 
-The current release target is v6.3.1. The tracked release-note surface starts at
+The current release target is v6.4.0. The tracked release-note surface starts at
 v4.5.0 so the public Git tree stays focused on the current product era.
+
+## v6.4.0 - Digital Brain Quality Hardening
+
+Lattice AI v6.4.0 tightens the Digital Brain quality layer without adding
+unrelated product surface. It focuses on scoped retrieval/memory boundaries,
+embedding/retrieval quality primitives, graph confidence/evidence metrics,
+structured context guardrails, and benchmarkable recall quality.
+
+### Highlights
+
+- Added `lattice_brain.quality` for non-destructive Brain quality primitives:
+  embedding fallback labels, drift/re-index plans, BM25 lexical scoring, hybrid
+  fusion, reranker fallback contracts, memory candidate quality, graph edge
+  quality metrics, structured context guardrails, and retrieval benchmark
+  metrics.
+- Scoped graph/search API reads across graph, node, neighborhood, relationship,
+  keyword, vector, graph, and hybrid retrieval paths.
+- Scoped Memory Manager prune/compact/clear operations to the caller's
+  owner/workspace boundary and blocked unscoped graph clear.
+- Added 6.4.0 Brain quality baseline/risk documentation and regression tests.
+- Synchronized package/runtime/static versions to `6.4.0`.
+
+### Expected Artifacts
+
+- `dist/ltcai-6.4.0-py3-none-any.whl`
+- `dist/ltcai-6.4.0.tar.gz`
+- `dist/ltcai-6.4.0.vsix`
+- `ltcai-6.4.0.tgz`
+- `src-tauri/target/release/bundle/dmg/Lattice AI_6.4.0_aarch64.dmg`
+
+Full notes: [RELEASE_NOTES_v6.4.0.md](RELEASE_NOTES_v6.4.0.md)
 
 ## v6.3.1 - Access Runtime / i18n Follow-up
 

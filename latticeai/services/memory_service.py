@@ -133,8 +133,11 @@ class MemoryService:
 
     # ── Memory Manager: sources / usage / health ──────────────────────────
     def manager(self, *, user_email: Optional[str] = None, workspace_id: Optional[str] = None) -> Dict[str, Any]:
-        ws_mem = self._workspace_memories(user_email=user_email, workspace_id="personal")
-        project_mem = [m for m in self._all_memories() if (m.get("workspace_id") or "personal") != "personal"]
+        ws_mem = self._workspace_memories(user_email=user_email, workspace_id=workspace_id or "personal")
+        if workspace_id is None:
+            project_mem = [m for m in self._all_memories() if (m.get("workspace_id") or "personal") != "personal"]
+        else:
+            project_mem = self._workspace_memories(user_email=user_email, workspace_id=workspace_id)
         snaps = self._snapshots(workspace_id=workspace_id)
         convs = self._conversations()
         kg_stats = self._kg_stats()
@@ -268,10 +271,13 @@ class MemoryService:
     # ── inspect a single tier ─────────────────────────────────────────────
     def inspect(self, source: str, *, user_email: Optional[str] = None, workspace_id: Optional[str] = None, limit: int = 50) -> Dict[str, Any]:
         if source == "workspace":
-            items = self._workspace_memories(user_email=user_email, workspace_id="personal")[:limit]
+            items = self._workspace_memories(user_email=user_email, workspace_id=workspace_id or "personal")[:limit]
             return {"source": source, "items": items, "count": len(items)}
         if source == "project":
-            items = [m for m in self._all_memories() if (m.get("workspace_id") or "personal") != "personal"][:limit]
+            if workspace_id is None:
+                items = [m for m in self._all_memories() if (m.get("workspace_id") or "personal") != "personal"][:limit]
+            else:
+                items = self._workspace_memories(user_email=user_email, workspace_id=workspace_id)[:limit]
             return {"source": source, "items": items, "count": len(items)}
         if source == "agent":
             items = self._snapshots(workspace_id=workspace_id)[:limit]
@@ -287,12 +293,39 @@ class MemoryService:
         raise KeyError(source)
 
     # ── mutating operations ───────────────────────────────────────────────
-    def prune(self, *, ids: Optional[List[str]] = None, kind: Optional[str] = None, user_email: Optional[str] = None) -> Dict[str, Any]:
+    def prune(
+        self,
+        *,
+        ids: Optional[List[str]] = None,
+        kind: Optional[str] = None,
+        user_email: Optional[str] = None,
+        workspace_id: Optional[str] = None,
+    ) -> Dict[str, Any]:
+        # Ownership guard: a caller may only prune memories they own. Both the
+        # explicit-id and kind paths are intersected with the caller's own
+        # memories, so a forged id for another user's memory is refused, not
+        # silently deleted.
+        owned_ids = {
+            m["id"]
+            for m in self._workspace_memories(user_email=user_email, workspace_id=workspace_id)
+            if m.get("id")
+        }
         removed: List[str] = []
-        target_ids = list(ids or [])
+        skipped: List[str] = []
+        target_ids: List[str] = []
+        seen: set = set()
+        for mid in (ids or []):
+            if mid in seen:
+                continue
+            seen.add(mid)
+            if mid in owned_ids:
+                target_ids.append(mid)
+            else:
+                skipped.append(mid)
         if kind:
-            for m in self._workspace_memories(user_email=user_email, workspace_id=None):
-                if m.get("kind") == kind and m.get("id"):
+            for m in self._workspace_memories(user_email=user_email, workspace_id=workspace_id):
+                if m.get("kind") == kind and m.get("id") and m["id"] not in seen:
+                    seen.add(m["id"])
                     target_ids.append(m["id"])
         for mid in target_ids:
             try:
@@ -300,14 +333,22 @@ class MemoryService:
                 removed.append(mid)
             except Exception:
                 continue
-        return {"removed": removed, "count": len(removed)}
+        result: Dict[str, Any] = {"removed": removed, "count": len(removed)}
+        if skipped:
+            result["skipped"] = skipped
+        return result
 
-    def compact(self, *, user_email: Optional[str] = None) -> Dict[str, Any]:
+    def compact(
+        self,
+        *,
+        user_email: Optional[str] = None,
+        workspace_id: Optional[str] = None,
+    ) -> Dict[str, Any]:
         """Dedupe workspace memories with identical (kind, content)."""
         seen: set = set()
         removed: List[str] = []
         # Oldest first so the first occurrence (oldest) is kept.
-        memories = list(reversed(self._workspace_memories(user_email=user_email, workspace_id=None)))
+        memories = list(reversed(self._workspace_memories(user_email=user_email, workspace_id=workspace_id)))
         for m in memories:
             key = (m.get("kind"), str(m.get("content") or "").strip())
             if key in seen:
@@ -332,21 +373,23 @@ class MemoryService:
                 return {"status": "error", "detail": str(exc)}
         return {"status": "error", "detail": f"Unknown rebuild target: {target}"}
 
-    def clear(self, *, scope: str, confirm: bool = False, user_email: Optional[str] = None) -> Dict[str, Any]:
+    def clear(
+        self,
+        *,
+        scope: str,
+        confirm: bool = False,
+        user_email: Optional[str] = None,
+        workspace_id: Optional[str] = None,
+    ) -> Dict[str, Any]:
         if not confirm:
             raise ValueError("clear requires confirm=true")
         if scope in WORKSPACE_KINDS:
-            result = self.prune(kind=scope, user_email=user_email)
+            result = self.prune(kind=scope, user_email=user_email, workspace_id=workspace_id)
             return {"cleared": scope, **result}
         if scope == "workspace":
-            ids = [m["id"] for m in self._workspace_memories(user_email=user_email, workspace_id=None) if m.get("id")]
-            result = self.prune(ids=ids, user_email=user_email)
+            ids = [m["id"] for m in self._workspace_memories(user_email=user_email, workspace_id=workspace_id) if m.get("id")]
+            result = self.prune(ids=ids, user_email=user_email, workspace_id=workspace_id)
             return {"cleared": "workspace", **result}
         if scope == "graph":
-            if not self._enable_graph:
-                return {"status": "unavailable", "detail": "Knowledge graph disabled."}
-            try:
-                return {"cleared": "graph", "result": self._kg.clear_all()}
-            except Exception as exc:
-                return {"status": "error", "detail": str(exc)}
+            raise ValueError("graph clear is disabled from Memory Manager because it is not workspace-scoped")
         raise ValueError(f"unsupported clear scope: {scope}")

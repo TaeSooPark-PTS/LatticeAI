@@ -6,7 +6,8 @@
 
 | 버전 | 지원 여부 |
 |------|-----------|
-| 6.3.x (latest) | ✅ 지원 |
+| 6.4.x (latest) | ✅ 지원 |
+| 6.3.x | ✅ 보안 패치 범위 내 지원 |
 | 6.2.x | ✅ 보안 패치 범위 내 지원 |
 | 6.1.x | ✅ 보안 패치 범위 내 지원 |
 | 6.0.x | ✅ 보안 패치 범위 내 지원 |
@@ -53,7 +54,7 @@
 
 ## 보안 모델
 
-Lattice AI v6.3.1는 모델이 바뀌어도 사용자의 지식과 맥락을 보존하는 local-first Digital Brain입니다. Personal /
+Lattice AI v6.4.0는 모델이 바뀌어도 사용자의 지식과 맥락을 보존하는 local-first Digital Brain입니다. Personal /
 Organization Workspace, Brain-first Conversation, Knowledge Graph, Vector
 Index, Hybrid Search, Basic / Advanced / Admin mode, durable workspace
 governance, independent Brain Core package boundary, pluggable storage,
@@ -61,12 +62,13 @@ encrypted `.latticebrain` archives, confirmed restore/import, local-only
 startup hardening, desktop sidecar status, strict packaged-app CSP, first-run
 setup, saved-profile email/password mismatch guards, explicit model
 recommendation/install/validation flow, and default-off model downloads/runtime
-installs를 포함합니다. v6.3.1는 구조화된 모델 capability registry와
-Hugging Face 검증 상태를 통해 모델 다운로드/로드 가능성, 하드웨어 요구사항,
-멀티모달 지원 여부를 사용자에게 더 투명하게 보여줍니다. 일반 사용자 Brain
-화면과 관리자 로그/보안/운영 화면을 분리하고, 로컬 파일 자동 읽기 우회를
-차단하며, secret redaction을 로그/감사/보안 export/hook packet에 중앙
-적용합니다. 아래 보안 모델을 따릅니다:
+installs를 포함합니다. v6.4.0는 workspace-scoped graph/search/memory retrieval
+and mutation boundary를 강화하고, fallback embedding label, drift/re-index
+signal, structured context attribution/guardrail을 통해 unsupported/stale
+Brain facts를 확정 사실처럼 제시하지 않도록 합니다. 일반 사용자 Brain 화면과
+관리자 로그/보안/운영 화면을 분리하고, 로컬 파일 자동 읽기 우회를 차단하며,
+secret redaction을 로그/감사/보안 export/hook packet에 중앙 적용합니다. 아래
+보안 모델을 따릅니다:
 
 ### 기본 안전 설정 (Default Secure)
 

@@ -74,16 +74,16 @@ def create_memory_router(
     @router.post("/api/memory/prune")
     async def memory_prune(req: PruneRequest, request: Request):
         user = require_user(request)
-        gate_write(request)
-        result = service.prune(ids=req.ids, kind=req.kind, user_email=user)
+        scope = gate_write(request)
+        result = service.prune(ids=req.ids, kind=req.kind, user_email=user, workspace_id=scope)
         append_audit_event("memory_prune", user_email=user, count=result.get("count", 0))
         return result
 
     @router.post("/api/memory/compact")
     async def memory_compact(request: Request):
         user = require_user(request)
-        gate_write(request)
-        result = service.compact(user_email=user)
+        scope = gate_write(request)
+        result = service.compact(user_email=user, workspace_id=scope)
         append_audit_event("memory_compact", user_email=user, compacted=result.get("compacted", 0))
         return result
 
@@ -98,9 +98,9 @@ def create_memory_router(
     @router.post("/api/memory/clear")
     async def memory_clear(req: ClearRequest, request: Request):
         user = require_user(request)
-        gate_write(request)
+        scope = gate_write(request)
         try:
-            result = service.clear(scope=req.scope, confirm=req.confirm, user_email=user)
+            result = service.clear(scope=req.scope, confirm=req.confirm, user_email=user, workspace_id=scope)
         except ValueError as exc:
             raise HTTPException(status_code=400, detail=str(exc)) from exc
         append_audit_event("memory_clear", user_email=user, scope=req.scope)

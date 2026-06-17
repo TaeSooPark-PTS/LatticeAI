@@ -26,7 +26,7 @@ from .storage import (
     storage_from_env,
 )
 
-__version__ = "6.3.1"
+__version__ = "6.4.0"
 
 __all__ = [
     "AgentRuntime",
@@ -45,6 +45,7 @@ __all__ = [
     "IngestionPipeline",
     "KGPortabilityService",
     "KnowledgeGraphStore",
+    "LatticeBrainQuality",
     "MultiAgentOrchestrator",
     "PostgresConfig",
     "PostgresEngine",
@@ -65,6 +66,7 @@ _LAZY = {
     "ConversationStore": ("conversations", "ConversationStore"),
     "BrainMemory": ("memory", "BrainMemory"),
     "KnowledgeGraphStore": ("graph.store", "KnowledgeGraphStore"),
+    "LatticeBrainQuality": ("quality", "LatticeBrainQuality"),
     "IngestionItem": ("ingestion", "IngestionItem"),
     "IngestionPipeline": ("ingestion", "IngestionPipeline"),
     "KGPortabilityService": ("portability", "KGPortabilityService"),

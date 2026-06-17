@@ -7,6 +7,33 @@
 > PyPI / npm / VS Code Marketplace / Open VSX 배포는 아래 수동 절차로만
 > 진행합니다. 태그 생성은 패키지 스토어 publish를 자동으로 트리거하지 않습니다.
 
+## v6.4.0 릴리스 준비 노트 (2026-06-17)
+
+Lattice AI v6.4.0 — Digital Brain Quality Hardening. 6.4.0은 새 제품
+surface를 추가하지 않고 Digital Brain의 품질 경계와 회귀 테스트를 강화한다.
+핵심 변경은 workspace-scoped graph/search/memory boundary, non-destructive
+Brain quality primitives, structured context guardrails, retrieval benchmark
+metrics, 그리고 6.4 baseline/risk 문서화다.
+
+`lattice_brain.quality`는 embedding fallback labelling, drift/re-index plan,
+BM25 lexical scoring, hybrid fusion, reranker fallback contract, memory
+candidate scoring/dedupe/conflict/retention, graph edge confidence/evidence
+metrics, structured context assembly guardrails, retrieval benchmark metric
+calculation을 DB schema 변경 없이 제공한다.
+
+Graph/search API는 graph, node, neighborhood, relationship, keyword, vector,
+graph, hybrid retrieval 경로에 caller workspace scope를 유지한다. Memory
+Manager prune/compact/clear는 caller owner/workspace set과 교집합인 memory만
+변경하며, workspace-safe graph delete가 생기기 전까지 Memory Manager graph clear는
+차단한다.
+
+Expected artifacts (exact 6.4.0 names only):
+- dist/ltcai-6.4.0-py3-none-any.whl
+- dist/ltcai-6.4.0.tar.gz
+- dist/ltcai-6.4.0.vsix
+- ltcai-6.4.0.tgz
+- src-tauri/target/release/bundle/dmg/Lattice AI_6.4.0_aarch64.dmg
+
 ## v6.3.1 릴리스 준비 노트 (2026-06-17)
 
 Lattice AI v6.3.1 — Access Runtime / i18n Follow-up. 6.3.1은 6.3.0의

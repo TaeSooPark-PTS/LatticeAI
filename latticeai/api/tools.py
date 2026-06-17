@@ -202,6 +202,7 @@ def create_tools_router(
     install_mcp=None,
     mcp_public_item=None,
     hooks=None,
+    allowed_workspaces_for=None,
 ) -> APIRouter:
     if tool_context is not None:
         config = tool_context.config
@@ -227,6 +228,7 @@ def create_tools_router(
         install_mcp = tool_context.install_mcp
         mcp_public_item = tool_context.mcp_public_item
         hooks = tool_context.hooks
+        allowed_workspaces_for = tool_context.allowed_workspaces_for
 
     api_router = APIRouter()
     HOOKS = hooks
@@ -486,6 +488,7 @@ def create_tools_router(
         local_kg_watcher=LOCAL_KG_WATCHER,
         hooks=HOOKS,
         data_dir=DATA_DIR,
+        allowed_workspaces_for=allowed_workspaces_for,
     ))
     api_router.include_router(create_computer_use_router(
         model_router=router,

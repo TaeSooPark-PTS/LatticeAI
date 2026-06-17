@@ -27,18 +27,53 @@ class KnowledgeGraphIngestRequest(BaseModel):
     metadata: Optional[Dict[str, Any]] = None
 
 
+def _format_context(matches: list, limit: int) -> str:
+    """Mirror ``KnowledgeGraphRetrievalMixin.context_for_query`` formatting for a
+    pre-filtered match list, so scoped callers get identical context lines minus
+    the rows they are not allowed to see."""
+    lines = []
+    for match in matches[:limit]:
+        meta = match.get("metadata") or {}
+        source = (
+            meta.get("relative_path")
+            or meta.get("filename")
+            or meta.get("conversation_id")
+            or meta.get("source")
+            or match.get("id")
+        )
+        summary = " ".join(str(match.get("summary") or "").split())[:700]
+        lines.append(f"- [{match.get('type')}] {match.get('title')} | source={source} | {summary}")
+    return "\n".join(lines)
+
+
 def create_knowledge_graph_router(
     *,
     get_graph: Callable[[], Any],
     require_graph: Callable[[], None],
     require_user: Callable[[Request], str],
     static_dir: Path,
+    allowed_workspaces_for: Optional[Callable[[Optional[str]], Any]] = None,
 ) -> APIRouter:
     router = APIRouter()
 
     def graph():
         require_graph()
         return get_graph()
+
+    def _scoped(request: Request):
+        """Authenticate the caller and resolve their allowed workspace set.
+
+        Returns ``(graph, allowed)``. ``allowed is None`` means no scoping
+        (single-user / no-auth mode); otherwise it is the set of workspace ids
+        the caller may read. Legacy-global rows (no workspace) stay visible —
+        the documented pre-v4 compatibility behavior enforced by
+        ``filter_scoped_nodes``.
+        """
+        user = require_user(request)
+        allowed = None
+        if allowed_workspaces_for is not None and user:
+            allowed = allowed_workspaces_for(user)
+        return graph(), allowed
 
     @router.get("/graph")
     async def knowledge_graph_page(request: Request):
@@ -81,8 +116,10 @@ def create_knowledge_graph_router(
 
     @router.get("/knowledge-graph/graph")
     async def knowledge_graph_data(request: Request, limit: int = 300):
-        require_user(request)
-        return graph().graph(limit)
+        kg, allowed = _scoped(request)
+        if allowed is None:
+            return kg.graph(limit)
+        return kg.graph(limit, allowed_workspaces=allowed)
 
     @router.get("/knowledge-graph/documents")
     async def knowledge_graph_documents(request: Request, limit: int = 200):
@@ -91,27 +128,51 @@ def create_knowledge_graph_router(
         Backs the Files view so uploaded content is visible end-to-end:
         upload → Files → Knowledge Graph → Hybrid Search → Chat.
         """
-        require_user(request)
-        return graph().list_documents(limit)
+        kg, allowed = _scoped(request)
+        payload = kg.list_documents(limit)
+        if allowed is not None:
+            documents = kg.filter_scoped_nodes(payload.get("documents", []), allowed)
+            payload = {**payload, "documents": documents, "total": len(documents)}
+        return payload
 
     @router.get("/knowledge-graph/search")
     async def knowledge_graph_search(q: str, request: Request, limit: int = 30):
-        require_user(request)
+        kg, allowed = _scoped(request)
         if not q or not q.strip():
             return {"query": q, "matches": []}
-        return graph().search(q, limit)
+        payload = kg.search(q, limit)
+        if allowed is not None:
+            payload = {**payload, "matches": kg.filter_scoped_nodes(payload.get("matches", []), allowed)}
+        return payload
 
     @router.get("/knowledge-graph/context")
     async def knowledge_graph_context(q: str, request: Request, limit: int = 6):
-        require_user(request)
-        return {"query": q, "context": graph().context_for_query(q, limit)}
+        kg, allowed = _scoped(request)
+        if allowed is None:
+            return {"query": q, "context": kg.context_for_query(q, limit)}
+        # Scoped mode: derive context from scope-filtered search matches so the
+        # RAG context never carries content from workspaces the caller can't read.
+        matches = kg.filter_scoped_nodes(kg.search(q, limit).get("matches", []), allowed)
+        return {"query": q, "context": _format_context(matches, limit)}
 
     @router.get("/knowledge-graph/neighbors/{node_id:path}")
     async def knowledge_graph_neighbors(node_id: str, request: Request):
-        require_user(request)
+        kg, allowed = _scoped(request)
         if not node_id:
             raise HTTPException(status_code=400, detail="node_id required")
-        return graph().neighbors(node_id)
+        if allowed is not None and not kg.filter_scoped_nodes([{"id": node_id}], allowed):
+            raise HTTPException(status_code=404, detail="node not found")
+        payload = kg.neighbors(node_id)
+        if allowed is not None:
+            neighbors = kg.filter_scoped_nodes(payload.get("neighbors", []), allowed)
+            kept = {n.get("id") for n in neighbors}
+            edges = [
+                e for e in payload.get("edges", [])
+                if (e.get("from") == node_id or e.get("from") in kept)
+                and (e.get("to") == node_id or e.get("to") in kept)
+            ]
+            payload = {**payload, "neighbors": neighbors, "edges": edges}
+        return payload
 
     @router.post("/knowledge-graph/ingest")
     async def knowledge_graph_ingest(req: KnowledgeGraphIngestRequest, request: Request):

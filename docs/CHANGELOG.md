@@ -3,6 +3,35 @@
 The top entry is the current release-preparation target. Older entries are
 historical and may describe behavior as it existed at that release.
 
+## [6.4.0] - 2026-06-17
+
+> Digital Brain Quality Hardening. Tightens workspace-scoped Brain retrieval
+> and memory mutation boundaries while adding non-destructive quality primitives
+> for embeddings, retrieval, memory, graph validation, context assembly, and
+> benchmarks.
+
+### Added
+- `lattice_brain.quality` with embedding fallback labelling, drift/re-index
+  planning, BM25 lexical scoring, hybrid fusion, reranker fallback contracts,
+  memory candidate scoring/deduplication/conflict/retention helpers, graph edge
+  confidence/evidence metrics, structured context guardrails, and retrieval
+  benchmark metric calculation.
+- `docs/v6.4/BRAIN_QUALITY_BASELINE.md` documenting the 6.4.0 Digital Brain
+  quality baseline, risk register, validation items, and deferred work.
+- Unit coverage for Brain quality primitives and workspace-scoped graph/search
+  and memory-manager mutation boundaries.
+
+### Changed
+- `/api/graph*`, `/knowledge-graph/*`, and hybrid-search service paths now
+  preserve workspace scope across graph, node, neighborhood, relationship,
+  keyword, vector, graph, and hybrid retrieval.
+- Memory Manager prune, compact, and clear operations now intersect requested
+  ids/kinds with the caller's scoped memory set.
+- Memory Manager graph clear is blocked because the existing graph clear path
+  is not workspace-scoped.
+- Package/runtime/static metadata is synchronized to 6.4.0; package publish and
+  deployment remain owner-run only.
+
 ## [6.3.1] - 2026-06-17
 
 > Access Runtime / i18n Follow-up. Closes the next app-factory decomposition

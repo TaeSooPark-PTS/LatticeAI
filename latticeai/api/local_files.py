@@ -48,6 +48,7 @@ def create_local_files_router(
     local_kg_watcher,
     hooks=None,
     data_dir: Optional[Path] = None,
+    allowed_workspaces_for=None,
 ) -> APIRouter:
     router = APIRouter()
 
@@ -210,6 +211,7 @@ def create_local_files_router(
             require_graph=require_graph,
             require_user=require_user,
             static_dir=static_dir,
+            allowed_workspaces_for=allowed_workspaces_for,
         )
     )
 
