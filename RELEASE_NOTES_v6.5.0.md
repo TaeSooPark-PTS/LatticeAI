@@ -6,8 +6,10 @@ first memory, forming topics, or ready for map-level exploration.
 
 ## Added
 
-- Brain readiness strip on Brain Home, derived from the current memory and topic
-  surface.
+- Brain readiness strip on Brain Home, derived from backend Memory Manager
+  memory, graph, relationship, and source health signals.
+- `/api/memory/brain-quality` for the same backend-owned readiness summary used
+  by `/api/memory/manager`.
 - Persistent depth progress rail for the Living Brain journey from conversation
   through memories, topics, relationships, and the full knowledge graph.
 - Source-aware memory-save detail after chat, clarifying that useful context is

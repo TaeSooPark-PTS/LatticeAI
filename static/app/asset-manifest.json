@@ -6,7 +6,7 @@
   },
   "assets": {
     "../node_modules/@tauri-apps/api/core.js": "/static/app/assets/core-CwxXejkd.js",
-    "index.html": "/static/app/assets/index-BBv-fkN7.js",
+    "index.html": "/static/app/assets/index-C1J_1441.js",
     "assets/index-CdCVz_i4.css": "/static/app/assets/index-CdCVz_i4.css"
   },
   "vite": {
@@ -17,7 +17,7 @@
       "isDynamicEntry": true
     },
     "index.html": {
-      "file": "assets/index-BBv-fkN7.js",
+      "file": "assets/index-C1J_1441.js",
       "name": "index",
       "src": "index.html",
       "isEntry": true,

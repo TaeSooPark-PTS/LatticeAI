@@ -5,7 +5,7 @@ import { type BrainState, LivingBrain, triggerBrainRecall } from "@/components/L
 import { useAppStore } from "@/store/appStore";
 import { t } from "@/i18n";
 import { BrainConversation } from "./BrainConversation";
-import { buildMemoryFragments, currentModelName, parseKnowledgeGraph } from "./brainData";
+import { buildBrainReadiness, buildMemoryFragments, currentModelName, parseKnowledgeGraph } from "./brainData";
 import { DepthEmergence } from "./DepthEmergence";
 import { DEPTHS, type BrainDepth, type MemoryFragment, type Message } from "./types";
 
@@ -45,6 +45,10 @@ export function BrainHome({
   const knowledgeConcepts = React.useMemo(
     () => graphModel.nodes.slice(0, 10),
     [graphModel.nodes],
+  );
+  const brainReadiness = React.useMemo(
+    () => buildBrainReadiness(memoriesQ.data?.data, memoryFragments.length, knowledgeConcepts.length),
+    [knowledgeConcepts.length, memoriesQ.data, memoryFragments.length],
   );
   const relationshipThreads = React.useMemo(
     () => graphModel.edges.slice(0, 10),
@@ -237,6 +241,7 @@ export function BrainHome({
         streamRef={streamRef}
         memories={memoryFragments}
         concepts={knowledgeConcepts}
+        readiness={brainReadiness}
         onOpenDepth={jumpToDepth}
         onDraftChange={setDraft}
         onImageDataChange={setImageData}

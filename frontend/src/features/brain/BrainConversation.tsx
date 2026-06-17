@@ -2,7 +2,7 @@ import * as React from "react";
 import { DatabaseZap, ShieldCheck } from "lucide-react";
 import { LanguageSwitcher } from "@/components/LanguageSwitcher";
 import { t, type Language } from "@/i18n";
-import type { BrainDepth, KnowledgeConcept, MemoryFragment, Message } from "./types";
+import type { BrainDepth, BrainReadiness, KnowledgeConcept, MemoryFragment, Message } from "./types";
 import { BrainCarePanel } from "./BrainCarePanel";
 import { BrainComposer } from "./BrainComposer";
 import { BrainOverviewPanel } from "./BrainOverviewPanel";
@@ -20,6 +20,7 @@ export function BrainConversation({
   streamRef,
   memories,
   concepts,
+  readiness,
   onOpenDepth,
   onDraftChange,
   onImageDataChange,
@@ -37,6 +38,7 @@ export function BrainConversation({
   streamRef: React.RefObject<HTMLDivElement | null>;
   memories: MemoryFragment[];
   concepts: KnowledgeConcept[];
+  readiness: BrainReadiness;
   onOpenDepth: (depth: BrainDepth) => void;
   onDraftChange: (value: string) => void;
   onImageDataChange: (value: string | null) => void;
@@ -66,6 +68,7 @@ export function BrainConversation({
         <BrainOverviewPanel
           memories={memories}
           concepts={concepts}
+          readiness={readiness}
           onOpenDepth={onOpenDepth}
         />
         {messages.length === 0 ? (

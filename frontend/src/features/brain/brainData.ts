@@ -1,5 +1,5 @@
 import { asArray } from "@/lib/utils";
-import type { ApiRecord, KnowledgeConcept, KnowledgeGraphModel, MemoryFragment, RelationshipThread } from "./types";
+import type { ApiRecord, BrainDepth, BrainReadiness, KnowledgeConcept, KnowledgeGraphModel, MemoryFragment, RelationshipThread } from "./types";
 import { clamp } from "./graphLayout";
 
 export function buildMemoryFragments(memoryData: unknown, historyData: unknown): MemoryFragment[] {
@@ -60,6 +60,32 @@ export function currentModelName(data: unknown) {
   return firstLoaded ? textValue(firstLoaded, ["name", "id", "model_id"], "local mind") : "local mind";
 }
 
+export function buildBrainReadiness(memoryData: unknown, fallbackMemoryCount: number, fallbackConceptCount: number): BrainReadiness {
+  const memory = isRecord(memoryData) ? memoryData : {};
+  const backend = isRecord(memory.brain_readiness) ? memory.brain_readiness : {};
+  const backendState = textValue(backend, ["state"]);
+  const backendDepth = numberValue(backend, ["depth"]);
+  const backendScore = numberValue(backend, ["score"]);
+  if ((backendState === "quiet" || backendState === "forming" || backendState === "alive") && isBrainDepth(backendDepth)) {
+    const signals = isRecord(backend.signals) ? backend.signals : {};
+    return {
+      score: clamp(Math.round(backendScore || 0), 0, 100),
+      state: backendState,
+      depth: backendDepth,
+      titleKey: textValue(backend, ["title_key", "titleKey"], `brain.readiness.${backendState}`),
+      actionKey: textValue(backend, ["action_key", "actionKey"], readinessActionKey(backendState)),
+      source: "memory_service",
+      signals: {
+        memoryCount: numberValue(signals, ["memory_count", "memoryCount"]),
+        conceptCount: numberValue(signals, ["concept_count", "conceptCount"]),
+        relationshipCount: numberValue(signals, ["relationship_count", "relationshipCount"]),
+        healthySources: numberValue(signals, ["healthy_sources", "healthySources"]),
+      },
+    };
+  }
+  return fallbackBrainReadiness(fallbackMemoryCount, fallbackConceptCount);
+}
+
 function uniqueById<T extends { id: string }>(items: T[]) {
   const seen = new Set<string>();
   return items.filter((item) => {
@@ -67,6 +93,51 @@ function uniqueById<T extends { id: string }>(items: T[]) {
     seen.add(item.id);
     return true;
   });
+}
+
+function fallbackBrainReadiness(memoryCount: number, conceptCount: number): BrainReadiness {
+  const score = Math.min(100, Math.round(memoryCount * 12 + conceptCount * 10));
+  if (memoryCount < 1) {
+    return {
+      score: Math.max(12, score),
+      state: "quiet",
+      depth: 2,
+      titleKey: "brain.readiness.quiet",
+      actionKey: "brain.readiness.start",
+      source: "frontend_fallback",
+      signals: { memoryCount, conceptCount, relationshipCount: 0, healthySources: 0 },
+    };
+  }
+  if (conceptCount < 3) {
+    return {
+      score: Math.max(38, score),
+      state: "forming",
+      depth: 3,
+      titleKey: "brain.readiness.forming",
+      actionKey: "brain.readiness.grow",
+      source: "frontend_fallback",
+      signals: { memoryCount, conceptCount, relationshipCount: 0, healthySources: 0 },
+    };
+  }
+  return {
+    score: Math.max(72, score),
+    state: "alive",
+    depth: 5,
+    titleKey: "brain.readiness.alive",
+    actionKey: "brain.readiness.map",
+    source: "frontend_fallback",
+    signals: { memoryCount, conceptCount, relationshipCount: 0, healthySources: 0 },
+  };
+}
+
+function readinessActionKey(state: "quiet" | "forming" | "alive") {
+  if (state === "quiet") return "brain.readiness.start";
+  if (state === "forming") return "brain.readiness.grow";
+  return "brain.readiness.map";
+}
+
+function isBrainDepth(value: number): value is BrainDepth {
+  return value >= 1 && value <= 5 && Number.isInteger(value);
 }
 
 export function isRecord(value: unknown): value is ApiRecord {

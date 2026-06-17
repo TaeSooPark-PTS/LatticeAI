@@ -12,6 +12,9 @@ historical and may describe behavior as it existed at that release.
 ### Added
 - Brain Home readiness strip that classifies the current Brain as waiting for
   its first memory, forming topics, or ready for map exploration.
+- Backend-owned Brain readiness summary from `MemoryService`, exposed through
+  `/api/memory/manager` and `/api/memory/brain-quality`, so the UI no longer
+  has to infer Brain growth from local fragments.
 - Persistent depth progress rail across the Living Brain surface so the
   memory -> topics -> relationships -> graph journey is visible and reversible.
 - Source-aware memory-save detail under chat feedback, making the recall loop
@@ -22,6 +25,9 @@ historical and may describe behavior as it existed at that release.
 ### Changed
 - Brain overview empty states now guide first-memory use without exposing graph
   internals or administrator language.
+- Brain readiness now uses the same memory, graph, relationship, and source
+  health signals that the Memory Manager reports, keeping product UX aligned
+  with backend Brain state.
 - Package/runtime/static metadata is synchronized to 6.5.0; package publish and
   deployment remain owner-run only.
 

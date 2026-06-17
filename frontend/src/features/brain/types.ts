@@ -35,6 +35,21 @@ export type KnowledgeGraphModel = {
   edges: RelationshipThread[];
 };
 
+export type BrainReadiness = {
+  score: number;
+  state: "quiet" | "forming" | "alive";
+  depth: BrainDepth;
+  titleKey: string;
+  actionKey: string;
+  source: "memory_service" | "frontend_fallback";
+  signals: {
+    memoryCount: number;
+    conceptCount: number;
+    relationshipCount: number;
+    healthySources: number;
+  };
+};
+
 export const DEPTHS: Array<{ level: BrainDepth; labelKey: string; state: BrainState }> = [
   { level: 1, labelKey: "brain.depthLabel.1", state: "idle" },
   { level: 2, labelKey: "brain.depthLabel.2", state: "recalling" },

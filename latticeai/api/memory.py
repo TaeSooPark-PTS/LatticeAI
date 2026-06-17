@@ -51,6 +51,12 @@ def create_memory_router(
         scope = gate_read(request)
         return service.manager(user_email=user, workspace_id=scope)
 
+    @router.get("/api/memory/brain-quality")
+    async def brain_quality_summary(request: Request):
+        user = require_user(request)
+        scope = gate_read(request)
+        return service.brain_quality_summary(user_email=user, workspace_id=scope)
+
     @router.get("/api/memory/tiers")
     async def memory_tiers(request: Request):
         require_user(request)

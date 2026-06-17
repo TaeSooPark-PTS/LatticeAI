@@ -133,8 +133,35 @@ def test_memory_manager_tiers(tmp_path):
     mgr = svc.manager()
     assert set(mgr["tiers"]) == set(TIERS)
     assert mgr["usage"]["total_items"] >= 3
+    assert mgr["brain_readiness"]["source"] == "memory_service"
+    assert mgr["brain_readiness"]["signals"]["memory_count"] >= 3
     ids = {s["id"] for s in mgr["sources"]}
     assert {"workspace", "project", "agent", "conversation", "graph", "vector"} == ids
+
+
+def test_memory_brain_quality_summary_uses_backend_growth_signals(tmp_path):
+    class _FakeKG:
+        def stats(self):
+            return {"nodes": {"concept": 4}, "edges": {"relates": 3}}
+
+        def index_status(self):
+            return {"vector_counts": {"node": 4}}
+
+    store = _FakeStore()
+    store.add("m1", "workspace", "alpha note")
+    svc = MemoryService(store=store, data_dir=tmp_path, knowledge_graph=_FakeKG(), enable_graph=True)
+
+    summary = svc.brain_quality_summary(user_email="user@example.com", workspace_id="personal")
+    assert summary["state"] == "alive"
+    assert summary["depth"] == 5
+    assert summary["title_key"] == "brain.readiness.alive"
+    assert summary["action_key"] == "brain.readiness.map"
+    assert summary["signals"] == {
+        "memory_count": 2,
+        "concept_count": 4,
+        "relationship_count": 3,
+        "healthy_sources": 5,
+    }
 
 
 def test_memory_recall_and_inspect(tmp_path):

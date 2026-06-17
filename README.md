@@ -204,7 +204,8 @@ The current development target is **6.5.0 Brain Experience Readiness**:
 
 - Brain Home now gives normal users a readiness signal that explains whether
   the Brain is waiting for its first memory, turning memories into topics, or
-  ready to explore as a connected map.
+  ready to explore as a connected map. That signal now comes from the backend
+  Memory Manager summary instead of a frontend-only estimate.
 - The Living Brain surface now includes a persistent depth progress rail, so
   users can understand and reverse the path from conversation to memory,
   topics, relationships, and the full knowledge graph.

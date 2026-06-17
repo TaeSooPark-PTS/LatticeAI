@@ -132,6 +132,60 @@ class MemoryService:
             return None
 
     # ── Memory Manager: sources / usage / health ──────────────────────────
+    def _brain_readiness(
+        self,
+        *,
+        memory_count: int,
+        concept_count: Optional[int],
+        relationship_count: Optional[int],
+        healthy_sources: int,
+    ) -> Dict[str, Any]:
+        """Summarize how ready the user's Brain is for the product UI.
+
+        The frontend should render this signal instead of re-deriving it from
+        UI fragments. Keeping it here makes the score auditable and keeps the
+        Memory Manager as the single owner of cross-tier Brain growth signals.
+        """
+        concepts = max(0, int(concept_count or 0))
+        relationships = max(0, int(relationship_count or 0))
+        memories = max(0, int(memory_count or 0))
+        healthy = max(0, int(healthy_sources or 0))
+        score = min(100, round(memories * 12 + concepts * 8 + relationships * 4 + healthy * 3))
+
+        if memories < 1 and concepts < 1:
+            state = "quiet"
+            depth = 2
+            title_key = "brain.readiness.quiet"
+            action_key = "brain.readiness.start"
+            score = max(12, score)
+        elif concepts < 3 or relationships < 2:
+            state = "forming"
+            depth = 3 if concepts < 3 else 4
+            title_key = "brain.readiness.forming"
+            action_key = "brain.readiness.grow"
+            score = max(38, score)
+        else:
+            state = "alive"
+            depth = 5
+            title_key = "brain.readiness.alive"
+            action_key = "brain.readiness.map"
+            score = max(72, score)
+
+        return {
+            "score": score,
+            "state": state,
+            "depth": depth,
+            "title_key": title_key,
+            "action_key": action_key,
+            "signals": {
+                "memory_count": memories,
+                "concept_count": concepts,
+                "relationship_count": relationships,
+                "healthy_sources": healthy,
+            },
+            "source": "memory_service",
+        }
+
     def manager(self, *, user_email: Optional[str] = None, workspace_id: Optional[str] = None) -> Dict[str, Any]:
         ws_mem = self._workspace_memories(user_email=user_email, workspace_id=workspace_id or "personal")
         if workspace_id is None:
@@ -198,14 +252,26 @@ class MemoryService:
         total_bytes = ws_bytes + kg_bytes + conv_bytes
         healthy = sum(1 for s in sources if s["health"] == "ok")
         overall = "ok" if healthy >= 4 else "degraded" if healthy >= 1 else "unavailable"
+        memory_ids = {m.get("id") for m in [*ws_mem, *project_mem] if m.get("id")}
+        memory_count = len(memory_ids) + len(snaps) + len(convs)
         return {
             "sources": sources,
             "tiers": list(TIERS),
             "usage": {"total_items": total_items, "total_bytes": total_bytes, "sources": len(sources)},
+            "brain_readiness": self._brain_readiness(
+                memory_count=memory_count,
+                concept_count=node_total,
+                relationship_count=edge_total,
+                healthy_sources=healthy,
+            ),
             "health": overall,
             "graph_enabled": self._enable_graph,
             "generated_at": _now(),
         }
+
+    def brain_quality_summary(self, *, user_email: Optional[str] = None, workspace_id: Optional[str] = None) -> Dict[str, Any]:
+        """Return the backend-owned Brain readiness signal for API consumers."""
+        return self.manager(user_email=user_email, workspace_id=workspace_id)["brain_readiness"]
 
     def tiers(self) -> Dict[str, Any]:
         return {"tiers": list(TIERS), "workspace_kinds": list(WORKSPACE_KINDS)}

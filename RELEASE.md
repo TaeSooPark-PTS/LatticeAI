@@ -15,11 +15,12 @@ Brain Home의 피드백 루프를 정리한다. Grok/OpenClaw 감사와 로컬 �
 품질 경계는 단단해졌지만 "내 Brain이 지금 얼마나 자랐고 다음에 무엇을 해야
 하는지"가 표면에서 충분히 보이지 않는 점이 가장 큰 사용 경험 gap이었다.
 
-Brain Home은 이제 memories/concepts 상태로 Brain readiness를 설명하고, Living
-Brain에는 1단계 conversation에서 5단계 graph까지의 진행 rail이 계속 보인다.
-대화 후 memory-save feedback은 "출처와 함께 나중에 다시 불러올 수 있다"는
-source-aware recall 의미를 즉시 알려준다. 이 변경은 graph/storage schema를
-바꾸지 않고 사용자가 Digital Brain 방향성을 체감하도록 만드는 UX layer 개선이다.
+Brain Home은 이제 `MemoryService`가 계산한 Brain readiness summary를 사용해
+memory, graph, relationship, source health 상태를 설명하고, Living Brain에는
+1단계 conversation에서 5단계 graph까지의 진행 rail이 계속 보인다. 대화 후
+memory-save feedback은 "출처와 함께 나중에 다시 불러올 수 있다"는 source-aware
+recall 의미를 즉시 알려준다. 이 변경은 graph/storage schema를 바꾸지 않고
+사용자가 Digital Brain 방향성을 체감하도록 만드는 backend-backed UX 개선이다.
 
 Expected artifacts (exact 6.5.0 names only):
 - dist/ltcai-6.5.0-py3-none-any.whl

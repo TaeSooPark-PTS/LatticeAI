@@ -582,7 +582,25 @@ const server = http.createServer((req, res) => {
     ],
     tiers: ["workspace", "project", "agent", "conversation", "graph", "vector"],
     usage: { total_items: 21, total_bytes: 7168, sources: 6 },
+    brain_readiness: {
+      score: 100,
+      state: "alive",
+      depth: 5,
+      title_key: "brain.readiness.alive",
+      action_key: "brain.readiness.map",
+      source: "memory_service",
+      signals: { memory_count: 8, concept_count: graphNodes.length, relationship_count: graphEdges.length, healthy_sources: 6 },
+    },
     health: "ok",
+  });
+  if (pathname === "/api/memory/brain-quality") return json(res, {
+    score: 100,
+    state: "alive",
+    depth: 5,
+    title_key: "brain.readiness.alive",
+    action_key: "brain.readiness.map",
+    source: "memory_service",
+    signals: { memory_count: 8, concept_count: graphNodes.length, relationship_count: graphEdges.length, healthy_sources: 6 },
   });
   if (pathname === "/api/memory/inspect") return json(res, { source: url.searchParams.get("source"), items: [{ id: "mem-demo", kind: "workspace", title: "Demo memory", content: "Release memory" }], count: 1, available: true, stats: workspaceOs.graph, index: { status: "ready" } });
   if (pathname === "/api/hooks/run" && req.method === "POST") return json(res, {
