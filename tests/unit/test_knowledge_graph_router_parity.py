@@ -139,3 +139,35 @@ def test_ingest_validates_type_and_delegates(tmp_path: Path):
     ok = client.post("/knowledge-graph/ingest", json={"type": "note", "content": "hello"})
     assert ok.status_code == 200
     assert ok.json()["status"] == "ok"
+
+
+def test_ingest_passes_workspace_scope_from_header(tmp_path: Path):
+    class _RecordingGraph(_StubGraph):
+        def __init__(self):
+            self.kwargs = {}
+
+        def ingest_message(self, role, content, **kwargs):
+            self.kwargs = kwargs
+            return {"status": "ok", "role": role, "ingested": bool(content)}
+
+    graph = _RecordingGraph()
+    app = FastAPI()
+    app.include_router(
+        create_knowledge_graph_router(
+            get_graph=lambda: graph,
+            require_graph=lambda: None,
+            require_user=lambda _request: "user@example.com",
+            static_dir=tmp_path,
+        )
+    )
+    client = TestClient(app)
+
+    response = client.post(
+        "/knowledge-graph/ingest",
+        headers={"X-Workspace-Id": "org:acme"},
+        json={"type": "note", "content": "workspace scoped note"},
+    )
+
+    assert response.status_code == 200
+    assert graph.kwargs["workspace_id"] == "org:acme"
+    assert graph.kwargs["raw"]["workspace_id"] == "org:acme"

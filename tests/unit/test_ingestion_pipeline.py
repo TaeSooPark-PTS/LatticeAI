@@ -76,12 +76,15 @@ def test_file_ingest_converges_through_same_pipeline(tmp_path):
     src = tmp_path / "doc.md"
     src.write_text("# Plan\nLattice AI Knowledge Graph First. We must decide the schema.", encoding="utf-8")
     pipe = _pipeline(tmp_path)
-    res = pipe.ingest(IngestionItem(source_type="file", path=str(src), owner="u@x.com"))
+    res = pipe.ingest(IngestionItem(source_type="file", path=str(src), owner="u@x.com", workspace_id="org:acme"))
 
     assert res.status == "ok"
     assert res.node_id and res.node_id.startswith("file:")
     assert res.source_node_id and res.source_node_id.startswith("source:")
     assert res.content_hash and len(res.content_hash) == 64
+    assert pipe._kg.workspaces_of([res.node_id]).get(res.node_id) == "org:acme"
+    assert pipe._kg.workspaces_of([res.source_node_id]).get(res.source_node_id) == "org:acme"
+    assert pipe._kg.filter_scoped_nodes([{"id": res.node_id}], {"org:other"}) == []
     prov = pipe._kg.get_provenance(res.node_id)
     assert prov["source_type"] == "file"
 

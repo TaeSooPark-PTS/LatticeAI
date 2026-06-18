@@ -6,11 +6,20 @@ import logging
 import tempfile
 from datetime import datetime
 from pathlib import Path
+from typing import Optional
 
 from fastapi import HTTPException, Request, UploadFile
 
 from lattice_brain.ingestion import IngestionItem
 from tools import ToolError, read_document
+
+
+def _workspace_scope_from_request(request: Request) -> Optional[str]:
+    header = request.headers.get("X-Workspace-Id")
+    if header and header.strip():
+        return header.strip()
+    query = request.query_params.get("workspace_id")
+    return query.strip() if query and query.strip() else None
 
 
 async def process_uploaded_document(
@@ -28,6 +37,7 @@ async def process_uploaded_document(
     hooks=None,
 ) -> dict:
     enforce_rate_limit(current_user, "upload")
+    workspace_id = _workspace_scope_from_request(request)
     suffix = Path(file.filename or "upload").suffix.lower()
     allowed = {".pdf", ".docx", ".xlsx", ".pptx", ".txt", ".md", ".csv"}
     if suffix not in allowed:
@@ -83,6 +93,7 @@ async def process_uploaded_document(
                         path=tmp_path,
                         mime_type=file.content_type,
                         owner=current_user,
+                        workspace_id=workspace_id,
                         conversation_id=request.query_params.get("conversation_id"),
                         metadata={"extracted": result},
                     ),
@@ -101,6 +112,7 @@ async def process_uploaded_document(
                     original_filename=file.filename,
                     mime_type=file.content_type,
                     uploader=current_user,
+                    workspace_id=workspace_id,
                     conversation_id=request.query_params.get("conversation_id"),
                     extracted=result,
                 )

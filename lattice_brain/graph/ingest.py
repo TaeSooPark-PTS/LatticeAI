@@ -250,6 +250,8 @@ class KnowledgeGraphIngestMixin:
                 summary=(text or filename)[:500],
                 metadata=metadata,
                 raw=metadata,
+                owner=owner or uploader,
+                workspace_id=workspace_id,
             )
             self._ingest_structure_nodes(conn, file_id, filename, doc_meta)
 
@@ -279,6 +281,8 @@ class KnowledgeGraphIngestMixin:
                     "Person",
                     uploader,
                     metadata={"email": uploader},
+                    owner=uploader,
+                    workspace_id=workspace_id,
                 )
                 # 선: 동사 — Person이 Document를 "업로드함"
                 self._upsert_edge(conn, person_id, file_id, "업로드함", weight=1.0)
@@ -286,7 +290,15 @@ class KnowledgeGraphIngestMixin:
             # ── Chat 노드와 연결 ──────────────────────────────────────────────
             if conversation_id:
                 conv_id = f"conversation:{_slug(conversation_id)}"
-                self._upsert_node(conn, conv_id, "Chat", conversation_id)
+                self._upsert_node(
+                    conn,
+                    conv_id,
+                    "Chat",
+                    conversation_id,
+                    metadata={"conversation_id": conversation_id, "workspace_id": workspace_id},
+                    owner=owner or uploader,
+                    workspace_id=workspace_id,
+                )
                 # 선: 동사 — Chat이 Document를 "언급함"
                 self._upsert_edge(conn, conv_id, file_id, "언급함", weight=0.8)
 
@@ -300,7 +312,9 @@ class KnowledgeGraphIngestMixin:
                     "Chunk",
                     f"{filename} chunk {index + 1}",
                     summary=chunk[:500],
-                    metadata={"index": index, "source_node": file_id},
+                    metadata={"index": index, "source_node": file_id, "workspace_id": workspace_id},
+                    owner=owner or uploader,
+                    workspace_id=workspace_id,
                 )
                 self._upsert_chunk(
                     conn,
@@ -322,7 +336,9 @@ class KnowledgeGraphIngestMixin:
                     cid,
                     node_t,
                     concept,
-                    metadata={"auto_extracted": True, "source_file": filename},
+                    metadata={"auto_extracted": True, "source_file": filename, "workspace_id": workspace_id},
+                    owner=owner or uploader,
+                    workspace_id=workspace_id,
                 )
                 # 선: 동사 — Document가 Concept을 "포함함"
                 self._upsert_edge(conn, file_id, cid, "포함함", weight=0.8)
@@ -356,8 +372,11 @@ class KnowledgeGraphIngestMixin:
                         "auto_extracted": True,
                         "source_node": file_id,
                         "filename": filename,
+                        "workspace_id": workspace_id,
                     },
                     raw=item,
+                    owner=owner or uploader,
+                    workspace_id=workspace_id,
                 )
                 # 선: Document가 Task/Decision을 "포함함"
                 self._upsert_edge(conn, file_id, sem_id, "포함함", weight=0.9)
@@ -488,6 +507,8 @@ class KnowledgeGraphIngestMixin:
             label,
             summary=str(source_uri or title or source_type)[:400],
             metadata=meta,
+            owner=meta.get("owner"),
+            workspace_id=meta.get("workspace_id"),
         )
         # 선: 콘텐츠 노드가 "이 출처에서 색인됨" (indexed_from → SOURCE)
         self._upsert_edge(

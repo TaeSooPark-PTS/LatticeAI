@@ -27,6 +27,8 @@ Home instead of staying implicit in backend stores.
 - Chat-to-Knowledge-Graph ingestion carries workspace scope into graph nodes,
   and Brain proof conversation counts are scoped before continuity is marked
   proven.
+- Direct Knowledge Graph ingest and document uploads now carry request
+  workspace scope into graph/source/document nodes.
 - Package, runtime, static, VS Code, and Tauri metadata are synchronized to
   6.6.0.
 

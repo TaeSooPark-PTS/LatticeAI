@@ -27,6 +27,14 @@ class KnowledgeGraphIngestRequest(BaseModel):
     metadata: Optional[Dict[str, Any]] = None
 
 
+def _workspace_scope_from_request(request: Request) -> Optional[str]:
+    header = request.headers.get("X-Workspace-Id")
+    if header and header.strip():
+        return header.strip()
+    query = request.query_params.get("workspace_id")
+    return query.strip() if query and query.strip() else None
+
+
 def _format_context(matches: list, limit: int) -> str:
     """Mirror ``KnowledgeGraphRetrievalMixin.context_for_query`` formatting for a
     pre-filtered match list, so scoped callers get identical context lines minus
@@ -178,6 +186,7 @@ def create_knowledge_graph_router(
     async def knowledge_graph_ingest(req: KnowledgeGraphIngestRequest, request: Request):
         current_user = require_user(request)
         kg = graph()
+        workspace_id = _workspace_scope_from_request(request)
         event_type = (req.type or "").strip().lower()
         if event_type not in {"message", "ai_response", "note"}:
             raise HTTPException(status_code=400, detail="지원하는 type: message, ai_response, note")
@@ -189,10 +198,12 @@ def create_knowledge_graph_router(
             user_nickname=req.user_nickname,
             source=req.source or "mcp",
             conversation_id=req.conversation_id,
+            workspace_id=workspace_id,
             raw={
                 "type": req.type,
                 "title": req.title,
                 "content": req.content,
+                "workspace_id": workspace_id,
                 "metadata": req.metadata or {},
             },
         )
