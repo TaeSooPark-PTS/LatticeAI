@@ -1,6 +1,6 @@
 # Changelog
 
-The top entry is the current release-preparation target. Older entries are
+The top entry is the current release line. Older entries are
 historical and may describe behavior as it existed at that release.
 
 ## [6.6.0] - 2026-06-18
@@ -19,6 +19,7 @@ historical and may describe behavior as it existed at that release.
   bring back after a useful exchange.
 - Brain Home document upload CTA in the empty state and composer, giving the
   first session a direct way to grow the Brain with files.
+- Refreshed README-linked release evidence under `output/release/v6.6.0/`.
 - Unit coverage for model-independent Brain proof recall behavior.
 - Honest empty-state Brain proof: model-independent capability remains visible,
   but continuity is only marked proven after durable evidence exists.

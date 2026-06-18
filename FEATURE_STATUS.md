@@ -1,6 +1,6 @@
-# Lattice AI — Feature Status (v6.6.0 target)
+# Lattice AI — Feature Status (v6.6.0 current)
 
-**Current release-preparation line:** v6.6.0 Brain Proof Runtime.
+**Current release line:** v6.6.0 Brain Proof Runtime.
 Lattice AI is a local-first Digital Brain that keeps your knowledge durable
 across any AI model. The primary experience is Brain plus conversation; the
 graph remains durable infrastructure and advanced exploration, not the home
@@ -29,6 +29,7 @@ Home.
 | **Release smoke automation** | WORKING | `npm run release:smoke` validates wheel install, npm tgz, static assets, and Tauri artifacts. |
 | **Brain quality primitives** | WORKING | `lattice_brain.quality` covers fallback labels, drift/re-index plans, BM25/hybrid fusion, memory quality, graph metrics, structured context guardrails, and retrieval benchmarks. |
 | **Brain proof loop** | WORKING | `/api/memory/brain-proof` and Brain Home proof cards show recallable context, model-continuity, knowledge-store depth, and the latest recallable item. |
+| **Brain document growth path** | WORKING | Brain Home empty state and composer expose a document upload CTA backed by workspace-scoped document ingestion. |
 | **Workspace-scoped Brain reads** | WORKING | Graph, node, relationship, keyword, vector, graph, and hybrid retrieval carry caller workspace scope. |
 | **Scoped memory mutations** | WORKING | Memory Manager prune/compact/clear intersect requests with the caller's owner/workspace boundary and block unscoped graph clear. |
 | **Release docs sync** | WORKING | README, RELEASE, CHANGELOG, release notes, security, and extension docs align to 6.6.0. |

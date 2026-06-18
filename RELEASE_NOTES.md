@@ -1,6 +1,6 @@
 # Release Notes
 
-The current release target is v6.6.0. The tracked release-note surface starts at
+The current release is v6.6.0. The tracked release-note surface starts at
 v4.5.0 so the public Git tree stays focused on the current product era.
 
 ## v6.6.0 - Brain Proof Runtime
@@ -16,10 +16,13 @@ on Brain Home.
   model, and unified recall signals.
 - Brain Home now shows recallable context, model-continuity, knowledge-store
   proof, and the latest recallable item.
+- Brain Home now includes a document upload CTA in the empty state and composer,
+  backed by workspace-scoped document ingestion.
 - Interaction router runtime context now carries active-model state into the
   Memory router, reducing app-factory inline wiring while preserving route
   order.
 - Synchronized package/runtime/static versions to `6.6.0`.
+- Refreshed release evidence under `output/release/v6.6.0/`.
 
 ### Expected Artifacts
 

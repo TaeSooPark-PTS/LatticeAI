@@ -7,7 +7,7 @@
 > PyPI / npm / VS Code Marketplace / Open VSX 배포는 아래 수동 절차로만
 > 진행합니다. 태그 생성은 패키지 스토어 publish를 자동으로 트리거하지 않습니다.
 
-## v6.6.0 릴리스 준비 노트 (2026-06-18)
+## v6.6.0 릴리스 노트 (2026-06-18)
 
 Lattice AI v6.6.0 — Brain Proof Runtime. 6.6.0은 6.5.0 Brain Experience
 Readiness 위에서 첫 사용자가 5분 안에 "Brain이 실제로 똑똑해졌다"를 확인하도록
@@ -34,6 +34,7 @@ Direct Knowledge Graph ingest와 document upload ingestion도 request workspace�
 읽어 graph/source/document node projection에 반영한다.
 Brain Home에는 같은 scoped upload 계약 위에 `파일/문서 넣기` CTA를 추가해,
 첫 사용자가 채팅만이 아니라 실제 파일로도 Brain을 바로 키울 수 있게 한다.
+README-linked release evidence도 `output/release/v6.6.0/`로 갱신했다.
 
 Expected artifacts (exact 6.6.0 names only):
 - dist/ltcai-6.6.0-py3-none-any.whl
