@@ -200,31 +200,30 @@ See [docs/DEVELOPMENT.md](docs/DEVELOPMENT.md) for developer workflow details.
 
 ## Current Release Preparation
 
-The current development target is **6.5.0 Brain Experience Readiness**:
+The current development target is **6.6.0 Brain Proof Runtime**:
 
-- Brain Home now gives normal users a readiness signal that explains whether
-  the Brain is waiting for its first memory, turning memories into topics, or
-  ready to explore as a connected map. That signal now comes from the backend
-  Memory Manager summary instead of a frontend-only estimate.
-- The Living Brain surface now includes a persistent depth progress rail, so
-  users can understand and reverse the path from conversation to memory,
-  topics, relationships, and the full knowledge graph.
-- Memory-save feedback now explicitly states that saved context is available
-  later with source-aware recall, closing the gap between "chat happened" and
-  "my Brain became more useful."
-- The release keeps the 6.4.0 quality hardening intact and focuses on
-  end-user comprehension rather than adding a new storage or graph schema.
+- Brain Home now shows backend-owned proof that the Brain is a durable context
+  store: saved context count, active-model continuity, graph/vector depth, and
+  the most recent recallable item.
+- `/api/memory/brain-proof` combines Memory Manager readiness, unified recall,
+  graph/vector state, and the active model id so the first screen can say
+  "model changed, context stayed" without guessing in the frontend.
+- App-factory interaction wiring now passes active-model state into the Memory
+  router through typed runtime context, keeping Brain proof assembly out of the
+  monolithic factory body.
+- The release keeps the 6.4.0/6.5.0 Brain readiness and quality hardening intact
+  while making the first-five-minute value proposition visible.
 - The release remains local-first: no automatic web/email/calendar ingestion,
   no package publishing, no production deployment, and no external reranker or
   embedding API use without explicit opt-in.
 
-Expected artifacts for 6.5.0 release must use exact filenames:
+Expected artifacts for 6.6.0 release must use exact filenames:
 
-- `dist/ltcai-6.5.0-py3-none-any.whl`
-- `dist/ltcai-6.5.0.tar.gz`
-- `ltcai-6.5.0.tgz`
-- `dist/ltcai-6.5.0.vsix`
-- `src-tauri/target/release/bundle/dmg/Lattice AI_6.5.0_aarch64.dmg`
+- `dist/ltcai-6.6.0-py3-none-any.whl`
+- `dist/ltcai-6.6.0.tar.gz`
+- `ltcai-6.6.0.tgz`
+- `dist/ltcai-6.6.0.vsix`
+- `src-tauri/target/release/bundle/dmg/Lattice AI_6.6.0_aarch64.dmg`
 
 Do not upload `dist/*`. Package registry publishing remains owner-run.
 
@@ -243,6 +242,7 @@ Do not upload `dist/*`. Package registry publishing remains owner-run.
 
 | Version | Theme |
 | --- | --- |
+| 6.6.0 | Brain Proof Runtime: backend-owned Brain proof API, model-continuity wiring, and first-screen proof that saved context can be recalled across model changes |
 | 6.5.0 | Brain Experience Readiness: Brain readiness signal, depth progress rail, source-aware memory-save feedback, and visual coverage for the first-memory loop |
 | 6.4.0 | Digital Brain Quality Hardening: workspace-scoped graph/search/memory reads and mutations, Brain quality primitives, structured context guardrails, and retrieval benchmark coverage |
 | 6.3.1 | Access Runtime / i18n Follow-up: app-factory access-control extraction, focused access runtime tests, and Capture/Review Center i18n coverage |

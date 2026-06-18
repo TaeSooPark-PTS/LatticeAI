@@ -5,7 +5,7 @@ import { type BrainState, LivingBrain, triggerBrainRecall } from "@/components/L
 import { useAppStore } from "@/store/appStore";
 import { t } from "@/i18n";
 import { BrainConversation } from "./BrainConversation";
-import { buildBrainReadiness, buildMemoryFragments, currentModelName, parseKnowledgeGraph } from "./brainData";
+import { buildBrainProof, buildBrainReadiness, buildMemoryFragments, currentModelName, parseKnowledgeGraph } from "./brainData";
 import { DepthEmergence } from "./DepthEmergence";
 import { DEPTHS, type BrainDepth, type MemoryFragment, type Message } from "./types";
 
@@ -29,6 +29,7 @@ export function BrainHome({
   const [graphSearch, setGraphSearch] = React.useState("");
   const [selectedGraphId, setSelectedGraphId] = React.useState<string | null>(null);
   const [memoryFeedback, setMemoryFeedback] = React.useState<string | null>(null);
+  const [lastRecallQuery, setLastRecallQuery] = React.useState("");
   const streamRef = React.useRef<HTMLDivElement>(null);
   const recallTimerRef = React.useRef<number | null>(null);
 
@@ -36,6 +37,10 @@ export function BrainHome({
   const historyQ = useQuery({ queryKey: ["chatHistory"], queryFn: latticeApi.chatHistory });
   const graphQ = useQuery({ queryKey: ["graph"], queryFn: latticeApi.graph });
   const modelsQ = useQuery({ queryKey: ["models"], queryFn: latticeApi.models });
+  const brainProofQ = useQuery({
+    queryKey: ["memoryBrainProof", lastRecallQuery],
+    queryFn: () => latticeApi.memoryBrainProof(lastRecallQuery, 3),
+  });
 
   const memoryFragments = React.useMemo(
     () => buildMemoryFragments(memoriesQ.data?.data, historyQ.data?.data),
@@ -55,6 +60,10 @@ export function BrainHome({
     [graphModel.edges],
   );
   const modelName = React.useMemo(() => currentModelName(modelsQ.data?.data), [modelsQ.data]);
+  const brainProof = React.useMemo(
+    () => buildBrainProof(brainProofQ.data?.data, modelName),
+    [brainProofQ.data, modelName],
+  );
   const currentDepth = DEPTHS[explorationDepth - 1];
   const starterPrompts = React.useMemo(
     () => [
@@ -123,12 +132,14 @@ export function BrainHome({
         });
       } else {
         setMemoryFeedback(t(language, "brain.saved", { topics: knowledgeConcepts.length, memories: memoryFragments.length }));
+        setLastRecallQuery(text);
       }
     } finally {
       setStreaming(false);
       void qc.invalidateQueries({ queryKey: ["chatHistory"] });
       void qc.invalidateQueries({ queryKey: ["memoryManager"] });
       void qc.invalidateQueries({ queryKey: ["graph"] });
+      void qc.invalidateQueries({ queryKey: ["memoryBrainProof"] });
     }
   }
 
@@ -242,6 +253,7 @@ export function BrainHome({
         memories={memoryFragments}
         concepts={knowledgeConcepts}
         readiness={brainReadiness}
+        proof={brainProof}
         onOpenDepth={jumpToDepth}
         onDraftChange={setDraft}
         onImageDataChange={setImageData}

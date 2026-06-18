@@ -1,5 +1,5 @@
 import { asArray } from "@/lib/utils";
-import type { ApiRecord, BrainDepth, BrainReadiness, KnowledgeConcept, KnowledgeGraphModel, MemoryFragment, RelationshipThread } from "./types";
+import type { ApiRecord, BrainDepth, BrainProof, BrainReadiness, KnowledgeConcept, KnowledgeGraphModel, MemoryFragment, RelationshipThread } from "./types";
 import { clamp } from "./graphLayout";
 
 export function buildMemoryFragments(memoryData: unknown, historyData: unknown): MemoryFragment[] {
@@ -86,6 +86,47 @@ export function buildBrainReadiness(memoryData: unknown, fallbackMemoryCount: nu
   return fallbackBrainReadiness(fallbackMemoryCount, fallbackConceptCount);
 }
 
+export function buildBrainProof(data: unknown, fallbackModelName = ""): BrainProof {
+  const proof = isRecord(data) ? data : {};
+  const modelContinuity = isRecord(proof.model_continuity) ? proof.model_continuity : {};
+  const proofs = isRecord(proof.proofs) ? proof.proofs : {};
+  const recall = isRecord(proof.recall) ? proof.recall : {};
+  const claims = isRecord(proof.claims) ? proof.claims : {};
+  return {
+    status: textValue(proof, ["status"], "quiet"),
+    modelContinuity: {
+      activeModel: textValue(modelContinuity, ["active_model", "activeModel"], fallbackModelName),
+      brainOwner: textValue(modelContinuity, ["brain_owner", "brainOwner"], "lattice_brain"),
+      survivesModelSwitch: booleanValue(modelContinuity, ["survives_model_switch", "survivesModelSwitch"], true),
+      contextStore: textValue(modelContinuity, ["context_store", "contextStore"], "workspace + conversation + graph + vector"),
+    },
+    proofs: {
+      durableItems: numberValue(proofs, ["durable_items", "durableItems"]),
+      workspaceMemories: numberValue(proofs, ["workspace_memories", "workspaceMemories"]),
+      conversations: numberValue(proofs, ["conversations"]),
+      graphConcepts: numberValue(proofs, ["graph_concepts", "graphConcepts"]),
+      vectorItems: numberValue(proofs, ["vector_items", "vectorItems"]),
+      healthySources: numberValue(proofs, ["healthy_sources", "healthySources"]),
+    },
+    recall: {
+      query: textValue(recall, ["query"]),
+      count: numberValue(recall, ["count"]),
+      items: asArray<ApiRecord>(recall.items).map((item, index) => ({
+        id: textValue(item, ["id"], `recall-${index}`),
+        source: titleValue(item, ["source"], "Memory"),
+        title: textValue(item, ["title"], "Memory"),
+        snippet: textValue(item, ["snippet"]),
+        score: numberValue(item, ["score"]),
+      })),
+    },
+    claims: {
+      canRecallUserContext: booleanValue(claims, ["can_recall_user_context", "canRecallUserContext"], false),
+      keepsContextAcrossModels: booleanValue(claims, ["keeps_context_across_models", "keepsContextAcrossModels"], true),
+      isKnowledgeStore: booleanValue(claims, ["is_knowledge_store", "isKnowledgeStore"], false),
+    },
+  };
+}
+
 function uniqueById<T extends { id: string }>(items: T[]) {
   const seen = new Set<string>();
   return items.filter((item) => {
@@ -166,4 +207,12 @@ function numberValue(record: ApiRecord, keys: string[]) {
     if (Number.isFinite(value)) return value;
   }
   return 0;
+}
+
+function booleanValue(record: ApiRecord, keys: string[], fallback: boolean) {
+  for (const key of keys) {
+    const value = record[key];
+    if (typeof value === "boolean") return value;
+  }
+  return fallback;
 }

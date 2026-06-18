@@ -1,17 +1,20 @@
 import * as React from "react";
+import { BrainCircuit, DatabaseZap, Repeat2 } from "lucide-react";
 import { t } from "@/i18n";
 import { useAppStore } from "@/store/appStore";
-import type { BrainDepth, BrainReadiness, KnowledgeConcept, MemoryFragment } from "./types";
+import type { BrainDepth, BrainProof, BrainReadiness, KnowledgeConcept, MemoryFragment } from "./types";
 
 export function BrainOverviewPanel({
   memories,
   concepts,
   readiness,
+  proof,
   onOpenDepth,
 }: {
   memories: MemoryFragment[];
   concepts: KnowledgeConcept[];
   readiness: BrainReadiness;
+  proof: BrainProof;
   onOpenDepth: (depth: BrainDepth) => void;
 }) {
   const language = useAppStore((state) => state.language);
@@ -60,7 +63,52 @@ export function BrainOverviewPanel({
           {t(language, readiness.actionKey)}
         </button>
       </div>
+      <div className="brain-proof-strip" aria-label={t(language, "brain.proof.aria")}>
+        <BrainProofPoint
+          icon={<DatabaseZap className="h-4 w-4" />}
+          label={t(language, "brain.proof.context")}
+          value={t(language, "brain.proof.contextValue", { count: proof.proofs.durableItems })}
+        />
+        <BrainProofPoint
+          icon={<Repeat2 className="h-4 w-4" />}
+          label={t(language, "brain.proof.model")}
+          value={proof.modelContinuity.activeModel || t(language, "brain.proof.noModel")}
+        />
+        <BrainProofPoint
+          icon={<BrainCircuit className="h-4 w-4" />}
+          label={t(language, "brain.proof.store")}
+          value={t(language, "brain.proof.storeValue", {
+            topics: proof.proofs.graphConcepts,
+            vectors: proof.proofs.vectorItems,
+          })}
+        />
+      </div>
+      {proof.recall.items.length ? (
+        <button type="button" className="brain-recall-proof" onClick={() => onOpenDepth(2)}>
+          <span>{t(language, "brain.proof.recall")}</span>
+          <strong>{proof.recall.items[0].title}</strong>
+          <small>{proof.recall.items[0].snippet || proof.recall.query}</small>
+        </button>
+      ) : null}
     </section>
+  );
+}
+
+function BrainProofPoint({
+  icon,
+  label,
+  value,
+}: {
+  icon: React.ReactNode;
+  label: string;
+  value: string;
+}) {
+  return (
+    <div className="brain-proof-point">
+      {icon}
+      <span>{label}</span>
+      <strong>{value}</strong>
+    </div>
   );
 }
 

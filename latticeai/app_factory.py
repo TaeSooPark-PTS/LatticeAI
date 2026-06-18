@@ -1447,6 +1447,7 @@ def _build(config: "Optional[Config]" = None) -> Dict[str, Any]:
         agent_registry=AGENT_REGISTRY,
         memory_service=MEMORY_SERVICE,
         platform=PLATFORM,
+        active_model_getter=lambda: router.current_model_id or "",
     )
     register_interaction_routers(
         app,

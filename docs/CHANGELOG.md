@@ -3,6 +3,29 @@
 The top entry is the current release-preparation target. Older entries are
 historical and may describe behavior as it existed at that release.
 
+## [6.6.0] - 2026-06-18
+
+> Brain Proof Runtime. Makes the first-five-minute Brain value visible by
+> showing backend-owned evidence that saved context can be recalled and survives
+> model changes.
+
+### Added
+- `/api/memory/brain-proof`, backed by `MemoryService.brain_proof()`, combining
+  Brain readiness, durable memory counts, graph/vector depth, active model id,
+  and a unified recall sample.
+- Brain Home proof strip for recallable context, model-continuity, and
+  knowledge-store state.
+- Recent recall proof card that surfaces the latest memory/item the Brain can
+  bring back after a useful exchange.
+- Unit coverage for model-independent Brain proof recall behavior.
+
+### Changed
+- Interaction router runtime context now carries an active-model getter into
+  the Memory router, reducing app-factory inline wiring while preserving route
+  order.
+- Package/runtime/static metadata is synchronized to 6.6.0; package publish and
+  deployment remain owner-run only.
+
 ## [6.5.0] - 2026-06-18
 
 > Brain Experience Readiness. Uses the 6.4.0 quality baseline to improve what

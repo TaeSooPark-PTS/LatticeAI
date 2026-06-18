@@ -1,0 +1,30 @@
+# Lattice AI v6.6.0 - Brain Proof Runtime
+
+v6.6.0 makes the Brain's value visible in the first few minutes: saved context,
+model-independent continuity, and recall evidence now appear directly on Brain
+Home instead of staying implicit in backend stores.
+
+## Added
+
+- `/api/memory/brain-proof`, backed by `MemoryService.brain_proof()`, combining
+  Brain readiness, durable memory counts, graph/vector state, active model id,
+  and a unified recall sample.
+- Brain Home proof strip for recallable context, model-continuity, and
+  knowledge-store state.
+- Recent recall proof card that shows the latest memory/item the Brain can bring
+  back after useful context is saved.
+- Unit coverage for model-independent Brain proof recall behavior.
+
+## Changed
+
+- Interaction router runtime context now passes active-model state into the
+  Memory router, reducing app-factory inline wiring while preserving route
+  order.
+- Package, runtime, static, VS Code, and Tauri metadata are synchronized to
+  6.6.0.
+
+## Release Boundaries
+
+- No storage schema migration.
+- No package registry publish or production deployment.
+- No automatic external ingestion or external model/reranker use.

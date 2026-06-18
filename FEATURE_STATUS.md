@@ -1,18 +1,19 @@
-# Lattice AI — Feature Status (v6.4.0 target)
+# Lattice AI — Feature Status (v6.6.0 target)
 
-**Current release-preparation line:** v6.4.0 Digital Brain Quality Hardening.
+**Current release-preparation line:** v6.6.0 Brain Proof Runtime.
 Lattice AI is a local-first Digital Brain that keeps your knowledge durable
 across any AI model. The primary experience is Brain plus conversation; the
 graph remains durable infrastructure and advanced exploration, not the home
 product identity. Sections below v5.3.0 are historical release-status records
 and should not override the current README, ARCHITECTURE.md, SECURITY.md,
-PRIVACY.md, or v6.4.0 release notes.
+PRIVACY.md, or v6.6.0 release notes.
 
-## v6.4.0 Digital Brain Quality Hardening — current release line
+## v6.6.0 Brain Proof Runtime — current release line
 
-v6.4.0 follows the product-hardening line by tightening Digital Brain quality:
-workspace-scoped graph/search/memory boundaries, non-destructive quality
-primitives, structured context guardrails, and recall benchmark coverage.
+v6.6.0 follows the Brain-readiness line by making the durable Brain proof loop
+visible immediately: saved context counts, active-model continuity, graph/vector
+depth, and a recall sample are exposed by the backend and rendered on Brain
+Home.
 
 | Area | Status | Evidence |
 | --- | --- | --- |
@@ -21,15 +22,28 @@ primitives, structured context guardrails, and recall benchmark coverage.
 | **Model download consent UX** | WORKING | First-run model setup displays size, storage location, external target, and a do-later path. |
 | **Root module shrink** | WORKING | `ltcai_cli.py`, `telegram_bot.py`, and `p_reinforce.py` are compatibility shims over package modules. |
 | **Router context extraction** | WORKING | Tool and interaction router assembly use typed context objects while keeping route order stable. |
-| **App factory runtime wiring** | WORKING | Platform and automation runtime construction is isolated behind `latticeai.runtime.platform_runtime_wiring` while preserving lazy import behavior. |
+| **App factory runtime wiring** | WORKING | Platform and automation runtime construction is isolated behind `latticeai.runtime.platform_runtime_wiring`; interaction runtime context also carries active-model state into Memory routes while preserving lazy import behavior. |
 | **Access runtime extraction** | WORKING | User role lookup, session token extraction, require-user, require-admin, and public-user projection live in `latticeai.runtime.access_runtime` with focused tests. |
 | **Review Center run-now contract** | WORKING | Run Now remains preview/regenerate, keeps status unchanged, and has scoped backend contract tests. |
 | **Root shim smoke** | WORKING | Compatibility import smoke covers `server.py`, `knowledge_graph.py`, `ltcai_cli.py`, `telegram_bot.py`, and `p_reinforce.py`. |
 | **Release smoke automation** | WORKING | `npm run release:smoke` validates wheel install, npm tgz, static assets, and Tauri artifacts. |
 | **Brain quality primitives** | WORKING | `lattice_brain.quality` covers fallback labels, drift/re-index plans, BM25/hybrid fusion, memory quality, graph metrics, structured context guardrails, and retrieval benchmarks. |
+| **Brain proof loop** | WORKING | `/api/memory/brain-proof` and Brain Home proof cards show recallable context, model-continuity, knowledge-store depth, and the latest recallable item. |
 | **Workspace-scoped Brain reads** | WORKING | Graph, node, relationship, keyword, vector, graph, and hybrid retrieval carry caller workspace scope. |
 | **Scoped memory mutations** | WORKING | Memory Manager prune/compact/clear intersect requests with the caller's owner/workspace boundary and block unscoped graph clear. |
-| **Release docs sync** | WORKING | README, RELEASE, CHANGELOG, release notes, security, and extension docs align to 6.4.0. |
+| **Release docs sync** | WORKING | README, RELEASE, CHANGELOG, release notes, security, and extension docs align to 6.6.0. |
+
+## v6.5.0 Brain Experience Readiness — previous release line
+
+v6.5.0 turned the 6.4.0 quality baseline into clearer everyday Brain Home
+signals: backend-owned readiness, depth progress, and source-aware memory-save
+feedback.
+
+## v6.4.0 Digital Brain Quality Hardening — previous release line
+
+v6.4.0 followed the product-hardening line by tightening Digital Brain quality:
+workspace-scoped graph/search/memory boundaries, non-destructive quality
+primitives, structured context guardrails, and recall benchmark coverage.
 
 ## v6.3.1 Access Runtime / i18n Follow-up — previous release line
 

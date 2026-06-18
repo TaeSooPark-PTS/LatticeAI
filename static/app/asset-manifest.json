@@ -1,13 +1,13 @@
 {
-  "version": "6.5.0",
+  "version": "6.6.0",
   "generated_at": "vite",
   "entrypoints": {
     "app": "/static/app/index.html"
   },
   "assets": {
     "../node_modules/@tauri-apps/api/core.js": "/static/app/assets/core-CwxXejkd.js",
-    "index.html": "/static/app/assets/index-C1J_1441.js",
-    "assets/index-CdCVz_i4.css": "/static/app/assets/index-CdCVz_i4.css"
+    "index.html": "/static/app/assets/index-gqybULHJ.js",
+    "assets/index-wU6ZDuSi.css": "/static/app/assets/index-wU6ZDuSi.css"
   },
   "vite": {
     "../node_modules/@tauri-apps/api/core.js": {
@@ -17,7 +17,7 @@
       "isDynamicEntry": true
     },
     "index.html": {
-      "file": "assets/index-C1J_1441.js",
+      "file": "assets/index-gqybULHJ.js",
       "name": "index",
       "src": "index.html",
       "isEntry": true,
@@ -25,7 +25,7 @@
         "../node_modules/@tauri-apps/api/core.js"
       ],
       "css": [
-        "assets/index-CdCVz_i4.css"
+        "assets/index-wU6ZDuSi.css"
       ]
     }
   }

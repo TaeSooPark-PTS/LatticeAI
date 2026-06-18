@@ -273,6 +273,89 @@ class MemoryService:
         """Return the backend-owned Brain readiness signal for API consumers."""
         return self.manager(user_email=user_email, workspace_id=workspace_id)["brain_readiness"]
 
+    def brain_proof(
+        self,
+        *,
+        user_email: Optional[str] = None,
+        workspace_id: Optional[str] = None,
+        active_model: Optional[str] = None,
+        recall_query: str = "",
+        limit: int = 3,
+    ) -> Dict[str, Any]:
+        """Return the proof points that make Brain feel model-independent.
+
+        This is intentionally backend-owned instead of UI-derived: the first-run
+        Brain screen needs to show the durable stores it can actually recall
+        from, and the model continuity claim must be independent from whichever
+        LLM is currently loaded.
+        """
+        manager = self.manager(user_email=user_email, workspace_id=workspace_id)
+        sources = {str(source.get("id")): source for source in manager.get("sources", []) if isinstance(source, dict)}
+        readiness = manager.get("brain_readiness") or {}
+        conversation_count = int(sources.get("conversation", {}).get("count") or 0)
+        workspace_count = int(sources.get("workspace", {}).get("count") or 0)
+        graph_count = int(sources.get("graph", {}).get("count") or 0)
+        vector_count = int(sources.get("vector", {}).get("count") or 0)
+        query = recall_query.strip() or self._latest_recall_query(user_email=user_email, workspace_id=workspace_id)
+        recall = self.recall(query, user_email=user_email, workspace_id=workspace_id, limit=limit) if query else {"query": "", "results": [], "count": 0, "source": "live"}
+        recall_items = [
+            {
+                "id": item.get("id"),
+                "source": item.get("source"),
+                "title": item.get("title"),
+                "snippet": item.get("snippet"),
+                "score": item.get("score", 0),
+            }
+            for item in recall.get("results", [])[: max(1, min(limit, 8))]
+        ]
+        durable_items = workspace_count + conversation_count + graph_count
+        return {
+            "status": readiness.get("state") or "quiet",
+            "readiness": readiness,
+            "model_continuity": {
+                "active_model": active_model or "",
+                "brain_owner": "lattice_brain",
+                "survives_model_switch": True,
+                "context_store": "workspace + conversation + graph + vector",
+            },
+            "proofs": {
+                "durable_items": durable_items,
+                "workspace_memories": workspace_count,
+                "conversations": conversation_count,
+                "graph_concepts": graph_count,
+                "vector_items": vector_count,
+                "healthy_sources": readiness.get("signals", {}).get("healthy_sources", 0),
+            },
+            "recall": {
+                "query": recall.get("query") or query,
+                "items": recall_items,
+                "count": recall.get("count", 0),
+            },
+            "claims": {
+                "can_recall_user_context": bool(recall_items or durable_items > 0),
+                "keeps_context_across_models": True,
+                "is_knowledge_store": bool(graph_count or vector_count or workspace_count or conversation_count),
+            },
+            "generated_at": _now(),
+        }
+
+    def _latest_recall_query(self, *, user_email: Optional[str], workspace_id: Optional[str]) -> str:
+        for memory in self._workspace_memories(user_email=user_email, workspace_id=workspace_id or "personal"):
+            content = str(memory.get("content") or "").strip()
+            if content:
+                return content[:96]
+        for conversation in self._conversations():
+            messages = conversation.get("messages") or []
+            if not isinstance(messages, list):
+                continue
+            for message in reversed(messages[-8:]):
+                if not isinstance(message, dict):
+                    continue
+                content = str(message.get("content") or "").strip()
+                if content:
+                    return content[:96]
+        return ""
+
     def tiers(self) -> Dict[str, Any]:
         return {"tiers": list(TIERS), "workspace_kinds": list(WORKSPACE_KINDS)}
 

@@ -7,6 +7,29 @@
 > PyPI / npm / VS Code Marketplace / Open VSX 배포는 아래 수동 절차로만
 > 진행합니다. 태그 생성은 패키지 스토어 publish를 자동으로 트리거하지 않습니다.
 
+## v6.6.0 릴리스 준비 노트 (2026-06-18)
+
+Lattice AI v6.6.0 — Brain Proof Runtime. 6.6.0은 6.5.0 Brain Experience
+Readiness 위에서 첫 사용자가 5분 안에 "Brain이 실제로 똑똑해졌다"를 확인하도록
+backend-owned proof loop를 추가한다. 핵심은 예쁜 Brain 설명이 아니라, 저장된
+대화/문서/결정이 다시 불러와지고 모델이 바뀌어도 맥락 저장소가 유지된다는
+증거를 Brain Home에 바로 표시하는 것이다.
+
+`MemoryService.brain_proof()`와 `/api/memory/brain-proof`는 Brain readiness,
+workspace/conversation/graph/vector counts, active model id, unified recall
+sample을 하나의 증거 payload로 묶는다. App-factory interaction runtime context는
+active-model getter를 Memory router까지 전달하므로 Brain proof assembly가
+frontend 추정이나 monolithic factory inline wiring에 묶이지 않는다. Brain Home은
+이 payload로 recallable context, model-continuity, knowledge-store proof, 최근
+recall item을 첫 화면에 표시한다.
+
+Expected artifacts (exact 6.6.0 names only):
+- dist/ltcai-6.6.0-py3-none-any.whl
+- dist/ltcai-6.6.0.tar.gz
+- dist/ltcai-6.6.0.vsix
+- ltcai-6.6.0.tgz
+- src-tauri/target/release/bundle/dmg/Lattice AI_6.6.0_aarch64.dmg
+
 ## v6.5.0 릴리스 준비 노트 (2026-06-18)
 
 Lattice AI v6.5.0 — Brain Experience Readiness. 6.5.0은 6.4.0의 Digital

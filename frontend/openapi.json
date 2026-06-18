@@ -3757,7 +3757,7 @@
   },
   "info": {
     "title": "Lattice AI Server (local)",
-    "version": "5.6.0"
+    "version": "6.6.0"
   },
   "openapi": "3.1.0",
   "paths": {
@@ -6939,6 +6939,70 @@
           }
         },
         "summary": "Local Agent Status"
+      }
+    },
+    "/api/memory/brain-proof": {
+      "get": {
+        "operationId": "brain_proof_api_memory_brain_proof_get",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "q",
+            "required": false,
+            "schema": {
+              "default": "",
+              "title": "Q",
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "limit",
+            "required": false,
+            "schema": {
+              "default": 3,
+              "title": "Limit",
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Brain Proof"
+      }
+    },
+    "/api/memory/brain-quality": {
+      "get": {
+        "operationId": "brain_quality_summary_api_memory_brain_quality_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": "Brain Quality Summary"
       }
     },
     "/api/memory/clear": {

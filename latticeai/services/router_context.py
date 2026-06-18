@@ -54,3 +54,4 @@ class InteractionRouterContext:
     agent_registry: Any
     memory_service: Any
     platform: Any
+    active_model_getter: Any = None

@@ -50,6 +50,40 @@ export type BrainReadiness = {
   };
 };
 
+export type BrainProof = {
+  status: "quiet" | "forming" | "alive" | string;
+  modelContinuity: {
+    activeModel: string;
+    brainOwner: string;
+    survivesModelSwitch: boolean;
+    contextStore: string;
+  };
+  proofs: {
+    durableItems: number;
+    workspaceMemories: number;
+    conversations: number;
+    graphConcepts: number;
+    vectorItems: number;
+    healthySources: number;
+  };
+  recall: {
+    query: string;
+    count: number;
+    items: Array<{
+      id: string;
+      source: string;
+      title: string;
+      snippet: string;
+      score: number;
+    }>;
+  };
+  claims: {
+    canRecallUserContext: boolean;
+    keepsContextAcrossModels: boolean;
+    isKnowledgeStore: boolean;
+  };
+};
+
 export const DEPTHS: Array<{ level: BrainDepth; labelKey: string; state: BrainState }> = [
   { level: 1, labelKey: "brain.depthLabel.1", state: "idle" },
   { level: 2, labelKey: "brain.depthLabel.2", state: "recalling" },

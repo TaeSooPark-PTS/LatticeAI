@@ -1,7 +1,35 @@
 # Release Notes
 
-The current release target is v6.4.0. The tracked release-note surface starts at
+The current release target is v6.6.0. The tracked release-note surface starts at
 v4.5.0 so the public Git tree stays focused on the current product era.
+
+## v6.6.0 - Brain Proof Runtime
+
+Lattice AI v6.6.0 makes the Brain's first-five-minute value visible: saved
+context, model-independent continuity, and recall evidence now appear directly
+on Brain Home.
+
+### Highlights
+
+- Added `/api/memory/brain-proof`, backed by `MemoryService.brain_proof()`, for
+  backend-owned Brain proof across memory, conversation, graph, vector, active
+  model, and unified recall signals.
+- Brain Home now shows recallable context, model-continuity, knowledge-store
+  proof, and the latest recallable item.
+- Interaction router runtime context now carries active-model state into the
+  Memory router, reducing app-factory inline wiring while preserving route
+  order.
+- Synchronized package/runtime/static versions to `6.6.0`.
+
+### Expected Artifacts
+
+- `dist/ltcai-6.6.0-py3-none-any.whl`
+- `dist/ltcai-6.6.0.tar.gz`
+- `dist/ltcai-6.6.0.vsix`
+- `ltcai-6.6.0.tgz`
+- `src-tauri/target/release/bundle/dmg/Lattice AI_6.6.0_aarch64.dmg`
+
+Full notes: [RELEASE_NOTES_v6.6.0.md](RELEASE_NOTES_v6.6.0.md)
 
 ## v6.4.0 - Digital Brain Quality Hardening
 

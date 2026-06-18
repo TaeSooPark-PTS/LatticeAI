@@ -42,6 +42,7 @@ def create_memory_router(
     gate_read: Callable[[Request], Optional[str]],
     gate_write: Callable[[Request], Optional[str]],
     append_audit_event: Callable[..., None],
+    active_model_getter: Callable[[], str] | None = None,
 ) -> APIRouter:
     router = APIRouter()
 
@@ -56,6 +57,19 @@ def create_memory_router(
         user = require_user(request)
         scope = gate_read(request)
         return service.brain_quality_summary(user_email=user, workspace_id=scope)
+
+    @router.get("/api/memory/brain-proof")
+    async def brain_proof(request: Request, q: str = "", limit: int = 3):
+        user = require_user(request)
+        scope = gate_read(request)
+        active_model = active_model_getter() if active_model_getter else ""
+        return service.brain_proof(
+            user_email=user,
+            workspace_id=scope,
+            active_model=active_model,
+            recall_query=q,
+            limit=limit,
+        )
 
     @router.get("/api/memory/tiers")
     async def memory_tiers(request: Request):

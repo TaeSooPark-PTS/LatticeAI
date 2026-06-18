@@ -164,6 +164,36 @@ def test_memory_brain_quality_summary_uses_backend_growth_signals(tmp_path):
     }
 
 
+def test_memory_brain_proof_shows_model_independent_recall(tmp_path):
+    class _FakeKG:
+        def stats(self):
+            return {"nodes": {"concept": 4}, "edges": {"relates": 3}}
+
+        def index_status(self):
+            return {"vector_counts": {"node": 4}}
+
+        def search(self, query, limit):
+            return {"matches": [{"id": "node:alpha", "title": "Alpha plan", "summary": f"{query} graph context"}]}
+
+    store = _FakeStore()
+    store.add("m1", "decisions", "alpha launch decision")
+    svc = MemoryService(store=store, data_dir=tmp_path, knowledge_graph=_FakeKG(), enable_graph=True)
+
+    proof = svc.brain_proof(
+        user_email="user@example.com",
+        workspace_id="personal",
+        active_model="local:model-a",
+        recall_query="alpha",
+    )
+
+    assert proof["model_continuity"]["active_model"] == "local:model-a"
+    assert proof["model_continuity"]["survives_model_switch"] is True
+    assert proof["proofs"]["durable_items"] >= 5
+    assert proof["claims"]["can_recall_user_context"] is True
+    assert proof["claims"]["is_knowledge_store"] is True
+    assert proof["recall"]["items"][0]["title"] in {"decisions", "Alpha plan"}
+
+
 def test_memory_recall_and_inspect(tmp_path):
     svc = _svc(tmp_path)
     res = svc.recall("alpha")

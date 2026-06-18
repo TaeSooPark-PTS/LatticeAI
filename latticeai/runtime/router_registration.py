@@ -451,6 +451,7 @@ def register_interaction_routers(
     create_memory_router: Any,
     memory_service: Any = None,
     platform: Any = None,
+    active_model_getter: Any = None,
 ) -> tuple[Any, ...]:
     """Register chat/search/tools/hooks/registry/memory routes in order."""
 
@@ -468,6 +469,7 @@ def register_interaction_routers(
         agent_registry = interaction_context.agent_registry
         memory_service = interaction_context.memory_service
         platform = interaction_context.platform
+        active_model_getter = interaction_context.active_model_getter
 
     return register_routers(
         app,
@@ -521,6 +523,7 @@ def register_interaction_routers(
             gate_read=platform.gate_read,
             gate_write=platform.gate_write,
             append_audit_event=append_audit_event,
+            active_model_getter=active_model_getter,
         ),
     )
 
