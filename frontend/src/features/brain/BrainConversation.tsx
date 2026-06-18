@@ -1,5 +1,5 @@
 import * as React from "react";
-import { Cpu, DatabaseZap, FileUp, Search, Settings, ShieldCheck } from "lucide-react";
+import { Cpu, DatabaseZap, FileText, FileUp, FolderPlus, Globe2, Repeat2, Search, Settings, ShieldCheck } from "lucide-react";
 import { LanguageSwitcher } from "@/components/LanguageSwitcher";
 import { t, type Language } from "@/i18n";
 import type { BrainDepth, BrainProof, BrainReadiness, KnowledgeConcept, MemoryFragment, Message } from "./types";
@@ -27,6 +27,10 @@ export function BrainConversation({
   onDraftChange,
   onImageDataChange,
   onUploadDocument,
+  onConnectFolder,
+  onIngestNote,
+  onIngestWeb,
+  onVerifyModelContinuity,
   onSend,
 }: {
   language: Language;
@@ -48,6 +52,10 @@ export function BrainConversation({
   onDraftChange: (value: string) => void;
   onImageDataChange: (value: string | null) => void;
   onUploadDocument: (file: File) => void;
+  onConnectFolder: (path: string) => void;
+  onIngestNote: (note: string) => void;
+  onIngestWeb: (url: string) => void;
+  onVerifyModelContinuity: () => void;
   onSend: () => void;
 }) {
   return (
@@ -89,12 +97,26 @@ export function BrainConversation({
       </div>
 
       <div ref={streamRef} className="brain-stream">
+        <BrainIngestionPanel
+          language={language}
+          uploadingDocument={uploadingDocument}
+          onUploadDocument={onUploadDocument}
+          onConnectFolder={onConnectFolder}
+          onIngestNote={onIngestNote}
+          onIngestWeb={onIngestWeb}
+        />
         <BrainOverviewPanel
           memories={memories}
           concepts={concepts}
           readiness={readiness}
           proof={proof}
           onOpenDepth={onOpenDepth}
+        />
+        <ModelContinuityDemo
+          language={language}
+          proof={proof}
+          modelName={modelName}
+          onVerify={onVerifyModelContinuity}
         />
         {messages.length === 0 ? (
           <BrainEmptyState
@@ -108,6 +130,9 @@ export function BrainConversation({
           messages.map((message, index) => (
             <div key={`${message.role}-${index}`} className={`brain-message ${message.role}`}>
               <div className="brain-message-bubble">{message.content}</div>
+              {message.role === "assistant" && message.proof ? (
+                <AnswerProofCard language={language} proof={message.proof} />
+              ) : null}
             </div>
           ))
         )}
@@ -135,6 +160,143 @@ export function BrainConversation({
         onSend={onSend}
       />
     </section>
+  );
+}
+
+function BrainIngestionPanel({
+  language,
+  uploadingDocument,
+  onUploadDocument,
+  onConnectFolder,
+  onIngestNote,
+  onIngestWeb,
+}: {
+  language: Language;
+  uploadingDocument: boolean;
+  onUploadDocument: (file: File) => void;
+  onConnectFolder: (path: string) => void;
+  onIngestNote: (note: string) => void;
+  onIngestWeb: (url: string) => void;
+}) {
+  const [folderPath, setFolderPath] = React.useState("");
+  const [note, setNote] = React.useState("");
+  const [url, setUrl] = React.useState("");
+
+  return (
+    <section className="brain-ingestion-panel" aria-label={t(language, "brain.ingest.aria")}>
+      <div className="brain-ingestion-head">
+        <span>{t(language, "brain.ingest.kicker")}</span>
+        <strong>{t(language, "brain.ingest.title")}</strong>
+      </div>
+      <div className="brain-ingestion-grid">
+        <label className={`brain-ingest-tile is-primary ${uploadingDocument ? "is-disabled" : ""}`}>
+          <FileUp className="h-4 w-4" />
+          <span>{uploadingDocument ? t(language, "brain.upload.uploading") : t(language, "brain.ingest.file")}</span>
+          <small>{t(language, "brain.ingest.file.detail")}</small>
+          <input
+            type="file"
+            accept=".pdf,.docx,.xlsx,.pptx,.txt,.md,.csv,application/pdf,text/plain,text/markdown,text/csv"
+            className="sr-only"
+            disabled={uploadingDocument}
+            onChange={(event) => {
+              const file = event.target.files?.[0];
+              event.currentTarget.value = "";
+              if (file) onUploadDocument(file);
+            }}
+          />
+        </label>
+        <form
+          className="brain-ingest-tile"
+          onSubmit={(event) => {
+            event.preventDefault();
+            onConnectFolder(folderPath);
+            setFolderPath("");
+          }}
+        >
+          <FolderPlus className="h-4 w-4" />
+          <span>{t(language, "brain.ingest.folder")}</span>
+          <input value={folderPath} onChange={(event) => setFolderPath(event.target.value)} placeholder={t(language, "brain.ingest.folder.placeholder")} />
+        </form>
+        <form
+          className="brain-ingest-tile"
+          onSubmit={(event) => {
+            event.preventDefault();
+            onIngestNote(note);
+            setNote("");
+          }}
+        >
+          <FileText className="h-4 w-4" />
+          <span>{t(language, "brain.ingest.note")}</span>
+          <input value={note} onChange={(event) => setNote(event.target.value)} placeholder={t(language, "brain.ingest.note.placeholder")} />
+        </form>
+        <form
+          className="brain-ingest-tile"
+          onSubmit={(event) => {
+            event.preventDefault();
+            onIngestWeb(url);
+            setUrl("");
+          }}
+        >
+          <Globe2 className="h-4 w-4" />
+          <span>{t(language, "brain.ingest.web")}</span>
+          <input value={url} onChange={(event) => setUrl(event.target.value)} placeholder={t(language, "brain.ingest.web.placeholder")} />
+        </form>
+      </div>
+    </section>
+  );
+}
+
+function ModelContinuityDemo({
+  language,
+  proof,
+  modelName,
+  onVerify,
+}: {
+  language: Language;
+  proof: BrainProof;
+  modelName: string;
+  onVerify: () => void;
+}) {
+  return (
+    <section className="brain-model-demo" aria-label={t(language, "brain.modelDemo.aria")}>
+      <div>
+        <span>{t(language, "brain.modelDemo.kicker")}</span>
+        <strong>{proof.modelContinuity.proven ? t(language, "brain.modelDemo.proven") : t(language, "brain.modelDemo.pending")}</strong>
+        <small>{t(language, "brain.modelDemo.detail", { model: proof.modelContinuity.activeModel || modelName })}</small>
+      </div>
+      <button type="button" onClick={onVerify}>
+        <Repeat2 className="h-3.5 w-3.5" />
+        {t(language, "brain.modelDemo.verify")}
+      </button>
+      <button type="button" onClick={() => navigateHash("/models")}>
+        <Cpu className="h-3.5 w-3.5" />
+        {t(language, "brain.modelDemo.change")}
+      </button>
+    </section>
+  );
+}
+
+function AnswerProofCard({ language, proof }: { language: Language; proof: NonNullable<Message["proof"]> }) {
+  return (
+    <div className="brain-answer-proof" aria-label={t(language, "brain.answerProof.aria")}>
+      <div className="brain-answer-proof-head">
+        <span>{t(language, "brain.answerProof.title")}</span>
+        <strong>{proof.provenAcrossModels ? t(language, "brain.answerProof.modelProven", { model: proof.model }) : t(language, "brain.answerProof.modelPending", { model: proof.model })}</strong>
+      </div>
+      {proof.citations.length ? (
+        <ol>
+          {proof.citations.map((citation) => (
+            <li key={citation.id}>
+              <span>{citation.source}</span>
+              <strong>{citation.title}</strong>
+              <small>{citation.snippet || proof.query}</small>
+            </li>
+          ))}
+        </ol>
+      ) : (
+        <small>{t(language, "brain.answerProof.empty")}</small>
+      )}
+    </div>
   );
 }
 

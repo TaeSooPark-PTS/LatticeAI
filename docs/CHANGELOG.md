@@ -4,6 +4,31 @@ The top entry is either the current unreleased main-branch work or the current
 release line. Older entries are historical and may describe behavior as it
 existed at that release.
 
+## [7.0.0] - 2026-06-18
+
+> Brain Productization Loop. Turns the Brain proof work into a first-five-minute
+> product flow: add sources, ask a question, see proof/citations, and verify the
+> same Brain evidence after switching models.
+
+### Added
+- Brain Home ingestion panel for files, local folder paths, notes, and web URLs,
+  all backed by existing workspace-scoped ingestion routes.
+- Answer-level Memory proof and source citation cards rendered under assistant
+  responses after Brain proof refreshes for the user's query.
+- Model-continuity demo strip that lets the user recheck the same Brain
+  evidence and jump to model switching from the Brain flow.
+- Deterministic `scripts/brain_quality_eval.py` recall/KG quality gate, wired
+  into CI after the unit suite.
+- Visual mock coverage for Brain proof, document upload, note ingest, folder
+  indexing, and web URL ingestion endpoints.
+
+### Changed
+- Brain Home is now ingestion-first instead of chat-first: first screen action
+  labels are files/folders/notes/web, with deeper graph/model/settings still
+  reachable from the shell.
+- Package/runtime/static metadata is synchronized to 7.0.0; package publish and
+  deployment remain owner-run only.
+
 ## [6.7.0] - 2026-06-18
 
 > Brain IA Cleanup. Makes rich product pages reachable from Brain Home,

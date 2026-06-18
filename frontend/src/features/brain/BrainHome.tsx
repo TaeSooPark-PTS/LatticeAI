@@ -7,7 +7,7 @@ import { t } from "@/i18n";
 import { BrainConversation } from "./BrainConversation";
 import { buildBrainProof, buildBrainReadiness, buildMemoryFragments, currentModelName, parseKnowledgeGraph } from "./brainData";
 import { DepthEmergence } from "./DepthEmergence";
-import { DEPTHS, type BrainDepth, type MemoryFragment, type Message } from "./types";
+import { DEPTHS, type BrainDepth, type BrainProof, type MemoryFragment, type Message, type MessageProof } from "./types";
 
 export function BrainHome({
   brainState,
@@ -134,6 +134,7 @@ export function BrainHome({
       } else {
         setMemoryFeedback(t(language, "brain.saved", { topics: knowledgeConcepts.length, memories: memoryFragments.length }));
         setLastRecallQuery(text);
+        void attachAnswerProof(text);
       }
     } finally {
       setStreaming(false);
@@ -142,6 +143,22 @@ export function BrainHome({
       void qc.invalidateQueries({ queryKey: ["graph"] });
       void qc.invalidateQueries({ queryKey: ["memoryBrainProof"] });
     }
+  }
+
+  async function attachAnswerProof(query: string) {
+    const proofResult = await latticeApi.memoryBrainProof(query, 4);
+    const proof = buildBrainProof(proofResult.data, modelName);
+    const messageProof = toMessageProof(proof, query, modelName);
+    setMessages((items) => {
+      const next = [...items];
+      for (let index = next.length - 1; index >= 0; index -= 1) {
+        if (next[index].role === "assistant") {
+          next[index] = { ...next[index], proof: messageProof };
+          break;
+        }
+      }
+      return next;
+    });
   }
 
   async function uploadDocument(file: File) {
@@ -167,6 +184,78 @@ export function BrainHome({
     } finally {
       setUploadingDocument(false);
     }
+  }
+
+  async function connectFolder(path: string) {
+    const target = path.trim();
+    if (!target) return;
+    setMemoryFeedback(t(language, "brain.ingest.folder.pending", { path: target }));
+    onBrainChange("recalling", 0.84);
+    const result = await latticeApi.connectFolder(target);
+    if (result.error || !result.ok) {
+      setMemoryFeedback(t(language, "brain.ingest.folder.failed", { reason: result.error || "unavailable" }));
+      return;
+    }
+    setMemoryFeedback(t(language, "brain.ingest.folder.saved", { path: target }));
+    setLastRecallQuery(target);
+    triggerBrainRecall();
+    void refreshBrainProof(target);
+  }
+
+  async function ingestNote(note: string) {
+    const content = note.trim();
+    if (!content) return;
+    setMemoryFeedback(t(language, "brain.ingest.note.pending"));
+    onBrainChange("recalling", 0.84);
+    const result = await latticeApi.ingestNote(content, content.slice(0, 80));
+    if (result.error || !result.ok) {
+      setMemoryFeedback(t(language, "brain.ingest.note.failed", { reason: result.error || "unavailable" }));
+      return;
+    }
+    setMemoryFeedback(t(language, "brain.ingest.note.saved"));
+    setLastRecallQuery(content.slice(0, 120));
+    triggerBrainRecall();
+    void refreshBrainProof(content.slice(0, 120));
+  }
+
+  async function ingestWeb(url: string) {
+    const target = url.trim();
+    if (!target) return;
+    setMemoryFeedback(t(language, "brain.ingest.web.pending", { url: target }));
+    onBrainChange("recalling", 0.84);
+    const result = await latticeApi.browserReadUrl(target);
+    if (result.error || !result.ok) {
+      setMemoryFeedback(t(language, "brain.ingest.web.failed", { reason: result.error || "unavailable" }));
+      return;
+    }
+    setMemoryFeedback(t(language, "brain.ingest.web.saved", { url: target }));
+    setLastRecallQuery(target);
+    triggerBrainRecall();
+    void refreshBrainProof(target);
+  }
+
+  async function refreshBrainProof(query = lastRecallQuery) {
+    await Promise.all([
+      qc.invalidateQueries({ queryKey: ["memoryManager"] }),
+      qc.invalidateQueries({ queryKey: ["graph"] }),
+      qc.invalidateQueries({ queryKey: ["memoryBrainProof"] }),
+    ]);
+    if (query.trim()) {
+      await attachAnswerProof(query);
+    }
+  }
+
+  async function verifyModelContinuity() {
+    const lastUserMessage = [...messages].reverse().find((message: Message) => message.role === "user");
+    const query = lastRecallQuery || lastUserMessage?.content || "";
+    if (!query.trim()) {
+      setMemoryFeedback(t(language, "brain.modelDemo.needQuestion"));
+      return;
+    }
+    setMemoryFeedback(t(language, "brain.modelDemo.checking", { model: modelName }));
+    await attachAnswerProof(query);
+    setLastRecallQuery(query);
+    setMemoryFeedback(t(language, "brain.modelDemo.done", { model: modelName }));
   }
 
   function deepen() {
@@ -285,8 +374,26 @@ export function BrainHome({
         onDraftChange={setDraft}
         onImageDataChange={setImageData}
         onUploadDocument={(file) => void uploadDocument(file)}
+        onConnectFolder={(path) => void connectFolder(path)}
+        onIngestNote={(note) => void ingestNote(note)}
+        onIngestWeb={(url) => void ingestWeb(url)}
+        onVerifyModelContinuity={() => void verifyModelContinuity()}
         onSend={() => void send()}
       />
     </main>
   );
+}
+
+function toMessageProof(proof: BrainProof, query: string, fallbackModelName: string): MessageProof {
+  return {
+    query,
+    model: proof.modelContinuity.activeModel || fallbackModelName,
+    provenAcrossModels: proof.modelContinuity.proven && proof.claims.keepsContextAcrossModels,
+    citations: proof.recall.items.slice(0, 4).map((item) => ({
+      id: item.id,
+      source: item.source,
+      title: item.title,
+      snippet: item.snippet,
+    })),
+  };
 }

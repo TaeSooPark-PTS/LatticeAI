@@ -6,6 +6,19 @@ export type BrainDepth = 1 | 2 | 3 | 4 | 5;
 export type Message = {
   role: "user" | "assistant";
   content: string;
+  proof?: MessageProof;
+};
+
+export type MessageProof = {
+  query: string;
+  model: string;
+  provenAcrossModels: boolean;
+  citations: Array<{
+    id: string;
+    source: string;
+    title: string;
+    snippet: string;
+  }>;
 };
 
 export type MemoryFragment = {

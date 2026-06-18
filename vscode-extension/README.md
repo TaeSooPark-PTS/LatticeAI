@@ -12,13 +12,14 @@ chat, run model workflows, and trigger coding actions from the editor.
 
 ## Current Release
 
-**6.7.0 — Brain IA Cleanup.** The extension follows
+**7.0.0 — Brain Productization Loop.** The extension follows
 the main app positioning: Lattice AI is a local-first Digital Brain, not just a
 model launcher or editor chat panel. It connects editor actions to the same
 durable Brain context, explicit consent gates, replaceable model workflow, and
-separated Admin surface used by the desktop app. The v6.7.0 line makes the
-main Brain IA more direct: document capture, graph/search, model selection, and
-settings are reachable from Brain Home while rich pages load only when opened.
+separated Admin surface used by the desktop app. The v7.0.0 line makes the
+main Brain loop product-ready: files, folders, notes, and web pages can enter
+Brain Home directly; answers can show Memory proof and citations; and the same
+Brain evidence can be rechecked after changing models.
 
 ## Quick Start
 

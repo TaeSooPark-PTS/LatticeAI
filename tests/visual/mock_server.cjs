@@ -602,6 +602,39 @@ const server = http.createServer((req, res) => {
     source: "memory_service",
     signals: { memory_count: 8, concept_count: graphNodes.length, relationship_count: graphEdges.length, healthy_sources: 6 },
   });
+  if (pathname === "/api/memory/brain-proof") return json(res, {
+    status: "alive",
+    model_continuity: {
+      active_model: workspaceOs.models.current_model,
+      brain_owner: "lattice_brain",
+      capability: true,
+      survives_model_switch: true,
+      proven: true,
+      context_store: "workspace + conversation + graph + vector",
+    },
+    proofs: {
+      durable_items: 13,
+      has_durable_evidence: true,
+      workspace_memories: 3,
+      conversations: 2,
+      graph_concepts: graphNodes.length,
+      vector_items: 8,
+      healthy_sources: 6,
+    },
+    recall: {
+      query: url.searchParams.get("q") || "first Brain proof",
+      count: 2,
+      items: [
+        { id: "mem:release", source: "workspace", title: "Release memory", snippet: "The Brain recalls saved release decisions with source evidence.", score: 0.94 },
+        { id: "file:readme", source: "graph", title: "README.md", snippet: "Release documentation anchors the answer.", score: 0.88 },
+      ],
+    },
+    claims: {
+      can_recall_user_context: true,
+      keeps_context_across_models: true,
+      is_knowledge_store: true,
+    },
+  });
   if (pathname === "/api/memory/inspect") return json(res, { source: url.searchParams.get("source"), items: [{ id: "mem-demo", kind: "workspace", title: "Demo memory", content: "Release memory" }], count: 1, available: true, stats: workspaceOs.graph, index: { status: "ready" } });
   if (pathname === "/api/hooks/run" && req.method === "POST") return json(res, {
     hook_id: "builtin:redact-secrets", name: "Redact secrets", kind: "pre_run",
@@ -687,6 +720,10 @@ const server = http.createServer((req, res) => {
   });
   if (pathname === "/knowledge-graph/provenance/coverage") return json(res, { total_nodes: 5, nodes_with_provenance: 4, coverage_ratio: 0.8, provenance_by_source_type: { upload: 2, note: 2 }, uncovered_by_type: { Concept: 1 } });
   if (pathname === "/knowledge-graph/search") return json(res, { query: url.searchParams.get("q"), matches: graphNodes });
+  if (pathname === "/knowledge-graph/ingest" && req.method === "POST") return json(res, { status: "ok", source_type: "note", node_id: "note:visual" });
+  if (pathname === "/knowledge-graph/local/index" && req.method === "POST") return json(res, { status: "ok", source: { id: "source-visual", root_path: repoRoot, status: "indexed" } });
+  if (pathname === "/upload/document" && req.method === "POST") return json(res, { status: "ok", source_type: "upload", node_id: "doc:visual" });
+  if (pathname === "/api/browser/read-url" && req.method === "POST") return json(res, { status: "ok", source_type: "web_url", node_id: "web:visual" });
   if (pathname.startsWith("/knowledge-graph/neighbors/")) return json(res, { node_id: pathname.replace("/knowledge-graph/neighbors/", ""), neighbors: graphNodes, edges: graphEdges });
 
   if (pathname === "/admin/summary") return json(res, { total_users: 2, active_users: 2, admin_users: 1, total_messages: 42, user_messages: 21, assistant_messages: 21 });

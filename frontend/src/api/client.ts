@@ -444,6 +444,11 @@ export const latticeApi = {
     return res;
   },
   browserReadUrl: (url: string) => post("/api/browser/read-url", { url }, {}),
+  ingestNote: (content: string, title = "Brain note") => post(
+    "/knowledge-graph/ingest",
+    { type: "note", content, title, source: "brain_home" },
+    {},
+  ),
   memoryManager: () => get("/api/memory/manager", { sources: [], tiers: [], usage: {} }),
   memoryBrainQuality: () => get("/api/memory/brain-quality", {}),
   memoryBrainProof: (query = "", limit = 3) => get("/api/memory/brain-proof", { proofs: {}, recall: { items: [] }, model_continuity: {}, claims: {} }, { q: query, limit }),

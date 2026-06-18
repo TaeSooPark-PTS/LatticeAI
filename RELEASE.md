@@ -7,6 +7,32 @@
 > PyPI / npm / VS Code Marketplace / Open VSX 배포는 아래 수동 절차로만
 > 진행합니다. 태그 생성은 패키지 스토어 publish를 자동으로 트리거하지 않습니다.
 
+## v7.0.0 릴리스 노트 (2026-06-18)
+
+Lattice AI v7.0.0 — Brain Productization Loop. 7.0.0은 6.7.0에서 정리한
+route IA와 rich-page code-splitting 위에, 첫 사용자가 5분 안에 "내 자료가
+Brain에 들어갔고, 답변이 출처와 함께 다시 불러와진다"를 확인하는 제품 루프를
+올린다.
+
+Brain Home 첫 화면은 파일, 폴더, 노트, 웹 URL ingestion을 중심으로 재정렬된다.
+문서 업로드, 로컬 폴더 연결, note ingest, browser URL ingest는 기존
+workspace-scoped ingestion 계약을 그대로 사용한다. 질문 답변에는 Memory proof와
+source citation 카드가 붙고, Brain proof payload를 다시 조회해 답변이 어떤
+기억/그래프 source에 기대는지 고정 노출한다.
+
+모델 독립성은 설명 문구가 아니라 demo flow로 보인다. 사용자는 모델 페이지로
+이동해 모델을 바꾼 뒤 Brain Home에서 같은 질문의 Brain evidence를 다시 확인할
+수 있다. CI에는 deterministic recall/KG quality eval을 추가해 durable evidence,
+source citation, graph/vector counts, model-continuity proof가 깨지면 릴리스가
+실패하도록 했다.
+
+Expected artifacts (exact 7.0.0 names only):
+- dist/ltcai-7.0.0-py3-none-any.whl
+- dist/ltcai-7.0.0.tar.gz
+- dist/ltcai-7.0.0.vsix
+- ltcai-7.0.0.tgz
+- src-tauri/target/release/bundle/dmg/Lattice AI_7.0.0_aarch64.dmg
+
 ## v6.7.0 릴리스 노트 (2026-06-18)
 
 Lattice AI v6.7.0 — Brain IA Cleanup. 6.7.0은 6.6.0 Brain Proof Runtime 위에서

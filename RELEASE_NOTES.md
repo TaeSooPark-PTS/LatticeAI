@@ -1,7 +1,36 @@
 # Release Notes
 
-The current release is v6.7.0. The tracked release-note surface starts at
+The current release is v7.0.0. The tracked release-note surface starts at
 v4.5.0 so the public Git tree stays focused on the current product era.
+
+## v7.0.0 - Brain Productization Loop
+
+Lattice AI v7.0.0 turns the Brain proof runtime into a direct product loop:
+add sources, ask, see Memory proof with citations, and verify that the same
+Brain evidence remains available after changing models.
+
+### Highlights
+
+- Brain Home now starts with ingestion actions for files, folders, notes, and
+  web pages.
+- Assistant answers now render Memory proof and source citation cards under the
+  response when Brain evidence is available.
+- The model-continuity demo lets users recheck the same Brain evidence and jump
+  to model switching from the Brain flow.
+- CI now runs a deterministic recall/KG quality eval that fails when Brain proof
+  loses durable evidence, source citations, graph counts, or vector counts.
+- Synchronized package/runtime/static versions to `7.0.0`.
+- Refreshed release evidence under `output/release/v7.0.0/`.
+
+### Expected Artifacts
+
+- `dist/ltcai-7.0.0-py3-none-any.whl`
+- `dist/ltcai-7.0.0.tar.gz`
+- `dist/ltcai-7.0.0.vsix`
+- `ltcai-7.0.0.tgz`
+- `src-tauri/target/release/bundle/dmg/Lattice AI_7.0.0_aarch64.dmg`
+
+Full notes: [RELEASE_NOTES_v7.0.0.md](RELEASE_NOTES_v7.0.0.md)
 
 ## v6.7.0 - Brain IA Cleanup
 

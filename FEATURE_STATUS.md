@@ -1,27 +1,35 @@
-# Lattice AI — Feature Status (v6.7.0 current)
+# Lattice AI — Feature Status (v7.0.0 current)
 
-**Current release line:** v6.7.0 Brain IA Cleanup.
+**Current release line:** v7.0.0 Brain Productization Loop.
 Lattice AI is a local-first Digital Brain that keeps your knowledge durable
 across any AI model. The primary experience is Brain plus conversation; the
 graph remains durable infrastructure and advanced exploration, not the home
 product identity. Sections below v5.3.0 are historical release-status records
 and should not override the current README, ARCHITECTURE.md, SECURITY.md,
-PRIVACY.md, or v6.7.0 release notes.
+PRIVACY.md, or v7.0.0 release notes.
 
-## v6.7.0 Brain IA Cleanup — current release line
+## v7.0.0 Brain Productization Loop — current release line
+
+v7.0.0 turns the Brain proof runtime into a product-ready first-five-minute
+loop. Brain Home now starts with direct ingestion for files, folders, notes, and
+web pages; answers show Memory proof and source citations; and the same Brain
+evidence can be rechecked after a model switch.
+
+| Area | Status | Evidence |
+| --- | --- | --- |
+| **First-screen ingestion** | WORKING | Brain Home exposes file upload, folder path indexing, note ingest, and web URL ingest before the chat empty state. |
+| **Answer proof/citations** | WORKING | Assistant messages can render Memory proof and source citation cards produced from `/api/memory/brain-proof`. |
+| **Model-continuity demo** | WORKING | Brain Home includes a model-independent proof strip with actions to recheck the same evidence and switch models. |
+| **Five-minute first-run loop** | WORKING | The primary flow is add source -> ask -> see proof -> deepen graph/search or change model. |
+| **Recall/KG quality CI** | WORKING | `scripts/brain_quality_eval.py` runs in CI and fails if durable evidence, source citations, graph counts, vector counts, or continuity proof disappear. |
+| **Release docs sync** | WORKING | README, RELEASE, CHANGELOG, release notes, security, and extension docs align to 7.0.0. |
+
+## v6.7.0 Brain IA Cleanup — previous release line
 
 v6.7.0 removes the "feature exists but cannot be reached" gap. Brain Home links
 the first-session actions directly into their rich pages: Capture for documents,
 Brain explorer for graph/search, Library for models, and System for
 settings/care.
-
-| Area | Status | Evidence |
-| --- | --- | --- |
-| **Reachable rich pages** | WORKING | `App.tsx` mounts Capture, Brain explorer, Library, System, and Act routes inside a shared Brain shell instead of only rendering Brain Home plus Act. |
-| **Brain Home action IA** | WORKING | The Brain conversation header exposes `넣기`, `찾기`, `모델`, and `설정` actions that route to document capture, graph/search, model selection, and settings. |
-| **Route IA separation** | WORKING | `routes.ts` separates `productShellRoutes` / `directProductRoutes` from `compatibilityRouteAliases`, preserving legacy URLs without mixing them into visible product IA. |
-| **Rich page code-splitting** | WORKING | `App.tsx` lazy-loads Brain explorer, Capture, Library, System, and Act pages so the first Brain Home bundle no longer carries every rich page at once. |
-| **Release docs sync** | WORKING | README, RELEASE, CHANGELOG, release notes, security, and extension docs align to 6.7.0. |
 
 ## v6.6.0 Brain Proof Runtime — previous release line
 

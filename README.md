@@ -69,42 +69,42 @@ You need Lattice AI when:
 Choose the owner of the Brain. The profile is not a SaaS account by default; it
 is the local identity for the knowledge you keep.
 
-![Login](output/release/v6.7.0/screenshots/01-login.png)
+![Login](output/release/v7.0.0/screenshots/01-login.png)
 
 ### 2. Environment Analysis
 
 See what kind of local AI experience this computer can support before choosing a
 model.
 
-![Environment Analysis](output/release/v6.7.0/screenshots/02-environment-analysis.png)
+![Environment Analysis](output/release/v7.0.0/screenshots/02-environment-analysis.png)
 
 ### 3. Recommended Models
 
 Start with a short list: safest recommendation, faster model, stronger model.
 Advanced details stay available without overwhelming first-time users.
 
-![Recommended Models](output/release/v6.7.0/screenshots/03-recommended-models.png)
+![Recommended Models](output/release/v7.0.0/screenshots/03-recommended-models.png)
 
 ### 4. Install And Load
 
 Download and load only after consent. Lattice explains model size, local
 execution, and network use before work starts.
 
-![Install and Load](output/release/v6.7.0/screenshots/04-install-load-progress.png)
+![Install and Load](output/release/v7.0.0/screenshots/04-install-load-progress.png)
 
 ### 5. Brain Chat
 
 Talk normally. Useful decisions and context become memory, then appear later as
 topics, relationships, and graph structure.
 
-![Brain Chat Home](output/release/v6.7.0/screenshots/05-brain-chat-home.png)
+![Brain Chat Home](output/release/v7.0.0/screenshots/05-brain-chat-home.png)
 
 ### 6. Review Center
 
 Automation results are staged for review before they become durable decisions.
 Snooze, unsnooze, run now, approve, and dismiss actions stay explicit.
 
-![Review Center](output/release/v6.7.0/screenshots/13-review-center.png)
+![Review Center](output/release/v7.0.0/screenshots/13-review-center.png)
 
 ## Brain Depths
 
@@ -120,10 +120,10 @@ The user travels inward from everyday memory to deeper structure:
 
 Walkthrough:
 
-![v6.7.0 Living Brain walkthrough](output/release/v6.7.0/gifs/v6.7.0-living-brain-walkthrough.gif)
+![v7.0.0 Living Brain walkthrough](output/release/v7.0.0/gifs/v7.0.0-living-brain-walkthrough.gif)
 
 Screenshot index and capture notes:
-[output/release/v6.7.0/SCREENSHOT_INDEX.md](output/release/v6.7.0/SCREENSHOT_INDEX.md)
+[output/release/v7.0.0/SCREENSHOT_INDEX.md](output/release/v7.0.0/SCREENSHOT_INDEX.md)
 
 ## Install
 
@@ -200,29 +200,26 @@ See [docs/DEVELOPMENT.md](docs/DEVELOPMENT.md) for developer workflow details.
 
 ## Current Release
 
-The current release is **6.7.0 Brain IA Cleanup**:
+The current release is **7.0.0 Brain Productization Loop**:
 
-- Brain Home now surfaces direct actions for adding documents, searching the
-  graph, changing models, and opening settings.
-- The rich Capture, Brain explorer, Library, System, and Act pages are mounted
-  inside a shared Brain shell instead of existing only as hard-to-discover
-  compatibility routes.
-- `routes.ts` now separates product shell routes from legacy compatibility
-  aliases, so visible IA and old entry URLs can evolve independently.
-- Rich pages are code-split with lazy route loading. The first Brain Home bundle
-  stays below the previous warning threshold while graph/search/model/settings
-  surfaces load when opened.
-- The release keeps the 6.6.0 backend-owned Brain proof loop and
-  workspace-scoped ingestion intact while making the product actions more
-  obvious in the first five minutes.
+- Brain Home starts with ingestion: files, folders, notes, and web pages can be
+  added directly from the first screen.
+- Every Brain answer can show memory proof and source citations instead of
+  asking users to trust an ungrounded chat bubble.
+- The model-continuity demo lets users recheck the same Brain evidence after
+  changing models.
+- The first-run loop is optimized for five minutes: add source, ask, see proof,
+  then switch or deepen.
+- CI now includes a deterministic recall/KG quality eval so the Brain proof
+  promise is guarded before release.
 
-Expected artifacts for 6.7.0 release must use exact filenames:
+Expected artifacts for 7.0.0 release must use exact filenames:
 
-- `dist/ltcai-6.7.0-py3-none-any.whl`
-- `dist/ltcai-6.7.0.tar.gz`
-- `ltcai-6.7.0.tgz`
-- `dist/ltcai-6.7.0.vsix`
-- `src-tauri/target/release/bundle/dmg/Lattice AI_6.7.0_aarch64.dmg`
+- `dist/ltcai-7.0.0-py3-none-any.whl`
+- `dist/ltcai-7.0.0.tar.gz`
+- `ltcai-7.0.0.tgz`
+- `dist/ltcai-7.0.0.vsix`
+- `src-tauri/target/release/bundle/dmg/Lattice AI_7.0.0_aarch64.dmg`
 
 Do not upload `dist/*`. Package registry publishing remains owner-run.
 
@@ -241,6 +238,7 @@ Do not upload `dist/*`. Package registry publishing remains owner-run.
 
 | Version | Theme |
 | --- | --- |
+| 7.0.0 | Brain Productization Loop: first-screen ingestion for files/folders/notes/web, answer-level memory proof and source citations, model-continuity demo flow, five-minute first-run loop, and recall/KG quality eval in CI |
 | 6.7.0 | Brain IA Cleanup: reachable rich pages, separated product routes vs compatibility aliases, shared Brain shell navigation, and lazy-loaded rich pages |
 | 6.6.0 | Brain Proof Runtime: backend-owned Brain proof API, model-continuity wiring, first-screen proof that saved context can be recalled across model changes, and direct Brain Home document upload |
 | 6.5.0 | Brain Experience Readiness: Brain readiness signal, depth progress rail, source-aware memory-save feedback, and visual coverage for the first-memory loop |

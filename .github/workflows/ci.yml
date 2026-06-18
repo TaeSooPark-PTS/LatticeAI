@@ -40,6 +40,9 @@ jobs:
         run: |
           python -m pytest tests/unit/ -v --tb=short
 
+      - name: Brain recall/KG quality eval
+        run: python scripts/brain_quality_eval.py
+
   integration:
     name: Integration smoke test
     runs-on: ubuntu-latest
