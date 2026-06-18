@@ -964,6 +964,57 @@ body {
   overflow: hidden;
 }
 
+.brain-shell-page {
+  position: relative;
+  z-index: 2;
+  height: 100vh;
+  overflow: auto;
+  padding: 0.9rem 1rem 2rem;
+}
+
+.brain-shell-nav {
+  position: sticky;
+  top: 0.65rem;
+  z-index: 20;
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 0.45rem;
+  width: min(100%, 72rem);
+  margin: 0 auto 1rem;
+  border: 1px solid hsl(var(--border) / 0.66);
+  border-radius: 8px;
+  background: hsl(var(--surface-glass));
+  padding: 0.35rem;
+  backdrop-filter: blur(18px);
+}
+
+.brain-shell-nav button {
+  min-height: 2.25rem;
+  border: 1px solid transparent;
+  border-radius: 6px;
+  background: transparent;
+  color: hsl(var(--fg-muted));
+  padding: 0 0.78rem;
+  font-size: 0.78rem;
+  font-weight: 820;
+  letter-spacing: 0;
+}
+
+.brain-shell-nav button:hover,
+.brain-shell-nav button:focus-visible,
+.brain-shell-nav button.is-active {
+  border-color: hsl(var(--brain-core) / 0.58);
+  background: hsl(var(--brain-core) / 0.1);
+  color: hsl(var(--fg));
+  outline: none;
+}
+
+.brain-shell-content {
+  width: min(100%, 72rem);
+  margin: 0 auto;
+}
+
 /* Subtle living field behind everything */
 .brain-field {
   position: fixed;
@@ -1238,6 +1289,7 @@ body {
   display: flex;
   align-items: center;
   justify-content: space-between;
+  flex-wrap: wrap;
   gap: 0.75rem;
   padding-bottom: 0.65rem;
   color: hsl(var(--fg-muted));
@@ -1265,6 +1317,16 @@ body {
   white-space: nowrap;
 }
 
+.brain-flow-actions {
+  display: flex;
+  flex: 0 1 auto;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: 0.35rem;
+}
+
+.brain-flow-actions button,
+.brain-model-pill,
 .brain-admin-link {
   display: inline-flex;
   min-height: 2rem;
@@ -1282,6 +1344,15 @@ body {
   transition: border-color 150ms ease, color 150ms ease, background 150ms ease;
 }
 
+.brain-model-pill {
+  max-width: 13rem;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.brain-flow-actions button:hover,
+.brain-flow-actions button:focus-visible,
 .brain-admin-link:hover,
 .brain-admin-link:focus-visible {
   border-color: hsl(var(--brain-core) / 0.72);

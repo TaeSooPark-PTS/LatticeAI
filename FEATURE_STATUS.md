@@ -8,6 +8,19 @@ product identity. Sections below v5.3.0 are historical release-status records
 and should not override the current README, ARCHITECTURE.md, SECURITY.md,
 PRIVACY.md, or v6.6.0 release notes.
 
+## v6.7.0 Brain IA Cleanup — development line
+
+The next product line removes the "feature exists but cannot be reached" gap.
+Brain Home now links the first-session actions directly into their rich pages:
+Capture for documents, Brain explorer for graph/search, Library for models, and
+System for settings/care.
+
+| Area | Status | Evidence |
+| --- | --- | --- |
+| **Reachable rich pages** | WORKING | `App.tsx` mounts Capture, Brain explorer, Library, System, and Act routes inside a shared Brain shell instead of only rendering Brain Home plus Act. |
+| **Brain Home action IA** | WORKING | The Brain conversation header exposes `넣기`, `찾기`, `모델`, and `설정` actions that route to document capture, graph/search, model selection, and settings. |
+| **Route cleanup debt** | REMAINS | Compatibility aliases still live in `routes.ts`; the next cleanup should separate public shell IA from legacy route aliases and consider code-splitting rich pages. |
+
 ## v6.6.0 Brain Proof Runtime — current release line
 
 v6.6.0 follows the Brain-readiness line by making the durable Brain proof loop

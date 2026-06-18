@@ -1,5 +1,5 @@
 import * as React from "react";
-import { DatabaseZap, ShieldCheck } from "lucide-react";
+import { Cpu, DatabaseZap, FileUp, Search, Settings, ShieldCheck } from "lucide-react";
 import { LanguageSwitcher } from "@/components/LanguageSwitcher";
 import { t, type Language } from "@/i18n";
 import type { BrainDepth, BrainProof, BrainReadiness, KnowledgeConcept, MemoryFragment, Message } from "./types";
@@ -63,7 +63,25 @@ export function BrainConversation({
           <span>{t(language, "brain.portable")}</span>
           <span>{t(language, "brain.private")}</span>
         </div>
-        <div>{modelName}</div>
+        <div className="brain-flow-actions" aria-label={t(language, "brain.aria.actions")}>
+          <button type="button" onClick={() => navigateHash("/capture")}>
+            <FileUp className="h-3.5 w-3.5" />
+            {t(language, "brain.action.add")}
+          </button>
+          <button type="button" onClick={() => navigateHash("/knowledge-graph")}>
+            <Search className="h-3.5 w-3.5" />
+            {t(language, "brain.action.find")}
+          </button>
+          <button type="button" onClick={() => navigateHash("/models")}>
+            <Cpu className="h-3.5 w-3.5" />
+            {t(language, "brain.action.model")}
+          </button>
+          <button type="button" onClick={() => navigateHash("/settings")}>
+            <Settings className="h-3.5 w-3.5" />
+            {t(language, "brain.action.settings")}
+          </button>
+        </div>
+        <div className="brain-model-pill">{modelName}</div>
         <button className="brain-admin-link" type="button" onClick={() => navigateHash("/admin")}>
           <ShieldCheck className="h-3.5 w-3.5" />
           {t(language, "brain.admin")}

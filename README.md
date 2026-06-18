@@ -219,6 +219,14 @@ The current release is **6.6.0 Brain Proof Runtime**:
   no package publishing, no production deployment, and no external reranker or
   embedding API use without explicit opt-in.
 
+## Main Branch UI Direction
+
+After v6.6.0, the main branch starts the v6.7.0 Brain IA cleanup: Brain Home
+now surfaces direct actions for adding documents, searching the graph, changing
+models, and opening settings. The rich Capture, Brain explorer, Library, and
+System pages are mounted inside the shared Brain shell instead of existing only
+as hard-to-discover compatibility routes.
+
 Expected artifacts for 6.6.0 release must use exact filenames:
 
 - `dist/ltcai-6.6.0-py3-none-any.whl`

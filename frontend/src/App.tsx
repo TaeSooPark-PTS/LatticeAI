@@ -4,6 +4,10 @@ import { ProductFlow, readProductFlowComplete } from "@/components/ProductFlow";
 import { useAppStore } from "@/store/appStore";
 import { parseHash } from "@/routes";
 import { ActPage } from "@/pages/Act";
+import { BrainPage } from "@/pages/Brain";
+import { CapturePage } from "@/pages/Capture";
+import { LibraryPage } from "@/pages/Library";
+import { SystemPage } from "@/pages/System";
 import { BrainHome } from "@/features/brain/BrainHome";
 import { AdminConsole } from "@/features/admin/AdminConsole";
 
@@ -41,11 +45,69 @@ export default function App() {
       {rawRoute.startsWith("/admin") ? (
         <AdminConsole onBack={() => navigateHash("/brain")} />
       ) : parsed.primary === "act" ? (
-        <ActPage initialTab={parsed.tab} />
+        <BrainShell active={parsed.primary}>
+          <ActPage initialTab={parsed.tab} />
+        </BrainShell>
+      ) : parsed.primary === "capture" ? (
+        <BrainShell active={parsed.primary}>
+          <CapturePage initialTab={parsed.tab} />
+        </BrainShell>
+      ) : parsed.primary === "library" ? (
+        <BrainShell active={parsed.primary}>
+          <LibraryPage initialTab={parsed.tab} />
+        </BrainShell>
+      ) : parsed.primary === "system" ? (
+        <BrainShell active={parsed.primary}>
+          <SystemPage initialTab={parsed.tab} />
+        </BrainShell>
+      ) : parsed.primary === "memory" ? (
+        <BrainShell active="memory">
+          <BrainPage initialTab="memory" />
+        </BrainShell>
+      ) : parsed.primary === "brain" && parsed.tab && parsed.tab !== "conversation" ? (
+        <BrainShell active="brain">
+          <BrainPage initialTab={parsed.tab} />
+        </BrainShell>
       ) : (
         <BrainHome brainState={brainState} intensity={intensity} onBrainChange={setBrain} />
       )}
     </div>
+  );
+}
+
+function BrainShell({
+  active,
+  children,
+}: {
+  active: string;
+  children: React.ReactNode;
+}) {
+  const items = [
+    { id: "brain", label: "Brain", path: "/brain" },
+    { id: "capture", label: "Files", path: "/capture" },
+    { id: "memory", label: "Graph", path: "/knowledge-graph" },
+    { id: "library", label: "Models", path: "/models" },
+    { id: "system", label: "Settings", path: "/settings" },
+    { id: "act", label: "Act", path: "/review" },
+  ];
+  return (
+    <main className="brain-shell-page" aria-label="Lattice workspace">
+      <nav className="brain-shell-nav" aria-label="Brain workspace navigation">
+        {items.map((item) => (
+          <button
+            key={item.id}
+            type="button"
+            className={item.id === active ? "is-active" : ""}
+            onClick={() => navigateHash(item.path)}
+          >
+            {item.label}
+          </button>
+        ))}
+      </nav>
+      <section className="brain-shell-content">
+        {children}
+      </section>
+    </main>
   );
 }
 
