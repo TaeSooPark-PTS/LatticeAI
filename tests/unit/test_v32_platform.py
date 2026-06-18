@@ -325,6 +325,18 @@ def test_memory_brain_proof_default_recall_query_normalizes_personal_workspace(t
     assert proof["recall"]["query"] == "own explicit personal decision"
 
 
+def test_memory_brain_proof_workspace_memory_seed_normalizes_personal_workspace(tmp_path):
+    store = _FakeStore()
+    store.add("m1", "workspace", "implicit personal workspace memory", ws=None)
+    store.add("m2", "workspace", "org workspace memory", ws="org:acme")
+    svc = MemoryService(store=store, data_dir=tmp_path, knowledge_graph=None, enable_graph=False)
+
+    proof = svc.brain_proof(user_email="user@example.com", workspace_id=None, recall_query="")
+
+    assert proof["recall"]["query"] == "implicit personal workspace memory"
+    assert "org" not in proof["recall"]["query"]
+
+
 def test_memory_recall_and_inspect(tmp_path):
     svc = _svc(tmp_path)
     res = svc.recall("alpha")
