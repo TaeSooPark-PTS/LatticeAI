@@ -83,7 +83,7 @@ function BrainShell({
   children: React.ReactNode;
 }) {
   const items = [
-    { id: "brain", label: "Brain", path: "/brain" },
+    { id: "brain", label: "Lattice Brain", path: "/brain" },
     { id: "capture", label: "Files", path: "/capture" },
     { id: "memory", label: "Graph", path: "/knowledge-graph" },
     { id: "library", label: "Models", path: "/models" },
