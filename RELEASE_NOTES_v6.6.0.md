@@ -24,6 +24,9 @@ Home instead of staying implicit in backend stores.
   order.
 - Default Brain proof recall seeding is scoped to the current user/workspace
   before falling back to conversation memory.
+- Chat-to-Knowledge-Graph ingestion carries workspace scope into graph nodes,
+  and Brain proof conversation counts are scoped before continuity is marked
+  proven.
 - Package, runtime, static, VS Code, and Tauri metadata are synchronized to
   6.6.0.
 

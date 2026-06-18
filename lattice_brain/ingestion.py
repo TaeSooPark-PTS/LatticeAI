@@ -267,6 +267,7 @@ class IngestionPipeline:
             user_nickname=meta.get("user_nickname"),
             source=meta.get("source") or source_type,
             conversation_id=item.conversation_id,
+            workspace_id=item.workspace_id,
             raw=meta.get("raw"),
         )
         # ingest_message reports message/response node ids; normalize the keys

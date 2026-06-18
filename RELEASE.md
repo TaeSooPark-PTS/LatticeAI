@@ -27,6 +27,9 @@ Follow-up hardening: Brain proof는 capability와 proven evidence를 분리한�
 빈 Brain은 model-independent capability만 보여주고 continuity proof는 durable
 evidence가 생긴 뒤 true로 내려온다. `/api/memory/brain-proof?q=`의 자동
 conversation seed도 current user/workspace로 제한한다.
+추가로 chat-to-Knowledge-Graph ingestion은 workspace scope를 graph node까지
+전달하고, Brain proof의 conversation count/proven 판정도 scoped conversation만
+사용한다.
 
 Expected artifacts (exact 6.6.0 names only):
 - dist/ltcai-6.6.0-py3-none-any.whl

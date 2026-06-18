@@ -34,6 +34,29 @@ def test_chat_message_through_pipeline_records_provenance(tmp_path):
     assert prov["owner"] == "alice@x.com"
 
 
+def test_chat_message_through_pipeline_projects_workspace_scope(tmp_path):
+    kg, pipe = _pipeline(tmp_path)
+    result = pipe.ingest(
+        IngestionItem(
+            source_type="chat_message",
+            text="org roadmap decision",
+            owner="alice@x.com",
+            workspace_id="org:acme",
+            conversation_id="conv-org",
+            metadata={"role": "user", "source": "web"},
+        ),
+        user_email="alice@x.com",
+    )
+
+    assert result.status == "ok"
+    assert kg.workspaces_of([result.node_id]).get(result.node_id) == "org:acme"
+    assert kg.workspaces_of(["conversation:conv-org"]).get("conversation:conv-org") == "org:acme"
+    assert kg.filter_scoped_nodes([{"id": result.node_id}], {"org:other"}) == []
+    assert kg.filter_scoped_nodes([{"id": result.node_id}], {"org:acme"}) == [{"id": result.node_id}]
+    assert all(node["id"] != "conversation:conv-org" for node in kg.graph(allowed_workspaces={"org:other"})["nodes"])
+    assert any(node["id"] == "conversation:conv-org" for node in kg.graph(allowed_workspaces={"org:acme"})["nodes"])
+
+
 def test_mcp_message_through_pipeline_records_provenance(tmp_path):
     kg, pipe = _pipeline(tmp_path)
     result = pipe.ingest(

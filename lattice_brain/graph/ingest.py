@@ -15,6 +15,7 @@ class KnowledgeGraphIngestMixin:
         user_nickname: Optional[str] = None,
         source: Optional[str] = None,
         conversation_id: Optional[str] = None,
+        workspace_id: Optional[str] = None,
         raw: Optional[Dict[str, Any]] = None,
     ) -> Dict[str, Any]:
         content = str(content or "")
@@ -28,6 +29,7 @@ class KnowledgeGraphIngestMixin:
             "role": role,
             "source": source,
             "conversation_id": conversation_id,
+            "workspace_id": workspace_id,
             "user_email": user_email,
             "user_nickname": user_nickname,
             "chars": len(content),
@@ -47,7 +49,9 @@ class KnowledgeGraphIngestMixin:
                 "Chat",
                 chat_title,
                 summary=_clean_text(content)[:400],
-                metadata={"source": source, "conversation_id": conversation_id},
+                metadata={"source": source, "conversation_id": conversation_id, "workspace_id": workspace_id},
+                owner=user_email,
+                workspace_id=workspace_id,
             )
 
             # ── 2. Person node  (점: 명사 — 사람) ─────────────────────────────
@@ -61,6 +65,8 @@ class KnowledgeGraphIngestMixin:
                     "Person",
                     user_nickname or user_email or "Unknown",
                     metadata={"email": user_email, "nickname": user_nickname},
+                    owner=user_email,
+                    workspace_id=workspace_id,
                 )
                 # 선: 동사 — Person이 Chat을 "작성함"
                 self._upsert_edge(
@@ -81,6 +87,8 @@ class KnowledgeGraphIngestMixin:
                 summary=_clean_text(content)[:500],
                 metadata=metadata,
                 raw=raw or metadata,
+                owner=user_email,
+                workspace_id=workspace_id,
             )
             # 선: Chat이 메시지를 "포함함"
             self._upsert_edge(
@@ -97,6 +105,8 @@ class KnowledgeGraphIngestMixin:
                     f"chunk {index + 1}",
                     summary=chunk[:500],
                     metadata={"index": index, "source_node": node_id},
+                    owner=user_email,
+                    workspace_id=workspace_id,
                 )
                 self._upsert_chunk(
                     conn,
@@ -118,7 +128,9 @@ class KnowledgeGraphIngestMixin:
                     cid,
                     node_t,
                     concept,
-                    metadata={"auto_extracted": True, "source": source},
+                    metadata={"auto_extracted": True, "source": source, "workspace_id": workspace_id},
+                    owner=user_email,
+                    workspace_id=workspace_id,
                 )
                 # 선: Chat이 개념을 "언급함"
                 self._upsert_edge(
@@ -155,8 +167,10 @@ class KnowledgeGraphIngestMixin:
                     sem_type,
                     sem_title,
                     summary=item["summary"],
-                    metadata={"auto_extracted": True, "source_node": node_id},
+                    metadata={"auto_extracted": True, "source_node": node_id, "workspace_id": workspace_id},
                     raw=item,
+                    owner=user_email,
+                    workspace_id=workspace_id,
                 )
                 # 선: Chat이 Task/Decision을 "생성함"
                 self._upsert_edge(conn, conv_id, sem_id, "생성함", weight=0.9)

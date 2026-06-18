@@ -736,6 +736,7 @@ def _build(config: "Optional[Config]" = None) -> Dict[str, Any]:
                             source_type="chat_message",
                             text=message,
                             owner=user_email,
+                            workspace_id=workspace_id,
                             conversation_id=conversation_id,
                             metadata={
                                 "role": role,

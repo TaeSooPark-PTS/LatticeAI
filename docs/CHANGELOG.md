@@ -27,6 +27,9 @@ historical and may describe behavior as it existed at that release.
   order.
 - Default Brain proof recall seeding is scoped to the current user/workspace
   before falling back to conversation memory.
+- Chat-to-Knowledge-Graph ingestion now carries workspace scope into projected
+  graph nodes, and Brain proof conversation counts use scoped conversations so
+  another user/workspace cannot make an empty Brain look proven.
 - Package/runtime/static metadata is synchronized to 6.6.0; package publish and
   deployment remain owner-run only.
 

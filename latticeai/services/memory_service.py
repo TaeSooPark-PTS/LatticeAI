@@ -115,6 +115,26 @@ class MemoryService:
             return data
         return []
 
+    def _scoped_conversations(self, *, user_email: Optional[str], workspace_id: Optional[str]) -> List[Dict[str, Any]]:
+        if not user_email:
+            return self._conversations()
+        target_workspace = workspace_id or "personal"
+        scoped: List[Dict[str, Any]] = []
+        for conversation in self._conversations():
+            messages = conversation.get("messages") or []
+            if not isinstance(messages, list):
+                continue
+            kept = [
+                message
+                for message in messages
+                if isinstance(message, dict)
+                and message.get("user_email") == user_email
+                and (message.get("workspace_id") or "personal") == target_workspace
+            ]
+            if kept:
+                scoped.append({**conversation, "messages": kept})
+        return scoped
+
     def _kg_stats(self) -> Optional[Dict[str, Any]]:
         if not self._enable_graph:
             return None
@@ -193,7 +213,7 @@ class MemoryService:
         else:
             project_mem = self._workspace_memories(user_email=user_email, workspace_id=workspace_id)
         snaps = self._snapshots(workspace_id=workspace_id)
-        convs = self._conversations()
+        convs = self._scoped_conversations(user_email=user_email, workspace_id=workspace_id)
         kg_stats = self._kg_stats()
         kg_index = self._kg_index()
 
@@ -449,7 +469,7 @@ class MemoryService:
             items = self._snapshots(workspace_id=workspace_id)[:limit]
             return {"source": source, "items": items, "count": len(items)}
         if source == "conversation":
-            convs = self._conversations()
+            convs = self._scoped_conversations(user_email=user_email, workspace_id=workspace_id)
             items = [{"id": c.get("id"), "title": c.get("title") or c.get("id"), "messages": len(c.get("messages") or [])} for c in convs[:limit]]
             return {"source": source, "items": items, "count": len(convs)}
         if source == "graph":

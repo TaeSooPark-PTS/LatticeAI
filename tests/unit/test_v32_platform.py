@@ -294,6 +294,55 @@ def test_memory_brain_proof_default_recall_query_is_workspace_scoped(tmp_path):
     assert "beta" not in proof["recall"]["query"]
 
 
+def test_memory_brain_proof_conversation_counts_are_workspace_scoped(tmp_path):
+    class _FakeConversationStore:
+        def history(self):
+            return [
+                {
+                    "role": "user",
+                    "content": "own personal durable conversation",
+                    "user_email": "user@example.com",
+                    "workspace_id": "personal",
+                    "conversation_id": "personal-1",
+                },
+                {
+                    "role": "user",
+                    "content": "own org durable conversation",
+                    "user_email": "user@example.com",
+                    "workspace_id": "org:acme",
+                    "conversation_id": "org-1",
+                },
+                {
+                    "role": "user",
+                    "content": "other personal durable conversation",
+                    "user_email": "other@example.com",
+                    "workspace_id": "personal",
+                    "conversation_id": "other-1",
+                },
+            ]
+
+    svc = MemoryService(
+        store=_FakeStore(),
+        data_dir=tmp_path,
+        knowledge_graph=None,
+        enable_graph=False,
+        conversation_store=_FakeConversationStore(),
+    )
+
+    personal = svc.brain_proof(user_email="user@example.com", workspace_id="personal", recall_query="")
+    org = svc.brain_proof(user_email="user@example.com", workspace_id="org:acme", recall_query="")
+    empty = svc.brain_proof(user_email="missing@example.com", workspace_id="personal", recall_query="")
+
+    assert personal["proofs"]["conversations"] == 1
+    assert personal["proofs"]["durable_items"] == 1
+    assert personal["model_continuity"]["proven"] is True
+    assert org["proofs"]["conversations"] == 1
+    assert org["recall"]["query"] == "own org durable conversation"
+    assert empty["proofs"]["conversations"] == 0
+    assert empty["proofs"]["durable_items"] == 0
+    assert empty["model_continuity"]["proven"] is False
+
+
 def test_memory_brain_proof_default_recall_query_normalizes_personal_workspace(tmp_path):
     class _FakeConversationStore:
         def history(self):
