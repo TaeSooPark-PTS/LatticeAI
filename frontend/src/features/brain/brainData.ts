@@ -92,16 +92,20 @@ export function buildBrainProof(data: unknown, fallbackModelName = ""): BrainPro
   const proofs = isRecord(proof.proofs) ? proof.proofs : {};
   const recall = isRecord(proof.recall) ? proof.recall : {};
   const claims = isRecord(proof.claims) ? proof.claims : {};
+  const durableItems = numberValue(proofs, ["durable_items", "durableItems"]);
   return {
     status: textValue(proof, ["status"], "quiet"),
     modelContinuity: {
       activeModel: textValue(modelContinuity, ["active_model", "activeModel"], fallbackModelName),
       brainOwner: textValue(modelContinuity, ["brain_owner", "brainOwner"], "lattice_brain"),
-      survivesModelSwitch: booleanValue(modelContinuity, ["survives_model_switch", "survivesModelSwitch"], true),
+      capability: booleanValue(modelContinuity, ["capability"], true),
+      survivesModelSwitch: booleanValue(modelContinuity, ["survives_model_switch", "survivesModelSwitch"], false),
+      proven: booleanValue(modelContinuity, ["proven"], false),
       contextStore: textValue(modelContinuity, ["context_store", "contextStore"], "workspace + conversation + graph + vector"),
     },
     proofs: {
-      durableItems: numberValue(proofs, ["durable_items", "durableItems"]),
+      durableItems,
+      hasDurableEvidence: booleanValue(proofs, ["has_durable_evidence", "hasDurableEvidence"], durableItems > 0),
       workspaceMemories: numberValue(proofs, ["workspace_memories", "workspaceMemories"]),
       conversations: numberValue(proofs, ["conversations"]),
       graphConcepts: numberValue(proofs, ["graph_concepts", "graphConcepts"]),
@@ -121,7 +125,7 @@ export function buildBrainProof(data: unknown, fallbackModelName = ""): BrainPro
     },
     claims: {
       canRecallUserContext: booleanValue(claims, ["can_recall_user_context", "canRecallUserContext"], false),
-      keepsContextAcrossModels: booleanValue(claims, ["keeps_context_across_models", "keepsContextAcrossModels"], true),
+      keepsContextAcrossModels: booleanValue(claims, ["keeps_context_across_models", "keepsContextAcrossModels"], false),
       isKnowledgeStore: booleanValue(claims, ["is_knowledge_store", "isKnowledgeStore"], false),
     },
   };

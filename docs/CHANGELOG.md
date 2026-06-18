@@ -18,11 +18,15 @@ historical and may describe behavior as it existed at that release.
 - Recent recall proof card that surfaces the latest memory/item the Brain can
   bring back after a useful exchange.
 - Unit coverage for model-independent Brain proof recall behavior.
+- Honest empty-state Brain proof: model-independent capability remains visible,
+  but continuity is only marked proven after durable evidence exists.
 
 ### Changed
 - Interaction router runtime context now carries an active-model getter into
   the Memory router, reducing app-factory inline wiring while preserving route
   order.
+- Default Brain proof recall seeding is scoped to the current user/workspace
+  before falling back to conversation memory.
 - Package/runtime/static metadata is synchronized to 6.6.0; package publish and
   deployment remain owner-run only.
 

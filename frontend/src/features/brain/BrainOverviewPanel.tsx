@@ -21,6 +21,11 @@ export function BrainOverviewPanel({
   const recent = memories.slice(0, 3);
   const older = memories.slice(3, 6);
   const topics = concepts.slice(0, 4);
+  const hasDurableProof = proof.proofs.hasDurableEvidence || proof.modelContinuity.proven;
+  const hasRecallProof = proof.recall.items.length > 0;
+  const modelProofValue = proof.modelContinuity.proven && proof.claims.keepsContextAcrossModels
+    ? proof.modelContinuity.activeModel || t(language, "brain.proof.noModel")
+    : t(language, "brain.proof.modelPending");
 
   return (
     <section className="brain-overview-panel" aria-label={t(language, "brain.aria.overview")}>
@@ -67,12 +72,14 @@ export function BrainOverviewPanel({
         <BrainProofPoint
           icon={<DatabaseZap className="h-4 w-4" />}
           label={t(language, "brain.proof.context")}
-          value={t(language, "brain.proof.contextValue", { count: proof.proofs.durableItems })}
+          value={hasDurableProof
+            ? t(language, "brain.proof.contextValue", { count: proof.proofs.durableItems })
+            : t(language, "brain.proof.contextEmpty")}
         />
         <BrainProofPoint
           icon={<Repeat2 className="h-4 w-4" />}
           label={t(language, "brain.proof.model")}
-          value={proof.modelContinuity.activeModel || t(language, "brain.proof.noModel")}
+          value={modelProofValue}
         />
         <BrainProofPoint
           icon={<BrainCircuit className="h-4 w-4" />}
@@ -83,13 +90,19 @@ export function BrainOverviewPanel({
           })}
         />
       </div>
-      {proof.recall.items.length ? (
+      {hasRecallProof ? (
         <button type="button" className="brain-recall-proof" onClick={() => onOpenDepth(2)}>
           <span>{t(language, "brain.proof.recall")}</span>
           <strong>{proof.recall.items[0].title}</strong>
           <small>{proof.recall.items[0].snippet || proof.recall.query}</small>
         </button>
-      ) : null}
+      ) : (
+        <div className="brain-recall-proof is-empty" role="status">
+          <span>{t(language, "brain.proof.recallEmpty.kicker")}</span>
+          <strong>{t(language, hasDurableProof ? "brain.proof.recallPending" : "brain.proof.recallEmpty.title")}</strong>
+          <small>{t(language, hasDurableProof ? "brain.proof.recallPending.detail" : "brain.proof.recallEmpty.detail")}</small>
+        </div>
+      )}
     </section>
   );
 }

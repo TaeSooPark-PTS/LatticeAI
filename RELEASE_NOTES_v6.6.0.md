@@ -14,12 +14,16 @@ Home instead of staying implicit in backend stores.
 - Recent recall proof card that shows the latest memory/item the Brain can bring
   back after useful context is saved.
 - Unit coverage for model-independent Brain proof recall behavior.
+- Honest empty-state Brain proof: model-independent capability remains visible,
+  but continuity is only marked proven after durable evidence exists.
 
 ## Changed
 
 - Interaction router runtime context now passes active-model state into the
   Memory router, reducing app-factory inline wiring while preserving route
   order.
+- Default Brain proof recall seeding is scoped to the current user/workspace
+  before falling back to conversation memory.
 - Package, runtime, static, VS Code, and Tauri metadata are synchronized to
   6.6.0.
 

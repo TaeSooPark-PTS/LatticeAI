@@ -15,6 +15,7 @@ import pytest
 from lattice_brain.runtime.hooks import HooksRegistry, HOOK_KINDS, BUILTIN_HOOKS
 from latticeai.core.agent_registry import AgentRegistry, AGENT_TYPES
 from latticeai.core.marketplace import TemplateCatalog, MARKETPLACE_VERSION
+from latticeai.api.memory import create_memory_router
 from latticeai.services.memory_service import MemoryService, TIERS
 
 ROOT = Path(__file__).resolve().parents[2]
@@ -187,11 +188,110 @@ def test_memory_brain_proof_shows_model_independent_recall(tmp_path):
     )
 
     assert proof["model_continuity"]["active_model"] == "local:model-a"
+    # Capability is a design property (always on); proof requires evidence.
+    assert proof["model_continuity"]["capability"] is True
     assert proof["model_continuity"]["survives_model_switch"] is True
+    assert proof["model_continuity"]["proven"] is True
     assert proof["proofs"]["durable_items"] >= 5
+    assert proof["proofs"]["has_durable_evidence"] is True
     assert proof["claims"]["can_recall_user_context"] is True
+    assert proof["claims"]["keeps_context_across_models"] is True
     assert proof["claims"]["is_knowledge_store"] is True
     assert proof["recall"]["items"][0]["title"] in {"decisions", "Alpha plan"}
+
+
+def test_memory_brain_proof_empty_brain_keeps_capability_but_no_proof(tmp_path):
+    """An empty brain must advertise the capability but never *claim proof*.
+
+    No durable evidence on disk means survives_model_switch / proven /
+    continuity claim must all be false, so the first-run screen cannot show a
+    hollow badge.
+    """
+    svc = MemoryService(store=_FakeStore(), data_dir=tmp_path, knowledge_graph=None, enable_graph=False)
+
+    proof = svc.brain_proof(user_email="user@example.com", workspace_id="personal", active_model="local:model-a")
+
+    assert proof["model_continuity"]["capability"] is True
+    assert proof["model_continuity"]["survives_model_switch"] is False
+    assert proof["model_continuity"]["proven"] is False
+    assert proof["proofs"]["durable_items"] == 0
+    assert proof["proofs"]["has_durable_evidence"] is False
+    assert proof["claims"]["keeps_context_across_models"] is False
+    assert proof["claims"]["is_knowledge_store"] is False
+    assert proof["recall"]["items"] == []
+
+
+def test_memory_brain_proof_endpoint_separates_capability_from_proof(tmp_path):
+    fastapi = pytest.importorskip("fastapi")
+    from fastapi.testclient import TestClient
+
+    store = _FakeStore()
+    store.add("m1", "workspace", "alpha launch decision")
+    svc = MemoryService(store=store, data_dir=tmp_path, knowledge_graph=None, enable_graph=False)
+
+    app = fastapi.FastAPI()
+    app.include_router(
+        create_memory_router(
+            service=svc,
+            require_user=lambda request: "user@example.com",
+            get_current_user=lambda request: "user@example.com",
+            gate_read=lambda request: "personal",
+            gate_write=lambda request: "personal",
+            append_audit_event=lambda *a, **k: None,
+            active_model_getter=lambda: "local:model-a",
+        )
+    )
+    client = TestClient(app)
+
+    body = client.get("/api/memory/brain-proof", params={"q": "alpha"}).json()
+    assert body["model_continuity"]["active_model"] == "local:model-a"
+    assert body["model_continuity"]["capability"] is True
+    assert body["model_continuity"]["proven"] is True
+    assert body["proofs"]["has_durable_evidence"] is True
+
+
+def test_memory_brain_proof_default_recall_query_is_workspace_scoped(tmp_path):
+    class _FakeConversationStore(_FakeStore):
+        def __init__(self):
+            super().__init__()
+            self._history = [
+                {
+                    "role": "user",
+                    "content": "own personal alpha decision",
+                    "user_email": "user@example.com",
+                    "workspace_id": "personal",
+                },
+                {
+                    "role": "user",
+                    "content": "own org beta secret",
+                    "user_email": "user@example.com",
+                    "workspace_id": "org:acme",
+                },
+                {
+                    "role": "user",
+                    "content": "other personal gamma secret",
+                    "user_email": "other@example.com",
+                    "workspace_id": "personal",
+                },
+            ]
+
+        def history(self):
+            return list(self._history)
+
+    conversation_store = _FakeConversationStore()
+    svc = MemoryService(
+        store=_FakeStore(),
+        data_dir=tmp_path,
+        knowledge_graph=None,
+        enable_graph=False,
+        conversation_store=conversation_store,
+    )
+
+    proof = svc.brain_proof(user_email="user@example.com", workspace_id="personal", recall_query="")
+
+    assert proof["recall"]["query"] == "own personal alpha decision"
+    assert "gamma" not in proof["recall"]["query"]
+    assert "beta" not in proof["recall"]["query"]
 
 
 def test_memory_recall_and_inspect(tmp_path):

@@ -23,6 +23,11 @@ frontend 추정이나 monolithic factory inline wiring에 묶이지 않는다. B
 이 payload로 recallable context, model-continuity, knowledge-store proof, 최근
 recall item을 첫 화면에 표시한다.
 
+Follow-up hardening: Brain proof는 capability와 proven evidence를 분리한다.
+빈 Brain은 model-independent capability만 보여주고 continuity proof는 durable
+evidence가 생긴 뒤 true로 내려온다. `/api/memory/brain-proof?q=`의 자동
+conversation seed도 current user/workspace로 제한한다.
+
 Expected artifacts (exact 6.6.0 names only):
 - dist/ltcai-6.6.0-py3-none-any.whl
 - dist/ltcai-6.6.0.tar.gz

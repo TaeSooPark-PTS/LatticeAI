@@ -55,11 +55,14 @@ export type BrainProof = {
   modelContinuity: {
     activeModel: string;
     brainOwner: string;
+    capability: boolean;
     survivesModelSwitch: boolean;
+    proven: boolean;
     contextStore: string;
   };
   proofs: {
     durableItems: number;
+    hasDurableEvidence: boolean;
     workspaceMemories: number;
     conversations: number;
     graphConcepts: number;

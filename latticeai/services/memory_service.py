@@ -309,17 +309,27 @@ class MemoryService:
             for item in recall.get("results", [])[: max(1, min(limit, 8))]
         ]
         durable_items = workspace_count + conversation_count + graph_count
+        # Capability and proof are deliberately separated. The brain is
+        # architecturally model-independent, so the capability is always true.
+        # The proof stays false until there is durable evidence on disk.
+        has_durable_evidence = durable_items > 0
+        proven_continuity = has_durable_evidence
         return {
             "status": readiness.get("state") or "quiet",
             "readiness": readiness,
             "model_continuity": {
                 "active_model": active_model or "",
                 "brain_owner": "lattice_brain",
-                "survives_model_switch": True,
+                # Design capability: the brain is built to outlive any model.
+                "capability": True,
+                # Proof: only true when durable evidence exists to recall.
+                "survives_model_switch": proven_continuity,
+                "proven": proven_continuity,
                 "context_store": "workspace + conversation + graph + vector",
             },
             "proofs": {
                 "durable_items": durable_items,
+                "has_durable_evidence": has_durable_evidence,
                 "workspace_memories": workspace_count,
                 "conversations": conversation_count,
                 "graph_concepts": graph_count,
@@ -333,7 +343,8 @@ class MemoryService:
             },
             "claims": {
                 "can_recall_user_context": bool(recall_items or durable_items > 0),
-                "keeps_context_across_models": True,
+                # Proven, not asserted: no durable evidence means no continuity claim.
+                "keeps_context_across_models": proven_continuity,
                 "is_knowledge_store": bool(graph_count or vector_count or workspace_count or conversation_count),
             },
             "generated_at": _now(),
@@ -350,6 +361,12 @@ class MemoryService:
                 continue
             for message in reversed(messages[-8:]):
                 if not isinstance(message, dict):
+                    continue
+                if user_email and message.get("user_email") != user_email:
+                    continue
+                message_workspace = message.get("workspace_id") or "personal"
+                target_workspace = workspace_id or "personal"
+                if message_workspace != target_workspace:
                     continue
                 content = str(message.get("content") or "").strip()
                 if content:

@@ -1531,6 +1531,11 @@ body {
   text-align: left;
 }
 
+.brain-recall-proof.is-empty {
+  border-color: hsl(var(--border) / 0.5);
+  background: hsl(var(--surface) / 0.5);
+}
+
 .brain-recall-proof span {
   color: hsl(var(--fg-muted));
   font-size: 0.64rem;
