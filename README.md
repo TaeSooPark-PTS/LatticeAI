@@ -205,6 +205,8 @@ The current development target is **6.6.0 Brain Proof Runtime**:
 - Brain Home now shows backend-owned proof that the Brain is a durable context
   store: saved context count, active-model continuity, graph/vector depth, and
   the most recent recallable item.
+- Brain Home now gives first-time users a direct document upload CTA in the
+  empty state and composer, backed by workspace-scoped document ingestion.
 - `/api/memory/brain-proof` combines Memory Manager readiness, unified recall,
   graph/vector state, and the active model id so the first screen can say
   "model changed, context stayed" without guessing in the frontend.
@@ -242,7 +244,7 @@ Do not upload `dist/*`. Package registry publishing remains owner-run.
 
 | Version | Theme |
 | --- | --- |
-| 6.6.0 | Brain Proof Runtime: backend-owned Brain proof API, model-continuity wiring, and first-screen proof that saved context can be recalled across model changes |
+| 6.6.0 | Brain Proof Runtime: backend-owned Brain proof API, model-continuity wiring, first-screen proof that saved context can be recalled across model changes, and direct Brain Home document upload |
 | 6.5.0 | Brain Experience Readiness: Brain readiness signal, depth progress rail, source-aware memory-save feedback, and visual coverage for the first-memory loop |
 | 6.4.0 | Digital Brain Quality Hardening: workspace-scoped graph/search/memory reads and mutations, Brain quality primitives, structured context guardrails, and retrieval benchmark coverage |
 | 6.3.1 | Access Runtime / i18n Follow-up: app-factory access-control extraction, focused access runtime tests, and Capture/Review Center i18n coverage |

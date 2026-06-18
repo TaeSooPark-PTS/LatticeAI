@@ -2851,6 +2851,7 @@ body {
   font-size: 0.88rem;
 }
 
+.brain-document-input,
 .brain-image-input {
   display: inline-flex;
   cursor: pointer;
@@ -2861,6 +2862,19 @@ body {
   padding: 0.42rem 0.78rem;
   color: hsl(var(--fg-muted));
   font-size: 0.78rem;
+}
+
+.brain-document-input {
+  border-color: hsl(var(--memory) / 0.42);
+  background: hsl(var(--memory) / 0.08);
+  color: hsl(var(--fg));
+  font-weight: 760;
+}
+
+.brain-document-input.is-disabled,
+.mind-empty-upload.is-disabled {
+  cursor: wait;
+  opacity: 0.68;
 }
 
 .mind-empty-kicker {
@@ -2947,6 +2961,37 @@ body {
   margin: 0 auto;
   font-size: 0.9rem;
   line-height: 1.45;
+}
+
+.mind-empty-upload {
+  display: inline-flex;
+  cursor: pointer;
+  align-items: center;
+  justify-content: center;
+  gap: 0.42rem;
+  margin-top: 1rem;
+  border: 1px solid hsl(var(--memory) / 0.46);
+  border-radius: 999px;
+  background: hsl(var(--memory) / 0.1);
+  color: hsl(var(--fg));
+  padding: 0.55rem 0.9rem;
+  font-size: 0.82rem;
+  font-weight: 820;
+  transition: border-color 150ms ease, background 150ms ease, transform 150ms ease;
+}
+
+.mind-empty-upload:hover,
+.mind-empty-upload:focus-within {
+  border-color: hsl(var(--memory) / 0.72);
+  background: hsl(var(--memory) / 0.16);
+  transform: translateY(-1px);
+}
+
+.mind-empty-upload-hint {
+  display: block;
+  margin-top: 0.42rem;
+  color: hsl(var(--fg-muted));
+  font-size: 0.72rem;
 }
 
 .mind-empty-prompts {

@@ -32,6 +32,8 @@ conversation seed도 current user/workspace로 제한한다.
 사용한다.
 Direct Knowledge Graph ingest와 document upload ingestion도 request workspace를
 읽어 graph/source/document node projection에 반영한다.
+Brain Home에는 같은 scoped upload 계약 위에 `파일/문서 넣기` CTA를 추가해,
+첫 사용자가 채팅만이 아니라 실제 파일로도 Brain을 바로 키울 수 있게 한다.
 
 Expected artifacts (exact 6.6.0 names only):
 - dist/ltcai-6.6.0-py3-none-any.whl

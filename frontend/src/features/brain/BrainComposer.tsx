@@ -1,5 +1,5 @@
 import * as React from "react";
-import { ImagePlus, Send } from "lucide-react";
+import { FileUp, ImagePlus, Send } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { t, type Language } from "@/i18n";
 
@@ -8,16 +8,20 @@ export function BrainComposer({
   draft,
   streaming,
   imageData,
+  uploadingDocument,
   onDraftChange,
   onImageDataChange,
+  onUploadDocument,
   onSend,
 }: {
   language: Language;
   draft: string;
   streaming: boolean;
   imageData: string | null;
+  uploadingDocument: boolean;
   onDraftChange: (value: string) => void;
   onImageDataChange: (value: string | null) => void;
+  onUploadDocument: (file: File) => void;
   onSend: () => void;
 }) {
   return (
@@ -34,6 +38,21 @@ export function BrainComposer({
         placeholder={t(language, "brain.placeholder")}
       />
       <div className="brain-composer-actions">
+        <label className={`brain-document-input ${uploadingDocument ? "is-disabled" : ""}`}>
+          <FileUp className="h-3.5 w-3.5" />
+          <span>{uploadingDocument ? t(language, "brain.upload.uploading") : t(language, "brain.upload.ctaShort")}</span>
+          <input
+            type="file"
+            accept=".pdf,.docx,.xlsx,.pptx,.txt,.md,.csv,application/pdf,text/plain,text/markdown,text/csv"
+            className="sr-only"
+            disabled={uploadingDocument}
+            onChange={(event) => {
+              const file = event.target.files?.[0];
+              event.currentTarget.value = "";
+              if (file) onUploadDocument(file);
+            }}
+          />
+        </label>
         <label className="brain-image-input">
           <ImagePlus className="h-3.5 w-3.5" />
           <span>{t(language, "brain.image")}</span>

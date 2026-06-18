@@ -29,6 +29,7 @@ export function BrainHome({
   const [graphSearch, setGraphSearch] = React.useState("");
   const [selectedGraphId, setSelectedGraphId] = React.useState<string | null>(null);
   const [memoryFeedback, setMemoryFeedback] = React.useState<string | null>(null);
+  const [uploadingDocument, setUploadingDocument] = React.useState(false);
   const [lastRecallQuery, setLastRecallQuery] = React.useState("");
   const streamRef = React.useRef<HTMLDivElement>(null);
   const recallTimerRef = React.useRef<number | null>(null);
@@ -143,6 +144,31 @@ export function BrainHome({
     }
   }
 
+  async function uploadDocument(file: File) {
+    if (uploadingDocument) return;
+
+    setUploadingDocument(true);
+    setMemoryFeedback(t(language, "brain.upload.pending", { name: file.name }));
+    onBrainChange("recalling", 0.86);
+
+    try {
+      const result = await latticeApi.uploadDocument(file);
+      if (result.error) {
+        setMemoryFeedback(t(language, "brain.upload.failed", { reason: result.error }));
+        return;
+      }
+
+      setMemoryFeedback(t(language, "brain.upload.saved", { name: file.name }));
+      setLastRecallQuery(file.name);
+      triggerBrainRecall();
+      void qc.invalidateQueries({ queryKey: ["memoryManager"] });
+      void qc.invalidateQueries({ queryKey: ["graph"] });
+      void qc.invalidateQueries({ queryKey: ["memoryBrainProof"] });
+    } finally {
+      setUploadingDocument(false);
+    }
+  }
+
   function deepen() {
     setExplorationDepth((depth) => {
       const next = Math.min(5, depth + 1) as BrainDepth;
@@ -254,9 +280,11 @@ export function BrainHome({
         concepts={knowledgeConcepts}
         readiness={brainReadiness}
         proof={brainProof}
+        uploadingDocument={uploadingDocument}
         onOpenDepth={jumpToDepth}
         onDraftChange={setDraft}
         onImageDataChange={setImageData}
+        onUploadDocument={(file) => void uploadDocument(file)}
         onSend={() => void send()}
       />
     </main>

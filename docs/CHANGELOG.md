@@ -17,6 +17,8 @@ historical and may describe behavior as it existed at that release.
   knowledge-store state.
 - Recent recall proof card that surfaces the latest memory/item the Brain can
   bring back after a useful exchange.
+- Brain Home document upload CTA in the empty state and composer, giving the
+  first session a direct way to grow the Brain with files.
 - Unit coverage for model-independent Brain proof recall behavior.
 - Honest empty-state Brain proof: model-independent capability remains visible,
   but continuity is only marked proven after durable evidence exists.

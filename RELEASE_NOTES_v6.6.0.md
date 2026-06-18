@@ -13,6 +13,8 @@ Home instead of staying implicit in backend stores.
   knowledge-store state.
 - Recent recall proof card that shows the latest memory/item the Brain can bring
   back after useful context is saved.
+- Brain Home document upload CTA in the empty state and composer, so first-time
+  users can grow the Brain with files without leaving the main surface.
 - Unit coverage for model-independent Brain proof recall behavior.
 - Honest empty-state Brain proof: model-independent capability remains visible,
   but continuity is only marked proven after durable evidence exists.

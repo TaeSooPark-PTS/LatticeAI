@@ -22,9 +22,11 @@ export function BrainConversation({
   concepts,
   readiness,
   proof,
+  uploadingDocument,
   onOpenDepth,
   onDraftChange,
   onImageDataChange,
+  onUploadDocument,
   onSend,
 }: {
   language: Language;
@@ -41,9 +43,11 @@ export function BrainConversation({
   concepts: KnowledgeConcept[];
   readiness: BrainReadiness;
   proof: BrainProof;
+  uploadingDocument: boolean;
   onOpenDepth: (depth: BrainDepth) => void;
   onDraftChange: (value: string) => void;
   onImageDataChange: (value: string | null) => void;
+  onUploadDocument: (file: File) => void;
   onSend: () => void;
 }) {
   return (
@@ -75,7 +79,13 @@ export function BrainConversation({
           onOpenDepth={onOpenDepth}
         />
         {messages.length === 0 ? (
-          <BrainEmptyState language={language} starterPrompts={starterPrompts} onDraftChange={onDraftChange} />
+          <BrainEmptyState
+            language={language}
+            starterPrompts={starterPrompts}
+            uploadingDocument={uploadingDocument}
+            onDraftChange={onDraftChange}
+            onUploadDocument={onUploadDocument}
+          />
         ) : (
           messages.map((message, index) => (
             <div key={`${message.role}-${index}`} className={`brain-message ${message.role}`}>
@@ -100,8 +110,10 @@ export function BrainConversation({
         draft={draft}
         streaming={streaming}
         imageData={imageData}
+        uploadingDocument={uploadingDocument}
         onDraftChange={onDraftChange}
         onImageDataChange={onImageDataChange}
+        onUploadDocument={onUploadDocument}
         onSend={onSend}
       />
     </section>
@@ -111,17 +123,37 @@ export function BrainConversation({
 function BrainEmptyState({
   language,
   starterPrompts,
+  uploadingDocument,
   onDraftChange,
+  onUploadDocument,
 }: {
   language: Language;
   starterPrompts: string[];
+  uploadingDocument: boolean;
   onDraftChange: (value: string) => void;
+  onUploadDocument: (file: File) => void;
 }) {
   return (
     <div className="mind-empty">
       <div className="mind-empty-kicker">{t(language, "brain.empty.kicker")}</div>
       <div className="mind-empty-title">{t(language, "brain.empty.title")}</div>
       <p>{t(language, "brain.empty.body")}</p>
+      <label className={`mind-empty-upload ${uploadingDocument ? "is-disabled" : ""}`}>
+        <DatabaseZap className="h-3.5 w-3.5" />
+        <span>{uploadingDocument ? t(language, "brain.upload.uploading") : t(language, "brain.upload.cta")}</span>
+        <input
+          type="file"
+          accept=".pdf,.docx,.xlsx,.pptx,.txt,.md,.csv,application/pdf,text/plain,text/markdown,text/csv"
+          className="sr-only"
+          disabled={uploadingDocument}
+          onChange={(event) => {
+            const file = event.target.files?.[0];
+            event.currentTarget.value = "";
+            if (file) onUploadDocument(file);
+          }}
+        />
+      </label>
+      <small className="mind-empty-upload-hint">{t(language, "brain.upload.hint")}</small>
       <div className="mind-empty-prompts" aria-label={t(language, "brain.aria.starterPrompts")}>
         {starterPrompts.map((prompt) => (
           <button key={prompt} type="button" onClick={() => onDraftChange(prompt)}>
