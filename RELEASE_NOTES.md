@@ -1,7 +1,36 @@
 # Release Notes
 
-The current release is v6.6.0. The tracked release-note surface starts at
+The current release is v6.7.0. The tracked release-note surface starts at
 v4.5.0 so the public Git tree stays focused on the current product era.
+
+## v6.7.0 - Brain IA Cleanup
+
+Lattice AI v6.7.0 makes the Brain product surface more direct: the first Brain
+Home flow now leads to documents, graph/search, models, and settings without
+hidden rich pages or overloaded route aliases.
+
+### Highlights
+
+- Brain Home now exposes action buttons for `Add`, `Find`, `Model`, and
+  `Settings`, mapped to Capture, Brain explorer/graph, Library, and System.
+- Capture, Brain explorer, Library, System, and Act now mount inside a shared
+  Brain shell navigation.
+- `routes.ts` separates product shell routes from compatibility aliases while
+  preserving old entry URLs.
+- Rich pages now lazy-load through route-level chunks, removing the previous
+  single large initial bundle warning.
+- Synchronized package/runtime/static versions to `6.7.0`.
+- Refreshed release evidence under `output/release/v6.7.0/`.
+
+### Expected Artifacts
+
+- `dist/ltcai-6.7.0-py3-none-any.whl`
+- `dist/ltcai-6.7.0.tar.gz`
+- `dist/ltcai-6.7.0.vsix`
+- `ltcai-6.7.0.tgz`
+- `src-tauri/target/release/bundle/dmg/Lattice AI_6.7.0_aarch64.dmg`
+
+Full notes: [RELEASE_NOTES_v6.7.0.md](RELEASE_NOTES_v6.7.0.md)
 
 ## v6.6.0 - Brain Proof Runtime
 

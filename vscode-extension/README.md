@@ -12,14 +12,13 @@ chat, run model workflows, and trigger coding actions from the editor.
 
 ## Current Release
 
-**6.6.0 — Brain Proof Runtime.** The extension follows
+**6.7.0 — Brain IA Cleanup.** The extension follows
 the main app positioning: Lattice AI is a local-first Digital Brain, not just a
 model launcher or editor chat panel. It connects editor actions to the same
 durable Brain context, explicit consent gates, replaceable model workflow, and
-separated Admin surface used by the desktop app. The v6.6.0 line makes durable
-Brain proof visible through backend-owned recall evidence, model-continuity
-signals, workspace-scoped ingestion, and first-session document upload into the
-Brain.
+separated Admin surface used by the desktop app. The v6.7.0 line makes the
+main Brain IA more direct: document capture, graph/search, model selection, and
+settings are reachable from Brain Home while rich pages load only when opened.
 
 ## Quick Start
 

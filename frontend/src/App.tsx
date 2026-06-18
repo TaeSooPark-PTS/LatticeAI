@@ -2,14 +2,15 @@ import * as React from "react";
 import { type BrainState } from "@/components/LivingBrain";
 import { ProductFlow, readProductFlowComplete } from "@/components/ProductFlow";
 import { useAppStore } from "@/store/appStore";
-import { parseHash } from "@/routes";
-import { ActPage } from "@/pages/Act";
-import { BrainPage } from "@/pages/Brain";
-import { CapturePage } from "@/pages/Capture";
-import { LibraryPage } from "@/pages/Library";
-import { SystemPage } from "@/pages/System";
+import { parseHash, productShellRoutes } from "@/routes";
 import { BrainHome } from "@/features/brain/BrainHome";
 import { AdminConsole } from "@/features/admin/AdminConsole";
+
+const ActPage = React.lazy(() => import("@/pages/Act").then((module) => ({ default: module.ActPage })));
+const BrainPage = React.lazy(() => import("@/pages/Brain").then((module) => ({ default: module.BrainPage })));
+const CapturePage = React.lazy(() => import("@/pages/Capture").then((module) => ({ default: module.CapturePage })));
+const LibraryPage = React.lazy(() => import("@/pages/Library").then((module) => ({ default: module.LibraryPage })));
+const SystemPage = React.lazy(() => import("@/pages/System").then((module) => ({ default: module.SystemPage })));
 
 export default function App() {
   const theme = useAppStore((state) => state.theme);
@@ -46,27 +47,39 @@ export default function App() {
         <AdminConsole onBack={() => navigateHash("/brain")} />
       ) : parsed.primary === "act" ? (
         <BrainShell active={parsed.primary}>
-          <ActPage initialTab={parsed.tab} />
+          <React.Suspense fallback={<PageLoader />}>
+            <ActPage initialTab={parsed.tab} />
+          </React.Suspense>
         </BrainShell>
       ) : parsed.primary === "capture" ? (
         <BrainShell active={parsed.primary}>
-          <CapturePage initialTab={parsed.tab} />
+          <React.Suspense fallback={<PageLoader />}>
+            <CapturePage initialTab={parsed.tab} />
+          </React.Suspense>
         </BrainShell>
       ) : parsed.primary === "library" ? (
         <BrainShell active={parsed.primary}>
-          <LibraryPage initialTab={parsed.tab} />
+          <React.Suspense fallback={<PageLoader />}>
+            <LibraryPage initialTab={parsed.tab} />
+          </React.Suspense>
         </BrainShell>
       ) : parsed.primary === "system" ? (
         <BrainShell active={parsed.primary}>
-          <SystemPage initialTab={parsed.tab} />
+          <React.Suspense fallback={<PageLoader />}>
+            <SystemPage initialTab={parsed.tab} />
+          </React.Suspense>
         </BrainShell>
       ) : parsed.primary === "memory" ? (
         <BrainShell active="memory">
-          <BrainPage initialTab="memory" />
+          <React.Suspense fallback={<PageLoader />}>
+            <BrainPage initialTab="memory" />
+          </React.Suspense>
         </BrainShell>
       ) : parsed.primary === "brain" && parsed.tab && parsed.tab !== "conversation" ? (
         <BrainShell active="brain">
-          <BrainPage initialTab={parsed.tab} />
+          <React.Suspense fallback={<PageLoader />}>
+            <BrainPage initialTab={parsed.tab} />
+          </React.Suspense>
         </BrainShell>
       ) : (
         <BrainHome brainState={brainState} intensity={intensity} onBrainChange={setBrain} />
@@ -82,23 +95,15 @@ function BrainShell({
   active: string;
   children: React.ReactNode;
 }) {
-  const items = [
-    { id: "brain", label: "Lattice Brain", path: "/brain" },
-    { id: "capture", label: "Files", path: "/capture" },
-    { id: "memory", label: "Graph", path: "/knowledge-graph" },
-    { id: "library", label: "Models", path: "/models" },
-    { id: "system", label: "Settings", path: "/settings" },
-    { id: "act", label: "Act", path: "/review" },
-  ];
   return (
     <main className="brain-shell-page" aria-label="Lattice workspace">
       <nav className="brain-shell-nav" aria-label="Brain workspace navigation">
-        {items.map((item) => (
+        {productShellRoutes.map((item) => (
           <button
             key={item.id}
             type="button"
             className={item.id === active ? "is-active" : ""}
-            onClick={() => navigateHash(item.path)}
+            onClick={() => navigateHash(`/${item.path}`)}
           >
             {item.label}
           </button>
@@ -108,6 +113,14 @@ function BrainShell({
         {children}
       </section>
     </main>
+  );
+}
+
+function PageLoader() {
+  return (
+    <div className="brain-shell-loader" role="status">
+      Loading Brain workspace...
+    </div>
   );
 }
 

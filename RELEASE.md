@@ -7,6 +7,30 @@
 > PyPI / npm / VS Code Marketplace / Open VSX 배포는 아래 수동 절차로만
 > 진행합니다. 태그 생성은 패키지 스토어 publish를 자동으로 트리거하지 않습니다.
 
+## v6.7.0 릴리스 노트 (2026-06-18)
+
+Lattice AI v6.7.0 — Brain IA Cleanup. 6.7.0은 6.6.0 Brain Proof Runtime 위에서
+"기능은 있는데 못 가는 앱" 상태를 정리한다. Brain Home 첫 흐름에서 문서 넣기,
+그래프/검색, 모델 변경, 설정으로 바로 이동할 수 있고, 기존 rich pages는 shared
+Brain shell 안에서 실제 제품 IA로 열린다.
+
+`routes.ts`는 visible product shell routes, direct product routes, legacy
+compatibility aliases를 분리한다. `/chat`, `/ask`, `/graph` 같은 기존 entry URL은
+계속 보존하지만, 사용자가 보는 IA는 `Lattice Brain`, `Files`, `Graph`, `Models`,
+`Settings`, `Act`로 정리된다.
+
+Frontend bundle도 정리했다. Brain explorer, Capture, Library, System, Act pages는
+`React.lazy` route chunks로 분리되어 첫 Brain Home bundle에 한꺼번에 들어오지
+않는다. v6.6.0의 backend-owned Brain proof, workspace-scoped ingestion, honest
+empty proof 상태는 그대로 유지한다.
+
+Expected artifacts (exact 6.7.0 names only):
+- dist/ltcai-6.7.0-py3-none-any.whl
+- dist/ltcai-6.7.0.tar.gz
+- dist/ltcai-6.7.0.vsix
+- ltcai-6.7.0.tgz
+- src-tauri/target/release/bundle/dmg/Lattice AI_6.7.0_aarch64.dmg
+
 ## v6.6.0 릴리스 노트 (2026-06-18)
 
 Lattice AI v6.6.0 — Brain Proof Runtime. 6.6.0은 6.5.0 Brain Experience

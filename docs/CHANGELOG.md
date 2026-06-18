@@ -4,7 +4,11 @@ The top entry is either the current unreleased main-branch work or the current
 release line. Older entries are historical and may describe behavior as it
 existed at that release.
 
-## [Unreleased]
+## [6.7.0] - 2026-06-18
+
+> Brain IA Cleanup. Makes rich product pages reachable from Brain Home,
+> separates visible product IA from legacy compatibility aliases, and
+> code-splits heavy pages out of the first Brain bundle.
 
 ### Changed
 - Brain Home now exposes direct action routes for adding documents, searching
@@ -14,6 +18,12 @@ existed at that release.
 - The post-onboarding app shell now mounts Capture, Brain explorer/graph,
   Library, System, and Act pages inside a shared Brain shell navigation instead
   of leaving those rich pages as compatibility-only routes.
+- `routes.ts` now keeps product shell routes and compatibility aliases in
+  separate maps while preserving old hash/entry URLs.
+- Rich pages now load through `React.lazy`, splitting Brain explorer, Capture,
+  Library, System, and Act chunks away from the initial Brain Home bundle.
+- Package/runtime/static metadata is synchronized to 6.7.0; package publish and
+  deployment remain owner-run only.
 
 ## [6.6.0] - 2026-06-18
 

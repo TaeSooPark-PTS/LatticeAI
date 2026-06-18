@@ -9,19 +9,29 @@ import {
 
 export type PrimaryRoute = "brain" | "memory" | "capture" | "act" | "library" | "system";
 
-export const primaryRoutes = [
-  { id: "brain", label: "Brain", icon: Brain, description: "Talk with your living Brain" },
-  { id: "memory", label: "Memory", icon: Database, description: "Recall what your Brain remembers" },
-  { id: "capture", label: "Files", icon: FolderInput, description: "Bring in files, folders, and pages" },
-  { id: "act", label: "Automations", icon: Workflow, description: "Turn goals into supervised runs" },
-  { id: "library", label: "Models", icon: Library, description: "Choose the local model powering your Brain" },
-  { id: "system", label: "Settings", icon: Settings, description: "Keep your Brain safe and portable" },
+export type RouteTarget = { primary: PrimaryRoute; tab?: string };
+
+export const productShellRoutes = [
+  { id: "brain", path: "brain", label: "Lattice Brain", icon: Brain, description: "Talk with your living Brain" },
+  { id: "capture", path: "capture", label: "Files", icon: FolderInput, description: "Bring in files, folders, and pages" },
+  { id: "memory", path: "knowledge-graph", label: "Graph", icon: Database, description: "Search and inspect Brain knowledge" },
+  { id: "library", path: "models", label: "Models", icon: Library, description: "Choose the local model powering your Brain" },
+  { id: "system", path: "settings", label: "Settings", icon: Settings, description: "Keep your Brain safe and portable" },
+  { id: "act", path: "review", label: "Act", icon: Workflow, description: "Turn goals into supervised runs" },
 ] as const;
 
-export const routeAliases: Record<string, { primary: PrimaryRoute; tab?: string }> = {
+export const directProductRoutes: Record<string, RouteTarget> = {
+  brain: { primary: "brain", tab: "conversation" },
+  capture: { primary: "capture", tab: "files" },
+  "knowledge-graph": { primary: "brain", tab: "graph" },
+  models: { primary: "library", tab: "models" },
+  settings: { primary: "system", tab: "settings" },
+  review: { primary: "act", tab: "review" },
+};
+
+export const compatibilityRouteAliases: Record<string, RouteTarget> = {
   home: { primary: "brain", tab: "conversation" },
   onboarding: { primary: "system", tab: "account" },
-  "knowledge-graph": { primary: "brain", tab: "graph" },
   "hybrid-search": { primary: "brain", tab: "knowledge" },
   memory: { primary: "memory", tab: "memory" },
   ask: { primary: "brain", tab: "conversation" },
@@ -31,13 +41,11 @@ export const routeAliases: Record<string, { primary: PrimaryRoute; tab?: string 
   "my-computer": { primary: "capture", tab: "local" },
   agents: { primary: "act", tab: "agents" },
   runs: { primary: "act", tab: "runs" },
-  review: { primary: "act", tab: "review" },
   "review-center": { primary: "act", tab: "review" },
   workflows: { primary: "act", tab: "workflows" },
   planning: { primary: "act", tab: "agents" },
   hooks: { primary: "act", tab: "hooks" },
   tools: { primary: "act", tab: "tools" },
-  models: { primary: "library", tab: "models" },
   skills: { primary: "library", tab: "skills" },
   mcp: { primary: "library", tab: "mcp" },
   marketplace: { primary: "library", tab: "marketplace" },
@@ -55,21 +63,27 @@ export const routeAliases: Record<string, { primary: PrimaryRoute; tab?: string 
   "admin/private-vpc": { primary: "system", tab: "admin" },
 };
 
+export const primaryRoutes = productShellRoutes;
+export const routeAliases = compatibilityRouteAliases;
+
 export const commandRoutes = [
-  { key: "brain", label: "Brain", icon: Brain },
-  { key: "memory", label: "Memory", icon: Database },
+  { key: "brain", label: "Lattice Brain", icon: Brain },
   { key: "files", label: "Files", icon: FolderInput },
-  { key: "workflows", label: "Automations", icon: Workflow },
+  { key: "knowledge-graph", label: "Graph", icon: Database },
   { key: "models", label: "Models", icon: Library },
   { key: "settings", label: "Settings", icon: Settings },
+  { key: "review", label: "Act", icon: Workflow },
 ];
 
 export function parseHash() {
   const raw = window.location.hash.replace(/^#\/?/, "").replace(/^\/+/, "");
   const path = raw || "brain";
-  const direct = primaryRoutes.find((route) => route.id === path);
-  if (direct) return { primary: direct.id as PrimaryRoute, tab: undefined, path };
-  const aliased = routeAliases[path] || routeAliases[path.split("?")[0]];
+  const normalized = path.split("?")[0];
+  const direct = directProductRoutes[normalized];
+  if (direct) return { ...direct, path };
+  const primary = productShellRoutes.find((route) => route.id === normalized);
+  if (primary) return { primary: primary.id as PrimaryRoute, tab: undefined, path };
+  const aliased = compatibilityRouteAliases[normalized];
   return { primary: aliased?.primary || "brain", tab: aliased?.tab, path };
 }
 

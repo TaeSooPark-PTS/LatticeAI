@@ -1015,6 +1015,18 @@ body {
   margin: 0 auto;
 }
 
+.brain-shell-loader {
+  min-height: 18rem;
+  display: grid;
+  place-items: center;
+  border: 1px solid hsl(var(--border) / 0.58);
+  border-radius: 8px;
+  background: hsl(var(--surface-glass));
+  color: hsl(var(--fg-muted));
+  font-size: 0.82rem;
+  font-weight: 760;
+}
+
 /* Subtle living field behind everything */
 .brain-field {
   position: fixed;

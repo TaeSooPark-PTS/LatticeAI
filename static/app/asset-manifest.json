@@ -1,13 +1,20 @@
 {
-  "version": "6.6.0",
+  "version": "6.7.0",
   "generated_at": "vite",
   "entrypoints": {
     "app": "/static/app/index.html"
   },
   "assets": {
     "../node_modules/@tauri-apps/api/core.js": "/static/app/assets/core-CwxXejkd.js",
-    "index.html": "/static/app/assets/index-bONh90Qb.js",
-    "assets/index-TH0bD52y.css": "/static/app/assets/index-TH0bD52y.css"
+    "_primitives-Bcm5lZRu.js": "/static/app/assets/primitives-Bcm5lZRu.js",
+    "_textarea-C2PLu6_O.js": "/static/app/assets/textarea-C2PLu6_O.js",
+    "index.html": "/static/app/assets/index-C950aES_.js",
+    "assets/index-ztppMg0c.css": "/static/app/assets/index-ztppMg0c.css",
+    "src/pages/Act.tsx": "/static/app/assets/Act-DGN37eR4.js",
+    "src/pages/Brain.tsx": "/static/app/assets/Brain-HDcIwPHW.js",
+    "src/pages/Capture.tsx": "/static/app/assets/Capture--eZfb_Ex.js",
+    "src/pages/Library.tsx": "/static/app/assets/Library-BbagRFyd.js",
+    "src/pages/System.tsx": "/static/app/assets/System-C6pd3Mp_.js"
   },
   "vite": {
     "../node_modules/@tauri-apps/api/core.js": {
@@ -16,16 +23,87 @@
       "src": "../node_modules/@tauri-apps/api/core.js",
       "isDynamicEntry": true
     },
+    "_primitives-Bcm5lZRu.js": {
+      "file": "assets/primitives-Bcm5lZRu.js",
+      "name": "primitives",
+      "imports": [
+        "index.html"
+      ]
+    },
+    "_textarea-C2PLu6_O.js": {
+      "file": "assets/textarea-C2PLu6_O.js",
+      "name": "textarea",
+      "imports": [
+        "index.html"
+      ]
+    },
     "index.html": {
-      "file": "assets/index-bONh90Qb.js",
+      "file": "assets/index-C950aES_.js",
       "name": "index",
       "src": "index.html",
       "isEntry": true,
       "dynamicImports": [
-        "../node_modules/@tauri-apps/api/core.js"
+        "../node_modules/@tauri-apps/api/core.js",
+        "src/pages/Act.tsx",
+        "src/pages/Brain.tsx",
+        "src/pages/Capture.tsx",
+        "src/pages/Library.tsx",
+        "src/pages/System.tsx"
       ],
       "css": [
-        "assets/index-TH0bD52y.css"
+        "assets/index-ztppMg0c.css"
+      ]
+    },
+    "src/pages/Act.tsx": {
+      "file": "assets/Act-DGN37eR4.js",
+      "name": "Act",
+      "src": "src/pages/Act.tsx",
+      "isDynamicEntry": true,
+      "imports": [
+        "index.html",
+        "_primitives-Bcm5lZRu.js",
+        "_textarea-C2PLu6_O.js"
+      ]
+    },
+    "src/pages/Brain.tsx": {
+      "file": "assets/Brain-HDcIwPHW.js",
+      "name": "Brain",
+      "src": "src/pages/Brain.tsx",
+      "isDynamicEntry": true,
+      "imports": [
+        "index.html",
+        "_primitives-Bcm5lZRu.js",
+        "_textarea-C2PLu6_O.js"
+      ]
+    },
+    "src/pages/Capture.tsx": {
+      "file": "assets/Capture--eZfb_Ex.js",
+      "name": "Capture",
+      "src": "src/pages/Capture.tsx",
+      "isDynamicEntry": true,
+      "imports": [
+        "index.html",
+        "_primitives-Bcm5lZRu.js"
+      ]
+    },
+    "src/pages/Library.tsx": {
+      "file": "assets/Library-BbagRFyd.js",
+      "name": "Library",
+      "src": "src/pages/Library.tsx",
+      "isDynamicEntry": true,
+      "imports": [
+        "index.html",
+        "_primitives-Bcm5lZRu.js"
+      ]
+    },
+    "src/pages/System.tsx": {
+      "file": "assets/System-C6pd3Mp_.js",
+      "name": "System",
+      "src": "src/pages/System.tsx",
+      "isDynamicEntry": true,
+      "imports": [
+        "index.html",
+        "_primitives-Bcm5lZRu.js"
       ]
     }
   }

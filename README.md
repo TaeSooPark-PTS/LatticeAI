@@ -69,42 +69,42 @@ You need Lattice AI when:
 Choose the owner of the Brain. The profile is not a SaaS account by default; it
 is the local identity for the knowledge you keep.
 
-![Login](output/release/v6.6.0/screenshots/01-login.png)
+![Login](output/release/v6.7.0/screenshots/01-login.png)
 
 ### 2. Environment Analysis
 
 See what kind of local AI experience this computer can support before choosing a
 model.
 
-![Environment Analysis](output/release/v6.6.0/screenshots/02-environment-analysis.png)
+![Environment Analysis](output/release/v6.7.0/screenshots/02-environment-analysis.png)
 
 ### 3. Recommended Models
 
 Start with a short list: safest recommendation, faster model, stronger model.
 Advanced details stay available without overwhelming first-time users.
 
-![Recommended Models](output/release/v6.6.0/screenshots/03-recommended-models.png)
+![Recommended Models](output/release/v6.7.0/screenshots/03-recommended-models.png)
 
 ### 4. Install And Load
 
 Download and load only after consent. Lattice explains model size, local
 execution, and network use before work starts.
 
-![Install and Load](output/release/v6.6.0/screenshots/04-install-load-progress.png)
+![Install and Load](output/release/v6.7.0/screenshots/04-install-load-progress.png)
 
 ### 5. Brain Chat
 
 Talk normally. Useful decisions and context become memory, then appear later as
 topics, relationships, and graph structure.
 
-![Brain Chat Home](output/release/v6.6.0/screenshots/05-brain-chat-home.png)
+![Brain Chat Home](output/release/v6.7.0/screenshots/05-brain-chat-home.png)
 
 ### 6. Review Center
 
 Automation results are staged for review before they become durable decisions.
 Snooze, unsnooze, run now, approve, and dismiss actions stay explicit.
 
-![Review Center](output/release/v6.6.0/screenshots/13-review-center.png)
+![Review Center](output/release/v6.7.0/screenshots/13-review-center.png)
 
 ## Brain Depths
 
@@ -120,10 +120,10 @@ The user travels inward from everyday memory to deeper structure:
 
 Walkthrough:
 
-![v6.6.0 Living Brain walkthrough](output/release/v6.6.0/gifs/v6.6.0-living-brain-walkthrough.gif)
+![v6.7.0 Living Brain walkthrough](output/release/v6.7.0/gifs/v6.7.0-living-brain-walkthrough.gif)
 
 Screenshot index and capture notes:
-[output/release/v6.6.0/SCREENSHOT_INDEX.md](output/release/v6.6.0/SCREENSHOT_INDEX.md)
+[output/release/v6.7.0/SCREENSHOT_INDEX.md](output/release/v6.7.0/SCREENSHOT_INDEX.md)
 
 ## Install
 
@@ -200,40 +200,29 @@ See [docs/DEVELOPMENT.md](docs/DEVELOPMENT.md) for developer workflow details.
 
 ## Current Release
 
-The current release is **6.6.0 Brain Proof Runtime**:
+The current release is **6.7.0 Brain IA Cleanup**:
 
-- Brain Home now shows backend-owned proof that the Brain is a durable context
-  store: saved context count, active-model continuity, graph/vector depth, and
-  the most recent recallable item.
-- Brain Home now gives first-time users a direct document upload CTA in the
-  empty state and composer, backed by workspace-scoped document ingestion.
-- `/api/memory/brain-proof` combines Memory Manager readiness, unified recall,
-  graph/vector state, and the active model id so the first screen can say
-  "model changed, context stayed" without guessing in the frontend.
-- App-factory interaction wiring now passes active-model state into the Memory
-  router through typed runtime context, keeping Brain proof assembly out of the
-  monolithic factory body.
-- The release keeps the 6.4.0/6.5.0 Brain readiness and quality hardening intact
-  while making the first-five-minute value proposition visible.
-- The release remains local-first: no automatic web/email/calendar ingestion,
-  no package publishing, no production deployment, and no external reranker or
-  embedding API use without explicit opt-in.
+- Brain Home now surfaces direct actions for adding documents, searching the
+  graph, changing models, and opening settings.
+- The rich Capture, Brain explorer, Library, System, and Act pages are mounted
+  inside a shared Brain shell instead of existing only as hard-to-discover
+  compatibility routes.
+- `routes.ts` now separates product shell routes from legacy compatibility
+  aliases, so visible IA and old entry URLs can evolve independently.
+- Rich pages are code-split with lazy route loading. The first Brain Home bundle
+  stays below the previous warning threshold while graph/search/model/settings
+  surfaces load when opened.
+- The release keeps the 6.6.0 backend-owned Brain proof loop and
+  workspace-scoped ingestion intact while making the product actions more
+  obvious in the first five minutes.
 
-## Main Branch UI Direction
+Expected artifacts for 6.7.0 release must use exact filenames:
 
-After v6.6.0, the main branch starts the v6.7.0 Brain IA cleanup: Brain Home
-now surfaces direct actions for adding documents, searching the graph, changing
-models, and opening settings. The rich Capture, Brain explorer, Library, and
-System pages are mounted inside the shared Brain shell instead of existing only
-as hard-to-discover compatibility routes.
-
-Expected artifacts for 6.6.0 release must use exact filenames:
-
-- `dist/ltcai-6.6.0-py3-none-any.whl`
-- `dist/ltcai-6.6.0.tar.gz`
-- `ltcai-6.6.0.tgz`
-- `dist/ltcai-6.6.0.vsix`
-- `src-tauri/target/release/bundle/dmg/Lattice AI_6.6.0_aarch64.dmg`
+- `dist/ltcai-6.7.0-py3-none-any.whl`
+- `dist/ltcai-6.7.0.tar.gz`
+- `ltcai-6.7.0.tgz`
+- `dist/ltcai-6.7.0.vsix`
+- `src-tauri/target/release/bundle/dmg/Lattice AI_6.7.0_aarch64.dmg`
 
 Do not upload `dist/*`. Package registry publishing remains owner-run.
 
@@ -252,6 +241,7 @@ Do not upload `dist/*`. Package registry publishing remains owner-run.
 
 | Version | Theme |
 | --- | --- |
+| 6.7.0 | Brain IA Cleanup: reachable rich pages, separated product routes vs compatibility aliases, shared Brain shell navigation, and lazy-loaded rich pages |
 | 6.6.0 | Brain Proof Runtime: backend-owned Brain proof API, model-continuity wiring, first-screen proof that saved context can be recalled across model changes, and direct Brain Home document upload |
 | 6.5.0 | Brain Experience Readiness: Brain readiness signal, depth progress rail, source-aware memory-save feedback, and visual coverage for the first-memory loop |
 | 6.4.0 | Digital Brain Quality Hardening: workspace-scoped graph/search/memory reads and mutations, Brain quality primitives, structured context guardrails, and retrieval benchmark coverage |
