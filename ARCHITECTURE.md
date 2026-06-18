@@ -1,6 +1,6 @@
 # Lattice AI Current Architecture
 
-Last updated for the 6.4.0 Digital Brain Quality Hardening target.
+Last updated for the 7.0.0 Brain Productization Loop target.
 
 Lattice AI is a local-first Digital Brain that keeps your knowledge durable
 across any AI model. Product category is the Digital Brain; core capability is
@@ -189,14 +189,16 @@ flowchart LR
   Quality --> Bench["Recall benchmark metrics"]
 ```
 
-The 6.4.0 quality layer is intentionally non-destructive. It does not mutate
-the graph schema or replace the existing ingestion pipeline. Instead it adds
-explicit quality data structures around the existing Brain paths: fallback
-embeddings are labelled fallback, provider/model drift produces a re-index
-plan, retrieval combines lexical and dense signals through a local-safe fusion
-contract, graph edges carry confidence/evidence metrics, and prompt context is
-assembled with attribution, confidence, timestamp, and known/inferred/stale/
-unknown guardrails.
+The 7.0.0 Brain quality layer keeps that non-destructive foundation and makes it
+product-visible. It does not mutate the graph schema or replace the existing
+ingestion pipeline. Instead it exposes explicit quality data structures around
+the Brain paths: fallback embeddings are labelled fallback, provider/model
+drift produces a re-index plan, retrieval combines lexical and dense signals
+through a local-safe fusion contract, graph edges carry confidence/evidence
+metrics, and prompt context is assembled with attribution, confidence,
+timestamp, and known/inferred/stale/unknown guardrails. The first user loop now
+surfaces ingestion, answer-level proof, source citations, and model-continuity
+evidence directly in Brain Home.
 
 Workspace scope is enforced before results enter the quality pipeline. Graph,
 node, neighborhood, relationship, keyword, vector, graph, and hybrid retrieval
@@ -301,18 +303,18 @@ explicit opt-in paths.
 
 ```mermaid
 flowchart TB
-  Source["Source Tree 6.4.0"] --> FrontendBuild["Vite Frontend Build"]
+  Source["Source Tree 7.0.0"] --> FrontendBuild["Vite Frontend Build"]
   Source --> PythonBuild["Python Build"]
   Source --> NpmPack["npm pack"]
   Source --> VsixBuild["VSIX Package"]
   Source --> TauriBuild["Tauri Build"]
 
   FrontendBuild --> StaticAssets["static/app Assets"]
-  PythonBuild --> Wheel["dist/ltcai-6.4.0-py3-none-any.whl"]
-  PythonBuild --> Sdist["dist/ltcai-6.4.0.tar.gz"]
-  NpmPack --> Tgz["ltcai-6.4.0.tgz"]
-  VsixBuild --> Vsix["dist/ltcai-6.4.0.vsix"]
-  TauriBuild --> Dmg["src-tauri/target/release/bundle/dmg/Lattice AI_6.4.0_aarch64.dmg"]
+  PythonBuild --> Wheel["dist/ltcai-7.0.0-py3-none-any.whl"]
+  PythonBuild --> Sdist["dist/ltcai-7.0.0.tar.gz"]
+  NpmPack --> Tgz["ltcai-7.0.0.tgz"]
+  VsixBuild --> Vsix["dist/ltcai-7.0.0.vsix"]
+  TauriBuild --> Dmg["src-tauri/target/release/bundle/dmg/Lattice AI_7.0.0_aarch64.dmg"]
   StaticAssets --> Wheel
   StaticAssets --> Tgz
   StaticAssets --> Dmg
@@ -332,4 +334,4 @@ Release uploads must use exact filenames. Do not upload `dist/*`.
 - Model-free states are reported honestly. The UI should not fabricate answers
   when no model is loaded.
 - Historical reports under `docs/` preserve older release behavior and should
-  not be rewritten as 6.4.0 claims.
+  not be rewritten as 7.0.0 claims.
