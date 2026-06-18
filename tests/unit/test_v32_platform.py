@@ -294,6 +294,37 @@ def test_memory_brain_proof_default_recall_query_is_workspace_scoped(tmp_path):
     assert "beta" not in proof["recall"]["query"]
 
 
+def test_memory_brain_proof_default_recall_query_normalizes_personal_workspace(tmp_path):
+    class _FakeConversationStore:
+        def history(self):
+            return [
+                {
+                    "role": "user",
+                    "content": "own implicit personal decision",
+                    "user_email": "user@example.com",
+                    "workspace_id": None,
+                },
+                {
+                    "role": "user",
+                    "content": "own explicit personal decision",
+                    "user_email": "user@example.com",
+                    "workspace_id": "personal",
+                },
+            ]
+
+    svc = MemoryService(
+        store=_FakeStore(),
+        data_dir=tmp_path,
+        knowledge_graph=None,
+        enable_graph=False,
+        conversation_store=_FakeConversationStore(),
+    )
+
+    proof = svc.brain_proof(user_email="user@example.com", workspace_id=None, recall_query="")
+
+    assert proof["recall"]["query"] == "own explicit personal decision"
+
+
 def test_memory_recall_and_inspect(tmp_path):
     svc = _svc(tmp_path)
     res = svc.recall("alpha")
