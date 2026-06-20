@@ -5,6 +5,9 @@ import { ModelPicker } from "./modelPicker";
 
 let client: LatticeAIClient;
 let statusBar: vscode.StatusBarItem;
+let syncStatusBar: vscode.StatusBarItem;
+let extensionVersion = "";
+let syncTimer: NodeJS.Timeout | undefined;
 
 const _diffDocs = new Map<string, string>();
 
@@ -17,6 +20,7 @@ class DiffContentProvider implements vscode.TextDocumentContentProvider {
 export async function activate(context: vscode.ExtensionContext) {
   const config = vscode.workspace.getConfiguration("ltcai");
   const serverUrl: string = config.get("serverUrl") ?? "http://localhost:4825";
+  extensionVersion = String(context.extension.packageJSON?.version || "");
 
   client = new LatticeAIClient(serverUrl);
   context.subscriptions.push(
@@ -29,6 +33,13 @@ export async function activate(context: vscode.ExtensionContext) {
   statusBar.text = "$(loading~spin) Lattice AI";
   statusBar.show();
   context.subscriptions.push(statusBar);
+
+  syncStatusBar = vscode.window.createStatusBarItem(vscode.StatusBarAlignment.Right, 99);
+  syncStatusBar.command = "ltcai.showSyncStatus";
+  syncStatusBar.text = "$(sync~spin) Lattice sync";
+  syncStatusBar.tooltip = "Checking Lattice AI workspace sync...";
+  syncStatusBar.show();
+  context.subscriptions.push(syncStatusBar);
 
   // ── Auto-load model ──────────────────────────────────────────────────────
   if (config.get("autoLoadModel")) {
@@ -160,13 +171,17 @@ export async function activate(context: vscode.ExtensionContext) {
       }
       const selection = editor.document.getText(editor.selection);
       const content = editor.document.getText();
+      updateSyncStatus("indexing", "Sending current file to Lattice...");
       await client.sendToWorkspace({
         action: "send_to_lattice",
         file_path: editor.document.fileName,
         language: editor.document.languageId,
         content,
         selection,
+        extension_version: extensionVersion,
+        workspace_folder: currentWorkspaceFolder(),
       });
+      await reportSyncStatus("synced", "synced", editor.document.fileName);
       vscode.window.showInformationMessage("Lattice AI: Sent to Workspace OS.");
     }),
 
@@ -195,7 +210,10 @@ export async function activate(context: vscode.ExtensionContext) {
         file_path: editor.document.fileName,
         language: editor.document.languageId,
         prompt: question,
+        extension_version: extensionVersion,
+        workspace_folder: currentWorkspaceFolder(),
       });
+      await reportSyncStatus("synced", "synced", editor.document.fileName);
     }),
 
     vscode.commands.registerCommand("ltcai.createFile", async () => {
@@ -277,8 +295,16 @@ export async function activate(context: vscode.ExtensionContext) {
       const tree = await client.gardenTree();
       const panel = vscode.window.createWebviewPanel("gardenTree", "Knowledge Garden", vscode.ViewColumn.Beside, {});
       panel.webview.html = renderGardenHTML(tree);
+    }),
+
+    vscode.commands.registerCommand("ltcai.showSyncStatus", async () => {
+      await refreshSyncStatus(true);
     })
   );
+
+  void refreshSyncStatus(false);
+  syncTimer = setInterval(() => void refreshSyncStatus(false), 20000);
+  context.subscriptions.push({ dispose: () => syncTimer && clearInterval(syncTimer) });
 
   console.log("Lattice AI Knowledge OS extension activated.");
 }
@@ -317,6 +343,84 @@ function updateStatusBar(modelId: string | null) {
   } else {
     statusBar.text = `$(brain) Lattice AI — No model`;
     statusBar.tooltip = "Lattice AI — Click to load a model";
+  }
+}
+
+function currentWorkspaceFolder(): string {
+  return vscode.workspace.workspaceFolders?.[0]?.uri.fsPath || "";
+}
+
+function activeFile(): string {
+  return vscode.window.activeTextEditor?.document.fileName || "";
+}
+
+function updateSyncStatus(state: "checking" | "connected" | "indexing" | "synced" | "offline", detail?: string) {
+  if (!syncStatusBar) return;
+  const icon =
+    state === "checking" ? "$(sync~spin)" :
+    state === "offline" ? "$(circle-slash)" :
+    state === "indexing" ? "$(loading~spin)" :
+    state === "synced" ? "$(check)" :
+    "$(plug)";
+  const label =
+    state === "offline" ? "Lattice offline" :
+    state === "indexing" ? "Lattice indexing" :
+    state === "synced" ? "Lattice synced" :
+    state === "checking" ? "Lattice sync" :
+    "Lattice connected";
+  syncStatusBar.text = `${icon} ${label}`;
+  syncStatusBar.tooltip = [
+    "Lattice AI VS Code bridge",
+    `State: ${state}`,
+    currentWorkspaceFolder() ? `Workspace: ${currentWorkspaceFolder()}` : "Workspace: none",
+    activeFile() ? `Active file: ${activeFile()}` : "Active file: none",
+    detail ? `Detail: ${detail}` : "",
+    "Click for current app sync status.",
+  ].filter(Boolean).join("\n");
+}
+
+async function reportSyncStatus(status: "connected" | "indexing" | "synced", indexStatus = "unknown", filePath = activeFile()) {
+  try {
+    const result = await client.reportWorkspaceStatus({
+      status,
+      index_status: indexStatus,
+      workspace_folder: currentWorkspaceFolder(),
+      extension_version: extensionVersion,
+      active_file: filePath,
+    });
+    updateSyncStatus(status, String(result.detail || result.status || ""));
+  } catch (error) {
+    updateSyncStatus("offline", error instanceof Error ? error.message : String(error));
+  }
+}
+
+async function refreshSyncStatus(showMessage: boolean) {
+  updateSyncStatus("checking");
+  try {
+    await client.reportWorkspaceStatus({
+      status: "connected",
+      index_status: "checking",
+      workspace_folder: currentWorkspaceFolder(),
+      extension_version: extensionVersion,
+      active_file: activeFile(),
+    });
+    const status = await client.workspaceStatus();
+    const connected = Boolean(status.connected);
+    const indexStatus = String(status.index_status || "unknown");
+    const next =
+      !connected ? "offline" :
+      /index|build|running|pending/i.test(indexStatus) ? "indexing" :
+      /sync|ok|ready|connected/i.test(indexStatus) ? "synced" :
+      "connected";
+    updateSyncStatus(next as "connected" | "indexing" | "synced" | "offline", indexStatus);
+    if (showMessage) {
+      vscode.window.showInformationMessage(`Lattice AI sync: ${next} (${indexStatus})`);
+    }
+  } catch (error) {
+    updateSyncStatus("offline", error instanceof Error ? error.message : String(error));
+    if (showMessage) {
+      vscode.window.showWarningMessage(`Lattice AI sync unavailable: ${error instanceof Error ? error.message : String(error)}`);
+    }
   }
 }
 

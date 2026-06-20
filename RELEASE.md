@@ -7,6 +7,33 @@
 > PyPI / npm / VS Code Marketplace / Open VSX 배포는 아래 수동 절차로만
 > 진행합니다. 태그 생성은 패키지 스토어 publish를 자동으로 트리거하지 않습니다.
 
+## v7.1.0 릴리스 노트 (2026-06-20)
+
+Lattice AI v7.1.0 — Brain Usability Completion. 7.1.0은 7.0.0의 Brain
+Productization Loop 위에서 첫 실행, ingestion, graph 탐색, 답변 proof,
+workspace/admin discovery, feedback state, VS Code 연동 상태를 제품 화면에서
+명확히 보이게 한다.
+
+첫 실행 온보딩은 하드웨어/메모리/GPU/런타임/모델 상태를 비개발자도 이해할 수
+있는 라벨과 시각 정보로 설명하고, 추천 모델과 설치 화면은 예상 다운로드/첫 응답
+시간과 다음 행동을 표시한다. Brain Home은 파일/폴더/노트/URL ingestion 단계와
+memory emergence timeline을 보여줘 사용자가 "지식이 들어갔다"는 피드백을 바로
+확인할 수 있다.
+
+Knowledge Graph layer는 검색 추천, type filter, recent/all-time 시간 탐색,
+선택 노드 focus 이동, neighbor highlight를 제공한다. Chat 답변은 inline source
+citation marker와 접근 가능한 proof payload를 함께 렌더링한다. Shell에는
+workspace/profile switcher, Admin Console gate, empty/error/consent revoke
+feedback, VS Code extension sync indicator가 추가된다. VS Code extension은
+heartbeat/status endpoint를 통해 main app에 연결/인덱싱/동기화 상태를 보고한다.
+
+Expected artifacts (exact 7.1.0 names only):
+- dist/ltcai-7.1.0-py3-none-any.whl
+- dist/ltcai-7.1.0.tar.gz
+- dist/ltcai-7.1.0.vsix
+- ltcai-7.1.0.tgz
+- src-tauri/target/release/bundle/dmg/Lattice AI_7.1.0_aarch64.dmg
+
 ## v7.0.0 릴리스 노트 (2026-06-18)
 
 Lattice AI v7.0.0 — Brain Productization Loop. 7.0.0은 6.7.0에서 정리한

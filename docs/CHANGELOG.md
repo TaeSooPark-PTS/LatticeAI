@@ -4,6 +4,29 @@ The top entry is either the current unreleased main-branch work or the current
 release line. Older entries are historical and may describe behavior as it
 existed at that release.
 
+## [7.1.0] - 2026-06-20
+
+> Brain Usability Completion. Completes the 7.1.0 first-run through editor-sync
+> usability pass: clear onboarding, visible ingestion, graph controls, inline
+> proof, workspace/admin discovery, feedback states, and VS Code sync status.
+
+### Added
+- Hardware visualization, expected timing, install timeline, and next-action
+  copy in first-run onboarding.
+- Brain Home ingestion stage disclosure and memory emergence timeline for file,
+  folder, note, and URL sources.
+- Knowledge Graph search suggestions, entity type filters, recent/all-time time
+  exploration, focus clearing, and neighbor highlighting.
+- Inline answer citation markers with keyboard-accessible proof cards.
+- Workspace/profile switcher, Admin Console gate, consent revoke feedback, and
+  shared empty/error feedback surfaces in the Brain shell.
+- VS Code extension heartbeat/status endpoint plus extension and main-app sync
+  indicators for connected/indexing/synced/offline states.
+
+### Changed
+- Package/runtime/static metadata is synchronized to 7.1.0; package publish and
+  deployment remain owner-run only.
+
 ## [7.0.0] - 2026-06-18
 
 > Brain Productization Loop. Turns the Brain proof work into a first-five-minute

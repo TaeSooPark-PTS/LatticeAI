@@ -1,8 +1,27 @@
 import * as React from "react";
-import { Cpu, DatabaseZap, FileText, FileUp, FolderPlus, Globe2, Repeat2, Search, Settings, ShieldCheck } from "lucide-react";
+import { Cpu, DatabaseZap, FileText, FileUp, FolderPlus, Globe2, Loader2, Repeat2, Search, Settings, ShieldCheck, Sparkles } from "lucide-react";
+
+const INGESTION_TYPE_LABEL_KEY: Record<IngestionSourceType, string> = {
+  file: "brain.ingest.type.file",
+  folder: "brain.ingest.type.folder",
+  note: "brain.ingest.type.note",
+  web: "brain.ingest.type.web",
+};
 import { LanguageSwitcher } from "@/components/LanguageSwitcher";
 import { t, type Language } from "@/i18n";
-import type { BrainDepth, BrainProof, BrainReadiness, KnowledgeConcept, MemoryFragment, Message } from "./types";
+import {
+  INGESTION_STAGE_ORDER,
+  type BrainDepth,
+  type BrainProof,
+  type BrainReadiness,
+  type EmergenceEvent,
+  type IngestionPipelineStage,
+  type IngestionSourceType,
+  type IngestionState,
+  type KnowledgeConcept,
+  type MemoryFragment,
+  type Message,
+} from "./types";
 import { BrainCarePanel } from "./BrainCarePanel";
 import { BrainComposer } from "./BrainComposer";
 import { BrainOverviewPanel } from "./BrainOverviewPanel";
@@ -14,6 +33,8 @@ export function BrainConversation({
   messages,
   starterPrompts,
   memoryFeedback,
+  ingestionStates,
+  emergenceEvents,
   draft,
   streaming,
   imageData,
@@ -39,6 +60,8 @@ export function BrainConversation({
   messages: Message[];
   starterPrompts: string[];
   memoryFeedback: string | null;
+  ingestionStates: Record<IngestionSourceType, IngestionState | null>;
+  emergenceEvents: EmergenceEvent[];
   draft: string;
   streaming: boolean;
   imageData: string | null;
@@ -100,11 +123,13 @@ export function BrainConversation({
         <BrainIngestionPanel
           language={language}
           uploadingDocument={uploadingDocument}
+          ingestionStates={ingestionStates}
           onUploadDocument={onUploadDocument}
           onConnectFolder={onConnectFolder}
           onIngestNote={onIngestNote}
           onIngestWeb={onIngestWeb}
         />
+        <IngestionTimelineSection language={language} emergenceEvents={emergenceEvents} />
         <BrainOverviewPanel
           memories={memories}
           concepts={concepts}
@@ -127,14 +152,21 @@ export function BrainConversation({
             onUploadDocument={onUploadDocument}
           />
         ) : (
-          messages.map((message, index) => (
-            <div key={`${message.role}-${index}`} className={`brain-message ${message.role}`}>
-              <div className="brain-message-bubble">{message.content}</div>
-              {message.role === "assistant" && message.proof ? (
-                <AnswerProofCard language={language} proof={message.proof} />
-              ) : null}
-            </div>
-          ))
+          messages.map((message, index) => {
+            const messageId = `brain-msg-${index}`;
+            const proof = message.role === "assistant" ? message.proof : undefined;
+            return (
+              <div key={`${message.role}-${index}`} className={`brain-message ${message.role}`}>
+                <div className="brain-message-bubble">
+                  {message.content}
+                  {proof && proof.citations.length ? (
+                    <InlineCitationMarkers language={language} proof={proof} messageId={messageId} />
+                  ) : null}
+                </div>
+                {proof ? <AnswerProofCard language={language} proof={proof} messageId={messageId} /> : null}
+              </div>
+            );
+          })
         )}
       </div>
 
@@ -166,6 +198,7 @@ export function BrainConversation({
 function BrainIngestionPanel({
   language,
   uploadingDocument,
+  ingestionStates,
   onUploadDocument,
   onConnectFolder,
   onIngestNote,
@@ -173,6 +206,7 @@ function BrainIngestionPanel({
 }: {
   language: Language;
   uploadingDocument: boolean;
+  ingestionStates: Record<IngestionSourceType, IngestionState | null>;
   onUploadDocument: (file: File) => void;
   onConnectFolder: (path: string) => void;
   onIngestNote: (note: string) => void;
@@ -189,7 +223,9 @@ function BrainIngestionPanel({
         <strong>{t(language, "brain.ingest.title")}</strong>
       </div>
       <div className="brain-ingestion-grid">
-        <label className={`brain-ingest-tile is-primary ${uploadingDocument ? "is-disabled" : ""}`}>
+        <label
+          className={`brain-ingest-tile is-primary ${tileStateClass(ingestionStates.file)} ${uploadingDocument ? "is-disabled" : ""}`}
+        >
           <FileUp className="h-4 w-4" />
           <span>{uploadingDocument ? t(language, "brain.upload.uploading") : t(language, "brain.ingest.file")}</span>
           <small>{t(language, "brain.ingest.file.detail")}</small>
@@ -204,9 +240,10 @@ function BrainIngestionPanel({
               if (file) onUploadDocument(file);
             }}
           />
+          <IngestionStageTrack language={language} state={ingestionStates.file} ctaKey="brain.ingest.cta.file" />
         </label>
         <form
-          className="brain-ingest-tile"
+          className={`brain-ingest-tile ${tileStateClass(ingestionStates.folder)}`}
           onSubmit={(event) => {
             event.preventDefault();
             onConnectFolder(folderPath);
@@ -216,9 +253,10 @@ function BrainIngestionPanel({
           <FolderPlus className="h-4 w-4" />
           <span>{t(language, "brain.ingest.folder")}</span>
           <input value={folderPath} onChange={(event) => setFolderPath(event.target.value)} placeholder={t(language, "brain.ingest.folder.placeholder")} />
+          <IngestionStageTrack language={language} state={ingestionStates.folder} ctaKey="brain.ingest.cta.folder" />
         </form>
         <form
-          className="brain-ingest-tile"
+          className={`brain-ingest-tile ${tileStateClass(ingestionStates.note)}`}
           onSubmit={(event) => {
             event.preventDefault();
             onIngestNote(note);
@@ -228,9 +266,10 @@ function BrainIngestionPanel({
           <FileText className="h-4 w-4" />
           <span>{t(language, "brain.ingest.note")}</span>
           <input value={note} onChange={(event) => setNote(event.target.value)} placeholder={t(language, "brain.ingest.note.placeholder")} />
+          <IngestionStageTrack language={language} state={ingestionStates.note} ctaKey="brain.ingest.cta.note" />
         </form>
         <form
-          className="brain-ingest-tile"
+          className={`brain-ingest-tile ${tileStateClass(ingestionStates.web)}`}
           onSubmit={(event) => {
             event.preventDefault();
             onIngestWeb(url);
@@ -240,8 +279,132 @@ function BrainIngestionPanel({
           <Globe2 className="h-4 w-4" />
           <span>{t(language, "brain.ingest.web")}</span>
           <input value={url} onChange={(event) => setUrl(event.target.value)} placeholder={t(language, "brain.ingest.web.placeholder")} />
+          <IngestionStageTrack language={language} state={ingestionStates.web} ctaKey="brain.ingest.cta.web" />
         </form>
       </div>
+    </section>
+  );
+}
+
+function tileStateClass(state: IngestionState | null): string {
+  if (!state) return "";
+  if (state.stage === "error") return "is-failed";
+  if (state.stage === "complete") return "is-emerged";
+  return "is-ingesting";
+}
+
+const STAGE_HINT_KEY: Record<IngestionPipelineStage, string> = {
+  preparing: "brain.ingest.stage.preparing.hint",
+  parsing: "brain.ingest.stage.parsing.hint",
+  embedding: "brain.ingest.stage.embedding.hint",
+  indexing: "brain.ingest.stage.indexing.hint",
+  complete: "brain.ingest.stage.complete.hint",
+  error: "brain.ingest.stage.error",
+};
+
+// Progressive disclosure of the pipeline: collect -> parse -> embed -> memorize.
+function IngestionStageTrack({
+  language,
+  state,
+  ctaKey,
+}: {
+  language: Language;
+  state: IngestionState | null;
+  ctaKey: string;
+}) {
+  if (!state) {
+    return <small className="brain-ingest-cta">{t(language, ctaKey)}</small>;
+  }
+
+  const activeIndex = INGESTION_STAGE_ORDER.indexOf(state.stage);
+  const isError = state.stage === "error";
+  const isComplete = state.stage === "complete";
+  const hasEmergence = state.newMemories > 0 || state.newEntities > 0;
+
+  return (
+    <div
+      className="brain-ingest-progress"
+      role="status"
+      aria-live="polite"
+      aria-label={t(language, "brain.ingest.progress.aria", { label: state.label })}
+    >
+      <div className="brain-ingest-stage-badges" aria-hidden="true">
+        {INGESTION_STAGE_ORDER.filter((stage) => stage !== "complete").map((stage) => {
+          const index = INGESTION_STAGE_ORDER.indexOf(stage);
+          const done = !isError && !isComplete && index < activeIndex;
+          const active = !isError && !isComplete && index === activeIndex;
+          const passed = isComplete;
+          const cls = isError
+            ? "is-failed"
+            : passed || done
+              ? "is-done"
+              : active
+                ? "is-active"
+                : "";
+          return (
+            <span key={stage} className={`brain-ingest-stage-badge ${cls}`}>
+              {(active || (isError && index === activeIndex)) ? <Loader2 className="h-3 w-3 brain-ingest-spin" /> : null}
+              {t(language, `brain.ingest.stage.${stage}`)}
+            </span>
+          );
+        })}
+      </div>
+      <small className={`brain-ingest-stage-hint ${isError ? "is-failed" : isComplete ? "is-emerged" : ""}`}>
+        {isError
+          ? t(language, "brain.ingest.stage.error")
+          : isComplete
+            ? hasEmergence
+              ? t(language, "brain.ingest.result", { memories: state.newMemories, entities: state.newEntities })
+              : t(language, "brain.ingest.result.empty")
+            : t(language, STAGE_HINT_KEY[state.stage])}
+      </small>
+    </div>
+  );
+}
+
+function relativeTime(language: Language, at: number, now: number): string {
+  const diffMinutes = Math.floor((now - at) / 60000);
+  if (diffMinutes < 1) return t(language, "brain.timeline.justNow");
+  return t(language, "brain.timeline.minutesAgo", { count: diffMinutes });
+}
+
+function IngestionTimelineSection({
+  language,
+  emergenceEvents,
+}: {
+  language: Language;
+  emergenceEvents: EmergenceEvent[];
+}) {
+  // Re-read the clock on each render of the parent so relative labels stay fresh-enough.
+  const now = Date.now();
+  return (
+    <section
+      className="brain-emergence-timeline"
+      aria-label={t(language, "brain.timeline.aria")}
+      aria-live="polite"
+    >
+      <div className="brain-emergence-head">
+        <Sparkles className="h-3.5 w-3.5" />
+        <strong>{t(language, "brain.timeline.emergenceTitle")}</strong>
+        <span>{t(language, "brain.timeline.recent")}</span>
+      </div>
+      {emergenceEvents.length === 0 ? (
+        <p className="brain-emergence-empty">{t(language, "brain.timeline.empty")}</p>
+      ) : (
+        <ol className="brain-emergence-list">
+          {emergenceEvents.map((event) => (
+            <li key={event.id} className="brain-emergence-item">
+              <span className="brain-emergence-type">{t(language, INGESTION_TYPE_LABEL_KEY[event.sourceType])}</span>
+              <span className="brain-emergence-label">{event.label}</span>
+              <span className="brain-emergence-counts">
+                <strong>{t(language, "brain.timeline.newMemories", { count: event.newMemories })}</strong>
+                <strong>{t(language, "brain.timeline.newEntities", { count: event.newEntities })}</strong>
+              </span>
+              <time className="brain-emergence-at">{relativeTime(language, event.at, now)}</time>
+            </li>
+          ))}
+        </ol>
+      )}
     </section>
   );
 }
@@ -276,17 +439,67 @@ function ModelContinuityDemo({
   );
 }
 
-function AnswerProofCard({ language, proof }: { language: Language; proof: NonNullable<Message["proof"]> }) {
+function citationDomId(messageId: string, citationId: string): string {
+  return `${messageId}-cite-${citationId}`;
+}
+
+// Inline, keyboard-focusable citation markers rendered next to the answer text.
+// Activating one moves focus to the matching row in the evidence card below.
+function InlineCitationMarkers({
+  language,
+  proof,
+  messageId,
+}: {
+  language: Language;
+  proof: NonNullable<Message["proof"]>;
+  messageId: string;
+}) {
+  const focusCitation = (citationId: string) => {
+    const target = document.getElementById(citationDomId(messageId, citationId));
+    if (target) {
+      target.scrollIntoView({ behavior: "smooth", block: "nearest" });
+      target.focus();
+    }
+  };
   return (
-    <div className="brain-answer-proof" aria-label={t(language, "brain.answerProof.aria")}>
+    <span className="brain-inline-citations" aria-label={t(language, "brain.answerProof.citationsLabel", { count: proof.citations.length })}>
+      {proof.citations.map((citation, index) => (
+        <button
+          key={citation.id}
+          type="button"
+          className="brain-inline-citation"
+          aria-label={t(language, "brain.answerProof.marker", { index: index + 1 })}
+          aria-controls={citationDomId(messageId, citation.id)}
+          title={citation.title}
+          onClick={() => focusCitation(citation.id)}
+        >
+          {index + 1}
+        </button>
+      ))}
+    </span>
+  );
+}
+
+function AnswerProofCard({ language, proof, messageId }: { language: Language; proof: NonNullable<Message["proof"]>; messageId: string }) {
+  return (
+    <section className="brain-answer-proof" role="group" aria-label={t(language, "brain.answerProof.aria")}>
       <div className="brain-answer-proof-head">
         <span>{t(language, "brain.answerProof.title")}</span>
         <strong>{proof.provenAcrossModels ? t(language, "brain.answerProof.modelProven", { model: proof.model }) : t(language, "brain.answerProof.modelPending", { model: proof.model })}</strong>
+        {proof.citations.length ? (
+          <small className="brain-answer-proof-count">{t(language, "brain.answerProof.citationsLabel", { count: proof.citations.length })}</small>
+        ) : null}
       </div>
       {proof.citations.length ? (
         <ol>
-          {proof.citations.map((citation) => (
-            <li key={citation.id}>
+          {proof.citations.map((citation, index) => (
+            <li
+              key={citation.id}
+              id={citationDomId(messageId, citation.id)}
+              tabIndex={-1}
+              aria-label={t(language, "brain.answerProof.citationItem", { index: index + 1, title: citation.title })}
+            >
+              <span className="brain-answer-proof-index" aria-hidden="true">{index + 1}</span>
               <span>{citation.source}</span>
               <strong>{citation.title}</strong>
               <small>{citation.snippet || proof.query}</small>
@@ -296,7 +509,7 @@ function AnswerProofCard({ language, proof }: { language: Language; proof: NonNu
       ) : (
         <small>{t(language, "brain.answerProof.empty")}</small>
       )}
-    </div>
+    </section>
   );
 }
 

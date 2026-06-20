@@ -81,6 +81,20 @@ export function InstallScreen({
         {t(language, "flow.install.body")}
       </div>
 
+      <section className="ritual-card ritual-expected-card" aria-label={t(language, "flow.install.expectedTitle")}>
+        <div className="ritual-fact-label">{t(language, "flow.install.expectedTitle")}</div>
+        <div className="ritual-time-estimate ritual-expected-line">{expectedLine(model, language)}</div>
+        <ol className="ritual-timeline">
+          {timelineSteps(model, language).map((step) => (
+            <li key={step.key} className="ritual-timeline-step">
+              <span className="ritual-timeline-name">{step.name}</span>
+              <span className="ritual-timeline-time">{step.time}</span>
+            </li>
+          ))}
+        </ol>
+        <div className="ritual-muted-hint">{t(language, "flow.install.expectedCompletion")}</div>
+      </section>
+
       <div className="ritual-install-brain">
         <LivingBrain
           state={brainStateForStage}
@@ -139,6 +153,47 @@ export function InstallScreen({
       </div>
     </div>
   );
+}
+
+function expectedLine(model: RecommendedModel, language: Language) {
+  const response = model.estimatedFirstResponseSeconds;
+  if (!model.downloadRequired || model.estimatedDownloadMinutes === 0) {
+    return t(language, "flow.install.expected.ready", { response });
+  }
+  if (model.estimatedDownloadMinutes === null) {
+    return t(language, "flow.install.expected.unknown", { response });
+  }
+  return t(language, "flow.install.expected", {
+    download: t(language, "flow.recommend.minutes", { count: model.estimatedDownloadMinutes }),
+    response,
+  });
+}
+
+function timelineSteps(model: RecommendedModel, language: Language) {
+  const downloadTime = model.downloadRequired && model.estimatedDownloadMinutes
+    ? t(language, "flow.install.timelineApprox", {
+        time: t(language, "flow.recommend.minutes", { count: model.estimatedDownloadMinutes }),
+      })
+    : t(language, "flow.install.timelineQuick");
+  return [
+    {
+      key: "download",
+      name: t(language, "flow.install.timelineStep.download"),
+      time: downloadTime,
+    },
+    {
+      key: "validate",
+      name: t(language, "flow.install.timelineStep.validate"),
+      time: t(language, "flow.install.timelineQuick"),
+    },
+    {
+      key: "load",
+      name: t(language, "flow.install.timelineStep.load"),
+      time: t(language, "flow.install.timelineApprox", {
+        time: `${model.estimatedFirstResponseSeconds}s`,
+      }),
+    },
+  ];
 }
 
 function friendlyInstallStage(stage: string): InstallStage {

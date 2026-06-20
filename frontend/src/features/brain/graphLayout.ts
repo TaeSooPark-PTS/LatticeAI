@@ -1,5 +1,16 @@
 import * as React from "react";
-import type { KnowledgeConcept } from "./types";
+import type { KnowledgeConcept, RelationshipThread } from "./types";
+
+// Return the set of node ids that share a direct (1-hop) edge with `nodeId`.
+// The focused node itself is not included.
+export function computeGraphNeighbors(nodeId: string, edges: RelationshipThread[]): Set<string> {
+  const neighbors = new Set<string>();
+  for (const edge of edges) {
+    if (edge.source === nodeId) neighbors.add(edge.target);
+    else if (edge.target === nodeId) neighbors.add(edge.source);
+  }
+  return neighbors;
+}
 
 export function layoutGraphNodes(nodes: KnowledgeConcept[], radiusX: number, radiusY: number) {
   return nodes.map((node, index) => {

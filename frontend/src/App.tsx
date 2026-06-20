@@ -5,6 +5,12 @@ import { useAppStore } from "@/store/appStore";
 import { parseHash, productShellRoutes } from "@/routes";
 import { BrainHome } from "@/features/brain/BrainHome";
 import { AdminConsole } from "@/features/admin/AdminConsole";
+import { WorkspaceProfileSwitcher } from "@/components/WorkspaceProfileSwitcher";
+import { AdminAccessGate } from "@/components/AdminAccessGate";
+import { t, type Language } from "@/i18n";
+import { latticeApi } from "@/api/client";
+import { useQuery } from "@tanstack/react-query";
+import { FeedbackState } from "@/components/FeedbackState";
 
 const ActPage = React.lazy(() => import("@/pages/Act").then((module) => ({ default: module.ActPage })));
 const BrainPage = React.lazy(() => import("@/pages/Brain").then((module) => ({ default: module.BrainPage })));
@@ -95,6 +101,7 @@ function BrainShell({
   active: string;
   children: React.ReactNode;
 }) {
+  const language = useAppStore((state) => state.language);
   return (
     <main className="brain-shell-page" aria-label="Lattice workspace">
       <nav className="brain-shell-nav" aria-label="Brain workspace navigation">
@@ -103,16 +110,89 @@ function BrainShell({
             key={item.id}
             type="button"
             className={item.id === active ? "is-active" : ""}
+            aria-current={item.id === active ? "page" : undefined}
             onClick={() => navigateHash(`/${item.path}`)}
           >
             {item.label}
           </button>
         ))}
+        <div className="brain-shell-switchers" aria-label={t(language, "shell.workspace.label")}>
+          <VsCodeSyncStatus language={language} />
+          <WorkspaceProfileSwitcher language={language} />
+          <AdminAccessGate language={language} />
+        </div>
       </nav>
       <section className="brain-shell-content">
+        <ExternalConsentStatus language={language} />
         {children}
       </section>
     </main>
+  );
+}
+
+function ExternalConsentStatus({ language }: { language: Language }) {
+  const externalConsent = useAppStore((state) => state.externalConsent);
+  const setExternalConsent = useAppStore((state) => state.setExternalConsent);
+
+  return (
+    <section className="external-consent-status" aria-label={t(language, "feedback.consent.aria")}>
+      <FeedbackState
+        tone={externalConsent ? "empty" : "error"}
+        language={language}
+        title={externalConsent ? t(language, "feedback.consent.activeTitle") : t(language, "feedback.consent.revokedTitle")}
+        body={externalConsent ? t(language, "feedback.consent.activeBody") : t(language, "feedback.consent.revokedBody")}
+        actionLabel={externalConsent ? t(language, "feedback.consent.revoke") : t(language, "feedback.consent.reenable")}
+        onAction={() => setExternalConsent(!externalConsent)}
+      />
+    </section>
+  );
+}
+
+function VsCodeSyncStatus({ language }: { language: Language }) {
+  const bridge = useQuery({
+    queryKey: ["workspaceVscodeStatus"],
+    queryFn: latticeApi.workspaceVscodeStatus,
+    refetchInterval: 15000,
+  });
+  const index = useQuery({
+    queryKey: ["index"],
+    queryFn: latticeApi.indexStatus,
+    refetchInterval: 15000,
+  });
+  const data = bridge.data?.data as Record<string, unknown> | undefined;
+  const lastSeen = Number(data?.last_seen_ms || 0);
+  const connected = Boolean(data?.connected) || (lastSeen > 0 && Date.now() - lastSeen < 60000);
+  const indexData = index.data?.data as Record<string, unknown> | undefined;
+  const indexStatus = String(indexData?.status || indexData?.state || "");
+  const indexing = /index|build|running|pending/i.test(indexStatus);
+  const state = bridge.isLoading
+    ? "checking"
+    : !connected
+      ? "offline"
+      : indexing
+        ? "indexing"
+        : "synced";
+  const labelKey = `shell.sync.${state}`;
+  const detail = connected
+    ? t(language, "shell.sync.detail")
+    : t(language, "shell.sync.detailOffline");
+
+  return (
+    <button
+      type="button"
+      className={`vscode-sync-status is-${state}`}
+      aria-label={`${t(language, "shell.sync.label")}: ${t(language, labelKey)}`}
+      title={`${t(language, "shell.sync.label")}: ${t(language, labelKey)}\n${detail}`}
+      onClick={() => {
+        window.location.hash = "/settings";
+      }}
+    >
+      <span className="vscode-sync-dot" aria-hidden="true" />
+      <span className="vscode-sync-copy">
+        <strong>{t(language, "shell.sync.label")}</strong>
+        <small>{t(language, labelKey)}</small>
+      </span>
+    </button>
   );
 }
 

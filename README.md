@@ -200,26 +200,25 @@ See [docs/DEVELOPMENT.md](docs/DEVELOPMENT.md) for developer workflow details.
 
 ## Current Release
 
-The current release is **7.0.0 Brain Productization Loop**:
+The current release is **7.1.0 Brain Usability Completion**:
 
-- Brain Home starts with ingestion: files, folders, notes, and web pages can be
-  added directly from the first screen.
-- Every Brain answer can show memory proof and source citations instead of
-  asking users to trust an ungrounded chat bubble.
-- The model-continuity demo lets users recheck the same Brain evidence after
-  changing models.
-- The first-run loop is optimized for five minutes: add source, ask, see proof,
-  then switch or deepen.
-- CI now includes a deterministic recall/KG quality eval so the Brain proof
-  promise is guarded before release.
+- First-run onboarding now explains detected hardware, recommendation timing,
+  install progress, and the next action in plain language.
+- Brain Home shows ingestion progress for files, folders, notes, and web pages,
+  including memory emergence after content lands.
+- Knowledge Graph exploration adds search suggestions, type filters, time
+  exploration, focus movement, and neighbor highlighting.
+- Chat answers surface inline source citations and accessible proof payloads.
+- Workspace/profile/admin entry points, empty/error feedback, consent revoke
+  feedback, and VS Code extension sync status are visible in the product shell.
 
-Expected artifacts for 7.0.0 release must use exact filenames:
+Expected artifacts for 7.1.0 release must use exact filenames:
 
-- `dist/ltcai-7.0.0-py3-none-any.whl`
-- `dist/ltcai-7.0.0.tar.gz`
-- `ltcai-7.0.0.tgz`
-- `dist/ltcai-7.0.0.vsix`
-- `src-tauri/target/release/bundle/dmg/Lattice AI_7.0.0_aarch64.dmg`
+- `dist/ltcai-7.1.0-py3-none-any.whl`
+- `dist/ltcai-7.1.0.tar.gz`
+- `ltcai-7.1.0.tgz`
+- `dist/ltcai-7.1.0.vsix`
+- `src-tauri/target/release/bundle/dmg/Lattice AI_7.1.0_aarch64.dmg`
 
 Do not upload `dist/*`. Package registry publishing remains owner-run.
 
@@ -238,6 +237,7 @@ Do not upload `dist/*`. Package registry publishing remains owner-run.
 
 | Version | Theme |
 | --- | --- |
+| 7.1.0 | Brain Usability Completion: clearer first-run onboarding, ingestion progress/emergence, richer graph controls, inline answer proof, workspace/profile/admin discovery, empty/error/consent feedback, and VS Code sync status |
 | 7.0.0 | Brain Productization Loop: first-screen ingestion for files/folders/notes/web, answer-level memory proof and source citations, model-continuity demo flow, five-minute first-run loop, and recall/KG quality eval in CI |
 | 6.7.0 | Brain IA Cleanup: reachable rich pages, separated product routes vs compatibility aliases, shared Brain shell navigation, and lazy-loaded rich pages |
 | 6.6.0 | Brain Proof Runtime: backend-owned Brain proof API, model-continuity wiring, first-screen proof that saved context can be recalled across model changes, and direct Brain Home document upload |

@@ -7,7 +7,19 @@ import { t } from "@/i18n";
 import { BrainConversation } from "./BrainConversation";
 import { buildBrainProof, buildBrainReadiness, buildMemoryFragments, currentModelName, parseKnowledgeGraph } from "./brainData";
 import { DepthEmergence } from "./DepthEmergence";
-import { DEPTHS, type BrainDepth, type BrainProof, type MemoryFragment, type Message, type MessageProof } from "./types";
+import {
+  DEPTHS,
+  INGESTION_STAGE_ORDER,
+  type BrainDepth,
+  type BrainProof,
+  type EmergenceEvent,
+  type IngestionPipelineStage,
+  type IngestionSourceType,
+  type IngestionState,
+  type MemoryFragment,
+  type Message,
+  type MessageProof,
+} from "./types";
 
 export function BrainHome({
   brainState,
@@ -31,8 +43,27 @@ export function BrainHome({
   const [memoryFeedback, setMemoryFeedback] = React.useState<string | null>(null);
   const [uploadingDocument, setUploadingDocument] = React.useState(false);
   const [lastRecallQuery, setLastRecallQuery] = React.useState("");
+  const [ingestionStates, setIngestionStates] = React.useState<Record<IngestionSourceType, IngestionState | null>>({
+    file: null,
+    folder: null,
+    note: null,
+    web: null,
+  });
+  const [emergenceEvents, setEmergenceEvents] = React.useState<EmergenceEvent[]>([]);
   const streamRef = React.useRef<HTMLDivElement>(null);
   const recallTimerRef = React.useRef<number | null>(null);
+  const stageTimersRef = React.useRef<Record<IngestionSourceType, number[]>>({
+    file: [],
+    folder: [],
+    note: [],
+    web: [],
+  });
+  const pendingBaselineRef = React.useRef<
+    Partial<Record<IngestionSourceType, { memories: number; entities: number; label: string }>>
+  >({});
+  // Source types whose request has resolved and are awaiting count settle to record emergence.
+  const awaitingEmergenceRef = React.useRef<Set<IngestionSourceType>>(new Set());
+  const settleTimerRef = React.useRef<number | null>(null);
 
   const memoriesQ = useQuery({ queryKey: ["memoryManager"], queryFn: latticeApi.memoryManager });
   const historyQ = useQuery({ queryKey: ["chatHistory"], queryFn: latticeApi.chatHistory });
@@ -89,8 +120,155 @@ export function BrainHome({
   React.useEffect(() => {
     return () => {
       if (recallTimerRef.current !== null) window.clearTimeout(recallTimerRef.current);
+      for (const timers of Object.values(stageTimersRef.current)) {
+        for (const timer of timers) window.clearTimeout(timer);
+      }
     };
   }, []);
+
+  const clearStageTimers = React.useCallback((sourceType: IngestionSourceType) => {
+    for (const timer of stageTimersRef.current[sourceType]) window.clearTimeout(timer);
+    stageTimersRef.current[sourceType] = [];
+  }, []);
+
+  const setStage = React.useCallback((sourceType: IngestionSourceType, stage: IngestionPipelineStage) => {
+    setIngestionStates((prev) => {
+      const current = prev[sourceType];
+      if (!current) return prev;
+      return {
+        ...prev,
+        [sourceType]: {
+          ...current,
+          stage,
+          completedAt: stage === "complete" || stage === "error" ? Date.now() : current.completedAt,
+        },
+      };
+    });
+  }, []);
+
+  const beginIngestion = React.useCallback(
+    (sourceType: IngestionSourceType, label: string) => {
+      clearStageTimers(sourceType);
+      pendingBaselineRef.current[sourceType] = {
+        memories: memoryFragments.length,
+        entities: knowledgeConcepts.length,
+        label,
+      };
+      setIngestionStates((prev) => ({
+        ...prev,
+        [sourceType]: {
+          sourceType,
+          label,
+          stage: "preparing",
+          startedAt: Date.now(),
+          completedAt: null,
+          newMemories: 0,
+          newEntities: 0,
+        },
+      }));
+      // Progressive disclosure of the in-flight pipeline while the request runs.
+      const interim: IngestionPipelineStage[] = ["parsing", "embedding", "indexing"];
+      interim.forEach((stage, index) => {
+        const timer = window.setTimeout(() => setStage(sourceType, stage), 420 * (index + 1));
+        stageTimersRef.current[sourceType].push(timer);
+      });
+    },
+    [clearStageTimers, knowledgeConcepts.length, memoryFragments.length, setStage],
+  );
+
+  const resolveEmergence = React.useCallback(
+    (sourceType: IngestionSourceType, memoryCount: number, entityCount: number) => {
+      clearStageTimers(sourceType);
+      const baseline = pendingBaselineRef.current[sourceType];
+      const label = baseline?.label ?? "";
+      // Snapshot deltas after invalidation lands; cap at >=0 to avoid noise.
+      const newMemories = Math.max(0, memoryCount - (baseline?.memories ?? memoryCount));
+      const newEntities = Math.max(0, entityCount - (baseline?.entities ?? entityCount));
+      delete pendingBaselineRef.current[sourceType];
+      setIngestionStates((prev) => {
+        const current = prev[sourceType];
+        if (!current) return prev;
+        return {
+          ...prev,
+          [sourceType]: {
+            ...current,
+            stage: "complete",
+            completedAt: Date.now(),
+            newMemories,
+            newEntities,
+          },
+        };
+      });
+      setEmergenceEvents((events) =>
+        [
+          {
+            id: `${sourceType}-${Date.now()}`,
+            sourceType,
+            label,
+            newMemories,
+            newEntities,
+            at: Date.now(),
+          },
+          ...events,
+        ].slice(0, 10),
+      );
+    },
+    [clearStageTimers],
+  );
+
+  // Once a request resolves we wait for the refetched counts to settle, then record the
+  // real emergence delta. A fallback timer guarantees the panel never hangs on a stale count.
+  const markAwaitingEmergence = React.useCallback(
+    (sourceType: IngestionSourceType) => {
+      awaitingEmergenceRef.current.add(sourceType);
+      if (settleTimerRef.current !== null) window.clearTimeout(settleTimerRef.current);
+      settleTimerRef.current = window.setTimeout(() => {
+        for (const pending of Array.from(awaitingEmergenceRef.current)) {
+          resolveEmergence(pending, memoryFragments.length, knowledgeConcepts.length);
+          awaitingEmergenceRef.current.delete(pending);
+        }
+      }, 1600);
+    },
+    [knowledgeConcepts.length, memoryFragments.length, resolveEmergence],
+  );
+
+  // Flush awaiting ingestions as soon as the underlying counts change post-invalidation.
+  React.useEffect(() => {
+    if (awaitingEmergenceRef.current.size === 0) return;
+    for (const pending of Array.from(awaitingEmergenceRef.current)) {
+      const baseline = pendingBaselineRef.current[pending];
+      if (!baseline) {
+        awaitingEmergenceRef.current.delete(pending);
+        continue;
+      }
+      if (memoryFragments.length !== baseline.memories || knowledgeConcepts.length !== baseline.entities) {
+        resolveEmergence(pending, memoryFragments.length, knowledgeConcepts.length);
+        awaitingEmergenceRef.current.delete(pending);
+      }
+    }
+  }, [memoryFragments.length, knowledgeConcepts.length, resolveEmergence]);
+
+  React.useEffect(() => {
+    return () => {
+      if (settleTimerRef.current !== null) window.clearTimeout(settleTimerRef.current);
+    };
+  }, []);
+
+  const failIngestion = React.useCallback(
+    (sourceType: IngestionSourceType, reason: string) => {
+      clearStageTimers(sourceType);
+      delete pendingBaselineRef.current[sourceType];
+      setIngestionStates((prev) => {
+        const current = prev[sourceType];
+        if (!current) return prev;
+        return {
+          ...prev,
+          [sourceType]: { ...current, stage: "error", completedAt: Date.now(), error: reason },
+        };
+      });
+    },
+    [clearStageTimers],
+  );
 
   async function send() {
     const text = draft.trim();
@@ -167,11 +345,13 @@ export function BrainHome({
     setUploadingDocument(true);
     setMemoryFeedback(t(language, "brain.upload.pending", { name: file.name }));
     onBrainChange("recalling", 0.86);
+    beginIngestion("file", file.name);
 
     try {
       const result = await latticeApi.uploadDocument(file);
       if (result.error) {
         setMemoryFeedback(t(language, "brain.upload.failed", { reason: result.error }));
+        failIngestion("file", result.error);
         return;
       }
 
@@ -181,6 +361,7 @@ export function BrainHome({
       void qc.invalidateQueries({ queryKey: ["memoryManager"] });
       void qc.invalidateQueries({ queryKey: ["graph"] });
       void qc.invalidateQueries({ queryKey: ["memoryBrainProof"] });
+      markAwaitingEmergence("file");
     } finally {
       setUploadingDocument(false);
     }
@@ -191,15 +372,18 @@ export function BrainHome({
     if (!target) return;
     setMemoryFeedback(t(language, "brain.ingest.folder.pending", { path: target }));
     onBrainChange("recalling", 0.84);
+    beginIngestion("folder", target);
     const result = await latticeApi.connectFolder(target);
     if (result.error || !result.ok) {
       setMemoryFeedback(t(language, "brain.ingest.folder.failed", { reason: result.error || "unavailable" }));
+      failIngestion("folder", result.error || "unavailable");
       return;
     }
     setMemoryFeedback(t(language, "brain.ingest.folder.saved", { path: target }));
     setLastRecallQuery(target);
     triggerBrainRecall();
     void refreshBrainProof(target);
+    markAwaitingEmergence("folder");
   }
 
   async function ingestNote(note: string) {
@@ -207,15 +391,18 @@ export function BrainHome({
     if (!content) return;
     setMemoryFeedback(t(language, "brain.ingest.note.pending"));
     onBrainChange("recalling", 0.84);
+    beginIngestion("note", content.slice(0, 80));
     const result = await latticeApi.ingestNote(content, content.slice(0, 80));
     if (result.error || !result.ok) {
       setMemoryFeedback(t(language, "brain.ingest.note.failed", { reason: result.error || "unavailable" }));
+      failIngestion("note", result.error || "unavailable");
       return;
     }
     setMemoryFeedback(t(language, "brain.ingest.note.saved"));
     setLastRecallQuery(content.slice(0, 120));
     triggerBrainRecall();
     void refreshBrainProof(content.slice(0, 120));
+    markAwaitingEmergence("note");
   }
 
   async function ingestWeb(url: string) {
@@ -223,15 +410,18 @@ export function BrainHome({
     if (!target) return;
     setMemoryFeedback(t(language, "brain.ingest.web.pending", { url: target }));
     onBrainChange("recalling", 0.84);
+    beginIngestion("web", target);
     const result = await latticeApi.browserReadUrl(target);
     if (result.error || !result.ok) {
       setMemoryFeedback(t(language, "brain.ingest.web.failed", { reason: result.error || "unavailable" }));
+      failIngestion("web", result.error || "unavailable");
       return;
     }
     setMemoryFeedback(t(language, "brain.ingest.web.saved", { url: target }));
     setLastRecallQuery(target);
     triggerBrainRecall();
     void refreshBrainProof(target);
+    markAwaitingEmergence("web");
   }
 
   async function refreshBrainProof(query = lastRecallQuery) {
@@ -361,6 +551,8 @@ export function BrainHome({
         messages={messages}
         starterPrompts={starterPrompts}
         memoryFeedback={memoryFeedback}
+        ingestionStates={ingestionStates}
+        emergenceEvents={emergenceEvents}
         draft={draft}
         streaming={streaming}
         imageData={imageData}

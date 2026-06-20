@@ -12,14 +12,14 @@ chat, run model workflows, and trigger coding actions from the editor.
 
 ## Current Release
 
-**7.0.0 — Brain Productization Loop.** The extension follows
+**7.1.0 — Brain Usability Completion.** The extension follows
 the main app positioning: Lattice AI is a local-first Digital Brain, not just a
 model launcher or editor chat panel. It connects editor actions to the same
 durable Brain context, explicit consent gates, replaceable model workflow, and
-separated Admin surface used by the desktop app. The v7.0.0 line makes the
-main Brain loop product-ready: files, folders, notes, and web pages can enter
-Brain Home directly; answers can show Memory proof and citations; and the same
-Brain evidence can be rechecked after changing models.
+separated Admin surface used by the desktop app. The v7.1.0 line adds a
+visible VS Code sync status in both the editor and main app, reporting
+connected, indexing, synced, and offline states without sending file contents
+until the user runs an explicit file action.
 
 ## Quick Start
 
@@ -50,6 +50,7 @@ The extension auto-connects to `http://localhost:4825`.
 | Chat panel | Work with local or cloud models using workspace and graph context |
 | Current file actions | Ask, edit, explain, refactor, and generate tests from the active file |
 | Send To Lattice | Send the current file or selection into workspace workflows |
+| Sync status | See whether the editor is connected, indexing, synced, or offline |
 | Model workflows | Load, switch, and use model choices managed by Lattice AI |
 | Knowledge Graph | Use graph-backed context from files, notes, screenshots, and conversations |
 | Multi-agent workflow | Start planner/executor/reviewer style coding workflows |
@@ -68,6 +69,7 @@ The extension auto-connects to `http://localhost:4825`.
 | Lattice AI: Generate Tests | Command palette | Generate focused tests |
 | Lattice AI: Send To Lattice | Command palette | Record file context in Lattice AI |
 | Lattice AI: Ask About Current File | Command palette | Ask with current file context |
+| Lattice AI: Show Sync Status | Command palette / status bar | Inspect the editor-to-app bridge state |
 | Lattice AI: Generate Terminal Command | Right-click menu | Generate a shell command |
 | Lattice AI: Save to Knowledge Garden | Right-click menu | Save a snippet or note |
 

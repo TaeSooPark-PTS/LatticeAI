@@ -33,7 +33,9 @@ export function parseKnowledgeGraph(data: unknown): KnowledgeGraphModel {
     const label = textValue(node, ["title", "label", "name"], id.replace(/^[^:]+:/, ""));
     const summary = textValue(node, ["summary", "description", "snippet"]) || textValue(metadata, ["summary", "description", "relative_path", "filename"]);
     const importance = clamp(numberValue(node, ["importance_norm", "importance", "score"]) || 0.5, 0.08, 1);
-    return [{ id, label, type, summary, importance }];
+    const createdAt = timestampValue(node, ["created_at", "createdAt", "added_at", "addedAt", "timestamp", "updated_at", "updatedAt"])
+      ?? timestampValue(metadata, ["created_at", "createdAt", "added_at", "addedAt", "timestamp", "updated_at", "updatedAt"]);
+    return [{ id, label, type, summary, importance, ...(createdAt !== undefined ? { createdAt } : {}) }];
   }).sort((left, right) => right.importance - left.importance);
   const ids = new Set(nodes.map((node) => node.id));
   const edges = rawEdges.flatMap((edge, index): RelationshipThread[] => {
@@ -203,6 +205,28 @@ function titleValue(record: ApiRecord, keys: string[], fallback = "") {
   return value
     .replace(/[_-]+/g, " ")
     .replace(/\b\w/g, (character) => character.toUpperCase());
+}
+
+// Parse a created/added timestamp into unix epoch milliseconds. Accepts ISO 8601
+// strings, unix seconds, or unix milliseconds. Returns undefined when absent or
+// unparseable so the time-exploration UI can fall back gracefully.
+function timestampValue(record: ApiRecord, keys: string[]): number | undefined {
+  for (const key of keys) {
+    const value = record[key];
+    if (typeof value === "number" && Number.isFinite(value)) {
+      // Heuristic: values below ~1e12 are seconds, otherwise milliseconds.
+      return value < 1e12 ? value * 1000 : value;
+    }
+    if (typeof value === "string" && value.trim()) {
+      const numeric = Number(value);
+      if (Number.isFinite(numeric) && /^\d+$/.test(value.trim())) {
+        return numeric < 1e12 ? numeric * 1000 : numeric;
+      }
+      const parsed = Date.parse(value);
+      if (Number.isFinite(parsed)) return parsed;
+    }
+  }
+  return undefined;
 }
 
 function numberValue(record: ApiRecord, keys: string[]) {

@@ -416,6 +416,12 @@ export const latticeApi = {
   },
   health: () => get("/health", {}),
   workspaceOs: () => get("/workspace/os", { counts: {}, models: {}, workspace_registry: { workspaces: [] } }),
+  workspaceVscodeStatus: () => get("/workspace/vscode/status", {
+    connected: false,
+    last_seen_ms: 0,
+    status: "offline",
+    index_status: "unknown",
+  }),
   indexStatus: () => get("/api/index/status", {}),
   rebuildIndex: () => post("/api/index/rebuild", { full: false, include_nodes: true, include_chunks: true }, {}),
   graph: () => get("/knowledge-graph/graph", { nodes: [], edges: [] }),

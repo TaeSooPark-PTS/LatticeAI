@@ -2,7 +2,7 @@
   "name": "ltcai",
   "displayName": "Lattice AI",
   "description": "Lattice AI extension for the local-first Digital Brain that keeps your knowledge durable across any AI model.",
-  "version": "7.0.0",
+  "version": "7.1.0",
   "publisher": "parktaesoo",
   "license": "MIT",
   "homepage": "https://github.com/TaeSooPark-PTS/LatticeAI#readme",
@@ -50,7 +50,8 @@
     "onCommand:ltcai.runTerminal",
     "onCommand:ltcai.garden",
     "onCommand:ltcai.showGarden",
-    "onCommand:ltcai.attachFile"
+    "onCommand:ltcai.attachFile",
+    "onCommand:ltcai.showSyncStatus"
   ],
   "main": "./out/extension.js",
   "contributes": {
@@ -106,6 +107,10 @@
       {
         "command": "ltcai.attachFile",
         "title": "Lattice AI: Attach Current File to Chat"
+      },
+      {
+        "command": "ltcai.showSyncStatus",
+        "title": "Lattice AI: Show Sync Status"
       }
     ],
     "configuration": {

@@ -33,6 +33,9 @@ export type KnowledgeConcept = {
   type: string;
   summary: string;
   importance: number;
+  // Optional unix epoch (ms) the concept was added to the graph. Enables
+  // time-based exploration; absent when the backend does not yet emit it.
+  createdAt?: number;
 };
 
 export type RelationshipThread = {
@@ -99,6 +102,44 @@ export type BrainProof = {
     isKnowledgeStore: boolean;
   };
 };
+
+export type IngestionSourceType = "file" | "folder" | "note" | "web";
+
+export type IngestionPipelineStage =
+  | "preparing"
+  | "parsing"
+  | "embedding"
+  | "indexing"
+  | "complete"
+  | "error";
+
+export type IngestionState = {
+  sourceType: IngestionSourceType;
+  label: string;
+  stage: IngestionPipelineStage;
+  startedAt: number;
+  completedAt: number | null;
+  newMemories: number;
+  newEntities: number;
+  error?: string;
+};
+
+export type EmergenceEvent = {
+  id: string;
+  sourceType: IngestionSourceType;
+  label: string;
+  newMemories: number;
+  newEntities: number;
+  at: number;
+};
+
+export const INGESTION_STAGE_ORDER: IngestionPipelineStage[] = [
+  "preparing",
+  "parsing",
+  "embedding",
+  "indexing",
+  "complete",
+];
 
 export const DEPTHS: Array<{ level: BrainDepth; labelKey: string; state: BrainState }> = [
   { level: 1, labelKey: "brain.depthLabel.1", state: "idle" },

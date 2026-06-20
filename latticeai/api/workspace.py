@@ -99,6 +99,25 @@ class WorkspaceVSCodeRequest(BaseModel):
     content: str = ""
     selection: str = ""
     prompt: str = ""
+    extension_version: str = ""
+    workspace_folder: str = ""
+
+
+class WorkspaceVSCodeStatusRequest(BaseModel):
+    status: str = "connected"
+    index_status: str = "unknown"
+    workspace_folder: str = ""
+    extension_version: str = ""
+    active_file: str = ""
+    detail: str = ""
+
+
+_VSCODE_STATUS: Dict[str, object] = {
+    "connected": False,
+    "status": "offline",
+    "index_status": "unknown",
+    "last_seen_ms": 0,
+}
 
 
 class WorkspaceCreateRequest(BaseModel):
@@ -630,9 +649,49 @@ def create_workspace_router(context: AppContext) -> APIRouter:
 
     # ── VS Code workflow bridge ───────────────────────────────────────────
 
+    @router.get("/workspace/vscode/status")
+    async def workspace_vscode_status(request: Request):
+        require_user(request)
+        last_seen = int(_VSCODE_STATUS.get("last_seen_ms") or 0)
+        now_ms = int(datetime.utcnow().timestamp() * 1000)
+        connected = last_seen > 0 and (now_ms - last_seen) < 60000
+        return {
+            **_VSCODE_STATUS,
+            "connected": connected,
+            "status": _VSCODE_STATUS.get("status") if connected else "offline",
+        }
+
+    @router.post("/workspace/vscode/status")
+    async def workspace_vscode_status_update(req: WorkspaceVSCodeStatusRequest, request: Request):
+        current_user = require_user(request)
+        now_ms = int(datetime.utcnow().timestamp() * 1000)
+        _VSCODE_STATUS.update({
+            "connected": True,
+            "status": req.status or "connected",
+            "index_status": req.index_status or "unknown",
+            "workspace_folder": req.workspace_folder,
+            "extension_version": req.extension_version,
+            "active_file": req.active_file,
+            "detail": req.detail,
+            "last_seen_ms": now_ms,
+            "user_email": current_user,
+        })
+        return {"status": "ok", **_VSCODE_STATUS}
+
     @router.post("/workspace/vscode/send")
     async def workspace_vscode_send(req: WorkspaceVSCodeRequest, request: Request):
         current_user = require_user(request)
+        now_ms = int(datetime.utcnow().timestamp() * 1000)
+        _VSCODE_STATUS.update({
+            "connected": True,
+            "status": "synced",
+            "index_status": "synced",
+            "workspace_folder": req.workspace_folder,
+            "extension_version": req.extension_version,
+            "active_file": req.file_path or "",
+            "last_seen_ms": now_ms,
+            "user_email": current_user,
+        })
         content = req.selection or req.content or req.prompt
         workflow = WORKSPACE_OS.create_workflow(
             name=f"VS Code: {req.action}",

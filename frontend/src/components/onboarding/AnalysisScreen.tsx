@@ -23,8 +23,11 @@ export function AnalysisScreen({
 
       <div className="ritual-fact-grid">
         {detected.map((item, idx) => (
-          <div key={idx} className="ritual-fact">
-            <div className="ritual-fact-label">{item.label}</div>
+          <div key={idx} className="ritual-fact ritual-fact--visual">
+            <div className="ritual-fact-head">
+              <span className="ritual-hardware-icon" aria-hidden="true">{item.icon}</span>
+              <div className="ritual-fact-label">{item.label}</div>
+            </div>
             <div className="ritual-fact-value">{item.value}</div>
             <div className="ritual-fact-detail">{item.detail}</div>
           </div>
@@ -57,11 +60,11 @@ export function AnalysisScreen({
 function buildDetectedFacts(analysis: FlowAnalysis | null, language: Language) {
   if (!analysis) {
     return [
-      { label: t(language, "flow.analysis.fact.computer"), value: t(language, "flow.analysis.checking"), detail: t(language, "flow.analysis.fact.computerDetail") },
-      { label: t(language, "flow.analysis.fact.memory"), value: t(language, "flow.analysis.checking"), detail: t(language, "flow.analysis.fact.memoryDetail") },
-      { label: t(language, "flow.analysis.fact.graphics"), value: t(language, "flow.analysis.checking"), detail: t(language, "flow.analysis.fact.graphicsDetail") },
-      { label: t(language, "flow.analysis.fact.support"), value: t(language, "flow.analysis.checking"), detail: t(language, "flow.analysis.fact.supportDetail") },
-      { label: t(language, "flow.analysis.fact.models"), value: t(language, "flow.analysis.checking"), detail: t(language, "flow.analysis.fact.modelsDetail") },
+      { icon: t(language, "flow.analysis.hardware.icon.chip"), label: t(language, "flow.analysis.hardware.label.chip"), value: t(language, "flow.analysis.checking"), detail: t(language, "flow.analysis.fact.computerDetail") },
+      { icon: t(language, "flow.analysis.hardware.icon.ram"), label: t(language, "flow.analysis.hardware.label.ram"), value: t(language, "flow.analysis.checking"), detail: t(language, "flow.analysis.fact.memoryDetail") },
+      { icon: t(language, "flow.analysis.hardware.icon.gpu"), label: t(language, "flow.analysis.hardware.label.gpu"), value: t(language, "flow.analysis.checking"), detail: t(language, "flow.analysis.fact.graphicsDetail") },
+      { icon: t(language, "flow.analysis.hardware.icon.support"), label: t(language, "flow.analysis.hardware.label.support"), value: t(language, "flow.analysis.checking"), detail: t(language, "flow.analysis.fact.supportDetail") },
+      { icon: t(language, "flow.analysis.hardware.icon.models"), label: t(language, "flow.analysis.hardware.label.models"), value: t(language, "flow.analysis.checking"), detail: t(language, "flow.analysis.fact.modelsDetail") },
     ];
   }
   const setupEnv = asRecord(analysis.setup?.environment);
@@ -81,27 +84,32 @@ function buildDetectedFacts(analysis: FlowAnalysis | null, language: Language) {
   ];
   return [
     {
-      label: t(language, "flow.analysis.fact.computer"),
+      icon: t(language, "flow.analysis.hardware.icon.chip"),
+      label: t(language, "flow.analysis.hardware.label.chip"),
       value: appleSilicon ? t(language, "flow.analysis.apple") : friendlyOs(profile.os, language),
       detail: t(language, "flow.analysis.readyDetail"),
     },
     {
-      label: t(language, "flow.analysis.fact.memory"),
+      icon: t(language, "flow.analysis.hardware.icon.ram"),
+      label: t(language, "flow.analysis.hardware.label.ram"),
       value: ramGb ? `${Math.round(ramGb)} GB` : t(language, "flow.analysis.detected"),
       detail: t(language, "flow.analysis.memoryReadyDetail"),
     },
     {
-      label: t(language, "flow.analysis.fact.graphics"),
+      icon: t(language, "flow.analysis.hardware.icon.gpu"),
+      label: t(language, "flow.analysis.hardware.label.gpu"),
       value: gpu.vendor || sysinfo.gpu_mem_gb ? t(language, "flow.analysis.localReady") : t(language, "flow.analysis.standardLocal"),
       detail: t(language, "flow.analysis.graphicsReadyDetail"),
     },
     {
-      label: t(language, "flow.analysis.fact.support"),
+      icon: t(language, "flow.analysis.hardware.icon.support"),
+      label: t(language, "flow.analysis.hardware.label.support"),
       value: installedRuntimes.length ? t(language, "flow.analysis.supportReady") : t(language, "flow.analysis.supportInstall"),
       detail: installedRuntimes.length ? t(language, "flow.analysis.supportReadyDetail") : t(language, "flow.analysis.supportInstallDetail"),
     },
     {
-      label: t(language, "flow.analysis.fact.models"),
+      icon: t(language, "flow.analysis.hardware.icon.models"),
+      label: t(language, "flow.analysis.hardware.label.models"),
       value: loadedModels.length ? t(language, "flow.analysis.modelsInstalled", { count: loadedModels.length }) : t(language, "flow.analysis.noModels"),
       detail: loadedModels.length ? t(language, "flow.analysis.modelsReadyDetail") : t(language, "flow.analysis.modelsInstallDetail"),
     },

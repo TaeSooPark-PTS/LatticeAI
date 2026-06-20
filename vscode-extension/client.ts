@@ -108,8 +108,25 @@ export class LatticeAIClient {
     content?: string;
     selection?: string;
     prompt?: string;
+    extension_version?: string;
+    workspace_folder?: string;
   }): Promise<any> {
     return this._post("/workspace/vscode/send", payload);
+  }
+
+  async workspaceStatus(): Promise<any> {
+    return this._get("/workspace/vscode/status");
+  }
+
+  async reportWorkspaceStatus(payload: {
+    status: string;
+    index_status?: string;
+    workspace_folder?: string;
+    extension_version?: string;
+    active_file?: string;
+    detail?: string;
+  }): Promise<any> {
+    return this._post("/workspace/vscode/status", payload);
   }
 
   // ── HTTP Helpers ──────────────────────────────────────────────────────────

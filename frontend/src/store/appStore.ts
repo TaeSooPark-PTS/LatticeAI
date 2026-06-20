@@ -10,11 +10,13 @@ type AppState = {
   workspaceId: string | null;
   apiBase: string | null;
   language: Language;
+  externalConsent: boolean;
   setTheme: (theme: Theme) => void;
   setMode: (mode: WorkspaceMode) => void;
   setWorkspaceId: (workspaceId: string | null) => void;
   setApiBase: (apiBase: string | null) => void;
   setLanguage: (language: Language) => void;
+  setExternalConsent: (externalConsent: boolean) => void;
 };
 
 function readTheme(): Theme {
@@ -40,6 +42,14 @@ function readWorkspaceId(): string | null {
   return null;
 }
 
+function readExternalConsent(): boolean {
+  try {
+    // Default: external access allowed (matches existing user-initiated download flow).
+    return localStorage.getItem("lattice.externalConsent") !== "revoked";
+  } catch {}
+  return true;
+}
+
 function readLanguage(): Language {
   try {
     const saved = localStorage.getItem("lattice.language");
@@ -55,6 +65,7 @@ export const useAppStore = create<AppState>((set) => ({
   workspaceId: readWorkspaceId(),
   apiBase: null,
   language: readLanguage(),
+  externalConsent: readExternalConsent(),
   setTheme: (theme) => {
     document.documentElement.dataset.theme = theme;
     try { localStorage.setItem("lattice.theme", theme); } catch {}
@@ -71,6 +82,10 @@ export const useAppStore = create<AppState>((set) => ({
     set({ workspaceId });
   },
   setApiBase: (apiBase) => set({ apiBase }),
+  setExternalConsent: (externalConsent) => {
+    try { localStorage.setItem("lattice.externalConsent", externalConsent ? "granted" : "revoked"); } catch {}
+    set({ externalConsent });
+  },
   setLanguage: (language) => {
     document.documentElement.lang = language === "ko" ? "ko" : "en";
     try { localStorage.setItem("lattice.language", language); } catch {}

@@ -84,7 +84,7 @@ BASELINE_PATHS = [
     "/workspace/snapshots/{snapshot_id}", "/workspace/snapshots/{snapshot_id}/export",
     "/workspace/snapshots/{snapshot_id}/{area}", "/workspace/time-machine",
     "/workspace/time-machine/{snapshot_id}/{area}", "/workspace/traces",
-    "/workspace/vscode/send", "/workspace/workflows",
+    "/workspace/vscode/send", "/workspace/vscode/status", "/workspace/workflows",
     "/workspace/workflows/{workflow_id}/events",
 ]
 

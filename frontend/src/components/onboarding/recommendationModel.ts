@@ -25,6 +25,12 @@ export type RecommendedModel = {
   downloadSize: string;
   storageLocation: string;
   externalHost: string;
+  /** Estimated download time in minutes. 0 when nothing needs downloading; null when size is unknown. */
+  estimatedDownloadMinutes: number | null;
+  /** Estimated seconds to first response after the model is loaded. */
+  estimatedFirstResponseSeconds: number;
+  /** Rough parameter scale (e.g. 8, 12, 70) parsed from the model name; null when unknown. */
+  parameterBillions: number | null;
 };
 
 export function buildRecommendations(analysis: FlowAnalysis | null): RecommendedModel[] {
@@ -75,6 +81,9 @@ export function fallbackModel(): RecommendedModel {
     downloadSize: "",
     storageLocation: "~/.latticeai/models",
     externalHost: "",
+    estimatedDownloadMinutes: 0,
+    estimatedFirstResponseSeconds: 5,
+    parameterBillions: 8,
   };
 }
 
@@ -87,6 +96,9 @@ function toRecommendedModel(row: ApiData): RecommendedModel {
     && row.load_status !== "runtime_update_needed"
     && row.status !== "not_recommended"
     && compatibility.supported !== false;
+  const downloadRequired = Boolean(row.download_required);
+  const downloadSize = String(row.download_size || row.size || "");
+  const parameterBillions = parseParameterBillions(`${name} ${id}`);
   return {
     id,
     loadId,
@@ -98,11 +110,56 @@ function toRecommendedModel(row: ApiData): RecommendedModel {
     role: "best",
     reason: String(row.reason || ""),
     supported,
-    downloadRequired: Boolean(row.download_required),
-    downloadSize: String(row.download_size || row.size || ""),
+    downloadRequired,
+    downloadSize,
     storageLocation: String(row.storage_location || row.local_path || "~/.latticeai/models"),
     externalHost: externalHostLabel(row),
+    estimatedDownloadMinutes: downloadRequired ? estimateDownloadMinutes(downloadSize) : 0,
+    estimatedFirstResponseSeconds: estimateFirstResponseSeconds(parameterBillions),
+    parameterBillions,
   };
+}
+
+/** Parse a download size string like "8GB", "8.5 GB", "512MB" into megabytes; null when unparseable. */
+export function parseDownloadMegabytes(value: string): number | null {
+  const match = String(value || "").match(/([\d.]+)\s*(t|g|m)?b?/i);
+  if (!match) return null;
+  const amount = Number(match[1]);
+  if (!Number.isFinite(amount) || amount <= 0) return null;
+  const unit = (match[2] || "g").toLowerCase();
+  if (unit === "t") return amount * 1024 * 1024;
+  if (unit === "m") return amount;
+  return amount * 1024; // gigabytes (default assumption for model weights)
+}
+
+/**
+ * Estimate download minutes from a size string, assuming a conservative ~15 Mbps
+ * (≈1.875 MB/s) average home connection. Returns null when the size is unknown so
+ * the UI can fall back to a "time unknown" message instead of showing 0.
+ */
+export function estimateDownloadMinutes(downloadSize: string): number | null {
+  const megabytes = parseDownloadMegabytes(downloadSize);
+  if (megabytes === null) return null;
+  const megabytesPerSecond = 15 / 8; // 15 Mbps
+  const minutes = megabytes / megabytesPerSecond / 60;
+  return Math.max(1, Math.round(minutes));
+}
+
+/** Pull a rough parameter scale (billions) out of a model name like "Gemma 12B" or "qwen-8b". */
+export function parseParameterBillions(text: string): number | null {
+  const match = String(text || "").match(/(\d{1,3}(?:\.\d)?)\s*b\b/i);
+  if (!match) return null;
+  const value = Number(match[1]);
+  return Number.isFinite(value) && value > 0 ? value : null;
+}
+
+/** Estimate seconds to first response from model scale: 8B→5s, 12B→10s, 70B→30s. */
+export function estimateFirstResponseSeconds(parameterBillions: number | null): number {
+  if (parameterBillions === null) return 8;
+  if (parameterBillions <= 9) return 5;
+  if (parameterBillions <= 16) return 10;
+  if (parameterBillions <= 40) return 18;
+  return 30;
 }
 
 function externalHostLabel(row: ApiData) {

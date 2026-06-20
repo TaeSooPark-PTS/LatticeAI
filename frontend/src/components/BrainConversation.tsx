@@ -3,13 +3,17 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { ImagePlus, MessageSquare, Plus, Send, Trash2 } from "lucide-react";
 import { latticeApi } from "@/api/client";
 import { EmptyState, EntityList, SourceBadge, StructuredView } from "@/components/primitives";
+import { FeedbackState } from "@/components/FeedbackState";
 import { type BrainState, LivingBrain } from "@/components/LivingBrain";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { asArray } from "@/lib/utils";
+import { t, type Language } from "@/i18n";
+import { useAppStore } from "@/store/appStore";
 
-type Msg = { role?: string; content?: string; timestamp?: string };
+type Citation = { id: string; source: string; title: string; snippet: string; score: number | null };
+type Msg = { role?: string; content?: string; timestamp?: string; citations?: Citation[] };
 type BrainActivity = BrainState;
 type BrainVitals = {
   connected: boolean;
@@ -49,7 +53,58 @@ function usageNumber(data: unknown, key: string) {
   return Number.isFinite(value) ? value : null;
 }
 
+// Pull human-readable citation records out of the heterogeneous streaming trace.
+// The backend trace shape varies, so we defensively scan the common containers
+// (matches / sources / retrieved / context / chunks) for source-like records.
+function extractCitations(trace: unknown): Citation[] {
+  if (!trace || typeof trace !== "object") return [];
+  const record = trace as Record<string, unknown>;
+  const containerKeys = ["matches", "sources", "retrieved", "context", "chunks", "citations", "evidence"];
+  let rows: Array<Record<string, unknown>> = [];
+  for (const key of containerKeys) {
+    const candidate = asArray<Record<string, unknown>>(record[key]);
+    if (candidate.length) {
+      rows = candidate;
+      break;
+    }
+  }
+  if (!rows.length && Array.isArray(trace)) rows = trace as Array<Record<string, unknown>>;
+
+  const seen = new Set<string>();
+  const citations: Citation[] = [];
+  for (const row of rows) {
+    if (!row || typeof row !== "object") continue;
+    const title = String(row.title || row.name || row.heading || row.label || row.id || "").trim();
+    const source = String(row.source || row.type || row.origin || row.kind || row.provider || "memory").trim();
+    const snippet = String(row.snippet || row.text || row.content || row.summary || row.excerpt || "").trim();
+    if (!title && !snippet) continue;
+    const scoreRaw = Number(row.score ?? row.relevance ?? row.similarity);
+    const score = Number.isFinite(scoreRaw) ? Math.round((scoreRaw <= 1 ? scoreRaw * 100 : scoreRaw)) : null;
+    const id = String(row.id || `${source}:${title}:${snippet.slice(0, 24)}`);
+    if (seen.has(id)) continue;
+    seen.add(id);
+    citations.push({ id, source: source || "memory", title: title || snippet.slice(0, 48), snippet, score });
+    if (citations.length >= 6) break;
+  }
+  return citations;
+}
+
+// Anchor citation chips after the first N sentences (conservative heuristic).
+// Each segment carries an optional citation index so chips stay tied to text.
+function splitWithCitations(content: string, citationCount: number): Array<{ text: string; citation: number | null }> {
+  if (!citationCount || !content) return [{ text: content, citation: null }];
+  const sentences = content.match(/[^.!?。！？\n]+[.!?。！？]?\s*/g);
+  if (!sentences || sentences.length <= 1) return [{ text: content, citation: 0 }];
+  const segments: Array<{ text: string; citation: number | null }> = [];
+  sentences.forEach((sentence, index) => {
+    const citation = index < citationCount ? index : null;
+    segments.push({ text: sentence, citation });
+  });
+  return segments;
+}
+
 export function BrainConversation({ className }: { className?: string }) {
+  const language = useAppStore((state) => state.language);
   const qc = useQueryClient();
   const history = useQuery({ queryKey: ["chatHistory"], queryFn: latticeApi.chatHistory });
   const models = useQuery({ queryKey: ["models"], queryFn: latticeApi.models });
@@ -94,7 +149,20 @@ export function BrainConversation({ className }: { className?: string }) {
               return next;
             });
           },
-          onTrace: setTrace,
+          onTrace: (incoming) => {
+            setTrace(incoming);
+            const citations = extractCitations(incoming);
+            if (citations.length) {
+              setMessages((items) => {
+                const next = [...items];
+                const last = next[next.length - 1];
+                if (last && last.role === "assistant") {
+                  next[next.length - 1] = { ...last, citations };
+                }
+                return next;
+              });
+            }
+          },
         },
       );
       if (result.error) {
@@ -167,7 +235,15 @@ export function BrainConversation({ className }: { className?: string }) {
               <div key={`${msg.role || "message"}-${index}`} className={`brain-message-row ${msg.role === "user" ? "from-user" : "from-brain"}`}>
                 <div className="brain-message-bubble">
                   <div className="brain-message-role">{msg.role === "user" ? "You" : "Brain"}</div>
-                  <div className="whitespace-pre-wrap">{msg.content}</div>
+                  {msg.role === "user" ? (
+                    <div className="whitespace-pre-wrap">{msg.content}</div>
+                  ) : (
+                    <MessageWithCitations
+                      language={language}
+                      content={msg.content || ""}
+                      citations={msg.citations || []}
+                    />
+                  )}
                 </div>
               </div>
             )) : (
@@ -239,6 +315,122 @@ export function BrainConversation({ className }: { className?: string }) {
   );
 }
 
+// Renders assistant text with inline, keyboard-accessible citation chips that are
+// linked to a proof list below. Selecting a chip highlights and reveals its source.
+function MessageWithCitations({
+  language,
+  content,
+  citations,
+}: {
+  language: Language;
+  content: string;
+  citations: Citation[];
+}) {
+  const [activeId, setActiveId] = React.useState<string | null>(null);
+  const [announce, setAnnounce] = React.useState("");
+  const listRef = React.useRef<HTMLOListElement | null>(null);
+
+  if (!citations.length) {
+    return <div className="whitespace-pre-wrap">{content}</div>;
+  }
+
+  const segments = splitWithCitations(content, citations.length);
+
+  const focusListItem = (id: string) => {
+    const node = listRef.current?.querySelector<HTMLLIElement>(`[data-citation-target="${id}"]`);
+    node?.focus?.();
+    node?.scrollIntoView?.({ block: "nearest" });
+  };
+
+  const toggle = (citation: Citation) => {
+    setActiveId((prev) => {
+      const next = prev === citation.id ? null : citation.id;
+      if (next) {
+        const idx = citations.findIndex((c) => c.id === citation.id) + 1;
+        setAnnounce(t(language, "brain.citation.announce.open", { num: idx, title: citation.title }));
+        focusListItem(citation.id);
+      } else {
+        setAnnounce(t(language, "brain.citation.announce.close"));
+      }
+      return next;
+    });
+  };
+
+  const onChipKey = (event: React.KeyboardEvent<HTMLSpanElement>, citation: Citation) => {
+    if (event.key === "Enter" || event.key === " " || event.key === "Spacebar") {
+      event.preventDefault();
+      toggle(citation);
+    } else if (event.key === "Escape" && activeId) {
+      event.preventDefault();
+      setActiveId(null);
+      setAnnounce(t(language, "brain.citation.announce.close"));
+    }
+  };
+
+  return (
+    <div className="brain-message-cited">
+      <div className="whitespace-pre-wrap brain-message-text">
+        {segments.map((segment, index) => {
+          const citation = segment.citation != null ? citations[segment.citation] : null;
+          const num = segment.citation != null ? segment.citation + 1 : 0;
+          return (
+            <React.Fragment key={index}>
+              {segment.text}
+              {citation ? (
+                <span
+                  role="button"
+                  tabIndex={0}
+                  className={`citation-chip ${activeId === citation.id ? "is-active" : ""}`}
+                  data-citation-id={citation.id}
+                  aria-pressed={activeId === citation.id}
+                  aria-label={t(language, "brain.citation.chip.long", { num, title: citation.title })}
+                  onClick={() => toggle(citation)}
+                  onKeyDown={(event) => onChipKey(event, citation)}
+                >
+                  {t(language, "brain.citation.chip", { num })}
+                </span>
+              ) : null}
+            </React.Fragment>
+          );
+        })}
+      </div>
+
+      <div className="brain-answer-proof" aria-label={t(language, "brain.citation.region")}>
+        <div className="brain-answer-proof-head">
+          <span>{t(language, "brain.answerProof.title")}</span>
+          <strong>{t(language, "brain.citation.count", { count: citations.length })}</strong>
+        </div>
+        <ol ref={listRef}>
+          {citations.map((citation, index) => {
+            const isActive = activeId === citation.id;
+            return (
+              <li
+                key={citation.id}
+                data-citation-target={citation.id}
+                className={isActive ? "is-cited" : ""}
+                tabIndex={-1}
+                aria-current={isActive ? "true" : undefined}
+              >
+                <span>{t(language, "brain.citation.preview.from")}{citation.source}</span>
+                <strong>{t(language, "brain.citation.chip", { num: index + 1 })} · {citation.title}</strong>
+                {citation.snippet ? (
+                  <small>{t(language, "brain.citation.preview.snippet")}{citation.snippet}</small>
+                ) : null}
+                {citation.score != null ? (
+                  <small className="brain-citation-score">{t(language, "brain.citation.score", { score: citation.score })}</small>
+                ) : null}
+              </li>
+            );
+          })}
+        </ol>
+        <small className="brain-citation-tip">{t(language, "brain.citation.keyboard.tip")}</small>
+      </div>
+
+      <div className="sr-only" role="status" aria-live="polite">{announce}</div>
+    </div>
+  );
+}
+
 function RecentConversations({
   conversations,
   result,
@@ -248,23 +440,32 @@ function RecentConversations({
   onDelete,
 }: {
   conversations: Array<Record<string, unknown>>;
-  result?: Parameters<typeof SourceBadge>[0]["result"];
+  result?: { source?: string; ok?: boolean; status?: number; error?: string };
   activeId: string | null;
   onNew: () => void;
   onSelect: (id: string) => void;
   onDelete: (id: string) => void;
 }) {
+  const language = useAppStore((state) => state.language);
   return (
     <section className="brain-side-panel">
       <div className="brain-side-head">
         <div>
           <h3>Recent conversations</h3>
-          <SourceBadge result={result} />
+          <SourceBadge result={result as Parameters<typeof SourceBadge>[0]["result"]} />
         </div>
         <Button variant="outline" size="sm" onClick={onNew}><Plus className="h-4 w-4" /> New</Button>
       </div>
       <div className="brain-conversation-list soft-scrollbar">
-        {conversations.length ? conversations.slice(0, 8).map((item) => {
+        {!result?.ok && result?.source === "unavailable" ? (
+          <FeedbackState
+            tone="error"
+            language={language}
+            title={t(language, "feedback.error.title")}
+            body={result.error || t(language, "feedback.error.body")}
+            onAction={() => window.location.reload()}
+          />
+        ) : conversations.length ? conversations.slice(0, 8).map((item) => {
           const id = String(item.id || item.conversation_id || "");
           return (
             <div key={id} className={`brain-conversation-item ${activeId === id ? "is-active" : ""}`}>
@@ -277,13 +478,23 @@ function RecentConversations({
               </button>
             </div>
           );
-        }) : <EmptyState title="No conversations yet" detail="New exchanges will appear here." />}
+        }) : (
+          <FeedbackState
+            tone="empty"
+            language={language}
+            title="No conversations yet"
+            body="New exchanges will appear here."
+            actionLabel="Start a conversation"
+            onAction={onNew}
+          />
+        )}
       </div>
     </section>
   );
 }
 
 function MemoryNearby({ question, trace }: { question: string; trace: unknown }) {
+  const language = useAppStore((state) => state.language);
   const hybrid = useQuery({
     queryKey: ["brainNearbyMemory", question],
     queryFn: () => latticeApi.hybridSearch(question),
@@ -299,10 +510,23 @@ function MemoryNearby({ question, trace }: { question: string; trace: unknown })
       </div>
       {hybrid.data?.ok ? (
         <EntityList items={(hybrid.data.data as Record<string, unknown>).matches || hybrid.data.data} titleKey="title" metaKey="type" limit={4} />
+      ) : hybrid.data?.source === "unavailable" ? (
+        <FeedbackState
+          tone="error"
+          language={language}
+          title={t(language, "feedback.error.title")}
+          body={hybrid.data.error || t(language, "feedback.error.body")}
+          onAction={() => void hybrid.refetch()}
+        />
       ) : trace ? (
         <StructuredView value={trace} limit={4} />
       ) : (
-        <EmptyState title="Quiet for now" detail="Relevant memory wakes up as the conversation gets specific." />
+        <FeedbackState
+          tone="empty"
+          language={language}
+          title="Quiet for now"
+          body="Relevant memory wakes up as the conversation gets specific."
+        />
       )}
     </section>
   );
