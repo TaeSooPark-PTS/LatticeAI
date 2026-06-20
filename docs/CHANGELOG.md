@@ -27,6 +27,9 @@ existed at that release.
 - npm dependency overrides move `js-yaml` to a non-vulnerable version; `npm
   audit` reports 0 vulnerabilities.
 - CI lint compatibility is restored for the Brain quality gate script.
+- Local MLX model preparation now recognizes valid existing Hugging Face cache
+  snapshots, avoiding an unnecessary re-download when the model already exists
+  outside Lattice's managed `~/.ltcai/hf-models` directory.
 - Package/runtime/static metadata is synchronized to 7.5.0; package publish and
   deployment remain owner-run only.
 

@@ -32,6 +32,7 @@ from latticeai.models.router import (
     HF_MODELS_ROOT,
     OPENAI_COMPATIBLE_PROVIDERS,
     ensure_mlx_runtime,
+    hf_cache_model_dir,
     hf_model_dir,
     parse_model_ref,
 )
@@ -429,10 +430,12 @@ def engine_support_status(engine: str) -> Dict[str, object]:
 
 def hf_model_ready(repo_id: str, provider: str = "local_mlx") -> bool:
     model_dir = hf_model_dir(repo_id)
-    if provider == "vllm" and (not model_dir.exists() or not model_dir.is_dir()):
+    if provider in {"local_mlx", "vllm"} and (not model_dir.exists() or not model_dir.is_dir()):
         hf_cache_repo = Path.home() / ".cache" / "huggingface" / "hub" / f"models--{repo_id.replace('/', '--')}"
         if hf_cache_repo.exists() and any(hf_cache_repo.glob("snapshots/*")):
-            return True
+            if provider == "vllm":
+                return True
+            return hf_cache_model_dir(repo_id) is not None
         return False
     if not model_dir.exists() or not model_dir.is_dir():
         return False
@@ -520,6 +523,8 @@ def download_hf_model(
 
     target_dir = hf_model_dir(repo_id)
     if hf_model_ready(repo_id, provider):
+        cached_dir = hf_cache_model_dir(repo_id) if provider == "local_mlx" else None
+        resolved_dir = cached_dir or target_dir
         if progress_emit:
             progress_emit(model_download_progress_payload(
                 "download",
@@ -529,7 +534,7 @@ def download_hf_model(
                 total_bytes=0,
                 eta_seconds=0,
             ))
-        return {"model": repo_id, "path": str(target_dir), "cached": True}
+        return {"model": repo_id, "path": str(resolved_dir), "cached": True}
 
     target_dir.mkdir(parents=True, exist_ok=True)
     try:

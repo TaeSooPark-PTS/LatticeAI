@@ -26,6 +26,9 @@ judged query의 recall, precision, NDCG, must-include hit-rate threshold를 검�
 clean release artifact set으로 검증한다. README release screenshots/GIF도
 `output/release/v7.5.0/` 기준으로 새로 캡처했다.
 
+Local MLX model preparation also reuses valid existing Hugging Face cache snapshots when
+the same model is already present outside Lattice's managed `~/.ltcai/hf-models` directory.
+
 Expected artifacts (exact 7.5.0 names only):
 - dist/ltcai-7.5.0-py3-none-any.whl
 - dist/ltcai-7.5.0.tar.gz

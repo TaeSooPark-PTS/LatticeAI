@@ -229,6 +229,22 @@ HF_MODELS_ROOT = Path.home() / ".ltcai" / "hf-models"
 def hf_model_dir(repo_id: str) -> Path:
     return HF_MODELS_ROOT / repo_id.replace("/", "__")
 
+def hf_cache_model_dir(repo_id: str) -> Optional[Path]:
+    """Return a usable Hugging Face cache snapshot for an already-downloaded model."""
+    cache_root = Path.home() / ".cache" / "huggingface" / "hub" / f"models--{repo_id.replace('/', '--')}"
+    snapshots = cache_root / "snapshots"
+    if not snapshots.exists():
+        return None
+    candidates = sorted(
+        (item for item in snapshots.iterdir() if item.is_dir()),
+        key=lambda item: item.stat().st_mtime,
+        reverse=True,
+    )
+    for snapshot in candidates:
+        if _looks_like_hf_model_dir(snapshot):
+            return snapshot
+    return None
+
 def _looks_like_hf_model_dir(path: Path) -> bool:
     if not path.exists() or not path.is_dir():
         return False
@@ -248,6 +264,9 @@ def _resolve_local_hf_model(model_id: str) -> str:
     local_dir = hf_model_dir(model_id)
     if _looks_like_hf_model_dir(local_dir):
         return str(local_dir)
+    cached_dir = hf_cache_model_dir(model_id)
+    if cached_dir is not None:
+        return str(cached_dir)
     return model_id
 
 def _is_gemma4_model_id(model_id: str) -> bool:
