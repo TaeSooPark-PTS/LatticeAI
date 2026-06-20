@@ -228,6 +228,57 @@ class AgentRuntime:
             "runs": runs[:25],
         }
 
+    def preview(
+        self,
+        goal: str,
+        *,
+        roles: Optional[List[str]] = None,
+        inputs: Optional[Dict[str, Any]] = None,
+        max_retries: int = 2,
+        scope: Optional[str] = None,
+    ) -> Dict[str, Any]:
+        """Return the execution contract without reserving or starting a run.
+
+        The preview is the product-facing readiness gate for agent execution:
+        clients can show whether a real LLM-backed run can start, which roles
+        will execute, how retry limits are clamped, and why the run is blocked.
+        """
+
+        requested_roles = list(roles or CORE_PIPELINE)
+        unknown_roles = [role for role in requested_roles if role not in AGENT_ROLES]
+        health = self.health()
+        goal_ready = bool(str(goal or "").strip())
+        retry_budget = max(0, min(int(max_retries or 0), self._max_retries_cap))
+        blocking_reasons: List[str] = []
+        if not goal_ready:
+            blocking_reasons.append("goal is required")
+        if unknown_roles:
+            blocking_reasons.append(f"unknown roles: {', '.join(unknown_roles)}")
+        if not health.get("ready"):
+            orchestrator = (health.get("checks") or {}).get("orchestrator") or {}
+            blocking_reasons.append(str(orchestrator.get("detail") or "agent runtime is unavailable"))
+        can_start = not blocking_reasons
+        return {
+            "ready": can_start,
+            "can_start": can_start,
+            "blocking_reasons": blocking_reasons,
+            "goal": str(goal or "").strip(),
+            "roles": requested_roles,
+            "unknown_roles": unknown_roles,
+            "inputs_keys": sorted((inputs or {}).keys()),
+            "max_retries": retry_budget,
+            "max_retries_requested": max_retries,
+            "scope": scope,
+            "execution_mode": self._execution_mode(),
+            "runtime": {
+                "version": MULTI_AGENT_VERSION,
+                "default_pipeline": list(CORE_PIPELINE),
+                "max_retries_cap": self._max_retries_cap,
+                "simulation_runs_allowed": self._allow_simulation_runs,
+            },
+            "health": health,
+        }
+
     # ── events / state ────────────────────────────────────────────────────
     def list_runs(self, *, scope: Optional[str] = None) -> Dict[str, Any]:
         return self._store.list_agents(workspace_id=scope)

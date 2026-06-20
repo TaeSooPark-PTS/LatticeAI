@@ -100,6 +100,23 @@ def test_start_requires_goal():
         pass
 
 
+def test_preview_explains_readiness_without_recording_run():
+    rt = _runtime(allow_simulation_runs=False)
+    preview = rt.preview(
+        "Ship the next release",
+        roles=["planner", "executor", "invalid"],
+        inputs={"ticket": "T-72"},
+        max_retries=99,
+        scope="personal",
+    )
+    assert preview["ready"] is False
+    assert preview["max_retries"] == 5
+    assert preview["unknown_roles"] == ["invalid"]
+    assert any("unknown roles" in reason for reason in preview["blocking_reasons"])
+    assert any("Simulation mode is disabled" in reason or "No LLM-backed model" in reason for reason in preview["blocking_reasons"])
+    assert rt.status(scope=None)["runtime"]["total_runs"] == 0
+
+
 def test_stop_is_honest_for_synchronous_runs():
     rt = _runtime()
     out = rt.start("a goal", user_email=None, scope=None)
@@ -149,6 +166,10 @@ def test_router_runtime_endpoints():
     status = client.get("/agents/api/runtime/status").json()
     assert status["runtime"]["ready"] is False
     assert status["runtime"]["total_runs"] == 0
+
+    preview = client.post("/agents/api/run/preview", json={"goal": "router run", "roles": ["planner"]})
+    assert preview.status_code == 200
+    assert preview.json()["can_start"] is False
 
 
 def test_router_run_requires_goal():

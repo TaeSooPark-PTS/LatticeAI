@@ -15,7 +15,7 @@ export function AdminConsole({ onBack }: { onBack: () => void }) {
   const qc = useQueryClient();
   const language = useAppStore((state) => state.language);
   const [filters, setFilters] = React.useState<AdminFilterState>({ q: "", actor: "", action: "", severity: "", limit: 50 });
-  const { summaryQ, statsQ, usersQ, auditQ, securityQ, securityEventsQ, policiesQ, rolesQ, retentionQ, indexQ } = useAdminConsoleData(filters);
+  const { summaryQ, statsQ, usersQ, auditQ, securityQ, securityEventsQ, policiesQ, rolesQ, retentionQ, indexQ, agentRuntimeQ, toolRegistryQ } = useAdminConsoleData(filters);
   const rebuildIndex = useMutation({
     mutationFn: latticeApi.rebuildIndex,
     onSuccess: () => void qc.invalidateQueries({ queryKey: ["indexStatus"] }),
@@ -139,6 +139,10 @@ export function AdminConsole({ onBack }: { onBack: () => void }) {
           </div>
         </AdminPanel>
 
+        <AdminPanel title={t(language, "admin.panel.runtimeTrust")} eyebrow={t(language, "admin.panel.contracts")}>
+          <RuntimeTrustPanel runtime={agentRuntimeQ.data?.data as ApiRecord | undefined} registry={toolRegistryQ.data?.data as ApiRecord | undefined} language={language} />
+        </AdminPanel>
+
       </section>
     </main>
   );
@@ -164,7 +168,43 @@ function useAdminConsoleData(filters: AdminFilterState) {
     rolesQ: useQuery({ queryKey: ["adminRoles"], queryFn: latticeApi.adminRoles }),
     retentionQ: useQuery({ queryKey: ["adminLogRetention"], queryFn: latticeApi.adminLogRetention }),
     indexQ: useQuery({ queryKey: ["indexStatus"], queryFn: latticeApi.indexStatus }),
+    agentRuntimeQ: useQuery({ queryKey: ["agentRuntime"], queryFn: latticeApi.agentRuntime }),
+    toolRegistryQ: useQuery({ queryKey: ["toolRegistryDiagnostics"], queryFn: latticeApi.toolRegistryDiagnostics }),
   };
+}
+
+function RuntimeTrustPanel({ runtime, registry, language }: { runtime?: ApiRecord; registry?: ApiRecord; language: "ko" | "en" }) {
+  const runtimeInfo = (runtime?.runtime || {}) as ApiRecord;
+  const health = (runtime?.health || {}) as ApiRecord;
+  const diagnostics = (registry?.diagnostics || {}) as ApiRecord;
+  const ready = Boolean(runtimeInfo.ready);
+  const registryReady = Boolean(diagnostics.ready);
+  const blocking = stringValue(runtimeInfo.unavailable_reason, ready ? t(language, "admin.runtime.readyDetail") : t(language, "admin.runtime.blockedFallback"));
+  return (
+    <div className="admin-runtime-trust">
+      <div className="admin-runtime-row">
+        <strong>{t(language, "admin.runtime.agent")}</strong>
+        <span className={ready ? "is-ok" : "is-warn"}>{ready ? t(language, "admin.status.ready") : t(language, "admin.status.unavailable")}</span>
+        <small>{blocking}</small>
+      </div>
+      <div className="admin-runtime-row">
+        <strong>{t(language, "admin.runtime.tools")}</strong>
+        <span className={registryReady ? "is-ok" : "is-warn"}>{registryReady ? t(language, "admin.runtime.aligned") : t(language, "admin.runtime.drift")}</span>
+        <small>
+          {t(language, "admin.runtime.toolCounts", {
+            registered: stringValue(diagnostics.registered_tools, "0"),
+            governed: stringValue(diagnostics.governed_tools, "0"),
+            described: stringValue(diagnostics.described_tools, "0"),
+          })}
+        </small>
+      </div>
+      <div className="admin-policy-strip">
+        <span>{t(language, "admin.runtime.mode", { mode: stringValue(runtimeInfo.mode, "unknown") })}</span>
+        <span>{t(language, "admin.runtime.execution", { mode: stringValue(runtimeInfo.execution_mode, "unknown") })}</span>
+        <span>{t(language, "admin.runtime.health", { status: stringValue(health.status, "unknown") })}</span>
+      </div>
+    </div>
+  );
 }
 
 function AdminLogFilters({

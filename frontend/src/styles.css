@@ -3472,6 +3472,51 @@ body {
   font-size: 0.88rem;
 }
 
+.admin-runtime-trust {
+  display: grid;
+  gap: 0.72rem;
+}
+
+.admin-runtime-row {
+  display: grid;
+  grid-template-columns: minmax(8rem, 1fr) auto;
+  gap: 0.2rem 0.75rem;
+  border: 1px solid hsl(var(--border) / 0.48);
+  border-radius: 8px;
+  background: hsl(var(--bg) / 0.35);
+  padding: 0.72rem;
+}
+
+.admin-runtime-row strong {
+  color: hsl(var(--fg));
+  font-size: 0.88rem;
+}
+
+.admin-runtime-row > span {
+  align-self: start;
+  border-radius: 999px;
+  padding: 0.18rem 0.48rem;
+  font-size: 0.72rem;
+  font-weight: 700;
+}
+
+.admin-runtime-row > small {
+  grid-column: 1 / -1;
+  color: hsl(var(--fg-muted));
+  font-size: 0.78rem;
+  line-height: 1.35;
+}
+
+.admin-runtime-row .is-ok {
+  background: hsl(151 65% 36% / 0.13);
+  color: hsl(151 48% 32%);
+}
+
+.admin-runtime-row .is-warn {
+  background: hsl(36 88% 52% / 0.14);
+  color: hsl(30 82% 35%);
+}
+
 .brain-document-input,
 .brain-image-input {
   display: inline-flex;

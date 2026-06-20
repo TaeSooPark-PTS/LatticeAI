@@ -192,4 +192,16 @@ def create_agents_router(
             # A pre_run hook gated this run (e.g. a policy/permission hook).
             raise HTTPException(status_code=403, detail=str(exc)) from exc
 
+    @router.post("/agents/api/run/preview")
+    async def agent_run_preview(req: AgentRunRequest, request: Request):
+        require_user(request)
+        scope = gate_read(request)
+        return runtime.preview(
+            req.goal,
+            scope=scope,
+            roles=req.roles or None,
+            inputs=req.inputs,
+            max_retries=req.max_retries,
+        )
+
     return router

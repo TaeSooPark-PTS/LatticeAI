@@ -25,6 +25,8 @@ from latticeai.services.tool_dispatch import (
     check_tool_role as _check_tool_role,
     get_tool_permission,
     list_tool_permissions,
+    tool_registry_diagnostics,
+    tool_registry_manifest,
 )
 from latticeai.services.router_context import ToolRouterContext
 from latticeai.services.p_reinforce import BRAIN_DIR
@@ -602,6 +604,18 @@ def create_tools_router(
         """
         require_user(request)
         return {"status": "ok", "permissions": list_tool_permissions()}
+
+    @api_router.get("/tools/registry")
+    async def tools_registry(request: Request):
+        """Full ToolRegistry contract: handlers, governance, catalog, diagnostics."""
+        require_user(request)
+        return tool_registry_manifest()
+
+    @api_router.get("/tools/registry/diagnostics")
+    async def tools_registry_diagnostics(request: Request):
+        """Small drift check for CI/admin runtime readiness views."""
+        require_user(request)
+        return {"status": "ok", "diagnostics": tool_registry_diagnostics()}
     
     
     # ── MCP / skills / plugins router (latticeai.api.mcp, v1.3.0) ────────────────

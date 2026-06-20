@@ -130,6 +130,7 @@ TOOL_GOVERNANCE: Dict[str, ToolPolicy] = {
     "todo_read": _r(),
     "local_list": _r(sandbox="home"),
     "local_read": _r(sandbox="home"),
+    "read_document": _r(sandbox="home"),
     "git_status": _rs(),
     "git_diff": _rs(),
     "git_log": _rs(),
@@ -189,6 +190,7 @@ MCP_TOOL_DESCRIPTIONS: Dict[str, str] = {
     "clear_history": "Clear chat history to reduce context and speed up responses.",
     "inspect_html": "Inspect local HTML structure and assets.",
     "preview_url": "Return a server URL for a workspace file.",
+    "create_web_project": "Create a web project scaffold inside the workspace.",
     "create_docx": "Create a Word DOCX document in the agent workspace.",
     "create_xlsx": "Create an XLSX spreadsheet in the agent workspace.",
     "create_pptx": "Create a PPTX presentation deck in the agent workspace.",
@@ -250,6 +252,51 @@ class ToolRegistry:
 
     def registered_tools(self) -> frozenset[str]:
         return frozenset(self.handlers)
+
+    def diagnostics(self) -> Dict[str, Any]:
+        """Return registry drift checks without executing any tool.
+
+        This is intentionally derived from the live registry instance, not from
+        duplicated constants, so admin/runtime surfaces can prove whether the
+        dispatch, governance, and catalog projections are still aligned.
+        """
+
+        registered = set(self.registered_tools())
+        governed = set(self.governance)
+        described = set(self.descriptions)
+        return {
+            "ready": not (governed - registered or registered - governed or registered - described),
+            "registered_tools": len(registered),
+            "governed_tools": len(governed),
+            "described_tools": len(described),
+            "governance_without_handler": sorted(governed - registered),
+            "handler_without_governance": sorted(registered - governed),
+            "handler_without_description": sorted(registered - described),
+            "description_without_handler": sorted(described - registered),
+        }
+
+    def manifest(self) -> Dict[str, Any]:
+        """Serializable tool registry contract for runtime/admin inspection."""
+
+        tools = []
+        for name in sorted(self.registered_tools() | set(self.governance) | set(self.descriptions)):
+            policy = self.policy_for(name, {})
+            tools.append({
+                "name": name,
+                "registered": name in self.handlers,
+                "governed": name in self.governance,
+                "described": name in self.descriptions,
+                "description": self.descriptions.get(name, ""),
+                "policy": dict(policy),
+                "permission": dict(self.permission(name, {})),
+            })
+        diagnostics = self.diagnostics()
+        return {
+            "status": "ok" if diagnostics["ready"] else "degraded",
+            "catalog_brief": self.catalog_brief.strip(),
+            "diagnostics": diagnostics,
+            "tools": tools,
+        }
 
     def execute(self, action: str, args: Dict[str, Any], *, error_cls: type[Exception]) -> Dict[str, Any]:
         handler = self.handlers.get(action)

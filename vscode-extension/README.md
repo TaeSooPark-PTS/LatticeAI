@@ -12,14 +12,14 @@ chat, run model workflows, and trigger coding actions from the editor.
 
 ## Current Release
 
-**7.1.0 — Brain Usability Completion.** The extension follows
+**7.2.0 — Runtime Trust Baseline.** The extension follows
 the main app positioning: Lattice AI is a local-first Digital Brain, not just a
 model launcher or editor chat panel. It connects editor actions to the same
 durable Brain context, explicit consent gates, replaceable model workflow, and
-separated Admin surface used by the desktop app. The v7.1.0 line adds a
-visible VS Code sync status in both the editor and main app, reporting
-connected, indexing, synced, and offline states without sending file contents
-until the user runs an explicit file action.
+separated Admin surface used by the desktop app. The v7.2.0 line keeps the
+visible VS Code sync status from 7.1.0 and aligns the extension release with
+the main app runtime trust work: agent runs can be previewed before execution
+and tool governance is inspectable from the app.
 
 ## Quick Start
 

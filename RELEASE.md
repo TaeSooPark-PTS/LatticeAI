@@ -7,6 +7,29 @@
 > PyPI / npm / VS Code Marketplace / Open VSX 배포는 아래 수동 절차로만
 > 진행합니다. 태그 생성은 패키지 스토어 publish를 자동으로 트리거하지 않습니다.
 
+## v7.2.0 릴리스 노트 (2026-06-20)
+
+Lattice AI v7.2.0 — Runtime Trust Baseline. 7.2.0은 7.1.0의 Brain usability
+surface 위에서 AgentRuntime과 ToolRegistry의 실행 신뢰도를 제품 계약으로 끌어올린다.
+
+AgentRuntime은 실행 전에 `POST /agents/api/run/preview`로 goal, roles, inputs,
+retry budget, runtime health, blocking reason을 반환한다. 사용자는 실제 run row를
+만들거나 LLM/tool 실행을 시작하기 전에 왜 실행 가능한지 또는 왜 막히는지 확인할 수 있다.
+Product runtime은 LLM-backed orchestrator가 준비되지 않은 simulation mode를 실제 성공으로
+기록하지 않으며, preview도 같은 준비 상태를 설명한다.
+
+ToolRegistry는 `GET /tools/registry`와 `GET /tools/registry/diagnostics`로 dispatch handler,
+governance policy, catalog description, permission projection의 live contract를 노출한다.
+`read_document` governance와 `create_web_project` catalog description을 정렬했고, 단위 테스트가
+handler/governance/catalog drift를 잡는다.
+
+Expected artifacts (exact 7.2.0 names only):
+- dist/ltcai-7.2.0-py3-none-any.whl
+- dist/ltcai-7.2.0.tar.gz
+- dist/ltcai-7.2.0.vsix
+- ltcai-7.2.0.tgz
+- src-tauri/target/release/bundle/dmg/Lattice AI_7.2.0_aarch64.dmg
+
 ## v7.1.0 릴리스 노트 (2026-06-20)
 
 Lattice AI v7.1.0 — Brain Usability Completion. 7.1.0은 7.0.0의 Brain

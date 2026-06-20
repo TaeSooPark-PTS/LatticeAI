@@ -42,6 +42,17 @@ def test_tool_registry_owns_permission_views():
     assert permission["requires_approval"] is True
 
 
+def test_tool_registry_manifest_reports_contract_diagnostics():
+    manifest = tools.DEFAULT_TOOL_REGISTRY.manifest()
+    diagnostics = manifest["diagnostics"]
+    assert manifest["status"] in {"ok", "degraded"}
+    assert diagnostics["registered_tools"] == len(tools.registered_tools())
+    read_file = next(item for item in manifest["tools"] if item["name"] == "read_file")
+    assert read_file["registered"] is True
+    assert read_file["governed"] is True
+    assert read_file["permission"]["risk"] == "low"
+
+
 def test_tool_dispatch_service_isolates_role_callbacks():
     service = ToolDispatchService(registry=tools.DEFAULT_TOOL_REGISTRY)
     service.configure(

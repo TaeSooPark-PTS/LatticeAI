@@ -90,6 +90,12 @@ class ToolDispatchService:
     def permissions(self) -> list[ToolPermission]:
         return self.registry.permissions()
 
+    def diagnostics(self) -> Dict[str, Any]:
+        return self.registry.diagnostics()
+
+    def manifest(self) -> Dict[str, Any]:
+        return self.registry.manifest()
+
     def check_role(self, tool_name: str, current_user: str) -> None:
         if tool_name not in self.registry.admin_only_tools:
             return
@@ -129,6 +135,14 @@ def get_tool_permission(name: str, args: Optional[dict] = None) -> ToolPermissio
 
 def list_tool_permissions() -> list:
     return DEFAULT_TOOL_DISPATCH_SERVICE.permissions()
+
+
+def tool_registry_diagnostics() -> Dict[str, Any]:
+    return DEFAULT_TOOL_DISPATCH_SERVICE.diagnostics()
+
+
+def tool_registry_manifest() -> Dict[str, Any]:
+    return DEFAULT_TOOL_DISPATCH_SERVICE.manifest()
 
 
 def check_tool_role(tool_name: str, current_user: str) -> None:

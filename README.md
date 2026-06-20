@@ -200,25 +200,26 @@ See [docs/DEVELOPMENT.md](docs/DEVELOPMENT.md) for developer workflow details.
 
 ## Current Release
 
-The current release is **7.1.0 Brain Usability Completion**:
+The current release is **7.2.0 Runtime Trust Baseline**:
 
-- First-run onboarding now explains detected hardware, recommendation timing,
-  install progress, and the next action in plain language.
-- Brain Home shows ingestion progress for files, folders, notes, and web pages,
-  including memory emergence after content lands.
-- Knowledge Graph exploration adds search suggestions, type filters, time
-  exploration, focus movement, and neighbor highlighting.
-- Chat answers surface inline source citations and accessible proof payloads.
-- Workspace/profile/admin entry points, empty/error feedback, consent revoke
-  feedback, and VS Code extension sync status are visible in the product shell.
+- Agent runs can be previewed before execution, including selected roles,
+  clamped retry budget, readiness state, and blocking reasons.
+- Product agent execution refuses simulation-mode success unless simulation is
+  explicitly enabled for a non-product runtime.
+- ToolRegistry exposes a live manifest and diagnostics endpoint covering
+  dispatch handlers, governance policy, catalog descriptions, and permissions.
+- Tool governance/catalog drift is covered by unit tests so tool additions
+  cannot silently bypass policy or disappear from operator views.
+- 7.1.0 Brain usability work remains intact while the runtime gains clearer
+  contracts for admin surfaces and future AgentRuntime extraction.
 
-Expected artifacts for 7.1.0 release must use exact filenames:
+Expected artifacts for 7.2.0 release must use exact filenames:
 
-- `dist/ltcai-7.1.0-py3-none-any.whl`
-- `dist/ltcai-7.1.0.tar.gz`
-- `ltcai-7.1.0.tgz`
-- `dist/ltcai-7.1.0.vsix`
-- `src-tauri/target/release/bundle/dmg/Lattice AI_7.1.0_aarch64.dmg`
+- `dist/ltcai-7.2.0-py3-none-any.whl`
+- `dist/ltcai-7.2.0.tar.gz`
+- `ltcai-7.2.0.tgz`
+- `dist/ltcai-7.2.0.vsix`
+- `src-tauri/target/release/bundle/dmg/Lattice AI_7.2.0_aarch64.dmg`
 
 Do not upload `dist/*`. Package registry publishing remains owner-run.
 
@@ -237,6 +238,7 @@ Do not upload `dist/*`. Package registry publishing remains owner-run.
 
 | Version | Theme |
 | --- | --- |
+| 7.2.0 | Runtime Trust Baseline: agent run preview/readiness, simulation-mode guardrails, live ToolRegistry manifest/diagnostics, and tests for dispatch/governance/catalog drift |
 | 7.1.0 | Brain Usability Completion: clearer first-run onboarding, ingestion progress/emergence, richer graph controls, inline answer proof, workspace/profile/admin discovery, empty/error/consent feedback, and VS Code sync status |
 | 7.0.0 | Brain Productization Loop: first-screen ingestion for files/folders/notes/web, answer-level memory proof and source citations, model-continuity demo flow, five-minute first-run loop, and recall/KG quality eval in CI |
 | 6.7.0 | Brain IA Cleanup: reachable rich pages, separated product routes vs compatibility aliases, shared Brain shell navigation, and lazy-loaded rich pages |

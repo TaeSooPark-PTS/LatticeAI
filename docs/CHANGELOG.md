@@ -4,6 +4,26 @@ The top entry is either the current unreleased main-branch work or the current
 release line. Older entries are historical and may describe behavior as it
 existed at that release.
 
+## [7.2.0] - 2026-06-20
+
+> Runtime Trust Baseline. Adds execution preview and registry diagnostics so
+> agent runs and tool permissions become inspectable contracts before action.
+
+### Added
+- `POST /agents/api/run/preview` for AgentRuntime readiness, role selection,
+  input keys, retry clamping, and blocking reasons without starting a run.
+- `GET /tools/registry` for the live ToolRegistry manifest across dispatch
+  handlers, governance policy, catalog descriptions, and permissions.
+- `GET /tools/registry/diagnostics` for a compact drift check suitable for CI,
+  admin views, and runtime health panels.
+- Unit coverage for AgentRuntime preview and ToolRegistry manifest diagnostics.
+
+### Changed
+- Tool governance now covers `read_document`, and the catalog describes
+  `create_web_project`, closing the current dispatch/governance/catalog drift.
+- Package/runtime/static metadata is synchronized to 7.2.0; package publish and
+  deployment remain owner-run only.
+
 ## [7.1.0] - 2026-06-20
 
 > Brain Usability Completion. Completes the 7.1.0 first-run through editor-sync
