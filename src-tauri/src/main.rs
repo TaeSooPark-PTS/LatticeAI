@@ -256,7 +256,7 @@ fn spawn_backend(origin: &str, launch: &BackendLaunch) -> Result<Option<Child>, 
         .env("LATTICEAI_HOST", "127.0.0.1")
         .env("LATTICEAI_PORT", origin.rsplit(':').next().unwrap_or("8765"))
         .env("LATTICEAI_ENABLE_TELEGRAM", "false")
-        .env("LATTICEAI_AUTOLOAD_MODELS", "false")
+        .env("LATTICEAI_AUTOLOAD_MODELS", "true")
         .env("LATTICEAI_ALLOW_MODEL_DOWNLOADS", "false")
         .env("LATTICEAI_CORS_ALLOW_NETWORK", "false")
         .env("LATTICEAI_ENABLE_EXTERNAL_CONNECTORS", "false")

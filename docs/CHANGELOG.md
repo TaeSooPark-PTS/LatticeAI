@@ -30,6 +30,14 @@ existed at that release.
 - Local MLX model preparation now recognizes valid existing Hugging Face cache
   snapshots, avoiding an unnecessary re-download when the model already exists
   outside Lattice's managed `~/.ltcai/hf-models` directory.
+- The default local model target is now
+  `mlx-community/gemma-4-26b-a4b-it-4bit`; local autoload is on by default but
+  only loads already-present model files, with downloads still gated by explicit
+  consent.
+- Brain Home now centers the level-5 Deep Graph directly and removes the staged
+  now/older/topic/relationship overview from the main page.
+- Model setup is available inline on Brain Home so users can download/load the
+  recommended model without being redirected away from the graph.
 - Package/runtime/static metadata is synchronized to 7.5.0; package publish and
   deployment remain owner-run only.
 

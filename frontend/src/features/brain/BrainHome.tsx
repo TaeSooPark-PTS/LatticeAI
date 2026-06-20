@@ -1,29 +1,26 @@
 import * as React from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { latticeApi } from "@/api/client";
-import { type BrainState, LivingBrain, triggerBrainRecall } from "@/components/LivingBrain";
+import { type BrainState, triggerBrainRecall } from "@/components/LivingBrain";
 import { useAppStore } from "@/store/appStore";
 import { t } from "@/i18n";
 import { BrainConversation } from "./BrainConversation";
 import { buildBrainProof, buildBrainReadiness, buildMemoryFragments, currentModelName, parseKnowledgeGraph } from "./brainData";
-import { DepthEmergence } from "./DepthEmergence";
 import {
   DEPTHS,
   INGESTION_STAGE_ORDER,
   type BrainDepth,
   type BrainProof,
-  type EmergenceEvent,
   type IngestionPipelineStage,
   type IngestionSourceType,
   type IngestionState,
-  type MemoryFragment,
   type Message,
   type MessageProof,
 } from "./types";
 
 export function BrainHome({
-  brainState,
-  intensity,
+  brainState: _brainState,
+  intensity: _intensity,
   onBrainChange,
 }: {
   brainState: BrainState;
@@ -37,7 +34,7 @@ export function BrainHome({
   const [imageData, setImageData] = React.useState<string | null>(null);
   const [streaming, setStreaming] = React.useState(false);
   const [conversationId, setConversationId] = React.useState<string | null>(null);
-  const [explorationDepth, setExplorationDepth] = React.useState<BrainDepth>(1);
+  const [explorationDepth, setExplorationDepth] = React.useState<BrainDepth>(5);
   const [graphSearch, setGraphSearch] = React.useState("");
   const [selectedGraphId, setSelectedGraphId] = React.useState<string | null>(null);
   const [memoryFeedback, setMemoryFeedback] = React.useState<string | null>(null);
@@ -49,7 +46,6 @@ export function BrainHome({
     note: null,
     web: null,
   });
-  const [emergenceEvents, setEmergenceEvents] = React.useState<EmergenceEvent[]>([]);
   const streamRef = React.useRef<HTMLDivElement>(null);
   const recallTimerRef = React.useRef<number | null>(null);
   const stageTimersRef = React.useRef<Record<IngestionSourceType, number[]>>({
@@ -69,10 +65,6 @@ export function BrainHome({
   const historyQ = useQuery({ queryKey: ["chatHistory"], queryFn: latticeApi.chatHistory });
   const graphQ = useQuery({ queryKey: ["graph"], queryFn: latticeApi.graph });
   const modelsQ = useQuery({ queryKey: ["models"], queryFn: latticeApi.models });
-  const brainProofQ = useQuery({
-    queryKey: ["memoryBrainProof", lastRecallQuery],
-    queryFn: () => latticeApi.memoryBrainProof(lastRecallQuery, 3),
-  });
 
   const memoryFragments = React.useMemo(
     () => buildMemoryFragments(memoriesQ.data?.data, historyQ.data?.data),
@@ -80,22 +72,14 @@ export function BrainHome({
   );
   const graphModel = React.useMemo(() => parseKnowledgeGraph(graphQ.data?.data), [graphQ.data]);
   const knowledgeConcepts = React.useMemo(
-    () => graphModel.nodes.slice(0, 10),
+    () => graphModel.nodes,
     [graphModel.nodes],
   );
   const brainReadiness = React.useMemo(
     () => buildBrainReadiness(memoriesQ.data?.data, memoryFragments.length, knowledgeConcepts.length),
     [knowledgeConcepts.length, memoriesQ.data, memoryFragments.length],
   );
-  const relationshipThreads = React.useMemo(
-    () => graphModel.edges.slice(0, 10),
-    [graphModel.edges],
-  );
   const modelName = React.useMemo(() => currentModelName(modelsQ.data?.data), [modelsQ.data]);
-  const brainProof = React.useMemo(
-    () => buildBrainProof(brainProofQ.data?.data, modelName),
-    [brainProofQ.data, modelName],
-  );
   const currentDepth = DEPTHS[explorationDepth - 1];
   const starterPrompts = React.useMemo(
     () => [
@@ -109,7 +93,7 @@ export function BrainHome({
   React.useEffect(() => {
     if (streaming) onBrainChange("thinking", 0.94);
     else if (draft.trim().length > 4) onBrainChange("listening", 0.76);
-    else onBrainChange(currentDepth.state, explorationDepth === 1 ? 0.58 : 0.66 + explorationDepth * 0.06);
+    else onBrainChange(currentDepth.state, 0.72);
   }, [streaming, draft, currentDepth.state, explorationDepth, onBrainChange]);
 
   React.useEffect(() => {
@@ -199,19 +183,6 @@ export function BrainHome({
           },
         };
       });
-      setEmergenceEvents((events) =>
-        [
-          {
-            id: `${sourceType}-${Date.now()}`,
-            sourceType,
-            label,
-            newMemories,
-            newEntities,
-            at: Date.now(),
-          },
-          ...events,
-        ].slice(0, 10),
-      );
     },
     [clearStageTimers],
   );
@@ -448,121 +419,28 @@ export function BrainHome({
     setMemoryFeedback(t(language, "brain.modelDemo.done", { model: modelName }));
   }
 
-  function deepen() {
-    setExplorationDepth((depth) => {
-      const next = Math.min(5, depth + 1) as BrainDepth;
-      const nextDepth = DEPTHS[next - 1];
-      onBrainChange(nextDepth.state, 0.66 + next * 0.06);
-      if (next >= 2) triggerBrainRecall();
-      return next;
-    });
-  }
-
-  function jumpToDepth(next: BrainDepth) {
-    setExplorationDepth(next);
-    const nextDepth = DEPTHS[next - 1];
-    onBrainChange(nextDepth.state, next === 1 ? 0.58 : 0.66 + next * 0.06);
-    if (next >= 2) triggerBrainRecall();
-  }
-
-  function surface() {
-    setExplorationDepth(1);
-    setSelectedGraphId(null);
-    setGraphSearch("");
-    onBrainChange("idle", 0.58);
-  }
-
-  function recallMemory(fragment: MemoryFragment) {
-    triggerBrainRecall();
-    setExplorationDepth((depth) => Math.max(depth, 2) as BrainDepth);
-    setMessages((items) => [
-      ...items,
-      { role: "assistant", content: t(language, "brain.recalled", { title: fragment.title }) },
-    ]);
-  }
-
   return (
     <main className="brain-home" aria-label={t(language, "brain.aria.home")}>
-      <section className="brain-presence" aria-label={t(language, "brain.aria.exploration")}>
-        <div className="brain-exploration" data-depth={explorationDepth}>
-          <LivingBrain
-            state={brainState}
-            intensity={intensity + explorationDepth * 0.035}
-            size="large"
-            depth={explorationDepth}
-            showLabel={false}
-            onInteract={deepen}
-          />
-
-          <div className="brain-depth-badge" aria-live="polite">
-            <span>{t(language, "brain.level")} {explorationDepth}</span>
-            <strong>{t(language, `brain.depth.${explorationDepth}`)}</strong>
-          </div>
-
-          <div className="brain-depth-actions" aria-label={t(language, "brain.aria.quickViews")}>
-            <button type="button" className={explorationDepth === 2 ? "is-active" : ""} onClick={() => jumpToDepth(2)}>{t(language, "brain.view.memories")}</button>
-            <button type="button" className={explorationDepth === 3 ? "is-active" : ""} onClick={() => jumpToDepth(3)}>{t(language, "brain.view.topics")}</button>
-            <button type="button" className={explorationDepth === 4 ? "is-active" : ""} onClick={() => jumpToDepth(4)}>{t(language, "brain.view.relationships")}</button>
-            <button type="button" className={explorationDepth === 5 ? "is-active" : ""} onClick={() => jumpToDepth(5)}>{t(language, "brain.view.graph")}</button>
-          </div>
-
-          <div className="brain-depth-rail" aria-label={t(language, "brain.depthRail.aria")}>
-            {DEPTHS.map((depth) => (
-              <button
-                key={depth.level}
-                type="button"
-                className={depth.level <= explorationDepth ? "is-revealed" : ""}
-                aria-current={depth.level === explorationDepth ? "step" : undefined}
-                onClick={() => jumpToDepth(depth.level)}
-              >
-                <span>{depth.level}</span>
-                <strong>{t(language, `brain.depth.${depth.level}`)}</strong>
-              </button>
-            ))}
-          </div>
-
-          <div className="brain-field-layer" aria-hidden={explorationDepth < 2}>
-            <DepthEmergence
-              depth={explorationDepth}
-              memories={memoryFragments}
-              concepts={knowledgeConcepts}
-              relationships={relationshipThreads}
-              graphModel={graphModel}
-              graphSearch={graphSearch}
-              selectedGraphId={selectedGraphId}
-              onGraphSearch={setGraphSearch}
-              onSelectGraphNode={setSelectedGraphId}
-              onRecallMemory={recallMemory}
-            />
-          </div>
-
-          {explorationDepth > 1 ? (
-            <button className="brain-surface-control" type="button" onClick={surface}>
-              {t(language, "brain.surface")}
-            </button>
-          ) : null}
-        </div>
-      </section>
-
       <BrainConversation
         language={language}
-        explorationDepth={explorationDepth}
+        explorationDepth={5}
         modelName={modelName}
         messages={messages}
         starterPrompts={starterPrompts}
         memoryFeedback={memoryFeedback}
         ingestionStates={ingestionStates}
-        emergenceEvents={emergenceEvents}
         draft={draft}
         streaming={streaming}
         imageData={imageData}
         streamRef={streamRef}
-        memories={memoryFragments}
         concepts={knowledgeConcepts}
+        graphModel={graphModel}
+        graphSearch={graphSearch}
+        selectedGraphId={selectedGraphId}
         readiness={brainReadiness}
-        proof={brainProof}
         uploadingDocument={uploadingDocument}
-        onOpenDepth={jumpToDepth}
+        onGraphSearch={setGraphSearch}
+        onSelectGraphNode={setSelectedGraphId}
         onDraftChange={setDraft}
         onImageDataChange={setImageData}
         onUploadDocument={(file) => void uploadDocument(file)}

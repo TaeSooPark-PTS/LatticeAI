@@ -28,6 +28,14 @@ clean release artifact set으로 검증한다. README release screenshots/GIF도
 
 Local MLX model preparation also reuses valid existing Hugging Face cache snapshots when
 the same model is already present outside Lattice's managed `~/.ltcai/hf-models` directory.
+The default local model target is now `mlx-community/gemma-4-26b-a4b-it-4bit`.
+Local autoload is enabled by default but only proceeds when model files are
+already present locally; missing files still require explicit download consent.
+
+Brain Home is simplified around the level-5 Deep Graph. The older staged
+"now memory / older memory / topics / relationships" overview is removed from
+the main page, and model setup can be loaded inline without redirecting to the
+separate Models page.
 
 Expected artifacts (exact 7.5.0 names only):
 - dist/ltcai-7.5.0-py3-none-any.whl

@@ -43,8 +43,8 @@ You need Lattice AI when:
   session as disposable.
 - Add documents, local folders, notes, screenshots, and conversations with
   source-aware memory.
-- See recent memories, older memories, topics, relationships, and the full
-  knowledge graph when you want deeper structure.
+- See the full Deep Graph directly on Brain Home with nodes, relationships,
+  search, filters, and focused detail in one view.
 - Create consent-first Brain automation drafts for memory digests, project
   reviews, and follow-up suggestions before any schedule is enabled.
 - Use a recommended local model without learning model internals first.
@@ -59,7 +59,7 @@ You need Lattice AI when:
 3. Let Lattice explain what this computer can run.
 4. Start with the recommended model, or skip and choose later.
 5. Talk to your Brain.
-6. Watch memories, topics, relationships, and graph structure emerge from real use.
+6. Watch the Deep Graph update from real use.
 7. Back up, inspect, export, or restore the Brain when you need ownership actions.
 
 ## Living Brain Flow
@@ -106,17 +106,12 @@ Snooze, unsnooze, run now, approve, and dismiss actions stay explicit.
 
 ![Review Center](output/release/v7.5.0/screenshots/13-review-center.png)
 
-## Brain Depths
+## Deep Graph
 
-The user travels inward from everyday memory to deeper structure:
-
-| Level | User name | What the user gets |
-| --- | --- | --- |
-| Level 1 | Now memory | The living Brain presence and current conversation context |
-| Level 2 | Older memory | Durable memories with source-aware recall |
-| Level 3 | Topics | Recurring themes across chats and documents |
-| Level 4 | Relationships | How decisions, people, files, and ideas connect |
-| Level 5 | Full knowledge graph | Nodes, edges, search, and focused detail for advanced exploration |
+Brain Home now opens directly on the full knowledge graph. File, folder, note,
+and web ingestion stay at the top, while the Deep Graph shows the complete
+node/link view with search, type filters, time filters, neighbor focus, and
+selected-node detail without stepping through intermediate memory levels.
 
 Walkthrough:
 

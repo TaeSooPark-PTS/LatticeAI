@@ -148,7 +148,7 @@ class Config:
         trusted_proxies = [item.strip() for item in _value(env, "LATTICEAI_TRUSTED_PROXIES", "").split(",") if item.strip()]
 
         public_model = _value(env, "LATTICEAI_PUBLIC_MODEL", _value(env, "LATTICEAI_DEFAULT_MODEL", "openai:gpt-4o-mini"))
-        local_model = _value(env, "LATTICEAI_LOCAL_MODEL", "mlx-community/gemma-4-12b-it-4bit")
+        local_model = _value(env, "LATTICEAI_LOCAL_MODEL", "mlx-community/gemma-4-26b-a4b-it-4bit")
 
         data_dir = Path(_value(env, "LATTICEAI_DATA_DIR", str(Path.home() / ".ltcai")))
         static_dir = Path(_value(env, "LATTICEAI_STATIC_DIR", str(base_dir / "static")))
@@ -167,7 +167,7 @@ class Config:
             network_exposed=network_exposed,
             enable_telegram=_bool(env, "LATTICEAI_ENABLE_TELEGRAM", default=False),
             enable_graph=_bool(env, "LATTICEAI_ENABLE_GRAPH", default=True),
-            autoload_models=_bool(env, "LATTICEAI_AUTOLOAD_MODELS", default=is_public),
+            autoload_models=_bool(env, "LATTICEAI_AUTOLOAD_MODELS", default=True),
             model_idle_unload_seconds=_int(env, "LATTICEAI_MODEL_IDLE_UNLOAD_SECONDS", 0),
             allow_local_models=_bool(env, "LATTICEAI_ALLOW_LOCAL_MODELS", default=not is_public),
             require_auth=_bool(env, "LATTICEAI_REQUIRE_AUTH", default=is_public or network_exposed),

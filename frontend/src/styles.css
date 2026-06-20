@@ -1291,10 +1291,10 @@ body {
   flex: 1 1 auto;
   display: flex;
   flex-direction: column;
-  max-width: 780px;
+  max-width: 1180px;
   margin: 0 auto;
   width: 100%;
-  padding: 0 1.25rem 1.75rem;
+  padding: 1.25rem 1.25rem 1.75rem;
 }
 
 .brain-conversation-header {
@@ -1746,6 +1746,26 @@ body {
   border-radius: 8px;
   background: hsl(var(--knowledge) / 0.06);
   padding: 0.66rem;
+}
+
+.brain-model-setup {
+  grid-template-columns: minmax(0, 1fr) auto auto auto;
+}
+
+.brain-model-consent {
+  display: inline-flex;
+  min-height: 2rem;
+  align-items: center;
+  gap: 0.35rem;
+  color: hsl(var(--fg-muted));
+  font-size: 0.72rem;
+  font-weight: 760;
+  white-space: nowrap;
+}
+
+.brain-model-progress {
+  grid-column: 1 / -1;
+  color: hsl(var(--brain-core));
 }
 
 .brain-model-demo span {
@@ -2317,6 +2337,49 @@ body {
   display: flex;
   min-height: 100vh;
   flex-direction: column;
+}
+
+.brain-deep-graph-panel {
+  display: grid;
+  gap: 0.75rem;
+  margin-bottom: 1rem;
+}
+
+.brain-deep-graph-summary {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 0.75rem;
+}
+
+.brain-deep-graph-summary > div {
+  border: 1px solid hsl(var(--brain-core) / 0.32);
+  border-radius: 8px;
+  background: hsl(var(--surface-glass));
+  padding: 0.75rem;
+}
+
+.brain-deep-graph-summary span {
+  display: block;
+  color: hsl(var(--fg-muted));
+  font-size: 0.66rem;
+  font-weight: 820;
+  text-transform: uppercase;
+}
+
+.brain-deep-graph-summary strong {
+  display: block;
+  margin-top: 0.18rem;
+  color: hsl(var(--fg));
+  font-size: 1rem;
+}
+
+.brain-deep-graph-panel .mind-core-graph {
+  position: relative;
+  inset: auto;
+  min-height: 34rem;
+  opacity: 1;
+  border-radius: 8px;
+  pointer-events: auto;
 }
 
 .brain-organism {

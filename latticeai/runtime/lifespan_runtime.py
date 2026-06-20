@@ -58,6 +58,19 @@ def build_lifespan_runtime(
             print("⏭️ Local model autoload skipped because LATTICEAI_ALLOW_LOCAL_MODELS=false.")
             return
 
+        try:
+            from latticeai.services.model_runtime import hf_model_ready
+
+            if not hf_model_ready(local_model, "local_mlx"):
+                print(
+                    "⏭️ Local model autoload skipped because model files are not present locally. "
+                    "Use the model setup panel to download with consent."
+                )
+                return
+        except Exception as e:  # pragma: no cover - startup diagnostics
+            print(f"⏭️ Local model autoload readiness check skipped: {e}")
+            return
+
         print("⏳ Auto-loading local model stack:")
         print(f"   - Target: {local_model}")
         if local_draft_model:

@@ -1,30 +1,25 @@
 import * as React from "react";
-import { Cpu, DatabaseZap, FileText, FileUp, FolderPlus, Globe2, Loader2, Repeat2, Search, Settings, ShieldCheck, Sparkles } from "lucide-react";
+import { CheckCircle2, Cpu, DatabaseZap, Download, FileText, FileUp, FolderPlus, Globe2, Loader2, Search, Settings, ShieldCheck } from "lucide-react";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 
-const INGESTION_TYPE_LABEL_KEY: Record<IngestionSourceType, string> = {
-  file: "brain.ingest.type.file",
-  folder: "brain.ingest.type.folder",
-  note: "brain.ingest.type.note",
-  web: "brain.ingest.type.web",
-};
 import { LanguageSwitcher } from "@/components/LanguageSwitcher";
 import { t, type Language } from "@/i18n";
+import { latticeApi } from "@/api/client";
+import { asArray } from "@/lib/utils";
 import {
   INGESTION_STAGE_ORDER,
   type BrainDepth,
-  type BrainProof,
   type BrainReadiness,
-  type EmergenceEvent,
   type IngestionPipelineStage,
   type IngestionSourceType,
   type IngestionState,
   type KnowledgeConcept,
-  type MemoryFragment,
+  type KnowledgeGraphModel,
   type Message,
 } from "./types";
 import { BrainCarePanel } from "./BrainCarePanel";
 import { BrainComposer } from "./BrainComposer";
-import { BrainOverviewPanel } from "./BrainOverviewPanel";
+import { BrainGraphLayer } from "./BrainGraphLayer";
 
 export function BrainConversation({
   language,
@@ -34,17 +29,18 @@ export function BrainConversation({
   starterPrompts,
   memoryFeedback,
   ingestionStates,
-  emergenceEvents,
   draft,
   streaming,
   imageData,
   streamRef,
-  memories,
   concepts,
+  graphModel,
+  graphSearch,
+  selectedGraphId,
   readiness,
-  proof,
   uploadingDocument,
-  onOpenDepth,
+  onGraphSearch,
+  onSelectGraphNode,
   onDraftChange,
   onImageDataChange,
   onUploadDocument,
@@ -61,17 +57,18 @@ export function BrainConversation({
   starterPrompts: string[];
   memoryFeedback: string | null;
   ingestionStates: Record<IngestionSourceType, IngestionState | null>;
-  emergenceEvents: EmergenceEvent[];
   draft: string;
   streaming: boolean;
   imageData: string | null;
   streamRef: React.RefObject<HTMLDivElement | null>;
-  memories: MemoryFragment[];
   concepts: KnowledgeConcept[];
+  graphModel: KnowledgeGraphModel;
+  graphSearch: string;
+  selectedGraphId: string | null;
   readiness: BrainReadiness;
-  proof: BrainProof;
   uploadingDocument: boolean;
-  onOpenDepth: (depth: BrainDepth) => void;
+  onGraphSearch: (value: string) => void;
+  onSelectGraphNode: (id: string | null) => void;
   onDraftChange: (value: string) => void;
   onImageDataChange: (value: string | null) => void;
   onUploadDocument: (file: File) => void;
@@ -103,7 +100,7 @@ export function BrainConversation({
             <Search className="h-3.5 w-3.5" />
             {t(language, "brain.action.find")}
           </button>
-          <button type="button" onClick={() => navigateHash("/models")}>
+          <button type="button" onClick={() => document.getElementById("brain-model-setup")?.scrollIntoView({ behavior: "smooth", block: "center" })}>
             <Cpu className="h-3.5 w-3.5" />
             {t(language, "brain.action.model")}
           </button>
@@ -129,30 +126,31 @@ export function BrainConversation({
           onIngestNote={onIngestNote}
           onIngestWeb={onIngestWeb}
         />
-        <IngestionTimelineSection language={language} emergenceEvents={emergenceEvents} />
-        <BrainOverviewPanel
-          memories={memories}
-          concepts={concepts}
-          readiness={readiness}
-          proof={proof}
-          onOpenDepth={onOpenDepth}
-        />
-        <ModelContinuityDemo
+        <section className="brain-deep-graph-panel" aria-label="Deep Graph">
+          <div className="brain-deep-graph-summary">
+            <div>
+              <span>Deep Graph</span>
+              <strong>{graphModel.nodes.length} nodes · {graphModel.edges.length} links</strong>
+            </div>
+            <div>
+              <span>Brain readiness</span>
+              <strong>{readiness.score}% · {concepts.length} concepts</strong>
+            </div>
+          </div>
+          <BrainGraphLayer
+            model={graphModel}
+            search={graphSearch}
+            selectedId={selectedGraphId}
+            onSearch={onGraphSearch}
+            onSelect={onSelectGraphNode}
+          />
+        </section>
+        <BrainModelSetupPanel
           language={language}
-          proof={proof}
           modelName={modelName}
           onVerify={onVerifyModelContinuity}
         />
-        {messages.length === 0 ? (
-          <BrainEmptyState
-            language={language}
-            starterPrompts={starterPrompts}
-            uploadingDocument={uploadingDocument}
-            onDraftChange={onDraftChange}
-            onUploadDocument={onUploadDocument}
-          />
-        ) : (
-          messages.map((message, index) => {
+        {messages.map((message, index) => {
             const messageId = `brain-msg-${index}`;
             const proof = message.role === "assistant" ? message.proof : undefined;
             return (
@@ -166,8 +164,7 @@ export function BrainConversation({
                 {proof ? <AnswerProofCard language={language} proof={proof} messageId={messageId} /> : null}
               </div>
             );
-          })
-        )}
+          })}
       </div>
 
       {memoryFeedback ? (
@@ -362,79 +359,79 @@ function IngestionStageTrack({
   );
 }
 
-function relativeTime(language: Language, at: number, now: number): string {
-  const diffMinutes = Math.floor((now - at) / 60000);
-  if (diffMinutes < 1) return t(language, "brain.timeline.justNow");
-  return t(language, "brain.timeline.minutesAgo", { count: diffMinutes });
-}
-
-function IngestionTimelineSection({
+function BrainModelSetupPanel({
   language,
-  emergenceEvents,
-}: {
-  language: Language;
-  emergenceEvents: EmergenceEvent[];
-}) {
-  // Re-read the clock on each render of the parent so relative labels stay fresh-enough.
-  const now = Date.now();
-  return (
-    <section
-      className="brain-emergence-timeline"
-      aria-label={t(language, "brain.timeline.aria")}
-      aria-live="polite"
-    >
-      <div className="brain-emergence-head">
-        <Sparkles className="h-3.5 w-3.5" />
-        <strong>{t(language, "brain.timeline.emergenceTitle")}</strong>
-        <span>{t(language, "brain.timeline.recent")}</span>
-      </div>
-      {emergenceEvents.length === 0 ? (
-        <p className="brain-emergence-empty">{t(language, "brain.timeline.empty")}</p>
-      ) : (
-        <ol className="brain-emergence-list">
-          {emergenceEvents.map((event) => (
-            <li key={event.id} className="brain-emergence-item">
-              <span className="brain-emergence-type">{t(language, INGESTION_TYPE_LABEL_KEY[event.sourceType])}</span>
-              <span className="brain-emergence-label">{event.label}</span>
-              <span className="brain-emergence-counts">
-                <strong>{t(language, "brain.timeline.newMemories", { count: event.newMemories })}</strong>
-                <strong>{t(language, "brain.timeline.newEntities", { count: event.newEntities })}</strong>
-              </span>
-              <time className="brain-emergence-at">{relativeTime(language, event.at, now)}</time>
-            </li>
-          ))}
-        </ol>
-      )}
-    </section>
-  );
-}
-
-function ModelContinuityDemo({
-  language,
-  proof,
   modelName,
   onVerify,
 }: {
   language: Language;
-  proof: BrainProof;
   modelName: string;
   onVerify: () => void;
 }) {
+  const qc = useQueryClient();
+  const models = useQuery({ queryKey: ["models"], queryFn: latticeApi.models });
+  const recs = useQuery({ queryKey: ["modelRecommendations", "local_mlx"], queryFn: () => latticeApi.modelRecommendations("local_mlx") });
+  const [consent, setConsent] = React.useState(false);
+  const [busy, setBusy] = React.useState(false);
+  const [progress, setProgress] = React.useState("");
+  const data = (models.data?.data || {}) as Record<string, unknown>;
+  const recommendationData = (recs.data?.data as Record<string, unknown> | undefined)?.recommendations as Record<string, unknown> | undefined;
+  const topPick = (recommendationData?.top_pick || null) as Record<string, unknown> | null;
+  const recommended = asArray<Record<string, unknown>>(data.recommended);
+  const picked =
+    recommended.find((item) => String(item.id || "").includes("gemma-4-26b-a4b-it-4bit"))
+    || recommended.find((item) => String(item.id || "") === String(topPick?.id || ""))
+    || recommended[0]
+    || topPick
+    || null;
+  const current = String(data.current || modelName || "");
+  const loaded = asArray<string>(data.loaded);
+  const pickedId = String(picked?.recommended_load_id || picked?.id || topPick?.id || "");
+  const engine = String(picked?.recommended_engine || "local_mlx");
+  const isLoaded = Boolean(current && (current === pickedId || loaded.includes(pickedId)));
+  const downloadRequired = Boolean(picked?.download_required);
+  const canRun = Boolean(pickedId) && !busy && (!downloadRequired || consent);
+
+  async function prepare() {
+    if (!pickedId || busy) return;
+    setBusy(true);
+    setProgress("Preparing local model...");
+    const result = await latticeApi.streamModelPrepare(
+      { model: pickedId, engine, allow_download: consent },
+      {
+        onProgress: (item) => setProgress(String(item.message || item.stage || "Preparing local model...")),
+        onDone: () => setProgress("Model is ready."),
+        onError: (item) => setProgress(String(item.user_message || item.reason || "Model setup failed.")),
+      },
+    );
+    if (!result.ok && result.error) setProgress(String(result.error));
+    await qc.invalidateQueries({ queryKey: ["models"] });
+    await qc.invalidateQueries({ queryKey: ["modelRecommendations", "local_mlx"] });
+    setBusy(false);
+  }
+
   return (
-    <section className="brain-model-demo" aria-label={t(language, "brain.modelDemo.aria")}>
+    <section id="brain-model-setup" className="brain-model-demo brain-model-setup" aria-label={t(language, "brain.modelDemo.aria")}>
       <div>
-        <span>{t(language, "brain.modelDemo.kicker")}</span>
-        <strong>{proof.modelContinuity.proven ? t(language, "brain.modelDemo.proven") : t(language, "brain.modelDemo.pending")}</strong>
-        <small>{t(language, "brain.modelDemo.detail", { model: proof.modelContinuity.activeModel || modelName })}</small>
+        <span>Local model</span>
+        <strong>{current || "No model loaded"}</strong>
+        <small>{picked ? `Recommended: ${String(picked.name || picked.id)}${downloadRequired ? " · download required" : " · ready locally"}` : "Scanning local model catalog..."}</small>
       </div>
+      {downloadRequired ? (
+        <label className="brain-model-consent">
+          <input type="checkbox" checked={consent} onChange={(event) => setConsent(event.target.checked)} />
+          <span>Allow download</span>
+        </label>
+      ) : null}
       <button type="button" onClick={onVerify}>
-        <Repeat2 className="h-3.5 w-3.5" />
-        {t(language, "brain.modelDemo.verify")}
+        <CheckCircle2 className="h-3.5 w-3.5" />
+        Verify
       </button>
-      <button type="button" onClick={() => navigateHash("/models")}>
-        <Cpu className="h-3.5 w-3.5" />
-        {t(language, "brain.modelDemo.change")}
+      <button type="button" disabled={!canRun || isLoaded} onClick={() => void prepare()}>
+        {downloadRequired ? <Download className="h-3.5 w-3.5" /> : <Cpu className="h-3.5 w-3.5" />}
+        {busy ? "Preparing" : isLoaded ? "Loaded" : downloadRequired ? "Install & Load" : "Load"}
       </button>
+      {progress ? <small className="brain-model-progress">{progress}</small> : null}
     </section>
   );
 }
