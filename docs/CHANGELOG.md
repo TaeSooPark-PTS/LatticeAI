@@ -18,12 +18,15 @@ existed at that release.
   compact `contracts` views alongside legacy payloads.
 - Deterministic 250+ record retrieval benchmark corpus while keeping 12 judged
   queries and real `KnowledgeGraphStore` + `SearchService` execution.
+- Refreshed README release evidence screenshots and walkthrough GIF under
+  `output/release/v7.5.0/`.
 
 ### Changed
 - Tauri Rust/CLI dependencies are updated within the Tauri 2 line, removing the
   old transitive `block v0.1.6` future-incompatibility warning.
 - npm dependency overrides move `js-yaml` to a non-vulnerable version; `npm
   audit` reports 0 vulnerabilities.
+- CI lint compatibility is restored for the Brain quality gate script.
 - Package/runtime/static metadata is synchronized to 7.5.0; package publish and
   deployment remain owner-run only.
 

@@ -23,7 +23,8 @@ judged query의 recall, precision, NDCG, must-include hit-rate threshold를 검�
 
 릴리스 위험도 줄였다. npm audit finding을 0개로 낮추고, Tauri 2 dependency stack을 최신 2.x로
 올려 기존 transitive `block v0.1.6` future-incompatibility warning을 제거했다. 7.5.0 산출물은
-clean release artifact set으로 검증한다.
+clean release artifact set으로 검증한다. README release screenshots/GIF도
+`output/release/v7.5.0/` 기준으로 새로 캡처했다.
 
 Expected artifacts (exact 7.5.0 names only):
 - dist/ltcai-7.5.0-py3-none-any.whl
