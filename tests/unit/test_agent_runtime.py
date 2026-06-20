@@ -17,6 +17,7 @@ from latticeai.core.agent import (
     AgentState,
     extract_action,
 )
+from lattice_brain.runtime.contracts import contract_view, extract_contract
 
 
 class FakeReq:
@@ -102,6 +103,8 @@ def test_full_cycle_plan_execute_verify_done():
     assert contract["schema_version"] == "agent-run-contract/v1"
     assert contract["runtime"] == "single_agent"
     assert contract["run_id"] == "single-run-1"
+    assert extract_contract({"contract": contract})["run_id"] == "single-run-1"
+    assert contract_view({"contract": contract})["kind"] == "agent_run"
 
 
 def test_destructive_tool_is_blocked_not_executed():

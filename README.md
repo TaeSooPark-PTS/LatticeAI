@@ -200,33 +200,34 @@ See [docs/DEVELOPMENT.md](docs/DEVELOPMENT.md) for developer workflow details.
 
 ## Current Release
 
-The current release is **7.4.0 Runtime Contract Convergence & Corpus Retrieval**:
+The current release is **7.5.0 Runtime Debt Burn-down & Release Risk Cleanup**:
 
 - Agent runs, workflow runs, audit events, and realtime events now carry the
   `agent-run-contract/v1` family envelope, so replay, admin review, and live
   feeds can inspect run identity, runtime, status, timeline, and artifacts
   through one contract shape.
-- Persisted queued/running/terminal agent and workflow rows refresh their
-  contract on every state transition, including cancellation and interruption.
-- Audit rows keep their existing admin fields while adding redacted contract
-  metadata; realtime SSE events keep `area`, `event_type`, `workspace_id`, and
-  `payload` while adding the same contract family.
+- AgentRuntime and realtime API responses now expose compact `contracts` views
+  so downstream consumers can read the common envelope instead of re-parsing
+  surface-specific records.
 - Brain quality evaluation now runs a real KnowledgeGraphStore + SearchService
-  corpus fixture with judged queries, recall, precision, NDCG, and must-include
-  hit-rate thresholds.
+  corpus fixture with 250+ records, judged queries, recall, precision, NDCG,
+  and must-include hit-rate thresholds.
+- Release risk cleanup removes stale-artifact upload ambiguity, clears npm audit
+  findings, and updates the Tauri 2 stack so the old `block v0.1.6`
+  future-incompatibility warning is gone.
 
-Expected artifacts for 7.4.0 release must use exact filenames:
+Expected artifacts for 7.5.0 release must use exact filenames:
 
-- `dist/ltcai-7.4.0-py3-none-any.whl`
-- `dist/ltcai-7.4.0.tar.gz`
-- `ltcai-7.4.0.tgz`
-- `dist/ltcai-7.4.0.vsix`
-- `src-tauri/target/release/bundle/dmg/Lattice AI_7.4.0_aarch64.dmg`
+- `dist/ltcai-7.5.0-py3-none-any.whl`
+- `dist/ltcai-7.5.0.tar.gz`
+- `ltcai-7.5.0.tgz`
+- `dist/ltcai-7.5.0.vsix`
+- `src-tauri/target/release/bundle/dmg/Lattice AI_7.5.0_aarch64.dmg`
 
 Do not upload `dist/*`. Package registry publishing remains owner-run.
 
 See [docs/ROADMAP_RECOMMENDATIONS.md](docs/ROADMAP_RECOMMENDATIONS.md) for the
-strategic roadmap slices applied through 7.4.0 and the follow-up tracks.
+strategic roadmap slices applied through 7.5.0 and the follow-up tracks.
 
 ## Known Limitations
 
@@ -243,6 +244,7 @@ strategic roadmap slices applied through 7.4.0 and the follow-up tracks.
 
 | Version | Theme |
 | --- | --- |
+| 7.5.0 | Runtime Debt Burn-down & Release Risk Cleanup: API consumers get normalized contract views, retrieval quality uses a 250+ record corpus fixture, stale artifact risk is removed, npm audit is clean, and Tauri is updated past the old block warning |
 | 7.4.0 | Runtime Contract Convergence & Corpus Retrieval: agent/workflow/audit/realtime records share the agent-run-contract/v1 family, and retrieval quality gates run against a real corpus-scale fixture |
 | 7.3.0 | Runtime Contract & Retrieval Quality: shared agent-run contract across runtimes plus deterministic hybrid recall/ranking regression gates |
 | 7.2.0 | Runtime Trust Baseline: agent run preview/readiness, simulation-mode guardrails, live ToolRegistry manifest/diagnostics, and tests for dispatch/governance/catalog drift |

@@ -6,7 +6,8 @@
 
 | 버전 | 지원 여부 |
 |------|-----------|
-| 7.4.x (latest) | ✅ 지원 |
+| 7.5.x (latest) | ✅ 지원 |
+| 7.4.x | ✅ 지원 |
 | 7.3.x | ✅ 보안 패치 범위 내 지원 |
 | 7.2.x | ✅ 보안 패치 범위 내 지원 |
 | 7.1.x | ✅ 보안 패치 범위 내 지원 |
@@ -62,7 +63,7 @@
 
 ## 보안 모델
 
-Lattice AI v7.4.0는 모델이 바뀌어도 사용자의 지식과 맥락을 보존하는 local-first Digital Brain입니다. Personal /
+Lattice AI v7.5.0는 모델이 바뀌어도 사용자의 지식과 맥락을 보존하는 local-first Digital Brain입니다. Personal /
 Organization Workspace, Brain-first Conversation, Knowledge Graph, Vector
 Index, Hybrid Search, Basic / Advanced / Admin mode, durable workspace
 governance, independent Brain Core package boundary, pluggable storage,
@@ -70,13 +71,13 @@ encrypted `.latticebrain` archives, confirmed restore/import, local-only
 startup hardening, desktop sidecar status, strict packaged-app CSP, first-run
 setup, saved-profile email/password mismatch guards, explicit model
 recommendation/install/validation flow, and default-off model downloads/runtime
-installs를 포함합니다. v7.4.0는 v6.4.0의 workspace-scoped graph/search/memory
+installs를 포함합니다. v7.5.0는 v6.4.0의 workspace-scoped graph/search/memory
 retrieval and mutation boundary를 유지하고, fallback embedding label,
 drift/re-index signal, structured context attribution/guardrail을 통해
 unsupported/stale Brain facts를 확정 사실처럼 제시하지 않도록 합니다. 일반 사용자 Brain 화면과
 관리자 로그/보안/운영 화면을 분리하고, Brain proof API가 active model id와
 recall sample만 노출하도록 scope/read gates를 통과하게 하며, 로컬 파일 자동 읽기 우회를 차단하고,
-secret redaction을 로그/감사/보안 export/hook packet에 중앙 적용합니다. v7.4.0은
+secret redaction을 로그/감사/보안 export/hook packet에 중앙 적용합니다. v7.5.0은
 visible product IA와 legacy compatibility routes를 분리하고 rich pages를 lazy-load해,
 보안/설정/모델/그래프 화면이 Brain Home에서 명확히 도달되면서도 초기 surface에
 불필요하게 모두 적재되지 않게 합니다. 또한 VS Code extension heartbeat/status
@@ -87,7 +88,9 @@ blocking reason만 반환하고, ToolRegistry diagnostics는 handler/governance/
 정렬 상태와 permission projection만 노출합니다. 공통 agent-run contract family는 agent run,
 workflow run, audit event, realtime event의 runtime 종류, mode, status, role/timeline,
 terminal 여부를 명시하고 audit event는 redaction 이후 contract를 생성해 simulated output이나
-민감 payload가 real execution evidence처럼 보이지 않도록 한다. 아래
+민감 payload가 real execution evidence처럼 보이지 않도록 한다. AgentRuntime과 realtime feed는
+compact contract view를 노출해 UI/API consumers가 surface별 payload를 재해석하지 않아도 같은
+보안 계약을 읽을 수 있게 한다. 아래
 보안 모델을 따릅니다:
 
 ### 기본 안전 설정 (Default Secure)

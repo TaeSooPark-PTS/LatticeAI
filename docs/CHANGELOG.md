@@ -4,6 +4,29 @@ The top entry is either the current unreleased main-branch work or the current
 release line. Older entries are historical and may describe behavior as it
 existed at that release.
 
+## [7.5.0] - 2026-06-20
+
+> Runtime Debt Burn-down & Release Risk Cleanup. Turns the 7.4.0 contract
+> envelope into a consumed API surface, expands retrieval quality to a 250+
+> record local corpus fixture, and removes release/security warnings.
+
+### Added
+- `extract_contract`, `require_contract`, `contract_view`, and `contract_views`
+  helpers for consumers that need a surface-agnostic `agent-run-contract/v1`
+  projection.
+- AgentRuntime status/list/detail/events and realtime feed responses now expose
+  compact `contracts` views alongside legacy payloads.
+- Deterministic 250+ record retrieval benchmark corpus while keeping 12 judged
+  queries and real `KnowledgeGraphStore` + `SearchService` execution.
+
+### Changed
+- Tauri Rust/CLI dependencies are updated within the Tauri 2 line, removing the
+  old transitive `block v0.1.6` future-incompatibility warning.
+- npm dependency overrides move `js-yaml` to a non-vulnerable version; `npm
+  audit` reports 0 vulnerabilities.
+- Package/runtime/static metadata is synchronized to 7.5.0; package publish and
+  deployment remain owner-run only.
+
 ## [7.4.0] - 2026-06-20
 
 > Runtime Contract Convergence & Corpus Retrieval. Completes the

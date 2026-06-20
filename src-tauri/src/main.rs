@@ -388,7 +388,7 @@ fn main() {
                 let _ = window.set_focus();
                 let origin = app.state::<BackendState>().origin.clone();
                 let target = format!("{}/app", origin.trim_end_matches('/'));
-                let mut window_for_nav = window.clone();
+                let window_for_nav = window.clone();
                 std::thread::spawn(move || {
                     wait_for_backend(&origin);
                     if let Ok(url) = tauri::Url::parse(&target) {

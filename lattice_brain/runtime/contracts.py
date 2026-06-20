@@ -30,7 +30,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass, field
 from datetime import datetime
-from typing import Any, Dict, List, Optional
+from typing import Any, Dict, Iterable, List, Optional
 
 
 def runtime_timestamp() -> str:
@@ -52,6 +52,22 @@ CONTRACT_KINDS = ("agent_run", "workflow_run", "audit_event", "realtime_event")
 
 # The envelope keys every family member is guaranteed to expose.
 CONTRACT_ENVELOPE_KEYS = ("family", "schema_version", "kind", "id", "status", "timestamp")
+CONTRACT_VIEW_KEYS = (
+    "family",
+    "schema_version",
+    "kind",
+    "id",
+    "run_id",
+    "agent_id",
+    "runtime",
+    "mode",
+    "status",
+    "goal",
+    "current_role",
+    "timestamp",
+    "is_terminal",
+    "blocking_reasons",
+)
 
 _SCHEMA_FOR_KIND = {
     "agent_run": AGENT_RUN_SCHEMA,
@@ -100,6 +116,44 @@ def is_contract_member(record: Any) -> bool:
     if record.get("schema_version") != _SCHEMA_FOR_KIND[kind]:
         return False
     return all(key in record for key in CONTRACT_ENVELOPE_KEYS)
+
+
+def extract_contract(record: Any) -> Optional[Dict[str, Any]]:
+    """Return the normalized family contract carried by ``record``.
+
+    Consumers should call this instead of branching on whether they received an
+    agent run, workflow run, audit row, or realtime event. The function accepts
+    either a raw contract dict or a surface record with a nested ``contract``.
+    """
+    if is_contract_member(record):
+        return dict(record)
+    if isinstance(record, dict) and is_contract_member(record.get("contract")):
+        return dict(record["contract"])
+    return None
+
+
+def require_contract(record: Any) -> Dict[str, Any]:
+    """Return a valid family contract or raise a precise error."""
+    contract = extract_contract(record)
+    if contract is None:
+        raise ValueError("record is missing an agent-run-contract/v1 family contract")
+    return contract
+
+
+def contract_view(record: Any) -> Dict[str, Any]:
+    """Return a compact, surface-agnostic view for API and UI consumers."""
+    contract = require_contract(record)
+    return {key: contract.get(key) for key in CONTRACT_VIEW_KEYS if key in contract}
+
+
+def contract_views(records: Iterable[Any]) -> List[Dict[str, Any]]:
+    """Return compact views for every valid contract in ``records``."""
+    views: List[Dict[str, Any]] = []
+    for record in records:
+        contract = extract_contract(record)
+        if contract is not None:
+            views.append({key: contract.get(key) for key in CONTRACT_VIEW_KEYS if key in contract})
+    return views
 
 
 @dataclass(frozen=True)

@@ -111,7 +111,7 @@ def create_agents_router(
     async def agent_runs(request: Request):
         require_user(request)
         scope = gate_read(request)
-        return store.list_agents(workspace_id=scope)
+        return runtime.list_runs(scope=scope)
 
     @router.get("/agents/api/handoffs")
     async def agent_handoffs(request: Request, run_id: str = ""):
@@ -124,7 +124,7 @@ def create_agents_router(
         require_user(request)
         scope = gate_read(request)
         try:
-            return {"run": store.get_agent_run(run_id, workspace_id=scope)}
+            return runtime.get_run(run_id, scope=scope)
         except FileNotFoundError as exc:
             raise HTTPException(status_code=404, detail=f"Agent run not found: {run_id}") from exc
 
@@ -133,7 +133,7 @@ def create_agents_router(
         require_user(request)
         scope = gate_read(request)
         try:
-            return {"replay": store.replay_agent_run(run_id, workspace_id=scope)}
+            return runtime.replay(run_id, scope=scope)
         except FileNotFoundError as exc:
             raise HTTPException(status_code=404, detail=f"Agent run not found: {run_id}") from exc
 

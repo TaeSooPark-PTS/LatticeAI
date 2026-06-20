@@ -30,6 +30,19 @@ small release-sized work. The operating principle stays unchanged:
   Knowledge Graph corpus and scores SearchService hybrid retrieval with judged
   queries, recall, precision, NDCG, and must-include hit-rate thresholds.
 
+## 7.5.0 Applied Slice
+
+7.5.0 burns down the remaining 7.4.0 risk instead of deferring it:
+
+- Contract consumption: AgentRuntime and realtime feed APIs now emit compact
+  `contracts` views so UI, replay, admin, and export consumers can depend on the
+  shared family envelope directly.
+- Retrieval scale: the corpus fixture now runs against 250+ local records while
+  keeping judged queries, graded relevance, and must-include expectations.
+- Release trust: stale artifact mixing is handled through clean exact-version
+  artifact generation, npm audit findings are cleared, and the Tauri 2 stack is
+  updated past the old `block v0.1.6` future-incompatibility warning.
+
 ## Near-Term Tracks
 
 1. Retrieval quality and scale
@@ -43,7 +56,8 @@ small release-sized work. The operating principle stays unchanged:
    - Surface conflict resolution for contradictory memories.
 
 3. Runtime convergence
-   - Drive UI run/replay/admin views from the shared contract family.
+   - Migrate remaining UI run/replay/admin components to read the API-level
+     compact contract views as their primary source.
    - Keep simulation mode explicit and never record it as product success.
    - Route tools through explicit registry/governance contracts.
 

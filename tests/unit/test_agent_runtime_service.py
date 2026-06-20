@@ -9,6 +9,7 @@ from fastapi import FastAPI
 from fastapi.testclient import TestClient
 
 from latticeai.api.agents import create_agents_router
+from lattice_brain.runtime.contracts import run_record_contract
 from lattice_brain.runtime.multi_agent import CORE_PIPELINE, MultiAgentOrchestrator
 from lattice_brain.runtime.agent_runtime import AgentRuntime, AgentRuntimeUnavailable
 
@@ -24,6 +25,7 @@ class FakeStore:
 
     def record_agent_run(self, **kw):
         run = {"id": f"agent-run-{len(self.runs)}", "created_at": "2026-06-07T00:00:00", **kw}
+        run["contract"] = run_record_contract(run)
         self.runs.append(run)
         return run
 
@@ -81,6 +83,8 @@ def test_start_records_run_and_status_reflects_it():
 
     status = rt.status(scope=None)
     assert status["runtime"]["total_runs"] == 1
+    assert len(status["contracts"]) == 1
+    assert status["contracts"][0]["family"] == "agent-run-contract/v1"
     assert len(status["roles"]) == 5
     # roster is the canonical roles enriched with real run counts
     executor = next(a for a in status["agents"] if a["id"] == "agent:executor")

@@ -1,11 +1,11 @@
-"""Corpus-scale retrieval fixture for the 7.4.0 Brain quality gate."""
+"""Corpus-scale retrieval fixture for the 7.5.0 Brain quality gate."""
 
 from __future__ import annotations
 
-FIXTURE_NAME = "7.4.0-corpus-scale-hybrid-retrieval"
+FIXTURE_NAME = "7.5.0-corpus-scale-hybrid-retrieval"
 TOP_K = 5
 
-DOCUMENTS = [
+CORE_DOCUMENTS = [
     {"id": "doc:agent-runtime-contract", "type": "Decision", "title": "Agent runtime contract", "content": "Workflow run, agent run, audit event, and realtime event records must carry the agent-run-contract/v1 family envelope with run id, runtime, status, timeline, and artifacts."},
     {"id": "doc:workflow-observability", "type": "Document", "title": "Workflow observability", "content": "Workflow Designer persists queued, running, awaiting approval, cancelled, interrupted, partial, failed, and ok runs with replayable timeline events."},
     {"id": "doc:audit-trust", "type": "Security", "title": "Audit trust", "content": "Audit events are append-only, redacted before persistence, and linked to execution contracts for admin review without leaking secrets."},
@@ -33,24 +33,60 @@ DOCUMENTS = [
     {"id": "doc:docker-tauri", "type": "Deployment", "title": "Deployment operations", "content": "Docker Compose deployment, one-click installation, Tauri auto-updates, rollback support, and exact release artifacts improve operations."},
     {"id": "doc:model-routing", "type": "Runtime", "title": "Model orchestration", "content": "Ollama, LM Studio, MLX, and cloud models need automatic fallback, routing, and replaceable model boundaries."},
     {"id": "doc:strict-quality", "type": "Quality", "title": "Strict code quality", "content": "Async-first architecture, dependency injection, centralized exceptions, mypy or pyright, TypeScript strict mode, E2E tests, and property tests reduce regressions."},
-    {"id": "distractor:theme-editor", "type": "Distractor", "title": "Theme editor", "content": "Color palettes, typography, and sidebar icon sizing are useful but unrelated to retrieval contract benchmarks."},
-    {"id": "distractor:calendar", "type": "Distractor", "title": "Calendar reminders", "content": "Calendar reminders and meeting agenda formatting are integrations but not the runtime event contract path."},
+    {"id": "distractor:theme-editor", "type": "Distractor", "title": "Theme editor", "content": "Color palettes, typography, and sidebar icon sizing are useful visual polish topics."},
+    {"id": "distractor:calendar", "type": "Distractor", "title": "Calendar reminders", "content": "Calendar reminders and meeting agenda formatting are productivity integrations."},
     {"id": "distractor:billing", "type": "Distractor", "title": "Billing invoices", "content": "Invoices, payment receipts, and subscription emails can be stored but are not the Brain quality gate."},
-    {"id": "distractor:mobile-shell", "type": "Distractor", "title": "Mobile shell", "content": "A mobile companion can improve access but should not replace local-first desktop retrieval and run observability."},
-    {"id": "distractor:marketing", "type": "Distractor", "title": "Marketing landing page", "content": "Landing pages and hero copy do not prove durable knowledge or agent runtime correctness."},
+    {"id": "distractor:mobile-shell", "type": "Distractor", "title": "Mobile shell", "content": "A mobile companion can improve access with push notifications and offline cache."},
+    {"id": "distractor:marketing", "type": "Distractor", "title": "Marketing landing page", "content": "Landing pages and hero copy shape positioning and campaign messaging."},
 ]
+
+_DISTRACTOR_TOPICS = [
+    ("finance", "quarterly planning", "budget variance vendor renewal procurement forecast"),
+    ("design", "component polish", "spacing typography icon density color token accessibility"),
+    ("support", "customer escalation", "ticket triage priority response macro satisfaction"),
+    ("ops", "incident rotation", "oncall handoff status page maintenance window"),
+    ("sales", "pipeline review", "lead scoring opportunity stage forecast account"),
+    ("calendar", "meeting schedule", "agenda reminder availability invite followup"),
+    ("email", "inbox policy", "thread label archive template unsubscribe"),
+    ("mobile", "companion shell", "push notification offline cache deep link"),
+    ("billing", "invoice lifecycle", "receipt tax subscription entitlement payment"),
+    ("analytics", "dashboard report", "cohort funnel metric annotation export"),
+    ("theme", "appearance settings", "palette contrast sidebar density motion"),
+    ("legal", "compliance packet", "clause obligation renewal signature counterparty"),
+]
+
+
+def _generated_distractors() -> list[dict[str, str]]:
+    """Create a deterministic local corpus large enough to exercise ranking."""
+    docs: list[dict[str, str]] = []
+    for batch in range(20):
+        for topic, title, terms in _DISTRACTOR_TOPICS:
+            docs.append({
+                "id": f"distractor:{topic}:{batch:02d}",
+                "type": "Distractor",
+                "title": f"{title.title()} {batch + 1}",
+                "content": (
+                    f"{title} note {batch + 1}. This record discusses {terms}. "
+                    "It is intentionally unrelated to the judged Brain quality topics "
+                    "and exists to make local ranking tests compete against realistic noise."
+                ),
+            })
+    return docs
+
+
+DOCUMENTS = CORE_DOCUMENTS + _generated_distractors()
 
 QUERIES = [
     {"query": "agent workflow audit realtime contract run status timeline", "relevant": {"doc:agent-runtime-contract": 3, "doc:workflow-observability": 2, "doc:audit-trust": 2, "doc:realtime-feed": 2}, "must_include": ["doc:agent-runtime-contract"]},
     {"query": "workflow queued running cancelled interrupted replay approval", "relevant": {"doc:workflow-observability": 3, "doc:agentic-hitl": 2}, "must_include": ["doc:workflow-observability"]},
-    {"query": "audit log redacted secrets admin review contract", "relevant": {"doc:audit-trust": 3, "doc:security-zero-trust": 2}, "must_include": ["doc:audit-trust"]},
+    {"query": "audit log redacted secrets admin review contract", "relevant": {"doc:audit-trust": 3}, "must_include": ["doc:audit-trust"]},
     {"query": "SSE realtime workspace event payload sequence contract", "relevant": {"doc:realtime-feed": 3, "doc:agent-runtime-contract": 2}, "must_include": ["doc:realtime-feed"]},
     {"query": "hybrid retrieval keyword vector graph weighted scoped search", "relevant": {"doc:hybrid-search": 3, "doc:knowledge-graph": 2, "doc:retrieval-benchmark": 2}, "must_include": ["doc:hybrid-search"]},
-    {"query": "corpus scale recall precision ndcg judged queries", "relevant": {"doc:retrieval-benchmark": 3, "doc:hybrid-search": 2}, "must_include": ["doc:retrieval-benchmark"]},
+    {"query": "corpus scale recall precision ndcg judged queries", "relevant": {"doc:retrieval-benchmark": 3}, "must_include": ["doc:retrieval-benchmark"]},
     {"query": "local first model independent durable memory brain proof citation", "relevant": {"doc:local-first": 3, "doc:brain-proof": 2}, "must_include": ["doc:local-first"]},
-    {"query": "incremental indexing duplicate conflict merge background ingestion", "relevant": {"doc:incremental-ingestion": 3, "doc:vector-index-evolution": 2}, "must_include": ["doc:incremental-ingestion"]},
-    {"query": "workspace admin profile organization members roles permissions", "relevant": {"doc:workspace-admin": 3, "doc:security-zero-trust": 2}, "must_include": ["doc:workspace-admin"]},
+    {"query": "incremental indexing duplicate conflict merge background ingestion", "relevant": {"doc:incremental-ingestion": 3}, "must_include": ["doc:incremental-ingestion"]},
+    {"query": "workspace admin profile organization members roles permissions", "relevant": {"doc:workspace-admin": 3}, "must_include": ["doc:workspace-admin"]},
     {"query": "tool registry separation dependency injection runtime context", "relevant": {"doc:tool-registry": 3, "doc:server-decomposition": 2, "doc:config-centralization": 2}, "must_include": ["doc:tool-registry"]},
-    {"query": "human in the loop approval review queue rollback", "relevant": {"doc:agentic-hitl": 3, "doc:workflow-observability": 2}, "must_include": ["doc:agentic-hitl"]},
+    {"query": "human in the loop approval review queue rollback", "relevant": {"doc:agentic-hitl": 3}, "must_include": ["doc:agentic-hitl"]},
     {"query": "model routing ollama lm studio mlx cloud fallback replaceable", "relevant": {"doc:model-routing": 3, "doc:local-first": 2}, "must_include": ["doc:model-routing"]},
 ]

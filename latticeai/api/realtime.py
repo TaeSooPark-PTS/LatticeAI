@@ -17,6 +17,7 @@ from fastapi.responses import StreamingResponse
 from pydantic import BaseModel
 
 from latticeai.api.ui_redirects import app_redirect
+from lattice_brain.runtime.contracts import contract_views
 
 
 class PresenceRequest(BaseModel):
@@ -63,7 +64,8 @@ def create_realtime_router(
     async def realtime_feed(request: Request, limit: int = 50):
         user = require_user(request)
         scope = allowed_scopes(user or None)
-        return {"events": bus.recent(limit=limit, workspace_scope=scope), "stats": bus.stats()}
+        events = bus.recent(limit=limit, workspace_scope=scope)
+        return {"events": events, "contracts": contract_views(events), "stats": bus.stats()}
 
     @router.get("/realtime/presence")
     async def realtime_presence(request: Request):

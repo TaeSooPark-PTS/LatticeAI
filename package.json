@@ -1,6 +1,6 @@
 {
   "name": "ltcai",
-  "version": "7.4.0",
+  "version": "7.5.0",
   "description": "Lattice AI — local-first Digital Brain that keeps your knowledge durable across any AI model.",
   "homepage": "https://github.com/TaeSooPark-PTS/LatticeAI#readme",
   "repository": {
@@ -115,8 +115,8 @@
     "@playwright/test": "^1.60.0",
     "@tailwindcss/postcss": "^4.3.0",
     "@tanstack/react-query": "^5.101.0",
-    "@tauri-apps/api": "^2.0.0",
-    "@tauri-apps/cli": "^2.0.0",
+    "@tauri-apps/api": "^2.11.1",
+    "@tauri-apps/cli": "^2.11.3",
     "@types/cytoscape": "^3.21.9",
     "@types/react": "^19.2.17",
     "@types/react-dom": "^19.2.3",
@@ -138,5 +138,8 @@
     "typescript": "^5.9.3",
     "vite": "^8.0.16",
     "zustand": "^5.0.14"
+  },
+  "overrides": {
+    "js-yaml": "^4.2.0"
   }
 }

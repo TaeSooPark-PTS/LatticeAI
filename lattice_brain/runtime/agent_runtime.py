@@ -37,7 +37,7 @@ from .multi_agent import (
     MULTI_AGENT_VERSION,
     ROLE_AGENT_IDS,
 )
-from .contracts import multi_agent_contract
+from .contracts import contract_view, contract_views, extract_contract, multi_agent_contract
 
 ROLE_DESCRIPTIONS = {
     "researcher": "Gathers workspace context and memory for the goal.",
@@ -227,6 +227,7 @@ class AgentRuntime:
             "roles": self.roles(),
             "agents": self._roster(runs),
             "runs": runs[:25],
+            "contracts": contract_views(runs[:25]),
         }
 
     def preview(
@@ -282,13 +283,27 @@ class AgentRuntime:
 
     # ── events / state ────────────────────────────────────────────────────
     def list_runs(self, *, scope: Optional[str] = None) -> Dict[str, Any]:
-        return self._store.list_agents(workspace_id=scope)
+        listing = self._store.list_agents(workspace_id=scope)
+        runs = list(listing.get("runs") or [])
+        payload = dict(listing)
+        payload["contracts"] = contract_views(runs)
+        return payload
 
     def get_run(self, run_id: str, *, scope: Optional[str] = None) -> Dict[str, Any]:
-        return {"run": self._store.get_agent_run(run_id, workspace_id=scope)}
+        run = self._store.get_agent_run(run_id, workspace_id=scope)
+        payload = {"run": run}
+        contract = extract_contract(run)
+        if contract is not None:
+            payload["contract"] = contract_view(contract)
+        return payload
 
     def replay(self, run_id: str, *, scope: Optional[str] = None) -> Dict[str, Any]:
-        return {"replay": self._store.replay_agent_run(run_id, workspace_id=scope)}
+        replay = self._store.replay_agent_run(run_id, workspace_id=scope)
+        payload = {"replay": replay}
+        contract = extract_contract(replay)
+        if contract is not None:
+            payload["contract"] = contract_view(contract)
+        return payload
 
     def events(self, run_id: str, *, scope: Optional[str] = None) -> Dict[str, Any]:
         run = self._store.get_agent_run(run_id, workspace_id=scope)
@@ -300,6 +315,7 @@ class AgentRuntime:
             "current_role": run.get("current_role"),
             "timeline": run.get("timeline") or [],
             "handoffs": run.get("handoffs") or [],
+            "contract": contract_view(run),
         }
 
     # ── execution ─────────────────────────────────────────────────────────

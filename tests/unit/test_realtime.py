@@ -2,6 +2,10 @@
 
 import asyncio
 
+from fastapi import FastAPI
+from fastapi.testclient import TestClient
+
+from latticeai.api.realtime import create_realtime_router
 from latticeai.core.realtime import RealtimeBus, sse_format
 from latticeai.core.workspace_os import WorkspaceOSStore
 
@@ -83,3 +87,20 @@ def test_backpressure_drops_oldest_not_publisher():
     for i in range(200):
         bus.publish({"area": "a", "event_type": f"e{i}", "workspace_id": None, "payload": {}})
     assert sub.queue.qsize() <= 100
+
+
+def test_realtime_feed_exposes_contract_views():
+    bus = RealtimeBus()
+    bus.publish({"area": "workspace", "event_type": "agent_started", "workspace_id": "personal", "payload": {"run_id": "run-1"}})
+    app = FastAPI()
+    app.include_router(create_realtime_router(
+        bus=bus,
+        require_user=lambda request: "tester",
+        get_current_user=lambda request: "tester",
+        allowed_scopes=lambda user: {"personal"},
+    ))
+
+    payload = TestClient(app).get("/realtime/feed").json()
+
+    assert payload["events"][0]["contract"]["family"] == "agent-run-contract/v1"
+    assert payload["contracts"][0]["run_id"] == "run-1"

@@ -6,7 +6,7 @@ from latticeai.services.search_service import SearchService
 from lattice_brain.retrieval_benchmark_fixtures import DOCUMENTS, FIXTURE_NAME, QUERIES, TOP_K
 
 
-def test_v740_corpus_scale_fixture_exercises_real_hybrid_search(tmp_path: Path):
+def test_v750_corpus_scale_fixture_exercises_real_hybrid_search(tmp_path: Path):
     graph = KnowledgeGraphStore(tmp_path / "kg.sqlite", tmp_path / "blobs")
     id_map = {}
     for doc in DOCUMENTS:
@@ -47,9 +47,9 @@ def test_v740_corpus_scale_fixture_exercises_real_hybrid_search(tmp_path: Path):
 
     metrics = RetrievalBenchmarkRunner().run_fixture(FIXTURE_NAME, judged, top_k=TOP_K)
 
-    assert len(DOCUMENTS) >= 30
+    assert len(DOCUMENTS) >= 250
     assert metrics["judged"] == len(QUERIES)
-    assert metrics["recall@5"] >= 0.80
-    assert metrics["precision@5"] >= 0.25
-    assert metrics["ndcg@5"] >= 0.70
+    assert metrics[f"recall@{TOP_K}"] >= 0.80
+    assert metrics[f"precision@{TOP_K}"] >= 0.25
+    assert metrics[f"ndcg@{TOP_K}"] >= 0.70
     assert metrics["must_include_hit_rate"] >= 0.90

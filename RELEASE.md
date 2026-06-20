@@ -7,6 +7,31 @@
 > PyPI / npm / VS Code Marketplace / Open VSX 배포는 아래 수동 절차로만
 > 진행합니다. 태그 생성은 패키지 스토어 publish를 자동으로 트리거하지 않습니다.
 
+## v7.5.0 릴리스 노트 (2026-06-20)
+
+Lattice AI v7.5.0 — Runtime Debt Burn-down & Release Risk Cleanup. 7.5.0은
+7.4.0에서 남긴 위험/기술부채를 다음 버전으로 미루지 않고 줄인다.
+
+contract family는 이제 붙어 있는 metadata에 그치지 않는다. AgentRuntime status/list/detail/events와
+realtime feed는 compact `contracts` view를 함께 반환해 UI, replay, admin, exporter가
+agent/workflow/audit/realtime별 top-level shape를 다시 파싱하지 않고
+`agent-run-contract/v1` family envelope를 소비할 수 있다.
+
+Brain quality gate는 250개 이상 record가 들어간 deterministic local corpus fixture로 확장했다.
+`scripts/brain_quality_eval.py`는 실제 `KnowledgeGraphStore`와 `SearchService`를 구동해 12개
+judged query의 recall, precision, NDCG, must-include hit-rate threshold를 검증한다.
+
+릴리스 위험도 줄였다. npm audit finding을 0개로 낮추고, Tauri 2 dependency stack을 최신 2.x로
+올려 기존 transitive `block v0.1.6` future-incompatibility warning을 제거했다. 7.5.0 산출물은
+clean release artifact set으로 검증한다.
+
+Expected artifacts (exact 7.5.0 names only):
+- dist/ltcai-7.5.0-py3-none-any.whl
+- dist/ltcai-7.5.0.tar.gz
+- dist/ltcai-7.5.0.vsix
+- ltcai-7.5.0.tgz
+- src-tauri/target/release/bundle/dmg/Lattice AI_7.5.0_aarch64.dmg
+
 ## v7.4.0 릴리스 노트 (2026-06-20)
 
 Lattice AI v7.4.0 — Runtime Contract Convergence & Corpus Retrieval. 7.4.0은

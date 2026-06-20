@@ -173,11 +173,14 @@ def main() -> int:
 
     with tempfile.TemporaryDirectory() as tmp:
         corpus_metrics = _corpus_scale_retrieval_metrics(Path(tmp))
-    if corpus_metrics.get("recall@5", 0.0) < 0.80:
+    recall_key = f"recall@{TOP_K}"
+    precision_key = f"precision@{TOP_K}"
+    ndcg_key = f"ndcg@{TOP_K}"
+    if corpus_metrics.get(recall_key, 0.0) < 0.80:
         return _fail(f"corpus hybrid recall below threshold: {corpus_metrics}")
-    if corpus_metrics.get("precision@5", 0.0) < 0.25:
+    if corpus_metrics.get(precision_key, 0.0) < 0.25:
         return _fail(f"corpus hybrid precision below threshold: {corpus_metrics}")
-    if corpus_metrics.get("ndcg@5", 0.0) < 0.70:
+    if corpus_metrics.get(ndcg_key, 0.0) < 0.70:
         return _fail(f"corpus hybrid ndcg below threshold: {corpus_metrics}")
     if corpus_metrics.get("must_include_hit_rate", 0.0) < 0.90:
         return _fail(f"corpus must-include hit rate below threshold: {corpus_metrics}")
