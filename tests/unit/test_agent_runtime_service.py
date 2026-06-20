@@ -89,6 +89,9 @@ def test_start_records_run_and_status_reflects_it():
     events = rt.events(run_id, scope=None)
     assert events["is_final"] is True
     assert isinstance(events["timeline"], list) and events["timeline"]
+    assert out["result"]["contract"]["schema_version"] == "agent-run-contract/v1"
+    assert out["result"]["contract"]["runtime"] == "multi_agent"
+    assert out["result"]["contract"]["run_id"] == run_id
 
 
 def test_start_requires_goal():

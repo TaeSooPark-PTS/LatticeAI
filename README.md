@@ -200,28 +200,32 @@ See [docs/DEVELOPMENT.md](docs/DEVELOPMENT.md) for developer workflow details.
 
 ## Current Release
 
-The current release is **7.2.0 Runtime Trust Baseline**:
+The current release is **7.3.0 Runtime Contract & Retrieval Quality**:
 
-- Agent runs can be previewed before execution, including selected roles,
-  clamped retry budget, readiness state, and blocking reasons.
-- Product agent execution refuses simulation-mode success unless simulation is
-  explicitly enabled for a non-product runtime.
-- ToolRegistry exposes a live manifest and diagnostics endpoint covering
-  dispatch handlers, governance policy, catalog descriptions, and permissions.
-- Tool governance/catalog drift is covered by unit tests so tool additions
-  cannot silently bypass policy or disappear from operator views.
-- 7.1.0 Brain usability work remains intact while the runtime gains clearer
-  contracts for admin surfaces and future AgentRuntime extraction.
+- Single-agent and multi-agent execution now share a serializable
+  `agent-run-contract/v1` payload for run identity, mode, status, roles,
+  timeline, retries, artifacts, and terminal state.
+- Agent runtime API responses include the shared contract, keeping real and
+  simulated run history distinguishable as runtime extraction continues.
+- Brain quality evaluation now includes deterministic hybrid recall/ranking
+  regression thresholds, not only "some recall exists" checks.
+- The 7.2.0 preview/diagnostics work remains the admin trust surface while
+  7.3.0 tightens the underlying run and retrieval contracts.
+- The roadmap focus is durability over model choice: knowledge, run evidence,
+  and retrieval quality become measurable product assets.
 
-Expected artifacts for 7.2.0 release must use exact filenames:
+Expected artifacts for 7.3.0 release must use exact filenames:
 
-- `dist/ltcai-7.2.0-py3-none-any.whl`
-- `dist/ltcai-7.2.0.tar.gz`
-- `ltcai-7.2.0.tgz`
-- `dist/ltcai-7.2.0.vsix`
-- `src-tauri/target/release/bundle/dmg/Lattice AI_7.2.0_aarch64.dmg`
+- `dist/ltcai-7.3.0-py3-none-any.whl`
+- `dist/ltcai-7.3.0.tar.gz`
+- `ltcai-7.3.0.tgz`
+- `dist/ltcai-7.3.0.vsix`
+- `src-tauri/target/release/bundle/dmg/Lattice AI_7.3.0_aarch64.dmg`
 
 Do not upload `dist/*`. Package registry publishing remains owner-run.
+
+See [docs/ROADMAP_RECOMMENDATIONS.md](docs/ROADMAP_RECOMMENDATIONS.md) for the
+strategic roadmap slice applied in 7.3.0 and the follow-up tracks.
 
 ## Known Limitations
 
@@ -238,6 +242,7 @@ Do not upload `dist/*`. Package registry publishing remains owner-run.
 
 | Version | Theme |
 | --- | --- |
+| 7.3.0 | Runtime Contract & Retrieval Quality: shared agent-run contract across runtimes plus deterministic hybrid recall/ranking regression gates |
 | 7.2.0 | Runtime Trust Baseline: agent run preview/readiness, simulation-mode guardrails, live ToolRegistry manifest/diagnostics, and tests for dispatch/governance/catalog drift |
 | 7.1.0 | Brain Usability Completion: clearer first-run onboarding, ingestion progress/emergence, richer graph controls, inline answer proof, workspace/profile/admin discovery, empty/error/consent feedback, and VS Code sync status |
 | 7.0.0 | Brain Productization Loop: first-screen ingestion for files/folders/notes/web, answer-level memory proof and source citations, model-continuity demo flow, five-minute first-run loop, and recall/KG quality eval in CI |

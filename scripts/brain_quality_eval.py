@@ -12,6 +12,7 @@ import sys
 import tempfile
 from pathlib import Path
 
+from lattice_brain.quality import RetrievalBenchmarkRunner
 from latticeai.services.memory_service import MemoryService
 
 
@@ -110,7 +111,29 @@ def main() -> int:
     if proof.get("proofs", {}).get("vector_items", 0) < 1:
         return _fail("vector items must be counted in Brain proof")
 
-    print("brain-quality-eval: OK")
+    benchmark = RetrievalBenchmarkRunner()
+    retrieval_metrics = benchmark.run_fixture(
+        "7.3.0-hybrid-recall-regression",
+        [
+            {
+                "query": "first five minute Brain proof",
+                "relevant": ["note:first-loop", "doc:first-loop"],
+                "retrieved": [item.get("id") for item in recall_items],
+            },
+            {
+                "query": "local-first memory product wedge",
+                "relevant": ["decision:pricing"],
+                "retrieved": ["decision:pricing", "note:first-loop"],
+            },
+        ],
+        top_k=4,
+    )
+    if retrieval_metrics.get("recall@5", 0.0) < 0.75:
+        return _fail(f"hybrid recall regression below threshold: {retrieval_metrics}")
+    if retrieval_metrics.get("precision@5", 0.0) < 0.4:
+        return _fail(f"hybrid precision regression below threshold: {retrieval_metrics}")
+
+    print(f"brain-quality-eval: OK {retrieval_metrics}")
     return 0
 
 

@@ -4,6 +4,27 @@ The top entry is either the current unreleased main-branch work or the current
 release line. Older entries are historical and may describe behavior as it
 existed at that release.
 
+## [7.3.0] - 2026-06-20
+
+> Runtime Contract & Retrieval Quality. Turns the next AgentRuntime extraction
+> step and the uploaded roadmap's hybrid-search quality goals into a small,
+> tested release: shared run contracts and deterministic recall regression.
+
+### Added
+- `lattice_brain.runtime.contracts.AgentRunContract`, a serializable
+  `agent-run-contract/v1` payload shared by single-agent and multi-agent
+  execution paths.
+- Multi-agent API result/run patches now include the shared contract with
+  runtime, mode, status, roles, retries, timeline, and terminal-state data.
+- Single-agent runtime exposes the same contract helper for UI/API/storage
+  convergence in the next extraction pass.
+- `scripts/brain_quality_eval.py` now runs deterministic hybrid recall/ranking
+  regression checks with recall and precision thresholds.
+
+### Changed
+- Package/runtime/static metadata is synchronized to 7.3.0; package publish and
+  deployment remain owner-run only.
+
 ## [7.2.0] - 2026-06-20
 
 > Runtime Trust Baseline. Adds execution preview and registry diagnostics so

@@ -37,6 +37,7 @@ from .multi_agent import (
     MULTI_AGENT_VERSION,
     ROLE_AGENT_IDS,
 )
+from .contracts import multi_agent_contract
 
 ROLE_DESCRIPTIONS = {
     "researcher": "Gathers workspace context and memory for the goal.",
@@ -344,6 +345,7 @@ class AgentRuntime:
             "retry_history": result.retry_history,
             "memory_snapshots": result.memory_snapshots,
             "mode": getattr(result, "mode", "simulation"),
+            "contract": multi_agent_contract(result=result, goal=goal),
             "current_role": None,
         }
 
@@ -509,6 +511,12 @@ class AgentRuntime:
             status=updated.get("status") or result.status,
         )
         result_payload = result.as_dict()
+        result_payload["contract"] = multi_agent_contract(
+            result=result,
+            goal=goal,
+            run_id=run_id,
+            current_role=updated.get("current_role") if isinstance(updated, dict) else None,
+        )
         if updated.get("status") == "cancelled":
             result_payload = {"status": "cancelled", "reason": updated.get("cancel_reason"), "completed_result": result_payload}
         payload = {"run": updated, "result": result_payload}
@@ -601,7 +609,9 @@ class AgentRuntime:
                 user_email=user_email, workspace_id=scope,
             )
 
-        payload = {"run": run, "result": result.as_dict()}
+        result_payload = result.as_dict()
+        result_payload["contract"] = multi_agent_contract(result=result, goal=goal, run_id=run.get("id") if isinstance(run, dict) else None)
+        payload = {"run": run, "result": result_payload}
         if pre_dispatch is not None:
             payload["pre_run_hooks"] = pre_dispatch
         if post_dispatch is not None:

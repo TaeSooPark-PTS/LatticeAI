@@ -6,7 +6,8 @@
 
 | 버전 | 지원 여부 |
 |------|-----------|
-| 7.2.x (latest) | ✅ 지원 |
+| 7.3.x (latest) | ✅ 지원 |
+| 7.2.x | ✅ 보안 패치 범위 내 지원 |
 | 7.1.x | ✅ 보안 패치 범위 내 지원 |
 | 7.0.x | ✅ 보안 패치 범위 내 지원 |
 | 6.7.x | ✅ 보안 패치 범위 내 지원 |
@@ -60,7 +61,7 @@
 
 ## 보안 모델
 
-Lattice AI v7.2.0는 모델이 바뀌어도 사용자의 지식과 맥락을 보존하는 local-first Digital Brain입니다. Personal /
+Lattice AI v7.3.0는 모델이 바뀌어도 사용자의 지식과 맥락을 보존하는 local-first Digital Brain입니다. Personal /
 Organization Workspace, Brain-first Conversation, Knowledge Graph, Vector
 Index, Hybrid Search, Basic / Advanced / Admin mode, durable workspace
 governance, independent Brain Core package boundary, pluggable storage,
@@ -68,13 +69,13 @@ encrypted `.latticebrain` archives, confirmed restore/import, local-only
 startup hardening, desktop sidecar status, strict packaged-app CSP, first-run
 setup, saved-profile email/password mismatch guards, explicit model
 recommendation/install/validation flow, and default-off model downloads/runtime
-installs를 포함합니다. v7.2.0는 v6.4.0의 workspace-scoped graph/search/memory
+installs를 포함합니다. v7.3.0는 v6.4.0의 workspace-scoped graph/search/memory
 retrieval and mutation boundary를 유지하고, fallback embedding label,
 drift/re-index signal, structured context attribution/guardrail을 통해
 unsupported/stale Brain facts를 확정 사실처럼 제시하지 않도록 합니다. 일반 사용자 Brain 화면과
 관리자 로그/보안/운영 화면을 분리하고, Brain proof API가 active model id와
 recall sample만 노출하도록 scope/read gates를 통과하게 하며, 로컬 파일 자동 읽기 우회를 차단하고,
-secret redaction을 로그/감사/보안 export/hook packet에 중앙 적용합니다. v7.2.0은
+secret redaction을 로그/감사/보안 export/hook packet에 중앙 적용합니다. v7.3.0은
 visible product IA와 legacy compatibility routes를 분리하고 rich pages를 lazy-load해,
 보안/설정/모델/그래프 화면이 Brain Home에서 명확히 도달되면서도 초기 surface에
 불필요하게 모두 적재되지 않게 합니다. 또한 VS Code extension heartbeat/status
@@ -82,7 +83,9 @@ endpoint와 shell sync indicator는 연결/인덱싱/동기화 상태만 노출�
 사용자 명시 action(`Send To Lattice`, `Ask Current File`)에서만 workspace bridge로
 전송합니다. AgentRuntime preview는 run row 생성이나 tool execution 없이 실행 준비 상태와
 blocking reason만 반환하고, ToolRegistry diagnostics는 handler/governance/catalog
-정렬 상태와 permission projection만 노출합니다. 아래
+정렬 상태와 permission projection만 노출합니다. 공통 agent-run contract는 runtime 종류,
+mode, status, role/timeline, terminal 여부를 명시해 simulated output이 real execution처럼
+보이지 않도록 한다. 아래
 보안 모델을 따릅니다:
 
 ### 기본 안전 설정 (Default Secure)

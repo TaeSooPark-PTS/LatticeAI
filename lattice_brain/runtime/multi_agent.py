@@ -18,8 +18,10 @@ from dataclasses import dataclass, field
 from datetime import datetime
 from typing import Any, Callable, Dict, List, Optional
 
+from .contracts import multi_agent_contract
 
-MULTI_AGENT_VERSION = "7.2.0"
+
+MULTI_AGENT_VERSION = "7.3.0"
 
 AGENT_ROLES = ("researcher", "planner", "executor", "reviewer", "release")
 CORE_PIPELINE = ("planner", "executor", "reviewer")
@@ -288,7 +290,7 @@ class AgentRunResult:
     mode: str = "simulation"
 
     def as_dict(self) -> Dict[str, Any]:
-        return {
+        payload = {
             "agent_id": self.agent_id,
             "mode": self.mode,
             "status": self.status,
@@ -305,6 +307,8 @@ class AgentRunResult:
             "plan_review": self.plan_review,
             "memory_snapshots": self.memory_snapshots,
         }
+        payload["contract"] = multi_agent_contract(result=self, goal=self.output)
+        return payload
 
 
 def default_role_runner(

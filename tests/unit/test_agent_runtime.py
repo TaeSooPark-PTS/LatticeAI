@@ -98,6 +98,10 @@ def test_full_cycle_plan_execute_verify_done():
     assert ctx.state == AgentState.DONE
     assert ctx.final_message == "완료"
     assert ("edit_file", {"path": "a.py", "old_string": "x", "new_string": "y"}) in tool_calls
+    contract = rt.contract(ctx, req, run_id="single-run-1")
+    assert contract["schema_version"] == "agent-run-contract/v1"
+    assert contract["runtime"] == "single_agent"
+    assert contract["run_id"] == "single-run-1"
 
 
 def test_destructive_tool_is_blocked_not_executed():

@@ -30,6 +30,7 @@ from pathlib import Path
 from typing import Any, Awaitable, Callable, Dict, FrozenSet, List, Optional
 
 from lattice_brain.runtime.hooks import dispatch_tool
+from lattice_brain.runtime.contracts import single_agent_contract
 from tools import ToolError
 
 
@@ -141,6 +142,10 @@ class AgentRuntime:
 
     def __init__(self, deps: AgentDeps) -> None:
         self.deps = deps
+
+    def contract(self, ctx: AgentRunContext, req: Any, *, run_id: Optional[str] = None) -> Dict[str, Any]:
+        """Expose the shared agent-run contract for the single-agent loop."""
+        return single_agent_contract(ctx=ctx, goal=getattr(req, "message", ""), run_id=run_id)
 
     # ── PLAN ─────────────────────────────────────────────────────────
     async def plan(

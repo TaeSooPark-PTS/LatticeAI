@@ -7,6 +7,30 @@
 > PyPI / npm / VS Code Marketplace / Open VSX 배포는 아래 수동 절차로만
 > 진행합니다. 태그 생성은 패키지 스토어 publish를 자동으로 트리거하지 않습니다.
 
+## v7.3.0 릴리스 노트 (2026-06-20)
+
+Lattice AI v7.3.0 — Runtime Contract & Retrieval Quality. 7.3.0은 7.2.0에서
+추가한 runtime trust surface를 내부 실행 계약과 retrieval 품질 gate로 강화한다.
+
+single-agent runtime과 multi-agent facade는 이제 공통 `agent-run-contract/v1` payload를
+공유한다. 이 계약은 run id, agent id, runtime 종류, mode(simulation/llm), status, goal,
+roles, current role, retry count, timeline, artifacts, blocking reason, terminal 여부를 담는다.
+multi-agent API 결과와 persisted run patch는 이 contract를 포함하고, single-agent runtime도
+같은 contract helper를 노출한다. 목적은 real vs simulated history가 섞이지 않게 하고,
+AgentRuntime extraction의 다음 단계에서 UI/API/storage가 같은 shape를 소비하게 만드는 것이다.
+
+Brain quality gate도 강화했다. `scripts/brain_quality_eval.py`는 기존 durable recall proof에
+더해 deterministic hybrid recall/ranking fixture를 실행하고 recall/precision threshold를 확인한다.
+Roadmap의 hybrid search optimization, continuous recall regression, durable Brain vision을 7.3.0의
+작은 검증 가능한 단위로 반영했다.
+
+Expected artifacts (exact 7.3.0 names only):
+- dist/ltcai-7.3.0-py3-none-any.whl
+- dist/ltcai-7.3.0.tar.gz
+- dist/ltcai-7.3.0.vsix
+- ltcai-7.3.0.tgz
+- src-tauri/target/release/bundle/dmg/Lattice AI_7.3.0_aarch64.dmg
+
 ## v7.2.0 릴리스 노트 (2026-06-20)
 
 Lattice AI v7.2.0 — Runtime Trust Baseline. 7.2.0은 7.1.0의 Brain usability
