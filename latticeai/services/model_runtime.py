@@ -77,7 +77,7 @@ def _env_bool(key: str, default: bool = False) -> bool:
 
 
 def _download_allowed(allow_download: bool = False) -> bool:
-    return bool(allow_download) or _env_bool("LATTICEAI_ALLOW_MODEL_DOWNLOADS", default=False)
+    return bool(allow_download) or _env_bool("LATTICEAI_ALLOW_MODEL_DOWNLOADS", default=False) or bool(AUTOLOAD_MODELS)
 
 
 def _download_block(provider: str, model_name: str) -> None:
