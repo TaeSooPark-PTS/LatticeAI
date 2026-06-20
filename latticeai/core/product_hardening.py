@@ -37,8 +37,7 @@ def external_integration_status(
     telegram_credentials = _present(env, "LATTICEAI_TELEGRAM_BOT_TOKEN", "TELEGRAM_BOT_TOKEN")
     brain_network_auto_push = _bool(env, "LATTICEAI_BRAIN_NETWORK_AUTO_PUSH", default=False)
     updater_enabled = _bool(env, "LATTICEAI_ENABLE_UPDATES", default=False)
-    model_downloads_enabled = _bool(env, "LATTICEAI_ALLOW_MODEL_DOWNLOADS", default=False)
-    model_autoload_egress = bool(config.autoload_models and (config.is_public or model_downloads_enabled))
+    model_downloads_enabled = _bool(env, "LATTICEAI_ALLOW_MODEL_DOWNLOADS", default=False) or bool(config.autoload_models)
     docker_auto_start = _bool(env, "LATTICEAI_DOCKER_AUTO_START", default=False)
     external_connectors_enabled = _bool(env, "LATTICEAI_ENABLE_EXTERNAL_CONNECTORS", default=False)
     postgres_enabled = config.storage_engine == "postgres" and bool(config.postgres_dsn)
@@ -74,8 +73,8 @@ def external_integration_status(
                 "enabled": model_downloads_enabled,
                 "credential_present": _present(env, "HF_TOKEN", "HUGGINGFACEHUB_API_TOKEN"),
                 "opt_in_required": True,
-                "automatic_egress": model_autoload_egress,
-                "detail": "local autoload uses present model files only; downloads still require explicit consent",
+                "automatic_egress": bool(config.autoload_models),
+                "detail": "model downloads require an explicit load/autoload setting",
             },
             "docker": {
                 "enabled": docker_auto_start,
@@ -122,6 +121,7 @@ def default_startup_local_only(
         not config.network_exposed
         and not config.cors_allow_network
         and not config.enable_telegram
+        and not config.autoload_models
         and config.storage_engine == "sqlite"
         and local_embedding
         and not any(item["automatic_egress"] for item in external.values())

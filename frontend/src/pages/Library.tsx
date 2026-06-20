@@ -66,28 +66,6 @@ function ModelsPanel() {
   const currentId = String((models.data?.data as Record<string, unknown> | undefined)?.current || "");
   const current = catalog.find((model) => loadedIds.includes(String(model.id)) || String(model.id) === currentId);
   const topPick = (((recs.data?.data as Record<string, unknown> | undefined)?.recommendations as Record<string, unknown> | undefined)?.top_pick || null) as Record<string, unknown> | null;
-  const displayCatalog = React.useMemo(() => {
-    const rows = catalog.length ? catalog : [];
-    const topPickId = String(topPick?.id || "");
-    return [...rows].sort((left, right) => {
-      const leftId = String(left.id || left.model_id || left.name || "");
-      const rightId = String(right.id || right.model_id || right.name || "");
-      const leftRec = recommendationById.get(leftId) || {};
-      const rightRec = recommendationById.get(rightId) || {};
-      const score = (item: Record<string, unknown>, itemId: string, rec: Record<string, unknown>) => {
-        let value = 0;
-        if (itemId && itemId === topPickId) value += 1000;
-        if (String(itemId).includes("gemma-4-26b-a4b-it-4bit")) value += 800;
-        if (loadedIds.includes(itemId) || itemId === currentId) value += 500;
-        if (item.load_status === "ready" || item.load_available) value += 220;
-        if (rec.status === "recommended") value += 120;
-        if (item.recommended_default) value += 30;
-        const size = Number(rec.size_gb || String(item.size || "").match(/[\d.]+/)?.[0] || 0);
-        return value + size;
-      };
-      return score(right, rightId, rightRec) - score(left, leftId, leftRec);
-    });
-  }, [catalog, currentId, loadedIds, recommendationById, topPick]);
   const latestProgress = progress[progress.length - 1] || null;
 
   const modelMessage = React.useCallback((message: unknown) => {
@@ -184,7 +162,7 @@ function ModelsPanel() {
         <DataPanel title={mode === "basic" ? "Recommended models" : "Recommended and advanced models"} result={models.data}>
         {(data) => (
           <div className="grid gap-2">
-            {(displayCatalog.length ? displayCatalog : asArray<Record<string, unknown>>((data as Record<string, unknown>).loaded)).slice(0, mode === "basic" ? 3 : 14).map((model, index) => {
+            {(catalog.length ? catalog : asArray<Record<string, unknown>>((data as Record<string, unknown>).loaded)).slice(0, mode === "basic" ? 3 : 14).map((model, index) => {
               const id = String(model.id || model.model_id || model.name || index);
               const loaded = asArray<string>((data as Record<string, unknown>).loaded).includes(id) || (data as Record<string, unknown>).current === id || model.state === "loaded";
               const loadId = String(model.recommended_load_id || id);
