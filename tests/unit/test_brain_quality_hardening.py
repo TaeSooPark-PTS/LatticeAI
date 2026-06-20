@@ -97,6 +97,21 @@ class TestBrainQualityHardening(unittest.TestCase):
         summary = br.summary()
         self.assertIn("total_runs", summary)
 
+    def test_graded_relevance_ndcg_rewards_ordering(self):
+        # Graded relevance ({id: grade}) must make nDCG sensitive to ranking:
+        # putting the highest-grade doc first scores strictly above the reverse.
+        br = self.q.benchmark
+        graded = {"a": 3, "b": 2, "c": 1}
+        best = br.run_fixture("graded_best", [{"query": "q", "relevant": graded, "retrieved": ["a", "b", "c"]}], top_k=3)
+        worst = br.run_fixture("graded_worst", [{"query": "q", "relevant": graded, "retrieved": ["c", "b", "a"]}], top_k=3)
+        self.assertEqual(best["ndcg@5"], 1.0)
+        self.assertLess(worst["ndcg@5"], best["ndcg@5"])
+        # Recall treats graded keys as the relevant set (binary membership).
+        self.assertEqual(best["recall@5"], 1.0)
+        # Binary list relevance must still work unchanged (back-compat).
+        binary = br.run_fixture("binary", [{"query": "q", "relevant": ["a", "b"], "retrieved": ["a", "b"]}], top_k=3)
+        self.assertEqual(binary["ndcg@5"], 1.0)
+
     def test_full_quality_pass_end_to_end(self):
         payload = {
             "embeddings": [{"id": "v1", "vector": [0.1]*8}],

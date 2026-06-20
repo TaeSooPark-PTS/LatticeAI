@@ -4,6 +4,30 @@ The top entry is either the current unreleased main-branch work or the current
 release line. Older entries are historical and may describe behavior as it
 existed at that release.
 
+## [7.4.0] - 2026-06-20
+
+> Runtime Contract Convergence & Corpus Retrieval. Completes the
+> agent-run-contract/v1 family across run storage, workflow execution, audit
+> events, realtime events, and a real corpus-scale retrieval quality gate.
+
+### Added
+- Persisted agent and workflow run rows now carry refreshed contract metadata
+  for queued, running, terminal, cancelled, and interrupted states.
+- Workflow engine results, replay payloads, audit log events, and realtime SSE
+  feed events now expose the same `agent-run-contract/v1` family envelope while
+  preserving existing top-level compatibility fields.
+- Corpus-scale retrieval fixture with 30+ documents, judged queries,
+  must-include expectations, and thresholds for recall, precision, NDCG, and
+  hit rate.
+- `scripts/brain_quality_eval.py` now exercises the real local
+  `KnowledgeGraphStore` + `SearchService` hybrid retrieval path before scoring.
+
+### Changed
+- `RetrievalBenchmarkRunner` reports dynamic metric aliases for the selected
+  `top_k` and a `must_include_hit_rate`.
+- Package/runtime/static metadata is synchronized to 7.4.0; package publish and
+  deployment remain owner-run only.
+
 ## [7.3.0] - 2026-06-20
 
 > Runtime Contract & Retrieval Quality. Turns the next AgentRuntime extraction

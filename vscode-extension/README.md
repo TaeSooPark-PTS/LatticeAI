@@ -12,14 +12,15 @@ chat, run model workflows, and trigger coding actions from the editor.
 
 ## Current Release
 
-**7.3.0 — Runtime Contract & Retrieval Quality.** The extension follows
+**7.4.0 — Runtime Contract Convergence & Corpus Retrieval.** The extension follows
 the main app positioning: Lattice AI is a local-first Digital Brain, not just a
 model launcher or editor chat panel. It connects editor actions to the same
 durable Brain context, explicit consent gates, replaceable model workflow, and
-separated Admin surface used by the desktop app. The v7.3.0 line keeps the
+separated Admin surface used by the desktop app. The v7.4.0 line keeps the
 visible VS Code sync status and aligns the extension release with the main app
-runtime contract work: agent runs expose a consistent contract and Brain
-retrieval quality is guarded by deterministic regression checks.
+runtime contract work: agent, workflow, audit, and realtime records share the
+same contract family, and Brain retrieval quality is guarded by a real
+corpus-scale regression fixture.
 
 ## Quick Start
 

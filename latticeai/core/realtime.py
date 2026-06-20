@@ -32,6 +32,8 @@ import threading
 from datetime import datetime
 from typing import Any, AsyncIterator, Dict, List, Optional, Set
 
+from lattice_brain.runtime.contracts import realtime_event_contract
+
 
 REALTIME_VERSION = "2.2.0"
 _FEED_LIMIT = 200
@@ -99,6 +101,7 @@ class RealtimeBus:
                 "payload": event.get("payload", {}),
                 **{k: v for k, v in event.items() if k not in {"area", "event_type", "workspace_id", "payload"}},
             }
+            enriched["contract"] = realtime_event_contract(enriched)
             self._feed.append(enriched)
             if len(self._feed) > _FEED_LIMIT:
                 self._feed = self._feed[-_FEED_LIMIT:]

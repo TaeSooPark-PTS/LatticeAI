@@ -16,12 +16,25 @@ small release-sized work. The operating principle stays unchanged:
 - Security and trust: run contracts distinguish runtime type and execution mode
   so simulated output is not presented as real execution.
 
+## 7.4.0 Applied Slice
+
+7.4.0 completes the next roadmap slice without deferring it:
+
+- Runtime convergence: agent runs, workflow runs, audit events, and realtime
+  events all expose the `agent-run-contract/v1` family envelope while keeping
+  legacy top-level fields for compatibility.
+- Trust and operations: persisted run rows refresh their contract through
+  queued, running, terminal, cancelled, and interrupted states; audit events are
+  contracted only after secret redaction.
+- Retrieval quality and scale: the CI quality gate now seeds a real local
+  Knowledge Graph corpus and scores SearchService hybrid retrieval with judged
+  queries, recall, precision, NDCG, and must-include hit-rate thresholds.
+
 ## Near-Term Tracks
 
 1. Retrieval quality and scale
-   - Expand fixture datasets for hybrid search.
-   - Add latency budgets for large corpora.
-   - Track recall, precision, and ranking regressions in CI.
+   - Add latency budgets for larger corpora.
+   - Track per-channel keyword/vector/graph diagnostics in CI.
    - Tune semantic/graph/keyword fusion by query class.
 
 2. Incremental ingestion
@@ -30,8 +43,7 @@ small release-sized work. The operating principle stays unchanged:
    - Surface conflict resolution for contradictory memories.
 
 3. Runtime convergence
-   - Use `agent-run-contract/v1` across single-agent, multi-agent, workflows,
-     audit logs, and UI event streams.
+   - Drive UI run/replay/admin views from the shared contract family.
    - Keep simulation mode explicit and never record it as product success.
    - Route tools through explicit registry/governance contracts.
 

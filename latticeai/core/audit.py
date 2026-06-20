@@ -5,8 +5,11 @@ import logging
 import os
 import re
 import threading
+import hashlib
 from pathlib import Path
 from typing import Any, Callable, Dict, List, Optional
+
+from lattice_brain.runtime.contracts import audit_event_contract
 
 from . import timezones
 from .security import redact_secrets
@@ -42,12 +45,21 @@ def get_audit_log(audit_file: Path) -> List[Dict]:
 def append_audit_event(audit_file: Path, event_type: str, **payload) -> None:
     try:
         safe_payload = redact_secrets(payload)
+        timestamp = timezones.now_iso()
+        event_hash = hashlib.sha256(
+            json.dumps([event_type, timestamp, safe_payload], ensure_ascii=False, sort_keys=True, default=str).encode("utf-8")
+        ).hexdigest()[:24]
         event = {
+            "event_id": f"audit-{event_hash}",
             "event_type": event_type,
             # item 7: 대시보드 "오늘" 계산과 동일한 시간대 기준으로 기록한다.
-            "timestamp": timezones.now_iso(),
+            "timestamp": timestamp,
             **safe_payload,
         }
+        # Stamp the agent-run-contract/v1 family envelope so audit rows are
+        # uniform with agent/workflow/realtime records. Additive — existing
+        # readers ignore the extra keys; new consumers can filter by family.
+        event["contract"] = audit_event_contract(event)
         with _history_lock:
             events = get_audit_log(audit_file)
             events.append(event)
@@ -236,6 +248,8 @@ def build_admin_audit_report(
 
 def _public_audit_event(event: Dict) -> Dict:
     allowed = {
+        # Stable event id + nested agent-run-contract/v1 family projection.
+        "event_id", "contract",
         "event_type", "timestamp", "role", "user_email", "user_nickname", "source",
         "conversation_id", "workspace_id", "command", "scope", "target_email", "filename", "mime_type",
         "ext", "bytes", "extracted_chars", "graph_node", "keep_last", "removed", "kept",

@@ -70,6 +70,9 @@ def test_run_ok_with_runner():
     engine = WorkflowEngine({"tool": lambda node, context: {"ran": node["id"]}})
     run = engine.run(_linear(), inputs={"x": 1})
     assert run.status == "ok"
+    serialized = run.as_dict()
+    assert serialized["contract"]["family"] == "agent-run-contract/v1"
+    assert serialized["contract"]["kind"] == "workflow_run"
     assert run.timeline[0]["type"] == "trigger"
     assert any(s.get("type") == "output" for s in run.timeline)
 

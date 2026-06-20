@@ -285,6 +285,18 @@ class StructuredContextAssembler:
 # -----------------------------
 # 6. Retrieval Benchmark Fixture Runner
 # -----------------------------
+def _relevance_grades(relevant: Any) -> Dict[str, float]:
+    """Normalize a ``relevant`` spec into a ``{doc_id: grade}`` map.
+
+    Accepts a graded dict (``{"doc": 3}``) or a binary list/set/tuple (grade 1
+    for every id), so judged fixtures can express graded relevance for nDCG
+    while older binary fixtures keep working unchanged.
+    """
+    if isinstance(relevant, dict):
+        return {str(k): float(v) for k, v in relevant.items()}
+    return {str(doc_id): 1.0 for doc_id in (relevant or [])}
+
+
 class RetrievalBenchmarkRunner:
     def __init__(self):
         self.results: List[Dict] = []
@@ -297,25 +309,36 @@ class RetrievalBenchmarkRunner:
             precisions = []
             ndcgs = []
             for query in judged:
-                relevant = set(query.get("relevant") or [])
+                grades = _relevance_grades(query.get("relevant"))
+                relevant = set(grades)
                 retrieved = list(query.get("retrieved") or [])[:top_k]
                 if not relevant:
                     continue
                 hits = [doc_id for doc_id in retrieved if doc_id in relevant]
                 recalls.append(len(hits) / len(relevant))
                 precisions.append(len(hits) / max(1, len(retrieved)))
+                # Graded DCG: each retrieved doc contributes its relevance grade
+                # discounted by log2(rank + 2). IDCG ranks the highest grades
+                # first, so nDCG rewards putting the *most* relevant docs on top.
+                # Binary fixtures fall back to grade 1 via _relevance_grades.
                 dcg = sum(
-                    1.0 / math.log2(rank + 2)
+                    grades.get(doc_id, 0.0) / math.log2(rank + 2)
                     for rank, doc_id in enumerate(retrieved)
-                    if doc_id in relevant
                 )
-                ideal = sum(1.0 / math.log2(rank + 2) for rank in range(min(len(relevant), top_k)))
+                ideal_grades = sorted(grades.values(), reverse=True)[:top_k]
+                ideal = sum(g / math.log2(rank + 2) for rank, g in enumerate(ideal_grades))
                 ndcgs.append(dcg / ideal if ideal else 0.0)
             recall = sum(recalls) / len(recalls) if recalls else 0.0
             precision = sum(precisions) / len(precisions) if precisions else 0.0
             ndcg = sum(ndcgs) / len(ndcgs) if ndcgs else 0.0
         else:
             recall = precision = ndcg = 0.0
+        must_include = [
+            bool(set(query.get("must_include") or []).intersection(set(list(query.get("retrieved") or [])[:top_k])))
+            for query in judged
+            if query.get("must_include")
+        ]
+        must_include_hit_rate = sum(1 for hit in must_include if hit) / len(must_include) if must_include else 1.0
         metrics = {
             "fixture": fixture_name,
             "queries": len(queries),
@@ -323,6 +346,10 @@ class RetrievalBenchmarkRunner:
             "recall@5": round(recall, 4),
             "precision@5": round(precision, 4),
             "ndcg@5": round(ndcg, 4),
+            f"recall@{top_k}": round(recall, 4),
+            f"precision@{top_k}": round(precision, 4),
+            f"ndcg@{top_k}": round(ndcg, 4),
+            "must_include_hit_rate": round(must_include_hit_rate, 4),
             "top_k": top_k,
             "judged": len(judged),
         }

@@ -10,6 +10,8 @@ def test_publish_and_recent_feed():
     bus = RealtimeBus()
     ev = bus.publish({"area": "workspace", "event_type": "test", "workspace_id": "personal", "payload": {"k": 1}})
     assert ev["seq"] == 1
+    assert ev["contract"]["family"] == "agent-run-contract/v1"
+    assert ev["contract"]["kind"] == "realtime_event"
     feed = bus.recent(limit=10)
     assert feed and feed[0]["event_type"] == "test"
 
@@ -51,6 +53,7 @@ def test_store_event_sink_publishes_timeline():
     after = bus.stats()["feed_size"]
     assert after == before + 1
     assert bus.recent(limit=1)[0]["event_type"] == "demo_event"
+    assert bus.recent(limit=1)[0]["contract"]["family"] == "agent-run-contract/v1"
 
 
 def test_sse_format_frame():

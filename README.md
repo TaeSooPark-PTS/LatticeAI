@@ -200,32 +200,33 @@ See [docs/DEVELOPMENT.md](docs/DEVELOPMENT.md) for developer workflow details.
 
 ## Current Release
 
-The current release is **7.3.0 Runtime Contract & Retrieval Quality**:
+The current release is **7.4.0 Runtime Contract Convergence & Corpus Retrieval**:
 
-- Single-agent and multi-agent execution now share a serializable
-  `agent-run-contract/v1` payload for run identity, mode, status, roles,
-  timeline, retries, artifacts, and terminal state.
-- Agent runtime API responses include the shared contract, keeping real and
-  simulated run history distinguishable as runtime extraction continues.
-- Brain quality evaluation now includes deterministic hybrid recall/ranking
-  regression thresholds, not only "some recall exists" checks.
-- The 7.2.0 preview/diagnostics work remains the admin trust surface while
-  7.3.0 tightens the underlying run and retrieval contracts.
-- The roadmap focus is durability over model choice: knowledge, run evidence,
-  and retrieval quality become measurable product assets.
+- Agent runs, workflow runs, audit events, and realtime events now carry the
+  `agent-run-contract/v1` family envelope, so replay, admin review, and live
+  feeds can inspect run identity, runtime, status, timeline, and artifacts
+  through one contract shape.
+- Persisted queued/running/terminal agent and workflow rows refresh their
+  contract on every state transition, including cancellation and interruption.
+- Audit rows keep their existing admin fields while adding redacted contract
+  metadata; realtime SSE events keep `area`, `event_type`, `workspace_id`, and
+  `payload` while adding the same contract family.
+- Brain quality evaluation now runs a real KnowledgeGraphStore + SearchService
+  corpus fixture with judged queries, recall, precision, NDCG, and must-include
+  hit-rate thresholds.
 
-Expected artifacts for 7.3.0 release must use exact filenames:
+Expected artifacts for 7.4.0 release must use exact filenames:
 
-- `dist/ltcai-7.3.0-py3-none-any.whl`
-- `dist/ltcai-7.3.0.tar.gz`
-- `ltcai-7.3.0.tgz`
-- `dist/ltcai-7.3.0.vsix`
-- `src-tauri/target/release/bundle/dmg/Lattice AI_7.3.0_aarch64.dmg`
+- `dist/ltcai-7.4.0-py3-none-any.whl`
+- `dist/ltcai-7.4.0.tar.gz`
+- `ltcai-7.4.0.tgz`
+- `dist/ltcai-7.4.0.vsix`
+- `src-tauri/target/release/bundle/dmg/Lattice AI_7.4.0_aarch64.dmg`
 
 Do not upload `dist/*`. Package registry publishing remains owner-run.
 
 See [docs/ROADMAP_RECOMMENDATIONS.md](docs/ROADMAP_RECOMMENDATIONS.md) for the
-strategic roadmap slice applied in 7.3.0 and the follow-up tracks.
+strategic roadmap slices applied through 7.4.0 and the follow-up tracks.
 
 ## Known Limitations
 
@@ -242,6 +243,7 @@ strategic roadmap slice applied in 7.3.0 and the follow-up tracks.
 
 | Version | Theme |
 | --- | --- |
+| 7.4.0 | Runtime Contract Convergence & Corpus Retrieval: agent/workflow/audit/realtime records share the agent-run-contract/v1 family, and retrieval quality gates run against a real corpus-scale fixture |
 | 7.3.0 | Runtime Contract & Retrieval Quality: shared agent-run contract across runtimes plus deterministic hybrid recall/ranking regression gates |
 | 7.2.0 | Runtime Trust Baseline: agent run preview/readiness, simulation-mode guardrails, live ToolRegistry manifest/diagnostics, and tests for dispatch/governance/catalog drift |
 | 7.1.0 | Brain Usability Completion: clearer first-run onboarding, ingestion progress/emergence, richer graph controls, inline answer proof, workspace/profile/admin discovery, empty/error/consent feedback, and VS Code sync status |

@@ -12,8 +12,15 @@ import sys
 import tempfile
 from pathlib import Path
 
+REPO_ROOT = Path(__file__).resolve().parents[1]
+if str(REPO_ROOT) not in sys.path:
+    sys.path.insert(0, str(REPO_ROOT))
+
+from knowledge_graph import KnowledgeGraphStore
 from lattice_brain.quality import RetrievalBenchmarkRunner
+from latticeai.services.search_service import SearchService
 from latticeai.services.memory_service import MemoryService
+from lattice_brain.retrieval_benchmark_fixtures import DOCUMENTS, FIXTURE_NAME, QUERIES, TOP_K
 
 
 class _EvalStore:
@@ -81,6 +88,37 @@ def _fail(message: str) -> int:
     return 1
 
 
+def _corpus_scale_retrieval_metrics(tmp_path: Path) -> dict:
+    graph = KnowledgeGraphStore(tmp_path / "kg.sqlite", tmp_path / "blobs")
+    id_map = {}
+    for doc in DOCUMENTS:
+        result = graph.ingest_event(
+            doc["type"],
+            f"{doc['title']} {doc['content']}",
+            source="retrieval-benchmark-v740",
+            conversation_id="retrieval-benchmark-v740",
+            metadata={
+                "fixture_id": doc["id"],
+                "title": doc["title"],
+                "content": doc["content"],
+                "workspace_id": "personal",
+            },
+        )
+        id_map[doc["id"]] = result["node_id"]
+    service = SearchService(graph)
+    judged = []
+    for query in QUERIES:
+        payload = service.hybrid_search(query["query"], limit=TOP_K, keyword_limit=TOP_K, vector_limit=TOP_K, graph_limit=TOP_K)
+        retrieved = [item.get("node_id") or item.get("id") for item in payload.get("matches", [])]
+        judged.append({
+            "query": query["query"],
+            "relevant": [id_map[item] for item in query["relevant"]],
+            "must_include": [id_map[item] for item in query.get("must_include", [])],
+            "retrieved": retrieved,
+        })
+    return RetrievalBenchmarkRunner().run_fixture(FIXTURE_NAME, judged, top_k=TOP_K)
+
+
 def main() -> int:
     with tempfile.TemporaryDirectory() as tmp:
         service = MemoryService(
@@ -133,7 +171,18 @@ def main() -> int:
     if retrieval_metrics.get("precision@5", 0.0) < 0.4:
         return _fail(f"hybrid precision regression below threshold: {retrieval_metrics}")
 
-    print(f"brain-quality-eval: OK {retrieval_metrics}")
+    with tempfile.TemporaryDirectory() as tmp:
+        corpus_metrics = _corpus_scale_retrieval_metrics(Path(tmp))
+    if corpus_metrics.get("recall@5", 0.0) < 0.80:
+        return _fail(f"corpus hybrid recall below threshold: {corpus_metrics}")
+    if corpus_metrics.get("precision@5", 0.0) < 0.25:
+        return _fail(f"corpus hybrid precision below threshold: {corpus_metrics}")
+    if corpus_metrics.get("ndcg@5", 0.0) < 0.70:
+        return _fail(f"corpus hybrid ndcg below threshold: {corpus_metrics}")
+    if corpus_metrics.get("must_include_hit_rate", 0.0) < 0.90:
+        return _fail(f"corpus must-include hit rate below threshold: {corpus_metrics}")
+
+    print(f"brain-quality-eval: OK small={retrieval_metrics} corpus={corpus_metrics}")
     return 0
 
 

@@ -89,11 +89,14 @@ def test_async_agent_run_completes_single_durable_record(tmp_path: Path):
     store, bus, run_id = asyncio.run(scenario())
     run = store.get_agent_run(run_id, workspace_id="personal")
     assert run["status"] in {"ok", "retried_ok"}
+    assert run["contract"]["family"] == "agent-run-contract/v1"
+    assert run["contract"]["run_id"] == run_id
     assert len(store.list_agents(workspace_id="personal")["runs"]) == 1
     assert run["timeline"][0]["event"] == "agent_started"
     assert any(item.get("event") == "handoff_created" for item in run["timeline"])
     event_types = {event["event_type"] for event in bus.recent(limit=50)}
     assert {"agent_started", "handoff_created"}.issubset(event_types)
+    assert all(event.get("contract", {}).get("family") == "agent-run-contract/v1" for event in bus.recent(limit=10))
 
 
 def test_async_agent_cancellation_is_persisted(tmp_path: Path):
@@ -136,6 +139,7 @@ def test_async_agent_cancellation_is_persisted(tmp_path: Path):
     run = store.get_agent_run(run_id, workspace_id="personal")
     assert stopped["stopped"] is True
     assert run["status"] == "cancelled"
+    assert run["contract"]["status"] == "cancelled"
     assert any(item.get("event") == "execution_cancelled" for item in run["timeline"])
 
 
@@ -166,6 +170,9 @@ def test_async_workflow_run_completes_and_emits_realtime(tmp_path: Path):
     store, bus, run_id, _ = asyncio.run(scenario())
     run = store.get_workflow_run(run_id, workspace_id="personal")
     assert run["status"] == "ok"
+    assert run["contract"]["family"] == "agent-run-contract/v1"
+    assert run["contract"]["kind"] == "workflow_run"
+    assert run["contract"]["run_id"] == run_id
     assert run["outputs"]["out"] == "done"
     assert len(store.list_workflow_runs(workspace_id="personal")["runs"]) == 1
     event_types = {event["event_type"] for event in bus.recent(limit=50)}

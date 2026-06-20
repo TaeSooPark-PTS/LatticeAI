@@ -21,7 +21,7 @@ from typing import Any, Callable, Dict, List, Optional
 from .contracts import multi_agent_contract
 
 
-MULTI_AGENT_VERSION = "7.3.0"
+MULTI_AGENT_VERSION = "7.4.0"
 
 AGENT_ROLES = ("researcher", "planner", "executor", "reviewer", "release")
 CORE_PIPELINE = ("planner", "executor", "reviewer")
@@ -286,6 +286,7 @@ class AgentRunResult:
     retry_history: List[Dict[str, Any]] = field(default_factory=list)
     plan_review: Dict[str, Any] = field(default_factory=dict)
     memory_snapshots: List[Dict[str, Any]] = field(default_factory=list)
+    goal: str = ""
     # "simulation" = deterministic LLM-free runner; "llm" = model-driven (v4 runtime).
     mode: str = "simulation"
 
@@ -306,8 +307,9 @@ class AgentRunResult:
             "retry_history": self.retry_history,
             "plan_review": self.plan_review,
             "memory_snapshots": self.memory_snapshots,
+            "goal": self.goal,
         }
-        payload["contract"] = multi_agent_contract(result=self, goal=self.output)
+        payload["contract"] = multi_agent_contract(result=self, goal=self.goal or self.output)
         return payload
 
 
@@ -800,5 +802,6 @@ class MultiAgentOrchestrator:
             retry_history=ctx.retry_history,
             plan_review=ctx.plan_review,
             memory_snapshots=ctx.memory_snapshots,
+            goal=ctx.goal,
             mode=self.mode,
         )

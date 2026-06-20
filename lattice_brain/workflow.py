@@ -27,6 +27,8 @@ from dataclasses import dataclass, field
 from datetime import datetime
 from typing import Any, Callable, Dict, List, Optional
 
+from lattice_brain.runtime.contracts import workflow_run_contract
+
 
 WORKFLOW_ENGINE_VERSION = "2.2.0"
 
@@ -198,7 +200,13 @@ class WorkflowRun:
     paused_context: Optional[Dict[str, Any]] = None
 
     def as_dict(self) -> Dict[str, Any]:
-        return {
+        # Native workflow-run shape is preserved unchanged for existing readers.
+        # A normalized ``agent-run-contract/v1`` projection is attached under
+        # ``contract`` so workflow runs sit in the same observability family as
+        # agent runs, audit events and realtime events (mirrors the audit-log
+        # and realtime-bus convention). The projection is built from the native
+        # dict — never from ``self`` — so it cannot recurse back into as_dict().
+        body = {
             "workflow_id": self.workflow_id,
             "name": self.name,
             "status": self.status,
@@ -211,6 +219,8 @@ class WorkflowRun:
             "pending_approval": self.pending_approval,
             "paused_context": self.paused_context,
         }
+        body["contract"] = workflow_run_contract(body)
+        return body
 
 
 class ApprovalRequired(Exception):

@@ -57,6 +57,9 @@ def test_secret_redaction_is_shared_across_text_values_logs_and_audit(tmp_path: 
 
     audit_file = tmp_path / "audit.json"
     append_audit_event(audit_file, "secret_probe", message=secret, nested=nested, dsn=dsn)
+    event = get_audit_log(audit_file)[0]
+    assert event["contract"]["family"] == "agent-run-contract/v1"
+    assert event["contract"]["kind"] == "audit_event"
     dumped = json.dumps(get_audit_log(audit_file), ensure_ascii=False)
     assert "sk-1234567890" not in dumped
     assert "ghp_abcdef" not in dumped

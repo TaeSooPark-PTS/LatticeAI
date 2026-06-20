@@ -18,8 +18,10 @@ from datetime import datetime
 from pathlib import Path
 from typing import Any, Callable, Dict, Iterable, List, Optional
 
+from lattice_brain.runtime.contracts import realtime_event_contract, run_record_contract, workflow_run_contract
 
-WORKSPACE_OS_VERSION = "7.3.0"
+
+WORKSPACE_OS_VERSION = "7.4.0"
 
 # Workspace types separate single-user Personal workspaces from shared
 # Organization workspaces. Both keep the same local-first JSON store; the type
@@ -526,6 +528,7 @@ class WorkspaceOSStore:
             "workspace_id": self._resolve_scope(workspace_id, state),
             "payload": payload,
         }
+        event["contract"] = realtime_event_contract({"seq": event["id"], "received_at": event["timestamp"], **event})
         state.setdefault("timeline", []).append(event)
         self.save_state(state)
         if self.event_sink is not None:
@@ -1565,6 +1568,13 @@ class WorkspaceOSStore:
         if status == "failed":
             self._emit_execution_event(area="agent", event_type="execution_failed", payload={"run_id": run["id"], "agent_id": agent_id, "status": status}, workspace_id=resolved_workspace)
         self.record_timeline_event("agent", "agent_run", {"run_id": run["id"], "agent_id": agent_id, "status": status}, workspace_id=resolved_workspace)
+        run["contract"] = run_record_contract(run)
+        state = self.load_state()
+        for item in _listify(state.get("agent_runs")):
+            if item.get("id") == run["id"]:
+                item["contract"] = run["contract"]
+                break
+        self.save_state(state)
         return run
 
     def update_agent_run(
@@ -1635,6 +1645,13 @@ class WorkspaceOSStore:
             except Exception as exc:
                 run["graph_error"] = str(exc)
 
+        self.save_state(state)
+        run["contract"] = run_record_contract(run)
+        state = self.load_state()
+        for item in _listify(state.get("agent_runs")):
+            if item.get("id") == run_id:
+                item["contract"] = run["contract"]
+                break
         self.save_state(state)
 
         timeline = run.get("timeline") or []
@@ -1774,6 +1791,13 @@ class WorkspaceOSStore:
         elif status in {"ok", "partial"}:
             self._emit_execution_event(area="workflow", event_type="workflow_completed", payload={"run_id": run["id"], "workflow_id": workflow_id, "status": status}, workspace_id=resolved_workspace)
         self.record_timeline_event("workflow", "workflow_run", {"run_id": run["id"], "workflow_id": workflow_id, "status": status}, workspace_id=resolved_workspace)
+        run["contract"] = workflow_run_contract(run)
+        state = self.load_state()
+        for item in _listify(state.get("workflow_runs")):
+            if item.get("id") == run["id"]:
+                item["contract"] = run["contract"]
+                break
+        self.save_state(state)
         return run
 
     def update_workflow_run(
@@ -1834,6 +1858,13 @@ class WorkspaceOSStore:
             except Exception as exc:
                 run["graph_error"] = str(exc)
 
+        self.save_state(state)
+        run["contract"] = workflow_run_contract(run)
+        state = self.load_state()
+        for item in _listify(state.get("workflow_runs")):
+            if item.get("id") == run_id:
+                item["contract"] = run["contract"]
+                break
         self.save_state(state)
 
         timeline = run.get("timeline") or []
@@ -2053,6 +2084,7 @@ class WorkspaceOSStore:
             "run_id": run_id,
             "status": run.get("status"),
             "workspace_id": self._record_workspace(run),
+            "contract": run.get("contract") or run_record_contract(run),
             "replayable": True,
             "frames": self._replay_frames(run, kind="agent"),
             "handoffs": run.get("handoffs") or [],
@@ -2068,6 +2100,7 @@ class WorkspaceOSStore:
             "run_id": run_id,
             "status": run.get("status"),
             "workspace_id": self._record_workspace(run),
+            "contract": run.get("contract") or workflow_run_contract(run),
             "replayable": True,
             "frames": self._replay_frames(run, kind="workflow"),
             "outputs": run.get("outputs") or {},

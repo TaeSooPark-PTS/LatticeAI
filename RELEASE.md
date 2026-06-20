@@ -7,6 +7,30 @@
 > PyPI / npm / VS Code Marketplace / Open VSX 배포는 아래 수동 절차로만
 > 진행합니다. 태그 생성은 패키지 스토어 publish를 자동으로 트리거하지 않습니다.
 
+## v7.4.0 릴리스 노트 (2026-06-20)
+
+Lattice AI v7.4.0 — Runtime Contract Convergence & Corpus Retrieval. 7.4.0은
+7.3.0에서 시작한 `agent-run-contract/v1` 작업을 agent run에 머물지 않고 workflow
+run, audit event, realtime event까지 확장한다.
+
+agent/workflow persisted rows는 queued/running/terminal/cancelled/interrupted 전환마다
+contract를 갱신한다. Workflow engine 결과, replay payload, audit log, realtime SSE
+feed는 기존 top-level 필드를 유지하면서 `contract.family == agent-run-contract/v1`인
+공통 envelope를 추가한다. 감사 로그는 redaction 이후 contract를 생성하므로 secret을
+contract artifact로 다시 노출하지 않는다.
+
+Brain quality gate도 corpus-scale fixture로 확장했다. `scripts/brain_quality_eval.py`는
+기존 small deterministic recall gate에 더해 `KnowledgeGraphStore`와 `SearchService`를
+실제로 구동해 30개 이상 corpus item, 12개 judged query, recall/precision/NDCG,
+must-include hit-rate threshold를 검증한다.
+
+Expected artifacts (exact 7.4.0 names only):
+- dist/ltcai-7.4.0-py3-none-any.whl
+- dist/ltcai-7.4.0.tar.gz
+- dist/ltcai-7.4.0.vsix
+- ltcai-7.4.0.tgz
+- src-tauri/target/release/bundle/dmg/Lattice AI_7.4.0_aarch64.dmg
+
 ## v7.3.0 릴리스 노트 (2026-06-20)
 
 Lattice AI v7.3.0 — Runtime Contract & Retrieval Quality. 7.3.0은 7.2.0에서
