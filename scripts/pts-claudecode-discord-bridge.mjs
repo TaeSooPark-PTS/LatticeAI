@@ -44,6 +44,18 @@ function stripAnsi(text) {
   return String(text || "").replace(/\u001b\[[0-9;]*m/g, "").trim();
 }
 
+function formatClaudeError(error) {
+  const message = stripAnsi(error?.message || error);
+  if (/401|Invalid authentication credentials|Failed to authenticate/i.test(message)) {
+    return [
+      "Claude Code 인증이 끊겼습니다.",
+      "로컬에서 `claude`를 열어 다시 로그인한 뒤 `pts_claudecode` 브리지를 재시작해야 합니다.",
+      "Discord 토큰 문제는 아니고, `/opt/homebrew/bin/claude -p` 호출이 401로 실패하고 있습니다.",
+    ].join(" ");
+  }
+  return `pts_claudecode 브리지 오류: ${message.slice(0, 800)}`;
+}
+
 function isAllowed(message, botId) {
   if (message.author.id === botId) return false;
   if (message.channelId !== channelId) return false;
@@ -117,8 +129,14 @@ function runClaudePrompt(prompt) {
 
     let stdout = "";
     let stderr = "";
+    let closed = false;
     const timer = setTimeout(() => {
       child.kill("SIGTERM");
+      setTimeout(() => {
+        if (!closed) {
+          child.kill("SIGKILL");
+        }
+      }, 5000).unref();
     }, runTimeoutMs);
 
     child.stdout.on("data", (chunk) => {
@@ -132,6 +150,7 @@ function runClaudePrompt(prompt) {
       reject(error);
     });
     child.on("close", (code, signal) => {
+      closed = true;
       clearTimeout(timer);
       if ((code !== 0 || signal) && !stdout.trim()) {
         reject(new Error(stripAnsi(stderr) || `claude exited with ${code || signal}`));
@@ -178,9 +197,7 @@ client.on("messageCreate", async (message) => {
       : reply;
     await message.reply(cleanReply || "pts_claudecode 응답 생성에 실패했습니다.");
   } catch (error) {
-    await message.reply(
-      `pts_claudecode 브리지 오류: ${String(error.message || error).slice(0, 800)}`,
-    );
+    await message.reply(formatClaudeError(error));
   } finally {
     busy = false;
   }
