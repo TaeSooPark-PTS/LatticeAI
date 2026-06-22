@@ -19,5 +19,7 @@ Lattice AI v7.6.0 turns the two local review files into shipped work.
 - Focused unit tests for 7.6 review completion plus existing AgentRuntime,
   ToolRegistry, Config, and KG portability gates.
 - Visual smoke coverage updated for Wake Brain and memory rings.
+- Release screenshots, walkthrough video, and GIF refreshed under
+  `output/release/v7.6.0/`.
 
 Publishing remains owner-run only. Do not publish packages from automation.

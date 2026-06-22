@@ -23,9 +23,9 @@ existed at that release.
 ### Changed
 - Package/runtime/static metadata is synchronized to 7.6.0; package publish and
   deployment remain owner-run only.
-- README and release docs now describe 7.6.0 as the current release and preserve
-  older 7.5.0 screenshots as historical release evidence until new captures are
-  generated.
+- README and release docs now describe 7.6.0 as the current release and point to
+  refreshed 7.6.0 screenshots, walkthrough GIF, and release evidence index under
+  `output/release/v7.6.0/`.
 
 ## [7.5.0] - 2026-06-20
 

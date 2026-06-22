@@ -9,7 +9,6 @@ upgrade; the raw token never touches disk again).
 import hashlib
 import json
 import logging
-import os
 import secrets
 import threading
 import time

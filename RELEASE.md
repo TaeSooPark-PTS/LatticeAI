@@ -25,6 +25,9 @@ Knowledge Graph hardening, Brain UX closure를 모두 gate로 노출하고 unit 
 기존 AgentRuntime/ToolRegistry/Config/KG portability 테스트와 함께 두 리뷰 문서의
 완료 조건을 릴리스 회귀 방지 대상으로 만든다.
 
+7.6.0 release evidence는 `output/release/v7.6.0/` 아래에서 새로 캡처한 screenshots,
+walkthrough video, GIF를 기준으로 한다.
+
 Expected artifacts (exact 7.6.0 names only):
 - dist/ltcai-7.6.0-py3-none-any.whl
 - dist/ltcai-7.6.0.tar.gz
