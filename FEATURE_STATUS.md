@@ -18,6 +18,7 @@ contract-tested, and release evidence is exact-versioned.
 | **Production classifiers** | COMPLETE | Changed to "Development Status :: 5 - Production/Stable" |
 | **Version & metadata sync** | COMPLETE | All 7.7.0 across py, npm, tauri, core, docs |
 | **UI/UX Product Polish** | COMPLETE | Brain Home command center, localized Act/Review surface, and current release evidence |
+| **Post-release UX draft integration** | WORKING | Six UX draft files folded into canonical Brain/onboarding surfaces with shared CSS, bilingual copy, and visual smoke coverage |
 | **Docs as product proof** | COMPLETE | RELEASE, CHANGELOG, README, FEATURE updated to declare 7.7 finished product |
 | **AgentRuntime + ToolRegistry** | COMPLETE | Tested boundaries, imported, used in production paths |
 | **Build & validation gates** | COMPLETE | typecheck, cargo, unit tests, tauri build checks pass |

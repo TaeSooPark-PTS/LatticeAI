@@ -483,6 +483,10 @@ export function BrainHome({
 
   return (
     <main className="brain-home" aria-label={t(language, "brain.aria.home")}>
+      <div className="brain-product-intro">
+        <div className="brain-product-kicker">{t(language, "brain.home.kicker")}</div>
+        <div className="brain-product-line">{t(language, "brain.home.line")}</div>
+      </div>
       <section className="brain-presence" aria-label={t(language, "brain.aria.exploration")}>
         <div className="brain-exploration" data-depth={explorationDepth}>
           <LivingBrain

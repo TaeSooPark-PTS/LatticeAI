@@ -3,13 +3,14 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import cytoscape, { Core, ElementDefinition } from "cytoscape";
 import { BrainCircuit, DatabaseBackup, Filter, Focus, Layers3, LocateFixed, Search, Sparkles } from "lucide-react";
 import { latticeApi } from "@/api/client";
-import { BrainConversation } from "@/components/BrainConversation";
+import { type BrainState } from "@/components/LivingBrain";
 import { ActionButton, DataPanel, EmptyState, EntityList, KeyValueList, LoadingPanel, OperationResult, StatGrid, StructuredView, Tabs } from "@/components/primitives";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
+import { BrainHome } from "@/features/brain/BrainHome";
 import { useAppStore } from "@/store/appStore";
 import { asArray, fmtNumber, pct, shortId, titleize } from "@/lib/utils";
 
@@ -416,9 +417,16 @@ export function BrainPage({ initialTab }: { initialTab?: string }) {
   const mode = useAppStore((state) => state.mode);
   const normalizedInitialTab = normalizeBrainTab(initialTab);
   const [tab, setTab] = React.useState<BrainTab>(normalizedInitialTab);
+  const [brainPresence, setBrainPresence] = React.useState<{ state: BrainState; intensity: number }>({
+    state: "idle",
+    intensity: 0.58,
+  });
   React.useEffect(() => {
     setTab(normalizeBrainTab(initialTab));
   }, [initialTab]);
+  const setBrain = React.useCallback((state: BrainState, intensity = 0.58) => {
+    setBrainPresence({ state, intensity });
+  }, []);
   const graph = useQuery({ queryKey: ["graph"], queryFn: latticeApi.graph });
   const stats = useQuery({ queryKey: ["graphStats"], queryFn: latticeApi.graphStats });
   const index = useQuery({ queryKey: ["index"], queryFn: latticeApi.indexStatus });
@@ -442,7 +450,9 @@ export function BrainPage({ initialTab }: { initialTab?: string }) {
       )}
       <Tabs tabs={tabs} value={tab} onChange={(id) => setTab(id as BrainTab)} />
 
-      {tab === "conversation" ? <BrainConversation /> : null}
+      {tab === "conversation" ? (
+        <BrainHome brainState={brainPresence.state} intensity={brainPresence.intensity} onBrainChange={setBrain} />
+      ) : null}
       {tab === "memory" ? <MemoryPanel /> : null}
       {tab === "knowledge" ? <HybridSearch /> : null}
       {tab === "relationships" ? (

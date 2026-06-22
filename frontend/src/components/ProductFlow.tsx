@@ -3,6 +3,7 @@ import { latticeApi } from "@/api/client";
 import { type BrainState, LivingBrain } from "@/components/LivingBrain";
 import { t } from "@/i18n";
 import { useAppStore } from "@/store/appStore";
+import { ArrowRight, Cpu, Shield, Zap } from "lucide-react";
 import {
   AnalysisScreen,
   InstallScreen,
@@ -106,10 +107,28 @@ export function ProductFlow({ onComplete }: { onComplete: () => void }) {
 
 function WakeBrainScreen({ onWake, onUseExisting }: { onWake: () => void; onUseExisting: () => void }) {
   const language = useAppStore((state) => state.language);
+  const valueCards = [
+    { icon: Shield, label: t(language, "flow.wake.value.local.k"), body: t(language, "flow.wake.value.local.v") },
+    { icon: Zap, label: t(language, "flow.wake.value.instant.k"), body: t(language, "flow.wake.value.instant.v") },
+    { icon: Cpu, label: t(language, "flow.wake.value.brain.k"), body: t(language, "flow.wake.value.brain.v") },
+  ];
   return (
     <section className="ritual-wake" aria-label={t(language, "flow.wake.aria")}>
       <div className="ritual-title">{t(language, "flow.wake.title")}</div>
       <div className="ritual-subtitle">{t(language, "flow.wake.body")}</div>
+
+      <div className="ritual-value-grid" aria-label={t(language, "flow.wake.value.aria")}>
+        {valueCards.map((card) => {
+          const Icon = card.icon;
+          return (
+            <div className="ritual-value-card" key={card.label}>
+              <div className="ritual-value-label"><Icon size={14} /> {card.label}</div>
+              <div className="ritual-value-body">{card.body}</div>
+            </div>
+          );
+        })}
+      </div>
+
       <div className="ritual-wake-plan" aria-label={t(language, "flow.wake.plan.aria")}>
         <div>
           <span>1</span>
@@ -124,14 +143,16 @@ function WakeBrainScreen({ onWake, onUseExisting }: { onWake: () => void; onUseE
           <strong>{t(language, "flow.wake.step.voice")}</strong>
         </div>
       </div>
-      <div className="ritual-button-row">
-        <button type="button" className="ritual-full-button" onClick={onWake}>
-          {t(language, "flow.wake.primary")}
+
+      <div className="ritual-button-row ritual-button-row-primary">
+        <button type="button" className="ritual-full-button ritual-full-button-primary" onClick={onWake}>
+          {t(language, "flow.wake.primary")} <ArrowRight size={18} />
         </button>
         <button type="button" className="ritual-secondary-button" onClick={onUseExisting}>
           {t(language, "flow.wake.existing")}
         </button>
       </div>
+      <div className="ritual-start-note">{t(language, "flow.wake.startNote")}</div>
     </section>
   );
 }

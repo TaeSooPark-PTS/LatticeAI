@@ -2,6 +2,7 @@ import { Button } from "@/components/ui/button";
 import { t, type Language } from "@/i18n";
 import { useAppStore } from "@/store/appStore";
 import { fallbackModel, type RecommendedModel } from "./recommendationModel";
+import { ArrowRight, Gauge, Star, Zap } from "lucide-react";
 
 export function RecommendationScreen({
   recommendations,
@@ -25,37 +26,43 @@ export function RecommendationScreen({
         {items[0]?.supported ? (
           <div className="ritual-primary-cta">
             <Button onClick={() => onSelect(items[0])} className="ritual-primary-model-button">
-              {t(language, "flow.recommend.primary")}
+              {t(language, "flow.recommend.primary")} <ArrowRight size={16} />
             </Button>
             <div className="ritual-time-estimate ritual-primary-note">{primaryNote(items[0], language)}</div>
             <div className="ritual-muted-hint ritual-next-hint">{t(language, "flow.recommend.nextHint")}</div>
           </div>
         ) : null}
-        {items.slice(0, 3).map((model, index) => (
-          <button
-            key={`${model.role}-${model.id}`}
-            className="ritual-model-card"
-            onClick={() => model.supported && onSelect(model)}
-            disabled={!model.supported}
-          >
-            <div className="role">{rankLabel(model.role, index, language)}</div>
-            <div className="name">{model.shortName}</div>
-            <div className="reason">
-              {model.reason} · {model.size || t(language, "flow.recommend.sizeReady")}
-              {comparisonLabel(model.role, language) ? (
-                <span className="ritual-model-comparison"> {comparisonLabel(model.role, language)}</span>
-              ) : null}
-            </div>
-            <div className="ritual-model-stats">
-              <span className="ritual-time-estimate">{timeEstimate(model, language)}</span>
-            </div>
-            {model.supported ? (
-              <span className="ritual-model-choose">{t(language, "flow.recommend.choose")}</span>
-            ) : (
-              <div className="ritual-model-warning">{t(language, "flow.recommend.unsupported")}</div>
-            )}
-          </button>
-        ))}
+        {items.slice(0, 3).map((model, index) => {
+          const Icon = model.role === "best" ? Star : model.role === "faster" ? Zap : Gauge;
+          return (
+            <button
+              key={`${model.role}-${model.id}`}
+              className="ritual-model-card"
+              onClick={() => model.supported && onSelect(model)}
+              disabled={!model.supported}
+            >
+              <div className="ritual-model-heading">
+                <Icon size={16} />
+                <div className="role">{rankLabel(model.role, index, language)}</div>
+              </div>
+              <div className="name">{model.shortName}</div>
+              <div className="reason">
+                {model.reason} · {model.size || t(language, "flow.recommend.sizeReady")}
+                {comparisonLabel(model.role, language) ? (
+                  <span className="ritual-model-comparison"> {comparisonLabel(model.role, language)}</span>
+                ) : null}
+              </div>
+              <div className="ritual-model-stats">
+                <span className="ritual-time-estimate">{timeEstimate(model, language)}</span>
+              </div>
+              {model.supported ? (
+                <span className="ritual-model-choose">{t(language, "flow.recommend.choose")} <ArrowRight size={14} /></span>
+              ) : (
+                <div className="ritual-model-warning">{t(language, "flow.recommend.unsupported")}</div>
+              )}
+            </button>
+          );
+        })}
         <div className="ritual-time-note">{t(language, "flow.recommend.timeNote")}</div>
       </div>
 

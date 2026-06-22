@@ -4,6 +4,16 @@ The top entry is either the current unreleased main-branch work or the current
 release line. Older entries are historical and may describe behavior as it
 existed at that release.
 
+## [Unreleased]
+
+### Changed
+- Integrated the six post-7.7 UX drafts into the canonical Brain experience:
+  first-run value cards, stronger recommendation affordances, product-toned
+  Brain Home intro copy, and routed legacy Brain conversation entry points to
+  the canonical Brain Home surface.
+- Moved draft onboarding polish out of inline styles and into the shared design
+  stylesheet with responsive behavior and bilingual copy.
+
 ## [7.7.0] - 2026-06-22
 
 > 7.7.0 marks the complete, finished product stage for Lattice AI.

@@ -134,7 +134,8 @@ export function LivingBrain({
           style={{
             animationDuration: state === "thinking" ? "1.65s" : state === "recalling" ? "2.4s" : "6.8s",
             transform: `scale(${1 + effectiveDepth * 0.12})`,
-            opacity: 0.65 + effectiveDepth * 0.05
+            opacity: 0.65 + effectiveDepth * 0.05,
+            boxShadow: effectiveDepth > 2 ? "0 0 60px hsl(var(--brain-core) / 0.25)" : "none"
           }}
         />
 
@@ -176,6 +177,13 @@ export function LivingBrain({
               <circle cx="50" cy="50" r="28" />
               <path d="M32 50 Q50 32 68 50" />
               <path d="M32 50 Q50 68 68 50" />
+              {/* lattice connections for deeper feel */}
+              <circle cx="25" cy="35" r="2" fill="hsl(var(--brain-core) / 0.4)" />
+              <circle cx="75" cy="35" r="2" fill="hsl(var(--brain-core) / 0.4)" />
+              <circle cx="25" cy="65" r="2" fill="hsl(var(--brain-core) / 0.4)" />
+              <circle cx="75" cy="65" r="2" fill="hsl(var(--brain-core) / 0.4)" />
+              <path d="M25 35 L50 50 L75 35" stroke="hsl(var(--knowledge)/0.3)" strokeWidth="0.4" />
+              <path d="M25 65 L50 50 L75 65" stroke="hsl(var(--knowledge)/0.3)" strokeWidth="0.4" />
             </g>
           </svg>
         )}
