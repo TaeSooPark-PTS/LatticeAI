@@ -779,15 +779,15 @@ const server = http.createServer((req, res) => {
   if (pathname === "/automation/reviews") {
     const items = [
       {
-        id: "rev-7-7-release",
+        id: "rev-7-8-release",
         status: "pending",
         effective_status: "pending",
-        title: "Approve 7.7 product readiness evidence",
+        title: "Approve 7.8 product readiness evidence",
         summary: "Review generated screenshots, exact artifacts, and product readiness gates before release.",
         source: "workflow_run",
         kind: "release_review",
-        payload: { last_run_id: "run-77-product" },
-        provenance: { workflow_id: "wf-release", run_id: "run-77-product", source_detail: "7.7 release workflow" },
+        payload: { last_run_id: "run-78-product" },
+        provenance: { workflow_id: "wf-release", run_id: "run-78-product", source_detail: "7.8 release workflow" },
         created_at: "2026-06-22T12:00:00Z",
         updated_at: "2026-06-22T12:05:00Z",
       },
@@ -813,15 +813,15 @@ const server = http.createServer((req, res) => {
   }
   if (pathname.startsWith("/automation/reviews/")) {
     return json(res, {
-      id: "rev-7-7-release",
+      id: "rev-7-8-release",
       status: "pending",
       effective_status: "pending",
-      title: "Approve 7.7 product readiness evidence",
+      title: "Approve 7.8 product readiness evidence",
       summary: "Action preview completed.",
       source: "workflow_run",
       kind: "release_review",
-      payload: { last_run_id: "run-77-product" },
-      provenance: { workflow_id: "wf-release", run_id: "run-77-product", source_detail: "7.7 release workflow" },
+      payload: { last_run_id: "run-78-product" },
+      provenance: { workflow_id: "wf-release", run_id: "run-78-product", source_detail: "7.8 release workflow" },
     });
   }
 

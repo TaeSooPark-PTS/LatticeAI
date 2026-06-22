@@ -16,6 +16,8 @@ above the conversation.
 - Deep memory controls stay hidden until the user intentionally travels deeper.
 - Obsolete Brain UX components were removed.
 - Product and architecture readiness gates now target 7.8.0.
+- Release screenshots, the walkthrough GIF, and capture notes were refreshed
+  under `output/release/v7.8.0/`.
 
 ### Expected Artifacts
 

@@ -23,6 +23,8 @@ existed at that release.
 - Moved draft onboarding polish out of inline styles and into the shared design
   stylesheet with responsive behavior and bilingual copy.
 - Updated architecture and product readiness targets to 7.8.0.
+- Refreshed 7.8.0 release screenshots, walkthrough video/GIF, and capture
+  notes under `output/release/v7.8.0/`.
 
 ## [7.7.0] - 2026-06-22
 

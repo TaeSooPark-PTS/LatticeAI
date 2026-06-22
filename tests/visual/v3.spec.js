@@ -174,7 +174,7 @@ test("Review Center loads actionable review evidence", async ({ page }) => {
   await page.goto("/app#/review");
 
   await expect(page.locator("body")).toContainText("검토함");
-  await expect(page.locator("body")).toContainText("Approve 7.7 product readiness evidence");
+  await expect(page.locator("body")).toContainText("Approve 7.8 product readiness evidence");
   await expect(page.locator("body")).toContainText("Review generated screenshots");
   await expect(page.locator("body")).not.toContainText("not valid JSON");
   await expect(page.locator("body")).not.toContainText("Unexpected token");

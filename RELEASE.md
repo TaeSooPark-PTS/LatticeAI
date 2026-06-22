@@ -24,6 +24,8 @@ can talk to the Brain.
   deeper into the Brain.
 - Obsolete Brain conversation and first-run guide components were removed.
 - Product and architecture readiness targets now track 7.8.0.
+- Release screenshots, walkthrough video/GIF, and capture notes were refreshed
+  under `output/release/v7.8.0/`.
 
 Expected artifacts (exact 7.8.0 names only):
 - dist/ltcai-7.8.0-py3-none-any.whl

@@ -89,6 +89,9 @@ PRODUCT_GATES: List[ProductGate] = [
             "docs/CHANGELOG.md::## [7.8.0]",
             "FEATURE_STATUS.md",
             "RELEASE_NOTES_v7.8.0.md",
+            "README.md::output/release/v7.8.0/SCREENSHOT_INDEX.md",
+            "output/release/v7.8.0/SCREENSHOT_INDEX.md",
+            "output/release/v7.8.0/gifs/v7.8.0-living-brain-walkthrough.gif",
         ],
     ),
     ProductGate(
