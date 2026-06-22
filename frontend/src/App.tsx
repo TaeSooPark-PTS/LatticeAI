@@ -113,7 +113,7 @@ function BrainShell({
             aria-current={item.id === active ? "page" : undefined}
             onClick={() => navigateHash(`/${item.path}`)}
           >
-            {item.label}
+            {t(language, item.labelKey)}
           </button>
         ))}
         <div className="brain-shell-switchers" aria-label={t(language, "shell.workspace.label")}>

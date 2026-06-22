@@ -87,12 +87,12 @@ export function ReviewInbox() {
         </div>
         <div className="grid gap-2">
           <Tabs
-            tabs={reviewStatusFilters}
+            tabs={reviewStatusFilters.map((filter) => ({ id: filter.id, label: t(language, filter.labelKey) }))}
             value={statusFilter}
             onChange={(id) => setStatusFilter(id as ReviewStatusFilter)}
           />
           <Tabs
-            tabs={reviewSourceFilters}
+            tabs={reviewSourceFilters.map((filter) => ({ id: filter.id, label: t(language, filter.labelKey) }))}
             value={sourceFilter}
             onChange={(id) => setSourceFilter(id as ReviewSourceFilter)}
           />

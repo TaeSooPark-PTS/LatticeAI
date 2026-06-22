@@ -39,12 +39,25 @@ jobs:
         uses: actions/setup-node@v5
         with:
           node-version: "20"
+          cache: npm
 
       - name: Install Python dependencies
         run: |
           pip install --upgrade build twine
           pip install "."
           pip install pytest
+
+      - name: Install Node dependencies
+        run: |
+          npm ci
+          (cd vscode-extension && npm ci)
+
+      - name: Frontend and release readiness gates
+        run: |
+          npm run lint
+          npm run typecheck
+          npm run build:assets
+          python scripts/product_readiness.py
 
       - name: Run unit tests
         run: python -m pytest tests/unit/ -v

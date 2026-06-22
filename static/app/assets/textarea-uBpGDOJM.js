@@ -1,0 +1,2 @@
+import{D as e,L as t,V as n,z as r}from"./index-B4_drWel.js";var i=n(r()),a=t(),o=i.forwardRef(({className:t,...n},r)=>(0,a.jsx)(`textarea`,{ref:r,className:e(`min-h-28 w-full resize-y rounded-md border border-input bg-background/70 px-3 py-3 text-sm leading-6 outline-none transition placeholder:text-muted-foreground focus:border-ring focus:ring-2 focus:ring-ring/35 disabled:cursor-not-allowed disabled:opacity-50`,t),...n}));o.displayName=`Textarea`;export{o as t};
+//# sourceMappingURL=textarea-uBpGDOJM.js.map

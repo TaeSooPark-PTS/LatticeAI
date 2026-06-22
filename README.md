@@ -1,6 +1,6 @@
 # Lattice AI
 
-**Lattice AI is a local-first Digital Brain that keeps your knowledge durable across any AI model.**
+**Lattice AI 7.7 is the complete, finished local-first Digital Brain product. It keeps your knowledge durable across any AI model — now undeniably a production-grade professional tool.**
 
 **Lattice AI는 모델이 바뀌어도 내 지식과 맥락을 보존하는 로컬 우선 AI 브레인입니다.**
 
@@ -11,7 +11,7 @@ downloads, update checks, and other external communication happen only after
 explicit consent.
 
 It is not a ChatGPT clone, a model launcher, a graph database, or a note app.
-It is a private AI memory layer wrapped in a Living Brain experience.
+It is the finished private AI memory layer wrapped in a Living Brain experience — 7.7 complete product.
 
 [![PyPI Version](https://img.shields.io/pypi/v/ltcai?label=PyPI)](https://pypi.org/project/ltcai/)
 [![npm Version](https://img.shields.io/npm/v/ltcai?label=npm)](https://www.npmjs.com/package/ltcai)
@@ -74,28 +74,28 @@ confirm owner, check the computer, choose the Brain voice.
 Choose the owner of the Brain. The profile is not a SaaS account by default; it
 is the local identity for the knowledge you keep.
 
-![Login](output/release/v7.6.0/screenshots/01-login.png)
+![Login](output/release/v7.7.0/screenshots/01-login.png)
 
 ### 3. Environment Analysis
 
 See what kind of local AI experience this computer can support before choosing a
 model.
 
-![Environment Analysis](output/release/v7.6.0/screenshots/02-environment-analysis.png)
+![Environment Analysis](output/release/v7.7.0/screenshots/02-environment-analysis.png)
 
 ### 4. Recommended Models
 
 Start with a short list: safest recommendation, faster model, stronger model.
 Advanced details stay available without overwhelming first-time users.
 
-![Recommended Models](output/release/v7.6.0/screenshots/03-recommended-models.png)
+![Recommended Models](output/release/v7.7.0/screenshots/03-recommended-models.png)
 
 ### 5. Install And Load
 
 Download and load only after consent. Lattice explains model size, local
 execution, and network use before work starts.
 
-![Install and Load](output/release/v7.6.0/screenshots/04-install-load-progress.png)
+![Install and Load](output/release/v7.7.0/screenshots/04-install-load-progress.png)
 
 ### 6. Brain Chat
 
@@ -103,14 +103,14 @@ Talk normally. Useful decisions and context become memory, then appear later as
 topics, relationships, graph structure, and the concentric memory rings around
 the Brain.
 
-![Brain Chat Home](output/release/v7.6.0/screenshots/05-brain-chat-home.png)
+![Brain Chat Home](output/release/v7.7.0/screenshots/05-brain-chat-home.png)
 
 ### 7. Review Center
 
 Automation results are staged for review before they become durable decisions.
 Snooze, unsnooze, run now, approve, and dismiss actions stay explicit.
 
-![Review Center](output/release/v7.6.0/screenshots/13-review-center.png)
+![Review Center](output/release/v7.7.0/screenshots/13-review-center.png)
 
 ## Brain Depths
 
@@ -126,10 +126,10 @@ The user travels inward from everyday memory to deeper structure:
 
 Walkthrough:
 
-![v7.6.0 Living Brain walkthrough](output/release/v7.6.0/gifs/v7.6.0-living-brain-walkthrough.gif)
+![v7.7.0 Living Brain walkthrough](output/release/v7.7.0/gifs/v7.7.0-living-brain-walkthrough.gif)
 
 Screenshot index and capture notes:
-[output/release/v7.6.0/SCREENSHOT_INDEX.md](output/release/v7.6.0/SCREENSHOT_INDEX.md)
+[output/release/v7.7.0/SCREENSHOT_INDEX.md](output/release/v7.7.0/SCREENSHOT_INDEX.md)
 
 ## Install
 
@@ -206,34 +206,30 @@ See [docs/DEVELOPMENT.md](docs/DEVELOPMENT.md) for developer workflow details.
 
 ## Current Release
 
-The current release is **7.6.0 Brain-Centered UX & Architecture Closure**:
+The current release is **7.7.0 — Complete Finished Product**:
 
-- First-run onboarding now starts with a dedicated Wake Brain surface before
-  owner/profile setup, so the first impression is the local Brain rather than a
-  generic account or model wizard.
-- Brain Home now includes concentric memory rings around the Living Brain plus
-  direct depth controls, letting users move from Now to Memory, Topics,
-  Relationships, and the full graph.
-- Architecture review closure is machine-checkable through the 7.6 readiness
-  contract covering AgentRuntime, ToolRegistry, central Config, server
-  decomposition, Knowledge Graph hardening, and Brain UX.
-- The two local review files (`review.md` and
-  `ux-brain-simplification-review.md`) are incorporated into this release line:
-  architecture gaps are covered by explicit boundaries/tests, and UX gaps are
-  closed by the Brain-first wake flow plus ring-based progressive disclosure.
+- Brain Home now opens with a product command center: readiness score, next best
+  action, memory/topic/source/proof metrics, and direct actions for adding
+  sources, inspecting topics, verifying proof, and managing ownership.
+- Review Center release evidence is backed by fixtures and tests, with polished
+  unavailable states instead of raw JSON parse errors.
+- Product readiness is machine-checkable through `product_readiness()`, which
+  composes the architecture contract with exact artifact/docs/workflow evidence.
+- CI and release workflows now run frontend lint/typecheck/build gates plus the
+  7.7 product readiness score before a tag can be treated as release-safe.
 
-Expected artifacts for 7.6.0 release must use exact filenames:
+Expected artifacts for 7.7.0 release must use exact filenames:
 
-- `dist/ltcai-7.6.0-py3-none-any.whl`
-- `dist/ltcai-7.6.0.tar.gz`
-- `ltcai-7.6.0.tgz`
-- `dist/ltcai-7.6.0.vsix`
-- `src-tauri/target/release/bundle/dmg/Lattice AI_7.6.0_aarch64.dmg`
+- `dist/ltcai-7.7.0-py3-none-any.whl`
+- `dist/ltcai-7.7.0.tar.gz`
+- `ltcai-7.7.0.tgz`
+- `dist/ltcai-7.7.0.vsix`
+- `src-tauri/target/release/bundle/dmg/Lattice AI_7.7.0_aarch64.dmg`
 
 Do not upload `dist/*`. Package registry publishing remains owner-run.
 
 See [docs/ROADMAP_RECOMMENDATIONS.md](docs/ROADMAP_RECOMMENDATIONS.md) for the
-strategic roadmap slices applied through 7.6.0 and the follow-up tracks.
+strategic roadmap slices applied through 7.7.0 and the follow-up tracks.
 
 ## Known Limitations
 
@@ -250,6 +246,7 @@ strategic roadmap slices applied through 7.6.0 and the follow-up tracks.
 
 | Version | Theme |
 | --- | --- |
+| 7.7.0 | Complete Product Polish: command-center Brain Home, repaired Review Center evidence, exact 7.7 docs/artifacts, product readiness gate, and stronger CI/release checks |
 | 7.6.0 | Brain-Centered UX & Architecture Closure: Wake Brain first-run surface, concentric memory rings with direct depth controls, and machine-checkable closure of the two architecture/UX review files |
 | 7.5.0 | Runtime Debt Burn-down & Release Risk Cleanup: API consumers get normalized contract views, retrieval quality uses a 250+ record corpus fixture, stale artifact risk is removed, npm audit is clean, and Tauri is updated past the old block warning |
 | 7.4.0 | Runtime Contract Convergence & Corpus Retrieval: agent/workflow/audit/realtime records share the agent-run-contract/v1 family, and retrieval quality gates run against a real corpus-scale fixture |

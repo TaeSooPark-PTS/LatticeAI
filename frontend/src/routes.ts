@@ -12,12 +12,12 @@ export type PrimaryRoute = "brain" | "memory" | "capture" | "act" | "library" | 
 export type RouteTarget = { primary: PrimaryRoute; tab?: string };
 
 export const productShellRoutes = [
-  { id: "brain", path: "brain", label: "Lattice Brain", icon: Brain, description: "Talk with your living Brain" },
-  { id: "capture", path: "capture", label: "Files", icon: FolderInput, description: "Bring in files, folders, and pages" },
-  { id: "memory", path: "knowledge-graph", label: "Graph", icon: Database, description: "Search and inspect Brain knowledge" },
-  { id: "library", path: "models", label: "Models", icon: Library, description: "Choose the local model powering your Brain" },
-  { id: "system", path: "settings", label: "Settings", icon: Settings, description: "Keep your Brain safe and portable" },
-  { id: "act", path: "review", label: "Act", icon: Workflow, description: "Turn goals into supervised runs" },
+  { id: "brain", path: "brain", labelKey: "shell.route.brain", icon: Brain, description: "Talk with your living Brain" },
+  { id: "capture", path: "capture", labelKey: "shell.route.capture", icon: FolderInput, description: "Bring in files, folders, and pages" },
+  { id: "memory", path: "knowledge-graph", labelKey: "shell.route.memory", icon: Database, description: "Search and inspect Brain knowledge" },
+  { id: "library", path: "models", labelKey: "shell.route.library", icon: Library, description: "Choose the local model powering your Brain" },
+  { id: "system", path: "settings", labelKey: "shell.route.system", icon: Settings, description: "Keep your Brain safe and portable" },
+  { id: "act", path: "review", labelKey: "shell.route.act", icon: Workflow, description: "Turn goals into supervised runs" },
 ] as const;
 
 export const directProductRoutes: Record<string, RouteTarget> = {

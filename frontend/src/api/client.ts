@@ -111,6 +111,13 @@ function friendlyError(error: unknown, fallback: string) {
   return fallback;
 }
 
+function friendlyCaughtError(error: unknown, fallback: string) {
+  const message = error instanceof Error ? error.message : String(error);
+  if (/not valid JSON|Unexpected token|JSON/i.test(message)) return fallback;
+  if (/aborted|abort/i.test(message)) return "Request timed out. Check that the local Lattice service is running.";
+  return message || fallback;
+}
+
 async function apiJson<T>(
   method: HttpMethod,
   path: string,
@@ -150,7 +157,7 @@ async function apiJson<T>(
       status: 0,
       data: emptyFor(opts.shape),
       source: "unavailable",
-      error: err instanceof Error ? err.message : String(err),
+      error: friendlyCaughtError(err, "The local Lattice service returned an unavailable response."),
     };
   } finally {
     window.clearTimeout(timer);
@@ -183,7 +190,7 @@ async function openApiJson<T>(
       status: 0,
       data: emptyFor(shape),
       source: "unavailable",
-      error: err instanceof Error ? err.message : String(err),
+      error: friendlyCaughtError(err, "The local Lattice service returned an unavailable response."),
     };
   } finally {
     window.clearTimeout(timer);

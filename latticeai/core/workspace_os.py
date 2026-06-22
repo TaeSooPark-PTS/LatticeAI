@@ -21,7 +21,7 @@ from typing import Any, Callable, Dict, Iterable, List, Optional
 from lattice_brain.runtime.contracts import realtime_event_contract, run_record_contract, workflow_run_contract
 
 
-WORKSPACE_OS_VERSION = "7.6.0"
+WORKSPACE_OS_VERSION = "7.7.0"
 
 # Workspace types separate single-user Personal workspaces from shared
 # Organization workspaces. Both keep the same local-first JSON store; the type

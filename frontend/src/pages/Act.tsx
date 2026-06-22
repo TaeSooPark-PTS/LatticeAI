@@ -12,25 +12,27 @@ import { Textarea } from "@/components/ui/textarea";
 import { ReviewInbox } from "@/features/review/ReviewInbox";
 import { useAppStore } from "@/store/appStore";
 import { asArray, shortId } from "@/lib/utils";
+import { t } from "@/i18n";
 
 type ActTab = "agents" | "runs" | "workflows" | "hooks" | "tools";
 type RunsSubTab = "runs" | "review";
 
-const runsSubTabs: Array<{ id: RunsSubTab; label: string }> = [
-  { id: "runs", label: "Runs" },
-  { id: "review", label: "Review Center" },
+const runsSubTabs: Array<{ id: RunsSubTab; labelKey: string }> = [
+  { id: "runs", labelKey: "act.tab.runs" },
+  { id: "review", labelKey: "act.tab.review" },
 ];
 
-const tabs: Array<{ id: ActTab; label: string }> = [
-  { id: "agents", label: "Goals" },
-  { id: "runs", label: "Runs" },
-  { id: "workflows", label: "Recipes" },
-  { id: "hooks", label: "Safeguards" },
-  { id: "tools", label: "Permissions" },
+const tabs: Array<{ id: ActTab; labelKey: string; advancedLabelKey?: string }> = [
+  { id: "agents", labelKey: "act.tab.goals" },
+  { id: "runs", labelKey: "act.tab.runs" },
+  { id: "workflows", labelKey: "act.tab.recipes" },
+  { id: "hooks", labelKey: "act.tab.safeguards", advancedLabelKey: "act.tab.hooks" },
+  { id: "tools", labelKey: "act.tab.permissions", advancedLabelKey: "act.tab.tools" },
 ];
 
 export function ActPage({ initialTab }: { initialTab?: string }) {
   const mode = useAppStore((state) => state.mode);
+  const language = useAppStore((state) => state.language);
   const [tab, setTab] = React.useState<ActTab>(() => {
     if (initialTab === "review") return "runs";
     return (initialTab as ActTab) || "agents";
@@ -47,11 +49,18 @@ export function ActPage({ initialTab }: { initialTab?: string }) {
   return (
     <div className="space-y-5">
       <header className="page-hero">
-        <div className="page-kicker"><Workflow className="h-4 w-4" /> Automate</div>
-        <h1 className="page-title">Make work move, with a hand on the door.</h1>
-        <p className="page-copy">Give Lattice a goal, review each run, and approve sensitive actions before anything important changes.</p>
+        <div className="page-kicker"><Workflow className="h-4 w-4" /> {t(language, "act.kicker")}</div>
+        <h1 className="page-title">{t(language, "act.title")}</h1>
+        <p className="page-copy">{t(language, "act.copy")}</p>
       </header>
-      <Tabs tabs={tabs.map((item) => mode === "basic" ? item : item.id === "hooks" ? { ...item, label: "Hooks" } : item.id === "tools" ? { ...item, label: "Tools" } : item)} value={tab} onChange={(id) => setTab(id as ActTab)} />
+      <Tabs
+        tabs={tabs.map((item) => ({
+          id: item.id,
+          label: t(language, mode === "basic" || !item.advancedLabelKey ? item.labelKey : item.advancedLabelKey),
+        }))}
+        value={tab}
+        onChange={(id) => setTab(id as ActTab)}
+      />
       {tab === "agents" ? <AgentsPanel /> : null}
       {tab === "runs" ? <RunsPanel subTab={runsSubTab} onSubTabChange={setRunsSubTab} /> : null}
       {tab === "workflows" ? <WorkflowsPanel /> : null}
@@ -140,9 +149,14 @@ function AgentsPanel() {
 }
 
 function RunsPanel({ subTab, onSubTabChange }: { subTab: RunsSubTab; onSubTabChange: (tab: RunsSubTab) => void }) {
+  const language = useAppStore((state) => state.language);
   return (
     <div className="space-y-4">
-      <Tabs tabs={runsSubTabs} value={subTab} onChange={(id) => onSubTabChange(id as RunsSubTab)} />
+      <Tabs
+        tabs={runsSubTabs.map((item) => ({ id: item.id, label: t(language, item.labelKey) }))}
+        value={subTab}
+        onChange={(id) => onSubTabChange(id as RunsSubTab)}
+      />
       {subTab === "runs" ? <RunsListPanel /> : <ReviewInbox />}
     </div>
   );

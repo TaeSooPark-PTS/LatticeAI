@@ -118,6 +118,9 @@ test("conversation keeps the Brain alive while chat streams", async ({ page }) =
   await openBrain(page);
 
   await expect(page.locator("body")).toContainText("잊으면 안 되는 맥락부터 말해 주세요.");
+  await expect(page.locator("section[aria-label='제품 상태와 다음 행동']")).toBeVisible();
+  await expect(page.locator("body")).toContainText("제품 상태판");
+  await expect(page.getByRole("button", { name: /근거 확인/ })).toBeVisible();
   await expect(page.locator("body")).toContainText("Brain 한눈에 보기");
   await expect(page.locator("body")).toContainText("Brain 준비도");
   await expect(page.locator("[aria-label='Brain 깊이 진행 상태']")).toBeVisible();
@@ -158,6 +161,19 @@ test("admin console is separated from the user Brain surface", async ({ page }) 
   await page.getByRole("button", { name: "Brain" }).click();
   await expect(page.locator("main[aria-label='Lattice Brain']")).toBeVisible();
   await expect(page.locator("main.admin-console")).toHaveCount(0);
+  expect(errors).toEqual([]);
+});
+
+test("Review Center loads actionable review evidence", async ({ page }) => {
+  const errors = trackPageErrors(page);
+  await bypassProductFlow(page);
+  await page.goto("/app#/review");
+
+  await expect(page.locator("body")).toContainText("검토함");
+  await expect(page.locator("body")).toContainText("Approve 7.7 product readiness evidence");
+  await expect(page.locator("body")).toContainText("Review generated screenshots");
+  await expect(page.locator("body")).not.toContainText("not valid JSON");
+  await expect(page.locator("body")).not.toContainText("Unexpected token");
   expect(errors).toEqual([]);
 });
 

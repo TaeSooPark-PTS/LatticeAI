@@ -26,9 +26,17 @@ jobs:
           python-version: ${{ matrix.python-version }}
           cache: pip
 
+      - name: Set up Node
+        uses: actions/setup-node@v5
+        with:
+          node-version: "20"
+          cache: npm
+
       - name: Install dependencies
         run: |
           pip install -e "." pytest pytest-asyncio httpx ruff
+          npm ci
+          (cd vscode-extension && npm ci)
 
       - name: Lint (ruff baseline)
         run: python -m ruff check .
@@ -36,12 +44,20 @@ jobs:
       - name: Syntax check (discover-based, auto-includes new modules)
         run: python scripts/check_python.py
 
+      - name: Frontend lint and typecheck
+        run: |
+          npm run lint
+          npm run typecheck
+
       - name: Run tests
         run: |
           python -m pytest tests/unit/ -v --tb=short
 
       - name: Brain recall/KG quality eval
         run: python scripts/brain_quality_eval.py
+
+      - name: Product readiness gate
+        run: python scripts/product_readiness.py
 
   integration:
     name: Integration smoke test

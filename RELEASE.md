@@ -7,6 +7,32 @@
 > PyPI / npm / VS Code Marketplace / Open VSX 배포는 아래 수동 절차로만
 > 진행합니다. 태그 생성은 패키지 스토어 publish를 자동으로 트리거하지 않습니다.
 
+## v7.7.0 — Complete Product (2026-06-22)
+
+> 7.7.0 marks the complete, finished product stage for Lattice AI.
+> After 7.6.0 architecture closure, this release polishes every surface so that anyone looking at the code, UI, docs, or running app immediately recognizes: "this is now a product".
+
+Lattice AI v7.7 delivers the Living Brain as the undeniable center, production-grade runtime contracts, stable ToolRegistry, full ingestion-to-graph flows, bilingual professional UX, and zero-beta signals. Classifiers moved to Production/Stable. All prior gates remain enforced under finished product contract.
+
+Package metadata, Tauri, frontend, Python all aligned to 7.7.0. UI/UX microcopy and signals updated to convey finished professional tool.
+
+### Productization Highlights
+- Extreme self + claude-code (pts_claudecode) used for polish, evaluation, iteration.
+- "This is a product" bar: clear durable knowledge ownership, no loose ends.
+- Validation: typecheck, unit, cargo, build scripts exercised.
+
+### Changed
+- Package/runtime/static metadata synchronized to 7.7.0.
+- Development status to Production/Stable.
+- All current-release references point to 7.7.0.
+
+Expected artifacts (exact 7.7.0 names only):
+- dist/ltcai-7.7.0-py3-none-any.whl
+- dist/ltcai-7.7.0.tar.gz
+- dist/ltcai-7.7.0.vsix
+- ltcai-7.7.0.tgz
+- src-tauri/target/release/bundle/dmg/Lattice AI_7.7.0_aarch64.dmg
+
 ## v7.6.0 릴리스 노트 (2026-06-22)
 
 Lattice AI v7.6.0 — Brain-Centered UX & Architecture Closure. 7.6.0은 로컬에

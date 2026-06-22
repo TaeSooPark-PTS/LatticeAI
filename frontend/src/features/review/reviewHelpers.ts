@@ -4,19 +4,19 @@ import type { Badge } from "@/components/ui/badge";
 
 export type ReviewAction = "approve" | "dismiss" | "snooze" | "unsnooze" | "run_now";
 
-export const reviewStatusFilters: Array<{ id: ReviewStatusFilter; label: string }> = [
-  { id: "pending", label: "Pending" },
-  { id: "snoozed", label: "Snoozed" },
-  { id: "all", label: "All" },
-  { id: "approved", label: "Approved" },
-  { id: "dismissed", label: "Dismissed" },
+export const reviewStatusFilters: Array<{ id: ReviewStatusFilter; labelKey: string }> = [
+  { id: "pending", labelKey: "review.filter.status.pending" },
+  { id: "snoozed", labelKey: "review.filter.status.snoozed" },
+  { id: "all", labelKey: "review.filter.status.all" },
+  { id: "approved", labelKey: "review.filter.status.approved" },
+  { id: "dismissed", labelKey: "review.filter.status.dismissed" },
 ];
 
-export const reviewSourceFilters: Array<{ id: ReviewSourceFilter; label: string }> = [
-  { id: "all", label: "All sources" },
-  { id: "workflow_run", label: "Workflow" },
-  { id: "trigger", label: "Trigger" },
-  { id: "kg_change_digest", label: "KG digest" },
+export const reviewSourceFilters: Array<{ id: ReviewSourceFilter; labelKey: string }> = [
+  { id: "all", labelKey: "review.filter.source.all" },
+  { id: "workflow_run", labelKey: "review.filter.source.workflow_run" },
+  { id: "trigger", labelKey: "review.filter.source.trigger" },
+  { id: "kg_change_digest", labelKey: "review.filter.source.kg_change_digest" },
 ];
 
 export function reviewStatusVariant(status: string): React.ComponentProps<typeof Badge>["variant"] {

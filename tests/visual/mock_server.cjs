@@ -776,6 +776,54 @@ const server = http.createServer((req, res) => {
     severity_counts: { high: 0, medium: 1, low: 2 }, field_counts: { email: 4, api_key: 1 },
   });
   if (pathname.startsWith("/admin/security/")) return json(res, { cards: {}, users: [], events: [], files: [], field_counts: {} });
+  if (pathname === "/automation/reviews") {
+    const items = [
+      {
+        id: "rev-7-7-release",
+        status: "pending",
+        effective_status: "pending",
+        title: "Approve 7.7 product readiness evidence",
+        summary: "Review generated screenshots, exact artifacts, and product readiness gates before release.",
+        source: "workflow_run",
+        kind: "release_review",
+        payload: { last_run_id: "run-77-product" },
+        provenance: { workflow_id: "wf-release", run_id: "run-77-product", source_detail: "7.7 release workflow" },
+        created_at: "2026-06-22T12:00:00Z",
+        updated_at: "2026-06-22T12:05:00Z",
+      },
+      {
+        id: "rev-kg-digest",
+        status: "pending",
+        effective_status: "pending",
+        title: "Review new Knowledge Graph digest",
+        summary: "Three new project memories are ready to become durable context.",
+        source: "kg_change_digest",
+        kind: "memory_digest",
+        payload: {},
+        provenance: { source_detail: "Brain ingestion pipeline" },
+        created_at: "2026-06-22T12:02:00Z",
+        updated_at: "2026-06-22T12:02:00Z",
+      },
+    ];
+    const status = url.searchParams.get("status");
+    const source = url.searchParams.get("source");
+    return json(res, {
+      items: items.filter((item) => (!status || item.effective_status === status) && (!source || item.source === source)),
+    });
+  }
+  if (pathname.startsWith("/automation/reviews/")) {
+    return json(res, {
+      id: "rev-7-7-release",
+      status: "pending",
+      effective_status: "pending",
+      title: "Approve 7.7 product readiness evidence",
+      summary: "Action preview completed.",
+      source: "workflow_run",
+      kind: "release_review",
+      payload: { last_run_id: "run-77-product" },
+      provenance: { workflow_id: "wf-release", run_id: "run-77-product", source_detail: "7.7 release workflow" },
+    });
+  }
 
   if (req.method === "POST" || req.method === "PATCH" || req.method === "DELETE") return json(res, { status: "ok" });
   text(res, "not found", "text/plain; charset=utf-8");

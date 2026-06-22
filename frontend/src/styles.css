@@ -1423,6 +1423,206 @@ body {
   mask-image: linear-gradient(transparent, black 6%, black 92%, transparent);
 }
 
+.brain-edition-badge,
+.ritual-edition {
+  display: inline-flex;
+  align-items: center;
+  min-height: 1.35rem;
+  border: 1px solid hsl(var(--brain-core) / 0.42);
+  border-radius: 999px;
+  background: hsl(var(--brain-core) / 0.1);
+  color: hsl(var(--fg));
+  padding: 0 0.48rem;
+  font-size: 0.62rem;
+  font-weight: 820;
+  letter-spacing: 0;
+  white-space: nowrap;
+}
+
+.brain-edition-badge {
+  margin-left: 0.45rem;
+  vertical-align: middle;
+}
+
+.ritual-edition {
+  position: absolute;
+  right: 50%;
+  bottom: 0.35rem;
+  transform: translateX(50%);
+  background: hsl(var(--surface-glass));
+  box-shadow: 0 10px 24px hsl(200 30% 3% / 0.18);
+}
+
+.brain-command-center {
+  display: grid;
+  gap: 0.72rem;
+  margin: 0 0 0.85rem;
+  border: 1px solid hsl(var(--brain-core) / 0.36);
+  border-radius: 8px;
+  background: linear-gradient(135deg, hsl(var(--surface-glass)), hsl(var(--brain-core) / 0.07));
+  padding: 0.82rem;
+  box-shadow: 0 14px 34px hsl(200 30% 3% / 0.16);
+  backdrop-filter: blur(18px);
+}
+
+.brain-command-head,
+.brain-command-next,
+.brain-command-metrics,
+.brain-command-signals {
+  display: flex;
+  align-items: center;
+  gap: 0.55rem;
+}
+
+.brain-command-head {
+  justify-content: space-between;
+}
+
+.brain-command-head span,
+.brain-command-next span,
+.brain-command-score span {
+  display: block;
+  color: hsl(var(--fg-muted));
+  font-size: 0.64rem;
+  font-weight: 840;
+  text-transform: uppercase;
+}
+
+.brain-command-head strong {
+  display: block;
+  margin-top: 0.12rem;
+  font-size: 0.98rem;
+}
+
+.brain-command-score {
+  display: grid;
+  justify-items: end;
+  min-width: 5.9rem;
+}
+
+.brain-command-score strong {
+  color: hsl(var(--brain-core));
+  font-size: 1.45rem;
+  line-height: 1;
+}
+
+.brain-command-next {
+  min-height: 2.35rem;
+  border: 1px solid hsl(var(--border) / 0.54);
+  border-radius: 8px;
+  background: hsl(var(--bg) / 0.34);
+  padding: 0.5rem 0.58rem;
+}
+
+.brain-command-next svg {
+  color: hsl(var(--brain-core));
+}
+
+.brain-command-next strong {
+  min-width: 0;
+  color: hsl(var(--fg));
+  font-size: 0.82rem;
+  line-height: 1.25;
+}
+
+.brain-command-metrics {
+  flex-wrap: wrap;
+}
+
+.brain-command-metrics span,
+.brain-command-signals span {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.28rem;
+  min-height: 1.65rem;
+  border: 1px solid hsl(var(--border) / 0.5);
+  border-radius: 999px;
+  background: hsl(var(--surface) / 0.6);
+  color: hsl(var(--fg-muted));
+  padding: 0 0.5rem;
+  font-size: 0.68rem;
+  font-weight: 760;
+}
+
+.brain-command-actions {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 0.5rem;
+}
+
+.brain-command-actions button {
+  display: grid;
+  min-height: 5.1rem;
+  align-content: start;
+  gap: 0.28rem;
+  border: 1px solid hsl(var(--border) / 0.55);
+  border-radius: 8px;
+  background: hsl(var(--surface) / 0.64);
+  color: hsl(var(--fg));
+  padding: 0.58rem;
+  text-align: left;
+  transition: border-color 150ms ease, background 150ms ease, transform 150ms ease;
+}
+
+.brain-command-actions button:hover,
+.brain-command-actions button:focus-visible {
+  border-color: hsl(var(--brain-core) / 0.66);
+  background: hsl(var(--brain-core) / 0.08);
+  outline: none;
+  transform: translateY(-1px);
+}
+
+.brain-command-actions svg {
+  color: hsl(var(--brain-core));
+}
+
+.brain-command-actions span {
+  font-size: 0.78rem;
+  font-weight: 820;
+  line-height: 1.18;
+}
+
+.brain-command-actions small {
+  overflow: hidden;
+  color: hsl(var(--fg-muted));
+  font-size: 0.68rem;
+  line-height: 1.2;
+  text-overflow: ellipsis;
+}
+
+.brain-command-signals {
+  flex-wrap: wrap;
+}
+
+.brain-command-signals svg {
+  color: hsl(var(--success));
+}
+
+@media (max-width: 760px) {
+  .brain-command-head,
+  .brain-command-next {
+    align-items: flex-start;
+  }
+
+  .brain-command-head {
+    flex-direction: column;
+  }
+
+  .brain-command-score {
+    justify-items: start;
+  }
+
+  .brain-command-actions {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+@media (max-width: 460px) {
+  .brain-command-actions {
+    grid-template-columns: 1fr;
+  }
+}
+
 .brain-ingestion-panel {
   margin: 0 0 0.85rem;
   border: 1px solid hsl(var(--memory) / 0.34);
@@ -3686,6 +3886,7 @@ body {
 }
 
 .ritual-brain {
+  position: relative;
   margin: 1.4rem auto 1.6rem;
 }
 

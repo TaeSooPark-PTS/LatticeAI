@@ -66,6 +66,9 @@ export function ProductFlow({ onComplete }: { onComplete: () => void }) {
         <LanguageChooser />
         <div className="ritual-brain">
           <LivingBrain state={brainStateForStep(step)} intensity={step === "install" ? 0.92 : 0.7} size="large" showLabel={false} />
+          <div className="ritual-edition" title={t(language, "brain.edition.tip")}>
+            {t(language, "brain.edition")}
+          </div>
         </div>
 
         {step === "wake" && <WakeBrainScreen onWake={() => setStep("login")} onUseExisting={() => completeFlow(onComplete)} />}

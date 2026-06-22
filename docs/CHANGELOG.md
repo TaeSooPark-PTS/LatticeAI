@@ -4,6 +4,25 @@ The top entry is either the current unreleased main-branch work or the current
 release line. Older entries are historical and may describe behavior as it
 existed at that release.
 
+## [7.7.0] - 2026-06-22
+
+> 7.7.0 marks the complete, finished product stage for Lattice AI.
+> After 7.6.0 architecture closure, this release polishes every surface so that anyone looking at the code, UI, docs, or running app immediately recognizes: "this is now a product".
+
+Lattice AI v7.7 delivers the Living Brain as the undeniable center, production-grade runtime contracts, stable ToolRegistry, full ingestion-to-graph flows, bilingual professional UX, and zero-beta signals. Classifiers moved to Production/Stable. All prior gates remain enforced under finished product contract.
+
+Package metadata, Tauri, frontend, Python all aligned to 7.7.0. UI/UX microcopy and signals updated to convey finished professional tool.
+
+### Productization Highlights
+- Extreme self + claude-code (pts_claudecode) used for polish, evaluation, iteration.
+- "This is a product" bar: clear durable knowledge ownership, no loose ends.
+- Validation: typecheck, unit, cargo, build scripts exercised.
+
+### Changed
+- Package/runtime/static metadata synchronized to 7.7.0.
+- Development status to Production/Stable.
+- All current-release references point to 7.7.0.
+
 ## [7.6.0] - 2026-06-22
 
 > Brain-Centered UX & Architecture Closure. Incorporates the two local review

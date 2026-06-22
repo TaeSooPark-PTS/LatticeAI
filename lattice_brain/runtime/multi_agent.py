@@ -21,7 +21,7 @@ from typing import Any, Callable, Dict, List, Optional
 from .contracts import multi_agent_contract
 
 
-MULTI_AGENT_VERSION = "7.6.0"
+MULTI_AGENT_VERSION = "7.7.0"
 
 AGENT_ROLES = ("researcher", "planner", "executor", "reviewer", "release")
 CORE_PIPELINE = ("planner", "executor", "reviewer")
