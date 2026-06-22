@@ -33,14 +33,15 @@ test("first-run ritual enters the living Brain", async ({ page }) => {
   await page.goto("/app");
   await page.getByRole("button", { name: "한국어" }).click();
 
-  await expect(page.locator("body")).toContainText("내 Brain을 깨웁니다.");
-  await expect(page.locator("body")).toContainText("모델은 목소리처럼 바꿔도");
-  await expect(page.getByRole("button", { name: "Brain 깨우기" })).toBeVisible();
-  await page.getByRole("button", { name: "Brain 깨우기" }).click();
+  await expect(page.locator("body")).toContainText("내 지식이 살아나는 Brain을 시작하세요.");
+  await expect(page.locator("body")).toContainText("모델은 바꿔도 Brain은 계속 내 것입니다.");
+  await expect(page.locator("body")).toContainText("완전 로컬");
+  await expect(page.getByRole("button", { name: "Brain 지금 깨우기" })).toBeVisible();
+  await page.getByRole("button", { name: "Brain 지금 깨우기" }).click();
 
-  await expect(page.locator("body")).toContainText("내 AI 브레인의 주인을 정합니다.");
-  await expect(page.locator("body")).toContainText("로컬 우선 AI 브레인입니다.");
-  await expect(page.locator("body")).toContainText("외부 전송은 사용자가 선택할 때만 시작됩니다.");
+  await expect(page.locator("body")).toContainText("이 Brain의 주인을 정합니다.");
+  await expect(page.locator("body")).toContainText("로컬 Brain의 소유권");
+  await expect(page.locator("body")).toContainText("먼저 안전하게 확인합니다.");
   await expect(page.locator("body")).toContainText("모델은 목소리이고, 자산은 Brain입니다.");
   await expect(page.getByRole("button", { name: "Travel deeper into your Brain" })).toBeVisible();
 
@@ -49,11 +50,11 @@ test("first-run ritual enters the living Brain", async ({ page }) => {
   await page.getByPlaceholder("로컬 Brain 비밀번호").fill("Lattice123");
   await page.getByRole("button", { name: "내 Brain 시작하기" }).click();
 
-  await expect(page.locator("body")).toContainText("이 컴퓨터에서 가능한 경험을 확인합니다.");
+  await expect(page.locator("body")).toContainText("이 컴퓨터에 맞는 Brain 경험을 확인합니다.");
   await page.getByRole("button", { name: "추천 모델 보기" }).click();
 
   await expect(page.locator("body")).toContainText("추천대로 시작하세요.");
-  await page.getByRole("button", { name: "추천대로 시작하기" }).click();
+  await page.getByRole("button", { name: "추천으로 바로 시작" }).click();
 
   await expect(page.locator("body")).toContainText("모델을 설치하고 시작합니다.");
   await page.getByRole("button", { name: "다운로드하고 시작하기" }).click();
@@ -124,8 +125,8 @@ test("conversation keeps the Brain alive while chat streams", async ({ page }) =
   await expect(page.locator("body")).toContainText("Brain 한눈에 보기");
   await expect(page.locator("body")).toContainText("Brain 준비도");
   await expect(page.locator("[aria-label='Brain 깊이 진행 상태']")).toBeVisible();
-  await page.getByRole("button", { name: /지난 결정들을 나중에 찾을 수 있게 정리해줘/ }).click();
-  await expect(page.getByPlaceholder("Brain에게 말하기...")).toHaveValue("지난 결정들을 나중에 찾을 수 있게 정리해줘: ");
+  await page.getByRole("button", { name: /과거 결정들을 Brain이 구조화해서/ }).click();
+  await expect(page.getByPlaceholder("Brain에게 말하기...")).toHaveValue("과거 결정들을 Brain이 구조화해서 나중에 쉽게 찾게 해줘: ");
   await page.getByPlaceholder("Brain에게 말하기...").fill("");
 
   await expect(page.locator("section[aria-label='내 Brain 돌보기']")).toBeVisible();
