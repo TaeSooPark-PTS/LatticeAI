@@ -110,7 +110,7 @@ def architecture_readiness(root: Path | None = None) -> Dict[str, Any]:
     runtime_module_count = len(list((root / "latticeai" / "runtime").glob("*.py")))
     return {
         "status": "complete" if all(gate.status == "complete" for gate in gates) else "incomplete",
-        "version_target": "7.7.0",
+        "version_target": "7.8.0",
         "gates": [gate.__dict__ for gate in gates],
         "metrics": {
             "api_router_modules": api_router_count,

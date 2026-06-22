@@ -1,6 +1,6 @@
 # Lattice AI
 
-**Lattice AI 7.7 is the complete, finished local-first Digital Brain product. It keeps your knowledge durable across any AI model — now undeniably a production-grade professional tool.**
+**Lattice AI 7.8 is the glanceable local-first Digital Brain product. It keeps your knowledge durable across any AI model, with Brain Chat Home rebuilt around immediate use instead of dashboard clutter.**
 
 **Lattice AI는 모델이 바뀌어도 내 지식과 맥락을 보존하는 로컬 우선 AI 브레인입니다.**
 
@@ -11,7 +11,7 @@ downloads, update checks, and other external communication happen only after
 explicit consent.
 
 It is not a ChatGPT clone, a model launcher, a graph database, or a note app.
-It is the finished private AI memory layer wrapped in a Living Brain experience — 7.7 complete product.
+It is the finished private AI memory layer wrapped in a Living Brain experience — now with a cleaner 7.8 Brain Chat Home.
 
 [![PyPI Version](https://img.shields.io/pypi/v/ltcai?label=PyPI)](https://pypi.org/project/ltcai/)
 [![npm Version](https://img.shields.io/npm/v/ltcai?label=npm)](https://www.npmjs.com/package/ltcai)
@@ -63,6 +63,10 @@ You need Lattice AI when:
 7. Back up, inspect, export, or restore the Brain when you need ownership actions.
 
 ## Living Brain Flow
+
+The screenshots below are release evidence captures. The 7.8 line keeps the
+same first-run flow and rebuilds the Brain Chat Home layout so chat and the
+composer are the first visible action.
 
 ### 1. Wake Brain
 
@@ -206,30 +210,33 @@ See [docs/DEVELOPMENT.md](docs/DEVELOPMENT.md) for developer workflow details.
 
 ## Current Release
 
-The current release is **7.7.0 — Complete Finished Product**:
+The current release is **7.8.0 — Brain Chat Home UX Simplification**:
 
-- Brain Home now opens with a product command center: readiness score, next best
-  action, memory/topic/source/proof metrics, and direct actions for adding
-  sources, inspecting topics, verifying proof, and managing ownership.
-- Review Center release evidence is backed by fixtures and tests, with polished
-  unavailable states instead of raw JSON parse errors.
+- Brain Chat Home now opens with chat, starter prompts, and the composer as the
+  first action. Source ingestion, readiness, proof, timeline, and care controls
+  move behind a single utility drawer instead of occupying the first viewport.
+- The default Brain surface now keeps workspace navigation visible, removes
+  permanent marketing intro copy, and only reveals deep memory controls after
+  the user chooses to travel deeper.
+- Obsolete Brain conversation and first-run guide components were removed so the
+  canonical Brain/onboarding implementation is the only path.
 - Product readiness is machine-checkable through `product_readiness()`, which
   composes the architecture contract with exact artifact/docs/workflow evidence.
 - CI and release workflows now run frontend lint/typecheck/build gates plus the
-  7.7 product readiness score before a tag can be treated as release-safe.
+  7.8 product readiness score before a tag can be treated as release-safe.
 
-Expected artifacts for 7.7.0 release must use exact filenames:
+Expected artifacts for 7.8.0 release must use exact filenames:
 
-- `dist/ltcai-7.7.0-py3-none-any.whl`
-- `dist/ltcai-7.7.0.tar.gz`
-- `ltcai-7.7.0.tgz`
-- `dist/ltcai-7.7.0.vsix`
-- `src-tauri/target/release/bundle/dmg/Lattice AI_7.7.0_aarch64.dmg`
+- `dist/ltcai-7.8.0-py3-none-any.whl`
+- `dist/ltcai-7.8.0.tar.gz`
+- `ltcai-7.8.0.tgz`
+- `dist/ltcai-7.8.0.vsix`
+- `src-tauri/target/release/bundle/dmg/Lattice AI_7.8.0_aarch64.dmg`
 
 Do not upload `dist/*`. Package registry publishing remains owner-run.
 
 See [docs/ROADMAP_RECOMMENDATIONS.md](docs/ROADMAP_RECOMMENDATIONS.md) for the
-strategic roadmap slices applied through 7.7.0 and the follow-up tracks.
+strategic roadmap slices applied through 7.8.0 and the follow-up tracks.
 
 ## Known Limitations
 
@@ -246,6 +253,7 @@ strategic roadmap slices applied through 7.7.0 and the follow-up tracks.
 
 | Version | Theme |
 | --- | --- |
+| 7.8.0 | Brain Chat Home UX Simplification: chat-first first viewport, visible workspace navigation, collapsed source/status utilities, hidden default depth controls, and removal of obsolete Brain UX components |
 | 7.7.0 | Complete Product Polish: command-center Brain Home, repaired Review Center evidence, exact 7.7 docs/artifacts, product readiness gate, and stronger CI/release checks |
 | 7.6.0 | Brain-Centered UX & Architecture Closure: Wake Brain first-run surface, concentric memory rings with direct depth controls, and machine-checkable closure of the two architecture/UX review files |
 | 7.5.0 | Runtime Debt Burn-down & Release Risk Cleanup: API consumers get normalized contract views, retrieval quality uses a 250+ record corpus fixture, stale artifact risk is removed, npm audit is clean, and Tauri is updated past the old block warning |

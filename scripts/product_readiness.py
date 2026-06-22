@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Print the 7.7 product-readiness scorecard and fail CI when incomplete.
+"""Print the 7.8 product-readiness scorecard and fail CI when incomplete.
 
 Run it as often as you like — it re-probes the repo every time, so it is the
 single objective answer to "is this a finished product yet?". Exit code is 0

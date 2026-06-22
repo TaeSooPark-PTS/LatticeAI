@@ -6,13 +6,23 @@ existed at that release.
 
 ## [Unreleased]
 
+## [7.8.0] - 2026-06-22
+
 ### Changed
+- Rebuilt Brain Chat Home around immediate conversation: chat purpose, starter
+  prompts, and the composer now occupy the first viewport.
+- Collapsed source ingestion, readiness, proof, timeline, overview, model
+  continuity, and care controls behind one utility drawer.
+- Kept workspace navigation visible on the default Brain surface.
+- Hid default depth controls until the user intentionally travels deeper.
 - Integrated the six post-7.7 UX drafts into the canonical Brain experience:
   first-run value cards, stronger recommendation affordances, product-toned
-  Brain Home intro copy, and routed legacy Brain conversation entry points to
-  the canonical Brain Home surface.
+  Brain Home copy, and routed legacy Brain conversation entry points to the
+  canonical Brain Home surface.
+- Removed obsolete Brain conversation and first-run guide components.
 - Moved draft onboarding polish out of inline styles and into the shared design
   stylesheet with responsive behavior and bilingual copy.
+- Updated architecture and product readiness targets to 7.8.0.
 
 ## [7.7.0] - 2026-06-22
 

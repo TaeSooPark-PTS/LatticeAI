@@ -1,0 +1,2 @@
+import{I as e,P as t,R as n,w as r}from"./index-DbcEYJQ2.js";var i=n(e()),a=t(),o=i.forwardRef(({className:e,...t},n)=>(0,a.jsx)(`textarea`,{ref:n,className:r(`min-h-28 w-full resize-y rounded-md border border-input bg-background/70 px-3 py-3 text-sm leading-6 outline-none transition placeholder:text-muted-foreground focus:border-ring focus:ring-2 focus:ring-ring/35 disabled:cursor-not-allowed disabled:opacity-50`,e),...t}));o.displayName=`Textarea`;export{o as t};
+//# sourceMappingURL=textarea-BZk6ybp5.js.map

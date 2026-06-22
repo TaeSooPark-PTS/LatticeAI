@@ -68,15 +68,14 @@ test("Brain depths reveal memory, knowledge, relationships, then graph", async (
   const errors = trackPageErrors(page);
   await openBrain(page);
 
-  await expect(page.locator("body")).toContainText("단계 1");
   await expect(page.locator("body")).toContainText("Lattice Brain");
-  await expect(page.locator("[aria-label='Brain 기억 깊이 링']")).toBeVisible();
+  await expect(page.locator("[aria-label='Brain 기억 깊이 링']")).toHaveCount(0);
   await expect(page.locator(".memory-fragment")).toHaveCount(0);
   await expect(page.locator("[data-testid='emergent-knowledge-graph']")).toHaveCount(0);
-  await expect(page.getByRole("button", { name: "기억 보기" })).toBeVisible();
-  await expect(page.getByRole("button", { name: "주제 보기" })).toBeVisible();
+  await expect(page.getByRole("button", { name: "기억 보기" })).toHaveCount(0);
+  await expect(page.getByRole("button", { name: "주제 보기" })).toHaveCount(0);
 
-  await page.getByRole("button", { name: "기억 보기" }).click();
+  await page.getByRole("button", { name: "Travel deeper into your Brain" }).click();
   await expect(page.locator("body")).toContainText("오래된 기억");
   await expect(page.locator(".memory-fragment").first()).toBeVisible();
   await expect(page.locator("body")).not.toContainText("Knowledge Graph");
@@ -118,17 +117,21 @@ test("conversation keeps the Brain alive while chat streams", async ({ page }) =
   const errors = trackPageErrors(page);
   await openBrain(page);
 
+  await expect(page.locator("nav[aria-label='Brain workspace navigation']")).toBeVisible();
+  await expect(page.locator("section[aria-label='Brain Chat Home']")).toBeVisible();
+  await expect(page.locator("body")).toContainText("먼저 질문하고, 필요하면 자료를 넣으세요.");
   await expect(page.locator("body")).toContainText("잊으면 안 되는 맥락부터 말해 주세요.");
-  await expect(page.locator("section[aria-label='제품 상태와 다음 행동']")).toBeVisible();
-  await expect(page.locator("body")).toContainText("제품 상태판");
-  await expect(page.getByRole("button", { name: /근거 확인/ })).toBeVisible();
-  await expect(page.locator("body")).toContainText("Brain 한눈에 보기");
-  await expect(page.locator("body")).toContainText("Brain 준비도");
-  await expect(page.locator("[aria-label='Brain 깊이 진행 상태']")).toBeVisible();
+  await expect(page.locator("section[aria-label='제품 상태와 다음 행동']")).not.toBeVisible();
+  await expect(page.locator("[aria-label='Brain 깊이 진행 상태']")).toHaveCount(0);
   await page.getByRole("button", { name: /과거 결정들을 Brain이 구조화해서/ }).click();
   await expect(page.getByPlaceholder("Brain에게 말하기...")).toHaveValue("과거 결정들을 Brain이 구조화해서 나중에 쉽게 찾게 해줘: ");
   await page.getByPlaceholder("Brain에게 말하기...").fill("");
 
+  await page.getByText("자료 넣기와 Brain 상태").click();
+  await expect(page.locator("section[aria-label='제품 상태와 다음 행동']")).toBeVisible();
+  await expect(page.getByRole("button", { name: /근거 확인/ })).toBeVisible();
+  await expect(page.locator("body")).toContainText("Brain 한눈에 보기");
+  await expect(page.locator("body")).toContainText("Brain 준비도");
   await expect(page.locator("section[aria-label='내 Brain 돌보기']")).toBeVisible();
   await expect(page.getByRole("button", { name: /내보내기/ })).toHaveCount(0);
   await page.getByRole("button", { name: /내 Brain 돌보기/ }).click();
@@ -152,7 +155,7 @@ test("admin console is separated from the user Brain surface", async ({ page }) 
   await expect(page.locator("main[aria-label='Lattice Brain']")).toBeVisible();
   await expect(page.locator("main.admin-console")).toHaveCount(0);
 
-  await page.getByRole("button", { name: "관리자 콘솔" }).click();
+  await page.getByRole("button", { name: "관리자 콘솔", exact: true }).click();
   await expect(page).toHaveURL(/#\/admin$/);
   await expect(page.locator("main.admin-console")).toBeVisible();
   await expect(page.locator("body")).toContainText("Admin Console");

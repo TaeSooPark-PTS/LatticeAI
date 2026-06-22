@@ -12,7 +12,6 @@ import {
   Loader2,
   Repeat2,
   Search,
-  Settings,
   ShieldCheck,
   Sparkles,
 } from "lucide-react";
@@ -44,7 +43,6 @@ import { BrainOverviewPanel } from "./BrainOverviewPanel";
 
 export function BrainConversation({
   language,
-  explorationDepth,
   modelName,
   messages,
   starterPrompts,
@@ -100,129 +98,130 @@ export function BrainConversation({
   return (
     <section className="brain-conversation" aria-label={t(language, "brain.aria.conversation")}>
       <div className="brain-conversation-header">
-        <div>
+        <div className="brain-conversation-title">
           <h1>
             {t(language, "brain.title")}
             <span className="brain-edition-badge" title={t(language, "brain.edition.tip")}>
               {t(language, "brain.edition")}
             </span>
           </h1>
-          <span>{t(language, `brain.depth.${explorationDepth}`)}</span>
+          <span>{t(language, "brain.chatHome.headerLine")}</span>
         </div>
-        <LanguageSwitcher compact />
-        <div className="brain-ownership-strip" aria-label={t(language, "brain.aria.ownership")}>
-          <span>{t(language, "brain.local")}</span>
-          <span>{t(language, "brain.portable")}</span>
-          <span>{t(language, "brain.private")}</span>
-        </div>
-        <div className="brain-flow-actions" aria-label={t(language, "brain.aria.actions")}>
-          <button type="button" onClick={() => navigateHash("/capture")}>
-            <FileUp className="h-3.5 w-3.5" />
-            {t(language, "brain.action.add")}
-          </button>
-          <button type="button" onClick={() => navigateHash("/knowledge-graph")}>
-            <Search className="h-3.5 w-3.5" />
-            {t(language, "brain.action.find")}
-          </button>
-          <button type="button" onClick={() => navigateHash("/models")}>
-            <Cpu className="h-3.5 w-3.5" />
-            {t(language, "brain.action.model")}
-          </button>
-          <button type="button" onClick={() => navigateHash("/settings")}>
-            <Settings className="h-3.5 w-3.5" />
-            {t(language, "brain.action.settings")}
+        <div className="brain-header-tools">
+          <LanguageSwitcher compact />
+          <div className="brain-model-pill">{modelName}</div>
+          <button className="brain-admin-link" type="button" onClick={() => navigateHash("/admin")}>
+            <ShieldCheck className="h-3.5 w-3.5" />
+            {t(language, "brain.admin")}
           </button>
         </div>
-        <div className="brain-model-pill">{modelName}</div>
-        <button className="brain-admin-link" type="button" onClick={() => navigateHash("/admin")}>
-          <ShieldCheck className="h-3.5 w-3.5" />
-          {t(language, "brain.admin")}
-        </button>
       </div>
 
-      <div ref={streamRef} className="brain-stream">
-        <ProductCommandCenter
-          language={language}
-          readiness={readiness}
-          proof={proof}
-          modelName={modelName}
-          memories={memories}
-          concepts={concepts}
-          emergenceEvents={emergenceEvents}
-          onOpenDepth={onOpenDepth}
-          onVerifyModelContinuity={onVerifyModelContinuity}
-        />
-        <BrainIngestionPanel
-          language={language}
-          uploadingDocument={uploadingDocument}
-          ingestionStates={ingestionStates}
-          onUploadDocument={onUploadDocument}
-          onConnectFolder={onConnectFolder}
-          onIngestNote={onIngestNote}
-          onIngestWeb={onIngestWeb}
-        />
-        <IngestionTimelineSection language={language} emergenceEvents={emergenceEvents} />
-        <BrainOverviewPanel
-          memories={memories}
-          concepts={concepts}
-          readiness={readiness}
-          proof={proof}
-          onOpenDepth={onOpenDepth}
-        />
-        <ModelContinuityDemo
-          language={language}
-          proof={proof}
-          modelName={modelName}
-          onVerify={onVerifyModelContinuity}
-        />
-        {messages.length === 0 ? (
-          <BrainEmptyState
+      <div className="brain-chat-home-layout">
+        <section className="brain-chat-home-card" aria-label={t(language, "brain.chatHome.aria")}>
+          <div className="brain-chat-home-head">
+            <div>
+              <span>{t(language, "brain.chatHome.kicker")}</span>
+              <h2>{t(language, "brain.chatHome.title")}</h2>
+              <p>{t(language, "brain.chatHome.body")}</p>
+            </div>
+            <div className="brain-chat-home-proof" aria-label={t(language, "brain.aria.ownership")}>
+              <span><CheckCircle2 className="h-3.5 w-3.5" />{t(language, "brain.local")}</span>
+              <span><CheckCircle2 className="h-3.5 w-3.5" />{t(language, "brain.private")}</span>
+              <span><CheckCircle2 className="h-3.5 w-3.5" />{t(language, "brain.portable")}</span>
+            </div>
+          </div>
+
+          <div ref={streamRef} className="brain-stream">
+            {messages.length === 0 ? (
+              <BrainEmptyState
+                language={language}
+                starterPrompts={starterPrompts}
+                uploadingDocument={uploadingDocument}
+                onDraftChange={onDraftChange}
+                onUploadDocument={onUploadDocument}
+              />
+            ) : (
+              messages.map((message, index) => {
+                const messageId = `brain-msg-${index}`;
+                const proof = message.role === "assistant" ? message.proof : undefined;
+                return (
+                  <div key={`${message.role}-${index}`} className={`brain-message ${message.role}`}>
+                    <div className="brain-message-bubble">
+                      {message.content}
+                      {proof && proof.citations.length ? (
+                        <InlineCitationMarkers language={language} proof={proof} messageId={messageId} />
+                      ) : null}
+                    </div>
+                    {proof ? <AnswerProofCard language={language} proof={proof} messageId={messageId} /> : null}
+                  </div>
+                );
+              })
+            )}
+          </div>
+
+          {memoryFeedback ? (
+            <div className="brain-save-feedback" role="status">
+              <DatabaseZap className="h-3.5 w-3.5" />
+              <span>{memoryFeedback}</span>
+              <small>{t(language, "brain.saved.detail")}</small>
+            </div>
+          ) : null}
+
+          <BrainComposer
             language={language}
-            starterPrompts={starterPrompts}
+            draft={draft}
+            streaming={streaming}
+            imageData={imageData}
             uploadingDocument={uploadingDocument}
             onDraftChange={onDraftChange}
+            onImageDataChange={onImageDataChange}
             onUploadDocument={onUploadDocument}
+            onSend={onSend}
           />
-        ) : (
-          messages.map((message, index) => {
-            const messageId = `brain-msg-${index}`;
-            const proof = message.role === "assistant" ? message.proof : undefined;
-            return (
-              <div key={`${message.role}-${index}`} className={`brain-message ${message.role}`}>
-                <div className="brain-message-bubble">
-                  {message.content}
-                  {proof && proof.citations.length ? (
-                    <InlineCitationMarkers language={language} proof={proof} messageId={messageId} />
-                  ) : null}
-                </div>
-                {proof ? <AnswerProofCard language={language} proof={proof} messageId={messageId} /> : null}
-              </div>
-            );
-          })
-        )}
+
+          <details className="brain-utility-drawer">
+            <summary>{t(language, "brain.chatHome.utility")}</summary>
+            <div className="brain-utility-grid">
+              <BrainIngestionPanel
+                language={language}
+                uploadingDocument={uploadingDocument}
+                ingestionStates={ingestionStates}
+                onUploadDocument={onUploadDocument}
+                onConnectFolder={onConnectFolder}
+                onIngestNote={onIngestNote}
+                onIngestWeb={onIngestWeb}
+              />
+              <ProductCommandCenter
+                language={language}
+                readiness={readiness}
+                proof={proof}
+                modelName={modelName}
+                memories={memories}
+                concepts={concepts}
+                emergenceEvents={emergenceEvents}
+                onOpenDepth={onOpenDepth}
+                onVerifyModelContinuity={onVerifyModelContinuity}
+              />
+              <IngestionTimelineSection language={language} emergenceEvents={emergenceEvents} />
+              <ModelContinuityDemo
+                language={language}
+                proof={proof}
+                modelName={modelName}
+                onVerify={onVerifyModelContinuity}
+              />
+              <BrainOverviewPanel
+                memories={memories}
+                concepts={concepts}
+                readiness={readiness}
+                proof={proof}
+                onOpenDepth={onOpenDepth}
+              />
+              <BrainCarePanel language={language} />
+            </div>
+          </details>
+        </section>
       </div>
-
-      {memoryFeedback ? (
-        <div className="brain-save-feedback" role="status">
-          <DatabaseZap className="h-3.5 w-3.5" />
-          <span>{memoryFeedback}</span>
-          <small>{t(language, "brain.saved.detail")}</small>
-        </div>
-      ) : null}
-
-      <BrainCarePanel language={language} />
-
-      <BrainComposer
-        language={language}
-        draft={draft}
-        streaming={streaming}
-        imageData={imageData}
-        uploadingDocument={uploadingDocument}
-        onDraftChange={onDraftChange}
-        onImageDataChange={onImageDataChange}
-        onUploadDocument={onUploadDocument}
-        onSend={onSend}
-      />
     </section>
   );
 }

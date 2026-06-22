@@ -7,6 +7,31 @@
 > PyPI / npm / VS Code Marketplace / Open VSX 배포는 아래 수동 절차로만
 > 진행합니다. 태그 생성은 패키지 스토어 publish를 자동으로 트리거하지 않습니다.
 
+## v7.8.0 — Brain Chat Home UX Simplification (2026-06-22)
+
+7.8.0 upgrades Lattice AI from “product complete” to “understandable at a glance”.
+The main Brain experience no longer asks the user to parse a command center,
+ingestion grid, timeline, overview, model proof, and care controls before they
+can talk to the Brain.
+
+### Changed
+- Brain Chat Home now puts the chat purpose, starter prompts, and composer in
+  the first viewport.
+- Source ingestion, readiness, proof, timeline, overview, model continuity, and
+  care controls are collapsed behind one utility drawer.
+- Workspace navigation is visible on the default Brain surface.
+- Default depth controls stay hidden until the user intentionally travels
+  deeper into the Brain.
+- Obsolete Brain conversation and first-run guide components were removed.
+- Product and architecture readiness targets now track 7.8.0.
+
+Expected artifacts (exact 7.8.0 names only):
+- dist/ltcai-7.8.0-py3-none-any.whl
+- dist/ltcai-7.8.0.tar.gz
+- dist/ltcai-7.8.0.vsix
+- ltcai-7.8.0.tgz
+- src-tauri/target/release/bundle/dmg/Lattice AI_7.8.0_aarch64.dmg
+
 ## v7.7.0 — Complete Product (2026-06-22)
 
 > 7.7.0 marks the complete, finished product stage for Lattice AI.

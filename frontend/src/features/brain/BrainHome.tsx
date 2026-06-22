@@ -483,10 +483,6 @@ export function BrainHome({
 
   return (
     <main className="brain-home" aria-label={t(language, "brain.aria.home")}>
-      <div className="brain-product-intro">
-        <div className="brain-product-kicker">{t(language, "brain.home.kicker")}</div>
-        <div className="brain-product-line">{t(language, "brain.home.line")}</div>
-      </div>
       <section className="brain-presence" aria-label={t(language, "brain.aria.exploration")}>
         <div className="brain-exploration" data-depth={explorationDepth}>
           <LivingBrain
@@ -498,34 +494,38 @@ export function BrainHome({
             onInteract={deepen}
           />
 
-          <BrainDepthRings explorationDepth={explorationDepth} onOpenDepth={jumpToDepth} />
+          {explorationDepth > 1 ? (
+            <>
+              <BrainDepthRings explorationDepth={explorationDepth} onOpenDepth={jumpToDepth} />
 
-          <div className="brain-depth-badge" aria-live="polite">
-            <span>{t(language, "brain.level")} {explorationDepth}</span>
-            <strong>{t(language, `brain.depth.${explorationDepth}`)}</strong>
-          </div>
+              <div className="brain-depth-badge" aria-live="polite">
+                <span>{t(language, "brain.level")} {explorationDepth}</span>
+                <strong>{t(language, `brain.depth.${explorationDepth}`)}</strong>
+              </div>
 
-          <div className="brain-depth-actions" aria-label={t(language, "brain.aria.quickViews")}>
-            <button type="button" className={explorationDepth === 2 ? "is-active" : ""} onClick={() => jumpToDepth(2)}>{t(language, "brain.view.memories")}</button>
-            <button type="button" className={explorationDepth === 3 ? "is-active" : ""} onClick={() => jumpToDepth(3)}>{t(language, "brain.view.topics")}</button>
-            <button type="button" className={explorationDepth === 4 ? "is-active" : ""} onClick={() => jumpToDepth(4)}>{t(language, "brain.view.relationships")}</button>
-            <button type="button" className={explorationDepth === 5 ? "is-active" : ""} onClick={() => jumpToDepth(5)}>{t(language, "brain.view.graph")}</button>
-          </div>
+              <div className="brain-depth-actions" aria-label={t(language, "brain.aria.quickViews")}>
+                <button type="button" className={explorationDepth === 2 ? "is-active" : ""} onClick={() => jumpToDepth(2)}>{t(language, "brain.view.memories")}</button>
+                <button type="button" className={explorationDepth === 3 ? "is-active" : ""} onClick={() => jumpToDepth(3)}>{t(language, "brain.view.topics")}</button>
+                <button type="button" className={explorationDepth === 4 ? "is-active" : ""} onClick={() => jumpToDepth(4)}>{t(language, "brain.view.relationships")}</button>
+                <button type="button" className={explorationDepth === 5 ? "is-active" : ""} onClick={() => jumpToDepth(5)}>{t(language, "brain.view.graph")}</button>
+              </div>
 
-          <div className="brain-depth-rail" aria-label={t(language, "brain.depthRail.aria")}>
-            {DEPTHS.map((depth) => (
-              <button
-                key={depth.level}
-                type="button"
-                className={depth.level <= explorationDepth ? "is-revealed" : ""}
-                aria-current={depth.level === explorationDepth ? "step" : undefined}
-                onClick={() => jumpToDepth(depth.level)}
-              >
-                <span>{depth.level}</span>
-                <strong>{t(language, `brain.depth.${depth.level}`)}</strong>
-              </button>
-            ))}
-          </div>
+              <div className="brain-depth-rail" aria-label={t(language, "brain.depthRail.aria")}>
+                {DEPTHS.map((depth) => (
+                  <button
+                    key={depth.level}
+                    type="button"
+                    className={depth.level <= explorationDepth ? "is-revealed" : ""}
+                    aria-current={depth.level === explorationDepth ? "step" : undefined}
+                    onClick={() => jumpToDepth(depth.level)}
+                  >
+                    <span>{depth.level}</span>
+                    <strong>{t(language, `brain.depth.${depth.level}`)}</strong>
+                  </button>
+                ))}
+              </div>
+            </>
+          ) : null}
 
           <div className="brain-field-layer" aria-hidden={explorationDepth < 2}>
             <DepthEmergence

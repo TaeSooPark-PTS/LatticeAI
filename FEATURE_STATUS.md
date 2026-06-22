@@ -1,31 +1,30 @@
-# Lattice AI — Feature Status (v7.7.0)
+# Lattice AI — Feature Status (v7.8.0)
 
-**Current release line:** v7.7.0 — Complete Finished Product.
+**Current release line:** v7.8.0 — Brain Chat Home UX Simplification.
 
-Lattice AI is now positioned as a production-grade local-first Digital Brain:
-the product surface centers Brain ownership and recall, while runtime,
-ToolRegistry, release artifacts, documentation, and readiness gates are
-machine-checked.
+Lattice AI is positioned as a production-grade local-first Digital Brain. The
+7.8 line keeps the product proof from 7.7 while making the main Brain surface
+glanceable: chat first, sources/status second, deep controls on intent.
 
-## v7.7.0 Complete Product Stage — current release line
+## v7.8.0 Brain Chat Home UX Simplification — current release line
 
-7.7.0 turns the 7.6.0 architecture foundation into a product-completeness
-release. Brain is the primary product surface, runtime boundaries remain
-contract-tested, and release evidence is exact-versioned.
+7.8.0 turns the complete product surface into a cleaner product surface. Brain
+Chat Home now prioritizes immediate conversation and hides secondary status,
+source, proof, and care surfaces until the user asks for them.
 
 | Area | Status | Evidence |
 | --- | --- | --- |
 | **Production classifiers** | COMPLETE | Changed to "Development Status :: 5 - Production/Stable" |
-| **Version & metadata sync** | COMPLETE | All 7.7.0 across py, npm, tauri, core, docs |
-| **UI/UX Product Polish** | COMPLETE | Brain Home command center, localized Act/Review surface, and current release evidence |
-| **Post-release UX draft integration** | WORKING | Six UX draft files folded into canonical Brain/onboarding surfaces with shared CSS, bilingual copy, and visual smoke coverage |
-| **Docs as product proof** | COMPLETE | RELEASE, CHANGELOG, README, FEATURE updated to declare 7.7 finished product |
+| **Version & metadata sync** | COMPLETE | All 7.8.0 across py, npm, tauri, core, docs |
+| **UI/UX Product Polish** | COMPLETE | Brain Chat Home simplified, workspace navigation visible, utility controls collapsed |
+| **Post-release UX draft integration** | COMPLETE | Six UX draft files folded into canonical Brain/onboarding surfaces with shared CSS, bilingual copy, and visual smoke coverage |
+| **Docs as product proof** | COMPLETE | RELEASE, CHANGELOG, README, FEATURE updated to declare 7.8 Brain Chat Home simplification |
 | **AgentRuntime + ToolRegistry** | COMPLETE | Tested boundaries, imported, used in production paths |
 | **Build & validation gates** | COMPLETE | typecheck, cargo, unit tests, tauri build checks pass |
 | **Product readiness evaluation** | COMPLETE | `product_readiness()` and visual/release evidence gates |
 
 
-**Current release line:** v7.7.0 Complete Product (see top).
+**Current release line:** v7.8.0 Brain Chat Home UX Simplification (see top).
 Lattice AI is a local-first Digital Brain that keeps your knowledge durable
 across any AI model. The primary experience is Brain plus conversation; the
 graph remains durable infrastructure and advanced exploration, not the home

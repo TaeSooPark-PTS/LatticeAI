@@ -88,7 +88,9 @@ export default function App() {
           </React.Suspense>
         </BrainShell>
       ) : (
-        <BrainHome brainState={brainState} intensity={intensity} onBrainChange={setBrain} />
+        <BrainShell active="brain">
+          <BrainHome brainState={brainState} intensity={intensity} onBrainChange={setBrain} />
+        </BrainShell>
       )}
     </div>
   );
