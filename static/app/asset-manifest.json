@@ -1,20 +1,20 @@
 {
-  "version": "7.5.0",
+  "version": "7.6.0",
   "generated_at": "vite",
   "entrypoints": {
     "app": "/static/app/index.html"
   },
   "assets": {
     "../node_modules/@tauri-apps/api/core.js": "/static/app/assets/core-CwxXejkd.js",
-    "_primitives-CdwcE--L.js": "/static/app/assets/primitives-CdwcE--L.js",
-    "_textarea-CqOdBPL1.js": "/static/app/assets/textarea-CqOdBPL1.js",
-    "index.html": "/static/app/assets/index-COuGp7_5.js",
-    "assets/index-Bi_bpigM.css": "/static/app/assets/index-Bi_bpigM.css",
-    "src/pages/Act.tsx": "/static/app/assets/Act-Di4tRFWY.js",
-    "src/pages/Brain.tsx": "/static/app/assets/Brain-BZB3Gy9w.js",
-    "src/pages/Capture.tsx": "/static/app/assets/Capture-tNyYWxnh.js",
-    "src/pages/Library.tsx": "/static/app/assets/Library-DAtDDLdg.js",
-    "src/pages/System.tsx": "/static/app/assets/System-DEu0xNUc.js"
+    "_primitives-CSsF_Ymb.js": "/static/app/assets/primitives-CSsF_Ymb.js",
+    "_textarea-CJMFSyfQ.js": "/static/app/assets/textarea-CJMFSyfQ.js",
+    "index.html": "/static/app/assets/index-D1hsexMt.js",
+    "assets/index-BwmCpRoW.css": "/static/app/assets/index-BwmCpRoW.css",
+    "src/pages/Act.tsx": "/static/app/assets/Act-CSeeIWB4.js",
+    "src/pages/Brain.tsx": "/static/app/assets/Brain-D_Ne4YoR.js",
+    "src/pages/Capture.tsx": "/static/app/assets/Capture-YFRAO4bJ.js",
+    "src/pages/Library.tsx": "/static/app/assets/Library-C4zmA8O2.js",
+    "src/pages/System.tsx": "/static/app/assets/System-Da-Kxwiz.js"
   },
   "vite": {
     "../node_modules/@tauri-apps/api/core.js": {
@@ -23,22 +23,22 @@
       "src": "../node_modules/@tauri-apps/api/core.js",
       "isDynamicEntry": true
     },
-    "_primitives-CdwcE--L.js": {
-      "file": "assets/primitives-CdwcE--L.js",
+    "_primitives-CSsF_Ymb.js": {
+      "file": "assets/primitives-CSsF_Ymb.js",
       "name": "primitives",
       "imports": [
         "index.html"
       ]
     },
-    "_textarea-CqOdBPL1.js": {
-      "file": "assets/textarea-CqOdBPL1.js",
+    "_textarea-CJMFSyfQ.js": {
+      "file": "assets/textarea-CJMFSyfQ.js",
       "name": "textarea",
       "imports": [
         "index.html"
       ]
     },
     "index.html": {
-      "file": "assets/index-COuGp7_5.js",
+      "file": "assets/index-D1hsexMt.js",
       "name": "index",
       "src": "index.html",
       "isEntry": true,
@@ -51,59 +51,59 @@
         "src/pages/System.tsx"
       ],
       "css": [
-        "assets/index-Bi_bpigM.css"
+        "assets/index-BwmCpRoW.css"
       ]
     },
     "src/pages/Act.tsx": {
-      "file": "assets/Act-Di4tRFWY.js",
+      "file": "assets/Act-CSeeIWB4.js",
       "name": "Act",
       "src": "src/pages/Act.tsx",
       "isDynamicEntry": true,
       "imports": [
         "index.html",
-        "_primitives-CdwcE--L.js",
-        "_textarea-CqOdBPL1.js"
+        "_primitives-CSsF_Ymb.js",
+        "_textarea-CJMFSyfQ.js"
       ]
     },
     "src/pages/Brain.tsx": {
-      "file": "assets/Brain-BZB3Gy9w.js",
+      "file": "assets/Brain-D_Ne4YoR.js",
       "name": "Brain",
       "src": "src/pages/Brain.tsx",
       "isDynamicEntry": true,
       "imports": [
         "index.html",
-        "_primitives-CdwcE--L.js",
-        "_textarea-CqOdBPL1.js"
+        "_primitives-CSsF_Ymb.js",
+        "_textarea-CJMFSyfQ.js"
       ]
     },
     "src/pages/Capture.tsx": {
-      "file": "assets/Capture-tNyYWxnh.js",
+      "file": "assets/Capture-YFRAO4bJ.js",
       "name": "Capture",
       "src": "src/pages/Capture.tsx",
       "isDynamicEntry": true,
       "imports": [
         "index.html",
-        "_primitives-CdwcE--L.js"
+        "_primitives-CSsF_Ymb.js"
       ]
     },
     "src/pages/Library.tsx": {
-      "file": "assets/Library-DAtDDLdg.js",
+      "file": "assets/Library-C4zmA8O2.js",
       "name": "Library",
       "src": "src/pages/Library.tsx",
       "isDynamicEntry": true,
       "imports": [
         "index.html",
-        "_primitives-CdwcE--L.js"
+        "_primitives-CSsF_Ymb.js"
       ]
     },
     "src/pages/System.tsx": {
-      "file": "assets/System-DEu0xNUc.js",
+      "file": "assets/System-Da-Kxwiz.js",
       "name": "System",
       "src": "src/pages/System.tsx",
       "isDynamicEntry": true,
       "imports": [
         "index.html",
-        "_primitives-CdwcE--L.js"
+        "_primitives-CSsF_Ymb.js"
       ]
     }
   }

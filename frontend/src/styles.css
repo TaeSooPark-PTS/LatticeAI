@@ -1187,6 +1187,16 @@ body {
   50% { transform: scale(1.035); opacity: 0.95; }
 }
 
+@keyframes ring-breathe {
+  0%, 100% { transform: translate(-50%, -50%) scale(0.99); }
+  50% { transform: translate(-50%, -50%) scale(1.012); }
+}
+
+@keyframes ring-label-breathe {
+  0%, 100% { opacity: 0.72; }
+  50% { opacity: 1; }
+}
+
 @keyframes brain-living-breathe {
   0%,
   100% {
@@ -2382,6 +2392,90 @@ body {
 .brain-depth-badge strong {
   font-size: 0.88rem;
   line-height: 1.05;
+}
+
+.brain-memory-rings {
+  position: absolute;
+  inset: 11.5% 13%;
+  z-index: 4;
+  pointer-events: none;
+}
+
+.brain-memory-ring {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  display: flex;
+  align-items: flex-start;
+  justify-content: center;
+  transform: translate(-50%, calc(-50% - var(--ring-radius)));
+  border: 0;
+  background: transparent;
+  color: hsl(var(--fg-muted));
+  padding: 0;
+  pointer-events: none;
+  opacity: 0.72;
+  animation: ring-label-breathe 5.8s ease-in-out infinite;
+  animation-delay: var(--ring-delay, 0ms);
+}
+
+.brain-memory-ring::before {
+  content: "";
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  width: var(--ring-size);
+  height: var(--ring-size);
+  transform: translate(-50%, calc(-50% + var(--ring-radius)));
+  border: 1px solid hsl(var(--border) / 0.38);
+  border-radius: 999px;
+  background: radial-gradient(circle, transparent 62%, hsl(var(--brain-core) / 0.045) 63%, transparent 70%);
+  pointer-events: none;
+}
+
+.brain-memory-ring.ring-1 { --ring-size: 14.2rem; --ring-radius: 7.1rem; }
+.brain-memory-ring.ring-2 { --ring-size: 17.9rem; --ring-radius: 8.95rem; }
+.brain-memory-ring.ring-3 { --ring-size: 21.6rem; --ring-radius: 10.8rem; }
+.brain-memory-ring.ring-4 { --ring-size: 25.3rem; --ring-radius: 12.65rem; }
+.brain-memory-ring.ring-5 { --ring-size: 29rem; --ring-radius: 14.5rem; }
+
+.brain-memory-ring span,
+.brain-memory-ring strong {
+  border-radius: 999px;
+  background: hsl(var(--surface-glass));
+  box-shadow: 0 8px 24px hsl(200 30% 3% / 0.14);
+  backdrop-filter: blur(16px);
+}
+
+.brain-memory-ring span {
+  margin-right: 0.22rem;
+  padding: 0.14rem 0.38rem;
+  color: hsl(var(--brain-core));
+  font-size: 0.58rem;
+  font-weight: 900;
+}
+
+.brain-memory-ring strong {
+  max-width: 5.8rem;
+  overflow: hidden;
+  padding: 0.14rem 0.46rem;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: 0.66rem;
+  font-weight: 760;
+}
+
+.brain-memory-ring:hover,
+.brain-memory-ring:focus-visible,
+.brain-memory-ring.is-revealed {
+  border-color: hsl(var(--brain-core) / 0.52);
+  color: hsl(var(--fg));
+  outline: none;
+  opacity: 1;
+}
+
+.brain-memory-ring[aria-current="step"] {
+  box-shadow: 0 0 0 1px hsl(var(--brain-core) / 0.32), 0 0 38px hsl(var(--brain-core) / 0.16);
 }
 
 .brain-depth-actions {
@@ -3747,6 +3841,18 @@ body {
   .brain-depth-actions button {
     flex: 0 0 auto;
   }
+  .brain-memory-rings {
+    inset: 16% 7%;
+  }
+  .brain-memory-ring.ring-1 { --ring-size: 10rem; --ring-radius: 5rem; }
+  .brain-memory-ring.ring-2 { --ring-size: 12.5rem; --ring-radius: 6.25rem; }
+  .brain-memory-ring.ring-3 { --ring-size: 15.1rem; --ring-radius: 7.55rem; }
+  .brain-memory-ring.ring-4 { --ring-size: 17.7rem; --ring-radius: 8.85rem; }
+  .brain-memory-ring.ring-5 { --ring-size: 20.2rem; --ring-radius: 10.1rem; }
+  .brain-memory-ring strong {
+    max-width: 4.6rem;
+    font-size: 0.58rem;
+  }
   .brain-depth-rail {
     top: 0.35rem;
     width: min(100vw - 1rem, 25rem);
@@ -3839,6 +3945,56 @@ body {
 
 .ritual-brain {
   margin: 0 auto 1.75rem;
+}
+
+.ritual-wake {
+  display: grid;
+  gap: 1rem;
+}
+
+.ritual-wake-plan {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 0.65rem;
+  margin: 0 auto;
+  width: min(100%, 640px);
+}
+
+.ritual-wake-plan div {
+  border: 1px solid hsl(var(--border) / 0.58);
+  border-radius: 8px;
+  background: hsl(var(--bg) / 0.46);
+  padding: 0.82rem 0.75rem;
+  text-align: left;
+}
+
+.ritual-wake-plan span {
+  display: inline-grid;
+  place-items: center;
+  width: 1.55rem;
+  height: 1.55rem;
+  border-radius: 999px;
+  background: hsl(var(--brain-core) / 0.12);
+  color: hsl(var(--brain-core));
+  font-size: 0.72rem;
+  font-weight: 900;
+}
+
+.ritual-wake-plan strong {
+  display: block;
+  margin-top: 0.45rem;
+  font-size: 0.92rem;
+  line-height: 1.22;
+}
+
+.ritual-secondary-button {
+  min-height: 2.75rem;
+  border: 1px solid hsl(var(--border) / 0.64);
+  border-radius: 8px;
+  background: hsl(var(--surface-glass));
+  color: hsl(var(--fg));
+  padding: 0 1.1rem;
+  font-weight: 760;
 }
 
 .ritual-title {

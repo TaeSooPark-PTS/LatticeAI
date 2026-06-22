@@ -54,52 +54,58 @@ You need Lattice AI when:
 
 ## One-Minute Flow
 
-1. Launch the app.
+1. Launch the app and wake the Brain.
 2. Create or open a local profile.
 3. Let Lattice explain what this computer can run.
-4. Start with the recommended model, or skip and choose later.
+4. Start with the recommended model as the Brain's voice, or skip and choose later.
 5. Talk to your Brain.
-6. Watch memories, topics, relationships, and graph structure emerge from real use.
+6. Use the memory rings to move from current context to the full knowledge graph.
 7. Back up, inspect, export, or restore the Brain when you need ownership actions.
 
 ## Living Brain Flow
 
-### 1. Login
+### 1. Wake Brain
+
+The first screen makes the Brain the product. It explains the three-step path:
+confirm owner, check the computer, choose the Brain voice.
+
+### 2. Login
 
 Choose the owner of the Brain. The profile is not a SaaS account by default; it
 is the local identity for the knowledge you keep.
 
 ![Login](output/release/v7.5.0/screenshots/01-login.png)
 
-### 2. Environment Analysis
+### 3. Environment Analysis
 
 See what kind of local AI experience this computer can support before choosing a
 model.
 
 ![Environment Analysis](output/release/v7.5.0/screenshots/02-environment-analysis.png)
 
-### 3. Recommended Models
+### 4. Recommended Models
 
 Start with a short list: safest recommendation, faster model, stronger model.
 Advanced details stay available without overwhelming first-time users.
 
 ![Recommended Models](output/release/v7.5.0/screenshots/03-recommended-models.png)
 
-### 4. Install And Load
+### 5. Install And Load
 
 Download and load only after consent. Lattice explains model size, local
 execution, and network use before work starts.
 
 ![Install and Load](output/release/v7.5.0/screenshots/04-install-load-progress.png)
 
-### 5. Brain Chat
+### 6. Brain Chat
 
 Talk normally. Useful decisions and context become memory, then appear later as
-topics, relationships, and graph structure.
+topics, relationships, graph structure, and the concentric memory rings around
+the Brain.
 
 ![Brain Chat Home](output/release/v7.5.0/screenshots/05-brain-chat-home.png)
 
-### 6. Review Center
+### 7. Review Center
 
 Automation results are staged for review before they become durable decisions.
 Snooze, unsnooze, run now, approve, and dismiss actions stay explicit.
@@ -200,34 +206,34 @@ See [docs/DEVELOPMENT.md](docs/DEVELOPMENT.md) for developer workflow details.
 
 ## Current Release
 
-The current release is **7.5.0 Runtime Debt Burn-down & Release Risk Cleanup**:
+The current release is **7.6.0 Brain-Centered UX & Architecture Closure**:
 
-- Agent runs, workflow runs, audit events, and realtime events now carry the
-  `agent-run-contract/v1` family envelope, so replay, admin review, and live
-  feeds can inspect run identity, runtime, status, timeline, and artifacts
-  through one contract shape.
-- AgentRuntime and realtime API responses now expose compact `contracts` views
-  so downstream consumers can read the common envelope instead of re-parsing
-  surface-specific records.
-- Brain quality evaluation now runs a real KnowledgeGraphStore + SearchService
-  corpus fixture with 250+ records, judged queries, recall, precision, NDCG,
-  and must-include hit-rate thresholds.
-- Release risk cleanup removes stale-artifact upload ambiguity, clears npm audit
-  findings, and updates the Tauri 2 stack so the old `block v0.1.6`
-  future-incompatibility warning is gone.
+- First-run onboarding now starts with a dedicated Wake Brain surface before
+  owner/profile setup, so the first impression is the local Brain rather than a
+  generic account or model wizard.
+- Brain Home now includes concentric memory rings around the Living Brain plus
+  direct depth controls, letting users move from Now to Memory, Topics,
+  Relationships, and the full graph.
+- Architecture review closure is machine-checkable through the 7.6 readiness
+  contract covering AgentRuntime, ToolRegistry, central Config, server
+  decomposition, Knowledge Graph hardening, and Brain UX.
+- The two local review files (`review.md` and
+  `ux-brain-simplification-review.md`) are incorporated into this release line:
+  architecture gaps are covered by explicit boundaries/tests, and UX gaps are
+  closed by the Brain-first wake flow plus ring-based progressive disclosure.
 
-Expected artifacts for 7.5.0 release must use exact filenames:
+Expected artifacts for 7.6.0 release must use exact filenames:
 
-- `dist/ltcai-7.5.0-py3-none-any.whl`
-- `dist/ltcai-7.5.0.tar.gz`
-- `ltcai-7.5.0.tgz`
-- `dist/ltcai-7.5.0.vsix`
-- `src-tauri/target/release/bundle/dmg/Lattice AI_7.5.0_aarch64.dmg`
+- `dist/ltcai-7.6.0-py3-none-any.whl`
+- `dist/ltcai-7.6.0.tar.gz`
+- `ltcai-7.6.0.tgz`
+- `dist/ltcai-7.6.0.vsix`
+- `src-tauri/target/release/bundle/dmg/Lattice AI_7.6.0_aarch64.dmg`
 
 Do not upload `dist/*`. Package registry publishing remains owner-run.
 
 See [docs/ROADMAP_RECOMMENDATIONS.md](docs/ROADMAP_RECOMMENDATIONS.md) for the
-strategic roadmap slices applied through 7.5.0 and the follow-up tracks.
+strategic roadmap slices applied through 7.6.0 and the follow-up tracks.
 
 ## Known Limitations
 
@@ -244,6 +250,7 @@ strategic roadmap slices applied through 7.5.0 and the follow-up tracks.
 
 | Version | Theme |
 | --- | --- |
+| 7.6.0 | Brain-Centered UX & Architecture Closure: Wake Brain first-run surface, concentric memory rings with direct depth controls, and machine-checkable closure of the two architecture/UX review files |
 | 7.5.0 | Runtime Debt Burn-down & Release Risk Cleanup: API consumers get normalized contract views, retrieval quality uses a 250+ record corpus fixture, stale artifact risk is removed, npm audit is clean, and Tauri is updated past the old block warning |
 | 7.4.0 | Runtime Contract Convergence & Corpus Retrieval: agent/workflow/audit/realtime records share the agent-run-contract/v1 family, and retrieval quality gates run against a real corpus-scale fixture |
 | 7.3.0 | Runtime Contract & Retrieval Quality: shared agent-run contract across runtimes plus deterministic hybrid recall/ranking regression gates |

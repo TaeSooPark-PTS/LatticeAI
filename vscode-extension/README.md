@@ -12,15 +12,14 @@ chat, run model workflows, and trigger coding actions from the editor.
 
 ## Current Release
 
-**7.5.0 — Runtime Debt Burn-down & Release Risk Cleanup.** The extension follows
+**7.6.0 — Brain-Centered UX & Architecture Closure.** The extension follows
 the main app positioning: Lattice AI is a local-first Digital Brain, not just a
 model launcher or editor chat panel. It connects editor actions to the same
 durable Brain context, explicit consent gates, replaceable model workflow, and
-separated Admin surface used by the desktop app. The v7.5.0 line keeps the
-visible VS Code sync status and aligns the extension release with the main app
-runtime contract work: agent, workflow, audit, and realtime records share the
-same contract family, API consumers get compact contract views, and Brain
-retrieval quality is guarded by a 250+ record corpus-scale regression fixture.
+separated Admin surface used by the desktop app. The v7.6.0 line aligns the
+extension release with the main app's Wake Brain flow, interactive memory rings,
+and machine-checkable architecture readiness gates while preserving the visible
+VS Code sync status.
 
 ## Quick Start
 

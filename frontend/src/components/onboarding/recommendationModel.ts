@@ -1,6 +1,6 @@
 import { asArray } from "@/lib/utils";
 
-export type FlowStep = "login" | "analysis" | "recommend" | "install";
+export type FlowStep = "wake" | "login" | "analysis" | "recommend" | "install";
 export type ApiData = Record<string, unknown>;
 
 export type FlowAnalysis = {

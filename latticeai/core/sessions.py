@@ -32,7 +32,14 @@ def _looks_hashed(key: str) -> bool:
 
 
 def _sessions_file(data_dir: Optional[Path] = None) -> Path:
-    d = data_dir or Path(os.getenv("LATTICEAI_DATA_DIR") or (Path.home() / ".ltcai"))
+    if data_dir is None:
+        try:
+            from latticeai.core.config import Config
+            data_dir = Config.from_env().data_dir
+        except Exception:
+            import os
+            data_dir = Path(os.getenv("LATTICEAI_DATA_DIR") or (Path.home() / ".ltcai"))
+    d = data_dir
     d.mkdir(parents=True, exist_ok=True)
     return d / "sessions.json"
 

@@ -27,7 +27,7 @@ export function readProductFlowComplete() {
 
 export function ProductFlow({ onComplete }: { onComplete: () => void }) {
   const language = useAppStore((state) => state.language);
-  const [step, setStep] = React.useState<FlowStep>("login");
+  const [step, setStep] = React.useState<FlowStep>("wake");
   const [analysis, setAnalysis] = React.useState<FlowAnalysis | null>(null);
   const [analysisError, setAnalysisError] = React.useState<string | null>(null);
   const [selected, setSelected] = React.useState<RecommendedModel | null>(null);
@@ -68,6 +68,8 @@ export function ProductFlow({ onComplete }: { onComplete: () => void }) {
           <LivingBrain state={brainStateForStep(step)} intensity={step === "install" ? 0.92 : 0.7} size="large" showLabel={false} />
         </div>
 
+        {step === "wake" && <WakeBrainScreen onWake={() => setStep("login")} onUseExisting={() => completeFlow(onComplete)} />}
+
         {step === "login" && <LoginScreen onSuccess={() => setStep("analysis")} />}
 
         {step === "analysis" && (
@@ -99,12 +101,45 @@ export function ProductFlow({ onComplete }: { onComplete: () => void }) {
   );
 }
 
+function WakeBrainScreen({ onWake, onUseExisting }: { onWake: () => void; onUseExisting: () => void }) {
+  const language = useAppStore((state) => state.language);
+  return (
+    <section className="ritual-wake" aria-label={t(language, "flow.wake.aria")}>
+      <div className="ritual-title">{t(language, "flow.wake.title")}</div>
+      <div className="ritual-subtitle">{t(language, "flow.wake.body")}</div>
+      <div className="ritual-wake-plan" aria-label={t(language, "flow.wake.plan.aria")}>
+        <div>
+          <span>1</span>
+          <strong>{t(language, "flow.wake.step.identity")}</strong>
+        </div>
+        <div>
+          <span>2</span>
+          <strong>{t(language, "flow.wake.step.check")}</strong>
+        </div>
+        <div>
+          <span>3</span>
+          <strong>{t(language, "flow.wake.step.voice")}</strong>
+        </div>
+      </div>
+      <div className="ritual-button-row">
+        <button type="button" className="ritual-full-button" onClick={onWake}>
+          {t(language, "flow.wake.primary")}
+        </button>
+        <button type="button" className="ritual-secondary-button" onClick={onUseExisting}>
+          {t(language, "flow.wake.existing")}
+        </button>
+      </div>
+    </section>
+  );
+}
+
 function completeFlow(onComplete: () => void) {
   try { localStorage.setItem(FLOW_COMPLETE_KEY, "true"); } catch {}
   onComplete();
 }
 
 function brainStateForStep(step: FlowStep): BrainState {
+  if (step === "wake") return "idle";
   if (step === "analysis") return "listening";
   if (step === "recommend") return "recalling";
   if (step === "install") return "thinking";

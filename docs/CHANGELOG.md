@@ -4,6 +4,29 @@ The top entry is either the current unreleased main-branch work or the current
 release line. Older entries are historical and may describe behavior as it
 existed at that release.
 
+## [7.6.0] - 2026-06-22
+
+> Brain-Centered UX & Architecture Closure. Incorporates the two local review
+> files into the release line with a Wake Brain first-run surface, memory rings
+> plus direct depth controls, and machine-checkable architecture readiness gates.
+
+### Added
+- Wake Brain first-run entry before owner/profile setup, reducing onboarding to
+  the product promise first and the setup mechanics second.
+- Concentric memory rings around Brain Home plus direct controls for Now, Memory,
+  Topics, Relationships, and Full Graph navigation.
+- `latticeai.services.architecture_readiness.architecture_readiness()` and
+  `tests/unit/test_v76_review_completion.py` to keep AgentRuntime, ToolRegistry,
+  Config, server decomposition, KG hardening, and Brain UX review closure under
+  test.
+
+### Changed
+- Package/runtime/static metadata is synchronized to 7.6.0; package publish and
+  deployment remain owner-run only.
+- README and release docs now describe 7.6.0 as the current release and preserve
+  older 7.5.0 screenshots as historical release evidence until new captures are
+  generated.
+
 ## [7.5.0] - 2026-06-20
 
 > Runtime Debt Burn-down & Release Risk Cleanup. Turns the 7.4.0 contract

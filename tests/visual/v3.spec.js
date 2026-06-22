@@ -33,6 +33,11 @@ test("first-run ritual enters the living Brain", async ({ page }) => {
   await page.goto("/app");
   await page.getByRole("button", { name: "한국어" }).click();
 
+  await expect(page.locator("body")).toContainText("내 Brain을 깨웁니다.");
+  await expect(page.locator("body")).toContainText("모델은 목소리처럼 바꿔도");
+  await expect(page.getByRole("button", { name: "Brain 깨우기" })).toBeVisible();
+  await page.getByRole("button", { name: "Brain 깨우기" }).click();
+
   await expect(page.locator("body")).toContainText("내 AI 브레인의 주인을 정합니다.");
   await expect(page.locator("body")).toContainText("로컬 우선 AI 브레인입니다.");
   await expect(page.locator("body")).toContainText("외부 전송은 사용자가 선택할 때만 시작됩니다.");
@@ -64,6 +69,7 @@ test("Brain depths reveal memory, knowledge, relationships, then graph", async (
 
   await expect(page.locator("body")).toContainText("단계 1");
   await expect(page.locator("body")).toContainText("Lattice Brain");
+  await expect(page.locator("[aria-label='Brain 기억 깊이 링']")).toBeVisible();
   await expect(page.locator(".memory-fragment")).toHaveCount(0);
   await expect(page.locator("[data-testid='emergent-knowledge-graph']")).toHaveCount(0);
   await expect(page.getByRole("button", { name: "기억 보기" })).toBeVisible();

@@ -7,6 +7,31 @@
 > PyPI / npm / VS Code Marketplace / Open VSX 배포는 아래 수동 절차로만
 > 진행합니다. 태그 생성은 패키지 스토어 publish를 자동으로 트리거하지 않습니다.
 
+## v7.6.0 릴리스 노트 (2026-06-22)
+
+Lattice AI v7.6.0 — Brain-Centered UX & Architecture Closure. 7.6.0은 로컬에
+생긴 두 리뷰 문서(`review.md`, `ux-brain-simplification-review.md`)의 내용을
+다음 릴리스로 미루지 않고 제품/코드/검증 계약으로 닫는다.
+
+첫 실행은 이제 일반 로그인/모델 마법사가 아니라 `Wake Brain`으로 시작한다. 사용자는
+Brain을 먼저 만나고, 주인 확인 → 컴퓨터 확인 → Brain voice 선택의 3단계 흐름을 본다.
+Brain Home에는 Living Brain 주변의 concentric memory rings와 직접 depth controls가
+추가되어 Now, Memory, Topics, Relationships, Full Graph로 바로 이동할 수 있다.
+이로써 Brain은 텍스트 비유가 아니라 화면의 중심 조작 객체가 된다.
+
+아키텍처 리뷰도 테스트 가능한 계약으로 고정했다. 7.6.0 readiness contract는
+AgentRuntime boundary, ToolRegistry separation, central Config, server decomposition,
+Knowledge Graph hardening, Brain UX closure를 모두 gate로 노출하고 unit test로 검증한다.
+기존 AgentRuntime/ToolRegistry/Config/KG portability 테스트와 함께 두 리뷰 문서의
+완료 조건을 릴리스 회귀 방지 대상으로 만든다.
+
+Expected artifacts (exact 7.6.0 names only):
+- dist/ltcai-7.6.0-py3-none-any.whl
+- dist/ltcai-7.6.0.tar.gz
+- dist/ltcai-7.6.0.vsix
+- ltcai-7.6.0.tgz
+- src-tauri/target/release/bundle/dmg/Lattice AI_7.6.0_aarch64.dmg
+
 ## v7.5.0 릴리스 노트 (2026-06-20)
 
 Lattice AI v7.5.0 — Runtime Debt Burn-down & Release Risk Cleanup. 7.5.0은

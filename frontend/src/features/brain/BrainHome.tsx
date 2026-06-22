@@ -494,6 +494,8 @@ export function BrainHome({
             onInteract={deepen}
           />
 
+          <BrainDepthRings explorationDepth={explorationDepth} onOpenDepth={jumpToDepth} />
+
           <div className="brain-depth-badge" aria-live="polite">
             <span>{t(language, "brain.level")} {explorationDepth}</span>
             <strong>{t(language, `brain.depth.${explorationDepth}`)}</strong>
@@ -573,6 +575,33 @@ export function BrainHome({
         onSend={() => void send()}
       />
     </main>
+  );
+}
+
+function BrainDepthRings({
+  explorationDepth,
+  onOpenDepth,
+}: {
+  explorationDepth: BrainDepth;
+  onOpenDepth: (depth: BrainDepth) => void;
+}) {
+  const language = useAppStore((state) => state.language);
+  return (
+    <div className="brain-memory-rings" aria-label={t(language, "brain.rings.aria")}>
+      {DEPTHS.map((depth, index) => (
+        <button
+          key={depth.level}
+          type="button"
+          className={`brain-memory-ring ring-${depth.level} ${depth.level <= explorationDepth ? "is-revealed" : ""}`}
+          aria-current={depth.level === explorationDepth ? "step" : undefined}
+          onClick={() => onOpenDepth(depth.level)}
+          style={{ "--ring-delay": `${index * 70}ms` } as React.CSSProperties}
+        >
+          <span>{depth.level}</span>
+          <strong>{t(language, `brain.rings.${depth.level}`)}</strong>
+        </button>
+      ))}
+    </div>
   );
 }
 
