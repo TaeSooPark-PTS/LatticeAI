@@ -15,6 +15,10 @@ existed at that release.
 - Moved single-agent git rollback behind an injected `rollback_file` port owned
   by `ToolDispatchService`, keeping shell execution out of the core state
   machine.
+- Added a shared `runtime-boundary/v1` descriptor so product and single-agent
+  runtime boundaries are machine-readable in config/tests.
+- Added `RuntimeBoundaryProtocol` as the minimal shared inspection surface for
+  runtime-boundary-aware dependency injection.
 - Updated architecture and product readiness targets to 7.9.0.
 
 ## [7.8.0] - 2026-06-22

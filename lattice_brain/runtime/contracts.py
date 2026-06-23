@@ -30,7 +30,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass, field
 from datetime import datetime
-from typing import Any, Dict, Iterable, List, Optional
+from typing import Any, Dict, Iterable, List, Optional, Protocol, runtime_checkable
 
 
 def runtime_timestamp() -> str:
@@ -68,6 +68,8 @@ CONTRACT_VIEW_KEYS = (
     "is_terminal",
     "blocking_reasons",
 )
+
+RUNTIME_BOUNDARY_SCHEMA = "runtime-boundary/v1"
 
 _SCHEMA_FOR_KIND = {
     "agent_run": AGENT_RUN_SCHEMA,
@@ -221,6 +223,67 @@ def multi_agent_contract(
         artifacts=[],
         blocking_reasons=list(blocking_reasons or []),
     ).as_dict()
+
+
+@dataclass(frozen=True)
+class RuntimeBoundaryContract:
+    """Machine-readable descriptor for an execution runtime boundary.
+
+    This is intentionally separate from run records: it lets tests, routers, and
+    docs assert which class owns which execution surface without importing the
+    wrong runtime by name.
+    """
+
+    name: str
+    runtime: str
+    entrypoint: str
+    surface: str
+    owns: str
+    compatibility_aliases: List[str] = field(default_factory=list)
+
+    def as_dict(self) -> Dict[str, Any]:
+        return {
+            "schema_version": RUNTIME_BOUNDARY_SCHEMA,
+            "name": self.name,
+            "runtime": self.runtime,
+            "entrypoint": self.entrypoint,
+            "surface": self.surface,
+            "owns": self.owns,
+            "compatibility_aliases": list(self.compatibility_aliases),
+        }
+
+
+def runtime_boundary_contract(
+    *,
+    name: str,
+    runtime: str,
+    entrypoint: str,
+    surface: str,
+    owns: str,
+    compatibility_aliases: Optional[List[str]] = None,
+) -> Dict[str, Any]:
+    return RuntimeBoundaryContract(
+        name=name,
+        runtime=runtime,
+        entrypoint=entrypoint,
+        surface=surface,
+        owns=owns,
+        compatibility_aliases=list(compatibility_aliases or []),
+    ).as_dict()
+
+
+@runtime_checkable
+class RuntimeBoundaryProtocol(Protocol):
+    """Minimal shared surface for runtime boundary discovery.
+
+    Product ``AgentRuntime`` and core ``SingleAgentRuntime`` intentionally keep
+    different execution methods. This protocol only fixes the common inspection
+    surface that DI, readiness gates, and tests can depend on safely.
+    """
+
+    def boundary(self) -> Dict[str, Any]: ...
+
+    def config(self) -> Dict[str, Any]: ...
 
 
 def run_record_contract(run: Dict[str, Any], *, runtime: str = "multi_agent") -> Dict[str, Any]:

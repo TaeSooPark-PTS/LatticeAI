@@ -218,6 +218,11 @@ The current release is **7.9.0 — Agent Runtime Boundary Hardening**:
   remains the unambiguous `/agents` execution and observability boundary.
 - Agent rollback is now an injected runtime port wired through
   `ToolDispatchService`, so the core state machine no longer shells out directly.
+- Both runtime surfaces expose a `runtime-boundary/v1` descriptor so tests and
+  API clients can identify the owning execution boundary without relying on
+  ambiguous class names.
+- A shared `RuntimeBoundaryProtocol` now fixes the common inspection surface
+  while letting each runtime keep its own execution methods.
 - Product readiness is machine-checkable through `product_readiness()`, which
   composes the architecture contract with exact artifact/docs/workflow evidence.
 - CI and release workflows now run frontend lint/typecheck/build gates plus the

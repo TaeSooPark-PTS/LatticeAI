@@ -14,6 +14,9 @@ PLAN / EXECUTE / VERIFY loop now has the explicit `SingleAgentRuntime` name.
 - Updated tool-dispatch wiring to construct `SingleAgentRuntime` directly.
 - Moved git rollback for single-agent edits behind an injected `rollback_file`
   port owned by `ToolDispatchService`.
+- Added a shared `runtime-boundary/v1` descriptor for both runtime surfaces.
+- Added `RuntimeBoundaryProtocol` for common runtime inspection without forcing
+  product and single-agent execution methods to match.
 - Updated product and architecture readiness gates to 7.9.0.
 
 ### Expected artifacts

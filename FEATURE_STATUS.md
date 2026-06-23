@@ -20,7 +20,7 @@ wired through an injected tool-dispatch port.
 | **UI/UX Product Polish** | COMPLETE | Brain Chat Home simplified, workspace navigation visible, utility controls collapsed |
 | **Post-release UX draft integration** | COMPLETE | Six UX draft files folded into canonical Brain/onboarding surfaces with shared CSS, bilingual copy, and visual smoke coverage |
 | **Docs as product proof** | COMPLETE | RELEASE, CHANGELOG, README, FEATURE updated to declare 7.9 Agent Runtime boundary hardening |
-| **AgentRuntime + ToolRegistry** | COMPLETE | Tested boundaries, imported, used in production paths |
+| **AgentRuntime + ToolRegistry** | COMPLETE | Tested boundaries, `runtime-boundary/v1` descriptors, `RuntimeBoundaryProtocol`, imported, used in production paths |
 | **Build & validation gates** | COMPLETE | typecheck, cargo, unit tests, tauri build checks pass |
 | **Product readiness evaluation** | COMPLETE | `product_readiness()` and visual/release evidence gates |
 

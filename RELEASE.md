@@ -20,6 +20,9 @@ compatibility alias for existing imports.
 - Updated tool-dispatch wiring to construct `SingleAgentRuntime` directly.
 - Moved single-agent git rollback behind an injected `rollback_file` port owned
   by `ToolDispatchService`.
+- Added a shared `runtime-boundary/v1` descriptor for the product and
+  single-agent runtime surfaces.
+- Added `RuntimeBoundaryProtocol` for the common runtime inspection surface.
 - Updated architecture/product readiness targets and current-release docs to 7.9.0.
 
 Expected artifacts (exact 7.9.0 names only):

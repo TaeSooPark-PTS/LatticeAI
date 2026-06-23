@@ -37,7 +37,13 @@ from .multi_agent import (
     MULTI_AGENT_VERSION,
     ROLE_AGENT_IDS,
 )
-from .contracts import contract_view, contract_views, extract_contract, multi_agent_contract
+from .contracts import (
+    contract_view,
+    contract_views,
+    extract_contract,
+    multi_agent_contract,
+    runtime_boundary_contract,
+)
 
 ROLE_DESCRIPTIONS = {
     "researcher": "Gathers workspace context and memory for the goal.",
@@ -91,10 +97,20 @@ class AgentRuntime:
     def _execution_mode(self) -> str:
         return "async" if self._run_executor is not None else "synchronous"
 
+    def boundary(self) -> Dict[str, Any]:
+        return runtime_boundary_contract(
+            name="AgentRuntime",
+            runtime="multi_agent",
+            entrypoint="lattice_brain.runtime.agent_runtime.AgentRuntime",
+            surface="/agents",
+            owns="product agent execution, observability, status, health, events, replay, and stop",
+        )
+
     # ── configuration ─────────────────────────────────────────────────────
     def config(self) -> Dict[str, Any]:
         return {
             "version": MULTI_AGENT_VERSION,
+            "boundary": self.boundary(),
             "roles": list(AGENT_ROLES),
             "default_pipeline": list(CORE_PIPELINE),
             "max_retries_cap": self._max_retries_cap,

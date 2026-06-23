@@ -95,6 +95,7 @@ def test_build_agent_runtime_returns_single_agent_runtime():
     )
 
     assert isinstance(runtime, SingleAgentRuntime)
+    assert runtime.boundary()["runtime"] == "single_agent"
 
 
 def test_catalog_brief_tokens_are_all_dispatchable():

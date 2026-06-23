@@ -65,6 +65,7 @@ __all__ = [
     "AgentRuntime",
     "AgentRuntimeUnavailable",
     "MultiAgentOrchestrator",
+    "RuntimeBoundaryProtocol",
     "HooksRegistry",
     "dispatch_tool",
 ]
@@ -79,6 +80,10 @@ def __getattr__(name: str):
         from .multi_agent import MultiAgentOrchestrator
 
         return MultiAgentOrchestrator
+    if name == "RuntimeBoundaryProtocol":
+        from .contracts import RuntimeBoundaryProtocol
+
+        return RuntimeBoundaryProtocol
     if name in {"HooksRegistry", "dispatch_tool"}:
         from . import hooks
 

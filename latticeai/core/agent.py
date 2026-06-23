@@ -29,7 +29,7 @@ from pathlib import Path
 from typing import Any, Awaitable, Callable, Dict, FrozenSet, List, Optional
 
 from lattice_brain.runtime.hooks import dispatch_tool
-from lattice_brain.runtime.contracts import single_agent_contract
+from lattice_brain.runtime.contracts import runtime_boundary_contract, single_agent_contract
 from tools import ToolError
 
 
@@ -146,6 +146,24 @@ class SingleAgentRuntime:
 
     def __init__(self, deps: AgentDeps) -> None:
         self.deps = deps
+
+    def boundary(self) -> Dict[str, Any]:
+        return runtime_boundary_contract(
+            name="SingleAgentRuntime",
+            runtime="single_agent",
+            entrypoint="latticeai.core.agent.SingleAgentRuntime",
+            surface="/agent",
+            owns="single-agent PLAN / EXECUTE / VERIFY state machine over injected ports",
+            compatibility_aliases=["latticeai.core.agent.AgentRuntime"],
+        )
+
+    def config(self) -> Dict[str, Any]:
+        return {
+            "boundary": self.boundary(),
+            "states": [state.value for state in AgentState],
+            "terminal_states": sorted(state.value for state in AGENT_TERMINAL_STATES),
+            "execution_mode": "injected_ports",
+        }
 
     def contract(self, ctx: AgentRunContext, req: Any, *, run_id: Optional[str] = None) -> Dict[str, Any]:
         """Expose the shared agent-run contract for the single-agent loop."""

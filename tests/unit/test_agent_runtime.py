@@ -18,7 +18,7 @@ from latticeai.core.agent import (
     SingleAgentRuntime,
     extract_action,
 )
-from lattice_brain.runtime.contracts import contract_view, extract_contract
+from lattice_brain.runtime.contracts import RuntimeBoundaryProtocol, contract_view, extract_contract
 
 
 class FakeReq:
@@ -183,6 +183,19 @@ def test_rollback_uses_injected_port():
 
 def test_legacy_agent_runtime_alias_is_preserved():
     assert AgentRuntime is SingleAgentRuntime
+
+
+def test_single_agent_runtime_boundary_contract_is_explicit():
+    runtime = SingleAgentRuntime(_deps(scripted=[], tool_calls=[]))
+    assert isinstance(runtime, RuntimeBoundaryProtocol)
+    boundary = runtime.boundary()
+    assert boundary["schema_version"] == "runtime-boundary/v1"
+    assert boundary["name"] == "SingleAgentRuntime"
+    assert boundary["runtime"] == "single_agent"
+    assert boundary["entrypoint"] == "latticeai.core.agent.SingleAgentRuntime"
+    assert boundary["surface"] == "/agent"
+    assert "latticeai.core.agent.AgentRuntime" in boundary["compatibility_aliases"]
+    assert runtime.config()["boundary"] == boundary
 
 
 def test_extract_action_tolerates_fences_and_prose():

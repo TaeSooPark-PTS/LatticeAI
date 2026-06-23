@@ -9,7 +9,7 @@ from fastapi import FastAPI
 from fastapi.testclient import TestClient
 
 from latticeai.api.agents import create_agents_router
-from lattice_brain.runtime.contracts import run_record_contract
+from lattice_brain.runtime.contracts import RuntimeBoundaryProtocol, run_record_contract
 from lattice_brain.runtime.multi_agent import CORE_PIPELINE, MultiAgentOrchestrator
 from lattice_brain.runtime.agent_runtime import AgentRuntime, AgentRuntimeUnavailable
 
@@ -50,8 +50,17 @@ def _runtime(*, allow_simulation_runs=True):
 
 
 def test_config_and_roles():
+    from lattice_brain.runtime import RuntimeBoundaryProtocol as PublicRuntimeBoundaryProtocol
+
+    assert PublicRuntimeBoundaryProtocol is RuntimeBoundaryProtocol
     rt = _runtime()
+    assert isinstance(rt, RuntimeBoundaryProtocol)
     cfg = rt.config()
+    assert cfg["boundary"]["schema_version"] == "runtime-boundary/v1"
+    assert cfg["boundary"]["name"] == "AgentRuntime"
+    assert cfg["boundary"]["runtime"] == "multi_agent"
+    assert cfg["boundary"]["entrypoint"] == "lattice_brain.runtime.agent_runtime.AgentRuntime"
+    assert cfg["boundary"]["surface"] == "/agents"
     assert cfg["default_pipeline"] == list(CORE_PIPELINE)
     assert cfg["execution_mode"] == "synchronous"
     roles = rt.roles()
