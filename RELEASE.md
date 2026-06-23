@@ -7,6 +7,28 @@
 > PyPI / npm / VS Code Marketplace / Open VSX 배포는 아래 수동 절차로만
 > 진행합니다. 태그 생성은 패키지 스토어 publish를 자동으로 트리거하지 않습니다.
 
+## v7.9.0 — Agent Runtime Boundary Hardening (2026-06-23)
+
+7.9.0 advances the top architecture priority: AgentRuntime extraction. The
+product facade remains `lattice_brain.runtime.agent_runtime.AgentRuntime`, while
+the older single-agent loop now has an explicit `SingleAgentRuntime` name and a
+compatibility alias for existing imports.
+
+### Changed
+- Added `SingleAgentRuntime` for the single-agent PLAN / EXECUTE / VERIFY loop.
+- Preserved `latticeai.core.agent.AgentRuntime` as a compatibility alias.
+- Updated tool-dispatch wiring to construct `SingleAgentRuntime` directly.
+- Moved single-agent git rollback behind an injected `rollback_file` port owned
+  by `ToolDispatchService`.
+- Updated architecture/product readiness targets and current-release docs to 7.9.0.
+
+Expected artifacts (exact 7.9.0 names only):
+- dist/ltcai-7.9.0-py3-none-any.whl
+- dist/ltcai-7.9.0.tar.gz
+- dist/ltcai-7.9.0.vsix
+- ltcai-7.9.0.tgz
+- src-tauri/target/release/bundle/dmg/Lattice AI_7.9.0_aarch64.dmg
+
 ## v7.8.0 — Brain Chat Home UX Simplification (2026-06-22)
 
 7.8.0 upgrades Lattice AI from “product complete” to “understandable at a glance”.

@@ -44,9 +44,9 @@ orchestrator, and the agent runtime service. Lazy-loaded so importing
     /agents/api/runtime/* , POST /agents (start via runtime.start or executor)
   api/chat.py
     from latticeai.services.tool_dispatch import build_agent_runtime
-    -> latticeai/core/agent.py:AgentRuntime (별도 state/plan/transcript 머신, single-agent /agent 경로. dispatch_tool 만 공유)
+    -> latticeai/core/agent.py:SingleAgentRuntime (별도 state/plan/transcript 머신, single-agent /agent 경로. dispatch_tool 만 공유)
   latticeai/services/tool_dispatch.py:14
-    from latticeai.core.agent import AgentRuntime as CoreAgentRuntime
+    from latticeai.core.agent import SingleAgentRuntime
     (tool governance + core single-agent용)
   latticeai/services/platform_runtime.py
     from lattice_brain.runtime.{hooks, multi_agent}
@@ -54,6 +54,7 @@ orchestrator, and the agent runtime service. Lazy-loaded so importing
 
 core/tool_registry.py (신규) + services/tool_dispatch.py 가 tool build 주도.
 lattice_brain/runtime 는 multi-agent + hooks + facade 에 집중. core/agent 는 chat/agent 단일 루프.
+기존 latticeai.core.agent.AgentRuntime import 는 SingleAgentRuntime 호환 alias 로 유지.
 
 이 매핑으로 중복 제거 및 wiring 명확화 완료 (feat(Act, automation) 방향).
 """

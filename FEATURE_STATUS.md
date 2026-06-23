@@ -1,30 +1,31 @@
-# Lattice AI — Feature Status (v7.8.0)
+# Lattice AI — Feature Status (v7.9.0)
 
-**Current release line:** v7.8.0 — Brain Chat Home UX Simplification.
+**Current release line:** v7.9.0 — Agent Runtime Boundary Hardening.
 
 Lattice AI is positioned as a production-grade local-first Digital Brain. The
-7.8 line keeps the product proof from 7.7 while making the main Brain surface
-glanceable: chat first, sources/status second, deep controls on intent.
+7.9 line keeps the product proof from 7.8 while making the agent runtime
+boundary clearer and easier to maintain.
 
-## v7.8.0 Brain Chat Home UX Simplification — current release line
+## v7.9.0 Agent Runtime Boundary Hardening — current release line
 
-7.8.0 turns the complete product surface into a cleaner product surface. Brain
-Chat Home now prioritizes immediate conversation and hides secondary status,
-source, proof, and care surfaces until the user asks for them.
+7.9.0 turns the complete product runtime into a cleaner architecture surface.
+The product AgentRuntime facade stays in `lattice_brain.runtime`, the legacy
+single-agent loop is explicitly named `SingleAgentRuntime`, and rollback is
+wired through an injected tool-dispatch port.
 
 | Area | Status | Evidence |
 | --- | --- | --- |
 | **Production classifiers** | COMPLETE | Changed to "Development Status :: 5 - Production/Stable" |
-| **Version & metadata sync** | COMPLETE | All 7.8.0 across py, npm, tauri, core, docs |
+| **Version & metadata sync** | COMPLETE | All 7.9.0 across py, npm, tauri, core, docs |
 | **UI/UX Product Polish** | COMPLETE | Brain Chat Home simplified, workspace navigation visible, utility controls collapsed |
 | **Post-release UX draft integration** | COMPLETE | Six UX draft files folded into canonical Brain/onboarding surfaces with shared CSS, bilingual copy, and visual smoke coverage |
-| **Docs as product proof** | COMPLETE | RELEASE, CHANGELOG, README, FEATURE updated to declare 7.8 Brain Chat Home simplification |
+| **Docs as product proof** | COMPLETE | RELEASE, CHANGELOG, README, FEATURE updated to declare 7.9 Agent Runtime boundary hardening |
 | **AgentRuntime + ToolRegistry** | COMPLETE | Tested boundaries, imported, used in production paths |
 | **Build & validation gates** | COMPLETE | typecheck, cargo, unit tests, tauri build checks pass |
 | **Product readiness evaluation** | COMPLETE | `product_readiness()` and visual/release evidence gates |
 
 
-**Current release line:** v7.8.0 Brain Chat Home UX Simplification (see top).
+**Current release line:** v7.9.0 Agent Runtime Boundary Hardening (see top).
 Lattice AI is a local-first Digital Brain that keeps your knowledge durable
 across any AI model. The primary experience is Brain plus conversation; the
 graph remains durable infrastructure and advanced exploration, not the home

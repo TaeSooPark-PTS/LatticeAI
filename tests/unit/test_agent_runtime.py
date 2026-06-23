@@ -1,6 +1,6 @@
 """The agent loop is now testable through its interface — no FastAPI, no MLX.
 
-We drive AgentRuntime with fake ports: an LLM that returns canned JSON per
+We drive SingleAgentRuntime with fake ports: an LLM that returns canned JSON per
 phase, and a recording tool executor. This is the leverage the extraction
 bought — before, exercising the state machine meant POSTing to a live /agent.
 """
@@ -12,9 +12,10 @@ import pytest
 
 from latticeai.core.agent import (
     AgentDeps,
-    AgentRuntime,
     AgentRunContext,
     AgentState,
+    AgentRuntime,
+    SingleAgentRuntime,
     extract_action,
 )
 from lattice_brain.runtime.contracts import contract_view, extract_contract
@@ -51,6 +52,9 @@ def _deps(scripted, tool_calls):
                 "network": False, "auto_approve": True, "sandbox": "workspace",
                 "rollback": "git"}
 
+    def rollback_file(path):
+        return {"path": path, "ok": True, "stderr": ""}
+
     return AgentDeps(
         generate_as=generate_as,
         generate=generate,
@@ -67,6 +71,7 @@ def _deps(scripted, tool_calls):
         planner_prompt="PLAN", executor_prompt="EXEC",
         critic_prompt="CRIT", memory_updater_prompt="MEM",
         agent_root=Path("/tmp"),
+        rollback_file=rollback_file,
     )
 
 
@@ -82,7 +87,7 @@ def test_full_cycle_plan_execute_verify_done():
         # critic
         '{"action":"verdict","verdict":"PASS","next_state":"DONE","reason":"looks good"}',
     ]
-    rt = AgentRuntime(_deps(scripted, tool_calls))
+    rt = SingleAgentRuntime(_deps(scripted, tool_calls))
     req = FakeReq()
     ctx = AgentRunContext()
 
@@ -121,7 +126,7 @@ def test_destructive_tool_is_blocked_not_executed():
         "risk": "destructive", "destructive": True, "shell": False, "network": False,
         "auto_approve": False, "sandbox": "system", "rollback": "none",
     }
-    rt = AgentRuntime(deps)
+    rt = SingleAgentRuntime(deps)
     ctx = AgentRunContext()
     ctx.state = AgentState.EXECUTING
 
@@ -142,11 +147,42 @@ def test_critic_retry_then_fail_after_budget():
         '{"action":"final","message":"x"}',
         '{"action":"verdict","next_state":"EXECUTING"}',  # retry budget exceeded → FAILED
     ]
-    rt = AgentRuntime(_deps(scripted, []))
+    rt = SingleAgentRuntime(_deps(scripted, []))
     ctx = AgentRunContext()
     ctx.state = AgentState.EXECUTING
     asyncio.run(rt.run_to_completion(ctx, FakeReq(), "ko", "tester", max_steps=25, max_retry=3))
     assert ctx.state == AgentState.FAILED
+
+
+def test_rollback_uses_injected_port():
+    rolled_paths = []
+
+    def rollback_file(path):
+        rolled_paths.append(path)
+        return {"path": path, "ok": True, "stderr": ""}
+
+    deps = _deps(scripted=[], tool_calls=[])
+    deps.rollback_file = rollback_file
+    rt = SingleAgentRuntime(deps)
+    ctx = AgentRunContext()
+    ctx.transcript.append({
+        "state": AgentState.EXECUTING.value,
+        "action": "edit_file",
+        "args": {"path": "changed.py"},
+        "governance": {"rollback": "git"},
+        "result": {"success": True, "path": "changed.py"},
+    })
+
+    rt.rollback(ctx, "tester")
+
+    assert rolled_paths == ["changed.py"]
+    assert ctx.state == AgentState.FAILED
+    assert ctx.rollback_log == []
+    assert ctx.transcript[-1]["rolled_back"] == [{"path": "changed.py", "ok": True, "stderr": ""}]
+
+
+def test_legacy_agent_runtime_alias_is_preserved():
+    assert AgentRuntime is SingleAgentRuntime
 
 
 def test_extract_action_tolerates_fences_and_prose():

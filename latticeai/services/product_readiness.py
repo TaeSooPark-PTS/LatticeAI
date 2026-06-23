@@ -1,8 +1,8 @@
-"""Machine-checkable *product* readiness gates for the 7.8 line.
+"""Machine-checkable *product* readiness gates for the 7.9 line.
 
 Where ``architecture_readiness`` proves the internal structure is sound, this
-module answers the product question the 7.8 release exists to settle: *can
-someone understand and use the Brain at a glance?* It does so honestly — every
+module answers the product question the 7.9 release exists to settle: *are the
+runtime boundaries still clear and release-ready after hardening?* It does so honestly — every
 gate is backed by evidence that is probed on disk, so a gate only reports
 ``complete`` when its evidence actually resolves. The same report can be printed
 by ``scripts/product_readiness.py`` and re-run after every change, which is the
@@ -17,7 +17,7 @@ from typing import Any, Dict, List
 
 from latticeai.services.architecture_readiness import architecture_readiness
 
-PRODUCT_VERSION_TARGET = "7.8.0"
+PRODUCT_VERSION_TARGET = "7.9.0"
 
 
 @dataclass(frozen=True)
@@ -64,10 +64,10 @@ PRODUCT_GATES: List[ProductGate] = [
         evidence=[
             "package.json::release:artifacts",
             "package.json::release:validate",
-            "README.md::dist/ltcai-7.8.0-py3-none-any.whl",
-            "README.md::dist/ltcai-7.8.0.tar.gz",
-            "README.md::dist/ltcai-7.8.0.vsix",
-            "README.md::ltcai-7.8.0.tgz",
+            "README.md::dist/ltcai-7.9.0-py3-none-any.whl",
+            "README.md::dist/ltcai-7.9.0.tar.gz",
+            "README.md::dist/ltcai-7.9.0.vsix",
+            "README.md::ltcai-7.9.0.tgz",
             "scripts/validate_release_artifacts.py",
             "scripts/release_smoke.py",
             "Dockerfile",
@@ -83,15 +83,15 @@ PRODUCT_GATES: List[ProductGate] = [
         title="Release story is documented and honest",
         evidence=[
             "README.md",
-            "README.md::The current release is **7.8.0",
-            "SECURITY.md::7.8.x (latest)",
-            "vscode-extension/README.md::**7.8.0",
-            "docs/CHANGELOG.md::## [7.8.0]",
+            "README.md::The current release is **7.9.0",
+            "SECURITY.md::7.9.x (latest)",
+            "vscode-extension/README.md::**7.9.0",
+            "docs/CHANGELOG.md::## [7.9.0]",
             "FEATURE_STATUS.md",
-            "RELEASE_NOTES_v7.8.0.md",
-            "README.md::output/release/v7.8.0/SCREENSHOT_INDEX.md",
-            "output/release/v7.8.0/SCREENSHOT_INDEX.md",
-            "output/release/v7.8.0/gifs/v7.8.0-living-brain-walkthrough.gif",
+            "RELEASE_NOTES_v7.9.0.md",
+            "latticeai/core/agent.py::SingleAgentRuntime",
+            "latticeai/core/agent.py::AgentRuntime = SingleAgentRuntime",
+            "latticeai/services/tool_dispatch.py::rollback_file",
         ],
     ),
     ProductGate(

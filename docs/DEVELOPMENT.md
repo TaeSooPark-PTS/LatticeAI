@@ -95,5 +95,4 @@ For user-facing, API, runtime, release, or packaging changes, check:
 - `docs/LEGACY_COMPATIBILITY.md` when root compatibility files change
 
 Release/publish examples must use exact target-version filenames. Do not
-document wildcard upload commands such as `dist/*`.
-
+document wildcard artifact upload commands.

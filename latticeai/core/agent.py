@@ -1,7 +1,7 @@
-"""Agent Runtime — the Discover→Plan→Implement→Verify state machine.
+"""Single-agent runtime — the Discover→Plan→Implement→Verify state machine.
 
-This module is the deep one: a small interface (``AgentDeps`` ports +
-``AgentRuntime.run_to_completion``) over the whole multi-role agent loop
+This module is the deep single-agent loop: a small interface (``AgentDeps`` ports +
+``SingleAgentRuntime.run_to_completion``) over the whole role-phased state machine
 (planner → executor → critic → rollback → memory). It carries no FastAPI,
 no globals, and no I/O of its own — every collaborator is injected through
 ``AgentDeps``.
@@ -23,7 +23,6 @@ from __future__ import annotations
 import json
 import logging
 import re
-import subprocess
 from dataclasses import dataclass
 from enum import Enum
 from pathlib import Path
@@ -92,7 +91,7 @@ def extract_action(raw: str) -> Dict:
 
 @dataclass
 class AgentDeps:
-    """The ports an :class:`AgentRuntime` needs from the outside world.
+    """The ports a :class:`SingleAgentRuntime` needs from the outside world.
 
     Everything the state machine touches is here, so the loop can be exercised
     against fakes. See module docstring for the two-adapter rationale.
@@ -125,6 +124,11 @@ class AgentDeps:
     memory_updater_prompt: str
     agent_root: Path
 
+    # ── rollback port (optional) ─────────────────────────────────────
+    # Production injects this from the tool dispatch service so this pure
+    # state machine does not shell out directly. Tests can pass a recorder.
+    rollback_file: Optional[Callable[[str], Dict[str, Any]]] = None
+
     # ── lifecycle hooks port (optional) ──────────────────────────────
     # When present, every tool execution fires the shared pre_tool/post_tool
     # lifecycle, so the agent tool path no longer bypasses hooks.
@@ -137,7 +141,7 @@ class AgentDeps:
     brain_memory: Any = None
 
 
-class AgentRuntime:
+class SingleAgentRuntime:
     """Drives the agent state machine over injected :class:`AgentDeps`."""
 
     def __init__(self, deps: AgentDeps) -> None:
@@ -405,12 +409,11 @@ class AgentRuntime:
             path = result.get("path") or (step.get("args") or {}).get("path", "")
             if not path:
                 continue
+            if d.rollback_file is None:
+                rolled.append({"path": path, "ok": False, "error": "rollback_file port is not configured"})
+                continue
             try:
-                r = subprocess.run(
-                    ["git", "checkout", "--", path], cwd=str(d.agent_root),
-                    capture_output=True, text=True, timeout=10,
-                )
-                rolled.append({"path": path, "ok": r.returncode == 0, "stderr": r.stderr[:200]})
+                rolled.append(d.rollback_file(str(path)))
             except Exception as exc:
                 rolled.append({"path": path, "ok": False, "error": str(exc)})
 
@@ -491,3 +494,9 @@ class AgentRuntime:
                 ctx.state = AgentState.FAILED
 
         ctx.state_history.append(ctx.state.value)
+
+
+# Backward compatibility: external callers historically imported
+# ``latticeai.core.agent.AgentRuntime`` for the single-agent state machine.
+# The product/runtime facade lives at ``lattice_brain.runtime.agent_runtime``.
+AgentRuntime = SingleAgentRuntime

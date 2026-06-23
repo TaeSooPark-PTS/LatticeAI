@@ -12,11 +12,11 @@ chat, run model workflows, and trigger coding actions from the editor.
 
 ## Current Release
 
-**7.8.0 — Brain Chat Home UX Simplification.** The extension follows
+**7.9.0 — Agent Runtime Boundary Hardening.** The extension follows
 the main app positioning: Lattice AI is a local-first Digital Brain, not just a
 model launcher or editor chat panel. It connects editor actions to the same
 durable Brain context, explicit consent gates, replaceable model workflow, and
-separated Admin surface used by the desktop app. The v7.8.0 line aligns the extension with the simplified Brain Chat Home, visible workspace navigation, exact release artifacts, and machine-checkable product readiness gates while preserving the visible VS Code sync status.
+separated Admin surface used by the desktop app. The v7.9.0 line aligns the extension with the hardened AgentRuntime boundary, exact release artifacts, and machine-checkable product readiness gates while preserving the visible VS Code sync status.
 
 ## Quick Start
 

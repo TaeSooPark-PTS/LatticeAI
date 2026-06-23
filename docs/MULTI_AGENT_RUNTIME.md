@@ -2,7 +2,7 @@
 
 The Multi-Agent Runtime is the **orchestration layer** introduced in v2.0.0 and
 operationalized in v2.2.0. It sits
-*above* the v1.x single-agent state machine ([`AgentRuntime`](../latticeai/core/agent.py))
+*above* the v1.x single-agent state machine ([`SingleAgentRuntime`](../latticeai/core/agent.py))
 and coordinates a pipeline of named **roles** that hand off work to one another,
 retry on a failing review, and emit a fully observable, replayable timeline.
 
@@ -34,20 +34,21 @@ objects durable and inspectable:
 
 ## How it relates to the v1 single-agent runtime
 
-v1.x shipped a single-agent state machine — `AgentRuntime` driving
+v1.x shipped a single-agent state machine — `SingleAgentRuntime` driving
 `PLAN → EXECUTE → VERIFY → DONE` (with `ROLLBACK` / `FAILED` recovery paths) over an
-injected `AgentDeps` port. That runtime is unchanged.
+injected `AgentDeps` port. The historical `AgentRuntime` import remains as a
+compatibility alias.
 
 v2.0 adds the *orchestration* layer on top: instead of one agent looping through
 internal phases, the `MultiAgentOrchestrator` drives a **pipeline of distinct roles**
 (researcher, planner, executor, reviewer, release) that hand off to one another and
 can rewind on a failing review. The two layers are complementary — the v2
 orchestrator coordinates roles; an individual role's runner could itself be backed by
-the v1 `AgentRuntime` loop or an LLM, but that is an implementation choice behind the
+the v1 `SingleAgentRuntime` loop or an LLM, but that is an implementation choice behind the
 injected runner port.
 
 > **Compatibility.** The Multi-Agent Runtime is purely additive. The v1
-> `AgentRuntime` state machine and its `/agent` endpoints are untouched, and the v2
+> `SingleAgentRuntime` state machine and its `/agent` endpoints are untouched, and the v2
 > API is namespaced under `/agents` (plural) so it never collides with the existing
 > single-agent `/agent` routes. Existing v1.x data is preserved; new runs are appended
 > to workspace state and the Knowledge Graph alongside it.

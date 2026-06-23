@@ -6,6 +6,17 @@ existed at that release.
 
 ## [Unreleased]
 
+## [7.9.0] - 2026-06-23
+
+### Changed
+- Added `SingleAgentRuntime` as the explicit name for the legacy single-agent
+  state machine while preserving `AgentRuntime` as a compatibility alias.
+- Updated tool dispatch to build `SingleAgentRuntime` directly.
+- Moved single-agent git rollback behind an injected `rollback_file` port owned
+  by `ToolDispatchService`, keeping shell execution out of the core state
+  machine.
+- Updated architecture and product readiness targets to 7.9.0.
+
 ## [7.8.0] - 2026-06-22
 
 ### Changed

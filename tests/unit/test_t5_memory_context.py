@@ -152,9 +152,9 @@ def test_agent_learnings_become_experience_records(tmp_path):
         def knowledge_save(*a, **kw):
             captured["vault_dump"] = True
 
-    from latticeai.core.agent import AgentRuntime
+    from latticeai.core.agent import SingleAgentRuntime
 
-    runtime = AgentRuntime.__new__(AgentRuntime)
+    runtime = SingleAgentRuntime.__new__(SingleAgentRuntime)
     runtime.deps = _Deps()
     ctx = AgentRunContext()
     ctx.transcript = [{"state": "DONE"}]

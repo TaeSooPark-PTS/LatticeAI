@@ -74,6 +74,29 @@ def test_tool_dispatch_service_isolates_role_callbacks():
     admin_service.check_role("run_command", "admin@example.com")
 
 
+def test_build_agent_runtime_returns_single_agent_runtime():
+    from latticeai.core.agent import SingleAgentRuntime
+    from latticeai.services.tool_dispatch import build_agent_runtime
+
+    class ModelRouter:
+        async def generate_as(self, *args, **kwargs):
+            return '{"action":"final","message":"ok"}'
+
+        async def generate(self, *args, **kwargs):
+            return '{"action":"memory","save_to_knowledge":false}'
+
+    runtime = build_agent_runtime(
+        model_router=ModelRouter(),
+        execute_tool=lambda name, args: {"success": True},
+        recent_chat_context=lambda **kwargs: "",
+        clear_history=lambda keep_last: {"cleared": True},
+        knowledge_save=lambda *args, **kwargs: {"status": "ok"},
+        audit=lambda *args, **kwargs: None,
+    )
+
+    assert isinstance(runtime, SingleAgentRuntime)
+
+
 def test_catalog_brief_tokens_are_all_dispatchable():
     import server
     registered = tools.registered_tools()

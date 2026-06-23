@@ -62,7 +62,7 @@ metadata/doc/comment references:
   `latticeai.core.agent.AgentRuntime`.
 - `lattice_brain/__init__.py:8` - package docstring states the no-import
   boundary.
-- `lattice_brain/runtime/__init__.py:46-51` - documentation of current binding
+- `lattice_brain/runtime/__init__.py:46-52` - documentation of current binding
   path through `latticeai`.
 - `lattice_brain/runtime/agent_runtime.py:11-12` - docstring references current
   FastAPI/platform integration classes.

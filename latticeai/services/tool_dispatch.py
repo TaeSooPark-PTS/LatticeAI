@@ -8,11 +8,12 @@ from __future__ import annotations
 
 from dataclasses import dataclass, field
 from pathlib import Path
+import subprocess
 from typing import Any, Callable, Dict, Mapping, Optional
 
 from fastapi import HTTPException
 
-from latticeai.core.agent import AgentDeps, AgentRuntime
+from latticeai.core.agent import AgentDeps, SingleAgentRuntime
 from latticeai.core.agent_prompts import (
     CRITIC_PROMPT,
     EXECUTOR_PROMPT,
@@ -106,6 +107,16 @@ class ToolDispatchService:
                 detail=f"'{tool_name}' 툴은 관리자 전용입니다.",
             )
 
+    def rollback_file(self, path: str) -> Dict[str, Any]:
+        r = subprocess.run(
+            ["git", "checkout", "--", path],
+            cwd=str(AGENT_ROOT),
+            capture_output=True,
+            text=True,
+            timeout=10,
+        )
+        return {"path": path, "ok": r.returncode == 0, "stderr": r.stderr[:200]}
+
 
 DEFAULT_TOOL_DISPATCH_SERVICE = ToolDispatchService()
 
@@ -185,7 +196,7 @@ def build_agent_runtime(
     hooks: Any = None,
     brain_memory: Any = None,
     dispatch_service: ToolDispatchService = DEFAULT_TOOL_DISPATCH_SERVICE,
-) -> AgentRuntime:
+) -> SingleAgentRuntime:
     ensure_agent_root()
     deps = AgentDeps(
         generate_as=model_router.generate_as,
@@ -205,10 +216,11 @@ def build_agent_runtime(
         critic_prompt=CRITIC_PROMPT,
         memory_updater_prompt=MEMORY_UPDATER_PROMPT,
         agent_root=AGENT_ROOT,
+        rollback_file=dispatch_service.rollback_file,
         hooks=hooks,
         brain_memory=brain_memory,
     )
-    return AgentRuntime(deps)
+    return SingleAgentRuntime(deps)
 
 
 def tool_response(fn, *args):

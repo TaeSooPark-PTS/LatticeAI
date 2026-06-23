@@ -141,8 +141,9 @@ portable JSON representation (definition only — no run history or scope).
 
 ### 1.3 Multi-Agent Runtime 2.0 (`latticeai.core.multi_agent`)
 
-v1.x shipped a single-agent state machine (`latticeai.core.agent.AgentRuntime`:
-PLAN → EXECUTE → VERIFY → DONE). v2.0 adds the **orchestration** layer above it:
+v1.x shipped a single-agent state machine (`latticeai.core.agent.SingleAgentRuntime`;
+`latticeai.core.agent.AgentRuntime` remains a compatibility alias) that drives
+PLAN → EXECUTE → VERIFY → DONE. v2.0 adds the **orchestration** layer above it:
 a pipeline of named roles that hand off to one another, retry on a failing
 review, and emit a structured timeline that drops straight into the Workspace
 timeline / Knowledge Graph.
