@@ -300,3 +300,80 @@ def test_archive_routes_verify_and_require_confirmed_restore(tmp_path):
     assert planned.status_code == 200
     assert planned.json()["operation"] == "import"
     assert planned.json()["dry_run"] is True
+
+
+def test_import_preserves_legacy_edge_collisions(tmp_path):
+    """Logical import must keep distinct v2 rows for legacy labels that normalize
+    to the same EdgeType (lossless collision case for hardening)."""
+    store = KnowledgeGraphStore(tmp_path / "kg.sqlite", tmp_path / "blobs")
+    # minimal seed
+    with store._connect() as conn:
+        conn.execute(
+            "INSERT INTO nodes(id,type,title,summary,metadata_json,raw_json,created_at,updated_at) "
+            "VALUES (?,?,?,?,?,?,?,?)",
+            ("a", "Concept", "A", "", "{}", "{}", "2026-01-01", "2026-01-01"),
+        )
+        conn.execute(
+            "INSERT INTO nodes(id,type,title,summary,metadata_json,raw_json,created_at,updated_at) "
+            "VALUES (?,?,?,?,?,?,?,?)",
+            ("b", "Concept", "B", "", "{}", "{}", "2026-01-01", "2026-01-01"),
+        )
+        # legacy table may only keep one, but import artifact can carry both
+    art = {
+        "header": {"graph_schema_version": 1},
+        "nodes": [
+            {
+                "id": "a",
+                "type": "Concept",
+                "title": "A",
+                "summary": "",
+                "metadata_json": "{}",
+                "raw_json": "{}",
+            },
+            {
+                "id": "b",
+                "type": "Concept",
+                "title": "B",
+                "summary": "",
+                "metadata_json": "{}",
+                "raw_json": "{}",
+            },
+        ],
+        "edges": [
+            {
+                "id": "e1",
+                "from_node": "a",
+                "to_node": "b",
+                "type": "mentions",
+                "weight": 1.0,
+                "metadata_json": "{}",
+            },
+            {
+                "id": "e2",
+                "from_node": "a",
+                "to_node": "b",
+                "type": "관련됨",
+                "weight": 1.0,
+                "metadata_json": "{}",
+            },
+        ],
+        "chunks": [],
+        "knowledge_sources": [],
+        "provenance": [],
+    }
+    res = store.import_graph_data(art, mode="replace")
+    assert res.get("imported")
+    with store._connect() as conn:
+        n = conn.execute(
+            "SELECT COUNT(*) FROM edges_v2 WHERE source='a' AND target='b'"
+        ).fetchone()[0]
+        legs = sorted(
+            r[0]
+            for r in conn.execute(
+                "SELECT legacy_type FROM edges_v2 WHERE source='a' AND target='b'"
+            )
+        )
+    assert n == 2, "v2 keeps colliding legacy labels as distinct projected rows"
+    # v2 must retain the distinction even if legacy collapsed
+    # (import now passes legacy_label to force distinct legacy_type)
+    assert legs == ["mentions", "관련됨"]

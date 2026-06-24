@@ -331,17 +331,31 @@ class KnowledgeGraphProjectionMixin:
         edge_id: Optional[str] = None,
         created_at: Optional[str] = None,
         strict: bool = False,
+        legacy_type: Optional[str] = None,
     ) -> None:
         if KGStoreV2 is None:
             if strict:
                 raise RuntimeError("Knowledge Graph v2 schema is unavailable")
             return
-        eid = (
-            edge_id or f"edge:{_sha256_text(f'{from_node}|{edge_type}|{to_node}')[:24]}"
-        )
+        explicit_legacy_type = legacy_type is not None
+        leg_type = legacy_type if explicit_legacy_type else edge_type
+        # Native canonical writes (and write-door dedupes) use legacy_type=''
+        # so (source,target,type) is the effective key.
+        # Import paths can pass distinct legacy_type to keep colliding legacy
+        # labels as separate rows (lossless for old data).
+        if leg_type and EdgeType is not None:
+            try:
+                if EdgeType.from_legacy(leg_type).value == leg_type:
+                    leg_type = ""
+            except ValueError:
+                pass
         norm_type = (
             EdgeType.from_legacy(edge_type).value if EdgeType is not None else edge_type
         )
+        if explicit_legacy_type and leg_type:
+            eid = f"edge:{_sha256_text(f'{from_node}|{norm_type}|{to_node}|{leg_type}')[:24]}"
+        else:
+            eid = edge_id or f"edge:{_sha256_text(f'{from_node}|{norm_type}|{to_node}')[:24]}"
         meta_str = metadata_json if metadata_json is not None else "{}"
         confidence = float(_safe_loads(meta_str).get("confidence", 1.0))
         try:
@@ -360,7 +374,7 @@ class KnowledgeGraphProjectionMixin:
                     from_node,
                     to_node,
                     norm_type,
-                    edge_type,
+                    leg_type,
                     float(weight),
                     confidence,
                     meta_str,
@@ -371,7 +385,7 @@ class KnowledgeGraphProjectionMixin:
             # (the UNIQUE upsert + weight=max alone would erase recurrence).
             row = conn.execute(
                 "SELECT id FROM edges_v2 WHERE source=? AND target=? AND type=? AND legacy_type=?",
-                (from_node, to_node, norm_type, edge_type),
+                (from_node, to_node, norm_type, leg_type),
             ).fetchone()
             if row is not None:
                 conn.execute(

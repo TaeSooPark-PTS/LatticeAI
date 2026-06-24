@@ -329,13 +329,21 @@ class KnowledgeGraphProvenanceMixin:
                     metadata=_safe_loads(c.get("metadata_json")),
                 )
             for e in edges:
+                e_meta = _safe_loads(e.get("metadata_json")) or {}
+                leg_label = e_meta.get("legacy_label")
+                if not leg_label:
+                    orig = e.get("type") or ""
+                    if orig:
+                        # preserve whatever label came from export (legacy or canon)
+                        leg_label = orig
                 self._upsert_edge(
                     conn,
                     e["from_node"],
                     e["to_node"],
                     e["type"],
                     weight=float(e.get("weight") or 1.0),
-                    metadata=_safe_loads(e.get("metadata_json")),
+                    metadata=e_meta,
+                    legacy_label=leg_label,
                 )
             for s in sources:
                 conn.execute(

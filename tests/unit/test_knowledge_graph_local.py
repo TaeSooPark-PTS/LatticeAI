@@ -189,6 +189,8 @@ def test_index_local_folder_marks_missing_files_deleted(tmp_path):
 
     assert result["counts"]["deleted"] == 1
     assert store.stats()["local_file_status"]["deleted"] == 1
+    rep = store._v2_sync_report()
+    assert rep.get("in_sync", False), f"v2 drift after reindex-delete: {rep}"
 
 
 def test_set_local_source_watch_updates_source(tmp_path):
@@ -219,3 +221,7 @@ def test_remove_local_source_removes_only_derived_index(tmp_path):
     assert local_file.exists()
     assert store.local_sources()["sources"] == []
     assert store.stats()["local_sources"] == 0
+
+    # explicit drift assertion for local-folder delete/reindex/remove paths
+    rep = store._v2_sync_report()
+    assert rep.get("in_sync", False), f"v2 drift after remove_local_source: {rep}"

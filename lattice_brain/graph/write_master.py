@@ -73,20 +73,46 @@ class KnowledgeGraphWriteMixin:
         edge_type: str,
         weight: float = 1.0,
         metadata: Optional[Dict[str, Any]] = None,
+        *,
+        legacy_label: Optional[str] = None,
     ) -> str:
         # v4 write door: every new edge stores the canonical EdgeType value —
         # free-string types (e.g. '포함함', '언급함') are normalized here, so no
         # caller can mint new legacy taxonomy. The original label survives in
         # metadata.legacy_label for traceability.
+        #
+        # legacy_type in edges_v2:
+        #   - normal write door: synonyms always dedupe to ONE row with legacy_type=''
+        #   - import (passes legacy_label=) : preserves distinct legacy labels as
+        #     separate v2 rows (lossless collision for old artifacts / backfill)
+        passed_for_legacy = legacy_label or edge_type
         if EdgeType is not None:
             canonical = EdgeType.from_legacy(edge_type).value
-            if canonical != edge_type:
+            if canonical != edge_type or (legacy_label and legacy_label != canonical):
                 metadata = dict(metadata or {})
-                metadata.setdefault("legacy_label", edge_type)
+                ll = legacy_label or edge_type
+                if ll != canonical:
+                    metadata.setdefault("legacy_label", ll)
             edge_type = canonical
         edge_id = f"edge:{_sha256_text(f'{from_node}|{edge_type}|{to_node}')[:24]}"
         now = _now()
         meta_json = _json(metadata)  # canonical string shared with the projection
+        v2_legacy = ""
+        if passed_for_legacy and passed_for_legacy != edge_type:
+            if legacy_label is not None:
+                # explicit legacy_label from import path forces distinct legacy_type
+                # rows in v2 for collision preservation
+                v2_legacy = passed_for_legacy
+            else:
+                # normal write-door dedupes even for synonym labels (legacy_type='')
+                v2_legacy = ""
+        # v2 may use distinct eid when preserving legacy collisions (different from
+        # the canon-based edge_id used for legacy edges table which always dedupes)
+        v2_eid = (
+            f"edge:{_sha256_text(f'{from_node}|{edge_type}|{to_node}|{v2_legacy}')[:24]}"
+            if v2_legacy
+            else edge_id
+        )
         self._v2_project_edge(
             conn,
             from_node,
@@ -94,9 +120,10 @@ class KnowledgeGraphWriteMixin:
             edge_type,
             float(weight),
             meta_json,
-            edge_id=edge_id,
+            edge_id=v2_eid,
             created_at=now,
             strict=True,
+            legacy_type=v2_legacy,
         )
         conn.execute(
             """
