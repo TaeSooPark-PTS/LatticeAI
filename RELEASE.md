@@ -25,6 +25,11 @@ release-note claims.
   contract, exact 8.0.0 artifacts, current docs, and release evidence.
 - Made logical Knowledge Graph `replace` imports transactional, so malformed
   imports roll back without clearing the existing graph.
+- Locked Knowledge Graph read-equivalence coverage for `list_documents`,
+  `get_node`, `relationship_search`, and `traverse` across legacy and v2
+  read paths.
+- Preserved colliding legacy edge labels during logical import/backfill without
+  regressing native write-door canonical edge dedupe.
 - Synchronized Python, npm, VS Code extension, Tauri, static asset, marketplace,
   workspace, and multi-agent runtime versions to 8.0.0.
 - Refreshed current-release documentation while preserving historical 7.x

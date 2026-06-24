@@ -223,6 +223,9 @@ The current release is **8.0.0 — Runtime Architecture Contract**:
   detect catalog drift from one source of truth.
 - Knowledge Graph hardening is represented as an additive reprojection strategy
   with legacy read compatibility and non-destructive rollback/export paths.
+- KG v2 read-equivalence is locked for document listing, node lookup,
+  relationship search, and traversal, while logical imports preserve colliding
+  legacy edge labels without breaking native canonical dedupe.
 - Product readiness is machine-checkable through `product_readiness()`, which
   composes the architecture contract with exact artifact/docs/workflow evidence.
 - CI and release workflows continue to run frontend lint/typecheck/build gates

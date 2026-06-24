@@ -11,6 +11,10 @@ Runtime Architecture Contract release.
   policy, and permission ownership are visible from one registry contract.
 - Made Knowledge Graph logical `replace` imports transactional, preserving the
   existing graph if a malformed import fails mid-run.
+- Locked KG v2 read-equivalence for document listing, node lookup,
+  relationship search, and traversal.
+- Preserved colliding legacy edge labels during logical import/backfill while
+  keeping native write-door synonym dedupe canonical.
 - Updated product readiness, package metadata, Tauri metadata, static asset
   metadata, and current-release documentation to 8.0.0.
 

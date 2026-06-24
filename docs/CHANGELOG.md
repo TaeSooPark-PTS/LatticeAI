@@ -22,6 +22,10 @@ existed at that release.
 ### Fixed
 - Made logical Knowledge Graph `replace` imports transactional so malformed
   imports roll back without clearing the existing graph.
+- Locked v2 read-equivalence coverage for `list_documents`, `get_node`,
+  `relationship_search`, and `traverse`.
+- Preserved colliding legacy edge labels during logical import/backfill while
+  keeping native write-door synonym dedupe canonical.
 
 ## [7.9.0] - 2026-06-23
 
