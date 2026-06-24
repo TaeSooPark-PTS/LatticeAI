@@ -1,10 +1,9 @@
 """Machine-checkable architecture readiness gates for release work.
 
-The 7.7 complete-product line preserves the 7.6 closure of the two local review
-notes by keeping their architectural claims in a small contract: AgentRuntime,
-ToolRegistry, central Config,
-decomposed API routers, and Knowledge Graph portability must all be discoverable
-and testable before the release can be called complete.
+8.0.0 turns the major architecture priorities into an explicit release
+contract. AgentRuntime, ToolRegistry, central Config, decomposed server runtime,
+and Knowledge Graph stabilization must be discoverable, ordered, and backed by
+tests before the release can be called complete.
 """
 
 from __future__ import annotations
@@ -13,6 +12,19 @@ import importlib
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Any, Dict, List
+
+
+ARCHITECTURE_VERSION_TARGET = "8.0.0"
+
+PREFERRED_REFACTORING_ORDER = [
+    "agent-runtime",
+    "tool-registry",
+    "config-centralization",
+    "server-decomposition",
+    "kg-hardening",
+    "documentation-sync",
+    "ui-enhancements",
+]
 
 
 @dataclass(frozen=True)
@@ -108,12 +120,43 @@ def architecture_readiness(root: Path | None = None) -> Dict[str, Any]:
 
     api_router_count = len(list((root / "latticeai" / "api").glob("*.py")))
     runtime_module_count = len(list((root / "latticeai" / "runtime").glob("*.py")))
+    ordered_gate_ids = [gate.id for gate in gates]
+    contract = {
+        "schema_version": "lattice-architecture-contract/v1",
+        "version_target": ARCHITECTURE_VERSION_TARGET,
+        "refactoring_order": list(PREFERRED_REFACTORING_ORDER),
+        "boundaries": {
+            "agent-runtime": {
+                "owner": "lattice_brain.runtime.agent_runtime.AgentRuntime",
+                "surface": "/agents",
+                "status": "facade",
+            },
+            "tool-registry": {
+                "owner": "latticeai.core.tool_registry.ToolRegistry",
+                "surface": "/tools",
+                "status": "registry",
+            },
+            "config-centralization": {
+                "owner": "latticeai.core.config.Config",
+                "surface": "composition root",
+                "status": "typed-config",
+            },
+            "kg-hardening": {
+                "owner": "lattice_brain.graph.store.KnowledgeGraphStore",
+                "strategy": "additive reprojection with legacy read compatibility",
+                "rollback": "portable export/import and non-destructive migration paths",
+            },
+        },
+        "ordered_gate_ids": ordered_gate_ids,
+    }
     return {
         "status": "complete" if all(gate.status == "complete" for gate in gates) else "incomplete",
-        "version_target": "7.9.0",
+        "version_target": ARCHITECTURE_VERSION_TARGET,
+        "contract": contract,
         "gates": [gate.__dict__ for gate in gates],
         "metrics": {
             "api_router_modules": api_router_count,
             "runtime_modules": runtime_module_count,
+            "architecture_gates": len(gates),
         },
     }

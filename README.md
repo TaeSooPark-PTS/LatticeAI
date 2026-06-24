@@ -1,6 +1,6 @@
 # Lattice AI
 
-**Lattice AI 7.9 is the local-first Digital Brain product with cleaner runtime boundaries. It keeps your knowledge durable across any AI model, with Brain Chat Home ready for immediate use and agent execution hardened behind explicit runtime ports.**
+**Lattice AI 8.0 is the local-first Digital Brain platform with hardened runtime architecture. It keeps your knowledge durable across any AI model, with AgentRuntime, ToolRegistry, central Config, and Knowledge Graph stability tracked by explicit release contracts.**
 
 **Lattice AI는 모델이 바뀌어도 내 지식과 맥락을 보존하는 로컬 우선 AI 브레인입니다.**
 
@@ -11,7 +11,7 @@ downloads, update checks, and other external communication happen only after
 explicit consent.
 
 It is not a ChatGPT clone, a model launcher, a graph database, or a note app.
-It is the finished private AI memory layer wrapped in a Living Brain experience — now with a clearer 7.9 agent-runtime boundary.
+It is the finished private AI memory layer wrapped in a Living Brain experience — now with the 8.0 runtime architecture contract behind it.
 
 [![PyPI Version](https://img.shields.io/pypi/v/ltcai?label=PyPI)](https://pypi.org/project/ltcai/)
 [![npm Version](https://img.shields.io/npm/v/ltcai?label=npm)](https://www.npmjs.com/package/ltcai)
@@ -64,7 +64,7 @@ You need Lattice AI when:
 
 ## Living Brain Flow
 
-The screenshots below are release evidence captures. The 7.9 line keeps the
+The screenshots below are release evidence captures. The 8.0 line keeps the
 same first-run flow and rebuilds the Brain Chat Home layout so chat and the
 composer are the first visible action.
 
@@ -210,36 +210,36 @@ See [docs/DEVELOPMENT.md](docs/DEVELOPMENT.md) for developer workflow details.
 
 ## Current Release
 
-The current release is **7.9.0 — Agent Runtime Boundary Hardening**:
+The current release is **8.0.0 — Runtime Architecture Contract**:
 
-- The single-agent state machine is now named `SingleAgentRuntime`, while the
-  historical `AgentRuntime` import remains as a compatibility alias.
+- `architecture_readiness()` now emits `lattice-architecture-contract/v1`,
+  including the preferred refactoring order and concrete ownership for
+  AgentRuntime, ToolRegistry, central Config, server decomposition, and KG
+  hardening.
 - The product AgentRuntime facade in `lattice_brain.runtime.agent_runtime`
   remains the unambiguous `/agents` execution and observability boundary.
-- Agent rollback is now an injected runtime port wired through
-  `ToolDispatchService`, so the core state machine no longer shells out directly.
-- Both runtime surfaces expose a `runtime-boundary/v1` descriptor so tests and
-  API clients can identify the owning execution boundary without relying on
-  ambiguous class names.
-- A shared `RuntimeBoundaryProtocol` now fixes the common inspection surface
-  while letting each runtime keep its own execution methods.
+- ToolRegistry manifest output now carries `tool-registry-contract/v1` with
+  dispatch, policy, and permission ownership, so runtime/admin surfaces can
+  detect catalog drift from one source of truth.
+- Knowledge Graph hardening is represented as an additive reprojection strategy
+  with legacy read compatibility and non-destructive rollback/export paths.
 - Product readiness is machine-checkable through `product_readiness()`, which
   composes the architecture contract with exact artifact/docs/workflow evidence.
-- CI and release workflows now run frontend lint/typecheck/build gates plus the
-  7.9 product readiness score before a tag can be treated as release-safe.
+- CI and release workflows continue to run frontend lint/typecheck/build gates
+  plus the 8.0 product readiness score before a tag can be treated as release-safe.
 
-Expected artifacts for 7.9.0 release must use exact filenames:
+Expected artifacts for 8.0.0 release must use exact filenames:
 
-- `dist/ltcai-7.9.0-py3-none-any.whl`
-- `dist/ltcai-7.9.0.tar.gz`
-- `ltcai-7.9.0.tgz`
-- `dist/ltcai-7.9.0.vsix`
-- `src-tauri/target/release/bundle/dmg/Lattice AI_7.9.0_aarch64.dmg`
+- `dist/ltcai-8.0.0-py3-none-any.whl`
+- `dist/ltcai-8.0.0.tar.gz`
+- `ltcai-8.0.0.tgz`
+- `dist/ltcai-8.0.0.vsix`
+- `src-tauri/target/release/bundle/dmg/Lattice AI_8.0.0_aarch64.dmg`
 
 Do not use wildcard artifact uploads. Package registry publishing remains owner-run.
 
 See [docs/ROADMAP_RECOMMENDATIONS.md](docs/ROADMAP_RECOMMENDATIONS.md) for the
-strategic roadmap slices applied through 7.9.0 and the follow-up tracks.
+strategic roadmap slices applied through 8.0.0 and the follow-up tracks.
 
 ## Known Limitations
 
@@ -256,6 +256,7 @@ strategic roadmap slices applied through 7.9.0 and the follow-up tracks.
 
 | Version | Theme |
 | --- | --- |
+| 8.0.0 | Runtime Architecture Contract: AgentRuntime, ToolRegistry, central Config, server decomposition, and KG hardening are captured as machine-checkable release boundaries with exact 8.0.0 artifacts |
 | 7.9.0 | Agent Runtime Boundary Hardening: explicit `SingleAgentRuntime`, compatibility alias preservation, injected rollback port, and release/readiness docs aligned to the product AgentRuntime facade |
 | 7.8.0 | Brain Chat Home UX Simplification: chat-first first viewport, visible workspace navigation, collapsed source/status utilities, hidden default depth controls, and removal of obsolete Brain UX components |
 | 7.7.0 | Complete Product Polish: command-center Brain Home, repaired Review Center evidence, exact 7.7 docs/artifacts, product readiness gate, and stronger CI/release checks |

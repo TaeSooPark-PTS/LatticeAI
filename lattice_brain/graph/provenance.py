@@ -292,10 +292,24 @@ class KnowledgeGraphProvenanceMixin:
             plan["dry_run"] = True
             return plan
 
-        if mode == "replace":
-            self.clear_all()
-
         with self._connect() as conn:
+            if mode == "replace":
+                # Keep replacement imports transactional. The old clear_all()
+                # path committed before the import started, so a malformed
+                # artifact could leave a cleared or partially rebuilt graph.
+                # These deletes roll back with the rest of the import.
+                for table in (
+                    "local_file_index",
+                    "knowledge_sources",
+                    "chunks",
+                    "edges",
+                    "nodes",
+                    "vector_embeddings",
+                ):
+                    conn.execute(f"DELETE FROM {table}")
+                if KGStoreV2 is not None:
+                    conn.execute("DELETE FROM edges_v2")
+                    conn.execute("DELETE FROM nodes_v2")
             for n in nodes:
                 self._upsert_node(
                     conn,

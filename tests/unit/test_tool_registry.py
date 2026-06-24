@@ -45,6 +45,9 @@ def test_tool_registry_owns_permission_views():
 def test_tool_registry_manifest_reports_contract_diagnostics():
     manifest = tools.DEFAULT_TOOL_REGISTRY.manifest()
     diagnostics = manifest["diagnostics"]
+    assert manifest["schema_version"] == "tool-registry-contract/v1"
+    assert manifest["boundary"]["owner"] == "latticeai.core.tool_registry.ToolRegistry"
+    assert manifest["boundary"]["permission_owner"] == "latticeai.services.tool_dispatch.ToolDispatchService"
     assert manifest["status"] in {"ok", "degraded"}
     assert diagnostics["registered_tools"] == len(tools.registered_tools())
     read_file = next(item for item in manifest["tools"] if item["name"] == "read_file")

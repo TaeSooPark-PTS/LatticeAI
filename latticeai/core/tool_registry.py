@@ -292,7 +292,14 @@ class ToolRegistry:
             })
         diagnostics = self.diagnostics()
         return {
+            "schema_version": "tool-registry-contract/v1",
             "status": "ok" if diagnostics["ready"] else "degraded",
+            "boundary": {
+                "owner": "latticeai.core.tool_registry.ToolRegistry",
+                "dispatch_owner": "tools.DEFAULT_TOOL_REGISTRY",
+                "policy_owner": "latticeai.core.tool_registry.ToolRegistry",
+                "permission_owner": "latticeai.services.tool_dispatch.ToolDispatchService",
+            },
             "catalog_brief": self.catalog_brief.strip(),
             "diagnostics": diagnostics,
             "tools": tools,

@@ -6,6 +6,23 @@ existed at that release.
 
 ## [Unreleased]
 
+## [8.0.0] - 2026-06-24
+
+### Changed
+- Added `lattice-architecture-contract/v1` to make the AgentRuntime,
+  ToolRegistry, Config, server decomposition, and Knowledge Graph stabilization
+  boundaries explicit and testable for the major architecture line.
+- Added `tool-registry-contract/v1` to the ToolRegistry manifest, including
+  dispatch, policy, and permission ownership.
+- Updated architecture and product readiness targets to 8.0.0.
+- Synchronized package/runtime/static/Tauri metadata to 8.0.0.
+- Updated current-release docs and exact artifact names to 8.0.0 while
+  preserving historical 7.x entries.
+
+### Fixed
+- Made logical Knowledge Graph `replace` imports transactional so malformed
+  imports roll back without clearing the existing graph.
+
 ## [7.9.0] - 2026-06-23
 
 ### Changed

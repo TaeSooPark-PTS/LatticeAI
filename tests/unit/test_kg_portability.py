@@ -77,6 +77,21 @@ def test_import_refuses_newer_schema(tmp_path):
         svc.import_data(art)
 
 
+def test_replace_import_rolls_back_on_mid_import_failure(tmp_path):
+    original = _seeded(tmp_path, "original")
+    before = _node_totals(original)
+    replacement = _seeded(tmp_path, "replacement")
+    art = KGPortabilityService(knowledge_graph=replacement, data_dir=tmp_path / "export").export()
+    art["nodes"].append({"type": "Broken", "title": "missing id"})
+
+    svc = KGPortabilityService(knowledge_graph=original, data_dir=tmp_path / "import")
+
+    with pytest.raises(KeyError):
+        svc.import_data(art, mode="replace")
+
+    assert _node_totals(original) == before
+
+
 def test_backup_clear_restore_recovers_graph(tmp_path):
     store = _seeded(tmp_path, "kg")
     svc = KGPortabilityService(knowledge_graph=store, data_dir=tmp_path / "data")

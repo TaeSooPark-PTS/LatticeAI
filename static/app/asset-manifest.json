@@ -1,5 +1,5 @@
 {
-  "version": "7.9.0",
+  "version": "8.0.0",
   "generated_at": "vite",
   "entrypoints": {
     "app": "/static/app/index.html"

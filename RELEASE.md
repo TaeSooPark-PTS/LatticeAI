@@ -7,6 +7,36 @@
 > PyPI / npm / VS Code Marketplace / Open VSX 배포는 아래 수동 절차로만
 > 진행합니다. 태그 생성은 패키지 스토어 publish를 자동으로 트리거하지 않습니다.
 
+## v8.0.0 — Runtime Architecture Contract (2026-06-24)
+
+8.0.0 makes the platform architecture release line explicit. AgentRuntime,
+ToolRegistry, central Config, server decomposition, and Knowledge Graph
+stabilization are now represented as machine-checkable contracts rather than
+release-note claims.
+
+### Changed
+- Added `lattice-architecture-contract/v1` to `architecture_readiness()`,
+  including the preferred refactoring order and concrete owners for runtime,
+  registry, config, server, and KG boundaries.
+- Added `tool-registry-contract/v1` to the live ToolRegistry manifest so
+  dispatch, policy, and permission ownership are visible from one registry
+  source of truth.
+- Updated product readiness to target 8.0.0 and require the architecture
+  contract, exact 8.0.0 artifacts, current docs, and release evidence.
+- Made logical Knowledge Graph `replace` imports transactional, so malformed
+  imports roll back without clearing the existing graph.
+- Synchronized Python, npm, VS Code extension, Tauri, static asset, marketplace,
+  workspace, and multi-agent runtime versions to 8.0.0.
+- Refreshed current-release documentation while preserving historical 7.x
+  release history.
+
+Expected artifacts (exact 8.0.0 names only):
+- dist/ltcai-8.0.0-py3-none-any.whl
+- dist/ltcai-8.0.0.tar.gz
+- dist/ltcai-8.0.0.vsix
+- ltcai-8.0.0.tgz
+- src-tauri/target/release/bundle/dmg/Lattice AI_8.0.0_aarch64.dmg
+
 ## v7.9.0 — Agent Runtime Boundary Hardening (2026-06-23)
 
 7.9.0 advances the top architecture priority: AgentRuntime extraction. The
