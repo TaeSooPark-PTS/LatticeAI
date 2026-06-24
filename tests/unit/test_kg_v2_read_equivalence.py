@@ -13,7 +13,6 @@ import pytest
 kg = pytest.importorskip("knowledge_graph")
 pytest.importorskip("kg_schema")
 
-
 # (id, type, title, summary, metadata) — varied types incl. ones the reads
 # filter on (Decision/Task/Document/File/Concept/Topic) and Korean text.
 _NODES = [
@@ -207,3 +206,80 @@ def test_v2_reflects_deletes(store):
     store._read_from_v2 = True
     assert store.search("rag", limit=20)["matches"] == []
     assert store.stats()["nodes"] == {}
+
+
+# Expanded coverage per 8.0.0+ KG hardening debt: list_documents, get_node,
+# relationship_search, traverse must also be equivalent under _read_from_v2 toggle.
+def test_list_documents_equivalent(store):
+    legacy, v2 = _both(store, lambda: store.list_documents(limit=50))
+    assert _node_ids(legacy.get("documents", [])) == _node_ids(v2.get("documents", [])), "list_documents differs"
+
+
+def test_get_node_equivalent(store):
+    for nid in ["doc:spec", "concept:rag", "decision:db"]:
+        legacy, v2 = _both(store, lambda: store.get_node(nid))
+        assert legacy == v2, f"get_node({nid}) differs"
+
+
+def test_relationship_search_equivalent(store):
+    for args in [
+        {"query": "rag"},
+        {"node_id": "doc:spec"},
+        {"relationship_type": "references"},
+        {"query": "spec", "relationship_type": "ref"},
+    ]:
+        legacy, v2 = _both(store, lambda: store.relationship_search(**args, limit=20))
+        assert legacy == v2, f"relationship_search({args}) differs"
+
+
+def test_traverse_equivalent(store):
+    for nid, depth in [("concept:rag", 1), ("decision:db", 2), ("file:main", 1)]:
+        legacy, v2 = _both(store, lambda: store.traverse(nid, depth=depth, limit=50))
+        assert _node_ids(legacy.get("nodes", [])) == _node_ids(v2.get("nodes", [])), f"traverse({nid},d={depth}) nodes differ"
+        # edges should match too
+        norm = lambda es: sorted((e.get("from") or e.get("from_node"), e.get("to") or e.get("to_node"), e.get("type")) for e in es)
+        assert norm(legacy.get("edges", [])) == norm(v2.get("edges", [])), f"traverse({nid}) edges differ"
+
+
+def test_list_documents_indexed_state_equivalent(tmp_path):
+    """list_documents reports indexed=True via a Chunk count; that path must be
+    equivalent under the v2 toggle too.
+
+    The shared seed has no Chunk node, so the chunk_count/indexed branch is
+    always 0 there. This seeds a Document + a Chunk that references it so both
+    the legacy tables and the kgv2_* views must reconstruct the Chunk and agree
+    that the document is indexed. Guards against the v2 projection silently
+    dropping non-graph-visible node types (Chunk) on backfill.
+    """
+    s = kg.KnowledgeGraphStore(tmp_path / "kg.sqlite", tmp_path / "blobs")
+    with s._connect() as conn:
+        conn.execute(
+            "INSERT INTO nodes(id,type,title,summary,metadata_json,raw_json,created_at,updated_at)"
+            " VALUES (?,?,?,?,?,?,?,?)",
+            ("doc:indexed", "Document", "Indexed spec", "indexed document",
+             json.dumps({"filename": "indexed.md"}), "{}",
+             "2026-01-01T00:00:00", "2026-01-01T00:00:00"),
+        )
+        # a Chunk whose metadata references the document id ⇒ chunk_count > 0
+        conn.execute(
+            "INSERT INTO nodes(id,type,title,summary,metadata_json,raw_json,created_at,updated_at)"
+            " VALUES (?,?,?,?,?,?,?,?)",
+            ("chunk:doc:indexed:0", "Chunk", "chunk 0", "chunk body",
+             json.dumps({"document_id": "doc:indexed", "ord": 0}), "{}",
+             "2026-01-02T00:00:00", "2026-01-02T00:00:00"),
+        )
+    s._backfill_v2_if_needed()
+
+    legacy, v2 = _both(s, lambda: s.list_documents(limit=50))
+    assert legacy == v2, "list_documents (indexed state) diverges under v2 toggle"
+    by_id = {d["id"]: d for d in v2.get("documents", [])}
+    assert by_id["doc:indexed"]["indexed"] is True, "Chunk not counted via v2 projection"
+    assert by_id["doc:indexed"]["chunks"] == 1
+
+
+def test_get_node_missing_raises_on_both_paths(store):
+    """A missing node must raise identically on legacy and v2 (not 404 on one path)."""
+    for read_v2 in (False, True):
+        store._read_from_v2 = read_v2
+        with pytest.raises(ValueError):
+            store.get_node("concept:does-not-exist")
