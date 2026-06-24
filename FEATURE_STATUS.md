@@ -1,31 +1,37 @@
-# Lattice AI — Feature Status (v7.9.0)
+# Lattice AI — Feature Status (v8.0.0)
 
-**Current release line:** v7.9.0 — Agent Runtime Boundary Hardening.
+**Current release line:** v8.0.0 — Runtime Architecture Contract.
 
 Lattice AI is positioned as a production-grade local-first Digital Brain. The
-7.9 line keeps the product proof from 7.8 while making the agent runtime
-boundary clearer and easier to maintain.
+8.0 line elevates the 7.9 runtime-boundary work into an enforced **Runtime
+Architecture Contract**: every core subsystem (AgentRuntime, ToolRegistry,
+central Config, Knowledge Graph) exposes a versioned contract gate that is
+tested in CI and used in production paths.
 
-## v7.9.0 Agent Runtime Boundary Hardening — current release line
+## v8.0.0 Runtime Architecture Contract — current release line
 
-7.9.0 turns the complete product runtime into a cleaner architecture surface.
-The product AgentRuntime facade stays in `lattice_brain.runtime`, the legacy
-single-agent loop is explicitly named `SingleAgentRuntime`, and rollback is
-wired through an injected tool-dispatch port.
+8.0.0 formalizes the runtime architecture priorities into machine-checkable
+contracts per the preferred refactoring order. `architecture_readiness()`
+emits `lattice-architecture-contract/v1` with owners and surfaces. ToolRegistry
+exposes `tool-registry-contract/v1`. The product AgentRuntime facade stays in
+`lattice_brain.runtime`, legacy loop is `SingleAgentRuntime`, rollback via
+injected port, and KG uses transactional reprojection.
 
 | Area | Status | Evidence |
 | --- | --- | --- |
 | **Production classifiers** | COMPLETE | Changed to "Development Status :: 5 - Production/Stable" |
-| **Version & metadata sync** | COMPLETE | All 7.9.0 across py, npm, tauri, core, docs |
-| **UI/UX Product Polish** | COMPLETE | Brain Chat Home simplified, workspace navigation visible, utility controls collapsed |
-| **Post-release UX draft integration** | COMPLETE | Six UX draft files folded into canonical Brain/onboarding surfaces with shared CSS, bilingual copy, and visual smoke coverage |
-| **Docs as product proof** | COMPLETE | RELEASE, CHANGELOG, README, FEATURE updated to declare 7.9 Agent Runtime boundary hardening |
-| **AgentRuntime + ToolRegistry** | COMPLETE | Tested boundaries, `runtime-boundary/v1` descriptors, `RuntimeBoundaryProtocol`, imported, used in production paths |
-| **Build & validation gates** | COMPLETE | typecheck, cargo, unit tests, tauri build checks pass |
-| **Product readiness evaluation** | COMPLETE | `product_readiness()` and visual/release evidence gates |
+| **Architecture contract gates** | COMPLETE | `lattice-architecture-contract/v1`, `tool-registry-contract/v1`, `runtime-boundary/v1`; all gates COMPLETE in architecture_readiness() |
+| **AgentRuntime boundary** | COMPLETE | `lattice_brain.runtime.agent_runtime.AgentRuntime` + SingleAgentRuntime alias, RuntimeBoundaryProtocol |
+| **ToolRegistry separation** | COMPLETE | `latticeai.core.tool_registry.ToolRegistry` owns catalog/governance/permissions; `latticeai.services.tool_dispatch.ToolDispatchService` owns dispatch |
+| **Central Config** | COMPLETE | `latticeai.core.config.Config` + runtime config context |
+| **KG hardening** | COMPLETE | `lattice_brain.graph.store.KnowledgeGraphStore` + transactional replace + portability |
+| **Version & metadata sync** | COMPLETE | All 8.0.0 across py, npm, tauri, core, docs |
+| **Docs as product proof** | COMPLETE | RELEASE, CHANGELOG, README, FEATURE updated to declare 8.0 Runtime Architecture Contract |
+| **Build & validation gates** | COMPLETE | typecheck, cargo, unit tests, tauri build, contract checks pass |
+| **Product readiness evaluation** | COMPLETE | `product_readiness()` score 7/7 + contract gates + release evidence |
 
 
-**Current release line:** v7.9.0 Agent Runtime Boundary Hardening (see top).
+**Current release line:** v8.0.0 Runtime Architecture Contract (see top).
 Lattice AI is a local-first Digital Brain that keeps your knowledge durable
 across any AI model. The primary experience is Brain plus conversation; the
 graph remains durable infrastructure and advanced exploration, not the home
