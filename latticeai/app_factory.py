@@ -44,6 +44,7 @@ from latticeai.runtime.platform_services_runtime import (
 from latticeai.runtime.platform_runtime_wiring import build_platform_automation_runtime
 from latticeai.runtime.persistence_runtime import build_persistence_runtime
 from latticeai.runtime.review_wiring import build_review_run_now_runner
+from latticeai.runtime.sso_runtime import build_sso_runtime
 from latticeai.runtime.router_registration import (
     build_auth_admin_security_router_bundle,
     build_static_routes_bundle,
@@ -249,29 +250,12 @@ def _build(config: "Optional[Config]" = None) -> Dict[str, Any]:
     SSO_CLIENT_SECRET = _security_runtime["SSO_CLIENT_SECRET"]
     SSO_REDIRECT_URI = _security_runtime["SSO_REDIRECT_URI"]
     SSO_PROVIDER_NAME = _security_runtime["SSO_PROVIDER_NAME"]
-    _sso_discovery_cache: Optional[Dict] = None
-    _sso_discovery_cache_url: str = ""
-    _sso_states: Dict[str, float] = {}  # state → timestamp (CSRF protection)
 
-    async def _get_sso_discovery() -> Optional[Dict]:
-        nonlocal _sso_discovery_cache, _sso_discovery_cache_url
-        settings = get_sso_settings()
-        discovery_url = settings.get("discovery_url", "")
-        if _sso_discovery_cache and _sso_discovery_cache_url == discovery_url:
-            return _sso_discovery_cache
-        if not discovery_url:
-            return None
-        try:
-            import httpx as _httpx
-            async with _httpx.AsyncClient() as c:
-                r = await c.get(discovery_url, timeout=10)
-                r.raise_for_status()
-                _sso_discovery_cache = r.json()
-                _sso_discovery_cache_url = discovery_url
-        except Exception as e:
-            logging.warning("SSO discovery failed: %s", e)
-            return None
-        return _sso_discovery_cache
+    # SSO cache + discovery built after get_sso_settings is defined (see below)
+    _sso_discovery_cache = None
+    _sso_discovery_cache_url = ""
+    _sso_states: Dict[str, float] = {}
+    _get_sso_discovery = None  # filled after def below
 
     # ── Password hashing — used directly from latticeai.core.security ──────────────
     # (hash_password / verify_password are imported above; no local wrapper needed)
@@ -478,6 +462,17 @@ def _build(config: "Optional[Config]" = None) -> Dict[str, Any]:
 
     def get_sso_settings() -> Dict[str, object]:
         return load_sso_config()
+
+    # Build SSO runtime (cache + helper) now that get_sso_settings exists in scope.
+    if _get_sso_discovery is None:
+        _sso = build_sso_runtime(
+            get_sso_settings=get_sso_settings,
+            logging=logging,
+        )
+        _sso_discovery_cache = _sso["_sso_discovery_cache"]
+        _sso_discovery_cache_url = _sso["_sso_discovery_cache_url"]
+        _sso_states = _sso["_sso_states"]
+        _get_sso_discovery = _sso["_get_sso_discovery"]
 
     def public_sso_config(config: Optional[Dict[str, object]] = None) -> Dict[str, object]:
         cfg = config or get_sso_settings()

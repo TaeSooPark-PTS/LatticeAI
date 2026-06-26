@@ -26,6 +26,8 @@ from typing import List, Mapping, Optional
 from latticeai.core.security import host_is_loopback
 
 
+__all__ = ["Config", "_value", "_str", "_bool", "_int"]
+
 def _value(env: Mapping[str, str], key: str, default: str = "") -> str:
     """Mirror the legacy ``env_value``: ``getenv(key) or default or ""`` (no strip)."""
     return env.get(key) or default or ""
@@ -68,6 +70,7 @@ class Config:
     host: str
     port: int
     network_exposed: bool
+    timezone: str
 
     # ── feature flags ───────────────────────────────────────────────
     enable_telegram: bool
@@ -165,6 +168,7 @@ class Config:
             host=host,
             port=port,
             network_exposed=network_exposed,
+            timezone=_value(env, "LATTICE_TZ", "UTC") or "UTC",
             enable_telegram=_bool(env, "LATTICEAI_ENABLE_TELEGRAM", default=False),
             enable_graph=_bool(env, "LATTICEAI_ENABLE_GRAPH", default=True),
             autoload_models=_bool(env, "LATTICEAI_AUTOLOAD_MODELS", default=is_public),

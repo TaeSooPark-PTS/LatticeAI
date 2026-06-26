@@ -9,6 +9,16 @@ effects at import time.
 
 from __future__ import annotations
 
+__all__ = [
+    "ToolPolicy",
+    "ToolPermission",
+    "TOOL_CATALOG_BRIEF",
+    "FILE_CREATE_ACTIONS",
+    "LOCAL_WRITE_BLOCKED_PREFIXES",
+    "RISK_LEVEL_MAP",
+    "ToolRegistry",
+]
+
 from dataclasses import dataclass, field
 from typing import Any, Callable, Dict, Mapping, Optional, TypedDict
 

@@ -9,7 +9,6 @@ exported or compared without mutating the live knowledge graph.
 from __future__ import annotations
 
 import json
-import os
 import shutil
 import sqlite3
 import zipfile
@@ -20,6 +19,33 @@ from typing import Any, Callable, Dict, Iterable, List, Optional
 
 from lattice_brain.runtime.contracts import realtime_event_contract, run_record_contract, workflow_run_contract
 
+# Extracted pure helpers (keeps this module smaller and focused on the store).
+from .workspace_os_utils import (
+    _atomic_write_json,
+    _deep_merge,
+    _json_hash,
+    _listify,
+    _now,
+    _parse_iso,
+    _safe_slug,
+    _snapshot_graph_import_payload,
+    remove_skill_directory,
+)
+
+__all__ = [
+    "WORKSPACE_OS_VERSION",
+    "WORKSPACE_TYPES",
+    "DEFAULT_WORKSPACE_ID",
+    "WORKSPACE_ROLES",
+    "WORKSPACE_PERMISSIONS",
+    "ROLE_PERMISSIONS",
+    "WORKSPACE_AREAS",
+    "ONBOARDING_STEPS",
+    "MEMORY_KINDS",
+    "EXECUTION_EVENT_TYPES",
+    "WorkspaceOSStore",
+    "remove_skill_directory",
+]
 
 WORKSPACE_OS_VERSION = "8.1.0"
 
@@ -138,101 +164,6 @@ DEFAULT_AGENTS = [
         "relationships": ["agent:reviewer"],
     },
 ]
-
-
-def _now() -> str:
-    return datetime.now().isoformat(timespec="seconds")
-
-
-def _safe_slug(raw: str) -> str:
-    value = "".join(ch if ch.isalnum() or ch in "-_." else "-" for ch in str(raw or "").strip())
-    value = "-".join(part for part in value.split("-") if part)
-    return (value or "item")[:96]
-
-
-def _json_hash(value: Any) -> str:
-    import hashlib
-
-    payload = json.dumps(value, ensure_ascii=False, sort_keys=True, default=str)
-    return hashlib.sha256(payload.encode("utf-8", errors="replace")).hexdigest()
-
-
-def _deep_merge(default: Any, loaded: Any) -> Any:
-    if isinstance(default, dict) and isinstance(loaded, dict):
-        merged = {key: _deep_merge(value, loaded.get(key)) for key, value in default.items()}
-        for key, value in loaded.items():
-            if key not in merged:
-                merged[key] = value
-        return merged
-    if loaded is None:
-        return default
-    return loaded
-
-
-def _atomic_write_json(path: Path, payload: Dict[str, Any]) -> None:
-    path.parent.mkdir(parents=True, exist_ok=True)
-    tmp_path = path.with_suffix(path.suffix + ".tmp")
-    tmp_path.write_text(json.dumps(payload, ensure_ascii=False, indent=2), encoding="utf-8")
-    os.replace(tmp_path, path)
-
-
-def _listify(value: Any) -> List[Any]:
-    return value if isinstance(value, list) else []
-
-
-def _snapshot_graph_import_payload(graph_payload: Dict[str, Any], *, workspace_id: Optional[str]) -> Dict[str, Any]:
-    """Convert the UI graph snapshot shape into the logical import artifact."""
-
-    nodes = []
-    for node in _listify((graph_payload or {}).get("nodes")):
-        node_id = node.get("id")
-        if not node_id:
-            continue
-        metadata = node.get("metadata") if isinstance(node.get("metadata"), dict) else {}
-        raw = node.get("raw") if isinstance(node.get("raw"), dict) else {}
-        if workspace_id and not metadata.get("workspace_id"):
-            metadata = {**metadata, "workspace_id": workspace_id}
-        nodes.append({
-            "id": node_id,
-            "type": node.get("type") or "Concept",
-            "title": node.get("title") or node.get("label") or node_id,
-            "summary": node.get("summary") or "",
-            "metadata_json": json.dumps(metadata, ensure_ascii=False),
-            "raw_json": json.dumps(raw, ensure_ascii=False),
-        })
-
-    edges = []
-    for edge in _listify((graph_payload or {}).get("edges")):
-        source = edge.get("from_node") or edge.get("from") or edge.get("source")
-        target = edge.get("to_node") or edge.get("to") or edge.get("target")
-        if not source or not target:
-            continue
-        edges.append({
-            "from_node": source,
-            "to_node": target,
-            "type": edge.get("type") or "related_to",
-            "weight": edge.get("weight") or 1.0,
-            "metadata_json": json.dumps(edge.get("metadata") or {}, ensure_ascii=False),
-        })
-
-    return {
-        "header": {"graph_schema_version": 1, "workspace_id": workspace_id, "source": "workspace_snapshot"},
-        "nodes": nodes,
-        "edges": edges,
-        "chunks": [],
-        "knowledge_sources": [],
-        "provenance": [],
-        "counts": {"nodes": len(nodes), "edges": len(edges)},
-    }
-
-
-def _parse_iso(value: Optional[str]) -> Optional[datetime]:
-    if not value:
-        return None
-    try:
-        return datetime.fromisoformat(str(value))
-    except (TypeError, ValueError):
-        return None
 
 
 class WorkspaceOSStore:
@@ -2523,17 +2454,3 @@ class WorkspaceOSStore:
         if "security" in raw or "auth" in raw or "login" in raw:
             return "security_event"
         return "workspace_event"
-
-
-def remove_skill_directory(skills_dir: Path, skill: str) -> Dict[str, Any]:
-    """Remove an installed skill directory after caller has performed auth checks."""
-
-    safe_name = _safe_slug(skill)
-    target = (skills_dir / safe_name).resolve()
-    root = skills_dir.resolve()
-    if not str(target).startswith(str(root)):
-        raise ValueError("invalid skill path")
-    if not target.exists() or not target.is_dir():
-        raise FileNotFoundError(skill)
-    shutil.rmtree(target)
-    return {"status": "ok", "skill": safe_name, "removed_path": str(target)}

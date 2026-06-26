@@ -33,4 +33,5 @@ def build_config_runtime(config: "Optional[Config]" = None) -> Dict[str, Any]:
         "PUBLIC_MODEL": cfg.public_model,
         "LOCAL_MODEL": cfg.local_model,
         "LOCAL_DRAFT_MODEL": cfg.local_draft_model,
+        "TIMEZONE": cfg.timezone,
     }
