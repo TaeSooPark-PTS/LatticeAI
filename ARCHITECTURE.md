@@ -1,6 +1,6 @@
 # Lattice AI Current Architecture
 
-Current release: **8.1.0 - Intuitive Brain Home**.
+Current release: **8.2.0 - Brain Brief**.
 
 Lattice AI is a local-first Digital Brain platform. The current architecture is
 organized around a private Brain, replaceable model runtimes, explicit tool
@@ -30,14 +30,14 @@ Key boundaries:
 
 ## Product Flow
 
-The 8.1.0 first-run and daily-use flow is:
+The 8.2.0 first-run and daily-use flow is:
 
 1. Wake Brain / login.
 2. Pick owner/workspace context.
 3. Review recommended local model setup.
 4. Prepare/install/load a model when the user opts in.
-5. Land on Brain Home with the living Brain, recent memory, connected topic,
-   next action, and conversation composer visible together.
+5. Land on Brain Home with the living Brain, conversation composer, and
+   evidence-backed Brain Brief visible together.
 6. Add sources, open the memory graph, choose model, automate, or manage from
    explicit navigation.
 
@@ -87,7 +87,7 @@ migration safety, and equivalence tests.
 
 ## Runtime Contracts
 
-The 8.0 architecture contract remains active in 8.1.0:
+The 8.0 architecture contract remains active in 8.2.0:
 
 - AgentRuntime has explicit preview/readiness contracts and does not execute
   tools during preview.
@@ -112,13 +112,13 @@ Docker/Postgres setup, marketplace refresh, and update checks are opt-in paths.
 
 ## Release Artifact Map
 
-8.1.0 exact artifact names:
+8.2.0 exact artifact names:
 
-- `dist/ltcai-8.1.0-py3-none-any.whl`
-- `dist/ltcai-8.1.0.tar.gz`
-- `ltcai-8.1.0.tgz`
-- `dist/ltcai-8.1.0.vsix`
-- `src-tauri/target/release/bundle/dmg/Lattice AI_8.1.0_aarch64.dmg`
+- `dist/ltcai-8.2.0-py3-none-any.whl`
+- `dist/ltcai-8.2.0.tar.gz`
+- `ltcai-8.2.0.tgz`
+- `dist/ltcai-8.2.0.vsix`
+- `src-tauri/target/release/bundle/dmg/Lattice AI_8.2.0_aarch64.dmg`
 
 Do not document or use wildcard artifact upload commands.
 
