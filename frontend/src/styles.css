@@ -6699,6 +6699,7 @@ body {
   .brain-composer-actions {
     gap: 0.42rem;
     padding: 0;
+    flex-wrap: nowrap;
     overflow-x: auto;
     scrollbar-width: none;
     -webkit-overflow-scrolling: touch;
@@ -6710,5 +6711,59 @@ body {
 
   .brain-composer-actions > * {
     flex: 0 0 auto;
+  }
+}
+
+@media (max-width: 360px) {
+  .brain-conversation {
+    padding: 0 0.45rem 4.5rem;
+  }
+
+  .brain-conversation-header {
+    gap: 0.42rem;
+    padding-bottom: 0.42rem;
+  }
+
+  .brain-conversation-title > span,
+  .brain-chat-home-head p {
+    display: none;
+  }
+
+  .brain-header-tools {
+    width: 100%;
+    flex-direction: row;
+    flex-wrap: nowrap;
+    overflow-x: auto;
+    justify-content: flex-start;
+    scrollbar-width: none;
+    -webkit-overflow-scrolling: touch;
+  }
+
+  .brain-header-tools::-webkit-scrollbar {
+    display: none;
+  }
+
+  .brain-chat-home-head {
+    gap: 0.5rem;
+    padding: 0.7rem;
+  }
+
+  .brain-chat-home-head h2 {
+    margin-bottom: 0;
+    font-size: 1.18rem;
+  }
+
+  .brain-chat-home-proof {
+    gap: 0.25rem;
+  }
+
+  .brain-chat-home-proof span {
+    min-height: 1.45rem;
+    padding: 0 0.42rem;
+    font-size: 0.6rem;
+  }
+
+  .brain-composer-actions {
+    padding-bottom: 0.1rem;
   }
 }
