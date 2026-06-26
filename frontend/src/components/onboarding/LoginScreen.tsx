@@ -85,15 +85,32 @@ export function LoginScreen({ onSuccess }: { onSuccess: () => void }) {
         <div className="ritual-field-stack">
           <div>
             <div className="ritual-field-label">{t(language, "flow.name")}</div>
-            <Input value={name} onChange={(e) => setName(e.target.value)} placeholder={t(language, "flow.name.placeholder")} />
+            <Input
+              value={name}
+              onChange={(e) => setName(e.target.value)}
+              placeholder={t(language, "flow.name.placeholder")}
+              autoComplete="name"
+            />
           </div>
           <div>
             <div className="ritual-field-label">{t(language, "flow.email")}</div>
-            <Input value={email} onChange={(e) => setEmail(e.target.value)} type="email" placeholder={t(language, "flow.email.placeholder")} />
+            <Input
+              value={email}
+              onChange={(e) => setEmail(e.target.value)}
+              type="email"
+              placeholder={t(language, "flow.email.placeholder")}
+              autoComplete="email"
+            />
           </div>
           <div>
             <div className="ritual-field-label">{t(language, "flow.password")}</div>
-            <Input value={password} onChange={(e) => setPassword(e.target.value)} type="password" placeholder={t(language, "flow.password.placeholder")} />
+            <Input
+              value={password}
+              onChange={(e) => setPassword(e.target.value)}
+              type="password"
+              placeholder={t(language, "flow.password.placeholder")}
+              autoComplete="current-password"
+            />
           </div>
         </div>
 

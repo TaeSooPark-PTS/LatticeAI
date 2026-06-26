@@ -15,7 +15,7 @@ import { useAppStore } from "@/store/appStore";
 import { t, type Language } from "@/i18n";
 import { asArray, fmtNumber, pct, shortId, titleize } from "@/lib/utils";
 
-type BrainTab = "conversation" | "memory" | "knowledge" | "relationships" | "graph" | "portability";
+type BrainTab = "graph" | "knowledge" | "memory";
 type LabelMode = "important" | "all" | "off";
 
 type GraphNode = {
@@ -64,12 +64,9 @@ type ExplorerModel = ParsedGraph & {
 };
 
 const tabs: Array<{ id: BrainTab; labelKey: string }> = [
-  { id: "conversation", labelKey: "brain.tab.conversation" },
-  { id: "memory", labelKey: "brain.tab.memory" },
-  { id: "knowledge", labelKey: "brain.tab.knowledge" },
-  { id: "relationships", labelKey: "brain.tab.relationships" },
   { id: "graph", labelKey: "brain.tab.graph" },
-  { id: "portability", labelKey: "brain.tab.portability" },
+  { id: "knowledge", labelKey: "brain.tab.knowledge" },
+  { id: "memory", labelKey: "brain.tab.memory" },
 ];
 
 const groupDefinitions = [
@@ -420,60 +417,25 @@ export function BrainPage({ initialTab }: { initialTab?: string }) {
   const language = useAppStore((state) => state.language);
   const normalizedInitialTab = normalizeBrainTab(initialTab);
   const [tab, setTab] = React.useState<BrainTab>(normalizedInitialTab);
-  const [brainPresence, setBrainPresence] = React.useState<{ state: BrainState; intensity: number }>({
-    state: "idle",
-    intensity: 0.58,
-  });
   React.useEffect(() => {
     setTab(normalizeBrainTab(initialTab));
   }, [initialTab]);
-  const setBrain = React.useCallback((state: BrainState, intensity = 0.58) => {
-    setBrainPresence({ state, intensity });
-  }, []);
   const graph = useQuery({ queryKey: ["graph"], queryFn: latticeApi.graph });
-  const stats = useQuery({ queryKey: ["graphStats"], queryFn: latticeApi.graphStats });
-  const index = useQuery({ queryKey: ["index"], queryFn: latticeApi.indexStatus });
   const coverage = useQuery({ queryKey: ["coverage"], queryFn: latticeApi.graphCoverage });
-  const provenance = useQuery({ queryKey: ["provenance"], queryFn: () => latticeApi.graphProvenance(50) });
-  const memory = useQuery({ queryKey: ["memoryManager"], queryFn: latticeApi.memoryManager });
 
   return (
     <div className="space-y-5">
-      {tab === "conversation" ? null : (
-        <header className="brain-layer-header">
-          <div>
-            <div className="page-kicker"><BrainCircuit className="h-4 w-4" /> {tabLabel(language, tab)}</div>
-            <h1>{tabHeadline(language, tab)}</h1>
-          </div>
-          <div className="brain-layer-meter">
-            <span>Source coverage</span>
-            <strong>{pct((coverage.data?.data as Record<string, unknown>)?.coverage_ratio)}</strong>
-          </div>
-        </header>
-      )}
-      <Tabs tabs={tabs.map((item) => ({ id: item.id, label: t(language, item.labelKey) }))} value={tab} onChange={(id) => setTab(id as BrainTab)} />
-
-      {tab === "conversation" ? (
-        <BrainHome brainState={brainPresence.state} intensity={brainPresence.intensity} onBrainChange={setBrain} />
-      ) : null}
-      {tab === "memory" ? <MemoryPanel /> : null}
-      {tab === "knowledge" ? <HybridSearch /> : null}
-      {tab === "relationships" ? (
-        <div className="grid gap-4 xl:grid-cols-2">
-          <DataPanel title="Brain activity" result={stats.data}>
-            {(data) => <GraphStatus data={data as Record<string, unknown>} />}
-          </DataPanel>
-          <DataPanel title="Retrieval rhythm" result={index.data}>
-            {(data) => <RetrievalStatus data={data as Record<string, unknown>} />}
-          </DataPanel>
-          <DataPanel title="Memory layers" result={memory.data}>
-            {(data) => <MemoryStatus data={data as Record<string, unknown>} />}
-          </DataPanel>
-          <DataPanel title="Recent sources" result={provenance.data}>
-            {(data) => <SourceProvenanceList items={(data as Record<string, unknown>).items || data} />}
-          </DataPanel>
+      <header className="brain-layer-header">
+        <div>
+          <div className="page-kicker"><BrainCircuit className="h-4 w-4" /> {tabLabel(language, tab)}</div>
+          <h1>{tabHeadline(language, tab)}</h1>
         </div>
-      ) : null}
+        <div className="brain-layer-meter">
+          <span>Source coverage</span>
+          <strong>{pct((coverage.data?.data as Record<string, unknown>)?.coverage_ratio)}</strong>
+        </div>
+      </header>
+      <Tabs tabs={tabs.map((item) => ({ id: item.id, label: t(language, item.labelKey) }))} value={tab} onChange={(id) => setTab(id as BrainTab)} />
 
       {tab === "graph" ? (
         graph.isLoading ? <LoadingPanel title="Deep graph" /> : (
@@ -482,16 +444,16 @@ export function BrainPage({ initialTab }: { initialTab?: string }) {
           </DataPanel>
         )
       ) : null}
-      {tab === "portability" ? <PortabilityPanel /> : null}
+      {tab === "knowledge" ? <HybridSearch /> : null}
+      {tab === "memory" ? <UnifiedMemoryPanel /> : null}
     </div>
   );
 }
 
 function normalizeBrainTab(tab?: string): BrainTab {
-  if (tab === "overview" || tab === "chat" || tab === "ask") return "conversation";
-  if (tab === "search") return "knowledge";
-  if (tab === "provenance" || tab === "sources") return "relationships";
-  return tabs.some((item) => item.id === tab) ? tab as BrainTab : "conversation";
+  if (tab === "knowledge" || tab === "search") return "knowledge";
+  if (tab === "memory" || tab === "relationships" || tab === "provenance" || tab === "sources" || tab === "portability" || tab === "care") return "memory";
+  return "graph";
 }
 
 function tabLabel(language: Language, tab: BrainTab) {
@@ -758,45 +720,152 @@ function HybridSearch() {
   );
 }
 
-function MemoryPanel() {
-  const [query, setQuery] = React.useState("");
+function UnifiedMemoryPanel() {
+  const qc = useQueryClient();
+  const mode = useAppStore((state) => state.mode);
+  const [recallQuery, setRecallQuery] = React.useState("");
+  const [importArtifact, setImportArtifact] = React.useState("");
+  const [expandedSection, setExpandedSection] = React.useState<"recall" | "sources" | "backup" | null>("recall");
+
   const manager = useQuery({ queryKey: ["memoryManager"], queryFn: latticeApi.memoryManager });
-  const recall = useMutation({ mutationFn: () => latticeApi.memoryRecall(query, 25) });
+  const provenance = useQuery({ queryKey: ["provenance"], queryFn: () => latticeApi.graphProvenance(80) });
+  const port = useQuery({ queryKey: ["portability"], queryFn: latticeApi.graphPortability });
+  const recall = useMutation({ mutationFn: () => latticeApi.memoryRecall(recallQuery, 25) });
+  const importMutation = useMutation({
+    mutationFn: async () => {
+      try {
+        return await latticeApi.graphImport(JSON.parse(importArtifact), true);
+      } catch (err) {
+        return { ok: false, status: 0, data: {}, source: "unavailable" as const, error: err instanceof Error ? err.message : String(err) };
+      }
+    },
+    onSuccess: () => qc.invalidateQueries({ queryKey: ["portability"] }),
+  });
+
+  const managerData = isRecord((manager.data as Record<string, unknown>)?.data) ? (manager.data as Record<string, unknown>).data as Record<string, unknown> : {};
+  const portData = isRecord((port.data as Record<string, unknown>)?.data) ? (port.data as Record<string, unknown>).data as Record<string, unknown> : {};
+  const portStats = isRecord(portData.stats) ? portData.stats : {};
+  const portStorage = isRecord(portData.storage) ? portData.storage : {};
+  const usage = isRecord(managerData.usage) ? managerData.usage : {};
+
+  const toggle = (section: "recall" | "sources" | "backup") =>
+    setExpandedSection((prev) => (prev === section ? null : section));
+
   return (
-    <div className="grid gap-4 xl:grid-cols-[0.9fr_1.1fr]">
-      <DataPanel title="Memory manager" result={manager.data}>
-        {(data) => <MemoryStatus data={data as Record<string, unknown>} />}
-      </DataPanel>
+    <div className="space-y-4">
+      {/* Unified summary bar */}
       <Card>
-        <CardHeader>
-          <CardTitle className="flex items-center gap-2"><Sparkles className="h-4 w-4" /> Recall</CardTitle>
-          <CardDescription>Bring back related memories from your workspace.</CardDescription>
-        </CardHeader>
-        <CardContent className="space-y-3">
-          <Input value={query} onChange={(e) => setQuery(e.target.value)} placeholder="Recall memories about..." />
-          <div className="flex flex-wrap gap-2">
-            <Button disabled={!query.trim() || recall.isPending} onClick={() => recall.mutate()}>Recall</Button>
-            <ActionButton label="Compact" action={() => latticeApi.memoryCompact()} />
-            <ActionButton label="Rebuild vector" action={() => latticeApi.memoryRebuild()} />
-          </div>
-          {recall.data ? <OperationResult result={recall.data} successLabel="Recall completed" /> : null}
+        <CardContent className="py-4">
+          <StatGrid stats={[
+            { label: "Sources", value: usage.sources ?? 0 },
+            { label: "Items", value: usage.total_items ?? 0 },
+            { label: "Brain format", value: portData.graph_schema_version || portData.schema_version || "–" },
+            { label: "Storage", value: portStorage.engine || "–" },
+          ]} />
         </CardContent>
       </Card>
-    </div>
-  );
-}
 
-function ProvenancePanel() {
-  const provenance = useQuery({ queryKey: ["provenance"], queryFn: () => latticeApi.graphProvenance(80) });
-  const coverage = useQuery({ queryKey: ["coverage"], queryFn: latticeApi.graphCoverage });
-  return (
-    <div className="grid gap-4 xl:grid-cols-[0.8fr_1.2fr]">
-      <DataPanel title="Coverage" result={coverage.data}>
-        {(data) => <StructuredView value={data} />}
-      </DataPanel>
-      <DataPanel title="Recent sources" result={provenance.data}>
-        {(data) => <SourceProvenanceList items={(data as Record<string, unknown>).items || data} limit={14} />}
-      </DataPanel>
+      {/* Section 1 — Memory Recall */}
+      <Card>
+        <CardHeader
+          className="cursor-pointer select-none"
+          onClick={() => toggle("recall")}
+        >
+          <CardTitle className="flex items-center gap-2">
+            <Sparkles className="h-4 w-4" />
+            Memory Recall
+            <span className="ml-auto text-xs text-muted-foreground">{expandedSection === "recall" ? "▲" : "▼"}</span>
+          </CardTitle>
+          <CardDescription>Search and manage your saved memories.</CardDescription>
+        </CardHeader>
+        {expandedSection === "recall" && (
+          <CardContent className="space-y-3">
+            <div className="flex flex-col gap-2 sm:flex-row">
+              <Input
+                value={recallQuery}
+                onChange={(e) => setRecallQuery(e.target.value)}
+                onKeyDown={(e) => e.key === "Enter" && recallQuery.trim() && recall.mutate()}
+                placeholder="Recall memories about..."
+              />
+              <Button disabled={!recallQuery.trim() || recall.isPending} onClick={() => recall.mutate()}>Recall</Button>
+            </div>
+            {mode !== "basic" && (
+              <div className="flex flex-wrap gap-2">
+                <ActionButton label="Compact" action={() => latticeApi.memoryCompact()} />
+                <ActionButton label="Rebuild vector" action={() => latticeApi.memoryRebuild()} />
+              </div>
+            )}
+            {recall.data ? <OperationResult result={recall.data} successLabel="Recall completed" /> : null}
+          </CardContent>
+        )}
+      </Card>
+
+      {/* Section 2 — Sources & Provenance */}
+      <Card>
+        <CardHeader
+          className="cursor-pointer select-none"
+          onClick={() => toggle("sources")}
+        >
+          <CardTitle className="flex items-center gap-2">
+            <Layers3 className="h-4 w-4" />
+            Sources & Provenance
+            <span className="ml-auto text-xs text-muted-foreground">{expandedSection === "sources" ? "▲" : "▼"}</span>
+          </CardTitle>
+          <CardDescription>Where your memories came from.</CardDescription>
+        </CardHeader>
+        {expandedSection === "sources" && (
+          <CardContent className="space-y-3">
+            {provenance.isLoading ? (
+              <LoadingPanel title="Loading sources" />
+            ) : (
+              <SourceProvenanceList
+                items={
+                  isRecord((provenance.data as Record<string, unknown>)?.data)
+                    ? ((provenance.data as Record<string, unknown>).data as Record<string, unknown>).items || (provenance.data as Record<string, unknown>).data
+                    : provenance.data
+                }
+                limit={10}
+              />
+            )}
+          </CardContent>
+        )}
+      </Card>
+
+      {/* Section 3 — Export & Backup */}
+      <Card>
+        <CardHeader
+          className="cursor-pointer select-none"
+          onClick={() => toggle("backup")}
+        >
+          <CardTitle className="flex items-center gap-2">
+            <DatabaseBackup className="h-4 w-4" />
+            Export & Backup
+            <span className="ml-auto text-xs text-muted-foreground">{expandedSection === "backup" ? "▲" : "▼"}</span>
+          </CardTitle>
+          <CardDescription>Export, back up, or import your Brain data.</CardDescription>
+        </CardHeader>
+        {expandedSection === "backup" && (
+          <CardContent className="space-y-3">
+            <div className="flex flex-wrap gap-2">
+              <ActionButton label="Export Brain" action={() => latticeApi.graphExport()} />
+              <ActionButton label="Create backup" action={() => latticeApi.graphBackup()} />
+            </div>
+            <Textarea
+              value={importArtifact}
+              onChange={(e) => setImportArtifact(e.target.value)}
+              placeholder="Paste an exported Brain artifact to preview import"
+            />
+            <Button
+              variant="outline"
+              disabled={!importArtifact.trim() || importMutation.isPending}
+              onClick={() => importMutation.mutate()}
+            >
+              Preview import
+            </Button>
+            {importMutation.data ? <OperationResult result={importMutation.data} successLabel="Import preview completed" /> : null}
+          </CardContent>
+        )}
+      </Card>
     </div>
   );
 }
@@ -851,64 +920,4 @@ function sourceCreatedAt(item: Record<string, unknown>) {
   const metadata = isRecord(item.metadata) ? item.metadata : {};
   const value = item.created_at || item.timestamp || item.updated_at || metadata.created_at || metadata.timestamp;
   return value ? String(value) : "";
-}
-
-function PortabilityPanel() {
-  const qc = useQueryClient();
-  const [artifact, setArtifact] = React.useState("");
-  const port = useQuery({ queryKey: ["portability"], queryFn: latticeApi.graphPortability });
-  const importMutation = useMutation({
-    mutationFn: async () => {
-      try {
-        return await latticeApi.graphImport(JSON.parse(artifact), true);
-      } catch (err) {
-        return { ok: false, status: 0, data: {}, source: "unavailable" as const, error: err instanceof Error ? err.message : String(err) };
-      }
-    },
-    onSuccess: () => qc.invalidateQueries({ queryKey: ["portability"] }),
-  });
-  return (
-    <div className="grid gap-4 xl:grid-cols-2">
-      <DataPanel title="Portability status" result={port.data}>
-        {(data) => <PortabilityStatus data={data as Record<string, unknown>} />}
-      </DataPanel>
-      <Card>
-        <CardHeader>
-          <CardTitle className="flex items-center gap-2"><DatabaseBackup className="h-4 w-4" /> Export, backup, import</CardTitle>
-          <CardDescription>Export, back up, or preview an import before changing your brain.</CardDescription>
-        </CardHeader>
-        <CardContent className="space-y-3">
-          <div className="flex flex-wrap gap-2">
-            <ActionButton label="Export Brain" action={() => latticeApi.graphExport()} />
-            <ActionButton label="Create backup" action={() => latticeApi.graphBackup()} />
-          </div>
-          <Textarea value={artifact} onChange={(e) => setArtifact(e.target.value)} placeholder="Paste an exported Brain artifact to preview import" />
-          <Button
-            variant="outline"
-            disabled={!artifact.trim() || importMutation.isPending}
-            onClick={() => importMutation.mutate()}
-          >
-            Preview import
-          </Button>
-          {importMutation.data ? <OperationResult result={importMutation.data} successLabel="Import preview completed" /> : null}
-        </CardContent>
-      </Card>
-    </div>
-  );
-}
-
-function PortabilityStatus({ data }: { data: Record<string, unknown> }) {
-  const stats = isRecord(data.stats) ? data.stats : {};
-  const storage = isRecord(data.storage) ? data.storage : {};
-  return (
-    <div className="space-y-3">
-      <StatGrid stats={[
-        { label: "Brain format", value: data.graph_schema_version || data.schema_version || "reported" },
-        { label: "Memories", value: (stats.total_nodes as number) || Object.values((stats.nodes as Record<string, unknown>) || {}).reduce((sum: number, value) => sum + Number(value || 0), 0) },
-        { label: "Links", value: (stats.total_edges as number) || Object.values((stats.edges as Record<string, unknown>) || {}).reduce((sum: number, value) => sum + Number(value || 0), 0) },
-        { label: "Storage", value: storage.engine || "reported" },
-      ]} />
-      <StructuredView value={data} />
-    </div>
-  );
 }

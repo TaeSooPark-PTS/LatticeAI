@@ -103,60 +103,125 @@ export function BrainConversation({
   onSend: () => void;
   onExploreBrain: () => void;
 }) {
+  const hasMessages = messages.length > 0;
+
   return (
     <section className="brain-conversation" aria-label={t(language, "brain.aria.conversation")}>
       <div className="brain-chat-home-layout">
-        <section className="brain-chat-home-card" aria-label={t(language, "brain.chatHome.aria")}>
-          <BrainFirstScreen
-            language={language}
-            brainState={brainState}
-            intensity={intensity}
-            readiness={readiness}
-            memories={memories}
-            concepts={concepts}
-            messages={messages}
-            onExploreBrain={onExploreBrain}
-            onOpenDepth={onOpenDepth}
-          />
-
-
-          <BrainComposer
-            language={language}
-            draft={draft}
-            streaming={streaming}
-            imageData={imageData}
-            uploadingDocument={uploadingDocument}
-            onDraftChange={onDraftChange}
-            onImageDataChange={onImageDataChange}
-            onUploadDocument={onUploadDocument}
-            onSend={onSend}
-          />
-
-          <div ref={streamRef} className="brain-stream">
-            {messages.length === 0 ? (
-              <BrainEmptyState
-                language={language}
-                starterPrompts={starterPrompts}
-                onDraftChange={onDraftChange}
-              />
-            ) : (
-              messages.map((message, index) => {
-                const messageId = `brain-msg-${index}`;
-                const proof = message.role === "assistant" ? message.proof : undefined;
-                return (
-                  <div key={`${message.role}-${index}`} className={`brain-message ${message.role}`}>
-                    <div className="brain-message-bubble">
-                      {message.content}
-                      {proof && proof.citations.length ? (
-                        <InlineCitationMarkers language={language} proof={proof} messageId={messageId} />
-                      ) : null}
-                    </div>
-                    {proof ? <AnswerProofCard language={language} proof={proof} messageId={messageId} /> : null}
+        <section className={`brain-chat-home-card ${hasMessages ? "has-messages" : "is-empty-home"}`} aria-label={t(language, "brain.chatHome.aria")}>
+          {hasMessages ? (
+            <>
+              <header className="brain-chat-header">
+                <div className="brain-header-presence">
+                  <LivingBrain
+                    state={brainState}
+                    intensity={intensity}
+                    size="trace"
+                    showLabel={false}
+                    onInteract={onExploreBrain}
+                  />
+                  <div className="brain-header-title">
+                    <strong>Lattice Brain</strong>
+                    <span>{t(language, `brain.firstScreen.state.${readiness.state}`)} ({readiness.score}%)</span>
                   </div>
-                );
-              })
-            )}
-          </div>
+                </div>
+                <div className="brain-header-actions">
+                  <div className="brain-model-pill">{modelName}</div>
+                  <button type="button" className="brain-deeper-btn" onClick={onExploreBrain}>
+                    {t(language, "brain.firstScreen.action.graph")}
+                  </button>
+                </div>
+              </header>
+
+              <div ref={streamRef} className="brain-stream">
+                {messages.map((message, index) => {
+                  const messageId = `brain-msg-${index}`;
+                  const proof = message.role === "assistant" ? message.proof : undefined;
+                  return (
+                    <div key={`${message.role}-${index}`} className={`brain-message ${message.role}`}>
+                      <div className="brain-message-bubble">
+                        {message.content}
+                        {proof && proof.citations.length ? (
+                          <InlineCitationMarkers language={language} proof={proof} messageId={messageId} />
+                        ) : null}
+                      </div>
+                      {proof ? <AnswerProofCard language={language} proof={proof} messageId={messageId} /> : null}
+                    </div>
+                  );
+                })}
+              </div>
+
+              <BrainComposer
+                language={language}
+                draft={draft}
+                streaming={streaming}
+                imageData={imageData}
+                uploadingDocument={uploadingDocument}
+                onDraftChange={onDraftChange}
+                onImageDataChange={onImageDataChange}
+                onUploadDocument={onUploadDocument}
+                onSend={onSend}
+              />
+            </>
+          ) : (
+            <div className="brain-centered-home">
+              <div className="brain-concentric-container">
+                <div className="brain-concentric-ring ring-4" title={t(language, "brain.depth.5")}>
+                  <span className="ring-label">{t(language, "brain.depthLabel.5")}</span>
+                </div>
+                <div className="brain-concentric-ring ring-3" title={`${concepts.length} Topics`}>
+                  <span className="ring-label">{concepts.length} {t(language, "brain.overview.topics")}</span>
+                </div>
+                <div className="brain-concentric-ring ring-2" title={`${memories.length} Memories`}>
+                  <span className="ring-label">{memories.length} {t(language, "brain.overview.recent")}</span>
+                </div>
+                <div className="brain-concentric-ring ring-1" title={t(language, "brain.depthTitle.1")}>
+                  <span className="ring-label">{t(language, "brain.depth.1")}</span>
+                </div>
+
+                <div className="brain-center-orb">
+                  <LivingBrain
+                    state={brainState}
+                    intensity={intensity}
+                    size="large"
+                    depth={readiness.depth || Math.max(1, Math.floor(readiness.score / 20))}
+                    showLabel={false}
+                    className="brain-home-presence"
+                    onInteract={onExploreBrain}
+                  />
+                </div>
+              </div>
+
+              <div className="brain-home-welcome">
+                <h2>{t(language, "brain.firstScreen.title")}</h2>
+                <p>{t(language, "brain.firstScreen.body")}</p>
+                <div className="brain-home-status-badge">
+                  <span className="status-dot" />
+                  <span>{t(language, `brain.firstScreen.state.${readiness.state}`)} ({readiness.score}%)</span>
+                </div>
+              </div>
+
+              <BrainComposer
+                language={language}
+                draft={draft}
+                streaming={streaming}
+                imageData={imageData}
+                uploadingDocument={uploadingDocument}
+                onDraftChange={onDraftChange}
+                onImageDataChange={onImageDataChange}
+                onUploadDocument={onUploadDocument}
+                onSend={onSend}
+              />
+
+              <div className="brain-home-prompts">
+                {starterPrompts.map((prompt) => (
+                  <button key={prompt} type="button" onClick={() => onDraftChange(prompt)} className="brain-prompt-pill">
+                    {prompt}
+                  </button>
+                ))}
+              </div>
+            </div>
+          )}
 
           {memoryFeedback ? (
             <div className="brain-save-feedback" role="status">

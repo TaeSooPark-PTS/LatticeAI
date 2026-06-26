@@ -4,16 +4,23 @@ import { type RecommendedModel } from "./recommendationModel";
 
 export function DownloadConsentPanel({ model }: { model: RecommendedModel }) {
   const language = useAppStore((state) => state.language);
-  const items = [
-    { label: t(language, "flow.consent.size"), value: model.downloadSize || t(language, "flow.consent.sizeUnknown") },
-    { label: t(language, "flow.consent.location"), value: model.storageLocation },
-    { label: t(language, "flow.consent.external"), value: model.externalHost || t(language, "flow.consent.externalNone") },
-  ];
+  const items = model.downloadRequired
+    ? [
+        { label: t(language, "flow.consent.size"), value: model.downloadSize || t(language, "flow.consent.sizeUnknown") },
+        { label: t(language, "flow.consent.location"), value: model.storageLocation },
+        { label: t(language, "flow.consent.external"), value: model.externalHost || t(language, "flow.consent.externalUnknown") },
+      ]
+    : [
+        { label: t(language, "flow.consent.state"), value: t(language, "flow.consent.stateReady") },
+        { label: t(language, "flow.consent.location"), value: model.storageLocation },
+        { label: t(language, "flow.consent.external"), value: t(language, "flow.consent.externalNone") },
+      ];
+  const titleKey = model.downloadRequired ? "flow.consent.title" : "flow.consent.readyTitle";
 
   return (
-    <section className="ritual-consent-panel" aria-label={t(language, "flow.consent.title")}>
+    <section className="ritual-consent-panel" aria-label={t(language, titleKey)}>
       <div>
-        <strong>{t(language, "flow.consent.title")}</strong>
+        <strong>{t(language, titleKey)}</strong>
         <p>{model.downloadRequired ? t(language, "flow.consent.body") : t(language, "flow.consent.ready")}</p>
       </div>
       <dl>

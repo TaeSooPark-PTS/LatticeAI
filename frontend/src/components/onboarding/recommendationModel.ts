@@ -97,7 +97,7 @@ function toRecommendedModel(row: ApiData): RecommendedModel {
     && row.status !== "not_recommended"
     && compatibility.supported !== false;
   const downloadRequired = Boolean(row.download_required);
-  const downloadSize = String(row.download_size || row.size || "");
+  const downloadSize = downloadRequired ? String(row.download_size || row.size || "") : "";
   const parameterBillions = parseParameterBillions(`${name} ${id}`);
   return {
     id,
@@ -113,7 +113,7 @@ function toRecommendedModel(row: ApiData): RecommendedModel {
     downloadRequired,
     downloadSize,
     storageLocation: String(row.storage_location || row.local_path || "~/.latticeai/models"),
-    externalHost: externalHostLabel(row),
+    externalHost: downloadRequired ? externalHostLabel(row) : "",
     estimatedDownloadMinutes: downloadRequired ? estimateDownloadMinutes(downloadSize) : 0,
     estimatedFirstResponseSeconds: estimateFirstResponseSeconds(parameterBillions),
     parameterBillions,

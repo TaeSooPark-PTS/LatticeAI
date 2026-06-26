@@ -35,10 +35,11 @@ export function ProductFlow({ onComplete }: { onComplete: () => void }) {
 
   const recommendations = React.useMemo(() => buildRecommendations(analysis), [analysis]);
 
+  // Run analysis in background immediately to save user wait time
   React.useEffect(() => {
-    if (step !== "analysis" || analysis) return;
     let cancelled = false;
     async function runAnalysis() {
+      if (analysis) return;
       setAnalysisError(null);
       const [setup, recommendationsResult, models, sysinfo] = await Promise.all([
         latticeApi.setupScan(),
@@ -59,7 +60,7 @@ export function ProductFlow({ onComplete }: { onComplete: () => void }) {
     }
     void runAnalysis();
     return () => { cancelled = true; };
-  }, [analysis, language, step]);
+  }, [analysis, language]);
 
   return (
     <div className="ritual-shell" aria-label={t(language, "flow.shell")}>
@@ -74,16 +75,13 @@ export function ProductFlow({ onComplete }: { onComplete: () => void }) {
 
         {step === "wake" && <WakeBrainScreen onWake={() => setStep("login")} onUseExisting={() => completeFlow(onComplete)} />}
 
-        {step === "login" && <LoginScreen onSuccess={() => setStep("analysis")} />}
-
-        {step === "analysis" && (
-          <AnalysisScreen analysis={analysis} error={analysisError} onContinue={() => setStep("recommend")} />
-        )}
+        {step === "login" && <LoginScreen onSuccess={() => setStep("recommend")} />}
 
         {step === "recommend" && (
           <RecommendationScreen
             recommendations={recommendations}
-            onBack={() => setStep("analysis")}
+            analysis={analysis}
+            onBack={() => setStep("login")}
             onSkipModel={() => completeFlow(onComplete)}
             onSelect={(model) => {
               setSelected(model);

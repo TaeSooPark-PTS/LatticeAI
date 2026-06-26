@@ -36,7 +36,7 @@ export function InstallScreen({
     setPercent(8);
     setMessage(t(language, "flow.install.prepare"));
     const result = await latticeApi.streamModelPrepare(
-      { model: model.loadId, engine: model.engine || "local_mlx", allow_download: true },
+      { model: model.loadId, engine: model.engine || "local_mlx", allow_download: model.downloadRequired },
       {
         onProgress: (event) => {
           const nextStage = friendlyInstallStage(String(event.stage || ""));
@@ -75,10 +75,10 @@ export function InstallScreen({
 
   return (
     <div>
-      <div className="ritual-title">{t(language, "flow.install.title")}</div>
+      <div className="ritual-title">{t(language, model.downloadRequired ? "flow.install.title" : "flow.install.title.ready")}</div>
       <div className="ritual-subtitle">
         <strong>{model.shortName}</strong> — {model.reason}.<br />
-        {t(language, "flow.install.body")}
+        {t(language, model.downloadRequired ? "flow.install.body" : "flow.install.body.ready")}
       </div>
 
       <section className="ritual-card ritual-expected-card" aria-label={t(language, "flow.install.expectedTitle")}>
@@ -110,7 +110,7 @@ export function InstallScreen({
           {(["install", "download", "validate", "load"] as const).map((item) => (
             <div key={item} className={`ritual-stage ${installStepState(stage, item)}`}>
               <CheckCircle2 className="ritual-stage-icon" />
-              <span>{installLabel(item, language)}</span>
+              <span>{installLabel(item, language, model)}</span>
             </div>
           ))}
         </div>
@@ -122,7 +122,7 @@ export function InstallScreen({
 
       <div className="ritual-status">{message}</div>
       <div className="ritual-card ritual-status-card">
-        {t(language, "flow.install.note")}
+        {t(language, model.downloadRequired ? "flow.install.note" : "flow.install.note.ready")}
       </div>
 
       {error && (
@@ -141,7 +141,7 @@ export function InstallScreen({
             onClick={start}
             disabled={busy || !model.supported}
           >
-            {busy ? t(language, "flow.install.busy") : t(language, "flow.install.start")}
+            {busy ? t(language, "flow.install.busy") : t(language, model.downloadRequired ? "flow.install.start" : "flow.install.startReady")}
           </Button>
         ) : (
           <Button onClick={onComplete}>{t(language, "flow.install.enter")}</Button>
@@ -149,7 +149,7 @@ export function InstallScreen({
       </div>
 
       <div className="ritual-local-note">
-        {t(language, "flow.install.local")}
+        {t(language, model.downloadRequired ? "flow.install.local" : "flow.install.local.ready")}
       </div>
     </div>
   );
@@ -178,7 +178,7 @@ function timelineSteps(model: RecommendedModel, language: Language) {
   return [
     {
       key: "download",
-      name: t(language, "flow.install.timelineStep.download"),
+      name: t(language, model.downloadRequired ? "flow.install.timelineStep.download" : "flow.install.timelineStep.ready"),
       time: downloadTime,
     },
     {
@@ -226,7 +226,8 @@ function friendlyInstallMessage(event: ApiData, stage: InstallStage, language: L
   return cleanConsumerText(String(event.user_message || event.message || fallback));
 }
 
-function installLabel(stage: "install" | "download" | "validate" | "load", language: Language) {
+function installLabel(stage: "install" | "download" | "validate" | "load", language: Language, model: RecommendedModel) {
+  if (stage === "download" && !model.downloadRequired) return t(language, "flow.install.step.ready");
   return t(language, `flow.install.step.${stage}`);
 }
 

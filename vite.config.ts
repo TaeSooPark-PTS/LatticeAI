@@ -5,7 +5,20 @@ import { resolve } from "node:path";
 export default defineConfig({
   root: "frontend",
   base: "/static/app/",
-  plugins: [react()],
+  plugins: [
+    react(),
+    {
+      name: "theme-boot-dev-path-fallback",
+      configureServer(server) {
+        server.middlewares.use((req, _res, next) => {
+          if (req.url?.startsWith("/static/app/static/app/theme-boot.js")) {
+            req.url = req.url.replace("/static/app/static/app/theme-boot.js", "/static/app/theme-boot.js");
+          }
+          next();
+        });
+      },
+    },
+  ],
   build: {
     outDir: "../static/app",
     emptyOutDir: true,
@@ -20,7 +33,9 @@ export default defineConfig({
     strictPort: true,
     proxy: {
       "/api": "http://127.0.0.1:8765",
+      "/account": "http://127.0.0.1:8765",
       "/agents": "http://127.0.0.1:8765",
+      "/automation": "http://127.0.0.1:8765",
       "/auth": "http://127.0.0.1:8765",
       "/chat": "http://127.0.0.1:8765",
       "/cu": "http://127.0.0.1:8765",

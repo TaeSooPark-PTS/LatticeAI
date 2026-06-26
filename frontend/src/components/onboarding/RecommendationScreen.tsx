@@ -1,26 +1,72 @@
 import { Button } from "@/components/ui/button";
 import { t, type Language } from "@/i18n";
 import { useAppStore } from "@/store/appStore";
-import { fallbackModel, type RecommendedModel } from "./recommendationModel";
+import { fallbackModel, type RecommendedModel, asRecord, type FlowAnalysis } from "./recommendationModel";
 import { ArrowRight, Gauge, Star, Zap } from "lucide-react";
 
 export function RecommendationScreen({
   recommendations,
+  analysis,
   onBack,
   onSkipModel,
   onSelect,
 }: {
   recommendations: RecommendedModel[];
+  analysis: FlowAnalysis | null;
   onBack: () => void;
   onSkipModel: () => void;
   onSelect: (model: RecommendedModel) => void;
 }) {
   const language = useAppStore((state) => state.language);
   const items = recommendations.length ? recommendations : [fallbackModel()];
+
+  function renderEnvironmentCheck(analysis: FlowAnalysis | null, language: Language) {
+    if (!analysis) {
+      return (
+        <div className="ritual-scan-banner is-loading">
+          <span className="ritual-scan-dot pulsing" />
+          <span>{t(language, "flow.analysis.checking")}</span>
+        </div>
+      );
+    }
+
+    const recs = asRecord(analysis.recommendations?.recommendations);
+    const setupEnv = asRecord(analysis.setup?.environment);
+    const recProfile = asRecord(analysis.recommendations?.profile);
+    const profile = { ...setupEnv, ...recProfile };
+    const ramGb = Number(recs.ram_gb || Number(profile.ram_mb || 0) / 1024 || 0);
+    const appleSilicon = Boolean(recs.apple_silicon || String(profile.arch || "").includes("arm"));
+
+    if (appleSilicon) {
+      return (
+        <div className="ritual-scan-banner is-success">
+          <span className="ritual-scan-dot is-success" />
+          <span>
+            {language === "ko"
+              ? `컴퓨터 준비 완료: 로컬 MLX 지원 (Apple Silicon, ${Math.round(ramGb)}GB RAM 감지됨)`
+              : `Computer ready: local MLX supported (Apple Silicon, ${Math.round(ramGb)}GB RAM detected)`}
+          </span>
+        </div>
+      );
+    } else {
+      return (
+        <div className="ritual-scan-banner is-warning">
+          <span className="ritual-scan-dot is-warning" />
+          <span>
+            {language === "ko"
+              ? `권장: 가벼운 로컬 모델로 시작하세요 (${Math.round(ramGb)}GB RAM 감지됨)`
+              : `Recommended: start with a lighter local model (${Math.round(ramGb)}GB RAM detected)`}
+          </span>
+        </div>
+      );
+    }
+  }
+
   return (
     <div>
       <div className="ritual-title">{t(language, "flow.recommend.title")}</div>
       <div className="ritual-subtitle">{t(language, "flow.recommend.body")}</div>
+      {renderEnvironmentCheck(analysis, language)}
 
       <div className="ritual-model-list">
         {items[0]?.supported ? (
@@ -29,7 +75,9 @@ export function RecommendationScreen({
               {t(language, "flow.recommend.primary")} <ArrowRight size={16} />
             </Button>
             <div className="ritual-time-estimate ritual-primary-note">{primaryNote(items[0], language)}</div>
-            <div className="ritual-muted-hint ritual-next-hint">{t(language, "flow.recommend.nextHint")}</div>
+            <div className="ritual-muted-hint ritual-next-hint">
+              {t(language, items[0].downloadRequired ? "flow.recommend.nextHint" : "flow.recommend.nextHint.ready")}
+            </div>
           </div>
         ) : null}
         {items.slice(0, 3).map((model, index) => {
@@ -94,7 +142,10 @@ function timeEstimate(model: RecommendedModel, language: Language) {
 }
 
 function primaryNote(model: RecommendedModel, language: Language) {
-  if (!model.downloadRequired || model.estimatedDownloadMinutes === 0 || model.estimatedDownloadMinutes === null) {
+  if (!model.downloadRequired || model.estimatedDownloadMinutes === 0) {
+    return t(language, "flow.recommend.primaryNote.ready");
+  }
+  if (model.estimatedDownloadMinutes === null) {
     return t(language, "flow.recommend.primaryNote.unknown");
   }
   return t(language, "flow.recommend.primaryNote", {
