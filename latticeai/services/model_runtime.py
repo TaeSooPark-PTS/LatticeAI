@@ -26,6 +26,14 @@ from typing import AsyncIterator, Dict, List, Optional
 
 from fastapi import HTTPException, Request
 
+def _missing_current_user(_request: Request) -> Optional[str]:
+    return None
+
+
+def _missing_user_api_key(_email: Optional[str], _provider: str) -> Optional[str]:
+    return None
+
+
 from latticeai.models.router import (
     AsyncOpenAI,
     HF_MODELS_ROOT,
@@ -61,28 +69,64 @@ get_ollama_pulled_models = _get_ollama_pulled_models
 engine_support_status = _engine_support_status
 install_engine = _install_engine
 
-# Server decomp improvement: central state for globals/wiring (legacy module globals remain for compat)
-_MODEL_RUNTIME_STATE: Dict[str, Any] = {
-    "router": None,
-    "APP_MODE": "local",
-    "DEFAULT_HOST": "127.0.0.1",
-    "DEFAULT_PORT": 4825,
-    "DATA_DIR": Path.home() / ".ltcai",
-    "BASE_DIR": Path.cwd(),
-    "ENABLE_TELEGRAM": False,
-    "ENABLE_GRAPH": True,
-    "AUTOLOAD_MODELS": False,
-    "MODEL_IDLE_UNLOAD_SECONDS": 0,
-    "ALLOW_LOCAL_MODELS": True,
-    "REQUIRE_AUTH": False,
-    "INVITE_GATE_ENABLED": False,
-    "ALLOW_PLAINTEXT_API_KEYS": False,
-    "CORS_ALLOW_NETWORK": False,
-    "PUBLIC_MODEL": "openai:gpt-4o-mini",
-    "LOCAL_MODEL": "mlx-community/gemma-4-12b-it-4bit",
-    "IS_PUBLIC_MODE": False,
-    "keyring": None,
-}
+# Server decomp: proper ModelRuntimeState class for globals/wiring
+class ModelRuntimeState:
+    """Central object for all legacy globals. Module level names delegate for compat.
+    This is the clean wiring surface for future decomp.
+    """
+    def __init__(self):
+        self.router = None
+        self.APP_MODE = "local"
+        self.DEFAULT_HOST = "127.0.0.1"
+        self.DEFAULT_PORT = 4825
+        self.DATA_DIR = Path.home() / ".ltcai"
+        self.BASE_DIR = Path.cwd()
+        self.ENABLE_TELEGRAM = False
+        self.ENABLE_GRAPH = True
+        self.AUTOLOAD_MODELS = False
+        self.MODEL_IDLE_UNLOAD_SECONDS = 0
+        self.ALLOW_LOCAL_MODELS = True
+        self.REQUIRE_AUTH = False
+        self.INVITE_GATE_ENABLED = False
+        self.ALLOW_PLAINTEXT_API_KEYS = False
+        self.CORS_ALLOW_NETWORK = False
+        self.PUBLIC_MODEL = "openai:gpt-4o-mini"
+        self.LOCAL_MODEL = "mlx-community/gemma-4-12b-it-4bit"
+        self.IS_PUBLIC_MODE = False
+        self.keyring = None
+        self.get_current_user = _missing_current_user
+        self.get_user_api_key = _missing_user_api_key
+
+    def sync_to_module_globals(self):
+        global router, APP_MODE, DEFAULT_HOST, DEFAULT_PORT, DATA_DIR, BASE_DIR
+        global ENABLE_TELEGRAM, ENABLE_GRAPH, AUTOLOAD_MODELS, MODEL_IDLE_UNLOAD_SECONDS
+        global ALLOW_LOCAL_MODELS, REQUIRE_AUTH, INVITE_GATE_ENABLED, ALLOW_PLAINTEXT_API_KEYS
+        global CORS_ALLOW_NETWORK, PUBLIC_MODEL, LOCAL_MODEL, IS_PUBLIC_MODE
+        global keyring, get_current_user, get_user_api_key
+        router = self.router
+        APP_MODE = self.APP_MODE
+        DEFAULT_HOST = self.DEFAULT_HOST
+        DEFAULT_PORT = self.DEFAULT_PORT
+        DATA_DIR = self.DATA_DIR
+        BASE_DIR = self.BASE_DIR
+        ENABLE_TELEGRAM = self.ENABLE_TELEGRAM
+        ENABLE_GRAPH = self.ENABLE_GRAPH
+        AUTOLOAD_MODELS = self.AUTOLOAD_MODELS
+        MODEL_IDLE_UNLOAD_SECONDS = self.MODEL_IDLE_UNLOAD_SECONDS
+        ALLOW_LOCAL_MODELS = self.ALLOW_LOCAL_MODELS
+        REQUIRE_AUTH = self.REQUIRE_AUTH
+        INVITE_GATE_ENABLED = self.INVITE_GATE_ENABLED
+        ALLOW_PLAINTEXT_API_KEYS = self.ALLOW_PLAINTEXT_API_KEYS
+        CORS_ALLOW_NETWORK = self.CORS_ALLOW_NETWORK
+        PUBLIC_MODEL = self.PUBLIC_MODEL
+        LOCAL_MODEL = self.LOCAL_MODEL
+        IS_PUBLIC_MODE = self.IS_PUBLIC_MODE
+        keyring = self.keyring
+        get_current_user = self.get_current_user
+        get_user_api_key = self.get_user_api_key
+
+STATE = ModelRuntimeState()
+STATE.sync_to_module_globals()
 
 # Configured by server_app.configure_model_runtime during app assembly.
 router = None
@@ -159,70 +203,25 @@ def _missing_user_api_key(_email: Optional[str], _provider: str) -> Optional[str
     return None
 
 
-get_current_user = _missing_current_user
-get_user_api_key = _missing_user_api_key
-
-
 def configure_model_runtime(**deps) -> None:
     """Wire app-owned runtime dependencies without importing server_app.
 
     Explicit per-key assignment (no blanket globals().update) so wiring is
     auditable and side effects are visible. Preserves exact public module
     globals and prior behavior for all callers and shims.
+    Now uses STATE class for clean decomp.
     """
-    global router, APP_MODE, DEFAULT_HOST, DEFAULT_PORT, DATA_DIR, BASE_DIR
-    global ENABLE_TELEGRAM, ENABLE_GRAPH, AUTOLOAD_MODELS, MODEL_IDLE_UNLOAD_SECONDS
-    global ALLOW_LOCAL_MODELS, REQUIRE_AUTH, INVITE_GATE_ENABLED, ALLOW_PLAINTEXT_API_KEYS
-    global CORS_ALLOW_NETWORK, PUBLIC_MODEL, LOCAL_MODEL, IS_PUBLIC_MODE
-    global keyring, get_current_user, get_user_api_key
+    for key, value in deps.items():
+        if hasattr(STATE, key):
+            setattr(STATE, key, value)
+        elif key == "keyring":
+            STATE.keyring = value
+        elif key == "get_current_user":
+            STATE.get_current_user = value
+        elif key == "get_user_api_key":
+            STATE.get_user_api_key = value
 
-    router = deps.get("router", router)
-    APP_MODE = deps.get("APP_MODE", APP_MODE)
-    DEFAULT_HOST = deps.get("DEFAULT_HOST", DEFAULT_HOST)
-    DEFAULT_PORT = deps.get("DEFAULT_PORT", DEFAULT_PORT)
-    DATA_DIR = deps.get("DATA_DIR", DATA_DIR)
-    BASE_DIR = deps.get("BASE_DIR", BASE_DIR)
-    ENABLE_TELEGRAM = deps.get("ENABLE_TELEGRAM", ENABLE_TELEGRAM)
-    ENABLE_GRAPH = deps.get("ENABLE_GRAPH", ENABLE_GRAPH)
-    AUTOLOAD_MODELS = deps.get("AUTOLOAD_MODELS", AUTOLOAD_MODELS)
-    MODEL_IDLE_UNLOAD_SECONDS = deps.get("MODEL_IDLE_UNLOAD_SECONDS", MODEL_IDLE_UNLOAD_SECONDS)
-    ALLOW_LOCAL_MODELS = deps.get("ALLOW_LOCAL_MODELS", ALLOW_LOCAL_MODELS)
-    REQUIRE_AUTH = deps.get("REQUIRE_AUTH", REQUIRE_AUTH)
-    INVITE_GATE_ENABLED = deps.get("INVITE_GATE_ENABLED", INVITE_GATE_ENABLED)
-    ALLOW_PLAINTEXT_API_KEYS = deps.get("ALLOW_PLAINTEXT_API_KEYS", ALLOW_PLAINTEXT_API_KEYS)
-    CORS_ALLOW_NETWORK = deps.get("CORS_ALLOW_NETWORK", CORS_ALLOW_NETWORK)
-    PUBLIC_MODEL = deps.get("PUBLIC_MODEL", PUBLIC_MODEL)
-    LOCAL_MODEL = deps.get("LOCAL_MODEL", LOCAL_MODEL)
-    IS_PUBLIC_MODE = deps.get("IS_PUBLIC_MODE", IS_PUBLIC_MODE)
-    if "keyring" in deps:
-        keyring = deps["keyring"]
-    if "get_current_user" in deps:
-        get_current_user = deps["get_current_user"]
-    if "get_user_api_key" in deps:
-        get_user_api_key = deps["get_user_api_key"]
-
-    # Update central state for decomp/wiring
-    _MODEL_RUNTIME_STATE.update({
-        "router": router,
-        "APP_MODE": APP_MODE,
-        "DEFAULT_HOST": DEFAULT_HOST,
-        "DEFAULT_PORT": DEFAULT_PORT,
-        "DATA_DIR": DATA_DIR,
-        "BASE_DIR": BASE_DIR,
-        "ENABLE_TELEGRAM": ENABLE_TELEGRAM,
-        "ENABLE_GRAPH": ENABLE_GRAPH,
-        "AUTOLOAD_MODELS": AUTOLOAD_MODELS,
-        "MODEL_IDLE_UNLOAD_SECONDS": MODEL_IDLE_UNLOAD_SECONDS,
-        "ALLOW_LOCAL_MODELS": ALLOW_LOCAL_MODELS,
-        "REQUIRE_AUTH": REQUIRE_AUTH,
-        "INVITE_GATE_ENABLED": INVITE_GATE_ENABLED,
-        "ALLOW_PLAINTEXT_API_KEYS": ALLOW_PLAINTEXT_API_KEYS,
-        "CORS_ALLOW_NETWORK": CORS_ALLOW_NETWORK,
-        "PUBLIC_MODEL": PUBLIC_MODEL,
-        "LOCAL_MODEL": LOCAL_MODEL,
-        "IS_PUBLIC_MODE": IS_PUBLIC_MODE,
-        "keyring": keyring,
-    })
+    STATE.sync_to_module_globals()
 
 
 # Catalog data + version-dedup helpers live in ``model_catalog``; re-exported
