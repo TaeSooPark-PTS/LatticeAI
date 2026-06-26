@@ -14,11 +14,11 @@ existed at that release.
 - Workspace helpers previously extracted + dedup.
 - Shim improvement: clarified deprecation paths.
 - Added explicit `__all__` surfaces and kept all contracts/tests green.
-- Completed recommended next refactor (report item 15): 
-  - Server decomp wave: significant extraction of engine server logic (lmstudio/ollama/vllm/llamacpp ensure, ollama pull, support, install entry) to latticeai/services/model_engines.py with re-exports and late imports to avoid cycles. model_runtime now delegates.
-  - Deeper WorkspaceOSStore: full Timeline and Plugin/Marketplace composition.
-  - KG: optional centralization for EMBED_DIM with getenv fallback (compat preserved).
-- All tests 767 passed, ruff/build/docs clean.
+- Completed recommended next refactor from report #15 (server decomp + deeper WorkspaceOS + KG):
+  - Further server decomp: extracted _smoke_test_loaded_model to model_engines.py (with late imports), more delegations in prepare paths. model_runtime size down.
+  - Deeper WorkspaceOSStore split: extracted WorkspaceMemory manager for upsert/list memory methods.
+  - KG: kept isolation (no top-level latticeai import in lattice_brain); getenv remains authoritative with optional future Config path documented.
+- Continued composition pattern for maintainability. All 767 unit tests, builds, ruff gates pass.
 
 ## [8.1.0] - 2026-06-27
 

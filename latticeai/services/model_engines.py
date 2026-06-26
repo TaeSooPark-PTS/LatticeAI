@@ -290,6 +290,82 @@ def install_engine(engine: str) -> Dict[str, Any]:
     return {"status": "manual", "engine": engine, "message": "Use explicit install consent flow."}
 
 
+# --- Smoke test extracted for server decomp wave ---
+async def _smoke_test_loaded_model(
+    resolution: Any,
+    *,
+    api_key_override: Optional[str] = None,
+) -> Dict[str, object]:
+    """로드 직후 짧은 채팅 테스트를 돌려 ready_to_chat 여부를 판정한다.
+
+    Cloud models are skipped to avoid cost.
+    Failures are swallowed.
+    """
+    # late imports to avoid circular and keep lattice_brain/latticeai clean
+    try:
+        from latticeai.services.model_runtime import (
+            router as _router,
+            _LOCAL_SMOKE_ENGINES,
+            _SMOKE_PROMPT,
+        )
+        from latticeai.core.model_compat import (
+            ensure_profile as _ensure_compat_profile,
+            fast_postprocess as _compat_fast_postprocess,
+            classify_smoke_response as _classify_smoke_response,
+            record_smoke_result as _record_smoke_result,
+        )
+        import asyncio
+    except Exception as e:
+        return {"ok": False, "reason": f"smoke import failed: {e}", "skipped": True}
+
+    if (getattr(resolution, "engine", "") or "").lower() not in _LOCAL_SMOKE_ENGINES:
+        profile = _ensure_compat_profile(getattr(resolution, "load_id", ""), getattr(resolution, "engine", ""))
+        return {
+            "ok": True,
+            "reason": "skipped (cloud model — smoke test would incur cost)",
+            "answer": None,
+            "profile": profile.to_dict(),
+            "skipped": True,
+        }
+    try:
+        text = await asyncio.wait_for(
+            _router.generate(
+                _SMOKE_PROMPT,
+                context=None,
+                max_tokens=128,
+                temperature=0.1,
+            ),
+            timeout=30,
+        )
+    except Exception as exc:
+        reason = str(exc)[:200] or "generation_failed"
+        profile = _record_smoke_result(
+            getattr(resolution, "load_id", ""), getattr(resolution, "engine", ""), False, reason, status="failed"
+        )
+        return {
+            "ok": False,
+            "status": "failed",
+            "reason": reason,
+            "answer": None,
+            "profile": profile.to_dict(),
+        }
+
+    profile = _ensure_compat_profile(getattr(resolution, "load_id", ""), getattr(resolution, "engine", ""))
+    cleaned = _compat_fast_postprocess(str(text or ""), profile.to_dict())
+    status, reason = _classify_smoke_response(cleaned)
+    ok = status != "failed"
+    profile = _record_smoke_result(
+        getattr(resolution, "load_id", ""), getattr(resolution, "engine", ""), ok, reason, status=status
+    )
+    return {
+        "ok": ok,
+        "status": status,
+        "reason": reason,
+        "answer": cleaned,
+        "profile": profile.to_dict(),
+    }
+
+
 __all__ = [
     "ensure_lmstudio_server",
     "ensure_ollama_server",
@@ -299,4 +375,5 @@ __all__ = [
     "get_ollama_pulled_models",
     "engine_support_status",
     "install_engine",
+    "_smoke_test_loaded_model",
 ]

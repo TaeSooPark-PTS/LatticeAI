@@ -33,6 +33,7 @@ from .workspace_os_utils import (
 from .workspace_permissions import WorkspacePermissionManager, _member_role  # type: ignore
 from .workspace_timeline import WorkspaceTimeline
 from .workspace_plugins import WorkspacePluginManager
+from .workspace_memory import WorkspaceMemory
 
 __all__ = [
     "WORKSPACE_OS_VERSION",
@@ -188,6 +189,7 @@ class WorkspaceOSStore:
         self.permissions = WorkspacePermissionManager(self)
         self._timeline = WorkspaceTimeline(self)
         self.plugins = WorkspacePluginManager(self)
+        self.memory = WorkspaceMemory(self)
 
     def _connect_state_db(self) -> sqlite3.Connection:
         conn = sqlite3.connect(self.sqlite_path)
@@ -1245,54 +1247,13 @@ class WorkspaceOSStore:
         graph: Any = None,
         workspace_id: Optional[str] = None,
     ) -> Dict[str, Any]:
-        if kind not in MEMORY_KINDS:
-            raise ValueError(f"unknown memory kind: {kind}")
-        if not str(content or "").strip():
-            raise ValueError("content is required")
-        state = self.load_state()
-        memories = _listify(state.get("memories"))
-        now = _now()
-        memory_id = memory_id or f"memory-{_json_hash([kind, content, user_email, now])[:16]}"
-        existing = next((item for item in memories if item.get("id") == memory_id), None)
-        record = existing or {
-            "id": memory_id,
-            "created_at": now,
-        }
-        record.update({
-            "kind": kind,
-            "content": content,
-            "user_email": user_email,
-            "tags": tags or [],
-            "metadata": {**(metadata or {}), "memory_scope": kind},
-            "workspace_id": self._resolve_scope(workspace_id, state) if existing is None else self._record_workspace(record),
-            "updated_at": now,
-        })
-        if graph is not None:
-            try:
-                ingested = graph.ingest_event(
-                    "Memory",
-                    f"{kind}: {content[:80]}",
-                    user_email=user_email,
-                    source="workspace_os",
-                    metadata={"memory_id": memory_id, "kind": kind, "tags": tags or []},
-                )
-                record["graph_node_id"] = ingested.get("node_id")
-            except Exception as exc:
-                record["graph_error"] = str(exc)
-        if existing is None:
-            memories.append(record)
-        state["memories"] = memories
-        self.save_state(state)
-        self.record_timeline_event("memory", "memory_upserted", {"memory_id": memory_id, "kind": kind}, workspace_id=record.get("workspace_id"))
-        return record
+        return self.memory.upsert_memory(
+            kind=kind, content=content, user_email=user_email, tags=tags,
+            memory_id=memory_id, metadata=metadata, graph=graph, workspace_id=workspace_id
+        )
 
     def list_memories(self, user_email: Optional[str] = None, kind: Optional[str] = None, workspace_id: Optional[str] = None) -> Dict[str, Any]:
-        memories = self._scoped(_listify(self.load_state().get("memories")), workspace_id)
-        if user_email:
-            memories = [item for item in memories if item.get("user_email") in {None, user_email}]
-        if kind:
-            memories = [item for item in memories if item.get("kind") == kind]
-        return {"memories": list(reversed(memories))}
+        return self.memory.list_memories(user_email=user_email, kind=kind, workspace_id=workspace_id)
 
     def search_memories(self, query: str, user_email: Optional[str] = None, limit: int = 20, workspace_id: Optional[str] = None) -> Dict[str, Any]:
         q = str(query or "").lower().strip()

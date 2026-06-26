@@ -1174,58 +1174,9 @@ async def _smoke_test_loaded_model(
     *,
     api_key_override: Optional[str] = None,
 ) -> Dict[str, object]:
-    """로드 직후 짧은 채팅 테스트를 돌려 ready_to_chat 여부를 판정한다.
-
-    Cloud(OpenAI/Anthropic/OpenRouter 등) 모델은 사용자 비용 발생 가능성 때문에 skip.
-    실패해도 예외를 던지지 않는다. 결과는 compat_cache에도 기록된다.
-    """
-    if (resolution.engine or "").lower() not in _LOCAL_SMOKE_ENGINES:
-        profile = _ensure_compat_profile(resolution.load_id, resolution.engine)
-        return {
-            "ok": True,
-            "reason": "skipped (cloud model — smoke test would incur cost)",
-            "answer": None,
-            "profile": profile.to_dict(),
-            "skipped": True,
-        }
-    try:
-        text = await asyncio.wait_for(
-            router.generate(
-                _SMOKE_PROMPT,
-                context=None,
-                max_tokens=128,
-                temperature=0.1,
-            ),
-            timeout=30,
-        )
-    except Exception as exc:  # pragma: no cover - generator may not exist on all engines
-        reason = str(exc)[:200] or "generation_failed"
-        profile = _record_smoke_result(
-            resolution.load_id, resolution.engine, False, reason, status="failed"
-        )
-        return {
-            "ok": False,
-            "status": "failed",
-            "reason": reason,
-            "answer": None,
-            "profile": profile.to_dict(),
-        }
-
-    profile = _ensure_compat_profile(resolution.load_id, resolution.engine)
-    cleaned = _compat_fast_postprocess(str(text or ""), profile.to_dict())
-    # item 3-3: ok / degraded / failed 3분류. degraded는 채팅은 가능하다.
-    status, reason = _classify_smoke_response(cleaned)
-    ok = status != "failed"
-    profile = _record_smoke_result(
-        resolution.load_id, resolution.engine, ok, reason, status=status
-    )
-    return {
-        "ok": ok,
-        "status": status,
-        "reason": reason,
-        "answer": cleaned,
-        "profile": profile.to_dict(),
-    }
+    # Delegated to model_engines for server decomp
+    from .model_engines import _smoke_test_loaded_model as _impl_smoke
+    return await _impl_smoke(resolution, api_key_override=api_key_override)
 
 
 async def prepare_and_load_model(
