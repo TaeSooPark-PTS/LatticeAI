@@ -22,7 +22,7 @@ warnings.warn(
     "latticeai.brain is deprecated; import lattice_brain instead",
     DeprecationWarning,
     stacklevel=2,
-)
+)  # one-time per import site in practice; shims remain for compat surface
 
 __all__ = [
     "AssembledContext",

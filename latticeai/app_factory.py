@@ -45,6 +45,7 @@ from latticeai.runtime.platform_runtime_wiring import build_platform_automation_
 from latticeai.runtime.persistence_runtime import build_persistence_runtime
 from latticeai.runtime.review_wiring import build_review_run_now_runner
 from latticeai.runtime.sso_runtime import build_sso_runtime
+from latticeai.runtime.audit_runtime import build_audit_runtime
 from latticeai.runtime.router_registration import (
     build_auth_admin_security_router_bundle,
     build_static_routes_bundle,
@@ -106,7 +107,6 @@ def _build(config: "Optional[Config]" = None) -> Dict[str, Any]:
     )
     from latticeai.core.audit import (
         get_audit_log as _get_audit_log,
-        append_audit_event as _append_audit_event,
         classify_sensitive_message as _classify_sensitive_message,
         build_sensitivity_report as _build_sensitivity_report,
         build_admin_audit_report as _build_admin_audit_report,
@@ -553,11 +553,7 @@ def _build(config: "Optional[Config]" = None) -> Dict[str, Any]:
 
     _history_lock = threading.Lock()
 
-    def get_audit_log() -> List[Dict]:
-        return _get_audit_log(AUDIT_FILE)
-
-    def append_audit_event(event_type: str, **payload) -> None:
-        _append_audit_event(AUDIT_FILE, event_type, **payload)
+    # audit build moved after redact_secret_text is defined (see below)
 
     def save_to_history(
         role: str,
@@ -628,6 +624,15 @@ def _build(config: "Optional[Config]" = None) -> Dict[str, Any]:
 
     def redact_secret_text(text: str) -> str:
         return _redact_secret_text(text)
+
+    # Build audit now that redact is available
+    _audit_rt = build_audit_runtime(
+        audit_file=AUDIT_FILE,
+        logging=logging,
+        redact_fn=redact_secret_text,
+    )
+    get_audit_log = _audit_rt["get_audit_log"]
+    append_audit_event = _audit_rt["append_audit_event"]
 
     def get_history():
         try:

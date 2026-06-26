@@ -96,6 +96,9 @@ class Config:
     local_model: str
     local_draft_model: str
     auto_read_chat_paths: bool
+    max_local_models: int
+    allow_model_downloads: bool
+    model_download_timeout: int
 
     # ── embeddings (retrieval vector signal) ────────────────────────
     embedding_provider: str
@@ -188,6 +191,9 @@ class Config:
             local_model=local_model,
             local_draft_model=_value(env, "LATTICEAI_LOCAL_DRAFT_MODEL", ""),
             auto_read_chat_paths=_bool(env, "LATTICEAI_AUTO_READ_CHAT_PATHS", default=False),
+            max_local_models=_int(env, "LATTICEAI_MAX_LOCAL_MODELS", 1),
+            allow_model_downloads=_bool(env, "LATTICEAI_ALLOW_MODEL_DOWNLOADS", default=False),
+            model_download_timeout=_int(env, "LATTICEAI_MODEL_DOWNLOAD_TIMEOUT", 300),
             embedding_provider=_value(env, "LATTICEAI_EMBEDDING_PROVIDER", "hash").strip().lower(),
             embedding_profile=_value(env, "LATTICEAI_EMBEDDING_PROFILE", "").strip().lower(),
             embedding_model=_value(env, "LATTICEAI_EMBEDDING_MODEL", ""),

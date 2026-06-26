@@ -7,12 +7,14 @@ existed at that release.
 ## [Unreleased]
 
 ### Changed
-- Continued server decomposition: extracted SSO discovery/cache logic into `latticeai/runtime/sso_runtime.py`.
-- Config centralization: added `timezone` (from `LATTICE_TZ`) to the frozen `Config` object and forwarded through config runtime.
-- Reduced monolithic module size: moved pure helpers (`_now`, `_safe_slug`, `_atomic_write_json`, snapshot conversion, `remove_skill_directory`, `_file_size`) from `latticeai/core/workspace_os.py` (2.5k LOC) into new focused `latticeai/core/workspace_os_utils.py`.
-- Deduplicated `_file_size` helper; `MemoryService` now imports the shared implementation.
-- Added explicit `__all__` to `latticeai/core/config.py`, `latticeai/core/tool_registry.py`, and `latticeai/core/workspace_os.py` for clearer public surfaces.
-- Preserved all public APIs, legacy shims, and runtime contracts (AgentRuntime, ToolRegistry, etc.).
+- Continued server decomposition: extracted SSO into `sso_runtime.py`, audit helpers into `audit_runtime.py`; further shrunk `app_factory._build`.
+- Model runtime monolith reduction: extracted HF download/progress/repo logic (~220 LOC) to `latticeai/services/model_download.py` with full re-export compat for globals and callers.
+- Config centralization: `timezone`, `max_local_models`, `allow_model_downloads`, `model_download_timeout` added to `Config` and wired.
+- WorkspaceOSStore decomposition: extracted `WorkspacePermissionManager` + role/permission logic to `workspace_permissions.py`; composed in main store; reduced god-class surface.
+- Workspace helpers previously extracted + dedup.
+- Shim improvement: clarified deprecation paths.
+- Added explicit `__all__` surfaces and kept all contracts/tests green.
+- All listed remaining technical debt items from prior review substantially addressed via move-based refactoring (preserving APIs exactly).
 
 ## [8.1.0] - 2026-06-27
 

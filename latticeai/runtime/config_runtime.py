@@ -34,4 +34,7 @@ def build_config_runtime(config: "Optional[Config]" = None) -> Dict[str, Any]:
         "LOCAL_MODEL": cfg.local_model,
         "LOCAL_DRAFT_MODEL": cfg.local_draft_model,
         "TIMEZONE": cfg.timezone,
+        "MAX_LOCAL_MODELS": cfg.max_local_models,
+        "ALLOW_MODEL_DOWNLOADS": cfg.allow_model_downloads,
+        "MODEL_DOWNLOAD_TIMEOUT": cfg.model_download_timeout,
     }
