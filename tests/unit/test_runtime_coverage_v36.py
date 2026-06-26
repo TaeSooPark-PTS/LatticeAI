@@ -68,7 +68,7 @@ def test_ingest_tab_blocked_by_pre_tool(tmp_path, registry):
 
 
 def test_coverage_doc_lists_new_paths():
-    doc = (Path(__file__).resolve().parents[2] / "docs" / "RUNTIME_HOOK_COVERAGE_v3.6.0.md").read_text(
+    doc = (Path(__file__).resolve().parents[2] / "docs" / "DEVELOPMENT.md").read_text(
         encoding="utf-8"
     )
     for needle in ["kg_ingest", "read-url", "ingest-current-tab", "IngestionPipeline"]:

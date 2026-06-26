@@ -87,6 +87,15 @@ Future extraction should continue with AgentRuntime, ToolRegistry, config,
 server decomposition, and Knowledge Graph stabilization in that order when
 architectural debt is present.
 
+## Runtime Hook Coverage
+
+Knowledge Graph ingestion paths must continue to pass through the shared
+pre-tool/post-tool lifecycle:
+
+- browser `read-url` ingestion dispatches `tool.kg_ingest.*` events;
+- browser `ingest-current-tab` ingestion dispatches the same lifecycle;
+- `IngestionPipeline` remains the common ingestion boundary behind those routes.
+
 ## Documentation Sync
 
 For user-facing, API, runtime, release, or packaging changes, check:
