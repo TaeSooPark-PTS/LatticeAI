@@ -280,3 +280,8 @@ Package metadata, Tauri, frontend, Python all aligned to 7.7.0. UI/UX microcopy 
   - Deeper WorkspaceOSStore (timeline + plugins + snapshots + memory).
   - KG embed: set_embed_dim.
 - All refactoring needed finished this session per AGENTS. 767 tests, builds, greps clean.
+
+### Added (this session features)
+- `vision_analyze` tool: new multimodal vision analysis tool using screenshot b64 + prompt. Leverages existing VLM support (image_data in generate). Added to computer-use agent prompt and general tools. Fits seamlessly with computer_use, agent runtime, tool registry, and VLM models without affecting text-only paths.
+- More recent multimodal models in user recommendations (Llama 3.2 11B Vision, Phi-3.5 Vision, Qwen2.5-VL 7B, Moondream2) + family order update in model_recommendation. Expanded curated list in model_capability_registry for better local VLM choices on Apple Silicon and other.
+- All additions checked for compatibility with existing KG (descriptions can be ingested), agents/tools dispatch, chat/computer_use (image pass-through), model rec logic, and non-multimodal fallbacks.

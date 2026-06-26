@@ -225,6 +225,7 @@ TOOL_HANDLERS: Dict[str, Callable[[Dict[str, Any]], Dict[str, Any]]] = {
     "computer_status":   lambda a: computer_status(),
     "chrome_status":     lambda a: desktop_bridge_status(),
     "computer_use_status": lambda a: desktop_bridge_status(),
+    "vision_analyze":    lambda a: vision_analyze(a.get("image_b64", ""), a.get("prompt", "Describe this image in detail. Be concise.")),
     # knowledge / obsidian
     "knowledge_save":    lambda a: knowledge_save(a["content"], a.get("folder", "00_Raw"), a.get("title")),
     "knowledge_search":  lambda a: knowledge_search(a["query"], a.get("max_results", 5)),
@@ -268,7 +269,7 @@ __all__ = [
     "network_status",
     "computer_screenshot", "computer_open_app", "computer_open_url",
     "computer_click", "computer_type", "computer_key", "computer_scroll",
-    "computer_move", "computer_drag", "computer_status",
+    "computer_move", "computer_drag", "computer_status", "vision_analyze",
     "run_command", "build_project", "deploy_project",
     "git_status", "git_diff", "git_log", "git_show",
     "TOOL_HANDLERS", "DEFAULT_TOOL_REGISTRY", "registered_tools", "execute_tool",

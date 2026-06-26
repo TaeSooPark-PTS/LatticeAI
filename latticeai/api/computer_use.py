@@ -42,12 +42,14 @@ Available actions:
 - computer_scroll: {"action":"computer_scroll","args":{"x":500,"y":300,"direction":"down","clicks":3}}
 - computer_move: {"action":"computer_move","args":{"x":500,"y":300}}
 - computer_drag: {"action":"computer_drag","args":{"x1":100,"y1":100,"x2":500,"y2":500}}
+- vision_analyze: {"action":"vision_analyze","args":{"image_b64": "...", "prompt": "What do you see on screen?"}} — use after screenshot to let VLM describe/answer about the image (only when multimodal model loaded)
 - final: {"action":"final","message":"Korean summary of what was accomplished"}
 
 Rules:
 - Respond with exactly ONE JSON object. No markdown, no extra text.
 - Do not take screenshots for simple app launch, URL opening, keyboard shortcuts, or non-visual tasks.
 - Take a screenshot before coordinate-based clicks/drags or when the task explicitly asks you to inspect the screen.
+- After screenshot, prefer vision_analyze (with good prompt) over raw b64 in next step when you need to understand what is on screen (especially with multimodal/VLM loaded).
 - After coordinate-based clicking or typing into an unknown focused field, take a screenshot only if verification is necessary.
 - Use coordinates relative to the screen (0,0 is top-left).
 - If a UI element is not visible, scroll or search for it first.

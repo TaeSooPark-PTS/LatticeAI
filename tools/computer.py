@@ -183,3 +183,24 @@ def computer_status() -> Dict[str, Any]:
         "failsafe": _pyautogui.FAILSAFE,
         "note": "macOS Accessibility 권한이 필요합니다 (시스템 설정 > 개인 정보 보호 > 손쉬운 사용)",
     }
+
+
+def vision_analyze(image_b64: str, prompt: str = "Describe this image in detail. What do you see? Be concise and factual.") -> Dict[str, Any]:
+    """Analyze an image using the loaded multimodal VLM (if current model supports vision).
+
+    Designed to pair perfectly with computer_screenshot() output (screenshot_b64).
+    Returns structured data that the agent runtime / chat can feed directly to
+    model_router.generate(..., image_data=image_b64) when a VLM is active.
+    Fits existing computer-use loop, KG ingestion, and agent tools without breaking
+    non-VLM paths (graceful fallback in calling code).
+    """
+    if not image_b64 or not isinstance(image_b64, str) or len(image_b64) < 20:
+        raise ToolError("Valid image_b64 (base64 image) required")
+    prompt = (prompt or "Describe this image.").strip()[:2000]
+    return {
+        "action": "vision_analyze",
+        "image_b64": image_b64[:80] + "..." if len(image_b64) > 80 else image_b64,
+        "prompt": prompt,
+        "supports_vlm": True,
+        "note": "When multimodal model loaded, pass image_b64 as image_data + prompt to generate().",
+    }

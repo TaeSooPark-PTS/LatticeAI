@@ -34,7 +34,12 @@ _APPLE_ONLY_ENGINES = {"local_mlx"}
 _FAMILY_ORDER = [
     "Gemma 4",
     "Qwen3-VL",
+    "Qwen2.5-VL",
     "Llama 4",
+    "Llama 3.2 Vision",
+    "Phi Vision",
+    "Moondream",
+    "Pixtral",
 ]
 
 _SIZE_RE = re.compile(r"([\d.]+)\s*(TB|GB|MB)", re.IGNORECASE)
