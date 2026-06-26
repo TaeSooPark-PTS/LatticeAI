@@ -6670,13 +6670,18 @@ body {
     padding: 0.34rem 0.48rem;
   }
 
-  .external-consent-status .feedback-state.is-compact .feedback-state-body span,
-  .external-consent-status .feedback-state.is-compact .feedback-state-action {
+  .external-consent-status .feedback-state.is-compact .feedback-state-body span {
     display: none;
   }
 
   .external-consent-status .feedback-state.is-compact .feedback-state-body strong {
     font-size: 0.68rem;
+  }
+
+  .external-consent-status .feedback-state.is-compact .feedback-state-action {
+    min-height: 1.55rem;
+    padding-inline: 0.48rem;
+    font-size: 0.62rem;
   }
 
   .brain-chat-home-card .brain-composer textarea {
