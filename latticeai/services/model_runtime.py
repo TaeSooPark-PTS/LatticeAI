@@ -14,7 +14,6 @@ import logging
 import os
 import platform
 import queue
-import re
 import shutil
 import subprocess
 import sys
@@ -51,6 +50,8 @@ from .model_engines import (
     ensure_ollama_server as _ensure_ollama_server,
     ensure_vllm_server as _ensure_vllm_server,
     ensure_llamacpp_server as _ensure_llamacpp_server,
+    pull_ollama_model_with_progress as _pull_ollama_model_with_progress,
+    get_ollama_pulled_models as _get_ollama_pulled_models,
     engine_support_status as _engine_support_status,
     install_engine as _install_engine,
 )
@@ -60,6 +61,8 @@ ensure_lmstudio_server = _ensure_lmstudio_server
 ensure_ollama_server = _ensure_ollama_server
 ensure_vllm_server = _ensure_vllm_server
 ensure_llamacpp_server = _ensure_llamacpp_server
+pull_ollama_model_with_progress = _pull_ollama_model_with_progress
+get_ollama_pulled_models = _get_ollama_pulled_models
 engine_support_status = _engine_support_status
 install_engine = _install_engine
 
@@ -302,35 +305,7 @@ def lmstudio_native_api_base() -> str:
 
 
 def ensure_lmstudio_server() -> None:
-    base_url = lmstudio_native_api_base()
-    try:
-        _json_request(f"{base_url}/api/v1/models", headers={"Authorization": "Bearer lmstudio"}, timeout=2.5)
-        return
-    except Exception:
-        pass
-
-    cli = find_lmstudio_cli()
-    if not cli:
-        raise HTTPException(status_code=400, detail="LM Studio CLI를 찾지 못했습니다. LM Studio를 설치한 뒤 다시 시도하세요.")
-
-    try:
-        subprocess.Popen(
-            [cli, "server", "start"],
-            stdout=subprocess.DEVNULL,
-            stderr=subprocess.DEVNULL,
-            start_new_session=True,
-        )
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=f"LM Studio 서버 시작 실패: {e}")
-
-    deadline = time.time() + 45
-    while time.time() < deadline:
-        try:
-            _json_request(f"{base_url}/api/v1/models", headers={"Authorization": "Bearer lmstudio"}, timeout=2.5)
-            return
-        except Exception:
-            time.sleep(1)
-    raise HTTPException(status_code=500, detail="LM Studio Local Server를 자동으로 시작하지 못했습니다.")
+    return _ensure_lmstudio_server()
 
 
 _LMSTUDIO_MODELS_CACHE: List[Dict[str, object]] = []
@@ -465,18 +440,7 @@ def ensure_lmstudio_model(model_name: str) -> Dict[str, object]:
     }
 
 def engine_support_status(engine: str) -> Dict[str, object]:
-    if engine != "vllm":
-        return {"supported": True, "reason": None}
-    is_apple_silicon = sys.platform == "darwin" and platform.machine() == "arm64"
-    if sys.platform.startswith("win"):
-        return {"supported": False, "reason": "vLLM은 Windows native 자동 설치보다 WSL2/Linux 환경을 권장합니다."}
-    if sys.platform == "darwin" and not is_apple_silicon:
-        return {"supported": False, "reason": "vLLM Metal 자동 설치는 Apple Silicon macOS에서만 지원됩니다."}
-    if sys.version_info >= (3, 13) and is_apple_silicon:
-        return {"supported": True, "reason": "현재 환경에서는 vLLM Metal 전용 런타임으로 설치합니다."}
-    if sys.version_info >= (3, 13):
-        return {"supported": False, "reason": "vLLM 설치는 현재 Python 3.13 이하 또는 별도 전용 런타임이 필요합니다."}
-    return {"supported": True, "reason": None}
+    return _engine_support_status(engine)
 
 def hf_model_ready(repo_id: str, provider: str = "local_mlx") -> bool:
     model_dir = hf_model_dir(repo_id)
@@ -730,91 +694,11 @@ def download_hf_model(
 
 
 def pull_ollama_model_with_progress(model_name: str, progress_emit=None) -> Dict[str, object]:
-    ollama = local_binary("ollama")
-    if not ollama:
-        raise HTTPException(status_code=400, detail="Ollama가 설치되지 않았습니다.")
-    started_at = time.time()
-    if progress_emit:
-        progress_emit(model_download_progress_payload(
-            "download",
-            "Ollama 모델 다운로드를 시작합니다.",
-            percent=0,
-            detail=model_name,
-            indeterminate=True,
-        ))
-    process = subprocess.Popen(
-        [ollama, "pull", model_name],
-        stdout=subprocess.PIPE,
-        stderr=subprocess.STDOUT,
-        text=True,
-        bufsize=1,
-    )
-    last_percent: Optional[float] = None
-    lines: List[str] = []
-    try:
-        assert process.stdout is not None
-        for raw_line in process.stdout:
-            for part in re.split(r"[\r\n]+", raw_line):
-                line = part.strip()
-                if not line:
-                    continue
-                lines.append(line)
-                match = re.search(r"(\d{1,3}(?:\.\d+)?)\s*%", line)
-                if match:
-                    last_percent = min(100.0, float(match.group(1)))
-                    if progress_emit:
-                        progress_emit(model_download_progress_payload(
-                            "download",
-                            "Ollama 모델 다운로드 중입니다.",
-                            percent=last_percent,
-                            detail=line[-180:],
-                            eta_seconds=estimate_eta_seconds(started_at, last_percent),
-                            indeterminate=False,
-                        ))
-                elif progress_emit:
-                    progress_emit(model_download_progress_payload(
-                        "download",
-                        "Ollama 모델 다운로드 중입니다.",
-                        percent=last_percent,
-                        detail=line[-180:],
-                        eta_seconds=estimate_eta_seconds(started_at, last_percent),
-                        indeterminate=last_percent is None,
-                    ))
-        returncode = process.wait()
-    except Exception:
-        process.kill()
-        raise
-
-    if returncode != 0:
-        tail = "\n".join(lines[-12:])
-        raise HTTPException(status_code=500, detail=tail[-2000:] or "Ollama 모델 다운로드 실패")
-
-    if progress_emit:
-        progress_emit(model_download_progress_payload(
-            "download",
-            "Ollama 모델 다운로드가 완료되었습니다.",
-            percent=100,
-            detail=model_name,
-            eta_seconds=0,
-            indeterminate=False,
-        ))
-    return {"provider": "ollama", "model": model_name, "returncode": returncode}
+    return _pull_ollama_model_with_progress(model_name, progress_emit)
 
 
 def get_ollama_pulled_models() -> set:
-    ollama = local_binary("ollama")
-    if not ollama:
-        return set()
-    try:
-        result = subprocess.run([ollama, "list"], capture_output=True, text=True, timeout=5, check=False)
-        pulled = set()
-        for line in result.stdout.splitlines()[1:]:
-            parts = line.split()
-            if parts:
-                pulled.add(parts[0])
-        return pulled
-    except Exception:
-        return set()
+    return _get_ollama_pulled_models()
 
 
 def get_openai_compatible_server_models(provider: str) -> List[str]:
@@ -1200,68 +1084,7 @@ def runtime_features() -> Dict:
     }
 
 def install_engine(engine: str) -> Dict:
-    if engine not in ENGINE_INSTALLERS:
-        raise HTTPException(status_code=400, detail="지원하지 않는 엔진입니다.")
-    installer = ENGINE_INSTALLERS[engine]
-    required_binary = installer.get("requires_binary")
-    if required_binary and shutil.which(required_binary) is None:
-        raise HTTPException(status_code=400, detail=f"{required_binary}가 설치되어 있지 않아 자동 설치할 수 없습니다.")
-    command = installer["command"]
-    run_kwargs = {
-        "cwd": str(BASE_DIR),
-        "capture_output": True,
-        "text": True,
-        "timeout": 900,
-        "check": False,
-    }
-
-    if engine == "vllm" and sys.platform == "darwin" and platform.machine() == "arm64":
-        command = [
-            "/bin/bash",
-            "-lc",
-            "set -euo pipefail; "
-            "if [ ! -x /opt/homebrew/bin/python3.12 ]; then brew install python@3.12; fi; "
-            "/opt/homebrew/bin/python3.12 -m venv ~/.venv-vllm-metal; "
-            "~/.venv-vllm-metal/bin/pip install -U pip setuptools wheel; "
-            "~/.venv-vllm-metal/bin/pip install vllm-metal",
-        ]
-    try:
-        completed = subprocess.run(command, **run_kwargs)
-    except subprocess.TimeoutExpired:
-        raise HTTPException(status_code=408, detail="엔진 설치 시간이 초과되었습니다.")
-    result = {
-        "engine": engine,
-        "command": " ".join(command),
-        "returncode": completed.returncode,
-        "stdout": completed.stdout[-12000:],
-        "stderr": completed.stderr[-12000:],
-        "installed": engine_installed(engine),
-    }
-    ollama = local_binary("ollama")
-    if engine == "ollama" and completed.returncode == 0 and ollama:
-        # Skip if already running to avoid orphan daemons.
-        already_up = False
-        try:
-            probe = subprocess.run([ollama, "list"], capture_output=True, timeout=2, check=False)
-            already_up = probe.returncode == 0
-        except Exception:
-            already_up = False
-        if already_up:
-            result["daemon_started"] = "already_running"
-        else:
-            try:
-                # Detach so the daemon survives this request but doesn't become our zombie.
-                subprocess.Popen(
-                    [ollama, "serve"],
-                    stdout=subprocess.DEVNULL,
-                    stderr=subprocess.DEVNULL,
-                    start_new_session=True,
-                )
-                result["daemon_started"] = True
-            except Exception as e:
-                logging.warning("ollama serve spawn failed: %s", e)
-                result["daemon_started"] = False
-    return result
+    return _install_engine(engine)
 
 
 def _resolve_model_alias(model_id: str, engine: Optional[str] = None) -> str:
