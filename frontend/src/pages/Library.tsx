@@ -7,31 +7,33 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
+import { t } from "@/i18n";
 import { useAppStore } from "@/store/appStore";
 import { asArray } from "@/lib/utils";
 
 type LibraryTab = "models" | "skills" | "mcp" | "marketplace";
 
-const tabs: Array<{ id: LibraryTab; label: string }> = [
-  { id: "models", label: "Models" },
-  { id: "skills", label: "Skills" },
-  { id: "mcp", label: "Connections" },
-  { id: "marketplace", label: "Marketplace" },
+const tabs: Array<{ id: LibraryTab; labelKey: string }> = [
+  { id: "models", labelKey: "library.tab.models" },
+  { id: "skills", labelKey: "library.tab.skills" },
+  { id: "mcp", labelKey: "library.tab.mcp" },
+  { id: "marketplace", labelKey: "library.tab.marketplace" },
 ];
 
 export function LibraryPage({ initialTab }: { initialTab?: string }) {
   const mode = useAppStore((state) => state.mode);
+  const language = useAppStore((state) => state.language);
   const [tab, setTab] = React.useState<LibraryTab>((initialTab as LibraryTab) || "models");
   React.useEffect(() => {
     if (tabs.some((item) => item.id === initialTab)) setTab(initialTab as LibraryTab);
   }, [initialTab]);
-  const visibleTabs = tabs.map((item) => item.id === "mcp" && mode !== "basic" ? { ...item, label: "MCP / tools" } : item);
+  const visibleTabs = tabs.map((item) => ({ id: item.id, label: t(language, item.labelKey) }));
   return (
     <div className="space-y-5">
       <header className="page-hero">
-        <div className="page-kicker"><Boxes className="h-4 w-4" /> Library</div>
-        <h1 className="page-title">Choose your Brain's voice.</h1>
-        <p className="page-copy">Start with a short local model recommendation. Your Brain and memories stay durable when you switch later.</p>
+        <div className="page-kicker"><Boxes className="h-4 w-4" /> {t(language, "library.kicker")}</div>
+        <h1 className="page-title">{t(language, "library.title")}</h1>
+        <p className="page-copy">{t(language, "library.body")}</p>
       </header>
       <Tabs tabs={visibleTabs} value={tab} onChange={(id) => setTab(id as LibraryTab)} />
       {tab === "models" ? <ModelsPanel /> : null}

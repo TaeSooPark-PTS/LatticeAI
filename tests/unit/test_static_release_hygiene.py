@@ -54,6 +54,14 @@ def test_runtime_assets_use_hashed_manifest_instead_of_query_versions():
     assert not (STATIC_DIR / "v3").exists()
 
 
+def test_app_shell_has_no_inline_scripts_under_strict_csp():
+    source_html = (REPO_ROOT / "frontend" / "index.html").read_text(encoding="utf-8")
+    built_html = (STATIC_DIR / "app" / "index.html").read_text(encoding="utf-8")
+
+    for html in (source_html, built_html):
+        assert not re.search(r"<script(?![^>]+\bsrc=)[^>]*>", html), "strict CSP blocks inline app-shell scripts"
+
+
 def test_manifest_assets_are_in_python_wheel_data_files():
     manifest = json.loads((STATIC_DIR / "app" / "asset-manifest.json").read_text(encoding="utf-8"))
     pyproject = tomllib.loads((REPO_ROOT / "pyproject.toml").read_text(encoding="utf-8"))

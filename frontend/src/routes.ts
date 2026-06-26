@@ -16,8 +16,8 @@ export const productShellRoutes = [
   { id: "capture", path: "capture", labelKey: "shell.route.capture", icon: FolderInput, description: "Bring in files, folders, and pages" },
   { id: "memory", path: "knowledge-graph", labelKey: "shell.route.memory", icon: Database, description: "Search and inspect Brain knowledge" },
   { id: "library", path: "models", labelKey: "shell.route.library", icon: Library, description: "Choose the local model powering your Brain" },
-  { id: "system", path: "settings", labelKey: "shell.route.system", icon: Settings, description: "Keep your Brain safe and portable" },
   { id: "act", path: "review", labelKey: "shell.route.act", icon: Workflow, description: "Turn goals into supervised runs" },
+  { id: "system", path: "settings", labelKey: "shell.route.system", icon: Settings, description: "Keep your Brain safe and portable" },
 ] as const;
 
 export const directProductRoutes: Record<string, RouteTarget> = {

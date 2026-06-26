@@ -15,6 +15,7 @@ export function FeedbackState({
   body,
   actionLabel,
   onAction,
+  compact = false,
 }: {
   tone: FeedbackTone;
   language: Language;
@@ -22,11 +23,12 @@ export function FeedbackState({
   body?: string;
   actionLabel?: string;
   onAction?: () => void;
+  compact?: boolean;
 }) {
   const isError = tone === "error";
   const resolvedActionLabel = actionLabel || (isError ? t(language, "feedback.retry") : undefined);
   return (
-    <div className={`feedback-state is-${tone}`} role={isError ? "alert" : "status"}>
+    <div className={`feedback-state is-${tone}${compact ? " is-compact" : ""}`} role={isError ? "alert" : "status"}>
       <span className="feedback-state-icon" aria-hidden="true">
         {isError ? <AlertTriangle className="h-4 w-4" /> : <Inbox className="h-4 w-4" />}
       </span>

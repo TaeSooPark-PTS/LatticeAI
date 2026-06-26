@@ -132,6 +132,18 @@ export function BrainConversation({
             </div>
           </div>
 
+          <BrainComposer
+            language={language}
+            draft={draft}
+            streaming={streaming}
+            imageData={imageData}
+            uploadingDocument={uploadingDocument}
+            onDraftChange={onDraftChange}
+            onImageDataChange={onImageDataChange}
+            onUploadDocument={onUploadDocument}
+            onSend={onSend}
+          />
+
           <div ref={streamRef} className="brain-stream">
             {messages.length === 0 ? (
               <BrainEmptyState
@@ -167,18 +179,6 @@ export function BrainConversation({
               <small>{t(language, "brain.saved.detail")}</small>
             </div>
           ) : null}
-
-          <BrainComposer
-            language={language}
-            draft={draft}
-            streaming={streaming}
-            imageData={imageData}
-            uploadingDocument={uploadingDocument}
-            onDraftChange={onDraftChange}
-            onImageDataChange={onImageDataChange}
-            onUploadDocument={onUploadDocument}
-            onSend={onSend}
-          />
 
           <details className="brain-utility-drawer">
             <summary>{t(language, "brain.chatHome.utility")}</summary>

@@ -7,23 +7,25 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
+import { t } from "@/i18n";
 import { useAppStore } from "@/store/appStore";
 import { asArray, shortId, titleize } from "@/lib/utils";
 
 type SystemTab = "account" | "workspaces" | "snapshots" | "activity" | "network" | "settings" | "admin";
 
-const tabs: Array<{ id: SystemTab; label: string }> = [
-  { id: "account", label: "Account" },
-  { id: "workspaces", label: "Spaces" },
-  { id: "snapshots", label: "Snapshots" },
-  { id: "activity", label: "History" },
-  { id: "network", label: "Devices" },
-  { id: "settings", label: "Preferences" },
-  { id: "admin", label: "Admin Console" },
+const tabs: Array<{ id: SystemTab; labelKey: string }> = [
+  { id: "account", labelKey: "system.tab.account" },
+  { id: "workspaces", labelKey: "system.tab.workspaces" },
+  { id: "snapshots", labelKey: "system.tab.snapshots" },
+  { id: "activity", labelKey: "system.tab.activity" },
+  { id: "network", labelKey: "system.tab.network" },
+  { id: "settings", labelKey: "system.tab.settings" },
+  { id: "admin", labelKey: "system.tab.admin" },
 ];
 
 export function SystemPage({ initialTab }: { initialTab?: string }) {
   const mode = useAppStore((state) => state.mode);
+  const language = useAppStore((state) => state.language);
   const [tab, setTab] = React.useState<SystemTab>((initialTab as SystemTab) || "account");
   React.useEffect(() => {
     if (tabs.some((item) => item.id === initialTab)) setTab(initialTab as SystemTab);
@@ -31,11 +33,11 @@ export function SystemPage({ initialTab }: { initialTab?: string }) {
   return (
     <div className="space-y-5">
       <header className="page-hero">
-        <div className="page-kicker"><ShieldCheck className="h-4 w-4" /> Care</div>
-        <h1 className="page-title">Keep your brain safe and portable.</h1>
-        <p className="page-copy">Manage identity, spaces, backups, trusted devices, and safeguards from one calm place.</p>
+        <div className="page-kicker"><ShieldCheck className="h-4 w-4" /> {t(language, "system.kicker")}</div>
+        <h1 className="page-title">{t(language, "system.title")}</h1>
+        <p className="page-copy">{t(language, "system.body")}</p>
       </header>
-      <Tabs tabs={mode === "basic" ? tabs.filter((item) => item.id !== "admin") : tabs} value={tab} onChange={(id) => setTab(id as SystemTab)} />
+      <Tabs tabs={(mode === "basic" ? tabs.filter((item) => item.id !== "admin") : tabs).map((item) => ({id: item.id, label: t(language, item.labelKey)}))} value={tab} onChange={(id) => setTab(id as SystemTab)} />
       {tab === "account" ? <AccountPanel /> : null}
       {tab === "workspaces" ? <WorkspacePanel /> : null}
       {tab === "snapshots" ? <SnapshotsPanel /> : null}

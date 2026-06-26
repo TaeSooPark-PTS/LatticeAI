@@ -483,6 +483,35 @@ export function BrainHome({
 
   return (
     <main className="brain-home" aria-label={t(language, "brain.aria.home")}>
+      <BrainConversation
+        language={language}
+        explorationDepth={explorationDepth}
+        modelName={modelName}
+        messages={messages}
+        starterPrompts={starterPrompts}
+        memoryFeedback={memoryFeedback}
+        ingestionStates={ingestionStates}
+        emergenceEvents={emergenceEvents}
+        draft={draft}
+        streaming={streaming}
+        imageData={imageData}
+        streamRef={streamRef}
+        memories={memoryFragments}
+        concepts={knowledgeConcepts}
+        readiness={brainReadiness}
+        proof={brainProof}
+        uploadingDocument={uploadingDocument}
+        onOpenDepth={jumpToDepth}
+        onDraftChange={setDraft}
+        onImageDataChange={setImageData}
+        onUploadDocument={(file) => void uploadDocument(file)}
+        onConnectFolder={(path) => void connectFolder(path)}
+        onIngestNote={(note) => void ingestNote(note)}
+        onIngestWeb={(url) => void ingestWeb(url)}
+        onVerifyModelContinuity={() => void verifyModelContinuity()}
+        onSend={() => void send()}
+      />
+
       <section className="brain-presence" aria-label={t(language, "brain.aria.exploration")}>
         <div className="brain-exploration" data-depth={explorationDepth}>
           <LivingBrain
@@ -549,35 +578,6 @@ export function BrainHome({
           ) : null}
         </div>
       </section>
-
-      <BrainConversation
-        language={language}
-        explorationDepth={explorationDepth}
-        modelName={modelName}
-        messages={messages}
-        starterPrompts={starterPrompts}
-        memoryFeedback={memoryFeedback}
-        ingestionStates={ingestionStates}
-        emergenceEvents={emergenceEvents}
-        draft={draft}
-        streaming={streaming}
-        imageData={imageData}
-        streamRef={streamRef}
-        memories={memoryFragments}
-        concepts={knowledgeConcepts}
-        readiness={brainReadiness}
-        proof={brainProof}
-        uploadingDocument={uploadingDocument}
-        onOpenDepth={jumpToDepth}
-        onDraftChange={setDraft}
-        onImageDataChange={setImageData}
-        onUploadDocument={(file) => void uploadDocument(file)}
-        onConnectFolder={(path) => void connectFolder(path)}
-        onIngestNote={(note) => void ingestNote(note)}
-        onIngestWeb={(url) => void ingestWeb(url)}
-        onVerifyModelContinuity={() => void verifyModelContinuity()}
-        onSend={() => void send()}
-      />
     </main>
   );
 }

@@ -98,6 +98,7 @@ export function LoginScreen({ onSuccess }: { onSuccess: () => void }) {
         </div>
 
         {error && <div className="ritual-error" role="alert">{error}</div>}
+        <div className="ritual-muted-hint">{t(language, "flow.login.passwordLocal")}</div>
 
         <Button type="submit" disabled={busy || !email.trim() || !password.trim()} className="ritual-full-button">
           {busy ? t(language, "flow.login.busy") : t(language, "flow.login.submit")}

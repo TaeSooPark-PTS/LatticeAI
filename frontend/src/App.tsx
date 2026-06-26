@@ -53,37 +53,37 @@ export default function App() {
         <AdminConsole onBack={() => navigateHash("/brain")} />
       ) : parsed.primary === "act" ? (
         <BrainShell active={parsed.primary}>
-          <React.Suspense fallback={<PageLoader />}>
+          <React.Suspense fallback={<PageLoader language={language} />}>
             <ActPage initialTab={parsed.tab} />
           </React.Suspense>
         </BrainShell>
       ) : parsed.primary === "capture" ? (
         <BrainShell active={parsed.primary}>
-          <React.Suspense fallback={<PageLoader />}>
+          <React.Suspense fallback={<PageLoader language={language} />}>
             <CapturePage initialTab={parsed.tab} />
           </React.Suspense>
         </BrainShell>
       ) : parsed.primary === "library" ? (
         <BrainShell active={parsed.primary}>
-          <React.Suspense fallback={<PageLoader />}>
+          <React.Suspense fallback={<PageLoader language={language} />}>
             <LibraryPage initialTab={parsed.tab} />
           </React.Suspense>
         </BrainShell>
       ) : parsed.primary === "system" ? (
         <BrainShell active={parsed.primary}>
-          <React.Suspense fallback={<PageLoader />}>
+          <React.Suspense fallback={<PageLoader language={language} />}>
             <SystemPage initialTab={parsed.tab} />
           </React.Suspense>
         </BrainShell>
       ) : parsed.primary === "memory" ? (
         <BrainShell active="memory">
-          <React.Suspense fallback={<PageLoader />}>
+          <React.Suspense fallback={<PageLoader language={language} />}>
             <BrainPage initialTab="memory" />
           </React.Suspense>
         </BrainShell>
       ) : parsed.primary === "brain" && parsed.tab && parsed.tab !== "conversation" ? (
         <BrainShell active="brain">
-          <React.Suspense fallback={<PageLoader />}>
+          <React.Suspense fallback={<PageLoader language={language} />}>
             <BrainPage initialTab={parsed.tab} />
           </React.Suspense>
         </BrainShell>
@@ -113,6 +113,7 @@ function BrainShell({
             type="button"
             className={item.id === active ? "is-active" : ""}
             aria-current={item.id === active ? "page" : undefined}
+            title={`${t(language, item.labelKey)} — ${item.description}`}
             onClick={() => navigateHash(`/${item.path}`)}
           >
             {t(language, item.labelKey)}
@@ -140,6 +141,7 @@ function ExternalConsentStatus({ language }: { language: Language }) {
     <section className="external-consent-status" aria-label={t(language, "feedback.consent.aria")}>
       <FeedbackState
         tone={externalConsent ? "empty" : "error"}
+        compact={externalConsent}
         language={language}
         title={externalConsent ? t(language, "feedback.consent.activeTitle") : t(language, "feedback.consent.revokedTitle")}
         body={externalConsent ? t(language, "feedback.consent.activeBody") : t(language, "feedback.consent.revokedBody")}
@@ -198,10 +200,10 @@ function VsCodeSyncStatus({ language }: { language: Language }) {
   );
 }
 
-function PageLoader() {
+function PageLoader({ language }: { language: Language }) {
   return (
     <div className="brain-shell-loader" role="status">
-      Loading Brain workspace...
+      {t(language, "shell.loading")}
     </div>
   );
 }

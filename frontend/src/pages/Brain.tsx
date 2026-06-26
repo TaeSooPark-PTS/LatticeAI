@@ -12,6 +12,7 @@ import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { BrainHome } from "@/features/brain/BrainHome";
 import { useAppStore } from "@/store/appStore";
+import { t, type Language } from "@/i18n";
 import { asArray, fmtNumber, pct, shortId, titleize } from "@/lib/utils";
 
 type BrainTab = "conversation" | "memory" | "knowledge" | "relationships" | "graph" | "portability";
@@ -62,23 +63,23 @@ type ExplorerModel = ParsedGraph & {
   hiddenByFilters: number;
 };
 
-const tabs: Array<{ id: BrainTab; label: string }> = [
-  { id: "conversation", label: "Brain" },
-  { id: "memory", label: "Memories" },
-  { id: "knowledge", label: "Knowledge" },
-  { id: "relationships", label: "Relationships" },
-  { id: "graph", label: "Graph" },
-  { id: "portability", label: "Care" },
+const tabs: Array<{ id: BrainTab; labelKey: string }> = [
+  { id: "conversation", labelKey: "brain.tab.conversation" },
+  { id: "memory", labelKey: "brain.tab.memory" },
+  { id: "knowledge", labelKey: "brain.tab.knowledge" },
+  { id: "relationships", labelKey: "brain.tab.relationships" },
+  { id: "graph", labelKey: "brain.tab.graph" },
+  { id: "portability", labelKey: "brain.tab.portability" },
 ];
 
 const groupDefinitions = [
-  { id: "knowledge", label: "Knowledge", color: "#20c997", types: ["topic", "concept", "entity", "decision", "insight", "claim", "fact"] },
-  { id: "source", label: "Sources", color: "#60a5fa", types: ["file", "document", "source", "chunk", "note", "url", "page", "image", "transcript"] },
-  { id: "activity", label: "Activity", color: "#f59e0b", types: ["task", "workflow", "agent", "run", "approval", "hook"] },
-  { id: "memory", label: "Memory", color: "#a78bfa", types: ["memory", "conversation", "message", "chat", "context"] },
-  { id: "people", label: "People", color: "#f472b6", types: ["person", "user", "team", "organization", "org"] },
-  { id: "system", label: "System", color: "#94a3b8", types: ["model", "skill", "plugin", "setting", "policy", "device", "storage"] },
-  { id: "other", label: "Other", color: "#f8fafc", types: [] },
+  { id: "knowledge", labelKey: "brain.group.knowledge", color: "#20c997", types: ["topic", "concept", "entity", "decision", "insight", "claim", "fact"] },
+  { id: "source", labelKey: "brain.group.source", color: "#60a5fa", types: ["file", "document", "source", "chunk", "note", "url", "page", "image", "transcript"] },
+  { id: "activity", labelKey: "brain.group.activity", color: "#f59e0b", types: ["task", "workflow", "agent", "run", "approval", "hook"] },
+  { id: "memory", labelKey: "brain.group.memory", color: "#a78bfa", types: ["memory", "conversation", "message", "chat", "context"] },
+  { id: "people", labelKey: "brain.group.people", color: "#f472b6", types: ["person", "user", "team", "organization", "org"] },
+  { id: "system", labelKey: "brain.group.system", color: "#94a3b8", types: ["model", "skill", "plugin", "setting", "policy", "device", "storage"] },
+  { id: "other", labelKey: "brain.group.other", color: "#f8fafc", types: [] },
 ] as const;
 
 const groupLookup: Map<string, string> = new Map(groupDefinitions.flatMap((group) => group.types.map((type) => [type, group.id])));
@@ -116,7 +117,7 @@ function groupDefinition(id: string) {
   return groupDefinitions.find((group) => group.id === id) || groupDefinitions[groupDefinitions.length - 1];
 }
 
-function parseGraph(data: unknown): ParsedGraph {
+function parseGraph(data: unknown, language: Language): ParsedGraph {
   const graph = isRecord(data) ? data : {};
   const rawNodes = asArray<Record<string, unknown>>(graph.nodes);
   const rawEdges = asArray<Record<string, unknown>>(graph.edges);
@@ -158,7 +159,7 @@ function parseGraph(data: unknown): ParsedGraph {
   nodes.forEach((node) => groupCounts.set(node.group, (groupCounts.get(node.group) || 0) + 1));
   const groups = groupDefinitions.map((group) => ({
     id: group.id,
-    label: group.label,
+    label: t(language, group.labelKey),
     color: group.color,
     count: groupCounts.get(group.id) || 0,
     visibleCount: 0,
@@ -206,11 +207,12 @@ function buildExplorerModel({
   const visibleNodes = capped.filter((node) => {
     if (!collapsedGroups.has(node.group)) return true;
     const definition = groupDefinition(node.group);
+    const group = graph.groups.find((item) => item.id === node.group);
     const aggregateId = `group:${node.group}`;
     const current = aggregateNodes.get(aggregateId);
     aggregateNodes.set(aggregateId, {
       id: aggregateId,
-      group: { id: definition.id, label: definition.label, color: definition.color, count: 0, visibleCount: 0, collapsed: true },
+      group: { id: definition.id, label: group?.label || definition.id, color: definition.color, count: 0, visibleCount: 0, collapsed: true },
       count: (current?.count || 0) + 1,
       maxImportance: Math.max(current?.maxImportance || 0, node.importance),
     });
@@ -238,6 +240,7 @@ function buildExplorerModel({
   });
   const nodeElements: ElementDefinition[] = visibleNodes.map((node) => {
     const definition = groupDefinition(node.group);
+    const group = graph.groups.find((item) => item.id === node.group);
     const matched = query && node.searchText.includes(query);
     const label = labelMode === "off" ? "" : labelMode === "all" || node.importance > 0.55 || node.degree > 1 || matched || selectedId === node.id ? node.label : "";
     return {
@@ -246,7 +249,7 @@ function buildExplorerModel({
         label: node.label,
         displayLabel: label,
         type: node.type,
-        group: definition.label,
+        group: group?.label || definition.id,
         color: definition.color,
         borderColor: selectedId === node.id ? "#ffffff" : definition.color,
         size: Math.round(20 + node.importance * 34 + Math.min(node.degree, 10) * 2),
@@ -383,7 +386,6 @@ function CytoscapeGraph({
         fit: true,
         padding: 32,
       },
-      wheelSensitivity: 0.18,
     });
     cyRef.current.on("tap", "node", (event) => onSelect(String(event.target.id())));
     cyRef.current.on("tap", (event) => {
@@ -415,6 +417,7 @@ function CytoscapeGraph({
 
 export function BrainPage({ initialTab }: { initialTab?: string }) {
   const mode = useAppStore((state) => state.mode);
+  const language = useAppStore((state) => state.language);
   const normalizedInitialTab = normalizeBrainTab(initialTab);
   const [tab, setTab] = React.useState<BrainTab>(normalizedInitialTab);
   const [brainPresence, setBrainPresence] = React.useState<{ state: BrainState; intensity: number }>({
@@ -439,8 +442,8 @@ export function BrainPage({ initialTab }: { initialTab?: string }) {
       {tab === "conversation" ? null : (
         <header className="brain-layer-header">
           <div>
-            <div className="page-kicker"><BrainCircuit className="h-4 w-4" /> {tabLabel(tab)}</div>
-            <h1>{tabHeadline(tab)}</h1>
+            <div className="page-kicker"><BrainCircuit className="h-4 w-4" /> {tabLabel(language, tab)}</div>
+            <h1>{tabHeadline(language, tab)}</h1>
           </div>
           <div className="brain-layer-meter">
             <span>Source coverage</span>
@@ -448,7 +451,7 @@ export function BrainPage({ initialTab }: { initialTab?: string }) {
           </div>
         </header>
       )}
-      <Tabs tabs={tabs} value={tab} onChange={(id) => setTab(id as BrainTab)} />
+      <Tabs tabs={tabs.map((item) => ({ id: item.id, label: t(language, item.labelKey) }))} value={tab} onChange={(id) => setTab(id as BrainTab)} />
 
       {tab === "conversation" ? (
         <BrainHome brainState={brainPresence.state} intensity={brainPresence.intensity} onBrainChange={setBrain} />
@@ -491,17 +494,13 @@ function normalizeBrainTab(tab?: string): BrainTab {
   return tabs.some((item) => item.id === tab) ? tab as BrainTab : "conversation";
 }
 
-function tabLabel(tab: BrainTab) {
-  return tabs.find((item) => item.id === tab)?.label || "Brain";
+function tabLabel(language: Language, tab: BrainTab) {
+  const labelKey = tabs.find((item) => item.id === tab)?.labelKey;
+  return labelKey ? t(language, labelKey) : "Brain";
 }
 
-function tabHeadline(tab: BrainTab) {
-  if (tab === "memory") return "Memories, before mechanics.";
-  if (tab === "knowledge") return "Knowledge, gathered into recall.";
-  if (tab === "relationships") return "Relationships, when you need the why.";
-  if (tab === "graph") return "The graph, intentionally opened.";
-  if (tab === "portability") return "Care for the Brain.";
-  return "Talk to your Brain.";
+function tabHeadline(language: Language, tab: BrainTab) {
+  return t(language, `brain.headline.${tab}`);
 }
 
 function GraphStatus({ data }: { data: Record<string, unknown> }) {
@@ -553,7 +552,8 @@ function MemoryStatus({ data }: { data: Record<string, unknown> }) {
 
 function DigitalBrainExplorer({ data }: { data: unknown }) {
   const mode = useAppStore((state) => state.mode);
-  const parsed = React.useMemo(() => parseGraph(data), [data]);
+  const language = useAppStore((state) => state.language);
+  const parsed = React.useMemo(() => parseGraph(data, language), [data, language]);
   const [search, setSearch] = React.useState("");
   const [groupFilter, setGroupFilter] = React.useState("all");
   const [minImportance, setMinImportance] = React.useState(mode === "basic" ? 0.1 : 0);
@@ -573,7 +573,7 @@ function DigitalBrainExplorer({ data }: { data: unknown }) {
     maxNodes: 220,
   }), [parsed, search, groupFilter, minImportance, collapsedGroups, selectedId, labelMode]);
   const selected = parsed.nodes.find((node) => node.id === selectedId);
-  const selectedGroup = selectedId?.startsWith("group:") ? groupDefinition(selectedId.replace("group:", "")) : null;
+  const selectedGroup = selectedId?.startsWith("group:") ? model.groups.find((group) => group.id === selectedId.replace("group:", "")) : null;
   const toggleGroup = (id: string) => {
     setCollapsedGroups((current) => {
       const next = new Set(current);
@@ -670,7 +670,7 @@ function DigitalBrainExplorer({ data }: { data: unknown }) {
                     <div className="text-lg font-semibold">{selected.label}</div>
                     <div className="mt-1 flex flex-wrap gap-1">
                       <Badge variant="muted">{selected.type}</Badge>
-                      <Badge variant="muted">{groupDefinition(selected.group).label}</Badge>
+                      <Badge variant="muted">{model.groups.find((group) => group.id === selected.group)?.label || selected.group}</Badge>
                       <Badge variant="success">{Math.round(selected.importance * 100)} importance</Badge>
                     </div>
                   </div>

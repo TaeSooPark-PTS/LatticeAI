@@ -2375,9 +2375,9 @@ body {
 .brain-composer {
   position: relative;
   z-index: 10;
-  margin-top: auto;
+  margin-top: 0;
   padding: 0.85rem 0.6rem 0.35rem;
-  background: linear-gradient(180deg, transparent, hsl(var(--bg)) 36%);
+  background: linear-gradient(180deg, hsl(var(--bg) / 0.62), transparent);
 }
 
 .brain-composer textarea {
@@ -4264,6 +4264,12 @@ body {
     flex-direction: row;
     flex-wrap: wrap;
   }
+  .brain-composer textarea {
+    min-height: 4.25rem;
+  }
+  .brain-composer-actions {
+    margin-top: 0.45rem;
+  }
   .brain-depth-actions {
     bottom: 3.55rem;
     width: min(100vw - 1rem, 24rem);
@@ -5463,7 +5469,7 @@ body {
 }
 
 .brain-composer textarea {
-  min-height: 7rem;
+  min-height: 3.5rem;
   resize: vertical;
 }
 
@@ -6149,6 +6155,34 @@ body {
   background: hsl(var(--memory) / 0.05);
 }
 
+.feedback-state.is-compact {
+  min-height: 2.35rem;
+  padding: 0.46rem 0.58rem;
+}
+
+.feedback-state.is-compact .feedback-state-icon {
+  width: 1.35rem;
+  height: 1.35rem;
+}
+
+.feedback-state.is-compact .feedback-state-body {
+  display: flex;
+  align-items: baseline;
+  gap: 0.45rem;
+}
+
+.feedback-state.is-compact .feedback-state-body strong {
+  font-size: 0.72rem;
+}
+
+.feedback-state.is-compact .feedback-state-body span {
+  font-size: 0.66rem;
+}
+
+.feedback-state.is-compact .feedback-state-action {
+  min-height: 1.55rem;
+}
+
 .feedback-state.is-error {
   border-color: hsl(var(--danger, 0 64% 56%) / 0.35);
   background: hsl(var(--danger, 0 64% 56%) / 0.07);
@@ -6576,4 +6610,10 @@ body {
     transform: translateX(-50%);
   }
 
+}
+
+@media (max-width: 720px) {
+  .brain-chat-home-card .brain-composer textarea {
+    min-height: 3.5rem;
+  }
 }

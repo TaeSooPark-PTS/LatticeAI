@@ -27,6 +27,7 @@ export function BrainComposer({
   return (
     <div className="brain-composer">
       <textarea
+        rows={1}
         value={draft}
         onChange={(event) => onDraftChange(event.target.value)}
         onKeyDown={(event) => {
@@ -38,6 +39,9 @@ export function BrainComposer({
         placeholder={t(language, "brain.placeholder")}
       />
       <div className="brain-composer-actions">
+        <Button onClick={onSend} disabled={!draft.trim() || streaming} className="rounded-full px-5">
+          <Send className="h-4 w-4" /> {t(language, "brain.send")}
+        </Button>
         <label className={`brain-document-input ${uploadingDocument ? "is-disabled" : ""}`}>
           <FileUp className="h-3.5 w-3.5" />
           <span>{uploadingDocument ? t(language, "brain.upload.uploading") : t(language, "brain.upload.ctaShort")}</span>
@@ -67,9 +71,6 @@ export function BrainComposer({
           />
         </label>
         {imageData ? <span className="brain-quiet-success">{t(language, "brain.imageAttached")}</span> : null}
-        <Button onClick={onSend} disabled={!draft.trim() || streaming} className="rounded-full px-5">
-          <Send className="h-4 w-4" /> {t(language, "brain.send")}
-        </Button>
       </div>
     </div>
   );
