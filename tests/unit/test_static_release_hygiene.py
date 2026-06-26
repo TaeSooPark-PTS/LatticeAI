@@ -62,6 +62,23 @@ def test_app_shell_has_no_inline_scripts_under_strict_csp():
         assert not re.search(r"<script(?![^>]+\bsrc=)[^>]*>", html), "strict CSP blocks inline app-shell scripts"
 
 
+def test_theme_bootstrap_is_csp_safe_and_paint_blocking():
+    source_html = (REPO_ROOT / "frontend" / "index.html").read_text(encoding="utf-8")
+    built_html = (STATIC_DIR / "app" / "index.html").read_text(encoding="utf-8")
+    source_boot = REPO_ROOT / "frontend" / "public" / "theme-boot.js"
+    built_boot = STATIC_DIR / "app" / "theme-boot.js"
+
+    assert source_boot.exists()
+    assert built_boot.exists()
+    assert '<script src="%BASE_URL%theme-boot.js"></script>' in source_html
+    assert '<script src="/static/app/theme-boot.js"></script>' in built_html
+    assert not re.search(r"<script[^>]+theme-boot\.js[^>]+(?:type|defer|async)=", built_html)
+
+    boot_text = built_boot.read_text(encoding="utf-8")
+    assert "lattice.theme" in boot_text
+    assert "document.documentElement.dataset.theme" in boot_text
+
+
 def test_manifest_assets_are_in_python_wheel_data_files():
     manifest = json.loads((STATIC_DIR / "app" / "asset-manifest.json").read_text(encoding="utf-8"))
     pyproject = tomllib.loads((REPO_ROOT / "pyproject.toml").read_text(encoding="utf-8"))
@@ -132,6 +149,7 @@ def test_python_package_never_ships_sourcemaps():
     # The JS/CSS the app actually loads must still be covered.
     assert "static/app/assets/*.js" in asset_patterns
     assert "static/app/assets/*.css" in asset_patterns
+    assert "static/app/theme-boot.js" in data_files["static/app"]
 
 
 def test_npm_package_excludes_sourcemaps_and_frontend_source():
