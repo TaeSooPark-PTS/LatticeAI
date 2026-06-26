@@ -2,18 +2,18 @@
   "version": "8.0.0",
   "generated_at": "vite",
   "entrypoints": {
-    "app": "/static/app/assets/index-BD52xldf.js"
+    "app": "/static/app/assets/index-DDIR-nG2.js"
   },
   "assets": {
     "../node_modules/@tauri-apps/api/core.js": "/static/app/assets/core-CwxXejkd.js",
-    "_primitives-DPuZ-FCY.js": "/static/app/assets/primitives-DPuZ-FCY.js",
-    "_textarea-BthBcI85.js": "/static/app/assets/textarea-BthBcI85.js",
-    "index.html": "/static/app/assets/index-BD52xldf.js",
-    "assets/index-BVPnyncw.css": "/static/app/assets/index-BVPnyncw.css",
-    "src/pages/Act.tsx": "/static/app/assets/Act-2lpdxpLL.js",
-    "src/pages/Brain.tsx": "/static/app/assets/Brain-lFLGhsoZ.js",
-    "src/pages/Capture.tsx": "/static/app/assets/Capture-PJ_ZdHfO.js",
-    "src/pages/Library.tsx": "/static/app/assets/Library-Cta5quUK.js",
-    "src/pages/System.tsx": "/static/app/assets/System-Ck2TDo1u.js"
+    "_primitives-CF3FaSQ1.js": "/static/app/assets/primitives-CF3FaSQ1.js",
+    "_textarea-BYOFbHZm.js": "/static/app/assets/textarea-BYOFbHZm.js",
+    "index.html": "/static/app/assets/index-DDIR-nG2.js",
+    "assets/index-hjfmRzox.css": "/static/app/assets/index-hjfmRzox.css",
+    "src/pages/Act.tsx": "/static/app/assets/Act-CrOSjboS.js",
+    "src/pages/Brain.tsx": "/static/app/assets/Brain-BYLc35EK.js",
+    "src/pages/Capture.tsx": "/static/app/assets/Capture-BZlrwRp7.js",
+    "src/pages/Library.tsx": "/static/app/assets/Library-PALqfhqZ.js",
+    "src/pages/System.tsx": "/static/app/assets/System-fkydXylF.js"
   }
 }

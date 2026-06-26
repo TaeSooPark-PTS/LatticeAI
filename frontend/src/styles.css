@@ -1509,6 +1509,21 @@ body {
   line-height: 1.5;
 }
 
+.brain-chat-presence.brain-presence {
+  min-height: 9rem;
+  border-bottom: 1px solid hsl(var(--border) / 0.5);
+  padding: 0.65rem 1rem 0.45rem;
+}
+
+.brain-chat-presence .brain-organism {
+  width: clamp(7.2rem, 22vw, 9.4rem);
+  height: clamp(7.2rem, 22vw, 9.4rem);
+}
+
+.brain-chat-presence .brain-organism:focus-visible {
+  outline-offset: 0.18rem;
+}
+
 .brain-chat-home-proof {
   display: flex;
   flex: 0 0 auto;
@@ -6787,6 +6802,16 @@ body {
   .brain-chat-home-head h2 {
     margin-bottom: 0;
     font-size: 1.18rem;
+  }
+
+  .brain-chat-presence.brain-presence {
+    min-height: 7.9rem;
+    padding: 0.42rem 0.7rem 0.32rem;
+  }
+
+  .brain-chat-presence .brain-organism {
+    width: 6.8rem;
+    height: 6.8rem;
   }
 
   .brain-chat-home-proof {

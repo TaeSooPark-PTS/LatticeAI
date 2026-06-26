@@ -16,6 +16,8 @@ import {
   Sparkles,
 } from "lucide-react";
 
+import { type BrainState, LivingBrain } from "@/components/LivingBrain";
+
 const INGESTION_TYPE_LABEL_KEY: Record<IngestionSourceType, string> = {
   file: "brain.ingest.type.file",
   folder: "brain.ingest.type.folder",
@@ -67,9 +69,14 @@ export function BrainConversation({
   onIngestWeb,
   onVerifyModelContinuity,
   onSend,
+  brainState,
+  intensity,
+  onExploreBrain,
 }: {
   language: Language;
   explorationDepth: BrainDepth;
+  brainState: BrainState;
+  intensity: number;
   modelName: string;
   messages: Message[];
   starterPrompts: string[];
@@ -94,6 +101,7 @@ export function BrainConversation({
   onIngestWeb: (url: string) => void;
   onVerifyModelContinuity: () => void;
   onSend: () => void;
+  onExploreBrain: () => void;
 }) {
   return (
     <section className="brain-conversation" aria-label={t(language, "brain.aria.conversation")}>
@@ -106,6 +114,16 @@ export function BrainConversation({
               <p>{t(language, "brain.chatHome.body")}</p>
             </div>
           </div>
+
+          <LivingBrain
+            state={brainState}
+            intensity={intensity}
+            size="large"
+            depth={0}
+            showLabel={false}
+            className="brain-chat-presence"
+            onInteract={onExploreBrain}
+          />
 
           <BrainComposer
             language={language}
