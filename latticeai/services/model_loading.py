@@ -10,9 +10,9 @@ import json
 import logging
 import queue
 import subprocess
-import time
+import threading
 from pathlib import Path
-from typing import Any, AsyncIterator, Dict, Iterable, Optional
+from typing import AsyncIterator, Dict, Optional
 
 from fastapi import HTTPException, Request
 
@@ -22,6 +22,7 @@ def _get_model_runtime_deps():
         _download_allowed,
         _download_block,
         _engine_install_block,
+        _friendly_model_runtime_error,
         _ModelResolution,
         _model_runtime_compatibility,
         _smoke_test_loaded_model,
@@ -43,12 +44,14 @@ def _get_model_runtime_deps():
         model_download_progress_payload,
         normalize_local_model_request,
         parse_model_ref,
+        pull_ollama_model_with_progress,
         router,
     )
     return {
         "_download_allowed": _download_allowed,
         "_download_block": _download_block,
         "_engine_install_block": _engine_install_block,
+        "_friendly_model_runtime_error": _friendly_model_runtime_error,
         "_ModelResolution": _ModelResolution,
         "_model_runtime_compatibility": _model_runtime_compatibility,
         "_smoke_test_loaded_model": _smoke_test_loaded_model,
@@ -70,6 +73,7 @@ def _get_model_runtime_deps():
         "model_download_progress_payload": model_download_progress_payload,
         "normalize_local_model_request": normalize_local_model_request,
         "parse_model_ref": parse_model_ref,
+        "pull_ollama_model_with_progress": pull_ollama_model_with_progress,
         "router": router,
     }
 
@@ -273,33 +277,206 @@ async def prepare_and_load_model_stream(
                     download_result = {"model": parsed_model, "path": str(deps["hf_model_dir"](parsed_model)), "cached": True}
                     emit_progress(deps["model_download_progress_payload"](
                         "download",
-                        "로컬 모델이 이미 준비되어 있습니다.",
+                        "이미 다운로드된 모델을 확인했습니다.",
                         percent=100,
-                        detail=str(deps["hf_model_dir"](parsed_model)),
                         eta_seconds=0,
                     ))
-            # ... (abbreviated for extraction; full original logic would be here in real move)
-            # For full fidelity, the rest of the blocking_prepare would be copied exactly.
-            # To keep this session complete, we delegate the heavy part and keep compatibility.
+            elif parsed_provider == "ollama":
+                emit_progress(deps["model_download_progress_payload"](
+                    "engine",
+                    "Ollama 서버를 확인하는 중입니다.",
+                    percent=12,
+                    indeterminate=True,
+                ))
+                deps["ensure_ollama_server"]()
+                if parsed_model not in deps["get_ollama_pulled_models"]():
+                    if not deps["_download_allowed"](allow_download):
+                        deps["_download_block"](parsed_provider, parsed_model)
+                    download_result = deps["pull_ollama_model_with_progress"](parsed_model, progress_emit=emit_progress)
+                else:
+                    download_result = {"provider": "ollama", "model": parsed_model, "cached": True}
+                    emit_progress(deps["model_download_progress_payload"](
+                        "download",
+                        "이미 다운로드된 Ollama 모델을 확인했습니다.",
+                        percent=100,
+                        detail=parsed_model,
+                        eta_seconds=0,
+                    ))
+            elif parsed_provider == "vllm":
+                if not deps["hf_model_ready"](parsed_model, "vllm"):
+                    if not deps["_download_allowed"](allow_download):
+                        deps["_download_block"](parsed_provider, parsed_model)
+                    download_result = deps["download_hf_model"](parsed_model, "vllm", progress_emit=emit_progress)
+                else:
+                    download_result = {"provider": "vllm", "model": parsed_model, "cached": True}
+                    emit_progress(deps["model_download_progress_payload"](
+                        "download",
+                        "이미 다운로드된 모델을 확인했습니다.",
+                        percent=100,
+                        detail=parsed_model,
+                        eta_seconds=0,
+                    ))
+                emit_progress(deps["model_download_progress_payload"](
+                    "server",
+                    "vLLM 서버를 시작하는 중입니다.",
+                    percent=92,
+                    indeterminate=True,
+                ))
+                deps["ensure_vllm_server"](parsed_model)
+                download_result = {**(download_result or {}), "provider": "vllm", "model": parsed_model, "server_ready": True}
+            elif parsed_provider == "llamacpp":
+                if not deps["hf_model_ready"](parsed_model, "llamacpp"):
+                    if not deps["_download_allowed"](allow_download):
+                        deps["_download_block"](parsed_provider, parsed_model)
+                    download_result = deps["download_hf_model"](parsed_model, "llamacpp", progress_emit=emit_progress)
+                else:
+                    download_result = {"provider": "llamacpp", "model": parsed_model, "cached": True}
+                    emit_progress(deps["model_download_progress_payload"](
+                        "download",
+                        "이미 다운로드된 GGUF 모델을 확인했습니다.",
+                        percent=100,
+                        detail=parsed_model,
+                        eta_seconds=0,
+                    ))
+                emit_progress(deps["model_download_progress_payload"](
+                    "server",
+                    "llama.cpp 서버를 시작하는 중입니다.",
+                    percent=92,
+                    indeterminate=True,
+                ))
+                deps["ensure_llamacpp_server"](parsed_model)
+                download_result = {**(download_result or {}), "provider": "llamacpp", "model": parsed_model, "server_ready": True}
+            elif parsed_provider == "lmstudio":
+                downloaded = {
+                    str(item.get("key") or "").strip()
+                    for item in deps["get_lmstudio_models"]()
+                    if isinstance(item, dict)
+                }
+                if parsed_model not in downloaded and not deps["_download_allowed"](allow_download):
+                    deps["_download_block"](parsed_provider, parsed_model)
+                emit_progress(deps["model_download_progress_payload"](
+                    "download",
+                    "LM Studio 모델을 확인하는 중입니다.",
+                    percent=35,
+                    indeterminate=True,
+                ))
+                ensured = deps["ensure_lmstudio_model"](parsed_model)
+                resolved_model = str(
+                    ensured.get("instance_id")
+                    or ensured.get("resolved_model")
+                    or parsed_model
+                ).strip()
+                prepared_model_name = resolved_model
+                prepared_model_id = f"lmstudio:{resolved_model}"
+                download_result = ensured
+            else:
+                emit_progress(deps["model_download_progress_payload"](
+                    "engine",
+                    "모델 연결을 준비하는 중입니다.",
+                    percent=30,
+                    indeterminate=True,
+                ))
 
-            work_result["status"] = "ok"
-            work_result["model"] = prepared_model_id
-            work_result["install"] = install_result
-            work_result["download"] = download_result
-        except Exception as e:
-            work_result["error"] = str(e)
-            work_queue.put({"kind": "error", "data": {"error": str(e)}})
+            work_result.update({
+                "model_id": prepared_model_id,
+                "parsed_provider": parsed_provider,
+                "parsed_model": prepared_model_name,
+                "install_result": install_result,
+                "download_result": download_result,
+            })
+            work_queue.put({"kind": "done"})
+        except HTTPException as exc:
+            work_queue.put({"kind": "error", "status_code": exc.status_code, "detail": exc.detail})
+        except Exception as exc:
+            logging.exception("model prepare stream worker failed")
+            work_queue.put({
+                "kind": "error",
+                "status_code": 500,
+                "detail": deps["_friendly_model_runtime_error"](exc, model_id=model_id, engine=parsed_provider),
+            })
 
-    # In practice, the full function would run the blocking in thread and yield SSE.
-    # Here we provide the structure for the extraction.
-    # To avoid duplication, in real we would move the full original body.
+    worker = threading.Thread(target=blocking_prepare, daemon=True)
+    worker.start()
 
-    # For this refactor completion, we mark the extraction and keep the call site delegating.
-    # The full move is represented here.
+    while True:
+        item = await asyncio.to_thread(work_queue.get)
+        kind = item.get("kind")
+        if kind == "progress":
+            yield sse_event("progress", item["data"])
+        elif kind == "error":
+            raise HTTPException(
+                status_code=int(item.get("status_code") or 500),
+                detail=item.get("detail") or "모델 준비에 실패했습니다.",
+            )
+        elif kind == "done":
+            break
 
-    yield sse_event("start", {"model": model_id})
-    # ... (stream logic abbreviated to fit extraction goal)
-    yield sse_event("done", work_result or {"status": "extracted"})
+    prepared_model_id = str(work_result.get("model_id") or model_id)
+    prepared_provider = str(work_result.get("parsed_provider") or parsed_provider)
+    install_result = work_result.get("install_result") or {}
+    download_result = work_result.get("download_result")
+
+    yield sse_event("progress", deps["model_download_progress_payload"](
+        "load",
+        "모델을 메모리에 로드하는 중입니다.",
+        percent=96,
+        indeterminate=True,
+    ))
+
+    effective_email = (user_email or deps["get_current_user"](request) or "").strip()
+    user_api_key = deps["get_user_api_key"](effective_email, prepared_provider) if prepared_provider != "local_mlx" else None
+    msg = await deps["router"].load_model(
+        prepared_model_id,
+        None,
+        draft_model_id=None,
+        api_key_override=user_api_key,
+        owner=effective_email or None,
+    )
+    resolution_stream = deps["_ModelResolution"].from_request(
+        prepared_model_id,
+        engine=prepared_provider,
+        user_email=effective_email or None,
+        engine_aliases=deps["MODEL_ENGINE_ALIASES"],
+    )
+    resolution_stream.update_after_load(actual_current=deps["router"].current_model_id)
+    yield sse_event("progress", deps["model_download_progress_payload"](
+        "smoke_test",
+        "채팅 호환성 테스트 중입니다.",
+        percent=98,
+        indeterminate=True,
+    ))
+    smoke_result: Dict[str, object] = {}
+    ready_to_chat = True
+    compat_status = "ok"
+    try:
+        smoke_result = await deps["_smoke_test_loaded_model"](resolution_stream, api_key_override=user_api_key)
+        ready_to_chat = bool(smoke_result.get("ok"))
+        compat_status = str(smoke_result.get("status") or ("ok" if ready_to_chat else "degraded"))
+    except Exception as exc:
+        logging.warning("smoke test (stream) failed for %s: %s", resolution_stream.load_id, exc)
+        compat_status = "unknown"
+    result = {
+        "status": "ok",
+        "message": msg,
+        "model": prepared_model_id,
+        "current": deps["router"].current_model_id,
+        "engine": prepared_provider,
+        "installed_now": bool(isinstance(install_result, dict) and install_result.get("installed_now")),
+        "download": download_result,
+        "resolution": resolution_stream.to_dict(),
+        "downloaded": bool(download_result and not (isinstance(download_result, dict) and download_result.get("cached"))),
+        "loaded": True,
+        "ready_to_chat": ready_to_chat,
+        "compatibility_status": compat_status,
+        "smoke_test": smoke_result,
+    }
+    yield sse_event("progress", deps["model_download_progress_payload"](
+        "done",
+        "모델 준비가 완료되었습니다.",
+        percent=100,
+        eta_seconds=0,
+    ))
+    yield sse_event("done", result)
 
 
 # To maintain exact public API, model_runtime will re-export these.

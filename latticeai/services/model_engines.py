@@ -6,11 +6,17 @@ Circular imports are avoided by late imports inside functions.
 """
 from __future__ import annotations
 
+import importlib.util
 import json
+import logging
 import os
+import platform
 import re
+import shutil
 import subprocess
+import sys
 import time
+import urllib.error
 import urllib.request
 from pathlib import Path
 from typing import Any, Dict, List, Optional
@@ -18,59 +24,66 @@ from typing import Any, Dict, List, Optional
 from fastapi import HTTPException
 
 
-# Small helpers moved here to be self-contained where possible
+LOCAL_SERVER_PROCESSES: Dict[str, subprocess.Popen] = {}
+VLLM_METAL_ENV = Path.home() / ".venv-vllm-metal"
+VLLM_METAL_BIN = VLLM_METAL_ENV / "bin" / "vllm"
+VLLM_METAL_PYTHON = VLLM_METAL_ENV / "bin" / "python"
+LMSTUDIO_BUNDLED_CLI = Path("/Applications/LM Studio.app/Contents/Resources/app/.webpack/lms")
+
+
 def local_binary(binary: str) -> Optional[str]:
-    for p in os.environ.get("PATH", "").split(os.pathsep):
-        cand = Path(p) / binary
-        if cand.exists() and os.access(cand, os.X_OK):
-            return str(cand)
-        cand2 = Path(p) / (binary + ".exe")
-        if cand2.exists() and os.access(cand2, os.X_OK):
-            return str(cand2)
+    found = shutil.which(binary)
+    if found:
+        return found
+    if platform.system() == "Windows":
+        for candidate in windows_binary_candidates(binary):
+            if candidate.exists():
+                return str(candidate)
     return None
 
 
 def windows_binary_candidates(binary: str) -> List[Path]:
-    candidates: List[Path] = []
     local_appdata = os.environ.get("LOCALAPPDATA", "")
     program_files = os.environ.get("ProgramFiles", r"C:\Program Files")
     program_files_x86 = os.environ.get("ProgramFiles(x86)", r"C:\Program Files (x86)")
-    if local_appdata:
-        candidates.append(Path(local_appdata) / "Programs" / binary / f"{binary}.exe")
-    candidates.append(Path(program_files) / binary / f"{binary}.exe")
-    candidates.append(Path(program_files_x86) / binary / f"{binary}.exe")
-    return candidates
+    candidates = {
+        "ollama": [
+            Path(local_appdata) / "Programs" / "Ollama" / "ollama.exe" if local_appdata else None,
+            Path(program_files) / "Ollama" / "ollama.exe",
+        ],
+        "lms": [
+            Path(local_appdata) / "Programs" / "LM Studio" / "resources" / "app" / ".webpack" / "lms.exe" if local_appdata else None,
+            Path(program_files) / "LM Studio" / "resources" / "app" / ".webpack" / "lms.exe",
+        ],
+        "nvidia-smi": [
+            Path(program_files) / "NVIDIA Corporation" / "NVSMI" / "nvidia-smi.exe",
+            Path(program_files_x86) / "NVIDIA Corporation" / "NVSMI" / "nvidia-smi.exe",
+        ],
+    }
+    return [item for item in candidates.get(binary, []) if item is not None]
 
 
 def find_lmstudio_cli() -> Optional[str]:
-    direct = local_binary("lmstudio") or local_binary("lms")
-    if direct:
-        return direct
-    if os.name == "nt":
-        for cand in windows_binary_candidates("LM Studio"):
-            if cand.exists():
-                return str(cand)
+    cli = local_binary("lms")
+    if cli:
+        return cli
+    if LMSTUDIO_BUNDLED_CLI.exists():
+        return str(LMSTUDIO_BUNDLED_CLI)
     return None
 
 
 def vllm_executable() -> Optional[str]:
-    p = local_binary("vllm")
-    if p:
-        return p
-    try:
-        import shutil
-        return shutil.which("vllm")
-    except Exception:
-        return None
+    found = shutil.which("vllm")
+    if found:
+        return found
+    if VLLM_METAL_BIN.exists():
+        return str(VLLM_METAL_BIN)
+    return None
 
 
 def vllm_metal_python() -> Optional[str]:
-    env_python = os.environ.get("VLLM_METAL_PYTHON")
-    if env_python and Path(env_python).exists():
-        return env_python
-    p = Path.home() / ".venv-vllm-metal" / "bin" / "python"
-    if p.exists():
-        return str(p)
+    if VLLM_METAL_PYTHON.exists():
+        return str(VLLM_METAL_PYTHON)
     return None
 
 
@@ -147,26 +160,174 @@ def ensure_ollama_server() -> None:
     if not ollama:
         raise HTTPException(status_code=400, detail="Ollama가 설치되지 않았습니다.")
     try:
-        subprocess.Popen([ollama, "serve"], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL, start_new_session=True)
-        time.sleep(1.5)
+        probe = subprocess.run([ollama, "list"], capture_output=True, text=True, timeout=3, check=False)
+        if probe.returncode == 0:
+            return
     except Exception:
         pass
+    subprocess.Popen(
+        [ollama, "serve"],
+        stdout=subprocess.DEVNULL,
+        stderr=subprocess.DEVNULL,
+        start_new_session=True,
+    )
+    deadline = time.time() + 20
+    while time.time() < deadline:
+        try:
+            probe = subprocess.run([ollama, "list"], capture_output=True, text=True, timeout=3, check=False)
+            if probe.returncode == 0:
+                return
+        except Exception:
+            pass
+        time.sleep(0.5)
+    raise HTTPException(status_code=500, detail="Ollama 서버를 자동으로 시작하지 못했습니다.")
+
+
+def get_openai_compatible_server_models(provider: str) -> List[str]:
+    from latticeai.services.model_runtime import OPENAI_COMPATIBLE_PROVIDERS, get_lmstudio_models
+
+    if provider == "lmstudio":
+        models = []
+        for item in get_lmstudio_models():
+            if not isinstance(item, dict):
+                continue
+            key = str(item.get("key") or "").strip()
+            loaded_instances = item.get("loaded_instances") or []
+            if loaded_instances:
+                instance_ids = [
+                    str(instance.get("id") or "").strip()
+                    for instance in loaded_instances
+                    if isinstance(instance, dict) and instance.get("id")
+                ]
+                models.extend(instance_ids or ([key] if key else []))
+        return list(dict.fromkeys([model for model in models if model]))
+
+    config = OPENAI_COMPATIBLE_PROVIDERS.get(provider) or {}
+    base_url = os.getenv(config.get("base_url_env", "")) if config.get("base_url_env") else None
+    base_url = (base_url or config.get("base_url") or "").rstrip("/")
+    if not base_url:
+        return []
+
+    api_key = os.getenv(config.get("env_key", "")) or config.get("api_key_fallback") or provider
+    req = urllib.request.Request(
+        f"{base_url}/models",
+        headers={"Authorization": f"Bearer {api_key}"},
+        method="GET",
+    )
+    try:
+        with urllib.request.urlopen(req, timeout=2.5) as res:
+            payload = json.loads(res.read().decode("utf-8", errors="replace"))
+    except (urllib.error.URLError, TimeoutError, json.JSONDecodeError, OSError):
+        return []
+
+    models = []
+    for item in payload.get("data") or []:
+        model_id = item.get("id") if isinstance(item, dict) else None
+        if model_id:
+            models.append(str(model_id))
+    return models
+
+
+def wait_for_openai_compatible_server(provider: str, model_name: Optional[str] = None, timeout: int = 45) -> bool:
+    deadline = time.time() + timeout
+    while time.time() < deadline:
+        models = get_openai_compatible_server_models(provider)
+        if models and (not model_name or model_name in models):
+            return True
+        time.sleep(1)
+    return False
 
 
 def ensure_vllm_server(model_name: str) -> None:
-    exe = vllm_executable() or vllm_metal_python() or "python"
-    # simplified start for extraction; full command construction can be expanded
-    try:
-        subprocess.Popen([exe, "-m", "vllm.entrypoints.openai.api_server", "--model", model_name, "--port", "8000"],
-                                stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL, start_new_session=True)
-        # in real would track process
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=f"vLLM 시작 실패: {e}")
+    from latticeai.services.model_runtime import download_hf_model, hf_model_dir, hf_model_ready
+
+    served_models = get_openai_compatible_server_models("vllm")
+    if model_name in served_models:
+        return
+    vllm_bin = vllm_executable()
+    vllm_metal_py = vllm_metal_python()
+    if not vllm_bin and not vllm_metal_py and importlib.util.find_spec("vllm") is None:
+        raise HTTPException(status_code=400, detail="vLLM runtime이 설치되지 않았습니다.")
+
+    local_dir = hf_model_dir(model_name)
+    if not vllm_metal_py and not hf_model_ready(model_name, "vllm"):
+        download_hf_model(model_name, "vllm")
+
+    running = LOCAL_SERVER_PROCESSES.get("vllm")
+    if running and running.poll() is None:
+        running.terminate()
+        try:
+            running.wait(timeout=10)
+        except subprocess.TimeoutExpired:
+            running.kill()
+    elif served_models:
+        raise HTTPException(status_code=409, detail="다른 vLLM 서버가 이미 실행 중입니다. 현재 서버를 종료한 뒤 다시 시도하세요.")
+
+    running = LOCAL_SERVER_PROCESSES.get("vllm")
+    if running and running.poll() is None:
+        return
+
+    host_args = ["--host", "127.0.0.1", "--port", "8000"]
+    if vllm_metal_py:
+        command = [vllm_metal_py, "-m", "vllm_metal.server", "--model", model_name, *host_args]
+    elif vllm_bin:
+        command = [vllm_bin, "serve", str(local_dir), "--served-model-name", model_name, *host_args]
+    else:
+        command = [sys.executable, "-m", "vllm.entrypoints.openai.api_server", "--model", str(local_dir), "--served-model-name", model_name, *host_args]
+    LOCAL_SERVER_PROCESSES["vllm"] = subprocess.Popen(
+        command,
+        stdout=subprocess.DEVNULL,
+        stderr=subprocess.DEVNULL,
+        start_new_session=True,
+    )
+    if not wait_for_openai_compatible_server("vllm", model_name, timeout=90):
+        raise HTTPException(status_code=500, detail="vLLM 서버가 모델을 자동 로드하지 못했습니다.")
 
 
 def ensure_llamacpp_server(model_name: str) -> None:
-    # placeholder - real logic would locate binary and start with --model etc.
-    pass
+    from latticeai.services.model_runtime import download_hf_model, hf_model_dir, hf_model_ready
+
+    served_models = get_openai_compatible_server_models("llamacpp")
+    if model_name in served_models:
+        return
+    running = LOCAL_SERVER_PROCESSES.get("llamacpp")
+    if running and running.poll() is None:
+        running.terminate()
+        try:
+            running.wait(timeout=10)
+        except subprocess.TimeoutExpired:
+            running.kill()
+    elif served_models:
+        raise HTTPException(status_code=409, detail="다른 llama.cpp 서버가 이미 실행 중입니다. 현재 서버를 종료한 뒤 다시 시도하세요.")
+    if not shutil.which("llama-server"):
+        raise HTTPException(status_code=400, detail="llama.cpp가 설치되지 않았습니다.")
+    if not hf_model_ready(model_name, "llamacpp"):
+        download_hf_model(model_name, "llamacpp")
+
+    gguf_files = sorted(hf_model_dir(model_name).rglob("*.gguf"))
+    if not gguf_files:
+        raise HTTPException(status_code=500, detail="다운로드된 GGUF 파일을 찾지 못했습니다.")
+
+    preferred = next((p for p in gguf_files if "q4_k_m" in p.name.lower()), None)
+    model_file = preferred or gguf_files[0]
+    LOCAL_SERVER_PROCESSES["llamacpp"] = subprocess.Popen(
+        [
+            "llama-server",
+            "-m",
+            str(model_file),
+            "--alias",
+            model_name,
+            "--host",
+            "127.0.0.1",
+            "--port",
+            "8080",
+        ],
+        stdout=subprocess.DEVNULL,
+        stderr=subprocess.DEVNULL,
+        start_new_session=True,
+    )
+    if not wait_for_openai_compatible_server("llamacpp", model_name, timeout=45):
+        raise HTTPException(status_code=500, detail="llama.cpp 서버가 모델을 자동 로드하지 못했습니다.")
 
 
 def pull_ollama_model_with_progress(model_name: str, progress_emit=None) -> Dict[str, object]:
@@ -274,20 +435,83 @@ def get_ollama_pulled_models() -> set:
 
 
 def engine_support_status(engine: str) -> Dict[str, object]:
-    # basic impl moved here
-    is_apple_silicon = os.name == "posix" and "arm" in os.uname().machine.lower() if hasattr(os, "uname") else False
-    if engine == "vllm":
-        if os.name == "nt":
-            return {"supported": False, "reason": "vLLM은 Windows native 자동 설치보다 WSL2/Linux 환경을 권장합니다."}
-        if is_apple_silicon:
-            return {"supported": True, "reason": "현재 환경에서는 vLLM Metal 전용 런타임으로 설치합니다."}
+    if engine != "vllm":
         return {"supported": True, "reason": None}
+    is_apple_silicon = sys.platform == "darwin" and platform.machine() == "arm64"
+    if sys.platform.startswith("win"):
+        return {"supported": False, "reason": "vLLM은 Windows native 자동 설치보다 WSL2/Linux 환경을 권장합니다."}
+    if sys.platform == "darwin" and not is_apple_silicon:
+        return {"supported": False, "reason": "vLLM Metal 자동 설치는 Apple Silicon macOS에서만 지원됩니다."}
+    if sys.version_info >= (3, 13) and is_apple_silicon:
+        return {"supported": True, "reason": "현재 환경에서는 vLLM Metal 전용 런타임으로 설치합니다."}
+    if sys.version_info >= (3, 13):
+        return {"supported": False, "reason": "vLLM 설치는 현재 Python 3.13 이하 또는 별도 전용 런타임이 필요합니다."}
     return {"supported": True, "reason": None}
 
 
 def install_engine(engine: str) -> Dict[str, Any]:
-    # placeholder for real install; in full would shell out to pip/brew etc with consent
-    return {"status": "manual", "engine": engine, "message": "Use explicit install consent flow."}
+    from latticeai.services.model_runtime import BASE_DIR, ENGINE_INSTALLERS, engine_installed
+
+    if engine not in ENGINE_INSTALLERS:
+        raise HTTPException(status_code=400, detail="지원하지 않는 엔진입니다.")
+    installer = ENGINE_INSTALLERS[engine]
+    required_binary = installer.get("requires_binary")
+    if required_binary and shutil.which(required_binary) is None:
+        raise HTTPException(status_code=400, detail=f"{required_binary}가 설치되어 있지 않아 자동 설치할 수 없습니다.")
+    command = installer["command"]
+    run_kwargs = {
+        "cwd": str(BASE_DIR),
+        "capture_output": True,
+        "text": True,
+        "timeout": 900,
+        "check": False,
+    }
+
+    if engine == "vllm" and sys.platform == "darwin" and platform.machine() == "arm64":
+        command = [
+            "/bin/bash",
+            "-lc",
+            "set -euo pipefail; "
+            "if [ ! -x /opt/homebrew/bin/python3.12 ]; then brew install python@3.12; fi; "
+            "/opt/homebrew/bin/python3.12 -m venv ~/.venv-vllm-metal; "
+            "~/.venv-vllm-metal/bin/pip install -U pip setuptools wheel; "
+            "~/.venv-vllm-metal/bin/pip install vllm-metal",
+        ]
+    try:
+        completed = subprocess.run(command, **run_kwargs)
+    except subprocess.TimeoutExpired:
+        raise HTTPException(status_code=408, detail="엔진 설치 시간이 초과되었습니다.")
+    result = {
+        "engine": engine,
+        "command": " ".join(command),
+        "returncode": completed.returncode,
+        "stdout": completed.stdout[-12000:],
+        "stderr": completed.stderr[-12000:],
+        "installed": engine_installed(engine),
+    }
+    ollama = local_binary("ollama")
+    if engine == "ollama" and completed.returncode == 0 and ollama:
+        already_up = False
+        try:
+            probe = subprocess.run([ollama, "list"], capture_output=True, timeout=2, check=False)
+            already_up = probe.returncode == 0
+        except Exception:
+            already_up = False
+        if already_up:
+            result["daemon_started"] = "already_running"
+        else:
+            try:
+                subprocess.Popen(
+                    [ollama, "serve"],
+                    stdout=subprocess.DEVNULL,
+                    stderr=subprocess.DEVNULL,
+                    start_new_session=True,
+                )
+                result["daemon_started"] = True
+            except Exception as exc:
+                logging.warning("ollama serve spawn failed: %s", exc)
+                result["daemon_started"] = False
+    return result
 
 
 # --- Smoke test extracted for server decomp wave ---

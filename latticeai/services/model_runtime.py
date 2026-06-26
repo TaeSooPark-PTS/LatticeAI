@@ -53,10 +53,18 @@ from .model_engines import (
     ensure_ollama_server as _ensure_ollama_server,
     ensure_vllm_server as _ensure_vllm_server,
     ensure_llamacpp_server as _ensure_llamacpp_server,
+    find_lmstudio_cli as _find_lmstudio_cli,
+    get_openai_compatible_server_models as _get_openai_compatible_server_models,
     pull_ollama_model_with_progress as _pull_ollama_model_with_progress,
     get_ollama_pulled_models as _get_ollama_pulled_models,
     engine_support_status as _engine_support_status,
     install_engine as _install_engine,
+    local_binary as _local_binary,
+    vllm_executable as _vllm_executable,
+    vllm_metal_python as _vllm_metal_python,
+    wait_for_openai_compatible_server as _wait_for_openai_compatible_server,
+    windows_binary_candidates as _windows_binary_candidates,
+    LOCAL_SERVER_PROCESSES as _LOCAL_SERVER_PROCESSES,
 )
 
 # Rebind extracted engines for legacy module globals
@@ -79,7 +87,7 @@ class ModelRuntimeState:
         self.APP_MODE = "local"
         self.DEFAULT_HOST = "127.0.0.1"
         self.DEFAULT_PORT = 4825
-        self.DATA_DIR = Path.home() / ".ltcai"
+        self.DATA_DIR = Path.home() / ".latticeai"
         self.BASE_DIR = Path.cwd()
         self.ENABLE_TELEGRAM = False
         self.ENABLE_GRAPH = True
@@ -129,25 +137,6 @@ STATE = ModelRuntimeState()
 STATE.sync_to_module_globals()
 
 # Configured by server_app.configure_model_runtime during app assembly.
-router = None
-APP_MODE = "local"
-DEFAULT_HOST = "127.0.0.1"
-DEFAULT_PORT = 4825
-DATA_DIR = Path.home() / ".latticeai"
-BASE_DIR = Path.cwd()
-ENABLE_TELEGRAM = False
-ENABLE_GRAPH = True
-AUTOLOAD_MODELS = False
-MODEL_IDLE_UNLOAD_SECONDS = 0
-ALLOW_LOCAL_MODELS = True
-REQUIRE_AUTH = False
-INVITE_GATE_ENABLED = False
-ALLOW_PLAINTEXT_API_KEYS = False
-CORS_ALLOW_NETWORK = False
-PUBLIC_MODEL = "openai:gpt-4o-mini"
-LOCAL_MODEL = "mlx-community/gemma-4-12b-it-4bit"
-IS_PUBLIC_MODE = False
-keyring = None
 
 
 def _env_bool(key: str, default: bool = False) -> bool:
@@ -252,66 +241,30 @@ def _update_env_file(env_file: Path, key: str, value: str) -> None:
     env_file.write_text("\n".join(lines) + "\n", encoding="utf-8")
 
 
-LOCAL_SERVER_PROCESSES: Dict[str, subprocess.Popen] = {}
+LOCAL_SERVER_PROCESSES = _LOCAL_SERVER_PROCESSES
 VLLM_METAL_ENV = Path.home() / ".venv-vllm-metal"
 VLLM_METAL_BIN = VLLM_METAL_ENV / "bin" / "vllm"
 VLLM_METAL_PYTHON = VLLM_METAL_ENV / "bin" / "python"
 LMSTUDIO_BUNDLED_CLI = Path("/Applications/LM Studio.app/Contents/Resources/app/.webpack/lms")
 
 def windows_binary_candidates(binary: str) -> List[Path]:
-    local_appdata = os.environ.get("LOCALAPPDATA", "")
-    program_files = os.environ.get("ProgramFiles", r"C:\Program Files")
-    program_files_x86 = os.environ.get("ProgramFiles(x86)", r"C:\Program Files (x86)")
-    candidates = {
-        "ollama": [
-            Path(local_appdata) / "Programs" / "Ollama" / "ollama.exe" if local_appdata else None,
-            Path(program_files) / "Ollama" / "ollama.exe",
-        ],
-        "lms": [
-            Path(local_appdata) / "Programs" / "LM Studio" / "resources" / "app" / ".webpack" / "lms.exe" if local_appdata else None,
-            Path(program_files) / "LM Studio" / "resources" / "app" / ".webpack" / "lms.exe",
-        ],
-        "nvidia-smi": [
-            Path(program_files) / "NVIDIA Corporation" / "NVSMI" / "nvidia-smi.exe",
-            Path(program_files_x86) / "NVIDIA Corporation" / "NVSMI" / "nvidia-smi.exe",
-        ],
-    }
-    return [item for item in candidates.get(binary, []) if item is not None]
+    return _windows_binary_candidates(binary)
 
 
 def local_binary(binary: str) -> Optional[str]:
-    found = shutil.which(binary)
-    if found:
-        return found
-    if platform.system() == "Windows":
-        for candidate in windows_binary_candidates(binary):
-            if candidate.exists():
-                return str(candidate)
-    return None
+    return _local_binary(binary)
 
 
 def find_lmstudio_cli() -> Optional[str]:
-    cli = local_binary("lms")
-    if cli:
-        return cli
-    if LMSTUDIO_BUNDLED_CLI.exists():
-        return str(LMSTUDIO_BUNDLED_CLI)
-    return None
+    return _find_lmstudio_cli()
 
 
 def vllm_executable() -> Optional[str]:
-    found = shutil.which("vllm")
-    if found:
-        return found
-    if VLLM_METAL_BIN.exists():
-        return str(VLLM_METAL_BIN)
-    return None
+    return _vllm_executable()
 
 
 def vllm_metal_python() -> Optional[str]:
-    if VLLM_METAL_PYTHON.exists():
-        return str(VLLM_METAL_PYTHON)
-    return None
+    return _vllm_metal_python()
 
 
 def _json_request(
@@ -742,172 +695,23 @@ def get_ollama_pulled_models() -> set:
 
 
 def get_openai_compatible_server_models(provider: str) -> List[str]:
-    if provider == "lmstudio":
-        models = []
-        for item in get_lmstudio_models():
-            if not isinstance(item, dict):
-                continue
-            key = str(item.get("key") or "").strip()
-            loaded_instances = item.get("loaded_instances") or []
-            if loaded_instances:
-                instance_ids = [
-                    str(instance.get("id") or "").strip()
-                    for instance in loaded_instances
-                    if isinstance(instance, dict) and instance.get("id")
-                ]
-                models.extend(instance_ids or ([key] if key else []))
-        return list(dict.fromkeys([model for model in models if model]))
-
-    config = OPENAI_COMPATIBLE_PROVIDERS.get(provider) or {}
-    base_url = os.getenv(config.get("base_url_env", "")) if config.get("base_url_env") else None
-    base_url = (base_url or config.get("base_url") or "").rstrip("/")
-    if not base_url:
-        return []
-
-    api_key = os.getenv(config.get("env_key", "")) or config.get("api_key_fallback") or provider
-    req = urllib.request.Request(
-        f"{base_url}/models",
-        headers={"Authorization": f"Bearer {api_key}"},
-        method="GET",
-    )
-    try:
-        with urllib.request.urlopen(req, timeout=2.5) as res:
-            payload = json.loads(res.read().decode("utf-8", errors="replace"))
-    except (urllib.error.URLError, TimeoutError, json.JSONDecodeError, OSError):
-        return []
-
-    models = []
-    for item in payload.get("data") or []:
-        model_id = item.get("id") if isinstance(item, dict) else None
-        if model_id:
-            models.append(str(model_id))
-    return models
+    return _get_openai_compatible_server_models(provider)
 
 
 def ensure_ollama_server() -> None:
-    ollama = local_binary("ollama")
-    if not ollama:
-        raise HTTPException(status_code=400, detail="Ollama가 설치되지 않았습니다.")
-    try:
-        probe = subprocess.run([ollama, "list"], capture_output=True, text=True, timeout=3, check=False)
-        if probe.returncode == 0:
-            return
-    except Exception:
-        pass
-    subprocess.Popen(
-        [ollama, "serve"],
-        stdout=subprocess.DEVNULL,
-        stderr=subprocess.DEVNULL,
-        start_new_session=True,
-    )
-    deadline = time.time() + 20
-    while time.time() < deadline:
-        try:
-            probe = subprocess.run([ollama, "list"], capture_output=True, text=True, timeout=3, check=False)
-            if probe.returncode == 0:
-                return
-        except Exception:
-            pass
-        time.sleep(0.5)
-    raise HTTPException(status_code=500, detail="Ollama 서버를 자동으로 시작하지 못했습니다.")
+    return _ensure_ollama_server()
 
 
 def wait_for_openai_compatible_server(provider: str, model_name: Optional[str] = None, timeout: int = 45) -> bool:
-    deadline = time.time() + timeout
-    while time.time() < deadline:
-        models = get_openai_compatible_server_models(provider)
-        if models and (not model_name or model_name in models):
-            return True
-        time.sleep(1)
-    return False
+    return _wait_for_openai_compatible_server(provider, model_name=model_name, timeout=timeout)
 
 
 def ensure_vllm_server(model_name: str) -> None:
-    served_models = get_openai_compatible_server_models("vllm")
-    if model_name in served_models:
-        return
-    vllm_bin = vllm_executable()
-    vllm_metal_py = vllm_metal_python()
-    if not vllm_bin and not vllm_metal_py and importlib.util.find_spec("vllm") is None:
-        raise HTTPException(status_code=400, detail="vLLM runtime이 설치되지 않았습니다.")
-
-    local_dir = hf_model_dir(model_name)
-    if not vllm_metal_py and not hf_model_ready(model_name, "vllm"):
-        download_hf_model(model_name, "vllm")
-
-    running = LOCAL_SERVER_PROCESSES.get("vllm")
-    if running and running.poll() is None:
-        running.terminate()
-        try:
-            running.wait(timeout=10)
-        except subprocess.TimeoutExpired:
-            running.kill()
-    elif served_models:
-        raise HTTPException(status_code=409, detail="다른 vLLM 서버가 이미 실행 중입니다. 현재 서버를 종료한 뒤 다시 시도하세요.")
-
-    running = LOCAL_SERVER_PROCESSES.get("vllm")
-    if running and running.poll() is None:
-        return
-
-    _host_args = ["--host", "127.0.0.1", "--port", "8000"]
-    if vllm_metal_py:
-        command = [vllm_metal_py, "-m", "vllm_metal.server", "--model", model_name, *_host_args]
-    elif vllm_bin:
-        command = [vllm_bin, "serve", str(local_dir), "--served-model-name", model_name, *_host_args]
-    else:
-        command = [sys.executable, "-m", "vllm.entrypoints.openai.api_server", "--model", str(local_dir), "--served-model-name", model_name, *_host_args]
-    LOCAL_SERVER_PROCESSES["vllm"] = subprocess.Popen(
-        command,
-        stdout=subprocess.DEVNULL,
-        stderr=subprocess.DEVNULL,
-        start_new_session=True,
-    )
-    if not wait_for_openai_compatible_server("vllm", model_name, timeout=90):
-        raise HTTPException(status_code=500, detail="vLLM 서버가 모델을 자동 로드하지 못했습니다.")
+    return _ensure_vllm_server(model_name)
 
 
 def ensure_llamacpp_server(model_name: str) -> None:
-    served_models = get_openai_compatible_server_models("llamacpp")
-    if model_name in served_models:
-        return
-    running = LOCAL_SERVER_PROCESSES.get("llamacpp")
-    if running and running.poll() is None:
-        running.terminate()
-        try:
-            running.wait(timeout=10)
-        except subprocess.TimeoutExpired:
-            running.kill()
-    elif served_models:
-        raise HTTPException(status_code=409, detail="다른 llama.cpp 서버가 이미 실행 중입니다. 현재 서버를 종료한 뒤 다시 시도하세요.")
-    if not shutil.which("llama-server"):
-        raise HTTPException(status_code=400, detail="llama.cpp가 설치되지 않았습니다.")
-    if not hf_model_ready(model_name, "llamacpp"):
-        download_hf_model(model_name, "llamacpp")
-
-    gguf_files = sorted(hf_model_dir(model_name).rglob("*.gguf"))
-    if not gguf_files:
-        raise HTTPException(status_code=500, detail="다운로드된 GGUF 파일을 찾지 못했습니다.")
-
-    preferred = next((p for p in gguf_files if "q4_k_m" in p.name.lower()), None)
-    model_file = preferred or gguf_files[0]
-    LOCAL_SERVER_PROCESSES["llamacpp"] = subprocess.Popen(
-        [
-            "llama-server",
-            "-m",
-            str(model_file),
-            "--alias",
-            model_name,
-            "--host",
-            "127.0.0.1",
-            "--port",
-            "8080",
-        ],
-        stdout=subprocess.DEVNULL,
-        stderr=subprocess.DEVNULL,
-        start_new_session=True,
-    )
-    if not wait_for_openai_compatible_server("llamacpp", model_name, timeout=45):
-        raise HTTPException(status_code=500, detail="llama.cpp 서버가 모델을 자동 로드하지 못했습니다.")
+    return _ensure_llamacpp_server(model_name)
 
 
 def engine_installed(engine: str) -> bool:
@@ -1228,123 +1032,17 @@ async def prepare_and_load_model(
     draft_model_id: Optional[str] = None,
     allow_download: bool = False,
 ) -> Dict[str, object]:
-    model_id = normalize_local_model_request(model_id, engine)
-    if not model_id:
-        raise HTTPException(status_code=400, detail="모델 식별자가 비어 있습니다.")
+    from .model_loading import prepare_and_load_model as _impl
 
-    # 피드백 #1: ModelResolution을 모든 단계가 공유한다.
-    resolution = _ModelResolution.from_request(
+    return await _impl(
         model_id,
+        request,
         engine=engine,
-        user_email=user_email or get_current_user(request),
-        engine_aliases=MODEL_ENGINE_ALIASES,
-    )
-
-    parsed_provider, parsed_model = parse_model_ref(model_id)
-    if parsed_provider == "mlx":
-        parsed_provider = "local_mlx"
-    compatibility = _model_runtime_compatibility(parsed_model, engine=parsed_provider)
-    if compatibility.get("supported") is False:
-        raise HTTPException(status_code=400, detail=compatibility)
-
-    local_engines = {"local_mlx", "ollama", "vllm", "lmstudio", "llamacpp"}
-    install_result: Dict[str, object] = {}
-    download_result: Optional[Dict[str, object]] = None
-
-    if parsed_provider in local_engines:
-        if not engine_installed(parsed_provider) and not _download_allowed(allow_download):
-            _engine_install_block(parsed_provider)
-        install_result = ensure_engine_ready(parsed_provider)
-
-    if parsed_provider == "local_mlx":
-        explicit_path = Path(parsed_model).expanduser()
-        if not explicit_path.exists() and not hf_model_ready(parsed_model, "local_mlx"):
-            if not _download_allowed(allow_download):
-                _download_block(parsed_provider, parsed_model)
-            download_result = download_hf_model(parsed_model, "local_mlx")
-    elif parsed_provider == "ollama":
-        ensure_ollama_server()
-        ollama = local_binary("ollama")
-        if not ollama:
-            raise HTTPException(status_code=400, detail="Ollama가 설치되지 않았습니다.")
-        if parsed_model not in get_ollama_pulled_models():
-            if not _download_allowed(allow_download):
-                _download_block(parsed_provider, parsed_model)
-            completed = subprocess.run(
-                [ollama, "pull", parsed_model],
-                capture_output=True,
-                text=True,
-                timeout=900,
-                check=False,
-            )
-            if completed.returncode != 0:
-                raise HTTPException(status_code=500, detail=completed.stderr[-2000:] or "Ollama 모델 다운로드 실패")
-            download_result = {"provider": "ollama", "model": parsed_model, "returncode": completed.returncode}
-    elif parsed_provider == "vllm":
-        if not hf_model_ready(parsed_model, "vllm") and not _download_allowed(allow_download):
-            _download_block(parsed_provider, parsed_model)
-        ensure_vllm_server(parsed_model)
-        download_result = {"provider": "vllm", "model": parsed_model, "server_ready": True}
-    elif parsed_provider == "llamacpp":
-        if not hf_model_ready(parsed_model, "llamacpp") and not _download_allowed(allow_download):
-            _download_block(parsed_provider, parsed_model)
-        ensure_llamacpp_server(parsed_model)
-        download_result = {"provider": "llamacpp", "model": parsed_model, "server_ready": True}
-    elif parsed_provider == "lmstudio":
-        downloaded = {
-            str(item.get("key") or "").strip()
-            for item in get_lmstudio_models()
-            if isinstance(item, dict)
-        }
-        if parsed_model not in downloaded and not _download_allowed(allow_download):
-            _download_block(parsed_provider, parsed_model)
-        ensured = ensure_lmstudio_model(parsed_model)
-        resolved_model = str(
-            ensured.get("instance_id")
-            or ensured.get("resolved_model")
-            or parsed_model
-        ).strip()
-        parsed_model = resolved_model
-        model_id = f"lmstudio:{resolved_model}"
-        download_result = ensured
-
-    effective_email = (user_email or get_current_user(request) or "").strip()
-    user_api_key = get_user_api_key(effective_email, parsed_provider) if parsed_provider != "local_mlx" else None
-    msg = await router.load_model(
-        model_id,
-        adapter_path,
+        user_email=user_email,
+        adapter_path=adapter_path,
         draft_model_id=draft_model_id,
-        api_key_override=user_api_key,
-        owner=effective_email or None,
+        allow_download=allow_download,
     )
-    # 피드백 #1/#2: 로드 직후 ModelResolution을 실제 current로 동기화하고 smoke test 수행.
-    resolution.update_after_load(actual_current=router.current_model_id)
-    smoke_result: Dict[str, object] = {}
-    ready_to_chat = True
-    compat_status = "ok"
-    try:
-        smoke_result = await _smoke_test_loaded_model(resolution, api_key_override=user_api_key)
-        ready_to_chat = bool(smoke_result.get("ok"))
-        # item 3-3: smoke 결과의 3분류(ok/degraded/failed)를 그대로 노출한다.
-        compat_status = str(smoke_result.get("status") or ("ok" if ready_to_chat else "degraded"))
-    except Exception as exc:  # never break load on smoke test failures
-        logging.warning("smoke test failed for %s: %s", resolution.load_id, exc)
-        compat_status = "unknown"
-    return {
-        "status": "ok",
-        "message": msg,
-        "model": model_id,
-        "current": router.current_model_id,
-        "engine": parsed_provider,
-        "installed_now": bool(install_result.get("installed_now")),
-        "download": download_result,
-        "resolution": resolution.to_dict(),
-        "downloaded": bool(download_result and not (isinstance(download_result, dict) and download_result.get("cached"))),
-        "loaded": True,
-        "ready_to_chat": ready_to_chat,
-        "compatibility_status": compat_status,
-        "smoke_test": smoke_result,
-    }
 
 
 def sse_event(event: str, data: Dict[str, object]) -> str:
@@ -1358,269 +1056,16 @@ async def prepare_and_load_model_stream(
     user_email: Optional[str] = None,
     allow_download: bool = False,
 ) -> AsyncIterator[str]:
-    model_id = normalize_local_model_request(model_id, engine)
-    if not model_id:
-        raise HTTPException(status_code=400, detail="모델 식별자가 비어 있습니다.")
+    from .model_loading import prepare_and_load_model_stream as _impl
 
-    parsed_provider, parsed_model = parse_model_ref(model_id)
-    if parsed_provider == "mlx":
-        parsed_provider = "local_mlx"
-    compatibility = _model_runtime_compatibility(parsed_model, engine=parsed_provider)
-    if compatibility.get("supported") is False:
-        raise HTTPException(status_code=400, detail=compatibility)
-
-    work_queue: "queue.Queue[Dict[str, object]]" = queue.Queue()
-    work_result: Dict[str, object] = {}
-
-    def emit_progress(payload: Dict[str, object]) -> None:
-        work_queue.put({"kind": "progress", "data": payload})
-
-    def blocking_prepare() -> None:
-        try:
-            local_engines = {"local_mlx", "ollama", "vllm", "lmstudio", "llamacpp"}
-            install_result: Dict[str, object] = {}
-            download_result: Optional[Dict[str, object]] = None
-            prepared_model_id = model_id
-            prepared_model_name = parsed_model
-
-            if parsed_provider in local_engines:
-                emit_progress(model_download_progress_payload(
-                    "engine",
-                    "실행 엔진을 확인하는 중입니다.",
-                    percent=2,
-                    indeterminate=True,
-                ))
-                if not engine_installed(parsed_provider) and not _download_allowed(allow_download):
-                    _engine_install_block(parsed_provider)
-                install_result = ensure_engine_ready(parsed_provider)
-                emit_progress(model_download_progress_payload(
-                    "engine",
-                    "실행 엔진 준비가 완료되었습니다.",
-                    percent=10,
-                    indeterminate=False,
-                ))
-
-            if parsed_provider == "local_mlx":
-                explicit_path = Path(parsed_model).expanduser()
-                if explicit_path.exists():
-                    download_result = {"model": parsed_model, "path": str(explicit_path), "cached": True}
-                    emit_progress(model_download_progress_payload(
-                        "download",
-                        "로컬 모델 경로를 확인했습니다.",
-                        percent=100,
-                        detail=str(explicit_path),
-                        eta_seconds=0,
-                    ))
-                elif not hf_model_ready(parsed_model, "local_mlx"):
-                    if not _download_allowed(allow_download):
-                        _download_block(parsed_provider, parsed_model)
-                    download_result = download_hf_model(parsed_model, "local_mlx", progress_emit=emit_progress)
-                else:
-                    download_result = {"model": parsed_model, "path": str(hf_model_dir(parsed_model)), "cached": True}
-                    emit_progress(model_download_progress_payload(
-                        "download",
-                        "이미 다운로드된 모델을 확인했습니다.",
-                        percent=100,
-                        eta_seconds=0,
-                    ))
-            elif parsed_provider == "ollama":
-                emit_progress(model_download_progress_payload(
-                    "engine",
-                    "Ollama 서버를 확인하는 중입니다.",
-                    percent=12,
-                    indeterminate=True,
-                ))
-                ensure_ollama_server()
-                if parsed_model not in get_ollama_pulled_models():
-                    if not _download_allowed(allow_download):
-                        _download_block(parsed_provider, parsed_model)
-                    download_result = pull_ollama_model_with_progress(parsed_model, progress_emit=emit_progress)
-                else:
-                    download_result = {"provider": "ollama", "model": parsed_model, "cached": True}
-                    emit_progress(model_download_progress_payload(
-                        "download",
-                        "이미 다운로드된 Ollama 모델을 확인했습니다.",
-                        percent=100,
-                        detail=parsed_model,
-                        eta_seconds=0,
-                    ))
-            elif parsed_provider == "vllm":
-                if not hf_model_ready(parsed_model, "vllm"):
-                    if not _download_allowed(allow_download):
-                        _download_block(parsed_provider, parsed_model)
-                    download_result = download_hf_model(parsed_model, "vllm", progress_emit=emit_progress)
-                else:
-                    download_result = {"provider": "vllm", "model": parsed_model, "cached": True}
-                    emit_progress(model_download_progress_payload(
-                        "download",
-                        "이미 다운로드된 모델을 확인했습니다.",
-                        percent=100,
-                        detail=parsed_model,
-                        eta_seconds=0,
-                    ))
-                emit_progress(model_download_progress_payload(
-                    "server",
-                    "vLLM 서버를 시작하는 중입니다.",
-                    percent=92,
-                    indeterminate=True,
-                ))
-                ensure_vllm_server(parsed_model)
-                download_result = {**(download_result or {}), "provider": "vllm", "model": parsed_model, "server_ready": True}
-            elif parsed_provider == "llamacpp":
-                if not hf_model_ready(parsed_model, "llamacpp"):
-                    if not _download_allowed(allow_download):
-                        _download_block(parsed_provider, parsed_model)
-                    download_result = download_hf_model(parsed_model, "llamacpp", progress_emit=emit_progress)
-                else:
-                    download_result = {"provider": "llamacpp", "model": parsed_model, "cached": True}
-                    emit_progress(model_download_progress_payload(
-                        "download",
-                        "이미 다운로드된 GGUF 모델을 확인했습니다.",
-                        percent=100,
-                        detail=parsed_model,
-                        eta_seconds=0,
-                    ))
-                emit_progress(model_download_progress_payload(
-                    "server",
-                    "llama.cpp 서버를 시작하는 중입니다.",
-                    percent=92,
-                    indeterminate=True,
-                ))
-                ensure_llamacpp_server(parsed_model)
-                download_result = {**(download_result or {}), "provider": "llamacpp", "model": parsed_model, "server_ready": True}
-            elif parsed_provider == "lmstudio":
-                downloaded = {
-                    str(item.get("key") or "").strip()
-                    for item in get_lmstudio_models()
-                    if isinstance(item, dict)
-                }
-                if parsed_model not in downloaded and not _download_allowed(allow_download):
-                    _download_block(parsed_provider, parsed_model)
-                emit_progress(model_download_progress_payload(
-                    "download",
-                    "LM Studio 모델을 확인하는 중입니다.",
-                    percent=35,
-                    indeterminate=True,
-                ))
-                ensured = ensure_lmstudio_model(parsed_model)
-                resolved_model = str(
-                    ensured.get("instance_id")
-                    or ensured.get("resolved_model")
-                    or parsed_model
-                ).strip()
-                prepared_model_name = resolved_model
-                prepared_model_id = f"lmstudio:{resolved_model}"
-                download_result = ensured
-            else:
-                emit_progress(model_download_progress_payload(
-                    "engine",
-                    "모델 연결을 준비하는 중입니다.",
-                    percent=30,
-                    indeterminate=True,
-                ))
-
-            work_result.update({
-                "model_id": prepared_model_id,
-                "parsed_provider": parsed_provider,
-                "parsed_model": prepared_model_name,
-                "install_result": install_result,
-                "download_result": download_result,
-            })
-            work_queue.put({"kind": "done"})
-        except HTTPException as exc:
-            work_queue.put({"kind": "error", "status_code": exc.status_code, "detail": exc.detail})
-        except Exception as exc:
-            logging.exception("model prepare stream worker failed")
-            work_queue.put({
-                "kind": "error",
-                "status_code": 500,
-                "detail": _friendly_model_runtime_error(exc, model_id=model_id, engine=parsed_provider),
-            })
-
-    worker = threading.Thread(target=blocking_prepare, daemon=True)
-    worker.start()
-
-    while True:
-        item = await asyncio.to_thread(work_queue.get)
-        kind = item.get("kind")
-        if kind == "progress":
-            yield sse_event("progress", item["data"])
-        elif kind == "error":
-            raise HTTPException(
-                status_code=int(item.get("status_code") or 500),
-                detail=item.get("detail") or "모델 준비에 실패했습니다.",
-            )
-        elif kind == "done":
-            break
-
-    prepared_model_id = str(work_result.get("model_id") or model_id)
-    prepared_provider = str(work_result.get("parsed_provider") or parsed_provider)
-    install_result = work_result.get("install_result") or {}
-    download_result = work_result.get("download_result")
-
-    yield sse_event("progress", model_download_progress_payload(
-        "load",
-        "모델을 메모리에 로드하는 중입니다.",
-        percent=96,
-        indeterminate=True,
-    ))
-
-    effective_email = (user_email or get_current_user(request) or "").strip()
-    user_api_key = get_user_api_key(effective_email, prepared_provider) if prepared_provider != "local_mlx" else None
-    msg = await router.load_model(
-        prepared_model_id,
-        None,
-        draft_model_id=None,
-        api_key_override=user_api_key,
-        owner=effective_email or None,
-    )
-    # 피드백 #1/#2: SSE에도 ModelResolution과 smoke test 결과를 같이 내려준다.
-    resolution_stream = _ModelResolution.from_request(
-        prepared_model_id,
-        engine=prepared_provider,
-        user_email=effective_email or None,
-        engine_aliases=MODEL_ENGINE_ALIASES,
-    )
-    resolution_stream.update_after_load(actual_current=router.current_model_id)
-    yield sse_event("progress", model_download_progress_payload(
-        "smoke_test",
-        "채팅 호환성 테스트 중입니다.",
-        percent=98,
-        indeterminate=True,
-    ))
-    smoke_result: Dict[str, object] = {}
-    ready_to_chat = True
-    compat_status = "ok"
-    try:
-        smoke_result = await _smoke_test_loaded_model(resolution_stream, api_key_override=user_api_key)
-        ready_to_chat = bool(smoke_result.get("ok"))
-        # item 3-3: smoke 결과의 3분류(ok/degraded/failed)를 그대로 노출한다.
-        compat_status = str(smoke_result.get("status") or ("ok" if ready_to_chat else "degraded"))
-    except Exception as exc:
-        logging.warning("smoke test (stream) failed for %s: %s", resolution_stream.load_id, exc)
-        compat_status = "unknown"
-    result = {
-        "status": "ok",
-        "message": msg,
-        "model": prepared_model_id,
-        "current": router.current_model_id,
-        "engine": prepared_provider,
-        "installed_now": bool(isinstance(install_result, dict) and install_result.get("installed_now")),
-        "download": download_result,
-        "resolution": resolution_stream.to_dict(),
-        "downloaded": bool(download_result and not (isinstance(download_result, dict) and download_result.get("cached"))),
-        "loaded": True,
-        "ready_to_chat": ready_to_chat,
-        "compatibility_status": compat_status,
-        "smoke_test": smoke_result,
-    }
-    yield sse_event("progress", model_download_progress_payload(
-        "done",
-        "모델 준비가 완료되었습니다.",
-        percent=100,
-        eta_seconds=0,
-    ))
-    yield sse_event("done", result)
+    async for event in _impl(
+        model_id,
+        request,
+        engine=engine,
+        user_email=user_email,
+        allow_download=allow_download,
+    ):
+        yield event
 
 
 CLOUD_VERIFY_CACHE: Dict[str, Dict] = {}

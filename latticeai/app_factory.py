@@ -95,6 +95,7 @@ def _build(config: "Optional[Config]" = None) -> Dict[str, Any]:
 
     from latticeai.models.router import LLMRouter, normalize_branding
     from lattice_brain._kg_common import set_llm_router
+    from lattice_brain.graph.schema import set_embed_dim
     from latticeai.core.security import (
         hash_password,
         verify_password,
@@ -339,6 +340,7 @@ def _build(config: "Optional[Config]" = None) -> Dict[str, Any]:
         extra={"target": CONFIG.embedding_custom_target},
         probe=_embedding_provider not in {"", "hash", "local", "fallback"},
     )
+    set_embed_dim(int(getattr(EMBEDDER, "dim", None) or _embedding_dim or 384))
     if EMBEDDER.fell_back:
         logging.warning("Embedding provider %s unavailable: %s", EMBEDDER.requested, EMBEDDER.detail)
     STORAGE_ENGINE = storage_from_env(os.environ, data_dir=DATA_DIR) if ENABLE_GRAPH else None

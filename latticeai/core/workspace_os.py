@@ -12,11 +12,8 @@ import json
 import shutil
 import sqlite3
 from collections import deque
-from datetime import datetime
 from pathlib import Path
 from typing import Any, Callable, Dict, Iterable, List, Optional
-
-from lattice_brain.runtime.contracts import run_record_contract, workflow_run_contract
 
 # Extracted pure helpers (keeps this module smaller and focused on the store).
 from .workspace_os_utils import (
@@ -26,7 +23,6 @@ from .workspace_os_utils import (
     _listify,
     _now,
     _safe_slug,
-    _snapshot_graph_import_payload,
     remove_skill_directory,
 )
 from .workspace_permissions import WorkspacePermissionManager, _member_role  # type: ignore
@@ -34,6 +30,9 @@ from .workspace_timeline import WorkspaceTimeline
 from .workspace_plugins import WorkspacePluginManager
 from .workspace_memory import WorkspaceMemory
 from .workspace_snapshots import WorkspaceSnapshots
+from .workspace_graph_trace import WorkspaceGraphTrace
+from .workspace_runs import WorkspaceRuns
+from .workspace_skills import WorkspaceSkills
 
 __all__ = [
     "WORKSPACE_OS_VERSION",
@@ -191,6 +190,9 @@ class WorkspaceOSStore:
         self.plugins = WorkspacePluginManager(self)
         self.memory = WorkspaceMemory(self)
         self.snapshots = WorkspaceSnapshots(self)
+        self.graph_trace = WorkspaceGraphTrace(self)
+        self.runs = WorkspaceRuns(self)
+        self.skills = WorkspaceSkills(self)
 
     def _connect_state_db(self) -> sqlite3.Connection:
         conn = sqlite3.connect(self.sqlite_path)
@@ -829,122 +831,13 @@ class WorkspaceOSStore:
     # ------------------------------------------------------------------
 
     def build_graph_trace(self, question: str, graph: Any, context: str = "", *, limit: int = 8) -> Dict[str, Any]:
-        if graph is None:
-            return {
-                "source_files": [],
-                "graph_nodes": [],
-                "graph_edges": [],
-                "confidence": 0.0,
-                "retrieval_metadata": {
-                    "query": question,
-                    "matched_nodes": 0,
-                    "graph_enabled": False,
-                    "context_chars": len(context or ""),
-                },
-            }
+        return self.graph_trace.build_graph_trace(question, graph, context, limit=limit)
 
-        matches: List[Dict[str, Any]] = []
-        search_error = ""
-        try:
-            matches = graph.search(question, limit=limit).get("matches", [])
-        except Exception as exc:
-            search_error = str(exc)
-            matches = []
-
-        source_files: List[Dict[str, Any]] = []
-        seen_sources = set()
-        for match in matches:
-            meta = match.get("metadata") or {}
-            source = (
-                meta.get("relative_path")
-                or meta.get("file_path")
-                or meta.get("filename")
-                or meta.get("blob_path")
-                or meta.get("source")
-            )
-            if source and source not in seen_sources:
-                seen_sources.add(source)
-                source_files.append({
-                    "source": source,
-                    "node_id": match.get("id"),
-                    "node_title": match.get("title"),
-                    "node_type": match.get("type"),
-                    "jump": {
-                        "graph": f"/graph?node={match.get('id')}",
-                        "source": source,
-                    },
-                })
-
-        edges: List[Dict[str, Any]] = []
-        edge_seen = set()
-        for match in matches[:5]:
-            node_id = match.get("id")
-            if not node_id:
-                continue
-            try:
-                for edge in graph.neighbors(node_id).get("edges", []):
-                    key = (edge.get("from"), edge.get("to"), edge.get("type"))
-                    if key in edge_seen:
-                        continue
-                    edge_seen.add(key)
-                    edges.append(edge)
-                    if len(edges) >= 24:
-                        break
-            except Exception:
-                continue
-
-        if matches:
-            confidence = min(0.95, 0.35 + min(len(matches), limit) / max(limit, 1) * 0.45 + (0.10 if edges else 0.0))
-        else:
-            confidence = 0.05 if context else 0.0
-
-        return {
-            "source_files": source_files,
-            "graph_nodes": matches,
-            "graph_edges": edges,
-            "confidence": round(confidence, 4),
-            "retrieval_metadata": {
-                "query": question,
-                "matched_nodes": len(matches),
-                "matched_edges": len(edges),
-                "graph_enabled": True,
-                "context_chars": len(context or ""),
-                "search_error": search_error,
-            },
-        }
-
-    def record_trace(
-        self,
-        *,
-        question: str,
-        response: str,
-        conversation_id: Optional[str],
-        user_email: Optional[str],
-        trace: Dict[str, Any],
-        workspace_id: Optional[str] = None,
-    ) -> Dict[str, Any]:
-        state = self.load_state()
-        trace_id = f"trace-{_json_hash([question, response, conversation_id, _now()])[:16]}"
-        record = {
-            "id": trace_id,
-            "question": question,
-            "response_preview": str(response or "")[:700],
-            "conversation_id": conversation_id,
-            "user_email": user_email,
-            "workspace_id": self._resolve_scope(workspace_id, state),
-            "created_at": _now(),
-            **trace,
-        }
-        state.setdefault("traces", []).append(record)
-        self.save_state(state)
-        self.record_timeline_event("graph", "answer_trace", {"trace_id": trace_id, "conversation_id": conversation_id})
-        return record
+    def record_trace(self, *args: Any, **kwargs: Any) -> Dict[str, Any]:
+        return self.graph_trace.record_trace(*args, **kwargs)
 
     def list_traces(self, conversation_id: Optional[str] = None, limit: int = 50, workspace_id: Optional[str] = None) -> Dict[str, Any]:
-        traces = self._scoped(_listify(self.load_state().get("traces")), workspace_id)
-        if conversation_id:
-            traces = [trace for trace in traces if trace.get("conversation_id") == conversation_id]
-        return {"traces": list(reversed(traces[-max(1, min(limit, 200)):]))}
+        return self.graph_trace.list_traces(conversation_id=conversation_id, limit=limit, workspace_id=workspace_id)
 
     # ------------------------------------------------------------------
     # Indexing dashboard
@@ -1059,99 +952,9 @@ class WorkspaceOSStore:
         user_email: Optional[str] = None,
     ) -> Dict[str, Any]:
         return self.snapshots.restore_snapshot(snapshot_id, graph=graph, workspace_id=workspace_id, user_email=user_email)
-        scope = self._resolve_scope(workspace_id or snapshot.get("workspace_id"))
-        if graph is None or not hasattr(graph, "import_graph_data"):
-            raise ValueError("knowledge graph import is required for snapshot restore")
-        artifact = _snapshot_graph_import_payload(snapshot.get("graph") or {}, workspace_id=scope)
-        import_result = graph.import_graph_data(artifact, mode="merge", dry_run=False)
-        restore_id = f"restore-{datetime.now().strftime('%Y%m%d%H%M%S')}-{_json_hash([snapshot_id, scope, user_email, _now()])[:10]}"
-        record = {
-            "id": restore_id,
-            "snapshot_id": snapshot_id,
-            "workspace_id": scope,
-            "restored_at": _now(),
-            "restored_by": user_email,
-            "mode": "merge",
-            "graph": import_result,
-            "settings_preserved": True,
-            "chat_preserved": True,
-        }
-        state = self.load_state()
-        state.setdefault("snapshot_restores", []).append(record)
-        self.save_state(state)
-        self.record_timeline_event(
-            "snapshot",
-            "snapshot_restored",
-            {"snapshot_id": snapshot_id, "restore_id": restore_id, "mode": "merge", "graph": import_result},
-            workspace_id=scope,
-        )
-        return {"restored": True, "restore": record}
 
     def compare_snapshots(self, before_id: str, after_id: str) -> Dict[str, Any]:
-        before = self.get_snapshot(before_id)
-        after = self.get_snapshot(after_id)
-        before_nodes = {node.get("id"): node for node in (before.get("graph") or {}).get("nodes") or [] if node.get("id")}
-        after_nodes = {node.get("id"): node for node in (after.get("graph") or {}).get("nodes") or [] if node.get("id")}
-
-        def edge_key(edge: Dict[str, Any]) -> str:
-            return "|".join(str(edge.get(key) or "") for key in ("from", "to", "type"))
-
-        before_edges = {edge_key(edge): edge for edge in (before.get("graph") or {}).get("edges") or []}
-        after_edges = {edge_key(edge): edge for edge in (after.get("graph") or {}).get("edges") or []}
-
-        added_nodes = [after_nodes[key] for key in sorted(set(after_nodes) - set(before_nodes))]
-        removed_nodes = [before_nodes[key] for key in sorted(set(before_nodes) - set(after_nodes))]
-        changed_nodes = [
-            {"before": before_nodes[key], "after": after_nodes[key]}
-            for key in sorted(set(before_nodes) & set(after_nodes))
-            if _json_hash(before_nodes[key]) != _json_hash(after_nodes[key])
-        ]
-        added_edges = [after_edges[key] for key in sorted(set(after_edges) - set(before_edges))]
-        removed_edges = [before_edges[key] for key in sorted(set(before_edges) - set(after_edges))]
-
-        before_decisions = {key: value for key, value in before_nodes.items() if value.get("type") == "Decision"}
-        after_decisions = {key: value for key, value in after_nodes.items() if value.get("type") == "Decision"}
-        decisions_changed = [
-            {"before": before_decisions.get(key), "after": after_decisions.get(key)}
-            for key in sorted(set(before_decisions) | set(after_decisions))
-            if _json_hash(before_decisions.get(key)) != _json_hash(after_decisions.get(key))
-        ]
-
-        return {
-            "before": before_id,
-            "after": after_id,
-            "nodes_added": added_nodes,
-            "nodes_removed": removed_nodes,
-            "nodes_changed": changed_nodes,
-            "edges_added": added_edges,
-            "edges_removed": removed_edges,
-            "decisions_changed": decisions_changed,
-            "summary": {
-                "nodes_added": len(added_nodes),
-                "nodes_removed": len(removed_nodes),
-                "nodes_changed": len(changed_nodes),
-                "edges_added": len(added_edges),
-                "edges_removed": len(removed_edges),
-                "decisions_changed": len(decisions_changed),
-            },
-        }
-
-    def timeline(self, audit_events: Optional[Iterable[Dict[str, Any]]] = None, limit: int = 100, workspace_id: Optional[str] = None) -> Dict[str, Any]:
-        state = self.load_state()
-        events: List[Dict[str, Any]] = []
-        events.extend(self._scoped(_listify(state.get("timeline")), workspace_id))
-        for snapshot in self._scoped(_listify(state.get("snapshots")), workspace_id):
-            events.append({"area": "snapshot", "event_type": "snapshot", "timestamp": snapshot.get("created_at"), "workspace_id": self._record_workspace(snapshot), "payload": snapshot})
-        for trace in self._scoped(_listify(state.get("traces")), workspace_id):
-            events.append({"area": "graph", "event_type": "answer_trace", "timestamp": trace.get("created_at"), "workspace_id": self._record_workspace(trace), "payload": trace})
-        for run in self._scoped(_listify(state.get("agent_runs")), workspace_id):
-            events.append({"area": "agent", "event_type": "agent_run", "timestamp": run.get("created_at"), "workspace_id": self._record_workspace(run), "payload": run})
-        for workflow in self._scoped(_listify(state.get("workflows")), workspace_id):
-            events.append({"area": "workflow", "event_type": "workflow", "timestamp": workflow.get("created_at"), "workspace_id": self._record_workspace(workflow), "payload": workflow})
-        for audit in audit_events or []:
-            events.append({"area": "audit", "event_type": audit.get("event_type") or "audit", "timestamp": audit.get("timestamp"), "payload": audit})
-        events.sort(key=lambda item: item.get("timestamp") or "", reverse=True)
-        return {"events": events[: max(1, min(limit, 500))]}
+        return self.snapshots.compare_snapshots(before_id, after_id)
 
     # ------------------------------------------------------------------
     # Personal memory
@@ -1252,432 +1055,63 @@ class WorkspaceOSStore:
     # Agent and workflow graph
     # ------------------------------------------------------------------
 
-    def list_agents(self, workspace_id: Optional[str] = None) -> Dict[str, Any]:
-        state = self.load_state()
-        runs = self._scoped(_listify(state.get("agent_runs")), workspace_id)
-        return {"agents": _listify(state.get("agents")), "runs": list(reversed(runs[-100:]))}
+    def list_agents(self, *args: Any, **kwargs: Any) -> Dict[str, Any]:
+        return self.runs.list_agents(*args, **kwargs)
 
-    def record_agent_run(
-        self,
-        *,
-        agent_id: str,
-        status: str,
-        input_text: str,
-        output_text: str,
-        user_email: Optional[str],
-        timeline: Optional[List[Dict[str, Any]]] = None,
-        relationships: Optional[List[str]] = None,
-        handoffs: Optional[List[Dict[str, Any]]] = None,
-        context_packets: Optional[List[Dict[str, Any]]] = None,
-        plan: Optional[List[Dict[str, Any]]] = None,
-        plan_review: Optional[Dict[str, Any]] = None,
-        review_history: Optional[List[Dict[str, Any]]] = None,
-        retry_history: Optional[List[Dict[str, Any]]] = None,
-        memory_snapshots: Optional[List[Dict[str, Any]]] = None,
-        graph: Any = None,
-        workspace_id: Optional[str] = None,
-        mode: str = "simulation",
-    ) -> Dict[str, Any]:
-        state = self.load_state()
-        resolved_workspace = self._resolve_scope(workspace_id, state)
-        run = {
-            "id": f"agent-run-{_json_hash([agent_id, input_text, output_text, _now()])[:16]}",
-            "record_schema_version": 2,
-            "agent_id": agent_id,
-            "mode": mode,
-            "status": status,
-            "input": input_text,
-            "output_preview": output_text[:1000],
-            "user_email": user_email,
-            "workspace_id": resolved_workspace,
-            "relationships": relationships or [],
-            "timeline": timeline or [],
-            "handoffs": handoffs or [],
-            "context_packets": context_packets or [],
-            "plan": plan or [],
-            "plan_review": plan_review or {},
-            "review_history": review_history or [],
-            "retry_history": retry_history or [],
-            "memory_snapshots": memory_snapshots or [],
-            "created_at": _now(),
-        }
-        if mode == "simulation":
-            # Simulated runs are replay scaffolding, not experiences — they must
-            # never enter the knowledge graph as real provenance.
-            run["graph_node_id"] = None
-            run["graph_skipped"] = "simulation runs are not recorded in the knowledge graph"
-        elif graph is not None:
-            try:
-                ingested = graph.ingest_event(
-                    "AgentRun",
-                    f"{agent_id} {status}",
-                    user_email=user_email,
-                    source="workspace_os",
-                    metadata={"run_id": run["id"], "agent_id": agent_id, "status": status, "mode": mode},
-                )
-                run["graph_node_id"] = ingested.get("node_id")
-            except Exception as exc:
-                run["graph_error"] = str(exc)
-        if handoffs:
-            stored_handoffs = state.setdefault("handoffs", [])
-            for handoff in handoffs:
-                stored = {
-                    **handoff,
-                    "run_id": run["id"],
-                    "workspace_id": resolved_workspace,
-                }
-                stored_handoffs.append(stored)
-            state["handoffs"] = stored_handoffs
-        state.setdefault("agent_runs", []).append(run)
-        self.save_state(state)
-        self._emit_replayable_timeline_events(area="agent", run_id=run["id"], timeline=run["timeline"], workspace_id=resolved_workspace)
-        if status == "failed":
-            self._emit_execution_event(area="agent", event_type="execution_failed", payload={"run_id": run["id"], "agent_id": agent_id, "status": status}, workspace_id=resolved_workspace)
-        self.record_timeline_event("agent", "agent_run", {"run_id": run["id"], "agent_id": agent_id, "status": status}, workspace_id=resolved_workspace)
-        run["contract"] = run_record_contract(run)
-        state = self.load_state()
-        for item in _listify(state.get("agent_runs")):
-            if item.get("id") == run["id"]:
-                item["contract"] = run["contract"]
-                break
-        self.save_state(state)
-        return run
+    def record_agent_run(self, *args: Any, **kwargs: Any) -> Dict[str, Any]:
+        return self.runs.record_agent_run(*args, **kwargs)
 
-    def update_agent_run(
-        self,
-        run_id: str,
-        *,
-        workspace_id: Optional[str] = None,
-        graph: Any = None,
-        patch: Optional[Dict[str, Any]] = None,
-        **fields: Any,
-    ) -> Dict[str, Any]:
-        """Patch a persisted agent run without changing its id.
+    def update_agent_run(self, *args: Any, **kwargs: Any) -> Dict[str, Any]:
+        return self.runs.update_agent_run(*args, **kwargs)
 
-        Async execution creates a durable queued/running row before work starts,
-        then updates that same row as progress, cancellation, or a terminal
-        result arrives. This keeps old run lists/read APIs compatible while
-        avoiding duplicate "placeholder + final" records.
-        """
-        updates = {**(patch or {}), **fields}
-        state = self.load_state()
-        run = next((item for item in _listify(state.get("agent_runs")) if item.get("id") == run_id), None)
-        if run is None or (workspace_id and self._record_workspace(run) != str(workspace_id)):
-            raise FileNotFoundError(run_id)
-        resolved_workspace = self._record_workspace(run)
-        old_timeline_len = len(run.get("timeline") or [])
+    def get_agent_run(self, *args: Any, **kwargs: Any) -> Dict[str, Any]:
+        return self.runs.get_agent_run(*args, **kwargs)
 
-        output_text = updates.pop("output_text", None)
-        if output_text is not None:
-            run["output_preview"] = str(output_text)[:1000]
-        for key, value in updates.items():
-            run[key] = value
-        status = str(run.get("status") or "")
-        run["updated_at"] = _now()
-        if status in RUN_TERMINAL_STATUSES:
-            run.setdefault("completed_at", _now())
+    def list_handoffs(self, *args: Any, **kwargs: Any) -> Dict[str, Any]:
+        return self.runs.list_handoffs(*args, **kwargs)
 
-        handoffs = updates.get("handoffs")
-        if isinstance(handoffs, list):
-            stored_handoffs = [
-                item for item in _listify(state.get("handoffs"))
-                if item.get("run_id") != run_id
-            ]
-            for handoff in handoffs:
-                if isinstance(handoff, dict):
-                    stored_handoffs.append({**handoff, "run_id": run_id, "workspace_id": resolved_workspace})
-            state["handoffs"] = stored_handoffs
+    def create_workflow(self, *args: Any, **kwargs: Any) -> Dict[str, Any]:
+        return self.runs.create_workflow(*args, **kwargs)
 
-        if (
-            status in RUN_TERMINAL_STATUSES
-            and run.get("mode") != "simulation"
-            and graph is not None
-            and not run.get("graph_node_id")
-        ):
-            try:
-                ingested = graph.ingest_event(
-                    "AgentRun",
-                    f"{run.get('agent_id')} {status}",
-                    user_email=run.get("user_email"),
-                    source="workspace_os",
-                    metadata={
-                        "run_id": run_id,
-                        "agent_id": run.get("agent_id"),
-                        "status": status,
-                        "mode": run.get("mode"),
-                    },
-                )
-                run["graph_node_id"] = ingested.get("node_id")
-            except Exception as exc:
-                run["graph_error"] = str(exc)
+    def record_workflow_run(self, *args: Any, **kwargs: Any) -> Dict[str, Any]:
+        return self.runs.record_workflow_run(*args, **kwargs)
 
-        self.save_state(state)
-        run["contract"] = run_record_contract(run)
-        state = self.load_state()
-        for item in _listify(state.get("agent_runs")):
-            if item.get("id") == run_id:
-                item["contract"] = run["contract"]
-                break
-        self.save_state(state)
+    def update_workflow_run(self, *args: Any, **kwargs: Any) -> Dict[str, Any]:
+        return self.runs.update_workflow_run(*args, **kwargs)
 
-        timeline = run.get("timeline") or []
-        if len(timeline) > old_timeline_len:
-            self._emit_replayable_timeline_events(
-                area="agent",
-                run_id=run_id,
-                timeline=timeline[old_timeline_len:],
-                workspace_id=resolved_workspace,
-            )
-        if status == "failed":
-            self._emit_execution_event(area="agent", event_type="execution_failed", payload={"run_id": run_id, "agent_id": run.get("agent_id"), "status": status}, workspace_id=resolved_workspace)
-        elif status == "cancelled":
-            self._emit_execution_event(area="agent", event_type="execution_cancelled", payload={"run_id": run_id, "agent_id": run.get("agent_id"), "status": status}, workspace_id=resolved_workspace)
-        elif status == "interrupted":
-            self._emit_execution_event(area="agent", event_type="execution_interrupted", payload={"run_id": run_id, "agent_id": run.get("agent_id"), "status": status}, workspace_id=resolved_workspace)
-        self.record_timeline_event("agent", "agent_run_update", {"run_id": run_id, "agent_id": run.get("agent_id"), "status": status}, workspace_id=resolved_workspace)
-        return run
+    def list_workflow_runs(self, *args: Any, **kwargs: Any) -> Dict[str, Any]:
+        return self.runs.list_workflow_runs(*args, **kwargs)
 
-    def get_agent_run(self, run_id: str, workspace_id: Optional[str] = None) -> Dict[str, Any]:
-        run = next((item for item in _listify(self.load_state().get("agent_runs")) if item.get("id") == run_id), None)
-        if not run or (workspace_id and self._record_workspace(run) != str(workspace_id)):
-            raise FileNotFoundError(run_id)
-        return run
+    def mark_workflow_run_resolved(self, *args: Any, **kwargs: Any) -> Dict[str, Any]:
+        return self.runs.mark_workflow_run_resolved(*args, **kwargs)
 
-    def list_handoffs(self, workspace_id: Optional[str] = None, run_id: Optional[str] = None) -> Dict[str, Any]:
-        handoffs = self._scoped(_listify(self.load_state().get("handoffs")), workspace_id)
-        if run_id:
-            handoffs = [item for item in handoffs if item.get("run_id") == run_id]
-        return {"handoffs": list(reversed(handoffs[-200:]))}
+    def get_workflow_run(self, *args: Any, **kwargs: Any) -> Dict[str, Any]:
+        return self.runs.get_workflow_run(*args, **kwargs)
 
-    def create_workflow(
-        self,
-        *,
-        name: str,
-        steps: List[Dict[str, Any]],
-        user_email: Optional[str],
-        metadata: Optional[Dict[str, Any]] = None,
-        graph: Any = None,
-        workspace_id: Optional[str] = None,
-        nodes: Optional[List[Dict[str, Any]]] = None,
-    ) -> Dict[str, Any]:
-        state = self.load_state()
-        workflow = {
-            "id": f"workflow-{_json_hash([name, steps, user_email, _now()])[:16]}",
-            "name": name or "Untitled workflow",
-            "steps": steps,
-            "user_email": user_email,
-            "workspace_id": self._resolve_scope(workspace_id, state),
-            "metadata": metadata or {},
-            "events": [{"type": "created", "timestamp": _now()}],
-            "created_at": _now(),
-            "updated_at": _now(),
-        }
-        # Workflow Designer stores a typed-node graph alongside the legacy
-        # ``steps`` list so older history keeps working and new editors get nodes.
-        if nodes is not None:
-            workflow["nodes"] = nodes
-        if graph is not None:
-            try:
-                ingested = graph.ingest_event(
-                    "Workflow",
-                    workflow["name"],
-                    user_email=user_email,
-                    source="workspace_os",
-                    metadata={"workflow_id": workflow["id"], "steps": steps},
-                )
-                workflow["graph_node_id"] = ingested.get("node_id")
-            except Exception as exc:
-                workflow["graph_error"] = str(exc)
-        state.setdefault("workflows", []).append(workflow)
-        self.save_state(state)
-        self.record_timeline_event("workflow", "workflow_created", {"workflow_id": workflow["id"], "name": workflow["name"]})
-        return workflow
+    def reconcile_interrupted_runs(self, *args: Any, **kwargs: Any) -> Dict[str, Any]:
+        return self.runs.reconcile_interrupted_runs(*args, **kwargs)
 
-    def record_workflow_run(
-        self,
-        *,
-        workflow_id: Optional[str],
-        name: str,
-        status: str,
-        timeline: List[Dict[str, Any]],
-        outputs: Optional[Dict[str, Any]] = None,
-        user_email: Optional[str] = None,
-        graph: Any = None,
-        workspace_id: Optional[str] = None,
-        mode: str = "simulation",
-        pause: Optional[Dict[str, Any]] = None,
-    ) -> Dict[str, Any]:
-        """Persist a Workflow Designer execution into local-first run history."""
-        state = self.load_state()
-        resolved_workspace = self._resolve_scope(workspace_id, state)
-        run = {
-            "id": f"workflow-run-{_json_hash([workflow_id, name, status, _now()])[:16]}",
-            "record_schema_version": 2,
-            "workflow_id": workflow_id,
-            "name": name or "workflow",
-            "mode": mode,
-            "status": status,
-            "timeline": timeline or [],
-            "outputs": outputs or {},
-            "user_email": user_email,
-            "workspace_id": resolved_workspace,
-            "created_at": _now(),
-        }
-        if pause:
-            run["pause"] = pause
-        if mode == "simulation":
-            # Record-only node runners do no real work; their runs must not be
-            # written into the knowledge graph as if they were real executions.
-            run["graph_node_id"] = None
-            run["graph_skipped"] = "simulation runs are not recorded in the knowledge graph"
-        elif graph is not None:
-            try:
-                ingested = graph.ingest_event(
-                    "WorkflowRun",
-                    f"{run['name']} {status}",
-                    user_email=user_email,
-                    source="workspace_os",
-                    metadata={"run_id": run["id"], "workflow_id": workflow_id, "status": status, "mode": mode},
-                )
-                run["graph_node_id"] = ingested.get("node_id")
-            except Exception as exc:
-                run["graph_error"] = str(exc)
-        state.setdefault("workflow_runs", []).append(run)
-        # Attach the run id to the workflow's event log for cross-linking.
-        for wf in _listify(state.get("workflows")):
-            if wf.get("id") == workflow_id:
-                wf.setdefault("events", []).append({"type": "run", "timestamp": _now(), "payload": {"run_id": run["id"], "status": status}})
-                wf["updated_at"] = _now()
-                break
-        self.save_state(state)
-        self._emit_execution_event(area="workflow", event_type="workflow_started", payload={"run_id": run["id"], "workflow_id": workflow_id, "name": name}, workspace_id=resolved_workspace)
-        self._emit_replayable_timeline_events(area="workflow", run_id=run["id"], timeline=run["timeline"], workspace_id=resolved_workspace)
-        if status == "failed":
-            self._emit_execution_event(area="workflow", event_type="execution_failed", payload={"run_id": run["id"], "workflow_id": workflow_id, "status": status}, workspace_id=resolved_workspace)
-        elif status in {"ok", "partial"}:
-            self._emit_execution_event(area="workflow", event_type="workflow_completed", payload={"run_id": run["id"], "workflow_id": workflow_id, "status": status}, workspace_id=resolved_workspace)
-        self.record_timeline_event("workflow", "workflow_run", {"run_id": run["id"], "workflow_id": workflow_id, "status": status}, workspace_id=resolved_workspace)
-        run["contract"] = workflow_run_contract(run)
-        state = self.load_state()
-        for item in _listify(state.get("workflow_runs")):
-            if item.get("id") == run["id"]:
-                item["contract"] = run["contract"]
-                break
-        self.save_state(state)
-        return run
+    @staticmethod
+    def _replay_frames(run: Dict[str, Any], *, kind: str) -> List[Dict[str, Any]]:
+        return WorkspaceRuns._replay_frames(run, kind=kind)
 
-    def update_workflow_run(
-        self,
-        run_id: str,
-        *,
-        workspace_id: Optional[str] = None,
-        graph: Any = None,
-        patch: Optional[Dict[str, Any]] = None,
-        **fields: Any,
-    ) -> Dict[str, Any]:
-        """Patch a persisted workflow run in place for async execution."""
-        updates = {**(patch or {}), **fields}
-        state = self.load_state()
-        run = next((item for item in _listify(state.get("workflow_runs")) if item.get("id") == run_id), None)
-        if run is None or (workspace_id and self._record_workspace(run) != str(workspace_id)):
-            raise FileNotFoundError(run_id)
-        resolved_workspace = self._record_workspace(run)
-        old_timeline_len = len(run.get("timeline") or [])
+    def replay_agent_run(self, *args: Any, **kwargs: Any) -> Dict[str, Any]:
+        return self.runs.replay_agent_run(*args, **kwargs)
 
-        for key, value in updates.items():
-            if value is None and key == "pause":
-                run.pop("pause", None)
-            else:
-                run[key] = value
-        status = str(run.get("status") or "")
-        run["updated_at"] = _now()
-        if status in RUN_TERMINAL_STATUSES:
-            run.setdefault("completed_at", _now())
+    def replay_workflow_run(self, *args: Any, **kwargs: Any) -> Dict[str, Any]:
+        return self.runs.replay_workflow_run(*args, **kwargs)
 
-        workflow_id = run.get("workflow_id")
-        for wf in _listify(state.get("workflows")):
-            if wf.get("id") == workflow_id:
-                wf.setdefault("events", []).append({"type": "run_update", "timestamp": _now(), "payload": {"run_id": run_id, "status": status}})
-                wf["updated_at"] = _now()
-                break
+    def get_workflow(self, *args: Any, **kwargs: Any) -> Dict[str, Any]:
+        return self.runs.get_workflow(*args, **kwargs)
 
-        if (
-            status in RUN_TERMINAL_STATUSES
-            and run.get("mode") != "simulation"
-            and graph is not None
-            and not run.get("graph_node_id")
-        ):
-            try:
-                ingested = graph.ingest_event(
-                    "WorkflowRun",
-                    f"{run.get('name')} {status}",
-                    user_email=run.get("user_email"),
-                    source="workspace_os",
-                    metadata={
-                        "run_id": run_id,
-                        "workflow_id": workflow_id,
-                        "status": status,
-                        "mode": run.get("mode"),
-                    },
-                )
-                run["graph_node_id"] = ingested.get("node_id")
-            except Exception as exc:
-                run["graph_error"] = str(exc)
+    def update_workflow_definition(self, *args: Any, **kwargs: Any) -> Dict[str, Any]:
+        return self.runs.update_workflow_definition(*args, **kwargs)
 
-        self.save_state(state)
-        run["contract"] = workflow_run_contract(run)
-        state = self.load_state()
-        for item in _listify(state.get("workflow_runs")):
-            if item.get("id") == run_id:
-                item["contract"] = run["contract"]
-                break
-        self.save_state(state)
+    def list_workflows(self, *args: Any, **kwargs: Any) -> Dict[str, Any]:
+        return self.runs.list_workflows(*args, **kwargs)
 
-        timeline = run.get("timeline") or []
-        if len(timeline) > old_timeline_len:
-            self._emit_replayable_timeline_events(
-                area="workflow",
-                run_id=run_id,
-                timeline=timeline[old_timeline_len:],
-                workspace_id=resolved_workspace,
-            )
-        if status == "failed":
-            self._emit_execution_event(area="workflow", event_type="execution_failed", payload={"run_id": run_id, "workflow_id": workflow_id, "status": status}, workspace_id=resolved_workspace)
-        elif status in {"ok", "partial"}:
-            self._emit_execution_event(area="workflow", event_type="workflow_completed", payload={"run_id": run_id, "workflow_id": workflow_id, "status": status}, workspace_id=resolved_workspace)
-        elif status == "cancelled":
-            self._emit_execution_event(area="workflow", event_type="execution_cancelled", payload={"run_id": run_id, "workflow_id": workflow_id, "status": status}, workspace_id=resolved_workspace)
-        elif status == "interrupted":
-            self._emit_execution_event(area="workflow", event_type="execution_interrupted", payload={"run_id": run_id, "workflow_id": workflow_id, "status": status}, workspace_id=resolved_workspace)
-        self.record_timeline_event("workflow", "workflow_run_update", {"run_id": run_id, "workflow_id": workflow_id, "status": status}, workspace_id=resolved_workspace)
-        return run
-
-    def list_workflow_runs(self, workflow_id: Optional[str] = None, limit: int = 50, workspace_id: Optional[str] = None) -> Dict[str, Any]:
-        runs = self._scoped(_listify(self.load_state().get("workflow_runs")), workspace_id)
-        if workflow_id:
-            runs = [run for run in runs if run.get("workflow_id") == workflow_id]
-        return {"runs": list(reversed(runs[-max(1, min(limit, 300)):]))}
-
-    def mark_workflow_run_resolved(
-        self, run_id: str, *, resumed_run_id: str, approved: bool,
-        workspace_id: Optional[str] = None,
-    ) -> Dict[str, Any]:
-        """Close out a paused run after its approval decision (one decision only)."""
-        state = self.load_state()
-        run = next((item for item in _listify(state.get("workflow_runs")) if item.get("id") == run_id), None)
-        if run is None or (workspace_id and self._record_workspace(run) != str(workspace_id)):
-            raise FileNotFoundError(run_id)
-        run["status"] = "resumed" if approved else "denied"
-        run["resolved_at"] = _now()
-        run["resumed_run_id"] = resumed_run_id
-        self.save_state(state)
-        return run
-
-    def get_workflow_run(self, run_id: str, workspace_id: Optional[str] = None) -> Dict[str, Any]:
-        run = next((item for item in _listify(self.load_state().get("workflow_runs")) if item.get("id") == run_id), None)
-        if not run or (workspace_id and self._record_workspace(run) != str(workspace_id)):
-            raise FileNotFoundError(run_id)
-        return run
+    def record_workflow_event(self, *args: Any, **kwargs: Any) -> Dict[str, Any]:
+        return self.runs.record_workflow_event(*args, **kwargs)
 
     # ── review queue (5.6.0) ─────────────────────────────────────────────
     # Workspace-scoped suggestion inbox. Automation/trigger runs write drafts
@@ -1762,171 +1196,6 @@ class WorkspaceOSStore:
             workspace_id=self._record_workspace(item),
         )
         return item
-
-    def reconcile_interrupted_runs(self, *, reason: str = "server_startup") -> Dict[str, Any]:
-        """Mark durable active runs as interrupted after a process restart.
-
-        Queued/running/cancelling rows cannot have an owning asyncio task after
-        startup. Paused approval runs are intentionally left untouched so their
-        durable human decision cursor remains resumable.
-        """
-        state = self.load_state()
-        interrupted: List[Dict[str, Any]] = []
-        now = _now()
-        collections = (("agent_runs", "agent"), ("workflow_runs", "workflow"))
-        for key, area in collections:
-            for run in _listify(state.get(key)):
-                status = str(run.get("status") or "")
-                if status not in RUN_ACTIVE_STATUSES:
-                    continue
-                run["status"] = "interrupted"
-                run["interrupted_at"] = now
-                run["interrupt_reason"] = reason
-                run["updated_at"] = now
-                run.setdefault("timeline", []).append({
-                    "event": "execution_interrupted",
-                    "status": "interrupted",
-                    "reason": reason,
-                    "timestamp": now,
-                })
-                interrupted.append({
-                    "kind": area,
-                    "run_id": run.get("id"),
-                    "workspace_id": self._record_workspace(run),
-                    "previous_status": status,
-                })
-        if not interrupted:
-            return {"count": 0, "interrupted": []}
-        self.save_state(state)
-        for item in interrupted:
-            area = item["kind"]
-            run_id = item["run_id"]
-            workspace = item.get("workspace_id")
-            self._emit_execution_event(
-                area=area,
-                event_type="execution_interrupted",
-                payload={"run_id": run_id, "reason": reason, "previous_status": item.get("previous_status")},
-                workspace_id=workspace,
-            )
-        self.record_timeline_event(
-            "system",
-            "startup_reconciliation",
-            {"interrupted_runs": len(interrupted), "reason": reason},
-        )
-        return {"count": len(interrupted), "interrupted": interrupted}
-
-    @staticmethod
-    def _replay_frames(run: Dict[str, Any], *, kind: str) -> List[Dict[str, Any]]:
-        frames = []
-        for index, item in enumerate(run.get("timeline") or []):
-            event = item.get("event") or item.get("event_type") or item.get("type") or "event"
-            actor = (
-                item.get("agent_id")
-                or item.get("role")
-                or item.get("source_agent")
-                or item.get("target_agent")
-                or item.get("node")
-                or kind
-            )
-            result = item.get("result") if "result" in item else item.get("output")
-            decision = item.get("outcome") or item.get("verdict") or item.get("status")
-            frames.append({
-                "index": index,
-                "event": event,
-                "actor": actor,
-                "when": item.get("timestamp") or item.get("started_at") or run.get("created_at"),
-                "why": item.get("reason") or item.get("note") or item.get("name") or "",
-                "input": item.get("context_packet") or item.get("trigger") or run.get("input"),
-                "output": result,
-                "decision": decision,
-                "raw": item,
-            })
-        return frames
-
-    def replay_agent_run(self, run_id: str, workspace_id: Optional[str] = None) -> Dict[str, Any]:
-        run = self.get_agent_run(run_id, workspace_id=workspace_id)
-        return {
-            "kind": "agent",
-            "run_id": run_id,
-            "status": run.get("status"),
-            "workspace_id": self._record_workspace(run),
-            "contract": run.get("contract") or run_record_contract(run),
-            "replayable": True,
-            "frames": self._replay_frames(run, kind="agent"),
-            "handoffs": run.get("handoffs") or [],
-            "context_packets": run.get("context_packets") or [],
-            "review_history": run.get("review_history") or [],
-            "retry_history": run.get("retry_history") or [],
-        }
-
-    def replay_workflow_run(self, run_id: str, workspace_id: Optional[str] = None) -> Dict[str, Any]:
-        run = self.get_workflow_run(run_id, workspace_id=workspace_id)
-        return {
-            "kind": "workflow",
-            "run_id": run_id,
-            "status": run.get("status"),
-            "workspace_id": self._record_workspace(run),
-            "contract": run.get("contract") or workflow_run_contract(run),
-            "replayable": True,
-            "frames": self._replay_frames(run, kind="workflow"),
-            "outputs": run.get("outputs") or {},
-        }
-
-    def get_workflow(self, workflow_id: str, workspace_id: Optional[str] = None) -> Dict[str, Any]:
-        workflow = next((wf for wf in _listify(self.load_state().get("workflows")) if wf.get("id") == workflow_id), None)
-        if not workflow or (workspace_id and self._record_workspace(workflow) != str(workspace_id)):
-            raise FileNotFoundError(workflow_id)
-        return workflow
-
-    def update_workflow_definition(
-        self,
-        workflow_id: str,
-        *,
-        name: Optional[str] = None,
-        nodes: Optional[List[Dict[str, Any]]] = None,
-        metadata: Optional[Dict[str, Any]] = None,
-        workspace_id: Optional[str] = None,
-    ) -> Dict[str, Any]:
-        """Edit a stored workflow's node graph / name without losing its history."""
-        state = self.load_state()
-        workflow = next((wf for wf in _listify(state.get("workflows")) if wf.get("id") == workflow_id), None)
-        if not workflow or (workspace_id and self._record_workspace(workflow) != str(workspace_id)):
-            raise FileNotFoundError(workflow_id)
-        if name is not None and str(name).strip():
-            workflow["name"] = str(name).strip()
-        if nodes is not None:
-            workflow["nodes"] = nodes
-        if metadata is not None:
-            workflow["metadata"] = {**(workflow.get("metadata") or {}), **metadata}
-        workflow.setdefault("events", []).append({"type": "edited", "timestamp": _now()})
-        workflow["updated_at"] = _now()
-        self.save_state(state)
-        self.record_timeline_event("workflow", "workflow_edited", {"workflow_id": workflow_id})
-        return workflow
-
-    def list_workflows(self, query: str = "", workspace_id: Optional[str] = None) -> Dict[str, Any]:
-        workflows = list(reversed(self._scoped(_listify(self.load_state().get("workflows")), workspace_id)))
-        q = str(query or "").lower().strip()
-        if q:
-            workflows = [
-                wf for wf in workflows
-                if q in str(wf.get("name") or "").lower()
-                or q in json.dumps(wf.get("steps") or [], ensure_ascii=False).lower()
-            ]
-        return {"workflows": workflows}
-
-    def record_workflow_event(self, workflow_id: str, event_type: str, payload: Optional[Dict[str, Any]] = None) -> Dict[str, Any]:
-        state = self.load_state()
-        workflows = _listify(state.get("workflows"))
-        workflow = next((item for item in workflows if item.get("id") == workflow_id), None)
-        if not workflow:
-            raise FileNotFoundError(workflow_id)
-        event = {"type": event_type, "timestamp": _now(), "payload": payload or {}}
-        workflow.setdefault("events", []).append(event)
-        workflow["updated_at"] = _now()
-        self.save_state(state)
-        self.record_timeline_event("workflow", "workflow_event", {"workflow_id": workflow_id, "event_type": event_type})
-        return workflow
 
     # ------------------------------------------------------------------
     # Relationship explorer
@@ -2050,103 +1319,17 @@ class WorkspaceOSStore:
     # Skills
     # ------------------------------------------------------------------
 
-    def list_skill_registry(self, skills_dir: Path, marketplace: Optional[List[Dict[str, Any]]] = None) -> Dict[str, Any]:
-        state = self.load_state()
-        registry = state.setdefault("skill_registry", {})
-        installed = []
-        if skills_dir.exists():
-            for skill_dir in sorted(skills_dir.iterdir()):
-                if not skill_dir.is_dir():
-                    continue
-                skill_md = skill_dir / "SKILL.md"
-                schema = skill_dir / "schema.json"
-                if not skill_md.exists():
-                    continue
-                desc = ""
-                try:
-                    for line in skill_md.read_text(encoding="utf-8").splitlines():
-                        if line.startswith("description:"):
-                            desc = line.split(":", 1)[1].strip()
-                            break
-                except Exception:
-                    desc = ""
-                version = "local"
-                if schema.exists():
-                    try:
-                        version = str((json.loads(schema.read_text(encoding="utf-8")) or {}).get("version") or "local")
-                    except Exception:
-                        version = "local"
-                entry = registry.setdefault(skill_dir.name, {})
-                entry.setdefault("enabled", True)
-                entry.update({
-                    "name": skill_dir.name,
-                    "description": desc,
-                    "version": version,
-                    "installed": True,
-                    "install_status": entry.get("install_status") or "ready",
-                    "validation_status": "ready" if skill_md.exists() else "missing_manifest",
-                    "source": entry.get("source") or "local",
-                    "path": str(skill_dir),
-                    "updated_at": entry.get("updated_at") or _now(),
-                })
-                installed.append(entry)
-        available = []
-        for item in marketplace or []:
-            name = item.get("skill") or item.get("name")
-            if not name:
-                continue
-            state_entry = registry.get(name, {})
-            available.append({
-                **item,
-                "enabled": bool(state_entry.get("enabled", True)),
-                "installed": bool(state_entry.get("installed")),
-                "install_status": state_entry.get("install_status") or ("ready" if state_entry.get("installed") else "available"),
-                "validation_status": state_entry.get("validation_status") or item.get("validation_status") or ("ready" if state_entry.get("installed") else "not_installed"),
-                "source": state_entry.get("source") or item.get("source") or item.get("plugin") or "marketplace",
-                "version": state_entry.get("version") or item.get("version") or "remote",
-            })
-        self.save_state(state)
-        return {
-            "installed": installed,
-            "available": available,
-            "registry": registry,
-            "total_installed": len(installed),
-            "total_available": len(available),
-        }
+    def list_skill_registry(self, *args: Any, **kwargs: Any) -> Dict[str, Any]:
+        return self.skills.list_skill_registry(*args, **kwargs)
 
-    def set_skill_enabled(self, skill: str, enabled: bool) -> Dict[str, Any]:
-        state = self.load_state()
-        entry = state.setdefault("skill_registry", {}).setdefault(skill, {"name": skill})
-        entry["enabled"] = bool(enabled)
-        entry["updated_at"] = _now()
-        self.save_state(state)
-        self.record_timeline_event("skills", "skill_enabled" if enabled else "skill_disabled", {"skill": skill})
-        return entry
+    def set_skill_enabled(self, *args: Any, **kwargs: Any) -> Dict[str, Any]:
+        return self.skills.set_skill_enabled(*args, **kwargs)
 
-    def mark_skill_installed(self, skill: str, *, version: str = "local", metadata: Optional[Dict[str, Any]] = None) -> Dict[str, Any]:
-        state = self.load_state()
-        entry = state.setdefault("skill_registry", {}).setdefault(skill, {"name": skill})
-        entry.update({
-            "installed": True,
-            "enabled": entry.get("enabled", True),
-            "version": version,
-            "install_status": "ready",
-            "validation_status": "ready",
-            "source": (metadata or {}).get("source") or entry.get("source") or "marketplace",
-            "metadata": metadata or entry.get("metadata") or {},
-            "updated_at": _now(),
-        })
-        self.save_state(state)
-        self.record_timeline_event("skills", "skill_installed", {"skill": skill, "version": version})
-        return entry
+    def mark_skill_installed(self, *args: Any, **kwargs: Any) -> Dict[str, Any]:
+        return self.skills.mark_skill_installed(*args, **kwargs)
 
-    def mark_skill_uninstalled(self, skill: str) -> Dict[str, Any]:
-        state = self.load_state()
-        entry = state.setdefault("skill_registry", {}).setdefault(skill, {"name": skill})
-        entry.update({"installed": False, "enabled": False, "updated_at": _now()})
-        self.save_state(state)
-        self.record_timeline_event("skills", "skill_uninstalled", {"skill": skill})
-        return entry
+    def mark_skill_uninstalled(self, *args: Any, **kwargs: Any) -> Dict[str, Any]:
+        return self.skills.mark_skill_uninstalled(*args, **kwargs)
 
     # ------------------------------------------------------------------
     # Plugin SDK registry — mirrors the skill registry contract.

@@ -144,3 +144,52 @@ class WorkspaceSnapshots:
             graph.imported = {"mode": "merge", "data": data}
         self._store.record_timeline_event("snapshot", "snapshot_restored", {"snapshot_id": snapshot_id}, workspace_id=workspace_id)
         return result
+
+    def compare_snapshots(self, before_id: str, after_id: str) -> Dict[str, Any]:
+        before = self.get_snapshot(before_id)
+        after = self.get_snapshot(after_id)
+        before_nodes = {node.get("id"): node for node in (before.get("graph") or {}).get("nodes") or [] if node.get("id")}
+        after_nodes = {node.get("id"): node for node in (after.get("graph") or {}).get("nodes") or [] if node.get("id")}
+
+        def edge_key(edge: Dict[str, Any]) -> str:
+            return "|".join(str(edge.get(key) or "") for key in ("from", "to", "type"))
+
+        before_edges = {edge_key(edge): edge for edge in (before.get("graph") or {}).get("edges") or []}
+        after_edges = {edge_key(edge): edge for edge in (after.get("graph") or {}).get("edges") or []}
+
+        added_nodes = [after_nodes[key] for key in sorted(set(after_nodes) - set(before_nodes))]
+        removed_nodes = [before_nodes[key] for key in sorted(set(before_nodes) - set(after_nodes))]
+        changed_nodes = [
+            {"before": before_nodes[key], "after": after_nodes[key]}
+            for key in sorted(set(before_nodes) & set(after_nodes))
+            if _json_hash(before_nodes[key]) != _json_hash(after_nodes[key])
+        ]
+        added_edges = [after_edges[key] for key in sorted(set(after_edges) - set(before_edges))]
+        removed_edges = [before_edges[key] for key in sorted(set(before_edges) - set(after_edges))]
+
+        before_decisions = {key: value for key, value in before_nodes.items() if value.get("type") == "Decision"}
+        after_decisions = {key: value for key, value in after_nodes.items() if value.get("type") == "Decision"}
+        decisions_changed = [
+            {"before": before_decisions.get(key), "after": after_decisions.get(key)}
+            for key in sorted(set(before_decisions) | set(after_decisions))
+            if _json_hash(before_decisions.get(key)) != _json_hash(after_decisions.get(key))
+        ]
+
+        return {
+            "before": before_id,
+            "after": after_id,
+            "nodes_added": added_nodes,
+            "nodes_removed": removed_nodes,
+            "nodes_changed": changed_nodes,
+            "edges_added": added_edges,
+            "edges_removed": removed_edges,
+            "decisions_changed": decisions_changed,
+            "summary": {
+                "nodes_added": len(added_nodes),
+                "nodes_removed": len(removed_nodes),
+                "nodes_changed": len(changed_nodes),
+                "edges_added": len(added_edges),
+                "edges_removed": len(removed_edges),
+                "decisions_changed": len(decisions_changed),
+            },
+        }
