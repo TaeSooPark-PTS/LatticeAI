@@ -17,7 +17,7 @@ from datetime import datetime
 from pathlib import Path
 from typing import Any, Callable, Dict, Iterable, List, Optional
 
-from lattice_brain.runtime.contracts import realtime_event_contract, run_record_contract, workflow_run_contract
+from lattice_brain.runtime.contracts import run_record_contract, workflow_run_contract
 
 # Extracted pure helpers (keeps this module smaller and focused on the store).
 from .workspace_os_utils import (
@@ -26,12 +26,13 @@ from .workspace_os_utils import (
     _json_hash,
     _listify,
     _now,
-    _parse_iso,
     _safe_slug,
     _snapshot_graph_import_payload,
     remove_skill_directory,
 )
 from .workspace_permissions import WorkspacePermissionManager, _member_role  # type: ignore
+from .workspace_timeline import WorkspaceTimeline
+from .workspace_plugins import WorkspacePluginManager
 
 __all__ = [
     "WORKSPACE_OS_VERSION",
@@ -183,8 +184,10 @@ class WorkspaceOSStore:
         # bus receives all workspace activity without per-call wiring.
         # Defaults to None → zero behavior change for existing callers/tests.
         self.event_sink = event_sink
-        # Composed permission manager (extracted to shrink this class).
+        # Composed managers (extracted to shrink god class per architecture rules).
         self.permissions = WorkspacePermissionManager(self)
+        self._timeline = WorkspaceTimeline(self)
+        self.plugins = WorkspacePluginManager(self)
 
     def _connect_state_db(self) -> sqlite3.Connection:
         conn = sqlite3.connect(self.sqlite_path)
@@ -453,25 +456,7 @@ class WorkspaceOSStore:
         return state
 
     def record_timeline_event(self, area: str, event_type: str, payload: Dict[str, Any], workspace_id: Optional[str] = None) -> Dict[str, Any]:
-        state = self.load_state()
-        event = {
-            "id": f"timeline-{_json_hash([area, event_type, payload, _now()])[:16]}",
-            "area": area,
-            "event_type": event_type,
-            "timestamp": _now(),
-            "workspace_id": self._resolve_scope(workspace_id, state),
-            "payload": payload,
-        }
-        event["contract"] = realtime_event_contract({"seq": event["id"], "received_at": event["timestamp"], **event})
-        state.setdefault("timeline", []).append(event)
-        self.save_state(state)
-        if self.event_sink is not None:
-            try:
-                self.event_sink(event)
-            except Exception:
-                # Realtime delivery is best-effort and must never break a write.
-                pass
-        return event
+        return self._timeline.record_timeline_event(area, event_type, payload, workspace_id=workspace_id)
 
     def _emit_execution_event(
         self,
@@ -2285,41 +2270,16 @@ class WorkspaceOSStore:
     # ------------------------------------------------------------------
 
     def list_plugin_registry(self) -> Dict[str, Any]:
-        return dict(self.load_state().get("plugin_registry") or {})
+        return self.plugins.list_plugin_registry()
 
     def set_plugin_enabled(self, plugin_id: str, enabled: bool) -> Dict[str, Any]:
-        state = self.load_state()
-        entry = state.setdefault("plugin_registry", {}).setdefault(plugin_id, {"id": plugin_id})
-        entry["enabled"] = bool(enabled)
-        entry["updated_at"] = _now()
-        self.save_state(state)
-        self.record_timeline_event("plugins", "plugin_enabled" if enabled else "plugin_disabled", {"plugin": plugin_id})
-        return entry
+        return self.plugins.set_plugin_enabled(plugin_id, enabled)
 
     def mark_plugin_installed(self, plugin_id: str, *, version: str = "0.0.0", metadata: Optional[Dict[str, Any]] = None) -> Dict[str, Any]:
-        state = self.load_state()
-        entry = state.setdefault("plugin_registry", {}).setdefault(plugin_id, {"id": plugin_id})
-        entry.update({
-            "id": plugin_id,
-            "installed": True,
-            "enabled": entry.get("enabled", True),
-            "version": version,
-            "install_status": "ready",
-            "validation_status": "valid",
-            "metadata": metadata or entry.get("metadata") or {},
-            "updated_at": _now(),
-        })
-        self.save_state(state)
-        self.record_timeline_event("plugins", "plugin_installed", {"plugin": plugin_id, "version": version})
-        return entry
+        return self.plugins.mark_plugin_installed(plugin_id, version=version, metadata=metadata)
 
     def mark_plugin_uninstalled(self, plugin_id: str) -> Dict[str, Any]:
-        state = self.load_state()
-        entry = state.setdefault("plugin_registry", {}).setdefault(plugin_id, {"id": plugin_id})
-        entry.update({"installed": False, "enabled": False, "updated_at": _now()})
-        self.save_state(state)
-        self.record_timeline_event("plugins", "plugin_uninstalled", {"plugin": plugin_id})
-        return {"status": "ok", "plugin_id": plugin_id, "registry": entry}
+        return self.plugins.mark_plugin_uninstalled(plugin_id)
 
     # ------------------------------------------------------------------
     # Marketplace template registry (v2.1 foundation)
@@ -2331,16 +2291,7 @@ class WorkspaceOSStore:
         return base if workspace_id == DEFAULT_WORKSPACE_ID else f"{workspace_id}:{base}"
 
     def list_template_registry(self, workspace_id: Optional[str] = None) -> Dict[str, Any]:
-        state = self.load_state()
-        registry = dict(state.get("template_registry") or {})
-        if workspace_id is None:
-            return registry
-        scope = self._resolve_scope(workspace_id, state)
-        return {
-            key: value
-            for key, value in registry.items()
-            if self._record_workspace(value) == scope
-        }
+        return self.plugins.list_template_registry(workspace_id)
 
     def mark_template_installed(
         self,
@@ -2351,22 +2302,7 @@ class WorkspaceOSStore:
         metadata: Optional[Dict[str, Any]] = None,
         workspace_id: Optional[str] = None,
     ) -> Dict[str, Any]:
-        state = self.load_state()
-        scope = self._resolve_scope(workspace_id, state)
-        key = self._template_registry_key(kind, template_id, scope)
-        entry = state.setdefault("template_registry", {}).setdefault(key, {"id": template_id, "kind": kind})
-        entry.update({
-            "id": template_id,
-            "kind": kind,
-            "version": version,
-            "installed": True,
-            "workspace_id": scope,
-            "metadata": metadata or entry.get("metadata") or {},
-            "updated_at": _now(),
-        })
-        self.save_state(state)
-        self.record_timeline_event("marketplace", "template_installed", {"kind": kind, "template_id": template_id}, workspace_id=scope)
-        return entry
+        return self.plugins.mark_template_installed(kind=kind, template_id=template_id, version=version, metadata=metadata, workspace_id=workspace_id)
 
     # ------------------------------------------------------------------
     # Audit timeline
@@ -2383,41 +2319,7 @@ class WorkspaceOSStore:
         until: Optional[str] = None,
         limit: int = 100,
     ) -> Dict[str, Any]:
-        since_dt = _parse_iso(since)
-        until_dt = _parse_iso(until)
-        filtered = []
-        for event in audit_events:
-            stamp = _parse_iso(event.get("timestamp"))
-            if user and user.lower() not in str(event.get("user_email") or event.get("user") or "").lower():
-                continue
-            if event_type and event_type.lower() not in str(event.get("event_type") or "").lower():
-                continue
-            if model and model.lower() not in json.dumps(event, ensure_ascii=False).lower():
-                continue
-            if since_dt and stamp and stamp < since_dt:
-                continue
-            if until_dt and stamp and stamp > until_dt:
-                continue
-            filtered.append({
-                **event,
-                "category": self._audit_category(event),
-            })
-        filtered.sort(key=lambda item: item.get("timestamp") or "", reverse=True)
-        return {"events": filtered[: max(1, min(limit, 1000))], "total": len(filtered)}
+        return self._timeline.filter_audit_timeline(audit_events, user=user, event_type=event_type, model=model, since=since, until=until, limit=limit)
 
-    @staticmethod
-    def _audit_category(event: Dict[str, Any]) -> str:
-        raw = str(event.get("event_type") or "").lower()
-        if "model" in raw or "chat" in raw:
-            return "model_usage"
-        if "file" in raw or "document" in raw or "local" in raw:
-            return "file_access"
-        if "folder" in raw or "permission" in raw:
-            return "folder_approval"
-        if "sensitive" in raw or "secret" in raw:
-            return "sensitive_data"
-        if "admin" in raw or "user" in raw or "sso" in raw:
-            return "admin_action"
-        if "security" in raw or "auth" in raw or "login" in raw:
-            return "security_event"
-        return "workspace_event"
+    def timeline(self, audit_events: Optional[Iterable[Dict[str, Any]]] = None, limit: int = 100, workspace_id: Optional[str] = None) -> Dict[str, Any]:
+        return self._timeline.timeline(audit_events=audit_events, limit=limit, workspace_id=workspace_id)

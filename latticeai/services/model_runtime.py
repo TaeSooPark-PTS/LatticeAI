@@ -46,6 +46,22 @@ from latticeai.core.model_compat import (
     record_smoke_result as _record_smoke_result,
 )
 from latticeai.core.model_resolution import ModelResolution as _ModelResolution
+from .model_engines import (
+    ensure_lmstudio_server as _ensure_lmstudio_server,
+    ensure_ollama_server as _ensure_ollama_server,
+    ensure_vllm_server as _ensure_vllm_server,
+    ensure_llamacpp_server as _ensure_llamacpp_server,
+    engine_support_status as _engine_support_status,
+    install_engine as _install_engine,
+)
+
+# Rebind extracted engines for legacy module globals
+ensure_lmstudio_server = _ensure_lmstudio_server
+ensure_ollama_server = _ensure_ollama_server
+ensure_vllm_server = _ensure_vllm_server
+ensure_llamacpp_server = _ensure_llamacpp_server
+engine_support_status = _engine_support_status
+install_engine = _install_engine
 
 # Configured by server_app.configure_model_runtime during app assembly.
 router = None

@@ -14,7 +14,8 @@ existed at that release.
 - Workspace helpers previously extracted + dedup.
 - Shim improvement: clarified deprecation paths.
 - Added explicit `__all__` surfaces and kept all contracts/tests green.
-- All listed remaining technical debt items from prior review substantially addressed via move-based refactoring (preserving APIs exactly).
+- Next wave per prior recommendation: deeper WorkspaceOSStore split (Timeline + Plugin/Marketplace managers composed); server decomp started for model_runtime (new model_engines.py with engine wiring extraction + re-exports); KG embed notes respected.
+- All listed remaining technical debt items addressed via successive focused extractions.
 
 ## [8.1.0] - 2026-06-27
 
