@@ -1,5 +1,6 @@
 import * as React from "react";
 import {
+  ArrowRight,
   BrainCircuit,
   CheckCircle2,
   Cpu,
@@ -106,23 +107,18 @@ export function BrainConversation({
     <section className="brain-conversation" aria-label={t(language, "brain.aria.conversation")}>
       <div className="brain-chat-home-layout">
         <section className="brain-chat-home-card" aria-label={t(language, "brain.chatHome.aria")}>
-          <div className="brain-chat-home-head">
-            <div>
-              <span>{t(language, "brain.chatHome.kicker")}</span>
-              <h2>{t(language, "brain.chatHome.title")}</h2>
-              <p>{t(language, "brain.chatHome.body")}</p>
-            </div>
-          </div>
-
-          <LivingBrain
-            state={brainState}
+          <BrainFirstScreen
+            language={language}
+            brainState={brainState}
             intensity={intensity}
-            size="large"
-            depth={0}
-            showLabel={false}
-            className="brain-chat-presence"
-            onInteract={onExploreBrain}
+            readiness={readiness}
+            memories={memories}
+            concepts={concepts}
+            messages={messages}
+            onExploreBrain={onExploreBrain}
+            onOpenDepth={onOpenDepth}
           />
+
 
           <BrainComposer
             language={language}
@@ -222,6 +218,116 @@ export function BrainConversation({
             </div>
           </details>
         </section>
+      </div>
+    </section>
+  );
+}
+
+function BrainFirstScreen({
+  language,
+  brainState,
+  intensity,
+  readiness,
+  memories,
+  concepts,
+  messages,
+  onExploreBrain,
+  onOpenDepth,
+}: {
+  language: Language;
+  brainState: BrainState;
+  intensity: number;
+  readiness: BrainReadiness;
+  memories: MemoryFragment[];
+  concepts: KnowledgeConcept[];
+  messages: Message[];
+  onExploreBrain: () => void;
+  onOpenDepth: (depth: BrainDepth) => void;
+}) {
+  const score = Math.max(0, Math.min(100, readiness.score));
+  const latestMemory = memories[0]?.title?.trim();
+  const strongestConcept = concepts.reduce<KnowledgeConcept | null>(
+    (best, concept) => (!best || concept.importance > best.importance ? concept : best),
+    null,
+  );
+  const nextKey =
+    score < 30
+      ? "brain.firstScreen.next.source"
+      : messages.length === 0
+        ? "brain.firstScreen.next.ask"
+        : "brain.firstScreen.next.graph";
+
+  return (
+    <section className="brain-first-screen" aria-label={t(language, "brain.firstScreen.aria")}>
+      <div className="brain-first-visual">
+        <LivingBrain
+          state={brainState}
+          intensity={intensity}
+          size="large"
+          depth={readiness.depth || Math.max(1, Math.floor(score / 20))}
+          showLabel={false}
+          className="brain-chat-presence"
+          onInteract={onExploreBrain}
+        />
+        <div className="brain-first-pulse" aria-hidden="true">
+          <span />
+          <span />
+          <span />
+        </div>
+      </div>
+
+      <div className="brain-first-copy">
+        <div className="brain-first-status" role="status">
+          <span>{t(language, `brain.firstScreen.state.${readiness.state}`)}</span>
+          <div className="brain-first-meter" aria-label={t(language, "brain.firstScreen.readiness", { score })}>
+            <i style={{ width: `${Math.max(6, score)}%` }} />
+          </div>
+        </div>
+
+        <h3>{t(language, "brain.firstScreen.title")}</h3>
+        <p>{t(language, "brain.firstScreen.body")}</p>
+
+        <div className="brain-first-memory" aria-label={t(language, "brain.firstScreen.memoryAria")}>
+          <div>
+            <DatabaseZap className="h-4 w-4" />
+            <span>{t(language, "brain.firstScreen.memory")}</span>
+            <strong>
+              {latestMemory
+                ? t(language, "brain.firstScreen.memory.with", { title: latestMemory })
+                : t(language, "brain.firstScreen.memory.empty")}
+            </strong>
+          </div>
+          <div>
+            <BrainCircuit className="h-4 w-4" />
+            <span>{t(language, "brain.firstScreen.connection")}</span>
+            <strong>
+              {strongestConcept
+                ? t(language, "brain.firstScreen.concept.with", { title: strongestConcept.label })
+                : t(language, "brain.firstScreen.concept.empty")}
+            </strong>
+          </div>
+        </div>
+
+        <div className="brain-first-next">
+          <Sparkles className="h-4 w-4" />
+          <span>{t(language, "brain.firstScreen.next")}</span>
+          <strong>{t(language, nextKey)}</strong>
+        </div>
+
+        <div className="brain-first-actions" aria-label={t(language, "brain.firstScreen.actions")}>
+          <button type="button" className="is-primary" onClick={() => focusComposer()}>
+            <span>{t(language, "brain.firstScreen.action.talk")}</span>
+            <ArrowRight className="h-4 w-4" />
+          </button>
+          <button type="button" onClick={() => navigateHash("/capture")}>
+            <FileUp className="h-4 w-4" />
+            <span>{t(language, "brain.firstScreen.action.source")}</span>
+          </button>
+          <button type="button" onClick={() => onOpenDepth(5)}>
+            <Search className="h-4 w-4" />
+            <span>{t(language, "brain.firstScreen.action.graph")}</span>
+          </button>
+        </div>
       </div>
     </section>
   );
@@ -661,4 +767,8 @@ function BrainEmptyState({
 
 function navigateHash(route: string) {
   window.location.hash = route;
+}
+
+function focusComposer() {
+  document.querySelector<HTMLTextAreaElement>(".brain-composer textarea")?.focus();
 }
