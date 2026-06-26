@@ -1,9 +1,10 @@
 """Machine-checkable architecture readiness gates for release work.
 
-8.0.0 turns the major architecture priorities into an explicit release
-contract. AgentRuntime, ToolRegistry, central Config, decomposed server runtime,
-and Knowledge Graph stabilization must be discoverable, ordered, and backed by
-tests before the release can be called complete.
+8.1.0 keeps the major architecture priorities under an explicit release
+contract while the product surface is refreshed. AgentRuntime, ToolRegistry,
+central Config, decomposed server runtime, and Knowledge Graph stabilization
+must remain discoverable, ordered, and backed by tests before the release can be
+called complete.
 """
 
 from __future__ import annotations
@@ -14,7 +15,7 @@ from pathlib import Path
 from typing import Any, Dict, List
 
 
-ARCHITECTURE_VERSION_TARGET = "8.0.0"
+ARCHITECTURE_VERSION_TARGET = "8.1.0"
 
 PREFERRED_REFACTORING_ORDER = [
     "agent-runtime",

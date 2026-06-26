@@ -6,6 +6,20 @@ existed at that release.
 
 ## [Unreleased]
 
+## [8.1.0] - 2026-06-27
+
+### Changed
+- Rebuilt Brain Home around an intuitive first screen with LivingBrain, recent
+  memory, connected topic, next-best action, and the composer visible together.
+- Replaced dashboard-style Brain growth metrics with narrative, product-facing
+  copy and focused primary actions.
+- Tightened mobile and narrow viewport behavior so the Brain and composer remain
+  visible without horizontal overflow.
+- Refreshed release screenshots, walkthrough GIF/WebM, static app assets, and
+  exact 8.1.0 artifact metadata.
+- Synchronized Python, npm, VS Code extension, Tauri, workspace, readiness, and
+  current-release documentation versions to 8.1.0.
+
 ## [8.0.0] - 2026-06-24
 
 ### Changed

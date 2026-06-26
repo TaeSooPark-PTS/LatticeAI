@@ -1,21 +1,18 @@
-# Lattice AI — Feature Status (v8.0.0)
+# Lattice AI — Feature Status (v8.1.0)
 
-**Current release line:** v8.0.0 — Runtime Architecture Contract.
+**Current release line:** v8.1.0 — Intuitive Brain Home.
 
 Lattice AI is positioned as a production-grade local-first Digital Brain. The
-8.0 line elevates the 7.9 runtime-boundary work into an enforced **Runtime
-Architecture Contract**: every core subsystem (AgentRuntime, ToolRegistry,
-central Config, Knowledge Graph) exposes a versioned contract gate that is
-tested in CI and used in production paths.
+8.1 line keeps the 8.0 runtime architecture contract active while making the
+default Brain surface feel like a product: the living Brain, recent memory,
+connected topic, next-best action, and composer are visible together.
 
-## v8.0.0 Runtime Architecture Contract — current release line
+## v8.1.0 Intuitive Brain Home — current release line
 
-8.0.0 formalizes the runtime architecture priorities into machine-checkable
-contracts per the preferred refactoring order. `architecture_readiness()`
-emits `lattice-architecture-contract/v1` with owners and surfaces. ToolRegistry
-exposes `tool-registry-contract/v1`. The product AgentRuntime facade stays in
-`lattice_brain.runtime`, legacy loop is `SingleAgentRuntime`, rollback via
-injected port, and KG uses transactional reprojection.
+8.1.0 refreshes Brain Home without weakening the runtime architecture gates.
+`architecture_readiness()` still emits `lattice-architecture-contract/v1`, while
+the first screen now shows Brain state, what was just remembered, the strongest
+connected topic, and the next action before any utility drawer.
 
 | Area | Status | Evidence |
 | --- | --- | --- |
@@ -25,19 +22,19 @@ injected port, and KG uses transactional reprojection.
 | **ToolRegistry separation** | COMPLETE | `latticeai.core.tool_registry.ToolRegistry` owns catalog/governance/permissions; `latticeai.services.tool_dispatch.ToolDispatchService` owns dispatch |
 | **Central Config** | COMPLETE | `latticeai.core.config.Config` + runtime config context |
 | **KG hardening** | COMPLETE | `lattice_brain.graph.store.KnowledgeGraphStore` + transactional replace + portability |
-| **Version & metadata sync** | COMPLETE | All 8.0.0 across py, npm, tauri, core, docs |
-| **Docs as product proof** | COMPLETE | RELEASE, CHANGELOG, README, FEATURE updated to declare 8.0 Runtime Architecture Contract |
+| **Version & metadata sync** | COMPLETE | All 8.1.0 across py, npm, tauri, core, docs |
+| **Docs as product proof** | COMPLETE | RELEASE, CHANGELOG, README, FEATURE updated to declare 8.1 Intuitive Brain Release |
 | **Build & validation gates** | COMPLETE | typecheck, cargo, unit tests, tauri build, contract checks pass |
 | **Product readiness evaluation** | COMPLETE | `product_readiness()` score 7/7 + contract gates + release evidence |
 
 
-**Current release line:** v8.0.0 Runtime Architecture Contract (see top).
+**Current release line:** v8.1.0 Intuitive Brain Home (see top).
 Lattice AI is a local-first Digital Brain that keeps your knowledge durable
 across any AI model. The primary experience is Brain plus conversation; the
 graph remains durable infrastructure and advanced exploration, not the home
-product identity. Sections below v8.0.0 are historical release-status records
+product identity. Sections below v8.1.0 are historical release-status records
 and should not override the current README, ARCHITECTURE.md, SECURITY.md,
-PRIVACY.md, or v8.0.0 release notes.
+PRIVACY.md, or v8.1.0 release notes.
 
 ## v7.0.0 Brain Productization Loop — historical release line
 

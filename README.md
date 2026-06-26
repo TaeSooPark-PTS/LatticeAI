@@ -64,9 +64,9 @@ You need Lattice AI when:
 
 ## Living Brain Flow
 
-The screenshots below are release evidence captures. The 8.0 line keeps the
-same first-run flow and rebuilds the Brain Chat Home layout so chat and the
-composer are the first visible action.
+The screenshots below are release evidence captures. The 8.1 line keeps the
+first-run flow and refreshes Brain Home so the living Brain, recent memory,
+next action, and composer are understandable in one glance.
 
 ### 1. Wake Brain
 
@@ -78,43 +78,36 @@ confirm owner, check the computer, choose the Brain voice.
 Choose the owner of the Brain. The profile is not a SaaS account by default; it
 is the local identity for the knowledge you keep.
 
-![Login](output/release/v7.8.0/screenshots/01-login.png)
+![Login](output/release/v8.1.0/screenshots/01-login.png)
 
-### 3. Environment Analysis
-
-See what kind of local AI experience this computer can support before choosing a
-model.
-
-![Environment Analysis](output/release/v7.8.0/screenshots/02-environment-analysis.png)
-
-### 4. Recommended Models
+### 3. Recommended Models
 
 Start with a short list: safest recommendation, faster model, stronger model.
 Advanced details stay available without overwhelming first-time users.
 
-![Recommended Models](output/release/v7.8.0/screenshots/03-recommended-models.png)
+![Recommended Models](output/release/v8.1.0/screenshots/02-recommended-models.png)
 
-### 5. Install And Load
+### 4. Install And Load
 
 Download and load only after consent. Lattice explains model size, local
 execution, and network use before work starts.
 
-![Install and Load](output/release/v7.8.0/screenshots/04-install-load-progress.png)
+![Install and Load](output/release/v8.1.0/screenshots/03-install-load-progress.png)
 
-### 6. Brain Chat
+### 5. Brain Chat
 
 Talk normally. Useful decisions and context become memory, then appear later as
 topics, relationships, graph structure, and the concentric memory rings around
 the Brain.
 
-![Brain Chat Home](output/release/v7.8.0/screenshots/05-brain-chat-home.png)
+![Brain Chat Home](output/release/v8.1.0/screenshots/04-brain-chat-home.png)
 
-### 7. Review Center
+### 6. Review Center
 
 Automation results are staged for review before they become durable decisions.
 Snooze, unsnooze, run now, approve, and dismiss actions stay explicit.
 
-![Review Center](output/release/v7.8.0/screenshots/13-review-center.png)
+![Review Center](output/release/v8.1.0/screenshots/12-review-center.png)
 
 ## Brain Depths
 
@@ -130,10 +123,10 @@ The user travels inward from everyday memory to deeper structure:
 
 Walkthrough:
 
-![v7.8.0 Living Brain walkthrough](output/release/v7.8.0/gifs/v7.8.0-living-brain-walkthrough.gif)
+![v8.1.0 Living Brain walkthrough](output/release/v8.1.0/gifs/v8.1.0-living-brain-walkthrough.gif)
 
 Screenshot index and capture notes:
-[output/release/v7.8.0/SCREENSHOT_INDEX.md](output/release/v7.8.0/SCREENSHOT_INDEX.md)
+[output/release/v8.1.0/SCREENSHOT_INDEX.md](output/release/v8.1.0/SCREENSHOT_INDEX.md)
 
 ## Install
 
@@ -210,39 +203,27 @@ See [docs/DEVELOPMENT.md](docs/DEVELOPMENT.md) for developer workflow details.
 
 ## Current Release
 
-The current release is **8.0.0 — Runtime Architecture Contract**:
+The current release is **8.1.0 — Intuitive Brain Home**:
 
-- `architecture_readiness()` now emits `lattice-architecture-contract/v1`,
-  including the preferred refactoring order and concrete ownership for
-  AgentRuntime, ToolRegistry, central Config, server decomposition, and KG
-  hardening.
-- The product AgentRuntime facade in `lattice_brain.runtime.agent_runtime`
-  remains the unambiguous `/agents` execution and observability boundary.
-- ToolRegistry manifest output now carries `tool-registry-contract/v1` with
-  dispatch, policy, and permission ownership, so runtime/admin surfaces can
-  detect catalog drift from one source of truth.
-- Knowledge Graph hardening is represented as an additive reprojection strategy
-  with legacy read compatibility and non-destructive rollback/export paths.
-- KG v2 read-equivalence is locked for document listing, node lookup,
-  relationship search, and traversal, while logical imports preserve colliding
-  legacy edge labels without breaking native canonical dedupe.
-- Product readiness is machine-checkable through `product_readiness()`, which
-  composes the architecture contract with exact artifact/docs/workflow evidence.
-- CI and release workflows continue to run frontend lint/typecheck/build gates
-  plus the 8.0 product readiness score before a tag can be treated as release-safe.
+- Brain Home now opens with the living Brain directly above the conversation composer, so the primary action is visible before users read any utility panels.
+- The previous dashboard-style growth strip is replaced by a product narrative: Brain state, what was just remembered, the strongest connected topic, and the next best action.
+- Primary actions are explicit and click-tested: talk to Brain, add sources, or open the memory graph.
+- Mobile and narrow layouts keep the Brain and composer in the first viewport, avoiding the previous clipped/overcrowded first screen.
+- The 8.0 runtime architecture contract remains active: AgentRuntime, ToolRegistry, Config, server decomposition, and KG hardening stay machine-checkable through readiness gates.
+- CI and release workflows continue to run frontend lint/typecheck/build gates plus product readiness before a tag can be treated as release-safe.
 
-Expected artifacts for 8.0.0 release must use exact filenames:
+Expected artifacts for 8.1.0 release must use exact filenames:
 
-- `dist/ltcai-8.0.0-py3-none-any.whl`
-- `dist/ltcai-8.0.0.tar.gz`
-- `ltcai-8.0.0.tgz`
-- `dist/ltcai-8.0.0.vsix`
-- `src-tauri/target/release/bundle/dmg/Lattice AI_8.0.0_aarch64.dmg`
+- `dist/ltcai-8.1.0-py3-none-any.whl`
+- `dist/ltcai-8.1.0.tar.gz`
+- `ltcai-8.1.0.tgz`
+- `dist/ltcai-8.1.0.vsix`
+- `src-tauri/target/release/bundle/dmg/Lattice AI_8.1.0_aarch64.dmg`
 
 Do not use wildcard artifact uploads. Package registry publishing remains owner-run.
 
 See [docs/ROADMAP_RECOMMENDATIONS.md](docs/ROADMAP_RECOMMENDATIONS.md) for the
-strategic roadmap slices applied through 8.0.0 and the follow-up tracks.
+strategic roadmap slices applied through 8.1.0 and the follow-up tracks.
 
 ## Known Limitations
 
@@ -259,6 +240,7 @@ strategic roadmap slices applied through 8.0.0 and the follow-up tracks.
 
 | Version | Theme |
 | --- | --- |
+| 8.1.0 | Intuitive Brain Home: living Brain, recent memory, connected topic, next action, and composer are visible in one product-first screen with refreshed 8.1.0 evidence and artifacts |
 | 8.0.0 | Runtime Architecture Contract: AgentRuntime, ToolRegistry, central Config, server decomposition, and KG hardening are captured as machine-checkable release boundaries with exact 8.0.0 artifacts |
 | 7.9.0 | Agent Runtime Boundary Hardening: explicit `SingleAgentRuntime`, compatibility alias preservation, injected rollback port, and release/readiness docs aligned to the product AgentRuntime facade |
 | 7.8.0 | Brain Chat Home UX Simplification: chat-first first viewport, visible workspace navigation, collapsed source/status utilities, hidden default depth controls, and removal of obsolete Brain UX components |

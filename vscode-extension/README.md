@@ -12,14 +12,14 @@ chat, run model workflows, and trigger coding actions from the editor.
 
 ## Current Release
 
-**8.0.0 — Runtime Architecture Contract.** The extension follows
+**8.1.0 — Intuitive Brain Home.** The extension follows
 the main app positioning: Lattice AI is a local-first Digital Brain, not just a
 model launcher or editor chat panel. It connects editor actions to the same
 durable Brain context, explicit consent gates, replaceable model workflow, and
-separated Admin surface used by the desktop app. The v8.0.0 line aligns the
-extension with the runtime architecture contract, exact release artifacts, and
+separated Admin surface used by the desktop app. The v8.1.0 line aligns the
+extension with the refreshed Brain Home, exact release artifacts, and
 machine-checkable product readiness gates while preserving the visible VS Code
-sync status.
+sync status and the 8.0 runtime architecture contract.
 
 ## Quick Start
 

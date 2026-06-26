@@ -1,13 +1,13 @@
-"""Machine-checkable *product* readiness gates for the 8.0 line.
+"""Machine-checkable *product* readiness gates for the 8.1 line.
 
 Where ``architecture_readiness`` proves the internal structure is sound, this
-module answers the product question the 8.0 release exists to settle: *are the
-runtime boundaries still clear and release-ready after hardening?* It does so
-honestly — every gate is backed by evidence that is probed on disk, so a gate
-only reports ``complete`` when its evidence actually resolves. The same report
-can be printed by ``scripts/product_readiness.py`` and re-run after every
-change, which is the point: completeness is something we keep measuring, not a
-one-time claim.
+module answers the product question the 8.1 release exists to settle: *is the
+Brain experience still release-ready after the default surface becomes more
+intuitive?* It does so honestly — every gate is backed by evidence that is
+probed on disk, so a gate only reports ``complete`` when its evidence actually
+resolves. The same report can be printed by ``scripts/product_readiness.py`` and
+re-run after every change, which is the point: completeness is something we keep
+measuring, not a one-time claim.
 """
 
 from __future__ import annotations
@@ -18,7 +18,7 @@ from typing import Any, Dict, List
 
 from latticeai.services.architecture_readiness import architecture_readiness
 
-PRODUCT_VERSION_TARGET = "8.0.0"
+PRODUCT_VERSION_TARGET = "8.1.0"
 
 
 @dataclass(frozen=True)
@@ -65,10 +65,10 @@ PRODUCT_GATES: List[ProductGate] = [
         evidence=[
             "package.json::release:artifacts",
             "package.json::release:validate",
-            "README.md::dist/ltcai-8.0.0-py3-none-any.whl",
-            "README.md::dist/ltcai-8.0.0.tar.gz",
-            "README.md::dist/ltcai-8.0.0.vsix",
-            "README.md::ltcai-8.0.0.tgz",
+            "README.md::dist/ltcai-8.1.0-py3-none-any.whl",
+            "README.md::dist/ltcai-8.1.0.tar.gz",
+            "README.md::dist/ltcai-8.1.0.vsix",
+            "README.md::ltcai-8.1.0.tgz",
             "scripts/validate_release_artifacts.py",
             "scripts/release_smoke.py",
             "Dockerfile",
@@ -84,12 +84,12 @@ PRODUCT_GATES: List[ProductGate] = [
         title="Release story is documented and honest",
         evidence=[
             "README.md",
-            "README.md::The current release is **8.0.0",
-            "SECURITY.md::8.0.x (latest)",
-            "vscode-extension/README.md::**8.0.0",
-            "docs/CHANGELOG.md::## [8.0.0]",
+            "README.md::The current release is **8.1.0",
+            "SECURITY.md::8.1.x (latest)",
+            "vscode-extension/README.md::**8.1.0",
+            "docs/CHANGELOG.md::## [8.1.0]",
             "FEATURE_STATUS.md",
-            "RELEASE_NOTES_v8.0.0.md",
+            "RELEASE_NOTES_v8.1.0.md",
             "latticeai/core/agent.py::SingleAgentRuntime",
             "latticeai/core/agent.py::AgentRuntime = SingleAgentRuntime",
             "lattice_brain/runtime/contracts.py::runtime-boundary/v1",

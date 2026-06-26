@@ -1,7 +1,33 @@
 # Release Notes
 
-The current release is v7.0.0. The tracked release-note surface starts at
+The current release is v8.1.0. The tracked release-note surface starts at
 v4.5.0 so the public Git tree stays focused on the current product era.
+
+## v8.1.0 - Intuitive Brain Home
+
+Lattice AI v8.1.0 makes the default Brain surface product-first: the living
+Brain, what it remembers, the connected topic, the next action, and the composer
+are visible together without making users parse a dashboard.
+
+### Highlights
+
+- Added a focused Brain first screen with LivingBrain, recent memory, connected
+  topic, next-best action, and primary actions.
+- Removed dashboard-style Brain growth metrics from the default entry.
+- Tightened mobile and 320px layouts so the Brain and composer stay in the first
+  viewport.
+- Refreshed release evidence under `output/release/v8.1.0/`.
+- Synchronized package/runtime/static versions to `8.1.0`.
+
+### Expected Artifacts
+
+- `dist/ltcai-8.1.0-py3-none-any.whl`
+- `dist/ltcai-8.1.0.tar.gz`
+- `dist/ltcai-8.1.0.vsix`
+- `ltcai-8.1.0.tgz`
+- `src-tauri/target/release/bundle/dmg/Lattice AI_8.1.0_aarch64.dmg`
+
+Full notes: [RELEASE_NOTES_v8.1.0.md](RELEASE_NOTES_v8.1.0.md)
 
 ## v7.0.0 - Brain Productization Loop
 

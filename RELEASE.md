@@ -7,6 +7,32 @@
 > PyPI / npm / VS Code Marketplace / Open VSX 배포는 아래 수동 절차로만
 > 진행합니다. 태그 생성은 패키지 스토어 publish를 자동으로 트리거하지 않습니다.
 
+## v8.1.0 — Intuitive Brain Home (2026-06-27)
+
+8.1.0 turns the default Brain surface from a dashboard-like status panel into a
+product-first conversation entry. The living Brain stays directly above the
+composer, while the first screen explains what the Brain remembers, what topic
+is connected, and what the user should do next.
+
+### Changed
+- Added a focused `BrainFirstScreen` surface that combines LivingBrain, readiness
+  status, recent memory, connected topic, and next-best action.
+- Removed the dashboard-style four-metric growth strip from the default Brain
+  entry and replaced it with narrative, action-oriented copy.
+- Kept the primary action visible by moving talk/add-source/view-graph actions
+  into the first screen and verifying their routes with Playwright.
+- Tightened mobile and 320px layouts so the Brain and composer fit in the first
+  viewport without horizontal overflow.
+- Refreshed 8.1.0 screenshots, walkthrough GIF/WebM, static app assets, package
+  metadata, Tauri metadata, readiness targets, and current-release docs.
+
+Expected artifacts (exact 8.1.0 names only):
+- dist/ltcai-8.1.0-py3-none-any.whl
+- dist/ltcai-8.1.0.tar.gz
+- dist/ltcai-8.1.0.vsix
+- ltcai-8.1.0.tgz
+- src-tauri/target/release/bundle/dmg/Lattice AI_8.1.0_aarch64.dmg
+
 ## v8.0.0 — Runtime Architecture Contract (2026-06-24)
 
 8.0.0 makes the platform architecture release line explicit. AgentRuntime,

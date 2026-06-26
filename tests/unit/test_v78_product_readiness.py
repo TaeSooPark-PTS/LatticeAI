@@ -8,7 +8,7 @@ ROOT = Path(__file__).resolve().parents[2]
 
 def test_v78_product_readiness_is_machine_checkable():
     report = product_readiness(ROOT)
-    assert report["version_target"] == "8.0.0"
+    assert report["version_target"] == "8.1.0"
     assert {gate["id"] for gate in report["gates"]} == {g.id for g in PRODUCT_GATES}
     # Every gate must carry concrete, probeable evidence.
     for gate in report["gates"]:
