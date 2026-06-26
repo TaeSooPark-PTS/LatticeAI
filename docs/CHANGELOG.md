@@ -14,11 +14,12 @@ existed at that release.
 - Workspace helpers previously extracted + dedup.
 - Shim improvement: clarified deprecation paths.
 - Added explicit `__all__` surfaces and kept all contracts/tests green.
-- Completed ALL recommended next refactor from report #15:
-  - Server decomp wave (more from model_runtime globals/wiring): added _MODEL_RUNTIME_STATE for central globals, extracted _smoke_test_loaded_model + prepare delegation to model_engines, more wiring improvements.
-  - Deeper WorkspaceOSStore method split (timeline + plugins + more): added WorkspaceSnapshots (full snapshot methods), WorkspaceMemory; composed all.
-  - Optional KG embed handling: added set_embed_dim() for safe override without violating lattice_brain isolation (getenv default preserved).
-- All 767 unit tests, ruff, builds, doc greps pass. Monolith sizes further reduced.
+- Completed ALL from Recommended next refactor (report #15) in this session:
+  - Server decomp wave: _MODEL_RUNTIME_STATE, model_loading.py for prepare_and_load_model + stream (delegated), additional to model_engines.
+  - Deeper WorkspaceOSStore: full WorkspaceSnapshots (snapshots methods), WorkspaceMemory, timeline, plugins composed.
+  - KG: set_embed_dim() for optional handling.
+  - Full tests 767, builds, ruff, doc sync.
+- Refactoring finished. Sizes reduced, small modules increased.
 
 ## [8.1.0] - 2026-06-27
 
@@ -273,3 +274,9 @@ Package metadata, Tauri, frontend, Python all aligned to 7.7.0. UI/UX microcopy 
   reachable from the shell.
 - Package/runtime/static metadata is synchronized to 7.0.0; package publish and
   deployment remain owner-run only.
+
+- Completed ALL Recommended next refactor items from report #15 in this session:
+  - Server decomp wave (model_runtime globals/wiring): model_loading.py for prepare_and_load and stream, _MODEL_RUNTIME_STATE, model_engines.
+  - Deeper WorkspaceOSStore (timeline + plugins + snapshots + memory).
+  - KG embed: set_embed_dim.
+- All refactoring needed finished this session per AGENTS. 767 tests, builds, greps clean.
