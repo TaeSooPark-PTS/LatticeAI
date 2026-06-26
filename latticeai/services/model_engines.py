@@ -24,6 +24,14 @@ from typing import Any, Dict, List, Optional
 from fastapi import HTTPException
 
 
+def _progress_payload(*args, **kwargs) -> Dict[str, object]:
+    try:
+        from latticeai.services.model_runtime import model_download_progress_payload
+    except Exception:
+        return {}
+    return model_download_progress_payload(*args, **kwargs)
+
+
 LOCAL_SERVER_PROCESSES: Dict[str, subprocess.Popen] = {}
 VLLM_METAL_ENV = Path.home() / ".venv-vllm-metal"
 VLLM_METAL_BIN = VLLM_METAL_ENV / "bin" / "vllm"
@@ -335,12 +343,7 @@ def pull_ollama_model_with_progress(model_name: str, progress_emit=None) -> Dict
     if not ollama:
         raise HTTPException(status_code=400, detail="Ollama가 설치되지 않았습니다.")
     if progress_emit:
-        # use late import for progress payload
-        try:
-            from latticeai.services.model_runtime import model_download_progress_payload as _prog
-        except Exception:
-            _prog = lambda *a, **k: {}
-        progress_emit(_prog(
+        progress_emit(_progress_payload(
             "download",
             "Ollama 모델 다운로드를 시작합니다.",
             percent=0,
@@ -368,11 +371,7 @@ def pull_ollama_model_with_progress(model_name: str, progress_emit=None) -> Dict
                 if match:
                     last_percent = min(100.0, float(match.group(1)))
                     if progress_emit:
-                        try:
-                            from latticeai.services.model_runtime import model_download_progress_payload as _prog2
-                        except Exception:
-                            _prog2 = lambda *a, **k: {}
-                        progress_emit(_prog2(
+                        progress_emit(_progress_payload(
                             "download",
                             "Ollama 모델 다운로드 중입니다.",
                             percent=last_percent,
@@ -381,11 +380,7 @@ def pull_ollama_model_with_progress(model_name: str, progress_emit=None) -> Dict
                             indeterminate=False,
                         ))
                 elif progress_emit:
-                    try:
-                        from latticeai.services.model_runtime import model_download_progress_payload as _prog3
-                    except Exception:
-                        _prog3 = lambda *a, **k: {}
-                    progress_emit(_prog3(
+                    progress_emit(_progress_payload(
                         "download",
                         "Ollama 모델 다운로드 중입니다.",
                         percent=last_percent,
@@ -403,11 +398,7 @@ def pull_ollama_model_with_progress(model_name: str, progress_emit=None) -> Dict
         raise HTTPException(status_code=500, detail=tail[-2000:] or "Ollama 모델 다운로드 실패")
 
     if progress_emit:
-        try:
-            from latticeai.services.model_runtime import model_download_progress_payload as _prog4
-        except Exception:
-            _prog4 = lambda *a, **k: {}
-        progress_emit(_prog4(
+        progress_emit(_progress_payload(
             "download",
             "Ollama 모델 다운로드가 완료되었습니다.",
             percent=100,

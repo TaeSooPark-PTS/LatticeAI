@@ -12,12 +12,7 @@ import importlib.util
 import json
 import logging
 import os
-import platform
-import queue
 import shutil
-import subprocess
-import sys
-import threading
 import time
 import urllib.error
 import urllib.request
@@ -25,14 +20,6 @@ from pathlib import Path
 from typing import AsyncIterator, Dict, List, Optional
 
 from fastapi import HTTPException, Request
-
-def _missing_current_user(_request: Request) -> Optional[str]:
-    return None
-
-
-def _missing_user_api_key(_email: Optional[str], _provider: str) -> Optional[str]:
-    return None
-
 
 from latticeai.models.router import (
     AsyncOpenAI,
@@ -42,10 +29,6 @@ from latticeai.models.router import (
     hf_cache_model_dir,
     hf_model_dir,
     parse_model_ref,
-)
-from latticeai.core.model_compat import (
-    friendly_model_runtime_error as _friendly_model_runtime_error,
-    model_runtime_compatibility as _model_runtime_compatibility,
 )
 from latticeai.core.model_resolution import ModelResolution as _ModelResolution
 from .model_engines import (
@@ -67,15 +50,13 @@ from .model_engines import (
     LOCAL_SERVER_PROCESSES as _LOCAL_SERVER_PROCESSES,
 )
 
-# Rebind extracted engines for legacy module globals
-ensure_lmstudio_server = _ensure_lmstudio_server
-ensure_ollama_server = _ensure_ollama_server
-ensure_vllm_server = _ensure_vllm_server
-ensure_llamacpp_server = _ensure_llamacpp_server
-pull_ollama_model_with_progress = _pull_ollama_model_with_progress
-get_ollama_pulled_models = _get_ollama_pulled_models
-engine_support_status = _engine_support_status
-install_engine = _install_engine
+
+def _missing_current_user(_request: Request) -> Optional[str]:
+    return None
+
+
+def _missing_user_api_key(_email: Optional[str], _provider: str) -> Optional[str]:
+    return None
 
 # Server decomp: proper ModelRuntimeState class for globals/wiring
 class ModelRuntimeState:
