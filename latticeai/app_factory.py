@@ -77,8 +77,6 @@ def _build(config: "Optional[Config]" = None) -> Dict[str, Any]:
     import re
     import secrets
     import threading
-    import subprocess
-    import sys
     import time
     from pathlib import Path
 
@@ -195,7 +193,6 @@ def _build(config: "Optional[Config]" = None) -> Dict[str, Any]:
     )
     from latticeai.core.tool_registry import TOOL_CATALOG_BRIEF as _TOOL_CATALOG_BRIEF  # noqa: F401
     from latticeai.core.mcp_registry import (
-        _get_combined_registry,
         _fetch_skills_marketplace,
         install_skill,
         SKILLS_DIR,
