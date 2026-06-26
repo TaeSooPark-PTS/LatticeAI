@@ -74,7 +74,6 @@ export function BrainConversation({
   onExploreBrain,
 }: {
   language: Language;
-  explorationDepth: BrainDepth;
   brainState: BrainState;
   intensity: number;
   modelName: string;
