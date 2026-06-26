@@ -11,7 +11,6 @@ from __future__ import annotations
 import json
 import shutil
 import sqlite3
-import zipfile
 from collections import deque
 from datetime import datetime
 from pathlib import Path
@@ -34,6 +33,7 @@ from .workspace_permissions import WorkspacePermissionManager, _member_role  # t
 from .workspace_timeline import WorkspaceTimeline
 from .workspace_plugins import WorkspacePluginManager
 from .workspace_memory import WorkspaceMemory
+from .workspace_snapshots import WorkspaceSnapshots
 
 __all__ = [
     "WORKSPACE_OS_VERSION",
@@ -190,6 +190,7 @@ class WorkspaceOSStore:
         self._timeline = WorkspaceTimeline(self)
         self.plugins = WorkspacePluginManager(self)
         self.memory = WorkspaceMemory(self)
+        self.snapshots = WorkspaceSnapshots(self)
 
     def _connect_state_db(self) -> sqlite3.Connection:
         conn = sqlite3.connect(self.sqlite_path)
@@ -1035,89 +1036,19 @@ class WorkspaceOSStore:
         models: Dict[str, Any],
         workspace_id: Optional[str] = None,
     ) -> Dict[str, Any]:
-        scope = self._resolve_scope(workspace_id)
-        graph_payload = {"nodes": [], "edges": []}
-        graph_stats = {}
-        local_sources = {"sources": []}
-        if graph is not None:
-            graph_payload = graph.graph(limit=2000)
-            graph_stats = graph.stats()
-            local_sources = graph.local_sources()
-        chat = list(history or [])
-        snapshot_body = {
-            "version": WORKSPACE_OS_VERSION,
-            "name": name or "Workspace snapshot",
-            "created_at": _now(),
-            "workspace": scope,
-            "workspace_id": scope,
-            "graph": graph_payload,
-            "graph_stats": graph_stats,
-            "chat": chat,
-            "settings": settings,
-            "indexed_folders": local_sources.get("sources", []),
-            "models": models,
-        }
-        snapshot_id = f"snapshot-{datetime.now().strftime('%Y%m%d%H%M%S')}-{_json_hash(snapshot_body)[:10]}"
-        snapshot_body["id"] = snapshot_id
-        path = self.snapshots_dir / f"{snapshot_id}.json"
-        _atomic_write_json(path, snapshot_body)
-
-        state = self.load_state()
-        meta = {
-            "id": snapshot_id,
-            "name": snapshot_body["name"],
-            "created_at": snapshot_body["created_at"],
-            "workspace_id": scope,
-            "path": str(path),
-            "node_count": len(graph_payload.get("nodes") or []),
-            "edge_count": len(graph_payload.get("edges") or []),
-            "chat_count": len(chat),
-            "model_count": len(models.get("loaded_models") or []),
-            "indexed_folder_count": len(local_sources.get("sources") or []),
-        }
-        state.setdefault("snapshots", []).append(meta)
-        self.save_state(state)
-        self.record_timeline_event("snapshot", "snapshot_saved", {"snapshot_id": snapshot_id, "name": name})
-        return {"snapshot": meta}
+        return self.snapshots.create_snapshot(name=name, graph=graph, history=history, settings=settings, models=models, workspace_id=workspace_id)
 
     def list_snapshots(self, workspace_id: Optional[str] = None) -> Dict[str, Any]:
-        snapshots = self._scoped(_listify(self.load_state().get("snapshots")), workspace_id)
-        return {"snapshots": list(reversed(snapshots))}
+        return self.snapshots.list_snapshots(workspace_id=workspace_id)
 
     def get_snapshot(self, snapshot_id: str) -> Dict[str, Any]:
-        path = self.snapshots_dir / f"{_safe_slug(snapshot_id)}.json"
-        if not path.exists():
-            state = self.load_state()
-            meta = next((item for item in _listify(state.get("snapshots")) if item.get("id") == snapshot_id), None)
-            if meta:
-                path = Path(meta.get("path") or path)
-        if not path.exists():
-            raise FileNotFoundError(snapshot_id)
-        return json.loads(path.read_text(encoding="utf-8"))
+        return self.snapshots.get_snapshot(snapshot_id)
 
     def snapshot_view(self, snapshot_id: str, area: str) -> Dict[str, Any]:
-        snapshot = self.get_snapshot(snapshot_id)
-        if area == "graph":
-            return {"snapshot_id": snapshot_id, "graph": snapshot.get("graph") or {}, "graph_stats": snapshot.get("graph_stats") or {}}
-        if area == "chat":
-            return {"snapshot_id": snapshot_id, "chat": snapshot.get("chat") or []}
-        if area == "decision":
-            nodes = (snapshot.get("graph") or {}).get("nodes") or []
-            return {"snapshot_id": snapshot_id, "decisions": [node for node in nodes if node.get("type") == "Decision"]}
-        return {"snapshot_id": snapshot_id, "snapshot": snapshot}
+        return self.snapshots.snapshot_view(snapshot_id, area)
 
     def export_snapshot(self, snapshot_id: str) -> Dict[str, Any]:
-        snapshot = self.get_snapshot(snapshot_id)
-        export_path = self.exports_dir / f"{_safe_slug(snapshot_id)}.zip"
-        with zipfile.ZipFile(export_path, "w", compression=zipfile.ZIP_DEFLATED) as zf:
-            zf.writestr("snapshot.json", json.dumps(snapshot, ensure_ascii=False, indent=2))
-            zf.writestr("graph.json", json.dumps(snapshot.get("graph") or {}, ensure_ascii=False, indent=2))
-            zf.writestr("chat.json", json.dumps(snapshot.get("chat") or [], ensure_ascii=False, indent=2))
-            zf.writestr("settings.json", json.dumps(snapshot.get("settings") or {}, ensure_ascii=False, indent=2))
-            zf.writestr("indexed_folders.json", json.dumps(snapshot.get("indexed_folders") or [], ensure_ascii=False, indent=2))
-            zf.writestr("models.json", json.dumps(snapshot.get("models") or {}, ensure_ascii=False, indent=2))
-        self.record_timeline_event("snapshot", "snapshot_exported", {"snapshot_id": snapshot_id, "path": str(export_path)})
-        return {"snapshot_id": snapshot_id, "export_path": str(export_path), "bytes": export_path.stat().st_size}
+        return self.snapshots.export_snapshot(snapshot_id)
 
     def restore_snapshot(
         self,
@@ -1127,16 +1058,7 @@ class WorkspaceOSStore:
         workspace_id: Optional[str] = None,
         user_email: Optional[str] = None,
     ) -> Dict[str, Any]:
-        """Restore a snapshot additively, preserving all current user data.
-
-        v4 snapshots are immutable checkpoints. Restoring one must not delete
-        newer graph nodes, chat history, memories, workspaces, or settings, so
-        this operation imports the snapshot graph in ``merge`` mode and records a
-        durable restore event. It is a real restore path for lost/missing graph
-        data, with rollback safety because current state remains intact.
-        """
-
-        snapshot = self.get_snapshot(snapshot_id)
+        return self.snapshots.restore_snapshot(snapshot_id, graph=graph, workspace_id=workspace_id, user_email=user_email)
         scope = self._resolve_scope(workspace_id or snapshot.get("workspace_id"))
         if graph is None or not hasattr(graph, "import_graph_data"):
             raise ValueError("knowledge graph import is required for snapshot restore")

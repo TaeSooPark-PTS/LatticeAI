@@ -36,13 +36,8 @@ from latticeai.models.router import (
     parse_model_ref,
 )
 from latticeai.core.model_compat import (
-    SMOKE_PROMPT as _SMOKE_PROMPT,
-    classify_smoke_response as _classify_smoke_response,
-    ensure_profile as _ensure_compat_profile,
-    fast_postprocess as _compat_fast_postprocess,
     friendly_model_runtime_error as _friendly_model_runtime_error,
     model_runtime_compatibility as _model_runtime_compatibility,
-    record_smoke_result as _record_smoke_result,
 )
 from latticeai.core.model_resolution import ModelResolution as _ModelResolution
 from .model_engines import (
@@ -65,6 +60,29 @@ pull_ollama_model_with_progress = _pull_ollama_model_with_progress
 get_ollama_pulled_models = _get_ollama_pulled_models
 engine_support_status = _engine_support_status
 install_engine = _install_engine
+
+# Server decomp improvement: central state for globals/wiring (legacy module globals remain for compat)
+_MODEL_RUNTIME_STATE: Dict[str, Any] = {
+    "router": None,
+    "APP_MODE": "local",
+    "DEFAULT_HOST": "127.0.0.1",
+    "DEFAULT_PORT": 4825,
+    "DATA_DIR": Path.home() / ".ltcai",
+    "BASE_DIR": Path.cwd(),
+    "ENABLE_TELEGRAM": False,
+    "ENABLE_GRAPH": True,
+    "AUTOLOAD_MODELS": False,
+    "MODEL_IDLE_UNLOAD_SECONDS": 0,
+    "ALLOW_LOCAL_MODELS": True,
+    "REQUIRE_AUTH": False,
+    "INVITE_GATE_ENABLED": False,
+    "ALLOW_PLAINTEXT_API_KEYS": False,
+    "CORS_ALLOW_NETWORK": False,
+    "PUBLIC_MODEL": "openai:gpt-4o-mini",
+    "LOCAL_MODEL": "mlx-community/gemma-4-12b-it-4bit",
+    "IS_PUBLIC_MODE": False,
+    "keyring": None,
+}
 
 # Configured by server_app.configure_model_runtime during app assembly.
 router = None
@@ -182,6 +200,29 @@ def configure_model_runtime(**deps) -> None:
         get_current_user = deps["get_current_user"]
     if "get_user_api_key" in deps:
         get_user_api_key = deps["get_user_api_key"]
+
+    # Update central state for decomp/wiring
+    _MODEL_RUNTIME_STATE.update({
+        "router": router,
+        "APP_MODE": APP_MODE,
+        "DEFAULT_HOST": DEFAULT_HOST,
+        "DEFAULT_PORT": DEFAULT_PORT,
+        "DATA_DIR": DATA_DIR,
+        "BASE_DIR": BASE_DIR,
+        "ENABLE_TELEGRAM": ENABLE_TELEGRAM,
+        "ENABLE_GRAPH": ENABLE_GRAPH,
+        "AUTOLOAD_MODELS": AUTOLOAD_MODELS,
+        "MODEL_IDLE_UNLOAD_SECONDS": MODEL_IDLE_UNLOAD_SECONDS,
+        "ALLOW_LOCAL_MODELS": ALLOW_LOCAL_MODELS,
+        "REQUIRE_AUTH": REQUIRE_AUTH,
+        "INVITE_GATE_ENABLED": INVITE_GATE_ENABLED,
+        "ALLOW_PLAINTEXT_API_KEYS": ALLOW_PLAINTEXT_API_KEYS,
+        "CORS_ALLOW_NETWORK": CORS_ALLOW_NETWORK,
+        "PUBLIC_MODEL": PUBLIC_MODEL,
+        "LOCAL_MODEL": LOCAL_MODEL,
+        "IS_PUBLIC_MODE": IS_PUBLIC_MODE,
+        "keyring": keyring,
+    })
 
 
 # Catalog data + version-dedup helpers live in ``model_catalog``; re-exported

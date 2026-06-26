@@ -56,6 +56,12 @@ KG_SCHEMA_V2_VERSION = 2
 EMBED_DIM = int(os.getenv("LATTICEAI_EMBED_DIM", "1024"))
 
 
+def set_embed_dim(dim: int) -> None:
+    """Optional way for upper layers to override without direct module import at top level in lattice_brain."""
+    global EMBED_DIM
+    EMBED_DIM = int(dim)  # lattice_brain isolation: no direct latticeai import; callers can pre-set env if using central Config
+
+
 # ── Node / Edge taxonomy (PPT 슬라이드 20·21) ──────────────────────────────
 class NodeType(str, Enum):
     """워크스페이스의 모든 ‘명사’.

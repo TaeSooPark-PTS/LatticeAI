@@ -14,11 +14,11 @@ existed at that release.
 - Workspace helpers previously extracted + dedup.
 - Shim improvement: clarified deprecation paths.
 - Added explicit `__all__` surfaces and kept all contracts/tests green.
-- Completed recommended next refactor from report #15 (server decomp + deeper WorkspaceOS + KG):
-  - Further server decomp: extracted _smoke_test_loaded_model to model_engines.py (with late imports), more delegations in prepare paths. model_runtime size down.
-  - Deeper WorkspaceOSStore split: extracted WorkspaceMemory manager for upsert/list memory methods.
-  - KG: kept isolation (no top-level latticeai import in lattice_brain); getenv remains authoritative with optional future Config path documented.
-- Continued composition pattern for maintainability. All 767 unit tests, builds, ruff gates pass.
+- Completed ALL recommended next refactor from report #15:
+  - Server decomp wave (more from model_runtime globals/wiring): added _MODEL_RUNTIME_STATE for central globals, extracted _smoke_test_loaded_model + prepare delegation to model_engines, more wiring improvements.
+  - Deeper WorkspaceOSStore method split (timeline + plugins + more): added WorkspaceSnapshots (full snapshot methods), WorkspaceMemory; composed all.
+  - Optional KG embed handling: added set_embed_dim() for safe override without violating lattice_brain isolation (getenv default preserved).
+- All 767 unit tests, ruff, builds, doc greps pass. Monolith sizes further reduced.
 
 ## [8.1.0] - 2026-06-27
 
