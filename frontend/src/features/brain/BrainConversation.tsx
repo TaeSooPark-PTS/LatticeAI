@@ -97,26 +97,6 @@ export function BrainConversation({
 }) {
   return (
     <section className="brain-conversation" aria-label={t(language, "brain.aria.conversation")}>
-      <div className="brain-conversation-header">
-        <div className="brain-conversation-title">
-          <h1>
-            {t(language, "brain.title")}
-            <span className="brain-edition-badge" title={t(language, "brain.edition.tip")}>
-              {t(language, "brain.edition")}
-            </span>
-          </h1>
-          <span>{t(language, "brain.chatHome.headerLine")}</span>
-        </div>
-        <div className="brain-header-tools">
-          <LanguageSwitcher compact />
-          <div className="brain-model-pill">{modelName}</div>
-          <button className="brain-admin-link" type="button" onClick={() => navigateHash("/admin")}>
-            <ShieldCheck className="h-3.5 w-3.5" />
-            {t(language, "brain.admin")}
-          </button>
-        </div>
-      </div>
-
       <div className="brain-chat-home-layout">
         <section className="brain-chat-home-card" aria-label={t(language, "brain.chatHome.aria")}>
           <div className="brain-chat-home-head">
@@ -124,11 +104,6 @@ export function BrainConversation({
               <span>{t(language, "brain.chatHome.kicker")}</span>
               <h2>{t(language, "brain.chatHome.title")}</h2>
               <p>{t(language, "brain.chatHome.body")}</p>
-            </div>
-            <div className="brain-chat-home-proof" aria-label={t(language, "brain.aria.ownership")}>
-              <span><CheckCircle2 className="h-3.5 w-3.5" />{t(language, "brain.local")}</span>
-              <span><CheckCircle2 className="h-3.5 w-3.5" />{t(language, "brain.private")}</span>
-              <span><CheckCircle2 className="h-3.5 w-3.5" />{t(language, "brain.portable")}</span>
             </div>
           </div>
 
@@ -149,9 +124,7 @@ export function BrainConversation({
               <BrainEmptyState
                 language={language}
                 starterPrompts={starterPrompts}
-                uploadingDocument={uploadingDocument}
                 onDraftChange={onDraftChange}
-                onUploadDocument={onUploadDocument}
               />
             ) : (
               messages.map((message, index) => {
@@ -182,6 +155,17 @@ export function BrainConversation({
 
           <details className="brain-utility-drawer">
             <summary>{t(language, "brain.chatHome.utility")}</summary>
+            <div className="brain-utility-tools" aria-label={t(language, "brain.chatHome.contextAria")}>
+              <LanguageSwitcher compact />
+              <div className="brain-model-pill">{modelName}</div>
+              <button className="brain-admin-link" type="button" onClick={() => navigateHash("/admin")}>
+                <ShieldCheck className="h-3.5 w-3.5" />
+                {t(language, "brain.admin")}
+              </button>
+              <span><CheckCircle2 className="h-3.5 w-3.5" />{t(language, "brain.local")}</span>
+              <span><CheckCircle2 className="h-3.5 w-3.5" />{t(language, "brain.private")}</span>
+              <span><CheckCircle2 className="h-3.5 w-3.5" />{t(language, "brain.portable")}</span>
+            </div>
             <div className="brain-utility-grid">
               <BrainIngestionPanel
                 language={language}
@@ -636,48 +620,23 @@ function AnswerProofCard({ language, proof, messageId }: { language: Language; p
 function BrainEmptyState({
   language,
   starterPrompts,
-  uploadingDocument,
   onDraftChange,
-  onUploadDocument,
 }: {
   language: Language;
   starterPrompts: string[];
-  uploadingDocument: boolean;
   onDraftChange: (value: string) => void;
-  onUploadDocument: (file: File) => void;
 }) {
   return (
     <div className="mind-empty">
       <div className="mind-empty-kicker">{t(language, "brain.empty.kicker")}</div>
       <div className="mind-empty-title">{t(language, "brain.empty.title")}</div>
       <p>{t(language, "brain.empty.body")}</p>
-      <label className={`mind-empty-upload ${uploadingDocument ? "is-disabled" : ""}`}>
-        <DatabaseZap className="h-3.5 w-3.5" />
-        <span>{uploadingDocument ? t(language, "brain.upload.uploading") : t(language, "brain.upload.cta")}</span>
-        <input
-          type="file"
-          accept=".pdf,.docx,.xlsx,.pptx,.txt,.md,.csv,application/pdf,text/plain,text/markdown,text/csv"
-          className="sr-only"
-          disabled={uploadingDocument}
-          onChange={(event) => {
-            const file = event.target.files?.[0];
-            event.currentTarget.value = "";
-            if (file) onUploadDocument(file);
-          }}
-        />
-      </label>
-      <small className="mind-empty-upload-hint">{t(language, "brain.upload.hint")}</small>
       <div className="mind-empty-prompts" aria-label={t(language, "brain.aria.starterPrompts")}>
         {starterPrompts.map((prompt) => (
           <button key={prompt} type="button" onClick={() => onDraftChange(prompt)}>
             {prompt}
           </button>
         ))}
-      </div>
-      <div className="mind-empty-trail" aria-label={t(language, "brain.empty.trail.label")}>
-        <span>{t(language, "brain.empty.trail.save")}</span>
-        <span>{t(language, "brain.empty.trail.recall")}</span>
-        <span>{t(language, "brain.empty.trail.backup")}</span>
       </div>
     </div>
   );
