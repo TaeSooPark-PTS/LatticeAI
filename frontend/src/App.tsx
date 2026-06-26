@@ -82,7 +82,7 @@ export default function App() {
           </React.Suspense>
         </BrainShell>
       ) : parsed.primary === "brain" && parsed.tab && parsed.tab !== "conversation" ? (
-        <BrainShell active="brain">
+        <BrainShell active={parsed.tab === "graph" ? "memory" : "brain"}>
           <React.Suspense fallback={<PageLoader language={language} />}>
             <BrainPage initialTab={parsed.tab} />
           </React.Suspense>
@@ -107,18 +107,22 @@ function BrainShell({
   return (
     <main className="brain-shell-page" aria-label="Lattice workspace">
       <nav className="brain-shell-nav" aria-label="Brain workspace navigation">
-        {productShellRoutes.map((item) => (
-          <button
-            key={item.id}
-            type="button"
-            className={item.id === active ? "is-active" : ""}
-            aria-current={item.id === active ? "page" : undefined}
-            title={`${t(language, item.labelKey)} — ${item.description}`}
-            onClick={() => navigateHash(`/${item.path}`)}
-          >
-            {t(language, item.labelKey)}
-          </button>
-        ))}
+        {productShellRoutes.map((item) => {
+          const Icon = item.icon;
+          return (
+            <button
+              key={item.id}
+              type="button"
+              className={`nav-item ${item.id === active ? "is-active" : ""}`}
+              aria-current={item.id === active ? "page" : undefined}
+              title={`${t(language, item.labelKey)} — ${item.description}`}
+              onClick={() => navigateHash(`/${item.path}`)}
+            >
+              {Icon && <Icon className="nav-icon" aria-hidden="true" />}
+              <span>{t(language, item.labelKey)}</span>
+            </button>
+          );
+        })}
         <div className="brain-shell-switchers" aria-label={t(language, "shell.workspace.label")}>
           <VsCodeSyncStatus language={language} />
           <WorkspaceProfileSwitcher language={language} />

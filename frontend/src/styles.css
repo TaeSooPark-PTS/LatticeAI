@@ -995,15 +995,28 @@ body {
   border-radius: 6px;
   background: transparent;
   color: hsl(var(--fg-muted));
-  padding: 0 0.78rem;
+  padding: 0 0.65rem;
   font-size: 0.78rem;
   font-weight: 820;
   letter-spacing: 0;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+}
+
+.brain-shell-nav .nav-icon {
+  width: 14px;
+  height: 14px;
+  flex-shrink: 0;
+  opacity: 0.85;
 }
 
 .brain-shell-nav button:hover,
 .brain-shell-nav button:focus-visible,
-.brain-shell-nav button.is-active {
+.brain-shell-nav button.is-active,
+.brain-shell-nav .nav-item:hover,
+.brain-shell-nav .nav-item:focus-visible,
+.brain-shell-nav .nav-item.is-active {
   border-color: hsl(var(--brain-core) / 0.58);
   background: hsl(var(--brain-core) / 0.1);
   color: hsl(var(--fg));
@@ -1014,7 +1027,6 @@ body {
   width: min(100%, 72rem);
   margin: 0 auto;
 }
-
 .brain-shell-loader {
   min-height: 18rem;
   display: grid;
@@ -6598,10 +6610,44 @@ body {
 }
 
 @media (max-width: 640px) {
+  .brain-shell-page {
+    padding: 0.55rem 0.55rem 1.2rem;
+  }
+
+  .brain-shell-nav {
+    top: 0.35rem;
+    flex-wrap: nowrap;
+    justify-content: flex-start;
+    gap: 0.28rem;
+    margin-bottom: 0.55rem;
+    overflow-x: auto;
+    overscroll-behavior-x: contain;
+    scrollbar-width: none;
+    -webkit-overflow-scrolling: touch;
+  }
+
+  .brain-shell-nav::-webkit-scrollbar {
+    display: none;
+  }
+
+  .brain-shell-nav button {
+    flex: 0 0 auto;
+    min-height: 2rem;
+    padding: 0 0.58rem;
+    font-size: 0.68rem;
+  }
+
+  .brain-shell-nav .nav-icon {
+    width: 0.82rem;
+    height: 0.82rem;
+  }
+
   .brain-shell-switchers {
-    margin-left: 0;
-    width: 100%;
-    justify-content: center;
+    flex: 0 0 auto;
+    flex-wrap: nowrap;
+    margin-left: 0.25rem;
+    padding-left: 0.25rem;
+    border-left: 1px solid hsl(var(--border) / 0.45);
   }
 
   .workspace-profile-popover {
@@ -6613,7 +6659,49 @@ body {
 }
 
 @media (max-width: 720px) {
+  .external-consent-status {
+    margin-bottom: 0.55rem;
+  }
+
+  .external-consent-status .feedback-state.is-compact {
+    min-height: 2rem;
+    padding: 0.34rem 0.48rem;
+  }
+
+  .external-consent-status .feedback-state.is-compact .feedback-state-body span,
+  .external-consent-status .feedback-state.is-compact .feedback-state-action {
+    display: none;
+  }
+
+  .external-consent-status .feedback-state.is-compact .feedback-state-body strong {
+    font-size: 0.68rem;
+  }
+
   .brain-chat-home-card .brain-composer textarea {
     min-height: 3.5rem;
+  }
+
+  .brain-chat-home-card {
+    min-height: auto;
+  }
+
+  .brain-composer {
+    padding: 0.62rem 0.55rem 0.3rem;
+  }
+
+  .brain-composer-actions {
+    gap: 0.42rem;
+    padding: 0;
+    overflow-x: auto;
+    scrollbar-width: none;
+    -webkit-overflow-scrolling: touch;
+  }
+
+  .brain-composer-actions::-webkit-scrollbar {
+    display: none;
+  }
+
+  .brain-composer-actions > * {
+    flex: 0 0 auto;
   }
 }
