@@ -95,7 +95,6 @@ include-package-data = true
   "static/app/**/*.css",
   "static/app/**/*.js",
   "static/app/**/*.json",
-  "static/app/**/*.map",
   "static/vendor/**/*.css",
   "static/vendor/**/*.js",
   "static/vendor/**/*.woff2",
@@ -109,7 +108,8 @@ include-package-data = true
 "static" = ["static/favicon.ico", "static/manifest.json", "static/sw.js"]
 "static/css" = ["static/css/*.css"]
 "static/app" = ["static/app/index.html", "static/app/asset-manifest.json"]
-"static/app/assets" = ["static/app/assets/*"]
+# Explicit asset extensions only — never package *.js.map sourcemaps (payload + source leak).
+"static/app/assets" = ["static/app/assets/*.js", "static/app/assets/*.css", "static/app/assets/*.woff2", "static/app/assets/*.woff", "static/app/assets/*.ttf", "static/app/assets/*.png", "static/app/assets/*.svg", "static/app/assets/*.webp"]
 "static/icons" = ["static/icons/icon-192.png", "static/icons/icon-512.png", "static/icons/apple-touch-icon.png", "static/icons/favicon-32.png"]
 "static/vendor" = ["static/vendor/chart.umd.min.js", "static/vendor/marked.min.js"]
 "static/vendor/fonts" = ["static/vendor/fonts/inter.css", "static/vendor/fonts/inter-latin-300-normal.woff2", "static/vendor/fonts/inter-latin-400-normal.woff2", "static/vendor/fonts/inter-latin-500-normal.woff2", "static/vendor/fonts/inter-latin-600-normal.woff2", "static/vendor/fonts/inter-latin-700-normal.woff2", "static/vendor/fonts/inter-latin-800-normal.woff2"]

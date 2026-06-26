@@ -2,11 +2,11 @@ include static/manifest.json
 include static/sw.js
 recursive-include static/icons *.png
 recursive-include static/css *.css
-recursive-include static/app *.html *.css *.js *.json *.map
+recursive-include static/app *.html *.css *.js *.json
 recursive-include skills *.md
 recursive-include docs *.md
 recursive-include plugins *.json *.md
-recursive-include scripts *.mjs *.py *.js
+recursive-include scripts *.mjs *.py
 include README.md
 include requirements.txt
 include auto_setup.py

@@ -23,6 +23,10 @@ DEFAULT_EMBEDDING_DIM = 384
 EMBEDDING_MODEL_ID = f"lattice-local-hash-v1:{DEFAULT_EMBEDDING_DIM}"
 
 
+def embedding_model_id(dim: int) -> str:
+    return f"lattice-local-hash-v1:{int(dim)}"
+
+
 def _tokenize(text: str) -> List[str]:
     raw = str(text or "").lower()
     tokens = re.findall(r"[a-z0-9][a-z0-9_.:/+-]{1,}|[가-힣]{2,}", raw)
@@ -56,6 +60,10 @@ class LocalEmbeddingModel:
 
     dim: int = DEFAULT_EMBEDDING_DIM
     model_id: str = EMBEDDING_MODEL_ID
+
+    def __post_init__(self) -> None:
+        if self.model_id == EMBEDDING_MODEL_ID and self.dim != DEFAULT_EMBEDDING_DIM:
+            object.__setattr__(self, "model_id", embedding_model_id(self.dim))
 
     def embed(self, text: str) -> List[float]:
         vector = [0.0] * self.dim

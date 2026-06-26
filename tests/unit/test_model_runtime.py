@@ -26,6 +26,20 @@ def test_download_blocked_without_model_download_consent():
         assert False, "_download_block must raise when consent is absent"
 
 
+def test_configure_model_runtime_ignores_unknown_globals(monkeypatch):
+    monkeypatch.delattr(model_runtime, "UNTRUSTED_RUNTIME_GLOBAL", raising=False)
+    original_public_model = model_runtime.PUBLIC_MODEL
+    try:
+        model_runtime.configure_model_runtime(
+            PUBLIC_MODEL="test:model",
+            UNTRUSTED_RUNTIME_GLOBAL="leak",
+        )
+        assert model_runtime.PUBLIC_MODEL == "test:model"
+        assert not hasattr(model_runtime, "UNTRUSTED_RUNTIME_GLOBAL")
+    finally:
+        model_runtime.configure_model_runtime(PUBLIC_MODEL=original_public_model)
+
+
 def _write_minimal_model_dir(path):
     path.mkdir(parents=True, exist_ok=True)
     (path / "config.json").write_text('{"model_type": "test"}', encoding="utf-8")

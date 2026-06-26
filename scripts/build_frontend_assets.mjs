@@ -6,6 +6,7 @@ const repo = join(import.meta.dirname, "..");
 const appDir = join(repo, "static", "app");
 const nestedViteManifest = join(appDir, ".vite", "asset-manifest.json");
 const publicManifest = join(appDir, "asset-manifest.json");
+const serviceWorker = join(repo, "static", "sw.js");
 const pkg = JSON.parse(readFileSync(join(repo, "package.json"), "utf8"));
 
 const assetsDir = join(appDir, "assets");
@@ -39,11 +40,19 @@ const manifest = {
   version: pkg.version,
   generated_at: "vite",
   entrypoints: {
-    app: assets["frontend/index.html"] || "/static/app/index.html",
+    app: assets["index.html"] || "/static/app/index.html",
   },
   assets,
-  vite: raw,
 };
 
 writeFileSync(publicManifest, JSON.stringify(manifest, null, 2) + "\n", "utf8");
+if (existsSync(serviceWorker)) {
+  const cacheVersion = pkg.version.replace(/\D/g, "");
+  const source = readFileSync(serviceWorker, "utf8");
+  const normalized = source.replace(
+    /const CACHE = "lattice-v[^"]+";/,
+    `const CACHE = "lattice-v${cacheVersion}";`,
+  );
+  if (normalized !== source) writeFileSync(serviceWorker, normalized, "utf8");
+}
 console.log(`wrote static/app/asset-manifest.json with ${Object.keys(assets).length} assets`);

@@ -54,3 +54,33 @@ def test_markdown_current_release_references_match_release():
     release = json.loads((ROOT / "package.json").read_text(encoding="utf-8"))["version"]
     release_minor = ".".join(release.split(".")[:2])
     assert f"{release_minor}.x (latest)" in security
+
+
+def test_create_mcp_install_state_focused_interface(tmp_path):
+    """MCP install state focused test: verify extraction contract and basic behavior."""
+    from pathlib import Path as _Path
+    from latticeai.core.mcp_registry import create_mcp_install_state
+
+    state = create_mcp_install_state(_Path(tmp_path))
+    assert isinstance(state, dict)
+    expected = {
+        "load_mcp_installs",
+        "save_mcp_installs",
+        "mcp_public_item",
+        "recommend_mcps",
+        "install_mcp",
+    }
+    assert expected.issubset(state.keys())
+    for k in expected:
+        assert callable(state[k]), f"{k} must be callable"
+
+    # basic roundtrip on load/save (sync parts)
+    loaded = state["load_mcp_installs"]()
+    assert isinstance(loaded, dict)
+    assert "installed" in loaded
+
+    # save should not raise
+    state["save_mcp_installs"]({"installed": {"test": {"status": "installed"}}})
+
+    loaded2 = state["load_mcp_installs"]()
+    assert "test" in loaded2.get("installed", {})

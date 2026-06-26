@@ -196,7 +196,10 @@ def _build(config: "Optional[Config]" = None) -> Dict[str, Any]:
     from latticeai.core.tool_registry import TOOL_CATALOG_BRIEF as _TOOL_CATALOG_BRIEF  # noqa: F401
     from latticeai.core.mcp_registry import (
         _get_combined_registry,
-        _fetch_skills_marketplace, install_skill, SKILLS_DIR,
+        _fetch_skills_marketplace,
+        install_skill,
+        SKILLS_DIR,
+        create_mcp_install_state,
     )
     from latticeai.services.p_reinforce import PReinforceGardener
     from setup_wizard import get_recommendations, scan_environment
@@ -322,6 +325,15 @@ def _build(config: "Optional[Config]" = None) -> Dict[str, Any]:
     MCP_FILE = DATA_DIR / "mcp_installs.json"
     AUDIT_FILE = DATA_DIR / "audit_log.json"
     SSO_FILE = DATA_DIR / "sso_config.json"
+
+    # MCP state extracted to mcp_registry.create_mcp_install_state (server decomp)
+    _mcp_state = create_mcp_install_state(DATA_DIR)
+    load_mcp_installs = _mcp_state["load_mcp_installs"]
+    save_mcp_installs = _mcp_state["save_mcp_installs"]
+    mcp_public_item = _mcp_state["mcp_public_item"]
+    recommend_mcps = _mcp_state["recommend_mcps"]
+    install_mcp = _mcp_state["install_mcp"]
+
     # Resolve the configured embedding provider once at startup. Degrades to the
     # offline hash fallback when the requested provider is unavailable, while
     # recording the requested-vs-active provider for the Embeddings status surface.
@@ -546,136 +558,6 @@ def _build(config: "Optional[Config]" = None) -> Dict[str, Any]:
         with open(VPC_FILE, "w", encoding="utf-8") as f:
             json.dump(config, f, ensure_ascii=False, indent=2)
 
-    def load_mcp_installs() -> Dict:
-        if not os.path.exists(MCP_FILE):
-            return {"installed": {}, "updated_at": None}
-        try:
-            with open(MCP_FILE, "r", encoding="utf-8") as f:
-                data = json.load(f)
-            if "installed" not in data:
-                data["installed"] = {}
-            return data
-        except Exception as e:
-            logging.warning("load_mcp_installs failed: %s", e)
-            return {"installed": {}, "updated_at": None}
-
-    def save_mcp_installs(data: Dict):
-        data["updated_at"] = datetime.now().isoformat()
-        with open(MCP_FILE, "w", encoding="utf-8") as f:
-            json.dump(data, f, ensure_ascii=False, indent=2)
-
-    def mcp_public_item(item: Dict, installed_state: Dict) -> Dict:
-        state = installed_state.get(item["id"]) or {}
-        installed = item["install_mode"] in {"builtin", "bundled"} or bool(state.get("installed"))
-        connector_pending = item["install_mode"] == "connector" and not state.get("authenticated")
-        authenticated = item["install_mode"] != "connector" or bool(state.get("authenticated"))
-        return {
-            "id": item["id"],
-            "name": item["name"],
-            "category": item.get("category", ""),
-            "install_mode": item["install_mode"],
-            "description": item.get("description", ""),
-            "capabilities": item.get("capabilities", []),
-            "connector_url": item.get("connector_url"),
-            "external_url": item.get("external_url"),
-            "package": item.get("package"),
-            "homepage": item.get("homepage"),
-            "source": item.get("source", "local"),
-            "installed": installed,
-            "status": state.get("status") or ("active" if installed and not connector_pending else "needs_auth" if connector_pending else "available"),
-            "authenticated": authenticated,
-            "updated_at": state.get("updated_at"),
-        }
-
-    async def recommend_mcps(query: str, limit: int = 5) -> List[Dict]:
-        text = (query or "").lower()
-        installed = load_mcp_installs().get("installed", {})
-        registry = await _get_combined_registry()
-        scored = []
-        for item in registry:
-            score = 0
-            hits = []
-            for keyword in item.get("keywords", []):
-                if keyword.lower() in text:
-                    score += 3 if len(keyword) > 2 else 1
-                    hits.append(keyword)
-            # description 키워드 매칭 (remote 항목 보완)
-            if not hits and text:
-                desc_words = item.get("description", "").lower().split()
-                for word in text.split():
-                    if len(word) > 2 and word in desc_words:
-                        score += 1
-                        hits.append(word)
-            if item["id"] == "filesystem" and any(word in text for word in ["만들", "구현", "build", "deploy", "코드", "앱"]):
-                score += 2
-            if score:
-                public = mcp_public_item(item, installed)
-                public["score"] = score
-                public["matched_keywords"] = hits[:6]
-                scored.append(public)
-        if not scored:
-            fallback_ids = ["filesystem", "browser", "documents"]
-            scored = [
-                {**mcp_public_item(item, installed), "score": 1, "matched_keywords": []}
-                for item in registry
-                if item["id"] in fallback_ids
-            ]
-        return sorted(scored, key=lambda item: item["score"], reverse=True)[: max(1, min(limit, 24))]
-
-    async def install_mcp(mcp_id: str) -> Dict:
-        registry = await _get_combined_registry()
-        item = next((entry for entry in registry if entry["id"] == mcp_id), None)
-        if not item:
-            raise HTTPException(status_code=404, detail="MCP를 찾을 수 없습니다.")
-        data = load_mcp_installs()
-        state = data.setdefault("installed", {})
-        status = "active"
-        message = "MCP가 활성화되었습니다."
-        if item["install_mode"] == "connector":
-            status = "needs_auth"
-            message = "커넥터 인증이 필요합니다. Codex 앱의 connector 설정에서 계정을 연결하면 바로 사용할 수 있습니다."
-        elif item["install_mode"] == "pip":
-            packages = item.get("pip_packages") or []
-            for pkg in packages:
-                completed = subprocess.run(
-                    [sys.executable, "-m", "pip", "install", "--upgrade", pkg],
-                    capture_output=True, text=True, timeout=900, check=False,
-                )
-                if completed.returncode != 0:
-                    raise HTTPException(status_code=500, detail=completed.stderr[-2000:] or f"{pkg} 설치 실패")
-            message = f"필수 패키지 설치 완료: {', '.join(packages)}"
-        elif item["install_mode"] == "pypi":
-            pkg = item.get("package", "")
-            version = item.get("package_version")
-            pkg_str = f"{pkg}=={version}" if version else pkg
-            completed = subprocess.run(
-                [sys.executable, "-m", "pip", "install", pkg_str],
-                capture_output=True, text=True, timeout=300, check=False,
-            )
-            if completed.returncode != 0:
-                raise HTTPException(status_code=500, detail=completed.stderr[-2000:] or f"{pkg} 설치 실패")
-            message = f"pip 패키지 설치 완료: {pkg_str}"
-        elif item["install_mode"] == "npm":
-            pkg = item.get("package", "")
-            version = item.get("package_version")
-            pkg_str = f"{pkg}@{version}" if version else pkg
-            completed = subprocess.run(
-                ["npm", "install", "-g", pkg_str],
-                capture_output=True, text=True, timeout=300, check=False,
-            )
-            if completed.returncode != 0:
-                raise HTTPException(status_code=500, detail=completed.stderr[-2000:] or f"{pkg} 설치 실패")
-            message = f"npm 패키지 설치 완료: {pkg_str}"
-        state[mcp_id] = {
-            "installed": True,
-            "status": status,
-            "authenticated": item["install_mode"] != "connector",
-            "updated_at": datetime.now().isoformat(),
-        }
-        save_mcp_installs(data)
-        public = mcp_public_item(item, state)
-        public["message"] = message
-        return public
 
     _history_lock = threading.Lock()
 

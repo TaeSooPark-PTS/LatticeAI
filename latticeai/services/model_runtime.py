@@ -127,8 +127,42 @@ get_user_api_key = _missing_user_api_key
 
 
 def configure_model_runtime(**deps) -> None:
-    """Wire app-owned runtime dependencies without importing server_app."""
-    globals().update({key: value for key, value in deps.items() if key in globals()})
+    """Wire app-owned runtime dependencies without importing server_app.
+
+    Explicit per-key assignment (no blanket globals().update) so wiring is
+    auditable and side effects are visible. Preserves exact public module
+    globals and prior behavior for all callers and shims.
+    """
+    global router, APP_MODE, DEFAULT_HOST, DEFAULT_PORT, DATA_DIR, BASE_DIR
+    global ENABLE_TELEGRAM, ENABLE_GRAPH, AUTOLOAD_MODELS, MODEL_IDLE_UNLOAD_SECONDS
+    global ALLOW_LOCAL_MODELS, REQUIRE_AUTH, INVITE_GATE_ENABLED, ALLOW_PLAINTEXT_API_KEYS
+    global CORS_ALLOW_NETWORK, PUBLIC_MODEL, LOCAL_MODEL, IS_PUBLIC_MODE
+    global keyring, get_current_user, get_user_api_key
+
+    router = deps.get("router", router)
+    APP_MODE = deps.get("APP_MODE", APP_MODE)
+    DEFAULT_HOST = deps.get("DEFAULT_HOST", DEFAULT_HOST)
+    DEFAULT_PORT = deps.get("DEFAULT_PORT", DEFAULT_PORT)
+    DATA_DIR = deps.get("DATA_DIR", DATA_DIR)
+    BASE_DIR = deps.get("BASE_DIR", BASE_DIR)
+    ENABLE_TELEGRAM = deps.get("ENABLE_TELEGRAM", ENABLE_TELEGRAM)
+    ENABLE_GRAPH = deps.get("ENABLE_GRAPH", ENABLE_GRAPH)
+    AUTOLOAD_MODELS = deps.get("AUTOLOAD_MODELS", AUTOLOAD_MODELS)
+    MODEL_IDLE_UNLOAD_SECONDS = deps.get("MODEL_IDLE_UNLOAD_SECONDS", MODEL_IDLE_UNLOAD_SECONDS)
+    ALLOW_LOCAL_MODELS = deps.get("ALLOW_LOCAL_MODELS", ALLOW_LOCAL_MODELS)
+    REQUIRE_AUTH = deps.get("REQUIRE_AUTH", REQUIRE_AUTH)
+    INVITE_GATE_ENABLED = deps.get("INVITE_GATE_ENABLED", INVITE_GATE_ENABLED)
+    ALLOW_PLAINTEXT_API_KEYS = deps.get("ALLOW_PLAINTEXT_API_KEYS", ALLOW_PLAINTEXT_API_KEYS)
+    CORS_ALLOW_NETWORK = deps.get("CORS_ALLOW_NETWORK", CORS_ALLOW_NETWORK)
+    PUBLIC_MODEL = deps.get("PUBLIC_MODEL", PUBLIC_MODEL)
+    LOCAL_MODEL = deps.get("LOCAL_MODEL", LOCAL_MODEL)
+    IS_PUBLIC_MODE = deps.get("IS_PUBLIC_MODE", IS_PUBLIC_MODE)
+    if "keyring" in deps:
+        keyring = deps["keyring"]
+    if "get_current_user" in deps:
+        get_current_user = deps["get_current_user"]
+    if "get_user_api_key" in deps:
+        get_user_api_key = deps["get_user_api_key"]
 
 
 # Catalog data + version-dedup helpers live in ``model_catalog``; re-exported

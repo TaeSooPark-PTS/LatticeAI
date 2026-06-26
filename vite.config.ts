@@ -9,7 +9,9 @@ export default defineConfig({
   build: {
     outDir: "../static/app",
     emptyOutDir: true,
-    sourcemap: true,
+    // No production sourcemaps: they leak source and bloat the shipped payload.
+    // Use `vite build --sourcemap` locally when debugging a release build.
+    sourcemap: false,
     manifest: "asset-manifest.json",
   },
   server: {

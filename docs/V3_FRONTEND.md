@@ -1,10 +1,15 @@
 # Lattice AI v3 — Frontend Product Shell
 
+> Historical v3 shell notes. The current product shell is the React/Vite app
+> built from `frontend/` into `static/app/` with `npm run build:assets`; current
+> linting uses `scripts/lint_frontend.mjs`.
+
 > A token-native single-page workspace shell for Lattice AI v3. It ships as the
 > primary product experience and calls the real v3 retrieval/chat APIs while
 > rendering clear unavailable states for local services that are not running.
 
 Entry point: **`/app`** (served by `latticeai/api/static_routes.py` →
+the current `static/app/index.html` bundle; the historical v3 shell used
 `static/v3/index.html`). Login, auto-login after registration, SSO callback, and
 the PWA manifest land on `/app`. Legacy multi-page static screens have been
 deleted; compatibility routes (`/workspace`, `/chat`, `/graph`, `/admin`, …)
@@ -27,7 +32,8 @@ Deep-linking into an `admin/*` route auto-promotes the shell to Admin mode.
 
 ## Information architecture
 
-One declarative table (`static/v3/js/core/routes.js`) drives the nav rail, the
+One declarative table (historically `static/v3/js/core/routes.js`, now
+represented by the React routes under `frontend/src/`) drives the nav rail, the
 command palette, the router, breadcrumbs, and lazy view loading.
 
 ```
@@ -50,8 +56,8 @@ Administration Users · Permissions · Audit Logs · Security · Policies · Pri
 Token-native, layered on the existing **single color source**
 (`static/css/tokens.css`, `data-lt-theme` light/dark). No legacy override layers
 (`responsive.css` / `workspace.css` / `platform.css`) are loaded by v3.
-Runtime assets are loaded through `static/v3/asset-manifest.json`; the build
-step writes hashed CSS/JS siblings and `/app` reads the manifest instead of
+Runtime assets are loaded through `static/app/asset-manifest.json`; the build
+step writes hashed CSS/JS assets and `/app` reads the manifest instead of
 using manual `?v=` query strings.
 
 | File | Responsibility |
@@ -133,8 +139,8 @@ focus rings, skip link, keyboard command palette (⌘K / Ctrl-K).
 
 ## Validation
 
-- `npm run lint` (extended to cover `static/v3/**` via `scripts/lint_v3.mjs`).
-- `npm run build:assets` (writes hashed v3 assets and `asset-manifest.json`).
+- `npm run lint` (covers the current frontend through `scripts/lint_frontend.mjs`).
+- `npm run build:assets` (writes hashed `static/app` assets and `asset-manifest.json`).
 - `npm run test:visual` (`tests/visual/v3.spec.js` against the mock server, which
   serves `/app` and mocks the future API surfaces).
 - Browser-rendered smoke checks of every route in light and dark themes.

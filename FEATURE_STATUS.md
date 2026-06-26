@@ -35,11 +35,11 @@ injected port, and KG uses transactional reprojection.
 Lattice AI is a local-first Digital Brain that keeps your knowledge durable
 across any AI model. The primary experience is Brain plus conversation; the
 graph remains durable infrastructure and advanced exploration, not the home
-product identity. Sections below v5.3.0 are historical release-status records
+product identity. Sections below v8.0.0 are historical release-status records
 and should not override the current README, ARCHITECTURE.md, SECURITY.md,
-PRIVACY.md, or v7.0.0 release notes.
+PRIVACY.md, or v8.0.0 release notes.
 
-## v7.0.0 Brain Productization Loop — current release line
+## v7.0.0 Brain Productization Loop — historical release line
 
 v7.0.0 turns the Brain proof runtime into a product-ready first-five-minute
 loop. Brain Home now starts with direct ingestion for files, folders, notes, and

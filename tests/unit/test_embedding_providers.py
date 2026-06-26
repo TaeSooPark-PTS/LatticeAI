@@ -37,6 +37,21 @@ def test_hash_provider_is_normalized_and_round_trips():
     assert p.grade == "fallback"
 
 
+def test_hash_provider_model_id_tracks_custom_dimension():
+    p = HashEmbeddingProvider(dim=16)
+    assert p.dim == 16
+    assert p.model_id == "lattice-local-hash-v1:16"
+    assert len(p.embed("dimension-specific index identity")) == 16
+
+
+def test_standalone_brain_hash_model_id_tracks_custom_dimension():
+    from lattice_brain.embeddings import LocalEmbeddingModel
+
+    model = LocalEmbeddingModel(dim=24)
+    assert model.model_id == "lattice-local-hash-v1:24"
+    assert len(model.embed("standalone brain embedding identity")) == 24
+
+
 def test_batch_embed_matches_single():
     p = HashEmbeddingProvider()
     texts = ["alpha vector", "beta graph", "gamma fusion"]
