@@ -1,2 +1,0 @@
-COMMAND   PID       USER   FD   TYPE             DEVICE SIZE/OFF NODE NAME
-Python  77467 parktaesoo   10u  IPv4 0xe76ca40b18c39a02      0t0  TCP 127.0.0.1:8911 (LISTEN)

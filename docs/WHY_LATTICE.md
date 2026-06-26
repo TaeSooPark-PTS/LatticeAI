@@ -1,51 +1,54 @@
 # Why Lattice AI Exists
 
-**Lattice AI is a local-first Digital Brain that keeps your knowledge durable across any AI model.**
+Current release: **8.1.0 - Intuitive Brain Home**.
+
+**Lattice AI is a local-first Digital Brain that keeps your knowledge durable
+across any AI model.**
 
 **모델은 바꿔도, 내 지식은 남는 로컬 AI 브레인.**
 
-AI models change quickly. A model you use today may be replaced next month, and
-the conversation history, project context, decisions, and sources you built
-around it can become scattered across tools. Lattice AI exists so the durable
-asset is not the model. The durable asset is your Brain.
+AI models change quickly. A model you use today may be replaced tomorrow, and a
+cloud chat history can become scattered across tools. Lattice AI exists so the
+durable asset is not the model. The durable asset is your Brain.
 
 ## The Problem
 
-Most AI products begin with a model and treat your context as temporary prompt
-material. That works for short questions, but it fails for long-running work:
+Most AI products start with a model and treat your context as temporary prompt
+material. That breaks down for real work:
 
 - project decisions disappear into old chats;
-- documents and notes are disconnected from conversations;
+- documents and notes stay disconnected from conversations;
 - switching models often means losing useful context;
-- graph or database tools expose implementation details before user value;
-- cloud-only products make it hard to inspect, back up, or move your knowledge.
+- graph tools expose implementation detail before user value;
+- cloud-only products make your knowledge hard to inspect, back up, or move.
 
 ## The Lattice Answer
 
-Lattice AI is a local-first private AI memory layer. It keeps conversations,
-documents, decisions, relationships, and project history in a Brain that belongs
-to the user. Models can be local, cloud, current, or future. The Brain remains.
+Lattice AI keeps conversations, documents, memories, decisions, relationships,
+and source provenance in a private local Brain. Models can be local, cloud,
+current, or future. The Brain remains.
 
-The graph is real, but it is not the product identity. Product category is
-local-first Digital Brain; core capability is a private AI memory layer; UX
-metaphor is the Living Brain. Users start with Brain
-Chat, memory, topics, relationships, ownership, backup, and graph exploration.
-Advanced admin logs, roles, hooks, workflows, Telegram, Brain Network, Docker,
-Postgres, and plugin details stay outside the normal user flow.
+The graph matters, but it is not the product identity. The product identity is a
+local-first Digital Brain: a place where the user can talk, add sources, watch
+memory grow, and inspect the Knowledge Graph when they need proof.
+
+In 8.1.0 the first screen is intentionally not a dashboard. The living Brain,
+recent memory, connected topic, next action, and conversation composer appear
+together so the user immediately knows what to do.
 
 ## Practical Reasons To Use It
 
-- Ask what the team decided last week and see the source.
-- Drop in documents and build a searchable personal memory.
-- Prepare for a meeting from past notes, project decisions, and files.
-- Preserve context when moving from one model to another.
-- Export or back up the Brain as an encrypted `.latticebrain` archive.
+- Ask what the team decided and see the source.
+- Add documents and build a searchable private memory.
+- Prepare from old notes, project decisions, and files.
+- Preserve context when moving between models.
+- Export or restore the Brain as an encrypted `.latticebrain` archive.
 - Use Korean or English without changing the underlying Brain.
 - Avoid fake answers when no model or evidence is available.
 
 ## What Lattice AI Is Not
 
-- Not a hosted SaaS by default.
+- Not hosted SaaS by default.
 - Not just a model launcher.
 - Not just a graph viewer.
 - Not a generic dashboard.

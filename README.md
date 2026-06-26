@@ -252,28 +252,6 @@ strategic roadmap slices applied through 8.1.0 and the follow-up tracks.
 | 7.2.0 | Runtime Trust Baseline: agent run preview/readiness, simulation-mode guardrails, live ToolRegistry manifest/diagnostics, and tests for dispatch/governance/catalog drift |
 | 7.1.0 | Brain Usability Completion: clearer first-run onboarding, ingestion progress/emergence, richer graph controls, inline answer proof, workspace/profile/admin discovery, empty/error/consent feedback, and VS Code sync status |
 | 7.0.0 | Brain Productization Loop: first-screen ingestion for files/folders/notes/web, answer-level memory proof and source citations, model-continuity demo flow, five-minute first-run loop, and recall/KG quality eval in CI |
-| 6.7.0 | Brain IA Cleanup: reachable rich pages, separated product routes vs compatibility aliases, shared Brain shell navigation, and lazy-loaded rich pages |
-| 6.6.0 | Brain Proof Runtime: backend-owned Brain proof API, model-continuity wiring, first-screen proof that saved context can be recalled across model changes, and direct Brain Home document upload |
-| 6.5.0 | Brain Experience Readiness: Brain readiness signal, depth progress rail, source-aware memory-save feedback, and visual coverage for the first-memory loop |
-| 6.4.0 | Digital Brain Quality Hardening: workspace-scoped graph/search/memory reads and mutations, Brain quality primitives, structured context guardrails, and retrieval benchmark coverage |
-| 6.3.1 | Access Runtime / i18n Follow-up: app-factory access-control extraction, focused access runtime tests, and Capture/Review Center i18n coverage |
-| 6.3.0 | Product Hardening Completion: Brain archive/provenance/ingestion UX polish, Review Center Run Now contract hardening, local model runtime status, app-factory review wiring, shim smoke, i18n guard, and exact release artifacts |
-| 6.2.0 | Product Decomposition / Release Smoke Automation: App and ProductFlow feature extraction, legacy root shim shrink, model download consent UX, typed router contexts, localized smoke tests, and wheel/npm/static/Tauri release smoke |
-| 6.1.0 | Product Hardening / Digital Brain Completion: local Brain entry without a loaded model, Brain memory/backup loop, Review Center semantics, ToolRegistry authorization boundary, and root CLI/runtime compatibility |
-| 6.0.0 | Product Reset / Review Center Completion: Snoozed filter, Unsnooze, OpenAPI-derived Review typing, Review feature extraction, v6 docs and scorecard |
-| 5.6.0 | Brain Automation Review Center: workspace-scoped automation review inbox, source-aware provenance, guarded approve/dismiss/snooze/run_now actions, and Act Review tab |
-| 5.5.0 | Release Coordination: synchronized package/runtime/static versions and release docs for the 5.5.0 line while preserving v5.4.0 Brain Automation Scheduler behavior |
-| 5.4.0 | Brain Automation Scheduler: consent-first recipe drafts (Daily/Weekly/Follow-up), TriggerService with dedup/LATTICE_TZ/degraded, runtime graph cleanup, E2E scenarios |
-| 5.3.0 | Product Clarity and Runtime Cleanup: user-first README/onboarding, unified Digital Brain identity, legacy compatibility map, and app factory runtime seams |
-| 5.2.0 | User-Focused Model Transformation: structured model capability registry, HF verification transparency, model recommendation UX, and workspace-scoped marketplace state |
-| 5.1.0 | Product Trust & Clarity Release: clarifies the private AI memory-layer promise, hardens CSP/secret/auto-read/download gates, adds trust/privacy docs, and refreshes evidence |
-| 5.0.0 | Multilingual Brain Foundation Release: adds persisted Korean/English language choice across first-run onboarding, Brain home, graph exploration, and Admin Console |
-| 4.7.2 | Intuitive Brain UX Release: safer login, one-click recommended setup, direct Brain views, memory-save feedback, and exact artifacts |
-| 4.7.0 | Admin Separation Release: adds the separate Admin Console for users/logs/security/Brain operations |
-| 4.6.1 | Living Brain Release Refresh: publishable version bump after v4.6.0 PyPI immutability |
-| 4.6.0 | Living Brain Experience: made Brain plus conversation the home product |
-| 4.5.1 | Product Reimagining RC: reset shell, navigation, onboarding, and visual system |
-| 4.5.0 | Product Experience Recovery RC: restored first-run setup, workspace/model onboarding, and graph discoverability |
 
 ## Documentation
 

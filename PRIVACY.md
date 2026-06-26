@@ -1,5 +1,7 @@
 # Privacy
 
+Current release: **8.1.0 - Intuitive Brain Home**.
+
 Lattice AI is local-first. It does not send your prompts, files, graph, or Brain
 archive to Lattice-owned servers by default. Some user-chosen features can
 contact third parties, and those paths are listed below.
@@ -31,13 +33,16 @@ requires explicit configuration and user/admin action.
 
 External paths include:
 
-- **Cloud models**: prompts/context are sent to the selected provider when a
-  cloud model is configured and used.
+- **Cloud models**: prompts/context are sent to the selected provider only when
+  a cloud model is configured and used.
 - **Model downloads**: model identifiers and download requests go to model
-  registries such as Hugging Face or Ollama registries when the user consents.
-- **Telegram**: messages can be bridged only when Telegram is explicitly enabled.
-- **Brain Network**: peer exchange requires explicit pairing and network action.
-- **PostgreSQL/Docker**: scale-mode setup uses configured local/network services.
+  registries such as Hugging Face or Ollama registries after user consent.
+- **Telegram**: messages can be bridged only when Telegram is explicitly
+  enabled.
+- **Brain Network**: peer exchange requires explicit pairing and network
+  action.
+- **PostgreSQL/Docker**: scale-mode setup uses configured local/network
+  services after opt-in.
 - **Update checks**: disabled unless explicitly enabled.
 - **Marketplace/registry refreshes**: contact remote registries only when the
   user/admin invokes the path.
@@ -47,19 +52,18 @@ External paths include:
 `.latticebrain` archives are portable encrypted Brain bundles. They may contain
 graph data, conversations, provenance, blob references or blobs, metadata, and
 integrity hashes. Without the passphrase, archive metadata may still reveal
-non-content facts such as archive version, creation time, size, and high-level
-manifest structure. Wrong passphrases, tampering, unsupported versions, and path
+non-content facts such as archive version, creation time, size, and manifest
+structure. Wrong passphrases, tampering, unsupported versions, and path
 traversal fail closed.
 
 ## Screenshots And Logs
 
 Release screenshots are generated from local mock/demo data. Secret-like values
-are centrally redacted before logs, audit events, security exports, and frontend
-previews. Admins can see operational logs, but hard secrets should not appear in
-clear text.
+are centrally redacted before logs, audit events, security exports, frontend
+previews, and hook packets. Admins can see operational logs, but hard secrets
+should not appear in clear text.
 
 ## User Control
 
-You can back up, export, inspect, verify, and move your Brain. Package publishing
-and public deployments are owner-run; local use remains the default.
-
+You can back up, export, inspect, verify, and move your Brain. Package
+publishing and public deployments are owner-run; local use remains the default.

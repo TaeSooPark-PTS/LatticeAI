@@ -1,4 +1,6 @@
-# Knowledge Graph — v2 스키마
+# Knowledge Graph Schema
+
+Current release: **8.1.0 - Intuitive Brain Home**.
 
 명세 출처: `lattice_ai_full_spec.pptx` 슬라이드 20·21·22
 구현: `kg_schema.py`
@@ -80,15 +82,15 @@ Edge {
 
 **엔드포인트 룰은 권고 사항이다 (스키마 문서 기준).** 코드에는 엔드포인트 페어
 검증기가 존재하지 않는다 — `validate_endpoints` 는 구현된 적이 없으며, 쓰기
-경로는 타입 페어를 거부하지 않는다. v4 의 쓰기 정규화는 *타입 어휘* 를
+경로는 타입 페어를 거부하지 않는다. 현재 쓰기 정규화는 *타입 어휘* 를
 강제한다: `_upsert_edge` 가 모든 엣지 타입을 canonical `EdgeType` 값으로
 정규화하므로 자유 문자열 타입은 더 이상 생성되지 않는다.
 
 ---
 
-## v3.6.0 — Knowledge Graph First 엔티티/관계
+## Current Knowledge Graph First 엔티티/관계
 
-v3.6.0 은 "모든 데이터 소스가 Knowledge Graph 로 수렴한다"는 원칙을 1급 스키마로
+8.1.0 은 "모든 데이터 소스가 Knowledge Graph 로 수렴한다"는 원칙을 1급 스키마로
 승격한다. 아래 타입은 **추가형(additive)**이다 — 기존 enum/legacy 매핑을 깨지 않고
 `from_legacy` 가 무손실로 정규화하며, 알 수 없는 타입은 여전히 `CONCEPT`/`MENTIONS` 로
 폴백한다. 스키마는 **확장 가능**하게 유지한다: 새 도메인 엔티티는 enum 멤버 1개 +

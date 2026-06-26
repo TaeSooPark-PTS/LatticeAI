@@ -1,8 +1,11 @@
 # Lattice AI Development
 
+Current release: **8.1.0 - Intuitive Brain Home**.
+
 This document is for contributors working on the local-first Digital Brain
 codebase. Product positioning and quick start stay in `README.md`; release
-history stays in `docs/CHANGELOG.md` and `RELEASE.md`.
+history is intentionally limited to 7.0.0-8.1.0 in `docs/CHANGELOG.md` and
+`RELEASE.md`.
 
 ## Product Contract
 
@@ -77,9 +80,12 @@ Runtime assembly seams live under `latticeai.runtime`:
 - `config_runtime.py` derives app config values from `Config`;
 - `security_runtime.py` applies trusted proxy/security-derived settings;
 - `brain_runtime.py` constructs Brain Core and conversation primitives.
+- model/runtime, ToolRegistry/MCP, router, static asset, and lifespan seams
+  should continue moving out of monolithic app-factory helpers.
 
-Future extraction should continue with router assembly, model runtime assembly,
-platform/hooks assembly, static asset serving, and lifespan/startup/shutdown.
+Future extraction should continue with AgentRuntime, ToolRegistry, config,
+server decomposition, and Knowledge Graph stabilization in that order when
+architectural debt is present.
 
 ## Documentation Sync
 
@@ -96,3 +102,11 @@ For user-facing, API, runtime, release, or packaging changes, check:
 
 Release/publish examples must use exact target-version filenames. Do not
 document wildcard artifact upload commands.
+
+For 8.1.0 release work, exact artifacts are:
+
+- `dist/ltcai-8.1.0-py3-none-any.whl`
+- `dist/ltcai-8.1.0.tar.gz`
+- `ltcai-8.1.0.tgz`
+- `dist/ltcai-8.1.0.vsix`
+- `src-tauri/target/release/bundle/dmg/Lattice AI_8.1.0_aarch64.dmg`

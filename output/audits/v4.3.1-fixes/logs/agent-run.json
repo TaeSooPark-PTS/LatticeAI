@@ -1,3 +1,0 @@
-{
-  "detail": "Agent execution is unavailable because no LLM-backed model is loaded. Simulation mode is disabled in the product execution API so it cannot be recorded as real success."
-}
