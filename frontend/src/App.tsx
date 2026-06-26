@@ -144,7 +144,7 @@ function ExternalConsentStatus({ language }: { language: Language }) {
   return (
     <section className="external-consent-status" aria-label={t(language, "feedback.consent.aria")}>
       <FeedbackState
-        tone={externalConsent ? "empty" : "error"}
+        tone="empty"
         compact={externalConsent}
         language={language}
         title={externalConsent ? t(language, "feedback.consent.activeTitle") : t(language, "feedback.consent.revokedTitle")}

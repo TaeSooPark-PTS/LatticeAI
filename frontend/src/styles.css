@@ -957,6 +957,7 @@ body {
 /* The entire post-onboarding experience is a living room with the Brain */
 .brain-space {
   min-height: 100vh;
+  min-height: 100dvh;
   display: flex;
   flex-direction: column;
   background: radial-gradient(120% 80% at 50% 20%, hsl(var(--bg-elevated)) 0%, hsl(var(--bg)) 55%);
@@ -968,8 +969,9 @@ body {
   position: relative;
   z-index: 2;
   height: 100vh;
+  height: 100dvh;
   overflow: auto;
-  padding: 0.9rem 1rem 2rem;
+  padding: 0.9rem 1rem calc(2rem + env(safe-area-inset-bottom, 0px));
 }
 
 .brain-shell-nav {
@@ -2424,7 +2426,7 @@ body {
 /* Progressive depths navigation — subtle, never a "sidebar" */
 .depths {
   position: fixed;
-  bottom: 1.35rem;
+  bottom: calc(1.35rem + env(safe-area-inset-bottom, 0px));
   left: 50%;
   transform: translateX(-50%);
   z-index: 40;
@@ -4283,7 +4285,7 @@ body {
     margin-top: 0.45rem;
   }
   .brain-depth-actions {
-    bottom: 3.55rem;
+    bottom: calc(3.55rem + env(safe-area-inset-bottom, 0px));
     width: min(100vw - 1rem, 24rem);
     overflow-x: auto;
     justify-content: flex-start;
