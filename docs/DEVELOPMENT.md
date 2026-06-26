@@ -1,10 +1,10 @@
 # Lattice AI Development
 
-Current release: **8.1.0 - Intuitive Brain Home**.
+Current release: **8.2.0 - Brain Brief**.
 
 This document is for contributors working on the local-first Digital Brain
 codebase. Product positioning and quick start stay in `README.md`; release
-history is intentionally limited to 7.0.0-8.1.0 in `docs/CHANGELOG.md` and
+history is intentionally limited to 7.0.0-8.2.0 in `docs/CHANGELOG.md` and
 `RELEASE.md`.
 
 ## Product Contract
@@ -112,10 +112,10 @@ For user-facing, API, runtime, release, or packaging changes, check:
 Release/publish examples must use exact target-version filenames. Do not
 document wildcard artifact upload commands.
 
-For 8.1.0 release work, exact artifacts are:
+For 8.2.0 release work, exact artifacts are:
 
-- `dist/ltcai-8.1.0-py3-none-any.whl`
-- `dist/ltcai-8.1.0.tar.gz`
-- `ltcai-8.1.0.tgz`
-- `dist/ltcai-8.1.0.vsix`
-- `src-tauri/target/release/bundle/dmg/Lattice AI_8.1.0_aarch64.dmg`
+- `dist/ltcai-8.2.0-py3-none-any.whl`
+- `dist/ltcai-8.2.0.tar.gz`
+- `ltcai-8.2.0.tgz`
+- `dist/ltcai-8.2.0.vsix`
+- `src-tauri/target/release/bundle/dmg/Lattice AI_8.2.0_aarch64.dmg`

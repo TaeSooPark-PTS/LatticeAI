@@ -1,9 +1,9 @@
-# Lattice AI Feature Status (v8.1.0)
+# Lattice AI Feature Status (v8.2.0)
 
-Current release: **8.1.0 - Intuitive Brain Home**.
+Current release: **8.2.0 - Brain Brief**.
 
 This file describes the current product state and known limitations. Historical
-change history is intentionally limited to 7.0.0-8.1.0 in `RELEASE.md` and
+change history is intentionally limited to 7.0.0-8.2.0 in `RELEASE.md` and
 `docs/CHANGELOG.md`.
 
 ## Product Position
@@ -12,15 +12,16 @@ Lattice AI is a local-first Digital Brain. The durable asset is the user's
 Brain: conversations, documents, decisions, memories, provenance, and Knowledge
 Graph structure. Models are replaceable voices over that Brain.
 
-The main product surface is not an admin dashboard. The 8.1.0 Brain Home puts
-the living Brain, recent memory, connected topic, next action, and conversation
-composer in the first screen so users can immediately understand what to do.
+The main product surface is not an admin dashboard. The 8.2.0 Brain Home keeps
+the living Brain and composer in the first screen, then adds an evidence-backed
+Brain Brief so users can immediately understand what matters and what to do.
 
 ## Current Feature Status
 
 | Area | Status | Notes |
 | --- | --- | --- |
-| Brain Home | Current | Living Brain, memory narrative, connected topic, next action, and composer are visible in the first viewport on desktop and mobile. |
+| Brain Home | Current | Living Brain, composer, and Brain Brief are visible in the first viewport on desktop and mobile. |
+| Brain Brief | Current | MemoryService turns real workspace, conversation, graph, vector, and source-health signals into focus, evidence, and next actions. |
 | Conversation | Current | Chat is the primary action. It refuses to fake model output when no model is loaded and can surface memory proof when context exists. |
 | Knowledge Graph | Current | Memory graph exploration, graph read compatibility, provenance-aware retrieval, and KG v2 equivalence gates remain active. |
 | Source Capture | Current | Files, folders, notes, and web/source capture paths feed Brain memory and graph context through explicit user actions. |
@@ -30,7 +31,7 @@ composer in the first screen so users can immediately understand what to do.
 | Tool Registry / MCP | Current | ToolRegistry diagnostics and MCP install state are separated from app-factory helpers and covered by focused tests. |
 | Workspaces | Current | Personal workspace is default. Organization/admin surfaces remain separated from normal Brain use. |
 | VS Code Extension | Current | Sync/status endpoints expose connection and indexing state. File contents move only through explicit user actions. |
-| Release Assets | Current | 8.1.0 package metadata, static app, screenshots, GIF/WebM evidence, and release notes are aligned. |
+| Release Assets | Current | 8.2.0 package metadata, static app, release notes, and exact artifact names are aligned. |
 
 ## Known Limitations
 
@@ -51,6 +52,7 @@ composer in the first screen so users can immediately understand what to do.
 
 The Git tree keeps release history from:
 
+- 8.2.0
 - 8.1.0
 - 8.0.0
 - 7.9.0

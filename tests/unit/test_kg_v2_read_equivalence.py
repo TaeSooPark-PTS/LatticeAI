@@ -61,6 +61,14 @@ def _both(store, fn):
     return legacy, v2
 
 
+def _without_generated_at(result):
+    if isinstance(result, dict):
+        return {key: _without_generated_at(value) for key, value in result.items() if key != "generated_at"}
+    if isinstance(result, list):
+        return [_without_generated_at(item) for item in result]
+    return result
+
+
 @pytest.fixture()
 def store(tmp_path):
     s = kg.KnowledgeGraphStore(tmp_path / "kg.sqlite", tmp_path / "blobs")
@@ -271,7 +279,9 @@ def test_list_documents_indexed_state_equivalent(tmp_path):
     s._backfill_v2_if_needed()
 
     legacy, v2 = _both(s, lambda: s.list_documents(limit=50))
-    assert legacy == v2, "list_documents (indexed state) diverges under v2 toggle"
+    assert _without_generated_at(legacy) == _without_generated_at(v2), (
+        "list_documents (indexed state) diverges under v2 toggle"
+    )
     by_id = {d["id"]: d for d in v2.get("documents", [])}
     assert by_id["doc:indexed"]["indexed"] is True, "Chunk not counted via v2 projection"
     assert by_id["doc:indexed"]["chunks"] == 1

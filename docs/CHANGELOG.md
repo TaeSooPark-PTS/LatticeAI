@@ -6,20 +6,27 @@ existed at that release.
 
 ## [Unreleased]
 
+No unreleased changes.
+
+## [8.2.0] - 2026-06-27
+
+### Added
+- Added an evidence-backed Brain Brief to Brain Home so users can see what to
+  notice, what evidence supports it, and what action to take next.
+- Added `GET /api/memory/brain-brief`, backed by `MemoryService.brain_brief()`,
+  with honest empty-state guidance and recall/graph/model-proof actions.
+- Added unit coverage for Brain Brief service behavior and the memory API route.
+
 ### Changed
-- Continued server decomposition: extracted SSO into `sso_runtime.py`, audit helpers into `audit_runtime.py`; further shrunk `app_factory._build`.
-- Model runtime monolith reduction: extracted HF download/progress/repo logic (~220 LOC) to `latticeai/services/model_download.py` with full re-export compat for globals and callers.
-- Config centralization: `timezone`, `max_local_models`, `allow_model_downloads`, `model_download_timeout` added to `Config` and wired.
-- WorkspaceOSStore decomposition: extracted `WorkspacePermissionManager` + role/permission logic to `workspace_permissions.py`; composed in main store; reduced god-class surface.
-- Workspace helpers previously extracted + dedup.
-- Shim improvement: clarified deprecation paths.
-- Added explicit `__all__` surfaces and kept all contracts/tests green.
-- Completed ALL from Recommended next refactor (report #15) in this session:
-  - Server decomp wave: _MODEL_RUNTIME_STATE, model_loading.py for prepare_and_load_model + stream (delegated), additional to model_engines.
-  - Deeper WorkspaceOSStore: full WorkspaceSnapshots (snapshots methods), WorkspaceMemory, timeline, plugins composed.
-  - KG: set_embed_dim() for optional handling.
-  - Full tests 767, builds, ruff, doc sync.
-- Refactoring finished. Sizes reduced, small modules increased.
+- Completed the remaining model loading/runtime extraction into
+  `model_loading.py` and `model_engines.py` while preserving compatibility
+  delegations from `model_runtime.py`.
+- Extracted WorkspaceOS graph trace, agent/workflow run, skill, and snapshot
+  comparison ownership into focused manager modules.
+- Wired Knowledge Graph embedding dimensions from the central resolved `Config`
+  embedder at app startup.
+- Synchronized Python, npm, VS Code extension, Tauri, workspace, readiness,
+  static asset, and current-release documentation versions to 8.2.0.
 
 ## [8.1.0] - 2026-06-27
 

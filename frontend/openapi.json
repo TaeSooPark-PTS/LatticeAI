@@ -3667,6 +3667,11 @@
             "title": "Content",
             "type": "string"
           },
+          "extension_version": {
+            "default": "",
+            "title": "Extension Version",
+            "type": "string"
+          },
           "file_path": {
             "anyOf": [
               {
@@ -3698,12 +3703,53 @@
             "default": "",
             "title": "Selection",
             "type": "string"
+          },
+          "workspace_folder": {
+            "default": "",
+            "title": "Workspace Folder",
+            "type": "string"
           }
         },
         "required": [
           "action"
         ],
         "title": "WorkspaceVSCodeRequest",
+        "type": "object"
+      },
+      "WorkspaceVSCodeStatusRequest": {
+        "properties": {
+          "active_file": {
+            "default": "",
+            "title": "Active File",
+            "type": "string"
+          },
+          "detail": {
+            "default": "",
+            "title": "Detail",
+            "type": "string"
+          },
+          "extension_version": {
+            "default": "",
+            "title": "Extension Version",
+            "type": "string"
+          },
+          "index_status": {
+            "default": "unknown",
+            "title": "Index Status",
+            "type": "string"
+          },
+          "status": {
+            "default": "connected",
+            "title": "Status",
+            "type": "string"
+          },
+          "workspace_folder": {
+            "default": "",
+            "title": "Workspace Folder",
+            "type": "string"
+          }
+        },
+        "title": "WorkspaceVSCodeStatusRequest",
         "type": "object"
       },
       "WorkspaceWorkflowEventRequest": {
@@ -3757,7 +3803,7 @@
   },
   "info": {
     "title": "Lattice AI Server (local)",
-    "version": "6.6.0"
+    "version": "8.2.0"
   },
   "openapi": "3.1.0",
   "paths": {
@@ -5372,6 +5418,42 @@
         "summary": "Agent Run"
       }
     },
+    "/agents/api/run/preview": {
+      "post": {
+        "operationId": "agent_run_preview_agents_api_run_preview_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/AgentRunRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Agent Run Preview"
+      }
+    },
     "/agents/api/runs": {
       "get": {
         "operationId": "agent_runs_agents_api_runs_get",
@@ -6939,6 +7021,54 @@
           }
         },
         "summary": "Local Agent Status"
+      }
+    },
+    "/api/memory/brain-brief": {
+      "get": {
+        "operationId": "brain_brief_api_memory_brain_brief_get",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "q",
+            "required": false,
+            "schema": {
+              "default": "",
+              "title": "Q",
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "limit",
+            "required": false,
+            "schema": {
+              "default": 3,
+              "title": "Limit",
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Brain Brief"
       }
     },
     "/api/memory/brain-proof": {
@@ -12672,6 +12802,40 @@
         "summary": "Tools Read File"
       }
     },
+    "/tools/registry": {
+      "get": {
+        "description": "Full ToolRegistry contract: handlers, governance, catalog, diagnostics.",
+        "operationId": "tools_registry_tools_registry_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": "Tools Registry"
+      }
+    },
+    "/tools/registry/diagnostics": {
+      "get": {
+        "description": "Small drift check for CI/admin runtime readiness views.",
+        "operationId": "tools_registry_diagnostics_tools_registry_diagnostics_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": "Tools Registry Diagnostics"
+      }
+    },
     "/tools/run_command": {
       "post": {
         "operationId": "tools_run_command_tools_run_command_post",
@@ -15300,6 +15464,56 @@
           }
         },
         "summary": "Workspace Vscode Send"
+      }
+    },
+    "/workspace/vscode/status": {
+      "get": {
+        "operationId": "workspace_vscode_status_workspace_vscode_status_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": "Workspace Vscode Status"
+      },
+      "post": {
+        "operationId": "workspace_vscode_status_update_workspace_vscode_status_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/WorkspaceVSCodeStatusRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Workspace Vscode Status Update"
       }
     },
     "/workspace/workflows": {

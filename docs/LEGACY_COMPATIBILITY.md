@@ -1,12 +1,12 @@
 # Legacy Compatibility Map
 
-Current release: **8.1.0 - Intuitive Brain Home**.
+Current release: **8.2.0 - Brain Brief**.
 
 Lattice AI is moving toward a smaller, modular architecture centered on
 `lattice_brain`, `latticeai.services`, `latticeai.api`, and `latticeai.runtime`.
 Some root-level modules remain packaged for compatibility with older imports,
 CLI entrypoints, or extension workflows. Their presence does not define the
-current 8.1.0 architecture.
+current 8.2.0 architecture.
 
 ## Current Policy
 

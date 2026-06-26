@@ -1,7 +1,7 @@
 """Machine-checkable architecture readiness gates for release work.
 
-8.1.0 keeps the major architecture priorities under an explicit release
-contract while the product surface is refreshed. AgentRuntime, ToolRegistry,
+8.2.0 keeps the major architecture priorities under an explicit release
+contract while Brain Brief improves the product surface. AgentRuntime, ToolRegistry,
 central Config, decomposed server runtime, and Knowledge Graph stabilization
 must remain discoverable, ordered, and backed by tests before the release can be
 called complete.
@@ -15,7 +15,7 @@ from pathlib import Path
 from typing import Any, Dict, List
 
 
-ARCHITECTURE_VERSION_TARGET = "8.1.0"
+ARCHITECTURE_VERSION_TARGET = "8.2.0"
 
 PREFERRED_REFACTORING_ORDER = [
     "agent-runtime",

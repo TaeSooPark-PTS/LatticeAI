@@ -1,5 +1,5 @@
 import { asArray } from "@/lib/utils";
-import type { ApiRecord, BrainDepth, BrainProof, BrainReadiness, KnowledgeConcept, KnowledgeGraphModel, MemoryFragment, RelationshipThread } from "./types";
+import type { ApiRecord, BrainBrief, BrainDepth, BrainProof, BrainReadiness, KnowledgeConcept, KnowledgeGraphModel, MemoryFragment, RelationshipThread } from "./types";
 import { clamp } from "./graphLayout";
 
 export function buildMemoryFragments(memoryData: unknown, historyData: unknown): MemoryFragment[] {
@@ -130,6 +130,54 @@ export function buildBrainProof(data: unknown, fallbackModelName = ""): BrainPro
       keepsContextAcrossModels: booleanValue(claims, ["keeps_context_across_models", "keepsContextAcrossModels"], false),
       isKnowledgeStore: booleanValue(claims, ["is_knowledge_store", "isKnowledgeStore"], false),
     },
+  };
+}
+
+export function buildBrainBrief(data: unknown): BrainBrief {
+  const brief = isRecord(data) ? data : {};
+  const focus = isRecord(brief.focus) ? brief.focus : {};
+  const rawActions = asArray<ApiRecord>(brief.next_actions || brief.nextActions);
+  const rawEvidence = asArray<ApiRecord>(brief.evidence);
+  const actionRows = rawActions.length
+    ? rawActions
+    : [
+        { id: "add_source", label_key: "brain.brief.action.add", detail_key: "brain.brief.action.add.detail", route: "/capture", priority: 10 },
+        { id: "ask_brain", label_key: "brain.brief.action.ask", detail_key: "brain.brief.action.ask.detail", route: "", priority: 9 },
+      ];
+  const evidenceRows = rawEvidence.length
+    ? rawEvidence
+    : [
+        { id: "durable", label_key: "brain.brief.evidence.durable", value: 0, detail_key: "brain.brief.evidence.durable.detail" },
+        { id: "graph", label_key: "brain.brief.evidence.graph", value: 0, detail_key: "brain.brief.evidence.graph.detail" },
+        { id: "sources", label_key: "brain.brief.evidence.sources", value: 0, detail_key: "brain.brief.evidence.sources.detail" },
+      ];
+  return {
+    status: textValue(brief, ["status"], "quiet"),
+    score: clamp(Math.round(numberValue(brief, ["score"])), 0, 100),
+    headlineKey: textValue(brief, ["headline_key", "headlineKey"], "brain.brief.headline.quiet"),
+    bodyKey: textValue(brief, ["body_key", "bodyKey"], "brain.brief.body.quiet"),
+    focus: {
+      kind: textValue(focus, ["kind"], "empty"),
+      title: textValue(focus, ["title"]),
+      detail: textValue(focus, ["detail"]),
+      source: titleValue(focus, ["source"], "Memory"),
+      score: numberValue(focus, ["score"]),
+      empty: booleanValue(focus, ["empty"], !textValue(focus, ["title"])),
+    },
+    nextActions: actionRows.map((item) => ({
+      id: textValue(item, ["id"], "ask_brain"),
+      labelKey: textValue(item, ["label_key", "labelKey"], "brain.brief.action.ask"),
+      detailKey: textValue(item, ["detail_key", "detailKey"], "brain.brief.action.ask.detail"),
+      route: textValue(item, ["route"]),
+      priority: numberValue(item, ["priority"]),
+    })),
+    evidence: evidenceRows.map((item) => ({
+      id: textValue(item, ["id"], "evidence"),
+      labelKey: textValue(item, ["label_key", "labelKey"], "brain.brief.evidence.durable"),
+      value: numberValue(item, ["value"]),
+      detailKey: textValue(item, ["detail_key", "detailKey"], "brain.brief.evidence.durable.detail"),
+    })),
+    generatedAt: textValue(brief, ["generated_at", "generatedAt"]),
   };
 }
 

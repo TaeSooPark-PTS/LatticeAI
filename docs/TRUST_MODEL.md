@@ -1,6 +1,6 @@
 # Lattice AI Trust Model
 
-Current release: **8.1.0 - Intuitive Brain Home**.
+Current release: **8.2.0 - Brain Brief**.
 
 Lattice AI is local-first, explicit about external communication, and honest
 when a capability is unavailable.

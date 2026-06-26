@@ -288,6 +288,219 @@ class MemoryService:
         """Return the backend-owned Brain readiness signal for API consumers."""
         return self.manager(user_email=user_email, workspace_id=workspace_id)["brain_readiness"]
 
+    def brain_brief(
+        self,
+        *,
+        user_email: Optional[str] = None,
+        workspace_id: Optional[str] = None,
+        active_model: Optional[str] = None,
+        recall_query: str = "",
+        limit: int = 3,
+    ) -> Dict[str, Any]:
+        """Return a compact, evidence-backed Brain briefing for the home screen.
+
+        The brief intentionally reuses the Memory Manager and Brain Proof data
+        instead of inventing UI-only facts. It answers three product questions:
+        what should the user notice, why can the Brain prove it, and what is the
+        easiest next action.
+        """
+        manager = self.manager(user_email=user_email, workspace_id=workspace_id)
+        proof = self.brain_proof(
+            user_email=user_email,
+            workspace_id=workspace_id,
+            active_model=active_model,
+            recall_query=recall_query,
+            limit=limit,
+        )
+        readiness = manager.get("brain_readiness") or {}
+        state = str(readiness.get("state") or "quiet")
+        proofs = proof.get("proofs") or {}
+        recall = proof.get("recall") or {}
+        recall_items = [item for item in recall.get("items") or [] if isinstance(item, dict)]
+        durable_items = int(proofs.get("durable_items") or 0)
+        workspace_memories = int(proofs.get("workspace_memories") or 0)
+        conversations = int(proofs.get("conversations") or 0)
+        graph_concepts = int(proofs.get("graph_concepts") or 0)
+        vector_items = int(proofs.get("vector_items") or 0)
+        healthy_sources = int(proofs.get("healthy_sources") or 0)
+
+        focus = self._brain_brief_focus(
+            user_email=user_email,
+            workspace_id=workspace_id,
+            recall_items=recall_items,
+            durable_items=durable_items,
+            graph_concepts=graph_concepts,
+            query=str(recall.get("query") or recall_query or ""),
+        )
+        actions = self._brain_brief_actions(
+            state=state,
+            has_durable_evidence=bool(proofs.get("has_durable_evidence")),
+            has_recall=bool(recall_items),
+            graph_concepts=graph_concepts,
+        )
+        return {
+            "status": state,
+            "score": int(readiness.get("score") or 0),
+            "headline_key": f"brain.brief.headline.{state if state in {'quiet', 'forming', 'alive'} else 'quiet'}",
+            "body_key": f"brain.brief.body.{state if state in {'quiet', 'forming', 'alive'} else 'quiet'}",
+            "focus": focus,
+            "next_actions": actions,
+            "evidence": [
+                {
+                    "id": "durable",
+                    "label_key": "brain.brief.evidence.durable",
+                    "value": durable_items,
+                    "detail_key": "brain.brief.evidence.durable.detail",
+                },
+                {
+                    "id": "graph",
+                    "label_key": "brain.brief.evidence.graph",
+                    "value": graph_concepts,
+                    "detail_key": "brain.brief.evidence.graph.detail",
+                },
+                {
+                    "id": "sources",
+                    "label_key": "brain.brief.evidence.sources",
+                    "value": healthy_sources,
+                    "detail_key": "brain.brief.evidence.sources.detail",
+                },
+            ],
+            "signals": {
+                "workspace_memories": workspace_memories,
+                "conversations": conversations,
+                "graph_concepts": graph_concepts,
+                "vector_items": vector_items,
+                "healthy_sources": healthy_sources,
+            },
+            "proof": {
+                "query": recall.get("query") or "",
+                "items": recall_items[: max(1, min(limit, 6))],
+                "model_continuity": proof.get("model_continuity") or {},
+            },
+            "generated_at": _now(),
+        }
+
+    def _brain_brief_focus(
+        self,
+        *,
+        user_email: Optional[str],
+        workspace_id: Optional[str],
+        recall_items: List[Dict[str, Any]],
+        durable_items: int,
+        graph_concepts: int,
+        query: str,
+    ) -> Dict[str, Any]:
+        if recall_items:
+            first = recall_items[0]
+            return {
+                "kind": "recall",
+                "title": str(first.get("title") or "Memory"),
+                "detail": str(first.get("snippet") or query or ""),
+                "source": str(first.get("source") or "memory"),
+                "score": float(first.get("score") or 0),
+            }
+
+        memories = self._workspace_memories(user_email=user_email, workspace_id=workspace_id or "personal")
+        if memories:
+            first_memory = memories[0]
+            return {
+                "kind": "memory",
+                "title": str(first_memory.get("kind") or "memory"),
+                "detail": str(first_memory.get("content") or "")[:240],
+                "source": "workspace",
+                "score": 1.0,
+            }
+
+        conversations = self._scoped_conversations(user_email=user_email, workspace_id=workspace_id)
+        if conversations:
+            latest = conversations[-1]
+            messages = latest.get("messages") if isinstance(latest, dict) else []
+            last_message = next((m for m in reversed(messages or []) if isinstance(m, dict) and str(m.get("content") or "").strip()), {})
+            return {
+                "kind": "conversation",
+                "title": str(latest.get("title") or latest.get("id") or "conversation"),
+                "detail": str(last_message.get("content") or "")[:240],
+                "source": "conversation",
+                "score": 1.0,
+            }
+
+        if graph_concepts > 0:
+            return {
+                "kind": "graph",
+                "title": "Knowledge Graph",
+                "detail": f"{graph_concepts} graph concepts are ready to inspect.",
+                "source": "graph",
+                "score": 1.0,
+            }
+
+        return {
+            "kind": "empty",
+            "title": "",
+            "detail": "",
+            "source": "none",
+            "score": 0,
+            "empty": durable_items <= 0,
+        }
+
+    @staticmethod
+    def _brain_brief_actions(
+        *,
+        state: str,
+        has_durable_evidence: bool,
+        has_recall: bool,
+        graph_concepts: int,
+    ) -> List[Dict[str, Any]]:
+        actions: List[Dict[str, Any]] = []
+        if not has_durable_evidence:
+            actions.extend([
+                {
+                    "id": "add_source",
+                    "label_key": "brain.brief.action.add",
+                    "detail_key": "brain.brief.action.add.detail",
+                    "route": "/capture",
+                    "priority": 10,
+                },
+                {
+                    "id": "ask_brain",
+                    "label_key": "brain.brief.action.ask",
+                    "detail_key": "brain.brief.action.ask.detail",
+                    "route": "",
+                    "priority": 9,
+                },
+            ])
+        else:
+            actions.append({
+                "id": "ask_brain",
+                "label_key": "brain.brief.action.ask",
+                "detail_key": "brain.brief.action.ask.detail",
+                "route": "",
+                "priority": 10,
+            })
+            if graph_concepts > 0 or state == "alive":
+                actions.append({
+                    "id": "inspect_topics",
+                    "label_key": "brain.brief.action.topics",
+                    "detail_key": "brain.brief.action.topics.detail",
+                    "route": "/knowledge-graph",
+                    "priority": 8,
+                })
+            if has_recall:
+                actions.append({
+                    "id": "verify_model",
+                    "label_key": "brain.brief.action.verify",
+                    "detail_key": "brain.brief.action.verify.detail",
+                    "route": "",
+                    "priority": 7,
+                })
+            actions.append({
+                "id": "backup_brain",
+                "label_key": "brain.brief.action.backup",
+                "detail_key": "brain.brief.action.backup.detail",
+                "route": "/settings",
+                "priority": 6,
+            })
+        return sorted(actions, key=lambda item: int(item.get("priority") or 0), reverse=True)[:4]
+
     def brain_proof(
         self,
         *,

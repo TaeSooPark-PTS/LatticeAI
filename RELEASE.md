@@ -7,6 +7,39 @@
 > PyPI / npm / VS Code Marketplace / Open VSX 배포는 아래 수동 절차로만
 > 진행합니다. 태그 생성은 패키지 스토어 publish를 자동으로 트리거하지 않습니다.
 
+## v8.2.0 — Brain Brief (2026-06-27)
+
+8.2.0 adds an evidence-backed Brain Brief to the default Brain Home. Instead of
+making the user infer readiness from scattered panels, the home screen now shows
+what to notice, which real memory/graph signals support it, and the easiest next
+action.
+
+### Added
+- Added `MemoryService.brain_brief()` and `/api/memory/brain-brief` so the Brain
+  home briefing is generated from real workspace, conversation, graph, vector,
+  and source-health data.
+- Added a Brain Brief panel to the centered Brain Home with a focus item,
+  evidence counters, and direct actions for adding sources, asking, inspecting
+  graph links, verifying model-independent proof, and managing backups.
+- Added unit coverage for empty Brain guidance, recall-backed Brain Briefs, and
+  the API endpoint.
+
+### Changed
+- Completed another runtime extraction pass by keeping model loading/server
+  engine bodies in `model_loading.py` / `model_engines.py` behind compatibility
+  delegations.
+- Moved WorkspaceOS graph trace, run, skill, and snapshot comparison ownership
+  into focused manager modules while preserving the store facade.
+- Synchronized package/runtime/static/Tauri metadata, readiness targets, and
+  current-release docs to 8.2.0.
+
+Expected artifacts (exact 8.2.0 names only):
+- dist/ltcai-8.2.0-py3-none-any.whl
+- dist/ltcai-8.2.0.tar.gz
+- dist/ltcai-8.2.0.vsix
+- ltcai-8.2.0.tgz
+- src-tauri/target/release/bundle/dmg/Lattice AI_8.2.0_aarch64.dmg
+
 ## v8.1.0 — Intuitive Brain Home (2026-06-27)
 
 8.1.0 turns the default Brain surface from a dashboard-like status panel into a

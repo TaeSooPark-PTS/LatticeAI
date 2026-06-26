@@ -9,7 +9,7 @@ from lattice_brain.runtime.agent_runtime import AgentRuntime
 def test_v76_architecture_review_items_are_machine_checkable():
     report = architecture_readiness(Path(__file__).resolve().parents[2])
     assert report["status"] == "complete"
-    assert report["version_target"] == "8.1.0"
+    assert report["version_target"] == "8.2.0"
     assert report["contract"]["schema_version"] == "lattice-architecture-contract/v1"
     assert report["contract"]["refactoring_order"][:4] == [
         "agent-runtime",

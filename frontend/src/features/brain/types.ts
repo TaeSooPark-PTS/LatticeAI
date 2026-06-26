@@ -103,6 +103,39 @@ export type BrainProof = {
   };
 };
 
+export type BrainBriefAction = {
+  id: "add_source" | "ask_brain" | "inspect_topics" | "verify_model" | "backup_brain" | string;
+  labelKey: string;
+  detailKey: string;
+  route: string;
+  priority: number;
+};
+
+export type BrainBriefEvidence = {
+  id: string;
+  labelKey: string;
+  value: number;
+  detailKey: string;
+};
+
+export type BrainBrief = {
+  status: "quiet" | "forming" | "alive" | string;
+  score: number;
+  headlineKey: string;
+  bodyKey: string;
+  focus: {
+    kind: string;
+    title: string;
+    detail: string;
+    source: string;
+    score: number;
+    empty: boolean;
+  };
+  nextActions: BrainBriefAction[];
+  evidence: BrainBriefEvidence[];
+  generatedAt: string;
+};
+
 export type IngestionSourceType = "file" | "folder" | "note" | "web";
 
 export type IngestionPipelineStage =

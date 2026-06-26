@@ -1,6 +1,6 @@
 # Why Lattice AI Exists
 
-Current release: **8.1.0 - Intuitive Brain Home**.
+Current release: **8.2.0 - Brain Brief**.
 
 **Lattice AI is a local-first Digital Brain that keeps your knowledge durable
 across any AI model.**
@@ -32,9 +32,9 @@ The graph matters, but it is not the product identity. The product identity is a
 local-first Digital Brain: a place where the user can talk, add sources, watch
 memory grow, and inspect the Knowledge Graph when they need proof.
 
-In 8.1.0 the first screen is intentionally not a dashboard. The living Brain,
-recent memory, connected topic, next action, and conversation composer appear
-together so the user immediately knows what to do.
+In 8.2.0 the first screen is intentionally not a dashboard. The living Brain,
+conversation composer, and evidence-backed Brain Brief appear together so the
+user immediately knows what matters and what to do next.
 
 ## Practical Reasons To Use It
 

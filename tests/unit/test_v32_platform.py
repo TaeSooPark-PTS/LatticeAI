@@ -221,6 +221,48 @@ def test_memory_brain_proof_empty_brain_keeps_capability_but_no_proof(tmp_path):
     assert proof["recall"]["items"] == []
 
 
+def test_memory_brain_brief_guides_empty_brain_without_overclaim(tmp_path):
+    svc = MemoryService(store=_FakeStore(), data_dir=tmp_path, knowledge_graph=None, enable_graph=False)
+
+    brief = svc.brain_brief(user_email="user@example.com", workspace_id="personal")
+
+    assert brief["focus"]["kind"] == "empty"
+    assert brief["focus"]["empty"] is True
+    assert brief["evidence"][0]["id"] == "durable"
+    assert brief["evidence"][0]["value"] == 0
+    assert [action["id"] for action in brief["next_actions"][:2]] == ["add_source", "ask_brain"]
+    assert "verify_model" not in {action["id"] for action in brief["next_actions"]}
+
+
+def test_memory_brain_brief_surfaces_recall_and_next_actions(tmp_path):
+    class _FakeKG:
+        def stats(self):
+            return {"nodes": {"concept": 4}, "edges": {"relates": 3}}
+
+        def index_status(self):
+            return {"vector_counts": {"node": 4}}
+
+        def search(self, query, limit):
+            return {"matches": [{"id": "node:alpha", "title": "Alpha plan", "summary": f"{query} graph context"}]}
+
+    store = _FakeStore()
+    store.add("m1", "decisions", "alpha launch decision")
+    svc = MemoryService(store=store, data_dir=tmp_path, knowledge_graph=_FakeKG(), enable_graph=True)
+
+    brief = svc.brain_brief(
+        user_email="user@example.com",
+        workspace_id="personal",
+        active_model="local:model-a",
+        recall_query="alpha",
+    )
+
+    assert brief["focus"]["kind"] == "recall"
+    assert brief["focus"]["title"] in {"decisions", "Alpha plan"}
+    assert brief["evidence"][0]["value"] >= 5
+    assert {action["id"] for action in brief["next_actions"]} >= {"ask_brain", "inspect_topics", "verify_model"}
+    assert brief["proof"]["model_continuity"]["active_model"] == "local:model-a"
+
+
 def test_memory_brain_proof_endpoint_separates_capability_from_proof(tmp_path):
     fastapi = pytest.importorskip("fastapi")
     from fastapi.testclient import TestClient
@@ -248,6 +290,10 @@ def test_memory_brain_proof_endpoint_separates_capability_from_proof(tmp_path):
     assert body["model_continuity"]["capability"] is True
     assert body["model_continuity"]["proven"] is True
     assert body["proofs"]["has_durable_evidence"] is True
+
+    brief = client.get("/api/memory/brain-brief", params={"q": "alpha"}).json()
+    assert brief["focus"]["kind"] == "recall"
+    assert brief["next_actions"][0]["id"] == "ask_brain"
 
 
 def test_memory_brain_proof_default_recall_query_is_workspace_scoped(tmp_path):

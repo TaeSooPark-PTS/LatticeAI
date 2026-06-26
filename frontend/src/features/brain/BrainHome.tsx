@@ -5,7 +5,7 @@ import { type BrainState, triggerBrainRecall } from "@/components/LivingBrain";
 import { useAppStore } from "@/store/appStore";
 import { t } from "@/i18n";
 import { BrainConversation } from "./BrainConversation";
-import { buildBrainProof, buildBrainReadiness, buildMemoryFragments, currentModelName, parseKnowledgeGraph } from "./brainData";
+import { buildBrainBrief, buildBrainProof, buildBrainReadiness, buildMemoryFragments, currentModelName, parseKnowledgeGraph } from "./brainData";
 import {
   INGESTION_STAGE_ORDER,
   type BrainProof,
@@ -66,6 +66,10 @@ export function BrainHome({
     queryKey: ["memoryBrainProof", lastRecallQuery],
     queryFn: () => latticeApi.memoryBrainProof(lastRecallQuery, 3),
   });
+  const brainBriefQ = useQuery({
+    queryKey: ["memoryBrainBrief", lastRecallQuery],
+    queryFn: () => latticeApi.memoryBrainBrief(lastRecallQuery, 3),
+  });
 
   const memoryFragments = React.useMemo(
     () => buildMemoryFragments(memoriesQ.data?.data, historyQ.data?.data),
@@ -84,6 +88,10 @@ export function BrainHome({
   const brainProof = React.useMemo(
     () => buildBrainProof(brainProofQ.data?.data, modelName),
     [brainProofQ.data, modelName],
+  );
+  const brainBrief = React.useMemo(
+    () => buildBrainBrief(brainBriefQ.data?.data),
+    [brainBriefQ.data],
   );
   const starterPrompts = React.useMemo(
     () => [
@@ -308,6 +316,7 @@ export function BrainHome({
       void qc.invalidateQueries({ queryKey: ["memoryManager"] });
       void qc.invalidateQueries({ queryKey: ["graph"] });
       void qc.invalidateQueries({ queryKey: ["memoryBrainProof"] });
+      void qc.invalidateQueries({ queryKey: ["memoryBrainBrief"] });
     }
   }
 
@@ -349,6 +358,7 @@ export function BrainHome({
       void qc.invalidateQueries({ queryKey: ["memoryManager"] });
       void qc.invalidateQueries({ queryKey: ["graph"] });
       void qc.invalidateQueries({ queryKey: ["memoryBrainProof"] });
+      void qc.invalidateQueries({ queryKey: ["memoryBrainBrief"] });
       markAwaitingEmergence("file");
     } finally {
       setUploadingDocument(false);
@@ -417,6 +427,7 @@ export function BrainHome({
       qc.invalidateQueries({ queryKey: ["memoryManager"] }),
       qc.invalidateQueries({ queryKey: ["graph"] }),
       qc.invalidateQueries({ queryKey: ["memoryBrainProof"] }),
+      qc.invalidateQueries({ queryKey: ["memoryBrainBrief"] }),
     ]);
     if (query.trim()) {
       await attachAnswerProof(query);
@@ -462,6 +473,7 @@ export function BrainHome({
         concepts={knowledgeConcepts}
         readiness={brainReadiness}
         proof={brainProof}
+        brief={brainBrief}
         uploadingDocument={uploadingDocument}
         onOpenDepth={openKnowledgeGraph}
         onDraftChange={setDraft}

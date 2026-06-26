@@ -29,6 +29,8 @@ import { LanguageSwitcher } from "@/components/LanguageSwitcher";
 import { t, type Language } from "@/i18n";
 import {
   INGESTION_STAGE_ORDER,
+  type BrainBrief,
+  type BrainBriefAction,
   type BrainDepth,
   type BrainProof,
   type BrainReadiness,
@@ -60,6 +62,7 @@ export function BrainConversation({
   concepts,
   readiness,
   proof,
+  brief,
   uploadingDocument,
   onOpenDepth,
   onDraftChange,
@@ -91,6 +94,7 @@ export function BrainConversation({
   concepts: KnowledgeConcept[];
   readiness: BrainReadiness;
   proof: BrainProof;
+  brief: BrainBrief;
   uploadingDocument: boolean;
   onOpenDepth: (depth: BrainDepth) => void;
   onDraftChange: (value: string) => void;
@@ -220,6 +224,12 @@ export function BrainConversation({
                   </button>
                 ))}
               </div>
+
+              <BrainBriefPanel
+                language={language}
+                brief={brief}
+                onAction={(action) => handleBriefAction(action, onVerifyModelContinuity)}
+              />
             </div>
           )}
 
@@ -286,6 +296,79 @@ export function BrainConversation({
       </div>
     </section>
   );
+}
+
+function handleBriefAction(action: BrainBriefAction, onVerifyModelContinuity: () => void) {
+  if (action.id === "ask_brain") {
+    focusComposer();
+    return;
+  }
+  if (action.id === "verify_model") {
+    onVerifyModelContinuity();
+    return;
+  }
+  if (action.route) {
+    navigateHash(action.route);
+  }
+}
+
+function BrainBriefPanel({
+  language,
+  brief,
+  onAction,
+}: {
+  language: Language;
+  brief: BrainBrief;
+  onAction: (action: BrainBriefAction) => void;
+}) {
+  const focusTitle = brief.focus.title || t(language, "brain.brief.focus.empty");
+  const focusDetail = brief.focus.detail || t(language, "brain.brief.focus.empty.detail");
+  const actions = brief.nextActions.slice(0, 3);
+
+  return (
+    <section className="brain-brief-panel" aria-label={t(language, "brain.brief.aria")}>
+      <div className="brain-brief-copy">
+        <span>{t(language, "brain.brief.kicker")}</span>
+        <strong>{t(language, brief.headlineKey)}</strong>
+        <p>{t(language, brief.bodyKey, { focus: focusTitle })}</p>
+      </div>
+      <div className="brain-brief-focus">
+        <Sparkles className="h-4 w-4" />
+        <div>
+          <span>{t(language, "brain.brief.focus")}</span>
+          <strong>{focusTitle}</strong>
+          <small>{focusDetail}</small>
+        </div>
+      </div>
+      <div className="brain-brief-evidence" aria-label={t(language, "brain.brief.evidence.aria")}>
+        {brief.evidence.slice(0, 3).map((item) => (
+          <span key={item.id} title={t(language, item.detailKey)}>
+            <strong>{item.value}</strong>
+            {t(language, item.labelKey)}
+          </span>
+        ))}
+      </div>
+      {actions.length ? (
+        <div className="brain-brief-actions" aria-label={t(language, "brain.brief.actions")}>
+          {actions.map((action) => (
+            <button key={action.id} type="button" onClick={() => onAction(action)}>
+              {briefActionIcon(action.id)}
+              <span>{t(language, action.labelKey)}</span>
+              <small>{t(language, action.detailKey)}</small>
+            </button>
+          ))}
+        </div>
+      ) : null}
+    </section>
+  );
+}
+
+function briefActionIcon(id: string) {
+  if (id === "add_source") return <FileUp className="h-4 w-4" />;
+  if (id === "inspect_topics") return <Search className="h-4 w-4" />;
+  if (id === "verify_model") return <Repeat2 className="h-4 w-4" />;
+  if (id === "backup_brain") return <HardDrive className="h-4 w-4" />;
+  return <ArrowRight className="h-4 w-4" />;
 }
 
 function BrainFirstScreen({

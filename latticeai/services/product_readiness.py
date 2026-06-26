@@ -1,13 +1,13 @@
-"""Machine-checkable *product* readiness gates for the 8.1 line.
+"""Machine-checkable *product* readiness gates for the 8.2 line.
 
 Where ``architecture_readiness`` proves the internal structure is sound, this
-module answers the product question the 8.1 release exists to settle: *is the
-Brain experience still release-ready after the default surface becomes more
-intuitive?* It does so honestly — every gate is backed by evidence that is
-probed on disk, so a gate only reports ``complete`` when its evidence actually
-resolves. The same report can be printed by ``scripts/product_readiness.py`` and
-re-run after every change, which is the point: completeness is something we keep
-measuring, not a one-time claim.
+module answers the product question the 8.2 release exists to settle: *is the
+Brain experience still release-ready now that the home screen explains what to
+notice and what to do next?* It does so honestly: every gate is backed by
+evidence that is probed on disk, so a gate only reports ``complete`` when its
+evidence actually resolves. The same report can be printed by
+``scripts/product_readiness.py`` and re-run after every change, which is the
+point: completeness is something we keep measuring, not a one-time claim.
 """
 
 from __future__ import annotations
@@ -18,7 +18,7 @@ from typing import Any, Dict, List
 
 from latticeai.services.architecture_readiness import architecture_readiness
 
-PRODUCT_VERSION_TARGET = "8.1.0"
+PRODUCT_VERSION_TARGET = "8.2.0"
 
 
 @dataclass(frozen=True)
@@ -37,6 +37,7 @@ PRODUCT_GATES: List[ProductGate] = [
         evidence=[
             "frontend/src/components/ProductFlow.tsx::WakeBrainScreen",
             "frontend/src/features/brain/BrainConversation.tsx::ProductCommandCenter",
+            "frontend/src/features/brain/BrainConversation.tsx::BrainBriefPanel",
             "frontend/src/features/brain/BrainHome.tsx",
             "auto_setup.py",
             "setup_wizard.py",
@@ -65,10 +66,10 @@ PRODUCT_GATES: List[ProductGate] = [
         evidence=[
             "package.json::release:artifacts",
             "package.json::release:validate",
-            "README.md::dist/ltcai-8.1.0-py3-none-any.whl",
-            "README.md::dist/ltcai-8.1.0.tar.gz",
-            "README.md::dist/ltcai-8.1.0.vsix",
-            "README.md::ltcai-8.1.0.tgz",
+            "README.md::dist/ltcai-8.2.0-py3-none-any.whl",
+            "README.md::dist/ltcai-8.2.0.tar.gz",
+            "README.md::dist/ltcai-8.2.0.vsix",
+            "README.md::ltcai-8.2.0.tgz",
             "scripts/validate_release_artifacts.py",
             "scripts/release_smoke.py",
             "Dockerfile",
@@ -84,12 +85,12 @@ PRODUCT_GATES: List[ProductGate] = [
         title="Release story is documented and honest",
         evidence=[
             "README.md",
-            "README.md::The current release is **8.1.0",
-            "SECURITY.md::8.1.x (latest)",
-            "vscode-extension/README.md::**8.1.0",
-            "docs/CHANGELOG.md::## [8.1.0]",
+            "README.md::The current release is **8.2.0",
+            "SECURITY.md::8.2.x (latest)",
+            "vscode-extension/README.md::**8.2.0",
+            "docs/CHANGELOG.md::## [8.2.0]",
             "FEATURE_STATUS.md",
-            "RELEASE_NOTES_v8.1.0.md",
+            "RELEASE_NOTES_v8.2.0.md",
             "latticeai/core/agent.py::SingleAgentRuntime",
             "latticeai/core/agent.py::AgentRuntime = SingleAgentRuntime",
             "lattice_brain/runtime/contracts.py::runtime-boundary/v1",

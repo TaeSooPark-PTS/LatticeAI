@@ -7322,6 +7322,148 @@ body {
   transform: translateY(-1px);
 }
 
+.brain-brief-panel {
+  width: min(680px, 100%);
+  margin-top: 1rem;
+  padding: 0.85rem;
+  border: 1px solid hsl(var(--border) / 0.55);
+  border-radius: 8px;
+  background: hsl(var(--surface-glass));
+  display: grid;
+  gap: 0.75rem;
+  text-align: left;
+}
+
+.brain-brief-copy {
+  display: grid;
+  gap: 0.25rem;
+}
+
+.brain-brief-copy span,
+.brain-brief-focus span {
+  font-size: 0.68rem;
+  font-weight: 800;
+  text-transform: uppercase;
+  color: hsl(var(--brain-core));
+  letter-spacing: 0.04em;
+}
+
+.brain-brief-copy strong {
+  font-size: 0.98rem;
+  font-weight: 850;
+  color: hsl(var(--fg));
+}
+
+.brain-brief-copy p,
+.brain-brief-focus small,
+.brain-brief-actions small {
+  margin: 0;
+  color: hsl(var(--fg) / 0.62);
+  font-size: 0.78rem;
+  line-height: 1.35;
+}
+
+.brain-brief-focus {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  gap: 0.65rem;
+  align-items: start;
+  padding: 0.7rem;
+  border-radius: 8px;
+  border: 1px solid hsl(var(--border) / 0.38);
+  background: hsl(var(--surface) / 0.45);
+}
+
+.brain-brief-focus svg {
+  color: hsl(var(--brain-core));
+  margin-top: 0.1rem;
+}
+
+.brain-brief-focus div {
+  display: grid;
+  gap: 0.18rem;
+  min-width: 0;
+}
+
+.brain-brief-focus strong {
+  color: hsl(var(--fg));
+  font-size: 0.86rem;
+  overflow-wrap: anywhere;
+}
+
+.brain-brief-evidence,
+.brain-brief-actions {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 0.55rem;
+}
+
+.brain-brief-evidence span {
+  display: grid;
+  gap: 0.12rem;
+  padding: 0.55rem;
+  border-radius: 8px;
+  background: hsl(var(--surface) / 0.4);
+  border: 1px solid hsl(var(--border) / 0.32);
+  color: hsl(var(--fg) / 0.62);
+  font-size: 0.72rem;
+}
+
+.brain-brief-evidence strong {
+  color: hsl(var(--fg));
+  font-size: 0.98rem;
+}
+
+.brain-brief-actions button {
+  min-height: 4.2rem;
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  grid-template-rows: auto auto;
+  column-gap: 0.45rem;
+  row-gap: 0.1rem;
+  align-content: center;
+  padding: 0.65rem;
+  border-radius: 8px;
+  border: 1px solid hsl(var(--border) / 0.45);
+  background: hsl(var(--surface) / 0.5);
+  color: hsl(var(--fg));
+  cursor: pointer;
+  text-align: left;
+  transition: background 0.2s ease, border-color 0.2s ease, transform 0.2s ease;
+}
+
+.brain-brief-actions button:hover {
+  background: hsl(var(--brain-core) / 0.08);
+  border-color: hsl(var(--brain-core) / 0.35);
+  transform: translateY(-1px);
+}
+
+.brain-brief-actions svg {
+  grid-row: 1 / span 2;
+  color: hsl(var(--brain-core));
+  margin-top: 0.08rem;
+}
+
+.brain-brief-actions span {
+  font-size: 0.78rem;
+  font-weight: 800;
+}
+
+@media (max-width: 680px) {
+  .brain-brief-panel {
+    padding: 0.75rem;
+  }
+
+  .brain-brief-evidence,
+  .brain-brief-actions {
+    grid-template-columns: 1fr;
+  }
+
+  .brain-brief-actions button {
+    min-height: 3.7rem;
+  }
+}
+
 /* Onboarding Environment Scan Banner */
 .ritual-scan-banner {
   display: flex;

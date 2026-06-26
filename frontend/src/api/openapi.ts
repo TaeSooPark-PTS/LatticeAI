@@ -790,6 +790,23 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/agents/api/run/preview": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Agent Run Preview */
+        post: operations["agent_run_preview_agents_api_run_preview_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/agents/api/runs": {
         parameters: {
             query?: never;
@@ -1542,6 +1559,23 @@ export interface paths {
          *     Allowed modes: offline · starting · online · degraded · error.
          */
         get: operations["local_agent_status_api_local_agent_status_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/memory/brain-brief": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Brain Brief */
+        get: operations["brain_brief_api_memory_brain_brief_get"];
         put?: never;
         post?: never;
         delete?: never;
@@ -4583,6 +4617,46 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/tools/registry": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Tools Registry
+         * @description Full ToolRegistry contract: handlers, governance, catalog, diagnostics.
+         */
+        get: operations["tools_registry_tools_registry_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/tools/registry/diagnostics": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Tools Registry Diagnostics
+         * @description Small drift check for CI/admin runtime readiness views.
+         */
+        get: operations["tools_registry_diagnostics_tools_registry_diagnostics_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/tools/run_command": {
         parameters: {
             query?: never;
@@ -5744,6 +5818,24 @@ export interface paths {
         put?: never;
         /** Workspace Vscode Send */
         post: operations["workspace_vscode_send_workspace_vscode_send_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/workspace/vscode/status": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Workspace Vscode Status */
+        get: operations["workspace_vscode_status_workspace_vscode_status_get"];
+        put?: never;
+        /** Workspace Vscode Status Update */
+        post: operations["workspace_vscode_status_update_workspace_vscode_status_post"];
         delete?: never;
         options?: never;
         head?: never;
@@ -7559,6 +7651,11 @@ export interface components {
              * @default
              */
             content: string;
+            /**
+             * Extension Version
+             * @default
+             */
+            extension_version: string;
             /** File Path */
             file_path?: string | null;
             /** Language */
@@ -7573,6 +7670,44 @@ export interface components {
              * @default
              */
             selection: string;
+            /**
+             * Workspace Folder
+             * @default
+             */
+            workspace_folder: string;
+        };
+        /** WorkspaceVSCodeStatusRequest */
+        WorkspaceVSCodeStatusRequest: {
+            /**
+             * Active File
+             * @default
+             */
+            active_file: string;
+            /**
+             * Detail
+             * @default
+             */
+            detail: string;
+            /**
+             * Extension Version
+             * @default
+             */
+            extension_version: string;
+            /**
+             * Index Status
+             * @default unknown
+             */
+            index_status: string;
+            /**
+             * Status
+             * @default connected
+             */
+            status: string;
+            /**
+             * Workspace Folder
+             * @default
+             */
+            workspace_folder: string;
         };
         /** WorkspaceWorkflowEventRequest */
         WorkspaceWorkflowEventRequest: {
@@ -8994,6 +9129,39 @@ export interface operations {
             };
         };
     };
+    agent_run_preview_agents_api_run_preview_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["AgentRunRequest"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": unknown;
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
     agent_runs_agents_api_runs_get: {
         parameters: {
             query?: never;
@@ -10352,6 +10520,38 @@ export interface operations {
                 };
                 content: {
                     "application/json": unknown;
+                };
+            };
+        };
+    };
+    brain_brief_api_memory_brain_brief_get: {
+        parameters: {
+            query?: {
+                q?: string;
+                limit?: number;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": unknown;
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
                 };
             };
         };
@@ -15559,6 +15759,46 @@ export interface operations {
             };
         };
     };
+    tools_registry_tools_registry_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": unknown;
+                };
+            };
+        };
+    };
+    tools_registry_diagnostics_tools_registry_diagnostics_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": unknown;
+                };
+            };
+        };
+    };
     tools_run_command_tools_run_command_post: {
         parameters: {
             query?: never;
@@ -17767,6 +18007,59 @@ export interface operations {
         requestBody: {
             content: {
                 "application/json": components["schemas"]["WorkspaceVSCodeRequest"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": unknown;
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    workspace_vscode_status_workspace_vscode_status_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": unknown;
+                };
+            };
+        };
+    };
+    workspace_vscode_status_update_workspace_vscode_status_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["WorkspaceVSCodeStatusRequest"];
             };
         };
         responses: {
