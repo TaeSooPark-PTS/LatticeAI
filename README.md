@@ -1,6 +1,6 @@
 # Lattice AI
 
-**Lattice AI 8.3.0 is the local-first Digital Brain platform with managed legacy compatibility, stronger AgentRuntime/workflow orchestration, and graph ingestion coverage that keeps workspace memory isolated.**
+**Lattice AI 8.4.0 is the local-first Digital Brain platform with action-aware Brain Chat that creates files through the governed AgentRuntime instead of only returning code.**
 
 **Lattice AI는 모델이 바뀌어도 내 지식과 맥락을 보존하는 로컬 우선 AI 브레인입니다.**
 
@@ -11,7 +11,7 @@ downloads, update checks, and other external communication happen only after
 explicit consent.
 
 It is not a ChatGPT clone, a model launcher, a graph database, or a note app.
-It is the finished private AI memory layer wrapped in a Living Brain experience — now with an 8.3.0 product-readiness contract behind onboarding, orchestration, graph ingestion, and the plugin/community path.
+It is the finished private AI memory layer wrapped in a Living Brain experience — now with an 8.4.0 action-readiness contract behind chat-to-agent file creation, onboarding, orchestration, graph ingestion, and the plugin/community path.
 
 [![PyPI Version](https://img.shields.io/pypi/v/ltcai?label=PyPI)](https://pypi.org/project/ltcai/)
 [![npm Version](https://img.shields.io/npm/v/ltcai?label=npm)](https://www.npmjs.com/package/ltcai)
@@ -204,27 +204,32 @@ See [docs/DEVELOPMENT.md](docs/DEVELOPMENT.md) for developer workflow details.
 
 ## Current Release
 
-The current release is **8.3.0 — Orchestrated Brain Readiness**:
+The current release is **8.4.0 — Action-Aware Brain Chat**:
 
-- Legacy compatibility is now tracked as a managed inventory in `latticeai.core.legacy_compatibility`, so root shims have owners, replacements, and removal phases instead of living as hidden debt.
-- AgentRuntime and workflow orchestration expose clearer lifecycle/config boundaries while preserving compatibility for legacy run records.
-- `/knowledge-graph/ingest` now routes through the unified ingestion pipeline when available, giving MCP/note/message writes the same provenance and hook lifecycle as files and browser sources.
-- Graph ingestion now keeps duplicate content isolated per workspace, avoiding cross-workspace metadata overwrites while preserving content-hash duplicate detection.
-- Upload failures surface honest client errors, and upload-to-KG behavior is covered by integration-style unit tests.
-- Onboarding, community, plugin, and release docs now define the five-minute first-run path and ecosystem growth path for 8.3.0.
+- Brain Chat now routes explicit file create/write/save/edit requests through
+  the governed AgentRuntime instead of treating them as ordinary prose
+  generation.
+- Requests such as `hello.md 파일 만들어줘` are executed through
+  `write_file`/`edit_file` style tool paths, and created artifacts are returned
+  in the chat response.
+- Normal Q&A stays on the low-friction `/chat` generation path; only explicit
+  side-effect requests move into the tool-running agent loop.
+- The release keeps the 8.3.0 managed legacy inventory, AgentRuntime/workflow
+  boundaries, unified graph ingestion, and workspace-safe duplicate content
+  protections active.
 
-Expected artifacts for 8.3.0 release must use exact filenames:
+Expected artifacts for 8.4.0 release must use exact filenames:
 
-- `dist/ltcai-8.3.0-py3-none-any.whl`
-- `dist/ltcai-8.3.0.tar.gz`
-- `ltcai-8.3.0.tgz`
-- `dist/ltcai-8.3.0.vsix`
-- `src-tauri/target/release/bundle/dmg/Lattice AI_8.3.0_aarch64.dmg`
+- `dist/ltcai-8.4.0-py3-none-any.whl`
+- `dist/ltcai-8.4.0.tar.gz`
+- `ltcai-8.4.0.tgz`
+- `dist/ltcai-8.4.0.vsix`
+- `src-tauri/target/release/bundle/dmg/Lattice AI_8.4.0_aarch64.dmg`
 
 Do not use wildcard artifact uploads. Package registry publishing remains owner-run.
 
 See [docs/ROADMAP_RECOMMENDATIONS.md](docs/ROADMAP_RECOMMENDATIONS.md) for the
-strategic roadmap slices applied through 8.3.0 and the follow-up tracks.
+strategic roadmap slices applied through 8.4.0 and the follow-up tracks.
 
 ## Known Limitations
 
@@ -241,6 +246,7 @@ strategic roadmap slices applied through 8.3.0 and the follow-up tracks.
 
 | Version | Theme |
 | --- | --- |
+| 8.4.0 | Action-Aware Brain Chat: explicit file create/write/save/edit requests from Brain Chat route into the governed AgentRuntime so files are actually created instead of returned as code-only answers |
 | 8.3.0 | Orchestrated Brain Readiness: managed legacy shim inventory, stronger AgentRuntime/workflow boundaries, unified graph ingestion, workspace-safe duplicate content, first-run onboarding, and explicit community/plugin growth path |
 | 8.2.0 | Brain Brief: evidence-backed home briefing, honest empty-state guidance, recall/graph/model-proof next actions, and continued model/workspace runtime extraction |
 | 8.1.0 | Intuitive Brain Home: living Brain, recent memory, connected topic, next action, and composer are visible in one product-first screen with refreshed 8.1.0 evidence and artifacts |

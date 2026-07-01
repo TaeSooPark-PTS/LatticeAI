@@ -6,6 +6,22 @@ existed at that release.
 
 ## [Unreleased]
 
+No unreleased changes.
+
+## [8.4.0] - 2026-07-01
+
+### Added
+- Added a chat-to-agent file action gate so explicit file create/write/save/edit
+  requests from Brain Chat execute through the governed AgentRuntime.
+- Added regression coverage that verifies `/chat` routes file creation intent to
+  AgentRuntime and returns created artifact metadata.
+
+### Changed
+- Kept ordinary Q&A on `/chat` while routing only explicit side-effect file
+  requests into the planner/executor/reviewer tool loop.
+- Synchronized package/runtime/static/Tauri metadata and current-release docs to
+  8.4.0.
+
 ### Fixed
 - Restored model loading dependency exports after the runtime/loading split so
   `/models/load` can prepare local MLX models again.

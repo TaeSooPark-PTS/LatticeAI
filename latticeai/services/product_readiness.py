@@ -1,7 +1,7 @@
-"""Machine-checkable *product* readiness gates for the 8.3 line.
+"""Machine-checkable *product* readiness gates for the 8.4 line.
 
 Where ``architecture_readiness`` proves the internal structure is sound, this
-module answers the product question the 8.3 release exists to settle: *does the
+module answers the product question the 8.4 release exists to settle: *does the
 app now feel like a finished product rather than only a strong framework?*
 It does so honestly: every gate is backed by
 evidence that is probed on disk, so a gate only reports ``complete`` when its
@@ -18,7 +18,7 @@ from typing import Any, Dict, List
 
 from latticeai.services.architecture_readiness import architecture_readiness
 
-PRODUCT_VERSION_TARGET = "8.3.0"
+PRODUCT_VERSION_TARGET = "8.4.0"
 
 
 @dataclass(frozen=True)
@@ -53,6 +53,15 @@ PRODUCT_GATES: List[ProductGate] = [
         ],
     ),
     ProductGate(
+        id="action-aware-chat",
+        title="File action requests create artifacts instead of code-only answers",
+        evidence=[
+            "latticeai/api/chat.py::is_file_action_request",
+            "latticeai/api/chat.py::routed_to_agent",
+            "tests/unit/test_chat_telegram_decoupling.py::test_chat_file_creation_intent_routes_to_agent_runtime",
+        ],
+    ),
+    ProductGate(
         id="local-first-trust",
         title="Local-first privacy is stated and bounded",
         evidence=[
@@ -67,10 +76,10 @@ PRODUCT_GATES: List[ProductGate] = [
         evidence=[
             "package.json::release:artifacts",
             "package.json::release:validate",
-            "README.md::dist/ltcai-8.3.0-py3-none-any.whl",
-            "README.md::dist/ltcai-8.3.0.tar.gz",
-            "README.md::dist/ltcai-8.3.0.vsix",
-            "README.md::ltcai-8.3.0.tgz",
+            "README.md::dist/ltcai-8.4.0-py3-none-any.whl",
+            "README.md::dist/ltcai-8.4.0.tar.gz",
+            "README.md::dist/ltcai-8.4.0.vsix",
+            "README.md::ltcai-8.4.0.tgz",
             "scripts/validate_release_artifacts.py",
             "scripts/release_smoke.py",
             "Dockerfile",
@@ -86,12 +95,12 @@ PRODUCT_GATES: List[ProductGate] = [
         title="Release story is documented and honest",
         evidence=[
             "README.md",
-            "README.md::The current release is **8.3.0",
-            "SECURITY.md::8.3.x (latest)",
-            "vscode-extension/README.md::**8.3.0",
-            "docs/CHANGELOG.md::## [8.3.0]",
+            "README.md::The current release is **8.4.0",
+            "SECURITY.md::8.4.x (latest)",
+            "vscode-extension/README.md::**8.4.0",
+            "docs/CHANGELOG.md::## [8.4.0]",
             "FEATURE_STATUS.md",
-            "RELEASE_NOTES_v8.3.0.md",
+            "RELEASE_NOTES_v8.4.0.md",
             "latticeai/core/agent.py::SingleAgentRuntime",
             "latticeai/core/agent.py::AgentRuntime = SingleAgentRuntime",
             "lattice_brain/runtime/contracts.py::runtime-boundary/v1",
@@ -106,7 +115,7 @@ PRODUCT_GATES: List[ProductGate] = [
         id="ecosystem-path",
         title="Community and plugin growth path is explicit",
         evidence=[
-            "docs/COMMUNITY_AND_PLUGINS.md::LatticeAI 8.3.0",
+            "docs/COMMUNITY_AND_PLUGINS.md::LatticeAI 8.4.0",
             "docs/PLUGIN_SDK.md",
             "plugins/README.md",
             "plugins/hello-world/plugin.json",

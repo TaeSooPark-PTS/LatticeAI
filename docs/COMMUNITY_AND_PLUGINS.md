@@ -1,8 +1,8 @@
 # Community And Plugins
 
-Current release: **8.3.0 - Orchestrated Brain Readiness**.
+Current release: **8.4.0 - Action-Aware Brain Chat**.
 
-LatticeAI 8.3.0 defines the path from a strong local-first framework to a
+LatticeAI 8.4.0 defines the path from a strong local-first framework to a
 product ecosystem. The immediate goal is small and practical: make it clear how
 contributors can extend the Brain without weakening local-first trust,
 workspace scoping, or release quality.
@@ -34,7 +34,7 @@ Plugins should add one bounded capability at a time:
 - Compatibility requirements belong in `lattice_version`, and examples should
   use current host-compatible values.
 
-## 8.3.0 Ecosystem Tasks
+## 8.4.0 Ecosystem Tasks
 
 - Keep the hello-world plugin valid and boring.
 - Expand examples only when they exercise real extension seams.

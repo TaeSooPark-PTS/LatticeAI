@@ -123,6 +123,50 @@ def is_current_url_request(text: str) -> bool:
 def is_clear_command(text: str) -> bool:
     return (text or "").strip().lower() in {"/clear", "/clear_all"}
 
+_FILE_TARGET_RE = re.compile(
+    r"(?<![\w.-])(?:[~./\\]?[\w .@()+-]+[\\/])*[\w .@()+-]+"
+    r"\.(?:py|js|jsx|ts|tsx|md|markdown|txt|json|yaml|yml|toml|html|css|csv|xml|pdf|docx|xlsx|pptx|sh|sql)",
+    re.IGNORECASE,
+)
+
+
+def is_file_action_request(text: str) -> bool:
+    """Return True for chat requests that should execute file tools, not prose.
+
+    The Brain chat composer posts to ``/chat``. Without this gate, explicit
+    side-effect requests such as "create hello.md" are handled as plain model
+    generation, which commonly produces a code block instead of a real file.
+    Keep the gate narrow so normal Q&A and "how do I create a file?" stay in
+    ordinary chat.
+    """
+    raw = (text or "").strip()
+    if not raw:
+        return False
+    lower = raw.lower()
+
+    if any(phrase in lower for phrase in (
+        "how to ", "how do i ", "방법", "어떻게", "예시", "sample", "example",
+    )) and not any(phrase in lower for phrase in (
+        "actually create", "real file", "실제로", "파일로", "저장해", "만들어",
+    )):
+        return False
+
+    has_target = bool(_FILE_TARGET_RE.search(raw))
+    has_file_word = any(word in lower for word in (
+        "file", "파일", "문서", "artifact", "아티팩트", "save as", "저장",
+    ))
+    has_action = any(word in lower for word in (
+        "create", "make", "write", "save", "generate", "edit", "update",
+        "만들", "생성", "작성", "저장", "수정", "써줘", "만들어줘",
+    ))
+
+    if not has_action:
+        return False
+    if has_target and has_action:
+        return True
+    return has_file_word and has_action
+
+
 def format_network_status(info: Dict) -> str:
     lines = [
         f"내부 IP: {info.get('local_ip') or '확인 안 됨'}",
@@ -425,6 +469,34 @@ def create_chat_router(context: AppContext) -> APIRouter:
             if req.model not in router.loaded_model_ids:
                 raise HTTPException(status_code=404, detail=f"Model '{req.model}' not loaded.")
             router.switch_model(req.model)
+
+        if is_file_action_request(req.message):
+            agent_req = AgentRequest(
+                message=req.message,
+                conversation_id=req.conversation_id,
+                source=req.source or "web",
+                max_steps=25,
+                temperature=min(req.temperature, 0.2),
+                user_email=effective_email,
+                user_nickname=req.user_nickname,
+                workspace_id=workspace_scope_from_request(request),
+            )
+            result = await agent(agent_req, request)
+            answer = str(result.get("response") or "파일 작업을 처리했습니다.")
+            notify_chat_message("user", req.message, req.source)
+            notify_chat_message("assistant", answer, req.source)
+            result["routed_to_agent"] = True
+            if req.stream:
+                async def _stream_agent_result():
+                    yield f"data: {json.dumps({'chunk': answer, 'model': router.current_model_id, 'agent': result}, ensure_ascii=False)}\n\n"
+                    yield f"data: {json.dumps({'chunk': '', 'model': router.current_model_id, 'agent': result}, ensure_ascii=False)}\n\n"
+                    yield "data: [DONE]\n\n"
+                return StreamingResponse(
+                    _stream_agent_result(),
+                    media_type="text/event-stream",
+                    headers={"X-Model": router.current_model_id, "X-Routed-To": "agent"},
+                )
+            return JSONResponse(content=result)
     
         lang = detect_language(req.message)
         context = f"[LANGUAGE: {_LANG_HINT[lang]}]\n" + (req.context or "")

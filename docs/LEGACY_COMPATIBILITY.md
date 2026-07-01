@@ -1,14 +1,14 @@
 # Legacy Compatibility Map
 
-Current release: **8.3.0 - Orchestrated Brain Readiness**.
+Current release: **8.4.0 - Action-Aware Brain Chat**.
 
 Lattice AI is moving toward a smaller, modular architecture centered on
 `lattice_brain`, `latticeai.services`, `latticeai.api`, and `latticeai.runtime`.
 Some root-level modules remain packaged for compatibility with older imports,
 CLI entrypoints, or extension workflows. Their presence does not define the
-current 8.3.0 architecture.
+current 8.4.0 architecture.
 
-8.3.0 also tracks the inner compatibility layers that sit below the root
+8.4.0 also tracks the inner compatibility layers that sit below the root
 modules. The managed inventory lives in `latticeai.core.legacy_compatibility`
 and groups shims by layer:
 

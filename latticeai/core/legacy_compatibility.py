@@ -1,7 +1,7 @@
 """Managed legacy compatibility surface for legacy import shims.
 
 Compatibility modules are intentionally still present for old scripts, VS Code
-extension paths, historical integrations, and pre-graph-package imports. 8.3.0
+extension paths, historical integrations, and pre-graph-package imports. 8.4.0
 stops treating them as vague technical debt: every tracked shim has an owner,
 migration target, removal phase, and replacement import that can be surfaced in
 docs and tests.
@@ -14,7 +14,7 @@ from pathlib import Path
 from typing import Any, Dict, List
 
 
-LEGACY_COMPATIBILITY_VERSION = "8.3.0"
+LEGACY_COMPATIBILITY_VERSION = "8.4.0"
 
 
 @dataclass(frozen=True)

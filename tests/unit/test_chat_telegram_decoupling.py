@@ -19,6 +19,7 @@ from fastapi import FastAPI
 from fastapi.testclient import TestClient
 
 from latticeai.api.chat import create_chat_router
+from latticeai.core.agent import AgentState
 from latticeai.services.app_context import AppContext
 
 REPO_ROOT = Path(__file__).resolve().parents[2]
@@ -49,11 +50,12 @@ def _chat_app(
     *,
     on_chat_message=None,
     chat_agent_runtime=None,
+    model_router=None,
 ) -> FastAPI:
     app = FastAPI()
     context = AppContext(
         config=SimpleNamespace(is_public=False, auto_read_chat_paths=False),
-        model_router=SimpleNamespace(
+        model_router=model_router or SimpleNamespace(
             current_model_id=None,
             loaded_model_ids=[],
             generate_as=lambda *_args, **_kwargs: "",
@@ -167,3 +169,55 @@ def test_injected_chat_agent_runtime_skips_router_construction(tmp_path: Path, m
     )
 
     assert response.status_code == 200
+
+
+def test_chat_file_creation_intent_routes_to_agent_runtime(tmp_path: Path):
+    class FakeAgentRuntime:
+        def __init__(self):
+            self.used = False
+
+        async def plan(self, ctx, req, lang_hint, current_user, model_id=None):
+            self.used = True
+            ctx.plan = {
+                "goal": req.message,
+                "steps": [{"action": "write_file"}],
+                "requires_approval": False,
+            }
+            ctx.state = AgentState.WAITING_APPROVAL
+
+        def approve(self, ctx, current_user):
+            ctx.state = AgentState.EXECUTING
+
+        async def run_to_completion(self, ctx, req, lang_hint, current_user, max_steps, max_retry):
+            ctx.transcript.append({
+                "state": AgentState.EXECUTING.value,
+                "action": "write_file",
+                "args": {"path": "hello.txt", "content": "hi"},
+                "result": {"success": True, "path": "hello.txt", "bytes": 2},
+            })
+            ctx.final_message = "hello.txt 파일을 만들었습니다."
+            ctx.state = AgentState.DONE
+
+        async def memory_update(self, ctx, req, current_user):
+            return None
+
+    runtime = FakeAgentRuntime()
+    router = SimpleNamespace(
+        current_model_id="local-model",
+        loaded_model_ids=["local-model"],
+        generate_as=lambda *_args, **_kwargs: "",
+        generate=lambda *_args, **_kwargs: "",
+    )
+    app = _chat_app(tmp_path, [], chat_agent_runtime=runtime, model_router=router)
+
+    response = TestClient(app).post(
+        "/chat",
+        json={"message": "hello.txt 파일 만들어줘. 내용은 hi", "stream": False},
+    )
+
+    assert response.status_code == 200
+    payload = response.json()
+    assert runtime.used is True
+    assert payload["routed_to_agent"] is True
+    assert payload["status"] == "ok"
+    assert payload["created_files"][0]["path"] == "hello.txt"

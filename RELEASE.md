@@ -7,6 +7,33 @@
 > PyPI / npm / VS Code Marketplace / Open VSX 배포는 아래 수동 절차로만
 > 진행합니다. 태그 생성은 패키지 스토어 publish를 자동으로 트리거하지 않습니다.
 
+## v8.4.0 — Action-Aware Brain Chat (2026-07-01)
+
+8.4.0 closes the gap between asking the Brain to create a file and seeing a
+real artifact appear. Explicit create/write/save/edit file requests from the
+Brain Chat route are now routed into the governed AgentRuntime tool loop instead
+of plain model generation, so the same composer can answer questions or perform
+workspace file actions.
+
+### Added
+- Added a `/chat` file-action intent gate for explicit file creation, editing,
+  saving, and artifact requests.
+- Added regression coverage proving file creation requests from chat route into
+  AgentRuntime and return `created_files`.
+
+### Changed
+- Kept normal Q&A on the direct chat generation path while routing only explicit
+  side-effect file requests to the existing planner/executor/reviewer agent.
+- Synchronized package/runtime/static/Tauri metadata and current-release docs to
+  8.4.0.
+
+Expected artifacts (exact 8.4.0 names only):
+- dist/ltcai-8.4.0-py3-none-any.whl
+- dist/ltcai-8.4.0.tar.gz
+- dist/ltcai-8.4.0.vsix
+- ltcai-8.4.0.tgz
+- src-tauri/target/release/bundle/dmg/Lattice AI_8.4.0_aarch64.dmg
+
 ## v8.3.0 — Orchestrated Brain Readiness (2026-07-01)
 
 8.3.0 turns the architecture and product polish backlog into measured release
