@@ -49,6 +49,7 @@ class TriggerService:
         clock: Callable[[], float] = time.time,
         tick_seconds: float = DEFAULT_TICK_SECONDS,
         review_sink: Optional[Any] = None,
+        tz_name: Optional[str] = None,
     ) -> None:
         self._store = store
         self._run_workflow = run_workflow
@@ -63,7 +64,8 @@ class TriggerService:
         self._lock = threading.Lock()
         # LATTICE_TZ: wall-clock / display 용. interval 계산은 여전히 unix seconds (duration 기반, drift 방지).
         # describe()와 이벤트에 tz 정보 노출. calendar "daily at HH:MM" semantics 는 추후 cron 확장 시 사용.
-        self._tz_name = os.environ.get("LATTICE_TZ") or "UTC"
+        # Prefer explicit tz_name (from Config) for DI; fall back to env for legacy/compat.
+        self._tz_name = (tz_name or os.environ.get("LATTICE_TZ") or "UTC").strip() or "UTC"
         self._tz = None
         if ZoneInfo is not None:
             try:

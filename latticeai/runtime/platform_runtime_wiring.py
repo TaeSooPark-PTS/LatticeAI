@@ -7,7 +7,7 @@ surface without changing router order or the legacy exported runtime names.
 
 from __future__ import annotations
 
-from typing import Any, Callable, Dict
+from typing import Any, Callable, Dict, Optional
 
 
 def build_platform_automation_runtime(
@@ -24,6 +24,7 @@ def build_platform_automation_runtime(
     agent_registry: Any,
     data_dir: Any,
     append_audit_event: Callable[..., Any],
+    tz_name: Optional[str] = None,
 ) -> Dict[str, Any]:
     """Build platform services, automation services, and hook bindings.
 
@@ -73,6 +74,7 @@ def build_platform_automation_runtime(
         workspace_graph=workspace_graph,
         append_audit_event=append_audit_event,
         hooks=hooks,
+        tz_name=tz_name,
     )
 
     return {

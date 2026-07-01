@@ -7,6 +7,30 @@
 > PyPI / npm / VS Code Marketplace / Open VSX 배포는 아래 수동 절차로만
 > 진행합니다. 태그 생성은 패키지 스토어 publish를 자동으로 트리거하지 않습니다.
 
+## v8.5.0 — Tool Registry Readiness & Config DI (2026-07-01)
+
+Full codebase scan for architectural debt, code smells, and improvement opportunities (per AGENTS.md priorities and rules). Targeted improvements implemented without breaking public behavior or legacy compatibility.
+
+### Added
+- Made ToolRegistry fully aligned: added governance + description for `vision_analyze`; diagnostics now report `ready: true` with no handler/governance mismatches.
+- Propagated `tz_name` (from central `Config`) into `TriggerService` via `build_automation_runtime` / platform wiring — advances Config centralization and explicit DI for automation layer.
+
+### Changed
+- Updated TriggerService, automation_runtime, platform_runtime_wiring and call sites in app_factory to accept and forward `tz_name` for Config-driven construction (env fallback preserved for compatibility).
+- Synchronized version metadata and all current-release documentation to 8.5.0.
+- Performed full scan: identified large modules, legacy globals, registry drift, and DI gaps; addressed highest-leverage safe changes.
+
+### Fixed
+- ToolRegistry drift between handlers, governance, and descriptions (vision_analyze was implemented in tools/ but missing from central registry policy surface).
+- Minor: timezone was only read via os.environ inside TriggerService instead of flowing from the Config seam.
+
+Expected artifacts (exact 8.5.0 names only):
+- `dist/ltcai-8.5.0-py3-none-any.whl`
+- `dist/ltcai-8.5.0.tar.gz`
+- `dist/ltcai-8.5.0.vsix`
+- `ltcai-8.5.0.tgz`
+- `src-tauri/target/release/bundle/dmg/Lattice AI_8.5.0_aarch64.dmg`
+
 ## v8.4.0 — Action-Aware Brain Chat (2026-07-01)
 
 8.4.0 closes the gap between asking the Brain to create a file and seeing a

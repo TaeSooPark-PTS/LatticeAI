@@ -1,6 +1,6 @@
-# Lattice AI Feature Status (v8.4.0)
+# Lattice AI Feature Status (v8.5.0)
 
-Current release: **8.4.0 - Action-Aware Brain Chat**.
+Current release: **8.5.0 — Tool Registry Readiness & Config DI**.
 
 This file describes the current product state and known limitations. Historical
 change history is intentionally limited to 7.0.0-8.4.0 in `RELEASE.md` and

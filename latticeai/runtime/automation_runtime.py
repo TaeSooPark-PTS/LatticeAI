@@ -6,7 +6,7 @@ Router registration remains in ``app_factory`` so route order stays unchanged.
 
 from __future__ import annotations
 
-from typing import Any, Callable, Dict
+from typing import Any, Callable, Dict, Optional
 
 
 def build_automation_runtime(
@@ -17,6 +17,7 @@ def build_automation_runtime(
     workspace_graph: Callable[..., Any],
     append_audit_event: Callable[..., Any],
     hooks: Any,
+    tz_name: Optional[str] = None,
 ) -> Dict[str, Any]:
     """Construct automation services and attach the run executor boundary."""
 
@@ -37,6 +38,7 @@ def build_automation_runtime(
         ),
         data_dir=data_dir,
         review_sink=review_queue,
+        tz_name=tz_name,
     )
     agent_runtime = AgentRuntime(
         store=store,

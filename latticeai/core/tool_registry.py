@@ -180,6 +180,7 @@ TOOL_GOVERNANCE: Dict[str, ToolPolicy] = {
         risk="exec", destructive=False, shell=False, network=True,
         auto_approve=False, sandbox="system", rollback="none",
     ),
+    "vision_analyze": _r(sandbox="system"),
 }
 
 TOOL_GOVERNANCE_DEFAULT = ToolPolicy(
@@ -221,6 +222,7 @@ MCP_TOOL_DESCRIPTIONS: Dict[str, str] = {
     "computer_status": "Check if Mac desktop control (pyautogui) is available.",
     "chrome_status": "Report Chrome desktop bridge availability.",
     "computer_use_status": "Report Mac desktop-control bridge availability.",
+    "vision_analyze": "Analyze a base64-encoded image (e.g. screenshot) using the active multimodal VLM. Returns structured description for agent consumption.",
     "knowledge_save": "Save a note into the local knowledge garden.",
     "knowledge_search": "Search the local knowledge garden.",
     "knowledge_tree": "List local knowledge garden markdown files.",

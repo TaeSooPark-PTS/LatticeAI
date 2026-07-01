@@ -6,7 +6,19 @@ existed at that release.
 
 ## [Unreleased]
 
-No unreleased changes.
+## [8.5.0] - 2026-07-01
+
+### Added
+- ToolRegistry now reports `ready: true` with full handler/governance/description alignment (added `vision_analyze` policy and description).
+- `tz_name` now flows from central `Config` into `TriggerService` (via updated automation and platform wiring runtimes) for better DI and Config centralization.
+
+### Changed
+- Full codebase scan completed; improvements prioritized per AGENTS.md (registry, config injection, wiring seams).
+- Version bumped to 8.5.0 across pyproject.toml, package.json, vscode-extension; all current-release doc references synchronized.
+- Documentation sync performed for README, RELEASE.md, docs/CHANGELOG.md and Current release markers.
+
+### Fixed
+- Eliminated ToolRegistry drift for `vision_analyze` (handler existed in tools/ but missing from core registry governance surface used by diagnostics, MCP, and permission views).
 
 ## [8.4.0] - 2026-07-01
 

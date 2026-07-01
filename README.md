@@ -1,6 +1,6 @@
 # Lattice AI
 
-**Lattice AI 8.4.0 is the local-first Digital Brain platform with action-aware Brain Chat that creates files through the governed workspace file tool instead of only returning code.**
+**Lattice AI 8.5.0 is the local-first Digital Brain platform. This release hardens the Tool Registry (now drift-free and ready) and improves dependency injection for configuration (e.g. timezone flows through Config to automation runtimes) after full codebase scan and targeted refactors.**
 
 **Lattice AI는 모델이 바뀌어도 내 지식과 맥락을 보존하는 로컬 우선 AI 브레인입니다.**
 
@@ -11,7 +11,7 @@ downloads, update checks, and other external communication happen only after
 explicit consent.
 
 It is not a ChatGPT clone, a model launcher, a graph database, or a note app.
-It is the finished private AI memory layer wrapped in a Living Brain experience — now with an 8.4.0 action-readiness contract behind chat-to-tool file creation, onboarding, orchestration, graph ingestion, and the plugin/community path.
+It is the finished private AI memory layer wrapped in a Living Brain experience — with ToolRegistry readiness, Config-driven DI for automation, and continued AgentRuntime/Tool wiring seams.
 
 [![PyPI Version](https://img.shields.io/pypi/v/ltcai?label=PyPI)](https://pypi.org/project/ltcai/)
 [![npm Version](https://img.shields.io/npm/v/ltcai?label=npm)](https://www.npmjs.com/package/ltcai)
@@ -204,7 +204,7 @@ See [docs/DEVELOPMENT.md](docs/DEVELOPMENT.md) for developer workflow details.
 
 ## Current Release
 
-The current release is **8.4.0 — Action-Aware Brain Chat**:
+The current release is **8.5.0 — Tool Registry Readiness & Config DI**:
 
 - Brain Chat now routes explicit file create/write/save/edit requests through
   the governed workspace file tool instead of treating them as ordinary prose
@@ -218,18 +218,18 @@ The current release is **8.4.0 — Action-Aware Brain Chat**:
   boundaries, unified graph ingestion, and workspace-safe duplicate content
   protections active.
 
-Expected artifacts for 8.4.0 release must use exact filenames:
+Expected artifacts for 8.5.0 release must use exact filenames:
 
-- `dist/ltcai-8.4.0-py3-none-any.whl`
-- `dist/ltcai-8.4.0.tar.gz`
-- `ltcai-8.4.0.tgz`
-- `dist/ltcai-8.4.0.vsix`
-- `src-tauri/target/release/bundle/dmg/Lattice AI_8.4.0_aarch64.dmg`
+- `dist/ltcai-8.5.0-py3-none-any.whl`
+- `dist/ltcai-8.5.0.tar.gz`
+- `ltcai-8.5.0.tgz`
+- `dist/ltcai-8.5.0.vsix`
+- `src-tauri/target/release/bundle/dmg/Lattice AI_8.5.0_aarch64.dmg`
 
 Do not use wildcard artifact uploads. Package registry publishing remains owner-run.
 
 See [docs/ROADMAP_RECOMMENDATIONS.md](docs/ROADMAP_RECOMMENDATIONS.md) for the
-strategic roadmap slices applied through 8.4.0 and the follow-up tracks.
+strategic roadmap slices applied through 8.5.0 and the follow-up tracks.
 
 ## Known Limitations
 

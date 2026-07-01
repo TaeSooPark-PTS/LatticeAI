@@ -1,6 +1,6 @@
 # Community And Plugins
 
-Current release: **8.4.0 - Action-Aware Brain Chat**.
+Current release: **8.5.0 - Registry Polish & Config DI**.
 
 LatticeAI 8.4.0 defines the path from a strong local-first framework to a
 product ecosystem. The immediate goal is small and practical: make it clear how

@@ -1,6 +1,6 @@
 # Lattice AI Trust Model
 
-Current release: **8.4.0 - Action-Aware Brain Chat**.
+Current release: **8.5.0 — Tool Registry Readiness & Config DI**.
 
 Lattice AI is local-first, explicit about external communication, and honest
 when a capability is unavailable.
