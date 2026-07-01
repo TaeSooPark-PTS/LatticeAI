@@ -34,6 +34,12 @@ the release docs name the onboarding and community/plugin growth paths.
 - Synchronized package/runtime/static/Tauri metadata, readiness targets, and
   current-release docs to 8.3.0.
 
+### Upgrade Notes
+- Existing legacy-global text/web/note graph nodes are not rewritten in place.
+  Re-ingesting the same content with a workspace id can create a separate
+  workspace-scoped node; re-index existing sources after upgrading when you want
+  provenance to converge on workspace scopes.
+
 Expected artifacts (exact 8.3.0 names only):
 - dist/ltcai-8.3.0-py3-none-any.whl
 - dist/ltcai-8.3.0.tar.gz

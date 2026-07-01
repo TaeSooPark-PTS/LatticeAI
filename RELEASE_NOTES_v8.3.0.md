@@ -21,6 +21,14 @@ path.
 - Upload client failure handling and upload-to-KG pipeline coverage.
 - 8.3.0 onboarding, community/plugin, release, changelog, and security docs.
 
+## Upgrade Note
+
+The workspace-scoped graph identity fix is intentionally additive. Existing
+legacy-global graph nodes are not rewritten in place; if the same text/web/note
+content is re-ingested with a workspace id, Lattice AI may create a separate
+workspace-scoped node. Re-index existing sources after upgrading when you want a
+graph to converge on workspace-scoped provenance.
+
 ## Artifacts
 
 Expected local release artifacts use exact 8.3.0 filenames:

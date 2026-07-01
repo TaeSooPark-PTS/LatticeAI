@@ -34,6 +34,12 @@ No unreleased changes.
 - Synchronized package/runtime/static/Tauri metadata and current-release docs to
   8.3.0.
 
+### Upgrade Notes
+- Existing legacy-global text/web/note graph nodes are not rewritten in place.
+  Re-ingesting the same content with a workspace id can create a separate
+  workspace-scoped node; re-index existing sources after upgrading when you want
+  provenance to converge on workspace scopes.
+
 ## [8.2.0] - 2026-06-27
 
 ### Added
