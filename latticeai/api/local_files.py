@@ -46,6 +46,7 @@ def create_local_files_router(
     require_graph,
     static_dir: Path,
     local_kg_watcher,
+    ingestion_pipeline=None,
     hooks=None,
     data_dir: Optional[Path] = None,
     allowed_workspaces_for=None,
@@ -212,6 +213,7 @@ def create_local_files_router(
             require_user=require_user,
             static_dir=static_dir,
             allowed_workspaces_for=allowed_workspaces_for,
+            ingestion_pipeline=ingestion_pipeline,
         )
     )
 

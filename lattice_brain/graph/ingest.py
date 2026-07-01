@@ -490,8 +490,6 @@ class KnowledgeGraphIngestMixin:
         is derived from (source_type, source_uri | content_hash) so re-ingesting
         the same origin reuses the same SOURCE node (idempotent).
         """
-        key = source_uri or content_hash or content_node_id
-        source_id = f"source:{_sha256_text(f'{source_type}|{key}')[:24]}"
         meta = {
             "source_type": source_type,
             "source_uri": source_uri,
@@ -499,6 +497,9 @@ class KnowledgeGraphIngestMixin:
             "captured_at": captured_at or _now(),
             **(extra or {}),
         }
+        key = source_uri or content_hash or content_node_id
+        source_scope = meta.get("workspace_id") or "legacy-global"
+        source_id = f"source:{_sha256_text(f'{source_scope}|{source_type}|{key}')[:24]}"
         label = title or source_uri or source_type
         self._upsert_node(
             conn,
@@ -551,7 +552,8 @@ class KnowledgeGraphIngestMixin:
         )
         captured_at = captured_at or _now()
         content_hash = _sha256_text(f"{source_type}|{source_uri or ''}|{text}")
-        content_id = f"webdoc:{content_hash[:24]}"
+        identity_hash = _sha256_text(f"{workspace_id or 'legacy-global'}|{content_hash}")
+        content_id = f"webdoc:{identity_hash[:24]}"
         full_text = f"{title}\n{text}"
         node_meta = {
             "source_type": source_type,
@@ -581,6 +583,8 @@ class KnowledgeGraphIngestMixin:
                 summary=(text or title)[:500],
                 metadata=node_meta,
                 raw=node_meta,
+                owner=owner,
+                workspace_id=workspace_id,
             )
             # ── SOURCE 노드 + indexed_from 엣지 (출처 추적) ──────────────────
             source_node_id = self._attach_source_node(
@@ -597,13 +601,27 @@ class KnowledgeGraphIngestMixin:
             if owner:
                 person_id = f"person:{_slug(owner)}"
                 self._upsert_node(
-                    conn, person_id, "Person", owner, metadata={"email": owner}
+                    conn,
+                    person_id,
+                    "Person",
+                    owner,
+                    metadata={"email": owner, "workspace_id": workspace_id},
+                    owner=owner,
+                    workspace_id=workspace_id,
                 )
                 self._upsert_edge(conn, person_id, content_id, "업로드함", weight=1.0)
             # ── 대화 연결 ───────────────────────────────────────────────────
             if conversation_id:
                 conv_id = f"conversation:{_slug(conversation_id)}"
-                self._upsert_node(conn, conv_id, "Chat", conversation_id)
+                self._upsert_node(
+                    conn,
+                    conv_id,
+                    "Chat",
+                    conversation_id,
+                    metadata={"conversation_id": conversation_id, "workspace_id": workspace_id},
+                    owner=owner,
+                    workspace_id=workspace_id,
+                )
                 self._upsert_edge(conn, conv_id, content_id, "언급함", weight=0.8)
             # ── RAG 청크 ────────────────────────────────────────────────────
             for index, chunk in enumerate(_chunks(text)):
@@ -615,7 +633,9 @@ class KnowledgeGraphIngestMixin:
                     "Chunk",
                     f"{title} chunk {index + 1}",
                     summary=chunk[:500],
-                    metadata={"index": index, "source_node": content_id},
+                    metadata={"index": index, "source_node": content_id, "workspace_id": workspace_id},
+                    owner=owner,
+                    workspace_id=workspace_id,
                 )
                 self._upsert_chunk(
                     conn,
@@ -636,7 +656,13 @@ class KnowledgeGraphIngestMixin:
                     cid,
                     node_t,
                     concept,
-                    metadata={"auto_extracted": True, "source_type": source_type},
+                    metadata={
+                        "auto_extracted": True,
+                        "source_type": source_type,
+                        "workspace_id": workspace_id,
+                    },
+                    owner=owner,
+                    workspace_id=workspace_id,
                 )
                 self._upsert_edge(conn, content_id, cid, "포함함", weight=0.8)
             for triple in triples:
@@ -662,8 +688,14 @@ class KnowledgeGraphIngestMixin:
                     sem_type,
                     sem_title,
                     summary=item["summary"],
-                    metadata={"auto_extracted": True, "source_node": content_id},
+                    metadata={
+                        "auto_extracted": True,
+                        "source_node": content_id,
+                        "workspace_id": workspace_id,
+                    },
                     raw=item,
+                    owner=owner,
+                    workspace_id=workspace_id,
                 )
                 self._upsert_edge(conn, content_id, sem_id, "포함함", weight=0.9)
 

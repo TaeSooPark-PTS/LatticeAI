@@ -27,7 +27,7 @@ from dataclasses import dataclass, field
 from datetime import datetime
 from typing import Any, Callable, Dict, List, Optional
 
-from lattice_brain.runtime.contracts import workflow_run_contract
+from lattice_brain.runtime.contracts import runtime_boundary_contract, workflow_run_contract
 
 
 WORKFLOW_ENGINE_VERSION = "2.2.0"
@@ -104,6 +104,11 @@ def normalize_definition(workflow: Dict[str, Any]) -> Dict[str, Any]:
         "nodes": lifted,
         "metadata": {**(workflow.get("metadata") or {}), "lifted_from_steps": True},
     }
+
+
+def legacy_steps_from_nodes(nodes: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
+    """Return the compact legacy ``steps`` projection for node workflows."""
+    return [{"action": node.get("type"), "node": node.get("id")} for node in nodes]
 
 
 def validate_definition(workflow: Dict[str, Any]) -> List[str]:
@@ -268,6 +273,26 @@ class WorkflowEngine:
         # ``workflow`` hooks at workflow start and end so automation registered
         # against the workflow lifecycle actually executes.
         self.hooks = hooks
+
+    def boundary(self) -> Dict[str, Any]:
+        return runtime_boundary_contract(
+            name="WorkflowEngine",
+            runtime="workflow",
+            entrypoint="lattice_brain.workflow.WorkflowEngine",
+            surface="/workflows",
+            owns="typed workflow validation, execution, approval suspension, resume, export, and import",
+        )
+
+    def config(self) -> Dict[str, Any]:
+        return {
+            "version": WORKFLOW_ENGINE_VERSION,
+            "boundary": self.boundary(),
+            "node_types": list(NODE_TYPES),
+            "runner_families": dict(_RUNNER_FOR),
+            "max_steps": _MAX_STEPS,
+            "approval_suspend": True,
+            "legacy_steps_projection": "lattice_brain.workflow.legacy_steps_from_nodes",
+        }
 
     def run(self, workflow: Dict[str, Any], *, inputs: Optional[Dict[str, Any]] = None) -> WorkflowRun:
         definition = normalize_definition(workflow)

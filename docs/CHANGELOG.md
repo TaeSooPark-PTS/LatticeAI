@@ -8,6 +8,32 @@ existed at that release.
 
 No unreleased changes.
 
+## [8.3.0] - 2026-07-01
+
+### Added
+- Added a managed legacy compatibility report for remaining root shims,
+  including owners, replacements, reasons, removal phases, and readiness
+  metrics.
+- Added AgentRuntime/workflow maturity evidence through lifecycle helper reuse,
+  legacy event compatibility, WorkflowEngine boundary/config inspection, and
+  centralized legacy workflow step projection.
+- Added graph ingestion coverage for upload-to-pipeline behavior and
+  workspace-safe duplicate content.
+- Added 8.3.0 onboarding and community/plugin growth documentation.
+
+### Changed
+- Routed `/knowledge-graph/ingest` through the unified `IngestionPipeline` when
+  available, preserving provenance and hook lifecycle behavior for MCP notes and
+  messages.
+- Isolated text/web/note graph node identity by workspace while preserving the
+  content hash used for duplicate detection.
+- Converted `mcp_registry.py` and `llm_router.py` into physical module aliases
+  for their current implementations.
+- Improved upload client error handling so failed uploads cannot look
+  successful.
+- Synchronized package/runtime/static/Tauri metadata and current-release docs to
+  8.3.0.
+
 ## [8.2.0] - 2026-06-27
 
 ### Added

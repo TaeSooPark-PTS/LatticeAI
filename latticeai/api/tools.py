@@ -488,6 +488,7 @@ def create_tools_router(
         require_graph=_require_graph,
         static_dir=STATIC_DIR,
         local_kg_watcher=LOCAL_KG_WATCHER,
+        ingestion_pipeline=ingestion_pipeline,
         hooks=HOOKS,
         data_dir=DATA_DIR,
         allowed_workspaces_for=allowed_workspaces_for,

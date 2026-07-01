@@ -1,7 +1,7 @@
 """Machine-checkable architecture readiness gates for release work.
 
-8.2.0 keeps the major architecture priorities under an explicit release
-contract while Brain Brief improves the product surface. AgentRuntime, ToolRegistry,
+8.3.0 keeps the major architecture priorities under an explicit release
+contract while product maturity work reduces visible beta seams. AgentRuntime, ToolRegistry,
 central Config, decomposed server runtime, and Knowledge Graph stabilization
 must remain discoverable, ordered, and backed by tests before the release can be
 called complete.
@@ -14,8 +14,10 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import Any, Dict, List
 
+from latticeai.core.legacy_compatibility import legacy_shim_report
 
-ARCHITECTURE_VERSION_TARGET = "8.2.0"
+
+ARCHITECTURE_VERSION_TARGET = "8.3.0"
 
 PREFERRED_REFACTORING_ORDER = [
     "agent-runtime",
@@ -55,6 +57,7 @@ def _symbol_exists(dotted: str) -> bool:
 def architecture_readiness(root: Path | None = None) -> Dict[str, Any]:
     if root is None:
         root = Path(__file__).resolve().parents[2]
+    shim_report = legacy_shim_report(root)
 
     gates = [
         ArchitectureGate(
@@ -117,6 +120,35 @@ def architecture_readiness(root: Path | None = None) -> Dict[str, Any]:
                 "tests/visual/v3.spec.js first-run and Brain depth coverage",
             ],
         ),
+        ArchitectureGate(
+            id="legacy-compatibility",
+            title="Legacy shim sunset plan",
+            status="complete" if shim_report["status"] == "managed" else "incomplete",
+            evidence=[
+                "latticeai.core.legacy_compatibility.legacy_shim_report",
+                "docs/LEGACY_COMPATIBILITY.md",
+                "tests/unit/test_legacy_root_shims.py",
+            ],
+        ),
+        ArchitectureGate(
+            id="orchestration-maturity",
+            title="AgentRuntime and workflow orchestration maturity",
+            status="complete" if all(
+                _symbol_exists(s)
+                for s in [
+                    "lattice_brain.runtime.multi_agent.MultiAgentOrchestrator",
+                    "lattice_brain.workflow.WorkflowEngine",
+                    "latticeai.services.run_executor.RunExecutor",
+                ]
+            ) else "incomplete",
+            evidence=[
+                "lattice_brain.runtime.multi_agent.MultiAgentOrchestrator",
+                "lattice_brain.workflow.WorkflowEngine",
+                "latticeai.services.run_executor.RunExecutor",
+                "tests/unit/test_agent_platform_maturity.py",
+                "tests/unit/test_t7_async_run_executor.py",
+            ],
+        ),
     ]
 
     api_router_count = len(list((root / "latticeai" / "api").glob("*.py")))
@@ -159,5 +191,7 @@ def architecture_readiness(root: Path | None = None) -> Dict[str, Any]:
             "api_router_modules": api_router_count,
             "runtime_modules": runtime_module_count,
             "architecture_gates": len(gates),
+            "legacy_shims_remaining": shim_report["remaining_count"],
         },
+        "legacy_compatibility": shim_report,
     }

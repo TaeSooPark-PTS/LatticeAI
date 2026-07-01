@@ -1,6 +1,6 @@
 # Knowledge Graph Schema
 
-Current release: **8.2.0 - Brain Brief**.
+Current release: **8.3.0 - Orchestrated Brain Readiness**.
 
 명세 출처: `lattice_ai_full_spec.pptx` 슬라이드 20·21·22
 구현: `kg_schema.py`
@@ -90,7 +90,7 @@ Edge {
 
 ## Current Knowledge Graph First 엔티티/관계
 
-8.2.0 은 "모든 데이터 소스가 Knowledge Graph 로 수렴한다"는 원칙을 1급 스키마로
+8.3.0 은 "모든 데이터 소스가 Knowledge Graph 로 수렴한다"는 원칙을 1급 스키마로
 승격한다. 아래 타입은 **추가형(additive)**이다 — 기존 enum/legacy 매핑을 깨지 않고
 `from_legacy` 가 무손실로 정규화하며, 알 수 없는 타입은 여전히 `CONCEPT`/`MENTIONS` 로
 폴백한다. 스키마는 **확장 가능**하게 유지한다: 새 도메인 엔티티는 enum 멤버 1개 +
@@ -138,7 +138,7 @@ provenance(source_type, source_uri, content_hash, captured_at, modified_at,
 - provenance 는 노드 `metadata.provenance` 에 임베드되며, 동시에 감사 가능한
   `ingestion_provenance` 테이블에 기록된다 (`KnowledgeGraphStore.get_provenance(node_id)`).
 
-구현: `latticeai/services/ingestion.py` (`IngestionPipeline`) 가 단일 진입점이며,
+구현: `lattice_brain/ingestion.py` (`IngestionPipeline`) 가 단일 진입점이며,
 파일/로컬폴더/URL/브라우저 탭/텍스트를 모두 이 형태로 정규화한다.
 
 ---

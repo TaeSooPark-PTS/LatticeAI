@@ -291,7 +291,13 @@ async function uploadDocument(file: File): Promise<ApiResult<Record<string, unkn
       body: form,
     });
     const data = await res.json().catch(() => null);
-    return { ok: res.ok, status: res.status, data, source: res.ok ? "live" : "unavailable" };
+    return {
+      ok: res.ok,
+      status: res.status,
+      data,
+      source: res.ok ? "live" : "unavailable",
+      error: res.ok ? undefined : friendlyError(data, res.statusText || "Upload failed"),
+    };
   } catch (err) {
     return { ok: false, status: 0, data: null, source: "unavailable", error: String(err) };
   }

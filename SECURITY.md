@@ -1,15 +1,16 @@
 # Security Policy
 
-Current release: **8.2.0 - Brain Brief**.
+Current release: **8.3.0 - Orchestrated Brain Readiness**.
 
 ## Supported Versions
 
-The public Git tree keeps release history from 7.0.0 through 8.2.0. Security
+The public Git tree keeps release history from 7.0.0 through 8.3.0. Security
 support follows that same product era.
 
 | Version | Support |
 | --- | --- |
-| 8.2.x (latest) | Supported |
+| 8.3.x (latest) | Supported |
+| 8.2.x | Supported |
 | 8.1.x | Supported |
 | 8.0.x | Supported |
 | 7.9.x | Supported |
@@ -41,7 +42,7 @@ The expected first response target is 48 hours.
 
 ## Security Model
 
-Lattice AI v8.2.0 is a local-first Digital Brain. It keeps user knowledge,
+Lattice AI v8.3.0 is a local-first Digital Brain. It keeps user knowledge,
 conversation context, Knowledge Graph data, and archives local by default while
 making external paths explicit.
 

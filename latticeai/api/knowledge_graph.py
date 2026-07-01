@@ -13,6 +13,7 @@ from fastapi import APIRouter, HTTPException, Request
 from pydantic import BaseModel
 
 from latticeai.api.ui_redirects import app_redirect
+from lattice_brain.ingestion import IngestionItem
 
 
 class KnowledgeGraphIngestRequest(BaseModel):
@@ -61,6 +62,7 @@ def create_knowledge_graph_router(
     require_user: Callable[[Request], str],
     static_dir: Path,
     allowed_workspaces_for: Optional[Callable[[Optional[str]], Any]] = None,
+    ingestion_pipeline: Any = None,
 ) -> APIRouter:
     router = APIRouter()
 
@@ -191,6 +193,37 @@ def create_knowledge_graph_router(
         if event_type not in {"message", "ai_response", "note"}:
             raise HTTPException(status_code=400, detail="지원하는 type: message, ai_response, note")
         role = req.role or ("assistant" if event_type == "ai_response" else "user")
+        if ingestion_pipeline is not None:
+            source_type = "chat_message" if event_type in {"message", "ai_response"} else "note"
+            result = ingestion_pipeline.ingest(
+                IngestionItem(
+                    source_type=source_type,
+                    title=req.title,
+                    text=req.content,
+                    source_uri=req.source,
+                    owner=req.user_email or current_user,
+                    workspace_id=workspace_id,
+                    conversation_id=req.conversation_id,
+                    metadata={
+                        "type": req.type,
+                        "role": role,
+                        "source": req.source or "mcp",
+                        "user_nickname": req.user_nickname,
+                        "raw": {
+                            "type": req.type,
+                            "title": req.title,
+                            "content": req.content,
+                            "workspace_id": workspace_id,
+                            "metadata": req.metadata or {},
+                        },
+                        **(req.metadata or {}),
+                    },
+                ),
+                user_email=req.user_email or current_user,
+            )
+            if result.status != "ok":
+                raise HTTPException(status_code=500, detail=result.detail or result.status)
+            return result.as_dict()
         return kg.ingest_message(
             role,
             req.content,

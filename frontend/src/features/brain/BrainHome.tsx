@@ -346,9 +346,10 @@ export function BrainHome({
 
     try {
       const result = await latticeApi.uploadDocument(file);
-      if (result.error) {
-        setMemoryFeedback(t(language, "brain.upload.failed", { reason: result.error }));
-        failIngestion("file", result.error);
+      if (result.error || !result.ok) {
+        const reason = result.error || "unavailable";
+        setMemoryFeedback(t(language, "brain.upload.failed", { reason }));
+        failIngestion("file", reason);
         return;
       }
 

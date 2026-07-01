@@ -107,6 +107,20 @@ def test_start_records_run_and_status_reflects_it():
     assert out["result"]["contract"]["run_id"] == run_id
 
 
+def test_events_tolerate_legacy_run_without_contract():
+    rt = _runtime()
+    rt._store.runs.append({
+        "id": "legacy-run",
+        "status": "ok",
+        "timeline": [{"event": "legacy"}],
+        "handoffs": [],
+    })
+
+    events = rt.events("legacy-run", scope=None)
+    assert events["is_final"] is True
+    assert events["contract"] is None
+
+
 def test_start_requires_goal():
     rt = _runtime()
     try:

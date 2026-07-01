@@ -1,9 +1,9 @@
-"""Machine-checkable *product* readiness gates for the 8.2 line.
+"""Machine-checkable *product* readiness gates for the 8.3 line.
 
 Where ``architecture_readiness`` proves the internal structure is sound, this
-module answers the product question the 8.2 release exists to settle: *is the
-Brain experience still release-ready now that the home screen explains what to
-notice and what to do next?* It does so honestly: every gate is backed by
+module answers the product question the 8.3 release exists to settle: *does the
+app now feel like a finished product rather than only a strong framework?*
+It does so honestly: every gate is backed by
 evidence that is probed on disk, so a gate only reports ``complete`` when its
 evidence actually resolves. The same report can be printed by
 ``scripts/product_readiness.py`` and re-run after every change, which is the
@@ -18,7 +18,7 @@ from typing import Any, Dict, List
 
 from latticeai.services.architecture_readiness import architecture_readiness
 
-PRODUCT_VERSION_TARGET = "8.2.0"
+PRODUCT_VERSION_TARGET = "8.3.0"
 
 
 @dataclass(frozen=True)
@@ -35,6 +35,7 @@ PRODUCT_GATES: List[ProductGate] = [
         id="first-run",
         title="First five minutes lands without a manual",
         evidence=[
+            "docs/ONBOARDING.md::five-minute",
             "frontend/src/components/ProductFlow.tsx::WakeBrainScreen",
             "frontend/src/features/brain/BrainConversation.tsx::ProductCommandCenter",
             "frontend/src/features/brain/BrainConversation.tsx::BrainBriefPanel",
@@ -66,10 +67,10 @@ PRODUCT_GATES: List[ProductGate] = [
         evidence=[
             "package.json::release:artifacts",
             "package.json::release:validate",
-            "README.md::dist/ltcai-8.2.0-py3-none-any.whl",
-            "README.md::dist/ltcai-8.2.0.tar.gz",
-            "README.md::dist/ltcai-8.2.0.vsix",
-            "README.md::ltcai-8.2.0.tgz",
+            "README.md::dist/ltcai-8.3.0-py3-none-any.whl",
+            "README.md::dist/ltcai-8.3.0.tar.gz",
+            "README.md::dist/ltcai-8.3.0.vsix",
+            "README.md::ltcai-8.3.0.tgz",
             "scripts/validate_release_artifacts.py",
             "scripts/release_smoke.py",
             "Dockerfile",
@@ -85,12 +86,12 @@ PRODUCT_GATES: List[ProductGate] = [
         title="Release story is documented and honest",
         evidence=[
             "README.md",
-            "README.md::The current release is **8.2.0",
-            "SECURITY.md::8.2.x (latest)",
-            "vscode-extension/README.md::**8.2.0",
-            "docs/CHANGELOG.md::## [8.2.0]",
+            "README.md::The current release is **8.3.0",
+            "SECURITY.md::8.3.x (latest)",
+            "vscode-extension/README.md::**8.3.0",
+            "docs/CHANGELOG.md::## [8.3.0]",
             "FEATURE_STATUS.md",
-            "RELEASE_NOTES_v8.2.0.md",
+            "RELEASE_NOTES_v8.3.0.md",
             "latticeai/core/agent.py::SingleAgentRuntime",
             "latticeai/core/agent.py::AgentRuntime = SingleAgentRuntime",
             "lattice_brain/runtime/contracts.py::runtime-boundary/v1",
@@ -99,6 +100,27 @@ PRODUCT_GATES: List[ProductGate] = [
             "latticeai/core/agent.py::def boundary",
             "latticeai/services/architecture_readiness.py::lattice-architecture-contract/v1",
             "latticeai/services/tool_dispatch.py::rollback_file",
+        ],
+    ),
+    ProductGate(
+        id="ecosystem-path",
+        title="Community and plugin growth path is explicit",
+        evidence=[
+            "docs/COMMUNITY_AND_PLUGINS.md::LatticeAI 8.3.0",
+            "docs/PLUGIN_SDK.md",
+            "plugins/README.md",
+            "plugins/hello-world/plugin.json",
+        ],
+    ),
+    ProductGate(
+        id="ingestion-graph-coverage",
+        title="Graph and ingestion integration coverage guards the Brain",
+        evidence=[
+            "tests/unit/test_ingestion_pipeline.py::test_upload_result_enters_unified_ingestion_pipeline",
+            "tests/unit/test_ingestion_pipeline.py::test_ingestion_preserves_workspace_scope_for_duplicate_content",
+            "tests/integration/test_ingest_graph_retrieval.py",
+            "tests/unit/test_lattice_brain_isolation.py",
+            "tests/unit/test_retrieval_benchmark_corpus.py",
         ],
     ),
     ProductGate(

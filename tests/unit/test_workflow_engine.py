@@ -7,6 +7,7 @@ from lattice_brain.workflow import (
     WorkflowError,
     export_workflow,
     import_workflow,
+    legacy_steps_from_nodes,
     normalize_definition,
     validate_definition,
 )
@@ -28,6 +29,16 @@ def _linear(nodes_extra=None):
 
 def test_valid_definition():
     assert validate_definition(_linear()) == []
+
+
+def test_workflow_engine_boundary_and_config_are_explicit():
+    engine = WorkflowEngine()
+    cfg = engine.config()
+    assert cfg["boundary"]["schema_version"] == "runtime-boundary/v1"
+    assert cfg["boundary"]["name"] == "WorkflowEngine"
+    assert cfg["boundary"]["surface"] == "/workflows"
+    assert "agent" in cfg["node_types"]
+    assert cfg["legacy_steps_projection"] == "lattice_brain.workflow.legacy_steps_from_nodes"
 
 
 def test_missing_trigger_fails():
@@ -62,6 +73,14 @@ def test_legacy_steps_normalize_and_validate():
     normalized = normalize_definition(legacy)
     assert normalized["nodes"][0]["type"] == "trigger"
     assert validate_definition(legacy) == []
+
+
+def test_legacy_steps_projection_is_centralized():
+    assert legacy_steps_from_nodes(_linear()["nodes"]) == [
+        {"action": "trigger", "node": "t"},
+        {"action": "tool", "node": "a"},
+        {"action": "output", "node": "o"},
+    ]
 
 
 # ── execution ─────────────────────────────────────────────────────────────────

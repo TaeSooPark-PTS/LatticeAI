@@ -7,15 +7,19 @@ ingestion — the v3.5.0 coverage gap that v3.6.0 closes.
 """
 from __future__ import annotations
 
+import asyncio
+import io
 import sys
 from pathlib import Path
 
+from fastapi import UploadFile
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[2]))
 
 from knowledge_graph import KnowledgeGraphStore
-from lattice_brain.runtime.hooks import HooksRegistry
 from lattice_brain.ingestion import IngestionItem, IngestionPipeline
+from lattice_brain.runtime.hooks import HooksRegistry
+from latticeai.services.upload_service import process_uploaded_document
 
 
 def _store(tmp_path: Path) -> KnowledgeGraphStore:
@@ -72,6 +76,31 @@ def test_content_hash_idempotency_reports_duplicate(tmp_path):
     assert first.node_id == second.node_id  # same content -> same node (idempotent)
 
 
+def test_ingestion_preserves_workspace_scope_for_duplicate_content(tmp_path):
+    pipe = _pipeline(tmp_path)
+    body = "same note body from two workspaces"
+
+    first = pipe.ingest(
+        IngestionItem(source_type="note", title="Shared", text=body, workspace_id="org:a"),
+        user_email="alice@example.com",
+    )
+    second = pipe.ingest(
+        IngestionItem(source_type="note", title="Shared", text=body, workspace_id="org:b"),
+        user_email="bob@example.com",
+    )
+
+    assert first.status == "ok"
+    assert second.status == "ok"
+    assert first.content_hash == second.content_hash
+    assert first.node_id != second.node_id
+    assert pipe._kg.workspaces_of([first.node_id, second.node_id]) == {
+        first.node_id: "org:a",
+        second.node_id: "org:b",
+    }
+    assert pipe._kg.filter_scoped_nodes([{"id": first.node_id}], {"org:b"}) == []
+    assert pipe._kg.filter_scoped_nodes([{"id": second.node_id}], {"org:a"}) == []
+
+
 def test_file_ingest_converges_through_same_pipeline(tmp_path):
     src = tmp_path / "doc.md"
     src.write_text("# Plan\nLattice AI Knowledge Graph First. We must decide the schema.", encoding="utf-8")
@@ -87,6 +116,46 @@ def test_file_ingest_converges_through_same_pipeline(tmp_path):
     assert pipe._kg.filter_scoped_nodes([{"id": res.node_id}], {"org:other"}) == []
     prov = pipe._kg.get_provenance(res.node_id)
     assert prov["source_type"] == "file"
+
+
+def test_upload_result_enters_unified_ingestion_pipeline(tmp_path):
+    class _Request:
+        headers = {"X-Workspace-Id": "org:upload"}
+        query_params = {"conversation_id": "upload-thread"}
+
+    audits = []
+    graph = _store(tmp_path)
+    pipe = IngestionPipeline(graph)
+    upload = UploadFile(
+        filename="brief.txt",
+        file=io.BytesIO(b"Lattice AI upload enters the unified ingestion pipeline."),
+    )
+
+    result = asyncio.run(
+        process_uploaded_document(
+            request=_Request(),
+            file=upload,
+            current_user="uploader@example.com",
+            enable_graph=True,
+            knowledge_graph=graph,
+            ingestion_pipeline=pipe,
+            bytes_match_extension=lambda _contents, _suffix: True,
+            classify_sensitive_message=lambda _item, _index: {
+                "preview": "Lattice AI upload",
+                "sensitivity": "low",
+                "labels": [],
+            },
+            append_audit_event=lambda *args, **kwargs: audits.append((args, kwargs)),
+            enforce_rate_limit=lambda _user, _action: None,
+        )
+    )
+
+    kg = result["knowledge_graph"]
+    assert kg["node_id"].startswith("file:")
+    assert kg["provenance_id"]
+    assert graph.get_provenance(kg["node_id"])["source_type"] == "upload"
+    assert graph.workspaces_of([kg["node_id"]])[kg["node_id"]] == "org:upload"
+    assert audits
 
 
 def test_dispatch_tool_hooks_fire_on_ingestion(tmp_path):

@@ -1,6 +1,6 @@
 # Lattice AI Current Architecture
 
-Current release: **8.2.0 - Brain Brief**.
+Current release: **8.3.0 - Orchestrated Brain Readiness**.
 
 Lattice AI is a local-first Digital Brain platform. The current architecture is
 organized around a private Brain, replaceable model runtimes, explicit tool
@@ -30,7 +30,7 @@ Key boundaries:
 
 ## Product Flow
 
-The 8.2.0 first-run and daily-use flow is:
+The 8.3.0 first-run and daily-use flow is:
 
 1. Wake Brain / login.
 2. Pick owner/workspace context.
@@ -38,7 +38,10 @@ The 8.2.0 first-run and daily-use flow is:
 4. Prepare/install/load a model when the user opts in.
 5. Land on Brain Home with the living Brain, conversation composer, and
    evidence-backed Brain Brief visible together.
-6. Add sources, open the memory graph, choose model, automate, or manage from
+6. Add a first source through upload, note, browser capture, or folder indexing.
+7. Ask a grounded question, inspect proof, then open the memory graph when
+   deeper source evidence is needed.
+8. Choose model, automate, or manage from
    explicit navigation.
 
 The graph is available when users need proof or exploration. It is not forced
@@ -87,7 +90,7 @@ migration safety, and equivalence tests.
 
 ## Runtime Contracts
 
-The 8.0 architecture contract remains active in 8.2.0:
+The 8.0 architecture contract remains active in 8.3.0:
 
 - AgentRuntime has explicit preview/readiness contracts and does not execute
   tools during preview.
@@ -97,6 +100,10 @@ The 8.0 architecture contract remains active in 8.2.0:
 - Server decomposition continues to shrink monolithic app factory helpers.
 - Knowledge Graph hardening remains guarded by compatibility and equivalence
   tests.
+- Legacy compatibility shims are tracked in a managed inventory with owners,
+  replacements, and removal phases.
+- AgentRuntime and WorkflowEngine expose release-checkable orchestration
+  boundaries while preserving legacy run compatibility.
 
 ## Storage And Portability
 
@@ -112,13 +119,13 @@ Docker/Postgres setup, marketplace refresh, and update checks are opt-in paths.
 
 ## Release Artifact Map
 
-8.2.0 exact artifact names:
+8.3.0 exact artifact names:
 
-- `dist/ltcai-8.2.0-py3-none-any.whl`
-- `dist/ltcai-8.2.0.tar.gz`
-- `ltcai-8.2.0.tgz`
-- `dist/ltcai-8.2.0.vsix`
-- `src-tauri/target/release/bundle/dmg/Lattice AI_8.2.0_aarch64.dmg`
+- `dist/ltcai-8.3.0-py3-none-any.whl`
+- `dist/ltcai-8.3.0.tar.gz`
+- `ltcai-8.3.0.tgz`
+- `dist/ltcai-8.3.0.vsix`
+- `src-tauri/target/release/bundle/dmg/Lattice AI_8.3.0_aarch64.dmg`
 
 Do not document or use wildcard artifact upload commands.
 

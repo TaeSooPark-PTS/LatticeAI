@@ -266,7 +266,7 @@ class AgentRuntime:
         unknown_roles = [role for role in requested_roles if role not in AGENT_ROLES]
         health = self.health()
         goal_ready = bool(str(goal or "").strip())
-        retry_budget = max(0, min(int(max_retries or 0), self._max_retries_cap))
+        retry_budget = self._clamp_retries(max_retries)
         blocking_reasons: List[str] = []
         if not goal_ready:
             blocking_reasons.append("goal is required")
@@ -324,6 +324,7 @@ class AgentRuntime:
     def events(self, run_id: str, *, scope: Optional[str] = None) -> Dict[str, Any]:
         run = self._store.get_agent_run(run_id, workspace_id=scope)
         status = str(run.get("status") or "")
+        contract = extract_contract(run)
         return {
             "run_id": run_id,
             "status": status,
@@ -331,7 +332,7 @@ class AgentRuntime:
             "current_role": run.get("current_role"),
             "timeline": run.get("timeline") or [],
             "handoffs": run.get("handoffs") or [],
-            "contract": contract_view(run),
+            "contract": contract_view(contract) if contract is not None else None,
         }
 
     # ── execution ─────────────────────────────────────────────────────────
@@ -359,6 +360,9 @@ class AgentRuntime:
                 )
                 raise PermissionError(pre_dispatch.get("block_reason") or "Agent run blocked by a pre_run hook.")
         return pre_dispatch
+
+    def _clamp_retries(self, max_retries: int) -> int:
+        return max(0, min(int(max_retries or 0), self._max_retries_cap))
 
     @staticmethod
     def _result_patch(result: Any, goal: str) -> Dict[str, Any]:
@@ -488,7 +492,7 @@ class AgentRuntime:
                 workspace_id=scope,
                 inputs=inputs or {},
                 roles=roles or None,
-                max_retries=max(0, min(int(max_retries or 0), self._max_retries_cap)),
+                max_retries=self._clamp_retries(max_retries),
             )
         except Exception as exc:
             failed = self._store.update_agent_run(
@@ -571,25 +575,13 @@ class AgentRuntime:
         if not str(goal or "").strip():
             raise ValueError("goal is required")
 
-        # ── pre_run hooks ─────────────────────────────────────────────────
-        # A blocking pre_run hook (e.g. a policy gate) aborts the run before any
-        # orchestration happens. Hook failures never crash the run (fire_hook
-        # swallows them); only an explicit block stops it.
-        pre_dispatch: Optional[Dict[str, Any]] = None
-        if self._hooks is not None:
-            pre_dispatch = self._hooks.fire_hook(
-                "pre_run", "agent.run",
-                payload={"goal": goal, "roles": roles or None, "max_retries": max_retries},
-                user_email=user_email, workspace_id=scope,
-            )
-            if pre_dispatch.get("blocked"):
-                self._append_audit_event(
-                    "multi_agent_run_blocked",
-                    user_email=user_email,
-                    reason=pre_dispatch.get("block_reason"),
-                )
-                raise PermissionError(pre_dispatch.get("block_reason") or "Agent run blocked by a pre_run hook.")
-
+        pre_dispatch = self._fire_pre_run(
+            goal=goal,
+            roles=roles,
+            max_retries=max_retries,
+            user_email=user_email,
+            scope=scope,
+        )
         orchestrator = self._live_orchestrator(user_email, scope)
         result = orchestrator.run(
             goal,
@@ -597,7 +589,7 @@ class AgentRuntime:
             workspace_id=scope,
             inputs=inputs or {},
             roles=roles or None,
-            max_retries=max(0, min(int(max_retries or 0), self._max_retries_cap)),
+            max_retries=self._clamp_retries(max_retries),
         )
         run = self._store.record_agent_run(
             agent_id=result.agent_id,
@@ -626,20 +618,13 @@ class AgentRuntime:
             retries=result.retries,
         )
 
-        # ── post_run hooks ────────────────────────────────────────────────
-        post_dispatch: Optional[Dict[str, Any]] = None
-        if self._hooks is not None:
-            run_id = run.get("id") or run.get("run_id") if isinstance(run, dict) else None
-            post_dispatch = self._hooks.fire_hook(
-                "post_run", "agent.run",
-                payload={
-                    "run_id": run_id,
-                    "agent_id": result.agent_id,
-                    "status": result.status,
-                    "retries": result.retries,
-                },
-                user_email=user_email, workspace_id=scope,
-            )
+        run_id = run.get("id") or run.get("run_id") if isinstance(run, dict) else None
+        post_dispatch = self._post_run_hooks(
+            run_id=run_id,
+            result=result,
+            user_email=user_email,
+            scope=scope,
+        )
 
         result_payload = result.as_dict()
         result_payload["contract"] = multi_agent_contract(result=result, goal=goal, run_id=run.get("id") if isinstance(run, dict) else None)

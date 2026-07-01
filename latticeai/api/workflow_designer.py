@@ -73,10 +73,11 @@ def create_workflow_designer_router(
 ) -> APIRouter:
     from lattice_brain.workflow import (
         WorkflowEngine,
+        WorkflowError,
         validate_definition,
         export_workflow,
         import_workflow,
-        WorkflowError,
+        legacy_steps_from_nodes,
     )
 
     router = APIRouter()
@@ -101,7 +102,7 @@ def create_workflow_designer_router(
             raise HTTPException(status_code=400, detail={"validation_errors": errors})
         workflow = store.create_workflow(
             name=req.name,
-            steps=[{"action": n.get("type"), "node": n.get("id")} for n in req.nodes],
+            steps=legacy_steps_from_nodes(req.nodes),
             nodes=req.nodes,
             metadata=req.metadata,
             user_email=current_user or None,
@@ -293,7 +294,7 @@ def create_workflow_designer_router(
             raise HTTPException(status_code=400, detail={"validation_errors": errors})
         workflow = store.create_workflow(
             name=definition["name"],
-            steps=[{"action": n.get("type"), "node": n.get("id")} for n in definition["nodes"]],
+            steps=legacy_steps_from_nodes(definition["nodes"]),
             nodes=definition["nodes"],
             metadata=definition["metadata"],
             user_email=current_user or None,
@@ -343,7 +344,7 @@ def create_workflow_designer_router(
             raise HTTPException(status_code=400, detail=str(exc)) from exc
         workflow = store.create_workflow(
             name=definition["name"],
-            steps=[{"action": n.get("type"), "node": n.get("id")} for n in definition["nodes"]],
+            steps=legacy_steps_from_nodes(definition["nodes"]),
             nodes=definition["nodes"],
             metadata=definition.get("metadata") or {},
             user_email=current_user or None,

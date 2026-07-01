@@ -7,6 +7,40 @@
 > PyPI / npm / VS Code Marketplace / Open VSX 배포는 아래 수동 절차로만
 > 진행합니다. 태그 생성은 패키지 스토어 publish를 자동으로 트리거하지 않습니다.
 
+## v8.3.0 — Orchestrated Brain Readiness (2026-07-01)
+
+8.3.0 turns the architecture and product polish backlog into measured release
+work. Legacy shims are now inventoried, AgentRuntime/workflow boundaries are
+more inspectable, graph ingestion is routed through the unified pipeline, and
+the release docs name the onboarding and community/plugin growth paths.
+
+### Added
+- Added a managed legacy compatibility inventory with owners, replacements,
+  reasons, removal phases, and readiness metrics.
+- Added AgentRuntime lifecycle coverage for legacy run records plus explicit
+  WorkflowEngine boundary/config inspection.
+- Added graph ingestion tests for upload-to-pipeline behavior and
+  workspace-safe duplicate content.
+- Added 8.3.0 onboarding and community/plugin docs.
+
+### Changed
+- Routed `/knowledge-graph/ingest` through `IngestionPipeline` when the
+  pipeline is wired, preserving provenance and hook lifecycle behavior.
+- Kept duplicate text/web/note content isolated per workspace while retaining
+  content-hash duplicate semantics.
+- Converted stateful root shims for `mcp_registry.py` and `llm_router.py` into
+  physical module aliases.
+- Updated upload client handling so HTTP failures surface as honest UI errors.
+- Synchronized package/runtime/static/Tauri metadata, readiness targets, and
+  current-release docs to 8.3.0.
+
+Expected artifacts (exact 8.3.0 names only):
+- dist/ltcai-8.3.0-py3-none-any.whl
+- dist/ltcai-8.3.0.tar.gz
+- dist/ltcai-8.3.0.vsix
+- ltcai-8.3.0.tgz
+- src-tauri/target/release/bundle/dmg/Lattice AI_8.3.0_aarch64.dmg
+
 ## v8.2.0 — Brain Brief (2026-06-27)
 
 8.2.0 adds an evidence-backed Brain Brief to the default Brain Home. Instead of

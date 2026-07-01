@@ -1,6 +1,6 @@
 # Lattice AI Trust Model
 
-Current release: **8.2.0 - Brain Brief**.
+Current release: **8.3.0 - Orchestrated Brain Readiness**.
 
 Lattice AI is local-first, explicit about external communication, and honest
 when a capability is unavailable.

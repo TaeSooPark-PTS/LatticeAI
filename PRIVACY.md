@@ -1,6 +1,6 @@
 # Privacy
 
-Current release: **8.2.0 - Brain Brief**.
+Current release: **8.3.0 - Orchestrated Brain Readiness**.
 
 Lattice AI is local-first. It does not send your prompts, files, graph, or Brain
 archive to Lattice-owned servers by default. Some user-chosen features can
