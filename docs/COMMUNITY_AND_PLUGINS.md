@@ -2,7 +2,7 @@
 
 Current release: **8.5.0 - Registry Polish & Config DI**.
 
-LatticeAI 8.4.0 defines the path from a strong local-first framework to a
+LatticeAI defines the path from a strong local-first framework (8.4.0 action-aware baseline, 8.5.0 registry+DI hardening) to a
 product ecosystem. The immediate goal is small and practical: make it clear how
 contributors can extend the Brain without weakening local-first trust,
 workspace scoping, or release quality.

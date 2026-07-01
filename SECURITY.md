@@ -9,7 +9,7 @@ support follows that same product era.
 
 | Version | Support |
 | --- | --- |
-| 8.4.x (latest) | Supported |
+| 8.5.x (latest) | Supported |
 | 8.3.x | Supported |
 | 8.2.x | Supported |
 | 8.1.x | Supported |
