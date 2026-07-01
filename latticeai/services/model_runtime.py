@@ -55,6 +55,14 @@ from .model_engines import (
     LOCAL_SERVER_PROCESSES as _LOCAL_SERVER_PROCESSES,
 )
 
+# ``model_loading._get_model_runtime_deps`` imports these private names from
+# this module to preserve the historical model_runtime wiring surface.
+_MODEL_LOADING_COMPAT_EXPORTS = (
+    _friendly_model_runtime_error,
+    _model_runtime_compatibility,
+    _SMOKE_PROMPT,
+)
+
 
 def _missing_current_user(_request: Request) -> Optional[str]:
     return None
