@@ -4,7 +4,7 @@
 
 8.4.0 makes the main Brain composer act on explicit file requests. When a user
 asks Lattice AI to create, write, save, or edit a file, `/chat` now routes that
-request into the governed AgentRuntime instead of treating it as ordinary prose
+request into the governed workspace file tool instead of treating it as ordinary prose
 generation. The result is a real workspace artifact, not only a code block.
 
 ## What Changed

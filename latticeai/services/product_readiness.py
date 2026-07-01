@@ -57,8 +57,8 @@ PRODUCT_GATES: List[ProductGate] = [
         title="File action requests create artifacts instead of code-only answers",
         evidence=[
             "latticeai/api/chat.py::is_file_action_request",
-            "latticeai/api/chat.py::routed_to_agent",
-            "tests/unit/test_chat_telegram_decoupling.py::test_chat_file_creation_intent_routes_to_agent_runtime",
+            "latticeai/api/chat.py::direct_write_file",
+            "tests/unit/test_chat_telegram_decoupling.py::test_chat_file_creation_intent_writes_real_file",
         ],
     ),
     ProductGate(

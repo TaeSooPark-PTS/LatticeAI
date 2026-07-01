@@ -167,6 +167,39 @@ def is_file_action_request(text: str) -> bool:
     return has_file_word and has_action
 
 
+def file_action_target(text: str) -> Optional[str]:
+    """Extract the first explicit workspace file target from a request."""
+    match = _FILE_TARGET_RE.search(text or "")
+    if not match:
+        return None
+    return match.group(0).strip().strip("`'\".,:;)]}")
+
+
+def inline_file_action_content(text: str) -> Optional[str]:
+    """Extract short user-provided content for deterministic file writes."""
+    raw = (text or "").strip()
+    patterns = [
+        r"(?:내용|본문)\s*(?:은|는|:|=)?\s*(.+)$",
+        r"(?:content|body|text)\s*(?:is|as|:|=)?\s*(.+)$",
+        r"(?:with|containing)\s+(.+)$",
+    ]
+    for pattern in patterns:
+        match = re.search(pattern, raw, flags=re.IGNORECASE | re.DOTALL)
+        if match:
+            content = match.group(1).strip()
+            return content.strip("`'\"")
+    return None
+
+
+def strip_generated_file_content(text: str) -> str:
+    """Remove common chat wrappers when a model is asked for file content only."""
+    content = (text or "").strip()
+    fenced = re.search(r"```(?:[\w.+-]+)?\s*(.*?)\s*```", content, flags=re.DOTALL)
+    if fenced:
+        content = fenced.group(1).strip()
+    return content
+
+
 def format_network_status(info: Dict) -> str:
     lines = [
         f"내부 IP: {info.get('local_ip') or '확인 안 됨'}",
@@ -471,6 +504,66 @@ def create_chat_router(context: AppContext) -> APIRouter:
             router.switch_model(req.model)
 
         if is_file_action_request(req.message):
+            target_path = file_action_target(req.message)
+            if target_path:
+                content = inline_file_action_content(req.message)
+                if content is None:
+                    generation_context = (
+                        "Create the exact content for the requested file. "
+                        "Return only the file bytes as plain text. "
+                        "Do not wrap the answer in Markdown fences, commentary, or explanations.\n\n"
+                        f"Target path: {target_path}\n"
+                        f"User request: {req.message}"
+                    )
+                    raw_content = await router.generate_as(
+                        router.current_model_id,
+                        message="Return only the requested file content.",
+                        context=generation_context,
+                        max_tokens=req.max_tokens,
+                        temperature=req.temperature,
+                    )
+                    content = strip_generated_file_content(str(raw_content))
+                try:
+                    result = execute_tool("write_file", {"path": target_path, "content": content})
+                except ToolError as exc:
+                    raise HTTPException(status_code=400, detail=str(exc)) from exc
+                answer = f"{result.get('path') or target_path} 파일을 만들었습니다."
+                created_files = [{
+                    "path": result.get("path") or target_path,
+                    "filename": Path(result.get("path") or target_path).name,
+                    "bytes": result.get("bytes", 0),
+                    "action": "write_file",
+                }]
+                notify_chat_message("user", req.message, req.source)
+                notify_chat_message("assistant", answer, req.source)
+                payload = {
+                    "status": "ok",
+                    "response": answer,
+                    "workspace": str(AGENT_ROOT),
+                    "steps": [{
+                        "state": AgentState.EXECUTING.value,
+                        "action": "write_file",
+                        "args": {"path": target_path},
+                        "result": result,
+                    }],
+                    "state_history": [AgentState.EXECUTING.value, AgentState.DONE.value],
+                    "final_state": AgentState.DONE.value,
+                    "created_files": created_files,
+                    "routed_to_agent": True,
+                    "action_route": "direct_write_file",
+                }
+                if req.stream:
+                    async def _stream_file_result():
+                        yield f"data: {json.dumps({'chunk': answer, 'model': router.current_model_id, 'agent': payload}, ensure_ascii=False)}\n\n"
+                        yield f"data: {json.dumps({'chunk': '', 'model': router.current_model_id, 'agent': payload}, ensure_ascii=False)}\n\n"
+                        yield "data: [DONE]\n\n"
+                    return StreamingResponse(
+                        _stream_file_result(),
+                        media_type="text/event-stream",
+                        headers={"X-Model": router.current_model_id, "X-Routed-To": "agent"},
+                    )
+                return JSONResponse(content=payload)
+
             agent_req = AgentRequest(
                 message=req.message,
                 conversation_id=req.conversation_id,

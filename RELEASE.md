@@ -11,7 +11,7 @@
 
 8.4.0 closes the gap between asking the Brain to create a file and seeing a
 real artifact appear. Explicit create/write/save/edit file requests from the
-Brain Chat route are now routed into the governed AgentRuntime tool loop instead
+Brain Chat route are now routed into the governed workspace file tool instead
 of plain model generation, so the same composer can answer questions or perform
 workspace file actions.
 
@@ -19,7 +19,7 @@ workspace file actions.
 - Added a `/chat` file-action intent gate for explicit file creation, editing,
   saving, and artifact requests.
 - Added regression coverage proving file creation requests from chat route into
-  AgentRuntime and return `created_files`.
+  the workspace file tool and return `created_files`.
 
 ### Changed
 - Kept normal Q&A on the direct chat generation path while routing only explicit

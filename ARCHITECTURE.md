@@ -49,7 +49,7 @@ into the first screen as a dashboard.
 
 Action-aware Brain Chat sits on the same product path: ordinary questions stay
 on direct chat generation, while explicit file create/write/save/edit requests
-enter the governed AgentRuntime tool loop.
+enter the governed workspace file tool path.
 
 ## Frontend
 

@@ -1,6 +1,6 @@
 # Lattice AI
 
-**Lattice AI 8.4.0 is the local-first Digital Brain platform with action-aware Brain Chat that creates files through the governed AgentRuntime instead of only returning code.**
+**Lattice AI 8.4.0 is the local-first Digital Brain platform with action-aware Brain Chat that creates files through the governed workspace file tool instead of only returning code.**
 
 **Lattice AI는 모델이 바뀌어도 내 지식과 맥락을 보존하는 로컬 우선 AI 브레인입니다.**
 
@@ -11,7 +11,7 @@ downloads, update checks, and other external communication happen only after
 explicit consent.
 
 It is not a ChatGPT clone, a model launcher, a graph database, or a note app.
-It is the finished private AI memory layer wrapped in a Living Brain experience — now with an 8.4.0 action-readiness contract behind chat-to-agent file creation, onboarding, orchestration, graph ingestion, and the plugin/community path.
+It is the finished private AI memory layer wrapped in a Living Brain experience — now with an 8.4.0 action-readiness contract behind chat-to-tool file creation, onboarding, orchestration, graph ingestion, and the plugin/community path.
 
 [![PyPI Version](https://img.shields.io/pypi/v/ltcai?label=PyPI)](https://pypi.org/project/ltcai/)
 [![npm Version](https://img.shields.io/npm/v/ltcai?label=npm)](https://www.npmjs.com/package/ltcai)
@@ -207,7 +207,7 @@ See [docs/DEVELOPMENT.md](docs/DEVELOPMENT.md) for developer workflow details.
 The current release is **8.4.0 — Action-Aware Brain Chat**:
 
 - Brain Chat now routes explicit file create/write/save/edit requests through
-  the governed AgentRuntime instead of treating them as ordinary prose
+  the governed workspace file tool instead of treating them as ordinary prose
   generation.
 - Requests such as `hello.md 파일 만들어줘` are executed through
   `write_file`/`edit_file` style tool paths, and created artifacts are returned
@@ -246,7 +246,7 @@ strategic roadmap slices applied through 8.4.0 and the follow-up tracks.
 
 | Version | Theme |
 | --- | --- |
-| 8.4.0 | Action-Aware Brain Chat: explicit file create/write/save/edit requests from Brain Chat route into the governed AgentRuntime so files are actually created instead of returned as code-only answers |
+| 8.4.0 | Action-Aware Brain Chat: explicit file create/write/save/edit requests from Brain Chat route into the governed workspace file tool so files are actually created instead of returned as code-only answers |
 | 8.3.0 | Orchestrated Brain Readiness: managed legacy shim inventory, stronger AgentRuntime/workflow boundaries, unified graph ingestion, workspace-safe duplicate content, first-run onboarding, and explicit community/plugin growth path |
 | 8.2.0 | Brain Brief: evidence-backed home briefing, honest empty-state guidance, recall/graph/model-proof next actions, and continued model/workspace runtime extraction |
 | 8.1.0 | Intuitive Brain Home: living Brain, recent memory, connected topic, next action, and composer are visible in one product-first screen with refreshed 8.1.0 evidence and artifacts |

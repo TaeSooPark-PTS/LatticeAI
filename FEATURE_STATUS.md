@@ -22,7 +22,7 @@ Brain Brief, and documents the five-minute source-to-proof onboarding loop.
 | --- | --- | --- |
 | Brain Home | Current | Living Brain, composer, and Brain Brief are visible in the first viewport on desktop and mobile. |
 | Brain Brief | Current | MemoryService turns real workspace, conversation, graph, vector, and source-health signals into focus, evidence, and next actions. |
-| Conversation | Current | Chat is the primary action. It refuses to fake model output when no model is loaded, surfaces memory proof when context exists, and routes explicit file actions into AgentRuntime. |
+| Conversation | Current | Chat is the primary action. It refuses to fake model output when no model is loaded, surfaces memory proof when context exists, and routes explicit file actions into the governed workspace file tool. |
 | Knowledge Graph | Current | Memory graph exploration, graph read compatibility, provenance-aware retrieval, workspace-safe duplicate content, and KG v2 equivalence gates remain active. |
 | Source Capture | Current | Files, folders, notes, and web/source capture paths feed Brain memory and graph context through explicit user actions and the unified ingestion pipeline when available. |
 | Local Models | Current | Setup and model recommendation flow remains explicit; model downloads and runtime installs require user action. |

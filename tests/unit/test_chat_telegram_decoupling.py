@@ -18,6 +18,8 @@ from types import SimpleNamespace
 from fastapi import FastAPI
 from fastapi.testclient import TestClient
 
+import tools as tools_module
+import latticeai.api.chat as chat_module
 from latticeai.api.chat import create_chat_router
 from latticeai.core.agent import AgentState
 from latticeai.services.app_context import AppContext
@@ -171,7 +173,10 @@ def test_injected_chat_agent_runtime_skips_router_construction(tmp_path: Path, m
     assert response.status_code == 200
 
 
-def test_chat_file_creation_intent_routes_to_agent_runtime(tmp_path: Path):
+def test_chat_file_creation_intent_writes_real_file(tmp_path: Path, monkeypatch):
+    monkeypatch.setattr(tools_module, "AGENT_ROOT", tmp_path)
+    monkeypatch.setattr(chat_module, "AGENT_ROOT", tmp_path)
+
     class FakeAgentRuntime:
         def __init__(self):
             self.used = False
@@ -217,7 +222,9 @@ def test_chat_file_creation_intent_routes_to_agent_runtime(tmp_path: Path):
 
     assert response.status_code == 200
     payload = response.json()
-    assert runtime.used is True
+    assert runtime.used is False
     assert payload["routed_to_agent"] is True
+    assert payload["action_route"] == "direct_write_file"
     assert payload["status"] == "ok"
     assert payload["created_files"][0]["path"] == "hello.txt"
+    assert (tmp_path / "hello.txt").read_text(encoding="utf-8") == "hi"
