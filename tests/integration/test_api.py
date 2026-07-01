@@ -16,6 +16,12 @@ def _session_cookie() -> dict:
     return {"session_id": sid} if sid else {}
 
 
+@pytest.fixture(scope="session", autouse=True)
+def _require_live_server(live_server_base_url):
+    """Skip this module's tests when no live server is reachable."""
+    return live_server_base_url
+
+
 @pytest.fixture(scope="session")
 def client():
     with httpx.Client(base_url=BASE_URL, cookies=_session_cookie(), timeout=15) as c:

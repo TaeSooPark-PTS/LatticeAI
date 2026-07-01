@@ -9,8 +9,14 @@ generation. The result is a real workspace artifact, not only a code block.
 
 ## What Changed
 
-- Brain Chat detects explicit file-action intent and routes it to the existing
-  planner/executor/reviewer agent runtime.
+- Brain Chat detects explicit file-action intent and routes explicit file-name
+  requests to the governed workspace `write_file` tool.
+- Literal file writes with user-provided content can now succeed even before a
+  model is loaded; model generation is used only when file content must be
+  synthesized.
+- File target and content parsing is narrower, so prose such as "create a text
+  file report.txt" no longer gets swallowed as the target path or literal
+  content.
 - Normal Q&A remains on direct chat generation, keeping the default conversation
   path fast and low-friction.
 - Agent responses returned through chat include `created_files` metadata so the

@@ -27,6 +27,12 @@ workspace file actions.
 - Synchronized package/runtime/static/Tauri metadata and current-release docs to
   8.4.0.
 
+### Fixed
+- Literal file writes with user-provided content no longer require a model to be
+  loaded before the workspace file tool runs.
+- File target/content parsing no longer swallows surrounding prose into the path
+  or treats descriptive words as literal file content.
+
 Expected artifacts (exact 8.4.0 names only):
 - dist/ltcai-8.4.0-py3-none-any.whl
 - dist/ltcai-8.4.0.tar.gz

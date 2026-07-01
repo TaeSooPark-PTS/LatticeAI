@@ -23,6 +23,11 @@ No unreleased changes.
   8.4.0.
 
 ### Fixed
+- Allowed literal `/chat` file writes with user-provided content to execute
+  before model loading, while still using a loaded model when content must be
+  synthesized.
+- Narrowed file target and content parsing to avoid treating surrounding prose
+  as the workspace path or literal file body.
 - Restored model loading dependency exports after the runtime/loading split so
   `/models/load` can prepare local MLX models again.
 - Added the common Gemma 4 26B shorthand alias to the canonical
