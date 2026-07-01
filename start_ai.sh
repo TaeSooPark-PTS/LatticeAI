@@ -6,14 +6,14 @@ PID_FILE="$PROJECT_DIR/.ltcai.pid"
 
 cd "$PROJECT_DIR" || exit 1
 
-if [ -x "$PROJECT_DIR/.venv/bin/uvicorn" ]; then
-    UVICORN_BIN="$PROJECT_DIR/.venv/bin/uvicorn"
+if [ -x "$PROJECT_DIR/.venv/bin/python" ]; then
+    PYTHON_BIN="$PROJECT_DIR/.venv/bin/python"
 else
-    UVICORN_BIN="$PROJECT_DIR/venv/bin/uvicorn"
+    PYTHON_BIN="$PROJECT_DIR/venv/bin/python"
 fi
 
-if [ ! -x "$UVICORN_BIN" ]; then
-    echo "❌ uvicorn 실행 파일을 찾을 수 없습니다: $UVICORN_BIN"
+if [ ! -x "$PYTHON_BIN" ]; then
+    echo "❌ Python 실행 파일을 찾을 수 없습니다: $PYTHON_BIN"
     echo "   먼저 venv와 requirements 설치 상태를 확인해 주세요."
     exit 1
 fi
@@ -41,7 +41,7 @@ while true; do
     echo "=========================================="
     
     # caffeinate명령어로 실행되는 동안 시스템 수면을 최대한 방지합니다.
-    caffeinate -i -s "$UVICORN_BIN" server:app --host "${LATTICEAI_HOST:-127.0.0.1}" --port 4825 &
+    caffeinate -i -s "$PYTHON_BIN" -m uvicorn server:app --host "${LATTICEAI_HOST:-127.0.0.1}" --port 4825 &
     SERVER_PID="$!"
     echo "$SERVER_PID" > "$PID_FILE"
     wait "$SERVER_PID"

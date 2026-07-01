@@ -67,6 +67,17 @@ def test_gemma4_catalog_aliases_do_not_force_mlx_vlm():
     assert ollama.load_id == "ollama:hf.co/ggml-org/gemma-4-12B-it-GGUF:Q4_K_M"
 
 
+def test_gemma4_26b_common_name_resolves_to_a4b_mlx_repo():
+    r = ModelResolution.from_request(
+        "gemma-4-26b-it-4bit",
+        engine="local_mlx",
+        engine_aliases=MODEL_ENGINE_ALIASES,
+    )
+    assert r.engine == "local_mlx"
+    assert r.resolved_model == "mlx-community/gemma-4-26b-a4b-it-4bit"
+    assert r.load_id == "mlx-community/gemma-4-26b-a4b-it-4bit"
+
+
 def test_resolution_for_explicit_prefix():
     r = ModelResolution.from_request("ollama:hf.co/ggml-org/gemma-4-12B-it-GGUF:Q4_K_M", user_email="t@x")
     assert r.engine == "ollama"

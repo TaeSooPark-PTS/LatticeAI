@@ -6,7 +6,13 @@ existed at that release.
 
 ## [Unreleased]
 
-No unreleased changes.
+### Fixed
+- Restored model loading dependency exports after the runtime/loading split so
+  `/models/load` can prepare local MLX models again.
+- Added the common Gemma 4 26B shorthand alias to the canonical
+  `mlx-community/gemma-4-26b-a4b-it-4bit` model id.
+- Updated the local server launcher to run `python -m uvicorn` from the active
+  virtual environment, avoiding stale console-script interpreter bindings.
 
 ## [8.3.0] - 2026-07-01
 

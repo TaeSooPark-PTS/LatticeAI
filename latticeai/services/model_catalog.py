@@ -102,6 +102,12 @@ MODEL_ENGINE_ALIASES = {
         "lmstudio": "ggml-org/gemma-4-12B-it-GGUF",
         "llamacpp": "ggml-org/gemma-4-12B-it-GGUF",
     },
+    "gemma-4-26b-it-4bit": {
+        "local_mlx": "mlx-community/gemma-4-26b-a4b-it-4bit",
+    },
+    "mlx-community/gemma-4-26b-a4b-it-4bit": {
+        "local_mlx": "mlx-community/gemma-4-26b-a4b-it-4bit",
+    },
     "gemma-4-31b-it-4bit": {
         "local_mlx": "mlx-community/gemma-4-31b-it-4bit",
         "ollama": "hf.co/ggml-org/gemma-4-31B-it-GGUF:Q4_K_M",

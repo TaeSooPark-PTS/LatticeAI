@@ -31,6 +31,11 @@ from latticeai.models.router import (
     parse_model_ref,
 )
 from latticeai.core.model_resolution import ModelResolution as _ModelResolution
+from latticeai.core.model_compat import (
+    friendly_model_runtime_error as _friendly_model_runtime_error,
+    model_runtime_compatibility as _model_runtime_compatibility,
+    SMOKE_PROMPT as _SMOKE_PROMPT,
+)
 from .model_engines import (
     ensure_lmstudio_server as _ensure_lmstudio_server,
     ensure_ollama_server as _ensure_ollama_server,
