@@ -228,3 +228,21 @@ def test_chat_file_creation_intent_writes_real_file(tmp_path: Path, monkeypatch)
     assert payload["status"] == "ok"
     assert payload["created_files"][0]["path"] == "hello.txt"
     assert (tmp_path / "hello.txt").read_text(encoding="utf-8") == "hi"
+
+
+def test_chat_literal_file_creation_does_not_require_loaded_model(tmp_path: Path, monkeypatch):
+    monkeypatch.setattr(tools_module, "AGENT_ROOT", tmp_path)
+    monkeypatch.setattr(chat_module, "AGENT_ROOT", tmp_path)
+    app = _chat_app(tmp_path, [])
+
+    response = TestClient(app).post(
+        "/chat",
+        json={"message": "notes/no-model.txt 파일 만들어줘. 내용은 local write ok", "stream": False},
+    )
+
+    assert response.status_code == 200
+    payload = response.json()
+    assert payload["status"] == "ok"
+    assert payload["action_route"] == "direct_write_file"
+    assert payload["created_files"][0]["path"] == "notes/no-model.txt"
+    assert (tmp_path / "notes" / "no-model.txt").read_text(encoding="utf-8") == "local write ok"

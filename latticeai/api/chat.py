@@ -123,8 +123,11 @@ def is_current_url_request(text: str) -> bool:
 def is_clear_command(text: str) -> bool:
     return (text or "").strip().lower() in {"/clear", "/clear_all"}
 
+# Path segments intentionally exclude spaces: allowing spaces let the target
+# match swallow preceding words (e.g. "create a text file report.txt" resolved
+# to the whole phrase as the path). Chat file targets are single tokens.
 _FILE_TARGET_RE = re.compile(
-    r"(?<![\w.-])(?:[~./\\]?[\w .@()+-]+[\\/])*[\w .@()+-]+"
+    r"(?<![\w.-])(?:[~./\\]?[\w.@()+-]+[\\/])*[\w.@()+-]+"
     r"\.(?:py|js|jsx|ts|tsx|md|markdown|txt|json|yaml|yml|toml|html|css|csv|xml|pdf|docx|xlsx|pptx|sh|sql)",
     re.IGNORECASE,
 )
@@ -178,10 +181,14 @@ def file_action_target(text: str) -> Optional[str]:
 def inline_file_action_content(text: str) -> Optional[str]:
     """Extract short user-provided content for deterministic file writes."""
     raw = (text or "").strip()
+    # Each pattern requires an explicit binder so ambiguous words like "text"
+    # ("create a text file report.txt") or a bare "with" ("report.md with a
+    # summary of X") do not get captured as literal file content.
     patterns = [
-        r"(?:내용|본문)\s*(?:은|는|:|=)?\s*(.+)$",
-        r"(?:content|body|text)\s*(?:is|as|:|=)?\s*(.+)$",
-        r"(?:with|containing)\s+(.+)$",
+        r"(?:내용|본문)\s*(?:은|는|이에요|입니다)\s*(.+)$",
+        r"(?:내용|본문|content|body|text)\s*[:=]\s*(.+)$",
+        r"(?:content|body)\s+(?:is|as)\s+(.+)$",
+        r"(?:with the content|with content|containing)\s+(.+)$",
     ]
     for pattern in patterns:
         match = re.search(pattern, raw, flags=re.IGNORECASE | re.DOTALL)
@@ -320,11 +327,11 @@ def create_chat_router(context: AppContext) -> APIRouter:
             user_email=user_email,
             conversation_id=conversation_id,
         )
-    
+
     def extract_screenshot_context(image_data: Optional[str]) -> str:
         if not image_data:
             return ""
-    
+
         lines = ["[SCREENSHOT INGESTION]"]
         image_bytes = b""
         try:
@@ -335,18 +342,18 @@ def create_chat_router(context: AppContext) -> APIRouter:
         except Exception as e:
             lines.append(f"- image_decode_error: {e}")
             return "\n".join(lines)
-    
+
         tesseract_path = shutil.which("tesseract")
         if not tesseract_path:
             lines.append("- ocr: unavailable; install `tesseract` to enable OCR text extraction.")
             return "\n".join(lines)
-    
+
         temp_path = None
         try:
             with tempfile.NamedTemporaryFile(prefix="ltcai-screenshot-", suffix=".png", delete=False) as temp:
                 temp.write(image_bytes)
                 temp_path = temp.name
-    
+
             ocr_text = ""
             for lang in ("kor+eng", "eng"):
                 completed = subprocess.run(
@@ -360,7 +367,7 @@ def create_chat_router(context: AppContext) -> APIRouter:
                     ocr_text = completed.stdout.strip()
                     lines.append(f"- ocr_language: {lang}")
                     break
-    
+
             if ocr_text:
                 lines.append("- ocr_text:")
                 lines.append(ocr_text[:4000])
@@ -374,7 +381,7 @@ def create_chat_router(context: AppContext) -> APIRouter:
                     Path(temp_path).unlink()
                 except OSError:
                     pass
-    
+
         return "\n".join(lines)
 
     _AGENT_RUNTIME = context.chat_agent_runtime
@@ -406,7 +413,7 @@ def create_chat_router(context: AppContext) -> APIRouter:
             "conversation_id": req.conversation_id,
             "workspace_id": workspace_scope_from_request(request),
         }
-    
+
         if is_network_status_request(req.message):
             history_message = f"{req.message}\n[Image attached]" if req.image_data else req.message
             save_to_history("user", history_message, **history_meta, **history_user)
@@ -424,7 +431,7 @@ def create_chat_router(context: AppContext) -> APIRouter:
                     headers={"X-Model": "network_status"},
                 )
             return JSONResponse(content={"response": answer})
-    
+
         if is_clear_command(req.message):
             command = req.message.strip().lower()
             clear_scope = "all" if command == "/clear_all" else "conversation"
@@ -469,7 +476,7 @@ def create_chat_router(context: AppContext) -> APIRouter:
                     headers={"X-Model": "history"},
                 )
             return JSONResponse(content={"response": answer})
-    
+
         if is_current_url_request(req.message) and req.client_url:
             answer = f"현재 페이지 URL: {req.client_url}"
             save_to_history("user", req.message, **history_meta, **history_user)
@@ -483,31 +490,16 @@ def create_chat_router(context: AppContext) -> APIRouter:
                     headers={"X-Model": "client_url"},
                 )
             return JSONResponse(content={"response": answer})
-    
-        if not router.current_model_id:
-            detail = "No model loaded. Call /models/load first."
-            if CONFIG.is_public:
-                detail = f"No public model loaded. Set OPENAI_API_KEY and LATTICEAI_PUBLIC_MODEL={PUBLIC_MODEL}, or call /models/load with an OpenAI-compatible model."
-            return JSONResponse(
-                status_code=400,
-                content={
-                    "error": "no_model_loaded",
-                    "detail": detail,
-                    "message": detail,
-                    "action": "load_model",
-                },
-            )
-    
-        if req.model and req.model != router.current_model_id:
-            if req.model not in router.loaded_model_ids:
-                raise HTTPException(status_code=404, detail=f"Model '{req.model}' not loaded.")
-            router.switch_model(req.model)
 
         if is_file_action_request(req.message):
             target_path = file_action_target(req.message)
             if target_path:
                 content = inline_file_action_content(req.message)
-                if content is None:
+                if content is None and router.current_model_id:
+                    if req.model and req.model != router.current_model_id:
+                        if req.model not in router.loaded_model_ids:
+                            raise HTTPException(status_code=404, detail=f"Model '{req.model}' not loaded.")
+                        router.switch_model(req.model)
                     generation_context = (
                         "Create the exact content for the requested file. "
                         "Return only the file bytes as plain text. "
@@ -523,6 +515,8 @@ def create_chat_router(context: AppContext) -> APIRouter:
                         temperature=req.temperature,
                     )
                     content = strip_generated_file_content(str(raw_content))
+                if content is None:
+                    content = ""
                 try:
                     result = execute_tool("write_file", {"path": target_path, "content": content})
                 except ToolError as exc:
@@ -560,10 +554,30 @@ def create_chat_router(context: AppContext) -> APIRouter:
                     return StreamingResponse(
                         _stream_file_result(),
                         media_type="text/event-stream",
-                        headers={"X-Model": router.current_model_id, "X-Routed-To": "agent"},
+                        headers={"X-Model": router.current_model_id or "tool", "X-Routed-To": "agent"},
                     )
                 return JSONResponse(content=payload)
 
+        if not router.current_model_id:
+            detail = "No model loaded. Call /models/load first."
+            if CONFIG.is_public:
+                detail = f"No public model loaded. Set OPENAI_API_KEY and LATTICEAI_PUBLIC_MODEL={PUBLIC_MODEL}, or call /models/load with an OpenAI-compatible model."
+            return JSONResponse(
+                status_code=400,
+                content={
+                    "error": "no_model_loaded",
+                    "detail": detail,
+                    "message": detail,
+                    "action": "load_model",
+                },
+            )
+
+        if req.model and req.model != router.current_model_id:
+            if req.model not in router.loaded_model_ids:
+                raise HTTPException(status_code=404, detail=f"Model '{req.model}' not loaded.")
+            router.switch_model(req.model)
+
+        if is_file_action_request(req.message):
             agent_req = AgentRequest(
                 message=req.message,
                 conversation_id=req.conversation_id,
@@ -590,7 +604,7 @@ def create_chat_router(context: AppContext) -> APIRouter:
                     headers={"X-Model": router.current_model_id, "X-Routed-To": "agent"},
                 )
             return JSONResponse(content=result)
-    
+
         lang = detect_language(req.message)
         context = f"[LANGUAGE: {_LANG_HINT[lang]}]\n" + (req.context or "")
         # v4 Context System: one budgeted, provenance-carrying assembly
@@ -627,12 +641,12 @@ def create_chat_router(context: AppContext) -> APIRouter:
                     print("📝 Document generation context retrieved from knowledge graph.")
         except Exception as e:
             logging.warning("Knowledge graph reinforcement skipped: %s", e)
-    
+
         if req.image_data:
             screenshot_context = extract_screenshot_context(req.image_data)
             if screenshot_context:
                 context += f"\n\n{screenshot_context}"
-    
+
         if CONFIG.auto_read_chat_paths:
             _file_path_re = re.compile(r'(?:^|[\s\'\"(])((~|/[\w.])[^\s\'")\]]*)', re.MULTILINE)
             requested_paths = [_m.group(1).strip() for _m in _file_path_re.finditer(req.message or "")]
@@ -652,7 +666,7 @@ def create_chat_router(context: AppContext) -> APIRouter:
                             "Attach the file, upload it, or use an approved local-file tool flow."
                         ),
                     )
-    
+
         trace_seed = CHAT_SERVICE.build_graph_trace(
             req.message,
             KNOWLEDGE_GRAPH if (ENABLE_GRAPH and KNOWLEDGE_GRAPH) else None,
@@ -662,11 +676,11 @@ def create_chat_router(context: AppContext) -> APIRouter:
             # Persisted with the answer trace: 'why is this in my context?'
             # is answerable from the stored record (UI surface lands in T9b).
             trace_seed["context_assembly"] = context_trace
-    
+
         history_message = f"{req.message}\n[Image attached]" if req.image_data else req.message
         save_to_history("user", history_message, **history_meta, **history_user)
         notify_chat_message("user", req.message, req.source)
-    
+
         if is_doc_gen and ENABLE_GRAPH and KNOWLEDGE_GRAPH:
             conv_key = req.conversation_id or "default"
             session = _doc_gen_sessions.get(conv_key)
@@ -677,7 +691,7 @@ def create_chat_router(context: AppContext) -> APIRouter:
             system_prompt = session.get_system_prompt(graph_md)
             sources = (doc_gen_context_result or {}).get("sources", [])
             footnote = format_sources_footnote(sources)
-    
+
             if req.stream:
                 async def _stream_doc_gen():
                     collected = []
@@ -728,7 +742,7 @@ def create_chat_router(context: AppContext) -> APIRouter:
                 )
                 notify_chat_message("assistant", str(result), req.source)
                 return JSONResponse(content={"response": str(result), "trace_id": trace_record["id"], "trace": trace_record})
-    
+
         if req.stream:
             recent_context = recent_chat_context(user_email=effective_email, conversation_id=req.conversation_id)
             stream_context = context
@@ -758,9 +772,9 @@ def create_chat_router(context: AppContext) -> APIRouter:
             else:
                 history_context = recent_chat_context(user_email=effective_email, conversation_id=req.conversation_id)
                 full_context = f"{history_context}\n{context}" if context else history_context
-    
+
             result = await router.generate(req.message, full_context, req.max_tokens, req.temperature, req.image_data)
-    
+
             save_to_history("assistant", str(result), **history_meta, **history_user)
             trace_record = CHAT_SERVICE.record_trace(
                 question=req.message,
@@ -770,22 +784,22 @@ def create_chat_router(context: AppContext) -> APIRouter:
                 trace=trace_seed,
             )
             notify_chat_message("assistant", str(result), req.source)
-    
+
             return JSONResponse(content={"response": str(result), "trace_id": trace_record["id"], "trace": trace_record})
-    
+
     
     @api_router.get("/history")
     async def fetch_history(request: Request):
         """웹 화면에서 이전 대화를 불러올 수 있도록 히스토리를 반환합니다."""
         require_user(request)
         return get_history()
-    
+
     @api_router.get("/history/conversations")
     async def fetch_history_conversations(request: Request):
         """저장된 히스토리를 대화 단위로 묶어 반환합니다."""
         require_user(request)
         return group_history_conversations()
-    
+
     @api_router.get("/history/conversations/{conversation_id:path}")
     async def fetch_history_conversation(conversation_id: str, request: Request):
         """선택한 대화의 메시지를 반환합니다."""
@@ -794,7 +808,7 @@ def create_chat_router(context: AppContext) -> APIRouter:
         if not messages:
             raise HTTPException(status_code=404, detail="대화를 찾을 수 없습니다.")
         return {"id": conversation_id, "messages": messages}
-    
+
     
     @api_router.delete("/history/conversations/{conversation_id:path}")
     async def delete_history_conversation(conversation_id: str, request: Request):
@@ -810,7 +824,7 @@ def create_chat_router(context: AppContext) -> APIRouter:
             kept=result.get("kept", 0),
         )
         return result
-    
+
     
     @api_router.delete("/history")
     async def delete_history(request: Request, keep_last: int = 0):
@@ -824,7 +838,7 @@ def create_chat_router(context: AppContext) -> APIRouter:
             kept=result.get("kept", 0),
         )
         return result
-    
+
     @api_router.get("/history/search")
     async def search_history(q: str, request: Request):
         """키워드로 채팅 히스토리를 검색합니다."""
@@ -841,7 +855,7 @@ def create_chat_router(context: AppContext) -> APIRouter:
                 grouped[cid] = {"conversation_id": cid, "title": conversation_title(item), "messages": []}
             grouped[cid]["messages"].append(item)
         return {"results": list(grouped.values())[-30:], "query": q}
-    
+
     async def _stream_chat(
         req: ChatRequest,
         context: str = "",
@@ -861,7 +875,7 @@ def create_chat_router(context: AppContext) -> APIRouter:
                     clean_chunk = chunk.split("text='")[1].split("', token=")[0].replace('\\n', '\n').replace('\\\\n', '\n')
                 except Exception:
                     pass
-    
+
             full_response += str(clean_chunk)
             yield f"data: {json.dumps({'chunk': clean_chunk, 'model': router.current_model_id}, ensure_ascii=False)}\n\n"
         history_user = get_history_user(effective_email or req.user_email, req.user_nickname)
@@ -889,7 +903,7 @@ def create_chat_router(context: AppContext) -> APIRouter:
         schema_path = skill_dir / "schema.json"
         if not schema_path.exists():
             raise HTTPException(404, detail=f"Skill '{req.skill}' not found or missing schema.json")
-    
+
         schema = json.loads(schema_path.read_text(encoding="utf-8"))
         eval_cases = schema.get("evals", [])
         if req.case_id:
@@ -897,7 +911,7 @@ def create_chat_router(context: AppContext) -> APIRouter:
         if not eval_cases:
             return {"skill": req.skill, "total": 0, "passed": 0, "failed": 0, "results": [],
                     "message": "No eval cases defined in schema.json"}
-    
+
         action_name = schema.get("action", req.skill)
         results = []
         for case in eval_cases:
@@ -919,19 +933,19 @@ def create_chat_router(context: AppContext) -> APIRouter:
                 results.append({"id": case_id, "description": case.get("description", ""),
                                 "passed": False, "error": str(exc),
                                 "pass_criteria": case.get("pass_criteria", "")})
-    
+
         n_passed = sum(1 for r in results if r.get("passed") is True)
         return {
             "skill": req.skill, "action": action_name,
             "total": len(results), "passed": n_passed, "failed": len(results) - n_passed,
             "results": results,
         }
-    
+
     
     @api_router.post("/agent")
     async def agent(req: AgentRequest, request: Request):
         """Natural-language local agent.
-    
+
         State machine:
             IDLE → PLANNING → WAITING_APPROVAL → EXECUTING → VERIFYING
                                            ↓                     ↓
@@ -944,22 +958,22 @@ def create_chat_router(context: AppContext) -> APIRouter:
         req.workspace_id = req.workspace_id or workspace_scope_from_request(request)
         if not router.current_model_id:
             raise HTTPException(status_code=400, detail="No model loaded. Call /models/load first.")
-    
+
         ensure_agent_root()
         lang = detect_language(req.message)
         lang_hint = _LANG_HINT[lang]
         max_steps = max(1, min(req.max_steps, 50))
         max_retry = 3
-    
+
         ctx = AgentRunContext()
         ctx.executing_model = req.executing_model
         ctx.reviewing_model = req.reviewing_model
-    
+
         # PLANNING phase
         ctx.state = AgentState.PLANNING
         ctx.state_history.append(ctx.state.value)
         await _AGENT_RUNTIME.plan(ctx, req, lang_hint, current_user, model_id=req.planning_model)
-    
+
         # Human-in-the-loop: pause after planning, return plan to UI
         if req.human_in_loop:
             context_id = secrets.token_urlsafe(16)
@@ -975,11 +989,11 @@ def create_chat_router(context: AppContext) -> APIRouter:
                 "executing_model": req.executing_model or router.current_model_id,
                 "reviewing_model": req.reviewing_model or router.current_model_id,
             }
-    
+
         # Auto-approve and run to completion (default behaviour)
         _AGENT_RUNTIME.approve(ctx, current_user)
         return await _agent_finish(ctx, req, lang_hint, current_user, max_steps, max_retry)
-    
+
     
     async def _agent_finish(
         ctx: AgentRunContext, req: AgentRequest, lang_hint: str,
@@ -988,7 +1002,7 @@ def create_chat_router(context: AppContext) -> APIRouter:
         """HTTP glue: drive the runtime to a terminal state, persist, shape the response."""
         await _AGENT_RUNTIME.run_to_completion(ctx, req, lang_hint, current_user, max_steps, max_retry)
         asyncio.create_task(_AGENT_RUNTIME.memory_update(ctx, req, current_user))
-    
+
         message = ctx.final_message or "작업을 완료했습니다."
         save_to_history("user", req.message, source=req.source or "web", conversation_id=req.conversation_id, workspace_id=req.workspace_id)
         save_to_history("assistant", message, source=req.source or "web", conversation_id=req.conversation_id, workspace_id=req.workspace_id)
@@ -1015,33 +1029,33 @@ def create_chat_router(context: AppContext) -> APIRouter:
             "final_state": ctx.state.value,
             "created_files": created_files,
         }
-    
+
     
     @api_router.post("/agent/resume")
     async def agent_resume(req: AgentResumeRequest, request: Request):
         """Resume a paused agent after human approval of the plan."""
         current_user = require_user(request)
-    
+
         with _pending_agents_lock:
             entry = _pending_agents.pop(req.context_id, None)
         if not entry:
             raise HTTPException(status_code=404, detail="Agent context not found or expired. Start a new request.")
-    
+
         ctx, orig_req, lang_hint, _orig_user = entry
-    
+
         if not req.approved:
             return {"status": "cancelled", "response": "사용자가 계획을 취소했습니다."}
-    
+
         if req.modified_plan:
             ctx.plan = req.modified_plan
             ctx.transcript[-1].update(ctx.plan)  # keep transcript in sync
-    
+
         # Apply model overrides from resume request (takes priority over original request)
         ctx.executing_model = req.executing_model or ctx.executing_model
         ctx.reviewing_model = req.reviewing_model or ctx.reviewing_model
-    
+
         _AGENT_RUNTIME.approve(ctx, current_user)
-    
+
         max_steps = max(1, min(orig_req.max_steps, 50))
         max_retry = 3
         return await _agent_finish(ctx, orig_req, lang_hint, current_user, max_steps, max_retry)
