@@ -164,6 +164,32 @@ test("Review Center loads actionable review evidence", async ({ page }) => {
   expect(errors).toEqual([]);
 });
 
+test("folder picker imports browser-selected folder files", async ({ page }) => {
+  const errors = trackPageErrors(page);
+  await bypassProductFlow(page);
+  await page.addInitScript(() => {
+    window.showDirectoryPicker = async () => ({
+      kind: "directory",
+      name: "Mock Folder",
+      async *values() {
+        yield {
+          kind: "file",
+          name: "folder-note.md",
+          getFile: async () => new File(["# Folder note"], "folder-note.md", { type: "text/markdown" }),
+        };
+      },
+    });
+  });
+  await page.goto("/app#/my-computer");
+
+  await expect(page.locator("body")).toContainText("폴더 연결");
+  await page.getByRole("button", { name: "폴더 선택" }).click();
+  await expect(page.locator("body")).toContainText("folder-note.md");
+  await expect(page.locator("body")).toContainText("Mock Folder 파일을 Brain에 넣었습니다.");
+  await expect(page.locator("body")).not.toContainText("폴더 선택 창을 열 수 없습니다");
+  expect(errors).toEqual([]);
+});
+
 test("mobile Brain surface has no horizontal overflow", async ({ page }) => {
   const errors = trackPageErrors(page);
   await page.setViewportSize({ width: 390, height: 780 });

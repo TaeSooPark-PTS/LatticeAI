@@ -109,7 +109,7 @@ async function uploadFiles(files: File[], setQueue: React.Dispatch<React.SetStat
   const rows = files.map((file) => ({
     id: `${file.name}-${file.size}-${file.lastModified}-${Date.now()}`,
     file,
-    name: file.name,
+    name: displayFileName(file),
     size: file.size,
     status: "queued" as const,
   }));
@@ -166,11 +166,94 @@ function uploadResultDetail(item: UploadQueueItem, language: Language) {
   return node ? t(language, "capture.files.capturedWithNode", { node }) : t(language, "capture.files.captured");
 }
 
+type BrowserFileHandle = {
+  kind: "file";
+  name: string;
+  getFile: () => Promise<File>;
+};
+
+type BrowserDirectoryHandle = {
+  kind: "directory";
+  name: string;
+  values?: () => AsyncIterable<BrowserFileHandle | BrowserDirectoryHandle>;
+  entries?: () => AsyncIterable<[string, BrowserFileHandle | BrowserDirectoryHandle]>;
+};
+
+type BrowserDirectoryPickerWindow = Window & {
+  showDirectoryPicker?: () => Promise<BrowserDirectoryHandle>;
+};
+
+type DesktopFolderPickerWindow = Window & {
+  __TAURI_INTERNALS__?: unknown;
+  __TAURI__?: {
+    core?: {
+      invoke?: <T>(command: string, args?: Record<string, unknown>) => Promise<T>;
+    };
+  };
+  latticeDesktop?: {
+    selectFolder?: () => Promise<string | null>;
+  };
+};
+
+const browserDirectoryInputProps: React.InputHTMLAttributes<HTMLInputElement> & {
+  webkitdirectory: string;
+  directory: string;
+} = {
+  webkitdirectory: "",
+  directory: "",
+};
+
+function displayFileName(file: File) {
+  return (file as File & { webkitRelativePath?: string }).webkitRelativePath || file.name;
+}
+
+function browserFolderNameFromFiles(files: File[]) {
+  const firstPath = (files[0] as (File & { webkitRelativePath?: string }) | undefined)?.webkitRelativePath || "";
+  return firstPath.split("/").filter(Boolean)[0] || "";
+}
+
+function hasDesktopFolderPicker() {
+  const shell = window as DesktopFolderPickerWindow;
+  return Boolean(shell.__TAURI__?.core?.invoke || shell.latticeDesktop?.selectFolder || (shell.__TAURI_INTERNALS__ && window.location.protocol === "tauri:"));
+}
+
+function isAbortError(error: unknown) {
+  return error instanceof DOMException && error.name === "AbortError";
+}
+
+async function browserDirectoryEntries(handle: BrowserDirectoryHandle) {
+  const entries: Array<BrowserFileHandle | BrowserDirectoryHandle> = [];
+  if (typeof handle.values === "function") {
+    for await (const entry of handle.values()) entries.push(entry);
+    return entries;
+  }
+  if (typeof handle.entries === "function") {
+    for await (const [, entry] of handle.entries()) entries.push(entry);
+  }
+  return entries;
+}
+
+async function filesFromBrowserDirectory(handle: BrowserDirectoryHandle): Promise<File[]> {
+  const files: File[] = [];
+  for (const entry of await browserDirectoryEntries(handle)) {
+    if (entry.kind === "file") {
+      files.push(await entry.getFile());
+      continue;
+    }
+    files.push(...await filesFromBrowserDirectory(entry));
+  }
+  return files;
+}
+
 function LocalPanel() {
   const language = useAppStore((state) => state.language);
   const qc = useQueryClient();
+  const folderInputRef = React.useRef<HTMLInputElement>(null);
   const [path, setPath] = React.useState("");
   const [folderPickError, setFolderPickError] = React.useState<string | null>(null);
+  const [browserFolderName, setBrowserFolderName] = React.useState("");
+  const [choosingFolder, setChoosingFolder] = React.useState(false);
+  const [folderQueue, setFolderQueue] = React.useState<UploadQueueItem[]>([]);
   const local = useQuery({ queryKey: ["localSources"], queryFn: latticeApi.localSources });
   const agent = useQuery({ queryKey: ["localAgent"], queryFn: latticeApi.localAgent });
   const connect = useMutation({
@@ -182,25 +265,69 @@ function LocalPanel() {
       void qc.invalidateQueries({ queryKey: ["memoryManager"] });
     },
   });
-  const choose = useMutation({
-    mutationFn: latticeApi.selectFolder,
-    onSuccess: (selectedPath) => {
-      if (!selectedPath) {
-        setFolderPickError(t(language, "capture.local.pickUnavailable"));
+  const browserFolderUpload = useMutation({
+    mutationFn: (files: File[]) => uploadFiles(files, setFolderQueue),
+    onSuccess: () => {
+      void qc.invalidateQueries({ queryKey: ["documents"] });
+      void qc.invalidateQueries({ queryKey: ["graphStats"] });
+      void qc.invalidateQueries({ queryKey: ["memoryManager"] });
+    },
+  });
+  const beginBrowserFolderUpload = React.useCallback((files: File[], folderName?: string) => {
+    if (!files.length) {
+      setFolderPickError(t(language, "capture.local.emptyFolder"));
+      return;
+    }
+    setFolderPickError(null);
+    setBrowserFolderName(folderName || browserFolderNameFromFiles(files) || t(language, "capture.local.browserFolder"));
+    browserFolderUpload.mutate(files);
+  }, [browserFolderUpload, language]);
+  const chooseFolder = React.useCallback(async () => {
+    if (choosingFolder) return;
+    setChoosingFolder(true);
+    setFolderPickError(null);
+    try {
+      const browserPicker = (window as BrowserDirectoryPickerWindow).showDirectoryPicker;
+      if (!hasDesktopFolderPicker() && typeof browserPicker === "function") {
+        const handle = await browserPicker.call(window);
+        beginBrowserFolderUpload(await filesFromBrowserDirectory(handle), handle.name);
         return;
       }
-      setFolderPickError(null);
-      setPath(selectedPath);
-      connect.mutate(selectedPath);
-    },
-    onError: () => setFolderPickError(t(language, "capture.local.pickUnavailable")),
-  });
+      if (hasDesktopFolderPicker()) {
+        const selectedPath = await latticeApi.selectFolder();
+        if (selectedPath) {
+          setBrowserFolderName("");
+          setPath(selectedPath);
+          connect.mutate(selectedPath);
+          return;
+        }
+      }
+      if (typeof browserPicker === "function") {
+        const handle = await browserPicker.call(window);
+        beginBrowserFolderUpload(await filesFromBrowserDirectory(handle), handle.name);
+        return;
+      }
+      if (folderInputRef.current) {
+        folderInputRef.current.click();
+        return;
+      }
+      setFolderPickError(t(language, "capture.local.pickUnavailable"));
+    } catch (error) {
+      if (!isAbortError(error)) setFolderPickError(t(language, "capture.local.pickUnavailable"));
+    } finally {
+      setChoosingFolder(false);
+    }
+  }, [beginBrowserFolderUpload, choosingFolder, connect, language]);
   const connectCurrent = React.useCallback(() => {
     const target = path.trim();
     if (!target) return;
     setFolderPickError(null);
+    setBrowserFolderName("");
     connect.mutate(target);
   }, [connect, path]);
+  const browserFolderResults = browserFolderUpload.data || [];
+  const browserFolderResultError = browserFolderResults.find((result) => !result.ok)?.error;
+  const browserFolderFailed = Boolean(browserFolderUpload.error || browserFolderResultError);
   return (
     <div className="grid gap-4 xl:grid-cols-[0.9fr_1.1fr]">
       <Card>
@@ -218,11 +345,25 @@ function LocalPanel() {
           >
             <div className="flex flex-col gap-2 sm:flex-row">
               <Input value={path} onChange={(e) => setPath(e.target.value)} placeholder={t(language, "capture.local.placeholder")} />
-              <Button type="button" variant="outline" disabled={choose.isPending || connect.isPending} onClick={() => choose.mutate()}>
-                {choose.isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : <FolderOpen className="h-4 w-4" />}
-                {choose.isPending ? t(language, "capture.local.choosing") : t(language, "capture.local.choose")}
+              <Button type="button" variant="outline" disabled={choosingFolder || connect.isPending || browserFolderUpload.isPending} onClick={() => void chooseFolder()}>
+                {choosingFolder ? <Loader2 className="h-4 w-4 animate-spin" /> : <FolderOpen className="h-4 w-4" />}
+                {choosingFolder ? t(language, "capture.local.choosing") : t(language, "capture.local.choose")}
               </Button>
             </div>
+            <input
+              ref={folderInputRef}
+              type="file"
+              multiple
+              className="sr-only"
+              aria-hidden="true"
+              tabIndex={-1}
+              {...browserDirectoryInputProps}
+              onChange={(event) => {
+                const files = Array.from(event.currentTarget.files || []);
+                event.currentTarget.value = "";
+                beginBrowserFolderUpload(files);
+              }}
+            />
             <Button type="submit" disabled={!path.trim() || connect.isPending}>
               {connect.isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : <ScanLine className="h-4 w-4" />}
               {t(language, "capture.local.connect")}
@@ -234,6 +375,19 @@ function LocalPanel() {
             />
           ) : null}
           {connect.data ? <OperationResult result={connect.data} successLabel={t(language, "capture.local.success")} /> : null}
+          {browserFolderName ? (
+            <OperationResult
+              result={{
+                ok: browserFolderUpload.isPending || !browserFolderFailed,
+                status: browserFolderFailed ? 0 : 200,
+                data: { folder: browserFolderName },
+                source: browserFolderFailed ? "unavailable" : "live",
+                error: browserFolderUpload.error ? t(language, "capture.local.browserImportFailed") : browserFolderResultError,
+              }}
+              successLabel={browserFolderUpload.isPending ? t(language, "capture.local.browserImporting") : t(language, "capture.local.browserImportSuccess", { folder: browserFolderName })}
+            />
+          ) : null}
+          <DocumentUploadQueue queue={folderQueue} onRetry={(file) => beginBrowserFolderUpload([file], browserFolderName)} />
         </CardContent>
       </Card>
       <DataPanel title={t(language, "capture.local.sources")} result={local.data}>
