@@ -49,12 +49,14 @@ API, UI, or release work, run:
 
 ```bash
 npm run check:python
-node scripts/run_python.mjs -m ruff check .
 npm run lint
 npm run typecheck
 npm run test:unit
 npm run docs:check-links
 ```
+
+`npm run lint` runs the Python Ruff baseline, frontend TypeScript lint gate,
+visual smoke syntax checks, and i18n literal checks.
 
 Use these when the change touches the relevant surface:
 

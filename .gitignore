@@ -31,6 +31,9 @@ vscode-extension/*.vsix
 # Playwright / test artifacts
 playwright-report/
 test-results/
+output/*
+!output/release/
+!output/release/**
 docs/images/tmp_frames/
 scripts/capture_*.js
 scripts/capture_*.mjs

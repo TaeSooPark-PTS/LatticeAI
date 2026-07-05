@@ -190,7 +190,6 @@ Main validation set:
 
 ```bash
 npm run check:python
-node scripts/run_python.mjs -m ruff check .
 npm run lint
 npm run typecheck
 npm run test:unit
@@ -199,6 +198,9 @@ npm run test:visual
 npm run desktop:tauri:check
 npm run docs:check-links
 ```
+
+`npm run lint` includes the Python Ruff baseline, frontend TypeScript lint
+gate, visual smoke syntax checks, and i18n literal checks.
 
 See [docs/DEVELOPMENT.md](docs/DEVELOPMENT.md) for developer workflow details.
 

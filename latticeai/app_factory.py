@@ -107,7 +107,7 @@ def _build(config: "Optional[Config]" = None) -> Dict[str, Any]:
         enforce_rate_limit as _enforce_rate_limit,
     )
     from latticeai.core.audit import (
-        get_audit_log as _get_audit_log,
+        get_audit_log as _get_audit_log,  # noqa: F401 - legacy server_app attr exported via locals()
         classify_sensitive_message as _classify_sensitive_message,
         build_sensitivity_report as _build_sensitivity_report,
         build_admin_audit_report as _build_admin_audit_report,

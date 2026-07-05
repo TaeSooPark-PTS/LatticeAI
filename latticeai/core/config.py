@@ -43,7 +43,12 @@ def _bool(env: Mapping[str, str], key: str, default: bool = False) -> bool:
     raw = env.get(key)
     if raw is None:
         return default
-    return raw.strip().lower() in {"1", "true", "yes", "on"}
+    normalized = raw.strip().lower()
+    if normalized in {"1", "true", "yes", "on"}:
+        return True
+    if normalized in {"0", "false", "no", "off"}:
+        return False
+    return default
 
 
 def _int(env: Mapping[str, str], key: str, default: int) -> int:
@@ -54,6 +59,13 @@ def _int(env: Mapping[str, str], key: str, default: int) -> int:
         return int(str(raw).strip())
     except ValueError:
         return default
+
+
+def _port(env: Mapping[str, str], key: str, default: int) -> int:
+    port = _int(env, key, default)
+    if 1 <= port <= 65535:
+        return port
+    return default
 
 
 @dataclass(frozen=True)
@@ -146,7 +158,7 @@ class Config:
         is_public = app_mode == "public"
 
         host = _value(env, "LATTICEAI_HOST", "127.0.0.1")
-        port = _int(env, "LATTICEAI_PORT", 4825)
+        port = _port(env, "LATTICEAI_PORT", 4825)
         network_exposed = not host_is_loopback(host)
 
         cors_extra = [item.strip() for item in _value(env, "LATTICEAI_CORS_ALLOWED_ORIGINS", "").split(",") if item.strip()]

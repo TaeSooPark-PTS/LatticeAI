@@ -60,7 +60,19 @@ def test_bad_mode_falls_back_to_local():
 
 def test_bad_port_falls_back_to_default():
     assert Config.from_env({"LATTICEAI_PORT": "not-a-number"}).port == 4825
+    assert Config.from_env({"LATTICEAI_PORT": "0"}).port == 4825
+    assert Config.from_env({"LATTICEAI_PORT": "70000"}).port == 4825
     assert Config.from_env({"LATTICEAI_PORT": "8080"}).port == 8080
+
+
+def test_unknown_bool_values_keep_default_security_posture():
+    public_cfg = Config.from_env({"LATTICEAI_MODE": "public", "LATTICEAI_REQUIRE_AUTH": "definitely"})
+    exposed_cfg = Config.from_env({"LATTICEAI_HOST": "0.0.0.0", "LATTICEAI_REQUIRE_AUTH": "definitely"})
+    local_cfg = Config.from_env({"LATTICEAI_ENABLE_GRAPH": "definitely"})
+
+    assert public_cfg.require_auth is True
+    assert exposed_cfg.require_auth is True
+    assert local_cfg.enable_graph is True
 
 
 def test_cors_and_admin_lists_parsed():

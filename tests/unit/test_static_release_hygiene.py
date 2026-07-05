@@ -160,3 +160,18 @@ def test_npm_package_excludes_sourcemaps_and_frontend_source():
     assert "frontend/" not in files, "npm package must not ship frontend source"
     # The built SPA shell must still ship.
     assert "static/app/" in files
+
+
+def test_lint_gate_includes_python_and_excludes_generated_output():
+    pkg = json.loads((REPO_ROOT / "package.json").read_text(encoding="utf-8"))
+    assert "lint:python" in pkg["scripts"]
+    assert "npm run lint:python" in pkg["scripts"]["lint"]
+
+    pyproject = tomllib.loads((REPO_ROOT / "pyproject.toml").read_text(encoding="utf-8"))
+    excludes = set(pyproject["tool"]["ruff"]["extend-exclude"])
+    assert "output" in excludes
+    assert "outputs" in excludes
+
+    gitignore = (REPO_ROOT / ".gitignore").read_text(encoding="utf-8")
+    assert "output/*" in gitignore
+    assert "!output/release/**" in gitignore

@@ -13,8 +13,9 @@ import time
 from dataclasses import dataclass
 from pathlib import Path
 
-# Set MLX_VLM_DRAFT_KIND to 'mtp' to enable the Gemma 4 assistant MTP drafter.
-os.environ["MLX_VLM_DRAFT_KIND"] = "mtp"
+# Default Gemma 4 assistant drafting to MTP without overriding an operator's
+# explicit MLX runtime choice.
+os.environ.setdefault("MLX_VLM_DRAFT_KIND", "mtp")
 
 from concurrent.futures import ThreadPoolExecutor
 from typing import AsyncIterator, Dict, Optional, Tuple, List

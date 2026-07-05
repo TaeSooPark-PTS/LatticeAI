@@ -1,6 +1,8 @@
 """Regression coverage for Gemma 4 MLX loader routing."""
 
 import asyncio
+import importlib
+import os
 
 import pytest
 
@@ -20,6 +22,22 @@ class _FakeMx:
 class _FakeTokenizer:
     def apply_chat_template(self, _messages, tokenize=False, add_generation_prompt=True):
         return "prompt"
+
+
+def test_router_import_preserves_explicit_mlx_draft_kind(monkeypatch):
+    monkeypatch.setenv("MLX_VLM_DRAFT_KIND", "custom-draft")
+
+    importlib.reload(router_mod)
+
+    assert os.environ["MLX_VLM_DRAFT_KIND"] == "custom-draft"
+
+
+def test_router_import_sets_default_mlx_draft_kind(monkeypatch):
+    monkeypatch.delenv("MLX_VLM_DRAFT_KIND", raising=False)
+
+    importlib.reload(router_mod)
+
+    assert os.environ["MLX_VLM_DRAFT_KIND"] == "mtp"
 
 
 def test_gemma4_26b_load_retries_mlx_lm_when_mlx_vlm_fails(monkeypatch):

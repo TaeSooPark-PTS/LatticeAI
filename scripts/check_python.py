@@ -1,23 +1,26 @@
 #!/usr/bin/env python3
-"""Discover-and-compile every first-party Python module.
+"""Discover-and-syntax-check every first-party Python module.
 
 Replaces the hand-maintained ``py_compile`` enumeration in CI and
 ``package.json``: walks the repository, skips vendored / virtualenv / build /
-cache / generated directories, and byte-compiles everything that remains. New
+cache / generated directories, and checks everything that remains. New
 modules are picked up automatically — there is nothing to update when a file is
 added, so the syntax gate can never silently fall behind the codebase.
 
+Unlike ``py_compile``, this script does not write ``.pyc`` files or create
+``__pycache__`` directories. Validation should not dirty a developer's working
+tree or leave generated files for later lint passes to trip over.
+
 Usage::
 
-    python scripts/check_python.py            # compile all discovered modules
-    python scripts/check_python.py --list     # just print what would be compiled
+    python scripts/check_python.py            # syntax-check all discovered modules
+    python scripts/check_python.py --list     # just print what would be checked
 
-Exit code is non-zero if any module fails to compile.
+Exit code is non-zero if any module fails to parse.
 """
 
 from __future__ import annotations
 
-import py_compile
 import sys
 from pathlib import Path
 
@@ -44,6 +47,7 @@ EXCLUDE_DIRS = {
     "playwright-report",
     "test-results",
     "ltcai.egg-info",
+    "output",
     ".ltcai",
     ".ltcai-brain",
     ".ltcai-test",
@@ -60,6 +64,16 @@ def iter_modules():
         yield path
 
 
+def check_syntax(path: Path) -> str | None:
+    """Return a human-readable failure string, or ``None`` when syntax is valid."""
+
+    try:
+        compile(path.read_bytes(), str(path), "exec", dont_inherit=True)
+    except (OSError, SyntaxError, ValueError) as exc:
+        return f"{path.relative_to(ROOT)}: {exc}"
+    return None
+
+
 def main(argv: list[str]) -> int:
     modules = sorted(iter_modules())
     if "--list" in argv:
@@ -69,17 +83,16 @@ def main(argv: list[str]) -> int:
 
     failures: list[str] = []
     for path in modules:
-        try:
-            py_compile.compile(str(path), doraise=True)
-        except py_compile.PyCompileError as exc:
-            failures.append(str(exc))
+        failure = check_syntax(path)
+        if failure:
+            failures.append(failure)
 
     if failures:
         print("\n".join(failures))
-        print(f"check:python FAILED — {len(failures)} of {len(modules)} module(s) did not compile")
+        print(f"check:python FAILED — {len(failures)} of {len(modules)} module(s) did not parse")
         return 1
 
-    print(f"check:python OK — compiled {len(modules)} modules")
+    print(f"check:python OK — syntax-checked {len(modules)} modules")
     return 0
 
 
