@@ -6,6 +6,12 @@ existed at that release.
 
 ## [Unreleased]
 
+### Changed
+- Improved the Capture source flow: desktop users can choose a folder with the
+  native folder picker and immediately scan/connect it, while web page capture
+  now supports paste, Enter-to-save, and `https://` normalization for bare
+  domains.
+
 ## [8.5.0] - 2026-07-01
 
 ### Added

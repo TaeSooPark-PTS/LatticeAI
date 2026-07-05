@@ -41,7 +41,7 @@ You need Lattice AI when:
 
 - Chat with a Brain that remembers useful context instead of treating every
   session as disposable.
-- Add documents, local folders, notes, screenshots, and conversations with
+- Add documents, selected local folders, notes, screenshots, and web pages with
   source-aware memory.
 - See recent memories, older memories, topics, relationships, and the full
   knowledge graph when you want deeper structure.

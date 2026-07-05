@@ -39,6 +39,9 @@ let desktopBase: Promise<string | null> | null = null;
 declare global {
   interface Window {
     __TAURI_INTERNALS__?: unknown;
+    latticeDesktop?: {
+      selectFolder?: () => Promise<string | null>;
+    };
   }
 }
 
@@ -57,11 +60,22 @@ async function tauriBackendOrigin(): Promise<string | null> {
   return desktopBase;
 }
 
-async function tauriInvoke<T>(command: string): Promise<T | null> {
+async function tauriInvoke<T>(command: string, args?: Record<string, unknown>): Promise<T | null> {
   if (!window.__TAURI_INTERNALS__) return null;
   try {
     const { invoke } = await import("@tauri-apps/api/core");
-    return await invoke<T>(command);
+    return await invoke<T>(command, args);
+  } catch {
+    return null;
+  }
+}
+
+async function selectFolder(): Promise<string | null> {
+  const tauriPath = await tauriInvoke<string | null>("select_folder");
+  if (tauriPath) return tauriPath;
+  try {
+    const electronPath = await window.latticeDesktop?.selectFolder?.();
+    return electronPath || null;
   } catch {
     return null;
   }
@@ -473,6 +487,7 @@ async function downloadWorkspaceFile(path: string, filename: string): Promise<{ 
 
 export const latticeApi = {
   raw: get,
+  selectFolder,
   desktopBackendStatus: async (): Promise<ApiResult<Record<string, unknown>>> => {
     const status = await tauriInvoke<Record<string, unknown>>("backend_status");
     if (status) return { ok: true, status: 200, data: status, source: "live" };

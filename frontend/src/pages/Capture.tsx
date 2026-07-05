@@ -1,6 +1,6 @@
 import * as React from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { AlertCircle, CheckCircle2, FolderPlus, Globe2, HardDrive, Loader2, RotateCcw, Upload } from "lucide-react";
+import { AlertCircle, CheckCircle2, ClipboardPaste, FolderOpen, FolderPlus, Globe2, HardDrive, Loader2, RotateCcw, ScanLine, Upload } from "lucide-react";
 import { latticeApi } from "@/api/client";
 import { ActionButton, DataPanel, EntityList, OperationResult, StructuredView, Tabs } from "@/components/primitives";
 import { Button } from "@/components/ui/button";
@@ -173,9 +173,26 @@ function LocalPanel() {
   const local = useQuery({ queryKey: ["localSources"], queryFn: latticeApi.localSources });
   const agent = useQuery({ queryKey: ["localAgent"], queryFn: latticeApi.localAgent });
   const connect = useMutation({
-    mutationFn: () => latticeApi.connectFolder(path),
-    onSuccess: () => qc.invalidateQueries({ queryKey: ["localSources"] }),
+    mutationFn: (targetPath?: string) => latticeApi.connectFolder((targetPath || path).trim()),
+    onSuccess: () => {
+      void qc.invalidateQueries({ queryKey: ["localSources"] });
+      void qc.invalidateQueries({ queryKey: ["graphStats"] });
+      void qc.invalidateQueries({ queryKey: ["memoryManager"] });
+    },
   });
+  const choose = useMutation({
+    mutationFn: latticeApi.selectFolder,
+    onSuccess: (selectedPath) => {
+      if (!selectedPath) return;
+      setPath(selectedPath);
+      connect.mutate(selectedPath);
+    },
+  });
+  const connectCurrent = React.useCallback(() => {
+    const target = path.trim();
+    if (!target) return;
+    connect.mutate(target);
+  }, [connect, path]);
   return (
     <div className="grid gap-4 xl:grid-cols-[0.9fr_1.1fr]">
       <Card>
@@ -184,8 +201,25 @@ function LocalPanel() {
           <CardDescription>{t(language, "capture.local.description")}</CardDescription>
         </CardHeader>
         <CardContent className="space-y-3">
-          <Input value={path} onChange={(e) => setPath(e.target.value)} placeholder={t(language, "capture.local.placeholder")} />
-          <Button disabled={!path.trim() || connect.isPending} onClick={() => connect.mutate()}>{t(language, "capture.local.connect")}</Button>
+          <form
+            className="space-y-3"
+            onSubmit={(event) => {
+              event.preventDefault();
+              connectCurrent();
+            }}
+          >
+            <div className="flex flex-col gap-2 sm:flex-row">
+              <Input value={path} onChange={(e) => setPath(e.target.value)} placeholder={t(language, "capture.local.placeholder")} />
+              <Button type="button" variant="outline" disabled={choose.isPending || connect.isPending} onClick={() => choose.mutate()}>
+                {choose.isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : <FolderOpen className="h-4 w-4" />}
+                {choose.isPending ? t(language, "capture.local.choosing") : t(language, "capture.local.choose")}
+              </Button>
+            </div>
+            <Button type="submit" disabled={!path.trim() || connect.isPending}>
+              {connect.isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : <ScanLine className="h-4 w-4" />}
+              {t(language, "capture.local.connect")}
+            </Button>
+          </form>
           {connect.data ? <OperationResult result={connect.data} successLabel={t(language, "capture.local.success")} /> : null}
         </CardContent>
       </Card>
@@ -213,8 +247,28 @@ function LocalPanel() {
 
 function BrowserPanel() {
   const language = useAppStore((state) => state.language);
+  const qc = useQueryClient();
   const [url, setUrl] = React.useState("");
-  const read = useMutation({ mutationFn: () => latticeApi.browserReadUrl(url) });
+  const read = useMutation({
+    mutationFn: (targetUrl: string) => latticeApi.browserReadUrl(targetUrl),
+    onSuccess: () => {
+      void qc.invalidateQueries({ queryKey: ["graphStats"] });
+      void qc.invalidateQueries({ queryKey: ["memoryManager"] });
+    },
+  });
+  const captureUrl = React.useCallback(() => {
+    const target = normalizeWebUrl(url);
+    if (!target) return;
+    setUrl(target);
+    read.mutate(target);
+  }, [read, url]);
+  const pasteUrl = React.useCallback(async () => {
+    const text = await navigator.clipboard?.readText().catch(() => "");
+    const target = normalizeWebUrl(text || "");
+    if (!target) return;
+    setUrl(target);
+    read.mutate(target);
+  }, [read]);
   return (
     <Card>
       <CardHeader>
@@ -222,14 +276,34 @@ function BrowserPanel() {
         <CardDescription>{t(language, "capture.browser.description")}</CardDescription>
       </CardHeader>
       <CardContent className="space-y-3">
-        <div className="flex flex-col gap-2 sm:flex-row">
-          <Input value={url} onChange={(e) => setUrl(e.target.value)} placeholder={t(language, "capture.browser.placeholder")} />
-          <Button disabled={!url.trim() || read.isPending} onClick={() => read.mutate()}>{t(language, "capture.browser.capture")}</Button>
-        </div>
+        <form
+          className="flex flex-col gap-2 sm:flex-row"
+          onSubmit={(event) => {
+            event.preventDefault();
+            captureUrl();
+          }}
+        >
+          <Input value={url} onChange={(e) => setUrl(e.target.value)} placeholder={t(language, "capture.browser.placeholder")} inputMode="url" />
+          <Button type="button" variant="outline" disabled={read.isPending} onClick={() => void pasteUrl()}>
+            <ClipboardPaste className="h-4 w-4" /> {t(language, "capture.browser.paste")}
+          </Button>
+          <Button type="submit" disabled={!url.trim() || read.isPending}>
+            {read.isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : <ScanLine className="h-4 w-4" />}
+            {t(language, "capture.browser.capture")}
+          </Button>
+        </form>
         {read.data ? <OperationResult result={read.data} successLabel={t(language, "capture.browser.success")} /> : null}
       </CardContent>
     </Card>
   );
+}
+
+function normalizeWebUrl(value: string) {
+  const raw = value.trim();
+  if (!raw) return "";
+  if (/^https?:\/\//i.test(raw)) return raw;
+  if (/^[\w.-]+\.[a-z]{2,}([/:?#].*)?$/i.test(raw)) return `https://${raw}`;
+  return raw;
 }
 
 function PipelinePanel() {

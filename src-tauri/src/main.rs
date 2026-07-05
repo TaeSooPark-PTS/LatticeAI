@@ -66,6 +66,36 @@ fn shutdown_backend(state: State<'_, BackendState>) -> BackendStatus {
     status_from_state(&state)
 }
 
+#[tauri::command]
+fn select_folder() -> Option<String> {
+    native_select_folder()
+}
+
+#[cfg(target_os = "macos")]
+fn native_select_folder() -> Option<String> {
+    let output = Command::new("osascript")
+        .args([
+            "-e",
+            r#"POSIX path of (choose folder with prompt "Choose a folder for Lattice AI")"#,
+        ])
+        .output()
+        .ok()?;
+    if !output.status.success() {
+        return None;
+    }
+    let path = String::from_utf8_lossy(&output.stdout).trim().to_string();
+    if path.is_empty() {
+        None
+    } else {
+        Some(path)
+    }
+}
+
+#[cfg(not(target_os = "macos"))]
+fn native_select_folder() -> Option<String> {
+    None
+}
+
 fn split_command(command: &str) -> Vec<String> {
     command.split_whitespace().map(|part| part.to_string()).collect()
 }
@@ -379,7 +409,8 @@ fn main() {
             backend_origin,
             backend_status,
             restart_backend,
-            shutdown_backend
+            shutdown_backend,
+            select_folder
         ])
         .setup(|app| {
             if let Some(window) = app.get_webview_window("main") {

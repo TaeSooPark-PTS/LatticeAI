@@ -12,8 +12,8 @@ read the docs first.
 1. Wake the Brain and confirm the local owner profile.
 2. Let Lattice inspect local model/runtime readiness.
 3. Pick the recommended Brain voice or skip model loading.
-4. Add one source: upload a file, connect a folder, save a note, or capture a
-   browser/source event.
+4. Add one source: upload a file, choose and scan a folder, save a note, or
+   capture a browser/source event.
 5. Ask one grounded question and inspect the answer proof.
 6. Open the Knowledge Graph only when the user wants source-level evidence.
 7. Back up the Brain once useful memory exists.
