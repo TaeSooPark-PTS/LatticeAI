@@ -286,7 +286,20 @@ export function BrainHome({
           onChunk: (_delta, fullText) => {
             setMessages((items) => {
               const next = [...items];
-              next[next.length - 1] = { role: "assistant", content: fullText };
+              next[next.length - 1] = { ...next[next.length - 1], role: "assistant", content: fullText };
+              return next;
+            });
+          },
+          onAgent: (agent) => {
+            const files = (agent.created_files || []).map((file) => ({
+              path: file.path,
+              filename: file.filename || file.path.split("/").pop() || file.path,
+              bytes: file.bytes || 0,
+            }));
+            if (!files.length) return;
+            setMessages((items) => {
+              const next = [...items];
+              next[next.length - 1] = { ...next[next.length - 1], files };
               return next;
             });
           },

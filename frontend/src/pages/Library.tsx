@@ -7,7 +7,7 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
-import { t } from "@/i18n";
+import { t, type Language } from "@/i18n";
 import { useAppStore } from "@/store/appStore";
 import { asArray } from "@/lib/utils";
 
@@ -47,6 +47,7 @@ export function LibraryPage({ initialTab }: { initialTab?: string }) {
 function ModelsPanel() {
   const qc = useQueryClient();
   const mode = useAppStore((state) => state.mode);
+  const language = useAppStore((state) => state.language);
   const models = useQuery({ queryKey: ["models"], queryFn: latticeApi.models });
   const recs = useQuery({ queryKey: ["modelRecommendations", "local_mlx"], queryFn: () => latticeApi.modelRecommendations("local_mlx") });
   const emb = useQuery({ queryKey: ["embeddings"], queryFn: latticeApi.embeddingsStatus });
@@ -105,13 +106,15 @@ function ModelsPanel() {
   return (
     <div className="grid gap-4 xl:grid-cols-[1.2fr_0.8fr]">
       <div className="space-y-4">
-        <DataPanel title="Guided model setup" description="Lattice recommends a small set first, explains internet/download needs, and keeps every model download behind consent." result={recs.data}>
+        <DataPanel title={t(language, "library.models.setup.title")} description={t(language, "library.models.setup.desc")} result={recs.data}>
           {(data) => {
             const recommendation = (data as Record<string, unknown>).recommendations as Record<string, unknown> | undefined;
             const profile = (data as Record<string, unknown>).profile as Record<string, unknown> | undefined;
             return (
               <div className="space-y-4">
                 <ModelRuntimeSummary
+                  language={language}
+                  mode={mode}
                   profile={profile || {}}
                   recommendation={recommendation || {}}
                   current={current}
@@ -127,29 +130,29 @@ function ModelsPanel() {
                 />
                 <div className="grid gap-2 md:grid-cols-3 xl:grid-cols-6">
                   {[
-                    ["Environment Analysis", true, Cpu],
-                    ["Recommended Models", Boolean(topPick || catalog.length), CheckCircle2],
-                    ["Install", Boolean(current || latestProgress?.stage === "engine"), PackagePlus],
-                    ["Download Progress", Boolean(current || latestProgress?.stage === "download"), Download],
-                    ["Validate", Boolean(current || latestProgress?.stage === "smoke_test"), ShieldAlert],
-                    ["Load / Ready", Boolean(current || lastResult), PlayCircle],
+                    [t(language, "library.step.environment"), true, Cpu],
+                    [t(language, "library.step.recommend"), Boolean(topPick || catalog.length), CheckCircle2],
+                    [t(language, "library.step.install"), Boolean(current || latestProgress?.stage === "engine"), PackagePlus],
+                    [t(language, "library.step.download"), Boolean(current || latestProgress?.stage === "download"), Download],
+                    [t(language, "library.step.validate"), Boolean(current || latestProgress?.stage === "smoke_test"), ShieldAlert],
+                    [t(language, "library.step.ready"), Boolean(current || lastResult), PlayCircle],
                   ].map(([label, done, Icon]) => (
                     <div key={String(label)} className="rounded-lg border border-border bg-background/55 p-3">
                       {React.createElement(Icon as typeof Cpu, { className: "h-4 w-4 text-primary" })}
                       <div className="mt-2 text-sm font-medium">{String(label)}</div>
-                      <Badge variant={done ? "success" : "muted"}>{done ? "ready" : "pending"}</Badge>
+                      <Badge variant={done ? "success" : "muted"}>{done ? t(language, "library.step.done") : t(language, "library.step.pending")}</Badge>
                     </div>
                   ))}
                 </div>
                 <label className="flex items-start gap-2 rounded-lg border border-border bg-background/55 p-3 text-sm leading-6">
                   <input className="mt-1" type="checkbox" checked={consent} onChange={(event) => setConsent(event.target.checked)} />
                   <span>
-                    Allow Lattice to install a missing local model component or download model files for this action. Download uses the internet; running the model stays local.
+                    {t(language, "library.consent")}
                   </span>
                 </label>
                 {latestProgress ? (
                   <div className="rounded-lg border border-border bg-background/55 p-3 text-sm">
-                    <div className="font-medium">{String(latestProgress.message || "Preparing model")}</div>
+                    <div className="font-medium">{String(latestProgress.message || t(language, "library.preparing"))}</div>
                     <div className="mt-2 h-2 overflow-hidden rounded-full bg-muted">
                       <div className="h-full bg-primary" style={{ width: `${Number(latestProgress.percent || 8)}%` }} />
                     </div>
@@ -161,7 +164,7 @@ function ModelsPanel() {
             );
           }}
         </DataPanel>
-        <DataPanel title={mode === "basic" ? "Recommended models" : "Recommended and advanced models"} result={models.data}>
+        <DataPanel title={mode === "basic" ? t(language, "library.panel.recommended.basic") : t(language, "library.panel.recommended.other")} result={models.data}>
         {(data) => (
           <div className="grid gap-2">
             {(catalog.length ? catalog : asArray<Record<string, unknown>>((data as Record<string, unknown>).loaded)).slice(0, mode === "basic" ? 3 : 14).map((model, index) => {
@@ -252,7 +255,7 @@ function ModelsPanel() {
                         disabled={busy || unsupported || !canPrepare || (downloadRequired && !consent)}
                         onClick={() => prepareModel(loadId, engine || "local_mlx", consent)}
                       >
-                        {activeModel === loadId && busy ? "Preparing" : downloadRequired ? "Install & Load" : "Validate & Load"}
+                        {activeModel === loadId && busy ? t(language, "library.btn.preparing") : downloadRequired ? t(language, "library.btn.installLoad") : t(language, "library.btn.validateLoad")}
                       </Button>
                     )}
                   </div>
@@ -269,10 +272,10 @@ function ModelsPanel() {
         </DataPanel>
       </div>
       <div className="space-y-4">
-        <DataPanel title={mode === "basic" ? "Memory search support" : "Embedding provider"} result={emb.data}>
+        <DataPanel title={mode === "basic" ? t(language, "library.models.embedding.basic") : "Embedding provider"} result={emb.data}>
           {(data) => mode === "basic" ? <ValuePreview value={(data as Record<string, unknown>).state || "ready"} /> : <StructuredView value={data} />}
         </DataPanel>
-        <DataPanel title="Model validation" result={models.data}>
+        <DataPanel title={mode === "basic" ? t(language, "library.models.validation") : "Model validation"} result={models.data}>
           {(data) => {
             const profiles = asArray<Record<string, unknown>>((data as Record<string, unknown>).compat_profiles);
             return profiles.length ? (
@@ -307,6 +310,8 @@ function AlternativeModels({ compatibility }: { compatibility: Record<string, un
 }
 
 function ModelRuntimeSummary({
+  language = "en",
+  mode = "advanced",
   profile,
   recommendation,
   current,
@@ -316,6 +321,8 @@ function ModelRuntimeSummary({
   onReload,
   onUnload,
 }: {
+  language?: Language;
+  mode?: string;
   profile: Record<string, unknown>;
   recommendation: Record<string, unknown>;
   current?: Record<string, unknown>;
@@ -329,9 +336,13 @@ function ModelRuntimeSummary({
   const engine = String(current?.engine || current?.recommended_engine || latestProgress?.engine || "local_mlx");
   const cachePath = String(current?.local_path || current?.storage_location || recommendation.cache_path || recommendation.storage_location || "~/.cache/huggingface / ~/.latticeai/models");
   const progressStage = String(latestProgress?.stage || lastResult?.stage || (loadedName ? "ready" : "idle"));
+  const basic = mode === "basic";
   return (
     <div className="space-y-3">
-      <StatGrid stats={[
+      <StatGrid stats={basic ? [
+        { label: t(language, "library.runtime.computer"), value: profile?.os ? `${String(profile.os)} ${String(profile.arch || "")}` : "detected" },
+        { label: t(language, "library.runtime.loaded"), value: loadedName || t(language, "library.runtime.noneShort") },
+      ] : [
         { label: "Computer", value: profile?.os ? `${String(profile.os)} ${String(profile.arch || "")}` : "detected" },
         { label: "Engine", value: engine },
         { label: "Loaded model", value: loadedName || "No local model loaded" },
@@ -340,12 +351,12 @@ function ModelRuntimeSummary({
       <div className="rounded-lg border border-border bg-background/55 p-3 text-sm">
         <div className="flex flex-wrap items-start justify-between gap-3">
           <div>
-            <div className="font-medium">{loadedName ? "Local model runtime is available" : "No model is loaded yet"}</div>
-            <div className="mt-1 text-muted-foreground">Cache/storage: {cachePath}</div>
+            <div className="font-medium">{loadedName ? t(language, "library.models.runtime.available") : t(language, "library.models.runtime.none")}</div>
+            {basic ? null : <div className="mt-1 text-muted-foreground">Cache/storage: {cachePath}</div>}
           </div>
           <div className="flex flex-wrap gap-2">
-            <Button variant="outline" size="sm" disabled={!loadedName} onClick={onReload}>Reload</Button>
-            <Button variant="outline" size="sm" disabled={!loadedName} onClick={onUnload}>Unload</Button>
+            <Button variant="outline" size="sm" disabled={!loadedName} onClick={onReload}>{t(language, "library.runtime.reload")}</Button>
+            <Button variant="outline" size="sm" disabled={!loadedName} onClick={onUnload}>{t(language, "library.runtime.unload")}</Button>
           </div>
         </div>
         {latestProgress ? (

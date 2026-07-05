@@ -45,7 +45,10 @@ export function WorkspaceProfileSwitcher({ language }: { language: Language }) {
   const workspaces = asArray<WorkspaceRow>(
     (registry.data?.data as Record<string, unknown> | undefined)?.workspaces,
   );
-  const owner = ownerEmail(profile.data?.data);
+  const ownerRaw = ownerEmail(profile.data?.data);
+  // Backend seeds a generic "Local User" profile name; show a friendly,
+  // localized label instead of the raw developer default.
+  const owner = ownerRaw && /^local\s*user$/i.test(ownerRaw) ? t(language, "shell.profile.you") : ownerRaw;
 
   const activeWorkspace = workspaces.find((row) => workspaceId(row) === workspaceIdState);
   const activeLabel = activeWorkspace

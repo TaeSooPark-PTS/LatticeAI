@@ -7,7 +7,7 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
-import { t } from "@/i18n";
+import { t, type Language } from "@/i18n";
 import { useAppStore } from "@/store/appStore";
 import { asArray, shortId, titleize } from "@/lib/utils";
 
@@ -282,6 +282,7 @@ function NetworkPanel() {
 function SettingsPanel() {
   const qc = useQueryClient();
   const { theme, setTheme, mode, setMode } = useAppStore();
+  const language = useAppStore((state) => state.language);
   const health = useQuery({ queryKey: ["health"], queryFn: latticeApi.health });
   const sys = useQuery({ queryKey: ["sysinfo"], queryFn: latticeApi.sysinfo });
   const comp = useQuery({ queryKey: ["computerMemory"], queryFn: latticeApi.computerMemory });
@@ -333,36 +334,39 @@ function SettingsPanel() {
     <div className="grid gap-4 xl:grid-cols-3">
       <Card>
         <CardHeader>
-          <CardTitle>Appearance</CardTitle>
-          <CardDescription>Local browser settings only.</CardDescription>
+          <CardTitle>{t(language, "system.panel.appearance")}</CardTitle>
+          <CardDescription>{t(language, "system.panel.appearance.hint")}</CardDescription>
         </CardHeader>
         <CardContent className="flex flex-wrap gap-2">
-          <Button variant={theme === "dark" ? "default" : "outline"} onClick={() => setTheme("dark")}>Dark</Button>
-          <Button variant={theme === "light" ? "default" : "outline"} onClick={() => setTheme("light")}>Light</Button>
+          <Button variant={theme === "dark" ? "default" : "outline"} onClick={() => setTheme("dark")}>{t(language, "system.theme.dark")}</Button>
+          <Button variant={theme === "light" ? "default" : "outline"} onClick={() => setTheme("light")}>{t(language, "system.theme.light")}</Button>
           {(["basic", "advanced", "admin"] as const).map((item) => (
-            <Button key={item} variant={mode === item ? "default" : "outline"} onClick={() => setMode(item)}>{titleize(item)}</Button>
+            <Button key={item} variant={mode === item ? "default" : "outline"} onClick={() => setMode(item)}>{t(language, `shell.mode.${item}`)}</Button>
           ))}
         </CardContent>
       </Card>
-      <DataPanel title="Server health" result={health.data}>
+      <DataPanel title={mode === "basic" ? t(language, "system.panel.brainStatus") : "Server health"} result={health.data}>
         {(data) => <HealthView data={data as Record<string, unknown>} />}
       </DataPanel>
-      <DataPanel title={mode === "basic" ? "Computer readiness" : "Host telemetry"} result={sys.data}>
+      <DataPanel title={mode === "basic" ? t(language, "system.panel.readiness") : "Host telemetry"} result={sys.data}>
         {(data) => mode === "basic" ? (
           <StatGrid stats={[
-            { label: "CPU", value: `${String((data as Record<string, unknown>).cpu_pct || "0")}%` },
-            { label: "Memory", value: `${String((data as Record<string, unknown>).ram_pct || "0")}%` },
-            { label: "GPU memory", value: `${String((data as Record<string, unknown>).gpu_mem_pct || "0")}%` },
-            { label: "Local status", value: "ready" },
+            { label: t(language, "system.stat.cpu"), value: `${String((data as Record<string, unknown>).cpu_pct || "0")}%` },
+            { label: t(language, "system.stat.memory"), value: `${String((data as Record<string, unknown>).ram_pct || "0")}%` },
+            { label: t(language, "system.stat.gpu"), value: `${String((data as Record<string, unknown>).gpu_mem_pct || "0")}%` },
+            { label: t(language, "system.stat.localStatus"), value: t(language, "system.stat.ready") },
           ]} />
         ) : <StructuredView value={data} />}
       </DataPanel>
-      <DataPanel title="Brain storage" result={storage.data} className="xl:col-span-3">
-        {(data) => <StorageView data={data as Record<string, unknown>} />}
+      <DataPanel title={mode === "basic" ? t(language, "system.storage.title") : "Brain storage"} result={storage.data} className="xl:col-span-3">
+        {(data) => <StorageView data={data as Record<string, unknown>} mode={mode} language={language} />}
       </DataPanel>
-      <DataPanel title="Backup health" result={backupHealth.data} className="xl:col-span-3">
-        {(data) => <BackupHealthView data={data as Record<string, unknown>} />}
-      </DataPanel>
+      {mode === "basic" ? null : (
+        <DataPanel title="Backup health" result={backupHealth.data} className="xl:col-span-3">
+          {(data) => <BackupHealthView data={data as Record<string, unknown>} />}
+        </DataPanel>
+      )}
+      {mode === "basic" ? null : (
       <Card className="xl:col-span-3">
         <CardHeader>
           <CardTitle>.latticebrain portability</CardTitle>
@@ -396,6 +400,7 @@ function SettingsPanel() {
           ))}
         </CardContent>
       </Card>
+      )}
       {mode !== "basic" ? <Card className="xl:col-span-3">
         <CardHeader>
           <CardTitle>Scale mode</CardTitle>
@@ -419,17 +424,19 @@ function SettingsPanel() {
           {migration.data ? <OperationResult result={migration.data} successLabel="Migration plan completed" /> : null}
         </CardContent>
       </Card> : null}
-      <DataPanel title="Computer memory" result={comp.data} className="xl:col-span-3">
-        {(data) => (
-          <div className="space-y-3">
-            <StructuredView value={data} />
-            <div className="flex gap-2">
-              <ActionButton label="Enable memory" action={() => latticeApi.setComputerMemory(true)} invalidate={["computerMemory"]} />
-              <ActionButton label="Disable memory" action={() => latticeApi.setComputerMemory(false)} invalidate={["computerMemory"]} variant="destructive" />
+      {mode === "basic" ? null : (
+        <DataPanel title="Computer memory" result={comp.data} className="xl:col-span-3">
+          {(data) => (
+            <div className="space-y-3">
+              <StructuredView value={data} />
+              <div className="flex gap-2">
+                <ActionButton label="Enable memory" action={() => latticeApi.setComputerMemory(true)} invalidate={["computerMemory"]} />
+                <ActionButton label="Disable memory" action={() => latticeApi.setComputerMemory(false)} invalidate={["computerMemory"]} variant="destructive" />
+              </div>
             </div>
-          </div>
-        )}
-      </DataPanel>
+          )}
+        </DataPanel>
+      )}
     </div>
   );
 }
@@ -478,25 +485,52 @@ function DeviceIdentityView({ data }: { data: Record<string, unknown> }) {
 
 function HealthView({ data }: { data: Record<string, unknown> }) {
   const mode = useAppStore((state) => state.mode);
+  const language = useAppStore((state) => state.language);
+  if (mode === "basic") {
+    return (
+      <StatusCard
+        title={t(language, "system.health.title")}
+        status={t(language, "system.health.ok")}
+        detail={t(language, "system.health.detail")}
+      />
+    );
+  }
   return (
     <div className="space-y-3">
       <StatGrid stats={[
         { label: "Status", value: data.status || data.ok || "reported" },
         { label: "Version", value: data.version || "not reported" },
         { label: "Mode", value: data.mode || data.environment || "local" },
-        ...(mode === "basic" ? [] : [{ label: "Port", value: data.port || data.backend_port || "configured" }]),
+        { label: "Port", value: data.port || data.backend_port || "configured" },
       ]} />
-      {mode === "basic" ? null : <StructuredView value={data} />}
+      <StructuredView value={data} />
     </div>
   );
 }
 
-function StorageView({ data }: { data: Record<string, unknown> }) {
+function StorageView({ data, mode = "advanced", language = "en" }: { data: Record<string, unknown>; mode?: string; language?: Language }) {
   const active = isRecord(data.active) ? data.active : data;
   const postgres = isRecord(data.postgres) ? data.postgres : {};
   const backup = isRecord(data.backup_health) ? data.backup_health : {};
   const vector = active.vector_search || active.vector || data.vector_search || data.sqlite_vec;
   const postgresAvailable = Boolean(postgres.available || postgres.connected || postgres.enabled);
+  const searchOn = Boolean(vector) && String(vector).toLowerCase() !== "not reported";
+  if (mode === "basic") {
+    return (
+      <div className="space-y-3">
+        <StatusCard
+          title={t(language, "system.storage.local.title")}
+          status={t(language, "system.storage.local.badge")}
+          detail={t(language, "system.storage.local.detail")}
+        />
+        <StatusCard
+          title={t(language, "system.storage.search.title")}
+          status={searchOn ? t(language, "system.storage.search.on") : t(language, "system.storage.search.pending")}
+          detail={searchOn ? t(language, "system.storage.search.detailOn") : t(language, "system.storage.search.detailPending")}
+        />
+      </div>
+    );
+  }
   return (
     <div className="space-y-4">
       <StatGrid stats={[

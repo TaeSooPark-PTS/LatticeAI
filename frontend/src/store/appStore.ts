@@ -24,7 +24,7 @@ function readTheme(): Theme {
     const saved = localStorage.getItem("lattice.theme");
     if (saved === "light" || saved === "dark") return saved;
   } catch {}
-  return "dark";
+  return "light";
 }
 
 function readMode(): WorkspaceMode {

@@ -30,7 +30,7 @@ export function reviewStatusVariant(status: string): React.ComponentProps<typeof
 export function reviewSourceLabel(source?: string) {
   if (source === "workflow_run") return "Workflow run";
   if (source === "trigger") return "Trigger";
-  if (source === "kg_change_digest") return "KG digest";
+  if (source === "kg_change_digest") return "Knowledge digest";
   return source || "Automation";
 }
 

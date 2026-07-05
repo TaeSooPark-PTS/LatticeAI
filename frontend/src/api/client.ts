@@ -303,9 +303,25 @@ async function uploadDocument(file: File): Promise<ApiResult<Record<string, unkn
   }
 }
 
+export type ChatCreatedFile = {
+  path: string;
+  filename: string;
+  bytes: number;
+  action?: string;
+};
+
+export type ChatAgentPayload = {
+  status?: string;
+  response?: string;
+  created_files?: ChatCreatedFile[];
+  routed_to_agent?: boolean;
+  action_route?: string;
+};
+
 export type ChatEventHandlers = {
   onChunk?: (delta: string, fullText: string) => void;
   onTrace?: (trace: unknown) => void;
+  onAgent?: (agent: ChatAgentPayload) => void;
   signal?: AbortSignal;
 };
 
@@ -394,6 +410,7 @@ async function streamChat(body: Record<string, unknown>, handlers: ChatEventHand
   let buffer = "";
   let text = "";
   let trace: unknown = null;
+  let agent: ChatAgentPayload | null = null;
   for (;;) {
     const { done, value } = await reader.read();
     if (done) break;
@@ -404,7 +421,7 @@ async function streamChat(body: Record<string, unknown>, handlers: ChatEventHand
       const line = part.split("\n").find((item) => item.startsWith("data:"));
       if (!line) continue;
       const raw = line.slice(5).trim();
-      if (raw === "[DONE]") return { source: "live", text, trace };
+      if (raw === "[DONE]") return { source: "live", text, trace, agent };
       const data = JSON.parse(raw);
       const delta = data.chunk || data.text || "";
       if (delta) {
@@ -415,9 +432,43 @@ async function streamChat(body: Record<string, unknown>, handlers: ChatEventHand
         trace = data.trace;
         handlers.onTrace?.(trace);
       }
+      if (data.agent && typeof data.agent === "object") {
+        agent = data.agent as ChatAgentPayload;
+        handlers.onAgent?.(agent);
+      }
     }
   }
-  return { source: "live", text, trace };
+  return { source: "live", text, trace, agent };
+}
+
+async function saveChatFile(path: string, content: string): Promise<ApiResult<{ path?: string; bytes?: number }>> {
+  return post("/tools/write_file", { path, content }, {});
+}
+
+async function downloadWorkspaceFile(path: string, filename: string): Promise<{ ok: boolean; error?: string }> {
+  const base = await apiBase();
+  try {
+    const res = await fetch(`${base}/tools/download?path=${encodeURIComponent(path)}`, {
+      credentials: "same-origin",
+      headers: workspaceHeaders(),
+    });
+    if (!res.ok) {
+      const payload = await res.json().catch(() => null);
+      return { ok: false, error: friendlyError(payload, res.statusText || "Download failed") };
+    }
+    const blob = await res.blob();
+    const url = URL.createObjectURL(blob);
+    const anchor = document.createElement("a");
+    anchor.href = url;
+    anchor.download = filename || path.split("/").pop() || "download";
+    document.body.appendChild(anchor);
+    anchor.click();
+    anchor.remove();
+    URL.revokeObjectURL(url);
+    return { ok: true };
+  } catch (err) {
+    return { ok: false, error: friendlyCaughtError(err, "Download failed") };
+  }
 }
 
 export const latticeApi = {
@@ -479,6 +530,8 @@ export const latticeApi = {
   conversation: (id: string) => get(`/history/conversations/${encodeURIComponent(id)}`, { messages: [] }),
   deleteConversation: (id: string) => del(`/history/conversations/${encodeURIComponent(id)}`, {}),
   streamChat,
+  saveChatFile,
+  downloadWorkspaceFile,
   uploadDocument,
   documents: (limit = 200) => get("/knowledge-graph/documents", { documents: [] }, { limit }),
   localSources: () => get("/knowledge-graph/local/sources", { sources: [], watch: { available: false, active: {} } }),

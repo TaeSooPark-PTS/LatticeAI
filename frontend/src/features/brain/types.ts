@@ -7,6 +7,14 @@ export type Message = {
   role: "user" | "assistant";
   content: string;
   proof?: MessageProof;
+  // Real files the assistant created in the local workspace for this reply.
+  files?: MessageFile[];
+};
+
+export type MessageFile = {
+  path: string;
+  filename: string;
+  bytes: number;
 };
 
 export type MessageProof = {

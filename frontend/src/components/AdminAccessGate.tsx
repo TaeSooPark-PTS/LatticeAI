@@ -19,6 +19,12 @@ export function AdminAccessGate({ language }: { language: Language }) {
   const setMode = useAppStore((state) => state.setMode);
   const canSeeAdmin = mode === "advanced" || mode === "admin";
 
+  // In everyday (basic) mode we keep the top bar calm and jargon-free:
+  // the admin console and the basic/advanced/admin switch stay tucked away
+  // in Settings → Appearance, so a first-time user is never asked to reason
+  // about "modes" just to have a conversation with their Brain.
+  if (mode === "basic") return null;
+
   return (
     <div className="admin-access-gate">
       {canSeeAdmin ? (

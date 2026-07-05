@@ -4,19 +4,19 @@
 :root {
   color-scheme: dark;
   /* Digital Brain — warm, private, alive */
-  --bg: 22 18% 5.5%;
-  --bg-elevated: 24 16% 8%;
-  --fg: 36 18% 94%;
-  --fg-muted: 30 12% 68%;
+  --bg: 22 18% 7%;
+  --bg-elevated: 24 16% 11%;
+  --fg: 36 18% 95%;
+  --fg-muted: 30 13% 76%;
   --brain-core: 38 72% 68%;      /* warm ember-gold */
   --brain-halo: 38 65% 78%;
   --memory: 168 52% 62%;        /* quiet teal pulse */
   --knowledge: 200 48% 70%;
   --connection: 280 42% 72%;    /* soft violet for relationships */
   --map: 32 38% 74%;            /* contemplative gold for the Map */
-  --surface: 24 14% 9%;
-  --surface-glass: 24 14% 9% / 0.82;
-  --border: 28 12% 22%;
+  --surface: 24 14% 12%;
+  --surface-glass: 24 14% 12% / 0.82;
+  --border: 28 12% 30%;
   --accent: 38 72% 68%;
   --destructive: 12 62% 58%;
   --ring: 38 72% 68%;
@@ -24,22 +24,23 @@
 
 :root[data-theme="light"] {
   color-scheme: light;
-  --bg: 36 28% 96%;
-  --bg-elevated: 36 26% 98%;
-  --fg: 24 16% 11%;
-  --fg-muted: 28 10% 42%;
-  --brain-core: 32 58% 46%;
-  --brain-halo: 32 52% 58%;
-  --memory: 170 48% 42%;
-  --knowledge: 205 42% 48%;
-  --connection: 275 38% 52%;
-  --map: 30 36% 52%;
-  --surface: 36 22% 96%;
-  --surface-glass: 36 22% 96% / 0.9;
-  --border: 28 14% 78%;
-  --accent: 32 58% 46%;
-  --destructive: 10 58% 48%;
-  --ring: 32 58% 46%;
+  /* Soft lavender daylight theme — calm, low-glare, high text contrast. */
+  --bg: 264 44% 95%;
+  --bg-elevated: 268 52% 97.5%;
+  --fg: 265 30% 18%;
+  --fg-muted: 264 16% 44%;
+  --brain-core: 270 66% 62%;
+  --brain-halo: 272 60% 73%;
+  --memory: 172 46% 40%;
+  --knowledge: 212 54% 52%;
+  --connection: 282 50% 60%;
+  --map: 28 52% 52%;
+  --surface: 276 52% 98.5%;
+  --surface-glass: 276 52% 98.5% / 0.86;
+  --border: 265 30% 84%;
+  --accent: 270 62% 60%;
+  --destructive: 350 64% 55%;
+  --ring: 270 62% 60%;
 }
 
 @theme inline {
@@ -66,6 +67,8 @@
 
 html {
   background: hsl(var(--background));
+  /* Larger, calmer base size so labels stay legible for every age group. */
+  font-size: 17.5px;
 }
 
 body {
@@ -76,6 +79,7 @@ body {
   font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
   letter-spacing: 0;
 }
+
 
 body::selection {
   background: hsl(var(--primary) / 0.28);
@@ -194,7 +198,10 @@ button {
 }
 
 :root[data-theme="light"] .premium-surface {
-  box-shadow: 0 18px 48px hsl(198 18% 54% / 0.16);
+  /* Cards sit as near-white lavender panels lifted above the lavender field. */
+  background: linear-gradient(180deg, hsl(var(--surface)), hsl(var(--surface) / 0.92));
+  border-color: hsl(var(--border) / 0.9);
+  box-shadow: 0 16px 40px hsl(266 40% 60% / 0.14);
 }
 
 .product-flow-shell {
@@ -2532,6 +2539,175 @@ body {
   border: 1px solid hsl(var(--border) / 0.7);
   color: hsl(var(--fg));
   border-bottom-left-radius: 6px;
+}
+
+/* Fenced code inside chat replies: readable card + copy / save-as-file actions. */
+.brain-code-block {
+  display: block;
+  margin: 0.55rem 0;
+  border: 1px solid hsl(var(--border) / 0.8);
+  border-radius: 10px;
+  background: hsl(var(--bg) / 0.72);
+  overflow: hidden;
+  text-align: left;
+  white-space: normal;
+}
+
+.brain-code-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem;
+  padding: 0.32rem 0.6rem;
+  border-bottom: 1px solid hsl(var(--border) / 0.6);
+  background: hsl(var(--surface) / 0.9);
+}
+
+.brain-code-lang {
+  color: hsl(var(--fg-muted));
+  font-size: 0.68rem;
+  font-weight: 760;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.brain-code-actions {
+  display: inline-flex;
+  gap: 0.35rem;
+}
+
+.brain-code-actions button {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.28rem;
+  border: 1px solid hsl(var(--border) / 0.9);
+  border-radius: 999px;
+  background: hsl(var(--surface));
+  color: hsl(var(--fg));
+  padding: 0.22rem 0.62rem;
+  font-size: 0.74rem;
+  font-weight: 660;
+  cursor: pointer;
+}
+
+.brain-code-actions button:hover:not(:disabled) {
+  border-color: hsl(var(--brain-core) / 0.6);
+  background: hsl(var(--brain-core) / 0.1);
+}
+
+.brain-code-actions button:disabled {
+  opacity: 0.6;
+  cursor: default;
+}
+
+.brain-code-block pre {
+  margin: 0;
+  padding: 0.7rem 0.8rem;
+  overflow-x: auto;
+  font-size: 0.85rem;
+  line-height: 1.5;
+  white-space: pre;
+}
+
+.brain-code-block pre code {
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  color: hsl(var(--fg));
+}
+
+.brain-code-save-error {
+  display: block;
+  padding: 0.4rem 0.8rem 0.55rem;
+  color: hsl(0 72% 52%);
+  font-size: 0.76rem;
+}
+
+/* Confirmation card for files actually written to the local workspace. */
+.brain-created-files {
+  display: grid;
+  gap: 0.4rem;
+  margin-top: 0.5rem;
+  border: 1px solid hsl(var(--memory) / 0.4);
+  border-radius: 10px;
+  background: hsl(var(--memory) / 0.08);
+  padding: 0.62rem 0.72rem;
+  text-align: left;
+}
+
+.brain-created-files.is-compact {
+  margin: 0.45rem 0.6rem 0.6rem;
+}
+
+.brain-created-files-head {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  color: hsl(var(--fg));
+  font-size: 0.86rem;
+}
+
+.brain-created-files ul {
+  display: grid;
+  gap: 0.34rem;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.brain-created-files li {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 0.45rem;
+  border: 1px solid hsl(var(--border) / 0.6);
+  border-radius: 8px;
+  background: hsl(var(--surface) / 0.92);
+  padding: 0.42rem 0.58rem;
+}
+
+.brain-created-file-name {
+  flex: 1 1 auto;
+  min-width: 0;
+  overflow-wrap: anywhere;
+  font-size: 0.88rem;
+  font-weight: 700;
+}
+
+.brain-created-files li small {
+  color: hsl(var(--fg-muted));
+  font-size: 0.72rem;
+}
+
+.brain-created-files li button {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.3rem;
+  border: 1px solid hsl(var(--brain-core) / 0.55);
+  border-radius: 999px;
+  background: hsl(var(--brain-core) / 0.12);
+  color: hsl(var(--fg));
+  padding: 0.28rem 0.72rem;
+  font-size: 0.78rem;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.brain-created-files li button:hover:not(:disabled) {
+  background: hsl(var(--brain-core) / 0.2);
+}
+
+.brain-created-files li button:disabled {
+  opacity: 0.6;
+  cursor: default;
+}
+
+.brain-created-files-hint {
+  color: hsl(var(--fg-muted));
+  font-size: 0.74rem;
+}
+
+.brain-created-files-error {
+  color: hsl(0 72% 52%);
+  font-size: 0.76rem;
 }
 
 .brain-answer-proof {

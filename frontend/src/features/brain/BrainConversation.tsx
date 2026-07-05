@@ -5,6 +5,8 @@ import {
   CheckCircle2,
   Cpu,
   DatabaseZap,
+  Download,
+  FileCheck2,
   FileText,
   FileUp,
   FolderPlus,
@@ -12,12 +14,15 @@ import {
   HardDrive,
   Loader2,
   Repeat2,
+  Save,
   Search,
   ShieldCheck,
   Sparkles,
 } from "lucide-react";
 
 import { type BrainState, LivingBrain } from "@/components/LivingBrain";
+import { latticeApi } from "@/api/client";
+import { useAppStore } from "@/store/appStore";
 
 const INGESTION_TYPE_LABEL_KEY: Record<IngestionSourceType, string> = {
   file: "brain.ingest.type.file",
@@ -41,6 +46,7 @@ import {
   type KnowledgeConcept,
   type MemoryFragment,
   type Message,
+  type MessageFile,
 } from "./types";
 import { BrainCarePanel } from "./BrainCarePanel";
 import { BrainComposer } from "./BrainComposer";
@@ -108,6 +114,8 @@ export function BrainConversation({
   onExploreBrain: () => void;
 }) {
   const hasMessages = messages.length > 0;
+  const mode = useAppStore((state) => state.mode);
+  const isBasic = mode === "basic";
 
   return (
     <section className="brain-conversation" aria-label={t(language, "brain.aria.conversation")}>
@@ -126,11 +134,14 @@ export function BrainConversation({
                   />
                   <div className="brain-header-title">
                     <strong>Lattice Brain</strong>
-                    <span>{t(language, `brain.firstScreen.state.${readiness.state}`)} ({readiness.score}%)</span>
+                    <span>
+                      {t(language, `brain.firstScreen.state.${readiness.state}`)}
+                      {isBasic ? "" : ` (${readiness.score}%)`}
+                    </span>
                   </div>
                 </div>
                 <div className="brain-header-actions">
-                  <div className="brain-model-pill">{modelName}</div>
+                  {isBasic ? null : <div className="brain-model-pill">{modelName}</div>}
                   <button type="button" className="brain-deeper-btn" onClick={onExploreBrain}>
                     {t(language, "brain.firstScreen.action.graph")}
                   </button>
@@ -144,11 +155,16 @@ export function BrainConversation({
                   return (
                     <div key={`${message.role}-${index}`} className={`brain-message ${message.role}`}>
                       <div className="brain-message-bubble">
-                        {message.content}
+                        {message.role === "assistant" ? (
+                          <MessageBody language={language} content={message.content} />
+                        ) : (
+                          message.content
+                        )}
                         {proof && proof.citations.length ? (
                           <InlineCitationMarkers language={language} proof={proof} messageId={messageId} />
                         ) : null}
                       </div>
+                      {message.files?.length ? <CreatedFilesCard language={language} files={message.files} /> : null}
                       {proof ? <AnswerProofCard language={language} proof={proof} messageId={messageId} /> : null}
                     </div>
                   );
@@ -201,7 +217,10 @@ export function BrainConversation({
                 <p>{t(language, "brain.firstScreen.body")}</p>
                 <div className="brain-home-status-badge">
                   <span className="status-dot" />
-                  <span>{t(language, `brain.firstScreen.state.${readiness.state}`)} ({readiness.score}%)</span>
+                  <span>
+                    {t(language, `brain.firstScreen.state.${readiness.state}`)}
+                    {isBasic ? "" : ` (${readiness.score}%)`}
+                  </span>
                 </div>
               </div>
 
@@ -228,6 +247,7 @@ export function BrainConversation({
               <BrainBriefPanel
                 language={language}
                 brief={brief}
+                showEvidence={!isBasic}
                 onAction={(action) => handleBriefAction(action, onVerifyModelContinuity)}
               />
             </div>
@@ -242,14 +262,18 @@ export function BrainConversation({
           ) : null}
 
           <details className="brain-utility-drawer">
-            <summary>{t(language, "brain.chatHome.utility")}</summary>
+            <summary>{t(language, isBasic ? "brain.chatHome.utility.basic" : "brain.chatHome.utility")}</summary>
             <div className="brain-utility-tools" aria-label={t(language, "brain.chatHome.contextAria")}>
               <LanguageSwitcher compact />
-              <div className="brain-model-pill">{modelName}</div>
-              <button className="brain-admin-link" type="button" onClick={() => navigateHash("/admin")}>
-                <ShieldCheck className="h-3.5 w-3.5" />
-                {t(language, "brain.admin")}
-              </button>
+              {isBasic ? null : (
+                <>
+                  <div className="brain-model-pill">{modelName}</div>
+                  <button className="brain-admin-link" type="button" onClick={() => navigateHash("/admin")}>
+                    <ShieldCheck className="h-3.5 w-3.5" />
+                    {t(language, "brain.admin")}
+                  </button>
+                </>
+              )}
               <span><CheckCircle2 className="h-3.5 w-3.5" />{t(language, "brain.local")}</span>
               <span><CheckCircle2 className="h-3.5 w-3.5" />{t(language, "brain.private")}</span>
               <span><CheckCircle2 className="h-3.5 w-3.5" />{t(language, "brain.portable")}</span>
@@ -264,31 +288,35 @@ export function BrainConversation({
                 onIngestNote={onIngestNote}
                 onIngestWeb={onIngestWeb}
               />
-              <ProductCommandCenter
-                language={language}
-                readiness={readiness}
-                proof={proof}
-                modelName={modelName}
-                memories={memories}
-                concepts={concepts}
-                emergenceEvents={emergenceEvents}
-                onOpenDepth={onOpenDepth}
-                onVerifyModelContinuity={onVerifyModelContinuity}
-              />
-              <IngestionTimelineSection language={language} emergenceEvents={emergenceEvents} />
-              <ModelContinuityDemo
-                language={language}
-                proof={proof}
-                modelName={modelName}
-                onVerify={onVerifyModelContinuity}
-              />
-              <BrainOverviewPanel
-                memories={memories}
-                concepts={concepts}
-                readiness={readiness}
-                proof={proof}
-                onOpenDepth={onOpenDepth}
-              />
+              {isBasic ? null : (
+                <>
+                  <ProductCommandCenter
+                    language={language}
+                    readiness={readiness}
+                    proof={proof}
+                    modelName={modelName}
+                    memories={memories}
+                    concepts={concepts}
+                    emergenceEvents={emergenceEvents}
+                    onOpenDepth={onOpenDepth}
+                    onVerifyModelContinuity={onVerifyModelContinuity}
+                  />
+                  <IngestionTimelineSection language={language} emergenceEvents={emergenceEvents} />
+                  <ModelContinuityDemo
+                    language={language}
+                    proof={proof}
+                    modelName={modelName}
+                    onVerify={onVerifyModelContinuity}
+                  />
+                  <BrainOverviewPanel
+                    memories={memories}
+                    concepts={concepts}
+                    readiness={readiness}
+                    proof={proof}
+                    onOpenDepth={onOpenDepth}
+                  />
+                </>
+              )}
               <BrainCarePanel language={language} />
             </div>
           </details>
@@ -315,10 +343,12 @@ function handleBriefAction(action: BrainBriefAction, onVerifyModelContinuity: ()
 function BrainBriefPanel({
   language,
   brief,
+  showEvidence = true,
   onAction,
 }: {
   language: Language;
   brief: BrainBrief;
+  showEvidence?: boolean;
   onAction: (action: BrainBriefAction) => void;
 }) {
   const focusTitle = brief.focus.title || t(language, "brain.brief.focus.empty");
@@ -340,14 +370,16 @@ function BrainBriefPanel({
           <small>{focusDetail}</small>
         </div>
       </div>
-      <div className="brain-brief-evidence" aria-label={t(language, "brain.brief.evidence.aria")}>
-        {brief.evidence.slice(0, 3).map((item) => (
-          <span key={item.id} title={t(language, item.detailKey)}>
-            <strong>{item.value}</strong>
-            {t(language, item.labelKey)}
-          </span>
-        ))}
-      </div>
+      {showEvidence ? (
+        <div className="brain-brief-evidence" aria-label={t(language, "brain.brief.evidence.aria")}>
+          {brief.evidence.slice(0, 3).map((item) => (
+            <span key={item.id} title={t(language, item.detailKey)}>
+              <strong>{item.value}</strong>
+              {t(language, item.labelKey)}
+            </span>
+          ))}
+        </div>
+      ) : null}
       {actions.length ? (
         <div className="brain-brief-actions" aria-label={t(language, "brain.brief.actions")}>
           {actions.map((action) => (
@@ -810,6 +842,184 @@ function ModelContinuityDemo({
         <Cpu className="h-3.5 w-3.5" />
         {t(language, "brain.modelDemo.change")}
       </button>
+    </section>
+  );
+}
+
+// Renders assistant text with fenced code blocks as readable code cards.
+// Every code block gets copy + save-as-real-file actions so "show me code"
+// answers can always become an actual file on disk with one click.
+function MessageBody({ language, content }: { language: Language; content: string }) {
+  const segments = React.useMemo(() => splitCodeSegments(content), [content]);
+  if (segments.length === 1 && segments[0].kind === "text") {
+    return <>{content}</>;
+  }
+  return (
+    <>
+      {segments.map((segment, index) =>
+        segment.kind === "code" ? (
+          <CodeBlock key={index} language={language} code={segment.value} lang={segment.lang} />
+        ) : segment.value ? (
+          <span key={index}>{segment.value}</span>
+        ) : null,
+      )}
+    </>
+  );
+}
+
+type MessageSegment = { kind: "text" | "code"; value: string; lang?: string };
+
+function splitCodeSegments(content: string): MessageSegment[] {
+  const segments: MessageSegment[] = [];
+  const fence = /```([\w.+-]*)\n([\s\S]*?)(?:```|$)/g;
+  let cursor = 0;
+  for (let match = fence.exec(content); match; match = fence.exec(content)) {
+    if (match.index > cursor) {
+      segments.push({ kind: "text", value: content.slice(cursor, match.index) });
+    }
+    segments.push({ kind: "code", value: match[2].replace(/\n$/, ""), lang: match[1] || undefined });
+    cursor = match.index + match[0].length;
+  }
+  if (cursor < content.length) {
+    segments.push({ kind: "text", value: content.slice(cursor) });
+  }
+  return segments.length ? segments : [{ kind: "text", value: content }];
+}
+
+const CODE_LANG_EXTENSION: Record<string, string> = {
+  python: "py", py: "py", javascript: "js", js: "js", typescript: "ts", ts: "ts",
+  tsx: "tsx", jsx: "jsx", html: "html", css: "css", json: "json", markdown: "md",
+  md: "md", bash: "sh", sh: "sh", shell: "sh", zsh: "sh", sql: "sql", yaml: "yml",
+  yml: "yml", toml: "toml", csv: "csv", xml: "xml", text: "txt", txt: "txt",
+};
+
+function suggestedFileName(lang?: string): string {
+  const extension = CODE_LANG_EXTENSION[(lang || "").toLowerCase()] || "txt";
+  const now = new Date();
+  const stamp = [
+    now.getFullYear(),
+    String(now.getMonth() + 1).padStart(2, "0"),
+    String(now.getDate()).padStart(2, "0"),
+  ].join("") + "-" + [
+    String(now.getHours()).padStart(2, "0"),
+    String(now.getMinutes()).padStart(2, "0"),
+    String(now.getSeconds()).padStart(2, "0"),
+  ].join("");
+  return `chat-${stamp}.${extension}`;
+}
+
+function CodeBlock({ language, code, lang }: { language: Language; code: string; lang?: string }) {
+  const [copied, setCopied] = React.useState(false);
+  const [saveState, setSaveState] = React.useState<"idle" | "saving" | "saved" | "error">("idle");
+  const [savedFile, setSavedFile] = React.useState<MessageFile | null>(null);
+  const [saveError, setSaveError] = React.useState("");
+
+  async function copy() {
+    try {
+      await navigator.clipboard?.writeText(code);
+      setCopied(true);
+      window.setTimeout(() => setCopied(false), 2000);
+    } catch {}
+  }
+
+  async function saveAsFile() {
+    if (saveState === "saving") return;
+    setSaveState("saving");
+    setSaveError("");
+    const name = suggestedFileName(lang);
+    const result = await latticeApi.saveChatFile(name, code);
+    if (!result.ok) {
+      setSaveState("error");
+      setSaveError(result.error || "unavailable");
+      return;
+    }
+    const data = result.data as { path?: string; bytes?: number };
+    const path = data.path || name;
+    setSavedFile({ path, filename: path.split("/").pop() || name, bytes: data.bytes || 0 });
+    setSaveState("saved");
+  }
+
+  return (
+    <div className="brain-code-block">
+      <div className="brain-code-head">
+        <span className="brain-code-lang">{lang || "text"}</span>
+        <div className="brain-code-actions">
+          <button type="button" onClick={() => void copy()}>
+            {copied ? t(language, "brain.code.copied") : t(language, "brain.code.copy")}
+          </button>
+          <button type="button" onClick={() => void saveAsFile()} disabled={saveState === "saving"}>
+            <Save className="h-3 w-3" aria-hidden="true" />
+            {saveState === "saving" ? t(language, "brain.code.saving") : t(language, "brain.code.save")}
+          </button>
+        </div>
+      </div>
+      <pre><code>{code}</code></pre>
+      {saveState === "saved" && savedFile ? (
+        <CreatedFilesCard language={language} files={[savedFile]} compact />
+      ) : null}
+      {saveState === "error" ? (
+        <small className="brain-code-save-error" role="alert">
+          {t(language, "brain.code.saveError", { reason: saveError })}
+        </small>
+      ) : null}
+    </div>
+  );
+}
+
+function formatFileSize(bytes: number): string {
+  if (!bytes) return "";
+  if (bytes < 1024) return `${bytes} B`;
+  if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`;
+  return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
+}
+
+// Friendly confirmation card for files the assistant actually created,
+// with a one-click download so non-technical users can find their file.
+function CreatedFilesCard({
+  language,
+  files,
+  compact = false,
+}: {
+  language: Language;
+  files: MessageFile[];
+  compact?: boolean;
+}) {
+  const [downloading, setDownloading] = React.useState<string | null>(null);
+  const [error, setError] = React.useState("");
+
+  async function download(file: MessageFile) {
+    if (downloading) return;
+    setDownloading(file.path);
+    setError("");
+    const result = await latticeApi.downloadWorkspaceFile(file.path, file.filename);
+    if (!result.ok) setError(result.error || "unavailable");
+    setDownloading(null);
+  }
+
+  return (
+    <section className={`brain-created-files ${compact ? "is-compact" : ""}`} aria-label={t(language, "brain.files.title")}>
+      <div className="brain-created-files-head">
+        <FileCheck2 className="h-4 w-4" aria-hidden="true" />
+        <strong>{t(language, "brain.files.title")}</strong>
+      </div>
+      <ul>
+        {files.map((file) => (
+          <li key={file.path}>
+            <span className="brain-created-file-name">{file.filename}</span>
+            {file.bytes ? <small>{formatFileSize(file.bytes)}</small> : null}
+            <button type="button" onClick={() => void download(file)} disabled={downloading === file.path}>
+              <Download className="h-3.5 w-3.5" aria-hidden="true" />
+              {downloading === file.path ? t(language, "brain.files.downloading") : t(language, "brain.files.download")}
+            </button>
+          </li>
+        ))}
+      </ul>
+      <small className="brain-created-files-hint">{t(language, "brain.files.hint")}</small>
+      {error ? (
+        <small className="brain-created-files-error" role="alert">
+          {t(language, "brain.files.downloadError", { reason: error })}
+        </small>
+      ) : null}
     </section>
   );
 }

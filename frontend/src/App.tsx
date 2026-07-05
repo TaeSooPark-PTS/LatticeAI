@@ -157,6 +157,14 @@ function ExternalConsentStatus({ language }: { language: Language }) {
 }
 
 function VsCodeSyncStatus({ language }: { language: Language }) {
+  const mode = useAppStore((state) => state.mode);
+  // "VS Code" means nothing to a non-technical user. Only show the editor
+  // sync indicator once someone has opted into advanced/admin mode.
+  if (mode === "basic") return null;
+  return <VsCodeSyncStatusInner language={language} />;
+}
+
+function VsCodeSyncStatusInner({ language }: { language: Language }) {
   const bridge = useQuery({
     queryKey: ["workspaceVscodeStatus"],
     queryFn: latticeApi.workspaceVscodeStatus,

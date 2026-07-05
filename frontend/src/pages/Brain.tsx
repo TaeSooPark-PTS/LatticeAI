@@ -431,15 +431,15 @@ export function BrainPage({ initialTab }: { initialTab?: string }) {
           <h1>{tabHeadline(language, tab)}</h1>
         </div>
         <div className="brain-layer-meter">
-          <span>Source coverage</span>
+          <span>{t(language, "graph.coverage")}</span>
           <strong>{pct((coverage.data?.data as Record<string, unknown>)?.coverage_ratio)}</strong>
         </div>
       </header>
       <Tabs tabs={tabs.map((item) => ({ id: item.id, label: t(language, item.labelKey) }))} value={tab} onChange={(id) => setTab(id as BrainTab)} />
 
       {tab === "graph" ? (
-        graph.isLoading ? <LoadingPanel title="Deep graph" /> : (
-          <DataPanel title="Advanced relationship graph" description={mode === "basic" ? "Open the deepest layer when you want to inspect the underlying relationships." : "Explore relationships, sources, and graph structure."} result={graph.data}>
+        graph.isLoading ? <LoadingPanel title={t(language, "graph.deep.title")} /> : (
+          <DataPanel title={t(language, "graph.advanced.title")} description={mode === "basic" ? t(language, "graph.advanced.desc.basic") : t(language, "graph.advanced.desc.other")} result={graph.data}>
             {(data) => <DigitalBrainExplorer data={data} />}
           </DataPanel>
         )
@@ -550,8 +550,8 @@ function DigitalBrainExplorer({ data }: { data: unknown }) {
   if (!parsed.nodes.length) {
     return (
       <EmptyState
-        title="No relationship records yet"
-        detail="Capture a document, note, or local folder to create connected memories with sources."
+        title={t(language, "graph.empty.title")}
+        detail={t(language, "graph.empty.detail")}
       />
     );
   }
@@ -560,34 +560,34 @@ function DigitalBrainExplorer({ data }: { data: unknown }) {
       <div className="grid gap-3 xl:grid-cols-[1fr_220px_180px_170px]">
         <div className="relative">
           <Search className="pointer-events-none absolute left-3 top-2.5 h-4 w-4 text-muted-foreground" />
-          <Input className="pl-9" value={search} onChange={(event) => setSearch(event.target.value)} placeholder={mode === "basic" ? "Search ideas, files, people, and notes..." : "Search graph labels, types, provenance..."} />
+          <Input className="pl-9" value={search} onChange={(event) => setSearch(event.target.value)} placeholder={mode === "basic" ? t(language, "graph.search.basic") : t(language, "graph.search.advanced")} />
         </div>
         <select className="h-9 rounded-md border border-border bg-background px-3 text-sm" value={groupFilter} onChange={(event) => setGroupFilter(event.target.value)}>
-          <option value="all">All semantic groups</option>
+          <option value="all">{t(language, "graph.group.all")}</option>
           {model.groups.map((group) => <option key={group.id} value={group.id}>{group.label}</option>)}
         </select>
         <select className="h-9 rounded-md border border-border bg-background px-3 text-sm" value={labelMode} onChange={(event) => setLabelMode(event.target.value as LabelMode)}>
-          <option value="important">Important labels</option>
-          <option value="all">All labels</option>
-          <option value="off">Hide labels</option>
+          <option value="important">{t(language, "graph.labels.important")}</option>
+          <option value="all">{t(language, "graph.labels.all")}</option>
+          <option value="off">{t(language, "graph.labels.off")}</option>
         </select>
-        <Button variant="outline" onClick={() => setFitSignal((value) => value + 1)}><LocateFixed className="h-4 w-4" /> Fit</Button>
+        <Button variant="outline" onClick={() => setFitSignal((value) => value + 1)}><LocateFixed className="h-4 w-4" /> {t(language, "graph.fit")}</Button>
       </div>
       <div className="grid gap-3 lg:grid-cols-[1fr_18rem]">
         <Card>
           <CardHeader className="flex-row items-start justify-between gap-3">
             <div>
-              <CardTitle className="flex items-center gap-2"><Layers3 className="h-4 w-4" /> Deep graph</CardTitle>
+              <CardTitle className="flex items-center gap-2"><Layers3 className="h-4 w-4" /> {t(language, "graph.deep.title")}</CardTitle>
               <CardDescription>
-                Showing {fmtNumber(model.visibleNodes.length)} ideas and {fmtNumber(model.visibleEdges.length)} connections from {fmtNumber(model.totalNodes)} saved items.
+                {t(language, "graph.deep.summary", { nodes: fmtNumber(model.visibleNodes.length), edges: fmtNumber(model.visibleEdges.length), total: fmtNumber(model.totalNodes) })}
               </CardDescription>
             </div>
-            <Badge variant={model.hiddenByFilters ? "warning" : "success"}>{model.hiddenByFilters ? `${fmtNumber(model.hiddenByFilters)} filtered` : "all in view"}</Badge>
+            <Badge variant={model.hiddenByFilters ? "warning" : "success"}>{model.hiddenByFilters ? t(language, "graph.filtered", { count: fmtNumber(model.hiddenByFilters) }) : t(language, "graph.allInView")}</Badge>
           </CardHeader>
           <CardContent className="space-y-3">
             <div className="flex flex-wrap items-center gap-2">
               <Filter className="h-4 w-4 text-muted-foreground" />
-              <label className="text-sm text-muted-foreground" htmlFor="importance">Importance</label>
+              <label className="text-sm text-muted-foreground" htmlFor="importance">{t(language, "graph.importance")}</label>
               <input
                 id="importance"
                 type="range"
@@ -597,11 +597,11 @@ function DigitalBrainExplorer({ data }: { data: unknown }) {
                 value={minImportance}
                 onChange={(event) => setMinImportance(Number(event.target.value))}
                 className="w-44"
-                aria-label="Minimum relationship importance"
+                aria-label={t(language, "graph.minImportance.aria")}
               />
               <Badge variant="muted">{Math.round(minImportance * 100)}%+</Badge>
-              {selectedId ? <Button variant="outline" size="sm" onClick={() => setSelectedId(null)}>Clear focus</Button> : null}
-              {search.trim() ? <Button variant="outline" size="sm" onClick={() => backendSearch.mutate()} disabled={backendSearch.isPending}>Search all memories</Button> : null}
+              {selectedId ? <Button variant="outline" size="sm" onClick={() => setSelectedId(null)}>{t(language, "graph.clearFocus")}</Button> : null}
+              {search.trim() ? <Button variant="outline" size="sm" onClick={() => backendSearch.mutate()} disabled={backendSearch.isPending}>{t(language, "graph.searchAll")}</Button> : null}
             </div>
             <div className="flex flex-wrap gap-2">
               {model.groups.map((group) => (
@@ -612,7 +612,7 @@ function DigitalBrainExplorer({ data }: { data: unknown }) {
                 >
                   <span className="h-2.5 w-2.5 rounded-full" style={{ backgroundColor: group.color }} />
                   <span>{group.label}</span>
-                  <Badge variant={group.collapsed ? "warning" : "muted"}>{group.collapsed ? "collapsed" : fmtNumber(group.count)}</Badge>
+                  <Badge variant={group.collapsed ? "warning" : "muted"}>{group.collapsed ? t(language, "graph.collapsed") : fmtNumber(group.count)}</Badge>
                 </button>
               ))}
             </div>
@@ -622,8 +622,8 @@ function DigitalBrainExplorer({ data }: { data: unknown }) {
         <aside className="space-y-3">
           <Card>
             <CardHeader>
-              <CardTitle className="flex items-center gap-2"><Focus className="h-4 w-4" /> Focus</CardTitle>
-              <CardDescription>Click any idea to see why it matters.</CardDescription>
+              <CardTitle className="flex items-center gap-2"><Focus className="h-4 w-4" /> {t(language, "graph.focus.title")}</CardTitle>
+              <CardDescription>{t(language, "graph.focus.desc")}</CardDescription>
             </CardHeader>
             <CardContent className="space-y-3">
               {selected ? (
@@ -633,41 +633,41 @@ function DigitalBrainExplorer({ data }: { data: unknown }) {
                     <div className="mt-1 flex flex-wrap gap-1">
                       <Badge variant="muted">{selected.type}</Badge>
                       <Badge variant="muted">{model.groups.find((group) => group.id === selected.group)?.label || selected.group}</Badge>
-                      <Badge variant="success">{Math.round(selected.importance * 100)} importance</Badge>
+                      <Badge variant="success">{t(language, "graph.importanceBadge", { n: Math.round(selected.importance * 100) })}</Badge>
                     </div>
                   </div>
                   {selected.summary ? <p className="text-sm text-muted-foreground">{selected.summary}</p> : null}
                   {mode === "basic" ? (
                     <KeyValueList data={{
                       connections: selected.degree,
-                      source: selected.source || "Source not recorded",
+                      source: selected.source || t(language, "graph.source.none"),
                       source_type: sourceType(selected.raw),
-                      created_at: sourceCreatedAt(selected.raw) || "Created time not recorded",
+                      created_at: sourceCreatedAt(selected.raw) || t(language, "graph.created.none"),
                     }} />
                   ) : (
                     <StructuredView value={{
                       id: selected.id,
                       degree: selected.degree,
-                      source: selected.source || "Source not recorded",
+                      source: selected.source || t(language, "graph.source.none"),
                       source_type: sourceType(selected.raw),
-                      created_at: sourceCreatedAt(selected.raw) || "Created time not recorded",
+                      created_at: sourceCreatedAt(selected.raw) || t(language, "graph.created.none"),
                     }} />
                   )}
-                  {selected.source ? <Button variant="outline" size="sm" onClick={() => void navigator.clipboard?.writeText(selected.source)}>Copy source</Button> : null}
+                  {selected.source ? <Button variant="outline" size="sm" onClick={() => void navigator.clipboard?.writeText(selected.source)}>{t(language, "graph.copySource")}</Button> : null}
                 </>
               ) : selectedGroup ? (
                 <div className="space-y-2">
-                  <Badge variant="warning">Collapsed group</Badge>
+                  <Badge variant="warning">{t(language, "graph.collapsedGroup")}</Badge>
                   <div className="text-lg font-semibold">{selectedGroup.label}</div>
-                  <Button variant="outline" onClick={() => toggleGroup(selectedGroup.id)}>Expand group</Button>
+                  <Button variant="outline" onClick={() => toggleGroup(selectedGroup.id)}>{t(language, "graph.expandGroup")}</Button>
                 </div>
-              ) : <EmptyState title="Nothing selected" detail="Select an item or collapsed group in the graph." />}
+              ) : <EmptyState title={t(language, "graph.nothingSelected.title")} detail={t(language, "graph.nothingSelected.detail")} />}
             </CardContent>
           </Card>
           <Card>
             <CardHeader>
-              <CardTitle>Important ideas</CardTitle>
-              <CardDescription>What Lattice thinks is most connected right now.</CardDescription>
+              <CardTitle>{t(language, "graph.important.title")}</CardTitle>
+              <CardDescription>{t(language, "graph.important.desc")}</CardDescription>
             </CardHeader>
             <CardContent className="space-y-2">
               {model.visibleNodes.slice(0, 8).map((node) => (
