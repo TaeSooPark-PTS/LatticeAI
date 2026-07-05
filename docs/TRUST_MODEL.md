@@ -1,6 +1,6 @@
 # Lattice AI Trust Model
 
-Current release: **8.6.0 — Desktop Capture & Navigation Reliability**.
+Current release: **8.7.0 — Runtime State Hygiene & Release Evidence Refresh**.
 
 Lattice AI is local-first, explicit about external communication, and honest
 when a capability is unavailable.

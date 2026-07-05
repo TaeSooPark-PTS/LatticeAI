@@ -12,15 +12,16 @@ chat, run model workflows, and trigger coding actions from the editor.
 
 ## Current Release
 
-**8.6.0 — Desktop Capture & Navigation Reliability.** The extension follows
+**8.7.0 — Runtime State Hygiene & Release Evidence Refresh.** The extension follows
 the main app positioning: Lattice AI is a local-first Digital Brain, not just a
 model launcher or editor chat panel. It connects editor actions to the same
 durable Brain context, explicit consent gates, replaceable model workflow, and
-separated Admin surface used by the desktop app. The v8.6.0 line aligns the
-extension with desktop Capture reliability, ToolRegistry readiness (no drift), Config DI improvements, managed legacy compatibility, unified graph ingestion coverage,
-explicit onboarding/community docs, exact release artifacts, and
-machine-checkable product readiness gates while preserving the visible VS Code
-sync status and the 8.0 runtime architecture contract.
+separated Admin surface used by the desktop app. The v8.7.0 line aligns the
+extension with the 8.7.0 runtime-state hygiene baseline, refreshed release
+evidence, desktop Capture reliability, ToolRegistry readiness, Config DI
+improvements, exact release artifacts, and machine-checkable product readiness
+gates while preserving the visible VS Code sync status and the 8.0 runtime
+architecture contract.
 
 ## Quick Start
 

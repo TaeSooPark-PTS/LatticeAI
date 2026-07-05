@@ -1,6 +1,6 @@
 # Lattice AI
 
-**Lattice AI 8.6.0 is the local-first Digital Brain platform. This release fixes desktop folder selection for the Tauri localhost app, improves Capture feedback for folder and web source saving, and aligns the new Brain shell navigation with CI-verified visual coverage.**
+**Lattice AI 8.7.0 is the local-first Digital Brain platform. This release hardens runtime state ownership, refreshes the checked-in release evidence, and synchronizes package, desktop, extension, and documentation metadata to the 8.7.0 line.**
 
 **Lattice AI는 모델이 바뀌어도 내 지식과 맥락을 보존하는 로컬 우선 AI 브레인입니다.**
 
@@ -65,9 +65,9 @@ You need Lattice AI when:
 ## Living Brain Flow
 
 The screenshots below are the latest checked-in visual evidence captures from
-the 8.2 Brain Home release. The 8.3 line keeps that first-run flow focused on
-the Brain while adding clearer onboarding, stronger workflow/runtime
-boundaries, and better ingestion proof behind the scenes.
+the 8.7.0 release. They keep the first-run Brain flow, memory graph, source
+capture, model library, system view, admin console, and review center visible as
+release gates.
 
 ### 1. Wake Brain
 
@@ -79,21 +79,21 @@ confirm owner, check the computer, choose the Brain voice.
 Choose the owner of the Brain. The profile is not a SaaS account by default; it
 is the local identity for the knowledge you keep.
 
-![Login](output/release/v8.2.0/screenshots/01-login.png)
+![Login](output/release/v8.7.0/screenshots/01-login.png)
 
 ### 3. Recommended Models
 
 Start with a short list: safest recommendation, faster model, stronger model.
 Advanced details stay available without overwhelming first-time users.
 
-![Recommended Models](output/release/v8.2.0/screenshots/02-recommended-models.png)
+![Recommended Models](output/release/v8.7.0/screenshots/02-recommended-models.png)
 
 ### 4. Install And Load
 
 Download and load only after consent. Lattice explains model size, local
 execution, and network use before work starts.
 
-![Install and Load](output/release/v8.2.0/screenshots/03-install-load-progress.png)
+![Install and Load](output/release/v8.7.0/screenshots/03-install-load-progress.png)
 
 ### 5. Brain Chat
 
@@ -101,14 +101,14 @@ Talk normally. Useful decisions and context become memory, then appear later as
 topics, relationships, graph structure, and the concentric memory rings around
 the Brain.
 
-![Brain Brief Home](output/release/v8.2.0/screenshots/04-brain-chat-home.png)
+![Brain Brief Home](output/release/v8.7.0/screenshots/04-brain-chat-home.png)
 
 ### 6. Review Center
 
 Automation results are staged for review before they become durable decisions.
 Snooze, unsnooze, run now, approve, and dismiss actions stay explicit.
 
-![Review Center](output/release/v8.2.0/screenshots/12-review-center.png)
+![Review Center](output/release/v8.7.0/screenshots/12-review-center.png)
 
 ## Brain Depths
 
@@ -124,10 +124,10 @@ The user travels inward from everyday memory to deeper structure:
 
 Walkthrough:
 
-![v8.2.0 Living Brain walkthrough](output/release/v8.2.0/gifs/v8.2.0-living-brain-walkthrough.gif)
+![v8.7.0 Living Brain walkthrough](output/release/v8.7.0/gifs/v8.7.0-living-brain-walkthrough.gif)
 
 Screenshot index and capture notes:
-[output/release/v8.2.0/SCREENSHOT_INDEX.md](output/release/v8.2.0/SCREENSHOT_INDEX.md)
+[output/release/v8.7.0/SCREENSHOT_INDEX.md](output/release/v8.7.0/SCREENSHOT_INDEX.md)
 
 ## Install
 
@@ -206,30 +206,29 @@ See [docs/DEVELOPMENT.md](docs/DEVELOPMENT.md) for developer workflow details.
 
 ## Current Release
 
-The current release is **8.6.0 — Desktop Capture & Navigation Reliability**:
+The current release is **8.7.0 — Runtime State Hygiene & Release Evidence Refresh**:
 
-- The desktop Capture flow can open a native folder picker from the Tauri
-  localhost app, fill the selected path, and immediately scan/connect it.
-- Folder picker failures now surface an actionable message instead of silently
-  doing nothing, while manual path entry remains available.
-- Web page capture keeps paste, Enter-to-save, and `https://` normalization for
-  bare domains.
-- The Brain shell sidebar/navigation and admin entry points are covered by
-  updated Visual Smoke tests, while the 8.5 ToolRegistry and Config DI
-  hardening remains active.
+- Internal model-runtime logic now reads from the typed `ModelRuntimeState`
+  object instead of the legacy module-global compatibility surface.
+- `sync_to_module_globals()` remains available for external shims, but now emits
+  a `DeprecationWarning` so new code does not rebuild global-state coupling.
+- The 8.7.0 release evidence refresh updates screenshots, walkthrough GIF/WebM,
+  package/runtime/static/Tauri metadata, and current-release documentation.
+- The 8.6 desktop Capture reliability and 8.5 ToolRegistry/Config DI hardening
+  remain active release guarantees.
 
-Expected artifacts for 8.6.0 release must use exact filenames:
+Expected artifacts for 8.7.0 release must use exact filenames:
 
-- `dist/ltcai-8.6.0-py3-none-any.whl`
-- `dist/ltcai-8.6.0.tar.gz`
-- `ltcai-8.6.0.tgz`
-- `dist/ltcai-8.6.0.vsix`
-- `src-tauri/target/release/bundle/dmg/Lattice AI_8.6.0_aarch64.dmg`
+- `dist/ltcai-8.7.0-py3-none-any.whl`
+- `dist/ltcai-8.7.0.tar.gz`
+- `ltcai-8.7.0.tgz`
+- `dist/ltcai-8.7.0.vsix`
+- `src-tauri/target/release/bundle/dmg/Lattice AI_8.7.0_aarch64.dmg`
 
 Do not use wildcard artifact uploads. Package registry publishing remains owner-run.
 
 See [docs/ROADMAP_RECOMMENDATIONS.md](docs/ROADMAP_RECOMMENDATIONS.md) for the
-strategic roadmap slices applied through 8.6.0 and the follow-up tracks.
+strategic roadmap slices applied through 8.7.0 and the follow-up tracks.
 
 ## Known Limitations
 
@@ -246,6 +245,7 @@ strategic roadmap slices applied through 8.6.0 and the follow-up tracks.
 
 | Version | Theme |
 | --- | --- |
+| 8.7.0 | Runtime State Hygiene & Release Evidence Refresh: model-runtime internals prefer typed state over legacy globals, compatibility sync is deprecated, 8.7.0 visual evidence is refreshed, and all release metadata/docs are synchronized |
 | 8.6.0 | Desktop Capture & Navigation Reliability: native folder selection works from the Tauri localhost app, picker failures surface in Capture, web saving remains one-action, and the Brain shell sidebar/admin flow is CI-covered |
 | 8.5.0 | Tool Registry Readiness & Config DI: ToolRegistry drift removed, `tz_name` flows through central Config into automation runtimes, and current-release documentation is synchronized |
 | 8.4.0 | Action-Aware Brain Chat: explicit file create/write/save/edit requests from Brain Chat route into the governed workspace file tool so files are actually created instead of returned as code-only answers |

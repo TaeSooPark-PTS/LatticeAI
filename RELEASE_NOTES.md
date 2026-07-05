@@ -1,11 +1,12 @@
 # Release Notes
 
-This repository keeps public release history from **7.0.0 through 8.6.0**.
+This repository keeps public release history from **7.0.0 through 8.7.0**.
 Earlier release notes and release evidence were removed from the Git tree so the
 history stays focused on the current product era.
 
 ## Current Release
 
+- [v8.7.0 - Runtime State Hygiene & Release Evidence Refresh](RELEASE_NOTES_v8.7.0.md)
 - [v8.6.0 - Desktop Capture & Navigation Reliability](RELEASE_NOTES_v8.6.0.md)
 - [v8.5.0 - Tool Registry Readiness & Config DI](RELEASE.md#v850--tool-registry-readiness--config-di-2026-07-01)
 - [v8.4.0 - Action-Aware Brain Chat](RELEASE_NOTES_v8.4.0.md)
@@ -24,7 +25,7 @@ history stays focused on the current product era.
 
 ## Canonical History
 
-The canonical 7.0.0-8.6.0 history is maintained in:
+The canonical 7.0.0-8.7.0 history is maintained in:
 
 - [RELEASE.md](RELEASE.md)
 - [docs/CHANGELOG.md](docs/CHANGELOG.md)

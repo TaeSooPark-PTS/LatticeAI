@@ -1,9 +1,11 @@
 # Community And Plugins
 
-Current release: **8.6.0 — Desktop Capture & Navigation Reliability**.
+Current release: **8.7.0 — Runtime State Hygiene & Release Evidence Refresh**.
 
-LatticeAI defines the path from a strong local-first framework (8.4.0 action-aware baseline, 8.5.0 registry+DI hardening, 8.6.0 capture/navigation reliability) to a
-product ecosystem. The immediate goal is small and practical: make it clear how
+LatticeAI defines the path from a strong local-first framework (8.4.0
+action-aware baseline, 8.5.0 registry+DI hardening, 8.6.0 capture/navigation
+reliability, and 8.7.0 runtime-state hygiene) to a product ecosystem. The
+immediate goal is small and practical: make it clear how
 contributors can extend the Brain without weakening local-first trust,
 workspace scoping, or release quality.
 

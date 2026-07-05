@@ -49,7 +49,7 @@ __all__ = [
     "remove_skill_directory",
 ]
 
-WORKSPACE_OS_VERSION = "8.6.0"
+WORKSPACE_OS_VERSION = "8.7.0"
 
 # Workspace types separate single-user Personal workspaces from shared
 # Organization workspaces. Both keep the same local-first JSON store; the type

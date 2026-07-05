@@ -7,6 +7,41 @@
 > PyPI / npm / VS Code Marketplace / Open VSX 배포는 아래 수동 절차로만
 > 진행합니다. 태그 생성은 패키지 스토어 publish를 자동으로 트리거하지 않습니다.
 
+## v8.7.0 — Runtime State Hygiene & Release Evidence Refresh (2026-07-05)
+
+8.7.0 packages the current main-branch hardening work into an exact release
+line. Model runtime implementation paths now use the typed runtime-state object
+as their source of truth, legacy module-global synchronization is explicitly
+deprecated, and the checked-in release screenshots/GIF/WebM are refreshed from
+the current app shell.
+
+### Added
+- Added unit coverage proving model-runtime internals read from
+  `ModelRuntimeState` while the legacy globals remain a compatibility surface.
+- Added 8.7.0 release evidence under `output/release/v8.7.0/`, including
+  screenshots, walkthrough GIF/WebM, and the capture index.
+- Added `RELEASE_NOTES_v8.7.0.md` and synchronized current-release docs.
+
+### Changed
+- Updated package/runtime/static/Tauri metadata to 8.7.0.
+- Updated README release evidence links from the old 8.2.0 screenshots to the
+  refreshed 8.7.0 captures.
+- Updated current-release documentation and exact artifact examples to 8.7.0.
+
+### Fixed
+- Reduced internal reliance on bare module globals in
+  `latticeai/services/model_runtime.py`; compatibility globals are still
+  available for older callers.
+- `sync_to_module_globals()` now emits `DeprecationWarning` so future code does
+  not build new coupling to the legacy global state path.
+
+Expected artifacts (exact 8.7.0 names only):
+- `dist/ltcai-8.7.0-py3-none-any.whl`
+- `dist/ltcai-8.7.0.tar.gz`
+- `dist/ltcai-8.7.0.vsix`
+- `ltcai-8.7.0.tgz`
+- `src-tauri/target/release/bundle/dmg/Lattice AI_8.7.0_aarch64.dmg`
+
 ## v8.6.0 — Desktop Capture & Navigation Reliability (2026-07-05)
 
 8.6.0 focuses on the user-facing capture path: folder selection now works from

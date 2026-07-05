@@ -6,17 +6,29 @@ existed at that release.
 
 ## [Unreleased]
 
+## [8.7.0] - 2026-07-05
+
+### Added
+- Added unit test coverage for model-runtime `STATE` source-of-truth behavior
+  and deprecation warnings on legacy global synchronization.
+- Added refreshed 8.7.0 screenshots, walkthrough GIF/WebM, and capture notes
+  under `output/release/v8.7.0/`.
+
 ### Changed
-- Code quality and architecture hygiene improvements across the full codebase review:
-  - Reduced internal reliance on bare module globals in `latticeai/services/model_runtime.py` (now consistently reads from `ModelRuntimeState` instance inside implementation logic; globals remain only as legacy compat surface).
-  - Added `DeprecationWarning` to `sync_to_module_globals()` (still functional for external shims; initial wiring and startup use private path).
-  - Added unit test coverage for STATE source-of-truth and deprecation behavior.
-  - Minor type improvement in `frontend/src/pages/Act.tsx` (removed loose `as any`).
-- Verified: all 795 unit tests pass, ruff lint clean, typecheck clean, python package builds successfully, architecture gates remain complete.
-- Documentation checks and sync performed (stale version references reviewed; historical entries preserved).
+- Reduced internal reliance on bare module globals in
+  `latticeai/services/model_runtime.py`; implementation logic now consistently
+  reads from the `ModelRuntimeState` instance while globals remain as a legacy
+  compatibility surface.
+- Added `DeprecationWarning` to `sync_to_module_globals()` while preserving the
+  external shim behavior.
+- Removed a loose `as any` cast from `frontend/src/pages/Act.tsx`.
+- Version bumped to 8.7.0 across Python, npm, VS Code extension, Tauri, static
+  metadata, README evidence links, release notes, and current-release
+  documentation.
 
 ### Fixed
-- Internal functions now prefer the typed STATE object per AGENTS.md preference for composition over global mutable state.
+- Internal model-runtime functions now prefer the typed state object per the
+  project preference for composition over global mutable state.
 
 ## [8.6.0] - 2026-07-05
 
