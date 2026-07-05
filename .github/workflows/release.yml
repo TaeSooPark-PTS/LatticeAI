@@ -45,7 +45,7 @@ jobs:
         run: |
           pip install --upgrade build twine
           pip install "."
-          pip install pytest
+          pip install pytest pytest-asyncio httpx ruff
 
       - name: Install Node dependencies
         run: |
