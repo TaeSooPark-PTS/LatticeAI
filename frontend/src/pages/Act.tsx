@@ -305,7 +305,8 @@ function WorkflowsPanel() {
                     </div>
                     {(() => {
                       const isInstalling = installRecipe.isPending && installRecipe.variables === id;
-                      const last = installRecipe.data as any;
+                      type InstallResult = { recipe?: { recipe_id?: string } } | undefined;
+                      const last = installRecipe.data as InstallResult;
                       const lastRid = last && last.recipe && last.recipe.recipe_id ? String(last.recipe.recipe_id) : "";
                       const justSucceeded = !installRecipe.isPending && lastRid === id;
                       const installed = installedRecipeIds.has(id);

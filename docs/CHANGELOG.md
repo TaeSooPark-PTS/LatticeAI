@@ -6,7 +6,17 @@ existed at that release.
 
 ## [Unreleased]
 
-No unreleased changes.
+### Changed
+- Code quality and architecture hygiene improvements across the full codebase review:
+  - Reduced internal reliance on bare module globals in `latticeai/services/model_runtime.py` (now consistently reads from `ModelRuntimeState` instance inside implementation logic; globals remain only as legacy compat surface).
+  - Added `DeprecationWarning` to `sync_to_module_globals()` (still functional for external shims; initial wiring and startup use private path).
+  - Added unit test coverage for STATE source-of-truth and deprecation behavior.
+  - Minor type improvement in `frontend/src/pages/Act.tsx` (removed loose `as any`).
+- Verified: all 795 unit tests pass, ruff lint clean, typecheck clean, python package builds successfully, architecture gates remain complete.
+- Documentation checks and sync performed (stale version references reviewed; historical entries preserved).
+
+### Fixed
+- Internal functions now prefer the typed STATE object per AGENTS.md preference for composition over global mutable state.
 
 ## [8.6.0] - 2026-07-05
 

@@ -16,6 +16,7 @@ import shutil
 import time
 import urllib.error
 import urllib.request
+import warnings
 from pathlib import Path
 from typing import AsyncIterator, Dict, List, Optional
 
@@ -100,6 +101,21 @@ class ModelRuntimeState:
         self.get_user_api_key = _missing_user_api_key
 
     def sync_to_module_globals(self):
+        """Sync to bare module globals for legacy external importers.
+
+        This is a compatibility surface only. Internal code should use STATE.
+        Emits DeprecationWarning (future removal in major after 8.x).
+        """
+        warnings.warn(
+            "sync_to_module_globals is a legacy compatibility shim and will be removed "
+            "after 8.x. Use latticeai.services.model_runtime.STATE or injected context instead.",
+            DeprecationWarning,
+            stacklevel=2,
+        )
+        self._sync_globals()
+
+    def _sync_globals(self) -> None:
+        """Internal no-warning sync used at init."""
         global router, APP_MODE, DEFAULT_HOST, DEFAULT_PORT, DATA_DIR, BASE_DIR
         global ENABLE_TELEGRAM, ENABLE_GRAPH, AUTOLOAD_MODELS, MODEL_IDLE_UNLOAD_SECONDS
         global ALLOW_LOCAL_MODELS, REQUIRE_AUTH, INVITE_GATE_ENABLED, ALLOW_PLAINTEXT_API_KEYS
@@ -128,7 +144,7 @@ class ModelRuntimeState:
         get_user_api_key = self.get_user_api_key
 
 STATE = ModelRuntimeState()
-STATE.sync_to_module_globals()
+STATE._sync_globals()  # initial no-warning; public API warns on explicit legacy syncs
 
 # Configured by server_app.configure_model_runtime during app assembly.
 
@@ -141,7 +157,9 @@ def _env_bool(key: str, default: bool = False) -> bool:
 
 
 def _download_allowed(allow_download: bool = False) -> bool:
-    return bool(allow_download) or _env_bool("LATTICEAI_ALLOW_MODEL_DOWNLOADS", default=False) or bool(AUTOLOAD_MODELS)
+    # Prefer STATE (the source of truth) over bare module global for internal logic.
+    autoload = getattr(STATE, "AUTOLOAD_MODELS", AUTOLOAD_MODELS)
+    return bool(allow_download) or _env_bool("LATTICEAI_ALLOW_MODEL_DOWNLOADS", default=False) or bool(autoload)
 
 
 def _download_block(provider: str, model_name: str) -> None:
@@ -204,7 +222,7 @@ def configure_model_runtime(**deps) -> None:
         elif key == "get_user_api_key":
             STATE.get_user_api_key = value
 
-    STATE.sync_to_module_globals()
+    STATE._sync_globals()  # wiring path uses internal (no spurious deprecation in normal startup)
 
 
 # Catalog data + version-dedup helpers live in ``model_catalog``; re-exported
@@ -727,7 +745,8 @@ def engine_installed(engine: str) -> bool:
     return False
 
 def engine_status() -> List[Dict]:
-    cloud_models = router.detected_cloud_models()
+    r = getattr(STATE, "router", None) or router
+    cloud_models = r.detected_cloud_models() if r else []
     cloud_by_provider = {}
     for model in cloud_models:
         cloud_by_provider.setdefault(model["provider"], []).append(model)
@@ -887,37 +906,41 @@ def engine_status() -> List[Dict]:
     return engines
 
 def runtime_features() -> Dict:
+    # Read from STATE object (central) for implementation; bare globals kept only
+    # for external legacy consumers who import names directly from this module.
+    s = STATE
+    r = getattr(s, "router", None) or router
     return {
-        "mode": APP_MODE,
-        "public": IS_PUBLIC_MODE,
-        "host": DEFAULT_HOST,
-        "port": DEFAULT_PORT,
-        "data_dir": str(DATA_DIR),
-        "telegram_enabled": ENABLE_TELEGRAM,
-        "graph_enabled": ENABLE_GRAPH,
-        "autoload_models": AUTOLOAD_MODELS,
-        "model_idle_unload_seconds": MODEL_IDLE_UNLOAD_SECONDS,
-        "model_memory_policy": router.model_memory_policy(),
-        "allow_local_models": ALLOW_LOCAL_MODELS,
+        "mode": s.APP_MODE,
+        "public": s.IS_PUBLIC_MODE,
+        "host": s.DEFAULT_HOST,
+        "port": s.DEFAULT_PORT,
+        "data_dir": str(s.DATA_DIR),
+        "telegram_enabled": s.ENABLE_TELEGRAM,
+        "graph_enabled": s.ENABLE_GRAPH,
+        "autoload_models": s.AUTOLOAD_MODELS,
+        "model_idle_unload_seconds": s.MODEL_IDLE_UNLOAD_SECONDS,
+        "model_memory_policy": r.model_memory_policy() if r else None,
+        "allow_local_models": s.ALLOW_LOCAL_MODELS,
         "security": {
-            "host": DEFAULT_HOST,
-            "require_auth": REQUIRE_AUTH,
-            "invite_gate_enabled": INVITE_GATE_ENABLED,
-            "keyring_available": keyring is not None,
-            "plaintext_api_keys_allowed": ALLOW_PLAINTEXT_API_KEYS,
-            "cors_allow_network": CORS_ALLOW_NETWORK,
+            "host": s.DEFAULT_HOST,
+            "require_auth": s.REQUIRE_AUTH,
+            "invite_gate_enabled": s.INVITE_GATE_ENABLED,
+            "keyring_available": s.keyring is not None,
+            "plaintext_api_keys_allowed": s.ALLOW_PLAINTEXT_API_KEYS,
+            "cors_allow_network": s.CORS_ALLOW_NETWORK,
         },
-        "default_model": PUBLIC_MODEL if IS_PUBLIC_MODE else LOCAL_MODEL,
+        "default_model": s.PUBLIC_MODEL if s.IS_PUBLIC_MODE else s.LOCAL_MODEL,
         "local_only_features": {
-            "mlx": ALLOW_LOCAL_MODELS and not IS_PUBLIC_MODE,
-            "telegram_bridge": ENABLE_TELEGRAM,
-            "desktop_chrome_bridge": not IS_PUBLIC_MODE,
-            "computer_use_bridge": not IS_PUBLIC_MODE,
+            "mlx": s.ALLOW_LOCAL_MODELS and not s.IS_PUBLIC_MODE,
+            "telegram_bridge": s.ENABLE_TELEGRAM,
+            "desktop_chrome_bridge": not s.IS_PUBLIC_MODE,
+            "computer_use_bridge": not s.IS_PUBLIC_MODE,
         },
         "public_features": {
             "web_ui": True,
             "openai_compatible_models": True,
-            "persistent_data_dir": str(DATA_DIR),
+            "persistent_data_dir": str(s.DATA_DIR),
         },
     }
 
@@ -1099,7 +1122,8 @@ async def _probe_cloud_model(model_ref: str) -> Dict[str, object]:
 
 async def verify_cloud_models(force: bool = False, provider_filter: Optional[str] = None) -> Dict[str, Dict]:
     now = time.time()
-    cloud_items = [item for item in router.detected_cloud_models() if item.get("tag") == "cloud"]
+    r = getattr(STATE, "router", None) or router
+    cloud_items = [item for item in (r.detected_cloud_models() if r else []) if item.get("tag") == "cloud"]
     if provider_filter:
         cloud_items = [item for item in cloud_items if item.get("provider") == provider_filter]
 

@@ -67,3 +67,25 @@ def test_local_mlx_reuses_existing_huggingface_cache(monkeypatch, tmp_path):
     assert model_runtime.hf_model_ready("mlx-community/cached-model", "local_mlx") is True
     assert model_router.hf_cache_model_dir("mlx-community/cached-model") == snapshot
     assert model_router._resolve_local_hf_model("mlx-community/cached-model") == str(snapshot)
+
+
+def test_model_runtime_state_is_source_and_sync_warns():
+    """STATE is the implementation source; explicit sync_to_module_globals warns (compat only)."""
+    import warnings
+    from latticeai.services.model_runtime import STATE
+
+    # STATE carries the values
+    assert hasattr(STATE, "APP_MODE")
+    assert hasattr(STATE, "PUBLIC_MODEL")
+
+    # Calling the public sync emits DeprecationWarning
+    with warnings.catch_warnings(record=True) as w:
+        warnings.simplefilter("always", DeprecationWarning)
+        STATE.sync_to_module_globals()
+        deprecation = [x for x in w if issubclass(x.category, DeprecationWarning)]
+        assert len(deprecation) >= 1
+        assert "legacy compatibility shim" in str(deprecation[0].message)
+
+    # Globals are still populated for compat readers
+    import latticeai.services.model_runtime as mr_mod
+    assert mr_mod.PUBLIC_MODEL == STATE.PUBLIC_MODEL
