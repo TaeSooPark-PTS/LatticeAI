@@ -6,11 +6,29 @@ existed at that release.
 
 ## [Unreleased]
 
+No unreleased changes.
+
+## [8.6.0] - 2026-07-05
+
+### Added
+- Added Tauri localhost remote capability coverage so the desktop app can keep
+  using local IPC commands after navigating to the FastAPI-served `/app`.
+- Added a regression trust gate for the Tauri localhost capability.
+
 ### Changed
 - Improved the Capture source flow: desktop users can choose a folder with the
   native folder picker and immediately scan/connect it, while web page capture
   now supports paste, Enter-to-save, and `https://` normalization for bare
   domains.
+- Updated Visual Smoke coverage for the new Brain shell sidebar and admin
+  console entry flow.
+- Version bumped to 8.6.0 across Python, npm, VS Code extension, Tauri, static
+  metadata, readiness gates, and current-release documentation.
+
+### Fixed
+- Fixed native folder selection from the Tauri production app's localhost
+  webview and added visible fallback feedback when the picker is unavailable.
+- Removed negative letter spacing from updated frontend shell styling.
 
 ## [8.5.0] - 2026-07-01
 

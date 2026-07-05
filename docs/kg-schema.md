@@ -1,6 +1,6 @@
 # Knowledge Graph Schema
 
-Current release: **8.5.0 — Tool Registry Readiness & Config DI**.
+Current release: **8.6.0 — Desktop Capture & Navigation Reliability**.
 
 명세 출처: `lattice_ai_full_spec.pptx` 슬라이드 20·21·22
 구현: `kg_schema.py`

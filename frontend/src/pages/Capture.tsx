@@ -170,11 +170,13 @@ function LocalPanel() {
   const language = useAppStore((state) => state.language);
   const qc = useQueryClient();
   const [path, setPath] = React.useState("");
+  const [folderPickError, setFolderPickError] = React.useState<string | null>(null);
   const local = useQuery({ queryKey: ["localSources"], queryFn: latticeApi.localSources });
   const agent = useQuery({ queryKey: ["localAgent"], queryFn: latticeApi.localAgent });
   const connect = useMutation({
     mutationFn: (targetPath?: string) => latticeApi.connectFolder((targetPath || path).trim()),
     onSuccess: () => {
+      setFolderPickError(null);
       void qc.invalidateQueries({ queryKey: ["localSources"] });
       void qc.invalidateQueries({ queryKey: ["graphStats"] });
       void qc.invalidateQueries({ queryKey: ["memoryManager"] });
@@ -183,14 +185,20 @@ function LocalPanel() {
   const choose = useMutation({
     mutationFn: latticeApi.selectFolder,
     onSuccess: (selectedPath) => {
-      if (!selectedPath) return;
+      if (!selectedPath) {
+        setFolderPickError(t(language, "capture.local.pickUnavailable"));
+        return;
+      }
+      setFolderPickError(null);
       setPath(selectedPath);
       connect.mutate(selectedPath);
     },
+    onError: () => setFolderPickError(t(language, "capture.local.pickUnavailable")),
   });
   const connectCurrent = React.useCallback(() => {
     const target = path.trim();
     if (!target) return;
+    setFolderPickError(null);
     connect.mutate(target);
   }, [connect, path]);
   return (
@@ -220,6 +228,11 @@ function LocalPanel() {
               {t(language, "capture.local.connect")}
             </Button>
           </form>
+          {folderPickError ? (
+            <OperationResult
+              result={{ ok: false, status: 0, data: {}, source: "unavailable", error: folderPickError }}
+            />
+          ) : null}
           {connect.data ? <OperationResult result={connect.data} successLabel={t(language, "capture.local.success")} /> : null}
         </CardContent>
       </Card>

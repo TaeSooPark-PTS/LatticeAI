@@ -7,6 +7,40 @@
 > PyPI / npm / VS Code Marketplace / Open VSX 배포는 아래 수동 절차로만
 > 진행합니다. 태그 생성은 패키지 스토어 publish를 자동으로 트리거하지 않습니다.
 
+## v8.6.0 — Desktop Capture & Navigation Reliability (2026-07-05)
+
+8.6.0 focuses on the user-facing capture path: folder selection now works from
+the desktop app's localhost-hosted Tauri webview, Capture shows actionable
+feedback when the picker is unavailable, and the new Brain shell navigation is
+covered by updated visual smoke tests.
+
+### Added
+- Added Tauri capability coverage for `http://127.0.0.1:*` and
+  `http://localhost:*`, preserving desktop IPC for the localhost app shell.
+- Added a regression trust gate that verifies the Tauri capability keeps
+  localhost desktop IPC enabled.
+- Added `RELEASE_NOTES_v8.6.0.md` and synchronized current-release docs.
+
+### Changed
+- Updated Capture folder selection to detect both module and global Tauri
+  bridges and to show a visible fallback message when the native picker cannot
+  open.
+- Updated Visual Smoke coverage for the Brain shell sidebar, advanced utility
+  drawer, and admin-console entry flow.
+- Synchronized package/runtime/static/Tauri metadata and release docs to 8.6.0.
+
+### Fixed
+- Fixed the folder-picker path for the Tauri production app after it navigates
+  from bundled static content to the local FastAPI `/app` URL.
+- Removed negative letter spacing from the updated frontend shell styling.
+
+Expected artifacts (exact 8.6.0 names only):
+- `dist/ltcai-8.6.0-py3-none-any.whl`
+- `dist/ltcai-8.6.0.tar.gz`
+- `dist/ltcai-8.6.0.vsix`
+- `ltcai-8.6.0.tgz`
+- `src-tauri/target/release/bundle/dmg/Lattice AI_8.6.0_aarch64.dmg`
+
 ## v8.5.0 — Tool Registry Readiness & Config DI (2026-07-01)
 
 Full codebase scan for architectural debt, code smells, and improvement opportunities (per AGENTS.md priorities and rules). Targeted improvements implemented without breaking public behavior or legacy compatibility.

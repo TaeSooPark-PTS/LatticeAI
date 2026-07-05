@@ -3,44 +3,109 @@
 
 :root {
   color-scheme: dark;
-  /* Digital Brain — warm, private, alive */
-  --bg: 22 18% 7%;
-  --bg-elevated: 24 16% 11%;
-  --fg: 36 18% 95%;
-  --fg-muted: 30 13% 76%;
-  --brain-core: 38 72% 68%;      /* warm ember-gold */
-  --brain-halo: 38 65% 78%;
-  --memory: 168 52% 62%;        /* quiet teal pulse */
-  --knowledge: 200 48% 70%;
-  --connection: 280 42% 72%;    /* soft violet for relationships */
-  --map: 32 38% 74%;            /* contemplative gold for the Map */
-  --surface: 24 14% 12%;
-  --surface-glass: 24 14% 12% / 0.82;
-  --border: 28 12% 30%;
-  --accent: 38 72% 68%;
-  --destructive: 12 62% 58%;
-  --ring: 38 72% 68%;
+  /* ── 먹빛 밤 (ink night) ──────────────────────────────────────────────
+   * 인터페이스는 차분한 먹(잉크 네이비)과 옥빛(jade), 브레인만 따뜻한
+   * 금빛으로 살아 있다. 라이트 테마와 같은 악센트 DNA를 공유한다.
+   * 토큰은 항상 hsl(var(--token)) 로 소비한다 — 값은 H S% L% 트리플. */
+
+  /* surfaces */
+  --bg: 226 24% 8%;
+  --bg-elevated: 226 20% 11%;
+  --background: 226 24% 8%;
+  --surface: 226 17% 13%;
+  --surface-glass: 226 18% 12% / 0.84;
+  --card: 226 18% 12%;
+  --card-foreground: 42 30% 93%;
+  --muted: 226 14% 18%;
+  --input: 226 14% 28%; /* input border tone (shadcn convention) */
+
+  /* text — 따뜻한 종이색 텍스트가 두 테마를 잇는다 */
+  --fg: 42 30% 93%;
+  --fg-muted: 227 12% 72%;
+  --foreground: 42 30% 93%;
+  --muted-foreground: 227 12% 72%;
+
+  /* interactive — 옥빛(jade) */
+  --primary: 168 48% 58%;
+  --primary-foreground: 228 24% 10%;
+  --secondary: 226 14% 20%;
+  --secondary-foreground: 42 30% 93%;
+  --accent: 168 48% 58%;
+  --ring: 168 48% 58%;
+  --border: 226 14% 24%;
+
+  /* the living Brain — 금빛 시그니처 */
+  --brain-core: 38 74% 66%;
+  --brain-halo: 40 68% 76%;
+
+  /* knowledge domains */
+  --memory: 168 48% 58%;
+  --knowledge: 205 55% 66%;
+  --connection: 278 44% 72%;
+  --map: 34 42% 70%;
+  --ask: 205 55% 66%;
+  --act: 30 66% 62%;
+  --library: 195 45% 62%;
+
+  /* status */
+  --success: 158 48% 54%;
+  --warning: 38 76% 60%;
+  --danger: 8 70% 64%;
+  --destructive: 8 70% 64%;
+  --destructive-foreground: 30 40% 97%;
 }
 
 :root[data-theme="light"] {
   color-scheme: light;
-  /* Soft lavender daylight theme — calm, low-glare, high text contrast. */
-  --bg: 264 44% 95%;
-  --bg-elevated: 268 52% 97.5%;
-  --fg: 265 30% 18%;
-  --fg-muted: 264 16% 44%;
-  --brain-core: 270 66% 62%;
-  --brain-halo: 272 60% 73%;
-  --memory: 172 46% 40%;
-  --knowledge: 212 54% 52%;
-  --connection: 282 50% 60%;
-  --map: 28 52% 52%;
-  --surface: 276 52% 98.5%;
-  --surface-glass: 276 52% 98.5% / 0.86;
-  --border: 265 30% 84%;
-  --accent: 270 62% 60%;
-  --destructive: 350 64% 55%;
-  --ring: 270 62% 60%;
+  /* ── 한지 낮 (paper day) ──────────────────────────────────────────────
+   * 따뜻한 종이 바탕 위의 먹 글씨, 짙은 옥빛 악센트. 눈부심 없이
+   * 높은 대비를 유지해 모든 연령대가 읽기 편하다. */
+
+  /* surfaces */
+  --bg: 44 30% 96%;
+  --bg-elevated: 44 34% 98%;
+  --background: 44 30% 96%;
+  --surface: 42 40% 99%;
+  --surface-glass: 44 45% 98.5% / 0.9;
+  --card: 42 40% 99%;
+  --card-foreground: 228 22% 16%;
+  --muted: 43 22% 92%;
+  --input: 40 15% 78%; /* input border tone (shadcn convention) */
+
+  /* text — 먹 */
+  --fg: 228 22% 16%;
+  --fg-muted: 228 10% 40%;
+  --foreground: 228 22% 16%;
+  --muted-foreground: 228 10% 40%;
+
+  /* interactive — 짙은 옥빛 */
+  --primary: 172 58% 26%;
+  --primary-foreground: 40 40% 98%;
+  --secondary: 43 22% 91%;
+  --secondary-foreground: 228 22% 16%;
+  --accent: 172 58% 26%;
+  --ring: 172 52% 34%;
+  --border: 40 16% 84%;
+
+  /* the living Brain — 금빛 시그니처 */
+  --brain-core: 36 78% 54%;
+  --brain-halo: 38 72% 68%;
+
+  /* knowledge domains */
+  --memory: 172 48% 32%;
+  --knowledge: 210 56% 40%;
+  --connection: 276 40% 48%;
+  --map: 32 48% 42%;
+  --ask: 210 56% 40%;
+  --act: 28 72% 40%;
+  --library: 198 48% 36%;
+
+  /* status */
+  --success: 158 54% 28%;
+  --warning: 34 82% 32%;
+  --danger: 8 64% 42%;
+  --destructive: 8 64% 42%;
+  --destructive-foreground: 40 40% 98%;
 }
 
 @theme inline {
@@ -59,6 +124,12 @@
   --color-border: hsl(var(--border));
   --color-input: hsl(var(--input));
   --color-ring: hsl(var(--ring));
+  --color-success: hsl(var(--success));
+  --color-warning: hsl(var(--warning));
+  --color-danger: hsl(var(--danger));
+  --color-memory: hsl(var(--memory));
+  --color-knowledge: hsl(var(--knowledge));
+  --color-brain: hsl(var(--brain-core));
 }
 
 * {
@@ -76,8 +147,18 @@ body {
   margin: 0;
   background: hsl(var(--background));
   color: hsl(var(--foreground));
-  font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  /* 한국어 우선 스택 — Pretendard가 설치돼 있으면 쓰고, 없으면 OS 한글 본문체로. */
+  font-family: "Pretendard Variable", Pretendard, -apple-system, BlinkMacSystemFont,
+    "Apple SD Gothic Neo", Inter, "Segoe UI", "Malgun Gothic", "Noto Sans KR", sans-serif;
   letter-spacing: 0;
+  line-height: 1.55;
+  -webkit-font-smoothing: antialiased;
+}
+
+h1, h2, h3, h4 {
+  letter-spacing: 0;
+  overflow-wrap: break-word;
+  word-break: keep-all; /* 한글 제목이 어절 단위로 줄바꿈되도록 */
 }
 
 
@@ -101,13 +182,13 @@ button {
   isolation: isolate;
   overflow-x: hidden;
   background:
-    linear-gradient(135deg, hsl(168 12% 7%) 0%, hsl(218 13% 9%) 48%, hsl(288 10% 9%) 100%),
+    linear-gradient(135deg, hsl(228 24% 7%) 0%, hsl(224 22% 9%) 48%, hsl(220 20% 8%) 100%),
     repeating-linear-gradient(90deg, hsl(var(--border) / 0.16) 0 1px, transparent 1px 56px);
 }
 
 :root[data-theme="light"] .app-backdrop {
   background:
-    linear-gradient(135deg, hsl(180 16% 96%) 0%, hsl(204 18% 94%) 52%, hsl(286 16% 96%) 100%),
+    linear-gradient(135deg, hsl(46 32% 96%) 0%, hsl(42 30% 95%) 52%, hsl(44 28% 96%) 100%),
     repeating-linear-gradient(90deg, hsl(var(--border) / 0.24) 0 1px, transparent 1px 56px);
 }
 
@@ -981,55 +1062,216 @@ body {
   padding: 0.9rem 1rem calc(2rem + env(safe-area-inset-bottom, 0px));
 }
 
-.brain-shell-nav {
+/* ── 단순한 셸 — 톱바에는 메뉴 버튼과 브랜드만, 나머지는 서랍으로 ────────── */
+.brain-topbar {
   position: sticky;
   top: 0.65rem;
   z-index: 20;
   display: flex;
-  flex-wrap: wrap;
-  justify-content: center;
-  gap: 0.45rem;
+  align-items: center;
+  gap: 0.5rem;
   width: min(100%, 72rem);
-  margin: 0 auto 1rem;
+  margin: 0 auto 1.1rem;
   border: 1px solid hsl(var(--border) / 0.66);
-  border-radius: 8px;
+  border-radius: 14px;
   background: hsl(var(--surface-glass));
-  padding: 0.35rem;
+  padding: 0.4rem 0.55rem;
   backdrop-filter: blur(18px);
+  box-shadow: 0 10px 32px hsl(228 30% 4% / 0.14);
 }
 
-.brain-shell-nav button {
-  min-height: 2.25rem;
-  border: 1px solid transparent;
-  border-radius: 6px;
-  background: transparent;
-  color: hsl(var(--fg-muted));
-  padding: 0 0.65rem;
-  font-size: 0.78rem;
-  font-weight: 820;
-  letter-spacing: 0;
+.brain-shell-brand {
   display: inline-flex;
   align-items: center;
-  gap: 0.35rem;
+  gap: 0.45rem;
+  padding: 0 0.35rem;
+  color: hsl(var(--fg));
+  font-size: 0.92rem;
+  font-weight: 750;
+  letter-spacing: 0;
+  white-space: nowrap;
 }
 
-.brain-shell-nav .nav-icon {
-  width: 14px;
-  height: 14px;
+.brain-shell-brand-mark {
+  display: grid;
+  place-items: center;
+  width: 1.7rem;
+  height: 1.7rem;
+  border-radius: 8px;
+  background:
+    radial-gradient(circle at 32% 30%, hsl(var(--brain-core) / 0.9), hsl(var(--brain-core) / 0.55)),
+    hsl(var(--surface));
+  color: hsl(228 24% 12%);
+  box-shadow: 0 0 14px hsl(var(--brain-core) / 0.35);
+}
+
+.brain-shell-brand-mark svg {
+  width: 1.05rem;
+  height: 1.05rem;
+}
+
+.brain-topbar-crumb {
+  color: hsl(var(--fg-muted));
+  font-size: 0.86rem;
+  font-weight: 650;
+}
+
+.brain-topbar-crumb::before {
+  content: "/";
+  margin-right: 0.5rem;
+  color: hsl(var(--border));
+}
+
+.brain-menu-button {
+  display: grid;
+  place-items: center;
+  width: 2.6rem;
+  height: 2.6rem;
+  flex: 0 0 auto;
+  border: 1px solid transparent;
+  border-radius: 10px;
+  background: transparent;
+  color: hsl(var(--fg));
+  cursor: pointer;
+  transition: background 140ms ease, border-color 140ms ease;
+}
+
+.brain-menu-button:hover {
+  background: hsl(var(--primary) / 0.08);
+}
+
+.brain-menu-button:focus-visible {
+  border-color: hsl(var(--ring) / 0.8);
+  outline: none;
+}
+
+.brain-sidebar-scrim {
+  position: fixed;
+  inset: 0;
+  z-index: 55;
+  background: hsl(228 26% 5% / 0.45);
+  backdrop-filter: blur(2px);
+}
+
+.brain-sidebar {
+  position: fixed;
+  top: 0;
+  bottom: 0;
+  left: 0;
+  z-index: 60;
+  display: flex;
+  flex-direction: column;
+  width: min(19rem, 88vw);
+  padding: 0.9rem 0.85rem calc(0.9rem + env(safe-area-inset-bottom, 0px));
+  border-right: 1px solid hsl(var(--border) / 0.7);
+  background: hsl(var(--bg-elevated));
+  transform: translateX(-102%);
+  visibility: hidden;
+  transition: transform 200ms var(--ease, ease), visibility 200ms;
+  overflow-y: auto;
+}
+
+.brain-sidebar.is-open {
+  transform: none;
+  visibility: visible;
+  box-shadow: 0 24px 70px hsl(228 30% 4% / 0.35);
+}
+
+.brain-sidebar-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem;
+  margin-bottom: 0.6rem;
+  padding: 0 0.25rem 0 0.55rem;
+}
+
+.brain-sidebar-title {
+  font-size: 0.8rem;
+  font-weight: 720;
+  color: hsl(var(--fg-muted));
+}
+
+.brain-sidebar-nav {
+  display: grid;
+  gap: 0.2rem;
+}
+
+.brain-sidebar-item {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  min-height: 2.8rem;
+  border: 1px solid transparent;
+  border-radius: 10px;
+  background: transparent;
+  color: hsl(var(--fg-muted));
+  padding: 0 0.7rem;
+  font-size: 0.92rem;
+  font-weight: 650;
+  letter-spacing: 0;
+  text-align: left;
+  cursor: pointer;
+  transition: background 140ms ease, color 140ms ease, border-color 140ms ease;
+}
+
+.brain-sidebar-item .nav-icon {
+  width: 17px;
+  height: 17px;
   flex-shrink: 0;
-  opacity: 0.85;
+  opacity: 0.9;
 }
 
-.brain-shell-nav button:hover,
-.brain-shell-nav button:focus-visible,
-.brain-shell-nav button.is-active,
-.brain-shell-nav .nav-item:hover,
-.brain-shell-nav .nav-item:focus-visible,
-.brain-shell-nav .nav-item.is-active {
-  border-color: hsl(var(--brain-core) / 0.58);
-  background: hsl(var(--brain-core) / 0.1);
+.brain-sidebar-item:hover,
+.brain-sidebar-item:focus-visible {
+  background: hsl(var(--primary) / 0.08);
   color: hsl(var(--fg));
   outline: none;
+}
+
+.brain-sidebar-item:focus-visible {
+  border-color: hsl(var(--ring) / 0.8);
+}
+
+.brain-sidebar-item.is-active {
+  border-color: hsl(var(--primary) / 0.4);
+  background: hsl(var(--primary) / 0.14);
+  color: hsl(var(--fg));
+  font-weight: 720;
+}
+
+.brain-sidebar-item.is-active .nav-icon {
+  color: hsl(var(--primary));
+  opacity: 1;
+}
+
+.brain-sidebar-foot {
+  display: grid;
+  gap: 0.5rem;
+  margin-top: auto;
+  padding-top: 0.9rem;
+  border-top: 1px solid hsl(var(--border) / 0.55);
+}
+
+.brain-sidebar-section-label {
+  padding: 0 0.55rem;
+  font-size: 0.7rem;
+  font-weight: 720;
+  color: hsl(var(--faint, var(--fg-muted)));
+}
+
+/* 서랍 안에서는 워크스페이스/동기화 위젯이 가로로 꽉 차게 */
+.brain-sidebar-foot .workspace-profile-switcher,
+.brain-sidebar-foot .workspace-profile-trigger,
+.brain-sidebar-foot .vscode-sync-status,
+.brain-sidebar-foot .admin-access-gate {
+  width: 100%;
+  max-width: none;
+  justify-content: flex-start;
+}
+
+.brain-sidebar-foot .external-consent-status {
+  margin: 0;
 }
 
 .brain-shell-content {
@@ -1078,6 +1320,7 @@ body {
 }
 
 /* The actual living visual object */
+/* ── 입체 브레인 — 원근 틸트 + 볼륨 셰이딩. 스티커가 아니라 오브다. ────── */
 .brain-organism {
   position: relative;
   width: clamp(220px, 28vw, 320px);
@@ -1089,8 +1332,39 @@ body {
   background: transparent;
   color: inherit;
   cursor: pointer;
-  transition: transform 600ms cubic-bezier(0.23, 1, 0.32, 1), filter 400ms ease;
+  transform-style: preserve-3d;
+  transform:
+    perspective(1100px)
+    rotateX(var(--tilt-x, 0deg))
+    rotateY(var(--tilt-y, 0deg))
+    scale(calc(var(--brain-scale, 1) * var(--state-scale, 1)));
+  transition: transform 220ms ease-out, filter 400ms ease;
   will-change: transform, filter;
+}
+
+/* 접지 그림자 — 바닥이 있어야 떠 있는 부피로 읽힌다 */
+.brain-organism::after {
+  content: "";
+  position: absolute;
+  left: 50%;
+  bottom: -4%;
+  width: 58%;
+  height: 8%;
+  border-radius: 999px;
+  background: radial-gradient(ellipse at center, hsl(228 30% 6% / 0.4), transparent 70%);
+  transform: translateX(-50%) translateZ(-60px);
+  filter: blur(7px);
+  pointer-events: none;
+  animation: brain-shadow-breathe 5.8s ease-in-out infinite;
+}
+
+:root[data-theme="light"] .brain-organism::after {
+  background: radial-gradient(ellipse at center, hsl(35 30% 30% / 0.3), transparent 70%);
+}
+
+@keyframes brain-shadow-breathe {
+  0%, 100% { opacity: 0.85; transform: translateX(-50%) translateZ(-60px) scale(1); }
+  50% { opacity: 0.6; transform: translateX(-50%) translateZ(-60px) scale(1.06); }
 }
 
 .brain-organism:focus-visible {
@@ -1099,10 +1373,10 @@ body {
   border-radius: 34% 44% 44% 34%;
 }
 
-.brain-organism[data-state="listening"] { transform: scale(1.015); filter: brightness(1.06) saturate(1.08); }
-.brain-organism[data-state="thinking"] { transform: scale(0.985); filter: brightness(0.96) saturate(0.92); }
+.brain-organism[data-state="listening"] { --state-scale: 1.015; filter: brightness(1.06) saturate(1.08); }
+.brain-organism[data-state="thinking"] { --state-scale: 0.985; filter: brightness(0.96) saturate(0.92); }
 .brain-organism[data-state="recalling"] { filter: brightness(1.12) saturate(1.15); }
-.brain-organism[data-state="synthesizing"] { transform: scale(1.01); }
+.brain-organism[data-state="synthesizing"] { --state-scale: 1.01; }
 .brain-organism[data-state="planning"] { filter: saturate(1.12) hue-rotate(8deg); }
 .brain-organism[data-state="acting"] { filter: brightness(1.08) saturate(1.22); }
 
@@ -1112,13 +1386,27 @@ body {
   display: grid;
   place-items: center;
   border-radius: 42% 47% 38% 42%;
+  transform-style: preserve-3d;
+  transform: translateZ(34px) scale(var(--core-scale, 1));
   background:
-    radial-gradient(55% 50% at 38% 34%, hsl(var(--brain-halo) / 0.38), transparent 70%),
-    radial-gradient(58% 54% at 68% 44%, hsl(var(--connection) / 0.16), transparent 74%);
+    radial-gradient(55% 50% at 34% 28%, hsl(var(--brain-halo) / 0.5), transparent 68%),
+    radial-gradient(58% 54% at 68% 44%, hsl(var(--connection) / 0.18), transparent 74%),
+    radial-gradient(90% 90% at 50% 46%, hsl(var(--brain-core) / 0.08), transparent 80%);
   box-shadow:
-    0 0 72px hsl(var(--brain-core) / 0.28),
-    0 16px 44px hsl(22 20% 3% / 0.5);
-  transition: all 520ms cubic-bezier(0.23, 1, 0.32, 1);
+    /* 상단 좌측 하이라이트 / 하단 우측 음영 — 구의 라이팅 */
+    inset 20px 26px 52px hsl(var(--brain-halo) / 0.2),
+    inset -26px -34px 64px hsl(228 32% 6% / 0.42),
+    0 0 72px hsl(var(--brain-core) / 0.3),
+    0 22px 52px hsl(22 20% 3% / 0.5);
+  transition: box-shadow 520ms cubic-bezier(0.23, 1, 0.32, 1);
+}
+
+:root[data-theme="light"] .brain-core {
+  box-shadow:
+    inset 20px 26px 52px hsl(40 60% 98% / 0.55),
+    inset -26px -34px 64px hsl(35 30% 40% / 0.28),
+    0 0 60px hsl(var(--brain-core) / 0.22),
+    0 22px 48px hsl(35 30% 30% / 0.28);
 }
 
 .brain-anatomy {
@@ -1128,6 +1416,13 @@ body {
   height: 100%;
   overflow: visible;
   filter: drop-shadow(0 18px 30px hsl(200 80% 4% / 0.46));
+  animation: brain-sway 11s ease-in-out infinite;
+}
+
+/* 좌우로 천천히 몸을 트는 느린 회전 — 정면 고정이 아니라는 신호 */
+@keyframes brain-sway {
+  0%, 100% { transform: rotateY(-5deg) rotateX(1.5deg); }
+  50% { transform: rotateY(5deg) rotateX(-1deg); }
 }
 
 .brain-lobe,
@@ -1141,22 +1436,34 @@ body {
   animation: brain-living-breathe 5.8s ease-in-out infinite;
 }
 
+.brain-lobe-left {
+  fill: url(#lattice-lobe-left-shade);
+}
+
 .brain-lobe-right {
-  fill: hsl(var(--connection) / 0.16);
+  fill: url(#lattice-lobe-right-shade);
   stroke: hsl(var(--connection) / 0.7);
   animation-delay: -1.4s;
 }
 
 .brain-bridge {
-  fill: hsl(var(--memory) / 0.14);
+  fill: url(#lattice-bridge-shade);
   stroke: hsl(var(--memory) / 0.52);
   stroke-width: 2;
 }
 
 .brain-stem {
-  fill: hsl(var(--knowledge) / 0.14);
+  fill: url(#lattice-stem-shade);
   stroke: hsl(var(--knowledge) / 0.54);
   stroke-width: 2.5;
+}
+
+.brain-sheen {
+  fill: url(#lattice-sheen-shade);
+  stroke: none;
+  opacity: 0.85;
+  pointer-events: none;
+  animation: brain-living-breathe 5.8s ease-in-out infinite;
 }
 
 .brain-fold {
@@ -1197,6 +1504,7 @@ body {
     0 0 86px hsl(var(--brain-core) / 0.2),
     0 0 70px hsl(var(--memory) / 0.08);
   animation: brain-halo-breathe 6.4s ease-in-out infinite;
+  pointer-events: none;
 }
 
 .brain-organism[data-state="thinking"] .brain-aura { animation-duration: 1.8s; }
@@ -1204,8 +1512,8 @@ body {
 .brain-organism[data-state="acting"] .brain-aura { animation-duration: 2s; }
 
 @keyframes brain-halo-breathe {
-  0%, 100% { transform: scale(1); opacity: 0.65; }
-  50% { transform: scale(1.035); opacity: 0.95; }
+  0%, 100% { transform: translateZ(-26px) scale(var(--aura-scale, 1)); opacity: 0.65; }
+  50% { transform: translateZ(-26px) scale(calc(var(--aura-scale, 1) * 1.035)); opacity: 0.95; }
 }
 
 @keyframes ring-breathe {
@@ -1244,6 +1552,7 @@ body {
   border-radius: 999px;
   overflow: hidden;
   pointer-events: none;
+  transform: translateZ(52px); /* 입자는 표면보다 앞 — 틸트 시 패럴랙스가 깊이를 만든다 */
 }
 
 .thought-particle {
@@ -2958,7 +3267,7 @@ body {
 .chamber-title {
   font-size: 1.05rem;
   font-weight: 620;
-  letter-spacing: -0.1px;
+  letter-spacing: 0;
 }
 
 .chamber-body {
@@ -4888,10 +5197,10 @@ body {
   width: 1.55rem;
   height: 1.55rem;
   border-radius: 999px;
-  background: hsl(var(--brain-core) / 0.12);
-  color: hsl(var(--brain-core));
+  background: hsl(var(--primary) / 0.12);
+  color: hsl(var(--primary));
   font-size: 0.72rem;
-  font-weight: 900;
+  font-weight: 750;
 }
 
 .ritual-wake-plan strong {
@@ -4921,17 +5230,17 @@ body {
 .ritual-value-card:hover,
 .ritual-value-card:focus-within {
   transform: translateY(-1px);
-  border-color: hsl(var(--brain-core) / 0.62);
-  box-shadow: 0 8px 22px hsl(var(--brain-core) / 0.09);
+  border-color: hsl(var(--primary) / 0.55);
+  box-shadow: 0 8px 22px hsl(var(--primary) / 0.09);
 }
 
 .ritual-value-label {
   display: flex;
   align-items: center;
   gap: 0.42rem;
-  color: hsl(var(--brain-core));
-  font-size: 0.72rem;
-  font-weight: 840;
+  color: hsl(var(--primary));
+  font-size: 0.74rem;
+  font-weight: 720;
   letter-spacing: 0;
 }
 
@@ -4946,17 +5255,26 @@ body {
 .ritual-secondary-button {
   min-height: 2.75rem;
   border: 1px solid hsl(var(--border) / 0.64);
-  border-radius: 8px;
+  border-radius: 10px;
   background: hsl(var(--surface-glass));
   color: hsl(var(--fg));
   padding: 0 1.1rem;
-  font-weight: 760;
+  font-weight: 650;
+  cursor: pointer;
+  transition: border-color 140ms ease, background 140ms ease;
+}
+
+.ritual-secondary-button:hover,
+.ritual-secondary-button:focus-visible {
+  border-color: hsl(var(--primary) / 0.55);
+  background: hsl(var(--primary) / 0.06);
+  outline: none;
 }
 
 .ritual-title {
   font-size: clamp(1.85rem, 5vw, 2.85rem);
   font-weight: 680;
-  letter-spacing: -0.3px;
+  letter-spacing: 0;
   line-height: 1.05;
   margin-bottom: 0.5rem;
   /* keep-all stops Korean wrapping mid-word (e.g. 시/작하세요) while still
@@ -5031,13 +5349,13 @@ body {
 }
 
 .ritual-card:hover {
-  border-color: hsl(var(--brain-core) / 0.55);
+  border-color: hsl(var(--primary) / 0.5);
   transform: translateY(-1px);
 }
 
 .ritual-card.selected {
-  border-color: hsl(var(--brain-core));
-  box-shadow: 0 0 0 1px hsl(var(--brain-core) / 0.25);
+  border-color: hsl(var(--primary));
+  box-shadow: 0 0 0 1px hsl(var(--primary) / 0.25);
 }
 
 .ritual-form {
@@ -5075,25 +5393,30 @@ body {
 }
 
 .ritual-full-button {
-  min-height: 2.75rem;
-  border: 1px solid hsl(var(--brain-core) / 0.62);
-  border-radius: 8px;
-  background: hsl(var(--brain-core));
-  color: hsl(var(--bg));
+  min-height: 2.9rem;
+  border: 1px solid hsl(var(--primary) / 0.7);
+  border-radius: 10px;
+  background: hsl(var(--primary));
+  color: hsl(var(--primary-foreground));
   padding: 0 1.2rem;
-  font-weight: 800;
+  font-weight: 720;
   cursor: pointer;
   margin-top: 1rem;
-  box-shadow: 0 8px 24px hsl(var(--brain-core) / 0.18);
+  box-shadow: 0 8px 24px hsl(var(--primary) / 0.2);
   transition: transform 140ms ease, box-shadow 140ms ease, border-color 140ms ease;
 }
 
 .ritual-full-button:hover,
 .ritual-full-button:focus-visible {
   transform: translateY(-1px);
-  border-color: hsl(var(--brain-halo));
-  box-shadow: 0 12px 30px hsl(var(--brain-core) / 0.24);
+  border-color: hsl(var(--ring));
+  box-shadow: 0 12px 30px hsl(var(--primary) / 0.28);
   outline: none;
+}
+
+.ritual-full-button:focus-visible {
+  outline: 2px solid hsl(var(--ring) / 0.7);
+  outline-offset: 2px;
 }
 
 .ritual-full-button-primary,
@@ -5232,12 +5555,12 @@ body {
   left: -115%;
   width: 40%;
   height: 210%;
-  background: linear-gradient(120deg, transparent, hsl(var(--brain-core) / 0.1), transparent);
+  background: linear-gradient(120deg, transparent, hsl(var(--primary) / 0.08), transparent);
   transition: left 420ms ease;
 }
 
 .ritual-model-card:hover {
-  border-color: hsl(var(--brain-core) / 0.5);
+  border-color: hsl(var(--primary) / 0.5);
   background: hsl(var(--surface) / 0.95);
 }
 
@@ -5251,14 +5574,14 @@ body {
   align-items: center;
   gap: 0.42rem;
   width: 100%;
-  color: hsl(var(--brain-core));
+  color: hsl(var(--primary));
 }
 
 .ritual-model-card .role {
   font-size: 0.7rem;
   letter-spacing: 1px;
   text-transform: uppercase;
-  color: hsl(var(--brain-core));
+  color: hsl(var(--primary));
   margin-bottom: 0;
 }
 
@@ -5282,8 +5605,8 @@ body {
   align-items: center;
   gap: 0.25rem;
   margin-top: 0.2rem;
-  color: hsl(var(--brain-core));
-  font-weight: 780;
+  color: hsl(var(--primary));
+  font-weight: 720;
 }
 
 .ritual-model-warning {
@@ -5482,29 +5805,25 @@ body {
   min-width: 0;
 }
 
+/* 섹션 헤더 — 랜딩 페이지가 아니라 도구의 머리말. 조용하고 낮게. */
 .page-hero {
   position: relative;
   overflow: hidden;
-  border: 1px solid hsl(var(--border) / 0.74);
-  border-radius: 8px;
-  background:
-    linear-gradient(120deg, hsl(var(--card) / 0.9), hsl(var(--muted) / 0.44)),
-    linear-gradient(90deg, hsl(var(--primary) / 0.1), transparent 56%);
-  padding: 1.35rem;
+  border-left: 3px solid hsl(var(--primary) / 0.55);
+  padding: 0.35rem 0 0.35rem 1.1rem;
 }
 
 .page-title {
-  margin-top: 0.58rem;
+  margin-top: 0.45rem;
   max-width: 56rem;
-  font-size: 3.1rem;
-  line-height: 0.98;
-  font-weight: 810;
-  letter-spacing: 0;
+  font-size: clamp(1.5rem, 1.1rem + 1.4vw, 1.95rem);
+  line-height: 1.25;
+  font-weight: 740;
 }
 
 .page-copy {
-  margin-top: 0.82rem;
-  max-width: 48rem;
+  margin-top: 0.55rem;
+  max-width: 44rem;
   color: hsl(var(--muted-foreground));
   font-size: 0.98rem;
   line-height: 1.62;
@@ -6182,11 +6501,11 @@ body {
   }
 
   .page-title {
-    font-size: 2.15rem;
+    font-size: 1.5rem;
   }
 
   .page-hero {
-    padding: 1rem;
+    padding: 0.25rem 0 0.25rem 0.85rem;
   }
 
   .brain-conversation-grid {
@@ -6313,7 +6632,7 @@ body {
 }
 
 .ritual-model-comparison {
-  color: hsl(var(--brain-core));
+  color: hsl(var(--primary));
   font-weight: 600;
 }
 
@@ -6322,7 +6641,7 @@ body {
   margin-top: 0.55rem;
   font-size: 0.82rem;
   font-weight: 600;
-  color: hsl(var(--brain-core));
+  color: hsl(var(--primary));
 }
 
 .ritual-primary-cta {
@@ -6730,8 +7049,8 @@ body {
 
 .feedback-state-action:hover,
 .feedback-state-action:focus-visible {
-  border-color: hsl(var(--brain-core) / 0.7);
-  background: hsl(var(--brain-core) / 0.08);
+  border-color: hsl(var(--primary) / 0.65);
+  background: hsl(var(--primary) / 0.08);
   outline: none;
 }
 
@@ -7092,40 +7411,16 @@ body {
     padding: 0.55rem 0.55rem 1.2rem;
   }
 
-  .brain-shell-nav {
+  .brain-topbar {
     top: 0.35rem;
-    flex-wrap: nowrap;
-    justify-content: flex-start;
-    gap: 0.28rem;
+    gap: 0.35rem;
     margin-bottom: 0.55rem;
-    overflow-x: auto;
-    overscroll-behavior-x: contain;
-    scrollbar-width: none;
-    -webkit-overflow-scrolling: touch;
+    padding: 0.3rem 0.4rem;
   }
 
-  .brain-shell-nav::-webkit-scrollbar {
-    display: none;
-  }
-
-  .brain-shell-nav button {
-    flex: 0 0 auto;
-    min-height: 2rem;
-    padding: 0 0.58rem;
-    font-size: 0.68rem;
-  }
-
-  .brain-shell-nav .nav-icon {
-    width: 0.82rem;
-    height: 0.82rem;
-  }
-
-  .brain-shell-switchers {
-    flex: 0 0 auto;
-    flex-wrap: nowrap;
-    margin-left: 0.25rem;
-    padding-left: 0.25rem;
-    border-left: 1px solid hsl(var(--border) / 0.45);
+  .brain-menu-button {
+    width: 2.4rem;
+    height: 2.4rem;
   }
 
   .workspace-profile-popover {
@@ -7347,68 +7642,84 @@ body {
   margin-bottom: clamp(0.85rem, 1.8vw, 1.15rem);
 }
 
-.brain-concentric-ring {
+/* 궤도 필드 — 링들이 브레인 주위를 도는 기울어진 궤도로 보인다 */
+.brain-orbit-field {
   position: absolute;
-  border-radius: 50%;
-  border: 1px dashed hsl(var(--border) / 0.35);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  transition: all 0.6s cubic-bezier(0.16, 1, 0.3, 1);
+  inset: -14%;
+  perspective: 800px;
+  transform-style: preserve-3d;
   pointer-events: none;
 }
 
-.brain-concentric-ring:hover {
-  border-color: hsl(var(--brain-core) / 0.6);
-  border-style: solid;
-  box-shadow: 0 0 15px hsl(var(--brain-core) / 0.1);
+.brain-concentric-ring {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  border-radius: 50%;
+  border: 1px dashed hsl(var(--border) / 0.4);
+  pointer-events: none;
 }
 
 .brain-concentric-ring.ring-1 {
-  width: 42%;
-  height: 42%;
+  width: 52%;
+  height: 52%;
   border-style: solid;
-  border-color: hsl(var(--border) / 0.25);
-  animation: spin-slow 30s linear infinite;
+  border-color: hsl(var(--brain-core) / 0.3);
+  animation: ring-orbit 30s linear infinite;
 }
 
 .brain-concentric-ring.ring-2 {
-  width: 60%;
-  height: 60%;
-  animation: spin-reverse 45s linear infinite;
+  width: 72%;
+  height: 72%;
+  border-color: hsl(var(--memory) / 0.4);
+  animation: ring-orbit-reverse 45s linear infinite;
 }
 
 .brain-concentric-ring.ring-3 {
-  width: 78%;
-  height: 78%;
-  animation: spin-slow 60s linear infinite;
+  width: 92%;
+  height: 92%;
+  border-color: hsl(var(--knowledge) / 0.35);
+  animation: ring-orbit 60s linear infinite;
 }
 
 .brain-concentric-ring.ring-4 {
-  width: 96%;
-  height: 96%;
+  width: 112%;
+  height: 112%;
   border-style: solid;
-  border-color: hsl(var(--border) / 0.15);
-  animation: spin-reverse 80s linear infinite;
+  border-color: hsl(var(--border) / 0.3);
+  animation: ring-orbit-reverse 80s linear infinite;
+}
+
+/* 링 자전 — 궤도면(rotateX 74°)을 유지한 채 돈다 */
+@keyframes ring-orbit {
+  from { transform: translate(-50%, -50%) rotateX(74deg) rotateZ(0deg); }
+  to { transform: translate(-50%, -50%) rotateX(74deg) rotateZ(360deg); }
+}
+
+@keyframes ring-orbit-reverse {
+  from { transform: translate(-50%, -50%) rotateX(74deg) rotateZ(360deg); }
+  to { transform: translate(-50%, -50%) rotateX(74deg) rotateZ(0deg); }
 }
 
 .ring-label {
   position: absolute;
+  z-index: 12;
   font-size: 10px;
   font-weight: 700;
-  color: hsl(var(--fg) / 0.4);
+  color: hsl(var(--fg) / 0.55);
   background: hsl(var(--surface));
-  padding: 2px 6px;
-  border-radius: 4px;
-  border: 1px solid hsl(var(--border) / 0.4);
+  padding: 2px 7px;
+  border-radius: 999px;
+  border: 1px solid hsl(var(--border) / 0.5);
   letter-spacing: 0.05em;
-  text-transform: uppercase;
+  white-space: nowrap;
+  pointer-events: none;
 }
 
-.brain-concentric-ring.ring-1 .ring-label { top: -9px; left: 50%; transform: translateX(-50%); }
-.brain-concentric-ring.ring-2 .ring-label { bottom: -9px; left: 50%; transform: translateX(-50%); }
-.brain-concentric-ring.ring-3 .ring-label { left: -25px; top: 50%; transform: translateY(-50%); rotate: -90deg; }
-.brain-concentric-ring.ring-4 .ring-label { right: -25px; top: 50%; transform: translateY(-50%); rotate: 90deg; }
+.ring-label-top { top: -7%; left: 50%; transform: translateX(-50%); }
+.ring-label-bottom { bottom: -7%; left: 50%; transform: translateX(-50%); }
+.ring-label-left { left: -12%; top: 50%; transform: translate(-50%, -50%); }
+.ring-label-right { right: -12%; top: 50%; transform: translate(50%, -50%); }
 
 .brain-center-orb {
   position: absolute;
@@ -7434,12 +7745,10 @@ body {
 
 .brain-home-welcome h2 {
   font-size: clamp(1.35rem, 2.6vw, 1.65rem);
-  font-weight: 800;
+  font-weight: 750;
   margin-bottom: 0.55rem;
   letter-spacing: 0;
-  background: linear-gradient(135deg, hsl(var(--fg)), hsl(var(--brain-core)));
-  -webkit-background-clip: text;
-  -webkit-text-fill-color: transparent;
+  color: hsl(var(--fg));
 }
 
 .brain-home-welcome p {
@@ -7459,7 +7768,7 @@ body {
   border: 1px solid hsl(var(--border) / 0.6);
   font-size: 0.75rem;
   font-weight: 700;
-  color: hsl(var(--brain-core));
+  color: hsl(var(--fg-muted));
 }
 
 .brain-home-status-badge .status-dot {

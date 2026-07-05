@@ -7,8 +7,8 @@ type BadgeProps = React.HTMLAttributes<HTMLSpanElement> & {
 
 const variants = {
   default: "border-primary/25 bg-primary/12 text-primary",
-  success: "border-emerald-500/25 bg-emerald-500/12 text-emerald-300",
-  warning: "border-amber-500/25 bg-amber-500/12 text-amber-300",
+  success: "border-success/30 bg-success/12 text-success",
+  warning: "border-warning/30 bg-warning/12 text-warning",
   muted: "border-border bg-muted/70 text-muted-foreground",
   danger: "border-destructive/30 bg-destructive/12 text-destructive",
 };
@@ -17,7 +17,7 @@ export function Badge({ className, variant = "default", ...props }: BadgeProps) 
   return (
     <span
       className={cn(
-        "inline-flex min-h-6 max-w-full items-center rounded-md border px-2 py-0.5 text-xs font-semibold leading-none",
+        "inline-flex min-h-6 max-w-full items-center whitespace-nowrap rounded-md border px-2 py-0.5 text-xs font-semibold leading-none",
         variants[variant],
         className,
       )}

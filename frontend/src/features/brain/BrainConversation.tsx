@@ -186,18 +186,17 @@ export function BrainConversation({
           ) : (
             <div className="brain-centered-home">
               <div className="brain-concentric-container">
-                <div className="brain-concentric-ring ring-4" title={t(language, "brain.depth.5")}>
-                  <span className="ring-label">{t(language, "brain.depthLabel.5")}</span>
+                <div className="brain-orbit-field" aria-hidden="true">
+                  <div className="brain-concentric-ring ring-4" />
+                  <div className="brain-concentric-ring ring-3" />
+                  <div className="brain-concentric-ring ring-2" />
+                  <div className="brain-concentric-ring ring-1" />
                 </div>
-                <div className="brain-concentric-ring ring-3" title={`${concepts.length} Topics`}>
-                  <span className="ring-label">{concepts.length} {t(language, "brain.overview.topics")}</span>
-                </div>
-                <div className="brain-concentric-ring ring-2" title={`${memories.length} Memories`}>
-                  <span className="ring-label">{memories.length} {t(language, "brain.overview.recent")}</span>
-                </div>
-                <div className="brain-concentric-ring ring-1" title={t(language, "brain.depthTitle.1")}>
-                  <span className="ring-label">{t(language, "brain.depth.1")}</span>
-                </div>
+                {/* 라벨은 궤도 회전과 분리된 고정 칩 — 기울어진 링 위에서도 똑바로 읽힌다 */}
+                <span className="ring-label ring-label-top" title={t(language, "brain.depthTitle.1")}>{t(language, "brain.depth.1")}</span>
+                <span className="ring-label ring-label-bottom">{memories.length} {t(language, "brain.overview.recent")}</span>
+                <span className="ring-label ring-label-left">{concepts.length} {t(language, "brain.overview.topics")}</span>
+                <span className="ring-label ring-label-right" title={t(language, "brain.depth.5")}>{t(language, "brain.depthLabel.5")}</span>
 
                 <div className="brain-center-orb">
                   <LivingBrain

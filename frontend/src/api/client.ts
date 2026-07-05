@@ -39,6 +39,11 @@ let desktopBase: Promise<string | null> | null = null;
 declare global {
   interface Window {
     __TAURI_INTERNALS__?: unknown;
+    __TAURI__?: {
+      core?: {
+        invoke?: <T>(command: string, args?: Record<string, unknown>) => Promise<T>;
+      };
+    };
     latticeDesktop?: {
       selectFolder?: () => Promise<string | null>;
     };
@@ -50,7 +55,7 @@ function sameOriginBase() {
 }
 
 async function tauriBackendOrigin(): Promise<string | null> {
-  if (!window.__TAURI_INTERNALS__) return null;
+  if (!hasTauriBridge()) return null;
   if (!desktopBase) {
     desktopBase = import("@tauri-apps/api/core")
       .then(({ invoke }) => invoke<string>("backend_origin"))
@@ -60,7 +65,19 @@ async function tauriBackendOrigin(): Promise<string | null> {
   return desktopBase;
 }
 
+function hasTauriBridge() {
+  return Boolean(window.__TAURI_INTERNALS__ || window.__TAURI__?.core?.invoke);
+}
+
 async function tauriInvoke<T>(command: string, args?: Record<string, unknown>): Promise<T | null> {
+  const globalInvoke = window.__TAURI__?.core?.invoke;
+  if (globalInvoke) {
+    try {
+      return await globalInvoke<T>(command, args);
+    } catch {
+      return null;
+    }
+  }
   if (!window.__TAURI_INTERNALS__) return null;
   try {
     const { invoke } = await import("@tauri-apps/api/core");

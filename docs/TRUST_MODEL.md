@@ -1,6 +1,6 @@
 # Lattice AI Trust Model
 
-Current release: **8.5.0 — Tool Registry Readiness & Config DI**.
+Current release: **8.6.0 — Desktop Capture & Navigation Reliability**.
 
 Lattice AI is local-first, explicit about external communication, and honest
 when a capability is unavailable.

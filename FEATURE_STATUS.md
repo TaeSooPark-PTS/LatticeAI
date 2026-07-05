@@ -1,9 +1,9 @@
-# Lattice AI Feature Status (v8.5.0)
+# Lattice AI Feature Status (v8.6.0)
 
-Current release: **8.5.0 — Tool Registry Readiness & Config DI**.
+Current release: **8.6.0 — Desktop Capture & Navigation Reliability**.
 
 This file describes the current product state and known limitations. Historical
-change history is intentionally limited to 7.0.0-8.4.0 in `RELEASE.md` and
+change history is intentionally limited to 7.0.0-8.6.0 in `RELEASE.md` and
 `docs/CHANGELOG.md`.
 
 ## Product Position
@@ -12,7 +12,7 @@ Lattice AI is a local-first Digital Brain. The durable asset is the user's
 Brain: conversations, documents, decisions, memories, provenance, and Knowledge
 Graph structure. Models are replaceable voices over that Brain.
 
-The main product surface is not an admin dashboard. The 8.4.0 Brain Home keeps
+The main product surface is not an admin dashboard. The 8.6.0 Brain Home keeps
 the living Brain and composer in the first screen, preserves the evidence-backed
 Brain Brief, and documents the five-minute source-to-proof onboarding loop.
 
@@ -31,7 +31,7 @@ Brain Brief, and documents the five-minute source-to-proof onboarding loop.
 | Tool Registry / MCP | Current | ToolRegistry diagnostics and MCP install state are separated from app-factory helpers and covered by focused tests. |
 | Workspaces | Current | Personal workspace is default. Organization/admin surfaces remain separated from normal Brain use. |
 | VS Code Extension | Current | Sync/status endpoints expose connection and indexing state. File contents move only through explicit user actions. |
-| Release Assets | Current | 8.4.0 package metadata, static app, release notes, and exact artifact names are aligned. |
+| Release Assets | Current | 8.6.0 package metadata, static app, release notes, and exact artifact names are aligned. |
 
 ## Known Limitations
 
@@ -53,6 +53,8 @@ Brain Brief, and documents the five-minute source-to-proof onboarding loop.
 
 The Git tree keeps release history from:
 
+- 8.6.0
+- 8.5.0
 - 8.4.0
 - 8.3.0
 - 8.2.0

@@ -11,6 +11,7 @@ import { t, type Language } from "@/i18n";
 import { latticeApi } from "@/api/client";
 import { useQuery } from "@tanstack/react-query";
 import { FeedbackState } from "@/components/FeedbackState";
+import { Brain, Menu, X } from "lucide-react";
 
 const ActPage = React.lazy(() => import("@/pages/Act").then((module) => ({ default: module.ActPage })));
 const BrainPage = React.lazy(() => import("@/pages/Brain").then((module) => ({ default: module.BrainPage })));
@@ -104,35 +105,98 @@ function BrainShell({
   children: React.ReactNode;
 }) {
   const language = useAppStore((state) => state.language);
+  const [menuOpen, setMenuOpen] = React.useState(false);
+  const menuButtonRef = React.useRef<HTMLButtonElement>(null);
+
+  const closeMenu = React.useCallback(() => {
+    setMenuOpen(false);
+    menuButtonRef.current?.focus();
+  }, []);
+
+  React.useEffect(() => {
+    if (!menuOpen) return;
+    const onKey = (event: KeyboardEvent) => {
+      if (event.key === "Escape") closeMenu();
+    };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [menuOpen, closeMenu]);
+
+  const activeRoute = productShellRoutes.find((item) => item.id === active);
+
   return (
     <main className="brain-shell-page" aria-label="Lattice workspace">
-      <nav className="brain-shell-nav" aria-label="Brain workspace navigation">
-        {productShellRoutes.map((item) => {
-          const Icon = item.icon;
-          return (
-            <button
-              key={item.id}
-              type="button"
-              className={`nav-item ${item.id === active ? "is-active" : ""}`}
-              aria-current={item.id === active ? "page" : undefined}
-              title={`${t(language, item.labelKey)} — ${item.description}`}
-              onClick={() => navigateHash(`/${item.path}`)}
-            >
-              {Icon && <Icon className="nav-icon" aria-hidden="true" />}
-              <span>{t(language, item.labelKey)}</span>
-            </button>
-          );
-        })}
-        <div className="brain-shell-switchers" aria-label={t(language, "shell.workspace.label")}>
+      <header className="brain-topbar">
+        <button
+          ref={menuButtonRef}
+          type="button"
+          className="brain-menu-button"
+          aria-expanded={menuOpen}
+          aria-controls="brain-sidebar"
+          aria-label={t(language, menuOpen ? "shell.menu.close" : "shell.menu.open")}
+          onClick={() => setMenuOpen((open) => !open)}
+        >
+          {menuOpen ? <X aria-hidden="true" /> : <Menu aria-hidden="true" />}
+        </button>
+        <a className="brain-shell-brand" href="#/brain" aria-label={t(language, "brain.title")}>
+          <span className="brain-shell-brand-mark" aria-hidden="true">
+            <Brain aria-hidden="true" />
+          </span>
+          Lattice
+        </a>
+        {activeRoute && active !== "brain" ? (
+          <span className="brain-topbar-crumb">{t(language, activeRoute.labelKey)}</span>
+        ) : null}
+      </header>
+
+      {menuOpen ? <div className="brain-sidebar-scrim" onClick={closeMenu} aria-hidden="true" /> : null}
+      <aside
+        id="brain-sidebar"
+        className={`brain-sidebar${menuOpen ? " is-open" : ""}`}
+        aria-hidden={!menuOpen}
+        aria-label={t(language, "shell.menu.title")}
+      >
+        <div className="brain-sidebar-head">
+          <span className="brain-sidebar-title">{t(language, "shell.menu.title")}</span>
+          <button
+            type="button"
+            className="brain-menu-button"
+            aria-label={t(language, "shell.menu.close")}
+            onClick={closeMenu}
+          >
+            <X aria-hidden="true" />
+          </button>
+        </div>
+        <nav className="brain-sidebar-nav" aria-label={t(language, "shell.menu.nav")}>
+          {productShellRoutes.map((item) => {
+            const Icon = item.icon;
+            return (
+              <button
+                key={item.id}
+                type="button"
+                className={`brain-sidebar-item${item.id === active ? " is-active" : ""}`}
+                aria-current={item.id === active ? "page" : undefined}
+                onClick={() => {
+                  setMenuOpen(false);
+                  navigateHash(`/${item.path}`);
+                }}
+              >
+                {Icon && <Icon className="nav-icon" aria-hidden="true" />}
+                <span>{t(language, item.labelKey)}</span>
+              </button>
+            );
+          })}
+        </nav>
+        <div className="brain-sidebar-foot" aria-label={t(language, "shell.menu.workspace")}>
+          <span className="brain-sidebar-section-label">{t(language, "shell.menu.workspace")}</span>
           <VsCodeSyncStatus language={language} />
           <WorkspaceProfileSwitcher language={language} />
           <AdminAccessGate language={language} />
+          <ExternalConsentStatus language={language} />
         </div>
-      </nav>
-      <section className="brain-shell-content">
-        <ExternalConsentStatus language={language} />
-        {children}
-      </section>
+      </aside>
+
+      <section className="brain-shell-content">{children}</section>
     </main>
   );
 }

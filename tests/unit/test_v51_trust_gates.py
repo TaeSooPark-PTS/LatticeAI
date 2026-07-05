@@ -35,6 +35,14 @@ def test_tauri_production_csp_is_not_null_or_open():
     assert csp != "*"
 
 
+def test_tauri_remote_localhost_keeps_desktop_ipc_available():
+    capability = json.loads((REPO_ROOT / "src-tauri" / "capabilities" / "default.json").read_text(encoding="utf-8"))
+
+    assert capability["windows"] == ["main"]
+    assert "core:default" in capability["permissions"]
+    assert set(capability["remote"]["urls"]) >= {"http://127.0.0.1:*", "http://localhost:*"}
+
+
 def test_app_shell_response_sets_csp_header(tmp_path: Path):
     page = tmp_path / "index.html"
     page.write_text("<html><body>Lattice</body></html>", encoding="utf-8")

@@ -1,6 +1,6 @@
 # Privacy
 
-Current release: **8.4.0 - Action-Aware Brain Chat**.
+Current release: **8.6.0 — Desktop Capture & Navigation Reliability**.
 
 Lattice AI is local-first. It does not send your prompts, files, graph, or Brain
 archive to Lattice-owned servers by default. Some user-chosen features can

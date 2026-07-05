@@ -79,6 +79,34 @@ export function LivingBrain({
     onInteract?.();
   };
 
+  // 3D tilt — the orb leans toward the pointer so it reads as a volume, not a sticker.
+  const reducedMotionRef = React.useRef(false);
+  React.useEffect(() => {
+    const query = window.matchMedia("(prefers-reduced-motion: reduce)");
+    const sync = () => { reducedMotionRef.current = query.matches; };
+    sync();
+    query.addEventListener("change", sync);
+    return () => query.removeEventListener("change", sync);
+  }, []);
+
+  const handleTilt = React.useCallback((event: React.PointerEvent<HTMLButtonElement>) => {
+    if (reducedMotionRef.current || event.pointerType === "touch") return;
+    const el = organismRef.current;
+    if (!el) return;
+    const rect = el.getBoundingClientRect();
+    const nx = ((event.clientX - rect.left) / rect.width) * 2 - 1;
+    const ny = ((event.clientY - rect.top) / rect.height) * 2 - 1;
+    el.style.setProperty("--tilt-y", `${(nx * 11).toFixed(2)}deg`);
+    el.style.setProperty("--tilt-x", `${(ny * -9).toFixed(2)}deg`);
+  }, []);
+
+  const resetTilt = React.useCallback(() => {
+    const el = organismRef.current;
+    if (!el) return;
+    el.style.setProperty("--tilt-y", "0deg");
+    el.style.setProperty("--tilt-x", "0deg");
+  }, []);
+
   return (
     <div
       className={cn(
@@ -100,14 +128,44 @@ export function LivingBrain({
         aria-label={effectiveDepth < 5 ? "Travel deeper into your Brain" : "Rest inside the Knowledge Graph"}
         aria-disabled={!canTravel}
         style={{
-          transform: `scale(${0.96 + (dynamicIntensity - 0.5) * 0.09 + effectiveDepth * 0.015})`,
-        }}
+          "--brain-scale": `${0.96 + (dynamicIntensity - 0.5) * 0.09 + effectiveDepth * 0.015}`,
+        } as React.CSSProperties}
         onClick={handleClick}
+        onPointerMove={handleTilt}
+        onPointerLeave={resetTilt}
         title={effectiveDepth < 5 ? "Travel deeper into your Brain" : "The core of your knowledge"}
       >
         {/* Living anatomical presence. The glow opens with depth; the folds make it unmistakably a Brain. */}
-        <div className="brain-core" style={{ transform: `scale(${1 + effectiveDepth * 0.045})` }}>
+        <div className="brain-core" style={{ "--core-scale": `${1 + effectiveDepth * 0.045}` } as React.CSSProperties}>
           <svg className="brain-anatomy" viewBox="0 0 220 174" aria-hidden>
+            <defs>
+              {/* 상단 좌측 광원 기준의 볼륨 셰이딩 — 로브가 부풀어 보이게 한다 */}
+              <radialGradient id="lattice-lobe-left-shade" cx="34%" cy="26%" r="85%">
+                <stop offset="0%" stopColor="hsl(var(--brain-halo) / 0.8)" />
+                <stop offset="42%" stopColor="hsl(var(--brain-core) / 0.46)" />
+                <stop offset="78%" stopColor="hsl(var(--brain-core) / 0.2)" />
+                <stop offset="100%" stopColor="hsl(228 30% 8% / 0.28)" />
+              </radialGradient>
+              <radialGradient id="lattice-lobe-right-shade" cx="62%" cy="24%" r="88%">
+                <stop offset="0%" stopColor="hsl(var(--connection) / 0.66)" />
+                <stop offset="46%" stopColor="hsl(var(--connection) / 0.32)" />
+                <stop offset="80%" stopColor="hsl(var(--connection) / 0.14)" />
+                <stop offset="100%" stopColor="hsl(228 30% 8% / 0.3)" />
+              </radialGradient>
+              <radialGradient id="lattice-bridge-shade" cx="50%" cy="30%" r="80%">
+                <stop offset="0%" stopColor="hsl(var(--memory) / 0.55)" />
+                <stop offset="100%" stopColor="hsl(var(--memory) / 0.1)" />
+              </radialGradient>
+              <linearGradient id="lattice-stem-shade" x1="0" y1="0" x2="0" y2="1">
+                <stop offset="0%" stopColor="hsl(var(--knowledge) / 0.42)" />
+                <stop offset="100%" stopColor="hsl(var(--knowledge) / 0.08)" />
+              </linearGradient>
+              <linearGradient id="lattice-sheen-shade" x1="0" y1="0" x2="0.4" y2="1">
+                <stop offset="0%" stopColor="hsl(40 60% 98% / 0.5)" />
+                <stop offset="70%" stopColor="hsl(40 60% 98% / 0.06)" />
+                <stop offset="100%" stopColor="hsl(40 60% 98% / 0)" />
+              </linearGradient>
+            </defs>
             <path
               className="brain-lobe brain-lobe-left"
               d="M102 30c-13-20-44-19-55 1-18 1-29 16-28 33-13 8-18 25-11 39-9 16-1 36 17 42 5 19 27 26 43 15 13 10 33 8 43-5 5-7 8-16 8-27V52c0-8-6-17-17-22Z"
@@ -125,6 +183,11 @@ export function LivingBrain({
             <path className="brain-fold fold-e" d="M186 82c-22-8-45-5-58 8" />
             <path className="brain-fold fold-f" d="M177 119c-18 5-35 2-49-11" />
             <path className="brain-fold fold-mid" d="M110 38c-5 30-5 70 0 112" />
+            {/* 광택 — 위쪽에서 떨어지는 반사광 한 줄이 표면의 곡률을 말해준다 */}
+            <path
+              className="brain-sheen"
+              d="M58 38c22-16 52-20 78-10-30-2-58 6-74 22-8 8-16 6-4-12Z"
+            />
           </svg>
         </div>
 
@@ -133,10 +196,10 @@ export function LivingBrain({
           className="brain-aura"
           style={{
             animationDuration: state === "thinking" ? "1.65s" : state === "recalling" ? "2.4s" : "6.8s",
-            transform: `scale(${1 + effectiveDepth * 0.12})`,
+            "--aura-scale": `${1 + effectiveDepth * 0.12}`,
             opacity: 0.65 + effectiveDepth * 0.05,
             boxShadow: effectiveDepth > 2 ? "0 0 60px hsl(var(--brain-core) / 0.25)" : "none"
-          }}
+          } as React.CSSProperties}
         />
 
         {/* Thought activity — increases and starts to "resolve" into structure at higher depths */}

@@ -8,17 +8,23 @@ function trackPageErrors(page) {
   return errors;
 }
 
-async function bypassProductFlow(page) {
-  await page.addInitScript(() => {
+async function bypassProductFlow(page, { mode = "advanced" } = {}) {
+  await page.addInitScript(({ workspaceMode }) => {
     localStorage.setItem("lattice.productFlow.complete", "true");
     localStorage.setItem("lattice.language", "ko");
-  });
+    localStorage.setItem("lattice.mode", workspaceMode);
+  }, { workspaceMode: mode });
 }
 
-async function openBrain(page) {
-  await bypassProductFlow(page);
+async function openBrain(page, options) {
+  await bypassProductFlow(page, options);
   await page.goto("/app");
   await expect(page.locator("main[aria-label='Lattice Brain']")).toBeVisible();
+}
+
+async function openShellMenu(page) {
+  await page.getByRole("button", { name: "메뉴 열기" }).click();
+  await expect(page.getByRole("navigation", { name: "화면 이동" })).toBeVisible();
 }
 
 test("first-run ritual enters the living Brain", async ({ page }) => {
@@ -72,12 +78,14 @@ test("Brain home opens the memory graph instead of a duplicate lower Brain", asy
 test("memory graph supports graph search and returning to the surface", async ({ page }) => {
   const errors = trackPageErrors(page);
   await openBrain(page);
+  await openShellMenu(page);
   await page.getByRole("button", { name: "기억 그래프" }).click();
   await expect(page.locator("[data-testid='brain-cytoscape']")).toBeVisible();
 
   await page.getByPlaceholder(GRAPH_SEARCH_PLACEHOLDER).fill("workspace");
   await expect(page.locator("body")).toContainText("Workspace Health");
 
+  await openShellMenu(page);
   await page.getByRole("button", { name: "대화" }).click();
   await expect(page.locator("body")).toContainText("지금 Brain이 기억을 만들 준비가 됐습니다");
   await expect(page.locator("[data-testid='brain-cytoscape']")).toHaveCount(0);
@@ -88,7 +96,10 @@ test("conversation keeps the Brain alive while chat streams", async ({ page }) =
   const errors = trackPageErrors(page);
   await openBrain(page);
 
-  await expect(page.locator("nav[aria-label='Brain workspace navigation']")).toBeVisible();
+  await expect(page.getByRole("button", { name: "메뉴 열기" })).toBeVisible();
+  await openShellMenu(page);
+  await expect(page.getByRole("button", { name: "자료 추가" })).toBeVisible();
+  await page.getByRole("button", { name: "메뉴 닫기" }).last().click();
   await expect(page.locator("section[aria-label='Brain Chat Home']")).toBeVisible();
   await expect(page.locator("body")).toContainText("지금 Brain이 기억을 만들 준비가 됐습니다");
   await expect(page.locator("body")).toContainText("대화 한 줄이나 문서 하나가 기억이 되고");
@@ -126,8 +137,8 @@ test("admin console is separated from the user Brain surface", async ({ page }) 
   await expect(page.locator("main[aria-label='Lattice Brain']")).toBeVisible();
   await expect(page.locator("main.admin-console")).toHaveCount(0);
 
-  await page.getByText("자료와 설정").click();
-  await page.getByRole("button", { name: "관리자 콘솔", exact: true }).click();
+  await openShellMenu(page);
+  await page.getByRole("button", { name: "관리자 콘솔 열기" }).click();
   await expect(page).toHaveURL(/#\/admin$/);
   await expect(page.locator("main.admin-console")).toBeVisible();
   await expect(page.locator("body")).toContainText("Admin Console");
@@ -156,7 +167,7 @@ test("Review Center loads actionable review evidence", async ({ page }) => {
 test("mobile Brain surface has no horizontal overflow", async ({ page }) => {
   const errors = trackPageErrors(page);
   await page.setViewportSize({ width: 390, height: 780 });
-  await openBrain(page);
+  await openBrain(page, { mode: "basic" });
 
   const overflow = await page.evaluate(() => document.documentElement.scrollWidth - document.documentElement.clientWidth);
   expect(overflow).toBeLessThanOrEqual(1);

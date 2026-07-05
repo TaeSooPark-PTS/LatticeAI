@@ -6,22 +6,27 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { useAppStore } from "@/store/appStore";
+import { t } from "@/i18n";
 import { cn, asArray, fmtNumber, shortId, titleize } from "@/lib/utils";
 
 export function SourceBadge({ result }: { result?: Pick<ApiResult, "source" | "ok" | "status"> }) {
   const mode = useAppStore((state) => state.mode);
-  if (!result) return <Badge variant="muted">not loaded</Badge>;
-  if (result.source === "live" && result.ok) return <Badge variant="success">{mode === "basic" ? "ready" : "connected"}</Badge>;
-  return <Badge variant="warning">{mode === "basic" ? "needs setup" : "unavailable"}</Badge>;
+  const language = useAppStore((state) => state.language);
+  if (!result) return <Badge variant="muted">{t(language, "ui.status.notLoaded")}</Badge>;
+  if (result.source === "live" && result.ok) {
+    return <Badge variant="success">{mode === "basic" ? t(language, "ui.status.ready") : t(language, "ui.status.connected")}</Badge>;
+  }
+  return <Badge variant="warning">{mode === "basic" ? t(language, "ui.status.needsSetup") : t(language, "ui.status.unavailable")}</Badge>;
 }
 
-export function EmptyState({ title = "Unavailable", detail }: { title?: string; detail?: React.ReactNode }) {
+export function EmptyState({ title, detail }: { title?: string; detail?: React.ReactNode }) {
+  const language = useAppStore((state) => state.language);
   return (
     <div className="flex min-h-36 flex-col items-center justify-center gap-2 rounded-lg border border-dashed border-border bg-muted/24 p-6 text-center text-sm text-muted-foreground">
       <div className="grid h-10 w-10 place-items-center rounded-md border border-border bg-card">
         <Sparkles className="h-5 w-5 text-primary" />
       </div>
-      <div className="text-base font-semibold text-foreground">{title}</div>
+      <div className="text-base font-semibold text-foreground">{title || t(language, "ui.empty.title")}</div>
       {detail ? <div className="max-w-md leading-6">{detail}</div> : null}
     </div>
   );
@@ -41,6 +46,7 @@ export function DataPanel<T>({
   className?: string;
 }) {
   const mode = useAppStore((state) => state.mode);
+  const language = useAppStore((state) => state.language);
   return (
     <Card className={cn("overflow-hidden", className)}>
       <CardHeader className="flex-row items-start justify-between gap-3">
@@ -52,7 +58,7 @@ export function DataPanel<T>({
       </CardHeader>
       <CardContent>
         {result?.ok ? children(result.data) : (
-          <EmptyState detail={mode === "basic" ? "This area needs setup or is not available yet." : result?.error || "This capability is not reporting right now."} />
+          <EmptyState detail={mode === "basic" ? t(language, "ui.empty.basicDetail") : result?.error || t(language, "ui.empty.advancedDetail")} />
         )}
       </CardContent>
     </Card>
@@ -60,6 +66,7 @@ export function DataPanel<T>({
 }
 
 export function LoadingPanel({ title }: { title: string }) {
+  const language = useAppStore((state) => state.language);
   return (
     <Card>
       <CardHeader>
@@ -67,7 +74,7 @@ export function LoadingPanel({ title }: { title: string }) {
       </CardHeader>
       <CardContent>
         <div className="flex items-center gap-2 text-sm text-muted-foreground">
-          <Loader2 className="h-4 w-4 animate-spin" /> Loading
+          <Loader2 className="h-4 w-4 animate-spin" /> {t(language, "ui.loading")}
         </div>
       </CardContent>
     </Card>
@@ -153,10 +160,11 @@ export function ValuePreview({ value }: { value: unknown }) {
 
 export function KeyValueList({ data, limit = 8 }: { data: Record<string, unknown>; limit?: number }) {
   const mode = useAppStore((state) => state.mode);
+  const language = useAppStore((state) => state.language);
   const rows = Object.entries(data || {})
     .filter(([key]) => mode !== "basic" || !hideInBasic(key))
     .slice(0, limit);
-  if (!rows.length) return <EmptyState title="No values" />;
+  if (!rows.length) return <EmptyState title={t(language, "ui.noValues")} />;
   return (
     <div className="divide-y divide-border rounded-md border border-border">
       {rows.map(([key, value]) => (
@@ -181,9 +189,10 @@ export function StructuredView({
   limit?: number;
 }) {
   const mode = useAppStore((state) => state.mode);
+  const language = useAppStore((state) => state.language);
   if (mode === "basic") return <FriendlySummary value={value} titleKey={titleKey} metaKey={metaKey} limit={limit} />;
   if (Array.isArray(value)) {
-    if (!value.length) return <EmptyState title="Nothing here yet" detail="New items will appear here when Lattice has something to show." />;
+    if (!value.length) return <EmptyState detail={t(language, "ui.empty.listDetail")} />;
     if (value.every((item) => isRecord(item))) {
       return <EntityList items={value} titleKey={titleKey} metaKey={metaKey} limit={limit} />;
     }
@@ -213,8 +222,9 @@ export function FriendlySummary({
   metaKey?: string;
   limit?: number;
 }) {
+  const language = useAppStore((state) => state.language);
   if (Array.isArray(value)) {
-    if (!value.length) return <EmptyState title="Nothing here yet" detail="New items will appear here when Lattice has something to show." />;
+    if (!value.length) return <EmptyState detail={t(language, "ui.empty.listDetail")} />;
     if (value.every((item) => isRecord(item))) {
       return <EntityList items={value} titleKey={titleKey} metaKey={metaKey} limit={limit} />;
     }
@@ -244,19 +254,20 @@ export function FriendlySummary({
 
 export function OperationResult({
   result,
-  successLabel = "Request completed",
+  successLabel,
 }: {
   result?: ApiResult<unknown> | null;
   successLabel?: string;
 }) {
   const mode = useAppStore((state) => state.mode);
+  const language = useAppStore((state) => state.language);
   if (!result) return null;
   if (!result.ok) {
-    return <EmptyState title="Request unavailable" detail={result.error || <ValuePreview value={result.data} />} />;
+    return <EmptyState title={t(language, "ui.requestUnavailable")} detail={result.error || <ValuePreview value={result.data} />} />;
   }
   return (
     <div className="space-y-2 rounded-md border border-border bg-background p-3">
-      <Badge variant="success">{successLabel}</Badge>
+      <Badge variant="success">{successLabel || t(language, "ui.requestCompleted")}</Badge>
       {mode === "basic" ? <FriendlySummary value={result.data} /> : <StructuredView value={result.data} />}
     </div>
   );
@@ -274,8 +285,9 @@ export function EntityList({
   limit?: number;
 }) {
   const mode = useAppStore((state) => state.mode);
+  const language = useAppStore((state) => state.language);
   const rows = asArray<Record<string, unknown>>(items).slice(0, limit);
-  if (!rows.length) return <EmptyState title="Nothing here yet" detail="New items will appear here when Lattice has something to show." />;
+  if (!rows.length) return <EmptyState detail={t(language, "ui.empty.listDetail")} />;
   return (
     <div className="grid gap-2">
       {rows.map((item, index) => (
@@ -297,8 +309,8 @@ export function EntityList({
 }
 
 export function ModeGate({
-  title = "Advanced controls",
-  detail = "Switch modes when you want diagnostics or administrative controls. Basic mode keeps the product focused on everyday use.",
+  title,
+  detail,
   target = "advanced",
 }: {
   title?: string;
@@ -306,6 +318,7 @@ export function ModeGate({
   target?: "advanced" | "admin";
 }) {
   const setMode = useAppStore((state) => state.setMode);
+  const language = useAppStore((state) => state.language);
   return (
     <Card>
       <CardContent className="flex flex-col items-start gap-3 p-6">
@@ -313,10 +326,12 @@ export function ModeGate({
           <LockKeyhole className="h-5 w-5 text-primary" />
         </div>
         <div>
-          <div className="text-lg font-semibold">{title}</div>
-          <p className="mt-1 max-w-2xl text-sm leading-6 text-muted-foreground">{detail}</p>
+          <div className="text-lg font-semibold">{title || t(language, "ui.modeGate.title")}</div>
+          <p className="mt-1 max-w-2xl text-sm leading-6 text-muted-foreground">{detail || t(language, "ui.modeGate.detail")}</p>
         </div>
-        <Button onClick={() => setMode(target)}>{target === "admin" ? "Switch to Admin Console" : "Switch to Advanced"}</Button>
+        <Button onClick={() => setMode(target)}>
+          {target === "admin" ? t(language, "ui.modeGate.admin") : t(language, "ui.modeGate.advanced")}
+        </Button>
       </CardContent>
     </Card>
   );
@@ -324,7 +339,7 @@ export function ModeGate({
 
 export function ActionButton({
   label,
-  successLabel = "Done",
+  successLabel,
   action,
   invalidate,
   variant = "outline",
@@ -338,11 +353,13 @@ export function ActionButton({
   disabled?: boolean;
 }) {
   const qc = useQueryClient();
+  const language = useAppStore((state) => state.language);
+  const resolvedSuccessLabel = successLabel || t(language, "ui.done");
   const [result, setResult] = React.useState<string | null>(null);
   const mut = useMutation({
     mutationFn: action,
     onSuccess: async (res) => {
-      setResult(res.ok ? successLabel : res.error || "Unavailable");
+      setResult(res.ok ? resolvedSuccessLabel : res.error || t(language, "ui.status.unavailable"));
       if (invalidate) {
         await Promise.all(invalidate.map((key) => qc.invalidateQueries({ queryKey: [key] })));
       }
@@ -355,8 +372,8 @@ export function ActionButton({
         {label}
       </Button>
       {result ? (
-        <span className={cn("inline-flex items-center gap-1 text-xs", result === successLabel ? "text-emerald-300" : "text-amber-300")}>
-          {result === successLabel ? <CheckCircle2 className="h-3.5 w-3.5" /> : <AlertCircle className="h-3.5 w-3.5" />}
+        <span className={cn("inline-flex items-center gap-1 text-xs", result === resolvedSuccessLabel ? "text-success" : "text-warning")}>
+          {result === resolvedSuccessLabel ? <CheckCircle2 className="h-3.5 w-3.5" /> : <AlertCircle className="h-3.5 w-3.5" />}
           {result}
         </span>
       ) : null}
