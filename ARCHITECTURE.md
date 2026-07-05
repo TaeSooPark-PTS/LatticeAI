@@ -1,6 +1,6 @@
 # Lattice AI Current Architecture
 
-Current release: **8.6.0 — Desktop Capture & Navigation Reliability**.
+Current release: **8.7.0 — Runtime State Hygiene & Release Evidence Refresh**.
 
 Lattice AI is a local-first Digital Brain platform. The current architecture is
 organized around a private Brain, replaceable model runtimes, explicit tool
@@ -8,13 +8,44 @@ registries, and import-safe server composition.
 
 ## System Map
 
-```text
-Desktop / Browser Shell
-  -> React + Vite app
-  -> FastAPI localhost sidecar
-  -> Runtime composition root
-  -> Brain Core / services / registries
-  -> SQLite local store by default
+```mermaid
+flowchart TB
+  user["User"]
+  desktop["Tauri desktop shell"]
+  browser["Browser extension"]
+  editor["VS Code extension"]
+  ui["React / Vite Brain Home"]
+  api["FastAPI localhost sidecar"]
+  runtime["Runtime composition root<br/>latticeai.runtime"]
+  services["Product services<br/>chat, memory, model, ingestion, search, review"]
+  agent["AgentRuntime<br/>preview, readiness, orchestration"]
+  tools["ToolRegistry / MCP<br/>permissions, dispatch, diagnostics"]
+  brain["Brain Core<br/>lattice_brain"]
+  kg["Knowledge Graph<br/>nodes, edges, provenance"]
+  store["Local storage<br/>SQLite default, Postgres optional"]
+  archive["Portable archives<br/>.latticebrain"]
+  trust["Trust gates<br/>auth, consent, audit, redaction"]
+  models["Model runtimes<br/>local first, cloud opt-in"]
+
+  user --> desktop
+  user --> browser
+  user --> editor
+  desktop --> ui
+  ui --> api
+  browser --> api
+  editor --> api
+  api --> trust
+  trust --> runtime
+  runtime --> services
+  runtime --> agent
+  runtime --> tools
+  services --> brain
+  agent --> tools
+  tools --> services
+  services --> models
+  brain --> kg
+  brain --> store
+  brain --> archive
 ```
 
 Key boundaries:
@@ -28,9 +59,38 @@ Key boundaries:
 - `latticeai.core` owns lower-level registries and helpers.
 - `lattice_brain` owns Brain Core, graph, memory, ingestion, and storage.
 
+## Runtime Flow
+
+```mermaid
+sequenceDiagram
+  participant U as User
+  participant UI as Brain Home
+  participant API as FastAPI Sidecar
+  participant RT as Runtime Context
+  participant MS as Memory / Model Services
+  participant AR as AgentRuntime
+  participant TR as ToolRegistry
+  participant KG as Knowledge Graph
+
+  U->>UI: Ask, capture, review, or automate
+  UI->>API: Authenticated localhost request
+  API->>RT: Resolve scoped runtime dependencies
+  RT->>MS: Load workspace, memory, model state
+  MS->>KG: Retrieve grounded context and provenance
+  alt Direct chat or memory request
+    MS-->>API: Grounded answer or honest no-model state
+  else Explicit tool or workflow request
+    RT->>AR: Preview / readiness contract
+    AR->>TR: Permissioned dispatch
+    TR-->>AR: Tool result and audit metadata
+    AR-->>API: Governed result
+  end
+  API-->>UI: Response, proof, and next actions
+```
+
 ## Product Flow
 
-The 8.6.0 first-run and daily-use flow is:
+The 8.7.0 first-run and daily-use flow is:
 
 1. Wake Brain / login.
 2. Pick owner/workspace context.
@@ -94,7 +154,7 @@ migration safety, and equivalence tests.
 
 ## Runtime Contracts
 
-The 8.0 architecture contract remains active in 8.6.0:
+The 8.0 architecture contract remains active in 8.7.0:
 
 - AgentRuntime has explicit preview/readiness contracts and does not execute
   tools during preview.
@@ -123,13 +183,13 @@ Docker/Postgres setup, marketplace refresh, and update checks are opt-in paths.
 
 ## Release Artifact Map
 
-8.6.0 exact artifact names:
+8.7.0 exact artifact names:
 
-- `dist/ltcai-8.6.0-py3-none-any.whl`
-- `dist/ltcai-8.6.0.tar.gz`
-- `ltcai-8.6.0.tgz`
-- `dist/ltcai-8.6.0.vsix`
-- `src-tauri/target/release/bundle/dmg/Lattice AI_8.6.0_aarch64.dmg`
+- `dist/ltcai-8.7.0-py3-none-any.whl`
+- `dist/ltcai-8.7.0.tar.gz`
+- `ltcai-8.7.0.tgz`
+- `dist/ltcai-8.7.0.vsix`
+- `src-tauri/target/release/bundle/dmg/Lattice AI_8.7.0_aarch64.dmg`
 
 Do not document or use wildcard artifact upload commands.
 

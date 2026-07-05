@@ -36,7 +36,7 @@ Plugins should add one bounded capability at a time:
 - Compatibility requirements belong in `lattice_version`, and examples should
   use current host-compatible values.
 
-## 8.4.0 Ecosystem Tasks
+## Current Ecosystem Tasks
 
 - Keep the hello-world plugin valid and boring.
 - Expand examples only when they exercise real extension seams.

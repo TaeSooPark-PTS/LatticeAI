@@ -7,6 +7,9 @@ history stays focused on the current product era.
 ## Current Release
 
 - [v8.7.0 - Runtime State Hygiene & Release Evidence Refresh](RELEASE_NOTES_v8.7.0.md)
+
+## Recent Release Notes
+
 - [v8.6.0 - Desktop Capture & Navigation Reliability](RELEASE_NOTES_v8.6.0.md)
 - [v8.5.0 - Tool Registry Readiness & Config DI](RELEASE.md#v850--tool-registry-readiness--config-di-2026-07-01)
 - [v8.4.0 - Action-Aware Brain Chat](RELEASE_NOTES_v8.4.0.md)

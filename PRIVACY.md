@@ -1,6 +1,6 @@
 # Privacy
 
-Current release: **8.6.0 — Desktop Capture & Navigation Reliability**.
+Current release: **8.7.0 — Runtime State Hygiene & Release Evidence Refresh**.
 
 Lattice AI is local-first. It does not send your prompts, files, graph, or Brain
 archive to Lattice-owned servers by default. Some user-chosen features can
