@@ -2,18 +2,18 @@
   "version": "8.6.0",
   "generated_at": "vite",
   "entrypoints": {
-    "app": "/static/app/assets/index-BaaPtsLp.js"
+    "app": "/static/app/assets/index-7pyZyWC9.js"
   },
   "assets": {
     "../node_modules/@tauri-apps/api/core.js": "/static/app/assets/core-CwxXejkd.js",
-    "_primitives-lz45ZfWY.js": "/static/app/assets/primitives-lz45ZfWY.js",
-    "_textarea-C7uwJsxy.js": "/static/app/assets/textarea-C7uwJsxy.js",
-    "index.html": "/static/app/assets/index-BaaPtsLp.js",
+    "_primitives-Bzw0aBgN.js": "/static/app/assets/primitives-Bzw0aBgN.js",
+    "_textarea-Dr4TbSsy.js": "/static/app/assets/textarea-Dr4TbSsy.js",
+    "index.html": "/static/app/assets/index-7pyZyWC9.js",
     "assets/index-_M5aCv21.css": "/static/app/assets/index-_M5aCv21.css",
-    "src/pages/Act.tsx": "/static/app/assets/Act-IrojDEWY.js",
-    "src/pages/Brain.tsx": "/static/app/assets/Brain--VODO4HM.js",
-    "src/pages/Capture.tsx": "/static/app/assets/Capture-BUP_wJ7s.js",
-    "src/pages/Library.tsx": "/static/app/assets/Library-DrVto3cO.js",
-    "src/pages/System.tsx": "/static/app/assets/System-DNrVbcMX.js"
+    "src/pages/Act.tsx": "/static/app/assets/Act-DxobTErq.js",
+    "src/pages/Brain.tsx": "/static/app/assets/Brain--4yk_vla.js",
+    "src/pages/Capture.tsx": "/static/app/assets/Capture-BiH_Eg0M.js",
+    "src/pages/Library.tsx": "/static/app/assets/Library-CZB5ZnWB.js",
+    "src/pages/System.tsx": "/static/app/assets/System-wOBry-dG.js"
   }
 }

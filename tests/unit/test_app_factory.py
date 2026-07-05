@@ -130,6 +130,29 @@ print(json.dumps({
     assert result["data_dir_created"] is True
 
 
+def test_create_app_admin_audit_surfaces_do_not_500(tmp_path: Path):
+    """The factory must pass the runtime audit reader expected by admin routes."""
+    code = """
+import json
+
+from fastapi.testclient import TestClient
+
+from latticeai.app_factory import create_app
+
+client = TestClient(create_app())
+audit = client.get("/admin/audit")
+retention = client.get("/admin/log-retention")
+print(json.dumps({
+    "audit": audit.status_code,
+    "retention": retention.status_code,
+}))
+"""
+    result = _run_in_sandbox(code, tmp_path)
+
+    assert result["audit"] < 500
+    assert result["retention"] < 500
+
+
 def test_server_module_proxies_lazily(tmp_path: Path):
     """``import server`` is also side-effect free until ``server.app`` is read."""
     code = """

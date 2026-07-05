@@ -62,6 +62,13 @@ export function currentModelName(data: unknown) {
   return firstLoaded ? textValue(firstLoaded, ["name", "id", "model_id"], "local mind") : "local mind";
 }
 
+export function hasLoadedModel(data: unknown) {
+  const record = isRecord(data) ? data : {};
+  if (textValue(record, ["current", "current_model", "local_model"])) return true;
+  return asArray<ApiRecord>(record.loaded || record.loaded_models)
+    .some((item) => item.id || item.name || item.model_id);
+}
+
 export function buildBrainReadiness(memoryData: unknown, fallbackMemoryCount: number, fallbackConceptCount: number): BrainReadiness {
   const memory = isRecord(memoryData) ? memoryData : {};
   const backend = isRecord(memory.brain_readiness) ? memory.brain_readiness : {};

@@ -162,16 +162,22 @@ def build_auth_admin_security_router_bundle(
         append_audit_event=append_audit_event,
     )
 
-    def security_audit_events_safe() -> list[dict[str, Any]]:
+    def audit_log_events_safe() -> list[dict[str, Any]]:
         try:
-            return get_audit_log(audit_file)
+            return get_audit_log()
+        except TypeError:
+            try:
+                return get_audit_log(audit_file)
+            except Exception as exc:  # pragma: no cover - defensive legacy behavior
+                logger.warning("security audit events load failed: %s", exc)
+                return []
         except Exception as exc:  # pragma: no cover - defensive legacy behavior
             logger.warning("security audit events load failed: %s", exc)
             return []
 
     def security_list_uploaded_files() -> list[dict[str, Any]]:
         files: list[dict[str, Any]] = []
-        for idx, event in enumerate(security_audit_events_safe()):
+        for idx, event in enumerate(audit_log_events_safe()):
             if event.get("event_type") != "document_upload":
                 continue
             files.append({
@@ -191,7 +197,7 @@ def build_auth_admin_security_router_bundle(
     security_router = create_security_router(
         require_admin=require_admin,
         get_history=get_history,
-        get_audit_events=security_audit_events_safe,
+        get_audit_events=audit_log_events_safe,
         classify_sensitive_message=classify_sensitive_message,
         build_sensitivity_report=build_sensitivity_report,
         list_uploaded_files=security_list_uploaded_files,
@@ -205,7 +211,7 @@ def build_auth_admin_security_router_bundle(
         "security_router": security_router,
         "_graph_stats_safe": graph_stats_safe,
         "_product_hardening_status": product_hardening_status,
-        "_security_audit_events_safe": security_audit_events_safe,
+        "_security_audit_events_safe": audit_log_events_safe,
         "_security_list_uploaded_files": security_list_uploaded_files,
     }
 

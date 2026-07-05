@@ -5,7 +5,7 @@ import { type BrainState, triggerBrainRecall } from "@/components/LivingBrain";
 import { useAppStore } from "@/store/appStore";
 import { t } from "@/i18n";
 import { BrainConversation } from "./BrainConversation";
-import { buildBrainBrief, buildBrainProof, buildBrainReadiness, buildMemoryFragments, currentModelName, parseKnowledgeGraph } from "./brainData";
+import { buildBrainBrief, buildBrainProof, buildBrainReadiness, buildMemoryFragments, currentModelName, hasLoadedModel, parseKnowledgeGraph } from "./brainData";
 import {
   INGESTION_STAGE_ORDER,
   type BrainProof,
@@ -85,6 +85,7 @@ export function BrainHome({
     [knowledgeConcepts.length, memoriesQ.data, memoryFragments.length],
   );
   const modelName = React.useMemo(() => currentModelName(modelsQ.data?.data), [modelsQ.data]);
+  const modelReady = React.useMemo(() => hasLoadedModel(modelsQ.data?.data), [modelsQ.data]);
   const brainProof = React.useMemo(
     () => buildBrainProof(brainProofQ.data?.data, modelName),
     [brainProofQ.data, modelName],
@@ -271,6 +272,18 @@ export function BrainHome({
     if (!text || streaming) return;
     const activeConversationId = conversationId || `brain-${Date.now()}`;
     if (!conversationId) setConversationId(activeConversationId);
+
+    if (!modelReady) {
+      setMessages((items) => [
+        ...items,
+        { role: "user", content: text },
+        { role: "assistant", content: t(language, "brain.noModel.message") },
+      ]);
+      setDraft("");
+      setImageData(null);
+      setMemoryFeedback(t(language, "brain.noModel.status"));
+      return;
+    }
 
     setMessages((items) => [...items, { role: "user", content: text }, { role: "assistant", content: "" }]);
     setDraft("");

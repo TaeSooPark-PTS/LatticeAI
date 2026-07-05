@@ -605,7 +605,7 @@ export const latticeApi = {
   resumeWorkflowRun: (id: string, approved: boolean) => post(`/workflows/api/runs/${encodeURIComponent(id)}/resume`, { approved }, {}),
   hooks: () => get("/api/hooks", { hooks: [] }),
   hookRuns: () => get("/api/hooks/runs", { runs: [] }, { limit: 50 }),
-  hookRun: (body: unknown) => post("/api/hooks/run", body, {}),
+  hookRun: (body: Record<string, unknown> = {}) => post("/api/hooks/run", { kind: "pre_run", event: "manual", ...body }, {}),
   automationReviews: reviewList,
   approveReviewItem: (id: string) => reviewAction(id, "approve"),
   dismissReviewItem: (id: string) => reviewAction(id, "dismiss"),
