@@ -123,6 +123,11 @@ def test_local_write_returns_path(tmp_path):
     assert result["path"] == str(target)
 
 
+def test_local_write_blocks_system_prefixes():
+    with pytest.raises(ToolError):
+        local_write("/etc/lattice-ai-blocked-test.txt", "nope")
+
+
 # ---------------------------------------------------------------------------
 # read_document
 # ---------------------------------------------------------------------------

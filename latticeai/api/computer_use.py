@@ -12,7 +12,9 @@ from pydantic import BaseModel
 
 from latticeai.core.agent import extract_action as _extract_agent_action
 from lattice_brain.runtime.hooks import dispatch_tool
+from latticeai.services.tool_dispatch import enforce_tool_policy
 from tools import (
+    AGENT_ROOT,
     ToolError,
     computer_click,
     computer_drag,
@@ -108,14 +110,64 @@ class CuDragRequest(BaseModel):
     y2: int
 
 
-def create_computer_use_router(*, model_router, require_user, tool_response, save_to_history, hooks=None) -> APIRouter:
+def create_computer_use_router(
+    *,
+    model_router,
+    require_user,
+    tool_response,
+    save_to_history,
+    hooks=None,
+    append_audit_event=None,
+) -> APIRouter:
     router = APIRouter()
 
-    def _dispatch(name, args, fn):
+    def _audit_args(name: str, args: dict) -> dict:
+        """Return audit-safe argument metadata without storing typed text."""
+        args = dict(args or {})
+        if name == "computer_type":
+            return {"text_length": len(str(args.get("text") or "")), "interval": args.get("interval")}
+        if name == "vision_analyze":
+            return {
+                "image_b64_length": len(str(args.get("image_b64") or "")),
+                "prompt_length": len(str(args.get("prompt") or "")),
+            }
+        return args
+
+    def _audit(name: str, args: dict, *, current_user: str, status: str, error: Optional[str] = None) -> None:
+        if append_audit_event is None:
+            return
+        payload = {
+            "user_email": current_user,
+            "source": "computer_use",
+            "tool": name,
+            "status": status,
+            "args": _audit_args(name, args),
+        }
+        if error:
+            payload["error"] = error[:500]
+        append_audit_event("computer_use_tool", **payload)
+
+    def _dispatch(name, args, fn, *, current_user: str):
         # Run a computer-use action through the unified pre_tool/post_tool
-        # lifecycle. With hooks=None this is a transparent pass-through, so the
-        # behaviour is unchanged when hooks are absent.
-        return dispatch_tool(hooks, name, dict(args or {}), fn, source="computer_use")
+        # lifecycle after the same ToolRegistry policy gate used by direct
+        # /tools execution. This keeps desktop control behind one governance
+        # boundary instead of relying on route-specific checks.
+        args = dict(args or {})
+        try:
+            enforce_tool_policy(name, args, current_user=current_user, source="computer_use")
+        except HTTPException as exc:
+            _audit(name, args, current_user=current_user, status="blocked", error=str(exc.detail))
+            raise
+        try:
+            result = dispatch_tool(hooks, name, args, fn, source="computer_use")
+        except (PermissionError, ToolError, KeyError, TypeError) as exc:
+            _audit(name, args, current_user=current_user, status="error", error=str(exc))
+            raise
+        _audit(name, args, current_user=current_user, status="ok")
+        return result
+
+    def _response(result):
+        return {"status": "ok", "workspace": str(AGENT_ROOT), "result": result}
 
     @router.get("/tools/chrome_status")
     async def tools_chrome_status(request: Request):
@@ -129,9 +181,11 @@ def create_computer_use_router(*, model_router, require_user, tool_response, sav
 
     @router.get("/cu/status")
     async def cu_status(request: Request):
-        require_user(request)
+        current_user = require_user(request)
         try:
-            return _dispatch("computer_status", {}, computer_status)
+            return _dispatch("computer_status", {}, computer_status, current_user=current_user)
+        except HTTPException:
+            raise
         except PermissionError as exc:
             raise HTTPException(status_code=403, detail=str(exc))
         except ToolError as exc:
@@ -139,9 +193,11 @@ def create_computer_use_router(*, model_router, require_user, tool_response, sav
 
     @router.get("/cu/screenshot")
     async def cu_screenshot(request: Request):
-        require_user(request)
+        current_user = require_user(request)
         try:
-            return _dispatch("computer_screenshot", {}, computer_screenshot)
+            return _dispatch("computer_screenshot", {}, computer_screenshot, current_user=current_user)
+        except HTTPException:
+            raise
         except PermissionError as exc:
             raise HTTPException(status_code=403, detail=str(exc))
         except ToolError as exc:
@@ -149,47 +205,95 @@ def create_computer_use_router(*, model_router, require_user, tool_response, sav
 
     @router.post("/cu/open_app")
     async def cu_open_app(req: CuOpenAppRequest, request: Request):
-        require_user(request)
-        return tool_response(computer_open_app, req.app)
+        current_user = require_user(request)
+        result = _dispatch(
+            "computer_open_app",
+            {"app": req.app},
+            lambda: computer_open_app(req.app),
+            current_user=current_user,
+        )
+        return _response(result)
 
     @router.post("/cu/open_url")
     async def cu_open_url(req: CuOpenUrlRequest, request: Request):
-        require_user(request)
-        return tool_response(computer_open_url, req.url, req.app)
+        current_user = require_user(request)
+        result = _dispatch(
+            "computer_open_url",
+            {"url": req.url, "app": req.app},
+            lambda: computer_open_url(req.url, req.app),
+            current_user=current_user,
+        )
+        return _response(result)
 
     @router.post("/cu/click")
     async def cu_click(req: CuClickRequest, request: Request):
-        require_user(request)
-        return tool_response(computer_click, req.x, req.y, req.button, req.double)
+        current_user = require_user(request)
+        result = _dispatch(
+            "computer_click",
+            {"x": req.x, "y": req.y, "button": req.button, "double": req.double},
+            lambda: computer_click(req.x, req.y, req.button, req.double),
+            current_user=current_user,
+        )
+        return _response(result)
 
     @router.post("/cu/type")
     async def cu_type(req: CuTypeRequest, request: Request):
-        require_user(request)
-        return tool_response(computer_type, req.text, req.interval)
+        current_user = require_user(request)
+        result = _dispatch(
+            "computer_type",
+            {"text": req.text, "interval": req.interval},
+            lambda: computer_type(req.text, req.interval),
+            current_user=current_user,
+        )
+        return _response(result)
 
     @router.post("/cu/key")
     async def cu_key(req: CuKeyRequest, request: Request):
-        require_user(request)
-        return tool_response(computer_key, req.key)
+        current_user = require_user(request)
+        result = _dispatch(
+            "computer_key",
+            {"key": req.key},
+            lambda: computer_key(req.key),
+            current_user=current_user,
+        )
+        return _response(result)
 
     @router.post("/cu/scroll")
     async def cu_scroll(req: CuScrollRequest, request: Request):
-        require_user(request)
-        return tool_response(computer_scroll, req.x, req.y, req.direction, req.clicks)
+        current_user = require_user(request)
+        result = _dispatch(
+            "computer_scroll",
+            {"x": req.x, "y": req.y, "direction": req.direction, "clicks": req.clicks},
+            lambda: computer_scroll(req.x, req.y, req.direction, req.clicks),
+            current_user=current_user,
+        )
+        return _response(result)
 
     @router.post("/cu/move")
     async def cu_move(req: CuMoveRequest, request: Request):
-        require_user(request)
-        return tool_response(computer_move, req.x, req.y)
+        current_user = require_user(request)
+        result = _dispatch(
+            "computer_move",
+            {"x": req.x, "y": req.y},
+            lambda: computer_move(req.x, req.y),
+            current_user=current_user,
+        )
+        return _response(result)
 
     @router.post("/cu/drag")
     async def cu_drag(req: CuDragRequest, request: Request):
-        require_user(request)
-        return tool_response(computer_drag, req.x1, req.y1, req.x2, req.y2)
+        current_user = require_user(request)
+        result = _dispatch(
+            "computer_drag",
+            {"x1": req.x1, "y1": req.y1, "x2": req.x2, "y2": req.y2},
+            lambda: computer_drag(req.x1, req.y1, req.x2, req.y2),
+            current_user=current_user,
+        )
+        return _response(result)
 
     @router.post("/cu/agent")
     async def cu_agent(req: CuAgentRequest, request: Request):
-        require_user(request)
+        current_user = require_user(request)
 
         async def _stream():
             task_lower = (req.task or "").lower()
@@ -209,8 +313,12 @@ def create_computer_use_router(*, model_router, require_user, tool_response, sav
                             "action",
                             {"step": 1, "action": "computer_open_url", "args": {"url": url, "app": "Google Chrome"}},
                         )
-                        result = _dispatch("computer_open_url", {"url": url, "app": "Google Chrome"},
-                                           lambda: computer_open_url(url, "Google Chrome"))
+                        result = _dispatch(
+                            "computer_open_url",
+                            {"url": url, "app": "Google Chrome"},
+                            lambda: computer_open_url(url, "Google Chrome"),
+                            current_user=current_user,
+                        )
                         yield _send("result", {"step": 1, "action": "computer_open_url", "result": result})
                         message = f"Google Chrome에서 {url}을 열었습니다."
                         action_name = "computer_open_url"
@@ -219,14 +327,20 @@ def create_computer_use_router(*, model_router, require_user, tool_response, sav
                             "action",
                             {"step": 1, "action": "computer_open_app", "args": {"app": "Google Chrome"}},
                         )
-                        result = _dispatch("computer_open_app", {"app": "Google Chrome"},
-                                           lambda: computer_open_app("Google Chrome"))
+                        result = _dispatch(
+                            "computer_open_app",
+                            {"app": "Google Chrome"},
+                            lambda: computer_open_app("Google Chrome"),
+                            current_user=current_user,
+                        )
                         yield _send("result", {"step": 1, "action": "computer_open_app", "result": result})
                         message = "Google Chrome을 열었습니다."
                         action_name = "computer_open_app"
                     save_to_history("user", req.task, source="web", conversation_id=req.conversation_id)
                     save_to_history("assistant", message, source="web", conversation_id=req.conversation_id)
                     yield _send("final", {"message": message, "steps": [{"step": 1, "action": action_name, "result": result}]})
+                except HTTPException as exc:
+                    yield _send("tool_error", {"step": 1, "action": "computer_open_app", "error": str(exc.detail)})
                 except (ToolError, PermissionError) as exc:
                     yield _send("tool_error", {"step": 1, "action": "computer_open_app", "error": str(exc)})
                 return
@@ -271,7 +385,7 @@ def create_computer_use_router(*, model_router, require_user, tool_response, sav
 
                 yield _send("action", {"step": step + 1, "action": name, "args": args})
                 try:
-                    result = _dispatch(name, args, lambda: execute_tool(name, args))
+                    result = _dispatch(name, args, lambda: execute_tool(name, args), current_user=current_user)
                     if name == "computer_screenshot" and "screenshot_b64" in result:
                         last_screenshot_b64 = result["screenshot_b64"]
                         result_summary = {k: v for k, v in result.items() if k != "screenshot_b64"}
@@ -290,6 +404,10 @@ def create_computer_use_router(*, model_router, require_user, tool_response, sav
                         last_screenshot_b64 = None
                         transcript.append({"step": step + 1, "action": name, "args": args, "result": result})
                         yield _send("result", {"step": step + 1, "action": name, "result": result})
+                except HTTPException as exc:
+                    error_str = str(exc.detail)
+                    transcript.append({"step": step + 1, "action": name, "args": args, "error": error_str})
+                    yield _send("tool_error", {"step": step + 1, "action": name, "error": error_str})
                 except (ToolError, PermissionError, KeyError, TypeError) as exc:
                     error_str = str(exc)
                     transcript.append({"step": step + 1, "action": name, "args": args, "error": error_str})

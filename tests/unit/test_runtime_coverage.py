@@ -15,6 +15,7 @@ from fastapi.testclient import TestClient
 
 from lattice_brain.runtime.hooks import HooksRegistry, dispatch_tool
 from latticeai.api.computer_use import create_computer_use_router
+from latticeai.services.tool_dispatch import configure_tool_dispatch
 
 
 @pytest.fixture()
@@ -22,14 +23,20 @@ def registry(tmp_path):
     return HooksRegistry(tmp_path / "hooks.json")
 
 
-def _app(registry):
+def _app(registry, *, user="admin@example.com", role="admin", audit_events=None):
+    configure_tool_dispatch(
+        load_users=lambda: {},
+        get_user_role=lambda email, _users=None: role if email == user else "user",
+    )
     app = FastAPI()
     app.include_router(create_computer_use_router(
         model_router=type("M", (), {"current_model_id": None})(),
-        require_user=lambda request: "u@x.com",
+        require_user=lambda request: user,
         tool_response=lambda fn, *a, **k: {"status": "ok", "result": fn(*a, **k)},
         save_to_history=lambda *a, **k: None,
         hooks=registry,
+        append_audit_event=(lambda event_type, **payload: audit_events.append((event_type, payload)))
+        if audit_events is not None else None,
     ))
     return app
 
@@ -60,6 +67,38 @@ def test_cu_screenshot_goes_through_lifecycle(registry):
     client = TestClient(_app(registry), raise_server_exceptions=False)
     resp = client.get("/cu/screenshot")
     assert resp.status_code == 403
+
+
+def test_cu_direct_actions_require_registry_policy_admin_role(registry):
+    audit_events = []
+    client = TestClient(
+        _app(registry, user="user@example.com", role="user", audit_events=audit_events),
+        raise_server_exceptions=False,
+    )
+
+    resp = client.post("/cu/click", json={"x": 1, "y": 2})
+
+    assert resp.status_code == 403
+    assert audit_events[-1][0] == "computer_use_tool"
+    assert audit_events[-1][1]["status"] == "blocked"
+    assert audit_events[-1][1]["tool"] == "computer_click"
+
+
+def test_cu_type_audit_does_not_store_typed_text(registry, monkeypatch):
+    audit_events = []
+    monkeypatch.setattr(
+        "latticeai.api.computer_use.computer_type",
+        lambda text, interval=0.04: {"typed": len(text), "interval": interval},
+    )
+    client = TestClient(_app(registry, audit_events=audit_events), raise_server_exceptions=False)
+
+    resp = client.post("/cu/type", json={"text": "secret-token-value", "interval": 0.01})
+
+    assert resp.status_code == 200
+    event = audit_events[-1][1]
+    assert event["status"] == "ok"
+    assert event["args"] == {"text_length": len("secret-token-value"), "interval": 0.01}
+    assert "secret-token-value" not in str(event)
 
 
 def test_dispatch_tool_forwards_kwargs_into_hook_payload(registry):

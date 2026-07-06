@@ -5,6 +5,7 @@ from __future__ import annotations
 from pathlib import Path
 from typing import Any, Dict
 
+from latticeai.core.tool_registry import LOCAL_WRITE_BLOCKED_PREFIXES
 from tools import ToolError, LOCAL_MAX_FILE_BYTES
 
 
@@ -50,6 +51,11 @@ def local_read(path: str) -> Dict[str, Any]:
 def local_write(path: str, content: str) -> Dict[str, Any]:
     """Write content to any path on the local filesystem (requires user approval via UI)."""
     target = Path(path).expanduser().resolve()
+    normalized = str(target).replace("\\", "/")
+    for prefix in LOCAL_WRITE_BLOCKED_PREFIXES:
+        blocked = normalized == prefix.rstrip("/") or normalized.startswith(prefix)
+        if blocked:
+            raise ToolError("차단된 시스템 경로에는 쓸 수 없습니다.")
     if len(content.encode("utf-8")) > LOCAL_MAX_FILE_BYTES:
         raise ToolError("내용이 너무 큽니다.")
     try:

@@ -14,11 +14,19 @@ existed at that release.
 - Split additional runtime and static-data seams out of app, chat, MCP, model,
   and Knowledge Graph modules while preserving re-export compatibility for
   existing imports.
+- Routed Computer Use direct `/cu/*` actions through the shared ToolRegistry
+  policy gate and audit lifecycle, preserving route paths while blocking
+  non-admin direct desktop control by default.
+- Moved blocked-system-prefix protection into `tools.local_write` itself so
+  local filesystem writes fail closed even when called outside the HTTP approval
+  route.
 
 ### Fixed
 - Added regression coverage for provider API-key lookup/storage behavior,
   including keyring precedence, plaintext fallback gating, legacy plaintext
   cleanup after keyring writes, and identity creation on plaintext fallback.
+- Added regression coverage for Computer Use policy enforcement, audit-safe
+  typed-text metadata, and direct local-write system-prefix blocking.
 
 ## [8.9.0] - 2026-07-06
 

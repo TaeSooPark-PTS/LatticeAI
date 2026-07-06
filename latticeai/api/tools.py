@@ -541,6 +541,7 @@ def create_tools_router(
         tool_response=_tool_response,
         save_to_history=save_to_history,
         hooks=HOOKS,
+        append_audit_event=append_audit_event,
     ))
 
     @api_router.post("/tools/knowledge_save")
