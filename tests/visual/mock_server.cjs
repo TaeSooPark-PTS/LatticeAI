@@ -194,7 +194,7 @@ const server = http.createServer((req, res) => {
     const id = pathname.slice("/history/conversations/".length);
     return json(res, { id, messages: [
       { role: "user", content: "How does hybrid search rank results?", timestamp: "2026-06-06T13:19:00" },
-      { role: "assistant", content: "It fuses the vector index and the knowledge graph with reciprocal-rank fusion, so a strong hit in either modality surfaces.", timestamp: "2026-06-06T13:20:00" },
+      { role: "assistant", content: "It fuses the vector index and the knowledge graph with **reciprocal-rank fusion**, so a strong hit in either modality surfaces.", timestamp: "2026-06-06T13:20:00" },
     ] });
   }
   if (pathname === "/chat") return redirect(res, "/app#/chat");

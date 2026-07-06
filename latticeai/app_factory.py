@@ -94,7 +94,7 @@ def _build(config: "Optional[Config]" = None) -> Dict[str, Any]:
     from pydantic import BaseModel
 
     from latticeai.models.router import LLMRouter, normalize_branding
-    from lattice_brain._kg_common import set_llm_router
+    from lattice_brain.graph._kg_common import set_llm_router
     from lattice_brain.graph.schema import set_embed_dim
     from latticeai.core.security import (
         hash_password,

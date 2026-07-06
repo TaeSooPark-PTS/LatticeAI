@@ -75,6 +75,30 @@ test("Brain home opens the memory graph instead of a duplicate lower Brain", asy
   expect(errors).toEqual([]);
 });
 
+test("memory rings peek previews a layer without leaving home", async ({ page }) => {
+  const errors = trackPageErrors(page);
+  await openBrain(page);
+
+  // Populated ring chips show live counts and open an inline peek panel.
+  const topicsChip = page.locator(".ring-label-bottom");
+  await expect(topicsChip).toContainText("주제");
+  await topicsChip.click();
+  const peek = page.locator("#brain-ring-peek");
+  await expect(peek).toBeVisible();
+  await expect(peek).toContainText("주제");
+
+  // Escape closes the peek and keeps the user on the home surface.
+  await page.keyboard.press("Escape");
+  await expect(peek).toHaveCount(0);
+  await expect(page.locator("body")).toContainText("지금 Brain이 기억을 만들 준비가 됐습니다");
+
+  // "Open this layer" from the graph ring hands off to the memory graph view.
+  await page.locator(".ring-label-right").click();
+  await page.getByRole("button", { name: "이 층 자세히 보기" }).click();
+  await expect(page.locator("[data-testid='brain-cytoscape']")).toBeVisible();
+  expect(errors).toEqual([]);
+});
+
 test("memory graph supports graph search and returning to the surface", async ({ page }) => {
   const errors = trackPageErrors(page);
   await openBrain(page);
@@ -211,4 +235,30 @@ test("legacy entry URLs still arrive at the Brain app", async ({ page }) => {
   await page.goto("/graph");
   await expect(page).toHaveURL(/\/app#\/knowledge-graph$/);
   await expect(page.locator("body")).toContainText("지식 연결망");
+});
+
+test("past conversations resume with markdown rendering and delete inline", async ({ page }) => {
+  const errors = trackPageErrors(page);
+  await openBrain(page);
+
+  await expect(page.locator("section[aria-label='지난 대화 목록']")).toBeVisible();
+  await expect(page.locator("body")).toContainText("지난 대화");
+  await expect(page.locator("body")).toContainText("How hybrid search ranks");
+
+  await page.getByRole("button", { name: /대화 이어가기: How hybrid search ranks/ }).click();
+  await expect(page.locator("body")).toContainText("How does hybrid search rank results?");
+  await expect(page.locator(".brain-message.assistant .brain-md strong")).toContainText("reciprocal-rank fusion");
+  await expect(page.locator("body")).not.toContainText("**reciprocal-rank fusion**");
+
+  await expect(page.getByRole("button", { name: "응답 전체 복사" })).toBeVisible();
+  await page.getByRole("button", { name: "마지막 질문에 다시 답변 받기" }).click();
+  await expect(page.locator("body")).toContainText("Hybrid retrieval");
+
+  await page.getByRole("button", { name: "새 대화" }).click();
+  await expect(page.locator("section[aria-label='지난 대화 목록']")).toBeVisible();
+
+  await page.getByRole("button", { name: "대화 삭제: Reindex the workspace" }).click();
+  await page.getByRole("button", { name: "한 번 더 누르면 삭제" }).click();
+  await expect(page.locator("body")).toContainText("대화를 삭제했습니다.");
+  expect(errors).toEqual([]);
 });

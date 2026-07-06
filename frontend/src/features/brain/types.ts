@@ -17,6 +17,8 @@ export type MessageFile = {
   bytes: number;
 };
 
+export type EvidenceConfidence = "high" | "medium" | "low";
+
 export type MessageProof = {
   query: string;
   model: string;
@@ -26,6 +28,10 @@ export type MessageProof = {
     source: string;
     title: string;
     snippet: string;
+    // Evidence explainability: why the Brain picked this citation.
+    matchedTerms: string[];
+    confidence: EvidenceConfidence;
+    score: number;
   }>;
 };
 
@@ -33,6 +39,15 @@ export type MemoryFragment = {
   id: string;
   title: string;
   kind: string;
+};
+
+// A past conversation the user can resume from the Brain home.
+export type ConversationSummary = {
+  id: string;
+  title: string;
+  messageCount: number;
+  // Unix epoch (ms) of the latest activity; undefined when the backend omits it.
+  updatedAt?: number;
 };
 
 export type KnowledgeConcept = {
@@ -102,6 +117,8 @@ export type BrainProof = {
       title: string;
       snippet: string;
       score: number;
+      matchedTerms: string[];
+      confidence: EvidenceConfidence;
     }>;
   };
   claims: {

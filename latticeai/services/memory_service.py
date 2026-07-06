@@ -533,6 +533,10 @@ class MemoryService:
                 "title": item.get("title"),
                 "snippet": item.get("snippet"),
                 "score": item.get("score", 0),
+                # Evidence explainability: why this item was recalled, so the
+                # citation UI can show the matched terms instead of a bare score.
+                "matched_terms": item.get("matched_terms") or [],
+                "confidence": item.get("confidence") or "low",
             }
             for item in recall.get("results", [])[: max(1, min(limit, 8))]
         ]
@@ -616,15 +620,17 @@ class MemoryService:
         q = str(query or "").strip()
         query_tokens = [tok for tok in q.lower().split() if tok]
 
-        def _lexical_score(*texts: Any) -> float:
+        def _matched_terms(*texts: Any) -> List[str]:
+            haystack = " ".join(str(t or "") for t in texts).lower()
+            return [tok for tok in query_tokens if tok in haystack]
+
+        def _lexical_score(matched: List[str]) -> float:
             # Honest, comparable relevance: fraction of query tokens present.
             # Both tiers share this scorer so the cross-tier ranking is real,
             # not an artifact of per-tier constants.
             if not query_tokens:
                 return 0.0
-            haystack = " ".join(str(t or "") for t in texts).lower()
-            hits = sum(1 for tok in query_tokens if tok in haystack)
-            return round(hits / len(query_tokens), 4)
+            return round(len(matched) / len(query_tokens), 4)
 
         results: List[Dict[str, Any]] = []
 
@@ -633,13 +639,15 @@ class MemoryService:
         except Exception:
             mem = []
         for m in mem:
+            matched = _matched_terms(m.get("content"), " ".join(m.get("tags") or []), m.get("kind"))
             results.append({
                 "source": "workspace",
                 "id": m.get("id"),
                 "title": (m.get("kind") or "memory"),
                 "snippet": str(m.get("content") or "")[:240],
                 "kind": m.get("kind"),
-                "score": _lexical_score(m.get("content"), " ".join(m.get("tags") or []), m.get("kind")),
+                "score": _lexical_score(matched),
+                "matched_terms": matched,
                 "tags": m.get("tags") or [],
             })
 
@@ -650,17 +658,40 @@ class MemoryService:
             except Exception:
                 hits = []
             for hit in hits[:limit]:
+                matched = _matched_terms(hit.get("title"), hit.get("name"), hit.get("summary"), hit.get("content"))
                 results.append({
                     "source": "graph",
                     "id": hit.get("id") or hit.get("node_id"),
                     "title": hit.get("title") or hit.get("name") or "node",
                     "snippet": str(hit.get("summary") or hit.get("content") or "")[:240],
                     "kind": hit.get("type") or "node",
-                    "score": _lexical_score(hit.get("title"), hit.get("name"), hit.get("summary"), hit.get("content")),
+                    "score": _lexical_score(matched),
+                    "matched_terms": matched,
                 })
 
+        # Quality gate: when at least one result carries real lexical evidence,
+        # zero-score rows are noise relative to it and are dropped. When nothing
+        # scores (e.g. tokenization mismatch), everything is kept so the tiers'
+        # own search filters still decide — the gate never empties a recall.
+        candidates = len(results)
+        if query_tokens and any(r.get("score", 0) > 0 for r in results):
+            results = [r for r in results if r.get("score", 0) > 0]
+        for r in results:
+            r["confidence"] = "high" if r.get("score", 0) >= 0.65 else "medium" if r.get("score", 0) >= 0.3 else "low"
+
         results.sort(key=lambda r: r.get("score", 0), reverse=True)
-        return {"query": q, "results": results[: max(1, min(limit, 100))], "count": len(results), "source": "live"}
+        return {
+            "query": q,
+            "results": results[: max(1, min(limit, 100))],
+            "count": len(results),
+            "source": "live",
+            "quality_gate": {
+                "candidates": candidates,
+                "passed": len(results),
+                "filtered": candidates - len(results),
+                "gate": "lexical-evidence/v1",
+            },
+        }
 
     # ── inspect a single tier ─────────────────────────────────────────────
     def inspect(self, source: str, *, user_email: Optional[str] = None, workspace_id: Optional[str] = None, limit: int = 50) -> Dict[str, Any]:

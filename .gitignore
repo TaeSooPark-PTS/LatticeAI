@@ -60,3 +60,16 @@ venv/
 # Tauri build outputs
 src-tauri/target/
 src-tauri/gen/
+
+# Local agent/workspace memory files
+.grok/
+.openclaw/
+.playwright-cli/
+HEARTBEAT.md
+IDENTITY.md
+SOUL.md
+TOOLS.md
+USER.md
+memory/
+bin/pts-grok
+scripts/launch-pts-grok.sh

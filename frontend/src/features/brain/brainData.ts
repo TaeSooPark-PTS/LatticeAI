@@ -1,6 +1,32 @@
 import { asArray } from "@/lib/utils";
-import type { ApiRecord, BrainBrief, BrainDepth, BrainProof, BrainReadiness, KnowledgeConcept, KnowledgeGraphModel, MemoryFragment, RelationshipThread } from "./types";
+import type { ApiRecord, BrainBrief, BrainDepth, BrainProof, BrainReadiness, ConversationSummary, KnowledgeConcept, KnowledgeGraphModel, MemoryFragment, Message, RelationshipThread } from "./types";
 import { clamp } from "./graphLayout";
+
+export function buildConversationSummaries(historyData: unknown): ConversationSummary[] {
+  return asArray<ApiRecord>(historyData)
+    .flatMap((item): ConversationSummary[] => {
+      const id = textValue(item, ["id", "conversation_id"]);
+      if (!id) return [];
+      const title = textValue(item, ["title", "summary", "last_message"], id).trim() || id;
+      return [{
+        id,
+        title,
+        messageCount: Math.max(0, Math.round(numberValue(item, ["message_count", "messages"]))),
+        updatedAt: timestampValue(item, ["updated_at", "updatedAt", "created_at", "createdAt"]),
+      }];
+    })
+    .sort((left, right) => (right.updatedAt ?? 0) - (left.updatedAt ?? 0));
+}
+
+export function parseConversationMessages(data: unknown): Message[] {
+  const record = isRecord(data) ? data : {};
+  return asArray<ApiRecord>(record.messages).flatMap((item): Message[] => {
+    const role = textValue(item, ["role"]);
+    const content = typeof item.content === "string" ? item.content : "";
+    if ((role !== "user" && role !== "assistant") || !content.trim()) return [];
+    return [{ role, content }];
+  });
+}
 
 export function buildMemoryFragments(memoryData: unknown, historyData: unknown): MemoryFragment[] {
   const memory = isRecord(memoryData) ? memoryData : {};
@@ -130,6 +156,8 @@ export function buildBrainProof(data: unknown, fallbackModelName = ""): BrainPro
         title: textValue(item, ["title"], "Memory"),
         snippet: textValue(item, ["snippet"]),
         score: numberValue(item, ["score"]),
+        matchedTerms: stringArrayValue(item, ["matched_terms", "matchedTerms"]),
+        confidence: confidenceValue(item, numberValue(item, ["score"])),
       })),
     },
     claims: {
@@ -282,6 +310,24 @@ function timestampValue(record: ApiRecord, keys: string[]): number | undefined {
     }
   }
   return undefined;
+}
+
+function stringArrayValue(record: ApiRecord, keys: string[]): string[] {
+  for (const key of keys) {
+    const value = record[key];
+    if (Array.isArray(value)) {
+      return value.filter((item): item is string => typeof item === "string" && item.trim().length > 0);
+    }
+  }
+  return [];
+}
+
+// Prefer the backend's confidence band; fall back to the same score bands the
+// backend uses so older responses still explain themselves.
+function confidenceValue(record: ApiRecord, score: number): "high" | "medium" | "low" {
+  const value = record["confidence"];
+  if (value === "high" || value === "medium" || value === "low") return value;
+  return score >= 0.65 ? "high" : score >= 0.3 ? "medium" : "low";
 }
 
 function numberValue(record: ApiRecord, keys: string[]) {

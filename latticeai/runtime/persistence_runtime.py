@@ -27,7 +27,7 @@ def build_persistence_runtime(
     import os
     from pathlib import Path
 
-    from lattice_brain.identity import DeviceIdentity
+    from lattice_brain.graph.identity import DeviceIdentity
     from lattice_brain.ingestion import IngestionPipeline
     from lattice_brain.portability import KGPortabilityService
     from latticeai.core.agent_registry import AgentRegistry

@@ -1,6 +1,6 @@
 # Lattice AI Trust Model
 
-Current release: **8.7.0 — Runtime State Hygiene & Release Evidence Refresh**.
+Current release: **8.8.0 — Brain Core Extraction & Recall Proof Hardening**.
 
 Lattice AI is local-first, explicit about external communication, and honest
 when a capability is unavailable.

@@ -35,6 +35,12 @@ class FakeStore:
                 return run
         raise FileNotFoundError(run_id)
 
+    def update_agent_run(self, run_id, *, workspace_id=None, graph=None, patch=None, **fields):
+        run = self.get_agent_run(run_id, workspace_id=workspace_id)
+        run.update({**(patch or {}), **fields})
+        run["contract"] = run_record_contract(run)
+        return run
+
     def replay_agent_run(self, run_id, workspace_id=None):
         return {"run_id": run_id, "frames": []}
 
@@ -107,7 +113,7 @@ def test_start_records_run_and_status_reflects_it():
     assert out["result"]["contract"]["run_id"] == run_id
 
 
-def test_events_tolerate_legacy_run_without_contract():
+def test_events_synthesize_contract_for_legacy_run():
     rt = _runtime()
     rt._store.runs.append({
         "id": "legacy-run",
@@ -118,7 +124,39 @@ def test_events_tolerate_legacy_run_without_contract():
 
     events = rt.events("legacy-run", scope=None)
     assert events["is_final"] is True
-    assert events["contract"] is None
+    # Legacy rows persisted before the contract family still expose the
+    # agent-run-contract/v1 envelope, synthesized from the raw run record.
+    assert events["contract"] is not None
+    assert events["contract"]["schema_version"] == "agent-run-contract/v1"
+    assert events["contract"]["id"] == "legacy-run"
+    assert events["contract"]["status"] == "ok"
+
+    payload = rt.get_run("legacy-run", scope=None)
+    assert payload["contract"]["id"] == "legacy-run"
+
+
+def test_start_rejects_unknown_roles():
+    rt = _runtime()
+    try:
+        rt.start("Do the thing", user_email=None, scope=None, roles=["planner", "hacker"])
+        assert False, "expected ValueError"
+    except ValueError as exc:
+        assert "unknown roles" in str(exc)
+        assert "hacker" in str(exc)
+    assert rt._store.runs == []
+
+
+def test_reserve_run_rejects_unknown_roles_and_clamps_retries():
+    rt = _runtime()
+    try:
+        rt.reserve_run("Do the thing", user_email=None, scope=None, roles=["ghost"])
+        assert False, "expected ValueError"
+    except ValueError as exc:
+        assert "unknown roles" in str(exc)
+    assert rt._store.runs == []
+
+    reserved = rt.reserve_run("Do the thing", user_email=None, scope=None, max_retries=99)
+    assert reserved["run"]["max_retries"] == 5
 
 
 def test_start_requires_goal():

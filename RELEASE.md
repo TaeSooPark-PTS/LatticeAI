@@ -7,6 +7,44 @@
 > PyPI / npm / VS Code Marketplace / Open VSX 배포는 아래 수동 절차로만
 > 진행합니다. 태그 생성은 패키지 스토어 publish를 자동으로 트리거하지 않습니다.
 
+## v8.8.0 — Brain Core Extraction & Recall Proof Hardening (2026-07-06)
+
+8.8.0 packages the Brain Core extraction prep and recall-proof hardening work.
+Internal-only Brain compatibility layers are physically removed, root-level
+compatibility shims remain explicitly managed for external entrypoints, and the
+Brain UI/backend path now gives users clearer conversation controls and better
+evidence for why memories were recalled.
+
+### Added
+- Added Brain Core isolation coverage proving `lattice_brain` does not import
+  the product `latticeai` package.
+- Added retrieval quality gates for matched recall terms, confidence labels,
+  and lexical evidence filtering.
+- Added Brain conversation controls for starting, resuming, deleting, stopping,
+  regenerating, and copying conversation output.
+
+### Changed
+- Removed internal-only flat Brain modules, the deprecated `latticeai.brain`
+  namespace, and the `latticeai.services.agent_runtime` alias.
+- Updated `legacy_shim_report()` to distinguish remaining shims from
+  intentionally removed 8.8.0 layers.
+- Hardened AgentRuntime role validation, legacy run contract reads, and
+  persisted retry budgets.
+- Updated package/runtime/static/Tauri metadata and current-release
+  documentation to 8.8.0.
+
+### Fixed
+- File ingestion now rejects directory paths at the file-ingest boundary.
+- Memory recall filters zero-evidence noise when higher-confidence lexical
+  matches exist, and answer proof citations expose matched terms and confidence.
+
+Expected artifacts (exact 8.8.0 names only):
+- `dist/ltcai-8.8.0-py3-none-any.whl`
+- `dist/ltcai-8.8.0.tar.gz`
+- `dist/ltcai-8.8.0.vsix`
+- `ltcai-8.8.0.tgz`
+- `src-tauri/target/release/bundle/dmg/Lattice AI_8.8.0_aarch64.dmg`
+
 ## v8.7.0 — Runtime State Hygiene & Release Evidence Refresh (2026-07-05)
 
 8.7.0 packages the current main-branch hardening work into an exact release

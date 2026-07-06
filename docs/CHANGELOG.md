@@ -6,6 +6,32 @@ existed at that release.
 
 ## [Unreleased]
 
+## [8.8.0] - 2026-07-06
+
+### Added
+- Added Brain Core isolation coverage that keeps `lattice_brain` independent of
+  product-package imports.
+- Added recall proof quality gates for matched terms, confidence labels, and
+  lexical evidence filtering.
+- Added Brain Chat conversation controls for new/resume/delete, stop,
+  regenerate, copy, and richer ingestion progress.
+
+### Changed
+- Removed internal-only Brain shim layers: flat pre-graph modules,
+  `latticeai.brain`, and `latticeai.services.agent_runtime`.
+- Updated legacy compatibility reporting so removed shim layers are tracked
+  separately from remaining external root shims.
+- Hardened AgentRuntime boundary handling for unknown roles, legacy run
+  contracts, and persisted retry budgets.
+- Version bumped to 8.8.0 across Python, npm, VS Code extension, Tauri, static
+  metadata, readiness gates, release notes, and current-release documentation.
+
+### Fixed
+- File ingestion now rejects directory paths before dispatching to document
+  ingestion.
+- Memory recall filters low-evidence noise when stronger lexical matches are
+  present and surfaces explainable citation confidence.
+
 ## [8.7.0] - 2026-07-05
 
 ### Added

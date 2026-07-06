@@ -1,9 +1,9 @@
-# Lattice AI Feature Status (v8.7.0)
+# Lattice AI Feature Status (v8.8.0)
 
-Current release: **8.7.0 — Runtime State Hygiene & Release Evidence Refresh**.
+Current release: **8.8.0 — Brain Core Extraction & Recall Proof Hardening**.
 
 This file describes the current product state and known limitations. Historical
-change history is intentionally limited to 7.0.0-8.7.0 in `RELEASE.md` and
+change history is intentionally limited to 7.0.0-8.8.0 in `RELEASE.md` and
 `docs/CHANGELOG.md`.
 
 ## Product Position
@@ -12,9 +12,10 @@ Lattice AI is a local-first Digital Brain. The durable asset is the user's
 Brain: conversations, documents, decisions, memories, provenance, and Knowledge
 Graph structure. Models are replaceable voices over that Brain.
 
-The main product surface is not an admin dashboard. The 8.7.0 Brain Home keeps
+The main product surface is not an admin dashboard. The 8.8.0 Brain Home keeps
 the living Brain and composer in the first screen, preserves the evidence-backed
-Brain Brief, and documents the five-minute source-to-proof onboarding loop.
+Brain Brief, adds conversation controls, and documents the five-minute
+source-to-proof onboarding loop.
 
 ## Current Feature Status
 
@@ -27,11 +28,11 @@ Brain Brief, and documents the five-minute source-to-proof onboarding loop.
 | Source Capture | Current | Files, folders, notes, and web/source capture paths feed Brain memory and graph context through explicit user actions and the unified ingestion pipeline when available. |
 | Local Models | Current | Setup and model recommendation flow remains explicit; model downloads and runtime installs require user action. |
 | Cloud Models | Opt-in | Cloud prompts are sent only after keys are configured and the user selects a cloud model path. |
-| Agent Runtime | Current | AgentRuntime preview/readiness contracts avoid tool execution during preview, tolerate legacy run events, and expose orchestration boundaries. |
+| Agent Runtime | Current | AgentRuntime preview/readiness contracts avoid tool execution during preview, reject unknown roles, tolerate legacy run events with contract envelopes, and expose orchestration boundaries. |
 | Tool Registry / MCP | Current | ToolRegistry diagnostics and MCP install state are separated from app-factory helpers and covered by focused tests. |
 | Workspaces | Current | Personal workspace is default. Organization/admin surfaces remain separated from normal Brain use. |
 | VS Code Extension | Current | Sync/status endpoints expose connection and indexing state. File contents move only through explicit user actions. |
-| Release Assets | Current | 8.7.0 package metadata, static app, release notes, refreshed screenshots/GIF, and exact artifact names are aligned. |
+| Release Assets | Current | 8.8.0 package metadata, static app, release notes, current documentation, and exact artifact names are aligned. |
 
 ## Known Limitations
 
@@ -47,12 +48,14 @@ Brain Brief, and documents the five-minute source-to-proof onboarding loop.
   backup policy outside Lattice AI.
 - Legacy root shims remain for compatibility while implementation continues to
   move into focused `latticeai.*` and `lattice_brain.*` modules; remaining
-  shims are now tracked by the managed compatibility inventory.
+  shims are tracked by the managed compatibility inventory, and internal-only
+  Brain shim layers were removed in 8.8.0.
 
 ## Release-Era History Kept In Git
 
 The Git tree keeps release history from:
 
+- 8.8.0
 - 8.7.0
 - 8.6.0
 - 8.5.0

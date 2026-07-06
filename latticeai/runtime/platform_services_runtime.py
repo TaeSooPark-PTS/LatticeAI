@@ -30,7 +30,7 @@ def build_brain_network(
 ) -> Any:
     """Construct peer sync/network service for brain portability routes."""
 
-    from lattice_brain.network import BrainNetwork
+    from lattice_brain.graph.network import BrainNetwork
 
     return BrainNetwork(
         identity=identity,

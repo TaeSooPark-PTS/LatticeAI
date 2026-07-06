@@ -132,7 +132,7 @@ class IngestionPipeline:
     # ── public API ───────────────────────────────────────────────────────────
     def ingest(self, item: IngestionItem, *, user_email: Optional[str] = None) -> IngestionResult:
         """Normalize, hash, route through dispatch_tool, and record provenance."""
-        source_type = str(item.source_type or "text").strip()
+        source_type = str(item.source_type or "text").strip().lower()
         if not self.available():
             return IngestionResult(
                 status="unavailable", source_type=source_type,
@@ -187,25 +187,33 @@ class IngestionPipeline:
         embedded = bool(self._kg.node_is_embedded(node_id)) if node_id else False
         title = raw.get("title") or item.title
 
-        prov = self._kg.record_provenance(
-            node_id=node_id,
-            source_type=source_type,
-            pipeline=self._pipeline_name,
-            source_uri=item.source_uri,
-            content_hash=content_hash,
-            title=title,
-            owner=owner,
-            workspace_id=item.workspace_id,
-            captured_at=captured_at,
-            modified_at=item.modified_at,
-            embedded=embedded,
-            linked=bool(raw.get("source_node_id")),
-            duplicate=bool(raw.get("duplicate")),
-            agent_used=item.agent_used,
-            chunk_count=len(chunk_ids),
-            permissions=item.permissions,
-            metadata=item.metadata,
-        )
+        # Provenance capture must never turn an already-persisted ingest into a
+        # caller-visible failure: the graph write above succeeded, so a broken
+        # provenance table degrades the result instead of raising.
+        provenance_detail: Optional[str] = None
+        try:
+            prov = self._kg.record_provenance(
+                node_id=node_id,
+                source_type=source_type,
+                pipeline=self._pipeline_name,
+                source_uri=item.source_uri,
+                content_hash=content_hash,
+                title=title,
+                owner=owner,
+                workspace_id=item.workspace_id,
+                captured_at=captured_at,
+                modified_at=item.modified_at,
+                embedded=embedded,
+                linked=bool(raw.get("source_node_id")),
+                duplicate=bool(raw.get("duplicate")),
+                agent_used=item.agent_used,
+                chunk_count=len(chunk_ids),
+                permissions=item.permissions,
+                metadata=item.metadata,
+            )
+        except Exception as exc:  # noqa: BLE001 — the ingest itself already landed
+            prov = {}
+            provenance_detail = f"provenance capture failed: {exc}"
         if self._audit is not None:
             try:
                 self._audit(
@@ -232,11 +240,16 @@ class IngestionPipeline:
             embedded=embedded,
             indexing_status="indexed",
             provenance_id=prov.get("id"),
+            detail=provenance_detail,
         )
 
     # ── routing helpers ──────────────────────────────────────────────────────
     def _ingest_text(self, item, *, source_type, owner, captured_at) -> Dict[str, Any]:
         text = item.text or ""
+        if not text.strip():
+            raise ValueError(
+                f"Empty content: {source_type} ingestion requires non-empty text."
+            )
         if len(text.encode("utf-8", "ignore")) > self._max_text_bytes:
             raise ValueError(
                 f"Text payload exceeds the {self._max_text_bytes // (1024 * 1024)}MB ingestion limit."
@@ -297,6 +310,8 @@ class IngestionPipeline:
         path = Path(item.path)
         if not path.exists():
             raise FileNotFoundError(f"File not found: {path}")
+        if path.is_dir():
+            raise ValueError(f"File ingestion requires a file, got a directory: {path}")
         return self._kg.ingest_document(
             path,
             original_filename=item.title or path.name,

@@ -42,6 +42,7 @@ from .contracts import (
     contract_views,
     extract_contract,
     multi_agent_contract,
+    run_record_contract,
     runtime_boundary_contract,
 )
 
@@ -308,7 +309,7 @@ class AgentRuntime:
     def get_run(self, run_id: str, *, scope: Optional[str] = None) -> Dict[str, Any]:
         run = self._store.get_agent_run(run_id, workspace_id=scope)
         payload = {"run": run}
-        contract = extract_contract(run)
+        contract = self._ensure_contract(run)
         if contract is not None:
             payload["contract"] = contract_view(contract)
         return payload
@@ -324,7 +325,7 @@ class AgentRuntime:
     def events(self, run_id: str, *, scope: Optional[str] = None) -> Dict[str, Any]:
         run = self._store.get_agent_run(run_id, workspace_id=scope)
         status = str(run.get("status") or "")
-        contract = extract_contract(run)
+        contract = self._ensure_contract(run)
         return {
             "run_id": run_id,
             "status": status,
@@ -363,6 +364,35 @@ class AgentRuntime:
 
     def _clamp_retries(self, max_retries: int) -> int:
         return max(0, min(int(max_retries or 0), self._max_retries_cap))
+
+    def _validate_roles(self, roles: Optional[List[str]]) -> Optional[List[str]]:
+        """Reject unknown roles at the boundary instead of deep in orchestration.
+
+        ``preview`` reports unknown roles as a blocking reason; execution paths
+        must enforce the same contract so a run can never be recorded with a
+        role the runtime does not own.
+        """
+        if not roles:
+            return None
+        unknown = [role for role in roles if role not in AGENT_ROLES]
+        if unknown:
+            raise ValueError(f"unknown roles: {', '.join(unknown)}")
+        return list(roles)
+
+    @staticmethod
+    def _ensure_contract(record: Any) -> Optional[Dict[str, Any]]:
+        """Return the record's family contract, synthesizing one for legacy rows.
+
+        Every read surface (get_run/events/replay) must expose the
+        ``agent-run-contract/v1`` envelope even for runs persisted before the
+        contract family existed, so consumers never need a legacy branch.
+        """
+        contract = extract_contract(record)
+        if contract is not None:
+            return contract
+        if isinstance(record, dict) and record.get("id"):
+            return run_record_contract(record)
+        return None
 
     @staticmethod
     def _result_patch(result: Any, goal: str) -> Dict[str, Any]:
@@ -420,6 +450,7 @@ class AgentRuntime:
         """Create the durable queued row used by the async executor."""
         if not str(goal or "").strip():
             raise ValueError("goal is required")
+        roles = self._validate_roles(roles)
         pre_dispatch = self._fire_pre_run(
             goal=goal,
             roles=roles,
@@ -454,7 +485,9 @@ class AgentRuntime:
             execution_mode="async",
             requested_roles=roles or None,
             inputs=inputs or {},
-            max_retries=max_retries,
+            # Persist the clamped budget so the durable row reflects what the
+            # executor will actually honor, not the raw client request.
+            max_retries=self._clamp_retries(max_retries),
         )
         payload: Dict[str, Any] = {"run": run}
         if pre_dispatch is not None:
@@ -574,6 +607,7 @@ class AgentRuntime:
     ) -> Dict[str, Any]:
         if not str(goal or "").strip():
             raise ValueError("goal is required")
+        roles = self._validate_roles(roles)
 
         pre_dispatch = self._fire_pre_run(
             goal=goal,

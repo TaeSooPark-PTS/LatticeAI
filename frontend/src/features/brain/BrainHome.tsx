@@ -5,7 +5,8 @@ import { type BrainState, triggerBrainRecall } from "@/components/LivingBrain";
 import { useAppStore } from "@/store/appStore";
 import { t } from "@/i18n";
 import { BrainConversation } from "./BrainConversation";
-import { buildBrainBrief, buildBrainProof, buildBrainReadiness, buildMemoryFragments, currentModelName, hasLoadedModel, parseKnowledgeGraph } from "./brainData";
+import { buildBrainBrief, buildBrainProof, buildBrainReadiness, buildConversationSummaries, buildMemoryFragments, currentModelName, hasLoadedModel, parseConversationMessages, parseKnowledgeGraph } from "./brainData";
+import { useConversationSession } from "./conversationSession";
 import {
   INGESTION_STAGE_ORDER,
   type BrainProof,
@@ -28,11 +29,15 @@ export function BrainHome({
 }) {
   const qc = useQueryClient();
   const language = useAppStore((state) => state.language);
-  const [messages, setMessages] = React.useState<Message[]>([]);
+  const messages = useConversationSession((state) => state.messages);
+  const setMessages = useConversationSession((state) => state.setMessages);
+  const conversationId = useConversationSession((state) => state.conversationId);
+  const setConversationId = useConversationSession((state) => state.setConversationId);
+  const resetConversation = useConversationSession((state) => state.resetConversation);
   const [draft, setDraft] = React.useState("");
   const [imageData, setImageData] = React.useState<string | null>(null);
   const [streaming, setStreaming] = React.useState(false);
-  const [conversationId, setConversationId] = React.useState<string | null>(null);
+  const [historyBusyId, setHistoryBusyId] = React.useState<string | null>(null);
   const [memoryFeedback, setMemoryFeedback] = React.useState<string | null>(null);
   const [uploadingDocument, setUploadingDocument] = React.useState(false);
   const [lastRecallQuery, setLastRecallQuery] = React.useState("");
@@ -44,6 +49,7 @@ export function BrainHome({
   });
   const [emergenceEvents, setEmergenceEvents] = React.useState<EmergenceEvent[]>([]);
   const streamRef = React.useRef<HTMLDivElement>(null);
+  const abortRef = React.useRef<AbortController | null>(null);
   const recallTimerRef = React.useRef<number | null>(null);
   const stageTimersRef = React.useRef<Record<IngestionSourceType, number[]>>({
     file: [],
@@ -74,6 +80,10 @@ export function BrainHome({
   const memoryFragments = React.useMemo(
     () => buildMemoryFragments(memoriesQ.data?.data, historyQ.data?.data),
     [memoriesQ.data, historyQ.data],
+  );
+  const pastConversations = React.useMemo(
+    () => buildConversationSummaries(historyQ.data?.data),
+    [historyQ.data],
   );
   const graphModel = React.useMemo(() => parseKnowledgeGraph(graphQ.data?.data), [graphQ.data]);
   const knowledgeConcepts = React.useMemo(
@@ -270,6 +280,27 @@ export function BrainHome({
   async function send() {
     const text = draft.trim();
     if (!text || streaming) return;
+    setDraft("");
+    await sendText(text);
+  }
+
+  // Regenerate: answer the latest user question again in the same conversation,
+  // replacing the trailing assistant reply so the thread does not duplicate.
+  async function regenerate() {
+    if (streaming) return;
+    const lastUser = [...messages].reverse().find((message: Message) => message.role === "user");
+    if (!lastUser) return;
+    setMessages((items) => {
+      const next = [...items];
+      if (next[next.length - 1]?.role === "assistant") next.pop();
+      if (next[next.length - 1]?.role === "user") next.pop();
+      return next;
+    });
+    await sendText(lastUser.content);
+  }
+
+  async function sendText(text: string) {
+    if (!text || streaming) return;
     const activeConversationId = conversationId || `brain-${Date.now()}`;
     if (!conversationId) setConversationId(activeConversationId);
 
@@ -279,23 +310,24 @@ export function BrainHome({
         { role: "user", content: text },
         { role: "assistant", content: t(language, "brain.noModel.message") },
       ]);
-      setDraft("");
       setImageData(null);
       setMemoryFeedback(t(language, "brain.noModel.status"));
       return;
     }
 
     setMessages((items) => [...items, { role: "user", content: text }, { role: "assistant", content: "" }]);
-    setDraft("");
     setImageData(null);
     setStreaming(true);
     setMemoryFeedback(null);
     onBrainChange("thinking", 0.96);
+    const controller = new AbortController();
+    abortRef.current = controller;
 
     try {
       const result = await latticeApi.streamChat(
         { message: text, conversation_id: activeConversationId, image_data: imageData || undefined },
         {
+          signal: controller.signal,
           onChunk: (_delta, fullText) => {
             setMessages((items) => {
               const next = [...items];
@@ -336,7 +368,26 @@ export function BrainHome({
         setLastRecallQuery(text);
         void attachAnswerProof(text);
       }
+    } catch (error) {
+      const aborted = error instanceof DOMException && error.name === "AbortError";
+      // Keep whatever partial answer already streamed in; never leave a
+      // silently empty assistant bubble behind.
+      setMessages((items) => {
+        const next = [...items];
+        const last = next[next.length - 1];
+        if (last?.role === "assistant" && !last.content.trim()) {
+          next[next.length - 1] = {
+            ...last,
+            content: aborted
+              ? t(language, "brain.stopped.empty")
+              : `${t(language, "brain.unavailable")}: ${error instanceof Error ? error.message : String(error)}`,
+          };
+        }
+        return next;
+      });
+      setMemoryFeedback(aborted ? t(language, "brain.stopped") : null);
     } finally {
+      abortRef.current = null;
       setStreaming(false);
       void qc.invalidateQueries({ queryKey: ["chatHistory"] });
       void qc.invalidateQueries({ queryKey: ["memoryManager"] });
@@ -474,10 +525,68 @@ export function BrainHome({
     setMemoryFeedback(t(language, "brain.modelDemo.done", { model: modelName }));
   }
 
+  function stopStreaming() {
+    abortRef.current?.abort();
+  }
+
+  function startNewConversation() {
+    if (streaming) stopStreaming();
+    resetConversation();
+    setMemoryFeedback(null);
+    onBrainChange("idle", 0.58);
+  }
+
+  async function resumeConversation(id: string) {
+    if (historyBusyId || streaming) return;
+    setHistoryBusyId(id);
+    setMemoryFeedback(t(language, "brain.history.loading"));
+    try {
+      const result = await latticeApi.conversation(id);
+      if (result.error || !result.ok) {
+        setMemoryFeedback(t(language, "brain.history.loadFailed", { reason: result.error || "unavailable" }));
+        return;
+      }
+      const restored = parseConversationMessages(result.data);
+      if (!restored.length) {
+        setMemoryFeedback(t(language, "brain.history.loadFailed", { reason: t(language, "brain.history.emptyConversation") }));
+        return;
+      }
+      setConversationId(id);
+      setMessages(restored);
+      setMemoryFeedback(t(language, "brain.history.resumed"));
+    } finally {
+      setHistoryBusyId(null);
+    }
+  }
+
+  async function deleteConversation(id: string) {
+    if (historyBusyId) return;
+    setHistoryBusyId(id);
+    try {
+      const result = await latticeApi.deleteConversation(id);
+      if (result.error || !result.ok) {
+        setMemoryFeedback(t(language, "brain.history.deleteFailed", { reason: result.error || "unavailable" }));
+        return;
+      }
+      if (conversationId === id) resetConversation();
+      setMemoryFeedback(t(language, "brain.history.deleted"));
+      void qc.invalidateQueries({ queryKey: ["chatHistory"] });
+      void qc.invalidateQueries({ queryKey: ["memoryManager"] });
+    } finally {
+      setHistoryBusyId(null);
+    }
+  }
+
   function openKnowledgeGraph() {
+    openDepth(5);
+  }
+
+  // Depth-aware navigation: memory layers land on the memory view, knowledge
+  // layers land on the graph, so a ring peek's "go deeper" keeps its meaning.
+  function openDepth(depth: number) {
     triggerBrainRecall();
     onBrainChange("recalling", 0.82);
-    window.location.hash = "/knowledge-graph";
+    window.location.hash = depth <= 2 ? "/memory" : "/knowledge-graph";
   }
 
   return (
@@ -487,7 +596,10 @@ export function BrainHome({
         brainState={brainState}
         intensity={intensity}
         modelName={modelName}
+        modelReady={modelReady}
         messages={messages}
+        pastConversations={pastConversations}
+        historyBusyId={historyBusyId}
         starterPrompts={starterPrompts}
         memoryFeedback={memoryFeedback}
         ingestionStates={ingestionStates}
@@ -498,11 +610,12 @@ export function BrainHome({
         streamRef={streamRef}
         memories={memoryFragments}
         concepts={knowledgeConcepts}
+        relationshipCount={graphModel.edges.length}
         readiness={brainReadiness}
         proof={brainProof}
         brief={brainBrief}
         uploadingDocument={uploadingDocument}
-        onOpenDepth={openKnowledgeGraph}
+        onOpenDepth={openDepth}
         onDraftChange={setDraft}
         onImageDataChange={setImageData}
         onUploadDocument={(file) => void uploadDocument(file)}
@@ -511,6 +624,11 @@ export function BrainHome({
         onIngestWeb={(url) => void ingestWeb(url)}
         onVerifyModelContinuity={() => void verifyModelContinuity()}
         onSend={() => void send()}
+        onStop={stopStreaming}
+        onRegenerate={() => void regenerate()}
+        onNewConversation={startNewConversation}
+        onResumeConversation={(id) => void resumeConversation(id)}
+        onDeleteConversation={(id) => void deleteConversation(id)}
         onExploreBrain={openKnowledgeGraph}
       />
     </main>
@@ -527,6 +645,9 @@ function toMessageProof(proof: BrainProof, query: string, fallbackModelName: str
       source: item.source,
       title: item.title,
       snippet: item.snippet,
+      matchedTerms: item.matchedTerms,
+      confidence: item.confidence,
+      score: item.score,
     })),
   };
 }

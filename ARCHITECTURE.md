@@ -1,6 +1,6 @@
 # Lattice AI Current Architecture
 
-Current release: **8.7.0 — Runtime State Hygiene & Release Evidence Refresh**.
+Current release: **8.8.0 — Brain Core Extraction & Recall Proof Hardening**.
 
 Lattice AI is a local-first Digital Brain platform. The current architecture is
 organized around a private Brain, replaceable model runtimes, explicit tool
@@ -90,7 +90,7 @@ sequenceDiagram
 
 ## Product Flow
 
-The 8.7.0 first-run and daily-use flow is:
+The 8.8.0 first-run and daily-use flow is:
 
 1. Wake Brain / login.
 2. Pick owner/workspace context.
@@ -154,7 +154,7 @@ migration safety, and equivalence tests.
 
 ## Runtime Contracts
 
-The 8.0 architecture contract remains active in 8.7.0:
+The 8.0 architecture contract remains active in 8.8.0:
 
 - AgentRuntime has explicit preview/readiness contracts and does not execute
   tools during preview.
@@ -183,13 +183,13 @@ Docker/Postgres setup, marketplace refresh, and update checks are opt-in paths.
 
 ## Release Artifact Map
 
-8.7.0 exact artifact names:
+8.8.0 exact artifact names:
 
-- `dist/ltcai-8.7.0-py3-none-any.whl`
-- `dist/ltcai-8.7.0.tar.gz`
-- `ltcai-8.7.0.tgz`
-- `dist/ltcai-8.7.0.vsix`
-- `src-tauri/target/release/bundle/dmg/Lattice AI_8.7.0_aarch64.dmg`
+- `dist/ltcai-8.8.0-py3-none-any.whl`
+- `dist/ltcai-8.8.0.tar.gz`
+- `ltcai-8.8.0.tgz`
+- `dist/ltcai-8.8.0.vsix`
+- `src-tauri/target/release/bundle/dmg/Lattice AI_8.8.0_aarch64.dmg`
 
 Do not document or use wildcard artifact upload commands.
 

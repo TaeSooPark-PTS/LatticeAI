@@ -184,6 +184,50 @@ def test_oversized_text_is_rejected_gracefully(tmp_path):
     assert "limit" in (res.detail or "").lower()
 
 
+def test_empty_text_is_rejected_gracefully(tmp_path):
+    pipe = _pipeline(tmp_path)
+    res = pipe.ingest(IngestionItem(source_type="note", title="empty", text="   \n\t "))
+    assert res.status == "failed"
+    assert "empty content" in (res.detail or "").lower()
+
+
+def test_directory_path_is_rejected_gracefully(tmp_path):
+    pipe = _pipeline(tmp_path)
+    target = tmp_path / "a-directory"
+    target.mkdir()
+    res = pipe.ingest(IngestionItem(source_type="file", path=str(target)))
+    assert res.status == "failed"
+    assert "directory" in (res.detail or "").lower()
+
+
+def test_source_type_is_normalized_to_lowercase(tmp_path):
+    pipe = _pipeline(tmp_path)
+    res = pipe.ingest(IngestionItem(source_type="  Note ", title="n", text="normalized body"))
+    assert res.status == "ok"
+    assert res.source_type == "note"
+
+
+def test_provenance_failure_degrades_instead_of_raising(tmp_path):
+    pipe = _pipeline(tmp_path)
+    original = pipe._kg.record_provenance
+
+    def _broken(**kwargs):
+        raise RuntimeError("provenance table locked")
+
+    pipe._kg.record_provenance = _broken
+    try:
+        res = pipe.ingest(IngestionItem(source_type="note", title="n", text="body that lands"))
+    finally:
+        pipe._kg.record_provenance = original
+
+    # The graph write succeeded, so the ingest reports ok with a degradation
+    # detail instead of surfacing an exception after data already landed.
+    assert res.status == "ok"
+    assert res.node_id
+    assert res.provenance_id is None
+    assert "provenance capture failed" in (res.detail or "")
+
+
 def test_unavailable_when_graph_disabled(tmp_path):
     pipe = _pipeline(tmp_path, enable_graph=False)
     res = pipe.ingest(IngestionItem(source_type="text", title="t", text="body"))

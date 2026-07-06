@@ -1,21 +1,40 @@
 # Legacy Compatibility Map
 
-Current release: **8.7.0 — Runtime State Hygiene & Release Evidence Refresh**.
+Current target: **8.8.0 — Internal shim removal & Brain Core extraction prep**.
 
 Lattice AI is moving toward a smaller, modular architecture centered on
 `lattice_brain`, `latticeai.services`, `latticeai.api`, and `latticeai.runtime`.
 Some root-level modules remain packaged for compatibility with older imports,
 CLI entrypoints, or extension workflows. Their presence does not define the
-current 8.7.0 architecture.
+current architecture.
 
-8.7.0 also tracks the inner compatibility layers that sit below the root
-modules. The managed inventory lives in `latticeai.core.legacy_compatibility`
-and groups shims by layer:
+The managed inventory lives in `latticeai.core.legacy_compatibility` and
+groups shims by layer:
 
-- `root`: historical repo-root imports such as `knowledge_graph.py`.
-- `brain-flat`: pre-graph-package imports such as `lattice_brain.store`.
-- `deprecated-namespace`: older `latticeai.brain.*` package imports.
-- `service-alias`: service paths that now alias Brain runtime modules.
+- `root`: historical repo-root imports such as `knowledge_graph.py` — **kept**
+  (external entrypoints: `uvicorn server:app`, installed CLI, old scripts).
+- `brain-flat`: pre-graph-package imports such as `lattice_brain.store` —
+  **removed in 8.8.0** (internal-only).
+- `deprecated-namespace`: older `latticeai.brain.*` package imports —
+  **removed in 8.8.0** (internal-only).
+- `service-alias`: `latticeai.services.agent_runtime` —
+  **removed in 8.8.0** (internal-only).
+
+Removed layers stay listed in `legacy_compatibility.REMOVED_SHIMS` and in the
+`legacy_shim_report()` payload (`removed`, `lingering`), so tooling can tell
+"removed on purpose" apart from "missing by accident".
+
+## Brain Core extraction readiness
+
+Removing the internal layers gives `lattice_brain` exactly one import surface
+(its physical module paths). Two structural guards keep it extractable as a
+standalone package:
+
+- `tests/unit/test_brain_core_isolation.py` — AST guard that fails if any
+  `lattice_brain` module imports `latticeai` (the product imports the Brain,
+  never the reverse).
+- `tests/unit/test_legacy_root_shims.py::test_internal_shim_layers_are_gone`
+  — fails if a removed shim path becomes importable again.
 
 ## Current Policy
 
@@ -47,13 +66,13 @@ and groups shims by layer:
 | `setup_wizard.py` | setup and model recommendation services | Compatibility for first-run recommendation calls |
 | `server.py` | lazy proxy to `latticeai.server_app` / `latticeai.app_factory` | Preserves historical `server.app` imports without import-time construction |
 
-## Inner Shim Layers
+## Inner Shim Layers (removed in 8.8.0)
 
-| Legacy layer | Example module | Current home / direction | Why it remains |
+| Legacy layer | Example module | Replacement import | Status |
 | --- | --- | --- | --- |
-| `brain-flat` | `lattice_brain.store`, `lattice_brain.ingest`, `lattice_brain.retrieval` | `lattice_brain.graph.*` | Preserves imports from before graph modules were split into a package |
-| `deprecated-namespace` | `latticeai.brain.store`, `latticeai.brain.ingest` | `lattice_brain.graph.*` | Preserves the old application-package Brain namespace |
-| `service-alias` | `latticeai.services.agent_runtime` | `lattice_brain.runtime.agent_runtime` | Preserves service-layer imports while runtime ownership sits in Brain Core |
+| `brain-flat` | `lattice_brain.store`, `lattice_brain.ingest`, `lattice_brain.retrieval` | `lattice_brain.graph.*` | Removed — internal-only, no supported entrypoint depended on it |
+| `deprecated-namespace` | `latticeai.brain.*` | `lattice_brain.*` | Removed — namespace also dropped from `pyproject.toml` packages |
+| `service-alias` | `latticeai.services.agent_runtime` | `lattice_brain.runtime.agent_runtime` | Removed — runtime ownership sits in Brain Core |
 
 ## Packaging Notes
 

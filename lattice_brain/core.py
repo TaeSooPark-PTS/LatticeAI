@@ -40,7 +40,7 @@ class BrainCore:
             )
 
         from .conversations import ConversationStore
-        from .store import KnowledgeGraphStore
+        from .graph.store import KnowledgeGraphStore
 
         self.knowledge = KnowledgeGraphStore(
             self.db_path,

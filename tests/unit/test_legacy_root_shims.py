@@ -33,39 +33,51 @@ def test_stateful_root_shims_alias_physical_modules():
     real_llm_router = importlib.import_module("latticeai.models.router")
     workflow_engine = importlib.import_module("latticeai.core.workflow_engine")
     real_workflow_engine = importlib.import_module("lattice_brain.workflow")
-    agent_runtime = importlib.import_module("latticeai.services.agent_runtime")
-    real_agent_runtime = importlib.import_module("lattice_brain.runtime.agent_runtime")
 
     assert mcp_registry is real_mcp_registry
     assert llm_router is real_llm_router
     assert workflow_engine is real_workflow_engine
-    assert agent_runtime is real_agent_runtime
 
 
-def test_inner_legacy_shim_layers_alias_physical_modules():
-    pairs = [
-        ("lattice_brain.store", "lattice_brain.graph.store"),
-        ("lattice_brain.ingest", "lattice_brain.graph.ingest"),
-        ("lattice_brain.retrieval", "lattice_brain.graph.retrieval"),
-        ("latticeai.brain.store", "lattice_brain.graph.store"),
-        ("latticeai.brain.ingest", "lattice_brain.graph.ingest"),
-        ("latticeai.services.agent_runtime", "lattice_brain.runtime.agent_runtime"),
+def test_internal_shim_layers_are_gone():
+    """8.8.0 removed the internal-only shim layers for Brain Core extraction.
+
+    ``lattice_brain`` must expose exactly one import surface (its physical
+    module paths); the pre-graph flat modules, the deprecated
+    ``latticeai.brain`` namespace, and the service-layer AgentRuntime alias
+    must no longer be importable.
+    """
+    removed = [
+        "lattice_brain.store",
+        "lattice_brain.ingest",
+        "lattice_brain.retrieval",
+        "lattice_brain.schema",
+        "lattice_brain.provenance",
+        "latticeai.brain",
+        "latticeai.services.agent_runtime",
     ]
+    for module_name in removed:
+        try:
+            importlib.import_module(module_name)
+            raise AssertionError(f"removed shim {module_name} is still importable")
+        except ImportError:
+            pass
 
-    for legacy, physical in pairs:
-        assert importlib.import_module(legacy) is importlib.import_module(physical)
 
-
-def test_legacy_shim_report_tracks_inner_layers():
+def test_legacy_shim_report_tracks_removals():
     from latticeai.core.legacy_compatibility import legacy_shim_report
 
     report = legacy_shim_report()
     assert report["status"] == "managed"
-    assert {"root", "brain-flat", "deprecated-namespace", "service-alias"} <= set(report["layers"])
-    paths = {shim["path"] for shim in report["shims"]}
-    assert "lattice_brain/store.py" in paths
-    assert "latticeai/brain/store.py" in paths
-    assert "latticeai/services/agent_runtime.py" in paths
+    assert "root" in report["layers"]
+    assert report["lingering"] == []
+    assert report["removed_count"] >= 5
+    removed_paths = {shim["path"] for shim in report["removed"]}
+    assert "lattice_brain/store.py" in removed_paths
+    assert "latticeai/brain/" in removed_paths
+    assert "latticeai/services/agent_runtime.py" in removed_paths
+    live_paths = {shim["path"] for shim in report["shims"]}
+    assert live_paths.isdisjoint(removed_paths)
 
 
 def test_server_root_stays_lazy_until_app_attribute_access():
