@@ -42,6 +42,7 @@ ai_server.log
 sessions.json
 audit_log.json
 sso_config.json
+verification_report.json
 
 # wheel smoke build artifacts
 dist-smoke/

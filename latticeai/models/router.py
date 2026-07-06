@@ -9,6 +9,7 @@ import io
 import json
 import os
 import re
+import threading
 import time
 from dataclasses import dataclass
 from pathlib import Path
@@ -20,6 +21,15 @@ os.environ.setdefault("MLX_VLM_DRAFT_KIND", "mtp")
 from concurrent.futures import ThreadPoolExecutor
 from typing import AsyncIterator, Dict, Optional, Tuple, List
 from PIL import Image
+
+# Cloud provider catalog data lives in .model_providers; re-exported here so
+# ``from latticeai.models.router import OPENAI_COMPATIBLE_PROVIDERS`` (and the
+# model_runtime re-export chain) resolve unchanged after the split.
+from latticeai.models.model_providers import (  # noqa: F401
+    MODEL_SOURCE_BY_FAMILY,
+    OPENAI_COMPATIBLE_PROVIDERS,
+    PROVIDER_MODEL_CATALOG,
+)
 
 try:
     from openai import AsyncOpenAI
@@ -75,108 +85,6 @@ def normalize_branding(text: Optional[str]) -> str:
     for pattern, replacement in LEGACY_BRAND_PATTERNS:
         normalized = pattern.sub(replacement, normalized)
     return normalized
-
-OPENAI_COMPATIBLE_PROVIDERS = {
-    "openai": {
-        "env_key": "OPENAI_API_KEY",
-        "base_url_env": "OPENAI_BASE_URL",
-        "default_model": "gpt-4o-mini",
-    },
-    "openrouter": {
-        "env_key": "OPENROUTER_API_KEY",
-        "base_url": "https://openrouter.ai/api/v1",
-        "default_model": "openai/gpt-4o-mini",
-    },
-    "groq": {
-        "env_key": "GROQ_API_KEY",
-        "base_url": "https://api.groq.com/openai/v1",
-        "default_model": "meta-llama/llama-4-scout-17b-16e-instruct",
-    },
-    "together": {
-        "env_key": "TOGETHER_API_KEY",
-        "base_url": "https://api.together.xyz/v1",
-        "default_model": "Qwen/Qwen3-VL-32B-Instruct",
-    },
-    "xai": {
-        "env_key": "XAI_API_KEY",
-        "base_url": "https://api.x.ai/v1",
-        "default_model": "grok-beta",
-    },
-    "ollama": {
-        "env_key": "OLLAMA_API_KEY",
-        "base_url_env": "OLLAMA_BASE_URL",
-        "base_url": "http://localhost:11434/v1",
-        "default_model": "hf.co/ggml-org/gemma-4-12B-it-GGUF:Q4_K_M",
-        "api_key_fallback": "ollama",
-    },
-    "vllm": {
-        "env_key": "VLLM_API_KEY",
-        "base_url_env": "VLLM_BASE_URL",
-        "base_url": "http://localhost:8000/v1",
-        "default_model": "Qwen/Qwen3-VL-8B-Instruct",
-        "api_key_fallback": "vllm",
-    },
-    "lmstudio": {
-        "env_key": "LMSTUDIO_API_KEY",
-        "base_url_env": "LMSTUDIO_BASE_URL",
-        "base_url": "http://localhost:1234/v1",
-        "default_model": "local-model",
-        "api_key_fallback": "lmstudio",
-    },
-    "llamacpp": {
-        "env_key": "LLAMACPP_API_KEY",
-        "base_url_env": "LLAMACPP_BASE_URL",
-        "base_url": "http://localhost:8080/v1",
-        "default_model": "llama.cpp-model",
-        "api_key_fallback": "llamacpp",
-    },
-}
-
-PROVIDER_MODEL_CATALOG = {
-    "openai": [
-        {"id": "gpt-5.5", "name": "GPT-5.5", "family": "GPT"},
-        {"id": "gpt-5.4", "name": "GPT-5.4", "family": "GPT"},
-        {"id": "gpt-5.4-mini", "name": "GPT-5.4 Mini", "family": "GPT"},
-        {"id": "gpt-5.4-nano", "name": "GPT-5.4 Nano", "family": "GPT"},
-        {"id": "gpt-4o-mini", "name": "GPT-4o Mini", "family": "GPT"},
-        {"id": "gpt-4o", "name": "GPT-4o", "family": "GPT"},
-        {"id": "gpt-4.1-mini", "name": "GPT-4.1 Mini", "family": "GPT"},
-        {"id": "gpt-4.1", "name": "GPT-4.1", "family": "GPT"},
-    ],
-    "openrouter": [
-        {"id": "openai/gpt-5.5", "name": "GPT-5.5 via OpenRouter", "family": "GPT"},
-        {"id": "openai/gpt-4o-mini", "name": "GPT-4o Mini via OpenRouter", "family": "GPT"},
-        {"id": "anthropic/claude-opus-4.7", "name": "Claude Opus 4.7 via OpenRouter", "family": "Claude"},
-        {"id": "anthropic/claude-sonnet-4.6", "name": "Claude Sonnet 4.6 via OpenRouter", "family": "Claude"},
-        {"id": "anthropic/claude-haiku-4.5", "name": "Claude Haiku 4.5 via OpenRouter", "family": "Claude"},
-        {"id": "qwen/qwen3-vl-235b-a22b-instruct", "name": "Qwen3-VL 235B A22B via OpenRouter", "family": "Qwen"},
-        {"id": "google/gemma-4-12b-it", "name": "Gemma 4 12B via OpenRouter", "family": "Gemma"},
-        {"id": "x-ai/grok-2", "name": "Grok 2 via OpenRouter", "family": "Grok"},
-        {"id": "meta-llama/llama-4-scout-17b-16e-instruct", "name": "Llama 4 Scout via OpenRouter", "family": "Llama"},
-        {"id": "google/gemini-2.5-flash", "name": "Gemini 2.5 Flash via OpenRouter", "family": "Gemini"},
-    ],
-    "groq": [
-        {"id": "meta-llama/llama-4-scout-17b-16e-instruct", "name": "Llama 4 Scout", "family": "Llama"},
-    ],
-    "together": [
-        {"id": "Qwen/Qwen3-VL-32B-Instruct", "name": "Qwen3-VL 32B", "family": "Qwen"},
-        {"id": "google/gemma-4-12b-it", "name": "Gemma 4 12B", "family": "Gemma"},
-        {"id": "meta-llama/Llama-4-Scout-17B-16E-Instruct", "name": "Llama 4 Scout", "family": "Llama"},
-    ],
-    "xai": [
-        {"id": "grok-beta", "name": "Grok Beta", "family": "Grok"},
-        {"id": "grok-vision-beta", "name": "Grok Vision Beta", "family": "Grok"},
-    ],
-}
-
-MODEL_SOURCE_BY_FAMILY = {
-    "GPT": ("미국", "OpenAI"),
-    "Claude": ("미국", "Anthropic"),
-    "Qwen": ("중국", "Alibaba"),
-    "Llama": ("미국", "Meta"),
-    "Gemini": ("미국", "Google"),
-    "Grok": ("미국", "xAI"),
-}
 
 
 def source_metadata_for_model(provider: str, model: Dict[str, str], *, local_server: bool) -> Dict[str, str]:
@@ -344,6 +252,12 @@ class LLMRouter:
         self._current: Optional[str] = None
         self._last_used: Dict[str, float] = {}
         self._max_local_models = max(1, int(os.getenv("LATTICEAI_MAX_LOCAL_MODELS", "1")))
+        # Guards the mutable model registry (_cache/_current/_last_used).
+        # Reentrant because the eviction path nests: _enforce_local_model_limit
+        # → unload_model → _release_memory. Never held across the heavy
+        # ``run_in_executor`` load (only the sync insert/read is guarded), so a
+        # long model load can't block a concurrent switch/unload from acquiring.
+        self._lock = threading.RLock()
 
     @property
     def current_model_id(self) -> Optional[str]:
@@ -354,33 +268,37 @@ class LLMRouter:
         return list(self._cache.keys())
 
     def switch_model(self, model_id: str) -> None:
-        if model_id not in self._cache:
-            raise KeyError(model_id)
-        self._current = model_id
-        self._touch(model_id)
+        with self._lock:
+            if model_id not in self._cache:
+                raise KeyError(model_id)
+            self._current = model_id
+            self._touch(model_id)
 
     def unload_model(self, model_id: str) -> None:
-        self._cache.pop(model_id, None)
-        self._last_used.pop(model_id, None)
-        if self._current == model_id:
-            self._current = next(iter(self._cache), None)
-        self._release_memory()
+        with self._lock:
+            self._cache.pop(model_id, None)
+            self._last_used.pop(model_id, None)
+            if self._current == model_id:
+                self._current = next(iter(self._cache), None)
+            self._release_memory()
 
     def unload_all(self) -> None:
-        self._cache.clear()
-        self._last_used.clear()
-        self._current = None
-        self._release_memory()
+        with self._lock:
+            self._cache.clear()
+            self._last_used.clear()
+            self._current = None
+            self._release_memory()
 
     def unload_idle_models(self, idle_seconds: int) -> List[str]:
         if idle_seconds <= 0:
             return []
         now = time.monotonic()
         unloaded = []
-        for model_id, last_used in list(self._last_used.items()):
-            if now - last_used >= idle_seconds:
-                self.unload_model(model_id)
-                unloaded.append(model_id)
+        with self._lock:
+            for model_id, last_used in list(self._last_used.items()):
+                if now - last_used >= idle_seconds:
+                    self.unload_model(model_id)
+                    unloaded.append(model_id)
         return unloaded
 
     def model_memory_policy(self) -> Dict[str, object]:
@@ -400,14 +318,15 @@ class LLMRouter:
         return cached is not None and not isinstance(cached, CloudModel)
 
     def _enforce_local_model_limit(self, incoming_key: str) -> None:
-        local_ids = [model_id for model_id in self._cache if self._is_local_model(model_id)]
-        while len(local_ids) >= self._max_local_models:
-            victim = min(local_ids, key=lambda model_id: self._last_used.get(model_id, 0))
-            if victim == incoming_key:
-                break
-            print(f"🧹 Unloading local model to stay within memory policy: {victim}")
-            self.unload_model(victim)
+        with self._lock:
             local_ids = [model_id for model_id in self._cache if self._is_local_model(model_id)]
+            while len(local_ids) >= self._max_local_models:
+                victim = min(local_ids, key=lambda model_id: self._last_used.get(model_id, 0))
+                if victim == incoming_key:
+                    break
+                print(f"🧹 Unloading local model to stay within memory policy: {victim}")
+                self.unload_model(victim)
+                local_ids = [model_id for model_id in self._cache if self._is_local_model(model_id)]
 
     def _release_memory(self) -> None:
         gc.collect()
@@ -434,10 +353,11 @@ class LLMRouter:
             raise RuntimeError("MLX is not available in this process. Run on Apple Silicon with Metal access.")
 
         cache_key = f"{model_id}_{draft_model_id}" if draft_model_id else model_id
-        if cache_key in self._cache:
-            self._current = cache_key
-            self._touch(cache_key)
-            return f"Cached: {cache_key}"
+        with self._lock:
+            if cache_key in self._cache:
+                self._current = cache_key
+                self._touch(cache_key)
+                return f"Cached: {cache_key}"
 
         self._enforce_local_model_limit(cache_key)
         print(f"⏳ Loading local model stack: {cache_key}...")
@@ -479,9 +399,10 @@ class LLMRouter:
         try:
             # Use the dedicated single-thread executor to ensure MLX GPU streams match during inference
             model, tokenizer, draft_model, loader_kind = await loop.run_in_executor(executor, _load)
-            self._cache[cache_key] = (model, tokenizer, draft_model, loader_kind)
-            self._current = cache_key
-            self._touch(cache_key)
+            with self._lock:
+                self._cache[cache_key] = (model, tokenizer, draft_model, loader_kind)
+                self._current = cache_key
+                self._touch(cache_key)
             print(f"✅ Fully Loaded: {cache_key} ({loader_kind})")
             return f"Success: {cache_key} ({loader_kind})"
         except Exception as e:
@@ -507,9 +428,10 @@ class LLMRouter:
 
         cache_owner = owner or "global"
         cache_key = f"{provider}:{model}::{cache_owner}"
-        self._cache[cache_key] = CloudModel(provider=provider, model=model, client=AsyncOpenAI(**client_kwargs), cache_key=cache_key)
-        self._current = cache_key
-        self._touch(cache_key)
+        with self._lock:
+            self._cache[cache_key] = CloudModel(provider=provider, model=model, client=AsyncOpenAI(**client_kwargs), cache_key=cache_key)
+            self._current = cache_key
+            self._touch(cache_key)
         return f"Cloud provider ready: {cache_key}"
 
     def detected_cloud_models(self) -> List[Dict[str, str]]:

@@ -6,6 +6,20 @@ existed at that release.
 
 ## [Unreleased]
 
+### Changed
+- Continued app-factory decomposition by extracting user profile/API-key helper
+  wiring into `latticeai.runtime.user_key_runtime`, keeping the legacy
+  `server_app` callable surface while making keyring/plaintext fallback policy
+  independently testable.
+- Split additional runtime and static-data seams out of app, chat, MCP, model,
+  and Knowledge Graph modules while preserving re-export compatibility for
+  existing imports.
+
+### Fixed
+- Added regression coverage for provider API-key lookup/storage behavior,
+  including keyring precedence, plaintext fallback gating, legacy plaintext
+  cleanup after keyring writes, and identity creation on plaintext fallback.
+
 ## [8.9.0] - 2026-07-06
 
 ### Added

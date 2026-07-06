@@ -14,7 +14,7 @@ import subprocess
 import tempfile
 import threading
 from pathlib import Path
-from typing import AsyncIterator, Dict, List, Optional
+from typing import AsyncIterator, Dict, Optional
 
 from fastapi import APIRouter, HTTPException, Request
 from fastapi.responses import JSONResponse, StreamingResponse
@@ -28,6 +28,25 @@ from lattice_brain.runtime.hooks import dispatch_tool
 from latticeai.services.app_context import AppContext
 from latticeai.services.tool_dispatch import build_agent_runtime, collect_created_files
 from tools import AGENT_ROOT, ToolError, ensure_agent_root, execute_tool, knowledge_save, network_status
+# Pure chat helpers (language/intent detection, file-action parsing, recent-context
+# assembly) live in chat_helpers; re-imported here so ``from latticeai.api.chat
+# import <helper>`` keeps resolving. See __all__ below.
+from latticeai.api.chat_helpers import (
+    _LANG_HINT,
+    build_recent_chat_context,
+    detect_language,
+    file_action_target,
+    format_network_status,
+    inline_file_action_content,
+    is_clear_command,
+    is_current_url_request,
+    is_file_action_request,
+    is_network_status_request,
+    pair_user_history,
+    single_text_stream,
+    strip_generated_file_content,
+    workspace_scope_from_request,
+)
 
 class ChatRequest(BaseModel):
     message: str
@@ -72,195 +91,26 @@ class AgentEvalRequest(BaseModel):
     skill: str
     case_id: Optional[str] = None
 
-def pair_user_history(history: List[Dict], user_email: str) -> List[Dict]:
-    """Restrict history to one user's exchange.
 
-    Keeps the user's own messages plus assistant replies that directly follow
-    them. A bare role=="assistant" pass would leak every other user's replies
-    into this user's prompt context.
-    """
-    paired: List[Dict] = []
-    include_next_assistant = False
-    for item in history:
-        if item.get("role") == "assistant":
-            if include_next_assistant:
-                paired.append(item)
-                include_next_assistant = False
-        elif item.get("user_email") == user_email:
-            paired.append(item)
-            include_next_assistant = True
-        else:
-            include_next_assistant = False
-    return paired
-
-
-def detect_language(text: str) -> str:
-    """Detect language: 'ko' (Korean) or 'en' (English)."""
-    total = max(len(text), 1)
-    ko = sum(1 for c in text if '가' <= c <= '힣')
-    if ko / total > 0.05:
-        return "ko"
-    return "en"
-
-_LANG_HINT = {
-    "ko": "Respond in Korean (한국어로 답변하세요).",
-    "en": "Respond in English.",
-}
-
-def is_network_status_request(text: str) -> bool:
-    """사용자가 현재 IP/네트워크 정보를 물었는지 감지합니다."""
-    t = (text or "").lower()
-    has_ip = bool(re.search(r"((?<![a-z0-9])ip(?![a-z0-9])|아이피|ip\s*주소|아이피\s*주소|ipconfig|ifconfig|네트워크)", t))
-    asks_current = any(word in t for word in ["내", "현재", "지금", "local", "로컬", "주소", "address", "뭐", "알려", "확인", "상태"])
-    return has_ip and asks_current
-
-def is_current_url_request(text: str) -> bool:
-    t = (text or "").lower()
-    has_url = any(word in t for word in ["url", "주소", "링크", "address"])
-    asks_current = any(word in t for word in ["현재", "지금", "여기", "접속", "페이지", "브라우저", "알려", "뭐"])
-    return has_url and asks_current
-
-def is_clear_command(text: str) -> bool:
-    return (text or "").strip().lower() in {"/clear", "/clear_all"}
-
-# Path segments intentionally exclude spaces: allowing spaces let the target
-# match swallow preceding words (e.g. "create a text file report.txt" resolved
-# to the whole phrase as the path). Chat file targets are single tokens.
-_FILE_TARGET_RE = re.compile(
-    r"(?<![\w.-])(?:[~./\\]?[\w.@()+-]+[\\/])*[\w.@()+-]+"
-    r"\.(?:py|js|jsx|ts|tsx|md|markdown|txt|json|yaml|yml|toml|html|css|csv|xml|pdf|docx|xlsx|pptx|sh|sql)",
-    re.IGNORECASE,
-)
-
-
-def is_file_action_request(text: str) -> bool:
-    """Return True for chat requests that should execute file tools, not prose.
-
-    The Brain chat composer posts to ``/chat``. Without this gate, explicit
-    side-effect requests such as "create hello.md" are handled as plain model
-    generation, which commonly produces a code block instead of a real file.
-    Keep the gate narrow so normal Q&A and "how do I create a file?" stay in
-    ordinary chat.
-    """
-    raw = (text or "").strip()
-    if not raw:
-        return False
-    lower = raw.lower()
-
-    if any(phrase in lower for phrase in (
-        "how to ", "how do i ", "방법", "어떻게", "예시", "sample", "example",
-    )) and not any(phrase in lower for phrase in (
-        "actually create", "real file", "실제로", "파일로", "저장해", "만들어",
-    )):
-        return False
-
-    has_target = bool(_FILE_TARGET_RE.search(raw))
-    has_file_word = any(word in lower for word in (
-        "file", "파일", "문서", "artifact", "아티팩트", "save as", "저장",
-    ))
-    has_action = any(word in lower for word in (
-        "create", "make", "write", "save", "generate", "edit", "update",
-        "만들", "생성", "작성", "저장", "수정", "써줘", "만들어줘",
-    ))
-
-    if not has_action:
-        return False
-    if has_target and has_action:
-        return True
-    return has_file_word and has_action
-
-
-def file_action_target(text: str) -> Optional[str]:
-    """Extract the first explicit workspace file target from a request."""
-    match = _FILE_TARGET_RE.search(text or "")
-    if not match:
-        return None
-    return match.group(0).strip().strip("`'\".,:;)]}")
-
-
-def inline_file_action_content(text: str) -> Optional[str]:
-    """Extract short user-provided content for deterministic file writes."""
-    raw = (text or "").strip()
-    # Each pattern requires an explicit binder so ambiguous words like "text"
-    # ("create a text file report.txt") or a bare "with" ("report.md with a
-    # summary of X") do not get captured as literal file content.
-    patterns = [
-        r"(?:내용|본문)\s*(?:은|는|이에요|입니다)\s*(.+)$",
-        r"(?:내용|본문|content|body|text)\s*[:=]\s*(.+)$",
-        r"(?:content|body)\s+(?:is|as)\s+(.+)$",
-        r"(?:with the content|with content|containing)\s+(.+)$",
-    ]
-    for pattern in patterns:
-        match = re.search(pattern, raw, flags=re.IGNORECASE | re.DOTALL)
-        if match:
-            content = match.group(1).strip()
-            return content.strip("`'\"")
-    return None
-
-
-def strip_generated_file_content(text: str) -> str:
-    """Remove common chat wrappers when a model is asked for file content only."""
-    content = (text or "").strip()
-    fenced = re.search(r"```(?:[\w.+-]+)?\s*(.*?)\s*```", content, flags=re.DOTALL)
-    if fenced:
-        content = fenced.group(1).strip()
-    return content
-
-
-def format_network_status(info: Dict) -> str:
-    lines = [
-        f"내부 IP: {info.get('local_ip') or '확인 안 됨'}",
-        f"외부 IP: {info.get('public_ip') or '확인 안 됨'}",
-        f"호스트명: {info.get('hostname') or '확인 안 됨'}",
-    ]
-    local_ips = info.get("local_ips") or {}
-    if local_ips:
-        lines.extend(["", "인터페이스:"])
-        lines.extend(f"- {name}: {ip}" for name, ip in local_ips.items())
-    note = info.get("note")
-    if note:
-        lines.extend(["", note])
-    return "\n".join(lines)
-
-def workspace_scope_from_request(request: Request) -> Optional[str]:
-    header = request.headers.get("X-Workspace-Id")
-    if header and header.strip():
-        return header.strip()
-    query = request.query_params.get("workspace_id")
-    return query.strip() if query and query.strip() else None
-
-async def single_text_stream(text: str, model: str = "system") -> AsyncIterator[str]:
-    yield f"data: {json.dumps({'chunk': text, 'model': model}, ensure_ascii=False)}\n\n"
-    yield "data: [DONE]\n\n"
-
-
-def build_recent_chat_context(
-    *,
-    get_history,
-    limit: int = 10,
-    include_image_missing_replies: bool = True,
-    user_email: Optional[str] = None,
-    conversation_id: Optional[str] = None,
-) -> str:
-    history = get_history()
-    if conversation_id:
-        history = [item for item in history if item.get("conversation_id") == conversation_id]
-    if user_email:
-        history = pair_user_history(history, user_email)
-    history = history[-limit:]
-    lines = []
-    for item in history:
-        role = item.get("role", "user")
-        content = item.get("content", "")
-        if not include_image_missing_replies and role == "assistant":
-            if "이미지" in content and any(word in content for word in ["업로드", "제공", "올려"]):
-                continue
-        source = item.get("source")
-        label = role
-        if source:
-            label = f"{role} ({source})"
-        lines.append(f"{label}: {content}")
-    return "\n".join(lines)
+# The chat helpers imported at the top of the module are re-exported so
+# ``from latticeai.api.chat import <helper>`` (tests, app_factory) keeps resolving
+# after the split; __all__ marks them as intentional re-exports.
+__all__ = [
+    "create_chat_router",
+    "build_recent_chat_context",
+    "pair_user_history",
+    "detect_language",
+    "file_action_target",
+    "inline_file_action_content",
+    "is_file_action_request",
+    "is_network_status_request",
+    "is_current_url_request",
+    "is_clear_command",
+    "format_network_status",
+    "strip_generated_file_content",
+    "workspace_scope_from_request",
+    "single_text_stream",
+]
 
 
 def create_chat_router(context: AppContext) -> APIRouter:

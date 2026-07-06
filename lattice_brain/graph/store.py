@@ -5,10 +5,13 @@ from __future__ import annotations
 from ._kg_common import *  # noqa: F403,F401
 from .documents import KnowledgeGraphDocumentsMixin
 from .discovery import KnowledgeGraphDiscoveryMixin
+from .discovery_index import KnowledgeGraphLocalIndexMixin
 from .ingest import KnowledgeGraphIngestMixin
 from .projection import KnowledgeGraphProjectionMixin
 from .provenance import KnowledgeGraphProvenanceMixin
 from .retrieval import KnowledgeGraphRetrievalMixin
+from .retrieval_docgen import KnowledgeGraphDocGenMixin
+from .retrieval_vector import KnowledgeGraphVectorMixin
 from .write_master import KnowledgeGraphWriteMixin
 
 
@@ -16,10 +19,13 @@ class KnowledgeGraphStore(
     KnowledgeGraphProjectionMixin,
     KnowledgeGraphWriteMixin,
     KnowledgeGraphDiscoveryMixin,
+    KnowledgeGraphLocalIndexMixin,
     KnowledgeGraphIngestMixin,
     KnowledgeGraphProvenanceMixin,
     KnowledgeGraphDocumentsMixin,
     KnowledgeGraphRetrievalMixin,
+    KnowledgeGraphVectorMixin,
+    KnowledgeGraphDocGenMixin,
 ):
     def __init__(
         self,

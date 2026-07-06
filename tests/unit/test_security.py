@@ -5,6 +5,8 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).parent.parent.parent))
 
+from types import SimpleNamespace
+
 from server import (
     ENGINE_MODEL_CATALOG,
     _bytes_match_extension,
@@ -15,12 +17,36 @@ from server import (
     verify_password,
     _agent_risk,
     _host_is_loopback,
-    _local_permission_response,
-    _require_local_approval,
     _LOCAL_WRITE_BLOCKED_PREFIXES,
 )
+from latticeai.api.permissions import PermissionGateway
 from latticeai.core.security import _rate_buckets
 from fastapi import HTTPException
+
+
+def _make_permission_gateway(tmp_path) -> PermissionGateway:
+    """A standalone PermissionGateway for local-approval unit tests.
+
+    Mirrors how ``create_permissions_router`` builds one, with Discord
+    notifications and the monitor secret disabled so the tests exercise only
+    the token/scope/content-binding logic.
+    """
+    config = SimpleNamespace(
+        discord_permission_webhook=None,
+        discord_bot_token=None,
+        discord_permission_channel=None,
+        permission_monitor_secret=None,
+    )
+    return PermissionGateway(
+        config=config,
+        data_dir=tmp_path,
+        require_admin=lambda request: None,
+        get_current_user=lambda request: None,
+    )
+
+
+def _approve(gateway: PermissionGateway, token: str) -> None:
+    gateway.local_approvals[gateway.token_hash(token)]["approved"] = True
 
 
 # ---------------------------------------------------------------------------
@@ -160,14 +186,14 @@ def test_host_loopback_detection():
 
 
 def test_local_approval_token_allows_exact_scope(tmp_path):
+    gateway = _make_permission_gateway(tmp_path)
     target = tmp_path / "note.txt"
     target.write_text("hello")
     user = "alice@example.com"
-    approval = _local_permission_response(str(target), "read", user)
-    from server import _local_approvals
-    _local_approvals[approval["approval_token"]]["approved"] = True
+    approval = gateway.local_permission_response(str(target), "read", user)
+    _approve(gateway, approval["approval_token"])
 
-    _require_local_approval(
+    gateway.require_local_approval(
         token=approval["approval_token"],
         path=str(target),
         action="read",
@@ -176,17 +202,17 @@ def test_local_approval_token_allows_exact_scope(tmp_path):
 
 
 def test_local_approval_token_rejects_wrong_path(tmp_path):
+    gateway = _make_permission_gateway(tmp_path)
     allowed = tmp_path / "allowed.txt"
     denied = tmp_path / "denied.txt"
     allowed.write_text("allowed")
     denied.write_text("denied")
     user = "alice@example.com"
-    approval = _local_permission_response(str(allowed), "read", user)
-    from server import _local_approvals
-    _local_approvals[approval["approval_token"]]["approved"] = True
+    approval = gateway.local_permission_response(str(allowed), "read", user)
+    _approve(gateway, approval["approval_token"])
 
     with pytest.raises(HTTPException) as exc:
-        _require_local_approval(
+        gateway.require_local_approval(
             token=approval["approval_token"],
             path=str(denied),
             action="read",
@@ -196,14 +222,14 @@ def test_local_approval_token_rejects_wrong_path(tmp_path):
 
 
 def test_local_write_approval_binds_content(tmp_path):
+    gateway = _make_permission_gateway(tmp_path)
     target = tmp_path / "out.txt"
     user = "alice@example.com"
-    approval = _local_permission_response(str(target), "write", user, "first")
-    from server import _local_approvals
-    _local_approvals[approval["approval_token"]]["approved"] = True
+    approval = gateway.local_permission_response(str(target), "write", user, "first")
+    _approve(gateway, approval["approval_token"])
 
     with pytest.raises(HTTPException) as exc:
-        _require_local_approval(
+        gateway.require_local_approval(
             token=approval["approval_token"],
             path=str(target),
             action="write",

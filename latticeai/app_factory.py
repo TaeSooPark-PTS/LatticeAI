@@ -34,7 +34,9 @@ from latticeai.runtime.hooks_runtime import (
     bind_trigger_hook_runner,
     build_hooks_runtime,
 )
+from latticeai.runtime.history_runtime import build_history_query_runtime
 from latticeai.runtime.lifespan_runtime import build_lifespan_runtime
+from latticeai.runtime.network_config_runtime import build_vpc_runtime
 from latticeai.runtime.model_wiring import (
     configure_model_runtime_from_context,
     register_model_runtime_routers,
@@ -45,7 +47,7 @@ from latticeai.runtime.platform_services_runtime import (
 from latticeai.runtime.platform_runtime_wiring import build_platform_automation_runtime
 from latticeai.runtime.persistence_runtime import build_persistence_runtime
 from latticeai.runtime.review_wiring import build_review_run_now_runner
-from latticeai.runtime.sso_runtime import build_sso_runtime
+from latticeai.runtime.sso_config_runtime import build_sso_config_runtime
 from latticeai.runtime.audit_runtime import build_audit_runtime
 from latticeai.runtime.router_registration import (
     build_auth_admin_security_router_bundle,
@@ -58,6 +60,7 @@ from latticeai.runtime.router_registration import (
 )
 from latticeai.runtime.security_runtime import build_security_runtime
 from latticeai.runtime.tail_wiring import register_tail_runtime_routers
+from latticeai.runtime.user_key_runtime import build_user_key_runtime
 from latticeai.runtime.web_runtime import build_web_runtime
 
 if TYPE_CHECKING:  # imports for annotations only — keep module import light
@@ -73,14 +76,9 @@ def _build(config: "Optional[Config]" = None) -> Dict[str, Any]:
     deliberately *inside* this function so that importing the module performs
     no GPU init, no singleton construction, and no filesystem writes.
     """
-    import hashlib
-    import json
     import logging
     import os
-    import re
-    import secrets
     import threading
-    import time
     from pathlib import Path
 
     try:
@@ -255,11 +253,8 @@ def _build(config: "Optional[Config]" = None) -> Dict[str, Any]:
     SSO_REDIRECT_URI = _security_runtime["SSO_REDIRECT_URI"]
     SSO_PROVIDER_NAME = _security_runtime["SSO_PROVIDER_NAME"]
 
-    # SSO cache + discovery built after get_sso_settings is defined (see below)
-    _sso_discovery_cache = None
-    _sso_discovery_cache_url = ""
-    _sso_states: Dict[str, float] = {}
-    _get_sso_discovery = None  # filled after def below
+    # SSO config + discovery seam is built below, after SSO_FILE is known
+    # (latticeai.runtime.sso_config_runtime).
 
     # ── Password hashing — used directly from latticeai.core.security ──────────────
     # (hash_password / verify_password are imported above; no local wrapper needed)
@@ -434,89 +429,31 @@ def _build(config: "Optional[Config]" = None) -> Dict[str, Any]:
         redirect_uri: Optional[str] = None
         scopes: Optional[str] = None
 
-    def _sso_env_defaults() -> Dict[str, object]:
-        return {
-            "enabled": bool(SSO_DISCOVERY_URL and SSO_CLIENT_ID and SSO_CLIENT_SECRET),
-            "provider_name": SSO_PROVIDER_NAME,
-            "discovery_url": SSO_DISCOVERY_URL,
-            "client_id": SSO_CLIENT_ID,
-            "client_secret": SSO_CLIENT_SECRET,
-            "redirect_uri": SSO_REDIRECT_URI,
-            "scopes": "openid email profile",
-        }
-
-    def load_sso_config() -> Dict[str, object]:
-        config = _sso_env_defaults()
-        if SSO_FILE.exists():
-            try:
-                data = json.loads(SSO_FILE.read_text(encoding="utf-8"))
-                if isinstance(data, dict):
-                    config.update({k: v for k, v in data.items() if v is not None})
-            except Exception as e:
-                logging.warning("load_sso_config failed (using env/defaults): %s", e)
-        config["provider_name"] = str(config.get("provider_name") or "SSO")
-        config["discovery_url"] = str(config.get("discovery_url") or "")
-        config["client_id"] = str(config.get("client_id") or "")
-        config["client_secret"] = str(config.get("client_secret") or "")
-        config["redirect_uri"] = str(config.get("redirect_uri") or SSO_REDIRECT_URI)
-        config["scopes"] = str(config.get("scopes") or "openid email profile")
-        config["enabled"] = bool(config.get("enabled")) and bool(
-            config["discovery_url"] and config["client_id"] and config["client_secret"]
-        )
-        return config
-
-    def get_sso_settings() -> Dict[str, object]:
-        return load_sso_config()
-
-    # Build SSO runtime (cache + helper) now that get_sso_settings exists in scope.
-    if _get_sso_discovery is None:
-        _sso = build_sso_runtime(
-            get_sso_settings=get_sso_settings,
-            logging=logging,
-        )
-        _sso_discovery_cache = _sso["_sso_discovery_cache"]
-        _sso_discovery_cache_url = _sso["_sso_discovery_cache_url"]
-        _sso_states = _sso["_sso_states"]
-        _get_sso_discovery = _sso["_get_sso_discovery"]
-
-    def public_sso_config(config: Optional[Dict[str, object]] = None) -> Dict[str, object]:
-        cfg = config or get_sso_settings()
-        return {
-            "enabled": bool(cfg.get("enabled")),
-            "provider_name": cfg.get("provider_name") or "",
-            "discovery_url": cfg.get("discovery_url") or "",
-            "client_id": cfg.get("client_id") or "",
-            "redirect_uri": cfg.get("redirect_uri") or SSO_REDIRECT_URI,
-            "scopes": cfg.get("scopes") or "openid email profile",
-            "secret_configured": bool(cfg.get("client_secret")),
-        }
-
-    def save_sso_config(update: Dict[str, object]) -> Dict[str, object]:
-        nonlocal _sso_discovery_cache, _sso_discovery_cache_url
-        current = load_sso_config()
-        if update.get("client_secret") == "":
-            update.pop("client_secret", None)
-        current.update({k: v for k, v in update.items() if v is not None})
-        current["enabled"] = bool(current.get("enabled")) and bool(
-            current.get("discovery_url") and current.get("client_id") and current.get("client_secret")
-        )
-        SSO_FILE.write_text(json.dumps(current, ensure_ascii=False, indent=2), encoding="utf-8")
-        _sso_discovery_cache = None
-        _sso_discovery_cache_url = ""
-        return current
+    # SSO config + OIDC discovery seam. One closure owns config load/save and the
+    # discovery cache, so save_sso_config now actually invalidates discovery.
+    _sso_runtime = build_sso_config_runtime(
+        sso_file=SSO_FILE,
+        discovery_url=SSO_DISCOVERY_URL,
+        client_id=SSO_CLIENT_ID,
+        client_secret=SSO_CLIENT_SECRET,
+        redirect_uri=SSO_REDIRECT_URI,
+        provider_name=SSO_PROVIDER_NAME,
+        logging=logging,
+    )
+    _sso_env_defaults = _sso_runtime["_sso_env_defaults"]
+    load_sso_config = _sso_runtime["load_sso_config"]
+    get_sso_settings = _sso_runtime["get_sso_settings"]
+    public_sso_config = _sso_runtime["public_sso_config"]
+    save_sso_config = _sso_runtime["save_sso_config"]
+    _get_sso_discovery = _sso_runtime["_get_sso_discovery"]
+    _sso_states = _sso_runtime["_sso_states"]
 
     # MCP/skill request models moved to latticeai.api.mcp (v1.3.0).
-    DEFAULT_VPC_CONFIG = {
-        "provider": "AWS",
-        "region": "ap-northeast-2",
-        "cidr_block": "10.42.0.0/16",
-        "private_subnets": ["10.42.10.0/24", "10.42.20.0/24"],
-        "endpoint": "ltcai-private.local",
-        "vpn_status": "standby",
-        "peering_status": "not_configured",
-        "notes": "로컬 MLX 브릿지를 프라이빗 서브넷 또는 VPN 뒤에서 운영할 때 쓰는 네트워크 프로필입니다.",
-        "updated_at": None,
-    }
+    # VPC network-profile config → latticeai.runtime.network_config_runtime.
+    _vpc_runtime = build_vpc_runtime(vpc_file=VPC_FILE, logging=logging)
+    DEFAULT_VPC_CONFIG = _vpc_runtime["DEFAULT_VPC_CONFIG"]
+    load_vpc_config = _vpc_runtime["load_vpc_config"]
+    save_vpc_config = _vpc_runtime["save_vpc_config"]
 
 
     def load_users():
@@ -538,22 +475,6 @@ def _build(config: "Optional[Config]" = None) -> Dict[str, Any]:
 
     def save_users(users):
         save_users_file(USERS_FILE, users)
-
-    def load_vpc_config() -> Dict:
-        if not os.path.exists(VPC_FILE):
-            return DEFAULT_VPC_CONFIG.copy()
-        try:
-            with open(VPC_FILE, "r", encoding="utf-8") as f:
-                stored = json.load(f)
-            return {**DEFAULT_VPC_CONFIG, **stored}
-        except Exception as e:
-            logging.warning("load_vpc_config failed (using defaults): %s", e)
-            return DEFAULT_VPC_CONFIG.copy()
-
-    def save_vpc_config(config: Dict):
-        config["updated_at"] = datetime.now().isoformat()
-        with open(VPC_FILE, "w", encoding="utf-8") as f:
-            json.dump(config, f, ensure_ascii=False, indent=2)
 
 
     _history_lock = threading.Lock()
@@ -639,130 +560,27 @@ def _build(config: "Optional[Config]" = None) -> Dict[str, Any]:
     get_audit_log = _audit_rt["get_audit_log"]
     append_audit_event = _audit_rt["append_audit_event"]
 
-    def _history_allowed_workspaces_for(user_email: Optional[str]):
-        if not REQUIRE_AUTH or not user_email:
-            return None
-        try:
-            return set(WORKSPACE_SERVICE.readable_workspaces(user_email))
-        except Exception as exc:
-            logging.warning("history workspace scope resolution failed for %s: %s", user_email, exc)
-            return set()
-
-    def _history_include_legacy_global(user_email: Optional[str]) -> bool:
-        return not REQUIRE_AUTH or not user_email
-
-    def get_history(
-        user_email: Optional[str] = None,
-        allowed_workspaces=None,
-        include_legacy_global: Optional[bool] = None,
-    ):
-        try:
-            if allowed_workspaces is None and user_email:
-                allowed_workspaces = _history_allowed_workspaces_for(user_email)
-            if include_legacy_global is None:
-                include_legacy_global = _history_include_legacy_global(user_email)
-            return CONVERSATIONS.history(
-                user_email=user_email,
-                allowed_workspaces=allowed_workspaces,
-                include_legacy_global=include_legacy_global,
-            )
-        except Exception as e:
-            logging.warning("get_history failed: %s", e)
-            return []
+    # History query/clear seam (scope resolution, get_history, grouping, clears)
+    # → latticeai.runtime.history_runtime. save_to_history (the write path) stays
+    # inline above because it is bound to redaction/audit/ingestion.
+    _history_query_runtime = build_history_query_runtime(
+        conversations=CONVERSATIONS,
+        workspace_service=WORKSPACE_SERVICE,
+        require_auth=REQUIRE_AUTH,
+        logging=logging,
+    )
+    _history_allowed_workspaces_for = _history_query_runtime["_history_allowed_workspaces_for"]
+    _history_include_legacy_global = _history_query_runtime["_history_include_legacy_global"]
+    get_history = _history_query_runtime["get_history"]
+    conversation_title = _history_query_runtime["conversation_title"]
+    group_history_conversations = _history_query_runtime["group_history_conversations"]
+    get_conversation_messages = _history_query_runtime["get_conversation_messages"]
+    clear_history = _history_query_runtime["clear_history"]
+    clear_conversation = _history_query_runtime["clear_conversation"]
 
     # Chat service seam: behaviour-preserving façade for history access and
     # Workspace-OS answer-trace recording used by the (unchanged) streaming chat path.
     CHAT_SERVICE = ChatService(store=WORKSPACE_OS, get_history=get_history)
-
-    def conversation_title(item: Dict) -> str:
-        content = str(item.get("content") or "").strip()
-        content = re.sub(r"\s+", " ", content)
-        return content[:48] or "새 대화"
-
-    def group_history_conversations(history: Optional[List[Dict]] = None) -> List[Dict]:
-        history = history if history is not None else get_history()
-        conversations: Dict[str, Dict] = {}
-        order: List[str] = []
-
-        for index, item in enumerate(history):
-            conv_id = item.get("conversation_id")
-            if not conv_id:
-                conv_id = "legacy-previous-history"
-
-            if conv_id not in conversations:
-                conversations[conv_id] = {
-                    "id": conv_id,
-                    "title": "이전 대화 기록" if conv_id == "legacy-previous-history" else conversation_title(item),
-                    "created_at": item.get("timestamp"),
-                    "updated_at": item.get("timestamp"),
-                    "message_count": 0,
-                    "last_message": "",
-                    "source": item.get("source"),
-                }
-                order.append(conv_id)
-
-            conv = conversations[conv_id]
-            conv["message_count"] += 1
-            conv["updated_at"] = item.get("timestamp") or conv.get("updated_at")
-            conv["last_message"] = conversation_title(item)
-            if conv_id != "legacy-previous-history" and item.get("role") == "user" and (not conv.get("title") or conv["title"] == "새 대화"):
-                conv["title"] = conversation_title(item)
-
-        return sorted((conversations[key] for key in order), key=lambda item: item.get("updated_at") or "", reverse=True)
-
-    def get_conversation_messages(
-        conversation_id: str,
-        *,
-        user_email: Optional[str] = None,
-        allowed_workspaces=None,
-        include_legacy_global: Optional[bool] = None,
-    ) -> List[Dict]:
-        history = get_history(
-            user_email=user_email,
-            allowed_workspaces=allowed_workspaces,
-            include_legacy_global=include_legacy_global,
-        )
-        if conversation_id == "legacy-previous-history":
-            return [item for item in history if not item.get("conversation_id")]
-        return [item for item in history if item.get("conversation_id") == conversation_id]
-
-    def clear_history(
-        keep_last: int = 0,
-        *,
-        user_email: Optional[str] = None,
-        allowed_workspaces=None,
-        include_legacy_global: Optional[bool] = None,
-    ) -> Dict:
-        if allowed_workspaces is None and user_email:
-            allowed_workspaces = _history_allowed_workspaces_for(user_email)
-        if include_legacy_global is None:
-            include_legacy_global = _history_include_legacy_global(user_email)
-        return CONVERSATIONS.clear_all(
-            keep_last=keep_last,
-            user_email=user_email,
-            allowed_workspaces=allowed_workspaces,
-            include_legacy_global=include_legacy_global,
-        )
-
-    def clear_conversation(
-        conversation_id: str,
-        started_at: Optional[str] = None,
-        *,
-        user_email: Optional[str] = None,
-        allowed_workspaces=None,
-        include_legacy_global: Optional[bool] = None,
-    ) -> Dict:
-        if allowed_workspaces is None and user_email:
-            allowed_workspaces = _history_allowed_workspaces_for(user_email)
-        if include_legacy_global is None:
-            include_legacy_global = _history_include_legacy_global(user_email)
-        return CONVERSATIONS.clear_conversation(
-            conversation_id,
-            started_at=started_at,
-            user_email=user_email,
-            allowed_workspaces=allowed_workspaces,
-            include_legacy_global=include_legacy_global,
-        )
 
     _access_runtime = build_access_runtime(
         config=CONFIG,
@@ -790,136 +608,24 @@ def _build(config: "Optional[Config]" = None) -> Dict[str, Any]:
     def _bytes_match_extension(data: bytes, ext: str) -> bool:
         return _bytes_match_extension_impl(data, ext)
 
-    _LOCAL_APPROVAL_TTL_SECONDS = 5 * 60
-    _local_approvals: Dict[str, Dict[str, object]] = {}
+    # Local file-access approval lives entirely in
+    # ``latticeai.api.permissions.PermissionGateway`` (token hash-at-rest,
+    # persisted approval queue, Discord notifications). The historical inline
+    # copy that used to sit here was app-dead — no route referenced it — so it
+    # was removed to keep this factory a single wiring path.
 
-
-    def _normalize_local_path_for_approval(path: str) -> str:
-        return str(Path(path).expanduser().resolve())
-
-
-    def _content_fingerprint(content: str = "") -> str:
-        return hashlib.sha256(content.encode("utf-8")).hexdigest()
-
-
-    def _local_permission_response(path: str, action: str, user_email: str, content: str = "") -> dict:
-        normalized = _normalize_local_path_for_approval(path)
-        token = secrets.token_urlsafe(24)
-        record: Dict[str, object] = {
-            "path": normalized,
-            "action": action,
-            "user_email": user_email,
-            "expires_at": time.time() + _LOCAL_APPROVAL_TTL_SECONDS,
-            "approved": False,
-        }
-        if action == "write":
-            record["content_hash"] = _content_fingerprint(content)
-        _local_approvals[token] = record
-        return {
-            "permission_required": True,
-            "path": path,
-            "action": action,
-            "approval_token": token,
-            "expires_in": _LOCAL_APPROVAL_TTL_SECONDS,
-        }
-
-
-    def _require_local_approval(
-        *,
-        token: Optional[str],
-        path: str,
-        action: str,
-        user_email: str,
-        content: str = "",
-    ) -> None:
-        if not token:
-            raise HTTPException(status_code=403, detail="파일 접근 승인 토큰이 필요합니다.")
-        record = _local_approvals.get(token)
-        if not record or float(record.get("expires_at", 0)) < time.time():
-            raise HTTPException(status_code=403, detail="파일 접근 승인이 만료되었거나 유효하지 않습니다.")
-        if not record.get("approved"):
-            raise HTTPException(status_code=403, detail="파일 접근이 아직 승인되지 않았습니다.")
-        if record.get("user_email") != user_email:
-            raise HTTPException(status_code=403, detail="다른 사용자의 파일 접근 승인은 사용할 수 없습니다.")
-        if record.get("path") != _normalize_local_path_for_approval(path) or record.get("action") != action:
-            raise HTTPException(status_code=403, detail="파일 접근 승인 범위가 일치하지 않습니다.")
-        if action == "write" and record.get("content_hash") != _content_fingerprint(content):
-            raise HTTPException(status_code=403, detail="승인된 파일 내용과 요청 내용이 다릅니다.")
-
-
-    def get_history_user(email: Optional[str], nickname: Optional[str] = None) -> Dict:
-        if not email:
-            return {"user_email": None, "user_nickname": nickname or None}
-        users = load_users()
-        user = users.get(email, {})
-        return {
-            "user_email": email,
-            "user_nickname": nickname or user.get("nickname") or user.get("name") or email,
-        }
-
-    def get_user_api_key(email: Optional[str], provider: str) -> Optional[str]:
-        if not email:
-            return None
-        keyring_key = f"{email}:{provider}"
-        if keyring is not None:
-            try:
-                key = keyring.get_password("LatticeAI", keyring_key)
-                if key:
-                    return key.strip()
-            except Exception as exc:
-                logging.warning("keyring read failed for %s: %s", provider, exc)
-        users = load_users()
-        user = users.get(email) or {}
-        api_keys = user.get("api_keys") or {}
-        key = api_keys.get(provider)
-        if isinstance(key, str) and key.strip() and ALLOW_PLAINTEXT_API_KEYS:
-            return key.strip()
-        return None
-
-    def set_user_api_key(email: str, provider: str, key: str) -> None:
-        keyring_key = f"{email}:{provider}"
-        if keyring is not None:
-            try:
-                keyring.set_password("LatticeAI", keyring_key, key)
-                users = load_users()
-                user = users.get(email)
-                if user and "api_keys" in user:
-                    user["api_keys"].pop(provider, None)
-                    if not user["api_keys"]:
-                        user.pop("api_keys", None)
-                    save_users(users)
-                return
-            except Exception as exc:
-                logging.warning("keyring write failed for %s: %s", provider, exc)
-                if not ALLOW_PLAINTEXT_API_KEYS:
-                    raise HTTPException(
-                        status_code=500,
-                        detail="OS keyring에 API 키를 저장하지 못했습니다. keyring 설정을 확인하거나 LATTICEAI_ALLOW_PLAINTEXT_API_KEYS=true를 명시적으로 설정하세요.",
-                    )
-
-        if not ALLOW_PLAINTEXT_API_KEYS:
-            raise HTTPException(
-                status_code=500,
-                detail="keyring 패키지를 사용할 수 없어 API 키를 안전하게 저장할 수 없습니다.",
-            )
-
-        users = load_users()
-        user = users.get(email)
-        if not user:
-            user = {
-                "password_hash": "",
-                "salt": "",
-                "name": email,
-                "nickname": email,
-                "role": "user",
-                "disabled": False,
-            }
-        ensure_user_identity(email, user)
-        api_keys = user.get("api_keys") or {}
-        api_keys[provider] = key
-        user["api_keys"] = api_keys
-        users[email] = user
-        save_users(users)
+    _user_key_runtime = build_user_key_runtime(
+        load_users=load_users,
+        save_users=save_users,
+        ensure_user_identity=ensure_user_identity,
+        keyring=keyring,
+        allow_plaintext_api_keys=ALLOW_PLAINTEXT_API_KEYS,
+        logging=logging,
+        http_exception=HTTPException,
+    )
+    get_history_user = _user_key_runtime["get_history_user"]
+    get_user_api_key = _user_key_runtime["get_user_api_key"]
+    set_user_api_key = _user_key_runtime["set_user_api_key"]
 
     # ── Sensitivity analysis — delegated to latticeai.core.audit ──────────────────
     def classify_sensitive_message(item: Dict, index: int) -> Dict:
