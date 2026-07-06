@@ -15,6 +15,7 @@ Computer Use 직접 API 위험 항목(`/cu/*` policy/capability 적용)은 이�
 - `SessionStore` TTL/refresh 값을 런타임에서 주입받도록 수정했다.
 - AgentRuntime approval/rollback 의미를 실제 동작과 맞추고 회귀 테스트를 추가했다.
 - local permission approval token을 hash-at-rest로 바꾸고 blocked prefix를 최종 강제했다.
+- installer/process 실행 경로에 redacted command plan, confirmation token, process audit를 추가했다.
 - 모델 다운로드 허용값을 env 직접 조회가 아니라 runtime config 상태로 주입했다.
 - AppRuntime legacy namespace adapter, KG JSON/runtime 분리, API client/CSS/i18n 검사 분리를 적용했다.
 - README/RELEASE/docs/CHANGELOG/FEATURE_STATUS/SECURITY/VS Code 문서를 8.9.0으로 최신화했다.
@@ -713,7 +714,7 @@ setWorkspaceId: (workspaceId) => {
 - [x] `SessionStore` TTL 주입 버그 수정
 - [x] Agent rollback 판정 로직 수정
 - [x] tool result schema 표준화 — rollback 경로에서 `success` 없는 dict 결과 허용
-- [ ] installer/process 실행 audit 강화 — 별도 hardening 후속으로 유지
+- [x] installer/process 실행 audit 강화
 
 ### 구조 개선
 

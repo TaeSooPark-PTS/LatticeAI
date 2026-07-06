@@ -21,6 +21,14 @@ import time
 from pathlib import Path
 from typing import Any, AsyncIterator, Dict, List, Tuple
 
+from latticeai.services.process_audit import (
+    CommandConfirmationError,
+    append_process_audit_event,
+    command_plan,
+    command_plan_for_commands,
+    require_command_confirmation,
+)
+
 # ── Helpers ───────────────────────────────────────────────────────────────────
 
 def _cmd(args: List[str], timeout: int = 10) -> str:
@@ -32,6 +40,61 @@ def _cmd(args: List[str], timeout: int = 10) -> str:
 
 def _sse(data: Dict) -> str:
     return f"data: {_json.dumps(data, ensure_ascii=False)}\n\n"
+
+
+def _action_commands(action: Dict[str, Any]) -> List[List[str]]:
+    atype = action.get("type")
+    if atype == "pip":
+        return [[sys.executable, "-m", "pip", "install", "--upgrade", str(pkg)] for pkg in action.get("packages", [])]
+    if atype == "brew":
+        package = str(action.get("package") or "")
+        return [["brew", "install", package]] if package else []
+    return []
+
+
+def _action_command_plan(action: Dict[str, Any], *, name: str) -> Dict[str, Any] | None:
+    commands = _action_commands(action)
+    if not commands:
+        return None
+    return command_plan_for_commands(
+        commands,
+        name=name,
+        purpose="setup_wizard_install",
+        metadata={"action_type": action.get("type")},
+    )
+
+
+def _attach_action_plan(action: Dict[str, Any] | None, *, name: str) -> Dict[str, Any] | None:
+    if not isinstance(action, dict):
+        return action
+    plan = _action_command_plan(action, name=name)
+    if not plan:
+        return action
+    hydrated = dict(action)
+    hydrated["command_plan"] = plan
+    hydrated["confirmation_token"] = plan["confirmation_token"]
+    return hydrated
+
+
+def _hydrate_install_actions(groups: Dict[str, Any]) -> Dict[str, Any]:
+    for group_name in ("components", "engines", "models", "mcps"):
+        items = groups.get(group_name)
+        if not isinstance(items, list):
+            continue
+        for item in items:
+            if isinstance(item, dict):
+                item["action"] = _attach_action_plan(
+                    item.get("action"),
+                    name=str(item.get("id") or item.get("name") or group_name),
+                )
+    return groups
+
+
+def _verify_action_confirmation(action: Dict[str, Any], token: str | None, *, name: str) -> bool:
+    plan = _action_command_plan(action, name=name)
+    if not plan:
+        return True
+    return str(token or "").strip() == plan["confirmation_token"]
 
 OFFICIAL_DOWNLOADS: Dict[str, str] = {
     "homebrew": "https://brew.sh",
@@ -933,7 +996,7 @@ def get_recommendations(env: Dict[str, Any]) -> Dict[str, Any]:
         },
     ]
 
-    return {
+    return _hydrate_install_actions({
         "components": components,
         "engines": engines,
         "models":  models,
@@ -954,7 +1017,7 @@ def get_recommendations(env: Dict[str, Any]) -> Dict[str, Any]:
             "is_apple_silicon": is_apple,
             "max_model_gb":    round(max_model_gb, 1),
         },
-    }
+    })
 
 # ── Installation Stream ───────────────────────────────────────────────────────
 
@@ -972,7 +1035,12 @@ def _verify_action(action: Dict[str, Any]) -> Tuple[bool, str]:
     return True, "검증 항목 없음"
 
 
-async def _repair_action(action: Dict[str, Any]) -> Tuple[bool, str]:
+async def _repair_action(
+    action: Dict[str, Any],
+    *,
+    confirmation_token: str | None = None,
+    actor: str | None = None,
+) -> Tuple[bool, str]:
     binary = action.get("binary")
     if binary:
         repair_path_for(binary)
@@ -982,15 +1050,23 @@ async def _repair_action(action: Dict[str, Any]) -> Tuple[bool, str]:
     if action.get("type") == "pip":
         packages = action.get("packages", [])
         if packages:
+            if not _verify_action_confirmation(action, confirmation_token, name="repair_action"):
+                return False, "설치 명령 확인 토큰이 일치하지 않습니다."
             for pkg in packages:
-                success, err = await _pip_install(pkg)
+                success, err = await _pip_install(pkg, confirmed=True, actor=actor)
                 if not success:
                     return False, err
             return _verify_action(action)
     return False, "자동 복구 방법을 찾지 못했습니다."
 
 
-async def install_stream(items: List[Dict], router: Any) -> AsyncIterator[str]:
+async def install_stream(
+    items: List[Dict],
+    router: Any,
+    *,
+    confirmation_token: str | None = None,
+    user_email: str | None = None,
+) -> AsyncIterator[str]:
     for item in items:
         item_id    = item.get("id", "unknown")
         name       = item.get("name", item_id)
@@ -1006,10 +1082,14 @@ async def install_stream(items: List[Dict], router: Any) -> AsyncIterator[str]:
 
         if atype == "pip":
             packages = action.get("packages", [])
+            token = confirmation_token or action.get("confirmation_token") or (action.get("command_plan") or {}).get("confirmation_token")
+            if not _verify_action_confirmation(action, token, name=str(item_id)):
+                yield _sse({"id": item_id, "status": "error", "msg": "설치 명령 확인 토큰이 일치하지 않습니다."})
+                continue
             ok = True
             for pkg in packages:
                 yield _sse({"id": item_id, "status": "running", "msg": f"pip install {pkg} ..."})
-                success, err = await _pip_install(pkg)
+                success, err = await _pip_install(pkg, confirmed=True, actor=user_email)
                 if success:
                     yield _sse({"id": item_id, "status": "progress", "msg": f"{pkg} 설치 완료"})
                 else:
@@ -1023,13 +1103,17 @@ async def install_stream(items: List[Dict], router: Any) -> AsyncIterator[str]:
                     yield _sse({"id": item_id, "status": "done", "msg": f"{name} 설치 · 검증 완료 ✅\n{detail}"})
                 else:
                     yield _sse({"id": item_id, "status": "running", "msg": f"검증 실패 — 자동 복구 중...\n{detail}"})
-                    repaired, repair_msg = await _repair_action(action)
+                    repaired, repair_msg = await _repair_action(action, confirmation_token=token, actor=user_email)
                     yield _sse({"id": item_id, "status": "done" if repaired else "error", "msg": repair_msg[:500]})
 
         elif atype == "brew":
             pkg = action.get("package", "")
+            token = confirmation_token or action.get("confirmation_token") or (action.get("command_plan") or {}).get("confirmation_token")
+            if not _verify_action_confirmation(action, token, name=str(item_id)):
+                yield _sse({"id": item_id, "status": "error", "msg": "설치 명령 확인 토큰이 일치하지 않습니다."})
+                continue
             yield _sse({"id": item_id, "status": "running", "msg": f"brew install {pkg} ..."})
-            success, err = await _brew_install(pkg)
+            success, err = await _brew_install(pkg, confirmed=True, actor=user_email)
             if success:
                 yield _sse({"id": item_id, "status": "running", "msg": "설치 완료 감지 · PATH 보정 중..."})
                 binary = action.get("binary")
@@ -1040,7 +1124,7 @@ async def install_stream(items: List[Dict], router: Any) -> AsyncIterator[str]:
                     yield _sse({"id": item_id, "status": "done", "msg": f"{name} 설치 · 연결 · 검증 완료 ✅\n{detail}"})
                 else:
                     yield _sse({"id": item_id, "status": "running", "msg": f"검증 실패 — 자동 복구 중...\n{detail}"})
-                    repaired, repair_msg = await _repair_action(action)
+                    repaired, repair_msg = await _repair_action(action, confirmation_token=token, actor=user_email)
                     yield _sse({"id": item_id, "status": "done" if repaired else "error", "msg": repair_msg[:500]})
             else:
                 url = action.get("official_url") or action.get("url")
@@ -1094,49 +1178,131 @@ async def install_stream(items: List[Dict], router: Any) -> AsyncIterator[str]:
     yield _sse({"status": "complete", "msg": "모든 항목 처리 완료!"})
 
 
-async def _pip_install(package: str) -> Tuple[bool, str]:
+async def _pip_install(
+    package: str,
+    *,
+    confirmation_token: str | None = None,
+    confirmed: bool = False,
+    actor: str | None = None,
+) -> Tuple[bool, str]:
+    command = [sys.executable, "-m", "pip", "install", "--upgrade", package]
+    plan = command_plan(
+        command,
+        name=f"pip:{package}",
+        purpose="setup_wizard_install",
+        metadata={"package": package},
+    )
     try:
+        if not confirmed:
+            require_command_confirmation(command, confirmation_token, purpose="setup_wizard_install")
+        append_process_audit_event("setup_wizard_install", plan=plan, status="started", user_email=actor)
         proc = await asyncio.create_subprocess_exec(
-            sys.executable, "-m", "pip", "install", "--upgrade", package,
+            *command,
             stdout=asyncio.subprocess.PIPE, stderr=asyncio.subprocess.PIPE,
         )
         _, stderr = await asyncio.wait_for(proc.communicate(), timeout=600)
+        stderr_text = stderr.decode(errors="replace")
+        append_process_audit_event(
+            "setup_wizard_install",
+            plan=plan,
+            status="finished",
+            user_email=actor,
+            returncode=proc.returncode,
+            stderr=stderr_text,
+        )
         if proc.returncode == 0:
             return True, ""
-        return False, stderr.decode(errors="replace")
+        return False, stderr_text
+    except CommandConfirmationError as e:
+        append_process_audit_event("setup_wizard_install", plan=plan, status="denied", user_email=actor, error=str(e))
+        return False, str(e)
     except asyncio.TimeoutError:
+        append_process_audit_event("setup_wizard_install", plan=plan, status="timeout", user_email=actor)
         return False, "설치 시간 초과 (10분)"
     except Exception as e:
+        append_process_audit_event("setup_wizard_install", plan=plan, status="error", user_email=actor, error=str(e))
         return False, str(e)
 
 
-async def _brew_install(package: str) -> Tuple[bool, str]:
+async def _brew_install(
+    package: str,
+    *,
+    confirmation_token: str | None = None,
+    confirmed: bool = False,
+    actor: str | None = None,
+) -> Tuple[bool, str]:
     brew = shutil.which("brew")
     if not brew:
         return False, "Homebrew 미설치 — https://brew.sh 에서 설치하세요"
+    command = [brew, "install", package]
+    plan = command_plan(
+        command,
+        name=f"brew:{package}",
+        purpose="setup_wizard_install",
+        metadata={"package": package},
+    )
     try:
+        if not confirmed:
+            require_command_confirmation(command, confirmation_token, purpose="setup_wizard_install")
+        append_process_audit_event("setup_wizard_install", plan=plan, status="started", user_email=actor)
         proc = await asyncio.create_subprocess_exec(
-            brew, "install", package,
+            *command,
             stdout=asyncio.subprocess.PIPE, stderr=asyncio.subprocess.PIPE,
         )
         _, stderr = await asyncio.wait_for(proc.communicate(), timeout=300)
+        stderr_text = stderr.decode(errors="replace")
+        append_process_audit_event(
+            "setup_wizard_install",
+            plan=plan,
+            status="finished",
+            user_email=actor,
+            returncode=proc.returncode,
+            stderr=stderr_text,
+        )
         if proc.returncode == 0:
             return True, ""
-        return False, stderr.decode(errors="replace")
+        return False, stderr_text
+    except CommandConfirmationError as e:
+        append_process_audit_event("setup_wizard_install", plan=plan, status="denied", user_email=actor, error=str(e))
+        return False, str(e)
     except asyncio.TimeoutError:
+        append_process_audit_event("setup_wizard_install", plan=plan, status="timeout", user_email=actor)
         return False, "설치 시간 초과 (5분)"
     except Exception as e:
+        append_process_audit_event("setup_wizard_install", plan=plan, status="error", user_email=actor, error=str(e))
         return False, str(e)
 
 
 def open_url(url: str) -> None:
+    command: List[str]
     try:
         system = platform.system()
         if system == "Darwin":
-            subprocess.Popen(["open", url])
+            command = ["open", url]
+            plan = command_plan(command, name="open_url", purpose="setup_wizard_open_url")
+            append_process_audit_event("setup_wizard_open_url", plan=plan, status="started")
+            subprocess.Popen(command)
+            append_process_audit_event("setup_wizard_open_url", plan=plan, status="spawned")
         elif system == "Windows":
-            subprocess.Popen(["start", "", url], shell=True)
+            command = ["start", "", url]
+            plan = command_plan(command, name="open_url", purpose="setup_wizard_open_url")
+            append_process_audit_event("setup_wizard_open_url", plan=plan, status="started")
+            subprocess.Popen(command, shell=True)
+            append_process_audit_event("setup_wizard_open_url", plan=plan, status="spawned")
         else:
-            subprocess.Popen(["xdg-open", url])
-    except Exception:
+            command = ["xdg-open", url]
+            plan = command_plan(command, name="open_url", purpose="setup_wizard_open_url")
+            append_process_audit_event("setup_wizard_open_url", plan=plan, status="started")
+            subprocess.Popen(command)
+            append_process_audit_event("setup_wizard_open_url", plan=plan, status="spawned")
+    except Exception as exc:
+        try:
+            append_process_audit_event(
+                "setup_wizard_open_url",
+                plan=command_plan(["open_url", url], name="open_url", purpose="setup_wizard_open_url"),
+                status="error",
+                error=str(exc),
+            )
+        except Exception:
+            pass
         pass

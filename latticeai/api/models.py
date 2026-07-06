@@ -67,6 +67,7 @@ class LoadModelRequest(BaseModel):
 
 class InstallEngineRequest(BaseModel):
     engine: str
+    confirmation_token: Optional[str] = None
 
 
 class SetApiKeyRequest(BaseModel):
@@ -99,7 +100,7 @@ def create_models_router(
     get_current_user: Callable[[Request], Optional[str]],
     load_users: Callable[[], Dict],
     get_user_role: Callable[..., str],
-    install_engine: Callable[[str], Dict],
+    install_engine: Callable[..., Dict],
     verify_cloud_models: Callable[..., Any],
     normalize_local_model_request: Callable[..., str],
     download_hf_model: Callable[..., Dict],
@@ -281,6 +282,8 @@ def create_models_router(
     @router.post("/engines/install")
     async def engines_install(req: InstallEngineRequest, request: Request):
         require_user(request)
+        if req.confirmation_token:
+            return install_engine(req.engine, confirmation_token=req.confirmation_token)
         return install_engine(req.engine)
 
     @router.post("/engines/verify-cloud")

@@ -6464,6 +6464,8 @@ export interface components {
         };
         /** InstallEngineRequest */
         InstallEngineRequest: {
+            /** Confirmation Token */
+            confirmation_token?: string | null;
             /** Engine */
             engine: string;
         };
@@ -6947,6 +6949,8 @@ export interface components {
         };
         /** SetupInstallRequest */
         SetupInstallRequest: {
+            /** Confirmation Token */
+            confirmation_token?: string | null;
             /** Items */
             items: {
                 [key: string]: unknown;

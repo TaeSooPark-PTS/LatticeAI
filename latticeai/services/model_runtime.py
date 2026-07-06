@@ -47,6 +47,7 @@ from .model_engines import (
     pull_ollama_model_with_progress as _pull_ollama_model_with_progress,
     get_ollama_pulled_models as _get_ollama_pulled_models,
     engine_support_status as _engine_support_status,
+    engine_install_plan as _engine_install_plan,
     install_engine as _install_engine,
     local_binary as _local_binary,
     vllm_executable as _vllm_executable,
@@ -732,6 +733,13 @@ def ensure_llamacpp_server(model_name: str) -> None:
     return _ensure_llamacpp_server(model_name)
 
 
+def _safe_engine_install_plan(engine: str) -> Optional[Dict[str, object]]:
+    try:
+        return _engine_install_plan(engine)
+    except Exception:
+        return None
+
+
 def engine_installed(engine: str) -> bool:
     if engine == "local_mlx":
         return bool(
@@ -853,6 +861,7 @@ def engine_status() -> List[Dict]:
             "installed": engine_installed("local_mlx"),
             "installable": True,
             "install_label": ENGINE_INSTALLERS["local_mlx"]["label"],
+            "install_plan": _safe_engine_install_plan("local_mlx"),
             "models": mlx_models,
         },
         {
@@ -863,6 +872,7 @@ def engine_status() -> List[Dict]:
             "installed": ollama_installed,
             "installable": True,
             "install_label": ENGINE_INSTALLERS["ollama"]["label"],
+            "install_plan": _safe_engine_install_plan("ollama"),
             "models": ollama_models,
         },
     ]
@@ -878,6 +888,7 @@ def engine_status() -> List[Dict]:
             "support_reason": support["reason"],
             "installable": support["supported"] and spec["id"] in ENGINE_INSTALLERS,
             "install_label": ENGINE_INSTALLERS.get(spec["id"], {}).get("label"),
+            "install_plan": _safe_engine_install_plan(spec["id"]) if spec["id"] in ENGINE_INSTALLERS else None,
             "requires": spec["requires"],
             "models": (
                 vllm_models if spec["id"] == "vllm"
@@ -906,6 +917,7 @@ def engine_status() -> List[Dict]:
             "installed": engine_installed(provider),
             "installable": True,
             "install_label": ENGINE_INSTALLERS[provider]["label"],
+            "install_plan": _safe_engine_install_plan(provider),
             "requires": env_key,
             "models": provider_models,
         })
@@ -952,8 +964,8 @@ def runtime_features() -> Dict:
         },
     }
 
-def install_engine(engine: str) -> Dict:
-    return _install_engine(engine)
+def install_engine(engine: str, confirmation_token: Optional[str] = None) -> Dict:
+    return _install_engine(engine, confirmation_token=confirmation_token)
 
 
 def _resolve_model_alias(model_id: str, engine: Optional[str] = None) -> str:

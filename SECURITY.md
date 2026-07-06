@@ -60,6 +60,7 @@ making external paths explicit.
 | CORS | Localhost only | Network CORS requires explicit opt-in |
 | Session TTL | 24 hours sliding | Inactive sessions expire |
 | API key storage | OS keyring where available | No intentional plaintext secret storage |
+| Installer/process execution | Confirmation-token gated | Redacted command plans and local process audit events |
 | Brain storage | SQLite | PostgreSQL is optional scale/migration tooling |
 | Docker Postgres setup | Disabled | Requires explicit consent |
 | Production CSP | Strict local app policy | External script/frame/object blocked by default |

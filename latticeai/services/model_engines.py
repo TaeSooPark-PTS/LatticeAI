@@ -23,6 +23,13 @@ from typing import Any, Dict, List, Optional
 
 from fastapi import HTTPException
 
+from latticeai.services.process_audit import (
+    CommandConfirmationError,
+    append_process_audit_event,
+    command_plan,
+    require_command_confirmation,
+)
+
 
 def _progress_payload(*args, **kwargs) -> Dict[str, object]:
     try:
@@ -440,8 +447,8 @@ def engine_support_status(engine: str) -> Dict[str, object]:
     return {"supported": True, "reason": None}
 
 
-def install_engine(engine: str) -> Dict[str, Any]:
-    from latticeai.services.model_runtime import BASE_DIR, ENGINE_INSTALLERS, engine_installed
+def _engine_install_command(engine: str) -> tuple[list[str], str, bool]:
+    from latticeai.services.model_runtime import BASE_DIR, ENGINE_INSTALLERS
 
     if engine not in ENGINE_INSTALLERS:
         raise HTTPException(status_code=400, detail="지원하지 않는 엔진입니다.")
@@ -449,14 +456,7 @@ def install_engine(engine: str) -> Dict[str, Any]:
     required_binary = installer.get("requires_binary")
     if required_binary and shutil.which(required_binary) is None:
         raise HTTPException(status_code=400, detail=f"{required_binary}가 설치되어 있지 않아 자동 설치할 수 없습니다.")
-    command = installer["command"]
-    run_kwargs = {
-        "cwd": str(BASE_DIR),
-        "capture_output": True,
-        "text": True,
-        "timeout": 900,
-        "check": False,
-    }
+    command = list(installer["command"])
 
     if engine == "vllm" and sys.platform == "darwin" and platform.machine() == "arm64":
         command = [
@@ -468,13 +468,69 @@ def install_engine(engine: str) -> Dict[str, Any]:
             "~/.venv-vllm-metal/bin/pip install -U pip setuptools wheel; "
             "~/.venv-vllm-metal/bin/pip install vllm-metal",
         ]
+    requires_admin = bool(command and command[0] in {"apt", "apt-get", "dnf", "pacman"})
+    return command, str(BASE_DIR), requires_admin
+
+
+def engine_install_plan(engine: str) -> Dict[str, Any]:
+    command, cwd, requires_admin = _engine_install_command(engine)
+    return command_plan(
+        command,
+        name=f"engine:{engine}",
+        purpose="engine_install",
+        cwd=cwd,
+        requires_admin=requires_admin,
+        metadata={"engine": engine},
+    )
+
+
+def install_engine(engine: str, confirmation_token: Optional[str] = None) -> Dict[str, Any]:
+    from latticeai.services.model_runtime import engine_installed
+
+    command, cwd, _requires_admin = _engine_install_command(engine)
+    plan = engine_install_plan(engine)
     try:
+        require_command_confirmation(command, confirmation_token, cwd=cwd, purpose="engine_install")
+    except CommandConfirmationError as exc:
+        append_process_audit_event("engine_install", plan=plan, status="denied", error=str(exc))
+        raise HTTPException(
+            status_code=403,
+            detail={
+                "status": "confirmation_required",
+                "reason": str(exc),
+                "install_plan": plan,
+            },
+        ) from exc
+
+    run_kwargs = {
+        "cwd": cwd,
+        "capture_output": True,
+        "text": True,
+        "timeout": 900,
+        "check": False,
+    }
+    try:
+        append_process_audit_event("engine_install", plan=plan, status="started")
         completed = subprocess.run(command, **run_kwargs)
     except subprocess.TimeoutExpired:
+        append_process_audit_event("engine_install", plan=plan, status="timeout")
         raise HTTPException(status_code=408, detail="엔진 설치 시간이 초과되었습니다.")
+    except Exception as exc:
+        append_process_audit_event("engine_install", plan=plan, status="error", error=str(exc))
+        raise
+    append_process_audit_event(
+        "engine_install",
+        plan=plan,
+        status="finished",
+        returncode=completed.returncode,
+        stdout=completed.stdout,
+        stderr=completed.stderr,
+    )
     result = {
         "engine": engine,
-        "command": " ".join(command),
+        "command_hash": plan["command_hash"],
+        "command_preview": plan["command_preview"],
+        "install_plan": plan,
         "returncode": completed.returncode,
         "stdout": completed.stdout[-12000:],
         "stderr": completed.stderr[-12000:],
@@ -491,15 +547,25 @@ def install_engine(engine: str) -> Dict[str, Any]:
         if already_up:
             result["daemon_started"] = "already_running"
         else:
+            daemon_command = [ollama, "serve"]
+            daemon_plan = command_plan(
+                daemon_command,
+                name="engine:ollama:serve",
+                purpose="engine_daemon_start",
+                metadata={"engine": "ollama"},
+            )
             try:
+                append_process_audit_event("engine_daemon_start", plan=daemon_plan, status="started")
                 subprocess.Popen(
-                    [ollama, "serve"],
+                    daemon_command,
                     stdout=subprocess.DEVNULL,
                     stderr=subprocess.DEVNULL,
                     start_new_session=True,
                 )
+                append_process_audit_event("engine_daemon_start", plan=daemon_plan, status="spawned")
                 result["daemon_started"] = True
             except Exception as exc:
+                append_process_audit_event("engine_daemon_start", plan=daemon_plan, status="error", error=str(exc))
                 logging.warning("ollama serve spawn failed: %s", exc)
                 result["daemon_started"] = False
     return result
@@ -589,6 +655,7 @@ __all__ = [
     "pull_ollama_model_with_progress",
     "get_ollama_pulled_models",
     "engine_support_status",
+    "engine_install_plan",
     "install_engine",
     "_smoke_test_loaded_model",
 ]

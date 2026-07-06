@@ -1,6 +1,6 @@
 # Lattice AI
 
-**Lattice AI 8.9.0 is the local-first Digital Brain platform. This release hardens authenticated history and graph scoping, blocks unapproved direct Tool API execution paths, makes local permission approvals safer at rest, and keeps package, desktop, extension, static app, and documentation metadata synchronized to the 8.9.0 line.**
+**Lattice AI 8.9.0 is the local-first Digital Brain platform. This release hardens authenticated history and graph scoping, blocks unapproved direct Tool API execution paths, makes local permission approvals and installer/process execution safer to audit, and keeps package, desktop, extension, static app, and documentation metadata synchronized to the 8.9.0 line.**
 
 **Lattice AI는 모델이 바뀌어도 내 지식과 맥락을 보존하는 로컬 우선 AI 브레인입니다.**
 
@@ -68,7 +68,8 @@ The screenshots below are the latest checked-in visual evidence captures. They
 keep the first-run Brain flow, memory graph, source capture, model library,
 system view, admin console, and review center visible as release gates while
 8.9.0 focuses on scoped memory isolation, direct Tool API policy enforcement,
-AgentRuntime human-approval semantics, and frontend/runtime maintainability.
+AgentRuntime human-approval semantics, confirmation-token guarded installer
+execution, and frontend/runtime maintainability.
 
 ### 1. Wake Brain
 

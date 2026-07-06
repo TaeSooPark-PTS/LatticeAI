@@ -16,6 +16,8 @@ existed at that release.
 - Added direct HTTP/MCP Tool API policy enforcement for registry-governed tools.
 - Added permission approval queue hashing and atomic writes so raw tokens are
   not persisted at rest.
+- Added confirmation-token guarded installer/process command plans with redacted
+  local process audit events.
 - Added regression coverage for scoped history, graph scoping, tool policy
   gates, AgentRuntime approval semantics, permission tokens, session TTL
   injection, and model-download runtime config.

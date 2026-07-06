@@ -13,7 +13,8 @@
 except the explicitly excluded Computer Use direct API risk. The release
 hardens authenticated history/KG scoping, direct Tool API policy gates,
 AgentRuntime human-approval behavior, permission token storage, and frontend
-maintainability seams.
+maintainability seams. Installer/process execution now uses redacted command
+plans, confirmation tokens, and local process audit events.
 
 ### Added
 - Added user/workspace-scoped conversation history reads and deletes for chat
@@ -21,6 +22,8 @@ maintainability seams.
 - Added workspace scope enforcement inside Knowledge Graph retrieval/search,
   relationship search, traversal, and node reads.
 - Added direct HTTP/MCP Tool API policy enforcement before hooks or handlers run.
+- Added confirmation-token guarded installer/process command plans with redacted
+  process audit events for setup and engine installation paths.
 - Added regression coverage for TTL injection, scoped history, tool policy
   blocking, AgentRuntime explicit approval, permission token hashing, blocked
   local write prefixes, and model-download config injection.

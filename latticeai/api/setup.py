@@ -8,6 +8,7 @@ from fastapi import APIRouter, HTTPException, Request
 from fastapi.responses import StreamingResponse
 from pydantic import BaseModel
 
+from latticeai.services.process_audit import command_plan
 from auto_setup import (
     plan as auto_setup_plan,
     preset as auto_setup_preset,
@@ -21,6 +22,7 @@ from setup_wizard import get_recommendations, install_stream, open_url, scan_env
 
 class SetupInstallRequest(BaseModel):
     items: List[Dict]
+    confirmation_token: Optional[str] = None
 
 
 def create_setup_router(*, model_router, require_user) -> APIRouter:
@@ -83,11 +85,19 @@ def create_setup_router(*, model_router, require_user) -> APIRouter:
                     command = ["lattice-ai", "models", "load", str(model_id)]
                 else:
                     command = ["huggingface-cli", "download", str(model_id), "--quiet"]
+                step_plan = command_plan(
+                    command,
+                    name=f"weights:{model_id}",
+                    purpose="auto_setup_install",
+                    metadata={"model_id": str(model_id)},
+                )
                 zero_config["plan"]["steps"] = [{
                     "name": f"weights:{model_id}",
                     "why": "추론에 사용할 모델 가중치",
                     "command": command,
                     "requires_admin": False,
+                    "command_plan": step_plan,
+                    "confirmation_token": step_plan["confirmation_token"],
                 }]
             if isinstance(zero_config.get("preset"), dict):
                 zero_config["preset"].setdefault("model", {})["id"] = model_id
@@ -107,9 +117,14 @@ def create_setup_router(*, model_router, require_user) -> APIRouter:
     @api_router.post("/setup/install")
     async def setup_install(req: SetupInstallRequest, request: Request):
         """선택된 항목을 순서대로 설치 · 로드하는 SSE 스트림."""
-        require_user(request)
+        user_email = require_user(request)
         async def _gen():
-            async for chunk in install_stream(req.items, router):
+            async for chunk in install_stream(
+                req.items,
+                router,
+                confirmation_token=req.confirmation_token,
+                user_email=user_email,
+            ):
                 yield chunk
         return StreamingResponse(_gen(), media_type="text/event-stream",
                                  headers={"Cache-Control": "no-cache", "X-Accel-Buffering": "no"})

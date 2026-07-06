@@ -11,6 +11,8 @@ Scoped Memory & Tool Policy Hardening.
 - AgentRuntime requires explicit human approval for non-auto-approved plans.
 - Local permission approvals hash tokens at rest and block write approvals for
   protected system prefixes.
+- Installer/process execution paths now expose redacted command plans, require
+  confirmation tokens, and write local process audit events.
 - Frontend API base handling, CSS tokens/base rules, workspace clearing, and
   i18n literal checks now have smaller maintainability seams.
 

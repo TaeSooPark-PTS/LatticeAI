@@ -25,7 +25,7 @@ Lattice AI — Zero-Config Auto Setup
 python3 auto_setup.py probe                  # 1단계만
 python3 auto_setup.py recommend              # 1+2단계
 python3 auto_setup.py plan                   # 1+2+3 (설치 계획 출력)
-python3 auto_setup.py plan --apply           # 실제 설치 실행 (위험)
+python3 auto_setup.py plan --apply --confirm-token <token>
 python3 auto_setup.py verify                 # 4단계 단독
 python3 auto_setup.py preset                 # 5단계
 python3 auto_setup.py all                    # 전체 흐름
@@ -46,6 +46,14 @@ import time
 from dataclasses import asdict, dataclass, field
 from pathlib import Path
 from typing import Any, Dict, List, Optional, Tuple
+
+from latticeai.services.process_audit import (
+    CommandConfirmationError,
+    append_process_audit_event,
+    command_plan,
+    command_plan_for_commands,
+    require_command_confirmation,
+)
 
 __all__ = [
     "SystemProfile", "Recommendation", "InstallPlan",
@@ -547,6 +555,21 @@ class InstallStep:
     command: List[str]
     requires_admin: bool = False
 
+    def to_json(self) -> Dict[str, Any]:
+        return {
+            "name": self.name,
+            "why": self.why,
+            "command": self.command,
+            "requires_admin": self.requires_admin,
+            "command_plan": command_plan(
+                self.command,
+                name=self.name,
+                purpose="auto_setup_install",
+                requires_admin=self.requires_admin,
+                metadata={"why": self.why},
+            ),
+        }
+
 
 @dataclass
 class InstallPlan:
@@ -555,10 +578,18 @@ class InstallPlan:
     notes: List[str] = field(default_factory=list)
 
     def to_json(self) -> Dict[str, Any]:
+        plan_summary = command_plan_for_commands(
+            [step.command for step in self.steps],
+            name="auto_setup_plan",
+            purpose="auto_setup_install",
+            metadata={"package_manager": self.package_manager},
+        )
         return {
             "package_manager": self.package_manager,
-            "steps": [asdict(s) for s in self.steps],
+            "steps": [s.to_json() for s in self.steps],
             "notes": self.notes,
+            "command_plan": plan_summary,
+            "confirmation_token": plan_summary["confirmation_token"],
         }
 
 
@@ -661,23 +692,55 @@ def plan(profile: SystemProfile, rec: Recommendation) -> InstallPlan:
     return InstallPlan(package_manager=pm, steps=steps, notes=notes)
 
 
-def apply_plan(plan_obj: InstallPlan, *, confirm: bool = False) -> List[Dict[str, Any]]:
-    """위험: 실제로 설치 명령을 실행한다. ``confirm=True`` 필수."""
+def apply_plan(
+    plan_obj: InstallPlan,
+    *,
+    confirm: bool = False,
+    confirmation_token: Optional[str] = None,
+) -> List[Dict[str, Any]]:
+    """위험: 실제로 설치 명령을 실행한다. ``confirm`` and token are required."""
     if not confirm:
         raise RuntimeError("refuse to apply: pass confirm=True")
+    expected = plan_obj.to_json().get("confirmation_token")
+    if str(confirmation_token or "").strip() != expected:
+        raise CommandConfirmationError("refuse to apply: confirmation token mismatch")
     results: List[Dict[str, Any]] = []
     for step in plan_obj.steps:
+        step_plan = command_plan(
+            step.command,
+            name=step.name,
+            purpose="auto_setup_install",
+            requires_admin=step.requires_admin,
+            metadata={"why": step.why},
+        )
         try:
+            require_command_confirmation(
+                step.command,
+                step_plan["confirmation_token"],
+                purpose="auto_setup_install",
+            )
+            append_process_audit_event("installer_command", plan=step_plan, status="started")
             r = subprocess.run(step.command, capture_output=True, text=True,
                                timeout=300, check=False)
+            append_process_audit_event(
+                "installer_command",
+                plan=step_plan,
+                status="finished",
+                returncode=r.returncode,
+                stdout=r.stdout,
+                stderr=r.stderr,
+            )
             results.append({
                 "name": step.name,
+                "command_hash": step_plan["command_hash"],
+                "command_preview": step_plan["command_preview"],
                 "returncode": r.returncode,
                 "stdout_tail": (r.stdout or "")[-2000:],
                 "stderr_tail": (r.stderr or "")[-2000:],
             })
         except Exception as exc:
-            results.append({"name": step.name, "error": str(exc)})
+            append_process_audit_event("installer_command", plan=step_plan, status="error", error=str(exc))
+            results.append({"name": step.name, "command_hash": step_plan["command_hash"], "error": str(exc)})
     return results
 
 
@@ -780,13 +843,13 @@ def preset(profile: SystemProfile, rec: Recommendation) -> Dict[str, Any]:
 
 
 # ── orchestrator ────────────────────────────────────────────────────────────
-def run_all(*, apply_install: bool = False) -> Dict[str, Any]:
+def run_all(*, apply_install: bool = False, confirmation_token: Optional[str] = None) -> Dict[str, Any]:
     p = probe()
     r = recommend(p)
     pl = plan(p, r)
     install_results = None
     if apply_install:
-        install_results = apply_plan(pl, confirm=True)
+        install_results = apply_plan(pl, confirm=True, confirmation_token=confirmation_token)
     v = verify(p, r)
     ps = preset(p, r)
     return {
@@ -809,6 +872,8 @@ def _main() -> int:
     sp_plan = sub.add_parser("plan")
     sp_plan.add_argument("--apply", action="store_true",
                          help="actually run the install commands (DANGER)")
+    sp_plan.add_argument("--confirm-token", default=None,
+                         help="confirmation token from the dry-run plan output")
     sub.add_parser("verify")
     sub.add_parser("preset")
     sub.add_parser("all")
@@ -825,7 +890,7 @@ def _main() -> int:
         p = probe(); r = recommend(p); pl = plan(p, r)
         out: Dict[str, Any] = {"plan": pl.to_json()}
         if args.apply:
-            out["install"] = apply_plan(pl, confirm=True)
+            out["install"] = apply_plan(pl, confirm=True, confirmation_token=args.confirm_token)
         print(json.dumps(out, indent=2, ensure_ascii=False)); return 0
     if args.cmd == "verify":
         p = probe(); r = recommend(p)

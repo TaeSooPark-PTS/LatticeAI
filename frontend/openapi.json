@@ -1245,6 +1245,17 @@
       },
       "InstallEngineRequest": {
         "properties": {
+          "confirmation_token": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Confirmation Token"
+          },
           "engine": {
             "title": "Engine",
             "type": "string"
@@ -2287,6 +2298,17 @@
       },
       "SetupInstallRequest": {
         "properties": {
+          "confirmation_token": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Confirmation Token"
+          },
           "items": {
             "items": {
               "additionalProperties": true,
@@ -3803,7 +3825,7 @@
   },
   "info": {
     "title": "Lattice AI Server (local)",
-    "version": "8.2.0"
+    "version": "8.9.0"
   },
   "openapi": "3.1.0",
   "paths": {

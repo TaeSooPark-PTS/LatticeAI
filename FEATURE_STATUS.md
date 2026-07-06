@@ -26,6 +26,7 @@ reads/deletes, Tool API execution gates, and local approval safety.
 | Knowledge Graph | Current | Memory graph exploration, graph read compatibility, provenance-aware retrieval, workspace-scoped reads/traversal, workspace-safe duplicate content, and KG v2 equivalence gates remain active. |
 | Source Capture | Current | Files, folders, notes, and web/source capture paths feed Brain memory and graph context through explicit user actions and the unified ingestion pipeline when available. |
 | Local Models | Current | Setup and model recommendation flow remains explicit; model downloads and runtime installs require user action. |
+| Installer Audit | Current | Setup Wizard, auto setup, and engine installers expose redacted command plans, require confirmation tokens, and write local process audit events. |
 | Cloud Models | Opt-in | Cloud prompts are sent only after keys are configured and the user selects a cloud model path. |
 | Agent Runtime | Current | AgentRuntime preview/readiness contracts avoid tool execution during preview, reject unknown roles, require explicit human approval for non-auto-approved plans, tolerate legacy run events with contract envelopes, and expose orchestration boundaries. |
 | Tool Registry / MCP | Current | ToolRegistry diagnostics, direct HTTP/MCP policy gates, and MCP install state are separated from app-factory helpers and covered by focused tests. |
