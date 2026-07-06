@@ -1,0 +1,106 @@
+:root {
+  color-scheme: dark;
+  /* ── 먹빛 밤 (ink night) ──────────────────────────────────────────────
+   * 인터페이스는 차분한 먹(잉크 네이비)과 옥빛(jade), 브레인만 따뜻한
+   * 금빛으로 살아 있다. 라이트 테마와 같은 악센트 DNA를 공유한다.
+   * 토큰은 항상 hsl(var(--token)) 로 소비한다 — 값은 H S% L% 트리플. */
+
+  /* surfaces */
+  --bg: 226 24% 8%;
+  --bg-elevated: 226 20% 11%;
+  --background: 226 24% 8%;
+  --surface: 226 17% 13%;
+  --surface-glass: 226 18% 12% / 0.84;
+  --card: 226 18% 12%;
+  --card-foreground: 42 30% 93%;
+  --muted: 226 14% 18%;
+  --input: 226 14% 28%; /* input border tone (shadcn convention) */
+
+  /* text — 따뜻한 종이색 텍스트가 두 테마를 잇는다 */
+  --fg: 42 30% 93%;
+  --fg-muted: 227 12% 72%;
+  --foreground: 42 30% 93%;
+  --muted-foreground: 227 12% 72%;
+
+  /* interactive — 옥빛(jade) */
+  --primary: 168 48% 58%;
+  --primary-foreground: 228 24% 10%;
+  --secondary: 226 14% 20%;
+  --secondary-foreground: 42 30% 93%;
+  --accent: 168 48% 58%;
+  --ring: 168 48% 58%;
+  --border: 226 14% 24%;
+
+  /* the living Brain — 금빛 시그니처 */
+  --brain-core: 38 74% 66%;
+  --brain-halo: 40 68% 76%;
+
+  /* knowledge domains */
+  --memory: 168 48% 58%;
+  --knowledge: 205 55% 66%;
+  --connection: 278 44% 72%;
+  --map: 34 42% 70%;
+  --ask: 205 55% 66%;
+  --act: 30 66% 62%;
+  --library: 195 45% 62%;
+
+  /* status */
+  --success: 158 48% 54%;
+  --warning: 38 76% 60%;
+  --danger: 8 70% 64%;
+  --destructive: 8 70% 64%;
+  --destructive-foreground: 30 40% 97%;
+}
+
+:root[data-theme="light"] {
+  color-scheme: light;
+  /* ── 한지 낮 (paper day) ──────────────────────────────────────────────
+   * 따뜻한 종이 바탕 위의 먹 글씨, 짙은 옥빛 악센트. 눈부심 없이
+   * 높은 대비를 유지해 모든 연령대가 읽기 편하다. */
+
+  /* surfaces */
+  --bg: 44 30% 96%;
+  --bg-elevated: 44 34% 98%;
+  --background: 44 30% 96%;
+  --surface: 42 40% 99%;
+  --surface-glass: 44 45% 98.5% / 0.9;
+  --card: 42 40% 99%;
+  --card-foreground: 228 22% 16%;
+  --muted: 43 22% 92%;
+  --input: 40 15% 78%; /* input border tone (shadcn convention) */
+
+  /* text — 먹 */
+  --fg: 228 22% 16%;
+  --fg-muted: 228 10% 40%;
+  --foreground: 228 22% 16%;
+  --muted-foreground: 228 10% 40%;
+
+  /* interactive — 짙은 옥빛 */
+  --primary: 172 58% 26%;
+  --primary-foreground: 40 40% 98%;
+  --secondary: 43 22% 91%;
+  --secondary-foreground: 228 22% 16%;
+  --accent: 172 58% 26%;
+  --ring: 172 52% 34%;
+  --border: 40 16% 84%;
+
+  /* the living Brain — 금빛 시그니처 */
+  --brain-core: 36 78% 54%;
+  --brain-halo: 38 72% 68%;
+
+  /* knowledge domains */
+  --memory: 172 48% 32%;
+  --knowledge: 210 56% 40%;
+  --connection: 276 40% 48%;
+  --map: 32 48% 42%;
+  --ask: 210 56% 40%;
+  --act: 28 72% 40%;
+  --library: 198 48% 36%;
+
+  /* status */
+  --success: 158 54% 28%;
+  --warning: 34 82% 32%;
+  --danger: 8 64% 42%;
+  --destructive: 8 64% 42%;
+  --destructive-foreground: 40 40% 98%;
+}

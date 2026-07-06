@@ -1,0 +1,34 @@
+{
+  "frontend/src/App.tsx": {
+    "maxFindings": 1,
+    "reason": "legacy shell aria label pending translation-key migration"
+  },
+  "frontend/src/components/LivingBrain.tsx": {
+    "maxFindings": 1,
+    "reason": "legacy visual component aria label pending translation-key migration"
+  },
+  "frontend/src/components/primitives.tsx": {
+    "maxFindings": 1,
+    "reason": "shared empty-state fallback pending translation-key migration"
+  },
+  "frontend/src/pages/Act.tsx": {
+    "maxFindings": 41,
+    "reason": "large legacy automation page pending incremental copy migration"
+  },
+  "frontend/src/pages/Brain.tsx": {
+    "maxFindings": 25,
+    "reason": "large legacy memory page pending incremental copy migration"
+  },
+  "frontend/src/pages/Capture.tsx": {
+    "maxFindings": 2,
+    "reason": "technical type-name literals are intentionally preserved for now"
+  },
+  "frontend/src/pages/Library.tsx": {
+    "maxFindings": 21,
+    "reason": "large legacy model/plugin page pending incremental copy migration"
+  },
+  "frontend/src/pages/System.tsx": {
+    "maxFindings": 118,
+    "reason": "large legacy system/admin page pending incremental copy migration"
+  }
+}

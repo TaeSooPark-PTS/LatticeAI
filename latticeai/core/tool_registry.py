@@ -109,6 +109,13 @@ def _w(sandbox: str = "workspace", rollback: str = "none") -> ToolPolicy:
     )
 
 
+def _wa(sandbox: str = "workspace", rollback: str = "none") -> ToolPolicy:
+    return ToolPolicy(
+        risk="write", destructive=False, shell=False, network=False,
+        auto_approve=True, sandbox=sandbox, rollback=rollback,
+    )
+
+
 def _e(sandbox: str = "workspace", rollback: str = "none") -> ToolPolicy:
     return ToolPolicy(
         risk="exec", destructive=False, shell=True, network=False,
@@ -137,6 +144,7 @@ TOOL_GOVERNANCE: Dict[str, ToolPolicy] = {
     "search_files": _r(),
     "grep": _r(),
     "inspect_html": _r(),
+    "preview_url": _r(),
     "todo_read": _r(),
     "local_list": _r(sandbox="home"),
     "local_read": _r(sandbox="home"),
@@ -161,7 +169,6 @@ TOOL_GOVERNANCE: Dict[str, ToolPolicy] = {
     "create_xlsx": _w(),
     "create_pptx": _w(),
     "create_pdf": _w(),
-    "preview_url": _w(),
     "todo_write": _w(),
     "knowledge_save": _w(sandbox="home"),
     "obsidian_save": _w(sandbox="home"),
@@ -325,9 +332,13 @@ class ToolRegistry:
 
     def policy_for(self, action_name: str, args: Optional[dict] = None) -> ToolPolicy:
         policy = self.governance.get(action_name, self.default_policy)
-        if action_name == "local_write":
-            path = str((args or {}).get("path", ""))
-            if any(path.startswith(prefix) for prefix in self.local_write_blocked_prefixes):
+        if action_name in {"local_write", "write_file", "edit_file"}:
+            path = str((args or {}).get("path", "")).replace("\\", "/")
+            for prefix in self.local_write_blocked_prefixes:
+                normalized_prefix = str(prefix).rstrip("/")
+                blocked = path == normalized_prefix or path.startswith(f"{normalized_prefix}/")
+                if not blocked:
+                    continue
                 return ToolPolicy(
                     risk="destructive", destructive=True, shell=False, network=False,
                     auto_approve=False, sandbox="system", rollback="none",

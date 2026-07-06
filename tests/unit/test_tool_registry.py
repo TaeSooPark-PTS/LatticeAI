@@ -77,6 +77,46 @@ def test_tool_dispatch_service_isolates_role_callbacks():
     admin_service.check_role("run_command", "admin@example.com")
 
 
+def test_direct_tool_policy_blocks_unapproved_user_write_but_allows_admin():
+    service = ToolDispatchService(registry=tools.DEFAULT_TOOL_REGISTRY)
+    users = {
+        "user@example.com": {"role": "user"},
+        "admin@example.com": {"role": "admin"},
+    }
+    service.configure(
+        load_users=lambda: users,
+        get_user_role=lambda email, loaded: loaded[email]["role"],
+    )
+
+    with pytest.raises(HTTPException) as exc:
+        service.enforce_policy(
+            "write_file",
+            {"path": "note.md", "content": "x"},
+            current_user="user@example.com",
+            source="http",
+        )
+    assert exc.value.status_code == 403
+    assert "명시 승인" in str(exc.value.detail)
+
+    policy = service.enforce_policy(
+        "write_file",
+        {"path": "note.md", "content": "x"},
+        current_user="admin@example.com",
+        source="http",
+    )
+    assert policy["risk"] == "write"
+
+    with pytest.raises(HTTPException) as destructive:
+        service.enforce_policy(
+            "write_file",
+            {"path": "/etc/passwd", "content": "x"},
+            current_user="admin@example.com",
+            source="http",
+            trusted_admin=True,
+        )
+    assert destructive.value.status_code == 403
+
+
 def test_build_agent_runtime_returns_single_agent_runtime():
     from latticeai.core.agent import SingleAgentRuntime
     from latticeai.services.tool_dispatch import build_agent_runtime

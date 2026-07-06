@@ -12,12 +12,12 @@ chat, run model workflows, and trigger coding actions from the editor.
 
 ## Current Release
 
-**8.8.0 — Brain Core Extraction & Recall Proof Hardening.** The extension follows
+**8.9.0 — Scoped Memory & Tool Policy Hardening.** The extension follows
 the main app positioning: Lattice AI is a local-first Digital Brain, not just a
 model launcher or editor chat panel. It connects editor actions to the same
 durable Brain context, explicit consent gates, replaceable model workflow, and
-separated Admin surface used by the desktop app. The v8.8.0 line aligns the
-extension with Brain Core extraction readiness, stronger recall proof quality,
+separated Admin surface used by the desktop app. The v8.9.0 line aligns the
+extension with scoped memory isolation, direct Tool API policy hardening,
 desktop Capture reliability, ToolRegistry readiness, Config DI improvements,
 exact release artifacts, and machine-checkable product readiness gates while
 preserving the visible VS Code sync status and the 8.0 runtime architecture

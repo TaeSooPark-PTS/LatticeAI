@@ -55,9 +55,18 @@ class KnowledgeGraphRetrievalMixin:
                 extracted = meta.get("extracted") or {}
                 node_id = row["id"]
                 chunk_count = conn.execute(
-                    f"SELECT COUNT(*) AS c FROM {nt} WHERE type='Chunk' AND metadata_json LIKE ?",
-                    (f"%{node_id}%",),
+                    "SELECT COUNT(*) AS c FROM chunks WHERE source_node=?",
+                    (node_id,),
                 ).fetchone()["c"]
+                if not chunk_count:
+                    # Legacy projections represented chunks as graph nodes and
+                    # linked them only through metadata_json. Keep read
+                    # compatibility without making the fragile LIKE path the
+                    # primary query.
+                    chunk_count = conn.execute(
+                        f"SELECT COUNT(*) AS c FROM {nt} WHERE type='Chunk' AND metadata_json LIKE ?",
+                        (f"%{node_id}%",),
+                    ).fetchone()["c"]
                 documents.append(
                     {
                         "id": node_id,
@@ -255,7 +264,7 @@ class KnowledgeGraphRetrievalMixin:
             node.pop("_raw_importance", None)
         return {"nodes": nodes, "edges": edges}
 
-    def search(self, query: str, limit: int = 30) -> Dict[str, Any]:
+    def search(self, query: str, limit: int = 30, *, allowed_workspaces=None) -> Dict[str, Any]:
         query = str(query or "").strip()
         q = f"%{query}%"
         limit = max(1, min(int(limit or 30), 100))
@@ -347,9 +356,7 @@ class KnowledgeGraphRetrievalMixin:
             # the legacy LIKE path regardless of FTS bm25 tie ordering.
             rows = sorted(rows, key=lambda r: r["id"])
             rows = sorted(rows, key=score, reverse=True)[:limit]
-        return {
-            "query": query,
-            "matches": [
+        matches = [
                 {
                     "id": row["id"],
                     "type": row["type"],
@@ -359,15 +366,17 @@ class KnowledgeGraphRetrievalMixin:
                     "updated_at": row["updated_at"],
                 }
                 for row in rows
-            ],
-        }
+            ]
+        if allowed_workspaces is not None:
+            matches = self.filter_scoped_nodes(matches, allowed_workspaces)
+        return {"query": query, "matches": matches}
 
-    def context_for_query(self, query: str, limit: int = 6) -> str:
+    def context_for_query(self, query: str, limit: int = 6, *, allowed_workspaces=None) -> str:
         """Return compact graph-backed RAG context for chat generation."""
         query = str(query or "").strip()
         if not query:
             return ""
-        matches = self.search(query, limit).get("matches", [])
+        matches = self.search(query, limit, allowed_workspaces=allowed_workspaces).get("matches", [])
         if not matches:
             topics = _topic_candidates(query, limit=4)
             if topics:
@@ -404,6 +413,8 @@ class KnowledgeGraphRetrievalMixin:
                     )
                     if len(matches) >= limit:
                         break
+                if allowed_workspaces is not None:
+                    matches = self.filter_scoped_nodes(matches, allowed_workspaces)
         lines = []
         for match in matches[:limit]:
             meta = match.get("metadata") or {}
@@ -420,8 +431,10 @@ class KnowledgeGraphRetrievalMixin:
             )
         return "\n".join(lines)
 
-    def neighbors(self, node_id: str) -> Dict[str, Any]:
+    def neighbors(self, node_id: str, *, allowed_workspaces=None) -> Dict[str, Any]:
         """Return direct neighbors (1-hop) of a node."""
+        if allowed_workspaces is not None and not self.filter_scoped_nodes([{"id": node_id}], allowed_workspaces):
+            raise ValueError(f"graph node not found: {node_id}")
         nt, et = self._read_tables()
         with self._connect() as conn:
             edge_rows = conn.execute(
@@ -458,9 +471,17 @@ class KnowledgeGraphRetrievalMixin:
                         list(neighbor_ids),
                     )
                 ]
+        if allowed_workspaces is not None:
+            nodes = self.filter_scoped_nodes(nodes, allowed_workspaces)
+            kept = {node.get("id") for node in nodes}
+            edges = [
+                edge for edge in edges
+                if (edge.get("from") == node_id or edge.get("from") in kept)
+                and (edge.get("to") == node_id or edge.get("to") in kept)
+            ]
         return {"node_id": node_id, "neighbors": nodes, "edges": edges}
 
-    def get_node(self, node_id: str) -> Dict[str, Any]:
+    def get_node(self, node_id: str, *, allowed_workspaces=None) -> Dict[str, Any]:
         node_id = str(node_id or "").strip()
         if not node_id:
             raise ValueError("node_id required")
@@ -480,7 +501,7 @@ class KnowledgeGraphRetrievalMixin:
                 f"SELECT COUNT(*) AS c FROM {et} WHERE from_node=? OR to_node=?",
                 (node_id, node_id),
             ).fetchone()["c"]
-        return {
+        node = {
             "id": row["id"],
             "type": row["type"],
             "title": row["title"],
@@ -489,6 +510,9 @@ class KnowledgeGraphRetrievalMixin:
             "updated_at": row["updated_at"],
             "degree": degree,
         }
+        if allowed_workspaces is not None and not self.filter_scoped_nodes([node], allowed_workspaces):
+            raise ValueError(f"graph node not found: {node_id}")
+        return node
 
     def relationship_search(
         self,
@@ -497,6 +521,7 @@ class KnowledgeGraphRetrievalMixin:
         node_id: str = "",
         relationship_type: str = "",
         limit: int = 30,
+        allowed_workspaces=None,
     ) -> Dict[str, Any]:
         query = str(query or "").strip()
         node_id = str(node_id or "").strip()
@@ -535,11 +560,7 @@ class KnowledgeGraphRetrievalMixin:
                     """,
                 (*params, limit),
             ).fetchall()
-        return {
-            "query": query,
-            "node_id": node_id,
-            "relationship_type": relationship_type,
-            "relationships": [
+        relationships = [
                 {
                     "id": row["id"],
                     "type": row["type"],
@@ -562,15 +583,32 @@ class KnowledgeGraphRetrievalMixin:
                     },
                 }
                 for row in rows
-            ],
+            ]
+        if allowed_workspaces is not None:
+            kept = []
+            for rel in relationships:
+                endpoints = [
+                    {"id": (rel.get("source") or {}).get("id")},
+                    {"id": (rel.get("target") or {}).get("id")},
+                ]
+                if len(self.filter_scoped_nodes(endpoints, allowed_workspaces)) == 2:
+                    kept.append(rel)
+            relationships = kept
+        return {
+            "query": query,
+            "node_id": node_id,
+            "relationship_type": relationship_type,
+            "relationships": relationships,
         }
 
     def traverse(
-        self, node_id: str, *, depth: int = 1, limit: int = 100
+        self, node_id: str, *, depth: int = 1, limit: int = 100, allowed_workspaces=None
     ) -> Dict[str, Any]:
         node_id = str(node_id or "").strip()
         if not node_id:
             raise ValueError("node_id required")
+        if allowed_workspaces is not None and not self.filter_scoped_nodes([{"id": node_id}], allowed_workspaces):
+            raise ValueError(f"graph node not found: {node_id}")
         depth = max(0, min(int(depth or 1), 4))
         limit = max(1, min(int(limit or 100), 500))
         nt, et = self._read_tables()
@@ -617,10 +655,7 @@ class KnowledgeGraphRetrievalMixin:
                     """,
                 list(visited),
             ).fetchall()
-        return {
-            "root": node_id,
-            "depth": depth,
-            "nodes": [
+        nodes = [
                 {
                     "id": row["id"],
                     "type": row["type"],
@@ -630,9 +665,13 @@ class KnowledgeGraphRetrievalMixin:
                     "updated_at": row["updated_at"],
                 }
                 for row in node_rows
-            ],
-            "edges": list(edges_by_id.values()),
-        }
+            ]
+        edges = list(edges_by_id.values())
+        if allowed_workspaces is not None:
+            nodes = self.filter_scoped_nodes(nodes, allowed_workspaces)
+            kept = {node.get("id") for node in nodes}
+            edges = [edge for edge in edges if edge.get("from") in kept and edge.get("to") in kept]
+        return {"root": node_id, "depth": depth, "nodes": nodes, "edges": edges}
 
     def _iter_vector_source_items(
         self,

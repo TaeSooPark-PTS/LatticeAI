@@ -78,6 +78,8 @@ export const useAppStore = create<AppState>((set) => ({
   setWorkspaceId: (workspaceId) => {
     if (workspaceId) {
       try { localStorage.setItem("lattice.workspace", workspaceId); } catch {}
+    } else {
+      try { localStorage.removeItem("lattice.workspace"); } catch {}
     }
     set({ workspaceId });
   },

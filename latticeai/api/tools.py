@@ -3,11 +3,12 @@
 from __future__ import annotations
 
 import base64
+import inspect
 import io
 import logging
 import shutil
 from pathlib import Path
-from typing import Dict, List, Optional
+from typing import Any, Dict, List, Optional
 
 from fastapi import APIRouter, File, HTTPException, Request, UploadFile
 from fastapi.responses import FileResponse
@@ -24,6 +25,7 @@ from latticeai.services.tool_dispatch import (
     TOOL_GOVERNANCE_DEFAULT as _TOOL_GOVERNANCE_DEFAULT,
     check_tool_role as _check_tool_role,
     get_tool_permission,
+    enforce_tool_policy,
     list_tool_permissions,
     tool_registry_diagnostics,
     tool_registry_manifest,
@@ -253,7 +255,21 @@ def create_tools_router(
 
     # ── Direct Tool API ───────────────────────────────────────────────────────────
     
-    def _tool_response(fn, *args, **kwargs):
+    def _policy_args(fn, *args, **kwargs) -> Dict:
+        try:
+            bound = inspect.signature(fn).bind_partial(*args, **kwargs)
+            return dict(bound.arguments)
+        except Exception:
+            return dict(kwargs)
+
+    def _tool_response(
+        fn,
+        *args,
+        current_user: Optional[str] = None,
+        source: str = "http",
+        trusted_admin: bool = False,
+        **kwargs,
+    ):
         # Shared tool lifecycle (same path as the agent + workflow tool calls):
         # pre_tool (may block) → execute → post_tool. Keyword args are forwarded
         # to the tool and surfaced in the hook payload so read_file / edit_file /
@@ -261,7 +277,16 @@ def create_tools_router(
         # tool instead of bypassing it.
         tool_name = getattr(fn, "__name__", "tool")
         try:
-            result = dispatch_tool(HOOKS, tool_name, dict(kwargs), lambda: fn(*args, **kwargs), source="http")
+            policy_args = _policy_args(fn, *args, **kwargs)
+            if current_user is not None:
+                enforce_tool_policy(
+                    tool_name,
+                    policy_args,
+                    current_user=current_user,
+                    source=source,
+                    trusted_admin=trusted_admin,
+                )
+            result = dispatch_tool(HOOKS, tool_name, dict(kwargs), lambda: fn(*args, **kwargs), source=source)
         except PermissionError as exc:
             raise HTTPException(status_code=403, detail=str(exc))
         except ToolError as exc:
@@ -277,47 +302,58 @@ def create_tools_router(
             raise HTTPException(status_code=403, detail=str(exc))
         except ToolError as exc:
             raise HTTPException(status_code=400, detail=str(exc))
+
+    def _history_scope(user_email: str) -> Dict[str, Any]:
+        require_auth = bool(getattr(CONFIG, "require_auth", False))
+        scope: Dict[str, Any] = {
+            "user_email": user_email if require_auth else None,
+            "allowed_workspaces": None,
+            "include_legacy_global": not require_auth,
+        }
+        if require_auth and user_email and allowed_workspaces_for is not None:
+            scope["allowed_workspaces"] = allowed_workspaces_for(user_email)
+        return scope
     
     
     @api_router.post("/tools/list_dir")
     async def tools_list_dir(req: ToolPathRequest, request: Request):
-        require_user(request)
-        return _tool_response(list_dir, req.path)
+        current_user = require_user(request)
+        return _tool_response(list_dir, req.path, current_user=current_user)
     
     
     @api_router.post("/tools/workspace_tree")
     async def tools_workspace_tree(req: ToolWorkspaceTreeRequest, request: Request):
-        require_user(request)
-        return _tool_response(workspace_tree, req.path, req.max_depth)
+        current_user = require_user(request)
+        return _tool_response(workspace_tree, req.path, req.max_depth, current_user=current_user)
     
     
     @api_router.post("/tools/read_file")
     async def tools_read_file(req: ToolReadFileRequest, request: Request):
-        require_user(request)
-        return _tool_response(read_file, req.path, offset=req.offset, limit=req.limit, line_numbers=req.line_numbers)
+        current_user = require_user(request)
+        return _tool_response(read_file, req.path, offset=req.offset, limit=req.limit, line_numbers=req.line_numbers, current_user=current_user)
     
     
     @api_router.post("/tools/write_file")
     async def tools_write_file(req: ToolWriteFileRequest, request: Request):
-        require_user(request)
-        return _tool_response(write_file, req.path, req.content)
+        current_user = require_user(request)
+        return _tool_response(write_file, req.path, req.content, current_user=current_user)
     
     
     @api_router.post("/tools/edit_file")
     async def tools_edit_file(req: ToolEditFileRequest, request: Request):
-        require_user(request)
-        return _tool_response(edit_file, req.path, req.old_string, req.new_string, replace_all=req.replace_all)
+        current_user = require_user(request)
+        return _tool_response(edit_file, req.path, req.old_string, req.new_string, replace_all=req.replace_all, current_user=current_user)
     
     
     @api_router.post("/tools/search_files")
     async def tools_search_files(req: ToolSearchFilesRequest, request: Request):
-        require_user(request)
-        return _tool_response(search_files, req.query, req.path, req.max_results)
+        current_user = require_user(request)
+        return _tool_response(search_files, req.query, req.path, req.max_results, current_user=current_user)
     
     
     @api_router.post("/tools/grep")
     async def tools_grep(req: ToolGrepRequest, request: Request):
-        require_user(request)
+        current_user = require_user(request)
         return _tool_response(
             grep,
             req.pattern,
@@ -326,25 +362,31 @@ def create_tools_router(
             max_results=req.max_results,
             case_insensitive=req.case_insensitive,
             context_lines=req.context_lines,
+            current_user=current_user,
         )
     
     
     @api_router.post("/tools/todo_read")
     async def tools_todo_read(request: Request):
-        require_user(request)
-        return _tool_response(todo_read)
+        current_user = require_user(request)
+        return _tool_response(todo_read, current_user=current_user)
     
     
     @api_router.post("/tools/todo_write")
     async def tools_todo_write(req: ToolTodoWriteRequest, request: Request):
-        require_user(request)
-        return _tool_response(todo_write, req.todos)
+        current_user = require_user(request)
+        return _tool_response(todo_write, req.todos, current_user=current_user)
     
     
     @api_router.post("/tools/clear_history")
     async def tools_clear_history(req: ToolClearHistoryRequest, request: Request):
         current_user = require_user(request)
-        result = _dispatch("clear_history", {"keep_last": req.keep_last}, lambda: clear_history(req.keep_last))
+        scope = _history_scope(current_user)
+        result = _dispatch(
+            "clear_history",
+            {"keep_last": req.keep_last, **scope},
+            lambda: clear_history(req.keep_last, **scope),
+        )
         append_audit_event(
             "history_delete",
             user_email=current_user,
@@ -358,38 +400,38 @@ def create_tools_router(
     
     @api_router.post("/tools/inspect_html")
     async def tools_inspect_html(req: ToolPathRequest, request: Request):
-        require_user(request)
-        return _tool_response(inspect_html, req.path)
+        current_user = require_user(request)
+        return _tool_response(inspect_html, req.path, current_user=current_user)
     
     
     @api_router.post("/tools/preview_url")
     async def tools_preview_url(req: ToolPathRequest, request: Request):
-        require_user(request)
-        return _tool_response(preview_url, req.path)
+        current_user = require_user(request)
+        return _tool_response(preview_url, req.path, current_user=current_user)
     
     
     @api_router.post("/tools/create_docx")
     async def tools_create_docx(req: ToolDocxRequest, request: Request):
-        require_user(request)
-        return _tool_response(create_docx, req.title, req.body, req.filename)
+        current_user = require_user(request)
+        return _tool_response(create_docx, req.title, req.body, req.filename, current_user=current_user)
     
     
     @api_router.post("/tools/create_xlsx")
     async def tools_create_xlsx(req: ToolXlsxRequest, request: Request):
-        require_user(request)
-        return _tool_response(create_xlsx, req.rows, req.filename, req.sheet_name)
+        current_user = require_user(request)
+        return _tool_response(create_xlsx, req.rows, req.filename, req.sheet_name, current_user=current_user)
     
     
     @api_router.post("/tools/create_pptx")
     async def tools_create_pptx(req: ToolPptxRequest, request: Request):
-        require_user(request)
-        return _tool_response(create_pptx, req.title, req.slides, req.filename)
+        current_user = require_user(request)
+        return _tool_response(create_pptx, req.title, req.slides, req.filename, current_user=current_user)
     
     
     @api_router.post("/tools/create_pdf")
     async def tools_create_pdf(req: ToolPdfRequest, request: Request):
-        require_user(request)
-        return _tool_response(create_pdf, req.title, req.body, req.filename)
+        current_user = require_user(request)
+        return _tool_response(create_pdf, req.title, req.body, req.filename, current_user=current_user)
     
     
     @api_router.post("/tools/read_document")
@@ -402,7 +444,7 @@ def create_tools_router(
                 action="read",
                 user_email=current_user,
             )
-        return _tool_response(read_document, req.path)
+        return _tool_response(read_document, req.path, current_user=current_user)
     
     
     @api_router.get("/tools/pdf_pages")
@@ -503,38 +545,38 @@ def create_tools_router(
 
     @api_router.post("/tools/knowledge_save")
     async def tools_knowledge_save(req: ToolKnowledgeSaveRequest, request: Request):
-        require_user(request)
-        return _tool_response(knowledge_save, req.content, req.folder, req.title)
+        current_user = require_user(request)
+        return _tool_response(knowledge_save, req.content, req.folder, req.title, current_user=current_user)
     
     
     @api_router.post("/tools/knowledge_search")
     async def tools_knowledge_search(req: ToolKnowledgeSearchRequest, request: Request):
-        require_user(request)
-        return _tool_response(knowledge_search, req.query, req.max_results)
+        current_user = require_user(request)
+        return _tool_response(knowledge_search, req.query, req.max_results, current_user=current_user)
     
     
     @api_router.get("/tools/knowledge_tree")
     async def tools_knowledge_tree(request: Request):
-        require_user(request)
-        return _tool_response(knowledge_tree)
+        current_user = require_user(request)
+        return _tool_response(knowledge_tree, current_user=current_user)
     
     
     @api_router.post("/tools/obsidian_save")
     async def tools_obsidian_save(req: ToolKnowledgeSaveRequest, request: Request):
-        require_user(request)
-        return _tool_response(obsidian_save, req.content, req.folder, req.title)
+        current_user = require_user(request)
+        return _tool_response(obsidian_save, req.content, req.folder, req.title, current_user=current_user)
     
     
     @api_router.post("/tools/obsidian_search")
     async def tools_obsidian_search(req: ToolKnowledgeSearchRequest, request: Request):
-        require_user(request)
-        return _tool_response(obsidian_search, req.query, req.max_results)
+        current_user = require_user(request)
+        return _tool_response(obsidian_search, req.query, req.max_results, current_user=current_user)
     
     
     @api_router.get("/tools/obsidian_tree")
     async def tools_obsidian_tree(request: Request):
-        require_user(request)
-        return _tool_response(obsidian_tree)
+        current_user = require_user(request)
+        return _tool_response(obsidian_tree, current_user=current_user)
     
     
     @api_router.get("/obsidian/status")
@@ -550,50 +592,50 @@ def create_tools_router(
     
     @api_router.get("/tools/git_status")
     async def tools_git_status(request: Request):
-        require_user(request)
-        return _tool_response(git_status)
+        current_user = require_user(request)
+        return _tool_response(git_status, current_user=current_user)
     
     
     @api_router.post("/tools/git_diff")
     async def tools_git_diff(req: ToolGitDiffRequest, request: Request):
-        require_user(request)
-        return _tool_response(git_diff, req.path, req.cwd)
+        current_user = require_user(request)
+        return _tool_response(git_diff, req.path, req.cwd, current_user=current_user)
     
     
     @api_router.post("/tools/git_log")
     async def tools_git_log(req: ToolGitLogRequest, request: Request):
-        require_user(request)
-        return _tool_response(git_log, req.max_count, req.cwd)
+        current_user = require_user(request)
+        return _tool_response(git_log, req.max_count, req.cwd, current_user=current_user)
     
     
     @api_router.post("/tools/git_show")
     async def tools_git_show(req: ToolGitShowRequest, request: Request):
-        require_user(request)
-        return _tool_response(git_show, req.revision, req.cwd)
+        current_user = require_user(request)
+        return _tool_response(git_show, req.revision, req.cwd, current_user=current_user)
     
     
     @api_router.post("/tools/run_command")
     async def tools_run_command(req: ToolRunCommandRequest, request: Request):
-        require_admin(request)
-        return _tool_response(run_command, req.command, req.cwd)
+        current_user, _users = require_admin(request)
+        return _tool_response(run_command, req.command, req.cwd, current_user=current_user, trusted_admin=True)
     
     
     @api_router.get("/tools/network_status")
     async def tools_network_status(request: Request):
-        require_user(request)
-        return _tool_response(network_status)
+        current_user = require_user(request)
+        return _tool_response(network_status, current_user=current_user)
     
     
     @api_router.post("/tools/build_project")
     async def tools_build_project(req: ToolScriptRequest, request: Request):
-        require_admin(request)
-        return _tool_response(build_project, req.cwd, req.script)
+        current_user, _users = require_admin(request)
+        return _tool_response(build_project, req.cwd, req.script, current_user=current_user, trusted_admin=True)
     
     
     @api_router.post("/tools/deploy_project")
     async def tools_deploy_project(req: ToolScriptRequest, request: Request):
-        require_admin(request)
-        return _tool_response(deploy_project, req.cwd, req.script)
+        current_user, _users = require_admin(request)
+        return _tool_response(deploy_project, req.cwd, req.script, current_user=current_user, trusted_admin=True)
     
     
     @api_router.get("/tools/permissions")

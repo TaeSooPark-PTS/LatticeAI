@@ -11,6 +11,7 @@ import json
 from fastapi import FastAPI, Request
 from fastapi.testclient import TestClient
 
+import latticeai.core.sessions as sessions_mod
 from latticeai.api.auth import create_auth_router
 from latticeai.core.sessions import SessionStore, _hash_token
 
@@ -35,6 +36,19 @@ def test_legacy_plaintext_sessions_migrate_and_survive(tmp_path):
     assert store.get_email(legacy_token) == "a@b.c", "pre-v4 sessions must survive the upgrade"
     raw = (tmp_path / "sessions.json").read_text()
     assert legacy_token not in raw, "migration must strip the plaintext token from disk"
+
+
+def test_session_store_uses_injected_ttl(tmp_path, monkeypatch):
+    store = SessionStore(tmp_path, ttl_seconds=10, refresh_threshold_seconds=999)
+    base = 1_000_000.0
+    monkeypatch.setattr(sessions_mod.time, "time", lambda: base)
+    token = store.create("ttl@b.c")
+
+    monkeypatch.setattr(sessions_mod.time, "time", lambda: base + 9)
+    assert store.get_email(token) == "ttl@b.c"
+
+    monkeypatch.setattr(sessions_mod.time, "time", lambda: base + 11)
+    assert store.get_email(token) is None
 
 
 # ── password policy ────────────────────────────────────────────────────────

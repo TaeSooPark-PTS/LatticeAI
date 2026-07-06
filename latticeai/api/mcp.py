@@ -30,6 +30,7 @@ from latticeai.core.mcp_registry import (
     SKILLS_DIR,
 )
 from latticeai.core.tool_registry import MCP_TOOL_DESCRIPTIONS
+from latticeai.services.tool_dispatch import enforce_tool_policy
 from tools import AGENT_ROOT, execute_tool
 
 
@@ -392,7 +393,7 @@ def create_mcp_router(
                     args.get("limit", 6),
                 )
             }
-        _check_tool_role(req.action, current_user)
-        return _tool_response(execute_tool, req.action, req.args or {})
+        enforce_tool_policy(req.action, req.args or {}, current_user=current_user, source="mcp")
+        return _tool_response(execute_tool, req.action, req.args or {}, source="mcp")
 
     return router

@@ -1,15 +1,16 @@
 # Security Policy
 
-Current release: **8.8.0 — Brain Core Extraction & Recall Proof Hardening**.
+Current release: **8.9.0 — Scoped Memory & Tool Policy Hardening**.
 
 ## Supported Versions
 
-The public Git tree keeps release history from 7.0.0 through 8.8.0. Security
+The public Git tree keeps release history from 7.0.0 through 8.9.0. Security
 support follows that same product era.
 
 | Version | Support |
 | --- | --- |
-| 8.8.x (latest) | Supported |
+| 8.9.x (latest) | Supported |
+| 8.8.x | Supported |
 | 8.7.x | Supported |
 | 8.6.x | Supported |
 | 8.5.x | Supported |
@@ -46,7 +47,7 @@ The expected first response target is 48 hours.
 
 ## Security Model
 
-Lattice AI v8.8.0 is a local-first Digital Brain. It keeps user knowledge,
+Lattice AI v8.9.0 is a local-first Digital Brain. It keeps user knowledge,
 conversation context, Knowledge Graph data, and archives local by default while
 making external paths explicit.
 
@@ -59,7 +60,7 @@ making external paths explicit.
 | CORS | Localhost only | Network CORS requires explicit opt-in |
 | Session TTL | 24 hours sliding | Inactive sessions expire |
 | API key storage | OS keyring where available | No intentional plaintext secret storage |
-| Brain storage | SQLite | PostgreSQL is optional scale mode |
+| Brain storage | SQLite | PostgreSQL is optional scale/migration tooling |
 | Docker Postgres setup | Disabled | Requires explicit consent |
 | Production CSP | Strict local app policy | External script/frame/object blocked by default |
 | Chat auto file read | Disabled | Arbitrary path reads require explicit approval |
@@ -81,8 +82,10 @@ making external paths explicit.
 
 ### Agent And Tool Safety
 
-- AgentRuntime preview/readiness does not execute tools.
-- ToolRegistry owns dispatch, permissions, diagnostics, and MCP install state.
+- AgentRuntime preview/readiness does not execute tools and non-auto-approved
+  plans require explicit human approval.
+- ToolRegistry owns dispatch, permissions, diagnostics, direct HTTP/MCP policy
+  gates, and MCP install state.
 - Command/file tools enforce sandbox and uniqueness checks where applicable.
 - Secret-like values are centrally redacted before logs, audit payloads,
   security exports, frontend previews, and hook packets.

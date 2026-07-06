@@ -18,7 +18,7 @@ from typing import Any, Dict, List
 
 from latticeai.services.architecture_readiness import architecture_readiness
 
-PRODUCT_VERSION_TARGET = "8.8.0"
+PRODUCT_VERSION_TARGET = "8.9.0"
 
 
 @dataclass(frozen=True)
@@ -76,10 +76,10 @@ PRODUCT_GATES: List[ProductGate] = [
         evidence=[
             "package.json::release:artifacts",
             "package.json::release:validate",
-            "README.md::dist/ltcai-8.8.0-py3-none-any.whl",
-            "README.md::dist/ltcai-8.8.0.tar.gz",
-            "README.md::dist/ltcai-8.8.0.vsix",
-            "README.md::ltcai-8.8.0.tgz",
+            "README.md::dist/ltcai-8.9.0-py3-none-any.whl",
+            "README.md::dist/ltcai-8.9.0.tar.gz",
+            "README.md::dist/ltcai-8.9.0.vsix",
+            "README.md::ltcai-8.9.0.tgz",
             "scripts/validate_release_artifacts.py",
             "scripts/release_smoke.py",
             "Dockerfile",
@@ -95,12 +95,12 @@ PRODUCT_GATES: List[ProductGate] = [
         title="Release story is documented and honest",
         evidence=[
             "README.md",
-            "README.md::The current release is **8.8.0",
-            "SECURITY.md::8.8.x (latest)",
-            "vscode-extension/README.md::**8.8.0",
-            "docs/CHANGELOG.md::## [8.8.0]",
+            "README.md::The current release is **8.9.0",
+            "SECURITY.md::8.9.x (latest)",
+            "vscode-extension/README.md::**8.9.0",
+            "docs/CHANGELOG.md::## [8.9.0]",
             "FEATURE_STATUS.md",
-            "RELEASE_NOTES_v8.8.0.md",
+            "RELEASE_NOTES_v8.9.0.md",
             "latticeai/core/agent.py::SingleAgentRuntime",
             "latticeai/core/agent.py::AgentRuntime = SingleAgentRuntime",
             "lattice_brain/runtime/contracts.py::runtime-boundary/v1",
@@ -115,7 +115,7 @@ PRODUCT_GATES: List[ProductGate] = [
         id="ecosystem-path",
         title="Community and plugin growth path is explicit",
         evidence=[
-            "docs/COMMUNITY_AND_PLUGINS.md::8.8.0",
+            "docs/COMMUNITY_AND_PLUGINS.md::8.9.0",
             "docs/PLUGIN_SDK.md",
             "plugins/README.md",
             "plugins/hello-world/plugin.json",

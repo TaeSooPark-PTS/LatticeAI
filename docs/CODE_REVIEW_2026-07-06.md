@@ -1,5 +1,24 @@
 # Lattice AI 전체 코드 리뷰 (2026-07-06)
 
+## 8.9.0 반영 상태
+
+이 리뷰에서 제안한 개선안은 8.9.0에서 가능한 범위까지 코드, 테스트,
+문서, 릴리스 메타데이터에 반영했다. 단, 사용자가 명시적으로 제외한
+Computer Use 직접 API 위험 항목(`/cu/*` policy/capability 적용)은 이번
+릴리스 범위에서 제외했다.
+
+8.9.0에서 완료한 주요 항목:
+
+- `/history*`와 `/tools/clear_history`에 사용자/워크스페이스 스코프를 적용했다.
+- Knowledge Graph 검색, 노드 조회, 관계 조회, traversal, chat context에 workspace scope를 적용했다.
+- HTTP/MCP 직접 Tool API가 ToolRegistry 정책을 통과하도록 게이트를 추가했다.
+- `SessionStore` TTL/refresh 값을 런타임에서 주입받도록 수정했다.
+- AgentRuntime approval/rollback 의미를 실제 동작과 맞추고 회귀 테스트를 추가했다.
+- local permission approval token을 hash-at-rest로 바꾸고 blocked prefix를 최종 강제했다.
+- 모델 다운로드 허용값을 env 직접 조회가 아니라 runtime config 상태로 주입했다.
+- AppRuntime legacy namespace adapter, KG JSON/runtime 분리, API client/CSS/i18n 검사 분리를 적용했다.
+- README/RELEASE/docs/CHANGELOG/FEATURE_STATUS/SECURITY/VS Code 문서를 8.9.0으로 최신화했다.
+
 ## 1. 검토 개요
 
 이 문서는 Lattice AI 저장소 전체를 대상으로 한 코드 리뷰 결과다. 검토 기준은 다음과 같다.
@@ -602,7 +621,7 @@ setWorkspaceId: (workspaceId) => {
 
 좋은 점:
 
-- README와 RELEASE는 현재 버전 8.8.0을 중심으로 릴리스 산출물 경로를 꽤 엄격하게 관리한다.
+- README와 RELEASE는 현재 버전 8.9.0을 중심으로 릴리스 산출물 경로를 꽤 엄격하게 관리한다.
 - `ARCHITECTURE.md`는 현재 구조를 설명하는 데 유용하다.
 - AGENTS 문서는 프로젝트의 선호 리팩터링 순서와 릴리스/문서 sync 규칙을 명확히 한다.
 
@@ -683,33 +702,33 @@ setWorkspaceId: (workspaceId) => {
 
 ### 보안 우선
 
-- [ ] `/history*` API 사용자/워크스페이스 스코프 적용
-- [ ] `/tools/*` 직접 API에 Tool Registry gate 적용
-- [ ] `/cu/*` 직접 action에 policy/capability 적용
-- [ ] local file permission gateway에 blocked prefix 최종 강제
-- [ ] approval token hash 저장 및 TTL 적용
+- [x] `/history*` API 사용자/워크스페이스 스코프 적용
+- [x] `/tools/*` 직접 API에 Tool Registry gate 적용
+- [ ] `/cu/*` 직접 action에 policy/capability 적용 — 8.9.0 범위에서 사용자 요청으로 제외
+- [x] local file permission gateway에 blocked prefix 최종 강제
+- [x] approval token hash 저장 및 TTL 적용
 
 ### 안정성 우선
 
-- [ ] `SessionStore` TTL 주입 버그 수정
-- [ ] Agent rollback 판정 로직 수정
-- [ ] tool result schema 표준화
-- [ ] installer/process 실행 audit 강화
+- [x] `SessionStore` TTL 주입 버그 수정
+- [x] Agent rollback 판정 로직 수정
+- [x] tool result schema 표준화 — rollback 경로에서 `success` 없는 dict 결과 허용
+- [ ] installer/process 실행 audit 강화 — 별도 hardening 후속으로 유지
 
 ### 구조 개선
 
-- [ ] `AppRuntime` typed dataclass 도입
-- [ ] `_kg_common.py`를 path policy/json/extraction/runtime으로 분리
-- [ ] `model_runtime` global compatibility layer 축소
-- [ ] `frontend/src/api/client.ts` domain 분리
-- [ ] `frontend/src/styles.css` feature별 분리
-- [ ] `scripts/check_i18n_literals.mjs` 검사 범위 확대
+- [x] `AppRuntime` typed dataclass 도입
+- [x] `_kg_common.py`를 path policy/json/extraction/runtime으로 분리 — 8.9.0에서는 JSON/runtime 1차 분리 완료
+- [x] `model_runtime` global compatibility layer 축소
+- [x] `frontend/src/api/client.ts` domain 분리
+- [x] `frontend/src/styles.css` feature별 분리 — 8.9.0에서는 tokens/base 1차 분리 완료
+- [x] `scripts/check_i18n_literals.mjs` 검사 범위 확대
 
 ### 문서
 
-- [ ] PostgreSQL/pgvector 현재 지원 범위를 README/FEATURE_STATUS에 정확히 반영
-- [ ] `docs/architecture.md`의 v3.6.0 문맥을 historical로 명확히 표시
-- [ ] 기존 `review.md` 상단에 최신 리뷰 링크 추가
+- [x] PostgreSQL/pgvector 현재 지원 범위를 README/FEATURE_STATUS에 정확히 반영
+- [x] `docs/architecture.md`의 v3.6.0 문맥을 historical로 명확히 표시
+- [x] 기존 `review.md` 상단에 최신 리뷰 링크 추가
 
 ## 13. 권장 첫 번째 PR
 
@@ -720,7 +739,7 @@ setWorkspaceId: (workspaceId) => {
 1. History read/delete scoping
 2. `ToolExecutionGateway` 최소 버전 도입
 3. HTTP direct tools gate 적용
-4. Computer Use direct actions gate 적용
+4. Computer Use direct actions gate 적용 — 8.9.0에서는 사용자 요청으로 제외
 5. 테스트 추가
 
 포함하지 않을 것:

@@ -34,6 +34,8 @@ except Exception:  # pragma: no cover - v2 schema is optional at import time
     _exec_script = None  # type: ignore[assignment]
 
 from ..embeddings import LocalEmbeddingModel
+from .json_utils import _json, _safe_loads
+from .runtime import get_llm_router, set_llm_router
 
 # Default read source for the graph queries: v2 reconstruction views.
 # Override with LATTICEAI_KG_READ_V2=0 to fall back to the legacy tables.
@@ -47,14 +49,6 @@ _PROJECTION_VERSION = 4
 _KG_DB_FORMAT_VERSION = 4
 _KG_DB_FORMAT_KEY = "db_format_version"
 _V2_WRITE_MASTER_KEY = "v2_write_mastered_at"
-
-_llm_router_ref = None
-
-
-def set_llm_router(router_instance):
-    global _llm_router_ref
-    _llm_router_ref = router_instance
-
 
 GRAPH_SCHEMA_VERSION = 1
 
@@ -284,24 +278,6 @@ def _recency_score(
     age_days = max(0.0, (now - stamp).total_seconds() / 86400.0)
     decay = math.log(2) / max(0.1, half_life_days)
     return math.exp(-decay * age_days)
-
-
-def _json(data: Optional[Dict[str, Any]]) -> str:
-    return json.dumps(data or {}, ensure_ascii=False, sort_keys=True)
-
-
-def _safe_loads(raw: Optional[str]) -> Dict[str, Any]:
-    """Tolerantly parse a metadata_json column — returns {} on corrupt rows."""
-    if not raw:
-        return {}
-    try:
-        value = json.loads(raw)
-        return value if isinstance(value, dict) else {}
-    except (json.JSONDecodeError, TypeError) as e:
-        logging.warning(
-            "knowledge_graph: corrupt metadata_json (%s) — using empty dict", e
-        )
-        return {}
 
 
 def _slug(text: str, max_len: int = 96) -> str:
@@ -586,9 +562,10 @@ ENABLE_LLM_EXTRACTION = os.getenv("LATTICEAI_LLM_EXTRACTION", "true").lower() in
 
 
 def _llm_extract_concepts(text: str, limit: int = 12) -> Optional[List[str]]:
-    if not ENABLE_LLM_EXTRACTION or not _llm_router_ref:
+    router = get_llm_router()
+    if not ENABLE_LLM_EXTRACTION or not router:
         return None
-    if not _llm_router_ref.current_model_id:
+    if not router.current_model_id:
         return None
     prompt = _LLM_EXTRACT_CONCEPT_PROMPT.format(text=text[:3000], limit=limit)
     try:
@@ -599,12 +576,12 @@ def _llm_extract_concepts(text: str, limit: int = 12) -> Optional[List[str]]:
             with concurrent.futures.ThreadPoolExecutor(max_workers=1) as pool:
                 future = pool.submit(
                     asyncio.run,
-                    _llm_router_ref.generate(prompt, max_tokens=1024, temperature=0.1),
+                    router.generate(prompt, max_tokens=1024, temperature=0.1),
                 )
                 raw = future.result(timeout=30)
         else:
             raw = asyncio.run(
-                _llm_router_ref.generate(prompt, max_tokens=1024, temperature=0.1)
+                router.generate(prompt, max_tokens=1024, temperature=0.1)
             )
         raw = raw.strip()
         if raw.startswith("```"):
@@ -627,9 +604,10 @@ def _llm_extract_concepts(text: str, limit: int = 12) -> Optional[List[str]]:
 def _llm_extract_triples(
     text: str, concepts: List[str], limit: int = 20
 ) -> Optional[List[Dict[str, str]]]:
-    if not ENABLE_LLM_EXTRACTION or not _llm_router_ref:
+    router = get_llm_router()
+    if not ENABLE_LLM_EXTRACTION or not router:
         return None
-    if not _llm_router_ref.current_model_id:
+    if not router.current_model_id:
         return None
     prompt = _LLM_EXTRACT_TRIPLE_PROMPT.format(
         text=text[:3000],
@@ -644,12 +622,12 @@ def _llm_extract_triples(
             with concurrent.futures.ThreadPoolExecutor(max_workers=1) as pool:
                 future = pool.submit(
                     asyncio.run,
-                    _llm_router_ref.generate(prompt, max_tokens=2048, temperature=0.1),
+                    router.generate(prompt, max_tokens=2048, temperature=0.1),
                 )
                 raw = future.result(timeout=30)
         else:
             raw = asyncio.run(
-                _llm_router_ref.generate(prompt, max_tokens=2048, temperature=0.1)
+                router.generate(prompt, max_tokens=2048, temperature=0.1)
             )
         raw = raw.strip()
         if raw.startswith("```"):

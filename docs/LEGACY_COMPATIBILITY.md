@@ -1,6 +1,6 @@
 # Legacy Compatibility Map
 
-Current target: **8.8.0 — Internal shim removal & Brain Core extraction prep**.
+Current target: **8.9.0 — Scoped Memory & Tool Policy Hardening**.
 
 Lattice AI is moving toward a smaller, modular architecture centered on
 `lattice_brain`, `latticeai.services`, `latticeai.api`, and `latticeai.runtime`.

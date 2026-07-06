@@ -107,6 +107,53 @@ class ToolDispatchService:
                 detail=f"'{tool_name}' 툴은 관리자 전용입니다.",
             )
 
+    def user_role(self, current_user: str) -> str:
+        users = self.load_users()
+        try:
+            return str(self.get_user_role(current_user, users) or "user")
+        except Exception:
+            return "user"
+
+    def enforce_policy(
+        self,
+        tool_name: str,
+        args: Optional[dict],
+        *,
+        current_user: str,
+        source: str,
+        require_auto_approval: bool = True,
+        trusted_admin: bool = False,
+    ) -> ToolPolicy:
+        """Authorize a tool call before any hook or handler can execute.
+
+        This is the shared policy gate for direct HTTP/MCP/tool surfaces. Agent
+        runtime uses the same policy data and blocks non-auto-approved steps in
+        its state machine so Computer Use direct endpoints can remain unchanged
+        when explicitly excluded from a hardening pass.
+        """
+        policy = self.policy_for(tool_name, args or {})
+        if not trusted_admin:
+            self.check_role(tool_name, current_user)
+        if policy["destructive"] or policy["risk"] == "destructive":
+            raise HTTPException(
+                status_code=403,
+                detail=f"'{tool_name}' 툴은 파괴적 작업으로 차단되었습니다.",
+            )
+        if (
+            require_auto_approval
+            and not trusted_admin
+            and not policy["auto_approve"]
+            and self.user_role(current_user) != "admin"
+        ):
+            raise HTTPException(
+                status_code=403,
+                detail=(
+                    f"'{tool_name}' 툴은 명시 승인이 필요합니다. "
+                    "8.9.0에서는 승인 UI가 없는 직접 실행 경로에서 기본 차단됩니다."
+                ),
+            )
+        return policy
+
     def rollback_file(self, path: str) -> Dict[str, Any]:
         r = subprocess.run(
             ["git", "checkout", "--", path],
@@ -158,6 +205,25 @@ def tool_registry_manifest() -> Dict[str, Any]:
 
 def check_tool_role(tool_name: str, current_user: str) -> None:
     DEFAULT_TOOL_DISPATCH_SERVICE.check_role(tool_name, current_user)
+
+
+def enforce_tool_policy(
+    tool_name: str,
+    args: Optional[dict],
+    *,
+    current_user: str,
+    source: str,
+    require_auto_approval: bool = True,
+    trusted_admin: bool = False,
+) -> ToolPolicy:
+    return DEFAULT_TOOL_DISPATCH_SERVICE.enforce_policy(
+        tool_name,
+        args or {},
+        current_user=current_user,
+        source=source,
+        require_auto_approval=require_auto_approval,
+        trusted_admin=trusted_admin,
+    )
 
 
 def collect_created_files(transcript: list) -> list:

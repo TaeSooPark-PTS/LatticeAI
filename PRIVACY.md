@@ -1,6 +1,6 @@
 # Privacy
 
-Current release: **8.8.0 — Brain Core Extraction & Recall Proof Hardening**.
+Current release: **8.9.0 — Scoped Memory & Tool Policy Hardening**.
 
 Lattice AI is local-first. It does not send your prompts, files, graph, or Brain
 archive to Lattice-owned servers by default. Some user-chosen features can

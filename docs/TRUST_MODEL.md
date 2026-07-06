@@ -1,6 +1,6 @@
 # Lattice AI Trust Model
 
-Current release: **8.8.0 — Brain Core Extraction & Recall Proof Hardening**.
+Current release: **8.9.0 — Scoped Memory & Tool Policy Hardening**.
 
 Lattice AI is local-first, explicit about external communication, and honest
 when a capability is unavailable.
@@ -33,6 +33,10 @@ External communication requires configuration plus a user/admin action:
 - marketplace or remote registry refreshes only when invoked.
 
 Token presence alone must not start external communication.
+
+Authenticated history, Knowledge Graph reads, and Tool API calls must also stay
+inside the caller's user/workspace scope. Direct HTTP/MCP tool routes run
+ToolRegistry policy before hooks or handlers execute.
 
 ## Consent And Honesty Gates
 

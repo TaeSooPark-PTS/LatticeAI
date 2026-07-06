@@ -286,6 +286,7 @@ def create_chat_router(context: AppContext) -> APIRouter:
     group_history_conversations = context.group_history_conversations
     get_conversation_messages = context.get_conversation_messages
     conversation_title = context.conversation_title
+    allowed_workspaces_for = context.allowed_workspaces_for
 
     CONFIG = context.config
     CHAT_SERVICE = context.chat_service
@@ -313,6 +314,18 @@ def create_chat_router(context: AppContext) -> APIRouter:
             on_chat_message(role, text, source)
         except Exception as exc:
             logging.warning("chat message bridge failed: %s", exc)
+
+    def history_scope_for_user(user_email: Optional[str]) -> Dict:
+        require_auth = bool(getattr(CONFIG, "require_auth", False))
+        scoped_user = user_email if require_auth else None
+        allowed = None
+        if require_auth and scoped_user and allowed_workspaces_for is not None:
+            allowed = allowed_workspaces_for(scoped_user)
+        return {
+            "user_email": scoped_user,
+            "allowed_workspaces": allowed,
+            "include_legacy_global": not require_auth,
+        }
 
     def recent_chat_context(
         limit: int = 10,
@@ -449,14 +462,14 @@ def create_chat_router(context: AppContext) -> APIRouter:
                 except Exception as e:
                     logging.warning("knowledge graph clear event ingest failed: %s", e)
             if command == "/clear_all":
-                result = clear_history(0)
+                result = clear_history(0, **history_scope_for_user(effective_email))
                 answer = f"채팅창을 정리했습니다. 화면에서 제거 {result.get('removed', 0)}개. 감사 로그와 지식 그래프/RAG 데이터는 유지됩니다."
             else:
                 if req.conversation_id:
-                    result = clear_conversation(req.conversation_id)
+                    result = clear_conversation(req.conversation_id, **history_scope_for_user(effective_email))
                     answer = f"현재 대화방 채팅창을 정리했습니다. 화면에서 제거 {result.get('removed', 0)}개. 감사 로그와 지식 그래프/RAG 데이터는 유지됩니다."
                 else:
-                    result = clear_history(0)
+                    result = clear_history(0, **history_scope_for_user(effective_email))
                     answer = f"채팅창을 정리했습니다. 화면에서 제거 {result.get('removed', 0)}개. 감사 로그와 지식 그래프/RAG 데이터는 유지됩니다."
             append_audit_event(
                 "clear_command",
@@ -791,20 +804,20 @@ def create_chat_router(context: AppContext) -> APIRouter:
     @api_router.get("/history")
     async def fetch_history(request: Request):
         """웹 화면에서 이전 대화를 불러올 수 있도록 히스토리를 반환합니다."""
-        require_user(request)
-        return get_history()
+        current_user = require_user(request)
+        return get_history(**history_scope_for_user(current_user))
 
     @api_router.get("/history/conversations")
     async def fetch_history_conversations(request: Request):
         """저장된 히스토리를 대화 단위로 묶어 반환합니다."""
-        require_user(request)
-        return group_history_conversations()
+        current_user = require_user(request)
+        return group_history_conversations(get_history(**history_scope_for_user(current_user)))
 
     @api_router.get("/history/conversations/{conversation_id:path}")
     async def fetch_history_conversation(conversation_id: str, request: Request):
         """선택한 대화의 메시지를 반환합니다."""
-        require_user(request)
-        messages = get_conversation_messages(conversation_id)
+        current_user = require_user(request)
+        messages = get_conversation_messages(conversation_id, **history_scope_for_user(current_user))
         if not messages:
             raise HTTPException(status_code=404, detail="대화를 찾을 수 없습니다.")
         return {"id": conversation_id, "messages": messages}
@@ -814,7 +827,11 @@ def create_chat_router(context: AppContext) -> APIRouter:
     async def delete_history_conversation(conversation_id: str, request: Request):
         """선택한 대화방의 메시지만 삭제합니다."""
         email = require_user(request)
-        result = clear_conversation(conversation_id, request.query_params.get("started_at"))
+        result = clear_conversation(
+            conversation_id,
+            request.query_params.get("started_at"),
+            **history_scope_for_user(email),
+        )
         append_audit_event(
             "conversation_delete",
             user_email=email,
@@ -829,7 +846,7 @@ def create_chat_router(context: AppContext) -> APIRouter:
     @api_router.delete("/history")
     async def delete_history(request: Request, keep_last: int = 0):
         email = require_user(request)
-        result = clear_history(keep_last)
+        result = clear_history(keep_last, **history_scope_for_user(email))
         append_audit_event(
             "history_delete",
             user_email=email,
@@ -842,11 +859,11 @@ def create_chat_router(context: AppContext) -> APIRouter:
     @api_router.get("/history/search")
     async def search_history(q: str, request: Request):
         """키워드로 채팅 히스토리를 검색합니다."""
-        require_user(request)
+        current_user = require_user(request)
         if not q or not q.strip():
             return {"results": [], "query": q}
         q_lower = q.strip().lower()
-        history = get_history()
+        history = get_history(**history_scope_for_user(current_user))
         matches = [item for item in history if q_lower in (item.get("content") or "").lower()]
         grouped: Dict[str, Dict] = {}
         for item in matches:
@@ -991,7 +1008,7 @@ def create_chat_router(context: AppContext) -> APIRouter:
             }
 
         # Auto-approve and run to completion (default behaviour)
-        _AGENT_RUNTIME.approve(ctx, current_user)
+        _AGENT_RUNTIME.approve(ctx, current_user, approved_by_human=True)
         return await _agent_finish(ctx, req, lang_hint, current_user, max_steps, max_retry)
 
     

@@ -1,5 +1,9 @@
 # Lattice AI Architecture
 
+> Historical subsystem note. The canonical current architecture document is
+> [`ARCHITECTURE.md`](../ARCHITECTURE.md). This file preserves the v3.6.0
+> Knowledge Graph First architecture detail for background.
+
 > v3.6.0 — **Knowledge Graph First.** Every data source converges into the graph
 > through one unified ingestion pipeline (`latticeai/services/ingestion.py`), with
 > formalized entities/relationships (`docs/kg-schema.md`), browser/web inputs,

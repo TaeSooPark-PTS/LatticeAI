@@ -52,8 +52,12 @@ for (const file of files) {
 console.log(`privacy: ${scanned} frontend/static files scanned`);
 
 const client = readFileSync(join(frontend, "src", "api", "client.ts"), "utf8");
-if (!client.includes("openapi-fetch") || !client.includes("./openapi")) {
-  fail("frontend/src/api/client.ts must use the generated OpenAPI client");
+const apiBase = readFileSync(join(frontend, "src", "api", "base.ts"), "utf8");
+if (
+  !(client.includes("openapi-fetch") || apiBase.includes("openapi-fetch")) ||
+  !(client.includes("./openapi") || apiBase.includes("./openapi"))
+) {
+  fail("frontend/src/api/client.ts or base.ts must use the generated OpenAPI client");
 }
 if (!existsSync(join(frontend, "src", "api", "openapi.ts"))) {
   fail("generated OpenAPI types missing");

@@ -6,6 +6,41 @@ existed at that release.
 
 ## [Unreleased]
 
+## [8.9.0] - 2026-07-06
+
+### Added
+- Added authenticated user/workspace scoping to durable conversation history
+  reads and deletes.
+- Added workspace-aware Knowledge Graph search, traversal, relationship, node,
+  and chat-context reads.
+- Added direct HTTP/MCP Tool API policy enforcement for registry-governed tools.
+- Added permission approval queue hashing and atomic writes so raw tokens are
+  not persisted at rest.
+- Added regression coverage for scoped history, graph scoping, tool policy
+  gates, AgentRuntime approval semantics, permission tokens, session TTL
+  injection, and model-download runtime config.
+
+### Changed
+- AgentRuntime now requires explicit human approval for non-auto-approved plans
+  and rolls back git-governed tool results even when `success` is omitted.
+- Model download consent now uses configured runtime state instead of direct
+  environment-variable reads.
+- Frontend API base logic, CSS token/base rules, and i18n literal checks were
+  split into smaller maintainability seams.
+- Version bumped to 8.9.0 across Python, npm, VS Code extension, Tauri, static
+  metadata, readiness gates, release notes, and current-release documentation.
+- Documentation now states that SQLite is the live local Brain store; Postgres
+  remains optional scale/migration tooling.
+
+### Fixed
+- Conversation store migration now creates the workspace index only after the
+  scope columns exist.
+- Direct `write_file`/`edit_file` policy lookup now blocks system write
+  prefixes consistently with local-file approvals.
+- Workspace selection clearing now removes the persisted workspace id.
+- Tauri/local API fetches now include credentials for localhost backend
+  sessions.
+
 ## [8.8.0] - 2026-07-06
 
 ### Added

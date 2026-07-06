@@ -136,6 +136,51 @@ def test_destructive_tool_is_blocked_not_executed():
     assert any("BLOCKED" in (s.get("error") or "") for s in ctx.transcript)
 
 
+def test_non_auto_plan_requires_explicit_human_approval():
+    tool_calls = []
+    scripted = [
+        '{"action":"plan","goal":"edit a file","steps":[{"action":"edit_file"}],"requires_approval":true}',
+    ]
+    deps = _deps(scripted, tool_calls)
+    deps.tool_governance = {"edit_file": {"auto_approve": False}}
+    rt = SingleAgentRuntime(deps)
+    ctx = AgentRunContext()
+
+    async def run():
+        ctx.state = AgentState.PLANNING
+        await rt.plan(ctx, FakeReq(), "ko", "tester")
+        rt.approve(ctx, "tester")
+
+    asyncio.run(run())
+
+    assert ctx.state == AgentState.FAILED
+    assert tool_calls == []
+    assert "명시 승인" in ctx.final_message
+
+
+def test_human_approval_allows_non_auto_tool_execution():
+    tool_calls = []
+    scripted = [
+        '{"action":"plan","goal":"edit a file","steps":[{"action":"edit_file"}],"requires_approval":true}',
+        '{"action":"edit_file","args":{"path":"a.py","old_string":"x","new_string":"y"}}',
+        '{"action":"final","message":"done"}',
+    ]
+    deps = _deps(scripted, tool_calls)
+    deps.tool_governance = {"edit_file": {"auto_approve": False}}
+    rt = SingleAgentRuntime(deps)
+    ctx = AgentRunContext()
+
+    async def run():
+        ctx.state = AgentState.PLANNING
+        await rt.plan(ctx, FakeReq(), "ko", "tester")
+        rt.approve(ctx, "tester", approved_by_human=True)
+        await rt.execute(ctx, FakeReq(), "ko", "tester", max_steps=5)
+
+    asyncio.run(run())
+
+    assert ("edit_file", {"path": "a.py", "old_string": "x", "new_string": "y"}) in tool_calls
+
+
 def test_critic_retry_then_fail_after_budget():
     scripted = [
         '{"action":"final","message":"x"}',          # exec → verifying
@@ -170,7 +215,7 @@ def test_rollback_uses_injected_port():
         "action": "edit_file",
         "args": {"path": "changed.py"},
         "governance": {"rollback": "git"},
-        "result": {"success": True, "path": "changed.py"},
+        "result": {"path": "changed.py"},
     })
 
     rt.rollback(ctx, "tester")

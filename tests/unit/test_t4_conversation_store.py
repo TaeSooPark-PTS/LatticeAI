@@ -103,6 +103,40 @@ def test_per_conversation_history(tmp_path):
     assert [m["content"] for m in store.history(conversation_id="a")] == ["message 1"]
 
 
+def test_history_and_clear_are_user_workspace_scoped(tmp_path):
+    store = _store(tmp_path)
+    store.append({**_item(1, conv="a", email="alice@example.com"), "workspace_id": "ws-a"})
+    store.append({**_item(2, conv="b", email="alice@example.com"), "workspace_id": "ws-b"})
+    store.append({**_item(3, conv="c", email="bob@example.com"), "workspace_id": "ws-a"})
+    store.append(_item(4, conv="legacy", email="alice@example.com"))
+
+    scoped = store.history(
+        user_email="alice@example.com",
+        allowed_workspaces={"ws-a"},
+        include_legacy_global=False,
+    )
+    assert [item["content"] for item in scoped] == ["message 1"]
+
+    with_legacy = store.history(
+        user_email="alice@example.com",
+        allowed_workspaces={"ws-a"},
+        include_legacy_global=True,
+    )
+    assert [item["content"] for item in with_legacy] == ["message 1", "message 4"]
+
+    result = store.clear_all(
+        user_email="alice@example.com",
+        allowed_workspaces={"ws-a"},
+        include_legacy_global=False,
+    )
+    assert result["removed"] == 1
+    assert [item["content"] for item in store.history()] == [
+        "message 2",
+        "message 3",
+        "message 4",
+    ]
+
+
 def test_backup_restore_round_trip_carries_conversations(tmp_path):
     """Conversations share the KG database file, so the existing
     kg_portability backup/restore covers them — prove it end-to-end."""

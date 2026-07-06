@@ -1,6 +1,6 @@
 """Machine-checkable architecture readiness gates for release work.
 
-8.8.0 keeps the major architecture priorities under an explicit release
+8.9.0 keeps the major architecture priorities under an explicit release
 contract while product maturity work reduces visible beta seams. AgentRuntime, ToolRegistry,
 central Config, decomposed server runtime, and Knowledge Graph stabilization
 must remain discoverable, ordered, and backed by tests before the release can be
@@ -17,7 +17,7 @@ from typing import Any, Dict, List
 from latticeai.core.legacy_compatibility import legacy_shim_report
 
 
-ARCHITECTURE_VERSION_TARGET = "8.8.0"
+ARCHITECTURE_VERSION_TARGET = "8.9.0"
 
 PREFERRED_REFACTORING_ORDER = [
     "agent-runtime",

@@ -42,9 +42,84 @@ class SearchService:
         graph = self._require_graph()
         return graph.filter_scoped_nodes(matches, allowed_workspaces)
 
+    def _graph_search(self, graph, query: str, *, limit: int, allowed_workspaces=None):
+        try:
+            return graph.search(query, limit, allowed_workspaces=allowed_workspaces)
+        except TypeError:
+            payload = graph.search(query, limit)
+            if allowed_workspaces is not None:
+                payload = {
+                    **payload,
+                    "matches": graph.filter_scoped_nodes(
+                        payload.get("matches", []),
+                        allowed_workspaces,
+                    ),
+                }
+            return payload
+
+    def _relationship_search(self, graph, *, allowed_workspaces=None, **kwargs):
+        try:
+            return graph.relationship_search(
+                **kwargs,
+                allowed_workspaces=allowed_workspaces,
+            )
+        except TypeError:
+            payload = graph.relationship_search(**kwargs)
+            if allowed_workspaces is not None:
+                kept = []
+                for rel in payload.get("relationships", []):
+                    endpoints = [
+                        {"id": (rel.get("source") or {}).get("id")},
+                        {"id": (rel.get("target") or {}).get("id")},
+                    ]
+                    if len(graph.filter_scoped_nodes(endpoints, allowed_workspaces)) == 2:
+                        kept.append(rel)
+                payload = {**payload, "relationships": kept}
+            return payload
+
+    def _traverse(self, graph, node_id: str, *, depth: int, limit: int, allowed_workspaces=None):
+        try:
+            return graph.traverse(
+                node_id,
+                depth=depth,
+                limit=limit,
+                allowed_workspaces=allowed_workspaces,
+            )
+        except TypeError:
+            neighborhood = graph.traverse(node_id, depth=depth, limit=limit)
+            if allowed_workspaces is not None:
+                nodes = graph.filter_scoped_nodes(
+                    neighborhood.get("nodes", []),
+                    allowed_workspaces,
+                )
+                kept = {item.get("id") for item in nodes}
+                edges = [
+                    edge for edge in neighborhood.get("edges", [])
+                    if edge.get("from") in kept and edge.get("to") in kept
+                ]
+                neighborhood = {**neighborhood, "nodes": nodes, "edges": edges}
+            return neighborhood
+
+    def _get_node(self, graph, node_id: str, *, allowed_workspaces=None):
+        try:
+            return graph.get_node(node_id, allowed_workspaces=allowed_workspaces)
+        except TypeError:
+            node = graph.get_node(node_id)
+            if allowed_workspaces is not None:
+                visible = graph.filter_scoped_nodes([node], allowed_workspaces)
+                if not visible:
+                    raise ValueError(f"graph node not found: {node_id}")
+                return visible[0]
+            return node
+
     def keyword_search(self, query: str, *, limit: int = 30, allowed_workspaces=None) -> Dict[str, Any]:
         graph = self._require_graph()
-        payload = graph.search(query, limit)
+        payload = self._graph_search(
+            graph,
+            query,
+            limit=limit,
+            allowed_workspaces=allowed_workspaces,
+        )
         matches = []
         for rank, match in enumerate(payload.get("matches", []), start=1):
             matches.append({
@@ -95,8 +170,18 @@ class SearchService:
         graph = self._require_graph()
         limit = max(1, min(int(limit or 30), 100))
         expand_depth = max(0, min(int(expand_depth or 1), 3))
-        direct = graph.search(query, limit=max(limit, 10)).get("matches", [])
-        relationships = graph.relationship_search(query=query, limit=limit).get("relationships", [])
+        direct = self._graph_search(
+            graph,
+            query,
+            limit=max(limit, 10),
+            allowed_workspaces=allowed_workspaces,
+        ).get("matches", [])
+        relationships = self._relationship_search(
+            graph,
+            query=query,
+            limit=limit,
+            allowed_workspaces=allowed_workspaces,
+        ).get("relationships", [])
         by_id: Dict[str, Dict[str, Any]] = {}
 
         def add_node(node: Mapping[str, Any], score: float, reason: str, edge: Optional[Mapping[str, Any]] = None) -> None:
@@ -138,7 +223,13 @@ class SearchService:
             if expand_depth <= 0:
                 continue
             try:
-                neighborhood = graph.traverse(match["id"], depth=expand_depth, limit=limit * 3)
+                neighborhood = self._traverse(
+                    graph,
+                    match["id"],
+                    depth=expand_depth,
+                    limit=limit * 3,
+                    allowed_workspaces=allowed_workspaces,
+                )
             except Exception:
                 neighborhood = {"nodes": [], "edges": []}
             edge_by_pair = {
@@ -262,23 +353,16 @@ class SearchService:
         allowed_workspaces=None,
     ) -> Dict[str, Any]:
         graph = self._require_graph()
-        node = graph.get_node(node_id)
-        if allowed_workspaces is not None:
-            visible = graph.filter_scoped_nodes([node], allowed_workspaces)
-            if not visible:
-                raise ValueError(f"graph node not found: {node_id}")
-            node = visible[0]
+        node = self._get_node(graph, node_id, allowed_workspaces=allowed_workspaces)
         payload = {"node": node}
         if include_neighbors:
-            neighborhood = graph.traverse(node_id, depth=depth, limit=limit)
-            if allowed_workspaces is not None:
-                nodes = graph.filter_scoped_nodes(neighborhood.get("nodes", []), allowed_workspaces)
-                kept = {item.get("id") for item in nodes}
-                edges = [
-                    edge for edge in neighborhood.get("edges", [])
-                    if edge.get("from") in kept and edge.get("to") in kept
-                ]
-                neighborhood = {**neighborhood, "nodes": nodes, "edges": edges}
+            neighborhood = self._traverse(
+                graph,
+                node_id,
+                depth=depth,
+                limit=limit,
+                allowed_workspaces=allowed_workspaces,
+            )
             payload["neighborhood"] = neighborhood
         return payload
 
@@ -292,22 +376,14 @@ class SearchService:
         allowed_workspaces=None,
     ) -> Dict[str, Any]:
         graph = self._require_graph()
-        payload = graph.relationship_search(
+        payload = self._relationship_search(
+            graph,
             query=query,
             node_id=node_id,
             relationship_type=relationship_type,
             limit=limit,
+            allowed_workspaces=allowed_workspaces,
         )
-        if allowed_workspaces is not None:
-            kept = []
-            for rel in payload.get("relationships", []):
-                endpoints = [
-                    {"id": (rel.get("source") or {}).get("id")},
-                    {"id": (rel.get("target") or {}).get("id")},
-                ]
-                if len(graph.filter_scoped_nodes(endpoints, allowed_workspaces)) == 2:
-                    kept.append(rel)
-            payload = {**payload, "relationships": kept}
         return payload
 
     def index_status(self) -> Dict[str, Any]:

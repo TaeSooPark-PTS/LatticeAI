@@ -90,8 +90,16 @@ def _entry_created_at(entry: tuple) -> float:
 
 
 class SessionStore:
-    def __init__(self, data_dir: Optional[Path] = None):
+    def __init__(
+        self,
+        data_dir: Optional[Path] = None,
+        *,
+        ttl_seconds: int = SESSION_TTL,
+        refresh_threshold_seconds: int = SESSION_REFRESH_THRESHOLD,
+    ):
         self._data_dir = data_dir
+        self._ttl_seconds = int(ttl_seconds or SESSION_TTL)
+        self._refresh_threshold_seconds = int(refresh_threshold_seconds or SESSION_REFRESH_THRESHOLD)
         self._sessions: Dict[str, tuple] = load_sessions(data_dir)
 
     def create(self, subject: str, *, email: Optional[str] = None) -> str:
@@ -117,11 +125,11 @@ class SessionStore:
             if entry is None:
                 return None
             created_at = _entry_created_at(entry)
-            if now - created_at > SESSION_TTL:
+            if now - created_at > self._ttl_seconds:
                 self._sessions.pop(key, None)
                 persist_sessions(self._sessions, self._data_dir)
                 return None
-            if now - created_at > SESSION_REFRESH_THRESHOLD:
+            if now - created_at > self._refresh_threshold_seconds:
                 refreshed = (_entry_subject(entry), now, _entry_email(entry))
                 self._sessions[key] = refreshed
                 persist_sessions(self._sessions, self._data_dir)

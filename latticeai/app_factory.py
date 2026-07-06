@@ -15,6 +15,7 @@ lazily via module ``__getattr__`` for backwards compatibility.
 from __future__ import annotations
 
 import threading
+from dataclasses import dataclass
 from typing import TYPE_CHECKING, Any, Dict, List, Optional
 
 from latticeai.runtime.app_context_runtime import build_app_context
@@ -94,7 +95,7 @@ def _build(config: "Optional[Config]" = None) -> Dict[str, Any]:
     from pydantic import BaseModel
 
     from latticeai.models.router import LLMRouter, normalize_branding
-    from lattice_brain.graph._kg_common import set_llm_router
+    from lattice_brain.graph.runtime import set_llm_router
     from lattice_brain.graph.schema import set_embed_dim
     from latticeai.core.security import (
         hash_password,
@@ -234,6 +235,8 @@ def _build(config: "Optional[Config]" = None) -> Dict[str, Any]:
     ENABLE_GRAPH    = _config_runtime["ENABLE_GRAPH"]
     AUTOLOAD_MODELS = _config_runtime["AUTOLOAD_MODELS"]
     MODEL_IDLE_UNLOAD_SECONDS = _config_runtime["MODEL_IDLE_UNLOAD_SECONDS"]
+    ALLOW_MODEL_DOWNLOADS = _config_runtime["ALLOW_MODEL_DOWNLOADS"]
+    MODEL_DOWNLOAD_TIMEOUT = _config_runtime["MODEL_DOWNLOAD_TIMEOUT"]
     ALLOW_LOCAL_MODELS = _config_runtime["ALLOW_LOCAL_MODELS"]
     REQUIRE_AUTH = _config_runtime["REQUIRE_AUTH"]
     ALLOW_PLAINTEXT_API_KEYS = _config_runtime["ALLOW_PLAINTEXT_API_KEYS"]
@@ -636,9 +639,33 @@ def _build(config: "Optional[Config]" = None) -> Dict[str, Any]:
     get_audit_log = _audit_rt["get_audit_log"]
     append_audit_event = _audit_rt["append_audit_event"]
 
-    def get_history():
+    def _history_allowed_workspaces_for(user_email: Optional[str]):
+        if not REQUIRE_AUTH or not user_email:
+            return None
         try:
-            return CONVERSATIONS.history()
+            return set(WORKSPACE_SERVICE.readable_workspaces(user_email))
+        except Exception as exc:
+            logging.warning("history workspace scope resolution failed for %s: %s", user_email, exc)
+            return set()
+
+    def _history_include_legacy_global(user_email: Optional[str]) -> bool:
+        return not REQUIRE_AUTH or not user_email
+
+    def get_history(
+        user_email: Optional[str] = None,
+        allowed_workspaces=None,
+        include_legacy_global: Optional[bool] = None,
+    ):
+        try:
+            if allowed_workspaces is None and user_email:
+                allowed_workspaces = _history_allowed_workspaces_for(user_email)
+            if include_legacy_global is None:
+                include_legacy_global = _history_include_legacy_global(user_email)
+            return CONVERSATIONS.history(
+                user_email=user_email,
+                allowed_workspaces=allowed_workspaces,
+                include_legacy_global=include_legacy_global,
+            )
         except Exception as e:
             logging.warning("get_history failed: %s", e)
             return []
@@ -683,17 +710,59 @@ def _build(config: "Optional[Config]" = None) -> Dict[str, Any]:
 
         return sorted((conversations[key] for key in order), key=lambda item: item.get("updated_at") or "", reverse=True)
 
-    def get_conversation_messages(conversation_id: str) -> List[Dict]:
-        history = get_history()
+    def get_conversation_messages(
+        conversation_id: str,
+        *,
+        user_email: Optional[str] = None,
+        allowed_workspaces=None,
+        include_legacy_global: Optional[bool] = None,
+    ) -> List[Dict]:
+        history = get_history(
+            user_email=user_email,
+            allowed_workspaces=allowed_workspaces,
+            include_legacy_global=include_legacy_global,
+        )
         if conversation_id == "legacy-previous-history":
             return [item for item in history if not item.get("conversation_id")]
         return [item for item in history if item.get("conversation_id") == conversation_id]
 
-    def clear_history(keep_last: int = 0) -> Dict:
-        return CONVERSATIONS.clear_all(keep_last=keep_last)
+    def clear_history(
+        keep_last: int = 0,
+        *,
+        user_email: Optional[str] = None,
+        allowed_workspaces=None,
+        include_legacy_global: Optional[bool] = None,
+    ) -> Dict:
+        if allowed_workspaces is None and user_email:
+            allowed_workspaces = _history_allowed_workspaces_for(user_email)
+        if include_legacy_global is None:
+            include_legacy_global = _history_include_legacy_global(user_email)
+        return CONVERSATIONS.clear_all(
+            keep_last=keep_last,
+            user_email=user_email,
+            allowed_workspaces=allowed_workspaces,
+            include_legacy_global=include_legacy_global,
+        )
 
-    def clear_conversation(conversation_id: str, started_at: Optional[str] = None) -> Dict:
-        return CONVERSATIONS.clear_conversation(conversation_id, started_at=started_at)
+    def clear_conversation(
+        conversation_id: str,
+        started_at: Optional[str] = None,
+        *,
+        user_email: Optional[str] = None,
+        allowed_workspaces=None,
+        include_legacy_global: Optional[bool] = None,
+    ) -> Dict:
+        if allowed_workspaces is None and user_email:
+            allowed_workspaces = _history_allowed_workspaces_for(user_email)
+        if include_legacy_global is None:
+            include_legacy_global = _history_include_legacy_global(user_email)
+        return CONVERSATIONS.clear_conversation(
+            conversation_id,
+            started_at=started_at,
+            user_email=user_email,
+            allowed_workspaces=allowed_workspaces,
+            include_legacy_global=include_legacy_global,
+        )
 
     _access_runtime = build_access_runtime(
         config=CONFIG,
@@ -942,6 +1011,8 @@ def _build(config: "Optional[Config]" = None) -> Dict[str, Any]:
         ENABLE_GRAPH=ENABLE_GRAPH,
         AUTOLOAD_MODELS=AUTOLOAD_MODELS,
         MODEL_IDLE_UNLOAD_SECONDS=MODEL_IDLE_UNLOAD_SECONDS,
+        ALLOW_MODEL_DOWNLOADS=ALLOW_MODEL_DOWNLOADS,
+        MODEL_DOWNLOAD_TIMEOUT=MODEL_DOWNLOAD_TIMEOUT,
         ALLOW_LOCAL_MODELS=ALLOW_LOCAL_MODELS,
         REQUIRE_AUTH=REQUIRE_AUTH,
         INVITE_GATE_ENABLED=INVITE_GATE_ENABLED,
@@ -1136,6 +1207,7 @@ def _build(config: "Optional[Config]" = None) -> Dict[str, Any]:
         load_users=load_users,
         get_user_role=get_user_role,
         enforce_rate_limit=enforce_rate_limit,
+        allowed_workspaces_for=_history_allowed_workspaces_for,
         append_audit_event=append_audit_event,
         get_audit_log=get_audit_log,
         get_history=get_history,
@@ -1383,6 +1455,16 @@ def _build(config: "Optional[Config]" = None) -> Dict[str, Any]:
     return dict(locals())
 
 
+@dataclass(frozen=True)
+class LegacyRuntimeNamespace:
+    """Compatibility adapter for the historical module-level runtime surface."""
+
+    namespace: Dict[str, Any]
+
+    def bind(self, runtime: "AppRuntime") -> None:
+        runtime.__dict__.update(self.namespace)
+
+
 class AppRuntime:
     """The constructed application namespace.
 
@@ -1391,7 +1473,8 @@ class AppRuntime:
     """
 
     def __init__(self, namespace: Dict[str, Any]) -> None:
-        self.__dict__.update(namespace)
+        self._legacy_namespace = LegacyRuntimeNamespace(namespace)
+        self._legacy_namespace.bind(self)
 
 
 _runtime_lock = threading.RLock()

@@ -24,7 +24,7 @@ def build_session_runtime(
 
     from latticeai.core.sessions import SessionStore
 
-    session_store = SessionStore()
+    session_store = SessionStore(ttl_seconds=ttl_seconds)
 
     def create_session(email: str) -> str:
         return session_store.create(user_id_resolver(email) or email, email=email)

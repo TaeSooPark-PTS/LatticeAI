@@ -1,6 +1,6 @@
 # Lattice AI Current Architecture
 
-Current release: **8.8.0 — Brain Core Extraction & Recall Proof Hardening**.
+Current release: **8.9.0 — Scoped Memory & Tool Policy Hardening**.
 
 Lattice AI is a local-first Digital Brain platform. The current architecture is
 organized around a private Brain, replaceable model runtimes, explicit tool
@@ -22,7 +22,7 @@ flowchart TB
   tools["ToolRegistry / MCP<br/>permissions, dispatch, diagnostics"]
   brain["Brain Core<br/>lattice_brain"]
   kg["Knowledge Graph<br/>nodes, edges, provenance"]
-  store["Local storage<br/>SQLite default, Postgres optional"]
+  store["Local storage<br/>SQLite live store, Postgres scale tooling"]
   archive["Portable archives<br/>.latticebrain"]
   trust["Trust gates<br/>auth, consent, audit, redaction"]
   models["Model runtimes<br/>local first, cloud opt-in"]
@@ -90,7 +90,7 @@ sequenceDiagram
 
 ## Product Flow
 
-The 8.8.0 first-run and daily-use flow is:
+The 8.9.0 first-run and daily-use flow is:
 
 1. Wake Brain / login.
 2. Pick owner/workspace context.
@@ -154,12 +154,12 @@ migration safety, and equivalence tests.
 
 ## Runtime Contracts
 
-The 8.0 architecture contract remains active in 8.8.0:
+The 8.0 architecture contract remains active in 8.9.0:
 
 - AgentRuntime has explicit preview/readiness contracts and does not execute
   tools during preview.
 - ToolRegistry owns dispatch, permissions, manifest, diagnostics, and MCP
-  install state.
+  install state, with direct HTTP/MCP policy gates enforced before execution.
 - Config values are centralized through runtime config objects.
 - Server decomposition continues to shrink monolithic app factory helpers.
 - Knowledge Graph hardening remains guarded by compatibility and equivalence
@@ -171,9 +171,10 @@ The 8.0 architecture contract remains active in 8.8.0:
 
 ## Storage And Portability
 
-SQLite is the default local store. PostgreSQL/pgvector remains optional scale
-mode and must be explicitly configured. Backups and `.latticebrain` archives are
-user-controlled portability paths.
+SQLite is the live local Brain store. PostgreSQL/pgvector remains optional
+scale/migration tooling and must be explicitly configured; it is not the
+default live KnowledgeGraphStore backend in 8.9.0. Backups and `.latticebrain`
+archives are user-controlled portability paths.
 
 ## Local-First Boundary
 
@@ -183,13 +184,13 @@ Docker/Postgres setup, marketplace refresh, and update checks are opt-in paths.
 
 ## Release Artifact Map
 
-8.8.0 exact artifact names:
+8.9.0 exact artifact names:
 
-- `dist/ltcai-8.8.0-py3-none-any.whl`
-- `dist/ltcai-8.8.0.tar.gz`
-- `ltcai-8.8.0.tgz`
-- `dist/ltcai-8.8.0.vsix`
-- `src-tauri/target/release/bundle/dmg/Lattice AI_8.8.0_aarch64.dmg`
+- `dist/ltcai-8.9.0-py3-none-any.whl`
+- `dist/ltcai-8.9.0.tar.gz`
+- `ltcai-8.9.0.tgz`
+- `dist/ltcai-8.9.0.vsix`
+- `src-tauri/target/release/bundle/dmg/Lattice AI_8.9.0_aarch64.dmg`
 
 Do not document or use wildcard artifact upload commands.
 
@@ -197,8 +198,9 @@ Do not document or use wildcard artifact upload commands.
 
 - Legacy root compatibility shims remain while public import paths still depend
   on them.
-- PostgreSQL, Docker, cloud models, Telegram, Brain Network, update checks, and
-  marketplace refreshes are not default local behavior.
+- PostgreSQL scale/migration tooling, Docker, cloud models, Telegram, Brain
+  Network, update checks, and marketplace refreshes are not default local
+  behavior.
 - Package registry publication is owner-run and can lag behind the GitHub
   release.
 - Local data protection depends on the user's machine, OS account, backups, and

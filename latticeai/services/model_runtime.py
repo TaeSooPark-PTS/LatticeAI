@@ -88,6 +88,8 @@ class ModelRuntimeState:
         self.ENABLE_GRAPH = True
         self.AUTOLOAD_MODELS = False
         self.MODEL_IDLE_UNLOAD_SECONDS = 0
+        self.ALLOW_MODEL_DOWNLOADS = False
+        self.MODEL_DOWNLOAD_TIMEOUT = 300
         self.ALLOW_LOCAL_MODELS = True
         self.REQUIRE_AUTH = False
         self.INVITE_GATE_ENABLED = False
@@ -118,7 +120,8 @@ class ModelRuntimeState:
         """Internal no-warning sync used at init."""
         global router, APP_MODE, DEFAULT_HOST, DEFAULT_PORT, DATA_DIR, BASE_DIR
         global ENABLE_TELEGRAM, ENABLE_GRAPH, AUTOLOAD_MODELS, MODEL_IDLE_UNLOAD_SECONDS
-        global ALLOW_LOCAL_MODELS, REQUIRE_AUTH, INVITE_GATE_ENABLED, ALLOW_PLAINTEXT_API_KEYS
+        global ALLOW_MODEL_DOWNLOADS, MODEL_DOWNLOAD_TIMEOUT, ALLOW_LOCAL_MODELS, REQUIRE_AUTH
+        global INVITE_GATE_ENABLED, ALLOW_PLAINTEXT_API_KEYS
         global CORS_ALLOW_NETWORK, PUBLIC_MODEL, LOCAL_MODEL, IS_PUBLIC_MODE
         global keyring, get_current_user, get_user_api_key
         router = self.router
@@ -131,6 +134,8 @@ class ModelRuntimeState:
         ENABLE_GRAPH = self.ENABLE_GRAPH
         AUTOLOAD_MODELS = self.AUTOLOAD_MODELS
         MODEL_IDLE_UNLOAD_SECONDS = self.MODEL_IDLE_UNLOAD_SECONDS
+        ALLOW_MODEL_DOWNLOADS = self.ALLOW_MODEL_DOWNLOADS
+        MODEL_DOWNLOAD_TIMEOUT = self.MODEL_DOWNLOAD_TIMEOUT
         ALLOW_LOCAL_MODELS = self.ALLOW_LOCAL_MODELS
         REQUIRE_AUTH = self.REQUIRE_AUTH
         INVITE_GATE_ENABLED = self.INVITE_GATE_ENABLED
@@ -159,7 +164,8 @@ def _env_bool(key: str, default: bool = False) -> bool:
 def _download_allowed(allow_download: bool = False) -> bool:
     # Prefer STATE (the source of truth) over bare module global for internal logic.
     autoload = getattr(STATE, "AUTOLOAD_MODELS", AUTOLOAD_MODELS)
-    return bool(allow_download) or _env_bool("LATTICEAI_ALLOW_MODEL_DOWNLOADS", default=False) or bool(autoload)
+    configured = getattr(STATE, "ALLOW_MODEL_DOWNLOADS", ALLOW_MODEL_DOWNLOADS)
+    return bool(allow_download) or bool(configured) or bool(autoload)
 
 
 def _download_block(provider: str, model_name: str) -> None:
@@ -920,6 +926,8 @@ def runtime_features() -> Dict:
         "graph_enabled": s.ENABLE_GRAPH,
         "autoload_models": s.AUTOLOAD_MODELS,
         "model_idle_unload_seconds": s.MODEL_IDLE_UNLOAD_SECONDS,
+        "allow_model_downloads": s.ALLOW_MODEL_DOWNLOADS,
+        "model_download_timeout": s.MODEL_DOWNLOAD_TIMEOUT,
         "model_memory_policy": r.model_memory_policy() if r else None,
         "allow_local_models": s.ALLOW_LOCAL_MODELS,
         "security": {

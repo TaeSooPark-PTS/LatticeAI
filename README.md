@@ -1,6 +1,6 @@
 # Lattice AI
 
-**Lattice AI 8.8.0 is the local-first Digital Brain platform. This release removes internal-only Brain compatibility layers, strengthens recall proof quality, and keeps package, desktop, extension, static app, and documentation metadata synchronized to the 8.8.0 line.**
+**Lattice AI 8.9.0 is the local-first Digital Brain platform. This release hardens authenticated history and graph scoping, blocks unapproved direct Tool API execution paths, makes local permission approvals safer at rest, and keeps package, desktop, extension, static app, and documentation metadata synchronized to the 8.9.0 line.**
 
 **Lattice AI는 모델이 바뀌어도 내 지식과 맥락을 보존하는 로컬 우선 AI 브레인입니다.**
 
@@ -67,7 +67,8 @@ You need Lattice AI when:
 The screenshots below are the latest checked-in visual evidence captures. They
 keep the first-run Brain flow, memory graph, source capture, model library,
 system view, admin console, and review center visible as release gates while
-8.8.0 focuses on Brain Core extraction readiness and recall proof hardening.
+8.9.0 focuses on scoped memory isolation, direct Tool API policy enforcement,
+AgentRuntime human-approval semantics, and frontend/runtime maintainability.
 
 ### 1. Wake Brain
 
@@ -169,7 +170,9 @@ pip install "ltcai[local]"
 - **Backend**: FastAPI on localhost is the UI source of truth.
 - **Brain Core**: independent `lattice_brain` package for graph, memory,
   context, conversations, ingestion, runtime, workflow, storage, and portability.
-- **Storage**: SQLite default; PostgreSQL/pgvector is optional scale mode.
+- **Storage**: SQLite is the live local Brain store; PostgreSQL/pgvector tooling
+  is optional scale-mode planning/migration support, not the default live graph
+  backend.
 - **Portability**: encrypted `.latticebrain` archives plus backup, restore,
   inspect, verify, import dry-run, and confirmed restore/import flows.
 - **Trust boundary**: local-first by default; cloud calls, downloads, Telegram,
@@ -206,38 +209,40 @@ See [docs/DEVELOPMENT.md](docs/DEVELOPMENT.md) for developer workflow details.
 
 ## Current Release
 
-The current release is **8.8.0 — Brain Core Extraction & Recall Proof Hardening**:
+The current release is **8.9.0 — Scoped Memory & Tool Policy Hardening**:
 
-- Internal-only Brain shim layers are removed: pre-graph flat modules,
-  the deprecated `latticeai.brain` namespace, and the service-layer
-  AgentRuntime alias are tracked as intentional 8.8.0 removals.
-- Root compatibility shims remain managed for external entrypoints while Brain
-  Core now has one physical import surface guarded by isolation tests.
-- AgentRuntime rejects unknown roles at the boundary, exposes contract envelopes
-  for legacy run rows, and persists clamped retry budgets.
-- Brain Chat adds resumable conversation history, stop/regenerate/copy actions,
-  richer ingestion panels, and answer proof explainability with matched terms
-  and confidence labels.
-- Memory recall drops zero-evidence noise when lexical evidence exists, so
-  citations explain why each source was selected.
+- Conversation history reads and deletes now scope by authenticated user and
+  readable workspace, while preserving legacy-global rows only in no-auth or
+  explicitly compatible flows.
+- Knowledge Graph search, graph traversal, relationships, node reads, and chat
+  context now apply workspace scope at the graph/service boundary.
+- Direct HTTP/MCP Tool API calls enforce ToolRegistry policy before hooks or
+  handlers run; destructive paths and non-auto-approved user writes are blocked.
+- AgentRuntime no longer treats “requires approval” plans as implicitly
+  approved, and rollback now handles tool results that omit `success`.
+- Local permission approvals hash tokens at rest, use atomic queue writes, and
+  reject write approvals for blocked system prefixes.
+- Frontend API base handling, Tauri credentials, workspace clearing, CSS tokens,
+  and i18n literal checks are split into safer maintainability seams.
 
-Expected artifacts for 8.8.0 release must use exact filenames:
+Expected artifacts for 8.9.0 release must use exact filenames:
 
-- `dist/ltcai-8.8.0-py3-none-any.whl`
-- `dist/ltcai-8.8.0.tar.gz`
-- `ltcai-8.8.0.tgz`
-- `dist/ltcai-8.8.0.vsix`
-- `src-tauri/target/release/bundle/dmg/Lattice AI_8.8.0_aarch64.dmg`
+- `dist/ltcai-8.9.0-py3-none-any.whl`
+- `dist/ltcai-8.9.0.tar.gz`
+- `ltcai-8.9.0.tgz`
+- `dist/ltcai-8.9.0.vsix`
+- `src-tauri/target/release/bundle/dmg/Lattice AI_8.9.0_aarch64.dmg`
 
 Do not use wildcard artifact uploads. Package registry publishing remains owner-run.
 
 See [docs/ROADMAP_RECOMMENDATIONS.md](docs/ROADMAP_RECOMMENDATIONS.md) for the
-strategic roadmap slices applied through 8.8.0 and the follow-up tracks.
+strategic roadmap slices applied through 8.9.0 and the follow-up tracks.
 
 ## Known Limitations
 
 - External package registries are owner-published and can lag behind GitHub.
-- PostgreSQL/pgvector is optional scale mode. SQLite is the default local Brain.
+- PostgreSQL/pgvector is optional scale/migration tooling. SQLite remains the
+  live local Brain store in 8.9.0.
 - Docker, model downloads, cloud model calls, Telegram, Brain Network, and update
   checks require explicit user action.
 - Conversation does not fabricate answers when no model is loaded.
@@ -249,6 +254,7 @@ strategic roadmap slices applied through 8.8.0 and the follow-up tracks.
 
 | Version | Theme |
 | --- | --- |
+| 8.9.0 | Scoped Memory & Tool Policy Hardening: authenticated history/KG reads are workspace-scoped, direct Tool API paths enforce registry policy, local approvals hash tokens at rest, AgentRuntime approval semantics are explicit, and frontend/runtime seams are split |
 | 8.8.0 | Brain Core Extraction & Recall Proof Hardening: internal-only Brain shim layers are removed, AgentRuntime run contracts/retry budgets are tighter, Brain Chat gains conversation controls, and citation recall exposes matched evidence |
 | 8.7.0 | Runtime State Hygiene & Release Evidence Refresh: model-runtime internals prefer typed state over legacy globals, compatibility sync is deprecated, 8.7.0 visual evidence is refreshed, and all release metadata/docs are synchronized |
 | 8.6.0 | Desktop Capture & Navigation Reliability: native folder selection works from the Tauri localhost app, picker failures surface in Capture, web saving remains one-action, and the Brain shell sidebar/admin flow is CI-covered |

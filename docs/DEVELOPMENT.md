@@ -1,10 +1,10 @@
 # Lattice AI Development
 
-Current release: **8.8.0 — Brain Core Extraction & Recall Proof Hardening**.
+Current release: **8.9.0 — Scoped Memory & Tool Policy Hardening**.
 
 This document is for contributors working on the local-first Digital Brain
 codebase. Product positioning and quick start stay in `README.md`; release
-history is intentionally limited to 7.0.0-8.8.0 in `docs/CHANGELOG.md` and
+history is intentionally limited to 7.0.0-8.9.0 in `docs/CHANGELOG.md` and
 `RELEASE.md`.
 
 ## Product Contract
@@ -16,8 +16,8 @@ Engineering work should preserve these boundaries:
 
 - the Brain is the durable asset;
 - models are replaceable voices;
-- SQLite is the default local store;
-- PostgreSQL, Docker, cloud models, downloads, update checks, Telegram, and
+- SQLite is the live local Brain store;
+- PostgreSQL scale/migration tooling, Docker, cloud models, downloads, update checks, Telegram, and
   Brain Network are opt-in;
 - import-only paths must not initialize MLX/GPU, write files, or make network
   calls;
@@ -114,10 +114,10 @@ For user-facing, API, runtime, release, or packaging changes, check:
 Release/publish examples must use exact target-version filenames. Do not
 document wildcard artifact upload commands.
 
-For 8.8.0 release work, exact artifacts are:
+For 8.9.0 release work, exact artifacts are:
 
-- `dist/ltcai-8.8.0-py3-none-any.whl`
-- `dist/ltcai-8.8.0.tar.gz`
-- `ltcai-8.8.0.tgz`
-- `dist/ltcai-8.8.0.vsix`
-- `src-tauri/target/release/bundle/dmg/Lattice AI_8.8.0_aarch64.dmg`
+- `dist/ltcai-8.9.0-py3-none-any.whl`
+- `dist/ltcai-8.9.0.tar.gz`
+- `ltcai-8.9.0.tgz`
+- `dist/ltcai-8.9.0.vsix`
+- `src-tauri/target/release/bundle/dmg/Lattice AI_8.9.0_aarch64.dmg`

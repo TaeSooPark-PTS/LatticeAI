@@ -7,6 +7,56 @@
 > PyPI / npm / VS Code Marketplace / Open VSX 배포는 아래 수동 절차로만
 > 진행합니다. 태그 생성은 패키지 스토어 publish를 자동으로 트리거하지 않습니다.
 
+## v8.9.0 — Scoped Memory & Tool Policy Hardening (2026-07-06)
+
+8.9.0 closes the actionable findings from `docs/CODE_REVIEW_2026-07-06.md`
+except the explicitly excluded Computer Use direct API risk. The release
+hardens authenticated history/KG scoping, direct Tool API policy gates,
+AgentRuntime human-approval behavior, permission token storage, and frontend
+maintainability seams.
+
+### Added
+- Added user/workspace-scoped conversation history reads and deletes for chat
+  and direct history tool routes.
+- Added workspace scope enforcement inside Knowledge Graph retrieval/search,
+  relationship search, traversal, and node reads.
+- Added direct HTTP/MCP Tool API policy enforcement before hooks or handlers run.
+- Added regression coverage for TTL injection, scoped history, tool policy
+  blocking, AgentRuntime explicit approval, permission token hashing, blocked
+  local write prefixes, and model-download config injection.
+- Added frontend API base split, CSS token/base split, and i18n literal
+  allowlist budgets across `frontend/src`.
+
+### Changed
+- AgentRuntime now blocks non-auto-approved plans unless a real human approval
+  path calls `approve(..., approved_by_human=True)`.
+- Model download consent now flows through configured runtime state instead of
+  reading environment variables directly in the gate.
+- AppRuntime uses an explicit legacy namespace adapter for the historical
+  module-level compatibility surface.
+- README, release docs, readiness gates, package metadata, Tauri metadata, and
+  VS Code extension metadata are synchronized to 8.9.0.
+- Documentation clarifies that SQLite is the live local Brain store; Postgres
+  remains optional scale/migration tooling rather than the default live KG
+  implementation.
+
+### Fixed
+- Conversation store migrations now add scope columns before creating the
+  workspace index, preserving upgrades from older DBs.
+- Direct `write_file` and `edit_file` policy lookup now treats blocked system
+  prefixes as destructive paths.
+- Permission approval queues no longer persist raw approval tokens.
+- Clearing the selected workspace now removes the persisted localStorage value.
+- Tauri/backend API calls use credential inclusion for cross-origin localhost
+  cookie/session behavior.
+
+Expected artifacts (exact 8.9.0 names only):
+- `dist/ltcai-8.9.0-py3-none-any.whl`
+- `dist/ltcai-8.9.0.tar.gz`
+- `dist/ltcai-8.9.0.vsix`
+- `ltcai-8.9.0.tgz`
+- `src-tauri/target/release/bundle/dmg/Lattice AI_8.9.0_aarch64.dmg`
+
 ## v8.8.0 — Brain Core Extraction & Recall Proof Hardening (2026-07-06)
 
 8.8.0 packages the Brain Core extraction prep and recall-proof hardening work.

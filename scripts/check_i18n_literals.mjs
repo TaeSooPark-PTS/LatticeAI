@@ -4,10 +4,12 @@ import { join, relative } from "node:path";
 
 const repo = join(import.meta.dirname, "..");
 const roots = [
-  join(repo, "frontend", "src", "features", "brain"),
-  join(repo, "frontend", "src", "features", "admin"),
-  join(repo, "frontend", "src", "components", "onboarding"),
+  join(repo, "frontend", "src"),
 ];
+const allowlistPath = join(repo, "scripts", "i18n_literal_allowlist.json");
+const allowlist = existsSync(allowlistPath)
+  ? JSON.parse(readFileSync(allowlistPath, "utf8"))
+  : {};
 
 function walk(dir) {
   if (!existsSync(dir)) return [];
@@ -16,7 +18,9 @@ function walk(dir) {
     const path = join(dir, name);
     const stat = statSync(path);
     if (stat.isDirectory()) out.push(...walk(path));
-    else if (name.endsWith(".tsx")) out.push(path);
+    else if ((name.endsWith(".tsx") || name.endsWith(".ts")) && name !== "openapi.ts") {
+      out.push(path);
+    }
   }
   return out;
 }
@@ -25,6 +29,7 @@ const rawLocalizedProps = /\b(?:aria-label|placeholder|title)=["'][^"'{]*[A-Za-z
 const rawJsxText = />\s*([A-Z][A-Za-z0-9][^<>{}\n]{2,})\s*</g;
 const rawComponentCopy = /\b(?:title|detail|description|successLabel|empty)=["'][^"'{]*[A-Za-z][^"']*["']/g;
 let failures = 0;
+let allowed = 0;
 
 for (const file of roots.flatMap(walk)) {
   const text = readFileSync(file, "utf8");
@@ -38,9 +43,16 @@ for (const file of roots.flatMap(walk)) {
     matches.push(`JSX text: ${literal}`);
   }
   if (!matches.length) continue;
-  failures += matches.length;
-  for (const match of matches) {
-    console.error(`${relative(repo, file)}: hardcoded localized prop: ${match}`);
+  const rel = relative(repo, file);
+  const budget = Number(allowlist[rel]?.maxFindings || 0);
+  if (budget >= matches.length) {
+    allowed += matches.length;
+    continue;
+  }
+  const newMatches = matches.slice(budget);
+  failures += newMatches.length;
+  for (const match of newMatches) {
+    console.error(`${rel}: hardcoded localized prop: ${match}`);
   }
 }
 
@@ -49,4 +61,4 @@ if (failures) {
   process.exit(1);
 }
 
-console.log("i18n literal check: localized props use translation keys");
+console.log(`i18n literal check: localized props use translation keys (${allowed} allowlisted legacy literal(s))`);

@@ -23,8 +23,9 @@ Already aligned:
 - The post-setup home is the living Brain plus conversation.
 - The graph appears only after progressive depth: Brain -> Memories ->
   Knowledge -> Relationships -> Graph.
-- Brain Core, SQLite default storage, optional PostgreSQL/pgvector scale mode,
-  backup/restore, and encrypted `.latticebrain` archives support user ownership.
+- Brain Core, SQLite live local storage, optional PostgreSQL/pgvector
+  scale/migration tooling, backup/restore, and encrypted `.latticebrain`
+  archives support user ownership.
 - Models are treated as swappable runtime workers rather than the durable asset.
 
 Gaps corrected in this review:

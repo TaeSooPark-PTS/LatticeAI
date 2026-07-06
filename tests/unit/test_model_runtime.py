@@ -40,6 +40,26 @@ def test_configure_model_runtime_ignores_unknown_globals(monkeypatch):
         model_runtime.configure_model_runtime(PUBLIC_MODEL=original_public_model)
 
 
+def test_model_download_gate_uses_configured_runtime_state(monkeypatch):
+    original_allowed = model_runtime.STATE.ALLOW_MODEL_DOWNLOADS
+    original_autoload = model_runtime.STATE.AUTOLOAD_MODELS
+    monkeypatch.setenv("LATTICEAI_ALLOW_MODEL_DOWNLOADS", "true")
+    try:
+        model_runtime.configure_model_runtime(
+            ALLOW_MODEL_DOWNLOADS=False,
+            AUTOLOAD_MODELS=False,
+        )
+        assert _download_allowed(allow_download=False) is False
+
+        model_runtime.configure_model_runtime(ALLOW_MODEL_DOWNLOADS=True)
+        assert _download_allowed(allow_download=False) is True
+    finally:
+        model_runtime.configure_model_runtime(
+            ALLOW_MODEL_DOWNLOADS=original_allowed,
+            AUTOLOAD_MODELS=original_autoload,
+        )
+
+
 def _write_minimal_model_dir(path):
     path.mkdir(parents=True, exist_ok=True)
     (path / "config.json").write_text('{"model_type": "test"}', encoding="utf-8")

@@ -1,5 +1,9 @@
 # Lattice AI Code Review Report
 
+> Historical review. This 2026-06-22 / 7.5.0 report is retained for context.
+> The current full-code review and 8.9.0 follow-up status live in
+> [`docs/CODE_REVIEW_2026-07-06.md`](docs/CODE_REVIEW_2026-07-06.md).
+
 **Date**: 2026-06-22
 **Reviewer**: AI Coding Agent (Hermes)
 **Version Reviewed**: 7.5.0 (main branch)

@@ -79,6 +79,21 @@ class WorkspaceService:
     def can_write(self, workspace_id: str, user_id: Optional[str]) -> bool:
         return self.store.has_permission(workspace_id, self._identity(user_id), "write")
 
+    def readable_workspaces(self, user_id: Optional[str]) -> list[str]:
+        """Return workspace ids the caller can read.
+
+        This keeps scoped read APIs from each reconstructing membership logic
+        from raw workspace state. The personal workspace remains readable via
+        the store's normal permission rules.
+        """
+        resolved_user = self._identity(user_id)
+        workspaces = (self.store.load_state().get("workspaces") or {})
+        return [
+            str(workspace_id)
+            for workspace_id in workspaces
+            if self.store.has_permission(str(workspace_id), resolved_user, "read")
+        ]
+
     # ── record-level authorization (by-id access must not bypass gating) ──
 
     def authorize_record_read(self, record: Dict[str, Any], user_id: Optional[str]) -> None:

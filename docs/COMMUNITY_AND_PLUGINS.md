@@ -1,11 +1,11 @@
 # Community And Plugins
 
-Current release: **8.8.0 — Brain Core Extraction & Recall Proof Hardening**.
+Current release: **8.9.0 — Scoped Memory & Tool Policy Hardening**.
 
 LatticeAI defines the path from a strong local-first framework (8.4.0
 action-aware baseline, 8.5.0 registry+DI hardening, 8.6.0 capture/navigation
-reliability, 8.7.0 runtime-state hygiene, and 8.8.0 Brain Core extraction
-readiness) to a product ecosystem. The
+reliability, 8.7.0 runtime-state hygiene, 8.8.0 Brain Core extraction
+readiness, and 8.9.0 scoped Tool API hardening) to a product ecosystem. The
 immediate goal is small and practical: make it clear how
 contributors can extend the Brain without weakening local-first trust,
 workspace scoping, or release quality.

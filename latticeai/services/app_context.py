@@ -47,6 +47,7 @@ class AppContext:
     load_users: Optional[Callable[[], dict]] = None
     get_user_role: Optional[Callable[..., str]] = None
     enforce_rate_limit: Optional[Callable[..., None]] = None
+    allowed_workspaces_for: Optional[Callable[..., Any]] = None
 
     # ── audit / history callables ─────────────────────────────────────────
     append_audit_event: Optional[Callable[..., None]] = None

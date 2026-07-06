@@ -60,27 +60,76 @@ class ConversationStore:
                   user_nickname TEXT,
                   source TEXT,
                   timestamp TEXT NOT NULL,
-                  metadata_json TEXT NOT NULL DEFAULT '{}'
+                  metadata_json TEXT NOT NULL DEFAULT '{}',
+                  workspace_id TEXT,
+                  organization_id TEXT
                 );
                 CREATE INDEX IF NOT EXISTS idx_conv_messages_conv
                   ON conversation_messages(conversation_id);
                 CREATE INDEX IF NOT EXISTS idx_conv_messages_time
                   ON conversation_messages(timestamp);
+                CREATE INDEX IF NOT EXISTS idx_conv_messages_user
+                  ON conversation_messages(user_email);
                 """
             )
+            columns = {row["name"] for row in conn.execute("PRAGMA table_info(conversation_messages)").fetchall()}
+            if "workspace_id" not in columns:
+                conn.execute("ALTER TABLE conversation_messages ADD COLUMN workspace_id TEXT")
+            if "organization_id" not in columns:
+                conn.execute("ALTER TABLE conversation_messages ADD COLUMN organization_id TEXT")
+            conn.execute(
+                """
+                CREATE INDEX IF NOT EXISTS idx_conv_messages_workspace
+                  ON conversation_messages(workspace_id)
+                """
+            )
+            rows = conn.execute(
+                """
+                SELECT id, metadata_json FROM conversation_messages
+                WHERE workspace_id IS NULL OR organization_id IS NULL
+                """
+            ).fetchall()
+            for row in rows:
+                try:
+                    meta = json.loads(row["metadata_json"] or "{}")
+                except Exception:
+                    meta = {}
+                workspace_id = meta.get("workspace_id")
+                organization_id = meta.get("organization_id")
+                if workspace_id or organization_id:
+                    conn.execute(
+                        """
+                        UPDATE conversation_messages
+                        SET workspace_id=COALESCE(workspace_id, ?),
+                            organization_id=COALESCE(organization_id, ?)
+                        WHERE id=?
+                        """,
+                        (workspace_id, organization_id, row["id"]),
+                    )
 
     # ── writes ────────────────────────────────────────────────────────────
     def append(self, item: Dict[str, Any]) -> Dict[str, Any]:
         """Persist one chat item (the legacy chat_history.json entry shape)."""
-        known = {"role", "content", "timestamp", "user_email", "user_nickname", "source", "conversation_id"}
+        known = {
+            "role",
+            "content",
+            "timestamp",
+            "user_email",
+            "user_nickname",
+            "source",
+            "conversation_id",
+            "workspace_id",
+            "organization_id",
+        }
         extra = {k: v for k, v in item.items() if k not in known}
         with self._lock, self._connect() as conn:
             conn.execute(
                 """
                 INSERT OR IGNORE INTO conversation_messages
                   (message_hash, conversation_id, role, content, user_email,
-                   user_nickname, source, timestamp, metadata_json)
-                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+                   user_nickname, source, timestamp, metadata_json, workspace_id,
+                   organization_id)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
                 """,
                 (
                     _message_hash(item),
@@ -92,6 +141,8 @@ class ConversationStore:
                     item.get("source"),
                     str(item.get("timestamp") or ""),
                     json.dumps(extra, ensure_ascii=False) if extra else "{}",
+                    item.get("workspace_id"),
+                    item.get("organization_id"),
                 ),
             )
         return item
@@ -122,8 +173,9 @@ class ConversationStore:
                     """
                     INSERT OR IGNORE INTO conversation_messages
                       (message_hash, conversation_id, role, content, user_email,
-                       user_nickname, source, timestamp, metadata_json)
-                    VALUES (?, ?, ?, ?, ?, ?, ?, ?, '{}')
+                       user_nickname, source, timestamp, metadata_json, workspace_id,
+                       organization_id)
+                    VALUES (?, ?, ?, ?, ?, ?, ?, ?, '{}', ?, ?)
                     """,
                     (
                         _message_hash(item),
@@ -134,6 +186,8 @@ class ConversationStore:
                         item.get("user_nickname"),
                         item.get("source"),
                         str(item.get("timestamp") or ""),
+                        item.get("workspace_id"),
+                        item.get("organization_id"),
                     ),
                 )
                 imported += cur.rowcount if cur.rowcount > 0 else 0
@@ -149,7 +203,7 @@ class ConversationStore:
             "content": row["content"],
             "timestamp": row["timestamp"],
         }
-        for key in ("user_email", "user_nickname", "source", "conversation_id"):
+        for key in ("user_email", "user_nickname", "source", "conversation_id", "workspace_id", "organization_id"):
             if row[key]:
                 item[key] = row[key]
         try:
@@ -159,13 +213,62 @@ class ConversationStore:
         item.update(extra)
         return item
 
-    def history(self, *, conversation_id: Optional[str] = None, limit: Optional[int] = None) -> List[Dict[str, Any]]:
+    @staticmethod
+    def _scope_sql(
+        *,
+        user_email: Optional[str] = None,
+        allowed_workspaces: Optional[Any] = None,
+        include_legacy_global: bool = True,
+    ) -> tuple[str, List[Any]]:
+        clauses: List[str] = []
+        params: List[Any] = []
+        if user_email:
+            if include_legacy_global:
+                clauses.append("(user_email = ? OR user_email IS NULL OR user_email = '')")
+            else:
+                clauses.append("user_email = ?")
+            params.append(user_email)
+        if allowed_workspaces is not None:
+            allowed = [str(item) for item in allowed_workspaces if item]
+            if allowed:
+                placeholders = ",".join("?" for _ in allowed)
+                if include_legacy_global:
+                    clauses.append(f"(workspace_id IN ({placeholders}) OR workspace_id IS NULL OR workspace_id = '')")
+                else:
+                    clauses.append(f"workspace_id IN ({placeholders})")
+                params.extend(allowed)
+            elif include_legacy_global:
+                clauses.append("(workspace_id IS NULL OR workspace_id = '')")
+            else:
+                clauses.append("1=0")
+        return " AND ".join(clauses), params
+
+    def history(
+        self,
+        *,
+        conversation_id: Optional[str] = None,
+        limit: Optional[int] = None,
+        user_email: Optional[str] = None,
+        allowed_workspaces: Optional[Any] = None,
+        include_legacy_global: bool = True,
+    ) -> List[Dict[str, Any]]:
         """Chronological items; the unbounded successor of get_history()."""
         query = "SELECT * FROM conversation_messages"
         params: List[Any] = []
+        where: List[str] = []
         if conversation_id is not None:
-            query += " WHERE conversation_id IS ?" if conversation_id == "" else " WHERE conversation_id = ?"
+            where.append("conversation_id IS ?" if conversation_id == "" else "conversation_id = ?")
             params.append(None if conversation_id == "" else conversation_id)
+        scope_sql, scope_params = self._scope_sql(
+            user_email=user_email,
+            allowed_workspaces=allowed_workspaces,
+            include_legacy_global=include_legacy_global,
+        )
+        if scope_sql:
+            where.append(scope_sql)
+            params.extend(scope_params)
+        if where:
+            query += " WHERE " + " AND ".join(where)
         query += " ORDER BY id ASC"
         if limit is not None:
             query += " LIMIT ?"
@@ -185,25 +288,51 @@ class ConversationStore:
             return 0
 
     # ── clears (legacy semantics preserved) ───────────────────────────────
-    def clear_all(self, keep_last: int = 0) -> Dict[str, Any]:
+    def clear_all(
+        self,
+        keep_last: int = 0,
+        *,
+        user_email: Optional[str] = None,
+        allowed_workspaces: Optional[Any] = None,
+        include_legacy_global: bool = True,
+    ) -> Dict[str, Any]:
         keep_last = max(0, min(int(keep_last or 0), 20))
         with self._lock, self._connect() as conn:
             total = conn.execute("SELECT COUNT(*) FROM conversation_messages").fetchone()[0]
+            scope_sql, scope_params = self._scope_sql(
+                user_email=user_email,
+                allowed_workspaces=allowed_workspaces,
+                include_legacy_global=include_legacy_global,
+            )
+            scope_where = f" WHERE {scope_sql}" if scope_sql else ""
             if keep_last:
                 conn.execute(
-                    """
-                    DELETE FROM conversation_messages WHERE id NOT IN (
-                      SELECT id FROM conversation_messages ORDER BY id DESC LIMIT ?
+                    f"""
+                    DELETE FROM conversation_messages
+                    WHERE id IN (
+                      SELECT id FROM conversation_messages{scope_where}
+                    )
+                    AND id NOT IN (
+                      SELECT id FROM conversation_messages{scope_where}
+                      ORDER BY id DESC LIMIT ?
                     )
                     """,
-                    (keep_last,),
+                    (*scope_params, *scope_params, keep_last),
                 )
             else:
-                conn.execute("DELETE FROM conversation_messages")
+                conn.execute(f"DELETE FROM conversation_messages{scope_where}", scope_params)
             kept = conn.execute("SELECT COUNT(*) FROM conversation_messages").fetchone()[0]
         return {"status": "cleared", "removed": max(0, total - kept), "kept": kept}
 
-    def clear_conversation(self, conversation_id: str, started_at: Optional[str] = None) -> Dict[str, Any]:
+    def clear_conversation(
+        self,
+        conversation_id: str,
+        started_at: Optional[str] = None,
+        *,
+        user_email: Optional[str] = None,
+        allowed_workspaces: Optional[Any] = None,
+        include_legacy_global: bool = True,
+    ) -> Dict[str, Any]:
         """Remove one conversation.
 
         ``legacy-previous-history`` targets unattributed messages; when
@@ -212,17 +341,23 @@ class ConversationStore:
         """
         with self._lock, self._connect() as conn:
             total = conn.execute("SELECT COUNT(*) FROM conversation_messages").fetchone()[0]
+            scope_sql, scope_params = self._scope_sql(
+                user_email=user_email,
+                allowed_workspaces=allowed_workspaces,
+                include_legacy_global=include_legacy_global,
+            )
+            scoped = f" AND {scope_sql}" if scope_sql else ""
             if conversation_id == "legacy-previous-history":
-                conn.execute("DELETE FROM conversation_messages WHERE conversation_id IS NULL")
+                conn.execute(f"DELETE FROM conversation_messages WHERE conversation_id IS NULL{scoped}", scope_params)
             else:
                 conn.execute(
-                    "DELETE FROM conversation_messages WHERE conversation_id = ?",
-                    (conversation_id,),
+                    f"DELETE FROM conversation_messages WHERE conversation_id = ?{scoped}",
+                    (conversation_id, *scope_params),
                 )
                 if started_at:
                     conn.execute(
-                        "DELETE FROM conversation_messages WHERE conversation_id IS NULL AND timestamp >= ?",
-                        (str(started_at),),
+                        f"DELETE FROM conversation_messages WHERE conversation_id IS NULL AND timestamp >= ?{scoped}",
+                        (str(started_at), *scope_params),
                     )
             kept = conn.execute("SELECT COUNT(*) FROM conversation_messages").fetchone()[0]
         return {

@@ -1,0 +1,46 @@
+* {
+  box-sizing: border-box;
+}
+
+html {
+  background: hsl(var(--background));
+  /* Larger, calmer base size so labels stay legible for every age group. */
+  font-size: 17.5px;
+}
+
+body {
+  min-width: 320px;
+  margin: 0;
+  background: hsl(var(--background));
+  color: hsl(var(--foreground));
+  /* 한국어 우선 스택 — Pretendard가 설치돼 있으면 쓰고, 없으면 OS 한글 본문체로. */
+  font-family: "Pretendard Variable", Pretendard, -apple-system, BlinkMacSystemFont,
+    "Apple SD Gothic Neo", Inter, "Segoe UI", "Malgun Gothic", "Noto Sans KR", sans-serif;
+  letter-spacing: 0;
+  line-height: 1.55;
+  -webkit-font-smoothing: antialiased;
+}
+
+h1,
+h2,
+h3,
+h4 {
+  letter-spacing: 0;
+  overflow-wrap: break-word;
+  word-break: keep-all; /* 한글 제목이 어절 단위로 줄바꿈되도록 */
+}
+
+body::selection {
+  background: hsl(var(--primary) / 0.28);
+}
+
+button,
+input,
+textarea,
+select {
+  font: inherit;
+}
+
+button {
+  touch-action: manipulation;
+}

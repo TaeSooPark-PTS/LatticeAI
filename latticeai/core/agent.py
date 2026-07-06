@@ -52,7 +52,7 @@ class AgentRunContext:
     """Mutable state carrier passed through all agent phases."""
     __slots__ = ("state", "plan", "transcript", "retry_count",
                  "state_history", "corrections", "final_message", "rollback_log",
-                 "executing_model", "reviewing_model")
+                 "executing_model", "reviewing_model", "approved_by_human")
 
     def __init__(self) -> None:
         self.state:           AgentState   = AgentState.IDLE
@@ -65,6 +65,7 @@ class AgentRunContext:
         self.rollback_log:    list         = []
         self.executing_model: Optional[str] = None
         self.reviewing_model: Optional[str] = None
+        self.approved_by_human: bool       = False
 
 
 def extract_action(raw: str) -> Dict:
@@ -207,7 +208,7 @@ class SingleAgentRuntime:
         ctx.state = AgentState.WAITING_APPROVAL
 
     # ── APPROVAL ─────────────────────────────────────────────────────
-    def approve(self, ctx: AgentRunContext, current_user: str) -> None:
+    def approve(self, ctx: AgentRunContext, current_user: str, *, approved_by_human: bool = False) -> None:
         """APPROVAL: Check governance, log decision, auto-approve (future: UI prompt)."""
         d = self.deps
         auto_approve_tools = {name for name, p in d.tool_governance.items() if p["auto_approve"]}
@@ -219,12 +220,22 @@ class SingleAgentRuntime:
             "state": AgentState.WAITING_APPROVAL.value,
             "requires_approval": requires,
             "non_auto_approve_steps": non_auto,
-            "decision": "auto_approved",
+            "decision": "human_approved" if requires and approved_by_human else ("blocked_pending_approval" if requires else "auto_approved"),
         })
         d.audit(
             "agent_approval", user_email=current_user,
-            requires_approval=requires, non_auto_steps=non_auto, decision="auto_approved",
+            requires_approval=requires,
+            non_auto_steps=non_auto,
+            decision="human_approved" if requires and approved_by_human else ("blocked_pending_approval" if requires else "auto_approved"),
         )
+        if requires and not approved_by_human:
+            ctx.final_message = (
+                "이 작업에는 명시 승인이 필요한 도구가 포함되어 있어 자동 실행을 중단했습니다. "
+                "human_in_loop 승인 흐름으로 다시 실행해 주세요."
+            )
+            ctx.state = AgentState.FAILED
+            return
+        ctx.approved_by_human = bool(approved_by_human)
         ctx.state = AgentState.EXECUTING
 
     # ── EXECUTE ──────────────────────────────────────────────────────
@@ -317,7 +328,7 @@ class SingleAgentRuntime:
                 )
                 continue
 
-            if not policy["auto_approve"]:
+            if not policy["auto_approve"] and not ctx.approved_by_human:
                 d.audit(
                     "agent_exec", user_email=current_user, source=getattr(req, "source", None) or "agent",
                     state=AgentState.EXECUTING.value, action=name, risk=risk,
@@ -326,6 +337,13 @@ class SingleAgentRuntime:
                     rollback=policy["rollback"],
                     args={k: v for k, v in args.items() if k != "content"},
                 )
+                ctx.transcript.append({
+                    "state": AgentState.EXECUTING.value, "action": name,
+                    "thoughts": thoughts, "args": args, "risk": risk,
+                    "governance": dict(policy),
+                    "error": f"BLOCKED: action '{name}' requires explicit approval.",
+                })
+                continue
 
             try:
                 d.check_role(name, current_user)
@@ -422,8 +440,8 @@ class SingleAgentRuntime:
             if gov.get("rollback") != "git":
                 continue
             result = step.get("result", {})
-            if not (isinstance(result, dict) and result.get("success")):
-                continue
+            if not isinstance(result, dict):
+                result = {}
             path = result.get("path") or (step.get("args") or {}).get("path", "")
             if not path:
                 continue
