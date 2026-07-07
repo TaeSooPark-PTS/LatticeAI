@@ -41,6 +41,7 @@ from latticeai.runtime.model_wiring import (
     configure_model_runtime_from_context,
     register_model_runtime_routers,
 )
+from latticeai.runtime.namespace_runtime import build_runtime_namespace
 from latticeai.runtime.platform_services_runtime import (
     build_brain_network,
 )
@@ -1156,11 +1157,9 @@ def _build(config: "Optional[Config]" = None) -> Dict[str, Any]:
         uvicorn.run(app, host=DEFAULT_HOST, port=DEFAULT_PORT, log_level="info")
 
     # ── Constructed-namespace export (consumed by AppRuntime) ────────────────
-    # Every local — singletons, helper functions, request models — becomes an
-    # attribute of the runtime so the legacy ``server_app`` surface survives.
-    # Large candidate #3 slice: explicit bundle construction toward full DI (no more blind dump).
-    # Keep full locals() for compat; the BUNDLE is the future clean surface.
-    # Use only names known to be assigned in this scope (from runtime builds + wiring).
+    # Public runtime objects and selected legacy helpers remain available via
+    # ``server_app.__getattr__``. Internal assembly scratch values are filtered
+    # out so the compatibility namespace can keep shrinking toward DI.
     _RUNTIME_BUNDLE = {
         "app": app,
         "CONFIG": CONFIG,
@@ -1176,7 +1175,7 @@ def _build(config: "Optional[Config]" = None) -> Dict[str, Any]:
         "create_app": create_app,
         # TODO(#3): progressively populate only the public surface here; drop full dump later.
     }
-    return {**dict(locals()), "_RUNTIME_BUNDLE": _RUNTIME_BUNDLE}
+    return build_runtime_namespace(locals(), runtime_bundle=_RUNTIME_BUNDLE)
 
 
 @dataclass(frozen=True)

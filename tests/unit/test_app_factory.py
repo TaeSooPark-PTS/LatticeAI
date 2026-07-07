@@ -179,6 +179,44 @@ print(json.dumps({
     assert result["app_matches"] is True
 
 
+def test_app_runtime_filters_internal_assembly_namespace(tmp_path: Path):
+    """server_app compatibility must not expose factory scratch imports/dicts."""
+    code = """
+import json
+
+from latticeai.app_factory import get_shared_runtime
+
+runtime = get_shared_runtime()
+internal = [
+    "os", "uvicorn", "keyring", "BaseModel", "_config_runtime",
+    "_hooks_runtime", "_platform_automation_runtime", "_foundation_router_bundle",
+]
+legacy = [
+    "app", "CONFIG", "hash_password", "verify_password",
+    "_agent_risk", "_LOCAL_WRITE_BLOCKED_PREFIXES", "_host_is_loopback",
+]
+print(json.dumps({
+    "missing_internal": [name for name in internal if not hasattr(runtime, name)],
+    "present_internal": [name for name in internal if hasattr(runtime, name)],
+    "present_legacy": [name for name in legacy if hasattr(runtime, name)],
+    "namespace_size": len(vars(runtime)),
+}))
+"""
+    result = _run_in_sandbox(code, tmp_path)
+
+    assert result["present_internal"] == []
+    assert set(result["present_legacy"]) == {
+        "app",
+        "CONFIG",
+        "hash_password",
+        "verify_password",
+        "_agent_risk",
+        "_LOCAL_WRITE_BLOCKED_PREFIXES",
+        "_host_is_loopback",
+    }
+    assert result["namespace_size"] < 280
+
+
 def test_server_module_proxies_lazily(tmp_path: Path):
     """``import server`` is also side-effect free until ``server.app`` is read."""
     code = """

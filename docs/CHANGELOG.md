@@ -43,6 +43,9 @@ existed at that release.
 - Moved blocked-system-prefix protection into `tools.local_write` itself so
   local filesystem writes fail closed even when called outside the HTTP approval
   route.
+- Narrowed the lazy `server_app` compatibility namespace by filtering
+  app-factory scratch imports and runtime wiring dictionaries while preserving
+  explicit legacy helpers.
 
 ### Fixed
 - Added regression coverage for provider API-key lookup/storage behavior,
