@@ -162,6 +162,7 @@ export function BrainConversation({
                   const messageId = `brain-msg-${index}`;
                   const proof = message.role === "assistant" ? message.proof : undefined;
                   const showActions = message.role === "assistant" && Boolean(message.content.trim()) && !streaming;
+                  const canFollowUp = showActions && index === lastAssistantIndex;
                   return (
                     <div key={`${message.role}-${index}`} className={`brain-message ${message.role}`}>
                       <div className="brain-message-bubble">
@@ -180,6 +181,8 @@ export function BrainConversation({
                           content={message.content}
                           canRegenerate={index === lastAssistantIndex}
                           onRegenerate={onRegenerate}
+                          canFollowUp={canFollowUp}
+                          onFollowUp={onSendText}
                         />
                       ) : null}
                       {message.files?.length ? <CreatedFilesCard language={language} files={message.files} /> : null}
@@ -388,13 +391,25 @@ function MessageActions({
   content,
   canRegenerate,
   onRegenerate,
+  canFollowUp,
+  onFollowUp,
 }: {
   language: Language;
   content: string;
   canRegenerate: boolean;
   onRegenerate: () => void;
+  canFollowUp: boolean;
+  onFollowUp: (text: string) => void;
 }) {
   const [copied, setCopied] = React.useState(false);
+  const followUps = React.useMemo(
+    () => [
+      { labelKey: "brain.message.followup.checklist", promptKey: "brain.message.followup.checklist.prompt" },
+      { labelKey: "brain.message.followup.evidence", promptKey: "brain.message.followup.evidence.prompt" },
+      { labelKey: "brain.message.followup.next", promptKey: "brain.message.followup.next.prompt" },
+    ],
+    [],
+  );
 
   async function copy() {
     try {
@@ -415,6 +430,15 @@ function MessageActions({
           <RefreshCw className="h-3 w-3" aria-hidden="true" />
           {t(language, "brain.message.regenerate")}
         </button>
+      ) : null}
+      {canFollowUp ? (
+        <div className="brain-message-followups" aria-label={t(language, "brain.message.followup.aria")}>
+          {followUps.map((item) => (
+            <button key={item.promptKey} type="button" onClick={() => onFollowUp(t(language, item.promptKey))}>
+              {t(language, item.labelKey)}
+            </button>
+          ))}
+        </div>
       ) : null}
     </div>
   );

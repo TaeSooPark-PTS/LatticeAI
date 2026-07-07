@@ -2704,6 +2704,7 @@ body {
    default; readable on hover/focus so the stream stays clean. */
 .brain-message-actions {
   display: flex;
+  flex-wrap: wrap;
   gap: 0.4rem;
   margin-top: 0.3rem;
 }
@@ -2726,6 +2727,18 @@ body {
   color: hsl(var(--fg));
   border-color: hsl(var(--brain-core) / 0.5);
   background: hsl(var(--brain-core) / 0.07);
+}
+
+.brain-message-followups {
+  display: inline-flex;
+  flex-wrap: wrap;
+  gap: 0.35rem;
+}
+
+.brain-message-followups button {
+  border-color: hsl(var(--brain-core) / 0.32);
+  background: hsl(var(--brain-core) / 0.05);
+  color: hsl(var(--fg) / 0.74);
 }
 
 /* Lightweight Markdown inside chat replies: real bold, lists, and headings

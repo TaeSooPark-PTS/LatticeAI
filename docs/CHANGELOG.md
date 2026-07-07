@@ -11,6 +11,8 @@ existed at that release.
   graph concepts, and conversation history into clickable first-screen prompts.
 - Suggested Brain questions now send immediately from the first screen instead
   of only filling the composer.
+- Added one-click follow-up prompts under the latest Brain answer for turning a
+  reply into a checklist, evidence review, or prioritized next steps.
 
 ### Changed
 - Continued app-factory decomposition by extracting user profile/API-key helper
