@@ -97,8 +97,8 @@ class _FakeStore:
     def __init__(self):
         self._m = []
 
-    def add(self, mid, kind, content, ws="personal"):
-        self._m.append({"id": mid, "kind": kind, "content": content, "workspace_id": ws, "tags": []})
+    def add(self, mid, kind, content, ws="personal", tags=None, metadata=None):
+        self._m.append({"id": mid, "kind": kind, "content": content, "workspace_id": ws, "tags": tags or [], "metadata": metadata or {}})
 
     def list_memories(self, user_email=None, kind=None, workspace_id=None):
         ms = [m for m in self._m if kind is None or m["kind"] == kind]
@@ -138,6 +138,25 @@ def test_memory_manager_tiers(tmp_path):
     assert mgr["brain_readiness"]["signals"]["memory_count"] >= 3
     ids = {s["id"] for s in mgr["sources"]}
     assert {"workspace", "project", "agent", "conversation", "graph", "vector"} == ids
+    assert mgr["recent_memories"][0]["id"]
+
+
+def test_memory_manager_marks_recent_agent_synthesis_memory(tmp_path):
+    store = _FakeStore()
+    store.add(
+        "agent-1",
+        "long_term",
+        "agent finished launch plan",
+        tags=["agent-synthesis", "delegated"],
+        metadata={"source": "agent_runtime"},
+    )
+    svc = MemoryService(store=store, data_dir=tmp_path, knowledge_graph=None, enable_graph=False)
+
+    recent = svc.manager()["recent_memories"]
+
+    assert recent[0]["id"] == "agent-1"
+    assert "agent-synthesis" in recent[0]["tags"]
+    assert recent[0]["metadata"]["source"] == "agent_runtime"
 
 
 def test_memory_brain_quality_summary_uses_backend_growth_signals(tmp_path):

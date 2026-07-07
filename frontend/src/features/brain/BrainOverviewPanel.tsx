@@ -18,8 +18,10 @@ export function BrainOverviewPanel({
   onOpenDepth: (depth: BrainDepth) => void;
 }) {
   const language = useAppStore((state) => state.language);
-  const recent = memories.slice(0, 3);
-  const older = memories.slice(3, 6);
+  const agentMemories = memories.filter((memory) => memory.agentGenerated).slice(0, 3);
+  const userMemories = memories.filter((memory) => !memory.agentGenerated);
+  const recent = userMemories.slice(0, 3);
+  const older = userMemories.slice(3, 6);
   const topics = concepts.slice(0, 4);
   const hasDurableProof = proof.proofs.hasDurableEvidence || proof.modelContinuity.proven;
   const hasRecallProof = proof.recall.items.length > 0;
@@ -37,6 +39,13 @@ export function BrainOverviewPanel({
         <button type="button" onClick={() => onOpenDepth(5)}>{t(language, "brain.overview.graph")}</button>
       </div>
       <div className="brain-overview-grid">
+        <BrainOverviewColumn
+          title={t(language, "brain.overview.agent")}
+          empty={t(language, "brain.overview.agentEmpty")}
+          items={agentMemories.map((memory) => memory.title)}
+          featured={agentMemories.length > 0}
+          onOpen={() => onOpenDepth(2)}
+        />
         <BrainOverviewColumn
           title={t(language, "brain.overview.recent")}
           empty={t(language, "brain.overview.recentEmpty")}
@@ -129,15 +138,17 @@ function BrainOverviewColumn({
   title,
   empty,
   items,
+  featured = false,
   onOpen,
 }: {
   title: string;
   empty: string;
   items: string[];
+  featured?: boolean;
   onOpen: () => void;
 }) {
   return (
-    <button type="button" className="brain-overview-column" onClick={onOpen}>
+    <button type="button" className={`brain-overview-column${featured ? " is-featured" : ""}`} onClick={onOpen}>
       <span>{title}</span>
       {items.length ? (
         items.slice(0, 3).map((item) => <strong key={item}>{item}</strong>)

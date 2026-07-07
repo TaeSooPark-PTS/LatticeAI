@@ -2410,7 +2410,7 @@ body {
 
 .brain-overview-grid {
   display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
+  grid-template-columns: repeat(4, minmax(0, 1fr));
   gap: 0.62rem;
 }
 
@@ -2433,6 +2433,11 @@ body {
   border-color: hsl(var(--brain-core) / 0.65);
   background: hsl(var(--brain-core) / 0.07);
   outline: none;
+}
+
+.brain-overview-column.is-featured {
+  border-color: hsl(var(--memory) / 0.5);
+  background: hsl(var(--memory) / 0.08);
 }
 
 .brain-overview-column span {

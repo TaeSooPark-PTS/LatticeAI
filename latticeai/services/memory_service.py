@@ -271,6 +271,7 @@ class MemoryService:
         memory_count = len(memory_ids) + len(snaps) + len(convs)
         return {
             "sources": sources,
+            "recent_memories": self._manager_recent_memories([*ws_mem, *project_mem], limit=8),
             "tiers": list(TIERS),
             "usage": {"total_items": total_items, "total_bytes": total_bytes, "sources": len(sources)},
             "brain_readiness": self._brain_readiness(
@@ -283,6 +284,23 @@ class MemoryService:
             "graph_enabled": self._enable_graph,
             "generated_at": _now(),
         }
+
+    @staticmethod
+    def _manager_recent_memories(memories: List[Dict[str, Any]], *, limit: int = 8) -> List[Dict[str, Any]]:
+        rows: List[Dict[str, Any]] = []
+        for item in memories[: max(1, limit)]:
+            metadata = item.get("metadata") if isinstance(item.get("metadata"), dict) else {}
+            rows.append({
+                "id": item.get("id") or "",
+                "kind": item.get("kind") or "memory",
+                "content": str(item.get("content") or "")[:320],
+                "tags": item.get("tags") if isinstance(item.get("tags"), list) else [],
+                "metadata": metadata,
+                "workspace_id": item.get("workspace_id") or "personal",
+                "created_at": item.get("created_at"),
+                "updated_at": item.get("updated_at"),
+            })
+        return rows
 
     def brain_quality_summary(self, *, user_email: Optional[str] = None, workspace_id: Optional[str] = None) -> Dict[str, Any]:
         """Return the backend-owned Brain readiness signal for API consumers."""

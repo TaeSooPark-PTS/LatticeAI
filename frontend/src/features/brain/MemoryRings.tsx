@@ -48,7 +48,9 @@ export function MemoryRings({
 
   const rings = React.useMemo<RingModel[]>(() => {
     const nowFragments = memories.filter((memory) => memory.kind === "Conversation");
-    const durableFragments = memories.filter((memory) => memory.kind !== "Conversation");
+    const durableFragments = memories
+      .filter((memory) => memory.kind !== "Conversation")
+      .sort((left, right) => Number(right.agentGenerated) - Number(left.agentGenerated));
     return [
       {
         id: "now",

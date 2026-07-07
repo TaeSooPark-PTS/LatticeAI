@@ -39,6 +39,9 @@ export type MemoryFragment = {
   id: string;
   title: string;
   kind: string;
+  detail?: string;
+  tags: string[];
+  agentGenerated: boolean;
 };
 
 // A past conversation the user can resume from the Brain home.

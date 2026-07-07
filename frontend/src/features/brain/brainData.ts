@@ -37,14 +37,33 @@ export function buildMemoryFragments(memoryData: unknown, historyData: unknown):
     id: textValue(item, ["id", "source", "label"], `memory-${index}`),
     title: textValue(item, ["title", "label", "source", "path", "name"], "Workspace memory"),
     kind: titleValue(item, ["type", "source_type", "kind", "health"], "Memory"),
+    tags: [],
+    agentGenerated: false,
   }));
+  const recentFragments = asArray<ApiRecord>(memory.recent_memories || memory.recentMemories).map((item, index) => {
+    const metadata = isRecord(item.metadata) ? item.metadata : {};
+    const tags = stringArrayValue(item, ["tags"]);
+    const content = textValue(item, ["content", "summary", "detail"]);
+    const source = textValue(metadata, ["source"]);
+    const agentGenerated = tags.includes("agent-synthesis") || source === "agent_runtime" || source === "agent_runtime_synthesis";
+    return {
+      id: textValue(item, ["id"], `recent-memory-${index}`),
+      title: content ? content.replace(/\s+/g, " ").slice(0, 96) : titleValue(item, ["kind"], "Memory"),
+      kind: titleValue(item, ["kind"], "Memory"),
+      detail: content,
+      tags,
+      agentGenerated,
+    };
+  });
   const conversationFragments = asArray<ApiRecord>(historyData).map((item, index) => ({
     id: textValue(item, ["id", "conversation_id"], `conversation-${index}`),
     title: textValue(item, ["title", "summary", "id"], "Conversation"),
     kind: "Conversation",
+    tags: [],
+    agentGenerated: false,
   }));
 
-  return uniqueById([...sourceFragments, ...conversationFragments]).slice(0, 10);
+  return uniqueById([...recentFragments, ...sourceFragments, ...conversationFragments]).slice(0, 12);
 }
 
 export function parseKnowledgeGraph(data: unknown): KnowledgeGraphModel {

@@ -17,6 +17,8 @@ existed at that release.
   reviewable task draft and manage it alongside automation suggestions.
 - Added direct Brain-to-Agent delegation and successful agent-run synthesis into
   durable Brain memory/graph context.
+- Surfaced recent agent-synthesis memories in Brain overview and memory rings
+  so delegated work is visibly reflected on the home screen.
 
 ### Changed
 - Continued app-factory decomposition by extracting user profile/API-key helper
