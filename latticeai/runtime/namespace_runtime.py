@@ -8,8 +8,30 @@ assembly scratch values do not leak into ``server_app.__getattr__``.
 
 from __future__ import annotations
 
+from dataclasses import dataclass, fields
 from types import ModuleType
 from typing import Any, Dict, Mapping
+
+
+@dataclass(frozen=True)
+class RuntimeBundle:
+    """Typed migration target for app-factory runtime dependencies."""
+
+    app: Any
+    CONFIG: Any
+    KNOWLEDGE_GRAPH: Any
+    INGESTION_PIPELINE: Any
+    AGENT_RUNTIME: Any
+    HOOKS_REGISTRY: Any
+    REVIEW_QUEUE: Any
+    AGENT_REGISTRY: Any
+    model_router: Any
+    build_runtime: Any
+    get_shared_runtime: Any
+    create_app: Any
+
+    def as_legacy_dict(self) -> Dict[str, Any]:
+        return {field.name: getattr(self, field.name) for field in fields(self)}
 
 
 INTERNAL_RUNTIME_NAMES = {
@@ -25,6 +47,7 @@ INTERNAL_RUNTIME_NAMES = {
     "BaseModel",
     "keyring",
     "datetime",
+    "runtime_bundle",
 }
 
 LEGACY_UNDERSCORE_EXPORTS = {
@@ -104,9 +127,14 @@ def _is_internal_runtime_dict(name: str, value: Any) -> bool:
 def build_runtime_namespace(
     local_namespace: Mapping[str, Any],
     *,
-    runtime_bundle: Mapping[str, Any],
+    runtime_bundle: RuntimeBundle | Mapping[str, Any],
 ) -> Dict[str, Any]:
     """Return the compatibility namespace without assembly scratch values."""
+    legacy_bundle = (
+        runtime_bundle.as_legacy_dict()
+        if isinstance(runtime_bundle, RuntimeBundle)
+        else dict(runtime_bundle)
+    )
     exported: Dict[str, Any] = {}
     for name, value in local_namespace.items():
         if name in INTERNAL_RUNTIME_NAMES:
@@ -118,12 +146,14 @@ def build_runtime_namespace(
         if name.startswith("_") and name not in LEGACY_UNDERSCORE_EXPORTS:
             continue
         exported[name] = value
-    exported["_RUNTIME_BUNDLE"] = dict(runtime_bundle)
+    exported["RUNTIME_BUNDLE"] = runtime_bundle
+    exported["_RUNTIME_BUNDLE"] = legacy_bundle
     return exported
 
 
 __all__ = [
     "INTERNAL_RUNTIME_NAMES",
     "LEGACY_UNDERSCORE_EXPORTS",
+    "RuntimeBundle",
     "build_runtime_namespace",
 ]

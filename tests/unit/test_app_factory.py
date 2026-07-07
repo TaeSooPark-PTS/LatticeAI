@@ -162,12 +162,16 @@ from latticeai.app_factory import get_shared_runtime
 
 runtime = get_shared_runtime()
 bundle = runtime._RUNTIME_BUNDLE
+typed_bundle = runtime.RUNTIME_BUNDLE
 required = {
     "app", "CONFIG", "KNOWLEDGE_GRAPH", "INGESTION_PIPELINE",
     "AGENT_RUNTIME", "HOOKS_REGISTRY", "REVIEW_QUEUE",
 }
 print(json.dumps({
     "has_required": required <= set(bundle),
+    "typed_bundle": type(typed_bundle).__name__,
+    "typed_matches": typed_bundle.app is runtime.app,
+    "legacy_matches_typed": bundle["app"] is typed_bundle.app,
     "bundle_size": len(bundle),
     "app_matches": bundle["app"] is runtime.app,
 }))
@@ -175,6 +179,9 @@ print(json.dumps({
     result = _run_in_sandbox(code, tmp_path)
 
     assert result["has_required"] is True
+    assert result["typed_bundle"] == "RuntimeBundle"
+    assert result["typed_matches"] is True
+    assert result["legacy_matches_typed"] is True
     assert result["bundle_size"] >= 8
     assert result["app_matches"] is True
 

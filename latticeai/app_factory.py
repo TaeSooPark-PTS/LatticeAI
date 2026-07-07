@@ -41,7 +41,7 @@ from latticeai.runtime.model_wiring import (
     configure_model_runtime_from_context,
     register_model_runtime_routers,
 )
-from latticeai.runtime.namespace_runtime import build_runtime_namespace
+from latticeai.runtime.namespace_runtime import RuntimeBundle, build_runtime_namespace
 from latticeai.runtime.platform_services_runtime import (
     build_brain_network,
 )
@@ -1160,22 +1160,21 @@ def _build(config: "Optional[Config]" = None) -> Dict[str, Any]:
     # Public runtime objects and selected legacy helpers remain available via
     # ``server_app.__getattr__``. Internal assembly scratch values are filtered
     # out so the compatibility namespace can keep shrinking toward DI.
-    _RUNTIME_BUNDLE = {
-        "app": app,
-        "CONFIG": CONFIG,
-        "KNOWLEDGE_GRAPH": KNOWLEDGE_GRAPH,
-        "INGESTION_PIPELINE": INGESTION_PIPELINE,
-        "AGENT_RUNTIME": AGENT_RUNTIME,
-        "HOOKS_REGISTRY": HOOKS_REGISTRY,
-        "REVIEW_QUEUE": REVIEW_QUEUE,
-        "AGENT_REGISTRY": AGENT_REGISTRY,
-        "model_router": router,
-        "build_runtime": build_runtime,
-        "get_shared_runtime": get_shared_runtime,
-        "create_app": create_app,
-        # TODO(#3): progressively populate only the public surface here; drop full dump later.
-    }
-    return build_runtime_namespace(locals(), runtime_bundle=_RUNTIME_BUNDLE)
+    runtime_bundle = RuntimeBundle(
+        app=app,
+        CONFIG=CONFIG,
+        KNOWLEDGE_GRAPH=KNOWLEDGE_GRAPH,
+        INGESTION_PIPELINE=INGESTION_PIPELINE,
+        AGENT_RUNTIME=AGENT_RUNTIME,
+        HOOKS_REGISTRY=HOOKS_REGISTRY,
+        REVIEW_QUEUE=REVIEW_QUEUE,
+        AGENT_REGISTRY=AGENT_REGISTRY,
+        model_router=router,
+        build_runtime=build_runtime,
+        get_shared_runtime=get_shared_runtime,
+        create_app=create_app,
+    )
+    return build_runtime_namespace(locals(), runtime_bundle=runtime_bundle)
 
 
 @dataclass(frozen=True)

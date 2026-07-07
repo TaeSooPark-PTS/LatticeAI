@@ -45,7 +45,8 @@ existed at that release.
   route.
 - Narrowed the lazy `server_app` compatibility namespace by filtering
   app-factory scratch imports and runtime wiring dictionaries while preserving
-  explicit legacy helpers.
+  explicit legacy helpers, and added a typed `RuntimeBundle` migration target
+  behind the legacy `_RUNTIME_BUNDLE` dict.
 
 ### Fixed
 - Added regression coverage for provider API-key lookup/storage behavior,
