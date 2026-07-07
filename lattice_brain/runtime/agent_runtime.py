@@ -65,6 +65,10 @@ def _now() -> str:
     return datetime.now().isoformat(timespec="seconds")
 
 
+def _compact_text(value: Any, *, limit: int) -> str:
+    return " ".join(str(value or "").split())[:limit]
+
+
 class AgentRuntimeUnavailable(RuntimeError):
     """Raised when a product run would otherwise persist simulation output."""
 
@@ -432,10 +436,18 @@ class AgentRuntime:
         if getattr(result, "status", None) not in ("ok", "retried_ok"):
             return
         try:
-            output = (getattr(result, "output", "") or "")[:2200]
+            output = _compact_text(getattr(result, "output", ""), limit=2200)
             plan_steps = getattr(result, "plan", None) or []
-            plan_summary = "; ".join(str(s.get("description", ""))[:80] for s in plan_steps[:4]) if plan_steps else ""
-            content = f"[에이전트 합성] 목표: {goal}\n\n결과 요약: {output}\n\n주요 단계: {plan_summary}".strip()
+            sections = self._agent_synthesis_sections(goal=goal, output=output, plan_steps=plan_steps, result=result)
+            plan_summary = "; ".join(sections["plan_steps"][:4])
+            content = "\n\n".join([
+                f"[Agent synthesis] Goal: {_compact_text(goal, limit=240)}",
+                f"Outcome: {output}",
+                self._format_synthesis_section("Key facts", sections["facts"]),
+                self._format_synthesis_section("Decisions", sections["decisions"]),
+                self._format_synthesis_section("Follow-ups", sections["followups"]),
+                f"Plan: {plan_summary}" if plan_summary else "",
+            ]).strip()
             if not content or len(content) < 20:
                 return
             tags = ["agent-synthesis", "delegated", "auto"]
@@ -444,24 +456,78 @@ class AgentRuntime:
                 content=content,
                 user_email=user_email,
                 tags=tags,
-                metadata={"source": "agent_runtime", "goal": goal[:200], "roles": getattr(result, "roles_run", None)},
+                metadata={
+                    "source": "agent_runtime",
+                    "synthesis_version": 2,
+                    "goal": _compact_text(goal, limit=200),
+                    "roles": getattr(result, "roles_run", None),
+                    "facts": sections["facts"],
+                    "decisions": sections["decisions"],
+                    "followups": sections["followups"],
+                },
                 graph=self._workspace_graph() if hasattr(self, "_workspace_graph") else None,
                 workspace_id=scope,
             )
-            # Also create a compact decision-style entry for quick visibility
-            if len(output) > 60:
-                decision_content = f"Agent delegation complete: {goal[:120]} → {output[:160]}..."
+            if sections["decisions"]:
                 self._memory_ingest(
                     kind="decisions",
-                    content=decision_content,
+                    content=f"Agent decision for {_compact_text(goal, limit=120)}: {'; '.join(sections['decisions'][:3])}",
                     user_email=user_email,
-                    tags=["agent", "outcome"],
-                    metadata={"source": "agent_runtime_synthesis"},
+                    tags=["agent", "outcome", "decision"],
+                    metadata={"source": "agent_runtime_synthesis", "synthesis_version": 2, "goal": _compact_text(goal, limit=200)},
+                    workspace_id=scope,
+                )
+            if sections["followups"]:
+                self._memory_ingest(
+                    kind="workspace",
+                    content=f"Agent follow-ups for {_compact_text(goal, limit=120)}: {'; '.join(sections['followups'][:5])}",
+                    user_email=user_email,
+                    tags=["agent", "follow-up", "next-action"],
+                    metadata={"source": "agent_runtime_followups", "synthesis_version": 2, "goal": _compact_text(goal, limit=200)},
                     workspace_id=scope,
                 )
         except Exception:
             # Synthesis must never break the run record.
             pass
+
+    @staticmethod
+    def _format_synthesis_section(title: str, items: List[str]) -> str:
+        if not items:
+            return ""
+        return f"{title}:\n" + "\n".join(f"- {item}" for item in items[:5])
+
+    @staticmethod
+    def _agent_synthesis_sections(*, goal: str, output: str, plan_steps: List[Dict[str, Any]], result: Any) -> Dict[str, List[str]]:
+        plan_descriptions = [
+            _compact_text(step.get("description") or step.get("name") or step.get("id"), limit=120)
+            for step in plan_steps
+            if isinstance(step, dict) and (step.get("description") or step.get("name") or step.get("id"))
+        ]
+        sentences = [
+            sentence.strip(" -•\t")
+            for sentence in output.replace("\n", ". ").split(".")
+            if sentence.strip(" -•\t")
+        ]
+        facts = [_compact_text(sentence, limit=180) for sentence in sentences[:4]]
+        review = getattr(result, "review", None) if isinstance(getattr(result, "review", None), dict) else {}
+        plan_review = getattr(result, "plan_review", None) if isinstance(getattr(result, "plan_review", None), dict) else {}
+        decision_seed = review.get("decision") or review.get("status") or plan_review.get("decision") or getattr(result, "status", "")
+        decisions = [
+            _compact_text(f"Run finished with {decision_seed}", limit=160),
+            _compact_text(f"Goal accepted: {goal}", limit=180),
+        ]
+        followups = [
+            item for item in plan_descriptions
+            if any(token in item.lower() for token in ("next", "follow", "review", "verify", "test", "ship", "publish", "document", "implement"))
+        ][:5]
+        if not followups:
+            followups = plan_descriptions[:3]
+        return {
+            "facts": [item for item in facts if item],
+            "decisions": [item for item in decisions if item],
+            "followups": [item for item in followups if item],
+            "plan_steps": plan_descriptions,
+        }
 
     def _post_run_hooks(
         self,

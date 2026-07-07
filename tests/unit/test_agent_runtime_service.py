@@ -5,6 +5,8 @@ boundary (config/roles/health/status/start/events/stop) that the HTTP router —
 and through it, the frontend — depends on.
 """
 
+from types import SimpleNamespace
+
 from fastapi import FastAPI
 from fastapi.testclient import TestClient
 
@@ -75,6 +77,42 @@ def test_config_and_roles():
 
 def test_health_ok():
     assert _runtime().health()["status"] == "ok"
+
+
+def test_successful_agent_run_synthesis_splits_memory_sections():
+    captured = []
+    rt = AgentRuntime(
+        store=FakeStore(),
+        orchestrator_factory=lambda user, scope: MultiAgentOrchestrator(),
+        workspace_graph=lambda: None,
+        append_audit_event=lambda *a, **k: None,
+        allow_simulation_runs=True,
+        memory_ingest=lambda **kw: captured.append(kw) or {"id": f"memory-{len(captured)}"},
+    )
+    result = SimpleNamespace(
+        status="ok",
+        output="Implemented the workflow. Verified recall quality. Ready for review.",
+        plan=[
+            {"description": "implement workflow handoff"},
+            {"description": "test recall quality"},
+            {"description": "document follow-up actions"},
+        ],
+        review={"decision": "approved"},
+        plan_review={},
+        roles_run=["planner", "executor", "reviewer"],
+    )
+
+    rt._synthesize_brain_memory(goal="Ship action workflow", result=result, user_email="u@example.com", scope="personal")
+
+    assert [item["kind"] for item in captured] == ["long_term", "decisions", "workspace"]
+    long_term = captured[0]
+    assert "Key facts:" in long_term["content"]
+    assert "Decisions:" in long_term["content"]
+    assert "Follow-ups:" in long_term["content"]
+    assert long_term["metadata"]["synthesis_version"] == 2
+    assert long_term["metadata"]["facts"]
+    assert long_term["metadata"]["decisions"]
+    assert captured[2]["tags"] == ["agent", "follow-up", "next-action"]
 
 
 def test_product_runtime_refuses_simulation_runs():

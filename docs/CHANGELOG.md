@@ -19,6 +19,8 @@ existed at that release.
   durable Brain memory/graph context.
 - Surfaced recent agent-synthesis memories in Brain overview and memory rings
   so delegated work is visibly reflected on the home screen.
+- Improved agent-run Brain synthesis quality by splitting successful results
+  into key facts, decisions, and follow-up memories with structured metadata.
 
 ### Changed
 - Continued app-factory decomposition by extracting user profile/API-key helper
