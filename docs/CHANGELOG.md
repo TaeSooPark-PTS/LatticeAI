@@ -23,6 +23,8 @@ existed at that release.
   into key facts, decisions, and follow-up memories with structured metadata.
 - Agent follow-ups now enter Review Center as task drafts so delegated work
   produces actionable approval candidates instead of passive memory only.
+- Approving an Agent follow-up review item now promotes it into a manual
+  workflow draft with trigger, agent, and output nodes.
 
 ### Changed
 - Continued app-factory decomposition by extracting user profile/API-key helper

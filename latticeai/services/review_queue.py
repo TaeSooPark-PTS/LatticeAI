@@ -122,7 +122,20 @@ class ReviewQueueService:
 
     # ── transitions ──────────────────────────────────────────────────────
     def approve(self, item_id: str, *, workspace_id: Optional[str] = None) -> Dict[str, Any]:
-        return self._transition(item_id, "approve", "approved", workspace_id=workspace_id)
+        item = self._store.get_review_item(item_id, workspace_id=workspace_id)
+        self._guard("approve", item)
+        payload = dict(item.get("payload") or {})
+        provenance = dict(item.get("provenance") or {})
+        promoted = self._promote_agent_followup(item, workspace_id=workspace_id)
+        if promoted:
+            payload["promoted_workflow_id"] = promoted.get("id")
+            provenance["workflow_id"] = promoted.get("id")
+            provenance["promotion"] = "workflow_draft"
+        patch: Dict[str, Any] = {"status": "approved", "payload": payload, "provenance": provenance}
+        if item.get("snoozed_until") is not None:
+            patch["snoozed_until"] = None
+        updated = self._store.update_review_item(item_id, workspace_id=workspace_id, **patch)
+        return self._view(updated)
 
     def dismiss(self, item_id: str, *, workspace_id: Optional[str] = None) -> Dict[str, Any]:
         return self._transition(item_id, "dismiss", "dismissed", workspace_id=workspace_id)
@@ -209,6 +222,53 @@ class ReviewQueueService:
         view = dict(item)
         view["effective_status"] = self._effective_status(item)
         return view
+
+    def _promote_agent_followup(self, item: Dict[str, Any], *, workspace_id: Optional[str]) -> Optional[Dict[str, Any]]:
+        if item.get("source") != "agent_followup" or not hasattr(self._store, "create_workflow"):
+            return None
+        payload = dict(item.get("payload") or {})
+        followup = str(payload.get("followup") or item.get("title") or "").strip()
+        if not followup:
+            return None
+        goal = str(payload.get("goal") or item.get("summary") or followup).strip()
+        nodes = [
+            {
+                "id": "trigger",
+                "type": "trigger",
+                "config": {"trigger": "manual", "review_queue": False},
+                "next": "agent",
+            },
+            {
+                "id": "agent",
+                "type": "agent",
+                "config": {
+                    "goal": followup,
+                    "roles": ["planner", "executor", "reviewer"],
+                    "source": "agent_followup",
+                },
+                "next": "output",
+            },
+            {
+                "id": "output",
+                "type": "output",
+                "config": {"format": "review_followup"},
+                "next": None,
+            },
+        ]
+        return self._store.create_workflow(
+            name=f"Follow-up: {str(item.get('title') or followup)[:96]}",
+            steps=[{"action": "agent", "goal": followup}],
+            nodes=nodes,
+            metadata={
+                "source": "review_center",
+                "review_item_id": item.get("id"),
+                "agent_followup": followup,
+                "goal": goal,
+                "draft": True,
+            },
+            user_email=item.get("user_email"),
+            workspace_id=workspace_id or item.get("workspace_id"),
+        )
 
 
 def enqueue_from_automation(

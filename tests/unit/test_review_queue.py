@@ -175,6 +175,30 @@ def test_approve_and_dismiss_transitions(tmp_path):
         svc.dismiss(item["id"])
 
 
+def test_approve_agent_followup_promotes_to_workflow_draft(tmp_path):
+    store, svc = _service(tmp_path)
+    item = svc.create(
+        title="Verify rollout",
+        summary="Follow-up extracted from an Agent run",
+        source="agent_followup",
+        kind="task_draft",
+        payload={"followup": "verify rollout", "goal": "ship release"},
+        provenance={"agent_id": "agent:executor", "source_detail": "agent_runtime_followup"},
+        user_email="u@x.com",
+        workspace_id="personal",
+    )
+
+    approved = svc.approve(item["id"], workspace_id="personal")
+
+    workflow_id = approved["payload"]["promoted_workflow_id"]
+    workflow = store.get_workflow(workflow_id, workspace_id="personal")
+    assert approved["status"] == "approved"
+    assert approved["provenance"]["promotion"] == "workflow_draft"
+    assert workflow["metadata"]["review_item_id"] == item["id"]
+    assert workflow["metadata"]["agent_followup"] == "verify rollout"
+    assert [node["type"] for node in workflow["nodes"]] == ["trigger", "agent", "output"]
+
+
 def test_illegal_transition_raises(tmp_path):
     _, svc = _service(tmp_path)
     item = svc.create(title="x")
