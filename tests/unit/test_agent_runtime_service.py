@@ -81,6 +81,8 @@ def test_health_ok():
 
 def test_successful_agent_run_synthesis_splits_memory_sections():
     captured = []
+    review_items = []
+    review_sink = SimpleNamespace(create=lambda **kw: review_items.append(kw) or {"id": f"review-{len(review_items)}"})
     rt = AgentRuntime(
         store=FakeStore(),
         orchestrator_factory=lambda user, scope: MultiAgentOrchestrator(),
@@ -88,6 +90,7 @@ def test_successful_agent_run_synthesis_splits_memory_sections():
         append_audit_event=lambda *a, **k: None,
         allow_simulation_runs=True,
         memory_ingest=lambda **kw: captured.append(kw) or {"id": f"memory-{len(captured)}"},
+        review_sink=review_sink,
     )
     result = SimpleNamespace(
         status="ok",
@@ -113,6 +116,10 @@ def test_successful_agent_run_synthesis_splits_memory_sections():
     assert long_term["metadata"]["facts"]
     assert long_term["metadata"]["decisions"]
     assert captured[2]["tags"] == ["agent", "follow-up", "next-action"]
+    assert review_items
+    assert {item["source"] for item in review_items} == {"agent_followup"}
+    assert review_items[0]["kind"] == "task_draft"
+    assert review_items[0]["payload"]["followup"]
 
 
 def test_product_runtime_refuses_simulation_runs():

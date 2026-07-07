@@ -85,6 +85,7 @@ class AgentRuntime:
         hooks: Any = None,
         allow_simulation_runs: bool = False,
         memory_ingest: Optional[Callable[..., Dict[str, Any]]] = None,
+        review_sink: Any = None,
     ):
         self._store = store
         self._orchestrator_factory = orchestrator_factory
@@ -100,6 +101,7 @@ class AgentRuntime:
         # Brain memories (long_term / workspace tier) so users *feel* the results
         # in BrainBrief, MemoryRings, search and graph immediately.
         self._memory_ingest = memory_ingest
+        self._review_sink = review_sink
 
     def attach_executor(self, executor: Any) -> None:
         self._run_executor = executor
@@ -486,6 +488,14 @@ class AgentRuntime:
                     metadata={"source": "agent_runtime_followups", "synthesis_version": 2, "goal": _compact_text(goal, limit=200)},
                     workspace_id=scope,
                 )
+                self._enqueue_agent_followups(
+                    goal=goal,
+                    followups=sections["followups"],
+                    result=result,
+                    user_email=user_email,
+                    scope=scope,
+                    output=output,
+                )
         except Exception:
             # Synthesis must never break the run record.
             pass
@@ -528,6 +538,42 @@ class AgentRuntime:
             "followups": [item for item in followups if item],
             "plan_steps": plan_descriptions,
         }
+
+    def _enqueue_agent_followups(
+        self,
+        *,
+        goal: str,
+        followups: List[str],
+        result: Any,
+        user_email: Optional[str],
+        scope: Optional[str],
+        output: str,
+    ) -> None:
+        if self._review_sink is None:
+            return
+        for index, followup in enumerate(followups[:5], start=1):
+            try:
+                self._review_sink.create(
+                    title=_compact_text(followup, limit=96) or f"Agent follow-up {index}",
+                    summary=_compact_text(f"From goal: {goal}", limit=420),
+                    source="agent_followup",
+                    kind="task_draft",
+                    payload={
+                        "goal": _compact_text(goal, limit=300),
+                        "followup": _compact_text(followup, limit=300),
+                        "output_preview": _compact_text(output, limit=800),
+                        "roles": getattr(result, "roles_run", None),
+                    },
+                    provenance={
+                        "agent_id": getattr(result, "agent_id", ""),
+                        "source_detail": "agent_runtime_followup",
+                        "status": getattr(result, "status", ""),
+                    },
+                    user_email=user_email,
+                    workspace_id=scope,
+                )
+            except Exception:
+                continue
 
     def _post_run_hooks(
         self,

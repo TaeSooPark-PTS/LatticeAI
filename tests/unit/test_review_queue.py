@@ -113,6 +113,23 @@ def test_create_accepts_brain_chat_followup_source(tmp_path):
     assert item["payload"]["answer_preview"] == "Do the thing"
 
 
+def test_create_accepts_agent_followup_source(tmp_path):
+    _, svc = _service(tmp_path)
+
+    item = svc.create(
+        title="Verify rollout",
+        summary="Follow-up extracted from an Agent run",
+        source="agent_followup",
+        kind="task_draft",
+        payload={"followup": "verify rollout"},
+        provenance={"agent_id": "agent:executor", "source_detail": "agent_runtime_followup"},
+    )
+
+    assert item["source"] == "agent_followup"
+    assert item["kind"] == "task_draft"
+    assert item["provenance"]["agent_id"] == "agent:executor"
+
+
 def test_list_is_workspace_scoped(tmp_path):
     store, svc = _service(tmp_path)
     org = store.create_organization_workspace(name="Acme", owner_user_id="owner@acme.com")

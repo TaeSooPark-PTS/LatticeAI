@@ -54,6 +54,7 @@ def build_automation_runtime(
         append_audit_event=append_audit_event,
         hooks=hooks,
         memory_ingest=_memory_ingest,
+        review_sink=review_queue,
     )
     run_executor = RunExecutor(
         store=store,

@@ -39,7 +39,7 @@ type ReviewItemOperation =
 export type ReviewItem = components["schemas"]["ReviewItem"];
 export type ReviewItemList = components["schemas"]["ReviewItemList"];
 export type ReviewStatusFilter = "pending" | "snoozed" | "approved" | "dismissed" | "all";
-export type ReviewSourceFilter = "workflow_run" | "trigger" | "kg_change_digest" | "chat_followup" | "all";
+export type ReviewSourceFilter = "workflow_run" | "trigger" | "kg_change_digest" | "chat_followup" | "agent_followup" | "all";
 export type CreateReviewItemBody = {
   title: string;
   summary?: string;

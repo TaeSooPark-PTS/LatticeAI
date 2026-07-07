@@ -29,7 +29,7 @@ export function ReviewCard({ item, feedback, onAction }: ReviewCardProps) {
   const hadRun = hasRunBefore(item);
   const snoozed = item.effective_status === "snoozed";
   const actionable = isActionableReview(item);
-  const canRunNow = item.source !== "chat_followup";
+  const canRunNow = item.source !== "chat_followup" && item.source !== "agent_followup";
 
   return (
     <div className="rounded-lg border border-border bg-background/55 p-4">
@@ -76,7 +76,7 @@ export function ReviewCard({ item, feedback, onAction }: ReviewCardProps) {
       {actionable ? (
         <div className="mt-4 grid gap-2">
           <p className="text-xs leading-5 text-muted-foreground">
-            {t(language, canRunNow ? "review.runNow.detail" : "review.chat.detail")}
+            {t(language, canRunNow ? "review.runNow.detail" : item.source === "agent_followup" ? "review.agent.detail" : "review.chat.detail")}
           </p>
           <div className="flex flex-wrap gap-2" aria-label={t(language, "review.actions.aria")}>
             {canRunNow ? (

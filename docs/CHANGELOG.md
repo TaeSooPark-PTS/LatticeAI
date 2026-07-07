@@ -21,6 +21,8 @@ existed at that release.
   so delegated work is visibly reflected on the home screen.
 - Improved agent-run Brain synthesis quality by splitting successful results
   into key facts, decisions, and follow-up memories with structured metadata.
+- Agent follow-ups now enter Review Center as task drafts so delegated work
+  produces actionable approval candidates instead of passive memory only.
 
 ### Changed
 - Continued app-factory decomposition by extracting user profile/API-key helper
