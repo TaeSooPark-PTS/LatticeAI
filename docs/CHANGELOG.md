@@ -9,6 +9,8 @@ existed at that release.
 ### Added
 - Added Brain Brief suggested questions that turn current memory, recall proof,
   graph concepts, and conversation history into clickable first-screen prompts.
+- Suggested Brain questions now send immediately from the first screen instead
+  of only filling the composer.
 
 ### Changed
 - Continued app-factory decomposition by extracting user profile/API-key helper

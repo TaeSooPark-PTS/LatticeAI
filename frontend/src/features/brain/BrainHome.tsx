@@ -624,6 +624,7 @@ export function BrainHome({
         onIngestWeb={(url) => void ingestWeb(url)}
         onVerifyModelContinuity={() => void verifyModelContinuity()}
         onSend={() => void send()}
+        onSendText={(text) => void sendText(text)}
         onStop={stopStreaming}
         onRegenerate={() => void regenerate()}
         onNewConversation={startNewConversation}

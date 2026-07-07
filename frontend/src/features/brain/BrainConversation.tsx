@@ -66,6 +66,7 @@ export function BrainConversation({
   onIngestWeb,
   onVerifyModelContinuity,
   onSend,
+  onSendText,
   onStop,
   onRegenerate,
   onNewConversation,
@@ -107,6 +108,7 @@ export function BrainConversation({
   onIngestWeb: (url: string) => void;
   onVerifyModelContinuity: () => void;
   onSend: () => void;
+  onSendText: (text: string) => void;
   onStop: () => void;
   onRegenerate: () => void;
   onNewConversation: () => void;
@@ -256,7 +258,15 @@ export function BrainConversation({
                     {suggestedQuestions.map((question) => {
                       const prompt = t(language, question.promptKey, question.params);
                       return (
-                        <button key={question.id} type="button" onClick={() => onDraftChange(prompt)}>
+                        <button
+                          key={question.id}
+                          type="button"
+                          disabled={streaming}
+                          onClick={() => {
+                            onDraftChange("");
+                            onSendText(prompt);
+                          }}
+                        >
                           <strong>{t(language, question.labelKey)}</strong>
                           <span>{t(language, question.detailKey)}</span>
                         </button>
