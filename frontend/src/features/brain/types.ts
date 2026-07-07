@@ -136,6 +136,15 @@ export type BrainBriefAction = {
   priority: number;
 };
 
+export type BrainSuggestedQuestion = {
+  id: string;
+  labelKey: string;
+  detailKey: string;
+  promptKey: string;
+  params: Record<string, string | number>;
+  priority: number;
+};
+
 export type BrainBriefEvidence = {
   id: string;
   labelKey: string;
@@ -157,6 +166,7 @@ export type BrainBrief = {
     empty: boolean;
   };
   nextActions: BrainBriefAction[];
+  suggestedQuestions: BrainSuggestedQuestion[];
   evidence: BrainBriefEvidence[];
   generatedAt: string;
 };

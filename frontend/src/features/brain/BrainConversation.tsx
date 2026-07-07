@@ -1,5 +1,5 @@
 import * as React from "react";
-import { CheckCircle2, Copy, DatabaseZap, MessageCirclePlus, RefreshCw, ShieldCheck } from "lucide-react";
+import { CheckCircle2, Copy, DatabaseZap, MessageCirclePlus, RefreshCw, ShieldCheck, Sparkles } from "lucide-react";
 
 import { type BrainState, LivingBrain } from "@/components/LivingBrain";
 import { LanguageSwitcher } from "@/components/LanguageSwitcher";
@@ -118,6 +118,7 @@ export function BrainConversation({
   const mode = useAppStore((state) => state.mode);
   const isBasic = mode === "basic";
   const lastAssistantIndex = findLastAssistantIndex(messages);
+  const suggestedQuestions = brief.suggestedQuestions.slice(0, 3);
 
   return (
     <section className="brain-conversation" aria-label={t(language, "brain.aria.conversation")}>
@@ -245,13 +246,33 @@ export function BrainConversation({
                 onStop={onStop}
               />
 
-              <div className="brain-home-prompts">
-                {starterPrompts.map((prompt) => (
-                  <button key={prompt} type="button" onClick={() => onDraftChange(prompt)} className="brain-prompt-pill">
-                    {prompt}
-                  </button>
-                ))}
-              </div>
+              {suggestedQuestions.length ? (
+                <section className="brain-home-suggestions" aria-label={t(language, "brain.suggestions.aria")}>
+                  <div className="brain-home-suggestions-head">
+                    <Sparkles className="h-3.5 w-3.5" aria-hidden="true" />
+                    <span>{t(language, "brain.suggestions.title")}</span>
+                  </div>
+                  <div className="brain-home-suggestions-grid">
+                    {suggestedQuestions.map((question) => {
+                      const prompt = t(language, question.promptKey, question.params);
+                      return (
+                        <button key={question.id} type="button" onClick={() => onDraftChange(prompt)}>
+                          <strong>{t(language, question.labelKey)}</strong>
+                          <span>{t(language, question.detailKey)}</span>
+                        </button>
+                      );
+                    })}
+                  </div>
+                </section>
+              ) : (
+                <div className="brain-home-prompts">
+                  {starterPrompts.map((prompt) => (
+                    <button key={prompt} type="button" onClick={() => onDraftChange(prompt)} className="brain-prompt-pill">
+                      {prompt}
+                    </button>
+                  ))}
+                </div>
+              )}
 
               <PastConversationsPanel
                 language={language}

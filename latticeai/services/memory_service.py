@@ -338,6 +338,13 @@ class MemoryService:
             has_recall=bool(recall_items),
             graph_concepts=graph_concepts,
         )
+        suggested_questions = self._brain_brief_suggested_questions(
+            focus=focus,
+            has_durable_evidence=bool(proofs.get("has_durable_evidence")),
+            has_recall=bool(recall_items),
+            graph_concepts=graph_concepts,
+            conversations=conversations,
+        )
         return {
             "status": state,
             "score": int(readiness.get("score") or 0),
@@ -345,6 +352,7 @@ class MemoryService:
             "body_key": f"brain.brief.body.{state if state in {'quiet', 'forming', 'alive'} else 'quiet'}",
             "focus": focus,
             "next_actions": actions,
+            "suggested_questions": suggested_questions,
             "evidence": [
                 {
                     "id": "durable",
@@ -500,6 +508,82 @@ class MemoryService:
                 "priority": 6,
             })
         return sorted(actions, key=lambda item: int(item.get("priority") or 0), reverse=True)[:4]
+
+    @staticmethod
+    def _brain_brief_suggested_questions(
+        *,
+        focus: Dict[str, Any],
+        has_durable_evidence: bool,
+        has_recall: bool,
+        graph_concepts: int,
+        conversations: int,
+    ) -> List[Dict[str, Any]]:
+        """Return reusable, localized UI prompt descriptors for the Brain home."""
+        focus_title = str(focus.get("title") or "").strip()
+        focus_kind = str(focus.get("kind") or "empty")
+        questions: List[Dict[str, Any]] = []
+
+        if not has_durable_evidence or focus_kind == "empty":
+            questions.extend([
+                {
+                    "id": "start_brain",
+                    "label_key": "brain.suggestion.start.label",
+                    "detail_key": "brain.suggestion.start.detail",
+                    "prompt_key": "brain.suggestion.start.prompt",
+                    "params": {},
+                    "priority": 10,
+                },
+                {
+                    "id": "add_context",
+                    "label_key": "brain.suggestion.context.label",
+                    "detail_key": "brain.suggestion.context.detail",
+                    "prompt_key": "brain.suggestion.context.prompt",
+                    "params": {},
+                    "priority": 9,
+                },
+            ])
+            return questions
+
+        questions.append({
+            "id": "focus_next",
+            "label_key": "brain.suggestion.focus.label",
+            "detail_key": "brain.suggestion.focus.detail",
+            "prompt_key": "brain.suggestion.focus.prompt",
+            "params": {"focus": focus_title or "Brain"},
+            "priority": 10,
+        })
+
+        if has_recall:
+            questions.append({
+                "id": "evidence_check",
+                "label_key": "brain.suggestion.evidence.label",
+                "detail_key": "brain.suggestion.evidence.detail",
+                "prompt_key": "brain.suggestion.evidence.prompt",
+                "params": {"focus": focus_title or "this topic"},
+                "priority": 9,
+            })
+
+        if graph_concepts > 0:
+            questions.append({
+                "id": "graph_connections",
+                "label_key": "brain.suggestion.graph.label",
+                "detail_key": "brain.suggestion.graph.detail",
+                "prompt_key": "brain.suggestion.graph.prompt",
+                "params": {"focus": focus_title or "Knowledge Graph"},
+                "priority": 8,
+            })
+
+        if conversations > 0:
+            questions.append({
+                "id": "conversation_followup",
+                "label_key": "brain.suggestion.history.label",
+                "detail_key": "brain.suggestion.history.detail",
+                "prompt_key": "brain.suggestion.history.prompt",
+                "params": {"focus": focus_title or "recent conversations"},
+                "priority": 7,
+            })
+
+        return sorted(questions, key=lambda item: int(item.get("priority") or 0), reverse=True)[:4]
 
     def brain_proof(
         self,

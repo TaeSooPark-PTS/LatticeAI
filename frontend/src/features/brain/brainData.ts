@@ -172,6 +172,7 @@ export function buildBrainBrief(data: unknown): BrainBrief {
   const brief = isRecord(data) ? data : {};
   const focus = isRecord(brief.focus) ? brief.focus : {};
   const rawActions = asArray<ApiRecord>(brief.next_actions || brief.nextActions);
+  const rawQuestions = asArray<ApiRecord>(brief.suggested_questions || brief.suggestedQuestions);
   const rawEvidence = asArray<ApiRecord>(brief.evidence);
   const actionRows = rawActions.length
     ? rawActions
@@ -206,6 +207,14 @@ export function buildBrainBrief(data: unknown): BrainBrief {
       route: textValue(item, ["route"]),
       priority: numberValue(item, ["priority"]),
     })),
+    suggestedQuestions: rawQuestions.map((item) => ({
+      id: textValue(item, ["id"], "suggested-question"),
+      labelKey: textValue(item, ["label_key", "labelKey"], "brain.suggestion.focus.label"),
+      detailKey: textValue(item, ["detail_key", "detailKey"], "brain.suggestion.focus.detail"),
+      promptKey: textValue(item, ["prompt_key", "promptKey"], "brain.suggestion.focus.prompt"),
+      params: paramsValue(item.params),
+      priority: numberValue(item, ["priority"]),
+    })).sort((left, right) => right.priority - left.priority),
     evidence: evidenceRows.map((item) => ({
       id: textValue(item, ["id"], "evidence"),
       labelKey: textValue(item, ["label_key", "labelKey"], "brain.brief.evidence.durable"),
@@ -223,6 +232,14 @@ function uniqueById<T extends { id: string }>(items: T[]) {
     seen.add(item.id);
     return true;
   });
+}
+
+function paramsValue(value: unknown): Record<string, string | number> {
+  if (!isRecord(value)) return {};
+  return Object.entries(value).reduce<Record<string, string | number>>((params, [key, item]) => {
+    if (typeof item === "string" || typeof item === "number") params[key] = item;
+    return params;
+  }, {});
 }
 
 function fallbackBrainReadiness(memoryCount: number, conceptCount: number): BrainReadiness {

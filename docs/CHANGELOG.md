@@ -6,6 +6,10 @@ existed at that release.
 
 ## [Unreleased]
 
+### Added
+- Added Brain Brief suggested questions that turn current memory, recall proof,
+  graph concepts, and conversation history into clickable first-screen prompts.
+
 ### Changed
 - Continued app-factory decomposition by extracting user profile/API-key helper
   wiring into `latticeai.runtime.user_key_runtime`, keeping the legacy
