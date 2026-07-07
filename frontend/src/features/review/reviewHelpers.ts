@@ -17,6 +17,7 @@ export const reviewSourceFilters: Array<{ id: ReviewSourceFilter; labelKey: stri
   { id: "workflow_run", labelKey: "review.filter.source.workflow_run" },
   { id: "trigger", labelKey: "review.filter.source.trigger" },
   { id: "kg_change_digest", labelKey: "review.filter.source.kg_change_digest" },
+  { id: "chat_followup", labelKey: "review.filter.source.chat_followup" },
 ];
 
 export function reviewStatusVariant(status: string): React.ComponentProps<typeof Badge>["variant"] {
@@ -31,6 +32,7 @@ export function reviewSourceLabel(source?: string) {
   if (source === "workflow_run") return "Workflow run";
   if (source === "trigger") return "Trigger";
   if (source === "kg_change_digest") return "Knowledge digest";
+  if (source === "chat_followup") return "Brain chat";
   return source || "Automation";
 }
 

@@ -1,5 +1,5 @@
 import * as React from "react";
-import { CheckCircle2, Copy, DatabaseZap, MessageCirclePlus, RefreshCw, ShieldCheck, Sparkles } from "lucide-react";
+import { CheckCircle2, Copy, DatabaseZap, ListTodo, MessageCirclePlus, RefreshCw, ShieldCheck, Sparkles } from "lucide-react";
 
 import { type BrainState, LivingBrain } from "@/components/LivingBrain";
 import { LanguageSwitcher } from "@/components/LanguageSwitcher";
@@ -67,6 +67,7 @@ export function BrainConversation({
   onVerifyModelContinuity,
   onSend,
   onSendText,
+  onCreateActionItem,
   onStop,
   onRegenerate,
   onNewConversation,
@@ -109,6 +110,7 @@ export function BrainConversation({
   onVerifyModelContinuity: () => void;
   onSend: () => void;
   onSendText: (text: string) => void;
+  onCreateActionItem: (content: string) => void;
   onStop: () => void;
   onRegenerate: () => void;
   onNewConversation: () => void;
@@ -183,6 +185,7 @@ export function BrainConversation({
                           onRegenerate={onRegenerate}
                           canFollowUp={canFollowUp}
                           onFollowUp={onSendText}
+                          onCreateActionItem={onCreateActionItem}
                         />
                       ) : null}
                       {message.files?.length ? <CreatedFilesCard language={language} files={message.files} /> : null}
@@ -393,6 +396,7 @@ function MessageActions({
   onRegenerate,
   canFollowUp,
   onFollowUp,
+  onCreateActionItem,
 }: {
   language: Language;
   content: string;
@@ -400,6 +404,7 @@ function MessageActions({
   onRegenerate: () => void;
   canFollowUp: boolean;
   onFollowUp: (text: string) => void;
+  onCreateActionItem: (content: string) => void;
 }) {
   const [copied, setCopied] = React.useState(false);
   const followUps = React.useMemo(
@@ -429,6 +434,12 @@ function MessageActions({
         <button type="button" aria-label={t(language, "brain.message.regenerateAria")} onClick={onRegenerate}>
           <RefreshCw className="h-3 w-3" aria-hidden="true" />
           {t(language, "brain.message.regenerate")}
+        </button>
+      ) : null}
+      {canFollowUp ? (
+        <button type="button" aria-label={t(language, "brain.message.saveTaskAria")} onClick={() => onCreateActionItem(content)}>
+          <ListTodo className="h-3 w-3" aria-hidden="true" />
+          {t(language, "brain.message.saveTask")}
         </button>
       ) : null}
       {canFollowUp ? (

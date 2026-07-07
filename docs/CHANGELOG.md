@@ -13,6 +13,10 @@ existed at that release.
   of only filling the composer.
 - Added one-click follow-up prompts under the latest Brain answer for turning a
   reply into a checklist, evidence review, or prioritized next steps.
+- Added a Brain chat to Review Center handoff so users can save an answer as a
+  reviewable task draft and manage it alongside automation suggestions.
+- Added direct Brain-to-Agent delegation and successful agent-run synthesis into
+  durable Brain memory/graph context.
 
 ### Changed
 - Continued app-factory decomposition by extracting user profile/API-key helper

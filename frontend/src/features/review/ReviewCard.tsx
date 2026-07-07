@@ -29,6 +29,7 @@ export function ReviewCard({ item, feedback, onAction }: ReviewCardProps) {
   const hadRun = hasRunBefore(item);
   const snoozed = item.effective_status === "snoozed";
   const actionable = isActionableReview(item);
+  const canRunNow = item.source !== "chat_followup";
 
   return (
     <div className="rounded-lg border border-border bg-background/55 p-4">
@@ -75,15 +76,17 @@ export function ReviewCard({ item, feedback, onAction }: ReviewCardProps) {
       {actionable ? (
         <div className="mt-4 grid gap-2">
           <p className="text-xs leading-5 text-muted-foreground">
-            {t(language, "review.runNow.detail")}
+            {t(language, canRunNow ? "review.runNow.detail" : "review.chat.detail")}
           </p>
           <div className="flex flex-wrap gap-2" aria-label={t(language, "review.actions.aria")}>
-            <ActionButton
-              label={t(language, "review.runNow")}
-              successLabel={hadRun ? t(language, "review.regenerated") : t(language, "review.executed")}
-              action={() => onAction(item, "run_now", hadRun)}
-              invalidate={[]}
-            />
+            {canRunNow ? (
+              <ActionButton
+                label={t(language, "review.runNow")}
+                successLabel={hadRun ? t(language, "review.regenerated") : t(language, "review.executed")}
+                action={() => onAction(item, "run_now", hadRun)}
+                invalidate={[]}
+              />
+            ) : null}
             <ActionButton label={t(language, "review.approve")} action={() => onAction(item, "approve")} invalidate={[]} />
             {!snoozed ? <ActionButton label={t(language, "review.snoozeDay")} action={() => onAction(item, "snooze")} invalidate={[]} /> : null}
             <ActionButton label={t(language, "review.dismiss")} action={() => onAction(item, "dismiss")} invalidate={[]} variant="destructive" />

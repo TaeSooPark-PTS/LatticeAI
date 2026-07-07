@@ -80,6 +80,7 @@ class AgentRuntime:
         max_retries_cap: int = 5,
         hooks: Any = None,
         allow_simulation_runs: bool = False,
+        memory_ingest: Optional[Callable[..., Dict[str, Any]]] = None,
     ):
         self._store = store
         self._orchestrator_factory = orchestrator_factory
@@ -91,6 +92,10 @@ class AgentRuntime:
         self._hooks = hooks
         self._allow_simulation_runs = bool(allow_simulation_runs)
         self._run_executor: Any = None
+        # Optional memory synthesis: successful agent runs produce durable
+        # Brain memories (long_term / workspace tier) so users *feel* the results
+        # in BrainBrief, MemoryRings, search and graph immediately.
+        self._memory_ingest = memory_ingest
 
     def attach_executor(self, executor: Any) -> None:
         self._run_executor = executor
@@ -415,6 +420,49 @@ class AgentRuntime:
             "current_role": None,
         }
 
+    def _synthesize_brain_memory(self, *, goal: str, result: Any, user_email: Optional[str], scope: Optional[str]) -> None:
+        """Turn a successful agent run into durable Brain memory + graph nodes.
+
+        This is the key to users *strongly feeling* the scale of agent work:
+        delegated goals don't disappear into Act tab; they become part of the
+        Living Brain (searchable, visible in rings/brief, connected in graph).
+        """
+        if not self._memory_ingest:
+            return
+        if getattr(result, "status", None) not in ("ok", "retried_ok"):
+            return
+        try:
+            output = (getattr(result, "output", "") or "")[:2200]
+            plan_steps = getattr(result, "plan", None) or []
+            plan_summary = "; ".join(str(s.get("description", ""))[:80] for s in plan_steps[:4]) if plan_steps else ""
+            content = f"[에이전트 합성] 목표: {goal}\n\n결과 요약: {output}\n\n주요 단계: {plan_summary}".strip()
+            if not content or len(content) < 20:
+                return
+            tags = ["agent-synthesis", "delegated", "auto"]
+            self._memory_ingest(
+                kind="long_term",
+                content=content,
+                user_email=user_email,
+                tags=tags,
+                metadata={"source": "agent_runtime", "goal": goal[:200], "roles": getattr(result, "roles_run", None)},
+                graph=self._workspace_graph() if hasattr(self, "_workspace_graph") else None,
+                workspace_id=scope,
+            )
+            # Also create a compact decision-style entry for quick visibility
+            if len(output) > 60:
+                decision_content = f"Agent delegation complete: {goal[:120]} → {output[:160]}..."
+                self._memory_ingest(
+                    kind="decisions",
+                    content=decision_content,
+                    user_email=user_email,
+                    tags=["agent", "outcome"],
+                    metadata={"source": "agent_runtime_synthesis"},
+                    workspace_id=scope,
+                )
+        except Exception:
+            # Synthesis must never break the run record.
+            pass
+
     def _post_run_hooks(
         self,
         *,
@@ -572,6 +620,9 @@ class AgentRuntime:
             status=updated.get("status") or result.status,
             retries=result.retries,
         )
+        # Large-scale user-visible impact: successful runs enrich the Brain permanently.
+        if (updated.get("status") or result.status) in ("ok", "retried_ok"):
+            self._synthesize_brain_memory(goal=goal, result=result, user_email=user_email, scope=scope)
         post_dispatch = self._post_run_hooks(
             run_id=run_id,
             result=result,
@@ -651,6 +702,9 @@ class AgentRuntime:
             status=result.status,
             retries=result.retries,
         )
+        # Large-scale user-visible impact: successful runs enrich the Brain permanently.
+        if result.status in ("ok", "retried_ok"):
+            self._synthesize_brain_memory(goal=goal, result=result, user_email=user_email, scope=scope)
 
         run_id = run.get("id") or run.get("run_id") if isinstance(run, dict) else None
         post_dispatch = self._post_run_hooks(

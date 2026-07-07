@@ -144,7 +144,15 @@ class PlatformRuntime:
         def provider(goal: str):
             try:
                 mems = self.store.search_memories(goal, user_email=user, workspace_id=scope).get("memories", [])
-                return [str(m.get("content") or "")[:160] for m in mems[:5]]
+                ctx = [str(m.get("content") or "")[:180] for m in mems[:6]]
+                # Enrich with agent-synthesis memories preferentially for self-improving Brain feel
+                try:
+                    allm = self.store.list_memories(user_email=user, workspace_id=scope).get("memories", [])
+                    synth = [str(m.get("content") or "")[:160] for m in allm if "agent-synthesis" in (m.get("tags") or [])][:3]
+                    ctx = synth + ctx
+                except Exception:
+                    pass
+                return ctx[:8]
             except Exception:
                 return []
         return provider

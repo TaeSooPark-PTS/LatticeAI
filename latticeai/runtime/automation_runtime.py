@@ -40,12 +40,20 @@ def build_automation_runtime(
         review_sink=review_queue,
         tz_name=tz_name,
     )
+    def _memory_ingest(**kwargs):
+        try:
+            # Delegate to store's upsert (enriches memories + KG automatically via internal graph.ingest_event)
+            return store.upsert_memory(**kwargs)
+        except Exception:
+            return None
+
     agent_runtime = AgentRuntime(
         store=store,
         orchestrator_factory=platform.build_orchestrator,
         workspace_graph=workspace_graph,
         append_audit_event=append_audit_event,
         hooks=hooks,
+        memory_ingest=_memory_ingest,
     )
     run_executor = RunExecutor(
         store=store,

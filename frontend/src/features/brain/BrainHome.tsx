@@ -1,5 +1,5 @@
 import * as React from "react";
-import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { latticeApi } from "@/api/client";
 import { type BrainState, triggerBrainRecall } from "@/components/LivingBrain";
 import { useAppStore } from "@/store/appStore";
@@ -75,6 +75,21 @@ export function BrainHome({
   const brainBriefQ = useQuery({
     queryKey: ["memoryBrainBrief", lastRecallQuery],
     queryFn: () => latticeApi.memoryBrainBrief(lastRecallQuery, 3),
+  });
+
+  // Large scale delegation: from main Brain composer, users can delegate big goals
+  // directly. Results auto-synthesize into Brain memory/graph for strong user feel.
+  const delegateMutation = useMutation({
+    mutationFn: (g: string) => latticeApi.runAgent(g, ["planner", "executor", "reviewer"]),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["memoryManager"] });
+      qc.invalidateQueries({ queryKey: ["memoryBrainBrief"] });
+      qc.invalidateQueries({ queryKey: ["graph"] });
+      qc.invalidateQueries({ queryKey: ["agentRuntime"] });
+      setMemoryFeedback(t(language, "brain.delegate.done"));
+      setTimeout(() => setMemoryFeedback(null), 4200);
+    },
+    onError: (error) => setMemoryFeedback(t(language, "brain.delegate.failed", { reason: String(error) })),
   });
 
   const memoryFragments = React.useMemo(
@@ -525,6 +540,30 @@ export function BrainHome({
     setMemoryFeedback(t(language, "brain.modelDemo.done", { model: modelName }));
   }
 
+  async function createActionItem(content: string) {
+    const trimmed = content.trim();
+    if (!trimmed) return;
+    const lastUser = [...messages].reverse().find((message: Message) => message.role === "user");
+    const title = (lastUser?.content || t(language, "brain.action.defaultTitle")).trim().slice(0, 96);
+    const result = await latticeApi.createReviewItem({
+      title,
+      summary: trimmed.slice(0, 420),
+      source: "chat_followup",
+      kind: "task_draft",
+      payload: {
+        answer_preview: trimmed.slice(0, 2000),
+        conversation_id: conversationId || "",
+      },
+      provenance: {
+        conversation_id: conversationId || "",
+        source_detail: "brain_chat",
+      },
+    });
+    setMemoryFeedback(result.ok
+      ? t(language, "brain.action.saved")
+      : t(language, "brain.action.saveFailed", { reason: result.error || String(result.status || "") }));
+  }
+
   function stopStreaming() {
     abortRef.current?.abort();
   }
@@ -625,6 +664,7 @@ export function BrainHome({
         onVerifyModelContinuity={() => void verifyModelContinuity()}
         onSend={() => void send()}
         onSendText={(text) => void sendText(text)}
+        onCreateActionItem={(content) => void createActionItem(content)}
         onStop={stopStreaming}
         onRegenerate={() => void regenerate()}
         onNewConversation={startNewConversation}
@@ -632,6 +672,25 @@ export function BrainHome({
         onDeleteConversation={(id) => void deleteConversation(id)}
         onExploreBrain={openKnowledgeGraph}
       />
+
+      <div className="mt-3 rounded-lg border border-border/70 bg-background/60 p-3 text-sm flex flex-wrap items-center gap-2">
+        <span className="font-medium">{t(language, "brain.delegate.title")}</span>
+        <span className="text-muted-foreground">{t(language, "brain.delegate.detail")}</span>
+        <button
+          className="ml-auto px-3 py-1 rounded bg-primary text-primary-foreground text-xs disabled:opacity-50"
+          disabled={!draft.trim() || delegateMutation.isPending}
+          onClick={() => {
+            const g = draft.trim();
+            if (g) {
+              delegateMutation.mutate(g);
+              // keep draft so user sees it was the goal
+            }
+          }}
+        >
+          {delegateMutation.isPending ? t(language, "brain.delegate.running") : t(language, "brain.delegate.cta")}
+        </button>
+        {delegateMutation.data ? <span className="text-emerald-600 text-xs">{t(language, "brain.delegate.saved")}</span> : null}
+      </div>
     </main>
   );
 }

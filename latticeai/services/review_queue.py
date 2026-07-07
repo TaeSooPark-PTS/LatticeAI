@@ -26,7 +26,7 @@ OPEN_STATUSES = {"pending", "snoozed"}
 TERMINAL_STATUSES = {"approved", "dismissed"}
 ALL_STATUSES = OPEN_STATUSES | TERMINAL_STATUSES
 
-REVIEW_SOURCES = frozenset({"workflow_run", "trigger", "kg_change_digest"})
+REVIEW_SOURCES = frozenset({"workflow_run", "trigger", "kg_change_digest", "chat_followup"})
 
 # Which source statuses each action is allowed from.
 _ALLOWED_FROM: Dict[str, set] = {

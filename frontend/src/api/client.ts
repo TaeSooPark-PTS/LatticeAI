@@ -39,7 +39,15 @@ type ReviewItemOperation =
 export type ReviewItem = components["schemas"]["ReviewItem"];
 export type ReviewItemList = components["schemas"]["ReviewItemList"];
 export type ReviewStatusFilter = "pending" | "snoozed" | "approved" | "dismissed" | "all";
-export type ReviewSourceFilter = "workflow_run" | "trigger" | "kg_change_digest" | "all";
+export type ReviewSourceFilter = "workflow_run" | "trigger" | "kg_change_digest" | "chat_followup" | "all";
+export type CreateReviewItemBody = {
+  title: string;
+  summary?: string;
+  source?: Exclude<ReviewSourceFilter, "all">;
+  kind?: string;
+  payload?: Record<string, unknown>;
+  provenance?: Record<string, unknown>;
+};
 
 function reviewItemShape(): ReviewItem {
   return {
@@ -399,6 +407,7 @@ export const latticeApi = {
   hookRuns: () => get("/api/hooks/runs", { runs: [] }, { limit: 50 }),
   hookRun: (body: Record<string, unknown> = {}) => post("/api/hooks/run", { kind: "pre_run", event: "manual", ...body }, {}),
   automationReviews: reviewList,
+  createReviewItem: (body: CreateReviewItemBody) => post("/automation/reviews", body, reviewItemShape()),
   approveReviewItem: (id: string) => reviewAction(id, "approve"),
   dismissReviewItem: (id: string) => reviewAction(id, "dismiss"),
   snoozeReviewItem: snoozeReview,

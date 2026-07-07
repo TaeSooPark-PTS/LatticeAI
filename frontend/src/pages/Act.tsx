@@ -73,6 +73,7 @@ export function ActPage({ initialTab }: { initialTab?: string }) {
 function AgentsPanel() {
   const qc = useQueryClient();
   const mode = useAppStore((state) => state.mode);
+  const language = useAppStore((state) => state.language);
   const [goal, setGoal] = React.useState("");
   const runtime = useQuery({ queryKey: ["agentRuntime"], queryFn: latticeApi.agentRuntime });
   const registry = useQuery({ queryKey: ["agentRegistry"], queryFn: latticeApi.agentRegistry });
@@ -96,7 +97,7 @@ function AgentsPanel() {
       <Card>
         <CardHeader>
           <CardTitle className="flex items-center gap-2"><Bot className="h-4 w-4" /> Start with a goal</CardTitle>
-          <CardDescription>Lattice will plan, execute, and review only when the local model is ready.</CardDescription>
+          <CardDescription>{t(language, "act.goal.description")}</CardDescription>
         </CardHeader>
         <CardContent className="space-y-3">
           <Textarea value={goal} onChange={(e) => setGoal(e.target.value)} placeholder="What should Lattice help you accomplish?" />
@@ -109,7 +110,10 @@ function AgentsPanel() {
           >
             <Play className="h-4 w-4" /> {runtimeReady ? "Start Run" : "Load a model first"}
           </Button>
-          {run.data ? <OperationResult result={run.data} successLabel="Agent run request completed" /> : null}
+          {run.data ? <OperationResult result={run.data} successLabel={t(language, "act.goal.completed")} /> : null}
+          {run.data && (run.data as any)?.data ? (
+            <div className="text-xs text-emerald-600">{t(language, "act.goal.brainSaved")}</div>
+          ) : null}
         </CardContent>
       </Card>
       <DataPanel title="Readiness" result={runtime.data}>
