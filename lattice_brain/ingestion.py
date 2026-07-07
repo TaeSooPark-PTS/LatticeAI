@@ -50,6 +50,52 @@ def _now_iso() -> str:
     return datetime.now(timezone.utc).isoformat()
 
 
+# --- Large candidate 1 slice: incremental / background ingestion support ---
+@dataclass
+class BackgroundIngestionJob:
+    """Job descriptor for background/incremental indexing (KG scale-up slice)."""
+    job_id: str
+    items: List[IngestionItem]
+    status: str = "pending"  # pending | running | done | failed
+    created_at: str = field(default_factory=_now_iso)
+    processed: int = 0
+    total: int = 0
+    errors: List[str] = field(default_factory=list)
+
+
+class BackgroundIngestionQueue:
+    """Simple in-memory queue for background incremental ingestion.
+
+    For large corpus: this is the seam where a real scheduler / worker pool
+    (celery, rq, or internal thread) can be plugged later without changing callers.
+    Supports incremental (skip duplicates) vs force reindex.
+    """
+    def __init__(self) -> None:
+        self._jobs: Dict[str, BackgroundIngestionJob] = {}
+        self._counter = 0
+
+    def schedule(self, items: List[IngestionItem], *, incremental: bool = True) -> BackgroundIngestionJob:
+        self._counter += 1
+        job_id = f"bg_ingest_{self._counter:04d}"
+        job = BackgroundIngestionJob(
+            job_id=job_id,
+            items=items,
+            total=len(items),
+        )
+        # annotate items for downstream
+        for it in job.items:
+            # attach flag without breaking dataclass defaults (use metadata)
+            it.metadata = {**it.metadata, "incremental": incremental, "bg_job": job_id}
+        self._jobs[job_id] = job
+        return job
+
+    def get(self, job_id: str) -> Optional[BackgroundIngestionJob]:
+        return self._jobs.get(job_id)
+
+    def list_pending(self) -> List[BackgroundIngestionJob]:
+        return [j for j in self._jobs.values() if j.status == "pending"]
+
+
 @dataclass
 class IngestionItem:
     """A single thing to ingest, normalized across every source type."""
@@ -118,6 +164,7 @@ class IngestionPipeline:
         audit: Optional[Any] = None,
         max_text_bytes: int = DEFAULT_MAX_TEXT_BYTES,
         pipeline_name: str = "unified-ingestion",
+        bg_queue: Optional[BackgroundIngestionQueue] = None,
     ) -> None:
         self._kg = knowledge_graph
         self._hooks = hooks
@@ -125,6 +172,7 @@ class IngestionPipeline:
         self._audit = audit
         self._max_text_bytes = int(max_text_bytes)
         self._pipeline_name = pipeline_name
+        self._bg_queue = bg_queue or BackgroundIngestionQueue()
 
     def available(self) -> bool:
         return self._enable and self._kg is not None
@@ -242,6 +290,26 @@ class IngestionPipeline:
             provenance_id=prov.get("id"),
             detail=provenance_detail,
         )
+
+    # --- Large candidate #1: background / incremental scheduling (slice) ---
+    def schedule_background(
+        self,
+        items: List[IngestionItem],
+        *,
+        incremental: bool = True,
+    ) -> BackgroundIngestionJob:
+        """Schedule items for background incremental indexing.
+
+        Returns a job handle. Actual execution can be driven by caller
+        (or future worker) calling pipeline.ingest on each. This seam enables
+        large-corpus scale without blocking user requests.
+        """
+        job = self._bg_queue.schedule(items, incremental=incremental)
+        # mark initial status on results concept (jobs track)
+        return job
+
+    def get_background_job(self, job_id: str) -> Optional[BackgroundIngestionJob]:
+        return self._bg_queue.get(job_id)
 
     # ── routing helpers ──────────────────────────────────────────────────────
     def _ingest_text(self, item, *, source_type, owner, captured_at) -> Dict[str, Any]:

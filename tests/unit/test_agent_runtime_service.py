@@ -122,6 +122,20 @@ def test_successful_agent_run_synthesis_splits_memory_sections():
     assert review_items[0]["payload"]["followup"]
 
 
+# --- Large candidate #4 slice: proactive contradiction / temporal detect (test) ---
+def test_quality_detects_temporal_contradiction():
+    from lattice_brain.quality import MemoryQualityManager
+    mgr = MemoryQualityManager()
+    mems = [
+        {"content": "Use X for retrieval", "timestamp": 100},
+        {"content": "Do not use X for retrieval", "timestamp": 200},
+        {"content": "Use X for retrieval", "timestamp": 150},
+    ]
+    flagged = mgr.detect_temporal_contradictions(mems)
+    # at least the negation pair should surface
+    assert any("contradiction:temporal_negation" in str(f.get("proactive_flag", "")) for f in flagged)
+
+
 def test_product_runtime_refuses_simulation_runs():
     rt = _runtime(allow_simulation_runs=False)
     health = rt.health()

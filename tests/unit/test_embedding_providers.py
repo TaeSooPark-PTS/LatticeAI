@@ -172,3 +172,19 @@ def test_search_router_embeddings_endpoints(tmp_path):
     assert ids == {"hash", "mlx", "ollama", "openai", "custom"}
     profile_ids = {p["id"] for p in r2.json()["profiles"]}
     assert {"local:bge-m3", "ollama:mxbai-embed-large", "openai:text-embedding-3-small"} <= profile_ids
+
+
+# --- Large candidate #2: multimodal vision stub test ---
+def test_vision_stub_describe_and_embed_offline():
+    from lattice_brain.embeddings import get_vision_embedder, VisionStub
+    v = get_vision_embedder(dim=64)
+    assert isinstance(v, VisionStub)
+    cap = v.describe("/tmp/photo.png", {"width": 640, "height": 480, "format": "PNG"})
+    assert "photo.png" in cap and "640x480" in cap
+    vec = v.embed_image("/tmp/photo.png", {"width": 640, "height": 480}, cap)
+    assert len(vec) == 64
+    assert any(abs(x) > 0 for x in vec)  # not zero vector
+    # similarity to self high
+    vec2 = v.embed_image("/tmp/photo.png", {"width": 640, "height": 480}, cap)
+    sim = sum(a*b for a,b in zip(vec, vec2))
+    assert sim > 0.99

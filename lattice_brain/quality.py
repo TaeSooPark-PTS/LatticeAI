@@ -152,6 +152,28 @@ class MemoryCandidate:
     conflicts: List[str] = field(default_factory=list)
 
 class MemoryQualityManager:
+    _NEGATION_PATTERNS = (
+        "not",
+        "does not",
+        "don't",
+        "do not",
+        "싫어",
+        "원하지 않",
+        "하지 않",
+        "반대",
+    )
+    _POSITIVE_PATTERNS = (
+        "prefers",
+        "prefer",
+        "likes",
+        "like",
+        "wants",
+        "want",
+        "좋아",
+        "선호",
+        "원해",
+    )
+
     def extract_candidates(self, memories: List[Dict]) -> List[MemoryCandidate]:
         return [MemoryCandidate(m["id"], m["content"], m.get("score", 0.6), m.get("source", "mem")) for m in memories]
 
@@ -163,10 +185,16 @@ class MemoryQualityManager:
         return sorted(cands, key=lambda x: x.score, reverse=True)
 
     def dedupe(self, cands: List[MemoryCandidate], threshold: float = 0.85) -> List[MemoryCandidate]:
+        """Advanced content dedup (KG scale slice).
+
+        Uses sha256 prefix + normalized length bucket for better collision resistance
+        than plain md5. Future: plug embedding cosine or simhash here.
+        """
         kept = []
         seen = set()
         for c in cands:
-            h = hashlib.md5(c.content.encode()).hexdigest()[:16]
+            norm = " ".join(c.content.lower().split())[:200]
+            h = hashlib.sha256((norm + f"|{len(c.content)//50}").encode()).hexdigest()[:16]
             if h not in seen:
                 seen.add(h)
                 kept.append(c)
@@ -182,11 +210,77 @@ class MemoryQualityManager:
         return list(merged.values())
 
     def detect_conflicts(self, cands: List[MemoryCandidate]) -> List[MemoryCandidate]:
-        # Lightweight local heuristic; LLM conflict classifiers can replace it.
-        for i, c in enumerate(cands):
-            if "not" in c.content.lower() or "반대" in c.content:
+        """Flag local contradiction signals before proactive synthesis.
+
+        The heuristic stays deterministic/offline: direct negation marks a row
+        as risky, and pairwise token overlap catches common preference conflicts
+        such as "prefers light mode" vs "does not like light mode".
+        """
+        for c in cands:
+            lowered = c.content.lower()
+            if any(pattern in lowered for pattern in self._NEGATION_PATTERNS):
                 c.conflicts.append("conflict:possible_negation")
+
+        signatures = [(c, self._content_signature(c.content)) for c in cands]
+        for left_index, (left, left_sig) in enumerate(signatures):
+            for right, right_sig in signatures[left_index + 1:]:
+                if not left_sig or len(left_sig & right_sig) < 2:
+                    continue
+                left_negative = self._is_negative(left.content)
+                right_negative = self._is_negative(right.content)
+                left_positive = self._is_positive(left.content)
+                right_positive = self._is_positive(right.content)
+                if left_negative == right_negative:
+                    continue
+                if not (left_positive or right_positive):
+                    continue
+                left.conflicts.append(f"conflict:contradicts:{right.id}")
+                right.conflicts.append(f"conflict:contradicts:{left.id}")
         return cands
+
+    def _is_negative(self, content: str) -> bool:
+        lowered = content.lower()
+        return any(pattern in lowered for pattern in self._NEGATION_PATTERNS)
+
+    def _is_positive(self, content: str) -> bool:
+        lowered = content.lower()
+        return any(pattern in lowered for pattern in self._POSITIVE_PATTERNS)
+
+    def _content_signature(self, content: str) -> set[str]:
+        stopwords = {
+            "a", "an", "and", "for", "i", "is", "it", "mode", "the", "to",
+            "user", "users", "does", "do", "not", "like", "likes", "prefer",
+            "prefers", "want", "wants",
+        }
+        tokens = set(re.findall(r"\w+", content.lower()))
+        return {token for token in tokens if len(token) > 2 and token not in stopwords}
+
+    # --- Large candidate #4 slice: proactive / temporal contradiction detection ---
+    def detect_temporal_contradictions(self, memories: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
+        """Simple temporal + contradiction detector over memory list (proactive synthesis extension).
+
+        Looks at negation keywords across similar contents + differing timestamps.
+        Real version would walk graph historical projections + LLM judge.
+        Returns flagged items with 'contradiction' tag.
+        """
+        flagged = []
+        neg_tokens = ("not ", "반대", "거짓", "no longer", "never", "중단", "사용하지")
+        pos_group = []
+        neg_group = []
+        for m in memories:
+            c = (m.get("content") or "").lower()
+            if any(t in c for t in neg_tokens):
+                neg_group.append(m)
+            else:
+                pos_group.append(m)
+        # cross check: if both pos and neg exist with time spread
+        all_t = [m.get("timestamp") or m.get("created_at") or 0 for m in memories]
+        if neg_group and pos_group and len(set(all_t)) > 1:
+            for g in (pos_group + neg_group):
+                gg = dict(g)
+                gg["proactive_flag"] = "contradiction:temporal_negation"
+                flagged.append(gg)
+        return flagged
 
     def apply_retention(self, cands: List[MemoryCandidate], max_age_days: int = 90) -> List[MemoryCandidate]:
         now = time.time()

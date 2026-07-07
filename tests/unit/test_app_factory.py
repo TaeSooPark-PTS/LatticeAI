@@ -153,6 +153,32 @@ print(json.dumps({
     assert result["retention"] < 500
 
 
+def test_app_runtime_exposes_explicit_runtime_bundle(tmp_path: Path):
+    """The factory keeps a typed migration target for removing locals export."""
+    code = """
+import json
+
+from latticeai.app_factory import get_shared_runtime
+
+runtime = get_shared_runtime()
+bundle = runtime._RUNTIME_BUNDLE
+required = {
+    "app", "CONFIG", "KNOWLEDGE_GRAPH", "INGESTION_PIPELINE",
+    "AGENT_RUNTIME", "HOOKS_REGISTRY", "REVIEW_QUEUE",
+}
+print(json.dumps({
+    "has_required": required <= set(bundle),
+    "bundle_size": len(bundle),
+    "app_matches": bundle["app"] is runtime.app,
+}))
+"""
+    result = _run_in_sandbox(code, tmp_path)
+
+    assert result["has_required"] is True
+    assert result["bundle_size"] >= 8
+    assert result["app_matches"] is True
+
+
 def test_server_module_proxies_lazily(tmp_path: Path):
     """``import server`` is also side-effect free until ``server.app`` is read."""
     code = """

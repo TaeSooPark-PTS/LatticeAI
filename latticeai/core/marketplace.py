@@ -12,7 +12,7 @@ from typing import Any, Dict, List, Optional
 
 
 MARKETPLACE_VERSION = "8.9.0"
-TEMPLATE_KINDS = ("plugin", "workflow", "agent")
+TEMPLATE_KINDS = ("plugin", "workflow", "agent", "ingestion_bridge")
 
 
 def _agent_template(
@@ -143,6 +143,37 @@ BUILTIN_TEMPLATES: Dict[str, List[Dict[str, Any]]] = {
             suggested_tools=["todo_write", "workspace_tree"],
             category="automation",
         ),
+    ],
+    "ingestion_bridge": [
+        {
+            "id": "bridge-obsidian-markdown",
+            "kind": "ingestion_bridge",
+            "name": "Obsidian Markdown Bridge",
+            "version": "1.0.0",
+            "description": "Import a local Markdown vault through the unified ingestion pipeline.",
+            "metadata": {"category": "interop", "installable": True},
+            "definition": {
+                "source_types": ["local_file", "markdown"],
+                "file_patterns": ["*.md"],
+                "pipeline": "unified-ingestion",
+                "provenance": True,
+                "graph_edges": ["indexed_from", "mentions"],
+            },
+        },
+        {
+            "id": "bridge-calendar-notes",
+            "kind": "ingestion_bridge",
+            "name": "Calendar Notes Bridge",
+            "version": "1.0.0",
+            "description": "Normalize calendar meeting notes into Brain events and source-linked notes.",
+            "metadata": {"category": "interop", "installable": True},
+            "definition": {
+                "source_types": ["workspace_event", "note"],
+                "pipeline": "unified-ingestion",
+                "provenance": True,
+                "graph_edges": ["indexed_from", "mentions"],
+            },
+        },
     ],
 }
 

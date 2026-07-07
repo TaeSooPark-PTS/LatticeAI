@@ -25,6 +25,9 @@ existed at that release.
   produces actionable approval candidates instead of passive memory only.
 - Approving an Agent follow-up review item now promotes it into a manual
   workflow draft with trigger, agent, and output nodes.
+- Added large-feature foundations for KG/Retrieval scale diagnostics,
+  background ingestion scheduling, offline multimodal image captions,
+  proactive contradiction detection, and ingestion bridge marketplace templates.
 
 ### Changed
 - Continued app-factory decomposition by extracting user profile/API-key helper

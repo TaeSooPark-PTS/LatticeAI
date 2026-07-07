@@ -51,11 +51,38 @@ def test_vector_index_is_incremental_and_rebuildable(tmp_path):
     missing = store.index_status()
     assert missing["status"] == "needs_reindex"
     assert missing["missing_items"] > 0
+    assert missing["scale"]["coverage_ratio"] == 0
+    assert missing["scale"]["incremental_reindex_recommended"] is True
+    assert missing["scale"]["backlog_reasons"]["missing_vector"] == missing["missing_items"]
+    assert missing["scale"]["backlog_samples"][0]["reason"] == "missing_vector"
 
     rebuilt = store.rebuild_vector_index(full=True)
     assert rebuilt["status"] == "completed"
     assert rebuilt["items_indexed"] > 0
-    assert store.index_status()["status"] == "ready"
+    rebuilt_status = store.index_status()
+    assert rebuilt_status["status"] == "ready"
+    assert rebuilt_status["scale"]["coverage_percent"] == 100.0
+    assert rebuilt_status["scale"]["latency_budget"]["last_items_per_second"] > 0
+
+
+def test_vector_index_status_explains_stale_backlog(tmp_path):
+    store = _store(tmp_path)
+    _seed_hybrid_graph(store)
+    with store._connect() as conn:
+        node_id = conn.execute(
+            "SELECT item_id FROM vector_embeddings WHERE item_type='node' LIMIT 1"
+        ).fetchone()["item_id"]
+        conn.execute(
+            "UPDATE nodes SET summary=? WHERE id=?",
+            ("changed summary that should force a vector refresh", node_id),
+        )
+
+    status = store.index_status()
+    assert status["status"] == "needs_reindex"
+    assert status["stale_items"] == 1
+    assert status["scale"]["backlog_reasons"]["text_changed"] == 1
+    assert status["scale"]["backlog_by_item_type"]["node"] == 1
+    assert status["scale"]["backlog_samples"][0]["item_id"] == node_id
 
 
 def test_vector_search_returns_local_similarity_results(tmp_path):

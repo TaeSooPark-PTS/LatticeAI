@@ -91,4 +91,15 @@ def create_marketplace_router(
         scope = gate_read(request)
         return {"registry": store.list_template_registry(workspace_id=scope)}
 
+    @router.get("/marketplace/interop/bridges")
+    async def list_interop_bridges(request: Request):
+        require_user(request)
+        gate_read(request)
+        bridges = catalog.list_templates(kind="ingestion_bridge")["templates"]
+        return {
+            "bridges": bridges,
+            "total": len(bridges),
+            "pipeline": "unified-ingestion",
+        }
+
     return router

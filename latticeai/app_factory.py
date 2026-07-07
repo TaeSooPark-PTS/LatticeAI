@@ -1158,7 +1158,25 @@ def _build(config: "Optional[Config]" = None) -> Dict[str, Any]:
     # ── Constructed-namespace export (consumed by AppRuntime) ────────────────
     # Every local — singletons, helper functions, request models — becomes an
     # attribute of the runtime so the legacy ``server_app`` surface survives.
-    return dict(locals())
+    # Large candidate #3 slice: explicit bundle construction toward full DI (no more blind dump).
+    # Keep full locals() for compat; the BUNDLE is the future clean surface.
+    # Use only names known to be assigned in this scope (from runtime builds + wiring).
+    _RUNTIME_BUNDLE = {
+        "app": app,
+        "CONFIG": CONFIG,
+        "KNOWLEDGE_GRAPH": KNOWLEDGE_GRAPH,
+        "INGESTION_PIPELINE": INGESTION_PIPELINE,
+        "AGENT_RUNTIME": AGENT_RUNTIME,
+        "HOOKS_REGISTRY": HOOKS_REGISTRY,
+        "REVIEW_QUEUE": REVIEW_QUEUE,
+        "AGENT_REGISTRY": AGENT_REGISTRY,
+        "model_router": router,
+        "build_runtime": build_runtime,
+        "get_shared_runtime": get_shared_runtime,
+        "create_app": create_app,
+        # TODO(#3): progressively populate only the public surface here; drop full dump later.
+    }
+    return {**dict(locals()), "_RUNTIME_BUNDLE": _RUNTIME_BUNDLE}
 
 
 @dataclass(frozen=True)

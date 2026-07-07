@@ -115,6 +115,16 @@ class KnowledgeGraphLocalIndexMixin:
                     ) as exc:  # pragma: no cover - depends on local OCR runtime
                         meta["ocr_error"] = str(exc)
                         text = ""
+                # Large candidate #2 slice: always attach vision stub describe for IMAGE node evidence
+                try:
+                    from ..embeddings import get_vision_embedder
+                    v = get_vision_embedder()
+                    cap = v.describe(str(path), meta)
+                    meta["vision_caption"] = cap
+                    if not text:
+                        text = cap  # fallback text signal for retrieval
+                except Exception:
+                    meta["vision_caption"] = meta.get("vision_caption") or f"image:{path}"
         return text[:200_000], meta
 
     def _ensure_local_hierarchy(

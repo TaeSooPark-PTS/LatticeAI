@@ -244,3 +244,23 @@ def test_provenance_stats_aggregate(tmp_path):
     assert stats["by_source_type"].get("web_url", 0) >= 1
     assert stats["by_source_type"].get("note", 0) >= 1
     assert stats["embedded"] >= 1
+
+
+# --- Large candidate #1 slice test: background incremental scheduling ---
+def test_background_schedule_creates_job_and_annotates_items(tmp_path):
+    pipe = _pipeline(tmp_path)
+    items = [
+        IngestionItem(source_type="note", title="bg1", text="background item one for large corpus"),
+        IngestionItem(source_type="web_url", title="bg2", text="background item two", source_uri="https://ex.com/2"),
+    ]
+    job = pipe.schedule_background(items, incremental=True)
+    assert job.job_id.startswith("bg_ingest_")
+    assert job.status == "pending"
+    assert job.total == 2
+    assert len(job.items) == 2
+    for it in job.items:
+        assert it.metadata.get("incremental") is True
+        assert "bg_job" in it.metadata
+    # job retrievable
+    again = pipe.get_background_job(job.job_id)
+    assert again is job or again.job_id == job.job_id

@@ -228,20 +228,77 @@ class KnowledgeGraphVectorMixin:
                     """
             ).fetchall()
         missing = stale = ready = 0
+        source_item_ids = {str(item["item_id"]) for item in source_items}
+        backlog_by_type: Dict[str, int] = {}
+        backlog_reasons: Dict[str, int] = {}
+        backlog_samples: List[Dict[str, Any]] = []
+
+        def add_backlog(item: Dict[str, Any], reason: str) -> None:
+            item_type = str(item.get("item_type") or "unknown")
+            backlog_by_type[item_type] = backlog_by_type.get(item_type, 0) + 1
+            backlog_reasons[reason] = backlog_reasons.get(reason, 0) + 1
+            if len(backlog_samples) >= 20:
+                return
+            backlog_samples.append(
+                {
+                    "item_id": item.get("item_id"),
+                    "item_type": item_type,
+                    "source_node": item.get("source_node"),
+                    "reason": reason,
+                    "metadata": {
+                        key: value
+                        for key, value in dict(item.get("metadata") or {}).items()
+                        if key in {"node_type", "source", "conversation_id", "parent_source_node"}
+                    },
+                }
+            )
+
         for item in source_items:
             vector_row = vector_rows.get(item["item_id"])
             expected_hash = _sha256_text(_clean_text(item["text"]))
             if not vector_row:
                 missing += 1
+                add_backlog(item, "missing_vector")
             elif (
                 vector_row["text_hash"] != expected_hash
                 or vector_row["embedding_dim"] != self._embedding_model.dim
                 or vector_row["embedding_model"] != self._embedding_model.model_id
             ):
                 stale += 1
+                reason = "text_changed"
+                if vector_row["embedding_model"] != self._embedding_model.model_id:
+                    reason = "model_changed"
+                elif vector_row["embedding_dim"] != self._embedding_model.dim:
+                    reason = "dimension_changed"
+                add_backlog(item, reason)
             else:
                 ready += 1
         pending = missing + stale
+        orphaned_items = max(0, len(set(vector_rows) - source_item_ids))
+        coverage_ratio = round(ready / len(source_items), 6) if source_items else 1.0
+        latest_completed = None
+        for row in latest_rows:
+            if row["status"] == "completed":
+                latest_completed = row
+                break
+        latency_budget: Dict[str, Any] = {
+            "target_rebuild_ms": 10_000,
+            "last_rebuild_duration_ms": None,
+            "last_items_per_second": None,
+            "within_target": None,
+        }
+        if latest_completed is not None:
+            metadata = _safe_loads(latest_completed["metadata_json"])
+            duration_ms = metadata.get("duration_ms")
+            items_total = int(latest_completed["items_total"] or 0)
+            if isinstance(duration_ms, (int, float)) and duration_ms > 0:
+                latency_budget.update(
+                    {
+                        "last_rebuild_duration_ms": round(float(duration_ms), 2),
+                        "last_items_per_second": round(items_total / (float(duration_ms) / 1000.0), 2),
+                        "within_target": float(duration_ms) <= 10_000,
+                    }
+                )
         return {
             "status": "ready" if pending == 0 else "needs_reindex",
             "storage": {
@@ -276,6 +333,23 @@ class KnowledgeGraphVectorMixin:
             "stale_items": stale,
             "pending_items": pending,
             "by_item_type": vector_counts,
+            "scale": {
+                "version": 1,
+                "coverage_ratio": coverage_ratio,
+                "coverage_percent": round(coverage_ratio * 100.0, 2),
+                "source_items": len(source_items),
+                "ready_items": ready,
+                "pending_items": pending,
+                "missing_items": missing,
+                "stale_items": stale,
+                "orphaned_items": orphaned_items,
+                "backlog_by_item_type": backlog_by_type,
+                "backlog_reasons": backlog_reasons,
+                "backlog_samples": backlog_samples,
+                "incremental_reindex_recommended": pending > 0,
+                "full_rebuild_recommended": orphaned_items > 0,
+                "latency_budget": latency_budget,
+            },
             "operations": [
                 {
                     "id": row["id"],

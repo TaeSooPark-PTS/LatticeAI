@@ -57,6 +57,17 @@ class TestBrainQualityHardening(unittest.TestCase):
         self.assertGreaterEqual(len(c), 1)
         self.assertTrue(any("conflict" in str(x.conflicts) for x in c if x.conflicts))
 
+    def test_memory_conflict_detector_pairs_opposite_preferences(self):
+        mgr = self.q.memory_mgr
+        cands = mgr.extract_candidates([
+            {"id": "old", "content": "User prefers light workspace theme"},
+            {"id": "new", "content": "User does not like light workspace theme"},
+        ])
+        flagged = mgr.detect_conflicts(cands)
+        by_id = {item.id: item for item in flagged}
+        self.assertIn("conflict:contradicts:new", by_id["old"].conflicts)
+        self.assertIn("conflict:contradicts:old", by_id["new"].conflicts)
+
     def test_graph_edge_quality(self):
         edges = [
             {"id": "e1", "source": "a", "target": "b", "type": "rel", "confidence": 0.9, "evidence": ["doc1"]},

@@ -501,3 +501,14 @@ def test_marketplace_clone_and_roundtrip():
     imported = catalog.import_template(exported)
     assert imported["id"] == "agent-research-assistant"
     assert imported["metadata"]["imported"] is True
+
+
+def test_marketplace_exposes_ingestion_bridge_templates():
+    catalog = TemplateCatalog()
+    payload = catalog.list_templates(kind="ingestion_bridge")
+    ids = {template["id"] for template in payload["templates"]}
+    assert {"bridge-obsidian-markdown", "bridge-calendar-notes"} <= ids
+    bridge = catalog.export_template("ingestion_bridge", "bridge-obsidian-markdown")
+    imported = catalog.import_template(bridge)
+    assert imported["definition"]["pipeline"] == "unified-ingestion"
+    assert imported["definition"]["provenance"] is True
