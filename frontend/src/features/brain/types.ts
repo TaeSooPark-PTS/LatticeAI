@@ -155,6 +155,17 @@ export type BrainBriefEvidence = {
   detailKey: string;
 };
 
+export type BrainProactiveAction = {
+  id: string;
+  intent: "ask" | "delegate" | "review" | "route" | string;
+  labelKey: string;
+  detailKey: string;
+  prompt: string;
+  route: string;
+  priority: number;
+  context: Record<string, string | number>;
+};
+
 export type BrainBrief = {
   status: "quiet" | "forming" | "alive" | string;
   score: number;
@@ -170,6 +181,7 @@ export type BrainBrief = {
   };
   nextActions: BrainBriefAction[];
   suggestedQuestions: BrainSuggestedQuestion[];
+  proactiveActions: BrainProactiveAction[];
   evidence: BrainBriefEvidence[];
   generatedAt: string;
 };

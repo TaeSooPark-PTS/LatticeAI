@@ -192,6 +192,7 @@ export function buildBrainBrief(data: unknown): BrainBrief {
   const focus = isRecord(brief.focus) ? brief.focus : {};
   const rawActions = asArray<ApiRecord>(brief.next_actions || brief.nextActions);
   const rawQuestions = asArray<ApiRecord>(brief.suggested_questions || brief.suggestedQuestions);
+  const rawProactive = asArray<ApiRecord>(brief.proactive_actions || brief.proactiveActions);
   const rawEvidence = asArray<ApiRecord>(brief.evidence);
   const actionRows = rawActions.length
     ? rawActions
@@ -233,6 +234,16 @@ export function buildBrainBrief(data: unknown): BrainBrief {
       promptKey: textValue(item, ["prompt_key", "promptKey"], "brain.suggestion.focus.prompt"),
       params: paramsValue(item.params),
       priority: numberValue(item, ["priority"]),
+    })).sort((left, right) => right.priority - left.priority),
+    proactiveActions: rawProactive.map((item) => ({
+      id: textValue(item, ["id"], "proactive-action"),
+      intent: textValue(item, ["intent"], "ask"),
+      labelKey: textValue(item, ["label_key", "labelKey"], "brain.proactive.evidence.label"),
+      detailKey: textValue(item, ["detail_key", "detailKey"], "brain.proactive.evidence.detail"),
+      prompt: textValue(item, ["prompt"]),
+      route: textValue(item, ["route"]),
+      priority: numberValue(item, ["priority"]),
+      context: paramsValue(item.context),
     })).sort((left, right) => right.priority - left.priority),
     evidence: evidenceRows.map((item) => ({
       id: textValue(item, ["id"], "evidence"),

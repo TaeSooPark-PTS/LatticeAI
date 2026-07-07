@@ -8,6 +8,7 @@ import { t, type Language } from "@/i18n";
 import type {
   BrainBrief,
   BrainDepth,
+  BrainProactiveAction,
   BrainProof,
   BrainReadiness,
   ConversationSummary,
@@ -68,6 +69,7 @@ export function BrainConversation({
   onSend,
   onSendText,
   onCreateActionItem,
+  onProactiveAction,
   onStop,
   onRegenerate,
   onNewConversation,
@@ -111,6 +113,7 @@ export function BrainConversation({
   onSend: () => void;
   onSendText: (text: string) => void;
   onCreateActionItem: (content: string) => void;
+  onProactiveAction: (action: BrainProactiveAction) => void;
   onStop: () => void;
   onRegenerate: () => void;
   onNewConversation: () => void;
@@ -123,6 +126,7 @@ export function BrainConversation({
   const isBasic = mode === "basic";
   const lastAssistantIndex = findLastAssistantIndex(messages);
   const suggestedQuestions = brief.suggestedQuestions.slice(0, 3);
+  const proactiveActions = brief.proactiveActions.slice(0, 3);
 
   return (
     <section className="brain-conversation" aria-label={t(language, "brain.aria.conversation")}>
@@ -289,6 +293,28 @@ export function BrainConversation({
                   ))}
                 </div>
               )}
+
+              {proactiveActions.length ? (
+                <section className="brain-home-proactive" aria-label={t(language, "brain.proactive.aria")}>
+                  <div className="brain-home-suggestions-head">
+                    <Sparkles className="h-3.5 w-3.5" aria-hidden="true" />
+                    <span>{t(language, "brain.proactive.title")}</span>
+                  </div>
+                  <div className="brain-home-proactive-grid">
+                    {proactiveActions.map((action) => (
+                      <button
+                        key={action.id}
+                        type="button"
+                        disabled={streaming}
+                        onClick={() => onProactiveAction(action)}
+                      >
+                        <strong>{t(language, action.labelKey)}</strong>
+                        <span>{t(language, action.detailKey)}</span>
+                      </button>
+                    ))}
+                  </div>
+                </section>
+              ) : null}
 
               <PastConversationsPanel
                 language={language}

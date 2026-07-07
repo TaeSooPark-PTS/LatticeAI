@@ -28,6 +28,9 @@ existed at that release.
 - Added large-feature foundations for KG/Retrieval scale diagnostics,
   background ingestion scheduling, offline multimodal image captions,
   proactive contradiction detection, and ingestion bridge marketplace templates.
+- Added proactive Brain action cards that turn Brain Brief evidence into
+  one-click ask, Agent delegation, Review Center draft, or graph navigation
+  actions on the Brain home screen.
 
 ### Changed
 - Continued app-factory decomposition by extracting user profile/API-key helper

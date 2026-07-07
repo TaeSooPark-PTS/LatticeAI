@@ -353,7 +353,7 @@ export const latticeApi = {
   ),
   memoryManager: () => get("/api/memory/manager", { sources: [], tiers: [], usage: {} }),
   memoryBrainQuality: () => get("/api/memory/brain-quality", {}),
-  memoryBrainBrief: (query = "", limit = 3) => get("/api/memory/brain-brief", { focus: {}, next_actions: [], evidence: [] }, { q: query, limit }),
+  memoryBrainBrief: (query = "", limit = 3) => get("/api/memory/brain-brief", { focus: {}, next_actions: [], proactive_actions: [], evidence: [] }, { q: query, limit }),
   memoryBrainProof: (query = "", limit = 3) => get("/api/memory/brain-proof", { proofs: {}, recall: { items: [] }, model_continuity: {}, claims: {} }, { q: query, limit }),
   memoryRecall: (query: string, limit = 20) => post("/api/memory/recall", { query, limit }, { matches: [] }),
   memoryCompact: () => post("/api/memory/compact", {}, {}),

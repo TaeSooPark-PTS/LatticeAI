@@ -363,6 +363,15 @@ class MemoryService:
             graph_concepts=graph_concepts,
             conversations=conversations,
         )
+        proactive_actions = self._brain_brief_proactive_actions(
+            focus=focus,
+            state=state,
+            has_durable_evidence=bool(proofs.get("has_durable_evidence")),
+            has_recall=bool(recall_items),
+            graph_concepts=graph_concepts,
+            vector_items=vector_items,
+            healthy_sources=healthy_sources,
+        )
         return {
             "status": state,
             "score": int(readiness.get("score") or 0),
@@ -371,6 +380,7 @@ class MemoryService:
             "focus": focus,
             "next_actions": actions,
             "suggested_questions": suggested_questions,
+            "proactive_actions": proactive_actions,
             "evidence": [
                 {
                     "id": "durable",
@@ -525,6 +535,107 @@ class MemoryService:
                 "route": "/settings",
                 "priority": 6,
             })
+        return sorted(actions, key=lambda item: int(item.get("priority") or 0), reverse=True)[:4]
+
+    @staticmethod
+    def _brain_brief_proactive_actions(
+        *,
+        focus: Dict[str, Any],
+        state: str,
+        has_durable_evidence: bool,
+        has_recall: bool,
+        graph_concepts: int,
+        vector_items: int,
+        healthy_sources: int,
+    ) -> List[Dict[str, Any]]:
+        """Return concrete, one-click actions Brain can proactively suggest."""
+        focus_title = str(focus.get("title") or "").strip() or "Brain"
+        focus_detail = str(focus.get("detail") or "").strip()
+        actions: List[Dict[str, Any]] = []
+        if not has_durable_evidence:
+            actions.append({
+                "id": "proactive_add_source",
+                "intent": "route",
+                "label_key": "brain.proactive.addSource.label",
+                "detail_key": "brain.proactive.addSource.detail",
+                "route": "/capture",
+                "prompt": "Add a useful source to my Brain and explain what it learned.",
+                "priority": 100,
+            })
+            actions.append({
+                "id": "proactive_seed_memory",
+                "intent": "ask",
+                "label_key": "brain.proactive.seed.label",
+                "detail_key": "brain.proactive.seed.detail",
+                "prompt": "Help me seed my Brain with the most useful personal context to remember.",
+                "priority": 90,
+            })
+            return actions
+
+        if has_recall:
+            actions.append({
+                "id": "proactive_evidence_review",
+                "intent": "ask",
+                "label_key": "brain.proactive.evidence.label",
+                "detail_key": "brain.proactive.evidence.detail",
+                "prompt": (
+                    f"Review the evidence Brain has for {focus_title}. "
+                    "Separate confirmed facts, weak signals, contradictions, and next checks."
+                ),
+                "priority": 100,
+                "context": {"focus": focus_title, "detail": focus_detail},
+            })
+            actions.append({
+                "id": "proactive_delegate",
+                "intent": "delegate",
+                "label_key": "brain.proactive.delegate.label",
+                "detail_key": "brain.proactive.delegate.detail",
+                "prompt": (
+                    f"Turn {focus_title} into an execution plan, verify the known context, "
+                    "and return concrete next steps with risks."
+                ),
+                "priority": 95,
+                "context": {"focus": focus_title, "detail": focus_detail},
+            })
+            actions.append({
+                "id": "proactive_review_draft",
+                "intent": "review",
+                "label_key": "brain.proactive.review.label",
+                "detail_key": "brain.proactive.review.detail",
+                "prompt": (
+                    f"Create a reviewable task from Brain's current focus: {focus_title}. "
+                    f"{focus_detail[:240]}"
+                ).strip(),
+                "priority": 90,
+                "context": {"focus": focus_title, "detail": focus_detail},
+            })
+
+        if graph_concepts > 0:
+            actions.append({
+                "id": "proactive_map_connections",
+                "intent": "route",
+                "label_key": "brain.proactive.map.label",
+                "detail_key": "brain.proactive.map.detail",
+                "route": "/knowledge-graph",
+                "prompt": f"Map the strongest Knowledge Graph connections around {focus_title}.",
+                "priority": 82,
+                "context": {"focus": focus_title, "graph_concepts": graph_concepts},
+            })
+
+        if state == "alive" and vector_items > 0 and healthy_sources > 0:
+            actions.append({
+                "id": "proactive_weekly_brief",
+                "intent": "review",
+                "label_key": "brain.proactive.weekly.label",
+                "detail_key": "brain.proactive.weekly.detail",
+                "prompt": (
+                    "Prepare a weekly Brain review: what changed, what decisions are pending, "
+                    "what should be delegated, and what evidence is stale."
+                ),
+                "priority": 78,
+                "context": {"vector_items": vector_items, "healthy_sources": healthy_sources},
+            })
+
         return sorted(actions, key=lambda item: int(item.get("priority") or 0), reverse=True)[:4]
 
     @staticmethod

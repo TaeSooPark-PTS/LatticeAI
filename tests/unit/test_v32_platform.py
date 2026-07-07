@@ -253,6 +253,8 @@ def test_memory_brain_brief_guides_empty_brain_without_overclaim(tmp_path):
     assert "verify_model" not in {action["id"] for action in brief["next_actions"]}
     assert [question["id"] for question in brief["suggested_questions"][:2]] == ["start_brain", "add_context"]
     assert brief["suggested_questions"][0]["prompt_key"] == "brain.suggestion.start.prompt"
+    assert [action["intent"] for action in brief["proactive_actions"][:2]] == ["route", "ask"]
+    assert brief["proactive_actions"][0]["route"] == "/capture"
 
 
 def test_memory_brain_brief_surfaces_recall_and_next_actions(tmp_path):
@@ -282,6 +284,9 @@ def test_memory_brain_brief_surfaces_recall_and_next_actions(tmp_path):
     assert brief["evidence"][0]["value"] >= 5
     assert {action["id"] for action in brief["next_actions"]} >= {"ask_brain", "inspect_topics", "verify_model"}
     assert {question["id"] for question in brief["suggested_questions"]} >= {"focus_next", "evidence_check", "graph_connections"}
+    proactive = {action["intent"]: action for action in brief["proactive_actions"]}
+    assert {"ask", "delegate", "review", "route"} <= set(proactive)
+    assert "Alpha plan" in proactive["delegate"]["prompt"] or "decisions" in proactive["delegate"]["prompt"]
     assert brief["suggested_questions"][0]["params"]["focus"] in {"decisions", "Alpha plan"}
     assert brief["proof"]["model_continuity"]["active_model"] == "local:model-a"
 

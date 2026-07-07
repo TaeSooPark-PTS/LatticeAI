@@ -564,6 +564,24 @@ export function BrainHome({
       : t(language, "brain.action.saveFailed", { reason: result.error || String(result.status || "") }));
   }
 
+  async function handleProactiveAction(action: { intent: string; prompt: string; route: string; labelKey: string }) {
+    const prompt = action.prompt.trim();
+    if (action.intent === "route" && action.route) {
+      window.location.hash = action.route;
+      return;
+    }
+    if (!prompt) return;
+    if (action.intent === "delegate") {
+      delegateMutation.mutate(prompt);
+      return;
+    }
+    if (action.intent === "review") {
+      await createActionItem(prompt);
+      return;
+    }
+    await sendText(prompt);
+  }
+
   function stopStreaming() {
     abortRef.current?.abort();
   }
@@ -665,6 +683,7 @@ export function BrainHome({
         onSend={() => void send()}
         onSendText={(text) => void sendText(text)}
         onCreateActionItem={(content) => void createActionItem(content)}
+        onProactiveAction={(action) => void handleProactiveAction(action)}
         onStop={stopStreaming}
         onRegenerate={() => void regenerate()}
         onNewConversation={startNewConversation}
