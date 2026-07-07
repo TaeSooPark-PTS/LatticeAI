@@ -9,6 +9,7 @@ import type {
   BrainBrief,
   BrainDepth,
   BrainProactiveAction,
+  BrainProactiveActivity,
   BrainProof,
   BrainReadiness,
   ConversationSummary,
@@ -47,6 +48,7 @@ export function BrainConversation({
   memoryFeedback,
   ingestionStates,
   emergenceEvents,
+  proactiveActivities,
   draft,
   streaming,
   imageData,
@@ -91,6 +93,7 @@ export function BrainConversation({
   memoryFeedback: string | null;
   ingestionStates: Record<IngestionSourceType, IngestionState | null>;
   emergenceEvents: EmergenceEvent[];
+  proactiveActivities: BrainProactiveActivity[];
   draft: string;
   streaming: boolean;
   imageData: string | null;
@@ -313,6 +316,24 @@ export function BrainConversation({
                       </button>
                     ))}
                   </div>
+                </section>
+              ) : null}
+
+              {proactiveActivities.length ? (
+                <section className="brain-proactive-trail" aria-label={t(language, "brain.proactive.trail.aria")} aria-live="polite">
+                  <div className="brain-home-suggestions-head">
+                    <CheckCircle2 className="h-3.5 w-3.5" aria-hidden="true" />
+                    <span>{t(language, "brain.proactive.trail.title")}</span>
+                  </div>
+                  <ol>
+                    {proactiveActivities.slice(0, 4).map((item) => (
+                      <li key={item.id} data-status={item.status}>
+                        <strong>{t(language, item.labelKey)}</strong>
+                        <span>{t(language, `brain.proactive.status.${item.status}`)}</span>
+                        <small>{t(language, `brain.proactive.intent.${item.intent}`)}</small>
+                      </li>
+                    ))}
+                  </ol>
                 </section>
               ) : null}
 

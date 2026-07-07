@@ -129,6 +129,7 @@ small release-sized work. The operating principle stays unchanged:
 - 3a. Server decomp follow-up: filtered app_factory runtime namespace so internal scratch imports/runtime dicts no longer leak through lazy server_app compatibility; namespace reduced from 300 to 253 keys while legacy helpers remain, with typed RuntimeBundle added behind legacy _RUNTIME_BUNDLE.
 - 4. Proactive/Temporal: stronger MemoryQualityManager conflict detection, including pairwise opposite-preference and temporal-negation flags.
 - 4a. Proactive UX follow-up: Brain Brief now emits proactive_actions, and BrainHome renders one-click ask/delegate/review/graph action cards.
+- 4b. Proactive UX completion: BrainHome now keeps a local activity trail for suggested actions, showing whether Brain ask, Agent delegation, Review draft, or graph navigation actions are running, completed, or failed.
 - 5. Interop/Marketplace: ingestion_bridge marketplace templates and /marketplace/interop/bridges exposure for future Obsidian/Calendar-style connector imports through unified-ingestion.
 - 총 affected tests: 45 passed in the first targeted gate. Broader lint/static/doc checks are run before commit.
 - 남은: 각 슬라이스는 기반 확장. full background workers, real local VLM/image embeddings, full locals() removal, graph-level temporal queries, and production connector installs remain follow-up work.

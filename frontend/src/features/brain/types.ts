@@ -166,6 +166,17 @@ export type BrainProactiveAction = {
   context: Record<string, string | number>;
 };
 
+export type BrainProactiveActivity = {
+  id: string;
+  actionId: string;
+  labelKey: string;
+  intent: string;
+  status: "running" | "completed" | "failed";
+  startedAt: number;
+  completedAt?: number;
+  detail?: string;
+};
+
 export type BrainBrief = {
   status: "quiet" | "forming" | "alive" | string;
   score: number;

@@ -31,6 +31,8 @@ existed at that release.
 - Added proactive Brain action cards that turn Brain Brief evidence into
   one-click ask, Agent delegation, Review Center draft, or graph navigation
   actions on the Brain home screen.
+- Added a visible proactive Brain action trail so one-click suggestions show
+  their running/completed/failed state after the user acts on them.
 
 ### Changed
 - Continued app-factory decomposition by extracting user profile/API-key helper

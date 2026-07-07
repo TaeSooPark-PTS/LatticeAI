@@ -9,6 +9,8 @@ import { buildBrainBrief, buildBrainProof, buildBrainReadiness, buildConversatio
 import { useConversationSession } from "./conversationSession";
 import {
   INGESTION_STAGE_ORDER,
+  type BrainProactiveAction,
+  type BrainProactiveActivity,
   type BrainProof,
   type EmergenceEvent,
   type IngestionPipelineStage,
@@ -48,6 +50,7 @@ export function BrainHome({
     web: null,
   });
   const [emergenceEvents, setEmergenceEvents] = React.useState<EmergenceEvent[]>([]);
+  const [proactiveActivities, setProactiveActivities] = React.useState<BrainProactiveActivity[]>([]);
   const streamRef = React.useRef<HTMLDivElement>(null);
   const abortRef = React.useRef<AbortController | null>(null);
   const recallTimerRef = React.useRef<number | null>(null);
@@ -540,9 +543,9 @@ export function BrainHome({
     setMemoryFeedback(t(language, "brain.modelDemo.done", { model: modelName }));
   }
 
-  async function createActionItem(content: string) {
+  async function createActionItem(content: string): Promise<boolean> {
     const trimmed = content.trim();
-    if (!trimmed) return;
+    if (!trimmed) return false;
     const lastUser = [...messages].reverse().find((message: Message) => message.role === "user");
     const title = (lastUser?.content || t(language, "brain.action.defaultTitle")).trim().slice(0, 96);
     const result = await latticeApi.createReviewItem({
@@ -562,24 +565,58 @@ export function BrainHome({
     setMemoryFeedback(result.ok
       ? t(language, "brain.action.saved")
       : t(language, "brain.action.saveFailed", { reason: result.error || String(result.status || "") }));
+    return Boolean(result.ok);
   }
 
-  async function handleProactiveAction(action: { intent: string; prompt: string; route: string; labelKey: string }) {
+  function recordProactiveActivity(action: BrainProactiveAction, status: BrainProactiveActivity["status"], detail?: string, id = `${action.id}-${Date.now()}`) {
+    const now = Date.now();
+    setProactiveActivities((items) => {
+      const next = items.filter((item) => item.id !== id);
+      return [
+        {
+          id,
+          actionId: action.id,
+          labelKey: action.labelKey,
+          intent: action.intent,
+          status,
+          startedAt: items.find((item) => item.id === id)?.startedAt ?? now,
+          completedAt: status === "running" ? undefined : now,
+          detail,
+        },
+        ...next,
+      ].slice(0, 6);
+    });
+    return id;
+  }
+
+  async function handleProactiveAction(action: BrainProactiveAction) {
     const prompt = action.prompt.trim();
+    const activityId = recordProactiveActivity(action, "running");
     if (action.intent === "route" && action.route) {
       window.location.hash = action.route;
+      recordProactiveActivity(action, "completed", action.route, activityId);
       return;
     }
-    if (!prompt) return;
-    if (action.intent === "delegate") {
-      delegateMutation.mutate(prompt);
+    if (!prompt) {
+      recordProactiveActivity(action, "failed", "empty prompt", activityId);
       return;
     }
-    if (action.intent === "review") {
-      await createActionItem(prompt);
-      return;
+    try {
+      if (action.intent === "delegate") {
+        await delegateMutation.mutateAsync(prompt);
+        recordProactiveActivity(action, "completed", "agent", activityId);
+        return;
+      }
+      if (action.intent === "review") {
+        const ok = await createActionItem(prompt);
+        recordProactiveActivity(action, ok ? "completed" : "failed", "review", activityId);
+        return;
+      }
+      await sendText(prompt);
+      recordProactiveActivity(action, "completed", "chat", activityId);
+    } catch (error) {
+      recordProactiveActivity(action, "failed", error instanceof Error ? error.message : String(error), activityId);
     }
-    await sendText(prompt);
   }
 
   function stopStreaming() {
@@ -661,6 +698,7 @@ export function BrainHome({
         memoryFeedback={memoryFeedback}
         ingestionStates={ingestionStates}
         emergenceEvents={emergenceEvents}
+        proactiveActivities={proactiveActivities}
         draft={draft}
         streaming={streaming}
         imageData={imageData}
