@@ -11,15 +11,13 @@ from __future__ import annotations
 
 import hashlib
 import math
+import os
 import re
 import struct
 from dataclasses import dataclass
 from typing import Iterable, List
 
-# Default controlled via latticeai.core.config.Config.embedding_dim (LATTICEAI_VECTOR_DIM).
-# Removed direct os.getenv per 7.6.0 config centralization (review.md item 3).
-# Callers that need override should pass dim= from Config.
-DEFAULT_EMBEDDING_DIM = 384
+DEFAULT_EMBEDDING_DIM = int(os.getenv("LATTICEAI_VECTOR_DIM", "384"))
 EMBEDDING_MODEL_ID = f"lattice-local-hash-v1:{DEFAULT_EMBEDDING_DIM}"
 
 

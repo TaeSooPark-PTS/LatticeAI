@@ -276,6 +276,14 @@ async function saveChatFile(path: string, content: string): Promise<ApiResult<{ 
   return post("/tools/write_file", { path, content }, {});
 }
 
+async function runAgent(goal: string, roles: string[]): Promise<ApiResult<Record<string, unknown>>> {
+  const result = await post<Record<string, unknown>>("/agents/api/run", { goal, roles }, {});
+  if (!result.ok) {
+    throw new Error(result.error || `Agent run failed with HTTP ${result.status}`);
+  }
+  return result;
+}
+
 async function downloadWorkspaceFile(path: string, filename: string): Promise<{ ok: boolean; error?: string }> {
   const base = await apiBase();
   try {
@@ -381,7 +389,7 @@ export const latticeApi = {
   embeddingsStatus: () => get("/api/embeddings/status", {}),
   agentRuntime: () => get("/agents/api/runtime/status", { runtime: {}, agents: [], runs: [] }),
   agentRunPreview: (goal: string, roles: string[] = []) => post("/agents/api/run/preview", { goal, roles }, { ready: false, blocking_reasons: [] }),
-  runAgent: (goal: string, roles: string[]) => post("/agents/api/run", { goal, roles }, {}),
+  runAgent,
   toolRegistryDiagnostics: () => get("/tools/registry/diagnostics", { diagnostics: { ready: false } }),
   toolRegistry: () => get("/tools/registry", { status: "unavailable", diagnostics: {}, tools: [] }),
   agentRun: (id: string) => get(`/agents/api/runs/${encodeURIComponent(id)}`, {}),

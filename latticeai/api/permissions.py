@@ -216,9 +216,9 @@ class PermissionGateway:
         now = time.time()
         key = self.token_hash(token)
         with self.local_approval_lock:
-            expired = [key for key, value in self.local_approvals.items() if float(value.get("expires_at", 0)) < now]
-            for key in expired:
-                self.local_approvals.pop(key, None)
+            expired = [approval_key for approval_key, value in self.local_approvals.items() if float(value.get("expires_at", 0)) < now]
+            for expired_key in expired:
+                self.local_approvals.pop(expired_key, None)
             record = self.local_approvals.get(key)
         if not record:
             raise HTTPException(status_code=403, detail="파일 접근 승인이 만료되었거나 유효하지 않습니다.")

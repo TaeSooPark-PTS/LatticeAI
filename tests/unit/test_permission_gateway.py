@@ -1,4 +1,5 @@
 from types import SimpleNamespace
+import time
 
 import pytest
 from fastapi import HTTPException
@@ -52,3 +53,33 @@ def test_permission_gateway_blocks_system_write_prefix(tmp_path):
     with pytest.raises(HTTPException) as exc:
         gateway.ensure_path_allowed("/etc/passwd", action="write")
     assert exc.value.status_code == 403
+
+
+def test_expired_permission_cleanup_preserves_current_token_lookup(tmp_path):
+    gateway = _gateway(tmp_path)
+    valid = gateway.local_permission_response(
+        str(tmp_path / "note.md"),
+        "write",
+        "user@example.com",
+        content="hello",
+    )["approval_token"]
+    expired = gateway.local_permission_response(
+        str(tmp_path / "old.md"),
+        "read",
+        "user@example.com",
+    )["approval_token"]
+    valid_key = gateway.token_hash(valid)
+    expired_key = gateway.token_hash(expired)
+    gateway.local_approvals[valid_key]["approved"] = True
+    gateway.local_approvals[expired_key]["expires_at"] = time.time() - 1
+
+    gateway.require_local_approval(
+        token=valid,
+        path=str(tmp_path / "note.md"),
+        action="write",
+        user_email="user@example.com",
+        content="hello",
+    )
+
+    assert expired_key not in gateway.local_approvals
+    assert valid_key in gateway.local_approvals

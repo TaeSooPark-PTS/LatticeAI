@@ -148,6 +148,7 @@ def create_chat_router(context: AppContext) -> APIRouter:
     _doc_gen_sessions: dict = {}
     _pending_agents: dict[str, tuple] = {}
     _pending_agents_lock = threading.Lock()
+    _background_tasks: set[asyncio.Task] = set()
 
     on_chat_message = context.on_chat_message
 
@@ -164,6 +165,21 @@ def create_chat_router(context: AppContext) -> APIRouter:
             on_chat_message(role, text, source)
         except Exception as exc:
             logging.warning("chat message bridge failed: %s", exc)
+
+    def schedule_background_task(coro) -> None:
+        task = asyncio.create_task(coro)
+        _background_tasks.add(task)
+
+        def _finish(done: asyncio.Task) -> None:
+            _background_tasks.discard(done)
+            try:
+                done.result()
+            except asyncio.CancelledError:
+                pass
+            except Exception as exc:
+                logging.warning("background chat task failed: %s", exc)
+
+        task.add_done_callback(_finish)
 
     def history_scope_for_user(user_email: Optional[str]) -> Dict:
         require_auth = bool(getattr(CONFIG, "require_auth", False))
@@ -265,9 +281,11 @@ def create_chat_router(context: AppContext) -> APIRouter:
         current_user = require_user(request)
         enforce_rate_limit(current_user, "chat")
         img_len = len(req.image_data) if req.image_data else 0
-        print(
-            f"🧪 /chat request: stream={req.stream} image_data_len={img_len} "
-            f"message_len={len(req.message or '')}"
+        logging.debug(
+            "/chat request: stream=%s image_data_len=%s message_len=%s",
+            req.stream,
+            img_len,
+            len(req.message or ""),
         )
         effective_email = req.user_email or current_user or None
         history_user = get_history_user(effective_email, req.user_nickname)
@@ -279,12 +297,12 @@ def create_chat_router(context: AppContext) -> APIRouter:
 
         if is_network_status_request(req.message):
             history_message = f"{req.message}\n[Image attached]" if req.image_data else req.message
-            save_to_history("user", history_message, **history_meta, **history_user)
+            await asyncio.to_thread(save_to_history, "user", history_message, **history_meta, **history_user)
             try:
                 answer = format_network_status(network_status())
             except ToolError as exc:
                 answer = f"네트워크 정보를 확인하지 못했습니다: {exc}"
-            save_to_history("assistant", answer, **history_meta, **history_user)
+            await asyncio.to_thread(save_to_history, "assistant", answer, **history_meta, **history_user)
             notify_chat_message("user", req.message, req.source)
             notify_chat_message("assistant", answer, req.source)
             if req.stream:
@@ -332,6 +350,8 @@ def create_chat_router(context: AppContext) -> APIRouter:
                 removed=result.get("removed", 0),
                 kept=result.get("kept", 0),
             )
+            notify_chat_message("user", req.message, req.source)
+            notify_chat_message("assistant", answer, req.source)
             if req.stream:
                 return StreamingResponse(
                     single_text_stream(answer),
@@ -342,8 +362,8 @@ def create_chat_router(context: AppContext) -> APIRouter:
 
         if is_current_url_request(req.message) and req.client_url:
             answer = f"현재 페이지 URL: {req.client_url}"
-            save_to_history("user", req.message, **history_meta, **history_user)
-            save_to_history("assistant", answer, **history_meta, **history_user)
+            await asyncio.to_thread(save_to_history, "user", req.message, **history_meta, **history_user)
+            await asyncio.to_thread(save_to_history, "assistant", answer, **history_meta, **history_user)
             notify_chat_message("user", req.message, req.source)
             notify_chat_message("assistant", answer, req.source)
             if req.stream:
@@ -358,6 +378,19 @@ def create_chat_router(context: AppContext) -> APIRouter:
             target_path = file_action_target(req.message)
             if target_path:
                 content = inline_file_action_content(req.message)
+                if content is None and not router.current_model_id:
+                    detail = "No model loaded. Call /models/load first."
+                    if CONFIG.is_public:
+                        detail = f"No public model loaded. Set OPENAI_API_KEY and LATTICEAI_PUBLIC_MODEL={PUBLIC_MODEL}, or call /models/load with an OpenAI-compatible model."
+                    return JSONResponse(
+                        status_code=400,
+                        content={
+                            "error": "no_model_loaded",
+                            "detail": detail,
+                            "message": detail,
+                            "action": "load_model",
+                        },
+                    )
                 if content is None and router.current_model_id:
                     if req.model and req.model != router.current_model_id:
                         if req.model not in router.loaded_model_ids:
@@ -379,7 +412,7 @@ def create_chat_router(context: AppContext) -> APIRouter:
                     )
                     content = strip_generated_file_content(str(raw_content))
                 if content is None:
-                    content = ""
+                    raise HTTPException(status_code=400, detail="File content could not be generated.")
                 try:
                     result = execute_tool("write_file", {"path": target_path, "content": content})
                 except ToolError as exc:
@@ -501,7 +534,7 @@ def create_chat_router(context: AppContext) -> APIRouter:
                 graph_md = doc_gen_context_result.get("context_markdown", "")
                 if graph_md:
                     context += f"\n\n[KNOWLEDGE GRAPH — Document Generation Context]\n{graph_md}"
-                    print("📝 Document generation context retrieved from knowledge graph.")
+                    logging.debug("Document generation context retrieved from knowledge graph.")
         except Exception as e:
             logging.warning("Knowledge graph reinforcement skipped: %s", e)
 
@@ -541,7 +574,7 @@ def create_chat_router(context: AppContext) -> APIRouter:
             trace_seed["context_assembly"] = context_trace
 
         history_message = f"{req.message}\n[Image attached]" if req.image_data else req.message
-        save_to_history("user", history_message, **history_meta, **history_user)
+        await asyncio.to_thread(save_to_history, "user", history_message, **history_meta, **history_user)
         notify_chat_message("user", req.message, req.source)
 
         if is_doc_gen and ENABLE_GRAPH and KNOWLEDGE_GRAPH:
@@ -558,19 +591,27 @@ def create_chat_router(context: AppContext) -> APIRouter:
             if req.stream:
                 async def _stream_doc_gen():
                     collected = []
-                    async for chunk in router.stream_generate_document(
-                        req.message, system_prompt,
-                        max_tokens=req.max_tokens or 8192,
-                        temperature=req.temperature or 0.3,
-                    ):
-                        collected.append(chunk)
-                        yield f"data: {json.dumps({'text': chunk}, ensure_ascii=False)}\n\n"
+                    stream_error = None
+                    try:
+                        async for chunk in router.stream_generate_document(
+                            req.message, system_prompt,
+                            max_tokens=req.max_tokens or 8192,
+                            temperature=req.temperature or 0.3,
+                        ):
+                            collected.append(chunk)
+                            yield f"data: {json.dumps({'text': chunk}, ensure_ascii=False)}\n\n"
+                    except Exception as exc:
+                        stream_error = str(exc)
+                        logging.warning("document stream failed: %s", exc)
+                        yield f"data: {json.dumps({'error': stream_error}, ensure_ascii=False)}\n\n"
                     full_text = "".join(collected)
                     if footnote:
                         yield f"data: {json.dumps({'text': footnote}, ensure_ascii=False)}\n\n"
                         full_text += footnote
+                    if stream_error:
+                        full_text = f"{full_text}\n\n[stream_error] {stream_error}" if full_text else f"[stream_error] {stream_error}"
                     session.update(graph_md, full_text, req.conversation_id)
-                    save_to_history("assistant", full_text, **history_meta, **history_user)
+                    await asyncio.to_thread(save_to_history, "assistant", full_text, **history_meta, **history_user)
                     trace_record = CHAT_SERVICE.record_trace(
                         question=req.message,
                         response=full_text,
@@ -595,7 +636,7 @@ def create_chat_router(context: AppContext) -> APIRouter:
                 if footnote:
                     result += footnote
                 session.update(graph_md, result, req.conversation_id)
-                save_to_history("assistant", str(result), **history_meta, **history_user)
+                await asyncio.to_thread(save_to_history, "assistant", str(result), **history_meta, **history_user)
                 trace_record = CHAT_SERVICE.record_trace(
                     question=req.message,
                     response=str(result),
@@ -638,7 +679,7 @@ def create_chat_router(context: AppContext) -> APIRouter:
 
             result = await router.generate(req.message, full_context, req.max_tokens, req.temperature, req.image_data)
 
-            save_to_history("assistant", str(result), **history_meta, **history_user)
+            await asyncio.to_thread(save_to_history, "assistant", str(result), **history_meta, **history_user)
             trace_record = CHAT_SERVICE.record_trace(
                 question=req.message,
                 response=str(result),
@@ -733,33 +774,45 @@ def create_chat_router(context: AppContext) -> APIRouter:
         history_meta: Optional[Dict] = None,
     ) -> AsyncIterator[str]:
         full_response = ""
-        async for chunk in router.stream_generate(req.message, context, req.max_tokens, req.temperature, image_data):
-            clean_chunk = chunk
-            if hasattr(chunk, "text"):
-                clean_chunk = chunk.text
-            elif isinstance(chunk, str) and "text='" in chunk:
-                try:
-                    clean_chunk = chunk.split("text='")[1].split("', token=")[0].replace('\\n', '\n').replace('\\\\n', '\n')
-                except Exception:
-                    pass
-
-            full_response += str(clean_chunk)
-            yield f"data: {json.dumps({'chunk': clean_chunk, 'model': router.current_model_id}, ensure_ascii=False)}\n\n"
+        stream_error: Optional[str] = None
+        try:
+            async for chunk in router.stream_generate(req.message, context, req.max_tokens, req.temperature, image_data):
+                clean_chunk = chunk.text if hasattr(chunk, "text") else chunk
+                full_response += str(clean_chunk)
+                yield f"data: {json.dumps({'chunk': clean_chunk, 'model': router.current_model_id}, ensure_ascii=False)}\n\n"
+        except Exception as exc:
+            stream_error = str(exc)
+            logging.warning("chat stream failed: %s", exc)
+            yield f"data: {json.dumps({'error': stream_error, 'model': router.current_model_id}, ensure_ascii=False)}\n\n"
         history_user = get_history_user(effective_email or req.user_email, req.user_nickname)
-        save_to_history("assistant", full_response, **(history_meta or {}), **history_user)
-        trace_record = CHAT_SERVICE.record_trace(
-            question=req.message,
-            response=full_response,
-            conversation_id=req.conversation_id,
-            user_email=effective_email or req.user_email,
-            trace=trace_seed or CHAT_SERVICE.build_graph_trace(
-                req.message,
-                KNOWLEDGE_GRAPH if (ENABLE_GRAPH and KNOWLEDGE_GRAPH) else None,
-                context,
-            ),
-        )
-        notify_chat_message("assistant", full_response, req.source)
-        yield f"data: {json.dumps({'chunk': '', 'model': router.current_model_id, 'trace_id': trace_record['id'], 'trace': trace_record}, ensure_ascii=False)}\n\n"
+        persisted_response = full_response
+        if stream_error and not persisted_response:
+            persisted_response = f"[stream_error] {stream_error}"
+        elif stream_error:
+            persisted_response = f"{persisted_response}\n\n[stream_error] {stream_error}"
+        trace_record = None
+        try:
+            await asyncio.to_thread(save_to_history, "assistant", persisted_response, **(history_meta or {}), **history_user)
+            trace_record = CHAT_SERVICE.record_trace(
+                question=req.message,
+                response=persisted_response,
+                conversation_id=req.conversation_id,
+                user_email=effective_email or req.user_email,
+                trace=trace_seed or CHAT_SERVICE.build_graph_trace(
+                    req.message,
+                    KNOWLEDGE_GRAPH if (ENABLE_GRAPH and KNOWLEDGE_GRAPH) else None,
+                    context,
+                ),
+            )
+            notify_chat_message("assistant", persisted_response, req.source)
+        except Exception as exc:
+            logging.warning("chat stream persistence failed: %s", exc)
+        trailer = {"chunk": "", "model": router.current_model_id}
+        if trace_record:
+            trailer.update({"trace_id": trace_record["id"], "trace": trace_record})
+        if stream_error:
+            trailer["error"] = stream_error
+        yield f"data: {json.dumps(trailer, ensure_ascii=False)}\n\n"
         yield "data: [DONE]\n\n"
 
     @api_router.post("/agent/eval")
@@ -868,11 +921,11 @@ def create_chat_router(context: AppContext) -> APIRouter:
     ) -> dict:
         """HTTP glue: drive the runtime to a terminal state, persist, shape the response."""
         await _AGENT_RUNTIME.run_to_completion(ctx, req, lang_hint, current_user, max_steps, max_retry)
-        asyncio.create_task(_AGENT_RUNTIME.memory_update(ctx, req, current_user))
+        schedule_background_task(_AGENT_RUNTIME.memory_update(ctx, req, current_user))
 
         message = ctx.final_message or "작업을 완료했습니다."
-        save_to_history("user", req.message, source=req.source or "web", conversation_id=req.conversation_id, workspace_id=req.workspace_id)
-        save_to_history("assistant", message, source=req.source or "web", conversation_id=req.conversation_id, workspace_id=req.workspace_id)
+        await asyncio.to_thread(save_to_history, "user", req.message, source=req.source or "web", conversation_id=req.conversation_id, workspace_id=req.workspace_id)
+        await asyncio.to_thread(save_to_history, "assistant", message, source=req.source or "web", conversation_id=req.conversation_id, workspace_id=req.workspace_id)
         try:
             WORKSPACE_OS.record_agent_run(
                 agent_id="agent:executor",

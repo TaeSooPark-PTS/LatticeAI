@@ -129,6 +129,27 @@ class RunExecutor:
                 self._cancel_agent_record(run_id, handle.scope, "cancelled after the final result was persisted")
             else:
                 self._results[run_id] = payload
+        except Exception as exc:
+            try:
+                run = self.store.get_agent_run(run_id, workspace_id=handle.scope)
+                timeline = list(run.get("timeline") or [])
+                timeline.append({"event": "execution_failed", "status": "failed", "detail": str(exc), "timestamp": _now()})
+                failed = self.store.update_agent_run(
+                    run_id,
+                    workspace_id=handle.scope,
+                    status="failed",
+                    current_role=None,
+                    output_text=str(exc),
+                    timeline=timeline,
+                    graph=self.workspace_graph(),
+                )
+                self._results[run_id] = {"run": failed, "result": {"status": "failed", "error": str(exc)}}
+            except Exception:
+                self._results[run_id] = {"run": {"id": run_id, "status": "failed"}, "result": {"status": "failed", "error": str(exc)}}
+            try:
+                self.append_audit_event("agent_run_failed", user_email=user_email, run_id=run_id, error=str(exc))
+            except Exception:
+                pass
         finally:
             self._handles.pop(run_id, None)
 

@@ -5,9 +5,10 @@ Returns dict of get_audit_log / append_audit_event for legacy namespace.
 from __future__ import annotations
 
 import json
-from datetime import datetime
 from pathlib import Path
 from typing import Any, Callable, Dict, List, Optional
+
+from latticeai.core import timezones
 
 
 def build_audit_runtime(
@@ -28,7 +29,7 @@ def build_audit_runtime(
             return []
 
     def _append(event_type: str, **payload: Any) -> None:
-        entry = {"event_type": event_type, "timestamp": datetime.now().isoformat()}
+        entry = {"event_type": event_type, "timestamp": timezones.now_iso()}
         if payload:
             entry.update(payload)
         if redact_fn:

@@ -10,7 +10,12 @@ Two caution bugs shipped in the 8.4.0 direct-write path:
    "file report.txt" as literal content instead of generating it.
 """
 
-from latticeai.api.chat import file_action_target, inline_file_action_content
+from latticeai.api.chat import (
+    file_action_target,
+    inline_file_action_content,
+    is_current_url_request,
+    is_network_status_request,
+)
 
 
 def test_target_is_single_token_not_preceding_words():
@@ -34,3 +39,15 @@ def test_explicit_binders_still_extract_content():
     assert inline_file_action_content("save report.txt with content Hello World") == "Hello World"
     assert inline_file_action_content("report.txt content: Hello World") == "Hello World"
     assert inline_file_action_content("report.txt content is Hello World") == "Hello World"
+
+
+def test_network_status_intent_requires_current_network_context():
+    assert is_network_status_request("내 IP 주소 알려줘")
+    assert is_network_status_request("네트워크 상태 확인")
+    assert not is_network_status_request("IP가 뭐야?")
+
+
+def test_current_url_intent_does_not_match_generic_address_requests():
+    assert is_current_url_request("현재 페이지 URL 알려줘")
+    assert is_current_url_request("여기 링크 보여줘")
+    assert not is_current_url_request("우리 회사 주소 알려줘")

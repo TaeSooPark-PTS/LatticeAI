@@ -52,15 +52,37 @@ _LANG_HINT = {
 def is_network_status_request(text: str) -> bool:
     """사용자가 현재 IP/네트워크 정보를 물었는지 감지합니다."""
     t = (text or "").lower()
-    has_ip = bool(re.search(r"((?<![a-z0-9])ip(?![a-z0-9])|아이피|ip\s*주소|아이피\s*주소|ipconfig|ifconfig|네트워크)", t))
-    asks_current = any(word in t for word in ["내", "현재", "지금", "local", "로컬", "주소", "address", "뭐", "알려", "확인", "상태"])
-    return has_ip and asks_current
+    explicit_network = any(
+        phrase in t
+        for phrase in (
+            "ipconfig",
+            "ifconfig",
+            "network status",
+            "네트워크 상태",
+            "네트워크 확인",
+            "현재 네트워크",
+        )
+    )
+    current_ip = bool(
+        re.search(
+            r"(내|현재|지금|로컬|local|public|공인|외부|내부)\s*(ip|아이피)\s*(주소)?",
+            t,
+        )
+        or re.search(
+            r"(ip|아이피)\s*(주소)?\s*(확인|상태|알려줘|보여줘)",
+            t,
+        )
+    )
+    return explicit_network or current_ip
 
 def is_current_url_request(text: str) -> bool:
     t = (text or "").lower()
-    has_url = any(word in t for word in ["url", "주소", "링크", "address"])
-    asks_current = any(word in t for word in ["현재", "지금", "여기", "접속", "페이지", "브라우저", "알려", "뭐"])
-    return has_url and asks_current
+    explicit_url = any(phrase in t for phrase in ("현재 url", "current url", "page url", "페이지 url"))
+    current_page_link = bool(
+        re.search(r"(현재|지금|여기|이\s*페이지|브라우저|접속)\s*(페이지\s*)?(url|링크|주소)", t)
+        or re.search(r"(url|링크)\s*(알려줘|보여줘|확인)", t)
+    )
+    return explicit_url or current_page_link
 
 def is_clear_command(text: str) -> bool:
     return (text or "").strip().lower() in {"/clear", "/clear_all"}

@@ -26,7 +26,8 @@ def env_value(primary: str, default: str = "") -> str:
 
 TOKEN          = env_value("LATTICEAI_TELEGRAM_BOT_TOKEN")
 API_URL        = f"https://api.telegram.org/bot{TOKEN}"
-BASE_URL       = "http://127.0.0.1:4825"
+SERVER_PORT    = int(env_value("LATTICEAI_SERVER_PORT", "4825"))
+BASE_URL       = env_value("LATTICEAI_BASE_URL", env_value("LATTICEAI_SERVER_URL", f"http://127.0.0.1:{SERVER_PORT}")).rstrip("/")
 CHAT_URL       = f"{BASE_URL}/chat"
 AGENT_URL      = f"{BASE_URL}/agent"
 MCP_TOOLS_URL  = f"{BASE_URL}/mcp/tools"
@@ -42,7 +43,6 @@ AGENT_WORKSPACE       = Path(env_value("LATTICEAI_AGENT_ROOT", "agent_workspace"
 # Pending plan approvals: context_id → (chat_id, executing_model, reviewing_model)
 _bot_pending_plans: dict[str, dict] = {}
 MAX_TELEGRAM_FILE_BYTES = 45 * 1024 * 1024
-SERVER_PORT           = int(env_value("LATTICEAI_SERVER_PORT", "4825"))
 INVITE_CODE           = env_value("LATTICEAI_INVITE_CODE", "gemma-lattice-ai")
 PUBLIC_WEB_URL        = env_value("LATTICEAI_PUBLIC_URL")
 DATA_DIR              = Path(env_value("LATTICEAI_DATA_DIR", str(Path.home() / ".ltcai")))
@@ -56,6 +56,9 @@ logger = logging.getLogger(__name__)
 
 def _get_server_session() -> str:
     """Read the most recent valid admin session from sessions.json (web login)."""
+    explicit_token = env_value("LATTICEAI_SERVER_SESSION_TOKEN")
+    if explicit_token:
+        return explicit_token
     sessions_file = DATA_DIR / "sessions.json"
     users_file = DATA_DIR / "users.json"
     try:
@@ -70,6 +73,8 @@ def _get_server_session() -> str:
         # Pick the newest non-expired admin session
         best_token, best_ts = "", 0.0
         for token, entry in sessions.items():
+            if len(token) == 64 and all(ch in "0123456789abcdef" for ch in token.lower()):
+                continue
             email, created_at = entry[0], float(entry[1])
             if admin_emails and email not in admin_emails:
                 continue

@@ -59,6 +59,14 @@ existed at that release.
   cleanup after keyring writes, and identity creation on plaintext fallback.
 - Added regression coverage for Computer Use policy enforcement, audit-safe
   typed-text metadata, and direct local-write system-prefix blocking.
+- Fixed functional findings from the July 8 code review: file generation now
+  fails cleanly when no model is loaded, chat/document streams preserve a
+  terminal SSE event on generation errors, agent runs persist failed status on
+  executor exceptions, Brain delegation treats HTTP failures as failures, and
+  local permission expiry cleanup no longer corrupts the active token lookup.
+- Tightened non-security chat intent detection, Telegram bot server URL
+  configuration, LATTICE_TZ-aware runtime audit timestamps, local embedding
+  dimension consistency, and stale Brain UI version copy.
 
 ## [8.9.0] - 2026-07-06
 
