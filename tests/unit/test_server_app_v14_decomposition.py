@@ -47,7 +47,9 @@ def test_markdown_current_release_references_match_release():
     readme = (ROOT / "README.md").read_text(encoding="utf-8")
     history = readme.split("## Release History", 1)[1]
     assert "8.1.0" in history
-    assert "7.0.0" in history
+    assert "8.0.0" in history
+    assert "7.9.0" not in history
+    assert "7.0.0" not in history
     assert "6.7.0" not in history
     assert "4.5.0" not in history
     assert "New in 1.3.0" not in readme
