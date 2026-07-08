@@ -72,6 +72,10 @@ existed at that release.
   appends to JSONL while preserving legacy JSON reads, making the legacy runtime
   namespace allowlist-based, clarifying static-vs-SPA design token ownership,
   and consolidating duplicated frontend helper functions.
+- Reduced the remaining chat-router risk by extracting repeated chat history,
+  bridge notification, no-model, single-answer, direct-file, and agent-file
+  response paths out of the main `/chat` handler, with regression coverage for
+  the shared fast-path epilogue.
 
 ## [8.9.0] - 2026-07-06
 

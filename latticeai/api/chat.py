@@ -14,7 +14,7 @@ import subprocess
 import tempfile
 import threading
 from pathlib import Path
-from typing import AsyncIterator, Dict, Optional
+from typing import Any, AsyncIterator, Dict, Optional
 
 from fastapi import APIRouter, HTTPException, Request
 from fastapi.responses import JSONResponse, StreamingResponse
@@ -181,6 +181,217 @@ def create_chat_router(context: AppContext) -> APIRouter:
 
         task.add_done_callback(_finish)
 
+    async def save_history_entry(role: str, content: str, history_meta: Dict, history_user: Dict) -> None:
+        await asyncio.to_thread(save_to_history, role, content, **history_meta, **history_user)
+
+    async def persist_chat_exchange(
+        req: ChatRequest,
+        answer: str,
+        *,
+        history_meta: Dict,
+        history_user: Dict,
+        user_message: Optional[str] = None,
+    ) -> None:
+        message = user_message if user_message is not None else req.message
+        await save_history_entry("user", message, history_meta, history_user)
+        await save_history_entry("assistant", answer, history_meta, history_user)
+        notify_chat_message("user", req.message, req.source)
+        notify_chat_message("assistant", answer, req.source)
+
+    def no_model_response() -> JSONResponse:
+        detail = "No model loaded. Call /models/load first."
+        if CONFIG.is_public:
+            detail = f"No public model loaded. Set OPENAI_API_KEY and LATTICEAI_PUBLIC_MODEL={PUBLIC_MODEL}, or call /models/load with an OpenAI-compatible model."
+        return JSONResponse(
+            status_code=400,
+            content={
+                "error": "no_model_loaded",
+                "detail": detail,
+                "message": detail,
+                "action": "load_model",
+            },
+        )
+
+    def single_answer_response(req: ChatRequest, answer: str, *, model: str) -> JSONResponse | StreamingResponse:
+        if req.stream:
+            return StreamingResponse(
+                single_text_stream(answer),
+                media_type="text/event-stream",
+                headers={"X-Model": model},
+            )
+        return JSONResponse(content={"response": answer})
+
+    def agent_payload_stream(answer: str, payload: Dict[str, Any]) -> AsyncIterator[str]:
+        async def _stream() -> AsyncIterator[str]:
+            yield f"data: {json.dumps({'chunk': answer, 'model': router.current_model_id, 'agent': payload}, ensure_ascii=False)}\n\n"
+            yield f"data: {json.dumps({'chunk': '', 'model': router.current_model_id, 'agent': payload}, ensure_ascii=False)}\n\n"
+            yield "data: [DONE]\n\n"
+
+        return _stream()
+
+    async def handle_network_status_intent(
+        req: ChatRequest,
+        *,
+        history_meta: Dict,
+        history_user: Dict,
+    ) -> JSONResponse | StreamingResponse:
+        history_message = f"{req.message}\n[Image attached]" if req.image_data else req.message
+        try:
+            answer = format_network_status(network_status())
+        except ToolError as exc:
+            answer = f"네트워크 정보를 확인하지 못했습니다: {exc}"
+        await persist_chat_exchange(req, answer, history_meta=history_meta, history_user=history_user, user_message=history_message)
+        return single_answer_response(req, answer, model="network_status")
+
+    async def handle_clear_intent(
+        req: ChatRequest,
+        *,
+        effective_email: Optional[str],
+    ) -> JSONResponse | StreamingResponse:
+        command = req.message.strip().lower()
+        clear_scope = "all" if command == "/clear_all" else "conversation"
+        if ENABLE_GRAPH and KNOWLEDGE_GRAPH:
+            try:
+                KNOWLEDGE_GRAPH.ingest_event(
+                    "ClearEvent",
+                    f"{command} requested",
+                    user_email=effective_email,
+                    user_nickname=req.user_nickname,
+                    source=req.source or "web",
+                    conversation_id=req.conversation_id,
+                    metadata={"command": command, "scope": clear_scope},
+                )
+            except Exception as e:
+                logging.warning("knowledge graph clear event ingest failed: %s", e)
+        if command == "/clear_all":
+            result = clear_history(0, **history_scope_for_user(effective_email))
+            answer = f"채팅창을 정리했습니다. 화면에서 제거 {result.get('removed', 0)}개. 감사 로그와 지식 그래프/RAG 데이터는 유지됩니다."
+        elif req.conversation_id:
+            result = clear_conversation(req.conversation_id, **history_scope_for_user(effective_email))
+            answer = f"현재 대화방 채팅창을 정리했습니다. 화면에서 제거 {result.get('removed', 0)}개. 감사 로그와 지식 그래프/RAG 데이터는 유지됩니다."
+        else:
+            result = clear_history(0, **history_scope_for_user(effective_email))
+            answer = f"채팅창을 정리했습니다. 화면에서 제거 {result.get('removed', 0)}개. 감사 로그와 지식 그래프/RAG 데이터는 유지됩니다."
+        append_audit_event(
+            "clear_command",
+            user_email=effective_email,
+            user_nickname=req.user_nickname,
+            source=req.source or "web",
+            conversation_id=req.conversation_id,
+            command=command,
+            scope=clear_scope,
+            removed=result.get("removed", 0),
+            kept=result.get("kept", 0),
+        )
+        notify_chat_message("user", req.message, req.source)
+        notify_chat_message("assistant", answer, req.source)
+        return single_answer_response(req, answer, model="history")
+
+    async def handle_current_url_intent(
+        req: ChatRequest,
+        *,
+        history_meta: Dict,
+        history_user: Dict,
+    ) -> JSONResponse | StreamingResponse:
+        answer = f"현재 페이지 URL: {req.client_url}"
+        await persist_chat_exchange(req, answer, history_meta=history_meta, history_user=history_user)
+        return single_answer_response(req, answer, model="client_url")
+
+    async def handle_direct_file_action(req: ChatRequest) -> Optional[JSONResponse | StreamingResponse]:
+        target_path = file_action_target(req.message)
+        if not target_path:
+            return None
+        content = inline_file_action_content(req.message)
+        if content is None and not router.current_model_id:
+            return no_model_response()
+        if content is None and router.current_model_id:
+            if req.model and req.model != router.current_model_id:
+                if req.model not in router.loaded_model_ids:
+                    raise HTTPException(status_code=404, detail=f"Model '{req.model}' not loaded.")
+                router.switch_model(req.model)
+            generation_context = (
+                "Create the exact content for the requested file. "
+                "Return only the file bytes as plain text. "
+                "Do not wrap the answer in Markdown fences, commentary, or explanations.\n\n"
+                f"Target path: {target_path}\n"
+                f"User request: {req.message}"
+            )
+            raw_content = await router.generate_as(
+                router.current_model_id,
+                message="Return only the requested file content.",
+                context=generation_context,
+                max_tokens=req.max_tokens,
+                temperature=req.temperature,
+            )
+            content = strip_generated_file_content(str(raw_content))
+        if content is None:
+            raise HTTPException(status_code=400, detail="File content could not be generated.")
+        try:
+            result = execute_tool("write_file", {"path": target_path, "content": content})
+        except ToolError as exc:
+            raise HTTPException(status_code=400, detail=str(exc)) from exc
+        answer = f"{result.get('path') or target_path} 파일을 만들었습니다."
+        created_files = [{
+            "path": result.get("path") or target_path,
+            "filename": Path(result.get("path") or target_path).name,
+            "bytes": result.get("bytes", 0),
+            "action": "write_file",
+        }]
+        notify_chat_message("user", req.message, req.source)
+        notify_chat_message("assistant", answer, req.source)
+        payload = {
+            "status": "ok",
+            "response": answer,
+            "workspace": str(AGENT_ROOT),
+            "steps": [{
+                "state": AgentState.EXECUTING.value,
+                "action": "write_file",
+                "args": {"path": target_path},
+                "result": result,
+            }],
+            "state_history": [AgentState.EXECUTING.value, AgentState.DONE.value],
+            "final_state": AgentState.DONE.value,
+            "created_files": created_files,
+            "routed_to_agent": True,
+            "action_route": "direct_write_file",
+        }
+        if req.stream:
+            return StreamingResponse(
+                agent_payload_stream(answer, payload),
+                media_type="text/event-stream",
+                headers={"X-Model": router.current_model_id or "tool", "X-Routed-To": "agent"},
+            )
+        return JSONResponse(content=payload)
+
+    async def route_file_action_to_agent(
+        req: ChatRequest,
+        request: Request,
+        *,
+        effective_email: Optional[str],
+    ) -> JSONResponse | StreamingResponse:
+        agent_req = AgentRequest(
+            message=req.message,
+            conversation_id=req.conversation_id,
+            source=req.source or "web",
+            max_steps=25,
+            temperature=min(req.temperature, 0.2),
+            user_email=effective_email,
+            user_nickname=req.user_nickname,
+            workspace_id=workspace_scope_from_request(request),
+        )
+        result = await agent(agent_req, request)
+        answer = str(result.get("response") or "파일 작업을 처리했습니다.")
+        notify_chat_message("user", req.message, req.source)
+        notify_chat_message("assistant", answer, req.source)
+        result["routed_to_agent"] = True
+        if req.stream:
+            return StreamingResponse(
+                agent_payload_stream(answer, result),
+                media_type="text/event-stream",
+                headers={"X-Model": router.current_model_id, "X-Routed-To": "agent"},
+            )
+        return JSONResponse(content=result)
+
     def history_scope_for_user(user_email: Optional[str]) -> Dict:
         require_auth = bool(getattr(CONFIG, "require_auth", False))
         scoped_user = user_email if require_auth else None
@@ -296,177 +507,21 @@ def create_chat_router(context: AppContext) -> APIRouter:
         }
 
         if is_network_status_request(req.message):
-            history_message = f"{req.message}\n[Image attached]" if req.image_data else req.message
-            await asyncio.to_thread(save_to_history, "user", history_message, **history_meta, **history_user)
-            try:
-                answer = format_network_status(network_status())
-            except ToolError as exc:
-                answer = f"네트워크 정보를 확인하지 못했습니다: {exc}"
-            await asyncio.to_thread(save_to_history, "assistant", answer, **history_meta, **history_user)
-            notify_chat_message("user", req.message, req.source)
-            notify_chat_message("assistant", answer, req.source)
-            if req.stream:
-                return StreamingResponse(
-                    single_text_stream(answer),
-                    media_type="text/event-stream",
-                    headers={"X-Model": "network_status"},
-                )
-            return JSONResponse(content={"response": answer})
+            return await handle_network_status_intent(req, history_meta=history_meta, history_user=history_user)
 
         if is_clear_command(req.message):
-            command = req.message.strip().lower()
-            clear_scope = "all" if command == "/clear_all" else "conversation"
-            if ENABLE_GRAPH and KNOWLEDGE_GRAPH:
-                try:
-                    KNOWLEDGE_GRAPH.ingest_event(
-                        "ClearEvent",
-                        f"{command} requested",
-                        user_email=effective_email,
-                        user_nickname=req.user_nickname,
-                        source=req.source or "web",
-                        conversation_id=req.conversation_id,
-                        metadata={"command": command, "scope": clear_scope},
-                    )
-                except Exception as e:
-                    logging.warning("knowledge graph clear event ingest failed: %s", e)
-            if command == "/clear_all":
-                result = clear_history(0, **history_scope_for_user(effective_email))
-                answer = f"채팅창을 정리했습니다. 화면에서 제거 {result.get('removed', 0)}개. 감사 로그와 지식 그래프/RAG 데이터는 유지됩니다."
-            else:
-                if req.conversation_id:
-                    result = clear_conversation(req.conversation_id, **history_scope_for_user(effective_email))
-                    answer = f"현재 대화방 채팅창을 정리했습니다. 화면에서 제거 {result.get('removed', 0)}개. 감사 로그와 지식 그래프/RAG 데이터는 유지됩니다."
-                else:
-                    result = clear_history(0, **history_scope_for_user(effective_email))
-                    answer = f"채팅창을 정리했습니다. 화면에서 제거 {result.get('removed', 0)}개. 감사 로그와 지식 그래프/RAG 데이터는 유지됩니다."
-            append_audit_event(
-                "clear_command",
-                user_email=effective_email,
-                user_nickname=req.user_nickname,
-                source=req.source or "web",
-                conversation_id=req.conversation_id,
-                command=command,
-                scope=clear_scope,
-                removed=result.get("removed", 0),
-                kept=result.get("kept", 0),
-            )
-            notify_chat_message("user", req.message, req.source)
-            notify_chat_message("assistant", answer, req.source)
-            if req.stream:
-                return StreamingResponse(
-                    single_text_stream(answer),
-                    media_type="text/event-stream",
-                    headers={"X-Model": "history"},
-                )
-            return JSONResponse(content={"response": answer})
+            return await handle_clear_intent(req, effective_email=effective_email)
 
         if is_current_url_request(req.message) and req.client_url:
-            answer = f"현재 페이지 URL: {req.client_url}"
-            await asyncio.to_thread(save_to_history, "user", req.message, **history_meta, **history_user)
-            await asyncio.to_thread(save_to_history, "assistant", answer, **history_meta, **history_user)
-            notify_chat_message("user", req.message, req.source)
-            notify_chat_message("assistant", answer, req.source)
-            if req.stream:
-                return StreamingResponse(
-                    single_text_stream(answer),
-                    media_type="text/event-stream",
-                    headers={"X-Model": "client_url"},
-                )
-            return JSONResponse(content={"response": answer})
+            return await handle_current_url_intent(req, history_meta=history_meta, history_user=history_user)
 
         if is_file_action_request(req.message):
-            target_path = file_action_target(req.message)
-            if target_path:
-                content = inline_file_action_content(req.message)
-                if content is None and not router.current_model_id:
-                    detail = "No model loaded. Call /models/load first."
-                    if CONFIG.is_public:
-                        detail = f"No public model loaded. Set OPENAI_API_KEY and LATTICEAI_PUBLIC_MODEL={PUBLIC_MODEL}, or call /models/load with an OpenAI-compatible model."
-                    return JSONResponse(
-                        status_code=400,
-                        content={
-                            "error": "no_model_loaded",
-                            "detail": detail,
-                            "message": detail,
-                            "action": "load_model",
-                        },
-                    )
-                if content is None and router.current_model_id:
-                    if req.model and req.model != router.current_model_id:
-                        if req.model not in router.loaded_model_ids:
-                            raise HTTPException(status_code=404, detail=f"Model '{req.model}' not loaded.")
-                        router.switch_model(req.model)
-                    generation_context = (
-                        "Create the exact content for the requested file. "
-                        "Return only the file bytes as plain text. "
-                        "Do not wrap the answer in Markdown fences, commentary, or explanations.\n\n"
-                        f"Target path: {target_path}\n"
-                        f"User request: {req.message}"
-                    )
-                    raw_content = await router.generate_as(
-                        router.current_model_id,
-                        message="Return only the requested file content.",
-                        context=generation_context,
-                        max_tokens=req.max_tokens,
-                        temperature=req.temperature,
-                    )
-                    content = strip_generated_file_content(str(raw_content))
-                if content is None:
-                    raise HTTPException(status_code=400, detail="File content could not be generated.")
-                try:
-                    result = execute_tool("write_file", {"path": target_path, "content": content})
-                except ToolError as exc:
-                    raise HTTPException(status_code=400, detail=str(exc)) from exc
-                answer = f"{result.get('path') or target_path} 파일을 만들었습니다."
-                created_files = [{
-                    "path": result.get("path") or target_path,
-                    "filename": Path(result.get("path") or target_path).name,
-                    "bytes": result.get("bytes", 0),
-                    "action": "write_file",
-                }]
-                notify_chat_message("user", req.message, req.source)
-                notify_chat_message("assistant", answer, req.source)
-                payload = {
-                    "status": "ok",
-                    "response": answer,
-                    "workspace": str(AGENT_ROOT),
-                    "steps": [{
-                        "state": AgentState.EXECUTING.value,
-                        "action": "write_file",
-                        "args": {"path": target_path},
-                        "result": result,
-                    }],
-                    "state_history": [AgentState.EXECUTING.value, AgentState.DONE.value],
-                    "final_state": AgentState.DONE.value,
-                    "created_files": created_files,
-                    "routed_to_agent": True,
-                    "action_route": "direct_write_file",
-                }
-                if req.stream:
-                    async def _stream_file_result():
-                        yield f"data: {json.dumps({'chunk': answer, 'model': router.current_model_id, 'agent': payload}, ensure_ascii=False)}\n\n"
-                        yield f"data: {json.dumps({'chunk': '', 'model': router.current_model_id, 'agent': payload}, ensure_ascii=False)}\n\n"
-                        yield "data: [DONE]\n\n"
-                    return StreamingResponse(
-                        _stream_file_result(),
-                        media_type="text/event-stream",
-                        headers={"X-Model": router.current_model_id or "tool", "X-Routed-To": "agent"},
-                    )
-                return JSONResponse(content=payload)
+            direct_response = await handle_direct_file_action(req)
+            if direct_response is not None:
+                return direct_response
 
         if not router.current_model_id:
-            detail = "No model loaded. Call /models/load first."
-            if CONFIG.is_public:
-                detail = f"No public model loaded. Set OPENAI_API_KEY and LATTICEAI_PUBLIC_MODEL={PUBLIC_MODEL}, or call /models/load with an OpenAI-compatible model."
-            return JSONResponse(
-                status_code=400,
-                content={
-                    "error": "no_model_loaded",
-                    "detail": detail,
-                    "message": detail,
-                    "action": "load_model",
-                },
-            )
+            return no_model_response()
 
         if req.model and req.model != router.current_model_id:
             if req.model not in router.loaded_model_ids:
@@ -474,32 +529,7 @@ def create_chat_router(context: AppContext) -> APIRouter:
             router.switch_model(req.model)
 
         if is_file_action_request(req.message):
-            agent_req = AgentRequest(
-                message=req.message,
-                conversation_id=req.conversation_id,
-                source=req.source or "web",
-                max_steps=25,
-                temperature=min(req.temperature, 0.2),
-                user_email=effective_email,
-                user_nickname=req.user_nickname,
-                workspace_id=workspace_scope_from_request(request),
-            )
-            result = await agent(agent_req, request)
-            answer = str(result.get("response") or "파일 작업을 처리했습니다.")
-            notify_chat_message("user", req.message, req.source)
-            notify_chat_message("assistant", answer, req.source)
-            result["routed_to_agent"] = True
-            if req.stream:
-                async def _stream_agent_result():
-                    yield f"data: {json.dumps({'chunk': answer, 'model': router.current_model_id, 'agent': result}, ensure_ascii=False)}\n\n"
-                    yield f"data: {json.dumps({'chunk': '', 'model': router.current_model_id, 'agent': result}, ensure_ascii=False)}\n\n"
-                    yield "data: [DONE]\n\n"
-                return StreamingResponse(
-                    _stream_agent_result(),
-                    media_type="text/event-stream",
-                    headers={"X-Model": router.current_model_id, "X-Routed-To": "agent"},
-                )
-            return JSONResponse(content=result)
+            return await route_file_action_to_agent(req, request, effective_email=effective_email)
 
         lang = detect_language(req.message)
         context = f"[LANGUAGE: {_LANG_HINT[lang]}]\n" + (req.context or "")

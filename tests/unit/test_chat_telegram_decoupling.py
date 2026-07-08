@@ -53,6 +53,7 @@ def _chat_app(
     on_chat_message=None,
     chat_agent_runtime=None,
     model_router=None,
+    history_entries=None,
 ) -> FastAPI:
     app = FastAPI()
     context = AppContext(
@@ -70,7 +71,7 @@ def _chat_app(
         require_user=lambda _request: "user@example.com",
         enforce_rate_limit=lambda *_args, **_kwargs: None,
         get_history_user=lambda *_args, **_kwargs: {},
-        save_to_history=lambda *_args, **_kwargs: None,
+        save_to_history=lambda *args, **kwargs: history_entries.append((args, kwargs)) if history_entries is not None else None,
         append_audit_event=lambda *_args, **_kwargs: None,
         clear_history=lambda *_args, **_kwargs: {"removed": 0, "kept": 0},
         clear_conversation=lambda *_args, **_kwargs: {"removed": 0, "kept": 0},
@@ -113,6 +114,31 @@ def test_on_chat_message_callback_fires_for_web_chat(tmp_path: Path):
     assert roles == ["user", "assistant"], f"bridge calls: {recorded}"
     assert recorded[1][1].endswith("http://localhost:4825/app")
     assert all(item[2] == "web" for item in recorded)
+
+
+def test_fast_path_epilogue_persists_history_and_bridge(tmp_path: Path):
+    recorded = []
+    history_entries = []
+    app = _chat_app(
+        tmp_path,
+        recorded,
+        history_entries=history_entries,
+        on_chat_message=lambda role, text, source: recorded.append((role, text, source)),
+    )
+
+    response = TestClient(app).post(
+        "/chat",
+        json={
+            "message": "현재 페이지 URL 알려줘",
+            "client_url": "http://localhost:4825/app",
+            "stream": False,
+            "source": "web",
+        },
+    )
+
+    assert response.status_code == 200
+    assert [entry[0][0] for entry in history_entries] == ["user", "assistant"]
+    assert [item[0] for item in recorded] == ["user", "assistant"]
 
 
 def test_telegram_originated_messages_are_not_echoed_back(tmp_path: Path):
