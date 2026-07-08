@@ -1,6 +1,6 @@
 # Privacy
 
-Current release: **8.9.0 — Scoped Memory & Tool Policy Hardening**.
+Current release: **9.0.0 — Code Review Closure & Runtime Cleanup**.
 
 Lattice AI is local-first. It does not send your prompts, files, graph, or Brain
 archive to Lattice-owned servers by default. Some user-chosen features can

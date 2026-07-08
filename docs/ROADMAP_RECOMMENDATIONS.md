@@ -5,43 +5,12 @@ small release-sized work. The operating principle stays unchanged:
 
 > Models are temporary. Knowledge is durable. The Brain is the product.
 
-## 7.3.0 Applied Slice
+## Applied Release History
 
-7.3.0 implements the first narrow slice of the roadmap:
-
-- Runtime evolution: single-agent and multi-agent execution share
-  `agent-run-contract/v1`, making mode/status/timeline evidence inspectable.
-- Hybrid search optimization: the Brain quality gate now includes deterministic
-  recall and ranking regression thresholds.
-- Security and trust: run contracts distinguish runtime type and execution mode
-  so simulated output is not presented as real execution.
-
-## 7.4.0 Applied Slice
-
-7.4.0 completes the next roadmap slice without deferring it:
-
-- Runtime convergence: agent runs, workflow runs, audit events, and realtime
-  events all expose the `agent-run-contract/v1` family envelope while keeping
-  legacy top-level fields for compatibility.
-- Trust and operations: persisted run rows refresh their contract through
-  queued, running, terminal, cancelled, and interrupted states; audit events are
-  contracted only after secret redaction.
-- Retrieval quality and scale: the CI quality gate now seeds a real local
-  Knowledge Graph corpus and scores SearchService hybrid retrieval with judged
-  queries, recall, precision, NDCG, and must-include hit-rate thresholds.
-
-## 7.5.0 Applied Slice
-
-7.5.0 burns down the remaining 7.4.0 risk instead of deferring it:
-
-- Contract consumption: AgentRuntime and realtime feed APIs now emit compact
-  `contracts` views so UI, replay, admin, and export consumers can depend on the
-  shared family envelope directly.
-- Retrieval scale: the corpus fixture now runs against 250+ local records while
-  keeping judged queries, graded relevance, and must-include expectations.
-- Release trust: stale artifact mixing is handled through clean exact-version
-  artifact generation, npm audit findings are cleared, and the Tauri 2 stack is
-  updated past the old `block v0.1.6` future-incompatibility warning.
+Release-specific applied-slice history is now kept only for 8.0.0 and newer in
+[docs/CHANGELOG.md](CHANGELOG.md) and [RELEASE.md](../RELEASE.md). Pre-8.0.0
+release-history notes were removed from the tracked documentation surface during
+the 9.0.0 documentation cleanup.
 
 ## Near-Term Tracks
 

@@ -185,7 +185,7 @@ git-tracked는 아니지만 실제 `.env`가 있다. `.env.example`(3.8KB)과 �
 **개선:** `.env` 권한 `chmod 600` 확인, `.gitignore`에 `.env` 확실히 포함(현재 tracked 아님은 확인됨), 릴리스 tarball(`MANIFEST.in`)에 절대 포함 안 되는지 `scripts/validate_release_artifacts.py`에 assert 추가.
 
 ### 4.5 루트 문서 과다 (98개 md)
-`RELEASE_NOTES_v7.0.0` ~ `v8.9.0` 15개 + `review.md`/`ux-brain-simplification-review.md`/`docs/CODE_REVIEW_2026-07-06.md` 등 리뷰 문서가 루트·docs에 흩어짐. `verification_report.json`, `chat_history.json`, `server.log`(25KB), `ai_server.log`(빈 파일)도 루트에.
+`RELEASE_NOTES_v8.0.0` ~ `v9.0.0` 중심으로 정리됨. 9.0.0 문서 정리 전에는 15개 릴리스 노트 + `review.md`/`ux-brain-simplification-review.md`/`docs/CODE_REVIEW_2026-07-06.md` 등 리뷰 문서가 루트·docs에 흩어짐. `verification_report.json`, `chat_history.json`, `server.log`(25KB), `ai_server.log`(빈 파일)도 루트에.
 
 **개선:** `RELEASE_NOTES_v*.md`는 `docs/releases/`로, 리뷰 문서는 `docs/reviews/`로 모은다. 로그·런타임 산출물(`server.log`, `chat_history.json`, `telegram_chats.json`, `verification_report.json`)은 데이터 디렉터리로 옮기고 `.gitignore`.
 

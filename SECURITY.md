@@ -4,7 +4,7 @@ Current release: **9.0.0 — Code Review Closure & Runtime Cleanup**.
 
 ## Supported Versions
 
-The public Git tree keeps release history from 7.0.0 through 9.0.0. Security
+The public Git tree keeps release history from 8.0.0 through 9.0.0. Security
 support follows that same product era.
 
 | Version | Support |
@@ -15,21 +15,12 @@ support follows that same product era.
 | 8.7.x | Supported |
 | 8.6.x | Supported |
 | 8.5.x | Supported |
+| 8.4.x | Supported |
 | 8.3.x | Supported |
 | 8.2.x | Supported |
 | 8.1.x | Supported |
 | 8.0.x | Supported |
-| 7.9.x | Supported |
-| 7.8.x | Supported |
-| 7.7.x | Supported |
-| 7.6.x | Security fixes when practical |
-| 7.5.x | Security fixes when practical |
-| 7.4.x | Security fixes when practical |
-| 7.3.x | Security fixes when practical |
-| 7.2.x | Security fixes when practical |
-| 7.1.x | Security fixes when practical |
-| 7.0.x | Security fixes when practical |
-| Older than 7.0.0 | Not supported in the current Git history |
+| Older than 8.0.0 | Not supported in the current Git history |
 
 ## Reporting Vulnerabilities
 

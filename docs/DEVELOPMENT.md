@@ -4,7 +4,7 @@ Current release: **9.0.0 — Code Review Closure & Runtime Cleanup**.
 
 This document is for contributors working on the local-first Digital Brain
 codebase. Product positioning and quick start stay in `README.md`; release
-history is intentionally limited to 7.0.0-9.0.0 in `docs/CHANGELOG.md` and
+history is intentionally limited to 8.0.0-9.0.0 in `docs/CHANGELOG.md` and
 `RELEASE.md`.
 
 ## Product Contract

@@ -1,9 +1,9 @@
-# Lattice AI Feature Status (v8.9.0)
+# Lattice AI Feature Status (v9.0.0)
 
-Current release: **8.9.0 — Scoped Memory & Tool Policy Hardening**.
+Current release: **9.0.0 — Code Review Closure & Runtime Cleanup**.
 
 This file describes the current product state and known limitations. Historical
-change history is intentionally limited to 7.0.0-8.9.0 in `RELEASE.md` and
+change history is intentionally limited to 8.0.0-9.0.0 in `RELEASE.md` and
 `docs/CHANGELOG.md`.
 
 ## Product Position
@@ -12,9 +12,10 @@ Lattice AI is a local-first Digital Brain. The durable asset is the user's
 Brain: conversations, documents, decisions, memories, provenance, and Knowledge
 Graph structure. Models are replaceable voices over that Brain.
 
-The main product surface is not an admin dashboard. The 8.9.0 line keeps the
-living Brain and composer in the first screen while tightening scoped memory
-reads/deletes, Tool API execution gates, and local approval safety.
+The main product surface is not an admin dashboard. The 9.0.0 line keeps the
+living Brain and composer in the first screen while closing July 8 review
+follow-ups, tightening chat/runtime reliability, and keeping release artifacts
+aligned.
 
 ## Current Feature Status
 
@@ -32,7 +33,7 @@ reads/deletes, Tool API execution gates, and local approval safety.
 | Tool Registry / MCP | Current | ToolRegistry diagnostics, direct HTTP/MCP policy gates, and MCP install state are separated from app-factory helpers and covered by focused tests. |
 | Workspaces | Current | Personal workspace is default. Organization/admin surfaces remain separated from normal Brain use. |
 | VS Code Extension | Current | Sync/status endpoints expose connection and indexing state. File contents move only through explicit user actions. |
-| Release Assets | Current | 8.9.0 package metadata, static app, release notes, current documentation, and exact artifact names are aligned. |
+| Release Assets | Current | 9.0.0 package metadata, static app, release notes, current documentation, and exact artifact names are aligned. |
 
 ## Known Limitations
 
@@ -55,6 +56,7 @@ reads/deletes, Tool API execution gates, and local approval safety.
 
 The Git tree keeps release history from:
 
+- 9.0.0
 - 8.9.0
 - 8.8.0
 - 8.7.0
@@ -65,16 +67,6 @@ The Git tree keeps release history from:
 - 8.2.0
 - 8.1.0
 - 8.0.0
-- 7.9.0
-- 7.8.0
-- 7.7.0
-- 7.6.0
-- 7.5.0
-- 7.4.0
-- 7.3.0
-- 7.2.0
-- 7.1.0
-- 7.0.0
 
-Release notes and release evidence older than 7.0.0 are intentionally removed
+Release notes and release evidence older than 8.0.0 are intentionally removed
 from the tracked tree.
