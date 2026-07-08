@@ -81,21 +81,21 @@ confirm owner, check the computer, choose the Brain voice.
 Choose the owner of the Brain. The profile is not a SaaS account by default; it
 is the local identity for the knowledge you keep.
 
-![Login](output/release/v8.7.0/screenshots/01-login.png)
+![Login](output/release/v9.0.0/screenshots/01-login.png)
 
 ### 3. Recommended Models
 
 Start with a short list: safest recommendation, faster model, stronger model.
 Advanced details stay available without overwhelming first-time users.
 
-![Recommended Models](output/release/v8.7.0/screenshots/02-recommended-models.png)
+![Recommended Models](output/release/v9.0.0/screenshots/02-recommended-models.png)
 
 ### 4. Install And Load
 
 Download and load only after consent. Lattice explains model size, local
 execution, and network use before work starts.
 
-![Install and Load](output/release/v8.7.0/screenshots/03-install-load-progress.png)
+![Install and Load](output/release/v9.0.0/screenshots/03-install-load-progress.png)
 
 ### 5. Brain Chat
 
@@ -103,14 +103,14 @@ Talk normally. Useful decisions and context become memory, then appear later as
 topics, relationships, graph structure, and the concentric memory rings around
 the Brain.
 
-![Brain Brief Home](output/release/v8.7.0/screenshots/04-brain-chat-home.png)
+![Brain Brief Home](output/release/v9.0.0/screenshots/04-brain-chat-home.png)
 
 ### 6. Review Center
 
 Automation results are staged for review before they become durable decisions.
 Snooze, unsnooze, run now, approve, and dismiss actions stay explicit.
 
-![Review Center](output/release/v8.7.0/screenshots/12-review-center.png)
+![Review Center](output/release/v9.0.0/screenshots/12-review-center.png)
 
 ## Brain Depths
 
@@ -126,10 +126,10 @@ The user travels inward from everyday memory to deeper structure:
 
 Walkthrough:
 
-![v8.7.0 Living Brain walkthrough](output/release/v8.7.0/gifs/v8.7.0-living-brain-walkthrough.gif)
+![v9.0.0 Living Brain walkthrough](output/release/v9.0.0/gifs/v9.0.0-living-brain-walkthrough.gif)
 
 Screenshot index and capture notes:
-[output/release/v8.7.0/SCREENSHOT_INDEX.md](output/release/v8.7.0/SCREENSHOT_INDEX.md)
+[output/release/v9.0.0/SCREENSHOT_INDEX.md](output/release/v9.0.0/SCREENSHOT_INDEX.md)
 
 ## Install
 

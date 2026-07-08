@@ -45,6 +45,8 @@ jobs:
         run: |
           npm run lint
           npm run typecheck
+          npm run docs:check-current
+          npm run docs:check-links
 
       - name: Run tests
         run: |

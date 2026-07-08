@@ -27,6 +27,7 @@
     "lint:python": "node scripts/run_python.mjs -m ruff check .",
     "lint:frontend": "node scripts/lint_frontend.mjs",
     "docs:check-links": "node scripts/check_markdown_links.mjs",
+    "docs:check-current": "node scripts/check_current_release_docs.mjs",
     "typecheck": "npm run typecheck:frontend && cd vscode-extension && npm run build",
     "typecheck:frontend": "npx tsc -p tsconfig.json --noEmit",
     "test": "node scripts/run_python.mjs -m pytest tests/ -v",

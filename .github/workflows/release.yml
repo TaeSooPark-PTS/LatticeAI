@@ -56,6 +56,8 @@ jobs:
         run: |
           npm run lint
           npm run typecheck
+          npm run docs:check-current
+          npm run docs:check-links
           npm run build:assets
           python scripts/product_readiness.py
 
