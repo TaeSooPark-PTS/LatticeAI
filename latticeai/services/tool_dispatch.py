@@ -149,7 +149,7 @@ class ToolDispatchService:
                 status_code=403,
                 detail=(
                     f"'{tool_name}' 툴은 명시 승인이 필요합니다. "
-                    "8.9.0에서는 승인 UI가 없는 직접 실행 경로에서 기본 차단됩니다."
+                    "9.0.0에서는 승인 UI가 없는 직접 실행 경로에서 기본 차단됩니다."
                 ),
             )
         return policy

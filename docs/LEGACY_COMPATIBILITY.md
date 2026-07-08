@@ -1,6 +1,6 @@
 # Legacy Compatibility Map
 
-Current target: **8.9.0 — Scoped Memory & Tool Policy Hardening**.
+Current target: **9.0.0 — Code Review Closure & Runtime Cleanup**.
 
 Lattice AI is moving toward a smaller, modular architecture centered on
 `lattice_brain`, `latticeai.services`, `latticeai.api`, and `latticeai.runtime`.

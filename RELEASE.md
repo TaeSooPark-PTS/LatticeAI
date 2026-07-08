@@ -7,6 +7,62 @@
 > PyPI / npm / VS Code Marketplace / Open VSX 배포는 아래 수동 절차로만
 > 진행합니다. 태그 생성은 패키지 스토어 publish를 자동으로 트리거하지 않습니다.
 
+## v9.0.0 — Code Review Closure & Runtime Cleanup (2026-07-08)
+
+9.0.0 packages the July 8 code-review follow-up work and the remaining cleanup
+risk reduction. The release keeps 8.9.0's scoped memory and ToolRegistry
+hardening, then fixes functional reliability issues, consolidates duplicated
+runtime/setup/frontend helpers, makes runtime audit append paths scale better,
+and decomposes the main chat router epilogues so future chat behavior changes
+have a smaller blast radius.
+
+### Added
+- Added regression coverage for no-model file generation, chat intent routing,
+  permission-token cleanup, setup detection helpers, runtime audit JSONL appends,
+  and shared chat fast-path epilogues.
+- Added `latticeai.core.io_utils`, `latticeai.services.setup_detection`, and
+  `lattice_brain.utils` as shared homes for duplicated JSON, timestamp, hash,
+  and setup-probe helpers.
+
+### Changed
+- Runtime audit events now append to JSONL while preserving legacy JSON audit
+  reads, avoiding full-file rewrites on every append.
+- The legacy `server_app` runtime namespace now exports from an explicit
+  allowlist instead of exposing every non-underscore local from app assembly.
+- Chat fast paths now share history, notification, no-model, single-answer, and
+  agent-payload epilogues instead of duplicating them in the main `/chat`
+  handler.
+- Setup wizard and zero-config setup share Windows GPU parsing, CUDA detection,
+  WSL detection, and tool detection helpers.
+- Static CSS and React SPA token ownership are documented as separate token
+  sources with different consumption formats.
+- README, release docs, readiness gates, package metadata, Tauri metadata, and
+  VS Code extension metadata are synchronized to 9.0.0.
+
+### Fixed
+- File-generation requests now fail cleanly when no model is loaded instead of
+  creating empty files and reporting success.
+- Streaming chat/document generation now preserves terminal SSE events and
+  history/trace persistence on mid-stream failures.
+- Agent run executor exceptions now persist `failed` run status instead of
+  leaving runs permanently `running`.
+- Brain delegation now treats failed HTTP responses as failed UI activity.
+- Local permission approval cleanup no longer corrupts the active token lookup
+  when expired approvals are removed.
+- Chat network-status and current-URL intent detection no longer overmatches
+  generic IP/address questions.
+- Telegram bot server URL configuration now honors environment overrides and
+  avoids replaying hashed session keys as bearer cookies.
+- Brain UI version copy, local embedding dimensions, and LATTICE_TZ-aware audit
+  timestamps are aligned with the current runtime configuration.
+
+Expected artifacts (exact 9.0.0 names only):
+- `dist/ltcai-9.0.0-py3-none-any.whl`
+- `dist/ltcai-9.0.0.tar.gz`
+- `dist/ltcai-9.0.0.vsix`
+- `ltcai-9.0.0.tgz`
+- `src-tauri/target/release/bundle/dmg/Lattice AI_9.0.0_aarch64.dmg`
+
 ## v8.9.0 — Scoped Memory & Tool Policy Hardening (2026-07-06)
 
 8.9.0 closes the actionable findings from `docs/CODE_REVIEW_2026-07-06.md`

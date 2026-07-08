@@ -1,6 +1,6 @@
 # Lattice AI
 
-**Lattice AI 8.9.0 is the local-first Digital Brain platform. This release hardens authenticated history and graph scoping, blocks unapproved direct Tool API execution paths, makes local permission approvals and installer/process execution safer to audit, and keeps package, desktop, extension, static app, and documentation metadata synchronized to the 8.9.0 line.**
+**Lattice AI 9.0.0 is the local-first Digital Brain platform. This release closes the July 8 code-review follow-up, hardens chat/runtime reliability, pays down cleanup debt across runtime utilities and setup detection, and keeps package, desktop, extension, static app, and documentation metadata synchronized to the 9.0.0 line.**
 
 **Lattice AI는 모델이 바뀌어도 내 지식과 맥락을 보존하는 로컬 우선 AI 브레인입니다.**
 
@@ -67,9 +67,9 @@ You need Lattice AI when:
 The screenshots below are the latest checked-in visual evidence captures. They
 keep the first-run Brain flow, memory graph, source capture, model library,
 system view, admin console, and review center visible as release gates while
-8.9.0 focuses on scoped memory isolation, direct Tool API policy enforcement,
-AgentRuntime human-approval semantics, confirmation-token guarded installer
-execution, and frontend/runtime maintainability.
+9.0.0 focuses on code-review closure, chat/runtime reliability,
+AgentRuntime and ToolRegistry maintainability, release artifact correctness,
+and frontend/runtime cleanup.
 
 ### 1. Wake Brain
 
@@ -210,40 +210,38 @@ See [docs/DEVELOPMENT.md](docs/DEVELOPMENT.md) for developer workflow details.
 
 ## Current Release
 
-The current release is **8.9.0 — Scoped Memory & Tool Policy Hardening**:
+The current release is **9.0.0 — Code Review Closure & Runtime Cleanup**:
 
-- Conversation history reads and deletes now scope by authenticated user and
-  readable workspace, while preserving legacy-global rows only in no-auth or
-  explicitly compatible flows.
-- Knowledge Graph search, graph traversal, relationships, node reads, and chat
-  context now apply workspace scope at the graph/service boundary.
-- Direct HTTP/MCP Tool API calls enforce ToolRegistry policy before hooks or
-  handlers run; destructive paths and non-auto-approved user writes are blocked.
-- AgentRuntime no longer treats “requires approval” plans as implicitly
-  approved, and rollback now handles tool results that omit `success`.
-- Local permission approvals hash tokens at rest, use atomic queue writes, and
-  reject write approvals for blocked system prefixes.
-- Frontend API base handling, Tauri credentials, workspace clearing, CSS tokens,
-  and i18n literal checks are split into safer maintainability seams.
+- July 8 code-review follow-ups are fixed across chat, agent runs, permissions,
+  Telegram integration, runtime audit timestamps, embeddings, and Brain UI copy.
+- Chat/document streaming now preserves terminal SSE events and history/trace
+  persistence when generation fails mid-stream.
+- Runtime audit appends use JSONL while legacy JSON reads remain compatible.
+- Shared JSON/ISO/hash, setup detection, and frontend helper utilities replace
+  duplicated implementations across runtime, Brain Core, setup, and React code.
+- The legacy `server_app` namespace is allowlist-based instead of exposing all
+  app-factory locals.
+- The main `/chat` handler now routes through focused intent handlers and shared
+  response epilogues for lower future regression risk.
 
-Expected artifacts for 8.9.0 release must use exact filenames:
+Expected artifacts for 9.0.0 release must use exact filenames:
 
-- `dist/ltcai-8.9.0-py3-none-any.whl`
-- `dist/ltcai-8.9.0.tar.gz`
-- `ltcai-8.9.0.tgz`
-- `dist/ltcai-8.9.0.vsix`
-- `src-tauri/target/release/bundle/dmg/Lattice AI_8.9.0_aarch64.dmg`
+- `dist/ltcai-9.0.0-py3-none-any.whl`
+- `dist/ltcai-9.0.0.tar.gz`
+- `ltcai-9.0.0.tgz`
+- `dist/ltcai-9.0.0.vsix`
+- `src-tauri/target/release/bundle/dmg/Lattice AI_9.0.0_aarch64.dmg`
 
 Do not use wildcard artifact uploads. Package registry publishing remains owner-run.
 
 See [docs/ROADMAP_RECOMMENDATIONS.md](docs/ROADMAP_RECOMMENDATIONS.md) for the
-strategic roadmap slices applied through 8.9.0 and the follow-up tracks.
+strategic roadmap slices applied through 9.0.0 and the follow-up tracks.
 
 ## Known Limitations
 
 - External package registries are owner-published and can lag behind GitHub.
 - PostgreSQL/pgvector is optional scale/migration tooling. SQLite remains the
-  live local Brain store in 8.9.0.
+  live local Brain store in 9.0.0.
 - Docker, model downloads, cloud model calls, Telegram, Brain Network, and update
   checks require explicit user action.
 - Conversation does not fabricate answers when no model is loaded.
@@ -255,6 +253,7 @@ strategic roadmap slices applied through 8.9.0 and the follow-up tracks.
 
 | Version | Theme |
 | --- | --- |
+| 9.0.0 | Code Review Closure & Runtime Cleanup: July 8 code-review follow-ups fixed, chat/runtime reliability improved, duplicated utility surfaces consolidated, runtime audit append paths moved to JSONL, and release metadata/artifacts synchronized |
 | 8.9.0 | Scoped Memory & Tool Policy Hardening: authenticated history/KG reads are workspace-scoped, direct Tool API paths enforce registry policy, local approvals hash tokens at rest, AgentRuntime approval semantics are explicit, and frontend/runtime seams are split |
 | 8.8.0 | Brain Core Extraction & Recall Proof Hardening: internal-only Brain shim layers are removed, AgentRuntime run contracts/retry budgets are tighter, Brain Chat gains conversation controls, and citation recall exposes matched evidence |
 | 8.7.0 | Runtime State Hygiene & Release Evidence Refresh: model-runtime internals prefer typed state over legacy globals, compatibility sync is deprecated, 8.7.0 visual evidence is refreshed, and all release metadata/docs are synchronized |

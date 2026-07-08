@@ -1,15 +1,16 @@
 # Security Policy
 
-Current release: **8.9.0 — Scoped Memory & Tool Policy Hardening**.
+Current release: **9.0.0 — Code Review Closure & Runtime Cleanup**.
 
 ## Supported Versions
 
-The public Git tree keeps release history from 7.0.0 through 8.9.0. Security
+The public Git tree keeps release history from 7.0.0 through 9.0.0. Security
 support follows that same product era.
 
 | Version | Support |
 | --- | --- |
-| 8.9.x (latest) | Supported |
+| 9.0.x (latest) | Supported |
+| 8.9.x | Supported |
 | 8.8.x | Supported |
 | 8.7.x | Supported |
 | 8.6.x | Supported |
@@ -47,7 +48,7 @@ The expected first response target is 48 hours.
 
 ## Security Model
 
-Lattice AI v8.9.0 is a local-first Digital Brain. It keeps user knowledge,
+Lattice AI v9.0.0 is a local-first Digital Brain. It keeps user knowledge,
 conversation context, Knowledge Graph data, and archives local by default while
 making external paths explicit.
 

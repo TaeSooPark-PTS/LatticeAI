@@ -6,6 +6,10 @@ existed at that release.
 
 ## [Unreleased]
 
+No unreleased changes yet.
+
+## [9.0.0] - 2026-07-08
+
 ### Added
 - Added Brain Brief suggested questions that turn current memory, recall proof,
   graph concepts, and conversation history into clickable first-screen prompts.
