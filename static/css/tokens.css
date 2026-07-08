@@ -1,7 +1,9 @@
 /* ============================================================================
- * Lattice AI — Design Tokens (Single Source of Truth)  v3.3.1
+ * Lattice AI — Static-shell Design Tokens  v3.3.1
  *
- * 이 파일이 색·면·테두리·그림자·포커스의 단일 출처다.
+ * 이 파일은 정적 서버 렌더링/legacy shell CSS의 색·면·테두리·그림자·포커스
+ * 출처다. React SPA(/app)는 frontend/src/styles/tokens.css의 HSL triple
+ * 토큰을 별도로 소비한다.
  *   :root                      → 라이트 테마 값
  *   :root[data-lt-theme="dark"] → 동일 토큰명의 다크 값
  *   @media (prefers-color-scheme: dark) → 사용자가 명시 선택 안 했을 때 OS 추종

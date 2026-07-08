@@ -9,7 +9,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Input } from "@/components/ui/input";
 import { t, type Language } from "@/i18n";
 import { useAppStore } from "@/store/appStore";
-import { asArray, shortId, titleize } from "@/lib/utils";
+import { asArray, isRecord, shortId, titleize } from "@/lib/utils";
 
 type SystemTab = "account" | "workspaces" | "snapshots" | "activity" | "network" | "settings" | "admin";
 
@@ -439,10 +439,6 @@ function SettingsPanel() {
       )}
     </div>
   );
-}
-
-function isRecord(value: unknown): value is Record<string, unknown> {
-  return Boolean(value && typeof value === "object" && !Array.isArray(value));
 }
 
 function textValue(value: unknown, fallback = "not reported") {

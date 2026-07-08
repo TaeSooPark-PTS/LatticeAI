@@ -91,6 +91,16 @@ LEGACY_UNDERSCORE_EXPORTS = {
     "_workspace_settings_payload",
 }
 
+LEGACY_PUBLIC_EXPORTS = {
+    "ENGINE_MODEL_CATALOG",
+    "TOOL_GOVERNANCE",
+    "enforce_rate_limit",
+    "filter_lower_family_versions",
+    "hash_password",
+    "normalize_local_model_request",
+    "verify_password",
+}
+
 
 def _is_internal_runtime_dict(name: str, value: Any) -> bool:
     if not isinstance(value, dict):
@@ -135,15 +145,19 @@ def build_runtime_namespace(
         if isinstance(runtime_bundle, RuntimeBundle)
         else dict(runtime_bundle)
     )
-    exported: Dict[str, Any] = {}
-    for name, value in local_namespace.items():
+    exported: Dict[str, Any] = dict(legacy_bundle)
+    allowed = set(legacy_bundle) | LEGACY_PUBLIC_EXPORTS | LEGACY_UNDERSCORE_EXPORTS
+    for name in allowed:
+        if name in exported:
+            continue
         if name in INTERNAL_RUNTIME_NAMES:
+            continue
+        value = local_namespace.get(name)
+        if value is None:
             continue
         if isinstance(value, ModuleType):
             continue
         if _is_internal_runtime_dict(name, value):
-            continue
-        if name.startswith("_") and name not in LEGACY_UNDERSCORE_EXPORTS:
             continue
         exported[name] = value
     exported["RUNTIME_BUNDLE"] = runtime_bundle

@@ -7,11 +7,13 @@ store class and public constants while preserving exact behavior.
 from __future__ import annotations
 
 import json
-import os
 import shutil
 from datetime import datetime
 from pathlib import Path
 from typing import Any, Dict, List, Optional
+
+from .io_utils import atomic_write_json as _atomic_write_json  # noqa: F401 - legacy helper re-export
+from .io_utils import parse_iso as _parse_iso  # noqa: F401 - legacy helper re-export
 
 
 def _now() -> str:
@@ -41,13 +43,6 @@ def _deep_merge(default: Any, loaded: Any) -> Any:
     if loaded is None:
         return default
     return loaded
-
-
-def _atomic_write_json(path: Path, payload: Dict[str, Any]) -> None:
-    path.parent.mkdir(parents=True, exist_ok=True)
-    tmp_path = path.with_suffix(path.suffix + ".tmp")
-    tmp_path.write_text(json.dumps(payload, ensure_ascii=False, indent=2), encoding="utf-8")
-    os.replace(tmp_path, path)
 
 
 def _listify(value: Any) -> List[Any]:
@@ -98,15 +93,6 @@ def _snapshot_graph_import_payload(graph_payload: Dict[str, Any], *, workspace_i
         "provenance": [],
         "counts": {"nodes": len(nodes), "edges": len(edges)},
     }
-
-
-def _parse_iso(value: Optional[str]) -> Optional[datetime]:
-    if not value:
-        return None
-    try:
-        return datetime.fromisoformat(str(value))
-    except (TypeError, ValueError):
-        return None
 
 
 def _file_size(path: Path) -> int:

@@ -1,5 +1,7 @@
 :root {
   color-scheme: dark;
+  /* React SPA token source. Values are HSL triples consumed as
+   * hsl(var(--token)); static/legacy pages use static/css/tokens.css. */
   /* ── 먹빛 밤 (ink night) ──────────────────────────────────────────────
    * 인터페이스는 차분한 먹(잉크 네이비)과 옥빛(jade), 브레인만 따뜻한
    * 금빛으로 살아 있다. 라이트 테마와 같은 악센트 DNA를 공유한다.

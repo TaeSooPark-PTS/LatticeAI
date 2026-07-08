@@ -10,19 +10,14 @@ from datetime import datetime
 from pathlib import Path
 from typing import Any, Dict, Optional
 
+from .io_utils import atomic_write_json
+
 
 USER_NAMESPACE = uuid.UUID("5d6d4480-cf79-49c3-a6d0-4c6eec3224d6")
 
 
 def _now() -> str:
     return datetime.now().isoformat(timespec="seconds")
-
-
-def _atomic_write_json(path: Path, data: Dict[str, Any]) -> None:
-    path.parent.mkdir(parents=True, exist_ok=True)
-    tmp = path.with_suffix(path.suffix + ".tmp")
-    tmp.write_text(json.dumps(data, ensure_ascii=False, indent=2), encoding="utf-8")
-    tmp.replace(path)
 
 
 def normalize_email(email: str) -> str:
@@ -86,13 +81,13 @@ def load_users_file(path: Path) -> Dict[str, Any]:
             shutil.copy2(path, backup)
         except Exception:
             pass
-        _atomic_write_json(path, migrated)
+        atomic_write_json(path, migrated)
     return migrated
 
 
 def save_users_file(path: Path, users: Dict[str, Any]) -> None:
     migrated, _, _ = migrate_users(users)
-    _atomic_write_json(path, migrated)
+    atomic_write_json(path, migrated)
 
 
 def user_id_for_email(users: Dict[str, Any], email: Optional[str]) -> Optional[str]:

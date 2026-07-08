@@ -54,6 +54,12 @@ from latticeai.services.process_audit import (
     command_plan_for_commands,
     require_command_confirmation,
 )
+from latticeai.services.setup_detection import (
+    detect_cuda,
+    detect_tools,
+    detect_wsl_from_text,
+    parse_windows_video_controllers as _parse_windows_video_controllers,
+)
 
 __all__ = [
     "SystemProfile", "Recommendation", "InstallPlan",
@@ -153,44 +159,6 @@ def _which(binary: str) -> Optional[str]:
     return None
 
 
-def _parse_windows_video_controllers(raw: str) -> List[Dict[str, Any]]:
-    controllers: List[Dict[str, Any]] = []
-    if not raw:
-        return controllers
-    try:
-        data = json.loads(raw)
-        if isinstance(data, dict):
-            data = [data]
-        if isinstance(data, list):
-            for item in data:
-                name = str(item.get("Name") or "").strip()
-                if not name:
-                    continue
-                try:
-                    ram_mb = int(item.get("AdapterRAM") or 0) // (1024 * 1024)
-                except Exception:
-                    ram_mb = 0
-                controllers.append({"name": name, "vram_mb": ram_mb})
-        if controllers:
-            return controllers
-    except Exception:
-        pass
-    current: Dict[str, Any] = {}
-    for line in raw.splitlines():
-        if line.startswith("Name="):
-            if current:
-                controllers.append(current)
-            current = {"name": line.split("=", 1)[-1].strip(), "vram_mb": 0}
-        elif line.startswith("AdapterRAM=") and current:
-            try:
-                current["vram_mb"] = int(line.split("=", 1)[-1].strip()) // (1024 * 1024)
-            except ValueError:
-                current["vram_mb"] = 0
-    if current:
-        controllers.append(current)
-    return controllers
-
-
 def _detect_gpu(prof_os: str, arch: str) -> GPUInfo:
     """OS별 휴리스틱으로 GPU 감지. 외부 라이브러리 없이 가능한 만큼만."""
     gpu = GPUInfo()
@@ -276,36 +244,17 @@ def _detect_package_manager(prof_os: str) -> Optional[str]:
 
 
 def _detect_tools() -> Dict[str, str]:
-    tools: Dict[str, str] = {}
-    for binary in ("ollama", "lms", "nvidia-smi", "nvcc", "winget", "brew", "apt", "git", "node", "python", "python3"):
-        found = _which(binary)
-        if found:
-            tools[binary] = found
-    return tools
+    detected = detect_tools(_which, ("ollama", "lms", "nvidia-smi", "nvcc", "winget", "brew", "apt", "git", "node", "python", "python3"))
+    return {binary: path for binary, path in detected.items() if path}
 
 
 def _detect_wsl(prof_os: str) -> Tuple[bool, str]:
-    if prof_os != "linux":
-        return False, ""
-    raw = _read_text("/proc/version")
-    is_wsl = "microsoft" in raw.lower() or "wsl" in raw.lower()
-    version = "2" if "microsoft-standard" in raw.lower() or "wsl2" in raw.lower() else ("1" if is_wsl else "")
-    return is_wsl, version
+    return detect_wsl_from_text(prof_os, _read_text("/proc/version"))
 
 
 def _detect_cuda() -> Tuple[bool, str]:
-    nvidia_smi = _which("nvidia-smi")
-    nvcc = _which("nvcc")
-    version = ""
-    if nvidia_smi:
-        raw = _run([nvidia_smi, "--query-gpu=driver_version", "--format=csv,noheader"], timeout=4.0)
-        version = raw.splitlines()[0].strip() if raw.splitlines() else ""
-    if nvcc:
-        raw = _run([nvcc, "--version"], timeout=4.0)
-        m = re.search(r"release\s+([\d.]+)", raw)
-        if m:
-            version = m.group(1)
-    return bool(nvidia_smi or nvcc), version
+    available, version, _nvidia_smi, _nvcc = detect_cuda(_which, lambda args: _run(args, timeout=4.0))
+    return available, version
 
 
 def _detect_cpu_details(prof_os: str) -> Tuple[str, int, int, List[str]]:

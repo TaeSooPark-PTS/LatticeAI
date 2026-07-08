@@ -21,6 +21,8 @@ from __future__ import annotations
 from datetime import datetime
 from typing import Any, Callable, Dict, Optional
 
+from latticeai.core.io_utils import parse_iso as _parse_iso
+
 # status: terminal vs. open. Open items can still be acted on.
 OPEN_STATUSES = {"pending", "snoozed"}
 TERMINAL_STATUSES = {"approved", "dismissed"}
@@ -57,15 +59,6 @@ class InvalidReviewTransition(Exception):
         self.action = action
         self.status = status
         super().__init__(f"cannot {action!r} a review item in status {status!r}")
-
-
-def _parse_iso(value: Optional[str]) -> Optional[datetime]:
-    if not value:
-        return None
-    try:
-        return datetime.fromisoformat(str(value))
-    except (TypeError, ValueError):
-        return None
 
 
 class ReviewQueueService:

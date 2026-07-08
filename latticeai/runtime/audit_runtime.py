@@ -18,15 +18,30 @@ def build_audit_runtime(
     redact_fn: Optional[Callable[[str], str]] = None,
 ) -> Dict[str, Any]:
     _audit_lock: Any = __import__("threading").Lock()
+    audit_jsonl = audit_file.with_suffix(audit_file.suffix + ".jsonl")
 
     def _read_audit() -> List[Dict[str, Any]]:
+        events: List[Dict[str, Any]] = []
         if not audit_file.exists():
-            return []
-        try:
-            data = json.loads(audit_file.read_text(encoding="utf-8"))
-            return data if isinstance(data, list) else []
-        except Exception:
-            return []
+            data = []
+        else:
+            try:
+                data = json.loads(audit_file.read_text(encoding="utf-8"))
+            except Exception:
+                data = []
+        if isinstance(data, list):
+            events.extend(item for item in data if isinstance(item, dict))
+        if audit_jsonl.exists():
+            try:
+                for line in audit_jsonl.read_text(encoding="utf-8").splitlines():
+                    if not line.strip():
+                        continue
+                    item = json.loads(line)
+                    if isinstance(item, dict):
+                        events.append(item)
+            except Exception:
+                pass
+        return events[-5000:]
 
     def _append(event_type: str, **payload: Any) -> None:
         entry = {"event_type": event_type, "timestamp": timezones.now_iso()}
@@ -40,15 +55,10 @@ def build_audit_runtime(
             except Exception:
                 pass
         with _audit_lock:
-            events = _read_audit()
-            events.append(entry)
-            # keep last N to bound size (legacy behavior)
-            if len(events) > 5000:
-                events = events[-5000:]
             audit_file.parent.mkdir(parents=True, exist_ok=True)
-            tmp = audit_file.with_suffix(".tmp")
-            tmp.write_text(json.dumps(events, ensure_ascii=False, indent=2), encoding="utf-8")
-            tmp.replace(audit_file)
+            with audit_jsonl.open("a", encoding="utf-8") as fh:
+                fh.write(json.dumps(entry, ensure_ascii=False, default=str))
+                fh.write("\n")
 
     def get_audit_log() -> List[Dict[str, Any]]:
         return _read_audit()

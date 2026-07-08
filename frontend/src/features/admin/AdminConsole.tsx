@@ -5,7 +5,7 @@ import { latticeApi, type AdminAuditFilters, type ApiResult } from "@/api/client
 import { Button } from "@/components/ui/button";
 import { LanguageSwitcher } from "@/components/LanguageSwitcher";
 import { useAppStore } from "@/store/appStore";
-import { asArray } from "@/lib/utils";
+import { asArray, isRecord } from "@/lib/utils";
 import { t } from "@/i18n";
 
 type ApiRecord = Record<string, unknown>;
@@ -318,10 +318,6 @@ function stringValue(value: unknown, fallback = "") {
   if (typeof value === "number" && Number.isFinite(value)) return String(value);
   if (typeof value === "boolean") return value ? "true" : "false";
   return fallback;
-}
-
-function isRecord(value: unknown): value is ApiRecord {
-  return Boolean(value && typeof value === "object" && !Array.isArray(value));
 }
 
 function textValue(record: ApiRecord, keys: string[], fallback = "") {

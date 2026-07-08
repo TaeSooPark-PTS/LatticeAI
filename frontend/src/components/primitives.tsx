@@ -7,7 +7,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { useAppStore } from "@/store/appStore";
 import { t } from "@/i18n";
-import { cn, asArray, fmtNumber, shortId, titleize } from "@/lib/utils";
+import { cn, asArray, fmtNumber, isRecord, shortId, titleize } from "@/lib/utils";
 
 export function SourceBadge({ result }: { result?: Pick<ApiResult, "source" | "ok" | "status"> }) {
   const mode = useAppStore((state) => state.mode);
@@ -93,10 +93,6 @@ export function StatGrid({ stats }: { stats: Array<{ label: string; value: unkno
       ))}
     </div>
   );
-}
-
-function isRecord(value: unknown): value is Record<string, unknown> {
-  return Boolean(value && typeof value === "object" && !Array.isArray(value));
 }
 
 function scalarText(value: unknown) {

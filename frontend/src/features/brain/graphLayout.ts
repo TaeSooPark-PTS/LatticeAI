@@ -1,4 +1,5 @@
 import * as React from "react";
+export { clamp } from "@/lib/utils";
 import type { KnowledgeConcept, RelationshipThread } from "./types";
 
 // Return the set of node ids that share a direct (1-hop) edge with `nodeId`.
@@ -30,8 +31,4 @@ export function polarPoint(index: number, total: number, radiusX: number, radius
 
 export function layerStyle(values: Record<string, string>) {
   return values as React.CSSProperties;
-}
-
-export function clamp(value: number, min: number, max: number) {
-  return Math.max(min, Math.min(max, value));
 }

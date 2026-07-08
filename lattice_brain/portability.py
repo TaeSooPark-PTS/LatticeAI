@@ -13,7 +13,6 @@ any cloud service. Two complementary mechanisms, both fully local:
 
 from __future__ import annotations
 
-import hashlib
 import json
 import os
 import shutil
@@ -30,6 +29,7 @@ from .storage import (
     PostgresEngine,
     SQLiteToPostgresMigrator,
 )
+from .utils import sha256_file as _sha256_file
 
 FORMAT = "latticeai.kg.export"
 FORMAT_VERSION = 1
@@ -42,14 +42,6 @@ def _now_iso() -> str:
 
 def _stamp() -> str:
     return _now_iso().replace(":", "").replace("-", "").replace(".", "")[:15]
-
-
-def _sha256_file(path: Path) -> str:
-    h = hashlib.sha256()
-    with open(path, "rb") as fh:
-        for block in iter(lambda: fh.read(65536), b""):
-            h.update(block)
-    return h.hexdigest()
 
 
 def _safe_zip_names(names) -> None:

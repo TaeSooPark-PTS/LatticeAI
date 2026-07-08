@@ -67,6 +67,11 @@ existed at that release.
 - Tightened non-security chat intent detection, Telegram bot server URL
   configuration, LATTICE_TZ-aware runtime audit timestamps, local embedding
   dimension consistency, and stale Brain UI version copy.
+- Paid down the remaining July 8 cleanup debt by moving duplicated JSON/ISO/hash
+  and setup detection helpers into shared modules, switching runtime audit
+  appends to JSONL while preserving legacy JSON reads, making the legacy runtime
+  namespace allowlist-based, clarifying static-vs-SPA design token ownership,
+  and consolidating duplicated frontend helper functions.
 
 ## [8.9.0] - 2026-07-06
 

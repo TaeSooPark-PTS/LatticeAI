@@ -1,4 +1,4 @@
-import { asArray } from "@/lib/utils";
+import { asArray, isRecord as isRecordValue } from "@/lib/utils";
 import type { ApiRecord, BrainBrief, BrainDepth, BrainProof, BrainReadiness, ConversationSummary, KnowledgeConcept, KnowledgeGraphModel, MemoryFragment, Message, RelationshipThread } from "./types";
 import { clamp } from "./graphLayout";
 
@@ -317,9 +317,7 @@ function isBrainDepth(value: number): value is BrainDepth {
   return value >= 1 && value <= 5 && Number.isInteger(value);
 }
 
-export function isRecord(value: unknown): value is ApiRecord {
-  return Boolean(value && typeof value === "object" && !Array.isArray(value));
-}
+export const isRecord = isRecordValue as (value: unknown) => value is ApiRecord;
 
 export function textValue(record: ApiRecord, keys: string[], fallback = "") {
   for (const key of keys) {

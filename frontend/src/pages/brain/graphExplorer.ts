@@ -1,6 +1,6 @@
 import type { ElementDefinition } from "cytoscape";
 import { t, type Language } from "@/i18n";
-import { asArray, shortId } from "@/lib/utils";
+import { asArray, isRecord as isRecordValue, shortId } from "@/lib/utils";
 
 export type LabelMode = "important" | "all" | "off";
 
@@ -61,9 +61,7 @@ const groupDefinitions = [
 
 const groupLookup: Map<string, string> = new Map(groupDefinitions.flatMap((group) => group.types.map((type) => [type, group.id])));
 
-export function isRecord(value: unknown): value is Record<string, unknown> {
-  return Boolean(value && typeof value === "object" && !Array.isArray(value));
-}
+export const isRecord = isRecordValue;
 
 function field(record: Record<string, unknown>, keys: string[], fallback = "") {
   for (const key of keys) {

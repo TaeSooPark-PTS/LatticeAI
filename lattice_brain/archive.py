@@ -9,7 +9,6 @@ restore on another machine without contacting a service.
 from __future__ import annotations
 
 import base64
-import hashlib
 import io
 import json
 import os
@@ -26,6 +25,8 @@ from cryptography.hazmat.primitives import hashes
 from cryptography.hazmat.primitives.ciphers.aead import AESGCM
 from cryptography.exceptions import InvalidTag
 from cryptography.hazmat.primitives.kdf.pbkdf2 import PBKDF2HMAC
+
+from .utils import sha256_file as _sha256_file
 
 
 ARCHIVE_FORMAT = "latticebrain.encrypted"
@@ -68,15 +69,9 @@ def _derive_key(passphrase: str, salt: bytes) -> bytes:
 
 
 def _sha256_bytes(data: bytes) -> str:
+    import hashlib
+
     return hashlib.sha256(data).hexdigest()
-
-
-def _sha256_file(path: Path) -> str:
-    h = hashlib.sha256()
-    with open(path, "rb") as fh:
-        for block in iter(lambda: fh.read(65536), b""):
-            h.update(block)
-    return h.hexdigest()
 
 
 def _safe_json(value: Any) -> Any:

@@ -22,19 +22,11 @@ from pathlib import Path
 from typing import Any, Dict, List, Optional, Tuple
 
 from ._kg_constants import *  # noqa: F401,F403
+from ..utils import parse_iso as _parse_iso
 
 
 def _now() -> str:
     return datetime.now().isoformat()
-
-
-def _parse_iso(raw: Optional[str]) -> Optional[datetime]:
-    if not raw:
-        return None
-    try:
-        return datetime.fromisoformat(str(raw))
-    except (TypeError, ValueError):
-        return None
 
 
 def _recency_score(

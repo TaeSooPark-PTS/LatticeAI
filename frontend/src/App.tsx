@@ -12,6 +12,8 @@ import { latticeApi } from "@/api/client";
 import { useQuery } from "@tanstack/react-query";
 import { FeedbackState } from "@/components/FeedbackState";
 import { Brain, Menu, X } from "lucide-react";
+import { navigateHash } from "@/features/brain/navigation";
+import { clamp } from "@/lib/utils";
 
 const ActPage = React.lazy(() => import("@/pages/Act").then((module) => ({ default: module.ActPage })));
 const BrainPage = React.lazy(() => import("@/pages/Brain").then((module) => ({ default: module.BrainPage })));
@@ -300,10 +302,6 @@ function useHashRoute() {
   return route;
 }
 
-function navigateHash(route: string) {
-  window.location.hash = route;
-}
-
 function useBrainState() {
   const [state, setState] = React.useState<BrainState>("idle");
   const [intensity, setIntensity] = React.useState(0.58);
@@ -314,8 +312,4 @@ function useBrainState() {
   }, []);
 
   return { state, intensity, setBrain };
-}
-
-function clamp(value: number, min: number, max: number) {
-  return Math.max(min, Math.min(max, value));
 }
