@@ -192,7 +192,7 @@ def test_memory_brain_proof_shows_model_independent_recall(tmp_path):
         def index_status(self):
             return {"vector_counts": {"node": 4}}
 
-        def search(self, query, limit):
+        def search(self, query, limit, *, allowed_workspaces=None):
             return {"matches": [{"id": "node:alpha", "title": "Alpha plan", "summary": f"{query} graph context"}]}
 
     store = _FakeStore()
@@ -265,7 +265,7 @@ def test_memory_brain_brief_surfaces_recall_and_next_actions(tmp_path):
         def index_status(self):
             return {"vector_counts": {"node": 4}}
 
-        def search(self, query, limit):
+        def search(self, query, limit, *, allowed_workspaces=None):
             return {"matches": [{"id": "node:alpha", "title": "Alpha plan", "summary": f"{query} graph context"}]}
 
     store = _FakeStore()

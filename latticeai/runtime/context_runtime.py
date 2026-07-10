@@ -23,16 +23,28 @@ def build_context_runtime(
     search_service = SearchService(graph_store=graph_store)
     brain_memory = BrainMemory(ingestion_pipeline)
 
-    def scoped_hybrid_search(q, user_email=None, **kw):
+    def scoped_hybrid_search(q, user_email=None, workspace_id=None, **kw):
         allowed = None
-        if require_auth and user_email:
-            allowed = allowed_scopes_for_user(user_email)
+        if require_auth:
+            if workspace_id is not None:
+                allowed = {workspace_id}
+            elif user_email:
+                allowed = allowed_scopes_for_user(user_email)
         return search_service.hybrid_search(q, allowed_workspaces=allowed, **kw)
+
+    def scoped_notes_context(q, user_email=None, workspace_id=None, **kw):
+        allowed = None
+        if require_auth:
+            if workspace_id is not None:
+                allowed = {workspace_id}
+            elif user_email:
+                allowed = allowed_scopes_for_user(user_email)
+        return gardener.get_relevant_context(q, allowed_workspaces=allowed, **kw)
 
     context_assembler = ContextAssembler(
         memory_recall=memory_service.recall,
         hybrid_search=scoped_hybrid_search,
-        notes_context=gardener.get_relevant_context,
+        notes_context=scoped_notes_context,
     )
 
     return {

@@ -30,7 +30,7 @@ from latticeai.core.mcp_registry import (
     SKILLS_DIR,
 )
 from latticeai.core.tool_registry import MCP_TOOL_DESCRIPTIONS
-from latticeai.services.tool_dispatch import enforce_tool_policy
+from latticeai.services.tool_dispatch import EXPLICIT_CONSENT_TOOLS, enforce_tool_policy
 from tools import AGENT_ROOT, execute_tool
 
 
@@ -80,6 +80,8 @@ def create_mcp_router(
     knowledge_graph: Any,
     ingestion_pipeline: Any,
     data_dir: Path,
+    allowed_workspaces_for: Optional[Callable[[Optional[str]], Any]] = None,
+    workspace_service: Any = None,
 ) -> APIRouter:
     router = APIRouter()
 
@@ -106,12 +108,33 @@ def create_mcp_router(
         with open(_CUSTOM_MCP_FILE, "w", encoding="utf-8") as f:
             json.dump(items, f, ensure_ascii=False, indent=2)
 
+    def _public_env_vars(items: Any) -> List[Dict[str, Any]]:
+        return [
+            {"name": str(item.get("name") or ""), "configured": bool(item.get("value"))}
+            for item in (items or [])
+            if isinstance(item, dict) and item.get("name")
+        ]
+
+    def _allowed_graph_workspaces(user: Optional[str]):
+        return allowed_workspaces_for(user) if allowed_workspaces_for is not None else None
+
+    def _write_workspace(requested: Optional[str], user: Optional[str]) -> Optional[str]:
+        if workspace_service is None:
+            return requested
+        try:
+            return workspace_service.resolve_write_scope(requested, user)
+        except PermissionError as exc:
+            raise HTTPException(status_code=403, detail=str(exc)) from exc
+
     @router.get("/mcp/tools")
-    async def mcp_tools():
+    async def mcp_tools(request: Request):
+        require_user(request)
         installed = load_mcp_installs().get("installed", {})
         registry = await _get_combined_registry()
         tools = []
         for name, description in MCP_TOOL_DESCRIPTIONS.items():
+            if name in EXPLICIT_CONSENT_TOOLS:
+                continue
             policy = TOOL_GOVERNANCE.get(name, _TOOL_GOVERNANCE_DEFAULT)
             tools.append({
                 "name": name,
@@ -178,7 +201,7 @@ def create_mcp_router(
     @router.get("/mcp/claude-code-servers")
     async def mcp_claude_code_servers(request: Request):
         """Read ~/.claude/settings.json mcpServers and return them as Lattice MCP items."""
-        require_user(request)
+        require_admin(request)
         settings_path = Path.home() / ".claude" / "settings.json"
         if not settings_path.exists():
             return {"servers": []}
@@ -192,7 +215,7 @@ def create_mcp_router(
                 args = cfg.get("args", [])
                 package = " ".join([cmd] + args) if args else cmd
                 env = cfg.get("env", {})
-                env_vars = [{"name": k, "value": v} for k, v in env.items()]
+                env_vars = [{"name": k, "configured": bool(v)} for k, v in env.items()]
                 servers.append({
                     "id": f"claude-code:{name}",
                     "name": name,
@@ -213,7 +236,12 @@ def create_mcp_router(
     async def mcp_custom_list(request: Request):
         """Return user-added custom MCP entries."""
         require_user(request)
-        return {"custom": _load_custom_mcps()}
+        items = []
+        for raw in _load_custom_mcps():
+            item = dict(raw)
+            item["env_vars"] = _public_env_vars(item.get("env_vars"))
+            items.append(item)
+        return {"custom": items}
 
     @router.post("/mcp/custom")
     async def mcp_custom_add(req: McpCustomRequest, request: Request):
@@ -362,18 +390,26 @@ def create_mcp_router(
             _require_graph()
             # v4: MCP messages enter the brain through the unified ingestion
             # pipeline (provenance + hook lifecycle), not a direct store call.
-            owner = args.get("user_email") or current_user
+            claimed_user = str(args.get("user_email") or "").strip()
+            if current_user and claimed_user and claimed_user.lower() != current_user.strip().lower():
+                raise HTTPException(status_code=403, detail="user_email must match the authenticated user.")
+            owner = current_user or claimed_user or None
+            workspace_id = _write_workspace(args.get("workspace_id"), owner)
+            raw = dict(args)
+            raw["user_email"] = owner
+            raw["workspace_id"] = workspace_id
             result = ingestion_pipeline.ingest(
                 IngestionItem(
                     source_type="mcp_message",
                     text=args.get("content") or "",
                     owner=owner,
+                    workspace_id=workspace_id,
                     conversation_id=args.get("conversation_id"),
                     metadata={
                         "role": args.get("role") or ("assistant" if args.get("type") == "ai_response" else "user"),
                         "user_nickname": args.get("user_nickname"),
                         "source": args.get("source") or "mcp",
-                        "raw": args,
+                        "raw": raw,
                     },
                 ),
                 user_email=owner,
@@ -381,16 +417,24 @@ def create_mcp_router(
             return result.as_dict()
         if req.action == "knowledge_graph_search":
             _require_graph()
-            return KNOWLEDGE_GRAPH.search(args.get("query") or args.get("q") or "", args.get("limit", 30))
+            return KNOWLEDGE_GRAPH.search(
+                args.get("query") or args.get("q") or "",
+                args.get("limit", 30),
+                allowed_workspaces=_allowed_graph_workspaces(current_user or None),
+            )
         if req.action == "knowledge_graph_graph":
             _require_graph()
-            return KNOWLEDGE_GRAPH.graph(args.get("limit", 300))
+            return KNOWLEDGE_GRAPH.graph(
+                args.get("limit", 300),
+                allowed_workspaces=_allowed_graph_workspaces(current_user or None),
+            )
         if req.action == "knowledge_graph_context":
             _require_graph()
             return {
                 "context": KNOWLEDGE_GRAPH.context_for_query(
                     args.get("query") or args.get("q") or "",
                     args.get("limit", 6),
+                    allowed_workspaces=_allowed_graph_workspaces(current_user or None),
                 )
             }
         enforce_tool_policy(req.action, req.args or {}, current_user=current_user, source="mcp")

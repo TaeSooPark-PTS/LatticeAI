@@ -10,6 +10,7 @@ import { Input } from "@/components/ui/input";
 import { t, type Language } from "@/i18n";
 import { useAppStore } from "@/store/appStore";
 import { asArray, isRecord, shortId, titleize } from "@/lib/utils";
+import { clearScopedClientState } from "@/queryClient";
 
 type SystemTab = "account" | "workspaces" | "snapshots" | "activity" | "network" | "settings" | "admin";
 
@@ -51,6 +52,7 @@ export function SystemPage({ initialTab }: { initialTab?: string }) {
 
 function AccountPanel() {
   const qc = useQueryClient();
+  const setWorkspaceId = useAppStore((state) => state.setWorkspaceId);
   const profile = useQuery({ queryKey: ["profile"], queryFn: latticeApi.profile });
   const sso = useQuery({ queryKey: ["sso"], queryFn: latticeApi.ssoConfig });
   const [email, setEmail] = React.useState("");
@@ -58,8 +60,13 @@ function AccountPanel() {
   const [name, setName] = React.useState("");
   const [nickname, setNickname] = React.useState("");
   const [newPassword, setNewPassword] = React.useState("");
-  const login = useMutation({ mutationFn: () => latticeApi.login(email, password), onSuccess: () => qc.invalidateQueries({ queryKey: ["profile"] }) });
-  const register = useMutation({ mutationFn: () => latticeApi.register({ email, password, name, nickname }), onSuccess: () => qc.invalidateQueries({ queryKey: ["profile"] }) });
+  const resetIdentityScope = (result: { ok: boolean }) => {
+    if (!result.ok) return;
+    clearScopedClientState();
+    setWorkspaceId(null);
+  };
+  const login = useMutation({ mutationFn: () => latticeApi.login(email, password), onSuccess: resetIdentityScope });
+  const register = useMutation({ mutationFn: () => latticeApi.register({ email, password, name, nickname }), onSuccess: resetIdentityScope });
   const saveProfile = useMutation({ mutationFn: () => latticeApi.updateProfile({ name, nickname }), onSuccess: () => qc.invalidateQueries({ queryKey: ["profile"] }) });
   const changePassword = useMutation({ mutationFn: () => latticeApi.changePassword(password, newPassword) });
   return (
@@ -85,7 +92,7 @@ function AccountPanel() {
             <Button variant="outline" onClick={() => register.mutate()} disabled={!email || !password || register.isPending}>Register</Button>
             <Button variant="outline" onClick={() => saveProfile.mutate()} disabled={saveProfile.isPending}>Save profile</Button>
             <Button variant="outline" onClick={() => changePassword.mutate()} disabled={!password || !newPassword || changePassword.isPending}>Change password</Button>
-            <ActionButton label="Logout" action={() => latticeApi.logout()} invalidate={["profile"]} />
+            <ActionButton label="Logout" action={() => latticeApi.logout()} onSuccess={resetIdentityScope} />
           </div>
           {[login.data, register.data, saveProfile.data, changePassword.data].filter(Boolean).map((item, i) => (
             <OperationResult key={i} result={item} successLabel="Account request completed" />

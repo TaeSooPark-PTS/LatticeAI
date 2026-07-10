@@ -88,7 +88,7 @@ def _chat_app_for_auto_read(tmp_path: Path, captured: dict, audit_events: list) 
             current_model_id="local:test",
             loaded_model_ids=["local:test"],
             generate=generate,
-            generate_as=lambda *_args, **_kwargs: "",
+            generate_as=lambda _model_id, *args, **kwargs: generate(*args, **kwargs),
         ),
         chat_service=SimpleNamespace(
             build_graph_trace=lambda *_args, **_kwargs: {},
@@ -156,6 +156,32 @@ def test_network_exposed_mode_requires_auth_and_closes_registration():
     assert cfg.network_exposed is True
     assert cfg.require_auth is True
     assert cfg.open_registration is False
+
+
+def test_frontend_does_not_present_a_client_only_toggle_as_global_egress_control():
+    app_source = (REPO_ROOT / "frontend" / "src" / "App.tsx").read_text(encoding="utf-8")
+    store_source = (REPO_ROOT / "frontend" / "src" / "store" / "appStore.ts").read_text(encoding="utf-8")
+    copy_source = (REPO_ROOT / "frontend" / "src" / "i18n.ts").read_text(encoding="utf-8")
+
+    assert "ExternalConsentStatus" not in app_source
+    assert "externalConsent" not in store_source
+    assert "lattice.externalConsent" not in store_source
+    assert "This Brain now runs fully local" not in copy_source
+    assert "이 Brain은 지금 완전히 로컬" not in copy_source
+
+
+def test_frontend_clears_scoped_cache_and_conversation_on_workspace_or_identity_change():
+    main_source = (REPO_ROOT / "frontend" / "src" / "main.tsx").read_text(encoding="utf-8")
+    query_source = (REPO_ROOT / "frontend" / "src" / "queryClient.ts").read_text(encoding="utf-8")
+    system_source = (REPO_ROOT / "frontend" / "src" / "pages" / "System.tsx").read_text(encoding="utf-8")
+
+    assert "useAppStore.subscribe" in main_source
+    assert "state.workspaceId !== previousState.workspaceId" in main_source
+    assert "clearScopedClientState" in main_source
+    assert "queryClient.clear()" in query_source
+    assert "resetConversation()" in query_source
+    assert "onSuccess: resetIdentityScope" in system_source
+    assert 'onSuccess={resetIdentityScope}' in system_source
 
 
 def test_production_python_paths_do_not_use_shell_true():

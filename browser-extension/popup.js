@@ -3,73 +3,101 @@
 // (http://127.0.0.1:<port>/api/browser/ingest-current-tab). Nothing leaves the
 // machine; there is no cloud endpoint anywhere in this extension.
 
-const portInput = document.getElementById("port");
-const sendBtn = document.getElementById("send");
-const statusEl = document.getElementById("status");
+const DEFAULT_PORT = 4825;
+const REQUEST_TIMEOUT_MS = 30_000;
 
-// Remember the last-used port.
-chrome.storage?.local.get(["latticePort"], (r) => {
-  if (r && r.latticePort) portInput.value = r.latticePort;
-});
-
-function setStatus(message, kind) {
-  statusEl.textContent = message;
-  statusEl.className = "status" + (kind ? " " + kind : "");
+function normalizePort(value) {
+  const parsed = Number.parseInt(String(value || ""), 10);
+  return Number.isInteger(parsed) && parsed >= 1 && parsed <= 65535
+    ? parsed
+    : DEFAULT_PORT;
 }
 
-// Runs in the page context to extract a sanitized capture payload.
-function capturePage() {
-  const clone = document.cloneNode(true);
-  clone.querySelectorAll("script,style,noscript,template,svg").forEach((n) => n.remove());
-  const text = (clone.body ? clone.body.innerText : document.title || "").trim();
-  const selected = (window.getSelection && window.getSelection().toString()) || "";
-  return {
-    url: location.href,
-    title: document.title || location.href,
-    text: text.slice(0, 4 * 1024 * 1024),
-    selected_text: selected.slice(0, 200000),
-    captured_at: new Date().toISOString(),
-  };
-}
-
-sendBtn.addEventListener("click", async () => {
-  sendBtn.disabled = true;
-  setStatus("Capturing…");
-  const port = parseInt(portInput.value, 10) || 8000;
-  chrome.storage?.local.set({ latticePort: port });
-
+async function fetchWithTimeout(url, options, timeoutMs = REQUEST_TIMEOUT_MS, fetchImpl = fetch) {
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), timeoutMs);
   try {
-    const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
-    if (!tab || !tab.id) throw new Error("No active tab.");
-    const [{ result: payload }] = await chrome.scripting.executeScript({
-      target: { tabId: tab.id },
-      func: capturePage,
-    });
-
-    setStatus("Sending to local Lattice AI…");
-    const resp = await fetch(`http://127.0.0.1:${port}/api/browser/ingest-current-tab`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      credentials: "include", // reuse the local app session cookie if present
-      body: JSON.stringify(payload),
-    });
-
-    if (!resp.ok) {
-      const detail = await resp.text();
-      throw new Error(`HTTP ${resp.status}: ${detail.slice(0, 200)}`);
-    }
-    const data = await resp.json();
-    if (data.status === "ok") {
-      setStatus(data.duplicate ? "Already in your graph ✓" : "Added to Knowledge Graph ✓", "ok");
-    } else {
-      setStatus(`Not added: ${data.status} ${data.detail || ""}`, "err");
-    }
-  } catch (err) {
-    setStatus(
-      `Failed: ${err.message}. Is Lattice AI running locally and are you signed in?`,
-      "err"
-    );
+    return await fetchImpl(url, { ...options, signal: controller.signal });
   } finally {
-    sendBtn.disabled = false;
+    clearTimeout(timer);
   }
-});
+}
+
+function initializePopup() {
+  const portInput = document.getElementById("port");
+  const sendBtn = document.getElementById("send");
+  const statusEl = document.getElementById("status");
+  if (!portInput || !sendBtn || !statusEl) return;
+
+  function setStatus(message, kind) {
+    statusEl.textContent = message;
+    statusEl.className = "status" + (kind ? " " + kind : "");
+  }
+
+  // Remember the last-used valid port.
+  chrome.storage?.local.get(["latticePort"], (result) => {
+    portInput.value = String(normalizePort(result?.latticePort));
+  });
+
+  sendBtn.addEventListener("click", async () => {
+    sendBtn.disabled = true;
+    setStatus("Capturing…");
+    const port = normalizePort(portInput.value);
+    portInput.value = String(port);
+    chrome.storage?.local.set({ latticePort: port });
+
+    try {
+      const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
+      if (!tab || !tab.id) throw new Error("No active tab.");
+      const [{ result: payload } = {}] = await chrome.scripting.executeScript({
+        target: { tabId: tab.id },
+        files: ["capture-page.js"],
+      });
+      if (!payload || typeof payload !== "object") {
+        throw new Error("The page did not return readable content.");
+      }
+
+      setStatus("Sending to local Lattice AI…");
+      const resp = await fetchWithTimeout(
+        `http://127.0.0.1:${port}/api/browser/ingest-current-tab`,
+        {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          credentials: "include", // reuse the local app session cookie if present
+          body: JSON.stringify(payload),
+        },
+      );
+
+      if (!resp.ok) {
+        const detail = await resp.text();
+        throw new Error(`HTTP ${resp.status}: ${detail.slice(0, 200)}`);
+      }
+      const data = await resp.json();
+      if (data.status === "ok") {
+        setStatus(data.duplicate ? "Already in your graph ✓" : "Added to Knowledge Graph ✓", "ok");
+      } else {
+        setStatus(`Not added: ${data.status} ${data.detail || ""}`, "err");
+      }
+    } catch (err) {
+      const timedOut = err && err.name === "AbortError";
+      const message = timedOut
+        ? "The local Lattice AI request timed out after 30 seconds"
+        : err instanceof Error
+          ? err.message
+          : String(err);
+      setStatus(
+        `Failed: ${message}. Is Lattice AI running locally and are you signed in?`,
+        "err",
+      );
+    } finally {
+      sendBtn.disabled = false;
+    }
+  });
+}
+
+if (typeof document !== "undefined") initializePopup();
+
+// Node's built-in test runner loads these pure helpers without a browser DOM.
+if (typeof module !== "undefined" && module.exports) {
+  module.exports = { DEFAULT_PORT, REQUEST_TIMEOUT_MS, fetchWithTimeout, normalizePort };
+}

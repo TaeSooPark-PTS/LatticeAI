@@ -34,6 +34,7 @@ TARGETS = [
     ("package-lock.json", "package-lock", None),
     ("vscode-extension/package.json", "json", "version"),
     ("vscode-extension/package-lock.json", "package-lock", None),
+    ("browser-extension/manifest.json", "json", "version"),
     ("src-tauri/Cargo.toml", "regex", r'(^version = ")([^"]+)(")'),
     ("src-tauri/tauri.conf.json", "json", "version"),
     ("static/app/asset-manifest.json", "json", "version"),

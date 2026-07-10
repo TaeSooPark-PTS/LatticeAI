@@ -120,7 +120,12 @@ def test_execute_blocked_without_declared_permission(tmp_path):
 
 def test_execute_ok_with_declared_permission_and_runner(tmp_path):
     plugins = tmp_path / "plugins"
-    _write_plugin(plugins, "alpha", permissions=["run_tools"])
+    _write_plugin(
+        plugins,
+        "alpha",
+        permissions=["run_tools"],
+        provides={"tools": ["x"]},
+    )
     store = WorkspaceOSStore(tmp_path / "data")
     registry = PluginRegistry(plugins, store=store)
     registry.install("alpha")
@@ -128,6 +133,29 @@ def test_execute_ok_with_declared_permission_and_runner(tmp_path):
     result = registry.execute_action("alpha", "run_tool", {"tool": "x"}, runners={"tools": lambda **k: {"ran": True}})
     assert result.status == "ok"
     assert result.output == {"ran": True}
+
+
+def test_execute_blocks_tool_not_declared_by_plugin(tmp_path):
+    plugins = tmp_path / "plugins"
+    _write_plugin(
+        plugins,
+        "alpha",
+        permissions=["run_tools"],
+        provides={"tools": ["todo_read"]},
+    )
+    store = WorkspaceOSStore(tmp_path / "data")
+    registry = PluginRegistry(plugins, store=store)
+    registry.install("alpha")
+
+    result = registry.execute_action(
+        "alpha",
+        "run_tool",
+        {"tool": "local_read", "path": "/etc/hosts"},
+        runners={"tools": lambda **kwargs: {"leaked": True}},
+    )
+
+    assert result.status == "blocked"
+    assert "provides.tools" in result.reason
 
 
 def test_execute_skipped_without_runner(tmp_path):

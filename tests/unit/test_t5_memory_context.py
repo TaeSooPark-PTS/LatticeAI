@@ -97,6 +97,51 @@ def test_assembled_context_carries_provenance_per_section():
     assert "[Knowledge]" in ctx.text
 
 
+def test_context_retrieval_callbacks_receive_active_workspace():
+    seen = {}
+
+    def hybrid(q, **kwargs):
+        seen["hybrid"] = kwargs
+        return {"matches": []}
+
+    def notes(q, **kwargs):
+        seen["notes"] = kwargs
+        return ""
+
+    def recent(**kwargs):
+        seen["recent"] = kwargs
+        return ""
+
+    _assembler(hybrid_search=hybrid, notes_context=notes, recent_chat=recent).assemble(
+        "query",
+        user_email="alice@example.com",
+        workspace_id="org-1",
+    )
+
+    assert seen["hybrid"]["workspace_id"] == "org-1"
+    assert seen["notes"]["workspace_id"] == "org-1"
+    assert seen["hybrid"]["user_email"] == "alice@example.com"
+    assert seen["notes"]["user_email"] == "alice@example.com"
+    assert seen["recent"]["workspace_id"] == "org-1"
+
+
+def test_context_callback_type_error_does_not_retry_without_workspace_scope():
+    calls = []
+
+    def scoped_failure(q, **kwargs):
+        calls.append(kwargs)
+        raise TypeError("backend adapter failed")
+
+    context = _assembler(hybrid_search=scoped_failure).assemble(
+        "query",
+        user_email="alice@example.com",
+        workspace_id="org-1",
+    )
+
+    assert calls == [{"limit": 5, "user_email": "alice@example.com", "workspace_id": "org-1"}]
+    assert "knowledge" not in {section.source for section in context.sections}
+
+
 def test_budget_trims_lowest_priority_first():
     ctx = _assembler(
         recent_chat=lambda **kw: "x" * 4000,  # ~1000 approx tokens

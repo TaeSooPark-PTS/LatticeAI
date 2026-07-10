@@ -297,7 +297,11 @@ def _build(config: "Optional[Config]" = None) -> Dict[str, Any]:
     # ── User Management Logic ──────────────────────────────────────────────────
     BASE_DIR = Path(__file__).resolve().parent.parent
     DATA_DIR = CONFIG.data_dir
-    DATA_DIR.mkdir(parents=True, exist_ok=True)
+    DATA_DIR.mkdir(parents=True, exist_ok=True, mode=0o700)
+    try:
+        DATA_DIR.chmod(0o700)
+    except OSError:
+        pass
     STATIC_DIR = CONFIG.static_dir
 
     USERS_FILE = DATA_DIR / "users.json"
@@ -1039,6 +1043,7 @@ def _build(config: "Optional[Config]" = None) -> Dict[str, Any]:
         app_version=APP_VERSION,
         app_mode=APP_MODE,
         require_user=require_user,
+        require_admin=require_admin,
         load_users=load_users,
         get_user_role=get_user_role,
         install_engine=install_engine,
@@ -1102,6 +1107,7 @@ def _build(config: "Optional[Config]" = None) -> Dict[str, Any]:
         install_mcp=install_mcp,
         mcp_public_item=mcp_public_item,
         hooks=HOOKS_REGISTRY,
+        workspace_service=WORKSPACE_SERVICE,
         chat_context=context,
         search_service=SEARCH_SERVICE,
         allowed_workspaces_for=_allowed_workspaces_for,
@@ -1137,6 +1143,7 @@ def _build(config: "Optional[Config]" = None) -> Dict[str, Any]:
         append_audit_event=append_audit_event,
         create_browser_router=create_browser_router,
         ingestion_pipeline=INGESTION_PIPELINE,
+        workspace_service=WORKSPACE_SERVICE,
         create_portability_router=create_portability_router,
         kg_portability=KG_PORTABILITY,
         require_admin=require_admin,

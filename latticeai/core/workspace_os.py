@@ -830,8 +830,22 @@ class WorkspaceOSStore:
     # Graph answer traces
     # ------------------------------------------------------------------
 
-    def build_graph_trace(self, question: str, graph: Any, context: str = "", *, limit: int = 8) -> Dict[str, Any]:
-        return self.graph_trace.build_graph_trace(question, graph, context, limit=limit)
+    def build_graph_trace(
+        self,
+        question: str,
+        graph: Any,
+        context: str = "",
+        *,
+        limit: int = 8,
+        allowed_workspaces=None,
+    ) -> Dict[str, Any]:
+        return self.graph_trace.build_graph_trace(
+            question,
+            graph,
+            context,
+            limit=limit,
+            allowed_workspaces=allowed_workspaces,
+        )
 
     def record_trace(self, *args: Any, **kwargs: Any) -> Dict[str, Any]:
         return self.graph_trace.record_trace(*args, **kwargs)

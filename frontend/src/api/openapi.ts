@@ -2958,6 +2958,23 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/marketplace/interop/bridges": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** List Interop Bridges */
+        get: operations["list_interop_bridges_marketplace_interop_bridges_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/marketplace/templates": {
         parameters: {
             query?: never;
@@ -13026,6 +13043,26 @@ export interface operations {
         };
     };
     manifest_manifest_json_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": unknown;
+                };
+            };
+        };
+    };
+    list_interop_bridges_marketplace_interop_bridges_get: {
         parameters: {
             query?: never;
             header?: never;

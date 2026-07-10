@@ -20,6 +20,7 @@ from fastapi import HTTPException, Request
 from lattice_brain.runtime.hooks import dispatch_tool
 from lattice_brain.runtime.multi_agent import MultiAgentOrchestrator, default_role_runner, llm_role_runner
 from lattice_brain.workflow import ApprovalRequired, WorkflowEngine
+from latticeai.services.tool_dispatch import enforce_tool_policy
 from tools import execute_tool
 
 
@@ -75,7 +76,12 @@ class PlatformRuntime:
             workspaces = self.svc.list_workspaces(user or None).get("workspaces", [])
             return {ws.get("workspace_id") for ws in workspaces if ws.get("workspace_id")}
         except Exception:
-            return None
+            # ``None`` deliberately means "unscoped local/no-auth mode" to
+            # search and realtime consumers. Returning it for an authenticated
+            # account on a storage/service failure would therefore fail open
+            # and expose every workspace. Authenticated failures see nothing;
+            # only the explicit anonymous local mode keeps legacy semantics.
+            return set() if user else None
 
     # ── plugin lifecycle hooks ────────────────────────────────────────────
 
@@ -169,15 +175,16 @@ class PlatformRuntime:
             tool = args.get("tool") or (manifest.provides.get("tools") or [None])[0]
             if not tool:
                 raise ValueError(f"plugin '{plugin_id}' run_tool needs a tool name")
-            permission = dict(self.get_tool_permission(tool))
-            if permission.get("requires_approval"):
-                raise ApprovalRequired(
-                    f"plugin tool '{tool}' requires explicit approval",
-                    tool=tool, args=args, permission=permission,
-                )
+            policy = enforce_tool_policy(
+                tool,
+                args,
+                current_user=user or "",
+                source="plugin",
+            )
+            permission = dict(self.get_tool_permission(tool, args))
             result = dispatch_tool(self.hooks, tool, args, lambda: execute_tool(tool, args),
                                    source=f"plugin:{plugin_id}")
-            return {"plugin": plugin_id, "tool": tool, "permission": permission,
+            return {"plugin": plugin_id, "tool": tool, "permission": permission, "policy": dict(policy),
                     "executed": True, "result": result}
 
         def run_workflow(*, plugin_id, action, args, manifest):

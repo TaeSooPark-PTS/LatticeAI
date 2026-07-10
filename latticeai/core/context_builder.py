@@ -23,6 +23,7 @@ def retrieve_context_for_generation(
     *,
     max_results: int = 10,
     max_hops: int = 2,
+    allowed_workspaces=None,
 ) -> Dict[str, Any]:
     """Knowledge Graph에서 문서 생성에 필요한 컨텍스트를 검색·조합한다.
 
@@ -38,9 +39,18 @@ def retrieve_context_for_generation(
     if not query or not kg_store:
         return {"query": query, "context_markdown": "", "sources": [], "stats": {}}
 
-    results = kg_store.search_for_document_generation(query, limit=max_results)
+    scope_kwargs = (
+        {"allowed_workspaces": allowed_workspaces}
+        if allowed_workspaces is not None
+        else {}
+    )
+    results = kg_store.search_for_document_generation(query, limit=max_results, **scope_kwargs)
     if not results:
-        fallback_ctx = kg_store.context_for_query(query, limit=max_results)
+        fallback_ctx = kg_store.context_for_query(
+            query,
+            limit=max_results,
+            **scope_kwargs,
+        )
         return {
             "query": query,
             "context_markdown": fallback_ctx,
@@ -49,7 +59,11 @@ def retrieve_context_for_generation(
         }
 
     seed_ids = [r["id"] for r in results]
-    hop_data = kg_store.multi_hop_context(seed_ids, max_hops=max_hops)
+    hop_data = kg_store.multi_hop_context(
+        seed_ids,
+        max_hops=max_hops,
+        **scope_kwargs,
+    )
 
     extra_nodes_by_id = {}
     for node in hop_data.get("nodes", []):

@@ -12,7 +12,7 @@ class KnowledgeGraphDocGenMixin:
     """
 
     def search_for_document_generation(
-        self, query: str, limit: int = 10
+        self, query: str, limit: int = 10, *, allowed_workspaces=None
     ) -> List[Dict[str, Any]]:
         """Hybrid retrieval optimized for document generation.
 
@@ -112,7 +112,7 @@ class KnowledgeGraphDocGenMixin:
                 neighbor_concepts = []
                 neighbor_rows = conn.execute(
                     f"""
-                        SELECT n.title, n.type FROM {et} e
+                        SELECT n.id, n.title, n.type FROM {et} e
                         JOIN {nt} n ON n.id = CASE WHEN e.from_node = ? THEN e.to_node ELSE e.from_node END
                         WHERE (e.from_node = ? OR e.to_node = ?)
                           AND n.type IN ('Concept', 'Feature', 'Decision', 'Task')
@@ -121,7 +121,7 @@ class KnowledgeGraphDocGenMixin:
                     (row["id"], row["id"], row["id"]),
                 ).fetchall()
                 for nr in neighbor_rows:
-                    neighbor_concepts.append({"title": nr["title"], "type": nr["type"]})
+                    neighbor_concepts.append({"id": nr["id"], "title": nr["title"], "type": nr["type"]})
 
                 scored_results.append(
                     {
@@ -141,11 +141,18 @@ class KnowledgeGraphDocGenMixin:
                     }
                 )
 
+            if allowed_workspaces is not None:
+                scored_results = self.filter_scoped_nodes(scored_results, allowed_workspaces)
+                for item in scored_results:
+                    item["related_concepts"] = self.filter_scoped_nodes(
+                        item.get("related_concepts", []),
+                        allowed_workspaces,
+                    )
             scored_results.sort(key=lambda x: x["hybrid_score"], reverse=True)
             return scored_results[:limit]
 
     def multi_hop_context(
-        self, node_ids: List[str], max_hops: int = 2
+        self, node_ids: List[str], max_hops: int = 2, *, allowed_workspaces=None
     ) -> Dict[str, Any]:
         """Multi-hop graph traversal from seed nodes for richer context."""
         visited_nodes = set()
@@ -207,4 +214,11 @@ class KnowledgeGraphDocGenMixin:
                                 next_frontier.add(other)
                 frontier = next_frontier
 
+        if allowed_workspaces is not None:
+            all_nodes = self.filter_scoped_nodes(all_nodes, allowed_workspaces)
+            visible_ids = {node.get("id") for node in all_nodes}
+            all_edges = [
+                edge for edge in all_edges
+                if edge.get("from") in visible_ids and edge.get("to") in visible_ids
+            ]
         return {"nodes": all_nodes, "edges": all_edges}

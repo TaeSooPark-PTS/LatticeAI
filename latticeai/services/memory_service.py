@@ -867,7 +867,12 @@ class MemoryService:
         if self._enable_graph and q:
             try:
                 # KnowledgeGraph.search returns {"query": ..., "matches": [...]}.
-                hits = self._kg.search(q, limit).get("matches", [])
+                search_kwargs = (
+                    {"allowed_workspaces": {workspace_id}}
+                    if workspace_id is not None
+                    else {}
+                )
+                hits = self._kg.search(q, limit, **search_kwargs).get("matches", [])
             except Exception:
                 hits = []
             for hit in hits[:limit]:

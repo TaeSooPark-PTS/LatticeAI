@@ -46,9 +46,20 @@ def create_hooks_router(
     *,
     registry: HooksRegistry,
     require_user: Callable[[Request], str],
+    require_admin: Callable[[Request], tuple],
     append_audit_event: Callable[..., None],
 ) -> APIRouter:
     router = APIRouter()
+
+    def _require_admin_email(request: Request) -> str:
+        """Authorize a hook mutation and return the acting administrator."""
+        result = require_admin(request)
+        if isinstance(result, tuple):
+            return str(result[0] or "")
+        # Keep the router tolerant of small test/runtime adapters that return
+        # only the identity while the production access runtime returns
+        # ``(email, users)``.
+        return str(result or "")
 
     @router.get("/api/hooks")
     async def list_hooks(request: Request, kind: Optional[str] = None):
@@ -67,7 +78,7 @@ def create_hooks_router(
         """Execute hooks now — by ``kind`` (all enabled hooks of that kind) or a
         single ``hook_id``. Returns the dispatch record so callers can see what
         ran, in what order, and whether the action was blocked."""
-        user = require_user(request)
+        user = _require_admin_email(request)
         try:
             if req.hook_id:
                 result = registry.run_hook(req.hook_id, event=req.event or None, payload=req.payload, user_email=user)
@@ -97,7 +108,7 @@ def create_hooks_router(
 
     @router.post("/api/hooks/enable")
     async def enable_hook(req: HookToggleRequest, request: Request):
-        user = require_user(request)
+        user = _require_admin_email(request)
         try:
             hook = registry.set_enabled(req.hook_id, req.enabled)
         except KeyError as exc:
@@ -107,7 +118,7 @@ def create_hooks_router(
 
     @router.post("/api/hooks/disable")
     async def disable_hook(req: HookToggleRequest, request: Request):
-        user = require_user(request)
+        user = _require_admin_email(request)
         try:
             hook = registry.set_enabled(req.hook_id, False)
         except KeyError as exc:
@@ -117,12 +128,12 @@ def create_hooks_router(
 
     @router.post("/api/hooks/reorder")
     async def reorder_hooks(req: HookReorderRequest, request: Request):
-        require_user(request)
+        _require_admin_email(request)
         return registry.reorder(req.kind, req.ordered_ids)
 
     @router.post("/api/hooks/register")
     async def register_hook(req: HookRegisterRequest, request: Request):
-        user = require_user(request)
+        user = _require_admin_email(request)
         try:
             entry = registry.register(
                 name=req.name,
@@ -139,7 +150,7 @@ def create_hooks_router(
 
     @router.delete("/api/hooks/{hook_id:path}")
     async def remove_hook(hook_id: str, request: Request):
-        user = require_user(request)
+        user = _require_admin_email(request)
         try:
             result = registry.remove(hook_id)
         except KeyError as exc:

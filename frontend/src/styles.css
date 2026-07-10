@@ -1120,10 +1120,6 @@ body {
   justify-content: flex-start;
 }
 
-.brain-sidebar-foot .external-consent-status {
-  margin: 0;
-}
-
 .brain-shell-content {
   width: min(100%, 72rem);
   margin: 0 auto;
@@ -6971,10 +6967,6 @@ body {
   margin-left: auto;
 }
 
-.external-consent-status {
-  margin: 0 0 0.85rem;
-}
-
 .feedback-state {
   display: flex;
   align-items: center;
@@ -7459,29 +7451,6 @@ body {
 }
 
 @media (max-width: 720px) {
-  .external-consent-status {
-    margin-bottom: 0.55rem;
-  }
-
-  .external-consent-status .feedback-state.is-compact {
-    min-height: 2rem;
-    padding: 0.34rem 0.48rem;
-  }
-
-  .external-consent-status .feedback-state.is-compact .feedback-state-body span {
-    display: none;
-  }
-
-  .external-consent-status .feedback-state.is-compact .feedback-state-body strong {
-    font-size: 0.68rem;
-  }
-
-  .external-consent-status .feedback-state.is-compact .feedback-state-action {
-    min-height: 1.55rem;
-    padding-inline: 0.48rem;
-    font-size: 0.62rem;
-  }
-
   .brain-chat-home-card .brain-composer textarea {
     min-height: 3.5rem;
   }

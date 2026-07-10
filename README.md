@@ -4,6 +4,11 @@
 
 **Lattice AI는 모델이 바뀌어도 내 지식과 맥락을 보존하는 로컬 우선 AI 브레인입니다.**
 
+> Main-branch hardening after 9.0.0 adds request-scoped model routing,
+> workspace-isolated graph identities and frontend caches, fail-closed admin
+> gates, SSRF-safe web capture, private local state permissions, and reproducible
+> release/test isolation. The published release number remains 9.0.0.
+
 Your model is the voice you use today. Your Brain is the asset you keep.
 Lattice AI preserves conversations, documents, decisions, project context,
 relationships, and workflows on your computer by default. Cloud models, model

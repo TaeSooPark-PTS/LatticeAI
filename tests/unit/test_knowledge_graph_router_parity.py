@@ -56,6 +56,9 @@ class _StubGraph:
     def ingest_message(self, role, content, **kwargs):
         return {"status": "ok", "role": role, "ingested": bool(content)}
 
+    def curate(self):
+        return {"status": "ok"}
+
 
 def _client(tmp_path: Path) -> TestClient:
     app = FastAPI()
@@ -85,6 +88,25 @@ def test_route_paths_and_methods_unchanged(tmp_path: Path):
         if method not in {"HEAD", "OPTIONS"}
     }
     assert current == BASELINE_ROUTES
+
+
+def test_curate_uses_admin_gate_when_available(tmp_path: Path):
+    calls = []
+    app = FastAPI()
+    app.include_router(
+        create_knowledge_graph_router(
+            get_graph=lambda: _StubGraph(),
+            require_graph=lambda: None,
+            require_user=lambda _request: "user@example.com",
+            require_admin=lambda _request: calls.append("admin"),
+            static_dir=tmp_path,
+        )
+    )
+
+    response = TestClient(app).post("/knowledge-graph/curate")
+
+    assert response.status_code == 200
+    assert calls == ["admin"]
 
 
 def test_root_shim_reexports_the_same_router_factory():
@@ -171,3 +193,35 @@ def test_ingest_passes_workspace_scope_from_header(tmp_path: Path):
     assert response.status_code == 200
     assert graph.kwargs["workspace_id"] == "org:acme"
     assert graph.kwargs["raw"]["workspace_id"] == "org:acme"
+
+
+def test_ingest_rejects_spoofed_identity_and_unauthorized_workspace(tmp_path: Path):
+    class _WorkspaceService:
+        def resolve_write_scope(self, requested, user):
+            raise PermissionError(f"{user} cannot write {requested}")
+
+    app = FastAPI()
+    app.include_router(
+        create_knowledge_graph_router(
+            get_graph=lambda: _StubGraph(),
+            require_graph=lambda: None,
+            require_user=lambda _request: "owner@example.com",
+            static_dir=tmp_path,
+            workspace_service=_WorkspaceService(),
+        )
+    )
+    client = TestClient(app)
+
+    spoofed = client.post(
+        "/knowledge-graph/ingest",
+        json={"type": "note", "content": "x", "user_email": "other@example.com"},
+    )
+    denied = client.post(
+        "/knowledge-graph/ingest",
+        headers={"X-Workspace-Id": "org:secret"},
+        json={"type": "note", "content": "x"},
+    )
+
+    assert spoofed.status_code == 403
+    assert denied.status_code == 403
+    assert "cannot write" in denied.json()["detail"]

@@ -52,6 +52,7 @@ class WorkspaceMemory:
                     f"{kind}: {content[:80]}",
                     user_email=user_email,
                     source="workspace_os",
+                    workspace_id=record["workspace_id"],
                     metadata={"memory_id": memory_id, "kind": kind, "tags": tags or []},
                 )
                 record["graph_node_id"] = ingested.get("node_id")

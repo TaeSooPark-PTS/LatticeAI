@@ -254,12 +254,17 @@ class SingleAgentRuntime:
                 + "\n".join(f"- {c}" for c in ctx.corrections)
             ) if ctx.corrections else ""
 
+            request_workspace = getattr(req, "workspace_id", None)
+            recent_kwargs = {"conversation_id": req.conversation_id}
+            if request_workspace is not None:
+                recent_kwargs["workspace_id"] = request_workspace
+            recent_conversation = d.recent_chat_context(**recent_kwargs) or "(none)"
             context = (
                 f"{d.executor_prompt}\n\n"
                 f"[LANGUAGE HINT: {lang_hint}]\n"
                 f"Workspace root: {d.agent_root}\n\n"
                 f"PLAN:\n{json.dumps(ctx.plan, ensure_ascii=False)}\n\n"
-                f"Recent conversation:\n{d.recent_chat_context(conversation_id=req.conversation_id) or '(none)'}\n\n"
+                f"Recent conversation:\n{recent_conversation}\n\n"
                 f"User request: {req.message}{corrections_hint}\n\n"
                 f"Execution transcript:\n{json.dumps(ctx.transcript, ensure_ascii=False, indent=2)}"
             )

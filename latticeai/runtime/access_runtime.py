@@ -46,10 +46,43 @@ def build_access_runtime(
             return auth[7:].strip()
         return request.cookies.get("session_token")
 
+    def active_session_email(identity: Optional[str], users: Dict) -> Optional[str]:
+        """Resolve a session identity only while its account remains active."""
+        if not identity:
+            return None
+        raw_identity = str(identity)
+        normalized_email = normalize_email(raw_identity)
+        matched_key: Optional[str] = None
+        user = users.get(normalized_email)
+        if isinstance(user, dict):
+            matched_key = normalized_email
+        else:
+            user = users.get(raw_identity)
+            if isinstance(user, dict):
+                matched_key = raw_identity
+            else:
+                for key, item in users.items():
+                    if isinstance(item, dict) and item.get("id") == raw_identity:
+                        matched_key = str(key)
+                        user = item
+                        break
+        # A session for a deleted account, malformed account record, or an
+        # explicitly disabled account is invalid immediately. This check is
+        # intentionally performed on every request so stale bearer/cookie
+        # tokens cannot retain user or administrator access.
+        if not matched_key or not isinstance(user, dict) or bool(user.get("disabled", False)):
+            return None
+        return normalize_email(matched_key)
+
     def get_current_user(request: request_type) -> Optional[str]:
         token = extract_bearer_token(request)
         if token:
-            return get_session_email(token)
+            try:
+                return active_session_email(get_session_email(token), load_users())
+            except Exception:
+                # Account-store failures must fail closed rather than turning a
+                # stale session into an authenticated identity.
+                return None
         return None
 
     def require_user(request: request_type) -> str:
@@ -64,7 +97,7 @@ def build_access_runtime(
             return "", users
         token = extract_bearer_token(request)
         if token:
-            email = get_session_email(token)
+            email = active_session_email(get_session_email(token), users)
             if email:
                 role = get_user_role(email, users)
                 try:

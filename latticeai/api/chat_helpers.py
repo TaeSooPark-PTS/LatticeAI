@@ -205,8 +205,14 @@ def build_recent_chat_context(
     include_image_missing_replies: bool = True,
     user_email: Optional[str] = None,
     conversation_id: Optional[str] = None,
+    workspace_id: Optional[str] = None,
 ) -> str:
     history = get_history()
+    if workspace_id is not None:
+        history = [
+            item for item in history
+            if str(item.get("workspace_id") or "personal") == str(workspace_id)
+        ]
     if conversation_id:
         history = [item for item in history if item.get("conversation_id") == conversation_id]
     if user_email:

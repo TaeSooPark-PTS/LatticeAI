@@ -12,7 +12,8 @@ import io
 import sys
 from pathlib import Path
 
-from fastapi import UploadFile
+import pytest
+from fastapi import HTTPException, UploadFile
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[2]))
 
@@ -118,6 +119,29 @@ def test_file_ingest_converges_through_same_pipeline(tmp_path):
     assert prov["source_type"] == "file"
 
 
+def test_identical_file_content_is_isolated_per_workspace(tmp_path):
+    src = tmp_path / "shared.md"
+    src.write_text("# Shared\nidentical bytes", encoding="utf-8")
+    pipe = _pipeline(tmp_path)
+
+    first = pipe.ingest(IngestionItem(
+        source_type="file", path=str(src), owner="alice@example.com", workspace_id="org:a",
+    ))
+    second = pipe.ingest(IngestionItem(
+        source_type="file", path=str(src), owner="bob@example.com", workspace_id="org:b",
+    ))
+
+    assert first.status == second.status == "ok"
+    assert first.content_hash == second.content_hash
+    assert first.node_id != second.node_id
+    assert first.duplicate is False
+    assert second.duplicate is False
+    assert pipe._kg.workspaces_of([first.node_id, second.node_id]) == {
+        first.node_id: "org:a",
+        second.node_id: "org:b",
+    }
+
+
 def test_upload_result_enters_unified_ingestion_pipeline(tmp_path):
     class _Request:
         headers = {"X-Workspace-Id": "org:upload"}
@@ -156,6 +180,36 @@ def test_upload_result_enters_unified_ingestion_pipeline(tmp_path):
     assert graph.get_provenance(kg["node_id"])["source_type"] == "upload"
     assert graph.workspaces_of([kg["node_id"]])[kg["node_id"]] == "org:upload"
     assert audits
+
+
+def test_upload_rejects_workspace_without_write_permission(tmp_path):
+    class _Request:
+        headers = {"X-Workspace-Id": "org:secret"}
+        query_params = {}
+
+    class _WorkspaceService:
+        def resolve_write_scope(self, requested, user):
+            raise PermissionError(f"{user} cannot write {requested}")
+
+    upload = UploadFile(filename="brief.txt", file=io.BytesIO(b"secret"))
+
+    with pytest.raises(HTTPException) as raised:
+        asyncio.run(
+            process_uploaded_document(
+                request=_Request(),
+                file=upload,
+                current_user="user@example.com",
+                enable_graph=True,
+                knowledge_graph=_store(tmp_path),
+                workspace_service=_WorkspaceService(),
+                bytes_match_extension=lambda *_args: True,
+                classify_sensitive_message=lambda *_args: {},
+                append_audit_event=lambda *_args, **_kwargs: None,
+                enforce_rate_limit=lambda *_args: None,
+            )
+        )
+
+    assert raised.value.status_code == 403
 
 
 def test_dispatch_tool_hooks_fire_on_ingestion(tmp_path):

@@ -35,9 +35,20 @@ async def process_uploaded_document(
     append_audit_event,
     enforce_rate_limit,
     hooks=None,
+    workspace_service=None,
 ) -> dict:
     enforce_rate_limit(current_user, "upload")
-    workspace_id = _workspace_scope_from_request(request)
+    requested_workspace = _workspace_scope_from_request(request)
+    if workspace_service is not None:
+        try:
+            workspace_id = workspace_service.resolve_write_scope(
+                requested_workspace,
+                current_user or None,
+            )
+        except PermissionError as exc:
+            raise HTTPException(status_code=403, detail=str(exc)) from exc
+    else:
+        workspace_id = requested_workspace
     suffix = Path(file.filename or "upload").suffix.lower()
     allowed = {".pdf", ".docx", ".xlsx", ".pptx", ".txt", ".md", ".csv"}
     if suffix not in allowed:

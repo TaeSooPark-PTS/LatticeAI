@@ -694,7 +694,21 @@ class HooksRegistry:
         if not argv:
             return "skipped", "empty command", "", False
         ctx_json = json.dumps(context.as_dict(), ensure_ascii=False)
-        env = dict(os.environ)
+        # Command hooks run with an intentionally small environment. In
+        # particular, provider keys, database credentials, session secrets,
+        # and arbitrary PYTHON*/NODE* injection variables from the server
+        # process must never be inherited by a child process. The retained
+        # entries are the minimum needed for executable lookup, home-relative
+        # tools, locale handling, temporary files, and Windows process startup.
+        allowed_env_keys = {
+            "PATH", "HOME", "LANG", "LC_ALL", "LC_CTYPE",
+            "TMPDIR", "TMP", "TEMP", "SYSTEMROOT", "WINDIR", "PATHEXT",
+        }
+        env = {
+            key: value
+            for key, value in os.environ.items()
+            if key.upper() in allowed_env_keys
+        }
         env.update({
             "LATTICE_HOOK_KIND": context.kind,
             "LATTICE_HOOK_EVENT": context.event,

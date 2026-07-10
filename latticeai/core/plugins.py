@@ -403,6 +403,21 @@ class PluginRegistry:
                 reason=f"permission '{permission}' not granted at install time",
             ))
 
+        if capability == "tools":
+            tool_name = str(args.get("tool") or "").strip()
+            declared_tools = {
+                str(item).strip()
+                for item in (manifest.provides.get("tools") or [])
+                if str(item).strip()
+            }
+            if not tool_name or tool_name not in declared_tools:
+                return finish(PluginExecutionResult(
+                    plugin_id,
+                    action,
+                    "blocked",
+                    reason=f"tool '{tool_name or '<missing>'}' is not declared in provides.tools",
+                ))
+
         runner = runners.get(capability)
         if runner is None:
             return finish(PluginExecutionResult(

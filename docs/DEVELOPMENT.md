@@ -56,7 +56,8 @@ npm run docs:check-links
 ```
 
 `npm run lint` runs the Python Ruff baseline, frontend TypeScript lint gate,
-visual smoke syntax checks, and i18n literal checks.
+visual smoke syntax checks, an exact generated-OpenAPI drift check, i18n literal
+checks, and browser-extension syntax/behavior tests.
 
 Use these when the change touches the relevant surface:
 
@@ -67,6 +68,14 @@ npm run desktop:tauri:check
 npm run release:artifacts
 npm run release:validate
 ```
+
+`npm run test:integration` starts its own loopback server with disposable HOME,
+data, Brain, agent, XDG, temp, SQLite, and vault paths. It refuses non-loopback
+external base URLs so validation cannot mutate a developer's real local Brain.
+
+Regenerate committed API artifacts with `npm run frontend:openapi`; CI and
+`npm run lint` fail when either `frontend/openapi.json` or
+`frontend/src/api/openapi.ts` differs from a fresh isolated export.
 
 ## Runtime Assembly
 

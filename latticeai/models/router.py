@@ -261,11 +261,13 @@ class LLMRouter:
 
     @property
     def current_model_id(self) -> Optional[str]:
-        return self._current
+        with self._lock:
+            return self._current
 
     @property
     def loaded_model_ids(self) -> List[str]:
-        return list(self._cache.keys())
+        with self._lock:
+            return list(self._cache.keys())
 
     def switch_model(self, model_id: str) -> None:
         with self._lock:
@@ -302,11 +304,12 @@ class LLMRouter:
         return unloaded
 
     def model_memory_policy(self) -> Dict[str, object]:
-        return {
-            "max_local_models": self._max_local_models,
-            "loaded_count": len(self._cache),
-            "last_used": dict(self._last_used),
-        }
+        with self._lock:
+            return {
+                "max_local_models": self._max_local_models,
+                "loaded_count": len(self._cache),
+                "last_used": dict(self._last_used),
+            }
 
     def _touch(self, model_id: Optional[str] = None) -> None:
         model_id = model_id or self._current
@@ -478,7 +481,8 @@ class LLMRouter:
         return items
 
     def _is_cloud_current(self) -> bool:
-        return bool(self._current and isinstance(self._cache.get(self._current), CloudModel))
+        with self._lock:
+            return bool(self._current and isinstance(self._cache.get(self._current), CloudModel))
 
     def _local_server_error_hint(self, cloud: CloudModel, error: Exception) -> str:
         raw = str(error)
@@ -532,28 +536,62 @@ class LLMRouter:
         loader_kind = str(cached[3]) if len(cached) > 3 else "mlx_vlm"
         return model, tokenizer, draft_model, loader_kind
 
-    async def generate_as(self, model_id: str | None, message: str, context: Optional[str] = None, max_tokens: int = 4096, temperature: float = 0.2) -> str:
-        """Generate using a specific model, temporarily switching if needed. Falls back to current model if model_id is None or not loaded."""
-        if not model_id or model_id == self._current:
-            return await self.generate(message, context, max_tokens, temperature)
-        if model_id not in self._cache:
-            raise ValueError(f"Model '{model_id}' is not loaded. Load it first via /models/load.")
-        prev = self._current
-        self._current = model_id
-        try:
-            return await self.generate(message, context, max_tokens, temperature)
-        finally:
-            self._current = prev
+    def _model_snapshot(self, model_id: Optional[str] = None) -> tuple[Optional[str], object | None]:
+        """Return an immutable request-scoped view of a loaded model.
 
-    async def generate(self, message: str, context: Optional[str] = None, max_tokens: int = 4096, temperature: float = 0.2, image_data: Optional[str] = None) -> str:
-        if not self._current:
+        Generation must never change ``_current``: that value is a UI/default
+        preference shared by every request.  Capturing the cache entry while
+        holding the registry lock prevents concurrent requests from selecting
+        or restoring each other's models.
+        """
+        with self._lock:
+            selected = model_id or self._current
+            if not selected:
+                return None, None
+            cached = self._cache.get(selected)
+            if cached is None:
+                raise ValueError(f"Model '{selected}' is not loaded. Load it first via /models/load.")
+            self._touch(selected)
+            return selected, cached
+
+    async def generate_as(
+        self,
+        model_id: str | None,
+        message: str,
+        context: Optional[str] = None,
+        max_tokens: int = 4096,
+        temperature: float = 0.2,
+        image_data: Optional[str] = None,
+    ) -> str:
+        """Generate with a request-scoped model without changing the default."""
+        _selected, cached = self._model_snapshot(model_id)
+        if cached is None:
             return "No model."
-        self._touch()
-        cached = self._cache[self._current]
+        return await self._generate_cached(cached, message, context, max_tokens, temperature, image_data)
+
+    async def generate(
+        self,
+        message: str,
+        context: Optional[str] = None,
+        max_tokens: int = 4096,
+        temperature: float = 0.2,
+        image_data: Optional[str] = None,
+    ) -> str:
+        return await self.generate_as(None, message, context, max_tokens, temperature, image_data)
+
+    async def _generate_cached(
+        self,
+        cached: object,
+        message: str,
+        context: Optional[str],
+        max_tokens: int,
+        temperature: float,
+        image_data: Optional[str],
+    ) -> str:
         if isinstance(cached, CloudModel):
             return await self._cloud_generate(cached, message, context, max_tokens, temperature)
 
-        model, tokenizer, draft_model, loader_kind = self._unpack_local_cache(self._cache[self._current])
+        model, tokenizer, draft_model, loader_kind = self._unpack_local_cache(cached)
         use_vlm = loader_kind == "mlx_vlm"
         prompt = (
             self._build_vlm_prompt(model, tokenizer, message, context, 1 if image_data else 0)
@@ -596,18 +634,26 @@ class LLMRouter:
             raise RuntimeError(self._local_server_error_hint(cloud, e)) from e
         return normalize_branding(response.choices[0].message.content or "")
 
-    async def stream_generate(self, message: str, context: Optional[str] = None, max_tokens: int = 4096, temperature: float = 0.2, image_data: Optional[str] = None) -> AsyncIterator[str]:
-        if not self._current:
+    async def stream_generate_as(
+        self,
+        model_id: str | None,
+        message: str,
+        context: Optional[str] = None,
+        max_tokens: int = 4096,
+        temperature: float = 0.2,
+        image_data: Optional[str] = None,
+    ) -> AsyncIterator[str]:
+        """Stream with a request-scoped model without changing the default."""
+        _selected, cached = self._model_snapshot(model_id)
+        if cached is None:
             yield "No model."
             return
-        self._touch()
-        cached = self._cache[self._current]
         if isinstance(cached, CloudModel):
             async for chunk in self._cloud_stream_generate(cached, message, context, max_tokens, temperature):
                 yield chunk
             return
 
-        model, tokenizer, draft_model, loader_kind = self._unpack_local_cache(self._cache[self._current])
+        model, tokenizer, draft_model, loader_kind = self._unpack_local_cache(cached)
         use_vlm = loader_kind == "mlx_vlm"
         prompt = (
             self._build_vlm_prompt(model, tokenizer, message, context, 1 if image_data else 0)
@@ -642,6 +688,19 @@ class LLMRouter:
             if chunk is None:
                 break
             yield normalize_branding(chunk)
+
+    async def stream_generate(
+        self,
+        message: str,
+        context: Optional[str] = None,
+        max_tokens: int = 4096,
+        temperature: float = 0.2,
+        image_data: Optional[str] = None,
+    ) -> AsyncIterator[str]:
+        async for chunk in self.stream_generate_as(
+            None, message, context, max_tokens, temperature, image_data
+        ):
+            yield chunk
 
     async def _cloud_stream_generate(self, cloud: CloudModel, message: str, context: Optional[str], max_tokens: int, temperature: float) -> AsyncIterator[str]:
         system = SYSTEM_PROMPT
@@ -691,10 +750,27 @@ class LLMRouter:
         temperature: float = 0.3,
     ) -> str:
         """Generate a document using a specialized system prompt with graph context."""
-        if not self._current:
+        return await self.generate_document_as(
+            None,
+            message,
+            system_prompt,
+            max_tokens=max_tokens,
+            temperature=temperature,
+        )
+
+    async def generate_document_as(
+        self,
+        model_id: str | None,
+        message: str,
+        system_prompt: str,
+        *,
+        max_tokens: int = 8192,
+        temperature: float = 0.3,
+    ) -> str:
+        """Generate a document with a request-scoped model."""
+        _selected, cached = self._model_snapshot(model_id)
+        if cached is None:
             return "No model loaded."
-        self._touch()
-        cached = self._cache[self._current]
 
         if isinstance(cached, CloudModel):
             return await self._cloud_generate_document(cached, message, system_prompt, max_tokens, temperature)
@@ -750,11 +826,29 @@ class LLMRouter:
         temperature: float = 0.3,
     ) -> AsyncIterator[str]:
         """Stream document generation with specialized system prompt."""
-        if not self._current:
+        async for chunk in self.stream_generate_document_as(
+            None,
+            message,
+            system_prompt,
+            max_tokens=max_tokens,
+            temperature=temperature,
+        ):
+            yield chunk
+
+    async def stream_generate_document_as(
+        self,
+        model_id: str | None,
+        message: str,
+        system_prompt: str,
+        *,
+        max_tokens: int = 8192,
+        temperature: float = 0.3,
+    ) -> AsyncIterator[str]:
+        """Stream a document with a request-scoped model."""
+        _selected, cached = self._model_snapshot(model_id)
+        if cached is None:
             yield "No model loaded."
             return
-        self._touch()
-        cached = self._cache[self._current]
 
         if isinstance(cached, CloudModel):
             async for chunk in self._cloud_stream_document(cached, message, system_prompt, max_tokens, temperature):

@@ -1,5 +1,5 @@
 import * as React from "react";
-import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { useQuery } from "@tanstack/react-query";
 import { Check, ChevronDown, UserCircle, Building2, ArrowRightLeft } from "lucide-react";
 import { latticeApi } from "@/api/client";
 import { t, type Language } from "@/i18n";
@@ -33,7 +33,6 @@ function ownerEmail(profile: unknown): string | null {
  * through the Settings tabs.
  */
 export function WorkspaceProfileSwitcher({ language }: { language: Language }) {
-  const qc = useQueryClient();
   const workspaceIdState = useAppStore((state) => state.workspaceId);
   const setWorkspaceId = useAppStore((state) => state.setWorkspaceId);
   const [open, setOpen] = React.useState(false);
@@ -76,8 +75,6 @@ export function WorkspaceProfileSwitcher({ language }: { language: Language }) {
   const handleSwitch = (id: string) => {
     if (id && id !== workspaceIdState) {
       setWorkspaceId(id);
-      // Workspace scoping changes server responses; drop cached views.
-      qc.invalidateQueries();
     }
     setOpen(false);
   };

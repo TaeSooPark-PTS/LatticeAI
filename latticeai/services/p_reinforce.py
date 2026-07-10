@@ -217,7 +217,13 @@ class PReinforceGardener:
             folders.append({"name": folder, "description": desc, "files": files, "count": len(files)})
         return {"root": str(BRAIN_DIR), "folders": folders}
 
-    def get_relevant_context(self, query: str, limit: int = 3) -> str:
+    def get_relevant_context(
+        self,
+        query: str,
+        limit: int = 3,
+        *,
+        allowed_workspaces: Any = None,
+    ) -> str:
         """질문과 관련된 정원 노트를 두뇌에서 검색해 컨텍스트로 반환.
 
         v4: 채팅마다 vault 전체를 rglob 하던 O(n) 스캔을 브레인 검색으로
@@ -225,7 +231,16 @@ class PReinforceGardener:
         """
         if self._kg is not None:
             try:
-                matches = self._kg.search(query, max(limit * 4, 8)).get("matches", [])
+                scope_kwargs = (
+                    {"allowed_workspaces": allowed_workspaces}
+                    if allowed_workspaces is not None
+                    else {}
+                )
+                matches = self._kg.search(
+                    query,
+                    max(limit * 4, 8),
+                    **scope_kwargs,
+                ).get("matches", [])
                 results = []
                 for match in matches:
                     meta = match.get("metadata") or {}
@@ -238,7 +253,11 @@ class PReinforceGardener:
                         break
                 return "\n\n".join(results)
             except Exception as exc:
-                logging.debug("garden brain context failed, falling back to vault scan: %s", exc)
+                logging.debug("garden brain context failed: %s", exc)
+                if allowed_workspaces is not None:
+                    return ""
+        elif allowed_workspaces is not None:
+            return ""
         return self._scan_vault_context(query, limit)
 
     def _scan_vault_context(self, query: str, limit: int = 3) -> str:

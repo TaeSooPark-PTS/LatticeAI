@@ -72,42 +72,19 @@ jobs:
           python-version: "3.11"
           cache: pip
 
+      - name: Set up Node
+        uses: actions/setup-node@v5
+        with:
+          node-version: "20"
+
       - name: Install dependencies
         run: |
           pip install -e "." pytest pytest-asyncio httpx
 
-      - name: Start server
+      - name: Run isolated integration tests
         env:
-          LATTICEAI_HOST: 127.0.0.1
-          LATTICEAI_PORT: "8899"
-        run: |
-          python -m uvicorn server:app --host 127.0.0.1 --port 8899 > /tmp/ltcai-server.log 2>&1 &
-          echo $! > /tmp/ltcai-server.pid
-
-      - name: Wait for health endpoint
-        run: |
-          for i in $(seq 1 30); do
-            if curl -fsS http://127.0.0.1:8899/health > /dev/null; then
-              exit 0
-            fi
-            sleep 1
-          done
-          cat /tmp/ltcai-server.log
-          exit 1
-
-      - name: Run integration tests
-        env:
-          LTCAI_TEST_BASE_URL: http://127.0.0.1:8899
-        run: |
-          python -m pytest tests/integration/ -v --tb=short
-
-      - name: Show server log on failure
-        if: failure()
-        run: cat /tmp/ltcai-server.log
-
-      - name: Stop server
-        if: always()
-        run: kill "$(cat /tmp/ltcai-server.pid)"
+          PYTHON: python
+        run: npm run test:integration
 
   build:
     name: Build package

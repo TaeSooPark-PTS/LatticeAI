@@ -234,7 +234,10 @@ def _app(tmp_path, *, admin_ok=True):
     return TestClient(app)
 
 
-def test_export_route_is_user_readable(tmp_path):
+def test_export_route_requires_admin(tmp_path):
+    denied = _app(tmp_path, admin_ok=False)
+    assert denied.post("/api/knowledge-graph/export").status_code == 403
+
     client = _app(tmp_path)
     r = client.post("/api/knowledge-graph/export")
     assert r.status_code == 200
@@ -255,6 +258,7 @@ def test_portability_status_route(tmp_path):
 
 
 def test_recent_provenance_route(tmp_path):
+    assert _app(tmp_path, admin_ok=False).get("/api/knowledge-graph/provenance?limit=10").status_code == 403
     client = _app(tmp_path)
     r = client.get("/api/knowledge-graph/provenance?limit=10")
     assert r.status_code == 200

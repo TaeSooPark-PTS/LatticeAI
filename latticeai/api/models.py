@@ -97,6 +97,7 @@ def create_models_router(
     *,
     model_router: Any,
     require_user: Callable[[Request], str],
+    require_admin: Callable[[Request], tuple],
     get_current_user: Callable[[Request], Optional[str]],
     load_users: Callable[[], Dict],
     get_user_role: Callable[..., str],
@@ -130,6 +131,24 @@ def create_models_router(
     ALLOW_LOCAL_MODELS = allow_local_models
     REQUIRE_AUTH = require_auth
     _list_compat_profiles = list_compat_profiles
+
+    def _normalized_identity(value: Optional[str]) -> str:
+        return str(value or "").strip().lower()
+
+    def _authorize_model_admin(request: Request, claimed_email: Optional[str] = None) -> str:
+        """Authenticate model operations and gate host-global state to admins."""
+        current_user = require_user(request)
+        if REQUIRE_AUTH:
+            if claimed_email and _normalized_identity(claimed_email) != _normalized_identity(current_user):
+                raise HTTPException(status_code=403, detail="다른 사용자의 모델 자격 증명을 사용할 수 없습니다.")
+            require_admin(request)
+        return current_user
+
+    def _effective_email(current_user: str, claimed_email: Optional[str]) -> Optional[str]:
+        # Authenticated callers may only act as their session identity. The
+        # legacy body field remains usable solely in explicit no-auth/local
+        # mode for backward compatibility.
+        return current_user if REQUIRE_AUTH else claimed_email or current_user or None
 
     def _recommended_with_engine_options(
         items: List[Dict[str, object]],
@@ -281,20 +300,20 @@ def create_models_router(
 
     @router.post("/engines/install")
     async def engines_install(req: InstallEngineRequest, request: Request):
-        require_user(request)
+        _authorize_model_admin(request)
         if req.confirmation_token:
             return install_engine(req.engine, confirmation_token=req.confirmation_token)
         return install_engine(req.engine)
 
     @router.post("/engines/verify-cloud")
     async def engines_verify_cloud(req: VerifyCloudRequest, request: Request):
-        require_user(request)
+        _authorize_model_admin(request)
         results = await verify_cloud_models(force=req.force, provider_filter=req.provider)
         return {"verified": results, "ttl_seconds": CLOUD_VERIFY_TTL_SECONDS}
 
     @router.post("/engines/pull-model")
     async def pull_ollama_model(req: PullModelRequest, request: Request):
-        require_user(request)
+        _authorize_model_admin(request)
         if not req.allow_download:
             raise HTTPException(
                 status_code=403,
@@ -349,10 +368,11 @@ def create_models_router(
 
     @router.post("/engines/prepare-model")
     async def engines_prepare_model(req: PrepareModelRequest, request: Request):
-        require_user(request)
+        current_user = _authorize_model_admin(request, req.user_email)
         try:
             return await prepare_and_load_model(
-                req.model, request, engine=req.engine, user_email=req.user_email,
+                req.model, request, engine=req.engine,
+                user_email=_effective_email(current_user, req.user_email),
                 allow_download=req.allow_download,
             )
         except HTTPException:
@@ -367,12 +387,13 @@ def create_models_router(
 
     @router.post("/engines/prepare-model/stream")
     async def engines_prepare_model_stream(req: PrepareModelRequest, request: Request):
-        require_user(request)
+        current_user = _authorize_model_admin(request, req.user_email)
+        effective_email = _effective_email(current_user, req.user_email)
 
         async def event_stream():
             try:
                 async for chunk in prepare_and_load_model_stream(
-                    req.model, request, engine=req.engine, user_email=req.user_email,
+                    req.model, request, engine=req.engine, user_email=effective_email,
                     allow_download=req.allow_download,
                 ):
                     yield chunk
@@ -404,14 +425,10 @@ def create_models_router(
             raise HTTPException(status_code=400, detail="알 수 없는 프로바이더입니다.")
         if not req.key.strip():
             raise HTTPException(status_code=400, detail="API 키가 비어있습니다.")
-        current_user = get_current_user(request)
-        if REQUIRE_AUTH and not current_user:
-            raise HTTPException(status_code=401, detail="인증이 필요합니다.")
-        if req.user_email and req.user_email != current_user:
-            users = load_users()
-            if get_user_role(current_user or "", users) != "admin":
-                raise HTTPException(status_code=403, detail="다른 사용자의 API 키를 설정할 권한이 없습니다.")
-        target_email = (req.user_email or current_user or "").strip()
+        current_user = require_user(request)
+        if REQUIRE_AUTH and req.user_email and _normalized_identity(req.user_email) != _normalized_identity(current_user):
+            raise HTTPException(status_code=403, detail="다른 사용자의 API 키를 설정할 권한이 없습니다.")
+        target_email = str(_effective_email(current_user, req.user_email) or "").strip()
         if not target_email:
             raise HTTPException(status_code=400, detail="사용자 식별이 필요합니다. 로그인 후 다시 시도하세요.")
         set_user_api_key(target_email, req.provider, req.key.strip())
@@ -420,7 +437,8 @@ def create_models_router(
     # ── Models ────────────────────────────────────────────────────────────
 
     @router.get("/models")
-    async def list_models():
+    async def list_models(request: Request):
+        _authorize_model_admin(request)
         engines = await asyncio.to_thread(engine_status)
         recommended = _recommended_with_engine_options(
             list(filter_lower_family_versions(ENGINE_MODEL_CATALOG.get("local_mlx", []))),
@@ -457,6 +475,7 @@ def create_models_router(
 
     @router.post("/models/load")
     async def load_model(req: LoadModelRequest, request: Request):
+        current_user = _authorize_model_admin(request, req.user_email)
         try:
             from latticeai.core.model_compat import friendly_model_runtime_error, model_runtime_compatibility
 
@@ -471,7 +490,8 @@ def create_models_router(
             if compatibility.get("supported") is False:
                 raise HTTPException(status_code=400, detail=compatibility)
             return await prepare_and_load_model(
-                model_id, request, engine=req.engine, user_email=req.user_email,
+                model_id, request, engine=req.engine,
+                user_email=_effective_email(current_user, req.user_email),
                 adapter_path=req.adapter_path, draft_model_id=req.draft_model_id,
                 allow_download=req.allow_download,
             )
@@ -485,7 +505,7 @@ def create_models_router(
 
     @router.post("/models/switch/{model_id:path}")
     async def switch_model(model_id: str, request: Request):
-        require_user(request)
+        _authorize_model_admin(request)
         try:
             _router.switch_model(model_id)
             return {"status": "ok", "current": _router.current_model_id}
@@ -494,13 +514,13 @@ def create_models_router(
 
     @router.delete("/models/unload/{model_id:path}")
     async def unload_model(model_id: str, request: Request):
-        require_user(request)
+        _authorize_model_admin(request)
         _router.unload_model(model_id)
         return {"status": "ok", "unloaded": model_id}
 
     @router.delete("/models/unload-all")
     async def unload_all_models(request: Request):
-        require_user(request)
+        _authorize_model_admin(request)
         unloaded = _router.loaded_model_ids
         _router.unload_all()
         return {"status": "ok", "unloaded": unloaded}

@@ -714,6 +714,7 @@ def create_workspace_router(context: AppContext) -> APIRouter:
                     req.action,
                     user_email=current_user or None,
                     source="vscode",
+                    workspace_id=workflow.get("workspace_id"),
                     metadata={
                         "file_path": req.file_path,
                         "language": req.language,

@@ -2,6 +2,7 @@
 
 import importlib.util
 import json
+import tarfile
 import zipfile
 from pathlib import Path
 
@@ -50,6 +51,47 @@ def test_missing_wheel_fails(tmp_path: Path):
 
     assert result["ok"] is False
     assert any("wheel" in err for err in result["errors"])
+
+
+def test_missing_required_tgz_fails(tmp_path: Path):
+    dist = tmp_path / "dist"
+    dist.mkdir()
+    _write_python_artifacts(dist, "1.1.0")
+
+    result = validator.validate("1.1.0", dist, require_vsix=False, require_tgz=True)
+
+    assert result["ok"] is False
+    assert any("npm tarball" in err for err in result["errors"])
+
+
+def test_present_required_tgz_passes(tmp_path: Path):
+    dist = tmp_path / "dist"
+    dist.mkdir()
+    _write_python_artifacts(dist, "1.1.0")
+    (tmp_path / "ltcai-1.1.0.tgz").write_bytes(b"fake-npm-package")
+
+    result = validator.validate("1.1.0", dist, require_vsix=False, require_tgz=True)
+
+    assert result["ok"] is True
+    assert result["found"]["tgz"].endswith("ltcai-1.1.0.tgz")
+
+
+def test_personal_bot_and_openclaw_files_in_npm_tarball_fail(tmp_path: Path):
+    dist = tmp_path / "dist"
+    dist.mkdir()
+    _write_python_artifacts(dist, "1.1.0")
+    tgz = tmp_path / "ltcai-1.1.0.tgz"
+    payload = tmp_path / "pts-private-discord-bridge.mjs"
+    payload.write_text("private bridge", encoding="utf-8")
+    with tarfile.open(tgz, "w:gz") as archive:
+        archive.add(payload, arcname="package/scripts/pts-private-discord-bridge.mjs")
+        archive.add(payload, arcname="package/HEARTBEAT.md")
+
+    result = validator.validate("1.1.0", dist, require_vsix=False, require_tgz=True)
+
+    assert result["ok"] is False
+    assert any("machine-local bot/agent" in err for err in result["errors"])
+    assert "HEARTBEAT.md" in " ".join(result["errors"])
 
 
 def test_vsix_without_entrypoint_fails(tmp_path: Path):

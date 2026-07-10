@@ -81,6 +81,11 @@ def test_read_document_missing(client):
     assert r.status_code in (400, 401, 403, 404, 422)
 
 
+def test_read_document_relative_traversal_requires_local_approval(client):
+    r = client.post("/tools/read_document", json={"path": "../README.md"})
+    assert r.status_code in (401, 403)
+
+
 # ---------------------------------------------------------------------------
 # /chat — smoke test (no model required)
 # ---------------------------------------------------------------------------

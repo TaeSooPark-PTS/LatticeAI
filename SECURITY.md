@@ -48,7 +48,7 @@ making external paths explicit.
 | Setting | Default | Notes |
 | --- | --- | --- |
 | Bind address | `127.0.0.1` | Local-only unless explicitly changed |
-| Auth | `REQUIRE_AUTH=true` | Sensitive endpoints require a session |
+| Auth | Off on loopback local mode | Forced on for public or non-loopback binding |
 | CORS | Localhost only | Network CORS requires explicit opt-in |
 | Session TTL | 24 hours sliding | Inactive sessions expire |
 | API key storage | OS keyring where available | No intentional plaintext secret storage |
@@ -62,7 +62,10 @@ making external paths explicit.
 
 - Passwords use scrypt hashing.
 - Session cookies are `HttpOnly` and `SameSite=Lax`.
-- Session state is stored locally.
+- Session tokens are stored locally only as SHA-256 hashes; deleted or disabled
+  accounts invalidate existing sessions on the next request.
+- The local data directory is mode `0700` and atomic JSON/session files are mode
+  `0600` on POSIX filesystems.
 - Enterprise SSO paths are explicit configuration paths.
 
 ### File And Archive Safety
@@ -79,7 +82,19 @@ making external paths explicit.
   plans require explicit human approval.
 - ToolRegistry owns dispatch, permissions, diagnostics, direct HTTP/MCP policy
   gates, and MCP install state.
+- Shared agent/plugin registries and graph curation are administrator-managed;
+  registry reads redact secret-shaped configuration values.
+- MCP graph calls and realtime presence are bound to the authenticated identity
+  and active/allowed workspace; MCP environment values are never returned.
+- MCP and plugin execution cannot invoke local filesystem/document tools; those
+  tools require the dedicated, scope-bound approval-token endpoints. Plugins
+  may invoke only tools explicitly declared in their installed manifest.
+- Realtime SSE connections revalidate session and workspace membership before
+  delivery, including events queued before a membership revocation.
 - Command/file tools enforce sandbox and uniqueness checks where applicable.
+- The command tool uses a fixed executable allowlist and sanitized environment;
+  interpreter commands, executable paths, traversal, symlink escapes, ripgrep
+  preprocessors, and mutating/exec `find` flags are refused.
 - Secret-like values are centrally redacted before logs, audit payloads,
   security exports, frontend previews, and hook packets.
 
@@ -97,6 +112,10 @@ External communication requires explicit configuration and user/admin action:
 - Docker/Postgres scale setup;
 - update checks;
 - marketplace or remote registry refresh.
+
+Web-page capture additionally resolves and pins public IPs, rejects private and
+reserved address classes, rechecks every redirect, ignores proxy environment
+variables, and streams at most 4 MiB of textual content.
 
 ## Public Deployment Guidance
 

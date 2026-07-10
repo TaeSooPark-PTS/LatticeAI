@@ -31,7 +31,7 @@ Lattice AI는 MCP(Model Context Protocol) 서버로 동작하여 Claude Desktop,
 
 | 도구 | 설명 | 위험도 |
 |------|------|--------|
-| `run_command` | 셸 명령 실행 (위험 패턴 차단) | 높음 |
+| `run_command` | shell 없이 고정 read-only 명령 allowlist 실행 | 높음 |
 | `run_terminal_command` | 터미널 명령 (별칭) | 높음 |
 
 ### 작업 관리
@@ -91,8 +91,13 @@ curl -b "session=<token>" \
 curl -b "session=<token>" -X POST \
   http://localhost:4825/tools/run_command \
   -H "Content-Type: application/json" \
-  -d '{"command": "python -m pytest tests/ -v"}'
+  -d '{"command": "rg TODO ."}'
 ```
+
+`run_command`는 `pwd`, `ls`, `find`, `cat`, `head`, `tail`, `wc`, `rg`만 허용합니다.
+Python/Node/npm/npx/sed, shell operator, 실행 파일 경로, 절대 경로, `..` traversal,
+workspace 밖 symlink, `rg --pre`, `find -exec/-delete`는 거부됩니다. 빌드와 테스트는
+별도의 허용된 project-script 도구를 사용합니다.
 
 ## 도구 카탈로그 조회
 

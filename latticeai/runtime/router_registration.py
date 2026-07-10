@@ -290,8 +290,9 @@ def register_platform_feature_routers(
             require_user=require_user,
             require_admin=require_admin,
             append_audit_event=append_audit_event,
+            gate_write=platform.gate_write,
             register_skill=platform.register_plugin_skill,
-            plugin_runners_factory=lambda: platform.plugin_capability_runners(None, None),
+            plugin_runners_factory=platform.plugin_capability_runners,
             ui_file_response=ui_file_response,
             static_dir=static_dir,
         ),
@@ -356,6 +357,7 @@ def register_health_and_model_routers(
     create_models_router: Any,
     model_router: Any,
     require_user: Any,
+    require_admin: Any,
     load_users: Any,
     get_user_role: Any,
     install_engine: Any,
@@ -391,6 +393,7 @@ def register_health_and_model_routers(
         create_models_router(
             model_router=model_router,
             require_user=require_user,
+            require_admin=require_admin,
             get_current_user=get_current_user,
             load_users=load_users,
             get_user_role=get_user_role,
@@ -469,6 +472,7 @@ def register_interaction_routers(
         require_user = interaction_context.require_user
         embedding_info = interaction_context.embedding_info
         tool_context = interaction_context.tool_context
+        require_admin = tool_context.require_admin
         get_current_user = tool_context.get_current_user
         append_audit_event = tool_context.append_audit_event
         hooks = interaction_context.hooks
@@ -515,11 +519,13 @@ def register_interaction_routers(
         create_hooks_router(
             registry=hooks,
             require_user=require_user,
+            require_admin=require_admin,
             append_audit_event=append_audit_event,
         ),
         create_agent_registry_router(
             registry=agent_registry,
             require_user=require_user,
+            require_admin=require_admin,
             append_audit_event=append_audit_event,
         ),
         create_memory_router(
@@ -546,6 +552,7 @@ def register_review_and_brain_tail_routers(
     append_audit_event: Any,
     create_browser_router: Any,
     ingestion_pipeline: Any,
+    workspace_service: Any,
     create_portability_router: Any,
     kg_portability: Any,
     require_admin: Any,
@@ -573,6 +580,7 @@ def register_review_and_brain_tail_routers(
         create_browser_router(
             pipeline=ingestion_pipeline,
             require_user=require_user,
+            workspace_service=workspace_service,
         ),
         create_portability_router(
             service=kg_portability,
@@ -591,6 +599,7 @@ def register_review_and_brain_tail_routers(
             network=brain_network,
             identity=device_identity,
             require_user=require_user,
+            require_admin=require_admin,
         ),
         create_garden_router(gardener=gardener, require_user=require_user),
         create_setup_router(model_router=model_router, require_user=require_user),

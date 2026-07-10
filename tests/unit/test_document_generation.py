@@ -163,6 +163,37 @@ class TestContextBuilder:
         assert result["query"] == "AI 기술 동향 보고서"
         assert len(result["context_markdown"]) > 0
 
+    def test_document_generation_context_is_workspace_scoped(self, tmp_path):
+        store = _store(tmp_path)
+        store.ingest_source(
+            source_type="note",
+            title="Quarterly allowed plan",
+            text="quarterly allowed workspace material",
+            owner="alice@example.com",
+            workspace_id="org-one",
+        )
+        store.ingest_source(
+            source_type="note",
+            title="Quarterly hidden plan",
+            text="quarterly HIDDEN_OTHER_WORKSPACE material",
+            owner="alice@example.com",
+            workspace_id="org-two",
+        )
+
+        result = retrieve_context_for_generation(
+            store,
+            "quarterly plan",
+            max_results=10,
+            allowed_workspaces={"org-one"},
+        )
+
+        assert "allowed" in result["context_markdown"].lower()
+        assert "HIDDEN_OTHER_WORKSPACE" not in result["context_markdown"]
+        assert all(
+            source["title"] != "Quarterly hidden plan"
+            for source in result["sources"]
+        )
+
     def test_format_sources_footnote(self):
         sources = [
             {"id": "file:abc", "type": "Document", "title": "전략서.pdf", "source": "docs/전략서.pdf"},

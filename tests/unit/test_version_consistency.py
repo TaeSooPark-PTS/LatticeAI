@@ -5,7 +5,7 @@ Lattice AI keeps a single release version. The runtime canonical is
 must agree with it:
 
 * ``latticeai.__version__`` (Python package)
-* ``pyproject.toml`` / ``package.json`` / ``vscode-extension/package.json``
+* ``pyproject.toml`` / ``package.json`` / editor and browser extensions
 * the React browser asset manifest (``static/app/asset-manifest.json``)
 * the release-tracking subsystem constants that historically moved with the
   release (marketplace, multi-agent)
@@ -60,6 +60,7 @@ def test_package_json_versions_agree():
     v = _canonical()
     assert _json("package.json")["version"] == v
     assert _json("vscode-extension/package.json")["version"] == v
+    assert _json("browser-extension/manifest.json")["version"] == v
     assert _json("src-tauri/tauri.conf.json")["version"] == v
 
 

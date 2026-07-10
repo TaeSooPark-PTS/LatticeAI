@@ -6,7 +6,55 @@ existed at that release.
 
 ## [Unreleased]
 
-No unreleased changes yet.
+### Added
+- Added regression gates for model-request concurrency, workspace/identity
+  authorization, graph ID isolation, command sandbox escapes, SSRF and redirect
+  rebinding, approval ownership, release archive hygiene, browser-extension byte
+  limits/timeouts, OpenAPI drift, and disposable test harness state.
+- Added a checked OpenAPI drift command and browser-extension test command to the
+  normal lint gate.
+
+### Changed
+- Model generation, streaming, and document generation now use request-scoped
+  model snapshots without mutating the global selected model.
+- New workspace-scoped graph nodes derive IDs from workspace identity, preventing
+  identical messages/files/concepts in separate workspaces from overwriting or
+  reassigning one another while preserving legacy unscoped reads.
+- Workspace and identity transitions synchronously clear frontend query and
+  conversation state; the client-only egress toggle that claimed server-wide
+  enforcement was removed.
+- Hook/model/network/registry/whole-graph portability and graph-curation operations now use administrator
+  boundaries, and chat/browser/upload/KG writes resolve workspace write access.
+- MCP graph calls now enforce authenticated identity and workspace-scoped reads
+  and writes; local MCP environment values are never returned by the API, and
+  MCP/plugin tool dispatch cannot bypass the dedicated local-file approval flow.
+- Memory, hybrid-search, and garden-note context assembly now use the active
+  workspace instead of blending content from every workspace the user can access.
+- Document-generation RAG, answer traces, trace timeline events, and realtime
+  unscoped events now fail closed at the active workspace boundary.
+- Long-lived realtime streams revalidate the session and workspace membership
+  before replay, every queued event, and each heartbeat, so revocation takes
+  effect without waiting for the SSE connection to reconnect.
+- Realtime presence now validates workspace membership, prevents cross-user
+  client-id takeover/eviction, and assigns authenticated joins to an allowed
+  workspace instead of an unscoped global presence record.
+- Local data directories and atomic JSON/session files now use private POSIX
+  permissions where supported.
+- Docker packaging now uses a small build context, a non-root runtime user, and
+  a healthcheck; personal OpenClaw/bot bridge files are excluded from Git,
+  Docker, and every release archive while remaining available as ignored
+  machine-local files.
+
+### Fixed
+- Blocked permission request self-approval, stale disabled/deleted-account
+  sessions, agent approval forgery and cross-user resume, body identity spoofing,
+  command traversal/symlink/interpreter escapes, and authenticated scope lookup
+  fail-open behavior.
+- Hardened URL ingestion against localhost/private/link-local/multicast/reserved
+  targets, mixed DNS answers, redirect-to-metadata attacks, environment proxies,
+  binary payloads, and unbounded response buffering.
+- Isolated integration and OpenAPI generation from real `~/.ltcai` state and
+  made missing required npm tarballs a release-validation failure.
 
 ## [9.0.0] - 2026-07-08
 

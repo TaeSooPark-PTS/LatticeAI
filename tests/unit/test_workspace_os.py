@@ -35,10 +35,10 @@ class FakeGraph:
             }]
         }
 
-    def search(self, query, limit=8):
+    def search(self, query, limit=8, *, allowed_workspaces=None):
         return {"matches": list(self.nodes)[:limit]}
 
-    def neighbors(self, node_id):
+    def neighbors(self, node_id, *, allowed_workspaces=None):
         return {"node_id": node_id, "neighbors": list(self.nodes), "edges": list(self.edges)}
 
     def set_local_source_watch(self, source_id, enabled):
@@ -72,6 +72,39 @@ def test_graph_trace_includes_sources_edges_and_confidence(tmp_path: Path):
     assert trace["source_files"][0]["source"] == "README.md"
     assert trace["graph_edges"][0]["type"] == "depends_on"
     assert trace["retrieval_metadata"]["matched_nodes"] == 2
+
+
+def test_graph_trace_passes_scope_and_timeline_keeps_trace_workspace(tmp_path: Path):
+    seen = []
+
+    class ScopedGraph(FakeGraph):
+        def search(self, query, limit=8, *, allowed_workspaces=None):
+            seen.append(("search", allowed_workspaces))
+            return super().search(query, limit, allowed_workspaces=allowed_workspaces)
+
+        def neighbors(self, node_id, *, allowed_workspaces=None):
+            seen.append(("neighbors", allowed_workspaces))
+            return super().neighbors(node_id, allowed_workspaces=allowed_workspaces)
+
+    store = WorkspaceOSStore(tmp_path)
+    trace = store.build_graph_trace(
+        "Workspace OS",
+        ScopedGraph(),
+        allowed_workspaces={"org-one"},
+    )
+    record = store.record_trace(
+        question="Workspace OS",
+        response="answer",
+        conversation_id="conv",
+        user_email="alice@example.com",
+        trace=trace,
+        workspace_id="org-one",
+    )
+
+    assert seen and all(scope == {"org-one"} for _kind, scope in seen)
+    assert record["workspace_id"] == "org-one"
+    event = store.timeline(workspace_id="org-one")["events"][-1]
+    assert event["workspace_id"] == "org-one"
 
 
 def test_snapshot_compare_reports_knowledge_diff(tmp_path: Path):

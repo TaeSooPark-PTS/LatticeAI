@@ -14,6 +14,7 @@ from fastapi import APIRouter, HTTPException, Request
 from pydantic import BaseModel
 
 from latticeai.core.agent_registry import AgentRegistry
+from latticeai.core.security import redact_secrets
 
 
 class AgentRegisterRequest(BaseModel):
@@ -34,6 +35,7 @@ def create_agent_registry_router(
     *,
     registry: AgentRegistry,
     require_user: Callable[[Request], str],
+    require_admin: Callable[[Request], Any],
     append_audit_event: Callable[..., None],
 ) -> APIRouter:
     router = APIRouter()
@@ -41,7 +43,7 @@ def create_agent_registry_router(
     @router.get("/agents/api/registry")
     async def list_registry(request: Request, type: Optional[str] = None):
         require_user(request)
-        return registry.list(agent_type=type)
+        return redact_secrets(registry.list(agent_type=type))
 
     @router.get("/agents/api/registry/capabilities")
     async def registry_capabilities(request: Request):
@@ -51,11 +53,11 @@ def create_agent_registry_router(
     @router.get("/agents/api/registry/discover")
     async def registry_discover(request: Request, capability: str = ""):
         require_user(request)
-        return {"capability": capability, "agents": registry.discover(capability)}
+        return {"capability": capability, "agents": redact_secrets(registry.discover(capability))}
 
     @router.post("/agents/api/registry")
     async def register_agent(req: AgentRegisterRequest, request: Request):
-        user = require_user(request)
+        user, _ = require_admin(request)
         try:
             entry = registry.register(
                 name=req.name,
@@ -68,7 +70,7 @@ def create_agent_registry_router(
         except ValueError as exc:
             raise HTTPException(status_code=400, detail=str(exc)) from exc
         append_audit_event("agent_register", user_email=user, agent_id=entry["id"], type=entry["type"])
-        return {"agent": entry}
+        return {"agent": redact_secrets(entry)}
 
     @router.get("/agents/api/registry/{agent_id:path}")
     async def get_agent(agent_id: str, request: Request):
@@ -76,21 +78,21 @@ def create_agent_registry_router(
         agent = registry.get(agent_id)
         if agent is None:
             raise HTTPException(status_code=404, detail=f"Agent not found: {agent_id}")
-        return {"agent": agent}
+        return {"agent": redact_secrets(agent)}
 
     @router.patch("/agents/api/registry/{agent_id:path}")
     async def update_agent(agent_id: str, req: AgentConfigRequest, request: Request):
-        user = require_user(request)
+        user, _ = require_admin(request)
         try:
             agent = registry.update_config(agent_id, req.config, enabled=req.enabled)
         except KeyError as exc:
             raise HTTPException(status_code=404, detail=f"Agent not found: {agent_id}") from exc
         append_audit_event("agent_config", user_email=user, agent_id=agent_id)
-        return {"agent": agent}
+        return {"agent": redact_secrets(agent)}
 
     @router.delete("/agents/api/registry/{agent_id:path}")
     async def remove_agent(agent_id: str, request: Request):
-        user = require_user(request)
+        user, _ = require_admin(request)
         try:
             result = registry.remove(agent_id)
         except KeyError as exc:

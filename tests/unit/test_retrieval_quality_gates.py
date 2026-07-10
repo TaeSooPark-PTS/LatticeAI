@@ -28,7 +28,7 @@ class _Graph:
     def __init__(self, matches):
         self._matches = matches
 
-    def search(self, q, limit):
+    def search(self, q, limit, *, allowed_workspaces=None):
         return {"query": q, "matches": list(self._matches)}
 
     def stats(self):
@@ -37,6 +37,27 @@ class _Graph:
     def index_status(self):
         return {"vector_counts": {"node": len(self._matches)}}
 
+
+def test_graph_recall_uses_exact_workspace_scope(tmp_path):
+    seen = []
+
+    class ScopedGraph(_Graph):
+        def search(self, q, limit, *, allowed_workspaces=None):
+            seen.append(allowed_workspaces)
+            return super().search(q, limit, allowed_workspaces=allowed_workspaces)
+
+    service = MemoryService(
+        store=_Store([]),
+        data_dir=tmp_path,
+        knowledge_graph=ScopedGraph([
+            {"id": "node:1", "title": "alpha", "summary": "alpha", "type": "Document"},
+        ]),
+        enable_graph=True,
+    )
+
+    service.recall("alpha", workspace_id="org-1")
+
+    assert seen == [{"org-1"}]
 
 def _service(tmp_path, memories=(), matches=()):
     return MemoryService(

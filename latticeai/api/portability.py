@@ -1,8 +1,8 @@
 """Knowledge Graph portability routes — local export / import / backup / restore.
 
-Reads (export, status) require a signed-in user. Mutating operations (import,
-backup, restore, file export) require admin because the graph is machine-global,
-not workspace-scoped. Nothing here touches a cloud service.
+Status reads require a signed-in user. Whole-graph exports, provenance, and all
+mutating operations require admin because the graph is machine-global, not
+workspace-scoped. Nothing here touches a cloud service.
 """
 
 from __future__ import annotations
@@ -97,14 +97,14 @@ def create_portability_router(
     @router.get("/api/knowledge-graph/provenance")
     async def recent_provenance(request: Request, limit: int = 50, source_type: Optional[str] = None):
         """Recent ingestions (provenance trail) for the ingestion-sources UI."""
-        require_user(request)
+        require_admin(request)
         _require_service()
         return service.recent_ingestions(limit=limit, source_type=source_type)
 
     @router.post("/api/knowledge-graph/export")
     async def export_graph(request: Request):
         """Logical JSON export of the whole graph (read-only)."""
-        require_user(request)
+        require_admin(request)
         _require_service()
         return service.export()
 

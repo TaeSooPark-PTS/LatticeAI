@@ -106,6 +106,26 @@ def test_command_hook_receives_context_on_stdin(registry):
     assert "tool.list_dir" in out["output"]
 
 
+def test_command_hook_receives_only_minimal_environment(registry, monkeypatch):
+    monkeypatch.setenv("LATTICE_TEST_SECRET", "must-not-leak")
+    script = (
+        "import os; "
+        "print(os.environ.get('LATTICE_TEST_SECRET', 'missing')); "
+        "print(bool(os.environ.get('PATH'))); "
+        "print(bool(os.environ.get('LATTICE_HOOK_CONTEXT')))"
+    )
+    hook = registry.register(
+        name="environment boundary",
+        kind="post_tool",
+        command=f"{PY} -c \"{script}\"",
+    )
+
+    out = registry.run_hook(hook["id"], event="tool.list_dir")
+
+    assert out["status"] == "ok"
+    assert out["output"].splitlines() == ["missing", "True", "True"]
+
+
 def test_advisory_when_no_runner_and_no_command(registry):
     # research-memory-snapshot built-in has no bound runner here → advisory.
     out = registry.run_hook("builtin:research-memory-snapshot", event="agent.run")

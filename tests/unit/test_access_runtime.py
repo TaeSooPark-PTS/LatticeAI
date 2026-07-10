@@ -44,7 +44,14 @@ def test_get_user_role_preserves_legacy_lookup_order():
 
 
 def test_extract_current_user_supports_bearer_and_cookie_tokens():
-    runtime = _runtime(sessions={"bearer-token": "bearer@example.com", "cookie-token": "cookie@example.com"})
+    users = {
+        "bearer@example.com": {"id": "bearer-id", "role": "user"},
+        "cookie@example.com": {"id": "cookie-id", "role": "user"},
+    }
+    runtime = _runtime(
+        users=users,
+        sessions={"bearer-token": "bearer@example.com", "cookie-token": "cookie@example.com"},
+    )
 
     assert runtime["_extract_bearer_token"](RequestStub(headers={"Authorization": "Bearer bearer-token"})) == "bearer-token"
     assert runtime["get_current_user"](RequestStub(headers={"Authorization": "Bearer bearer-token"})) == "bearer@example.com"
@@ -83,3 +90,43 @@ def test_public_user_keeps_identity_projection():
         "role": "user",
         "disabled": True,
     }
+
+
+@pytest.mark.parametrize(
+    "users",
+    [
+        {},
+        {"owner@example.com": {"id": "owner-id", "role": "admin", "disabled": True}},
+    ],
+    ids=["deleted", "disabled"],
+)
+def test_deleted_or_disabled_account_invalidates_existing_session(users):
+    runtime = _runtime(users=users, sessions={"stale-token": "owner@example.com"})
+    request = RequestStub(headers={"Authorization": "Bearer stale-token"})
+
+    assert runtime["get_current_user"](request) is None
+    with pytest.raises(HTTPException) as user_error:
+        runtime["require_user"](request)
+    assert user_error.value.status_code == 401
+
+    with pytest.raises(HTTPException) as admin_error:
+        runtime["require_admin"](request)
+    assert admin_error.value.status_code == 403
+
+
+def test_account_store_failure_fails_session_closed():
+    runtime = build_access_runtime(
+        config=SimpleNamespace(admin_emails=["owner@example.com"]),
+        require_auth=True,
+        http_exception=HTTPException,
+        request_type=RequestStub,
+        load_users=lambda: (_ for _ in ()).throw(RuntimeError("storage unavailable")),
+        get_session_email=lambda _token: "owner@example.com",
+        user_id_for_email=lambda _users, email: f"id:{email}",
+    )
+    request = RequestStub(headers={"Authorization": "Bearer token"})
+
+    assert runtime["get_current_user"](request) is None
+    with pytest.raises(HTTPException) as exc:
+        runtime["require_user"](request)
+    assert exc.value.status_code == 401

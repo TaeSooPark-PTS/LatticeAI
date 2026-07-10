@@ -50,11 +50,42 @@ def test_chat_message_through_pipeline_projects_workspace_scope(tmp_path):
 
     assert result.status == "ok"
     assert kg.workspaces_of([result.node_id]).get(result.node_id) == "org:acme"
-    assert kg.workspaces_of(["conversation:conv-org"]).get("conversation:conv-org") == "org:acme"
+    conversation_ids = [
+        node["id"]
+        for node in kg.graph()["nodes"]
+        if node["id"].startswith("conversation:")
+    ]
+    assert len(conversation_ids) == 1
+    conversation_id = conversation_ids[0]
+    assert kg.workspaces_of([conversation_id]).get(conversation_id) == "org:acme"
     assert kg.filter_scoped_nodes([{"id": result.node_id}], {"org:other"}) == []
     assert kg.filter_scoped_nodes([{"id": result.node_id}], {"org:acme"}) == [{"id": result.node_id}]
-    assert all(node["id"] != "conversation:conv-org" for node in kg.graph(allowed_workspaces={"org:other"})["nodes"])
-    assert any(node["id"] == "conversation:conv-org" for node in kg.graph(allowed_workspaces={"org:acme"})["nodes"])
+    assert all(node["id"] != conversation_id for node in kg.graph(allowed_workspaces={"org:other"})["nodes"])
+    assert any(node["id"] == conversation_id for node in kg.graph(allowed_workspaces={"org:acme"})["nodes"])
+
+
+def test_identical_chat_content_never_reassigns_nodes_between_workspaces(tmp_path):
+    kg, pipe = _pipeline(tmp_path)
+    common = dict(
+        source_type="chat_message",
+        text="shared roadmap concept",
+        owner="alice@example.com",
+        conversation_id="same-conversation",
+        metadata={"role": "user", "source": "web"},
+    )
+
+    first = pipe.ingest(IngestionItem(**common, workspace_id="org:a"))
+    second = pipe.ingest(IngestionItem(**common, workspace_id="org:b"))
+
+    assert first.node_id != second.node_id
+    assert kg.workspaces_of([first.node_id, second.node_id]) == {
+        first.node_id: "org:a",
+        second.node_id: "org:b",
+    }
+    assert kg.filter_scoped_nodes([{"id": first.node_id}], {"org:a"})
+    assert kg.filter_scoped_nodes([{"id": first.node_id}], {"org:b"}) == []
+    assert kg.filter_scoped_nodes([{"id": second.node_id}], {"org:b"})
+    assert kg.filter_scoped_nodes([{"id": second.node_id}], {"org:a"}) == []
 
 
 def test_mcp_message_through_pipeline_records_provenance(tmp_path):

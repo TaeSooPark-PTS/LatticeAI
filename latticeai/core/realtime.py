@@ -30,7 +30,7 @@ import asyncio
 import json
 import threading
 from datetime import datetime
-from typing import Any, AsyncIterator, Dict, List, Optional, Set
+from typing import Any, AsyncIterator, Callable, Dict, List, Optional, Set
 
 from lattice_brain.runtime.contracts import realtime_event_contract
 
@@ -64,10 +64,10 @@ class _Subscriber:
             self.loop = None
 
     def accepts(self, workspace_id: Optional[str]) -> bool:
-        # ``None`` scope = see everything the local user can (personal/unscoped).
+        # Only the explicit no-auth/local ``None`` scope sees unscoped events.
+        # Any concrete set, including the authenticated fail-closed empty set,
+        # requires an exact workspace match.
         if self.workspace_scope is None:
-            return True
-        if workspace_id is None:
             return True
         return workspace_id in self.workspace_scope
 
@@ -142,21 +142,42 @@ class RealtimeBus:
         with self._lock:
             self._subscribers.pop(sub_id, None)
 
-    async def stream(self, sub: _Subscriber, *, heartbeat: float = 15.0) -> AsyncIterator[str]:
+    async def stream(
+        self,
+        sub: _Subscriber,
+        *,
+        heartbeat: float = 15.0,
+        refresh_authorization: Optional[Callable[[_Subscriber], bool]] = None,
+    ) -> AsyncIterator[str]:
         """Yield SSE frames for a subscriber until the client disconnects.
 
         Emits a periodic heartbeat comment so proxies keep the connection open
         and single-user local mode never looks "stuck" with no events.
         """
         # Replay a small tail so a fresh subscriber has immediate context.
+        if refresh_authorization is not None and not refresh_authorization(sub):
+            self.remove_subscriber(sub.id)
+            return
         for event in self.recent(limit=10, workspace_scope=sub.workspace_scope):
-            yield sse_format(event)
+            if refresh_authorization is not None and not refresh_authorization(sub):
+                self.remove_subscriber(sub.id)
+                return
+            if sub.accepts(event.get("workspace_id")):
+                yield sse_format(event)
         try:
             while True:
                 try:
                     event = await asyncio.wait_for(sub.queue.get(), timeout=heartbeat)
-                    yield sse_format(event)
+                    if refresh_authorization is not None and not refresh_authorization(sub):
+                        break
+                    # The event may have been queued under an older membership
+                    # snapshot. Recheck it against the refreshed scope before
+                    # any bytes leave the process.
+                    if sub.accepts(event.get("workspace_id")):
+                        yield sse_format(event)
                 except asyncio.TimeoutError:
+                    if refresh_authorization is not None and not refresh_authorization(sub):
+                        break
                     yield ": heartbeat\n\n"
         finally:
             self.remove_subscriber(sub.id)
@@ -167,7 +188,7 @@ class RealtimeBus:
         with self._lock:
             events = list(self._feed)
         if workspace_scope is not None:
-            events = [e for e in events if e.get("workspace_id") is None or e.get("workspace_id") in workspace_scope]
+            events = [e for e in events if e.get("workspace_id") in workspace_scope]
         return list(reversed(events[-max(1, min(limit, _FEED_LIMIT)):]))
 
     def join(self, client_id: str, *, user: Optional[str], workspace_id: Optional[str]) -> Dict[str, Any]:
@@ -179,6 +200,9 @@ class RealtimeBus:
             "last_seen": _now(),
         }
         with self._lock:
+            existing = self._presence.get(client_id)
+            if existing is not None and existing.get("user") != user:
+                raise PermissionError("Presence client belongs to another user.")
             self._presence[client_id] = record
         self.publish({"area": "presence", "event_type": "join", "workspace_id": workspace_id, "payload": {"user": user, "client_id": client_id}})
         return record
@@ -190,8 +214,11 @@ class RealtimeBus:
                 record["last_seen"] = _now()
             return record
 
-    def leave(self, client_id: str) -> None:
+    def leave(self, client_id: str, *, user: Optional[str] = None) -> None:
         with self._lock:
+            record = self._presence.get(client_id)
+            if record is not None and user is not None and record.get("user") != user:
+                raise PermissionError("Presence client belongs to another user.")
             record = self._presence.pop(client_id, None)
         if record:
             self.publish({"area": "presence", "event_type": "leave", "workspace_id": record.get("workspace_id"), "payload": {"client_id": client_id}})
@@ -200,7 +227,7 @@ class RealtimeBus:
         with self._lock:
             records = list(self._presence.values())
         if workspace_scope is not None:
-            records = [r for r in records if r.get("workspace_id") is None or r.get("workspace_id") in workspace_scope]
+            records = [r for r in records if r.get("workspace_id") in workspace_scope]
         return records
 
     def stats(self) -> Dict[str, Any]:

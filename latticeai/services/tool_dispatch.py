@@ -36,6 +36,12 @@ FILE_CREATE_ACTIONS = set(DEFAULT_TOOL_REGISTRY.file_create_actions)
 TOOL_GOVERNANCE: Dict[str, ToolPolicy] = dict(DEFAULT_TOOL_REGISTRY.governance)
 TOOL_GOVERNANCE_DEFAULT: ToolPolicy = DEFAULT_TOOL_REGISTRY.default_policy
 ADMIN_ONLY_TOOLS: frozenset[str] = DEFAULT_TOOL_REGISTRY.admin_only_tools
+EXPLICIT_CONSENT_TOOLS: frozenset[str] = frozenset({
+    "local_list",
+    "local_read",
+    "local_write",
+    "read_document",
+})
 LOCAL_WRITE_BLOCKED_PREFIXES = DEFAULT_TOOL_REGISTRY.local_write_blocked_prefixes
 RISK_LEVEL_MAP = DEFAULT_TOOL_REGISTRY.risk_level_map
 
@@ -132,6 +138,14 @@ class ToolDispatchService:
         when explicitly excluded from a hardening pass.
         """
         policy = self.policy_for(tool_name, args or {})
+        if source in {"mcp", "plugin"} and tool_name in EXPLICIT_CONSENT_TOOLS:
+            raise HTTPException(
+                status_code=403,
+                detail=(
+                    f"'{tool_name}' requires the dedicated local-file approval flow "
+                    "and cannot run through MCP or plugins."
+                ),
+            )
         if not trusted_admin:
             self.check_role(tool_name, current_user)
         if policy["destructive"] or policy["risk"] == "destructive":

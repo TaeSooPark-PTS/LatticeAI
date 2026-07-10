@@ -13,6 +13,7 @@ design-review amendment T5).
 
 from __future__ import annotations
 
+import inspect
 import logging
 from dataclasses import dataclass, field
 from typing import Any, Callable, Dict, List, Optional
@@ -21,6 +22,46 @@ from typing import Any, Callable, Dict, List, Optional
 def approx_tokens(text: str) -> int:
     """Documented chars/4 approximation — NOT a real tokenizer count."""
     return max(0, (len(text or "") + 3) // 4)
+
+
+def _call_context_seam(callback: Callable[..., Any], query: str, **context: Any) -> Any:
+    """Pass identity/scope only when a legacy seam declares support for it.
+
+    Signature inspection preserves old one-argument adapters without catching
+    a callback's own ``TypeError`` and retrying it with less restrictive scope.
+    If a callable cannot be inspected, the secure behavior is to pass every
+    context field and let the caller's failure isolation omit that section.
+    """
+    try:
+        parameters = inspect.signature(callback).parameters
+    except (TypeError, ValueError):
+        return callback(query, **context)
+    accepts_kwargs = any(
+        item.kind is inspect.Parameter.VAR_KEYWORD
+        for item in parameters.values()
+    )
+    supported = context if accepts_kwargs else {
+        key: value for key, value in context.items()
+        if key in parameters
+    }
+    return callback(query, **supported)
+
+
+def _call_keyword_seam(callback: Callable[..., Any], **context: Any) -> Any:
+    """Invoke a keyword-only seam while preserving legacy narrow signatures."""
+    try:
+        parameters = inspect.signature(callback).parameters
+    except (TypeError, ValueError):
+        return callback(**context)
+    accepts_kwargs = any(
+        item.kind is inspect.Parameter.VAR_KEYWORD
+        for item in parameters.values()
+    )
+    supported = context if accepts_kwargs else {
+        key: value for key, value in context.items()
+        if key in parameters
+    }
+    return callback(**supported)
 
 
 @dataclass
@@ -112,11 +153,11 @@ class ContextAssembler:
         if self._memory_recall is not None:
             sections.append(self._memories_section(query, user_email, workspace_id, memory_limit))
         if self._hybrid_search is not None:
-            sections.append(self._knowledge_section(query, knowledge_limit, user_email))
+            sections.append(self._knowledge_section(query, knowledge_limit, user_email, workspace_id))
         if self._notes_context is not None:
-            sections.append(self._notes_section(query))
+            sections.append(self._notes_section(query, user_email, workspace_id))
         if self._recent_chat is not None:
-            sections.append(self._recent_section(user_email, conversation_id))
+            sections.append(self._recent_section(user_email, conversation_id, workspace_id))
 
         sections = [s for s in sections if s.content.strip()]
         self._apply_budget(sections, budget)
@@ -141,9 +182,15 @@ class ContextAssembler:
             ],
         )
 
-    def _knowledge_section(self, query, limit, user_email=None) -> ContextSection:
+    def _knowledge_section(self, query, limit, user_email=None, workspace_id=None) -> ContextSection:
         try:
-            hybrid = self._hybrid_search(query, limit=limit, user_email=user_email)
+            hybrid = _call_context_seam(
+                self._hybrid_search,
+                query,
+                limit=limit,
+                user_email=user_email,
+                workspace_id=workspace_id,
+            )
             matches = hybrid.get("matches", [])[:limit]
         except Exception as exc:
             logging.debug("context: hybrid search failed: %s", exc)
@@ -166,9 +213,14 @@ class ContextAssembler:
             provenance=provenance,
         )
 
-    def _notes_section(self, query) -> ContextSection:
+    def _notes_section(self, query, user_email=None, workspace_id=None) -> ContextSection:
         try:
-            content = self._notes_context(query) or ""
+            content = _call_context_seam(
+                self._notes_context,
+                query,
+                user_email=user_email,
+                workspace_id=workspace_id,
+            ) or ""
         except Exception as exc:
             logging.debug("context: notes context failed: %s", exc)
             content = ""
@@ -179,9 +231,14 @@ class ContextAssembler:
             provenance=[{"source": "garden", "included": bool(content)}],
         )
 
-    def _recent_section(self, user_email, conversation_id) -> ContextSection:
+    def _recent_section(self, user_email, conversation_id, workspace_id=None) -> ContextSection:
         try:
-            content = self._recent_chat(user_email=user_email, conversation_id=conversation_id) or ""
+            content = _call_keyword_seam(
+                self._recent_chat,
+                user_email=user_email,
+                conversation_id=conversation_id,
+                workspace_id=workspace_id,
+            ) or ""
         except Exception as exc:
             logging.debug("context: recent chat failed: %s", exc)
             content = ""

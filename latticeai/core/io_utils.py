@@ -13,8 +13,16 @@ from typing import Any, Dict, Optional
 def atomic_write_json(path: Path, payload: Dict[str, Any]) -> None:
     path.parent.mkdir(parents=True, exist_ok=True)
     tmp_path = path.with_suffix(path.suffix + ".tmp")
-    tmp_path.write_text(json.dumps(payload, ensure_ascii=False, indent=2), encoding="utf-8")
+    fd = os.open(tmp_path, os.O_WRONLY | os.O_CREAT | os.O_TRUNC, 0o600)
+    with os.fdopen(fd, "w", encoding="utf-8") as handle:
+        handle.write(json.dumps(payload, ensure_ascii=False, indent=2))
     os.replace(tmp_path, path)
+    try:
+        path.chmod(0o600)
+    except OSError:
+        # Windows and unusual filesystems may not expose POSIX mode bits; the
+        # atomic write is still the safest supported fallback there.
+        pass
 
 
 def parse_iso(value: Optional[str]) -> Optional[datetime]:

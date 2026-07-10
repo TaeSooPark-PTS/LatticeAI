@@ -2,7 +2,9 @@
 
 ## 요약
 
-**Lattice AI는 데이터를 수집하거나 외부 서버로 전송하지 않습니다.**
+**Lattice AI는 기본 상태에서 텔레메트리를 수집하거나 사용자 데이터를 외부로
+전송하지 않습니다.** 사용자가 명시적으로 선택한 클라우드 모델, 모델 다운로드,
+웹 페이지 읽기, Telegram/Brain Network 같은 외부 기능은 해당 대상과 통신합니다.
 
 모든 데이터는 사용자의 로컬 머신에만 저장됩니다.
 
@@ -11,7 +13,7 @@
 | 데이터 | 저장 위치 | 설명 |
 |--------|-----------|------|
 | 사용자 계정 | `~/.ltcai/users.json` | 이름, scrypt 해시 비밀번호, 역할 |
-| 세션 토큰 | `~/.ltcai/sessions.json` | UUID 토큰, 만료시간 |
+| 세션 토큰 | `~/.ltcai/sessions.json` | SHA-256 토큰 해시, 만료/갱신 시각(평문 bearer 미저장) |
 | 채팅 히스토리 | `~/.ltcai/chat_history.json` | 사용자-AI 대화 내용 |
 | 지식 그래프 | `~/.ltcai/knowledge_graph.sqlite` | 채팅/문서/웹/탭 노드·엣지, 프로비넌스 |
 | 업로드/수집 파일 | `~/.ltcai/knowledge_graph_blobs/` | 원본 PDF/DOCX/웹 텍스트 등 |
@@ -42,7 +44,9 @@ Apple Silicon MLX 로컬 모델 사용 시에는 프롬프트가 외부로 전�
 
 - **URL 읽기**(`/api/browser/read-url`): 사용자가 명시적으로 요청한 URL을 **로컬
   런타임이 직접** 가져와 텍스트만 추출해 그래프에 색인합니다. Lattice AI가 임의로
-  크롤링하지 않으며, 가져온 페이지는 외부로 다시 전송되지 않습니다.
+  크롤링하지 않으며, 가져온 페이지는 외부로 다시 전송되지 않습니다. private/local
+  주소와 DNS rebinding을 차단하고 redirect마다 다시 검증하며 최대 4MB의 textual
+  응답만 스트리밍합니다.
 - **브라우저 탭 수집**(`/api/browser/ingest-current-tab`) 및 Manifest V3 확장:
   확장 프로그램은 **오직 `127.0.0.1`(로컬)** 로만 전송합니다. 클라우드 엔드포인트가
   존재하지 않습니다(`browser-extension/` 소스에서 단일 `fetch` 대상 확인 가능).

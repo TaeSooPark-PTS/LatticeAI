@@ -13,7 +13,15 @@ class WorkspaceGraphTrace:
     def __getattr__(self, name: str) -> Any:
         return getattr(self._store, name)
 
-    def build_graph_trace(self, question: str, graph: Any, context: str = "", *, limit: int = 8) -> Dict[str, Any]:
+    def build_graph_trace(
+        self,
+        question: str,
+        graph: Any,
+        context: str = "",
+        *,
+        limit: int = 8,
+        allowed_workspaces=None,
+    ) -> Dict[str, Any]:
         if graph is None:
             return {
                 "source_files": [],
@@ -31,7 +39,16 @@ class WorkspaceGraphTrace:
         matches: List[Dict[str, Any]] = []
         search_error = ""
         try:
-            matches = graph.search(question, limit=limit).get("matches", [])
+            scope_kwargs = (
+                {"allowed_workspaces": allowed_workspaces}
+                if allowed_workspaces is not None
+                else {}
+            )
+            matches = graph.search(
+                question,
+                limit=limit,
+                **scope_kwargs,
+            ).get("matches", [])
         except Exception as exc:
             search_error = str(exc)
             matches = []
@@ -67,7 +84,10 @@ class WorkspaceGraphTrace:
             if not node_id:
                 continue
             try:
-                for edge in graph.neighbors(node_id).get("edges", []):
+                for edge in graph.neighbors(
+                    node_id,
+                    **scope_kwargs,
+                ).get("edges", []):
                     key = (edge.get("from"), edge.get("to"), edge.get("type"))
                     if key in edge_seen:
                         continue
@@ -122,7 +142,12 @@ class WorkspaceGraphTrace:
         }
         state.setdefault("traces", []).append(record)
         self.save_state(state)
-        self.record_timeline_event("graph", "answer_trace", {"trace_id": trace_id, "conversation_id": conversation_id})
+        self.record_timeline_event(
+            "graph",
+            "answer_trace",
+            {"trace_id": trace_id, "conversation_id": conversation_id},
+            workspace_id=record["workspace_id"],
+        )
         return record
 
     def list_traces(self, conversation_id: Optional[str] = None, limit: int = 50, workspace_id: Optional[str] = None) -> Dict[str, Any]:

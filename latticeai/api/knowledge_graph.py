@@ -61,8 +61,10 @@ def create_knowledge_graph_router(
     require_graph: Callable[[], None],
     require_user: Callable[[Request], str],
     static_dir: Path,
+    require_admin: Optional[Callable[[Request], Any]] = None,
     allowed_workspaces_for: Optional[Callable[[Optional[str]], Any]] = None,
     ingestion_pipeline: Any = None,
+    workspace_service: Any = None,
 ) -> APIRouter:
     router = APIRouter()
 
@@ -85,6 +87,15 @@ def create_knowledge_graph_router(
             allowed = allowed_workspaces_for(user)
         return graph(), allowed
 
+    def _write_workspace(request: Request, user: str) -> Optional[str]:
+        requested = _workspace_scope_from_request(request)
+        if workspace_service is None:
+            return requested
+        try:
+            return workspace_service.resolve_write_scope(requested, user or None)
+        except PermissionError as exc:
+            raise HTTPException(status_code=403, detail=str(exc)) from exc
+
     @router.get("/graph")
     async def knowledge_graph_page(request: Request):
         """Serve the interactive knowledge graph canvas UI."""
@@ -101,7 +112,11 @@ def create_knowledge_graph_router(
 
     @router.post("/knowledge-graph/curate")
     async def knowledge_graph_curate(request: Request):
-        require_user(request)
+        # Curation rewrites the shared graph and is therefore an administrative
+        # operation whenever role-based authentication is configured.  The
+        # fallback preserves the standalone/local router contract used by
+        # embedders that only provide ``require_user``.
+        (require_admin or require_user)(request)
         return graph().curate()
 
     @router.get("/knowledge-graph/provenance/coverage")
@@ -187,8 +202,12 @@ def create_knowledge_graph_router(
     @router.post("/knowledge-graph/ingest")
     async def knowledge_graph_ingest(req: KnowledgeGraphIngestRequest, request: Request):
         current_user = require_user(request)
+        if current_user and req.user_email:
+            if current_user.strip().lower() != req.user_email.strip().lower():
+                raise HTTPException(status_code=403, detail="user_email must match the authenticated user.")
+        effective_user = current_user or req.user_email or None
         kg = graph()
-        workspace_id = _workspace_scope_from_request(request)
+        workspace_id = _write_workspace(request, current_user)
         event_type = (req.type or "").strip().lower()
         if event_type not in {"message", "ai_response", "note"}:
             raise HTTPException(status_code=400, detail="지원하는 type: message, ai_response, note")
@@ -201,7 +220,7 @@ def create_knowledge_graph_router(
                     title=req.title,
                     text=req.content,
                     source_uri=req.source,
-                    owner=req.user_email or current_user,
+                    owner=effective_user,
                     workspace_id=workspace_id,
                     conversation_id=req.conversation_id,
                     metadata={
@@ -219,7 +238,7 @@ def create_knowledge_graph_router(
                         **(req.metadata or {}),
                     },
                 ),
-                user_email=req.user_email or current_user,
+                user_email=effective_user,
             )
             if result.status != "ok":
                 raise HTTPException(status_code=500, detail=result.detail or result.status)
@@ -227,7 +246,7 @@ def create_knowledge_graph_router(
         return kg.ingest_message(
             role,
             req.content,
-            user_email=req.user_email or current_user,
+            user_email=effective_user,
             user_nickname=req.user_nickname,
             source=req.source or "mcp",
             conversation_id=req.conversation_id,

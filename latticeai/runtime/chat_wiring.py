@@ -56,6 +56,7 @@ def build_interaction_contexts(
     install_mcp: Any,
     mcp_public_item: Any,
     hooks: Any,
+    workspace_service: Any,
     chat_context: Any,
     search_service: Any,
     allowed_workspaces_for: Any,
@@ -89,6 +90,7 @@ def build_interaction_contexts(
         install_mcp=install_mcp,
         mcp_public_item=mcp_public_item,
         hooks=hooks,
+        workspace_service=workspace_service,
         allowed_workspaces_for=allowed_workspaces_for,
     )
     interaction_router_context = InteractionRouterContext(

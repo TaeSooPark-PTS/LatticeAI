@@ -12,7 +12,7 @@ import secrets
 from pathlib import Path
 from typing import Any, Callable, Optional, Set
 
-from fastapi import APIRouter, Request
+from fastapi import APIRouter, HTTPException, Request
 from fastapi.responses import StreamingResponse
 from pydantic import BaseModel
 
@@ -48,8 +48,21 @@ def create_realtime_router(
         sub_id = secrets.token_urlsafe(12)
         sub = bus.add_subscriber(sub_id, workspace_scope=scope, user=user or None)
 
+        def refresh_authorization(current_sub) -> bool:
+            try:
+                refreshed_user = require_user(request)
+            except Exception:
+                return False
+            if refreshed_user != user:
+                return False
+            current_sub.workspace_scope = allowed_scopes(refreshed_user or None)
+            return True
+
         async def event_gen():
-            async for frame in bus.stream(sub):
+            async for frame in bus.stream(
+                sub,
+                refresh_authorization=refresh_authorization,
+            ):
                 if await request.is_disconnected():
                     break
                 yield frame
@@ -76,15 +89,30 @@ def create_realtime_router(
     @router.post("/realtime/presence/join")
     async def realtime_join(req: PresenceRequest, request: Request):
         user = require_user(request)
+        scope = allowed_scopes(user or None)
+        workspace_id = req.workspace_id
+        if scope is not None:
+            if workspace_id is None:
+                if not scope:
+                    raise HTTPException(status_code=403, detail="No accessible workspace for presence.")
+                workspace_id = "personal" if "personal" in scope else sorted(scope)[0]
+            elif workspace_id not in scope:
+                raise HTTPException(status_code=403, detail="Workspace presence access denied.")
         client_id = req.client_id or secrets.token_urlsafe(8)
-        record = bus.join(client_id, user=user or None, workspace_id=req.workspace_id)
+        try:
+            record = bus.join(client_id, user=user or None, workspace_id=workspace_id)
+        except PermissionError as exc:
+            raise HTTPException(status_code=403, detail=str(exc)) from exc
         return {"presence": record}
 
     @router.post("/realtime/presence/leave")
     async def realtime_leave(req: PresenceRequest, request: Request):
-        require_user(request)
+        user = require_user(request)
         if req.client_id:
-            bus.leave(req.client_id)
+            try:
+                bus.leave(req.client_id, user=user or None)
+            except PermissionError as exc:
+                raise HTTPException(status_code=403, detail=str(exc)) from exc
         return {"status": "ok"}
 
     return router

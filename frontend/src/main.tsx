@@ -1,17 +1,15 @@
 import React from "react";
 import ReactDOM from "react-dom/client";
-import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
+import { QueryClientProvider } from "@tanstack/react-query";
 import App from "./App";
 import "./styles.css";
+import { clearScopedClientState, queryClient } from "@/queryClient";
+import { useAppStore } from "@/store/appStore";
 
-const queryClient = new QueryClient({
-  defaultOptions: {
-    queries: {
-      staleTime: 15_000,
-      refetchOnWindowFocus: false,
-      retry: 1,
-    },
-  },
+useAppStore.subscribe((state, previousState) => {
+  if (state.workspaceId !== previousState.workspaceId) {
+    clearScopedClientState();
+  }
 });
 
 ReactDOM.createRoot(document.getElementById("root")!).render(

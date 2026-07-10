@@ -7,6 +7,7 @@ S256 PKCE challenge and the exchange sends the verifier.
 """
 
 import json
+import os
 
 from fastapi import FastAPI, Request
 from fastapi.testclient import TestClient
@@ -27,6 +28,8 @@ def test_session_file_contains_no_raw_tokens(tmp_path):
     assert store.get_email(token) == "a@b.c"
     store.invalidate(token)
     assert store.get_email(token) is None
+    if os.name == "posix":
+        assert (tmp_path / "sessions.json").stat().st_mode & 0o777 == 0o600
 
 
 def test_legacy_plaintext_sessions_migrate_and_survive(tmp_path):

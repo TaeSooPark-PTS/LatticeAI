@@ -40,8 +40,11 @@ def create_plugins_router(
     require_user: Callable[[Request], str],
     require_admin: Callable[[Request], Any],
     append_audit_event: Callable[..., None],
+    gate_write: Optional[Callable[[Request], Optional[str]]] = None,
     register_skill: Optional[Callable[[str, str], Any]] = None,
-    plugin_runners_factory: Optional[Callable[[], Dict[str, Callable[..., Any]]]] = None,
+    plugin_runners_factory: Optional[
+        Callable[[str, Optional[str]], Dict[str, Callable[..., Any]]]
+    ] = None,
     ui_file_response: Optional[Callable[[Path], Any]] = None,
     static_dir: Optional[Path] = None,
 ) -> APIRouter:
@@ -93,19 +96,30 @@ def create_plugins_router(
 
     @router.post("/plugins/enable")
     async def plugin_enable(req: PluginActionRequest, request: Request):
-        require_user(request)
-        return {"plugin": registry.set_enabled(req.plugin_id, True)}
+        admin_email, _ = require_admin(request)
+        plugin = registry.set_enabled(req.plugin_id, True)
+        append_audit_event("plugin_enable", user_email=admin_email, plugin=req.plugin_id)
+        return {"plugin": plugin}
 
     @router.post("/plugins/disable")
     async def plugin_disable(req: PluginActionRequest, request: Request):
-        require_user(request)
-        return {"plugin": registry.set_enabled(req.plugin_id, False)}
+        admin_email, _ = require_admin(request)
+        plugin = registry.set_enabled(req.plugin_id, False)
+        append_audit_event("plugin_disable", user_email=admin_email, plugin=req.plugin_id)
+        return {"plugin": plugin}
 
     @router.post("/plugins/execute")
     async def plugin_execute(req: PluginExecuteRequest, request: Request):
         current_user = require_user(request)
-        runners = plugin_runners_factory() if plugin_runners_factory else {}
-        result = registry.execute_action(req.plugin_id, req.action, req.args, runners=runners)
+        scope = gate_write(request) if gate_write is not None else None
+        runners = plugin_runners_factory(current_user, scope) if plugin_runners_factory else {}
+        result = registry.execute_action(
+            req.plugin_id,
+            req.action,
+            req.args,
+            runners=runners,
+            workspace_id=scope,
+        )
         append_audit_event("plugin_execute", user_email=current_user, plugin=req.plugin_id, action=req.action, status=result.status)
         return result.as_dict()
 

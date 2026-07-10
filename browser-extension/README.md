@@ -19,7 +19,7 @@ The active tab is captured (scripts/styles/SVG stripped) into:
 {
   "url": "https://…",
   "title": "Page title",
-  "text": "readable text (≤4MB)",
+  "text": "readable text (≤4 MiB as UTF-8 bytes)",
   "selected_text": "current selection (optional)",
   "captured_at": "ISO-8601"
 }
@@ -34,8 +34,11 @@ ingestion pipeline as `source_type=browser_tab` (see `latticeai/api/browser.py`)
    cookie via `credentials: include`).
 2. Open `chrome://extensions`, enable **Developer mode**.
 3. **Load unpacked** → select this `browser-extension/` folder.
-4. Click the toolbar icon, confirm the port (default `8000`), press
+4. Click the toolbar icon, confirm the port (default `4825`), press
    **Send this page**.
+
+The popup aborts a local ingestion request if it has not completed within 30
+seconds, then restores the Send button so the capture can be retried.
 
 ## Backend contract
 

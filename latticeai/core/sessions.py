@@ -15,6 +15,8 @@ import time
 from pathlib import Path
 from typing import Dict, Optional
 
+from latticeai.core.io_utils import atomic_write_json
+
 SESSION_TTL = 60 * 60 * 24  # 24 hours
 SESSION_REFRESH_THRESHOLD = 60 * 15  # only persist if >15 min since last bump
 _lock = threading.Lock()
@@ -39,7 +41,7 @@ def _sessions_file(data_dir: Optional[Path] = None) -> Path:
             import os
             data_dir = Path(os.getenv("LATTICEAI_DATA_DIR") or (Path.home() / ".ltcai"))
     d = data_dir
-    d.mkdir(parents=True, exist_ok=True)
+    d.mkdir(parents=True, exist_ok=True, mode=0o700)
     return d / "sessions.json"
 
 
@@ -68,7 +70,10 @@ def load_sessions(data_dir: Optional[Path] = None) -> Dict[str, tuple]:
 
 def persist_sessions(sessions: Dict[str, tuple], data_dir: Optional[Path] = None) -> None:
     try:
-        _sessions_file(data_dir).write_text(json.dumps({k: list(v) for k, v in sessions.items()}, ensure_ascii=False))
+        atomic_write_json(
+            _sessions_file(data_dir),
+            {key: list(value) for key, value in sessions.items()},
+        )
     except Exception as e:
         logging.warning("persist_sessions failed: %s", e)
 

@@ -7,6 +7,30 @@
 > PyPI / npm / VS Code Marketplace / Open VSX 배포는 아래 수동 절차로만
 > 진행합니다. 태그 생성은 패키지 스토어 publish를 자동으로 트리거하지 않습니다.
 
+## Main branch after v9.0.0 — Security & Isolation Hardening (Unreleased)
+
+- Model generation now snapshots the requested model per request, so concurrent
+  chat, streaming, and document jobs cannot switch each other's process-wide
+  model state.
+- Chat, upload, browser capture, graph ingestion, Brain Network, portability,
+  MCP, realtime presence, shared registries, hooks, model lifecycle, and
+  permission decisions now enforce authenticated identity, active workspace
+  scope, or administrator ownership as appropriate.
+- Knowledge Graph IDs for new workspace-scoped messages, documents, people,
+  concepts, structured document children, and events include workspace identity;
+  legacy unscoped IDs remain readable and are not destructively migrated.
+- Web URL capture now rejects private/reserved DNS targets and rebinding,
+  revalidates redirects, disables environment proxies, and enforces a streamed
+  4 MiB response limit.
+- Integration/OpenAPI generation runs in disposable state, committed OpenAPI
+  artifacts are drift-gated, release archives reject personal bridge files, and
+  the browser extension is aligned to version 9.0.0 and port 4825.
+- The misleading client-only global egress toggle was removed. External actions
+  continue to use their real feature-specific consent/configuration paths.
+- MCP/plugin dispatch no longer bypasses local-file approval, and document RAG,
+  answer traces, garden fallback, and realtime unscoped events fail closed at
+  authenticated workspace boundaries.
+
 ## v9.0.0 — Code Review Closure & Runtime Cleanup (2026-07-08)
 
 9.0.0 packages the July 8 code-review follow-up work and the remaining cleanup

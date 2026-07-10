@@ -80,6 +80,7 @@ class WorkspaceRuns:
                     f"{agent_id} {status}",
                     user_email=user_email,
                     source="workspace_os",
+                    workspace_id=resolved_workspace,
                     metadata={"run_id": run["id"], "agent_id": agent_id, "status": status, "mode": mode},
                 )
                 run["graph_node_id"] = ingested.get("node_id")
@@ -167,6 +168,7 @@ class WorkspaceRuns:
                     f"{run.get('agent_id')} {status}",
                     user_email=run.get("user_email"),
                     source="workspace_os",
+                    workspace_id=resolved_workspace,
                     metadata={
                         "run_id": run_id,
                         "agent_id": run.get("agent_id"),
@@ -250,6 +252,7 @@ class WorkspaceRuns:
                     workflow["name"],
                     user_email=user_email,
                     source="workspace_os",
+                    workspace_id=workflow["workspace_id"],
                     metadata={"workflow_id": workflow["id"], "steps": steps},
                 )
                 workflow["graph_node_id"] = ingested.get("node_id")
@@ -257,7 +260,12 @@ class WorkspaceRuns:
                 workflow["graph_error"] = str(exc)
         state.setdefault("workflows", []).append(workflow)
         self.save_state(state)
-        self.record_timeline_event("workflow", "workflow_created", {"workflow_id": workflow["id"], "name": workflow["name"]})
+        self.record_timeline_event(
+            "workflow",
+            "workflow_created",
+            {"workflow_id": workflow["id"], "name": workflow["name"]},
+            workspace_id=workflow["workspace_id"],
+        )
         return workflow
 
     def record_workflow_run(
@@ -304,6 +312,7 @@ class WorkspaceRuns:
                     f"{run['name']} {status}",
                     user_email=user_email,
                     source="workspace_os",
+                    workspace_id=resolved_workspace,
                     metadata={"run_id": run["id"], "workflow_id": workflow_id, "status": status, "mode": mode},
                 )
                 run["graph_node_id"] = ingested.get("node_id")
@@ -380,6 +389,7 @@ class WorkspaceRuns:
                     f"{run.get('name')} {status}",
                     user_email=run.get("user_email"),
                     source="workspace_os",
+                    workspace_id=resolved_workspace,
                     metadata={
                         "run_id": run_id,
                         "workflow_id": workflow_id,

@@ -63,16 +63,10 @@ ALLOWED_COMMANDS = {
     "ls",
     "find",
     "cat",
-    "sed",
     "head",
     "tail",
     "wc",
     "rg",
-    "python",
-    "python3",
-    "node",
-    "npm",
-    "npx",
     "git",
 }
 

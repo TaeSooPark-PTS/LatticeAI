@@ -3825,7 +3825,7 @@
   },
   "info": {
     "title": "Lattice AI Server (local)",
-    "version": "8.9.0"
+    "version": "9.0.0"
   },
   "openapi": "3.1.0",
   "paths": {
@@ -9876,6 +9876,22 @@
           }
         },
         "summary": "Manifest"
+      }
+    },
+    "/marketplace/interop/bridges": {
+      "get": {
+        "operationId": "list_interop_bridges_marketplace_interop_bridges_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": "List Interop Bridges"
       }
     },
     "/marketplace/templates": {

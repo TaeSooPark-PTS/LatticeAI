@@ -75,6 +75,7 @@ def test_models_endpoint_distinguishes_gemma4_12b_runtime_update_from_26b_ready(
         create_models_router(
             model_router=_FakeRouter(),
             require_user=lambda _request: "tester",
+            require_admin=lambda _request: ("tester", {}),
             get_current_user=lambda _request: "tester",
             load_users=lambda: {},
             get_user_role=lambda *_args, **_kwargs: "admin",

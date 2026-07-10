@@ -207,6 +207,7 @@ def create_tools_router(
     mcp_public_item=None,
     hooks=None,
     allowed_workspaces_for=None,
+    workspace_service=None,
 ) -> APIRouter:
     if tool_context is not None:
         config = tool_context.config
@@ -233,6 +234,7 @@ def create_tools_router(
         mcp_public_item = tool_context.mcp_public_item
         hooks = tool_context.hooks
         allowed_workspaces_for = tool_context.allowed_workspaces_for
+        workspace_service = tool_context.workspace_service
 
     api_router = APIRouter()
     HOOKS = hooks
@@ -437,14 +439,23 @@ def create_tools_router(
     @api_router.post("/tools/read_document")
     async def tools_read_document(req: ToolPathRequest, request: Request):
         current_user = require_user(request)
-        if Path(req.path).expanduser().is_absolute():
+        raw_path = Path(req.path).expanduser()
+        target = raw_path.resolve() if raw_path.is_absolute() else (AGENT_ROOT / raw_path).resolve()
+        inside_agent_workspace = target == AGENT_ROOT or AGENT_ROOT in target.parents
+        if not inside_agent_workspace:
             permission_gateway.require_local_approval(
                 token=req.approval_token,
-                path=req.path,
+                path=str(target),
                 action="read",
                 user_email=current_user,
             )
-        return _tool_response(read_document, req.path, current_user=current_user)
+        return _tool_response(
+            read_document,
+            str(target),
+            current_user=current_user,
+            source="workspace" if inside_agent_workspace else "approved_local",
+            trusted_admin=True,
+        )
     
     
     @api_router.get("/tools/pdf_pages")
@@ -518,12 +529,14 @@ def create_tools_router(
             append_audit_event=append_audit_event,
             enforce_rate_limit=enforce_rate_limit,
             hooks=HOOKS,
+            workspace_service=workspace_service,
         )
     
     
     api_router.include_router(permissions_router)
     api_router.include_router(create_local_files_router(
         require_user=require_user,
+        require_admin=require_admin,
         tool_response=_tool_response,
         permission_gateway=permission_gateway,
         knowledge_graph=KNOWLEDGE_GRAPH,
@@ -534,6 +547,7 @@ def create_tools_router(
         hooks=HOOKS,
         data_dir=DATA_DIR,
         allowed_workspaces_for=allowed_workspaces_for,
+        workspace_service=workspace_service,
     ))
     api_router.include_router(create_computer_use_router(
         model_router=router,
@@ -680,6 +694,8 @@ def create_tools_router(
         knowledge_graph=KNOWLEDGE_GRAPH,
         ingestion_pipeline=ingestion_pipeline,
         data_dir=DATA_DIR,
+        allowed_workspaces_for=allowed_workspaces_for,
+        workspace_service=workspace_service,
     ))
 
     return api_router

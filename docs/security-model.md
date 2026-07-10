@@ -22,10 +22,13 @@ Lattice AI는 **개인 AI 워크스페이스**로 설계되었습니다. 기본�
 
 ### 세션
 
-- UUID 토큰, `~/.ltcai/sessions.json` 파일 저장
+- `secrets.token_urlsafe`로 생성한 토큰은 SHA-256 해시만
+  `~/.ltcai/sessions.json`에 저장(레거시 평문 토큰은 로드 시 자동 마이그레이션)
 - TTL: 24시간 + sliding refresh (활동 시 자동 연장, 15분 단위 디스크 쓰기)
 - 쿠키: `HttpOnly; SameSite=Lax; Path=/`
 - 서버 재시작 후에도 유지 (파일 기반)
+- 삭제되거나 비활성화된 계정의 기존 세션은 다음 요청에서 즉시 거부
+- POSIX에서 데이터 디렉터리 `0700`, atomic JSON/세션 파일 `0600`
 
 ### SSO (선택적)
 
@@ -83,15 +86,24 @@ MAGIC_NUMBERS = {
 - **수집 라이프사이클**: 모든 수집은 `IngestionPipeline.ingest` → `dispatch_tool`
   를 거쳐 `pre_tool`/`post_tool` 훅이 발화됩니다. `pre_tool`이 차단하면 수집은
   정직하게 `status="blocked"`로 거부됩니다(권한 게이트·민감정보 가드 적용).
-- **웹 URL 읽기**(`/api/browser/read-url`): `http(s)` 스킴만 허용(파일/기타 스킴
-  거부), 12초 타임아웃, 4MB 응답 상한, HTML/text 컨텐츠 타입만 처리. 차단/로그인
-  필요 페이지는 5xx가 아닌 **422로 우아하게 실패**합니다. 로컬 런타임이 사용자가
-  명시한 URL만 가져옵니다(자동 크롤링 없음).
+- **웹 URL 읽기**(`/api/browser/read-url`): `http(s)`만 허용하고 DNS의 모든 결과에서
+  loopback/private/link-local/multicast/reserved 주소를 거부합니다. 검증한 IP에 연결을
+  고정해 DNS rebinding을 막고, redirect마다 재검증하며 환경 proxy를 사용하지
+  않습니다. 12초 타임아웃, 스트리밍된 4MB 응답 상한, textual content type만
+  처리합니다. 차단/로그인 필요 페이지는 5xx가 아닌 **422로 실패**합니다.
 - **브라우저 탭 수집**(`/api/browser/ingest-current-tab`): payload 정화(스크립트/
   스타일 제거) + 페이로드 크기 상한(413). Manifest V3 확장은 **`127.0.0.1`로만**
   전송하며 클라우드 엔드포인트가 없습니다.
-- **포터빌리티 권한**: 그래프 export/status 읽기는 로그인 사용자, **import /
-  backup / restore 는 admin 전용**(`require_admin`). 그래프는 머신-전역 자원입니다.
+- **포터빌리티 권한**: 상태 읽기는 로그인 사용자, 전체 그래프 export/provenance와
+  **import / backup / restore는 admin 전용**(`require_admin`)입니다. 그래프는
+  머신-전역 자원입니다.
+- **워크스페이스 컨텍스트**: MCP 그래프 호출, 메모리 recall, hybrid search,
+  garden-note 컨텍스트, realtime presence는 인증된 사용자와 활성/허용 workspace에
+  바인딩됩니다. 에이전트·플러그인 registry 및 graph curation 변경은 admin
+  전용이며, MCP 환경 변수 값은 API 응답에 포함되지 않습니다. MCP/플러그인
+  실행은 local file/document 도구를 호출할 수 없고 전용 승인 토큰 경로를
+  사용해야 합니다. Document RAG와 answer trace도 동일한 workspace 범위로
+  검색·저장됩니다.
 - **복원 무결성**: 백업 아카이브는 `manifest.json`의 sha256과 대조 검증 후에만
   복원되며, 불일치 시 거부됩니다.
 
@@ -99,9 +111,10 @@ MAGIC_NUMBERS = {
 
 ### `run_command()` 위험 플래그 차단
 
-다음 패턴이 포함된 명령 실행 거부:
-- `rm -rf`, `sudo`, `chmod 777`, `curl | bash`, `wget | sh`
-- `> /dev/sda`, `dd if=`, `mkfs`
+고정 allowlist(`pwd`, `ls`, `find`, `cat`, `head`, `tail`, `wc`, `rg`)와 정화된
+환경만 사용합니다. Python/Node/npm/npx/sed 같은 일반 인터프리터, 실행 파일 경로,
+절대 경로·`..` traversal·workspace 밖 symlink, `rg --pre`, `find -exec/-delete`
+등은 실행 전에 거부합니다.
 
 ### `edit_file()` 유일성 검증
 

@@ -366,6 +366,7 @@ class IngestionPipeline:
             user_email=owner,
             source=meta.get("source") or source_type,
             conversation_id=item.conversation_id,
+            workspace_id=item.workspace_id,
             metadata={**meta, "detail": (item.text or "")[:2000]},
         )
         result.setdefault("node_id", result.get("node_id") or result.get("id"))

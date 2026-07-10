@@ -232,18 +232,30 @@ class PermissionGateway:
             raise HTTPException(status_code=403, detail="승인된 파일 내용과 요청 내용이 다릅니다.")
 
     def check_permission_auth(self, request: Request, token: Optional[str] = None) -> None:
+        """Authorize an approval decision.
+
+        Possession of the approval token is deliberately *not* sufficient:
+        the requester receives that token in order to poll status, so allowing
+        token ownership here would let them approve their own request.
+        """
+        _ = token  # retained for compatibility with existing call sites
         if self.permission_monitor_secret:
             auth_header = request.headers.get("Authorization", "")
-            if auth_header == f"Bearer {self.permission_monitor_secret}":
-                return
-        if token:
-            key = self.token_hash(token)
-            current_user = self.get_current_user(request)
-            with self.local_approval_lock:
-                record = self.local_approvals.get(key)
-            if current_user and record and record.get("user_email") == current_user:
+            expected = f"Bearer {self.permission_monitor_secret}"
+            if secrets.compare_digest(auth_header, expected):
                 return
         self.require_admin(request)
+
+    def require_permission_status_owner(self, *, token: str, user_email: str) -> None:
+        """Allow approval-status polling only to the original requester."""
+        key = self.token_hash(token)
+        with self.local_approval_lock:
+            record = self.local_approvals.get(key)
+        # Missing/expired tokens intentionally retain the generic status
+        # response. For a live request, however, a different account must not
+        # learn or poll its state even if it obtains the URL.
+        if record and record.get("user_email") != user_email:
+            raise HTTPException(status_code=403, detail="다른 사용자의 승인 상태는 조회할 수 없습니다.")
 
     def ensure_path_allowed(self, path: str, *, action: str) -> None:
         if action != "write":
@@ -347,7 +359,8 @@ def create_permissions_router(
 
     @router.get("/permissions/status/{token}")
     async def permissions_status(token: str, request: Request):
-        require_user(request)
+        current_user = require_user(request)
+        gateway.require_permission_status_owner(token=token, user_email=current_user)
         now = time.time()
         key = gateway.token_hash(token)
         with gateway.local_approval_lock:

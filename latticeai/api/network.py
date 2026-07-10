@@ -23,7 +23,7 @@ class PeerPushRequest(BaseModel):
     workspace_id: Optional[str] = None
 
 
-def create_network_router(*, network, identity, require_user) -> APIRouter:
+def create_network_router(*, network, identity, require_user, require_admin) -> APIRouter:
     router = APIRouter()
 
     @router.get("/network/identity")
@@ -33,12 +33,12 @@ def create_network_router(*, network, identity, require_user) -> APIRouter:
 
     @router.get("/network/peers")
     async def network_peers(request: Request):
-        require_user(request)
+        require_admin(request)
         return {"peers": network.list_peers()}
 
     @router.post("/network/peers")
     async def network_pair(req: PeerPairRequest, request: Request):
-        require_user(request)
+        require_admin(request)
         try:
             return {"status": "paired", "peer": network.add_peer(
                 name=req.name, base_url=req.base_url, public_key=req.public_key,
@@ -48,7 +48,7 @@ def create_network_router(*, network, identity, require_user) -> APIRouter:
 
     @router.delete("/network/peers/{peer_id}")
     async def network_unpair(peer_id: str, request: Request):
-        require_user(request)
+        require_admin(request)
         try:
             return network.remove_peer(peer_id)
         except FileNotFoundError as exc:
@@ -56,7 +56,7 @@ def create_network_router(*, network, identity, require_user) -> APIRouter:
 
     @router.post("/network/push/{peer_id}")
     async def network_push(peer_id: str, req: PeerPushRequest, request: Request):
-        require_user(request)
+        require_admin(request)
         try:
             return network.push_to_peer(peer_id, workspace_id=req.workspace_id)
         except FileNotFoundError as exc:

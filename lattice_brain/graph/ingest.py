@@ -5,6 +5,20 @@ from __future__ import annotations
 from ._kg_common import *  # noqa: F403,F401
 
 
+def _scoped_slug_id(prefix: str, value: str, workspace_id: Optional[str]) -> str:
+    """Keep legacy IDs unchanged while isolating every newly scoped identity."""
+    slug = _slug(value)
+    if not workspace_id:
+        return f"{prefix}:{slug}"
+    scope = _sha256_text(str(workspace_id))[:12]
+    return f"{prefix}:{scope}:{slug}"
+
+
+def _scoped_hash_id(prefix: str, value: str, workspace_id: Optional[str]) -> str:
+    identity = f"{workspace_id}|{value}" if workspace_id else value
+    return f"{prefix}:{_sha256_text(identity)[:24]}"
+
+
 class KnowledgeGraphIngestMixin:
     def ingest_message(
         self,
@@ -19,12 +33,10 @@ class KnowledgeGraphIngestMixin:
         raw: Optional[Dict[str, Any]] = None,
     ) -> Dict[str, Any]:
         content = str(content or "")
-        digest = _sha256_text(
-            "|".join([role or "", content, conversation_id or "", user_email or ""])
-        )[:24]
         node_type = "AIResponse" if role == "assistant" else "Message"
-        node_id = f"{node_type.lower()}:{digest}"
-        conv_id = f"conversation:{_slug(conversation_id or 'default')}"
+        message_identity = "|".join([role or "", content, conversation_id or "", user_email or ""])
+        node_id = _scoped_hash_id(node_type.lower(), message_identity, workspace_id)
+        conv_id = _scoped_slug_id("conversation", conversation_id or "default", workspace_id)
         metadata = {
             "role": role,
             "source": source,
@@ -58,7 +70,7 @@ class KnowledgeGraphIngestMixin:
             person_id = None
             if user_email or user_nickname:
                 person_key = user_email or user_nickname or "unknown"
-                person_id = f"person:{_slug(person_key)}"
+                person_id = _scoped_slug_id("person", person_key, workspace_id)
                 self._upsert_node(
                     conn,
                     person_id,
@@ -121,7 +133,7 @@ class KnowledgeGraphIngestMixin:
             concept_ids: Dict[str, str] = {}
             for concept in concepts:
                 node_t = _classify_node_type(concept, content)
-                cid = f"{node_t.lower()}:{_slug(concept)}"
+                cid = _scoped_slug_id(node_t.lower(), concept, workspace_id)
                 concept_ids[concept.lower()] = cid
                 self._upsert_node(
                     conn,
@@ -212,7 +224,7 @@ class KnowledgeGraphIngestMixin:
         text = str(
             (extracted or {}).get("content") or (extracted or {}).get("preview") or ""
         )
-        file_id = f"file:{digest[:24]}"
+        file_id = _scoped_hash_id("file", digest, workspace_id)
         metadata = {
             "filename": filename,
             "ext": ext,
@@ -253,7 +265,14 @@ class KnowledgeGraphIngestMixin:
                 owner=owner or uploader,
                 workspace_id=workspace_id,
             )
-            self._ingest_structure_nodes(conn, file_id, filename, doc_meta)
+            self._ingest_structure_nodes(
+                conn,
+                file_id,
+                filename,
+                doc_meta,
+                owner=owner or uploader,
+                workspace_id=workspace_id,
+            )
 
             # ── SOURCE 노드 + indexed_from (v3.6.0, source_type 지정 시) ──────
             if source_type:
@@ -274,7 +293,7 @@ class KnowledgeGraphIngestMixin:
 
             # ── Person 노드 + 동사형 엣지 ─────────────────────────────────────
             if uploader:
-                person_id = f"person:{_slug(uploader)}"
+                person_id = _scoped_slug_id("person", uploader, workspace_id)
                 self._upsert_node(
                     conn,
                     person_id,
@@ -289,7 +308,7 @@ class KnowledgeGraphIngestMixin:
 
             # ── Chat 노드와 연결 ──────────────────────────────────────────────
             if conversation_id:
-                conv_id = f"conversation:{_slug(conversation_id)}"
+                conv_id = _scoped_slug_id("conversation", conversation_id, workspace_id)
                 self._upsert_node(
                     conn,
                     conv_id,
@@ -329,7 +348,7 @@ class KnowledgeGraphIngestMixin:
             concept_ids: Dict[str, str] = {}
             for concept in concepts:
                 node_t = _classify_node_type(concept, full_text)
-                cid = f"{node_t.lower()}:{_slug(concept)}"
+                cid = _scoped_slug_id(node_t.lower(), concept, workspace_id)
                 concept_ids[concept.lower()] = cid
                 self._upsert_node(
                     conn,
@@ -403,6 +422,7 @@ class KnowledgeGraphIngestMixin:
         user_nickname: Optional[str] = None,
         source: Optional[str] = None,
         conversation_id: Optional[str] = None,
+        workspace_id: Optional[str] = None,
         metadata: Optional[Dict[str, Any]] = None,
     ) -> Dict[str, Any]:
         event_type = str(event_type or "Event")
@@ -414,11 +434,12 @@ class KnowledgeGraphIngestMixin:
             "user_nickname": user_nickname,
             "source": source,
             "conversation_id": conversation_id,
+            "workspace_id": workspace_id,
             "metadata": metadata or {},
             "timestamp": _now(),
         }
-        event_id = f"event:{_sha256_text(_json(payload))[:24]}"
-        conv_id = f"conversation:{_slug(conversation_id or 'default')}"
+        event_id = _scoped_hash_id("event", _json(payload), workspace_id)
+        conv_id = _scoped_slug_id("conversation", conversation_id or "default", workspace_id)
         with self._connect() as conn:
             self._upsert_node(
                 conn,
@@ -428,26 +449,32 @@ class KnowledgeGraphIngestMixin:
                 summary=title,
                 metadata=payload,
                 raw=payload,
+                owner=user_email,
+                workspace_id=workspace_id,
             )
             self._upsert_node(
                 conn,
                 conv_id,
                 "Conversation",
                 conversation_id or "Default conversation",
-                metadata={"source": source},
+                metadata={"source": source, "workspace_id": workspace_id},
+                owner=user_email,
+                workspace_id=workspace_id,
             )
             self._upsert_edge(
                 conn, conv_id, event_id, "has_event", metadata={"source": source}
             )
             if user_email or user_nickname:
                 person_key = user_email or user_nickname or "unknown"
-                person_id = f"person:{_slug(person_key)}"
+                person_id = _scoped_slug_id("person", person_key, workspace_id)
                 self._upsert_node(
                     conn,
                     person_id,
                     "Person",
                     user_nickname or user_email or "Unknown user",
-                    metadata={"email": user_email},
+                    metadata={"email": user_email, "workspace_id": workspace_id},
+                    owner=user_email,
+                    workspace_id=workspace_id,
                 )
                 self._upsert_edge(
                     conn,
@@ -599,7 +626,7 @@ class KnowledgeGraphIngestMixin:
             )
             # ── 소유자(Person) + 동사형 엣지 ────────────────────────────────
             if owner:
-                person_id = f"person:{_slug(owner)}"
+                person_id = _scoped_slug_id("person", owner, workspace_id)
                 self._upsert_node(
                     conn,
                     person_id,
@@ -612,7 +639,7 @@ class KnowledgeGraphIngestMixin:
                 self._upsert_edge(conn, person_id, content_id, "업로드함", weight=1.0)
             # ── 대화 연결 ───────────────────────────────────────────────────
             if conversation_id:
-                conv_id = f"conversation:{_slug(conversation_id)}"
+                conv_id = _scoped_slug_id("conversation", conversation_id, workspace_id)
                 self._upsert_node(
                     conn,
                     conv_id,
@@ -649,7 +676,7 @@ class KnowledgeGraphIngestMixin:
             concept_ids: Dict[str, str] = {}
             for concept in concepts:
                 node_t = _classify_node_type(concept, full_text)
-                cid = f"{node_t.lower()}:{_slug(concept)}"
+                cid = _scoped_slug_id(node_t.lower(), concept, workspace_id)
                 concept_ids[concept.lower()] = cid
                 self._upsert_node(
                     conn,

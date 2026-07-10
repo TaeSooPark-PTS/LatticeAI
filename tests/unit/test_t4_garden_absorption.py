@@ -77,6 +77,18 @@ def test_relevant_context_falls_back_to_vault_without_graph(vault, tmp_path):
     assert "kubernetes" in context.lower()
 
 
+def test_scoped_relevant_context_never_falls_back_to_unscoped_vault(vault, tmp_path):
+    gardener = PReinforceGardener()
+    (vault / "10_Wiki" / "secret.md").write_text("org two secret", encoding="utf-8")
+
+    context = gardener.get_relevant_context(
+        "secret",
+        allowed_workspaces={"org-one"},
+    )
+
+    assert context == ""
+
+
 def test_get_tree_returns_real_structure(vault, tmp_path):
     gardener = PReinforceGardener()
     (vault / "10_Wiki" / "a.md").write_text("# a", encoding="utf-8")

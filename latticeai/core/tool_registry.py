@@ -88,6 +88,14 @@ def _r(sandbox: str = "workspace", rollback: str = "none") -> ToolPolicy:
     )
 
 
+def _rc(sandbox: str = "home", rollback: str = "none") -> ToolPolicy:
+    """Read operation that still requires explicit human consent."""
+    return ToolPolicy(
+        risk="read", destructive=False, shell=False, network=False,
+        auto_approve=False, sandbox=sandbox, rollback=rollback,
+    )
+
+
 def _rs(sandbox: str = "workspace", rollback: str = "none") -> ToolPolicy:
     return ToolPolicy(
         risk="read", destructive=False, shell=True, network=False,
@@ -146,9 +154,9 @@ TOOL_GOVERNANCE: Dict[str, ToolPolicy] = {
     "inspect_html": _r(),
     "preview_url": _r(),
     "todo_read": _r(),
-    "local_list": _r(sandbox="home"),
-    "local_read": _r(sandbox="home"),
-    "read_document": _r(sandbox="home"),
+    "local_list": _rc(sandbox="home"),
+    "local_read": _rc(sandbox="home"),
+    "read_document": _rc(sandbox="home"),
     "git_status": _rs(),
     "git_diff": _rs(),
     "git_log": _rs(),

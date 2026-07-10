@@ -12,6 +12,9 @@ class KnowledgeGraphDocumentsMixin:
         file_id: str,
         filename: str,
         structure: Dict[str, Any],
+        *,
+        owner: Optional[str] = None,
+        workspace_id: Optional[str] = None,
     ) -> None:
         for slide in structure.get("slides") or []:
             index = slide.get("index")
@@ -19,18 +22,28 @@ class KnowledgeGraphDocumentsMixin:
             title = f"{filename} slide {index}"
             summary = "\n".join(slide.get("texts") or [])[:800]
             self._upsert_node(
-                conn, slide_id, "Slide", title, summary=summary, metadata=slide
+                conn,
+                slide_id,
+                "Slide",
+                title,
+                summary=summary,
+                metadata={**slide, "workspace_id": workspace_id},
+                owner=owner,
+                workspace_id=workspace_id,
             )
             self._upsert_edge(conn, file_id, slide_id, "has_slide")
             for text in slide.get("texts") or []:
                 for topic in _topic_candidates(text, limit=4):
-                    topic_id = f"topic:{_slug(topic)}"
+                    topic_key = f"{workspace_id}|{topic}" if workspace_id else topic
+                    topic_id = f"topic:{_sha256_text(topic_key)[:24]}" if workspace_id else f"topic:{_slug(topic)}"
                     self._upsert_node(
                         conn,
                         topic_id,
                         "Topic",
                         topic,
-                        metadata={"auto_extracted": True},
+                        metadata={"auto_extracted": True, "workspace_id": workspace_id},
+                        owner=owner,
+                        workspace_id=workspace_id,
                     )
                     self._upsert_edge(conn, slide_id, topic_id, "discusses", weight=0.6)
 
@@ -44,13 +57,22 @@ class KnowledgeGraphDocumentsMixin:
                 "Page",
                 title,
                 summary=page.get("preview") or "",
-                metadata=page,
+                metadata={**page, "workspace_id": workspace_id},
+                owner=owner,
+                workspace_id=workspace_id,
             )
             self._upsert_edge(conn, file_id, page_id, "has_page")
             for topic in _topic_candidates(page.get("preview") or "", limit=4):
-                topic_id = f"topic:{_slug(topic)}"
+                topic_key = f"{workspace_id}|{topic}" if workspace_id else topic
+                topic_id = f"topic:{_sha256_text(topic_key)[:24]}" if workspace_id else f"topic:{_slug(topic)}"
                 self._upsert_node(
-                    conn, topic_id, "Topic", topic, metadata={"auto_extracted": True}
+                    conn,
+                    topic_id,
+                    "Topic",
+                    topic,
+                    metadata={"auto_extracted": True, "workspace_id": workspace_id},
+                    owner=owner,
+                    workspace_id=workspace_id,
                 )
                 self._upsert_edge(conn, page_id, topic_id, "discusses", weight=0.6)
 
@@ -58,7 +80,13 @@ class KnowledgeGraphDocumentsMixin:
             sheet_title = sheet.get("title")
             sheet_id = f"sheet:{_sha256_text(f'{file_id}:sheet:{sheet_title}')[:24]}"
             self._upsert_node(
-                conn, sheet_id, "Sheet", f"{filename} / {sheet_title}", metadata=sheet
+                conn,
+                sheet_id,
+                "Sheet",
+                f"{filename} / {sheet_title}",
+                metadata={**sheet, "workspace_id": workspace_id},
+                owner=owner,
+                workspace_id=workspace_id,
             )
             self._upsert_edge(conn, file_id, sheet_id, "has_sheet")
 
@@ -66,14 +94,21 @@ class KnowledgeGraphDocumentsMixin:
             image_key = image.get("sha256") or _sha256_text(
                 json.dumps(image, ensure_ascii=False, sort_keys=True)
             )
-            image_id = f"image:{str(image_key)[:24]}"
+            scoped_image_key = f"{workspace_id}|{image_key}" if workspace_id else str(image_key)
+            image_id = f"image:{_sha256_text(scoped_image_key)[:24]}" if workspace_id else f"image:{str(image_key)[:24]}"
             title_parts = [filename, "image"]
             if image.get("page"):
                 title_parts.append(f"page {image.get('page')}")
             if image.get("name"):
                 title_parts.append(str(image.get("name")).split("/")[-1])
             self._upsert_node(
-                conn, image_id, "Image", " / ".join(title_parts), metadata=image
+                conn,
+                image_id,
+                "Image",
+                " / ".join(title_parts),
+                metadata={**image, "workspace_id": workspace_id},
+                owner=owner,
+                workspace_id=workspace_id,
             )
             self._upsert_edge(conn, file_id, image_id, "contains_image")
 

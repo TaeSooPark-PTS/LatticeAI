@@ -2,7 +2,9 @@
 
 from __future__ import annotations
 
+import os
 import shlex
+import shutil
 import subprocess
 from pathlib import Path
 from typing import Any, Dict, List, Optional
@@ -25,7 +27,46 @@ from tools import (
 )
 
 # find(1) flags that execute or delete; checked in run_command.
-_BLOCKED_FIND_FLAGS = {"-exec", "-execdir", "-delete", "-ok", "-okdir"}
+_BLOCKED_FIND_FLAGS = {
+    "-delete",
+    "-exec",
+    "-execdir",
+    "-fls",
+    "-fprint",
+    "-fprintf",
+    "-ok",
+    "-okdir",
+}
+_BLOCKED_RG_FLAGS = {"--pre", "--pre-glob"}
+_SAFE_EXECUTABLE_PATH = "/usr/bin:/bin:/usr/sbin:/sbin:/opt/homebrew/bin:/usr/local/bin"
+
+
+def _argument_value(argument: str) -> str:
+    if argument.startswith("-") and "=" in argument:
+        return argument.split("=", 1)[1]
+    return argument
+
+
+def _validate_command_paths(parts: List[str], workdir: Path) -> None:
+    """Reject traversal and symlink escapes hidden in command arguments."""
+    for argument in parts[1:]:
+        value = _argument_value(argument)
+        if not value or value == "/dev/null" or (argument.startswith("-") and "=" not in argument):
+            continue
+        candidate_path = Path(value).expanduser()
+        if candidate_path.is_absolute():
+            raise ToolError(f"Absolute paths in command arguments are not allowed: {value}")
+        if ".." in candidate_path.parts:
+            raise ToolError(f"Path traversal in command arguments is not allowed: {value}")
+
+        candidate = workdir / candidate_path
+        # Existing arguments (including symlinks) and explicit path-shaped
+        # values must resolve inside the workspace. Other values can be search
+        # patterns, counts, or expressions and are not interpreted as paths.
+        if candidate.exists() or candidate.is_symlink() or "/" in value or "\\" in value:
+            resolved = candidate.resolve(strict=False)
+            if resolved != tools.AGENT_ROOT and tools.AGENT_ROOT not in resolved.parents:
+                raise ToolError(f"Path escapes the agent workspace: {value}")
 
 
 def run_command(command: str, cwd: Optional[str] = None) -> Dict[str, Any]:
@@ -35,6 +76,8 @@ def run_command(command: str, cwd: Optional[str] = None) -> Dict[str, Any]:
         raise ToolError("Command is empty.")
 
     executable = Path(parts[0]).name
+    if parts[0] != executable:
+        raise ToolError("Executable paths are not allowed.")
     if executable in BLOCKED_COMMANDS or executable not in ALLOWED_COMMANDS:
         raise ToolError(f"Command is not allowed: {executable}")
     if executable == "git":
@@ -45,20 +88,37 @@ def run_command(command: str, cwd: Optional[str] = None) -> Dict[str, Any]:
         blocked = [f for f in parts[1:] if f in _BLOCKED_FIND_FLAGS]
         if blocked:
             raise ToolError(f"find flags are not allowed: {', '.join(blocked)}")
-    abs_args = [a for a in parts[1:] if a.startswith("/") and a not in ("/dev/null",)]
-    if abs_args:
-        raise ToolError(f"Absolute paths in command arguments are not allowed: {abs_args[0]}")
+    if executable == "rg":
+        blocked = [
+            flag
+            for flag in parts[1:]
+            if any(flag == denied or flag.startswith(f"{denied}=") for denied in _BLOCKED_RG_FLAGS)
+        ]
+        if blocked:
+            raise ToolError(f"rg flags are not allowed: {', '.join(blocked)}")
 
     workdir = _resolve_path(cwd or ".")
     if not workdir.exists() or not workdir.is_dir():
         raise ToolError("Working directory does not exist.")
+    _validate_command_paths(parts, workdir)
+
+    executable_path = shutil.which(executable, path=_SAFE_EXECUTABLE_PATH)
+    if not executable_path:
+        raise ToolError(f"Allowed command is not installed: {executable}")
+    environment = {
+        "HOME": str(tools.AGENT_ROOT),
+        "LANG": os.environ.get("LANG", "C.UTF-8"),
+        "LC_ALL": os.environ.get("LC_ALL", "C.UTF-8"),
+        "PATH": _SAFE_EXECUTABLE_PATH,
+    }
 
     try:
         completed = subprocess.run(
-            parts,
+            [executable_path, *parts[1:]],
             cwd=workdir,
             capture_output=True,
             text=True,
+            env=environment,
             timeout=MAX_COMMAND_SECONDS,
             check=False,
         )

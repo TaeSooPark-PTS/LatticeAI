@@ -21,11 +21,21 @@ from __future__ import annotations
 import argparse
 import json
 import re
+import tarfile
 import zipfile
 from pathlib import Path
 from typing import Dict, List, Optional
 
 SEMVER_RE = re.compile(r"^\d+\.\d+\.\d+([.-][0-9A-Za-z.]+)?$")
+FORBIDDEN_PERSONAL_PATHS = (
+    re.compile(r"(?:^|/)DISCORD_AGENTS\.md$", re.IGNORECASE),
+    re.compile(r"(?:^|/)scripts/[^/]*discord-bridge[^/]*\.mjs$", re.IGNORECASE),
+    re.compile(r"(?:^|/)scripts/start-[^/]*-discord\.sh$", re.IGNORECASE),
+    re.compile(r"(?:^|/)scripts/com\.[^/]*\.discord\.plist$", re.IGNORECASE),
+    re.compile(r"(?:^|/)bin/pts-grok$", re.IGNORECASE),
+    re.compile(r"(?:^|/)scripts/launch-pts-grok\.sh$", re.IGNORECASE),
+    re.compile(r"(?:^|/)(?:HEARTBEAT|IDENTITY|SOUL|TOOLS|USER)\.md$", re.IGNORECASE),
+)
 
 
 def _expected_names(version: str) -> Dict[str, str]:
@@ -58,6 +68,36 @@ def _vsix_version(path: Path) -> Optional[str]:
     return None
 
 
+def _forbidden_archive_entries(path: Path) -> List[str]:
+    """Return machine-local bot/agent paths accidentally shipped in an archive."""
+    names: List[str] = []
+    try:
+        if zipfile.is_zipfile(path):
+            with zipfile.ZipFile(path) as archive:
+                names = archive.namelist()
+        elif tarfile.is_tarfile(path):
+            with tarfile.open(path, "r:*") as archive:
+                names = archive.getnames()
+    except (OSError, tarfile.TarError, zipfile.BadZipFile):
+        # Archive integrity is validated by the package-specific smoke checks;
+        # this helper is narrowly responsible for preventing personal files.
+        return []
+
+    return sorted(
+        name
+        for name in names
+        if any(pattern.search(name.replace("\\", "/")) for pattern in FORBIDDEN_PERSONAL_PATHS)
+    )
+
+
+def _reject_personal_files(path: Path, artifact_type: str, errors: List[str]) -> None:
+    forbidden = _forbidden_archive_entries(path)
+    if forbidden:
+        errors.append(
+            f"{artifact_type} contains machine-local bot/agent files: {', '.join(forbidden)}"
+        )
+
+
 def validate(
     version: str,
     dist_dir: Path,
@@ -84,6 +124,7 @@ def validate(
         artifact = dist_dir / expected[key]
         if artifact.is_file():
             found[key] = str(artifact)
+            _reject_personal_files(artifact, key, errors)
         else:
             errors.append(f"missing {key}: {artifact.name}")
 
@@ -91,6 +132,7 @@ def validate(
     vsix = dist_dir / expected["vsix"]
     if vsix.is_file():
         found["vsix"] = str(vsix)
+        _reject_personal_files(vsix, "vsix", errors)
         if not _vsix_has_entrypoint(vsix):
             errors.append(f"{vsix.name} is missing extension/out/extension.js (compile step skipped?)")
         vsix_ver = _vsix_version(vsix)
@@ -100,12 +142,12 @@ def validate(
         errors.append(f"missing vsix: {vsix.name}")
 
     # npm pack tarball lives at repo root, not dist/.
-    if require_tgz:
-        tgz = dist_dir.parent / f"ltcai-{version}.tgz"
-        if tgz.is_file():
-            found["tgz"] = str(tgz)
-        else:
-            warnings.append(f"npm tarball not found: {tgz.name} (run `npm pack`)")
+    tgz = dist_dir.parent / f"ltcai-{version}.tgz"
+    if tgz.is_file():
+        found["tgz"] = str(tgz)
+        _reject_personal_files(tgz, "npm tarball", errors)
+    elif require_tgz:
+        errors.append(f"missing npm tarball: {tgz.name} (run `npm pack`)")
 
     dmg = dist_dir.parent / "src-tauri" / "target" / "release" / "bundle" / "dmg" / f"Lattice AI_{version}_aarch64.dmg"
     if dmg.is_file():
@@ -144,7 +186,7 @@ def main(argv: Optional[List[str]] = None) -> int:
     parser.add_argument("version", help="exact version to validate, e.g. 1.1.0")
     parser.add_argument("--dist", default="dist", help="dist directory (default: dist)")
     parser.add_argument("--require-vsix", action="store_true", help="fail if the VSIX is absent")
-    parser.add_argument("--require-tgz", action="store_true", help="check for npm pack tarball at repo root")
+    parser.add_argument("--require-tgz", action="store_true", help="fail if the npm pack tarball is absent")
     parser.add_argument("--require-dmg", action="store_true", help="fail if the Tauri DMG is absent")
     parser.add_argument("--json", action="store_true", help="emit machine-readable JSON")
     args = parser.parse_args(argv)

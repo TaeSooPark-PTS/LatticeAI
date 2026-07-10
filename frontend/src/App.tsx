@@ -10,7 +10,6 @@ import { AdminAccessGate } from "@/components/AdminAccessGate";
 import { t, type Language } from "@/i18n";
 import { latticeApi } from "@/api/client";
 import { useQuery } from "@tanstack/react-query";
-import { FeedbackState } from "@/components/FeedbackState";
 import { Brain, Menu, X } from "lucide-react";
 import { navigateHash } from "@/features/brain/navigation";
 import { clamp } from "@/lib/utils";
@@ -194,31 +193,11 @@ function BrainShell({
           <VsCodeSyncStatus language={language} />
           <WorkspaceProfileSwitcher language={language} />
           <AdminAccessGate language={language} />
-          <ExternalConsentStatus language={language} />
         </div>
       </aside>
 
       <section className="brain-shell-content">{children}</section>
     </main>
-  );
-}
-
-function ExternalConsentStatus({ language }: { language: Language }) {
-  const externalConsent = useAppStore((state) => state.externalConsent);
-  const setExternalConsent = useAppStore((state) => state.setExternalConsent);
-
-  return (
-    <section className="external-consent-status" aria-label={t(language, "feedback.consent.aria")}>
-      <FeedbackState
-        tone="empty"
-        compact={externalConsent}
-        language={language}
-        title={externalConsent ? t(language, "feedback.consent.activeTitle") : t(language, "feedback.consent.revokedTitle")}
-        body={externalConsent ? t(language, "feedback.consent.activeBody") : t(language, "feedback.consent.revokedBody")}
-        actionLabel={externalConsent ? t(language, "feedback.consent.revoke") : t(language, "feedback.consent.reenable")}
-        onAction={() => setExternalConsent(!externalConsent)}
-      />
-    </section>
   );
 }
 

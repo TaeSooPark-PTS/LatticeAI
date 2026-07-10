@@ -30,8 +30,22 @@ class ChatService:
 
     # ── answer-trace recording (Graph RAG) ───────────────────────────────
 
-    def build_graph_trace(self, question: str, graph: Any, context: str = "", *, limit: int = 8) -> Dict[str, Any]:
-        return self._store.build_graph_trace(question, graph, context, limit=limit)
+    def build_graph_trace(
+        self,
+        question: str,
+        graph: Any,
+        context: str = "",
+        *,
+        limit: int = 8,
+        allowed_workspaces=None,
+    ) -> Dict[str, Any]:
+        return self._store.build_graph_trace(
+            question,
+            graph,
+            context,
+            limit=limit,
+            allowed_workspaces=allowed_workspaces,
+        )
 
     def record_trace(
         self,

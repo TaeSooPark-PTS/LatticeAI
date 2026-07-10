@@ -1,21 +1,87 @@
 #!/usr/bin/env node
 import { spawn } from "node:child_process";
-import { existsSync } from "node:fs";
+import { existsSync, mkdirSync, mkdtempSync, rmSync } from "node:fs";
+import { tmpdir } from "node:os";
 import { join } from "node:path";
 
 const host = process.env.LTCAI_TEST_HOST || "127.0.0.1";
+if (!new Set(["127.0.0.1", "localhost"]).has(host)) {
+  throw new Error(`LTCAI_TEST_HOST must be loopback, received: ${host}`);
+}
 const port = process.env.LTCAI_TEST_PORT || "8899";
-const baseUrl = process.env.LTCAI_TEST_BASE_URL || `http://${host}:${port}`;
+if (!/^\d+$/.test(port) || Number(port) < 1 || Number(port) > 65535) {
+  throw new Error(`LTCAI_TEST_PORT must be an integer from 1 to 65535, received: ${port}`);
+}
+// This runner owns the server lifecycle; never redirect its tests to a caller-
+// supplied live server through LTCAI_TEST_BASE_URL.
+const baseUrl = `http://${host}:${port}`;
 const venvPython = join(process.cwd(), ".venv", "bin", "python");
 const python = process.env.PYTHON || (existsSync(venvPython) ? venvPython : "python");
 
+// Integration tests must never discover or mutate the developer's real HOME,
+// ~/.ltcai, Brain vault, or agent workspace. Keep every user-state path under
+// one disposable root and pass the exact same environment to the server and
+// pytest process.
+const sandboxRoot = mkdtempSync(join(tmpdir(), "ltcai-integration-"));
+const sandbox = {
+  home: join(sandboxRoot, "home"),
+  data: join(sandboxRoot, "data"),
+  brain: join(sandboxRoot, "brain"),
+  agent: join(sandboxRoot, "agent-workspace"),
+  vault: join(sandboxRoot, "vault"),
+  cache: join(sandboxRoot, "cache"),
+  config: join(sandboxRoot, "config"),
+  tmp: join(sandboxRoot, "tmp"),
+};
+for (const path of Object.values(sandbox)) mkdirSync(path, { recursive: true });
+
+const isolatedEnv = {
+  ...process.env,
+  HOME: sandbox.home,
+  USERPROFILE: sandbox.home,
+  XDG_CACHE_HOME: sandbox.cache,
+  XDG_CONFIG_HOME: sandbox.config,
+  XDG_DATA_HOME: join(sandboxRoot, "share"),
+  TMPDIR: sandbox.tmp,
+  TEMP: sandbox.tmp,
+  TMP: sandbox.tmp,
+  LATTICEAI_MODE: "local",
+  LATTICEAI_HOST: host,
+  LATTICEAI_PORT: port,
+  LATTICEAI_DATA_DIR: sandbox.data,
+  LATTICEAI_BRAIN_DIR: sandbox.brain,
+  LATTICEAI_AGENT_ROOT: sandbox.agent,
+  LATTICEAI_OBSIDIAN_VAULT_DIR: sandbox.vault,
+  LATTICEAI_STORAGE_ENGINE: "sqlite",
+  LATTICEAI_POSTGRES_DSN: "",
+  LATTICEAI_REQUIRE_AUTH: "false",
+  LATTICEAI_ENABLE_TELEGRAM: "false",
+  LATTICEAI_AUTOLOAD_MODELS: "false",
+  LATTICEAI_ALLOW_MODEL_DOWNLOADS: "false",
+  LATTICEAI_AUTO_READ_CHAT_PATHS: "false",
+  LATTICEAI_TUNNEL: "false",
+  LATTICEAI_DISCORD_PERMISSION_WEBHOOK: "",
+  LATTICEAI_DISCORD_BOT_TOKEN: "",
+  OIDC_DISCOVERY_URL: "",
+  PYTHON_KEYRING_BACKEND: "keyring.backends.null.Keyring",
+};
+
+let sandboxCleaned = false;
+function cleanupSandbox() {
+  if (sandboxCleaned) return;
+  sandboxCleaned = true;
+  rmSync(sandboxRoot, { recursive: true, force: true });
+}
+process.once("exit", cleanupSandbox);
+
 function run(command, args, options = {}) {
-  return new Promise((resolve) => {
+  return new Promise((resolve, reject) => {
     const child = spawn(command, args, {
       stdio: "inherit",
-      env: { ...process.env, ...options.env },
+      env: { ...isolatedEnv, ...options.env },
       cwd: options.cwd || process.cwd(),
     });
+    child.on("error", reject);
     child.on("close", (code, signal) => resolve({ code, signal }));
   });
 }
@@ -62,12 +128,7 @@ const server = spawn(
   ["-m", "uvicorn", "server:app", "--host", host, "--port", port],
   {
     cwd: process.cwd(),
-    env: {
-      ...process.env,
-      LATTICEAI_MODE: process.env.LATTICEAI_MODE || "test",
-      LATTICEAI_HOST: host,
-      LATTICEAI_PORT: port,
-    },
+    env: isolatedEnv,
     stdio: ["ignore", "pipe", "pipe"],
   },
 );
@@ -86,6 +147,7 @@ try {
   console.error(String(error?.message || error));
 } finally {
   await stop(server);
+  cleanupSandbox();
 }
 
 process.exit(exitCode);

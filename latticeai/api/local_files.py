@@ -40,6 +40,7 @@ class LocalWriteRequest(BaseModel):
 def create_local_files_router(
     *,
     require_user,
+    require_admin=None,
     tool_response,
     permission_gateway,
     knowledge_graph,
@@ -50,6 +51,7 @@ def create_local_files_router(
     hooks=None,
     data_dir: Optional[Path] = None,
     allowed_workspaces_for=None,
+    workspace_service=None,
 ) -> APIRouter:
     router = APIRouter()
 
@@ -211,9 +213,11 @@ def create_local_files_router(
             get_graph=lambda: knowledge_graph,
             require_graph=require_graph,
             require_user=require_user,
+            require_admin=require_admin,
             static_dir=static_dir,
             allowed_workspaces_for=allowed_workspaces_for,
             ingestion_pipeline=ingestion_pipeline,
+            workspace_service=workspace_service,
         )
     )
 

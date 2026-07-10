@@ -337,6 +337,7 @@ export function ActionButton({
   label,
   successLabel,
   action,
+  onSuccess,
   invalidate,
   variant = "outline",
   disabled,
@@ -344,6 +345,7 @@ export function ActionButton({
   label: string;
   successLabel?: string;
   action: () => Promise<ApiResult<unknown>>;
+  onSuccess?: (result: ApiResult<unknown>) => void | Promise<void>;
   invalidate?: string[];
   variant?: React.ComponentProps<typeof Button>["variant"];
   disabled?: boolean;
@@ -356,6 +358,7 @@ export function ActionButton({
     mutationFn: action,
     onSuccess: async (res) => {
       setResult(res.ok ? resolvedSuccessLabel : res.error || t(language, "ui.status.unavailable"));
+      await onSuccess?.(res);
       if (invalidate) {
         await Promise.all(invalidate.map((key) => qc.invalidateQueries({ queryKey: [key] })));
       }

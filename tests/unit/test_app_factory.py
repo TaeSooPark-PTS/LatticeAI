@@ -119,6 +119,7 @@ print(json.dumps({
     "status": response.status_code,
     "version": response.json().get("version"),
     "data_dir_created": os.path.isdir(data_dir),
+    "data_dir_mode": os.stat(data_dir).st_mode & 0o777,
 }))
 """
     result = _run_in_sandbox(code, tmp_path)
@@ -128,6 +129,8 @@ print(json.dumps({
     # Construction must write into the sandboxed data dir (proving the config
     # seam works), and nowhere else in the sandbox home but expected app dirs.
     assert result["data_dir_created"] is True
+    if os.name == "posix":
+        assert result["data_dir_mode"] == 0o700
 
 
 def test_create_app_admin_audit_surfaces_do_not_500(tmp_path: Path):
