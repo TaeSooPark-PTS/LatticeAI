@@ -7,6 +7,10 @@ existed at that release.
 ## [Unreleased]
 
 ### Added
+- Added continuous vital rings, heartbeat echoes, neural sparks, body motion,
+  and Brain-to-graph particles whose speed and intensity reflect real listening,
+  recall, synthesis, and automation activity. Reduced-motion preferences still
+  disable nonessential animation.
 - Added a living knowledge flow that shows chat, files, folders, notes, and web
   pages entering the Brain, then renders a lightweight graph from actual
   Knowledge Graph nodes and edges on the first screen.
@@ -31,6 +35,11 @@ existed at that release.
   normal lint gate.
 
 ### Changed
+- Compressed the empty Brain home into a single desktop/mobile viewport: the
+  living Brain, real graph, source dock, composer, primary grounded action, and
+  flow status remain visible without page scrolling. Conversation history,
+  deeper proof, and the complete automation action set now open in bounded
+  overlays instead of stacking below the fold.
 - Rebuilt Brain Home around the visible source-to-memory-to-graph-to-automation
   journey, while keeping the greeting, composer, suggested starts, recent
   conversations, and optional deeper Brain proof.

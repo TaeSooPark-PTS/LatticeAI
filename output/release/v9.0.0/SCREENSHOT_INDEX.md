@@ -9,7 +9,7 @@ Captured from the built React/Vite app served by the release visual API for the 
 | [01-login.png](screenshots/01-login.png) | Login |
 | [02-recommended-models.png](screenshots/02-recommended-models.png) | Recommended Models |
 | [03-install-load-progress.png](screenshots/03-install-load-progress.png) | Install & Load progress |
-| [04-brain-chat-home.png](screenshots/04-brain-chat-home.png) | Brain Chat home |
+| [04-brain-chat-home.png](screenshots/04-brain-chat-home.png) | One-viewport Living Brain home |
 | [05-memory-graph.png](screenshots/05-memory-graph.png) | Memory Graph |
 | [06-capture.png](screenshots/06-capture.png) | Add Sources |
 | [07-model-library.png](screenshots/07-model-library.png) | Model Library |

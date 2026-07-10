@@ -9,10 +9,12 @@ import {
   Globe2,
   Link2,
   MessageSquareText,
+  MoreHorizontal,
   Network,
   SearchCheck,
   ShieldCheck,
   Sparkles,
+  X,
 } from "lucide-react";
 
 import { type BrainState, LivingBrain } from "@/components/LivingBrain";
@@ -30,14 +32,14 @@ import type {
 } from "./types";
 
 const GRAPH_POSITIONS = [
-  { x: 69, y: 17 },
-  { x: 86, y: 23 },
-  { x: 94, y: 46 },
-  { x: 89, y: 73 },
-  { x: 70, y: 82 },
-  { x: 63, y: 57 },
-  { x: 75, y: 47 },
-  { x: 82, y: 60 },
+  { x: 68, y: 16 },
+  { x: 84, y: 20 },
+  { x: 94, y: 39 },
+  { x: 91, y: 63 },
+  { x: 73, y: 69 },
+  { x: 62, y: 52 },
+  { x: 76, y: 43 },
+  { x: 84, y: 55 },
 ] as const;
 
 const SOURCE_ORDER: IngestionSourceType[] = ["chat", "file", "folder", "note", "web"];
@@ -135,12 +137,23 @@ export const BrainKnowledgeFlow = React.memo(function BrainKnowledgeFlow({
     <section
       className={`brain-knowledge-flow ${absorbing ? "is-absorbing" : ""}`}
       data-source={sourceType || "idle"}
+      data-stage={activeIngestion?.stage || (latestEvent ? "connected" : "ready")}
+      data-brain-state={brainState}
       aria-labelledby="brain-home-title"
     >
       <header className="brain-flow-heading">
-        <span className="brain-home-kicker">{t(language, "brain.home.kicker")}</span>
-        <h1 id="brain-home-title">{t(language, "brain.firstScreen.title")}</h1>
-        <p>{t(language, "brain.firstScreen.body")}</p>
+        <div className="brain-flow-heading-copy">
+          <span className="brain-home-kicker">{t(language, "brain.home.kicker")}</span>
+          <h1 id="brain-home-title">{t(language, "brain.firstScreen.title")}</h1>
+          <p>{t(language, "brain.firstScreen.body")}</p>
+        </div>
+        <div className="brain-flow-vital" data-state={brainState}>
+          <span aria-hidden="true"><i /><i /></span>
+          <span>
+            <small>{t(language, "brain.flow.vital")}</small>
+            <strong>{t(language, `brain.living.state.${brainState}`)}</strong>
+          </span>
+        </div>
       </header>
 
       <div className="brain-flow-canvas" data-testid="brain-knowledge-flow">
@@ -172,6 +185,16 @@ export const BrainKnowledgeFlow = React.memo(function BrainKnowledgeFlow({
               <animateMotion dur="1.7s" repeatCount="indefinite" path="M20 50 C28 50 31 50 43 50" />
             </circle>
           )) : null}
+          {nodes.length ? Array.from({ length: 3 }).map((_, index) => (
+            <circle key={`output-${index}`} className="brain-flow-particle is-output" r="0.66">
+              <animateMotion
+                begin={`${index * 1.15}s`}
+                dur={absorbing ? "2.1s" : "4.2s"}
+                repeatCount="indefinite"
+                path="M51 50 C58 46 61 44 70 42"
+              />
+            </circle>
+          )) : null}
         </svg>
 
         <div className="brain-flow-organism">
@@ -184,12 +207,16 @@ export const BrainKnowledgeFlow = React.memo(function BrainKnowledgeFlow({
             showLabel={false}
             onInteract={onExploreBrain}
           />
+          <span className="brain-flow-organism-vital" aria-hidden="true">
+            <i />
+            {t(language, `brain.living.state.${brainState}`)}
+          </span>
         </div>
 
         <div className="brain-flow-graph" aria-label={t(language, "brain.flow.graph.aria", { concepts: conceptCount, relationships: relationshipCount })}>
           <span className="brain-flow-column-label">{t(language, "brain.flow.graph")}</span>
           <svg className="brain-flow-edges" viewBox="0 0 100 100" preserveAspectRatio="none" aria-hidden="true">
-            {edges.map((edge) => {
+            {edges.map((edge, index) => {
               const source = positionById.get(edge.source);
               const target = positionById.get(edge.target);
               if (!source || !target) return null;
@@ -201,6 +228,7 @@ export const BrainKnowledgeFlow = React.memo(function BrainKnowledgeFlow({
                   x2={target.x}
                   y2={target.y}
                   vectorEffect="non-scaling-stroke"
+                  style={{ animationDelay: `${index * -0.72}s` }}
                 />
               );
             })}
@@ -237,39 +265,39 @@ export const BrainKnowledgeFlow = React.memo(function BrainKnowledgeFlow({
             })}
           </ul>
         </div>
-      </div>
 
-      <div className="brain-flow-live-status" role="status" aria-live="polite">
-        <span className="brain-flow-status-icon" aria-hidden="true">
-          {absorbing ? <Sparkles className="h-4 w-4" /> : <CheckCircle2 className="h-4 w-4" />}
-        </span>
-        <span>
-          <strong>{sourceLabel}</strong>
-          <small>{statusText}</small>
-        </span>
-      </div>
+        <div className="brain-flow-live-status" role="status" aria-live="polite" aria-atomic="true">
+          <span className="brain-flow-status-icon" aria-hidden="true">
+            {absorbing ? <Sparkles className="h-4 w-4" /> : <CheckCircle2 className="h-4 w-4" />}
+          </span>
+          <span>
+            <strong>{sourceLabel}</strong>
+            <small>{statusText}</small>
+          </span>
+        </div>
 
-      <ol className="brain-flow-path" aria-label={t(language, "brain.flow.path.aria")}>
-        <li data-active={Boolean(sourceType)}>
-          <span>{t(language, "brain.flow.path.input")}</span>
-          <strong>{sourceType ? t(language, `brain.ingest.type.${sourceType}`) : t(language, "brain.flow.path.waiting")}</strong>
-        </li>
-        <ArrowRight className="h-4 w-4" aria-hidden="true" />
-        <li data-active={absorbing}>
-          <span>{t(language, "brain.flow.path.memory")}</span>
-          <strong>{t(language, "brain.flow.path.memoryCount", { count: memoryCount })}</strong>
-        </li>
-        <ArrowRight className="h-4 w-4" aria-hidden="true" />
-        <li>
-          <span>{t(language, "brain.flow.path.connections")}</span>
-          <strong>{t(language, "brain.flow.path.graphCount", { concepts: conceptCount, relationships: relationshipCount })}</strong>
-        </li>
-        <ArrowRight className="h-4 w-4" aria-hidden="true" />
-        <li>
-          <span>{t(language, "brain.flow.path.automation")}</span>
-          <strong>{t(language, "brain.flow.path.actionCount", { count: brief.proactiveActions.length })}</strong>
-        </li>
-      </ol>
+        <ol className="brain-flow-path" aria-label={t(language, "brain.flow.path.aria")}>
+          <li data-active={Boolean(sourceType)}>
+            <span>{t(language, "brain.flow.path.input")}</span>
+            <strong>{sourceType ? t(language, `brain.ingest.type.${sourceType}`) : t(language, "brain.flow.path.waiting")}</strong>
+          </li>
+          <ArrowRight className="h-4 w-4" aria-hidden="true" />
+          <li data-active={absorbing}>
+            <span>{t(language, "brain.flow.path.memory")}</span>
+            <strong>{t(language, "brain.flow.path.memoryCount", { count: memoryCount })}</strong>
+          </li>
+          <ArrowRight className="h-4 w-4" aria-hidden="true" />
+          <li>
+            <span>{t(language, "brain.flow.path.connections")}</span>
+            <strong>{t(language, "brain.flow.path.graphCount", { concepts: conceptCount, relationships: relationshipCount })}</strong>
+          </li>
+          <ArrowRight className="h-4 w-4" aria-hidden="true" />
+          <li>
+            <span>{t(language, "brain.flow.path.automation")}</span>
+            <strong>{t(language, "brain.flow.path.actionCount", { count: brief.proactiveActions.length })}</strong>
+          </li>
+        </ol>
+      </div>
     </section>
   );
 });
@@ -280,16 +308,117 @@ export function BrainMemoryAutomation({
   activities,
   streaming,
   onAction,
+  compact = false,
 }: {
   language: Language;
   brief: BrainBrief;
   activities: BrainProactiveActivity[];
   streaming: boolean;
   onAction: (action: BrainProactiveAction) => void;
+  compact?: boolean;
 }) {
+  const compactDetailsRef = React.useRef<HTMLDetailsElement>(null);
   const actions = brief.proactiveActions.slice(0, 3);
   const evidence = brief.evidence.filter((item) => item.value > 0).slice(0, 3);
   const focusTitle = brief.focus.title || t(language, "brain.brief.focus.empty");
+  const closeCompactActions = () => {
+    const details = compactDetailsRef.current;
+    if (!details) return;
+    details.removeAttribute("open");
+    details.querySelector<HTMLElement>("summary")?.focus();
+  };
+
+  if (compact) {
+    const primaryAction = actions[0];
+    const actionCountClass = actions.length > 1 ? "has-more-actions" : actions.length === 1 ? "has-single-action" : "has-no-actions";
+    return (
+      <section
+        className={`brain-memory-automation is-compact ${actionCountClass}`}
+        data-testid="brain-automation-dock"
+        aria-labelledby="brain-memory-automation-compact-title"
+      >
+        <div className="brain-automation-compact-head">
+          <span className="brain-memory-automation-mark" aria-hidden="true"><Bot className="h-4 w-4" /></span>
+          <span>
+            <small>{t(language, "brain.automation.kicker")}</small>
+            <strong id="brain-memory-automation-compact-title">{t(language, "brain.automation.title")}</strong>
+          </span>
+          {actions.length > 1 ? (
+            <details
+              ref={compactDetailsRef}
+              className="brain-automation-more"
+              data-testid="brain-automation-more"
+              onKeyDown={(event) => {
+                if (event.key !== "Escape") return;
+                event.preventDefault();
+                closeCompactActions();
+              }}
+            >
+              <summary aria-label={t(language, "brain.automation.more")}>
+                <MoreHorizontal className="h-4 w-4" aria-hidden="true" />
+              </summary>
+              <div className="brain-automation-more-popover">
+                <header className="brain-automation-more-head">
+                  <strong>{t(language, "brain.automation.title")}</strong>
+                  <button
+                    type="button"
+                    aria-label={t(language, "brain.automation.close")}
+                    onClick={closeCompactActions}
+                  >
+                    <X className="h-4 w-4" aria-hidden="true" />
+                  </button>
+                </header>
+                <div className="brain-automation-actions">
+                  {actions.map((action) => (
+                    <button key={action.id} type="button" disabled={streaming} onClick={() => onAction(action)}>
+                      <span className="brain-automation-action-icon" aria-hidden="true">{automationIcon(action.intent)}</span>
+                      <span>
+                        <strong>{t(language, action.labelKey)}</strong>
+                        <small>{t(language, action.detailKey)}</small>
+                      </span>
+                      <em>{t(language, automationIntentKey(action.intent))}</em>
+                      <ArrowRight className="h-4 w-4" aria-hidden="true" />
+                    </button>
+                  ))}
+                </div>
+                <div className="brain-automation-guard">
+                  <ShieldCheck className="h-4 w-4" aria-hidden="true" />
+                  <span>{t(language, "brain.automation.guard")}</span>
+                </div>
+                {activities.length ? (
+                  <ol className="brain-automation-activity" aria-label={t(language, "brain.proactive.trail.aria")} aria-live="polite">
+                    {activities.slice(0, 3).map((activity) => (
+                      <li key={activity.id} data-status={activity.status}>
+                        <CheckCircle2 className="h-3.5 w-3.5" aria-hidden="true" />
+                        <strong>{t(language, activity.labelKey)}</strong>
+                        <span>{t(language, `brain.proactive.status.${activity.status}`)}</span>
+                      </li>
+                    ))}
+                  </ol>
+                ) : null}
+              </div>
+            </details>
+          ) : null}
+        </div>
+        <span className="brain-automation-compact-focus" title={focusTitle}>{focusTitle}</span>
+        {primaryAction ? (
+          <button
+            type="button"
+            className="brain-automation-primary-action"
+            disabled={streaming}
+            onClick={() => onAction(primaryAction)}
+          >
+            <span aria-hidden="true">{automationIcon(primaryAction.intent)}</span>
+            <span>
+              <strong>{t(language, primaryAction.labelKey)}</strong>
+              <small>{t(language, automationIntentKey(primaryAction.intent))}</small>
+            </span>
+            <ArrowRight className="h-4 w-4" aria-hidden="true" />
+          </button>
+        ) : <p className="brain-automation-empty">{t(language, "brain.automation.empty")}</p>}
+      </section>
+    );
+  }
 
   return (
     <section className="brain-memory-automation" aria-labelledby="brain-memory-automation-title">

@@ -17,6 +17,16 @@ export interface LivingBrainProps {
   onInteract?: () => void; // called on click to advance exploration (travel deeper)
 }
 
+const THOUGHT_PARTICLES = Array.from({ length: 12 }, (_, index) => index);
+const VITAL_SPARKS = [
+  { x: 22, y: 32, delay: -0.4, duration: 5.8 },
+  { x: 36, y: 18, delay: -2.1, duration: 6.4 },
+  { x: 65, y: 22, delay: -3.7, duration: 5.4 },
+  { x: 79, y: 42, delay: -1.3, duration: 6.8 },
+  { x: 68, y: 72, delay: -4.5, duration: 5.9 },
+  { x: 31, y: 75, delay: -2.8, duration: 6.2 },
+] as const;
+
 /**
  * The Living Brain — the primary visual and emotional object in the product.
  * It is not decoration. It is the other participant.
@@ -36,6 +46,8 @@ export function LivingBrain({
   const language = useAppStore((store) => store.language);
   const organismRef = React.useRef<HTMLButtonElement>(null);
   const pulseTimerRef = React.useRef<number | null>(null);
+  const tiltFrameRef = React.useRef<number | null>(null);
+  const pendingTiltRef = React.useRef({ x: 0, y: 0 });
   const gradientPrefix = React.useId().replace(/:/g, "");
   const gradients = {
     left: `${gradientPrefix}-lobe-left`,
@@ -80,11 +92,12 @@ export function LivingBrain({
 
   const dynamicIntensity = Math.max(0.35, Math.min(1, intensity));
   const effectiveDepth = Math.max(0, Math.min(5, depth || 0));
-  const canTravel = state !== "thinking";
-
+  const isBusy = state === "thinking" || state === "recalling" || state === "synthesizing" || state === "acting";
   const handleClick = () => {
-    if (!canTravel) return;
     firePulse();
+    // Keep the Brain responsive to touch while it is working, but do not
+    // navigate away and orphan an active request or ingestion.
+    if (isBusy) return;
     onInteract?.();
   };
 
@@ -105,15 +118,30 @@ export function LivingBrain({
     const rect = el.getBoundingClientRect();
     const nx = ((event.clientX - rect.left) / rect.width) * 2 - 1;
     const ny = ((event.clientY - rect.top) / rect.height) * 2 - 1;
-    el.style.setProperty("--tilt-y", `${(nx * 11).toFixed(2)}deg`);
-    el.style.setProperty("--tilt-x", `${(ny * -9).toFixed(2)}deg`);
+    pendingTiltRef.current = { x: ny * -9, y: nx * 11 };
+    if (tiltFrameRef.current !== null) return;
+    tiltFrameRef.current = window.requestAnimationFrame(() => {
+      tiltFrameRef.current = null;
+      const target = organismRef.current;
+      if (!target) return;
+      target.style.setProperty("--tilt-y", `${pendingTiltRef.current.y.toFixed(2)}deg`);
+      target.style.setProperty("--tilt-x", `${pendingTiltRef.current.x.toFixed(2)}deg`);
+    });
   }, []);
 
   const resetTilt = React.useCallback(() => {
+    if (tiltFrameRef.current !== null) {
+      window.cancelAnimationFrame(tiltFrameRef.current);
+      tiltFrameRef.current = null;
+    }
     const el = organismRef.current;
     if (!el) return;
     el.style.setProperty("--tilt-y", "0deg");
     el.style.setProperty("--tilt-x", "0deg");
+  }, []);
+
+  React.useEffect(() => () => {
+    if (tiltFrameRef.current !== null) window.cancelAnimationFrame(tiltFrameRef.current);
   }, []);
 
   return (
@@ -134,8 +162,9 @@ export function LivingBrain({
         ref={organismRef}
         className={cn("brain-organism", `size-${size}`, `depth-${effectiveDepth}`)}
         data-state={dataState}
+        data-testid="living-brain"
         aria-label={t(language, effectiveDepth < 5 ? "brain.living.open" : "brain.living.graph")}
-        aria-disabled={!canTravel}
+        aria-busy={isBusy}
         style={{
           "--brain-scale": `${0.96 + (dynamicIntensity - 0.5) * 0.09 + effectiveDepth * 0.015}`,
         } as React.CSSProperties}
@@ -144,9 +173,30 @@ export function LivingBrain({
         onPointerLeave={resetTilt}
         title={t(language, effectiveDepth < 5 ? "brain.living.open" : "brain.living.graph")}
       >
+        <div className="brain-vital-field" aria-hidden="true">
+          <span className="brain-vital-ring is-primary" />
+          <span className="brain-vital-ring is-echo" />
+          <span className="brain-orbit is-near"><i /></span>
+          <span className="brain-orbit is-far"><i /></span>
+          {VITAL_SPARKS.map((spark, index) => (
+            <i
+              key={`${spark.x}-${spark.y}`}
+              className="brain-vital-spark"
+              style={{
+                left: `${spark.x}%`,
+                top: `${spark.y}%`,
+                animationDelay: `${spark.delay}s`,
+                animationDuration: `${spark.duration}s`,
+                "--spark-index": index,
+              } as React.CSSProperties}
+            />
+          ))}
+        </div>
+
         {/* Living anatomical presence. The glow opens with depth; the folds make it unmistakably a Brain. */}
         <div className="brain-core" style={{ "--core-scale": `${1 + effectiveDepth * 0.045}` } as React.CSSProperties}>
-          <svg className="brain-anatomy" viewBox="0 0 220 174" aria-hidden>
+          <div className="brain-body-motion">
+            <svg className="brain-anatomy" viewBox="0 0 220 174" aria-hidden>
             <defs>
               {/* 상단 좌측 광원 기준의 볼륨 셰이딩 — 로브가 부풀어 보이게 한다 */}
               <radialGradient id={gradients.left} cx="34%" cy="26%" r="85%">
@@ -200,7 +250,8 @@ export function LivingBrain({
               style={{ fill: `url(#${gradients.sheen})` }}
               d="M58 38c22-16 52-20 78-10-30-2-58 6-74 22-8 8-16 6-4-12Z"
             />
-          </svg>
+            </svg>
+          </div>
         </div>
 
         {/* Breathing field expands as we go deeper. */}
@@ -216,7 +267,7 @@ export function LivingBrain({
 
         {/* Thought activity — increases and starts to "resolve" into structure at higher depths */}
         <div className="thought-activity" aria-hidden>
-          {Array.from({ length: Math.min(12, 5 + effectiveDepth * 2) }).map((_, i) => (
+          {THOUGHT_PARTICLES.slice(0, Math.min(12, 5 + effectiveDepth * 2)).map((i) => (
             <div
               key={i}
               className={cn("thought-particle", effectiveDepth >= 3 && "resolving")}

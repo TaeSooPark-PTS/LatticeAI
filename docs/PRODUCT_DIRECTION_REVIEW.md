@@ -21,6 +21,10 @@ Already aligned:
 - First launch follows Login -> Environment Analysis -> Recommended Models ->
   Install & Load -> Brain.
 - The post-setup home is the living Brain plus conversation.
+- The empty home presents the Brain, incoming sources, real relationship graph,
+  composer, and next grounded action in one viewport. Its life signal and motion
+  are driven by listening, recall, synthesis, and action state rather than being
+  a decorative loop; history and technical proof remain progressively disclosed.
 - The graph appears only after progressive depth: Brain -> Memories ->
   Knowledge -> Relationships -> Graph.
 - Brain Core, SQLite live local storage, optional PostgreSQL/pgvector

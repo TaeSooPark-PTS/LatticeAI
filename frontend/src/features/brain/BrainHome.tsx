@@ -53,6 +53,7 @@ export function BrainHome({
   });
   const [emergenceEvents, setEmergenceEvents] = React.useState<EmergenceEvent[]>([]);
   const [proactiveActivities, setProactiveActivities] = React.useState<BrainProactiveActivity[]>([]);
+  const [synthesisActive, setSynthesisActive] = React.useState(false);
   const [detailsRequested, setDetailsRequested] = React.useState(false);
   const streamRef = React.useRef<HTMLDivElement>(null);
   const abortRef = React.useRef<AbortController | null>(null);
@@ -148,8 +149,16 @@ export function BrainHome({
   React.useEffect(() => {
     return () => {
       if (recallTimerRef.current !== null) window.clearTimeout(recallTimerRef.current);
+      abortRef.current?.abort();
     };
   }, []);
+
+  React.useEffect(() => {
+    if (!emergenceEvents[0]?.id) return;
+    setSynthesisActive(true);
+    const timer = window.setTimeout(() => setSynthesisActive(false), 1650);
+    return () => window.clearTimeout(timer);
+  }, [emergenceEvents]);
 
   const setStage = React.useCallback((sourceType: IngestionSourceType, stage: IngestionPipelineStage) => {
     setIngestionStates((prev) => {
@@ -696,12 +705,35 @@ export function BrainHome({
     window.location.hash = depth <= 2 ? "/memory" : "/knowledge-graph";
   }
 
+  const hasRunningAutomation = proactiveActivities.some((activity) => activity.status === "running");
+  const hasActiveIngestion = Object.values(ingestionStates).some(
+    (state) => state && state.stage !== "complete" && state.stage !== "error",
+  );
+  const visibleBrainState: BrainState = hasRunningAutomation
+    ? "acting"
+    : streaming && brainState === "recalling"
+      ? "recalling"
+    : streaming
+      ? "thinking"
+      : hasActiveIngestion
+        ? "recalling"
+        : synthesisActive
+          ? "synthesizing"
+          : draft.trim()
+            ? "listening"
+            : "idle";
+  const visibleBrainIntensity = visibleBrainState === "idle"
+    ? 0.62
+    : visibleBrainState === "listening"
+      ? 0.76
+      : Math.max(0.92, intensity);
+
   return (
     <main className="brain-home" aria-label={t(language, "brain.aria.home")}>
       <BrainConversation
         language={language}
-        brainState={brainState}
-        intensity={intensity}
+        brainState={visibleBrainState}
+        intensity={visibleBrainIntensity}
         modelName={modelName}
         modelReady={modelReady}
         messages={messages}

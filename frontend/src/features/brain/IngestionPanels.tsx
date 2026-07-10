@@ -1,5 +1,5 @@
 import * as React from "react";
-import { FileText, FileUp, FolderOpen, FolderPlus, Globe2, Loader2, Sparkles } from "lucide-react";
+import { ArrowUp, FileText, FileUp, FolderOpen, FolderPlus, Globe2, Loader2, Sparkles, X } from "lucide-react";
 
 import { t, type Language } from "@/i18n";
 import {
@@ -110,6 +110,154 @@ export function BrainIngestionPanel({
           <IngestionStageTrack language={language} state={ingestionStates.web} ctaKey="brain.ingest.cta.web" />
         </form>
       </div>
+    </section>
+  );
+}
+
+type DockSource = Exclude<IngestionSourceType, "chat" | "file">;
+
+export function BrainIngestionDock({
+  language,
+  uploadingDocument,
+  ingestionStates,
+  onUploadDocument,
+  onPickFolder,
+  onConnectFolder,
+  onIngestNote,
+  onIngestWeb,
+}: {
+  language: Language;
+  uploadingDocument: boolean;
+  ingestionStates: Record<IngestionSourceType, IngestionState | null>;
+  onUploadDocument: (file: File) => void;
+  onPickFolder: () => void;
+  onConnectFolder: (path: string) => void;
+  onIngestNote: (note: string) => void;
+  onIngestWeb: (url: string) => void;
+}) {
+  const [activeSource, setActiveSource] = React.useState<DockSource | null>(null);
+  const [folderPath, setFolderPath] = React.useState("");
+  const [note, setNote] = React.useState("");
+  const [url, setUrl] = React.useState("");
+  const popoverId = React.useId();
+
+  const toggle = (source: DockSource) => {
+    setActiveSource((current) => current === source ? null : source);
+  };
+
+  const submit = (source: DockSource) => {
+    if (source === "folder") {
+      if (!folderPath.trim()) return;
+      onConnectFolder(folderPath);
+      setFolderPath("");
+    } else if (source === "note") {
+      if (!note.trim()) return;
+      onIngestNote(note);
+      setNote("");
+    } else {
+      if (!url.trim()) return;
+      onIngestWeb(url);
+      setUrl("");
+    }
+    setActiveSource(null);
+  };
+
+  return (
+    <section
+      className="brain-ingestion-dock"
+      data-testid="brain-ingestion-dock"
+      aria-label={t(language, "brain.ingest.aria")}
+      onKeyDown={(event) => {
+        if (event.key === "Escape") setActiveSource(null);
+      }}
+    >
+      <div className="brain-ingestion-dock-head">
+        <Sparkles className="h-3.5 w-3.5" aria-hidden="true" />
+        <span>
+          <small>{t(language, "brain.ingest.kicker")}</small>
+          <strong>{t(language, "brain.ingest.dock.title")}</strong>
+        </span>
+      </div>
+
+      <div className="brain-ingestion-dock-actions">
+        <label className={`brain-ingestion-dock-action ${tileStateClass(ingestionStates.file)} ${uploadingDocument ? "is-disabled" : ""}`}>
+          <FileUp className="h-4 w-4" aria-hidden="true" />
+          <span>{t(language, "brain.ingest.type.file")}</span>
+          <i aria-hidden="true" />
+          <input
+            type="file"
+            accept=".pdf,.docx,.xlsx,.pptx,.txt,.md,.csv,application/pdf,text/plain,text/markdown,text/csv"
+            className="sr-only"
+            disabled={uploadingDocument}
+            onChange={(event) => {
+              const file = event.target.files?.[0];
+              event.currentTarget.value = "";
+              if (file) onUploadDocument(file);
+            }}
+          />
+        </label>
+        {([
+          ["folder", FolderOpen],
+          ["note", FileText],
+          ["web", Globe2],
+        ] as const).map(([source, Icon]) => (
+          <button
+            key={source}
+            type="button"
+            className={`brain-ingestion-dock-action ${tileStateClass(ingestionStates[source])}`}
+            aria-expanded={activeSource === source}
+            aria-controls={activeSource === source ? popoverId : undefined}
+            onClick={() => toggle(source)}
+          >
+            <Icon className="h-4 w-4" aria-hidden="true" />
+            <span>{t(language, `brain.ingest.type.${source}`)}</span>
+            <i aria-hidden="true" />
+          </button>
+        ))}
+      </div>
+
+      {activeSource ? (
+        <div id={popoverId} className="brain-ingestion-dock-popover">
+          <header>
+            <span>{t(language, `brain.ingest.${activeSource}`)}</span>
+            <button type="button" aria-label={t(language, "brain.ingest.dock.close")} onClick={() => setActiveSource(null)}>
+              <X className="h-4 w-4" aria-hidden="true" />
+            </button>
+          </header>
+          {activeSource === "folder" ? (
+            <button type="button" className="brain-ingestion-dock-picker" onClick={onPickFolder}>
+              <FolderOpen className="h-4 w-4" aria-hidden="true" />
+              {t(language, "capture.local.choose")}
+            </button>
+          ) : null}
+          <form
+            onSubmit={(event) => {
+              event.preventDefault();
+              submit(activeSource);
+            }}
+          >
+            <input
+              autoFocus
+              value={activeSource === "folder" ? folderPath : activeSource === "note" ? note : url}
+              onChange={(event) => {
+                if (activeSource === "folder") setFolderPath(event.target.value);
+                else if (activeSource === "note") setNote(event.target.value);
+                else setUrl(event.target.value);
+              }}
+              placeholder={t(language, `brain.ingest.${activeSource}.placeholder`)}
+              aria-label={t(language, `brain.ingest.${activeSource}.placeholder`)}
+            />
+            <button type="submit" aria-label={t(language, "brain.action.add")}>
+              <ArrowUp className="h-4 w-4" aria-hidden="true" />
+            </button>
+          </form>
+          <IngestionStageTrack
+            language={language}
+            state={ingestionStates[activeSource]}
+            ctaKey={`brain.ingest.cta.${activeSource}`}
+          />
+        </div>
+      ) : null}
     </section>
   );
 }

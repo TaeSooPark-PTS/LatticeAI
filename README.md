@@ -10,7 +10,10 @@
 > release/test isolation. The same unreleased line introduces a human-first UI:
 > a visible knowledge journey from conversation or source capture into the
 > living Brain, its real relationship graph, and memory-grounded automation;
-> task navigation and technical detail stay calm and approachable.
+> the empty Brain home now keeps that complete loop inside one viewport, with
+> continuous vital motion and behavior-driven listening, recall, synthesis,
+> and action states. Task navigation and technical detail stay calm and
+> approachable.
 > The published release number remains 9.0.0.
 
 Your model is the voice you use today. Your Brain is the asset you keep.
@@ -56,6 +59,9 @@ You need Lattice AI when:
   source-aware memory.
 - Watch new knowledge enter the Brain and appear in a lightweight, real
   relationship graph before opening the full graph explorer.
+- See the Brain breathe, pulse, listen, recall, synthesize, and act while the
+  source, graph, composer, and next memory-grounded action remain visible in a
+  single desktop or mobile viewport.
 - Create evidence-linked Brain automation drafts for memory digests, project
   reviews, and follow-up suggestions, then explicitly enable them when ready.
 - Use a recommended local model without learning model internals first.
@@ -111,13 +117,15 @@ execution, and network use before work starts.
 
 ### 5. Brain Chat
 
-Talk normally or add a source from a calm, reading-first canvas. The default
-home makes the full knowledge lifecycle legible: the source enters the living
-Brain, real nodes and relationships appear in a lightweight graph, and grounded
-next actions show which memories and evidence they will use. Detailed memory
-rings, provenance, and model/runtime proof remain available when needed.
+Talk normally or add a source from a single, living canvas. The default home
+fits the complete knowledge lifecycle into one viewport: source controls feed
+the breathing Brain, real nodes and animated relationships stay visible beside
+it, and the composer plus grounded next action remain within reach. Brain motion
+and its visible life signal follow real listening, recall, synthesis, and action
+state. Detailed memory rings, provenance, conversation history, and
+model/runtime proof open as overlays only when requested.
 
-![Brain Brief Home](output/release/v9.0.0/screenshots/04-brain-chat-home.png)
+![One-viewport Living Brain Home](output/release/v9.0.0/screenshots/04-brain-chat-home.png)
 
 ### 6. Review Center
 

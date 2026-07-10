@@ -1,5 +1,5 @@
 import * as React from "react";
-import { CheckCircle2, Copy, DatabaseZap, ListTodo, MessageCirclePlus, RefreshCw, ShieldCheck, Sparkles } from "lucide-react";
+import { CheckCircle2, Copy, DatabaseZap, History, ListTodo, MessageCirclePlus, RefreshCw, ShieldCheck, Sparkles, X } from "lucide-react";
 
 import { type BrainState, LivingBrain } from "@/components/LivingBrain";
 import { LanguageSwitcher } from "@/components/LanguageSwitcher";
@@ -32,7 +32,7 @@ import {
   ModelMissingNotice,
   PastConversationsPanel,
 } from "./HomePanels";
-import { BrainIngestionPanel, IngestionTimelineSection } from "./IngestionPanels";
+import { BrainIngestionDock, BrainIngestionPanel, IngestionTimelineSection } from "./IngestionPanels";
 import { BrainKnowledgeFlow, BrainMemoryAutomation, ConversationKnowledgeTrace } from "./BrainKnowledgeFlow";
 import { CreatedFilesCard, MessageBody } from "./MessageMarkdown";
 import { MemoryRings } from "./MemoryRings";
@@ -238,7 +238,7 @@ export function BrainConversation({
               />
             </>
           ) : (
-            <div className="brain-centered-home">
+            <div className="brain-centered-home" data-testid="brain-home-stage">
               <BrainKnowledgeFlow
                 language={language}
                 brainState={brainState}
@@ -254,60 +254,38 @@ export function BrainConversation({
               />
 
               {modelReady ? null : <ModelMissingNotice language={language} />}
-              <BrainComposer
-                language={language}
-                draft={draft}
-                streaming={streaming}
-                imageData={imageData}
-                uploadingDocument={uploadingDocument}
-                onDraftChange={onDraftChange}
-                onImageDataChange={onImageDataChange}
-                onUploadDocument={onUploadDocument}
-                onSend={onSend}
-                onStop={onStop}
-              />
-
-              <div className="brain-live-source-panel">
-                <BrainIngestionPanel
-                  language={language}
-                  uploadingDocument={uploadingDocument}
-                  ingestionStates={ingestionStates}
-                  onUploadDocument={onUploadDocument}
-                  onPickFolder={onPickFolder}
-                  onConnectFolder={onConnectFolder}
-                  onIngestNote={onIngestNote}
-                  onIngestWeb={onIngestWeb}
-                />
-              </div>
 
               {suggestedQuestions.length ? (
-                <section className="brain-home-suggestions" aria-label={t(language, "brain.suggestions.aria")}>
-                  <div className="brain-home-suggestions-head">
+                <section className="brain-home-prompt-strip" aria-label={t(language, "brain.suggestions.aria")}>
+                  <span className="brain-home-prompt-strip-label">
                     <Sparkles className="h-3.5 w-3.5" aria-hidden="true" />
-                    <span>{t(language, "brain.suggestions.title")}</span>
-                  </div>
-                  <div className="brain-home-suggestions-grid">
-                    {suggestedQuestions.map((question) => {
-                      const prompt = t(language, question.promptKey, question.params);
-                      return (
-                        <button
-                          key={question.id}
-                          type="button"
-                          disabled={streaming}
-                          onClick={() => {
-                            onDraftChange("");
-                            onSendText(prompt);
-                          }}
-                        >
-                          <strong>{t(language, question.labelKey)}</strong>
-                          <span>{t(language, question.detailKey)}</span>
-                        </button>
-                      );
-                    })}
-                  </div>
+                    {t(language, "brain.suggestions.title")}
+                  </span>
+                  {suggestedQuestions.map((question) => {
+                    const prompt = t(language, question.promptKey, question.params);
+                    return (
+                      <button
+                        key={question.id}
+                        type="button"
+                        disabled={streaming}
+                        title={t(language, question.detailKey)}
+                        onClick={() => {
+                          onDraftChange("");
+                          onSendText(prompt);
+                        }}
+                      >
+                        <strong>{t(language, question.labelKey)}</strong>
+                        <span>{t(language, question.detailKey)}</span>
+                      </button>
+                    );
+                  })}
                 </section>
               ) : (
-                <div className="brain-home-prompts" aria-label={t(language, "brain.suggestions.aria")}>
+                <div className="brain-home-prompt-strip" aria-label={t(language, "brain.suggestions.aria")}>
+                  <span className="brain-home-prompt-strip-label">
+                    <Sparkles className="h-3.5 w-3.5" aria-hidden="true" />
+                    {t(language, "brain.suggestions.title")}
+                  </span>
                   {starterPrompts.slice(0, 3).map((prompt) => (
                     <button key={prompt} type="button" onClick={() => onDraftChange(prompt)} className="brain-prompt-pill">
                       {prompt}
@@ -316,51 +294,144 @@ export function BrainConversation({
                 </div>
               )}
 
-              <BrainMemoryAutomation
-                language={language}
-                brief={brief}
-                activities={proactiveActivities}
-                streaming={streaming}
-                onAction={onProactiveAction}
-              />
-
-              <PastConversationsPanel
-                language={language}
-                items={pastConversations}
-                busyId={historyBusyId}
-                onResume={onResumeConversation}
-                onDelete={onDeleteConversation}
-              />
-
-              <details className="brain-home-insights" onToggle={(event) => event.currentTarget.open && onRequestDetails()}>
-                <summary>
-                  <Sparkles className="h-4 w-4" aria-hidden="true" />
-                  <span>
-                    <strong>{t(language, "brain.home.insights")}</strong>
-                    <small>{t(language, "brain.home.insights.detail")}</small>
-                  </span>
-                </summary>
-                <div className="brain-home-insights-content">
-                  <MemoryRings
+              <div className="brain-home-control-deck">
+                <div className="brain-live-source-panel">
+                  <BrainIngestionDock
                     language={language}
-                    brainState={brainState}
-                    intensity={intensity}
-                    readiness={readiness}
-                    memories={memories}
-                    concepts={concepts}
-                    relationshipCount={relationshipCount}
-                    onExploreBrain={onExploreBrain}
-                    onOpenDepth={onOpenDepth}
-                  />
-
-                  <BrainBriefPanel
-                    language={language}
-                    brief={brief}
-                    showEvidence={!isBasic}
-                    onAction={(action) => handleBriefAction(action, onVerifyModelContinuity)}
+                    uploadingDocument={uploadingDocument}
+                    ingestionStates={ingestionStates}
+                    onUploadDocument={onUploadDocument}
+                    onPickFolder={onPickFolder}
+                    onConnectFolder={onConnectFolder}
+                    onIngestNote={onIngestNote}
+                    onIngestWeb={onIngestWeb}
                   />
                 </div>
-              </details>
+
+                <BrainComposer
+                  language={language}
+                  draft={draft}
+                  streaming={streaming}
+                  imageData={imageData}
+                  uploadingDocument={uploadingDocument}
+                  onDraftChange={onDraftChange}
+                  onImageDataChange={onImageDataChange}
+                  onUploadDocument={onUploadDocument}
+                  onSend={onSend}
+                  onStop={onStop}
+                />
+
+                <aside className="brain-home-action-dock" aria-label={t(language, "brain.automation.title")}>
+                  <BrainMemoryAutomation
+                    language={language}
+                    brief={brief}
+                    activities={proactiveActivities}
+                    streaming={streaming}
+                    onAction={onProactiveAction}
+                    compact
+                  />
+
+                  <div className="brain-home-shelves">
+                    <details
+                      className="brain-home-history-shelf"
+                      data-testid="brain-history-shelf"
+                      onKeyDown={(event) => {
+                        if (event.key !== "Escape") return;
+                        event.preventDefault();
+                        closeHomeShelf(event.currentTarget);
+                      }}
+                    >
+                      <summary>
+                        <History className="h-3.5 w-3.5" aria-hidden="true" />
+                        <span>{t(language, "brain.history.title")}</span>
+                        <small>{pastConversations.length}</small>
+                      </summary>
+                      <div className="brain-home-shelf-popover">
+                        <button
+                          type="button"
+                          className="brain-home-shelf-close"
+                          aria-label={t(language, "brain.home.shelf.close")}
+                          onClick={(event) => closeHomeShelf(event.currentTarget)}
+                        >
+                          <X className="h-4 w-4" aria-hidden="true" />
+                        </button>
+                        <PastConversationsPanel
+                          language={language}
+                          items={pastConversations}
+                          busyId={historyBusyId}
+                          onResume={onResumeConversation}
+                          onDelete={onDeleteConversation}
+                        />
+                      </div>
+                    </details>
+
+                    <details
+                      className="brain-home-insights"
+                      data-testid="brain-insights-shelf"
+                      onToggle={(event) => event.currentTarget.open && onRequestDetails()}
+                      onKeyDown={(event) => {
+                        if (event.key !== "Escape") return;
+                        if (event.currentTarget.querySelector("#brain-ring-peek")) return;
+                        event.preventDefault();
+                        closeHomeShelf(event.currentTarget);
+                      }}
+                    >
+                      <summary>
+                        <Sparkles className="h-3.5 w-3.5" aria-hidden="true" />
+                        <span>{t(language, "brain.home.insights")}</span>
+                      </summary>
+                      <div className="brain-home-shelf-popover brain-home-insights-content">
+                        <button
+                          type="button"
+                          className="brain-home-shelf-close"
+                          aria-label={t(language, "brain.home.shelf.close")}
+                          onClick={(event) => closeHomeShelf(event.currentTarget)}
+                        >
+                          <X className="h-4 w-4" aria-hidden="true" />
+                        </button>
+                        <MemoryRings
+                          language={language}
+                          brainState={brainState}
+                          intensity={intensity}
+                          readiness={readiness}
+                          memories={memories}
+                          concepts={concepts}
+                          relationshipCount={relationshipCount}
+                          onExploreBrain={onExploreBrain}
+                          onOpenDepth={onOpenDepth}
+                        />
+
+                        <BrainBriefPanel
+                          language={language}
+                          brief={brief}
+                          showEvidence={!isBasic}
+                          onAction={(action) => handleBriefAction(action, onVerifyModelContinuity)}
+                        />
+
+                        {isBasic ? null : (
+                          <>
+                            <IngestionTimelineSection language={language} emergenceEvents={emergenceEvents} />
+                            <ModelContinuityDemo
+                              language={language}
+                              proof={proof}
+                              modelName={modelName}
+                              onVerify={onVerifyModelContinuity}
+                            />
+                            <BrainOverviewPanel
+                              memories={memories}
+                              concepts={concepts}
+                              readiness={readiness}
+                              proof={proof}
+                              onOpenDepth={onOpenDepth}
+                            />
+                          </>
+                        )}
+                        <BrainCarePanel language={language} />
+                      </div>
+                    </details>
+                  </div>
+                </aside>
+              </div>
             </div>
           )}
 
@@ -372,7 +443,7 @@ export function BrainConversation({
             </div>
           ) : null}
 
-          <details className="brain-utility-drawer" onToggle={(event) => event.currentTarget.open && onRequestDetails()}>
+          {hasMessages ? <details className="brain-utility-drawer" onToggle={(event) => event.currentTarget.open && onRequestDetails()}>
             <summary>{t(language, isBasic ? "brain.chatHome.utility.basic" : "brain.chatHome.utility")}</summary>
             <div className="brain-utility-tools" aria-label={t(language, "brain.chatHome.contextAria")}>
               <LanguageSwitcher compact />
@@ -422,11 +493,18 @@ export function BrainConversation({
               )}
               <BrainCarePanel language={language} />
             </div>
-          </details>
+          </details> : null}
         </section>
       </div>
     </section>
   );
+}
+
+function closeHomeShelf(target: HTMLElement) {
+  const details = target instanceof HTMLDetailsElement ? target : target.closest("details");
+  if (!details) return;
+  details.removeAttribute("open");
+  details.querySelector<HTMLElement>("summary")?.focus();
 }
 
 function findLastAssistantIndex(messages: Message[]): number {

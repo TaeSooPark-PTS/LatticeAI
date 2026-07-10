@@ -16,6 +16,14 @@
 - Added truthful ingestion emergence evidence, native desktop folder selection,
   persistent conversation-to-knowledge traces, grounded next actions, and
   desktop/mobile layouts that keep the Brain—not a dashboard—the protagonist.
+- Rebuilt the empty Brain home as a one-viewport organism: source capture,
+  composer, real graph, life signal, and the primary memory-grounded action stay
+  visible without page scrolling, while history and deeper proof open as
+  overlays. Continuous breathing, heartbeat, sparks, and Brain-to-graph pulses
+  now accelerate from real listening, recall, synthesis, and action state.
+- Preserved access to every memory-grounded action in the compact command deck;
+  the first action stays one click away and the complete reviewed set opens in a
+  focused popover instead of extending the page.
 - Brain automation recipes are now created as reviewable disabled drafts and
   require an explicit enable action. Triggered and review-queue runs execute a
   real agent pipeline grounded by scoped MemoryService recall, with researcher,
