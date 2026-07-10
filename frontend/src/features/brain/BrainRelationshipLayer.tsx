@@ -12,9 +12,9 @@ export function BrainRelationshipLayer({
   const layout = layoutGraphNodes(visibleConcepts, 30, 20);
   const positionById = new Map(layout.map((item) => [item.node.id, item]));
   const visibleRelationships = relationships
-    .map((relationship, index) => {
-      const source = positionById.get(relationship.source) || layout[index % Math.max(layout.length, 1)];
-      const target = positionById.get(relationship.target) || layout[(index + 3) % Math.max(layout.length, 1)];
+    .map((relationship) => {
+      const source = positionById.get(relationship.source);
+      const target = positionById.get(relationship.target);
       return source && target && source.node.id !== target.node.id ? { relationship, source, target } : null;
     })
     .filter(Boolean)

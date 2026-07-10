@@ -39,6 +39,7 @@ class PlatformRuntime:
         llm_generate: Optional[Callable[..., str]] = None,
         llm_available: Optional[Callable[[], bool]] = None,
         agent_registry: Any = None,
+        memory_recall: Optional[Callable[..., Dict[str, Any]]] = None,
     ):
         self.store = store
         self.svc = workspace_service
@@ -56,6 +57,7 @@ class PlatformRuntime:
         self.llm_generate = llm_generate
         self.llm_available = llm_available or (lambda: False)
         self.agent_registry = agent_registry
+        self.memory_recall = memory_recall
 
     # ── request gating ────────────────────────────────────────────────────
 
@@ -148,6 +150,31 @@ class PlatformRuntime:
 
     def _context_provider(self, user, scope):
         def provider(goal: str):
+            recall = getattr(self, "memory_recall", None)
+            if recall is not None:
+                try:
+                    payload = recall(
+                        goal,
+                        user_email=user,
+                        workspace_id=scope,
+                        limit=8,
+                    )
+                    results = payload.get("results") or payload.get("items") or []
+                    evidence = []
+                    for item in results[:8]:
+                        if not isinstance(item, dict):
+                            continue
+                        source = str(item.get("source") or "memory")
+                        title = str(item.get("title") or item.get("kind") or "Memory")
+                        snippet = str(item.get("snippet") or item.get("content") or "").strip()
+                        if snippet:
+                            evidence.append(f"[{source}] {title}: {snippet[:240]}")
+                    if evidence:
+                        return evidence
+                except Exception:
+                    # Recall is an enrichment seam; the legacy store fallback
+                    # keeps agent execution available if it degrades.
+                    pass
             try:
                 mems = self.store.search_memories(goal, user_email=user, workspace_id=scope).get("memories", [])
                 ctx = [str(m.get("content") or "")[:180] for m in mems[:6]]
@@ -158,6 +185,14 @@ class PlatformRuntime:
                     ctx = synth + ctx
                 except Exception:
                     pass
+                if not ctx:
+                    try:
+                        recent = self.store.list_memories(user_email=user, workspace_id=scope).get("memories", [])
+                        # list_memories is newest-first; automation should ground
+                        # itself in the knowledge that just entered the Brain.
+                        ctx = [str(m.get("content") or "")[:180] for m in recent[:8]]
+                    except Exception:
+                        pass
                 return ctx[:8]
             except Exception:
                 return []
@@ -213,8 +248,18 @@ class PlatformRuntime:
     def _agent_node_runner(self, user, scope):
         def runner(*, node, context):
             cfg = node.get("config") or {}
-            goal = cfg.get("goal") or context.get("goal") or "Run agent"
-            return self.run_agent(goal, user, scope, with_workflow=False, roles=cfg.get("roles"), inputs=context.get("inputs"))
+            goal = cfg.get("goal") or cfg.get("prompt") or context.get("goal") or "Run agent"
+            roles = cfg.get("roles")
+            if not roles and (cfg.get("mode") == "draft" or cfg.get("prompt")):
+                roles = ["researcher", "planner", "executor", "reviewer"]
+            return self.run_agent(
+                goal,
+                user,
+                scope,
+                with_workflow=False,
+                roles=roles,
+                inputs=context.get("inputs"),
+            )
         return runner
 
     # ── cross-system runs ─────────────────────────────────────────────────
@@ -243,12 +288,8 @@ class PlatformRuntime:
         return {"workflow_run_id": run["id"], "status": result.status}
 
     def run_agent(self, goal, user, scope, *, with_workflow: bool, roles=None, inputs=None) -> Dict[str, Any]:
-        role_runner = default_role_runner(
-            workflow_runner=(lambda wf_ref, ctx: self.run_workflow_by_id(wf_ref, user, scope, with_agent=False, inputs=ctx.inputs)) if with_workflow else None,
-            plugin_runner=lambda pid, ctx: self.registry.execute_action(pid, "run_skill", {}, runners=self.plugin_capability_runners(user, scope), workspace_id=scope).as_dict(),
-            context_provider=self._context_provider(user, scope),
-        )
-        result = MultiAgentOrchestrator(role_runner=role_runner).run(
+        orchestrator = self.build_orchestrator(user, scope, with_workflow=with_workflow)
+        result = orchestrator.run(
             goal, user_email=user, workspace_id=scope, roles=roles, inputs=inputs or {}
         )
         run = self.store.record_agent_run(
@@ -272,8 +313,12 @@ class PlatformRuntime:
             "agent": self._agent_node_runner(user, scope),
         }
 
-    def build_orchestrator(self, user, scope) -> MultiAgentOrchestrator:
-        workflow_runner = lambda wf_ref, ctx: self.run_workflow_by_id(wf_ref, user, scope, with_agent=False, inputs=ctx.inputs)  # noqa: E731
+    def build_orchestrator(self, user, scope, *, with_workflow: bool = True) -> MultiAgentOrchestrator:
+        workflow_runner = (
+            (lambda wf_ref, ctx: self.run_workflow_by_id(wf_ref, user, scope, with_agent=False, inputs=ctx.inputs))
+            if with_workflow
+            else None
+        )
         plugin_runner = lambda pid, ctx: self.registry.execute_action(pid, "run_skill", {}, runners=self.plugin_capability_runners(user, scope), workspace_id=scope).as_dict()  # noqa: E731
         context_provider = self._context_provider(user, scope)
         custom_agents = {}

@@ -28,17 +28,20 @@ Lattice AI keeps conversations, documents, memories, decisions, relationships,
 and source provenance in a private local Brain. Models can be local, cloud,
 current, or future. The Brain remains.
 
-The graph matters, but it is not the product identity. The product identity is a
-local-first Digital Brain: a place where the user can talk, add sources, watch
-memory grow, and inspect the Knowledge Graph when they need proof.
+The graph matters as visible proof, but a graph editor is not the product
+identity. The product identity is a local-first Digital Brain: the user talks or
+adds a source, watches it enter memory, sees the real relationships that emerge,
+and uses those memories to drive reviewed automation.
 
 The current main-branch experience is intentionally not a dashboard. The first
-screen leads with a greeting, conversation composer, useful starting prompts,
-and recent conversations. Evidence-backed Brain Brief, memory rings, ingestion,
-and runtime detail remain one disclosure away, so users can inspect grounding
-without reading operational status before they ask a question. Primary
-navigation follows human tasks — Chat, Sources, Memory, and Work — while models,
-workspace controls, and administration stay secondary.
+screen leads with a living knowledge journey around the conversation composer:
+chat, file, folder, note, and web inputs flow into the Brain; a bounded real
+graph makes new connections visible; and grounded next actions explain which
+memory and evidence they use. Evidence-backed Brain Brief, deeper memory rings,
+and runtime detail remain available without turning the first screen into an
+operator console. Primary navigation follows human tasks — Chat, Sources,
+Memory, and Work — while models, workspace controls, and administration stay
+secondary.
 
 ## Practical Reasons To Use It
 

@@ -197,7 +197,7 @@ export type BrainBrief = {
   generatedAt: string;
 };
 
-export type IngestionSourceType = "file" | "folder" | "note" | "web";
+export type IngestionSourceType = "chat" | "file" | "folder" | "note" | "web";
 
 export type IngestionPipelineStage =
   | "preparing"
@@ -215,7 +215,18 @@ export type IngestionState = {
   completedAt: number | null;
   newMemories: number;
   newEntities: number;
+  nodeIds?: string[];
+  chunkCount?: number;
+  duplicate?: boolean;
+  provenanceId?: string;
   error?: string;
+};
+
+export type IngestionEvidence = {
+  nodeIds: string[];
+  chunkCount: number;
+  duplicate?: boolean;
+  provenanceId?: string;
 };
 
 export type EmergenceEvent = {
@@ -224,6 +235,7 @@ export type EmergenceEvent = {
   label: string;
   newMemories: number;
   newEntities: number;
+  nodeIds: string[];
   at: number;
 };
 

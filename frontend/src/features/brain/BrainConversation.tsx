@@ -17,6 +17,7 @@ import type {
   IngestionSourceType,
   IngestionState,
   KnowledgeConcept,
+  KnowledgeGraphModel,
   MemoryFragment,
   Message,
 } from "./types";
@@ -32,6 +33,7 @@ import {
   PastConversationsPanel,
 } from "./HomePanels";
 import { BrainIngestionPanel, IngestionTimelineSection } from "./IngestionPanels";
+import { BrainKnowledgeFlow, BrainMemoryAutomation, ConversationKnowledgeTrace } from "./BrainKnowledgeFlow";
 import { CreatedFilesCard, MessageBody } from "./MessageMarkdown";
 import { MemoryRings } from "./MemoryRings";
 import { navigateHash } from "./navigation";
@@ -53,6 +55,7 @@ export function BrainConversation({
   imageData,
   streamRef,
   memories,
+  graph,
   concepts,
   relationshipCount,
   readiness,
@@ -63,6 +66,7 @@ export function BrainConversation({
   onDraftChange,
   onImageDataChange,
   onUploadDocument,
+  onPickFolder,
   onConnectFolder,
   onIngestNote,
   onIngestWeb,
@@ -99,6 +103,7 @@ export function BrainConversation({
   imageData: string | null;
   streamRef: React.RefObject<HTMLDivElement | null>;
   memories: MemoryFragment[];
+  graph: KnowledgeGraphModel;
   concepts: KnowledgeConcept[];
   relationshipCount: number;
   readiness: BrainReadiness;
@@ -109,6 +114,7 @@ export function BrainConversation({
   onDraftChange: (value: string) => void;
   onImageDataChange: (value: string | null) => void;
   onUploadDocument: (file: File) => void;
+  onPickFolder: () => void;
   onConnectFolder: (path: string) => void;
   onIngestNote: (note: string) => void;
   onIngestWeb: (url: string) => void;
@@ -130,7 +136,6 @@ export function BrainConversation({
   const isBasic = mode === "basic";
   const lastAssistantIndex = findLastAssistantIndex(messages);
   const suggestedQuestions = brief.suggestedQuestions.slice(0, 3);
-  const proactiveActions = brief.proactiveActions.slice(0, 3);
 
   return (
     <section className="brain-conversation" aria-label={t(language, "brain.aria.conversation")}>
@@ -166,6 +171,14 @@ export function BrainConversation({
                   </button>
                 </div>
               </header>
+
+              <ConversationKnowledgeTrace
+                language={language}
+                state={ingestionStates.chat}
+                concepts={concepts}
+                relationshipCount={relationshipCount}
+                onExploreBrain={onExploreBrain}
+              />
 
               <div ref={streamRef} className="brain-stream">
                 {messages.map((message, index) => {
@@ -216,28 +229,29 @@ export function BrainConversation({
                 onSend={onSend}
                 onStop={onStop}
               />
+              <BrainMemoryAutomation
+                language={language}
+                brief={brief}
+                activities={proactiveActivities}
+                streaming={streaming}
+                onAction={onProactiveAction}
+              />
             </>
           ) : (
             <div className="brain-centered-home">
-              <section className="brain-home-intro" aria-labelledby="brain-home-title">
-                <LivingBrain
-                  state={brainState}
-                  intensity={intensity}
-                  size="trace"
-                  showLabel={false}
-                  className="brain-home-presence-compact"
-                  onInteract={onExploreBrain}
-                />
-                <div className="brain-home-welcome">
-                  <span className="brain-home-kicker">{t(language, "brain.home.kicker")}</span>
-                  <h1 id="brain-home-title">{t(language, "brain.firstScreen.title")}</h1>
-                  <p>{t(language, "brain.firstScreen.body")}</p>
-                  <button type="button" className="brain-home-status-link" onClick={onExploreBrain}>
-                    <span className="status-dot" aria-hidden="true" />
-                    {t(language, `brain.firstScreen.state.${readiness.state}`)}
-                  </button>
-                </div>
-              </section>
+              <BrainKnowledgeFlow
+                language={language}
+                brainState={brainState}
+                intensity={intensity}
+                graph={graph}
+                readiness={readiness}
+                brief={brief}
+                memories={memories}
+                ingestionStates={ingestionStates}
+                emergenceEvents={emergenceEvents}
+                streaming={streaming}
+                onExploreBrain={onExploreBrain}
+              />
 
               {modelReady ? null : <ModelMissingNotice language={language} />}
               <BrainComposer
@@ -252,6 +266,19 @@ export function BrainConversation({
                 onSend={onSend}
                 onStop={onStop}
               />
+
+              <div className="brain-live-source-panel">
+                <BrainIngestionPanel
+                  language={language}
+                  uploadingDocument={uploadingDocument}
+                  ingestionStates={ingestionStates}
+                  onUploadDocument={onUploadDocument}
+                  onPickFolder={onPickFolder}
+                  onConnectFolder={onConnectFolder}
+                  onIngestNote={onIngestNote}
+                  onIngestWeb={onIngestWeb}
+                />
+              </div>
 
               {suggestedQuestions.length ? (
                 <section className="brain-home-suggestions" aria-label={t(language, "brain.suggestions.aria")}>
@@ -289,6 +316,14 @@ export function BrainConversation({
                 </div>
               )}
 
+              <BrainMemoryAutomation
+                language={language}
+                brief={brief}
+                activities={proactiveActivities}
+                streaming={streaming}
+                onAction={onProactiveAction}
+              />
+
               <PastConversationsPanel
                 language={language}
                 items={pastConversations}
@@ -324,46 +359,6 @@ export function BrainConversation({
                     showEvidence={!isBasic}
                     onAction={(action) => handleBriefAction(action, onVerifyModelContinuity)}
                   />
-
-                  {proactiveActions.length ? (
-                    <section className="brain-home-proactive" aria-label={t(language, "brain.proactive.aria")}>
-                      <div className="brain-home-suggestions-head">
-                        <Sparkles className="h-3.5 w-3.5" aria-hidden="true" />
-                        <span>{t(language, "brain.proactive.title")}</span>
-                      </div>
-                      <div className="brain-home-proactive-grid">
-                        {proactiveActions.map((action) => (
-                          <button
-                            key={action.id}
-                            type="button"
-                            disabled={streaming}
-                            onClick={() => onProactiveAction(action)}
-                          >
-                            <strong>{t(language, action.labelKey)}</strong>
-                            <span>{t(language, action.detailKey)}</span>
-                          </button>
-                        ))}
-                      </div>
-                    </section>
-                  ) : null}
-
-                  {proactiveActivities.length ? (
-                    <section className="brain-proactive-trail" aria-label={t(language, "brain.proactive.trail.aria")} aria-live="polite">
-                      <div className="brain-home-suggestions-head">
-                        <CheckCircle2 className="h-3.5 w-3.5" aria-hidden="true" />
-                        <span>{t(language, "brain.proactive.trail.title")}</span>
-                      </div>
-                      <ol>
-                        {proactiveActivities.slice(0, 4).map((item) => (
-                          <li key={item.id} data-status={item.status}>
-                            <strong>{t(language, item.labelKey)}</strong>
-                            <span>{t(language, `brain.proactive.status.${item.status}`)}</span>
-                            <small>{t(language, `brain.proactive.intent.${item.intent}`)}</small>
-                          </li>
-                        ))}
-                      </ol>
-                    </section>
-                  ) : null}
                 </div>
               </details>
             </div>
@@ -395,15 +390,18 @@ export function BrainConversation({
               <span><CheckCircle2 className="h-3.5 w-3.5" />{t(language, "brain.portable")}</span>
             </div>
             <div className="brain-utility-grid">
-              <BrainIngestionPanel
-                language={language}
-                uploadingDocument={uploadingDocument}
-                ingestionStates={ingestionStates}
-                onUploadDocument={onUploadDocument}
-                onConnectFolder={onConnectFolder}
-                onIngestNote={onIngestNote}
-                onIngestWeb={onIngestWeb}
-              />
+              {hasMessages ? (
+                <BrainIngestionPanel
+                  language={language}
+                  uploadingDocument={uploadingDocument}
+                  ingestionStates={ingestionStates}
+                  onUploadDocument={onUploadDocument}
+                  onPickFolder={onPickFolder}
+                  onConnectFolder={onConnectFolder}
+                  onIngestNote={onIngestNote}
+                  onIngestWeb={onIngestWeb}
+                />
+              ) : null}
               {isBasic ? null : (
                 <>
                   <IngestionTimelineSection language={language} emergenceEvents={emergenceEvents} />

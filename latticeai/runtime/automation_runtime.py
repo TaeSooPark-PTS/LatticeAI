@@ -27,19 +27,25 @@ def build_automation_runtime(
     from latticeai.services.triggers import TriggerService
 
     review_queue = ReviewQueueService(store=store)
+
+    def _run_triggered_workflow(workflow_id: str, inputs: Dict[str, Any]) -> Dict[str, Any]:
+        trigger = (inputs or {}).get("__trigger__") or {}
+        return platform.run_workflow_by_id(
+            workflow_id,
+            trigger.get("user_email"),
+            trigger.get("workspace_id"),
+            with_agent=True,
+            inputs=inputs,
+        )
+
     trigger_service = TriggerService(
         store=store,
-        run_workflow=lambda wf_id, inputs: platform.run_workflow_by_id(
-            wf_id,
-            None,
-            None,
-            with_agent=False,
-            inputs=inputs,
-        ),
+        run_workflow=_run_triggered_workflow,
         data_dir=data_dir,
         review_sink=review_queue,
         tz_name=tz_name,
     )
+
     def _memory_ingest(**kwargs):
         try:
             # Delegate to store's upsert (enriches memories + KG automatically via internal graph.ingest_event)

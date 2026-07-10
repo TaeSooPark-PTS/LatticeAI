@@ -1,9 +1,8 @@
 import * as React from "react";
-import { FileText, FileUp, FolderPlus, Globe2, Loader2, Sparkles } from "lucide-react";
+import { FileText, FileUp, FolderOpen, FolderPlus, Globe2, Loader2, Sparkles } from "lucide-react";
 
 import { t, type Language } from "@/i18n";
 import {
-  INGESTION_STAGE_ORDER,
   type EmergenceEvent,
   type IngestionPipelineStage,
   type IngestionSourceType,
@@ -11,6 +10,7 @@ import {
 } from "./types";
 
 const INGESTION_TYPE_LABEL_KEY: Record<IngestionSourceType, string> = {
+  chat: "brain.ingest.type.chat",
   file: "brain.ingest.type.file",
   folder: "brain.ingest.type.folder",
   note: "brain.ingest.type.note",
@@ -22,6 +22,7 @@ export function BrainIngestionPanel({
   uploadingDocument,
   ingestionStates,
   onUploadDocument,
+  onPickFolder,
   onConnectFolder,
   onIngestNote,
   onIngestWeb,
@@ -30,6 +31,7 @@ export function BrainIngestionPanel({
   uploadingDocument: boolean;
   ingestionStates: Record<IngestionSourceType, IngestionState | null>;
   onUploadDocument: (file: File) => void;
+  onPickFolder: () => void;
   onConnectFolder: (path: string) => void;
   onIngestNote: (note: string) => void;
   onIngestWeb: (url: string) => void;
@@ -74,6 +76,10 @@ export function BrainIngestionPanel({
         >
           <FolderPlus className="h-4 w-4" />
           <span>{t(language, "brain.ingest.folder")}</span>
+          <button type="button" className="brain-ingest-folder-picker" onClick={onPickFolder}>
+            <FolderOpen className="h-4 w-4" aria-hidden="true" />
+            {t(language, "capture.local.choose")}
+          </button>
           <input value={folderPath} onChange={(event) => setFolderPath(event.target.value)} placeholder={t(language, "brain.ingest.folder.placeholder")} />
           <IngestionStageTrack language={language} state={ingestionStates.folder} ctaKey="brain.ingest.cta.folder" />
         </form>
@@ -138,7 +144,6 @@ function IngestionStageTrack({
     return <small className="brain-ingest-cta">{t(language, ctaKey)}</small>;
   }
 
-  const activeIndex = INGESTION_STAGE_ORDER.indexOf(state.stage);
   const isError = state.stage === "error";
   const isComplete = state.stage === "complete";
   const hasEmergence = state.newMemories > 0 || state.newEntities > 0;
@@ -151,25 +156,10 @@ function IngestionStageTrack({
       aria-label={t(language, "brain.ingest.progress.aria", { label: state.label })}
     >
       <div className="brain-ingest-stage-badges" aria-hidden="true">
-        {INGESTION_STAGE_ORDER.filter((stage) => stage !== "complete").map((stage) => {
-          const index = INGESTION_STAGE_ORDER.indexOf(stage);
-          const done = !isError && !isComplete && index < activeIndex;
-          const active = !isError && !isComplete && index === activeIndex;
-          const passed = isComplete;
-          const cls = isError
-            ? "is-failed"
-            : passed || done
-              ? "is-done"
-              : active
-                ? "is-active"
-                : "";
-          return (
-            <span key={stage} className={`brain-ingest-stage-badge ${cls}`}>
-              {(active || (isError && index === activeIndex)) ? <Loader2 className="h-3 w-3 brain-ingest-spin" /> : null}
-              {t(language, `brain.ingest.stage.${stage}`)}
-            </span>
-          );
-        })}
+        <span className={`brain-ingest-stage-badge ${isError ? "is-failed" : isComplete ? "is-done" : "is-active"}`}>
+          {!isError && !isComplete ? <Loader2 className="h-3 w-3 brain-ingest-spin" /> : null}
+          {t(language, `brain.ingest.stage.${state.stage}`)}
+        </span>
       </div>
       <small className={`brain-ingest-stage-hint ${isError ? "is-failed" : isComplete ? "is-emerged" : ""}`}>
         {isError

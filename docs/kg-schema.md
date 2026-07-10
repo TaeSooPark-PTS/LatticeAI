@@ -137,6 +137,10 @@ provenance(source_type, source_uri, content_hash, captured_at, modified_at,
 - 모든 콘텐츠 노드는 `SOURCE` 노드로 `INDEXED_FROM` 엣지를 가져 **출처를 항상 설명 가능**하다.
 - provenance 는 노드 `metadata.provenance` 에 임베드되며, 동시에 감사 가능한
   `ingestion_provenance` 테이블에 기록된다 (`KnowledgeGraphStore.get_provenance(node_id)`).
+- 로컬 폴더 수집은 Computer/Drive/Folder/File/Chunk/Concept/semantic 노드 전체에
+  동일한 `workspace_id`를 투영하고 신규 ID도 워크스페이스별로 분리한다. 기존
+  범위 없는 로컬 폴더는 개인 Brain으로 재투영하되 기존 노드 ID는 보존하며,
+  같은 폴더를 다른 워크스페이스로 조용히 재할당하지 않는다.
 
 구현: `lattice_brain/ingestion.py` (`IngestionPipeline`) 가 단일 진입점이며,
 파일/로컬폴더/URL/브라우저 탭/텍스트를 모두 이 형태로 정규화한다.

@@ -24,7 +24,7 @@ def test_review_run_now_runner_uses_payload_workflow_and_review_item_input():
     assert calls == [
         (
             ("wf-payload", "u@example.com", "personal"),
-            {"with_agent": False, "inputs": {"__review_item__": "review-1"}},
+            {"with_agent": True, "inputs": {"__review_item__": "review-1"}},
         )
     ]
 

@@ -84,6 +84,75 @@ def test_build_orchestrator_selects_mode_honestly():
     assert runtime.build_orchestrator(None, None).mode == "simulation"
 
 
+def test_context_provider_uses_scoped_memory_service_recall():
+    runtime = PlatformRuntime.__new__(PlatformRuntime)
+    seen = {}
+
+    def recall(query, **kwargs):
+        seen.update({"query": query, **kwargs})
+        return {
+            "results": [
+                {
+                    "source": "graph",
+                    "title": "Roadmap",
+                    "snippet": "The scanned roadmap says the launch is Friday.",
+                }
+            ]
+        }
+
+    runtime.memory_recall = recall
+    runtime.store = None
+    context = runtime._context_provider("owner@example.com", "org:acme")("prepare launch follow-ups")
+
+    assert context == ["[graph] Roadmap: The scanned roadmap says the launch is Friday."]
+    assert seen["user_email"] == "owner@example.com"
+    assert seen["workspace_id"] == "org:acme"
+    assert seen["limit"] == 8
+
+
+def test_context_provider_falls_back_to_newest_scoped_memories():
+    runtime = PlatformRuntime.__new__(PlatformRuntime)
+    runtime.memory_recall = lambda *args, **kwargs: {"results": []}
+
+    class Store:
+        @staticmethod
+        def search_memories(*args, **kwargs):
+            return {"memories": []}
+
+        @staticmethod
+        def list_memories(*args, **kwargs):
+            # The store contract is newest-first.
+            return {"memories": [
+                {"content": "newest knowledge"},
+                {"content": "older knowledge"},
+            ]}
+
+    runtime.store = Store()
+    context = runtime._context_provider("owner@example.com", "org:acme")("unmatched automation goal")
+
+    assert context == ["newest knowledge", "older knowledge"]
+
+
+def test_legacy_recipe_prompt_becomes_grounded_agent_goal():
+    runtime = PlatformRuntime.__new__(PlatformRuntime)
+    captured = {}
+
+    def run_agent(goal, user, scope, **kwargs):
+        captured.update({"goal": goal, "user": user, "scope": scope, **kwargs})
+        return {"status": "ok"}
+
+    runtime.run_agent = run_agent
+    runner = runtime._agent_node_runner("owner@example.com", "personal")
+    runner(
+        node={"config": {"prompt": "Review new Brain memory", "mode": "draft"}},
+        context={"inputs": {"__trigger__": {"source_type": "note"}}},
+    )
+
+    assert captured["goal"] == "Review new Brain memory"
+    assert captured["roles"] == ["researcher", "planner", "executor", "reviewer"]
+    assert captured["with_workflow"] is False
+
+
 def test_custom_registry_agents_execute():
     """A registered custom agent id in the pipeline actually runs with its
     persisted config — registration is no longer a UI illusion."""

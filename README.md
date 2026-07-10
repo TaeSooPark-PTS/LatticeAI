@@ -8,8 +8,9 @@
 > workspace-isolated graph identities and frontend caches, fail-closed admin
 > gates, SSRF-safe web capture, private local state permissions, and reproducible
 > release/test isolation. The same unreleased line introduces a human-first UI:
-> conversation-led home, visible task navigation, search-first memory, focused
-> source/work flows, and progressive disclosure for technical Brain details.
+> a visible knowledge journey from conversation or source capture into the
+> living Brain, its real relationship graph, and memory-grounded automation;
+> task navigation and technical detail stay calm and approachable.
 > The published release number remains 9.0.0.
 
 Your model is the voice you use today. Your Brain is the asset you keep.
@@ -19,7 +20,9 @@ downloads, update checks, and other external communication happen only after
 explicit consent.
 
 It is not a ChatGPT clone, a model launcher, a graph database, or a note app.
-It is the finished private AI memory layer wrapped in a Living Brain experience — with desktop source capture that uses native folder selection, ToolRegistry readiness, Config-driven DI for automation, and continued AgentRuntime/Tool wiring seams.
+It is a Living Brain: chatting or adding a file, folder, note, or web page grows
+durable memory; the real graph shows how that knowledge connects; and reviewed,
+user-enabled automations can act from the same evidence.
 
 [![PyPI Version](https://img.shields.io/pypi/v/ltcai?label=PyPI)](https://pypi.org/project/ltcai/)
 [![npm Version](https://img.shields.io/npm/v/ltcai?label=npm)](https://www.npmjs.com/package/ltcai)
@@ -51,10 +54,10 @@ You need Lattice AI when:
   session as disposable.
 - Add documents, selected local folders, notes, screenshots, and web pages with
   source-aware memory.
-- See recent memories, older memories, topics, relationships, and the full
-  knowledge graph when you want deeper structure.
-- Create consent-first Brain automation drafts for memory digests, project
-  reviews, and follow-up suggestions before any schedule is enabled.
+- Watch new knowledge enter the Brain and appear in a lightweight, real
+  relationship graph before opening the full graph explorer.
+- Create evidence-linked Brain automation drafts for memory digests, project
+  reviews, and follow-up suggestions, then explicitly enable them when ready.
 - Use a recommended local model without learning model internals first.
 - Keep advanced controls, audit logs, roles, and retention in a separate Admin
   surface.
@@ -66,9 +69,10 @@ You need Lattice AI when:
 2. Create or open a local profile.
 3. Let Lattice explain what this computer can run.
 4. Start with the recommended model as the Brain's voice, or skip and choose later.
-5. Talk to your Brain.
-6. Open Memory to search first, then reveal the connection map when useful.
-7. Back up, inspect, export, or restore the Brain when you need ownership actions.
+5. Talk to your Brain or add a file, folder, note, or web page.
+6. Watch the source become memory and connect to the visible knowledge graph.
+7. Ask, delegate, review, or explicitly enable a memory-grounded automation.
+8. Back up, inspect, export, or restore the Brain when you need ownership actions.
 
 ## Living Brain Flow
 
@@ -107,10 +111,11 @@ execution, and network use before work starts.
 
 ### 5. Brain Chat
 
-Talk normally from a calm, reading-first canvas. The default home keeps the
-composer, a few useful starters, and recent conversations in view. Brain Brief,
-memory rings, ingestion detail, and model/runtime evidence remain available
-behind intentional disclosures instead of competing with the first action.
+Talk normally or add a source from a calm, reading-first canvas. The default
+home makes the full knowledge lifecycle legible: the source enters the living
+Brain, real nodes and relationships appear in a lightweight graph, and grounded
+next actions show which memories and evidence they will use. Detailed memory
+rings, provenance, and model/runtime proof remain available when needed.
 
 ![Brain Brief Home](output/release/v9.0.0/screenshots/04-brain-chat-home.png)
 
@@ -173,7 +178,8 @@ pip install "ltcai[local]"
 - **Product category**: local-first Digital Brain.
 - **Core capability**: private AI memory layer for conversations, documents,
   decisions, relationships, workflows, and project context.
-- **UX metaphor**: Living Brain in a calm conversation-and-document workspace.
+- **UX metaphor**: a visible source-to-memory-to-graph-to-automation journey
+  centered on the Living Brain, not a generic chat or operations dashboard.
 - **Product navigation**: desktop task navigation and a mobile bottom bar expose
   Chat, Sources, Memory, and Work; model, workspace, and admin controls live in
   the secondary menu.

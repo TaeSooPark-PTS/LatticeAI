@@ -975,6 +975,7 @@ def _build(config: "Optional[Config]" = None) -> Dict[str, Any]:
         agent_registry=AGENT_REGISTRY,
         data_dir=DATA_DIR,
         append_audit_event=append_audit_event,
+        memory_service=MEMORY_SERVICE,
         tz_name=getattr(CONFIG, "timezone", None),
     )
     _llm_generate_sync = _platform_automation_runtime["_llm_generate_sync"]

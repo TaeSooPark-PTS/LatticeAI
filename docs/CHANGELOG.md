@@ -7,6 +7,16 @@ existed at that release.
 ## [Unreleased]
 
 ### Added
+- Added a living knowledge flow that shows chat, files, folders, notes, and web
+  pages entering the Brain, then renders a lightweight graph from actual
+  Knowledge Graph nodes and edges on the first screen.
+- Added persistent conversation-to-knowledge traces, truthful ingestion
+  emergence counts and provenance, native desktop folder selection, and
+  evidence-linked Brain automation actions.
+- Added a consent-preserving recipe lifecycle: create a reviewable disabled
+  draft, inspect its memory focus and evidence, then explicitly enable it.
+- Added scoped MemoryService recall to workflow agents and researcher-first
+  execution for triggered and review-queue automation runs.
 - Added a visible task-oriented desktop navigation, mobile bottom navigation,
   accessible secondary menu, skip link, focus trap/restoration, keyboard-driven
   tabs, and reduced-motion behavior for the React workspace.
@@ -21,9 +31,9 @@ existed at that release.
   normal lint gate.
 
 ### Changed
-- Rebuilt Brain Home around greeting, composer, suggested starts, and recent
-  conversations; Brain Brief, memory rings, proactive activity, ingestion, and
-  technical proof are now progressively disclosed.
+- Rebuilt Brain Home around the visible source-to-memory-to-graph-to-automation
+  journey, while keeping the greeting, composer, suggested starts, recent
+  conversations, and optional deeper Brain proof.
 - Renamed and regrouped the primary experience around Chat, Sources, Memory, and
   Work. Memory now opens with search, basic Work leads with one goal composer,
   and basic mode hides pipeline, agent-registry, runtime-metric, plugin, and
@@ -34,8 +44,9 @@ existed at that release.
 - Restyled shared panels, entity lists, empty states, statistics, onboarding,
   source capture, and active messages to use solid surfaces, whitespace, and
   separators instead of nested glass cards and dashboard grids.
-- Deferred graph and Brain-proof home queries until a user opens detailed Brain
-  information or starts an action that needs them.
+- Brain Home now fetches a bounded graph preview so it can show real knowledge
+  relationships immediately; heavier proof and the full graph explorer remain
+  deferred until requested.
 - Model generation, streaming, and document generation now use request-scoped
   model snapshots without mutating the global selected model.
 - New workspace-scoped graph nodes derive IDs from workspace identity, preventing
@@ -67,6 +78,22 @@ existed at that release.
   machine-local files.
 
 ### Fixed
+- Fixed ingestion deltas that compared against truncated display lists instead
+  of complete graph/readiness baselines, and replaced simulated stage timers
+  with post-response memory and graph verification.
+- Fixed global Brain recall pulses being ignored by Brain instances without a
+  local callback, relationship visuals inventing fallback endpoints, and SVG
+  gradient IDs colliding when multiple living Brains appear on one page.
+- Fixed Brain automation hook/agent configuration mismatches, missing scoped
+  recall, trigger runs that skipped agent execution, and review-queue runs that
+  did not execute the workflow's agent node.
+- Fixed local-folder graph nodes and Brain events trusting unvalidated or absent
+  workspace scope, losing scope on watcher restart, appearing in another
+  workspace's graph/search, or waking another workspace/owner's recipe. Legacy
+  personal nodes are reprojected without changing their IDs.
+- Fixed recipe activation replacing reviewed user edits with the starter
+  definition, and stopped empty web captures from being presented as newly
+  remembered knowledge.
 - Blocked permission request self-approval, stale disabled/deleted-account
   sessions, agent approval forgery and cross-user resume, body identity spoofing,
   command traversal/symlink/interpreter escapes, and authenticated scope lookup

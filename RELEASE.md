@@ -9,13 +9,34 @@
 
 ## Main branch after v9.0.0 — Security, Isolation & Human-First UX (Unreleased)
 
+- Reframed Brain Home around the product's actual knowledge lifecycle: chat,
+  files, folders, notes, and web pages visibly enter the Living Brain, then
+  resolve into a lightweight graph built only from real Knowledge Graph nodes
+  and edges.
+- Added truthful ingestion emergence evidence, native desktop folder selection,
+  persistent conversation-to-knowledge traces, grounded next actions, and
+  desktop/mobile layouts that keep the Brain—not a dashboard—the protagonist.
+- Brain automation recipes are now created as reviewable disabled drafts and
+  require an explicit enable action. Triggered and review-queue runs execute a
+  real agent pipeline grounded by scoped MemoryService recall, with researcher,
+  planner, executor, and reviewer roles.
+- Normalized ingestion hook names and provenance so chat, upload, local-folder,
+  note, web, and legacy sources can drive workspace-scoped recipes without
+  treating failed ingestion as knowledge.
+- Local-folder hierarchy, file, chunk, concept, and semantic nodes now carry
+  workspace-scoped identities. Automation events validate the same write scope,
+  persist it through watcher restarts, and stay isolated by workspace and owner;
+  legacy personal-folder nodes reproject in place without destructive ID rewrites.
+- Enabling a reviewed recipe preserves the user's edited prompt, roles, name,
+  and nodes; empty web captures remain visibly unsuccessful.
 - Replaced the floating hamburger/drawer shell with visible desktop task
   navigation and a mobile bottom bar for Chat, Sources, Memory, and Work; model,
   settings, workspace, and admin utilities remain available in an accessible
   secondary menu.
-- Rebuilt Brain Home around a short greeting, large composer, contextual
-  starters, and recent conversations. Memory rings, Brain Brief, proactive
-  activity, ingestion, and technical proof now use progressive disclosure.
+- Rebuilt Brain Home around a large composer, contextual starters, recent
+  conversations, visible source capture, the living knowledge flow, and grounded
+  automation. Deeper memory rings and runtime proof still use progressive
+  disclosure.
 - Memory opens on search instead of the graph, basic Work opens on a single goal
   composer instead of runtime metrics, and basic Sources uses a one-column add
   flow with technical pipeline controls hidden.

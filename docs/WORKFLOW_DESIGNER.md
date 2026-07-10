@@ -20,6 +20,28 @@ The engine version is exported as:
 WORKFLOW_ENGINE_VERSION = "2.2.0"
 ```
 
+## Memory-grounded Brain automation
+
+Brain Home turns recalled knowledge into suggested actions and automation
+recipes without silently enabling work. A recipe is first installed as a
+disabled, reviewable workflow draft. The user can inspect its memory focus,
+source, evidence, and agent roles, then explicitly enable the same workflow in
+place; activation does not create a duplicate recipe or replace the user's
+reviewed name, prompt, roles, or node edits.
+
+When an enabled recipe receives a successful workspace-scoped Brain ingestion
+event, the workflow runs a researcher-first agent chain:
+
+```text
+Brain event -> researcher recall -> planner -> executor -> reviewer -> review queue
+```
+
+The researcher receives scoped `MemoryService.recall` context. Trigger identity,
+workspace, source provenance, and run ID remain attached through execution and
+review. Chat, upload, local-folder, note, web, and compatible legacy ingestion
+events are normalized; failed ingestion never triggers a recipe. Generated work
+is staged for review rather than performing an unreviewed external action.
+
 ## v2.2 hardening
 
 - Agent node output is captured in workflow context and can flow into a later

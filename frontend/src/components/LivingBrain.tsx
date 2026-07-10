@@ -1,5 +1,7 @@
 import * as React from "react";
 import { cn } from "@/lib/utils";
+import { t } from "@/i18n";
+import { useAppStore } from "@/store/appStore";
 
 export type BrainState = "idle" | "listening" | "thinking" | "recalling" | "synthesizing" | "planning" | "acting" | "resting";
 
@@ -31,39 +33,46 @@ export function LivingBrain({
   depth = 0,
   onInteract,
 }: LivingBrainProps) {
-  const [isPulsing, setIsPulsing] = React.useState(false);
+  const language = useAppStore((store) => store.language);
   const organismRef = React.useRef<HTMLButtonElement>(null);
+  const pulseTimerRef = React.useRef<number | null>(null);
+  const gradientPrefix = React.useId().replace(/:/g, "");
+  const gradients = {
+    left: `${gradientPrefix}-lobe-left`,
+    right: `${gradientPrefix}-lobe-right`,
+    bridge: `${gradientPrefix}-bridge`,
+    stem: `${gradientPrefix}-stem`,
+    sheen: `${gradientPrefix}-sheen`,
+  };
 
-  // External trigger for memory / important recall moments
-  React.useEffect(() => {
-    if (onPulse) {
-      const handler = () => firePulse();
-      // allow global window event too for simplicity across components
-      window.addEventListener("brain:recall", handler as EventListener);
-      return () => window.removeEventListener("brain:recall", handler as EventListener);
-    }
-  }, [onPulse]);
-
-  function firePulse() {
-    setIsPulsing(true);
+  const firePulse = React.useCallback(() => {
     if (organismRef.current) {
       organismRef.current.classList.add("pulse");
-      // clean after animation
-      window.setTimeout(() => {
+      if (pulseTimerRef.current !== null) window.clearTimeout(pulseTimerRef.current);
+      pulseTimerRef.current = window.setTimeout(() => {
         if (organismRef.current) organismRef.current.classList.remove("pulse");
-        setIsPulsing(false);
       }, 1350);
     }
     onPulse?.();
-  }
+  }, [onPulse]);
+
+  // Every visible Brain responds to real recall and ingestion events.
+  React.useEffect(() => {
+    const handler = () => firePulse();
+    window.addEventListener("brain:recall", handler as EventListener);
+    return () => {
+      window.removeEventListener("brain:recall", handler as EventListener);
+      if (pulseTimerRef.current !== null) window.clearTimeout(pulseTimerRef.current);
+    };
+  }, [firePulse]);
 
   // Auto gentle pulse when recalling or high intensity
   React.useEffect(() => {
-    if ((state === "recalling" || intensity > 0.82) && !isPulsing) {
+    if (state === "recalling" || intensity > 0.82) {
       const t = window.setTimeout(() => firePulse(), 180);
       return () => clearTimeout(t);
     }
-  }, [state, intensity]);
+  }, [state, intensity, firePulse]);
 
   const dataState = state;
   const isLarge = size === "large";
@@ -116,7 +125,7 @@ export function LivingBrain({
         className,
         effectiveDepth > 0 && "is-exploring"
       )}
-      aria-label="Your living Brain"
+      aria-label={t(language, "brain.living.aria")}
       role="group"
       data-depth={effectiveDepth}
     >
@@ -125,7 +134,7 @@ export function LivingBrain({
         ref={organismRef}
         className={cn("brain-organism", `size-${size}`, `depth-${effectiveDepth}`)}
         data-state={dataState}
-        aria-label={effectiveDepth < 5 ? "Travel deeper into your Brain" : "Rest inside the Knowledge Graph"}
+        aria-label={t(language, effectiveDepth < 5 ? "brain.living.open" : "brain.living.graph")}
         aria-disabled={!canTravel}
         style={{
           "--brain-scale": `${0.96 + (dynamicIntensity - 0.5) * 0.09 + effectiveDepth * 0.015}`,
@@ -133,34 +142,34 @@ export function LivingBrain({
         onClick={handleClick}
         onPointerMove={handleTilt}
         onPointerLeave={resetTilt}
-        title={effectiveDepth < 5 ? "Travel deeper into your Brain" : "The core of your knowledge"}
+        title={t(language, effectiveDepth < 5 ? "brain.living.open" : "brain.living.graph")}
       >
         {/* Living anatomical presence. The glow opens with depth; the folds make it unmistakably a Brain. */}
         <div className="brain-core" style={{ "--core-scale": `${1 + effectiveDepth * 0.045}` } as React.CSSProperties}>
           <svg className="brain-anatomy" viewBox="0 0 220 174" aria-hidden>
             <defs>
               {/* 상단 좌측 광원 기준의 볼륨 셰이딩 — 로브가 부풀어 보이게 한다 */}
-              <radialGradient id="lattice-lobe-left-shade" cx="34%" cy="26%" r="85%">
+              <radialGradient id={gradients.left} cx="34%" cy="26%" r="85%">
                 <stop offset="0%" stopColor="hsl(var(--brain-halo) / 0.8)" />
                 <stop offset="42%" stopColor="hsl(var(--brain-core) / 0.46)" />
                 <stop offset="78%" stopColor="hsl(var(--brain-core) / 0.2)" />
                 <stop offset="100%" stopColor="hsl(228 30% 8% / 0.28)" />
               </radialGradient>
-              <radialGradient id="lattice-lobe-right-shade" cx="62%" cy="24%" r="88%">
+              <radialGradient id={gradients.right} cx="62%" cy="24%" r="88%">
                 <stop offset="0%" stopColor="hsl(var(--connection) / 0.66)" />
                 <stop offset="46%" stopColor="hsl(var(--connection) / 0.32)" />
                 <stop offset="80%" stopColor="hsl(var(--connection) / 0.14)" />
                 <stop offset="100%" stopColor="hsl(228 30% 8% / 0.3)" />
               </radialGradient>
-              <radialGradient id="lattice-bridge-shade" cx="50%" cy="30%" r="80%">
+              <radialGradient id={gradients.bridge} cx="50%" cy="30%" r="80%">
                 <stop offset="0%" stopColor="hsl(var(--memory) / 0.55)" />
                 <stop offset="100%" stopColor="hsl(var(--memory) / 0.1)" />
               </radialGradient>
-              <linearGradient id="lattice-stem-shade" x1="0" y1="0" x2="0" y2="1">
+              <linearGradient id={gradients.stem} x1="0" y1="0" x2="0" y2="1">
                 <stop offset="0%" stopColor="hsl(var(--knowledge) / 0.42)" />
                 <stop offset="100%" stopColor="hsl(var(--knowledge) / 0.08)" />
               </linearGradient>
-              <linearGradient id="lattice-sheen-shade" x1="0" y1="0" x2="0.4" y2="1">
+              <linearGradient id={gradients.sheen} x1="0" y1="0" x2="0.4" y2="1">
                 <stop offset="0%" stopColor="hsl(40 60% 98% / 0.5)" />
                 <stop offset="70%" stopColor="hsl(40 60% 98% / 0.06)" />
                 <stop offset="100%" stopColor="hsl(40 60% 98% / 0)" />
@@ -168,14 +177,16 @@ export function LivingBrain({
             </defs>
             <path
               className="brain-lobe brain-lobe-left"
+              style={{ fill: `url(#${gradients.left})` }}
               d="M102 30c-13-20-44-19-55 1-18 1-29 16-28 33-13 8-18 25-11 39-9 16-1 36 17 42 5 19 27 26 43 15 13 10 33 8 43-5 5-7 8-16 8-27V52c0-8-6-17-17-22Z"
             />
             <path
               className="brain-lobe brain-lobe-right"
+              style={{ fill: `url(#${gradients.right})` }}
               d="M118 30c13-20 44-19 55 1 18 1 29 16 28 33 13 8 18 25 11 39 9 16 1 36-17 42-5 19-27 26-43 15-13 10-33 8-43-5-5-7-8-16-8-27V52c0-8 6-17 17-22Z"
             />
-            <path className="brain-bridge" d="M103 48c9-8 24-8 33 0 7 6 9 16 5 25-5 11-16 15-31 12-15 3-26-1-31-12-4-9-2-19 5-25 5-4 12-6 19 0Z" />
-            <path className="brain-stem" d="M92 137c10 9 26 9 36 0 1 14 7 25 20 33H76c12-8 17-19 16-33Z" />
+            <path className="brain-bridge" style={{ fill: `url(#${gradients.bridge})` }} d="M103 48c9-8 24-8 33 0 7 6 9 16 5 25-5 11-16 15-31 12-15 3-26-1-31-12-4-9-2-19 5-25 5-4 12-6 19 0Z" />
+            <path className="brain-stem" style={{ fill: `url(#${gradients.stem})` }} d="M92 137c10 9 26 9 36 0 1 14 7 25 20 33H76c12-8 17-19 16-33Z" />
             <path className="brain-fold fold-a" d="M48 50c18-11 38-8 47 8" />
             <path className="brain-fold fold-b" d="M34 82c22-8 45-5 58 8" />
             <path className="brain-fold fold-c" d="M43 119c18 5 35 2 49-11" />
@@ -186,6 +197,7 @@ export function LivingBrain({
             {/* 광택 — 위쪽에서 떨어지는 반사광 한 줄이 표면의 곡률을 말해준다 */}
             <path
               className="brain-sheen"
+              style={{ fill: `url(#${gradients.sheen})` }}
               d="M58 38c22-16 52-20 78-10-30-2-58 6-74 22-8 8-16 6-4-12Z"
             />
           </svg>
@@ -232,46 +244,30 @@ export function LivingBrain({
           />
         ))}
 
-        {/* Relationship structure appears only near the deepest layers. */}
-        {effectiveDepth >= 4 && (
-          <svg className="brain-inner-structure" viewBox="0 0 100 100" aria-hidden>
-            <g stroke="hsl(var(--brain-core) / 0.35)" strokeWidth="0.6" fill="none">
-              <circle cx="50" cy="50" r="18" />
-              <circle cx="50" cy="50" r="28" />
-              <path d="M32 50 Q50 32 68 50" />
-              <path d="M32 50 Q50 68 68 50" />
-              {/* lattice connections for deeper feel */}
-              <circle cx="25" cy="35" r="2" fill="hsl(var(--brain-core) / 0.4)" />
-              <circle cx="75" cy="35" r="2" fill="hsl(var(--brain-core) / 0.4)" />
-              <circle cx="25" cy="65" r="2" fill="hsl(var(--brain-core) / 0.4)" />
-              <circle cx="75" cy="65" r="2" fill="hsl(var(--brain-core) / 0.4)" />
-              <path d="M25 35 L50 50 L75 35" stroke="hsl(var(--knowledge)/0.3)" strokeWidth="0.4" />
-              <path d="M25 65 L50 50 L75 65" stroke="hsl(var(--knowledge)/0.3)" strokeWidth="0.4" />
-            </g>
-          </svg>
-        )}
       </button>
 
       {showLabel && !isTrace && (
         <div className="brain-presence-label" data-state={state}>
           <span className="dot" />
-          {label || (effectiveDepth > 0 ? `Depth ${effectiveDepth}` : humanState(state))}
+          {label || (effectiveDepth > 0
+            ? t(language, "brain.living.depth", { depth: effectiveDepth })
+            : t(language, humanStateKey(state)))}
         </div>
       )}
     </div>
   );
 }
 
-function humanState(s: BrainState) {
+function humanStateKey(s: BrainState) {
   switch (s) {
-    case "listening": return "Listening";
-    case "thinking": return "Thinking with you";
-    case "recalling": return "Remembering";
-    case "synthesizing": return "Making sense";
-    case "planning": return "Planning";
-    case "acting": return "Acting";
-    case "resting": return "With you";
-    default: return "Here";
+    case "listening": return "brain.living.state.listening";
+    case "thinking": return "brain.living.state.thinking";
+    case "recalling": return "brain.living.state.recalling";
+    case "synthesizing": return "brain.living.state.synthesizing";
+    case "planning": return "brain.living.state.planning";
+    case "acting": return "brain.living.state.acting";
+    case "resting": return "brain.living.state.resting";
+    default: return "brain.living.state.idle";
   }
 }
 

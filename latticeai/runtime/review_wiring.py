@@ -27,7 +27,7 @@ def build_review_run_now_runner(platform: Any, http_exception: type[Exception]) 
             workflow_id,
             user_email,
             scope,
-            with_agent=False,
+            with_agent=True,
             inputs={"__review_item__": item.get("id")},
         )
 

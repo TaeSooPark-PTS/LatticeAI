@@ -329,6 +329,7 @@ export const latticeApi = {
   indexStatus: () => get("/api/index/status", {}),
   rebuildIndex: () => post("/api/index/rebuild", { full: false, include_nodes: true, include_chunks: true }, {}),
   graph: () => get("/knowledge-graph/graph", { nodes: [], edges: [] }),
+  graphPreview: (limit = 48) => get("/knowledge-graph/graph", { nodes: [], edges: [] }, { limit }),
   graphStats: () => get("/knowledge-graph/stats", { nodes: {}, edges: {}, total_nodes: 0, total_edges: 0 }),
   graphPortability: () => get("/api/knowledge-graph/portability", {}),
   brainStorage: () => get("/api/brain/storage", {}),

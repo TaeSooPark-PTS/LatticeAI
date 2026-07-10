@@ -409,6 +409,32 @@ def test_run_now_illegal_on_approved(tmp_path):
         svc.run_now(item["id"], runner=lambda _stored: "run-1")
 
 
+def test_run_now_backlinks_platform_workflow_run_id(tmp_path):
+    _, svc = _service(tmp_path)
+    item = svc.create(title="x", payload={"workflow_id": "wf"})
+
+    updated = svc.run_now(
+        item["id"],
+        runner=lambda _stored: {"workflow_run_id": "workflow-run-grounded"},
+    )
+
+    assert updated["status"] == "pending"
+    assert updated["payload"]["last_run_id"] == "workflow-run-grounded"
+    assert updated["provenance"]["run_id"] == "workflow-run-grounded"
+
+
+def test_legacy_brain_recipe_is_review_queue_opted_in(tmp_path):
+    from latticeai.services.review_queue import review_queue_opted_in
+
+    workflow = _workflow(review_queue=False)
+    workflow["metadata"] = {
+        "created_from": "brain_automation_recipe",
+        "external_actions": False,
+    }
+
+    assert review_queue_opted_in(workflow) is True
+
+
 # ── API routes ───────────────────────────────────────────────────────────
 def test_api_uses_automation_reviews_route(tmp_path):
     client, _svc = _api_client(tmp_path)

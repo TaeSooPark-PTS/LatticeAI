@@ -99,7 +99,15 @@ class LocalKnowledgeWatcher:
         try:
             for source in graph.local_sources().get("sources", []):
                 if source.get("watch_enabled"):
-                    result = self.start_source(source)
+                    consent = source.get("consent") or {}
+                    restored_source = {
+                        **source,
+                        # Older sources had no explicit scope. Their local
+                        # knowledge belongs to the personal Brain, never every
+                        # workspace.
+                        "workspace_id": source.get("workspace_id") or consent.get("workspace_id") or "personal",
+                    }
+                    result = self.start_source(restored_source)
                     if result.get("watching"):
                         restored += 1
         except Exception as exc:
@@ -193,12 +201,14 @@ class LocalKnowledgeWatcher:
             self._hooks.fire_hook("pre_index", "folder.reindex",
                                   payload={"source_id": source_id, "root_path": root, "trigger": "watch"})
         try:
-            graph.index_local_folder(
+            result = graph.index_local_folder(
                 Path(source["root_path"]),
                 include_ocr=bool(source.get("include_ocr")),
                 watch_enabled=True,
                 user_email=consent.get("approved_by"),
+                workspace_id=source.get("workspace_id") or consent.get("workspace_id") or "personal",
                 consent=consent,
+                source_id_override=source_id,
             )
             with self._lock:
                 if source_id in self._watched:
@@ -207,6 +217,21 @@ class LocalKnowledgeWatcher:
             if self._hooks is not None:
                 self._hooks.fire_hook("post_index", "folder.reindex",
                                       payload={"source_id": source_id, "root_path": root, "trigger": "watch", "status": "ok"})
+                counts = (result.get("counts") or {}) if isinstance(result, dict) else {}
+                if int(counts.get("indexed") or 0) + int(counts.get("deleted") or 0) > 0:
+                    self._hooks.fire_hook(
+                        "post_tool",
+                        "tool.kg_ingest.local_folder",
+                        payload={
+                            "tool": "kg_ingest.local_folder",
+                            "status": "ok",
+                            "source": "ingestion",
+                            "source_type": "local_folder",
+                            "source_id": source_id,
+                        },
+                        user_email=consent.get("approved_by"),
+                        workspace_id=source.get("workspace_id"),
+                    )
         except Exception as exc:
             logging.warning("local knowledge watcher reindex failed for %s: %s", source_id, exc)
             with self._lock:
@@ -233,12 +258,23 @@ def create_local_knowledge_router(
     require_local_approval: Callable[..., None],
     watcher: Optional[LocalKnowledgeWatcher] = None,
     hooks: Any = None,
+    workspace_service: Any = None,
 ) -> APIRouter:
     router = APIRouter()
 
     def graph():
         require_graph()
         return get_graph()
+
+    def write_workspace(request: Request, user: str) -> Optional[str]:
+        requested = request.headers.get("X-Workspace-Id")
+        requested = requested.strip() if requested and requested.strip() else None
+        if workspace_service is None:
+            return requested
+        try:
+            return workspace_service.resolve_write_scope(requested, user or None)
+        except PermissionError as exc:
+            raise HTTPException(status_code=403, detail=str(exc)) from exc
 
     @router.get("/knowledge-graph/local/roots")
     async def knowledge_graph_local_roots(request: Request):
@@ -301,41 +337,83 @@ def create_local_knowledge_router(
     @router.post("/knowledge-graph/local/index")
     async def knowledge_graph_local_index(req: LocalKnowledgeIndexRequest, request: Request):
         current_user = require_local_user(request)
+        workspace_id = write_workspace(request, current_user)
         kg = graph()
         if not req.approved:
             return local_permission_response(req.path, "read", current_user)
         require_local_approval(token=req.approval_token, path=req.path, action="read", user_email=current_user)
+        consent = {
+            **(req.consent or {}),
+            "approved_by": current_user,
+            "workspace_id": workspace_id or "personal",
+        }
+        source_id_override = None
+        try:
+            target_root = Path(req.path).expanduser().resolve()
+            target_scope = workspace_id or "personal"
+            for source in kg.local_sources().get("sources", []):
+                source_consent = source.get("consent") or {}
+                source_scope = source_consent.get("workspace_id") or "personal"
+                source_root_value = str(source.get("root_path") or "").strip()
+                if not source_root_value:
+                    continue
+                source_root = Path(source_root_value).expanduser().resolve()
+                if source_scope == target_scope and source_root == target_root:
+                    source_id_override = source.get("id")
+                    break
+        except Exception:
+            # Source reuse is a compatibility optimization; indexing still has
+            # a deterministic workspace-scoped ID when discovery is unavailable.
+            source_id_override = None
         if hooks is not None:
             hooks.fire_hook("pre_index", "folder.index",
                             payload={"root_path": req.path, "trigger": "connect", "watch": req.watch_enabled},
-                            user_email=current_user)
+                            user_email=current_user, workspace_id=workspace_id)
         try:
             result = kg.index_local_folder(
                 Path(req.path),
                 include_ocr=req.include_ocr,
                 watch_enabled=req.watch_enabled,
                 user_email=current_user,
-                consent=req.consent or {},
+                workspace_id=workspace_id or "personal",
+                consent=consent,
                 max_files=req.max_files,
+                source_id_override=source_id_override,
             )
         except ValueError as exc:
             if hooks is not None:
                 hooks.fire_hook("post_index", "folder.index",
                                 payload={"root_path": req.path, "trigger": "connect", "status": "error", "error": str(exc)},
-                                user_email=current_user)
+                                user_email=current_user, workspace_id=workspace_id)
             raise HTTPException(status_code=400, detail=str(exc)) from exc
         if hooks is not None:
             _idx = (result.get("index") or {}) if isinstance(result, dict) else {}
             hooks.fire_hook("post_index", "folder.index",
                             payload={"root_path": req.path, "trigger": "connect", "status": "ok",
                                      "indexed": _idx.get("indexed") or (result or {}).get("indexed")},
-                            user_email=current_user)
+                            user_email=current_user, workspace_id=workspace_id)
+            counts = (result.get("counts") or {}) if isinstance(result, dict) else {}
+            if int(counts.get("indexed") or 0) + int(counts.get("deleted") or 0) > 0:
+                hooks.fire_hook(
+                    "post_tool",
+                    "tool.kg_ingest.local_folder",
+                    payload={
+                        "tool": "kg_ingest.local_folder",
+                        "status": "ok",
+                        "source": "ingestion",
+                        "source_type": "local_folder",
+                        "source_id": (result.get("source") or {}).get("id") if isinstance(result, dict) else None,
+                    },
+                    user_email=current_user,
+                    workspace_id=workspace_id,
+                )
 
         if watcher:
             if req.watch_enabled:
                 source_payload = {
                     **result.get("source", {}),
-                    "consent": {"approved_by": current_user, **(req.consent or {})},
+                    "workspace_id": workspace_id or "personal",
+                    "consent": consent,
                 }
                 result["watch"] = watcher.start_source(source_payload)
             else:

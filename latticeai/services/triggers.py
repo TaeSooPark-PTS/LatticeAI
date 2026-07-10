@@ -209,12 +209,22 @@ class TriggerService:
     def on_brain_event(self, event: str, payload: Optional[Dict[str, Any]] = None) -> int:
         """Fire workflows whose brain_event trigger matches this ingestion."""
         payload = payload or {}
-        source_type = str(payload.get("source_type") or event.split(".", 1)[-1] or "")
+        source_type = str(payload.get("source_type") or _ingestion_source_type(event, payload) or "")
+        event_workspace = str(payload.get("workspace_id") or "personal").strip()
+        event_user = str(payload.get("user_email") or "").strip().lower()
         fired = 0
         with self._lock:
             state = self._load_state()
             for item in self._triggered_workflows():
                 if item["kind"] != "brain_event":
+                    continue
+                workflow_workspace = str(item["workflow"].get("workspace_id") or "personal").strip()
+                workflow_user = str(item["workflow"].get("user_email") or "").strip().lower()
+                if event_workspace != workflow_workspace:
+                    continue
+                # Owned workflows only respond to their owner's ingestion.
+                # Ownerless legacy workflows remain compatible in personal.
+                if workflow_user and workflow_user != event_user:
                     continue
                 wanted = str(item["config"].get("source_type") or "").strip()
                 if wanted and wanted != source_type:
@@ -237,6 +247,8 @@ class TriggerService:
                     "event": event,
                     "source_type": source_type,
                     "node_id": payload.get("node_id"),
+                    "user_email": payload.get("user_email"),
+                    "workspace_id": payload.get("workspace_id"),
                 })
             self._save_state(state)
         return fired
@@ -245,15 +257,37 @@ class TriggerService:
         """A post_tool hook runner: ingestion events fan into triggers."""
         def runner(context):
             event = str(getattr(context, "event", "") or "")
-            if not event.startswith("kg_ingest."):
-                return {"status": "ok", "output": "not an ingestion event"}
             payload = context.payload if isinstance(context.payload, dict) else {}
-            fired = self.on_brain_event(event, payload)
+            source_type = _ingestion_source_type(event, payload)
+            if not source_type:
+                return {"status": "ok", "output": "not an ingestion event"}
+            if str(payload.get("status") or "ok") != "ok":
+                return {"status": "ok", "output": "ignored failed ingestion event"}
+            fired = self.on_brain_event(
+                f"kg_ingest.{source_type}",
+                {
+                    **payload,
+                    "source_type": source_type,
+                    "user_email": getattr(context, "user_email", None) or payload.get("user_email"),
+                    "workspace_id": getattr(context, "workspace_id", None) or payload.get("workspace_id"),
+                },
+            )
             return {"status": "ok", "output": f"fired {fired} workflow trigger(s)"}
         return runner
 
     # ── execution + lifecycle ──────────────────────────────────────────────
     def _fire(self, workflow_id: str, trigger_info: Dict[str, Any]) -> None:
+        try:
+            workflows = list(self._store.load_state().get("workflows") or [])
+            workflow = next((wf for wf in workflows if wf.get("id") == workflow_id), None) or {}
+        except Exception:
+            workflow = {}
+        trigger_info = dict(trigger_info)
+        if not trigger_info.get("user_email"):
+            trigger_info["user_email"] = workflow.get("user_email")
+        if not trigger_info.get("workspace_id"):
+            trigger_info["workspace_id"] = workflow.get("workspace_id")
+
         def _run():
             try:
                 result = self._run_workflow(workflow_id, {"__trigger__": trigger_info})
@@ -285,6 +319,8 @@ class TriggerService:
                 source=source,
                 run_result=result,
                 trigger_info=trigger_info,
+                user_email=trigger_info.get("user_email") or workflow.get("user_email"),
+                workspace_id=trigger_info.get("workspace_id") or workflow.get("workspace_id"),
             )
         except Exception as exc:
             logging.warning("review_sink enqueue failed for %s: %s", workflow_id, exc)
@@ -324,6 +360,19 @@ class TriggerService:
         self._stop_event.set()
         if self._thread:
             self._thread.join(timeout=2)
+
+
+def _ingestion_source_type(event: str, payload: Dict[str, Any]) -> str:
+    """Normalize the real dispatch event (``tool.kg_ingest.*``) and legacy form."""
+    tool = str(payload.get("tool") or "").strip()
+    if tool.startswith("kg_ingest."):
+        return tool.removeprefix("kg_ingest.").strip()
+    normalized = str(event or "").strip()
+    if normalized.startswith("tool.kg_ingest."):
+        return normalized.removeprefix("tool.kg_ingest.").strip()
+    if normalized.startswith("kg_ingest."):
+        return normalized.removeprefix("kg_ingest.").strip()
+    return ""
 
 
 __all__ = ["TriggerService", "TRIGGER_HOOK_NAME", "MIN_INTERVAL_SECONDS"]

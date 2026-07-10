@@ -1,5 +1,5 @@
 import { asArray, isRecord as isRecordValue } from "@/lib/utils";
-import type { ApiRecord, BrainBrief, BrainDepth, BrainProof, BrainReadiness, ConversationSummary, KnowledgeConcept, KnowledgeGraphModel, MemoryFragment, Message, RelationshipThread } from "./types";
+import type { ApiRecord, BrainBrief, BrainDepth, BrainProof, BrainReadiness, ConversationSummary, IngestionEvidence, KnowledgeConcept, KnowledgeGraphModel, MemoryFragment, Message, RelationshipThread } from "./types";
 import { clamp } from "./graphLayout";
 
 export function buildConversationSummaries(historyData: unknown): ConversationSummary[] {
@@ -96,6 +96,38 @@ export function parseKnowledgeGraph(data: unknown): KnowledgeGraphModel {
     }];
   });
   return { nodes, edges };
+}
+
+export function extractIngestionEvidence(data: unknown): IngestionEvidence {
+  const root = isRecord(data) ? data : {};
+  const nested = [root, root.knowledge_graph, root.ingestion, root.result]
+    .filter(isRecord) as ApiRecord[];
+  const nodeIds = new Set<string>();
+  let chunkCount = 0;
+  let duplicate: boolean | undefined;
+  let provenanceId: string | undefined;
+
+  for (const item of nested) {
+    const nodeId = textValue(item, ["node_id", "graph_node", "graph_node_id"]);
+    if (nodeId) nodeIds.add(nodeId);
+    for (const indexed of asArray<unknown>(item.indexed_nodes)) {
+      if (typeof indexed === "string" && indexed.trim()) nodeIds.add(indexed.trim());
+      else if (isRecord(indexed)) {
+        const indexedId = textValue(indexed, ["node_id", "graph_node_id", "id"]);
+        if (indexedId) nodeIds.add(indexedId);
+      }
+    }
+    chunkCount = Math.max(chunkCount, numberValue(item, ["chunk_count", "chunks", "indexed_count"]));
+    if (typeof item.duplicate === "boolean") duplicate = item.duplicate;
+    provenanceId ||= textValue(item, ["provenance_id"]);
+  }
+
+  return {
+    nodeIds: Array.from(nodeIds),
+    chunkCount,
+    ...(duplicate !== undefined ? { duplicate } : {}),
+    ...(provenanceId ? { provenanceId } : {}),
+  };
 }
 
 export function currentModelName(data: unknown) {

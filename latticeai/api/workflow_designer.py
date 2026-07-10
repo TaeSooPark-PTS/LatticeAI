@@ -13,6 +13,7 @@ actually drive plugins, skills, and multi-agent runs.
 
 from __future__ import annotations
 
+from copy import deepcopy
 from pathlib import Path
 from typing import Any, Callable, Dict, List, Optional
 
@@ -283,6 +284,42 @@ def create_workflow_designer_router(
             store.list_workflows(workspace_id=scope).get("workflows"), recipe_id
         )
         if existing is not None:
+            existing_metadata = existing.get("metadata") or {}
+            if req.enabled and existing_metadata.get("automation_state") != "enabled":
+                enabled_nodes = deepcopy(existing.get("nodes") or definition["nodes"])
+                for node in enabled_nodes:
+                    if node.get("type") != "trigger":
+                        continue
+                    node["config"] = {
+                        **(node.get("config") or {}),
+                        "enabled": True,
+                        "review_queue": True,
+                        "consent_required": True,
+                    }
+                errors = validate_definition({
+                    "name": existing.get("name") or definition["name"],
+                    "nodes": enabled_nodes,
+                })
+                if errors:
+                    raise HTTPException(status_code=400, detail={"validation_errors": errors})
+                enabled_metadata = {
+                    **existing_metadata,
+                    "automation_state": "enabled",
+                    "requires_user_enable": False,
+                }
+                existing = store.update_workflow_definition(
+                    str(existing.get("id") or existing.get("workflow_id") or ""),
+                    name=existing.get("name") or definition["name"],
+                    nodes=enabled_nodes,
+                    metadata=enabled_metadata,
+                    workspace_id=scope,
+                )
+                append_audit_event(
+                    "brain_automation_recipe_enabled",
+                    user_email=current_user,
+                    workflow_id=existing.get("id"),
+                    recipe_id=recipe_id,
+                )
             return {
                 "workflow": existing,
                 "recipe": existing.get("metadata") or definition["metadata"],

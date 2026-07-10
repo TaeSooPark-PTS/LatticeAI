@@ -21,6 +21,8 @@ const graphEdges = [
   { from: "entity:skills", to: "file:readme", type: "based_on", weight: 0.7 },
 ];
 
+let installedRecipeWorkflow = null;
+
 function json(res, value, status = 200) {
   const body = JSON.stringify(value);
   res.writeHead(status, {
@@ -557,12 +559,37 @@ const server = http.createServer((req, res) => {
   if (pathname === "/plugins/registry") return json(res, { plugins: [{ id: "hello-world", name: "Hello World", version: "1.0.0", description: "Demo plugin", installed: true, enabled: true }] });
   if (pathname === "/plugins/directory") return json(res, { plugins: [{ id: "git-insights", name: "Git Insights", description: "Repository summary plugin", version: "1.0.0", author: "Lattice" }], categories: ["dev"] });
   if (pathname === "/skills/marketplace") return json(res, { skills: [{ skill: "visual_regression", name: "visual_regression", description: "Capture and compare workspace UI", version: "1.2.0", author: "Lattice", category: "test", installed: false }], categories: ["test"] });
-  if (pathname === "/workflows/api/definitions") return json(res, { workflows: [{ id: "wf-agent-review", name: "Agent Review Workflow", nodes: [
-    { id: "trigger", type: "trigger", name: "Trigger", config: { trigger: "manual" }, next: "agent" },
-    { id: "agent", type: "agent", name: "Agent chain", next: "tool" },
-    { id: "tool", type: "tool", name: "Tool", next: "output" },
-    { id: "output", type: "output", name: "Result", next: null },
-  ] }] });
+  if (pathname === "/workflows/api/definitions") return json(res, { workflows: [
+    { id: "wf-agent-review", name: "Agent Review Workflow", nodes: [
+      { id: "trigger", type: "trigger", name: "Trigger", config: { trigger: "manual" }, next: "agent" },
+      { id: "agent", type: "agent", name: "Agent chain", next: "tool" },
+      { id: "tool", type: "tool", name: "Tool", next: "output" },
+      { id: "output", type: "output", name: "Result", next: null },
+    ] },
+    ...(installedRecipeWorkflow ? [installedRecipeWorkflow] : []),
+  ] });
+  if (pathname === "/workflows/api/automation/recipes") return json(res, {
+    recipes: [{
+      id: "follow-up-radar",
+      name: "Follow-up Radar",
+      summary: "Looks for follow-up candidates when new knowledge enters the Brain.",
+      user_value: "Gentle reminders for loose ends without a noisy task system.",
+      cadence: "when new memory is saved",
+      creates: ["follow-up suggestions", "approval-ready task drafts"],
+      consent: { requires_user_enable: true },
+    }],
+    principles: { local_first: true, drafts_before_automation: true },
+  });
+  if (pathname === "/workflows/api/automation/recipes/follow-up-radar" && req.method === "POST") {
+    const enabled = Boolean(installedRecipeWorkflow);
+    installedRecipeWorkflow = {
+      id: "wf-follow-up-radar",
+      name: "Follow-up Radar",
+      nodes: [{ id: "trigger", type: "trigger", config: { trigger: "brain_event", enabled }, next: "draft" }],
+      metadata: { created_from: "brain_automation_recipe", recipe_id: "follow-up-radar", automation_state: enabled ? "enabled" : "draft_disabled" },
+    };
+    return json(res, { workflow: installedRecipeWorkflow, recipe: installedRecipeWorkflow.metadata, enabled, already_installed: enabled });
+  }
   if (pathname.startsWith("/workflows/api/definitions/") && req.method === "PATCH") return json(res, { workflow: { id: "wf-agent-review", name: "Agent Review Workflow" } });
   if (pathname === "/workflows/api/triggers") return json(res, { running: true, tick_seconds: 5, armed: [{ workflow_id: "wf-agent-review", name: "Agent Review Workflow", kind: "brain_event", config: { source_type: "upload" }, last_fired_at: 1780300800, recent_events: [{ type: "fired", trigger: "brain_event" }] }] });
   if (pathname === "/workflows/api/runs") return json(res, { runs: [
@@ -634,6 +661,38 @@ const server = http.createServer((req, res) => {
       keeps_context_across_models: true,
       is_knowledge_store: true,
     },
+  });
+  if (pathname === "/api/memory/brain-brief") return json(res, {
+    status: "alive",
+    score: 100,
+    headline_key: "brain.brief.headline.alive",
+    body_key: "brain.brief.body.alive",
+    focus: {
+      kind: "graph",
+      title: "Lattice AI",
+      detail: "Local-first workspace graph grounded in saved release decisions.",
+      source: "Knowledge Graph",
+      score: 0.96,
+      empty: false,
+    },
+    next_actions: [
+      { id: "inspect_topics", label_key: "brain.brief.action.topics", detail_key: "brain.brief.action.topics.detail", route: "/knowledge-graph", priority: 9 },
+    ],
+    suggested_questions: [
+      { id: "focus_next", label_key: "brain.suggestion.focus.label", detail_key: "brain.suggestion.focus.detail", prompt_key: "brain.suggestion.focus.prompt", params: { focus: "Lattice AI" }, priority: 10 },
+      { id: "evidence_check", label_key: "brain.suggestion.evidence.label", detail_key: "brain.suggestion.evidence.detail", prompt_key: "brain.suggestion.evidence.prompt", params: { focus: "Lattice AI" }, priority: 9 },
+    ],
+    proactive_actions: [
+      { id: "proactive_evidence_review", intent: "ask", label_key: "brain.proactive.evidence.label", detail_key: "brain.proactive.evidence.detail", prompt: "Review the evidence Brain has for Lattice AI.", route: "", priority: 100, context: { focus: "Lattice AI" } },
+      { id: "proactive_delegate", intent: "delegate", label_key: "brain.proactive.delegate.label", detail_key: "brain.proactive.delegate.detail", prompt: "Turn Lattice AI into an evidence-backed execution plan.", route: "", priority: 95, context: { focus: "Lattice AI" } },
+      { id: "proactive_review_draft", intent: "review", label_key: "brain.proactive.review.label", detail_key: "brain.proactive.review.detail", prompt: "Create a reviewable task from Lattice AI.", route: "", priority: 90, context: { focus: "Lattice AI" } },
+    ],
+    evidence: [
+      { id: "durable", label_key: "brain.brief.evidence.durable", value: 13, detail_key: "brain.brief.evidence.durable.detail" },
+      { id: "graph", label_key: "brain.brief.evidence.graph", value: graphNodes.length, detail_key: "brain.brief.evidence.graph.detail" },
+      { id: "sources", label_key: "brain.brief.evidence.sources", value: 6, detail_key: "brain.brief.evidence.sources.detail" },
+    ],
+    generated_at: "2026-06-07T10:05:00Z",
   });
   if (pathname === "/api/memory/inspect") return json(res, { source: url.searchParams.get("source"), items: [{ id: "mem-demo", kind: "workspace", title: "Demo memory", content: "Release memory" }], count: 1, available: true, stats: workspaceOs.graph, index: { status: "ready" } });
   if (pathname === "/api/hooks/run" && req.method === "POST") return json(res, {

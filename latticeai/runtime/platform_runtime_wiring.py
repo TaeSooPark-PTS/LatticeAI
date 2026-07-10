@@ -24,6 +24,7 @@ def build_platform_automation_runtime(
     agent_registry: Any,
     data_dir: Any,
     append_audit_event: Callable[..., Any],
+    memory_service: Any = None,
     tz_name: Optional[str] = None,
 ) -> Dict[str, Any]:
     """Build platform services, automation services, and hook bindings.
@@ -65,6 +66,7 @@ def build_platform_automation_runtime(
         llm_generate=_llm_generate_sync,
         llm_available=lambda: bool(getattr(model_router, "current_model_id", None)),
         agent_registry=agent_registry,
+        memory_recall=memory_service.recall if memory_service is not None else None,
     )
 
     automation_runtime = build_automation_runtime(

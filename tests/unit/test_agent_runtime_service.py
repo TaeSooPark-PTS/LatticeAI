@@ -10,7 +10,7 @@ from types import SimpleNamespace
 from fastapi import FastAPI
 from fastapi.testclient import TestClient
 
-from latticeai.api.agents import create_agents_router
+from latticeai.api.agents import _memory_grounded_roles, create_agents_router
 from lattice_brain.runtime.contracts import RuntimeBoundaryProtocol, run_record_contract
 from lattice_brain.runtime.multi_agent import CORE_PIPELINE, MultiAgentOrchestrator
 from lattice_brain.runtime.agent_runtime import AgentRuntime, AgentRuntimeUnavailable
@@ -45,6 +45,16 @@ class FakeStore:
 
     def replay_agent_run(self, run_id, workspace_id=None):
         return {"run_id": run_id, "frames": []}
+
+
+def test_standard_api_pipeline_is_grounded_before_planning():
+    assert _memory_grounded_roles(["planner", "executor", "reviewer"]) == [
+        "researcher",
+        "planner",
+        "executor",
+        "reviewer",
+    ]
+    assert _memory_grounded_roles(["executor"]) == ["executor"]
 
 
 def _runtime(*, allow_simulation_runs=True):

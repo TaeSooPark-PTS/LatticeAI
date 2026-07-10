@@ -231,6 +231,7 @@ def create_local_files_router(
             require_local_approval=permission_gateway.require_local_approval,
             watcher=local_kg_watcher,
             hooks=hooks,
+            workspace_service=workspace_service,
         )
     )
 

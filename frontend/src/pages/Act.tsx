@@ -246,6 +246,7 @@ function RunList({ runs, kind }: { runs: Array<Record<string, unknown>>; kind: "
 
 function WorkflowsPanel() {
   const qc = useQueryClient();
+  const language = useAppStore((state) => state.language);
   const defs = useQuery({ queryKey: ["workflowDefinitions"], queryFn: latticeApi.workflowDefinitions });
   const triggers = useQuery({ queryKey: ["workflowTriggers"], queryFn: latticeApi.workflowTriggers });
   const recipes = useQuery({ queryKey: ["automationRecipes"], queryFn: latticeApi.automationRecipes });
@@ -267,17 +268,22 @@ function WorkflowsPanel() {
     },
   });
   const installRecipe = useMutation({
-    mutationFn: (recipeId: string) => latticeApi.installAutomationRecipe(recipeId, false),
-    onSuccess: () => {
-      qc.invalidateQueries({ queryKey: ["workflowDefinitions"] });
-      qc.invalidateQueries({ queryKey: ["workflowTriggers"] });
+    mutationFn: ({ recipeId, enabled }: { recipeId: string; enabled: boolean }) => latticeApi.installAutomationRecipe(recipeId, enabled),
+    onSuccess: async () => {
+      await Promise.all([
+        qc.invalidateQueries({ queryKey: ["workflowDefinitions"] }),
+        qc.invalidateQueries({ queryKey: ["workflowTriggers"] }),
+      ]);
     },
   });
   const workflows = asArray<Record<string, unknown>>((defs.data?.data as Record<string, unknown>)?.workflows);
-  const installedRecipeIds = new Set(
+  const installedRecipes = new Map(
     workflows
-      .filter((w: any) => w && w.metadata && w.metadata.created_from === "brain_automation_recipe" && w.metadata.recipe_id)
-      .map((w: any) => String(w.metadata.recipe_id))
+      .filter((workflow) => {
+        const metadata = (workflow.metadata || {}) as Record<string, unknown>;
+        return metadata.created_from === "brain_automation_recipe" && metadata.recipe_id;
+      })
+      .map((workflow) => [String(((workflow.metadata || {}) as Record<string, unknown>).recipe_id), workflow]),
   );
   const nodes: Node[] = workflows.slice(0, 12).map((workflow, index) => ({
     id: String(workflow.id || workflow.workflow_id || index),
@@ -287,7 +293,7 @@ function WorkflowsPanel() {
   const edges: Edge[] = nodes.slice(1).map((node, index) => ({ id: `e-${index}`, source: nodes[index].id, target: node.id }));
   return (
     <div className="grid gap-4 xl:grid-cols-[1.2fr_0.8fr]">
-      <DataPanel title="Brain automations" result={recipes.data} className="xl:col-span-2">
+      <DataPanel title={t(language, "act.automation.title")} result={recipes.data} className="xl:col-span-2">
         {(data) => {
           const items = asArray<Record<string, unknown>>((data as Record<string, unknown>).recipes);
           return (
@@ -309,42 +315,51 @@ function WorkflowsPanel() {
                     </div>
                     <p className="mt-3 text-sm">{String(recipe.user_value || "")}</p>
                     <div className="mt-3 flex flex-wrap gap-2">
-                      <Badge variant="success"><ShieldCheck className="h-3 w-3" /> local only</Badge>
-                      {consent.requires_user_enable ? <Badge variant="warning">draft first</Badge> : null}
+                      <Badge variant="success"><ShieldCheck className="h-3 w-3" /> {t(language, "act.automation.local")}</Badge>
+                      {consent.requires_user_enable ? <Badge variant="warning">{t(language, "act.automation.consent")}</Badge> : null}
                       {creates.slice(0, 2).map((item) => <Badge key={item} variant="muted">{item}</Badge>)}
                     </div>
                     {(() => {
-                      const isInstalling = installRecipe.isPending && installRecipe.variables === id;
-                      type InstallResult = { recipe?: { recipe_id?: string } } | undefined;
+                      const installedWorkflow = installedRecipes.get(id);
+                      const installedMetadata = (installedWorkflow?.metadata || {}) as Record<string, unknown>;
+                      const isEnabled = installedMetadata.automation_state === "enabled";
+                      const isInstalling = installRecipe.isPending && installRecipe.variables?.recipeId === id;
+                      type InstallResult = { recipe?: { recipe_id?: string }; enabled?: boolean } | undefined;
                       const last = installRecipe.data as InstallResult;
                       const lastRid = last && last.recipe && last.recipe.recipe_id ? String(last.recipe.recipe_id) : "";
                       const justSucceeded = !installRecipe.isPending && lastRid === id;
-                      const installed = installedRecipeIds.has(id);
+                      const installed = Boolean(installedWorkflow);
+                      const enabled = isEnabled || Boolean(justSucceeded && last?.enabled);
                       const btnLabel = isInstalling
-                        ? "Creating..."
-                        : justSucceeded
-                        ? "✓ Draft created"
-                        : installed
-                        ? "Draft already created"
-                        : "Create reviewable draft";
+                        ? t(language, installRecipe.variables?.enabled ? "act.automation.enabling" : "act.automation.creating")
+                        : enabled
+                          ? t(language, "act.automation.active")
+                          : installed
+                            ? t(language, "act.automation.enable")
+                            : justSucceeded
+                              ? t(language, "act.automation.created")
+                              : t(language, "act.automation.create");
                       return (
                         <>
                           <Button
                             className="mt-4 w-full"
-                            variant={installed || justSucceeded ? "secondary" : "outline"}
-                            disabled={!id || isInstalling || installed}
+                            variant={enabled || installed ? "secondary" : "outline"}
+                            disabled={!id || isInstalling || enabled}
                             onClick={() => {
-                              if (installed || isInstalling) return;
-                              installRecipe.mutate(id);
+                              if (enabled || isInstalling) return;
+                              installRecipe.mutate({ recipeId: id, enabled: installed });
                             }}
                           >
                             {btnLabel}
                           </Button>
-                          {justSucceeded ? (
-                            <p className="mt-1 text-[10px] text-green-600">Reviewable draft ready. Check Definitions below.</p>
+                          {justSucceeded && !enabled ? (
+                            <p className="mt-1 text-[10px] text-green-600">{t(language, "act.automation.draftReady")}</p>
                           ) : null}
-                          {installed && !justSucceeded ? (
-                            <p className="mt-1 text-[10px] text-muted-foreground">Reviewable draft exists — see Definitions.</p>
+                          {installed && !enabled && !justSucceeded ? (
+                            <p className="mt-1 text-[10px] text-muted-foreground">{t(language, "act.automation.enableHint")}</p>
+                          ) : null}
+                          {enabled ? (
+                            <p className="mt-1 text-[10px] text-green-600">{t(language, "act.automation.activeHint")}</p>
                           ) : null}
                         </>
                       );

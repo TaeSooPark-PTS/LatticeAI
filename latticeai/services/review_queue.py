@@ -49,6 +49,14 @@ def review_queue_opted_in(workflow: Dict[str, Any]) -> bool:
             continue
         if (node.get("config") or {}).get("review_queue") is True:
             return True
+    metadata = workflow.get("metadata") or {}
+    # Compatibility for recipe drafts installed before review_queue became an
+    # explicit trigger flag. They are local-only and already consent-gated.
+    if (
+        metadata.get("created_from") == "brain_automation_recipe"
+        and metadata.get("external_actions") is False
+    ):
+        return True
     return False
 
 
@@ -307,6 +315,10 @@ def _extract_run_id(result: Any) -> Optional[str]:
     if isinstance(result, dict):
         if result.get("run_id"):
             return str(result["run_id"])
+        if result.get("workflow_run_id"):
+            return str(result["workflow_run_id"])
+        if result.get("agent_run_id"):
+            return str(result["agent_run_id"])
         run = result.get("run")
         if isinstance(run, dict) and run.get("id"):
             return str(run["id"])

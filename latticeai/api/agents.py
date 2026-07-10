@@ -17,6 +17,24 @@ from pydantic import BaseModel
 from latticeai.api.ui_redirects import app_redirect
 
 
+_CORE_EXECUTION_ROLES = ["planner", "executor", "reviewer"]
+_MEMORY_GROUNDED_ROLES = ["researcher", *_CORE_EXECUTION_ROLES]
+
+
+def _memory_grounded_roles(roles: List[str]) -> Optional[List[str]]:
+    """Ground standard user-initiated agent runs in Brain recall first.
+
+    Explicit specialist/custom pipelines keep their requested shape. The
+    desktop Brain and Work surfaces both send the historical three-role core
+    sequence, so normalizing it at the API boundary upgrades existing clients
+    without a frontend-only compatibility branch.
+    """
+    requested = list(roles or _CORE_EXECUTION_ROLES)
+    if requested == _CORE_EXECUTION_ROLES:
+        return list(_MEMORY_GROUNDED_ROLES)
+    return requested or None
+
+
 class AgentRunRequest(BaseModel):
     goal: str
     roles: List[str] = []
@@ -160,13 +178,14 @@ def create_agents_router(
     async def agent_run(req: AgentRunRequest, request: Request):
         current_user = require_user(request)
         scope = gate_write(request)
+        grounded_roles = _memory_grounded_roles(req.roles)
         try:
             if run_executor is not None:
                 return await run_executor.start_agent(
                     req.goal,
                     user_email=current_user or None,
                     scope=scope,
-                    roles=req.roles or None,
+                    roles=grounded_roles,
                     inputs=req.inputs,
                     max_retries=req.max_retries,
                 )
@@ -180,7 +199,7 @@ def create_agents_router(
                 req.goal,
                 user_email=current_user or None,
                 scope=scope,
-                roles=req.roles or None,
+                roles=grounded_roles,
                 inputs=req.inputs,
                 max_retries=req.max_retries,
             )
@@ -199,7 +218,7 @@ def create_agents_router(
         return runtime.preview(
             req.goal,
             scope=scope,
-            roles=req.roles or None,
+            roles=_memory_grounded_roles(req.roles),
             inputs=req.inputs,
             max_retries=req.max_retries,
         )

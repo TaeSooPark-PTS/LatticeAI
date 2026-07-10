@@ -5,6 +5,7 @@ silently dropped, never replayed in a catch-up storm); brain events fan out
 to matching workflows; trigger-fired runs carry __trigger__ provenance.
 """
 
+from lattice_brain.runtime.hooks import HooksRegistry, dispatch_tool
 from latticeai.services.triggers import TriggerService
 
 
@@ -115,6 +116,84 @@ def test_hook_runner_ignores_non_ingest_events(tmp_path):
     _drain_threads()
     assert len(fired) == 1
     assert "fired 1" in out["output"]
+
+
+def test_real_dispatch_tool_ingestion_event_fires_scoped_brain_workflow(tmp_path):
+    matching = _event_wf("wf-org")
+    matching["workspace_id"] = "org:acme"
+    other = _event_wf("wf-other")
+    other["workspace_id"] = "org:other"
+    svc, fired, _ = _service(tmp_path, [matching, other], now=1000.0)
+
+    registry = HooksRegistry(tmp_path / "hooks.json")
+    hook = registry.register(
+        name="brain-event-triggers",
+        kind="post_tool",
+        description="test ingestion trigger binding",
+    )
+    registry.register_hook(hook["id"], svc.hook_runner())
+
+    dispatch_tool(
+        registry,
+        "kg_ingest.note",
+        {"source_type": "note"},
+        lambda: {"node_id": "node:note"},
+        user_email="owner@example.com",
+        workspace_id="org:acme",
+        source="ingestion",
+    )
+    _drain_threads()
+
+    assert [workflow_id for workflow_id, _inputs in fired] == ["wf-org"]
+    trigger = fired[0][1]["__trigger__"]
+    assert trigger["source_type"] == "note"
+    assert trigger["user_email"] == "owner@example.com"
+    assert trigger["workspace_id"] == "org:acme"
+
+
+def test_hook_runner_preserves_scope_carried_by_legacy_payload(tmp_path):
+    matching = _event_wf("wf-org")
+    matching["workspace_id"] = "org:acme"
+    other = _event_wf("wf-other")
+    other["workspace_id"] = "org:other"
+    svc, fired, _ = _service(tmp_path, [matching, other], now=1000.0)
+
+    class _LegacyContext:
+        event = "kg_ingest.note"
+        payload = {
+            "source_type": "note",
+            "user_email": "owner@example.com",
+            "workspace_id": "org:acme",
+        }
+
+    out = svc.hook_runner()(_LegacyContext())
+    _drain_threads()
+
+    assert out["status"] == "ok"
+    assert [workflow_id for workflow_id, _inputs in fired] == ["wf-org"]
+    trigger = fired[0][1]["__trigger__"]
+    assert trigger["user_email"] == "owner@example.com"
+    assert trigger["workspace_id"] == "org:acme"
+
+
+def test_brain_event_never_crosses_workspace_or_workflow_owner(tmp_path):
+    owned = _event_wf("wf-owned")
+    owned.update({"workspace_id": "org:acme", "user_email": "owner@example.com"})
+    other_user = _event_wf("wf-other-user")
+    other_user.update({"workspace_id": "org:acme", "user_email": "other@example.com"})
+    other_workspace = _event_wf("wf-other-workspace")
+    other_workspace.update({"workspace_id": "org:other", "user_email": "owner@example.com"})
+    svc, fired, _ = _service(tmp_path, [owned, other_user, other_workspace], now=1000.0)
+
+    count = svc.on_brain_event("kg_ingest.note", {
+        "source_type": "note",
+        "workspace_id": "org:acme",
+        "user_email": "owner@example.com",
+    })
+    _drain_threads()
+
+    assert count == 1
+    assert [workflow_id for workflow_id, _inputs in fired] == ["wf-owned"]
 
 
 def test_describe_reports_armed_state_honestly(tmp_path):

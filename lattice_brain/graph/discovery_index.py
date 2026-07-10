@@ -5,6 +5,15 @@ from __future__ import annotations
 from ._kg_common import *  # noqa: F403,F401
 
 
+def _local_scoped_slug(prefix: str, value: str, workspace_id: Optional[str]) -> str:
+    """Preserve legacy IDs while isolating newly workspace-scoped nodes."""
+    slug = _slug(value)
+    if not workspace_id:
+        return f"{prefix}:{slug}"
+    scope = _sha256_text(str(workspace_id))[:12]
+    return f"{prefix}:{scope}:{slug}"
+
+
 class KnowledgeGraphLocalIndexMixin:
     """Local file → graph indexing (text extraction, node/index upserts,
     graph-node deletion, orphan cleanup, and the index_local_folder driver),
@@ -136,27 +145,56 @@ class KnowledgeGraphLocalIndexMixin:
         file_path: Path,
         os_type: str,
         drive_id: str,
+        user_email: Optional[str] = None,
+        workspace_id: Optional[str] = None,
     ) -> str:
         computer_label = platform.node() or "내 컴퓨터"
-        computer_id = f"computer:{_slug(computer_label)}"
-        drive_node_id = f"drive:{_sha256_text(f'{os_type}:{drive_id}')[:24]}"
+        computer_id = _local_scoped_slug("computer", computer_label, workspace_id)
+        drive_identity = f"{workspace_id}|{os_type}:{drive_id}" if workspace_id else f"{os_type}:{drive_id}"
+        drive_node_id = f"drive:{_sha256_text(drive_identity)[:24]}"
         root_folder_id = f"folder:{_sha256_text(f'{source_id}:root')[:24]}"
         self._upsert_node(
-            conn, computer_id, "Computer", computer_label, metadata={"os_type": os_type}
+            conn,
+            computer_id,
+            "Computer",
+            computer_label,
+            metadata={"os_type": os_type, "workspace_id": workspace_id},
+            owner=user_email,
+            workspace_id=workspace_id,
         )
         self._upsert_node(
             conn,
             drive_node_id,
             "Drive",
             drive_id,
-            metadata={"os_type": os_type, "drive_id": drive_id},
+            metadata={"os_type": os_type, "drive_id": drive_id, "workspace_id": workspace_id},
+            owner=user_email,
+            workspace_id=workspace_id,
         )
+        stale_parents = conn.execute(
+            """
+                SELECT e.from_node
+                FROM edges e
+                JOIN nodes n ON n.id=e.from_node
+                WHERE e.to_node=? AND n.type='Drive' AND e.from_node<>?
+                """,
+            (root_folder_id, drive_node_id),
+        ).fetchall()
+        for row in stale_parents:
+            conn.execute(
+                "DELETE FROM edges WHERE from_node=? AND to_node=?",
+                (row["from_node"], root_folder_id),
+            )
+            conn.execute(
+                "DELETE FROM edges_v2 WHERE source=? AND target=?",
+                (row["from_node"], root_folder_id),
+            )
         self._upsert_edge(
             conn,
             computer_id,
             drive_node_id,
             "포함함",
-            metadata={"source": "local_scan"},
+            metadata={"source": "local_scan", "workspace_id": workspace_id},
         )
         self._upsert_node(
             conn,
@@ -164,14 +202,16 @@ class KnowledgeGraphLocalIndexMixin:
             "Folder",
             root.name or str(root),
             summary=str(root),
-            metadata={"source_id": source_id, "path": str(root), "root": True},
+            metadata={"source_id": source_id, "path": str(root), "root": True, "workspace_id": workspace_id},
+            owner=user_email,
+            workspace_id=workspace_id,
         )
         self._upsert_edge(
             conn,
             drive_node_id,
             root_folder_id,
             "포함함",
-            metadata={"source": "local_scan"},
+            metadata={"source": "local_scan", "workspace_id": workspace_id},
         )
 
         try:
@@ -195,10 +235,17 @@ class KnowledgeGraphLocalIndexMixin:
                     "source_id": source_id,
                     "path": str(current_path),
                     "root": False,
+                    "workspace_id": workspace_id,
                 },
+                owner=user_email,
+                workspace_id=workspace_id,
             )
             self._upsert_edge(
-                conn, parent_id, folder_id, "포함함", metadata={"source": "local_scan"}
+                conn,
+                parent_id,
+                folder_id,
+                "포함함",
+                metadata={"source": "local_scan", "workspace_id": workspace_id},
             )
             parent_id = folder_id
         return parent_id
@@ -296,6 +343,8 @@ class KnowledgeGraphLocalIndexMixin:
         parser_type: str,
         text: str,
         parser_meta: Dict[str, Any],
+        user_email: Optional[str] = None,
+        workspace_id: Optional[str] = None,
     ) -> str:
         text = _clean_text(text)
         if not text:
@@ -312,17 +361,26 @@ class KnowledgeGraphLocalIndexMixin:
             file_path=file_path,
             os_type=os_type,
             drive_id=drive_id,
+            user_email=user_email,
+            workspace_id=workspace_id,
         )
-        child_rows = conn.execute(
+        linked_rows = conn.execute(
             """
-                SELECT e.to_node AS id
+                SELECT e.to_node AS id, n.type, n.metadata_json
                 FROM edges e
                 JOIN nodes n ON n.id=e.to_node
-                WHERE e.from_node=? AND n.type IN ('Chunk', 'ImageText', 'Section')
+                WHERE e.from_node=?
                 """,
             (file_node_id,),
         ).fetchall()
-        child_ids = [row["id"] for row in child_rows]
+        child_ids = []
+        auto_candidate_ids = set()
+        for row in linked_rows:
+            linked_metadata = _safe_loads(row["metadata_json"])
+            if row["type"] in {"Chunk", "ImageText", "Section"} or linked_metadata.get("source_node") == file_node_id:
+                child_ids.append(row["id"])
+            elif linked_metadata.get("auto_extracted") and linked_metadata.get("source") == "local_folder":
+                auto_candidate_ids.add(row["id"])
         conn.execute("DELETE FROM chunks WHERE source_node=?", (file_node_id,))
         if child_ids:
             placeholders = ",".join("?" * len(child_ids))
@@ -330,6 +388,27 @@ class KnowledgeGraphLocalIndexMixin:
             self._v2_delete_nodes(conn, child_ids)
         conn.execute("DELETE FROM edges WHERE from_node=?", (file_node_id,))
         self._v2_delete_edges_from(conn, file_node_id)
+        removable_auto_ids = set()
+        for node_id in auto_candidate_ids:
+            remaining_edges = conn.execute(
+                "SELECT from_node, to_node FROM edges WHERE from_node=? OR to_node=?",
+                (node_id, node_id),
+            ).fetchall()
+            if all(
+                row["from_node"] in auto_candidate_ids
+                and row["to_node"] in auto_candidate_ids
+                for row in remaining_edges
+            ):
+                removable_auto_ids.add(node_id)
+        if removable_auto_ids:
+            placeholders = ",".join("?" * len(removable_auto_ids))
+            params = list(removable_auto_ids)
+            conn.execute(
+                f"DELETE FROM edges WHERE from_node IN ({placeholders}) OR to_node IN ({placeholders})",
+                params * 2,
+            )
+            conn.execute(f"DELETE FROM nodes WHERE id IN ({placeholders})", params)
+            self._v2_delete_nodes(conn, params)
 
         metadata = {
             "source": "local_folder",
@@ -345,6 +424,7 @@ class KnowledgeGraphLocalIndexMixin:
             "modified_at": _safe_iso_from_stat_mtime(stat.st_mtime),
             "sha256": sha256,
             "parser": parser_meta,
+            "workspace_id": workspace_id,
         }
         self._upsert_node(
             conn,
@@ -354,6 +434,8 @@ class KnowledgeGraphLocalIndexMixin:
             summary=text[:700],
             metadata=metadata,
             raw=metadata,
+            owner=user_email,
+            workspace_id=workspace_id,
         )
         self._upsert_edge(
             conn,
@@ -361,8 +443,9 @@ class KnowledgeGraphLocalIndexMixin:
             file_node_id,
             "포함함",
             weight=1.0,
-            metadata={"source": "local_scan"},
+            metadata={"source": "local_scan", "workspace_id": workspace_id},
         )
+        self._cleanup_local_graph_orphans(conn, source_id)
 
         target_for_concepts = text
         if category == "image" and text:
@@ -377,7 +460,10 @@ class KnowledgeGraphLocalIndexMixin:
                     "source_node": file_node_id,
                     "source_id": source_id,
                     "chars": len(text),
+                    "workspace_id": workspace_id,
                 },
+                owner=user_email,
+                workspace_id=workspace_id,
             )
             self._upsert_edge(
                 conn,
@@ -385,7 +471,7 @@ class KnowledgeGraphLocalIndexMixin:
                 image_text_id,
                 "포함함",
                 weight=0.8,
-                metadata={"source": "ocr"},
+                metadata={"source": "ocr", "workspace_id": workspace_id},
             )
 
         for index, chunk in enumerate(_chunks(text)):
@@ -400,7 +486,10 @@ class KnowledgeGraphLocalIndexMixin:
                     "index": index,
                     "source_node": file_node_id,
                     "source_id": source_id,
+                    "workspace_id": workspace_id,
                 },
+                owner=user_email,
+                workspace_id=workspace_id,
             )
             self._upsert_chunk(
                 conn,
@@ -411,6 +500,7 @@ class KnowledgeGraphLocalIndexMixin:
                     "index": index,
                     "source_node": file_node_id,
                     "source_id": source_id,
+                    "workspace_id": workspace_id,
                 },
             )
             self._upsert_edge(
@@ -419,14 +509,14 @@ class KnowledgeGraphLocalIndexMixin:
                 chunk_id,
                 "포함함",
                 weight=0.7,
-                metadata={"source": "local_scan"},
+                metadata={"source": "local_scan", "workspace_id": workspace_id},
             )
 
         concepts = _extract_concepts(target_for_concepts, limit=18)
         concept_ids: Dict[str, str] = {}
         for concept in concepts:
             node_t = _classify_node_type(concept, target_for_concepts)
-            concept_id = f"{node_t.lower()}:{_slug(concept)}"
+            concept_id = _local_scoped_slug(node_t.lower(), concept, workspace_id)
             concept_ids[concept.lower()] = concept_id
             self._upsert_node(
                 conn,
@@ -437,7 +527,10 @@ class KnowledgeGraphLocalIndexMixin:
                     "auto_extracted": True,
                     "source": "local_folder",
                     "source_id": source_id,
+                    "workspace_id": workspace_id,
                 },
+                owner=user_email,
+                workspace_id=workspace_id,
             )
             self._upsert_edge(
                 conn,
@@ -445,7 +538,7 @@ class KnowledgeGraphLocalIndexMixin:
                 concept_id,
                 "언급함",
                 weight=0.75,
-                metadata={"source": "local_scan"},
+                metadata={"source": "local_scan", "workspace_id": workspace_id},
             )
 
         for triple in _extract_triples(target_for_concepts, concepts, limit=20):
@@ -461,6 +554,7 @@ class KnowledgeGraphLocalIndexMixin:
                     metadata={
                         "context": triple.get("context", "")[:240],
                         "source_id": source_id,
+                        "workspace_id": workspace_id,
                     },
                 )
 
@@ -478,10 +572,20 @@ class KnowledgeGraphLocalIndexMixin:
                     "auto_extracted": True,
                     "source_node": file_node_id,
                     "filename": file_path.name,
+                    "workspace_id": workspace_id,
                 },
                 raw=item,
+                owner=user_email,
+                workspace_id=workspace_id,
             )
-            self._upsert_edge(conn, file_node_id, sem_id, "포함함", weight=0.9)
+            self._upsert_edge(
+                conn,
+                file_node_id,
+                sem_id,
+                "포함함",
+                weight=0.9,
+                metadata={"source": "local_scan", "workspace_id": workspace_id},
+            )
 
         return file_node_id
 
@@ -627,6 +731,21 @@ class KnowledgeGraphLocalIndexMixin:
         except (TypeError, ValueError):
             return False
 
+    @staticmethod
+    def _node_matches_workspace(
+        conn: sqlite3.Connection,
+        node_id: Optional[str],
+        workspace_id: Optional[str],
+    ) -> bool:
+        """Return true only when the projected node has the expected scope."""
+        if not node_id:
+            return False
+        row = conn.execute(
+            "SELECT workspace_id FROM nodes_v2 WHERE id=?",
+            (node_id,),
+        ).fetchone()
+        return bool(row is not None and row["workspace_id"] == workspace_id)
+
     def index_local_folder(
         self,
         path: Path,
@@ -634,8 +753,10 @@ class KnowledgeGraphLocalIndexMixin:
         include_ocr: bool = False,
         watch_enabled: bool = False,
         user_email: Optional[str] = None,
+        workspace_id: Optional[str] = None,
         consent: Optional[Dict[str, Any]] = None,
         max_files: int = 5_000,
+        source_id_override: Optional[str] = None,
     ) -> Dict[str, Any]:
         """Read approved files from a local folder and connect them to Graph RAG."""
         root = Path(path).expanduser().resolve()
@@ -646,17 +767,25 @@ class KnowledgeGraphLocalIndexMixin:
 
         os_type = _current_os_type()
         drive_id = _drive_id_for_path(root)
-        source_id = f"source:{_path_fingerprint(root)}"
+        path_fingerprint = _path_fingerprint(root)
+        source_id = str(source_id_override or "").strip()
+        if not source_id:
+            source_id = (
+                f"source:{_sha256_text(f'{workspace_id}|{path_fingerprint}')[:24]}"
+                if workspace_id
+                else f"source:{path_fingerprint}"
+            )
         now = _now()
         max_files = max(1, min(int(max_files or 5_000), 50_000))
         consent_payload = {
             "approved_at": now,
-            "approved_by": user_email,
             "knowledge_source": True,
             "include_ocr": bool(include_ocr),
             "watch_enabled": bool(watch_enabled),
             "sensitive_files_default_excluded": True,
             **(consent or {}),
+            "approved_by": user_email or (consent or {}).get("approved_by"),
+            "workspace_id": workspace_id or (consent or {}).get("workspace_id"),
         }
         counts: Counter = Counter()
         seen_relative_paths: set = set()
@@ -665,6 +794,23 @@ class KnowledgeGraphLocalIndexMixin:
         limit_reached = False
 
         with self._connect() as conn:
+            existing_source = conn.execute(
+                "SELECT id, consent_json FROM knowledge_sources WHERE root_path=?",
+                (str(root),),
+            ).fetchone()
+            if existing_source is not None:
+                existing_consent = _safe_loads(existing_source["consent_json"])
+                existing_scope = existing_consent.get("workspace_id") or "personal"
+                requested_scope = workspace_id or consent_payload.get("workspace_id") or "personal"
+                if existing_scope != requested_scope:
+                    raise ValueError(
+                        "This folder is already connected to another workspace. "
+                        "Disconnect it there before assigning it to a different Brain."
+                    )
+                if existing_source["id"] != source_id:
+                    # Reuse the legacy source identity so a personal source is
+                    # reprojected in place instead of duplicated during upgrade.
+                    source_id = existing_source["id"]
             conn.execute(
                 """
                     INSERT INTO knowledge_sources(
@@ -765,6 +911,9 @@ class KnowledgeGraphLocalIndexMixin:
                     and existing["status"] == "indexed"
                     and existing["graph_node_id"]
                     and self._local_file_index_has_extracted_text(existing)
+                    and self._node_matches_workspace(
+                        conn, existing["graph_node_id"], workspace_id
+                    )
                     and existing["size_bytes"] == stat.st_size
                     and existing["modified_at"] == modified_at
                 ):
@@ -817,6 +966,9 @@ class KnowledgeGraphLocalIndexMixin:
                     and existing["sha256"] == digest
                     and existing["graph_node_id"]
                     and self._local_file_index_has_extracted_text(existing)
+                    and self._node_matches_workspace(
+                        conn, existing["graph_node_id"], workspace_id
+                    )
                 ):
                     counts["skipped_unchanged"] += 1
                     self._upsert_local_file_index(
@@ -884,6 +1036,8 @@ class KnowledgeGraphLocalIndexMixin:
                         parser_type=parser_type,
                         text=text,
                         parser_meta=parser_meta,
+                        user_email=user_email,
+                        workspace_id=workspace_id,
                     )
                     self._upsert_local_file_index(
                         conn,

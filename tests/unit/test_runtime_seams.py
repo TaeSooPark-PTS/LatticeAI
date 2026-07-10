@@ -10,6 +10,7 @@ from latticeai.runtime.hooks_runtime import (
 )
 from latticeai.runtime.lifespan_runtime import build_lifespan_runtime
 from latticeai.runtime.persistence_runtime import build_persistence_runtime
+from latticeai.runtime.automation_runtime import build_automation_runtime
 from latticeai.runtime.web_runtime import build_web_runtime
 from latticeai.services.triggers import TRIGGER_HOOK_NAME
 
@@ -22,6 +23,44 @@ _BUILTIN_HOOK_IDS = (
     "builtin:sensitive-data-guard",
     "builtin:workflow-replay-log",
 )
+
+
+def test_trigger_runtime_executes_agent_nodes_with_ingestion_scope(tmp_path):
+    calls = []
+
+    class _Platform:
+        build_orchestrator = staticmethod(lambda _user, _scope: object())
+        build_workflow_runners = staticmethod(lambda _user, _scope: {})
+
+        @staticmethod
+        def run_workflow_by_id(*args, **kwargs):
+            calls.append((args, kwargs))
+            return {"workflow_run_id": "run-grounded"}
+
+    store = type("Store", (), {"upsert_memory": staticmethod(lambda **_kwargs: {})})()
+    runtime = build_automation_runtime(
+        store=store,
+        platform=_Platform(),
+        data_dir=tmp_path,
+        workspace_graph=lambda: None,
+        append_audit_event=lambda *_args, **_kwargs: None,
+        hooks=None,
+    )
+
+    result = runtime["TRIGGER_SERVICE"]._run_workflow(
+        "workflow-memory",
+        {
+            "__trigger__": {
+                "source_type": "note",
+                "user_email": "owner@example.com",
+                "workspace_id": "org:acme",
+            }
+        },
+    )
+
+    assert result["workflow_run_id"] == "run-grounded"
+    assert calls[0][0] == ("workflow-memory", "owner@example.com", "org:acme")
+    assert calls[0][1]["with_agent"] is True
 
 
 def test_session_runtime_preserves_token_lifecycle():
