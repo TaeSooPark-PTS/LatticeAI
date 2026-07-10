@@ -13,6 +13,7 @@ import { ReviewInbox } from "@/features/review/ReviewInbox";
 import { useAppStore } from "@/store/appStore";
 import { asArray, shortId } from "@/lib/utils";
 import { t } from "@/i18n";
+import { navigateHash } from "@/features/brain/navigation";
 
 type ActTab = "agents" | "runs" | "workflows" | "hooks" | "tools";
 type RunsSubTab = "runs" | "review";
@@ -44,25 +45,34 @@ export function ActPage({ initialTab }: { initialTab?: string }) {
       setRunsSubTab("review");
       return;
     }
+    if (initialTab === "runs") setRunsSubTab("runs");
     if (tabs.some((item) => item.id === initialTab)) setTab(initialTab as ActTab);
   }, [initialTab]);
+  const selectTab = (next: ActTab) => {
+    setTab(next);
+    navigateHash("/" + next);
+  };
+  const selectRunsSubTab = (next: RunsSubTab) => {
+    setRunsSubTab(next);
+    navigateHash(next === "review" ? "/review" : "/runs");
+  };
   return (
-    <div className="space-y-5">
+    <div className="product-page act-page space-y-5">
       <header className="page-hero">
         <div className="page-kicker"><Workflow className="h-4 w-4" /> {t(language, "act.kicker")}</div>
         <h1 className="page-title">{t(language, "act.title")}</h1>
         <p className="page-copy">{t(language, "act.copy")}</p>
       </header>
       <Tabs
-        tabs={tabs.map((item) => ({
+        tabs={(mode === "basic" ? tabs.filter((item) => item.id === "agents" || item.id === "runs" || item.id === "workflows") : tabs).map((item) => ({
           id: item.id,
           label: t(language, mode === "basic" || !item.advancedLabelKey ? item.labelKey : item.advancedLabelKey),
         }))}
         value={tab}
-        onChange={(id) => setTab(id as ActTab)}
+        onChange={(id) => selectTab(id as ActTab)}
       />
       {tab === "agents" ? <AgentsPanel /> : null}
-      {tab === "runs" ? <RunsPanel subTab={runsSubTab} onSubTabChange={setRunsSubTab} /> : null}
+      {tab === "runs" ? <RunsPanel subTab={runsSubTab} onSubTabChange={selectRunsSubTab} /> : null}
       {tab === "workflows" ? <WorkflowsPanel /> : null}
       {tab === "hooks" ? <HooksPanel /> : null}
       {tab === "tools" ? <ToolsPanel /> : null}
@@ -76,8 +86,8 @@ function AgentsPanel() {
   const language = useAppStore((state) => state.language);
   const [goal, setGoal] = React.useState("");
   const runtime = useQuery({ queryKey: ["agentRuntime"], queryFn: latticeApi.agentRuntime });
-  const registry = useQuery({ queryKey: ["agentRegistry"], queryFn: latticeApi.agentRegistry });
-  const caps = useQuery({ queryKey: ["agentCapabilities"], queryFn: latticeApi.agentCapabilities });
+  const registry = useQuery({ queryKey: ["agentRegistry"], queryFn: latticeApi.agentRegistry, enabled: mode !== "basic" });
+  const caps = useQuery({ queryKey: ["agentCapabilities"], queryFn: latticeApi.agentCapabilities, enabled: mode !== "basic" });
   const run = useMutation({
     mutationFn: () => latticeApi.runAgent(goal, ["planner", "executor", "reviewer"]),
     onSuccess: () => qc.invalidateQueries({ queryKey: ["agentRuntime"] }),
@@ -90,17 +100,19 @@ function AgentsPanel() {
   const runtimeData = (runtime.data?.data || {}) as Record<string, unknown>;
   const runtimeMeta = (runtimeData.runtime || {}) as Record<string, unknown>;
   const runtimeReady = Boolean(runtimeMeta.ready);
-  const runtimeReason = mode === "basic" ? "Load a local model before running agents." : String(runtimeMeta.unavailable_reason || "Load an LLM-backed model before running agents.");
+  const runtimeReason = mode === "basic"
+    ? t(language, "act.goal.modelRequired")
+    : String(runtimeMeta.unavailable_reason || "Load an LLM-backed model before running agents.");
   const canRunAgent = Boolean(goal.trim()) && runtimeReady && !run.isPending;
   return (
-    <div className="grid gap-4 xl:grid-cols-[0.9fr_1.1fr]">
-      <Card>
+    <div className="work-start-flow grid gap-4 xl:grid-cols-[0.9fr_1.1fr]">
+      <Card className="work-goal-card">
         <CardHeader>
-          <CardTitle className="flex items-center gap-2"><Bot className="h-4 w-4" /> Start with a goal</CardTitle>
+          <CardTitle className="flex items-center gap-2"><Bot className="h-4 w-4" /> {t(language, "act.goal.title")}</CardTitle>
           <CardDescription>{t(language, "act.goal.description")}</CardDescription>
         </CardHeader>
         <CardContent className="space-y-3">
-          <Textarea value={goal} onChange={(e) => setGoal(e.target.value)} placeholder="What should Lattice help you accomplish?" />
+          <Textarea value={goal} onChange={(e) => setGoal(e.target.value)} placeholder={t(language, "act.goal.placeholder")} />
           {!runtimeReady ? <Badge variant="warning">{runtimeReason}</Badge> : null}
           <Button
             className="w-full"
@@ -108,7 +120,7 @@ function AgentsPanel() {
             disabled={!canRunAgent}
             onClick={() => run.mutate()}
           >
-            <Play className="h-4 w-4" /> {runtimeReady ? "Start Run" : "Load a model first"}
+            <Play className="h-4 w-4" /> {runtimeReady ? t(language, "act.goal.start") : t(language, "act.goal.needsModel")}
           </Button>
           {run.data ? <OperationResult result={run.data} successLabel={t(language, "act.goal.completed")} /> : null}
           {run.data && (run.data as any)?.data ? (
@@ -116,38 +128,32 @@ function AgentsPanel() {
           ) : null}
         </CardContent>
       </Card>
-      <DataPanel title="Readiness" result={runtime.data}>
-        {(data) => mode === "basic" ? (
-          <div className="grid gap-3 sm:grid-cols-3">
-            <div className="rounded-lg border border-border bg-background/55 p-3">
-              <div className="text-sm font-medium">Model</div>
-              <Badge variant={runtimeReady ? "success" : "warning"}>{runtimeReady ? "ready" : "needed"}</Badge>
-            </div>
-            <div className="rounded-lg border border-border bg-background/55 p-3">
-              <div className="text-sm font-medium">Planner</div>
-              <Badge variant="muted">{runtimeReady ? "available" : "waiting"}</Badge>
-            </div>
-            <div className="rounded-lg border border-border bg-background/55 p-3">
-              <div className="text-sm font-medium">Review</div>
-              <Badge variant="success">approval required</Badge>
-            </div>
-          </div>
-        ) : <StructuredView value={data} />}
-      </DataPanel>
-      <DataPanel title="Agent team" result={registry.data}>
-        {(data) => (
-          <div className="space-y-3">
-            <EntityList items={(data as Record<string, unknown>).agents} titleKey="name" metaKey="type" />
-            <div className="flex gap-2">
-              <Input value={agentName} onChange={(e) => setAgentName(e.target.value)} placeholder="New custom agent name" />
-              <Button disabled={!agentName.trim() || register.isPending} onClick={() => register.mutate()}>Register</Button>
-            </div>
-          </div>
-        )}
-      </DataPanel>
-      <DataPanel title={mode === "basic" ? "What Lattice can do" : "What agents can do"} result={caps.data}>
-        {(data) => <StructuredView value={data} />}
-      </DataPanel>
+      {mode === "basic" ? (
+        <div className="work-safety-note">
+          <ShieldCheck className="h-4 w-4" aria-hidden="true" />
+          <span>{t(language, "act.goal.safety")}</span>
+        </div>
+      ) : (
+        <>
+          <DataPanel title="Readiness" result={runtime.data}>
+            {(data) => <StructuredView value={data} />}
+          </DataPanel>
+          <DataPanel title="Agent team" result={registry.data}>
+            {(data) => (
+              <div className="space-y-3">
+                <EntityList items={(data as Record<string, unknown>).agents} titleKey="name" metaKey="type" />
+                <div className="flex gap-2">
+                  <Input value={agentName} onChange={(e) => setAgentName(e.target.value)} placeholder="New custom agent name" />
+                  <Button disabled={!agentName.trim() || register.isPending} onClick={() => register.mutate()}>Register</Button>
+                </div>
+              </div>
+            )}
+          </DataPanel>
+          <DataPanel title="What agents can do" result={caps.data}>
+            {(data) => <StructuredView value={data} />}
+          </DataPanel>
+        </>
+      )}
     </div>
   );
 }

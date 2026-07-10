@@ -9,11 +9,13 @@ import { Input } from "@/components/ui/input";
 import { t, type Language } from "@/i18n";
 import { asArray } from "@/lib/utils";
 import { useAppStore } from "@/store/appStore";
+import { navigateHash } from "@/features/brain/navigation";
 
 type CaptureTab = "files" | "local" | "browser" | "pipeline";
 
 export function CapturePage({ initialTab }: { initialTab?: string }) {
   const language = useAppStore((state) => state.language);
+  const mode = useAppStore((state) => state.mode);
   const [tab, setTab] = React.useState<CaptureTab>((initialTab as CaptureTab) || "files");
   const tabs: Array<{ id: CaptureTab; label: string }> = [
     { id: "files", label: t(language, "capture.tab.files") },
@@ -22,16 +24,20 @@ export function CapturePage({ initialTab }: { initialTab?: string }) {
     { id: "pipeline", label: t(language, "capture.tab.pipeline") },
   ];
   React.useEffect(() => {
-    if (initialTab === "pipeline" || initialTab === "local" || initialTab === "files") setTab(initialTab);
+    if (initialTab === "pipeline" || initialTab === "local" || initialTab === "browser" || initialTab === "files") setTab(initialTab);
   }, [initialTab]);
+  const selectTab = (next: CaptureTab) => {
+    setTab(next);
+    navigateHash("/" + ({ files: "capture", local: "my-computer", browser: "capture-browser", pipeline: "pipeline" } as const)[next]);
+  };
   return (
-    <div className="space-y-5">
+    <div className="product-page capture-page space-y-5">
       <header className="page-hero">
         <div className="page-kicker"><Upload className="h-4 w-4" /> {t(language, "capture.kicker")}</div>
         <h1 className="page-title">{t(language, "capture.title")}</h1>
         <p className="page-copy">{t(language, "capture.body")}</p>
       </header>
-      <Tabs tabs={tabs} value={tab} onChange={(id) => setTab(id as CaptureTab)} />
+      <Tabs tabs={mode === "basic" ? tabs.filter((item) => item.id !== "pipeline") : tabs} value={tab} onChange={(id) => selectTab(id as CaptureTab)} />
       {tab === "files" ? <FilesPanel /> : null}
       {tab === "local" ? <LocalPanel /> : null}
       {tab === "browser" ? <BrowserPanel /> : null}
@@ -59,7 +65,7 @@ function FilesPanel() {
     upload.mutate(nextFiles);
   }, [upload]);
   return (
-    <div className="grid gap-4 xl:grid-cols-[0.75fr_1.25fr]">
+    <div className="capture-files-flow grid gap-4 xl:grid-cols-[0.75fr_1.25fr]">
       <Card>
         <CardHeader>
           <CardTitle className="flex items-center gap-2"><Upload className="h-4 w-4" /> {t(language, "capture.files.title")}</CardTitle>

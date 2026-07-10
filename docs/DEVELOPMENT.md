@@ -77,6 +77,20 @@ Regenerate committed API artifacts with `npm run frontend:openapi`; CI and
 `npm run lint` fail when either `frontend/openapi.json` or
 `frontend/src/api/openapi.ts` differs from a fresh isolated export.
 
+## Frontend Experience Ownership
+
+`frontend/src/styles/tokens.css` owns React color tokens and
+`frontend/src/styles/experience.css` is imported after the legacy feature
+stylesheet to own the product shell, conversation canvas, shared content
+surfaces, and responsive navigation. Keep feature-specific graph, ingestion,
+admin, and onboarding rules in their existing modules until they are extracted;
+do not add another competing shell or composer rule to `styles.css`.
+
+Default mode should expose user tasks and outcomes. Runtime metrics, registry
+identifiers, pipeline controls, and administrator tools belong in progressive
+disclosure or advanced/admin mode. New navigation and tabs must preserve
+keyboard access, visible focus, mobile safe areas, and reduced-motion behavior.
+
 ## Runtime Assembly
 
 `latticeai.app_factory` is the composition root. Keep it import-safe:

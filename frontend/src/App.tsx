@@ -10,7 +10,7 @@ import { AdminAccessGate } from "@/components/AdminAccessGate";
 import { t, type Language } from "@/i18n";
 import { latticeApi } from "@/api/client";
 import { useQuery } from "@tanstack/react-query";
-import { Brain, Menu, X } from "lucide-react";
+import { Brain, Ellipsis, X } from "lucide-react";
 import { navigateHash } from "@/features/brain/navigation";
 import { clamp } from "@/lib/utils";
 
@@ -37,7 +37,15 @@ export default function App() {
     const onKey = (event: KeyboardEvent) => {
       if ((event.metaKey || event.ctrlKey) && event.key.toLowerCase() === "k") {
         event.preventDefault();
-        document.querySelector<HTMLTextAreaElement>(".brain-composer textarea")?.focus();
+        const composer = document.querySelector<HTMLTextAreaElement>(".brain-composer textarea");
+        if (composer) {
+          composer.focus();
+          return;
+        }
+        navigateHash("/brain");
+        window.setTimeout(() => {
+          document.querySelector<HTMLTextAreaElement>(".brain-composer textarea")?.focus();
+        }, 0);
       }
     };
     window.addEventListener("keydown", onKey);
@@ -84,13 +92,13 @@ export default function App() {
           </React.Suspense>
         </BrainShell>
       ) : parsed.primary === "brain" && parsed.tab && parsed.tab !== "conversation" ? (
-        <BrainShell active={parsed.tab === "graph" ? "memory" : "brain"}>
+        <BrainShell active={parsed.tab === "graph" || parsed.tab === "knowledge" || parsed.tab === "memory" ? "memory" : "brain"}>
           <React.Suspense fallback={<PageLoader language={language} />}>
             <BrainPage initialTab={parsed.tab} />
           </React.Suspense>
         </BrainShell>
       ) : (
-        <BrainShell active="brain">
+        <BrainShell active="brain" contentOwnsMain>
           <BrainHome brainState={brainState} intensity={intensity} onBrainChange={setBrain} />
         </BrainShell>
       )}
@@ -100,104 +108,255 @@ export default function App() {
 
 function BrainShell({
   active,
+  contentOwnsMain = false,
   children,
 }: {
   active: string;
+  contentOwnsMain?: boolean;
   children: React.ReactNode;
 }) {
   const language = useAppStore((state) => state.language);
   const [menuOpen, setMenuOpen] = React.useState(false);
-  const menuButtonRef = React.useRef<HTMLButtonElement>(null);
+  const menuPanelRef = React.useRef<HTMLDivElement>(null);
+  const desktopMenuButtonRef = React.useRef<HTMLButtonElement>(null);
+  const mobileMenuButtonRef = React.useRef<HTMLButtonElement>(null);
+  const returnFocusRef = React.useRef<HTMLButtonElement | null>(null);
 
-  const closeMenu = React.useCallback(() => {
+  const closeMenu = React.useCallback((restoreFocus = true) => {
     setMenuOpen(false);
-    menuButtonRef.current?.focus();
+    if (restoreFocus) {
+      window.requestAnimationFrame(() => returnFocusRef.current?.focus());
+    }
+  }, []);
+
+  const toggleMenu = React.useCallback((trigger: HTMLButtonElement) => {
+    returnFocusRef.current = trigger;
+    setMenuOpen((open) => !open);
   }, []);
 
   React.useEffect(() => {
     if (!menuOpen) return;
     const onKey = (event: KeyboardEvent) => {
-      if (event.key === "Escape") closeMenu();
+      if (event.key === "Escape") {
+        event.preventDefault();
+        closeMenu();
+        return;
+      }
+      if (event.key === "Tab") {
+        const focusable = Array.from(
+          menuPanelRef.current?.querySelectorAll<HTMLElement>(
+            'a[href], button:not([disabled]), input:not([disabled]), select:not([disabled]), [tabindex]:not([tabindex="-1"])',
+          ) ?? [],
+        );
+        if (!focusable.length) return;
+        const first = focusable[0];
+        const last = focusable[focusable.length - 1];
+        if (event.shiftKey && document.activeElement === first) {
+          event.preventDefault();
+          last.focus();
+        } else if (!event.shiftKey && document.activeElement === last) {
+          event.preventDefault();
+          first.focus();
+        }
+      }
+    };
+    const onPointerDown = (event: MouseEvent) => {
+      const target = event.target as Node;
+      if (
+        menuPanelRef.current?.contains(target)
+        || desktopMenuButtonRef.current?.contains(target)
+        || mobileMenuButtonRef.current?.contains(target)
+      ) {
+        return;
+      }
+      closeMenu(false);
     };
     window.addEventListener("keydown", onKey);
-    return () => window.removeEventListener("keydown", onKey);
+    window.addEventListener("mousedown", onPointerDown);
+    return () => {
+      window.removeEventListener("keydown", onKey);
+      window.removeEventListener("mousedown", onPointerDown);
+    };
   }, [menuOpen, closeMenu]);
 
-  const activeRoute = productShellRoutes.find((item) => item.id === active);
+  React.useEffect(() => {
+    setMenuOpen(false);
+  }, [active]);
+
+  React.useEffect(() => {
+    if (!menuOpen) return;
+    window.requestAnimationFrame(() => {
+      const firstNavigationItem = menuPanelRef.current?.querySelector<HTMLElement>(".brain-more-nav a[href]");
+      const fallbackButton = menuPanelRef.current?.querySelector<HTMLElement>("button:not([disabled])");
+      (firstNavigationItem || fallbackButton)?.focus();
+    });
+  }, [menuOpen]);
+
+  const primaryRoutes = productShellRoutes.filter((item) => (
+    item.id === "brain" || item.id === "capture" || item.id === "memory" || item.id === "act"
+  ));
+  const secondaryRoutes = productShellRoutes.filter((item) => (
+    item.id === "library" || item.id === "system"
+  ));
+  const Content = contentOwnsMain ? "div" : "main";
+  const skipLabel = t(language, "shell.skip");
 
   return (
-    <main className="brain-shell-page" aria-label="Lattice workspace">
+    <div className="brain-shell-page">
+      <a
+        className="brain-skip-link"
+        href="#brain-main-content"
+        onClick={(event) => {
+          event.preventDefault();
+          document.getElementById("brain-main-content")?.focus();
+        }}
+      >
+        {skipLabel}
+      </a>
+
       <header className="brain-topbar">
-        <button
-          ref={menuButtonRef}
-          type="button"
-          className="brain-menu-button"
-          aria-expanded={menuOpen}
-          aria-controls="brain-sidebar"
-          aria-label={t(language, menuOpen ? "shell.menu.close" : "shell.menu.open")}
-          onClick={() => setMenuOpen((open) => !open)}
-        >
-          {menuOpen ? <X aria-hidden="true" /> : <Menu aria-hidden="true" />}
-        </button>
         <a className="brain-shell-brand" href="#/brain" aria-label={t(language, "brain.title")}>
           <span className="brain-shell-brand-mark" aria-hidden="true">
             <Brain aria-hidden="true" />
           </span>
           Lattice
         </a>
-        {activeRoute && active !== "brain" ? (
-          <span className="brain-topbar-crumb">{t(language, activeRoute.labelKey)}</span>
-        ) : null}
-      </header>
 
-      {menuOpen ? <div className="brain-sidebar-scrim" onClick={closeMenu} aria-hidden="true" /> : null}
-      <aside
-        id="brain-sidebar"
-        className={`brain-sidebar${menuOpen ? " is-open" : ""}`}
-        aria-hidden={!menuOpen}
-        aria-label={t(language, "shell.menu.title")}
-      >
-        <div className="brain-sidebar-head">
-          <span className="brain-sidebar-title">{t(language, "shell.menu.title")}</span>
-          <button
-            type="button"
-            className="brain-menu-button"
-            aria-label={t(language, "shell.menu.close")}
-            onClick={closeMenu}
-          >
-            <X aria-hidden="true" />
-          </button>
-        </div>
-        <nav className="brain-sidebar-nav" aria-label={t(language, "shell.menu.nav")}>
-          {productShellRoutes.map((item) => {
+        <nav className="brain-desktop-nav brain-primary-nav" aria-label={t(language, "shell.menu.nav")}>
+          {primaryRoutes.map((item) => {
             const Icon = item.icon;
             return (
-              <button
+              <a
                 key={item.id}
-                type="button"
-                className={`brain-sidebar-item${item.id === active ? " is-active" : ""}`}
+                className={`brain-nav-link${item.id === active ? " is-active" : ""}`}
+                href={`#/${item.path}`}
                 aria-current={item.id === active ? "page" : undefined}
-                onClick={() => {
-                  setMenuOpen(false);
-                  navigateHash(`/${item.path}`);
-                }}
               >
                 {Icon && <Icon className="nav-icon" aria-hidden="true" />}
                 <span>{t(language, item.labelKey)}</span>
-              </button>
+              </a>
             );
           })}
         </nav>
-        <div className="brain-sidebar-foot" aria-label={t(language, "shell.menu.workspace")}>
-          <span className="brain-sidebar-section-label">{t(language, "shell.menu.workspace")}</span>
-          <VsCodeSyncStatus language={language} />
-          <WorkspaceProfileSwitcher language={language} />
-          <AdminAccessGate language={language} />
-        </div>
-      </aside>
 
-      <section className="brain-shell-content">{children}</section>
-    </main>
+        <div className="brain-shell-actions">
+          <button
+            ref={desktopMenuButtonRef}
+            type="button"
+            className={`brain-more-button brain-menu-button${menuOpen ? " is-open" : ""}`}
+            aria-expanded={menuOpen}
+            aria-controls="brain-more-popover"
+            aria-haspopup="dialog"
+            aria-label={t(language, menuOpen ? "shell.menu.close" : "shell.menu.open")}
+            onClick={(event) => toggleMenu(event.currentTarget)}
+          >
+            <Ellipsis aria-hidden="true" />
+            <span>{t(language, "shell.menu.title")}</span>
+          </button>
+        </div>
+      </header>
+
+      {menuOpen ? (
+        <>
+          <div className="brain-sidebar-scrim brain-more-scrim" aria-hidden="true" />
+          <div
+            ref={menuPanelRef}
+            id="brain-more-popover"
+            className="brain-more-popover"
+            role="dialog"
+            aria-label={t(language, "shell.menu.title")}
+          >
+            <div className="brain-more-popover-head">
+              <strong>{t(language, "shell.menu.title")}</strong>
+              <button
+                type="button"
+                className="brain-menu-button"
+                aria-label={t(language, "shell.menu.close")}
+                onClick={() => closeMenu()}
+              >
+                <X aria-hidden="true" />
+              </button>
+            </div>
+
+            <section className="brain-more-section" aria-labelledby="brain-more-navigation-label">
+              <span id="brain-more-navigation-label" className="brain-more-section-label">
+                {t(language, "shell.menu.nav")}
+              </span>
+              <nav className="brain-more-nav" aria-label={t(language, "shell.menu.nav")}>
+                {secondaryRoutes.map((item) => {
+                  const Icon = item.icon;
+                  return (
+                    <a
+                      key={item.id}
+                      className={`brain-more-nav-item brain-sidebar-item${item.id === active ? " is-active" : ""}`}
+                      href={`#/${item.path}`}
+                      aria-current={item.id === active ? "page" : undefined}
+                      onClick={() => closeMenu(false)}
+                    >
+                      {Icon && <Icon className="nav-icon" aria-hidden="true" />}
+                      <span>{t(language, item.labelKey)}</span>
+                    </a>
+                  );
+                })}
+              </nav>
+            </section>
+
+            <section
+              className="brain-more-section brain-more-utilities brain-sidebar-foot"
+              aria-labelledby="brain-more-workspace-label"
+            >
+              <span id="brain-more-workspace-label" className="brain-more-section-label brain-sidebar-section-label">
+                {t(language, "shell.menu.workspace")}
+              </span>
+              <WorkspaceProfileSwitcher language={language} />
+              <VsCodeSyncStatus language={language} />
+              <AdminAccessGate language={language} />
+            </section>
+          </div>
+        </>
+      ) : null}
+
+      <Content
+        id="brain-main-content"
+        className="brain-shell-content"
+        tabIndex={-1}
+        {...(!contentOwnsMain ? { "aria-label": t(language, "brain.title") } : {})}
+      >
+        {children}
+      </Content>
+
+      <nav className="brain-mobile-nav" aria-label={t(language, "shell.menu.nav")}>
+        {primaryRoutes.map((item) => {
+          const Icon = item.icon;
+          return (
+            <a
+              key={item.id}
+              className={`brain-mobile-nav-item${item.id === active ? " is-active" : ""}`}
+              href={`#/${item.path}`}
+              aria-current={item.id === active ? "page" : undefined}
+            >
+              {Icon && <Icon className="nav-icon" aria-hidden="true" />}
+              <span>{t(language, item.labelKey)}</span>
+            </a>
+          );
+        })}
+        <button
+          ref={mobileMenuButtonRef}
+          type="button"
+          className={`brain-mobile-nav-item brain-mobile-menu-button${
+            menuOpen || active === "library" || active === "system" ? " is-active" : ""
+          }`}
+          aria-expanded={menuOpen}
+          aria-controls="brain-more-popover"
+          aria-haspopup="dialog"
+          aria-label={t(language, menuOpen ? "shell.menu.close" : "shell.menu.open")}
+          onClick={(event) => toggleMenu(event.currentTarget)}
+        >
+          <Ellipsis className="nav-icon" aria-hidden="true" />
+          <span>{t(language, "shell.menu.title")}</span>
+        </button>
+      </nav>
+    </div>
   );
 }
 

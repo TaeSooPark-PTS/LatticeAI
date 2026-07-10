@@ -7,7 +7,10 @@
 > Main-branch hardening after 9.0.0 adds request-scoped model routing,
 > workspace-isolated graph identities and frontend caches, fail-closed admin
 > gates, SSRF-safe web capture, private local state permissions, and reproducible
-> release/test isolation. The published release number remains 9.0.0.
+> release/test isolation. The same unreleased line introduces a human-first UI:
+> conversation-led home, visible task navigation, search-first memory, focused
+> source/work flows, and progressive disclosure for technical Brain details.
+> The published release number remains 9.0.0.
 
 Your model is the voice you use today. Your Brain is the asset you keep.
 Lattice AI preserves conversations, documents, decisions, project context,
@@ -64,7 +67,7 @@ You need Lattice AI when:
 3. Let Lattice explain what this computer can run.
 4. Start with the recommended model as the Brain's voice, or skip and choose later.
 5. Talk to your Brain.
-6. Use the memory rings to move from current context to the full knowledge graph.
+6. Open Memory to search first, then reveal the connection map when useful.
 7. Back up, inspect, export, or restore the Brain when you need ownership actions.
 
 ## Living Brain Flow
@@ -104,9 +107,10 @@ execution, and network use before work starts.
 
 ### 5. Brain Chat
 
-Talk normally. Useful decisions and context become memory, then appear later as
-topics, relationships, graph structure, and the concentric memory rings around
-the Brain.
+Talk normally from a calm, reading-first canvas. The default home keeps the
+composer, a few useful starters, and recent conversations in view. Brain Brief,
+memory rings, ingestion detail, and model/runtime evidence remain available
+behind intentional disclosures instead of competing with the first action.
 
 ![Brain Brief Home](output/release/v9.0.0/screenshots/04-brain-chat-home.png)
 
@@ -169,7 +173,10 @@ pip install "ltcai[local]"
 - **Product category**: local-first Digital Brain.
 - **Core capability**: private AI memory layer for conversations, documents,
   decisions, relationships, workflows, and project context.
-- **UX metaphor**: Living Brain.
+- **UX metaphor**: Living Brain in a calm conversation-and-document workspace.
+- **Product navigation**: desktop task navigation and a mobile bottom bar expose
+  Chat, Sources, Memory, and Work; model, workspace, and admin controls live in
+  the secondary menu.
 - **Desktop shell**: Tauri 2 starts a localhost sidecar.
 - **Frontend**: React, TypeScript, Vite, TanStack Query, Zustand, Cytoscape.js,
   React Flow, and generated OpenAPI types.

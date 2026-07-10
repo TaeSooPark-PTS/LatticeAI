@@ -21,6 +21,12 @@ read the docs first.
 ## Product Promises
 
 - The user starts in the Brain, not in an admin dashboard.
+- The first screen asks what the user wants to do, then prioritizes one composer,
+  a few starters, and recent conversations over scores or system status.
+- Chat, Sources, Memory, and Work stay one visible navigation action away on
+  desktop and mobile; models and administration do not compete with them.
+- Memory starts with search. The connection map appears only when the user asks
+  to inspect relationships.
 - Empty states suggest one concrete next action without claiming proof that does
   not exist yet.
 - Upload, note, browser, and message ingestion all converge through the unified

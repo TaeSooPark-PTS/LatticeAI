@@ -32,11 +32,13 @@ The graph matters, but it is not the product identity. The product identity is a
 local-first Digital Brain: a place where the user can talk, add sources, watch
 memory grow, and inspect the Knowledge Graph when they need proof.
 
-In 9.0.0 the first screen is intentionally not a dashboard. The living Brain,
-conversation composer, evidence-backed Brain Brief, scoped memory isolation,
-and five-minute onboarding
-path appear together so the user immediately knows what matters, what to add,
-and why the answer is grounded in local memory.
+The current main-branch experience is intentionally not a dashboard. The first
+screen leads with a greeting, conversation composer, useful starting prompts,
+and recent conversations. Evidence-backed Brain Brief, memory rings, ingestion,
+and runtime detail remain one disclosure away, so users can inspect grounding
+without reading operational status before they ask a question. Primary
+navigation follows human tasks — Chat, Sources, Memory, and Work — while models,
+workspace controls, and administration stay secondary.
 
 ## Practical Reasons To Use It
 

@@ -7,6 +7,12 @@ existed at that release.
 ## [Unreleased]
 
 ### Added
+- Added a visible task-oriented desktop navigation, mobile bottom navigation,
+  accessible secondary menu, skip link, focus trap/restoration, keyboard-driven
+  tabs, and reduced-motion behavior for the React workspace.
+- Added a dedicated human-first experience stylesheet that owns the product
+  shell, conversation canvas, shared content rhythm, responsive behavior, and
+  warm paper/ink/jade visual tokens.
 - Added regression gates for model-request concurrency, workspace/identity
   authorization, graph ID isolation, command sandbox escapes, SSRF and redirect
   rebinding, approval ownership, release archive hygiene, browser-extension byte
@@ -15,6 +21,21 @@ existed at that release.
   normal lint gate.
 
 ### Changed
+- Rebuilt Brain Home around greeting, composer, suggested starts, and recent
+  conversations; Brain Brief, memory rings, proactive activity, ingestion, and
+  technical proof are now progressively disclosed.
+- Renamed and regrouped the primary experience around Chat, Sources, Memory, and
+  Work. Memory now opens with search, basic Work leads with one goal composer,
+  and basic mode hides pipeline, agent-registry, runtime-metric, plugin, and
+  operator tabs until requested.
+- Synced major tab choices to canonical hash routes so refresh, browser history,
+  and bookmarked Sources, Memory, Work, Model, and Settings subviews preserve
+  the user's place.
+- Restyled shared panels, entity lists, empty states, statistics, onboarding,
+  source capture, and active messages to use solid surfaces, whitespace, and
+  separators instead of nested glass cards and dashboard grids.
+- Deferred graph and Brain-proof home queries until a user opens detailed Brain
+  information or starts an action that needs them.
 - Model generation, streaming, and document generation now use request-scoped
   model snapshots without mutating the global selected model.
 - New workspace-scoped graph nodes derive IDs from workspace identity, preventing

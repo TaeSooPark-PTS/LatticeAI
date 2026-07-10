@@ -22,7 +22,7 @@ export function SourceBadge({ result }: { result?: Pick<ApiResult, "source" | "o
 export function EmptyState({ title, detail }: { title?: string; detail?: React.ReactNode }) {
   const language = useAppStore((state) => state.language);
   return (
-    <div className="flex min-h-36 flex-col items-center justify-center gap-2 rounded-lg border border-dashed border-border bg-muted/24 p-6 text-center text-sm text-muted-foreground">
+    <div className="product-empty-state flex min-h-36 flex-col items-center justify-center gap-2 rounded-lg border border-dashed border-border bg-muted/24 p-6 text-center text-sm text-muted-foreground">
       <div className="grid h-10 w-10 place-items-center rounded-md border border-border bg-card">
         <Sparkles className="h-5 w-5 text-primary" />
       </div>
@@ -48,13 +48,13 @@ export function DataPanel<T>({
   const mode = useAppStore((state) => state.mode);
   const language = useAppStore((state) => state.language);
   return (
-    <Card className={cn("overflow-hidden", className)}>
+    <Card className={cn("data-panel overflow-hidden", className)}>
       <CardHeader className="flex-row items-start justify-between gap-3">
         <div>
           <CardTitle>{title}</CardTitle>
           {description ? <CardDescription>{description}</CardDescription> : null}
         </div>
-        <SourceBadge result={result} />
+        {mode === "basic" ? null : <SourceBadge result={result} />}
       </CardHeader>
       <CardContent>
         {result?.ok ? children(result.data) : (
@@ -83,7 +83,7 @@ export function LoadingPanel({ title }: { title: string }) {
 
 export function StatGrid({ stats }: { stats: Array<{ label: string; value: unknown; hint?: string }> }) {
   return (
-    <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
+    <div className="data-stat-grid grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
       {stats.map((stat) => (
         <div key={stat.label} className="rounded-lg border border-border bg-background/55 p-4">
           <div className="text-xs uppercase text-muted-foreground">{stat.label}</div>
@@ -285,9 +285,9 @@ export function EntityList({
   const rows = asArray<Record<string, unknown>>(items).slice(0, limit);
   if (!rows.length) return <EmptyState detail={t(language, "ui.empty.listDetail")} />;
   return (
-    <div className="grid gap-2">
+    <div className="entity-list grid gap-2">
       {rows.map((item, index) => (
-        <div key={String(item.id || item.name || index)} className="rounded-lg border border-border bg-background/55 p-3">
+        <div key={String(item.id || item.name || index)} className="entity-list-row rounded-lg border border-border bg-background/55 p-3">
           <div className="flex flex-wrap items-center justify-between gap-2">
             <div className="font-medium">{mode === "basic" ? humanText(item[titleKey] || item.name || item.label || `Item ${index + 1}`) : String(item[titleKey] || item.name || item.id || `Record ${index + 1}`)}</div>
             <Badge variant="muted">{mode === "basic" ? humanText(item[metaKey] || item.status || item.state || "ready") : String(item[metaKey] || item.status || item.state || "record")}</Badge>
@@ -389,12 +389,42 @@ export function Tabs({
   value: string;
   onChange: (id: string) => void;
 }) {
+  const tabRefs = React.useRef<Array<HTMLButtonElement | null>>([]);
+
+  const moveFocus = (currentIndex: number, direction: number) => {
+    const nextIndex = (currentIndex + direction + tabs.length) % tabs.length;
+    tabRefs.current[nextIndex]?.focus();
+    onChange(tabs[nextIndex].id);
+  };
+
   return (
-    <div className="inline-flex max-w-full flex-wrap gap-1 rounded-lg border border-border bg-muted/28 p-1">
-      {tabs.map((tab) => (
+    <div className="product-tabs inline-flex max-w-full flex-wrap gap-1 rounded-lg border border-border bg-muted/28 p-1" role="tablist">
+      {tabs.map((tab, index) => (
         <button
           key={tab.id}
+          ref={(element) => { tabRefs.current[index] = element; }}
+          type="button"
+          role="tab"
+          aria-selected={value === tab.id}
+          tabIndex={value === tab.id ? 0 : -1}
           onClick={() => onChange(tab.id)}
+          onKeyDown={(event) => {
+            if (event.key === "ArrowRight" || event.key === "ArrowDown") {
+              event.preventDefault();
+              moveFocus(index, 1);
+            } else if (event.key === "ArrowLeft" || event.key === "ArrowUp") {
+              event.preventDefault();
+              moveFocus(index, -1);
+            } else if (event.key === "Home") {
+              event.preventDefault();
+              tabRefs.current[0]?.focus();
+              onChange(tabs[0].id);
+            } else if (event.key === "End") {
+              event.preventDefault();
+              tabRefs.current[tabs.length - 1]?.focus();
+              onChange(tabs[tabs.length - 1].id);
+            }
+          }}
           className={cn(
             "h-9 rounded-md px-3.5 text-sm font-semibold transition",
             value === tab.id ? "bg-card text-foreground shadow-sm" : "text-muted-foreground hover:bg-card/60 hover:text-foreground",

@@ -24,7 +24,7 @@ async function openBrain(page, options) {
 
 async function openShellMenu(page) {
   await page.getByRole("button", { name: "메뉴 열기" }).click();
-  await expect(page.getByRole("navigation", { name: "화면 이동" })).toBeVisible();
+  await expect(page.locator("#brain-more-popover")).toBeVisible();
 }
 
 test("first-run ritual enters the living Brain", async ({ page }) => {
@@ -54,7 +54,7 @@ test("first-run ritual enters the living Brain", async ({ page }) => {
   await expect(page.locator("body")).toContainText("모델을 준비하고 시작합니다.");
   await page.getByRole("button", { name: "준비하고 시작하기" }).click();
   await expect(page.locator("main[aria-label='Lattice Brain']")).toBeVisible();
-  await expect(page.locator("body")).toContainText("지금 Brain이 기억을 만들 준비가 됐습니다");
+  await expect(page.getByRole("heading", { name: "무엇을 함께 해볼까요?" })).toBeVisible();
   await expect(page.locator("body")).not.toContainText("전체 지식 그래프");
   expect(errors).toEqual([]);
 });
@@ -63,13 +63,13 @@ test("Brain home opens the memory graph instead of a duplicate lower Brain", asy
   const errors = trackPageErrors(page);
   await openBrain(page);
 
-  await expect(page.locator("body")).toContainText("지금 Brain이 기억을 만들 준비가 됐습니다");
+  await expect(page.getByRole("heading", { name: "무엇을 함께 해볼까요?" })).toBeVisible();
   await expect(page.locator(".memory-fragment")).toHaveCount(0);
   await expect(page.locator("[data-testid='brain-cytoscape']")).toHaveCount(0);
   await expect(page.getByRole("button", { name: "기억 보기" })).toHaveCount(0);
 
-  await page.locator(".brain-center-orb .brain-organism").click();
-  await expect(page.locator("body")).toContainText("지식 연결망");
+  await page.locator(".brain-home-presence-compact .brain-organism").click();
+  await expect(page.locator("body")).toContainText("기억 사이의 연결을 살펴보세요");
   await expect(page.locator("[data-testid='brain-cytoscape']")).toBeVisible();
   await expect(page.getByPlaceholder(GRAPH_SEARCH_PLACEHOLDER)).toBeVisible();
   expect(errors).toEqual([]);
@@ -79,7 +79,9 @@ test("memory rings peek previews a layer without leaving home", async ({ page })
   const errors = trackPageErrors(page);
   await openBrain(page);
 
-  // Populated ring chips show live counts and open an inline peek panel.
+  // The detailed memory visualization stays out of the primary home flow,
+  // then remains fully interactive when the user asks to see it.
+  await page.getByText("Brain이 정리한 내용", { exact: true }).click();
   const topicsChip = page.locator(".ring-label-bottom");
   await expect(topicsChip).toContainText("주제");
   await topicsChip.click();
@@ -90,7 +92,7 @@ test("memory rings peek previews a layer without leaving home", async ({ page })
   // Escape closes the peek and keeps the user on the home surface.
   await page.keyboard.press("Escape");
   await expect(peek).toHaveCount(0);
-  await expect(page.locator("body")).toContainText("지금 Brain이 기억을 만들 준비가 됐습니다");
+  await expect(page.getByRole("heading", { name: "무엇을 함께 해볼까요?" })).toBeVisible();
 
   // "Open this layer" from the graph ring hands off to the memory graph view.
   await page.locator(".ring-label-right").click();
@@ -99,19 +101,21 @@ test("memory rings peek previews a layer without leaving home", async ({ page })
   expect(errors).toEqual([]);
 });
 
-test("memory graph supports graph search and returning to the surface", async ({ page }) => {
+test("memory opens with search and can reveal the connections map", async ({ page }) => {
   const errors = trackPageErrors(page);
   await openBrain(page);
-  await openShellMenu(page);
-  await page.getByRole("button", { name: "기억 그래프" }).click();
+  await page.getByRole("link", { name: "기억", exact: true }).click();
+  await expect(page).toHaveURL(/#\/hybrid-search$/);
+  await expect(page.getByRole("heading", { name: "기억에서 찾아보세요." })).toBeVisible();
+  await page.getByRole("tab", { name: "연결 지도" }).click();
+  await expect(page).toHaveURL(/#\/knowledge-graph$/);
   await expect(page.locator("[data-testid='brain-cytoscape']")).toBeVisible();
 
   await page.getByPlaceholder(GRAPH_SEARCH_PLACEHOLDER).fill("workspace");
   await expect(page.locator("body")).toContainText("Workspace Health");
 
-  await openShellMenu(page);
-  await page.getByRole("button", { name: "대화" }).click();
-  await expect(page.locator("body")).toContainText("지금 Brain이 기억을 만들 준비가 됐습니다");
+  await page.getByRole("link", { name: "대화", exact: true }).click();
+  await expect(page.getByRole("heading", { name: "무엇을 함께 해볼까요?" })).toBeVisible();
   await expect(page.locator("[data-testid='brain-cytoscape']")).toHaveCount(0);
   expect(errors).toEqual([]);
 });
@@ -121,21 +125,27 @@ test("conversation keeps the Brain alive while chat streams", async ({ page }) =
   await openBrain(page);
 
   await expect(page.getByRole("button", { name: "메뉴 열기" })).toBeVisible();
+  await expect(page.getByRole("link", { name: "자료", exact: true })).toBeVisible();
+  await expect(page.getByRole("link", { name: "기억", exact: true })).toBeVisible();
+  await expect(page.getByRole("link", { name: "작업", exact: true })).toBeVisible();
   await openShellMenu(page);
-  await expect(page.getByRole("button", { name: "자료 추가" })).toBeVisible();
+  await expect(page.getByRole("link", { name: "AI 모델" })).toBeVisible();
+  await expect(page.getByRole("link", { name: "설정" })).toBeVisible();
   await page.getByRole("button", { name: "메뉴 닫기" }).last().click();
   await expect(page.locator("section[aria-label='Brain Chat Home']")).toBeVisible();
-  await expect(page.locator("body")).toContainText("지금 Brain이 기억을 만들 준비가 됐습니다");
-  await expect(page.locator("body")).toContainText("대화 한 줄이나 문서 하나가 기억이 되고");
-  await expect(page.locator("section[aria-label='제품 상태와 다음 행동']")).not.toBeVisible();
+  await expect(page.getByRole("heading", { name: "무엇을 함께 해볼까요?" })).toBeVisible();
+  await expect(page.locator("body")).toContainText("질문하거나, 생각을 정리하거나");
+  await expect(page.locator("section[aria-label='제품 상태와 다음 행동']")).toHaveCount(0);
   await expect(page.locator("[aria-label='Brain 깊이 진행 상태']")).toHaveCount(0);
-  await page.getByRole("button", { name: /과거 결정들을 Brain이 구조화해서/ }).click();
-  await expect(page.getByPlaceholder("Brain에게 말하기...")).toHaveValue("과거 결정들을 Brain이 구조화해서 나중에 쉽게 찾게 해줘: ");
-  await page.getByPlaceholder("Brain에게 말하기...").fill("");
+  await page.getByRole("button", { name: "지금 해야 할 일을 우선순위로 정리해줘" }).click();
+  const composer = page.getByPlaceholder("질문하거나, 자료를 붙여 넣거나, 할 일을 적어보세요");
+  await expect(composer).toHaveValue("지금 해야 할 일을 우선순위로 정리해줘");
+  await composer.fill("");
 
-  await page.getByText("자료와 설정").click();
-  await expect(page.locator("section[aria-label='제품 상태와 다음 행동']")).toBeVisible();
-  await expect(page.getByRole("button", { name: /근거 확인/ })).toBeVisible();
+  await page.getByText("Brain이 정리한 내용", { exact: true }).click();
+  await expect(page.locator(".brain-home-insights-content")).toBeVisible();
+  await page.getByText("Brain 세부 정보", { exact: true }).click();
+  await expect(page.locator("section[aria-label='제품 상태와 다음 행동']")).toHaveCount(0);
   await expect(page.locator("body")).toContainText("Brain 한눈에 보기");
   await expect(page.locator("body")).toContainText("Brain 준비도");
   await expect(page.locator("section[aria-label='내 Brain 돌보기']")).toBeVisible();
@@ -145,7 +155,7 @@ test("conversation keeps the Brain alive while chat streams", async ({ page }) =
   await expect(page.getByRole("button", { name: /백업/ })).toBeVisible();
   await expect(page.getByRole("button", { name: /복원 미리보기/ })).toBeVisible();
 
-  await page.getByPlaceholder("Brain에게 말하기...").fill("How does hybrid search rank results?");
+  await composer.fill("How does hybrid search rank results?");
   await page.getByRole("button", { name: "보내기", exact: true }).click();
   await expect(page.locator("body")).toContainText("Hybrid retrieval");
   await expect(page.locator("body")).toContainText("기억에 저장됨");
@@ -221,8 +231,8 @@ test("mobile Brain surface has no horizontal overflow", async ({ page }) => {
 
   const overflow = await page.evaluate(() => document.documentElement.scrollWidth - document.documentElement.clientWidth);
   expect(overflow).toBeLessThanOrEqual(1);
-  await expect(page.locator("body")).toContainText("지금 Brain이 기억을 만들 준비가 됐습니다");
-  await expect(page.getByPlaceholder("Brain에게 말하기...")).toBeVisible();
+  await expect(page.getByRole("heading", { name: "무엇을 함께 해볼까요?" })).toBeVisible();
+  await expect(page.getByPlaceholder("질문하거나, 자료를 붙여 넣거나, 할 일을 적어보세요")).toBeVisible();
   expect(errors).toEqual([]);
 });
 
@@ -230,11 +240,11 @@ test("legacy entry URLs still arrive at the Brain app", async ({ page }) => {
   await bypassProductFlow(page);
   await page.goto("/chat");
   await expect(page).toHaveURL(/\/app#\/chat$/);
-  await expect(page.locator("body")).toContainText("지금 Brain이 기억을 만들 준비가 됐습니다");
+  await expect(page.getByRole("heading", { name: "무엇을 함께 해볼까요?" })).toBeVisible();
 
   await page.goto("/graph");
   await expect(page).toHaveURL(/\/app#\/knowledge-graph$/);
-  await expect(page.locator("body")).toContainText("지식 연결망");
+  await expect(page.locator("body")).toContainText("기억 사이의 연결을 살펴보세요");
 });
 
 test("past conversations resume with markdown rendering and delete inline", async ({ page }) => {

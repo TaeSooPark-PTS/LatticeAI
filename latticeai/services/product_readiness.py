@@ -37,9 +37,10 @@ PRODUCT_GATES: List[ProductGate] = [
         evidence=[
             "docs/ONBOARDING.md::five-minute",
             "frontend/src/components/ProductFlow.tsx::WakeBrainScreen",
-            "frontend/src/features/brain/BrainConversation.tsx::ProductCommandCenter",
+            "frontend/src/features/brain/BrainConversation.tsx::brain-home-insights",
             "frontend/src/features/brain/BrainConversation.tsx::BrainBriefPanel",
             "frontend/src/features/brain/BrainHome.tsx",
+            "frontend/src/App.tsx::brain-mobile-nav",
             "auto_setup.py",
             "setup_wizard.py",
         ],

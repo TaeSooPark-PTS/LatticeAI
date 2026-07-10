@@ -15,13 +15,14 @@ import { t, type Language } from "@/i18n";
 import { asArray, fmtNumber, pct, titleize } from "@/lib/utils";
 import { CytoscapeGraph } from "./brain/CytoscapeGraph";
 import { buildExplorerModel, isRecord, parseGraph, type LabelMode } from "./brain/graphExplorer";
+import { navigateHash } from "@/features/brain/navigation";
 
 type BrainTab = "graph" | "knowledge" | "memory";
 
 const tabs: Array<{ id: BrainTab; labelKey: string }> = [
-  { id: "graph", labelKey: "brain.tab.graph" },
   { id: "knowledge", labelKey: "brain.tab.knowledge" },
   { id: "memory", labelKey: "brain.tab.memory" },
+  { id: "graph", labelKey: "brain.tab.graph" },
 ];
 
 export function BrainPage({ initialTab }: { initialTab?: string }) {
@@ -32,11 +33,15 @@ export function BrainPage({ initialTab }: { initialTab?: string }) {
   React.useEffect(() => {
     setTab(normalizeBrainTab(initialTab));
   }, [initialTab]);
+  const selectTab = (next: BrainTab) => {
+    setTab(next);
+    navigateHash("/" + ({ knowledge: "hybrid-search", memory: "memory", graph: "knowledge-graph" } as const)[next]);
+  };
   const graph = useQuery({ queryKey: ["graph"], queryFn: latticeApi.graph });
   const coverage = useQuery({ queryKey: ["coverage"], queryFn: latticeApi.graphCoverage });
 
   return (
-    <div className="space-y-5">
+    <div className="product-page memory-page space-y-5">
       <header className="brain-layer-header">
         <div>
           <div className="page-kicker"><BrainCircuit className="h-4 w-4" /> {tabLabel(language, tab)}</div>
@@ -47,7 +52,7 @@ export function BrainPage({ initialTab }: { initialTab?: string }) {
           <strong>{pct((coverage.data?.data as Record<string, unknown>)?.coverage_ratio)}</strong>
         </div>
       </header>
-      <Tabs tabs={tabs.map((item) => ({ id: item.id, label: t(language, item.labelKey) }))} value={tab} onChange={(id) => setTab(id as BrainTab)} />
+      <Tabs tabs={tabs.map((item) => ({ id: item.id, label: t(language, item.labelKey) }))} value={tab} onChange={(id) => selectTab(id as BrainTab)} />
 
       {tab === "graph" ? (
         graph.isLoading ? <LoadingPanel title={t(language, "graph.deep.title")} /> : (
@@ -309,21 +314,22 @@ function DigitalBrainExplorer({ data }: { data: unknown }) {
 }
 
 function HybridSearch() {
+  const language = useAppStore((state) => state.language);
   const [query, setQuery] = React.useState("");
   const search = useMutation({ mutationFn: () => latticeApi.hybridSearch(query) });
   return (
     <Card>
       <CardHeader>
-        <CardTitle className="flex items-center gap-2"><Search className="h-4 w-4" /> Brain search</CardTitle>
-        <CardDescription>Find ideas across memories, documents, and connections.</CardDescription>
+        <CardTitle className="flex items-center gap-2"><Search className="h-4 w-4" /> {t(language, "brain.search.title")}</CardTitle>
+        <CardDescription>{t(language, "brain.search.detail")}</CardDescription>
       </CardHeader>
       <CardContent className="space-y-3">
         <div className="flex flex-col gap-2 sm:flex-row">
-          <Input placeholder="Search memories, indexed documents, and relationships" value={query} onChange={(e) => setQuery(e.target.value)} onKeyDown={(e) => e.key === "Enter" && !e.nativeEvent.isComposing && search.mutate()} />
-          <Button onClick={() => search.mutate()} disabled={!query.trim() || search.isPending}>Search</Button>
+          <Input placeholder={t(language, "brain.search.placeholder")} value={query} onChange={(e) => setQuery(e.target.value)} onKeyDown={(e) => e.key === "Enter" && !e.nativeEvent.isComposing && search.mutate()} />
+          <Button onClick={() => search.mutate()} disabled={!query.trim() || search.isPending}>{t(language, "brain.search.cta")}</Button>
         </div>
         {search.data ? (
-          <DataPanel title="Results" result={search.data}>
+          <DataPanel title={t(language, "brain.search.results")} result={search.data}>
             {(data) => <EntityList items={(data as Record<string, unknown>).matches || data} titleKey="title" metaKey="type" limit={12} />}
           </DataPanel>
         ) : null}

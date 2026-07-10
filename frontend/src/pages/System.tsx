@@ -11,6 +11,7 @@ import { t, type Language } from "@/i18n";
 import { useAppStore } from "@/store/appStore";
 import { asArray, isRecord, shortId, titleize } from "@/lib/utils";
 import { clearScopedClientState } from "@/queryClient";
+import { navigateHash } from "@/features/brain/navigation";
 
 type SystemTab = "account" | "workspaces" | "snapshots" | "activity" | "network" | "settings" | "admin";
 
@@ -31,14 +32,33 @@ export function SystemPage({ initialTab }: { initialTab?: string }) {
   React.useEffect(() => {
     if (tabs.some((item) => item.id === initialTab)) setTab(initialTab as SystemTab);
   }, [initialTab]);
+  const selectTab = (next: SystemTab) => {
+    setTab(next);
+    navigateHash("/" + ({
+      account: "account",
+      workspaces: "workspace-admin",
+      snapshots: "snapshots",
+      activity: "activity",
+      network: "network",
+      settings: "settings",
+      admin: "system-admin",
+    } as const)[next]);
+  };
   return (
-    <div className="space-y-5">
+    <div className="product-page settings-page space-y-5">
       <header className="page-hero">
         <div className="page-kicker"><ShieldCheck className="h-4 w-4" /> {t(language, "system.kicker")}</div>
         <h1 className="page-title">{t(language, "system.title")}</h1>
         <p className="page-copy">{t(language, "system.body")}</p>
       </header>
-      <Tabs tabs={(mode === "basic" ? tabs.filter((item) => item.id !== "admin") : tabs).map((item) => ({id: item.id, label: t(language, item.labelKey)}))} value={tab} onChange={(id) => setTab(id as SystemTab)} />
+      <Tabs
+        tabs={(mode === "basic"
+          ? tabs.filter((item) => item.id === "account" || item.id === "workspaces" || item.id === "snapshots" || item.id === "settings")
+          : tabs
+        ).map((item) => ({ id: item.id, label: t(language, item.labelKey) }))}
+        value={tab}
+        onChange={(id) => selectTab(id as SystemTab)}
+      />
       {tab === "account" ? <AccountPanel /> : null}
       {tab === "workspaces" ? <WorkspacePanel /> : null}
       {tab === "snapshots" ? <SnapshotsPanel /> : null}

@@ -14,9 +14,9 @@ export type RouteTarget = { primary: PrimaryRoute; tab?: string };
 export const productShellRoutes = [
   { id: "brain", path: "brain", labelKey: "shell.route.brain", icon: Brain, description: "Talk with your living Brain" },
   { id: "capture", path: "capture", labelKey: "shell.route.capture", icon: FolderInput, description: "Bring in files, folders, and pages" },
-  { id: "memory", path: "knowledge-graph", labelKey: "shell.route.memory", icon: Database, description: "Search and inspect Brain knowledge" },
+  { id: "memory", path: "hybrid-search", labelKey: "shell.route.memory", icon: Database, description: "Search and revisit remembered knowledge" },
   { id: "library", path: "models", labelKey: "shell.route.library", icon: Library, description: "Choose the local model powering your Brain" },
-  { id: "act", path: "review", labelKey: "shell.route.act", icon: Workflow, description: "Turn goals into supervised runs" },
+  { id: "act", path: "agents", labelKey: "shell.route.act", icon: Workflow, description: "Start work and review what needs attention" },
   { id: "system", path: "settings", labelKey: "shell.route.system", icon: Settings, description: "Keep your Brain safe and portable" },
 ] as const;
 
@@ -38,6 +38,7 @@ export const compatibilityRouteAliases: Record<string, RouteTarget> = {
   chat: { primary: "brain", tab: "conversation" },
   files: { primary: "capture", tab: "files" },
   pipeline: { primary: "capture", tab: "pipeline" },
+  "capture-browser": { primary: "capture", tab: "browser" },
   "my-computer": { primary: "capture", tab: "local" },
   agents: { primary: "act", tab: "agents" },
   runs: { primary: "act", tab: "runs" },
@@ -55,6 +56,7 @@ export const compatibilityRouteAliases: Record<string, RouteTarget> = {
   activity: { primary: "system", tab: "activity" },
   network: { primary: "system", tab: "network" },
   settings: { primary: "system", tab: "settings" },
+  "system-admin": { primary: "system", tab: "admin" },
   "admin/users": { primary: "system", tab: "admin" },
   "admin/permissions": { primary: "system", tab: "admin" },
   "admin/audit": { primary: "system", tab: "admin" },
@@ -68,11 +70,11 @@ export const routeAliases = compatibilityRouteAliases;
 
 export const commandRoutes = [
   { key: "brain", label: "Lattice Brain", icon: Brain },
-  { key: "files", label: "Files", icon: FolderInput },
-  { key: "knowledge-graph", label: "Graph", icon: Database },
-  { key: "models", label: "Models", icon: Library },
+  { key: "files", label: "Sources", icon: FolderInput },
+  { key: "hybrid-search", label: "Memory", icon: Database },
+  { key: "models", label: "AI model", icon: Library },
   { key: "settings", label: "Settings", icon: Settings },
-  { key: "review", label: "Act", icon: Workflow },
+  { key: "agents", label: "Work", icon: Workflow },
 ];
 
 export function parseHash() {

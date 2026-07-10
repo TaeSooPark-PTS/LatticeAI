@@ -51,6 +51,7 @@ export function BrainHome({
   });
   const [emergenceEvents, setEmergenceEvents] = React.useState<EmergenceEvent[]>([]);
   const [proactiveActivities, setProactiveActivities] = React.useState<BrainProactiveActivity[]>([]);
+  const [detailsRequested, setDetailsRequested] = React.useState(false);
   const streamRef = React.useRef<HTMLDivElement>(null);
   const abortRef = React.useRef<AbortController | null>(null);
   const recallTimerRef = React.useRef<number | null>(null);
@@ -69,11 +70,12 @@ export function BrainHome({
 
   const memoriesQ = useQuery({ queryKey: ["memoryManager"], queryFn: latticeApi.memoryManager });
   const historyQ = useQuery({ queryKey: ["chatHistory"], queryFn: latticeApi.chatHistory });
-  const graphQ = useQuery({ queryKey: ["graph"], queryFn: latticeApi.graph });
+  const graphQ = useQuery({ queryKey: ["graph"], queryFn: latticeApi.graph, enabled: detailsRequested });
   const modelsQ = useQuery({ queryKey: ["models"], queryFn: latticeApi.models });
   const brainProofQ = useQuery({
     queryKey: ["memoryBrainProof", lastRecallQuery],
     queryFn: () => latticeApi.memoryBrainProof(lastRecallQuery, 3),
+    enabled: detailsRequested || Boolean(lastRecallQuery) || messages.length > 0,
   });
   const brainBriefQ = useQuery({
     queryKey: ["memoryBrainBrief", lastRecallQuery],
@@ -173,6 +175,7 @@ export function BrainHome({
 
   const beginIngestion = React.useCallback(
     (sourceType: IngestionSourceType, label: string) => {
+      setDetailsRequested(true);
       clearStageTimers(sourceType);
       pendingBaselineRef.current[sourceType] = {
         memories: memoryFragments.length,
@@ -728,26 +731,8 @@ export function BrainHome({
         onResumeConversation={(id) => void resumeConversation(id)}
         onDeleteConversation={(id) => void deleteConversation(id)}
         onExploreBrain={openKnowledgeGraph}
+        onRequestDetails={() => setDetailsRequested(true)}
       />
-
-      <div className="mt-3 rounded-lg border border-border/70 bg-background/60 p-3 text-sm flex flex-wrap items-center gap-2">
-        <span className="font-medium">{t(language, "brain.delegate.title")}</span>
-        <span className="text-muted-foreground">{t(language, "brain.delegate.detail")}</span>
-        <button
-          className="ml-auto px-3 py-1 rounded bg-primary text-primary-foreground text-xs disabled:opacity-50"
-          disabled={!draft.trim() || delegateMutation.isPending}
-          onClick={() => {
-            const g = draft.trim();
-            if (g) {
-              delegateMutation.mutate(g);
-              // keep draft so user sees it was the goal
-            }
-          }}
-        >
-          {delegateMutation.isPending ? t(language, "brain.delegate.running") : t(language, "brain.delegate.cta")}
-        </button>
-        {delegateMutation.data ? <span className="text-emerald-600 text-xs">{t(language, "brain.delegate.saved")}</span> : null}
-      </div>
     </main>
   );
 }

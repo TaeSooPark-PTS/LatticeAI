@@ -30,7 +30,6 @@ import {
   ModelContinuityDemo,
   ModelMissingNotice,
   PastConversationsPanel,
-  ProductCommandCenter,
 } from "./HomePanels";
 import { BrainIngestionPanel, IngestionTimelineSection } from "./IngestionPanels";
 import { CreatedFilesCard, MessageBody } from "./MessageMarkdown";
@@ -80,6 +79,7 @@ export function BrainConversation({
   brainState,
   intensity,
   onExploreBrain,
+  onRequestDetails,
 }: {
   language: Language;
   brainState: BrainState;
@@ -123,6 +123,7 @@ export function BrainConversation({
   onResumeConversation: (id: string) => void;
   onDeleteConversation: (id: string) => void;
   onExploreBrain: () => void;
+  onRequestDetails: () => void;
 }) {
   const hasMessages = messages.length > 0;
   const mode = useAppStore((state) => state.mode);
@@ -218,34 +219,25 @@ export function BrainConversation({
             </>
           ) : (
             <div className="brain-centered-home">
-              <MemoryRings
-                language={language}
-                brainState={brainState}
-                intensity={intensity}
-                readiness={readiness}
-                memories={memories}
-                concepts={concepts}
-                relationshipCount={relationshipCount}
-                onExploreBrain={onExploreBrain}
-                onOpenDepth={onOpenDepth}
-              />
-
-              <div className="brain-home-welcome">
-                <h2>{t(language, "brain.firstScreen.title")}</h2>
-                <p>{t(language, "brain.firstScreen.body")}</p>
-                <div className="brain-home-status-badge">
-                  <span className="status-dot" />
-                  <span>
+              <section className="brain-home-intro" aria-labelledby="brain-home-title">
+                <LivingBrain
+                  state={brainState}
+                  intensity={intensity}
+                  size="trace"
+                  showLabel={false}
+                  className="brain-home-presence-compact"
+                  onInteract={onExploreBrain}
+                />
+                <div className="brain-home-welcome">
+                  <span className="brain-home-kicker">{t(language, "brain.home.kicker")}</span>
+                  <h1 id="brain-home-title">{t(language, "brain.firstScreen.title")}</h1>
+                  <p>{t(language, "brain.firstScreen.body")}</p>
+                  <button type="button" className="brain-home-status-link" onClick={onExploreBrain}>
+                    <span className="status-dot" aria-hidden="true" />
                     {t(language, `brain.firstScreen.state.${readiness.state}`)}
-                    {isBasic ? "" : ` (${readiness.score}%)`}
-                  </span>
+                  </button>
                 </div>
-                {readiness.state === "quiet" && memories.length === 0 ? (
-                  <p className="brain-home-waking-hint" role="note">
-                    {t(language, "brain.home.wakingHint")}
-                  </p>
-                ) : null}
-              </div>
+              </section>
 
               {modelReady ? null : <ModelMissingNotice language={language} />}
               <BrainComposer
@@ -288,54 +280,14 @@ export function BrainConversation({
                   </div>
                 </section>
               ) : (
-                <div className="brain-home-prompts">
-                  {starterPrompts.map((prompt) => (
+                <div className="brain-home-prompts" aria-label={t(language, "brain.suggestions.aria")}>
+                  {starterPrompts.slice(0, 3).map((prompt) => (
                     <button key={prompt} type="button" onClick={() => onDraftChange(prompt)} className="brain-prompt-pill">
                       {prompt}
                     </button>
                   ))}
                 </div>
               )}
-
-              {proactiveActions.length ? (
-                <section className="brain-home-proactive" aria-label={t(language, "brain.proactive.aria")}>
-                  <div className="brain-home-suggestions-head">
-                    <Sparkles className="h-3.5 w-3.5" aria-hidden="true" />
-                    <span>{t(language, "brain.proactive.title")}</span>
-                  </div>
-                  <div className="brain-home-proactive-grid">
-                    {proactiveActions.map((action) => (
-                      <button
-                        key={action.id}
-                        type="button"
-                        disabled={streaming}
-                        onClick={() => onProactiveAction(action)}
-                      >
-                        <strong>{t(language, action.labelKey)}</strong>
-                        <span>{t(language, action.detailKey)}</span>
-                      </button>
-                    ))}
-                  </div>
-                </section>
-              ) : null}
-
-              {proactiveActivities.length ? (
-                <section className="brain-proactive-trail" aria-label={t(language, "brain.proactive.trail.aria")} aria-live="polite">
-                  <div className="brain-home-suggestions-head">
-                    <CheckCircle2 className="h-3.5 w-3.5" aria-hidden="true" />
-                    <span>{t(language, "brain.proactive.trail.title")}</span>
-                  </div>
-                  <ol>
-                    {proactiveActivities.slice(0, 4).map((item) => (
-                      <li key={item.id} data-status={item.status}>
-                        <strong>{t(language, item.labelKey)}</strong>
-                        <span>{t(language, `brain.proactive.status.${item.status}`)}</span>
-                        <small>{t(language, `brain.proactive.intent.${item.intent}`)}</small>
-                      </li>
-                    ))}
-                  </ol>
-                </section>
-              ) : null}
 
               <PastConversationsPanel
                 language={language}
@@ -345,12 +297,75 @@ export function BrainConversation({
                 onDelete={onDeleteConversation}
               />
 
-              <BrainBriefPanel
-                language={language}
-                brief={brief}
-                showEvidence={!isBasic}
-                onAction={(action) => handleBriefAction(action, onVerifyModelContinuity)}
-              />
+              <details className="brain-home-insights" onToggle={(event) => event.currentTarget.open && onRequestDetails()}>
+                <summary>
+                  <Sparkles className="h-4 w-4" aria-hidden="true" />
+                  <span>
+                    <strong>{t(language, "brain.home.insights")}</strong>
+                    <small>{t(language, "brain.home.insights.detail")}</small>
+                  </span>
+                </summary>
+                <div className="brain-home-insights-content">
+                  <MemoryRings
+                    language={language}
+                    brainState={brainState}
+                    intensity={intensity}
+                    readiness={readiness}
+                    memories={memories}
+                    concepts={concepts}
+                    relationshipCount={relationshipCount}
+                    onExploreBrain={onExploreBrain}
+                    onOpenDepth={onOpenDepth}
+                  />
+
+                  <BrainBriefPanel
+                    language={language}
+                    brief={brief}
+                    showEvidence={!isBasic}
+                    onAction={(action) => handleBriefAction(action, onVerifyModelContinuity)}
+                  />
+
+                  {proactiveActions.length ? (
+                    <section className="brain-home-proactive" aria-label={t(language, "brain.proactive.aria")}>
+                      <div className="brain-home-suggestions-head">
+                        <Sparkles className="h-3.5 w-3.5" aria-hidden="true" />
+                        <span>{t(language, "brain.proactive.title")}</span>
+                      </div>
+                      <div className="brain-home-proactive-grid">
+                        {proactiveActions.map((action) => (
+                          <button
+                            key={action.id}
+                            type="button"
+                            disabled={streaming}
+                            onClick={() => onProactiveAction(action)}
+                          >
+                            <strong>{t(language, action.labelKey)}</strong>
+                            <span>{t(language, action.detailKey)}</span>
+                          </button>
+                        ))}
+                      </div>
+                    </section>
+                  ) : null}
+
+                  {proactiveActivities.length ? (
+                    <section className="brain-proactive-trail" aria-label={t(language, "brain.proactive.trail.aria")} aria-live="polite">
+                      <div className="brain-home-suggestions-head">
+                        <CheckCircle2 className="h-3.5 w-3.5" aria-hidden="true" />
+                        <span>{t(language, "brain.proactive.trail.title")}</span>
+                      </div>
+                      <ol>
+                        {proactiveActivities.slice(0, 4).map((item) => (
+                          <li key={item.id} data-status={item.status}>
+                            <strong>{t(language, item.labelKey)}</strong>
+                            <span>{t(language, `brain.proactive.status.${item.status}`)}</span>
+                            <small>{t(language, `brain.proactive.intent.${item.intent}`)}</small>
+                          </li>
+                        ))}
+                      </ol>
+                    </section>
+                  ) : null}
+                </div>
+              </details>
             </div>
           )}
 
@@ -362,7 +377,7 @@ export function BrainConversation({
             </div>
           ) : null}
 
-          <details className="brain-utility-drawer">
+          <details className="brain-utility-drawer" onToggle={(event) => event.currentTarget.open && onRequestDetails()}>
             <summary>{t(language, isBasic ? "brain.chatHome.utility.basic" : "brain.chatHome.utility")}</summary>
             <div className="brain-utility-tools" aria-label={t(language, "brain.chatHome.contextAria")}>
               <LanguageSwitcher compact />
@@ -391,17 +406,6 @@ export function BrainConversation({
               />
               {isBasic ? null : (
                 <>
-                  <ProductCommandCenter
-                    language={language}
-                    readiness={readiness}
-                    proof={proof}
-                    modelName={modelName}
-                    memories={memories}
-                    concepts={concepts}
-                    emergenceEvents={emergenceEvents}
-                    onOpenDepth={onOpenDepth}
-                    onVerifyModelContinuity={onVerifyModelContinuity}
-                  />
                   <IngestionTimelineSection language={language} emergenceEvents={emergenceEvents} />
                   <ModelContinuityDemo
                     language={language}

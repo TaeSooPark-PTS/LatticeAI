@@ -7,7 +7,24 @@
 > PyPI / npm / VS Code Marketplace / Open VSX 배포는 아래 수동 절차로만
 > 진행합니다. 태그 생성은 패키지 스토어 publish를 자동으로 트리거하지 않습니다.
 
-## Main branch after v9.0.0 — Security & Isolation Hardening (Unreleased)
+## Main branch after v9.0.0 — Security, Isolation & Human-First UX (Unreleased)
+
+- Replaced the floating hamburger/drawer shell with visible desktop task
+  navigation and a mobile bottom bar for Chat, Sources, Memory, and Work; model,
+  settings, workspace, and admin utilities remain available in an accessible
+  secondary menu.
+- Rebuilt Brain Home around a short greeting, large composer, contextual
+  starters, and recent conversations. Memory rings, Brain Brief, proactive
+  activity, ingestion, and technical proof now use progressive disclosure.
+- Memory opens on search instead of the graph, basic Work opens on a single goal
+  composer instead of runtime metrics, and basic Sources uses a one-column add
+  flow with technical pipeline controls hidden.
+- Added keyboard focus trapping/restoration for the secondary menu, semantic
+  tab roles and arrow-key navigation, skip navigation, 44-pixel mobile targets,
+  reduced-motion handling, and desktop/mobile visual regression coverage.
+- Consolidated the new shell, conversation, and content grammar in a dedicated
+  `experience.css` layer while keeping feature-specific legacy visualization
+  styles compatible.
 
 - Model generation now snapshots the requested model per request, so concurrent
   chat, streaming, and document jobs cannot switch each other's process-wide

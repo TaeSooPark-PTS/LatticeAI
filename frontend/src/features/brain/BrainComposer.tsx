@@ -38,7 +38,7 @@ export function BrainComposer({
   }, [draft]);
 
   return (
-    <div className="brain-composer">
+    <div className="brain-composer" aria-busy={streaming}>
       <textarea
         ref={textareaRef}
         rows={1}
@@ -54,47 +54,54 @@ export function BrainComposer({
             onSend();
           }
         }}
+        aria-label={t(language, "brain.placeholder")}
+        aria-describedby="brain-composer-hint"
+        aria-keyshortcuts="Control+K Meta+K"
         placeholder={t(language, "brain.placeholder")}
       />
       <div className="brain-composer-actions">
+        <div className="brain-composer-attachments" aria-label={t(language, "brain.composer.attachments")}>
+          <label className={`brain-document-input ${uploadingDocument ? "is-disabled" : ""}`}>
+            <FileUp className="h-4 w-4" aria-hidden="true" />
+            <span>{uploadingDocument ? t(language, "brain.upload.uploading") : t(language, "brain.upload.ctaShort")}</span>
+            <input
+              type="file"
+              accept=".pdf,.docx,.xlsx,.pptx,.txt,.md,.csv,application/pdf,text/plain,text/markdown,text/csv"
+              className="sr-only"
+              disabled={uploadingDocument}
+              onChange={(event) => {
+                const file = event.target.files?.[0];
+                event.currentTarget.value = "";
+                if (file) onUploadDocument(file);
+              }}
+            />
+          </label>
+          <label className="brain-image-input">
+            <ImagePlus className="h-4 w-4" aria-hidden="true" />
+            <span>{t(language, "brain.image")}</span>
+            <input
+              type="file"
+              accept="image/*"
+              className="sr-only"
+              onChange={async (event) => {
+                const file = event.target.files?.[0];
+                event.currentTarget.value = "";
+                if (file) onImageDataChange(await fileToDataUrl(file));
+              }}
+            />
+          </label>
+          {imageData ? <span className="brain-quiet-success">{t(language, "brain.imageAttached")}</span> : null}
+        </div>
+        <span id="brain-composer-hint" className="brain-composer-hint">{t(language, "brain.composer.hint")}</span>
         {streaming && onStop ? (
-          <Button onClick={onStop} variant="outline" className="rounded-full px-5">
-            <Square className="h-4 w-4" /> {t(language, "brain.stop")}
+          <Button onClick={onStop} variant="outline" className="brain-composer-submit">
+            <Square className="h-4 w-4" aria-hidden="true" /> {t(language, "brain.stop")}
           </Button>
         ) : (
-          <Button onClick={onSend} disabled={!draft.trim() || streaming} className="rounded-full px-5">
-            <Send className="h-4 w-4" /> {t(language, "brain.send")}
+          <Button onClick={onSend} disabled={!draft.trim() || streaming} className="brain-composer-submit">
+            <Send className="h-4 w-4" aria-hidden="true" /> {t(language, "brain.send")}
           </Button>
         )}
-        <label className={`brain-document-input ${uploadingDocument ? "is-disabled" : ""}`}>
-          <FileUp className="h-3.5 w-3.5" />
-          <span>{uploadingDocument ? t(language, "brain.upload.uploading") : t(language, "brain.upload.ctaShort")}</span>
-          <input
-            type="file"
-            accept=".pdf,.docx,.xlsx,.pptx,.txt,.md,.csv,application/pdf,text/plain,text/markdown,text/csv"
-            className="sr-only"
-            disabled={uploadingDocument}
-            onChange={(event) => {
-              const file = event.target.files?.[0];
-              event.currentTarget.value = "";
-              if (file) onUploadDocument(file);
-            }}
-          />
-        </label>
-        <label className="brain-image-input">
-          <ImagePlus className="h-3.5 w-3.5" />
-          <span>{t(language, "brain.image")}</span>
-          <input
-            type="file"
-            accept="image/*"
-            className="sr-only"
-            onChange={async (event) => {
-              const file = event.target.files?.[0];
-              if (file) onImageDataChange(await fileToDataUrl(file));
-            }}
-          />
-        </label>
-        {imageData ? <span className="brain-quiet-success">{t(language, "brain.imageAttached")}</span> : null}
       </div>
     </div>
   );
