@@ -18,7 +18,6 @@ from __future__ import annotations
 import json
 import os
 import tempfile
-from datetime import datetime
 from pathlib import Path
 from typing import Any, Dict, List, Optional
 
@@ -28,12 +27,9 @@ from lattice_brain.runtime.multi_agent import (
     MULTI_AGENT_VERSION,
     ROLE_AGENT_IDS,
 )
+from .timeutil import now_iso as _now
 
 AGENT_TYPES = ("planner", "researcher", "executor", "reviewer", "release", "custom")
-
-
-def _now() -> str:
-    return datetime.now().isoformat(timespec="seconds")
 
 
 # Capabilities + descriptions for the built-in role agents. Kept here as the

@@ -1,21 +1,19 @@
-"""Runtime namespace filtering for legacy server_app compatibility.
+"""Explicit runtime exports for the legacy :mod:`server_app` facade.
 
-The app factory still constructs a broad local namespace for historical
-``server_app`` attribute access. This module keeps that surface deliberate:
-public runtime objects and known legacy helpers stay visible, while internal
-assembly scratch values do not leak into ``server_app.__getattr__``.
+The composition root must never export ``locals()``. Every compatibility name
+is selected here and every typed assembly stage remains available through the
+``RuntimeBundle`` without leaking construction scratch state.
 """
 
 from __future__ import annotations
 
-from dataclasses import dataclass, fields
-from types import ModuleType
+from dataclasses import dataclass
 from typing import Any, Dict, Mapping
 
 
 @dataclass(frozen=True)
 class RuntimeBundle:
-    """Typed migration target for app-factory runtime dependencies."""
+    """Typed application assembly result and its five explicit stages."""
 
     app: Any
     CONFIG: Any
@@ -29,26 +27,45 @@ class RuntimeBundle:
     build_runtime: Any
     get_shared_runtime: Any
     create_app: Any
+    config_runtime: Any
+    security_runtime: Any
+    brain_runtime: Any
+    model_runtime: Any
+    router_bundle: Any
 
     def as_legacy_dict(self) -> Dict[str, Any]:
-        return {field.name: getattr(self, field.name) for field in fields(self)}
+        return {
+            name: getattr(self, name)
+            for name in RUNTIME_BUNDLE_EXPORTS
+        }
+
+    @property
+    def stages(self) -> Dict[str, Any]:
+        return {
+            "config": self.config_runtime,
+            "security": self.security_runtime,
+            "brain": self.brain_runtime,
+            "models": self.model_runtime,
+            "routers": self.router_bundle,
+        }
 
 
-INTERNAL_RUNTIME_NAMES = {
-    "config",
-    "logging",
-    "os",
-    "threading",
-    "Path",
-    "mx",
-    "uvicorn",
-    "HTTPException",
-    "Request",
-    "BaseModel",
-    "keyring",
-    "datetime",
-    "runtime_bundle",
-}
+RUNTIME_BUNDLE_EXPORTS = frozenset(
+    {
+        "app",
+        "CONFIG",
+        "KNOWLEDGE_GRAPH",
+        "INGESTION_PIPELINE",
+        "AGENT_RUNTIME",
+        "HOOKS_REGISTRY",
+        "REVIEW_QUEUE",
+        "AGENT_REGISTRY",
+        "model_router",
+        "build_runtime",
+        "get_shared_runtime",
+        "create_app",
+    }
+)
 
 LEGACY_UNDERSCORE_EXPORTS = {
     "_LOCAL_WRITE_BLOCKED_PREFIXES",
@@ -102,62 +119,25 @@ LEGACY_PUBLIC_EXPORTS = {
 }
 
 
-def _is_internal_runtime_dict(name: str, value: Any) -> bool:
-    if not isinstance(value, dict):
-        return False
-    if name in {"_RUNTIME_BUNDLE"}:
-        return False
-    return (
-        name.endswith("_runtime")
-        or name.endswith("_router_bundle")
-        or name.endswith("_rt")
-        or name
-        in {
-            "_mcp_state",
-            "_garden_import",
-            "_foundation_router_bundle",
-            "_static_routes_bundle",
-            "_vpc_runtime",
-            "_sso_runtime",
-            "_security_runtime",
-            "_session_runtime",
-            "_config_runtime",
-            "_context_runtime",
-            "_brain_runtime",
-            "_hooks_runtime",
-            "_history_query_runtime",
-            "_persistence_runtime",
-            "_platform_automation_runtime",
-            "_user_key_runtime",
-            "_web_runtime",
-        }
-    )
-
-
 def build_runtime_namespace(
-    local_namespace: Mapping[str, Any],
-    *,
-    runtime_bundle: RuntimeBundle | Mapping[str, Any],
+    *, runtime_bundle: RuntimeBundle | Mapping[str, Any], legacy_exports: Mapping[str, Any]
 ) -> Dict[str, Any]:
-    """Return the compatibility namespace without assembly scratch values."""
+    """Return only explicit compatibility exports and typed bundle handles."""
     legacy_bundle = (
         runtime_bundle.as_legacy_dict()
         if isinstance(runtime_bundle, RuntimeBundle)
         else dict(runtime_bundle)
     )
     exported: Dict[str, Any] = dict(legacy_bundle)
-    allowed = set(legacy_bundle) | LEGACY_PUBLIC_EXPORTS | LEGACY_UNDERSCORE_EXPORTS
-    for name in allowed:
+    allowed = LEGACY_PUBLIC_EXPORTS | LEGACY_UNDERSCORE_EXPORTS
+    unexpected = set(legacy_exports) - allowed
+    if unexpected:
+        raise ValueError(f"unapproved runtime exports: {sorted(unexpected)}")
+    for name in sorted(allowed):
         if name in exported:
             continue
-        if name in INTERNAL_RUNTIME_NAMES:
-            continue
-        value = local_namespace.get(name)
+        value = legacy_exports.get(name)
         if value is None:
-            continue
-        if isinstance(value, ModuleType):
-            continue
-        if _is_internal_runtime_dict(name, value):
             continue
         exported[name] = value
     exported["RUNTIME_BUNDLE"] = runtime_bundle
@@ -165,9 +145,19 @@ def build_runtime_namespace(
     return exported
 
 
+SERVER_APP_EXPORTS = frozenset(
+    RUNTIME_BUNDLE_EXPORTS
+    | LEGACY_PUBLIC_EXPORTS
+    | LEGACY_UNDERSCORE_EXPORTS
+    | {"RUNTIME_BUNDLE", "_RUNTIME_BUNDLE"}
+)
+
+
 __all__ = [
-    "INTERNAL_RUNTIME_NAMES",
     "LEGACY_UNDERSCORE_EXPORTS",
+    "LEGACY_PUBLIC_EXPORTS",
+    "RUNTIME_BUNDLE_EXPORTS",
     "RuntimeBundle",
+    "SERVER_APP_EXPORTS",
     "build_runtime_namespace",
 ]

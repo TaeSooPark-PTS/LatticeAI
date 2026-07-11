@@ -1,22 +1,31 @@
 """model_runtime trust gate unit tests for v6.1 hardening."""
 
-from fastapi import HTTPException
+from dataclasses import FrozenInstanceError
+
+import pytest
 
 from latticeai.models import router as model_router
 from latticeai.services import model_runtime
-from latticeai.services.model_runtime import _download_allowed, _download_block
+from latticeai.services.model_errors import ModelRuntimeError
+from latticeai.services.model_runtime import (
+    ModelRuntimeService,
+    ModelRuntimeState,
+    _download_allowed,
+    _download_block,
+)
 
 
 def test_download_blocked_without_model_download_consent():
     """External download must be blocked when no explicit consent is given."""
     # Default state: no consent
-    assert _download_allowed(allow_download=False) is False
-    assert _download_allowed(allow_download=True) is True
+    state = ModelRuntimeState()
+    assert _download_allowed(allow_download=False, state=state) is False
+    assert _download_allowed(allow_download=True, state=state) is True
 
     # Without consent, calling block raises the expected 409 gate
     try:
         _download_block("huggingface", "some/model")
-    except HTTPException as exc:
+    except ModelRuntimeError as exc:
         assert exc.status_code == 409
         detail = exc.detail
         assert isinstance(detail, dict)
@@ -26,38 +35,28 @@ def test_download_blocked_without_model_download_consent():
         assert False, "_download_block must raise when consent is absent"
 
 
-def test_configure_model_runtime_ignores_unknown_globals(monkeypatch):
-    monkeypatch.delattr(model_runtime, "UNTRUSTED_RUNTIME_GLOBAL", raising=False)
-    original_public_model = model_runtime.PUBLIC_MODEL
-    try:
-        model_runtime.configure_model_runtime(
-            PUBLIC_MODEL="test:model",
-            UNTRUSTED_RUNTIME_GLOBAL="leak",
-        )
-        assert model_runtime.PUBLIC_MODEL == "test:model"
-        assert not hasattr(model_runtime, "UNTRUSTED_RUNTIME_GLOBAL")
-    finally:
-        model_runtime.configure_model_runtime(PUBLIC_MODEL=original_public_model)
+def test_configure_model_runtime_is_strict_isolated_factory():
+    runtime = model_runtime.configure_model_runtime(PUBLIC_MODEL="test:model")
+
+    assert isinstance(runtime, ModelRuntimeService)
+    assert runtime.state.PUBLIC_MODEL == "test:model"
+    assert not hasattr(model_runtime, "PUBLIC_MODEL")
+
+    with pytest.raises(TypeError, match="UNTRUSTED_RUNTIME_GLOBAL"):
+        model_runtime.configure_model_runtime(UNTRUSTED_RUNTIME_GLOBAL="leak")
 
 
 def test_model_download_gate_uses_configured_runtime_state(monkeypatch):
-    original_allowed = model_runtime.STATE.ALLOW_MODEL_DOWNLOADS
-    original_autoload = model_runtime.STATE.AUTOLOAD_MODELS
     monkeypatch.setenv("LATTICEAI_ALLOW_MODEL_DOWNLOADS", "true")
-    try:
-        model_runtime.configure_model_runtime(
-            ALLOW_MODEL_DOWNLOADS=False,
-            AUTOLOAD_MODELS=False,
-        )
-        assert _download_allowed(allow_download=False) is False
+    blocked = model_runtime.configure_model_runtime(
+        ALLOW_MODEL_DOWNLOADS=False,
+        AUTOLOAD_MODELS=False,
+    )
+    allowed = model_runtime.configure_model_runtime(ALLOW_MODEL_DOWNLOADS=True)
 
-        model_runtime.configure_model_runtime(ALLOW_MODEL_DOWNLOADS=True)
-        assert _download_allowed(allow_download=False) is True
-    finally:
-        model_runtime.configure_model_runtime(
-            ALLOW_MODEL_DOWNLOADS=original_allowed,
-            AUTOLOAD_MODELS=original_autoload,
-        )
+    assert _download_allowed(allow_download=False, state=blocked.state) is False
+    assert _download_allowed(allow_download=False, state=allowed.state) is True
+    assert blocked.state.ALLOW_MODEL_DOWNLOADS is False
 
 
 def _write_minimal_model_dir(path):
@@ -89,23 +88,32 @@ def test_local_mlx_reuses_existing_huggingface_cache(monkeypatch, tmp_path):
     assert model_router._resolve_local_hf_model("mlx-community/cached-model") == str(snapshot)
 
 
-def test_model_runtime_state_is_source_and_sync_warns():
-    """STATE is the implementation source; explicit sync_to_module_globals warns (compat only)."""
-    import warnings
-    from latticeai.services.model_runtime import STATE
+def test_model_runtime_state_is_immutable_and_not_module_ambient():
+    state = ModelRuntimeState(PUBLIC_MODEL="test:model")
 
-    # STATE carries the values
-    assert hasattr(STATE, "APP_MODE")
-    assert hasattr(STATE, "PUBLIC_MODEL")
+    with pytest.raises(FrozenInstanceError):
+        state.PUBLIC_MODEL = "other:model"  # type: ignore[misc]
 
-    # Calling the public sync emits DeprecationWarning
-    with warnings.catch_warnings(record=True) as w:
-        warnings.simplefilter("always", DeprecationWarning)
-        STATE.sync_to_module_globals()
-        deprecation = [x for x in w if issubclass(x.category, DeprecationWarning)]
-        assert len(deprecation) >= 1
-        assert "legacy compatibility shim" in str(deprecation[0].message)
+    assert "STATE" not in vars(model_runtime)
+    assert "PUBLIC_MODEL" not in vars(model_runtime)
+    assert not hasattr(model_runtime, "STATE")
 
-    # Globals are still populated for compat readers
-    import latticeai.services.model_runtime as mr_mod
-    assert mr_mod.PUBLIC_MODEL == STATE.PUBLIC_MODEL
+
+def test_model_runtime_services_do_not_leak_between_apps():
+    first = model_runtime.build_model_runtime(
+        APP_MODE="public",
+        PUBLIC_MODEL="openai:first",
+        ALLOW_MODEL_DOWNLOADS=True,
+    )
+    second = model_runtime.build_model_runtime(
+        APP_MODE="local",
+        PUBLIC_MODEL="openai:second",
+        ALLOW_MODEL_DOWNLOADS=False,
+    )
+
+    assert first.runtime_features()["mode"] == "public"
+    assert second.runtime_features()["mode"] == "local"
+    assert first.state.PUBLIC_MODEL == "openai:first"
+    assert second.state.PUBLIC_MODEL == "openai:second"
+    assert _download_allowed(state=first.state) is True
+    assert _download_allowed(state=second.state) is False

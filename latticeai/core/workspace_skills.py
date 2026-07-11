@@ -5,7 +5,7 @@ import json
 from pathlib import Path
 from typing import Any, Dict, List, Optional
 
-from .workspace_os_utils import _now
+from .timeutil import now_iso as _now
 
 
 class WorkspaceSkills:

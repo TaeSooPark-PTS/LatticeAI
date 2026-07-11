@@ -10,7 +10,15 @@ Required env:
 
 ```bash
 LATTICEAI_TELEGRAM_BOT_TOKEN=...
+LATTICEAI_TELEGRAM_ALLOWED_CHAT_IDS=123456789
+LATTICEAI_SERVER_SESSION_TOKEN=...
 ```
+
+`LATTICEAI_TELEGRAM_ALLOWED_CHAT_IDS` is a comma-separated allowlist applied to
+messages and callback queries before chat registration. The bot does not start
+without a non-empty allowlist and dedicated server session token. Do not copy a
+hash from `sessions.json`; use an authenticated session bearer created for the
+bridge.
 
 Run with the normal local server:
 

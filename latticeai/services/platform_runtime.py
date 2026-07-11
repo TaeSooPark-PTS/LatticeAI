@@ -20,8 +20,9 @@ from fastapi import HTTPException, Request
 from lattice_brain.runtime.hooks import dispatch_tool
 from lattice_brain.runtime.multi_agent import MultiAgentOrchestrator, default_role_runner, llm_role_runner
 from lattice_brain.workflow import ApprovalRequired, WorkflowEngine
+from latticeai.core.tool_registry import SCOPED_KNOWLEDGE_TOOLS
 from latticeai.services.tool_dispatch import enforce_tool_policy
-from tools import execute_tool
+from latticeai.tools import execute_tool
 
 
 class PlatformRuntime:
@@ -94,7 +95,7 @@ class PlatformRuntime:
 
     # ── shared node runners ───────────────────────────────────────────────
 
-    def _tool_node_runner(self):
+    def _tool_node_runner(self, user=None, scope=None):
         """Workflow tool node: EXECUTES the tool under governance (v4).
 
         Auto-approve tools run immediately through the shared dispatch_tool
@@ -107,9 +108,12 @@ class PlatformRuntime:
         def runner(*, node, context):
             cfg = node.get("config") or {}
             name = cfg.get("tool") or ""
-            args = cfg.get("args") or {}
+            args = dict(cfg.get("args") or {})
             if not name:
                 raise ValueError("tool node has no tool configured")
+            if name in SCOPED_KNOWLEDGE_TOOLS:
+                args["workspace_id"] = scope or "personal"
+                args["user_email"] = user or "local"
             try:
                 permission = dict(self.get_tool_permission(name, args))
             except TypeError:
@@ -210,6 +214,10 @@ class PlatformRuntime:
             tool = args.get("tool") or (manifest.provides.get("tools") or [None])[0]
             if not tool:
                 raise ValueError(f"plugin '{plugin_id}' run_tool needs a tool name")
+            args = dict(args)
+            if tool in SCOPED_KNOWLEDGE_TOOLS:
+                args["workspace_id"] = scope or "personal"
+                args["user_email"] = user or "local"
             policy = enforce_tool_policy(
                 tool,
                 args,
@@ -270,7 +278,7 @@ class PlatformRuntime:
         except FileNotFoundError:
             return {"error": f"workflow not found: {workflow_id}"}
         runners = {
-            "tool": self._tool_node_runner(),
+            "tool": self._tool_node_runner(user, scope),
             "skill": self._skill_node_runner(),
             "plugin": self._plugin_node_runner(user, scope),
         }
@@ -307,7 +315,7 @@ class PlatformRuntime:
 
     def build_workflow_runners(self, user, scope) -> Dict[str, Callable[..., Any]]:
         return {
-            "tool": self._tool_node_runner(),
+            "tool": self._tool_node_runner(user, scope),
             "skill": self._skill_node_runner(),
             "plugin": self._plugin_node_runner(user, scope),
             "agent": self._agent_node_runner(user, scope),

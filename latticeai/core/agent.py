@@ -30,7 +30,8 @@ from typing import Any, Awaitable, Callable, Dict, FrozenSet, List, Optional
 
 from lattice_brain.runtime.hooks import dispatch_tool
 from lattice_brain.runtime.contracts import runtime_boundary_contract, single_agent_contract
-from tools import ToolError
+from latticeai.core.tool_registry import SCOPED_KNOWLEDGE_TOOLS
+from latticeai.tools import ToolError
 
 
 class AgentState(str, Enum):
@@ -155,7 +156,7 @@ class SingleAgentRuntime:
             entrypoint="latticeai.core.agent.SingleAgentRuntime",
             surface="/agent",
             owns="single-agent PLAN / EXECUTE / VERIFY state machine over injected ports",
-            compatibility_aliases=["latticeai.core.agent.AgentRuntime"],
+            compatibility_aliases=[],
         )
 
     def config(self) -> Dict[str, Any]:
@@ -255,7 +256,10 @@ class SingleAgentRuntime:
             ) if ctx.corrections else ""
 
             request_workspace = getattr(req, "workspace_id", None)
-            recent_kwargs = {"conversation_id": req.conversation_id}
+            recent_kwargs = {
+                "conversation_id": req.conversation_id,
+                "user_email": current_user or None,
+            }
             if request_workspace is not None:
                 recent_kwargs["workspace_id"] = request_workspace
             recent_conversation = d.recent_chat_context(**recent_kwargs) or "(none)"
@@ -285,6 +289,13 @@ class SingleAgentRuntime:
             name     = action.get("action")
             thoughts = str(action.get("thoughts") or "")[:600]
             args     = action.get("args") or {}
+
+            if name in SCOPED_KNOWLEDGE_TOOLS:
+                # Scope is server-owned, never model-owned. Overwrite any
+                # claimed values before policy evaluation, audit, and dispatch.
+                args = dict(args)
+                args["workspace_id"] = request_workspace or "personal"
+                args["user_email"] = current_user or "local"
 
             if name == "final":
                 ctx.final_message = action.get("message", "작업을 완료했습니다.")
@@ -535,9 +546,3 @@ class SingleAgentRuntime:
                 ctx.state = AgentState.FAILED
 
         ctx.state_history.append(ctx.state.value)
-
-
-# Backward compatibility: external callers historically imported
-# ``latticeai.core.agent.AgentRuntime`` for the single-agent state machine.
-# The product/runtime facade lives at ``lattice_brain.runtime.agent_runtime``.
-AgentRuntime = SingleAgentRuntime

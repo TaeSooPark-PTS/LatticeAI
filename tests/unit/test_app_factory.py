@@ -166,6 +166,7 @@ from latticeai.app_factory import get_shared_runtime
 runtime = get_shared_runtime()
 bundle = runtime._RUNTIME_BUNDLE
 typed_bundle = runtime.RUNTIME_BUNDLE
+stage_types = {name: type(value).__name__ for name, value in typed_bundle.stages.items()}
 required = {
     "app", "CONFIG", "KNOWLEDGE_GRAPH", "INGESTION_PIPELINE",
     "AGENT_RUNTIME", "HOOKS_REGISTRY", "REVIEW_QUEUE",
@@ -177,6 +178,11 @@ print(json.dumps({
     "legacy_matches_typed": bundle["app"] is typed_bundle.app,
     "bundle_size": len(bundle),
     "app_matches": bundle["app"] is runtime.app,
+    "stage_types": stage_types,
+    "workspace_context_callable": isinstance(
+        runtime._recent_chat_context(workspace_id="personal"),
+        str,
+    ),
 }))
 """
     result = _run_in_sandbox(code, tmp_path)
@@ -187,6 +193,21 @@ print(json.dumps({
     assert result["legacy_matches_typed"] is True
     assert result["bundle_size"] >= 8
     assert result["app_matches"] is True
+    assert result["stage_types"] == {
+        "config": "ConfigRuntime",
+        "security": "SecurityRuntime",
+        "brain": "BrainRuntime",
+        "models": "ModelRuntime",
+        "routers": "RouterBundle",
+    }
+    assert result["workspace_context_callable"] is True
+
+
+def test_factory_has_no_ambient_namespace_export():
+    source = (REPO_ROOT / "latticeai" / "app_factory.py").read_text(encoding="utf-8")
+
+    assert "build_runtime_namespace(locals" not in source
+    assert "dict(locals())" not in source
 
 
 def test_app_runtime_filters_internal_assembly_namespace(tmp_path: Path):

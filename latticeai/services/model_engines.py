@@ -1,8 +1,9 @@
 """Engine server management, pull, install and support logic extracted from model_runtime monolith.
 
 This module is the home for engine-specific server starting, model pulling and install flows.
-model_runtime re-exports the names to keep exact legacy globals, callers and monkeypatching working.
-Circular imports are avoided by late imports inside functions.
+``model_runtime`` exposes compatibility callables, while application configuration
+is passed explicitly through the bound runtime service. Circular imports are
+avoided by late imports inside functions.
 """
 from __future__ import annotations
 
@@ -21,8 +22,8 @@ import urllib.request
 from pathlib import Path
 from typing import Any, Dict, List, Optional
 
-from fastapi import HTTPException
-
+from latticeai.services.model_errors import ModelRuntimeError
+from latticeai.services.model_catalog import ENGINE_INSTALLERS
 from latticeai.services.process_audit import (
     CommandConfirmationError,
     append_process_audit_event,
@@ -148,7 +149,7 @@ def ensure_lmstudio_server() -> None:
 
     cli = find_lmstudio_cli()
     if not cli:
-        raise HTTPException(status_code=400, detail="LM Studio CLI를 찾지 못했습니다. LM Studio를 설치한 뒤 다시 시도하세요.")
+        raise ModelRuntimeError(status_code=400, detail="LM Studio CLI를 찾지 못했습니다. LM Studio를 설치한 뒤 다시 시도하세요.")
 
     try:
         subprocess.Popen(
@@ -158,7 +159,7 @@ def ensure_lmstudio_server() -> None:
             start_new_session=True,
         )
     except Exception as e:
-        raise HTTPException(status_code=500, detail=f"LM Studio 서버 시작 실패: {e}")
+        raise ModelRuntimeError(status_code=500, detail=f"LM Studio 서버 시작 실패: {e}")
 
     deadline = time.time() + 45
     while time.time() < deadline:
@@ -167,13 +168,13 @@ def ensure_lmstudio_server() -> None:
             return
         except Exception:
             time.sleep(1)
-    raise HTTPException(status_code=500, detail="LM Studio Local Server를 자동으로 시작하지 못했습니다.")
+    raise ModelRuntimeError(status_code=500, detail="LM Studio Local Server를 자동으로 시작하지 못했습니다.")
 
 
 def ensure_ollama_server() -> None:
     ollama = local_binary("ollama")
     if not ollama:
-        raise HTTPException(status_code=400, detail="Ollama가 설치되지 않았습니다.")
+        raise ModelRuntimeError(status_code=400, detail="Ollama가 설치되지 않았습니다.")
     try:
         probe = subprocess.run([ollama, "list"], capture_output=True, text=True, timeout=3, check=False)
         if probe.returncode == 0:
@@ -195,7 +196,7 @@ def ensure_ollama_server() -> None:
         except Exception:
             pass
         time.sleep(0.5)
-    raise HTTPException(status_code=500, detail="Ollama 서버를 자동으로 시작하지 못했습니다.")
+    raise ModelRuntimeError(status_code=500, detail="Ollama 서버를 자동으로 시작하지 못했습니다.")
 
 
 def get_openai_compatible_server_models(provider: str) -> List[str]:
@@ -262,7 +263,7 @@ def ensure_vllm_server(model_name: str) -> None:
     vllm_bin = vllm_executable()
     vllm_metal_py = vllm_metal_python()
     if not vllm_bin and not vllm_metal_py and importlib.util.find_spec("vllm") is None:
-        raise HTTPException(status_code=400, detail="vLLM runtime이 설치되지 않았습니다.")
+        raise ModelRuntimeError(status_code=400, detail="vLLM runtime이 설치되지 않았습니다.")
 
     local_dir = hf_model_dir(model_name)
     if not vllm_metal_py and not hf_model_ready(model_name, "vllm"):
@@ -276,7 +277,7 @@ def ensure_vllm_server(model_name: str) -> None:
         except subprocess.TimeoutExpired:
             running.kill()
     elif served_models:
-        raise HTTPException(status_code=409, detail="다른 vLLM 서버가 이미 실행 중입니다. 현재 서버를 종료한 뒤 다시 시도하세요.")
+        raise ModelRuntimeError(status_code=409, detail="다른 vLLM 서버가 이미 실행 중입니다. 현재 서버를 종료한 뒤 다시 시도하세요.")
 
     running = LOCAL_SERVER_PROCESSES.get("vllm")
     if running and running.poll() is None:
@@ -296,7 +297,7 @@ def ensure_vllm_server(model_name: str) -> None:
         start_new_session=True,
     )
     if not wait_for_openai_compatible_server("vllm", model_name, timeout=90):
-        raise HTTPException(status_code=500, detail="vLLM 서버가 모델을 자동 로드하지 못했습니다.")
+        raise ModelRuntimeError(status_code=500, detail="vLLM 서버가 모델을 자동 로드하지 못했습니다.")
 
 
 def ensure_llamacpp_server(model_name: str) -> None:
@@ -313,15 +314,15 @@ def ensure_llamacpp_server(model_name: str) -> None:
         except subprocess.TimeoutExpired:
             running.kill()
     elif served_models:
-        raise HTTPException(status_code=409, detail="다른 llama.cpp 서버가 이미 실행 중입니다. 현재 서버를 종료한 뒤 다시 시도하세요.")
+        raise ModelRuntimeError(status_code=409, detail="다른 llama.cpp 서버가 이미 실행 중입니다. 현재 서버를 종료한 뒤 다시 시도하세요.")
     if not shutil.which("llama-server"):
-        raise HTTPException(status_code=400, detail="llama.cpp가 설치되지 않았습니다.")
+        raise ModelRuntimeError(status_code=400, detail="llama.cpp가 설치되지 않았습니다.")
     if not hf_model_ready(model_name, "llamacpp"):
         download_hf_model(model_name, "llamacpp")
 
     gguf_files = sorted(hf_model_dir(model_name).rglob("*.gguf"))
     if not gguf_files:
-        raise HTTPException(status_code=500, detail="다운로드된 GGUF 파일을 찾지 못했습니다.")
+        raise ModelRuntimeError(status_code=500, detail="다운로드된 GGUF 파일을 찾지 못했습니다.")
 
     preferred = next((p for p in gguf_files if "q4_k_m" in p.name.lower()), None)
     model_file = preferred or gguf_files[0]
@@ -342,13 +343,13 @@ def ensure_llamacpp_server(model_name: str) -> None:
         start_new_session=True,
     )
     if not wait_for_openai_compatible_server("llamacpp", model_name, timeout=45):
-        raise HTTPException(status_code=500, detail="llama.cpp 서버가 모델을 자동 로드하지 못했습니다.")
+        raise ModelRuntimeError(status_code=500, detail="llama.cpp 서버가 모델을 자동 로드하지 못했습니다.")
 
 
 def pull_ollama_model_with_progress(model_name: str, progress_emit=None) -> Dict[str, object]:
     ollama = local_binary("ollama")
     if not ollama:
-        raise HTTPException(status_code=400, detail="Ollama가 설치되지 않았습니다.")
+        raise ModelRuntimeError(status_code=400, detail="Ollama가 설치되지 않았습니다.")
     if progress_emit:
         progress_emit(_progress_payload(
             "download",
@@ -402,7 +403,7 @@ def pull_ollama_model_with_progress(model_name: str, progress_emit=None) -> Dict
 
     if returncode != 0:
         tail = "\n".join(lines[-12:])
-        raise HTTPException(status_code=500, detail=tail[-2000:] or "Ollama 모델 다운로드 실패")
+        raise ModelRuntimeError(status_code=500, detail=tail[-2000:] or "Ollama 모델 다운로드 실패")
 
     if progress_emit:
         progress_emit(_progress_payload(
@@ -447,15 +448,17 @@ def engine_support_status(engine: str) -> Dict[str, object]:
     return {"supported": True, "reason": None}
 
 
-def _engine_install_command(engine: str) -> tuple[list[str], str, bool]:
-    from latticeai.services.model_runtime import BASE_DIR, ENGINE_INSTALLERS
-
+def _engine_install_command(
+    engine: str,
+    *,
+    base_dir: Optional[Path] = None,
+) -> tuple[list[str], str, bool]:
     if engine not in ENGINE_INSTALLERS:
-        raise HTTPException(status_code=400, detail="지원하지 않는 엔진입니다.")
+        raise ModelRuntimeError(status_code=400, detail="지원하지 않는 엔진입니다.")
     installer = ENGINE_INSTALLERS[engine]
     required_binary = installer.get("requires_binary")
     if required_binary and shutil.which(required_binary) is None:
-        raise HTTPException(status_code=400, detail=f"{required_binary}가 설치되어 있지 않아 자동 설치할 수 없습니다.")
+        raise ModelRuntimeError(status_code=400, detail=f"{required_binary}가 설치되어 있지 않아 자동 설치할 수 없습니다.")
     command = list(installer["command"])
 
     if engine == "vllm" and sys.platform == "darwin" and platform.machine() == "arm64":
@@ -469,11 +472,15 @@ def _engine_install_command(engine: str) -> tuple[list[str], str, bool]:
             "~/.venv-vllm-metal/bin/pip install vllm-metal",
         ]
     requires_admin = bool(command and command[0] in {"apt", "apt-get", "dnf", "pacman"})
-    return command, str(BASE_DIR), requires_admin
+    return command, str(base_dir or Path.cwd()), requires_admin
 
 
-def engine_install_plan(engine: str) -> Dict[str, Any]:
-    command, cwd, requires_admin = _engine_install_command(engine)
+def engine_install_plan(
+    engine: str,
+    *,
+    base_dir: Optional[Path] = None,
+) -> Dict[str, Any]:
+    command, cwd, requires_admin = _engine_install_command(engine, base_dir=base_dir)
     return command_plan(
         command,
         name=f"engine:{engine}",
@@ -484,16 +491,21 @@ def engine_install_plan(engine: str) -> Dict[str, Any]:
     )
 
 
-def install_engine(engine: str, confirmation_token: Optional[str] = None) -> Dict[str, Any]:
+def install_engine(
+    engine: str,
+    confirmation_token: Optional[str] = None,
+    *,
+    base_dir: Optional[Path] = None,
+) -> Dict[str, Any]:
     from latticeai.services.model_runtime import engine_installed
 
-    command, cwd, _requires_admin = _engine_install_command(engine)
-    plan = engine_install_plan(engine)
+    command, cwd, _requires_admin = _engine_install_command(engine, base_dir=base_dir)
+    plan = engine_install_plan(engine, base_dir=base_dir)
     try:
         require_command_confirmation(command, confirmation_token, cwd=cwd, purpose="engine_install")
     except CommandConfirmationError as exc:
         append_process_audit_event("engine_install", plan=plan, status="denied", error=str(exc))
-        raise HTTPException(
+        raise ModelRuntimeError(
             status_code=403,
             detail={
                 "status": "confirmation_required",
@@ -514,7 +526,7 @@ def install_engine(engine: str, confirmation_token: Optional[str] = None) -> Dic
         completed = subprocess.run(command, **run_kwargs)
     except subprocess.TimeoutExpired:
         append_process_audit_event("engine_install", plan=plan, status="timeout")
-        raise HTTPException(status_code=408, detail="엔진 설치 시간이 초과되었습니다.")
+        raise ModelRuntimeError(status_code=408, detail="엔진 설치 시간이 초과되었습니다.")
     except Exception as exc:
         append_process_audit_event("engine_install", plan=plan, status="error", error=str(exc))
         raise
@@ -576,6 +588,7 @@ async def _smoke_test_loaded_model(
     resolution: Any,
     *,
     api_key_override: Optional[str] = None,
+    model_router: Any = None,
 ) -> Dict[str, object]:
     """로드 직후 짧은 채팅 테스트를 돌려 ready_to_chat 여부를 판정한다.
 
@@ -585,7 +598,6 @@ async def _smoke_test_loaded_model(
     # late imports to avoid circular and keep lattice_brain/latticeai clean
     try:
         from latticeai.services.model_runtime import (
-            router as _router,
             _LOCAL_SMOKE_ENGINES,
             _SMOKE_PROMPT,
         )
@@ -599,6 +611,9 @@ async def _smoke_test_loaded_model(
     except Exception as e:
         return {"ok": False, "reason": f"smoke import failed: {e}", "skipped": True}
 
+    if model_router is None:
+        return {"ok": False, "reason": "model router is not configured", "skipped": True}
+
     if (getattr(resolution, "engine", "") or "").lower() not in _LOCAL_SMOKE_ENGINES:
         profile = _ensure_compat_profile(getattr(resolution, "load_id", ""), getattr(resolution, "engine", ""))
         return {
@@ -610,7 +625,7 @@ async def _smoke_test_loaded_model(
         }
     try:
         text = await asyncio.wait_for(
-            _router.generate(
+            model_router.generate(
                 _SMOKE_PROMPT,
                 context=None,
                 max_tokens=128,

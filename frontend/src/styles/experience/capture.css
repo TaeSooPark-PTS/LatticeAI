@@ -1,0 +1,307 @@
+/* ── Shared content pages ────────────────────────────────────────────── */
+
+.brain-shell-content > .space-y-5 {
+  padding: clamp(2.5rem, 6vw, 4.5rem) 0 3rem;
+}
+
+.page-hero {
+  max-width: 44rem;
+  overflow: visible;
+  border: 0;
+  padding: 0;
+}
+
+.page-kicker {
+  color: hsl(var(--primary));
+  font-size: 0.78rem;
+  font-weight: 700;
+  letter-spacing: 0;
+  text-transform: none;
+}
+
+.page-title,
+.brain-layer-header h1 {
+  margin: 0.55rem 0 0;
+  color: hsl(var(--foreground));
+  font-size: clamp(1.8rem, 4vw, 2.35rem);
+  font-weight: 750;
+  line-height: 1.2;
+  letter-spacing: -0.02em;
+}
+
+.page-copy {
+  max-width: 42rem;
+  margin-top: 0.7rem;
+  color: hsl(var(--muted-foreground));
+  font-size: 0.96rem;
+  line-height: 1.72;
+}
+
+.brain-layer-header {
+  display: flex;
+  align-items: end;
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+  padding: 0;
+}
+
+.brain-layer-meter {
+  min-width: 0;
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+  padding: 0;
+  text-align: right;
+}
+
+.brain-layer-meter span {
+  font-size: 0.72rem;
+  text-transform: none;
+}
+
+.brain-layer-meter strong {
+  font-size: 1rem;
+}
+
+.product-tabs {
+  display: flex;
+  width: fit-content;
+  max-width: 100%;
+  flex-wrap: nowrap;
+  gap: 0;
+  overflow-x: auto;
+  border: 0;
+  border-bottom: 1px solid hsl(var(--border));
+  border-radius: 0;
+  background: transparent;
+  padding: 0;
+  scrollbar-width: none;
+}
+
+.product-tabs::-webkit-scrollbar {
+  display: none;
+}
+
+.product-tabs > button {
+  position: relative;
+  min-height: 2.85rem;
+  flex: 0 0 auto;
+  border-radius: 0;
+  background: transparent !important;
+  box-shadow: none !important;
+  color: hsl(var(--muted-foreground));
+  font-size: 0.82rem;
+  font-weight: 650;
+}
+
+.product-tabs > button[aria-selected="true"] {
+  color: hsl(var(--foreground));
+}
+
+.product-tabs > button[aria-selected="true"]::after {
+  content: "";
+  position: absolute;
+  right: 0.85rem;
+  bottom: -1px;
+  left: 0.85rem;
+  height: 2px;
+  border-radius: 99px;
+  background: hsl(var(--primary));
+}
+
+.premium-surface,
+:root[data-theme="light"] .premium-surface {
+  border: 1px solid hsl(var(--border));
+  border-radius: var(--experience-radius);
+  background: hsl(var(--surface));
+  box-shadow: none;
+}
+
+.data-panel {
+  border-color: hsl(var(--border) / 0.86);
+}
+
+.data-panel > :first-child {
+  border-bottom: 1px solid hsl(var(--border) / 0.72);
+}
+
+.data-panel h2 {
+  font-size: 0.96rem;
+  font-weight: 700;
+}
+
+.entity-list {
+  gap: 0;
+  border-top: 1px solid hsl(var(--border));
+}
+
+.entity-list-row {
+  border: 0;
+  border-bottom: 1px solid hsl(var(--border));
+  border-radius: 0;
+  background: transparent;
+  padding: 0.85rem 0.2rem;
+}
+
+.entity-list-row:hover {
+  background: hsl(var(--muted) / 0.24);
+}
+
+.capture-files-flow {
+  width: min(100%, var(--experience-reading));
+  grid-template-columns: minmax(0, 1fr) !important;
+}
+
+.capture-files-flow > .premium-surface:first-child {
+  border: 0;
+  background: transparent;
+}
+
+.capture-files-flow > .premium-surface:first-child > :first-child,
+.capture-files-flow > .premium-surface:first-child > :last-child {
+  padding-right: 0;
+  padding-left: 0;
+}
+
+.capture-files-flow > .data-panel {
+  margin-top: 0.75rem;
+  border-right: 0;
+  border-left: 0;
+  border-radius: 0;
+  background: transparent;
+}
+
+.capture-files-flow > .data-panel > :first-child,
+.capture-files-flow > .data-panel > :last-child {
+  padding-right: 0;
+  padding-left: 0;
+}
+
+.capture-files-flow label[class*="min-h-56"] {
+  border-radius: var(--experience-radius);
+  background: hsl(var(--surface));
+}
+
+.work-start-flow {
+  width: min(100%, var(--experience-reading));
+  grid-template-columns: minmax(0, 1fr) !important;
+}
+
+.work-goal-card {
+  border: 0;
+  background: transparent;
+}
+
+.work-goal-card > :first-child,
+.work-goal-card > :last-child {
+  padding-right: 0;
+  padding-left: 0;
+}
+
+.work-goal-card textarea {
+  min-height: 9rem;
+  border: 1px solid hsl(var(--border));
+  border-radius: var(--experience-radius);
+  background: hsl(var(--surface));
+  padding: 1rem;
+  font-size: 0.98rem;
+  line-height: 1.65;
+}
+
+.work-safety-note {
+  display: flex;
+  align-items: center;
+  gap: 0.55rem;
+  border-top: 1px solid hsl(var(--border));
+  color: hsl(var(--muted-foreground));
+  padding: 1rem 0.2rem;
+  font-size: 0.82rem;
+}
+
+.work-safety-note svg {
+  color: hsl(var(--primary));
+}
+
+.data-stat-grid {
+  grid-template-columns: repeat(auto-fit, minmax(8.5rem, 1fr));
+  gap: 0;
+  border-top: 1px solid hsl(var(--border));
+  border-bottom: 1px solid hsl(var(--border));
+}
+
+.data-stat-grid > div {
+  min-width: 0;
+  border: 0;
+  border-right: 1px solid hsl(var(--border));
+  border-radius: 0;
+  background: transparent;
+  padding: 0.9rem 1rem;
+}
+
+.data-stat-grid > div:last-child {
+  border-right: 0;
+}
+
+.data-stat-grid > div > :first-child {
+  color: hsl(var(--muted-foreground));
+  font-size: 0.72rem;
+  letter-spacing: 0;
+  text-transform: none;
+}
+
+.data-stat-grid > div > :nth-child(2) {
+  margin-top: 0.3rem;
+  font-size: 1.35rem;
+}
+
+.product-empty-state {
+  min-height: 10rem;
+  border-color: hsl(var(--border));
+  border-radius: var(--experience-radius);
+  background: hsl(var(--muted) / 0.28);
+}
+
+.product-empty-state > :first-child {
+  border: 0;
+  background: hsl(var(--primary) / 0.1);
+}
+
+.brain-shell-content :is(input, textarea, select) {
+  border-radius: var(--experience-control-radius);
+}
+
+.brain-shell-content :is(input, textarea, select):focus-visible {
+  border-color: hsl(var(--ring));
+  outline: 2px solid hsl(var(--ring) / 0.22);
+  outline-offset: 1px;
+}
+
+/* Calm onboarding: retain the warm Brain character without a grid dashboard. */
+.ritual-shell,
+.product-flow-shell {
+  background: hsl(var(--background));
+}
+
+.product-flow-shell::before {
+  display: none;
+}
+
+.ritual-container {
+  width: min(100%, 54rem);
+}
+
+.ritual-value-card,
+.ritual-wake-plan,
+.ritual-card,
+.ritual-fact,
+.ritual-consent-panel {
+  border-color: hsl(var(--border));
+  border-radius: var(--experience-radius);
+  background: hsl(var(--surface));
+  box-shadow: none;
+}
+
+.ritual-title {
+  letter-spacing: -0.025em;
+}

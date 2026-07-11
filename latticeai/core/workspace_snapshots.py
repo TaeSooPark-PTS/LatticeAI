@@ -10,7 +10,8 @@ from datetime import datetime
 from pathlib import Path
 from typing import Any, Dict, Iterable, Optional
 
-from .workspace_os_utils import _atomic_write_json, _json_hash, _listify, _now, _safe_slug
+from .timeutil import now_iso as _now
+from .workspace_os_utils import _atomic_write_json, _json_hash, _listify, _safe_slug
 
 
 class WorkspaceSnapshots:

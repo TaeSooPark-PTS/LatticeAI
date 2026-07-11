@@ -1,4 +1,5 @@
 const { test, expect } = require("@playwright/test");
+const { version: appVersion } = require("../../package.json");
 
 const GRAPH_SEARCH_PLACEHOLDER = /Search ideas|Search graph labels|검색/;
 
@@ -208,6 +209,24 @@ test("an empty web capture is not presented as new Brain knowledge", async ({ pa
   expect(errors).toEqual([]);
 });
 
+test("ok:false core responses render an unavailable error instead of a quiet empty Brain", async ({ page }) => {
+  const errors = trackPageErrors(page);
+  await page.route("**/api/memory/manager", (route) => route.fulfill({
+    status: 503,
+    contentType: "application/json",
+    body: JSON.stringify({ detail: "memory service offline" }),
+  }));
+
+  await openBrain(page);
+
+  const banner = page.getByTestId("service-unavailable-banner");
+  await expect(banner).toBeVisible();
+  await expect(banner).toContainText("로컬 Lattice 서비스를 사용할 수 없습니다");
+  await expect(banner).toContainText("memory service offline");
+  await expect(banner).toContainText("빈 Brain으로 표시하지 않았습니다");
+  expect(errors).toEqual([]);
+});
+
 test("memory rings peek previews a layer without leaving home", async ({ page }) => {
   const errors = trackPageErrors(page);
   await openBrain(page);
@@ -349,7 +368,7 @@ test("Review Center loads actionable review evidence", async ({ page }) => {
   await page.goto("/app#/review");
 
   await expect(page.locator("body")).toContainText("검토함");
-  await expect(page.locator("body")).toContainText("Approve 8.1 product readiness evidence");
+  await expect(page.locator("body")).toContainText(`Approve ${appVersion} product readiness evidence`);
   await expect(page.locator("body")).toContainText("Review generated screenshots");
   await expect(page.locator("body")).not.toContainText("not valid JSON");
   await expect(page.locator("body")).not.toContainText("Unexpected token");

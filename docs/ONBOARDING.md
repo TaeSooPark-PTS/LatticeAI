@@ -1,6 +1,6 @@
 # Lattice AI Onboarding
 
-Current release: **9.0.0 — Code Review Closure & Runtime Cleanup**.
+Current release: **9.1.0 — Code Review Completion & Fail-Closed Runtime**.
 
 The first-run goal is a five-minute path from "I opened the app" to "my Brain
 has a source, a question, and proof." This page is the product contract behind
@@ -29,6 +29,8 @@ read the docs first.
   to inspect relationships.
 - Empty states suggest one concrete next action without claiming proof that does
   not exist yet.
+- Core-service failures show an unavailable/error state and recovery guidance;
+  they are never presented as an empty or healthy Brain.
 - Upload, note, browser, and message ingestion all converge through the unified
   ingestion pipeline when it is available.
 - Workspace-scoped content must not leak or overwrite another workspace's graph
@@ -38,7 +40,7 @@ read the docs first.
 
 ## Release Gate
 
-9.0.0 treats onboarding as a release gate, not marketing copy. The current
+9.1.0 treats onboarding as a release gate, not marketing copy. The current
 machine-checkable product readiness report requires this five-minute contract,
 the Brain Home surface, setup helpers, graph ingestion tests, and exact release
 artifact documentation before the release can be called complete.

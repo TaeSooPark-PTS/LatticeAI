@@ -24,10 +24,10 @@ a linear node chain so existing workflow history keeps working.
 from __future__ import annotations
 
 from dataclasses import dataclass, field
-from datetime import datetime
 from typing import Any, Callable, Dict, List, Optional
 
 from lattice_brain.runtime.contracts import runtime_boundary_contract, workflow_run_contract
+from lattice_brain.utils import now_iso as _now
 
 
 WORKFLOW_ENGINE_VERSION = "2.2.0"
@@ -57,10 +57,6 @@ _MAX_STEPS = 100  # hard cap so a mis-wired ``next`` cycle can never hang a run.
 
 class WorkflowError(Exception):
     """Raised for invalid workflow definitions."""
-
-
-def _now() -> str:
-    return datetime.now().isoformat(timespec="seconds")
 
 
 def normalize_definition(workflow: Dict[str, Any]) -> Dict[str, Any]:

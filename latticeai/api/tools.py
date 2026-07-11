@@ -31,8 +31,7 @@ from latticeai.services.tool_dispatch import (
     tool_registry_manifest,
 )
 from latticeai.services.router_context import ToolRouterContext
-from latticeai.services.p_reinforce import BRAIN_DIR
-from tools import (
+from latticeai.tools import (
     AGENT_ROOT,
     ToolError,
     build_project,
@@ -51,6 +50,7 @@ from tools import (
     inspect_html,
     knowledge_save,
     knowledge_search,
+    knowledge_scope_root,
     knowledge_tree,
     list_dir,
     network_status,
@@ -315,6 +315,37 @@ def create_tools_router(
         if require_auth and user_email and allowed_workspaces_for is not None:
             scope["allowed_workspaces"] = allowed_workspaces_for(user_email)
         return scope
+
+    def _requested_workspace(request: Request) -> Optional[str]:
+        return (
+            request.headers.get("X-Workspace-Id")
+            or request.query_params.get("workspace_id")
+            or None
+        )
+
+    def _knowledge_scope(request: Request, current_user: str, *, write: bool) -> Dict[str, str]:
+        # Preserve the historical shared vault only for explicit single-user,
+        # no-auth local mode. Authenticated deployments always partition by
+        # both authorized workspace and account.
+        if not bool(getattr(CONFIG, "require_auth", False)):
+            return {}
+        requested = _requested_workspace(request)
+        try:
+            if workspace_service is not None:
+                resolver = (
+                    workspace_service.resolve_write_scope
+                    if write
+                    else workspace_service.resolve_read_scope
+                )
+                workspace_id = resolver(requested, current_user)
+            else:
+                workspace_id = requested or "personal"
+                allowed = allowed_workspaces_for(current_user) if allowed_workspaces_for else None
+                if allowed is not None and workspace_id not in set(allowed):
+                    raise PermissionError(f"workspace '{workspace_id}' is not readable")
+        except PermissionError as exc:
+            raise HTTPException(status_code=403, detail=str(exc)) from exc
+        return {"workspace_id": str(workspace_id), "user_email": current_user}
     
     
     @api_router.post("/tools/list_dir")
@@ -556,51 +587,86 @@ def create_tools_router(
         save_to_history=save_to_history,
         hooks=HOOKS,
         append_audit_event=append_audit_event,
+        workspace_service=workspace_service,
     ))
 
     @api_router.post("/tools/knowledge_save")
     async def tools_knowledge_save(req: ToolKnowledgeSaveRequest, request: Request):
         current_user = require_user(request)
-        return _tool_response(knowledge_save, req.content, req.folder, req.title, current_user=current_user)
+        scope = _knowledge_scope(request, current_user, write=True)
+        return _tool_response(
+            knowledge_save,
+            req.content,
+            req.folder,
+            req.title,
+            current_user=current_user,
+            **scope,
+        )
     
     
     @api_router.post("/tools/knowledge_search")
     async def tools_knowledge_search(req: ToolKnowledgeSearchRequest, request: Request):
         current_user = require_user(request)
-        return _tool_response(knowledge_search, req.query, req.max_results, current_user=current_user)
+        scope = _knowledge_scope(request, current_user, write=False)
+        return _tool_response(
+            knowledge_search,
+            req.query,
+            req.max_results,
+            current_user=current_user,
+            **scope,
+        )
     
     
     @api_router.get("/tools/knowledge_tree")
     async def tools_knowledge_tree(request: Request):
         current_user = require_user(request)
-        return _tool_response(knowledge_tree, current_user=current_user)
+        scope = _knowledge_scope(request, current_user, write=False)
+        return _tool_response(knowledge_tree, current_user=current_user, **scope)
     
     
     @api_router.post("/tools/obsidian_save")
     async def tools_obsidian_save(req: ToolKnowledgeSaveRequest, request: Request):
         current_user = require_user(request)
-        return _tool_response(obsidian_save, req.content, req.folder, req.title, current_user=current_user)
+        scope = _knowledge_scope(request, current_user, write=True)
+        return _tool_response(
+            obsidian_save,
+            req.content,
+            req.folder,
+            req.title,
+            current_user=current_user,
+            **scope,
+        )
     
     
     @api_router.post("/tools/obsidian_search")
     async def tools_obsidian_search(req: ToolKnowledgeSearchRequest, request: Request):
         current_user = require_user(request)
-        return _tool_response(obsidian_search, req.query, req.max_results, current_user=current_user)
+        scope = _knowledge_scope(request, current_user, write=False)
+        return _tool_response(
+            obsidian_search,
+            req.query,
+            req.max_results,
+            current_user=current_user,
+            **scope,
+        )
     
     
     @api_router.get("/tools/obsidian_tree")
     async def tools_obsidian_tree(request: Request):
         current_user = require_user(request)
-        return _tool_response(obsidian_tree, current_user=current_user)
+        scope = _knowledge_scope(request, current_user, write=False)
+        return _tool_response(obsidian_tree, current_user=current_user, **scope)
     
     
     @api_router.get("/obsidian/status")
     async def obsidian_status(request: Request):
-        require_user(request)
+        current_user = require_user(request)
+        scope = _knowledge_scope(request, current_user, write=False)
+        root = knowledge_scope_root(**scope)
         return {
             "status": "ok",
-            "vault_root": str(BRAIN_DIR),
-            "folders": [path.name for path in BRAIN_DIR.iterdir() if path.is_dir()] if BRAIN_DIR.exists() else [],
+            "vault_root": str(root),
+            "folders": [path.name for path in root.iterdir() if path.is_dir()] if root.exists() else [],
             "ocr_engine": shutil.which("tesseract") or None,
         }
     

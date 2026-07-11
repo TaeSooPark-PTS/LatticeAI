@@ -1,4 +1,5 @@
 from types import SimpleNamespace
+import json
 import time
 
 import pytest
@@ -38,6 +39,7 @@ def test_permission_queue_hashes_tokens_at_rest(tmp_path):
     assert gateway.token_hash(token) in raw_queue
     assert gateway.token_hint(token) in raw_queue
     assert token not in gateway.local_approvals
+    assert (tmp_path / "permission_queue.json").stat().st_mode & 0o777 == 0o600
 
     gateway.local_approvals[gateway.token_hash(token)]["approved"] = True
     gateway.require_local_approval(
@@ -47,6 +49,74 @@ def test_permission_queue_hashes_tokens_at_rest(tmp_path):
         user_email="user@example.com",
         content="hello",
     )
+
+
+def test_discord_bot_notification_contains_only_hint_and_ui_deeplink(tmp_path, monkeypatch):
+    gateway = _gateway(tmp_path)
+    gateway.discord_bot_token = "discord-bot-token"
+    gateway.discord_permission_channel = "channel-1"
+    gateway.permission_ui_url = "https://lattice.example/app#/admin/permissions"
+    captured = {}
+
+    class Response:
+        def __enter__(self):
+            return self
+
+        def __exit__(self, *_args):
+            return False
+
+    def fake_urlopen(request, timeout):
+        captured["request"] = request
+        captured["timeout"] = timeout
+        return Response()
+
+    monkeypatch.setattr("urllib.request.urlopen", fake_urlopen)
+    token = "abcdefgh-full-approval-token"
+    gateway._notify_discord_permission_sync(
+        token,
+        str(tmp_path / "secret.md"),
+        "read",
+        "user@example.com",
+    )
+
+    payload = json.loads(captured["request"].data.decode("utf-8"))
+    serialized = json.dumps(payload, ensure_ascii=False)
+    assert token not in serialized
+    assert gateway.token_hint(token) in serialized
+    assert gateway.permission_ui_url in serialized
+
+
+def test_discord_webhook_notification_contains_only_hint_and_ui_deeplink(tmp_path, monkeypatch):
+    gateway = _gateway(tmp_path)
+    gateway.discord_permission_webhook_url = "https://discord.example/webhook"
+    gateway.permission_ui_url = "https://lattice.example/app#/admin/permissions"
+    captured = {}
+
+    class Response:
+        def __enter__(self):
+            return self
+
+        def __exit__(self, *_args):
+            return False
+
+    def fake_urlopen(request, timeout):
+        captured["request"] = request
+        return Response()
+
+    monkeypatch.setattr("urllib.request.urlopen", fake_urlopen)
+    token = "abcdefgh-full-approval-token"
+    gateway._notify_discord_permission_sync(
+        token,
+        str(tmp_path / "secret.md"),
+        "write",
+        "user@example.com",
+    )
+
+    payload = json.loads(captured["request"].data.decode("utf-8"))
+    serialized = json.dumps(payload, ensure_ascii=False)
+    assert token not in serialized
+    assert gateway.token_hint(token) in serialized
+    assert gateway.permission_ui_url in serialized
 
 
 def test_permission_gateway_blocks_system_write_prefix(tmp_path):
@@ -149,7 +219,7 @@ def test_monitor_secret_or_admin_can_decide_permission(tmp_path):
     )["approval_token"]
 
     monitor = client.post(
-        f"/permissions/approve/{approve_token}",
+        f"/permissions/approve/{gateway.token_hint(approve_token)}",
         headers={"Authorization": "Bearer monitor-secret"},
     )
     assert monitor.status_code == 200

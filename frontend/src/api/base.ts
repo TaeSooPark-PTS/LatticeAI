@@ -101,7 +101,7 @@ function clientFor(baseUrl: string) {
   return clients.get(baseUrl)!;
 }
 
-function emptyFor<T>(shape: T): T {
+export function emptyFor<T>(shape: T): T {
   if (Array.isArray(shape)) return [] as T;
   if (shape && typeof shape === "object") {
     return { ...(shape as Record<string, unknown>) } as T;

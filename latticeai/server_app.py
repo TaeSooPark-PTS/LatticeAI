@@ -13,6 +13,8 @@ from __future__ import annotations
 
 from typing import Any, List
 
+from latticeai.runtime.namespace_runtime import SERVER_APP_EXPORTS
+
 
 def _runtime():
     from latticeai.app_factory import get_shared_runtime
@@ -25,6 +27,8 @@ def __getattr__(name: str) -> Any:
         # Never let dunder probes (importlib, inspect, pickling) trigger the
         # full application construction.
         raise AttributeError(name)
+    if name not in SERVER_APP_EXPORTS:
+        raise AttributeError(f"module 'latticeai.server_app' has no attribute '{name}'")
     try:
         return getattr(_runtime(), name)
     except AttributeError as exc:
@@ -34,7 +38,7 @@ def __getattr__(name: str) -> Any:
 
 
 def __dir__() -> List[str]:
-    return sorted(set(globals()) | set(vars(_runtime())))
+    return sorted(set(globals()) | set(SERVER_APP_EXPORTS))
 
 
 def main() -> None:

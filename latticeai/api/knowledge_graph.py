@@ -77,15 +77,39 @@ def create_knowledge_graph_router(
 
         Returns ``(graph, allowed)``. ``allowed is None`` means no scoping
         (single-user / no-auth mode); otherwise it is the set of workspace ids
-        the caller may read. Legacy-global rows (no workspace) stay visible —
-        the documented pre-v4 compatibility behavior enforced by
-        ``filter_scoped_nodes``.
+        the caller may read. Legacy-global rows are private by default in this
+        multi-user path; maintenance callers can opt in only through the store
+        API's explicit ``include_legacy_global=True`` argument.
         """
         user = require_user(request)
         allowed = None
         if allowed_workspaces_for is not None and user:
             allowed = allowed_workspaces_for(user)
         return graph(), allowed
+
+    def _filter_scoped(kg: Any, items: Any, allowed: Any) -> list:
+        """Apply the fail-closed v2 scope contract, including to old stores."""
+
+        candidates = list(items)
+        try:
+            return kg.filter_scoped_nodes(
+                candidates,
+                allowed,
+                include_legacy_global=False,
+            )
+        except TypeError:
+            # A pre-hardening store may still interpret missing ids as global.
+            # Resolve authoritative scopes directly and keep only known rows in
+            # an allowed workspace instead of invoking that legacy behavior.
+            scopes = kg.workspaces_of([item.get("id") for item in candidates])
+            allowed_ids = {str(item) for item in allowed if item}
+            return [
+                item
+                for item in candidates
+                if str(item.get("id") or "") in scopes
+                and scopes[str(item.get("id") or "")] is not None
+                and str(scopes[str(item.get("id") or "")]) in allowed_ids
+            ]
 
     def _write_workspace(request: Request, user: str) -> Optional[str]:
         requested = _workspace_scope_from_request(request)
@@ -144,7 +168,25 @@ def create_knowledge_graph_router(
         kg, allowed = _scoped(request)
         if allowed is None:
             return kg.graph(limit)
-        return kg.graph(limit, allowed_workspaces=allowed)
+        try:
+            return kg.graph(
+                limit,
+                allowed_workspaces=allowed,
+                include_legacy_global=False,
+            )
+        except TypeError:
+            payload = kg.graph(limit)
+            nodes = _filter_scoped(kg, payload.get("nodes", []), allowed)
+            kept = {node.get("id") for node in nodes}
+            return {
+                **payload,
+                "nodes": nodes,
+                "edges": [
+                    edge
+                    for edge in payload.get("edges", [])
+                    if edge.get("from") in kept and edge.get("to") in kept
+                ],
+            }
 
     @router.get("/knowledge-graph/documents")
     async def knowledge_graph_documents(request: Request, limit: int = 200):
@@ -156,7 +198,7 @@ def create_knowledge_graph_router(
         kg, allowed = _scoped(request)
         payload = kg.list_documents(limit)
         if allowed is not None:
-            documents = kg.filter_scoped_nodes(payload.get("documents", []), allowed)
+            documents = _filter_scoped(kg, payload.get("documents", []), allowed)
             payload = {**payload, "documents": documents, "total": len(documents)}
         return payload
 
@@ -167,7 +209,10 @@ def create_knowledge_graph_router(
             return {"query": q, "matches": []}
         payload = kg.search(q, limit)
         if allowed is not None:
-            payload = {**payload, "matches": kg.filter_scoped_nodes(payload.get("matches", []), allowed)}
+            payload = {
+                **payload,
+                "matches": _filter_scoped(kg, payload.get("matches", []), allowed),
+            }
         return payload
 
     @router.get("/knowledge-graph/context")
@@ -177,7 +222,7 @@ def create_knowledge_graph_router(
             return {"query": q, "context": kg.context_for_query(q, limit)}
         # Scoped mode: derive context from scope-filtered search matches so the
         # RAG context never carries content from workspaces the caller can't read.
-        matches = kg.filter_scoped_nodes(kg.search(q, limit).get("matches", []), allowed)
+        matches = _filter_scoped(kg, kg.search(q, limit).get("matches", []), allowed)
         return {"query": q, "context": _format_context(matches, limit)}
 
     @router.get("/knowledge-graph/neighbors/{node_id:path}")
@@ -185,11 +230,11 @@ def create_knowledge_graph_router(
         kg, allowed = _scoped(request)
         if not node_id:
             raise HTTPException(status_code=400, detail="node_id required")
-        if allowed is not None and not kg.filter_scoped_nodes([{"id": node_id}], allowed):
+        if allowed is not None and not _filter_scoped(kg, [{"id": node_id}], allowed):
             raise HTTPException(status_code=404, detail="node not found")
         payload = kg.neighbors(node_id)
         if allowed is not None:
-            neighbors = kg.filter_scoped_nodes(payload.get("neighbors", []), allowed)
+            neighbors = _filter_scoped(kg, payload.get("neighbors", []), allowed)
             kept = {n.get("id") for n in neighbors}
             edges = [
                 e for e in payload.get("edges", [])

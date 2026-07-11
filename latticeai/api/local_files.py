@@ -15,8 +15,8 @@ from fastapi.responses import FileResponse
 from pydantic import BaseModel
 
 from latticeai.api.knowledge_graph import create_knowledge_graph_router
-from local_knowledge_api import create_local_knowledge_router
-from tools import local_list, local_read, local_write
+from latticeai.services.local_knowledge import create_local_knowledge_router
+from latticeai.tools import local_list, local_read, local_write
 
 try:
     from latticeai import __version__ as _LATTICE_VERSION

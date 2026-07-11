@@ -25,6 +25,7 @@ order.
 from __future__ import annotations
 
 import json
+import logging
 import os
 import shlex
 import subprocess
@@ -32,9 +33,13 @@ import tempfile
 import threading
 import time
 from collections import deque
-from datetime import datetime
 from pathlib import Path
 from typing import Any, Callable, Dict, List, Optional
+
+from ..utils import now_iso as _now
+
+
+LOGGER = logging.getLogger(__name__)
 
 
 HOOK_KINDS = (
@@ -61,10 +66,6 @@ LEGACY_KIND_ALIASES = {
 
 # Hook statuses a dispatch can record.
 HOOK_STATUSES = ("ok", "blocked", "error", "skipped", "advisory")
-
-
-def _now() -> str:
-    return datetime.now().isoformat(timespec="seconds")
 
 
 class HookContext:
@@ -213,7 +214,8 @@ def dispatch_tool(
         return run_fn()
     try:
         arg_keys = list(args.keys()) if isinstance(args, dict) else []
-    except Exception:
+    except Exception as exc:
+        LOGGER.debug("tool argument metadata could not be inspected: %s", exc)
         arg_keys = []
     pre = hooks.fire_hook(
         "pre_tool", f"tool.{tool_name}",
@@ -341,8 +343,8 @@ class HooksRegistry:
                     data.setdefault("custom", [])
                     data.setdefault("overrides", {})
                     return data
-            except Exception:
-                pass
+            except (OSError, json.JSONDecodeError, TypeError, ValueError) as exc:
+                LOGGER.warning("hook registry state is unreadable at %s: %s", self._path, exc)
         return {"custom": [], "overrides": {}}
 
     def _save(self) -> None:
@@ -626,6 +628,7 @@ class HooksRegistry:
                 user_email=user_email, workspace_id=workspace_id, metadata=metadata,
             )
         except Exception as exc:  # pragma: no cover - defensive
+            LOGGER.exception("hook dispatch failed before execution: %s", kind)
             return {"kind": kind, "event": event or kind, "ran": 0, "blocked": False,
                     "block_reason": "", "error": str(exc), "results": [], "generated_at": _now()}
 
@@ -740,8 +743,8 @@ class HooksRegistry:
                     data = json.load(fh)
                 if isinstance(data, list):
                     return data
-        except Exception:
-            pass
+        except (OSError, json.JSONDecodeError, TypeError, ValueError) as exc:
+            LOGGER.warning("hook run history is unreadable at %s: %s", self._runs_path, exc)
         return []
 
     def _save_runs(self) -> None:
@@ -751,8 +754,8 @@ class HooksRegistry:
             with os.fdopen(fd, "w", encoding="utf-8") as fh:
                 json.dump(list(self._runs), fh, ensure_ascii=False, indent=2)
             os.replace(tmp, self._runs_path)
-        except Exception:  # pragma: no cover - the run log is best-effort
-            pass
+        except OSError as exc:  # pragma: no cover - the run log is best-effort
+            LOGGER.warning("hook run history write failed at %s: %s", self._runs_path, exc)
 
     def _record_run(self, result: HookResult, context: HookContext) -> None:
         entry = result.as_dict()

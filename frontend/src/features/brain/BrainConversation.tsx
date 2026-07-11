@@ -153,7 +153,7 @@ export function BrainConversation({
                     onInteract={onExploreBrain}
                   />
                   <div className="brain-header-title">
-                    <strong>Lattice Brain</strong>
+                    <strong>{t(language, "brain.title")}</strong>
                     <span>
                       {t(language, `brain.firstScreen.state.${readiness.state}`)}
                       {isBasic ? "" : ` (${readiness.score}%)`}

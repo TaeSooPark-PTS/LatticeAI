@@ -5,11 +5,10 @@ import json
 from typing import Any, Dict, List, Optional
 
 from lattice_brain.runtime.contracts import run_record_contract, workflow_run_contract
+from lattice_brain.runtime.statuses import RUN_ACTIVE_STATUSES, RUN_TERMINAL_STATUSES
 
-from .workspace_os_utils import _json_hash, _listify, _now
-
-RUN_ACTIVE_STATUSES = {"queued", "running", "in_progress", "retrying", "cancelling"}
-RUN_TERMINAL_STATUSES = {"ok", "retried_ok", "failed", "rejected", "cancelled", "interrupted", "partial"}
+from .timeutil import now_iso as _now
+from .workspace_os_utils import _json_hash, _listify
 
 
 class WorkspaceRuns:

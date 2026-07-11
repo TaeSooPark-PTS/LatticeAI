@@ -62,6 +62,25 @@ def test_review_retry_loop_records_history_and_limit():
     assert [item["outcome"] for item in result.review_history] == ["retry", "approve"]
 
 
+def test_role_exception_fails_closed_before_downstream_roles_run():
+    roles = []
+
+    def runner(role: str, ctx: OrchestrationContext):
+        roles.append(role)
+        if role == "executor":
+            raise RuntimeError("executor unavailable")
+        if role == "planner":
+            ctx.plan = [{"index": 0, "description": "step", "status": "planned"}]
+        return {"role": role}
+
+    result = MultiAgentOrchestrator(role_runner=runner).run("goal")
+
+    assert result.status == "failed"
+    assert roles == ["planner", "executor"]
+    assert result.review["outcome"] == "reject"
+    assert any(item.get("event") == "execution_failed" for item in result.timeline)
+
+
 def test_memory_snapshot_is_workspace_scoped(tmp_path: Path):
     store = WorkspaceOSStore(tmp_path)
     store.upsert_memory(kind="short_term", content="active run note", user_email="u@example.com", workspace_id="personal")

@@ -1,6 +1,6 @@
 """Machine-checkable architecture readiness gates for release work.
 
-9.0.0 keeps the major architecture priorities under an explicit release
+The current release keeps the major architecture priorities under an explicit release
 contract while product maturity work reduces visible beta seams. AgentRuntime, ToolRegistry,
 central Config, decomposed server runtime, and Knowledge Graph stabilization
 must remain discoverable, ordered, and backed by tests before the release can be
@@ -17,7 +17,7 @@ from typing import Any, Dict, List
 from latticeai.core.legacy_compatibility import legacy_shim_report
 
 
-ARCHITECTURE_VERSION_TARGET = "9.0.0"
+ARCHITECTURE_VERSION_TARGET = "9.1.0"
 
 PREFERRED_REFACTORING_ORDER = [
     "agent-runtime",
@@ -54,16 +54,64 @@ def _symbol_exists(dotted: str) -> bool:
         return False
 
 
+def _forbidden_patterns(root: Path, relative_path: str, patterns: List[str]) -> List[str]:
+    path = root / relative_path
+    try:
+        source = path.read_text(encoding="utf-8")
+    except OSError:
+        return [f"missing:{relative_path}"]
+    return [pattern for pattern in patterns if pattern in source]
+
+
 def architecture_readiness(root: Path | None = None) -> Dict[str, Any]:
     if root is None:
         root = Path(__file__).resolve().parents[2]
     shim_report = legacy_shim_report(root)
+    factory_forbidden = _forbidden_patterns(
+        root,
+        "latticeai/app_factory.py",
+        ["build_runtime_namespace(locals", "dict(locals())"],
+    )
+    model_runtime_forbidden = _forbidden_patterns(
+        root,
+        "latticeai/services/model_runtime.py",
+        [
+            "def _sync_globals",
+            "global router",
+            "STATE = ModelRuntimeState",
+            "_STATE_EXPORTS",
+            "def __getattr__(name:",
+            "from fastapi import HTTPException",
+        ],
+    )
+    model_runtime_forbidden.extend(
+        _forbidden_patterns(
+            root,
+            "latticeai/services/model_loading.py",
+            ["from .model_runtime import STATE", "from fastapi import HTTPException"],
+        )
+    )
+    model_runtime_forbidden.extend(
+        _forbidden_patterns(
+            root,
+            "latticeai/services/model_engines.py",
+            ["from fastapi import HTTPException", "raise HTTPException"],
+        )
+    )
+    agent_alias_forbidden = _forbidden_patterns(
+        root,
+        "latticeai/core/agent.py",
+        ["AgentRuntime = SingleAgentRuntime"],
+    )
 
     gates = [
         ArchitectureGate(
             id="agent-runtime",
             title="AgentRuntime boundary",
-            status="complete" if _symbol_exists("lattice_brain.runtime.agent_runtime.AgentRuntime") else "incomplete",
+            status="complete" if (
+                _symbol_exists("lattice_brain.runtime.agent_runtime.AgentRuntime")
+                and not agent_alias_forbidden
+            ) else "incomplete",
             evidence=[
                 "lattice_brain.runtime.agent_runtime.AgentRuntime",
                 "latticeai.api.agents.create_agents_router(agent_runtime=...)",
@@ -83,7 +131,11 @@ def architecture_readiness(root: Path | None = None) -> Dict[str, Any]:
         ArchitectureGate(
             id="config-centralization",
             title="Central app Config",
-            status="complete" if _symbol_exists("latticeai.core.config.Config") else "incomplete",
+            status="complete" if (
+                _symbol_exists("latticeai.core.config.Config")
+                and _symbol_exists("latticeai.runtime.config_runtime.ConfigRuntime")
+                and not model_runtime_forbidden
+            ) else "incomplete",
             evidence=[
                 "latticeai.core.config.Config.from_env",
                 "latticeai.runtime.config_runtime.ConfigRuntime",
@@ -93,7 +145,19 @@ def architecture_readiness(root: Path | None = None) -> Dict[str, Any]:
         ArchitectureGate(
             id="server-decomposition",
             title="Server decomposition",
-            status="complete",
+            status="complete" if (
+                all(
+                    _symbol_exists(symbol)
+                    for symbol in [
+                        "latticeai.runtime.config_runtime.ConfigRuntime",
+                        "latticeai.runtime.security_runtime.SecurityRuntime",
+                        "latticeai.runtime.brain_runtime.BrainRuntime",
+                        "latticeai.runtime.model_wiring.ModelRuntime",
+                        "latticeai.runtime.router_registration.RouterBundle",
+                    ]
+                )
+                and not factory_forbidden
+            ) else "incomplete",
             evidence=[
                 "latticeai.app_factory.create_app composition root",
                 "latticeai.api.* domain routers",
@@ -192,6 +256,11 @@ def architecture_readiness(root: Path | None = None) -> Dict[str, Any]:
             "runtime_modules": runtime_module_count,
             "architecture_gates": len(gates),
             "legacy_shims_remaining": shim_report["remaining_count"],
+            "forbidden_patterns": {
+                "app_factory": factory_forbidden,
+                "model_runtime": model_runtime_forbidden,
+                "agent_alias": agent_alias_forbidden,
+            },
         },
         "legacy_compatibility": shim_report,
     }

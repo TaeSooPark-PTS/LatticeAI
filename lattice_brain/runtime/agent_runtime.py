@@ -28,7 +28,6 @@ it, the frontend) now depends on this boundary instead of internal paths.
 
 from __future__ import annotations
 
-from datetime import datetime
 from typing import Any, Callable, Dict, List, Optional
 
 from .multi_agent import (
@@ -45,6 +44,11 @@ from .contracts import (
     run_record_contract,
     runtime_boundary_contract,
 )
+from .statuses import (
+    RUN_ACTIVE_STATUSES as _ACTIVE_STATUSES,
+    RUN_TERMINAL_STATUSES as _TERMINAL_STATUSES,
+)
+from ..utils import now_iso as _now
 
 ROLE_DESCRIPTIONS = {
     "researcher": "Gathers workspace context and memory for the goal.",
@@ -57,14 +61,6 @@ ROLE_DESCRIPTIONS = {
 # Run statuses the orchestrator can emit that mean "still working". The default
 # orchestrator runs synchronously, so persisted runs are always terminal; this
 # set lets the runtime report live work if a future async runner lands.
-_ACTIVE_STATUSES = {"running", "in_progress", "queued", "retrying", "cancelling"}
-_TERMINAL_STATUSES = {"ok", "retried_ok", "failed", "rejected", "cancelled", "interrupted", "partial"}
-
-
-def _now() -> str:
-    return datetime.now().isoformat(timespec="seconds")
-
-
 def _compact_text(value: Any, *, limit: int) -> str:
     return " ".join(str(value or "").split())[:limit]
 

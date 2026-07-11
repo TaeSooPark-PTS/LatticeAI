@@ -104,7 +104,7 @@ def _chat_app_for_auto_read(tmp_path: Path, captured: dict, audit_events: list) 
         append_audit_event=lambda event_type, **payload: audit_events.append((event_type, payload)),
         clear_history=lambda *_args, **_kwargs: {"removed": 0, "kept": 0},
         clear_conversation=lambda *_args, **_kwargs: {"removed": 0, "kept": 0},
-        get_history=lambda: [],
+        get_history=lambda **_scope: [],
         group_history_conversations=lambda *_args, **_kwargs: [],
         get_conversation_messages=lambda *_args, **_kwargs: [],
         conversation_title=lambda *_args, **_kwargs: "Conversation",

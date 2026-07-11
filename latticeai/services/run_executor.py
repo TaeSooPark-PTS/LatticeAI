@@ -10,18 +10,13 @@ from __future__ import annotations
 
 import asyncio
 from dataclasses import dataclass
-from datetime import datetime
 from typing import Any, Callable, Dict, Optional
 
+from lattice_brain.runtime.statuses import (
+    RUN_ACTIVE_STATUSES as ACTIVE_STATUSES,
+)
 from lattice_brain.workflow import WorkflowEngine
-
-
-ACTIVE_STATUSES = {"queued", "running", "in_progress", "retrying", "cancelling"}
-TERMINAL_STATUSES = {"ok", "retried_ok", "failed", "rejected", "cancelled", "interrupted", "partial"}
-
-
-def _now() -> str:
-    return datetime.now().isoformat(timespec="seconds")
+from latticeai.core.timeutil import now_iso as _now
 
 
 @dataclass

@@ -7,7 +7,80 @@
 > PyPI / npm / VS Code Marketplace / Open VSX 배포는 아래 수동 절차로만
 > 진행합니다. 태그 생성은 패키지 스토어 publish를 자동으로 트리거하지 않습니다.
 
-## Main branch after v9.0.0 — Security, Isolation & Human-First UX (Unreleased)
+## v9.1.0 — Code Review Completion & Fail-Closed Runtime (2026-07-11)
+
+9.1.0 completes every actionable item in
+`docs/reviews/CODE_REVIEW_2026-07-11.md`. The release makes network, workspace,
+invitation, and tool boundaries fail closed; replaces ambient runtime and model
+state with typed ownership; decomposes the chat and frontend hotspots; makes
+service failures visible and testable; and removes tracked release/review
+clutter without rewriting historical release records.
+
+### Security and access control
+
+- Telegram messages and callback queries are denied unless their chat ID is in
+  the required `LATTICEAI_TELEGRAM_ALLOWED_CHAT_IDS` allowlist. Allowed chats
+  are registered only after authorization, and the bridge authenticates to the
+  local server with the required `LATTICEAI_SERVER_SESSION_TOKEN`.
+- Invitation authorization uses a signed, expiring server-bound value instead
+  of trusting `authorized=true`; the built-in invitation code is removed and
+  an enabled public invitation gate uses either an explicitly configured random
+  code or a generated per-install secret persisted with private permissions.
+  New SSO accounts must carry the same verified invite authorization, bound to
+  the server-side one-time OIDC state, nonce, and PKCE transaction.
+- Knowledge Graph scope lookup and unknown v2 nodes fail closed. Legacy-global
+  reads require an explicit compatibility opt-in and have regression coverage
+  for projection failures and cross-workspace isolation.
+- Computer screenshot/status, knowledge and Obsidian tools, and chat network
+  status now pass explicit capability, consent, user, workspace, or policy
+  gates instead of relying on permissive auto-approval.
+- Permission notifications disclose only token hints and can link to the
+  optional `LATTICEAI_PERMISSION_UI_URL`; queue persistence is atomic and
+  private. Non-loopback cookies are secure, reconnaissance endpoints redact or
+  require authentication, and MCP paths are masked.
+
+### Runtime and maintainability
+
+- App assembly is expressed as typed config, security, Brain, model, and router
+  stages. The legacy `server_app` surface remains an explicit compatibility
+  allowlist and no longer depends on exporting `locals()`.
+- Model selection and loading use injected typed state rather than dual-synced
+  module globals, with API error translation kept at the HTTP boundary.
+- Chat contracts, history, documents, and streaming live in focused modules;
+  the route layer delegates to services instead of owning every chat concern,
+  and agent/Computer Use records keep authenticated user/workspace ownership.
+- Shallow runtime pass-through modules and repeated timestamp/status utilities
+  are consolidated. Root setup and local-knowledge modules are compatibility
+  shims over package-owned implementations.
+- AgentRuntime naming is explicit, high-cost broad exception paths log or fail
+  closed, and readiness gates check forbidden architectural patterns as well as
+  symbol presence.
+
+### Frontend reliability and repository hygiene
+
+- Failed API results render unavailable/error states rather than healthy empty
+  Brain data. Proof attachment, continuity checks, and action callbacks report
+  success only after an `ok` response, with a core-service unavailable banner
+  for critical queries.
+- Brain logic is split into focused hooks, translations into namespaces, and
+  experience styling into surface files. User-facing strings use i18n and the
+  version is injected from package metadata.
+- Vitest coverage now protects API empty shapes, proof parsing, conversation
+  sessions, primitives, and i18n; visual coverage asserts that failed services
+  do not become quiet-success UI.
+- Obsolete local VSIX files are removed, ignored build/audit/workspace trees stay
+  outside release archives, Electron is documented as an experimental
+  compatibility shell, and review documents are archived under `docs/reviews/`.
+
+The exact 9.1.0 release artifacts are:
+
+- `dist/ltcai-9.1.0-py3-none-any.whl`
+- `dist/ltcai-9.1.0.tar.gz`
+- `dist/ltcai-9.1.0.vsix`
+- `ltcai-9.1.0.tgz`
+- `src-tauri/target/release/bundle/dmg/Lattice AI_9.1.0_aarch64.dmg`
+
+The following product and isolation work is also included in 9.1.0:
 
 - Reframed Brain Home around the product's actual knowledge lifecycle: chat,
   files, folders, notes, and web pages visibly enter the Living Brain, then
@@ -70,7 +143,7 @@
   4 MiB response limit.
 - Integration/OpenAPI generation runs in disposable state, committed OpenAPI
   artifacts are drift-gated, release archives reject personal bridge files, and
-  the browser extension is aligned to version 9.0.0 and port 4825.
+  the browser extension is aligned to version 9.1.0 and port 4825.
 - The misleading client-only global egress toggle was removed. External actions
   continue to use their real feature-specific consent/configuration paths.
 - MCP/plugin dispatch no longer bypasses local-file approval, and document RAG,
@@ -135,7 +208,7 @@ Expected artifacts (exact 9.0.0 names only):
 
 ## v8.9.0 — Scoped Memory & Tool Policy Hardening (2026-07-06)
 
-8.9.0 closes the actionable findings from `docs/CODE_REVIEW_2026-07-06.md`
+8.9.0 closes the actionable findings from `docs/reviews/CODE_REVIEW_2026-07-06.md`
 except the explicitly excluded Computer Use direct API risk. The release
 hardens authenticated history/KG scoping, direct Tool API policy gates,
 AgentRuntime human-approval behavior, permission token storage, and frontend

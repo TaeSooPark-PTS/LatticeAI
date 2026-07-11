@@ -21,6 +21,7 @@ ROLE_CAPABILITIES: Dict[str, Set[str]] = {
         "search",
         "files",
         "pipeline",
+        "desktop:control",
     },
     "member": {"workspace:read", "workspace:write", "chat", "search", "files", "pipeline"},
     "user": {"workspace:read", "workspace:write", "chat", "search", "files", "pipeline"},
@@ -51,4 +52,3 @@ def require_capability(role: str, capability: str) -> None:
 def policy_matrix(roles: Iterable[str] | None = None) -> List[Dict[str, object]]:
     selected = list(roles or ROLE_CAPABILITIES.keys())
     return [{"role": normalize_role(role), "caps": capabilities_for_role(role)} for role in selected]
-

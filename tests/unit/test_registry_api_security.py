@@ -6,12 +6,14 @@ import pytest
 from fastapi import FastAPI, HTTPException
 from fastapi.testclient import TestClient
 
+from latticeai.api import mcp as mcp_api
 from latticeai.api.agent_registry import create_agent_registry_router
 from latticeai.api.mcp import create_mcp_router
 from latticeai.api.plugins import create_plugins_router
 from latticeai.core.agent_registry import AgentRegistry
 from latticeai.services.platform_runtime import PlatformRuntime
 from latticeai.services.tool_dispatch import get_tool_permission
+from tools import AGENT_ROOT
 
 
 def _admin_gate(state):
@@ -214,6 +216,21 @@ def test_mcp_graph_calls_are_workspace_scoped_and_ingest_identity_is_bound(tmp_p
     assert pipeline.user == "alice@example.com"
     assert pipeline.item.owner == "alice@example.com"
     assert pipeline.item.workspace_id == "org-1"
+
+
+def test_mcp_tool_discovery_masks_absolute_workspace_path(tmp_path, monkeypatch):
+    async def empty_registry():
+        return []
+
+    monkeypatch.setattr(mcp_api, "_get_combined_registry", empty_registry)
+    client, _graph, _pipeline = _mcp_client(tmp_path)
+
+    response = client.get("/mcp/tools")
+
+    assert response.status_code == 200
+    payload = response.json()
+    assert payload["workspace"] == "."
+    assert str(AGENT_ROOT) not in json.dumps(payload, ensure_ascii=False)
 
 
 def test_mcp_cannot_bypass_local_file_approval(tmp_path):

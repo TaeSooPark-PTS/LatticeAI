@@ -12,16 +12,15 @@ chat, run model workflows, and trigger coding actions from the editor.
 
 ## Current Release
 
-**9.0.0 — Code Review Closure & Runtime Cleanup.** The extension follows
+**9.1.0 — Code Review Completion & Fail-Closed Runtime.** The extension follows
 the main app positioning: Lattice AI is a local-first Digital Brain, not just a
 model launcher or editor chat panel. It connects editor actions to the same
 durable Brain context, explicit consent gates, replaceable model workflow, and
-separated Admin surface used by the desktop app. The v9.0.0 line aligns the
-extension with code-review closure, direct Tool API policy hardening,
-desktop Capture reliability, ToolRegistry readiness, Config DI improvements,
-exact release artifacts, and machine-checkable product readiness gates while
-preserving the visible VS Code sync status and the runtime architecture
-contract.
+separated Admin surface used by the desktop app. The v9.1.0 line completes the
+July 11 review with fail-closed server/workspace/tool boundaries, typed runtime
+and model state, honest frontend failures and tests, exact release artifacts,
+and machine-checkable architecture/readiness gates while preserving the visible
+VS Code sync status and runtime architecture contract.
 
 ## Quick Start
 

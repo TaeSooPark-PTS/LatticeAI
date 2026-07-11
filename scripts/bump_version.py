@@ -29,6 +29,7 @@ TARGETS = [
     ("lattice_brain/runtime/multi_agent.py", "regex", r'(MULTI_AGENT_VERSION = ")([^"]+)(")'),
     ("latticeai/services/architecture_readiness.py", "regex", r'(ARCHITECTURE_VERSION_TARGET = ")([^"]+)(")'),
     ("latticeai/services/product_readiness.py", "regex", r'(PRODUCT_VERSION_TARGET = ")([^"]+)(")'),
+    ("latticeai/core/legacy_compatibility.py", "regex", r'(LEGACY_COMPATIBILITY_VERSION = ")([^"]+)(")'),
     ("pyproject.toml", "regex", r'(^version = ")([^"]+)(")'),
     ("package.json", "json", "version"),
     ("package-lock.json", "package-lock", None),
@@ -36,6 +37,7 @@ TARGETS = [
     ("vscode-extension/package-lock.json", "package-lock", None),
     ("browser-extension/manifest.json", "json", "version"),
     ("src-tauri/Cargo.toml", "regex", r'(^version = ")([^"]+)(")'),
+    ("src-tauri/Cargo.lock", "regex", r'(name = "lattice-ai-desktop"\nversion = ")([^"]+)(")'),
     ("src-tauri/tauri.conf.json", "json", "version"),
     ("static/app/asset-manifest.json", "json", "version"),
 ]

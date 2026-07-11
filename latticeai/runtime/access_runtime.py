@@ -20,9 +20,23 @@ def build_access_runtime(
     from latticeai.core.policy import normalize_role, require_capability
     from latticeai.core.users import normalize_email
 
+    # The historical loopback/no-auth profile represents its single human as
+    # an empty identity.  Keep that storage/workspace compatibility contract,
+    # but project the identity as an owner at authorization boundaries.  Never
+    # extend this trust to public or non-loopback bindings, even if an invalid
+    # caller constructs this runtime with ``require_auth=False`` directly.
+    externally_reachable = bool(
+        getattr(config, "is_public", False)
+        or getattr(config, "network_exposed", False)
+    )
+    trusted_local_owner = not require_auth and not externally_reachable
+    effective_require_auth = bool(require_auth or externally_reachable)
+
     def get_user_role(email: str, users: Optional[Dict] = None) -> str:
         users = users or load_users()
         identity = str(email or "")
+        if trusted_local_owner and not identity:
+            return "owner"
         normalized_email = normalize_email(identity)
         user = users.get(normalized_email) or users.get(identity) or next(
             (
@@ -87,13 +101,24 @@ def build_access_runtime(
 
     def require_user(request: request_type) -> str:
         email = get_current_user(request)
-        if require_auth and not email:
+        if email:
+            # Optional authentication remains meaningful in local mode: a
+            # valid session keeps its real account identity instead of being
+            # collapsed into the anonymous Local User fallback.
+            return email
+        if trusted_local_owner:
+            # A no-auth loopback caller is the trusted, anonymous local owner.
+            # Returning the legacy empty identity keeps ownerless workspaces,
+            # shared local vaults, and Local User profile behavior compatible;
+            # get_user_role() supplies the explicit owner authorization role.
+            return ""
+        if effective_require_auth and not email:
             raise http_exception(status_code=401, detail="인증이 필요합니다.")
         return email or ""
 
     def require_admin(request: request_type) -> tuple[str, Dict]:
         users = load_users()
-        if not require_auth:
+        if trusted_local_owner:
             return "", users
         token = extract_bearer_token(request)
         if token:

@@ -2,7 +2,17 @@
 
 from __future__ import annotations
 
-from typing import Any, Dict
+from dataclasses import dataclass
+from typing import Any
+
+from latticeai.runtime.stages import RuntimeStage
+
+
+@dataclass(frozen=True)
+class BrainRuntime(RuntimeStage):
+    BRAIN_CORE: Any
+    KNOWLEDGE_GRAPH: Any
+    CONVERSATIONS: Any
 
 
 def build_brain_runtime(
@@ -12,7 +22,7 @@ def build_brain_runtime(
     enable_graph: bool,
     embedder: Any,
     storage_engine: Any,
-) -> Dict[str, Any]:
+) -> BrainRuntime:
     """Construct Brain Core storage/conversation primitives behind one seam."""
 
     from lattice_brain import BrainCore, ConversationStore
@@ -33,9 +43,11 @@ def build_brain_runtime(
         else ConversationStore(data_dir / "knowledge_graph.sqlite")
     )
     conversations.import_legacy_json(history_file)
-    return {
-        "BRAIN_CORE": brain_core,
-        "KNOWLEDGE_GRAPH": knowledge_graph,
-        "CONVERSATIONS": conversations,
-    }
+    return BrainRuntime(
+        BRAIN_CORE=brain_core,
+        KNOWLEDGE_GRAPH=knowledge_graph,
+        CONVERSATIONS=conversations,
+    )
 
+
+__all__ = ["BrainRuntime", "build_brain_runtime"]

@@ -10,7 +10,7 @@ from __future__ import annotations
 import asyncio
 from typing import Callable, List, Optional
 
-from fastapi import APIRouter, Request
+from fastapi import APIRouter, HTTPException, Request
 
 
 def create_health_router(
@@ -25,6 +25,10 @@ def create_health_router(
     router = APIRouter()
     svc = model_service
 
+    def _require_sensitive_status_access(request: Request) -> None:
+        if require_auth and not get_current_user(request):
+            raise HTTPException(status_code=401, detail="인증이 필요합니다.")
+
     @router.get("/health")
     async def health(request: Request):
         base = svc.health_base(version=app_version, mode=app_mode)
@@ -35,11 +39,13 @@ def create_health_router(
 
     @router.get("/mode")
     @router.get("/runtime_features")
-    async def mode():
+    async def mode(request: Request):
+        _require_sensitive_status_access(request)
         return svc.runtime()
 
     @router.get("/engines")
-    async def engines():
+    async def engines(request: Request):
+        _require_sensitive_status_access(request)
         return svc.engines_payload(await asyncio.to_thread(engine_status))
 
     return router

@@ -40,6 +40,18 @@
 
 Apple Silicon MLX 로컬 모델 사용 시에는 프롬프트가 외부로 전송되지 않습니다.
 
+## Telegram 및 권한 알림
+
+Telegram bridge는 사용자가 명시적으로 활성화하고 chat ID를
+`LATTICEAI_TELEGRAM_ALLOWED_CHAT_IDS`에 등록한 경우에만 해당 chat의 메시지와
+callback query를 처리합니다. 로컬 Lattice API 호출에는 전용
+`LATTICEAI_SERVER_SESSION_TOKEN`을 사용하며 세션 저장 파일에서 bearer를 찾지
+않습니다.
+
+Discord 등의 권한 요청 알림에는 전체 승인 토큰이 아닌 짧은 hint만 포함됩니다.
+운영자가 `LATTICEAI_PERMISSION_UI_URL`을 설정하면 검토 페이지 링크를 제공할 수
+있지만, 승인 토큰 자체는 메시지나 URL에 넣지 않습니다.
+
 ## 웹/브라우저 수집 (v3.6.0)
 
 - **URL 읽기**(`/api/browser/read-url`): 사용자가 명시적으로 요청한 URL을 **로컬

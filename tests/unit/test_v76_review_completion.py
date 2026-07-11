@@ -7,9 +7,11 @@ from lattice_brain.runtime.agent_runtime import AgentRuntime
 
 
 def test_v76_architecture_review_items_are_machine_checkable():
+    from latticeai import __version__
+
     report = architecture_readiness(Path(__file__).resolve().parents[2])
     assert report["status"] == "complete"
-    assert report["version_target"] == "9.0.0"
+    assert report["version_target"] == __version__
     assert report["contract"]["schema_version"] == "lattice-architecture-contract/v1"
     assert report["contract"]["refactoring_order"][:4] == [
         "agent-runtime",
@@ -32,6 +34,11 @@ def test_v76_architecture_review_items_are_machine_checkable():
     }
     assert report["metrics"]["api_router_modules"] >= 20
     assert report["metrics"]["runtime_modules"] >= 5
+    assert report["metrics"]["forbidden_patterns"] == {
+        "app_factory": [],
+        "model_runtime": [],
+        "agent_alias": [],
+    }
 
 
 def test_v76_core_boundaries_are_importable():

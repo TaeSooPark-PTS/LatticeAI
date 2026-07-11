@@ -403,7 +403,7 @@ function LocalPanel() {
             {asArray<Record<string, unknown>>((data as Record<string, unknown>).sources).map((source) => (
               <ActionButton
                 key={String(source.id || source.source_id || source.path)}
-                label={`Stop ${String(source.path || source.id || "source")}`}
+                label={t(language, "capture.local.stop", { source: String(source.path || source.id || t(language, "capture.local.source")) })}
                 action={() => latticeApi.localWatchStop(String(source.id || source.source_id))}
                 invalidate={["localSources"]}
               />

@@ -1,15 +1,16 @@
 # Security Policy
 
-Current release: **9.0.0 — Code Review Closure & Runtime Cleanup**.
+Current release: **9.1.0 — Code Review Completion & Fail-Closed Runtime**.
 
 ## Supported Versions
 
-The public Git tree keeps release history from 8.0.0 through 9.0.0. Security
+The public Git tree keeps release history from 8.0.0 through 9.1.0. Security
 support follows that same product era.
 
 | Version | Support |
 | --- | --- |
-| 9.0.x (latest) | Supported |
+| 9.1.x (latest) | Supported |
+| 9.0.x | Supported |
 | 8.9.x | Supported |
 | 8.8.x | Supported |
 | 8.7.x | Supported |
@@ -39,7 +40,7 @@ The expected first response target is 48 hours.
 
 ## Security Model
 
-Lattice AI v9.0.0 is a local-first Digital Brain. It keeps user knowledge,
+Lattice AI v9.1.0 is a local-first Digital Brain. It keeps user knowledge,
 conversation context, Knowledge Graph data, and archives local by default while
 making external paths explicit.
 
@@ -57,16 +58,23 @@ making external paths explicit.
 | Docker Postgres setup | Disabled | Requires explicit consent |
 | Production CSP | Strict local app policy | External script/frame/object blocked by default |
 | Chat auto file read | Disabled | Arbitrary path reads require explicit approval |
+| Telegram inbound access | Deny by default | Requires an explicit chat-ID allowlist and dedicated server session token |
+| Legacy-global graph reads | Disabled | Must be explicitly requested for compatibility |
+| Invitation authorization | Signed and expiring | Static authorization cookies and built-in invitation codes are rejected |
 
 ### Authentication And Sessions
 
 - Passwords use scrypt hashing.
-- Session cookies are `HttpOnly` and `SameSite=Lax`.
+- Session cookies are `HttpOnly` and `SameSite=Lax`; non-loopback/public
+  deployments also set `Secure`.
 - Session tokens are stored locally only as SHA-256 hashes; deleted or disabled
   accounts invalidate existing sessions on the next request.
 - The local data directory is mode `0700` and atomic JSON/session files are mode
   `0600` on POSIX filesystems.
 - Enterprise SSO paths are explicit configuration paths.
+- Invitation authorization is HMAC-signed, time-limited, and server-bound. A
+  literal `authorized=true` cookie does not grant access, and public mode will
+  not start an invitation gate with a built-in default code.
 
 ### File And Archive Safety
 
@@ -86,6 +94,9 @@ making external paths explicit.
   registry reads redact secret-shaped configuration values.
 - MCP graph calls and realtime presence are bound to the authenticated identity
   and active/allowed workspace; MCP environment values are never returned.
+- Knowledge Graph scope lookup fails closed on projection/query errors. Unknown
+  scoped nodes are private, and legacy-global reads require an explicit
+  `include_legacy_global` compatibility choice.
 - MCP and plugin execution cannot invoke local filesystem/document tools; those
   tools require the dedicated, scope-bound approval-token endpoints. Plugins
   may invoke only tools explicitly declared in their installed manifest.
@@ -97,6 +108,11 @@ making external paths explicit.
   preprocessors, and mutating/exec `find` flags are refused.
 - Secret-like values are centrally redacted before logs, audit payloads,
   security exports, frontend previews, and hook packets.
+- Computer screenshot/status, knowledge/Obsidian, and chat network-status tools
+  require their declared policy, capability, consent, and scope checks.
+- Permission requests are written atomically with private permissions. External
+  notifications contain only a token hint and an optional configured review UI
+  link, never the full approval token.
 
 ### External Communication
 
@@ -107,7 +123,7 @@ External communication requires explicit configuration and user/admin action:
 
 - cloud model calls;
 - model downloads;
-- Telegram bridge;
+- Telegram bridge, only for explicitly allowed chat IDs;
 - Brain Network peer exchange;
 - Docker/Postgres scale setup;
 - update checks;
@@ -117,15 +133,34 @@ Web-page capture additionally resolves and pins public IPs, rejects private and
 reserved address classes, rechecks every redirect, ignores proxy environment
 variables, and streams at most 4 MiB of textual content.
 
+### Security-Sensitive Environment Variables
+
+| Variable | Requirement | Purpose |
+| --- | --- | --- |
+| `LATTICEAI_TELEGRAM_ALLOWED_CHAT_IDS` | Required when Telegram is enabled | Comma-separated inbound Telegram chat-ID allowlist; missing/empty means deny all |
+| `LATTICEAI_SERVER_SESSION_TOKEN` | Required when Telegram is enabled | Dedicated bearer used by the bridge for local Lattice AI API calls |
+| `LATTICEAI_PERMISSION_UI_URL` | Optional | Base URL for human permission-review links; approval tokens are never appended or sent |
+| `LATTICEAI_INVITE_GATE_ENABLED` | Optional, default off | Enables invitation onboarding without reopening unrestricted registration |
+| `LATTICEAI_INVITE_CODE` | Recommended when the invitation gate is enabled | Operator-generated random invitation code; when omitted, a private per-install value is generated and persisted—there is no shared default |
+
 ## Public Deployment Guidance
 
 If exposing Lattice AI beyond localhost:
 
 1. Set `LATTICEAI_MODE=public`.
-2. Use a private `LATTICEAI_INVITE_CODE`.
+2. Keep registration closed. If invitation onboarding is required, enable the
+   invitation gate and set a random private `LATTICEAI_INVITE_CODE`, or retain
+   the generated per-install secret on persistent storage; no shared default
+   exists. A valid signed invite authorizes only that registration request;
+   unsigned direct `/register` calls remain closed. SSO just-in-time account
+   creation requires the same invite claim, bound server-side to the one-time
+   OIDC state, nonce, and PKCE transaction; existing active SSO accounts may
+   still sign in without a new invitation.
 3. Put the app behind HTTPS.
 4. Mount persistent storage.
 5. Review CORS, auth, rate limits, and graph exposure settings before use.
+6. Keep Telegram disabled, or set both its chat-ID allowlist and dedicated
+   server session token before enabling it.
 
 ## Known Limitations
 

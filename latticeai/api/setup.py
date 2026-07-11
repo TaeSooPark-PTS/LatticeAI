@@ -9,7 +9,7 @@ from fastapi.responses import StreamingResponse
 from pydantic import BaseModel
 
 from latticeai.services.process_audit import command_plan
-from auto_setup import (
+from latticeai.setup.auto_setup import (
     plan as auto_setup_plan,
     preset as auto_setup_preset,
     probe as auto_setup_probe,
@@ -17,7 +17,7 @@ from auto_setup import (
     verify as auto_setup_verify,
 )
 from latticeai.models.router import parse_model_ref
-from setup_wizard import get_recommendations, install_stream, open_url, scan_environment
+from latticeai.setup.wizard import get_recommendations, install_stream, open_url, scan_environment
 
 
 class SetupInstallRequest(BaseModel):

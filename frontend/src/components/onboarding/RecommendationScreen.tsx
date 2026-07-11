@@ -42,9 +42,7 @@ export function RecommendationScreen({
         <div className="ritual-scan-banner is-success">
           <span className="ritual-scan-dot is-success" />
           <span>
-            {language === "ko"
-              ? `컴퓨터 준비 완료: 로컬 MLX 지원 (Apple Silicon, ${Math.round(ramGb)}GB RAM 감지됨)`
-              : `Computer ready: local MLX supported (Apple Silicon, ${Math.round(ramGb)}GB RAM detected)`}
+            {t(language, "flow.recommend.environment.apple", { ram: Math.round(ramGb) })}
           </span>
         </div>
       );
@@ -53,9 +51,7 @@ export function RecommendationScreen({
         <div className="ritual-scan-banner is-warning">
           <span className="ritual-scan-dot is-warning" />
           <span>
-            {language === "ko"
-              ? `권장: 가벼운 로컬 모델로 시작하세요 (${Math.round(ramGb)}GB RAM 감지됨)`
-              : `Recommended: start with a lighter local model (${Math.round(ramGb)}GB RAM detected)`}
+            {t(language, "flow.recommend.environment.standard", { ram: Math.round(ramGb) })}
           </span>
         </div>
       );

@@ -1,6 +1,6 @@
 # Legacy Compatibility Map
 
-Current target: **9.0.0 — Code Review Closure & Runtime Cleanup**.
+Current target: **9.1.0 — Code Review Completion & Fail-Closed Runtime**.
 
 Lattice AI is moving toward a smaller, modular architecture centered on
 `lattice_brain`, `latticeai.services`, `latticeai.api`, and `latticeai.runtime`.
@@ -56,14 +56,14 @@ standalone package:
 | `knowledge_graph.py` | `lattice_brain.graph` / `lattice_brain.knowledge` | Compatibility for older graph imports and historical tooling |
 | `knowledge_graph_api.py` | `latticeai.api.memory`, `latticeai.api.search`, graph-related API routers | Compatibility for older API import paths |
 | `kg_schema.py` | `lattice_brain` storage/schema modules | Compatibility for graph schema references |
-| `auto_setup.py` | setup/model recommendation services | Compatibility for zero-config setup probes and historical auto-setup commands |
+| `auto_setup.py` | `latticeai.setup.auto_setup` | Thin compatibility shim for zero-config setup probes and historical commands |
 | `llm_router.py` | `latticeai.models.router` | Compatibility for older local model routing imports |
 | `ltcai_cli.py` | package console entrypoint (`ltcai`) | Compatibility for the installed CLI contract |
 | `mcp_registry.py` | `latticeai.core.mcp_registry` and service-backed registries | Compatibility for MCP/skills lookup entrypoints |
-| `local_knowledge_api.py` | `lattice_brain.ingestion`, workspace capture APIs | Compatibility for local folder/file watcher flows |
+| `local_knowledge_api.py` | `latticeai.services.local_knowledge` | Thin compatibility shim for local folder/file watcher flows |
 | `p_reinforce.py` | gardener/maintenance service direction | Compatibility for existing Brain gardening runtime hooks |
 | `telegram_bot.py` | opt-in integration package or disabled-by-default connector | Compatibility only; Telegram must remain opt-in |
-| `setup_wizard.py` | setup and model recommendation services | Compatibility for first-run recommendation calls |
+| `setup_wizard.py` | `latticeai.setup.wizard` | Thin compatibility shim for first-run recommendation calls |
 | `server.py` | lazy proxy to `latticeai.server_app` / `latticeai.app_factory` | Preserves historical `server.app` imports without import-time construction |
 
 ## Inner Shim Layers (removed in 8.8.0)

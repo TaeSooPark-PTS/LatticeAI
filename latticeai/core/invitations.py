@@ -9,10 +9,7 @@ from datetime import datetime, timedelta
 from pathlib import Path
 from typing import Any, Dict, List, Optional
 
-
-def _now() -> datetime:
-    return datetime.now()
-
+from .timeutil import local_now as _now
 
 def _iso(dt: datetime) -> str:
     return dt.isoformat(timespec="seconds")

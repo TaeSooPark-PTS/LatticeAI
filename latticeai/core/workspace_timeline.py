@@ -6,7 +6,8 @@ from __future__ import annotations
 
 from typing import Any, Dict, Iterable, List, Optional
 
-from .workspace_os_utils import _listify, _now, _parse_iso
+from .timeutil import now_iso as _now
+from .workspace_os_utils import _listify, _parse_iso
 
 
 def _audit_category(event: Dict[str, Any]) -> str:

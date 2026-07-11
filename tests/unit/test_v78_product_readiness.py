@@ -7,8 +7,10 @@ ROOT = Path(__file__).resolve().parents[2]
 
 
 def test_v78_product_readiness_is_machine_checkable():
+    from latticeai import __version__
+
     report = product_readiness(ROOT)
-    assert report["version_target"] == "9.0.0"
+    assert report["version_target"] == __version__
     assert {gate["id"] for gate in report["gates"]} == {g.id for g in PRODUCT_GATES}
     # Every gate must carry concrete, probeable evidence.
     for gate in report["gates"]:

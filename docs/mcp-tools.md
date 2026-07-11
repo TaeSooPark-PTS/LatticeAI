@@ -1,4 +1,4 @@
-# MCP 도구 카탈로그
+# MCP 도구 카탈로그 (v9.1.0)
 
 Lattice AI는 MCP(Model Context Protocol) 서버로 동작하여 Claude Desktop, Cursor 등에서 직접 도구를 사용할 수 있습니다.
 
@@ -45,10 +45,11 @@ Lattice AI는 MCP(Model Context Protocol) 서버로 동작하여 Claude Desktop,
 
 | 도구 | 설명 | 위험도 |
 |------|------|--------|
-| `computer_screenshot` | 화면 캡처 | 낮음 |
+| `computer_screenshot` | 화면 캡처 (desktop-control capability 및 정책 승인 필요) | 높음 |
+| `computer_status` | 데스크톱 제어 상태 조회 (동일 capability/policy 적용) | 중간 |
 | `computer_open_app` | 앱 실행 | 중간 |
 | `computer_open_url` | URL 열기 | 낮음 |
-| `network_status` | IP, Wi-Fi 정보 | 낮음 |
+| `network_status` | IP, Wi-Fi 정보 (인증 및 ToolRegistry 정책 적용) | 중간 |
 
 ### 문서
 
@@ -102,7 +103,7 @@ workspace 밖 symlink, `rg --pre`, `find -exec/-delete`는 거부됩니다. 빌�
 ## 도구 카탈로그 조회
 
 ```bash
-curl http://localhost:4825/mcp/tools
+curl -b "session=<token>" http://localhost:4825/mcp/tools
 ```
 
 응답:
@@ -119,3 +120,8 @@ curl http://localhost:4825/mcp/tools
   ]
 }
 ```
+
+도구 카탈로그는 인증이 필요하며 서버의 절대 `AGENT_ROOT`를 반환하지 않습니다.
+MCP/plugin dispatch도 각 도구의 사용자·workspace·capability·승인 정책을 우회할
+수 없습니다. knowledge/Obsidian 계열 읽기는 명시적 사용자 동의와 scope를
+사용합니다.

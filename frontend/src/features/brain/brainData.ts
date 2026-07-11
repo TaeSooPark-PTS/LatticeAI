@@ -173,7 +173,12 @@ export function buildBrainReadiness(memoryData: unknown, fallbackMemoryCount: nu
 }
 
 export function buildBrainProof(data: unknown, fallbackModelName = ""): BrainProof {
-  const proof = isRecord(data) ? data : {};
+  const result = isRecord(data) && typeof data.ok === "boolean" && "data" in data
+    ? data
+    : null;
+  if (result && !result.ok) return unavailableBrainProof(fallbackModelName);
+  const payload = result ? result.data : data;
+  const proof = isRecord(payload) ? payload : {};
   const modelContinuity = isRecord(proof.model_continuity) ? proof.model_continuity : {};
   const proofs = isRecord(proof.proofs) ? proof.proofs : {};
   const recall = isRecord(proof.recall) ? proof.recall : {};
@@ -215,6 +220,35 @@ export function buildBrainProof(data: unknown, fallbackModelName = ""): BrainPro
       canRecallUserContext: booleanValue(claims, ["can_recall_user_context", "canRecallUserContext"], false),
       keepsContextAcrossModels: booleanValue(claims, ["keeps_context_across_models", "keepsContextAcrossModels"], false),
       isKnowledgeStore: booleanValue(claims, ["is_knowledge_store", "isKnowledgeStore"], false),
+    },
+  };
+}
+
+function unavailableBrainProof(fallbackModelName: string): BrainProof {
+  return {
+    status: "unavailable",
+    modelContinuity: {
+      activeModel: fallbackModelName,
+      brainOwner: "",
+      capability: false,
+      survivesModelSwitch: false,
+      proven: false,
+      contextStore: "",
+    },
+    proofs: {
+      durableItems: 0,
+      hasDurableEvidence: false,
+      workspaceMemories: 0,
+      conversations: 0,
+      graphConcepts: 0,
+      vectorItems: 0,
+      healthySources: 0,
+    },
+    recall: { query: "", count: 0, items: [] },
+    claims: {
+      canRecallUserContext: false,
+      keepsContextAcrossModels: false,
+      isKnowledgeStore: false,
     },
   };
 }

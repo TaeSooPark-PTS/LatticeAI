@@ -5,11 +5,11 @@ import base64
 import os
 import socket
 import tempfile
-import time
 import zipfile
 import json
 from pathlib import Path
 
+from latticeai.core.io_utils import atomic_write_json
 from latticeai.core.logging_safety import install_sensitive_log_filter, safe_log_text
 from latticeai.cli.runtime import _load_env_file
 
@@ -43,7 +43,7 @@ AGENT_WORKSPACE       = Path(env_value("LATTICEAI_AGENT_ROOT", "agent_workspace"
 # Pending plan approvals: context_id → (chat_id, executing_model, reviewing_model)
 _bot_pending_plans: dict[str, dict] = {}
 MAX_TELEGRAM_FILE_BYTES = 45 * 1024 * 1024
-INVITE_CODE           = env_value("LATTICEAI_INVITE_CODE", "gemma-lattice-ai")
+INVITE_CODE           = env_value("LATTICEAI_INVITE_CODE")
 PUBLIC_WEB_URL        = env_value("LATTICEAI_PUBLIC_URL")
 DATA_DIR              = Path(env_value("LATTICEAI_DATA_DIR", str(Path.home() / ".ltcai")))
 DATA_DIR.mkdir(parents=True, exist_ok=True)
@@ -55,44 +55,55 @@ logger = logging.getLogger(__name__)
 # ── Server session auth ───────────────────────────────────────────────────────
 
 def _get_server_session() -> str:
-    """Read the most recent valid admin session from sessions.json (web login)."""
-    explicit_token = env_value("LATTICEAI_SERVER_SESSION_TOKEN")
-    if explicit_token:
-        return explicit_token
-    sessions_file = DATA_DIR / "sessions.json"
-    users_file = DATA_DIR / "users.json"
-    try:
-        if not sessions_file.exists():
-            return ""
-        sessions = json.loads(sessions_file.read_text())
-        admin_emails: set[str] = set()
-        if users_file.exists():
-            users = json.loads(users_file.read_text())
-            admin_emails = {e for e, u in users.items() if u.get("role") == "admin" and not u.get("disabled")}
-        now = time.time()
-        # Pick the newest non-expired admin session
-        best_token, best_ts = "", 0.0
-        for token, entry in sessions.items():
-            if len(token) == 64 and all(ch in "0123456789abcdef" for ch in token.lower()):
-                continue
-            email, created_at = entry[0], float(entry[1])
-            if admin_emails and email not in admin_emails:
-                continue
-            if now - created_at > 7 * 86400:
-                continue
-            if created_at > best_ts:
-                best_token, best_ts = token, created_at
-        return best_token
-    except Exception:
-        return ""
+    """Return only the explicitly provisioned bot-to-server token.
+
+    Web sessions are hashed at rest and belong to interactive users. Scanning
+    ``sessions.json`` cannot recover a usable token and would couple the bot to
+    whichever administrator happened to be logged in most recently.
+    """
+    return env_value("LATTICEAI_SERVER_SESSION_TOKEN").strip()
 
 def _server_client(**kwargs) -> httpx.AsyncClient:
-    """httpx client pre-loaded with the web session cookie."""
+    """Return a server client authenticated by an explicit bearer capability."""
     token = _get_server_session()
-    cookies = {"session_token": token} if token else {}
-    return httpx.AsyncClient(cookies=cookies, **kwargs)
+    if not token:
+        raise RuntimeError(
+            "LATTICEAI_SERVER_SESSION_TOKEN is required for Telegram server API calls."
+        )
+    headers = dict(kwargs.pop("headers", {}) or {})
+    headers["Authorization"] = f"Bearer {token}"
+    return httpx.AsyncClient(headers=headers, **kwargs)
 
 # ── Chat ID registry ─────────────────────────────────────────────────────────
+
+def parse_allowed_chat_ids(raw: str) -> frozenset[int]:
+    """Parse a comma-separated Telegram chat-id allowlist."""
+    allowed: set[int] = set()
+    for value in str(raw or "").split(","):
+        value = value.strip()
+        if not value:
+            continue
+        try:
+            allowed.add(int(value))
+        except ValueError:
+            logger.warning(
+                "Invalid Telegram chat id ignored in allowlist: %r",
+                safe_log_text(value),
+            )
+    return frozenset(allowed)
+
+
+def allowed_chat_ids() -> frozenset[int]:
+    """Return the configured allowlist; missing configuration denies all."""
+    return parse_allowed_chat_ids(env_value("LATTICEAI_TELEGRAM_ALLOWED_CHAT_IDS"))
+
+
+def is_chat_allowed(chat_id) -> bool:
+    try:
+        return int(chat_id) in allowed_chat_ids()
+    except (TypeError, ValueError):
+        return False
+
 
 def load_chat_ids():
     try:
@@ -105,19 +116,24 @@ def load_chat_ids():
 
 def save_chat_ids(chat_ids):
     try:
-        CHAT_IDS_FILE.write_text(
-            json.dumps({"chat_ids": sorted(chat_ids)}, ensure_ascii=False, indent=2),
-            encoding="utf-8",
-        )
+        atomic_write_json(CHAT_IDS_FILE, {"chat_ids": sorted(chat_ids)})
     except Exception as e:
         logger.error("텔레그램 채팅 목록 저장 실패: %s", safe_log_text(e))
 
 def register_chat_id(chat_id):
+    if not is_chat_allowed(chat_id):
+        logger.warning(
+            "허용되지 않은 텔레그램 채팅 등록 차단: %s",
+            safe_log_text(chat_id),
+        )
+        return False
+    chat_id = int(chat_id)
     chat_ids = load_chat_ids()
     if chat_id not in chat_ids:
         chat_ids.add(chat_id)
         save_chat_ids(chat_ids)
         logger.info("텔레그램 웹 미러링 대상 등록: %s", chat_id)
+    return True
 
 # ── Telegram API helpers ──────────────────────────────────────────────────────
 
@@ -205,7 +221,8 @@ def get_lan_ip():
 def get_web_url():
     if PUBLIC_WEB_URL:
         return PUBLIC_WEB_URL.rstrip("/")
-    return f"http://{get_lan_ip()}:{SERVER_PORT}/?code={INVITE_CODE}"
+    base = f"http://{get_lan_ip()}:{SERVER_PORT}/"
+    return f"{base}?code={INVITE_CODE}" if INVITE_CODE else base
 
 def get_graph_url():
     if PUBLIC_WEB_URL:
@@ -217,7 +234,10 @@ def get_graph_url():
 async def broadcast_web_chat(role, text):
     if not TOKEN:
         return
-    chat_ids = load_chat_ids()
+    # Old releases registered every sender. Intersect persisted recipients
+    # with the current allowlist so stale files cannot keep receiving mirrors.
+    allowed = allowed_chat_ids()
+    chat_ids = load_chat_ids() & set(allowed)
     if not chat_ids:
         return
     label = "사용자" if role == "user" else "Lattice AI"
@@ -730,6 +750,14 @@ async def handle_plan_callback(client, chat_id, data: str) -> None:
     if len(parts) != 3:
         return
     _, action, context_id = parts
+    pending = _bot_pending_plans.get(context_id)
+
+    # A callback is bound to the chat that received the plan. Even two allowed
+    # chats cannot approve or cancel each other's plan by replaying callback
+    # data.
+    if pending and int(pending.get("chat_id")) != int(chat_id):
+        await send_message(client, chat_id, "❌ 다른 채팅의 작업은 처리할 수 없습니다.")
+        return
     pending = _bot_pending_plans.pop(context_id, None)
 
     if action == "cancel" or not pending:
@@ -870,9 +898,16 @@ async def handle_command(client, chat_id, command: str, args: str):
 # ── Callback query handler ────────────────────────────────────────────────────
 
 async def handle_callback_query(client, callback_query):
-    cq_id   = callback_query["id"]
-    chat_id = callback_query["message"]["chat"]["id"]
+    cq_id = callback_query.get("id", "")
+    chat_id = (
+        (callback_query.get("message") or {}).get("chat") or {}
+    ).get("id")
     data    = callback_query.get("data", "")
+
+    if not is_chat_allowed(chat_id):
+        logger.warning("허용되지 않은 텔레그램 callback 차단: %s", safe_log_text(chat_id))
+        await answer_callback(client, cq_id, "허용되지 않은 채팅입니다.")
+        return
 
     await answer_callback(client, cq_id)
 
@@ -906,6 +941,16 @@ async def handle_callback_query(client, callback_query):
 async def run_bot():
     if not TOKEN:
         logger.warning("LATTICEAI_TELEGRAM_BOT_TOKEN이 설정되지 않아 텔레그램 봇을 시작하지 않습니다.")
+        return
+    if not allowed_chat_ids():
+        logger.error(
+            "LATTICEAI_TELEGRAM_ALLOWED_CHAT_IDS가 없어 텔레그램 봇을 시작하지 않습니다."
+        )
+        return
+    if not _get_server_session():
+        logger.error(
+            "LATTICEAI_SERVER_SESSION_TOKEN이 없어 텔레그램 봇을 시작하지 않습니다."
+        )
         return
 
     logger.info("🚀 비동기 텔레그램 봇 모드 시작!")
@@ -942,6 +987,12 @@ async def run_bot():
 
                     msg     = update["message"]
                     chat_id = msg["chat"]["id"]
+                    if not is_chat_allowed(chat_id):
+                        logger.warning(
+                            "허용되지 않은 텔레그램 메시지 차단: %s",
+                            safe_log_text(chat_id),
+                        )
+                        continue
                     register_chat_id(chat_id)
                     text    = msg.get("text", "")
                     caption = msg.get("caption", "")

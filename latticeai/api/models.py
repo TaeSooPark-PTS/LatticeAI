@@ -5,10 +5,8 @@ Extracted from ``server_app.py`` in v1.3.0. Paths and schemas unchanged:
 ``/setup/set-api-key``.
 
 Mirrors the established router-factory convention: the heavy provider/runtime
-helpers (engine_status, prepare_and_load_model, download_hf_model,
-verify_cloud_models, …) remain owned by server_app for now and are injected here
-as callables, so this module has no import cycle and adds no import-time
-side effects.
+helpers are injected as bound service callables. This module owns the sole
+translation from transport-neutral ``ModelRuntimeError`` failures to HTTP.
 """
 
 from __future__ import annotations
@@ -16,11 +14,13 @@ from __future__ import annotations
 import asyncio
 import logging
 import subprocess
-from typing import Any, Callable, Dict, List, Optional
+from typing import Any, Callable, Dict, List, NoReturn, Optional
 
 from fastapi import APIRouter, HTTPException, Request
 from fastapi.responses import StreamingResponse
 from pydantic import BaseModel
+
+from latticeai.services.model_errors import ModelRuntimeError
 
 
 def _vision_capability(current_model_id: Optional[str], engines: Any) -> Dict[str, Any]:
@@ -149,6 +149,9 @@ def create_models_router(
         # legacy body field remains usable solely in explicit no-auth/local
         # mode for backward compatibility.
         return current_user if REQUIRE_AUTH else claimed_email or current_user or None
+
+    def _raise_model_http(exc: ModelRuntimeError) -> NoReturn:
+        raise HTTPException(status_code=exc.status_code, detail=exc.detail) from exc
 
     def _recommended_with_engine_options(
         items: List[Dict[str, object]],
@@ -301,14 +304,20 @@ def create_models_router(
     @router.post("/engines/install")
     async def engines_install(req: InstallEngineRequest, request: Request):
         _authorize_model_admin(request)
-        if req.confirmation_token:
-            return install_engine(req.engine, confirmation_token=req.confirmation_token)
-        return install_engine(req.engine)
+        try:
+            if req.confirmation_token:
+                return install_engine(req.engine, confirmation_token=req.confirmation_token)
+            return install_engine(req.engine)
+        except ModelRuntimeError as exc:
+            _raise_model_http(exc)
 
     @router.post("/engines/verify-cloud")
     async def engines_verify_cloud(req: VerifyCloudRequest, request: Request):
         _authorize_model_admin(request)
-        results = await verify_cloud_models(force=req.force, provider_filter=req.provider)
+        try:
+            results = await verify_cloud_models(force=req.force, provider_filter=req.provider)
+        except ModelRuntimeError as exc:
+            _raise_model_http(exc)
         return {"verified": results, "ttl_seconds": CLOUD_VERIFY_TTL_SECONDS}
 
     @router.post("/engines/pull-model")
@@ -334,7 +343,10 @@ def create_models_router(
             raise HTTPException(status_code=400, detail="모델 이름이 비어 있습니다.")
 
         if provider == "ollama":
-            ensure_ollama_server()
+            try:
+                ensure_ollama_server()
+            except ModelRuntimeError as exc:
+                _raise_model_http(exc)
             ollama = local_binary("ollama")
             if not ollama:
                 raise HTTPException(status_code=400, detail="Ollama가 설치되지 않았습니다.")
@@ -361,7 +373,10 @@ def create_models_router(
 
         if provider in {"vllm", "llamacpp", "local_mlx", "mlx"}:
             download_provider = "local_mlx" if provider == "mlx" else provider
-            result = download_hf_model(model_name, download_provider)
+            try:
+                result = download_hf_model(model_name, download_provider)
+            except ModelRuntimeError as exc:
+                _raise_model_http(exc)
             return {"provider": provider, "model": model_name, "returncode": 0, **result}
 
         raise HTTPException(status_code=400, detail=f"{provider} 엔진 모델 다운로드는 아직 자동화되지 않았습니다.")
@@ -375,6 +390,8 @@ def create_models_router(
                 user_email=_effective_email(current_user, req.user_email),
                 allow_download=req.allow_download,
             )
+        except ModelRuntimeError as exc:
+            _raise_model_http(exc)
         except HTTPException:
             raise
         except Exception as exc:
@@ -397,7 +414,7 @@ def create_models_router(
                     allow_download=req.allow_download,
                 ):
                     yield chunk
-            except HTTPException as exc:
+            except (HTTPException, ModelRuntimeError) as exc:
                 yield sse_event("error", {
                     "status_code": exc.status_code,
                     "detail": exc.detail or "모델 준비에 실패했습니다.",
@@ -495,6 +512,8 @@ def create_models_router(
                 adapter_path=req.adapter_path, draft_model_id=req.draft_model_id,
                 allow_download=req.allow_download,
             )
+        except ModelRuntimeError as exc:
+            _raise_model_http(exc)
         except HTTPException:
             raise
         except Exception as e:
@@ -533,7 +552,7 @@ def create_models_router(
         hardware, load_strategy, license, safety_notes) from the structured registry.
         """
         require_user(request)
-        from auto_setup import probe as auto_setup_probe
+        from latticeai.setup.auto_setup import probe as auto_setup_probe
         from latticeai.services.model_recommendation import recommend_catalog
 
         profile = await asyncio.to_thread(lambda: auto_setup_probe().to_json())

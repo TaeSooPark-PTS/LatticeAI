@@ -290,7 +290,7 @@ def create_workspace_router(context: AppContext) -> APIRouter:
         # not_recommended) for this machine, used by the onboarding model step.
         catalog = None
         try:
-            from auto_setup import probe as auto_setup_probe
+            from latticeai.setup.auto_setup import probe as auto_setup_probe
             from latticeai.services.model_recommendation import recommend_catalog
             profile = await asyncio.to_thread(lambda: auto_setup_probe().to_json())
             catalog = recommend_catalog(profile, engine="local_mlx")

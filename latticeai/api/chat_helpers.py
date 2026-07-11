@@ -26,6 +26,13 @@ def pair_user_history(history: List[Dict], user_email: str) -> List[Dict]:
     for item in history:
         if item.get("role") == "assistant":
             if include_next_assistant:
+                assistant_user = item.get("user_email")
+                if assistant_user and assistant_user != user_email:
+                    # Concurrent requests can interleave rows in the global
+                    # history order.  A reply explicitly owned by somebody
+                    # else is never this user's reply; keep waiting for the
+                    # next correctly-owned (or legacy ownerless) assistant.
+                    continue
                 paired.append(item)
                 include_next_assistant = False
         elif item.get("user_email") == user_email:
@@ -207,7 +214,17 @@ def build_recent_chat_context(
     conversation_id: Optional[str] = None,
     workspace_id: Optional[str] = None,
 ) -> str:
-    history = get_history()
+    if user_email:
+        # Apply identity/workspace isolation in the durable query rather than
+        # relying only on positional post-filtering.  In particular, never
+        # admit legacy-global rows into an authenticated model prompt.
+        history = get_history(
+            user_email=user_email,
+            allowed_workspaces={workspace_id} if workspace_id is not None else None,
+            include_legacy_global=False,
+        )
+    else:
+        history = get_history()
     if workspace_id is not None:
         history = [
             item for item in history

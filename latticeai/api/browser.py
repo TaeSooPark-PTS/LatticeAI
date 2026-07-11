@@ -26,6 +26,7 @@ from urllib.parse import SplitResult, urljoin, urlsplit, urlunsplit
 from fastapi import APIRouter, HTTPException, Request
 from pydantic import BaseModel
 
+from latticeai import __version__
 from lattice_brain.ingestion import IngestionItem
 
 MAX_TAB_BYTES = 4 * 1024 * 1024          # 4 MB per captured tab payload
@@ -288,7 +289,7 @@ def _default_fetch_url(
                             "Accept-Encoding": "identity",
                             "Connection": "close",
                             "Host": _origin_host_header(hostname, port, parsed.scheme.lower()),
-                            "User-Agent": "LatticeAI-local/9.0 (+local-first knowledge graph)",
+                            "User-Agent": f"LatticeAI-local/{__version__} (+local-first knowledge graph)",
                         },
                         extensions={"sni_hostname": hostname},
                     )

@@ -142,5 +142,14 @@ def test_workspace_export_really_filters(tmp_path):
 
     artifact = portability.export(workspace_id="org-acme")
     ids = {n["id"] for n in artifact["nodes"]}
-    assert "n-org" in ids and "n-legacy" in ids
+    assert ids == {"n-org"}
     assert "n-other" not in ids, "another workspace's rows must not leak into the bundle"
+
+    legacy_compatible = portability.export(
+        workspace_id="org-acme",
+        include_legacy_global=True,
+    )
+    assert {node["id"] for node in legacy_compatible["nodes"]} == {
+        "n-org",
+        "n-legacy",
+    }

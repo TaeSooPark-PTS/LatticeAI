@@ -5,6 +5,7 @@ from __future__ import annotations
 import hashlib
 import json
 import logging
+import os
 import secrets
 import threading
 import time
@@ -13,6 +14,8 @@ from pathlib import Path
 from typing import Dict, Optional, Tuple
 
 from fastapi import APIRouter, HTTPException, Request
+
+from latticeai.core.io_utils import atomic_write_json
 
 
 _PERMISSION_ACTION_LABELS = {
@@ -37,6 +40,12 @@ class PermissionGateway:
         self.discord_permission_channel = config.discord_permission_channel
         self.permission_monitor_secret = config.permission_monitor_secret
         self.perm_queue_file = data_dir / "permission_queue.json"
+        explicit_ui_url = os.getenv("LATTICEAI_PERMISSION_UI_URL", "").strip()
+        public_url = os.getenv("LATTICEAI_PUBLIC_URL", "").strip().rstrip("/")
+        default_ui_url = f"http://127.0.0.1:{getattr(config, 'port', 4825)}/app#/admin/permissions"
+        self.permission_ui_url = explicit_ui_url or (
+            f"{public_url}/app#/admin/permissions" if public_url else default_ui_url
+        )
 
     @staticmethod
     def token_hash(token: str) -> str:
@@ -56,10 +65,9 @@ class PermissionGateway:
             return {}
 
     def _write_queue(self, queue: Dict) -> None:
-        self.perm_queue_file.parent.mkdir(parents=True, exist_ok=True)
-        tmp = self.perm_queue_file.with_suffix(self.perm_queue_file.suffix + ".tmp")
-        tmp.write_text(json.dumps(queue, ensure_ascii=False, indent=2), encoding="utf-8")
-        tmp.replace(self.perm_queue_file)
+        # Approval metadata contains local paths and identities. Keep writes
+        # atomic and private even when the caller's umask is permissive.
+        atomic_write_json(self.perm_queue_file, queue)
 
     def _perm_queue_write(self, token: str, record: Dict[str, object]) -> None:
         try:
@@ -72,14 +80,37 @@ class PermissionGateway:
             logging.warning("perm_queue_write failed: %s", exc)
 
     def _perm_queue_remove(self, token: str) -> None:
+        self._perm_queue_remove_key(self.token_hash(token))
+
+    def _perm_queue_remove_key(self, key: str) -> None:
         try:
-            key = self.token_hash(token)
             with self.perm_queue_lock:
                 queue = self._read_queue()
                 queue.pop(key, None)
                 self._write_queue(queue)
         except Exception as exc:
             logging.warning("perm_queue_remove failed: %s", exc)
+
+    def resolve_approval_key(self, token_or_hint: str) -> str:
+        """Resolve either the private token or its UI-safe eight-char hint.
+
+        Only an authenticated administrator/monitor reaches approval routes.
+        Supporting a unique hint lets the admin UI act on pending requests
+        without ever receiving the bearer-grade full token.
+        """
+        value = str(token_or_hint or "")
+        direct_key = self.token_hash(value)
+        with self.local_approval_lock:
+            if direct_key in self.local_approvals:
+                return direct_key
+            matches = [
+                key
+                for key, record in self.local_approvals.items()
+                if len(value) == 8 and record.get("token_hint") == value
+            ]
+        if len(matches) > 1:
+            raise HTTPException(status_code=409, detail="요청 ID가 중복되었습니다. 관리자 목록을 새로고침하세요.")
+        return matches[0] if matches else direct_key
 
     @staticmethod
     def normalize_local_path_for_approval(path: str) -> str:
@@ -91,6 +122,7 @@ class PermissionGateway:
 
     def _notify_discord_permission_sync(self, token: str, path: str, action: str, user_email: str) -> None:
         sent = False
+        token_hint = self.token_hint(token)
         if self.discord_bot_token and self.discord_permission_channel:
             action_label = _PERMISSION_ACTION_LABELS.get(action, action)
             expires_at_iso = time.strftime(
@@ -102,9 +134,9 @@ class PermissionGateway:
                 f"**경로:** `{path}`\n"
                 f"**작업:** {action_label}\n"
                 f"**요청자:** {user_email}\n"
-                f"**토큰:** `{token}`\n"
+                f"**요청 ID:** `{token_hint}`\n"
                 f"**만료:** {expires_at_iso}\n\n"
-                f"승인하려면 `승인 {token[:8]}` / 거부하려면 `거부 {token[:8]}` 라고 답장하세요."
+                f"승인/거부: {self.permission_ui_url}"
             )
             payload = json.dumps({"content": msg}, ensure_ascii=False).encode("utf-8")
             try:
@@ -139,15 +171,11 @@ class PermissionGateway:
                                 {"name": "경로", "value": f"`{path}`", "inline": False},
                                 {"name": "작업", "value": action_label, "inline": True},
                                 {"name": "요청자", "value": user_email, "inline": True},
-                                {"name": "토큰", "value": f"`{token}`", "inline": False},
+                                {"name": "요청 ID", "value": f"`{token_hint}`", "inline": False},
                                 {"name": "만료", "value": expires_at_iso, "inline": True},
                             ],
                             "footer": {
-                                "text": (
-                                    "승인: POST /permissions/approve/{token}  |  "
-                                    "거부: POST /permissions/deny/{token}  |  "
-                                    "목록: GET /permissions/pending"
-                                )
+                                "text": f"승인/거부 UI: {self.permission_ui_url}"
                             },
                         }
                     ]
@@ -308,7 +336,7 @@ def create_permissions_router(
     @router.post("/permissions/approve/{token}")
     async def permissions_approve(token: str, request: Request):
         gateway.check_permission_auth(request, token)
-        key = gateway.token_hash(token)
+        key = gateway.resolve_approval_key(token)
         with gateway.local_approval_lock:
             record = gateway.local_approvals.get(key)
             if not record:
@@ -317,7 +345,7 @@ def create_permissions_router(
                 gateway.local_approvals.pop(key, None)
                 raise HTTPException(status_code=410, detail="토큰이 만료되었습니다.")
             record["approved"] = True
-        gateway._perm_queue_remove(token)
+        gateway._perm_queue_remove_key(key)
         logging.info(
             "Permission approved: token=%s path=%s action=%s user=%s",
             gateway.token_hint(token),
@@ -336,10 +364,10 @@ def create_permissions_router(
     @router.post("/permissions/deny/{token}")
     async def permissions_deny(token: str, request: Request):
         gateway.check_permission_auth(request, token)
-        key = gateway.token_hash(token)
+        key = gateway.resolve_approval_key(token)
         with gateway.local_approval_lock:
             record = gateway.local_approvals.pop(key, None)
-        gateway._perm_queue_remove(token)
+        gateway._perm_queue_remove_key(key)
         if not record:
             raise HTTPException(status_code=404, detail="토큰이 없거나 이미 처리되었습니다.")
         logging.info(

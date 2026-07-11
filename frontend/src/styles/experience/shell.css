@@ -1,0 +1,365 @@
+/*
+ * Lattice human-first experience layer
+ *
+ * The legacy stylesheet still contains feature-specific visualizations. This
+ * file owns the product shell, conversation surface, and shared content
+ * grammar so ordinary screens feel like a calm workspace instead of an
+ * operations dashboard. Keep this import after styles.css.
+ */
+
+:root {
+  --experience-content: 64rem;
+  --experience-reading: 46rem;
+  --experience-radius: 14px;
+  --experience-control-radius: 10px;
+  --experience-header-height: 4.25rem;
+  --experience-shadow: 0 18px 50px hsl(30 18% 18% / 0.08);
+}
+
+html {
+  scroll-padding-top: calc(var(--experience-header-height) + 1rem);
+}
+
+body {
+  background: hsl(var(--background));
+}
+
+.brain-organism {
+  will-change: auto;
+}
+
+.brain-organism:is(:hover, :focus-visible),
+.brain-organism[data-state="thinking"],
+.brain-organism[data-state="recalling"],
+.brain-organism[data-state="acting"] {
+  will-change: transform, filter;
+}
+
+button,
+a,
+input,
+textarea,
+select,
+summary {
+  -webkit-tap-highlight-color: transparent;
+}
+
+:where(button, a, input, textarea, select, summary):focus-visible {
+  outline: 2px solid hsl(var(--ring));
+  outline-offset: 2px;
+}
+
+/* ── Product shell ───────────────────────────────────────────────────── */
+
+.brain-space {
+  min-height: 100dvh;
+  overflow: visible;
+  background: hsl(var(--background));
+}
+
+.brain-field {
+  display: none;
+}
+
+.core-service-unavailable {
+  position: fixed;
+  z-index: 90;
+  top: calc(var(--experience-header-height) + 0.6rem);
+  left: 50%;
+  display: flex;
+  width: min(calc(100% - 2rem), 46rem);
+  align-items: center;
+  gap: 0.7rem;
+  transform: translateX(-50%);
+  border: 1px solid hsl(var(--warning) / 0.45);
+  border-radius: var(--experience-control-radius);
+  background: hsl(var(--surface) / 0.98);
+  box-shadow: var(--experience-shadow);
+  color: hsl(var(--foreground));
+  padding: 0.7rem 0.8rem;
+}
+
+.core-service-unavailable > svg {
+  flex: 0 0 auto;
+  color: hsl(var(--warning));
+}
+
+.core-service-unavailable > div {
+  display: grid;
+  min-width: 0;
+  flex: 1;
+  gap: 0.1rem;
+}
+
+.core-service-unavailable strong,
+.core-service-unavailable span {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.core-service-unavailable span {
+  color: hsl(var(--muted-foreground));
+  font-size: 0.75rem;
+}
+
+.core-service-unavailable button {
+  display: inline-flex;
+  min-height: 2rem;
+  flex: 0 0 auto;
+  align-items: center;
+  gap: 0.35rem;
+  border: 1px solid hsl(var(--border));
+  border-radius: 8px;
+  background: hsl(var(--background));
+  padding: 0.35rem 0.6rem;
+  font-size: 0.75rem;
+  font-weight: 700;
+}
+
+.brain-shell-page {
+  min-height: 100dvh;
+  height: auto;
+  overflow: visible;
+  padding: 0 0 4rem;
+}
+
+.brain-skip-link {
+  position: fixed;
+  top: 0.5rem;
+  left: 50%;
+  z-index: 100;
+  transform: translate(-50%, -180%);
+  border-radius: var(--experience-control-radius);
+  background: hsl(var(--primary));
+  color: hsl(var(--primary-foreground));
+  padding: 0.65rem 1rem;
+  font-size: 0.82rem;
+  font-weight: 760;
+  transition: transform 140ms ease;
+}
+
+.brain-skip-link:focus {
+  transform: translate(-50%, 0);
+}
+
+.brain-topbar {
+  position: sticky;
+  top: 0;
+  z-index: 40;
+  width: 100%;
+  max-width: none;
+  min-height: var(--experience-header-height);
+  margin: 0;
+  padding: 0.65rem max(1rem, calc((100vw - 72rem) / 2));
+  border: 0;
+  border-bottom: 1px solid hsl(var(--border) / 0.84);
+  border-radius: 0;
+  background: hsl(var(--background) / 0.94);
+  box-shadow: none;
+  backdrop-filter: blur(18px) saturate(1.15);
+}
+
+.brain-shell-brand {
+  gap: 0.55rem;
+  min-height: 2.75rem;
+  padding: 0 0.35rem 0 0;
+  font-size: 1rem;
+  font-weight: 780;
+  text-decoration: none;
+}
+
+.brain-shell-brand-mark {
+  width: 2rem;
+  height: 2rem;
+  border-radius: 10px;
+  background: hsl(var(--brain-core) / 0.16);
+  color: hsl(var(--brain-core));
+  box-shadow: none;
+}
+
+.brain-shell-brand-mark svg {
+  width: 1.15rem;
+  height: 1.15rem;
+}
+
+.brain-desktop-nav {
+  display: flex;
+  align-items: center;
+  gap: 0.15rem;
+  margin-left: clamp(1rem, 3vw, 2.5rem);
+}
+
+.brain-nav-link {
+  position: relative;
+  display: inline-flex;
+  min-height: 2.75rem;
+  align-items: center;
+  gap: 0.42rem;
+  border-radius: var(--experience-control-radius);
+  color: hsl(var(--muted-foreground));
+  padding: 0 0.78rem;
+  font-size: 0.86rem;
+  font-weight: 650;
+  text-decoration: none;
+  transition: color 140ms ease, background 140ms ease;
+}
+
+.brain-nav-link .nav-icon {
+  width: 1rem;
+  height: 1rem;
+}
+
+.brain-nav-link:hover {
+  background: hsl(var(--muted) / 0.62);
+  color: hsl(var(--foreground));
+}
+
+.brain-nav-link.is-active {
+  background: hsl(var(--primary) / 0.1);
+  color: hsl(var(--primary));
+}
+
+.brain-nav-link.is-active::after {
+  content: "";
+  position: absolute;
+  right: 0.75rem;
+  bottom: 0.22rem;
+  left: 0.75rem;
+  height: 2px;
+  border-radius: 99px;
+  background: currentColor;
+}
+
+.brain-shell-actions {
+  display: flex;
+  align-items: center;
+  margin-left: auto;
+}
+
+.brain-more-button.brain-menu-button {
+  display: inline-flex;
+  width: auto;
+  min-width: 2.75rem;
+  min-height: 2.75rem;
+  gap: 0.38rem;
+  padding: 0 0.7rem;
+  color: hsl(var(--muted-foreground));
+}
+
+.brain-more-button svg {
+  width: 1.1rem;
+  height: 1.1rem;
+}
+
+.brain-more-button span {
+  font-size: 0.82rem;
+  font-weight: 680;
+}
+
+.brain-more-button:hover,
+.brain-more-button.is-open {
+  background: hsl(var(--muted) / 0.7);
+  color: hsl(var(--foreground));
+}
+
+.brain-more-scrim {
+  position: fixed;
+  inset: 0;
+  z-index: 54;
+  background: hsl(40 8% 8% / 0.14);
+  backdrop-filter: none;
+}
+
+.brain-more-popover {
+  position: fixed;
+  top: calc(var(--experience-header-height) - 0.15rem);
+  right: max(1rem, calc((100vw - 72rem) / 2));
+  z-index: 60;
+  width: min(22rem, calc(100vw - 2rem));
+  max-height: calc(100dvh - var(--experience-header-height) - 1rem);
+  overflow-y: auto;
+  border: 1px solid hsl(var(--border));
+  border-radius: var(--experience-radius);
+  background: hsl(var(--surface));
+  box-shadow: var(--experience-shadow);
+  padding: 0.65rem;
+}
+
+.brain-more-popover-head {
+  display: flex;
+  min-height: 2.8rem;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0 0.3rem 0 0.65rem;
+}
+
+.brain-more-popover-head strong {
+  font-size: 0.92rem;
+}
+
+.brain-more-section {
+  padding: 0.55rem 0;
+}
+
+.brain-more-section + .brain-more-section {
+  border-top: 1px solid hsl(var(--border) / 0.75);
+}
+
+.brain-more-section-label {
+  display: block;
+  padding: 0.2rem 0.7rem 0.45rem;
+  color: hsl(var(--muted-foreground));
+  font-size: 0.74rem;
+  font-weight: 660;
+}
+
+.brain-more-nav {
+  display: grid;
+  gap: 0.12rem;
+}
+
+.brain-more-nav-item.brain-sidebar-item {
+  min-height: 2.85rem;
+  text-decoration: none;
+}
+
+.brain-more-utilities.brain-sidebar-foot {
+  display: grid;
+  gap: 0.45rem;
+  margin: 0;
+  border-top: 1px solid hsl(var(--border) / 0.75);
+  padding: 0.75rem 0 0;
+}
+
+.brain-more-utilities .brain-sidebar-section-label {
+  padding: 0.2rem 0.7rem;
+}
+
+.brain-more-utilities :is(.workspace-profile-trigger, .vscode-sync-status, .admin-access-gate) {
+  width: 100%;
+  max-width: none;
+}
+
+.brain-more-utilities .workspace-profile-popover {
+  right: 0;
+  left: auto;
+}
+
+.brain-shell-content {
+  width: min(calc(100% - 2rem), var(--experience-content));
+  margin: 0 auto;
+  outline: none;
+}
+
+.brain-mobile-nav {
+  display: none;
+}
+
+.brain-shell-loader {
+  min-height: 16rem;
+  border: 0;
+  background: transparent;
+  color: hsl(var(--muted-foreground));
+  font-size: 0.88rem;
+}

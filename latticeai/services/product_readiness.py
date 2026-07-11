@@ -1,4 +1,4 @@
-"""Machine-checkable *product* readiness gates for the 8.4 line.
+"""Machine-checkable product readiness gates for the current release.
 
 Where ``architecture_readiness`` proves the internal structure is sound, this
 module answers the product question the 8.4 release exists to settle: *does the
@@ -18,7 +18,7 @@ from typing import Any, Dict, List
 
 from latticeai.services.architecture_readiness import architecture_readiness
 
-PRODUCT_VERSION_TARGET = "9.0.0"
+PRODUCT_VERSION_TARGET = "9.1.0"
 
 
 @dataclass(frozen=True)
@@ -41,8 +41,8 @@ PRODUCT_GATES: List[ProductGate] = [
             "frontend/src/features/brain/BrainConversation.tsx::BrainBriefPanel",
             "frontend/src/features/brain/BrainHome.tsx",
             "frontend/src/App.tsx::brain-mobile-nav",
-            "auto_setup.py",
-            "setup_wizard.py",
+            "latticeai/setup/auto_setup.py",
+            "latticeai/setup/wizard.py",
         ],
     ),
     ProductGate(
@@ -58,7 +58,8 @@ PRODUCT_GATES: List[ProductGate] = [
         title="File action requests create artifacts instead of code-only answers",
         evidence=[
             "latticeai/api/chat.py::is_file_action_request",
-            "latticeai/api/chat.py::direct_write_file",
+            "latticeai/api/chat_intents.py::direct_file_action",
+            "latticeai/api/chat_intents.py::direct_write_file",
             "tests/unit/test_chat_telegram_decoupling.py::test_chat_file_creation_intent_writes_real_file",
         ],
     ),
@@ -77,10 +78,10 @@ PRODUCT_GATES: List[ProductGate] = [
         evidence=[
             "package.json::release:artifacts",
             "package.json::release:validate",
-            "README.md::dist/ltcai-9.0.0-py3-none-any.whl",
-            "README.md::dist/ltcai-9.0.0.tar.gz",
-            "README.md::dist/ltcai-9.0.0.vsix",
-            "README.md::ltcai-9.0.0.tgz",
+            f"README.md::dist/ltcai-{PRODUCT_VERSION_TARGET}-py3-none-any.whl",
+            f"README.md::dist/ltcai-{PRODUCT_VERSION_TARGET}.tar.gz",
+            f"README.md::dist/ltcai-{PRODUCT_VERSION_TARGET}.vsix",
+            f"README.md::ltcai-{PRODUCT_VERSION_TARGET}.tgz",
             "scripts/validate_release_artifacts.py",
             "scripts/release_smoke.py",
             "Dockerfile",
@@ -96,14 +97,14 @@ PRODUCT_GATES: List[ProductGate] = [
         title="Release story is documented and honest",
         evidence=[
             "README.md",
-            "README.md::The current release is **9.0.0",
-            "SECURITY.md::9.0.x (latest)",
-            "vscode-extension/README.md::**9.0.0",
-            "docs/CHANGELOG.md::## [9.0.0]",
+            f"README.md::The current release is **{PRODUCT_VERSION_TARGET}",
+            f"SECURITY.md::{'.'.join(PRODUCT_VERSION_TARGET.split('.')[:2])}.x (latest)",
+            f"vscode-extension/README.md::**{PRODUCT_VERSION_TARGET}",
+            f"docs/CHANGELOG.md::## [{PRODUCT_VERSION_TARGET}]",
             "FEATURE_STATUS.md",
-            "RELEASE_NOTES_v9.0.0.md",
+            f"RELEASE_NOTES_v{PRODUCT_VERSION_TARGET}.md",
             "latticeai/core/agent.py::SingleAgentRuntime",
-            "latticeai/core/agent.py::AgentRuntime = SingleAgentRuntime",
+            "lattice_brain/runtime/agent_runtime.py::class AgentRuntime",
             "lattice_brain/runtime/contracts.py::runtime-boundary/v1",
             "lattice_brain/runtime/contracts.py::RuntimeBoundaryProtocol",
             "lattice_brain/runtime/agent_runtime.py::def boundary",
@@ -116,7 +117,7 @@ PRODUCT_GATES: List[ProductGate] = [
         id="ecosystem-path",
         title="Community and plugin growth path is explicit",
         evidence=[
-            "docs/COMMUNITY_AND_PLUGINS.md::9.0.0",
+            f"docs/COMMUNITY_AND_PLUGINS.md::{PRODUCT_VERSION_TARGET}",
             "docs/PLUGIN_SDK.md",
             "plugins/README.md",
             "plugins/hello-world/plugin.json",

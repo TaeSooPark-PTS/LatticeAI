@@ -2,10 +2,10 @@ import asyncio
 from types import SimpleNamespace
 
 import pytest
-from fastapi import HTTPException
 
 import auto_setup
 from latticeai.services import model_engines
+from latticeai.services.model_errors import ModelRuntimeError
 from latticeai.services.process_audit import (
     CommandConfirmationError,
     command_plan,
@@ -66,7 +66,7 @@ def test_engine_install_refuses_missing_confirmation_token() -> None:
     plan = model_engines.engine_install_plan("local_mlx")
 
     assert plan["confirmation_token"]
-    with pytest.raises(HTTPException) as exc:
+    with pytest.raises(ModelRuntimeError) as exc:
         model_engines.install_engine("local_mlx")
 
     assert exc.value.status_code == 403

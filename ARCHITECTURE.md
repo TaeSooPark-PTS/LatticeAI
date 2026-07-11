@@ -1,6 +1,6 @@
 # Lattice AI Current Architecture
 
-Current release: **9.0.0 — Code Review Closure & Runtime Cleanup**.
+Current release: **9.1.0 — Code Review Completion & Fail-Closed Runtime**.
 
 Lattice AI is a local-first Digital Brain platform. The current architecture is
 organized around a private Brain, replaceable model runtimes, explicit tool
@@ -52,9 +52,10 @@ Key boundaries:
 
 - `frontend/src` owns product UX and static app behavior.
 - `latticeai.app_factory` is the FastAPI composition root.
-- `latticeai.runtime` owns runtime assembly seams for config, security, Brain,
-  model, tool, and server construction.
-- `latticeai.api` owns route-level behavior.
+- `latticeai.runtime` owns typed config, security, Brain, model, platform, and
+  router assembly stages; no stage exports ambient `locals()` state.
+- `latticeai.api` owns route-level behavior. Chat contracts, history, documents,
+  and streaming are focused modules over service-owned logic.
 - `latticeai.services` owns product services and execution services.
 - `latticeai.core` owns lower-level registries and helpers.
 - `lattice_brain` owns Brain Core, graph, memory, ingestion, and storage.
@@ -90,7 +91,7 @@ sequenceDiagram
 
 ## Product Flow
 
-The 9.0.0 first-run and daily-use flow is:
+The 9.1.0 first-run and daily-use flow is:
 
 1. Wake Brain / login.
 2. Pick owner/workspace context.
@@ -123,13 +124,15 @@ Current UX rules:
 - Mobile layouts preserve the Brain and composer in the first viewport.
 - Static release assets are generated under `static/app` and must match
   `asset-manifest.json`.
+- Critical API failures produce an explicit unavailable state and are never
+  normalized into healthy empty Brain data.
 
 ## FastAPI Sidecar
 
 `latticeai.app_factory` builds the local app without import-time MLX/GPU
 initialization, filesystem writes, or network calls. Runtime assembly is
-dependency-injected through focused runtime modules instead of global mutable
-state.
+dependency-injected through immutable typed stages instead of ambient locals or
+global mutable model state.
 
 Important expectations:
 
@@ -138,6 +141,8 @@ Important expectations:
 - keep static serving, API routers, MCP install state, and runtime context
   separately testable;
 - keep model and tool execution behind explicit runtime boundaries.
+- keep API-specific HTTP errors at the route boundary and domain/model errors in
+  services.
 
 ## Brain Core
 
@@ -154,16 +159,19 @@ migration safety, and equivalence tests.
 
 ## Runtime Contracts
 
-The 8.0 architecture contract remains active in 9.0.0:
+The 8.0 architecture contract remains active in 9.1.0:
 
 - AgentRuntime has explicit preview/readiness contracts and does not execute
   tools during preview.
 - ToolRegistry owns dispatch, permissions, manifest, diagnostics, and MCP
   install state, with direct HTTP/MCP policy gates enforced before execution.
 - Config values are centralized through runtime config objects.
-- Server decomposition continues to shrink monolithic app factory helpers.
-- Knowledge Graph hardening remains guarded by compatibility and equivalence
-  tests.
+- Server decomposition uses typed stages and an explicit legacy export allowlist.
+- Model routing/loading uses injected state; request snapshots prevent
+  concurrent generations from changing one another's selected model.
+- Knowledge Graph hardening remains guarded by compatibility, equivalence, and
+  fail-closed workspace-scope tests. Unknown scope is private; legacy-global
+  reads require explicit compatibility opt-in.
 - Legacy compatibility shims are tracked in a managed inventory with owners,
   replacements, and removal phases.
 - AgentRuntime and WorkflowEngine expose release-checkable orchestration
@@ -173,7 +181,7 @@ The 8.0 architecture contract remains active in 9.0.0:
 
 SQLite is the live local Brain store. PostgreSQL/pgvector remains optional
 scale/migration tooling and must be explicitly configured; it is not the
-default live KnowledgeGraphStore backend in 9.0.0. Backups and `.latticebrain`
+default live KnowledgeGraphStore backend in 9.1.0. Backups and `.latticebrain`
 archives are user-controlled portability paths.
 
 ## Local-First Boundary
@@ -184,13 +192,13 @@ Docker/Postgres setup, marketplace refresh, and update checks are opt-in paths.
 
 ## Release Artifact Map
 
-9.0.0 exact artifact names:
+9.1.0 exact artifact names:
 
-- `dist/ltcai-9.0.0-py3-none-any.whl`
-- `dist/ltcai-9.0.0.tar.gz`
-- `ltcai-9.0.0.tgz`
-- `dist/ltcai-9.0.0.vsix`
-- `src-tauri/target/release/bundle/dmg/Lattice AI_9.0.0_aarch64.dmg`
+- `dist/ltcai-9.1.0-py3-none-any.whl`
+- `dist/ltcai-9.1.0.tar.gz`
+- `ltcai-9.1.0.tgz`
+- `dist/ltcai-9.1.0.vsix`
+- `src-tauri/target/release/bundle/dmg/Lattice AI_9.1.0_aarch64.dmg`
 
 Do not document or use wildcard artifact upload commands.
 

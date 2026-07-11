@@ -21,11 +21,11 @@ from __future__ import annotations
 
 import hashlib
 from dataclasses import dataclass, field
-from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any, Dict, List, Optional
 
 from .runtime.hooks import dispatch_tool
+from .utils import utc_now_iso
 
 # Source types that arrive as a file on disk (read via ingest_document).
 FILE_SOURCE_TYPES = frozenset({"file", "local_file", "upload", "pdf"})
@@ -46,10 +46,6 @@ _MEMORY_NODE_TYPES = {"decision": "Decision", "experience": "Experience", "works
 DEFAULT_MAX_TEXT_BYTES = 5 * 1024 * 1024  # 5 MB of extracted text per item
 
 
-def _now_iso() -> str:
-    return datetime.now(timezone.utc).isoformat()
-
-
 # --- Large candidate 1 slice: incremental / background ingestion support ---
 @dataclass
 class BackgroundIngestionJob:
@@ -57,7 +53,7 @@ class BackgroundIngestionJob:
     job_id: str
     items: List[IngestionItem]
     status: str = "pending"  # pending | running | done | failed
-    created_at: str = field(default_factory=_now_iso)
+    created_at: str = field(default_factory=utc_now_iso)
     processed: int = 0
     total: int = 0
     errors: List[str] = field(default_factory=list)
@@ -188,7 +184,7 @@ class IngestionPipeline:
                 detail="Knowledge Graph is disabled (LATTICEAI_ENABLE_GRAPH).",
             )
 
-        captured_at = item.captured_at or _now_iso()
+        captured_at = item.captured_at or utc_now_iso()
         owner = item.owner or user_email
         tool_name = f"kg_ingest.{source_type}"
         # Only the keys are read by the hook payload, so this dict is safe/cheap.

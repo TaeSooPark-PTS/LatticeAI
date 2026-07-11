@@ -1,17 +1,17 @@
 # Release Notes
 
-This repository keeps public release history from **8.0.0 through 9.0.0**.
+This repository keeps public release history from **8.0.0 through 9.1.0**.
 Earlier release notes and release evidence were removed from the Git tree so the
 history stays focused on the current product era.
 
 ## Current Release
 
-- [v9.0.0 - Code Review Closure & Runtime Cleanup](RELEASE_NOTES_v9.0.0.md)
+- [v9.1.0 - Code Review Completion & Fail-Closed Runtime](RELEASE_NOTES_v9.1.0.md)
 
 ## Recent Release Notes
 
+- [v9.0.0 - Code Review Closure & Runtime Cleanup](RELEASE_NOTES_v9.0.0.md)
 - [v8.9.0 - Scoped Memory & Tool Policy Hardening](RELEASE_NOTES_v8.9.0.md)
-
 - [v8.8.0 - Brain Core Extraction & Recall Proof Hardening](RELEASE_NOTES_v8.8.0.md)
 - [v8.7.0 - Runtime State Hygiene & Release Evidence Refresh](RELEASE_NOTES_v8.7.0.md)
 - [v8.6.0 - Desktop Capture & Navigation Reliability](RELEASE_NOTES_v8.6.0.md)
@@ -27,7 +27,7 @@ history stays focused on the current product era.
 
 ## Canonical History
 
-The canonical 8.0.0-9.0.0 history is maintained in:
+The canonical 8.0.0-9.1.0 history is maintained in:
 
 - [RELEASE.md](RELEASE.md)
 - [docs/CHANGELOG.md](docs/CHANGELOG.md)

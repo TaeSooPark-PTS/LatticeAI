@@ -200,7 +200,10 @@ class KnowledgeGraphProvenanceMixin:
         }
 
     def export_graph_data(
-        self, *, workspace_id: Optional[str] = None
+        self,
+        *,
+        workspace_id: Optional[str] = None,
+        include_legacy_global: bool = False,
     ) -> Dict[str, Any]:
         """Raw, lossless logical export of the graph (nodes/edges/chunks/sources/
         provenance). Vector embeddings are intentionally omitted — they are
@@ -208,10 +211,11 @@ class KnowledgeGraphProvenanceMixin:
         :meth:`backup_database` for a faithful binary copy incl. embeddings.
 
         ``workspace_id`` REALLY filters (v4): the artifact contains only nodes
-        scoped to that workspace plus legacy-global rows (NULL scope, readable
-        machine-wide by definition), with edges/chunks/provenance restricted to
-        the surviving nodes. Pre-v4 this parameter was stamped into the header
-        while the data exported everything — a header that lied.
+        scoped to that workspace, with edges/chunks/provenance restricted to the
+        surviving nodes. Legacy-global rows require the explicit
+        ``include_legacy_global=True`` migration/compatibility opt-in. Pre-v4
+        this parameter was stamped into the header while the data exported
+        everything — a header that lied.
         """
         with self._connect() as conn:
 
@@ -221,10 +225,13 @@ class KnowledgeGraphProvenanceMixin:
                 ]
 
             if workspace_id:
+                scope_sql = "workspace_id = ?"
+                if include_legacy_global:
+                    scope_sql += " OR workspace_id IS NULL"
                 keep_ids = {
                     row["id"]
                     for row in conn.execute(
-                        "SELECT id FROM nodes_v2 WHERE workspace_id = ? OR workspace_id IS NULL",
+                        f"SELECT id FROM nodes_v2 WHERE {scope_sql}",
                         (workspace_id,),
                     ).fetchall()
                 }

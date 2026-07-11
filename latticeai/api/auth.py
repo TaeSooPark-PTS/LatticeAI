@@ -5,7 +5,8 @@ import hashlib
 import logging
 import secrets
 import time
-from typing import Any, Awaitable, Callable, Dict, Optional, Tuple
+from dataclasses import dataclass
+from typing import Any, Awaitable, Callable, Dict, Optional
 from urllib.parse import urlencode
 
 from fastapi import APIRouter, HTTPException, Request
@@ -42,9 +43,20 @@ class UpdateProfileRequest(BaseModel):
     nickname: Optional[str] = None
 
 
-# state → (issued_at, nonce). The nonce binds the eventual ID token to *this*
-# login attempt (replay / token-injection defence); the timestamp expires it.
-_sso_states: Dict[str, Tuple[float, str]] = {}
+@dataclass(frozen=True)
+class _SSOLoginState:
+    """Server-side SSO transaction state consumed exactly once."""
+
+    issued_at: float
+    nonce: str
+    code_verifier: str
+    invite_authorized: bool
+
+
+# The nonce and PKCE verifier bind the callback/token to this login attempt.
+# The signed invite cookie is verified once at login and reduced to a
+# server-side claim, so the callback never trusts a client-supplied invite bit.
+_sso_states: Dict[str, _SSOLoginState] = {}
 
 
 def create_auth_router(
@@ -67,7 +79,10 @@ def create_auth_router(
     open_registration: bool,
     session_ttl: int,
     require_auth: bool = True,
+    secure_cookies: bool = False,
     ensure_identity: Optional[Callable[[str, Dict], None]] = None,
+    invite_gate_enabled: bool = False,
+    invite_authorized: Optional[Callable[[Request], bool]] = None,
     verify_id_token: Callable[..., Dict] = _default_verify_id_token,
     fetch_jwks: Callable[[str], Awaitable[Dict]] = _default_fetch_jwks,
 ) -> APIRouter:
@@ -86,7 +101,19 @@ def create_auth_router(
     @router.post("/register")
     async def register(req: UserRegister, request: Request):
         check_ip_rate_limit(client_ip(request), "register", max_calls=5, window_secs=3600)
-        if not open_registration:
+        invite_claim = bool(
+            invite_gate_enabled
+            and invite_authorized is not None
+            and invite_authorized(request)
+        )
+        if invite_gate_enabled and not invite_claim:
+            raise HTTPException(
+                status_code=403,
+                detail="유효한 서명 초대 권한이 필요합니다.",
+            )
+        # Closed public registration stays closed unless the operator enabled
+        # the invite gate and this exact request carries a valid signed claim.
+        if not open_registration and not invite_claim:
             raise HTTPException(status_code=403, detail="회원가입이 비활성화되어 있습니다. 관리자에게 문의하세요.")
         _enforce_password_policy(req.password)
         email = normalize_email(req.email)
@@ -127,7 +154,14 @@ def create_auth_router(
             "role": role,
             "is_admin": role == "admin",
         })
-        response.set_cookie(key="session_token", value=token, httponly=True, samesite="lax", max_age=session_ttl)
+        response.set_cookie(
+            key="session_token",
+            value=token,
+            httponly=True,
+            secure=secure_cookies,
+            samesite="lax",
+            max_age=session_ttl,
+        )
         return response
 
     @router.get("/auth/sso/config")
@@ -135,7 +169,7 @@ def create_auth_router(
         return public_sso_config()
 
     @router.get("/auth/sso/login")
-    async def sso_login():
+    async def sso_login(request: Request):
         settings = get_sso_settings()
         discovery = await get_sso_discovery()
         if not settings.get("enabled") or not discovery:
@@ -150,7 +184,19 @@ def create_auth_router(
             .rstrip(b"=")
             .decode("ascii")
         )
-        _sso_states[state] = (time.time(), nonce, code_verifier)
+        invite_claim = bool(
+            not invite_gate_enabled
+            or (
+                invite_authorized is not None
+                and invite_authorized(request)
+            )
+        )
+        _sso_states[state] = _SSOLoginState(
+            issued_at=time.time(),
+            nonce=nonce,
+            code_verifier=code_verifier,
+            invite_authorized=invite_claim,
+        )
         params = urlencode({
             "client_id": settings["client_id"],
             "response_type": "code",
@@ -165,12 +211,11 @@ def create_auth_router(
 
     @router.get("/auth/sso/callback")
     async def sso_callback(code: str = "", state: str = "", error: str = ""):
-        if error:
-            return RedirectResponse(f"/?sso_error={error}")
         entry = _sso_states.pop(state, None)
-        if entry is None or time.time() - entry[0] > 300:
+        if entry is None or time.time() - entry.issued_at > 300:
             raise HTTPException(status_code=400, detail="유효하지 않은 SSO 상태입니다.")
-        _, nonce, code_verifier = entry
+        if error:
+            return RedirectResponse(f"/?{urlencode({'sso_error': error})}")
         settings = get_sso_settings()
         discovery = await get_sso_discovery()
         if not settings.get("enabled") or not discovery:
@@ -183,7 +228,7 @@ def create_auth_router(
                 "redirect_uri": settings["redirect_uri"],
                 "client_id": settings["client_id"],
                 "client_secret": settings["client_secret"],
-                "code_verifier": code_verifier,
+                "code_verifier": entry.code_verifier,
             }, headers={"Accept": "application/json"}, timeout=15)
             tokens = r.json()
         id_token = tokens.get("id_token")
@@ -200,7 +245,7 @@ def create_auth_router(
                 jwks=jwks,
                 issuer=issuer,
                 audience=settings["client_id"],
-                nonce=nonce,
+                nonce=entry.nonce,
             )
         except OIDCValidationError as exc:
             logging.warning("SSO ID token rejected: %s", exc)
@@ -213,6 +258,11 @@ def create_auth_router(
             raise HTTPException(status_code=400, detail="이메일을 확인할 수 없습니다.")
         users = load_users()
         if email not in users:
+            if invite_gate_enabled and not entry.invite_authorized:
+                raise HTTPException(
+                    status_code=403,
+                    detail="신규 SSO 계정에는 유효한 서명 초대 권한이 필요합니다.",
+                )
             is_first = len(users) == 0
             users[email] = {
                 "password": "",
@@ -229,7 +279,14 @@ def create_auth_router(
             raise HTTPException(status_code=403, detail="비활성화된 계정입니다.")
         token = create_session(email)
         resp = RedirectResponse("/app", status_code=302)
-        resp.set_cookie("session_token", token, httponly=True, samesite="lax", max_age=session_ttl)
+        resp.set_cookie(
+            "session_token",
+            token,
+            httponly=True,
+            secure=secure_cookies,
+            samesite="lax",
+            max_age=session_ttl,
+        )
         return resp
 
     @router.post("/logout")
@@ -238,7 +295,12 @@ def create_auth_router(
         if token:
             invalidate_session(token)
         response = JSONResponse(content={"status": "ok"})
-        response.delete_cookie("session_token")
+        response.delete_cookie(
+            "session_token",
+            secure=secure_cookies,
+            httponly=True,
+            samesite="lax",
+        )
         return response
 
     @router.post("/account/change-password")

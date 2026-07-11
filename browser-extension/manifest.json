@@ -1,10 +1,17 @@
 {
   "manifest_version": 3,
   "name": "Send to Lattice AI",
-  "version": "9.0.0",
+  "version": "9.1.0",
   "description": "Send the current page into your local Lattice AI Knowledge Graph. Local-only — sends only to 127.0.0.1, never to a cloud server.",
-  "permissions": ["activeTab", "scripting", "storage"],
-  "host_permissions": ["http://127.0.0.1/*", "http://localhost/*"],
+  "permissions": [
+    "activeTab",
+    "scripting",
+    "storage"
+  ],
+  "host_permissions": [
+    "http://127.0.0.1/*",
+    "http://localhost/*"
+  ],
   "action": {
     "default_popup": "popup.html",
     "default_title": "Send page to Lattice AI"

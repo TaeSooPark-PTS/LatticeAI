@@ -6,18 +6,14 @@ import json
 import shutil
 import sqlite3
 import uuid
-from datetime import datetime
 from pathlib import Path
 from typing import Any, Dict, Optional
 
 from .io_utils import atomic_write_json
+from .timeutil import now_iso as _now
 
 
 USER_NAMESPACE = uuid.UUID("5d6d4480-cf79-49c3-a6d0-4c6eec3224d6")
-
-
-def _now() -> str:
-    return datetime.now().isoformat(timespec="seconds")
 
 
 def normalize_email(email: str) -> str:

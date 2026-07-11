@@ -1,6 +1,6 @@
 # Why Lattice AI Exists
 
-Current release: **9.0.0 — Code Review Closure & Runtime Cleanup**.
+Current release: **9.1.0 — Code Review Completion & Fail-Closed Runtime**.
 
 **Lattice AI is a local-first Digital Brain that keeps your knowledge durable
 across any AI model.**

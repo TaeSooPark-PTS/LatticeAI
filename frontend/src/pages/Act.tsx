@@ -12,7 +12,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { ReviewInbox } from "@/features/review/ReviewInbox";
 import { useAppStore } from "@/store/appStore";
 import { asArray, shortId } from "@/lib/utils";
-import { t } from "@/i18n";
+import { t, type Language } from "@/i18n";
 import { navigateHash } from "@/features/brain/navigation";
 
 type ActTab = "agents" | "runs" | "workflows" | "hooks" | "tools";
@@ -102,7 +102,7 @@ function AgentsPanel() {
   const runtimeReady = Boolean(runtimeMeta.ready);
   const runtimeReason = mode === "basic"
     ? t(language, "act.goal.modelRequired")
-    : String(runtimeMeta.unavailable_reason || "Load an LLM-backed model before running agents.");
+    : String(runtimeMeta.unavailable_reason || t(language, "act.runtime.modelUnavailable"));
   const canRunAgent = Boolean(goal.trim()) && runtimeReady && !run.isPending;
   return (
     <div className="work-start-flow grid gap-4 xl:grid-cols-[0.9fr_1.1fr]">
@@ -135,21 +135,21 @@ function AgentsPanel() {
         </div>
       ) : (
         <>
-          <DataPanel title="Readiness" result={runtime.data}>
+          <DataPanel title={t(language, "act.panel.readiness")} result={runtime.data}>
             {(data) => <StructuredView value={data} />}
           </DataPanel>
-          <DataPanel title="Agent team" result={registry.data}>
+          <DataPanel title={t(language, "act.panel.agentTeam")} result={registry.data}>
             {(data) => (
               <div className="space-y-3">
                 <EntityList items={(data as Record<string, unknown>).agents} titleKey="name" metaKey="type" />
                 <div className="flex gap-2">
-                  <Input value={agentName} onChange={(e) => setAgentName(e.target.value)} placeholder="New custom agent name" />
-                  <Button disabled={!agentName.trim() || register.isPending} onClick={() => register.mutate()}>Register</Button>
+                  <Input value={agentName} onChange={(e) => setAgentName(e.target.value)} placeholder={t(language, "act.agent.namePlaceholder")} />
+                  <Button disabled={!agentName.trim() || register.isPending} onClick={() => register.mutate()}>{t(language, "act.agent.register")}</Button>
                 </div>
               </div>
             )}
           </DataPanel>
-          <DataPanel title="What agents can do" result={caps.data}>
+          <DataPanel title={t(language, "act.panel.capabilities")} result={caps.data}>
             {(data) => <StructuredView value={data} />}
           </DataPanel>
         </>
@@ -174,6 +174,7 @@ function RunsPanel({ subTab, onSubTabChange }: { subTab: RunsSubTab; onSubTabCha
 
 function RunsListPanel() {
   const mode = useAppStore((state) => state.mode);
+  const language = useAppStore((state) => state.language);
   const runtime = useQuery({ queryKey: ["agentRuntime"], queryFn: latticeApi.agentRuntime });
   const workflows = useQuery({ queryKey: ["workflowRuns"], queryFn: latticeApi.workflowRuns });
   const pending = useQuery({ queryKey: ["permissions"], queryFn: latticeApi.permissionsPending });
@@ -181,13 +182,13 @@ function RunsListPanel() {
   const workflowRuns = asArray<Record<string, unknown>>((workflows.data?.data as Record<string, unknown>)?.runs);
   return (
     <div className="grid gap-4 xl:grid-cols-2">
-      <DataPanel title="Agent runs" result={runtime.data}>
+      <DataPanel title={t(language, "act.panel.agentRuns")} result={runtime.data}>
         {() => <RunList runs={agentRuns} kind="agent" />}
       </DataPanel>
-      <DataPanel title="Workflow runs" result={workflows.data}>
+      <DataPanel title={t(language, "act.panel.workflowRuns")} result={workflows.data}>
         {() => <RunList runs={workflowRuns} kind="workflow" />}
       </DataPanel>
-      <DataPanel title="Approval inbox" result={pending.data} className="xl:col-span-2">
+      <DataPanel title={t(language, "act.panel.approvalInbox")} result={pending.data} className="xl:col-span-2">
         {(data) => {
           const pendingMap = ((data as Record<string, unknown>).pending || {}) as Record<string, unknown>;
           const rows = Object.entries(pendingMap);
@@ -196,14 +197,14 @@ function RunsListPanel() {
               {rows.map(([token, value], index) => (
                 <div key={token} className="flex flex-wrap items-center justify-between gap-3 rounded-md border border-border p-3">
                   <div>
-                    <div className="font-medium">{mode === "basic" ? `Approval request ${index + 1}` : shortId(token, 16)}</div>
+                    <div className="font-medium">{mode === "basic" ? t(language, "act.approval.request", { index: index + 1 }) : shortId(token, 16)}</div>
                     <div className="mt-2">
                       <KeyValueList data={(value || {}) as Record<string, unknown>} limit={5} />
                     </div>
                   </div>
                   <div className="flex gap-2">
-                    <ActionButton label="Approve" action={() => latticeApi.approvePermission(token)} invalidate={["permissions"]} />
-                    <ActionButton label="Deny" action={() => latticeApi.denyPermission(token)} invalidate={["permissions"]} variant="destructive" />
+                    <ActionButton label={t(language, "act.action.approve")} action={() => latticeApi.approvePermission(token)} invalidate={["permissions"]} />
+                    <ActionButton label={t(language, "act.action.deny")} action={() => latticeApi.denyPermission(token)} invalidate={["permissions"]} variant="destructive" />
                   </div>
                 </div>
               ))}
@@ -216,12 +217,13 @@ function RunsListPanel() {
 }
 
 function RunList({ runs, kind }: { runs: Array<Record<string, unknown>>; kind: "agent" | "workflow" }) {
+  const language = useAppStore((state) => state.language);
   if (!runs.length) return <EntityList items={[]} />;
   return (
     <div className="grid gap-2">
       {runs.slice(0, 10).map((run) => {
         const id = String(run.run_id || run.id);
-        const status = String(run.status || "unknown");
+        const status = String(run.status || t(language, "act.status.unknown"));
         return (
           <div key={id} className="rounded-md border border-border bg-background p-3">
             <div className="flex flex-wrap items-center justify-between gap-2">
@@ -229,11 +231,11 @@ function RunList({ runs, kind }: { runs: Array<Record<string, unknown>>; kind: "
               <Badge variant={status === "succeeded" ? "success" : status === "awaiting_approval" ? "warning" : "muted"}>{status}</Badge>
             </div>
             <div className="mt-2 flex flex-wrap gap-2">
-              <ActionButton label="Stop" action={() => kind === "agent" ? latticeApi.stopAgentRun(id) : latticeApi.stopWorkflowRun(id)} />
+              <ActionButton label={t(language, "act.action.stop")} action={() => kind === "agent" ? latticeApi.stopAgentRun(id) : latticeApi.stopWorkflowRun(id)} />
               {status === "awaiting_approval" && kind === "workflow" ? (
                 <>
-                  <ActionButton label="Resume approved" action={() => latticeApi.resumeWorkflowRun(id, true)} />
-                  <ActionButton label="Resume denied" action={() => latticeApi.resumeWorkflowRun(id, false)} variant="destructive" />
+                  <ActionButton label={t(language, "act.action.resumeApproved")} action={() => latticeApi.resumeWorkflowRun(id, true)} />
+                  <ActionButton label={t(language, "act.action.resumeDenied")} action={() => latticeApi.resumeWorkflowRun(id, false)} variant="destructive" />
                 </>
               ) : null}
             </div>
@@ -250,12 +252,12 @@ function WorkflowsPanel() {
   const defs = useQuery({ queryKey: ["workflowDefinitions"], queryFn: latticeApi.workflowDefinitions });
   const triggers = useQuery({ queryKey: ["workflowTriggers"], queryFn: latticeApi.workflowTriggers });
   const recipes = useQuery({ queryKey: ["automationRecipes"], queryFn: latticeApi.automationRecipes });
-  const [name, setName] = React.useState("Manual workflow");
+  const [name, setName] = React.useState(() => t(language, "act.workflow.defaultName"));
   const [importText, setImportText] = React.useState("");
   const create = useMutation({
     mutationFn: () => latticeApi.createWorkflow({
-      name: name.trim() || "Manual workflow",
-      nodes: manualWorkflowNodes(),
+      name: name.trim() || t(language, "act.workflow.defaultName"),
+      nodes: manualWorkflowNodes(language),
       metadata: { created_from: "desktop-act-ui" },
     }),
     onSuccess: () => qc.invalidateQueries({ queryKey: ["workflowDefinitions"] }),
@@ -288,7 +290,7 @@ function WorkflowsPanel() {
   const nodes: Node[] = workflows.slice(0, 12).map((workflow, index) => ({
     id: String(workflow.id || workflow.workflow_id || index),
     position: { x: (index % 4) * 190, y: Math.floor(index / 4) * 120 },
-    data: { label: String(workflow.name || workflow.id || `Workflow ${index + 1}`) },
+    data: { label: String(workflow.name || workflow.id || t(language, "act.workflow.fallbackName", { index: index + 1 })) },
   }));
   const edges: Edge[] = nodes.slice(1).map((node, index) => ({ id: `e-${index}`, source: nodes[index].id, target: node.id }));
   return (
@@ -311,7 +313,7 @@ function WorkflowsPanel() {
                         </div>
                         <p className="mt-2 text-sm text-muted-foreground">{String(recipe.summary || "")}</p>
                       </div>
-                      <Badge variant="muted">{String(recipe.cadence || "draft")}</Badge>
+                      <Badge variant="muted">{String(recipe.cadence || t(language, "act.status.draft"))}</Badge>
                     </div>
                     <p className="mt-3 text-sm">{String(recipe.user_value || "")}</p>
                     <div className="mt-3 flex flex-wrap gap-2">
@@ -373,8 +375,8 @@ function WorkflowsPanel() {
       </DataPanel>
       <Card>
         <CardHeader>
-          <CardTitle className="flex items-center gap-2"><GitBranch className="h-4 w-4" /> Workflow graph</CardTitle>
-          <CardDescription>See your saved workflows as a simple map.</CardDescription>
+          <CardTitle className="flex items-center gap-2"><GitBranch className="h-4 w-4" /> {t(language, "act.workflow.graph")}</CardTitle>
+          <CardDescription>{t(language, "act.workflow.graphDetail")}</CardDescription>
         </CardHeader>
         <CardContent>
           <div className="h-[440px] rounded-lg border border-border">
@@ -385,18 +387,18 @@ function WorkflowsPanel() {
           </div>
         </CardContent>
       </Card>
-      <DataPanel title="Definitions" result={defs.data}>
+      <DataPanel title={t(language, "act.panel.definitions")} result={defs.data}>
         {() => (
           <div className="space-y-3">
             <div className="grid gap-2 rounded-md border border-border p-3">
               <div className="flex flex-wrap gap-2">
-                <Input value={name} onChange={(event) => setName(event.target.value)} placeholder="Workflow name" />
-                <Button disabled={create.isPending} onClick={() => create.mutate()}>Create</Button>
+                <Input value={name} onChange={(event) => setName(event.target.value)} placeholder={t(language, "act.workflow.namePlaceholder")} />
+                <Button disabled={create.isPending} onClick={() => create.mutate()}>{t(language, "act.workflow.create")}</Button>
               </div>
-              <Textarea value={importText} onChange={(event) => setImportText(event.target.value)} placeholder="Paste a workflow export" />
-              <Button variant="outline" disabled={!importText.trim() || importWorkflow.isPending} onClick={() => importWorkflow.mutate()}>Import</Button>
-              {create.data ? <OperationResult result={create.data} successLabel="Workflow created" /> : null}
-              {importWorkflow.data ? <OperationResult result={importWorkflow.data} successLabel="Workflow imported" /> : null}
+              <Textarea value={importText} onChange={(event) => setImportText(event.target.value)} placeholder={t(language, "act.workflow.importPlaceholder")} />
+              <Button variant="outline" disabled={!importText.trim() || importWorkflow.isPending} onClick={() => importWorkflow.mutate()}>{t(language, "act.workflow.import")}</Button>
+              {create.data ? <OperationResult result={create.data} successLabel={t(language, "act.workflow.created")} /> : null}
+              {importWorkflow.data ? <OperationResult result={importWorkflow.data} successLabel={t(language, "act.workflow.imported")} /> : null}
             </div>
             {workflows.length ? workflows.map((workflow) => {
               const id = String(workflow.id || workflow.workflow_id);
@@ -404,8 +406,8 @@ function WorkflowsPanel() {
                 <div key={id} className="rounded-md border border-border p-3">
                   <div className="font-medium">{String(workflow.name || id)}</div>
                   <div className="mt-2 flex gap-2">
-                    <ActionButton label="Run" action={() => latticeApi.runWorkflow(id)} invalidate={["workflowRuns"]} />
-                    <ActionButton label="Export" action={() => latticeApi.exportWorkflow(id)} />
+                    <ActionButton label={t(language, "act.workflow.run")} action={() => latticeApi.runWorkflow(id)} invalidate={["workflowRuns"]} />
+                    <ActionButton label={t(language, "act.workflow.export")} action={() => latticeApi.exportWorkflow(id)} />
                   </div>
                 </div>
               );
@@ -413,27 +415,27 @@ function WorkflowsPanel() {
           </div>
         )}
       </DataPanel>
-      <DataPanel title="Automation triggers" result={triggers.data} className="xl:col-span-2">
+      <DataPanel title={t(language, "act.panel.triggers")} result={triggers.data} className="xl:col-span-2">
         {(data) => <StructuredView value={data} />}
       </DataPanel>
     </div>
   );
 }
 
-function manualWorkflowNodes(): Array<Record<string, unknown>> {
+function manualWorkflowNodes(language: Language): Array<Record<string, unknown>> {
   return [
     {
       id: "trigger",
       type: "trigger",
-      name: "Manual start",
+      name: t(language, "act.workflow.manualStart"),
       config: { trigger: "manual" },
       next: "output",
     },
     {
       id: "output",
       type: "output",
-      name: "Output",
-      config: { value: "Workflow completed" },
+      name: t(language, "act.workflow.output"),
+      config: { value: t(language, "act.workflow.completed") },
       next: null,
     },
   ];
@@ -441,33 +443,34 @@ function manualWorkflowNodes(): Array<Record<string, unknown>> {
 
 function HooksPanel() {
   const mode = useAppStore((state) => state.mode);
+  const language = useAppStore((state) => state.language);
   const hooks = useQuery({ queryKey: ["hooks"], queryFn: latticeApi.hooks });
   const runs = useQuery({ queryKey: ["hookRuns"], queryFn: latticeApi.hookRuns });
   if (mode === "basic") {
     return (
       <div className="grid gap-4 xl:grid-cols-2">
-        <DataPanel title="Safeguards" result={hooks.data}>
+        <DataPanel title={t(language, "act.panel.safeguards")} result={hooks.data}>
           {(data) => <EntityList items={(data as Record<string, unknown>).hooks} titleKey="name" metaKey="kind" />}
         </DataPanel>
-        <ModeGate title="Detailed hook logs" detail="Switch to Advanced when you need hook run logs and manual diagnostic controls." />
+        <ModeGate title={t(language, "act.hooks.detailed")} detail={t(language, "act.hooks.detailedHint")} />
       </div>
     );
   }
   return (
     <div className="grid gap-4 xl:grid-cols-2">
-      <DataPanel title="Hooks" result={hooks.data}>
+      <DataPanel title={t(language, "act.panel.hooks")} result={hooks.data}>
         {(data) => <EntityList items={(data as Record<string, unknown>).hooks} titleKey="name" metaKey="kind" />}
       </DataPanel>
-      <DataPanel title="Hook run log" result={runs.data}>
+      <DataPanel title={t(language, "act.panel.hookRuns")} result={runs.data}>
         {(data) => <EntityList items={(data as Record<string, unknown>).runs} titleKey="hook_id" metaKey="status" />}
       </DataPanel>
       <Card className="xl:col-span-2">
         <CardHeader>
-        <CardTitle className="flex items-center gap-2"><PauseCircle className="h-4 w-4" /> Run manual hooks</CardTitle>
-          <CardDescription>Trigger hooks deliberately and review the recorded result.</CardDescription>
+        <CardTitle className="flex items-center gap-2"><PauseCircle className="h-4 w-4" /> {t(language, "act.hooks.runManual")}</CardTitle>
+          <CardDescription>{t(language, "act.hooks.runManualHint")}</CardDescription>
         </CardHeader>
         <CardContent>
-          <ActionButton label="Run all manual hooks" action={() => latticeApi.hookRun({ event: "manual" })} invalidate={["hookRuns"]} />
+          <ActionButton label={t(language, "act.hooks.runAll")} action={() => latticeApi.hookRun({ event: "manual" })} invalidate={["hookRuns"]} />
         </CardContent>
       </Card>
     </div>
@@ -475,9 +478,10 @@ function HooksPanel() {
 }
 
 function ToolsPanel() {
+  const language = useAppStore((state) => state.language);
   const tools = useQuery({ queryKey: ["toolPermissions"], queryFn: latticeApi.toolPermissions });
   return (
-    <DataPanel title="Action permissions" result={tools.data}>
+    <DataPanel title={t(language, "act.panel.permissions")} result={tools.data}>
       {(data) => <EntityList items={(data as Record<string, unknown>).permissions || data} titleKey="tool" metaKey="risk" />}
     </DataPanel>
   );

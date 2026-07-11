@@ -24,6 +24,7 @@ def retrieve_context_for_generation(
     max_results: int = 10,
     max_hops: int = 2,
     allowed_workspaces=None,
+    include_legacy_global: bool = False,
 ) -> Dict[str, Any]:
     """Knowledge Graph에서 문서 생성에 필요한 컨텍스트를 검색·조합한다.
 
@@ -40,7 +41,10 @@ def retrieve_context_for_generation(
         return {"query": query, "context_markdown": "", "sources": [], "stats": {}}
 
     scope_kwargs = (
-        {"allowed_workspaces": allowed_workspaces}
+        {
+            "allowed_workspaces": allowed_workspaces,
+            "include_legacy_global": include_legacy_global,
+        }
         if allowed_workspaces is not None
         else {}
     )

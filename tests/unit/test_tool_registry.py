@@ -11,6 +11,7 @@ import re
 from fastapi import HTTPException
 import pytest
 import tools
+import tools.knowledge as knowledge_tools
 
 from latticeai.services.tool_dispatch import ToolDispatchService
 
@@ -40,6 +41,100 @@ def test_tool_registry_owns_permission_views():
     permission = tools.DEFAULT_TOOL_REGISTRY.permission("run_command", {"command": "ls"})
     assert permission["risk"] == "high"
     assert permission["requires_approval"] is True
+
+
+def test_desktop_and_knowledge_tools_require_consent_capability_and_scope():
+    for name in {
+        "computer_screenshot",
+        "computer_status",
+        "chrome_status",
+        "computer_use_status",
+    }:
+        policy = tools.DEFAULT_TOOL_REGISTRY.policy_for(name, {})
+        assert policy["auto_approve"] is False
+        assert policy["capability"] == "desktop:control"
+        assert policy["scope"] == "host"
+
+    for name in {
+        "knowledge_save",
+        "knowledge_search",
+        "knowledge_tree",
+        "obsidian_save",
+        "obsidian_search",
+        "obsidian_tree",
+    }:
+        policy = tools.DEFAULT_TOOL_REGISTRY.policy_for(name, {})
+        assert policy["auto_approve"] is False
+        assert policy["sandbox"] == "workspace"
+        assert policy["scope"] == "workspace_user"
+        assert policy["capability"] in {"workspace:read", "workspace:write"}
+
+
+def test_knowledge_vault_is_partitioned_by_workspace_and_user(tmp_path, monkeypatch):
+    monkeypatch.setattr(knowledge_tools, "BRAIN_DIR", tmp_path)
+
+    saved = knowledge_tools.knowledge_save(
+        "workspace-a secret",
+        title="secret",
+        workspace_id="workspace-a",
+        user_email="alice@example.com",
+    )
+    assert str(tmp_path / ".lattice-scopes") in saved["path"]
+
+    own = knowledge_tools.knowledge_search(
+        "workspace-a secret",
+        workspace_id="workspace-a",
+        user_email="alice@example.com",
+    )
+    other_workspace = knowledge_tools.knowledge_search(
+        "workspace-a secret",
+        workspace_id="workspace-b",
+        user_email="alice@example.com",
+    )
+    other_user = knowledge_tools.knowledge_search(
+        "workspace-a secret",
+        workspace_id="workspace-a",
+        user_email="bob@example.com",
+    )
+
+    assert len(own["results"]) == 1
+    assert other_workspace["results"] == []
+    assert other_user["results"] == []
+
+
+def test_registry_knowledge_execution_fails_closed_without_scope():
+    with pytest.raises(tools.ToolError, match="authenticated workspace"):
+        tools.execute_tool("knowledge_search", {"query": "secret"})
+
+
+def test_desktop_capability_is_admin_only_even_if_policy_approval_is_skipped():
+    users = {
+        "user@example.com": {"role": "user"},
+        "admin@example.com": {"role": "admin"},
+    }
+    service = ToolDispatchService(registry=tools.DEFAULT_TOOL_REGISTRY)
+    service.configure(
+        load_users=lambda: users,
+        get_user_role=lambda email, loaded: loaded[email]["role"],
+    )
+
+    with pytest.raises(HTTPException) as denied:
+        service.enforce_policy(
+            "computer_screenshot",
+            {},
+            current_user="user@example.com",
+            source="test",
+            require_auto_approval=False,
+        )
+    assert denied.value.status_code == 403
+
+    allowed = service.enforce_policy(
+        "computer_screenshot",
+        {},
+        current_user="admin@example.com",
+        source="test",
+    )
+    assert allowed["capability"] == "desktop:control"
 
 
 def test_tool_registry_manifest_reports_contract_diagnostics():

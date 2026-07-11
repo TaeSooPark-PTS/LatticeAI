@@ -13,6 +13,7 @@ import { useQuery } from "@tanstack/react-query";
 import { Brain, Ellipsis, X } from "lucide-react";
 import { navigateHash } from "@/features/brain/navigation";
 import { clamp } from "@/lib/utils";
+import { CoreServiceUnavailableBanner } from "@/components/CoreServiceUnavailableBanner";
 
 const ActPage = React.lazy(() => import("@/pages/Act").then((module) => ({ default: module.ActPage })));
 const BrainPage = React.lazy(() => import("@/pages/Brain").then((module) => ({ default: module.BrainPage })));
@@ -59,6 +60,7 @@ export default function App() {
   return (
     <div className="brain-space">
       <div className="brain-field" />
+      <CoreServiceUnavailableBanner />
       {rawRoute.startsWith("/admin") ? (
         <AdminConsole onBack={() => navigateHash("/brain")} />
       ) : parsed.primary === "act" ? (

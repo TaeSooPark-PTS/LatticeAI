@@ -68,7 +68,9 @@ class _EvalGraph:
     def index_status(self):
         return {"vector_counts": {"node": 3, "chunk": 2}}
 
-    def search(self, q, limit=20):
+    def search(self, q, limit=20, *, allowed_workspaces=None):
+        if allowed_workspaces is not None and "personal" not in allowed_workspaces:
+            return {"matches": []}
         return {
             "matches": [
                 {

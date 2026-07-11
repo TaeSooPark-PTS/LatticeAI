@@ -34,34 +34,86 @@ class SearchService:
             raise ValueError("knowledge graph is disabled")
         return self.graph_store
 
-    def _scope(self, matches, allowed_workspaces):
+    def _scope(
+        self,
+        matches,
+        allowed_workspaces,
+        *,
+        include_legacy_global: bool = False,
+    ):
         """Drop matches scoped to workspaces the caller is not a member of
-        (None = no scoping; legacy-global rows stay visible — documented)."""
+        (None = no scoping; legacy-global requires an explicit opt-in)."""
         if allowed_workspaces is None:
             return matches
         graph = self._require_graph()
-        return graph.filter_scoped_nodes(matches, allowed_workspaces)
-
-    def _graph_search(self, graph, query: str, *, limit: int, allowed_workspaces=None):
         try:
-            return graph.search(query, limit, allowed_workspaces=allowed_workspaces)
+            return graph.filter_scoped_nodes(
+                matches,
+                allowed_workspaces,
+                include_legacy_global=include_legacy_global,
+            )
+        except TypeError:
+            # Compatibility for pre-opt-in graph implementations.  Rebuild the
+            # policy here instead of invoking their legacy fail-open filter.
+            candidates = list(matches)
+            scopes = graph.workspaces_of(
+                [item.get("id") or item.get("node_id") for item in candidates]
+            )
+            allowed = {str(item) for item in allowed_workspaces if item}
+            visible = []
+            for item in candidates:
+                node_id = str(item.get("id") or item.get("node_id") or "")
+                if not node_id or node_id not in scopes:
+                    continue
+                scope = scopes[node_id]
+                if scope is None and include_legacy_global:
+                    visible.append(item)
+                elif scope is not None and str(scope) in allowed:
+                    visible.append(item)
+            return visible
+
+    def _graph_search(
+        self,
+        graph,
+        query: str,
+        *,
+        limit: int,
+        allowed_workspaces=None,
+        include_legacy_global: bool = False,
+    ):
+        try:
+            return graph.search(
+                query,
+                limit,
+                allowed_workspaces=allowed_workspaces,
+                include_legacy_global=include_legacy_global,
+            )
         except TypeError:
             payload = graph.search(query, limit)
             if allowed_workspaces is not None:
                 payload = {
                     **payload,
-                    "matches": graph.filter_scoped_nodes(
+                    "matches": self._scope(
                         payload.get("matches", []),
                         allowed_workspaces,
+                        include_legacy_global=include_legacy_global,
                     ),
                 }
             return payload
 
-    def _relationship_search(self, graph, *, allowed_workspaces=None, **kwargs):
+    def _relationship_search(
+        self,
+        graph,
+        *,
+        allowed_workspaces=None,
+        include_legacy_global: bool = False,
+        **kwargs,
+    ):
         try:
             return graph.relationship_search(
                 **kwargs,
                 allowed_workspaces=allowed_workspaces,
+                include_legacy_global=include_legacy_global,
             )
         except TypeError:
             payload = graph.relationship_search(**kwargs)
@@ -72,25 +124,42 @@ class SearchService:
                         {"id": (rel.get("source") or {}).get("id")},
                         {"id": (rel.get("target") or {}).get("id")},
                     ]
-                    if len(graph.filter_scoped_nodes(endpoints, allowed_workspaces)) == 2:
+                    if len(
+                        self._scope(
+                            endpoints,
+                            allowed_workspaces,
+                            include_legacy_global=include_legacy_global,
+                        )
+                    ) == 2:
                         kept.append(rel)
                 payload = {**payload, "relationships": kept}
             return payload
 
-    def _traverse(self, graph, node_id: str, *, depth: int, limit: int, allowed_workspaces=None):
+    def _traverse(
+        self,
+        graph,
+        node_id: str,
+        *,
+        depth: int,
+        limit: int,
+        allowed_workspaces=None,
+        include_legacy_global: bool = False,
+    ):
         try:
             return graph.traverse(
                 node_id,
                 depth=depth,
                 limit=limit,
                 allowed_workspaces=allowed_workspaces,
+                include_legacy_global=include_legacy_global,
             )
         except TypeError:
             neighborhood = graph.traverse(node_id, depth=depth, limit=limit)
             if allowed_workspaces is not None:
-                nodes = graph.filter_scoped_nodes(
+                nodes = self._scope(
                     neighborhood.get("nodes", []),
                     allowed_workspaces,
+                    include_legacy_global=include_legacy_global,
                 )
                 kept = {item.get("id") for item in nodes}
                 edges = [
@@ -100,25 +169,48 @@ class SearchService:
                 neighborhood = {**neighborhood, "nodes": nodes, "edges": edges}
             return neighborhood
 
-    def _get_node(self, graph, node_id: str, *, allowed_workspaces=None):
+    def _get_node(
+        self,
+        graph,
+        node_id: str,
+        *,
+        allowed_workspaces=None,
+        include_legacy_global: bool = False,
+    ):
         try:
-            return graph.get_node(node_id, allowed_workspaces=allowed_workspaces)
+            return graph.get_node(
+                node_id,
+                allowed_workspaces=allowed_workspaces,
+                include_legacy_global=include_legacy_global,
+            )
         except TypeError:
             node = graph.get_node(node_id)
             if allowed_workspaces is not None:
-                visible = graph.filter_scoped_nodes([node], allowed_workspaces)
+                visible = self._scope(
+                    [node],
+                    allowed_workspaces,
+                    include_legacy_global=include_legacy_global,
+                )
                 if not visible:
                     raise ValueError(f"graph node not found: {node_id}")
                 return visible[0]
             return node
 
-    def keyword_search(self, query: str, *, limit: int = 30, allowed_workspaces=None) -> Dict[str, Any]:
+    def keyword_search(
+        self,
+        query: str,
+        *,
+        limit: int = 30,
+        allowed_workspaces=None,
+        include_legacy_global: bool = False,
+    ) -> Dict[str, Any]:
         graph = self._require_graph()
         payload = self._graph_search(
             graph,
             query,
             limit=limit,
             allowed_workspaces=allowed_workspaces,
+            include_legacy_global=include_legacy_global,
         )
         matches = []
         for rank, match in enumerate(payload.get("matches", []), start=1):
@@ -136,9 +228,25 @@ class SearchService:
                 "metadata": match.get("metadata") or {},
                 "updated_at": match.get("updated_at"),
             })
-        return {"query": query, "mode": "keyword", "matches": self._scope(matches, allowed_workspaces)}
+        return {
+            "query": query,
+            "mode": "keyword",
+            "matches": self._scope(
+                matches,
+                allowed_workspaces,
+                include_legacy_global=include_legacy_global,
+            ),
+        }
 
-    def vector_search(self, query: str, *, limit: int = 30, min_score: float = 0.0, allowed_workspaces=None) -> Dict[str, Any]:
+    def vector_search(
+        self,
+        query: str,
+        *,
+        limit: int = 30,
+        min_score: float = 0.0,
+        allowed_workspaces=None,
+        include_legacy_global: bool = False,
+    ) -> Dict[str, Any]:
         graph = self._require_graph()
         payload = graph.vector_search(query, limit=limit, min_score=min_score)
         matches = []
@@ -163,10 +271,22 @@ class SearchService:
             "mode": "vector",
             "embedding_model": payload.get("embedding_model"),
             "embedding_dim": payload.get("embedding_dim"),
-            "matches": self._scope(matches, allowed_workspaces),
+            "matches": self._scope(
+                matches,
+                allowed_workspaces,
+                include_legacy_global=include_legacy_global,
+            ),
         }
 
-    def graph_search(self, query: str, *, limit: int = 30, expand_depth: int = 1, allowed_workspaces=None) -> Dict[str, Any]:
+    def graph_search(
+        self,
+        query: str,
+        *,
+        limit: int = 30,
+        expand_depth: int = 1,
+        allowed_workspaces=None,
+        include_legacy_global: bool = False,
+    ) -> Dict[str, Any]:
         graph = self._require_graph()
         limit = max(1, min(int(limit or 30), 100))
         expand_depth = max(0, min(int(expand_depth or 1), 3))
@@ -175,12 +295,14 @@ class SearchService:
             query,
             limit=max(limit, 10),
             allowed_workspaces=allowed_workspaces,
+            include_legacy_global=include_legacy_global,
         ).get("matches", [])
         relationships = self._relationship_search(
             graph,
             query=query,
             limit=limit,
             allowed_workspaces=allowed_workspaces,
+            include_legacy_global=include_legacy_global,
         ).get("relationships", [])
         by_id: Dict[str, Dict[str, Any]] = {}
 
@@ -229,6 +351,7 @@ class SearchService:
                     depth=expand_depth,
                     limit=limit * 3,
                     allowed_workspaces=allowed_workspaces,
+                    include_legacy_global=include_legacy_global,
                 )
             except Exception:
                 neighborhood = {"nodes": [], "edges": []}
@@ -256,7 +379,16 @@ class SearchService:
             match["rank"] = rank
             match["score"] = round(float(match["score"]), 6)
             match["source_scores"]["graph"] = round(float(match["source_scores"]["graph"]), 6)
-        return {"query": query, "mode": "graph", "expand_depth": expand_depth, "matches": self._scope(matches, allowed_workspaces)}
+        return {
+            "query": query,
+            "mode": "graph",
+            "expand_depth": expand_depth,
+            "matches": self._scope(
+                matches,
+                allowed_workspaces,
+                include_legacy_global=include_legacy_global,
+            ),
+        }
 
     def hybrid_search(
         self,
@@ -268,14 +400,30 @@ class SearchService:
         graph_limit: int = 30,
         weights: Optional[Mapping[str, float]] = None,
         allowed_workspaces=None,
+        include_legacy_global: bool = False,
     ) -> Dict[str, Any]:
         weights = {**DEFAULT_HYBRID_WEIGHTS, **dict(weights or {})}
         # Scope each channel at the source so out-of-scope rows never enter the
         # fusion set (defense-in-depth — the fused result is re-scoped below too).
         channels = {
-            "keyword": self.keyword_search(query, limit=keyword_limit, allowed_workspaces=allowed_workspaces),
-            "vector": self.vector_search(query, limit=vector_limit, allowed_workspaces=allowed_workspaces),
-            "graph": self.graph_search(query, limit=graph_limit, allowed_workspaces=allowed_workspaces),
+            "keyword": self.keyword_search(
+                query,
+                limit=keyword_limit,
+                allowed_workspaces=allowed_workspaces,
+                include_legacy_global=include_legacy_global,
+            ),
+            "vector": self.vector_search(
+                query,
+                limit=vector_limit,
+                allowed_workspaces=allowed_workspaces,
+                include_legacy_global=include_legacy_global,
+            ),
+            "graph": self.graph_search(
+                query,
+                limit=graph_limit,
+                allowed_workspaces=allowed_workspaces,
+                include_legacy_global=include_legacy_global,
+            ),
         }
         fused: Dict[str, Dict[str, Any]] = {}
         for source, payload in channels.items():
@@ -304,7 +452,11 @@ class SearchService:
                     current.setdefault("graph_context", [])
                     current["graph_context"].extend(result.get("graph_context") or [])
 
-        matches = self._scope(sorted(fused.values(), key=lambda item: item["score"], reverse=True), allowed_workspaces)[: max(1, min(limit, 100))]
+        matches = self._scope(
+            sorted(fused.values(), key=lambda item: item["score"], reverse=True),
+            allowed_workspaces,
+            include_legacy_global=include_legacy_global,
+        )[: max(1, min(limit, 100))]
         for rank, match in enumerate(matches, start=1):
             match["rank"] = rank
             match["score"] = round(float(match["score"]), 6)
@@ -327,14 +479,28 @@ class SearchService:
             "matches": matches,
         }
 
-    def graph(self, *, limit: int = 300, allowed_workspaces=None) -> Dict[str, Any]:
+    def graph(
+        self,
+        *,
+        limit: int = 300,
+        allowed_workspaces=None,
+        include_legacy_global: bool = False,
+    ) -> Dict[str, Any]:
         graph = self._require_graph()
         try:
-            return graph.graph(limit=limit, allowed_workspaces=allowed_workspaces)
+            return graph.graph(
+                limit=limit,
+                allowed_workspaces=allowed_workspaces,
+                include_legacy_global=include_legacy_global,
+            )
         except TypeError:
             payload = graph.graph(limit=limit)
             if allowed_workspaces is not None:
-                nodes = graph.filter_scoped_nodes(payload.get("nodes", []), allowed_workspaces)
+                nodes = self._scope(
+                    payload.get("nodes", []),
+                    allowed_workspaces,
+                    include_legacy_global=include_legacy_global,
+                )
                 kept = {node.get("id") for node in nodes}
                 edges = [
                     edge for edge in payload.get("edges", [])
@@ -351,9 +517,15 @@ class SearchService:
         depth: int = 1,
         limit: int = 100,
         allowed_workspaces=None,
+        include_legacy_global: bool = False,
     ) -> Dict[str, Any]:
         graph = self._require_graph()
-        node = self._get_node(graph, node_id, allowed_workspaces=allowed_workspaces)
+        node = self._get_node(
+            graph,
+            node_id,
+            allowed_workspaces=allowed_workspaces,
+            include_legacy_global=include_legacy_global,
+        )
         payload = {"node": node}
         if include_neighbors:
             neighborhood = self._traverse(
@@ -362,6 +534,7 @@ class SearchService:
                 depth=depth,
                 limit=limit,
                 allowed_workspaces=allowed_workspaces,
+                include_legacy_global=include_legacy_global,
             )
             payload["neighborhood"] = neighborhood
         return payload
@@ -374,6 +547,7 @@ class SearchService:
         relationship_type: str = "",
         limit: int = 30,
         allowed_workspaces=None,
+        include_legacy_global: bool = False,
     ) -> Dict[str, Any]:
         graph = self._require_graph()
         payload = self._relationship_search(
@@ -383,6 +557,7 @@ class SearchService:
             relationship_type=relationship_type,
             limit=limit,
             allowed_workspaces=allowed_workspaces,
+            include_legacy_global=include_legacy_global,
         )
         return payload
 

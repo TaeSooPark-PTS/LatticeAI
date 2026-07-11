@@ -16,11 +16,13 @@ __all__ = [
     "FILE_CREATE_ACTIONS",
     "LOCAL_WRITE_BLOCKED_PREFIXES",
     "RISK_LEVEL_MAP",
+    "SCOPED_KNOWLEDGE_TOOLS",
+    "KNOWLEDGE_WRITE_TOOLS",
     "ToolRegistry",
 ]
 
 from dataclasses import dataclass, field
-from typing import Any, Callable, Dict, Mapping, Optional, TypedDict
+from typing import Any, Callable, Dict, Mapping, NotRequired, Optional, TypedDict
 
 
 class ToolPolicy(TypedDict):
@@ -31,6 +33,8 @@ class ToolPolicy(TypedDict):
     auto_approve: bool
     sandbox: str
     rollback: str
+    capability: NotRequired[str]
+    scope: NotRequired[str]
 
 
 class ToolPermission(TypedDict):
@@ -38,6 +42,8 @@ class ToolPermission(TypedDict):
     risk: str
     requires_approval: bool
     network: bool
+    capability: NotRequired[str]
+    scope: NotRequired[str]
 
 
 TOOL_CATALOG_BRIEF = """
@@ -80,6 +86,17 @@ RISK_LEVEL_MAP = {
     "destructive": "high",
 }
 
+SCOPED_KNOWLEDGE_TOOLS = frozenset({
+    "knowledge_save",
+    "knowledge_search",
+    "knowledge_tree",
+    "obsidian_save",
+    "obsidian_search",
+    "obsidian_tree",
+})
+
+KNOWLEDGE_WRITE_TOOLS = frozenset({"knowledge_save", "obsidian_save"})
+
 
 def _r(sandbox: str = "workspace", rollback: str = "none") -> ToolPolicy:
     return ToolPolicy(
@@ -88,12 +105,23 @@ def _r(sandbox: str = "workspace", rollback: str = "none") -> ToolPolicy:
     )
 
 
-def _rc(sandbox: str = "home", rollback: str = "none") -> ToolPolicy:
+def _rc(
+    sandbox: str = "home",
+    rollback: str = "none",
+    *,
+    capability: str = "",
+    scope: str = "",
+) -> ToolPolicy:
     """Read operation that still requires explicit human consent."""
-    return ToolPolicy(
+    policy = ToolPolicy(
         risk="read", destructive=False, shell=False, network=False,
         auto_approve=False, sandbox=sandbox, rollback=rollback,
     )
+    if capability:
+        policy["capability"] = capability
+    if scope:
+        policy["scope"] = scope
+    return policy
 
 
 def _rs(sandbox: str = "workspace", rollback: str = "none") -> ToolPolicy:
@@ -110,11 +138,22 @@ def _rn(sandbox: str = "system", rollback: str = "none") -> ToolPolicy:
     )
 
 
-def _w(sandbox: str = "workspace", rollback: str = "none") -> ToolPolicy:
-    return ToolPolicy(
+def _w(
+    sandbox: str = "workspace",
+    rollback: str = "none",
+    *,
+    capability: str = "",
+    scope: str = "",
+) -> ToolPolicy:
+    policy = ToolPolicy(
         risk="write", destructive=False, shell=False, network=False,
         auto_approve=False, sandbox=sandbox, rollback=rollback,
     )
+    if capability:
+        policy["capability"] = capability
+    if scope:
+        policy["scope"] = scope
+    return policy
 
 
 def _wa(sandbox: str = "workspace", rollback: str = "none") -> ToolPolicy:
@@ -161,14 +200,30 @@ TOOL_GOVERNANCE: Dict[str, ToolPolicy] = {
     "git_diff": _rs(),
     "git_log": _rs(),
     "git_show": _rs(),
-    "knowledge_search": _r(sandbox="home"),
-    "knowledge_tree": _r(sandbox="home"),
-    "obsidian_search": _r(sandbox="home"),
-    "obsidian_tree": _r(sandbox="home"),
-    "computer_screenshot": _r(sandbox="system"),
-    "computer_status": _r(sandbox="system"),
-    "chrome_status": _r(sandbox="system"),
-    "computer_use_status": _r(sandbox="system"),
+    "knowledge_search": _rc(
+        sandbox="workspace", capability="workspace:read", scope="workspace_user"
+    ),
+    "knowledge_tree": _rc(
+        sandbox="workspace", capability="workspace:read", scope="workspace_user"
+    ),
+    "obsidian_search": _rc(
+        sandbox="workspace", capability="workspace:read", scope="workspace_user"
+    ),
+    "obsidian_tree": _rc(
+        sandbox="workspace", capability="workspace:read", scope="workspace_user"
+    ),
+    "computer_screenshot": _rc(
+        sandbox="system", capability="desktop:control", scope="host"
+    ),
+    "computer_status": _rc(
+        sandbox="system", capability="desktop:control", scope="host"
+    ),
+    "chrome_status": _rc(
+        sandbox="system", capability="desktop:control", scope="host"
+    ),
+    "computer_use_status": _rc(
+        sandbox="system", capability="desktop:control", scope="host"
+    ),
     "network_status": _rn(),
     "write_file": _w(rollback="git"),
     "edit_file": _w(rollback="git"),
@@ -178,8 +233,12 @@ TOOL_GOVERNANCE: Dict[str, ToolPolicy] = {
     "create_pptx": _w(),
     "create_pdf": _w(),
     "todo_write": _w(),
-    "knowledge_save": _w(sandbox="home"),
-    "obsidian_save": _w(sandbox="home"),
+    "knowledge_save": _w(
+        sandbox="workspace", capability="workspace:write", scope="workspace_user"
+    ),
+    "obsidian_save": _w(
+        sandbox="workspace", capability="workspace:write", scope="workspace_user"
+    ),
     "local_write": _w(sandbox="home"),
     "run_command": _e(),
     "build_project": _e(),
@@ -323,7 +382,7 @@ class ToolRegistry:
             "status": "ok" if diagnostics["ready"] else "degraded",
             "boundary": {
                 "owner": "latticeai.core.tool_registry.ToolRegistry",
-                "dispatch_owner": "tools.DEFAULT_TOOL_REGISTRY",
+                "dispatch_owner": "latticeai.tools.DEFAULT_TOOL_REGISTRY",
                 "policy_owner": "latticeai.core.tool_registry.ToolRegistry",
                 "permission_owner": "latticeai.services.tool_dispatch.ToolDispatchService",
             },
@@ -362,12 +421,17 @@ class ToolRegistry:
 
     def permission(self, name: str, args: Optional[dict] = None) -> ToolPermission:
         policy = self.policy_for(name, args or {})
-        return ToolPermission(
+        permission = ToolPermission(
             tool=name,
             risk=self.risk_level(policy),
             requires_approval=not policy["auto_approve"],
             network=policy["network"],
         )
+        if policy.get("capability"):
+            permission["capability"] = policy["capability"]
+        if policy.get("scope"):
+            permission["scope"] = policy["scope"]
+        return permission
 
     def permissions(self) -> list[ToolPermission]:
         return [self.permission(name) for name in sorted(self.governance.keys())]

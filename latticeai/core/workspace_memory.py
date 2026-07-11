@@ -6,7 +6,8 @@ from __future__ import annotations
 
 from typing import Any, Dict, List, Optional
 
-from .workspace_os_utils import _json_hash, _listify, _now
+from .timeutil import now_iso as _now
+from .workspace_os_utils import _json_hash, _listify
 
 
 class WorkspaceMemory:

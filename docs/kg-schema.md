@@ -1,6 +1,6 @@
 # Knowledge Graph Schema
 
-Current release: **9.0.0 — Code Review Closure & Runtime Cleanup**.
+Current release: **9.1.0 — Code Review Completion & Fail-Closed Runtime**.
 
 명세 출처: `lattice_ai_full_spec.pptx` 슬라이드 20·21·22
 구현: `kg_schema.py`
@@ -261,9 +261,16 @@ print(KGStoreV2(store.db_path).stats())
 
 ### v4 컬럼 (T3b/T3c)
 
-- `nodes_v2.workspace_id` — `NULL` = legacy-global (스코프 도입 이전 데이터)
+- `nodes_v2.workspace_id` — `NULL` = legacy-global (스코프 도입 이전 데이터).
+  9.1.0부터 일반 workspace 읽기에는 자동 포함하지 않으며
+  `include_legacy_global=True`를 명시한 호환 읽기에서만 포함
 - `nodes_v2.visibility` — 신규 스코프 쓰기는 `workspace`/`private`,
   스코프 없는 쓰기는 `legacy` (기존 공유 데이터를 몰래 private 으로
   만들지 않는다)
 - `nodes_v2.superseded_by` — 개정 체인 (`mark_superseded`)
 - `edge_occurrences` — 관계의 모든 관측 기록 (observed_at/weight/source)
+
+workspace projection 조회가 실패하거나 node의 scope를 확인할 수 없으면 해당
+node는 비공개로 취급해 빈 결과를 반환하거나 오류를 전파합니다. projection 장애를
+legacy-global로 해석해 다른 workspace에 노출하는 fail-open 경로는 허용하지
+않습니다.

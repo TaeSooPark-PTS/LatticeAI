@@ -18,7 +18,6 @@ import threading
 from dataclasses import dataclass
 from typing import TYPE_CHECKING, Any, Dict, List, Optional
 
-from latticeai.runtime.app_context_runtime import build_app_context
 from latticeai.runtime.access_runtime import build_access_runtime
 from latticeai.runtime.bootstrap import build_session_runtime
 from latticeai.runtime.brain_runtime import build_brain_runtime
@@ -52,6 +51,7 @@ from latticeai.runtime.sso_config_runtime import build_sso_config_runtime
 from latticeai.runtime.audit_runtime import build_audit_runtime
 from latticeai.runtime.router_registration import (
     build_auth_admin_security_router_bundle,
+    build_router_bundle,
     build_static_routes_bundle,
     register_health_and_model_routers,
     register_foundation_routers,
@@ -60,7 +60,6 @@ from latticeai.runtime.router_registration import (
     register_review_and_brain_tail_routers,
 )
 from latticeai.runtime.security_runtime import build_security_runtime
-from latticeai.runtime.tail_wiring import register_tail_runtime_routers
 from latticeai.runtime.user_key_runtime import build_user_key_runtime
 from latticeai.runtime.web_runtime import build_web_runtime
 
@@ -107,7 +106,7 @@ def _build(config: "Optional[Config]" = None) -> Dict[str, Any]:
         enforce_rate_limit as _enforce_rate_limit,
     )
     from latticeai.core.audit import (
-        get_audit_log as _get_audit_log,  # noqa: F401 - legacy server_app attr exported via locals()
+        get_audit_log as _get_audit_log,  # noqa: F401 - explicit legacy server_app export
         classify_sensitive_message as _classify_sensitive_message,
         build_sensitivity_report as _build_sensitivity_report,
         build_admin_audit_report as _build_admin_audit_report,
@@ -132,24 +131,19 @@ def _build(config: "Optional[Config]" = None) -> Dict[str, Any]:
         user_id_for_email as _user_id_for_email,
     )
     from latticeai.services.chat_service import ChatService
+    from latticeai.services.app_context import AppContext
     from latticeai.core.embedding_providers import resolve_embedder, resolve_embedding_profile
     from latticeai.services.model_runtime import (
         CLOUD_VERIFY_TTL_SECONDS,
         ENGINE_MODEL_CATALOG,
         LOCAL_SERVER_PROCESSES,
         MODEL_ENGINE_ALIASES,
-        configure_model_runtime,
+        build_model_runtime,
         download_hf_model,
-        engine_status,
         filter_lower_family_versions,
-        install_engine,
         local_binary,
         normalize_local_model_request,
-        prepare_and_load_model,
-        prepare_and_load_model_stream,
-        runtime_features,
         sse_event,
-        verify_cloud_models,
         ensure_ollama_server,
     )
     from latticeai.api.workspace import create_workspace_router, _workspace_scope_from_request
@@ -177,10 +171,8 @@ def _build(config: "Optional[Config]" = None) -> Dict[str, Any]:
     from lattice_brain.ingestion import IngestionItem
     from lattice_brain.storage import storage_from_env
     from latticeai.api.network import create_network_router
-    # The aliased names below look unused but are part of the legacy
-    # ``server_app`` attribute surface: every local is exported via
-    # ``dict(locals())`` and reached through ``server_app.__getattr__``
-    # (tests import _agent_risk, _LOCAL_WRITE_BLOCKED_PREFIXES, …).
+    # The aliased names below form the explicit, allowlisted compatibility
+    # surface consumed by historical ``server_app`` callers.
     from latticeai.services.tool_dispatch import (  # noqa: F401
         LOCAL_WRITE_BLOCKED_PREFIXES as _LOCAL_WRITE_BLOCKED_PREFIXES,
         TOOL_GOVERNANCE,
@@ -201,8 +193,8 @@ def _build(config: "Optional[Config]" = None) -> Dict[str, Any]:
         create_mcp_install_state,
     )
     from latticeai.services.p_reinforce import PReinforceGardener
-    from setup_wizard import get_recommendations, scan_environment
-    from tools import ensure_agent_root, execute_tool, knowledge_save
+    from latticeai.setup.wizard import get_recommendations, scan_environment
+    from latticeai.tools import ensure_agent_root, execute_tool, knowledge_save
 
     try:
         import keyring
@@ -229,7 +221,6 @@ def _build(config: "Optional[Config]" = None) -> Dict[str, Any]:
     def _host_is_loopback(host: str) -> bool:
         return _host_is_loopback_impl(host)
 
-    NETWORK_EXPOSED = _config_runtime["NETWORK_EXPOSED"]
     ENABLE_TELEGRAM = _config_runtime["ENABLE_TELEGRAM"]
     ENABLE_GRAPH    = _config_runtime["ENABLE_GRAPH"]
     AUTOLOAD_MODELS = _config_runtime["AUTOLOAD_MODELS"]
@@ -253,6 +244,10 @@ def _build(config: "Optional[Config]" = None) -> Dict[str, Any]:
     SSO_CLIENT_SECRET = _security_runtime["SSO_CLIENT_SECRET"]
     SSO_REDIRECT_URI = _security_runtime["SSO_REDIRECT_URI"]
     SSO_PROVIDER_NAME = _security_runtime["SSO_PROVIDER_NAME"]
+    INVITE_CODE = _security_runtime["INVITE_CODE"]
+    INVITE_COOKIE_SECRET = _security_runtime["INVITE_COOKIE_SECRET"]
+    INVITE_GATE_ENABLED = _security_runtime["INVITE_GATE_ENABLED"]
+    SECURE_COOKIES = _security_runtime["SECURE_COOKIES"]
 
     # SSO config + discovery seam is built below, after SSO_FILE is known
     # (latticeai.runtime.sso_config_runtime).
@@ -291,7 +286,6 @@ def _build(config: "Optional[Config]" = None) -> Dict[str, Any]:
     _session_store = _session_runtime["_session_store"]
     create_session = _session_runtime["create_session"]
     get_session_email = _session_runtime["get_session_email"]
-    get_session_user_id = _session_runtime["get_session_user_id"]
     invalidate_session = _session_runtime["invalidate_session"]
 
     # ── User Management Logic ──────────────────────────────────────────────────
@@ -307,14 +301,12 @@ def _build(config: "Optional[Config]" = None) -> Dict[str, Any]:
     USERS_FILE = DATA_DIR / "users.json"
     HISTORY_FILE = DATA_DIR / "chat_history.json"
     VPC_FILE = DATA_DIR / "vpc_config.json"
-    MCP_FILE = DATA_DIR / "mcp_installs.json"
     AUDIT_FILE = DATA_DIR / "audit_log.json"
     SSO_FILE = DATA_DIR / "sso_config.json"
 
     # MCP state extracted to mcp_registry.create_mcp_install_state (server decomp)
     _mcp_state = create_mcp_install_state(DATA_DIR)
     load_mcp_installs = _mcp_state["load_mcp_installs"]
-    save_mcp_installs = _mcp_state["save_mcp_installs"]
     mcp_public_item = _mcp_state["mcp_public_item"]
     recommend_mcps = _mcp_state["recommend_mcps"]
     install_mcp = _mcp_state["install_mcp"]
@@ -354,7 +346,6 @@ def _build(config: "Optional[Config]" = None) -> Dict[str, Any]:
         embedder=EMBEDDER,
         storage_engine=STORAGE_ENGINE,
     )
-    BRAIN_CORE = _brain_runtime["BRAIN_CORE"]
     KNOWLEDGE_GRAPH = _brain_runtime["KNOWLEDGE_GRAPH"]
     # ── v4 durable conversation store: unbounded episodic memory in the same
     # SQLite file as the graph (kg_portability backup/restore covers it for
@@ -388,7 +379,6 @@ def _build(config: "Optional[Config]" = None) -> Dict[str, Any]:
     WORKSPACE_OS = _persistence_runtime["WORKSPACE_OS"]
     WORKSPACE_SERVICE = _persistence_runtime["WORKSPACE_SERVICE"]
     INVITATION_STORE = _persistence_runtime["INVITATION_STORE"]
-    PLUGINS_DIR = _persistence_runtime["PLUGINS_DIR"]
     PLUGIN_REGISTRY = _persistence_runtime["PLUGIN_REGISTRY"]
     TEMPLATE_CATALOG = _persistence_runtime["TEMPLATE_CATALOG"]
     AGENT_REGISTRY = _persistence_runtime["AGENT_REGISTRY"]
@@ -446,7 +436,6 @@ def _build(config: "Optional[Config]" = None) -> Dict[str, Any]:
         logging=logging,
     )
     _sso_env_defaults = _sso_runtime["_sso_env_defaults"]
-    load_sso_config = _sso_runtime["load_sso_config"]
     get_sso_settings = _sso_runtime["get_sso_settings"]
     public_sso_config = _sso_runtime["public_sso_config"]
     save_sso_config = _sso_runtime["save_sso_config"]
@@ -456,7 +445,6 @@ def _build(config: "Optional[Config]" = None) -> Dict[str, Any]:
     # MCP/skill request models moved to latticeai.api.mcp (v1.3.0).
     # VPC network-profile config → latticeai.runtime.network_config_runtime.
     _vpc_runtime = build_vpc_runtime(vpc_file=VPC_FILE, logging=logging)
-    DEFAULT_VPC_CONFIG = _vpc_runtime["DEFAULT_VPC_CONFIG"]
     load_vpc_config = _vpc_runtime["load_vpc_config"]
     save_vpc_config = _vpc_runtime["save_vpc_config"]
 
@@ -583,10 +571,6 @@ def _build(config: "Optional[Config]" = None) -> Dict[str, Any]:
     clear_history = _history_query_runtime["clear_history"]
     clear_conversation = _history_query_runtime["clear_conversation"]
 
-    # Chat service seam: behaviour-preserving façade for history access and
-    # Workspace-OS answer-trace recording used by the (unchanged) streaming chat path.
-    CHAT_SERVICE = ChatService(store=WORKSPACE_OS, get_history=get_history)
-
     _access_runtime = build_access_runtime(
         config=CONFIG,
         require_auth=REQUIRE_AUTH,
@@ -631,6 +615,15 @@ def _build(config: "Optional[Config]" = None) -> Dict[str, Any]:
     get_history_user = _user_key_runtime["get_history_user"]
     get_user_api_key = _user_key_runtime["get_user_api_key"]
     set_user_api_key = _user_key_runtime["set_user_api_key"]
+
+    # Chat service owns persistence and trace behavior after its user-key
+    # dependencies are available.
+    CHAT_SERVICE = ChatService(
+        store=WORKSPACE_OS,
+        get_history=get_history,
+        save_to_history=save_to_history,
+        get_history_user=get_history_user,
+    )
 
     # ── Sensitivity analysis — delegated to latticeai.core.audit ──────────────────
     def classify_sensitive_message(item: Dict, index: int) -> Dict:
@@ -688,8 +681,6 @@ def _build(config: "Optional[Config]" = None) -> Dict[str, Any]:
         local_server_processes=LOCAL_SERVER_PROCESSES,
         logger=logging,
     )
-    autoload_default_model = _lifespan_runtime["autoload_default_model"]
-    unload_idle_models_loop = _lifespan_runtime["unload_idle_models_loop"]
     _spawn = _lifespan_runtime["_spawn"]
     lifespan = _lifespan_runtime["lifespan"]
 
@@ -704,14 +695,11 @@ def _build(config: "Optional[Config]" = None) -> Dict[str, Any]:
         static_dir=STATIC_DIR,
     )
     app = _web_runtime["app"]
-    CORS_ALLOWED_ORIGINS = _web_runtime["CORS_ALLOWED_ORIGINS"]
     ensure_agent_root()
 
     OPEN_REGISTRATION = CONFIG.open_registration
-    INVITE_CODE = CONFIG.invite_code
-    INVITE_GATE_ENABLED = CONFIG.invite_gate_enabled
-    configure_model_runtime_from_context(
-        configure_model_runtime=configure_model_runtime,
+    _model_runtime_service = configure_model_runtime_from_context(
+        build_model_runtime=build_model_runtime,
         router=router,
         APP_MODE=APP_MODE,
         DEFAULT_HOST=DEFAULT_HOST,
@@ -741,6 +729,8 @@ def _build(config: "Optional[Config]" = None) -> Dict[str, Any]:
         static_dir=STATIC_DIR,
         invite_gate_enabled=INVITE_GATE_ENABLED,
         invite_code=INVITE_CODE,
+        invite_cookie_secret=INVITE_COOKIE_SECRET,
+        secure_cookies=SECURE_COOKIES,
         app_mode=APP_MODE,
         model_router=router,
         require_user=require_user,
@@ -748,6 +738,7 @@ def _build(config: "Optional[Config]" = None) -> Dict[str, Any]:
     STATIC_ROUTES = _static_routes_bundle["STATIC_ROUTES"]
     ui_file_response = _static_routes_bundle["ui_file_response"]
     local_sysinfo = _static_routes_bundle["local_sysinfo"]
+    invite_authorized = _static_routes_bundle["invite_authorized"]
 
     # ── Auth & Admin routers (latticeai.api) ─────────────────────────────────────
     _foundation_router_bundle = build_auth_admin_security_router_bundle(
@@ -770,6 +761,8 @@ def _build(config: "Optional[Config]" = None) -> Dict[str, Any]:
         open_registration=OPEN_REGISTRATION,
         session_ttl=_SESSION_TTL,
         require_auth=REQUIRE_AUTH,
+        secure_cookies=SECURE_COOKIES,
+        invite_authorized=invite_authorized,
         ensure_identity=ensure_user_identity,
         create_admin_router=create_admin_router,
         require_admin=require_admin,
@@ -870,6 +863,7 @@ def _build(config: "Optional[Config]" = None) -> Dict[str, Any]:
         include_image_missing_replies: bool = True,
         user_email: Optional[str] = None,
         conversation_id: Optional[str] = None,
+        workspace_id: Optional[str] = None,
     ) -> str:
         return build_recent_chat_context(
             get_history=get_history,
@@ -877,6 +871,7 @@ def _build(config: "Optional[Config]" = None) -> Dict[str, Any]:
             include_image_missing_replies=include_image_missing_replies,
             user_email=user_email,
             conversation_id=conversation_id,
+            workspace_id=workspace_id,
         )
 
     CHAT_AGENT_RUNTIME = build_chat_agent_runtime_from_context(
@@ -893,7 +888,7 @@ def _build(config: "Optional[Config]" = None) -> Dict[str, Any]:
 
     # ── Typed dependency context (latticeai.services.app_context) ────────────────
     # One context object replaces the historical 25-30-kwarg router wiring.
-    context = build_app_context(
+    context = AppContext(
         config=CONFIG,
         data_dir=DATA_DIR,
         static_dir=STATIC_DIR,
@@ -1030,15 +1025,16 @@ def _build(config: "Optional[Config]" = None) -> Dict[str, Any]:
     # ── Health / status / engine-summary router (latticeai.api.health, v1.2.0) ───
     # /health, /mode, /runtime_features, /engines(GET) now live in the health router.
     # Heavier engine mutation endpoints remain below in server_app.
-    MODEL_SERVICE = register_model_runtime_routers(
+    _model_runtime = register_model_runtime_routers(
         app=app,
         create_health_router=create_health_router,
         create_models_router=create_models_router,
         register_health_and_model_routers=register_health_and_model_routers,
         model_router=router,
-        runtime_features=runtime_features,
+        runtime_service=_model_runtime_service,
+        runtime_features=_model_runtime_service.runtime_features,
         is_public_mode=IS_PUBLIC_MODE,
-        engine_status=engine_status,
+        engine_status=_model_runtime_service.engine_status,
         get_current_user=get_current_user,
         require_auth=REQUIRE_AUTH,
         app_version=APP_VERSION,
@@ -1047,12 +1043,12 @@ def _build(config: "Optional[Config]" = None) -> Dict[str, Any]:
         require_admin=require_admin,
         load_users=load_users,
         get_user_role=get_user_role,
-        install_engine=install_engine,
-        verify_cloud_models=verify_cloud_models,
+        install_engine=_model_runtime_service.install_engine,
+        verify_cloud_models=_model_runtime_service.verify_cloud_models,
         normalize_local_model_request=normalize_local_model_request,
         download_hf_model=download_hf_model,
-        prepare_and_load_model=prepare_and_load_model,
-        prepare_and_load_model_stream=prepare_and_load_model_stream,
+        prepare_and_load_model=_model_runtime_service.prepare_and_load_model,
+        prepare_and_load_model_stream=_model_runtime_service.prepare_and_load_model_stream,
         sse_event=sse_event,
         ensure_ollama_server=ensure_ollama_server,
         local_binary=local_binary,
@@ -1079,7 +1075,8 @@ def _build(config: "Optional[Config]" = None) -> Dict[str, Any]:
 
     def _allowed_workspaces_for(user):
         # No-auth local mode is single-user: no scoping. With auth, scope
-        # reads to the caller's memberships (legacy-global rows stay visible).
+        # reads to the caller's memberships (legacy-global rows require an
+        # explicit maintenance-only compatibility opt-in).
         if not REQUIRE_AUTH or not user:
             return None
         return PLATFORM.allowed_scopes(user)
@@ -1132,10 +1129,9 @@ def _build(config: "Optional[Config]" = None) -> Dict[str, Any]:
     from latticeai.api.review_queue import create_review_queue_router
     run_review_item = build_review_run_now_runner(PLATFORM, HTTPException)
 
-    BRAIN_NETWORK = register_tail_runtime_routers(
-        app=app,
+    register_review_and_brain_tail_routers(
+        app,
         create_review_queue_router=create_review_queue_router,
-        register_review_and_brain_tail_routers=register_review_and_brain_tail_routers,
         review_queue=REVIEW_QUEUE,
         require_user=require_user,
         gate_read=PLATFORM.gate_read,
@@ -1165,9 +1161,9 @@ def _build(config: "Optional[Config]" = None) -> Dict[str, Any]:
         uvicorn.run(app, host=DEFAULT_HOST, port=DEFAULT_PORT, log_level="info")
 
     # ── Constructed-namespace export (consumed by AppRuntime) ────────────────
-    # Public runtime objects and selected legacy helpers remain available via
-    # ``server_app.__getattr__``. Internal assembly scratch values are filtered
-    # out so the compatibility namespace can keep shrinking toward DI.
+    # The five stages are typed and the compatibility surface is enumerated;
+    # assembly locals never escape the composition root.
+    router_bundle = build_router_bundle(app, context)
     runtime_bundle = RuntimeBundle(
         app=app,
         CONFIG=CONFIG,
@@ -1181,8 +1177,62 @@ def _build(config: "Optional[Config]" = None) -> Dict[str, Any]:
         build_runtime=build_runtime,
         get_shared_runtime=get_shared_runtime,
         create_app=create_app,
+        config_runtime=_config_runtime,
+        security_runtime=_security_runtime,
+        brain_runtime=_brain_runtime,
+        model_runtime=_model_runtime,
+        router_bundle=router_bundle,
     )
-    return build_runtime_namespace(locals(), runtime_bundle=runtime_bundle)
+    return build_runtime_namespace(
+        runtime_bundle=runtime_bundle,
+        legacy_exports={
+            "ENGINE_MODEL_CATALOG": ENGINE_MODEL_CATALOG,
+            "TOOL_GOVERNANCE": TOOL_GOVERNANCE,
+            "enforce_rate_limit": enforce_rate_limit,
+            "filter_lower_family_versions": filter_lower_family_versions,
+            "hash_password": hash_password,
+            "normalize_local_model_request": normalize_local_model_request,
+            "verify_password": verify_password,
+            "_LOCAL_WRITE_BLOCKED_PREFIXES": _LOCAL_WRITE_BLOCKED_PREFIXES,
+            "_RATE_LIMIT_ENABLED": _RATE_LIMIT_ENABLED,
+            "_SESSION_TTL": _SESSION_TTL,
+            "_TOOL_CATALOG_BRIEF": _TOOL_CATALOG_BRIEF,
+            "_TOOL_GOVERNANCE_DEFAULT": _TOOL_GOVERNANCE_DEFAULT,
+            "_agent_risk": _agent_risk,
+            "_allowed_workspaces_for": _allowed_workspaces_for,
+            "_build_admin_audit_report": _build_admin_audit_report,
+            "_build_sensitivity_report": _build_sensitivity_report,
+            "_bytes_match_extension": _bytes_match_extension,
+            "_check_ip_rate_limit": _check_ip_rate_limit,
+            "_check_rate_limit": _check_rate_limit,
+            "_check_tool_role": _check_tool_role,
+            "_classify_sensitive_message": _classify_sensitive_message,
+            "_client_ip": _client_ip,
+            "_create_security_router": _create_security_router,
+            "_embedding_info": _embedding_info,
+            "_fetch_skills_marketplace": _fetch_skills_marketplace,
+            "_get_audit_log": _get_audit_log,
+            "_get_sso_discovery": _get_sso_discovery,
+            "_graph_stats_safe": _graph_stats_safe,
+            "_host_is_loopback": _host_is_loopback,
+            "_list_compat_profiles": _list_compat_profiles,
+            "_llm_generate_sync": _llm_generate_sync,
+            "_product_hardening_status": _product_hardening_status,
+            "_recent_chat_context": _recent_chat_context,
+            "_redact_secret_text": _redact_secret_text,
+            "_require_graph": _require_graph,
+            "_scoped_hybrid_search": _scoped_hybrid_search,
+            "_security_audit_events_safe": _security_audit_events_safe,
+            "_security_list_uploaded_files": _security_list_uploaded_files,
+            "_spawn": _spawn,
+            "_tool_response": _tool_response,
+            "_user_id_for_email": _user_id_for_email,
+            "_workspace_graph": _workspace_graph,
+            "_workspace_models_payload": _workspace_models_payload,
+            "_workspace_scope_from_request": _workspace_scope_from_request,
+            "_workspace_settings_payload": _workspace_settings_payload,
+        },
+    )
 
 
 @dataclass(frozen=True)

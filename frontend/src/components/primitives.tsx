@@ -129,11 +129,12 @@ function firstRecordList(value: Record<string, unknown>) {
 }
 
 export function ValuePreview({ value }: { value: unknown }) {
+  const language = useAppStore((state) => state.language);
   if (typeof value === "boolean") {
-    return <Badge variant={value ? "success" : "muted"}>{value ? "enabled" : "disabled"}</Badge>;
+    return <Badge variant={value ? "success" : "muted"}>{t(language, value ? "ui.value.enabled" : "ui.value.disabled")}</Badge>;
   }
   if (Array.isArray(value)) {
-    if (!value.length) return <span className="text-muted-foreground">None</span>;
+    if (!value.length) return <span className="text-muted-foreground">{t(language, "ui.value.none")}</span>;
     const primitive = value.every((item) => item === null || ["string", "number", "boolean"].includes(typeof item));
     if (primitive) {
       return (
@@ -143,11 +144,11 @@ export function ValuePreview({ value }: { value: unknown }) {
         </span>
       );
     }
-    return <span className="text-muted-foreground">{fmtNumber(value.length)} records</span>;
+    return <span className="text-muted-foreground">{t(language, "ui.value.records", { count: fmtNumber(value.length) })}</span>;
   }
   if (isRecord(value)) {
     const keys = Object.keys(value);
-    if (!keys.length) return <span className="text-muted-foreground">No fields</span>;
+    if (!keys.length) return <span className="text-muted-foreground">{t(language, "ui.value.noFields")}</span>;
     return <span className="text-muted-foreground">{keys.slice(0, 4).map(titleize).join(", ")}{keys.length > 4 ? ` +${keys.length - 4}` : ""}</span>;
   }
   const text = scalarText(value);
@@ -358,10 +359,9 @@ export function ActionButton({
     mutationFn: action,
     onSuccess: async (res) => {
       setResult(res.ok ? resolvedSuccessLabel : res.error || t(language, "ui.status.unavailable"));
+      if (!res.ok) return;
       await onSuccess?.(res);
-      if (invalidate) {
-        await Promise.all(invalidate.map((key) => qc.invalidateQueries({ queryKey: [key] })));
-      }
+      if (invalidate) await Promise.all(invalidate.map((key) => qc.invalidateQueries({ queryKey: [key] })));
     },
   });
   return (

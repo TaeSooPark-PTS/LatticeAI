@@ -7,7 +7,8 @@ from __future__ import annotations
 
 from typing import Any, Dict, Optional
 
-from .workspace_os_utils import _listify, _now
+from .timeutil import now_iso as _now
+from .workspace_os_utils import _listify
 
 # Avoid circular at import time: pull constants lazily from parent module.
 def _get_role_permissions():

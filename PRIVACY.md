@@ -1,6 +1,6 @@
 # Privacy
 
-Current release: **9.0.0 — Code Review Closure & Runtime Cleanup**.
+Current release: **9.1.0 — Code Review Completion & Fail-Closed Runtime**.
 
 Lattice AI is local-first. It does not send your prompts, files, graph, or Brain
 archive to Lattice-owned servers by default. Some user-chosen features can
@@ -38,7 +38,8 @@ External paths include:
 - **Model downloads**: model identifiers and download requests go to model
   registries such as Hugging Face or Ollama registries after user consent.
 - **Telegram**: messages can be bridged only when Telegram is explicitly
-  enabled.
+  enabled, the chat is listed in `LATTICEAI_TELEGRAM_ALLOWED_CHAT_IDS`, and the
+  bridge has a dedicated `LATTICEAI_SERVER_SESSION_TOKEN` for local API calls.
 - **Brain Network**: peer exchange requires explicit pairing and network
   action.
 - **PostgreSQL/Docker**: scale-mode setup uses configured local/network
@@ -61,7 +62,9 @@ traversal fail closed.
 Release screenshots are generated from local mock/demo data. Secret-like values
 are centrally redacted before logs, audit events, security exports, frontend
 previews, and hook packets. Admins can see operational logs, but hard secrets
-should not appear in clear text.
+should not appear in clear text. Permission notifications contain a short token
+hint and optional `LATTICEAI_PERMISSION_UI_URL` review link, never the approval
+token itself.
 
 ## User Control
 

@@ -15,13 +15,13 @@ installations can exercise the full Planner -> Executor -> Reviewer loop.
 from __future__ import annotations
 
 from dataclasses import dataclass, field
-from datetime import datetime
 from typing import Any, Callable, Dict, List, Optional
 
 from .contracts import multi_agent_contract
+from ..utils import now_iso as _now
 
 
-MULTI_AGENT_VERSION = "9.0.0"
+MULTI_AGENT_VERSION = "9.1.0"
 
 AGENT_ROLES = ("researcher", "planner", "executor", "reviewer", "release")
 CORE_PIPELINE = ("planner", "executor", "reviewer")
@@ -48,10 +48,6 @@ HANDOFF_STATUSES = (
 REVIEW_OUTCOMES = ("approve", "reject", "retry")
 
 _SECRET_KEYS = ("secret", "token", "password", "api_key", "apikey", "credential")
-
-
-def _now() -> str:
-    return datetime.now().isoformat(timespec="seconds")
 
 
 def _redact(value: Any) -> Any:
@@ -668,7 +664,7 @@ class MultiAgentOrchestrator:
             result = self.role_runner(role, ctx) or {}
             status = result.get("status", "ok")
         except Exception as exc:
-            result = {"error": str(exc)}
+            result = {"status": "error", "error": str(exc)}
             status = "error"
         if role == "reviewer":
             review = dict(ctx.review or result)
@@ -739,8 +735,31 @@ class MultiAgentOrchestrator:
             role = pipeline[index]
             if previous is not None:
                 ctx.handoff(previous, role)
-            self._run_role(role, ctx)
+            role_result = self._run_role(role, ctx)
             roles_run.append(role)
+
+            # A role exception is terminal for this attempt. Continuing would
+            # let downstream roles review stale or missing output and could
+            # incorrectly convert a failed run into an approved one.
+            if str(role_result.get("status") or "").lower() == "error":
+                reason = str(role_result.get("error") or f"{role} role failed")
+                existing_review = dict(ctx.review or {})
+                ctx.review = existing_review or {
+                    "outcome": "reject",
+                    "verdict": "fail",
+                    "reason": reason,
+                    "notes": [f"{role} did not complete"],
+                    "reviewed_at": _now(),
+                }
+                ctx.timeline.append(
+                    {
+                        "event": "execution_failed",
+                        "role": role,
+                        "reason": reason,
+                        "timestamp": _now(),
+                    }
+                )
+                break
 
             if role == "reviewer":
                 review = dict(ctx.review or {})

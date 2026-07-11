@@ -29,9 +29,13 @@ from latticeai.core.mcp_registry import (
     install_skill,
     SKILLS_DIR,
 )
-from latticeai.core.tool_registry import MCP_TOOL_DESCRIPTIONS
+from latticeai.core.tool_registry import (
+    KNOWLEDGE_WRITE_TOOLS,
+    MCP_TOOL_DESCRIPTIONS,
+    SCOPED_KNOWLEDGE_TOOLS,
+)
 from latticeai.services.tool_dispatch import EXPLICIT_CONSENT_TOOLS, enforce_tool_policy
-from tools import AGENT_ROOT, execute_tool
+from latticeai.tools import execute_tool
 
 
 class McpRecommendRequest(BaseModel):
@@ -126,6 +130,18 @@ def create_mcp_router(
         except PermissionError as exc:
             raise HTTPException(status_code=403, detail=str(exc)) from exc
 
+    def _read_workspace(requested: Optional[str], user: Optional[str]) -> Optional[str]:
+        if workspace_service is not None:
+            try:
+                return workspace_service.resolve_read_scope(requested, user)
+            except PermissionError as exc:
+                raise HTTPException(status_code=403, detail=str(exc)) from exc
+        workspace_id = requested or "personal"
+        allowed = _allowed_graph_workspaces(user)
+        if allowed is not None and workspace_id not in set(allowed):
+            raise HTTPException(status_code=403, detail=f"workspace '{workspace_id}' is not readable")
+        return workspace_id
+
     @router.get("/mcp/tools")
     async def mcp_tools(request: Request):
         require_user(request)
@@ -136,23 +152,30 @@ def create_mcp_router(
             if name in EXPLICIT_CONSENT_TOOLS:
                 continue
             policy = TOOL_GOVERNANCE.get(name, _TOOL_GOVERNANCE_DEFAULT)
+            governance = {
+                "risk":         policy["risk"],
+                "destructive":  policy["destructive"],
+                "shell":        policy["shell"],
+                "network":      policy["network"],
+                "auto_approve": policy["auto_approve"],
+                "sandbox":      policy["sandbox"],
+                "rollback":     policy["rollback"],
+            }
+            if policy.get("capability"):
+                governance["capability"] = policy["capability"]
+            if policy.get("scope"):
+                governance["scope"] = policy["scope"]
             tools.append({
                 "name": name,
                 "description": description,
                 "permission": get_tool_permission(name),
-                "governance": {
-                    "risk":         policy["risk"],
-                    "destructive":  policy["destructive"],
-                    "shell":        policy["shell"],
-                    "network":      policy["network"],
-                    "auto_approve": policy["auto_approve"],
-                    "sandbox":      policy["sandbox"],
-                    "rollback":     policy["rollback"],
-                },
+                "governance": governance,
             })
         return {
             "status": "ok",
-            "workspace": str(AGENT_ROOT),
+            # Do not disclose the host user's absolute checkout path through a
+            # discovery endpoint. Tool paths are workspace-relative already.
+            "workspace": ".",
             "installed_mcps": [mcp_public_item(item, installed) for item in registry],
             "tools": tools,
         }
@@ -437,7 +460,19 @@ def create_mcp_router(
                     allowed_workspaces=_allowed_graph_workspaces(current_user or None),
                 )
             }
-        enforce_tool_policy(req.action, req.args or {}, current_user=current_user, source="mcp")
-        return _tool_response(execute_tool, req.action, req.args or {}, source="mcp")
+        dispatch_args = dict(req.args or {})
+        if req.action in SCOPED_KNOWLEDGE_TOOLS:
+            claimed_user = str(dispatch_args.get("user_email") or "").strip().lower()
+            if claimed_user and claimed_user != current_user.strip().lower():
+                raise HTTPException(status_code=403, detail="user_email must match the authenticated user.")
+            requested_workspace = dispatch_args.get("workspace_id")
+            if req.action in KNOWLEDGE_WRITE_TOOLS:
+                workspace_id = _write_workspace(requested_workspace, current_user)
+            else:
+                workspace_id = _read_workspace(requested_workspace, current_user)
+            dispatch_args["workspace_id"] = workspace_id
+            dispatch_args["user_email"] = current_user
+        enforce_tool_policy(req.action, dispatch_args, current_user=current_user, source="mcp")
+        return _tool_response(execute_tool, req.action, dispatch_args, source="mcp")
 
     return router

@@ -6,6 +6,8 @@ import pytest
 from fastapi import HTTPException
 
 from latticeai.runtime.access_runtime import build_access_runtime
+from latticeai.services.tool_dispatch import ToolDispatchService
+from latticeai.tools import DEFAULT_TOOL_REGISTRY
 
 
 class RequestStub:
@@ -14,12 +16,23 @@ class RequestStub:
         self.cookies = cookies or {}
 
 
-def _runtime(*, users: dict | None = None, require_auth: bool = True, sessions: dict[str, str] | None = None):
+def _runtime(
+    *,
+    users: dict | None = None,
+    require_auth: bool = True,
+    sessions: dict[str, str] | None = None,
+    is_public: bool = False,
+    network_exposed: bool = False,
+):
     users = users or {}
     sessions = sessions or {}
 
     return build_access_runtime(
-        config=SimpleNamespace(admin_emails=["owner@example.com"]),
+        config=SimpleNamespace(
+            admin_emails=["owner@example.com"],
+            is_public=is_public,
+            network_exposed=network_exposed,
+        ),
         require_auth=require_auth,
         http_exception=HTTPException,
         request_type=RequestStub,
@@ -130,3 +143,72 @@ def test_account_store_failure_fails_session_closed():
     with pytest.raises(HTTPException) as exc:
         runtime["require_user"](request)
     assert exc.value.status_code == 401
+
+
+def test_loopback_no_auth_identity_is_authorized_as_trusted_local_owner():
+    runtime = _runtime(require_auth=False)
+    request = RequestStub()
+
+    # Preserve the long-standing anonymous Local User identity while making
+    # its authorization role explicit and consistent across policy callers.
+    assert runtime["require_user"](request) == ""
+    assert runtime["get_user_role"]("", {}) == "owner"
+    assert runtime["require_admin"](request) == ("", {})
+
+    service = ToolDispatchService(registry=DEFAULT_TOOL_REGISTRY)
+    service.configure(
+        load_users=lambda: {},
+        get_user_role=runtime["get_user_role"],
+    )
+    for tool_name in (
+        "computer_status",
+        "computer_screenshot",
+        "network_status",
+        "knowledge_search",
+    ):
+        policy = service.enforce_policy(
+            tool_name,
+            {"query": "local"} if tool_name == "knowledge_search" else {},
+            current_user=runtime["require_user"](request),
+            source="http",
+        )
+        assert policy["destructive"] is False
+
+
+def test_loopback_no_auth_preserves_a_valid_optional_session_identity():
+    users = {
+        "member@example.com": {
+            "id": "member-id",
+            "role": "user",
+            "disabled": False,
+        }
+    }
+    runtime = _runtime(
+        users=users,
+        require_auth=False,
+        sessions={"member-token": "member@example.com"},
+    )
+    request = RequestStub(headers={"Authorization": "Bearer member-token"})
+
+    assert runtime["get_current_user"](request) == "member@example.com"
+    assert runtime["require_user"](request) == "member@example.com"
+
+
+@pytest.mark.parametrize(
+    "exposure",
+    [
+        {"is_public": True},
+        {"network_exposed": True},
+    ],
+)
+def test_exposed_runtime_never_inherits_no_auth_local_owner_trust(exposure):
+    runtime = _runtime(require_auth=False, **exposure)
+    request = RequestStub()
+
+    assert runtime["get_user_role"]("", {}) == "user"
+    with pytest.raises(HTTPException) as user_error:
+        runtime["require_user"](request)
+    assert user_error.value.status_code == 401
+    with pytest.raises(HTTPException) as admin_error:
+        runtime["require_admin"](request)
+    assert admin_error.value.status_code == 403

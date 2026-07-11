@@ -2,7 +2,9 @@ const { app, BrowserWindow, dialog, ipcMain } = require("electron");
 const { spawn } = require("node:child_process");
 const path = require("node:path");
 
-const origin = process.env.LATTICEAI_DESKTOP_BACKEND_ORIGIN || "http://127.0.0.1:8765";
+// Experimental compatibility shell. Tauri is the primary desktop client; use
+// the same backend port as every other Lattice client to avoid split defaults.
+const origin = process.env.LATTICEAI_DESKTOP_BACKEND_ORIGIN || "http://127.0.0.1:4825";
 let backend = null;
 
 ipcMain.handle("lattice:select-folder", async (event) => {
@@ -18,12 +20,12 @@ ipcMain.handle("lattice:select-folder", async (event) => {
 
 function startBackend() {
   if (process.env.LATTICEAI_DESKTOP_NO_BACKEND) return;
-  const command = process.env.LATTICEAI_DESKTOP_BACKEND_CMD || "python3 ltcai_cli.py --host 127.0.0.1 --port 8765";
+  const command = process.env.LATTICEAI_DESKTOP_BACKEND_CMD || "python3 ltcai_cli.py --host 127.0.0.1 --port 4825";
   const [bin, ...args] = command.split(/\s+/).filter(Boolean);
   if (!bin) return;
   backend = spawn(bin, args, {
     cwd: process.env.LATTICEAI_DESKTOP_BACKEND_CWD || path.resolve(__dirname, "../.."),
-    env: { ...process.env, LATTICEAI_HOST: "127.0.0.1", LATTICEAI_PORT: "8765", LATTICEAI_TUNNEL: "false" },
+    env: { ...process.env, LATTICEAI_HOST: "127.0.0.1", LATTICEAI_PORT: "4825", LATTICEAI_TUNNEL: "false" },
     stdio: "ignore",
   });
 }

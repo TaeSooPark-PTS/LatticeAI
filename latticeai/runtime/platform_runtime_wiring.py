@@ -29,9 +29,8 @@ def build_platform_automation_runtime(
 ) -> Dict[str, Any]:
     """Build platform services, automation services, and hook bindings.
 
-    The returned names intentionally match the historical local variables in
-    ``app_factory._build`` so ``dict(locals())`` continues to expose the legacy
-    ``server_app`` compatibility surface.
+    The returned names intentionally match the explicit composition-root
+    bindings consumed by the typed application stages.
     """
     from latticeai.runtime.automation_runtime import build_automation_runtime
     from latticeai.services.platform_runtime import PlatformRuntime

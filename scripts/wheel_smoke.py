@@ -53,6 +53,8 @@ WHEEL_MODULES = [
     "latticeai.core.mcp_registry",
     "latticeai.api.knowledge_graph",
     "latticeai.services.p_reinforce",
+    "latticeai.tools",
+    "latticeai.tools.knowledge",
     "ltcai_cli",
     "auto_setup",
     "server",
@@ -65,11 +67,14 @@ WHEEL_MODULES = [
     "p_reinforce",
     "telegram_bot",
     "tools",
+    "tools.knowledge",
 ]
 
 IMPORT_CHECK = (
     "import importlib\n"
     + "".join(f"importlib.import_module({mod!r})\n" for mod in WHEEL_MODULES)
+    + "assert importlib.import_module('tools') is importlib.import_module('latticeai.tools')\n"
+    + "assert importlib.import_module('tools.knowledge') is importlib.import_module('latticeai.tools.knowledge')\n"
     + f"print('wheel imports ok: {len(WHEEL_MODULES)} modules')\n"
 )
 

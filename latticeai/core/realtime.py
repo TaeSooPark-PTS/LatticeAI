@@ -29,19 +29,15 @@ from __future__ import annotations
 import asyncio
 import json
 import threading
-from datetime import datetime
 from typing import Any, AsyncIterator, Callable, Dict, List, Optional, Set
 
 from lattice_brain.runtime.contracts import realtime_event_contract
+from .timeutil import now_iso as _now
 
 
 REALTIME_VERSION = "2.2.0"
 _FEED_LIMIT = 200
 _QUEUE_MAX = 100
-
-
-def _now() -> str:
-    return datetime.now().isoformat(timespec="seconds")
 
 
 def sse_format(event: Dict[str, Any]) -> str:

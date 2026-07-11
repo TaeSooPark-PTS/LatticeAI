@@ -1,6 +1,6 @@
 # Lattice AI Trust Model
 
-Current release: **9.0.0 — Code Review Closure & Runtime Cleanup**.
+Current release: **9.1.0 — Code Review Completion & Fail-Closed Runtime**.
 
 Lattice AI is local-first, explicit about external communication, and honest
 when a capability is unavailable.
@@ -26,7 +26,8 @@ External communication requires configuration plus a user/admin action:
 
 - cloud model calls after keys are configured and a cloud model is selected;
 - model downloads from registries after install consent;
-- Telegram bridge after the integration is enabled;
+- Telegram bridge after the integration is enabled, the chat is allowlisted,
+  and a dedicated server session bearer is configured;
 - Brain Network peer actions after pairing;
 - Docker/Postgres setup after opt-in scale configuration;
 - update checks only when enabled;
@@ -49,6 +50,8 @@ Lattice AI should fail closed or show an unavailable state for:
 - dry-run versus real execution;
 - no graph/context evidence available;
 - unavailable external integration;
+- unknown or unreadable Knowledge Graph workspace scope;
+- missing Telegram chat allowlist or dedicated server session token;
 - wrong archive passphrase;
 - archive tampering, unsupported archive versions, or path traversal.
 

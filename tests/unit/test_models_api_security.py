@@ -5,6 +5,7 @@ from fastapi import FastAPI, HTTPException, Request
 from fastapi.testclient import TestClient
 
 from latticeai.api.models import create_models_router
+from latticeai.services.model_errors import ModelRuntimeError
 
 
 class _FakeRouter:
@@ -28,7 +29,13 @@ class _FakeRouter:
         self.current_model_id = None
 
 
-def _models_client(*, identity: str | None, role: str = "user", require_auth: bool = True):
+def _models_client(
+    *,
+    identity: str | None,
+    role: str = "user",
+    require_auth: bool = True,
+    install_error: ModelRuntimeError | None = None,
+):
     calls = []
 
     def require_user(_request: Request) -> str:
@@ -53,6 +60,12 @@ def _models_client(*, identity: str | None, role: str = "user", require_auth: bo
         calls.append(("prepare_stream", {"model": model, **kwargs}))
         yield "data: done\n\n"
 
+    def install_engine(engine, **kwargs):
+        if install_error is not None:
+            raise install_error
+        calls.append(("install", {"engine": engine, **kwargs}))
+        return {}
+
     app = FastAPI()
     app.include_router(
         create_models_router(
@@ -62,7 +75,7 @@ def _models_client(*, identity: str | None, role: str = "user", require_auth: bo
             get_current_user=lambda _request: identity,
             load_users=lambda: ({identity: {"role": role}} if identity else {}),
             get_user_role=lambda *_args, **_kwargs: role,
-            install_engine=lambda engine, **kwargs: calls.append(("install", {"engine": engine, **kwargs})) or {},
+            install_engine=install_engine,
             verify_cloud_models=verify_cloud_models,
             normalize_local_model_request=lambda model, _engine=None: model,
             download_hf_model=lambda model, provider: calls.append(("pull", {"model": model, "provider": provider})) or {},
@@ -164,3 +177,20 @@ def test_prepare_uses_authenticated_identity_downstream():
             },
         )
     ]
+
+
+def test_model_runtime_error_is_translated_only_at_http_boundary():
+    client, calls = _models_client(
+        identity="admin@example.com",
+        role="admin",
+        install_error=ModelRuntimeError(
+            status_code=409,
+            detail={"status": "confirmation_required"},
+        ),
+    )
+
+    response = client.post("/engines/install", json={"engine": "local_mlx"})
+
+    assert response.status_code == 409
+    assert response.json()["detail"] == {"status": "confirmation_required"}
+    assert calls == []

@@ -22,11 +22,12 @@ underlying store, and missing stores surface as ``unavailable``.
 from __future__ import annotations
 
 import json
-from datetime import datetime
+import logging
 from pathlib import Path
 from typing import Any, Dict, List, Optional
 
 from latticeai.core.workspace_os_utils import _file_size
+from latticeai.core.timeutil import now_iso as _now
 
 # Personal workspace memory kinds (from WorkspaceOS.MEMORY_KINDS).
 WORKSPACE_KINDS = (
@@ -40,10 +41,11 @@ WORKSPACE_KINDS = (
 )
 
 TIERS = ("workspace", "project", "agent", "conversation", "graph", "vector")
+LOGGER = logging.getLogger(__name__)
 
 
-def _now() -> str:
-    return datetime.now().isoformat(timespec="seconds")
+class MemoryServiceError(RuntimeError):
+    """Raised when a configured memory backend cannot be read reliably."""
 
 
 class MemoryService:
@@ -70,20 +72,23 @@ class MemoryService:
     def _workspace_memories(self, *, user_email: Optional[str], workspace_id: Optional[str]) -> List[Dict[str, Any]]:
         try:
             return list(self._store.list_memories(user_email=user_email, workspace_id=workspace_id).get("memories", []))
-        except Exception:
-            return []
+        except Exception as exc:
+            LOGGER.exception("workspace memory read failed")
+            raise MemoryServiceError("workspace memory backend unavailable") from exc
 
     def _all_memories(self) -> List[Dict[str, Any]]:
         try:
             return list(self._store.list_memories().get("memories", []))
-        except Exception:
-            return []
+        except Exception as exc:
+            LOGGER.exception("global memory read failed")
+            raise MemoryServiceError("memory backend unavailable") from exc
 
     def _snapshots(self, *, workspace_id: Optional[str]) -> List[Dict[str, Any]]:
         try:
             return list(self._store.list_memory_snapshots(workspace_id=workspace_id, limit=200).get("snapshots", []))
-        except Exception:
-            return []
+        except Exception as exc:
+            LOGGER.exception("memory snapshot read failed")
+            raise MemoryServiceError("memory snapshot backend unavailable") from exc
 
     def _conversations(self) -> List[Dict[str, Any]]:
         if self._conversation_store is not None:
@@ -92,15 +97,17 @@ class MemoryService:
                 for item in self._conversation_store.history():
                     grouped.setdefault(item.get("conversation_id") or "legacy-previous-history", []).append(item)
                 return [{"id": conv_id, "messages": msgs} for conv_id, msgs in grouped.items()]
-            except Exception:
-                return []
+            except Exception as exc:
+                LOGGER.exception("conversation store read failed")
+                raise MemoryServiceError("conversation backend unavailable") from exc
         if not self._history_file.exists():
             return []
         try:
             with open(self._history_file, "r", encoding="utf-8") as fh:
                 data = json.load(fh)
-        except Exception:
-            return []
+        except (OSError, json.JSONDecodeError, TypeError, ValueError) as exc:
+            LOGGER.exception("legacy conversation history read failed")
+            raise MemoryServiceError("conversation history is unreadable") from exc
         if isinstance(data, dict):
             convs = data.get("conversations")
             if isinstance(convs, list):
@@ -136,6 +143,7 @@ class MemoryService:
         try:
             return self._kg.stats()
         except Exception:
+            LOGGER.exception("knowledge graph stats read failed")
             return None
 
     def _kg_index(self) -> Optional[Dict[str, Any]]:
@@ -144,6 +152,7 @@ class MemoryService:
         try:
             return self._kg.index_status()
         except Exception:
+            LOGGER.exception("knowledge graph index status read failed")
             return None
 
     # ── Memory Manager: sources / usage / health ──────────────────────────
@@ -847,9 +856,12 @@ class MemoryService:
 
         results: List[Dict[str, Any]] = []
 
+        errors: List[Dict[str, str]] = []
         try:
             mem = self._store.search_memories(q, user_email=user_email, limit=limit, workspace_id=workspace_id).get("memories", [])
-        except Exception:
+        except Exception as exc:
+            LOGGER.exception("workspace memory search failed")
+            errors.append({"source": "workspace", "detail": str(exc)})
             mem = []
         for m in mem:
             matched = _matched_terms(m.get("content"), " ".join(m.get("tags") or []), m.get("kind"))
@@ -873,7 +885,9 @@ class MemoryService:
                     else {}
                 )
                 hits = self._kg.search(q, limit, **search_kwargs).get("matches", [])
-            except Exception:
+            except Exception as exc:
+                LOGGER.exception("knowledge graph memory search failed")
+                errors.append({"source": "graph", "detail": str(exc)})
                 hits = []
             for hit in hits[:limit]:
                 matched = _matched_terms(hit.get("title"), hit.get("name"), hit.get("summary"), hit.get("content"))
@@ -903,6 +917,8 @@ class MemoryService:
             "results": results[: max(1, min(limit, 100))],
             "count": len(results),
             "source": "live",
+            "status": "degraded" if errors else "ok",
+            "errors": errors,
             "quality_gate": {
                 "candidates": candidates,
                 "passed": len(results),
@@ -954,6 +970,7 @@ class MemoryService:
             if m.get("id")
         }
         removed: List[str] = []
+        failed: List[Dict[str, str]] = []
         skipped: List[str] = []
         target_ids: List[str] = []
         seen: set = set()
@@ -974,11 +991,15 @@ class MemoryService:
             try:
                 self._store.delete_memory(mid)
                 removed.append(mid)
-            except Exception:
-                continue
+            except Exception as exc:
+                LOGGER.exception("memory deletion failed for %s", mid)
+                failed.append({"id": mid, "detail": str(exc)})
         result: Dict[str, Any] = {"removed": removed, "count": len(removed)}
         if skipped:
             result["skipped"] = skipped
+        if failed:
+            result["failed"] = failed
+            result["status"] = "partial" if removed else "error"
         return result
 
     def compact(
@@ -990,6 +1011,7 @@ class MemoryService:
         """Dedupe workspace memories with identical (kind, content)."""
         seen: set = set()
         removed: List[str] = []
+        failed: List[Dict[str, str]] = []
         # Oldest first so the first occurrence (oldest) is kept.
         memories = list(reversed(self._workspace_memories(user_email=user_email, workspace_id=workspace_id)))
         for m in memories:
@@ -999,11 +1021,18 @@ class MemoryService:
                     try:
                         self._store.delete_memory(m["id"])
                         removed.append(m["id"])
-                    except Exception:
-                        continue
+                    except Exception as exc:
+                        LOGGER.exception("memory compaction deletion failed for %s", m["id"])
+                        failed.append({"id": m["id"], "detail": str(exc)})
             else:
                 seen.add(key)
-        return {"compacted": len(removed), "removed": removed, "remaining": len(seen)}
+        return {
+            "compacted": len(removed),
+            "removed": removed,
+            "remaining": len(seen),
+            "failed": failed,
+            "status": "partial" if failed and removed else "error" if failed else "ok",
+        }
 
     def rebuild(self, target: str = "vector") -> Dict[str, Any]:
         if target in {"vector", "index", "vector_index"}:

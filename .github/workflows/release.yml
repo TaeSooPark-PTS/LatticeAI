@@ -1,6 +1,7 @@
 name: Release
 
-# Runs on v* tag pushes. Builds and validates all release artifacts only.
+# Runs on semantic release tag pushes, with or without a leading v. Builds and
+# validates all release artifacts only.
 # Package-store publication is intentionally manual so pushing a tag can never
 # publish to PyPI / npm / VS Code Marketplace / Open VSX by accident.
 #
@@ -11,6 +12,7 @@ on:
   push:
     tags:
       - 'v*'
+      - '[0-9]*'
 
 # GitHub is migrating JS actions to Node.js 24 (Node 20 removed 2026-09-16).
 env:
@@ -62,7 +64,9 @@ jobs:
           python scripts/product_readiness.py
 
       - name: Run unit tests
-        run: python -m pytest tests/unit/ -v
+        run: |
+          npm run test:frontend
+          python -m pytest tests/unit/ -v
 
       - name: Build Python sdist + wheel
         run: python -m build

@@ -259,7 +259,7 @@ def create_admin_router(
                 {"id": "model_egress", "label": "Model egress",
                  "value": "Local-only by default (no external inference in local mode)", "enforced": True},
                 {"id": "invite_gate", "label": "Invite gate",
-                 "value": "Required for new accounts" if invite_gate_enabled else "Open registration",
+                 "value": "Signed access gate" if invite_gate_enabled else "Disabled",
                  "enforced": bool(invite_gate_enabled)},
                 {"id": "log_retention", "label": "Log retention",
                  "value": "90 day local audit window with manual export before pruning", "enforced": True},

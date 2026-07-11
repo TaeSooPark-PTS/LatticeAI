@@ -20,8 +20,9 @@ from latticeai.core.agent_prompts import (
     MEMORY_UPDATER_PROMPT,
     PLANNER_PROMPT,
 )
+from latticeai.core.policy import role_has_capability
 from latticeai.core.tool_registry import ToolPermission, ToolPolicy
-from tools import AGENT_ROOT, DEFAULT_TOOL_REGISTRY, ToolError, ensure_agent_root
+from latticeai.tools import AGENT_ROOT, DEFAULT_TOOL_REGISTRY, ToolError, ensure_agent_root
 
 
 def _default_load_users() -> Dict[str, Any]:
@@ -104,13 +105,21 @@ class ToolDispatchService:
         return self.registry.manifest()
 
     def check_role(self, tool_name: str, current_user: str) -> None:
-        if tool_name not in self.registry.admin_only_tools:
+        admin_only = tool_name in self.registry.admin_only_tools
+        capability = self.policy_for(tool_name, {}).get("capability")
+        if not admin_only and not capability:
             return
         users = self.load_users()
-        if self.get_user_role(current_user, users) != "admin":
+        role = str(self.get_user_role(current_user, users) or "user")
+        if admin_only and role not in {"admin", "owner"}:
             raise HTTPException(
                 status_code=403,
                 detail=f"'{tool_name}' 툴은 관리자 전용입니다.",
+            )
+        if capability and not role_has_capability(role, capability):
+            raise HTTPException(
+                status_code=403,
+                detail=f"'{tool_name}' 툴에는 '{capability}' capability가 필요합니다.",
             )
 
     def user_role(self, current_user: str) -> str:
@@ -157,13 +166,13 @@ class ToolDispatchService:
             require_auto_approval
             and not trusted_admin
             and not policy["auto_approve"]
-            and self.user_role(current_user) != "admin"
+            and self.user_role(current_user) not in {"admin", "owner"}
         ):
             raise HTTPException(
                 status_code=403,
                 detail=(
                     f"'{tool_name}' 툴은 명시 승인이 필요합니다. "
-                    "9.0.0에서는 승인 UI가 없는 직접 실행 경로에서 기본 차단됩니다."
+                    "현재 릴리스에서는 승인 UI가 없는 직접 실행 경로에서 기본 차단됩니다."
                 ),
             )
         return policy

@@ -23,20 +23,30 @@ def registry(tmp_path):
     return HooksRegistry(tmp_path / "hooks.json")
 
 
-def _app(registry, *, user="admin@example.com", role="admin", audit_events=None):
+def _app(
+    registry,
+    *,
+    user="admin@example.com",
+    role="admin",
+    audit_events=None,
+    model_router=None,
+    save_to_history=None,
+    workspace_service=None,
+):
     configure_tool_dispatch(
         load_users=lambda: {},
         get_user_role=lambda email, _users=None: role if email == user else "user",
     )
     app = FastAPI()
     app.include_router(create_computer_use_router(
-        model_router=type("M", (), {"current_model_id": None})(),
+        model_router=model_router or type("M", (), {"current_model_id": None})(),
         require_user=lambda request: user,
         tool_response=lambda fn, *a, **k: {"status": "ok", "result": fn(*a, **k)},
-        save_to_history=lambda *a, **k: None,
+        save_to_history=save_to_history or (lambda *a, **k: None),
         hooks=registry,
         append_audit_event=(lambda event_type, **payload: audit_events.append((event_type, payload)))
         if audit_events is not None else None,
+        workspace_service=workspace_service,
     ))
     return app
 
@@ -117,3 +127,156 @@ def test_dispatch_tool_forwards_kwargs_into_hook_payload(registry):
     assert out == {"ok": True}
     assert seen.get("tool") == "read_file"
     assert "path" in seen.get("args_keys", [])
+
+
+class _WorkspaceResolver:
+    def __init__(self, resolved="org:resolved", error=None):
+        self.resolved = resolved
+        self.error = error
+        self.calls = []
+
+    def resolve_write_scope(self, requested, user):
+        self.calls.append((requested, user))
+        if self.error is not None:
+            raise PermissionError(self.error)
+        return self.resolved
+
+
+def test_cu_agent_fast_path_persists_authenticated_workspace_scope(registry, monkeypatch):
+    saved = []
+    workspace = _WorkspaceResolver()
+    monkeypatch.setattr(
+        "latticeai.api.computer_use.computer_open_app",
+        lambda app: {"opened": app},
+    )
+    client = TestClient(
+        _app(
+            registry,
+            save_to_history=lambda *args, **kwargs: saved.append((args, kwargs)),
+            workspace_service=workspace,
+        )
+    )
+
+    response = client.post(
+        "/cu/agent",
+        headers={"X-Workspace-Id": "org:requested"},
+        json={
+            "task": "Chrome 열어",
+            "conversation_id": "conversation-fast",
+        },
+    )
+
+    assert response.status_code == 200
+    assert "event: final" in response.text
+    assert workspace.calls == [("org:requested", "admin@example.com")]
+    assert [entry[0][0] for entry in saved] == ["user", "assistant"]
+    assert [entry[0][1] for entry in saved] == [
+        "Chrome 열어",
+        "Google Chrome을 열었습니다.",
+    ]
+    for _args, kwargs in saved:
+        assert kwargs == {
+            "source": "web",
+            "conversation_id": "conversation-fast",
+            "user_email": "admin@example.com",
+            "workspace_id": "org:resolved",
+        }
+
+
+def test_cu_agent_model_final_persists_authenticated_workspace_scope(registry):
+    class FinalModel:
+        current_model_id = "deterministic-model"
+
+        def __init__(self):
+            self.calls = 0
+
+        async def generate(self, **_kwargs):
+            self.calls += 1
+            return '{"action":"final","message":"model final"}'
+
+    saved = []
+    model = FinalModel()
+    workspace = _WorkspaceResolver()
+    client = TestClient(
+        _app(
+            registry,
+            model_router=model,
+            save_to_history=lambda *args, **kwargs: saved.append((args, kwargs)),
+            workspace_service=workspace,
+        )
+    )
+
+    response = client.post(
+        "/cu/agent?workspace_id=org:query",
+        json={
+            "task": "complete through the model",
+            "conversation_id": "conversation-model",
+        },
+    )
+
+    assert response.status_code == 200
+    assert "model final" in response.text
+    assert model.calls == 1
+    assert workspace.calls == [("org:query", "admin@example.com")]
+    assert [entry[0] for entry in saved] == [
+        ("user", "complete through the model"),
+        ("assistant", "model final"),
+    ]
+    for _args, kwargs in saved:
+        assert kwargs == {
+            "source": "web",
+            "conversation_id": "conversation-model",
+            "user_email": "admin@example.com",
+            "workspace_id": "org:resolved",
+        }
+
+
+def test_cu_agent_rejects_unauthorized_workspace_before_streaming(registry):
+    saved = []
+    workspace = _WorkspaceResolver(error="workspace write denied")
+    client = TestClient(
+        _app(
+            registry,
+            save_to_history=lambda *args, **kwargs: saved.append((args, kwargs)),
+            workspace_service=workspace,
+        )
+    )
+
+    response = client.post(
+        "/cu/agent",
+        headers={"X-Workspace-Id": "org:forbidden"},
+        json={"task": "Chrome 열어"},
+    )
+
+    assert response.status_code == 403
+    assert response.json()["detail"] == "workspace write denied"
+    assert workspace.calls == [("org:forbidden", "admin@example.com")]
+    assert saved == []
+
+
+def test_cu_agent_no_auth_without_scope_preserves_legacy_history_shape(registry, monkeypatch):
+    class UnexpectedWorkspaceResolution:
+        def resolve_write_scope(self, _requested, _user):
+            raise AssertionError("unscoped no-auth CU should remain legacy local")
+
+    saved = []
+    monkeypatch.setattr(
+        "latticeai.api.computer_use.computer_open_app",
+        lambda app: {"opened": app},
+    )
+    client = TestClient(
+        _app(
+            registry,
+            user="",
+            role="owner",
+            save_to_history=lambda *args, **kwargs: saved.append((args, kwargs)),
+            workspace_service=UnexpectedWorkspaceResolution(),
+        )
+    )
+
+    response = client.post("/cu/agent", json={"task": "Chrome 열어"})
+
+    assert response.status_code == 200
+    assert len(saved) == 2
+    assert all(kwargs["user_email"] == "" for _args, kwargs in saved)
+    assert all(kwargs["workspace_id"] is None for _args, kwargs in saved)

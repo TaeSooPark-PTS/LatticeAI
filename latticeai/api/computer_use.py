@@ -13,7 +13,7 @@ from pydantic import BaseModel
 from latticeai.core.agent import extract_action as _extract_agent_action
 from lattice_brain.runtime.hooks import dispatch_tool
 from latticeai.services.tool_dispatch import enforce_tool_policy
-from tools import (
+from latticeai.tools import (
     AGENT_ROOT,
     ToolError,
     computer_click,
@@ -118,8 +118,38 @@ def create_computer_use_router(
     save_to_history,
     hooks=None,
     append_audit_event=None,
+    workspace_service=None,
 ) -> APIRouter:
     router = APIRouter()
+
+    def _requested_workspace(request: Request) -> Optional[str]:
+        header = request.headers.get("X-Workspace-Id")
+        if header and header.strip():
+            return header.strip()
+        query = request.query_params.get("workspace_id")
+        return query.strip() if query and query.strip() else None
+
+    def _write_workspace(request: Request, current_user: str) -> Optional[str]:
+        """Resolve only the CU agent's durable write scope.
+
+        The other ``/cu`` actions remain host operations and do not acquire a
+        workspace dependency.  A no-auth local request without an explicit
+        scope preserves its legacy unscoped history behavior; explicit scopes
+        and every authenticated request go through the normal write gate.
+        """
+
+        requested = _requested_workspace(request)
+        if workspace_service is None:
+            return requested
+        if not current_user and requested is None:
+            return None
+        try:
+            return workspace_service.resolve_write_scope(
+                requested,
+                current_user or None,
+            )
+        except PermissionError as exc:
+            raise HTTPException(status_code=403, detail=str(exc)) from exc
 
     def _audit_args(name: str, args: dict) -> dict:
         """Return audit-safe argument metadata without storing typed text."""
@@ -171,13 +201,25 @@ def create_computer_use_router(
 
     @router.get("/tools/chrome_status")
     async def tools_chrome_status(request: Request):
-        require_user(request)
-        return tool_response(desktop_bridge_status)
+        current_user = require_user(request)
+        result = _dispatch(
+            "chrome_status",
+            {},
+            desktop_bridge_status,
+            current_user=current_user,
+        )
+        return _response(result)
 
     @router.get("/tools/computer_use_status")
     async def tools_computer_use_status(request: Request):
-        require_user(request)
-        return tool_response(computer_status)
+        current_user = require_user(request)
+        result = _dispatch(
+            "computer_use_status",
+            {},
+            computer_status,
+            current_user=current_user,
+        )
+        return _response(result)
 
     @router.get("/cu/status")
     async def cu_status(request: Request):
@@ -294,6 +336,17 @@ def create_computer_use_router(
     @router.post("/cu/agent")
     async def cu_agent(req: CuAgentRequest, request: Request):
         current_user = require_user(request)
+        workspace_id = _write_workspace(request, current_user)
+
+        def _save_completed(role: str, message: str) -> None:
+            save_to_history(
+                role,
+                message,
+                source="web",
+                conversation_id=req.conversation_id,
+                user_email=current_user,
+                workspace_id=workspace_id,
+            )
 
         async def _stream():
             task_lower = (req.task or "").lower()
@@ -336,8 +389,8 @@ def create_computer_use_router(
                         yield _send("result", {"step": 1, "action": "computer_open_app", "result": result})
                         message = "Google Chrome을 열었습니다."
                         action_name = "computer_open_app"
-                    save_to_history("user", req.task, source="web", conversation_id=req.conversation_id)
-                    save_to_history("assistant", message, source="web", conversation_id=req.conversation_id)
+                    _save_completed("user", req.task)
+                    _save_completed("assistant", message)
                     yield _send("final", {"message": message, "steps": [{"step": 1, "action": action_name, "result": result}]})
                 except HTTPException as exc:
                     yield _send("tool_error", {"step": 1, "action": "computer_open_app", "error": str(exc.detail)})
@@ -378,8 +431,8 @@ def create_computer_use_router(
                 args = action.get("args") or {}
                 if name == "final":
                     message = action.get("message", "작업을 완료했습니다.")
-                    save_to_history("user", req.task, source="web", conversation_id=req.conversation_id)
-                    save_to_history("assistant", message, source="web", conversation_id=req.conversation_id)
+                    _save_completed("user", req.task)
+                    _save_completed("assistant", message)
                     yield _send("final", {"message": message, "steps": transcript})
                     return
 

@@ -8,16 +8,11 @@ from __future__ import annotations
 
 import json
 import shutil
-from datetime import datetime
 from pathlib import Path
 from typing import Any, Dict, List, Optional
 
 from .io_utils import atomic_write_json as _atomic_write_json  # noqa: F401 - legacy helper re-export
 from .io_utils import parse_iso as _parse_iso  # noqa: F401 - legacy helper re-export
-
-
-def _now() -> str:
-    return datetime.now().isoformat(timespec="seconds")
 
 
 def _safe_slug(raw: str) -> str:

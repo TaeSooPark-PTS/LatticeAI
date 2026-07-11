@@ -4,9 +4,21 @@ The top entry is either the current unreleased main-branch work or the current
 release line. Older entries are historical and may describe behavior as it
 existed at that release.
 
-## [Unreleased]
+## [9.1.0] - 2026-07-11
 
 ### Added
+- Added required Telegram chat/callback allowlisting through
+  `LATTICEAI_TELEGRAM_ALLOWED_CHAT_IDS` and authenticated local API bridging
+  through `LATTICEAI_SERVER_SESSION_TOKEN`.
+- Added signed, expiring invitation authorization, explicit legacy-global graph
+  read opt-in, and fail-closed regression coverage for broken or unknown
+  Knowledge Graph scope.
+- Added optional permission-review deep links through
+  `LATTICEAI_PERMISSION_UI_URL` while keeping approval tokens out of outbound
+  notifications.
+- Added Vitest coverage for API empty/result shapes, Brain proof state,
+  conversation sessions, shared primitives, and i18n, plus visual assertions
+  for unavailable core services.
 - Added continuous vital rings, heartbeat echoes, neural sparks, body motion,
   and Brain-to-graph particles whose speed and intensity reflect real listening,
   recall, synthesis, and automation activity. Reduced-motion preferences still
@@ -35,6 +47,18 @@ existed at that release.
   normal lint gate.
 
 ### Changed
+- Replaced ambient app-factory namespace assembly with typed config, security,
+  Brain, model, and router stages while retaining an explicit compatibility
+  surface.
+- Replaced model-runtime dual globals with injected typed state and split chat
+  contracts, documents, history, and streaming into focused modules.
+- Split Brain feature hooks, translation namespaces, and experience CSS by
+  product surface; frontend version copy now comes from package metadata.
+- Consolidated shallow runtime pass-through modules, timestamps and run-status
+  constants, and moved setup/local-knowledge implementations behind package
+  owned modules with root compatibility shims.
+- Archived code-review documents under `docs/reviews/`, removed obsolete local
+  VSIX artifacts, and documented Electron as an experimental compatibility shell.
 - Compressed the empty Brain home into a single desktop/mobile viewport: the
   living Brain, real graph, source dock, composer, primary grounded action, and
   flow status remain visible without page scrolling. Conversation history,
@@ -87,6 +111,21 @@ existed at that release.
   machine-local files.
 
 ### Fixed
+- Closed every actionable item in the July 11 code review across fail-closed
+  security, typed runtime/model/chat ownership, honest frontend failures/tests,
+  and repository hygiene.
+- Telegram now rejects unknown chats before registration; invitation gates no
+  longer trust a static cookie or built-in code, including SSO just-in-time
+  provisioning; and graph projection failures cannot expose cross-workspace
+  nodes.
+- Agent and Computer Use history/run persistence now retains authenticated
+  user and workspace ownership, and recent model context is selected through
+  fail-closed storage scopes before prompt assembly.
+- Desktop, knowledge, Obsidian, and network-status tools now use explicit
+  policy/capability/consent checks. Permission queues use atomic private writes,
+  notifications expose token hints only, and MCP paths are masked.
+- Failed API results no longer become quiet healthy Brain state, proof is not
+  synthesized after failure, and action success callbacks run only on success.
 - Fixed ingestion deltas that compared against truncated display lists instead
   of complete graph/readiness baselines, and replaced simulated stage timers
   with post-response memory and graph verification.

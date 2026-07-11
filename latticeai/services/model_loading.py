@@ -11,13 +11,15 @@ import logging
 import queue
 import subprocess
 import threading
+from functools import partial
 from pathlib import Path
-from typing import AsyncIterator, Dict, Optional
+from typing import Any, AsyncIterator, Dict, Optional
 
-from fastapi import HTTPException, Request
+from .model_errors import ModelRuntimeError
 
-# Late imports to avoid circulars during extraction
-def _get_model_runtime_deps():
+# Late imports to avoid circulars during extraction. The state argument is
+# mandatory so this module cannot fall back to ambient process configuration.
+def _get_model_runtime_deps(runtime_state: Any):
     from .model_runtime import (
         _download_allowed,
         _download_block,
@@ -33,10 +35,8 @@ def _get_model_runtime_deps():
         ensure_lmstudio_model,
         ensure_ollama_server,
         ensure_vllm_server,
-        get_current_user,
         get_lmstudio_models,
         get_ollama_pulled_models,
-        get_user_api_key,
         hf_model_dir,
         hf_model_ready,
         local_binary,
@@ -45,27 +45,26 @@ def _get_model_runtime_deps():
         normalize_local_model_request,
         parse_model_ref,
         pull_ollama_model_with_progress,
-        router,
     )
     return {
-        "_download_allowed": _download_allowed,
+        "_download_allowed": partial(_download_allowed, state=runtime_state),
         "_download_block": _download_block,
         "_engine_install_block": _engine_install_block,
         "_friendly_model_runtime_error": _friendly_model_runtime_error,
         "_ModelResolution": _ModelResolution,
         "_model_runtime_compatibility": _model_runtime_compatibility,
-        "_smoke_test_loaded_model": _smoke_test_loaded_model,
+        "_smoke_test_loaded_model": partial(_smoke_test_loaded_model, state=runtime_state),
         "download_hf_model": download_hf_model,
         "engine_installed": engine_installed,
-        "ensure_engine_ready": ensure_engine_ready,
+        "ensure_engine_ready": partial(ensure_engine_ready, state=runtime_state),
         "ensure_llamacpp_server": ensure_llamacpp_server,
         "ensure_lmstudio_model": ensure_lmstudio_model,
         "ensure_ollama_server": ensure_ollama_server,
         "ensure_vllm_server": ensure_vllm_server,
-        "get_current_user": get_current_user,
+        "get_current_user": runtime_state.get_current_user,
         "get_lmstudio_models": get_lmstudio_models,
         "get_ollama_pulled_models": get_ollama_pulled_models,
-        "get_user_api_key": get_user_api_key,
+        "get_user_api_key": runtime_state.get_user_api_key,
         "hf_model_dir": hf_model_dir,
         "hf_model_ready": hf_model_ready,
         "local_binary": local_binary,
@@ -74,23 +73,25 @@ def _get_model_runtime_deps():
         "normalize_local_model_request": normalize_local_model_request,
         "parse_model_ref": parse_model_ref,
         "pull_ollama_model_with_progress": pull_ollama_model_with_progress,
-        "router": router,
+        "router": runtime_state.router,
     }
 
 
 async def prepare_and_load_model(
     model_id: str,
-    request: Request,
+    request: Any,
     engine: Optional[str] = None,
     user_email: Optional[str] = None,
     adapter_path: Optional[str] = None,
     draft_model_id: Optional[str] = None,
     allow_download: bool = False,
+    *,
+    runtime_state: Any,
 ) -> Dict[str, object]:
-    deps = _get_model_runtime_deps()
+    deps = _get_model_runtime_deps(runtime_state)
     model_id = deps["normalize_local_model_request"](model_id, engine)
     if not model_id:
-        raise HTTPException(status_code=400, detail="모델 식별자가 비어 있습니다.")
+        raise ModelRuntimeError(status_code=400, detail="모델 식별자가 비어 있습니다.")
 
     resolution = deps["_ModelResolution"].from_request(
         model_id,
@@ -104,7 +105,7 @@ async def prepare_and_load_model(
         parsed_provider = "local_mlx"
     compatibility = deps["_model_runtime_compatibility"](parsed_model, engine=parsed_provider)
     if compatibility.get("supported") is False:
-        raise HTTPException(status_code=400, detail=compatibility)
+        raise ModelRuntimeError(status_code=400, detail=compatibility)
 
     local_engines = {"local_mlx", "ollama", "vllm", "lmstudio", "llamacpp"}
     install_result: Dict[str, object] = {}
@@ -125,7 +126,7 @@ async def prepare_and_load_model(
         deps["ensure_ollama_server"]()
         ollama = deps["local_binary"]("ollama")
         if not ollama:
-            raise HTTPException(status_code=400, detail="Ollama가 설치되지 않았습니다.")
+            raise ModelRuntimeError(status_code=400, detail="Ollama가 설치되지 않았습니다.")
         if parsed_model not in deps["get_ollama_pulled_models"]():
             if not deps["_download_allowed"](allow_download):
                 deps["_download_block"](parsed_provider, parsed_model)
@@ -137,7 +138,7 @@ async def prepare_and_load_model(
                 check=False,
             )
             if completed.returncode != 0:
-                raise HTTPException(status_code=500, detail=completed.stderr[-2000:] or "Ollama 모델 다운로드 실패")
+                raise ModelRuntimeError(status_code=500, detail=completed.stderr[-2000:] or "Ollama 모델 다운로드 실패")
             download_result = {"provider": "ollama", "model": parsed_model, "returncode": completed.returncode}
     elif parsed_provider == "vllm":
         if not deps["hf_model_ready"](parsed_model, "vllm") and not deps["_download_allowed"](allow_download):
@@ -210,22 +211,24 @@ def sse_event(event: str, data: Dict[str, object]) -> str:
 
 async def prepare_and_load_model_stream(
     model_id: str,
-    request: Request,
+    request: Any,
     engine: Optional[str] = None,
     user_email: Optional[str] = None,
     allow_download: bool = False,
+    *,
+    runtime_state: Any,
 ) -> AsyncIterator[str]:
-    deps = _get_model_runtime_deps()
+    deps = _get_model_runtime_deps(runtime_state)
     model_id = deps["normalize_local_model_request"](model_id, engine)
     if not model_id:
-        raise HTTPException(status_code=400, detail="모델 식별자가 비어 있습니다.")
+        raise ModelRuntimeError(status_code=400, detail="모델 식별자가 비어 있습니다.")
 
     parsed_provider, parsed_model = deps["parse_model_ref"](model_id)
     if parsed_provider == "mlx":
         parsed_provider = "local_mlx"
     compatibility = deps["_model_runtime_compatibility"](parsed_model, engine=parsed_provider)
     if compatibility.get("supported") is False:
-        raise HTTPException(status_code=400, detail=compatibility)
+        raise ModelRuntimeError(status_code=400, detail=compatibility)
 
     work_queue: "queue.Queue[Dict[str, object]]" = queue.Queue()
     work_result: Dict[str, object] = {}
@@ -385,7 +388,7 @@ async def prepare_and_load_model_stream(
                 "download_result": download_result,
             })
             work_queue.put({"kind": "done"})
-        except HTTPException as exc:
+        except ModelRuntimeError as exc:
             work_queue.put({"kind": "error", "status_code": exc.status_code, "detail": exc.detail})
         except Exception as exc:
             logging.exception("model prepare stream worker failed")
@@ -404,7 +407,7 @@ async def prepare_and_load_model_stream(
         if kind == "progress":
             yield sse_event("progress", item["data"])
         elif kind == "error":
-            raise HTTPException(
+            raise ModelRuntimeError(
                 status_code=int(item.get("status_code") or 500),
                 detail=item.get("detail") or "모델 준비에 실패했습니다.",
             )

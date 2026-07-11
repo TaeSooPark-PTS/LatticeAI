@@ -21,7 +21,7 @@ def build_hooks_runtime(
     """Construct the hooks registry and local-knowledge watcher behind one seam."""
 
     from lattice_brain.runtime.hooks import HooksRegistry
-    from local_knowledge_api import LocalKnowledgeWatcher
+    from latticeai.services.local_knowledge import LocalKnowledgeWatcher
 
     hooks_registry = HooksRegistry(data_dir / "hooks.json")
     local_kg_watcher = (

@@ -9,7 +9,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Input } from "@/components/ui/input";
 import { t, type Language } from "@/i18n";
 import { useAppStore } from "@/store/appStore";
-import { asArray, isRecord, shortId, titleize } from "@/lib/utils";
+import { asArray, isRecord, shortId } from "@/lib/utils";
 import { clearScopedClientState } from "@/queryClient";
 import { navigateHash } from "@/features/brain/navigation";
 
@@ -72,6 +72,7 @@ export function SystemPage({ initialTab }: { initialTab?: string }) {
 
 function AccountPanel() {
   const qc = useQueryClient();
+  const language = useAppStore((state) => state.language);
   const setWorkspaceId = useAppStore((state) => state.setWorkspaceId);
   const profile = useQuery({ queryKey: ["profile"], queryFn: latticeApi.profile });
   const sso = useQuery({ queryKey: ["sso"], queryFn: latticeApi.ssoConfig });
@@ -91,35 +92,35 @@ function AccountPanel() {
   const changePassword = useMutation({ mutationFn: () => latticeApi.changePassword(password, newPassword) });
   return (
     <div className="grid gap-4 xl:grid-cols-2">
-      <DataPanel title="Profile" result={profile.data}>
+      <DataPanel title={t(language, "system.account.profile")} result={profile.data}>
         {(data) => <KeyValueList data={data as Record<string, unknown>} />}
       </DataPanel>
       <Card>
         <CardHeader>
-          <CardTitle className="flex items-center gap-2"><UserCircle className="h-4 w-4" /> Account</CardTitle>
-          <CardDescription>Sign in, create a local account, and keep your profile current.</CardDescription>
+          <CardTitle className="flex items-center gap-2"><UserCircle className="h-4 w-4" /> {t(language, "system.account.title")}</CardTitle>
+          <CardDescription>{t(language, "system.account.detail")}</CardDescription>
         </CardHeader>
         <CardContent className="grid gap-3">
-          <Input value={email} onChange={(e) => setEmail(e.target.value)} placeholder="email" />
-          <Input type="password" value={password} onChange={(e) => setPassword(e.target.value)} placeholder="current password" />
+          <Input value={email} onChange={(e) => setEmail(e.target.value)} placeholder={t(language, "system.account.email")} />
+          <Input type="password" value={password} onChange={(e) => setPassword(e.target.value)} placeholder={t(language, "system.account.password")} />
           <div className="grid gap-2 sm:grid-cols-2">
-            <Input value={name} onChange={(e) => setName(e.target.value)} placeholder="name" />
-            <Input value={nickname} onChange={(e) => setNickname(e.target.value)} placeholder="nickname" />
+            <Input value={name} onChange={(e) => setName(e.target.value)} placeholder={t(language, "system.account.name")} />
+            <Input value={nickname} onChange={(e) => setNickname(e.target.value)} placeholder={t(language, "system.account.nickname")} />
           </div>
-          <Input type="password" value={newPassword} onChange={(e) => setNewPassword(e.target.value)} placeholder="new password" />
+          <Input type="password" value={newPassword} onChange={(e) => setNewPassword(e.target.value)} placeholder={t(language, "system.account.newPassword")} />
           <div className="flex flex-wrap gap-2">
-            <Button onClick={() => login.mutate()} disabled={!email || !password || login.isPending}>Login</Button>
-            <Button variant="outline" onClick={() => register.mutate()} disabled={!email || !password || register.isPending}>Register</Button>
-            <Button variant="outline" onClick={() => saveProfile.mutate()} disabled={saveProfile.isPending}>Save profile</Button>
-            <Button variant="outline" onClick={() => changePassword.mutate()} disabled={!password || !newPassword || changePassword.isPending}>Change password</Button>
-            <ActionButton label="Logout" action={() => latticeApi.logout()} onSuccess={resetIdentityScope} />
+            <Button onClick={() => login.mutate()} disabled={!email || !password || login.isPending}>{t(language, "system.account.login")}</Button>
+            <Button variant="outline" onClick={() => register.mutate()} disabled={!email || !password || register.isPending}>{t(language, "system.account.register")}</Button>
+            <Button variant="outline" onClick={() => saveProfile.mutate()} disabled={saveProfile.isPending}>{t(language, "system.account.save")}</Button>
+            <Button variant="outline" onClick={() => changePassword.mutate()} disabled={!password || !newPassword || changePassword.isPending}>{t(language, "system.account.changePassword")}</Button>
+            <ActionButton label={t(language, "system.account.logout")} action={() => latticeApi.logout()} onSuccess={resetIdentityScope} />
           </div>
           {[login.data, register.data, saveProfile.data, changePassword.data].filter(Boolean).map((item, i) => (
-            <OperationResult key={i} result={item} successLabel="Account request completed" />
+            <OperationResult key={i} result={item} successLabel={t(language, "system.account.requestDone")} />
           ))}
         </CardContent>
       </Card>
-      <DataPanel title="Sign-in options" result={sso.data} className="xl:col-span-2">
+      <DataPanel title={t(language, "system.account.signInOptions")} result={sso.data} className="xl:col-span-2">
         {(data) => <StructuredView value={data} />}
       </DataPanel>
     </div>
@@ -128,6 +129,7 @@ function AccountPanel() {
 
 function WorkspacePanel() {
   const qc = useQueryClient();
+  const language = useAppStore((state) => state.language);
   const { setWorkspaceId } = useAppStore();
   const registry = useQuery({ queryKey: ["workspaceRegistry"], queryFn: latticeApi.workspaceRegistry });
   const invites = useQuery({ queryKey: ["invitations"], queryFn: latticeApi.invitations });
@@ -140,7 +142,7 @@ function WorkspacePanel() {
   const workspaces = asArray<Record<string, unknown>>((registry.data?.data as Record<string, unknown>)?.workspaces);
   return (
     <div className="grid gap-4 xl:grid-cols-[1.1fr_0.9fr]">
-      <DataPanel title="Your workspaces" result={registry.data}>
+      <DataPanel title={t(language, "system.workspace.yours")} result={registry.data}>
         {() => (
           <div className="grid gap-2">
             {workspaces.map((workspace) => {
@@ -153,9 +155,9 @@ function WorkspacePanel() {
                       <div className="text-sm text-muted-foreground">{String(workspace.type || "")} · {String(workspace.your_role || workspace.role || "")}</div>
                     </div>
                     <div className="flex flex-wrap gap-2">
-                      <Button variant="outline" onClick={() => setWorkspaceId(id)}>Use</Button>
-                      <ActionButton label="Activate" action={() => latticeApi.activateWorkspace(id)} invalidate={["workspaceRegistry"]} />
-                      <ActionButton label="Archive" action={() => latticeApi.archiveWorkspace(id)} invalidate={["workspaceRegistry"]} variant="destructive" />
+                      <Button variant="outline" onClick={() => setWorkspaceId(id)}>{t(language, "system.workspace.use")}</Button>
+                      <ActionButton label={t(language, "system.workspace.activate")} action={() => latticeApi.activateWorkspace(id)} invalidate={["workspaceRegistry"]} />
+                      <ActionButton label={t(language, "system.workspace.archive")} action={() => latticeApi.archiveWorkspace(id)} invalidate={["workspaceRegistry"]} variant="destructive" />
                     </div>
                   </div>
                 </div>
@@ -166,17 +168,17 @@ function WorkspacePanel() {
       </DataPanel>
       <Card>
         <CardHeader>
-          <CardTitle className="flex items-center gap-2"><Users className="h-4 w-4" /> Organizations and invitations</CardTitle>
-          <CardDescription>Create or join a workspace before adding knowledge.</CardDescription>
+          <CardTitle className="flex items-center gap-2"><Users className="h-4 w-4" /> {t(language, "system.workspace.organizations")}</CardTitle>
+          <CardDescription>{t(language, "system.workspace.organizationsHint")}</CardDescription>
         </CardHeader>
         <CardContent className="grid gap-3">
-          <Input value={orgName} onChange={(e) => setOrgName(e.target.value)} placeholder="New organization name" />
-          <Button disabled={!orgName.trim() || createOrg.isPending} onClick={() => createOrg.mutate()}>Create organization</Button>
-          <Input value={inviteEmail} onChange={(e) => setInviteEmail(e.target.value)} placeholder="invitee email" />
-          <Button variant="outline" disabled={createInvite.isPending} onClick={() => createInvite.mutate()}>Create invitation</Button>
-          <Input value={inviteToken} onChange={(e) => setInviteToken(e.target.value)} placeholder="invitation token" />
-          <Button variant="outline" disabled={!inviteToken.trim() || accept.isPending} onClick={() => accept.mutate()}>Accept invitation</Button>
-          <DataPanel title="Invitations" result={invites.data}>
+          <Input value={orgName} onChange={(e) => setOrgName(e.target.value)} placeholder={t(language, "system.workspace.orgPlaceholder")} />
+          <Button disabled={!orgName.trim() || createOrg.isPending} onClick={() => createOrg.mutate()}>{t(language, "system.workspace.createOrg")}</Button>
+          <Input value={inviteEmail} onChange={(e) => setInviteEmail(e.target.value)} placeholder={t(language, "system.workspace.inviteeEmail")} />
+          <Button variant="outline" disabled={createInvite.isPending} onClick={() => createInvite.mutate()}>{t(language, "system.workspace.createInvite")}</Button>
+          <Input value={inviteToken} onChange={(e) => setInviteToken(e.target.value)} placeholder={t(language, "system.workspace.inviteToken")} />
+          <Button variant="outline" disabled={!inviteToken.trim() || accept.isPending} onClick={() => accept.mutate()}>{t(language, "system.workspace.acceptInvite")}</Button>
+          <DataPanel title={t(language, "system.workspace.invitations")} result={invites.data}>
             {(data) => <EntityList items={(data as Record<string, unknown>).invitations} titleKey="token" metaKey="role" />}
           </DataPanel>
         </CardContent>
@@ -186,17 +188,18 @@ function WorkspacePanel() {
 }
 
 function SnapshotsPanel() {
+  const language = useAppStore((state) => state.language);
   const snaps = useQuery({ queryKey: ["snapshots"], queryFn: latticeApi.snapshots });
   const timeline = useQuery({ queryKey: ["timeMachine"], queryFn: latticeApi.timeMachine });
   const [name, setName] = React.useState("");
   const [before, setBefore] = React.useState("");
   const [after, setAfter] = React.useState("");
-  const create = useMutation({ mutationFn: () => latticeApi.createSnapshot(name || "desktop checkpoint") });
+  const create = useMutation({ mutationFn: () => latticeApi.createSnapshot(name || t(language, "system.snapshots.defaultName")) });
   const compare = useMutation({ mutationFn: () => latticeApi.compareSnapshots(before, after) });
   const rows = asArray<Record<string, unknown>>((snaps.data?.data as Record<string, unknown>)?.snapshots);
   return (
     <div className="grid gap-4 xl:grid-cols-2">
-      <DataPanel title="Snapshots" result={snaps.data}>
+      <DataPanel title={t(language, "system.snapshots.title")} result={snaps.data}>
         {() => (
           <div className="space-y-2">
             {rows.map((snap) => {
@@ -205,8 +208,8 @@ function SnapshotsPanel() {
                 <div key={id} className="rounded-md border border-border p-3">
                   <div className="font-medium">{String(snap.name || id)}</div>
                   <div className="mt-2 flex flex-wrap gap-2">
-                    <ActionButton label="Export" action={() => latticeApi.exportSnapshot(id)} />
-                    <ActionButton label="Merge restore" action={() => latticeApi.restoreSnapshot(id)} variant="outline" />
+                    <ActionButton label={t(language, "system.snapshots.export")} action={() => latticeApi.exportSnapshot(id)} />
+                    <ActionButton label={t(language, "system.snapshots.mergeRestore")} action={() => latticeApi.restoreSnapshot(id)} variant="outline" />
                   </div>
                 </div>
               );
@@ -216,21 +219,21 @@ function SnapshotsPanel() {
       </DataPanel>
       <Card>
         <CardHeader>
-          <CardTitle>Snapshot actions</CardTitle>
-          <CardDescription>Create checkpoints and compare changes over time.</CardDescription>
+          <CardTitle>{t(language, "system.snapshots.actions")}</CardTitle>
+          <CardDescription>{t(language, "system.snapshots.actionsHint")}</CardDescription>
         </CardHeader>
         <CardContent className="grid gap-3">
-          <Input value={name} onChange={(e) => setName(e.target.value)} placeholder="snapshot name" />
-          <Button onClick={() => create.mutate()} disabled={create.isPending}>Create snapshot</Button>
+          <Input value={name} onChange={(e) => setName(e.target.value)} placeholder={t(language, "system.snapshots.namePlaceholder")} />
+          <Button onClick={() => create.mutate()} disabled={create.isPending}>{t(language, "system.snapshots.create")}</Button>
           <div className="grid gap-2 sm:grid-cols-2">
-            <Input value={before} onChange={(e) => setBefore(e.target.value)} placeholder="before id" />
-            <Input value={after} onChange={(e) => setAfter(e.target.value)} placeholder="after id" />
+            <Input value={before} onChange={(e) => setBefore(e.target.value)} placeholder={t(language, "system.snapshots.beforeId")} />
+            <Input value={after} onChange={(e) => setAfter(e.target.value)} placeholder={t(language, "system.snapshots.afterId")} />
           </div>
-          <Button variant="outline" onClick={() => compare.mutate()} disabled={!before || !after || compare.isPending}>Compare</Button>
-          {compare.data ? <OperationResult result={compare.data} successLabel="Snapshot comparison completed" /> : null}
+          <Button variant="outline" onClick={() => compare.mutate()} disabled={!before || !after || compare.isPending}>{t(language, "system.snapshots.compare")}</Button>
+          {compare.data ? <OperationResult result={compare.data} successLabel={t(language, "system.snapshots.compareDone")} /> : null}
         </CardContent>
       </Card>
-      <DataPanel title="Time machine" result={timeline.data} className="xl:col-span-2">
+      <DataPanel title={t(language, "system.snapshots.timeline")} result={timeline.data} className="xl:col-span-2">
         {(data) => <EntityList items={(data as Record<string, unknown>).events || data} titleKey="event" metaKey="type" limit={14} />}
       </DataPanel>
     </div>
@@ -238,14 +241,15 @@ function SnapshotsPanel() {
 }
 
 function ActivityPanel() {
+  const language = useAppStore((state) => state.language);
   const feed = useQuery({ queryKey: ["realtimeFeed"], queryFn: latticeApi.realtimeFeed });
   const presence = useQuery({ queryKey: ["presence"], queryFn: latticeApi.presence });
   return (
     <div className="grid gap-4 xl:grid-cols-2">
-      <DataPanel title="Realtime feed" result={feed.data}>
+      <DataPanel title={t(language, "system.activity.feed")} result={feed.data}>
         {(data) => <EntityList items={(data as Record<string, unknown>).events} titleKey="event_type" metaKey="area" limit={14} />}
       </DataPanel>
-      <DataPanel title="Presence" result={presence.data}>
+      <DataPanel title={t(language, "system.activity.presence")} result={presence.data}>
         {(data) => <PresenceView data={data as Record<string, unknown>} />}
       </DataPanel>
     </div>
@@ -254,6 +258,7 @@ function ActivityPanel() {
 
 function NetworkPanel() {
   const qc = useQueryClient();
+  const language = useAppStore((state) => state.language);
   const identity = useQuery({ queryKey: ["networkIdentity"], queryFn: latticeApi.networkIdentity });
   const peers = useQuery({ queryKey: ["networkPeers"], queryFn: latticeApi.networkPeers });
   const [name, setName] = React.useState("");
@@ -265,23 +270,23 @@ function NetworkPanel() {
   });
   return (
     <div className="grid gap-4 xl:grid-cols-[0.8fr_1.2fr]">
-      <DataPanel title="Device identity" result={identity.data}>
+      <DataPanel title={t(language, "system.network.identity")} result={identity.data}>
         {(data) => <DeviceIdentityView data={data as Record<string, unknown>} />}
       </DataPanel>
       <Card>
         <CardHeader>
-          <CardTitle className="flex items-center gap-2"><Network className="h-4 w-4" /> Pair device</CardTitle>
-        <CardDescription>Pair a trusted device for workspace exchange.</CardDescription>
+          <CardTitle className="flex items-center gap-2"><Network className="h-4 w-4" /> {t(language, "system.network.pair")}</CardTitle>
+        <CardDescription>{t(language, "system.network.pairHint")}</CardDescription>
         </CardHeader>
         <CardContent className="grid gap-3">
-          <Input value={name} onChange={(e) => setName(e.target.value)} placeholder="device name" />
-          <Input value={baseUrl} onChange={(e) => setBaseUrl(e.target.value)} placeholder="trusted device address" />
-          <Input value={publicKey} onChange={(e) => setPublicKey(e.target.value)} placeholder="trusted public key" />
-          <Button disabled={!name || !baseUrl || !publicKey || pair.isPending} onClick={() => pair.mutate()}>Pair device</Button>
-          {pair.data ? <OperationResult result={pair.data} successLabel="Peer pairing request completed" /> : null}
+          <Input value={name} onChange={(e) => setName(e.target.value)} placeholder={t(language, "system.network.deviceName")} />
+          <Input value={baseUrl} onChange={(e) => setBaseUrl(e.target.value)} placeholder={t(language, "system.network.address")} />
+          <Input value={publicKey} onChange={(e) => setPublicKey(e.target.value)} placeholder={t(language, "system.network.publicKey")} />
+          <Button disabled={!name || !baseUrl || !publicKey || pair.isPending} onClick={() => pair.mutate()}>{t(language, "system.network.pair")}</Button>
+          {pair.data ? <OperationResult result={pair.data} successLabel={t(language, "system.network.pairDone")} /> : null}
         </CardContent>
       </Card>
-      <DataPanel title="Peers" result={peers.data} className="xl:col-span-2">
+      <DataPanel title={t(language, "system.network.peers")} result={peers.data} className="xl:col-span-2">
         {(data) => (
           <div className="grid gap-2">
             {asArray<Record<string, unknown>>((data as Record<string, unknown>).peers).map((peer) => {
@@ -293,8 +298,8 @@ function NetworkPanel() {
                     <div className="text-sm text-muted-foreground">{String(peer.base_url || "")}</div>
                   </div>
                   <div className="flex flex-wrap gap-2">
-                    <ActionButton label="Push workspace" action={() => latticeApi.pushPeer(id, useAppStore.getState().workspaceId)} />
-                    <ActionButton label="Unpair" action={() => latticeApi.unpairPeer(id)} invalidate={["networkPeers"]} variant="destructive" />
+                    <ActionButton label={t(language, "system.network.pushWorkspace")} action={() => latticeApi.pushPeer(id, useAppStore.getState().workspaceId)} />
+                    <ActionButton label={t(language, "system.network.unpair")} action={() => latticeApi.unpairPeer(id)} invalidate={["networkPeers"]} variant="destructive" />
                   </div>
                 </div>
               );
@@ -372,10 +377,10 @@ function SettingsPanel() {
           ))}
         </CardContent>
       </Card>
-      <DataPanel title={mode === "basic" ? t(language, "system.panel.brainStatus") : "Server health"} result={health.data}>
+      <DataPanel title={mode === "basic" ? t(language, "system.panel.brainStatus") : t(language, "system.panel.serverHealth")} result={health.data}>
         {(data) => <HealthView data={data as Record<string, unknown>} />}
       </DataPanel>
-      <DataPanel title={mode === "basic" ? t(language, "system.panel.readiness") : "Host telemetry"} result={sys.data}>
+      <DataPanel title={mode === "basic" ? t(language, "system.panel.readiness") : t(language, "system.panel.hostTelemetry")} result={sys.data}>
         {(data) => mode === "basic" ? (
           <StatGrid stats={[
             { label: t(language, "system.stat.cpu"), value: `${String((data as Record<string, unknown>).cpu_pct || "0")}%` },
@@ -385,80 +390,80 @@ function SettingsPanel() {
           ]} />
         ) : <StructuredView value={data} />}
       </DataPanel>
-      <DataPanel title={mode === "basic" ? t(language, "system.storage.title") : "Brain storage"} result={storage.data} className="xl:col-span-3">
+      <DataPanel title={mode === "basic" ? t(language, "system.storage.title") : t(language, "system.panel.brainStorage")} result={storage.data} className="xl:col-span-3">
         {(data) => <StorageView data={data as Record<string, unknown>} mode={mode} language={language} />}
       </DataPanel>
       {mode === "basic" ? null : (
-        <DataPanel title="Backup health" result={backupHealth.data} className="xl:col-span-3">
+        <DataPanel title={t(language, "system.backup.health")} result={backupHealth.data} className="xl:col-span-3">
           {(data) => <BackupHealthView data={data as Record<string, unknown>} />}
         </DataPanel>
       )}
       {mode === "basic" ? null : (
       <Card className="xl:col-span-3">
         <CardHeader>
-          <CardTitle>.latticebrain portability</CardTitle>
-          <CardDescription>Create an encrypted portable brain file, verify one, or preview a restore before applying it.</CardDescription>
+          <CardTitle>{t(language, "system.archive.title")}</CardTitle>
+          <CardDescription>{t(language, "system.archive.detail")}</CardDescription>
         </CardHeader>
         <CardContent className="grid gap-3">
           <div className="grid gap-2 sm:grid-cols-[1fr_1fr]">
-            <Input value={archivePath} onChange={(e) => setArchivePath(e.target.value)} placeholder="export path (optional)" />
-            <Input value={restorePath} onChange={(e) => setRestorePath(e.target.value)} placeholder="archive path for inspect/restore" />
+            <Input value={archivePath} onChange={(e) => setArchivePath(e.target.value)} placeholder={t(language, "system.archive.exportPath")} />
+            <Input value={restorePath} onChange={(e) => setRestorePath(e.target.value)} placeholder={t(language, "system.archive.restorePath")} />
           </div>
-          <Input type="password" value={archivePassphrase} onChange={(e) => setArchivePassphrase(e.target.value)} placeholder="archive passphrase" />
+          <Input type="password" value={archivePassphrase} onChange={(e) => setArchivePassphrase(e.target.value)} placeholder={t(language, "system.archive.passphrase")} />
           <div className="flex flex-wrap gap-2">
-            <Button onClick={() => archiveCreate.mutate()} disabled={!archivePassphrase || archiveCreate.isPending}>Export archive</Button>
-            <Button variant="outline" onClick={() => archiveInspect.mutate()} disabled={!restorePath || archiveInspect.isPending}>Inspect</Button>
-            <Button variant="outline" onClick={() => archiveVerify.mutate()} disabled={!restorePath || !archivePassphrase || archiveVerify.isPending}>Verify</Button>
-            <Button variant="outline" onClick={() => archiveDryRun.mutate()} disabled={!restorePath || !archivePassphrase || archiveDryRun.isPending}>Restore dry run</Button>
-            <Button variant="outline" onClick={() => archiveImportDryRun.mutate()} disabled={!restorePath || !archivePassphrase || archiveImportDryRun.isPending}>Import dry run</Button>
+            <Button onClick={() => archiveCreate.mutate()} disabled={!archivePassphrase || archiveCreate.isPending}>{t(language, "system.archive.export")}</Button>
+            <Button variant="outline" onClick={() => archiveInspect.mutate()} disabled={!restorePath || archiveInspect.isPending}>{t(language, "system.archive.inspect")}</Button>
+            <Button variant="outline" onClick={() => archiveVerify.mutate()} disabled={!restorePath || !archivePassphrase || archiveVerify.isPending}>{t(language, "system.archive.verify")}</Button>
+            <Button variant="outline" onClick={() => archiveDryRun.mutate()} disabled={!restorePath || !archivePassphrase || archiveDryRun.isPending}>{t(language, "system.archive.restoreDryRun")}</Button>
+            <Button variant="outline" onClick={() => archiveImportDryRun.mutate()} disabled={!restorePath || !archivePassphrase || archiveImportDryRun.isPending}>{t(language, "system.archive.importDryRun")}</Button>
             <label className="flex items-center gap-2 rounded-md border border-border px-3 py-2 text-sm">
               <input type="checkbox" checked={restoreConfirm} onChange={(e) => setRestoreConfirm(e.target.checked)} />
-              Confirm restore
+              {t(language, "system.archive.confirmRestore")}
             </label>
-            <Button variant="destructive" onClick={() => archiveRestore.mutate()} disabled={!restorePath || !archivePassphrase || !restoreConfirm || archiveRestore.isPending}>Restore</Button>
+            <Button variant="destructive" onClick={() => archiveRestore.mutate()} disabled={!restorePath || !archivePassphrase || !restoreConfirm || archiveRestore.isPending}>{t(language, "system.archive.restore")}</Button>
             <label className="flex items-center gap-2 rounded-md border border-border px-3 py-2 text-sm">
               <input type="checkbox" checked={importConfirm} onChange={(e) => setImportConfirm(e.target.checked)} />
-              Confirm import
+              {t(language, "system.archive.confirmImport")}
             </label>
-            <Button variant="outline" onClick={() => archiveImport.mutate()} disabled={!restorePath || !archivePassphrase || !importConfirm || archiveImport.isPending}>Import</Button>
+            <Button variant="outline" onClick={() => archiveImport.mutate()} disabled={!restorePath || !archivePassphrase || !importConfirm || archiveImport.isPending}>{t(language, "system.archive.import")}</Button>
           </div>
           {[archiveCreate.data, archiveInspect.data, archiveVerify.data, archiveDryRun.data, archiveRestore.data, archiveImportDryRun.data, archiveImport.data].filter(Boolean).map((item, i) => (
-            <OperationResult key={i} result={item} successLabel="Archive request completed" />
+            <OperationResult key={i} result={item} successLabel={t(language, "system.archive.requestDone")} />
           ))}
         </CardContent>
       </Card>
       )}
       {mode !== "basic" ? <Card className="xl:col-span-3">
         <CardHeader>
-          <CardTitle>Scale mode</CardTitle>
-          <CardDescription>Optional advanced storage. Local SQLite remains the default.</CardDescription>
+          <CardTitle>{t(language, "system.scale.title")}</CardTitle>
+          <CardDescription>{t(language, "system.scale.detail")}</CardDescription>
         </CardHeader>
         <CardContent className="grid gap-3">
           <div className="grid gap-2 sm:grid-cols-[1fr_220px]">
-            <Input value={dsn} onChange={(e) => setDsn(e.target.value)} placeholder="Postgres connection string" />
-            <Input value={schema} onChange={(e) => setSchema(e.target.value)} placeholder="database schema" />
+            <Input value={dsn} onChange={(e) => setDsn(e.target.value)} placeholder={t(language, "system.scale.dsn")} />
+            <Input value={schema} onChange={(e) => setSchema(e.target.value)} placeholder={t(language, "system.scale.schema")} />
           </div>
           <div className="flex flex-wrap gap-2">
-            <Button variant="outline" onClick={() => docker.mutate(false)} disabled={docker.isPending}>Docker plan</Button>
+            <Button variant="outline" onClick={() => docker.mutate(false)} disabled={docker.isPending}>{t(language, "system.scale.dockerPlan")}</Button>
             <label className="flex items-center gap-2 rounded-md border border-border px-3 py-2 text-sm">
               <input type="checkbox" checked={dockerConsent} onChange={(e) => setDockerConsent(e.target.checked)} />
-              Consent to start Docker
+              {t(language, "system.scale.dockerConsent")}
             </label>
-            <Button onClick={() => docker.mutate(true)} disabled={!dockerConsent || docker.isPending}>Start Docker</Button>
-            <Button variant="outline" onClick={() => migration.mutate()} disabled={!dsn || migration.isPending}>Plan migration</Button>
+            <Button onClick={() => docker.mutate(true)} disabled={!dockerConsent || docker.isPending}>{t(language, "system.scale.dockerStart")}</Button>
+            <Button variant="outline" onClick={() => migration.mutate()} disabled={!dsn || migration.isPending}>{t(language, "system.scale.migrationPlan")}</Button>
           </div>
-          {docker.data ? <OperationResult result={docker.data} successLabel="Docker setup request completed" /> : null}
-          {migration.data ? <OperationResult result={migration.data} successLabel="Migration plan completed" /> : null}
+          {docker.data ? <OperationResult result={docker.data} successLabel={t(language, "system.scale.dockerDone")} /> : null}
+          {migration.data ? <OperationResult result={migration.data} successLabel={t(language, "system.scale.migrationDone")} /> : null}
         </CardContent>
       </Card> : null}
       {mode === "basic" ? null : (
-        <DataPanel title="Computer memory" result={comp.data} className="xl:col-span-3">
+        <DataPanel title={t(language, "system.computerMemory.title")} result={comp.data} className="xl:col-span-3">
           {(data) => (
             <div className="space-y-3">
               <StructuredView value={data} />
               <div className="flex gap-2">
-                <ActionButton label="Enable memory" action={() => latticeApi.setComputerMemory(true)} invalidate={["computerMemory"]} />
-                <ActionButton label="Disable memory" action={() => latticeApi.setComputerMemory(false)} invalidate={["computerMemory"]} variant="destructive" />
+                <ActionButton label={t(language, "system.computerMemory.enable")} action={() => latticeApi.setComputerMemory(true)} invalidate={["computerMemory"]} />
+                <ActionButton label={t(language, "system.computerMemory.disable")} action={() => latticeApi.setComputerMemory(false)} invalidate={["computerMemory"]} variant="destructive" />
               </div>
             </div>
           )}
@@ -468,39 +473,41 @@ function SettingsPanel() {
   );
 }
 
-function textValue(value: unknown, fallback = "not reported") {
+function localizedTextValue(language: Language, value: unknown, fallback = t(language, "system.value.notReported")) {
   if (value === null || value === undefined || value === "") return fallback;
-  if (typeof value === "boolean") return value ? "enabled" : "disabled";
+  if (typeof value === "boolean") return t(language, value ? "system.value.enabled" : "system.value.disabled");
   return String(value);
 }
 
 function PresenceView({ data }: { data: Record<string, unknown> }) {
+  const language = useAppStore((state) => state.language);
   const rows = asArray<Record<string, unknown>>(data.presence || data.clients || data);
-  if (!rows.length) return <EmptyState title="No active presence" detail="No live collaborators or realtime clients are currently reported." />;
+  if (!rows.length) return <EmptyState title={t(language, "system.presence.empty")} detail={t(language, "system.presence.emptyDetail")} />;
   return <EntityList items={rows} titleKey="user" metaKey="workspace_id" />;
 }
 
 function DeviceIdentityView({ data }: { data: Record<string, unknown> }) {
   const mode = useAppStore((state) => state.mode);
-  const publicKey = textValue(data.public_key, "");
+  const language = useAppStore((state) => state.language);
+  const publicKey = localizedTextValue(language, data.public_key, "");
   if (mode === "basic") {
     return (
       <div className="space-y-3">
-        <StatusCard title="This Mac" status="trusted" detail="This device can participate in local workspace exchange when you pair another trusted device." />
-        <Badge variant="muted">{textValue(data.algorithm, "local identity")}</Badge>
+        <StatusCard title={t(language, "system.device.thisMac")} status={t(language, "system.value.trusted")} detail={t(language, "system.device.thisMacDetail")} />
+        <Badge variant="muted">{localizedTextValue(language, data.algorithm, t(language, "system.value.localIdentity"))}</Badge>
       </div>
     );
   }
   return (
     <div className="space-y-3">
       <div className="flex flex-wrap items-center gap-2">
-        <Badge variant="success">local device</Badge>
-        <Badge variant="muted">{textValue(data.algorithm, "identity key")}</Badge>
+        <Badge variant="success">{t(language, "system.value.localDevice")}</Badge>
+        <Badge variant="muted">{localizedTextValue(language, data.algorithm, t(language, "system.value.identityKey"))}</Badge>
       </div>
       <KeyValueList data={{
-        device_id: data.device_id || data.id || "not reported",
-        fingerprint: data.fingerprint || "not reported",
-        public_key: publicKey ? shortId(publicKey.replace(/\s+/g, " "), 72) : "not reported",
+        device_id: data.device_id || data.id || t(language, "system.value.notReported"),
+        fingerprint: data.fingerprint || t(language, "system.value.notReported"),
+        public_key: publicKey ? shortId(publicKey.replace(/\s+/g, " "), 72) : t(language, "system.value.notReported"),
       }} />
     </div>
   );
@@ -521,10 +528,10 @@ function HealthView({ data }: { data: Record<string, unknown> }) {
   return (
     <div className="space-y-3">
       <StatGrid stats={[
-        { label: "Status", value: data.status || data.ok || "reported" },
-        { label: "Version", value: data.version || "not reported" },
-        { label: "Mode", value: data.mode || data.environment || "local" },
-        { label: "Port", value: data.port || data.backend_port || "configured" },
+        { label: t(language, "system.health.status"), value: data.status || data.ok || t(language, "system.value.reported") },
+        { label: t(language, "system.health.version"), value: data.version || t(language, "system.value.notReported") },
+        { label: t(language, "system.health.mode"), value: data.mode || data.environment || t(language, "system.value.local") },
+        { label: t(language, "system.health.port"), value: data.port || data.backend_port || t(language, "system.value.configured") },
       ]} />
       <StructuredView value={data} />
     </div>
@@ -557,15 +564,15 @@ function StorageView({ data, mode = "advanced", language = "en" }: { data: Recor
   return (
     <div className="space-y-4">
       <StatGrid stats={[
-        { label: "Active engine", value: active.engine || data.engine || "sqlite" },
-        { label: "SQLite default", value: active.engine === "postgres" ? "scale mode" : "enabled" },
-        { label: "Vector search", value: vector || "not reported" },
-        { label: "Postgres", value: postgresAvailable ? "available" : "optional" },
+        { label: t(language, "system.storage.activeEngine"), value: active.engine || data.engine || t(language, "system.storage.sqlite") },
+        { label: t(language, "system.storage.sqliteDefault"), value: active.engine === "postgres" ? t(language, "system.value.scaleMode") : t(language, "system.value.enabled") },
+        { label: t(language, "system.storage.vector"), value: vector || t(language, "system.value.notReported") },
+        { label: t(language, "system.storage.postgres"), value: postgresAvailable ? t(language, "system.value.available") : t(language, "system.value.optional") },
       ]} />
       <div className="grid gap-3 md:grid-cols-3">
-        <StatusCard title="SQLite" status={active.available === false ? "unavailable" : "default"} detail={textValue(active.reason || active.path || data.path, "Local brain storage is active by default.")} />
-        <StatusCard title="Vector search" status={textValue(vector, "reported")} detail={textValue(active.vector_reason || active.sqlite_vec_reason || data.vector_reason, "Uses the configured local vector capability or reports why it is unavailable.")} />
-        <StatusCard title="Postgres" status={postgresAvailable ? "available" : "not enabled"} detail={textValue(postgres.reason || postgres.dsn || postgres.status, "Postgres scale mode is opt-in and never required for local use.")} />
+        <StatusCard title={t(language, "system.storage.sqlite")} status={active.available === false ? t(language, "system.value.unavailable") : t(language, "system.value.default")} detail={localizedTextValue(language, active.reason || active.path || data.path, t(language, "system.storage.sqliteDetail"))} />
+        <StatusCard title={t(language, "system.storage.vector")} status={localizedTextValue(language, vector, t(language, "system.value.reported"))} detail={localizedTextValue(language, active.vector_reason || active.sqlite_vec_reason || data.vector_reason, t(language, "system.storage.vectorDetail"))} />
+        <StatusCard title={t(language, "system.storage.postgres")} status={postgresAvailable ? t(language, "system.value.available") : t(language, "system.value.notEnabled")} detail={localizedTextValue(language, postgres.reason || postgres.dsn || postgres.status, t(language, "system.storage.postgresDetail"))} />
       </div>
       {Object.keys(backup).length ? <StructuredView value={{ backup_health: backup }} /> : null}
     </div>
@@ -573,26 +580,27 @@ function StorageView({ data, mode = "advanced", language = "en" }: { data: Recor
 }
 
 function BackupHealthView({ data }: { data: Record<string, unknown> }) {
+  const language = useAppStore((state) => state.language);
   return (
     <div className="space-y-3">
       <StatGrid stats={[
-        { label: "Available", value: data.available === false ? "no" : "yes" },
-        { label: "Backups", value: data.count || data.backups || 0 },
-        { label: "Encrypted", value: data.encrypted_archives || 0 },
-        { label: "Zip backups", value: data.zip_backups || 0 },
+        { label: t(language, "system.backup.available"), value: data.available === false ? t(language, "system.value.no") : t(language, "system.value.yes") },
+        { label: t(language, "system.backup.backups"), value: data.count || data.backups || 0 },
+        { label: t(language, "system.backup.encrypted"), value: data.encrypted_archives || 0 },
+        { label: t(language, "system.backup.zip"), value: data.zip_backups || 0 },
       ]} />
       <KeyValueList data={{
-        directory: data.directory || "not reported",
-        latest: data.latest || "none reported",
-        last_verified: data.last_verified || data.verified_at || "not reported",
-        failure: data.error || data.reason || "none reported",
+        directory: data.directory || t(language, "system.value.notReported"),
+        latest: data.latest || t(language, "system.value.noneReported"),
+        last_verified: data.last_verified || data.verified_at || t(language, "system.value.notReported"),
+        failure: data.error || data.reason || t(language, "system.value.noneReported"),
       }} />
     </div>
   );
 }
 
 function StatusCard({ title, status, detail }: { title: string; status: string; detail: string }) {
-  const variant = /unavailable|failed|denied|disabled|not enabled/i.test(status) ? "warning" : "success";
+  const variant = /unavailable|failed|denied|disabled|not enabled|사용 불가|실패|거부|비활성|활성화되지 않음/i.test(status) ? "warning" : "success";
   return (
     <div className="rounded-md border border-border bg-background p-3">
       <div className="flex items-center justify-between gap-2">
@@ -605,6 +613,7 @@ function StatusCard({ title, status, detail }: { title: string; status: string; 
 }
 
 function HardeningView({ data }: { data: Record<string, unknown> }) {
+  const language = useAppStore((state) => state.language);
   const startup = isRecord(data.startup) ? data.startup : {};
   const privacy = isRecord(data.privacy) ? data.privacy : {};
   const storage = isRecord(data.storage) ? data.storage : {};
@@ -614,31 +623,32 @@ function HardeningView({ data }: { data: Record<string, unknown> }) {
   return (
     <div className="space-y-3">
       <StatGrid stats={[
-        { label: "Version", value: data.version || "reported" },
-        { label: "Local only", value: privacy.local_only_default ?? startup.local_only_default ?? "reported" },
-        { label: "Storage", value: isRecord(storage.active) ? (storage.active as Record<string, unknown>).engine : "reported" },
-        { label: "Backups", value: backup.count || backup.available || "reported" },
+        { label: t(language, "system.hardening.version"), value: data.version || t(language, "system.value.reported") },
+        { label: t(language, "system.hardening.localOnly"), value: privacy.local_only_default ?? startup.local_only_default ?? t(language, "system.value.reported") },
+        { label: t(language, "system.hardening.storage"), value: isRecord(storage.active) ? (storage.active as Record<string, unknown>).engine : t(language, "system.value.reported") },
+        { label: t(language, "system.hardening.backups"), value: backup.count || backup.available || t(language, "system.value.reported") },
       ]} />
       <div className="grid gap-3 md:grid-cols-2">
-        <StatusCard title="Startup" status={startup.network_exposed ? "network exposed" : "local-only"} detail="Lattice starts locally by default and reports when network access is enabled." />
-        <StatusCard title="Integrations" status={privacy.local_only_default === false ? "review required" : "opt-in"} detail="External integrations remain disabled until the user explicitly enables them." />
-        <StatusCard title="Device identity" status={textValue(identity.algorithm || identity.fingerprint, "reported")} detail={textValue(identity.storage, "Stored locally and used for signed bundle exchange.")} />
-        <StatusCard title="Permissions" status={permissions.destructive_restore_requires_confirmation === false ? "review required" : "guarded"} detail="Export, import, and destructive restore permissions are surfaced through admin status." />
+        <StatusCard title={t(language, "system.hardening.startup")} status={t(language, startup.network_exposed ? "system.value.networkExposed" : "system.value.localOnly")} detail={t(language, "system.hardening.startupDetail")} />
+        <StatusCard title={t(language, "system.hardening.integrations")} status={t(language, privacy.local_only_default === false ? "system.value.reviewRequired" : "system.value.optIn")} detail={t(language, "system.hardening.integrationsDetail")} />
+        <StatusCard title={t(language, "system.hardening.identity")} status={localizedTextValue(language, identity.algorithm || identity.fingerprint, t(language, "system.value.reported"))} detail={localizedTextValue(language, identity.storage, t(language, "system.hardening.identityStorage"))} />
+        <StatusCard title={t(language, "system.hardening.permissions")} status={t(language, permissions.destructive_restore_requires_confirmation === false ? "system.value.reviewRequired" : "system.value.guarded")} detail={t(language, "system.hardening.permissionsDetail")} />
       </div>
     </div>
   );
 }
 
 function SecurityView({ data }: { data: Record<string, unknown> }) {
+  const language = useAppStore((state) => state.language);
   const cards = isRecord(data.cards) ? data.cards : {};
   const severities = isRecord(data.severity_counts) ? data.severity_counts : {};
   return (
     <div className="space-y-3">
       <StatGrid stats={[
-        { label: "Events today", value: cards.events_today || 0 },
-        { label: "High risk", value: cards.high_risk_events || severities.high || 0 },
-        { label: "Review", value: cards.review_required || 0 },
-        { label: "Risk rate", value: data.risk_rate || 0 },
+        { label: t(language, "system.security.eventsToday"), value: cards.events_today || 0 },
+        { label: t(language, "system.security.highRisk"), value: cards.high_risk_events || severities.high || 0 },
+        { label: t(language, "system.security.review"), value: cards.review_required || 0 },
+        { label: t(language, "system.security.riskRate"), value: data.risk_rate || 0 },
       ]} />
       <StructuredView value={{ severity_counts: severities, sensitive_fields: data.field_counts || {} }} />
     </div>
@@ -647,6 +657,7 @@ function SecurityView({ data }: { data: Record<string, unknown> }) {
 
 function AdminPanel() {
   const mode = useAppStore((state) => state.mode);
+  const language = useAppStore((state) => state.language);
   const summary = useQuery({ queryKey: ["adminSummary"], queryFn: latticeApi.adminSummary });
   const users = useQuery({ queryKey: ["adminUsers"], queryFn: latticeApi.adminUsers });
   const audit = useQuery({ queryKey: ["adminAudit"], queryFn: () => latticeApi.adminAudit() });
@@ -656,21 +667,21 @@ function AdminPanel() {
   const security = useQuery({ queryKey: ["adminSecurity"], queryFn: latticeApi.adminSecurity });
   const vpc = useQuery({ queryKey: ["vpcStatus"], queryFn: latticeApi.vpcStatus });
   if (mode !== "admin") {
-    return <ModeGate title="Admin controls" detail="Switch to Admin mode to review users, audit events, policies, security posture, and private networking diagnostics." target="admin" />;
+    return <ModeGate title={t(language, "system.admin.controls")} detail={t(language, "system.admin.controlsDetail")} target="admin" />;
   }
   return (
     <div className="grid gap-4 xl:grid-cols-2">
-      <DataPanel title="Admin summary" result={summary.data}>{(data) => <KeyValueList data={data as Record<string, unknown>} />}</DataPanel>
-      <DataPanel title="Users" result={users.data}>{(data) => <EntityList items={data} titleKey="email" metaKey="role" />}</DataPanel>
-      <DataPanel title="Audit" result={audit.data}>{(data) => <EntityList items={(data as Record<string, unknown>).recent_events || data} titleKey="act" metaKey="sev" />}</DataPanel>
-      <DataPanel title="Roles" result={roles.data}>{(data) => <EntityList items={(data as Record<string, unknown>).roles || data} titleKey="role" metaKey="members" />}</DataPanel>
-      <DataPanel title="Policies" result={policies.data}>{(data) => <EntityList items={(data as Record<string, unknown>).policies || data} titleKey="label" metaKey="enforced" />}</DataPanel>
-      <DataPanel title="Product hardening" result={hardening.data}>{(data) => <HardeningView data={data as Record<string, unknown>} />}</DataPanel>
-      <DataPanel title="Security overview" result={security.data}>{(data) => <SecurityView data={data as Record<string, unknown>} />}</DataPanel>
-      <DataPanel title="Private VPC" result={vpc.data} className="xl:col-span-2">
+      <DataPanel title={t(language, "system.admin.summary")} result={summary.data}>{(data) => <KeyValueList data={data as Record<string, unknown>} />}</DataPanel>
+      <DataPanel title={t(language, "system.admin.users")} result={users.data}>{(data) => <EntityList items={data} titleKey="email" metaKey="role" />}</DataPanel>
+      <DataPanel title={t(language, "system.admin.audit")} result={audit.data}>{(data) => <EntityList items={(data as Record<string, unknown>).recent_events || data} titleKey="act" metaKey="sev" />}</DataPanel>
+      <DataPanel title={t(language, "system.admin.roles")} result={roles.data}>{(data) => <EntityList items={(data as Record<string, unknown>).roles || data} titleKey="role" metaKey="members" />}</DataPanel>
+      <DataPanel title={t(language, "system.admin.policies")} result={policies.data}>{(data) => <EntityList items={(data as Record<string, unknown>).policies || data} titleKey="label" metaKey="enforced" />}</DataPanel>
+      <DataPanel title={t(language, "system.admin.hardening")} result={hardening.data}>{(data) => <HardeningView data={data as Record<string, unknown>} />}</DataPanel>
+      <DataPanel title={t(language, "system.admin.security")} result={security.data}>{(data) => <SecurityView data={data as Record<string, unknown>} />}</DataPanel>
+      <DataPanel title={t(language, "system.admin.vpc")} result={vpc.data} className="xl:col-span-2">
         {(data) => (
           <div className="space-y-2">
-            <Badge variant="muted">Community-disabled features remain honest unavailable states.</Badge>
+            <Badge variant="muted">{t(language, "system.admin.communityUnavailable")}</Badge>
             <StructuredView value={data} />
           </div>
         )}

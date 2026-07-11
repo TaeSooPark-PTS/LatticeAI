@@ -17,7 +17,6 @@ import sqlite3
 import tempfile
 import zipfile
 from dataclasses import dataclass
-from datetime import datetime, timezone
 from pathlib import Path, PurePosixPath
 from typing import Any, Dict, Iterable, List, Optional
 
@@ -26,7 +25,7 @@ from cryptography.hazmat.primitives.ciphers.aead import AESGCM
 from cryptography.exceptions import InvalidTag
 from cryptography.hazmat.primitives.kdf.pbkdf2 import PBKDF2HMAC
 
-from .utils import sha256_file as _sha256_file
+from .utils import sha256_file as _sha256_file, utc_now_iso as _now
 
 
 ARCHIVE_FORMAT = "latticebrain.encrypted"
@@ -46,10 +45,6 @@ PORTABLE_DATA_FILES = (
     "brain_peers.json",
 )
 PORTABLE_EXPORT_SUFFIXES = (".json", ".zip")
-
-
-def _now() -> str:
-    return datetime.now(timezone.utc).isoformat()
 
 
 def _stamp() -> str:

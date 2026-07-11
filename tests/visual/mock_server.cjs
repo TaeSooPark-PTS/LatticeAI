@@ -4,6 +4,8 @@ const path = require("path");
 
 const repoRoot = path.resolve(__dirname, "../..");
 const port = Number(process.env.LTCAI_VISUAL_PORT || 4927);
+const appVersion = require(path.join(repoRoot, "package.json")).version;
+const releaseRunId = `run-${appVersion.replace(/\D/g, "")}-product`;
 
 const graphNodes = [
   { id: "entity:lattice", type: "Topic", title: "Lattice AI", summary: "Local-first workspace graph", importance_norm: 0.96, metadata: { graph_metrics: { degree: 4, importance_norm: 0.96, mention_count: 14, conversation_count: 5 } } },
@@ -217,7 +219,7 @@ const server = http.createServer((req, res) => {
   if (pathname === "/account/change-password" && req.method === "POST") return json(res, { status: "ok" });
   if (pathname === "/auth/sso/config") return json(res, { enabled: false, providers: [] });
 
-  if (pathname === "/health") return json(res, { status: "ok", version: "4.6.1", mode: "visual" });
+  if (pathname === "/health") return json(res, { status: "ok", version: appVersion, mode: "visual" });
   if (pathname === "/vpc/status") return json(res, { provider: "local", region: "visual", vpn_status: "standby", peering_status: "not_configured", private_subnets: [] });
   if (pathname === "/workspace/os") return json(res, workspaceOs);
   if (pathname === "/workspace/registry") return json(res, workspaceOs.workspace_registry);
@@ -841,12 +843,12 @@ const server = http.createServer((req, res) => {
         id: "rev-7-8-release",
         status: "pending",
         effective_status: "pending",
-        title: "Approve 8.1 product readiness evidence",
+        title: `Approve ${appVersion} product readiness evidence`,
         summary: "Review generated screenshots, exact artifacts, and product readiness gates before release.",
         source: "workflow_run",
         kind: "release_review",
-        payload: { last_run_id: "run-78-product" },
-        provenance: { workflow_id: "wf-release", run_id: "run-78-product", source_detail: "7.8 release workflow" },
+        payload: { last_run_id: releaseRunId },
+        provenance: { workflow_id: "wf-release", run_id: releaseRunId, source_detail: `${appVersion} release workflow` },
         created_at: "2026-06-22T12:00:00Z",
         updated_at: "2026-06-22T12:05:00Z",
       },
@@ -875,12 +877,12 @@ const server = http.createServer((req, res) => {
       id: "rev-7-8-release",
       status: "pending",
       effective_status: "pending",
-      title: "Approve 8.1 product readiness evidence",
+      title: `Approve ${appVersion} product readiness evidence`,
       summary: "Action preview completed.",
       source: "workflow_run",
       kind: "release_review",
-      payload: { last_run_id: "run-78-product" },
-      provenance: { workflow_id: "wf-release", run_id: "run-78-product", source_detail: "7.8 release workflow" },
+      payload: { last_run_id: releaseRunId },
+      provenance: { workflow_id: "wf-release", run_id: releaseRunId, source_detail: `${appVersion} release workflow` },
     });
   }
 

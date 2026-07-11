@@ -93,42 +93,67 @@ class KnowledgeGraphRetrievalMixin:
         }
 
     def workspaces_of(self, node_ids) -> Dict[str, Optional[str]]:
-        """Map node ids to their workspace scope (None = legacy-global)."""
+        """Map known node ids to their workspace scope.
+
+        ``None`` is returned only for a row that is explicitly present in the
+        authoritative v2 projection with a NULL workspace.  Missing ids remain
+        missing, and projection/query failures propagate so callers can fail
+        closed instead of mistaking every candidate for legacy-global data.
+        """
         ids = [str(i) for i in node_ids if i]
         if not ids:
             return {}
         placeholders = ",".join("?" for _ in ids)
         with self._connect() as conn:
-            try:
-                return {
-                    row["id"]: row["workspace_id"]
-                    for row in conn.execute(
-                        f"SELECT id, workspace_id FROM nodes_v2 WHERE id IN ({placeholders})",
-                        ids,
-                    ).fetchall()
-                }
-            except Exception:
-                return {}
+            return {
+                row["id"]: row["workspace_id"]
+                for row in conn.execute(
+                    f"SELECT id, workspace_id FROM nodes_v2 WHERE id IN ({placeholders})",
+                    ids,
+                ).fetchall()
+            }
 
-    def filter_scoped_nodes(self, items, allowed_workspaces, *, id_key: str = "id"):
+    def filter_scoped_nodes(
+        self,
+        items,
+        allowed_workspaces,
+        *,
+        id_key: str = "id",
+        include_legacy_global: bool = False,
+    ):
         """Drop items scoped to a workspace the caller is not a member of.
 
         ``allowed_workspaces=None`` means no scoping (single-user / no-auth
-        mode). Legacy-global rows (no workspace) stay visible to everyone on
-        the machine — the documented pre-v4 compatibility behavior.
+        mode). In scoped/multi-user mode, unknown ids are private and
+        legacy-global rows require the explicit ``include_legacy_global=True``
+        compatibility opt-in.
         """
+        candidates = list(items)
         if allowed_workspaces is None:
-            return list(items)
-        allowed = set(allowed_workspaces)
-        scopes = self.workspaces_of([item.get(id_key) for item in items])
-        return [
-            item
-            for item in items
-            if scopes.get(item.get(id_key)) is None
-            or scopes.get(item.get(id_key)) in allowed
-        ]
+            return candidates
+        allowed = {str(workspace_id) for workspace_id in allowed_workspaces if workspace_id}
+        scopes = self.workspaces_of([item.get(id_key) for item in candidates])
+        visible = []
+        for item in candidates:
+            node_id = str(item.get(id_key) or "")
+            if not node_id or node_id not in scopes:
+                # Unknown/unprojected rows are never treated as public.
+                continue
+            workspace_id = scopes[node_id]
+            if workspace_id is None:
+                if include_legacy_global:
+                    visible.append(item)
+            elif str(workspace_id) in allowed:
+                visible.append(item)
+        return visible
 
-    def graph(self, limit: int = 300, *, allowed_workspaces=None) -> Dict[str, Any]:
+    def graph(
+        self,
+        limit: int = 300,
+        *,
+        allowed_workspaces=None,
+        include_legacy_global: bool = False,
+    ) -> Dict[str, Any]:
         limit = max(1, min(int(limit or 300), 2000))
         visible = ",".join(f"'{t}'" for t in self._GRAPH_VISIBLE_TYPES)
         nt, et = self._read_tables()
@@ -179,7 +204,11 @@ class KnowledgeGraphRetrievalMixin:
                 ]
 
         if allowed_workspaces is not None:
-            nodes = self.filter_scoped_nodes(nodes, allowed_workspaces)
+            nodes = self.filter_scoped_nodes(
+                nodes,
+                allowed_workspaces,
+                include_legacy_global=include_legacy_global,
+            )
             kept_ids = {node["id"] for node in nodes}
             edges = [e for e in edges if e["from"] in kept_ids and e["to"] in kept_ids]
 
@@ -264,7 +293,14 @@ class KnowledgeGraphRetrievalMixin:
             node.pop("_raw_importance", None)
         return {"nodes": nodes, "edges": edges}
 
-    def search(self, query: str, limit: int = 30, *, allowed_workspaces=None) -> Dict[str, Any]:
+    def search(
+        self,
+        query: str,
+        limit: int = 30,
+        *,
+        allowed_workspaces=None,
+        include_legacy_global: bool = False,
+    ) -> Dict[str, Any]:
         query = str(query or "").strip()
         q = f"%{query}%"
         limit = max(1, min(int(limit or 30), 100))
@@ -368,15 +404,31 @@ class KnowledgeGraphRetrievalMixin:
                 for row in rows
             ]
         if allowed_workspaces is not None:
-            matches = self.filter_scoped_nodes(matches, allowed_workspaces)
+            matches = self.filter_scoped_nodes(
+                matches,
+                allowed_workspaces,
+                include_legacy_global=include_legacy_global,
+            )
         return {"query": query, "matches": matches}
 
-    def context_for_query(self, query: str, limit: int = 6, *, allowed_workspaces=None) -> str:
+    def context_for_query(
+        self,
+        query: str,
+        limit: int = 6,
+        *,
+        allowed_workspaces=None,
+        include_legacy_global: bool = False,
+    ) -> str:
         """Return compact graph-backed RAG context for chat generation."""
         query = str(query or "").strip()
         if not query:
             return ""
-        matches = self.search(query, limit, allowed_workspaces=allowed_workspaces).get("matches", [])
+        matches = self.search(
+            query,
+            limit,
+            allowed_workspaces=allowed_workspaces,
+            include_legacy_global=include_legacy_global,
+        ).get("matches", [])
         if not matches:
             topics = _topic_candidates(query, limit=4)
             if topics:
@@ -414,7 +466,11 @@ class KnowledgeGraphRetrievalMixin:
                     if len(matches) >= limit:
                         break
                 if allowed_workspaces is not None:
-                    matches = self.filter_scoped_nodes(matches, allowed_workspaces)
+                    matches = self.filter_scoped_nodes(
+                        matches,
+                        allowed_workspaces,
+                        include_legacy_global=include_legacy_global,
+                    )
         lines = []
         for match in matches[:limit]:
             meta = match.get("metadata") or {}
@@ -431,9 +487,19 @@ class KnowledgeGraphRetrievalMixin:
             )
         return "\n".join(lines)
 
-    def neighbors(self, node_id: str, *, allowed_workspaces=None) -> Dict[str, Any]:
+    def neighbors(
+        self,
+        node_id: str,
+        *,
+        allowed_workspaces=None,
+        include_legacy_global: bool = False,
+    ) -> Dict[str, Any]:
         """Return direct neighbors (1-hop) of a node."""
-        if allowed_workspaces is not None and not self.filter_scoped_nodes([{"id": node_id}], allowed_workspaces):
+        if allowed_workspaces is not None and not self.filter_scoped_nodes(
+            [{"id": node_id}],
+            allowed_workspaces,
+            include_legacy_global=include_legacy_global,
+        ):
             raise ValueError(f"graph node not found: {node_id}")
         nt, et = self._read_tables()
         with self._connect() as conn:
@@ -472,7 +538,11 @@ class KnowledgeGraphRetrievalMixin:
                     )
                 ]
         if allowed_workspaces is not None:
-            nodes = self.filter_scoped_nodes(nodes, allowed_workspaces)
+            nodes = self.filter_scoped_nodes(
+                nodes,
+                allowed_workspaces,
+                include_legacy_global=include_legacy_global,
+            )
             kept = {node.get("id") for node in nodes}
             edges = [
                 edge for edge in edges
@@ -481,7 +551,13 @@ class KnowledgeGraphRetrievalMixin:
             ]
         return {"node_id": node_id, "neighbors": nodes, "edges": edges}
 
-    def get_node(self, node_id: str, *, allowed_workspaces=None) -> Dict[str, Any]:
+    def get_node(
+        self,
+        node_id: str,
+        *,
+        allowed_workspaces=None,
+        include_legacy_global: bool = False,
+    ) -> Dict[str, Any]:
         node_id = str(node_id or "").strip()
         if not node_id:
             raise ValueError("node_id required")
@@ -510,7 +586,11 @@ class KnowledgeGraphRetrievalMixin:
             "updated_at": row["updated_at"],
             "degree": degree,
         }
-        if allowed_workspaces is not None and not self.filter_scoped_nodes([node], allowed_workspaces):
+        if allowed_workspaces is not None and not self.filter_scoped_nodes(
+            [node],
+            allowed_workspaces,
+            include_legacy_global=include_legacy_global,
+        ):
             raise ValueError(f"graph node not found: {node_id}")
         return node
 
@@ -522,6 +602,7 @@ class KnowledgeGraphRetrievalMixin:
         relationship_type: str = "",
         limit: int = 30,
         allowed_workspaces=None,
+        include_legacy_global: bool = False,
     ) -> Dict[str, Any]:
         query = str(query or "").strip()
         node_id = str(node_id or "").strip()
@@ -591,7 +672,13 @@ class KnowledgeGraphRetrievalMixin:
                     {"id": (rel.get("source") or {}).get("id")},
                     {"id": (rel.get("target") or {}).get("id")},
                 ]
-                if len(self.filter_scoped_nodes(endpoints, allowed_workspaces)) == 2:
+                if len(
+                    self.filter_scoped_nodes(
+                        endpoints,
+                        allowed_workspaces,
+                        include_legacy_global=include_legacy_global,
+                    )
+                ) == 2:
                     kept.append(rel)
             relationships = kept
         return {
@@ -602,12 +689,22 @@ class KnowledgeGraphRetrievalMixin:
         }
 
     def traverse(
-        self, node_id: str, *, depth: int = 1, limit: int = 100, allowed_workspaces=None
+        self,
+        node_id: str,
+        *,
+        depth: int = 1,
+        limit: int = 100,
+        allowed_workspaces=None,
+        include_legacy_global: bool = False,
     ) -> Dict[str, Any]:
         node_id = str(node_id or "").strip()
         if not node_id:
             raise ValueError("node_id required")
-        if allowed_workspaces is not None and not self.filter_scoped_nodes([{"id": node_id}], allowed_workspaces):
+        if allowed_workspaces is not None and not self.filter_scoped_nodes(
+            [{"id": node_id}],
+            allowed_workspaces,
+            include_legacy_global=include_legacy_global,
+        ):
             raise ValueError(f"graph node not found: {node_id}")
         depth = max(0, min(int(depth or 1), 4))
         limit = max(1, min(int(limit or 100), 500))
@@ -668,7 +765,11 @@ class KnowledgeGraphRetrievalMixin:
             ]
         edges = list(edges_by_id.values())
         if allowed_workspaces is not None:
-            nodes = self.filter_scoped_nodes(nodes, allowed_workspaces)
+            nodes = self.filter_scoped_nodes(
+                nodes,
+                allowed_workspaces,
+                include_legacy_global=include_legacy_global,
+            )
             kept = {node.get("id") for node in nodes}
             edges = [edge for edge in edges if edge.get("from") in kept and edge.get("to") in kept]
         return {"root": node_id, "depth": depth, "nodes": nodes, "edges": edges}

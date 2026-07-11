@@ -3,8 +3,8 @@
 Priority-1 isolation hardening (v6.4.0). Three boundaries are covered:
 
 1. The knowledge-graph router scopes every node/content read to the caller's
-   allowed workspaces (legacy-global rows stay visible), and is a no-op when no
-   scope resolver is wired (single-user / no-auth mode).
+   allowed workspaces (legacy-global rows are private by default), and is a
+   no-op when no scope resolver is wired (single-user / no-auth mode).
 2. ``SearchService.hybrid_search`` passes the caller's scope down into each
    fusion channel, not just the fused result.
 3. ``MemoryService.prune`` refuses to delete a memory the caller does not own,
@@ -96,7 +96,7 @@ def _kg_client(*, scoped: bool) -> TestClient:
 def test_kg_search_hides_other_workspaces():
     client = _kg_client(scoped=True)
     ids = {m["id"] for m in client.get("/knowledge-graph/search?q=secret").json()["matches"]}
-    assert ids == {"n-alice", "n-global"}  # Bob's row never reaches Alice
+    assert ids == {"n-alice"}  # Bob's and legacy-global rows never reach Alice
 
 
 def test_kg_graph_documents_and_neighbors_are_scoped():
@@ -111,7 +111,7 @@ def test_kg_graph_documents_and_neighbors_are_scoped():
     assert "n-bob" not in graph_ids
     assert "n-bob" not in doc_ids
     assert hidden.status_code == 404
-    assert nbr_ids == {"n-global"}  # n-bob filtered, n-global (legacy) kept
+    assert nbr_ids == set()  # n-bob and legacy-global are both filtered
     assert "n-bob" not in edge_targets  # edges to dropped nodes are pruned
 
 

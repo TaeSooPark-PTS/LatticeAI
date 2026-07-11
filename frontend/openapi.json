@@ -3825,7 +3825,7 @@
   },
   "info": {
     "title": "Lattice AI Server (local)",
-    "version": "9.0.0"
+    "version": "9.1.0"
   },
   "openapi": "3.1.0",
   "paths": {
@@ -3852,7 +3852,7 @@
           },
           {
             "in": "cookie",
-            "name": "authorized",
+            "name": "lattice_invite",
             "required": false,
             "schema": {
               "anyOf": [
@@ -3863,7 +3863,7 @@
                   "type": "null"
                 }
               ],
-              "title": "Authorized"
+              "title": "Lattice Invite"
             }
           }
         ],
@@ -3894,6 +3894,24 @@
       "get": {
         "description": "Direct login/register page route used by logout and manual navigation.",
         "operationId": "account_page_account_get",
+        "parameters": [
+          {
+            "in": "cookie",
+            "name": "lattice_invite",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Lattice Invite"
+            }
+          }
+        ],
         "responses": {
           "200": {
             "content": {
@@ -3902,6 +3920,16 @@
               }
             },
             "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
           }
         },
         "summary": "Account Page"
@@ -4904,7 +4932,6 @@
     },
     "/agent": {
       "post": {
-        "description": "Natural-language local agent.\n\nState machine:\n    IDLE \u2192 PLANNING \u2192 WAITING_APPROVAL \u2192 EXECUTING \u2192 VERIFYING\n                                   \u2193                     \u2193\n                                 FAILED       DONE | EXECUTING(retry) | ROLLBACK\n                                                                              \u2193\n                                                                           FAILED",
         "operationId": "agent_agent_post",
         "requestBody": {
           "content": {
@@ -4941,7 +4968,6 @@
     },
     "/agent/eval": {
       "post": {
-        "description": "Run a skill's eval cases from schema.json and return pass/fail per case.",
         "operationId": "agent_eval_agent_eval_post",
         "requestBody": {
           "content": {
@@ -4978,7 +5004,6 @@
     },
     "/agent/resume": {
       "post": {
-        "description": "Resume a paused agent after human approval of the plan.",
         "operationId": "agent_resume_agent_resume_post",
         "requestBody": {
           "content": {
@@ -7677,6 +7702,24 @@
       "get": {
         "description": "React desktop single-page workspace shell.",
         "operationId": "app_shell_app_get",
+        "parameters": [
+          {
+            "in": "cookie",
+            "name": "lattice_invite",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Lattice Invite"
+            }
+          }
+        ],
         "responses": {
           "200": {
             "content": {
@@ -7685,6 +7728,16 @@
               }
             },
             "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
           }
         },
         "summary": "App Shell"

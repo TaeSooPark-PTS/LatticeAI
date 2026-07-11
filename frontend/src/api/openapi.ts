@@ -575,17 +575,7 @@ export interface paths {
         };
         get?: never;
         put?: never;
-        /**
-         * Agent
-         * @description Natural-language local agent.
-         *
-         *     State machine:
-         *         IDLE → PLANNING → WAITING_APPROVAL → EXECUTING → VERIFYING
-         *                                        ↓                     ↓
-         *                                      FAILED       DONE | EXECUTING(retry) | ROLLBACK
-         *                                                                                   ↓
-         *                                                                                FAILED
-         */
+        /** Agent */
         post: operations["agent_agent_post"];
         delete?: never;
         options?: never;
@@ -602,10 +592,7 @@ export interface paths {
         };
         get?: never;
         put?: never;
-        /**
-         * Agent Eval
-         * @description Run a skill's eval cases from schema.json and return pass/fail per case.
-         */
+        /** Agent Eval */
         post: operations["agent_eval_agent_eval_post"];
         delete?: never;
         options?: never;
@@ -622,10 +609,7 @@ export interface paths {
         };
         get?: never;
         put?: never;
-        /**
-         * Agent Resume
-         * @description Resume a paused agent after human approval of the plan.
-         */
+        /** Agent Resume */
         post: operations["agent_resume_agent_resume_post"];
         delete?: never;
         options?: never;
@@ -7778,7 +7762,7 @@ export interface operations {
             header?: never;
             path?: never;
             cookie?: {
-                authorized?: string | null;
+                lattice_invite?: string | null;
             };
         };
         requestBody?: never;
@@ -7808,7 +7792,9 @@ export interface operations {
             query?: never;
             header?: never;
             path?: never;
-            cookie?: never;
+            cookie?: {
+                lattice_invite?: string | null;
+            };
         };
         requestBody?: never;
         responses: {
@@ -7819,6 +7805,15 @@ export interface operations {
                 };
                 content: {
                     "application/json": unknown;
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
                 };
             };
         };
@@ -11066,7 +11061,9 @@ export interface operations {
             query?: never;
             header?: never;
             path?: never;
-            cookie?: never;
+            cookie?: {
+                lattice_invite?: string | null;
+            };
         };
         requestBody?: never;
         responses: {
@@ -11077,6 +11074,15 @@ export interface operations {
                 };
                 content: {
                     "application/json": unknown;
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
                 };
             };
         };

@@ -50,6 +50,7 @@ jobs:
 
       - name: Run tests
         run: |
+          npm run test:frontend
           python -m pytest tests/unit/ -v --tb=short
 
       - name: Brain recall/KG quality eval

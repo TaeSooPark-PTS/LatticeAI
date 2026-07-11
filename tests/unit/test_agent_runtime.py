@@ -14,7 +14,6 @@ from latticeai.core.agent import (
     AgentDeps,
     AgentRunContext,
     AgentState,
-    AgentRuntime,
     SingleAgentRuntime,
     extract_action,
 )
@@ -31,6 +30,7 @@ class FakeReq:
         self.max_steps = 25
         self.executing_model = None
         self.reviewing_model = None
+        self.workspace_id = None
 
 
 def _deps(scripted, tool_calls):
@@ -64,7 +64,7 @@ def _deps(scripted, tool_calls):
         check_role=lambda name, user: None,
         tool_governance={"edit_file": {"auto_approve": True}},
         file_create_actions=frozenset({"write_file", "edit_file"}),
-        recent_chat_context=lambda conversation_id=None: "",
+        recent_chat_context=lambda conversation_id=None, workspace_id=None, user_email=None: "",
         clear_history=lambda keep_last: {"cleared": True},
         knowledge_save=lambda *a, **k: None,
         audit=lambda *a, **k: None,
@@ -110,6 +110,39 @@ def test_full_cycle_plan_execute_verify_done():
     assert contract["run_id"] == "single-run-1"
     assert extract_contract({"contract": contract})["run_id"] == "single-run-1"
     assert contract_view({"contract": contract})["kind"] == "agent_run"
+
+
+def test_executor_scopes_recent_context_to_authenticated_user_and_workspace():
+    seen = {}
+    deps = _deps(['{"action":"final","message":"done"}'], [])
+
+    def recent_chat_context(**kwargs):
+        seen.update(kwargs)
+        return ""
+
+    deps.recent_chat_context = recent_chat_context
+    runtime = SingleAgentRuntime(deps)
+    request = FakeReq()
+    request.conversation_id = "shared-conversation"
+    request.workspace_id = "org-one"
+    context = AgentRunContext()
+    context.state = AgentState.EXECUTING
+
+    asyncio.run(
+        runtime.execute(
+            context,
+            request,
+            "en",
+            "alice@example.com",
+            max_steps=1,
+        )
+    )
+
+    assert seen == {
+        "conversation_id": "shared-conversation",
+        "user_email": "alice@example.com",
+        "workspace_id": "org-one",
+    }
 
 
 def test_destructive_tool_is_blocked_not_executed():
@@ -181,6 +214,33 @@ def test_human_approval_allows_non_auto_tool_execution():
     assert ("edit_file", {"path": "a.py", "old_string": "x", "new_string": "y"}) in tool_calls
 
 
+def test_agent_overwrites_model_claimed_knowledge_scope_with_authenticated_scope():
+    tool_calls = []
+    deps = _deps(
+        scripted=[
+            '{"action":"knowledge_search","args":{"query":"x","workspace_id":"stolen","user_email":"mallory@example.com"}}',
+            '{"action":"final","message":"done"}',
+        ],
+        tool_calls=tool_calls,
+    )
+    rt = SingleAgentRuntime(deps)
+    req = FakeReq()
+    req.workspace_id = "org-1"
+    ctx = AgentRunContext()
+    ctx.state = AgentState.EXECUTING
+
+    asyncio.run(rt.execute(ctx, req, "ko", "alice@example.com", max_steps=5))
+
+    assert tool_calls == [(
+        "knowledge_search",
+        {
+            "query": "x",
+            "workspace_id": "org-1",
+            "user_email": "alice@example.com",
+        },
+    )]
+
+
 def test_critic_retry_then_fail_after_budget():
     scripted = [
         '{"action":"final","message":"x"}',          # exec → verifying
@@ -226,8 +286,10 @@ def test_rollback_uses_injected_port():
     assert ctx.transcript[-1]["rolled_back"] == [{"path": "changed.py", "ok": True, "stderr": ""}]
 
 
-def test_legacy_agent_runtime_alias_is_preserved():
-    assert AgentRuntime is SingleAgentRuntime
+def test_product_agent_runtime_name_is_not_shadowed_by_single_agent_loop():
+    import latticeai.core.agent as agent_module
+
+    assert not hasattr(agent_module, "AgentRuntime")
 
 
 def test_single_agent_runtime_boundary_contract_is_explicit():
@@ -239,7 +301,7 @@ def test_single_agent_runtime_boundary_contract_is_explicit():
     assert boundary["runtime"] == "single_agent"
     assert boundary["entrypoint"] == "latticeai.core.agent.SingleAgentRuntime"
     assert boundary["surface"] == "/agent"
-    assert "latticeai.core.agent.AgentRuntime" in boundary["compatibility_aliases"]
+    assert boundary["compatibility_aliases"] == []
     assert runtime.config()["boundary"] == boundary
 
 

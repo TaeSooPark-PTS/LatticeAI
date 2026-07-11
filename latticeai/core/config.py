@@ -99,6 +99,7 @@ class Config:
     rate_limit_enabled: bool
     open_registration: bool
     invite_code: str
+    invite_cookie_secret: str
     invite_gate_enabled: bool
     admin_emails: List[str]
     trusted_proxies: List[str]
@@ -160,6 +161,7 @@ class Config:
         host = _value(env, "LATTICEAI_HOST", "127.0.0.1")
         port = _port(env, "LATTICEAI_PORT", 4825)
         network_exposed = not host_is_loopback(host)
+        externally_reachable = is_public or network_exposed
 
         cors_extra = [item.strip() for item in _value(env, "LATTICEAI_CORS_ALLOWED_ORIGINS", "").split(",") if item.strip()]
         admin_emails = [item.strip().lower() for item in _value(env, "LATTICEAI_ADMIN_EMAILS", "").split(",") if item.strip()]
@@ -189,13 +191,31 @@ class Config:
             autoload_models=_bool(env, "LATTICEAI_AUTOLOAD_MODELS", default=is_public),
             model_idle_unload_seconds=_int(env, "LATTICEAI_MODEL_IDLE_UNLOAD_SECONDS", 0),
             allow_local_models=_bool(env, "LATTICEAI_ALLOW_LOCAL_MODELS", default=not is_public),
-            require_auth=_bool(env, "LATTICEAI_REQUIRE_AUTH", default=is_public or network_exposed),
+            # Authentication is optional only for the local-first loopback
+            # profile.  An explicit ``false`` must never turn a public/LAN
+            # binding into an unauthenticated service.
+            require_auth=(
+                True
+                if externally_reachable
+                else _bool(env, "LATTICEAI_REQUIRE_AUTH", default=False)
+            ),
             allow_plaintext_api_keys=_bool(env, "LATTICEAI_ALLOW_PLAINTEXT_API_KEYS", default=False),
             cors_allow_network=_bool(env, "LATTICEAI_CORS_ALLOW_NETWORK", default=False),
             cors_extra_origins=cors_extra,
             rate_limit_enabled=_str(env, "LATTICEAI_RATE_LIMIT", "1") != "0",
-            open_registration=_bool(env, "LATTICEAI_OPEN_REGISTRATION", default=not network_exposed and not is_public),
-            invite_code=_value(env, "LATTICEAI_INVITE_CODE", "gemma-lattice-ai"),
+            # Public/LAN startup is closed-registration even if a stale or
+            # unsafe environment file attempts to opt back in.
+            open_registration=(
+                False
+                if externally_reachable
+                else _bool(env, "LATTICEAI_OPEN_REGISTRATION", default=True)
+            ),
+            # There is deliberately no repository-wide/default invitation
+            # code.  When the gate is enabled, the security runtime persists a
+            # cryptographically random code if the operator did not provide
+            # one explicitly.
+            invite_code=_value(env, "LATTICEAI_INVITE_CODE", ""),
+            invite_cookie_secret=_value(env, "LATTICEAI_INVITE_COOKIE_SECRET", ""),
             invite_gate_enabled=_bool(env, "LATTICEAI_INVITE_GATE_ENABLED", default=False),
             admin_emails=admin_emails,
             trusted_proxies=trusted_proxies,

@@ -2,7 +2,11 @@
 
 from __future__ import annotations
 
+import hashlib
+import hmac
+import secrets
 import subprocess
+import time
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Callable, Optional
@@ -26,6 +30,66 @@ PRODUCTION_CSP = (
     "frame-ancestors 'none'"
 )
 
+INVITE_COOKIE_NAME = "lattice_invite"
+INVITE_COOKIE_TTL_SECONDS = 60 * 60 * 24 * 7
+
+
+def _sign_invite_cookie(secret: str, *, now: Optional[int] = None) -> str:
+    """Create an expiring, nonce-bearing invite-gate capability cookie."""
+
+    issued_at = int(time.time() if now is None else now)
+    expires_at = issued_at + INVITE_COOKIE_TTL_SECONDS
+    nonce = secrets.token_urlsafe(24)
+    payload = f"{expires_at}.{nonce}"
+    signature = hmac.new(
+        str(secret).encode("utf-8"),
+        payload.encode("utf-8"),
+        hashlib.sha256,
+    ).hexdigest()
+    return f"v1.{payload}.{signature}"
+
+
+def _verify_invite_cookie(
+    value: Optional[str],
+    secret: str,
+    *,
+    now: Optional[int] = None,
+) -> bool:
+    """Verify version, expiry and HMAC without trusting client claims."""
+
+    if not value or not secret:
+        return False
+    try:
+        version, raw_expiry, nonce, supplied_signature = value.split(".", 3)
+        expires_at = int(raw_expiry)
+    except (TypeError, ValueError):
+        return False
+    if version != "v1" or not nonce or expires_at <= int(time.time() if now is None else now):
+        return False
+    payload = f"{expires_at}.{nonce}"
+    expected_signature = hmac.new(
+        str(secret).encode("utf-8"),
+        payload.encode("utf-8"),
+        hashlib.sha256,
+    ).hexdigest()
+    return hmac.compare_digest(supplied_signature, expected_signature)
+
+
+def _invite_denied_response() -> HTMLResponse:
+    return HTMLResponse(
+        content="""
+            <body style="background:#0f1115; color:white; display:flex; flex-direction:column; align-items:center; justify-content:center; height:100vh; font-family:sans-serif;">
+                <div style="background:#16191f; padding:40px; border-radius:24px; border:1px solid rgba(255,255,255,0.1); text-align:center; box-shadow: 0 20px 40px rgba(0,0,0,0.5);">
+                    <div style="font-size:48px; margin-bottom:20px;">🔒</div>
+                    <h1 style="color:#378ADD; margin:0; font-size:24px;">Invitation Required</h1>
+                    <p style="color:#94a3b8; margin:20px 0; line-height:1.6;">이 서비스는 비공개로 운영되고 있습니다.<br>선생님께 받은 <b>초대용 전용 링크</b>를 통해 접속해 주세요.</p>
+                    <div style="margin-top:30px; padding-top:20px; border-top:1px solid rgba(255,255,255,0.05); font-size:11px; color:rgba(255,255,255,0.2); letter-spacing:1px;">LATTICE AI</div>
+                </div>
+            </body>
+        """,
+        status_code=403,
+    )
+
 
 def ui_file_response(path: Path) -> FileResponse:
     response = FileResponse(path)
@@ -40,6 +104,7 @@ class StaticRoutesBundle:
     router: APIRouter
     ui_file_response: Callable[[Path], FileResponse]
     local_sysinfo: Callable[[Request], object]
+    invite_authorized: Callable[[Request], bool]
 
 
 def create_static_routes_router(
@@ -50,46 +115,69 @@ def create_static_routes_router(
     app_mode: str,
     model_router,
     require_user,
+    invite_cookie_secret: str = "",
+    secure_cookies: bool = False,
 ) -> StaticRoutesBundle:
     api_router = APIRouter()
     STATIC_DIR = static_dir
     INVITE_GATE_ENABLED = invite_gate_enabled
     INVITE_CODE = invite_code
+    INVITE_COOKIE_SECRET = invite_cookie_secret or secrets.token_urlsafe(48)
+    SECURE_COOKIES = bool(secure_cookies)
     APP_MODE = app_mode
     router = model_router
 
+    def invite_authorized(request: Request) -> bool:
+        """Verify the request's signed invite claim at every gated boundary."""
+
+        if not INVITE_GATE_ENABLED:
+            return True
+        return _verify_invite_cookie(
+            request.cookies.get(INVITE_COOKIE_NAME),
+            INVITE_COOKIE_SECRET,
+        )
+
     @api_router.get("/")
-    async def root(request: Request, code: Optional[str] = None, authorized: Optional[str] = Cookie(None)):
+    async def root(
+        request: Request,
+        code: Optional[str] = None,
+        invite_cookie: Optional[str] = Cookie(None, alias=INVITE_COOKIE_NAME),
+    ):
         """로그인/회원가입 페이지. 초대 게이트 활성화 시 코드 검증 후 진입."""
         if not INVITE_GATE_ENABLED:
             return app_redirect("account", request)
-    
-        # 1. 이미 쿠키로 인증된 경우
-        if authorized == "true":
-            return app_redirect("account", request)
-    
+
+        # 1. 유효한 서버 서명 쿠키가 있는 경우
+        if invite_authorized(request):
+            return app_redirect("account")
+
         # 2. 초대 코드가 일치하는 경우 (최초 진입)
-        if code == INVITE_CODE:
-            response = app_redirect("account", request)
-            response.set_cookie(key="authorized", value="true", httponly=True, samesite="lax", max_age=60*60*24*7)
+        if INVITE_CODE and code and secrets.compare_digest(code, INVITE_CODE):
+            # Do not retain the invitation code in the redirect URL/history.
+            response = app_redirect("account")
+            response.set_cookie(
+                key=INVITE_COOKIE_NAME,
+                value=_sign_invite_cookie(INVITE_COOKIE_SECRET),
+                httponly=True,
+                secure=SECURE_COOKIES,
+                samesite="lax",
+                max_age=INVITE_COOKIE_TTL_SECONDS,
+                path="/",
+            )
             return response
-    
+
         # 3. 인증 실패 시 차단 화면
-        return HTMLResponse(content="""
-            <body style="background:#0f1115; color:white; display:flex; flex-direction:column; align-items:center; justify-content:center; height:100vh; font-family:sans-serif;">
-                <div style="background:#16191f; padding:40px; border-radius:24px; border:1px solid rgba(255,255,255,0.1); text-align:center; box-shadow: 0 20px 40px rgba(0,0,0,0.5);">
-                    <div style="font-size:48px; margin-bottom:20px;">🔒</div>
-                    <h1 style="color:#378ADD; margin:0; font-size:24px;">Invitation Required</h1>
-                    <p style="color:#94a3b8; margin:20px 0; line-height:1.6;">이 서비스는 비공개로 운영되고 있습니다.<br>선생님께 받은 <b>초대용 전용 링크</b>를 통해 접속해 주세요.</p>
-                    <div style="margin-top:30px; padding-top:20px; border-top:1px solid rgba(255,255,255,0.05); font-size:11px; color:rgba(255,255,255,0.2); letter-spacing:1px;">LATTICE AI</div>
-                </div>
-            </body>
-        """, status_code=403)
+        return _invite_denied_response()
     
     
     @api_router.get("/account")
-    async def account_page():
+    async def account_page(
+        request: Request,
+        invite_cookie: Optional[str] = Cookie(None, alias=INVITE_COOKIE_NAME),
+    ):
         """Direct login/register page route used by logout and manual navigation."""
+        if INVITE_GATE_ENABLED and not invite_authorized(request):
+            return _invite_denied_response()
         return app_redirect("account")
     
     
@@ -127,8 +215,13 @@ def create_static_routes_router(
 
 
     @api_router.get("/app")
-    async def app_shell(request: Request):
+    async def app_shell(
+        request: Request,
+        invite_cookie: Optional[str] = Cookie(None, alias=INVITE_COOKIE_NAME),
+    ):
         """React desktop single-page workspace shell."""
+        if INVITE_GATE_ENABLED and not invite_authorized(request):
+            return _invite_denied_response()
         page = STATIC_DIR / "app" / "index.html"
         if not page.exists():
             raise HTTPException(status_code=404, detail="React shell not found.")
@@ -143,8 +236,9 @@ def create_static_routes_router(
     # (latticeai.api.workspace), included below after its dependencies are defined.
     
     @api_router.get("/status")
-    async def status():
+    async def status(request: Request):
         """서버 상태 및 현재 로드된 모델 정보를 반환합니다."""
+        require_user(request)
         return {
             "message": "🧠 Lattice AI MLX Server is running!",
             "status": "online",
@@ -193,4 +287,9 @@ def create_static_routes_router(
             result["error"] = str(e)
         return result
 
-    return StaticRoutesBundle(api_router, ui_file_response, local_sysinfo)
+    return StaticRoutesBundle(
+        api_router,
+        ui_file_response,
+        local_sysinfo,
+        invite_authorized,
+    )

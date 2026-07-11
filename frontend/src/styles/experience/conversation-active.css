@@ -1,0 +1,151 @@
+/* ── Active conversation ─────────────────────────────────────────────── */
+
+.brain-chat-home-card.has-messages {
+  width: min(100%, 52rem);
+  min-height: calc(100dvh - var(--experience-header-height) - 2rem);
+  margin: 0 auto;
+  overflow: visible;
+  border: 0;
+  background: transparent;
+}
+
+.brain-chat-header {
+  position: sticky;
+  top: var(--experience-header-height);
+  z-index: 18;
+  min-height: 4rem;
+  border-bottom: 1px solid hsl(var(--border));
+  background: hsl(var(--background) / 0.94);
+  padding: 0.65rem 0.25rem;
+  backdrop-filter: blur(16px);
+}
+
+.brain-header-presence .brain-presence {
+  min-height: 0;
+}
+
+.brain-header-title strong {
+  font-size: 0.86rem;
+}
+
+.brain-header-title span {
+  color: hsl(var(--muted-foreground));
+  font-size: 0.72rem;
+}
+
+.brain-header-actions {
+  gap: 0.35rem;
+}
+
+.brain-deeper-btn {
+  display: inline-flex;
+  min-height: 2.55rem;
+  align-items: center;
+  gap: 0.35rem;
+  border: 0;
+  border-radius: var(--experience-control-radius);
+  background: transparent;
+  color: hsl(var(--muted-foreground));
+  padding: 0 0.68rem;
+  font-size: 0.75rem;
+}
+
+.brain-deeper-btn:hover {
+  border-color: transparent;
+  background: hsl(var(--muted) / 0.62);
+  color: hsl(var(--foreground));
+}
+
+.brain-chat-home-card.has-messages .brain-stream {
+  min-height: 24rem;
+  overflow: visible;
+  padding: 2rem 0.25rem 1.5rem;
+  mask-image: none;
+}
+
+.brain-message {
+  margin-bottom: 1.35rem;
+}
+
+.brain-message-bubble {
+  max-width: min(88%, 42rem);
+  border-radius: 16px;
+  font-size: 0.96rem;
+  line-height: 1.72;
+}
+
+.brain-message.assistant .brain-message-bubble {
+  max-width: min(100%, 44rem);
+  border: 0;
+  background: transparent;
+  padding: 0.2rem 0;
+}
+
+.brain-message.user .brain-message-bubble {
+  border: 1px solid hsl(var(--border));
+  background: hsl(var(--muted) / 0.58);
+  padding: 0.82rem 1rem;
+}
+
+.brain-message-actions {
+  flex-wrap: wrap;
+  margin-top: 0.45rem;
+}
+
+.brain-message-actions button {
+  min-height: 2.35rem;
+  border-radius: 8px;
+  font-size: 0.72rem;
+}
+
+.brain-chat-home-card.has-messages > .brain-composer {
+  position: sticky;
+  bottom: 1rem;
+  z-index: 20;
+  margin: auto 0 1rem;
+}
+
+.brain-save-feedback {
+  width: min(100%, var(--experience-reading));
+  margin: 0.75rem auto;
+  border: 0;
+  border-radius: 10px;
+  background: hsl(var(--primary) / 0.08);
+}
+
+.brain-utility-drawer {
+  width: min(100%, var(--experience-reading));
+  margin: 1rem auto 0;
+  border-top: 1px solid hsl(var(--border));
+  background: transparent;
+}
+
+.brain-utility-drawer > summary {
+  min-height: 3.4rem;
+  justify-content: flex-start;
+  padding: 0 0.35rem;
+  color: hsl(var(--muted-foreground));
+  font-size: 0.78rem;
+  font-weight: 640;
+}
+
+.brain-utility-drawer > summary:hover,
+.brain-utility-drawer > summary:focus-visible {
+  background: transparent;
+  color: hsl(var(--foreground));
+}
+
+.brain-utility-tools {
+  border: 1px solid hsl(var(--border));
+  border-bottom: 0;
+  border-radius: var(--experience-radius) var(--experience-radius) 0 0;
+  background: hsl(var(--surface));
+  padding: 0.75rem;
+}
+.brain-utility-grid {
+  border: 1px solid hsl(var(--border));
+  border-top: 0;
+  border-radius: 0 0 var(--experience-radius) var(--experience-radius);
+  background: hsl(var(--surface));
+  padding: 0.75rem;
+}

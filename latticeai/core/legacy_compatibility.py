@@ -14,7 +14,7 @@ from pathlib import Path
 from typing import Any, Dict, List
 
 
-LEGACY_COMPATIBILITY_VERSION = "9.0.0"
+LEGACY_COMPATIBILITY_VERSION = "9.1.0"
 
 
 @dataclass(frozen=True)
@@ -90,11 +90,32 @@ LEGACY_SHIMS: List[LegacyShim] = [
         removal_phase="major-release-after-8.x",
     ),
     LegacyShim(
+        path="tools/",
+        owner="latticeai.tools",
+        replacement="from latticeai.tools import execute_tool",
+        reason="Existing integrations and tests import the historical root tools package.",
+        removal_phase="major-release-after-9.x",
+    ),
+    LegacyShim(
         path="local_knowledge_api.py",
-        owner="latticeai.api.local_files",
-        replacement="from latticeai.api.local_files import create_local_files_router",
+        owner="latticeai.services.local_knowledge",
+        replacement="from latticeai.services.local_knowledge import create_local_knowledge_router",
         reason="Local folder ingestion integrations used the root local knowledge API.",
         removal_phase="requires-api-route-migration",
+    ),
+    LegacyShim(
+        path="auto_setup.py",
+        owner="latticeai.setup.auto_setup",
+        replacement="from latticeai.setup.auto_setup import probe, recommend",
+        reason="Historical scripts invoke the zero-config setup module from the repo root.",
+        removal_phase="major-release-after-9.x",
+    ),
+    LegacyShim(
+        path="setup_wizard.py",
+        owner="latticeai.setup.wizard",
+        replacement="from latticeai.setup.wizard import scan_environment",
+        reason="Older integrations imported the setup wizard from the repo root.",
+        removal_phase="major-release-after-9.x",
     ),
 ]
 

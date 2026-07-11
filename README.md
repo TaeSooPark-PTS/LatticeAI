@@ -1,20 +1,22 @@
 # Lattice AI
 
-**Lattice AI 9.0.0 is the local-first Digital Brain platform. This release closes the July 8 code-review follow-up, hardens chat/runtime reliability, pays down cleanup debt across runtime utilities and setup detection, and keeps package, desktop, extension, static app, and documentation metadata synchronized to the 9.0.0 line.**
+**Lattice AI 9.1.0 is the local-first Digital Brain platform. Code Review Completion & Fail-Closed Runtime closes every actionable finding from the July 11 review: security boundaries now deny by default, runtime and chat state have typed ownership, frontend failures stay visible and tested, and repository/release hygiene is enforced across the 9.1.0 line.**
 
 **Lattice AI는 모델이 바뀌어도 내 지식과 맥락을 보존하는 로컬 우선 AI 브레인입니다.**
 
-> Main-branch hardening after 9.0.0 adds request-scoped model routing,
+> The 9.1.0 release adds request-scoped model routing,
 > workspace-isolated graph identities and frontend caches, fail-closed admin
 > gates, SSRF-safe web capture, private local state permissions, and reproducible
-> release/test isolation. The same unreleased line introduces a human-first UI:
+> release/test isolation. The same release introduces a human-first UI:
 > a visible knowledge journey from conversation or source capture into the
 > living Brain, its real relationship graph, and memory-grounded automation;
 > the empty Brain home now keeps that complete loop inside one viewport, with
 > continuous vital motion and behavior-driven listening, recall, synthesis,
 > and action states. Task navigation and technical detail stay calm and
 > approachable.
-> The published release number remains 9.0.0.
+> Telegram access requires an explicit chat allowlist and server session token;
+> public invitation access uses signed, expiring authorization instead of a
+> static cookie; and unknown or unreadable Knowledge Graph scope fails closed.
 
 Your model is the voice you use today. Your Brain is the asset you keep.
 Lattice AI preserves conversations, documents, decisions, project context,
@@ -85,9 +87,10 @@ You need Lattice AI when:
 The screenshots below are the latest checked-in visual evidence captures. They
 keep the first-run Brain flow, memory graph, source capture, model library,
 system view, admin console, and review center visible as release gates while
-9.0.0 focuses on code-review closure, chat/runtime reliability,
-AgentRuntime and ToolRegistry maintainability, release artifact correctness,
-and frontend/runtime cleanup.
+9.1.0 completes the July 11 code review with fail-closed access control,
+typed runtime/model state, a decomposed chat API, honest frontend error states
+and unit tests, and repository/release hygiene. The captures below are the
+checked-in 9.1.0 visual release evidence for that product flow.
 
 ### 1. Wake Brain
 
@@ -99,21 +102,21 @@ confirm owner, check the computer, choose the Brain voice.
 Choose the owner of the Brain. The profile is not a SaaS account by default; it
 is the local identity for the knowledge you keep.
 
-![Login](output/release/v9.0.0/screenshots/01-login.png)
+![Login](output/release/v9.1.0/screenshots/01-login.png)
 
 ### 3. Recommended Models
 
 Start with a short list: safest recommendation, faster model, stronger model.
 Advanced details stay available without overwhelming first-time users.
 
-![Recommended Models](output/release/v9.0.0/screenshots/02-recommended-models.png)
+![Recommended Models](output/release/v9.1.0/screenshots/02-recommended-models.png)
 
 ### 4. Install And Load
 
 Download and load only after consent. Lattice explains model size, local
 execution, and network use before work starts.
 
-![Install and Load](output/release/v9.0.0/screenshots/03-install-load-progress.png)
+![Install and Load](output/release/v9.1.0/screenshots/03-install-load-progress.png)
 
 ### 5. Brain Chat
 
@@ -125,14 +128,14 @@ and its visible life signal follow real listening, recall, synthesis, and action
 state. Detailed memory rings, provenance, conversation history, and
 model/runtime proof open as overlays only when requested.
 
-![One-viewport Living Brain Home](output/release/v9.0.0/screenshots/04-brain-chat-home.png)
+![One-viewport Living Brain Home](output/release/v9.1.0/screenshots/04-brain-chat-home.png)
 
 ### 6. Review Center
 
 Automation results are staged for review before they become durable decisions.
 Snooze, unsnooze, run now, approve, and dismiss actions stay explicit.
 
-![Review Center](output/release/v9.0.0/screenshots/12-review-center.png)
+![Review Center](output/release/v9.1.0/screenshots/12-review-center.png)
 
 ## Brain Depths
 
@@ -148,10 +151,10 @@ The user travels inward from everyday memory to deeper structure:
 
 Walkthrough:
 
-![v9.0.0 Living Brain walkthrough](output/release/v9.0.0/gifs/v9.0.0-living-brain-walkthrough.gif)
+![v9.1.0 Living Brain walkthrough](output/release/v9.1.0/gifs/v9.1.0-living-brain-walkthrough.gif)
 
 Screenshot index and capture notes:
-[output/release/v9.0.0/SCREENSHOT_INDEX.md](output/release/v9.0.0/SCREENSHOT_INDEX.md)
+[output/release/v9.1.0/SCREENSHOT_INDEX.md](output/release/v9.1.0/SCREENSHOT_INDEX.md)
 
 ## Install
 
@@ -236,38 +239,42 @@ See [docs/DEVELOPMENT.md](docs/DEVELOPMENT.md) for developer workflow details.
 
 ## Current Release
 
-The current release is **9.0.0 — Code Review Closure & Runtime Cleanup**:
+The current release is **9.1.0 — Code Review Completion & Fail-Closed Runtime**:
 
-- July 8 code-review follow-ups are fixed across chat, agent runs, permissions,
-  Telegram integration, runtime audit timestamps, embeddings, and Brain UI copy.
-- Chat/document streaming now preserves terminal SSE events and history/trace
-  persistence when generation fails mid-stream.
-- Runtime audit appends use JSONL while legacy JSON reads remain compatible.
-- Shared JSON/ISO/hash, setup detection, and frontend helper utilities replace
-  duplicated implementations across runtime, Brain Core, setup, and React code.
-- The legacy `server_app` namespace is allowlist-based instead of exposing all
-  app-factory locals.
-- The main `/chat` handler now routes through focused intent handlers and shared
-  response epilogues for lower future regression risk.
+- Telegram rejects every chat and callback outside
+  `LATTICEAI_TELEGRAM_ALLOWED_CHAT_IDS`, and its local API bridge requires
+  `LATTICEAI_SERVER_SESSION_TOKEN` instead of scanning stored sessions.
+- Public invitation authorization is signed and expiring, default invitation
+  credentials are removed, Knowledge Graph scope lookup fails closed, and
+  desktop/knowledge/network tools use explicit policy and consent boundaries.
+- App assembly exports typed runtime stages, model routing uses injected typed
+  state, and chat history, documents, streaming, and contracts are split into
+  focused modules.
+- The React workspace distinguishes unavailable services from empty Brain data,
+  gates success callbacks on real success, and has Vitest coverage for API
+  result shapes, proof state, conversation state, primitives, and i18n.
+- Large frontend i18n/CSS/Brain hooks and repeated runtime utilities are split,
+  obsolete aliases and local VSIX artifacts are removed, and review documents
+  live under `docs/reviews/` as immutable history.
 
-Expected artifacts for 9.0.0 release must use exact filenames:
+Expected artifacts for 9.1.0 release must use exact filenames:
 
-- `dist/ltcai-9.0.0-py3-none-any.whl`
-- `dist/ltcai-9.0.0.tar.gz`
-- `ltcai-9.0.0.tgz`
-- `dist/ltcai-9.0.0.vsix`
-- `src-tauri/target/release/bundle/dmg/Lattice AI_9.0.0_aarch64.dmg`
+- `dist/ltcai-9.1.0-py3-none-any.whl`
+- `dist/ltcai-9.1.0.tar.gz`
+- `ltcai-9.1.0.tgz`
+- `dist/ltcai-9.1.0.vsix`
+- `src-tauri/target/release/bundle/dmg/Lattice AI_9.1.0_aarch64.dmg`
 
 Do not use wildcard artifact uploads. Package registry publishing remains owner-run.
 
 See [docs/ROADMAP_RECOMMENDATIONS.md](docs/ROADMAP_RECOMMENDATIONS.md) for the
-strategic roadmap slices applied through 9.0.0 and the follow-up tracks.
+strategic roadmap slices applied through 9.1.0 and the follow-up tracks.
 
 ## Known Limitations
 
 - External package registries are owner-published and can lag behind GitHub.
 - PostgreSQL/pgvector is optional scale/migration tooling. SQLite remains the
-  live local Brain store in 9.0.0.
+  live local Brain store in 9.1.0.
 - Docker, model downloads, cloud model calls, Telegram, Brain Network, and update
   checks require explicit user action.
 - Conversation does not fabricate answers when no model is loaded.
@@ -279,6 +286,7 @@ strategic roadmap slices applied through 9.0.0 and the follow-up tracks.
 
 | Version | Theme |
 | --- | --- |
+| 9.1.0 | Code Review Completion & Fail-Closed Runtime: all July 11 review findings closed across fail-closed security, typed runtime/model/chat boundaries, honest frontend failures and tests, and repository hygiene |
 | 9.0.0 | Code Review Closure & Runtime Cleanup: July 8 code-review follow-ups fixed, chat/runtime reliability improved, duplicated utility surfaces consolidated, runtime audit append paths moved to JSONL, and release metadata/artifacts synchronized |
 | 8.9.0 | Scoped Memory & Tool Policy Hardening: authenticated history/KG reads are workspace-scoped, direct Tool API paths enforce registry policy, local approvals hash tokens at rest, AgentRuntime approval semantics are explicit, and frontend/runtime seams are split |
 | 8.8.0 | Brain Core Extraction & Recall Proof Hardening: internal-only Brain shim layers are removed, AgentRuntime run contracts/retry budgets are tighter, Brain Chat gains conversation controls, and citation recall exposes matched evidence |

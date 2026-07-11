@@ -19,7 +19,6 @@ import shutil
 import sqlite3
 import tempfile
 import zipfile
-from datetime import datetime, timezone
 from pathlib import Path, PurePosixPath
 from typing import Any, Dict, Optional
 
@@ -30,18 +29,15 @@ from .storage import (
     SQLiteToPostgresMigrator,
 )
 from .utils import sha256_file as _sha256_file
+from .utils import utc_now_iso
 
 FORMAT = "latticeai.kg.export"
 FORMAT_VERSION = 1
 BACKUP_FORMAT = "latticeai.kg.backup"
 
 
-def _now_iso() -> str:
-    return datetime.now(timezone.utc).isoformat()
-
-
 def _stamp() -> str:
-    return _now_iso().replace(":", "").replace("-", "").replace(".", "")[:15]
+    return utc_now_iso().replace(":", "").replace("-", "").replace(".", "")[:15]
 
 
 def _safe_zip_names(names) -> None:
@@ -160,15 +156,24 @@ class KGPortabilityService:
             raise RuntimeError("Knowledge Graph is disabled (LATTICEAI_ENABLE_GRAPH).")
 
     # ── logical export / import ──────────────────────────────────────────────
-    def export(self, *, workspace_id: Optional[str] = None) -> Dict[str, Any]:
+    def export(
+        self,
+        *,
+        workspace_id: Optional[str] = None,
+        include_legacy_global: bool = False,
+    ) -> Dict[str, Any]:
         self._require()
-        data = self._kg.export_graph_data(workspace_id=workspace_id)
+        data = self._kg.export_graph_data(
+            workspace_id=workspace_id,
+            include_legacy_global=include_legacy_global,
+        )
         header = {
             "format": FORMAT,
             "format_version": FORMAT_VERSION,
             **self._kg.schema_versions(),
-            "exported_at": _now_iso(),
+            "exported_at": utc_now_iso(),
             "workspace_id": workspace_id,
+            "include_legacy_global": bool(include_legacy_global),
             "counts": data.get("counts"),
         }
         artifact = {"header": header, **data}
@@ -176,8 +181,17 @@ class KGPortabilityService:
             artifact["signature"] = self._identity.sign_manifest(header)
         return artifact
 
-    def export_to_file(self, path=None, *, workspace_id: Optional[str] = None) -> Dict[str, Any]:
-        artifact = self.export(workspace_id=workspace_id)
+    def export_to_file(
+        self,
+        path=None,
+        *,
+        workspace_id: Optional[str] = None,
+        include_legacy_global: bool = False,
+    ) -> Dict[str, Any]:
+        artifact = self.export(
+            workspace_id=workspace_id,
+            include_legacy_global=include_legacy_global,
+        )
         self._exports_dir.mkdir(parents=True, exist_ok=True)
         path = Path(path) if path else self._exports_dir / f"kg-export-{_stamp()}.json"
         path.write_text(json.dumps(artifact, ensure_ascii=False, indent=2), encoding="utf-8")
@@ -204,7 +218,7 @@ class KGPortabilityService:
         if not dry_run:
             try:
                 self._kg.record_provenance(
-                    node_id="import:" + str((artifact.get("header") or {}).get("exported_at") or _now_iso()),
+                    node_id="import:" + str((artifact.get("header") or {}).get("exported_at") or utc_now_iso()),
                     source_type="bundle_import",
                     pipeline="kg-portability",
                     owner=None,
@@ -232,7 +246,7 @@ class KGPortabilityService:
                 "format": BACKUP_FORMAT,
                 "format_version": FORMAT_VERSION,
                 **self._kg.schema_versions(),
-                "created_at": _now_iso(),
+                "created_at": utc_now_iso(),
                 "db_sha256": _sha256_file(db_copy),
                 "has_blobs": Path(self._kg.blob_dir).exists(),
             }
@@ -333,7 +347,7 @@ class KGPortabilityService:
             "storage": self.storage_status().get("active", {}),
             "snapshot": self.snapshot_metadata(),
             "device_identity": self._identity.describe() if self._identity is not None else {},
-            "provenance": {"exported_at": _now_iso(), "source": "kg-portability"},
+            "provenance": {"exported_at": utc_now_iso(), "source": "kg-portability"},
         }
         archive = EncryptedBrainArchive(
             BrainArchivePaths(

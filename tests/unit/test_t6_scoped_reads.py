@@ -1,9 +1,9 @@
 """T6: graph reads honor workspace scope — Personal/Org Brain becomes real.
 
 Search (keyword/vector/graph/hybrid) and the graph view drop rows scoped to
-workspaces the caller is not a member of; legacy-global rows (NULL scope)
-stay machine-visible (documented compatibility); no scoping in single-user
-mode (allowed=None).
+workspaces the caller is not a member of. Legacy-global rows (NULL scope) are
+private in scoped mode unless the compatibility flag is explicit; no scoping
+is applied in single-user mode (allowed=None).
 """
 
 from knowledge_graph import KnowledgeGraphStore
@@ -25,7 +25,7 @@ def test_keyword_search_filters_by_membership(tmp_path):
     kg = _seeded(tmp_path)
     svc = SearchService(graph_store=kg)
     ids = {m["id"] for m in svc.keyword_search("quarterly", allowed_workspaces={"org-acme"})["matches"]}
-    assert ids == {"n-acme", "n-legacy"}, "other workspaces' rows must not leak"
+    assert ids == {"n-acme"}, "other workspaces and legacy-global rows must not leak"
 
 
 def test_hybrid_search_filters_by_membership(tmp_path):
@@ -33,7 +33,7 @@ def test_hybrid_search_filters_by_membership(tmp_path):
     svc = SearchService(graph_store=kg)
     ids = {m["id"] for m in svc.hybrid_search("quarterly", allowed_workspaces={"org-zeta"})["matches"]}
     assert "n-acme" not in ids
-    assert "n-zeta" in ids and "n-legacy" in ids
+    assert ids == {"n-zeta"}
 
 
 def test_no_scope_means_no_filter(tmp_path):
@@ -50,13 +50,29 @@ def test_graph_view_filters_nodes_and_edges(tmp_path):
         kg._upsert_edge(conn, "n-zeta", "n-legacy", "mentions", 1.0, {})
     view = kg.graph(limit=100, allowed_workspaces={"org-acme"})
     ids = {n["id"] for n in view["nodes"]}
-    assert "n-zeta" not in ids and "n-acme" in ids and "n-legacy" in ids
+    assert ids == {"n-acme"}
     for edge in view["edges"]:
         assert edge["from"] in ids and edge["to"] in ids, "edges to hidden nodes must vanish"
 
 
-def test_member_of_no_org_sees_only_legacy(tmp_path):
+def test_member_of_no_org_sees_no_scoped_or_legacy_rows(tmp_path):
     kg = _seeded(tmp_path)
     svc = SearchService(graph_store=kg)
     ids = {m["id"] for m in svc.keyword_search("quarterly", allowed_workspaces=set())["matches"]}
-    assert ids == {"n-legacy"}
+    assert ids == set()
+
+
+def test_legacy_global_compatibility_requires_explicit_opt_in(tmp_path):
+    kg = _seeded(tmp_path)
+    svc = SearchService(graph_store=kg)
+
+    ids = {
+        match["id"]
+        for match in svc.keyword_search(
+            "quarterly",
+            allowed_workspaces={"org-acme"},
+            include_legacy_global=True,
+        )["matches"]
+    }
+
+    assert ids == {"n-acme", "n-legacy"}

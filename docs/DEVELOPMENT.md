@@ -1,10 +1,10 @@
 # Lattice AI Development
 
-Current release: **9.0.0 — Code Review Closure & Runtime Cleanup**.
+Current release: **9.1.0 — Code Review Completion & Fail-Closed Runtime**.
 
 This document is for contributors working on the local-first Digital Brain
 codebase. Product positioning and quick start stay in `README.md`; release
-history is intentionally limited to 8.0.0-9.0.0 in `docs/CHANGELOG.md` and
+history is intentionally limited to 8.0.0-9.1.0 in `docs/CHANGELOG.md` and
 `RELEASE.md`.
 
 ## Product Contract
@@ -51,6 +51,7 @@ API, UI, or release work, run:
 npm run check:python
 npm run lint
 npm run typecheck
+npm run test:frontend
 npm run test:unit
 npm run docs:check-links
 ```
@@ -65,9 +66,14 @@ Use these when the change touches the relevant surface:
 npm run test:integration
 npm run test:visual
 npm run desktop:tauri:check
+npm run release:evidence
 npm run release:artifacts
 npm run release:validate
 ```
+
+Run `npm run build:assets` before `npm run release:evidence`. The capture command
+reads the current package version, writes only to `output/release/vX.Y.Z/`, and
+requires Playwright Chromium plus `ffmpeg` for the checked-in GIF/WebM evidence.
 
 `npm run test:integration` starts its own loopback server with disposable HOME,
 data, Brain, agent, XDG, temp, SQLite, and vault paths. It refuses non-loopback
@@ -80,11 +86,16 @@ Regenerate committed API artifacts with `npm run frontend:openapi`; CI and
 ## Frontend Experience Ownership
 
 `frontend/src/styles/tokens.css` owns React color tokens and
-`frontend/src/styles/experience.css` is imported after the legacy feature
-stylesheet to own the product shell, conversation canvas, shared content
-surfaces, and responsive navigation. Keep feature-specific graph, ingestion,
-admin, and onboarding rules in their existing modules until they are extracted;
-do not add another competing shell or composer rule to `styles.css`.
+`frontend/src/styles/experience.css` imports the focused shell, conversation,
+graph, capture, and responsive layers under `frontend/src/styles/experience/`.
+Keep ownership in the narrowest surface file; do not add another competing
+shell or composer rule to `styles.css`.
+
+Brain behavior belongs in the focused `useBrainChat`, `useBrainHistory`,
+`useBrainIngestion`, and `useBrainProof` hooks. Translation namespaces live in
+`frontend/src/i18n/`. Failed `ApiResult` values must remain unavailable/error
+states rather than being normalized to healthy empty data, and affected paths
+must have Vitest coverage.
 
 Default mode should expose user tasks and outcomes. Runtime metrics, registry
 identifiers, pipeline controls, and administrator tools belong in progressive
@@ -100,13 +111,18 @@ keyboard access, visible focus, mobile safe areas, and reduced-motion behavior.
 - no filesystem writes at module import time;
 - no external network calls at module import time.
 
-Runtime assembly seams live under `latticeai.runtime`:
+Runtime assembly seams live under `latticeai.runtime` as typed stages:
 
-- `config_runtime.py` derives app config values from `Config`;
+- `config_runtime.py` derives immutable app config values from `Config`;
 - `security_runtime.py` applies trusted proxy/security-derived settings;
-- `brain_runtime.py` constructs Brain Core and conversation primitives.
-- model/runtime, ToolRegistry/MCP, router, static asset, and lifespan seams
-  should continue moving out of monolithic app-factory helpers.
+- `brain_runtime.py` constructs Brain Core and conversation primitives;
+- model, platform, and router stages receive explicit dependencies and return
+  typed bundles rather than ambient `locals()` maps.
+
+The module-level `server_app` compatibility surface is an explicit allowlist.
+Model services use injected state, and HTTP exceptions belong at the API
+boundary. Readiness tests should reject forbidden patterns instead of treating
+symbol presence alone as architectural completion.
 
 Future extraction should continue with AgentRuntime, ToolRegistry, config,
 server decomposition, and Knowledge Graph stabilization in that order when
@@ -137,10 +153,10 @@ For user-facing, API, runtime, release, or packaging changes, check:
 Release/publish examples must use exact target-version filenames. Do not
 document wildcard artifact upload commands.
 
-For 9.0.0 release work, exact artifacts are:
+For 9.1.0 release work, exact artifacts are:
 
-- `dist/ltcai-9.0.0-py3-none-any.whl`
-- `dist/ltcai-9.0.0.tar.gz`
-- `ltcai-9.0.0.tgz`
-- `dist/ltcai-9.0.0.vsix`
-- `src-tauri/target/release/bundle/dmg/Lattice AI_9.0.0_aarch64.dmg`
+- `dist/ltcai-9.1.0-py3-none-any.whl`
+- `dist/ltcai-9.1.0.tar.gz`
+- `ltcai-9.1.0.tgz`
+- `dist/ltcai-9.1.0.vsix`
+- `src-tauri/target/release/bundle/dmg/Lattice AI_9.1.0_aarch64.dmg`

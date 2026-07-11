@@ -21,10 +21,10 @@ from .workspace_os_utils import (
     _deep_merge,
     _json_hash,
     _listify,
-    _now,
     _safe_slug,
     remove_skill_directory,
 )
+from .timeutil import now_iso as _now
 from .workspace_permissions import WorkspacePermissionManager, _member_role  # type: ignore
 from .workspace_timeline import WorkspaceTimeline
 from .workspace_plugins import WorkspacePluginManager
@@ -49,7 +49,7 @@ __all__ = [
     "remove_skill_directory",
 ]
 
-WORKSPACE_OS_VERSION = "9.0.0"
+WORKSPACE_OS_VERSION = "9.1.0"
 
 # Workspace types separate single-user Personal workspaces from shared
 # Organization workspaces. Both keep the same local-first JSON store; the type
@@ -125,9 +125,6 @@ EXECUTION_EVENT_TYPES = {
     "execution_cancelled",
     "execution_interrupted",
 }
-
-RUN_ACTIVE_STATUSES = {"queued", "running", "in_progress", "retrying", "cancelling"}
-RUN_TERMINAL_STATUSES = {"ok", "retried_ok", "failed", "rejected", "cancelled", "interrupted", "partial"}
 
 DEFAULT_AGENTS = [
     {

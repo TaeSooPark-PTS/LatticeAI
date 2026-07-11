@@ -8,9 +8,23 @@ exact include order while creating a narrow seam for the later
 
 from __future__ import annotations
 
+from dataclasses import dataclass
 from typing import Any
 
 from latticeai.services.router_context import InteractionRouterContext
+
+
+@dataclass(frozen=True)
+class RouterBundle:
+    """Final typed router stage after all domain routers are registered."""
+
+    app: Any
+    context: Any
+    route_count: int
+
+
+def build_router_bundle(app: Any, context: Any) -> RouterBundle:
+    return RouterBundle(app=app, context=context, route_count=len(getattr(app, "routes", ())))
 
 
 def build_static_routes_bundle(
@@ -19,6 +33,8 @@ def build_static_routes_bundle(
     static_dir: Any,
     invite_gate_enabled: bool,
     invite_code: str,
+    invite_cookie_secret: str,
+    secure_cookies: bool,
     app_mode: str,
     model_router: Any,
     require_user: Any,
@@ -29,6 +45,8 @@ def build_static_routes_bundle(
         static_dir=static_dir,
         invite_gate_enabled=invite_gate_enabled,
         invite_code=invite_code,
+        invite_cookie_secret=invite_cookie_secret,
+        secure_cookies=secure_cookies,
         app_mode=app_mode,
         model_router=model_router,
         require_user=require_user,
@@ -37,6 +55,7 @@ def build_static_routes_bundle(
         "STATIC_ROUTES": static_routes,
         "ui_file_response": static_routes.ui_file_response,
         "local_sysinfo": static_routes.local_sysinfo,
+        "invite_authorized": static_routes.invite_authorized,
     }
 
 
@@ -61,6 +80,8 @@ def build_auth_admin_security_router_bundle(
     open_registration: bool,
     session_ttl: int,
     require_auth: bool,
+    secure_cookies: bool,
+    invite_authorized: Any,
     ensure_identity: Any,
     create_admin_router: Any,
     require_admin: Any,
@@ -113,6 +134,9 @@ def build_auth_admin_security_router_bundle(
         open_registration=open_registration,
         session_ttl=session_ttl,
         require_auth=require_auth,
+        secure_cookies=secure_cookies,
+        invite_gate_enabled=invite_gate_enabled,
+        invite_authorized=invite_authorized,
         ensure_identity=ensure_identity,
     )
 

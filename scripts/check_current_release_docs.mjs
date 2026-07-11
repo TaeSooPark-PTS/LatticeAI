@@ -6,7 +6,9 @@ const root = process.cwd();
 const pkg = JSON.parse(readFileSync(path.join(root, "package.json"), "utf8"));
 const version = pkg.version;
 const releaseDir = `output/release/v${version}`;
-const title = "9.0.0 — Code Review Closure & Runtime Cleanup";
+const releaseTheme = "Code Review Completion & Fail-Closed Runtime";
+const title = `${version} — ${releaseTheme}`;
+const escapedVersion = version.replaceAll(".", "\\.");
 
 const currentReleaseFiles = [
   "README.md",
@@ -38,14 +40,18 @@ function requireIncludes(rel, needle) {
 
 function assertNoCurrentDrift(rel) {
   const text = read(rel);
-  const stale = text.match(/Current release:\s+\*\*(?!9\.0\.0\b)[^*]+\*\*/i);
+  const stale = text.match(
+    new RegExp(`Current release:\\s+\\*\\*(?!${escapedVersion}\\b)[^*]+\\*\\*`, "i"),
+  );
   if (stale) {
     errors.push(`${rel}: stale current-release marker ${JSON.stringify(stale[0])}`);
   }
-  if (/Latest\b.*\b[0-8]\.\d+\.\d+/i.test(text)) {
-    errors.push(`${rel}: stale Latest version reference`);
+  for (const match of text.matchAll(/Latest\b[^\n]*\b(\d+\.\d+\.\d+)\b/gi)) {
+    if (match[1] !== version) {
+      errors.push(`${rel}: stale Latest version reference ${match[1]}`);
+    }
   }
-  if (/current release is\s+\*\*(?!9\.0\.0\b)/i.test(text)) {
+  if (new RegExp(`current release is\\s+\\*\\*(?!${escapedVersion}\\b)`, "i").test(text)) {
     errors.push(`${rel}: stale README current release sentence`);
   }
 }
@@ -66,9 +72,9 @@ for (const rel of [
 
 requireIncludes("README.md", `The current release is **${title}**`);
 requireIncludes("README.md", `![v${version} Living Brain walkthrough]`);
-requireIncludes("RELEASE.md", `## v${version} — Code Review Closure & Runtime Cleanup`);
+requireIncludes("RELEASE.md", `## v${version} — ${releaseTheme}`);
 requireIncludes("docs/CHANGELOG.md", `## [${version}]`);
-requireIncludes("RELEASE_NOTES.md", `[v${version} - Code Review Closure & Runtime Cleanup]`);
+requireIncludes("RELEASE_NOTES.md", `[v${version} - ${releaseTheme}]`);
 requireIncludes("CHANGELOG.md", "starts at v8.0.0");
 requireIncludes("RELEASE_NOTES.md", `8.0.0 through ${version}`);
 requireIncludes("SECURITY.md", `${version.split(".").slice(0, 2).join(".")}.x (latest)`);

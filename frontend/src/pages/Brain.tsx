@@ -75,7 +75,7 @@ function normalizeBrainTab(tab?: string): BrainTab {
 
 function tabLabel(language: Language, tab: BrainTab) {
   const labelKey = tabs.find((item) => item.id === tab)?.labelKey;
-  return labelKey ? t(language, labelKey) : "Brain";
+  return labelKey ? t(language, labelKey) : t(language, "brain.title");
 }
 
 function tabHeadline(language: Language, tab: BrainTab) {
@@ -84,15 +84,16 @@ function tabHeadline(language: Language, tab: BrainTab) {
 
 function GraphStatus({ data }: { data: Record<string, unknown> }) {
   const mode = useAppStore((state) => state.mode);
+  const language = useAppStore((state) => state.language);
   const nodeTypes = Object.keys((data.nodes as Record<string, unknown>) || {});
   const edgeTypes = Object.keys((data.edges as Record<string, unknown>) || {});
   return (
     <div className="space-y-3">
       <StatGrid stats={[
-        { label: "Memories", value: data.total_nodes ?? nodeTypes.reduce((sum, key) => sum + Number(((data.nodes as Record<string, unknown>) || {})[key] || 0), 0) },
-        { label: "Links", value: data.total_edges ?? edgeTypes.reduce((sum, key) => sum + Number(((data.edges as Record<string, unknown>) || {})[key] || 0), 0) },
-        { label: "Memory kinds", value: nodeTypes.length },
-        { label: "Link kinds", value: edgeTypes.length },
+        { label: t(language, "brain.stats.memories"), value: data.total_nodes ?? nodeTypes.reduce((sum, key) => sum + Number(((data.nodes as Record<string, unknown>) || {})[key] || 0), 0) },
+        { label: t(language, "brain.stats.links"), value: data.total_edges ?? edgeTypes.reduce((sum, key) => sum + Number(((data.edges as Record<string, unknown>) || {})[key] || 0), 0) },
+        { label: t(language, "brain.stats.memoryKinds"), value: nodeTypes.length },
+        { label: t(language, "brain.stats.linkKinds"), value: edgeTypes.length },
       ]} />
       {mode === "basic" ? (
         <div className="flex flex-wrap gap-1">
@@ -104,25 +105,27 @@ function GraphStatus({ data }: { data: Record<string, unknown> }) {
 }
 
 function RetrievalStatus({ data }: { data: Record<string, unknown> }) {
+  const language = useAppStore((state) => state.language);
   const pipelines = isRecord(data.pipelines) ? data.pipelines : {};
   const rows = Object.entries(pipelines).map(([name, value]) => ({
     name: titleize(name),
-    status: isRecord(value) ? String(value.state || value.status || "reported") : "reported",
+    status: isRecord(value) ? String(value.state || value.status || t(language, "brain.value.reported")) : t(language, "brain.value.reported"),
     description: isRecord(value) ? Object.entries(value).filter(([key]) => key !== "state" && key !== "status").slice(0, 3).map(([key, item]) => `${titleize(key)}: ${String(item)}`).join(" · ") : String(value),
   }));
   return rows.length ? <EntityList items={rows} titleKey="name" metaKey="status" /> : <StructuredView value={data} />;
 }
 
 function MemoryStatus({ data }: { data: Record<string, unknown> }) {
+  const language = useAppStore((state) => state.language);
   const usage = isRecord(data.usage) ? data.usage : {};
   const sources = asArray<Record<string, unknown>>(data.sources || data.tiers);
   return (
     <div className="space-y-3">
       <StatGrid stats={[
-        { label: "Sources", value: usage.sources ?? asArray(data.sources).length },
-        { label: "Items", value: usage.total_items ?? asArray(data.sources).reduce((sum, item) => sum + Number(isRecord(item) ? item.count || 0 : 0), 0) },
-        { label: "Bytes", value: usage.total_bytes ?? 0 },
-        { label: "Health", value: data.health || "reported" },
+        { label: t(language, "brain.stats.sources"), value: usage.sources ?? asArray(data.sources).length },
+        { label: t(language, "brain.stats.items"), value: usage.total_items ?? asArray(data.sources).reduce((sum, item) => sum + Number(isRecord(item) ? item.count || 0 : 0), 0) },
+        { label: t(language, "brain.stats.bytes"), value: usage.total_bytes ?? 0 },
+        { label: t(language, "brain.stats.health"), value: data.health || t(language, "brain.value.reported") },
       ]} />
       <SourceProvenanceList items={sources} limit={6} />
     </div>
@@ -258,7 +261,7 @@ function DigitalBrainExplorer({ data }: { data: unknown }) {
                     <KeyValueList data={{
                       connections: selected.degree,
                       source: selected.source || t(language, "graph.source.none"),
-                      source_type: sourceType(selected.raw),
+                      source_type: sourceType(selected.raw, language),
                       created_at: sourceCreatedAt(selected.raw) || t(language, "graph.created.none"),
                     }} />
                   ) : (
@@ -266,7 +269,7 @@ function DigitalBrainExplorer({ data }: { data: unknown }) {
                       id: selected.id,
                       degree: selected.degree,
                       source: selected.source || t(language, "graph.source.none"),
-                      source_type: sourceType(selected.raw),
+                      source_type: sourceType(selected.raw, language),
                       created_at: sourceCreatedAt(selected.raw) || t(language, "graph.created.none"),
                     }} />
                   )}
@@ -297,7 +300,7 @@ function DigitalBrainExplorer({ data }: { data: unknown }) {
                     <span className="font-medium">{node.label}</span>
                     <Badge variant="muted">{node.type}</Badge>
                   </div>
-                  <div className="mt-1 text-xs text-muted-foreground">{Math.round(node.importance * 100)} importance · {fmtNumber(node.degree)} links</div>
+                  <div className="mt-1 text-xs text-muted-foreground">{t(language, "brain.graph.nodeStats", { importance: Math.round(node.importance * 100), links: fmtNumber(node.degree) })}</div>
                 </button>
               ))}
             </CardContent>
@@ -305,7 +308,7 @@ function DigitalBrainExplorer({ data }: { data: unknown }) {
         </aside>
       </div>
       {backendSearch.data ? (
-        <DataPanel title="Brain search results" result={backendSearch.data}>
+        <DataPanel title={t(language, "brain.search.results")} result={backendSearch.data}>
           {(result) => <EntityList items={(result as Record<string, unknown>).matches || result} titleKey="title" metaKey="type" limit={8} />}
         </DataPanel>
       ) : null}
@@ -341,6 +344,7 @@ function HybridSearch() {
 function UnifiedMemoryPanel() {
   const qc = useQueryClient();
   const mode = useAppStore((state) => state.mode);
+  const language = useAppStore((state) => state.language);
   const [recallQuery, setRecallQuery] = React.useState("");
   const [importArtifact, setImportArtifact] = React.useState("");
   const [expandedSection, setExpandedSection] = React.useState<"recall" | "sources" | "backup" | null>("recall");
@@ -375,10 +379,10 @@ function UnifiedMemoryPanel() {
       <Card>
         <CardContent className="py-4">
           <StatGrid stats={[
-            { label: "Sources", value: usage.sources ?? 0 },
-            { label: "Items", value: usage.total_items ?? 0 },
-            { label: "Brain format", value: portData.graph_schema_version || portData.schema_version || "–" },
-            { label: "Storage", value: portStorage.engine || "–" },
+            { label: t(language, "brain.stats.sources"), value: usage.sources ?? 0 },
+            { label: t(language, "brain.stats.items"), value: usage.total_items ?? 0 },
+            { label: t(language, "brain.stats.format"), value: portData.graph_schema_version || portData.schema_version || "–" },
+            { label: t(language, "brain.stats.storage"), value: portStorage.engine || "–" },
           ]} />
         </CardContent>
       </Card>
@@ -391,10 +395,10 @@ function UnifiedMemoryPanel() {
         >
           <CardTitle className="flex items-center gap-2">
             <Sparkles className="h-4 w-4" />
-            Memory Recall
+            {t(language, "brain.memory.recall.title")}
             <span className="ml-auto text-xs text-muted-foreground">{expandedSection === "recall" ? "▲" : "▼"}</span>
           </CardTitle>
-          <CardDescription>Search and manage your saved memories.</CardDescription>
+          <CardDescription>{t(language, "brain.memory.recall.detail")}</CardDescription>
         </CardHeader>
         {expandedSection === "recall" && (
           <CardContent className="space-y-3">
@@ -403,17 +407,17 @@ function UnifiedMemoryPanel() {
                 value={recallQuery}
                 onChange={(e) => setRecallQuery(e.target.value)}
                 onKeyDown={(e) => e.key === "Enter" && !e.nativeEvent.isComposing && recallQuery.trim() && recall.mutate()}
-                placeholder="Recall memories about..."
+                placeholder={t(language, "brain.memory.recall.placeholder")}
               />
-              <Button disabled={!recallQuery.trim() || recall.isPending} onClick={() => recall.mutate()}>Recall</Button>
+              <Button disabled={!recallQuery.trim() || recall.isPending} onClick={() => recall.mutate()}>{t(language, "brain.memory.recall.action")}</Button>
             </div>
             {mode !== "basic" && (
               <div className="flex flex-wrap gap-2">
-                <ActionButton label="Compact" action={() => latticeApi.memoryCompact()} />
-                <ActionButton label="Rebuild vector" action={() => latticeApi.memoryRebuild()} />
+                <ActionButton label={t(language, "brain.memory.compact")} action={() => latticeApi.memoryCompact()} />
+                <ActionButton label={t(language, "brain.memory.rebuildVector")} action={() => latticeApi.memoryRebuild()} />
               </div>
             )}
-            {recall.data ? <OperationResult result={recall.data} successLabel="Recall completed" /> : null}
+            {recall.data ? <OperationResult result={recall.data} successLabel={t(language, "brain.memory.recall.completed")} /> : null}
           </CardContent>
         )}
       </Card>
@@ -426,15 +430,15 @@ function UnifiedMemoryPanel() {
         >
           <CardTitle className="flex items-center gap-2">
             <Layers3 className="h-4 w-4" />
-            Sources & Provenance
+            {t(language, "brain.sources.title")}
             <span className="ml-auto text-xs text-muted-foreground">{expandedSection === "sources" ? "▲" : "▼"}</span>
           </CardTitle>
-          <CardDescription>Where your memories came from.</CardDescription>
+          <CardDescription>{t(language, "brain.sources.detail")}</CardDescription>
         </CardHeader>
         {expandedSection === "sources" && (
           <CardContent className="space-y-3">
             {provenance.isLoading ? (
-              <LoadingPanel title="Loading sources" />
+              <LoadingPanel title={t(language, "brain.sources.loading")} />
             ) : (
               <SourceProvenanceList
                 items={
@@ -457,30 +461,30 @@ function UnifiedMemoryPanel() {
         >
           <CardTitle className="flex items-center gap-2">
             <DatabaseBackup className="h-4 w-4" />
-            Export & Backup
+            {t(language, "brain.portability.title")}
             <span className="ml-auto text-xs text-muted-foreground">{expandedSection === "backup" ? "▲" : "▼"}</span>
           </CardTitle>
-          <CardDescription>Export, back up, or import your Brain data.</CardDescription>
+          <CardDescription>{t(language, "brain.portability.detail")}</CardDescription>
         </CardHeader>
         {expandedSection === "backup" && (
           <CardContent className="space-y-3">
             <div className="flex flex-wrap gap-2">
-              <ActionButton label="Export Brain" action={() => latticeApi.graphExport()} />
-              <ActionButton label="Create backup" action={() => latticeApi.graphBackup()} />
+              <ActionButton label={t(language, "brain.portability.export")} action={() => latticeApi.graphExport()} />
+              <ActionButton label={t(language, "brain.portability.backup")} action={() => latticeApi.graphBackup()} />
             </div>
             <Textarea
               value={importArtifact}
               onChange={(e) => setImportArtifact(e.target.value)}
-              placeholder="Paste an exported Brain artifact to preview import"
+              placeholder={t(language, "brain.portability.importPlaceholder")}
             />
             <Button
               variant="outline"
               disabled={!importArtifact.trim() || importMutation.isPending}
               onClick={() => importMutation.mutate()}
             >
-              Preview import
+              {t(language, "brain.portability.previewImport")}
             </Button>
-            {importMutation.data ? <OperationResult result={importMutation.data} successLabel="Import preview completed" /> : null}
+            {importMutation.data ? <OperationResult result={importMutation.data} successLabel={t(language, "brain.portability.importCompleted")} /> : null}
           </CardContent>
         )}
       </Card>
@@ -489,14 +493,15 @@ function UnifiedMemoryPanel() {
 }
 
 function SourceProvenanceList({ items, limit = 8 }: { items: unknown; limit?: number }) {
+  const language = useAppStore((state) => state.language);
   const rows = asArray<Record<string, unknown>>(items).slice(0, limit);
-  if (!rows.length) return <EmptyState title="No sources yet" detail="New memories will show their chat, manual, document, or import origin here." />;
+  if (!rows.length) return <EmptyState title={t(language, "brain.sources.empty")} detail={t(language, "brain.sources.emptyDetail")} />;
   return (
     <div className="grid gap-2">
       {rows.map((item, index) => {
-        const title = String(item.title || item.label || item.source_title || item.filename || item.path || item.source || `Source ${index + 1}`);
+        const title = String(item.title || item.label || item.source_title || item.filename || item.path || item.source || t(language, "brain.sources.fallback", { index: index + 1 }));
         const path = String(item.path || item.source_path || item.source || item.conversation_id || "");
-        const type = sourceType(item);
+        const type = sourceType(item, language);
         const created = sourceCreatedAt(item);
         return (
           <div key={String(item.id || item.source_id || title)} className="rounded-lg border border-border bg-background/55 p-3">
@@ -504,18 +509,18 @@ function SourceProvenanceList({ items, limit = 8 }: { items: unknown; limit?: nu
               <div>
                 <div className="font-medium">{title}</div>
                 <div className="mt-1 text-xs text-muted-foreground">
-                  {type} · {created || "Created time not recorded"}
+                  {type} · {created || t(language, "brain.sources.createdUnknown")}
                 </div>
               </div>
-              <Badge variant="muted">{path ? "inspectable" : "missing provenance"}</Badge>
+              <Badge variant="muted">{t(language, path ? "brain.sources.inspectable" : "brain.sources.missingProvenance")}</Badge>
             </div>
             {path ? (
               <div className="mt-2 flex flex-wrap items-center gap-2 text-xs text-muted-foreground">
                 <span className="break-all">{path}</span>
-                <Button variant="outline" size="sm" onClick={() => void navigator.clipboard?.writeText(path)}>Copy source</Button>
+                <Button variant="outline" size="sm" onClick={() => void navigator.clipboard?.writeText(path)}>{t(language, "brain.sources.copy")}</Button>
               </div>
             ) : (
-              <p className="mt-2 text-xs text-muted-foreground">This older memory did not record a source path or conversation. It remains searchable, but provenance is incomplete.</p>
+              <p className="mt-2 text-xs text-muted-foreground">{t(language, "brain.sources.legacyMissing")}</p>
             )}
           </div>
         );
@@ -524,14 +529,14 @@ function SourceProvenanceList({ items, limit = 8 }: { items: unknown; limit?: nu
   );
 }
 
-function sourceType(item: Record<string, unknown>) {
+function sourceType(item: Record<string, unknown>, language: Language) {
   const metadata = isRecord(item.metadata) ? item.metadata : {};
   const raw = String(item.source_type || item.type || item.kind || metadata.source_type || metadata.role || "").toLowerCase();
-  if (/chat|conversation|message/.test(raw)) return "chat";
-  if (/document|upload|file|pdf|markdown|text/.test(raw)) return "document";
-  if (/import|archive|restore/.test(raw)) return "import";
-  if (/manual|note/.test(raw)) return "manual";
-  return "source unknown";
+  if (/chat|conversation|message/.test(raw)) return t(language, "brain.sources.type.chat");
+  if (/document|upload|file|pdf|markdown|text/.test(raw)) return t(language, "brain.sources.type.document");
+  if (/import|archive|restore/.test(raw)) return t(language, "brain.sources.type.import");
+  if (/manual|note/.test(raw)) return t(language, "brain.sources.type.manual");
+  return t(language, "brain.sources.type.unknown");
 }
 
 function sourceCreatedAt(item: Record<string, unknown>) {

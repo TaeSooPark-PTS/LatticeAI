@@ -16,11 +16,11 @@ import shutil
 import time
 import urllib.error
 import urllib.request
-import warnings
+from dataclasses import dataclass, field, fields
 from pathlib import Path
-from typing import AsyncIterator, Dict, List, Optional
+from typing import Any, AsyncIterator, Callable, Dict, List, Optional
 
-from fastapi import HTTPException, Request
+from .model_errors import ModelRuntimeError
 
 from latticeai.models.router import (
     AsyncOpenAI,
@@ -66,111 +66,68 @@ _MODEL_LOADING_COMPAT_EXPORTS = (
 )
 
 
-def _missing_current_user(_request: Request) -> Optional[str]:
+def _missing_current_user(_request: Any) -> Optional[str]:
     return None
 
 
 def _missing_user_api_key(_email: Optional[str], _provider: str) -> Optional[str]:
     return None
 
-# Server decomp: proper ModelRuntimeState class for globals/wiring
+
+@dataclass(frozen=True, slots=True)
 class ModelRuntimeState:
-    """Central object for all legacy globals. Module level names delegate for compat.
-    This is the clean wiring surface for future decomp.
+    """Immutable application-owned dependencies for one model runtime.
+
+    Upper-case configuration field names intentionally match the long-standing
+    composition-root vocabulary.  Unlike the former module ``STATE`` object,
+    instances are explicit, immutable, and safe to create more than once in a
+    process (for example in isolated tests or multiple ASGI applications).
     """
-    def __init__(self):
-        self.router = None
-        self.APP_MODE = "local"
-        self.DEFAULT_HOST = "127.0.0.1"
-        self.DEFAULT_PORT = 4825
-        self.DATA_DIR = Path.home() / ".latticeai"
-        self.BASE_DIR = Path.cwd()
-        self.ENABLE_TELEGRAM = False
-        self.ENABLE_GRAPH = True
-        self.AUTOLOAD_MODELS = False
-        self.MODEL_IDLE_UNLOAD_SECONDS = 0
-        self.ALLOW_MODEL_DOWNLOADS = False
-        self.MODEL_DOWNLOAD_TIMEOUT = 300
-        self.ALLOW_LOCAL_MODELS = True
-        self.REQUIRE_AUTH = False
-        self.INVITE_GATE_ENABLED = False
-        self.ALLOW_PLAINTEXT_API_KEYS = False
-        self.CORS_ALLOW_NETWORK = False
-        self.PUBLIC_MODEL = "openai:gpt-4o-mini"
-        self.LOCAL_MODEL = "mlx-community/gemma-4-12b-it-4bit"
-        self.IS_PUBLIC_MODE = False
-        self.keyring = None
-        self.get_current_user = _missing_current_user
-        self.get_user_api_key = _missing_user_api_key
 
-    def sync_to_module_globals(self):
-        """Sync to bare module globals for legacy external importers.
-
-        This is a compatibility surface only. Internal code should use STATE.
-        Emits DeprecationWarning (future removal in major after 8.x).
-        """
-        warnings.warn(
-            "sync_to_module_globals is a legacy compatibility shim and will be removed "
-            "after 8.x. Use latticeai.services.model_runtime.STATE or injected context instead.",
-            DeprecationWarning,
-            stacklevel=2,
-        )
-        self._sync_globals()
-
-    def _sync_globals(self) -> None:
-        """Internal no-warning sync used at init."""
-        global router, APP_MODE, DEFAULT_HOST, DEFAULT_PORT, DATA_DIR, BASE_DIR
-        global ENABLE_TELEGRAM, ENABLE_GRAPH, AUTOLOAD_MODELS, MODEL_IDLE_UNLOAD_SECONDS
-        global ALLOW_MODEL_DOWNLOADS, MODEL_DOWNLOAD_TIMEOUT, ALLOW_LOCAL_MODELS, REQUIRE_AUTH
-        global INVITE_GATE_ENABLED, ALLOW_PLAINTEXT_API_KEYS
-        global CORS_ALLOW_NETWORK, PUBLIC_MODEL, LOCAL_MODEL, IS_PUBLIC_MODE
-        global keyring, get_current_user, get_user_api_key
-        router = self.router
-        APP_MODE = self.APP_MODE
-        DEFAULT_HOST = self.DEFAULT_HOST
-        DEFAULT_PORT = self.DEFAULT_PORT
-        DATA_DIR = self.DATA_DIR
-        BASE_DIR = self.BASE_DIR
-        ENABLE_TELEGRAM = self.ENABLE_TELEGRAM
-        ENABLE_GRAPH = self.ENABLE_GRAPH
-        AUTOLOAD_MODELS = self.AUTOLOAD_MODELS
-        MODEL_IDLE_UNLOAD_SECONDS = self.MODEL_IDLE_UNLOAD_SECONDS
-        ALLOW_MODEL_DOWNLOADS = self.ALLOW_MODEL_DOWNLOADS
-        MODEL_DOWNLOAD_TIMEOUT = self.MODEL_DOWNLOAD_TIMEOUT
-        ALLOW_LOCAL_MODELS = self.ALLOW_LOCAL_MODELS
-        REQUIRE_AUTH = self.REQUIRE_AUTH
-        INVITE_GATE_ENABLED = self.INVITE_GATE_ENABLED
-        ALLOW_PLAINTEXT_API_KEYS = self.ALLOW_PLAINTEXT_API_KEYS
-        CORS_ALLOW_NETWORK = self.CORS_ALLOW_NETWORK
-        PUBLIC_MODEL = self.PUBLIC_MODEL
-        LOCAL_MODEL = self.LOCAL_MODEL
-        IS_PUBLIC_MODE = self.IS_PUBLIC_MODE
-        keyring = self.keyring
-        get_current_user = self.get_current_user
-        get_user_api_key = self.get_user_api_key
-
-STATE = ModelRuntimeState()
-STATE._sync_globals()  # initial no-warning; public API warns on explicit legacy syncs
-
-# Configured by server_app.configure_model_runtime during app assembly.
+    router: Any = None
+    APP_MODE: str = "local"
+    DEFAULT_HOST: str = "127.0.0.1"
+    DEFAULT_PORT: int = 4825
+    DATA_DIR: Path = field(default_factory=lambda: Path.home() / ".latticeai")
+    BASE_DIR: Path = field(default_factory=Path.cwd)
+    ENABLE_TELEGRAM: bool = False
+    ENABLE_GRAPH: bool = True
+    AUTOLOAD_MODELS: bool = False
+    MODEL_IDLE_UNLOAD_SECONDS: int = 0
+    ALLOW_MODEL_DOWNLOADS: bool = False
+    MODEL_DOWNLOAD_TIMEOUT: int = 300
+    ALLOW_LOCAL_MODELS: bool = True
+    REQUIRE_AUTH: bool = False
+    INVITE_GATE_ENABLED: bool = False
+    ALLOW_PLAINTEXT_API_KEYS: bool = False
+    CORS_ALLOW_NETWORK: bool = False
+    PUBLIC_MODEL: str = "openai:gpt-4o-mini"
+    LOCAL_MODEL: str = "mlx-community/gemma-4-12b-it-4bit"
+    IS_PUBLIC_MODE: bool = False
+    keyring: Any = None
+    get_current_user: Callable[[Any], Optional[str]] = _missing_current_user
+    get_user_api_key: Callable[[Optional[str], str], Optional[str]] = _missing_user_api_key
 
 
-def _env_bool(key: str, default: bool = False) -> bool:
-    raw = os.getenv(key)
-    if raw is None:
-        return default
-    return raw.strip().lower() in {"1", "true", "yes", "on"}
+def create_model_runtime_state(**deps: Any) -> ModelRuntimeState:
+    """Create an immutable runtime dependency set with strict key validation."""
 
+    known = {item.name for item in fields(ModelRuntimeState)}
+    unknown = sorted(set(deps) - known)
+    if unknown:
+        raise TypeError(f"unknown model runtime dependencies: {', '.join(unknown)}")
+    return ModelRuntimeState(**deps)
 
-def _download_allowed(allow_download: bool = False) -> bool:
-    # Prefer STATE (the source of truth) over bare module global for internal logic.
-    autoload = getattr(STATE, "AUTOLOAD_MODELS", AUTOLOAD_MODELS)
-    configured = getattr(STATE, "ALLOW_MODEL_DOWNLOADS", ALLOW_MODEL_DOWNLOADS)
+def _download_allowed(
+    allow_download: bool = False, *, state: ModelRuntimeState
+) -> bool:
+    autoload = state.AUTOLOAD_MODELS
+    configured = state.ALLOW_MODEL_DOWNLOADS
     return bool(allow_download) or bool(configured) or bool(autoload)
 
 
 def _download_block(provider: str, model_name: str) -> None:
-    raise HTTPException(
+    raise ModelRuntimeError(
         status_code=409,
         detail={
             "status": "unavailable",
@@ -188,7 +145,7 @@ def _download_block(provider: str, model_name: str) -> None:
 
 
 def _engine_install_block(engine: str) -> None:
-    raise HTTPException(
+    raise ModelRuntimeError(
         status_code=409,
         detail={
             "status": "unavailable",
@@ -203,33 +160,15 @@ def _engine_install_block(engine: str) -> None:
     )
 
 
-def _missing_current_user(_request: Request) -> Optional[str]:
-    return None
+def configure_model_runtime(**deps: Any) -> "ModelRuntimeService":
+    """Compatibility factory returning an isolated, bound runtime service.
 
-
-def _missing_user_api_key(_email: Optional[str], _provider: str) -> Optional[str]:
-    return None
-
-
-def configure_model_runtime(**deps) -> None:
-    """Wire app-owned runtime dependencies without importing server_app.
-
-    Explicit per-key assignment (no blanket globals().update) so wiring is
-    auditable and side effects are visible. Preserves exact public module
-    globals and prior behavior for all callers and shims.
-    Now uses STATE class for clean decomp.
+    The historical function mutated process-wide module globals.  Keeping the
+    import path while returning a service preserves practical construction
+    compatibility without ambient state or cross-application leakage.
     """
-    for key, value in deps.items():
-        if hasattr(STATE, key):
-            setattr(STATE, key, value)
-        elif key == "keyring":
-            STATE.keyring = value
-        elif key == "get_current_user":
-            STATE.get_current_user = value
-        elif key == "get_user_api_key":
-            STATE.get_user_api_key = value
 
-    STATE._sync_globals()  # wiring path uses internal (no spurious deprecation in normal startup)
+    return ModelRuntimeService(create_model_runtime_state(**deps))
 
 
 # Catalog data + version-dedup helpers live in ``model_catalog``; re-exported
@@ -394,9 +333,9 @@ def ensure_lmstudio_model(model_name: str) -> Dict[str, object]:
             )
         except urllib.error.HTTPError as e:
             detail = e.read().decode("utf-8", errors="replace")[-2000:]
-            raise HTTPException(status_code=500, detail=f"LM Studio 모델 다운로드 실패: {detail or e.reason}")
+            raise ModelRuntimeError(status_code=500, detail=f"LM Studio 모델 다운로드 실패: {detail or e.reason}")
         except Exception as e:
-            raise HTTPException(status_code=500, detail=f"LM Studio 모델 다운로드 실패: {e}")
+            raise ModelRuntimeError(status_code=500, detail=f"LM Studio 모델 다운로드 실패: {e}")
 
         status = str(job.get("status") or "")
         job_id = str(job.get("job_id") or "")
@@ -412,10 +351,10 @@ def ensure_lmstudio_model(model_name: str) -> Dict[str, object]:
                 if polled_status == "completed":
                     break
                 if polled_status == "failed":
-                    raise HTTPException(status_code=500, detail=f"LM Studio 모델 다운로드 실패: {polled}")
+                    raise ModelRuntimeError(status_code=500, detail=f"LM Studio 모델 다운로드 실패: {polled}")
                 time.sleep(2)
             else:
-                raise HTTPException(status_code=408, detail="LM Studio 모델 다운로드 시간이 초과되었습니다.")
+                raise ModelRuntimeError(status_code=408, detail="LM Studio 모델 다운로드 시간이 초과되었습니다.")
 
         models = get_lmstudio_models(force=True)
         model_key = _find_lmstudio_model_key(model_name, models) or model_name
@@ -435,12 +374,12 @@ def ensure_lmstudio_model(model_name: str) -> Dict[str, object]:
         )
     except urllib.error.HTTPError as e:
         detail = e.read().decode("utf-8", errors="replace")[-2000:]
-        raise HTTPException(status_code=500, detail=f"LM Studio 모델 로드 실패: {detail or e.reason}")
+        raise ModelRuntimeError(status_code=500, detail=f"LM Studio 모델 로드 실패: {detail or e.reason}")
     except Exception as e:
-        raise HTTPException(status_code=500, detail=f"LM Studio 모델 로드 실패: {e}")
+        raise ModelRuntimeError(status_code=500, detail=f"LM Studio 모델 로드 실패: {e}")
 
     if str(loaded.get("status") or "") != "loaded":
-        raise HTTPException(status_code=500, detail=f"LM Studio 모델 로드 실패: {loaded}")
+        raise ModelRuntimeError(status_code=500, detail=f"LM Studio 모델 로드 실패: {loaded}")
 
     return {
         "provider": "lmstudio",
@@ -545,7 +484,7 @@ def download_hf_model(
     progress_emit=None,
 ) -> Dict[str, object]:
     if importlib.util.find_spec("huggingface_hub") is None:
-        raise HTTPException(status_code=400, detail="huggingface_hub가 없습니다. 먼저 MLX runtime 설치를 진행해 주세요.")
+        raise ModelRuntimeError(status_code=400, detail="huggingface_hub가 없습니다. 먼저 MLX runtime 설치를 진행해 주세요.")
 
     target_dir = hf_model_dir(repo_id)
     if hf_model_ready(repo_id, provider):
@@ -697,10 +636,10 @@ def download_hf_model(
                 eta_seconds=0,
             ))
     except Exception as e:
-        raise HTTPException(status_code=500, detail=f"{repo_id} 다운로드 실패: {str(e)[-2000:]}")
+        raise ModelRuntimeError(status_code=500, detail=f"{repo_id} 다운로드 실패: {str(e)[-2000:]}")
 
     if not hf_model_ready(repo_id, provider):
-        raise HTTPException(status_code=500, detail=f"{repo_id} 다운로드가 완료되지 않았습니다. 모델 파일을 찾지 못했습니다.")
+        raise ModelRuntimeError(status_code=500, detail=f"{repo_id} 다운로드가 완료되지 않았습니다. 모델 파일을 찾지 못했습니다.")
 
     return {"model": repo_id, "path": str(target_dir), "cached": False}
 
@@ -733,9 +672,13 @@ def ensure_llamacpp_server(model_name: str) -> None:
     return _ensure_llamacpp_server(model_name)
 
 
-def _safe_engine_install_plan(engine: str) -> Optional[Dict[str, object]]:
+def _safe_engine_install_plan(
+    engine: str,
+    *,
+    base_dir: Path,
+) -> Optional[Dict[str, object]]:
     try:
-        return _engine_install_plan(engine)
+        return _engine_install_plan(engine, base_dir=base_dir)
     except Exception:
         return None
 
@@ -758,8 +701,13 @@ def engine_installed(engine: str) -> bool:
         return AsyncOpenAI is not None
     return False
 
-def engine_status() -> List[Dict]:
-    r = getattr(STATE, "router", None) or router
+def engine_status(
+    *,
+    state: ModelRuntimeState,
+    cloud_verify_cache: Optional[Dict[str, Dict[str, Any]]] = None,
+) -> List[Dict]:
+    r = state.router
+    verify_cache = cloud_verify_cache or {}
     cloud_models = r.detected_cloud_models() if r else []
     cloud_by_provider = {}
     for model in cloud_models:
@@ -861,7 +809,7 @@ def engine_status() -> List[Dict]:
             "installed": engine_installed("local_mlx"),
             "installable": True,
             "install_label": ENGINE_INSTALLERS["local_mlx"]["label"],
-            "install_plan": _safe_engine_install_plan("local_mlx"),
+            "install_plan": _safe_engine_install_plan("local_mlx", base_dir=state.BASE_DIR),
             "models": mlx_models,
         },
         {
@@ -872,7 +820,7 @@ def engine_status() -> List[Dict]:
             "installed": ollama_installed,
             "installable": True,
             "install_label": ENGINE_INSTALLERS["ollama"]["label"],
-            "install_plan": _safe_engine_install_plan("ollama"),
+            "install_plan": _safe_engine_install_plan("ollama", base_dir=state.BASE_DIR),
             "models": ollama_models,
         },
     ]
@@ -888,7 +836,11 @@ def engine_status() -> List[Dict]:
             "support_reason": support["reason"],
             "installable": support["supported"] and spec["id"] in ENGINE_INSTALLERS,
             "install_label": ENGINE_INSTALLERS.get(spec["id"], {}).get("label"),
-            "install_plan": _safe_engine_install_plan(spec["id"]) if spec["id"] in ENGINE_INSTALLERS else None,
+            "install_plan": (
+                _safe_engine_install_plan(spec["id"], base_dir=state.BASE_DIR)
+                if spec["id"] in ENGINE_INSTALLERS
+                else None
+            ),
             "requires": spec["requires"],
             "models": (
                 vllm_models if spec["id"] == "vllm"
@@ -903,7 +855,7 @@ def engine_status() -> List[Dict]:
         env_key = next((item.get("requires") for item in cloud_by_provider.get(provider, []) if item.get("requires")), None)
         provider_models = []
         for model in cloud_by_provider.get(provider, []):
-            cache = CLOUD_VERIFY_CACHE.get(model.get("id"))
+            cache = verify_cache.get(model.get("id"))
             provider_models.append({
                 **model,
                 "verified": cache.get("ok") if cache else None,
@@ -917,17 +869,15 @@ def engine_status() -> List[Dict]:
             "installed": engine_installed(provider),
             "installable": True,
             "install_label": ENGINE_INSTALLERS[provider]["label"],
-            "install_plan": _safe_engine_install_plan(provider),
+            "install_plan": _safe_engine_install_plan(provider, base_dir=state.BASE_DIR),
             "requires": env_key,
             "models": provider_models,
         })
     return engines
 
-def runtime_features() -> Dict:
-    # Read from STATE object (central) for implementation; bare globals kept only
-    # for external legacy consumers who import names directly from this module.
-    s = STATE
-    r = getattr(s, "router", None) or router
+def runtime_features(*, state: ModelRuntimeState) -> Dict:
+    s = state
+    r = s.router
     return {
         "mode": s.APP_MODE,
         "public": s.IS_PUBLIC_MODE,
@@ -964,8 +914,17 @@ def runtime_features() -> Dict:
         },
     }
 
-def install_engine(engine: str, confirmation_token: Optional[str] = None) -> Dict:
-    return _install_engine(engine, confirmation_token=confirmation_token)
+def install_engine(
+    engine: str,
+    confirmation_token: Optional[str] = None,
+    *,
+    state: ModelRuntimeState,
+) -> Dict:
+    return _install_engine(
+        engine,
+        confirmation_token=confirmation_token,
+        base_dir=state.BASE_DIR,
+    )
 
 
 def _resolve_model_alias(model_id: str, engine: Optional[str] = None) -> str:
@@ -999,13 +958,13 @@ def normalize_local_model_request(model_id: str, engine: Optional[str] = None) -
     return model_id
 
 
-def ensure_engine_ready(engine: str) -> Dict[str, object]:
+def ensure_engine_ready(engine: str, *, state: ModelRuntimeState) -> Dict[str, object]:
     engine = "local_mlx" if engine == "mlx" else engine
     if engine not in ENGINE_INSTALLERS and engine not in OPENAI_COMPATIBLE_PROVIDERS:
-        raise HTTPException(status_code=400, detail=f"지원하지 않는 엔진입니다: {engine}")
+        raise ModelRuntimeError(status_code=400, detail=f"지원하지 않는 엔진입니다: {engine}")
     support = engine_support_status(engine)
     if not support["supported"]:
-        raise HTTPException(status_code=400, detail=str(support["reason"]))
+        raise ModelRuntimeError(status_code=400, detail=str(support["reason"]))
 
     if engine_installed(engine):
         if engine == "local_mlx":
@@ -1013,12 +972,12 @@ def ensure_engine_ready(engine: str) -> Dict[str, object]:
         return {"engine": engine, "installed": True, "installed_now": False}
 
     if engine not in ENGINE_INSTALLERS:
-        raise HTTPException(status_code=400, detail=f"{engine} 엔진 설치 방법이 등록되어 있지 않습니다.")
+        raise ModelRuntimeError(status_code=400, detail=f"{engine} 엔진 설치 방법이 등록되어 있지 않습니다.")
 
-    result = install_engine(engine)
+    result = install_engine(engine, state=state)
     if result.get("returncode") not in (0, None) or not engine_installed(engine):
         detail = result.get("stderr") or result.get("stdout") or f"{engine} 설치에 실패했습니다."
-        raise HTTPException(status_code=500, detail=str(detail)[-2000:])
+        raise ModelRuntimeError(status_code=500, detail=str(detail)[-2000:])
 
     if engine == "local_mlx":
         ensure_mlx_runtime()
@@ -1054,20 +1013,27 @@ async def _smoke_test_loaded_model(
     resolution: _ModelResolution,
     *,
     api_key_override: Optional[str] = None,
+    state: ModelRuntimeState,
 ) -> Dict[str, object]:
     # Delegated to model_engines for server decomp
     from .model_engines import _smoke_test_loaded_model as _impl_smoke
-    return await _impl_smoke(resolution, api_key_override=api_key_override)
+    return await _impl_smoke(
+        resolution,
+        api_key_override=api_key_override,
+        model_router=state.router,
+    )
 
 
 async def prepare_and_load_model(
     model_id: str,
-    request: Request,
+    request: Any,
     engine: Optional[str] = None,
     user_email: Optional[str] = None,
     adapter_path: Optional[str] = None,
     draft_model_id: Optional[str] = None,
     allow_download: bool = False,
+    *,
+    state: ModelRuntimeState,
 ) -> Dict[str, object]:
     from .model_loading import prepare_and_load_model as _impl
 
@@ -1079,6 +1045,7 @@ async def prepare_and_load_model(
         adapter_path=adapter_path,
         draft_model_id=draft_model_id,
         allow_download=allow_download,
+        runtime_state=state,
     )
 
 
@@ -1088,10 +1055,12 @@ def sse_event(event: str, data: Dict[str, object]) -> str:
 
 async def prepare_and_load_model_stream(
     model_id: str,
-    request: Request,
+    request: Any,
     engine: Optional[str] = None,
     user_email: Optional[str] = None,
     allow_download: bool = False,
+    *,
+    state: ModelRuntimeState,
 ) -> AsyncIterator[str]:
     from .model_loading import prepare_and_load_model_stream as _impl
 
@@ -1101,11 +1070,11 @@ async def prepare_and_load_model_stream(
         engine=engine,
         user_email=user_email,
         allow_download=allow_download,
+        runtime_state=state,
     ):
         yield event
 
 
-CLOUD_VERIFY_CACHE: Dict[str, Dict] = {}
 CLOUD_VERIFY_TTL_SECONDS = 600
 
 async def _probe_cloud_model(model_ref: str) -> Dict[str, object]:
@@ -1140,9 +1109,15 @@ async def _probe_cloud_model(model_ref: str) -> Dict[str, object]:
         return {"ok": False, "reason": str(e)[:220]}
 
 
-async def verify_cloud_models(force: bool = False, provider_filter: Optional[str] = None) -> Dict[str, Dict]:
+async def verify_cloud_models(
+    force: bool = False,
+    provider_filter: Optional[str] = None,
+    *,
+    state: ModelRuntimeState,
+    cache: Dict[str, Dict[str, Any]],
+) -> Dict[str, Dict]:
     now = time.time()
-    r = getattr(STATE, "router", None) or router
+    r = state.router
     cloud_items = [item for item in (r.detected_cloud_models() if r else []) if item.get("tag") == "cloud"]
     if provider_filter:
         cloud_items = [item for item in cloud_items if item.get("provider") == provider_filter]
@@ -1150,17 +1125,108 @@ async def verify_cloud_models(force: bool = False, provider_filter: Optional[str
     results: Dict[str, Dict] = {}
     for item in cloud_items:
         model_ref = item["id"]
-        cached = CLOUD_VERIFY_CACHE.get(model_ref)
+        cached = cache.get(model_ref)
         if not force and cached and (now - cached.get("ts", 0) <= CLOUD_VERIFY_TTL_SECONDS):
             results[model_ref] = cached
             continue
         if item.get("available") is False:
             record = {"ok": False, "reason": item.get("requires") or "API key missing", "ts": now}
-            CLOUD_VERIFY_CACHE[model_ref] = record
+            cache[model_ref] = record
             results[model_ref] = record
             continue
         probe = await _probe_cloud_model(model_ref)
         record = {"ok": bool(probe.get("ok")), "reason": probe.get("reason", ""), "ts": now}
-        CLOUD_VERIFY_CACHE[model_ref] = record
+        cache[model_ref] = record
         results[model_ref] = record
     return results
+
+
+@dataclass(slots=True)
+class ModelRuntimeService:
+    """Bound model operations for one explicitly configured application.
+
+    All configuration and app-owned callables live on ``state``. Operational
+    verification cache data belongs to this service instance, so creating a
+    second ASGI app cannot inherit credentials, routers, or probe results from
+    the first one.
+    """
+
+    state: ModelRuntimeState
+    _cloud_verify_cache: Dict[str, Dict[str, Any]] = field(default_factory=dict)
+
+    def runtime_features(self) -> Dict[str, Any]:
+        return runtime_features(state=self.state)
+
+    def engine_status(self) -> List[Dict[str, Any]]:
+        return engine_status(
+            state=self.state,
+            cloud_verify_cache=self._cloud_verify_cache,
+        )
+
+    def install_engine(
+        self,
+        engine: str,
+        confirmation_token: Optional[str] = None,
+    ) -> Dict[str, Any]:
+        return install_engine(
+            engine,
+            confirmation_token=confirmation_token,
+            state=self.state,
+        )
+
+    async def verify_cloud_models(
+        self,
+        force: bool = False,
+        provider_filter: Optional[str] = None,
+    ) -> Dict[str, Dict[str, Any]]:
+        return await verify_cloud_models(
+            force=force,
+            provider_filter=provider_filter,
+            state=self.state,
+            cache=self._cloud_verify_cache,
+        )
+
+    async def prepare_and_load_model(
+        self,
+        model_id: str,
+        request: Any,
+        engine: Optional[str] = None,
+        user_email: Optional[str] = None,
+        adapter_path: Optional[str] = None,
+        draft_model_id: Optional[str] = None,
+        allow_download: bool = False,
+    ) -> Dict[str, object]:
+        return await prepare_and_load_model(
+            model_id,
+            request,
+            engine=engine,
+            user_email=user_email,
+            adapter_path=adapter_path,
+            draft_model_id=draft_model_id,
+            allow_download=allow_download,
+            state=self.state,
+        )
+
+    async def prepare_and_load_model_stream(
+        self,
+        model_id: str,
+        request: Any,
+        engine: Optional[str] = None,
+        user_email: Optional[str] = None,
+        allow_download: bool = False,
+    ) -> AsyncIterator[str]:
+        async for event in prepare_and_load_model_stream(
+            model_id,
+            request,
+            engine=engine,
+            user_email=user_email,
+            allow_download=allow_download,
+            state=self.state,
+        ):
+            yield event
+
+
+def build_model_runtime(**deps: Any) -> ModelRuntimeService:
+    """Build the application's isolated model runtime service."""
+
+    return ModelRuntimeService(create_model_runtime_state(**deps))

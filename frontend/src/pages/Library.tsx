@@ -78,16 +78,19 @@ function ModelsPanel() {
   const latestProgress = progress[progress.length - 1] || null;
 
   const modelMessage = React.useCallback((message: unknown) => {
-    const text = String(message || "This model is not ready to load yet.");
+    const text = String(message || t(language, "library.model.notReady"));
     if (mode !== "basic") return text;
-    return text
-      .replace(/gemma4_unified/gi, "this local model format")
-      .replace(/mlx[-_ ]?vlm|mlx[-_ ]?lm|local_mlx|\bmlx\b|\bgguf\b|\bollama\b|hugging face/gi, "local model support")
-      .replace(/runtime/gi, "model support")
-      .replace(/model_type/gi, "model format")
-      .replace(/this local model format local model support format/gi, "this local model format")
-      .replace(/local model support model support/gi, "local model support");
-  }, [mode]);
+    const localized = text
+      .replace(/gemma4_unified/gi, t(language, "library.model.localFormat"))
+      .replace(/mlx[-_ ]?vlm|mlx[-_ ]?lm|local_mlx|\bmlx\b|\bgguf\b|\bollama\b|hugging face/gi, t(language, "library.model.localSupport"))
+      .replace(/runtime/gi, t(language, "library.model.support"))
+      .replace(/model_type/gi, t(language, "library.model.format"));
+    return language === "en"
+      ? localized
+        .replace(/this local model format local model support format/gi, t(language, "library.model.localFormat"))
+        .replace(/local model support model support/gi, t(language, "library.model.localSupport"))
+      : localized;
+  }, [language, mode]);
 
   async function prepareModel(loadId: string, engine: string, allowDownload: boolean) {
     setBusy(true);
@@ -183,7 +186,9 @@ function ModelsPanel() {
               const recommendationVerification = asRecord(recommendation.verification);
               const modelHardware = asRecord(model.hardware);
               const recommendationHardware = asRecord(recommendation.hardware);
-              const hardwareNote = modelHardware.notes || recommendationHardware.notes || (modelHardware.recommended_ram_gb ? `~${modelHardware.recommended_ram_gb}GB RAM rec` : "");
+              const hardwareNote = modelHardware.notes || recommendationHardware.notes || (modelHardware.recommended_ram_gb
+                ? t(language, "library.model.ramRecommended", { ram: String(modelHardware.recommended_ram_gb) })
+                : "");
               const safetyNotes = model.safety_notes || recommendation.safety_notes;
               const licenseText = model.license || recommendation.license;
               const compatibility = (model.runtime_compatibility || recommendation.runtime_compatibility || {}) as Record<string, unknown>;
@@ -192,10 +197,10 @@ function ModelsPanel() {
               const downloadRequired = Boolean(model.download_required);
               const loadAvailable = (Boolean(model.load_available) || loaded) && !unsupported;
               const loadStatus = String(model.load_status || (loaded ? "loaded" : "unavailable"));
-              const unavailableReason = modelMessage(model.unavailable_reason || "This model is not ready to load yet.");
+              const unavailableReason = modelMessage(model.unavailable_reason || t(language, "library.model.notReady"));
               const runtimeLabel = String(model.runtime_label || compatibility.preferred_runtime || engine || "local_mlx");
               const actionLabel = String(compatibility.action || loadStatus.replace(/_/g, " "));
-              const badgeLabel = unsupported && mode === "basic" ? "needs attention" : unsupported ? actionLabel : loadStatus;
+              const badgeLabel = unsupported && mode === "basic" ? t(language, "library.model.needsAttention") : unsupported ? actionLabel : loadStatus;
               const canPrepare = loadAvailable || downloadRequired;
               const downloadSize = model.download_size || model.estimated_size || recommendation.download_size || recommendation.estimated_size || model.size || recommendation.size;
               const maker = model.provider || recommendation.provider || model.organization || recommendation.organization;
@@ -204,17 +209,17 @@ function ModelsPanel() {
                   <div className="min-w-0">
                     <div className="flex flex-wrap items-center gap-2">
                         <div className="text-base font-semibold">{String(model.name || id)}</div>
-                      {topPick?.id === id || model.recommended_default ? <Badge variant="success">recommended</Badge> : null}
-                      {String(model.modality || recommendation.modality || "").includes("multi") || String(model.modality || "") === "multimodal" ? <Badge variant="muted">multimodal</Badge> : null}
-                      {modelVerification.verified || recommendationVerification.verified ? <Badge variant="success" title="HF verified (config+tokenizer present)">✓ HF</Badge> : null}
+                      {topPick?.id === id || model.recommended_default ? <Badge variant="success">{t(language, "library.model.recommended")}</Badge> : null}
+                      {String(model.modality || recommendation.modality || "").includes("multi") || String(model.modality || "") === "multimodal" ? <Badge variant="muted">{t(language, "library.model.multimodal")}</Badge> : null}
+                      {modelVerification.verified || recommendationVerification.verified ? <Badge variant="success" title={t(language, "library.model.hfVerified")}>✓ HF</Badge> : null}
                     </div>
                     <div className="mt-1 text-sm text-muted-foreground">
                       {mode === "basic"
                         ? [
-                          modelMessage(model.family || recommendation.family || "Local model"),
+                          modelMessage(model.family || recommendation.family || t(language, "library.model.local")),
                           /mlx|gguf|ollama/i.test(String(model.size || recommendation.size || "")) ? "" : model.size || recommendation.size,
                         ].filter(Boolean).map(String).join(" · ")
-                        : [model.family || recommendation.family || "local", model.size || recommendation.size].filter(Boolean).map(String).join(" · ")}
+                        : [model.family || recommendation.family || t(language, "library.value.local"), model.size || recommendation.size].filter(Boolean).map(String).join(" · ")}
                     </div>
                     {(model.hardware || recommendation.hardware) ? (
                       <div className="mt-1 text-[11px] text-muted-foreground/80">
@@ -222,19 +227,21 @@ function ModelsPanel() {
                       </div>
                     ) : null}
                     <div className="mt-2 flex flex-wrap gap-1 text-[11px] text-muted-foreground">
-                      <Badge variant="muted">{downloadRequired ? `Download: ${String(downloadSize || "required")}` : "No download needed now"}</Badge>
-                      <Badge variant="muted">{downloadRequired ? "Internet only during download" : "Runs locally when loaded"}</Badge>
+                      <Badge variant="muted">{downloadRequired
+                        ? t(language, "library.model.downloadSize", { size: String(downloadSize || t(language, "library.model.downloadRequired")) })
+                        : t(language, "library.model.noDownload")}</Badge>
+                      <Badge variant="muted">{downloadRequired ? t(language, "library.model.internetDuringDownload") : t(language, "library.model.runsLocally")}</Badge>
                       {maker ? <Badge variant="muted">{String(maker)}</Badge> : null}
                     </div>
                     {unsupported ? (
                       <div className="mt-3 rounded-lg border border-amber-500/30 bg-amber-500/10 p-3 text-sm">
-                        <div className="font-medium">{mode === "basic" ? "Needs attention before loading" : actionLabel}</div>
+                        <div className="font-medium">{mode === "basic" ? t(language, "library.model.attentionBeforeLoad") : actionLabel}</div>
                         <div className="text-muted-foreground">{modelMessage(compatibility.user_message || unavailableReason)}</div>
                       </div>
                     ) : fallbackAvailable ? (
                       <div className="mt-3 rounded-lg border border-amber-500/30 bg-amber-500/10 p-3 text-sm">
-                        <div className="font-medium">{mode === "basic" ? "Compatible loading path available" : "Runtime fallback available"}</div>
-                        <div className="text-muted-foreground">{modelMessage(compatibility.user_message || "Lattice will try the compatible local runtime path before showing this model as unsupported.")}</div>
+                        <div className="font-medium">{mode === "basic" ? t(language, "library.model.compatiblePath") : t(language, "library.model.runtimeFallback")}</div>
+                        <div className="text-muted-foreground">{modelMessage(compatibility.user_message || t(language, "library.model.compatibilityFallback"))}</div>
                       </div>
                     ) : !loaded && !loadAvailable ? <div className="mt-1 text-xs text-muted-foreground">{unavailableReason}</div> : null}
                     {mode !== "basic" ? (
@@ -245,16 +252,16 @@ function ModelsPanel() {
                           {modelVerification.notes ? ` · ${String(modelVerification.notes).slice(0,60)}` : ""}
                         </div>
                         {safetyNotes || licenseText ? (
-                          <div>{[licenseText ? `License: ${String(licenseText)}` : "", safetyNotes ? String(safetyNotes) : ""].filter(Boolean).join(" · ")}</div>
+                          <div>{[licenseText ? t(language, "library.model.license", { license: String(licenseText) }) : "", safetyNotes ? String(safetyNotes) : ""].filter(Boolean).join(" · ")}</div>
                         ) : null}
                       </div>
                     ) : null}
                     {unsupported || fallbackAvailable ? <AlternativeModels compatibility={compatibility} /> : null}
                   </div>
                   <div className="flex flex-wrap items-center gap-2 md:justify-end">
-                    <Badge variant={loaded ? "success" : loadAvailable ? "muted" : "warning"}>{loaded ? "loaded" : badgeLabel}</Badge>
+                    <Badge variant={loaded ? "success" : loadAvailable ? "muted" : "warning"}>{loaded ? t(language, "library.model.loaded") : badgeLabel}</Badge>
                     {loaded ? (
-                      <ActionButton label="Unload" action={() => latticeApi.unloadModel(loadId)} invalidate={["models"]} />
+                      <ActionButton label={t(language, "library.runtime.unload")} action={() => latticeApi.unloadModel(loadId)} invalidate={["models"]} />
                     ) : (
                       <Button
                         variant="outline"
@@ -270,7 +277,7 @@ function ModelsPanel() {
             })}
             {mode === "basic" && catalog.length > 3 ? (
               <div className="rounded-lg border border-border bg-background/55 p-3 text-sm text-muted-foreground">
-                Showing the safest short list. Switch to Advanced for the full registry, runtime details, licenses, and safety notes.
+                {t(language, "library.model.shortListHint")}
               </div>
             ) : null}
           </div>
@@ -278,20 +285,20 @@ function ModelsPanel() {
         </DataPanel>
       </div>
       <div className="space-y-4">
-        <DataPanel title={mode === "basic" ? t(language, "library.models.embedding.basic") : "Embedding provider"} result={emb.data}>
-          {(data) => mode === "basic" ? <ValuePreview value={(data as Record<string, unknown>).state || "ready"} /> : <StructuredView value={data} />}
+        <DataPanel title={mode === "basic" ? t(language, "library.models.embedding.basic") : t(language, "library.models.embedding.advanced")} result={emb.data}>
+          {(data) => mode === "basic" ? <ValuePreview value={(data as Record<string, unknown>).state || t(language, "library.value.ready")} /> : <StructuredView value={data} />}
         </DataPanel>
-        <DataPanel title={mode === "basic" ? t(language, "library.models.validation") : "Model validation"} result={models.data}>
+        <DataPanel title={mode === "basic" ? t(language, "library.models.validation") : t(language, "library.models.validationAdvanced")} result={models.data}>
           {(data) => {
             const profiles = asArray<Record<string, unknown>>((data as Record<string, unknown>).compat_profiles);
             return profiles.length ? (
               <EntityList items={profiles.map((profile) => ({
                 ...profile,
-                name: mode === "basic" ? profile.name || profile.display_name || "Loaded model" : profile.name || profile.display_name || profile.model_id,
-                status: profile.quality_status || profile.load_status || "checked",
+                name: mode === "basic" ? profile.name || profile.display_name || t(language, "library.model.loadedName") : profile.name || profile.display_name || profile.model_id,
+                status: profile.quality_status || profile.load_status || t(language, "library.model.checked"),
               }))} titleKey="name" metaKey="status" limit={6} />
             ) : (
-              <EmptyState title="No model checked yet" detail="Load a model to confirm it can answer before you start using it." />
+              <EmptyState title={t(language, "library.model.noneChecked")} detail={t(language, "library.model.noneCheckedHint")} />
             );
           }}
         </DataPanel>
@@ -302,13 +309,14 @@ function ModelsPanel() {
 
 function AlternativeModels({ compatibility }: { compatibility: Record<string, unknown> }) {
   const mode = useAppStore((state) => state.mode);
+  const language = useAppStore((state) => state.language);
   const alternatives = asArray<Record<string, unknown>>(compatibility.alternatives);
   if (!alternatives.length) return null;
   return (
     <div className="mt-2 flex flex-wrap gap-1">
       {alternatives.slice(0, 3).map((item) => (
         <Badge key={String(item.id || item.name)} variant="muted">
-          {mode === "basic" && /mlx|gguf|ollama|lm studio/i.test(String(item.name || item.id)) ? "Compatible alternative" : String(item.name || item.id)}
+          {mode === "basic" && /mlx|gguf|ollama|lm studio/i.test(String(item.name || item.id)) ? t(language, "library.model.compatibleAlternative") : String(item.name || item.id)}
         </Badge>
       ))}
     </div>
@@ -341,24 +349,24 @@ function ModelRuntimeSummary({
   const loadedName = String(current?.name || current?.id || currentId || "");
   const engine = String(current?.engine || current?.recommended_engine || latestProgress?.engine || "local_mlx");
   const cachePath = String(current?.local_path || current?.storage_location || recommendation.cache_path || recommendation.storage_location || "~/.cache/huggingface / ~/.latticeai/models");
-  const progressStage = String(latestProgress?.stage || lastResult?.stage || (loadedName ? "ready" : "idle"));
+  const progressStage = String(latestProgress?.stage || lastResult?.stage || (loadedName ? t(language, "library.value.ready") : t(language, "library.value.idle")));
   const basic = mode === "basic";
   return (
     <div className="space-y-3">
       <StatGrid stats={basic ? [
-        { label: t(language, "library.runtime.computer"), value: profile?.os ? `${String(profile.os)} ${String(profile.arch || "")}` : "detected" },
+        { label: t(language, "library.runtime.computer"), value: profile?.os ? `${String(profile.os)} ${String(profile.arch || "")}` : t(language, "library.value.detected") },
         { label: t(language, "library.runtime.loaded"), value: loadedName || t(language, "library.runtime.noneShort") },
       ] : [
-        { label: "Computer", value: profile?.os ? `${String(profile.os)} ${String(profile.arch || "")}` : "detected" },
-        { label: "Engine", value: engine },
-        { label: "Loaded model", value: loadedName || "No local model loaded" },
-        { label: "Runtime state", value: progressStage },
+        { label: t(language, "library.runtime.computer"), value: profile?.os ? `${String(profile.os)} ${String(profile.arch || "")}` : t(language, "library.value.detected") },
+        { label: t(language, "library.runtime.engine"), value: engine },
+        { label: t(language, "library.runtime.loaded"), value: loadedName || t(language, "library.runtime.noLoaded") },
+        { label: t(language, "library.runtime.state"), value: progressStage },
       ]} />
       <div className="rounded-lg border border-border bg-background/55 p-3 text-sm">
         <div className="flex flex-wrap items-start justify-between gap-3">
           <div>
             <div className="font-medium">{loadedName ? t(language, "library.models.runtime.available") : t(language, "library.models.runtime.none")}</div>
-            {basic ? null : <div className="mt-1 text-muted-foreground">Cache/storage: {cachePath}</div>}
+            {basic ? null : <div className="mt-1 text-muted-foreground">{t(language, "library.runtime.cacheStorage", { path: cachePath })}</div>}
           </div>
           <div className="flex flex-wrap gap-2">
             <Button variant="outline" size="sm" disabled={!loadedName} onClick={onReload}>{t(language, "library.runtime.reload")}</Button>
@@ -368,7 +376,7 @@ function ModelRuntimeSummary({
         {latestProgress ? (
           <div className="mt-3">
             <div className="flex justify-between text-xs text-muted-foreground">
-              <span>{String(latestProgress.message || "Preparing model")}</span>
+              <span>{String(latestProgress.message || t(language, "library.preparing"))}</span>
               <span>{Number(latestProgress.percent || 0)}%</span>
             </div>
             <div className="mt-1 h-2 overflow-hidden rounded-full bg-muted">
@@ -382,10 +390,11 @@ function ModelRuntimeSummary({
 }
 
 function ModelRecovery({ error }: { error: Record<string, unknown> }) {
+  const language = useAppStore((state) => state.language);
   const guidance = asArray<string>(error.recovery_guidance);
   return (
     <div className="rounded-lg border border-amber-500/30 bg-amber-500/10 p-3 text-sm">
-      <div className="font-medium">{String(error.user_message || "Model setup needs attention.")}</div>
+      <div className="font-medium">{String(error.user_message || t(language, "library.model.setupAttention"))}</div>
       {guidance.length ? (
         <ul className="mt-2 list-inside list-disc text-muted-foreground">
           {guidance.slice(0, 3).map((item) => <li key={item}>{item}</li>)}
@@ -401,6 +410,7 @@ function asRecord(value: unknown): Record<string, unknown> {
 
 function SkillsPanel() {
   const qc = useQueryClient();
+  const language = useAppStore((state) => state.language);
   const skills = useQuery({ queryKey: ["skills"], queryFn: latticeApi.skills });
   const market = useQuery({ queryKey: ["skillsMarketplace"], queryFn: latticeApi.skillsMarketplace });
   const install = useMutation({
@@ -409,7 +419,7 @@ function SkillsPanel() {
   });
   return (
     <div className="grid gap-4 xl:grid-cols-2">
-      <DataPanel title="Installed skills" result={skills.data}>
+      <DataPanel title={t(language, "library.skills.installed")} result={skills.data}>
         {(data) => (
           <div className="grid gap-2">
             {asArray<Record<string, unknown>>((data as Record<string, unknown>).skills).map((skill) => (
@@ -418,13 +428,13 @@ function SkillsPanel() {
                   <div className="font-medium">{String(skill.name || skill.id)}</div>
                   <div className="text-sm text-muted-foreground">{String(skill.plugin || skill.description || "")}</div>
                 </div>
-                <ActionButton label={skill.enabled ? "Disable" : "Enable"} action={() => latticeApi.skillToggle(String(skill.name || skill.id), Boolean(skill.enabled))} invalidate={["skills"]} />
+                <ActionButton label={t(language, skill.enabled ? "library.skills.disable" : "library.skills.enable")} action={() => latticeApi.skillToggle(String(skill.name || skill.id), Boolean(skill.enabled))} invalidate={["skills"]} />
               </div>
             ))}
           </div>
         )}
       </DataPanel>
-      <DataPanel title="Skill marketplace" result={market.data}>
+      <DataPanel title={t(language, "library.skills.marketplace")} result={market.data}>
         {(data) => (
           <div className="grid gap-2">
             {asArray<Record<string, unknown>>((data as Record<string, unknown>).skills).slice(0, 10).map((skill) => (
@@ -433,7 +443,7 @@ function SkillsPanel() {
                   <div className="font-medium">{String(skill.name || skill.id)}</div>
                   <div className="text-sm text-muted-foreground">{String(skill.description || skill.category || "")}</div>
                 </div>
-                <Button variant="outline" disabled={install.isPending} onClick={() => install.mutate(skill)}>Install</Button>
+                <Button variant="outline" disabled={install.isPending} onClick={() => install.mutate(skill)}>{t(language, "library.skills.install")}</Button>
               </div>
             ))}
           </div>
@@ -445,25 +455,26 @@ function SkillsPanel() {
 
 function McpPanel() {
   const mode = useAppStore((state) => state.mode);
+  const language = useAppStore((state) => state.language);
   const [query, setQuery] = React.useState("github");
   const tools = useQuery({ queryKey: ["mcpTools"], queryFn: latticeApi.mcpTools });
   const rec = useMutation({ mutationFn: () => latticeApi.mcpRecommend(query) });
   return (
     <div className="grid gap-4 xl:grid-cols-[1fr_1fr]">
-      <DataPanel title={mode === "basic" ? "Tool connections" : "MCP tools"} result={tools.data}>
+      <DataPanel title={t(language, mode === "basic" ? "library.connector.connections" : "library.connector.mcpTools")} result={tools.data}>
         {(data) => <EntityList items={(data as Record<string, unknown>).tools || (data as Record<string, unknown>).installed_mcps} titleKey="name" metaKey="status" />}
       </DataPanel>
       <Card>
         <CardHeader>
-          <CardTitle className="flex items-center gap-2"><Plug className="h-4 w-4" /> Recommend connector</CardTitle>
-          <CardDescription>Describe what you want to connect and Lattice will suggest a connector.</CardDescription>
+          <CardTitle className="flex items-center gap-2"><Plug className="h-4 w-4" /> {t(language, "library.connector.recommend")}</CardTitle>
+          <CardDescription>{t(language, "library.connector.recommendHint")}</CardDescription>
         </CardHeader>
         <CardContent className="space-y-3">
           <div className="flex gap-2">
             <Input value={query} onChange={(e) => setQuery(e.target.value)} />
-            <Button onClick={() => rec.mutate()} disabled={!query.trim() || rec.isPending}>Recommend</Button>
+            <Button onClick={() => rec.mutate()} disabled={!query.trim() || rec.isPending}>{t(language, "library.connector.recommendAction")}</Button>
           </div>
-          {rec.data ? <OperationResult result={rec.data} successLabel="Recommendation completed" /> : null}
+          {rec.data ? <OperationResult result={rec.data} successLabel={t(language, "library.connector.recommendDone")} /> : null}
         </CardContent>
       </Card>
     </div>
@@ -471,30 +482,31 @@ function McpPanel() {
 }
 
 function MarketplacePanel() {
+  const language = useAppStore((state) => state.language);
   const templates = useQuery({ queryKey: ["templates"], queryFn: latticeApi.templates });
   const plugins = useQuery({ queryKey: ["plugins"], queryFn: latticeApi.pluginsRegistry });
   const dir = useQuery({ queryKey: ["pluginsDirectory"], queryFn: latticeApi.pluginsDirectory });
   return (
     <div className="grid gap-4 xl:grid-cols-3">
-      <DataPanel title="Templates" result={templates.data}>
+      <DataPanel title={t(language, "library.market.templates")} result={templates.data}>
         {(data) => <EntityList items={(data as Record<string, unknown>).templates} titleKey="name" metaKey="kind" />}
       </DataPanel>
-      <DataPanel title="Installed plugins" result={plugins.data}>
+      <DataPanel title={t(language, "library.market.installedPlugins")} result={plugins.data}>
         {(data) => <EntityList items={(data as Record<string, unknown>).plugins} titleKey="name" metaKey="status" />}
       </DataPanel>
-      <DataPanel title="Plugin directory" result={dir.data}>
+      <DataPanel title={t(language, "library.market.pluginDirectory")} result={dir.data}>
         {(data) => <EntityList items={(data as Record<string, unknown>).plugins} titleKey="name" metaKey="category" />}
       </DataPanel>
       <Card className="xl:col-span-3">
         <CardHeader>
-          <CardTitle className="flex items-center gap-2"><PackagePlus className="h-4 w-4" /> Template install</CardTitle>
-          <CardDescription>Start from a reusable workspace pattern.</CardDescription>
+          <CardTitle className="flex items-center gap-2"><PackagePlus className="h-4 w-4" /> {t(language, "library.market.templateInstall")}</CardTitle>
+          <CardDescription>{t(language, "library.market.templateInstallHint")}</CardDescription>
         </CardHeader>
         <CardContent>
           {asArray<Record<string, unknown>>((templates.data?.data as Record<string, unknown>)?.templates).length ? (
             <div className="flex flex-wrap gap-2">
               {asArray<Record<string, unknown>>((templates.data?.data as Record<string, unknown>)?.templates).slice(0, 6).map((template) => (
-                <ActionButton key={String(template.id || template.name)} label={`Install ${String(template.name || template.id)}`} action={() => latticeApi.installTemplate(template)} />
+                <ActionButton key={String(template.id || template.name)} label={t(language, "library.market.installTemplate", { name: String(template.name || template.id) })} action={() => latticeApi.installTemplate(template)} />
               ))}
             </div>
           ) : <EntityList items={[]} />}

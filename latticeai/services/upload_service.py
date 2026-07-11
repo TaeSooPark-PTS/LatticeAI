@@ -11,7 +11,7 @@ from typing import Optional
 from fastapi import HTTPException, Request, UploadFile
 
 from lattice_brain.ingestion import IngestionItem
-from tools import ToolError, read_document
+from latticeai.tools import ToolError, read_document
 
 
 def _workspace_scope_from_request(request: Request) -> Optional[str]:
