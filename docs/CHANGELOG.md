@@ -4,6 +4,31 @@ The top entry is either the current unreleased main-branch work or the current
 release line. Older entries are historical and may describe behavior as it
 existed at that release.
 
+## [9.5.0] - 2026-07-20
+
+### Added
+- Added `latticeai/services/command_center.py` and the `/api/command/*`
+  router: a daily briefing aggregating recent knowledge, conversation
+  activity, automation state, pending reviews, a Brain-health snapshot, top
+  automation suggestions, and state-derived quick actions with stable ids;
+  and a universal search grouping knowledge nodes, the user's own
+  conversations (deduped per conversation), and installed automations.
+- Added the Cmd+K Command Palette (grouped results, keyboard navigation,
+  debounced universal search, static page jumps) and the collapsible
+  "오늘의 브리핑 / Today's briefing" panel on the Brain home, fully ko/en
+  localized.
+- Added `tests/unit/test_command_center.py` (11 tests) and
+  `frontend/src/features/command/CommandPalette.test.tsx` (3 tests).
+
+### Changed
+- Cmd+K now opens the Command Palette instead of only focusing the chat
+  composer; the palette includes a direct jump to the Brain conversation.
+
+### Security
+- Both Command Center endpoints are read-only and scoped to the requesting
+  user and workspace; scoped reads exclude legacy-global rows, and every
+  briefing section degrades independently without leaking errors.
+
 ## [9.4.0] - 2026-07-20
 
 ### Added

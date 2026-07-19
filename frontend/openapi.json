@@ -3854,7 +3854,7 @@
   },
   "info": {
     "title": "Lattice AI Server (local)",
-    "version": "9.4.0"
+    "version": "9.5.0"
   },
   "openapi": "3.1.0",
   "paths": {
@@ -6070,6 +6070,73 @@
           }
         },
         "summary": "Read Url"
+      }
+    },
+    "/api/command/briefing": {
+      "get": {
+        "operationId": "command_briefing_api_command_briefing_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": "Command Briefing"
+      }
+    },
+    "/api/command/search": {
+      "get": {
+        "operationId": "command_search_api_command_search_get",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "q",
+            "required": false,
+            "schema": {
+              "default": "",
+              "maxLength": 300,
+              "title": "Q",
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "limit",
+            "required": false,
+            "schema": {
+              "default": 8,
+              "maximum": 20,
+              "minimum": 1,
+              "title": "Limit",
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Command Search"
       }
     },
     "/api/embeddings/providers": {

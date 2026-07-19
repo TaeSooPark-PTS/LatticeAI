@@ -7,6 +7,46 @@
 > PyPI / npm / VS Code Marketplace / Open VSX 배포는 아래 수동 절차로만
 > 진행합니다. 태그 생성은 패키지 스토어 publish를 자동으로 트리거하지 않습니다.
 
+## v9.5.0 — Command Center (2026-07-20)
+
+9.5.0 puts the whole Brain one keystroke away. A new read-only, deterministic
+Command Center surface condenses every product area into two endpoints, and
+the app gains a Cmd+K command palette plus a Today's Briefing panel.
+
+### Command Center (`/api/command/*`)
+
+- `GET /api/command/briefing` — one payload answering "what does my Brain see
+  today?": recent knowledge from the scoped graph, conversation activity,
+  automation enabled/draft counts, pending review items, a Brain-health
+  snapshot, top automation suggestions, and state-derived quick actions with
+  stable ids. Each section degrades independently when a backend is
+  unavailable.
+- `GET /api/command/search?q=…` — universal search grouping results across
+  knowledge nodes (scoped keyword search), the user's own conversations
+  (deduped per conversation, newest first), and installed automations. All
+  reads are scoped to the requesting user and workspace.
+
+### Command Palette + Today's Briefing (frontend)
+
+- Cmd+K (or Ctrl+K) opens a command palette with grouped results
+  (지식/지난 대화/자동화/화면 이동), keyboard navigation, and one-press page
+  jumps; typing queries the universal search with debounce.
+- The Brain home gains a collapsible "오늘의 브리핑 / Today's briefing" panel:
+  stat chips (questions, automations on, awaiting review, Brain health),
+  recently added knowledge, waiting automation suggestions, and one-click
+  quick actions derived from actual product state.
+- Fully ko/en localized; no model calls, no writes, no external actions.
+
+### Verification
+
+- New `tests/unit/test_command_center.py` (11 tests) and
+  `CommandPalette.test.tsx` (3 component tests) cover section independence,
+  scoped reads, quick-action derivation, search grouping/dedupe/scoping, and
+  palette keyboard interaction.
+- Full sweep: 1097 unit / 13 integration / 17 frontend / 18 visual tests,
+  lint + typecheck + docs + readiness gates green, live-boot smoke on both
+  new endpoints.
+
 ## v9.4.0 — Question-Driven Everyday Automation (2026-07-20)
 
 9.4.0 makes automating daily life effortless. The Brain now watches what the

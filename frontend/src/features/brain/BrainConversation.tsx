@@ -24,6 +24,7 @@ import type {
 import { AnswerProofCard, InlineCitationMarkers } from "./AnswerProof";
 import { BrainCarePanel } from "./BrainCarePanel";
 import { BrainIntelligencePanel } from "./BrainIntelligencePanel";
+import { DailyBriefingPanel } from "@/features/command/DailyBriefingPanel";
 import { BrainComposer } from "./BrainComposer";
 import { BrainOverviewPanel } from "./BrainOverviewPanel";
 import {
@@ -427,6 +428,7 @@ export function BrainConversation({
                             />
                           </>
                         )}
+                        <DailyBriefingPanel language={language} />
                         <BrainIntelligencePanel language={language} />
                         <BrainCarePanel language={language} />
                       </div>
@@ -493,6 +495,7 @@ export function BrainConversation({
                   />
                 </>
               )}
+              <DailyBriefingPanel language={language} />
               <BrainIntelligencePanel language={language} />
               <BrainCarePanel language={language} />
             </div>

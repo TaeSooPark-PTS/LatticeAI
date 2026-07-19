@@ -369,6 +369,9 @@ export const latticeApi = {
   automationPatterns: () => get("/api/automation/patterns", { patterns: [], questions_scanned: 0 }),
   installAutomationSuggestion: (suggestionId: string, enabled = false) =>
     post("/api/automation/install", { suggestion_id: suggestionId, enabled }, {}),
+  commandBriefing: () => get("/api/command/briefing", { sections: {}, quick_actions: [] }),
+  commandSearch: (q: string, limit = 8) =>
+    get("/api/command/search", { query: q, groups: [], total: 0 }, { q, limit }),
   brainHealth: () => get("/api/brain/health", { overall_score: null, grade: null, dimensions: {}, recommended_actions: [] }),
   brainInsights: () => get("/api/brain/insights", { activity: {}, attention: {}, suggested_questions: [] }),
   brainContradictions: () => get("/api/brain/contradictions", { items: [], count: 0 }),

@@ -167,6 +167,8 @@ def _build(config: "Optional[Config]" = None) -> Dict[str, Any]:
     from latticeai.api.agent_registry import create_agent_registry_router
     from latticeai.api.automation_intelligence import create_automation_intelligence_router
     from latticeai.api.brain_intelligence import create_brain_intelligence_router
+    from latticeai.api.command_center import create_command_center_router
+    from latticeai.services.command_center import CommandCenterService
     from latticeai.api.memory import create_memory_router
     from latticeai.api.browser import create_browser_router
     from latticeai.api.portability import create_portability_router
@@ -1030,6 +1032,23 @@ def _build(config: "Optional[Config]" = None) -> Dict[str, Any]:
             gate_write=PLATFORM.gate_write,
             append_audit_event=append_audit_event,
             workspace_graph=_workspace_graph,
+        )
+    )
+    COMMAND_CENTER = CommandCenterService(
+        conversation_store=CONVERSATIONS,
+        knowledge_graph=KNOWLEDGE_GRAPH,
+        store=WORKSPACE_OS,
+        search_service=SEARCH_SERVICE,
+        brain_intelligence=BRAIN_INTELLIGENCE,
+        automation_intelligence=AUTOMATION_INTELLIGENCE,
+        review_queue=REVIEW_QUEUE,
+        enable_graph=ENABLE_GRAPH,
+    )
+    app.include_router(
+        create_command_center_router(
+            service=COMMAND_CENTER,
+            require_user=require_user,
+            gate_read=PLATFORM.gate_read,
         )
     )
 

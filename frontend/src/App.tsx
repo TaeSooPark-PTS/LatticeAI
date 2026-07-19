@@ -14,6 +14,7 @@ import { Brain, Ellipsis, X } from "lucide-react";
 import { navigateHash } from "@/features/brain/navigation";
 import { clamp } from "@/lib/utils";
 import { CoreServiceUnavailableBanner } from "@/components/CoreServiceUnavailableBanner";
+import { CommandPalette } from "@/features/command/CommandPalette";
 
 const ActPage = React.lazy(() => import("@/pages/Act").then((module) => ({ default: module.ActPage })));
 const BrainPage = React.lazy(() => import("@/pages/Brain").then((module) => ({ default: module.BrainPage })));
@@ -34,25 +35,6 @@ export default function App() {
     document.documentElement.lang = language === "ko" ? "ko" : "en";
   }, [theme, language]);
 
-  React.useEffect(() => {
-    const onKey = (event: KeyboardEvent) => {
-      if ((event.metaKey || event.ctrlKey) && event.key.toLowerCase() === "k") {
-        event.preventDefault();
-        const composer = document.querySelector<HTMLTextAreaElement>(".brain-composer textarea");
-        if (composer) {
-          composer.focus();
-          return;
-        }
-        navigateHash("/brain");
-        window.setTimeout(() => {
-          document.querySelector<HTMLTextAreaElement>(".brain-composer textarea")?.focus();
-        }, 0);
-      }
-    };
-    window.addEventListener("keydown", onKey);
-    return () => window.removeEventListener("keydown", onKey);
-  }, []);
-
   if (!flowComplete) {
     return <ProductFlow onComplete={() => setFlowComplete(true)} />;
   }
@@ -61,6 +43,7 @@ export default function App() {
     <div className="brain-space">
       <div className="brain-field" />
       <CoreServiceUnavailableBanner />
+      <CommandPalette language={language} />
       {rawRoute.startsWith("/admin") ? (
         <AdminConsole onBack={() => navigateHash("/brain")} />
       ) : parsed.primary === "act" ? (

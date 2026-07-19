@@ -1,9 +1,9 @@
-# Lattice AI Feature Status (v9.4.0)
+# Lattice AI Feature Status (v9.5.0)
 
-Current release: **9.4.0 — Question-Driven Everyday Automation**.
+Current release: **9.5.0 — Command Center**.
 
 This file describes the current product state and known limitations. Historical
-change history is intentionally limited to 8.0.0-9.4.0 in `RELEASE.md` and
+change history is intentionally limited to 8.0.0-9.5.0 in `RELEASE.md` and
 `docs/CHANGELOG.md`.
 
 ## Product Position
@@ -39,7 +39,8 @@ recalls with hybrid lexical+semantic evidence.
 | Workspaces | Current | Personal workspace is default. Organization/admin surfaces remain separated from normal Brain use. |
 | VS Code Extension | Current | Sync/status endpoints expose connection and indexing state. File contents move only through explicit user actions. |
 | Frontend Reliability | Current | Core API failures render unavailable states, successful callbacks require successful results, and Vitest/visual tests protect result, proof, conversation, primitive, i18n, and service-error behavior. |
-| Release Assets | Current | 9.4.0 package metadata, static app, release notes, current documentation, and exact artifact names are aligned. |
+| Command Center | Current | `/api/command/briefing` + `/api/command/search` aggregate knowledge, conversations, automations, review, health, and suggestions read-only and workspace-scoped; surfaced as the Cmd+K palette and Today's Briefing panel. |
+| Release Assets | Current | 9.5.0 package metadata, static app, release notes, current documentation, and exact artifact names are aligned. |
 
 ## Known Limitations
 
@@ -62,6 +63,7 @@ recalls with hybrid lexical+semantic evidence.
 
 The Git tree keeps release history from:
 
+- 9.5.0
 - 9.4.0
 - 9.3.0
 - 9.2.0

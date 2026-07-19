@@ -12,11 +12,11 @@ chat, run model workflows, and trigger coding actions from the editor.
 
 ## Current Release
 
-**9.4.0 — Question-Driven Everyday Automation.** The extension follows
+**9.5.0 — Command Center.** The extension follows
 the main app positioning: Lattice AI is a local-first Digital Brain, not just a
 model launcher or editor chat panel. It connects editor actions to the same
 durable Brain context, explicit consent gates, replaceable model workflow, and
-separated Admin surface used by the desktop app. The v9.4.0 line makes
+separated Admin surface used by the desktop app. The v9.5.0 line makes
 everyday automation question-driven — the Brain proposes consent-first
 automations from the user's own recurring questions and connected knowledge
 folders — while preserving the 9.3.0 proactive Brain intelligence, 9.2.0

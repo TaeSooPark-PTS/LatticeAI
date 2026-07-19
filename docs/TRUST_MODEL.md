@@ -1,6 +1,6 @@
 # Lattice AI Trust Model
 
-Current release: **9.4.0 — Question-Driven Everyday Automation**.
+Current release: **9.5.0 — Command Center**.
 
 Lattice AI is local-first, explicit about external communication, and honest
 when a capability is unavailable.

@@ -1,6 +1,6 @@
 # Why Lattice AI Exists
 
-Current release: **9.4.0 — Question-Driven Everyday Automation**.
+Current release: **9.5.0 — Command Center**.
 
 **Lattice AI is a local-first Digital Brain that keeps your knowledge durable
 across any AI model.**
