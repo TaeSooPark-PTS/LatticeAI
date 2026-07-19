@@ -1,4 +1,4 @@
-# MCP 도구 카탈로그 (v9.5.0)
+# MCP 도구 카탈로그 (v9.6.0)
 
 Lattice AI는 MCP(Model Context Protocol) 서버로 동작하여 Claude Desktop, Cursor 등에서 직접 도구를 사용할 수 있습니다.
 

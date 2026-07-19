@@ -1,4 +1,4 @@
-# Lattice AI — Operations Guide (v9.5.0)
+# Lattice AI — Operations Guide (v9.6.0)
 
 ## 1. 데이터 파일 위치
 

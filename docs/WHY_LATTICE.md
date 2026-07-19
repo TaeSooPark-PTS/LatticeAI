@@ -1,6 +1,6 @@
 # Why Lattice AI Exists
 
-Current release: **9.5.0 — Command Center**.
+Current release: **9.6.0 — Trusted Agent Loop**.
 
 **Lattice AI is a local-first Digital Brain that keeps your knowledge durable
 across any AI model.**

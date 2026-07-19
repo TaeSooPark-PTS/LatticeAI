@@ -8938,3 +8938,70 @@ body {
 .daily-briefing-action:hover {
   background: hsl(var(--accent) / 0.12);
 }
+
+/* ── Change proposals panel (v9.6.0) ────────────────────────────────── */
+
+.pending-proposals-list {
+  display: grid;
+  gap: 0.6rem;
+}
+
+.pending-proposal {
+  border: 1px solid hsl(var(--border) / 0.6);
+  border-radius: 10px;
+  background: hsl(var(--bg) / 0.35);
+  padding: 0.6rem 0.7rem;
+  display: grid;
+  gap: 0.35rem;
+}
+
+.pending-proposal header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem;
+}
+
+.pending-proposal header strong {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: 0.86rem;
+}
+
+.pending-proposal-tier {
+  flex-shrink: 0;
+  border: 1px solid hsl(var(--border) / 0.7);
+  border-radius: 999px;
+  padding: 0.08rem 0.5rem;
+  font-size: 0.68rem;
+  color: hsl(var(--fg-muted));
+}
+
+.pending-proposal-diff {
+  margin: 0;
+  max-height: 180px;
+  overflow: auto;
+  border: 1px solid hsl(var(--border) / 0.5);
+  border-radius: 8px;
+  background: hsl(var(--bg) / 0.6);
+  padding: 0.5rem 0.6rem;
+  font-size: 0.72rem;
+  line-height: 1.4;
+  white-space: pre;
+}
+
+.pending-proposal-actions {
+  display: flex;
+  gap: 0.4rem;
+}
+
+.pending-proposal-actions .daily-briefing-action {
+  flex: 1;
+  justify-content: center;
+}
+
+.pending-proposal-reject {
+  color: hsl(var(--fg-muted));
+}

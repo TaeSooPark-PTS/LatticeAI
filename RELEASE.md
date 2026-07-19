@@ -7,6 +7,61 @@
 > PyPI / npm / VS Code Marketplace / Open VSX 배포는 아래 수동 절차로만
 > 진행합니다. 태그 생성은 패키지 스토어 publish를 자동으로 트리거하지 않습니다.
 
+## v9.6.0 — Trusted Agent Loop (2026-07-20)
+
+9.6.0 engineers trust into autonomous work along four tracks: loop
+observability, weak-model robustness with a real evaluation harness,
+proposal-first change governance, and structural housekeeping.
+
+### Agent loop observability (`loop` payload)
+
+- `latticeai/core/agent_trace.py` — `LoopTrace` records typed events for
+  every run: llm calls, parse errors (recovered or not), named format
+  repairs, corrections, tool outcomes (ok / error / blocked / proposed),
+  retries, approval and verdict decisions, rollback results.
+- The agent API returns `loop` (trace summary) with both the
+  waiting-approval and final responses.
+
+### Weak-model robustness + evaluation harness
+
+- `extract_action_details` adds python-literal repair (single quotes,
+  True/False/None via `ast.literal_eval`) and reports every tolerance used
+  by name; a second formatting slip escalates the correction with the exact
+  valid tool list.
+- `scripts/agent_eval.py` (new CI gate) drives the real SingleAgentRuntime
+  through 8 deterministic scripted scenarios — happy path, weak-model format
+  gauntlet, prose-slip recovery, correction escalation, destructive block,
+  loop detection, critic retry, unrecoverable garbage — and fails the build
+  unless all pass.
+
+### Proposal-first change governance (`/api/proposals`)
+
+- `latticeai/core/tool_governor.py` centrally classifies every governed
+  call: read / additive / mutation / destructive.
+- Additive creates (new files) now run with minimal friction in the agent
+  loop; mutations and deletions of existing files are staged as review
+  proposals (review-queue source `change_proposal`) with a unified diff,
+  exact staged content, and a small/large tier. Approve applies exactly what
+  was reviewed; reject discards; nothing touches disk while pending.
+- The Brain home gains the "변경 제안 / Change proposals" panel with diff
+  previews and one-click approve/reject; proposals also appear in the Act
+  review center.
+
+### Structure & process
+
+- Ruff per-file lint ignores trimmed from 9 entries to 3 (all dead ignores
+  removed; the one remaining legacy monolith is scoped to `E702` only).
+- AGENTS.md carries a machine-checked current-release marker and agent-loop
+  invariants, enforced by `scripts/check_current_release_docs.mjs`.
+
+### Verification
+
+- New tests: `test_agent_trace.py` (11), `test_agent_eval.py` (4),
+  `test_change_proposals.py` (15), `PendingProposalsPanel.test.tsx` (2).
+- Full sweep: 1127 unit / 13 integration / 19 frontend / 18 visual tests,
+  agent-loop-eval + brain-quality + readiness + docs gates green, live-boot
+  smoke on `/api/proposals`.
+
 ## v9.5.0 — Command Center (2026-07-20)
 
 9.5.0 puts the whole Brain one keystroke away. A new read-only, deterministic

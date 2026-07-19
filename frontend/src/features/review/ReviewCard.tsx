@@ -29,7 +29,7 @@ export function ReviewCard({ item, feedback, onAction }: ReviewCardProps) {
   const hadRun = hasRunBefore(item);
   const snoozed = item.effective_status === "snoozed";
   const actionable = isActionableReview(item);
-  const canRunNow = item.source !== "chat_followup" && item.source !== "agent_followup";
+  const canRunNow = item.source !== "chat_followup" && item.source !== "agent_followup" && item.source !== "change_proposal";
 
   return (
     <div className="rounded-lg border border-border bg-background/55 p-4">

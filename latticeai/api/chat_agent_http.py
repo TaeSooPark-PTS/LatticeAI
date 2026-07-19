@@ -229,6 +229,7 @@ class AgentHTTPController:
                 "planning_model": req.planning_model or self.model_router.current_model_id,
                 "executing_model": req.executing_model or self.model_router.current_model_id,
                 "reviewing_model": req.reviewing_model or self.model_router.current_model_id,
+                "loop": ctx.trace.summary(),
             }
 
         self.runtime.approve(ctx, current_user, approved_by_human=False)
@@ -306,6 +307,7 @@ class AgentHTTPController:
             "state_history": ctx.state_history,
             "final_state": ctx.state.value,
             "created_files": collect_created_files(ctx.transcript),
+            "loop": ctx.trace.summary(),
         }
 
     async def resume(

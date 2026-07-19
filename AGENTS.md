@@ -1,5 +1,12 @@
 # LatticeAI Project AGENTS.md
 
+Current release: **9.6.0 — Trusted Agent Loop**.
+
+This file is part of the release documentation gate
+(`scripts/check_current_release_docs.mjs`): the current-release marker above
+must be updated in the same commit as any version bump, so AGENTS.md can no
+longer drift behind a release after the fact.
+
 ## Project Mission
 
 LatticeAI is a local-first AI workspace platform.
@@ -127,6 +134,31 @@ Knowledge Graph changes must:
 - Preserve read compatibility
 - Preserve migration safety
 - Preserve dual-write guarantees
+
+---
+
+## Agent Loop Rules (9.6.0)
+
+The single-agent reasoning loop (`latticeai/core/agent.py`) is observable and
+evaluated; changes to it must keep these invariants:
+
+- Every run carries a `LoopTrace` (`latticeai/core/agent_trace.py`): llm
+  calls, parse errors (recovered or not), format repairs, corrections, tool
+  outcomes, retries. The API returns `loop` (trace summary) with each agent
+  response — do not remove or bypass it.
+- Weak-model tolerance lives in `extract_action_details`: think-block strip,
+  fence extraction, object slicing, trailing-comma repair, python-literal
+  repair. New tolerances must be deterministic and reported in `repairs`.
+- `scripts/agent_eval.py` is a CI gate: a deterministic scripted-model
+  scenario suite (happy path, weak-model gauntlet, correction escalation,
+  destructive block, loop detection, critic retry, garbage termination) that
+  must stay at 100% scenario pass.
+- Change governance is proposal-first (`latticeai/core/tool_governor.py` +
+  `latticeai/services/change_proposals.py`): additive creates run with
+  minimal friction; mutations/deletions of existing files are staged as
+  review proposals (source `change_proposal`) and applied exactly as
+  reviewed, only on approval. Never let an autonomous path mutate or delete
+  existing user content directly.
 
 ---
 

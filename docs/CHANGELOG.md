@@ -4,6 +4,38 @@ The top entry is either the current unreleased main-branch work or the current
 release line. Older entries are historical and may describe behavior as it
 existed at that release.
 
+## [9.6.0] - 2026-07-20
+
+### Added
+- Added `latticeai/core/agent_trace.py` (`LoopTrace`): typed observability
+  for the single-agent reasoning loop, returned as `loop` with every agent
+  API response.
+- Added `latticeai/core/agent_eval.py` + `scripts/agent_eval.py`: a
+  deterministic scripted-model evaluation harness over the real agent state
+  machine, wired into CI as a release gate.
+- Added `latticeai/core/tool_governor.py` and
+  `latticeai/services/change_proposals.py` + `/api/proposals` router:
+  central read/additive/mutation/destructive classification with
+  proposal-first governance — edits/deletions of existing files are staged
+  as review-queue proposals (source `change_proposal`) with unified diffs
+  and applied exactly as reviewed on approval.
+- Added the "변경 제안 / Change proposals" Brain home panel with diff
+  previews and one-click approve/reject.
+
+### Changed
+- The action parser tolerates Python-literal dicts and reports every repair
+  by name; repeated formatting slips escalate the correction with the valid
+  tool list.
+- Additive file creates in the agent loop run without plan-approval
+  friction; plan approval no longer hard-blocks governor-managed tools.
+- Ruff per-file lint ignores trimmed from 9 entries to 3.
+
+### Security
+- Mutations and deletions of existing workspace files by the agent can no
+  longer apply silently: they stage as reviewable proposals, and approve
+  applies the exact reviewed content with full audit events.
+- AGENTS.md is now inside the machine-checked release documentation gate.
+
 ## [9.5.0] - 2026-07-20
 
 ### Added

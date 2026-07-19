@@ -6,11 +6,12 @@ const root = process.cwd();
 const pkg = JSON.parse(readFileSync(path.join(root, "package.json"), "utf8"));
 const version = pkg.version;
 const releaseDir = `output/release/v${version}`;
-const releaseTheme = "Command Center";
+const releaseTheme = "Trusted Agent Loop";
 const title = `${version} — ${releaseTheme}`;
 const escapedVersion = version.replaceAll(".", "\\.");
 
 const currentReleaseFiles = [
+  "AGENTS.md",
   "README.md",
   "ARCHITECTURE.md",
   "FEATURE_STATUS.md",

@@ -56,6 +56,9 @@ jobs:
       - name: Brain recall/KG quality eval
         run: python scripts/brain_quality_eval.py
 
+      - name: Agent loop evaluation harness
+        run: python scripts/agent_eval.py
+
       - name: Product readiness gate
         run: python scripts/product_readiness.py
 

@@ -39,7 +39,7 @@ type ReviewItemOperation =
 export type ReviewItem = components["schemas"]["ReviewItem"];
 export type ReviewItemList = components["schemas"]["ReviewItemList"];
 export type ReviewStatusFilter = "pending" | "snoozed" | "approved" | "dismissed" | "all";
-export type ReviewSourceFilter = "workflow_run" | "trigger" | "kg_change_digest" | "chat_followup" | "agent_followup" | "all";
+export type ReviewSourceFilter = "workflow_run" | "trigger" | "kg_change_digest" | "chat_followup" | "agent_followup" | "change_proposal" | "all";
 export type CreateReviewItemBody = {
   title: string;
   summary?: string;
@@ -370,6 +370,9 @@ export const latticeApi = {
   installAutomationSuggestion: (suggestionId: string, enabled = false) =>
     post("/api/automation/install", { suggestion_id: suggestionId, enabled }, {}),
   commandBriefing: () => get("/api/command/briefing", { sections: {}, quick_actions: [] }),
+  proposals: () => get("/api/proposals", { items: [], count: 0, contract: {} }),
+  approveProposal: (itemId: string) => post(`/api/proposals/${encodeURIComponent(itemId)}/approve`, {}, {}),
+  rejectProposal: (itemId: string) => post(`/api/proposals/${encodeURIComponent(itemId)}/reject`, {}, {}),
   commandSearch: (q: string, limit = 8) =>
     get("/api/command/search", { query: q, groups: [], total: 0 }, { q, limit }),
   brainHealth: () => get("/api/brain/health", { overall_score: null, grade: null, dimensions: {}, recommended_actions: [] }),

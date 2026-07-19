@@ -1,9 +1,17 @@
 # Lattice AI
 
-**Lattice AI 9.5.0 is the local-first Digital Brain platform. The Command Center puts everything one keystroke away: a Cmd+K palette that searches knowledge, past conversations, automations, and app pages in one query, and a daily briefing that condenses recent knowledge, automation state, pending reviews, Brain health, and suggested next steps into one glance with one-click quick actions.**
+**Lattice AI 9.6.0 is the local-first Digital Brain platform. The Trusted Agent Loop makes autonomous work transparent and git-like: the reasoning loop reports every model call, format repair, and tool outcome; a deterministic evaluation harness gates every release on weak-model robustness; and change governance is proposal-first — creating new files is frictionless while edits and deletions of existing content become reviewable proposals you approve or reject before anything changes.**
 
 **Lattice AI는 모델이 바뀌어도 내 지식과 맥락을 보존하는 로컬 우선 AI 브레인입니다.**
 
+> The 9.6.0 release engineers trust into the agent loop: a structured
+> LoopTrace makes every run observable (llm calls, parse recoveries, format
+> repairs, corrections, tool outcomes — returned as `loop` in the agent API),
+> weak-model tolerance gains python-literal repair and escalating format
+> corrections, a deterministic agent evaluation harness gates CI, and a
+> central change governor stages edits/deletions of existing files as review
+> proposals (`/api/proposals`) applied exactly as reviewed — while new-file
+> creation now runs without approval friction.
 > The 9.5.0 release adds the Command Center: a deterministic, local
 > `/api/command` surface serving a daily briefing (recent knowledge,
 > conversation activity, automation state, pending reviews, health snapshot,
@@ -108,11 +116,11 @@ You need Lattice AI when:
 The screenshots below are the latest checked-in visual evidence captures. They
 keep the first-run Brain flow, memory graph, source capture, model library,
 system view, admin console, and review center visible as release gates while
-9.5.0 puts the whole Brain one keystroke away: the Cmd+K Command Palette
-searches knowledge, conversations, automations, and pages in one query, and
-Today's Briefing condenses the Brain's state into one glance with one-click
-next steps. The captures below are the checked-in 9.5.0 visual release
-evidence for that product flow.
+9.6.0 makes autonomous work trustworthy: agents create new things freely,
+but every change to existing content becomes a reviewable proposal with a
+diff, and the reasoning loop itself is observable and regression-gated. The
+captures below are the checked-in 9.6.0 visual release evidence for that
+product flow.
 
 ### 1. Wake Brain
 
@@ -124,21 +132,21 @@ confirm owner, check the computer, choose the Brain voice.
 Choose the owner of the Brain. The profile is not a SaaS account by default; it
 is the local identity for the knowledge you keep.
 
-![Login](output/release/v9.5.0/screenshots/01-login.png)
+![Login](output/release/v9.6.0/screenshots/01-login.png)
 
 ### 3. Recommended Models
 
 Start with a short list: safest recommendation, faster model, stronger model.
 Advanced details stay available without overwhelming first-time users.
 
-![Recommended Models](output/release/v9.5.0/screenshots/02-recommended-models.png)
+![Recommended Models](output/release/v9.6.0/screenshots/02-recommended-models.png)
 
 ### 4. Install And Load
 
 Download and load only after consent. Lattice explains model size, local
 execution, and network use before work starts.
 
-![Install and Load](output/release/v9.5.0/screenshots/03-install-load-progress.png)
+![Install and Load](output/release/v9.6.0/screenshots/03-install-load-progress.png)
 
 ### 5. Brain Chat
 
@@ -150,14 +158,14 @@ and its visible life signal follow real listening, recall, synthesis, and action
 state. Detailed memory rings, provenance, conversation history, and
 model/runtime proof open as overlays only when requested.
 
-![One-viewport Living Brain Home](output/release/v9.5.0/screenshots/04-brain-chat-home.png)
+![One-viewport Living Brain Home](output/release/v9.6.0/screenshots/04-brain-chat-home.png)
 
 ### 6. Review Center
 
 Automation results are staged for review before they become durable decisions.
 Snooze, unsnooze, run now, approve, and dismiss actions stay explicit.
 
-![Review Center](output/release/v9.5.0/screenshots/12-review-center.png)
+![Review Center](output/release/v9.6.0/screenshots/12-review-center.png)
 
 ## Brain Depths
 
@@ -173,10 +181,10 @@ The user travels inward from everyday memory to deeper structure:
 
 Walkthrough:
 
-![v9.5.0 Living Brain walkthrough](output/release/v9.5.0/gifs/v9.5.0-living-brain-walkthrough.gif)
+![v9.6.0 Living Brain walkthrough](output/release/v9.6.0/gifs/v9.6.0-living-brain-walkthrough.gif)
 
 Screenshot index and capture notes:
-[output/release/v9.5.0/SCREENSHOT_INDEX.md](output/release/v9.5.0/SCREENSHOT_INDEX.md)
+[output/release/v9.6.0/SCREENSHOT_INDEX.md](output/release/v9.6.0/SCREENSHOT_INDEX.md)
 
 ## Install
 
@@ -261,45 +269,50 @@ See [docs/DEVELOPMENT.md](docs/DEVELOPMENT.md) for developer workflow details.
 
 ## Current Release
 
-The current release is **9.5.0 — Command Center**:
+The current release is **9.6.0 — Trusted Agent Loop**:
 
-- A new `CommandCenterService` (`/api/command/briefing`, `/api/command/search`)
-  aggregates every Brain surface read-only and deterministically: recent
-  knowledge from the scoped graph, conversation activity, automation
-  enable/draft counts, pending review items, a Brain-health snapshot, and the
-  top automation suggestions — each section degrades independently when a
-  backend is unavailable.
-- State-derived quick actions with stable ids ("N items waiting for review",
-  "enable your draft automations", "connect a knowledge folder") give the UI
-  one-click jumps that always reflect the actual product state.
-- Universal search groups results across knowledge nodes (scoped keyword
-  search), the user's own conversations (deduped per conversation, newest
-  first), and installed automations — all scoped to the requesting user and
-  workspace.
-- The frontend gains a Cmd+K Command Palette (grouped results, keyboard
-  navigation, page jumps, fully ko/en localized) and a Today's Briefing panel
-  on the Brain home with stat chips, recent knowledge, and quick actions.
-- Everything is read-only, local, and model-free: no model calls, no writes,
-  no external actions.
+- The single-agent reasoning loop is fully observable: a structured
+  `LoopTrace` records every llm call, parse error (recovered or not), format
+  repair, correction, tool outcome, retry, and rollback, and its summary is
+  returned as `loop` with every agent API response.
+- Weak-model robustness is stronger and measured: the action parser now also
+  repairs Python-literal dicts (single quotes, True/False/None), repairs are
+  reported by name, and a second formatting slip escalates the correction
+  with the exact list of valid tools.
+- A deterministic agent evaluation harness (`scripts/agent_eval.py`, CI
+  gate) drives the real state machine through scripted scenarios — happy
+  path, weak-model format gauntlet, correction escalation, destructive
+  block, loop detection, critic retry, unrecoverable garbage — and must stay
+  at 100% scenario pass.
+- Change governance is proposal-first (`latticeai/core/tool_governor.py`):
+  additive creates run with minimal friction, while agent edits/deletions of
+  existing files are staged as review proposals with a unified diff and a
+  small/large tier, listed at `GET /api/proposals`, applied exactly as
+  reviewed on approve, discarded on reject. The Brain home shows a
+  "변경 제안 / Change proposals" panel with diff previews and one-click
+  approve/reject.
+- Housekeeping: Ruff per-file lint ignores trimmed from 9 entries to 3,
+  AGENTS.md now carries a machine-checked current-release marker inside the
+  docs gate, and the review queue gained the `change_proposal` source.
 
-Expected artifacts for 9.5.0 release must use exact filenames:
+Expected artifacts for 9.6.0 release must use exact filenames:
 
-- `dist/ltcai-9.5.0-py3-none-any.whl`
-- `dist/ltcai-9.5.0.tar.gz`
-- `ltcai-9.5.0.tgz`
-- `dist/ltcai-9.5.0.vsix`
-- `src-tauri/target/release/bundle/dmg/Lattice AI_9.5.0_aarch64.dmg`
+- `dist/ltcai-9.6.0-py3-none-any.whl`
+- `dist/ltcai-9.6.0.tar.gz`
+- `ltcai-9.6.0.tgz`
+- `dist/ltcai-9.6.0.vsix`
+- `src-tauri/target/release/bundle/dmg/Lattice AI_9.6.0_aarch64.dmg`
 
 Do not use wildcard artifact uploads. Package registry publishing remains owner-run.
 
 See [docs/ROADMAP_RECOMMENDATIONS.md](docs/ROADMAP_RECOMMENDATIONS.md) for the
-strategic roadmap slices applied through 9.5.0 and the follow-up tracks.
+strategic roadmap slices applied through 9.6.0 and the follow-up tracks.
 
 ## Known Limitations
 
 - External package registries are owner-published and can lag behind GitHub.
 - PostgreSQL/pgvector is optional scale/migration tooling. SQLite remains the
-  live local Brain store in 9.5.0.
+  live local Brain store in 9.6.0.
 - Docker, model downloads, cloud model calls, Telegram, Brain Network, and update
   checks require explicit user action.
 - Conversation does not fabricate answers when no model is loaded.
@@ -311,6 +324,7 @@ strategic roadmap slices applied through 9.5.0 and the follow-up tracks.
 
 | Version | Theme |
 | --- | --- |
+| 9.6.0 | Trusted Agent Loop: observable agent reasoning (LoopTrace + loop API payload), python-literal/fence/think weak-model repairs with escalating corrections, a deterministic CI agent-eval harness, and proposal-first change governance where edits/deletions of existing files become reviewable diffs |
 | 9.5.0 | Command Center: a Cmd+K palette searching knowledge, conversations, automations, and pages in one query, plus a daily briefing with Brain state at a glance and state-derived one-click quick actions |
 | 9.4.0 | Question-Driven Everyday Automation: the Brain mines recurring user questions and connected knowledge folders into one-click, consent-first automation suggestions installed as review-gated drafts |
 | 9.3.0 | Proactive Brain Intelligence: the Brain diagnoses its own health, surfaces contradictions and stale knowledge, proposes consent-first duplicate consolidation, and recalls with hybrid lexical+semantic evidence behind an honest quality gate |

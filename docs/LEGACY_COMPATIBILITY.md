@@ -1,6 +1,6 @@
 # Legacy Compatibility Map
 
-Current target: **9.5.0 — Command Center**.
+Current target: **9.6.0 — Trusted Agent Loop**.
 
 Lattice AI is moving toward a smaller, modular architecture centered on
 `lattice_brain`, `latticeai.services`, `latticeai.api`, and `latticeai.runtime`.

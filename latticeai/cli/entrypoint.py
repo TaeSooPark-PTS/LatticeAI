@@ -157,7 +157,9 @@ def _start_tunnel(port: int) -> str | None:
     log_path = Path.home() / ".latticeai" / "tunnel.log"
     log_path.parent.mkdir(parents=True, exist_ok=True)
 
-    proc = subprocess.Popen(
+    # Detached on purpose: the tunnel outlives this helper; the log file is
+    # the observable surface.
+    subprocess.Popen(
         [bin_path, "tunnel", "--url", f"http://localhost:{port}"],
         stdout=open(log_path, "w"),
         stderr=subprocess.STDOUT,

@@ -1,6 +1,6 @@
 # Lattice AI Onboarding
 
-Current release: **9.5.0 — Command Center**.
+Current release: **9.6.0 — Trusted Agent Loop**.
 
 The first-run goal is a five-minute path from "I opened the app" to "my Brain
 has a source, a question, and proof." This page is the product contract behind
@@ -40,7 +40,7 @@ read the docs first.
 
 ## Release Gate
 
-9.5.0 treats onboarding as a release gate, not marketing copy. The current
+9.6.0 treats onboarding as a release gate, not marketing copy. The current
 machine-checkable product readiness report requires this five-minute contract,
 the Brain Home surface, setup helpers, graph ingestion tests, and exact release
 artifact documentation before the release can be called complete.

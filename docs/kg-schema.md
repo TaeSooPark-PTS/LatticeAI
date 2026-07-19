@@ -1,6 +1,6 @@
 # Knowledge Graph Schema
 
-Current release: **9.5.0 — Command Center**.
+Current release: **9.6.0 — Trusted Agent Loop**.
 
 명세 출처: `lattice_ai_full_spec.pptx` 슬라이드 20·21·22
 구현: `kg_schema.py`

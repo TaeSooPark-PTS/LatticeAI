@@ -124,6 +124,11 @@ def _resolve_path(path: str = "") -> Path:
     return candidate
 
 
+def resolve_workspace_path(path: str = "") -> Path:
+    """Public alias of the sandboxed workspace path resolver (v9.6.0)."""
+    return _resolve_path(path)
+
+
 def _relative(path: Path) -> str:
     return str(path.relative_to(AGENT_ROOT))
 
@@ -259,7 +264,7 @@ def execute_tool(action: str, args: Dict[str, Any]) -> Dict[str, Any]:
 
 
 __all__ = [
-    "AGENT_ROOT", "ToolError", "ensure_agent_root",
+    "AGENT_ROOT", "ToolError", "ensure_agent_root", "resolve_workspace_path",
     "list_dir", "workspace_tree", "read_file", "write_file", "edit_file", "grep",
     "search_files", "inspect_html", "preview_url", "create_web_project",
     "todo_read", "todo_write",

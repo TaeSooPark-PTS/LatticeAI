@@ -169,6 +169,9 @@ def _build(config: "Optional[Config]" = None) -> Dict[str, Any]:
     from latticeai.api.brain_intelligence import create_brain_intelligence_router
     from latticeai.api.command_center import create_command_center_router
     from latticeai.services.command_center import CommandCenterService
+    from latticeai.api.change_proposals import create_change_proposals_router
+    from latticeai.services.change_proposals import ChangeProposalService
+    from latticeai.tools import resolve_workspace_path
     from latticeai.api.memory import create_memory_router
     from latticeai.api.browser import create_browser_router
     from latticeai.api.portability import create_portability_router
@@ -1049,6 +1052,23 @@ def _build(config: "Optional[Config]" = None) -> Dict[str, Any]:
             service=COMMAND_CENTER,
             require_user=require_user,
             gate_read=PLATFORM.gate_read,
+        )
+    )
+    CHANGE_PROPOSALS = ChangeProposalService(
+        review_queue=REVIEW_QUEUE,
+        resolve_path=resolve_workspace_path,
+        audit=append_audit_event,
+    )
+    # Proposal-first mutations: the agent loop consults the governor so
+    # additive creates run with minimal friction while changes/deletions of
+    # existing files are staged for review instead of applied.
+    CHAT_AGENT_RUNTIME.deps.change_governor = CHANGE_PROPOSALS
+    app.include_router(
+        create_change_proposals_router(
+            service=CHANGE_PROPOSALS,
+            require_user=require_user,
+            gate_read=PLATFORM.gate_read,
+            gate_write=PLATFORM.gate_write,
         )
     )
 
