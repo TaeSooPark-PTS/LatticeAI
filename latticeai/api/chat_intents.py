@@ -14,10 +14,10 @@ from latticeai.api.chat_helpers import (
     file_action_target,
     format_network_status,
     inline_file_action_content,
-    strip_generated_file_content,
 )
 from latticeai.api.chat_stream import agent_payload_stream, single_answer_response
 from latticeai.core.agent import AgentState
+from latticeai.core.file_generation import generate_file_content, infer_file_target
 
 
 class ChatIntentController:
@@ -185,28 +185,36 @@ class ChatIntentController:
         return single_answer_response(req, answer, model="client_url")
 
     async def direct_file_action(self, req: Any, *, model_id: Optional[str]):
-        target_path = file_action_target(req.message)
+        # An explicit path ("report.txt") wins; otherwise infer one from an
+        # explicit type keyword ("html 파일 만들어줘") so weak models never
+        # have to drive the JSON tool loop just to create a file.
+        target_path = file_action_target(req.message) or infer_file_target(req.message)
         if not target_path:
             return None
         content = inline_file_action_content(req.message)
+        generation_meta: Optional[Dict[str, Any]] = None
         if content is None and not model_id:
             return self.no_model_response()
         if content is None and model_id:
-            generation_context = (
-                "Create the exact content for the requested file. "
-                "Return only the file bytes as plain text. "
-                "Do not wrap the answer in Markdown fences, commentary, or explanations.\n\n"
-                f"Target path: {target_path}\n"
-                f"User request: {req.message}"
+            # Model-agnostic pipeline: strict extension-aware prompt →
+            # extraction → validation → one corrective retry → deterministic
+            # repair. Guarantees a structurally valid file from any LLM.
+            async def _generate(context: str) -> str:
+                return str(
+                    await self.router.generate_as(
+                        model_id,
+                        message="Return only the requested file content.",
+                        context=context,
+                        max_tokens=max(int(req.max_tokens or 0), 4096),
+                        temperature=min(req.temperature, 0.3),
+                    )
+                )
+
+            content, generation_meta = await generate_file_content(
+                _generate,
+                target_path=target_path,
+                user_request=req.message,
             )
-            raw_content = await self.router.generate_as(
-                model_id,
-                message="Return only the requested file content.",
-                context=generation_context,
-                max_tokens=req.max_tokens,
-                temperature=req.temperature,
-            )
-            content = strip_generated_file_content(str(raw_content))
         if content is None:
             raise HTTPException(
                 status_code=400,
@@ -220,6 +228,10 @@ class ChatIntentController:
         except self.tool_error as exc:
             raise HTTPException(status_code=400, detail=str(exc)) from exc
         answer = f"{result.get('path') or target_path} 파일을 만들었습니다."
+        if generation_meta and generation_meta.get("repaired"):
+            answer += (
+                " (모델 출력이 불완전해 자동 보정을 거쳐 유효한 파일로 저장했습니다.)"
+            )
         created_files = [
             {
                 "path": result.get("path") or target_path,
@@ -248,6 +260,8 @@ class ChatIntentController:
             "routed_to_agent": True,
             "action_route": "direct_write_file",
         }
+        if generation_meta is not None:
+            payload["generation"] = generation_meta
         if req.stream:
             return StreamingResponse(
                 agent_payload_stream(

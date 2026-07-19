@@ -1,9 +1,9 @@
-# Lattice AI Feature Status (v9.1.0)
+# Lattice AI Feature Status (v9.2.0)
 
-Current release: **9.1.0 — Code Review Completion & Fail-Closed Runtime**.
+Current release: **9.2.0 — Model-Agnostic File Generation**.
 
 This file describes the current product state and known limitations. Historical
-change history is intentionally limited to 8.0.0-9.1.0 in `RELEASE.md` and
+change history is intentionally limited to 8.0.0-9.2.0 in `RELEASE.md` and
 `docs/CHANGELOG.md`.
 
 ## Product Position
@@ -12,7 +12,7 @@ Lattice AI is a local-first Digital Brain. The durable asset is the user's
 Brain: conversations, documents, decisions, memories, provenance, and Knowledge
 Graph structure. Models are replaceable voices over that Brain.
 
-The main product surface is not an admin dashboard. The 9.1.0 line keeps the
+The main product surface is not an admin dashboard. The 9.2.0 line keeps the
 living Brain and composer in the first screen while completing every July 11
 review action across fail-closed security, typed runtime/model/chat ownership,
 honest frontend errors and tests, and repository hygiene.
@@ -35,7 +35,7 @@ honest frontend errors and tests, and repository hygiene.
 | Workspaces | Current | Personal workspace is default. Organization/admin surfaces remain separated from normal Brain use. |
 | VS Code Extension | Current | Sync/status endpoints expose connection and indexing state. File contents move only through explicit user actions. |
 | Frontend Reliability | Current | Core API failures render unavailable states, successful callbacks require successful results, and Vitest/visual tests protect result, proof, conversation, primitive, i18n, and service-error behavior. |
-| Release Assets | Current | 9.1.0 package metadata, static app, release notes, current documentation, and exact artifact names are aligned. |
+| Release Assets | Current | 9.2.0 package metadata, static app, release notes, current documentation, and exact artifact names are aligned. |
 
 ## Known Limitations
 
@@ -58,6 +58,7 @@ honest frontend errors and tests, and repository hygiene.
 
 The Git tree keeps release history from:
 
+- 9.2.0
 - 9.1.0
 - 9.0.0
 - 8.9.0

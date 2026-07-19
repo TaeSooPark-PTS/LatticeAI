@@ -1,6 +1,6 @@
 # Lattice AI Trust Model
 
-Current release: **9.1.0 — Code Review Completion & Fail-Closed Runtime**.
+Current release: **9.2.0 — Model-Agnostic File Generation**.
 
 Lattice AI is local-first, explicit about external communication, and honest
 when a capability is unavailable.

@@ -1,12 +1,13 @@
 # Community And Plugins
 
-Current release: **9.1.0 — Code Review Completion & Fail-Closed Runtime**.
+Current release: **9.2.0 — Model-Agnostic File Generation**.
 
 LatticeAI defines the path from a strong local-first framework (8.4.0
 action-aware baseline, 8.5.0 registry+DI hardening, 8.6.0 capture/navigation
 reliability, 8.7.0 runtime-state hygiene, 8.8.0 Brain Core extraction
-readiness, 8.9.0 scoped Tool API hardening, 9.0.0 cleanup closure, and 9.1.0
-fail-closed review completion) to a product ecosystem. The
+readiness, 8.9.0 scoped Tool API hardening, 9.0.0 cleanup closure, 9.1.0
+fail-closed review completion, and 9.2.0 model-agnostic file generation) to a
+product ecosystem. The
 immediate goal is small and practical: make it clear how
 contributors can extend the Brain without weakening local-first trust,
 workspace scoping, or release quality.

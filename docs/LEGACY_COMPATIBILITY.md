@@ -1,6 +1,6 @@
 # Legacy Compatibility Map
 
-Current target: **9.1.0 — Code Review Completion & Fail-Closed Runtime**.
+Current target: **9.2.0 — Model-Agnostic File Generation**.
 
 Lattice AI is moving toward a smaller, modular architecture centered on
 `lattice_brain`, `latticeai.services`, `latticeai.api`, and `latticeai.runtime`.

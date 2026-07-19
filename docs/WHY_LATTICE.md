@@ -1,6 +1,6 @@
 # Why Lattice AI Exists
 
-Current release: **9.1.0 — Code Review Completion & Fail-Closed Runtime**.
+Current release: **9.2.0 — Model-Agnostic File Generation**.
 
 **Lattice AI is a local-first Digital Brain that keeps your knowledge durable
 across any AI model.**

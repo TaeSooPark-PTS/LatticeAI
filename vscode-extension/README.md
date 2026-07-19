@@ -12,15 +12,17 @@ chat, run model workflows, and trigger coding actions from the editor.
 
 ## Current Release
 
-**9.1.0 — Code Review Completion & Fail-Closed Runtime.** The extension follows
+**9.2.0 — Model-Agnostic File Generation.** The extension follows
 the main app positioning: Lattice AI is a local-first Digital Brain, not just a
 model launcher or editor chat panel. It connects editor actions to the same
 durable Brain context, explicit consent gates, replaceable model workflow, and
-separated Admin surface used by the desktop app. The v9.1.0 line completes the
-July 11 review with fail-closed server/workspace/tool boundaries, typed runtime
-and model state, honest frontend failures and tests, exact release artifacts,
-and machine-checkable architecture/readiness gates while preserving the visible
-VS Code sync status and runtime architecture contract.
+separated Admin surface used by the desktop app. The v9.2.0 line makes file
+generation model-agnostic — chat and agent file requests always produce
+structurally valid files with any loaded LLM via extraction, per-type
+validation, corrective retry, and deterministic repair — while preserving the
+9.1.0 fail-closed boundaries, typed runtime and model state, exact release
+artifacts, and the visible VS Code sync status and runtime architecture
+contract.
 
 ## Quick Start
 

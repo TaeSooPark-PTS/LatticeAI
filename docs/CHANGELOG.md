@@ -4,6 +4,38 @@ The top entry is either the current unreleased main-branch work or the current
 release line. Older entries are historical and may describe behavior as it
 existed at that release.
 
+## [9.2.0] - 2026-07-20
+
+### Added
+- Added `latticeai/core/file_generation.py`, a model-agnostic file content
+  pipeline: extension-aware strict prompting with pinned first lines, payload
+  extraction from fences/`<think>` blocks/chat framing, per-type structural
+  validation, one corrective retry, and a deterministic repair fallback that
+  guarantees a structurally valid file from any loaded LLM.
+- Added filename inference for chat file requests that name a type but no path
+  ("html 파일 만들어줘" → `generated_page.html`), keeping such requests on the
+  deterministic direct-write path instead of the model-driven agent loop.
+- Added `generation` metadata (attempts, validation reasons, auto-repair flag)
+  to `/chat` direct file-action responses, and a user-facing notice when the
+  saved file was produced by auto-repair.
+- Added `tests/unit/test_file_generation.py` covering extraction, validation,
+  repair, inference, prompting, and retry/repair orchestration (22 tests).
+
+### Changed
+- Chat file-action routing counts explicit artifact types (html, 웹페이지,
+  webpage) as file words, so "html 페이지 만들어줘" creates a real file.
+- Direct file generation clamps temperature to ≤0.3 and raises the token
+  budget to ≥4096 so generated documents complete.
+- The agent executor prompt pins `write_file` content rules: complete raw
+  content, no Markdown fences, extension-valid documents.
+
+### Fixed
+- Small local models (gemma/qwen class) no longer save chat wrappers, fenced
+  code blocks, reasoning traces, or truncated documents as file bytes.
+- The agent JSON loop no longer aborts on the first malformed action reply:
+  `extract_action` strips `<think>` blocks and tolerates trailing commas, and
+  up to two corrective format reminders are fed back before halting.
+
 ## [9.1.0] - 2026-07-11
 
 ### Added

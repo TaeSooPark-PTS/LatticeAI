@@ -7,6 +7,57 @@
 > PyPI / npm / VS Code Marketplace / Open VSX 배포는 아래 수동 절차로만
 > 진행합니다. 태그 생성은 패키지 스토어 publish를 자동으로 트리거하지 않습니다.
 
+## v9.2.0 — Model-Agnostic File Generation (2026-07-20)
+
+9.2.0 makes "create a file" work reliably with any loaded LLM, including small
+local models (gemma/qwen class) that previously produced broken HTML or chat
+wrappers instead of file content.
+
+### File generation pipeline
+
+- New `latticeai/core/file_generation.py` module treats every model reply as
+  untrusted content: extension-aware strict prompting (the prompt pins the
+  exact first line, e.g. `<!DOCTYPE html>`), extraction of the real payload
+  from Markdown fences, `<think>`/reasoning blocks, and conversational
+  framing, per-type structural validation (complete HTML documents, parseable
+  JSON, CSS rule blocks, fence-free code), one corrective retry that feeds the
+  rejection reason back to the model, and a deterministic repair fallback
+  (truncated HTML is closed, fragments are wrapped in a valid scaffold,
+  invalid JSON is recovered or re-encoded) so the user always receives a
+  structurally valid file.
+- Chat file requests that name a type but no filename ("html 파일 만들어줘",
+  "웹페이지 만들어줘") now resolve to an inferred target and run on the
+  deterministic direct-write path instead of the model-driven agent JSON
+  loop. File-generation temperature is clamped and the token budget raised so
+  documents complete.
+- The `/chat` direct-write response reports `generation` metadata (attempts,
+  validation reasons, whether deterministic repair ran), and the confirmation
+  message discloses when auto-repair produced the saved file.
+
+### Agent loop hardening
+
+- `extract_action` strips `<think>` blocks before locating the action JSON and
+  tolerates trailing commas.
+- The executor no longer aborts the run on the first malformed action reply:
+  up to two corrective format reminders are fed back through the corrections
+  channel before halting.
+- The executor prompt pins exact `write_file` content rules (complete raw
+  content, no fences, extension-valid documents).
+
+### Tests
+
+- `tests/unit/test_file_generation.py` covers extraction, validation, repair,
+  filename inference, prompt anchoring, and the retry/repair orchestration
+  (22 tests). Full unit suite: 1062 passing.
+
+The exact 9.2.0 release artifacts are:
+
+- `dist/ltcai-9.2.0-py3-none-any.whl`
+- `dist/ltcai-9.2.0.tar.gz`
+- `ltcai-9.2.0.tgz`
+- `dist/ltcai-9.2.0.vsix`
+- `src-tauri/target/release/bundle/dmg/Lattice AI_9.2.0_aarch64.dmg`
+
 ## v9.1.0 — Code Review Completion & Fail-Closed Runtime (2026-07-11)
 
 9.1.0 completes every actionable item in

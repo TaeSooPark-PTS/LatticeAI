@@ -69,9 +69,16 @@ class AgentRunContext:
         self.approved_by_human: bool       = False
 
 
+_THINK_BLOCK_RE = re.compile(
+    r"<(think|thinking|reasoning)>.*?</\1>", flags=re.DOTALL | re.IGNORECASE
+)
+
+
 def extract_action(raw: str) -> Dict:
     """Parse one JSON action object out of an LLM response (tolerant of fences/prose)."""
-    text = raw.strip()
+    # Small local models often prepend <think>...</think> reasoning that can
+    # itself contain braces — drop it before locating the action object.
+    text = _THINK_BLOCK_RE.sub("", raw).strip()
     fenced = re.search(r"```(?:json)?\s*(\{.*?\})\s*```", text, flags=re.DOTALL)
     if fenced:
         text = fenced.group(1).strip()
@@ -83,8 +90,14 @@ def extract_action(raw: str) -> Dict:
 
     try:
         action = json.loads(text)
-    except json.JSONDecodeError as exc:
-        raise ValueError(f"Agent did not return valid JSON: {exc}") from exc
+    except json.JSONDecodeError:
+        # Second chance for the most common small-model JSON slips: trailing
+        # commas before a closing brace/bracket.
+        repaired = re.sub(r",\s*([}\]])", r"\1", text)
+        try:
+            action = json.loads(repaired)
+        except json.JSONDecodeError as exc:
+            raise ValueError(f"Agent did not return valid JSON: {exc}") from exc
 
     if not isinstance(action, dict) or "action" not in action:
         raise ValueError("Agent JSON must include an action field.")
@@ -248,6 +261,7 @@ class SingleAgentRuntime:
         d = self.deps
         exec_count = sum(1 for s in ctx.transcript if s.get("state") == AgentState.EXECUTING.value)
         budget = max(1, max_steps - exec_count)
+        parse_failures = 0
 
         for _ in range(budget):
             corrections_hint = (
@@ -280,11 +294,24 @@ class SingleAgentRuntime:
             try:
                 action = extract_action(str(raw))
             except ValueError as exc:
+                parse_failures += 1
                 ctx.transcript.append({
                     "state": AgentState.EXECUTING.value, "action": "parse_error",
                     "raw": str(raw)[:400], "error": str(exc),
                 })
-                break
+                if parse_failures >= 3:
+                    break
+                # Weak models often need one concrete reminder of the wire
+                # format; feed it through the corrections channel and retry
+                # instead of aborting the whole run on the first slip.
+                hint = (
+                    'Your last reply was not a single JSON action object. Reply with '
+                    'EXACTLY one JSON object like {"thoughts": "...", "action": '
+                    '"tool_name", "args": {...}} and nothing else.'
+                )
+                if hint not in ctx.corrections:
+                    ctx.corrections.append(hint)
+                continue
 
             name     = action.get("action")
             thoughts = str(action.get("thoughts") or "")[:600]

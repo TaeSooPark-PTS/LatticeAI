@@ -128,6 +128,10 @@ def is_file_action_request(text: str) -> bool:
     has_target = bool(_FILE_TARGET_RE.search(raw))
     has_file_word = any(word in lower for word in (
         "file", "파일", "문서", "artifact", "아티팩트", "save as", "저장",
+        # Explicit artifact types: users asking for "an html page" expect a
+        # real file, not a code block in chat — route them to the file path
+        # where the model-agnostic generation pipeline guarantees validity.
+        "html", "웹페이지", "웹 페이지", "홈페이지", "webpage", "web page",
     ))
     has_action = any(word in lower for word in (
         "create", "make", "write", "save", "generate", "edit", "update",

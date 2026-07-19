@@ -1,6 +1,6 @@
 # Model Policy
 
-Lattice AI v9.1.0 uses a multimodal-first model policy. The Brain is the
+Lattice AI v9.2.0 uses a multimodal-first model policy. The Brain is the
 durable product surface; model choice is a replaceable execution voice that must
 preserve source facts, memory proof, and model-continuity evidence.
 

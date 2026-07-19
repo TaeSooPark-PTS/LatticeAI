@@ -1,6 +1,6 @@
 # Knowledge Graph Schema
 
-Current release: **9.1.0 — Code Review Completion & Fail-Closed Runtime**.
+Current release: **9.2.0 — Model-Agnostic File Generation**.
 
 명세 출처: `lattice_ai_full_spec.pptx` 슬라이드 20·21·22
 구현: `kg_schema.py`
