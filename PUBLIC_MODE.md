@@ -1,4 +1,4 @@
-# Lattice AI Local / Public Mode (v9.3.0)
+# Lattice AI Local / Public Mode (v9.4.0)
 
 Lattice AI now has two runtime modes.
 

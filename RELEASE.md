@@ -7,6 +7,67 @@
 > PyPI / npm / VS Code Marketplace / Open VSX 배포는 아래 수동 절차로만
 > 진행합니다. 태그 생성은 패키지 스토어 publish를 자동으로 트리거하지 않습니다.
 
+## v9.4.0 — Question-Driven Everyday Automation (2026-07-20)
+
+9.4.0 makes automating daily life effortless. The Brain now watches what the
+user actually does — the questions they keep asking and the knowledge folders
+they keep feeding — and proposes concrete automations with the user's own
+words as evidence.
+
+### Automation Intelligence (`/api/automation/*`)
+
+- `GET /api/automation/patterns` — deterministic local mining of recurring
+  question intents from the user's chat history (token-signature clustering,
+  Korean+English aware, no model call). Each pattern carries its literal
+  example questions, count, and last-asked time.
+- `GET /api/automation/suggestions` — recurring patterns become one-click
+  suggestions: digest/status/follow-up intents map to the matching starter
+  recipe, any other repeated question becomes a "scheduled answer"
+  automation, and connected knowledge folders with indexed files become
+  folder-digest suggestions triggered when new knowledge arrives.
+- `POST /api/automation/install` — idempotent, consent-first install: each
+  accepted suggestion is created as a disabled draft workflow (trigger →
+  draft agent → review output) with review-queue gating, local-only /
+  no-external-actions flags, and provenance metadata (`suggestion_id`), via
+  the same validated WorkspaceOS workflow path as the starter recipes.
+- `GET /api/automation/overview` — one payload for the automation surface:
+  suggestions, installed automations with enable state, and consent
+  contract.
+
+### Intuitive automation surface
+
+- The Act page's recipes tab now opens with "Automation suggestions for
+  you": evidence chips ("you asked this 7 times", "a folder with 42 files in
+  your Brain"), cadence labels, and a one-click Create button that produces
+  a reviewable draft. Fully ko/en localized; visible in basic mode.
+
+### Scope and safety
+
+- History mining is scoped: `user_email` + workspace boundaries flow into
+  the conversation-store query; legacy-global rows are excluded for scoped
+  reads.
+- Suggestion ids are deterministic, so re-requesting suggestions or double-
+  clicking install never duplicates workflows.
+- Nothing runs on its own: accepted suggestions stay disabled until the user
+  explicitly enables them, and enabled runs still land in the review queue.
+
+### Verification
+
+- New `tests/unit/test_automation_intelligence.py` (10 tests): clustering,
+  intent mapping, scoping, stable ids, install marking, consent-first
+  definitions, overview, and no-backend degradation.
+- Full sweep: 1086 unit, 13 integration, 14 frontend vitest, 18 playwright
+  visual tests passing; lint/typecheck/docs/readiness gates green; live-boot
+  smoke on all four new endpoints.
+
+The exact 9.4.0 release artifacts are:
+
+- `dist/ltcai-9.4.0-py3-none-any.whl`
+- `dist/ltcai-9.4.0.tar.gz`
+- `ltcai-9.4.0.tgz`
+- `dist/ltcai-9.4.0.vsix`
+- `src-tauri/target/release/bundle/dmg/Lattice AI_9.4.0_aarch64.dmg`
+
 ## v9.3.0 — Proactive Brain Intelligence (2026-07-20)
 
 9.3.0 turns the Brain from a passive store into an active steward of its own

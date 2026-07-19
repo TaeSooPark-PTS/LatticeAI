@@ -9,6 +9,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
+import { AutomationSuggestions } from "@/features/act/AutomationSuggestions";
 import { ReviewInbox } from "@/features/review/ReviewInbox";
 import { useAppStore } from "@/store/appStore";
 import { asArray, shortId } from "@/lib/utils";
@@ -295,6 +296,7 @@ function WorkflowsPanel() {
   const edges: Edge[] = nodes.slice(1).map((node, index) => ({ id: `e-${index}`, source: nodes[index].id, target: node.id }));
   return (
     <div className="grid gap-4 xl:grid-cols-[1.2fr_0.8fr]">
+      <AutomationSuggestions language={language} />
       <DataPanel title={t(language, "act.automation.title")} result={recipes.data} className="xl:col-span-2">
         {(data) => {
           const items = asArray<Record<string, unknown>>((data as Record<string, unknown>).recipes);

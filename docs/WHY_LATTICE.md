@@ -1,6 +1,6 @@
 # Why Lattice AI Exists
 
-Current release: **9.3.0 — Proactive Brain Intelligence**.
+Current release: **9.4.0 — Question-Driven Everyday Automation**.
 
 **Lattice AI is a local-first Digital Brain that keeps your knowledge durable
 across any AI model.**

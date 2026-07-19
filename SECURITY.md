@@ -1,15 +1,16 @@
 # Security Policy
 
-Current release: **9.3.0 — Proactive Brain Intelligence**.
+Current release: **9.4.0 — Question-Driven Everyday Automation**.
 
 ## Supported Versions
 
-The public Git tree keeps release history from 8.0.0 through 9.3.0. Security
+The public Git tree keeps release history from 8.0.0 through 9.4.0. Security
 support follows that same product era.
 
 | Version | Support |
 | --- | --- |
-| 9.3.x (latest) | Supported |
+| 9.4.x (latest) | Supported |
+| 9.3.x | Supported |
 | 9.2.x | Supported |
 | 9.1.x | Supported |
 | 9.0.x | Supported |
@@ -42,7 +43,7 @@ The expected first response target is 48 hours.
 
 ## Security Model
 
-Lattice AI v9.3.0 is a local-first Digital Brain. It keeps user knowledge,
+Lattice AI v9.4.0 is a local-first Digital Brain. It keeps user knowledge,
 conversation context, Knowledge Graph data, and archives local by default while
 making external paths explicit.
 

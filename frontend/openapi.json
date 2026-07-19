@@ -2449,6 +2449,24 @@
         "title": "SsoConfigUpdate",
         "type": "object"
       },
+      "SuggestionInstallRequest": {
+        "properties": {
+          "enabled": {
+            "default": false,
+            "title": "Enabled",
+            "type": "boolean"
+          },
+          "suggestion_id": {
+            "title": "Suggestion Id",
+            "type": "string"
+          }
+        },
+        "required": [
+          "suggestion_id"
+        ],
+        "title": "SuggestionInstallRequest",
+        "type": "object"
+      },
       "TemplateCloneRequest": {
         "properties": {
           "name": {
@@ -3836,7 +3854,7 @@
   },
   "info": {
     "title": "Lattice AI Server (local)",
-    "version": "9.3.0"
+    "version": "9.4.0"
   },
   "openapi": "3.1.0",
   "paths": {
@@ -5722,6 +5740,90 @@
           }
         },
         "summary": "Agent Runtime Status"
+      }
+    },
+    "/api/automation/install": {
+      "post": {
+        "operationId": "automation_install_api_automation_install_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SuggestionInstallRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Automation Install"
+      }
+    },
+    "/api/automation/overview": {
+      "get": {
+        "operationId": "automation_overview_api_automation_overview_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": "Automation Overview"
+      }
+    },
+    "/api/automation/patterns": {
+      "get": {
+        "operationId": "automation_patterns_api_automation_patterns_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": "Automation Patterns"
+      }
+    },
+    "/api/automation/suggestions": {
+      "get": {
+        "operationId": "automation_suggestions_api_automation_suggestions_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": "Automation Suggestions"
       }
     },
     "/api/brain/consolidate": {

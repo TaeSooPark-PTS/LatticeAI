@@ -1,6 +1,6 @@
 # Lattice AI Trust Model
 
-Current release: **9.3.0 — Proactive Brain Intelligence**.
+Current release: **9.4.0 — Question-Driven Everyday Automation**.
 
 Lattice AI is local-first, explicit about external communication, and honest
 when a capability is unavailable.

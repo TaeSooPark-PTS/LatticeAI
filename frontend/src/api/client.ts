@@ -365,6 +365,10 @@ export const latticeApi = {
   memoryBrainBrief: (query = "", limit = 3) => get("/api/memory/brain-brief", { focus: {}, next_actions: [], proactive_actions: [], evidence: [] }, { q: query, limit }),
   memoryBrainProof: (query = "", limit = 3) => get("/api/memory/brain-proof", { proofs: {}, recall: { items: [] }, model_continuity: {}, claims: {} }, { q: query, limit }),
   memoryRecall: (query: string, limit = 20) => post("/api/memory/recall", { query, limit }, { matches: [] }),
+  automationOverview: () => get("/api/automation/overview", { suggestions: [], installed: [], questions_scanned: 0 }),
+  automationPatterns: () => get("/api/automation/patterns", { patterns: [], questions_scanned: 0 }),
+  installAutomationSuggestion: (suggestionId: string, enabled = false) =>
+    post("/api/automation/install", { suggestion_id: suggestionId, enabled }, {}),
   brainHealth: () => get("/api/brain/health", { overall_score: null, grade: null, dimensions: {}, recommended_actions: [] }),
   brainInsights: () => get("/api/brain/insights", { activity: {}, attention: {}, suggested_questions: [] }),
   brainContradictions: () => get("/api/brain/contradictions", { items: [], count: 0 }),

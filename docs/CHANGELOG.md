@@ -4,6 +4,29 @@ The top entry is either the current unreleased main-branch work or the current
 release line. Older entries are historical and may describe behavior as it
 existed at that release.
 
+## [9.4.0] - 2026-07-20
+
+### Added
+- Added `latticeai/services/automation_intelligence.py` and the
+  `/api/automation/*` router: recurring-question pattern mining
+  (deterministic local token-signature clustering with literal-question
+  evidence), automation suggestions from question patterns and connected
+  knowledge folders, idempotent consent-first install (disabled draft,
+  review-queue gated, local-only), and a combined overview payload.
+- Added the "Automation suggestions for you" panel to the Act page with
+  evidence chips and one-click creation, fully ko/en localized.
+- Added `tests/unit/test_automation_intelligence.py` (10 tests).
+
+### Changed
+- Recurring question intents that match a starter recipe (daily digest,
+  weekly project review, follow-up radar) suggest that recipe; other
+  repeated questions become parameterized "scheduled answer" workflows.
+
+### Security
+- History mining respects user/workspace scoping and excludes legacy-global
+  rows for scoped reads; suggestion installs carry provenance metadata and
+  never enable themselves.
+
 ## [9.3.0] - 2026-07-20
 
 ### Added

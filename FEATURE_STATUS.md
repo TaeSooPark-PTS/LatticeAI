@@ -1,9 +1,9 @@
-# Lattice AI Feature Status (v9.3.0)
+# Lattice AI Feature Status (v9.4.0)
 
-Current release: **9.3.0 — Proactive Brain Intelligence**.
+Current release: **9.4.0 — Question-Driven Everyday Automation**.
 
 This file describes the current product state and known limitations. Historical
-change history is intentionally limited to 8.0.0-9.3.0 in `RELEASE.md` and
+change history is intentionally limited to 8.0.0-9.4.0 in `RELEASE.md` and
 `docs/CHANGELOG.md`.
 
 ## Product Position
@@ -23,6 +23,7 @@ recalls with hybrid lexical+semantic evidence.
 | Area | Status | Notes |
 | --- | --- | --- |
 | Brain Home | Current | Living Brain, composer, and Brain Brief are visible in the first viewport on desktop and mobile. |
+| Automation Intelligence | Current | /api/automation mines recurring user questions (deterministic local clustering, literal-question evidence) and connected knowledge folders into one-click suggestions; installs are idempotent, disabled-draft, review-queue-gated workflows. |
 | Brain Intelligence | Current | The Brain diagnoses itself: /api/brain health scoring (freshness, connectivity, search readiness, consistency), proactive insights digest, contradiction surfacing, and consent-first duplicate consolidation, wired from the lattice_brain quality layer and covered by unit + live-boot tests. |
 | Hybrid Recall | Current | /api/memory/recall blends lexical evidence with vector similarity (hybrid-evidence/v2 gate) with workspace-scoped vector hits and honest lexical fallback when the vector tier fails. |
 | Brain Brief | Current | MemoryService turns real workspace, conversation, graph, vector, and source-health signals into focus, evidence, and next actions. |
@@ -38,7 +39,7 @@ recalls with hybrid lexical+semantic evidence.
 | Workspaces | Current | Personal workspace is default. Organization/admin surfaces remain separated from normal Brain use. |
 | VS Code Extension | Current | Sync/status endpoints expose connection and indexing state. File contents move only through explicit user actions. |
 | Frontend Reliability | Current | Core API failures render unavailable states, successful callbacks require successful results, and Vitest/visual tests protect result, proof, conversation, primitive, i18n, and service-error behavior. |
-| Release Assets | Current | 9.3.0 package metadata, static app, release notes, current documentation, and exact artifact names are aligned. |
+| Release Assets | Current | 9.4.0 package metadata, static app, release notes, current documentation, and exact artifact names are aligned. |
 
 ## Known Limitations
 
@@ -61,6 +62,7 @@ recalls with hybrid lexical+semantic evidence.
 
 The Git tree keeps release history from:
 
+- 9.4.0
 - 9.3.0
 - 9.2.0
 - 9.1.0

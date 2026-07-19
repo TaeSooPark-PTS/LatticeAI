@@ -12,16 +12,17 @@ chat, run model workflows, and trigger coding actions from the editor.
 
 ## Current Release
 
-**9.3.0 — Proactive Brain Intelligence.** The extension follows
+**9.4.0 — Question-Driven Everyday Automation.** The extension follows
 the main app positioning: Lattice AI is a local-first Digital Brain, not just a
 model launcher or editor chat panel. It connects editor actions to the same
 durable Brain context, explicit consent gates, replaceable model workflow, and
-separated Admin surface used by the desktop app. The v9.3.0 line makes the
-Brain proactively intelligent — health diagnosis, contradiction surfacing,
-consent-first consolidation, and hybrid lexical+semantic recall — while
-preserving the 9.2.0 model-agnostic file generation, fail-closed boundaries,
-typed runtime and model state, exact release artifacts, and the visible
-VS Code sync status and runtime architecture contract.
+separated Admin surface used by the desktop app. The v9.4.0 line makes
+everyday automation question-driven — the Brain proposes consent-first
+automations from the user's own recurring questions and connected knowledge
+folders — while preserving the 9.3.0 proactive Brain intelligence, 9.2.0
+model-agnostic file generation, fail-closed boundaries, typed runtime and
+model state, exact release artifacts, and the visible VS Code sync status
+and runtime architecture contract.
 
 ## Quick Start
 

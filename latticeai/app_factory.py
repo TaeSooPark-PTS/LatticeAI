@@ -165,6 +165,7 @@ def _build(config: "Optional[Config]" = None) -> Dict[str, Any]:
     from latticeai.api.hooks import create_hooks_router
     from latticeai.core.product_hardening import build_product_hardening_status
     from latticeai.api.agent_registry import create_agent_registry_router
+    from latticeai.api.automation_intelligence import create_automation_intelligence_router
     from latticeai.api.brain_intelligence import create_brain_intelligence_router
     from latticeai.api.memory import create_memory_router
     from latticeai.api.browser import create_browser_router
@@ -385,6 +386,7 @@ def _build(config: "Optional[Config]" = None) -> Dict[str, Any]:
     AGENT_REGISTRY = _persistence_runtime["AGENT_REGISTRY"]
     MEMORY_SERVICE = _persistence_runtime["MEMORY_SERVICE"]
     BRAIN_INTELLIGENCE = _persistence_runtime["BRAIN_INTELLIGENCE"]
+    AUTOMATION_INTELLIGENCE = _persistence_runtime["AUTOMATION_INTELLIGENCE"]
     INGESTION_PIPELINE = _persistence_runtime["INGESTION_PIPELINE"]
     DEVICE_IDENTITY = _persistence_runtime["DEVICE_IDENTITY"]
     KG_PORTABILITY = _persistence_runtime["KG_PORTABILITY"]
@@ -1018,6 +1020,17 @@ def _build(config: "Optional[Config]" = None) -> Dict[str, Any]:
         template_catalog=TEMPLATE_CATALOG,
         create_realtime_router=create_realtime_router,
         realtime_bus=REALTIME_BUS,
+    )
+    app.include_router(
+        create_automation_intelligence_router(
+            service=AUTOMATION_INTELLIGENCE,
+            store=WORKSPACE_OS,
+            require_user=require_user,
+            gate_read=PLATFORM.gate_read,
+            gate_write=PLATFORM.gate_write,
+            append_audit_event=append_audit_event,
+            workspace_graph=_workspace_graph,
+        )
     )
 
 

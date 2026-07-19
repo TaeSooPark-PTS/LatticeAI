@@ -1,6 +1,6 @@
 # Legacy Compatibility Map
 
-Current target: **9.3.0 — Proactive Brain Intelligence**.
+Current target: **9.4.0 — Question-Driven Everyday Automation**.
 
 Lattice AI is moving toward a smaller, modular architecture centered on
 `lattice_brain`, `latticeai.services`, `latticeai.api`, and `latticeai.runtime`.
