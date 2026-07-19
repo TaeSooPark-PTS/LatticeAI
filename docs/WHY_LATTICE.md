@@ -1,6 +1,6 @@
 # Why Lattice AI Exists
 
-Current release: **9.2.0 — Model-Agnostic File Generation**.
+Current release: **9.3.0 — Proactive Brain Intelligence**.
 
 **Lattice AI is a local-first Digital Brain that keeps your knowledge durable
 across any AI model.**

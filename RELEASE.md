@@ -7,6 +7,65 @@
 > PyPI / npm / VS Code Marketplace / Open VSX 배포는 아래 수동 절차로만
 > 진행합니다. 태그 생성은 패키지 스토어 publish를 자동으로 트리거하지 않습니다.
 
+## v9.3.0 — Proactive Brain Intelligence (2026-07-20)
+
+9.3.0 turns the Brain from a passive store into an active steward of its own
+knowledge. The previously dormant `lattice_brain.quality` layer (dedupe,
+merge, conflict/temporal-contradiction detection, edge quality) is wired into
+router-facing capabilities, and the core recall path gains semantic evidence.
+
+### Brain Intelligence (`/api/brain/*`)
+
+- `GET /api/brain/health` — scored diagnosis across freshness (stale-node
+  ratio), connectivity (orphan-node ratio), embedding coverage (vector-index
+  scale), and consistency (duplicate/contradiction pressure), with an overall
+  grade and recommended care actions. Every number is read from live stores;
+  missing stores degrade the dimension to `unavailable`.
+- `GET /api/brain/insights` — proactive digest: recent knowledge growth,
+  trending node types, stale knowledge, disconnected (orphan) nodes, and
+  suggested questions grounded in real node titles.
+- `GET /api/brain/contradictions` — negation/preference conflicts and
+  temporal contradictions across workspace memories, plus explicit
+  CONTRADICTS edges from the graph, each with evidence snippets.
+- `POST /api/brain/consolidate` — duplicate-memory and duplicate-edge
+  detection. Dry-run by default; `apply=true` prunes only exact duplicate
+  workspace memories through the audited MemoryService path and never mutates
+  graph content.
+
+### Hybrid recall
+
+- `POST /api/memory/recall` blends vector similarity into the lexical
+  ranking (`hybrid-evidence/v2` quality gate). Semantic hits surface
+  knowledge phrased differently from the query; vector matches are
+  workspace-scoped through `filter_scoped_nodes` before they can influence
+  results; each row reports its `evidence_kinds` (lexical/semantic); and any
+  vector-tier failure degrades recall honestly back to `lexical-evidence/v1`.
+
+### Brain surface
+
+- New "Brain intelligence check" panel beside Brain care: plain-language
+  health grades, per-dimension scores, activity/attention chips,
+  recommended care actions, and duplicate-cleanup preview/apply. Fully ko/en
+  localized.
+
+### Verification
+
+- `tests/unit/test_brain_intelligence.py` (14 tests) covers health scoring,
+  scoped graph reads, insights, contradiction pairs, consent-first
+  consolidation, and hybrid recall (blend, merge, scoping, degradation).
+- Full sweep on this release: 1076 unit, 13 integration, 14 frontend vitest,
+  18 playwright visual tests passing; lint/typecheck/brain-quality-eval/
+  product-readiness gates green; all four new endpoints exercised against a
+  live-boot app.
+
+The exact 9.3.0 release artifacts are:
+
+- `dist/ltcai-9.3.0-py3-none-any.whl`
+- `dist/ltcai-9.3.0.tar.gz`
+- `ltcai-9.3.0.tgz`
+- `dist/ltcai-9.3.0.vsix`
+- `src-tauri/target/release/bundle/dmg/Lattice AI_9.3.0_aarch64.dmg`
+
 ## v9.2.0 — Model-Agnostic File Generation (2026-07-20)
 
 9.2.0 makes "create a file" work reliably with any loaded LLM, including small

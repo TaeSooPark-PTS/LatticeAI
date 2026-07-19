@@ -65,6 +65,7 @@ def build_interaction_contexts(
     memory_service: Any,
     platform: Any,
     active_model_getter: Any = None,
+    brain_intelligence: Any = None,
 ) -> tuple[ToolRouterContext, InteractionRouterContext]:
     tool_router_context = ToolRouterContext(
         config=config,
@@ -105,6 +106,7 @@ def build_interaction_contexts(
         memory_service=memory_service,
         platform=platform,
         active_model_getter=active_model_getter,
+        brain_intelligence=brain_intelligence,
     )
     return tool_router_context, interaction_router_context
 

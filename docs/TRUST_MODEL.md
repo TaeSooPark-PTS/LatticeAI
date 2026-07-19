@@ -1,6 +1,6 @@
 # Lattice AI Trust Model
 
-Current release: **9.2.0 — Model-Agnostic File Generation**.
+Current release: **9.3.0 — Proactive Brain Intelligence**.
 
 Lattice AI is local-first, explicit about external communication, and honest
 when a capability is unavailable.

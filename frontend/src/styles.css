@@ -4489,6 +4489,65 @@ body {
   padding: 0.82rem;
 }
 
+.brain-intelligence-dimensions {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(110px, 1fr));
+  gap: 0.5rem;
+}
+
+.brain-intelligence-dimension {
+  display: grid;
+  gap: 0.12rem;
+  border: 1px solid hsl(var(--border) / 0.55);
+  border-radius: 8px;
+  background: hsl(var(--bg) / 0.4);
+  padding: 0.5rem 0.6rem;
+}
+
+.brain-intelligence-dimension small {
+  color: hsl(var(--fg-muted));
+  font-size: 0.68rem;
+}
+
+.brain-intelligence-dimension strong {
+  color: hsl(var(--fg));
+  font-size: 1.02rem;
+}
+
+.brain-intelligence-insights {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.4rem;
+}
+
+.brain-intelligence-insights span {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.3rem;
+  border: 1px solid hsl(var(--border) / 0.55);
+  border-radius: 999px;
+  background: hsl(var(--bg) / 0.42);
+  padding: 0.24rem 0.5rem;
+  color: hsl(var(--fg-muted));
+  font-size: 0.72rem;
+}
+
+.brain-intelligence-actions small {
+  color: hsl(var(--fg-muted));
+  font-size: 0.7rem;
+  font-weight: 700;
+  text-transform: uppercase;
+}
+
+.brain-intelligence-actions ul {
+  margin: 0.3rem 0 0;
+  padding-left: 1.05rem;
+  display: grid;
+  gap: 0.2rem;
+  color: hsl(var(--fg));
+  font-size: 0.8rem;
+}
+
 .brain-care-actions,
 .brain-care-archive,
 .brain-care-archive-actions {

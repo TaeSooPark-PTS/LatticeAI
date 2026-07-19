@@ -165,6 +165,7 @@ def _build(config: "Optional[Config]" = None) -> Dict[str, Any]:
     from latticeai.api.hooks import create_hooks_router
     from latticeai.core.product_hardening import build_product_hardening_status
     from latticeai.api.agent_registry import create_agent_registry_router
+    from latticeai.api.brain_intelligence import create_brain_intelligence_router
     from latticeai.api.memory import create_memory_router
     from latticeai.api.browser import create_browser_router
     from latticeai.api.portability import create_portability_router
@@ -383,6 +384,7 @@ def _build(config: "Optional[Config]" = None) -> Dict[str, Any]:
     TEMPLATE_CATALOG = _persistence_runtime["TEMPLATE_CATALOG"]
     AGENT_REGISTRY = _persistence_runtime["AGENT_REGISTRY"]
     MEMORY_SERVICE = _persistence_runtime["MEMORY_SERVICE"]
+    BRAIN_INTELLIGENCE = _persistence_runtime["BRAIN_INTELLIGENCE"]
     INGESTION_PIPELINE = _persistence_runtime["INGESTION_PIPELINE"]
     DEVICE_IDENTITY = _persistence_runtime["DEVICE_IDENTITY"]
     KG_PORTABILITY = _persistence_runtime["KG_PORTABILITY"]
@@ -1114,6 +1116,7 @@ def _build(config: "Optional[Config]" = None) -> Dict[str, Any]:
         memory_service=MEMORY_SERVICE,
         platform=PLATFORM,
         active_model_getter=lambda: router.current_model_id or "",
+        brain_intelligence=BRAIN_INTELLIGENCE,
     )
     register_interaction_routers(
         app,
@@ -1124,6 +1127,7 @@ def _build(config: "Optional[Config]" = None) -> Dict[str, Any]:
         create_hooks_router=create_hooks_router,
         create_agent_registry_router=create_agent_registry_router,
         create_memory_router=create_memory_router,
+        create_brain_intelligence_router=create_brain_intelligence_router,
     )
 
     from latticeai.api.review_queue import create_review_queue_router

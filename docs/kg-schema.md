@@ -1,6 +1,6 @@
 # Knowledge Graph Schema
 
-Current release: **9.2.0 — Model-Agnostic File Generation**.
+Current release: **9.3.0 — Proactive Brain Intelligence**.
 
 명세 출처: `lattice_ai_full_spec.pptx` 슬라이드 20·21·22
 구현: `kg_schema.py`

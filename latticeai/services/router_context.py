@@ -56,3 +56,4 @@ class InteractionRouterContext:
     memory_service: Any
     platform: Any
     active_model_getter: Any = None
+    brain_intelligence: Any = None

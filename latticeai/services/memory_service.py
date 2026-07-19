@@ -901,15 +901,75 @@ class MemoryService:
                     "matched_terms": matched,
                 })
 
-        # Quality gate: when at least one result carries real lexical evidence,
-        # zero-score rows are noise relative to it and are dropped. When nothing
-        # scores (e.g. tokenization mismatch), everything is kept so the tiers'
-        # own search filters still decide — the gate never empties a recall.
+        # v9.3.0 hybrid recall: blend semantic similarity from the vector
+        # index into the lexical ranking. Vector evidence lets recall find
+        # knowledge phrased differently from the query — the main lexical
+        # blind spot. The vector tier is optional: any failure degrades recall
+        # back to pure lexical instead of breaking it.
+        vector_used = False
+        if self._enable_graph and q and hasattr(self._kg, "vector_search"):
+            try:
+                vector_hits = list(
+                    self._kg.vector_search(q, limit=limit).get("matches", [])
+                )
+                # Workspace scoping is server-owned: the vector index is
+                # global, so scoped calls must filter matches to visible
+                # nodes before they can influence results.
+                if workspace_id is not None and vector_hits and hasattr(self._kg, "filter_scoped_nodes"):
+                    vector_hits = self._kg.filter_scoped_nodes(
+                        vector_hits, {workspace_id}, id_key="node_id"
+                    )
+                vector_used = True
+            except Exception as exc:
+                LOGGER.exception("vector recall failed; falling back to lexical")
+                errors.append({"source": "vector", "detail": str(exc)})
+                vector_hits = []
+            by_node_id = {str(r.get("id")): r for r in results if r.get("source") == "graph"}
+            for hit in vector_hits:
+                node_id = str(hit.get("node_id") or hit.get("id") or "")
+                similarity = round(float(hit.get("score") or 0.0), 4)
+                if similarity <= 0:
+                    continue
+                existing = by_node_id.get(node_id)
+                if existing is not None:
+                    existing["vector_score"] = max(existing.get("vector_score", 0.0), similarity)
+                    existing["score"] = round(
+                        max(existing.get("score", 0.0), 0.4 * existing.get("score", 0.0) + 0.6 * similarity),
+                        4,
+                    )
+                else:
+                    matched = _matched_terms(hit.get("title"), hit.get("summary"))
+                    row = {
+                        "source": "graph",
+                        "id": node_id or hit.get("id"),
+                        "title": hit.get("title") or "node",
+                        "snippet": str(hit.get("summary") or "")[:240],
+                        "kind": hit.get("type") or "node",
+                        "score": round(max(_lexical_score(matched), 0.6 * similarity), 4),
+                        "matched_terms": matched,
+                        "vector_score": similarity,
+                    }
+                    results.append(row)
+                    if node_id:
+                        by_node_id[node_id] = row
+
+        # Quality gate: when at least one result carries real evidence
+        # (lexical term hits, or semantic similarity in hybrid mode),
+        # zero-score rows are noise relative to it and are dropped. When
+        # nothing scores (e.g. tokenization mismatch), everything is kept so
+        # the tiers' own search filters still decide — the gate never empties
+        # a recall.
         candidates = len(results)
         if query_tokens and any(r.get("score", 0) > 0 for r in results):
             results = [r for r in results if r.get("score", 0) > 0]
         for r in results:
             r["confidence"] = "high" if r.get("score", 0) >= 0.65 else "medium" if r.get("score", 0) >= 0.3 else "low"
+            evidence = []
+            if r.get("matched_terms"):
+                evidence.append("lexical")
+            if r.get("vector_score"):
+                evidence.append("semantic")
+            r["evidence_kinds"] = evidence
 
         results.sort(key=lambda r: r.get("score", 0), reverse=True)
         return {
@@ -923,7 +983,7 @@ class MemoryService:
                 "candidates": candidates,
                 "passed": len(results),
                 "filtered": candidates - len(results),
-                "gate": "lexical-evidence/v1",
+                "gate": "hybrid-evidence/v2" if vector_used else "lexical-evidence/v1",
             },
         }
 

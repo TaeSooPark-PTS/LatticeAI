@@ -485,6 +485,8 @@ def register_interaction_routers(
     memory_service: Any = None,
     platform: Any = None,
     active_model_getter: Any = None,
+    create_brain_intelligence_router: Any = None,
+    brain_intelligence: Any = None,
 ) -> tuple[Any, ...]:
     """Register chat/search/tools/hooks/registry/memory routes in order."""
 
@@ -504,6 +506,7 @@ def register_interaction_routers(
         memory_service = interaction_context.memory_service
         platform = interaction_context.platform
         active_model_getter = interaction_context.active_model_getter
+        brain_intelligence = interaction_context.brain_intelligence
 
     return register_routers(
         app,
@@ -560,6 +563,19 @@ def register_interaction_routers(
             gate_write=platform.gate_write,
             append_audit_event=append_audit_event,
             active_model_getter=active_model_getter,
+        ),
+        *(
+            (
+                create_brain_intelligence_router(
+                    service=brain_intelligence,
+                    require_user=require_user,
+                    gate_read=platform.gate_read,
+                    gate_write=platform.gate_write,
+                    append_audit_event=append_audit_event,
+                ),
+            )
+            if create_brain_intelligence_router is not None and brain_intelligence is not None
+            else ()
         ),
     )
 

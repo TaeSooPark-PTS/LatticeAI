@@ -36,6 +36,7 @@ def build_persistence_runtime(
     from latticeai.core.plugins import PluginRegistry
     from latticeai.core.realtime import RealtimeBus
     from latticeai.core.workspace_os import WorkspaceOSStore
+    from latticeai.services.brain_intelligence import BrainIntelligenceService
     from latticeai.services.memory_service import MemoryService
     from latticeai.services.workspace_service import WorkspaceService
 
@@ -56,6 +57,11 @@ def build_persistence_runtime(
         enable_graph=enable_graph,
         history_file=history_file,
         conversation_store=conversations,
+    )
+    brain_intelligence = BrainIntelligenceService(
+        knowledge_graph=knowledge_graph,
+        memory_service=memory_service,
+        enable_graph=enable_graph,
     )
     ingestion_pipeline = IngestionPipeline(
         knowledge_graph,
@@ -81,6 +87,7 @@ def build_persistence_runtime(
         "TEMPLATE_CATALOG": template_catalog,
         "AGENT_REGISTRY": agent_registry,
         "MEMORY_SERVICE": memory_service,
+        "BRAIN_INTELLIGENCE": brain_intelligence,
         "INGESTION_PIPELINE": ingestion_pipeline,
         "DEVICE_IDENTITY": device_identity,
         "KG_PORTABILITY": kg_portability,

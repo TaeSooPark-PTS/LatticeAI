@@ -1,6 +1,6 @@
 # Lattice AI Current Architecture
 
-Current release: **9.2.0 — Model-Agnostic File Generation**.
+Current release: **9.3.0 — Proactive Brain Intelligence**.
 
 Lattice AI is a local-first Digital Brain platform. The current architecture is
 organized around a private Brain, replaceable model runtimes, explicit tool
@@ -91,7 +91,7 @@ sequenceDiagram
 
 ## Product Flow
 
-The 9.2.0 first-run and daily-use flow is:
+The 9.3.0 first-run and daily-use flow is:
 
 1. Wake Brain / login.
 2. Pick owner/workspace context.
@@ -159,7 +159,7 @@ migration safety, and equivalence tests.
 
 ## Runtime Contracts
 
-The 8.0 architecture contract remains active in 9.2.0:
+The 8.0 architecture contract remains active in 9.3.0:
 
 - AgentRuntime has explicit preview/readiness contracts and does not execute
   tools during preview.
@@ -181,7 +181,7 @@ The 8.0 architecture contract remains active in 9.2.0:
 
 SQLite is the live local Brain store. PostgreSQL/pgvector remains optional
 scale/migration tooling and must be explicitly configured; it is not the
-default live KnowledgeGraphStore backend in 9.2.0. Backups and `.latticebrain`
+default live KnowledgeGraphStore backend in 9.3.0. Backups and `.latticebrain`
 archives are user-controlled portability paths.
 
 ## Local-First Boundary
@@ -192,13 +192,13 @@ Docker/Postgres setup, marketplace refresh, and update checks are opt-in paths.
 
 ## Release Artifact Map
 
-9.2.0 exact artifact names:
+9.3.0 exact artifact names:
 
-- `dist/ltcai-9.2.0-py3-none-any.whl`
-- `dist/ltcai-9.2.0.tar.gz`
-- `ltcai-9.2.0.tgz`
-- `dist/ltcai-9.2.0.vsix`
-- `src-tauri/target/release/bundle/dmg/Lattice AI_9.2.0_aarch64.dmg`
+- `dist/ltcai-9.3.0-py3-none-any.whl`
+- `dist/ltcai-9.3.0.tar.gz`
+- `ltcai-9.3.0.tgz`
+- `dist/ltcai-9.3.0.vsix`
+- `src-tauri/target/release/bundle/dmg/Lattice AI_9.3.0_aarch64.dmg`
 
 Do not document or use wildcard artifact upload commands.
 

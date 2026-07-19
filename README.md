@@ -1,10 +1,15 @@
 # Lattice AI
 
-**Lattice AI 9.2.0 is the local-first Digital Brain platform. Model-Agnostic File Generation makes "create a file" work reliably with any loaded LLM: file requests run through a strict extension-aware prompt, robust extraction, per-type validation, one corrective retry, and a deterministic repair fallback, so even small local models (gemma/qwen class) always produce a structurally valid HTML, JSON, or code file.**
+**Lattice AI 9.3.0 is the local-first Digital Brain platform. Proactive Brain Intelligence turns the Brain from a passive store into an active steward of its own knowledge: it scores its health across freshness, connectivity, search readiness, and consistency, surfaces contradictions and stale knowledge, proposes consent-first duplicate consolidation, and upgrades recall to hybrid lexical+semantic evidence.**
 
 **Lattice AI는 모델이 바뀌어도 내 지식과 맥락을 보존하는 로컬 우선 AI 브레인입니다.**
 
-> The 9.2.0 release hardens file creation end to end: chat file requests are
+> The 9.3.0 release wires the previously dormant Brain quality layer into
+> the product: /api/brain health diagnosis with recommended care actions, a
+> proactive insights digest, contradiction surfacing across memories and the
+> graph, dry-run-first duplicate consolidation, and hybrid recall that blends
+> vector similarity with lexical evidence behind an honest quality gate.
+> The 9.2.0 release hardened file creation end to end: chat file requests are
 > routed to a deterministic direct-write path (including type-only requests
 > like "html 파일 만들어줘"), model replies are treated as untrusted content
 > and cleaned of fences, reasoning blocks, and chat framing, and the agent
@@ -92,10 +97,10 @@ You need Lattice AI when:
 The screenshots below are the latest checked-in visual evidence captures. They
 keep the first-run Brain flow, memory graph, source capture, model library,
 system view, admin console, and review center visible as release gates while
-9.2.0 makes file generation model-agnostic: chat file requests always end in
-a structurally valid file regardless of which LLM is loaded, backed by
-extraction, validation, corrective retry, and deterministic repair. The
-captures below are the checked-in 9.2.0 visual release evidence for that
+9.3.0 makes the Brain proactively intelligent: it diagnoses its own health,
+surfaces contradictions and stale knowledge, proposes consent-first
+consolidation, and recalls with hybrid lexical+semantic evidence. The
+captures below are the checked-in 9.3.0 visual release evidence for that
 product flow.
 
 ### 1. Wake Brain
@@ -108,21 +113,21 @@ confirm owner, check the computer, choose the Brain voice.
 Choose the owner of the Brain. The profile is not a SaaS account by default; it
 is the local identity for the knowledge you keep.
 
-![Login](output/release/v9.2.0/screenshots/01-login.png)
+![Login](output/release/v9.3.0/screenshots/01-login.png)
 
 ### 3. Recommended Models
 
 Start with a short list: safest recommendation, faster model, stronger model.
 Advanced details stay available without overwhelming first-time users.
 
-![Recommended Models](output/release/v9.2.0/screenshots/02-recommended-models.png)
+![Recommended Models](output/release/v9.3.0/screenshots/02-recommended-models.png)
 
 ### 4. Install And Load
 
 Download and load only after consent. Lattice explains model size, local
 execution, and network use before work starts.
 
-![Install and Load](output/release/v9.2.0/screenshots/03-install-load-progress.png)
+![Install and Load](output/release/v9.3.0/screenshots/03-install-load-progress.png)
 
 ### 5. Brain Chat
 
@@ -134,14 +139,14 @@ and its visible life signal follow real listening, recall, synthesis, and action
 state. Detailed memory rings, provenance, conversation history, and
 model/runtime proof open as overlays only when requested.
 
-![One-viewport Living Brain Home](output/release/v9.2.0/screenshots/04-brain-chat-home.png)
+![One-viewport Living Brain Home](output/release/v9.3.0/screenshots/04-brain-chat-home.png)
 
 ### 6. Review Center
 
 Automation results are staged for review before they become durable decisions.
 Snooze, unsnooze, run now, approve, and dismiss actions stay explicit.
 
-![Review Center](output/release/v9.2.0/screenshots/12-review-center.png)
+![Review Center](output/release/v9.3.0/screenshots/12-review-center.png)
 
 ## Brain Depths
 
@@ -157,10 +162,10 @@ The user travels inward from everyday memory to deeper structure:
 
 Walkthrough:
 
-![v9.2.0 Living Brain walkthrough](output/release/v9.2.0/gifs/v9.2.0-living-brain-walkthrough.gif)
+![v9.3.0 Living Brain walkthrough](output/release/v9.3.0/gifs/v9.3.0-living-brain-walkthrough.gif)
 
 Screenshot index and capture notes:
-[output/release/v9.2.0/SCREENSHOT_INDEX.md](output/release/v9.2.0/SCREENSHOT_INDEX.md)
+[output/release/v9.3.0/SCREENSHOT_INDEX.md](output/release/v9.3.0/SCREENSHOT_INDEX.md)
 
 ## Install
 
@@ -245,7 +250,7 @@ See [docs/DEVELOPMENT.md](docs/DEVELOPMENT.md) for developer workflow details.
 
 ## Current Release
 
-The current release is **9.2.0 — Model-Agnostic File Generation**:
+The current release is **9.3.0 — Proactive Brain Intelligence**:
 
 - A new `latticeai.core.file_generation` pipeline treats every model reply as
   untrusted content: extension-aware strict prompting, extraction of the real
@@ -264,24 +269,24 @@ The current release is **9.2.0 — Model-Agnostic File Generation**:
 - File writes report whether content was generated cleanly, retried, or
   auto-repaired in the response payload (`generation` metadata).
 
-Expected artifacts for 9.2.0 release must use exact filenames:
+Expected artifacts for 9.3.0 release must use exact filenames:
 
-- `dist/ltcai-9.2.0-py3-none-any.whl`
-- `dist/ltcai-9.2.0.tar.gz`
-- `ltcai-9.2.0.tgz`
-- `dist/ltcai-9.2.0.vsix`
-- `src-tauri/target/release/bundle/dmg/Lattice AI_9.2.0_aarch64.dmg`
+- `dist/ltcai-9.3.0-py3-none-any.whl`
+- `dist/ltcai-9.3.0.tar.gz`
+- `ltcai-9.3.0.tgz`
+- `dist/ltcai-9.3.0.vsix`
+- `src-tauri/target/release/bundle/dmg/Lattice AI_9.3.0_aarch64.dmg`
 
 Do not use wildcard artifact uploads. Package registry publishing remains owner-run.
 
 See [docs/ROADMAP_RECOMMENDATIONS.md](docs/ROADMAP_RECOMMENDATIONS.md) for the
-strategic roadmap slices applied through 9.2.0 and the follow-up tracks.
+strategic roadmap slices applied through 9.3.0 and the follow-up tracks.
 
 ## Known Limitations
 
 - External package registries are owner-published and can lag behind GitHub.
 - PostgreSQL/pgvector is optional scale/migration tooling. SQLite remains the
-  live local Brain store in 9.2.0.
+  live local Brain store in 9.3.0.
 - Docker, model downloads, cloud model calls, Telegram, Brain Network, and update
   checks require explicit user action.
 - Conversation does not fabricate answers when no model is loaded.
@@ -293,6 +298,7 @@ strategic roadmap slices applied through 9.2.0 and the follow-up tracks.
 
 | Version | Theme |
 | --- | --- |
+| 9.3.0 | Proactive Brain Intelligence: the Brain diagnoses its own health, surfaces contradictions and stale knowledge, proposes consent-first duplicate consolidation, and recalls with hybrid lexical+semantic evidence behind an honest quality gate |
 | 9.2.0 | Model-Agnostic File Generation: chat file requests always produce structurally valid files with any LLM via extraction, per-type validation, corrective retry, deterministic repair, inferred file targets, and a fault-tolerant agent JSON loop |
 | 9.1.0 | Code Review Completion & Fail-Closed Runtime: all July 11 review findings closed across fail-closed security, typed runtime/model/chat boundaries, honest frontend failures and tests, and repository hygiene |
 | 9.0.0 | Code Review Closure & Runtime Cleanup: July 8 code-review follow-ups fixed, chat/runtime reliability improved, duplicated utility surfaces consolidated, runtime audit append paths moved to JSONL, and release metadata/artifacts synchronized |

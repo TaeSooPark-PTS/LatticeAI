@@ -1,6 +1,6 @@
 # Privacy
 
-Current release: **9.2.0 — Model-Agnostic File Generation**.
+Current release: **9.3.0 — Proactive Brain Intelligence**.
 
 Lattice AI is local-first. It does not send your prompts, files, graph, or Brain
 archive to Lattice-owned servers by default. Some user-chosen features can

@@ -4,6 +4,32 @@ The top entry is either the current unreleased main-branch work or the current
 release line. Older entries are historical and may describe behavior as it
 existed at that release.
 
+## [9.3.0] - 2026-07-20
+
+### Added
+- Added `latticeai/services/brain_intelligence.py` and the `/api/brain/*`
+  router: health diagnosis (freshness/connectivity/search-readiness/
+  consistency scores with recommended care actions), proactive insights
+  digest, contradiction surfacing (memory pairs, temporal, CONTRADICTS
+  edges), and consent-first duplicate consolidation (dry-run default,
+  audited memory prune on apply, graph never mutated).
+- Wired the previously dormant `lattice_brain.quality` layer
+  (MemoryQualityManager, GraphEdgeQualityManager) into the product.
+- Added the "Brain intelligence check" panel to the Brain surface with full
+  ko/en localization, plus `latticeApi` client methods for the new endpoints.
+- Added `tests/unit/test_brain_intelligence.py` (14 tests).
+
+### Changed
+- `/api/memory/recall` is now hybrid: vector similarity blends with lexical
+  term evidence behind a `hybrid-evidence/v2` quality gate; results carry
+  `vector_score` and `evidence_kinds`; vector matches are workspace-scoped
+  via `filter_scoped_nodes` before they can influence rankings.
+
+### Fixed
+- Recall no longer misses knowledge phrased differently from the query when
+  the vector index is available; vector-tier failures degrade recall to
+  lexical with the error surfaced instead of breaking the endpoint.
+
 ## [9.2.0] - 2026-07-20
 
 ### Added

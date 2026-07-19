@@ -506,6 +506,17 @@
         "title": "ClearRequest",
         "type": "object"
       },
+      "ConsolidateRequest": {
+        "properties": {
+          "apply": {
+            "default": false,
+            "title": "Apply",
+            "type": "boolean"
+          }
+        },
+        "title": "ConsolidateRequest",
+        "type": "object"
+      },
       "CreateReviewItemRequest": {
         "properties": {
           "kind": {
@@ -3825,7 +3836,7 @@
   },
   "info": {
     "title": "Lattice AI Server (local)",
-    "version": "9.2.0"
+    "version": "9.3.0"
   },
   "openapi": "3.1.0",
   "paths": {
@@ -5711,6 +5722,90 @@
           }
         },
         "summary": "Agent Runtime Status"
+      }
+    },
+    "/api/brain/consolidate": {
+      "post": {
+        "operationId": "brain_consolidate_api_brain_consolidate_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ConsolidateRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Brain Consolidate"
+      }
+    },
+    "/api/brain/contradictions": {
+      "get": {
+        "operationId": "brain_contradictions_api_brain_contradictions_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": "Brain Contradictions"
+      }
+    },
+    "/api/brain/health": {
+      "get": {
+        "operationId": "brain_health_api_brain_health_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": "Brain Health"
+      }
+    },
+    "/api/brain/insights": {
+      "get": {
+        "operationId": "brain_insights_api_brain_insights_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": "Brain Insights"
       }
     },
     "/api/brain/storage": {
