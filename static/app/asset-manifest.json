@@ -1,19 +1,35 @@
 {
-  "version": "9.8.0",
+  "version": "9.9.0",
   "generated_at": "vite",
   "entrypoints": {
-    "app": "/static/app/assets/index-CndfILiF.js"
+    "app": "/static/app/assets/index-BjaXCeOZ.js"
   },
   "assets": {
     "../node_modules/@tauri-apps/api/core.js": "/static/app/assets/core-CwxXejkd.js",
-    "_primitives-DxsIXb6G.js": "/static/app/assets/primitives-DxsIXb6G.js",
-    "_textarea-DH7ne8VI.js": "/static/app/assets/textarea-DH7ne8VI.js",
-    "index.html": "/static/app/assets/index-CndfILiF.js",
-    "assets/index-7gY9t9Sd.css": "/static/app/assets/index-7gY9t9Sd.css",
-    "src/pages/Act.tsx": "/static/app/assets/Act-Dd3z8AzF.js",
-    "src/pages/Brain.tsx": "/static/app/assets/Brain-BMkgdWnI.js",
-    "src/pages/Capture.tsx": "/static/app/assets/Capture-D2Aw9gkv.js",
-    "src/pages/Library.tsx": "/static/app/assets/Library-Yreq-KW5.js",
-    "src/pages/System.tsx": "/static/app/assets/System-CXNmmtEo.js"
+    "_BrainSignals-BjRBA18L.js": "/static/app/assets/BrainSignals-BjRBA18L.js",
+    "_LivingBrain-CaU_hCxQ.js": "/static/app/assets/LivingBrain-CaU_hCxQ.js",
+    "_bot-Bp2x1i6F.js": "/static/app/assets/bot-Bp2x1i6F.js",
+    "_circle-check-CyGal42W.js": "/static/app/assets/circle-check-CyGal42W.js",
+    "_cpu-DQFk82hG.js": "/static/app/assets/cpu-DQFk82hG.js",
+    "_download-C70gKQVi.js": "/static/app/assets/download-C70gKQVi.js",
+    "_folder-open-DNGytsVw.js": "/static/app/assets/folder-open-DNGytsVw.js",
+    "_hard-drive-CYo_bEl4.js": "/static/app/assets/hard-drive-CYo_bEl4.js",
+    "_i18n-BBMJshCW.js": "/static/app/assets/i18n-BBMJshCW.js",
+    "_input-ChWD-Fsh.js": "/static/app/assets/input-ChWD-Fsh.js",
+    "_navigation-D9D9_FPC.js": "/static/app/assets/navigation-D9D9_FPC.js",
+    "_network-DzLDGmtV.js": "/static/app/assets/network-DzLDGmtV.js",
+    "_primitives-CmaSAyGG.js": "/static/app/assets/primitives-CmaSAyGG.js",
+    "_sparkles-DXiaM1NS.js": "/static/app/assets/sparkles-DXiaM1NS.js",
+    "_textarea-CV43-o79.js": "/static/app/assets/textarea-CV43-o79.js",
+    "index.html": "/static/app/assets/index-BjaXCeOZ.js",
+    "assets/index-BqRcLZR3.css": "/static/app/assets/index-BqRcLZR3.css",
+    "src/components/ProductFlow.tsx": "/static/app/assets/ProductFlow-Db-1O71-.js",
+    "src/features/brain/BrainHome.tsx": "/static/app/assets/BrainHome-D8e3wQiW.js",
+    "src/features/command/CommandPalette.tsx": "/static/app/assets/CommandPalette-pss56Mg4.js",
+    "src/pages/Act.tsx": "/static/app/assets/Act-CfOPUKPs.js",
+    "src/pages/Brain.tsx": "/static/app/assets/Brain-Cgkh0Hpn.js",
+    "src/pages/Capture.tsx": "/static/app/assets/Capture-CQQYQ1Ga.js",
+    "src/pages/Library.tsx": "/static/app/assets/Library-CoI3xYJk.js",
+    "src/pages/System.tsx": "/static/app/assets/System-Dfocn0zN.js"
   }
 }

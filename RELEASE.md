@@ -7,6 +7,71 @@
 > PyPI / npm / VS Code Marketplace / Open VSX 배포는 아래 수동 절차로만
 > 진행합니다. 태그 생성은 패키지 스토어 publish를 자동으로 트리거하지 않습니다.
 
+## v9.9.0 — Fail-Closed Trust (2026-07-21)
+
+9.9.0 makes the "trustworthy autonomy / honest knowledge" promises enforceable
+by fixing two P0 trust defects, governing every mutating tool, and making
+onboarding honest about unverifiable hardware — plus supply-chain, benchmark,
+and doc-integrity groundwork.
+
+### Change proposals can't overwrite your edits (P0)
+
+- Proposals record `base_sha256` + `base_exists`; approval re-hashes the disk
+  and rejects a changed/deleted/created target with a **409 conflict** instead
+  of overwriting newer content. Writes are atomic (`os.replace`); duplicate or
+  concurrent approvals apply exactly once (replay → 409).
+
+### A confused verifier never reports success (P0)
+
+- Unparseable critic output no longer fabricates PASS/DONE: one strict repair
+  retry, then terminate as the new `NEEDS_REVIEW` state. `DONE` requires a
+  valid PASS **and** execution evidence; the loose `next_state == DONE` success
+  path is removed.
+
+### Every mutating tool is governed (P1)
+
+- `MUTATING_TOOL_INVENTORY` classifies all side-effecting tools; a CI gate
+  fails closed on any ungoverned new mutator. Existing-content overwrites that
+  can't be staged as a proposal (`create_docx/xlsx/pptx/pdf`, `local_write`)
+  are blocked (409) at dispatch; new-file creation is unaffected.
+
+### Honest onboarding (P1)
+
+- Device analysis is `loading | ready | unavailable`; a failed probe shows the
+  cause + retry + "continue without a model" instead of a fabricated
+  `supported: true` card.
+
+### Leaner, audited, honest (P2)
+
+- Initial JS bundle −22% (180.3 → 141.6 KiB gzip) with a CI budget gate.
+- `dependency-audit.yml` (pip-audit + npm audit + CycloneDX SBOM) and
+  `postgres-integration.yml` (scheduled pgvector) workflows; all actions
+  SHA-pinned. `docs/SECURITY_AUDIT.md`, `docs/BENCHMARKS.md` +
+  `scripts/bench_models.py`, `docs/USABILITY_AUDIT.md`, and doc status/link
+  classification. Eval separates correct-completion from safe-termination.
+
+### Verification
+
+- 1287 unit / 39 frontend / integration 3 passed (11 skipped, live PG on
+  schedule) green; agent eval 20/20 @ 1.0; ruff, tsc, frontend lint, i18n,
+  bundle budget, OpenAPI drift, current-release + doc-status gates pass;
+  pip-audit + npm audit 0 vulns.
+
+### Honest limitations
+
+- External pentest and real user interviews were out of autonomous scope
+  (substituted by a static security scan and heuristic usability audit);
+  live PostgreSQL and per-model long benchmarks run via scheduled CI /
+  harness rather than locally.
+
+### Artifacts (exact filenames)
+
+- `dist/ltcai-9.9.0-py3-none-any.whl`
+- `dist/ltcai-9.9.0.tar.gz`
+- `ltcai-9.9.0.tgz`
+- `dist/ltcai-9.9.0.vsix`
+- `src-tauri/target/release/bundle/dmg/Lattice AI_9.9.0_aarch64.dmg`
+
 ## v9.8.0 — Honest Knowledge Pipeline (2026-07-20)
 
 9.8.0 makes the file→folder→web→graph→RAG→automation pipeline honest and

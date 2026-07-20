@@ -5,42 +5,40 @@ import { t } from "@/i18n";
 import { useAppStore } from "@/store/appStore";
 import { ArrowRight, Cpu, Shield, Zap } from "lucide-react";
 import {
-  AnalysisScreen,
   InstallScreen,
   LanguageChooser,
   LoginScreen,
   RecommendationScreen,
-  buildRecommendations,
+  evaluateAnalysis,
   fallbackModel,
+  type AnalysisEndpointStatus,
   type FlowAnalysis,
   type FlowStep,
   type RecommendedModel,
 } from "@/components/onboarding/ProductFlowScreens";
 
-const FLOW_COMPLETE_KEY = "lattice.productFlow.complete";
+import { markProductFlowComplete } from "@/components/productFlowState";
 
-export function readProductFlowComplete() {
-  try {
-    return localStorage.getItem(FLOW_COMPLETE_KEY) === "true";
-  } catch {}
-  return false;
-}
+export { readProductFlowComplete } from "@/components/productFlowState";
 
 export function ProductFlow({ onComplete }: { onComplete: () => void }) {
   const language = useAppStore((state) => state.language);
   const [step, setStep] = React.useState<FlowStep>("wake");
   const [analysis, setAnalysis] = React.useState<FlowAnalysis | null>(null);
-  const [analysisError, setAnalysisError] = React.useState<string | null>(null);
+  // `null` endpoints means the probes are still running (loading). Once set,
+  // the per-endpoint success flags drive an honest analysis outcome so we never
+  // present a fabricated "ready" model on failure or unsupported hardware.
+  const [endpoints, setEndpoints] = React.useState<AnalysisEndpointStatus | null>(null);
+  const [reloadToken, setReloadToken] = React.useState(0);
   const [selected, setSelected] = React.useState<RecommendedModel | null>(null);
 
-  const recommendations = React.useMemo(() => buildRecommendations(analysis), [analysis]);
+  const outcome = React.useMemo(() => evaluateAnalysis({ analysis, endpoints }), [analysis, endpoints]);
 
-  // Run analysis in background immediately to save user wait time
+  // Run analysis in background immediately to save user wait time. `reloadToken`
+  // lets the user retry from the unavailable state.
   React.useEffect(() => {
     let cancelled = false;
     async function runAnalysis() {
-      if (analysis) return;
-      setAnalysisError(null);
       const [setup, recommendationsResult, models, sysinfo] = await Promise.all([
         latticeApi.setupScan(),
         latticeApi.modelRecommendations("local_mlx"),
@@ -54,13 +52,22 @@ export function ProductFlow({ onComplete }: { onComplete: () => void }) {
         models: models.ok ? models.data as Record<string, unknown> : null,
         sysinfo: sysinfo.ok ? sysinfo.data as Record<string, unknown> : null,
       });
-      if (!setup.ok && !recommendationsResult.ok && !models.ok) {
-        setAnalysisError(t(language, "flow.analysis.error"));
-      }
+      setEndpoints({
+        setup: setup.ok,
+        recommendations: recommendationsResult.ok,
+        models: models.ok,
+        sysinfo: sysinfo.ok,
+      });
     }
     void runAnalysis();
     return () => { cancelled = true; };
-  }, [analysis, language]);
+  }, [reloadToken]);
+
+  const retryAnalysis = React.useCallback(() => {
+    setAnalysis(null);
+    setEndpoints(null);
+    setReloadToken((token) => token + 1);
+  }, []);
 
   return (
     <div className="ritual-shell" aria-label={t(language, "flow.shell")}>
@@ -79,9 +86,12 @@ export function ProductFlow({ onComplete }: { onComplete: () => void }) {
 
         {step === "recommend" && (
           <RecommendationScreen
-            recommendations={recommendations}
+            status={outcome.status}
+            reason={outcome.reason}
+            recommendations={outcome.recommendations}
             analysis={analysis}
             onBack={() => setStep("login")}
+            onRetry={retryAnalysis}
             onSkipModel={() => completeFlow(onComplete)}
             onSelect={(model) => {
               setSelected(model);
@@ -92,7 +102,7 @@ export function ProductFlow({ onComplete }: { onComplete: () => void }) {
 
         {step === "install" && (
           <InstallScreen
-            model={selected || recommendations[0] || fallbackModel()}
+            model={selected || outcome.recommendations[0] || fallbackModel()}
             onBack={() => setStep("recommend")}
             onComplete={() => completeFlow(onComplete)}
             onLater={() => completeFlow(onComplete)}
@@ -156,7 +166,7 @@ function WakeBrainScreen({ onWake, onUseExisting }: { onWake: () => void; onUseE
 }
 
 function completeFlow(onComplete: () => void) {
-  try { localStorage.setItem(FLOW_COMPLETE_KEY, "true"); } catch {}
+  markProductFlowComplete();
   onComplete();
 }
 

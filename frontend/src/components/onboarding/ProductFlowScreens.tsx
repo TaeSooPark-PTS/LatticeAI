@@ -6,7 +6,12 @@ export { LoginScreen } from "./LoginScreen";
 export { RecommendationScreen } from "./RecommendationScreen";
 export {
   buildRecommendations,
+  evaluateAnalysis,
   fallbackModel,
+  type AnalysisEndpointStatus,
+  type AnalysisOutcome,
+  type AnalysisStatus,
+  type AnalysisUnavailableReason,
   type FlowAnalysis,
   type FlowStep,
   type RecommendedModel,

@@ -4,6 +4,41 @@ The top entry is either the current unreleased main-branch work or the current
 release line. Older entries are historical and may describe behavior as it
 existed at that release.
 
+## [9.9.0] - 2026-07-21
+
+### Fixed
+- Change proposals record the target's original content hash and existence;
+  approval re-hashes the disk and rejects a modified/deleted/created target
+  with a 409 conflict instead of overwriting newer content. Applies are atomic
+  (`os.replace`) and serialized so duplicate/concurrent approvals apply once.
+- The agent verifier no longer fabricates a PASS on unparseable critic output:
+  one strict repair retry, then the new terminal `NEEDS_REVIEW` state. `DONE`
+  now requires a valid PASS and deterministic execution evidence; the loose
+  `next_state == DONE` success path is removed.
+- Device analysis no longer fabricates a `supported: true` model card on probe
+  failure; the recommendation screen models `loading | ready | unavailable`
+  and offers retry / continue-without-a-model.
+
+### Added
+- `MUTATING_TOOL_INVENTORY` single-source governance classification for every
+  side-effecting tool, a fail-closed CI coverage gate, and dispatch-level
+  blocking (409) of existing-content overwrites that cannot be staged as a
+  reviewable proposal (`create_docx/xlsx/pptx/pdf`, `local_write`).
+- Agent-eval result classification (`correct_completion` / `safe_termination`
+  / `needs_review` / `failed`) and fail-closed verifier scenarios (20 total).
+- CI: `dependency-audit.yml` (pip-audit + npm audit + CycloneDX SBOM) and
+  scheduled `postgres-integration.yml`; all GitHub Actions SHA-pinned; a
+  frontend bundle-budget gate (150 KiB gzip).
+- `docs/SECURITY_AUDIT.md`, `docs/BENCHMARKS.md` + `scripts/bench_models.py`,
+  `docs/USABILITY_AUDIT.md`, `docs/CI_AND_RELEASE_GATES.md`, and a
+  documentation status/link gate (`scripts/check_doc_status.mjs`).
+
+### Changed
+- Initial JS bundle reduced ~22% (180.3 → 141.6 KiB gzip) via lazy-loaded
+  onboarding, Brain home, and command palette.
+- `ARCHITECTURE.md` verified against the real module layout and corrected;
+  stale 9.6-era operational/feature/development docs updated and classified.
+
 ## [9.8.0] - 2026-07-20
 
 ### Added

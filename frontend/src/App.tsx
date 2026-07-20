@@ -1,9 +1,8 @@
 import * as React from "react";
 import { type BrainState } from "@/components/LivingBrain";
-import { ProductFlow, readProductFlowComplete } from "@/components/ProductFlow";
+import { readProductFlowComplete } from "@/components/productFlowState";
 import { useAppStore } from "@/store/appStore";
 import { parseHash, productShellRoutes } from "@/routes";
-import { BrainHome } from "@/features/brain/BrainHome";
 import { AdminConsole } from "@/features/admin/AdminConsole";
 import { WorkspaceProfileSwitcher } from "@/components/WorkspaceProfileSwitcher";
 import { AdminAccessGate } from "@/components/AdminAccessGate";
@@ -14,7 +13,14 @@ import { Brain, Ellipsis, X } from "lucide-react";
 import { navigateHash } from "@/features/brain/navigation";
 import { clamp } from "@/lib/utils";
 import { CoreServiceUnavailableBanner } from "@/components/CoreServiceUnavailableBanner";
-import { CommandPalette } from "@/features/command/CommandPalette";
+import { CommandPaletteHost } from "@/features/command/CommandPaletteHost";
+
+// Heavy first-run onboarding and the conversation home each carry large subtrees
+// (setup flow, chat panels, markdown, memory rings). They are code-split so the
+// initial shell chunk stays small; the natural gates (onboarding vs. returning
+// user) mean only one is ever fetched on first paint.
+const ProductFlow = React.lazy(() => import("@/components/ProductFlow").then((module) => ({ default: module.ProductFlow })));
+const BrainHome = React.lazy(() => import("@/features/brain/BrainHome").then((module) => ({ default: module.BrainHome })));
 
 const ActPage = React.lazy(() => import("@/pages/Act").then((module) => ({ default: module.ActPage })));
 const BrainPage = React.lazy(() => import("@/pages/Brain").then((module) => ({ default: module.BrainPage })));
@@ -36,14 +42,18 @@ export default function App() {
   }, [theme, language]);
 
   if (!flowComplete) {
-    return <ProductFlow onComplete={() => setFlowComplete(true)} />;
+    return (
+      <React.Suspense fallback={<PageLoader language={language} />}>
+        <ProductFlow onComplete={() => setFlowComplete(true)} />
+      </React.Suspense>
+    );
   }
 
   return (
     <div className="brain-space">
       <div className="brain-field" />
       <CoreServiceUnavailableBanner />
-      <CommandPalette language={language} />
+      <CommandPaletteHost language={language} />
       {rawRoute.startsWith("/admin") ? (
         <AdminConsole onBack={() => navigateHash("/brain")} />
       ) : parsed.primary === "act" ? (
@@ -84,7 +94,9 @@ export default function App() {
         </BrainShell>
       ) : (
         <BrainShell active="brain" contentOwnsMain>
-          <BrainHome brainState={brainState} intensity={intensity} onBrainChange={setBrain} />
+          <React.Suspense fallback={<PageLoader language={language} />}>
+            <BrainHome brainState={brainState} intensity={intensity} onBrainChange={setBrain} />
+          </React.Suspense>
         </BrainShell>
       )}
     </div>

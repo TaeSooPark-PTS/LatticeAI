@@ -19,6 +19,7 @@ from typing import Any, Callable, Dict, List, Optional
 from fastapi import APIRouter, HTTPException, Request
 from pydantic import BaseModel, Field
 
+from latticeai.services.change_proposals import ProposalConflictError
 from latticeai.services.review_queue import InvalidReviewTransition, ReviewQueueService
 
 
@@ -151,6 +152,12 @@ def create_review_queue_router(
                     applied = change_proposals.approve_and_apply(
                         item_id, user_email=user, workspace_id=scope
                     )
+                except ProposalConflictError as exc:
+                    # The file drifted since staging (or the proposal was
+                    # already resolved): same 409-on-replay semantics as the
+                    # other illegal transitions, plus a rebase hint so the UI
+                    # can offer "re-stage against the current content".
+                    raise HTTPException(status_code=409, detail=exc.to_detail()) from exc
                 except (KeyError, FileNotFoundError) as exc:
                     raise HTTPException(status_code=404, detail=str(exc)) from exc
                 except ValueError as exc:

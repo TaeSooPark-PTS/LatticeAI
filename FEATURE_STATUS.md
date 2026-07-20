@@ -1,9 +1,12 @@
-# Lattice AI Feature Status (v9.6.0)
+# Lattice AI Feature Status (v9.9.0)
 
-Current release: **9.8.0 — Honest Knowledge Pipeline**.
+> **Status: canonical** — current-truth feature state, kept in sync with the
+> current release.
+
+Current release: **9.9.0 — Fail-Closed Trust**.
 
 This file describes the current product state and known limitations. Historical
-change history is intentionally limited to 8.0.0-9.6.0 in `RELEASE.md` and
+change history is intentionally limited to 8.0.0-9.9.0 in `RELEASE.md` and
 `docs/CHANGELOG.md`.
 
 ## Product Position
@@ -12,11 +15,18 @@ Lattice AI is a local-first Digital Brain. The durable asset is the user's
 Brain: conversations, documents, decisions, memories, provenance, and Knowledge
 Graph structure. Models are replaceable voices over that Brain.
 
-The main product surface is not an admin dashboard. The 9.3.0 line keeps the
+The main product surface is not an admin dashboard. The current line keeps the
 living Brain and composer in the first screen while the Brain becomes an
 active steward of its own knowledge: it diagnoses health, surfaces
 contradictions and stale knowledge, proposes consent-first consolidation, and
-recalls with hybrid lexical+semantic evidence.
+recalls with hybrid lexical+semantic evidence. The 9.8.0 line makes that
+grounding honest: retrieval reports context quality, ingestion scores
+extraction quality behind an observe-mode gate, and vector freshness is tracked
+and reindexable. The 9.9.0 line hardens trust: change proposals are
+conflict-checked against the original content hash and applied atomically,
+every mutating tool is inventory-governed with a fail-closed CI gate, the agent
+verifier fails closed into review rather than reporting false success, and
+device analysis no longer fabricates a "ready" model card on probe failure.
 
 ## Current Feature Status
 
@@ -25,7 +35,11 @@ recalls with hybrid lexical+semantic evidence.
 | Brain Home | Current | Living Brain, composer, and Brain Brief are visible in the first viewport on desktop and mobile. |
 | Automation Intelligence | Current | /api/automation mines recurring user questions (deterministic local clustering, literal-question evidence) and connected knowledge folders into one-click suggestions; installs are idempotent, disabled-draft, review-queue-gated workflows. |
 | Brain Intelligence | Current | The Brain diagnoses itself: /api/brain health scoring (freshness, connectivity, search readiness, consistency), proactive insights digest, contradiction surfacing, and consent-first duplicate consolidation, wired from the lattice_brain quality layer and covered by unit + live-boot tests. |
-| Hybrid Recall | Current | /api/memory/recall blends lexical evidence with vector similarity (hybrid-evidence/v2 gate) with workspace-scoped vector hits and honest lexical fallback when the vector tier fails. |
+| Hybrid Recall | Current | /api/memory/recall and the graph-layer `hybrid_search` blend lexical evidence with vector similarity (hybrid-evidence/v2 gate) with workspace-scoped vector hits and honest lexical fallback when the vector tier fails. Chat consumes a `context_quality` signal so grounding reflects how strong the retrieved context actually is. |
+| Folder Ingestion | Current | `ingest_folder` indexes a chosen local folder with `.latticeignore` filtering; long runs execute as resumable background jobs surfaced through `/api/ingestion/jobs` rather than a single blocking request. |
+| Extraction Quality | Current | Ingestion scores per-source `extraction_quality` and runs an observe-mode `quality_gate` that flags low-quality extractions instead of silently accepting them. |
+| Vector Freshness | Current | `/api/brain/vector-freshness` reports embedded-vs-total content so stale embeddings are visible and reindexing can be triggered on demand. |
+| Change Governance | Current | `core/tool_governor.py` `MUTATING_TOOL_INVENTORY` requires every mutating tool to be governed or explicitly exempt (release-checked). File edits/deletions flow through change proposals that record a base content hash and re-check it for conflicts before applying atomically. `core/agent_eval.py` verifier fails closed to `NEEDS_REVIEW` on unverifiable or failing outcomes. |
 | Brain Brief | Current | MemoryService turns real workspace, conversation, graph, vector, and source-health signals into focus, evidence, and next actions. |
 | Conversation | Current | Chat is the primary action. It refuses to fake model output when no model is loaded, surfaces memory proof when context exists, and routes explicit file actions into the governed workspace file tool. |
 | Knowledge Graph | Current | Memory graph exploration, graph read compatibility, provenance-aware retrieval, fail-closed workspace reads/traversal, explicit legacy-global compatibility, workspace-safe duplicate content, and KG v2 equivalence gates remain active. |
@@ -41,7 +55,7 @@ recalls with hybrid lexical+semantic evidence.
 | Frontend Reliability | Current | Core API failures render unavailable states, successful callbacks require successful results, and Vitest/visual tests protect result, proof, conversation, primitive, i18n, and service-error behavior. |
 | Trusted Agent Loop | Current | LoopTrace observability + `loop` API payload, python-literal weak-model repair with escalating corrections, deterministic agent-eval CI gate, and proposal-first change governance (`/api/proposals`, 변경 제안 panel) where edits/deletions of existing files are reviewed before applying. |
 | Command Center | Current | `/api/command/briefing` + `/api/command/search` aggregate knowledge, conversations, automations, review, health, and suggestions read-only and workspace-scoped; surfaced as the Cmd+K palette and Today's Briefing panel. |
-| Release Assets | Current | 9.6.0 package metadata, static app, release notes, current documentation, and exact artifact names are aligned. |
+| Release Assets | Current | 9.9.0 package metadata, static app, release notes, current documentation, and exact artifact names are aligned. |
 
 ## Known Limitations
 
@@ -64,6 +78,9 @@ recalls with hybrid lexical+semantic evidence.
 
 The Git tree keeps release history from:
 
+- 9.9.0
+- 9.8.0
+- 9.7.0
 - 9.6.0
 - 9.5.0
 - 9.4.0

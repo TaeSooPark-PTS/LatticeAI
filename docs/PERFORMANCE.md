@@ -1,5 +1,13 @@
 # Knowledge Graph Performance Baseline
 
+> **Status: reference** — a synthetic regression baseline, not a
+> current-release measurement. The numbers below were last captured on the
+> v9.6.0 working tree (see provenance line) and are carried forward as the
+> comparison reference. The 9.7.0-9.8.0 line added graph-layer paths
+> (`hybrid_search`, vector freshness, extraction-quality scoring), so
+> regenerate with `scripts/profile_kg.py` on the current tree before treating
+> these as 9.8.0 numbers.
+
 Synthetic performance and memory baseline for `KnowledgeGraphStore`
 (`lattice_brain/graph/`). Measured with `scripts/profile_kg.py`.
 
@@ -34,7 +42,7 @@ Run it:
 .venv/bin/python scripts/profile_kg.py --json          # machine-readable
 ```
 
-## Measured baseline (2026-07-20, v9.6.0 working tree)
+## Measured baseline (last captured on the v9.6.0 working tree)
 
 Apple Silicon (darwin), Python 3.x from `.venv`, SQLite with FTS5 trigram
 available, tracemalloc enabled.

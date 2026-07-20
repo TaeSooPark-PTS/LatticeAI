@@ -49,8 +49,8 @@ function useDebounced(value: string, delayMs: number) {
   return debounced;
 }
 
-export function CommandPalette({ language }: { language: Language }) {
-  const [open, setOpen] = React.useState(false);
+export function CommandPalette({ language, initialOpen = false }: { language: Language; initialOpen?: boolean }) {
+  const [open, setOpen] = React.useState(initialOpen);
   const [query, setQuery] = React.useState("");
   const [activeIndex, setActiveIndex] = React.useState(0);
   const inputRef = React.useRef<HTMLInputElement>(null);

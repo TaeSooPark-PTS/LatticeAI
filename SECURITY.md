@@ -1,15 +1,19 @@
 # Security Policy
 
-Current release: **9.8.0 — Honest Knowledge Pipeline**.
+> **Status: canonical** — current security model, kept in sync with the current
+> release.
+
+Current release: **9.9.0 — Fail-Closed Trust**.
 
 ## Supported Versions
 
-The public Git tree keeps release history from 8.0.0 through 9.8.0. Security
+The public Git tree keeps release history from 8.0.0 through 9.9.0. Security
 support follows that same product era.
 
 | Version | Support |
 | --- | --- |
-| 9.8.x (latest) | Supported |
+| 9.9.x (latest) | Supported |
+| 9.8.x | Supported |
 | 9.7.x | Supported |
 | 9.6.x | Supported |
 | 9.5.x | Supported |
@@ -47,7 +51,7 @@ The expected first response target is 48 hours.
 
 ## Security Model
 
-Lattice AI v9.6.0 is a local-first Digital Brain. It keeps user knowledge,
+Lattice AI v9.9.0 is a local-first Digital Brain. It keeps user knowledge,
 conversation context, Knowledge Graph data, and archives local by default while
 making external paths explicit.
 
@@ -95,6 +99,15 @@ making external paths explicit.
 
 - AgentRuntime preview/readiness does not execute tools and non-auto-approved
   plans require explicit human approval.
+- Mutating tools are enumerated in a governed inventory
+  (`MUTATING_TOOL_INVENTORY`); each is either proposal-governed or explicitly
+  exempt, and that coverage is release-checked so a new mutating tool cannot
+  silently bypass governance. Edits and deletions of existing files run through
+  change proposals that record a base content hash and re-verify it before
+  applying atomically, so a conflicting concurrent edit fails closed instead of
+  being overwritten.
+- The agent-eval verifier fails closed: unverifiable or failing outcomes resolve
+  to a review state rather than being reported as success.
 - ToolRegistry owns dispatch, permissions, diagnostics, direct HTTP/MCP policy
   gates, and MCP install state.
 - Shared agent/plugin registries and graph curation are administrator-managed;

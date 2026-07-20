@@ -12,19 +12,20 @@ chat, run model workflows, and trigger coding actions from the editor.
 
 ## Current Release
 
-**9.8.0 — Honest Knowledge Pipeline.** The extension follows
+**9.9.0 — Fail-Closed Trust.** The extension follows
 the main app positioning: Lattice AI is a local-first Digital Brain, not just a
 model launcher or editor chat panel. It connects editor actions to the same
 durable Brain context, explicit consent gates, replaceable model workflow, and
-separated Admin surface used by the desktop app. The v9.8.0 line makes the
-knowledge pipeline honest end to end: every file/folder/web ingest reports an
-extraction-quality score, background folder ingestion gains progress/resume
-and a jobs API, chat answers carry a context-quality signal when graph
-context is limited, and vector-index freshness becomes visible in the UI
-— while preserving the 9.7.0 hybrid graph retrieval, 9.3.0 proactive Brain intelligence, 9.2.0
-model-agnostic file generation, fail-closed boundaries, typed runtime and
-model state, exact release artifacts, and the visible VS Code sync status
-and runtime architecture contract.
+separated Admin surface used by the desktop app. The v9.9.0 line hardens
+trust: change proposals record the original content hash and refuse to apply
+over a file you edited in the meantime (atomic apply, exactly-once approval);
+a verifier that can't be parsed ends as needs-review instead of a fabricated
+success; every mutating tool is inventory-governed with a fail-closed CI gate;
+and device analysis no longer fabricates a "ready" model card on probe failure
+— while preserving the 9.8.0 honest knowledge pipeline, 9.7.0 hybrid graph
+retrieval, model-agnostic file generation, fail-closed boundaries, typed
+runtime and model state, exact release artifacts, and the visible VS Code sync
+status and runtime architecture contract.
 
 ## Quick Start
 

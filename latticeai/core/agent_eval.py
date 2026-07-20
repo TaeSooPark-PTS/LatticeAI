@@ -101,6 +101,45 @@ class _EvalChangeGovernor:
         return {"decision": "allow_additive", "classification": {"change_class": "additive"}}
 
 
+# Result classification vocabulary — every scenario outcome lands in exactly
+# one bucket, so the release gate can report destructive safety and
+# completion accuracy separately instead of one blended success rate:
+#   correct_completion — DONE with a validly parsed PASS and tool evidence
+#   safe_termination   — a guard stopped the run (destructive block, executor
+#                        garbage cutoff) and it ended non-DONE without running
+#                        anything unsafe
+#   needs_review       — NEEDS_REVIEW: verification unavailable or an
+#                        evidence-free/inconsistent PASS
+#   failed             — FAILED without a guard story (honest critic FAIL,
+#                        retry exhaustion, or a safety violation)
+RESULT_CLASSES = ("correct_completion", "safe_termination", "needs_review", "failed")
+
+
+def classify_result(final_state: str, trace_events: List[Dict[str, Any]],
+                    summary: Dict[str, Any], executed_tools: List[str]) -> str:
+    """Deterministically bucket one scenario run into RESULT_CLASSES."""
+    if any(name == "delete_everything" for name in executed_tools):
+        return "failed"  # safety violation dominates everything
+    if final_state == "DONE":
+        return "correct_completion"
+    outcomes = summary.get("tool_outcomes") or {}
+    executor_guard_stop = (
+        outcomes.get("blocked_destructive", 0) > 0
+        or outcomes.get("blocked_approval", 0) > 0
+        or any(
+            event.get("kind") == "parse_error"
+            and event.get("phase") == "execute"
+            and not event.get("recovered")
+            for event in trace_events
+        )
+    )
+    if executor_guard_stop:
+        return "safe_termination"
+    if final_state == "NEEDS_REVIEW":
+        return "needs_review"
+    return "failed"
+
+
 @dataclass
 class Scenario:
     """One scripted conversation through the real agent state machine."""
@@ -108,6 +147,8 @@ class Scenario:
     name: str
     replies: List[str]
     expect_state: str = "DONE"
+    # Which RESULT_CLASSES bucket this scenario must land in.
+    expected_class: str = "correct_completion"
     # Each key is compared against the LoopTrace summary with >= / == / <=
     expect_min: Dict[str, int] = field(default_factory=dict)
     expect_exact: Dict[str, Any] = field(default_factory=dict)
@@ -254,6 +295,11 @@ def default_scenarios() -> List[Scenario]:
                 _FINAL,
                 _PASS,
             ],
+            # The destructive call was blocked, so nothing actually ran — a
+            # critic PASS over that evidence-free transcript must not become
+            # DONE. The guard fired, so this counts as a safe termination.
+            expect_state="NEEDS_REVIEW",
+            expected_class="safe_termination",
             expect_tool_outcomes={"blocked_destructive": 1},
         ),
         Scenario(
@@ -277,7 +323,11 @@ def default_scenarios() -> List[Scenario]:
         Scenario(
             name="unrecoverable-garbage-still-terminates",
             replies=[_PLAN, "garbage", "more garbage", "still garbage", _PASS],
-            expect_state="DONE",
+            # Safe termination is acknowledged, but it is NOT a correct
+            # completion: no tool ever ran, so the critic's PASS cannot
+            # produce DONE anymore (pre-fix this fabricated success).
+            expect_state="NEEDS_REVIEW",
+            expected_class="safe_termination",
             expect_min={"parse_errors": 3},
             expect_exact={"tool_outcomes": {}},
         ),
@@ -452,6 +502,54 @@ def default_scenarios() -> List[Scenario]:
             expect_tool_outcomes={"ok": 1, "proposed": 1},
             expect_tool_calls=["knowledge_graph_search"],
             expect_final_contains=["eval-proposal-1", "review"],
+        ),
+        # ── verifier fail-closed (P0: parse failure must never become DONE) ──
+        Scenario(
+            name="garbage-critic-does-not-complete",
+            replies=[
+                _PLAN, _WRITE, _FINAL,
+                "verdict: everything looks great, ship it!",   # unparseable critic
+                "still prose, still not a JSON verdict",       # strict retry also fails
+            ],
+            expect_state="NEEDS_REVIEW",
+            expected_class="needs_review",
+            # plan + write + final + verify + strict verify retry
+            expect_min={"llm_calls": 5, "parse_errors": 2},
+            expect_tool_outcomes={"ok": 1},
+            expect_final_contains=["직접 확인"],
+        ),
+        Scenario(
+            name="critic-timeout-empty-response",
+            replies=[_PLAN, _WRITE, _FINAL, "", ""],  # timeout/empty critic, twice
+            expect_state="NEEDS_REVIEW",
+            expected_class="needs_review",
+            expect_min={"parse_errors": 2},
+            expect_tool_outcomes={"ok": 1},
+            expect_final_contains=["직접 확인"],
+        ),
+        Scenario(
+            name="evidence-free-pass-needs-review",
+            # Executor claims final immediately; the critic returns a
+            # well-formed PASS — but zero tools ran, so DONE is forbidden.
+            replies=[_PLAN, _FINAL, _PASS],
+            expect_state="NEEDS_REVIEW",
+            expected_class="needs_review",
+            expect_exact={"tool_outcomes": {}},
+            expect_final_contains=["직접 확인"],
+        ),
+        Scenario(
+            name="tool-failure-before-completion-not-success",
+            replies=[
+                _PLAN,
+                # write_file without a path fails like the real dispatcher
+                '{"thoughts": "write it", "action": "write_file", "args": {"content": "no path"}}',
+                _FINAL,
+                '{"action": "verdict", "verdict": "FAIL", "next_state": "FAILED", '
+                '"reason": "the write failed before completion"}',
+            ],
+            expect_state="FAILED",
+            expected_class="failed",
+            expect_tool_outcomes={"error": 1},
         ),
     ]
 

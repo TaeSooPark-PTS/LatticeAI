@@ -1,6 +1,13 @@
 # Lattice AI — 명세(PPT) vs 구현(repo) 매핑
 
-`lattice_ai_full_spec.pptx` 의 사양과 현재 리포지토리 구현 사이의 정렬 상태를 한 장으로 정리한다.
+> **Status: historical** — 초기 PPT 명세 대비 갭을 정리한 스냅샷 문서다. 이후
+> 여러 갭이 해소되었다(예: `src-tauri/`의 Tauri 데스크탑 셸, SQLite 라이브
+> 스토어 + 임베딩/벡터 검색, 하이브리드 리트리벌 등). 현행 아키텍처의
+> 단일 진실은 [`../ARCHITECTURE.md`](../ARCHITECTURE.md)와
+> [`../FEATURE_STATUS.md`](../FEATURE_STATUS.md)이며, 아래 갭 서술은
+> 작성 시점 기준으로 보존한다.
+
+`lattice_ai_full_spec.pptx` 의 사양과 작성 시점 리포지토리 구현 사이의 정렬 상태를 한 장으로 정리한다.
 각 항목은 **목표(PPT) → 현재(repo) → 갭 → 보강 위치** 순으로 본다.
 
 ---

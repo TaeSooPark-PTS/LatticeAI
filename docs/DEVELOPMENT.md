@@ -1,10 +1,13 @@
 # Lattice AI Development
 
-Current release: **9.8.0 — Honest Knowledge Pipeline**.
+> **Status: canonical** — current contributor guidance, kept in sync with the
+> current release.
+
+Current release: **9.9.0 — Fail-Closed Trust**.
 
 This document is for contributors working on the local-first Digital Brain
 codebase. Product positioning and quick start stay in `README.md`; release
-history is intentionally limited to 8.0.0-9.6.0 in `docs/CHANGELOG.md` and
+history is intentionally limited to 8.0.0-9.9.0 in `docs/CHANGELOG.md` and
 `RELEASE.md`.
 
 ## Product Contract
@@ -153,10 +156,10 @@ For user-facing, API, runtime, release, or packaging changes, check:
 Release/publish examples must use exact target-version filenames. Do not
 document wildcard artifact upload commands.
 
-For 9.6.0 release work, exact artifacts are:
+For 9.9.0 release work, exact artifacts are:
 
-- `dist/ltcai-9.6.0-py3-none-any.whl`
-- `dist/ltcai-9.6.0.tar.gz`
-- `ltcai-9.6.0.tgz`
-- `dist/ltcai-9.6.0.vsix`
-- `src-tauri/target/release/bundle/dmg/Lattice AI_9.6.0_aarch64.dmg`
+- `dist/ltcai-9.9.0-py3-none-any.whl`
+- `dist/ltcai-9.9.0.tar.gz`
+- `ltcai-9.9.0.tgz`
+- `dist/ltcai-9.9.0.vsix`
+- `src-tauri/target/release/bundle/dmg/Lattice AI_9.9.0_aarch64.dmg`

@@ -1,13 +1,18 @@
-# Lattice AI — Operations Guide (v9.6.0)
+# Lattice AI — Operations Guide (v9.9.0)
+
+> **Status: canonical** — kept in sync with the current release. Storage layout
+> below reflects the SQLite live Brain store and workspace scoping, not the
+> earlier Markdown-per-node graph.
 
 ## 1. 데이터 파일 위치
 
 | 파일 | 용도 |
 |------|------|
 | `~/.ltcai/users.json` | 사용자 계정 (scrypt 해시 저장) |
-| `~/.ltcai/history.json` | 대화 히스토리 |
+| `~/.ltcai/knowledge_graph.sqlite` | Brain 라이브 스토어 — Knowledge Graph 노드/엣지/청크, 대화 히스토리, 프로비넌스 (workspace_id 스코프) |
+| `~/.ltcai/knowledge_graph_blobs/` | 업로드 원본/blob 저장소 |
 | `~/.ltcai/audit.json` | 감사 로그 (agent 실행, 사용자 변경 등) |
-| `~/.ltcai/brain/` | Knowledge Graph 노드 (Markdown) |
+| `~/.ltcai/chat_history.json` | 레거시 대화 히스토리 — 최초 1회 SQLite로 idempotent 임포트 후 미사용 |
 | `~/ltcai-agent/` | Agent workspace (agent가 생성한 파일) |
 
 ## 2. 백업 및 복구
@@ -112,8 +117,10 @@ pip install --upgrade ltcai
 
 ### 6.3 데이터 마이그레이션 주의사항
 - `users.json` 스키마 변경 시: 서버가 자동으로 누락 필드를 기본값으로 보완합니다.
-- `history.json` 스키마 변경 시: 하위 호환성 유지. 구버전 레코드는 무시됩니다.
-- `brain/` Knowledge Graph: Markdown 파일 기반이므로 별도 마이그레이션 없음.
+- 대화 히스토리: SQLite 라이브 스토어에 저장됩니다. 레거시 `chat_history.json`은
+  최초 실행 시 1회 idempotent 임포트된 뒤 사용되지 않습니다.
+- `knowledge_graph.sqlite` Knowledge Graph: SQLite 스키마 마이그레이션은 부팅 시
+  적용되며 읽기 호환성/롤백/동등성 테스트로 보호됩니다.
 
 ## 7. 공개 서버 체크리스트
 
@@ -135,7 +142,9 @@ pip install --upgrade ltcai
 - 대화 히스토리는 `user_email` 필드로 필터링됩니다.
 - Agent workspace (`~/ltcai-agent/`)는 현재 단일 공유 디렉토리입니다.  
   멀티 유저 환경에서는 `~/ltcai-agent/<email>/` 구조로 분리를 권장합니다.
-- Knowledge Graph (`brain/`) 역시 단일 공유 공간입니다.
+- Knowledge Graph는 `workspace_id`로 스코프됩니다. 알 수 없는 스코프의 노드는
+  기본 비공개(fail-closed)이며, 레거시 글로벌 읽기는 명시적 호환성 옵트인이
+  있을 때만 허용됩니다.
 
 ## 9. 서버 시작 / 종료
 

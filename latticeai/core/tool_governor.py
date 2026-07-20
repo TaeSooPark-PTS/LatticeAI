@@ -44,6 +44,63 @@ _ADDITIVE_TOOLS = frozenset({
     "knowledge_graph_ingest",
 })
 
+# ── Mutating-tool inventory (single source of truth) ─────────────────────
+# Every tool with a side effect is classified into exactly one category so a
+# CI check can prove nothing slips through ungoverned. Categories:
+#   new_artifact         — only ever creates new content (additive)
+#   existing_content_update — can rewrite content that already exists
+#   delete               — removes existing content
+#   external_side_effect — acts outside the Brain (shell, deploy, desktop, net)
+#   internal_state       — agent-internal bookkeeping, not user content
+NEW_ARTIFACT = "new_artifact"
+EXISTING_CONTENT_UPDATE = "existing_content_update"
+DELETE = "delete"
+EXTERNAL_SIDE_EFFECT = "external_side_effect"
+INTERNAL_STATE = "internal_state"
+
+MUTATING_TOOL_INVENTORY: Dict[str, str] = {
+    # text files — fully proposal-capable (staged + applied as reviewed)
+    "write_file": EXISTING_CONTENT_UPDATE,
+    "edit_file": EXISTING_CONTENT_UPDATE,
+    # binary/document creators — can overwrite an existing file, but their
+    # output cannot be staged as a text diff, so an overwrite is fail-closed.
+    "create_docx": EXISTING_CONTENT_UPDATE,
+    "create_xlsx": EXISTING_CONTENT_UPDATE,
+    "create_pptx": EXISTING_CONTENT_UPDATE,
+    "create_pdf": EXISTING_CONTENT_UPDATE,
+    # home-sandbox write — same story: overwrite is fail-closed until the
+    # proposal service learns to stage home-sandbox paths.
+    "local_write": EXISTING_CONTENT_UPDATE,
+    # additive-only writes
+    "create_web_project": NEW_ARTIFACT,
+    "knowledge_save": NEW_ARTIFACT,
+    "obsidian_save": NEW_ARTIFACT,
+    "knowledge_graph_ingest": NEW_ARTIFACT,
+    # agent-internal state
+    "todo_write": INTERNAL_STATE,
+    # deletions
+    "delete_file": DELETE,
+    "remove_file": DELETE,
+    "clear_history": DELETE,
+    # external side effects (approval-gated, never proposal-based)
+    "run_command": EXTERNAL_SIDE_EFFECT,
+    "build_project": EXTERNAL_SIDE_EFFECT,
+    "deploy_project": EXTERNAL_SIDE_EFFECT,
+    "computer_click": EXTERNAL_SIDE_EFFECT,
+    "computer_type": EXTERNAL_SIDE_EFFECT,
+    "computer_key": EXTERNAL_SIDE_EFFECT,
+    "computer_scroll": EXTERNAL_SIDE_EFFECT,
+    "computer_drag": EXTERNAL_SIDE_EFFECT,
+    "computer_move": EXTERNAL_SIDE_EFFECT,
+    "computer_open_app": EXTERNAL_SIDE_EFFECT,
+    "computer_open_url": EXTERNAL_SIDE_EFFECT,
+}
+
+# Tools whose existing-content update the ChangeProposalService can actually
+# stage AND apply as a reviewed proposal. A tool that is proposal_required but
+# NOT here is fail-closed (blocked) rather than silently applied.
+PROPOSAL_CAPABLE_TOOLS = frozenset({"write_file", "edit_file"})
+
 
 def classify_tool_call(
     name: str,
@@ -83,12 +140,38 @@ def classify_tool_call(
         change = CHANGE_ADDITIVE
         reason = "write tool without an existing target"
 
+    proposal_required = change in {CHANGE_MUTATION, CHANGE_DESTRUCTIVE}
+    proposal_supported = name in PROPOSAL_CAPABLE_TOOLS
+    # A change that must be reviewed as a proposal but that we cannot stage is
+    # fail-closed: callers must block it instead of applying it silently.
+    fail_closed = proposal_required and not proposal_supported
+
     return {
         "tool": name,
         "change_class": change,
-        "proposal_required": change in {CHANGE_MUTATION, CHANGE_DESTRUCTIVE},
+        "proposal_required": proposal_required,
+        "proposal_supported": proposal_supported,
+        "fail_closed": fail_closed,
         "reason": reason,
     }
+
+
+def assert_governance_coverage(tool_names: "Any") -> None:
+    """Raise if any side-effecting registry tool is not classified.
+
+    A new mutating tool added to the registry without an inventory entry makes
+    this raise, so CI fails closed instead of shipping an ungoverned mutator.
+    Read-only tools (risk ``read``) are intentionally exempt.
+    """
+    missing = [
+        name for name in tool_names
+        if name not in MUTATING_TOOL_INVENTORY
+    ]
+    if missing:
+        raise ValueError(
+            "ungoverned mutating tools (add to MUTATING_TOOL_INVENTORY): "
+            + ", ".join(sorted(missing))
+        )
 
 
 __all__ = [
@@ -97,5 +180,13 @@ __all__ = [
     "CHANGE_MUTATION",
     "CHANGE_DESTRUCTIVE",
     "CHANGE_EXEC",
+    "NEW_ARTIFACT",
+    "EXISTING_CONTENT_UPDATE",
+    "DELETE",
+    "EXTERNAL_SIDE_EFFECT",
+    "INTERNAL_STATE",
+    "MUTATING_TOOL_INVENTORY",
+    "PROPOSAL_CAPABLE_TOOLS",
     "classify_tool_call",
+    "assert_governance_coverage",
 ]

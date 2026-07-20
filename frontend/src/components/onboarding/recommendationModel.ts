@@ -65,6 +65,69 @@ export function buildRecommendations(analysis: FlowAnalysis | null): Recommended
   ].filter(Boolean) as RecommendedModel[];
 }
 
+/**
+ * Explicit analysis lifecycle for the setup flow.
+ * - `loading`: probes are still running; show a neutral checking state.
+ * - `ready`: at least one genuinely supported model was derived from live data.
+ * - `unavailable`: the environment could not be read, or nothing runs here.
+ * There is deliberately no state that fabricates a "ready" model on failure.
+ */
+export type AnalysisStatus = "loading" | "ready" | "unavailable";
+
+/**
+ * Why the analysis is unavailable.
+ * - `probe_failed`: the model-bearing endpoints did not respond, so we cannot
+ *   make any honest claim about this computer.
+ * - `no_supported_model`: the probes responded, but no model can run here
+ *   (empty catalog / MLX-unsupported hardware / all entries unsupported).
+ */
+export type AnalysisUnavailableReason = "probe_failed" | "no_supported_model";
+
+/** Success flag for each analysis probe. */
+export type AnalysisEndpointStatus = {
+  setup: boolean;
+  recommendations: boolean;
+  models: boolean;
+  sysinfo: boolean;
+};
+
+export type AnalysisOutcome = {
+  status: AnalysisStatus;
+  /** Only ever contains supported models; empty unless status is `ready`. */
+  recommendations: RecommendedModel[];
+  reason: AnalysisUnavailableReason | null;
+  failedEndpoints: string[];
+};
+
+/**
+ * Derive an honest analysis outcome from the raw probe payloads and their
+ * per-endpoint success flags. This never returns a supported fallback: when the
+ * environment cannot be read or nothing runs locally, the status is
+ * `unavailable` and `recommendations` is empty so the UI cannot mislead the
+ * user into thinking a model is ready on their device.
+ */
+export function evaluateAnalysis(input: {
+  analysis: FlowAnalysis | null;
+  endpoints: AnalysisEndpointStatus | null;
+}): AnalysisOutcome {
+  const { analysis, endpoints } = input;
+  if (!endpoints) {
+    return { status: "loading", recommendations: [], reason: null, failedEndpoints: [] };
+  }
+  const failedEndpoints = (Object.keys(endpoints) as (keyof AnalysisEndpointStatus)[])
+    .filter((key) => !endpoints[key]);
+  // Without the model-bearing endpoints we cannot claim anything is supported.
+  const modelDataOk = endpoints.recommendations || endpoints.models;
+  if (!modelDataOk) {
+    return { status: "unavailable", recommendations: [], reason: "probe_failed", failedEndpoints };
+  }
+  const supported = buildRecommendations(analysis).filter((item) => item.supported);
+  if (!supported.length) {
+    return { status: "unavailable", recommendations: [], reason: "no_supported_model", failedEndpoints };
+  }
+  return { status: "ready", recommendations: supported, reason: null, failedEndpoints };
+}
+
 export function fallbackModel(): RecommendedModel {
   return {
     id: "mlx-community/Qwen3-VL-8B-Instruct-4bit",

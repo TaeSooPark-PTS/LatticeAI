@@ -1,24 +1,90 @@
 import { Button } from "@/components/ui/button";
 import { t, type Language } from "@/i18n";
 import { useAppStore } from "@/store/appStore";
-import { fallbackModel, type RecommendedModel, asRecord, type FlowAnalysis } from "./recommendationModel";
-import { ArrowRight, Gauge, Star, Zap } from "lucide-react";
+import {
+  type AnalysisStatus,
+  type AnalysisUnavailableReason,
+  type RecommendedModel,
+  asRecord,
+  type FlowAnalysis,
+} from "./recommendationModel";
+import { ArrowRight, Gauge, RefreshCw, Star, TriangleAlert, Zap } from "lucide-react";
 
 export function RecommendationScreen({
+  status,
+  reason,
   recommendations,
   analysis,
   onBack,
+  onRetry,
   onSkipModel,
   onSelect,
 }: {
+  status: AnalysisStatus;
+  reason: AnalysisUnavailableReason | null;
   recommendations: RecommendedModel[];
   analysis: FlowAnalysis | null;
   onBack: () => void;
+  onRetry: () => void;
   onSkipModel: () => void;
   onSelect: (model: RecommendedModel) => void;
 }) {
   const language = useAppStore((state) => state.language);
-  const items = recommendations.length ? recommendations : [fallbackModel()];
+
+  if (status === "loading") {
+    return (
+      <div>
+        <div className="ritual-title">{t(language, "flow.recommend.title")}</div>
+        <div className="ritual-subtitle">{t(language, "flow.recommend.body")}</div>
+        <div className="ritual-scan-banner is-loading" role="status">
+          <span className="ritual-scan-dot pulsing" />
+          <span>{t(language, "flow.recommend.loading")}</span>
+        </div>
+        <div className="ritual-action-row">
+          <Button variant="ghost" onClick={onBack}>{t(language, "flow.recommend.back")}</Button>
+          <Button variant="outline" onClick={onSkipModel}>{t(language, "flow.recommend.skip")}</Button>
+        </div>
+      </div>
+    );
+  }
+
+  if (status === "unavailable") {
+    const detailKey = reason === "no_supported_model"
+      ? "flow.recommend.unavailable.empty"
+      : "flow.recommend.unavailable.probe";
+    return (
+      <div>
+        <div className="ritual-title">{t(language, "flow.recommend.title")}</div>
+        <section
+          className="ritual-card ritual-error-card ritual-unavailable-card"
+          role="alert"
+          aria-label={t(language, "flow.recommend.unavailable.aria")}
+        >
+          <div className="ritual-inline-row">
+            <TriangleAlert className="ritual-core-icon" aria-hidden="true" />
+            <div>
+              <div className="ritual-strong-text">{t(language, "flow.recommend.unavailable.title")}</div>
+              <div className="ritual-muted-text">{t(language, detailKey)}</div>
+            </div>
+          </div>
+        </section>
+        <div className="ritual-button-row ritual-button-row-primary">
+          <button type="button" className="ritual-full-button ritual-full-button-primary" onClick={onRetry}>
+            <RefreshCw size={16} /> {t(language, "flow.recommend.unavailable.retry")}
+          </button>
+          <button type="button" className="ritual-secondary-button" onClick={onSkipModel}>
+            {t(language, "flow.recommend.skip")}
+          </button>
+        </div>
+        <div className="ritual-action-row">
+          <Button variant="ghost" onClick={onBack}>{t(language, "flow.recommend.back")}</Button>
+          <div className="ritual-muted-hint">{t(language, "flow.recommend.unavailable.hint")}</div>
+        </div>
+      </div>
+    );
+  }
+
+  const items = recommendations;
 
   function renderEnvironmentCheck(analysis: FlowAnalysis | null, language: Language) {
     if (!analysis) {

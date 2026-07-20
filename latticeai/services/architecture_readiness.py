@@ -17,7 +17,7 @@ from typing import Any, Dict, List
 from latticeai.core.legacy_compatibility import legacy_shim_report
 
 
-ARCHITECTURE_VERSION_TARGET = "9.8.0"
+ARCHITECTURE_VERSION_TARGET = "9.9.0"
 
 PREFERRED_REFACTORING_ORDER = [
     "agent-runtime",

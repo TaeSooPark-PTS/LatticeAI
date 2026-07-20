@@ -21,9 +21,13 @@ change audit log. The classification itself lives in
 from __future__ import annotations
 
 import difflib
+import hashlib
 import logging
+import os
+import tempfile
+import threading
 from pathlib import Path
-from typing import Any, Callable, Dict, List, Optional
+from typing import Any, Callable, Dict, List, Optional, Tuple
 
 from latticeai.core.tool_governor import classify_tool_call
 
@@ -32,6 +36,55 @@ LOGGER = logging.getLogger(__name__)
 _MAX_STAGED_BYTES = 400_000
 _MAX_DIFF_LINES = 400
 _SMALL_TIER_DIFF_LINES = 40
+
+
+class ProposalConflictError(ValueError):
+    """The target file changed (or the proposal was already resolved) between
+    staging and approval — applying now would silently destroy user edits.
+
+    Subclasses :class:`ValueError` deliberately: API surfaces that only know
+    ``except ValueError`` degrade to a 4xx instead of applying or crashing,
+    while conflict-aware surfaces catch this class first and answer **409**
+    with a rebase hint.
+    """
+
+    def __init__(
+        self,
+        *,
+        reason: str,
+        path: str,
+        kind: str,
+        base_sha256: str = "",
+        current_sha256: str = "",
+        rebase_hint: str = "",
+    ) -> None:
+        self.reason = reason
+        self.path = path
+        self.kind = kind
+        self.base_sha256 = base_sha256
+        self.current_sha256 = current_sha256
+        self.rebase_hint = rebase_hint or (
+            "제안 생성 이후 파일 상태가 바뀌었습니다. 이 제안을 거부하고 "
+            "현재 파일 내용을 기준으로 제안을 다시 생성하세요."
+        )
+        super().__init__(f"change proposal conflict ({reason}): {path}")
+
+    def to_detail(self) -> Dict[str, Any]:
+        """409 response body — no staged content, just what the UI needs."""
+        return {
+            "error": "change_proposal_conflict",
+            "conflict": True,
+            "reason": self.reason,
+            "path": self.path,
+            "kind": self.kind,
+            "base_sha256": self.base_sha256,
+            "current_sha256": self.current_sha256,
+            "rebase_hint": self.rebase_hint,
+        }
+
+
+def _sha256_text(content: str) -> str:
+    return hashlib.sha256(content.encode("utf-8")).hexdigest()
 
 
 def _unified_diff(before: str, after: str, path: str) -> List[str]:
@@ -60,6 +113,11 @@ class ChangeProposalService:
         self._review_queue = review_queue
         self._resolve_path = resolve_path
         self._audit = audit or (lambda *a, **kw: None)
+        # One protected section for status-check → conflict-check → apply →
+        # transition. In-process serialization is the right weight here: the
+        # review queue lives in this process and the write itself is atomic
+        # (temp file + os.replace), so a cross-process file lock adds nothing.
+        self._apply_lock = threading.Lock()
 
     # ── classification / staging (agent-loop governor port) ─────────────
 
@@ -125,15 +183,24 @@ class ChangeProposalService:
             return False
 
     def _read_before(self, path: str) -> str:
+        return self._snapshot(path)[1]
+
+    def _snapshot(self, path: str) -> Tuple[bool, str]:
+        """(exists, content) of the target *as the proposal pipeline sees it*.
+
+        Both staging and the approve-time conflict check go through this one
+        normalization (truncate → utf-8 with replacement), so an unchanged
+        file always hashes identically at both points in time.
+        """
         try:
             target = self._resolve_path(path)
             if not target.is_file():
-                return ""
+                return False, ""
             raw = target.read_bytes()[:_MAX_STAGED_BYTES]
-            return raw.decode("utf-8", errors="replace")
+            return True, raw.decode("utf-8", errors="replace")
         except Exception:
             LOGGER.exception("change proposal read failed")
-            return ""
+            return False, ""
 
     def _staged_content(self, name: str, args: Dict[str, Any]) -> Optional[str]:
         if name == "write_file":
@@ -164,7 +231,7 @@ class ChangeProposalService:
         workspace_id: Optional[str] = None,
         context: Optional[Dict[str, Any]] = None,
     ) -> Dict[str, Any]:
-        before = self._read_before(path)
+        base_exists, before = self._snapshot(path)
         diff = _unified_diff(before, new_content, path)
         tier = "small" if len(diff) <= _SMALL_TIER_DIFF_LINES else "large"
         provenance: Dict[str, Any] = {"proposed_by": proposed_by, "reason": reason}
@@ -183,6 +250,11 @@ class ChangeProposalService:
                 "tier": tier,
                 "before_bytes": len(before.encode("utf-8")),
                 "after_bytes": len(new_content.encode("utf-8")),
+                # Base snapshot for the approve-time conflict check: an empty
+                # base_sha256 with base_exists=False means "proposed against a
+                # missing file", never "hash of the empty string".
+                "base_exists": base_exists,
+                "base_sha256": _sha256_text(before) if base_exists else "",
             },
             provenance=provenance,
             user_email=user_email,
@@ -203,7 +275,7 @@ class ChangeProposalService:
         user_email: Optional[str] = None,
         workspace_id: Optional[str] = None,
     ) -> Dict[str, Any]:
-        before = self._read_before(path)
+        base_exists, before = self._snapshot(path)
         item = self._review_queue.create(
             title=f"파일 삭제 제안: {path}",
             summary=reason or "기존 파일을 삭제하는 작업이라 검토 후 적용됩니다.",
@@ -215,6 +287,8 @@ class ChangeProposalService:
                 "tier": "large",
                 "before_bytes": len(before.encode("utf-8")),
                 "after_bytes": 0,
+                "base_exists": base_exists,
+                "base_sha256": _sha256_text(before) if base_exists else "",
             },
             provenance={"proposed_by": proposed_by, "reason": reason},
             user_email=user_email,
@@ -274,27 +348,95 @@ class ChangeProposalService:
         self, item_id: str, *, user_email: Optional[str] = None,
         workspace_id: Optional[str] = None,
     ) -> Dict[str, Any]:
-        item = self._review_queue.get(item_id, workspace_id=workspace_id)
-        if item.get("source") != "change_proposal":
-            raise KeyError(f"not a change proposal: {item_id}")
-        payload = item.get("payload") or {}
-        kind = item.get("kind")
-        path = str(payload.get("path") or "")
-        target = self._resolve_path(path)
-        if kind == "file_update":
-            target.parent.mkdir(parents=True, exist_ok=True)
-            target.write_text(str(payload.get("new_content") or ""), encoding="utf-8")
-        elif kind == "file_delete":
-            if target.is_file():
-                target.unlink()
-        else:
-            raise ValueError(f"unknown change proposal kind: {kind}")
-        approved = self._review_queue.approve(item_id, workspace_id=workspace_id)
+        """Apply the staged change exactly as reviewed — but only if the file
+        on disk still matches the base snapshot the reviewer looked at.
+
+        Raises :class:`ProposalConflictError` (→ HTTP 409) when the target
+        drifted since staging or the proposal was already resolved; nothing
+        touches disk in that case, so out-of-band user edits are preserved.
+        """
+        with self._apply_lock:
+            item = self._review_queue.get(item_id, workspace_id=workspace_id)
+            if item.get("source") != "change_proposal":
+                raise KeyError(f"not a change proposal: {item_id}")
+            payload = item.get("payload") or {}
+            kind = str(item.get("kind") or "")
+            path = str(payload.get("path") or "")
+            if kind not in ("file_update", "file_delete"):
+                raise ValueError(f"unknown change proposal kind: {kind}")
+
+            # Duplicate/concurrent approval guard: a resolved proposal must
+            # never re-apply (the disk may have moved on since it was applied).
+            status = str(item.get("status") or "pending")
+            if status not in ("pending", "snoozed"):
+                raise ProposalConflictError(
+                    reason=f"already_{status}", path=path, kind=kind,
+                    rebase_hint="이미 처리된 제안입니다. 다시 적용할 수 없습니다.",
+                )
+
+            self._check_base_unchanged(payload, path=path, kind=kind)
+
+            target = self._resolve_path(path)
+            if kind == "file_update":
+                self._atomic_write(target, str(payload.get("new_content") or ""))
+            else:  # file_delete — existence re-verified inside the lock
+                if target.is_file():
+                    target.unlink()
+            approved = self._review_queue.approve(item_id, workspace_id=workspace_id)
         self._audit(
             "change_proposal_applied", user_email=user_email,
             proposal_id=item_id, path=path, kind=kind,
         )
         return {"item": approved, "applied": True, "path": path, "kind": kind}
+
+    def _check_base_unchanged(
+        self, payload: Dict[str, Any], *, path: str, kind: str
+    ) -> None:
+        """Compare the disk state *now* against the staged base snapshot."""
+        if "base_sha256" not in payload or "base_exists" not in payload:
+            # Legacy proposal staged before base snapshots existed — keep the
+            # historical apply-as-reviewed behavior rather than rejecting it.
+            return
+        base_exists = bool(payload.get("base_exists"))
+        base_sha256 = str(payload.get("base_sha256") or "")
+        current_exists, current_content = self._snapshot(path)
+        current_sha256 = _sha256_text(current_content) if current_exists else ""
+        if not base_exists:
+            if current_exists:
+                raise ProposalConflictError(
+                    reason="file_created_since_proposal", path=path, kind=kind,
+                    current_sha256=current_sha256,
+                )
+            return
+        if not current_exists:
+            raise ProposalConflictError(
+                reason="file_deleted_since_proposal", path=path, kind=kind,
+                base_sha256=base_sha256,
+            )
+        if current_sha256 != base_sha256:
+            raise ProposalConflictError(
+                reason="file_modified_since_proposal", path=path, kind=kind,
+                base_sha256=base_sha256, current_sha256=current_sha256,
+            )
+
+    @staticmethod
+    def _atomic_write(target: Path, content: str) -> None:
+        """Write via a same-directory temp file + ``os.replace`` so readers
+        never observe a partially written proposal."""
+        target.parent.mkdir(parents=True, exist_ok=True)
+        fd, tmp_name = tempfile.mkstemp(
+            dir=str(target.parent), prefix=f".{target.name}.", suffix=".staged"
+        )
+        try:
+            with os.fdopen(fd, "w", encoding="utf-8") as handle:
+                handle.write(content)
+            os.replace(tmp_name, target)
+        except BaseException:
+            try:
+                os.unlink(tmp_name)
+            except OSError:
+                pass
+            raise
 
     def reject(
         self, item_id: str, *, user_email: Optional[str] = None,
@@ -319,4 +461,4 @@ class ChangeProposalService:
         return {"item": dismissed, "applied": False, "reason": reason}
 
 
-__all__ = ["ChangeProposalService"]
+__all__ = ["ChangeProposalService", "ProposalConflictError"]

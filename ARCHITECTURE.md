@@ -1,6 +1,10 @@
 # Lattice AI Current Architecture
 
-Current release: **9.8.0 — Honest Knowledge Pipeline**.
+> **Status: canonical** — current-truth architecture document, kept in sync
+> with the current release. Historical subsystem detail lives in
+> [`docs/architecture.md`](docs/architecture.md).
+
+Current release: **9.9.0 — Fail-Closed Trust**.
 
 Lattice AI is a local-first Digital Brain platform. The current architecture is
 organized around a private Brain, replaceable model runtimes, explicit tool
@@ -53,12 +57,29 @@ Key boundaries:
 - `frontend/src` owns product UX and static app behavior.
 - `latticeai.app_factory` is the FastAPI composition root.
 - `latticeai.runtime` owns typed config, security, Brain, model, platform, and
-  router assembly stages; no stage exports ambient `locals()` state.
-- `latticeai.api` owns route-level behavior. Chat contracts, history, documents,
-  and streaming are focused modules over service-owned logic.
-- `latticeai.services` owns product services and execution services.
-- `latticeai.core` owns lower-level registries and helpers.
+  router assembly stages (`config_runtime`, `security_runtime`,
+  `brain_runtime`, `persistence_runtime`, `history_runtime`,
+  `router_registration`, ...); no stage exports ambient `locals()` state.
+- `latticeai.api` owns route-level behavior through router-factory modules
+  (chat, memory, search, local_files/ingestion, brain_intelligence,
+  automation_intelligence, command_center, change_proposals, review_queue,
+  workspace, admin, ...). Chat contracts, history, documents, and streaming
+  are focused modules over service-owned logic.
+- `latticeai.services` owns product and execution services (`chat_service`,
+  `memory_service`, `model_service`, `ingestion`, `search_service`,
+  `review_queue`, `command_center`, `automation_intelligence`,
+  `brain_intelligence`, `change_proposals`, ...).
+- `latticeai.core` owns lower-level registries and helpers (`agent`,
+  `agent_eval`, `tool_governor`, `context_builder`, `workspace_os`,
+  `mcp_registry`, `marketplace`, `tool_registry`, `config`, ...).
 - `lattice_brain` owns Brain Core, graph, memory, ingestion, and storage.
+  `lattice_brain/graph/store.py` composes `KnowledgeGraphStore` from focused
+  mixins (retrieval, retrieval_vector, ingest, discovery, provenance,
+  projection, documents, write_master). `lattice_brain/graph/proactive.py`
+  provides read-only proactive intelligence (duplicate discovery,
+  contradictions, quality reports, the observe-mode ingest quality gate) over
+  the store's public APIs. Storage engines live in `lattice_brain/storage/`
+  (SQLite live engine, optional Postgres scale/migration tooling).
 
 ## Runtime Flow
 
@@ -91,7 +112,7 @@ sequenceDiagram
 
 ## Product Flow
 
-The 9.6.0 first-run and daily-use flow is:
+The current first-run and daily-use flow is:
 
 1. Wake Brain / login.
 2. Pick owner/workspace context.
@@ -154,12 +175,25 @@ Important expectations:
 - local storage and backup/restore behavior;
 - `.latticebrain` archive compatibility.
 
+The Honest Knowledge Pipeline hardens retrieval and ingestion:
+
+- `graph/retrieval.py` `hybrid_search` blends lexical (FTS) and vector evidence
+  and reports a `context_quality` signal that chat consumes so grounding is
+  honest about how strong the retrieved context is.
+- `graph/retrieval_vector.py` tracks vector freshness (embedded vs. total
+  content) so the Brain can report stale embeddings and reindex on demand.
+- `ingestion.py` supports folder ingestion (`ingest_folder`) with
+  `.latticeignore` filtering and resumable background jobs
+  (`/api/ingestion/jobs`), plus per-source `extraction_quality` scoring and an
+  observe-mode `quality_gate` that flags low-quality extractions instead of
+  silently accepting them.
+
 Knowledge Graph changes must preserve read compatibility, rollback paths,
 migration safety, and equivalence tests.
 
 ## Runtime Contracts
 
-The 8.0 architecture contract remains active in 9.6.0:
+The 8.0 architecture contract remains active in 9.8.0:
 
 - AgentRuntime has explicit preview/readiness contracts and does not execute
   tools during preview.
@@ -177,11 +211,24 @@ The 8.0 architecture contract remains active in 9.6.0:
 - AgentRuntime and WorkflowEngine expose release-checkable orchestration
   boundaries while preserving legacy run compatibility.
 
+Change governance and agent-eval extend the contract:
+
+- `core/tool_governor.py` owns a `MUTATING_TOOL_INVENTORY` so every mutating
+  tool is either governed (proposal-first) or explicitly exempt, and coverage is
+  release-checked rather than assumed.
+- File edits/deletions to existing content flow through change proposals
+  (`services/change_proposals.py`, `/api/proposals`): each proposal records a
+  base content hash, and application re-checks that hash to detect conflicting
+  edits before writing atomically.
+- `core/agent_eval.py` runs a fail-closed verifier: unverifiable or failing
+  outcomes resolve to `NEEDS_REVIEW` and enter the review queue rather than
+  being reported as success.
+
 ## Storage And Portability
 
 SQLite is the live local Brain store. PostgreSQL/pgvector remains optional
 scale/migration tooling and must be explicitly configured; it is not the
-default live KnowledgeGraphStore backend in 9.6.0. Backups and `.latticebrain`
+default live KnowledgeGraphStore backend in 9.8.0. Backups and `.latticebrain`
 archives are user-controlled portability paths.
 
 ## Local-First Boundary
@@ -192,13 +239,13 @@ Docker/Postgres setup, marketplace refresh, and update checks are opt-in paths.
 
 ## Release Artifact Map
 
-9.6.0 exact artifact names:
+9.8.0 exact artifact names:
 
-- `dist/ltcai-9.6.0-py3-none-any.whl`
-- `dist/ltcai-9.6.0.tar.gz`
-- `ltcai-9.6.0.tgz`
-- `dist/ltcai-9.6.0.vsix`
-- `src-tauri/target/release/bundle/dmg/Lattice AI_9.6.0_aarch64.dmg`
+- `dist/ltcai-9.8.0-py3-none-any.whl`
+- `dist/ltcai-9.8.0.tar.gz`
+- `ltcai-9.8.0.tgz`
+- `dist/ltcai-9.8.0.vsix`
+- `src-tauri/target/release/bundle/dmg/Lattice AI_9.8.0_aarch64.dmg`
 
 Do not document or use wildcard artifact upload commands.
 

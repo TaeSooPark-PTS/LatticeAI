@@ -21,6 +21,7 @@ from latticeai.core.agent_prompts import (
     PLANNER_PROMPT,
 )
 from latticeai.core.policy import role_has_capability
+from latticeai.core.tool_governor import classify_tool_call
 from latticeai.core.tool_registry import ToolPermission, ToolPolicy
 from latticeai.tools import AGENT_ROOT, DEFAULT_TOOL_REGISTRY, ToolError, ensure_agent_root
 
@@ -122,6 +123,22 @@ class ToolDispatchService:
                 detail=f"'{tool_name}' 툴에는 '{capability}' capability가 필요합니다.",
             )
 
+    def _governed_path_exists(self, path: str) -> bool:
+        """Best-effort existence check for governance classification.
+
+        Resolves workspace-relative paths under ``AGENT_ROOT`` and honors
+        absolute paths (home-sandbox writes). Never raises — an unresolvable
+        path is treated as non-existent (additive), which the fail-closed
+        guard only escalates when the target actually exists.
+        """
+        try:
+            candidate = Path(path)
+            if not candidate.is_absolute():
+                candidate = Path(AGENT_ROOT) / candidate
+            return candidate.exists()
+        except Exception:
+            return False
+
     def user_role(self, current_user: str) -> str:
         users = self.load_users()
         try:
@@ -161,6 +178,22 @@ class ToolDispatchService:
             raise HTTPException(
                 status_code=403,
                 detail=f"'{tool_name}' 툴은 파괴적 작업으로 차단되었습니다.",
+            )
+        # Fail-closed governance: a call that would rewrite existing content but
+        # cannot be staged as a reviewable proposal is blocked, never applied
+        # silently. New-file (additive) calls are unaffected.
+        verdict = classify_tool_call(
+            tool_name, args or {},
+            policy=dict(policy), path_exists=self._governed_path_exists,
+        )
+        if verdict.get("fail_closed"):
+            raise HTTPException(
+                status_code=409,
+                detail=(
+                    f"'{tool_name}' 툴은 기존 콘텐츠를 변경하지만 검토 가능한 제안으로 "
+                    "적용할 수 없어 차단되었습니다. 새 파일 이름으로 생성하거나 "
+                    "지원되는 편집 도구(write_file/edit_file)를 사용하세요."
+                ),
             )
         if (
             require_auto_approval

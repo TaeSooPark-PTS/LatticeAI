@@ -14,7 +14,7 @@ from pathlib import Path
 from typing import Any, Dict, List
 
 
-LEGACY_COMPATIBILITY_VERSION = "9.8.0"
+LEGACY_COMPATIBILITY_VERSION = "9.9.0"
 
 
 @dataclass(frozen=True)
