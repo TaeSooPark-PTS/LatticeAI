@@ -26,6 +26,19 @@ class FakeGraph:
         return {"sources": self.sources}
 
 
+class FakeSearchGraph(FakeGraph):
+    """Graph fake that also answers ``search`` for KG-grounded confidence."""
+
+    def __init__(self, sources=None, matches=None):
+        super().__init__(sources)
+        self.matches = matches or []
+        self.search_calls = []
+
+    def search(self, query, limit=30, **kwargs):
+        self.search_calls.append({"query": query, "limit": limit, **kwargs})
+        return {"query": query, "matches": self.matches[:limit]}
+
+
 class FakeStore:
     def __init__(self, workflows=None):
         self.workflows = workflows or []
@@ -139,6 +152,114 @@ def test_installed_suggestions_are_marked():
     suggestion = service.suggestions()["suggestions"][0]
     assert suggestion["installed"] is True
     assert suggestion["workflow_id"] == "wf-1"
+
+
+# ── suggestion quality (v9.8.0) ─────────────────────────────────────────
+
+def test_suggestions_carry_additive_confidence_fields():
+    conversations = FakeConversations([
+        _msg("오늘 기억 정리해줘", ts="2026-07-18T08:00:00"),
+        _msg("오늘 기억 정리해줘 부탁", ts="2026-07-19T08:00:00"),
+    ])
+    graph = FakeGraph([
+        {"id": "src-1", "root_path": "/Users/me/Docs", "label": "내 문서",
+         "watch_enabled": True, "file_status": {"indexed": 42}},
+    ])
+    report = _service(conversations, graph).suggestions()
+    assert report["quality"]["min_confidence"] == 0.35
+    for suggestion in report["suggestions"]:
+        assert 0.0 <= suggestion["confidence"] <= 1.0
+        assert isinstance(suggestion["confidence_factors"], dict)
+        assert isinstance(suggestion["low_confidence"], bool)
+    source_sug = next(s for s in report["suggestions"] if s["kind"] == "knowledge_source")
+    assert source_sug["confidence_factors"]["indexed_files"] == 42
+    question_sug = next(s for s in report["suggestions"] if s["kind"] == "recurring_question")
+    assert question_sug["confidence_factors"]["repeat_count"] == 2
+    # No search-capable graph wired → grounding is "unavailable", not zero.
+    assert question_sug["confidence_factors"]["kg_related_nodes"] is None
+
+
+def test_kg_grounding_raises_question_confidence():
+    def conversations():
+        return FakeConversations([
+            _msg("프로젝트 진행 상태 알려줘", ts="2026-07-18T08:00:00"),
+            _msg("프로젝트 진행 상태 알려줘 이번에도", ts="2026-07-19T08:00:00"),
+        ])
+
+    ungrounded = _service(conversations()).suggestions()["suggestions"][0]
+    graph = FakeSearchGraph(matches=[{"id": f"n{i}"} for i in range(5)])
+    grounded_service = _service(conversations(), graph)
+    grounded = grounded_service.suggestions()["suggestions"][0]
+    assert grounded["confidence"] > ungrounded["confidence"]
+    assert grounded["confidence_factors"]["kg_related_nodes"] == 5
+    # Grounding reads are scoped like history reads.
+    grounded_service.suggestions(workspace_id="team-1")
+    scoped_call = grounded_service._kg  # noqa: SLF001 - fake introspection
+    assert scoped_call.search_calls[-1]["allowed_workspaces"] == {"team-1"}
+    assert scoped_call.search_calls[-1]["include_legacy_global"] is False
+
+
+def test_duplicate_recipe_suggestions_are_suppressed():
+    conversations = FakeConversations([
+        # Cluster A (3x) and cluster B (2x) both map to daily-memory-digest.
+        _msg("오늘 기억 정리해줘", ts="2026-07-17T08:00:00"),
+        _msg("오늘 기억 정리해줘", ts="2026-07-18T08:00:00"),
+        _msg("오늘 기억 정리해줘 부탁", ts="2026-07-19T08:00:00"),
+        _msg("today summary please", ts="2026-07-18T09:00:00"),
+        _msg("today summary please", ts="2026-07-19T09:00:00"),
+    ])
+    report = _service(conversations).suggestions()
+    digest_suggestions = [
+        s for s in report["suggestions"] if s["recipe_id"] == "daily-memory-digest"
+    ]
+    assert len(digest_suggestions) == 1
+    # The stronger cluster (count 3) won.
+    assert digest_suggestions[0]["reason"]["count"] == 3
+    assert report["quality"]["suppressed_duplicates"] == 1
+
+
+def test_low_evidence_source_suggestion_is_suppressed():
+    graph = FakeGraph([
+        {"id": "src-tiny", "root_path": "/tmp/tiny", "label": "tiny",
+         "watch_enabled": False, "file_status": {"indexed": 1}},
+    ])
+    report = _service(FakeConversations([]), graph).suggestions()
+    assert report["suggestions"] == []
+    assert report["quality"]["suppressed_low_confidence"] == 1
+
+
+def test_installed_recipe_marks_matching_question_suggestion_installed():
+    conversations = FakeConversations([
+        _msg("오늘 기억 정리해줘", ts="2026-07-18T08:00:00"),
+        _msg("오늘 기억 정리해줘 부탁", ts="2026-07-19T08:00:00"),
+    ])
+    store = FakeStore([
+        {"id": "wf-recipe", "metadata": {
+            "created_from": "brain_automation_recipe",
+            "recipe_id": "daily-memory-digest",
+        }},
+    ])
+    suggestion = _service(conversations, store=store).suggestions()["suggestions"][0]
+    assert suggestion["recipe_id"] == "daily-memory-digest"
+    # Install API is idempotent on recipe provenance; the read side agrees.
+    assert suggestion["installed"] is True
+    assert suggestion["workflow_id"] == "wf-recipe"
+
+
+def test_install_metadata_stamps_confidence():
+    service = _service(FakeConversations([]))
+    definition = service.build_suggestion_workflow({
+        "id": "sug-q-abc", "kind": "recurring_question",
+        "title": "오늘 할 일 정리해줘", "reason": {"count": 3},
+        "confidence": 0.72,
+    })
+    assert definition["metadata"]["suggestion_confidence"] == 0.72
+
+
+def test_overview_exposes_quality_block():
+    overview = _service(FakeConversations([])).overview()
+    assert overview["quality"]["suppressed_low_confidence"] == 0
+    assert overview["quality"]["suppressed_duplicates"] == 0
 
 
 # ── workflow building ───────────────────────────────────────────────────

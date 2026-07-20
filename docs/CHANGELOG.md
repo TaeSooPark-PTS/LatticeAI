@@ -4,6 +4,43 @@ The top entry is either the current unreleased main-branch work or the current
 release line. Older entries are historical and may describe behavior as it
 existed at that release.
 
+## [9.8.0] - 2026-07-20
+
+### Added
+- Added `extraction_quality` (score/level/reasons) and low-quality `warnings`
+  to every ingest result, with upstream extractor confidence taking
+  precedence; the proactive `gate_ingest_candidate()` now records an
+  observe-only `quality_gate` verdict on non-chat ingests.
+- Added background ingestion job progress (`total`/`processed`/`failed`,
+  capped per-item errors) with resume-from-remaining support, plus
+  `GET /api/ingestion/jobs`, `GET /api/ingestion/jobs/{id}`,
+  `POST /api/ingestion/jobs/{id}/resume`, and approval-gated
+  `POST /api/ingestion/folder`.
+- Added `context_quality` (mode/nodes/limited/reason) to chat responses
+  (non-stream top-level and final SSE trailer) with a localized
+  limited-context note in the assistant bubble.
+- Added `GET /api/brain/vector-freshness` and a pending-indexing chip in the
+  Brain views; `vector_freshness()` never raises and degrades to
+  `unavailable` with a reason.
+- Added four agent-eval scenarios (ingestion chain, concept extraction,
+  RAG-grounded answer with a negative grounding test, automation
+  proposal-first), growing the CI gate to 16 scenarios with
+  `expect_final_contains` grounding assertions.
+- Added deterministic `confidence`, `confidence_factors`, duplicate
+  suppression, installed-recipe detection, and a low-quality floor to
+  automation suggestions, with a `quality` reporting block.
+- Added a frontend ingestion jobs panel (progress bar, failed count, resume)
+  and extraction-quality warnings in the ingestion panels, all with ko/en
+  i18n parity.
+
+### Changed
+- Rebuilt README media-first: hero walkthrough GIF, screenshot grid, compact
+  release-history table, and roughly 60% less prose.
+- `context_for_query()` gains an opt-in metadata path
+  (`context_for_query_with_meta()`); the default output is byte-identical.
+- Background ingestion job initial status is now `queued` (was internal
+  `pending`).
+
 ## [9.7.0] - 2026-07-20
 
 ### Added

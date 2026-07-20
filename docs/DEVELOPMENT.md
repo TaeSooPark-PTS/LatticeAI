@@ -1,6 +1,6 @@
 # Lattice AI Development
 
-Current release: **9.7.0 — Proactive Hybrid Brain**.
+Current release: **9.8.0 — Honest Knowledge Pipeline**.
 
 This document is for contributors working on the local-first Digital Brain
 codebase. Product positioning and quick start stay in `README.md`; release

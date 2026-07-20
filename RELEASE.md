@@ -7,6 +7,66 @@
 > PyPI / npm / VS Code Marketplace / Open VSX 배포는 아래 수동 절차로만
 > 진행합니다. 태그 생성은 패키지 스토어 publish를 자동으로 트리거하지 않습니다.
 
+## v9.8.0 — Honest Knowledge Pipeline (2026-07-20)
+
+9.8.0 makes the file→folder→web→graph→RAG→automation pipeline honest and
+robust end to end: extraction-quality scoring on every ingest, resumable
+background folder jobs with a jobs API and UI progress, chat answers that
+disclose limited graph context, visible vector-index freshness, a 16-scenario
+agent evaluation gate, and confidence-scored automation suggestions.
+
+### Ingestion quality & robustness
+
+- Every ingest result carries `extraction_quality` (score/level/reasons from
+  pure heuristics; upstream confidence takes precedence) plus `warnings` on
+  low-quality captures; the proactive quality gate runs observe-only and
+  records `quality_gate` verdicts without changing behavior.
+- Background jobs track progress (`total`/`processed`/`failed`/errors),
+  survive per-item failures, and resume from remaining items.
+- New endpoints: `GET /api/ingestion/jobs`, `GET /api/ingestion/jobs/{id}`,
+  `POST /api/ingestion/jobs/{id}/resume`, `POST /api/ingestion/folder`
+  (approval-gated local-disk access, `background: true` → `job_id`).
+
+### Honest RAG & freshness signals
+
+- Chat answers compute `context_quality` (mode/nodes/limited/reason) —
+  top-level in non-stream responses and in the final SSE trailer; the UI
+  shows a small note when graph context is limited.
+- `GET /api/brain/vector-freshness` reports ready/pending/unavailable with
+  pending counts and never raises; the Brain views show a pending-indexing
+  chip refreshed after ingests.
+
+### Evaluation & automation quality
+
+- `scripts/agent_eval.py` grew 12 → 16 deterministic scenarios (ingestion
+  chain, concept extraction, RAG-grounded answer with a gate-proving negative
+  test, automation proposal-first) with grounding assertions against canned
+  tool fixtures.
+- Automation suggestions gain deterministic `confidence`,
+  `confidence_factors` (including KG grounding), duplicate suppression,
+  installed-recipe detection, and a low-quality floor; responses report a
+  `quality` block.
+
+### Product & docs
+
+- README rebuilt media-first (hero GIF + screenshot grid, ~60% less prose).
+- Frontend: freshness chip, low-extraction warnings, context-quality note in
+  the assistant bubble, jobs progress panel with resume — all ko/en i18n.
+
+### Verification
+
+- 1263 unit / 27 frontend tests green; ruff, tsc, frontend lint, i18n
+  parity/literal, OpenAPI drift, and current-release docs gates pass;
+  agent eval 16/16 at success rate 1.0.
+
+### Artifacts (exact filenames)
+
+- `dist/ltcai-9.8.0-py3-none-any.whl`
+- `dist/ltcai-9.8.0.tar.gz`
+- `ltcai-9.8.0.tgz`
+- `dist/ltcai-9.8.0.vsix`
+- `src-tauri/target/release/bundle/dmg/Lattice AI_9.8.0_aarch64.dmg`
+
 ## v9.7.0 — Proactive Hybrid Brain (2026-07-20)
 
 9.7.0 deepens the Brain along three tracks: unified hybrid retrieval that

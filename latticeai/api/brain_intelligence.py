@@ -57,6 +57,18 @@ def create_brain_intelligence_router(
         scope = gate_read(request)
         return service.contradictions(user_email=user, workspace_id=scope)
 
+    @router.get("/api/brain/vector-freshness")
+    async def brain_vector_freshness(request: Request):
+        """Vector index freshness summary (read-only, never raises).
+
+        Fixed contract consumed by the frontend:
+        ``{"status": "ready"|"pending"|"unavailable", "pending_items": int,
+        "total_items": int, "detail": str}``.
+        """
+        user = require_user(request)
+        scope = gate_read(request)
+        return service.vector_freshness(user_email=user, workspace_id=scope)
+
     @router.get("/api/brain/duplicates")
     async def brain_duplicates(request: Request):
         """Graph-layer duplicate node candidates (read-only)."""

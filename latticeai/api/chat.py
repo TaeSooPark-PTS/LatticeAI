@@ -28,6 +28,7 @@ from latticeai.api.chat_documents import (
 )
 from latticeai.api.chat_helpers import (
     _LANG_HINT,
+    build_context_quality,
     build_recent_chat_context,
     detect_language,
     file_action_target,
@@ -64,6 +65,7 @@ __all__ = [
     "AgentResumeRequest",
     "ChatRequest",
     "create_chat_router",
+    "build_context_quality",
     "build_recent_chat_context",
     "pair_user_history",
     "detect_language",
@@ -358,6 +360,19 @@ def create_chat_router(context: AppContext) -> APIRouter:
         if context_trace is not None and isinstance(trace_seed, dict):
             trace_seed["context_assembly"] = context_trace
 
+        # v9.8.0 honest RAG signal: how well the graph grounded this answer.
+        # Rides the same channel as sources/evidence (the answer trace) and is
+        # additionally exposed top-level on both response shapes below.
+        context_quality = build_context_quality(
+            req.message,
+            knowledge_graph=context.knowledge_graph
+            if (context.enable_graph and context.knowledge_graph)
+            else None,
+            allowed_workspaces={workspace_id} if workspace_id else None,
+        )
+        if isinstance(trace_seed, dict):
+            trace_seed["context_quality"] = context_quality
+
         history_message = (
             f"{req.message}\n[Image attached]" if req.image_data else req.message
         )
@@ -407,6 +422,7 @@ def create_chat_router(context: AppContext) -> APIRouter:
                     history_meta=history_meta,
                     model_id=selected_model_id,
                     workspace_id=workspace_id,
+                    context_quality=context_quality,
                 ),
                 media_type="text/event-stream",
                 headers={"X-Model": selected_model_id},
@@ -462,6 +478,7 @@ def create_chat_router(context: AppContext) -> APIRouter:
                 "response": response_text,
                 "trace_id": trace_record["id"],
                 "trace": trace_record,
+                "context_quality": context_quality,
             }
         )
 

@@ -4,6 +4,7 @@ import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { latticeApi } from "@/api/client";
 import { triggerBrainRecall, type BrainState } from "@/components/LivingBrain";
 import { t, type Language } from "@/i18n";
+import { parseContextQuality } from "../brainData";
 import { useConversationSession } from "../conversationSession";
 import type {
   BrainProactiveAction,
@@ -160,6 +161,22 @@ export function useBrainChat({
         setMessages((items) => replaceTrailingAssistant(items, `${t(language, "brain.unavailable")}: ${result.error}`));
         failIngestion("chat", String(result.error));
       } else {
+        // Honest signaling: surface the additive context_quality meta (from the
+        // trailer or the trace record) on the answer it belongs to.
+        const contextQuality = parseContextQuality("contextQuality" in result ? result.contextQuality : null)
+          || parseContextQuality(result.trace);
+        if (contextQuality) {
+          setMessages((items) => {
+            const next = [...items];
+            for (let index = next.length - 1; index >= 0; index -= 1) {
+              if (next[index].role === "assistant") {
+                next[index] = { ...next[index], contextQuality };
+                break;
+              }
+            }
+            return next;
+          });
+        }
         setLastRecallQuery(text);
         const counts = await completeIngestion("chat");
         setMemoryFeedback(t(language, "brain.saved", { topics: counts.entities, memories: counts.memories }));

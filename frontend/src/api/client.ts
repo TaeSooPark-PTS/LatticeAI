@@ -242,6 +242,9 @@ async function streamChat(body: Record<string, unknown>, handlers: ChatEventHand
   let text = "";
   let trace: unknown = null;
   let agent: ChatAgentPayload | null = null;
+  // Additive answer meta ("context_quality") rides the same trailer as the
+  // trace; keep the raw value so the UI can parse it defensively.
+  let contextQuality: unknown = null;
   for (;;) {
     const { done, value } = await reader.read();
     if (done) break;
@@ -252,7 +255,7 @@ async function streamChat(body: Record<string, unknown>, handlers: ChatEventHand
       const line = part.split("\n").find((item) => item.startsWith("data:"));
       if (!line) continue;
       const raw = line.slice(5).trim();
-      if (raw === "[DONE]") return { source: "live", text, trace, agent };
+      if (raw === "[DONE]") return { source: "live", text, trace, agent, contextQuality };
       const data = JSON.parse(raw);
       const delta = data.chunk || data.text || "";
       if (delta) {
@@ -263,13 +266,16 @@ async function streamChat(body: Record<string, unknown>, handlers: ChatEventHand
         trace = data.trace;
         handlers.onTrace?.(trace);
       }
+      if (data.context_quality && typeof data.context_quality === "object") {
+        contextQuality = data.context_quality;
+      }
       if (data.agent && typeof data.agent === "object") {
         agent = data.agent as ChatAgentPayload;
         handlers.onAgent?.(agent);
       }
     }
   }
-  return { source: "live", text, trace, agent };
+  return { source: "live", text, trace, agent, contextQuality };
 }
 
 async function saveChatFile(path: string, content: string): Promise<ApiResult<{ path?: string; bytes?: number }>> {
@@ -379,6 +385,9 @@ export const latticeApi = {
   commandSearch: (q: string, limit = 8) =>
     get("/api/command/search", { query: q, groups: [], total: 0 }, { q, limit }),
   brainHealth: () => get("/api/brain/health", { overall_score: null, grade: null, dimensions: {}, recommended_actions: [] }),
+  brainVectorFreshness: () => get("/api/brain/vector-freshness", { status: "unavailable", pending_items: 0, total_items: 0, detail: "" }),
+  ingestionJobs: () => get("/api/ingestion/jobs", { jobs: [] }),
+  resumeIngestionJob: (jobId: string) => post(`/api/ingestion/jobs/${encodeURIComponent(jobId)}/resume`, {}, {}),
   brainInsights: () => get("/api/brain/insights", { activity: {}, attention: {}, suggested_questions: [] }),
   brainContradictions: () => get("/api/brain/contradictions", { items: [], count: 0 }),
   brainConsolidate: (apply = false) => post("/api/brain/consolidate", { apply }, {}),

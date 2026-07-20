@@ -1,15 +1,16 @@
 # Release Notes
 
-This repository keeps public release history from **8.0.0 through 9.7.0**.
+This repository keeps public release history from **8.0.0 through 9.8.0**.
 Earlier release notes and release evidence were removed from the Git tree so the
 history stays focused on the current product era.
 
 ## Current Release
 
-- [v9.7.0 - Proactive Hybrid Brain](RELEASE_NOTES_v9.7.0.md)
+- [v9.8.0 - Honest Knowledge Pipeline](RELEASE_NOTES_v9.8.0.md)
 
 ## Recent Release Notes
 
+- [v9.7.0 - Proactive Hybrid Brain](RELEASE_NOTES_v9.7.0.md)
 - [v9.6.0 - Trusted Agent Loop](RELEASE_NOTES_v9.6.0.md)
 - [v9.5.0 - Command Center](RELEASE_NOTES_v9.5.0.md)
 - [v9.4.0 - Question-Driven Everyday Automation](RELEASE_NOTES_v9.4.0.md)

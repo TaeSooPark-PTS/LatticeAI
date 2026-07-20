@@ -12,15 +12,16 @@ chat, run model workflows, and trigger coding actions from the editor.
 
 ## Current Release
 
-**9.7.0 — Proactive Hybrid Brain.** The extension follows
+**9.8.0 — Honest Knowledge Pipeline.** The extension follows
 the main app positioning: Lattice AI is a local-first Digital Brain, not just a
 model launcher or editor chat panel. It connects editor actions to the same
 durable Brain context, explicit consent gates, replaceable model workflow, and
-separated Admin surface used by the desktop app. The v9.7.0 line unifies
-hybrid lexical+vector retrieval in the graph layer with a self-syncing
-vector index, adds folder ingestion with `.latticeignore`, makes the Brain
-proactive about duplicates and contradictions, and closes the
-proposal→Review Center→apply governance loop — while preserving the 9.3.0 proactive Brain intelligence, 9.2.0
+separated Admin surface used by the desktop app. The v9.8.0 line makes the
+knowledge pipeline honest end to end: every file/folder/web ingest reports an
+extraction-quality score, background folder ingestion gains progress/resume
+and a jobs API, chat answers carry a context-quality signal when graph
+context is limited, and vector-index freshness becomes visible in the UI
+— while preserving the 9.7.0 hybrid graph retrieval, 9.3.0 proactive Brain intelligence, 9.2.0
 model-agnostic file generation, fail-closed boundaries, typed runtime and
 model state, exact release artifacts, and the visible VS Code sync status
 and runtime architecture contract.

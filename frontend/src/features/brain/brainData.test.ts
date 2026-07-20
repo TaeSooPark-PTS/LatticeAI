@@ -3,8 +3,12 @@ import { describe, expect, it } from "vitest";
 import {
   buildBrainProof,
   buildConversationSummaries,
+  extractIngestionEvidence,
+  parseContextQuality,
   parseConversationMessages,
+  parseIngestionJobs,
   parseKnowledgeGraph,
+  parseVectorFreshness,
 } from "./brainData";
 
 describe("brainData parsers", () => {
@@ -53,5 +57,47 @@ describe("brainData parsers", () => {
     expect(proof.modelContinuity.activeModel).toBe("local-model");
     expect(proof.proofs.hasDurableEvidence).toBe(false);
     expect(proof.claims.keepsContextAcrossModels).toBe(false);
+  });
+
+  it("reads additive extraction_quality with warnings from ingest responses", () => {
+    const evidence = extractIngestionEvidence({
+      status: "ok",
+      extraction_quality: { score: 0.21, level: "low", reasons: ["ocr_noise"] },
+      warnings: ["표 내용 일부를 읽지 못했어요"],
+    });
+
+    expect(evidence.extraction).toEqual({
+      score: 0.21,
+      level: "low",
+      reasons: ["ocr_noise"],
+      warnings: ["표 내용 일부를 읽지 못했어요"],
+    });
+    expect(extractIngestionEvidence({ status: "ok" }).extraction).toBeUndefined();
+  });
+
+  it("parses context_quality from the trailer, the trace record, or not at all", () => {
+    const expected = { mode: "lexical_only", nodes: 0, limited: true, reason: "vector index pending" };
+    expect(parseContextQuality({ context_quality: expected })).toEqual(expected);
+    expect(parseContextQuality({ trace: { context_quality: expected } })).toEqual(expected);
+    expect(parseContextQuality({ mode: "hybrid", nodes: 4, limited: false, reason: null }))
+      .toEqual({ mode: "hybrid", nodes: 4, limited: false, reason: null });
+    expect(parseContextQuality({ trace: { sources: [] } })).toBeNull();
+    expect(parseContextQuality(null)).toBeNull();
+  });
+
+  it("normalizes vector freshness and defaults to unavailable", () => {
+    expect(parseVectorFreshness({ status: "pending", pending_items: 7, total_items: 40, detail: "reindexing" }))
+      .toEqual({ status: "pending", pendingItems: 7, totalItems: 40, detail: "reindexing" });
+    expect(parseVectorFreshness(null).status).toBe("unavailable");
+  });
+
+  it("parses ingestion jobs and drops rows without a job id", () => {
+    const jobs = parseIngestionJobs({ jobs: [
+      { job_id: "job-1", status: "running", total: 20, processed: 8, failed: 1, errors: ["a.pdf"] },
+      { status: "queued" },
+    ] });
+
+    expect(jobs).toHaveLength(1);
+    expect(jobs[0]).toMatchObject({ jobId: "job-1", status: "running", total: 20, processed: 8, failed: 1 });
   });
 });

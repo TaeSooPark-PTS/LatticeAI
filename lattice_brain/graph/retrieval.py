@@ -5,6 +5,40 @@ from __future__ import annotations
 from ._kg_common import *  # noqa: F403,F401
 
 
+def context_quality_signal(
+    mode: str,
+    nodes: int,
+    *,
+    reason: Optional[str] = None,
+) -> Dict[str, Any]:
+    """Honest RAG context-quality signal (v9.8.0, additive contract).
+
+    Shape consumed by the chat metadata channel:
+    ``{"mode": "hybrid"|"lexical_only"|"none", "nodes": int, "limited": bool,
+    "reason": str|None}``. ``nodes == 0`` always collapses ``mode`` to
+    ``"none"``; ``limited`` is true whenever the context is thin (0–1 nodes)
+    or the vector side fell back to lexical-only retrieval. ``reason`` is a
+    short human-readable Korean phrase, only present when limited.
+    """
+    nodes = max(0, int(nodes or 0))
+    mode = str(mode or "none")
+    if nodes == 0:
+        mode = "none"
+    if mode not in ("hybrid", "lexical_only", "none"):
+        mode = "lexical_only"
+    limited = nodes <= 1 or mode != "hybrid"
+    if reason is None and limited:
+        if nodes == 0:
+            reason = "그래프에서 관련 지식을 찾지 못했습니다"
+        elif mode == "lexical_only":
+            reason = "벡터 검색을 사용할 수 없어 키워드 검색 결과만 사용했습니다"
+        else:
+            reason = "그래프 기반 컨텍스트가 제한적입니다"
+    if not limited:
+        reason = None
+    return {"mode": mode, "nodes": nodes, "limited": limited, "reason": reason}
+
+
 class KnowledgeGraphRetrievalMixin:
     _GRAPH_VISIBLE_TYPES = (
         "Computer",  # 내 컴퓨터
@@ -604,26 +638,45 @@ class KnowledgeGraphRetrievalMixin:
         allowed_workspaces=None,
         include_legacy_global: bool = False,
         use_hybrid: bool = False,
-    ) -> str:
+        with_meta: bool = False,
+    ):
         """Return compact graph-backed RAG context for chat generation.
 
         ``use_hybrid=True`` sources the matches from :meth:`hybrid_search`
         (lexical + vector fusion) instead of the lexical-only :meth:`search`.
         Default behavior is unchanged, and any hybrid failure silently falls
         back to the legacy lexical path.
+
+        ``with_meta=True`` (additive, v9.8.0) returns
+        ``{"context": str, "quality": {...}}`` instead of the bare string.
+        ``quality`` follows :func:`context_quality_signal` and honestly
+        reports how the context was retrieved (hybrid vs lexical-only
+        fallback vs nothing). The ``context`` value is byte-identical to the
+        default ``with_meta=False`` return for the same arguments.
         """
         query = str(query or "").strip()
         if not query:
+            if with_meta:
+                return {
+                    "context": "",
+                    "quality": context_quality_signal(
+                        "none", 0, reason="질의가 비어 있습니다"
+                    ),
+                }
             return ""
         matches: List[Dict[str, Any]] = []
+        retrieval_mode = "none"
         if use_hybrid:
             try:
-                matches = self.hybrid_search(
+                hybrid = self.hybrid_search(
                     query,
                     top_k=limit,
                     allowed_workspaces=allowed_workspaces,
                     include_legacy_global=include_legacy_global,
-                ).get("matches", [])
+                )
+                matches = hybrid.get("matches", [])
+                if matches:
+                    retrieval_mode = str(hybrid.get("mode") or "hybrid")
             except Exception:  # noqa: BLE001 — context building must never fail
                 matches = []
         if not matches:
@@ -633,6 +686,8 @@ class KnowledgeGraphRetrievalMixin:
                 allowed_workspaces=allowed_workspaces,
                 include_legacy_global=include_legacy_global,
             ).get("matches", [])
+            if matches:
+                retrieval_mode = "lexical_only"
         if not matches:
             topics = _topic_candidates(query, limit=4)
             if topics:
@@ -675,6 +730,8 @@ class KnowledgeGraphRetrievalMixin:
                         allowed_workspaces,
                         include_legacy_global=include_legacy_global,
                     )
+                if matches:
+                    retrieval_mode = "lexical_only"
         lines = []
         for match in matches[:limit]:
             meta = match.get("metadata") or {}
@@ -689,7 +746,39 @@ class KnowledgeGraphRetrievalMixin:
             lines.append(
                 f"- [{match['type']}] {match['title']} | source={source} | {summary}"
             )
-        return "\n".join(lines)
+        context = "\n".join(lines)
+        if not with_meta:
+            return context
+        return {
+            "context": context,
+            "quality": context_quality_signal(retrieval_mode, len(matches[:limit])),
+        }
+
+    def context_for_query_with_meta(
+        self,
+        query: str,
+        limit: int = 6,
+        *,
+        allowed_workspaces=None,
+        include_legacy_global: bool = False,
+        use_hybrid: bool = True,
+    ) -> Dict[str, Any]:
+        """Additive companion to :meth:`context_for_query` (v9.8.0).
+
+        Always returns ``{"context": str, "quality": {...}}`` so chat callers
+        can surface an honest retrieval signal without changing the legacy
+        string-returning contract. Defaults to hybrid retrieval because meta
+        consumers want the vector-fallback signal; pass ``use_hybrid=False``
+        for the legacy lexical-only sourcing.
+        """
+        return self.context_for_query(
+            query,
+            limit,
+            allowed_workspaces=allowed_workspaces,
+            include_legacy_global=include_legacy_global,
+            use_hybrid=use_hybrid,
+            with_meta=True,
+        )
 
     def neighbors(
         self,

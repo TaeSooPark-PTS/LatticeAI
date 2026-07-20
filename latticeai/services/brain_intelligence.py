@@ -257,6 +257,78 @@ class BrainIntelligenceService:
             "generated_at": _now(),
         }
 
+    # ── vector freshness (v9.8.0) ────────────────────────────────────────
+
+    def vector_freshness(
+        self, *, user_email: Optional[str] = None, workspace_id: Optional[str] = None
+    ) -> Dict[str, Any]:
+        """Fixed-contract vector index freshness for ``/api/brain/vector-freshness``.
+
+        Always returns ``{"status": "ready"|"pending"|"unavailable",
+        "pending_items": int, "total_items": int, "detail": str}`` and never
+        raises. The vector index is store-global (not workspace-partitioned);
+        scope arguments are accepted for router symmetry but do not narrow
+        the report.
+        """
+
+        def _unavailable(detail: str) -> Dict[str, Any]:
+            return {
+                "status": "unavailable",
+                "pending_items": 0,
+                "total_items": 0,
+                "detail": detail,
+            }
+
+        if not self._enable_graph or self._kg is None:
+            return _unavailable("knowledge graph is disabled; no vector index is configured")
+
+        freshness_fn = getattr(self._kg, "vector_freshness", None)
+        if callable(freshness_fn):
+            try:
+                raw = freshness_fn() or {}
+            except Exception as exc:
+                LOGGER.exception("vector freshness read failed")
+                return _unavailable(f"vector freshness read failed: {exc}")
+            status = str(raw.get("status") or "unavailable")
+            if status == "needs_reindex":
+                status = "pending"
+            if status not in {"ready", "pending", "unavailable"}:
+                status = "unavailable"
+            return {
+                "status": status,
+                "pending_items": int(raw.get("pending_items") or 0),
+                "total_items": int(raw.get("total_items") or 0),
+                "detail": str(raw.get("detail") or ""),
+            }
+
+        # Older/lighter stores: summarize index_status directly.
+        status_fn = getattr(self._kg, "index_status", None)
+        if callable(status_fn):
+            try:
+                raw = status_fn() or {}
+            except Exception as exc:
+                LOGGER.exception("vector index status read failed")
+                return _unavailable(f"vector index status unavailable: {exc}")
+            pending = int(raw.get("pending_items") or 0)
+            total = int(raw.get("source_items") or 0)
+            if pending > 0:
+                return {
+                    "status": "pending",
+                    "pending_items": pending,
+                    "total_items": total,
+                    "detail": (
+                        f"{pending} of {total} items are missing or stale in the vector index"
+                    ),
+                }
+            return {
+                "status": "ready",
+                "pending_items": 0,
+                "total_items": total,
+                "detail": "vector index is up to date",
+            }
+
+        return _unavailable("this knowledge store does not expose a vector index")
+
     # ── insights digest ──────────────────────────────────────────────────
 
     def insights(

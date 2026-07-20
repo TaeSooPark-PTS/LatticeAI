@@ -1,5 +1,5 @@
 import { asArray, isRecord as isRecordValue } from "@/lib/utils";
-import type { ApiRecord, BrainBrief, BrainDepth, BrainProof, BrainReadiness, ConversationSummary, IngestionEvidence, KnowledgeConcept, KnowledgeGraphModel, MemoryFragment, Message, RelationshipThread } from "./types";
+import type { ApiRecord, BrainBrief, BrainDepth, BrainProof, BrainReadiness, ConversationSummary, ExtractionQuality, IngestionEvidence, IngestionJob, KnowledgeConcept, KnowledgeGraphModel, MemoryFragment, Message, MessageContextQuality, RelationshipThread, VectorFreshness } from "./types";
 import { clamp } from "./graphLayout";
 
 export function buildConversationSummaries(historyData: unknown): ConversationSummary[] {
@@ -122,12 +122,93 @@ export function extractIngestionEvidence(data: unknown): IngestionEvidence {
     provenanceId ||= textValue(item, ["provenance_id"]);
   }
 
+  let extraction: ExtractionQuality | undefined;
+  for (const item of nested) {
+    const parsed = parseExtractionQuality(item);
+    if (parsed) {
+      extraction = parsed;
+      break;
+    }
+  }
+
   return {
     nodeIds: Array.from(nodeIds),
     chunkCount,
     ...(duplicate !== undefined ? { duplicate } : {}),
     ...(provenanceId ? { provenanceId } : {}),
+    ...(extraction ? { extraction } : {}),
   };
+}
+
+// Additive ingest meta: {"extraction_quality": {score, level, reasons}} with a
+// sibling "warnings" list when the level is low. Absent → undefined (no UI).
+export function parseExtractionQuality(container: unknown): ExtractionQuality | null {
+  const root = isRecord(container) ? container : {};
+  const quality = isRecord(root.extraction_quality) ? root.extraction_quality : null;
+  if (!quality) return null;
+  const level = textValue(quality, ["level"]);
+  if (level !== "high" && level !== "medium" && level !== "low") return null;
+  const warnings = stringArrayValue(root, ["warnings"]).length
+    ? stringArrayValue(root, ["warnings"])
+    : stringArrayValue(quality, ["warnings"]);
+  return {
+    score: numberValue(quality, ["score"]),
+    level,
+    reasons: stringArrayValue(quality, ["reasons"]),
+    warnings,
+  };
+}
+
+// Additive chat meta: "context_quality" travels on the same channel as
+// sources/evidence (the answer trace). Accepts the trailer payload or the
+// trace record itself; returns null when the backend does not emit it yet.
+export function parseContextQuality(value: unknown): MessageContextQuality | null {
+  const root = isRecord(value) ? value : {};
+  const direct = isRecord(root.context_quality) ? root.context_quality : null;
+  const nested = !direct && isRecord(root.trace) && isRecord(root.trace.context_quality)
+    ? root.trace.context_quality
+    : null;
+  const quality = direct || nested || (typeof root.mode === "string" && typeof root.limited === "boolean" ? root : null);
+  if (!quality) return null;
+  const mode = textValue(quality, ["mode"]);
+  if (!mode) return null;
+  const reason = typeof quality.reason === "string" && quality.reason.trim() ? quality.reason.trim() : null;
+  return {
+    mode,
+    nodes: Math.max(0, Math.round(numberValue(quality, ["nodes"]))),
+    limited: booleanValue(quality, ["limited"], false),
+    reason,
+  };
+}
+
+export function parseVectorFreshness(data: unknown): VectorFreshness {
+  const record = isRecord(data) ? data : {};
+  return {
+    status: textValue(record, ["status"], "unavailable"),
+    pendingItems: Math.max(0, Math.round(numberValue(record, ["pending_items", "pendingItems"]))),
+    totalItems: Math.max(0, Math.round(numberValue(record, ["total_items", "totalItems"]))),
+    detail: textValue(record, ["detail"]),
+  };
+}
+
+export function parseIngestionJobs(data: unknown): IngestionJob[] {
+  const record = isRecord(data) ? data : {};
+  return asArray<ApiRecord>(record.jobs).flatMap((item): IngestionJob[] => {
+    const jobId = textValue(item, ["job_id", "jobId", "id"]);
+    if (!jobId) return [];
+    const createdAt = textValue(item, ["created_at", "createdAt"]);
+    const updatedAt = textValue(item, ["updated_at", "updatedAt"]);
+    return [{
+      jobId,
+      status: textValue(item, ["status"], "queued"),
+      total: Math.max(0, Math.round(numberValue(item, ["total"]))),
+      processed: Math.max(0, Math.round(numberValue(item, ["processed"]))),
+      failed: Math.max(0, Math.round(numberValue(item, ["failed"]))),
+      errors: stringArrayValue(item, ["errors"]),
+      ...(createdAt ? { createdAt } : {}),
+      ...(updatedAt ? { updatedAt } : {}),
+    }];
+  });
 }
 
 export function currentModelName(data: unknown) {

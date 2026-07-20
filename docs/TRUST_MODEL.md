@@ -1,6 +1,6 @@
 # Lattice AI Trust Model
 
-Current release: **9.7.0 — Proactive Hybrid Brain**.
+Current release: **9.8.0 — Honest Knowledge Pipeline**.
 
 Lattice AI is local-first, explicit about external communication, and honest
 when a capability is unavailable.

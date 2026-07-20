@@ -10,7 +10,7 @@ from datetime import datetime
 from pathlib import Path
 from typing import Optional
 
-from fastapi import APIRouter, HTTPException, Request
+from fastapi import APIRouter, BackgroundTasks, HTTPException, Request
 from fastapi.responses import FileResponse
 from pydantic import BaseModel
 
@@ -33,6 +33,18 @@ class LocalAccessRequest(BaseModel):
 class LocalWriteRequest(BaseModel):
     path: str
     content: str
+    approved: bool = False
+    approval_token: Optional[str] = None
+
+
+class FolderIngestRequest(BaseModel):
+    path: str
+    recursive: bool = True
+    background: bool = False
+    workspace_id: Optional[str] = None
+    # Local filesystem reads follow the standard approval dance (same as
+    # /local/read and /knowledge-graph/local/index): the first call returns a
+    # permission_required payload with an approval token.
     approved: bool = False
     approval_token: Optional[str] = None
 
@@ -194,6 +206,107 @@ def create_local_files_router(
             raise HTTPException(status_code=404, detail="File not found")
         return FileResponse(str(target))
 
+    # ── v9.8.0 ingestion jobs API (frozen paths — consumed by the frontend) ───
+    def _require_pipeline():
+        if ingestion_pipeline is None or not ingestion_pipeline.available():
+            raise HTTPException(status_code=503, detail="Knowledge Graph ingestion is disabled.")
+
+    def _ingestion_write_workspace(request: Request, body_workspace: Optional[str], user: str) -> Optional[str]:
+        header = request.headers.get("X-Workspace-Id")
+        header = header.strip() if header and header.strip() else None
+        supplied = [value for value in (body_workspace, header) if value]
+        if len(set(supplied)) > 1:
+            raise HTTPException(status_code=403, detail="Workspace selectors must match.")
+        requested = supplied[0] if supplied else None
+        if workspace_service is None:
+            return requested
+        try:
+            return workspace_service.resolve_write_scope(requested, user or None)
+        except PermissionError as exc:
+            raise HTTPException(status_code=403, detail=str(exc)) from exc
+
+    @router.get("/api/ingestion/jobs")
+    async def ingestion_jobs(request: Request, limit: int = 20):
+        """Recent background ingestion jobs (newest first)."""
+        require_user(request)
+        _require_pipeline()
+        limit = max(1, min(int(limit or 20), 100))
+        return {"jobs": ingestion_pipeline.list_background_jobs(limit=limit)}
+
+    @router.get("/api/ingestion/jobs/{job_id}")
+    async def ingestion_job_detail(job_id: str, request: Request):
+        """One job with its progress counters and (capped) error records."""
+        require_user(request)
+        _require_pipeline()
+        job = ingestion_pipeline.get_background_job(job_id)
+        if job is None:
+            raise HTTPException(status_code=404, detail="ingestion job not found")
+        return job.as_dict()
+
+    @router.post("/api/ingestion/jobs/{job_id}/resume")
+    async def ingestion_job_resume(job_id: str, request: Request, background_tasks: BackgroundTasks):
+        """Resume an interrupted/partial/failed job from its remaining items."""
+        user = require_user(request)
+        _require_pipeline()
+        job = ingestion_pipeline.get_background_job(job_id)
+        if job is None:
+            raise HTTPException(status_code=404, detail="ingestion job not found")
+        if job.status == "running":
+            return {"status": "already_running", "job_id": job_id, "job": job.as_dict()}
+        remaining = len(job.remaining_indices())
+        if remaining == 0 and job.status == "completed":
+            return {"status": "nothing_to_resume", "job_id": job_id, "job": job.as_dict()}
+        background_tasks.add_task(
+            ingestion_pipeline.resume_background_job, job_id, user_email=user or None,
+        )
+        return {
+            "status": "resuming",
+            "job_id": job_id,
+            "remaining": remaining,
+            "job": job.as_dict(),
+        }
+
+    @router.post("/api/ingestion/folder")
+    async def ingestion_folder(req: FolderIngestRequest, request: Request, background_tasks: BackgroundTasks):
+        """Ingest a local folder through the unified pipeline.
+
+        Reads local disk, so it follows the same approval dance as
+        ``/local/read`` and ``/knowledge-graph/local/index``: without
+        ``approved`` + ``approval_token`` the response is a
+        ``permission_required`` payload. ``background=true`` schedules a job
+        (summary includes ``job_id``) and executes it after the response.
+        """
+        current_user = permission_gateway.require_local_user(request)
+        _require_pipeline()
+        workspace_id = _ingestion_write_workspace(request, req.workspace_id, current_user)
+        path = (req.path or "").strip()
+        if not path:
+            raise HTTPException(status_code=400, detail="path is required.")
+        if not req.approved:
+            return permission_gateway.local_permission_response(path, "read", current_user)
+        permission_gateway.require_local_approval(
+            token=req.approval_token,
+            path=path,
+            action="read",
+            user_email=current_user,
+        )
+        summary = ingestion_pipeline.ingest_folder(
+            path,
+            recursive=req.recursive,
+            background=req.background,
+            owner=current_user or None,
+            workspace_id=workspace_id,
+            user_email=current_user or None,
+        )
+        job_id = summary.get("job_id")
+        if req.background and job_id:
+            # Execute after the response is sent; progress is visible via
+            # GET /api/ingestion/jobs/{job_id}.
+            background_tasks.add_task(
+                ingestion_pipeline.run_background_job, job_id, user_email=current_user or None,
+            )
+        return summary
+
     @router.post("/local/write")
     async def local_write_endpoint(req: LocalWriteRequest, request: Request):
         current_user = permission_gateway.require_local_user(request)
@@ -238,4 +351,9 @@ def create_local_files_router(
     return router
 
 
-__all__ = ["LocalAccessRequest", "LocalWriteRequest", "create_local_files_router"]
+__all__ = [
+    "FolderIngestRequest",
+    "LocalAccessRequest",
+    "LocalWriteRequest",
+    "create_local_files_router",
+]

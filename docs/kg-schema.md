@@ -1,6 +1,6 @@
 # Knowledge Graph Schema
 
-Current release: **9.7.0 — Proactive Hybrid Brain**.
+Current release: **9.8.0 — Honest Knowledge Pipeline**.
 
 명세 출처: `lattice_ai_full_spec.pptx` 슬라이드 20·21·22
 구현: `kg_schema.py`

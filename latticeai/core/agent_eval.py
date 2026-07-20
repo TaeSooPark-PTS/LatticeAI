@@ -52,6 +52,24 @@ _GOVERNED_WRITE_POLICY = {
     "destructive": False, "sandbox": "workspace", "rollback": "git",
 }
 
+# Deterministic Brain-port fixtures. Grounding scenarios assert their final
+# message against these exact values (node ids, concepts, snippets), so a
+# response that was not derived from the tool result — a hallucination in
+# loop terms — cannot pass.
+_EVAL_INGEST_RESULT = {
+    "ok": True,
+    "node_id": "node-ing-1",
+    "concepts": ["mlx", "quantization"],
+    "relations": [{"from": "mlx", "to": "quantization", "type": "related_to"}],
+}
+_EVAL_SEARCH_RESULT = {
+    "ok": True,
+    "matches": [
+        {"id": "node-42", "title": "Q3 roadmap", "snippet": "ship v9.8 by August"}
+    ],
+    "count": 1,
+}
+
 
 class _EvalChangeGovernor:
     """Deterministic stand-in for ChangeProposalService's governor port.
@@ -99,6 +117,11 @@ class Scenario:
     expect_tool_calls: List[str] = field(default_factory=list)
     # Wire a change governor so governed tools follow the proposal path.
     use_governor: bool = False
+    # Substrings the final user-facing message must contain. Grounding
+    # scenarios point these at tokens that only exist in the fake tool port's
+    # canned results (node ids, snippets, proposal ids), so an answer that is
+    # not grounded in the retrieved/executed evidence fails the scenario.
+    expect_final_contains: List[str] = field(default_factory=list)
     max_steps: int = 8
 
 
@@ -136,6 +159,12 @@ def _build_deps(
         if name in ("write_file", "generate_file") and not args.get("path"):
             raise ToolError(f"{name} requires args.path")
         tool_log.append({"name": name, "args": args})
+        # Brain ports return canned, stable payloads so grounding scenarios
+        # can assert the final answer cites what was actually retrieved.
+        if name == "knowledge_graph_ingest":
+            return dict(_EVAL_INGEST_RESULT)
+        if name == "knowledge_graph_search":
+            return dict(_EVAL_SEARCH_RESULT)
         return {"ok": True, "path": args.get("path", "")}
 
     def policy_for(name: str, args: dict) -> dict:
@@ -157,6 +186,8 @@ def _build_deps(
             "write_file": write_policy,
             "read_file": dict(_AUTO_POLICY),
             "generate_file": dict(_AUTO_POLICY),
+            "knowledge_graph_ingest": dict(_AUTO_POLICY),
+            "knowledge_graph_search": dict(_AUTO_POLICY),
             "delete_everything": dict(_DESTRUCTIVE_POLICY),
         },
         file_create_actions=frozenset({"write_file", "generate_file"}),
@@ -333,6 +364,95 @@ def default_scenarios() -> List[Scenario]:
             expect_tool_outcomes={"proposed": 1, "ok": 1},
             expect_tool_calls=["write_file"],
         ),
+        # ── brain ingestion ─────────────────────────────────────────────
+        Scenario(
+            name="ingestion-chain-confirms-save",
+            replies=[
+                '{"action": "plan", "goal": "ingest web article into the Brain", '
+                '"steps": [{"action": "knowledge_graph_ingest"}]}',
+                # Weak-model dressing (think block) around a clean ingest call.
+                "<think>save the text first, then confirm with the node id</think>\n"
+                '{"thoughts": "ingest the pasted article", '
+                '"action": "knowledge_graph_ingest", "args": {"source": "web", '
+                '"url": "https://example.com/mlx-notes", '
+                '"text": "MLX quantization notes"}}',
+                # Confirmation cites the node id the ingest port returned —
+                # the loop must carry the tool result into the final turn.
+                '{"action": "final", "message": "Saved to the Brain as node-ing-1."}',
+                _PASS,
+            ],
+            expect_exact={"parse_errors": 0},
+            expect_tool_outcomes={"ok": 1},
+            expect_tool_calls=["knowledge_graph_ingest"],
+            expect_final_contains=["node-ing-1"],
+        ),
+        # ── concept extraction ──────────────────────────────────────────
+        Scenario(
+            name="concept-extraction-reflected-in-answer",
+            replies=[
+                '{"action": "plan", "goal": "ingest the note and report extracted concepts", '
+                '"steps": [{"action": "knowledge_graph_ingest"}]}',
+                '{"thoughts": "ingest the file so the pipeline extracts concepts", '
+                '"action": "knowledge_graph_ingest", "args": {"source": "file", '
+                '"path": "notes/mlx.md", "text": "quantization on MLX"}}',
+                # The confirmation must surface what the pipeline extracted
+                # (concepts + relation), not merely say "done".
+                '{"action": "final", "message": "Ingested notes/mlx.md - extracted '
+                'concepts mlx and quantization (mlx -> quantization, related_to)."}',
+                _PASS,
+            ],
+            expect_exact={"parse_errors": 0},
+            expect_tool_outcomes={"ok": 1},
+            expect_tool_calls=["knowledge_graph_ingest"],
+            expect_final_contains=["mlx", "quantization", "related_to"],
+        ),
+        # ── RAG-grounded answer ─────────────────────────────────────────
+        Scenario(
+            name="rag-grounded-answer-cites-retrieval",
+            replies=[
+                '{"action": "plan", "goal": "answer from the Brain, not from priors", '
+                '"steps": [{"action": "knowledge_graph_search"}]}',
+                '{"thoughts": "retrieve evidence before answering", '
+                '"action": "knowledge_graph_search", "args": {"query": "Q3 roadmap"}}',
+                # Grounded: cites the retrieved node id and snippet — both exist
+                # only in the fake port's canned search result, so an ungrounded
+                # (hallucinated) final message cannot satisfy the expectation.
+                '{"action": "final", "message": "Per Q3 roadmap (node-42): ship v9.8 by August."}',
+                _PASS,
+            ],
+            expect_exact={"parse_errors": 0},
+            expect_tool_outcomes={"ok": 1},
+            expect_tool_calls=["knowledge_graph_search"],
+            expect_final_contains=["node-42", "ship v9.8 by August"],
+        ),
+        # ── automation suggestion under proposal-first governance ───────
+        Scenario(
+            name="automation-suggestion-proposal-first",
+            use_governor=True,
+            replies=[
+                '{"action": "plan", "goal": "recurring daily question detected - stage a '
+                'digest automation for review", '
+                '"steps": [{"action": "knowledge_graph_search"}, {"action": "write_file"}]}',
+                # Evidence first: confirm the repeated pattern from the Brain.
+                '{"thoughts": "confirm the pattern is real before suggesting automation", '
+                '"action": "knowledge_graph_search", '
+                '"args": {"query": "recurring question daily digest"}}',
+                # Proposal-first: changing existing automation state is a
+                # mutation, so the governor stages it as a review proposal —
+                # the model can never silently install/enable an automation.
+                '{"thoughts": "stage the automation as a reviewable proposal", '
+                '"action": "write_file", '
+                '"args": {"path": "existing/automations/daily-digest.json", '
+                '"content": "trigger interval, disabled draft, review_queue"}}',
+                '{"action": "final", "message": "Automation staged for review as '
+                'eval-proposal-1 - enable it from the review queue."}',
+                _PASS,
+            ],
+            expect_exact={"parse_errors": 0},
+            expect_tool_outcomes={"ok": 1, "proposed": 1},
+            expect_tool_calls=["knowledge_graph_search"],
+            expect_final_contains=["eval-proposal-1", "review"],
+        ),
     ]
 
 
@@ -370,6 +490,9 @@ async def _run_scenario(scenario: Scenario) -> Dict[str, Any]:
     executed = [call["name"] for call in tool_log]
     if scenario.expect_tool_calls and executed != scenario.expect_tool_calls:
         failures.append(f"tool_calls={executed} != {scenario.expect_tool_calls}")
+    for needle in scenario.expect_final_contains:
+        if needle not in ctx.final_message:
+            failures.append(f"final_message missing {needle!r}")
     if governor is not None and summary["tool_outcomes"].get("proposed", 0) != len(governor.proposals):
         failures.append(
             f"governor proposals={len(governor.proposals)} != "

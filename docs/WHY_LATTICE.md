@@ -1,6 +1,6 @@
 # Why Lattice AI Exists
 
-Current release: **9.7.0 — Proactive Hybrid Brain**.
+Current release: **9.8.0 — Honest Knowledge Pipeline**.
 
 **Lattice AI is a local-first Digital Brain that keeps your knowledge durable
 across any AI model.**

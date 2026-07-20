@@ -52,8 +52,14 @@ async def stream_chat(
     history_meta: Optional[Dict[str, Any]] = None,
     model_id: Optional[str] = None,
     workspace_id: Optional[str] = None,
+    context_quality: Optional[Dict[str, Any]] = None,
 ) -> AsyncIterator[str]:
-    """Stream model chunks and persist exactly one finalized answer."""
+    """Stream model chunks and persist exactly one finalized answer.
+
+    ``context_quality`` (v9.8.0, additive) is echoed on the final trailer
+    event alongside the answer trace so streaming clients receive the same
+    honest RAG signal as the non-streaming JSON response.
+    """
 
     full_response = ""
     stream_error: Optional[str] = None
@@ -106,6 +112,8 @@ async def stream_chat(
     trailer: Dict[str, Any] = {"chunk": "", "model": model_id}
     if trace_record:
         trailer.update({"trace_id": trace_record["id"], "trace": trace_record})
+    if context_quality is not None:
+        trailer["context_quality"] = context_quality
     if stream_error:
         trailer["error"] = stream_error
     yield f"data: {json.dumps(trailer, ensure_ascii=False)}\n\n"

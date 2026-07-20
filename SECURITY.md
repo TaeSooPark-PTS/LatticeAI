@@ -1,15 +1,16 @@
 # Security Policy
 
-Current release: **9.7.0 — Proactive Hybrid Brain**.
+Current release: **9.8.0 — Honest Knowledge Pipeline**.
 
 ## Supported Versions
 
-The public Git tree keeps release history from 8.0.0 through 9.7.0. Security
+The public Git tree keeps release history from 8.0.0 through 9.8.0. Security
 support follows that same product era.
 
 | Version | Support |
 | --- | --- |
-| 9.7.x (latest) | Supported |
+| 9.8.x (latest) | Supported |
+| 9.7.x | Supported |
 | 9.6.x | Supported |
 | 9.5.x | Supported |
 | 9.4.x | Supported |

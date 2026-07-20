@@ -1155,6 +1155,30 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/brain/vector-freshness": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Brain Vector Freshness
+         * @description Vector index freshness summary (read-only, never raises).
+         *
+         *     Fixed contract consumed by the frontend:
+         *     ``{"status": "ready"|"pending"|"unavailable", "pending_items": int,
+         *     "total_items": int, "detail": str}``.
+         */
+        get: operations["brain_vector_freshness_api_brain_vector_freshness_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/browser/ingest-current-tab": {
         parameters: {
             query?: never;
@@ -1503,6 +1527,92 @@ export interface paths {
         get: operations["index_status_api_index_status_get"];
         put?: never;
         post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/ingestion/folder": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Ingestion Folder
+         * @description Ingest a local folder through the unified pipeline.
+         *
+         *     Reads local disk, so it follows the same approval dance as
+         *     ``/local/read`` and ``/knowledge-graph/local/index``: without
+         *     ``approved`` + ``approval_token`` the response is a
+         *     ``permission_required`` payload. ``background=true`` schedules a job
+         *     (summary includes ``job_id``) and executes it after the response.
+         */
+        post: operations["ingestion_folder_api_ingestion_folder_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/ingestion/jobs": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Ingestion Jobs
+         * @description Recent background ingestion jobs (newest first).
+         */
+        get: operations["ingestion_jobs_api_ingestion_jobs_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/ingestion/jobs/{job_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Ingestion Job Detail
+         * @description One job with its progress counters and (capped) error records.
+         */
+        get: operations["ingestion_job_detail_api_ingestion_jobs__job_id__get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/ingestion/jobs/{job_id}/resume": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Ingestion Job Resume
+         * @description Resume an interrupted/partial/failed job from its remaining items.
+         */
+        post: operations["ingestion_job_resume_api_ingestion_jobs__job_id__resume_post"];
         delete?: never;
         options?: never;
         head?: never;
@@ -6621,6 +6731,30 @@ export interface components {
              */
             scope: string;
         };
+        /** FolderIngestRequest */
+        FolderIngestRequest: {
+            /** Approval Token */
+            approval_token?: string | null;
+            /**
+             * Approved
+             * @default false
+             */
+            approved: boolean;
+            /**
+             * Background
+             * @default false
+             */
+            background: boolean;
+            /** Path */
+            path: string;
+            /**
+             * Recursive
+             * @default true
+             */
+            recursive: boolean;
+            /** Workspace Id */
+            workspace_id?: string | null;
+        };
         /** GardenRequest */
         GardenRequest: {
             /** Category */
@@ -10066,6 +10200,26 @@ export interface operations {
             };
         };
     };
+    brain_vector_freshness_api_brain_vector_freshness_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": unknown;
+                };
+            };
+        };
+    };
     ingest_current_tab_api_browser_ingest_current_tab_post: {
         parameters: {
             query?: never;
@@ -10790,6 +10944,132 @@ export interface operations {
                     "application/json": {
                         [key: string]: unknown;
                     };
+                };
+            };
+        };
+    };
+    ingestion_folder_api_ingestion_folder_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["FolderIngestRequest"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": unknown;
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    ingestion_jobs_api_ingestion_jobs_get: {
+        parameters: {
+            query?: {
+                limit?: number;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": unknown;
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    ingestion_job_detail_api_ingestion_jobs__job_id__get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                job_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": unknown;
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    ingestion_job_resume_api_ingestion_jobs__job_id__resume_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                job_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": unknown;
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
                 };
             };
         };

@@ -1,6 +1,6 @@
 # Privacy
 
-Current release: **9.7.0 — Proactive Hybrid Brain**.
+Current release: **9.8.0 — Honest Knowledge Pipeline**.
 
 Lattice AI is local-first. It does not send your prompts, files, graph, or Brain
 archive to Lattice-owned servers by default. Some user-chosen features can

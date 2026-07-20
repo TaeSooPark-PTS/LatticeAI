@@ -36,6 +36,7 @@ import {
   PastConversationsPanel,
 } from "./HomePanels";
 import { BrainIngestionDock, BrainIngestionPanel, IngestionTimelineSection } from "./IngestionPanels";
+import { IngestionJobsPanel, VectorFreshnessNotice } from "./BrainSignals";
 import { BrainKnowledgeFlow, BrainMemoryAutomation, ConversationKnowledgeTrace } from "./BrainKnowledgeFlow";
 import { CreatedFilesCard, MessageBody } from "./MessageMarkdown";
 import { MemoryRings } from "./MemoryRings";
@@ -144,6 +145,7 @@ export function BrainConversation({
     <section className="brain-conversation" aria-label={t(language, "brain.aria.conversation")}>
       <div className="brain-chat-home-layout">
         <section className={`brain-chat-home-card ${hasMessages ? "has-messages" : "is-empty-home"}`} aria-label={t(language, "brain.chatHome.aria")}>
+          <VectorFreshnessNotice language={language} />
           {hasMessages ? (
             <>
               <header className="brain-chat-header">
@@ -199,6 +201,12 @@ export function BrainConversation({
                         )}
                         {proof && proof.citations.length ? (
                           <InlineCitationMarkers language={language} proof={proof} messageId={messageId} />
+                        ) : null}
+                        {message.role === "assistant" && message.contextQuality?.limited ? (
+                          <ContextQualityNote
+                            language={language}
+                            reason={isBasic ? null : message.contextQuality.reason}
+                          />
                         ) : null}
                       </div>
                       {showActions ? (
@@ -309,6 +317,7 @@ export function BrainConversation({
                     onIngestNote={onIngestNote}
                     onIngestWeb={onIngestWeb}
                   />
+                  <IngestionJobsPanel language={language} />
                 </div>
 
                 <BrainComposer
@@ -468,16 +477,19 @@ export function BrainConversation({
             </div>
             <div className="brain-utility-grid">
               {hasMessages ? (
-                <BrainIngestionPanel
-                  language={language}
-                  uploadingDocument={uploadingDocument}
-                  ingestionStates={ingestionStates}
-                  onUploadDocument={onUploadDocument}
-                  onPickFolder={onPickFolder}
-                  onConnectFolder={onConnectFolder}
-                  onIngestNote={onIngestNote}
-                  onIngestWeb={onIngestWeb}
-                />
+                <>
+                  <BrainIngestionPanel
+                    language={language}
+                    uploadingDocument={uploadingDocument}
+                    ingestionStates={ingestionStates}
+                    onUploadDocument={onUploadDocument}
+                    onPickFolder={onPickFolder}
+                    onConnectFolder={onConnectFolder}
+                    onIngestNote={onIngestNote}
+                    onIngestWeb={onIngestWeb}
+                  />
+                  <IngestionJobsPanel language={language} />
+                </>
               ) : null}
               {isBasic ? null : (
                 <>
@@ -506,6 +518,17 @@ export function BrainConversation({
         </section>
       </div>
     </section>
+  );
+}
+
+// Honest signaling: a quiet inline note when the Brain answered with limited
+// graph-backed context, so users know how much to trust the recall behind it.
+function ContextQualityNote({ language, reason }: { language: Language; reason: string | null }) {
+  return (
+    <p className="brain-context-quality-note" role="note" data-testid="context-quality-note">
+      <span>{t(language, "brain.contextQuality.limited")}</span>
+      {reason ? <small>{t(language, "brain.contextQuality.reason", { reason })}</small> : null}
+    </p>
   );
 }
 

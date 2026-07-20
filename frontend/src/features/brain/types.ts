@@ -9,6 +9,17 @@ export type Message = {
   proof?: MessageProof;
   // Real files the assistant created in the local workspace for this reply.
   files?: MessageFile[];
+  // Honest signal about how much graph context backed this answer.
+  contextQuality?: MessageContextQuality;
+};
+
+// Additive chat meta ("context_quality") flowing on the same channel as
+// sources/evidence. `limited` means the graph context was thinner than usual.
+export type MessageContextQuality = {
+  mode: "hybrid" | "lexical_only" | "none" | string;
+  nodes: number;
+  limited: boolean;
+  reason: string | null;
 };
 
 export type MessageFile = {
@@ -220,6 +231,7 @@ export type IngestionState = {
   duplicate?: boolean;
   provenanceId?: string;
   error?: string;
+  extraction?: ExtractionQuality;
 };
 
 export type IngestionEvidence = {
@@ -227,6 +239,36 @@ export type IngestionEvidence = {
   chunkCount: number;
   duplicate?: boolean;
   provenanceId?: string;
+  extraction?: ExtractionQuality;
+};
+
+// Additive ingest meta ("extraction_quality"): how well the source content
+// could be extracted. Low quality carries user-facing warnings.
+export type ExtractionQuality = {
+  score: number;
+  level: "high" | "medium" | "low";
+  reasons: string[];
+  warnings: string[];
+};
+
+export type VectorFreshness = {
+  status: "ready" | "pending" | "unavailable" | string;
+  pendingItems: number;
+  totalItems: number;
+  detail: string;
+};
+
+export type IngestionJobStatus = "queued" | "running" | "completed" | "failed" | "partial" | string;
+
+export type IngestionJob = {
+  jobId: string;
+  status: IngestionJobStatus;
+  total: number;
+  processed: number;
+  failed: number;
+  errors: string[];
+  createdAt?: string;
+  updatedAt?: string;
 };
 
 export type EmergenceEvent = {

@@ -42,9 +42,10 @@ from __future__ import annotations
 import fnmatch
 import hashlib
 import os
+import threading
 from dataclasses import dataclass, field
 from pathlib import Path
-from typing import Any, Dict, Iterable, List, Optional, Tuple
+from typing import Any, Dict, Iterable, List, Optional, Set, Tuple
 
 from .runtime.hooks import dispatch_tool
 from .utils import utc_now_iso
@@ -111,6 +112,138 @@ LATTICEIGNORE_FILENAME = ".latticeignore"
 # Opt-out escape hatch for the post-ingest incremental vector sync.
 AUTO_VECTOR_INDEX_ENV = "LATTICEAI_AUTO_VECTOR_INDEX"
 
+# ── Extraction quality heuristics (v9.8.0 A1) ────────────────────────────────
+# Pure heuristics over the extracted text — no model calls, no network. The
+# score is *advisory*: it never blocks an ingest, it only annotates the result
+# so capture surfaces (browser, folder scan) can surface low-quality warnings.
+QUALITY_HIGH_THRESHOLD = 0.7
+QUALITY_LOW_THRESHOLD = 0.4
+QUALITY_LOW_WARNING = "추출 품질이 낮습니다 — 원문 확인을 권장합니다."
+_WEB_SOURCE_TYPES = frozenset({"web_url", "browser_tab"})
+# Standalone short lines that smell like leftover site chrome (nav/menu/footer).
+_BOILERPLATE_LINE_MARKERS = frozenset(
+    {
+        "home", "menu", "nav", "navigation", "login", "log in", "sign in",
+        "sign up", "register", "subscribe", "search", "about", "about us",
+        "contact", "contact us", "privacy policy", "terms of service",
+        "cookie policy", "accept cookies", "accept all cookies", "share",
+        "skip to content", "copyright", "all rights reserved", "sitemap",
+        "back to top", "footer", "read more", "next", "previous",
+    }
+)
+
+
+def _quality_level(score: float) -> str:
+    if score >= QUALITY_HIGH_THRESHOLD:
+        return "high"
+    if score >= QUALITY_LOW_THRESHOLD:
+        return "medium"
+    return "low"
+
+
+def assess_extraction_quality(
+    text: Optional[str],
+    *,
+    source_type: Optional[str] = None,
+    upstream_confidence: Optional[Any] = None,
+) -> Dict[str, Any]:
+    """Score extracted text 0..1 with reasons (pure heuristic, deterministic).
+
+    Signals: text length, whitespace ratio, character/word diversity
+    (repetition), sentence structure, and — for web sources — leftover
+    nav/menu boilerplate. When the upstream extractor supplies its own
+    confidence (``upstream_confidence``), that value wins verbatim: the
+    extractor saw the raw document, this function only sees its output.
+    """
+    if upstream_confidence is not None:
+        try:
+            score = max(0.0, min(1.0, float(upstream_confidence)))
+        except (TypeError, ValueError):
+            score = None
+        if score is not None:
+            return {
+                "score": round(score, 4),
+                "level": _quality_level(score),
+                "reasons": ["upstream_confidence"],
+            }
+
+    raw = str(text or "")
+    stripped = raw.strip()
+    if not stripped:
+        return {"score": 0.0, "level": "low", "reasons": ["empty_text"]}
+
+    reasons: List[str] = []
+    length = len(stripped)
+    sample = stripped[:4000]
+    lines = [ln.strip() for ln in stripped.splitlines() if ln.strip()]
+    words = stripped.split()
+
+    # 1) Length — very short extractions rarely carry recall value.
+    if length < 40:
+        length_factor = 0.35
+        reasons.append("very_short_text")
+    elif length < 120:
+        length_factor = 0.6
+        reasons.append("short_text")
+    elif length < 300:
+        length_factor = 0.85
+    else:
+        length_factor = 1.0
+
+    # 2) Sentence structure — prose has sentence-ending punctuation.
+    sentence_marks = sum(sample.count(mark) for mark in (".", "!", "?", "…", "。", "！", "？"))
+    if sentence_marks > 0:
+        structure_factor = 1.0
+    elif length < 200:
+        structure_factor = 0.75  # titles/snippets legitimately lack periods
+    else:
+        structure_factor = 0.45
+        reasons.append("no_sentence_structure")
+
+    # 3) Diversity — repeated characters/lines/words indicate extraction junk.
+    diversity_factor = 1.0
+    distinct_chars = len(set(sample.lower()))
+    if distinct_chars < 10:
+        diversity_factor *= 0.2
+        reasons.append("low_character_diversity")
+    elif distinct_chars < 20:
+        diversity_factor *= 0.7
+    if len(lines) >= 6:
+        top_count = max(lines.count(ln) for ln in set(lines))
+        if top_count >= max(3, len(lines) // 4):
+            diversity_factor *= 0.5
+            reasons.append("repetitive_lines")
+    if len(words) >= 30 and (len(set(w.lower() for w in words)) / len(words)) < 0.25:
+        diversity_factor *= 0.5
+        reasons.append("repetitive_words")
+
+    # 4) Cleanliness — whitespace floods, fragmented lines, site chrome.
+    cleanliness_factor = 1.0
+    whitespace_ratio = sum(1 for ch in raw if ch.isspace()) / max(1, len(raw))
+    if whitespace_ratio > 0.45:
+        cleanliness_factor *= 0.6
+        reasons.append("high_whitespace_ratio")
+    if len(lines) >= 8:
+        short_lines = sum(1 for ln in lines if len(ln.split()) <= 3)
+        if short_lines / len(lines) > 0.6:
+            cleanliness_factor *= 0.6
+            reasons.append("fragmented_lines")
+    boilerplate_hits = sum(
+        1 for ln in lines if ln.lower().strip(" .:>|•·-–—*") in _BOILERPLATE_LINE_MARKERS
+    )
+    if lines and boilerplate_hits >= 3 and (boilerplate_hits / len(lines)) > 0.2:
+        cleanliness_factor *= 0.35
+        if str(source_type or "").lower() in _WEB_SOURCE_TYPES:
+            reasons.append("nav_menu_remnants")
+        else:
+            reasons.append("boilerplate_markers")
+
+    score = length_factor * structure_factor * diversity_factor * cleanliness_factor
+    score = max(0.0, min(1.0, score))
+    if not reasons:
+        reasons.append("clean_extraction")
+    return {"score": round(score, 4), "level": _quality_level(score), "reasons": reasons}
+
 
 def _load_latticeignore(root: Path) -> List[str]:
     """Parse ``root/.latticeignore`` → glob patterns (gitignore-like subset)."""
@@ -155,16 +288,58 @@ def _matches_ignore(
 
 
 # --- Large candidate 1 slice: incremental / background ingestion support ---
+JOB_ERRORS_CAP = 50  # per-job error records kept (failed count keeps counting)
+
+
 @dataclass
 class BackgroundIngestionJob:
-    """Job descriptor for background/incremental indexing (KG scale-up slice)."""
+    """Job descriptor + progress state for background/incremental indexing.
+
+    ``done_indices`` tracks per-item completion so an interrupted or partially
+    failed job can be *resumed* from the remaining items instead of restarting.
+    ``errors`` is capped at ``max_errors`` records; ``failed`` keeps counting.
+    """
     job_id: str
     items: List[IngestionItem]
-    status: str = "pending"  # pending | running | done | failed
+    status: str = "queued"  # queued | running | completed | failed | partial
     created_at: str = field(default_factory=utc_now_iso)
+    updated_at: str = field(default_factory=utc_now_iso)
     processed: int = 0
+    failed: int = 0
     total: int = 0
-    errors: List[str] = field(default_factory=list)
+    errors: List[Dict[str, Any]] = field(default_factory=list)
+    incremental: bool = True
+    user_email: Optional[str] = None
+    max_errors: int = JOB_ERRORS_CAP
+    done_indices: Set[int] = field(default_factory=set)
+
+    def touch(self) -> None:
+        self.updated_at = utc_now_iso()
+
+    def record_error(self, index: int, item: IngestionItem, detail: Any) -> None:
+        self.failed += 1
+        if len(self.errors) < self.max_errors:
+            self.errors.append({
+                "index": index,
+                "source": item.source_uri or item.path or item.title or item.source_type,
+                "detail": str(detail)[:500],
+            })
+
+    def remaining_indices(self) -> List[int]:
+        return [i for i in range(len(self.items)) if i not in self.done_indices]
+
+    def as_dict(self) -> Dict[str, Any]:
+        """Frozen job schema consumed by ``/api/ingestion/jobs*``."""
+        return {
+            "job_id": self.job_id,
+            "status": self.status,
+            "total": self.total,
+            "processed": self.processed,
+            "failed": self.failed,
+            "errors": list(self.errors),
+            "created_at": self.created_at,
+            "updated_at": self.updated_at,
+        }
 
 
 class BackgroundIngestionQueue:
@@ -177,27 +352,45 @@ class BackgroundIngestionQueue:
     def __init__(self) -> None:
         self._jobs: Dict[str, BackgroundIngestionJob] = {}
         self._counter = 0
+        self._lock = threading.Lock()
 
-    def schedule(self, items: List[IngestionItem], *, incremental: bool = True) -> BackgroundIngestionJob:
-        self._counter += 1
-        job_id = f"bg_ingest_{self._counter:04d}"
+    def schedule(
+        self,
+        items: List[IngestionItem],
+        *,
+        incremental: bool = True,
+        user_email: Optional[str] = None,
+    ) -> BackgroundIngestionJob:
+        with self._lock:
+            self._counter += 1
+            job_id = f"bg_ingest_{self._counter:04d}"
         job = BackgroundIngestionJob(
             job_id=job_id,
             items=items,
             total=len(items),
+            incremental=incremental,
+            user_email=user_email,
         )
         # annotate items for downstream
         for it in job.items:
             # attach flag without breaking dataclass defaults (use metadata)
             it.metadata = {**it.metadata, "incremental": incremental, "bg_job": job_id}
-        self._jobs[job_id] = job
+        with self._lock:
+            self._jobs[job_id] = job
         return job
 
     def get(self, job_id: str) -> Optional[BackgroundIngestionJob]:
         return self._jobs.get(job_id)
 
     def list_pending(self) -> List[BackgroundIngestionJob]:
-        return [j for j in self._jobs.values() if j.status == "pending"]
+        return [j for j in self._jobs.values() if j.status == "queued"]
+
+    def list_recent(self, limit: int = 20) -> List[BackgroundIngestionJob]:
+        """Most recent jobs first (insertion order is schedule order)."""
+        limit = max(1, int(limit))
+        with self._lock:
+            jobs = list(self._jobs.values())
+        return list(reversed(jobs))[:limit]
 
 
 @dataclass
@@ -237,9 +430,13 @@ class IngestionResult:
     indexing_status: str = "pending"    # indexed | skipped | failed | pending
     provenance_id: Optional[str] = None
     detail: Optional[str] = None
+    # v9.8.0 additive quality fields — advisory only, never gate behavior.
+    extraction_quality: Optional[Dict[str, Any]] = None
+    warnings: List[str] = field(default_factory=list)
+    quality_gate: Optional[Dict[str, Any]] = None
 
     def as_dict(self) -> Dict[str, Any]:
-        return {
+        payload = {
             "status": self.status,
             "source_type": self.source_type,
             "node_id": self.node_id,
@@ -254,6 +451,14 @@ class IngestionResult:
             "provenance_id": self.provenance_id,
             "detail": self.detail,
         }
+        # Additive keys only when populated so pre-v9.8 payloads are unchanged.
+        if self.extraction_quality is not None:
+            payload["extraction_quality"] = self.extraction_quality
+        if self.warnings:
+            payload["warnings"] = list(self.warnings)
+        if self.quality_gate is not None:
+            payload["quality_gate"] = self.quality_gate
+        return payload
 
 
 class IngestionPipeline:
@@ -319,6 +524,14 @@ class IngestionPipeline:
             if source_type in FILE_SOURCE_TYPES or (item.path and not item.text):
                 return self._ingest_file(item, source_type=source_type, owner=owner, captured_at=captured_at)
             return self._ingest_text(item, source_type=source_type, owner=owner, captured_at=captured_at)
+
+        # v9.8.0 observation-only quality gate: computed *before* the write so
+        # the search never matches the node we are about to create. It is
+        # recorded on the result and never skips an ingest (behavior unchanged).
+        quality_text = self._extractable_text(item)
+        quality_gate = self._observe_quality_gate(
+            item, source_type=source_type, text=quality_text,
+        )
 
         try:
             raw = dispatch_tool(
@@ -397,6 +610,13 @@ class IngestionPipeline:
             except Exception:  # noqa: BLE001 — audit must never break ingestion
                 pass
 
+        extraction_quality = self._assess_item_quality(
+            item, source_type=source_type, text=quality_text, chunk_ids=chunk_ids,
+        )
+        warnings: List[str] = []
+        if extraction_quality is not None and extraction_quality.get("level") == "low":
+            warnings.append(QUALITY_LOW_WARNING)
+
         details = [d for d in (provenance_detail, vector_detail) if d]
         return IngestionResult(
             status="ok",
@@ -412,7 +632,109 @@ class IngestionPipeline:
             indexing_status=indexing_status,
             provenance_id=prov.get("id"),
             detail="; ".join(details) if details else None,
+            extraction_quality=extraction_quality,
+            warnings=warnings,
+            quality_gate=quality_gate,
         )
+
+    # ── extraction quality (v9.8.0 A1 — advisory, never gates) ───────────────
+    @staticmethod
+    def _extractable_text(item: IngestionItem) -> Optional[str]:
+        """Best available extracted text for quality scoring/gating."""
+        if item.text is not None:
+            return item.text
+        extracted = (item.metadata or {}).get("extracted")
+        if isinstance(extracted, dict):
+            content = extracted.get("content") or extracted.get("text")
+            if content is not None:
+                return str(content)
+        return None
+
+    @staticmethod
+    def _upstream_confidence(item: IngestionItem) -> Optional[Any]:
+        """Upstream extractor confidence, if the capture surface supplied one."""
+        meta = item.metadata or {}
+        extracted = meta.get("extracted")
+        if isinstance(extracted, dict) and extracted.get("confidence") is not None:
+            return extracted.get("confidence")
+        if meta.get("extraction_confidence") is not None:
+            return meta.get("extraction_confidence")
+        return None
+
+    def _assess_item_quality(
+        self,
+        item: IngestionItem,
+        *,
+        source_type: str,
+        text: Optional[str],
+        chunk_ids: List[str],
+    ) -> Optional[Dict[str, Any]]:
+        """Quality annotation for document-like sources (not chat/memory)."""
+        if source_type in CHAT_SOURCE_TYPES or source_type in MEMORY_SOURCE_TYPES:
+            return None
+        confidence = self._upstream_confidence(item)
+        if text is not None or confidence is not None:
+            return assess_extraction_quality(
+                text, source_type=source_type, upstream_confidence=confidence,
+            )
+        # File door without inline extraction (e.g. PDF): the pipeline never saw
+        # the text, so score honestly from the chunk output instead of guessing.
+        if chunk_ids:
+            return {
+                "score": 0.5,
+                "level": "medium",
+                "reasons": ["content_extracted_upstream_not_scored"],
+            }
+        return {"score": 0.0, "level": "low", "reasons": ["no_extracted_text"]}
+
+    def _observe_quality_gate(
+        self,
+        item: IngestionItem,
+        *,
+        source_type: str,
+        text: Optional[str],
+    ) -> Optional[Dict[str, Any]]:
+        """Observation-mode ``gate_ingest_candidate`` wiring.
+
+        Records what the proactive gate *would* decide (ingest /
+        skip_duplicate / review) without ever acting on it. Any failure —
+        import, search, gate — yields ``None``; the ingest proceeds untouched.
+        """
+        if source_type in CHAT_SOURCE_TYPES or source_type in MEMORY_SOURCE_TYPES:
+            return None
+        body = str(text or "").strip()
+        if not body:
+            return None
+        try:
+            from .graph.proactive import gate_ingest_candidate
+        except Exception:  # noqa: BLE001 — optional observation, never required
+            return None
+
+        def _search(query: str) -> Any:
+            snippet = str(query or "")[:400]
+            try:
+                if item.workspace_id:
+                    return self._kg.search(
+                        snippet, 20, allowed_workspaces={item.workspace_id},
+                    )
+                return self._kg.search(snippet, 20)
+            except TypeError:
+                # Older store without workspace-scoped search.
+                return self._kg.search(snippet, 20)
+
+        try:
+            gate = gate_ingest_candidate(body, _search)
+        except Exception:  # noqa: BLE001 — observation must never fail the ingest
+            return None
+        parts = [str(gate.get("reason") or "")]
+        if gate.get("similarity") is not None:
+            parts.append(f"similarity={gate.get('similarity')}")
+        if gate.get("match_id"):
+            parts.append(f"match={gate.get('match_id')}")
+        return {
+            "action": str(gate.get("action") or "review"),
+            "detail": "; ".join(p for p in parts if p),
+        }
 
     def _sync_vector_index(self, node_id: str) -> Tuple[str, Optional[str]]:
         """Best-effort incremental vector sync → (indexing_status, detail).
@@ -441,19 +763,80 @@ class IngestionPipeline:
         items: List[IngestionItem],
         *,
         incremental: bool = True,
+        user_email: Optional[str] = None,
     ) -> BackgroundIngestionJob:
         """Schedule items for background incremental indexing.
 
         Returns a job handle. Actual execution can be driven by caller
-        (or future worker) calling pipeline.ingest on each. This seam enables
-        large-corpus scale without blocking user requests.
+        (or future worker) calling pipeline.ingest on each — or through
+        :meth:`run_background_job`. This seam enables large-corpus scale
+        without blocking user requests.
         """
-        job = self._bg_queue.schedule(items, incremental=incremental)
+        job = self._bg_queue.schedule(items, incremental=incremental, user_email=user_email)
         # mark initial status on results concept (jobs track)
         return job
 
     def get_background_job(self, job_id: str) -> Optional[BackgroundIngestionJob]:
         return self._bg_queue.get(job_id)
+
+    def list_background_jobs(self, limit: int = 20) -> List[Dict[str, Any]]:
+        """Recent jobs (newest first) in the frozen ``/api/ingestion`` schema."""
+        return [job.as_dict() for job in self._bg_queue.list_recent(limit=limit)]
+
+    def run_background_job(
+        self, job_id: str, *, user_email: Optional[str] = None
+    ) -> Dict[str, Any]:
+        """Execute a queued/interrupted job's remaining items.
+
+        Per-item errors are recorded (capped) and never abort the job. The
+        final status is ``completed`` (all done), ``partial`` (some done),
+        or ``failed`` (nothing done). Already-completed items are skipped, so
+        the same method safely powers both first-run and resume.
+        """
+        job = self._bg_queue.get(job_id)
+        if job is None:
+            return {"status": "not_found", "job_id": job_id}
+        if job.status == "running":
+            return job.as_dict()
+        return self._execute_background_job(job, user_email=user_email)
+
+    def resume_background_job(
+        self, job_id: str, *, user_email: Optional[str] = None
+    ) -> Dict[str, Any]:
+        """Resume an interrupted/partial/failed job from its remaining items."""
+        return self.run_background_job(job_id, user_email=user_email)
+
+    def _execute_background_job(
+        self, job: BackgroundIngestionJob, *, user_email: Optional[str] = None
+    ) -> Dict[str, Any]:
+        job.status = "running"
+        # Retried items get a fresh verdict: reset failure state for this run.
+        job.failed = 0
+        job.errors = []
+        job.touch()
+        runner_email = user_email or job.user_email
+        for index in job.remaining_indices():
+            item = job.items[index]
+            try:
+                result = self.ingest(item, user_email=runner_email or item.owner)
+                status, detail = result.status, result.detail
+            except Exception as exc:  # noqa: BLE001 — per-item isolation: keep going
+                status, detail = "failed", str(exc)
+            if status == "ok":
+                job.done_indices.add(index)
+            else:
+                job.record_error(index, item, detail or status)
+            job.processed = len(job.done_indices)
+            job.touch()
+        job.processed = len(job.done_indices)
+        if job.total == 0 or job.processed >= job.total:
+            job.status = "completed"
+        elif job.processed > 0:
+            job.status = "partial"
+        else:
+            job.status = "failed"
+        job.touch()
+        return job.as_dict()
 
     def ingest_web_page(
         self,
@@ -647,7 +1030,9 @@ class IngestionPipeline:
 
         summary["matched"] = len(items)
         if background:
-            job = self.schedule_background(items, incremental=True)
+            job = self.schedule_background(
+                items, incremental=True, user_email=user_email or owner,
+            )
             summary.update(status="scheduled", job_id=job.job_id, scheduled=len(items))
             return summary
 

@@ -318,6 +318,25 @@ function IngestionStageTrack({
               : t(language, "brain.ingest.result.empty")
             : t(language, STAGE_HINT_KEY[state.stage])}
       </small>
+      {isComplete ? <ExtractionQualityNote language={language} state={state} /> : null}
+    </div>
+  );
+}
+
+// Gentle heads-up when the backend flags a low extraction quality: the source
+// was saved, but parts of it may be missing or garbled.
+function ExtractionQualityNote({ language, state }: { language: Language; state: IngestionState }) {
+  const extraction = state.extraction;
+  if (!extraction || extraction.level !== "low") return null;
+  const warnings = extraction.warnings.slice(0, 3);
+  return (
+    <div className="brain-ingest-quality-note" role="note" data-testid="extraction-quality-note">
+      <p>{t(language, "brain.ingest.quality.low")}</p>
+      {warnings.length ? (
+        <ul>
+          {warnings.map((warning) => <li key={warning}>{warning}</li>)}
+        </ul>
+      ) : null}
     </div>
   );
 }

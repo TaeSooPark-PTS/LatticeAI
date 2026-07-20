@@ -146,6 +146,7 @@ export function useBrainIngestion({
           chunkCount: evidence.chunkCount,
           duplicate: evidence.duplicate,
           provenanceId: evidence.provenanceId,
+          extraction: evidence.extraction,
         },
       };
     });
@@ -185,6 +186,9 @@ export function useBrainIngestion({
       qc.invalidateQueries({ queryKey: ["graph"] }),
       qc.invalidateQueries({ queryKey: ["memoryBrainProof"] }),
       qc.invalidateQueries({ queryKey: ["memoryBrainBrief"] }),
+      // Freshness + background jobs may have moved after an ingest completes.
+      qc.invalidateQueries({ queryKey: ["vectorFreshness"] }),
+      qc.invalidateQueries({ queryKey: ["ingestionJobs"] }),
     ]);
     return {
       memories: Math.max(nextReadiness.signals.memoryCount, memoryFragments.length),

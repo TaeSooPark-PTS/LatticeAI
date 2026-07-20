@@ -309,7 +309,7 @@ def test_background_schedule_creates_job_and_annotates_items(tmp_path):
     ]
     job = pipe.schedule_background(items, incremental=True)
     assert job.job_id.startswith("bg_ingest_")
-    assert job.status == "pending"
+    assert job.status == "queued"
     assert job.total == 2
     assert len(job.items) == 2
     for it in job.items:

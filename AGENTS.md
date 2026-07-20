@@ -1,6 +1,6 @@
 # LatticeAI Project AGENTS.md
 
-Current release: **9.7.0 — Proactive Hybrid Brain**.
+Current release: **9.8.0 — Honest Knowledge Pipeline**.
 
 This file is part of the release documentation gate
 (`scripts/check_current_release_docs.mjs`): the current-release marker above

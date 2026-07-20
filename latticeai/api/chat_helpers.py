@@ -197,6 +197,54 @@ def format_network_status(info: Dict) -> str:
         lines.extend(["", note])
     return "\n".join(lines)
 
+def build_context_quality(
+    query: str,
+    *,
+    knowledge_graph=None,
+    allowed_workspaces=None,
+    limit: int = 6,
+) -> Dict[str, object]:
+    """Honest RAG context-quality signal for chat responses (v9.8.0, additive).
+
+    Returns ``{"mode": "hybrid"|"lexical_only"|"none", "nodes": int,
+    "limited": bool, "reason": str|None}``. ``limited`` is true when the
+    graph produced 0–1 matches, when vector retrieval fell back to
+    lexical-only, or when retrieval failed entirely — so the frontend can
+    tell the user the answer is weakly grounded instead of implying rich
+    graph context. Never raises.
+    """
+    from lattice_brain.graph.retrieval import context_quality_signal
+
+    query = str(query or "").strip()
+    if knowledge_graph is None or not query:
+        return context_quality_signal(
+            "none", 0, reason="지식 그래프 컨텍스트를 사용하지 않았습니다"
+        )
+    scope_kwargs = (
+        {"allowed_workspaces": allowed_workspaces}
+        if allowed_workspaces is not None
+        else {}
+    )
+    hybrid_fn = getattr(knowledge_graph, "hybrid_search", None)
+    if callable(hybrid_fn):
+        try:
+            result = hybrid_fn(query, top_k=limit, **scope_kwargs) or {}
+        except Exception:  # noqa: BLE001 — signal building must never fail chat
+            return context_quality_signal("none", 0, reason="그래프 검색에 실패했습니다")
+        matches = result.get("matches") or []
+        return context_quality_signal(
+            str(result.get("mode") or "hybrid"), len(matches)
+        )
+    # Lexical-only stores without the hybrid mixin.
+    try:
+        matches = (
+            knowledge_graph.search(query, limit=limit, **scope_kwargs) or {}
+        ).get("matches") or []
+    except Exception:  # noqa: BLE001 — signal building must never fail chat
+        return context_quality_signal("none", 0, reason="그래프 검색에 실패했습니다")
+    return context_quality_signal("lexical_only", len(matches))
+
+
 def workspace_scope_from_request(request: Request) -> Optional[str]:
     header = request.headers.get("X-Workspace-Id")
     if header and header.strip():

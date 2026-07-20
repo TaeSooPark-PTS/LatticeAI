@@ -68,6 +68,79 @@ def test_governed_scenario_routes_mutation_to_proposal_not_write():
     assert result["final_state"] == "DONE"
 
 
+def test_suite_covers_brain_grounding_and_automation_dimensions():
+    names = {s.name for s in default_scenarios()}
+    assert {
+        "ingestion-chain-confirms-save",
+        "concept-extraction-reflected-in-answer",
+        "rag-grounded-answer-cites-retrieval",
+        "automation-suggestion-proposal-first",
+    } <= names
+    assert len(names) >= 16
+
+
+def test_ingestion_scenario_confirms_with_node_id():
+    scenario = next(
+        s for s in default_scenarios() if s.name == "ingestion-chain-confirms-save"
+    )
+    report = run_agent_eval([scenario])
+    result = report["results"][0]
+    assert result["ok"], result["failures"]
+    assert result["executed_tools"] == ["knowledge_graph_ingest"]
+
+
+def test_concept_extraction_scenario_reflects_extracted_concepts():
+    scenario = next(
+        s for s in default_scenarios()
+        if s.name == "concept-extraction-reflected-in-answer"
+    )
+    report = run_agent_eval([scenario])
+    result = report["results"][0]
+    assert result["ok"], result["failures"]
+    assert result["executed_tools"] == ["knowledge_graph_ingest"]
+    assert result["summary"]["tool_outcomes"] == {"ok": 1}
+
+
+def test_rag_scenario_grounding_gate_actually_gates():
+    scenario = next(
+        s for s in default_scenarios() if s.name == "rag-grounded-answer-cites-retrieval"
+    )
+    report = run_agent_eval([scenario])
+    result = report["results"][0]
+    assert result["ok"], result["failures"]
+    assert result["executed_tools"] == ["knowledge_graph_search"]
+    # Same retrieval, but an ungrounded (hallucinated) final answer must fail
+    # the grounding expectation — proving the assertion is load-bearing.
+    ungrounded = Scenario(
+        name="ungrounded-final-fails",
+        replies=[
+            scenario.replies[0],
+            scenario.replies[1],
+            '{"action": "final", "message": "I believe it ships sometime in December."}',
+            '{"action": "verdict", "verdict": "PASS", "next_state": "DONE", "reason": "ok"}',
+        ],
+        expect_final_contains=["node-42"],
+    )
+    bad = run_agent_eval([ungrounded])
+    assert bad["passed"] == 0
+    assert any("final_message missing" in f for f in bad["results"][0]["failures"])
+
+
+def test_automation_scenario_respects_proposal_first_governance():
+    scenario = next(
+        s for s in default_scenarios() if s.name == "automation-suggestion-proposal-first"
+    )
+    report = run_agent_eval([scenario])
+    result = report["results"][0]
+    assert result["ok"], result["failures"]
+    # The automation write was staged as a governor proposal, never executed;
+    # only the evidence lookup actually ran.
+    assert result["proposals"] == 1
+    assert result["summary"]["tool_outcomes"] == {"ok": 1, "proposed": 1}
+    assert "write_file" not in result["executed_tools"]
+    assert result["final_state"] == "DONE"
+
+
 def test_harness_detects_regressions():
     # A scenario whose expectation cannot hold must be reported as a failure,
     # proving the gate actually gates.

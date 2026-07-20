@@ -470,6 +470,49 @@ class KnowledgeGraphVectorMixin:
             ],
         }
 
+    def vector_freshness(self) -> Dict[str, Any]:
+        """Compact vector-index freshness summary for API surfaces (v9.8.0).
+
+        Reduces :meth:`index_status` (``pending = missing + stale``) to the
+        fixed contract ``{"status", "pending_items", "total_items", "detail"}``
+        with ``status`` in ``ready`` / ``pending`` / ``unavailable``.
+
+        Never raises: environments where the embedding provider or index
+        storage cannot be used report ``"unavailable"`` with the cause in
+        ``detail`` instead of surfacing an exception to the API layer.
+        """
+        try:
+            status = self.index_status()
+        except Exception as exc:  # noqa: BLE001 — freshness must degrade, not fail
+            return {
+                "status": "unavailable",
+                "pending_items": 0,
+                "total_items": 0,
+                "detail": f"vector index status unavailable: {exc}",
+            }
+        pending = int(status.get("pending_items") or 0)
+        total = int(status.get("source_items") or 0)
+        if pending > 0:
+            return {
+                "status": "pending",
+                "pending_items": pending,
+                "total_items": total,
+                "detail": (
+                    f"{pending} of {total} items are missing or stale in the vector index"
+                ),
+            }
+        detail = (
+            "vector index is up to date"
+            if total
+            else "vector index is empty (no indexable items yet)"
+        )
+        return {
+            "status": "ready",
+            "pending_items": 0,
+            "total_items": total,
+            "detail": detail,
+        }
+
     def vector_search(
         self,
         query: str,
