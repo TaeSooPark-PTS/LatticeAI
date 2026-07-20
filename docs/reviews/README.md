@@ -10,4 +10,6 @@ historical evidence and are intentionally not rewritten during release bumps.
 - [2026-07-08 code review](CODE_REVIEW_2026-07-08.md)
 - [2026-07-11 code review](CODE_REVIEW_2026-07-11.md) — actionable findings
   closed in 9.1.0; the original review text remains unchanged as evidence
+- [2026-07-20 code · documentation · harness review](CODE_REVIEW_2026-07-20.md)
+  — v9.8.0 review with loop engineering and user-experience findings
 - [Brain simplification UX review](UX_BRAIN_SIMPLIFICATION_REVIEW.md)
