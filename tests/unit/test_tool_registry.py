@@ -10,8 +10,8 @@ import re
 
 from fastapi import HTTPException
 import pytest
-import tools
-import tools.knowledge as knowledge_tools
+import latticeai.tools as tools
+import latticeai.tools.knowledge as knowledge_tools
 
 from latticeai.services.tool_dispatch import ToolDispatchService
 

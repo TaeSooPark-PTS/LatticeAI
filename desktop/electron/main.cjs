@@ -20,7 +20,7 @@ ipcMain.handle("lattice:select-folder", async (event) => {
 
 function startBackend() {
   if (process.env.LATTICEAI_DESKTOP_NO_BACKEND) return;
-  const command = process.env.LATTICEAI_DESKTOP_BACKEND_CMD || "python3 ltcai_cli.py --host 127.0.0.1 --port 4825";
+  const command = process.env.LATTICEAI_DESKTOP_BACKEND_CMD || "python3 -m latticeai.cli.entrypoint --host 127.0.0.1 --port 4825";
   const [bin, ...args] = command.split(/\s+/).filter(Boolean);
   if (!bin) return;
   backend = spawn(bin, args, {

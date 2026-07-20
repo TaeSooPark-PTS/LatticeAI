@@ -1,7 +1,7 @@
 {
   "$schema": "https://schema.tauri.app/config/2",
   "productName": "Lattice AI",
-  "version": "9.9.0",
+  "version": "9.9.1",
   "identifier": "ai.lattice.desktop",
   "build": {
     "beforeDevCommand": "npm run frontend:dev",
@@ -33,22 +33,10 @@
       "app"
     ],
     "resources": [
-      "../auto_setup.py",
-      "../kg_schema.py",
-      "../knowledge_graph.py",
-      "../knowledge_graph_api.py",
-      "../llm_router.py",
-      "../local_knowledge_api.py",
-      "../ltcai_cli.py",
-      "../mcp_registry.py",
-      "../p_reinforce.py",
       "../server.py",
-      "../setup_wizard.py",
-      "../telegram_bot.py",
       "../requirements.txt",
       "../latticeai",
       "../lattice_brain",
-      "../tools",
       "../static"
     ],
     "icon": [

@@ -1,7 +1,7 @@
 import os
 import shutil
 
-import setup_wizard as setup
+from latticeai.setup import wizard as setup
 
 
 def test_scan_environment_includes_components_and_paths():

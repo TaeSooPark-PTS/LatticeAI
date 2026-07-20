@@ -17,7 +17,7 @@ from fastapi.testclient import TestClient
 sys.path.insert(0, str(Path(__file__).resolve().parents[2]))
 
 import lattice_brain.portability as portability_module
-from knowledge_graph import GRAPH_SCHEMA_VERSION, KnowledgeGraphStore
+from lattice_brain.graph.store import GRAPH_SCHEMA_VERSION, KnowledgeGraphStore
 from latticeai.api.portability import create_portability_router
 from lattice_brain.ingestion import IngestionItem, IngestionPipeline
 from lattice_brain.portability import KGPortabilityService

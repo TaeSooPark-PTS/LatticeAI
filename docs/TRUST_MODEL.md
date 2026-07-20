@@ -1,6 +1,6 @@
 # Lattice AI Trust Model
 
-Current release: **9.9.0 — Fail-Closed Trust**.
+Current release: **9.9.1 — Clean Foundations**.
 
 Lattice AI is local-first, explicit about external communication, and honest
 when a capability is unavailable.

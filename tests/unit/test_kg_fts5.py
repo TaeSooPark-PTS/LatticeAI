@@ -10,7 +10,7 @@ import sqlite3
 
 import pytest
 
-from knowledge_graph import KnowledgeGraphStore
+from lattice_brain.graph.store import KnowledgeGraphStore
 
 
 def _store(tmp_path):

@@ -7,6 +7,26 @@
 > PyPI / npm / VS Code Marketplace / Open VSX 배포는 아래 수동 절차로만
 > 진행합니다. 태그 생성은 패키지 스토어 publish를 자동으로 트리거하지 않습니다.
 
+> **릴리스 증거물 보존 정책 (`output/release/`)**: 버전별 스크린샷/영상 증거는
+> 최신 3개 버전만 보관합니다. `npm run release:evidence`가 캡처 후 자동으로
+> `scripts/prune_release_evidence.mjs`를 실행해 오래된 버전을 정리하며
+> (`LTCAI_RELEASE_EVIDENCE_KEEP`으로 조정), 과거 증거는 언제든 해당 태그를
+> 체크아웃해 재생성할 수 있습니다.
+
+## v9.9.1 — Clean Foundations (2026-07-21)
+
+9.9.1 removes the legacy root-shim layer (12 of 13 tracked shims deleted;
+`server.py` alone remains for `uvicorn server:app`), adds a legacy debt gate
+to `npm run lint`, and polishes the product surface: a "First 5 minutes"
+guided card and the daily briefing on the empty Brain home, proactive Cmd+K
+quick actions, a Review Center with human-language labels/framed diffs, and a
+localized error pipeline so failures speak plain ko/en. The test suite is
+scenario-named (37 files renamed), `output/release/` keeps only the newest
+three evidence sets via an automated retention policy, and the current-release
+docs gate now also verifies the ARCHITECTURE artifact map.
+
+- 상세: [RELEASE_NOTES_v9.9.1.md](RELEASE_NOTES_v9.9.1.md)
+
 ## v9.9.0 — Fail-Closed Trust (2026-07-21)
 
 9.9.0 makes the "trustworthy autonomy / honest knowledge" promises enforceable

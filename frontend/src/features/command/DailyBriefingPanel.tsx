@@ -23,15 +23,44 @@ function section(data: Record<string, unknown>, key: string): Record<string, unk
   return value && typeof value === "object" ? (value as Record<string, unknown>) : {};
 }
 
-export function DailyBriefingPanel({ language }: { language: Language }) {
-  const [expanded, setExpanded] = React.useState(false);
+export function DailyBriefingPanel({
+  language,
+  variant = "drawer",
+}: {
+  language: Language;
+  // "drawer" keeps the historical lazy behavior inside collapsed shelves;
+  // "home" starts expanded and fetches immediately so the empty-state home
+  // shows the briefing without any click.
+  variant?: "drawer" | "home";
+}) {
+  const [expanded, setExpanded] = React.useState(variant === "home");
+  const rootRef = React.useRef<HTMLElement>(null);
   const briefingQ = useQuery({
     queryKey: ["commandBriefing"],
     queryFn: latticeApi.commandBriefing,
     enabled: expanded,
   });
 
+  // The command palette can ask for the briefing from anywhere; expand this
+  // panel, open any collapsed ancestor drawer, and bring it into view.
+  React.useEffect(() => {
+    const onOpen = () => {
+      setExpanded(true);
+      const root = rootRef.current;
+      if (!root) return;
+      root.closest("details")?.setAttribute("open", "");
+      window.setTimeout(() => root.scrollIntoView?.({ behavior: "smooth", block: "center" }), 0);
+    };
+    window.addEventListener("lattice:open-briefing", onOpen);
+    return () => window.removeEventListener("lattice:open-briefing", onOpen);
+  }, []);
+
   const data = (briefingQ.data?.data || {}) as Record<string, unknown>;
+  // Friendly degrade: a failed fetch or an empty briefing becomes one calm
+  // sentence — never raw errors, never a grid of dashes.
+  const briefingEmpty =
+    Boolean(briefingQ.data) &&
+    (!briefingQ.data?.ok || Object.keys((data.sections || {}) as Record<string, unknown>).length === 0);
   const knowledge = section(data, "knowledge");
   const conversations = section(data, "conversations");
   const automations = section(data, "automations");
@@ -43,7 +72,8 @@ export function DailyBriefingPanel({ language }: { language: Language }) {
 
   return (
     <section
-      className={`brain-care-panel daily-briefing-panel ${expanded ? "is-expanded" : "is-collapsed"}`}
+      ref={rootRef}
+      className={`brain-care-panel daily-briefing-panel ${expanded ? "is-expanded" : "is-collapsed"} ${variant === "home" ? "is-home" : ""}`}
       aria-label={t(language, "briefing.title")}
       data-testid="daily-briefing"
     >
@@ -65,6 +95,8 @@ export function DailyBriefingPanel({ language }: { language: Language }) {
         <div id="daily-briefing-details" className="brain-care-details">
           {briefingQ.isPending ? (
             <p className="brain-care-note">{t(language, "briefing.loading")}</p>
+          ) : briefingEmpty ? (
+            <p className="brain-care-note" data-testid="daily-briefing-empty">{t(language, "briefing.empty")}</p>
           ) : (
             <>
               <div className="daily-briefing-stats" role="list">

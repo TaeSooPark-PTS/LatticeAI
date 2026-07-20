@@ -6,7 +6,7 @@ const root = process.cwd();
 const pkg = JSON.parse(readFileSync(path.join(root, "package.json"), "utf8"));
 const version = pkg.version;
 const releaseDir = `output/release/v${version}`;
-const releaseTheme = "Fail-Closed Trust";
+const releaseTheme = "Clean Foundations";
 const title = `${version} — ${releaseTheme}`;
 const escapedVersion = version.replaceAll(".", "\\.");
 
@@ -69,6 +69,25 @@ for (const rel of [
   "SECURITY.md",
 ]) {
   requireIncludes(rel, version);
+}
+
+// The Release Artifact Map in ARCHITECTURE.md must name current-version
+// artifacts exactly — this block drifted silently before 9.9.1.
+requireIncludes("ARCHITECTURE.md", `${version} exact artifact names:`);
+for (const artifact of [
+  `dist/ltcai-${version}-py3-none-any.whl`,
+  `dist/ltcai-${version}.tar.gz`,
+  `ltcai-${version}.tgz`,
+  `dist/ltcai-${version}.vsix`,
+  `src-tauri/target/release/bundle/dmg/Lattice AI_${version}_aarch64.dmg`,
+]) {
+  requireIncludes("ARCHITECTURE.md", artifact);
+}
+const architecture = read("ARCHITECTURE.md");
+for (const match of architecture.matchAll(/ltcai-(\d+\.\d+\.\d+)/g)) {
+  if (match[1] !== version) {
+    errors.push(`ARCHITECTURE.md: stale artifact version reference ${match[0]}`);
+  }
 }
 
 requireIncludes("README.md", `The current release is **${title}**`);

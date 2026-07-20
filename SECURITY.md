@@ -3,7 +3,7 @@
 > **Status: canonical** — current security model, kept in sync with the current
 > release.
 
-Current release: **9.9.0 — Fail-Closed Trust**.
+Current release: **9.9.1 — Clean Foundations**.
 
 ## Supported Versions
 

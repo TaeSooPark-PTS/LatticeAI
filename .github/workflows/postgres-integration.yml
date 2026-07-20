@@ -2,7 +2,7 @@ name: Postgres Integration (live)
 
 # Exercises the SQLite -> Postgres/pgvector migration integrity test that is
 # SKIPPED everywhere by default. The suite
-# (tests/integration/test_v42_postgres_migration_live.py) is gated behind
+# (tests/integration/test_postgres_migration_live.py) is gated behind
 # LTCAI_LIVE_POSTGRES_DOCKER_CONSENT=1 because it starts a real database via
 # lattice_brain.storage.DockerPostgresWizard (image: pgvector/pgvector:pg16)
 # using `docker compose`, which is preinstalled on GitHub-hosted ubuntu
@@ -51,7 +51,7 @@ jobs:
           # Explicit consent flips the pytest skip marker in the suite.
           LTCAI_LIVE_POSTGRES_DOCKER_CONSENT: "1"
         run: |
-          python -m pytest tests/integration/test_v42_postgres_migration_live.py -v --tb=short
+          python -m pytest tests/integration/test_postgres_migration_live.py -v --tb=short
 
       - name: Collect Docker logs on failure
         if: failure()

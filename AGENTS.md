@@ -1,6 +1,6 @@
 # LatticeAI Project AGENTS.md
 
-Current release: **9.9.0 — Fail-Closed Trust**.
+Current release: **9.9.1 — Clean Foundations**.
 
 This file is part of the release documentation gate
 (`scripts/check_current_release_docs.mjs`): the current-release marker above

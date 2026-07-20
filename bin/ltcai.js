@@ -90,7 +90,7 @@ function run(index) {
     process.exit(1);
   }
 
-  const child = spawn(python, [path.join(root, "ltcai_cli.py"), ...process.argv.slice(2)], {
+  const child = spawn(python, ["-m", "latticeai.cli.entrypoint", ...process.argv.slice(2)], {
     cwd: root,
     stdio: "inherit",
   });

@@ -3,7 +3,7 @@ from types import SimpleNamespace
 
 import pytest
 
-import auto_setup
+from latticeai.setup import auto_setup
 from latticeai.services import model_engines
 from latticeai.services.model_errors import ModelRuntimeError
 from latticeai.services.process_audit import (
@@ -11,7 +11,7 @@ from latticeai.services.process_audit import (
     command_plan,
     verify_command_confirmation,
 )
-from setup_wizard import install_stream
+from latticeai.setup.wizard import install_stream
 
 
 def test_command_plan_redacts_secret_args_and_confirms() -> None:

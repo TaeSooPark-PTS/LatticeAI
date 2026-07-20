@@ -10,7 +10,7 @@ import pytest
 from fastapi import FastAPI, HTTPException, Request
 from fastapi.testclient import TestClient
 
-from knowledge_graph import KnowledgeGraphStore
+from lattice_brain.graph.store import KnowledgeGraphStore
 from latticeai.api.auth import create_auth_router
 from latticeai.api.health import create_health_router
 from latticeai.api.static_routes import (

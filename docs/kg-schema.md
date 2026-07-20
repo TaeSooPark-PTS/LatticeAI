@@ -1,9 +1,9 @@
 # Knowledge Graph Schema
 
-Current release: **9.9.0 — Fail-Closed Trust**.
+Current release: **9.9.1 — Clean Foundations**.
 
 명세 출처: `lattice_ai_full_spec.pptx` 슬라이드 20·21·22
-구현: `kg_schema.py`
+구현: `lattice_brain/graph/schema.py`
 
 ---
 
@@ -179,8 +179,8 @@ provenance(source_type, source_uri, content_hash, captured_at, modified_at,
 
 ## 마이그레이션 (legacy → v2)
 
-기존 `knowledge_graph.py` 가 만든 `nodes` / `edges` 테이블은 자유 문자열 타입을
-사용해 왔다. `kg_schema.py` 는 매핑 표를 가지고 있어 정식 enum 으로 변환한다.
+기존 `lattice_brain/graph/store.py`(구 `knowledge_graph.py`) 가 만든 `nodes` / `edges` 테이블은 자유 문자열 타입을
+사용해 왔다. `lattice_brain/graph/schema.py` 는 매핑 표를 가지고 있어 정식 enum 으로 변환한다.
 
 | legacy 타입 (한글 동사) | → v2 `EdgeType` |
 |------------------------|------------------|
@@ -209,7 +209,7 @@ provenance(source_type, source_uri, content_hash, captured_at, modified_at,
 
 마이그레이션은 별도 CLI 없이 **서버 기동 시 자동으로** 일어난다:
 `knowledge_graph.KnowledgeGraphStore` 가 열릴 때 v2 스키마를 생성/치유하고
-(`kg_schema.KGStoreV2.init_schema` — 추가 컬럼은 `ALTER` 로 in-place 치유,
+(`lattice_brain.graph.schema.KGStoreV2.init_schema` — 추가 컬럼은 `ALTER` 로 in-place 치유,
 edges_v2 식별자 변경은 create→copy→swap 으로 재구축), legacy 데이터를
 v2 로 백필한다. 기존 `nodes` / `edges` 테이블은 삭제하지 않는다. v4 에서는
 `nodes_v2` / `edges_v2` 가 쓰기 마스터이며, legacy 테이블은 이전 import/API
@@ -243,7 +243,7 @@ v2 로 백필한다. 기존 `nodes` / `edges` 테이블은 삭제하지 않는�
 read/write 는 `knowledge_graph.KnowledgeGraphStore` 가 담당한다:
 
 ```python
-from kg_schema import KGStoreV2, NodeType, EdgeType
+from lattice_brain.graph.schema import KGStoreV2, NodeType, EdgeType
 from knowledge_graph import KnowledgeGraphStore
 
 store = KnowledgeGraphStore(db_path, blob_dir)

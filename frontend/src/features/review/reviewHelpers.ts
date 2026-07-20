@@ -1,8 +1,17 @@
 import type * as React from "react";
 import type { ReviewItem, ReviewSourceFilter, ReviewStatusFilter } from "@/api/client";
 import type { Badge } from "@/components/ui/badge";
+import { t, type Language } from "@/i18n";
 
 export type ReviewAction = "approve" | "dismiss" | "snooze" | "unsnooze" | "run_now";
+
+// Structured feedback for a review action so the UI never has to guess the
+// tone from message text: the caller records success/failure explicitly.
+export type ReviewFeedback = {
+  tone: "success" | "error";
+  message: string;
+  detail?: string;
+};
 
 export const reviewStatusFilters: Array<{ id: ReviewStatusFilter; labelKey: string }> = [
   { id: "pending", labelKey: "review.filter.status.pending" },
@@ -30,22 +39,71 @@ export function reviewStatusVariant(status: string): React.ComponentProps<typeof
   return "muted";
 }
 
-export function reviewSourceLabel(source?: string) {
-  if (source === "workflow_run") return "Workflow run";
-  if (source === "trigger") return "Trigger";
-  if (source === "kg_change_digest") return "Knowledge digest";
-  if (source === "chat_followup") return "Brain chat";
-  if (source === "agent_followup") return "Agent follow-up";
-  if (source === "change_proposal") return "Change proposal";
-  return source || "Automation";
+const REVIEW_STATUS_LABEL_KEYS: Record<string, string> = {
+  pending: "review.itemStatus.pending",
+  snoozed: "review.itemStatus.snoozed",
+  approved: "review.itemStatus.approved",
+  dismissed: "review.itemStatus.dismissed",
+};
+
+export function reviewStatusLabel(language: Language, status: string) {
+  const key = REVIEW_STATUS_LABEL_KEYS[status];
+  return key ? t(language, key) : status;
 }
 
-export function reviewSourceDetail(provenance: Record<string, unknown>, source?: string) {
+const REVIEW_SOURCE_LABEL_KEYS: Record<string, string> = {
+  workflow_run: "review.source.workflow_run",
+  trigger: "review.source.trigger",
+  kg_change_digest: "review.source.kg_change_digest",
+  chat_followup: "review.source.chat_followup",
+  agent_followup: "review.source.agent_followup",
+  change_proposal: "review.source.change_proposal",
+};
+
+export function reviewSourceLabel(language: Language, source?: string) {
+  const key = source ? REVIEW_SOURCE_LABEL_KEYS[source] : undefined;
+  if (key) return t(language, key);
+  return source || t(language, "review.source.automation");
+}
+
+export function reviewSourceDetail(language: Language, provenance: Record<string, unknown>, source?: string) {
   const detail = provenance.source_detail;
   if (detail != null && String(detail).trim()) return String(detail);
   const triggerId = provenance.trigger_id;
   if (triggerId != null && String(triggerId).trim()) return String(triggerId);
-  return reviewSourceLabel(source);
+  return reviewSourceLabel(language, source);
+}
+
+// Human labels for governance metadata. Unknown values fall back to the raw
+// string so new backend classes still show something meaningful.
+const REVIEW_RISK_LABEL_KEYS: Record<string, string> = {
+  read: "review.risk.read",
+  write: "review.risk.write",
+  write_scoped: "review.risk.write_scoped",
+  exec: "review.risk.exec",
+  destructive: "review.risk.destructive",
+};
+
+export function reviewRiskLabel(language: Language, risk: unknown): string {
+  const value = typeof risk === "string" ? risk.trim() : "";
+  if (!value) return "";
+  const key = REVIEW_RISK_LABEL_KEYS[value];
+  return key ? t(language, key) : value;
+}
+
+const REVIEW_CHANGE_LABEL_KEYS: Record<string, string> = {
+  read: "review.change.read",
+  additive: "review.change.additive",
+  mutation: "review.change.mutation",
+  destructive: "review.change.destructive",
+  exec: "review.change.exec",
+};
+
+export function reviewChangeClassLabel(language: Language, changeClass: unknown): string {
+  const value = typeof changeClass === "string" ? changeClass.trim() : "";
+  if (!value) return "";
+  const key = REVIEW_CHANGE_LABEL_KEYS[value];
+  return key ? t(language, key) : value;
 }
 
 export function defaultSnoozeUntil() {
@@ -54,14 +112,15 @@ export function defaultSnoozeUntil() {
   return until.toISOString();
 }
 
-export function formatSnoozedUntil(value?: string | null) {
-  if (!value) return "Snoozed";
+export function formatSnoozedUntil(language: Language, value?: string | null) {
+  if (!value) return t(language, "review.snoozed.badge");
   const date = new Date(value);
-  if (Number.isNaN(date.getTime())) return `Snoozed until ${value}`;
-  return `Snoozed until ${new Intl.DateTimeFormat(undefined, {
+  if (Number.isNaN(date.getTime())) return t(language, "review.snoozed.until", { value });
+  const formatted = new Intl.DateTimeFormat(language === "ko" ? "ko-KR" : "en-US", {
     dateStyle: "medium",
     timeStyle: "short",
-  }).format(date)}`;
+  }).format(date);
+  return t(language, "review.snoozed.until", { value: formatted });
 }
 
 export function isActionableReview(item: ReviewItem) {

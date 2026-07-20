@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from pathlib import Path
 
-from knowledge_graph import KnowledgeGraphStore
+from lattice_brain.graph.store import KnowledgeGraphStore
 from lattice_brain.ingestion import IngestionItem, IngestionPipeline
 
 

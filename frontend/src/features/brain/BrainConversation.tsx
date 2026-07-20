@@ -28,6 +28,8 @@ import { DailyBriefingPanel } from "@/features/command/DailyBriefingPanel";
 import { PendingProposalsPanel } from "@/features/command/PendingProposalsPanel";
 import { BrainComposer } from "./BrainComposer";
 import { BrainOverviewPanel } from "./BrainOverviewPanel";
+import { FirstFiveCard } from "./FirstFiveCard";
+import type { FirstFiveStep } from "./firstFive";
 import {
   BrainBriefPanel,
   handleBriefAction,
@@ -140,6 +142,50 @@ export function BrainConversation({
   const isBasic = mode === "basic";
   const lastAssistantIndex = findLastAssistantIndex(messages);
   const suggestedQuestions = brief.suggestedQuestions.slice(0, 3);
+
+  // First-five guided card wiring: each step drives a real, already-existing
+  // surface on this screen (composer, ingestion dock, insights shelf).
+  const homeDeckRef = React.useRef<HTMLDivElement>(null);
+  const sourceDockRef = React.useRef<HTMLDivElement>(null);
+  const insightsShelfRef = React.useRef<HTMLDetailsElement>(null);
+
+  const firstFiveAutoDone = React.useMemo(
+    () => ({
+      // Any past conversation means the user already asked the Brain something.
+      ask: pastConversations.length > 0,
+      // "Add" completes only when a non-chat source really lands in the Brain.
+      add: [ingestionStates.file, ingestionStates.folder, ingestionStates.note, ingestionStates.web].some(Boolean),
+    }),
+    [pastConversations.length, ingestionStates],
+  );
+
+  const handleFirstFiveStep = React.useCallback(
+    (step: FirstFiveStep) => {
+      if (step === "ask") {
+        const prompt = starterPrompts[0] || t(language, "brain.prompt.remember");
+        onDraftChange(prompt);
+        window.setTimeout(() => {
+          homeDeckRef.current?.querySelector<HTMLTextAreaElement>(".brain-composer textarea")?.focus();
+        }, 0);
+      } else if (step === "add") {
+        const dock = sourceDockRef.current;
+        if (!dock) return;
+        dock.scrollIntoView?.({ behavior: "smooth", block: "center" });
+        window.setTimeout(() => {
+          dock.querySelector<HTMLElement>("button, input, [tabindex]")?.focus({ preventScroll: true });
+        }, 0);
+      } else {
+        const shelf = insightsShelfRef.current;
+        if (!shelf) return;
+        shelf.open = true;
+        shelf.scrollIntoView?.({ behavior: "smooth", block: "nearest" });
+        window.setTimeout(() => {
+          shelf.querySelector<HTMLElement>(".brain-home-shelf-close")?.focus({ preventScroll: true });
+        }, 0);
+      }
+    },
+    [starterPrompts, language, onDraftChange],
+  );
 
   return (
     <section className="brain-conversation" aria-label={t(language, "brain.aria.conversation")}>
@@ -305,8 +351,8 @@ export function BrainConversation({
                 </div>
               )}
 
-              <div className="brain-home-control-deck">
-                <div className="brain-live-source-panel">
+              <div className="brain-home-control-deck" ref={homeDeckRef}>
+                <div className="brain-live-source-panel" ref={sourceDockRef}>
                   <BrainIngestionDock
                     language={language}
                     uploadingDocument={uploadingDocument}
@@ -378,6 +424,7 @@ export function BrainConversation({
                     </details>
 
                     <details
+                      ref={insightsShelfRef}
                       className="brain-home-insights"
                       data-testid="brain-insights-shelf"
                       onToggle={(event) => event.currentTarget.open && onRequestDetails()}
@@ -438,7 +485,9 @@ export function BrainConversation({
                             />
                           </>
                         )}
-                        <DailyBriefingPanel language={language} />
+                        {/* Daily briefing now lives directly on the empty home
+                            (brain-home-intro-row), so the shelf only keeps the
+                            remaining insight panels. */}
                         <PendingProposalsPanel language={language} />
                         <BrainIntelligencePanel language={language} />
                         <BrainCarePanel language={language} />
@@ -446,6 +495,14 @@ export function BrainConversation({
                     </details>
                   </div>
                 </aside>
+              </div>
+
+              {/* First-run guidance + today's briefing live below the primary
+                  controls so compact viewports keep the composer and docks
+                  fully on screen. */}
+              <div className="brain-home-intro-row">
+                <FirstFiveCard language={language} autoDone={firstFiveAutoDone} onStep={handleFirstFiveStep} />
+                <DailyBriefingPanel language={language} variant="home" />
               </div>
             </div>
           )}

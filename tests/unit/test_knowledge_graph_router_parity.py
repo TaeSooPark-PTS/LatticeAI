@@ -109,13 +109,6 @@ def test_curate_uses_admin_gate_when_available(tmp_path: Path):
     assert calls == ["admin"]
 
 
-def test_root_shim_reexports_the_same_router_factory():
-    import knowledge_graph_api
-
-    assert knowledge_graph_api.create_knowledge_graph_router is create_knowledge_graph_router
-    assert hasattr(knowledge_graph_api, "KnowledgeGraphIngestRequest")
-
-
 def test_response_keys_unchanged(tmp_path: Path):
     client = _client(tmp_path)
 

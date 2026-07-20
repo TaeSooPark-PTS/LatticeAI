@@ -11,7 +11,7 @@
 [![CI Status](https://github.com/TaeSooPark-PTS/LatticeAI/actions/workflows/ci.yml/badge.svg?branch=main)](https://github.com/TaeSooPark-PTS/LatticeAI/actions/workflows/ci.yml)
 [![License](https://img.shields.io/badge/license-MIT-green)](LICENSE)
 
-![v9.9.0 Living Brain walkthrough](output/release/v9.9.0/gifs/v9.9.0-living-brain-walkthrough.gif)
+![v9.9.1 Living Brain walkthrough](output/release/v9.9.1/gifs/v9.9.1-living-brain-walkthrough.gif)
 
 Chat, files, folders, notes, and web pages all flow into one durable knowledge
 graph on your computer. Any model — local MLX or cloud — can speak with that
@@ -24,9 +24,9 @@ memory. Nothing leaves your machine without explicit consent.
 
 | | |
 | --- | --- |
-| **Chat with a Brain that remembers** — every conversation grows durable, source-linked memory ![Brain Chat](output/release/v9.9.0/screenshots/04-brain-chat-home.png) | **See how knowledge connects** — a real relationship graph, not a file list ![Memory Graph](output/release/v9.9.0/screenshots/05-memory-graph.png) |
-| **Capture anything** — files, whole folders, notes, screenshots, web pages ![Capture](output/release/v9.9.0/screenshots/06-capture.png) | **Automate with review** — agent changes become proposals you approve first ![Review Center](output/release/v9.9.0/screenshots/12-review-center.png) |
-| **Pick a model in one click** — recommended local models for your hardware ![Recommended Models](output/release/v9.9.0/screenshots/02-recommended-models.png) | **Stay in control** — audit, roles, retention in a separate admin surface ![Admin Console](output/release/v9.9.0/screenshots/10-admin-console.png) |
+| **Chat with a Brain that remembers** — every conversation grows durable, source-linked memory ![Brain Chat](output/release/v9.9.1/screenshots/04-brain-chat-home.png) | **See how knowledge connects** — a real relationship graph, not a file list ![Memory Graph](output/release/v9.9.1/screenshots/05-memory-graph.png) |
+| **Capture anything** — files, whole folders, notes, screenshots, web pages ![Capture](output/release/v9.9.1/screenshots/06-capture.png) | **Automate with review** — agent changes become proposals you approve first ![Review Center](output/release/v9.9.1/screenshots/12-review-center.png) |
+| **Pick a model in one click** — recommended local models for your hardware ![Recommended Models](output/release/v9.9.1/screenshots/02-recommended-models.png) | **Stay in control** — audit, roles, retention in a separate admin surface ![Admin Console](output/release/v9.9.1/screenshots/10-admin-console.png) |
 
 ## Why Lattice AI
 
@@ -57,45 +57,49 @@ First-run flow — wake the Brain, pick the owner, load a recommended model:
 
 | | | |
 | --- | --- | --- |
-| ![Login](output/release/v9.9.0/screenshots/01-login.png) | ![Model install](output/release/v9.9.0/screenshots/03-install-load-progress.png) | ![Model library](output/release/v9.9.0/screenshots/07-model-library.png) |
+| ![Login](output/release/v9.9.1/screenshots/01-login.png) | ![Model install](output/release/v9.9.1/screenshots/03-install-load-progress.png) | ![Model library](output/release/v9.9.1/screenshots/07-model-library.png) |
 
 Screenshot index and capture notes:
-[output/release/v9.9.0/SCREENSHOT_INDEX.md](output/release/v9.9.0/SCREENSHOT_INDEX.md)
+[output/release/v9.9.1/SCREENSHOT_INDEX.md](output/release/v9.9.1/SCREENSHOT_INDEX.md)
 
 ## Current Release
 
-The current release is **9.9.0 — Fail-Closed Trust**:
+The current release is **9.9.1 — Clean Foundations**:
 
-- **Change proposals can't clobber your edits.** A proposal now records the
-  original content hash; if the file changed before you approve, the apply is
-  rejected with a conflict instead of silently overwriting your work, and the
-  write is atomic. Duplicate/concurrent approvals apply exactly once.
-- **A confused verifier never reports success.** If the agent's critic output
-  can't be parsed (after one strict retry), the run ends as `NEEDS_REVIEW`
-  instead of a fabricated "done"; completion now requires a valid PASS *and*
-  real execution evidence.
-- **Every mutating tool is governed.** A single-source inventory classifies
-  each side-effecting tool; a CI gate fails closed if a new mutator ships
-  ungoverned, and tools that would overwrite existing content without a
-  reviewable proposal are blocked rather than applied.
-- **Honest onboarding.** Device analysis is modeled as
-  `loading | ready | unavailable`; a failed probe no longer fabricates a
-  "supported, ready on this computer" model card — it shows the cause, a
-  retry, and "continue without a model."
-- **Leaner & audited.** Initial JS bundle is ~22% smaller (lazy-loaded heavy
-  views, with a CI budget), plus dependency/SBOM audit and scheduled
-  PostgreSQL integration workflows, a security-scan report, a model benchmark
-  harness, and current/architecture documentation classification.
+- **A clean core.** The historical repo-root compatibility shims are gone
+  (only `server.py` remains for `uvicorn server:app`); packaging ships exactly
+  the `latticeai.*` / `lattice_brain.*` packages, and a legacy debt gate in
+  `npm run lint` plus a dedicated test suite keep the root clean for good.
+- **Your first five minutes matter.** A guided "First 5 minutes" card on the
+  empty Brain home walks a new user through asking a first question, adding a
+  first file or note, and seeing what the Brain learned — wired to real
+  features, with progress that persists and a briefing that loads immediately.
+- **Proactive intelligence you can actually see.** Today's briefing now lives
+  on the Brain home instead of a double-collapsed drawer, and Cmd+K opens with
+  proactive quick actions (open briefing, review pending items, ask the Brain)
+  before you type a single letter.
+- **Review Center at product quality.** Proposal cards translate risk and
+  change class into human language, frame diffs with file targets and honest
+  truncation counts, tuck raw IDs into a "Technical details" disclosure, and
+  every approve/reject failure shows a friendly message first.
+- **Errors that speak your language.** The API error pipeline is localized
+  (ko/en): timeouts, unreachable-service, and backend failures produce plain,
+  helpful copy instead of raw `statusText` or English literals, across chat,
+  admin, care, and intelligence panels.
+- **Scenario-first tests, smaller evidence footprint.** 37 version-named test
+  files were renamed to behavior-named suites, and `output/release/` now keeps
+  only the newest three evidence sets (~70MB reclaimed) via an automated
+  retention policy.
 
 Release notes: [RELEASE.md](RELEASE.md) · Full history: [docs/CHANGELOG.md](docs/CHANGELOG.md)
 
-Expected artifacts for 9.9.0 release must use exact filenames:
+Expected artifacts for 9.9.1 release must use exact filenames:
 
-- `dist/ltcai-9.9.0-py3-none-any.whl`
-- `dist/ltcai-9.9.0.tar.gz`
-- `ltcai-9.9.0.tgz`
-- `dist/ltcai-9.9.0.vsix`
-- `src-tauri/target/release/bundle/dmg/Lattice AI_9.9.0_aarch64.dmg`
+- `dist/ltcai-9.9.1-py3-none-any.whl`
+- `dist/ltcai-9.9.1.tar.gz`
+- `ltcai-9.9.1.tgz`
+- `dist/ltcai-9.9.1.vsix`
+- `src-tauri/target/release/bundle/dmg/Lattice AI_9.9.1_aarch64.dmg`
 
 Do not use wildcard artifact uploads. Package registry publishing remains owner-run.
 
@@ -115,7 +119,7 @@ See [ARCHITECTURE.md](ARCHITECTURE.md) for details and
 
 - External package registries are owner-published and can lag behind GitHub.
 - PostgreSQL/pgvector is optional scale/migration tooling. SQLite remains the
-  live local Brain store in 9.9.0.
+  live local Brain store in 9.9.1.
 - Docker, model downloads, cloud model calls, Telegram, Brain Network, and
   update checks require explicit user action.
 - Conversation does not fabricate answers when no model is loaded. Agent and
@@ -127,6 +131,7 @@ See [ARCHITECTURE.md](ARCHITECTURE.md) for details and
 
 | Version | Theme |
 | --- | --- |
+| 9.9.1 | Clean Foundations |
 | 9.9.0 | Fail-Closed Trust |
 | 9.8.0 | Honest Knowledge Pipeline |
 | 9.7.0 | Proactive Hybrid Brain |

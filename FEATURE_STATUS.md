@@ -3,7 +3,7 @@
 > **Status: canonical** — current-truth feature state, kept in sync with the
 > current release.
 
-Current release: **9.9.0 — Fail-Closed Trust**.
+Current release: **9.9.1 — Clean Foundations**.
 
 This file describes the current product state and known limitations. Historical
 change history is intentionally limited to 8.0.0-9.9.0 in `RELEASE.md` and
@@ -69,10 +69,10 @@ device analysis no longer fabricates a "ready" model card on probe failure.
   labeled as model-free rather than autonomous model execution.
 - Local file privacy depends on the user's OS account, disk encryption, and
   backup policy outside Lattice AI.
-- Legacy root shims remain for compatibility while implementation continues to
-  move into focused `latticeai.*` and `lattice_brain.*` modules; remaining
-  shims are tracked by the managed compatibility inventory, and internal-only
-  Brain shim layers were removed in 8.8.0.
+- Root compatibility shims were removed in 9.9.1 (only `server.py` remains
+  for `uvicorn server:app`); the managed compatibility inventory tracks the
+  removals, internal-only Brain shim layers were removed in 8.8.0, and the
+  legacy debt gate in `npm run lint` blocks reintroduction.
 
 ## Release-Era History Kept In Git
 

@@ -12,6 +12,7 @@ import {
   MessageCircle,
   Search,
   Settings,
+  Sunrise,
   Workflow,
 } from "lucide-react";
 import { latticeApi } from "@/api/client";
@@ -21,11 +22,14 @@ import { navigateHash } from "@/features/brain/navigation";
 
 type PaletteItem = {
   id: string;
-  group: "pages" | "knowledge" | "conversation" | "automation";
+  group: "proactive" | "pages" | "knowledge" | "conversation" | "automation";
   title: string;
   detail?: string;
   icon: React.ReactNode;
   target: string;
+  // Optional extra behavior on activation, e.g. asking the briefing panel to
+  // expand itself after navigation. Search behavior stays untouched.
+  action?: "open-briefing";
 };
 
 type SearchGroup = { kind: string; items: Record<string, unknown>[] };
@@ -86,8 +90,53 @@ export function CommandPalette({ language, initialOpen = false }: { language: La
     enabled: open && debouncedQuery.length > 0,
   });
 
+  // Cold-open proactivity: fetch the (cached) briefing once the palette opens
+  // so we can suggest concrete next moves before the user types anything.
+  const briefingQ = useQuery({
+    queryKey: ["commandBriefing"],
+    queryFn: latticeApi.commandBriefing,
+    enabled: open,
+    staleTime: 60_000,
+  });
+
   const items = React.useMemo<PaletteItem[]>(() => {
     const needle = query.trim().toLowerCase();
+
+    // Before the user types: a small proactive section built from real
+    // briefing data. If the fetch failed, the section simply does not appear.
+    const proactive: PaletteItem[] = [];
+    if (!needle && briefingQ.data?.ok) {
+      const briefing = (briefingQ.data.data || {}) as Record<string, unknown>;
+      const sections = (briefing.sections || {}) as Record<string, unknown>;
+      const review = (sections.review || {}) as Record<string, unknown>;
+      const suggestions = (sections.suggestions || {}) as Record<string, unknown>;
+      const suggestionCount = Number(suggestions.count ?? 0) || 0;
+      const pendingCount = Number(review.pending ?? 0) || 0;
+      proactive.push({
+        id: "proactive-briefing",
+        group: "proactive",
+        title: t(language, "command.proactive.briefing"),
+        detail: suggestionCount > 0 ? t(language, "command.proactive.suggestions", { count: suggestionCount }) : undefined,
+        icon: <Sunrise className="h-4 w-4" />,
+        target: "/brain",
+        action: "open-briefing",
+      });
+      proactive.push({
+        id: "proactive-review",
+        group: "proactive",
+        title: t(language, "command.proactive.review"),
+        detail: pendingCount > 0 ? t(language, "command.proactive.pending", { count: pendingCount }) : undefined,
+        icon: <FileSearch className="h-4 w-4" />,
+        target: "/act/review",
+      });
+      proactive.push({
+        id: "proactive-ask",
+        group: "proactive",
+        title: t(language, "briefing.action.askBrain"),
+        icon: <MessageCircle className="h-4 w-4" />,
+        target: "/brain",
+      });
+    }
     const pages: PaletteItem[] = PAGE_ENTRIES.map((entry) => ({
       id: entry.id,
       group: "pages" as const,
@@ -130,8 +179,8 @@ export function CommandPalette({ language, initialOpen = false }: { language: La
         }
       }
     }
-    return [...remote, ...pages];
-  }, [language, query, searchQ.data]);
+    return [...proactive, ...remote, ...pages];
+  }, [language, query, searchQ.data, briefingQ.data]);
 
   React.useEffect(() => {
     setActiveIndex(0);
@@ -144,6 +193,11 @@ export function CommandPalette({ language, initialOpen = false }: { language: La
       if (!item) return;
       close();
       navigateHash(item.target);
+      if (item.action === "open-briefing") {
+        // Best effort: an already-mounted briefing panel expands and scrolls
+        // into view; otherwise the user still lands where the briefing lives.
+        window.dispatchEvent(new Event("lattice:open-briefing"));
+      }
     },
     [close],
   );
@@ -167,6 +221,7 @@ export function CommandPalette({ language, initialOpen = false }: { language: La
   if (!open) return null;
 
   const groupLabels: Record<PaletteItem["group"], string> = {
+    proactive: t(language, "command.proactive.title"),
     pages: t(language, "command.group.pages"),
     knowledge: t(language, "command.group.knowledge"),
     conversation: t(language, "command.group.conversation"),

@@ -23,7 +23,7 @@ from pathlib import Path
 from typing import Any, Callable, Dict, List, Optional
 
 from latticeai.core.tool_registry import ToolRegistry
-from p_reinforce import BRAIN_DIR, STRUCTURE
+from latticeai.services.p_reinforce import BRAIN_DIR, STRUCTURE
 
 _PLATFORM = platform.system()  # "Darwin" | "Windows" | "Linux"
 

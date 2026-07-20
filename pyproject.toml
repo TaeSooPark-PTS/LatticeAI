@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "ltcai"
-version = "9.9.0"
+version = "9.9.1"
 description = "Lattice AI — local-first Digital Brain that keeps your knowledge durable across any AI model."
 readme = "README.md"
 requires-python = ">=3.11"
@@ -57,7 +57,7 @@ voice = ["openai-whisper", "SpeechRecognition", "pydub"]
 all = ["mlx-vlm>=0.6.3", "mlx-lm", "openai-whisper", "SpeechRecognition", "pydub", "sqlite-vec>=0.1,<1", "psycopg[binary]>=3.2,<4"]
 
 [project.scripts]
-LTCAI = "ltcai_cli:main"
+LTCAI = "latticeai.cli.entrypoint:main"
 
 [project.urls]
 Homepage = "https://github.com/TaeSooPark-PTS/LatticeAI"
@@ -68,20 +68,9 @@ Changelog = "https://github.com/TaeSooPark-PTS/LatticeAI/blob/main/docs/CHANGELO
 
 [tool.setuptools]
 py-modules = [
-  "ltcai_cli",
-  "auto_setup",
-  "setup_wizard",
   "server",
-  "mcp_registry",
-  "kg_schema",
-  "knowledge_graph",
-  "knowledge_graph_api",
-  "local_knowledge_api",
-  "llm_router",
-  "p_reinforce",
-  "telegram_bot",
 ]
-packages = ["lattice_brain", "lattice_brain.graph", "lattice_brain.runtime", "lattice_brain.storage", "latticeai", "latticeai.core", "latticeai.api", "latticeai.cli", "latticeai.integrations", "latticeai.models", "latticeai.runtime", "latticeai.services", "latticeai.setup", "latticeai.tools", "tools"]
+packages = ["lattice_brain", "lattice_brain.graph", "lattice_brain.runtime", "lattice_brain.storage", "latticeai", "latticeai.core", "latticeai.api", "latticeai.cli", "latticeai.integrations", "latticeai.models", "latticeai.runtime", "latticeai.services", "latticeai.setup", "latticeai.tools"]
 include-package-data = true
 
 [tool.setuptools.package-data]

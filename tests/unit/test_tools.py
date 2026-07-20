@@ -5,8 +5,8 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).parent.parent.parent))
 
-import tools as tools_module
-from tools import (
+import latticeai.tools as tools_module
+from latticeai.tools import (
     ToolError,
     edit_file,
     grep,

@@ -6,7 +6,7 @@ import hashlib
 from pathlib import Path
 from typing import Any, Dict, List, Optional
 
-from p_reinforce import BRAIN_DIR, STRUCTURE
+from latticeai.services.p_reinforce import BRAIN_DIR, STRUCTURE
 from latticeai.tools import MAX_FILE_BYTES, ToolError
 
 

@@ -1,5 +1,6 @@
 import createClient from "openapi-fetch";
 import type { paths } from "./openapi";
+import { t, type Language } from "@/i18n";
 import { useAppStore } from "@/store/appStore";
 
 export type ApiResult<T = unknown> = {
@@ -114,6 +115,26 @@ export function workspaceHeaders(): Record<string, string> {
   return workspaceId ? { "X-Workspace-Id": workspaceId } : {};
 }
 
+// The API layer runs outside React, so it reads the persisted language from
+// the store (which is itself seeded from localStorage "lattice.language").
+function uiLanguage(): Language {
+  try {
+    return useAppStore.getState().language;
+  } catch {
+    return "ko";
+  }
+}
+
+// Friendly, localized copy for the two failure shapes non-developers actually
+// hit: the local service not answering at all, and answering with an error.
+function unreachableMessage() {
+  return t(uiLanguage(), "api.error.unreachable");
+}
+
+function requestFailedMessage(status: number) {
+  return t(uiLanguage(), "api.error.request", { status });
+}
+
 export function friendlyError(error: unknown, fallback: string) {
   if (!error) return fallback;
   const record =
@@ -142,8 +163,11 @@ export function friendlyError(error: unknown, fallback: string) {
 export function friendlyCaughtError(error: unknown, fallback: string) {
   const message = error instanceof Error ? error.message : String(error);
   if (/not valid JSON|Unexpected token|JSON/i.test(message)) return fallback;
-  if (/aborted|abort/i.test(message)) {
-    return "Request timed out. Check that the local Lattice service is running.";
+  if (/aborted|abort|timed?\s?out/i.test(message)) {
+    return t(uiLanguage(), "api.error.timeout");
+  }
+  if (/failed to fetch|load failed|networkerror|network request failed/i.test(message)) {
+    return t(uiLanguage(), "api.error.unreachable");
   }
   return message || fallback;
 }
@@ -189,7 +213,7 @@ async function apiJson<T>(
       status: response.status,
       data: emptyFor(opts.shape),
       source: "unavailable",
-      error: friendlyError(error, response.statusText),
+      error: friendlyError(error, requestFailedMessage(response.status)),
     };
   } catch (err) {
     return {
@@ -197,7 +221,7 @@ async function apiJson<T>(
       status: 0,
       data: emptyFor(opts.shape),
       source: "unavailable",
-      error: friendlyCaughtError(err, "The local Lattice service returned an unavailable response."),
+      error: friendlyCaughtError(err, unreachableMessage()),
     };
   } finally {
     window.clearTimeout(timer);
@@ -225,7 +249,7 @@ export async function openApiJson<T>(
       status: response.status,
       data: emptyFor(shape),
       source: "unavailable",
-      error: friendlyError(error, response.statusText),
+      error: friendlyError(error, requestFailedMessage(response.status)),
     };
   } catch (err) {
     return {
@@ -233,7 +257,7 @@ export async function openApiJson<T>(
       status: 0,
       data: emptyFor(shape),
       source: "unavailable",
-      error: friendlyCaughtError(err, "The local Lattice service returned an unavailable response."),
+      error: friendlyCaughtError(err, unreachableMessage()),
     };
   } finally {
     window.clearTimeout(timer);

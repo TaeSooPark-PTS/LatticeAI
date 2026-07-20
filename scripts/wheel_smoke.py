@@ -32,7 +32,6 @@ REPO_ROOT = Path(__file__).resolve().parents[1]
 
 # Every importable module the wheel ships (pyproject py-modules + packages).
 WHEEL_MODULES = [
-    "setup_wizard",
     "lattice_brain",
     "lattice_brain.graph",
     "lattice_brain.graph.store",
@@ -55,9 +54,18 @@ WHEEL_MODULES = [
     "latticeai.services.p_reinforce",
     "latticeai.tools",
     "latticeai.tools.knowledge",
+    "latticeai.setup.auto_setup",
+    "latticeai.setup.wizard",
+    "latticeai.services.local_knowledge",
+    "lattice_brain.graph.schema",
+    "server",
+]
+
+# Root shims removed in 9.9.1 — the wheel must NOT ship them anymore.
+REMOVED_ROOT_MODULES = [
     "ltcai_cli",
     "auto_setup",
-    "server",
+    "setup_wizard",
     "mcp_registry",
     "kg_schema",
     "knowledge_graph",
@@ -67,15 +75,23 @@ WHEEL_MODULES = [
     "p_reinforce",
     "telegram_bot",
     "tools",
-    "tools.knowledge",
 ]
 
 IMPORT_CHECK = (
     "import importlib\n"
     + "".join(f"importlib.import_module({mod!r})\n" for mod in WHEEL_MODULES)
-    + "assert importlib.import_module('tools') is importlib.import_module('latticeai.tools')\n"
-    + "assert importlib.import_module('tools.knowledge') is importlib.import_module('latticeai.tools.knowledge')\n"
-    + f"print('wheel imports ok: {len(WHEEL_MODULES)} modules')\n"
+    + "".join(
+        f"""
+try:
+    importlib.import_module({mod!r})
+except ImportError:
+    pass
+else:
+    raise AssertionError('removed root shim {mod} is still shipped in the wheel')
+"""
+        for mod in REMOVED_ROOT_MODULES
+    )
+    + f"print('wheel imports ok: {len(WHEEL_MODULES)} modules, {len(REMOVED_ROOT_MODULES)} shims gone')\n"
 )
 
 HEALTH_CHECK = """

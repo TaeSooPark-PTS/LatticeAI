@@ -218,7 +218,7 @@ function CodeBlock({ language, code, lang }: { language: Language; code: string;
     const result = await latticeApi.saveChatFile(name, code);
     if (!result.ok) {
       setSaveState("error");
-      setSaveError(result.error || "unavailable");
+      setSaveError(result.error || t(language, "common.error.unknown"));
       return;
     }
     const data = result.data as { path?: string; bytes?: number };
@@ -280,7 +280,7 @@ export function CreatedFilesCard({
     setDownloading(file.path);
     setError("");
     const result = await latticeApi.downloadWorkspaceFile(file.path, file.filename);
-    if (!result.ok) setError(result.error || "unavailable");
+    if (!result.ok) setError(result.error || t(language, "common.error.unknown"));
     setDownloading(null);
   }
 

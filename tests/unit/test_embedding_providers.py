@@ -11,7 +11,7 @@ from pathlib import Path
 from fastapi import FastAPI
 from fastapi.testclient import TestClient
 
-from knowledge_graph import KnowledgeGraphStore
+from lattice_brain.graph.store import KnowledgeGraphStore
 from latticeai.api.search import create_search_router
 from latticeai.core.embedding_providers import (
     HashEmbeddingProvider,

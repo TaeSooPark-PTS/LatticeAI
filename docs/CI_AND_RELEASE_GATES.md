@@ -63,7 +63,7 @@ the required-checks list below.
 ## Postgres integration gate
 
 `postgres-integration.yml` runs the migration-integrity suite
-(`tests/integration/test_v42_postgres_migration_live.py`) that is skipped
+(`tests/integration/test_postgres_migration_live.py`) that is skipped
 everywhere else. The suite is gated by `LTCAI_LIVE_POSTGRES_DOCKER_CONSENT=1`;
 the workflow sets that variable, and the test itself starts and tears down a
 `pgvector/pgvector:pg16` container via `docker compose` (preinstalled on

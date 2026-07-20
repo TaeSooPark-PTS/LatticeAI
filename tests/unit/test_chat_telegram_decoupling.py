@@ -18,7 +18,7 @@ from types import SimpleNamespace
 from fastapi import FastAPI
 from fastapi.testclient import TestClient
 
-import tools as tools_module
+import latticeai.tools as tools_module
 import latticeai.api.chat as chat_module
 from latticeai.api.chat import create_chat_router
 from latticeai.core.agent import AgentState
@@ -31,7 +31,7 @@ def test_importing_chat_router_does_not_import_telegram_bot():
     code = (
         "import json, sys\n"
         "import latticeai.api.chat\n"
-        "print(json.dumps('telegram_bot' in sys.modules))\n"
+        "print(json.dumps('latticeai.integrations.telegram_bot' in sys.modules))\n"
     )
     proc = subprocess.run(
         [sys.executable, "-c", code],

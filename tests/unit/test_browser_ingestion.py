@@ -17,7 +17,7 @@ from fastapi.testclient import TestClient
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[2]))
 
-from knowledge_graph import KnowledgeGraphStore
+from lattice_brain.graph.store import KnowledgeGraphStore
 from latticeai.api.browser import (
     BrowserFetchError,
     _default_fetch_url,

@@ -12,6 +12,7 @@ import {
   reviewSourceFilters,
   reviewStatusFilters,
   type ReviewAction,
+  type ReviewFeedback,
 } from "./reviewHelpers";
 
 export function ReviewInbox() {
@@ -19,7 +20,7 @@ export function ReviewInbox() {
   const qc = useQueryClient();
   const [statusFilter, setStatusFilter] = React.useState<ReviewStatusFilter>("pending");
   const [sourceFilter, setSourceFilter] = React.useState<ReviewSourceFilter>("all");
-  const [runFeedback, setRunFeedback] = React.useState<Record<string, string>>({});
+  const [runFeedback, setRunFeedback] = React.useState<Record<string, ReviewFeedback>>({});
   const reviews = useQuery({
     queryKey: ["automationReviews", statusFilter, sourceFilter],
     queryFn: () => latticeApi.automationReviews({
@@ -52,9 +53,15 @@ export function ReviewInbox() {
       () => latticeApi.runNowReviewItem(item.id);
     const result = await call();
     if (!result.ok) {
+      // Friendly localized copy first; the raw backend detail stays available
+      // as demoted secondary text on the card.
       setRunFeedback((prev) => ({
         ...prev,
-        [item.id]: result.error || t(language, "review.action.failed", { action }),
+        [item.id]: {
+          tone: "error",
+          message: t(language, "review.feedback.error"),
+          ...(result.error ? { detail: result.error } : {}),
+        },
       }));
       return result;
     }
@@ -63,11 +70,13 @@ export function ReviewInbox() {
         const payload = result.data.payload || {};
         const provenance = result.data.provenance || {};
         const runId = String(payload.last_run_id || provenance.run_id || "");
+        const executedLabel = hadRunBefore ? t(language, "review.regenerated") : t(language, "review.executed");
         setRunFeedback((prev) => ({
           ...prev,
-          [item.id]: runId
-            ? `${hadRunBefore ? t(language, "review.regenerated") : t(language, "review.executed")} · ${runId}`
-            : hadRunBefore ? t(language, "review.regenerated") : t(language, "review.executed"),
+          [item.id]: {
+            tone: "success",
+            message: runId ? `${executedLabel} · ${runId}` : executedLabel,
+          },
         }));
       } else {
         setRunFeedback((prev) => {
@@ -123,7 +132,14 @@ export function ReviewInbox() {
         {reviews.isError || (reviews.data && !reviews.data.ok) ? (
           <EmptyState
             title={t(language, "review.inbox.loadError")}
-            detail={reviews.data?.error || t(language, "review.inbox.unavailable")}
+            detail={
+              <>
+                {t(language, "review.inbox.unavailable")}
+                {reviews.data?.error ? (
+                  <span className="mt-1 block text-xs opacity-75">{reviews.data.error}</span>
+                ) : null}
+              </>
+            }
           />
         ) : !items.length ? (
           <EmptyState

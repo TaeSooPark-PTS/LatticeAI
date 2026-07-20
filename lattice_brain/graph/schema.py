@@ -32,7 +32,7 @@ legacy 테이블에 대한 dual-write 프로젝션(raw SQL) + ``kgv2_*`` 재구�
 사용 예
 -------
 ```python
-from kg_schema import KGStoreV2
+from lattice_brain.graph.schema import KGStoreV2
 
 store = KGStoreV2("/Users/me/.ltcai/kg_v2.db")
 store.init_schema()        # nodes_v2 / edges_v2 생성 + 컬럼 drift self-heal

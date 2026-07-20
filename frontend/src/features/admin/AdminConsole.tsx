@@ -290,7 +290,11 @@ function renderLogRow(event: ApiRecord, language: "ko" | "en") {
 
 function sourceLabel(result: ApiResult<unknown> | undefined, language: "ko" | "en") {
   if (!result) return t(language, "admin.source.loading");
-  return result.ok ? t(language, "admin.source.live") : result.error || t(language, "admin.status.unavailable");
+  if (result.ok) return t(language, "admin.source.live");
+  // Friendly localized status first; the raw backend detail is demoted to a
+  // trailing note instead of replacing the message.
+  const friendly = t(language, "admin.status.unavailable");
+  return result.error && result.error !== friendly ? `${friendly} · ${result.error}` : friendly;
 }
 
 function adminStatusLabel(data: unknown, key: string) {

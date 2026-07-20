@@ -27,15 +27,13 @@ REPO_ROOT = Path(__file__).resolve().parents[2]
 _FORBIDDEN_MODULES = (
     "mlx",
     "mlx.core",
-    "llm_router",
     "latticeai.models.router",
-    "knowledge_graph",
-    "local_knowledge_api",
-    "telegram_bot",
-    "mcp_registry",
+    "lattice_brain.graph.store",
+    "latticeai.services.local_knowledge",
+    "latticeai.integrations.telegram_bot",
     "latticeai.core.mcp_registry",
-    "setup_wizard",
-    "p_reinforce",
+    "latticeai.setup.wizard",
+    "latticeai.services.p_reinforce",
 )
 
 

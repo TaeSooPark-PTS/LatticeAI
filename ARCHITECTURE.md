@@ -4,7 +4,7 @@
 > with the current release. Historical subsystem detail lives in
 > [`docs/architecture.md`](docs/architecture.md).
 
-Current release: **9.9.0 — Fail-Closed Trust**.
+Current release: **9.9.1 — Clean Foundations**.
 
 Lattice AI is a local-first Digital Brain platform. The current architecture is
 organized around a private Brain, replaceable model runtimes, explicit tool
@@ -193,7 +193,7 @@ migration safety, and equivalence tests.
 
 ## Runtime Contracts
 
-The 8.0 architecture contract remains active in 9.8.0:
+The 8.0 architecture contract remains active in 9.9.1:
 
 - AgentRuntime has explicit preview/readiness contracts and does not execute
   tools during preview.
@@ -228,7 +228,7 @@ Change governance and agent-eval extend the contract:
 
 SQLite is the live local Brain store. PostgreSQL/pgvector remains optional
 scale/migration tooling and must be explicitly configured; it is not the
-default live KnowledgeGraphStore backend in 9.8.0. Backups and `.latticebrain`
+default live KnowledgeGraphStore backend in 9.9.1. Backups and `.latticebrain`
 archives are user-controlled portability paths.
 
 ## Local-First Boundary
@@ -239,20 +239,21 @@ Docker/Postgres setup, marketplace refresh, and update checks are opt-in paths.
 
 ## Release Artifact Map
 
-9.8.0 exact artifact names:
+9.9.1 exact artifact names:
 
-- `dist/ltcai-9.8.0-py3-none-any.whl`
-- `dist/ltcai-9.8.0.tar.gz`
-- `ltcai-9.8.0.tgz`
-- `dist/ltcai-9.8.0.vsix`
-- `src-tauri/target/release/bundle/dmg/Lattice AI_9.8.0_aarch64.dmg`
+- `dist/ltcai-9.9.1-py3-none-any.whl`
+- `dist/ltcai-9.9.1.tar.gz`
+- `ltcai-9.9.1.tgz`
+- `dist/ltcai-9.9.1.vsix`
+- `src-tauri/target/release/bundle/dmg/Lattice AI_9.9.1_aarch64.dmg`
 
 Do not document or use wildcard artifact upload commands.
 
 ## Known Limitations
 
-- Legacy root compatibility shims remain while public import paths still depend
-  on them.
+- The repo root keeps exactly one compatibility module (`server.py` for
+  `uvicorn server:app`); all other root shims were removed in 9.9.1 and a
+  legacy debt gate (`scripts/check_legacy_debt.mjs`) keeps the root clean.
 - PostgreSQL scale/migration tooling, Docker, cloud models, Telegram, Brain
   Network, update checks, and marketplace refreshes are not default local
   behavior.

@@ -18,7 +18,7 @@ from typing import Any, Dict, List
 
 from latticeai.services.architecture_readiness import architecture_readiness
 
-PRODUCT_VERSION_TARGET = "9.9.0"
+PRODUCT_VERSION_TARGET = "9.9.1"
 
 
 @dataclass(frozen=True)
@@ -140,7 +140,7 @@ PRODUCT_GATES: List[ProductGate] = [
         evidence=[
             "scripts/brain_quality_eval.py",
             "scripts/product_readiness.py",
-            "tests/unit/test_v78_product_readiness.py",
+            "tests/unit/test_product_readiness.py",
             "tests/visual/v3.spec.js::Brain Chat Home",
             ".github/workflows/ci.yml::scripts/product_readiness.py",
             ".github/workflows/release.yml::npm run lint",

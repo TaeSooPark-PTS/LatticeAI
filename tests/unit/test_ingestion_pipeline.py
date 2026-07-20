@@ -17,7 +17,7 @@ from fastapi import HTTPException, UploadFile
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[2]))
 
-from knowledge_graph import KnowledgeGraphStore
+from lattice_brain.graph.store import KnowledgeGraphStore
 from lattice_brain.ingestion import IngestionItem, IngestionPipeline
 from lattice_brain.runtime.hooks import HooksRegistry
 from latticeai.services.upload_service import process_uploaded_document

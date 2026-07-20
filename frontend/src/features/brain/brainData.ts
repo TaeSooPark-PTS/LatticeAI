@@ -181,6 +181,9 @@ export function parseContextQuality(value: unknown): MessageContextQuality | nul
   };
 }
 
+// "unavailable" here is a machine state, not display copy: consumers gate on
+// it (VectorFreshnessNotice only renders for "pending") or map it to i18n
+// keys. Never render this status string directly in the UI.
 export function parseVectorFreshness(data: unknown): VectorFreshness {
   const record = isRecord(data) ? data : {};
   return {
@@ -305,6 +308,8 @@ export function buildBrainProof(data: unknown, fallbackModelName = ""): BrainPro
   };
 }
 
+// status "unavailable" is a machine state consumed by boolean/i18n-key logic
+// (useBrainProof, HomePanels). It must not be rendered as user-facing text.
 function unavailableBrainProof(fallbackModelName: string): BrainProof {
   return {
     status: "unavailable",

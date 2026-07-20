@@ -20,5 +20,3 @@ exclude TOOLS.md
 exclude USER.md
 include README.md
 include requirements.txt
-include auto_setup.py
-include kg_schema.py

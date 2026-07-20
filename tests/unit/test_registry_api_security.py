@@ -13,7 +13,7 @@ from latticeai.api.plugins import create_plugins_router
 from latticeai.core.agent_registry import AgentRegistry
 from latticeai.services.platform_runtime import PlatformRuntime
 from latticeai.services.tool_dispatch import get_tool_permission
-from tools import AGENT_ROOT
+from latticeai.tools import AGENT_ROOT
 
 
 def _admin_gate(state):

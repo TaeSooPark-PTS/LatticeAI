@@ -164,9 +164,9 @@ fn resource_dir() -> Option<PathBuf> {
 fn bundled_python_root() -> Option<PathBuf> {
     let resources = resource_dir()?;
     let up = resources.join("_up_");
-    if up.join("ltcai_cli.py").is_file() {
+    if up.join("latticeai").join("cli").join("entrypoint.py").is_file() {
         Some(up)
-    } else if resources.join("ltcai_cli.py").is_file() {
+    } else if resources.join("latticeai").join("cli").join("entrypoint.py").is_file() {
         Some(resources)
     } else {
         None
@@ -222,13 +222,13 @@ fn backend_launch(origin: &str) -> BackendLaunch {
     }
 
     for python in python_candidates() {
-        if module_importable(&python, "ltcai_cli") {
+        if module_importable(&python, "latticeai.cli.entrypoint") {
             return BackendLaunch {
-                command: format!("{python} -m ltcai_cli --host 127.0.0.1 --port {port}"),
+                command: format!("{python} -m latticeai.cli.entrypoint --host 127.0.0.1 --port {port}"),
                 program: python,
                 args: vec![
                     "-m".into(),
-                    "ltcai_cli".into(),
+                    "latticeai.cli.entrypoint".into(),
                     "--host".into(),
                     "127.0.0.1".into(),
                     "--port".into(),
@@ -240,27 +240,27 @@ fn backend_launch(origin: &str) -> BackendLaunch {
     }
 
     if let Some(resources) = bundled_python_root() {
-        let launcher = resources.join("ltcai_cli.py");
-        if launcher.is_file() {
+        if resources.join("latticeai").join("cli").join("entrypoint.py").is_file() {
             if let Some(python) = python_candidates().into_iter().next() {
                 return BackendLaunch {
-                    command: format!("{python} {} --host 127.0.0.1 --port {port}", launcher.display()),
+                    command: format!("{python} -m latticeai.cli.entrypoint --host 127.0.0.1 --port {port}"),
                     program: python,
                     args: vec![
-                        launcher.to_string_lossy().to_string(),
+                        "-m".into(),
+                        "latticeai.cli.entrypoint".into(),
                         "--host".into(),
                         "127.0.0.1".into(),
                         "--port".into(),
                         port,
                     ],
-                    cwd: None,
+                    cwd: Some(resources),
                 };
             }
         }
     }
 
     BackendLaunch {
-        command: "unavailable: LTCAI executable or importable ltcai_cli module not found".to_string(),
+        command: "unavailable: LTCAI executable or importable latticeai.cli.entrypoint module not found".to_string(),
         program: String::new(),
         args: Vec::new(),
         cwd: None,
@@ -278,7 +278,7 @@ fn spawn_backend(origin: &str, launch: &BackendLaunch) -> Result<Option<Child>, 
         return Ok(None);
     }
     if launch.program.is_empty() {
-        return Err("Desktop backend unavailable: LTCAI executable or importable ltcai_cli module not found.".to_string());
+        return Err("Desktop backend unavailable: LTCAI executable or importable latticeai.cli.entrypoint module not found.".to_string());
     }
 
     let mut cmd = Command::new(&launch.program);

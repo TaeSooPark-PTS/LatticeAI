@@ -4,8 +4,8 @@ from pathlib import Path
 
 import pytest
 
-import tools as tools_module
-from tools import ToolError, run_command
+import latticeai.tools as tools_module
+from latticeai.tools import ToolError, run_command
 
 
 @pytest.fixture

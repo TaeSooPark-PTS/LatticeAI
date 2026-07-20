@@ -213,7 +213,18 @@ function backupHealthLabel(data: unknown, language: Language) {
 }
 
 function CareResultSummary({ result, language }: { result: ApiResult; language: Language }) {
-  if (!result.ok) return <>{result.error || t(language, "care.result.error")}</>;
+  if (!result.ok) {
+    // Friendly localized message first; the raw backend detail is demoted to
+    // secondary text below it.
+    return (
+      <div className="brain-care-result-summary">
+        <strong>{t(language, "care.result.error")}</strong>
+        {result.error && result.error !== t(language, "care.result.error") ? (
+          <span>{result.error}</span>
+        ) : null}
+      </div>
+    );
+  }
   const data = isRecord(result.data) ? result.data : {};
   const path = textValue(data, ["path", "archive_path", "backup_path", "export_path", "latest_backup"]);
   const status = textValue(data, ["message", "status", "result"], t(language, "care.result.completed"));

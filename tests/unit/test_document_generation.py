@@ -4,7 +4,7 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).parent.parent.parent))
 
-from knowledge_graph import KnowledgeGraphStore, _extract_concepts, _extract_concepts_rules, _extract_triples_rules
+from lattice_brain.graph.store import KnowledgeGraphStore, _extract_concepts, _extract_concepts_rules, _extract_triples_rules
 from latticeai.core.document_generator import detect_document_intent, DocumentGenerationSession, build_document_system_prompt
 from latticeai.core.context_builder import retrieve_context_for_generation, format_sources_footnote
 
@@ -209,12 +209,12 @@ class TestContextBuilder:
 
 class TestKGSchemaV2Enhancements:
     def test_document_node_type_exists(self):
-        from kg_schema import NodeType
+        from lattice_brain.graph.schema import NodeType
         assert hasattr(NodeType, "DOCUMENT")
         assert NodeType.DOCUMENT.value == "DOCUMENT"
 
     def test_new_edge_types_exist(self):
-        from kg_schema import EdgeType
+        from lattice_brain.graph.schema import EdgeType
         for name in ("USED_IN", "INSPIRED_BY", "CONTRADICTS", "EVOLVES_FROM"):
             assert hasattr(EdgeType, name), f"EdgeType.{name} missing"
 
@@ -223,7 +223,7 @@ class TestKGSchemaV2Enhancements:
         importance_score). Asserted at the schema level — KGStoreV2 is a
         schema/init helper, not a data API."""
         import sqlite3
-        from kg_schema import KGStoreV2
+        from lattice_brain.graph.schema import KGStoreV2
         KGStoreV2(str(tmp_path / "v2.db")).init_schema()
         with sqlite3.connect(str(tmp_path / "v2.db")) as conn:
             cols = {r[1] for r in conn.execute("PRAGMA table_info(nodes_v2)")}
@@ -233,7 +233,7 @@ class TestKGSchemaV2Enhancements:
         """A Document node written via the production KnowledgeGraphStore path is
         projected into nodes_v2 with the normalized type + preserved legacy type,
         and is readable through the graph read API."""
-        import knowledge_graph as kg
+        import lattice_brain.graph.store as kg
         store = kg.KnowledgeGraphStore(tmp_path / "kg.sqlite", tmp_path / "blobs")
         with store._connect() as conn:
             store._upsert_node(conn, "doc:1", "Document", "테스트 문서",

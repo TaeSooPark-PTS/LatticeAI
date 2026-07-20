@@ -40,7 +40,15 @@ export function BrainIntelligencePanel({ language }: { language: Language }) {
   });
 
   const health = healthQ.data?.ok && isRecord(healthQ.data.data) ? healthQ.data.data : null;
-  const healthUnavailable = expanded && !healthQ.isPending && (!healthQ.data?.ok || healthQ.data?.source === "unavailable");
+  // Any failed fetch (thrown, non-ok, or degraded source) is a real error
+  // state — never render zeroed metrics as if the brain were empty.
+  const healthUnavailable =
+    expanded && !healthQ.isPending && (healthQ.isError || !healthQ.data?.ok || healthQ.data?.source === "unavailable");
+  const retryHealth = () => {
+    void healthQ.refetch();
+    void insightsQ.refetch();
+    void contradictionsQ.refetch();
+  };
   const insights = insightsQ.data?.ok && isRecord(insightsQ.data.data) ? insightsQ.data.data : null;
   const contradictionCount =
     contradictionsQ.data?.ok && isRecord(contradictionsQ.data.data)
@@ -84,7 +92,17 @@ export function BrainIntelligencePanel({ language }: { language: Language }) {
           {healthQ.isPending ? (
             <p className="brain-care-note">{t(language, "intelligence.loading")}</p>
           ) : healthUnavailable ? (
-            <p className="brain-care-note">{t(language, "intelligence.unavailable")}</p>
+            <div className="grid gap-2" role="alert">
+              <p className="brain-care-note">{t(language, "intelligence.loadError")}</p>
+              {healthQ.data?.error ? (
+                <small className="text-xs text-muted-foreground opacity-75">{healthQ.data.error}</small>
+              ) : null}
+              <div>
+                <Button variant="outline" size="sm" onClick={retryHealth}>
+                  {t(language, "common.retry")}
+                </Button>
+              </div>
+            </div>
           ) : (
             <>
               <div className="brain-intelligence-dimensions" role="list">

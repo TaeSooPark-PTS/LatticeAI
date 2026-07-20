@@ -969,9 +969,27 @@
   }
 
   .brain-centered-home {
-    grid-template-rows: minmax(0, 1fr) 2.25rem 7rem;
+    grid-template-rows: minmax(0, 1fr) 2.25rem 7rem auto;
     padding: clamp(0.55rem, 1.4vh, 0.8rem) 0;
     overflow: visible;
+  }
+
+  /* The desktop empty home is a one-viewport contract: the intro row may
+     only spend a bounded slice of height, and disappears entirely on
+     low-height viewports so the primary controls stay fully on screen. */
+  .brain-centered-home .brain-home-intro-row {
+    margin-top: 0.6rem;
+  }
+
+  .brain-centered-home .brain-home-intro-row > * {
+    max-height: clamp(8rem, 15vh, 11.5rem);
+    overflow: hidden auto;
+  }
+}
+
+@media (min-width: 761px) and (max-height: 719px) {
+  .brain-centered-home .brain-home-intro-row {
+    display: none;
   }
 }
 
@@ -1064,4 +1082,157 @@
     bottom: 0.45rem;
     min-height: 2.6rem;
   }
+}
+
+/* ── First 5 minutes card + home briefing row ─────────────────────────
+   The empty home greets brand-new users with a light guided checklist
+   next to an always-visible daily briefing. Both reuse existing surface
+   tokens so they read as part of the command deck, not a modal tour. */
+
+.brain-home-intro-row {
+  display: grid;
+  width: min(100%, 64rem);
+  margin: 0 auto;
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 21rem), 1fr));
+  gap: 0.7rem;
+  align-items: start;
+}
+
+.brain-first-five {
+  display: grid;
+  gap: 0.5rem;
+  border: 1px solid hsl(var(--border) / 0.86);
+  border-radius: 17px;
+  background: hsl(var(--surface) / 0.96);
+  padding: 0.85rem 0.95rem;
+  text-align: left;
+}
+
+.brain-first-five-head {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.brain-first-five-title {
+  display: inline-flex;
+  flex: 1;
+  min-width: 0;
+  align-items: center;
+  gap: 0.35rem;
+  color: hsl(var(--foreground));
+  font-size: 0.82rem;
+  font-weight: 750;
+}
+
+.brain-first-five-title svg {
+  color: hsl(var(--brain-core));
+}
+
+.brain-first-five-progress {
+  color: hsl(var(--muted-foreground));
+  font-size: 0.68rem;
+  white-space: nowrap;
+}
+
+.brain-first-five-dismiss {
+  display: inline-flex;
+  flex: 0 0 auto;
+  align-items: center;
+  justify-content: center;
+  border: none;
+  border-radius: 8px;
+  background: transparent;
+  color: hsl(var(--muted-foreground));
+  padding: 0.25rem;
+  cursor: pointer;
+}
+
+.brain-first-five-dismiss:hover,
+.brain-first-five-dismiss:focus-visible {
+  color: hsl(var(--foreground));
+  background: hsl(var(--primary) / 0.08);
+}
+
+.brain-first-five-subtitle {
+  margin: 0;
+  color: hsl(var(--muted-foreground));
+  font-size: 0.74rem;
+  line-height: 1.4;
+}
+
+.brain-first-five-steps {
+  display: grid;
+  gap: 0.4rem;
+}
+
+.brain-first-five-step {
+  display: flex;
+  align-items: center;
+  gap: 0.55rem;
+  border: 1px solid hsl(var(--border) / 0.7);
+  border-radius: 12px;
+  background: transparent;
+  color: hsl(var(--foreground));
+  padding: 0.5rem 0.6rem;
+  text-align: left;
+  cursor: pointer;
+}
+
+.brain-first-five-step:hover:not(:disabled) {
+  border-color: hsl(var(--primary) / 0.45);
+  background: hsl(var(--primary) / 0.06);
+}
+
+.brain-first-five-step:disabled {
+  cursor: default;
+  opacity: 0.72;
+}
+
+.brain-first-five-step-index {
+  display: inline-flex;
+  flex: 0 0 auto;
+  width: 1.5rem;
+  height: 1.5rem;
+  align-items: center;
+  justify-content: center;
+  border: 1px solid hsl(var(--border) / 0.85);
+  border-radius: 999px;
+  color: hsl(var(--muted-foreground));
+  font-size: 0.72rem;
+  font-weight: 750;
+}
+
+.brain-first-five-step.is-done .brain-first-five-step-index {
+  border-color: hsl(var(--primary) / 0.55);
+  color: hsl(var(--primary));
+}
+
+.brain-first-five-step-copy {
+  display: grid;
+  min-width: 0;
+  gap: 0.1rem;
+}
+
+.brain-first-five-step-copy strong {
+  font-size: 0.8rem;
+  line-height: 1.2;
+}
+
+.brain-first-five-step-copy span {
+  color: hsl(var(--muted-foreground));
+  font-size: 0.7rem;
+  line-height: 1.35;
+}
+
+.brain-first-five-step-done {
+  margin-left: auto;
+  color: hsl(var(--primary));
+  font-size: 0.68rem;
+  font-weight: 750;
+  white-space: nowrap;
+}
+
+.brain-home-intro-row .daily-briefing-panel.is-home {
+  border-radius: 17px;
 }

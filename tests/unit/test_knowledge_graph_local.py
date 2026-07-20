@@ -11,8 +11,8 @@ sys.path.insert(0, str(Path(__file__).parent.parent.parent))
 from fastapi import FastAPI
 from fastapi.testclient import TestClient
 
-from knowledge_graph import KnowledgeGraphStore
-from local_knowledge_api import LocalKnowledgeWatcher, create_local_knowledge_router
+from lattice_brain.graph.store import KnowledgeGraphStore
+from latticeai.services.local_knowledge import LocalKnowledgeWatcher, create_local_knowledge_router
 
 
 def _store(tmp_path: Path) -> KnowledgeGraphStore:

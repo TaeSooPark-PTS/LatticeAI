@@ -78,7 +78,7 @@ def test_recommendation_payload_includes_5_2_fields(tmp_path: Path):
 
 def test_verification_report_exists_and_valid():
     # The script writes this; existence + parse proves the automation path
-    report = Path("verification_report.json")
+    report = Path(__file__).resolve().parents[2] / "verification_report.json"
     if not report.exists():
         pytest.skip("verification_report.json not present (run the script first in CI)")
     data = json.loads(report.read_text(encoding="utf-8"))

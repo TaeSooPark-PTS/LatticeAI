@@ -4,6 +4,53 @@ The top entry is either the current unreleased main-branch work or the current
 release line. Older entries are historical and may describe behavior as it
 existed at that release.
 
+## [9.9.1] - 2026-07-21
+
+### Removed
+- All repo-root compatibility shims except `server.py`: `ltcai_cli.py`,
+  `auto_setup.py`, `setup_wizard.py`, `mcp_registry.py`, `kg_schema.py`,
+  `knowledge_graph.py`, `knowledge_graph_api.py`, `local_knowledge_api.py`,
+  `llm_router.py`, `p_reinforce.py`, `telegram_bot.py`, and the root `tools/`
+  package (12 of 13 tracked shims, 92%). Canonical imports are the
+  `latticeai.*` / `lattice_brain.*` module paths; the console script and
+  `bin/ltcai.js` now target `latticeai.cli.entrypoint` directly.
+- Stale release evidence: `output/release/` now keeps only the newest three
+  versioned evidence directories (automated retention policy).
+
+### Added
+- Legacy debt gate: `scripts/check_legacy_debt.mjs` in `npm run lint` plus a
+  rewritten `tests/unit/test_legacy_root_shims.py` fail if a root module
+  reappears or any source tree imports a removed shim.
+- `scripts/prune_release_evidence.mjs` retention policy (newest 3, override
+  with `LTCAI_RELEASE_EVIDENCE_KEEP`), wired into `npm run release:evidence`.
+- First-run "First 5 minutes" guided card on the empty Brain home: ask a first
+  question, add a first file/note, see what the Brain learned — real feature
+  wiring, persistent progress, dismissible.
+- Daily briefing on the Brain home (immediate fetch, friendly empty state) and
+  proactive quick actions on Cmd+K cold open (open briefing, review pending,
+  ask the Brain) with live counts.
+- Localized API error pipeline: timeout/unreachable/status failures map to
+  friendly ko/en copy instead of raw `statusText` or English literals.
+- `scripts/check_current_release_docs.mjs` now verifies the ARCHITECTURE.md
+  Release Artifact Map names current-version artifacts exactly.
+
+### Changed
+- Review Center at product quality: translated status/source/risk/change-class
+  labels, framed diffs (file target, +/- coloring, honest truncation count),
+  raw IDs relegated to a collapsed "Technical details" disclosure, structured
+  success/failure feedback, and a distinct error state with retry for the
+  pending-proposals panel.
+- Intelligence/care/admin/markdown panels show friendly i18n error copy first;
+  raw backend detail is demoted to secondary text.
+- 37 version-named test files (`test_v3_*`, `test_v42_*` … `test_t9_*`,
+  `test_kg_v2/v4_*`) renamed to scenario-named suites; versioned test
+  function names cleaned up. Coverage is unchanged (1284 unit tests).
+- Packaging: `pyproject.toml` ships a single root module (`server`);
+  `package.json` files list and `MANIFEST.in` no longer ship shim files.
+- Docs: `docs/LEGACY_COMPATIBILITY.md` rewritten for the post-shim layout;
+  `docs/kg-schema.md` points at `lattice_brain/graph/schema.py`; ARCHITECTURE
+  artifact map and 9.8.0-era references brought current.
+
 ## [9.9.0] - 2026-07-21
 
 ### Fixed
