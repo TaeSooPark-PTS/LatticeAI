@@ -10,6 +10,33 @@ the operational objects first-class: handoffs, context packets, review/retry
 history, replayable timeline events, and explicit planning records. The default
 runner is still deterministic and LLM-free so tests, local demos, and Community
 installations can exercise the full Planner -> Executor -> Reviewer loop.
+
+Consistency with the single-agent harness (latticeai.core.agent)
+----------------------------------------------------------------
+Both runtimes expose the shared ``agent-run-contract/v1`` envelope
+(:mod:`.contracts`), and every terminal status this orchestrator emits
+(``ok`` / ``retried_ok`` / ``failed``) is a member of
+``statuses.RUN_TERMINAL_STATUSES``. Three differences are intentional design,
+not drift:
+
+* **Tool dispatch** — this orchestrator is pure and never executes tools
+  itself. Tool work reachable from a multi-agent step flows through the
+  *injected* ``workflow_runner`` / ``plugin_runner`` seams (wired in
+  ``latticeai.services.platform_runtime``), and those seams route every call
+  through the same shared ``hooks.dispatch_tool`` pre_tool/post_tool lifecycle
+  the single-agent loop uses.
+* **Change governance** — the single-agent loop stages mutations of existing
+  content as review proposals (``AgentDeps.change_governor``); the injected
+  workflow tool node instead pauses non-auto-approve tools into
+  ``awaiting_approval`` (``ApprovalRequired``). Different mechanisms, same
+  fail-closed outcome: no unapproved mutation executes from either runtime.
+* **Tracing** — the single-agent loop records a ``LoopTrace`` event stream;
+  this runtime records replayable ``timeline`` events. Both surface uniformly
+  as the contract's ``timeline``.
+
+Run-level ``pre_run`` / ``post_run`` hooks fire in
+``lattice_brain.runtime.agent_runtime.AgentRuntime``, which wraps this
+orchestrator for the product ``/agents`` surface.
 """
 
 from __future__ import annotations
@@ -21,7 +48,7 @@ from .contracts import multi_agent_contract
 from ..utils import now_iso as _now
 
 
-MULTI_AGENT_VERSION = "9.6.0"
+MULTI_AGENT_VERSION = "9.7.0"
 
 AGENT_ROLES = ("researcher", "planner", "executor", "reviewer", "release")
 CORE_PIPELINE = ("planner", "executor", "reviewer")
@@ -742,7 +769,16 @@ class MultiAgentOrchestrator:
             # let downstream roles review stale or missing output and could
             # incorrectly convert a failed run into an approved one.
             if str(role_result.get("status") or "").lower() == "error":
-                reason = str(role_result.get("error") or f"{role} role failed")
+                # Both role-error result shapes are honored: a raised exception
+                # (``_run_role``) carries ``error``; an llm_role_runner failure
+                # carries ``reason`` (with the raw model output preserved in
+                # ``ctx.review``). Either way the terminal timeline event names
+                # the real cause instead of a generic placeholder.
+                reason = str(
+                    role_result.get("error")
+                    or role_result.get("reason")
+                    or f"{role} role failed"
+                )
                 existing_review = dict(ctx.review or {})
                 ctx.review = existing_review or {
                     "outcome": "reject",

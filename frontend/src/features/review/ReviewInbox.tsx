@@ -1,6 +1,6 @@
 import * as React from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { latticeApi, type ReviewItem, type ReviewSourceFilter, type ReviewStatusFilter } from "@/api/client";
+import { type ApiResult, latticeApi, type ReviewItem, type ReviewSourceFilter, type ReviewStatusFilter } from "@/api/client";
 import { EmptyState, LoadingPanel, Tabs } from "@/components/primitives";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -28,15 +28,25 @@ export function ReviewInbox() {
     }),
   });
   const items = reviews.data?.data.items || [];
+  const proposalCounts = useQuery({
+    queryKey: ["proposalCounts"],
+    queryFn: latticeApi.proposalCounts,
+  });
+  const pendingProposals = Number(proposalCounts.data?.data?.pending || 0);
 
   const actOnReview = async (
     item: ReviewItem,
     action: ReviewAction,
     hadRunBefore = false,
+    reason?: string,
   ) => {
+    // change_proposal reject goes through the proposal surface so the
+    // rejection reason lands in the item's provenance (audit trail).
+    const rejectProposal = () =>
+      latticeApi.rejectProposal(item.id, reason || "") as unknown as Promise<ApiResult<ReviewItem>>;
     const call =
       action === "approve" ? () => latticeApi.approveReviewItem(item.id) :
-      action === "dismiss" ? () => latticeApi.dismissReviewItem(item.id) :
+      action === "dismiss" ? (item.source === "change_proposal" ? rejectProposal : () => latticeApi.dismissReviewItem(item.id)) :
       action === "snooze" ? () => latticeApi.snoozeReviewItem(item.id, defaultSnoozeUntil()) :
       action === "unsnooze" ? () => latticeApi.unsnoozeReviewItem(item.id) :
       () => latticeApi.runNowReviewItem(item.id);
@@ -66,7 +76,11 @@ export function ReviewInbox() {
           return next;
         });
       }
-      await qc.invalidateQueries({ queryKey: ["automationReviews"] });
+      await Promise.all([
+        qc.invalidateQueries({ queryKey: ["automationReviews"] }),
+        qc.invalidateQueries({ queryKey: ["proposalCounts"] }),
+        qc.invalidateQueries({ queryKey: ["pendingProposals"] }),
+      ]);
     }
     return result;
   };
@@ -81,9 +95,16 @@ export function ReviewInbox() {
             <CardTitle>{t(language, "review.inbox.title")}</CardTitle>
             <CardDescription>{t(language, "review.inbox.description")}</CardDescription>
           </div>
-          {reviews.data ? (
-            <Badge variant={reviews.data.ok ? "success" : "warning"}>{reviews.data.ok ? t(language, "review.status.connected") : t(language, "review.status.unavailable")}</Badge>
-          ) : null}
+          <div className="flex flex-wrap items-center gap-2">
+            {pendingProposals > 0 ? (
+              <Badge variant="warning" data-testid="proposal-count-badge">
+                {t(language, "review.proposal.badge", { count: pendingProposals })}
+              </Badge>
+            ) : null}
+            {reviews.data ? (
+              <Badge variant={reviews.data.ok ? "success" : "warning"}>{reviews.data.ok ? t(language, "review.status.connected") : t(language, "review.status.unavailable")}</Badge>
+            ) : null}
+          </div>
         </div>
         <div className="grid gap-2">
           <Tabs

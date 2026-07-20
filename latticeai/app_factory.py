@@ -1194,6 +1194,9 @@ def _build(config: "Optional[Config]" = None) -> Dict[str, Any]:
         gate_write=PLATFORM.gate_write,
         run_review_item=run_review_item,
         append_audit_event=append_audit_event,
+        # Approving a change_proposal from the Review Center applies the
+        # staged content through the same service the agent governor uses.
+        change_proposals=CHANGE_PROPOSALS,
         create_browser_router=create_browser_router,
         ingestion_pipeline=INGESTION_PIPELINE,
         workspace_service=WORKSPACE_SERVICE,

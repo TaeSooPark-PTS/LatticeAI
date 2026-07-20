@@ -71,6 +71,7 @@ class ChangeProposalService:
         policy: Optional[Dict[str, Any]] = None,
         user_email: Optional[str] = None,
         workspace_id: Optional[str] = None,
+        conversation_id: Optional[str] = None,
     ) -> Optional[Dict[str, Any]]:
         """Governor port for the agent loop.
 
@@ -102,6 +103,15 @@ class ChangeProposalService:
                 reason=verdict["reason"],
                 user_email=user_email,
                 workspace_id=workspace_id,
+                context={
+                    # Full provenance for the Review Center: which tool asked,
+                    # how the governor classified it, and the policy risk.
+                    "tool": name,
+                    "change_class": verdict.get("change_class"),
+                    "risk": (policy or {}).get("risk"),
+                    "conversation_id": conversation_id,
+                    "source_detail": "agent change governor",
+                },
             )
         except Exception:
             LOGGER.exception("change proposal staging failed")
@@ -152,10 +162,15 @@ class ChangeProposalService:
         reason: str = "",
         user_email: Optional[str] = None,
         workspace_id: Optional[str] = None,
+        context: Optional[Dict[str, Any]] = None,
     ) -> Dict[str, Any]:
         before = self._read_before(path)
         diff = _unified_diff(before, new_content, path)
         tier = "small" if len(diff) <= _SMALL_TIER_DIFF_LINES else "large"
+        provenance: Dict[str, Any] = {"proposed_by": proposed_by, "reason": reason}
+        for key, value in (context or {}).items():
+            if value is not None and key not in provenance:
+                provenance[key] = value
         item = self._review_queue.create(
             title=f"파일 수정 제안: {path}",
             summary=reason or "기존 파일을 변경하는 작업이라 검토 후 적용됩니다.",
@@ -169,7 +184,7 @@ class ChangeProposalService:
                 "before_bytes": len(before.encode("utf-8")),
                 "after_bytes": len(new_content.encode("utf-8")),
             },
-            provenance={"proposed_by": proposed_by, "reason": reason},
+            provenance=provenance,
             user_email=user_email,
             workspace_id=workspace_id,
         )
@@ -232,11 +247,36 @@ class ChangeProposalService:
             },
         }
 
+    def counts(
+        self, *, user_email: Optional[str] = None, workspace_id: Optional[str] = None
+    ) -> Dict[str, Any]:
+        """Pending proposal count for the Review Center badge."""
+        listed = self._review_queue.list(
+            workspace_id=workspace_id, user_email=user_email,
+            status="pending", source="change_proposal",
+        )
+        return {"pending": len(listed.get("items") or [])}
+
+    def get_proposal(
+        self, item_id: str, *, workspace_id: Optional[str] = None
+    ) -> Dict[str, Any]:
+        """Full proposal detail (diff + staged content) for the preview UI.
+
+        Raises ``KeyError`` when the id exists but is not a change proposal,
+        so the API surface cannot leak arbitrary review items.
+        """
+        item = self._review_queue.get(item_id, workspace_id=workspace_id)
+        if item.get("source") != "change_proposal":
+            raise KeyError(f"not a change proposal: {item_id}")
+        return item
+
     def approve_and_apply(
         self, item_id: str, *, user_email: Optional[str] = None,
         workspace_id: Optional[str] = None,
     ) -> Dict[str, Any]:
         item = self._review_queue.get(item_id, workspace_id=workspace_id)
+        if item.get("source") != "change_proposal":
+            raise KeyError(f"not a change proposal: {item_id}")
         payload = item.get("payload") or {}
         kind = item.get("kind")
         path = str(payload.get("path") or "")
@@ -258,13 +298,25 @@ class ChangeProposalService:
 
     def reject(
         self, item_id: str, *, user_email: Optional[str] = None,
-        workspace_id: Optional[str] = None,
+        workspace_id: Optional[str] = None, reason: str = "",
     ) -> Dict[str, Any]:
-        dismissed = self._review_queue.dismiss(item_id, workspace_id=workspace_id)
+        self.get_proposal(item_id, workspace_id=workspace_id)  # source guard
+        reason = str(reason or "").strip()[:500]
+        if reason:
+            try:
+                dismissed = self._review_queue.dismiss(
+                    item_id, workspace_id=workspace_id, reason=reason
+                )
+            except TypeError:
+                # Older/fake queues without reason support still dismiss.
+                dismissed = self._review_queue.dismiss(item_id, workspace_id=workspace_id)
+        else:
+            dismissed = self._review_queue.dismiss(item_id, workspace_id=workspace_id)
         self._audit(
             "change_proposal_rejected", user_email=user_email, proposal_id=item_id,
+            reason=reason or None,
         )
-        return {"item": dismissed, "applied": False}
+        return {"item": dismissed, "applied": False, "reason": reason}
 
 
 __all__ = ["ChangeProposalService"]

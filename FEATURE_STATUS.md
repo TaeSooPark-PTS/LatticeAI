@@ -1,6 +1,6 @@
 # Lattice AI Feature Status (v9.6.0)
 
-Current release: **9.6.0 — Trusted Agent Loop**.
+Current release: **9.7.0 — Proactive Hybrid Brain**.
 
 This file describes the current product state and known limitations. Historical
 change history is intentionally limited to 8.0.0-9.6.0 in `RELEASE.md` and

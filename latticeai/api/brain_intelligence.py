@@ -18,6 +18,15 @@ from latticeai.services.brain_intelligence import BrainIntelligenceService
 
 class ConsolidateRequest(BaseModel):
     apply: bool = False
+    # v9.6.x additive alias: dry_run=true means apply=false. When provided it
+    # takes precedence over ``apply`` (explicit intent wins); omitted keeps the
+    # v9.3.0 contract unchanged. Default behaviour is always a dry run.
+    dry_run: Optional[bool] = None
+
+    def effective_apply(self) -> bool:
+        if self.dry_run is not None:
+            return not self.dry_run
+        return self.apply
 
 
 def create_brain_intelligence_router(
@@ -48,11 +57,27 @@ def create_brain_intelligence_router(
         scope = gate_read(request)
         return service.contradictions(user_email=user, workspace_id=scope)
 
+    @router.get("/api/brain/duplicates")
+    async def brain_duplicates(request: Request):
+        """Graph-layer duplicate node candidates (read-only)."""
+        user = require_user(request)
+        scope = gate_read(request)
+        return service.graph_duplicates(user_email=user, workspace_id=scope)
+
+    @router.get("/api/brain/quality-report")
+    async def brain_quality_report(request: Request):
+        """Combined graph quality report: duplicates, contradictions, stale
+        nodes, edge quality (read-only)."""
+        user = require_user(request)
+        scope = gate_read(request)
+        return service.quality_report(user_email=user, workspace_id=scope)
+
     @router.post("/api/brain/consolidate")
     async def brain_consolidate(req: ConsolidateRequest, request: Request):
         user = require_user(request)
-        scope = gate_write(request) if req.apply else gate_read(request)
-        result = service.consolidate(apply=req.apply, user_email=user, workspace_id=scope)
+        apply = req.effective_apply()
+        scope = gate_write(request) if apply else gate_read(request)
+        result = service.consolidate(apply=apply, user_email=user, workspace_id=scope)
         append_audit_event(
             "brain_consolidate",
             user_email=user,

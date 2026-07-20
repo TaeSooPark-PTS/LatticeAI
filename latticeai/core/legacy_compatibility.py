@@ -14,7 +14,7 @@ from pathlib import Path
 from typing import Any, Dict, List
 
 
-LEGACY_COMPATIBILITY_VERSION = "9.6.0"
+LEGACY_COMPATIBILITY_VERSION = "9.7.0"
 
 
 @dataclass(frozen=True)
@@ -81,6 +81,20 @@ LEGACY_SHIMS: List[LegacyShim] = [
         replacement="from latticeai.services.p_reinforce import PReinforceGardener",
         reason="Old gardener scripts referenced the root reinforcement helper.",
         removal_phase="major-release-after-8.x",
+    ),
+    LegacyShim(
+        path="mcp_registry.py",
+        owner="latticeai.core.mcp_registry",
+        replacement="import latticeai.core.mcp_registry",
+        reason="Older integrations imported the MCP registry from the repo root.",
+        removal_phase="major-release-after-9.x",
+    ),
+    LegacyShim(
+        path="llm_router.py",
+        owner="latticeai.models.router",
+        replacement="import latticeai.models.router",
+        reason="Historical scripts and tests imported the LLM router from the repo root.",
+        removal_phase="major-release-after-9.x",
     ),
     LegacyShim(
         path="server.py",

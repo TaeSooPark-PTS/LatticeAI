@@ -15,14 +15,36 @@ ingestion exactly as they do on tool calls. The heavy graph construction lives i
 :class:`knowledge_graph.KnowledgeGraphStore` (``ingest_document`` for files,
 ``ingest_source`` for text/web), which this module composes rather than
 re-implements.
+
+Web ingestion seam
+------------------
+The graph layer never fetches or parses the web. Fetching, rendering,
+readability extraction, and parse quality are the responsibility of the
+*upstream* capture surfaces (browser extension, tools layer, MCP servers):
+they hand this module already-extracted text. :meth:`IngestionPipeline.
+ingest_web_page` is the convenience wrapper for that hand-off — it normalizes
+``(url, extracted_text)`` into an ``IngestionItem(source_type="web_url")`` and
+routes it through the exact same :meth:`IngestionPipeline.ingest` door as every
+other source. If the extracted text is bad, fix the extractor upstream; the
+pipeline will not attempt network access or HTML parsing.
+
+Folder ingestion (:meth:`IngestionPipeline.ingest_folder`) walks a local
+directory, honors a gitignore-like ``.latticeignore`` file at the root
+(blank lines, ``#`` comments, ``fnmatch`` glob patterns, ``dir/`` suffix for
+directories), always skips common noise (``.git``, ``node_modules``,
+``__pycache__``, virtualenvs, ``dist``, hidden entries by default), applies
+size/extension filters, and either ingests inline or schedules through the
+existing :class:`BackgroundIngestionQueue`.
 """
 
 from __future__ import annotations
 
+import fnmatch
 import hashlib
+import os
 from dataclasses import dataclass, field
 from pathlib import Path
-from typing import Any, Dict, List, Optional
+from typing import Any, Dict, Iterable, List, Optional, Tuple
 
 from .runtime.hooks import dispatch_tool
 from .utils import utc_now_iso
@@ -44,6 +66,92 @@ MEMORY_SOURCE_TYPES = frozenset({"decision", "experience", "workspace_event"})
 _MEMORY_NODE_TYPES = {"decision": "Decision", "experience": "Experience", "workspace_event": "Event"}
 
 DEFAULT_MAX_TEXT_BYTES = 5 * 1024 * 1024  # 5 MB of extracted text per item
+
+# ── Folder ingestion (ingest_folder) filters ─────────────────────────────────
+# Directories that are always pruned regardless of .latticeignore.
+FOLDER_DEFAULT_SKIP_DIRS = frozenset(
+    {
+        ".git",
+        "node_modules",
+        "__pycache__",
+        ".venv",
+        "venv",
+        "env",
+        ".pytest_cache",
+        ".mypy_cache",
+        ".ruff_cache",
+        "dist",
+        "build",
+        ".next",
+        "target",
+        ".cache",
+        ".idea",
+        ".vscode",
+    }
+)
+# Extension filter matching FILE_SOURCE_TYPES conventions: text/markdown/code
+# are read inline (extracted content → chunks); .pdf routes as source_type
+# "pdf" through ingest_document (content extraction is upstream's concern).
+FOLDER_TEXT_EXTENSIONS = frozenset(
+    {".txt", ".md", ".markdown", ".rst", ".csv", ".json", ".yaml", ".yml", ".toml", ".ini"}
+)
+FOLDER_CODE_EXTENSIONS = frozenset(
+    {
+        ".py", ".js", ".ts", ".tsx", ".jsx", ".html", ".css", ".go", ".rs",
+        ".java", ".c", ".h", ".cpp", ".hpp", ".rb", ".php", ".swift", ".kt",
+        ".sh", ".sql",
+    }
+)
+FOLDER_DOCUMENT_EXTENSIONS = frozenset({".pdf"})
+DEFAULT_FOLDER_EXTENSIONS = (
+    FOLDER_TEXT_EXTENSIONS | FOLDER_CODE_EXTENSIONS | FOLDER_DOCUMENT_EXTENSIONS
+)
+DEFAULT_MAX_FILE_BYTES = 4_000_000  # matches the local-index text/code budget
+LATTICEIGNORE_FILENAME = ".latticeignore"
+# Opt-out escape hatch for the post-ingest incremental vector sync.
+AUTO_VECTOR_INDEX_ENV = "LATTICEAI_AUTO_VECTOR_INDEX"
+
+
+def _load_latticeignore(root: Path) -> List[str]:
+    """Parse ``root/.latticeignore`` → glob patterns (gitignore-like subset)."""
+    ignore_file = root / LATTICEIGNORE_FILENAME
+    patterns: List[str] = []
+    if not ignore_file.is_file():
+        return patterns
+    try:
+        lines = ignore_file.read_text(encoding="utf-8", errors="ignore").splitlines()
+    except OSError:
+        return patterns
+    for raw in lines:
+        line = raw.strip()
+        if not line or line.startswith("#"):
+            continue
+        patterns.append(line)
+    return patterns
+
+
+def _matches_ignore(
+    rel_posix: str, name: str, *, is_dir: bool, patterns: Iterable[str]
+) -> bool:
+    """fnmatch-based .latticeignore matching.
+
+    - ``pattern/`` matches directories only (files under it never appear
+      because ignored directories are pruned during the walk).
+    - Patterns match against both the root-relative posix path and the
+      basename, so ``*.log`` and ``docs/draft.md`` both behave as expected.
+    """
+    for raw in patterns:
+        pattern = raw
+        if pattern.endswith("/"):
+            if not is_dir:
+                continue
+            pattern = pattern.rstrip("/")
+        pattern = pattern.lstrip("/")
+        if not pattern:
+            continue
+        if fnmatch.fnmatch(rel_posix, pattern) or fnmatch.fnmatch(name, pattern):
+            return True
+    return False
 
 
 # --- Large candidate 1 slice: incremental / background ingestion support ---
@@ -161,6 +269,7 @@ class IngestionPipeline:
         max_text_bytes: int = DEFAULT_MAX_TEXT_BYTES,
         pipeline_name: str = "unified-ingestion",
         bg_queue: Optional[BackgroundIngestionQueue] = None,
+        auto_vector_index: bool = True,
     ) -> None:
         self._kg = knowledge_graph
         self._hooks = hooks
@@ -169,6 +278,13 @@ class IngestionPipeline:
         self._max_text_bytes = int(max_text_bytes)
         self._pipeline_name = pipeline_name
         self._bg_queue = bg_queue or BackgroundIngestionQueue()
+        # Incremental vector sync after each successful non-duplicate ingest.
+        # Constructor opt-out AND env opt-out (LATTICEAI_AUTO_VECTOR_INDEX=0)
+        # both disable it; a vector failure never fails the ingest.
+        env_flag = os.getenv(AUTO_VECTOR_INDEX_ENV, "1").strip().lower() not in {
+            "0", "false", "no", "off",
+        }
+        self._auto_vector_index = bool(auto_vector_index) and env_flag
 
     def available(self) -> bool:
         return self._enable and self._kg is not None
@@ -228,8 +344,18 @@ class IngestionPipeline:
         node_id = raw.get("node_id")
         content_hash = raw.get("content_hash") or raw.get("sha256")
         chunk_ids = list(raw.get("chunk_ids") or [])
-        embedded = bool(self._kg.node_is_embedded(node_id)) if node_id else False
         title = raw.get("title") or item.title
+
+        # Incremental vector-index sync (opt-in via auto_vector_index +
+        # LATTICEAI_AUTO_VECTOR_INDEX). Exception-safe by contract: the graph
+        # write above already landed, so a vector failure only downgrades
+        # indexing_status to "pending" — index_status()/rebuild_vector_index()
+        # discover the same node as backlog and pick it up later.
+        indexing_status = "indexed"
+        vector_detail: Optional[str] = None
+        if node_id and self._auto_vector_index and not bool(raw.get("duplicate")):
+            indexing_status, vector_detail = self._sync_vector_index(node_id)
+        embedded = bool(self._kg.node_is_embedded(node_id)) if node_id else False
 
         # Provenance capture must never turn an already-persisted ingest into a
         # caller-visible failure: the graph write above succeeded, so a broken
@@ -271,6 +397,7 @@ class IngestionPipeline:
             except Exception:  # noqa: BLE001 — audit must never break ingestion
                 pass
 
+        details = [d for d in (provenance_detail, vector_detail) if d]
         return IngestionResult(
             status="ok",
             source_type=source_type,
@@ -282,10 +409,31 @@ class IngestionPipeline:
             chunk_count=len(chunk_ids),
             duplicate=bool(raw.get("duplicate")),
             embedded=embedded,
-            indexing_status="indexed",
+            indexing_status=indexing_status,
             provenance_id=prov.get("id"),
-            detail=provenance_detail,
+            detail="; ".join(details) if details else None,
         )
+
+    def _sync_vector_index(self, node_id: str) -> Tuple[str, Optional[str]]:
+        """Best-effort incremental vector sync → (indexing_status, detail).
+
+        Any failure — missing method on older stores, embedding provider down,
+        storage error — yields ``("pending", detail)`` so a later
+        ``rebuild_vector_index`` run picks the node up from the backlog.
+        """
+        sync = getattr(self._kg, "index_node_incremental", None)
+        if not callable(sync):
+            # Older store without the incremental path: the write-side already
+            # embeds inline, so nothing extra to do.
+            return "indexed", None
+        try:
+            outcome = sync(node_id) or {}
+        except Exception as exc:  # noqa: BLE001 — vector sync must never fail the ingest
+            return "pending", f"vector index sync failed: {exc}"
+        if str(outcome.get("status") or "") == "failed":
+            reason = outcome.get("detail") or "unknown error"
+            return "pending", f"vector index sync failed: {reason}"
+        return "indexed", None
 
     # --- Large candidate #1: background / incremental scheduling (slice) ---
     def schedule_background(
@@ -306,6 +454,214 @@ class IngestionPipeline:
 
     def get_background_job(self, job_id: str) -> Optional[BackgroundIngestionJob]:
         return self._bg_queue.get(job_id)
+
+    def ingest_web_page(
+        self,
+        url: str,
+        extracted_text: str,
+        *,
+        title: Optional[str] = None,
+        metadata: Optional[Dict[str, Any]] = None,
+        owner: Optional[str] = None,
+        workspace_id: Optional[str] = None,
+        captured_at: Optional[str] = None,
+        user_email: Optional[str] = None,
+    ) -> IngestionResult:
+        """Ingest an *already-extracted* web page (see module docstring seam).
+
+        Fetching/parsing is upstream's responsibility (browser extension /
+        tools layer); this wrapper only normalizes ``(url, extracted_text)``
+        into an ``IngestionItem(source_type="web_url")`` and routes it through
+        the standard :meth:`ingest` door.
+        """
+        url = str(url or "").strip()
+        if not url:
+            return IngestionResult(
+                status="failed", source_type="web_url",
+                indexing_status="skipped", detail="url required",
+            )
+        text = str(extracted_text or "")
+        if not text.strip():
+            return IngestionResult(
+                status="failed", source_type="web_url",
+                indexing_status="skipped",
+                detail=(
+                    "extracted_text required — the graph layer does not fetch or "
+                    "parse the web; extraction happens upstream."
+                ),
+            )
+        item = IngestionItem(
+            source_type="web_url",
+            title=title or url,
+            text=text,
+            source_uri=url,
+            owner=owner,
+            workspace_id=workspace_id,
+            captured_at=captured_at,
+            metadata=dict(metadata or {}),
+        )
+        return self.ingest(item, user_email=user_email or owner)
+
+    def ingest_folder(
+        self,
+        root_path: Any,
+        *,
+        recursive: bool = True,
+        background: bool = False,
+        extensions: Optional[Iterable[str]] = None,
+        max_file_bytes: int = DEFAULT_MAX_FILE_BYTES,
+        include_hidden: bool = False,
+        max_files: int = 1000,
+        max_errors: int = 25,
+        owner: Optional[str] = None,
+        workspace_id: Optional[str] = None,
+        user_email: Optional[str] = None,
+    ) -> Dict[str, Any]:
+        """Walk ``root_path`` and ingest every eligible file through the pipeline.
+
+        Filtering, in order: hard skip-list directories (``.git`` …), hidden
+        entries (unless ``include_hidden``), root ``.latticeignore`` patterns
+        (fnmatch globs; ``dir/`` suffix prunes directories), extension
+        allow-list, then ``max_file_bytes``. Text/code files are read inline so
+        their content is chunked; ``.pdf`` routes through the file door without
+        inline extraction.
+
+        ``background=True`` schedules the built items on the existing
+        :class:`BackgroundIngestionQueue` instead of ingesting inline.
+        Returns a summary dict with counts and per-file errors (capped at
+        ``max_errors``).
+        """
+        summary: Dict[str, Any] = {
+            "root": str(root_path),
+            "recursive": bool(recursive),
+            "background": bool(background),
+            "scanned": 0,
+            "matched": 0,
+            "ingested": 0,
+            "duplicate": 0,
+            "failed": 0,
+            "skipped": {"ignored": 0, "extension": 0, "too_large": 0, "hidden": 0},
+            "truncated": False,
+            "errors": [],
+        }
+        try:
+            root = Path(root_path).expanduser()
+        except TypeError:
+            summary.update(status="failed", detail=f"invalid root path: {root_path!r}")
+            return summary
+        if not root.is_dir():
+            summary.update(status="failed", detail=f"not a directory: {root}")
+            return summary
+        if not self.available():
+            summary.update(
+                status="unavailable",
+                detail="Knowledge Graph is disabled (LATTICEAI_ENABLE_GRAPH).",
+            )
+            return summary
+        summary["root"] = str(root)
+        max_files = max(1, int(max_files))
+        max_errors = max(0, int(max_errors))
+        max_file_bytes = max(1, int(max_file_bytes))
+        allowed_exts = (
+            frozenset(str(e).lower() if str(e).startswith(".") else f".{str(e).lower()}" for e in extensions)
+            if extensions
+            else DEFAULT_FOLDER_EXTENSIONS
+        )
+        patterns = _load_latticeignore(root)
+        errors: List[Dict[str, Any]] = summary["errors"]
+        skipped = summary["skipped"]
+        items: List[IngestionItem] = []
+
+        def _record_error(path: Path, detail: str, status: str = "failed") -> None:
+            summary["failed"] += 1
+            if len(errors) < max_errors:
+                errors.append({"path": str(path), "status": status, "detail": detail})
+
+        for dirpath, dirnames, filenames in os.walk(root):
+            current = Path(dirpath)
+            rel_dir = current.relative_to(root)
+            kept_dirs: List[str] = []
+            for name in sorted(dirnames):
+                if name in FOLDER_DEFAULT_SKIP_DIRS:
+                    continue
+                if name.startswith(".") and not include_hidden:
+                    continue
+                rel = name if str(rel_dir) == "." else (rel_dir / name).as_posix()
+                if _matches_ignore(rel, name, is_dir=True, patterns=patterns):
+                    skipped["ignored"] += 1
+                    continue
+                kept_dirs.append(name)
+            dirnames[:] = kept_dirs if recursive else []
+
+            for name in sorted(filenames):
+                if name == LATTICEIGNORE_FILENAME:
+                    continue
+                summary["scanned"] += 1
+                path = current / name
+                rel = name if str(rel_dir) == "." else (rel_dir / name).as_posix()
+                if name.startswith(".") and not include_hidden:
+                    skipped["hidden"] += 1
+                    continue
+                if _matches_ignore(rel, name, is_dir=False, patterns=patterns):
+                    skipped["ignored"] += 1
+                    continue
+                ext = path.suffix.lower()
+                if ext not in allowed_exts:
+                    skipped["extension"] += 1
+                    continue
+                try:
+                    size = path.stat().st_size
+                except OSError as exc:
+                    _record_error(path, f"stat failed: {exc}")
+                    continue
+                if size > max_file_bytes:
+                    skipped["too_large"] += 1
+                    continue
+                if len(items) >= max_files:
+                    summary["truncated"] = True
+                    break
+                item_metadata: Dict[str, Any] = {"relative_path": rel}
+                if ext in FOLDER_DOCUMENT_EXTENSIONS:
+                    source_type = "pdf"
+                else:
+                    source_type = "file"
+                    try:
+                        content = path.read_text(encoding="utf-8", errors="ignore")
+                    except OSError as exc:
+                        _record_error(path, f"read failed: {exc}")
+                        continue
+                    item_metadata["extracted"] = {"content": content, "chars": len(content)}
+                items.append(
+                    IngestionItem(
+                        source_type=source_type,
+                        title=name,
+                        path=str(path),
+                        source_uri=str(path),
+                        owner=owner,
+                        workspace_id=workspace_id,
+                        metadata=item_metadata,
+                    )
+                )
+            if summary["truncated"]:
+                break
+
+        summary["matched"] = len(items)
+        if background:
+            job = self.schedule_background(items, incremental=True)
+            summary.update(status="scheduled", job_id=job.job_id, scheduled=len(items))
+            return summary
+
+        for item in items:
+            result = self.ingest(item, user_email=user_email or owner)
+            if result.status == "ok":
+                if result.duplicate:
+                    summary["duplicate"] += 1
+                else:
+                    summary["ingested"] += 1
+            else:
+                _record_error(Path(item.path or ""), result.detail or result.status, result.status)
+        summary["status"] = "ok" if summary["failed"] == 0 else "partial"
+        return summary
 
     # ── routing helpers ──────────────────────────────────────────────────────
     def _ingest_text(self, item, *, source_type, owner, captured_at) -> Dict[str, Any]:

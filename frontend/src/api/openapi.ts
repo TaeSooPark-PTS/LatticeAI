@@ -1029,6 +1029,26 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/brain/duplicates": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Brain Duplicates
+         * @description Graph-layer duplicate node candidates (read-only).
+         */
+        get: operations["brain_duplicates_api_brain_duplicates_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/brain/health": {
         parameters: {
             query?: never;
@@ -1055,6 +1075,27 @@ export interface paths {
         };
         /** Brain Insights */
         get: operations["brain_insights_api_brain_insights_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/brain/quality-report": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Brain Quality Report
+         * @description Combined graph quality report: duplicates, contradictions, stale
+         *     nodes, edge quality (read-only).
+         */
+        get: operations["brain_quality_report_api_brain_quality_report_get"];
         put?: never;
         post?: never;
         delete?: never;
@@ -1925,6 +1966,40 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/proposals/counts": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Proposal Counts */
+        get: operations["proposal_counts_api_proposals_counts_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/proposals/{item_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Get Proposal */
+        get: operations["get_proposal_api_proposals__item_id__get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/proposals/{item_id}/approve": {
         parameters: {
             query?: never;
@@ -2096,6 +2171,23 @@ export interface paths {
         put?: never;
         /** Create Item */
         post: operations["create_item_automation_reviews_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/automation/reviews/counts": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Review Counts */
+        get: operations["review_counts_automation_reviews_counts_get"];
+        put?: never;
+        post?: never;
         delete?: never;
         options?: never;
         head?: never;
@@ -6312,6 +6404,8 @@ export interface components {
              * @default false
              */
             apply: boolean;
+            /** Dry Run */
+            dry_run?: boolean | null;
         };
         /** CreateReviewItemRequest */
         CreateReviewItemRequest: {
@@ -6442,6 +6536,17 @@ export interface components {
             interval: number;
             /** Text */
             text: string;
+        };
+        /**
+         * DismissRequest
+         * @description Optional dismissal context (e.g. why a change proposal was rejected).
+         */
+        DismissRequest: {
+            /**
+             * Reason
+             * @default
+             */
+            reason: string;
         };
         /** DockerPostgresRequest */
         DockerPostgresRequest: {
@@ -7051,6 +7156,17 @@ export interface components {
              */
             query: string;
         };
+        /**
+         * RejectProposalRequest
+         * @description Optional rejection context — kept in the item's provenance.
+         */
+        RejectProposalRequest: {
+            /**
+             * Reason
+             * @default
+             */
+            reason: string;
+        };
         /** RelationshipSearchRequest */
         RelationshipSearchRequest: {
             /**
@@ -7093,6 +7209,23 @@ export interface components {
              * @default true
              */
             verify: boolean;
+        };
+        /** ReviewCounts */
+        ReviewCounts: {
+            /**
+             * Pending
+             * @default 0
+             */
+            pending: number;
+            /** Pending By Source */
+            pending_by_source?: {
+                [key: string]: number;
+            };
+            /**
+             * Snoozed
+             * @default 0
+             */
+            snoozed: number;
         };
         /** ReviewItem */
         ReviewItem: {
@@ -9767,6 +9900,26 @@ export interface operations {
             };
         };
     };
+    brain_duplicates_api_brain_duplicates_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": unknown;
+                };
+            };
+        };
+    };
     brain_health_api_brain_health_get: {
         parameters: {
             query?: never;
@@ -9788,6 +9941,26 @@ export interface operations {
         };
     };
     brain_insights_api_brain_insights_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": unknown;
+                };
+            };
+        };
+    };
+    brain_quality_report_api_brain_quality_report_get: {
         parameters: {
             query?: never;
             header?: never;
@@ -11345,6 +11518,57 @@ export interface operations {
             };
         };
     };
+    proposal_counts_api_proposals_counts_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": unknown;
+                };
+            };
+        };
+    };
+    get_proposal_api_proposals__item_id__get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                item_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": unknown;
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
     approve_proposal_api_proposals__item_id__approve_post: {
         parameters: {
             query?: never;
@@ -11385,7 +11609,11 @@ export interface operations {
             };
             cookie?: never;
         };
-        requestBody?: never;
+        requestBody?: {
+            content: {
+                "application/json": components["schemas"]["RejectProposalRequest"] | null;
+            };
+        };
         responses: {
             /** @description Successful Response */
             200: {
@@ -11784,6 +12012,26 @@ export interface operations {
             };
         };
     };
+    review_counts_automation_reviews_counts_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ReviewCounts"];
+                };
+            };
+        };
+    };
     get_item_automation_reviews__item_id__get: {
         parameters: {
             query?: never;
@@ -11855,7 +12103,11 @@ export interface operations {
             };
             cookie?: never;
         };
-        requestBody?: never;
+        requestBody?: {
+            content: {
+                "application/json": components["schemas"]["DismissRequest"] | null;
+            };
+        };
         responses: {
             /** @description Successful Response */
             200: {

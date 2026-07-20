@@ -4,7 +4,17 @@ The implementation now lives under :mod:`lattice_brain`. Root imports are
 kept for older integrations and tests.
 """
 
-from lattice_brain.graph._kg_common import (  # noqa: F401
+import warnings as _warnings
+
+_warnings.warn(
+    "Importing 'knowledge_graph' from the repository root is deprecated; "
+    "use 'from lattice_brain.graph.store import KnowledgeGraphStore' instead. "
+    "The root shim will be removed in a future major release.",
+    DeprecationWarning,
+    stacklevel=2,
+)
+
+from lattice_brain.graph._kg_common import (  # noqa: F401,E402
     EDGE_VERB,
     GRAPH_SCHEMA_VERSION,
     LOCAL_CODE_EXTENSIONS,
@@ -24,7 +34,7 @@ from lattice_brain.graph._kg_common import (  # noqa: F401
     _slug,
     set_llm_router,
 )
-from lattice_brain.graph.store import KnowledgeGraphStore
+from lattice_brain.graph.store import KnowledgeGraphStore  # noqa: E402
 
 __all__ = [
     "KnowledgeGraphStore",

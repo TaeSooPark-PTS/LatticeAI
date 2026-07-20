@@ -1,6 +1,6 @@
 # LatticeAI Project AGENTS.md
 
-Current release: **9.6.0 — Trusted Agent Loop**.
+Current release: **9.7.0 — Proactive Hybrid Brain**.
 
 This file is part of the release documentation gate
 (`scripts/check_current_release_docs.mjs`): the current-release marker above

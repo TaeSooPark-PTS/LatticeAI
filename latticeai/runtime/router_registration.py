@@ -604,6 +604,7 @@ def register_review_and_brain_tail_routers(
     gardener: Any,
     create_setup_router: Any,
     model_router: Any,
+    change_proposals: Any = None,
 ) -> Any:
     """Register the final review/browser/brain tail routes in legacy order."""
 
@@ -616,6 +617,7 @@ def register_review_and_brain_tail_routers(
             gate_write=gate_write,
             run_review_item=run_review_item,
             append_audit_event=append_audit_event,
+            change_proposals=change_proposals,
         ),
         create_browser_router(
             pipeline=ingestion_pipeline,

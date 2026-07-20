@@ -142,6 +142,46 @@ class RerankerInterface:
 # -----------------------------
 # 3. Memory Candidate Extraction / Scoring / Dedupe / Merge / Conflict / Retention
 # -----------------------------
+
+# Public content-signature helpers (v9.6.x graph-layer proactive seam).
+# Extracted from MemoryQualityManager so the graph layer
+# (lattice_brain.graph.proactive) and future ingestion gating can reuse the
+# exact same dedupe semantics without instantiating the manager. Behaviour is
+# byte-for-byte identical to the pre-existing private logic.
+
+_SIGNATURE_STOPWORDS = {
+    "a", "an", "and", "for", "i", "is", "it", "mode", "the", "to",
+    "user", "users", "does", "do", "not", "like", "likes", "prefer",
+    "prefers", "want", "wants",
+}
+
+
+def dedupe_key(content: str) -> str:
+    """Stable near-exact signature for a piece of content.
+
+    sha256 prefix over the normalized text head plus a coarse length bucket —
+    the same key ``MemoryQualityManager.dedupe`` uses to collapse duplicates.
+    Two texts with the same key are treated as exact/near-exact duplicates.
+    """
+    text = str(content or "")
+    norm = " ".join(text.lower().split())[:200]
+    return hashlib.sha256((norm + f"|{len(text)//50}").encode()).hexdigest()[:16]
+
+
+def content_signature(content: str) -> set:
+    """Token-set signature (stopword-filtered) for overlap/jaccard comparison.
+
+    Mirrors ``MemoryQualityManager._content_signature`` — kept public so
+    graph-layer duplicate/contradiction detection shares one definition.
+    """
+    tokens = set(re.findall(r"\w+", str(content or "").lower()))
+    return {
+        token
+        for token in tokens
+        if len(token) > 2 and token not in _SIGNATURE_STOPWORDS
+    }
+
+
 @dataclass
 class MemoryCandidate:
     id: str
@@ -193,8 +233,7 @@ class MemoryQualityManager:
         kept = []
         seen = set()
         for c in cands:
-            norm = " ".join(c.content.lower().split())[:200]
-            h = hashlib.sha256((norm + f"|{len(c.content)//50}").encode()).hexdigest()[:16]
+            h = dedupe_key(c.content)
             if h not in seen:
                 seen.add(h)
                 kept.append(c)
@@ -247,13 +286,7 @@ class MemoryQualityManager:
         return any(pattern in lowered for pattern in self._POSITIVE_PATTERNS)
 
     def _content_signature(self, content: str) -> set[str]:
-        stopwords = {
-            "a", "an", "and", "for", "i", "is", "it", "mode", "the", "to",
-            "user", "users", "does", "do", "not", "like", "likes", "prefer",
-            "prefers", "want", "wants",
-        }
-        tokens = set(re.findall(r"\w+", content.lower()))
-        return {token for token in tokens if len(token) > 2 and token not in stopwords}
+        return content_signature(content)
 
     # --- Large candidate #4 slice: proactive / temporal contradiction detection ---
     def detect_temporal_contradictions(self, memories: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
@@ -516,6 +549,8 @@ class LatticeBrainQuality:
 __all__ = [
     "BM25Scorer",
     "ContextGuardrails",
+    "content_signature",
+    "dedupe_key",
     "EmbeddingFallbackLabeller",
     "EmbeddingLabel",
     "GraphEdgeQuality",

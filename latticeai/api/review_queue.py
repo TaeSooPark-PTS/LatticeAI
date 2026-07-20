@@ -56,6 +56,18 @@ class SnoozeRequest(BaseModel):
     until: str
 
 
+class DismissRequest(BaseModel):
+    """Optional dismissal context (e.g. why a change proposal was rejected)."""
+
+    reason: str = ""
+
+
+class ReviewCounts(BaseModel):
+    pending: int = 0
+    snoozed: int = 0
+    pending_by_source: Dict[str, int] = Field(default_factory=dict)
+
+
 def create_review_queue_router(
     *,
     service: ReviewQueueService,
@@ -64,7 +76,13 @@ def create_review_queue_router(
     gate_write: Callable[[Request], Optional[str]],
     run_review_item: Callable[..., Any],
     append_audit_event: Callable[..., None],
+    change_proposals: Any = None,
 ) -> APIRouter:
+    """``change_proposals`` (optional) closes the governance loop: approving a
+    ``change_proposal`` item from the Review Center applies the staged content
+    via :class:`~latticeai.services.change_proposals.ChangeProposalService`
+    instead of merely flipping the status — the same single application path
+    the /api/proposals surface uses."""
     router = APIRouter()
 
     @router.get("/automation/reviews", response_model=ReviewItemList)
@@ -95,6 +113,14 @@ def create_review_queue_router(
         append_audit_event("review_item_created", user_email=user, item_id=item["id"])
         return item
 
+    # NOTE: declared before /automation/reviews/{item_id} so "counts" never
+    # resolves as an item id.
+    @router.get("/automation/reviews/counts", response_model=ReviewCounts)
+    async def review_counts(request: Request):
+        user = require_user(request)
+        scope = gate_read(request)
+        return service.counts(workspace_id=scope, user_email=user)
+
     @router.get("/automation/reviews/{item_id}", response_model=ReviewItem)
     async def get_item(item_id: str, request: Request):
         require_user(request)
@@ -106,11 +132,49 @@ def create_review_queue_router(
 
     @router.post("/automation/reviews/{item_id}/approve", response_model=ReviewItem)
     async def approve_item(item_id: str, request: Request):
+        user = require_user(request)
+        scope = gate_write(request)
+        # change_proposal items must apply the staged content on approve —
+        # otherwise the item flips to "approved" while nothing hits disk.
+        if change_proposals is not None:
+            try:
+                stored = service.get(item_id, workspace_id=scope)
+            except FileNotFoundError as exc:
+                raise HTTPException(status_code=404, detail="review item not found") from exc
+            if stored.get("source") == "change_proposal":
+                if stored.get("effective_status") not in ("pending", "snoozed"):
+                    raise HTTPException(
+                        status_code=409,
+                        detail=f"cannot 'approve' a review item in status {stored.get('status')!r}",
+                    )
+                try:
+                    applied = change_proposals.approve_and_apply(
+                        item_id, user_email=user, workspace_id=scope
+                    )
+                except (KeyError, FileNotFoundError) as exc:
+                    raise HTTPException(status_code=404, detail=str(exc)) from exc
+                except ValueError as exc:
+                    raise HTTPException(status_code=400, detail=str(exc)) from exc
+                append_audit_event("review_item_approve", user_email=user, item_id=item_id)
+                return applied["item"]
         return _act(request, item_id, "approve")
 
     @router.post("/automation/reviews/{item_id}/dismiss", response_model=ReviewItem)
-    async def dismiss_item(item_id: str, request: Request):
-        return _act(request, item_id, "dismiss")
+    async def dismiss_item(
+        item_id: str, request: Request, req: Optional[DismissRequest] = None
+    ):
+        user = require_user(request)
+        scope = gate_write(request)
+        try:
+            item = service.dismiss(
+                item_id, workspace_id=scope, reason=(req.reason if req else None)
+            )
+        except FileNotFoundError as exc:
+            raise HTTPException(status_code=404, detail="review item not found") from exc
+        except InvalidReviewTransition as exc:
+            raise HTTPException(status_code=409, detail=str(exc)) from exc
+        append_audit_event("review_item_dismiss", user_email=user, item_id=item_id)
+        return item
 
     @router.post("/automation/reviews/{item_id}/snooze", response_model=ReviewItem)
     async def snooze_item(item_id: str, req: SnoozeRequest, request: Request):

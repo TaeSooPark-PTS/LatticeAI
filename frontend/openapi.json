@@ -512,6 +512,17 @@
             "default": false,
             "title": "Apply",
             "type": "boolean"
+          },
+          "dry_run": {
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Dry Run"
           }
         },
         "title": "ConsolidateRequest",
@@ -749,6 +760,18 @@
           "text"
         ],
         "title": "CuTypeRequest",
+        "type": "object"
+      },
+      "DismissRequest": {
+        "description": "Optional dismissal context (e.g. why a change proposal was rejected).",
+        "properties": {
+          "reason": {
+            "default": "",
+            "title": "Reason",
+            "type": "string"
+          }
+        },
+        "title": "DismissRequest",
         "type": "object"
       },
       "DockerPostgresRequest": {
@@ -2061,6 +2084,18 @@
         "title": "RecallRequest",
         "type": "object"
       },
+      "RejectProposalRequest": {
+        "description": "Optional rejection context \u2014 kept in the item's provenance.",
+        "properties": {
+          "reason": {
+            "default": "",
+            "title": "Reason",
+            "type": "string"
+          }
+        },
+        "title": "RejectProposalRequest",
+        "type": "object"
+      },
       "RelationshipSearchRequest": {
         "properties": {
           "limit": {
@@ -2113,6 +2148,29 @@
           "path"
         ],
         "title": "RestoreRequest",
+        "type": "object"
+      },
+      "ReviewCounts": {
+        "properties": {
+          "pending": {
+            "default": 0,
+            "title": "Pending",
+            "type": "integer"
+          },
+          "pending_by_source": {
+            "additionalProperties": {
+              "type": "integer"
+            },
+            "title": "Pending By Source",
+            "type": "object"
+          },
+          "snoozed": {
+            "default": 0,
+            "title": "Snoozed",
+            "type": "integer"
+          }
+        },
+        "title": "ReviewCounts",
         "type": "object"
       },
       "ReviewItem": {
@@ -5878,6 +5936,23 @@
         "summary": "Brain Contradictions"
       }
     },
+    "/api/brain/duplicates": {
+      "get": {
+        "description": "Graph-layer duplicate node candidates (read-only).",
+        "operationId": "brain_duplicates_api_brain_duplicates_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": "Brain Duplicates"
+      }
+    },
     "/api/brain/health": {
       "get": {
         "operationId": "brain_health_api_brain_health_get",
@@ -5908,6 +5983,23 @@
           }
         },
         "summary": "Brain Insights"
+      }
+    },
+    "/api/brain/quality-report": {
+      "get": {
+        "description": "Combined graph quality report: duplicates, contradictions, stale\nnodes, edge quality (read-only).",
+        "operationId": "brain_quality_report_api_brain_quality_report_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": "Brain Quality Report"
       }
     },
     "/api/brain/storage": {
@@ -7701,6 +7793,59 @@
         "summary": "List Proposals"
       }
     },
+    "/api/proposals/counts": {
+      "get": {
+        "operationId": "proposal_counts_api_proposals_counts_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": "Proposal Counts"
+      }
+    },
+    "/api/proposals/{item_id}": {
+      "get": {
+        "operationId": "get_proposal_api_proposals__item_id__get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "item_id",
+            "required": true,
+            "schema": {
+              "title": "Item Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Get Proposal"
+      }
+    },
     "/api/proposals/{item_id}/approve": {
       "post": {
         "operationId": "approve_proposal_api_proposals__item_id__approve_post",
@@ -7752,6 +7897,23 @@
             }
           }
         ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "anyOf": [
+                  {
+                    "$ref": "#/components/schemas/RejectProposalRequest"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ],
+                "title": "Req"
+              }
+            }
+          }
+        },
         "responses": {
           "200": {
             "content": {
@@ -8285,6 +8447,24 @@
         "summary": "Create Item"
       }
     },
+    "/automation/reviews/counts": {
+      "get": {
+        "operationId": "review_counts_automation_reviews_counts_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ReviewCounts"
+                }
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": "Review Counts"
+      }
+    },
     "/automation/reviews/{item_id}": {
       "get": {
         "operationId": "get_item_automation_reviews__item_id__get",
@@ -8377,6 +8557,23 @@
             }
           }
         ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "anyOf": [
+                  {
+                    "$ref": "#/components/schemas/DismissRequest"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ],
+                "title": "Req"
+              }
+            }
+          }
+        },
         "responses": {
           "200": {
             "content": {

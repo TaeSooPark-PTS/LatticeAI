@@ -7,6 +7,98 @@
 > PyPI / npm / VS Code Marketplace / Open VSX 배포는 아래 수동 절차로만
 > 진행합니다. 태그 생성은 패키지 스토어 publish를 자동으로 트리거하지 않습니다.
 
+## v9.7.0 — Proactive Hybrid Brain (2026-07-20)
+
+9.7.0 deepens the Brain along three tracks: unified hybrid retrieval that
+keeps itself indexed, proactive graph-layer quality intelligence, and a
+change-governance loop that is now closed end-to-end in the Review Center.
+
+### Unified hybrid retrieval + self-syncing vector index
+
+- `KnowledgeGraphStore.hybrid_search()` — one graph-layer entrypoint fusing
+  lexical `search()` and `vector_search()`: scores normalized to [0,1],
+  alpha-weighted fusion, chunk hits rolled up to parent nodes, per-source
+  `scores`/`fusion` provenance on every match, workspace-scoped throughout.
+  Falls back to `mode: "lexical_only"` (with detail) when the vector side is
+  unavailable. `context_for_query(use_hybrid=True)` opts the context builder
+  into it; the default path is byte-identical to 9.6.0.
+- `index_node_incremental(node_id)` + automatic post-ingest sync in
+  `IngestionPipeline` (`auto_vector_index=True`, env
+  `LATTICEAI_AUTO_VECTOR_INDEX`): each successful non-duplicate ingest
+  indexes just the new node's chunks; vector failures never fail the ingest —
+  they downgrade `indexing_status` to `pending` so `rebuild_vector_index`
+  backlog discovery picks them up.
+
+### Folder & web ingestion
+
+- `IngestionPipeline.ingest_folder(root, recursive=True, background=False)` —
+  directory walk with `.latticeignore` (gitignore-like globs, `dir/` prunes,
+  `#` comments), hard skip-list (`.git`, `node_modules`, `__pycache__`, venvs,
+  build dirs), hidden-by-default, size/extension filters, capped error
+  reporting, and optional scheduling on the background ingestion queue.
+- `ingest_web_page(url, extracted_text)` — formalizes the web seam: fetching,
+  cleaning, and layout parsing belong upstream (browser extension / tools);
+  the graph layer receives extracted text and owns structuring + concepts.
+  The module docstring now states this parsing-depth contract explicitly.
+
+### Proactive Brain in the graph layer
+
+- New `lattice_brain/graph/proactive.py` (`ProactiveBrain`): duplicate
+  detection (content-hash exact + token-signature near-duplicates,
+  sub-quadratic sampling), contradiction detection (negation and temporal,
+  reusing `lattice_brain/quality.py`), a combined JSON-safe
+  `quality_report()` (duplicates + contradictions + stale nodes + edge
+  quality), and `consolidate_duplicates()` merge planning — proposal-first,
+  plan-only until the store grows a safe merge primitive (auto-detected).
+- New read endpoints `GET /api/brain/duplicates` and
+  `GET /api/brain/quality-report`; `/api/brain/contradictions` and
+  `/api/brain/consolidate` gain graph-layer results additively.
+- `gate_ingest_candidate()` — a pure quality-gating seam (ingest /
+  skip_duplicate / review) ready for ingestion-time adoption.
+
+### Closed change-governance loop
+
+- Review Center approval of a `change_proposal` item now delegates to
+  `ChangeProposalService.approve_and_apply` — the staged content actually
+  lands on disk through the single application path (409 on replay); before
+  9.7.0 the review-queue approve only flipped the status.
+- Proposals carry full provenance: tool, risk, change class, originating
+  conversation id; reject accepts a reason (recorded); new counts endpoints
+  (`GET /api/proposals/counts`, `GET /automation/reviews/counts`) badge the
+  review inbox; a proposal detail endpoint serves diff + staged content.
+- Frontend: `change_proposal` source filter, unified-diff preview, tier and
+  deletion badges, reject-with-reason input, pending-count badge — ko/en
+  i18n parity maintained.
+
+### Agent-loop evaluation & runtime consistency
+
+- `scripts/agent_eval.py` gate: 8 → 12 scenarios, adding file-generation
+  happy path, file-generation failure recovery, a 3-step multi-step workflow
+  chain with exact ordered tool-call assertions, and a governed-write
+  proposal path pinning the approve()-excludes-governed-tools invariant.
+- `SingleAgentRuntime.execute` (206 lines) decomposed into six focused
+  helpers with zero behavior change; the multi-agent orchestrator now
+  surfaces the real failure reason in `execution_failed` timeline events; new
+  `test_runtime_consistency.py` pins contract-envelope, status-vocabulary,
+  and fail-closed parity between the single- and multi-agent runtimes.
+
+### Structure, performance & housekeeping
+
+- All 10 root legacy modules (`knowledge_graph.py`, `kg_schema.py`,
+  `llm_router.py`, `mcp_registry.py`, …) now emit `DeprecationWarning`
+  naming their package replacement; the legacy-compatibility registry tracks
+  all 13 shims.
+- `scripts/profile_kg.py` — offline synthetic KG profiler (p50/p95 latency +
+  tracemalloc peaks for ingest/search/context/traverse/vector phases);
+  measured baseline recorded in `docs/PERFORMANCE.md`, which also names
+  brute-force `vector_search()` as the first optimization candidate at scale.
+
+### Verification
+
+- 1201 unit / 13 integration / 19 frontend tests green; agent-loop-eval
+  12/12; brain-quality-eval, readiness, docs, i18n-literal, openapi-drift,
+  ruff, and frontend lint gates all pass.
+
 ## v9.6.0 — Trusted Agent Loop (2026-07-20)
 
 9.6.0 engineers trust into autonomous work along four tracks: loop

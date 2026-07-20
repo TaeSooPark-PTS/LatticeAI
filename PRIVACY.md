@@ -1,6 +1,6 @@
 # Privacy
 
-Current release: **9.6.0 — Trusted Agent Loop**.
+Current release: **9.7.0 — Proactive Hybrid Brain**.
 
 Lattice AI is local-first. It does not send your prompts, files, graph, or Brain
 archive to Lattice-owned servers by default. Some user-chosen features can

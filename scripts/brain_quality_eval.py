@@ -16,7 +16,7 @@ REPO_ROOT = Path(__file__).resolve().parents[1]
 if str(REPO_ROOT) not in sys.path:
     sys.path.insert(0, str(REPO_ROOT))
 
-from knowledge_graph import KnowledgeGraphStore  # noqa: E402
+from lattice_brain.graph.store import KnowledgeGraphStore  # noqa: E402
 from lattice_brain.quality import RetrievalBenchmarkRunner  # noqa: E402
 from latticeai.services.search_service import SearchService  # noqa: E402
 from latticeai.services.memory_service import MemoryService  # noqa: E402

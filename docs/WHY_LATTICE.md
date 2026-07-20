@@ -1,6 +1,6 @@
 # Why Lattice AI Exists
 
-Current release: **9.6.0 — Trusted Agent Loop**.
+Current release: **9.7.0 — Proactive Hybrid Brain**.
 
 **Lattice AI is a local-first Digital Brain that keeps your knowledge durable
 across any AI model.**

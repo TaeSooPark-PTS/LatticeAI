@@ -411,6 +411,191 @@ class KnowledgeGraphRetrievalMixin:
             )
         return {"query": query, "matches": matches}
 
+    def hybrid_search(
+        self,
+        query: str,
+        *,
+        top_k: int = 20,
+        alpha: float = 0.6,
+        workspace_id: Optional[str] = None,
+        allowed_workspaces=None,
+        include_legacy_global: bool = False,
+        lexical_limit: Optional[int] = None,
+        vector_limit: Optional[int] = None,
+        min_vector_score: float = 0.0,
+    ) -> Dict[str, Any]:
+        """Unified lexical + vector retrieval with alpha-weighted linear fusion.
+
+        Runs the SQLite lexical :meth:`search` and the embedding-backed
+        ``vector_search`` (sibling mixin via the store MRO), normalizes both
+        score spaces to ``[0, 1]``, fuses them as
+        ``alpha * vector + (1 - alpha) * lexical`` (the same shape as
+        ``lattice_brain.quality.HybridFusion`` — reimplemented here without
+        importing that module), and dedupes by ``node_id`` (chunk hits roll up
+        to their parent node).
+
+        Degrades gracefully: when the vector side is unavailable (mixin not
+        composed, embedder/index failure) the result falls back to
+        lexical-only ranking and reports ``mode: "lexical_only"`` with a
+        ``detail`` explaining why. Each match carries per-source ``scores``
+        and a ``fusion`` field (``lexical`` / ``vector`` / ``both``).
+
+        ``workspace_id`` is a convenience for single-workspace callers; the
+        richer ``allowed_workspaces`` set wins when both are provided.
+        """
+        query = str(query or "").strip()
+        try:
+            top_k = int(top_k)
+        except (TypeError, ValueError):
+            top_k = 20
+        top_k = max(1, min(top_k, 100))
+        try:
+            alpha = float(alpha)
+        except (TypeError, ValueError):
+            alpha = 0.6
+        alpha = max(0.0, min(alpha, 1.0))
+        if allowed_workspaces is None and workspace_id:
+            allowed_workspaces = {str(workspace_id)}
+
+        if not query:
+            return {
+                "query": query,
+                "mode": "hybrid",
+                "alpha": alpha,
+                "top_k": top_k,
+                "sources": {"lexical": 0, "vector": 0},
+                "matches": [],
+                "detail": None,
+            }
+
+        lex_fetch = max(1, min(int(lexical_limit or max(top_k * 2, 20)), 100))
+        vec_fetch = max(1, min(int(vector_limit or max(top_k * 2, 20)), 100))
+
+        lexical_matches = self.search(
+            query,
+            lex_fetch,
+            allowed_workspaces=allowed_workspaces,
+            include_legacy_global=include_legacy_global,
+        ).get("matches", [])
+
+        mode = "hybrid"
+        detail: Optional[str] = None
+        vector_matches: List[Dict[str, Any]] = []
+        vector_fn = getattr(self, "vector_search", None)
+        if not callable(vector_fn):
+            mode = "lexical_only"
+            detail = "vector search is not available on this store"
+        else:
+            try:
+                vector_matches = list(
+                    (vector_fn(query, limit=vec_fetch, min_score=min_vector_score) or {}).get(
+                        "matches", []
+                    )
+                )
+            except Exception as exc:  # noqa: BLE001 — degrade, never fail the search
+                mode = "lexical_only"
+                detail = f"vector index unavailable: {exc}"
+                vector_matches = []
+        if vector_matches and allowed_workspaces is not None:
+            vector_matches = self.filter_scoped_nodes(
+                vector_matches,
+                allowed_workspaces,
+                id_key="node_id",
+                include_legacy_global=include_legacy_global,
+            )
+
+        def _parent_node_id(match: Dict[str, Any]) -> str:
+            # Chunk-level hits dedupe to their parent content node.
+            if match.get("type") == "Chunk":
+                meta = match.get("metadata") or {}
+                parent = meta.get("source_node") or meta.get("parent_source_node")
+                if parent:
+                    return str(parent)
+            return str(match.get("node_id") or match.get("id") or "")
+
+        entries: Dict[str, Dict[str, Any]] = {}
+
+        def _entry_for(node_id: str, match: Dict[str, Any]) -> Dict[str, Any]:
+            entry = entries.get(node_id)
+            if entry is None:
+                entry = {
+                    "node_id": node_id,
+                    "id": match.get("id") or node_id,
+                    "type": match.get("type"),
+                    "title": match.get("title"),
+                    "summary": match.get("summary"),
+                    "metadata": match.get("metadata") or {},
+                    "updated_at": match.get("updated_at"),
+                    "scores": {"lexical": 0.0, "vector": 0.0},
+                    "_lexical": False,
+                    "_vector": False,
+                }
+                entries[node_id] = entry
+            return entry
+
+        for rank, match in enumerate(lexical_matches, start=1):
+            node_id = _parent_node_id(match)
+            if not node_id:
+                continue
+            entry = _entry_for(node_id, match)
+            entry["scores"]["lexical"] = max(
+                entry["scores"]["lexical"], round(1.0 / rank, 6)
+            )
+            entry["_lexical"] = True
+
+        # Max-normalize cosine scores into [0, 1] (guard the score-0 falsy trap
+        # by comparing explicitly, never with truthiness).
+        max_vec = 0.0
+        for match in vector_matches:
+            raw = match.get("score")
+            if raw is not None and float(raw) > max_vec:
+                max_vec = float(raw)
+        for match in vector_matches:
+            node_id = _parent_node_id(match)
+            if not node_id:
+                continue
+            raw = float(match.get("score") or 0.0)
+            vec_norm = max(0.0, raw) / max_vec if max_vec > 0 else 0.0
+            entry = _entry_for(node_id, match)
+            entry["scores"]["vector"] = max(entry["scores"]["vector"], round(vec_norm, 6))
+            entry["_vector"] = True
+            # Prefer a real snippet when the lexical row had no summary.
+            if not entry.get("summary") and match.get("summary"):
+                entry["summary"] = match.get("summary")
+
+        matches: List[Dict[str, Any]] = []
+        for entry in entries.values():
+            lex_score = float(entry["scores"]["lexical"])
+            vec_score = float(entry["scores"]["vector"])
+            if mode == "lexical_only":
+                fused = lex_score
+            else:
+                fused = alpha * vec_score + (1.0 - alpha) * lex_score
+            entry["score"] = round(fused, 6)
+            from_lexical = bool(entry.pop("_lexical", False))
+            from_vector = bool(entry.pop("_vector", False))
+            if from_lexical and from_vector:
+                entry["fusion"] = "both"
+            elif from_vector:
+                entry["fusion"] = "vector"
+            else:
+                entry["fusion"] = "lexical"
+            matches.append(entry)
+
+        matches.sort(key=lambda item: (-item["score"], item["node_id"]))
+        matches = matches[:top_k]
+        for rank, match in enumerate(matches, start=1):
+            match["rank"] = rank
+        return {
+            "query": query,
+            "mode": mode,
+            "alpha": alpha,
+            "top_k": top_k,
+            "sources": {"lexical": len(lexical_matches), "vector": len(vector_matches)},
+            "matches": matches,
+            "detail": detail,
+        }
+
     def context_for_query(
         self,
         query: str,
@@ -418,17 +603,36 @@ class KnowledgeGraphRetrievalMixin:
         *,
         allowed_workspaces=None,
         include_legacy_global: bool = False,
+        use_hybrid: bool = False,
     ) -> str:
-        """Return compact graph-backed RAG context for chat generation."""
+        """Return compact graph-backed RAG context for chat generation.
+
+        ``use_hybrid=True`` sources the matches from :meth:`hybrid_search`
+        (lexical + vector fusion) instead of the lexical-only :meth:`search`.
+        Default behavior is unchanged, and any hybrid failure silently falls
+        back to the legacy lexical path.
+        """
         query = str(query or "").strip()
         if not query:
             return ""
-        matches = self.search(
-            query,
-            limit,
-            allowed_workspaces=allowed_workspaces,
-            include_legacy_global=include_legacy_global,
-        ).get("matches", [])
+        matches: List[Dict[str, Any]] = []
+        if use_hybrid:
+            try:
+                matches = self.hybrid_search(
+                    query,
+                    top_k=limit,
+                    allowed_workspaces=allowed_workspaces,
+                    include_legacy_global=include_legacy_global,
+                ).get("matches", [])
+            except Exception:  # noqa: BLE001 — context building must never fail
+                matches = []
+        if not matches:
+            matches = self.search(
+                query,
+                limit,
+                allowed_workspaces=allowed_workspaces,
+                include_legacy_global=include_legacy_global,
+            ).get("matches", [])
         if not matches:
             topics = _topic_candidates(query, limit=4)
             if topics:

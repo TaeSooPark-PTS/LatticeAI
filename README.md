@@ -132,21 +132,21 @@ confirm owner, check the computer, choose the Brain voice.
 Choose the owner of the Brain. The profile is not a SaaS account by default; it
 is the local identity for the knowledge you keep.
 
-![Login](output/release/v9.6.0/screenshots/01-login.png)
+![Login](output/release/v9.7.0/screenshots/01-login.png)
 
 ### 3. Recommended Models
 
 Start with a short list: safest recommendation, faster model, stronger model.
 Advanced details stay available without overwhelming first-time users.
 
-![Recommended Models](output/release/v9.6.0/screenshots/02-recommended-models.png)
+![Recommended Models](output/release/v9.7.0/screenshots/02-recommended-models.png)
 
 ### 4. Install And Load
 
 Download and load only after consent. Lattice explains model size, local
 execution, and network use before work starts.
 
-![Install and Load](output/release/v9.6.0/screenshots/03-install-load-progress.png)
+![Install and Load](output/release/v9.7.0/screenshots/03-install-load-progress.png)
 
 ### 5. Brain Chat
 
@@ -158,14 +158,14 @@ and its visible life signal follow real listening, recall, synthesis, and action
 state. Detailed memory rings, provenance, conversation history, and
 model/runtime proof open as overlays only when requested.
 
-![One-viewport Living Brain Home](output/release/v9.6.0/screenshots/04-brain-chat-home.png)
+![One-viewport Living Brain Home](output/release/v9.7.0/screenshots/04-brain-chat-home.png)
 
 ### 6. Review Center
 
 Automation results are staged for review before they become durable decisions.
 Snooze, unsnooze, run now, approve, and dismiss actions stay explicit.
 
-![Review Center](output/release/v9.6.0/screenshots/12-review-center.png)
+![Review Center](output/release/v9.7.0/screenshots/12-review-center.png)
 
 ## Brain Depths
 
@@ -181,10 +181,10 @@ The user travels inward from everyday memory to deeper structure:
 
 Walkthrough:
 
-![v9.6.0 Living Brain walkthrough](output/release/v9.6.0/gifs/v9.6.0-living-brain-walkthrough.gif)
+![v9.7.0 Living Brain walkthrough](output/release/v9.7.0/gifs/v9.7.0-living-brain-walkthrough.gif)
 
 Screenshot index and capture notes:
-[output/release/v9.6.0/SCREENSHOT_INDEX.md](output/release/v9.6.0/SCREENSHOT_INDEX.md)
+[output/release/v9.7.0/SCREENSHOT_INDEX.md](output/release/v9.7.0/SCREENSHOT_INDEX.md)
 
 ## Install
 
@@ -269,50 +269,59 @@ See [docs/DEVELOPMENT.md](docs/DEVELOPMENT.md) for developer workflow details.
 
 ## Current Release
 
-The current release is **9.6.0 — Trusted Agent Loop**:
+The current release is **9.7.0 — Proactive Hybrid Brain**:
 
-- The single-agent reasoning loop is fully observable: a structured
-  `LoopTrace` records every llm call, parse error (recovered or not), format
-  repair, correction, tool outcome, retry, and rollback, and its summary is
-  returned as `loop` with every agent API response.
-- Weak-model robustness is stronger and measured: the action parser now also
-  repairs Python-literal dicts (single quotes, True/False/None), repairs are
-  reported by name, and a second formatting slip escalates the correction
-  with the exact list of valid tools.
-- A deterministic agent evaluation harness (`scripts/agent_eval.py`, CI
-  gate) drives the real state machine through scripted scenarios — happy
-  path, weak-model format gauntlet, correction escalation, destructive
-  block, loop detection, critic retry, unrecoverable garbage — and must stay
-  at 100% scenario pass.
-- Change governance is proposal-first (`latticeai/core/tool_governor.py`):
-  additive creates run with minimal friction, while agent edits/deletions of
-  existing files are staged as review proposals with a unified diff and a
-  small/large tier, listed at `GET /api/proposals`, applied exactly as
-  reviewed on approve, discarded on reject. The Brain home shows a
-  "변경 제안 / Change proposals" panel with diff previews and one-click
-  approve/reject.
-- Housekeeping: Ruff per-file lint ignores trimmed from 9 entries to 3,
-  AGENTS.md now carries a machine-checked current-release marker inside the
-  docs gate, and the review queue gained the `change_proposal` source.
+- Retrieval is unified: `KnowledgeGraphStore.hybrid_search()` fuses lexical
+  and vector search in the graph layer itself (normalized scores, per-source
+  provenance, rank fusion), degrades honestly to `lexical_only` when the
+  vector index is unavailable, and `context_for_query()` can opt into it.
+- The vector index stays in sync automatically: every successful ingest runs
+  an incremental `index_node_incremental()` pass (opt-out via
+  `LATTICEAI_AUTO_VECTOR_INDEX`), and failures downgrade to an explicit
+  `pending` status that the next `rebuild_vector_index` picks up.
+- Ingestion covers whole folders: `ingest_folder()` walks directories with
+  `.latticeignore` support (gitignore-like globs), size/extension filters,
+  and optional background scheduling; `ingest_web_page()` formalizes the
+  web seam — fetching/parsing stays upstream, the graph receives clean text.
+- The Brain is proactive in the graph layer: `lattice_brain/graph/proactive.py`
+  finds duplicate and contradictory knowledge, produces a combined quality
+  report with stale-node and edge-quality signals, and plans consent-first
+  duplicate consolidation — surfaced at `GET /api/brain/duplicates`,
+  `GET /api/brain/quality-report`, and the existing contradiction/consolidate
+  endpoints.
+- The change-governance loop is closed: Review Center approval now applies
+  staged proposals through the single application path (no more
+  status-only approvals), proposals carry tool/risk/change-class/conversation
+  provenance, reject records a reason, and pending-proposal counts badge the
+  review inbox.
+- The agent evaluation gate grew to 12 scenarios, adding file-generation
+  happy path and recovery, a 3-step multi-step workflow chain, and a
+  governed-write proposal path that pins the approve()-excludes-governed-tools
+  invariant.
+- Engineering health: `SingleAgentRuntime.execute` decomposed into focused
+  helpers, multi-agent/single-agent runtime consistency pinned by tests, all
+  root legacy modules emit deprecation warnings pointing at their package
+  homes, and `scripts/profile_kg.py` + `docs/PERFORMANCE.md` establish a
+  measured KG performance baseline.
 
-Expected artifacts for 9.6.0 release must use exact filenames:
+Expected artifacts for 9.7.0 release must use exact filenames:
 
-- `dist/ltcai-9.6.0-py3-none-any.whl`
-- `dist/ltcai-9.6.0.tar.gz`
-- `ltcai-9.6.0.tgz`
-- `dist/ltcai-9.6.0.vsix`
-- `src-tauri/target/release/bundle/dmg/Lattice AI_9.6.0_aarch64.dmg`
+- `dist/ltcai-9.7.0-py3-none-any.whl`
+- `dist/ltcai-9.7.0.tar.gz`
+- `ltcai-9.7.0.tgz`
+- `dist/ltcai-9.7.0.vsix`
+- `src-tauri/target/release/bundle/dmg/Lattice AI_9.7.0_aarch64.dmg`
 
 Do not use wildcard artifact uploads. Package registry publishing remains owner-run.
 
 See [docs/ROADMAP_RECOMMENDATIONS.md](docs/ROADMAP_RECOMMENDATIONS.md) for the
-strategic roadmap slices applied through 9.6.0 and the follow-up tracks.
+strategic roadmap slices applied through 9.7.0 and the follow-up tracks.
 
 ## Known Limitations
 
 - External package registries are owner-published and can lag behind GitHub.
 - PostgreSQL/pgvector is optional scale/migration tooling. SQLite remains the
-  live local Brain store in 9.6.0.
+  live local Brain store in 9.7.0.
 - Docker, model downloads, cloud model calls, Telegram, Brain Network, and update
   checks require explicit user action.
 - Conversation does not fabricate answers when no model is loaded.
@@ -324,6 +333,7 @@ strategic roadmap slices applied through 9.6.0 and the follow-up tracks.
 
 | Version | Theme |
 | --- | --- |
+| 9.7.0 | Proactive Hybrid Brain: graph-native hybrid lexical+vector retrieval with automatic incremental vector indexing, folder ingestion with `.latticeignore`, proactive duplicate/contradiction detection and quality reporting in the graph layer, and a fully closed proposal→Review Center→apply governance loop |
 | 9.6.0 | Trusted Agent Loop: observable agent reasoning (LoopTrace + loop API payload), python-literal/fence/think weak-model repairs with escalating corrections, a deterministic CI agent-eval harness, and proposal-first change governance where edits/deletions of existing files become reviewable diffs |
 | 9.5.0 | Command Center: a Cmd+K palette searching knowledge, conversations, automations, and pages in one query, plus a daily briefing with Brain state at a glance and state-derived one-click quick actions |
 | 9.4.0 | Question-Driven Everyday Automation: the Brain mines recurring user questions and connected knowledge folders into one-click, consent-first automation suggestions installed as review-gated drafts |

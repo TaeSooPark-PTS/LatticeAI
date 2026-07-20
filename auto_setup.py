@@ -1,6 +1,16 @@
 """Compatibility shim for :mod:`latticeai.setup.auto_setup`."""
 
-from latticeai.setup import auto_setup as _impl
+import warnings
+
+warnings.warn(
+    "Importing 'auto_setup' from the repository root is deprecated; "
+    "use 'from latticeai.setup import auto_setup' instead. "
+    "The root shim will be removed in a future major release.",
+    DeprecationWarning,
+    stacklevel=2,
+)
+
+from latticeai.setup import auto_setup as _impl  # noqa: E402
 
 
 if __name__ == "__main__":

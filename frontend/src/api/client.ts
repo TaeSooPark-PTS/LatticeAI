@@ -371,8 +371,11 @@ export const latticeApi = {
     post("/api/automation/install", { suggestion_id: suggestionId, enabled }, {}),
   commandBriefing: () => get("/api/command/briefing", { sections: {}, quick_actions: [] }),
   proposals: () => get("/api/proposals", { items: [], count: 0, contract: {} }),
+  proposalCounts: () => get("/api/proposals/counts", { pending: 0 }),
+  proposalDetail: (itemId: string) => get(`/api/proposals/${encodeURIComponent(itemId)}`, { payload: {}, provenance: {} }),
   approveProposal: (itemId: string) => post(`/api/proposals/${encodeURIComponent(itemId)}/approve`, {}, {}),
-  rejectProposal: (itemId: string) => post(`/api/proposals/${encodeURIComponent(itemId)}/reject`, {}, {}),
+  rejectProposal: (itemId: string, reason = "") =>
+    post(`/api/proposals/${encodeURIComponent(itemId)}/reject`, reason ? { reason } : {}, {}),
   commandSearch: (q: string, limit = 8) =>
     get("/api/command/search", { query: q, groups: [], total: 0 }, { q, limit }),
   brainHealth: () => get("/api/brain/health", { overall_score: null, grade: null, dimensions: {}, recommended_actions: [] }),

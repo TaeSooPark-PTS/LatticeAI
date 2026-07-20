@@ -319,28 +319,8 @@ class SingleAgentRuntime:
         parse_failures = 0
 
         for _ in range(budget):
-            corrections_hint = (
-                "\n\nCritic corrections from previous attempt:\n"
-                + "\n".join(f"- {c}" for c in ctx.corrections)
-            ) if ctx.corrections else ""
-
             request_workspace = getattr(req, "workspace_id", None)
-            recent_kwargs = {
-                "conversation_id": req.conversation_id,
-                "user_email": current_user or None,
-            }
-            if request_workspace is not None:
-                recent_kwargs["workspace_id"] = request_workspace
-            recent_conversation = d.recent_chat_context(**recent_kwargs) or "(none)"
-            context = (
-                f"{d.executor_prompt}\n\n"
-                f"[LANGUAGE HINT: {lang_hint}]\n"
-                f"Workspace root: {d.agent_root}\n\n"
-                f"PLAN:\n{json.dumps(ctx.plan, ensure_ascii=False)}\n\n"
-                f"Recent conversation:\n{recent_conversation}\n\n"
-                f"User request: {req.message}{corrections_hint}\n\n"
-                f"Execution transcript:\n{json.dumps(ctx.transcript, ensure_ascii=False, indent=2)}"
-            )
+            context = self._executor_context(ctx, req, lang_hint, current_user, request_workspace)
             raw = await d.generate_as(
                 model_id,
                 message="Execute the next step.",
@@ -352,33 +332,8 @@ class SingleAgentRuntime:
                 ctx.trace.repair("execute", repairs=exec_repairs)
             except ValueError as exc:
                 parse_failures += 1
-                ctx.transcript.append({
-                    "state": AgentState.EXECUTING.value, "action": "parse_error",
-                    "raw": str(raw)[:400], "error": str(exc),
-                })
-                if parse_failures >= 3:
-                    ctx.trace.parse_error("execute", error=str(exc), recovered=False)
+                if self._note_parse_failure(ctx, raw, exc, parse_failures):
                     break
-                ctx.trace.parse_error("execute", error=str(exc), recovered=True)
-                # Weak models often need one concrete reminder of the wire
-                # format; feed it through the corrections channel and retry
-                # instead of aborting the whole run on the first slip.
-                hint = (
-                    'Your last reply was not a single JSON action object. Reply with '
-                    'EXACTLY one JSON object like {"thoughts": "...", "action": '
-                    '"tool_name", "args": {...}} and nothing else.'
-                )
-                if parse_failures >= 2:
-                    # Escalate: name the valid tools so the model stops
-                    # inventing action names or prose.
-                    valid = ", ".join(sorted(d.tool_governance.keys()))
-                    hint = (
-                        f"{hint} Valid action values are: {valid}, final. "
-                        'Use {"action": "final", "message": "..."} to finish.'
-                    )
-                if hint not in ctx.corrections:
-                    ctx.corrections.append(hint)
-                    ctx.trace.correction("execute", hint=hint)
                 continue
 
             name     = action.get("action")
@@ -402,14 +357,7 @@ class SingleAgentRuntime:
                 return
 
             # Loop guard
-            exec_steps = [s for s in ctx.transcript if s.get("state") == AgentState.EXECUTING.value]
-            last = exec_steps[-1] if exec_steps else None
-            if (
-                name in d.file_create_actions and last
-                and last.get("action") == name
-                and (last.get("args") or {}) == args
-                and "result" in last
-            ):
+            if self._is_repeated_create(ctx, name, args):
                 ctx.transcript.append({
                     "state": AgentState.EXECUTING.value, "action": name,
                     "error": "LOOP_DETECTED: identical action+args repeated — halted.",
@@ -428,92 +376,202 @@ class SingleAgentRuntime:
             policy = d.policy_for(name, args)
             risk   = d.risk_level(policy)
 
-            # Central change-class governance: create-new runs with minimal
-            # friction, change/delete-existing becomes a review proposal.
-            governor_allows_additive = False
-            if d.change_governor is not None:
-                verdict = d.change_governor.review(
-                    name, args, policy=dict(policy),
-                    user_email=current_user, workspace_id=request_workspace,
-                )
-                if verdict is not None and verdict.get("decision") == "proposed":
-                    proposal = verdict.get("proposal") or {}
-                    ctx.trace.tool("execute", name=name, outcome="proposed", risk=risk)
-                    ctx.transcript.append({
-                        "state": AgentState.EXECUTING.value, "action": name,
-                        "thoughts": thoughts, "args": {k: v for k, v in args.items() if k != "content"},
-                        "risk": risk, "governance": dict(policy),
-                        "result": {
-                            "proposed": True,
-                            "proposal_id": proposal.get("id"),
-                            "note": "기존 내용을 바꾸는 작업이라 변경 제안으로 저장했습니다. 검토함에서 승인하면 적용됩니다.",
-                        },
-                    })
-                    d.audit(
-                        "agent_change_proposed", user_email=current_user,
-                        action=name, proposal_id=proposal.get("id"),
-                        change_class=(verdict.get("classification") or {}).get("change_class"),
-                    )
-                    continue
-                governor_allows_additive = (
-                    verdict is not None and verdict.get("decision") == "allow_additive"
-                )
-
-            if policy["risk"] == "destructive":
-                ctx.trace.tool("execute", name=name, outcome="blocked_destructive", risk=risk)
-                ctx.transcript.append({
-                    "state": AgentState.EXECUTING.value, "action": name,
-                    "thoughts": thoughts, "args": args, "risk": risk,
-                    "governance": dict(policy),
-                    "error": f"BLOCKED: destructive action '{name}' not permitted in agent mode.",
-                })
-                d.audit(
-                    "agent_blocked", user_email=current_user, source=getattr(req, "source", None) or "agent",
-                    action=name, reason="destructive", governance=dict(policy),
-                )
+            proposed, governor_allows_additive = self._governor_review(
+                ctx, name, thoughts, args, policy, risk, current_user, request_workspace,
+                conversation_id=getattr(req, "conversation_id", None),
+            )
+            if proposed:
                 continue
 
-            if not policy["auto_approve"] and not ctx.approved_by_human and not governor_allows_additive:
-                d.audit(
-                    "agent_exec", user_email=current_user, source=getattr(req, "source", None) or "agent",
-                    state=AgentState.EXECUTING.value, action=name, risk=risk,
-                    shell=policy["shell"], network=policy["network"],
-                    destructive=policy["destructive"], sandbox=policy["sandbox"],
-                    rollback=policy["rollback"],
-                    args={k: v for k, v in args.items() if k != "content"},
-                )
-                ctx.trace.tool("execute", name=name, outcome="blocked_approval", risk=risk)
-                ctx.transcript.append({
-                    "state": AgentState.EXECUTING.value, "action": name,
-                    "thoughts": thoughts, "args": args, "risk": risk,
-                    "governance": dict(policy),
-                    "error": f"BLOCKED: action '{name}' requires explicit approval.",
-                })
+            if self._blocked_by_gates(
+                ctx, req, name, thoughts, args, policy, risk,
+                current_user, governor_allows_additive,
+            ):
                 continue
 
-            try:
-                d.check_role(name, current_user)
-                # Shared tool lifecycle: pre_tool (may block) → execute → post_tool.
-                result = dispatch_tool(
-                    d.hooks, name, args,
-                    lambda: d.execute_tool(name, args),
-                    user_email=current_user, source="agent",
-                )
-                ctx.trace.tool("execute", name=name, outcome="ok", risk=risk)
-                ctx.transcript.append({
-                    "state": AgentState.EXECUTING.value, "action": name,
-                    "thoughts": thoughts, "args": args,
-                    "risk": risk, "governance": dict(policy), "result": result,
-                })
-            except (ToolError, KeyError, TypeError, PermissionError) as exc:
-                ctx.trace.tool("execute", name=name, outcome="error", risk=risk)
-                ctx.transcript.append({
-                    "state": AgentState.EXECUTING.value, "action": name,
-                    "thoughts": thoughts, "args": args,
-                    "risk": risk, "governance": dict(policy), "error": str(exc),
-                })
+            self._dispatch_step(ctx, name, thoughts, args, policy, risk, current_user)
 
         ctx.state = AgentState.VERIFYING
+
+    def _executor_context(
+        self, ctx: AgentRunContext, req: Any, lang_hint: str,
+        current_user: str, request_workspace: Optional[str],
+    ) -> str:
+        """Assemble one executor turn's prompt (plan, corrections, recent chat)."""
+        d = self.deps
+        corrections_hint = (
+            "\n\nCritic corrections from previous attempt:\n"
+            + "\n".join(f"- {c}" for c in ctx.corrections)
+        ) if ctx.corrections else ""
+
+        recent_kwargs = {
+            "conversation_id": req.conversation_id,
+            "user_email": current_user or None,
+        }
+        if request_workspace is not None:
+            recent_kwargs["workspace_id"] = request_workspace
+        recent_conversation = d.recent_chat_context(**recent_kwargs) or "(none)"
+        return (
+            f"{d.executor_prompt}\n\n"
+            f"[LANGUAGE HINT: {lang_hint}]\n"
+            f"Workspace root: {d.agent_root}\n\n"
+            f"PLAN:\n{json.dumps(ctx.plan, ensure_ascii=False)}\n\n"
+            f"Recent conversation:\n{recent_conversation}\n\n"
+            f"User request: {req.message}{corrections_hint}\n\n"
+            f"Execution transcript:\n{json.dumps(ctx.transcript, ensure_ascii=False, indent=2)}"
+        )
+
+    def _note_parse_failure(
+        self, ctx: AgentRunContext, raw: Any, exc: ValueError, parse_failures: int,
+    ) -> bool:
+        """Record one executor parse slip; True when the run should stop retrying."""
+        ctx.transcript.append({
+            "state": AgentState.EXECUTING.value, "action": "parse_error",
+            "raw": str(raw)[:400], "error": str(exc),
+        })
+        if parse_failures >= 3:
+            ctx.trace.parse_error("execute", error=str(exc), recovered=False)
+            return True
+        ctx.trace.parse_error("execute", error=str(exc), recovered=True)
+        # Weak models often need one concrete reminder of the wire
+        # format; feed it through the corrections channel and retry
+        # instead of aborting the whole run on the first slip.
+        hint = (
+            'Your last reply was not a single JSON action object. Reply with '
+            'EXACTLY one JSON object like {"thoughts": "...", "action": '
+            '"tool_name", "args": {...}} and nothing else.'
+        )
+        if parse_failures >= 2:
+            # Escalate: name the valid tools so the model stops
+            # inventing action names or prose.
+            valid = ", ".join(sorted(self.deps.tool_governance.keys()))
+            hint = (
+                f"{hint} Valid action values are: {valid}, final. "
+                'Use {"action": "final", "message": "..."} to finish.'
+            )
+        if hint not in ctx.corrections:
+            ctx.corrections.append(hint)
+            ctx.trace.correction("execute", hint=hint)
+        return False
+
+    def _is_repeated_create(self, ctx: AgentRunContext, name: Any, args: dict) -> bool:
+        """Loop guard: the same file-create action+args re-issued right after a result."""
+        exec_steps = [s for s in ctx.transcript if s.get("state") == AgentState.EXECUTING.value]
+        last = exec_steps[-1] if exec_steps else None
+        return bool(
+            name in self.deps.file_create_actions and last
+            and last.get("action") == name
+            and (last.get("args") or {}) == args
+            and "result" in last
+        )
+
+    def _governor_review(
+        self, ctx: AgentRunContext, name: str, thoughts: str, args: dict,
+        policy: dict, risk: str, current_user: str, request_workspace: Optional[str],
+        conversation_id: Optional[str] = None,
+    ) -> Tuple[bool, bool]:
+        """Central change-class governance: create-new runs with minimal
+        friction, change/delete-existing becomes a review proposal.
+
+        Returns ``(proposed, governor_allows_additive)``: ``proposed`` means the
+        step was staged as a proposal (skip execution); ``allows_additive`` lets
+        an additive create pass the classic approval gate.
+        """
+        d = self.deps
+        if d.change_governor is None:
+            return False, False
+        verdict = d.change_governor.review(
+            name, args, policy=dict(policy),
+            user_email=current_user, workspace_id=request_workspace,
+            conversation_id=conversation_id,
+        )
+        if verdict is not None and verdict.get("decision") == "proposed":
+            proposal = verdict.get("proposal") or {}
+            ctx.trace.tool("execute", name=name, outcome="proposed", risk=risk)
+            ctx.transcript.append({
+                "state": AgentState.EXECUTING.value, "action": name,
+                "thoughts": thoughts, "args": {k: v for k, v in args.items() if k != "content"},
+                "risk": risk, "governance": dict(policy),
+                "result": {
+                    "proposed": True,
+                    "proposal_id": proposal.get("id"),
+                    "note": "기존 내용을 바꾸는 작업이라 변경 제안으로 저장했습니다. 검토함에서 승인하면 적용됩니다.",
+                },
+            })
+            d.audit(
+                "agent_change_proposed", user_email=current_user,
+                action=name, proposal_id=proposal.get("id"),
+                change_class=(verdict.get("classification") or {}).get("change_class"),
+            )
+            return True, False
+        return False, (verdict is not None and verdict.get("decision") == "allow_additive")
+
+    def _blocked_by_gates(
+        self, ctx: AgentRunContext, req: Any, name: str, thoughts: str, args: dict,
+        policy: dict, risk: str, current_user: str, governor_allows_additive: bool,
+    ) -> bool:
+        """Classic destructive / explicit-approval gates; True when the step was blocked."""
+        d = self.deps
+        if policy["risk"] == "destructive":
+            ctx.trace.tool("execute", name=name, outcome="blocked_destructive", risk=risk)
+            ctx.transcript.append({
+                "state": AgentState.EXECUTING.value, "action": name,
+                "thoughts": thoughts, "args": args, "risk": risk,
+                "governance": dict(policy),
+                "error": f"BLOCKED: destructive action '{name}' not permitted in agent mode.",
+            })
+            d.audit(
+                "agent_blocked", user_email=current_user, source=getattr(req, "source", None) or "agent",
+                action=name, reason="destructive", governance=dict(policy),
+            )
+            return True
+
+        if not policy["auto_approve"] and not ctx.approved_by_human and not governor_allows_additive:
+            d.audit(
+                "agent_exec", user_email=current_user, source=getattr(req, "source", None) or "agent",
+                state=AgentState.EXECUTING.value, action=name, risk=risk,
+                shell=policy["shell"], network=policy["network"],
+                destructive=policy["destructive"], sandbox=policy["sandbox"],
+                rollback=policy["rollback"],
+                args={k: v for k, v in args.items() if k != "content"},
+            )
+            ctx.trace.tool("execute", name=name, outcome="blocked_approval", risk=risk)
+            ctx.transcript.append({
+                "state": AgentState.EXECUTING.value, "action": name,
+                "thoughts": thoughts, "args": args, "risk": risk,
+                "governance": dict(policy),
+                "error": f"BLOCKED: action '{name}' requires explicit approval.",
+            })
+            return True
+        return False
+
+    def _dispatch_step(
+        self, ctx: AgentRunContext, name: str, thoughts: str, args: dict,
+        policy: dict, risk: str, current_user: str,
+    ) -> None:
+        """Role check + shared tool lifecycle, recorded on the transcript either way."""
+        d = self.deps
+        try:
+            d.check_role(name, current_user)
+            # Shared tool lifecycle: pre_tool (may block) → execute → post_tool.
+            result = dispatch_tool(
+                d.hooks, name, args,
+                lambda: d.execute_tool(name, args),
+                user_email=current_user, source="agent",
+            )
+            ctx.trace.tool("execute", name=name, outcome="ok", risk=risk)
+            ctx.transcript.append({
+                "state": AgentState.EXECUTING.value, "action": name,
+                "thoughts": thoughts, "args": args,
+                "risk": risk, "governance": dict(policy), "result": result,
+            })
+        except (ToolError, KeyError, TypeError, PermissionError) as exc:
+            ctx.trace.tool("execute", name=name, outcome="error", risk=risk)
+            ctx.transcript.append({
+                "state": AgentState.EXECUTING.value, "action": name,
+                "thoughts": thoughts, "args": args,
+                "risk": risk, "governance": dict(policy), "error": str(exc),
+            })
 
     # ── VERIFY ───────────────────────────────────────────────────────
     async def verify(

@@ -141,8 +141,49 @@ class ReviewQueueService:
         updated = self._store.update_review_item(item_id, workspace_id=workspace_id, **patch)
         return self._view(updated)
 
-    def dismiss(self, item_id: str, *, workspace_id: Optional[str] = None) -> Dict[str, Any]:
-        return self._transition(item_id, "dismiss", "dismissed", workspace_id=workspace_id)
+    def dismiss(
+        self, item_id: str, *, workspace_id: Optional[str] = None,
+        reason: Optional[str] = None,
+    ) -> Dict[str, Any]:
+        """Dismiss an item; an optional ``reason`` is kept in provenance.
+
+        The reason matters most for ``change_proposal`` items — the review
+        timeline doubles as the change audit log, so "why was this rejected"
+        should survive next to the staged diff.
+        """
+        if not reason:
+            return self._transition(item_id, "dismiss", "dismissed", workspace_id=workspace_id)
+        item = self._store.get_review_item(item_id, workspace_id=workspace_id)
+        self._guard("dismiss", item)
+        provenance = dict(item.get("provenance") or {})
+        provenance["dismiss_reason"] = str(reason)[:500]
+        patch: Dict[str, Any] = {"status": "dismissed", "provenance": provenance}
+        if item.get("snoozed_until") is not None:
+            patch["snoozed_until"] = None
+        updated = self._store.update_review_item(item_id, workspace_id=workspace_id, **patch)
+        return self._view(updated)
+
+    def counts(
+        self, *, workspace_id: Optional[str] = None, user_email: Optional[str] = None,
+    ) -> Dict[str, Any]:
+        """Badge-friendly effective-status counts (pending includes expired snoozes)."""
+        items = [
+            self._view(it)
+            for it in self._store.list_review_items(
+                workspace_id=workspace_id, user_email=user_email,
+            )
+        ]
+        pending = [it for it in items if it["effective_status"] == "pending"]
+        snoozed = [it for it in items if it["effective_status"] == "snoozed"]
+        by_source: Dict[str, int] = {}
+        for it in pending:
+            source = str(it.get("source") or "workflow_run")
+            by_source[source] = by_source.get(source, 0) + 1
+        return {
+            "pending": len(pending),
+            "snoozed": len(snoozed),
+            "pending_by_source": by_source,
+        }
 
     def snooze(
         self, item_id: str, *, until: str, workspace_id: Optional[str] = None,

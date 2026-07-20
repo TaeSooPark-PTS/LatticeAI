@@ -72,6 +72,108 @@ class KnowledgeGraphVectorMixin:
                     )
         return items
 
+    def index_node_incremental(self, node_id: str) -> Dict[str, Any]:
+        """Embed/index only ``node_id`` and its chunks (incremental sync).
+
+        The item construction mirrors :meth:`_iter_vector_source_items` exactly
+        (same ids, same ``source_node``/``parent_source_node`` semantics), so
+        anything this method indexes is indistinguishable from a full
+        :meth:`rebuild_vector_index` pass — and anything it *fails* to index
+        stays visible as ``missing``/``stale`` backlog in :meth:`index_status`,
+        where a later rebuild picks it up.
+
+        Never raises: embedding-provider or storage failures are reported as
+        ``{"status": "failed", ...}`` so ingestion callers can degrade instead
+        of losing an already-persisted write.
+        """
+        node_id = str(node_id or "").strip()
+        started = time.perf_counter()
+        summary: Dict[str, Any] = {
+            "node_id": node_id,
+            "items_total": 0,
+            "items_indexed": 0,
+            "items_skipped": 0,
+        }
+        if not node_id:
+            return {**summary, "status": "skipped", "detail": "node_id required"}
+        try:
+            with self._connect() as conn:
+                row = conn.execute(
+                    "SELECT id, type, title, summary, metadata_json FROM nodes WHERE id=?",
+                    (node_id,),
+                ).fetchone()
+                if row is None:
+                    return {**summary, "status": "skipped", "detail": "node not found"}
+                items: List[Dict[str, Any]] = []
+                if row["type"] != "Chunk":
+                    metadata = _safe_loads(row["metadata_json"])
+                    text = self._vector_text_for_node(
+                        title=row["title"],
+                        summary=row["summary"] or "",
+                        metadata=metadata,
+                    )
+                    if text:
+                        items.append(
+                            {
+                                "item_id": row["id"],
+                                "item_type": "node",
+                                "source_node": row["id"],
+                                "text": text,
+                                "metadata": {"node_type": row["type"], **metadata},
+                            }
+                        )
+                for chunk_row in conn.execute(
+                    """
+                        SELECT c.id, c.source_node AS parent_source_node, c.text, c.metadata_json
+                        FROM chunks c
+                        JOIN nodes n ON n.id=c.id
+                        WHERE c.source_node=?
+                        ORDER BY c.created_at ASC, c.id ASC
+                        """,
+                    (node_id,),
+                ).fetchall():
+                    metadata = _safe_loads(chunk_row["metadata_json"])
+                    text = _clean_text(chunk_row["text"] or "")
+                    if text:
+                        items.append(
+                            {
+                                "item_id": chunk_row["id"],
+                                "item_type": "chunk",
+                                "source_node": chunk_row["id"],
+                                "text": text,
+                                "metadata": {
+                                    **metadata,
+                                    "parent_source_node": chunk_row["parent_source_node"],
+                                },
+                            }
+                        )
+                indexed = skipped = 0
+                for item in items:
+                    if self._upsert_vector_item(conn, **item):
+                        indexed += 1
+                    else:
+                        skipped += 1
+            summary.update(
+                {
+                    "items_total": len(items),
+                    "items_indexed": indexed,
+                    "items_skipped": skipped,
+                }
+            )
+            return {
+                **summary,
+                "status": "indexed" if indexed else "noop",
+                "duration_ms": round((time.perf_counter() - started) * 1000, 2),
+                "embedding_model": self._embedding_model.model_id,
+            }
+        except Exception as exc:  # noqa: BLE001 — incremental sync must never raise
+            return {
+                **summary,
+                "status": "failed",
+                "detail": str(exc),
+                "duration_ms": round((time.perf_counter() - started) * 1000, 2),
+            }
+
     def rebuild_vector_index(
         self,
         *,

@@ -4,6 +4,60 @@ The top entry is either the current unreleased main-branch work or the current
 release line. Older entries are historical and may describe behavior as it
 existed at that release.
 
+## [9.7.0] - 2026-07-20
+
+### Added
+- Added `KnowledgeGraphStore.hybrid_search()`: graph-native fusion of
+  lexical and vector retrieval with normalized scores, per-source
+  provenance, chunk→parent roll-up, workspace scoping, and an honest
+  `lexical_only` fallback; `context_for_query()` gains an opt-in
+  `use_hybrid` flag.
+- Added `index_node_incremental()` and automatic post-ingest vector-index
+  sync in `IngestionPipeline` (opt-out `LATTICEAI_AUTO_VECTOR_INDEX`);
+  vector failures downgrade to `indexing_status: pending` instead of
+  failing the ingest.
+- Added `IngestionPipeline.ingest_folder()` (recursive walk,
+  `.latticeignore` gitignore-like filtering, size/extension limits,
+  optional background queue) and `ingest_web_page()` (formalized
+  extracted-text web seam; fetching/parsing stays upstream).
+- Added `lattice_brain/graph/proactive.py` (`ProactiveBrain`): duplicate
+  detection, contradiction detection, combined `quality_report()`,
+  consent-first `consolidate_duplicates()` planning, and the pure
+  `gate_ingest_candidate()` quality-gating seam.
+- Added `GET /api/brain/duplicates` and `GET /api/brain/quality-report`;
+  `/api/brain/contradictions` and `/api/brain/consolidate` return
+  graph-layer results additively.
+- Added `GET /api/proposals/counts`, `GET /api/proposals/{id}` (diff +
+  staged content), reject-with-reason, and
+  `GET /automation/reviews/counts`; the Review Center UI gains a
+  `change_proposal` filter, diff preview, tier/deletion badges, a
+  pending-count badge, and a reject-reason input (ko/en parity).
+- Added 4 agent-eval scenarios (12 total): file-generation happy path,
+  file-generation recovery, multi-step workflow chain, and a
+  governed-write proposal path pinning the
+  approve()-excludes-governed-tools invariant.
+- Added `tests/unit/test_runtime_consistency.py`,
+  `scripts/profile_kg.py`, and `docs/PERFORMANCE.md` (measured synthetic
+  KG baseline; flags brute-force `vector_search()` as the next
+  optimization target).
+
+### Changed
+- Review Center approval of `change_proposal` items now applies the staged
+  content through `ChangeProposalService.approve_and_apply` (single
+  application path, 409 on replay) instead of only flipping status.
+- Change proposals carry tool/risk/change-class/conversation-id
+  provenance; the agent loop forwards `conversation_id` to the governor.
+- `SingleAgentRuntime.execute` decomposed into six focused helpers
+  (behavior-preserving); the multi-agent orchestrator surfaces real
+  failure reasons in `execution_failed` timeline events.
+- All root legacy modules emit `DeprecationWarning` pointing at their
+  package homes; the legacy-compatibility registry tracks all 13 shims.
+
+### Security
+- Proposal apply/reject stays fail-closed end-to-end: approval applies
+  exactly the reviewed staged content, replays are rejected with 409, and
+  reject reasons land in provenance for audit.
+
 ## [9.6.0] - 2026-07-20
 
 ### Added

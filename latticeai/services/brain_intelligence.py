@@ -65,6 +65,23 @@ class BrainIntelligenceService:
         self._enable_graph = bool(enable_graph and knowledge_graph is not None)
         self._memory_quality = MemoryQualityManager()
         self._edge_quality = GraphEdgeQualityManager()
+        self._proactive_brain: Any = None
+
+    def _proactive(self) -> Any:
+        """Lazy graph-layer ProactiveBrain over the injected store (or None)."""
+        if not self._enable_graph:
+            return None
+        if self._proactive_brain is None:
+            try:
+                from lattice_brain.graph.proactive import ProactiveBrain
+
+                self._proactive_brain = ProactiveBrain(
+                    self._kg, sample_limit=_GRAPH_SAMPLE_LIMIT
+                )
+            except Exception:
+                LOGGER.exception("proactive brain initialization failed")
+                return None
+        return self._proactive_brain
 
     # ── shared graph sampling ─────────────────────────────────────────────
 
@@ -302,6 +319,56 @@ class BrainIntelligenceService:
             "generated_at": _now(),
         }
 
+    # ── graph-layer proactive quality (v9.6.x) ───────────────────────────
+
+    def graph_duplicates(
+        self, *, user_email: Optional[str] = None, workspace_id: Optional[str] = None
+    ) -> Dict[str, Any]:
+        """Duplicate graph nodes (exact groups + near pairs) — read only."""
+        proactive = self._proactive()
+        if proactive is None:
+            return {
+                "available": False,
+                "exact_groups": [],
+                "near_pairs": [],
+                "exact_duplicate_nodes": 0,
+                "nodes_scanned": 0,
+                "generated_at": _now(),
+            }
+        try:
+            result = dict(proactive.find_duplicates(workspace_id=workspace_id))
+        except Exception as exc:
+            LOGGER.exception("graph duplicates scan failed")
+            return {
+                "available": False,
+                "error": str(exc),
+                "exact_groups": [],
+                "near_pairs": [],
+                "exact_duplicate_nodes": 0,
+                "nodes_scanned": 0,
+                "generated_at": _now(),
+            }
+        result["available"] = True
+        result["generated_at"] = _now()
+        return result
+
+    def quality_report(
+        self, *, user_email: Optional[str] = None, workspace_id: Optional[str] = None
+    ) -> Dict[str, Any]:
+        """Combined graph quality report: duplicates, contradictions, stale
+        nodes, edge quality — one workspace-scoped graph sample."""
+        proactive = self._proactive()
+        if proactive is None:
+            return {"available": False, "generated_at": _now()}
+        try:
+            result = dict(proactive.quality_report(workspace_id=workspace_id))
+        except Exception as exc:
+            LOGGER.exception("graph quality report failed")
+            return {"available": False, "error": str(exc), "generated_at": _now()}
+        result["available"] = True
+        result["generated_at"] = _now()
+        return result
+
     # ── contradictions ───────────────────────────────────────────────────
 
     def contradictions(
@@ -365,7 +432,21 @@ class BrainIntelligenceService:
                     "signal": "contradicts_edge",
                 })
 
-        items = conflicts + temporal_items + edge_items
+        # v9.6.x additive: graph-layer node-content contradictions (proactive
+        # detector over node title/summary), on top of the memory + edge scans.
+        graph_pair_items: List[Dict[str, Any]] = []
+        proactive = self._proactive()
+        if proactive is not None:
+            try:
+                graph_result = proactive.detect_contradictions(workspace_id=workspace_id)
+                graph_pair_items = [
+                    {"kind": "graph_node_pair", **pair}
+                    for pair in graph_result.get("node_pairs") or []
+                ]
+            except Exception:
+                LOGGER.exception("graph contradiction scan failed")
+
+        items = conflicts + temporal_items + edge_items + graph_pair_items
         return {
             "items": items,
             "count": len(items),
@@ -373,6 +454,7 @@ class BrainIntelligenceService:
                 "memory_pairs": len(conflicts),
                 "temporal": len(temporal_items),
                 "graph_edges": len(edge_items),
+                "graph_node_pairs": len(graph_pair_items),
             },
             "memories_scanned": len(memory_rows),
             "generated_at": _now(),
@@ -422,6 +504,19 @@ class BrainIntelligenceService:
             except Exception:
                 LOGGER.exception("consolidation prune failed")
 
+        # v9.6.x additive: graph-layer node merge plan. Always dry-run from
+        # this service — graph content changes stay proposal-first; the plan
+        # is surfaced so a governed apply path can adopt it later.
+        graph_consolidation: Optional[Dict[str, Any]] = None
+        proactive = self._proactive()
+        if proactive is not None:
+            try:
+                graph_consolidation = proactive.consolidate_duplicates(
+                    workspace_id=workspace_id, dry_run=True
+                )
+            except Exception:
+                LOGGER.exception("graph consolidation plan failed")
+
         return {
             "mode": "applied" if apply else "dry_run",
             "memories_scanned": len(memory_rows),
@@ -432,6 +527,7 @@ class BrainIntelligenceService:
             # mutates graph content directly.
             "duplicate_edges": duplicate_edge_ids[:50],
             "duplicate_edge_count": len(duplicate_edge_ids),
+            "graph_consolidation": graph_consolidation,
             "generated_at": _now(),
         }
 
