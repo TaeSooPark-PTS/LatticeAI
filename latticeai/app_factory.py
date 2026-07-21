@@ -911,6 +911,7 @@ def _build(config: "Optional[Config]" = None) -> Dict[str, Any]:
         chat_service=CHAT_SERVICE,
         context_assembler=CONTEXT_ASSEMBLER,
         brain_memory=BRAIN_MEMORY,
+        ingestion_pipeline=INGESTION_PIPELINE if ENABLE_GRAPH else None,
         chat_agent_runtime=CHAT_AGENT_RUNTIME,
         gardener=gardener,
         hooks=HOOKS_REGISTRY,

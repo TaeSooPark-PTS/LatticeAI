@@ -1,6 +1,6 @@
 # Privacy
 
-Current release: **9.9.1 — Clean Foundations**.
+Current release: **9.9.2 — Artifact Trust**.
 
 Lattice AI is local-first. It does not send your prompts, files, graph, or Brain
 archive to Lattice-owned servers by default. Some user-chosen features can

@@ -3099,6 +3099,50 @@ body {
   font-size: 0.76rem;
 }
 
+/* Honesty badge: the file was rebuilt by the deterministic repair scaffold.
+   Base colors follow the dark default theme; light overrides below. */
+.brain-created-file-repaired {
+  border: 1px solid hsl(38 92% 42% / 0.55);
+  border-radius: 999px;
+  background: hsl(38 92% 50% / 0.14);
+  color: hsl(38 92% 68%);
+  padding: 0.16rem 0.55rem;
+  font-size: 0.7rem;
+  font-weight: 700;
+}
+
+:root[data-theme="light"] .brain-created-file-repaired {
+  color: hsl(30 80% 34%);
+}
+
+/* Terminal non-success agent states — warm warning, never the success green. */
+.brain-agent-state-note {
+  display: block;
+  margin-top: 0.5rem;
+  border: 1px solid hsl(38 92% 42% / 0.5);
+  border-left-width: 4px;
+  border-radius: 8px;
+  background: hsl(38 92% 50% / 0.1);
+  color: hsl(38 92% 70%);
+  padding: 0.5rem 0.7rem;
+  font-size: 0.82rem;
+  font-weight: 600;
+}
+
+.brain-agent-state-note.is-failed {
+  border-color: hsl(0 72% 48% / 0.5);
+  background: hsl(0 72% 52% / 0.08);
+  color: hsl(0 80% 72%);
+}
+
+:root[data-theme="light"] .brain-agent-state-note {
+  color: hsl(30 70% 32%);
+}
+
+:root[data-theme="light"] .brain-agent-state-note.is-failed {
+  color: hsl(0 62% 40%);
+}
+
 .brain-answer-proof {
   display: grid;
   gap: 0.45rem;

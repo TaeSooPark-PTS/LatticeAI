@@ -18,7 +18,7 @@ from lattice_brain.runtime.hooks import dispatch_tool
 from latticeai.api.chat_contracts import AgentEvalRequest, AgentRequest, AgentResumeRequest
 from latticeai.api.chat_helpers import _LANG_HINT, detect_language, workspace_scope_from_request
 from latticeai.core.agent import AgentRunContext, AgentState
-from latticeai.services.tool_dispatch import collect_created_files
+from latticeai.services.tool_dispatch import collect_artifacts, collect_created_files
 
 
 class AgentHTTPController:
@@ -307,6 +307,7 @@ class AgentHTTPController:
             "state_history": ctx.state_history,
             "final_state": ctx.state.value,
             "created_files": collect_created_files(ctx.transcript),
+            "artifacts": collect_artifacts(ctx.transcript),
             "loop": ctx.trace.summary(),
         }
 

@@ -208,6 +208,7 @@ def create_chat_router(context: AppContext) -> APIRouter:
         execute_tool=execute_tool,
         agent_controller=agent_controller,
         agent_root=AGENT_ROOT,
+        ingestion_pipeline=context.ingestion_pipeline,
     )
     document_coordinator = DocumentGenerationCoordinator(
         model_router=model_router,
@@ -276,6 +277,8 @@ def create_chat_router(context: AppContext) -> APIRouter:
             direct_response = await intent_controller.direct_file_action(
                 req,
                 model_id=selected_model_id,
+                effective_email=effective_email,
+                workspace_id=workspace_id,
             )
             if direct_response is not None:
                 return direct_response

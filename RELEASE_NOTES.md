@@ -1,11 +1,12 @@
 # Release Notes
 
-This repository keeps public release history from **8.0.0 through 9.9.1**.
+This repository keeps public release history from **8.0.0 through 9.9.2**.
 Earlier release notes and release evidence were removed from the Git tree so the
 history stays focused on the current product era.
 
 ## Current Release
 
+- [v9.9.2 - Artifact Trust](RELEASE_NOTES_v9.9.2.md)
 - [v9.9.1 - Clean Foundations](RELEASE_NOTES_v9.9.1.md)
 
 ## Recent Release Notes

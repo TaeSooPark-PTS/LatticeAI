@@ -307,6 +307,42 @@ def collect_created_files(transcript: list) -> list:
     return files
 
 
+def collect_artifacts(transcript: list) -> list:
+    """Artifact-first view of a run: every produced file with honesty flags.
+
+    ``repaired`` surfaces the ArtifactWritePipeline verdict recorded on the
+    transcript step (``content_sanitize``) so the UI can badge deterministic
+    scaffolds instead of presenting them as high-quality model output.
+    """
+    from latticeai.core.file_generation import PREVIEWABLE_EXTENSIONS
+
+    artifacts = []
+    for step in transcript:
+        if step.get("action") not in FILE_CREATE_ACTIONS:
+            continue
+        result = step.get("result", {})
+        if not isinstance(result, dict):
+            continue
+        sanitize = step.get("content_sanitize") or {}
+        repaired = bool(sanitize.get("repaired"))
+        rel_paths = (
+            result["created_files"]
+            if isinstance(result.get("created_files"), list)
+            else ([result["path"]] if result.get("path") else [])
+        )
+        for rel_path in rel_paths:
+            artifacts.append({
+                "kind": "file",
+                "path": rel_path,
+                "filename": Path(rel_path).name,
+                "bytes": result.get("bytes", 0) if len(rel_paths) == 1 else 0,
+                "previewable": Path(rel_path).suffix.lower() in PREVIEWABLE_EXTENSIONS,
+                "valid": True,
+                "repaired": repaired,
+            })
+    return artifacts
+
+
 def build_agent_runtime(
     *,
     model_router: Any,

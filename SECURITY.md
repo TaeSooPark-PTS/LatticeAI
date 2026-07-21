@@ -3,7 +3,7 @@
 > **Status: canonical** — current security model, kept in sync with the current
 > release.
 
-Current release: **9.9.1 — Clean Foundations**.
+Current release: **9.9.2 — Artifact Trust**.
 
 ## Supported Versions
 

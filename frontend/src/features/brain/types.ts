@@ -11,6 +11,9 @@ export type Message = {
   files?: MessageFile[];
   // Honest signal about how much graph context backed this answer.
   contextQuality?: MessageContextQuality;
+  // Terminal agent-loop state for this reply (NEEDS_REVIEW/FAILED render as
+  // warnings, never as success).
+  agentState?: string;
 };
 
 // Additive chat meta ("context_quality") flowing on the same channel as
@@ -26,6 +29,9 @@ export type MessageFile = {
   path: string;
   filename: string;
   bytes: number;
+  // True when the generation pipeline had to fall back to a deterministic
+  // repair scaffold — the UI badges these so they are never oversold.
+  repaired?: boolean;
 };
 
 export type EvidenceConfidence = "high" | "medium" | "low";

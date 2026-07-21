@@ -295,6 +295,11 @@ export function CreatedFilesCard({
           <li key={file.path}>
             <span className="brain-created-file-name">{file.filename}</span>
             {file.bytes ? <small>{formatFileSize(file.bytes)}</small> : null}
+            {file.repaired ? (
+              <span className="brain-created-file-repaired" role="note">
+                {t(language, "brain.files.repaired")}
+              </span>
+            ) : null}
             <button type="button" onClick={() => void download(file)} disabled={downloading === file.path}>
               <Download className="h-3.5 w-3.5" aria-hidden="true" />
               {downloading === file.path ? t(language, "brain.files.downloading") : t(language, "brain.files.download")}

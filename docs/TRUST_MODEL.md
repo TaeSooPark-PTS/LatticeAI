@@ -1,6 +1,6 @@
 # Lattice AI Trust Model
 
-Current release: **9.9.1 — Clean Foundations**.
+Current release: **9.9.2 — Artifact Trust**.
 
 Lattice AI is local-first, explicit about external communication, and honest
 when a capability is unavailable.

@@ -32,6 +32,7 @@ from typing import Any, Awaitable, Callable, Dict, FrozenSet, List, Optional, Tu
 from lattice_brain.runtime.hooks import dispatch_tool
 from lattice_brain.runtime.contracts import runtime_boundary_contract, single_agent_contract
 from latticeai.core.agent_trace import LoopTrace
+from latticeai.core.file_generation import infer_file_target, sanitize_write_content
 from latticeai.core.tool_registry import SCOPED_KNOWLEDGE_TOOLS
 from latticeai.tools import ToolError
 
@@ -139,6 +140,91 @@ def extract_action(raw: str) -> Dict:
     """Back-compat wrapper over :func:`extract_action_details`."""
     action, _ = extract_action_details(raw)
     return action
+
+
+def normalize_plan(plan: Any, user_message: str) -> Tuple[Dict[str, Any], List[str]]:
+    """Enforce the minimal plan schema so execution never starts adrift.
+
+    A weak planner that returns junk steps / a missing goal previously flowed
+    straight into the executor, which then had to reconstruct intent from the
+    raw request. Normalization keeps the loop honest: ``goal`` is always a
+    non-empty string, ``steps`` only contains dicts with an ``action``, and an
+    empty plan for an obvious file-creation request gets a deterministic
+    single ``write_file`` step instead of leaving the executor to improvise.
+
+    Returns ``(plan, fixes)`` where ``fixes`` names every applied repair —
+    the loop trace records them so plan quality is observable per model.
+    """
+    fixes: List[str] = []
+    if not isinstance(plan, dict):
+        plan = {}
+        fixes.append("plan_not_object")
+    plan = dict(plan)
+
+    goal = str(plan.get("goal") or "").strip()
+    if not goal:
+        plan["goal"] = user_message
+        fixes.append("goal_defaulted")
+
+    raw_steps = plan.get("steps")
+    steps = [
+        s for s in (raw_steps if isinstance(raw_steps, list) else [])
+        if isinstance(s, dict) and s.get("action")
+    ]
+    if raw_steps and steps != raw_steps:
+        fixes.append("steps_filtered")
+    if not steps:
+        inferred = infer_file_target(user_message)
+        if inferred:
+            steps = [{
+                "action": "write_file",
+                "args": {"path": inferred},
+                "description": f"Create {inferred} for: {user_message[:120]}",
+            }]
+            fixes.append("heuristic_file_step")
+    plan["steps"] = steps
+
+    try:
+        estimated = int(plan.get("estimated_steps") or 0)
+    except (TypeError, ValueError):
+        estimated = 0
+        fixes.append("estimated_steps_invalid")
+    plan["estimated_steps"] = max(1, estimated, len(steps))
+    plan["requires_approval"] = bool(plan.get("requires_approval", False))
+    if not isinstance(plan.get("rollback_strategy"), str):
+        plan["rollback_strategy"] = "none"
+    return plan, fixes
+
+
+_TRIVIAL_LEARNING_RE = re.compile(
+    r"^(파일(을|이)?\s*(만들|생성|작성|저장)|작업(을|이)?\s*(완료|성공)|성공적으로"
+    r"|task\s+(was\s+)?complet|file\s+(was\s+)?(creat|written|saved)"
+    r"|(successfully\s+)?(created|completed|finished|done)\b)",
+    re.IGNORECASE,
+)
+
+
+def filter_learnings(learnings: List[Any]) -> List[str]:
+    """Drop trivial/duplicate learnings before they enter the brain.
+
+    "파일을 만들었다"-class statements restate what the transcript already
+    records and pollute recall. A learning survives when it is long enough to
+    carry information and is not a bare completion announcement.
+    """
+    kept: List[str] = []
+    seen: set = set()
+    for raw in learnings or []:
+        text = str(raw or "").strip()
+        if len(text) < 12:
+            continue
+        if _TRIVIAL_LEARNING_RE.match(text) and len(text) < 48:
+            continue
+        key = text.lower()
+        if key in seen:
+            continue
+        seen.add(key)
+        kept.append(text)
+    return kept
 
 
 @dataclass
@@ -258,6 +344,9 @@ class SingleAgentRuntime:
                 "goal": req.message, "steps": [],
                 "requires_approval": False, "rollback_strategy": "none", "estimated_steps": 1,
             }
+        plan, plan_fixes = normalize_plan(plan, req.message)
+        if plan_fixes:
+            ctx.trace.repair("plan", repairs=plan_fixes)
         ctx.plan = plan
         ctx.transcript.append({
             "state": AgentState.PLANNING.value,
@@ -266,6 +355,7 @@ class SingleAgentRuntime:
             "requires_approval": plan.get("requires_approval", False),
             "rollback_strategy": plan.get("rollback_strategy", "none"),
             "estimated_steps": plan.get("estimated_steps", 1),
+            **({"plan_fixes": plan_fixes} if plan_fixes else {}),
         })
         ctx.state = AgentState.WAITING_APPROVAL
 
@@ -557,6 +647,26 @@ class SingleAgentRuntime:
     ) -> None:
         """Role check + shared tool lifecycle, recorded on the transcript either way."""
         d = self.deps
+        sanitize_meta: Optional[Dict[str, Any]] = None
+        if name == "write_file" and isinstance(args.get("content"), str):
+            # ArtifactWritePipeline: the executor's args.content is untrusted
+            # model output. The same extract→validate→repair guarantee as the
+            # direct chat path applies here, so a weak model driving the JSON
+            # loop can never persist fenced/chatty/truncated payloads.
+            cleaned, meta = sanitize_write_content(
+                str(args.get("path") or ""), args["content"],
+                user_request=str(ctx.plan.get("goal") or thoughts or name),
+            )
+            if meta.get("sanitized"):
+                args = dict(args)
+                args["content"] = cleaned
+                sanitize_meta = meta
+                ctx.trace.repair(
+                    "execute",
+                    repairs=[
+                        "artifact_repair" if meta.get("repaired") else "artifact_sanitize"
+                    ],
+                )
         try:
             d.check_role(name, current_user)
             # Shared tool lifecycle: pre_tool (may block) → execute → post_tool.
@@ -570,6 +680,7 @@ class SingleAgentRuntime:
                 "state": AgentState.EXECUTING.value, "action": name,
                 "thoughts": thoughts, "args": args,
                 "risk": risk, "governance": dict(policy), "result": result,
+                **({"content_sanitize": sanitize_meta} if sanitize_meta else {}),
             })
         except (ToolError, KeyError, TypeError, PermissionError) as exc:
             ctx.trace.tool("execute", name=name, outcome="error", risk=risk)
@@ -791,8 +902,9 @@ class SingleAgentRuntime:
                 context=context, max_tokens=256, temperature=0.1,
             )
             mem = extract_action(str(raw))
-            if mem.get("save_to_knowledge") and mem.get("learnings"):
-                learnings = "\n".join(mem["learnings"])
+            kept_learnings = filter_learnings(mem.get("learnings") or [])
+            if mem.get("save_to_knowledge") and kept_learnings:
+                learnings = "\n".join(kept_learnings)
                 if d.brain_memory is not None:
                     # This runtime is LLM-driven — its learnings are real
                     # experiences and enter the brain with provenance.

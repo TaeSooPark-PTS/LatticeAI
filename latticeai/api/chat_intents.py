@@ -3,8 +3,10 @@
 from __future__ import annotations
 
 import logging
+import os
+import re
 from pathlib import Path
-from typing import Any, Dict, Optional
+from typing import Any, Dict, List, Optional
 
 from fastapi import HTTPException, Request
 from fastapi.responses import JSONResponse, StreamingResponse
@@ -17,7 +19,43 @@ from latticeai.api.chat_helpers import (
 )
 from latticeai.api.chat_stream import agent_payload_stream, single_answer_response
 from latticeai.core.agent import AgentState
-from latticeai.core.file_generation import generate_file_content, infer_file_target
+from latticeai.core.file_generation import (
+    PREVIEWABLE_EXTENSIONS,
+    generate_file_content,
+    infer_file_target,
+)
+
+
+def next_available_path(root: Path, target: str) -> str:
+    """Return ``target`` unchanged, or a ``name_2.ext``-style variant when the
+    file already exists in the workspace.
+
+    The direct chat write path must never silently overwrite an existing file:
+    overwrites belong to the reviewable-proposal flow. Deterministic suffixing
+    keeps "make me an html page" repeatable without a 409 dead end.
+    """
+    candidate = (root / target)
+    if not candidate.exists():
+        return target
+    stem, suffix = candidate.stem, candidate.suffix
+    # An earlier auto-suffix run may have produced name_2 already; restart the
+    # numbering from the base name so we fill the first free slot.
+    base = re.sub(r"_\d+$", "", stem) or stem
+    for index in range(2, 100):
+        variant = candidate.with_name(f"{base}_{index}{suffix}")
+        if not variant.exists():
+            return str(Path(target).with_name(variant.name))
+    raise HTTPException(
+        status_code=409,
+        detail=f"'{target}' 이름의 파일이 너무 많습니다. 다른 이름을 지정해 주세요.",
+    )
+
+
+def ingest_generated_enabled() -> bool:
+    """Feature toggle for auto-indexing generated files into the Brain."""
+    return os.environ.get("LATTICEAI_INGEST_GENERATED", "1").strip().lower() not in {
+        "0", "false", "off", "no",
+    }
 
 
 class ChatIntentController:
@@ -41,6 +79,7 @@ class ChatIntentController:
         execute_tool: Any,
         agent_controller: Any,
         agent_root: Path,
+        ingestion_pipeline: Any = None,
     ) -> None:
         self.router = model_router
         self.config = config
@@ -59,6 +98,7 @@ class ChatIntentController:
         self.execute_tool = execute_tool
         self.agent_controller = agent_controller
         self.agent_root = Path(agent_root)
+        self.ingestion_pipeline = ingestion_pipeline
 
     def no_model_response(self) -> JSONResponse:
         detail = "No model loaded. Call /models/load first."
@@ -184,13 +224,25 @@ class ChatIntentController:
         )
         return single_answer_response(req, answer, model="client_url")
 
-    async def direct_file_action(self, req: Any, *, model_id: Optional[str]):
+    async def direct_file_action(
+        self,
+        req: Any,
+        *,
+        model_id: Optional[str],
+        effective_email: Optional[str] = None,
+        workspace_id: Optional[str] = None,
+    ):
         # An explicit path ("report.txt") wins; otherwise infer one from an
         # explicit type keyword ("html 파일 만들어줘") so weak models never
         # have to drive the JSON tool loop just to create a file.
         target_path = file_action_target(req.message) or infer_file_target(req.message)
         if not target_path:
             return None
+        # Never silently overwrite: an existing target gets a _2/_3 suffix so
+        # regeneration is safe and repeatable without the proposal flow.
+        deduped_path = next_available_path(self.agent_root, target_path)
+        renamed = deduped_path != target_path
+        target_path = deduped_path
         content = inline_file_action_content(req.message)
         generation_meta: Optional[Dict[str, Any]] = None
         if content is None and not model_id:
@@ -227,19 +279,43 @@ class ChatIntentController:
             )
         except self.tool_error as exc:
             raise HTTPException(status_code=400, detail=str(exc)) from exc
-        answer = f"{result.get('path') or target_path} 파일을 만들었습니다."
-        if generation_meta and generation_meta.get("repaired"):
+        final_path = result.get("path") or target_path
+        answer = f"{final_path} 파일을 만들었습니다."
+        if renamed:
+            answer += " (같은 이름의 파일이 있어 새 이름으로 저장했습니다.)"
+        repaired = bool(generation_meta and generation_meta.get("repaired"))
+        if repaired:
             answer += (
                 " (모델 출력이 불완전해 자동 보정을 거쳐 유효한 파일로 저장했습니다.)"
             )
         created_files = [
             {
-                "path": result.get("path") or target_path,
-                "filename": Path(result.get("path") or target_path).name,
+                "path": final_path,
+                "filename": Path(final_path).name,
                 "bytes": result.get("bytes", 0),
                 "action": "write_file",
             }
         ]
+        # Artifact-first contract: every file the request produced, with the
+        # honesty flags the UI needs (valid vs repaired scaffold, previewable).
+        artifacts: List[Dict[str, Any]] = [
+            {
+                "kind": "file",
+                "path": final_path,
+                "filename": Path(final_path).name,
+                "bytes": result.get("bytes", 0),
+                "previewable": Path(final_path).suffix.lower() in PREVIEWABLE_EXTENSIONS,
+                "valid": True,
+                "repaired": repaired,
+            }
+        ]
+        brain_ingest = self._ingest_generated_file(
+            final_path,
+            content,
+            effective_email=effective_email,
+            workspace_id=workspace_id,
+            conversation_id=getattr(req, "conversation_id", None),
+        )
         self.notify("user", req.message, req.source)
         self.notify("assistant", answer, req.source)
         payload = {
@@ -257,11 +333,14 @@ class ChatIntentController:
             "state_history": [AgentState.EXECUTING.value, AgentState.DONE.value],
             "final_state": AgentState.DONE.value,
             "created_files": created_files,
+            "artifacts": artifacts,
             "routed_to_agent": True,
             "action_route": "direct_write_file",
         }
         if generation_meta is not None:
             payload["generation"] = generation_meta
+        if brain_ingest is not None:
+            payload["brain_ingest"] = brain_ingest
         if req.stream:
             return StreamingResponse(
                 agent_payload_stream(
@@ -274,6 +353,50 @@ class ChatIntentController:
                 headers={"X-Model": model_id or "tool", "X-Routed-To": "agent"},
             )
         return JSONResponse(content=payload)
+
+    def _ingest_generated_file(
+        self,
+        rel_path: str,
+        content: Optional[str],
+        *,
+        effective_email: Optional[str],
+        workspace_id: Optional[str],
+        conversation_id: Optional[str],
+    ) -> Optional[Dict[str, Any]]:
+        """Optionally index a just-generated file into the Brain.
+
+        The knowledge promise is "what Lattice makes, Lattice remembers":
+        without this, generated files are invisible to recall until the user
+        re-uploads them. Best-effort and additive — ingestion problems never
+        fail the file creation, and LATTICEAI_INGEST_GENERATED=0 disables it.
+        """
+        if self.ingestion_pipeline is None or not ingest_generated_enabled():
+            return None
+        try:
+            from lattice_brain.ingestion import IngestionItem
+
+            item = IngestionItem(
+                source_type="file",
+                title=Path(rel_path).name,
+                text=content,
+                path=str(self.agent_root / rel_path),
+                source_uri=f"workspace://{rel_path}",
+                owner=effective_email,
+                workspace_id=workspace_id,
+                conversation_id=conversation_id,
+                metadata={"origin": "generated_file", "route": "direct_write_file"},
+            )
+            result = self.ingestion_pipeline.ingest(item, user_email=effective_email)
+            payload = result.as_dict() if hasattr(result, "as_dict") else dict(result or {})
+            return {
+                "status": payload.get("status"),
+                "node_id": payload.get("node_id"),
+                "chunk_count": payload.get("chunk_count", 0),
+                "duplicate": payload.get("duplicate", False),
+            }
+        except Exception as exc:  # noqa: BLE001 — indexing must never break creation
+            logging.warning("generated-file ingest failed: %s", exc)
+            return {"status": "failed", "detail": str(exc)[:200]}
 
     async def route_file_to_agent(
         self,

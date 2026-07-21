@@ -136,15 +136,27 @@ export function useBrainChat({
             });
           },
           onAgent: (agent) => {
+            const repaired = Boolean(agent.generation?.repaired);
             const files = (agent.created_files || []).map((file) => ({
               path: file.path,
               filename: file.filename || file.path.split("/").pop() || file.path,
               bytes: file.bytes || 0,
+              repaired,
             }));
-            if (!files.length) return;
+            // NEEDS_REVIEW / FAILED must reach the message even when no file
+            // was produced — they render as warnings, never as success.
+            const agentState =
+              agent.final_state === "NEEDS_REVIEW" || agent.final_state === "FAILED"
+                ? agent.final_state
+                : undefined;
+            if (!files.length && !agentState) return;
             setMessages((items) => {
               const next = [...items];
-              next[next.length - 1] = { ...next[next.length - 1], files };
+              next[next.length - 1] = {
+                ...next[next.length - 1],
+                ...(files.length ? { files } : {}),
+                ...(agentState ? { agentState } : {}),
+              };
               return next;
             });
           },

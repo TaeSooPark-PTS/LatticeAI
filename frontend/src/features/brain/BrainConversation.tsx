@@ -267,6 +267,9 @@ export function BrainConversation({
                         />
                       ) : null}
                       {message.files?.length ? <CreatedFilesCard language={language} files={message.files} /> : null}
+                      {message.role === "assistant" && message.agentState ? (
+                        <AgentStateNote language={language} state={message.agentState} />
+                      ) : null}
                       {proof ? <AnswerProofCard language={language} proof={proof} messageId={messageId} /> : null}
                     </div>
                   );
@@ -580,6 +583,21 @@ export function BrainConversation({
 
 // Honest signaling: a quiet inline note when the Brain answered with limited
 // graph-backed context, so users know how much to trust the recall behind it.
+// Terminal non-success states get a visually distinct warning strip so a
+// NEEDS_REVIEW/FAILED run can never be mistaken for a completed one.
+function AgentStateNote({ language, state }: { language: Language; state: string }) {
+  const key = state === "FAILED" ? "brain.agent.failed" : "brain.agent.needsReview";
+  return (
+    <p
+      className={`brain-agent-state-note ${state === "FAILED" ? "is-failed" : "is-review"}`}
+      role="alert"
+      data-testid="agent-state-note"
+    >
+      {t(language, key)}
+    </p>
+  );
+}
+
 function ContextQualityNote({ language, reason }: { language: Language; reason: string | null }) {
   return (
     <p className="brain-context-quality-note" role="note" data-testid="context-quality-note">

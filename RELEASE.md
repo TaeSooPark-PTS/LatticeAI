@@ -13,6 +13,21 @@
 > (`LTCAI_RELEASE_EVIDENCE_KEEP`으로 조정), 과거 증거는 언제든 해당 태그를
 > 체크아웃해 재생성할 수 있습니다.
 
+## v9.9.2 — Artifact Trust (2026-07-21)
+
+9.9.2 unifies every file write behind the model-agnostic validation pipeline
+(`sanitize_write_content` — the agent JSON loop now shares the direct chat
+path's extract→validate→repair guarantee), makes the chat surface
+artifact-first (`artifacts[]` contract, auto-suffix instead of silent
+overwrite, optional Brain indexing of generated files), enforces the minimal
+plan schema with a deterministic file-step fallback, filters trivial agent
+learnings before they enter the Brain, and renders honesty in the UI:
+"Auto-repaired" badges on file cards and an unmistakable warning strip for
+`NEEDS_REVIEW`/`FAILED` runs. The FG-01..FG-08 scenario matrix from the
+2026-07-21 review is pinned as a permanent unit-test harness.
+
+- 상세: [RELEASE_NOTES_v9.9.2.md](RELEASE_NOTES_v9.9.2.md)
+
 ## v9.9.1 — Clean Foundations (2026-07-21)
 
 9.9.1 removes the legacy root-shim layer (12 of 13 tracked shims deleted;

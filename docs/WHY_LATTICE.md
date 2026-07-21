@@ -1,6 +1,6 @@
 # Why Lattice AI Exists
 
-Current release: **9.9.1 — Clean Foundations**.
+Current release: **9.9.2 — Artifact Trust**.
 
 **Lattice AI is a local-first Digital Brain that keeps your knowledge durable
 across any AI model.**

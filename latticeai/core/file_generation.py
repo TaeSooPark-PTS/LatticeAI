@@ -195,6 +195,14 @@ def validate_file_content(content: str, target_path: str) -> Tuple[bool, str]:
             return False, "not a complete HTML document (missing <!DOCTYPE html>/<html>)"
         if "</html>" not in lower:
             return False, "HTML document is truncated (missing </html>)"
+        # A document that merely *contains* html somewhere is not a valid
+        # file payload: fenced/chat-wrapped replies must fail here so the
+        # extraction pass gets a chance to slice out the real document.
+        stripped = content.lstrip()
+        if not (stripped.lower().startswith("<!doctype") or stripped.lower().startswith("<html")):
+            return False, "HTML document is wrapped in prose or fences"
+        if "```" in content:
+            return False, "output still contains Markdown fences"
         return True, "ok"
     if ext == ".json":
         try:
@@ -359,6 +367,54 @@ def _repair_html(salvage: str, user_request: str) -> str:
     )
 
 
+# Extensions the Brain UI can render inline (preview) after creation.
+PREVIEWABLE_EXTENSIONS = frozenset({
+    ".html", ".htm", ".md", ".markdown", ".txt", ".json", ".css", ".js",
+    ".csv", ".py", ".yaml", ".yml", ".xml", ".sql", ".sh",
+})
+
+
+# ── write-side sanitize (ArtifactWritePipeline) ─────────────────────────
+
+def sanitize_write_content(
+    target_path: str,
+    content: Any,
+    user_request: str = "",
+) -> Tuple[str, Dict[str, Any]]:
+    """Single write-side guarantee for model-produced file content.
+
+    The direct chat path already runs the full generate→validate→repair
+    pipeline, but the agent JSON loop historically wrote ``args.content``
+    verbatim — weak models routinely put fenced/chatty payloads there. This
+    conservative sanitizer closes that gap for *any* write entry point:
+
+    1. content that already validates is returned byte-for-byte unchanged
+       (trusted/user-authored content is never mangled);
+    2. otherwise the extraction pass strips fences/think-blocks/chat noise
+       and is used only when the extracted payload validates;
+    3. otherwise deterministic repair guarantees a structurally valid file.
+
+    Empty content is left untouched (creating an empty file is a legitimate,
+    intentional action — e.g. ``__init__.py``). Returns ``(content, meta)``
+    where meta is ``{"sanitized": bool, "repaired": bool, "reason": str}``.
+    """
+    raw = str(content or "")
+    if not raw.strip():
+        return raw, {"sanitized": False, "repaired": False, "reason": "empty"}
+    ok, reason = validate_file_content(raw, target_path)
+    if ok:
+        return raw, {"sanitized": False, "repaired": False, "reason": "ok"}
+    extracted = extract_file_content(raw, target_path)
+    if extracted:
+        extracted_ok, _ = validate_file_content(extracted, target_path)
+        if extracted_ok:
+            return extracted, {"sanitized": True, "repaired": False, "reason": reason}
+    repaired = repair_file_content(
+        extracted or raw, target_path, user_request or f"content for {target_path}"
+    )
+    return repaired, {"sanitized": True, "repaired": True, "reason": reason}
+
+
 # ── filename inference ──────────────────────────────────────────────────
 
 _CREATE_VERB_RE = re.compile(
@@ -441,11 +497,13 @@ async def generate_file_content(
 
 
 __all__ = [
+    "PREVIEWABLE_EXTENSIONS",
     "build_file_generation_context",
     "extract_file_content",
     "generate_file_content",
     "infer_file_target",
     "looks_like_refusal",
     "repair_file_content",
+    "sanitize_write_content",
     "validate_file_content",
 ]

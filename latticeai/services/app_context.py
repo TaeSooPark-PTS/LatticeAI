@@ -34,6 +34,9 @@ class AppContext:
     chat_service: Any = None
     context_assembler: Any = None
     brain_memory: Any = None
+    # Unified ingestion gateway (lattice_brain.ingestion.IngestionPipeline);
+    # None when the knowledge graph is disabled.
+    ingestion_pipeline: Any = None
     chat_agent_runtime: Any = None
     gardener: Any = None
     hooks: Any = None

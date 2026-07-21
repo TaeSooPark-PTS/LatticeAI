@@ -147,6 +147,13 @@ export type ChatAgentPayload = {
   created_files?: ChatCreatedFile[];
   routed_to_agent?: boolean;
   action_route?: string;
+  // Terminal loop state (DONE | NEEDS_REVIEW | FAILED | ...): NEEDS_REVIEW and
+  // FAILED must never render like success.
+  final_state?: string;
+  // Honesty meta from the file-generation pipeline; `repaired` marks a
+  // deterministic fallback scaffold rather than clean model output.
+  generation?: { repaired?: boolean; attempts?: unknown[] };
+  artifacts?: Array<Record<string, unknown>>;
 };
 
 export type ChatEventHandlers = {

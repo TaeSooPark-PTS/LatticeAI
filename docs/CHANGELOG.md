@@ -4,6 +4,42 @@ The top entry is either the current unreleased main-branch work or the current
 release line. Older entries are historical and may describe behavior as it
 existed at that release.
 
+## [9.9.2] - 2026-07-21
+
+### Added
+- ArtifactWritePipeline: `sanitize_write_content` in
+  `latticeai/core/file_generation.py` — a conservative validate-first →
+  extract → repair gate. The agent executor applies it to every `write_file`
+  `args.content` before dispatch, records a `content_sanitize` verdict on the
+  transcript, and tags `artifact_sanitize`/`artifact_repair` in the loop trace.
+- Artifact-first chat contract: direct file-creation responses and agent runs
+  carry an `artifacts[]` array (`kind/path/filename/bytes/previewable/valid/
+  repaired`) via `collect_artifacts(transcript)`.
+- Direct-path overwrite protection: an existing target is auto-suffixed
+  (`generated_page_2.html`) and announced, instead of silently overwritten.
+- Generated files are optionally indexed into the Brain through the unified
+  `IngestionPipeline` (`workspace://` provenance, `origin: generated_file`);
+  disable with `LATTICEAI_INGEST_GENERATED=0`. The response reports an honest
+  `brain_ingest` status; ingest failures never fail the file creation.
+- Plan schema enforcement (`normalize_plan`): non-empty goal, junk-step
+  filtering, `estimated_steps` clamping, and a deterministic single
+  `write_file` step for file-intent requests whose plan came back empty.
+- Memory quality filter (`filter_learnings`): trivial and duplicate agent
+  learnings are dropped before entering the Brain.
+- FG harness `tests/unit/test_artifact_write_scenarios.py` (FG-01..FG-08):
+  intent gating, filename inference, dirty-output extraction, truncated-HTML
+  repair, agent-path sanitization, how-to non-routing, scaffold validity.
+- Frontend honesty surfaces: "Auto-repaired" badge on file cards
+  (`generation.repaired`), and a distinct warning strip for `NEEDS_REVIEW` /
+  `FAILED` terminal agent states (`role="alert"`, ko/en, dark/light).
+
+### Changed
+- HTML file validation now rejects documents wrapped in prose or Markdown
+  fences, so extraction gets a chance to slice out the real document instead
+  of the wrapper being saved as "valid".
+- `product_readiness` `action-aware-chat` gate additionally proves the
+  ArtifactWritePipeline evidence (module, agent seam, FG harness test).
+
 ## [9.9.1] - 2026-07-21
 
 ### Removed

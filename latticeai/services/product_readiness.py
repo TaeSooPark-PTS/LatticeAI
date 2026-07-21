@@ -18,7 +18,7 @@ from typing import Any, Dict, List
 
 from latticeai.services.architecture_readiness import architecture_readiness
 
-PRODUCT_VERSION_TARGET = "9.9.1"
+PRODUCT_VERSION_TARGET = "9.9.2"
 
 
 @dataclass(frozen=True)
@@ -60,6 +60,11 @@ PRODUCT_GATES: List[ProductGate] = [
             "latticeai/api/chat.py::is_file_action_request",
             "latticeai/api/chat_intents.py::direct_file_action",
             "latticeai/api/chat_intents.py::direct_write_file",
+            # v9.9.2 ArtifactWritePipeline: every write path shares the same
+            # extract → validate → repair guarantee, proven by the FG harness.
+            "latticeai/core/file_generation.py::sanitize_write_content",
+            "latticeai/core/agent.py::content_sanitize",
+            "tests/unit/test_artifact_write_scenarios.py::test_fg06_agent_dispatch_strips_fences_from_write_file_content",
             "tests/unit/test_chat_telegram_decoupling.py::test_chat_file_creation_intent_writes_real_file",
         ],
     ),
