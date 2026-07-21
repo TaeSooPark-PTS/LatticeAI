@@ -12,4 +12,7 @@ historical evidence and are intentionally not rewritten during release bumps.
   closed in 9.1.0; the original review text remains unchanged as evidence
 - [2026-07-20 code · documentation · harness review](CODE_REVIEW_2026-07-20.md)
   — v9.8.0 review with loop engineering and user-experience findings
+- [2026-07-21 full-stack UX · harness · loop · KG/RAG · file-generation review](FULL_STACK_UX_HARNESS_KG_FILEGEN_REVIEW_2026-07-21.md)
+  — v9.9.1 deep-dive: product impact, UX polish, harness/loop engineering,
+  file→folder→web→graph→RAG→automation strength, and model-agnostic file delivery
 - [Brain simplification UX review](UX_BRAIN_SIMPLIFICATION_REVIEW.md)
