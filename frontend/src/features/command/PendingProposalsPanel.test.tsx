@@ -40,8 +40,10 @@ describe("PendingProposalsPanel", () => {
         ],
       },
     } as never);
-    const approveSpy = vi.spyOn(latticeApi, "approveProposal").mockResolvedValue({
-      ok: true, status: 200, source: "api", data: { applied: true },
+    // Approval goes through the review-queue surface so a base-changed
+    // conflict comes back as a real 409 (see the conflict test below).
+    const approveSpy = vi.spyOn(latticeApi, "approveReviewItem").mockResolvedValue({
+      ok: true, status: 200, source: "api", data: { id: "rp-1", status: "approved" },
     } as never);
 
     renderPanel();
@@ -53,6 +55,38 @@ describe("PendingProposalsPanel", () => {
 
     await userEvent.click(screen.getByRole("button", { name: /승인하고 적용/ }));
     expect(approveSpy).toHaveBeenCalledWith("rp-1");
+  });
+
+  it("shows the conflict rebase flow when approval answers 409", async () => {
+    vi.spyOn(latticeApi, "proposals").mockResolvedValue({
+      ok: true,
+      status: 200,
+      source: "api",
+      data: {
+        count: 1,
+        items: [
+          {
+            id: "rp-9",
+            title: "파일 수정 제안: site.html",
+            summary: "요약",
+            kind: "file_update",
+            payload: { path: "site.html", tier: "small", diff: [] },
+          },
+        ],
+      },
+    } as never);
+    vi.spyOn(latticeApi, "approveReviewItem").mockResolvedValue({
+      ok: false, status: 409, source: "unavailable", data: {}, error: "file_modified_since_proposal",
+    } as never);
+
+    renderPanel();
+    await userEvent.click(screen.getByRole("button", { name: /변경 제안/ }));
+    await screen.findByText("site.html");
+    await userEvent.click(screen.getByRole("button", { name: /승인하고 적용/ }));
+
+    const note = await screen.findByTestId("proposal-conflict-note");
+    expect(note.textContent).toContain("파일이 그 사이 변경되었습니다");
+    expect(screen.getByRole("button", { name: /다시 읽어서 재적용/ })).toBeTruthy();
   });
 
   it("shows the empty state when nothing is pending", async () => {

@@ -245,6 +245,72 @@ def assess_extraction_quality(
     return {"score": round(score, 4), "level": _quality_level(score), "reasons": reasons}
 
 
+# ── capture quality CTA (backlog #9, review §7.2 C) ──────────────────────────
+# Structured verdict over the same extraction-quality schema the rest of the
+# pipeline uses, so capture surfaces (browser extension, read-url) can render
+# an honest "this capture is thin" CTA instead of silently storing junk.
+CAPTURE_SUGGESTIONS_THIN = ["recapture", "paste_manually", "highlight_source"]
+_CAPTURE_REASON_LABELS = {
+    "empty_text": "추출된 본문이 비어 있습니다",
+    "very_short_text": "추출된 본문이 매우 짧습니다",
+    "short_text": "추출된 본문이 짧습니다",
+    "no_sentence_structure": "문장 구조가 거의 없습니다",
+    "low_character_diversity": "반복 문자가 대부분입니다",
+    "repetitive_lines": "같은 줄이 반복됩니다",
+    "repetitive_words": "같은 단어가 반복됩니다",
+    "high_whitespace_ratio": "공백이 지나치게 많습니다",
+    "fragmented_lines": "줄이 잘게 조각나 있습니다",
+    "nav_menu_remnants": "메뉴/내비게이션 잔여물이 많습니다",
+    "boilerplate_markers": "상용구 텍스트가 많습니다",
+    "no_extracted_text": "추출된 텍스트가 없습니다",
+}
+
+
+def capture_quality_verdict(
+    extraction_quality: Optional[Dict[str, Any]],
+    *,
+    source_type: Optional[str] = None,
+) -> Dict[str, Any]:
+    """Structured CTA verdict from a pipeline ``extraction_quality`` dict.
+
+    ``{"status": "thin"|"ok", "reason": str|None, "suggestions": [...],
+    "score": float|None, "level": str|None}``. ``thin`` (level == "low", the
+    same threshold as the ingest warning) carries actionable suggestions —
+    ``recapture`` / ``paste_manually`` / ``highlight_source`` — so the UI can
+    offer the user a way to fix the capture instead of hiding the problem.
+    Deterministic and never raises; ``None`` input yields an honest ``thin``.
+    """
+    if not isinstance(extraction_quality, dict):
+        return {
+            "status": "thin",
+            "reason": _CAPTURE_REASON_LABELS["no_extracted_text"],
+            "reason_codes": ["no_extracted_text"],
+            "suggestions": list(CAPTURE_SUGGESTIONS_THIN),
+            "score": None,
+            "level": None,
+        }
+    level = str(extraction_quality.get("level") or "")
+    score = extraction_quality.get("score")
+    reasons = [str(item) for item in (extraction_quality.get("reasons") or [])]
+    thin = level == "low"
+    reason = None
+    if thin:
+        labeled = [
+            _CAPTURE_REASON_LABELS[code]
+            for code in reasons
+            if code in _CAPTURE_REASON_LABELS
+        ]
+        reason = "; ".join(labeled) if labeled else QUALITY_LOW_WARNING
+    return {
+        "status": "thin" if thin else "ok",
+        "reason": reason,
+        "reason_codes": reasons if thin else [],
+        "suggestions": list(CAPTURE_SUGGESTIONS_THIN) if thin else [],
+        "score": score,
+        "level": level or None,
+    }
+
+
 def _load_latticeignore(root: Path) -> List[str]:
     """Parse ``root/.latticeignore`` → glob patterns (gitignore-like subset)."""
     ignore_file = root / LATTICEIGNORE_FILENAME

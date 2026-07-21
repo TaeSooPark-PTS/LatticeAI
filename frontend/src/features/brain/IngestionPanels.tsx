@@ -318,6 +318,14 @@ function IngestionStageTrack({
               : t(language, "brain.ingest.result.empty")
             : t(language, STAGE_HINT_KEY[state.stage])}
       </small>
+      {isComplete && hasEmergence ? (
+        // Knowledge-inflow micro animation: three jade motes drifting "into"
+        // the Brain. Purely decorative, hidden unless the user allows motion
+        // (visible only under prefers-reduced-motion: no-preference).
+        <span className="lattice-inflow" aria-hidden="true">
+          <i /><i /><i />
+        </span>
+      ) : null}
       {isComplete ? <ExtractionQualityNote language={language} state={state} /> : null}
     </div>
   );

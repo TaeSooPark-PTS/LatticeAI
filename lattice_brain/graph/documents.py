@@ -6,6 +6,117 @@ from ._kg_common import *  # noqa: F403,F401
 
 
 class KnowledgeGraphDocumentsMixin:
+    def find_documents_by_uri_prefix(self, prefix: str) -> List[Dict[str, Any]]:
+        """Content nodes whose ``metadata.source_uri`` starts with ``prefix``.
+
+        Powers removable seeded corpora (e.g. the ``demo://`` First Value Loop
+        documents): callers stamp a URI scheme at ingest time and can later
+        enumerate exactly those nodes without guessing ids.
+        """
+        prefix = str(prefix or "").strip()
+        if not prefix:
+            return []
+        nt, _ = self._read_tables()
+        documents: List[Dict[str, Any]] = []
+        with self._connect() as conn:
+            rows = conn.execute(
+                f"""
+                SELECT id, type, title, metadata_json, created_at, updated_at
+                FROM {nt}
+                WHERE json_extract(metadata_json, '$.source_uri') LIKE ? || '%'
+                  AND type NOT IN ('Source', 'Chunk')
+                ORDER BY created_at ASC, id ASC
+                """,
+                (prefix,),
+            ).fetchall()
+            for row in rows:
+                meta = _safe_loads(row["metadata_json"]) or {}
+                documents.append(
+                    {
+                        "id": row["id"],
+                        "type": row["type"],
+                        "title": row["title"],
+                        "source_uri": meta.get("source_uri"),
+                        "workspace_id": meta.get("workspace_id"),
+                        "created_at": row["created_at"],
+                        "updated_at": row["updated_at"],
+                    }
+                )
+        return documents
+
+    def delete_document_tree(self, node_id: str) -> Dict[str, Any]:
+        """Delete an ingested content node plus everything it owns.
+
+        Removes the node, its retrieval chunks (``chunks`` table + ``Chunk``
+        nodes), auto-extracted Task/Decision nodes whose ``source_node`` is
+        this document, every touching edge, the vector rows, and — when it
+        becomes orphaned — the linked ``Source`` node. Shared Concept nodes
+        are intentionally left alone (they may be cited by other content).
+        Mirrored into the v2 projection via ``_v2_delete_nodes``.
+        """
+        node_id = str(node_id or "").strip()
+        if not node_id:
+            return {"status": "skipped", "removed_nodes": 0}
+        with self._connect() as conn:
+            if not conn.execute(
+                "SELECT 1 FROM nodes WHERE id=?", (node_id,)
+            ).fetchone():
+                return {"status": "not_found", "node_id": node_id, "removed_nodes": 0}
+
+            remove_ids = {node_id}
+            # Owned children: chunks + auto-extracted semantic nodes that
+            # explicitly point back at this document via metadata.source_node.
+            for row in conn.execute(
+                """
+                SELECT id FROM nodes
+                WHERE json_extract(metadata_json, '$.source_node') = ?
+                """,
+                (node_id,),
+            ):
+                remove_ids.add(row["id"])
+            # The Source node this content was indexed from (if it ends up
+            # referenced by nothing else after the delete, drop it too).
+            source_ids = [
+                row["to_node"]
+                for row in conn.execute(
+                    "SELECT to_node FROM edges WHERE from_node=? AND type IN ('indexed_from', 'INDEXED_FROM')",
+                    (node_id,),
+                )
+            ]
+
+            ids = list(remove_ids)
+            ph = ",".join("?" * len(ids))
+            conn.execute(f"DELETE FROM chunks WHERE source_node IN ({ph})", ids)
+            conn.execute(
+                f"DELETE FROM edges WHERE from_node IN ({ph}) OR to_node IN ({ph})",
+                ids * 2,
+            )
+            conn.execute(
+                f"DELETE FROM vector_embeddings WHERE item_id IN ({ph}) OR source_node IN ({ph})",
+                ids * 2,
+            )
+            conn.execute(f"DELETE FROM nodes WHERE id IN ({ph})", ids)
+            self._v2_delete_nodes(conn, ids)
+
+            removed_sources = 0
+            for source_id in source_ids:
+                still_linked = conn.execute(
+                    "SELECT 1 FROM edges WHERE from_node=? OR to_node=? LIMIT 1",
+                    (source_id, source_id),
+                ).fetchone()
+                if still_linked:
+                    continue
+                conn.execute("DELETE FROM vector_embeddings WHERE item_id=?", (source_id,))
+                conn.execute("DELETE FROM nodes WHERE id=?", (source_id,))
+                self._v2_delete_nodes(conn, [source_id])
+                removed_sources += 1
+
+        return {
+            "status": "ok",
+            "node_id": node_id,
+            "removed_nodes": len(remove_ids) + removed_sources,
+        }
+
     def _ingest_structure_nodes(
         self,
         conn: sqlite3.Connection,

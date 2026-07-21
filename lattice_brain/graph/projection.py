@@ -514,6 +514,167 @@ class KnowledgeGraphProjectionMixin:
             "skipped_total": len(overlay["skipped"]),
         }
 
+    _NOISE_CONTENT_TYPES = (
+        "Document",
+        "File",
+        "CodeFile",
+        "Message",
+        "AIResponse",
+        "Chat",
+        "Page",
+        "Slide",
+        "Spreadsheet",
+    )
+    _NOISE_CONCEPT_TYPES = ("Concept", "Feature", "Topic", "Code", "Error")
+
+    def curate_noise(
+        self,
+        *,
+        dry_run: bool = True,
+        max_df_ratio: float = 0.8,
+        min_doc_frequency: int = 1,
+        min_corpus_docs: int = 5,
+        normalize_verbs: bool = True,
+        max_removals: int = 200,
+    ) -> Dict[str, Any]:
+        """Noise-reduction curation job (backlog #10, review §7.2 D).
+
+        (a) Removes heuristic concept nodes (``auto_extracted`` /
+        ``graph_curator``-promoted) whose document frequency marks them as
+        noise: ubiquitous (low IDF — linked from more than ``max_df_ratio`` of
+        content docs once the corpus has ``min_corpus_docs``) or below the
+        ``min_doc_frequency`` floor. Explicitly user-created nodes are never
+        touched, whatever their stats.
+
+        (b) Normalizes free-string relation verbs on the legacy edge table via
+        the ko/en dictionary in :mod:`lattice_brain.graph.curator`
+        ('만들다/만든/creates' → 'created', …), merging rows that collide
+        after the rename.
+
+        ``dry_run=True`` (the default) only *reports* what would change.
+        """
+        from .curator import (
+            build_relation_verb_index,
+            plan_concept_noise_reduction,
+            plan_relation_normalization,
+        )
+
+        max_removals = max(0, int(max_removals))
+        # Operate on the legacy write tables directly: they are the mutation
+        # target, and raw free-string verbs only exist there (the v4 write
+        # door normalizes new edges; the kgv2_* read views collapse
+        # legacy_type and would hide exactly the rows this job cleans up).
+        nt, et = "nodes", "edges"
+        with self._connect() as conn:
+            content_ph = ",".join("?" for _ in self._NOISE_CONTENT_TYPES)
+            total_docs = conn.execute(
+                f"SELECT COUNT(*) AS c FROM {nt} WHERE type IN ({content_ph})",
+                self._NOISE_CONTENT_TYPES,
+            ).fetchone()["c"]
+
+            concept_ph = ",".join("?" for _ in self._NOISE_CONCEPT_TYPES)
+            concept_rows = conn.execute(
+                f"SELECT id, type, title, metadata_json FROM {nt} WHERE type IN ({concept_ph})",
+                self._NOISE_CONCEPT_TYPES,
+            ).fetchall()
+            concepts = []
+            for row in concept_rows:
+                meta = _safe_loads(row["metadata_json"]) or {}
+                heuristic = bool(meta.get("auto_extracted")) or (
+                    meta.get("source") == "graph_curator" or meta.get("curated") is True
+                )
+                # Document frequency: distinct *content* nodes linked to this
+                # concept in either direction.
+                df = conn.execute(
+                    f"""
+                    SELECT COUNT(DISTINCT n.id) AS c
+                    FROM {et} e
+                    JOIN {nt} n
+                      ON n.id = CASE WHEN e.to_node = ? THEN e.from_node ELSE e.to_node END
+                    WHERE (e.to_node = ? OR e.from_node = ?)
+                      AND n.type IN ({content_ph})
+                    """,
+                    (row["id"], row["id"], row["id"], *self._NOISE_CONTENT_TYPES),
+                ).fetchone()["c"]
+                concepts.append({
+                    "id": row["id"],
+                    "label": row["title"],
+                    "type": row["type"],
+                    "df": int(df or 0),
+                    "heuristic": heuristic,
+                })
+
+            plan = plan_concept_noise_reduction(
+                concepts,
+                total_docs,
+                max_df_ratio=max_df_ratio,
+                min_doc_frequency=min_doc_frequency,
+                min_corpus_docs=min_corpus_docs,
+            )
+            removals = plan["remove"][:max_removals]
+
+            verb_index = build_relation_verb_index()
+            edge_type_rows = conn.execute(
+                f"SELECT DISTINCT type FROM {et}"
+            ).fetchall()
+            verb_plan = (
+                plan_relation_normalization(
+                    (row["type"] for row in edge_type_rows), index=verb_index,
+                )
+                if normalize_verbs
+                else {}
+            )
+
+            removed_count = 0
+            renamed_edges = 0
+            if not dry_run:
+                for decision in removals:
+                    node_id = decision["id"]
+                    conn.execute(
+                        "DELETE FROM edges WHERE from_node=? OR to_node=?",
+                        (node_id, node_id),
+                    )
+                    conn.execute(
+                        "DELETE FROM vector_embeddings WHERE item_id=?", (node_id,)
+                    )
+                    conn.execute("DELETE FROM nodes WHERE id=?", (node_id,))
+                    self._v2_delete_nodes(conn, [node_id])
+                    removed_count += 1
+                for original, canonical in verb_plan.items():
+                    renamed_edges += conn.execute(
+                        "SELECT COUNT(*) AS c FROM edges WHERE type=?", (original,)
+                    ).fetchone()["c"]
+                    # UNIQUE(from_node, to_node, type): merge rows that collide
+                    # after the rename instead of failing the UPDATE.
+                    conn.execute(
+                        "UPDATE OR IGNORE edges SET type=? WHERE type=?",
+                        (canonical, original),
+                    )
+                    conn.execute("DELETE FROM edges WHERE type=?", (original,))
+
+        return {
+            "status": "ok",
+            "dry_run": bool(dry_run),
+            "total_content_docs": int(total_docs or 0),
+            "concepts_examined": len(concepts),
+            "remove": removals,
+            "remove_total": len(plan["remove"]),
+            "kept": len(plan["keep"]),
+            "protected_user_nodes": sum(
+                1 for item in plan["keep"] if item.get("reason") == "user_created_protected"
+            ),
+            "verb_normalizations": verb_plan,
+            "applied": {
+                "removed_nodes": removed_count,
+                "renamed_edges": renamed_edges,
+            },
+            "thresholds": {
+                "max_df_ratio": float(max_df_ratio),
+                "min_doc_frequency": int(min_doc_frequency),
+                "min_corpus_docs": int(min_corpus_docs),
+            },
+        }
+
     def mark_superseded(self, old_node_id: str, new_node_id: str) -> Dict[str, Any]:
         """Record that ``old_node_id`` was replaced by ``new_node_id``.
 

@@ -53,15 +53,22 @@ export function ReviewInbox() {
       () => latticeApi.runNowReviewItem(item.id);
     const result = await call();
     if (!result.ok) {
+      // A 409 on a change-proposal approval means the target file drifted
+      // since staging (base-changed guard): explain it and offer the
+      // "re-read & re-apply" rebase flow instead of a generic error.
+      const isConflict =
+        action === "approve" && item.source === "change_proposal" && result.status === 409;
       // Friendly localized copy first; the raw backend detail stays available
       // as demoted secondary text on the card.
       setRunFeedback((prev) => ({
         ...prev,
-        [item.id]: {
-          tone: "error",
-          message: t(language, "review.feedback.error"),
-          ...(result.error ? { detail: result.error } : {}),
-        },
+        [item.id]: isConflict
+          ? { tone: "error", message: t(language, "proposals.conflict.title"), conflict: true }
+          : {
+              tone: "error",
+              message: t(language, "review.feedback.error"),
+              ...(result.error ? { detail: result.error } : {}),
+            },
       }));
       return result;
     }

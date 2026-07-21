@@ -4,7 +4,8 @@ import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { latticeApi } from "@/api/client";
 import { triggerBrainRecall, type BrainState } from "@/components/LivingBrain";
 import { t, type Language } from "@/i18n";
-import { parseContextQuality } from "../brainData";
+import { type ApprovalResolution, parseApprovalPayload } from "../approvalFlow";
+import { agentPayloadFiles, parseContextQuality, parseGrounding } from "../brainData";
 import { useConversationSession } from "../conversationSession";
 import type {
   BrainProactiveAction,
@@ -136,13 +137,21 @@ export function useBrainChat({
             });
           },
           onAgent: (agent) => {
-            const repaired = Boolean(agent.generation?.repaired);
-            const files = (agent.created_files || []).map((file) => ({
-              path: file.path,
-              filename: file.filename || file.path.split("/").pop() || file.path,
-              bytes: file.bytes || 0,
-              repaired,
-            }));
+            // Governed plans pause server-side as awaiting_approval — attach
+            // the resume token to this reply so the inline approval card can
+            // approve/edit/cancel the parked run.
+            const approval = parseApprovalPayload(agent);
+            if (approval) {
+              setMessages((items) => {
+                const next = [...items];
+                next[next.length - 1] = { ...next[next.length - 1], approval };
+                return next;
+              });
+              return;
+            }
+            // artifacts[] carries the per-file preview verdict; keyed by path
+            // so it can be joined back onto created_files defensively.
+            const files = agentPayloadFiles(agent);
             // NEEDS_REVIEW / FAILED must reach the message even when no file
             // was produced — they render as warnings, never as success.
             const agentState =
@@ -177,12 +186,20 @@ export function useBrainChat({
         // trailer or the trace record) on the answer it belongs to.
         const contextQuality = parseContextQuality("contextQuality" in result ? result.contextQuality : null)
           || parseContextQuality(result.trace);
-        if (contextQuality) {
+        // Answer-citation binding verdict (근거 있음/근거 없음) rides the same
+        // trailer; it badges the answer without ever modifying it.
+        const grounding = parseGrounding("grounding" in result ? result.grounding : null)
+          || parseGrounding(result.trace);
+        if (contextQuality || grounding) {
           setMessages((items) => {
             const next = [...items];
             for (let index = next.length - 1; index >= 0; index -= 1) {
               if (next[index].role === "assistant") {
-                next[index] = { ...next[index], contextQuality };
+                next[index] = {
+                  ...next[index],
+                  ...(contextQuality ? { contextQuality } : {}),
+                  ...(grounding ? { grounding } : {}),
+                };
                 break;
               }
             }
@@ -216,6 +233,51 @@ export function useBrainChat({
       abortRef.current = null;
       setStreaming(false);
       for (const key of ["chatHistory", "memoryManager", "graphPreview", "graph", "memoryBrainProof", "memoryBrainBrief"]) {
+        void qc.invalidateQueries({ queryKey: [key] });
+      }
+    }
+  }
+
+  // Applies an /agent/resume outcome to the paused message. A finished run
+  // merges exactly like a normal agent completion (response text + files via
+  // the shared artifacts join + NEEDS_REVIEW/FAILED warning); every terminal
+  // approval status persists on the message so the card stays honest.
+  function handleApprovalResolved(messageIndex: number, resolution: ApprovalResolution) {
+    setMessages((items) => {
+      const message = items[messageIndex];
+      if (!message?.approval) return items;
+      const next = [...items];
+      if (resolution.kind === "finished") {
+        const agent = resolution.payload;
+        const files = agentPayloadFiles(agent);
+        const agentState =
+          agent.final_state === "NEEDS_REVIEW" || agent.final_state === "FAILED"
+            ? agent.final_state
+            : undefined;
+        const response = typeof agent.response === "string" ? agent.response.trim() : "";
+        next[messageIndex] = {
+          ...message,
+          content: response || message.content,
+          ...(files.length ? { files } : {}),
+          ...(agentState ? { agentState } : {}),
+          approval: { ...message.approval, status: "approved" },
+        };
+      } else if (resolution.kind === "error") {
+        next[messageIndex] = {
+          ...message,
+          approval: { ...message.approval, status: "error", errorReason: resolution.reason },
+        };
+      } else {
+        next[messageIndex] = {
+          ...message,
+          approval: { ...message.approval, status: resolution.kind },
+        };
+      }
+      return next;
+    });
+    if (resolution.kind === "finished") {
+      triggerBrainRecall();
+      for (const key of ["chatHistory", "memoryManager", "graphPreview", "graph", "memoryBrainProof", "memoryBrainBrief", "agentRuntime"]) {
         void qc.invalidateQueries({ queryKey: [key] });
       }
     }
@@ -306,6 +368,7 @@ export function useBrainChat({
     regenerate,
     createActionItem,
     handleProactiveAction,
+    handleApprovalResolved,
     stopStreaming: () => abortRef.current?.abort(),
   };
 }

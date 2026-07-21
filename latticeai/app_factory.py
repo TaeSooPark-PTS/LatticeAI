@@ -395,6 +395,7 @@ def _build(config: "Optional[Config]" = None) -> Dict[str, Any]:
     INGESTION_PIPELINE = _persistence_runtime["INGESTION_PIPELINE"]
     DEVICE_IDENTITY = _persistence_runtime["DEVICE_IDENTITY"]
     KG_PORTABILITY = _persistence_runtime["KG_PORTABILITY"]
+    FUNNEL_METRICS = _persistence_runtime["FUNNEL_METRICS"]
 
     def _require_graph():
         if not ENABLE_GRAPH or KNOWLEDGE_GRAPH is None:
@@ -951,6 +952,7 @@ def _build(config: "Optional[Config]" = None) -> Dict[str, Any]:
         public_model=PUBLIC_MODEL,
         local_model=LOCAL_MODEL or "",
         on_chat_message=on_chat_message,
+        funnel_metrics=FUNNEL_METRICS,
     )
     app.state.context = context
 
@@ -1036,6 +1038,17 @@ def _build(config: "Optional[Config]" = None) -> Dict[str, Any]:
             gate_write=PLATFORM.gate_write,
             append_audit_event=append_audit_event,
             workspace_graph=_workspace_graph,
+            run_executor=RUN_EXECUTOR,
+            review_queue=REVIEW_QUEUE,
+        )
+    )
+    # UX funnel metrics (backlog #16): admin-only runtime counters.
+    from latticeai.api.funnel_metrics import create_funnel_metrics_router
+
+    app.include_router(
+        create_funnel_metrics_router(
+            service=FUNNEL_METRICS,
+            require_admin=require_admin,
         )
     )
     COMMAND_CENTER = CommandCenterService(
@@ -1212,6 +1225,7 @@ def _build(config: "Optional[Config]" = None) -> Dict[str, Any]:
         gardener=gardener,
         create_setup_router=create_setup_router,
         model_router=router,
+        knowledge_graph=KNOWLEDGE_GRAPH,
     )
 
     # ── Entry Point ────────────────────────────────────────────────────────────────

@@ -27,7 +27,7 @@ import re
 from dataclasses import dataclass
 from enum import Enum
 from pathlib import Path
-from typing import Any, Awaitable, Callable, Dict, FrozenSet, List, Optional, Tuple
+from typing import Any, Awaitable, Callable, Dict, FrozenSet, List, Mapping, Optional, Tuple
 
 from lattice_brain.runtime.hooks import dispatch_tool
 from lattice_brain.runtime.contracts import runtime_boundary_contract, single_agent_contract
@@ -227,6 +227,44 @@ def filter_learnings(learnings: List[Any]) -> List[str]:
     return kept
 
 
+@dataclass(frozen=True)
+class PhaseBudgets:
+    """Per-phase token budgets for the agent loop.
+
+    One shared budget let a weak model burn everything on planning prose and
+    reach EXECUTE with nothing left. Each role phase now has its own cap, so
+    a verbose planner can never starve execution or verification. Defaults
+    match the historical hardcoded values; every cap is overridable through
+    the ``Config.from_env`` environment pattern.
+    """
+
+    plan_tokens: int = 1024
+    execute_tokens: int = 4096
+    verify_tokens: int = 512
+    memory_tokens: int = 256
+
+    @classmethod
+    def from_env(cls, env: Optional[Mapping[str, str]] = None) -> "PhaseBudgets":
+        from latticeai.core.config import _int
+
+        if env is None:
+            import os
+
+            env = os.environ
+
+        def cap(key: str, default: int) -> int:
+            # A misconfigured/absurd value must not brick the loop: floor at a
+            # budget that still fits one JSON action object.
+            return max(128, _int(env, key, default))
+
+        return cls(
+            plan_tokens=cap("LATTICEAI_AGENT_PLAN_TOKENS", cls.plan_tokens),
+            execute_tokens=cap("LATTICEAI_AGENT_EXECUTE_TOKENS", cls.execute_tokens),
+            verify_tokens=cap("LATTICEAI_AGENT_VERIFY_TOKENS", cls.verify_tokens),
+            memory_tokens=cap("LATTICEAI_AGENT_MEMORY_TOKENS", cls.memory_tokens),
+        )
+
+
 @dataclass
 class AgentDeps:
     """The ports a :class:`SingleAgentRuntime` needs from the outside world.
@@ -286,12 +324,29 @@ class AgentDeps:
     # returning None (fall through to the classic gates) or a verdict dict.
     change_governor: Any = None
 
+    # ── phase budgets (optional) ─────────────────────────────────────
+    # Per-phase token caps (plan/execute/verify/memory). None reads the
+    # environment once at first use; tests inject a fixed PhaseBudgets.
+    phase_budgets: Optional[PhaseBudgets] = None
+
 
 class SingleAgentRuntime:
     """Drives the agent state machine over injected :class:`AgentDeps`."""
 
     def __init__(self, deps: AgentDeps) -> None:
         self.deps = deps
+        self._env_phase_budgets: Optional[PhaseBudgets] = None
+
+    @property
+    def phase_budgets(self) -> PhaseBudgets:
+        # getattr twice: partially-constructed runtimes/deps (tests build them
+        # via __new__ or minimal fakes) still get working default budgets.
+        injected = getattr(self.deps, "phase_budgets", None)
+        if injected is not None:
+            return injected
+        if getattr(self, "_env_phase_budgets", None) is None:
+            self._env_phase_budgets = PhaseBudgets.from_env()
+        return self._env_phase_budgets
 
     def boundary(self) -> Dict[str, Any]:
         return runtime_boundary_contract(
@@ -331,7 +386,7 @@ class SingleAgentRuntime:
         raw = await d.generate_as(
             model_id,
             message="Produce a JSON execution plan for this request.",
-            context=context, max_tokens=1024, temperature=0.1,
+            context=context, max_tokens=self.phase_budgets.plan_tokens, temperature=0.1,
         )
         ctx.trace.llm_call("plan", model=model_id)
         try:
@@ -360,8 +415,14 @@ class SingleAgentRuntime:
         ctx.state = AgentState.WAITING_APPROVAL
 
     # ── APPROVAL ─────────────────────────────────────────────────────
-    def approve(self, ctx: AgentRunContext, current_user: str, *, approved_by_human: bool = False) -> None:
-        """APPROVAL: Check governance, log decision, auto-approve (future: UI prompt)."""
+    def approval_requirements(self, ctx: AgentRunContext) -> Dict[str, Any]:
+        """Read-only preview of the approval gate for a planned run.
+
+        Shares the exact predicate :meth:`approve` enforces, so the HTTP
+        layer can pause a run as ``awaiting_approval`` (with a plan summary
+        for the user) instead of letting it fail closed — without ever
+        weakening the gate itself.
+        """
         d = self.deps
         auto_approve_tools = {name for name, p in d.tool_governance.items() if p["auto_approve"]}
         # Governor-managed tools never hard-block the plan: each call is
@@ -377,7 +438,26 @@ class SingleAgentRuntime:
             if s.get("action") not in auto_approve_tools
             and s.get("action") not in governed_tools
         ]
-        requires = ctx.plan.get("requires_approval", False) or bool(non_auto)
+        requires = bool(ctx.plan.get("requires_approval", False)) or bool(non_auto)
+        lines = [
+            f"{index}. {step.get('description') or step.get('action') or '?'}"
+            for index, step in enumerate(steps, start=1)
+        ]
+        summary = str(ctx.plan.get("goal") or "").strip()
+        if lines:
+            summary = (summary + "\n" if summary else "") + "\n".join(lines)
+        return {
+            "requires_approval": requires,
+            "non_auto_steps": non_auto,
+            "plan_summary": summary,
+        }
+
+    def approve(self, ctx: AgentRunContext, current_user: str, *, approved_by_human: bool = False) -> None:
+        """APPROVAL: Check governance, log decision, auto-approve (future: UI prompt)."""
+        d = self.deps
+        requirements = self.approval_requirements(ctx)
+        non_auto = requirements["non_auto_steps"]
+        requires = requirements["requires_approval"]
 
         ctx.transcript.append({
             "state": AgentState.WAITING_APPROVAL.value,
@@ -420,7 +500,8 @@ class SingleAgentRuntime:
             raw = await d.generate_as(
                 model_id,
                 message="Execute the next step.",
-                context=context, max_tokens=4096, temperature=req.temperature,
+                context=context, max_tokens=self.phase_budgets.execute_tokens,
+                temperature=req.temperature,
             )
             ctx.trace.llm_call("execute", model=model_id)
             try:
@@ -727,7 +808,7 @@ class SingleAgentRuntime:
         raw = await d.generate_as(
             model_id,
             message="Review the execution transcript and return your verdict JSON.",
-            context=context, max_tokens=512, temperature=0.1,
+            context=context, max_tokens=self.phase_budgets.verify_tokens, temperature=0.1,
         )
         ctx.trace.llm_call("verify", model=model_id)
         verdict: Optional[Dict[str, Any]] = None
@@ -749,7 +830,8 @@ class SingleAgentRuntime:
             raw = await d.generate_as(
                 model_id,
                 message="Return your verdict as one strict JSON object.",
-                context=strict_context, max_tokens=512, temperature=0.0,
+                context=strict_context, max_tokens=self.phase_budgets.verify_tokens,
+                temperature=0.0,
             )
             ctx.trace.llm_call("verify", model=model_id)
             try:
@@ -899,7 +981,7 @@ class SingleAgentRuntime:
         try:
             raw = await d.generate(
                 message="Extract learnings from this completed task.",
-                context=context, max_tokens=256, temperature=0.1,
+                context=context, max_tokens=self.phase_budgets.memory_tokens, temperature=0.1,
             )
             mem = extract_action(str(raw))
             kept_learnings = filter_learnings(mem.get("learnings") or [])

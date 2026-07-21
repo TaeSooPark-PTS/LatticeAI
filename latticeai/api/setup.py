@@ -17,7 +17,15 @@ from latticeai.setup.auto_setup import (
     verify as auto_setup_verify,
 )
 from latticeai.models.router import parse_model_ref
+from latticeai.setup.demo_corpus import (
+    DEMO_DOCUMENTS,
+    DEMO_METADATA_FLAG,
+    DEMO_URI_PREFIX,
+    demo_source_uri,
+    suggested_questions,
+)
 from latticeai.setup.wizard import get_recommendations, install_stream, open_url, scan_environment
+from lattice_brain.ingestion import IngestionItem
 
 
 class SetupInstallRequest(BaseModel):
@@ -25,7 +33,18 @@ class SetupInstallRequest(BaseModel):
     confirmation_token: Optional[str] = None
 
 
-def create_setup_router(*, model_router, require_user) -> APIRouter:
+class DemoCorpusRequest(BaseModel):
+    workspace_id: Optional[str] = None
+
+
+def create_setup_router(
+    *,
+    model_router,
+    require_user,
+    ingestion_pipeline=None,
+    knowledge_graph=None,
+    workspace_service=None,
+) -> APIRouter:
     api_router = APIRouter()
     router = model_router
 
@@ -157,6 +176,120 @@ def create_setup_router(*, model_router, require_user) -> APIRouter:
         return {"status": "ok", "opened": url, "mcp_id": mcp_id}
     
     
+    # ── First Value Loop demo corpus (backlog #3, review §3.3 P0) ────────────
+
+    def _require_demo_pipeline():
+        if ingestion_pipeline is None or not ingestion_pipeline.available():
+            raise HTTPException(
+                status_code=503, detail="Knowledge Graph ingestion is disabled.",
+            )
+        if knowledge_graph is None:
+            raise HTTPException(status_code=503, detail="Knowledge Graph is disabled.")
+
+    def _demo_workspace(request: Request, body_workspace: Optional[str], user: str) -> Optional[str]:
+        header = request.headers.get("X-Workspace-Id")
+        header = header.strip() if header and header.strip() else None
+        supplied = [value for value in (body_workspace, header) if value]
+        if len(set(supplied)) > 1:
+            raise HTTPException(status_code=403, detail="Workspace selectors must match.")
+        requested = supplied[0] if supplied else None
+        if workspace_service is None:
+            return requested
+        try:
+            return workspace_service.resolve_write_scope(requested, user or None)
+        except PermissionError as exc:
+            raise HTTPException(status_code=403, detail=str(exc)) from exc
+
+    @api_router.get("/api/setup/demo-corpus")
+    async def demo_corpus_status(request: Request):
+        """Whether the demo corpus is installed + the suggestion chips."""
+        require_user(request)
+        _require_demo_pipeline()
+        installed = knowledge_graph.find_documents_by_uri_prefix(DEMO_URI_PREFIX)
+        return {
+            "installed": bool(installed),
+            "documents": installed,
+            "document_count": len(installed),
+            "suggested_questions": suggested_questions(),
+        }
+
+    @api_router.post("/api/setup/demo-corpus")
+    async def demo_corpus_install(request: Request, req: Optional[DemoCorpusRequest] = None):
+        """One-click ingest of the 3 built-in demo documents (idempotent).
+
+        Every document goes through the normal IngestionPipeline door with
+        ``demo://`` provenance so it is honest (real nodes, real chunks, real
+        provenance) and removable via DELETE. Re-POSTing reports duplicates
+        instead of duplicating.
+        """
+        user = require_user(request)
+        _require_demo_pipeline()
+        workspace_id = _demo_workspace(request, req.workspace_id if req else None, user)
+        results = []
+        ingested = 0
+        duplicates = 0
+        failed = 0
+        for doc in DEMO_DOCUMENTS:
+            result = ingestion_pipeline.ingest(
+                IngestionItem(
+                    source_type="note",
+                    title=doc["title"],
+                    text=doc["text"],
+                    source_uri=demo_source_uri(doc["id"]),
+                    owner=user or None,
+                    workspace_id=workspace_id,
+                    metadata={DEMO_METADATA_FLAG: True, "demo_id": doc["id"]},
+                ),
+                user_email=user or None,
+            )
+            if result.status != "ok":
+                failed += 1
+            elif result.duplicate:
+                duplicates += 1
+            else:
+                ingested += 1
+            results.append({
+                "demo_id": doc["id"],
+                "title": doc["title"],
+                "source_uri": demo_source_uri(doc["id"]),
+                "status": result.status,
+                "node_id": result.node_id,
+                "duplicate": result.duplicate,
+                "chunk_count": result.chunk_count,
+                "detail": result.detail,
+            })
+        status = "ok" if failed == 0 else ("partial" if (ingested + duplicates) else "failed")
+        return {
+            "status": status,
+            "ingested": ingested,
+            "duplicates": duplicates,
+            "failed": failed,
+            "documents": results,
+            "suggested_questions": suggested_questions(),
+        }
+
+    @api_router.delete("/api/setup/demo-corpus")
+    async def demo_corpus_remove(request: Request):
+        """Remove every demo document (node + chunks + edges + orphan source)."""
+        require_user(request)
+        _require_demo_pipeline()
+        installed = knowledge_graph.find_documents_by_uri_prefix(DEMO_URI_PREFIX)
+        removed = []
+        for doc in installed:
+            outcome = knowledge_graph.delete_document_tree(doc["id"])
+            removed.append({
+                "node_id": doc["id"],
+                "title": doc.get("title"),
+                "source_uri": doc.get("source_uri"),
+                "status": outcome.get("status"),
+                "removed_nodes": outcome.get("removed_nodes", 0),
+            })
+        return {
+            "status": "ok",
+            "removed_count": len(removed),
+            "removed": removed,
+        }
+
     @api_router.post("/permissions/open/{permission_id}")
     async def open_permission_settings(permission_id: str, request: Request):
         require_user(request)

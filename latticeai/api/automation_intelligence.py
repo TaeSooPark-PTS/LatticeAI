@@ -12,11 +12,21 @@ enable), review-queue gated, local-only, and idempotent per suggestion.
 
 from __future__ import annotations
 
+import asyncio
+import os
+import time
 from typing import Any, Callable, Optional
 
 from fastapi import APIRouter, HTTPException, Request
 from pydantic import BaseModel
 
+from latticeai.services.automation_execution import (
+    build_last_execution,
+    dry_run_report,
+    enqueue_failed_execution,
+    is_automation_workflow,
+    summarize_workflow_run,
+)
 from latticeai.services.automation_intelligence import AutomationIntelligenceService
 from latticeai.services.brain_automation import find_installed_recipe_workflow
 
@@ -24,6 +34,21 @@ from latticeai.services.brain_automation import find_installed_recipe_workflow
 class SuggestionInstallRequest(BaseModel):
     suggestion_id: str
     enabled: bool = False
+
+
+class AutomationRunNowRequest(BaseModel):
+    workflow_id: str
+    # Dry-run first: the default reports what WOULD happen without side
+    # effects; an explicit dry_run=false runs the automation once for real.
+    dry_run: bool = True
+
+
+def _run_now_wait_seconds() -> float:
+    raw = os.environ.get("LATTICEAI_AUTOMATION_RUN_NOW_WAIT", "30")
+    try:
+        return max(0.0, min(float(raw), 300.0))
+    except (TypeError, ValueError):
+        return 30.0
 
 
 def create_automation_intelligence_router(
@@ -35,7 +60,10 @@ def create_automation_intelligence_router(
     gate_write: Callable[[Request], Optional[str]],
     append_audit_event: Callable[..., None],
     workspace_graph: Callable[[], Any],
+    run_executor: Any = None,
+    review_queue: Any = None,
 ) -> APIRouter:
+    from lattice_brain.runtime.statuses import RUN_TERMINAL_STATUSES
     from lattice_brain.workflow import legacy_steps_from_nodes, validate_definition
 
     router = APIRouter()
@@ -122,6 +150,137 @@ def create_automation_intelligence_router(
             "enabled": bool(req.enabled),
             "already_installed": False,
         }
+
+    def _stamp_last_execution(
+        workflow_id: str, last_execution: dict, scope: Optional[str]
+    ) -> None:
+        """Persist the execution record on the workflow's metadata (merge)."""
+        try:
+            store.update_workflow_definition(
+                workflow_id,
+                metadata={"last_execution": last_execution},
+                workspace_id=scope,
+            )
+        except Exception:  # noqa: BLE001 — surfacing must never undo the run
+            pass
+
+    @router.post("/api/automation/run-now")
+    async def automation_run_now(req: AutomationRunNowRequest, request: Request):
+        """Run an installed automation once — dry-run by default.
+
+        * ``dry_run=true``: deterministic report of what WOULD happen; no
+          runner executes and nothing but the ``last_execution`` stamp moves.
+        * ``dry_run=false``: one real execution through the async run
+          executor; the request waits briefly for completion, stamps the
+          result, and enqueues failed executions into the review inbox.
+        """
+        user = require_user(request)
+        scope = gate_write(request)
+        try:
+            workflow = store.get_workflow(req.workflow_id, workspace_id=scope)
+        except FileNotFoundError as exc:
+            raise HTTPException(
+                status_code=404, detail=f"Automation not found: {req.workflow_id}"
+            ) from exc
+        if not is_automation_workflow(workflow):
+            raise HTTPException(
+                status_code=404,
+                detail=f"Workflow is not an installed automation: {req.workflow_id}",
+            )
+
+        if req.dry_run:
+            report = dry_run_report(workflow)
+            last_execution = build_last_execution(
+                mode="dry_run",
+                status=report["status"],
+                summary=report["summary"],
+            )
+            _stamp_last_execution(req.workflow_id, last_execution, scope)
+            append_audit_event(
+                "automation_run_now",
+                user_email=user,
+                workflow_id=req.workflow_id,
+                dry_run=True,
+                status=report["status"],
+            )
+            return {
+                "workflow_id": req.workflow_id,
+                "dry_run": True,
+                "status": report["status"],
+                "report": report,
+                "last_execution": last_execution,
+            }
+
+        if run_executor is None:
+            raise HTTPException(
+                status_code=503,
+                detail="Automation execution runtime is not available.",
+            )
+        started = await run_executor.start_workflow(
+            workflow,
+            workflow_id=req.workflow_id,
+            user_email=user or None,
+            scope=scope,
+            inputs={"trigger": "run_now"},
+        )
+        run_id = str(((started or {}).get("run") or {}).get("id") or "")
+
+        # Bounded, non-cancelling wait: poll the durable run row so a slow
+        # execution keeps running in the background instead of being aborted.
+        run = (started or {}).get("run") or {}
+        deadline = time.monotonic() + _run_now_wait_seconds()
+        while time.monotonic() < deadline:
+            try:
+                run = store.get_workflow_run(run_id, workspace_id=scope)
+            except FileNotFoundError:
+                break
+            if str(run.get("status") or "") in RUN_TERMINAL_STATUSES:
+                break
+            await asyncio.sleep(0.05)
+
+        status = str(run.get("status") or "running")
+        completed = status in RUN_TERMINAL_STATUSES
+        summary = (
+            summarize_workflow_run(run)
+            if completed
+            else "started — still running in the background"
+        )
+        last_execution = build_last_execution(
+            mode="live",
+            status=status if completed else "running",
+            summary=summary,
+            run_id=run_id or None,
+        )
+        _stamp_last_execution(req.workflow_id, last_execution, scope)
+
+        review_item = None
+        if status == "failed":
+            review_item = enqueue_failed_execution(
+                review_queue,
+                workflow=workflow,
+                run_id=run_id or None,
+                error=summary,
+                user_email=user or None,
+                workspace_id=scope,
+            )
+        append_audit_event(
+            "automation_run_now",
+            user_email=user,
+            workflow_id=req.workflow_id,
+            dry_run=False,
+            run_id=run_id or None,
+            status=last_execution["status"],
+        )
+        payload = {
+            "workflow_id": req.workflow_id,
+            "dry_run": False,
+            "status": last_execution["status"],
+            "run_id": run_id or None,
+            "last_execution": last_execution,
+        }
+        if review_item is not None:
+            payload["review_item_id"] = review_item.get("id")
+        return payload
 
     return router
 

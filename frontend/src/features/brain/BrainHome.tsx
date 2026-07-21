@@ -18,6 +18,7 @@ import { useBrainChat } from "./hooks/useBrainChat";
 import { useBrainHistory } from "./hooks/useBrainHistory";
 import { useBrainIngestion } from "./hooks/useBrainIngestion";
 import { useBrainProof } from "./hooks/useBrainProof";
+import { useGlobalFileDrop } from "./hooks/useGlobalFileDrop";
 
 export function BrainHome({
   brainState,
@@ -89,6 +90,20 @@ export function BrainHome({
     window.location.hash = depth <= 2 ? "/memory" : "/knowledge-graph";
   }, [onBrainChange]);
 
+  // Global drag-and-drop capture: dropped files reuse the exact upload/ingest
+  // mutation the click-to-upload tiles call, processed sequentially so each
+  // file gets its own pipeline feedback.
+  const uploadDocumentRef = React.useRef(ingestion.uploadDocument);
+  uploadDocumentRef.current = ingestion.uploadDocument;
+  const handleDroppedFiles = React.useCallback((files: File[]) => {
+    void (async () => {
+      for (const file of files.slice(0, 5)) {
+        await uploadDocumentRef.current(file);
+      }
+    })();
+  }, []);
+  const draggingFiles = useGlobalFileDrop(handleDroppedFiles);
+
   const startNewConversation = React.useCallback(() => {
     if (chat.streaming) chat.stopStreaming();
     history.resetConversation();
@@ -122,6 +137,14 @@ export function BrainHome({
 
   return (
     <main className="brain-home" aria-label={t(language, "brain.aria.home")}>
+      {draggingFiles ? (
+        <div className="brain-drop-overlay" role="status" data-testid="brain-drop-overlay">
+          <div className="brain-drop-overlay-card">
+            <strong>{t(language, "brain.dnd.title")}</strong>
+            <span>{t(language, "brain.dnd.detail")}</span>
+          </div>
+        </div>
+      ) : null}
       <BrainConversation
         language={language}
         brainState={visibleBrainState}
@@ -161,6 +184,7 @@ export function BrainHome({
         onSendText={(text) => void chat.sendText(text)}
         onCreateActionItem={(content) => void chat.createActionItem(content)}
         onProactiveAction={(action) => void chat.handleProactiveAction(action)}
+        onApprovalResolved={chat.handleApprovalResolved}
         onStop={chat.stopStreaming}
         onRegenerate={() => void chat.regenerate()}
         onNewConversation={startNewConversation}

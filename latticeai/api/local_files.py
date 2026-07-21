@@ -49,6 +49,16 @@ class FolderIngestRequest(BaseModel):
     approval_token: Optional[str] = None
 
 
+class FolderWatchEnableRequest(BaseModel):
+    path: str
+    recursive: bool = True
+    workspace_id: Optional[str] = None
+    # Watching continuously reads local disk → same approval dance as
+    # /api/ingestion/folder. This is the explicit opt-in the review requires.
+    approved: bool = False
+    approval_token: Optional[str] = None
+
+
 def create_local_files_router(
     *,
     require_user,
@@ -64,8 +74,25 @@ def create_local_files_router(
     data_dir: Optional[Path] = None,
     allowed_workspaces_for=None,
     workspace_service=None,
+    folder_watch=None,
 ) -> APIRouter:
     router = APIRouter()
+
+    # ── opt-in folder watch service (backlog #8) ──────────────────────────────
+    # Constructed here (not injected) unless a test provides one; restore()
+    # only resumes watches persisted with the explicit opt-in — a fresh
+    # data_dir never starts a polling thread.
+    if folder_watch is None and ingestion_pipeline is not None and data_dir is not None:
+        try:
+            from latticeai.services.folder_watch import FolderWatchService
+
+            folder_watch = FolderWatchService(
+                pipeline=ingestion_pipeline,
+                config_path=Path(data_dir) / "folder_watch.json",
+            )
+            folder_watch.restore()
+        except Exception:  # noqa: BLE001 — watch mode is optional, never blocks routes
+            folder_watch = None
 
     @router.get("/api/local-agent/status")
     async def local_agent_status(request: Request):
@@ -307,6 +334,68 @@ def create_local_files_router(
             )
         return summary
 
+    # ── folder watch mode: opt-in, off by default (backlog #8) ────────────────
+    def _require_folder_watch():
+        _require_pipeline()
+        if folder_watch is None:
+            raise HTTPException(status_code=503, detail="Folder watch service is unavailable.")
+
+    @router.get("/api/ingestion/watch")
+    async def folder_watch_status(request: Request):
+        """Watch-mode status: stored opt-ins, poller state, last scan results."""
+        require_user(request)
+        _require_folder_watch()
+        return folder_watch.status()
+
+    @router.post("/api/ingestion/watch")
+    async def folder_watch_enable(req: FolderWatchEnableRequest, request: Request):
+        """Explicitly opt a previously-ingested folder into watch mode.
+
+        Follows the same local-read approval dance as ``/api/ingestion/folder``.
+        Enabling snapshots the folder as the baseline; only *future* new or
+        changed files are re-ingested (through the normal pipeline, with the
+        watch owner's workspace scope).
+        """
+        current_user = permission_gateway.require_local_user(request)
+        _require_folder_watch()
+        workspace_id = _ingestion_write_workspace(request, req.workspace_id, current_user)
+        path = (req.path or "").strip()
+        if not path:
+            raise HTTPException(status_code=400, detail="path is required.")
+        if not req.approved:
+            return permission_gateway.local_permission_response(path, "read", current_user)
+        permission_gateway.require_local_approval(
+            token=req.approval_token,
+            path=path,
+            action="read",
+            user_email=current_user,
+        )
+        result = folder_watch.enable(
+            path,
+            owner=current_user or None,
+            workspace_id=workspace_id,
+            recursive=req.recursive,
+        )
+        if result.get("status") != "ok":
+            raise HTTPException(status_code=400, detail=result.get("detail") or "watch enable failed")
+        return result
+
+    @router.delete("/api/ingestion/watch")
+    async def folder_watch_disable(
+        request: Request,
+        watch_id: Optional[str] = None,
+        path: Optional[str] = None,
+    ):
+        """Opt back out of watch mode (removes the stored consent record)."""
+        require_user(request)
+        _require_folder_watch()
+        if not watch_id and not path:
+            raise HTTPException(status_code=400, detail="watch_id or path is required.")
+        result = folder_watch.disable(watch_id=watch_id, path=path)
+        if result.get("status") == "not_found":
+            raise HTTPException(status_code=404, detail="watch not found")
+        return result
+
     @router.post("/local/write")
     async def local_write_endpoint(req: LocalWriteRequest, request: Request):
         current_user = permission_gateway.require_local_user(request)
@@ -353,6 +442,7 @@ def create_local_files_router(
 
 __all__ = [
     "FolderIngestRequest",
+    "FolderWatchEnableRequest",
     "LocalAccessRequest",
     "LocalWriteRequest",
     "create_local_files_router",

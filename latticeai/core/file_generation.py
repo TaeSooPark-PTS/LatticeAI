@@ -25,6 +25,7 @@ The pipeline is pure (no I/O, no FastAPI); the chat layer injects an async
 
 from __future__ import annotations
 
+import ast
 import html as html_lib
 import json
 import re
@@ -91,6 +92,8 @@ _EXT_FENCE_LANGS: Dict[str, Tuple[str, ...]] = {
     ".xml": ("xml", "svg"),
     ".csv": ("csv",),
     ".txt": ("txt", "text", "plaintext"),
+    ".vue": ("vue", "html"),
+    ".svelte": ("svelte", "html"),
 }
 
 
@@ -181,6 +184,76 @@ def looks_like_refusal(content: str) -> bool:
     return bool(_REFUSAL_RE.search(head)) and len(content) < 600
 
 
+# Braced code types validated structurally (balanced delimiters, no fences).
+_BRACED_CODE_EXTENSIONS = frozenset({".js", ".jsx", ".ts", ".tsx"})
+# Single-file components validated by their block tags being closed.
+_COMPONENT_EXTENSIONS = frozenset({".vue", ".svelte"})
+
+
+def _strip_code_literals(text: str) -> str:
+    """Remove string literals and comments so delimiter counting stays honest.
+
+    A cheap single-pass scanner (not a parser): quotes ('', "", ``), line
+    comments (//) and block comments (/* */) commonly contain lone braces
+    that would otherwise false-flag valid JS/TS as unbalanced.
+    """
+    out: List[str] = []
+    i, n = 0, len(text)
+    while i < n:
+        ch = text[i]
+        nxt = text[i + 1] if i + 1 < n else ""
+        if ch == "\\":
+            i += 2  # escaped char (inside or outside a literal — always skip)
+            continue
+        if ch in ("'", '"', "`"):
+            quote = ch
+            i += 1
+            while i < n:
+                if text[i] == "\\":
+                    i += 2
+                    continue
+                if text[i] == quote:
+                    i += 1
+                    break
+                i += 1
+            continue
+        if ch == "/" and nxt == "/":
+            while i < n and text[i] != "\n":
+                i += 1
+            continue
+        if ch == "/" and nxt == "*":
+            end = text.find("*/", i + 2)
+            i = n if end < 0 else end + 2
+            continue
+        out.append(ch)
+        i += 1
+    return "".join(out)
+
+
+def _check_balanced_delimiters(content: str) -> Tuple[bool, str]:
+    """Lenient count-based balance check for braced code (js/ts family).
+
+    Only *counts* are compared, never ordering, so valid-but-unusual code is
+    not rejected; a truncated file with a dangling ``{`` still fails.
+    """
+    stripped = _strip_code_literals(content)
+    for opener, closer, label in (("{", "}", "braces"), ("(", ")", "parentheses"), ("[", "]", "brackets")):
+        if stripped.count(opener) != stripped.count(closer):
+            return False, f"unbalanced {label} ({opener}{closer}) — the file looks truncated"
+    return True, "ok"
+
+
+def _check_component_blocks(content: str) -> Tuple[bool, str]:
+    """Vue/Svelte SFC sanity: every opened block tag must be closed."""
+    lower = content.lower()
+    for tag in ("template", "script", "style"):
+        opened = len(re.findall(rf"<{tag}(?:\s[^>]*)?>", lower))
+        closed = lower.count(f"</{tag}>")
+        if opened != closed:
+            return False, f"<{tag}> block is not closed — the component looks truncated"
+    return True, "ok"
+
+
 def validate_file_content(content: str, target_path: str) -> Tuple[bool, str]:
     """Structural sanity check per file type. Returns (ok, reason)."""
     if not content.strip():
@@ -211,10 +284,28 @@ def validate_file_content(content: str, target_path: str) -> Tuple[bool, str]:
             return False, f"invalid JSON: {exc}"
         return True, "ok"
     if ext == ".css":
+        if "```" in content:
+            return False, "output still contains Markdown fences"
         if "{" not in content or "}" not in content:
             return False, "no CSS rule blocks found"
         return True, "ok"
-    if ext in (".py", ".js", ".jsx", ".ts", ".tsx", ".sh", ".sql"):
+    if ext == ".py":
+        if "```" in content:
+            return False, "output still contains Markdown fences"
+        try:
+            ast.parse(content)
+        except SyntaxError as exc:
+            return False, f"invalid Python syntax: {exc.msg} (line {exc.lineno})"
+        return True, "ok"
+    if ext in _BRACED_CODE_EXTENSIONS:
+        if "```" in content:
+            return False, "output still contains Markdown fences"
+        return _check_balanced_delimiters(content)
+    if ext in _COMPONENT_EXTENSIONS:
+        if "```" in content:
+            return False, "output still contains Markdown fences"
+        return _check_component_blocks(content)
+    if ext in (".sh", ".sql"):
         if "```" in content:
             return False, "output still contains Markdown fences"
         return True, "ok"
@@ -248,13 +339,31 @@ _TYPE_RULES: Dict[str, str] = {
     ".csv": "Produce CSV with a header row; comma-separated, one record per line.",
     ".py": "Produce complete runnable Python source code.",
     ".js": "Produce complete valid JavaScript source code.",
+    ".jsx": "Produce one complete React component file in JSX.",
+    ".ts": "Produce complete valid TypeScript source code.",
+    ".tsx": "Produce one complete React component file in TSX (TypeScript).",
+    ".vue": "Produce ONE complete Vue single-file component with closed <template>/<script>/<style> blocks.",
+    ".svelte": "Produce ONE complete Svelte component; every <script>/<style> block must be closed.",
 }
+
+# Multi-file bundles override the standalone-HTML rule: the page must link
+# its sibling files instead of inlining everything.
+_BUNDLE_HTML_RULE = (
+    "Produce ONE complete HTML5 document: <!DOCTYPE html>, <html>, <head> with "
+    "<meta charset=\"utf-8\"> and a <title>, and a closed </html> tag. "
+    "This page is part of a multi-file project: link the project stylesheet(s) "
+    "with <link rel=\"stylesheet\" href=\"...\"> and load the project script(s) "
+    "with <script src=\"...\"></script> just before </body>. Reference ONLY the "
+    "project files listed below — no other external files, no inline <style> "
+    "blocks, no inline behavior scripts."
+)
 
 
 def build_file_generation_context(
     target_path: str,
     user_request: str,
     feedback: Optional[str] = None,
+    bundle_files: Optional[List[str]] = None,
 ) -> str:
     """Strict, extension-aware generation instructions.
 
@@ -271,8 +380,13 @@ def build_file_generation_context(
         "no text before or after the content.",
     ]
     type_rule = _TYPE_RULES.get(ext)
+    if bundle_files and ext in (".html", ".htm"):
+        type_rule = _BUNDLE_HTML_RULE
     if type_rule:
         parts.append(f"- {type_rule}")
+    if bundle_files:
+        listed = ", ".join(bundle_files)
+        parts.append(f"- Project files in this bundle: {listed}")
     first_line = _FIRST_LINE_HINTS.get(ext)
     if first_line:
         parts.append(f"- The very first line of your reply must be: {first_line}")
@@ -309,12 +423,29 @@ def repair_file_content(content: str, target_path: str, user_request: str) -> st
             ensure_ascii=False,
             indent=2,
         )
+    if ext == ".py" and salvage:
+        # The repair guarantee for Python is parseability: unparseable output
+        # is preserved honestly as a commented-out draft, never as a broken
+        # module the user has to debug.
+        try:
+            ast.parse(salvage)
+            return salvage
+        except SyntaxError:
+            commented = "\n".join(f"# {line}" for line in salvage.splitlines())
+            return (
+                f"# TODO: model produced invalid Python for: {user_request}\n"
+                "# The draft below is preserved as comments — fix and uncomment.\n"
+                f"{commented}\n"
+            )
     if salvage:
         return salvage
     # Nothing usable at all — leave an honest placeholder in the right format.
     comment = {
         ".py": "# TODO: model produced no usable content for: ",
         ".js": "// TODO: model produced no usable content for: ",
+        ".jsx": "// TODO: model produced no usable content for: ",
+        ".ts": "// TODO: model produced no usable content for: ",
+        ".tsx": "// TODO: model produced no usable content for: ",
         ".css": "/* TODO: model produced no usable content for: ",
         ".sh": "# TODO: model produced no usable content for: ",
         ".sql": "-- TODO: model produced no usable content for: ",
@@ -371,6 +502,7 @@ def _repair_html(salvage: str, user_request: str) -> str:
 PREVIEWABLE_EXTENSIONS = frozenset({
     ".html", ".htm", ".md", ".markdown", ".txt", ".json", ".css", ".js",
     ".csv", ".py", ".yaml", ".yml", ".xml", ".sql", ".sh",
+    ".jsx", ".ts", ".tsx", ".vue", ".svelte",
 })
 
 
@@ -457,6 +589,145 @@ def infer_file_target(message: str) -> Optional[str]:
     return None
 
 
+# ── project manifest (multi-file bundles) ───────────────────────────────
+
+# ``\b`` fails against Korean particles ("js로") because Hangul is ``\w`` —
+# use ASCII lookarounds so type keywords match with or without a particle.
+_HTML_HINT_RE = re.compile(
+    r"(?<![a-z0-9])html(?![a-z0-9])"
+    r"|웹\s*페이지|웹페이지|홈페이지|웹\s*사이트|웹사이트|website|web\s*page|landing\s*page",
+)
+_CSS_HINT_RE = re.compile(r"(?<![a-z0-9])css(?![a-z0-9])|스타일\s*시트|stylesheet")
+_JS_HINT_RE = re.compile(
+    r"(?<![a-z0-9])js(?![a-z0-9])|javascript|자바스크립트|자바\s*스크립트"
+)
+# An explicit filename means the user is managing paths — keep the
+# deterministic single-file flow untouched.
+_EXPLICIT_FILENAME_RE = re.compile(
+    r"[\w-]+\.(?:html?|css|js|jsx|ts|tsx|py|json|md|txt|csv|vue|svelte)\b",
+    re.IGNORECASE,
+)
+_PROJECT_NAME_RE = re.compile(r"([A-Za-z][A-Za-z0-9_-]{1,30})\s*(?:앱|app\b)", re.IGNORECASE)
+
+
+def infer_project_manifest(message: str) -> Optional[Dict[str, Any]]:
+    """Infer a multi-file web-project manifest from a creation request.
+
+    "todo 앱 html+css+js로 만들어줘" should yield real linked files, not one
+    inlined page. Deliberately narrow and deterministic (weak local models
+    never see this decision): requires a creation verb, an HTML-page intent,
+    at least one *additional* named technology (css/js), and no explicit
+    filename. Single-type requests return ``None`` so the existing
+    single-file flow is completely unchanged.
+    """
+    text = (message or "").strip()
+    if not text or not _CREATE_VERB_RE.search(text):
+        return None
+    if _EXPLICIT_FILENAME_RE.search(text):
+        return None
+    lower = text.lower()
+    wants_html = bool(_HTML_HINT_RE.search(lower))
+    wants_css = bool(_CSS_HINT_RE.search(lower))
+    wants_js = bool(_JS_HINT_RE.search(lower))
+    if not wants_html or not (wants_css or wants_js):
+        return None
+
+    name_match = _PROJECT_NAME_RE.search(text)
+    name = f"{name_match.group(1).lower()}-app" if name_match else "web-project"
+
+    files: List[Dict[str, str]] = []
+    html_refs: List[str] = []
+    if wants_css:
+        html_refs.append('<link rel="stylesheet" href="style.css"> in <head>')
+    if wants_js:
+        html_refs.append('<script src="app.js"></script> just before </body>')
+    files.append({
+        "path": "index.html",
+        "brief": (
+            "The main HTML page of the project. Reference the sibling files: "
+            + " and ".join(html_refs)
+            + ". Do not inline styles or behavior scripts."
+        ),
+    })
+    if wants_css:
+        files.append({
+            "path": "style.css",
+            "brief": "All visual styles for index.html (layout, colors, typography).",
+        })
+    if wants_js:
+        files.append({
+            "path": "app.js",
+            "brief": (
+                "All page behavior for index.html as plain browser JavaScript "
+                "(no build step, no imports of missing files)."
+            ),
+        })
+    return {"name": name, "kind": "web", "files": files}
+
+
+_HTML_LOCAL_REF_RE = re.compile(
+    r"(?:href|src)\s*=\s*[\"']([^\"'#?]+)[\"']", re.IGNORECASE
+)
+_EXTERNAL_REF_PREFIXES = ("http://", "https://", "//", "data:", "mailto:", "tel:", "javascript:")
+
+
+def _local_bundle_refs(html: str) -> List[str]:
+    """File references inside an HTML document that must exist in the bundle."""
+    refs: List[str] = []
+    for ref in _HTML_LOCAL_REF_RE.findall(html or ""):
+        candidate = ref.strip()
+        if not candidate or candidate.startswith(_EXTERNAL_REF_PREFIXES):
+            continue
+        if "." not in candidate.rsplit("/", 1)[-1]:
+            continue  # anchors / routes, not files
+        refs.append(candidate)
+    return refs
+
+
+def repair_bundle_references(files: Dict[str, str]) -> Tuple[Dict[str, str], List[str]]:
+    """Deterministically point dangling HTML refs at real bundle files.
+
+    A weak model asked for ``style.css`` sometimes links ``styles.css``. When
+    a referenced file is missing but the bundle contains exactly one file of
+    the same extension, the reference is rewritten. Returns ``(files, fixes)``.
+    """
+    names = {p.rsplit("/", 1)[-1] for p in files}
+    fixes: List[str] = []
+    repaired = dict(files)
+    for path, content in files.items():
+        if _ext(path) not in (".html", ".htm"):
+            continue
+        updated = content
+        for ref in _local_bundle_refs(content):
+            base = ref.rsplit("/", 1)[-1]
+            if base in names:
+                continue
+            same_ext = [n for n in names if _ext(n) == _ext(base)]
+            if len(same_ext) == 1:
+                updated = updated.replace(ref, same_ext[0])
+                fixes.append(f"{path}: '{ref}' -> '{same_ext[0]}'")
+        if updated != content:
+            repaired[path] = updated
+    return repaired, fixes
+
+
+def validate_project_bundle(files: Dict[str, str]) -> Dict[str, Any]:
+    """Bundle-level verification: every file valid, every HTML ref resolvable."""
+    issues: List[str] = []
+    per_file: Dict[str, Dict[str, Any]] = {}
+    names = {p.rsplit("/", 1)[-1] for p in files}
+    for path, content in files.items():
+        ok, reason = validate_file_content(content, path)
+        per_file[path] = {"valid": ok, "reason": reason}
+        if not ok:
+            issues.append(f"{path}: {reason}")
+        if _ext(path) in (".html", ".htm"):
+            for ref in _local_bundle_refs(content):
+                if ref.rsplit("/", 1)[-1] not in names:
+                    issues.append(f"{path}: references missing file '{ref}'")
+    return {"ok": not issues, "issues": issues, "files": per_file}
+
+
 # ── orchestration ───────────────────────────────────────────────────────
 
 async def generate_file_content(
@@ -465,6 +736,7 @@ async def generate_file_content(
     target_path: str,
     user_request: str,
     max_attempts: int = 2,
+    bundle_files: Optional[List[str]] = None,
 ) -> Tuple[str, Dict[str, Any]]:
     """Generate validated file content with any LLM.
 
@@ -477,7 +749,9 @@ async def generate_file_content(
     feedback: Optional[str] = None
     last_candidate = ""
     for attempt in range(1, max_attempts + 1):
-        context = build_file_generation_context(target_path, user_request, feedback=feedback)
+        context = build_file_generation_context(
+            target_path, user_request, feedback=feedback, bundle_files=bundle_files,
+        )
         try:
             raw = await generate(context)
         except Exception as exc:  # model backend hiccup — repair still delivers
@@ -502,8 +776,11 @@ __all__ = [
     "extract_file_content",
     "generate_file_content",
     "infer_file_target",
+    "infer_project_manifest",
     "looks_like_refusal",
+    "repair_bundle_references",
     "repair_file_content",
     "sanitize_write_content",
     "validate_file_content",
+    "validate_project_bundle",
 ]

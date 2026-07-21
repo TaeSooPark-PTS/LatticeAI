@@ -605,6 +605,7 @@ def register_review_and_brain_tail_routers(
     create_setup_router: Any,
     model_router: Any,
     change_proposals: Any = None,
+    knowledge_graph: Any = None,
 ) -> Any:
     """Register the final review/browser/brain tail routes in legacy order."""
 
@@ -644,6 +645,12 @@ def register_review_and_brain_tail_routers(
             require_admin=require_admin,
         ),
         create_garden_router(gardener=gardener, require_user=require_user),
-        create_setup_router(model_router=model_router, require_user=require_user),
+        create_setup_router(
+            model_router=model_router,
+            require_user=require_user,
+            ingestion_pipeline=ingestion_pipeline,
+            knowledge_graph=knowledge_graph,
+            workspace_service=workspace_service,
+        ),
     )
     return brain_network

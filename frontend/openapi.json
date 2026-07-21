@@ -236,14 +236,55 @@
       },
       "AgentResumeRequest": {
         "properties": {
+          "approval_token": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Approval Token"
+          },
+          "approve": {
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Approve"
+          },
           "approved": {
             "default": true,
             "title": "Approved",
             "type": "boolean"
           },
           "context_id": {
-            "title": "Context Id",
-            "type": "string"
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Context Id"
+          },
+          "edited_plan": {
+            "anyOf": [
+              {
+                "additionalProperties": true,
+                "type": "object"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Edited Plan"
           },
           "executing_model": {
             "anyOf": [
@@ -278,11 +319,19 @@
               }
             ],
             "title": "Reviewing Model"
+          },
+          "run_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Run Id"
           }
         },
-        "required": [
-          "context_id"
-        ],
         "title": "AgentResumeRequest",
         "type": "object"
       },
@@ -316,6 +365,24 @@
           "goal"
         ],
         "title": "AgentRunRequest",
+        "type": "object"
+      },
+      "AutomationRunNowRequest": {
+        "properties": {
+          "dry_run": {
+            "default": true,
+            "title": "Dry Run",
+            "type": "boolean"
+          },
+          "workflow_id": {
+            "title": "Workflow Id",
+            "type": "string"
+          }
+        },
+        "required": [
+          "workflow_id"
+        ],
+        "title": "AutomationRunNowRequest",
         "type": "object"
       },
       "BackupRequest": {
@@ -762,6 +829,59 @@
         "title": "CuTypeRequest",
         "type": "object"
       },
+      "CurateNoiseRequest": {
+        "properties": {
+          "dry_run": {
+            "default": true,
+            "title": "Dry Run",
+            "type": "boolean"
+          },
+          "max_df_ratio": {
+            "default": 0.8,
+            "title": "Max Df Ratio",
+            "type": "number"
+          },
+          "max_removals": {
+            "default": 200,
+            "title": "Max Removals",
+            "type": "integer"
+          },
+          "min_corpus_docs": {
+            "default": 5,
+            "title": "Min Corpus Docs",
+            "type": "integer"
+          },
+          "min_doc_frequency": {
+            "default": 1,
+            "title": "Min Doc Frequency",
+            "type": "integer"
+          },
+          "normalize_verbs": {
+            "default": true,
+            "title": "Normalize Verbs",
+            "type": "boolean"
+          }
+        },
+        "title": "CurateNoiseRequest",
+        "type": "object"
+      },
+      "DemoCorpusRequest": {
+        "properties": {
+          "workspace_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Workspace Id"
+          }
+        },
+        "title": "DemoCorpusRequest",
+        "type": "object"
+      },
       "DismissRequest": {
         "description": "Optional dismissal context (e.g. why a change proposal was rejected).",
         "properties": {
@@ -965,6 +1085,51 @@
           "path"
         ],
         "title": "FolderIngestRequest",
+        "type": "object"
+      },
+      "FolderWatchEnableRequest": {
+        "properties": {
+          "approval_token": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Approval Token"
+          },
+          "approved": {
+            "default": false,
+            "title": "Approved",
+            "type": "boolean"
+          },
+          "path": {
+            "title": "Path",
+            "type": "string"
+          },
+          "recursive": {
+            "default": true,
+            "title": "Recursive",
+            "type": "boolean"
+          },
+          "workspace_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Workspace Id"
+          }
+        },
+        "required": [
+          "path"
+        ],
+        "title": "FolderWatchEnableRequest",
         "type": "object"
       },
       "GardenRequest": {
@@ -5850,6 +6015,22 @@
         "summary": "Agent Runtime Status"
       }
     },
+    "/api/admin/funnel-metrics": {
+      "get": {
+        "operationId": "funnel_metrics_api_admin_funnel_metrics_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": "Funnel Metrics"
+      }
+    },
     "/api/automation/install": {
       "post": {
         "operationId": "automation_install_api_automation_install_post",
@@ -5916,6 +6097,43 @@
           }
         },
         "summary": "Automation Patterns"
+      }
+    },
+    "/api/automation/run-now": {
+      "post": {
+        "description": "Run an installed automation once \u2014 dry-run by default.\n\n* ``dry_run=true``: deterministic report of what WOULD happen; no\n  runner executes and nothing but the ``last_execution`` stamp moves.\n* ``dry_run=false``: one real execution through the async run\n  executor; the request waits briefly for completion, stamps the\n  result, and enqueues failed executions into the review inbox.",
+        "operationId": "automation_run_now_api_automation_run_now_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/AutomationRunNowRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Automation Run Now"
       }
     },
     "/api/automation/suggestions": {
@@ -7220,6 +7438,117 @@
         "summary": "Ingestion Job Resume"
       }
     },
+    "/api/ingestion/watch": {
+      "delete": {
+        "description": "Opt back out of watch mode (removes the stored consent record).",
+        "operationId": "folder_watch_disable_api_ingestion_watch_delete",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "watch_id",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Watch Id"
+            }
+          },
+          {
+            "in": "query",
+            "name": "path",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Path"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Folder Watch Disable"
+      },
+      "get": {
+        "description": "Watch-mode status: stored opt-ins, poller state, last scan results.",
+        "operationId": "folder_watch_status_api_ingestion_watch_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": "Folder Watch Status"
+      },
+      "post": {
+        "description": "Explicitly opt a previously-ingested folder into watch mode.\n\nFollows the same local-read approval dance as ``/api/ingestion/folder``.\nEnabling snapshots the folder as the baseline; only *future* new or\nchanged files are re-ingested (through the normal pipeline, with the\nwatch owner's workspace scope).",
+        "operationId": "folder_watch_enable_api_ingestion_watch_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/FolderWatchEnableRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Folder Watch Enable"
+      }
+    },
     "/api/knowledge-graph/archive": {
       "post": {
         "operationId": "encrypted_archive_api_knowledge_graph_archive_post",
@@ -8431,6 +8760,80 @@
           }
         },
         "summary": "Vector Search"
+      }
+    },
+    "/api/setup/demo-corpus": {
+      "delete": {
+        "description": "Remove every demo document (node + chunks + edges + orphan source).",
+        "operationId": "demo_corpus_remove_api_setup_demo_corpus_delete",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": "Demo Corpus Remove"
+      },
+      "get": {
+        "description": "Whether the demo corpus is installed + the suggestion chips.",
+        "operationId": "demo_corpus_status_api_setup_demo_corpus_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": "Demo Corpus Status"
+      },
+      "post": {
+        "description": "One-click ingest of the 3 built-in demo documents (idempotent).\n\nEvery document goes through the normal IngestionPipeline door with\n``demo://`` provenance so it is honest (real nodes, real chunks, real\nprovenance) and removable via DELETE. Re-POSTing reports duplicates\ninstead of duplicating.",
+        "operationId": "demo_corpus_install_api_setup_demo_corpus_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "anyOf": [
+                  {
+                    "$ref": "#/components/schemas/DemoCorpusRequest"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ],
+                "title": "Req"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Demo Corpus Install"
       }
     },
     "/app": {
@@ -9981,6 +10384,43 @@
           }
         },
         "summary": "Knowledge Graph Curate"
+      }
+    },
+    "/knowledge-graph/curate/noise": {
+      "post": {
+        "description": "Noise-reduction curation job (backlog #10).\n\nDry-run by default: reports which heuristic concept nodes would be\nremoved (low IDF / below the frequency floor) and which relation\nverbs would be normalized, without changing the graph. Set\n``dry_run=false`` to apply. User-created nodes are never removed.\nAdministrative like ``/knowledge-graph/curate`` when roles exist.",
+        "operationId": "knowledge_graph_curate_noise_knowledge_graph_curate_noise_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CurateNoiseRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Knowledge Graph Curate Noise"
       }
     },
     "/knowledge-graph/documents": {
@@ -13022,6 +13462,44 @@
           }
         },
         "summary": "Tools Download"
+      }
+    },
+    "/tools/download_zip": {
+      "get": {
+        "description": "Serve a generated project directory from the agent workspace as a zip.\n\nThe multi-file artifact loop writes bundles like ``todo-app/`` \u2014\nthis is their one-click download. Path confinement mirrors\n``/tools/download``: anything outside the workspace is refused.",
+        "operationId": "tools_download_zip_tools_download_zip_get",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "path",
+            "required": true,
+            "schema": {
+              "title": "Path",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Tools Download Zip"
       }
     },
     "/tools/edit_file": {

@@ -6,11 +6,13 @@ Path resolution reads ``latticeai.tools.AGENT_ROOT`` so tests can redirect the s
 
 from __future__ import annotations
 
+import io
 import json
 import re
+import zipfile
 from html.parser import HTMLParser
 from pathlib import Path
-from typing import Any, Dict, List, Optional
+from typing import Any, Dict, List, Optional, Tuple
 
 import latticeai.tools as tools
 from latticeai.tools import (
@@ -554,3 +556,38 @@ button { padding: 10px 14px; border-radius: 10px; border: 1px solid #d6d6d6; bac
         "file_count": len(created),
         "bytes": total_bytes,
     }
+
+
+# Generous cap for a generated-project archive — the workspace itself caps
+# individual files at MAX_FILE_BYTES, this only bounds pathological trees.
+MAX_ZIP_TOTAL_BYTES = 50_000_000
+
+
+def zip_workspace_dir(path: str, max_total_bytes: int = MAX_ZIP_TOTAL_BYTES) -> Tuple[bytes, str]:
+    """Zip one workspace directory for download; confinement-safe by design.
+
+    Path resolution goes through the sandboxed ``_resolve_path`` (traversal
+    outside the agent workspace raises ``ToolError``), symlinks are skipped so
+    an in-workspace link can never leak files from elsewhere, and the archive
+    root is the directory name itself (``todo-app/index.html``).
+    """
+    target = _resolve_path(path)
+    if target == tools.AGENT_ROOT:
+        raise ToolError("Cannot zip the entire workspace root — pick a project directory.")
+    if not target.exists() or not target.is_dir():
+        raise ToolError("Path is not a directory in the workspace.")
+
+    buffer = io.BytesIO()
+    total = 0
+    with zipfile.ZipFile(buffer, "w", zipfile.ZIP_DEFLATED) as archive:
+        for child in sorted(target.rglob("*")):
+            if child.is_symlink() or not child.is_file():
+                continue
+            resolved = child.resolve()
+            if target not in resolved.parents:
+                continue  # defense in depth — never archive escaped paths
+            total += child.stat().st_size
+            if total > max_total_bytes:
+                raise ToolError("Directory is too large to zip.")
+            archive.write(child, arcname=str(child.relative_to(target.parent)))
+    return buffer.getvalue(), f"{target.name}.zip"

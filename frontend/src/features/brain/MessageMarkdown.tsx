@@ -1,8 +1,9 @@
 import * as React from "react";
-import { Download, FileCheck2, Save } from "lucide-react";
+import { Download, Eye, FileCheck2, Save } from "lucide-react";
 
 import { latticeApi } from "@/api/client";
 import { t, type Language } from "@/i18n";
+import { FilePreviewModal, isPreviewableFile } from "./FilePreviewModal";
 import type { MessageFile } from "./types";
 
 // Renders assistant text with fenced code blocks as readable code cards.
@@ -274,6 +275,7 @@ export function CreatedFilesCard({
 }) {
   const [downloading, setDownloading] = React.useState<string | null>(null);
   const [error, setError] = React.useState("");
+  const [previewFile, setPreviewFile] = React.useState<MessageFile | null>(null);
 
   async function download(file: MessageFile) {
     if (downloading) return;
@@ -285,7 +287,10 @@ export function CreatedFilesCard({
   }
 
   return (
-    <section className={`brain-created-files ${compact ? "is-compact" : ""}`} aria-label={t(language, "brain.files.title")}>
+    <section
+      className={`brain-created-files lattice-success-pulse ${compact ? "is-compact" : ""}`}
+      aria-label={t(language, "brain.files.title")}
+    >
       <div className="brain-created-files-head">
         <FileCheck2 className="h-4 w-4" aria-hidden="true" />
         <strong>{t(language, "brain.files.title")}</strong>
@@ -300,6 +305,12 @@ export function CreatedFilesCard({
                 {t(language, "brain.files.repaired")}
               </span>
             ) : null}
+            {isPreviewableFile(file) ? (
+              <button type="button" onClick={() => setPreviewFile(file)}>
+                <Eye className="h-3.5 w-3.5" aria-hidden="true" />
+                {t(language, "brain.preview.open")}
+              </button>
+            ) : null}
             <button type="button" onClick={() => void download(file)} disabled={downloading === file.path}>
               <Download className="h-3.5 w-3.5" aria-hidden="true" />
               {downloading === file.path ? t(language, "brain.files.downloading") : t(language, "brain.files.download")}
@@ -307,6 +318,9 @@ export function CreatedFilesCard({
           </li>
         ))}
       </ul>
+      {previewFile ? (
+        <FilePreviewModal language={language} file={previewFile} onClose={() => setPreviewFile(null)} />
+      ) : null}
       <small className="brain-created-files-hint">{t(language, "brain.files.hint")}</small>
       {error ? (
         <small className="brain-created-files-error" role="alert">

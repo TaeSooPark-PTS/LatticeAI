@@ -8,7 +8,7 @@ from typing import Any, AsyncIterator, Dict, Optional
 
 from fastapi.responses import JSONResponse, StreamingResponse
 
-from latticeai.api.chat_helpers import single_text_stream
+from latticeai.api.chat_helpers import assess_answer_grounding, single_text_stream
 
 
 def single_answer_response(req: Any, answer: str, *, model: str):
@@ -87,6 +87,7 @@ async def stream_chat(
         persisted_response = f"{persisted_response}\n\n[stream_error] {stream_error}"
 
     trace_record = None
+    grounding = None
     try:
         answer_trace = trace_seed or chat_service.build_graph_trace(
             req.message,
@@ -94,6 +95,19 @@ async def stream_chat(
             context,
             allowed_workspaces={workspace_id} if workspace_id else None,
         )
+        # Answer-citation binding (backlog #11): same honest verdict as the
+        # non-streaming path, recorded on the persisted trace + trailer.
+        try:
+            grounding = assess_answer_grounding(
+                full_response,
+                trace=answer_trace if isinstance(answer_trace, dict) else None,
+                context_quality=context_quality,
+            )
+            if isinstance(answer_trace, dict):
+                answer_trace["grounding"] = grounding
+        except Exception as exc:  # noqa: BLE001 — annotation must never break streaming
+            logging.warning("answer grounding assessment failed: %s", exc)
+            grounding = None
         trace_record = await chat_service.persist_answer(
             question=req.message,
             response=persisted_response,
@@ -114,6 +128,8 @@ async def stream_chat(
         trailer.update({"trace_id": trace_record["id"], "trace": trace_record})
     if context_quality is not None:
         trailer["context_quality"] = context_quality
+    if grounding is not None:
+        trailer["grounding"] = grounding
     if stream_error:
         trailer["error"] = stream_error
     yield f"data: {json.dumps(trailer, ensure_ascii=False)}\n\n"

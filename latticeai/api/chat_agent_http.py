@@ -9,6 +9,7 @@ import re
 import secrets
 import threading
 import time
+from datetime import datetime, timedelta, timezone
 from pathlib import Path
 from typing import Any, Dict
 
@@ -17,7 +18,7 @@ from fastapi import APIRouter, HTTPException, Request
 from lattice_brain.runtime.hooks import dispatch_tool
 from latticeai.api.chat_contracts import AgentEvalRequest, AgentRequest, AgentResumeRequest
 from latticeai.api.chat_helpers import _LANG_HINT, detect_language, workspace_scope_from_request
-from latticeai.core.agent import AgentRunContext, AgentState
+from latticeai.core.agent import AgentRunContext, AgentState, normalize_plan
 from latticeai.services.tool_dispatch import collect_artifacts, collect_created_files
 
 
@@ -40,6 +41,7 @@ class AgentHTTPController:
         base_dir: Path,
         agent_root: Path,
         ensure_agent_root: Any,
+        funnel_metrics: Any = None,
     ) -> None:
         self.runtime = runtime
         self.model_router = model_router
@@ -56,9 +58,16 @@ class AgentHTTPController:
         self.base_dir = Path(base_dir)
         self.agent_root = Path(agent_root)
         self.ensure_agent_root = ensure_agent_root
+        self.funnel_metrics = funnel_metrics
         self._pending: Dict[str, tuple] = {}
         self._pending_lock = threading.Lock()
         self._pending_ttl_seconds = 15 * 60
+        # awaiting_approval runs: run_id -> paused run state + approval token.
+        # Fail-closed: governed steps only ever execute after resume presents
+        # the matching, unexpired token for this run (or via the legacy
+        # explicit human-in-loop context flow above).
+        self._approvals: Dict[str, Dict[str, Any]] = {}
+        self._approval_ttl_seconds = 10 * 60
         self._background_tasks: set[asyncio.Task] = set()
 
     def register_routes(self, router: APIRouter) -> None:
@@ -232,6 +241,18 @@ class AgentHTTPController:
                 "loop": ctx.trace.summary(),
             }
 
+        # Interactive approval: when the plan needs human approval, pause the
+        # run as awaiting_approval (short-TTL token) instead of failing it.
+        # ``getattr`` keeps injected fake runtimes without the preview method
+        # on the historical fail-closed path.
+        requirements_probe = getattr(self.runtime, "approval_requirements", None)
+        if callable(requirements_probe):
+            requirements = requirements_probe(ctx)
+            if requirements.get("requires_approval"):
+                return self._pause_for_approval(
+                    ctx, req, language_hint, current_user, requirements,
+                )
+
         self.runtime.approve(ctx, current_user, approved_by_human=False)
         return await self._finish(
             ctx,
@@ -241,6 +262,62 @@ class AgentHTTPController:
             max_steps,
             max_retry,
         )
+
+    def _pause_for_approval(
+        self,
+        ctx: AgentRunContext,
+        req: AgentRequest,
+        language_hint: str,
+        current_user: str,
+        requirements: Dict[str, Any],
+    ) -> Dict[str, Any]:
+        """Park a plan that needs approval and hand the user a resume token."""
+        run_id = secrets.token_urlsafe(16)
+        approval_token = secrets.token_urlsafe(32)
+        now_monotonic = time.monotonic()
+        expires_at = (
+            datetime.now(timezone.utc) + timedelta(seconds=self._approval_ttl_seconds)
+        ).isoformat(timespec="seconds")
+        with self._pending_lock:
+            self._purge_expired_approvals_locked(now_monotonic)
+            self._approvals[run_id] = {
+                "ctx": ctx,
+                "req": req,
+                "language_hint": language_hint,
+                "user": current_user,
+                "token": approval_token,
+                "expires_monotonic": now_monotonic + self._approval_ttl_seconds,
+                "expires_at": expires_at,
+            }
+        ctx.state_history.append(AgentState.WAITING_APPROVAL.value)
+        message = (
+            "이 작업에는 승인이 필요한 단계가 있어 실행을 잠시 멈췄습니다. "
+            "계획을 확인한 뒤 승인하면 이어서 실행합니다."
+        )
+        return {
+            "status": "awaiting_approval",
+            "run_id": run_id,
+            "approval": {
+                "token": approval_token,
+                "expires_at": expires_at,
+                "plan_summary": requirements.get("plan_summary", ""),
+            },
+            "response": message,
+            "plan": ctx.plan,
+            "steps": ctx.transcript,
+            "state_history": ctx.state_history,
+            "final_state": AgentState.WAITING_APPROVAL.value,
+            "non_auto_steps": requirements.get("non_auto_steps", []),
+            "planning_model": req.planning_model or self.model_router.current_model_id,
+            "executing_model": req.executing_model or self.model_router.current_model_id,
+            "reviewing_model": req.reviewing_model or self.model_router.current_model_id,
+            "loop": ctx.trace.summary(),
+        }
+
+    def _purge_expired_approvals_locked(self, now_monotonic: float) -> None:
+        for run_id, entry in list(self._approvals.items()):
+            if now_monotonic >= entry["expires_monotonic"]:
+                self._approvals.pop(run_id, None)
 
     async def _finish(
         self,
@@ -299,6 +376,16 @@ class AgentHTTPController:
             )
         except Exception as exc:
             logging.warning("workspace agent run record failed: %s", exc)
+        if self.funnel_metrics is not None:
+            # UX funnel (backlog #16): every completed agent run counts, and
+            # NEEDS_REVIEW terminals feed the needs_review_rate the review
+            # gates watch. Advisory only — a metrics failure never fails chat.
+            try:
+                self.funnel_metrics.increment("agent_runs")
+                if ctx.state == AgentState.NEEDS_REVIEW:
+                    self.funnel_metrics.increment("needs_review_runs")
+            except Exception as exc:  # noqa: BLE001
+                logging.warning("funnel metrics increment failed: %s", exc)
         return {
             "status": "ok" if ctx.state == AgentState.DONE else "failed",
             "response": message,
@@ -316,8 +403,22 @@ class AgentHTTPController:
         req: AgentResumeRequest,
         request: Request,
     ) -> Dict[str, Any]:
-        """Resume a paused agent after human approval of the plan."""
+        """Resume a paused agent after human approval of the plan.
+
+        Two entry modes share this endpoint:
+
+        * ``run_id`` + ``approval_token`` — an ``awaiting_approval`` run
+          (token-validated, short TTL, bound to the pausing user);
+        * ``context_id`` — the legacy explicit human-in-loop pause.
+        """
         current_user = self.require_user(request)
+        if req.run_id:
+            return await self._resume_approval(req, current_user)
+        if not req.context_id:
+            raise HTTPException(
+                status_code=400,
+                detail="run_id (with approval_token) or context_id is required.",
+            )
         with self._pending_lock:
             now = time.monotonic()
             for context_id, pending in list(self._pending.items()):
@@ -345,7 +446,94 @@ class AgentHTTPController:
             ctx.transcript[-1].update(ctx.plan)
         ctx.executing_model = req.executing_model or ctx.executing_model
         ctx.reviewing_model = req.reviewing_model or ctx.reviewing_model
-        self.runtime.approve(ctx, current_user)
+        # The authenticated owner of this pending context explicitly approved
+        # the plan — record it as a human approval so approval-gated steps can
+        # actually run instead of terminating the run as FAILED.
+        self.runtime.approve(ctx, current_user, approved_by_human=True)
+        return await self._finish(
+            ctx,
+            original_request,
+            language_hint,
+            current_user,
+            max(1, min(original_request.max_steps, 50)),
+            3,
+        )
+
+    async def _resume_approval(
+        self,
+        req: AgentResumeRequest,
+        current_user: str,
+    ) -> Dict[str, Any]:
+        """Validate an awaiting_approval token, then continue or cancel the run."""
+        now_monotonic = time.monotonic()
+        with self._pending_lock:
+            entry = self._approvals.get(req.run_id or "")
+            if entry is None:
+                raise HTTPException(
+                    status_code=404,
+                    detail="Agent run not found. It may have expired — start a new request.",
+                )
+            if entry["user"] != current_user:
+                raise HTTPException(
+                    status_code=403,
+                    detail="Agent run belongs to another user.",
+                )
+            if now_monotonic >= entry["expires_monotonic"]:
+                self._approvals.pop(req.run_id, None)
+                raise HTTPException(
+                    status_code=410,
+                    detail="Approval token expired. Start a new request.",
+                )
+            supplied = req.approval_token or ""
+            if not supplied or not secrets.compare_digest(entry["token"], supplied):
+                raise HTTPException(
+                    status_code=403,
+                    detail="Invalid approval token for this run.",
+                )
+            # Token validated — the pending run is consumed either way.
+            self._approvals.pop(req.run_id, None)
+            self._purge_expired_approvals_locked(now_monotonic)
+
+        ctx: AgentRunContext = entry["ctx"]
+        original_request: AgentRequest = entry["req"]
+        language_hint: str = entry["language_hint"]
+
+        approved = req.approve if req.approve is not None else req.approved
+        if not approved:
+            message = "사용자가 계획을 취소했습니다."
+            try:
+                self.workspace_store.record_agent_run(
+                    agent_id="agent:executor",
+                    status="cancelled",
+                    input_text=original_request.message,
+                    output_text=message,
+                    user_email=current_user or None,
+                    workspace_id=original_request.workspace_id,
+                    mode="llm",
+                    timeline=ctx.transcript,
+                    relationships=["agent:planner", "agent:reviewer"],
+                    graph=self.workspace_graph(),
+                )
+            except Exception as exc:
+                logging.warning("workspace agent run record failed: %s", exc)
+            return {
+                "status": "cancelled",
+                "run_id": req.run_id,
+                "response": message,
+            }
+
+        edited_plan = req.edited_plan or req.modified_plan
+        if edited_plan:
+            plan, plan_fixes = normalize_plan(edited_plan, original_request.message)
+            ctx.plan = plan
+            ctx.transcript.append({
+                "state": AgentState.WAITING_APPROVAL.value,
+                "edited_plan": True,
+                **({"plan_fixes": plan_fixes} if plan_fixes else {}),
+            })
+        ctx.executing_model = req.executing_model or ctx.executing_model
+        ctx.reviewing_model = req.reviewing_model or ctx.reviewing_model
+        self.runtime.approve(ctx, current_user, approved_by_human=True)
         return await self._finish(
             ctx,
             original_request,

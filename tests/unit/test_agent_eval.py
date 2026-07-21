@@ -141,6 +141,74 @@ def test_automation_scenario_respects_proposal_first_governance():
     assert result["final_state"] == "DONE"
 
 
+def test_suite_covers_artifact_write_sanitize_dimensions():
+    names = {s.name for s in default_scenarios()}
+    assert {
+        "filegen-dirty-write-sanitized-critic-pass",
+        "filegen-truncated-write-repaired-critic-pass",
+        "filegen-dirty-write-unverifiable-needs-review",
+    } <= names
+
+
+def test_dirty_write_scenario_sanitizes_before_tool_and_passes_critic():
+    scenario = next(
+        s for s in default_scenarios()
+        if s.name == "filegen-dirty-write-sanitized-critic-pass"
+    )
+    report = run_agent_eval([scenario])
+    result = report["results"][0]
+    assert result["ok"], result["failures"]
+    assert result["final_state"] == "DONE"
+    assert result["summary"]["tool_outcomes"] == {"ok": 1}
+    # The ArtifactWritePipeline fired exactly once, extraction-level (no
+    # deterministic repair needed for a fence+prose wrapper).
+    assert result["summary"]["repairs"].get("artifact_sanitize") == 1
+    assert "artifact_repair" not in result["summary"]["repairs"]
+
+
+def test_truncated_write_scenario_records_artifact_repair():
+    scenario = next(
+        s for s in default_scenarios()
+        if s.name == "filegen-truncated-write-repaired-critic-pass"
+    )
+    report = run_agent_eval([scenario])
+    result = report["results"][0]
+    assert result["ok"], result["failures"]
+    assert result["summary"]["repairs"].get("artifact_repair") == 1
+
+
+def test_dirty_write_needs_review_scenario_fails_closed():
+    scenario = next(
+        s for s in default_scenarios()
+        if s.name == "filegen-dirty-write-unverifiable-needs-review"
+    )
+    report = run_agent_eval([scenario])
+    result = report["results"][0]
+    assert result["ok"], result["failures"]
+    # File was sanitized and written, but verification was unavailable —
+    # fail-closed means NEEDS_REVIEW, never a fabricated DONE.
+    assert result["final_state"] == "NEEDS_REVIEW"
+    assert result["summary"]["repairs"].get("artifact_sanitize") == 1
+
+
+def test_write_content_expectations_actually_gate():
+    # The content-level assertions must be load-bearing: a scenario whose
+    # written payload violates expect_write_excludes has to fail.
+    clean_write = Scenario(
+        name="write-excludes-gates",
+        replies=[
+            '{"action": "plan", "goal": "x", "steps": [{"action": "write_file"}]}',
+            '{"action": "write_file", "args": {"path": "note.txt", "content": "hi"}}',
+            '{"action": "final", "message": "done"}',
+            '{"action": "verdict", "verdict": "PASS", "next_state": "DONE", "reason": "ok"}',
+        ],
+        expect_write_excludes=["hi"],
+    )
+    report = run_agent_eval([clean_write])
+    assert report["passed"] == 0
+    assert any("must not contain" in f for f in report["results"][0]["failures"])
+
+
 def test_harness_detects_regressions():
     # A scenario whose expectation cannot hold must be reported as a failure,
     # proving the gate actually gates.

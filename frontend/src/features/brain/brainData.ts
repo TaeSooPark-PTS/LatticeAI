@@ -1,5 +1,5 @@
 import { asArray, isRecord as isRecordValue } from "@/lib/utils";
-import type { ApiRecord, BrainBrief, BrainDepth, BrainProof, BrainReadiness, ConversationSummary, ExtractionQuality, IngestionEvidence, IngestionJob, KnowledgeConcept, KnowledgeGraphModel, MemoryFragment, Message, MessageContextQuality, RelationshipThread, VectorFreshness } from "./types";
+import type { ApiRecord, BrainBrief, BrainDepth, BrainProof, BrainReadiness, ConversationSummary, ExtractionQuality, IngestionEvidence, IngestionJob, KnowledgeConcept, KnowledgeGraphModel, MemoryFragment, Message, MessageContextQuality, MessageFile, MessageGrounding, RelationshipThread, VectorFreshness } from "./types";
 import { clamp } from "./graphLayout";
 
 export function buildConversationSummaries(historyData: unknown): ConversationSummary[] {
@@ -181,6 +181,46 @@ export function parseContextQuality(value: unknown): MessageContextQuality | nul
   };
 }
 
+// Answer-citation binding verdict from the backend ("grounding"): defensive
+// parse of {status, reason}. The backend's Korean `label` field is
+// intentionally ignored so display copy always comes from i18n keys.
+export function parseGrounding(value: unknown): MessageGrounding | null {
+  const root = isRecord(value) ? value : {};
+  const direct = isRecord(root.grounding) ? root.grounding : null;
+  const grounding = direct || (typeof root.status === "string" && "label" in root ? root : null);
+  if (!grounding) return null;
+  const status = textValue(grounding, ["status"]);
+  if (!["supported", "unsupported", "no_context"].includes(status)) return null;
+  const reason = typeof grounding.reason === "string" && grounding.reason.trim() ? grounding.reason.trim() : null;
+  return { status, reason };
+}
+
+// Joins an agent payload's created_files with the artifacts[] preview verdict
+// (keyed by path, defensively) — shared by the streaming onAgent handler and
+// the approval-resume merge so both render through the same file-card path.
+export function agentPayloadFiles(agent: {
+  created_files?: Array<{ path: string; filename?: string; bytes?: number }>;
+  artifacts?: Array<Record<string, unknown>>;
+  generation?: { repaired?: boolean };
+}): MessageFile[] {
+  const repaired = Boolean(agent.generation?.repaired);
+  const previewableByPath = new Map<string, boolean>();
+  for (const artifact of agent.artifacts || []) {
+    if (artifact && typeof artifact.path === "string") {
+      previewableByPath.set(artifact.path, Boolean(artifact.previewable));
+    }
+  }
+  return (agent.created_files || []).map((file) => ({
+    path: file.path,
+    filename: file.filename || file.path.split("/").pop() || file.path,
+    bytes: file.bytes || 0,
+    repaired,
+    ...(previewableByPath.has(file.path)
+      ? { previewable: previewableByPath.get(file.path) }
+      : {}),
+  }));
+}
+
 // "unavailable" here is a machine state, not display copy: consumers gate on
 // it (VectorFreshnessNotice only renders for "pending") or map it to i18n
 // keys. Never render this status string directly in the UI.
@@ -192,6 +232,17 @@ export function parseVectorFreshness(data: unknown): VectorFreshness {
     totalItems: Math.max(0, Math.round(numberValue(record, ["total_items", "totalItems"]))),
     detail: textValue(record, ["detail"]),
   };
+}
+
+// The backend job schema records errors as {index, source, detail} objects;
+// older payloads use plain strings. Normalize both into readable one-liners
+// so the completion report can show skip/failure samples with reasons.
+function jobErrorText(entry: unknown): string {
+  if (typeof entry === "string") return entry.trim();
+  if (!isRecord(entry)) return "";
+  const source = textValue(entry, ["source", "path", "file"]);
+  const detail = textValue(entry, ["detail", "reason", "error"]);
+  return [source, detail].filter(Boolean).join(" — ");
 }
 
 export function parseIngestionJobs(data: unknown): IngestionJob[] {
@@ -207,7 +258,7 @@ export function parseIngestionJobs(data: unknown): IngestionJob[] {
       total: Math.max(0, Math.round(numberValue(item, ["total"]))),
       processed: Math.max(0, Math.round(numberValue(item, ["processed"]))),
       failed: Math.max(0, Math.round(numberValue(item, ["failed"]))),
-      errors: stringArrayValue(item, ["errors"]),
+      errors: asArray<unknown>(item.errors).map(jobErrorText).filter(Boolean).slice(0, 10),
       ...(createdAt ? { createdAt } : {}),
       ...(updatedAt ? { updatedAt } : {}),
     }];

@@ -450,7 +450,7 @@ class KnowledgeGraphRetrievalMixin:
         query: str,
         *,
         top_k: int = 20,
-        alpha: float = 0.6,
+        alpha: Optional[float] = None,
         workspace_id: Optional[str] = None,
         allowed_workspaces=None,
         include_legacy_global: bool = False,
@@ -476,6 +476,12 @@ class KnowledgeGraphRetrievalMixin:
 
         ``workspace_id`` is a convenience for single-workspace callers; the
         richer ``allowed_workspaces`` set wins when both are provided.
+
+        ``alpha=None`` (the default) resolves the vector share from the
+        query-class fusion table (:mod:`lattice_brain.graph.fusion`):
+        fact 0.6 (the historical default) / code 0.35 / person 0.45 /
+        recency 0.5, config-overridable via ``LATTICEAI_FUSION_WEIGHTS``.
+        Passing an explicit ``alpha`` pins it exactly as before.
         """
         query = str(query or "").strip()
         try:
@@ -483,6 +489,16 @@ class KnowledgeGraphRetrievalMixin:
         except (TypeError, ValueError):
             top_k = 20
         top_k = max(1, min(top_k, 100))
+        query_class: Optional[str] = None
+        if alpha is None:
+            try:
+                from .fusion import fusion_profile
+
+                profile = fusion_profile(query)
+                query_class = profile["query_class"]
+                alpha = float(profile["alpha"])
+            except Exception:  # noqa: BLE001 — fusion table must never break search
+                alpha = 0.6
         try:
             alpha = float(alpha)
         except (TypeError, ValueError):
@@ -496,6 +512,7 @@ class KnowledgeGraphRetrievalMixin:
                 "query": query,
                 "mode": "hybrid",
                 "alpha": alpha,
+                "query_class": query_class,
                 "top_k": top_k,
                 "sources": {"lexical": 0, "vector": 0},
                 "matches": [],
@@ -624,6 +641,7 @@ class KnowledgeGraphRetrievalMixin:
             "query": query,
             "mode": mode,
             "alpha": alpha,
+            "query_class": query_class,
             "top_k": top_k,
             "sources": {"lexical": len(lexical_matches), "vector": len(vector_matches)},
             "matches": matches,

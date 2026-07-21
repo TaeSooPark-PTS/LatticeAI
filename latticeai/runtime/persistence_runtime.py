@@ -38,6 +38,7 @@ def build_persistence_runtime(
     from latticeai.core.workspace_os import WorkspaceOSStore
     from latticeai.services.automation_intelligence import AutomationIntelligenceService
     from latticeai.services.brain_intelligence import BrainIntelligenceService
+    from latticeai.services.funnel_metrics import FunnelMetricsService
     from latticeai.services.memory_service import MemoryService
     from latticeai.services.workspace_service import WorkspaceService
 
@@ -70,11 +71,27 @@ def build_persistence_runtime(
         store=workspace_os,
         enable_graph=enable_graph,
     )
+    # UX funnel metrics (backlog #16): cheap JSON counters under the data dir.
+    # The ingestion pipeline's audit seam is wrapped so every successful
+    # ingest bumps the funnel (and starts the TTFV clock) without touching
+    # lattice_brain internals.
+    funnel_metrics = FunnelMetricsService(Path(data_dir) / "funnel_metrics.json")
+
+    def _funnel_audit(action, detail, user):
+        try:
+            if action == "kg_ingest":
+                funnel_metrics.record_ingest(
+                    duplicate=bool((detail or {}).get("duplicate"))
+                )
+        except Exception:  # noqa: BLE001 — metrics must never break ingestion
+            pass
+        audit(action, detail, user)
+
     ingestion_pipeline = IngestionPipeline(
         knowledge_graph,
         hooks=hooks_registry,
         enable_graph=enable_graph,
-        audit=audit,
+        audit=_funnel_audit,
     )
     device_identity = DeviceIdentity(data_dir)
     kg_portability = KGPortabilityService(
@@ -99,4 +116,5 @@ def build_persistence_runtime(
         "INGESTION_PIPELINE": ingestion_pipeline,
         "DEVICE_IDENTITY": device_identity,
         "KG_PORTABILITY": kg_portability,
+        "FUNNEL_METRICS": funnel_metrics,
     }

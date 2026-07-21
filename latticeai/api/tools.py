@@ -11,7 +11,7 @@ from pathlib import Path
 from typing import Any, Dict, List, Optional
 
 from fastapi import APIRouter, File, HTTPException, Request, UploadFile
-from fastapi.responses import FileResponse
+from fastapi.responses import FileResponse, Response
 from pydantic import BaseModel
 
 from latticeai.api.computer_use import create_computer_use_router
@@ -543,8 +543,38 @@ def create_tools_router(
             filename=target.name,
             media_type="application/octet-stream",
         )
-    
-    
+
+
+    @api_router.get("/tools/download_zip")
+    async def tools_download_zip(path: str, request: Request):
+        """Serve a generated project directory from the agent workspace as a zip.
+
+        The multi-file artifact loop writes bundles like ``todo-app/`` —
+        this is their one-click download. Path confinement mirrors
+        ``/tools/download``: anything outside the workspace is refused.
+        """
+        require_user(request)
+        from urllib.parse import unquote
+
+        from latticeai.tools.filesystem import zip_workspace_dir
+
+        rel = unquote(path).lstrip("/")
+        target = (AGENT_ROOT / rel).resolve()
+        if AGENT_ROOT not in target.parents and target != AGENT_ROOT:
+            raise HTTPException(status_code=403, detail="경로가 작업 공간 밖입니다.")
+        if not target.exists() or not target.is_dir():
+            raise HTTPException(status_code=404, detail="디렉터리가 없습니다.")
+        try:
+            payload, filename = zip_workspace_dir(rel)
+        except ToolError as exc:
+            raise HTTPException(status_code=400, detail=str(exc)) from exc
+        return Response(
+            content=payload,
+            media_type="application/zip",
+            headers={"Content-Disposition": f'attachment; filename="{filename}"'},
+        )
+
+
     @api_router.post("/upload/document")
     async def upload_document(request: Request, file: UploadFile = File(...)):
         current_user = require_user(request)

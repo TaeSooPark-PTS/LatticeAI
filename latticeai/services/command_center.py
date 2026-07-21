@@ -147,18 +147,37 @@ class CommandCenterService:
         workflows = self._workflows(workspace_id=workspace_id)
         enabled = 0
         drafts = 0
+        last_execution: Optional[Dict[str, Any]] = None
         for workflow in workflows:
             metadata = (workflow or {}).get("metadata") or {}
             if metadata.get("automation_state") == "enabled":
                 enabled += 1
             elif metadata.get("automation_state") == "draft_disabled":
                 drafts += 1
-        return {
+            # Execution log surfacing (backlog #6): the briefing carries the
+            # most recent stamped automation execution so "did my automation
+            # run, and how did it go?" is answered on the home surface.
+            stamped = metadata.get("last_execution")
+            if isinstance(stamped, dict) and str(stamped.get("finished_at") or "") > str(
+                (last_execution or {}).get("finished_at") or ""
+            ):
+                last_execution = {
+                    "workflow_id": workflow.get("id"),
+                    "name": _clip(workflow.get("name"), 120),
+                    "mode": stamped.get("mode"),
+                    "status": stamped.get("status"),
+                    "summary": _clip(stamped.get("summary"), 200),
+                    "finished_at": stamped.get("finished_at"),
+                }
+        section = {
             "available": True,
             "total": len(workflows),
             "enabled": enabled,
             "drafts": drafts,
         }
+        if last_execution is not None:
+            section["last_execution"] = last_execution
+        return section
 
     def _review_section(
         self, *, user_email: Optional[str], workspace_id: Optional[str]

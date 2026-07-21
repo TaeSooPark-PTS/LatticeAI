@@ -163,6 +163,18 @@ class Scenario:
     # canned results (node ids, snippets, proposal ids), so an answer that is
     # not grounded in the retrieved/executed evidence fails the scenario.
     expect_final_contains: List[str] = field(default_factory=list)
+    # Exact per-name counts against the LoopTrace ``repairs`` histogram —
+    # filegen scenarios use this to prove the ArtifactWritePipeline actually
+    # fired (``artifact_sanitize`` / ``artifact_repair``), not merely that
+    # the tool ran.
+    expect_repairs: Dict[str, int] = field(default_factory=dict)
+    # Content-level assertions on what file-writing tools actually received
+    # AFTER sanitize: every ``contains`` needle must appear in at least one
+    # written payload, every ``excludes`` needle in none. This is the teeth
+    # of the dirty-write scenarios — a fence or chat wrapper reaching the
+    # tool port fails the gate.
+    expect_write_contains: List[str] = field(default_factory=list)
+    expect_write_excludes: List[str] = field(default_factory=list)
     max_steps: int = 8
 
 
@@ -246,6 +258,37 @@ _PLAN = '{"action": "plan", "goal": "task", "steps": [{"action": "write_file"}]}
 _WRITE = '{"action": "write_file", "args": {"path": "note.txt", "content": "hi"}}'
 _FINAL = '{"action": "final", "message": "done"}'
 _PASS = '{"action": "verdict", "verdict": "PASS", "next_state": "DONE", "reason": "ok"}'
+
+# ── dirty write_file payloads (ArtifactWritePipeline scenarios) ──────────
+# What weak local models actually put in args.content: chat framing + a
+# Markdown fence around the document. The JSON envelope itself is valid —
+# the dirt is *inside* the content string, so only the write-side sanitize
+# pass (agent.py _dispatch_step → sanitize_write_content) can clean it.
+_DIRTY_HTML_CONTENT = (
+    "Sure! Here is your page:\\n"
+    "```html\\n"
+    "<!DOCTYPE html>\\n<html>\\n<head><meta charset=\\\"utf-8\\\">"
+    "<title>Hello</title></head>\\n<body><h1>Hello</h1></body>\\n</html>\\n"
+    "```\\n"
+    "Hope this helps! Let me know if you need changes."
+)
+_DIRTY_WRITE = (
+    '{"thoughts": "produce the page", "action": "write_file", '
+    '"args": {"path": "pages/hello.html", "content": "' + _DIRTY_HTML_CONTENT + '"}}'
+)
+# Token-limit casualty: the document just stops mid-body (no </body>/</html>).
+_TRUNCATED_HTML_CONTENT = (
+    "<!DOCTYPE html>\\n<html>\\n<head><meta charset=\\\"utf-8\\\">"
+    "<title>Weekly</title></head>\\n<body>\\n<h1>Weekly report</h1>"
+)
+_TRUNCATED_WRITE = (
+    '{"thoughts": "write the report", "action": "write_file", '
+    '"args": {"path": "reports/weekly.html", "content": "' + _TRUNCATED_HTML_CONTENT + '"}}'
+)
+_FILEGEN_PLAN = (
+    '{"action": "plan", "goal": "save the requested web page to disk", '
+    '"steps": [{"action": "write_file"}]}'
+)
 
 
 def default_scenarios() -> List[Scenario]:
@@ -551,6 +594,54 @@ def default_scenarios() -> List[Scenario]:
             expected_class="failed",
             expect_tool_outcomes={"error": 1},
         ),
+        # ── ArtifactWritePipeline (write-side sanitize) ─────────────────
+        Scenario(
+            name="filegen-dirty-write-sanitized-critic-pass",
+            # Weak model wraps args.content in prose + a Markdown fence. The
+            # sanitize pass must strip the wrapper BEFORE the tool runs, the
+            # trace must record artifact_sanitize, and the critic PASS then
+            # completes over a transcript whose written payload is clean.
+            replies=[_FILEGEN_PLAN, _DIRTY_WRITE, _FINAL, _PASS],
+            expect_exact={"parse_errors": 0},
+            expect_tool_outcomes={"ok": 1},
+            expect_tool_calls=["write_file"],
+            expect_repairs={"artifact_sanitize": 1},
+            expect_write_contains=["<!DOCTYPE html>", "</html>"],
+            expect_write_excludes=["```", "Sure!", "Hope this helps"],
+        ),
+        Scenario(
+            name="filegen-truncated-write-repaired-critic-pass",
+            # Token-limit truncation: no extractable clean document exists, so
+            # the pipeline's deterministic repair must close the document
+            # (artifact_repair) — the file on disk is still structurally valid.
+            replies=[_FILEGEN_PLAN, _TRUNCATED_WRITE, _FINAL, _PASS],
+            expect_exact={"parse_errors": 0},
+            expect_tool_outcomes={"ok": 1},
+            expect_tool_calls=["write_file"],
+            expect_repairs={"artifact_repair": 1},
+            expect_write_contains=["<h1>Weekly report</h1>", "</body>", "</html>"],
+            expect_write_excludes=["```"],
+        ),
+        Scenario(
+            name="filegen-dirty-write-unverifiable-needs-review",
+            # The dirty write is sanitized and runs, but the critic never
+            # produces a parseable verdict — fail-closed: the run must end
+            # NEEDS_REVIEW (never a fabricated DONE), while the written file
+            # stays clean because sanitize ran before the tool.
+            replies=[
+                _FILEGEN_PLAN, _DIRTY_WRITE, _FINAL,
+                "the page looks great, approving!",       # unparseable critic
+                "still prose, still not a JSON verdict",  # strict retry fails too
+            ],
+            expect_state="NEEDS_REVIEW",
+            expected_class="needs_review",
+            expect_min={"parse_errors": 2},
+            expect_tool_outcomes={"ok": 1},
+            expect_tool_calls=["write_file"],
+            expect_repairs={"artifact_sanitize": 1},
+            expect_write_excludes=["```", "Sure!"],
+            expect_final_contains=["직접 확인"],
+        ),
     ]
 
 
@@ -591,6 +682,22 @@ async def _run_scenario(scenario: Scenario) -> Dict[str, Any]:
     for needle in scenario.expect_final_contains:
         if needle not in ctx.final_message:
             failures.append(f"final_message missing {needle!r}")
+    for repair_name, count in scenario.expect_repairs.items():
+        seen = int((summary.get("repairs") or {}).get(repair_name, 0))
+        if seen != count:
+            failures.append(f"repairs[{repair_name}]={seen} != {count}")
+    # Payloads the file-writing tools actually received (post-sanitize).
+    written = [
+        str((call.get("args") or {}).get("content") or "")
+        for call in tool_log
+        if call["name"] in ("write_file", "generate_file")
+    ]
+    for needle in scenario.expect_write_contains:
+        if not any(needle in payload for payload in written):
+            failures.append(f"written content missing {needle!r}")
+    for needle in scenario.expect_write_excludes:
+        if any(needle in payload for payload in written):
+            failures.append(f"written content must not contain {needle!r}")
     if governor is not None and summary["tool_outcomes"].get("proposed", 0) != len(governor.proposals):
         failures.append(
             f"governor proposals={len(governor.proposals)} != "

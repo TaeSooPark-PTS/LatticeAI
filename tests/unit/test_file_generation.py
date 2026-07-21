@@ -182,3 +182,99 @@ def test_generation_survives_backend_errors():
     )
     assert meta["repaired"] is True
     assert content.strip()
+
+
+# ── Python validation (ast.parse) ───────────────────────────────────────
+
+def test_validate_accepts_parseable_python():
+    ok, reason = validate_file_content("import os\n\n\ndef main():\n    return os.getcwd()\n", "script.py")
+    assert ok, reason
+
+
+def test_validate_rejects_python_syntax_errors():
+    ok, reason = validate_file_content("def broken(:\n    pass\n", "script.py")
+    assert not ok
+    assert "invalid Python syntax" in reason
+
+
+def test_python_repair_path_always_yields_parseable_module():
+    import ast
+
+    from latticeai.core.file_generation import sanitize_write_content
+
+    fixed, meta = sanitize_write_content("script.py", "def broken(:\n    pass\n")
+    assert meta["sanitized"] and meta["repaired"]
+    ast.parse(fixed)  # must not raise
+    assert "broken" in fixed  # the draft is preserved (as comments)
+
+
+# ── braced code types (.js/.jsx/.ts/.tsx) ───────────────────────────────
+
+VALID_TSX = (
+    "// braces in comments { should not count }\n"
+    "const label = \"unmatched { in a string\";\n"
+    "const tpl = `also { unmatched`;\n"
+    "export default function App(): JSX.Element {\n"
+    "  return <div onClick={() => console.log('hi')}>ok</div>;\n"
+    "}\n"
+)
+
+
+def test_validate_accepts_valid_tsx_with_braces_in_literals():
+    for path in ("App.tsx", "App.jsx", "util.ts", "util.js"):
+        ok, reason = validate_file_content(VALID_TSX, path)
+        assert ok, f"{path}: {reason}"
+
+
+def test_validate_rejects_truncated_braced_code():
+    truncated = "export function run() {\n  if (true) {\n    doIt();\n"
+    for path in ("a.ts", "a.tsx", "a.js", "a.jsx"):
+        ok, reason = validate_file_content(truncated, path)
+        assert not ok
+        assert "unbalanced" in reason
+
+
+def test_validate_rejects_fenced_code_for_new_extensions():
+    fenced = "```tsx\nexport const x = 1;\n```"
+    assert not validate_file_content(fenced, "x.tsx")[0]
+
+
+def test_escaped_braces_in_regex_do_not_false_reject():
+    code = "const m = s.replace(/\\{/g, '(');\nexport const ok = () => m;\n"
+    ok, reason = validate_file_content(code, "re.ts")
+    assert ok, reason
+
+
+# ── single-file components (.vue/.svelte) ───────────────────────────────
+
+VALID_VUE = (
+    "<template>\n  <button @click=\"count++\">{{ count }}</button>\n</template>\n"
+    "<script setup>\nimport { ref } from 'vue';\nconst count = ref(0);\n</script>\n"
+    "<style scoped>\nbutton { padding: 8px; }\n</style>\n"
+)
+
+VALID_SVELTE = (
+    "<script>\n  let count = 0;\n</script>\n"
+    "<button on:click={() => count++}>{count}</button>\n"
+    "<style>\n  button { padding: 8px; }\n</style>\n"
+)
+
+
+def test_validate_accepts_valid_vue_and_svelte_components():
+    assert validate_file_content(VALID_VUE, "Counter.vue")[0]
+    assert validate_file_content(VALID_SVELTE, "Counter.svelte")[0]
+
+
+def test_validate_rejects_unclosed_component_blocks():
+    truncated_vue = "<template>\n  <p>hi</p>\n</template>\n<script setup>\nconst x = 1;\n"
+    ok, reason = validate_file_content(truncated_vue, "Broken.vue")
+    assert not ok
+    assert "not closed" in reason
+    truncated_svelte = "<script>\n  let x = 1;\n"
+    assert not validate_file_content(truncated_svelte, "Broken.svelte")[0]
+
+
+def test_fenced_component_reply_is_extracted_then_validates():
+    raw = f"Sure! Here is the component:\n```vue\n{VALID_VUE}```\nEnjoy!"
+    extracted = extract_file_content(raw, "Counter.vue")
+    assert validate_file_content(extracted, "Counter.vue")[0]

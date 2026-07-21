@@ -11,6 +11,9 @@ export type ReviewFeedback = {
   tone: "success" | "error";
   message: string;
   detail?: string;
+  // True when a change-proposal approval hit the 409 base-changed guard —
+  // the card then offers the "re-read & re-apply" (rebase) recovery flow.
+  conflict?: boolean;
 };
 
 export const reviewStatusFilters: Array<{ id: ReviewStatusFilter; labelKey: string }> = [

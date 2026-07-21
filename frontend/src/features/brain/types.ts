@@ -14,6 +14,38 @@ export type Message = {
   // Terminal agent-loop state for this reply (NEEDS_REVIEW/FAILED render as
   // warnings, never as success).
   agentState?: string;
+  // Interactive plan approval (status "awaiting_approval"): the run is paused
+  // server-side behind a short-TTL single-use token until the user decides.
+  approval?: MessageApproval;
+  // Answer-citation binding verdict ("근거 있음/근거 없음") from the backend.
+  grounding?: MessageGrounding;
+};
+
+export type ApprovalStatus =
+  | "pending"
+  | "approved"
+  | "cancelled"
+  | "expired"
+  | "error";
+
+// A paused agent run waiting for the user's go-ahead. `token` is single-use
+// with a ~10 minute server TTL; `plan` is the normalized plan the user may
+// edit before resuming.
+export type MessageApproval = {
+  runId: string;
+  token: string;
+  expiresAt: string;
+  planSummary: string;
+  plan: Record<string, unknown> | null;
+  status: ApprovalStatus;
+  errorReason?: string;
+};
+
+// Honest answer-grounding signal: whether the reply actually used retrieved
+// sources. `no_context` means nothing was retrieved at all.
+export type MessageGrounding = {
+  status: "supported" | "unsupported" | "no_context" | string;
+  reason: string | null;
 };
 
 // Additive chat meta ("context_quality") flowing on the same channel as
@@ -32,6 +64,10 @@ export type MessageFile = {
   // True when the generation pipeline had to fall back to a deterministic
   // repair scaffold — the UI badges these so they are never oversold.
   repaired?: boolean;
+  // From the artifacts[] response contract: whether the backend judged this
+  // file safe/sensible to preview inline. Undefined when the artifact meta is
+  // absent (older responses) — the UI then falls back to an extension check.
+  previewable?: boolean;
 };
 
 export type EvidenceConfidence = "high" | "medium" | "low";

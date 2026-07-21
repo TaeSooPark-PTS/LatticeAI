@@ -42,6 +42,9 @@ class AppContext:
     hooks: Any = None
     realtime_bus: Any = None
     capability_registry: Any = None
+    # UX funnel metrics (latticeai.services.funnel_metrics); None in tests
+    # that don't observe the funnel — every increment site is nil-safe.
+    funnel_metrics: Any = None
 
     # ── auth / session callables ──────────────────────────────────────────
     require_user: Optional[Callable[..., str]] = None

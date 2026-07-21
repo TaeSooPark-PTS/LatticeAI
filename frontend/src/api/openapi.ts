@@ -927,6 +927,23 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/admin/funnel-metrics": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Funnel Metrics */
+        get: operations["funnel_metrics_api_admin_funnel_metrics_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/automation/install": {
         parameters: {
             query?: never;
@@ -972,6 +989,32 @@ export interface paths {
         get: operations["automation_patterns_api_automation_patterns_get"];
         put?: never;
         post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/automation/run-now": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Automation Run Now
+         * @description Run an installed automation once — dry-run by default.
+         *
+         *     * ``dry_run=true``: deterministic report of what WOULD happen; no
+         *       runner executes and nothing but the ``last_execution`` stamp moves.
+         *     * ``dry_run=false``: one real execution through the async run
+         *       executor; the request waits briefly for completion, stamps the
+         *       result, and enqueues failed executions into the review inbox.
+         */
+        post: operations["automation_run_now_api_automation_run_now_post"];
         delete?: never;
         options?: never;
         head?: never;
@@ -1619,6 +1662,39 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/ingestion/watch": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Folder Watch Status
+         * @description Watch-mode status: stored opt-ins, poller state, last scan results.
+         */
+        get: operations["folder_watch_status_api_ingestion_watch_get"];
+        put?: never;
+        /**
+         * Folder Watch Enable
+         * @description Explicitly opt a previously-ingested folder into watch mode.
+         *
+         *     Follows the same local-read approval dance as ``/api/ingestion/folder``.
+         *     Enabling snapshots the folder as the baseline; only *future* new or
+         *     changed files are re-ingested (through the normal pipeline, with the
+         *     watch owner's workspace scope).
+         */
+        post: operations["folder_watch_enable_api_ingestion_watch_post"];
+        /**
+         * Folder Watch Disable
+         * @description Opt back out of watch mode (removes the stored consent record).
+         */
+        delete: operations["folder_watch_disable_api_ingestion_watch_delete"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/knowledge-graph/archive": {
         parameters: {
             query?: never;
@@ -2193,6 +2269,39 @@ export interface paths {
         /** Vector Search */
         post: operations["vector_search_api_search_vector_post"];
         delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/setup/demo-corpus": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Demo Corpus Status
+         * @description Whether the demo corpus is installed + the suggestion chips.
+         */
+        get: operations["demo_corpus_status_api_setup_demo_corpus_get"];
+        put?: never;
+        /**
+         * Demo Corpus Install
+         * @description One-click ingest of the 3 built-in demo documents (idempotent).
+         *
+         *     Every document goes through the normal IngestionPipeline door with
+         *     ``demo://`` provenance so it is honest (real nodes, real chunks, real
+         *     provenance) and removable via DELETE. Re-POSTing reports duplicates
+         *     instead of duplicating.
+         */
+        post: operations["demo_corpus_install_api_setup_demo_corpus_post"];
+        /**
+         * Demo Corpus Remove
+         * @description Remove every demo document (node + chunks + edges + orphan source).
+         */
+        delete: operations["demo_corpus_remove_api_setup_demo_corpus_delete"];
         options?: never;
         head?: never;
         patch?: never;
@@ -2958,6 +3067,32 @@ export interface paths {
         put?: never;
         /** Knowledge Graph Curate */
         post: operations["knowledge_graph_curate_knowledge_graph_curate_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/knowledge-graph/curate/noise": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Knowledge Graph Curate Noise
+         * @description Noise-reduction curation job (backlog #10).
+         *
+         *     Dry-run by default: reports which heuristic concept nodes would be
+         *     removed (low IDF / below the frequency floor) and which relation
+         *     verbs would be normalized, without changing the graph. Set
+         *     ``dry_run=false`` to apply. User-created nodes are never removed.
+         *     Administrative like ``/knowledge-graph/curate`` when roles exist.
+         */
+        post: operations["knowledge_graph_curate_noise_knowledge_graph_curate_noise_post"];
         delete?: never;
         options?: never;
         head?: never;
@@ -4692,6 +4827,30 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/tools/download_zip": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Tools Download Zip
+         * @description Serve a generated project directory from the agent workspace as a zip.
+         *
+         *     The multi-file artifact loop writes bundles like ``todo-app/`` —
+         *     this is their one-click download. Path confinement mirrors
+         *     ``/tools/download``: anything outside the workspace is refused.
+         */
+        get: operations["tools_download_zip_tools_download_zip_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/tools/edit_file": {
         parameters: {
             query?: never;
@@ -6401,13 +6560,21 @@ export interface components {
         };
         /** AgentResumeRequest */
         AgentResumeRequest: {
+            /** Approval Token */
+            approval_token?: string | null;
+            /** Approve */
+            approve?: boolean | null;
             /**
              * Approved
              * @default true
              */
             approved: boolean;
             /** Context Id */
-            context_id: string;
+            context_id?: string | null;
+            /** Edited Plan */
+            edited_plan?: {
+                [key: string]: unknown;
+            } | null;
             /** Executing Model */
             executing_model?: string | null;
             /** Modified Plan */
@@ -6416,6 +6583,8 @@ export interface components {
             } | null;
             /** Reviewing Model */
             reviewing_model?: string | null;
+            /** Run Id */
+            run_id?: string | null;
         };
         /** AgentRunRequest */
         AgentRunRequest: {
@@ -6438,6 +6607,16 @@ export interface components {
              * @default []
              */
             roles: string[];
+        };
+        /** AutomationRunNowRequest */
+        AutomationRunNowRequest: {
+            /**
+             * Dry Run
+             * @default true
+             */
+            dry_run: boolean;
+            /** Workflow Id */
+            workflow_id: string;
         };
         /** BackupRequest */
         BackupRequest: {
@@ -6647,6 +6826,44 @@ export interface components {
             /** Text */
             text: string;
         };
+        /** CurateNoiseRequest */
+        CurateNoiseRequest: {
+            /**
+             * Dry Run
+             * @default true
+             */
+            dry_run: boolean;
+            /**
+             * Max Df Ratio
+             * @default 0.8
+             */
+            max_df_ratio: number;
+            /**
+             * Max Removals
+             * @default 200
+             */
+            max_removals: number;
+            /**
+             * Min Corpus Docs
+             * @default 5
+             */
+            min_corpus_docs: number;
+            /**
+             * Min Doc Frequency
+             * @default 1
+             */
+            min_doc_frequency: number;
+            /**
+             * Normalize Verbs
+             * @default true
+             */
+            normalize_verbs: boolean;
+        };
+        /** DemoCorpusRequest */
+        DemoCorpusRequest: {
+            /** Workspace Id */
+            workspace_id?: string | null;
+        };
         /**
          * DismissRequest
          * @description Optional dismissal context (e.g. why a change proposal was rejected).
@@ -6745,6 +6962,25 @@ export interface components {
              * @default false
              */
             background: boolean;
+            /** Path */
+            path: string;
+            /**
+             * Recursive
+             * @default true
+             */
+            recursive: boolean;
+            /** Workspace Id */
+            workspace_id?: string | null;
+        };
+        /** FolderWatchEnableRequest */
+        FolderWatchEnableRequest: {
+            /** Approval Token */
+            approval_token?: string | null;
+            /**
+             * Approved
+             * @default false
+             */
+            approved: boolean;
             /** Path */
             path: string;
             /**
@@ -9888,6 +10124,26 @@ export interface operations {
             };
         };
     };
+    funnel_metrics_api_admin_funnel_metrics_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": unknown;
+                };
+            };
+        };
+    };
     automation_install_api_automation_install_post: {
         parameters: {
             query?: never;
@@ -9957,6 +10213,39 @@ export interface operations {
                 };
                 content: {
                     "application/json": unknown;
+                };
+            };
+        };
+    };
+    automation_run_now_api_automation_run_now_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["AutomationRunNowRequest"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": unknown;
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
                 };
             };
         };
@@ -11074,6 +11363,91 @@ export interface operations {
             };
         };
     };
+    folder_watch_status_api_ingestion_watch_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": unknown;
+                };
+            };
+        };
+    };
+    folder_watch_enable_api_ingestion_watch_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["FolderWatchEnableRequest"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": unknown;
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    folder_watch_disable_api_ingestion_watch_delete: {
+        parameters: {
+            query?: {
+                watch_id?: string | null;
+                path?: string | null;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": unknown;
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
     encrypted_archive_api_knowledge_graph_archive_post: {
         parameters: {
             query?: never;
@@ -12119,6 +12493,79 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    demo_corpus_status_api_setup_demo_corpus_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": unknown;
+                };
+            };
+        };
+    };
+    demo_corpus_install_api_setup_demo_corpus_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: {
+            content: {
+                "application/json": components["schemas"]["DemoCorpusRequest"] | null;
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": unknown;
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    demo_corpus_remove_api_setup_demo_corpus_delete: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": unknown;
                 };
             };
         };
@@ -13490,6 +13937,39 @@ export interface operations {
                 };
                 content: {
                     "application/json": unknown;
+                };
+            };
+        };
+    };
+    knowledge_graph_curate_noise_knowledge_graph_curate_noise_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CurateNoiseRequest"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": unknown;
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
                 };
             };
         };
@@ -16273,6 +16753,37 @@ export interface operations {
         };
     };
     tools_download_tools_download_get: {
+        parameters: {
+            query: {
+                path: string;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": unknown;
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    tools_download_zip_tools_download_zip_get: {
         parameters: {
             query: {
                 path: string;

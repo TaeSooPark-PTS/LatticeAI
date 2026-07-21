@@ -238,7 +238,13 @@ function DigitalBrainExplorer({ data }: { data: unknown }) {
                 </button>
               ))}
             </div>
-            <CytoscapeGraph model={model} selectedId={selectedId} onSelect={setSelectedId} fitSignal={fitSignal} />
+            <CytoscapeGraph
+              model={model}
+              selectedId={selectedId}
+              onSelect={setSelectedId}
+              fitSignal={fitSignal}
+              ariaLabel={t(language, "graph.canvas.aria")}
+            />
           </CardContent>
         </Card>
         <aside className="space-y-3">

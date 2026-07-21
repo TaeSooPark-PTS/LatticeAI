@@ -7,6 +7,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { t, type Language } from "@/i18n";
 import { useAppStore } from "@/store/appStore";
+import { ProposalConflictNote } from "./ProposalConflictNote";
 import {
   formatSnoozedUntil,
   hasRunBefore,
@@ -223,7 +224,9 @@ export function ReviewCard({ item, feedback, onAction }: ReviewCardProps) {
           </div>
         </div>
       ) : null}
-      {feedback ? (
+      {feedback?.conflict && isProposal ? (
+        <ProposalConflictNote language={language} itemId={item.id} />
+      ) : feedback ? (
         <p className={`mt-2 text-xs ${feedback.tone === "error" ? "text-warning" : "text-success"}`}>
           {feedback.message} - {t(language, "review.feedback.open")}
           {feedback.detail && feedback.detail !== feedback.message ? (

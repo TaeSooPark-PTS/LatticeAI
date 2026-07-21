@@ -7,14 +7,21 @@ export function CytoscapeGraph({
   selectedId,
   onSelect,
   fitSignal,
+  ariaLabel,
 }: {
   model: ExplorerModel;
   selectedId: string | null;
   onSelect: (id: string | null) => void;
   fitSignal: number;
+  // Localized instructions ("arrow keys move, Enter opens…") supplied by the
+  // parent, which owns the i18n context.
+  ariaLabel?: string;
 }) {
   const hostRef = React.useRef<HTMLDivElement | null>(null);
   const cyRef = React.useRef<Core | null>(null);
+  // Keyboard cursor over the visible nodes: the canvas itself is focusable and
+  // arrow keys walk the node list, Enter/Space opens the focused node.
+  const [kbIndex, setKbIndex] = React.useState<number | null>(null);
   React.useEffect(() => {
     if (!hostRef.current) return;
     cyRef.current?.destroy();
@@ -64,6 +71,13 @@ export function CytoscapeGraph({
           },
         },
         {
+          selector: "node.kb-focus",
+          style: {
+            "border-width": 4,
+            "border-color": "#f8fafc",
+          },
+        },
+        {
           selector: "edge",
           style: {
             width: "data(width)",
@@ -100,6 +114,7 @@ export function CytoscapeGraph({
     cyRef.current.on("tap", (event) => {
       if (event.target === cyRef.current) onSelect(null);
     });
+    setKbIndex(null);
     return () => cyRef.current?.destroy();
   }, [model.elements, onSelect]);
 
@@ -115,11 +130,60 @@ export function CytoscapeGraph({
     }
   }, [selectedId]);
 
+  const kbNode = kbIndex !== null ? model.visibleNodes[kbIndex] : undefined;
+
+  // Reflect the keyboard cursor on the canvas: highlight + keep in view.
+  React.useEffect(() => {
+    const cy = cyRef.current;
+    if (!cy) return;
+    cy.nodes().removeClass("kb-focus");
+    if (!kbNode) return;
+    const element = cy.getElementById(kbNode.id);
+    if (element.length) {
+      element.addClass("kb-focus");
+      cy.animate({ center: { eles: element } }, { duration: 120 });
+    }
+  }, [kbNode]);
+
+  const onKeyDown = (event: React.KeyboardEvent<HTMLDivElement>) => {
+    const count = model.visibleNodes.length;
+    if (!count) return;
+    const move = (next: number) => {
+      event.preventDefault();
+      setKbIndex(((next % count) + count) % count);
+    };
+    if (event.key === "ArrowRight" || event.key === "ArrowDown") {
+      move(kbIndex === null ? 0 : kbIndex + 1);
+    } else if (event.key === "ArrowLeft" || event.key === "ArrowUp") {
+      move(kbIndex === null ? count - 1 : kbIndex - 1);
+    } else if (event.key === "Home") {
+      move(0);
+    } else if (event.key === "End") {
+      move(count - 1);
+    } else if ((event.key === "Enter" || event.key === " ") && kbNode) {
+      event.preventDefault();
+      onSelect(kbNode.id);
+    } else if (event.key === "Escape") {
+      event.preventDefault();
+      setKbIndex(null);
+      onSelect(null);
+    }
+  };
+
   return (
-    <div
-      ref={hostRef}
-      data-testid="brain-cytoscape"
-      className="brain-grid h-[620px] min-h-[32rem] w-full overflow-hidden rounded-lg border border-border bg-background/80"
-    />
+    <div className="relative">
+      <div
+        ref={hostRef}
+        data-testid="brain-cytoscape"
+        role="application"
+        aria-label={ariaLabel}
+        tabIndex={0}
+        onKeyDown={onKeyDown}
+        className="brain-grid h-[620px] min-h-[32rem] w-full overflow-hidden rounded-lg border border-border bg-background/80 focus-visible:outline focus-visible:outline-2 focus-visible:outline-ring"
+      />
+      <span className="sr-only" role="status" aria-live="polite">
+        {kbNode ? kbNode.label : ""}
+      </span>
+    </div>
   );
 }

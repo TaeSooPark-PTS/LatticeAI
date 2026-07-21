@@ -1,0 +1,17 @@
+Sure! Here is the page you asked for:
+
+```html
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <title>Golden Page</title>
+</head>
+<body>
+  <h1>Hello Golden</h1>
+  <p>A page recovered from a chatty model reply.</p>
+</body>
+</html>
+```
+
+Let me know if you need any changes!

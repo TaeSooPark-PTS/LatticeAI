@@ -10,6 +10,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { AutomationSuggestions } from "@/features/act/AutomationSuggestions";
+import { InstalledAutomations } from "@/features/act/InstalledAutomations";
 import { ReviewInbox } from "@/features/review/ReviewInbox";
 import { useAppStore } from "@/store/appStore";
 import { asArray, shortId } from "@/lib/utils";
@@ -297,6 +298,7 @@ function WorkflowsPanel() {
   return (
     <div className="grid gap-4 xl:grid-cols-[1.2fr_0.8fr]">
       <AutomationSuggestions language={language} />
+      <InstalledAutomations language={language} />
       <DataPanel title={t(language, "act.automation.title")} result={recipes.data} className="xl:col-span-2">
         {(data) => {
           const items = asArray<Record<string, unknown>>((data as Record<string, unknown>).recipes);

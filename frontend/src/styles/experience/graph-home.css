@@ -1236,3 +1236,204 @@
 .brain-home-intro-row .daily-briefing-panel.is-home {
   border-radius: 17px;
 }
+
+/* ── First Value Loop "30초 체험" track (backlog #3) ────────────────────────
+   Sits beside the first-five card in the intro row and reuses its visual
+   language. Inflow motes / success pulse come from the shared emotional
+   design classes, which are already gated on prefers-reduced-motion. */
+.brain-fvl {
+  display: grid;
+  gap: 0.5rem;
+  border: 1px solid hsl(var(--border) / 0.86);
+  border-radius: 17px;
+  background: hsl(var(--surface) / 0.96);
+  padding: 0.85rem 0.95rem;
+  text-align: left;
+}
+
+.brain-fvl-head {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.brain-fvl-title {
+  display: inline-flex;
+  flex: 1;
+  min-width: 0;
+  align-items: center;
+  gap: 0.35rem;
+  color: hsl(var(--foreground));
+  font-size: 0.82rem;
+  font-weight: 750;
+}
+
+.brain-fvl-title svg {
+  color: hsl(var(--brain-core));
+}
+
+.brain-fvl-dismiss {
+  display: inline-flex;
+  flex: 0 0 auto;
+  align-items: center;
+  justify-content: center;
+  border: none;
+  border-radius: 8px;
+  background: transparent;
+  color: hsl(var(--muted-foreground));
+  padding: 0.25rem;
+  cursor: pointer;
+}
+
+.brain-fvl-dismiss:hover,
+.brain-fvl-dismiss:focus-visible {
+  color: hsl(var(--foreground));
+  background: hsl(var(--primary) / 0.08);
+}
+
+.brain-fvl-subtitle,
+.brain-fvl-installed,
+.brain-fvl-done {
+  margin: 0;
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  color: hsl(var(--muted-foreground));
+  font-size: 0.74rem;
+  line-height: 1.4;
+}
+
+.brain-fvl-done {
+  color: hsl(var(--success));
+  font-weight: 650;
+}
+
+.brain-fvl-start {
+  justify-self: start;
+  border: 1px solid hsl(var(--primary) / 0.55);
+  border-radius: 999px;
+  background: hsl(var(--primary) / 0.12);
+  color: hsl(var(--primary));
+  padding: 0.42rem 0.9rem;
+  font-size: 0.78rem;
+  font-weight: 750;
+  cursor: pointer;
+}
+
+.brain-fvl-start:hover:not(:disabled),
+.brain-fvl-start:focus-visible {
+  background: hsl(var(--primary) / 0.18);
+}
+
+.brain-fvl-start:disabled {
+  cursor: default;
+  opacity: 0.65;
+}
+
+.brain-fvl-docs {
+  display: grid;
+  gap: 0.3rem;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.brain-fvl-docs li {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  border: 1px solid hsl(var(--border) / 0.7);
+  border-radius: 10px;
+  padding: 0.38rem 0.55rem;
+  color: hsl(var(--foreground));
+  font-size: 0.74rem;
+}
+
+.brain-fvl-docs li svg {
+  flex: 0 0 auto;
+  color: hsl(var(--memory));
+}
+
+.brain-fvl-docs li span {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.brain-fvl-docs li small {
+  margin-left: auto;
+  color: hsl(var(--muted-foreground));
+  font-size: 0.66rem;
+  white-space: nowrap;
+}
+
+.brain-fvl-questions,
+.brain-fvl-next {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.35rem;
+}
+
+.brain-fvl-step-label {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.3rem;
+  width: 100%;
+  color: hsl(var(--muted-foreground));
+  font-size: 0.7rem;
+  font-weight: 700;
+}
+
+.brain-fvl-chip {
+  border: 1px solid hsl(var(--primary) / 0.4);
+  border-radius: 999px;
+  background: transparent;
+  color: hsl(var(--foreground));
+  padding: 0.32rem 0.7rem;
+  font-size: 0.74rem;
+  text-align: left;
+  cursor: pointer;
+}
+
+.brain-fvl-chip:hover:not(:disabled),
+.brain-fvl-chip:focus-visible {
+  border-color: hsl(var(--primary) / 0.65);
+  background: hsl(var(--primary) / 0.08);
+}
+
+.brain-fvl-chip:disabled {
+  cursor: default;
+  opacity: 0.6;
+}
+
+.brain-fvl-chip.is-filegen {
+  border-color: hsl(var(--knowledge) / 0.55);
+  font-weight: 650;
+}
+
+.brain-fvl-remove {
+  display: inline-flex;
+  justify-self: start;
+  align-items: center;
+  gap: 0.3rem;
+  border: none;
+  border-radius: 8px;
+  background: transparent;
+  color: hsl(var(--muted-foreground));
+  padding: 0.25rem 0.35rem;
+  font-size: 0.68rem;
+  cursor: pointer;
+}
+
+.brain-fvl-remove:hover:not(:disabled),
+.brain-fvl-remove:focus-visible {
+  color: hsl(var(--danger));
+  background: hsl(var(--danger) / 0.08);
+}
+
+.brain-fvl-error {
+  color: hsl(var(--danger));
+  font-size: 0.7rem;
+}

@@ -245,6 +245,153 @@ def build_context_quality(
     return context_quality_signal("lexical_only", len(matches))
 
 
+# ── answer-citation binding (backlog #11, review §7.2 E #4) ──────────────────
+_GROUNDING_TOKEN_RE = re.compile(r"[0-9A-Za-z가-힣]{2,}")
+# High-frequency tokens that overlap by accident, not by grounding.
+_GROUNDING_STOP_TOKENS = frozenset({
+    "그리고", "그러나", "하지만", "그래서", "있습니다", "입니다", "합니다",
+    "있는", "없는", "위해", "통해", "대한", "관련", "경우", "내용", "answer",
+    "the", "and", "for", "with", "this", "that", "from", "have", "are",
+    "was", "were", "can", "will", "not", "you", "your",
+})
+GROUNDING_MIN_OVERLAP_TOKENS = 2
+GROUNDING_MIN_OVERLAP_RATIO = 0.08
+
+
+def _grounding_tokens(text: str) -> set:
+    return {
+        token.lower()
+        for token in _GROUNDING_TOKEN_RE.findall(str(text or ""))
+        if token.lower() not in _GROUNDING_STOP_TOKENS
+    }
+
+
+def assess_answer_grounding(
+    answer: str,
+    *,
+    trace: Optional[Dict[str, object]] = None,
+    context_quality: Optional[Dict[str, object]] = None,
+) -> Dict[str, object]:
+    """Bind an answer to its retrieved sources — honestly (never blocks).
+
+    Heuristic: for each retrieved source (the answer trace's ``graph_nodes``
+    / ``source_files``), measure content-token overlap between the answer and
+    the source's title+summary, and accept explicit citations (the answer
+    names the source title or filename). Returns::
+
+        {"status": "supported",   "label": "근거 있음", "source_ids": [...],
+         "cited": [...], "overlap": float}
+        {"status": "unsupported", "label": "근거 없음", "source_ids": [], ...}
+        {"status": "no_context",  "label": "근거 없음", ...}  # nothing retrieved
+
+    ``no_context`` (still labeled 근거 없음) lets the UI distinguish "the
+    Brain had nothing" from "the Brain had sources but the answer ignored
+    them". Annotation only — the answer is never modified or blocked.
+    """
+    answer_text = str(answer or "").strip()
+    trace = trace if isinstance(trace, dict) else {}
+    sources: List[Dict[str, object]] = []
+    seen_ids = set()
+    for node in list(trace.get("graph_nodes") or []):
+        if not isinstance(node, dict):
+            continue
+        node_id = str(node.get("id") or node.get("node_id") or "")
+        if not node_id or node_id in seen_ids:
+            continue
+        seen_ids.add(node_id)
+        meta = node.get("metadata") if isinstance(node.get("metadata"), dict) else {}
+        sources.append({
+            "id": node_id,
+            "title": str(node.get("title") or ""),
+            "body": " ".join(
+                str(part or "")
+                for part in (node.get("title"), node.get("summary"), meta.get("filename"))
+            ),
+        })
+    for src in list(trace.get("source_files") or []):
+        if not isinstance(src, dict):
+            continue
+        node_id = str(src.get("node_id") or src.get("source") or "")
+        if not node_id or node_id in seen_ids:
+            continue
+        seen_ids.add(node_id)
+        sources.append({
+            "id": node_id,
+            "title": str(src.get("node_title") or ""),
+            "body": " ".join(
+                str(part or "") for part in (src.get("node_title"), src.get("source"))
+            ),
+        })
+
+    mode = str((context_quality or {}).get("mode") or "none")
+    if not sources:
+        return {
+            "status": "no_context",
+            "label": "근거 없음",
+            "source_ids": [],
+            "cited": [],
+            "overlap": 0.0,
+            "reason": (
+                "검색된 출처가 없습니다"
+                if mode == "none"
+                else "출처 후보를 답변에 연결하지 못했습니다"
+            ),
+        }
+    if not answer_text:
+        return {
+            "status": "unsupported",
+            "label": "근거 없음",
+            "source_ids": [],
+            "cited": [],
+            "overlap": 0.0,
+            "reason": "답변이 비어 있습니다",
+        }
+
+    answer_tokens = _grounding_tokens(answer_text)
+    answer_lower = answer_text.lower()
+    cited: List[Dict[str, object]] = []
+    best_overlap = 0.0
+    for source in sources:
+        source_tokens = _grounding_tokens(source["body"])
+        if not source_tokens:
+            continue
+        shared = answer_tokens & source_tokens
+        denominator = max(1, min(len(source_tokens), 60))
+        ratio = len(shared) / denominator
+        best_overlap = max(best_overlap, ratio)
+        title = str(source.get("title") or "").strip().lower()
+        explicit = bool(title) and len(title) >= 4 and title in answer_lower
+        # Explicit-citation OR token-overlap binding. Comparisons are explicit
+        # (a 0.0 score is falsy but a valid value — never use `or` defaults).
+        if explicit or (
+            len(shared) >= GROUNDING_MIN_OVERLAP_TOKENS
+            and ratio >= GROUNDING_MIN_OVERLAP_RATIO
+        ):
+            cited.append({
+                "id": source["id"],
+                "title": source.get("title"),
+                "overlap": round(ratio, 4),
+                "explicit": explicit,
+            })
+    if cited:
+        return {
+            "status": "supported",
+            "label": "근거 있음",
+            "source_ids": [item["id"] for item in cited],
+            "cited": cited,
+            "overlap": round(best_overlap, 4),
+            "reason": None,
+        }
+    return {
+        "status": "unsupported",
+        "label": "근거 없음",
+        "source_ids": [],
+        "cited": [],
+        "overlap": round(best_overlap, 4),
+        "reason": "답변이 검색된 출처의 내용을 사용하지 않았습니다",
+    }
+
+
 def workspace_scope_from_request(request: Request) -> Optional[str]:
     header = request.headers.get("X-Workspace-Id")
     if header and header.strip():

@@ -154,6 +154,11 @@ export type ChatAgentPayload = {
   // deterministic fallback scaffold rather than clean model output.
   generation?: { repaired?: boolean; attempts?: unknown[] };
   artifacts?: Array<Record<string, unknown>>;
+  // status === "awaiting_approval": the run paused server-side behind a
+  // short-TTL single-use token until the user approves/edits/cancels the plan.
+  run_id?: string;
+  approval?: { token?: string; expires_at?: string; plan_summary?: string };
+  plan?: Record<string, unknown>;
 };
 
 export type ChatEventHandlers = {
@@ -249,9 +254,10 @@ async function streamChat(body: Record<string, unknown>, handlers: ChatEventHand
   let text = "";
   let trace: unknown = null;
   let agent: ChatAgentPayload | null = null;
-  // Additive answer meta ("context_quality") rides the same trailer as the
-  // trace; keep the raw value so the UI can parse it defensively.
+  // Additive answer meta ("context_quality" + "grounding") rides the same
+  // trailer as the trace; keep the raw values so the UI parses defensively.
   let contextQuality: unknown = null;
+  let grounding: unknown = null;
   for (;;) {
     const { done, value } = await reader.read();
     if (done) break;
@@ -262,7 +268,7 @@ async function streamChat(body: Record<string, unknown>, handlers: ChatEventHand
       const line = part.split("\n").find((item) => item.startsWith("data:"));
       if (!line) continue;
       const raw = line.slice(5).trim();
-      if (raw === "[DONE]") return { source: "live", text, trace, agent, contextQuality };
+      if (raw === "[DONE]") return { source: "live", text, trace, agent, contextQuality, grounding };
       const data = JSON.parse(raw);
       const delta = data.chunk || data.text || "";
       if (delta) {
@@ -276,17 +282,129 @@ async function streamChat(body: Record<string, unknown>, handlers: ChatEventHand
       if (data.context_quality && typeof data.context_quality === "object") {
         contextQuality = data.context_quality;
       }
+      if (data.grounding && typeof data.grounding === "object") {
+        grounding = data.grounding;
+      }
       if (data.agent && typeof data.agent === "object") {
         agent = data.agent as ChatAgentPayload;
         handlers.onAgent?.(agent);
       }
     }
   }
-  return { source: "live", text, trace, agent, contextQuality };
+  return { source: "live", text, trace, agent, contextQuality, grounding };
 }
 
 async function saveChatFile(path: string, content: string): Promise<ApiResult<{ path?: string; bytes?: number }>> {
   return post("/tools/write_file", { path, content }, {});
+}
+
+export type AgentResumeBody = {
+  run_id: string;
+  approval_token: string;
+  approve: boolean;
+  edited_plan?: Record<string, unknown>;
+};
+
+// Resumes an awaiting_approval agent run. Uses a raw fetch (no client
+// timeout): approving executes the full plan, which can legitimately take
+// minutes on local models. The HTTP status matters to callers (410 = token
+// expired, 404 = run lost, 403 = wrong token/user), so it is passed through.
+async function resumeAgentApproval(body: AgentResumeBody): Promise<ApiResult<Record<string, unknown>>> {
+  const base = await apiBase();
+  try {
+    const res = await fetch(`${base}/agent/resume`, {
+      method: "POST",
+      credentials: "include",
+      headers: {
+        "Content-Type": "application/json",
+        Accept: "application/json",
+        ...workspaceHeaders(),
+      } satisfies HeadersInit,
+      body: JSON.stringify(body),
+    });
+    const data = await res.json().catch(() => null);
+    return {
+      ok: res.ok,
+      status: res.status,
+      data: (data && typeof data === "object" ? data : {}) as Record<string, unknown>,
+      source: res.ok ? "live" : "unavailable",
+      error: res.ok ? undefined : friendlyError(data, res.statusText || `HTTP ${res.status}`),
+    };
+  } catch (err) {
+    return { ok: false, status: 0, data: {}, source: "unavailable", error: friendlyCaughtError(err, "unreachable") };
+  }
+}
+
+export type DemoCorpusDocument = {
+  demo_id?: string;
+  title?: string;
+  source_uri?: string;
+  status?: string;
+  node_id?: string | null;
+  duplicate?: boolean;
+  chunk_count?: number;
+};
+
+export type DemoCorpusQuestion = {
+  question?: string;
+  expected_source_uri?: string;
+  expected_title?: string;
+};
+
+export type DemoCorpusStatus = {
+  installed: boolean;
+  documents: DemoCorpusDocument[];
+  document_count: number;
+  suggested_questions: DemoCorpusQuestion[];
+};
+
+export type DemoCorpusInstallResult = {
+  status: string;
+  ingested: number;
+  duplicates: number;
+  failed?: number;
+  documents: DemoCorpusDocument[];
+  suggested_questions: DemoCorpusQuestion[];
+};
+
+// One-click First Value Loop corpus install. Raw fetch without the 10s client
+// timeout: the three documents run through the real ingestion pipeline
+// (chunking + embedding), which can exceed it on first use.
+async function installDemoCorpus(): Promise<ApiResult<DemoCorpusInstallResult>> {
+  const base = await apiBase();
+  const shape: DemoCorpusInstallResult = {
+    status: "", ingested: 0, duplicates: 0, documents: [], suggested_questions: [],
+  };
+  try {
+    const res = await fetch(`${base}/api/setup/demo-corpus`, {
+      method: "POST",
+      credentials: "include",
+      headers: {
+        "Content-Type": "application/json",
+        Accept: "application/json",
+        ...workspaceHeaders(),
+      } satisfies HeadersInit,
+      body: JSON.stringify({}),
+    });
+    const data = await res.json().catch(() => null);
+    if (!res.ok) {
+      return {
+        ok: false,
+        status: res.status,
+        data: shape,
+        source: "unavailable",
+        error: friendlyError(data, res.statusText || `HTTP ${res.status}`),
+      };
+    }
+    return {
+      ok: true,
+      status: res.status,
+      data: { ...shape, ...(data && typeof data === "object" ? data : {}) },
+      source: "live",
+    };
+  } catch (err) {
+    return { ok: false, status: 0, data: shape, source: "unavailable", error: friendlyCaughtError(err, "unreachable") };
+  }
 }
 
 async function runAgent(goal: string, roles: string[]): Promise<ApiResult<Record<string, unknown>>> {
@@ -295,6 +413,39 @@ async function runAgent(goal: string, roles: string[]): Promise<ApiResult<Record
     throw new Error(result.error || `Agent run failed with HTTP ${result.status}`);
   }
   return result;
+}
+
+// Reads a generated workspace file as text (same endpoint the download action
+// uses) so file cards can offer an inline preview without a second backend
+// surface. 404 keeps its status so callers can distinguish "file is gone".
+async function readWorkspaceFile(path: string): Promise<ApiResult<{ content: string }>> {
+  const base = await apiBase();
+  try {
+    const res = await fetch(`${base}/tools/download?path=${encodeURIComponent(path)}`, {
+      credentials: "include",
+      headers: workspaceHeaders(),
+    });
+    if (!res.ok) {
+      const payload = await res.json().catch(() => null);
+      return {
+        ok: false,
+        status: res.status,
+        data: { content: "" },
+        source: "unavailable",
+        error: friendlyError(payload, res.statusText || `HTTP ${res.status}`),
+      };
+    }
+    const content = await res.text();
+    return { ok: true, status: res.status, data: { content }, source: "live" };
+  } catch (err) {
+    return {
+      ok: false,
+      status: 0,
+      data: { content: "" },
+      source: "unavailable",
+      error: friendlyCaughtError(err, "unreachable"),
+    };
+  }
 }
 
 async function downloadWorkspaceFile(path: string, filename: string): Promise<{ ok: boolean; error?: string }> {
@@ -382,6 +533,8 @@ export const latticeApi = {
   automationPatterns: () => get("/api/automation/patterns", { patterns: [], questions_scanned: 0 }),
   installAutomationSuggestion: (suggestionId: string, enabled = false) =>
     post("/api/automation/install", { suggestion_id: suggestionId, enabled }, {}),
+  runAutomationNow: (workflowId: string, dryRun = true) =>
+    post("/api/automation/run-now", { workflow_id: workflowId, dry_run: dryRun }, {}),
   commandBriefing: () => get("/api/command/briefing", { sections: {}, quick_actions: [] }),
   proposals: () => get("/api/proposals", { items: [], count: 0, contract: {} }),
   proposalCounts: () => get("/api/proposals/counts", { pending: 0 }),
@@ -404,8 +557,19 @@ export const latticeApi = {
   conversation: (id: string) => get(`/history/conversations/${encodeURIComponent(id)}`, { messages: [] }),
   deleteConversation: (id: string) => del(`/history/conversations/${encodeURIComponent(id)}`, {}),
   streamChat,
+  resumeAgentApproval,
+  demoCorpusStatus: () => get<DemoCorpusStatus>(
+    "/api/setup/demo-corpus",
+    { installed: false, documents: [], document_count: 0, suggested_questions: [] },
+  ),
+  installDemoCorpus,
+  removeDemoCorpus: () => del<{ status: string; removed_count: number; removed: Array<Record<string, unknown>> }>(
+    "/api/setup/demo-corpus",
+    { status: "", removed_count: 0, removed: [] },
+  ),
   saveChatFile,
   downloadWorkspaceFile,
+  readWorkspaceFile,
   uploadDocument,
   documents: (limit = 200) => get("/knowledge-graph/documents", { documents: [] }, { limit }),
   localSources: () => get("/knowledge-graph/local/sources", { sources: [], watch: { available: false, active: {} } }),

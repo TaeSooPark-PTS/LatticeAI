@@ -23,6 +23,9 @@ from latticeai.core.file_generation import (
     PREVIEWABLE_EXTENSIONS,
     generate_file_content,
     infer_file_target,
+    infer_project_manifest,
+    repair_bundle_references,
+    validate_project_bundle,
 )
 
 
@@ -80,6 +83,7 @@ class ChatIntentController:
         agent_controller: Any,
         agent_root: Path,
         ingestion_pipeline: Any = None,
+        funnel_metrics: Any = None,
     ) -> None:
         self.router = model_router
         self.config = config
@@ -99,6 +103,16 @@ class ChatIntentController:
         self.agent_controller = agent_controller
         self.agent_root = Path(agent_root)
         self.ingestion_pipeline = ingestion_pipeline
+        self.funnel_metrics = funnel_metrics
+
+    def _funnel_increment(self, name: str) -> None:
+        """UX funnel counter (backlog #16) — advisory, never raises."""
+        if self.funnel_metrics is None:
+            return
+        try:
+            self.funnel_metrics.increment(name)
+        except Exception as exc:  # noqa: BLE001 — metrics must never break chat
+            logging.warning("funnel metrics increment failed: %s", exc)
 
     def no_model_response(self) -> JSONResponse:
         detail = "No model loaded. Call /models/load first."
@@ -235,7 +249,21 @@ class ChatIntentController:
         # An explicit path ("report.txt") wins; otherwise infer one from an
         # explicit type keyword ("html 파일 만들어줘") so weak models never
         # have to drive the JSON tool loop just to create a file.
-        target_path = file_action_target(req.message) or infer_file_target(req.message)
+        explicit_target = file_action_target(req.message)
+        if explicit_target is None:
+            # Multi-file intent ("todo 앱 html+css+js") becomes a real linked
+            # project bundle instead of one inlined page. Single-type requests
+            # return None here and keep the unchanged single-file flow.
+            manifest = infer_project_manifest(req.message)
+            if manifest is not None:
+                return await self.direct_project_action(
+                    req,
+                    manifest,
+                    model_id=model_id,
+                    effective_email=effective_email,
+                    workspace_id=workspace_id,
+                )
+        target_path = explicit_target or infer_file_target(req.message)
         if not target_path:
             return None
         # Never silently overwrite: an existing target gets a _2/_3 suffix so
@@ -316,6 +344,7 @@ class ChatIntentController:
             workspace_id=workspace_id,
             conversation_id=getattr(req, "conversation_id", None),
         )
+        self._funnel_increment("real_file_delivered")
         self.notify("user", req.message, req.source)
         self.notify("assistant", answer, req.source)
         payload = {
@@ -341,6 +370,156 @@ class ChatIntentController:
             payload["generation"] = generation_meta
         if brain_ingest is not None:
             payload["brain_ingest"] = brain_ingest
+        if req.stream:
+            return StreamingResponse(
+                agent_payload_stream(
+                    answer,
+                    payload,
+                    router=self.router,
+                    model_id=model_id,
+                ),
+                media_type="text/event-stream",
+                headers={"X-Model": model_id or "tool", "X-Routed-To": "agent"},
+            )
+        return JSONResponse(content=payload)
+
+    async def direct_project_action(
+        self,
+        req: Any,
+        manifest: Dict[str, Any],
+        *,
+        model_id: Optional[str],
+        effective_email: Optional[str] = None,
+        workspace_id: Optional[str] = None,
+    ):
+        """Artifact Loop: manifest → per-file generate/validate → bundle write.
+
+        Every file goes through the same model-agnostic pipeline as the
+        single-file path; after generation the *bundle* is verified as a whole
+        (dangling href/src references are deterministically repaired first),
+        then written together under one project directory, exposed through the
+        standard ``artifacts[]`` contract, and downloadable as a zip.
+        """
+        if not model_id:
+            return self.no_model_response()
+        project_dir = next_available_path(self.agent_root, manifest["name"])
+        bundle_files = [str(f["path"]) for f in manifest["files"]]
+
+        async def _generate(context: str) -> str:
+            return str(
+                await self.router.generate_as(
+                    model_id,
+                    message="Return only the requested file content.",
+                    context=context,
+                    max_tokens=max(int(req.max_tokens or 0), 4096),
+                    temperature=min(req.temperature, 0.3),
+                )
+            )
+
+        contents: Dict[str, str] = {}
+        file_meta: Dict[str, Dict[str, Any]] = {}
+        for spec in manifest["files"]:
+            name = str(spec["path"])
+            request_text = f"{req.message}\n\nThis file's role: {spec.get('brief', '')}"
+            content, meta = await generate_file_content(
+                _generate,
+                target_path=name,
+                user_request=request_text,
+                bundle_files=bundle_files,
+            )
+            contents[name] = content
+            file_meta[name] = meta
+
+        contents, reference_fixes = repair_bundle_references(contents)
+        bundle_validation = validate_project_bundle(contents)
+
+        steps: List[Dict[str, Any]] = []
+        created_files: List[Dict[str, Any]] = []
+        artifacts: List[Dict[str, Any]] = []
+        brain_ingests: List[Dict[str, Any]] = []
+        for name, content in contents.items():
+            rel_path = f"{project_dir}/{name}"
+            try:
+                result = self.execute_tool(
+                    "write_file",
+                    {"path": rel_path, "content": content},
+                )
+            except self.tool_error as exc:
+                raise HTTPException(status_code=400, detail=str(exc)) from exc
+            final_path = result.get("path") or rel_path
+            steps.append({
+                "state": AgentState.EXECUTING.value,
+                "action": "write_file",
+                "args": {"path": rel_path},
+                "result": result,
+            })
+            created_files.append({
+                "path": final_path,
+                "filename": Path(final_path).name,
+                "bytes": result.get("bytes", 0),
+                "action": "write_file",
+            })
+            verdict = bundle_validation["files"].get(name, {})
+            artifacts.append({
+                "kind": "file",
+                "path": final_path,
+                "filename": Path(final_path).name,
+                "bytes": result.get("bytes", 0),
+                "previewable": Path(final_path).suffix.lower() in PREVIEWABLE_EXTENSIONS,
+                "valid": bool(verdict.get("valid", True)),
+                "repaired": bool(file_meta.get(name, {}).get("repaired")),
+            })
+            ingest = self._ingest_generated_file(
+                final_path,
+                content,
+                effective_email=effective_email,
+                workspace_id=workspace_id,
+                conversation_id=getattr(req, "conversation_id", None),
+            )
+            if ingest is not None:
+                brain_ingests.append({"path": final_path, **ingest})
+
+        file_list = ", ".join(Path(a["path"]).name for a in artifacts)
+        answer = (
+            f"{project_dir} 프로젝트를 만들었습니다 "
+            f"({len(artifacts)}개 파일: {file_list})."
+        )
+        if not bundle_validation["ok"]:
+            answer += " 일부 파일은 검증 경고가 있어 결과를 확인해 주세요."
+        repaired_any = any(a["repaired"] for a in artifacts)
+        if repaired_any:
+            answer += " (모델 출력이 불완전한 파일은 자동 보정을 거쳤습니다.)"
+
+        from urllib.parse import quote
+
+        payload: Dict[str, Any] = {
+            "status": "ok",
+            "response": answer,
+            "workspace": str(self.agent_root),
+            "steps": steps,
+            "state_history": [AgentState.EXECUTING.value, AgentState.DONE.value],
+            "final_state": AgentState.DONE.value,
+            "created_files": created_files,
+            "artifacts": artifacts,
+            "routed_to_agent": True,
+            "action_route": "direct_project_bundle",
+            "project": {
+                "dir": project_dir,
+                "files": bundle_files,
+                "zip_url": f"/tools/download_zip?path={quote(project_dir)}",
+                "bundle_validation": bundle_validation,
+                "reference_fixes": reference_fixes,
+            },
+            "generation": {
+                "files": file_meta,
+                "repaired": repaired_any,
+            },
+        }
+        if brain_ingests:
+            payload["brain_ingest"] = brain_ingests
+        self._funnel_increment("real_file_delivered")
+        self.notify("user", req.message, req.source)
+        self.notify("assistant", answer, req.source)
         if req.stream:
             return StreamingResponse(
                 agent_payload_stream(
@@ -419,6 +598,15 @@ class ChatIntentController:
         )
         result = await self.agent_controller.agent(agent_request, request)
         answer = str(result.get("response") or "파일 작업을 처리했습니다.")
+        # UX funnel (backlog #16): a file-intent request that the agent loop
+        # finished without producing a single artifact is the "code-only"
+        # failure mode the >95% real-file goal watches. Paused/failed runs
+        # count neither way — they did not answer with code instead of files.
+        delivered = bool(result.get("created_files") or result.get("artifacts"))
+        if delivered:
+            self._funnel_increment("real_file_delivered")
+        elif str(result.get("status") or "") == "ok":
+            self._funnel_increment("code_only_responses")
         self.notify("user", req.message, req.source)
         self.notify("assistant", answer, req.source)
         result["routed_to_agent"] = True

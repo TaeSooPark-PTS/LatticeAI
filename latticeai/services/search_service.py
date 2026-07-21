@@ -9,6 +9,8 @@ from __future__ import annotations
 from dataclasses import dataclass
 from typing import Any, Dict, Mapping, Optional
 
+from lattice_brain.graph.fusion import fusion_profile
+
 
 DEFAULT_HYBRID_WEIGHTS = {
     "keyword": 0.35,
@@ -402,7 +404,18 @@ class SearchService:
         allowed_workspaces=None,
         include_legacy_global: bool = False,
     ) -> Dict[str, Any]:
-        weights = {**DEFAULT_HYBRID_WEIGHTS, **dict(weights or {})}
+        # Query-class fusion (backlog #5): when the caller does not pin
+        # explicit weights, detect the query class (fact/code/person/recency)
+        # and use its per-class channel weights. Explicit weights still win,
+        # and the "fact" class equals DEFAULT_HYBRID_WEIGHTS, so pinned-weight
+        # callers and fact-class queries behave exactly as before.
+        query_class: Optional[str] = None
+        if weights is None:
+            profile = fusion_profile(query)
+            query_class = profile["query_class"]
+            weights = dict(profile["weights"])
+        else:
+            weights = {**DEFAULT_HYBRID_WEIGHTS, **dict(weights)}
         # Scope each channel at the source so out-of-scope rows never enter the
         # fusion set (defense-in-depth — the fused result is re-scoped below too).
         channels = {
@@ -464,9 +477,12 @@ class SearchService:
                 "weights": weights,
                 "sources": match.get("sources", []),
             }
+            if query_class is not None:
+                match["fusion"]["query_class"] = query_class
         return {
             "query": query,
             "mode": "hybrid",
+            "query_class": query_class,
             "weights": weights,
             "channels": {
                 name: {

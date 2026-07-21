@@ -1,6 +1,6 @@
 # Lattice AI Trust Model
 
-Current release: **9.9.2 — Artifact Trust**.
+Current release: **9.9.3 — Closed Loops**.
 
 Lattice AI is local-first, explicit about external communication, and honest
 when a capability is unavailable.

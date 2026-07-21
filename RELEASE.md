@@ -13,6 +13,23 @@
 > (`LTCAI_RELEASE_EVIDENCE_KEEP`으로 조정), 과거 증거는 언제든 해당 태그를
 > 체크아웃해 재생성할 수 있습니다.
 
+## v9.9.3 — Closed Loops (2026-07-22)
+
+9.9.3 ships the complete 22-item backlog left by the 2026-07-21 full-stack
+review: multi-file project generation with bundle validation and zip download,
+an interactive `awaiting_approval` flow (pause + token-gated resume instead of
+FAILED), a 30-second First Value Loop over a built-in demo corpus, honest
+answer grounding badges, query-class retrieval fusion behind a benchmark CI
+gate, opt-in folder watch, capture-quality CTAs, graph noise curation,
+automation dry-run/"run now" with surfaced last executions, inline file
+previews, global drag-and-drop, 409 rebase UX, a11y/reduced-motion coverage,
+per-phase token budgets, expanded filegen extensions with `ast.parse`
+validation, and a deeper harness (23 agent_eval scenarios, golden sanitize
+fixtures, multi-model filegen bench, deterministic knowledge-pipeline E2E,
+funnel metrics).
+
+- 상세: [RELEASE_NOTES_v9.9.3.md](RELEASE_NOTES_v9.9.3.md)
+
 ## v9.9.2 — Artifact Trust (2026-07-21)
 
 9.9.2 unifies every file write behind the model-agnostic validation pipeline

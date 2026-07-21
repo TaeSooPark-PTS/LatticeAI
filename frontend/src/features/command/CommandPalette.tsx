@@ -17,6 +17,7 @@ import {
 } from "lucide-react";
 import { latticeApi } from "@/api/client";
 import { asArray } from "@/lib/utils";
+import { useFocusTrap } from "@/lib/useFocusTrap";
 import { t, type Language } from "@/i18n";
 import { navigateHash } from "@/features/brain/navigation";
 
@@ -187,6 +188,9 @@ export function CommandPalette({ language, initialOpen = false }: { language: La
   }, [items.length, debouncedQuery]);
 
   const close = React.useCallback(() => setOpen(false), []);
+  // Modal a11y: focus stays trapped in the palette and Escape closes it from
+  // anywhere inside (not just the search input).
+  const trapRef = useFocusTrap<HTMLDivElement>(close, open);
 
   const activate = React.useCallback(
     (item: PaletteItem | undefined) => {
@@ -239,6 +243,7 @@ export function CommandPalette({ language, initialOpen = false }: { language: La
       }}
     >
       <div
+        ref={trapRef}
         className="command-palette"
         role="dialog"
         aria-modal="true"

@@ -560,6 +560,8 @@ class AutomationIntelligenceService:
             except Exception:
                 LOGGER.exception("automation intelligence workflow read failed")
                 workflows = []
+            from latticeai.services.automation_execution import last_execution_view
+
             for workflow in workflows:
                 metadata = (workflow or {}).get("metadata") or {}
                 if metadata.get("created_from") not in {"automation_suggestion", "brain_automation_recipe"}:
@@ -573,6 +575,11 @@ class AutomationIntelligenceService:
                     "enabled": metadata.get("automation_state") == "enabled",
                     "requires_user_enable": bool(metadata.get("requires_user_enable", True)),
                     "creates": metadata.get("creates") or [],
+                    # Execution log surfacing (backlog #6): the newest of the
+                    # run-now stamp vs. the latest persisted workflow run.
+                    "last_execution": last_execution_view(
+                        workflow, store=self._store, workspace_id=workspace_id
+                    ),
                 })
         return {
             "suggestions": suggestion_report["suggestions"],

@@ -27,7 +27,7 @@ from fastapi import APIRouter, HTTPException, Request
 from pydantic import BaseModel
 
 from latticeai import __version__
-from lattice_brain.ingestion import IngestionItem
+from lattice_brain.ingestion import IngestionItem, capture_quality_verdict
 
 MAX_TAB_BYTES = 4 * 1024 * 1024          # 4 MB per captured tab payload
 MAX_URL_FETCH_BYTES = 4 * 1024 * 1024    # 4 MB cap on a fetched page
@@ -427,7 +427,10 @@ def create_browser_router(
             raise HTTPException(status_code=422, detail=str(exc))
         if not (text or "").strip():
             return {"status": "empty", "source_type": "web_url", "url": url,
-                    "detail": "No readable text was extracted from the page."}
+                    "detail": "No readable text was extracted from the page.",
+                    # Structured CTA (backlog #9): the extraction produced
+                    # nothing, tell the UI what the user can do about it.
+                    "capture_quality": capture_quality_verdict(None, source_type="web_url")}
         res = pipeline.ingest(
             IngestionItem(
                 source_type="web_url", title=title, text=text, source_uri=url,
@@ -435,7 +438,11 @@ def create_browser_router(
             ),
             user_email=user,
         )
-        return res.as_dict()
+        payload = res.as_dict()
+        payload["capture_quality"] = capture_quality_verdict(
+            res.extraction_quality, source_type="web_url",
+        )
+        return payload
 
     @router.post("/api/browser/ingest-current-tab")
     async def ingest_current_tab(req: IngestTabRequest, request: Request):
@@ -481,6 +488,10 @@ def create_browser_router(
             ),
             user_email=user,
         )
-        return res.as_dict()
+        payload = res.as_dict()
+        payload["capture_quality"] = capture_quality_verdict(
+            res.extraction_quality, source_type="browser_tab",
+        )
+        return payload
 
     return router

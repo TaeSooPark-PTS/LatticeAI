@@ -412,6 +412,142 @@ def curate_nodes(
     return enriched
 
 
+# ── Noise reduction (backlog #10, review §7.2 D) ─────────────────────────────
+# Relation-verb normalization dictionary (ko/en). Keys are canonical verbs;
+# values are the free-string labels observed in the legacy edge table. The
+# canonical labels stay aligned with the v2 EdgeType legacy mapping so this
+# never fights the schema normalization.
+
+RELATION_VERB_GROUPS: Dict[str, List[str]] = {
+    "created": [
+        "creates", "create", "만들다", "만든", "만들었다", "만듦", "만들어냄",
+        "생성함", "생성", "생성했다", "작성함", "작성", "작성했다",
+    ],
+    "mentions": ["mention", "언급함", "언급", "언급했다", "언급됨"],
+    "contains": ["contain", "포함함", "포함", "포함했다", "포함됨"],
+    "uses": ["use", "used", "사용함", "사용", "사용했다", "이용함", "이용"],
+    "related_to": ["related", "relates_to", "관련", "관련됨", "관련있음", "연관됨", "연관"],
+    "fixed": ["fixes", "fix", "수정함", "수정", "수정했다", "고침", "고쳤다"],
+    "decided": ["decides", "decide", "결정함", "결정", "결정했다"],
+    "uploaded": ["uploads", "upload", "업로드함", "업로드", "올림", "올렸다"],
+}
+
+
+def build_relation_verb_index(
+    groups: Optional[Dict[str, List[str]]] = None,
+) -> Dict[str, str]:
+    """{alias(lower) → canonical} — canonical labels map to themselves."""
+    groups = groups or RELATION_VERB_GROUPS
+    index: Dict[str, str] = {}
+    for canonical, aliases in groups.items():
+        canon = str(canonical).strip().lower()
+        index[canon] = canon
+        for alias in aliases:
+            index[str(alias).strip().lower()] = canon
+    return index
+
+
+def normalize_relation_verb(
+    verb: str,
+    *,
+    index: Optional[Dict[str, str]] = None,
+) -> str:
+    """Map a free-string edge verb to its canonical form (identity if unknown).
+
+    Korean verbs are additionally tried with the trailing josa stripped so
+    "생성함을" style variants still normalize; unknown labels pass through
+    unchanged (lossless — this function is a rename map, not a filter).
+    """
+    raw = str(verb or "").strip()
+    if not raw:
+        return raw
+    index = index if index is not None else build_relation_verb_index()
+    low = raw.lower()
+    if low in index:
+        return index[low]
+    stripped = _strip_josa(low)
+    if stripped in index:
+        return index[stripped]
+    return raw
+
+
+# v4 write-door enum labels are SCREAMING_SNAKE_CASE ASCII; those are already
+# canonical schema taxonomy and must never be rewritten by the verb dictionary.
+_V4_ENUM_LABEL_RE = re.compile(r"^[A-Z][A-Z0-9_]*$")
+
+
+def plan_relation_normalization(
+    edge_types: Iterable[str],
+    *,
+    index: Optional[Dict[str, str]] = None,
+) -> Dict[str, str]:
+    """{observed_type → canonical} for every type the dictionary changes.
+
+    Skips v4-canonical enum labels (``MENTIONS``, ``INDEXED_FROM``, …): this
+    plan targets the free-string verbs of pre-v4 rows, not the schema enum.
+    """
+    index = index if index is not None else build_relation_verb_index()
+    plan: Dict[str, str] = {}
+    for edge_type in edge_types:
+        original = str(edge_type or "")
+        if _V4_ENUM_LABEL_RE.match(original):
+            continue
+        canonical = normalize_relation_verb(original, index=index)
+        if canonical and canonical != original:
+            plan[original] = canonical
+    return plan
+
+
+def plan_concept_noise_reduction(
+    concepts: Iterable[Dict[str, Any]],
+    total_docs: int,
+    *,
+    max_df_ratio: float = 0.8,
+    min_doc_frequency: int = 1,
+    min_corpus_docs: int = 5,
+) -> Dict[str, List[Dict[str, Any]]]:
+    """Decide which heuristic concept nodes are graph noise.
+
+    ``concepts``: ``[{"id", "label", "df", "heuristic"}]`` where ``df`` is the
+    number of distinct content documents linking to the concept.
+
+    Rules (dry-run friendly — pure decision, no side effects):
+
+    * **never** flag ``heuristic=False`` nodes (explicit user-created nodes
+      are untouchable, whatever their stats);
+    * low IDF: with a corpus of at least ``min_corpus_docs`` documents, a
+      concept appearing in ``> max_df_ratio`` of them separates nothing —
+      remove;
+    * frequency floor: ``df < min_doc_frequency`` (orphaned/near-orphaned
+      auto concepts) — remove.
+    """
+    total = max(0, int(total_docs))
+    remove: List[Dict[str, Any]] = []
+    keep: List[Dict[str, Any]] = []
+    for concept in concepts:
+        entry = {
+            "id": str(concept.get("id") or ""),
+            "label": concept.get("label"),
+            "df": int(concept.get("df") or 0),
+            "heuristic": bool(concept.get("heuristic")),
+        }
+        if not entry["heuristic"]:
+            keep.append({**entry, "reason": "user_created_protected"})
+            continue
+        df = entry["df"]
+        if df < int(min_doc_frequency):
+            df_ratio = (df / total) if total else 0.0
+            remove.append({**entry, "df_ratio": round(df_ratio, 4), "reason": "below_frequency_floor"})
+            continue
+        if total >= int(min_corpus_docs):
+            df_ratio = df / total
+            if df_ratio > float(max_df_ratio):
+                remove.append({**entry, "df_ratio": round(df_ratio, 4), "reason": "low_idf_ubiquitous"})
+                continue
+        keep.append({**entry, "reason": "signal"})
+    return {"remove": remove, "keep": keep}
+
+
 # ── End-to-end helper ─────────────────────────────────────────────────────────
 
 
@@ -457,6 +593,11 @@ def auto_build_graph_overlay(
 
 
 __all__ = [
+    "RELATION_VERB_GROUPS",
+    "build_relation_verb_index",
+    "normalize_relation_verb",
+    "plan_relation_normalization",
+    "plan_concept_noise_reduction",
     "TopicCandidate",
     "PromotionDecision",
     "ThreadEdge",

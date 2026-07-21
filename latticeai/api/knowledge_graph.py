@@ -28,6 +28,16 @@ class KnowledgeGraphIngestRequest(BaseModel):
     metadata: Optional[Dict[str, Any]] = None
 
 
+class CurateNoiseRequest(BaseModel):
+    # Dry-run by default: the job *reports* removals until explicitly applied.
+    dry_run: bool = True
+    max_df_ratio: float = 0.8
+    min_doc_frequency: int = 1
+    min_corpus_docs: int = 5
+    normalize_verbs: bool = True
+    max_removals: int = 200
+
+
 def _workspace_scope_from_request(request: Request) -> Optional[str]:
     header = request.headers.get("X-Workspace-Id")
     if header and header.strip():
@@ -142,6 +152,26 @@ def create_knowledge_graph_router(
         # embedders that only provide ``require_user``.
         (require_admin or require_user)(request)
         return graph().curate()
+
+    @router.post("/knowledge-graph/curate/noise")
+    async def knowledge_graph_curate_noise(req: CurateNoiseRequest, request: Request):
+        """Noise-reduction curation job (backlog #10).
+
+        Dry-run by default: reports which heuristic concept nodes would be
+        removed (low IDF / below the frequency floor) and which relation
+        verbs would be normalized, without changing the graph. Set
+        ``dry_run=false`` to apply. User-created nodes are never removed.
+        Administrative like ``/knowledge-graph/curate`` when roles exist.
+        """
+        (require_admin or require_user)(request)
+        return graph().curate_noise(
+            dry_run=req.dry_run,
+            max_df_ratio=req.max_df_ratio,
+            min_doc_frequency=req.min_doc_frequency,
+            min_corpus_docs=req.min_corpus_docs,
+            normalize_verbs=req.normalize_verbs,
+            max_removals=req.max_removals,
+        )
 
     @router.get("/knowledge-graph/provenance/coverage")
     async def knowledge_graph_provenance_coverage(request: Request):

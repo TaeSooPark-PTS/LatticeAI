@@ -2,6 +2,7 @@ import * as React from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { Check, ChevronDown, GitPullRequestArrow, X } from "lucide-react";
 import { latticeApi } from "@/api/client";
+import { ProposalConflictNote } from "@/features/review/ProposalConflictNote";
 import { ProposalDiff } from "@/features/review/ReviewCard";
 import { asArray } from "@/lib/utils";
 import { t, type Language } from "@/i18n";
@@ -28,9 +29,26 @@ export function PendingProposalsPanel({ language }: { language: Language }) {
       qc.invalidateQueries({ queryKey: ["reviewItems"] }),
     ]);
   };
+  // Conflict-aware approval: the review-queue approve surface answers 409
+  // with a rebase hint when the target file changed since staging (9.9.0);
+  // those items get an inline explanation + "re-read & re-apply" recovery.
+  const [conflictIds, setConflictIds] = React.useState<Record<string, boolean>>({});
   const approve = useMutation({
-    mutationFn: (id: string) => latticeApi.approveProposal(id),
-    onSuccess: invalidate,
+    mutationFn: (id: string) => latticeApi.approveReviewItem(id),
+    onSuccess: async (result, id) => {
+      if (!result.ok && result.status === 409) {
+        setConflictIds((current) => ({ ...current, [id]: true }));
+        return;
+      }
+      if (result.ok) {
+        setConflictIds((current) => {
+          const next = { ...current };
+          delete next[id];
+          return next;
+        });
+        await invalidate();
+      }
+    },
   });
   const reject = useMutation({
     mutationFn: (id: string) => latticeApi.rejectProposal(id),
@@ -105,6 +123,9 @@ export function PendingProposalsPanel({ language }: { language: Language }) {
                     <p className="brain-care-note">{item.summary}</p>
                     {diff.length > 0 ? (
                       <ProposalDiff language={language} diff={diff} />
+                    ) : null}
+                    {conflictIds[item.id] ? (
+                      <ProposalConflictNote language={language} itemId={item.id} />
                     ) : null}
                     <div className="pending-proposal-actions">
                       <button

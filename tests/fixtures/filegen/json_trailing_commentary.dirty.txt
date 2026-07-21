@@ -1,0 +1,7 @@
+{
+  "name": "lattice",
+  "version": 2,
+  "tags": ["brain", "local"]
+}
+
+This JSON document contains the project metadata you requested. Feel free to adjust the tags.

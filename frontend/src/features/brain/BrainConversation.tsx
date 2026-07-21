@@ -21,6 +21,8 @@ import type {
   MemoryFragment,
   Message,
 } from "./types";
+import { AgentApprovalCard } from "./AgentApprovalCard";
+import type { ApprovalResolution } from "./approvalFlow";
 import { AnswerProofCard, InlineCitationMarkers } from "./AnswerProof";
 import { BrainCarePanel } from "./BrainCarePanel";
 import { BrainIntelligencePanel } from "./BrainIntelligencePanel";
@@ -30,6 +32,7 @@ import { BrainComposer } from "./BrainComposer";
 import { BrainOverviewPanel } from "./BrainOverviewPanel";
 import { FirstFiveCard } from "./FirstFiveCard";
 import type { FirstFiveStep } from "./firstFive";
+import { FirstValueLoopCard } from "./FirstValueLoopCard";
 import {
   BrainBriefPanel,
   handleBriefAction,
@@ -81,6 +84,7 @@ export function BrainConversation({
   onSendText,
   onCreateActionItem,
   onProactiveAction,
+  onApprovalResolved,
   onStop,
   onRegenerate,
   onNewConversation,
@@ -129,6 +133,7 @@ export function BrainConversation({
   onSendText: (text: string) => void;
   onCreateActionItem: (content: string) => void;
   onProactiveAction: (action: BrainProactiveAction) => void;
+  onApprovalResolved: (messageIndex: number, resolution: ApprovalResolution) => void;
   onStop: () => void;
   onRegenerate: () => void;
   onNewConversation: () => void;
@@ -254,7 +259,17 @@ export function BrainConversation({
                             reason={isBasic ? null : message.contextQuality.reason}
                           />
                         ) : null}
+                        {message.role === "assistant" && message.content.trim() && message.grounding ? (
+                          <GroundingBadge language={language} grounding={message.grounding} />
+                        ) : null}
                       </div>
+                      {message.role === "assistant" && message.approval ? (
+                        <AgentApprovalCard
+                          language={language}
+                          approval={message.approval}
+                          onResolved={(resolution) => onApprovalResolved(index, resolution)}
+                        />
+                      ) : null}
                       {showActions ? (
                         <MessageActions
                           language={language}
@@ -504,6 +519,7 @@ export function BrainConversation({
                   controls so compact viewports keep the composer and docks
                   fully on screen. */}
               <div className="brain-home-intro-row">
+                <FirstValueLoopCard language={language} streaming={streaming} onSendText={onSendText} />
                 <FirstFiveCard language={language} autoDone={firstFiveAutoDone} onStep={handleFirstFiveStep} />
                 <DailyBriefingPanel language={language} variant="home" />
               </div>
@@ -595,6 +611,23 @@ function AgentStateNote({ language, state }: { language: Language; state: string
     >
       {t(language, key)}
     </p>
+  );
+}
+
+// Small, unobtrusive answer-citation verdict: whether the reply actually used
+// retrieved sources ("근거 있음") or not ("근거 없음"). Copy comes from i18n —
+// the backend's Korean label field is never rendered directly.
+function GroundingBadge({ language, grounding }: { language: Language; grounding: NonNullable<Message["grounding"]> }) {
+  const supported = grounding.status === "supported";
+  return (
+    <span
+      className={`brain-grounding-badge ${supported ? "is-supported" : "is-none"}`}
+      role="note"
+      data-testid="grounding-badge"
+      title={grounding.reason || undefined}
+    >
+      {t(language, supported ? "brain.grounding.supported" : "brain.grounding.none")}
+    </span>
   );
 }
 

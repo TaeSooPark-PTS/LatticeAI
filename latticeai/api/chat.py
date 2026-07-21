@@ -28,6 +28,7 @@ from latticeai.api.chat_documents import (
 )
 from latticeai.api.chat_helpers import (
     _LANG_HINT,
+    assess_answer_grounding,
     build_context_quality,
     build_recent_chat_context,
     detect_language,
@@ -189,6 +190,7 @@ def create_chat_router(context: AppContext) -> APIRouter:
         base_dir=context.base_dir or Path.cwd(),
         agent_root=AGENT_ROOT,
         ensure_agent_root=ensure_agent_root,
+        funnel_metrics=context.funnel_metrics,
     )
     intent_controller = ChatIntentController(
         model_router=model_router,
@@ -209,6 +211,7 @@ def create_chat_router(context: AppContext) -> APIRouter:
         agent_controller=agent_controller,
         agent_root=AGENT_ROOT,
         ingestion_pipeline=context.ingestion_pipeline,
+        funnel_metrics=context.funnel_metrics,
     )
     document_coordinator = DocumentGenerationCoordinator(
         model_router=model_router,
@@ -273,7 +276,12 @@ def create_chat_router(context: AppContext) -> APIRouter:
             )
 
         selected_model_id = request_model(req.model)
-        if is_file_action_request(req.message):
+        file_intent = is_file_action_request(req.message)
+        if file_intent and context.funnel_metrics is not None:
+            # UX funnel (backlog #16): one file-intent request counted once,
+            # regardless of which delivery path handles it below.
+            context.funnel_metrics.increment("file_requests")
+        if file_intent:
             direct_response = await intent_controller.direct_file_action(
                 req,
                 model_id=selected_model_id,
@@ -284,7 +292,7 @@ def create_chat_router(context: AppContext) -> APIRouter:
                 return direct_response
         if not selected_model_id:
             return intent_controller.no_model_response()
-        if is_file_action_request(req.message):
+        if file_intent:
             return await intent_controller.route_file_to_agent(
                 req,
                 request,
@@ -375,6 +383,12 @@ def create_chat_router(context: AppContext) -> APIRouter:
         )
         if isinstance(trace_seed, dict):
             trace_seed["context_quality"] = context_quality
+        if context.funnel_metrics is not None and int(
+            context_quality.get("nodes") or 0
+        ) > 0:
+            # UX funnel (backlog #16): a grounded answer is "first value" —
+            # the TTFV clock ends on the first successful recall.
+            context.funnel_metrics.record_recall_success()
 
         history_message = (
             f"{req.message}\n[Image attached]" if req.image_data else req.message
@@ -464,6 +478,16 @@ def create_chat_router(context: AppContext) -> APIRouter:
             req.image_data,
         )
         response_text = str(result)
+        # Answer-citation binding (backlog #11): annotate — never block — how
+        # the answer relates to the retrieved sources. Recorded on the trace
+        # so the Review/proof surfaces see the same verdict as the client.
+        grounding = assess_answer_grounding(
+            response_text,
+            trace=trace_seed if isinstance(trace_seed, dict) else None,
+            context_quality=context_quality,
+        )
+        if isinstance(trace_seed, dict):
+            trace_seed["grounding"] = grounding
         trace_record = await chat_service.persist_answer(
             question=req.message,
             response=response_text,
@@ -482,6 +506,7 @@ def create_chat_router(context: AppContext) -> APIRouter:
                 "trace_id": trace_record["id"],
                 "trace": trace_record,
                 "context_quality": context_quality,
+                "grounding": grounding,
             }
         )
 

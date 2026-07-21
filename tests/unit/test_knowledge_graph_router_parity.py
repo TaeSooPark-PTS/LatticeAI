@@ -24,6 +24,8 @@ BASELINE_ROUTES = {
     ("/knowledge-graph/provenance/coverage", "GET"),
     # v4 T4.4 addition: on-demand curation (graph_curator goes live).
     ("/knowledge-graph/curate", "POST"),
+    # backlog #10 addition: noise-reduction curation job (dry-run by default).
+    ("/knowledge-graph/curate/noise", "POST"),
     ("/knowledge-graph/schema", "GET"),
     ("/knowledge-graph/graph", "GET"),
     ("/knowledge-graph/documents", "GET"),

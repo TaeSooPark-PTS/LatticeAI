@@ -4,6 +4,50 @@ The top entry is either the current unreleased main-branch work or the current
 release line. Older entries are historical and may describe behavior as it
 existed at that release.
 
+## [9.9.3] - 2026-07-22
+
+### Added
+- Multi-file Artifact Loop: `infer_project_manifest` → per-file
+  generate/validate → cross-file reference repair → bundle validation →
+  `artifacts[]` + `project.zip_url`; safe `GET /tools/download_zip`.
+- Interactive approval: governed plans pause as `awaiting_approval` with a
+  single-use 10-minute token; `POST /agent/resume` approves, edits, or
+  cancels. Inline approval card in chat.
+- First Value Loop: `POST/GET/DELETE /api/setup/demo-corpus` (3 built-in demo
+  documents, `demo://` provenance, idempotent) + the "30초 체험" home track
+  with suggested-question chips.
+- Answer grounding: `grounding {status, source_ids, overlap}` on chat
+  responses; 근거 있음/근거 없음 badge.
+- Retrieval fusion: query-class detection (fact/code/person/recency) with
+  per-class channel weights and a benchmark-threshold CI gate
+  (`tests/unit/test_retrieval_fusion_gate.py`).
+- Opt-in folder watch (`/api/ingestion/watch`, polling + persisted consent),
+  capture-quality CTA (`capture_quality` on browser captures), graph noise
+  curation job (`POST /knowledge-graph/curate/noise`, dry-run default).
+- Automation visibility: `POST /api/automation/run-now` (dry-run-first),
+  `last_execution` on overview/briefing, failed runs → Review queue; Act-panel
+  "지금 한 번 실행" cards.
+- UX: inline file preview (sandboxed iframe / modal), folder job report card,
+  global drag-and-drop capture, 409 proposal rebase flow, focus traps, graph
+  keyboard navigation, reduced-motion coverage, success pulse / inflow motes.
+- Harness: agent_eval 23 scenarios (dirty-write filegen paths), golden
+  sanitize fixtures, `bench_models.py --filegen` (fail-open), deterministic
+  knowledge-pipeline E2E test, funnel metrics
+  (`GET /api/admin/funnel-metrics`), `PhaseBudgets` per-phase token caps,
+  `.ts/.tsx/.jsx/.vue/.svelte` filegen validation and Python `ast.parse`.
+
+### Changed
+- Approval-requiring agent runs return `awaiting_approval` instead of FAILED;
+  legacy `context_id` resume with `approved: true` now executes the gated
+  steps.
+- Hybrid search responses expose `query_class`; chat responses expose
+  `grounding`; automation overview exposes `last_execution`.
+
+### Fixed
+- Fenced/chatty CSS is now sanitized before write (`.css` validation rejects
+  Markdown fences) — caught by the new golden fixtures.
+- A legacy approved resume no longer re-fails at the approval gate.
+
 ## [9.9.2] - 2026-07-21
 
 ### Added
