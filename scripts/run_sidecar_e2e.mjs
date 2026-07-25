@@ -116,15 +116,18 @@ function stop(child) {
 async function main() {
   console.log(`[e2e] sandbox ${sandboxRoot}`);
   console.log(`[e2e] starting sidecar at ${baseUrl}`);
+  // Same process model as scripts/run_integration_tests.mjs: uvicorn on
+  // server:app with an isolated env. Do not double-append /health — the
+  // wait helper already probes `${url}/health`.
   const server = spawn(
     python,
-    ["-m", "latticeai.cli.entrypoint", "--host", host, "--port", port],
+    ["-m", "uvicorn", "server:app", "--host", host, "--port", port],
     { stdio: "inherit", env: isolatedEnv, cwd: process.cwd() },
   );
 
   let exitCode = 1;
   try {
-    await waitForHealth(`${baseUrl}/health`);
+    await waitForHealth(baseUrl);
     console.log("[e2e] sidecar healthy — running Playwright");
     const playwright = spawn(
       "npx",
