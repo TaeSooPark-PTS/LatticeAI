@@ -303,6 +303,10 @@ class FolderWatchService:
                 for key in ("status", "new", "changed", "removed", "ingested", "duplicate", "failed")
                 if key in result
             }
+            # Watch trust UI (review Wave 1.3): keep a small sample of the
+            # latest scan's failures so the home health card can show *why*
+            # a watch is unhealthy, not just a count.
+            watch["last_errors"] = list(result.get("errors") or [])[:3]
             if snapshot is not None:
                 watch["snapshot"] = snapshot
             self._save_config()
@@ -353,6 +357,7 @@ class FolderWatchService:
             "created_at": watch.get("created_at"),
             "last_scan_at": watch.get("last_scan_at"),
             "last_result": watch.get("last_result"),
+            "last_errors": list(watch.get("last_errors") or []),
             "tracked_files": len(watch.get("snapshot") or {}),
         }
 

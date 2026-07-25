@@ -45,6 +45,7 @@ from latticeai.api.chat_helpers import (
     workspace_scope_from_request,
 )
 from latticeai.api.chat_history import HistoryRouteDependencies, register_history_routes
+from latticeai.core.run_store import AgentRunStore
 from latticeai.api.chat_intents import ChatIntentController
 from latticeai.api.chat_stream import stream_chat
 from latticeai.services.app_context import AppContext
@@ -191,6 +192,11 @@ def create_chat_router(context: AppContext) -> APIRouter:
         agent_root=AGENT_ROOT,
         ensure_agent_root=ensure_agent_root,
         funnel_metrics=context.funnel_metrics,
+        run_store=(
+            AgentRunStore(Path(context.data_dir) / "agent_runs")
+            if context.data_dir
+            else None
+        ),
     )
     intent_controller = ChatIntentController(
         model_router=model_router,

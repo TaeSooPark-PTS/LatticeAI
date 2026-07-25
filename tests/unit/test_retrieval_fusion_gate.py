@@ -130,6 +130,45 @@ def test_service_hybrid_search_reports_query_class(tmp_path):
     assert pinned["weights"]["keyword"] == 1.0
 
 
+# ── single retrieval policy across both hybrid layers (review Wave 0.2) ─────
+
+def test_both_hybrid_layers_resolve_the_same_policy(tmp_path):
+    """RetrievalPolicy 단일화: SearchService and the graph-layer hybrid must
+    report the same query_class for the same query and echo the policy's
+    rewritten search_query additively (response "query" stays the original)."""
+    store = _seeded_store(tmp_path)
+    service = SearchService(store)
+    queries = {
+        "fact": "출시 결정 내용이 뭐였지",
+        "code": "hybrid_search alpha 융합 코드",
+        "person": "백엔드 담당자 누구야",
+        "recency": "어제 회의에서 합의한 것",
+    }
+    for expected_class, query in queries.items():
+        graph_result = store.hybrid_search(query, top_k=5)
+        service_result = service.hybrid_search(query, limit=5)
+        assert graph_result["query_class"] == expected_class, query
+        assert service_result["query_class"] == expected_class, query
+        assert graph_result["query"] == query
+        assert service_result["query"] == query
+        for payload in (graph_result, service_result):
+            assert payload["policy"]["search_query"]
+            assert isinstance(payload["policy"]["rewrite_rules"], list)
+        assert (
+            graph_result["policy"]["search_query"]
+            == service_result["policy"]["search_query"]
+        )
+        assert (
+            graph_result["policy"]["rewrite_rules"]
+            == service_result["policy"]["rewrite_rules"]
+        )
+    # The fact query above ends in the "뭐였지" filler — both layers must have
+    # searched with the same rewritten form, not two different strings.
+    rewritten = store.hybrid_search("출시 결정 내용이 뭐였지", top_k=5)["policy"]
+    assert rewritten["search_query"] == "출시 결정 내용이"
+    assert "strip_filler_ko" in rewritten["rewrite_rules"]
+
+
 # ── CI benchmark threshold gate ──────────────────────────────────────────────
 
 def test_retrieval_fusion_benchmark_gate(tmp_path):

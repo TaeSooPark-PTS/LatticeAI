@@ -188,6 +188,90 @@ def test_briefing_uses_scoped_history_reads():
     assert call["include_legacy_global"] is False
 
 
+# ── hygiene advisory (review 2026-07-25 Wave 2.5) ───────────────────────
+
+
+class FakeHygieneGraph:
+    """Graph stub exposing only what the hygiene section reads."""
+
+    def __init__(self, node_count=250, last=None, raise_stats=False):
+        self.node_count = node_count
+        self.last = last
+        self.raise_stats = raise_stats
+
+    def stats(self):
+        if self.raise_stats:
+            raise RuntimeError("graph unavailable")
+        return {"nodes": {"Document": self.node_count // 2,
+                          "Concept": self.node_count - self.node_count // 2}}
+
+    def last_noise_curate_at(self):
+        return self.last
+
+
+def _days_ago(days):
+    from datetime import datetime, timedelta
+
+    return (datetime.now() - timedelta(days=days)).isoformat(timespec="seconds")
+
+
+def test_briefing_hygiene_absent_suggestion_without_graph():
+    # No graph at all → section present, unavailable, never raises.
+    briefing = _service().briefing()
+    hygiene = briefing["sections"]["hygiene"]
+    assert hygiene["available"] is False
+    assert hygiene["suggest_noise_curate"] is False
+    assert "curate-noise" not in [a["id"] for a in briefing["quick_actions"]]
+    # A graph without stats()/last_noise_curate_at() degrades the same way.
+    briefing = _service(graph=FakeGraph([_node("n1", "회의록")])).briefing()
+    assert briefing["sections"]["hygiene"]["suggest_noise_curate"] is False
+
+
+def test_briefing_hygiene_suggests_dry_run_curate_when_stale():
+    service = _service(graph=FakeHygieneGraph(node_count=250, last=None))
+    briefing = service.briefing()
+    hygiene = briefing["sections"]["hygiene"]
+    assert hygiene["available"] is True
+    assert hygiene["node_count"] == 250
+    assert hygiene["last_noise_curate_at"] is None
+    assert hygiene["suggest_noise_curate"] is True
+    assert hygiene["reason"]
+    action = {a["id"]: a for a in briefing["quick_actions"]}["curate-noise"]
+    assert action["kind"] == "hygiene"
+    assert action["count"] == 250
+    assert action["endpoint"] == "/knowledge-graph/curate/noise"
+
+
+def test_briefing_hygiene_stale_timestamp_still_suggests():
+    service = _service(graph=FakeHygieneGraph(node_count=300, last=_days_ago(8)))
+    hygiene = service.briefing()["sections"]["hygiene"]
+    assert hygiene["suggest_noise_curate"] is True
+
+
+def test_briefing_hygiene_recent_curate_silences_suggestion():
+    service = _service(graph=FakeHygieneGraph(node_count=300, last=_days_ago(1)))
+    briefing = service.briefing()
+    hygiene = briefing["sections"]["hygiene"]
+    assert hygiene["available"] is True
+    assert hygiene["suggest_noise_curate"] is False
+    assert "curate-noise" not in [a["id"] for a in briefing["quick_actions"]]
+
+
+def test_briefing_hygiene_small_graph_never_suggests():
+    service = _service(graph=FakeHygieneGraph(node_count=50, last=None))
+    hygiene = service.briefing()["sections"]["hygiene"]
+    assert hygiene["available"] is True
+    assert hygiene["suggest_noise_curate"] is False
+
+
+def test_briefing_hygiene_backend_error_degrades_not_raises():
+    service = _service(graph=FakeHygieneGraph(raise_stats=True))
+    briefing = service.briefing()  # must not raise
+    hygiene = briefing["sections"]["hygiene"]
+    assert hygiene["available"] is False
+    assert hygiene["suggest_noise_curate"] is False
+
+
 # ── universal search ────────────────────────────────────────────────────
 
 def test_search_groups_knowledge_conversations_and_automations():

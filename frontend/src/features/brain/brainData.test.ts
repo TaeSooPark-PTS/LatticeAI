@@ -1,13 +1,19 @@
 import { describe, expect, it } from "vitest";
 
 import {
+  agentPayloadFiles,
   buildBrainProof,
   buildConversationSummaries,
   extractIngestionEvidence,
+  parseAgentStepEvent,
+  parseAgentTranscript,
   parseContextQuality,
   parseConversationMessages,
   parseIngestionJobs,
+  parseIngestionWatchStatus,
   parseKnowledgeGraph,
+  parseLoopSummary,
+  parsePendingApprovals,
   parseVectorFreshness,
 } from "./brainData";
 
@@ -99,5 +105,147 @@ describe("brainData parsers", () => {
 
     expect(jobs).toHaveLength(1);
     expect(jobs[0]).toMatchObject({ jobId: "job-1", status: "running", total: 20, processed: 8, failed: 1 });
+  });
+
+  it("parses live agent_step frames and ignores unknown extra fields", () => {
+    expect(parseAgentStepEvent({
+      phase: "execute",
+      event: "tool",
+      action: "write_file",
+      path: "out/notes.html",
+      step: 2,
+      ok: true,
+      totally_new_field: { nested: true },
+    })).toEqual({
+      phase: "execute",
+      event: "tool",
+      action: "write_file",
+      path: "out/notes.html",
+      step: 2,
+      ok: true,
+    });
+    expect(parseAgentStepEvent({ phase: "verify", event: "verdict", verdict: "NEEDS_REVIEW" }))
+      .toEqual({ phase: "verify", event: "verdict", verdict: "NEEDS_REVIEW" });
+    expect(parseAgentStepEvent({ event: "tool" })).toBeNull();
+    expect(parseAgentStepEvent("not a record")).toBeNull();
+  });
+
+  it("derives a post-hoc timeline from the payload steps transcript", () => {
+    const steps = parseAgentTranscript([
+      { state: "EXECUTING", action: "write_file", args: { path: "page.html" }, result: { bytes: 12 } },
+      { state: "EXECUTING", action: "read_file", args: { path: "a.txt" }, error: "not found" },
+      { state: "DONE" },
+      "garbage",
+      {},
+    ]);
+
+    expect(steps).toEqual([
+      { phase: "execute", event: "tool", action: "write_file", path: "page.html", ok: true },
+      { phase: "execute", event: "tool", action: "read_file", path: "a.txt", ok: false, detail: "not found" },
+      { phase: "terminal", event: "state", state: "DONE" },
+    ]);
+  });
+
+  it("summarizes payload.loop repairs and stays null when nothing was repaired", () => {
+    expect(parseLoopSummary({
+      repairs: { json_fence: 2, tool_name: 1, zero: 0 },
+      parse_errors: 3,
+      parse_recovered: 2,
+    })).toEqual({
+      repairs: { json_fence: 2, tool_name: 1 },
+      parseErrors: 3,
+      parseRecovered: 2,
+      total: 5,
+    });
+    expect(parseLoopSummary({ repairs: {}, parse_errors: 0, parse_recovered: 0 })).toBeNull();
+    expect(parseLoopSummary(undefined)).toBeNull();
+  });
+
+  it("joins the payload-level brain_ingest verdict onto created files", () => {
+    // Single-file path: one dict, applied to the only file.
+    const single = agentPayloadFiles({
+      created_files: [{ path: "out/page.html", filename: "page.html", bytes: 10 }],
+      brain_ingest: { status: "ok", node_id: "doc:1", chunk_count: 2, duplicate: false },
+    });
+    expect(single[0].brainIngest).toEqual({ status: "ok" });
+
+    // Bundle path: list keyed by path; unknown statuses stay silent.
+    const bundle = agentPayloadFiles({
+      created_files: [
+        { path: "site/index.html", filename: "index.html", bytes: 10 },
+        { path: "site/style.css", filename: "style.css", bytes: 5 },
+        { path: "site/app.js", filename: "app.js", bytes: 4 },
+      ],
+      brain_ingest: [
+        { path: "site/index.html", status: "failed", detail: "chunker crashed" },
+        { path: "site/style.css", status: "skipped" },
+      ],
+    });
+    expect(bundle[0].brainIngest).toEqual({ status: "failed", detail: "chunker crashed" });
+    expect(bundle[1].brainIngest).toBeUndefined();
+    expect(bundle[2].brainIngest).toBeUndefined();
+
+    // A single dict never fans out across multiple files.
+    const ambiguous = agentPayloadFiles({
+      created_files: [
+        { path: "a.html", filename: "a.html", bytes: 1 },
+        { path: "b.html", filename: "b.html", bytes: 1 },
+      ],
+      brain_ingest: { status: "ok" },
+    });
+    expect(ambiguous.every((file) => file.brainIngest === undefined)).toBe(true);
+
+    // Absent field → unknown → nothing.
+    expect(agentPayloadFiles({
+      created_files: [{ path: "c.html", filename: "c.html", bytes: 1 }],
+    })[0].brainIngest).toBeUndefined();
+  });
+
+  it("parses pending approvals and drops rows without a run id", () => {
+    expect(parsePendingApprovals({ pending: [
+      { run_id: "run-7", goal: "정리 보고서 만들기", expires_at: "2026-07-26T09:00:00+09:00" },
+      { goal: "no id" },
+    ] })).toEqual([
+      { runId: "run-7", goal: "정리 보고서 만들기", expiresAt: "2026-07-26T09:00:00+09:00" },
+    ]);
+    expect(parsePendingApprovals(null)).toEqual([]);
+  });
+
+  it("parses watch status defensively, including absent last_result/last_errors", () => {
+    const status = parseIngestionWatchStatus({
+      enabled_count: 2,
+      polling: false,
+      interval_seconds: 60,
+      watches: [
+        {
+          id: "watch_1",
+          path: "/Users/me/Documents/notes",
+          enabled: true,
+          last_scan_at: "2026-07-26T08:00:00+09:00",
+          last_result: { status: "ok", new: 2, ingested: 2, failed: 1 },
+          tracked_files: 40,
+          last_errors: [{ path: "/Users/me/Documents/notes/bad.pdf", detail: "parse failed" }, "loose error"],
+        },
+        { id: "watch_2", path: "/tmp/other", enabled: false },
+        { bogus: true },
+      ],
+    });
+
+    expect(status.enabledCount).toBe(2);
+    expect(status.polling).toBe(false);
+    expect(status.intervalSeconds).toBe(60);
+    expect(status.watches).toHaveLength(2);
+    expect(status.watches[0]).toMatchObject({
+      id: "watch_1",
+      enabled: true,
+      lastResult: { status: "ok", ingested: 2, failed: 1 },
+      trackedFiles: 40,
+    });
+    expect(status.watches[0].lastErrors).toEqual([
+      { path: "/Users/me/Documents/notes/bad.pdf", detail: "parse failed" },
+      { path: "", detail: "loose error" },
+    ]);
+    expect(status.watches[1].lastResult).toBeNull();
+    expect(status.watches[1].lastErrors).toEqual([]);
   });
 });

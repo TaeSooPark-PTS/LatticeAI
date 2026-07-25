@@ -358,6 +358,23 @@ _BUNDLE_HTML_RULE = (
     "blocks, no inline behavior scripts."
 )
 
+# Vite/React bundles need a module entry point, not classic script tags.
+_BUNDLE_HTML_MODULE_RULE = (
+    "Produce ONE complete HTML5 document: <!DOCTYPE html>, <html>, <head> with "
+    "<meta charset=\"utf-8\"> and a <title>, and a closed </html> tag. "
+    "This page is the Vite entry of a React project: the <body> must contain "
+    "<div id=\"root\"></div> and load the app with "
+    "<script type=\"module\" src=\"/src/main.jsx\"></script> just before "
+    "</body>. No inline <style> blocks, no other scripts, no external files."
+)
+
+
+def _bundle_html_rule(bundle_files: List[str]) -> str:
+    """Pick the HTML bundle rule that matches the bundle's technology."""
+    if any(str(path).lower().endswith((".jsx", ".tsx")) for path in bundle_files):
+        return _BUNDLE_HTML_MODULE_RULE
+    return _BUNDLE_HTML_RULE
+
 
 def build_file_generation_context(
     target_path: str,
@@ -381,7 +398,7 @@ def build_file_generation_context(
     ]
     type_rule = _TYPE_RULES.get(ext)
     if bundle_files and ext in (".html", ".htm"):
-        type_rule = _BUNDLE_HTML_RULE
+        type_rule = _bundle_html_rule(bundle_files)
     if type_rule:
         parts.append(f"- {type_rule}")
     if bundle_files:
@@ -608,16 +625,116 @@ _EXPLICIT_FILENAME_RE = re.compile(
     re.IGNORECASE,
 )
 _PROJECT_NAME_RE = re.compile(r"([A-Za-z][A-Za-z0-9_-]{1,30})\s*(?:앱|app\b)", re.IGNORECASE)
+# React/Vite intent: the react keyword is specific enough on its own.
+_REACT_HINT_RE = re.compile(r"(?<![a-z0-9])react(?![a-z0-9])|리액트")
+_VITE_HINT_RE = re.compile(r"(?<![a-z0-9])vite(?![a-z0-9])")
+# Python package intent: language + package word, both required.
+_PYTHON_HINT_RE = re.compile(r"(?<![a-z0-9])python(?![a-z0-9])|파이썬")
+_PACKAGE_HINT_RE = re.compile(r"패키지|(?<![a-z0-9])package(?![a-z0-9])")
+_PKG_NAME_RE = re.compile(
+    r"([A-Za-z][A-Za-z0-9_-]{1,30})\s*(?:패키지|package\b)", re.IGNORECASE
+)
+
+
+def _react_manifest(text: str) -> Dict[str, Any]:
+    """Vite + React starter manifest (review Wave 4: manifest 확장)."""
+    name_match = _PROJECT_NAME_RE.search(text)
+    name = f"{name_match.group(1).lower()}-app" if name_match else "react-app"
+    return {
+        "name": name,
+        "kind": "react",
+        "files": [
+            {
+                "path": "package.json",
+                "brief": (
+                    f'Vite React app manifest: strictly valid JSON with "name": "{name}", '
+                    '"private": true, "type": "module", "scripts" {"dev": "vite", '
+                    '"build": "vite build", "preview": "vite preview"}, "dependencies" '
+                    'with react and react-dom (^18), and "devDependencies" with vite '
+                    "and @vitejs/plugin-react."
+                ),
+            },
+            {
+                "path": "index.html",
+                "brief": (
+                    "The Vite entry HTML: <div id=\"root\"></div> in <body> and "
+                    "<script type=\"module\" src=\"/src/main.jsx\"></script> just "
+                    "before </body>. No inline styles or scripts."
+                ),
+            },
+            {
+                "path": "src/main.jsx",
+                "brief": (
+                    "React entry: createRoot from react-dom/client rendering <App /> "
+                    "into #root; imports ./App.jsx and ./App.css."
+                ),
+            },
+            {
+                "path": "src/App.jsx",
+                "brief": (
+                    "The main App component implementing the user's request as one "
+                    "self-contained React component (hooks allowed, no extra deps)."
+                ),
+            },
+            {
+                "path": "src/App.css",
+                "brief": "All visual styles for the App component.",
+            },
+        ],
+    }
+
+
+def _python_package_manifest(text: str) -> Dict[str, Any]:
+    """Multi-file Python package manifest (review Wave 4: manifest 확장)."""
+    name_match = _PKG_NAME_RE.search(text)
+    raw_name = name_match.group(1).lower() if name_match else "my_package"
+    module = re.sub(r"[^a-z0-9_]", "_", raw_name)
+    if not re.match(r"[a-z_]", module):
+        module = f"pkg_{module}"
+    return {
+        "name": module,
+        "kind": "python",
+        "files": [
+            {
+                "path": f"{module}/__init__.py",
+                "brief": (
+                    f"Package init for {module}: import and re-export the public "
+                    "API from .core with an explicit __all__."
+                ),
+            },
+            {
+                "path": f"{module}/core.py",
+                "brief": (
+                    "Implement the user's request as clean, documented functions/"
+                    "classes with type hints. Standard library only."
+                ),
+            },
+            {
+                "path": f"{module}/cli.py",
+                "brief": (
+                    "argparse CLI wrapping the core API: a main() function and an "
+                    'if __name__ == "__main__": main() guard.'
+                ),
+            },
+            {
+                "path": "README.md",
+                "brief": (
+                    f"Usage documentation for the {module} package: install, import "
+                    "example, and CLI example."
+                ),
+            },
+        ],
+    }
 
 
 def infer_project_manifest(message: str) -> Optional[Dict[str, Any]]:
-    """Infer a multi-file web-project manifest from a creation request.
+    """Infer a multi-file project manifest from a creation request.
 
     "todo 앱 html+css+js로 만들어줘" should yield real linked files, not one
     inlined page. Deliberately narrow and deterministic (weak local models
-    never see this decision): requires a creation verb, an HTML-page intent,
-    at least one *additional* named technology (css/js), and no explicit
-    filename. Single-type requests return ``None`` so the existing
+    never see this decision): requires a creation verb, a recognized project
+    intent (web page + css/js, React/Vite app, or Python package), and no
+    explicit filename. Single-type requests return ``None`` so the existing
     single-file flow is completely unchanged.
     """
     text = (message or "").strip()
@@ -626,6 +743,14 @@ def infer_project_manifest(message: str) -> Optional[Dict[str, Any]]:
     if _EXPLICIT_FILENAME_RE.search(text):
         return None
     lower = text.lower()
+
+    # Most-specific first: React (its own structure), then Python package,
+    # then the classic html+css/js web bundle.
+    if _REACT_HINT_RE.search(lower) or _VITE_HINT_RE.search(lower):
+        return _react_manifest(text)
+    if _PYTHON_HINT_RE.search(lower) and _PACKAGE_HINT_RE.search(lower):
+        return _python_package_manifest(text)
+
     wants_html = bool(_HTML_HINT_RE.search(lower))
     wants_css = bool(_CSS_HINT_RE.search(lower))
     wants_js = bool(_JS_HINT_RE.search(lower))

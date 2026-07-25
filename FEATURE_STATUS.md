@@ -1,9 +1,9 @@
-# Lattice AI Feature Status (v9.9.0)
+# Lattice AI Feature Status (v9.9.4)
 
 > **Status: canonical** — current-truth feature state, kept in sync with the
 > current release.
 
-Current release: **9.9.3 — Closed Loops**.
+Current release: **9.9.4 — Durable Loops**.
 
 This file describes the current product state and known limitations. Historical
 change history is intentionally limited to 8.0.0-9.9.0 in `RELEASE.md` and

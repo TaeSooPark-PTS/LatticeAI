@@ -16,6 +16,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parents[2]))
 from fastapi import FastAPI
 from fastapi.testclient import TestClient
 
+from lattice_brain.embeddings import LocalEmbeddingModel
 from lattice_brain.graph.store import KnowledgeGraphStore
 from latticeai.api.brain_intelligence import create_brain_intelligence_router
 from latticeai.services.brain_intelligence import BrainIntelligenceService
@@ -36,7 +37,9 @@ def _store(tmp_path: Path) -> KnowledgeGraphStore:
 
 def _assert_contract(payload):
     assert set(payload) == CONTRACT_KEYS
-    assert payload["status"] in {"ready", "pending", "unavailable"}
+    # "stale_embedder" (review Wave 2.2) is the additive honest status for an
+    # index built by a different embedding model than the current one.
+    assert payload["status"] in {"ready", "pending", "stale_embedder", "unavailable"}
     assert isinstance(payload["pending_items"], int)
     assert isinstance(payload["total_items"], int)
     assert isinstance(payload["detail"], str)
@@ -77,6 +80,85 @@ def test_store_vector_freshness_never_raises(tmp_path, monkeypatch):
     _assert_contract(result)
     assert result["status"] == "unavailable"
     assert "embedding provider offline" in result["detail"]
+
+
+# ── embedder fingerprint / stale_embedder (review Wave 2.2) ──────────────
+
+
+def test_embedder_fingerprint_recorded_and_fresh_after_rebuild(tmp_path):
+    """A rebuilt index records which embedder built it; same embedder → fresh."""
+    store = _store(tmp_path)
+    store.rebuild_vector_index()
+    embedder = store.index_status()["embedder"]
+    assert embedder["stale_embedder"] is False
+    assert embedder["recorded"] == embedder["current"]
+    assert embedder["current"]["model_id"] == store._embedding_model.model_id
+    assert store.vector_freshness()["status"] == "ready"
+
+
+def test_incremental_index_establishes_first_fingerprint(tmp_path):
+    """The first successful incremental vector write records the fingerprint."""
+    store = _store(tmp_path)
+    node_id = store.search("Freshness Note", 5)["matches"][0]["id"]
+    with store._connect() as conn:
+        conn.execute("DELETE FROM vector_embeddings")
+        conn.execute("DELETE FROM graph_meta WHERE key='embedder_fingerprint'")
+    outcome = store.index_node_incremental(node_id)
+    assert outcome["status"] == "indexed"
+    embedder = store.embedder_fingerprint_status()
+    assert embedder["recorded"] == embedder["current"]
+    assert embedder["stale_embedder"] is False
+
+
+def test_embedder_swap_reports_stale_embedder_everywhere(tmp_path):
+    """Swapping the embedder must surface stale_embedder in index_status,
+    vector_freshness, and the hybrid_search degradation detail — instead of
+    silently returning zero vector rows."""
+    store = _store(tmp_path)
+    store.rebuild_vector_index()
+    assert store.index_status()["embedder"]["stale_embedder"] is False
+
+    swapped = KnowledgeGraphStore(
+        tmp_path / "kg.sqlite",
+        tmp_path / "blobs",
+        embedder=LocalEmbeddingModel(dim=64),
+    )
+    status = swapped.index_status()
+    assert status["embedder"]["stale_embedder"] is True
+    assert status["embedder"]["recorded"]["dim"] == 384
+    assert status["embedder"]["current"]["dim"] == 64
+    assert status["scale"]["full_rebuild_recommended"] is True
+
+    freshness = swapped.vector_freshness()
+    _assert_contract(freshness)
+    assert freshness["status"] == "stale_embedder"
+    assert "rebuild" in freshness["detail"]
+
+    result = swapped.hybrid_search("vector freshness pending backlog", top_k=5)
+    assert result["mode"] == "hybrid"
+    assert result["vector_degraded"] == "stale_embedder"
+
+    # A full rebuild under the new embedder heals the fingerprint honestly.
+    swapped.rebuild_vector_index(full=True)
+    assert swapped.index_status()["embedder"]["stale_embedder"] is False
+    assert swapped.vector_freshness()["status"] == "ready"
+
+
+def test_stale_fingerprint_without_old_rows_keeps_existing_status(tmp_path):
+    """stale_embedder is reported only while rows indexed under the old model
+    exist; an emptied index keeps the honest pending/ready statuses."""
+    store = _store(tmp_path)
+    store.rebuild_vector_index()
+    with store._connect() as conn:
+        conn.execute("DELETE FROM vector_embeddings")
+    swapped = KnowledgeGraphStore(
+        tmp_path / "kg.sqlite",
+        tmp_path / "blobs",
+        embedder=LocalEmbeddingModel(dim=64),
+    )
+    freshness = swapped.vector_freshness()
+    _assert_contract(freshness)
+    assert freshness["status"] == "pending"
 
 
 # ── service layer ────────────────────────────────────────────────────────

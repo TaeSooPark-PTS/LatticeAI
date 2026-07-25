@@ -1,11 +1,16 @@
 import * as React from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { AlertTriangle, CheckCircle2, Clock3, RotateCcw, X } from "lucide-react";
+import { AlertTriangle, CheckCircle2, Clock3, FolderSync, PauseCircle, RotateCcw, X } from "lucide-react";
 
 import { latticeApi } from "@/api/client";
 import { t, type Language } from "@/i18n";
-import { parseIngestionJobs, parseVectorFreshness } from "./brainData";
-import type { IngestionJob, VectorFreshness } from "./types";
+import {
+  parseIngestionJobs,
+  parseIngestionWatchStatus,
+  parsePendingApprovals,
+  parseVectorFreshness,
+} from "./brainData";
+import type { IngestionJob, IngestionWatch, VectorFreshness } from "./types";
 
 // One fetch per view entry, gentle refresh afterwards. When the endpoint is
 // missing or reports "unavailable" the chip stays silent by design.
@@ -243,5 +248,174 @@ export function IngestionJobsPanel({ language }: { language: Language }) {
         </>
       ) : null}
     </section>
+  );
+}
+
+function watchBaseName(path: string): string {
+  return path.split(/[\\/]/).filter(Boolean).pop() || path;
+}
+
+// Relative "last scanned" line for a watch. Absent/unparseable → "not yet".
+function watchScanLabel(language: Language, lastScanAt: string): string {
+  if (!lastScanAt) return t(language, "brain.watch.scan.never");
+  const scanned = Date.parse(lastScanAt);
+  if (!Number.isFinite(scanned)) return t(language, "brain.watch.scan.never");
+  const elapsedMs = Math.max(0, Date.now() - scanned);
+  const minutes = Math.floor(elapsedMs / 60_000);
+  if (minutes < 1) return t(language, "brain.watch.scan.now");
+  if (minutes < 60) return t(language, "brain.watch.scan.minutes", { count: minutes });
+  const hours = Math.floor(minutes / 60);
+  if (hours < 24) return t(language, "brain.watch.scan.hours", { count: hours });
+  return t(language, "brain.watch.scan.days", { count: Math.floor(hours / 24) });
+}
+
+const MAX_VISIBLE_WATCHES = 4;
+
+// Watch-mode health beside the ingestion dock: whether "connected" folders
+// actually flow. Renders only when at least one watch is enabled — no watch,
+// no card. Every line hides itself when the API omits the underlying field.
+export function WatchHealthCard({ language }: { language: Language }) {
+  const query = useQuery({
+    queryKey: ["ingestionWatch"],
+    queryFn: latticeApi.ingestionWatchStatus,
+    staleTime: 30_000,
+    refetchOnWindowFocus: false,
+    retry: false,
+  });
+  const status = React.useMemo(
+    () => (query.data?.ok ? parseIngestionWatchStatus(query.data.data) : null),
+    [query.data],
+  );
+  if (!status || status.enabledCount < 1) return null;
+  const watches = status.watches.filter((watch) => watch.enabled).slice(0, MAX_VISIBLE_WATCHES);
+  if (!watches.length) return null;
+
+  return (
+    <section
+      className="brain-watch-card"
+      aria-label={t(language, "brain.watch.aria")}
+      data-testid="watch-health-card"
+    >
+      <header className="brain-watch-head">
+        <FolderSync className="h-3.5 w-3.5" aria-hidden="true" />
+        <strong>{t(language, "brain.watch.title")}</strong>
+      </header>
+      {status.polling ? null : (
+        <p className="brain-watch-note" role="note" data-testid="watch-polling-note">
+          <PauseCircle className="h-3 w-3" aria-hidden="true" />
+          {t(language, "brain.watch.notLive")}
+        </p>
+      )}
+      <ul className="brain-watch-list">
+        {watches.map((watch) => (
+          <WatchHealthRow key={watch.id} language={language} watch={watch} />
+        ))}
+      </ul>
+    </section>
+  );
+}
+
+function WatchHealthRow({ language, watch }: { language: Language; watch: IngestionWatch }) {
+  return (
+    <li className="brain-watch-item">
+      <div className="brain-watch-item-row">
+        <span className="brain-watch-path" title={watch.path}>{watchBaseName(watch.path)}</span>
+        <small className="brain-watch-scan">{watchScanLabel(language, watch.lastScanAt)}</small>
+      </div>
+      <div className="brain-watch-item-row">
+        {watch.lastResult && watch.lastResult.ingested > 0 ? (
+          <span className="brain-watch-stat">
+            {t(language, "brain.watch.ingested", { count: watch.lastResult.ingested })}
+          </span>
+        ) : null}
+        {watch.lastResult && watch.lastResult.failed > 0 ? (
+          <span className="brain-watch-stat is-failed">
+            <AlertTriangle className="h-3 w-3" aria-hidden="true" />
+            {t(language, "brain.jobs.failedCount", { count: watch.lastResult.failed })}
+          </span>
+        ) : null}
+        {watch.trackedFiles > 0 ? (
+          <small className="brain-watch-tracked">
+            {t(language, "brain.watch.tracked", { count: watch.trackedFiles })}
+          </small>
+        ) : null}
+      </div>
+      {watch.lastErrors.length ? (
+        <div className="brain-watch-errors">
+          <small>{t(language, "brain.watch.errors")}</small>
+          <ul>
+            {watch.lastErrors.slice(0, 3).map((error, index) => (
+              <li key={`${error.path}-${index}`}>
+                {[error.path ? watchBaseName(error.path) : "", error.detail].filter(Boolean).join(" — ")}
+              </li>
+            ))}
+          </ul>
+        </div>
+      ) : null}
+    </li>
+  );
+}
+
+function approvalClockTime(language: Language, expiresAt: string): string {
+  if (!expiresAt) return "";
+  const date = new Date(expiresAt);
+  if (Number.isNaN(date.getTime())) return "";
+  return date.toLocaleTimeString(language === "ko" ? "ko-KR" : "en-US", {
+    hour: "2-digit",
+    minute: "2-digit",
+  });
+}
+
+// Paused approvals that survived a reload/restart (GET /agent/approvals) but
+// are not represented by any approval card in the current messages. The
+// notice only informs — the single-use token lives with the original card, so
+// the honest path forward is the original surface or a fresh request.
+export function PendingApprovalsNotice({
+  language,
+  knownRunIds,
+}: {
+  language: Language;
+  knownRunIds: string[];
+}) {
+  const query = useQuery({
+    queryKey: ["agentApprovals"],
+    queryFn: latticeApi.agentApprovals,
+    staleTime: Infinity,
+    refetchOnWindowFocus: false,
+    retry: false,
+  });
+  const pending = React.useMemo(
+    () => (query.data?.ok ? parsePendingApprovals(query.data.data) : []),
+    [query.data],
+  );
+  const known = React.useMemo(() => new Set(knownRunIds), [knownRunIds]);
+  const orphaned = pending.filter((item) => !known.has(item.runId));
+  if (!orphaned.length) return null;
+
+  return (
+    <aside
+      className="brain-pending-approvals"
+      role="note"
+      aria-label={t(language, "brain.approval.pendingNotice.aria")}
+      data-testid="pending-approvals-notice"
+    >
+      {orphaned.slice(0, 2).map((item) => {
+        const time = approvalClockTime(language, item.expiresAt);
+        return (
+          <p key={item.runId}>
+            <span>
+              {item.goal
+                ? t(language, "brain.approval.pendingNotice", { goal: item.goal })
+                : t(language, "brain.approval.pendingNotice.generic")}
+            </span>
+            <small>
+              {time
+                ? t(language, "brain.approval.pendingNotice.expiry", { time })
+                : t(language, "brain.approval.pendingNotice.hint")}
+            </small>
+          </p>
+        );
+      })}
+    </aside>
   );
 }

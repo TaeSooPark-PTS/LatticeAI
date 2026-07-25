@@ -26,6 +26,10 @@ BASELINE_ROUTES = {
     ("/knowledge-graph/curate", "POST"),
     # backlog #10 addition: noise-reduction curation job (dry-run by default).
     ("/knowledge-graph/curate/noise", "POST"),
+    # 9.9.4 review Wave 4: review-before-promote for curator topic promotions.
+    ("/knowledge-graph/promotions", "GET"),
+    ("/knowledge-graph/promotions/apply", "POST"),
+    ("/knowledge-graph/promotions/reject", "POST"),
     ("/knowledge-graph/schema", "GET"),
     ("/knowledge-graph/graph", "GET"),
     ("/knowledge-graph/documents", "GET"),

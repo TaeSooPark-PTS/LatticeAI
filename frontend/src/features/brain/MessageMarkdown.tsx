@@ -262,6 +262,34 @@ function formatFileSize(bytes: number): string {
   return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
 }
 
+// "Brain remembered" chip: only rendered when the payload actually reported
+// an ingest verdict for this file (ok/pending/failed). Absent → unknown →
+// nothing, so the memory promise is never oversold.
+function BrainIngestChip({
+  language,
+  ingest,
+}: {
+  language: Language;
+  ingest: NonNullable<MessageFile["brainIngest"]>;
+}) {
+  const key =
+    ingest.status === "ok" ? "brain.files.brainOk"
+    : ingest.status === "pending" ? "brain.files.brainPending"
+    : ingest.status === "failed" ? "brain.files.brainFailed"
+    : null;
+  if (!key) return null;
+  return (
+    <span
+      className={`brain-created-file-brain is-${ingest.status}`}
+      role="note"
+      data-testid="brain-ingest-chip"
+      title={ingest.status === "failed" && ingest.detail ? ingest.detail : undefined}
+    >
+      {t(language, key)}
+    </span>
+  );
+}
+
 // Friendly confirmation card for files the assistant actually created,
 // with a one-click download so non-technical users can find their file.
 export function CreatedFilesCard({
@@ -304,6 +332,9 @@ export function CreatedFilesCard({
               <span className="brain-created-file-repaired" role="note">
                 {t(language, "brain.files.repaired")}
               </span>
+            ) : null}
+            {file.brainIngest ? (
+              <BrainIngestChip language={language} ingest={file.brainIngest} />
             ) : null}
             {isPreviewableFile(file) ? (
               <button type="button" onClick={() => setPreviewFile(file)}>

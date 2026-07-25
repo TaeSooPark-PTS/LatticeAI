@@ -583,6 +583,23 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/agent/approvals": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Agent Approvals */
+        get: operations["agent_approvals_agent_approvals_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/agent/eval": {
         parameters: {
             query?: never;
@@ -3286,6 +3303,71 @@ export interface paths {
         get: operations["knowledge_graph_neighbors_knowledge_graph_neighbors__node_id__get"];
         put?: never;
         post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/knowledge-graph/promotions": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Knowledge Graph Promotions
+         * @description Pending curator promotions awaiting human review (review Wave 4).
+         *
+         *     Populated when ``curate()`` runs in review mode (explicit
+         *     ``review_mode=True`` or the LATTICEAI_GRAPH_PROMOTION_REVIEW env
+         *     opt-in). Administrative like ``/knowledge-graph/curate``: the queue
+         *     governs the shared graph.
+         */
+        get: operations["knowledge_graph_promotions_knowledge_graph_promotions_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/knowledge-graph/promotions/apply": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Knowledge Graph Promotions Apply
+         * @description Apply pending promotions (all when ``ids`` is omitted).
+         */
+        post: operations["knowledge_graph_promotions_apply_knowledge_graph_promotions_apply_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/knowledge-graph/promotions/reject": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Knowledge Graph Promotions Reject
+         * @description Reject pending promotions without writing (all when ``ids`` omitted).
+         */
+        post: operations["knowledge_graph_promotions_reject_knowledge_graph_promotions_reject_post"];
         delete?: never;
         options?: never;
         head?: never;
@@ -7478,6 +7560,11 @@ export interface components {
             /** Workspace Id */
             workspace_id?: string | null;
         };
+        /** PromotionActionRequest */
+        PromotionActionRequest: {
+            /** Ids */
+            ids?: string[] | null;
+        };
         /** PruneRequest */
         PruneRequest: {
             /**
@@ -9437,6 +9524,26 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    agent_approvals_agent_approvals_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": unknown;
                 };
             };
         };
@@ -14271,6 +14378,92 @@ export interface operations {
             cookie?: never;
         };
         requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": unknown;
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    knowledge_graph_promotions_knowledge_graph_promotions_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": unknown;
+                };
+            };
+        };
+    };
+    knowledge_graph_promotions_apply_knowledge_graph_promotions_apply_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["PromotionActionRequest"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": unknown;
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    knowledge_graph_promotions_reject_knowledge_graph_promotions_reject_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["PromotionActionRequest"];
+            };
+        };
         responses: {
             /** @description Successful Response */
             200: {

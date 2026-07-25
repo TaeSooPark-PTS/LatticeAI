@@ -5,7 +5,14 @@ import { latticeApi } from "@/api/client";
 import { triggerBrainRecall, type BrainState } from "@/components/LivingBrain";
 import { t, type Language } from "@/i18n";
 import { type ApprovalResolution, parseApprovalPayload } from "../approvalFlow";
-import { agentPayloadFiles, parseContextQuality, parseGrounding } from "../brainData";
+import {
+  agentPayloadFiles,
+  parseAgentStepEvent,
+  parseAgentTranscript,
+  parseContextQuality,
+  parseGrounding,
+  parseLoopSummary,
+} from "../brainData";
 import { useConversationSession } from "../conversationSession";
 import type {
   BrainProactiveAction,
@@ -136,6 +143,22 @@ export function useBrainChat({
               return next;
             });
           },
+          // Live loop progress: `event: agent_step` frames accumulate on the
+          // trailing assistant reply so the step timeline updates in place.
+          onAgentStep: (step) => {
+            const parsed = parseAgentStepEvent(step);
+            if (!parsed) return;
+            setMessages((items) => {
+              const next = [...items];
+              const last = next[next.length - 1];
+              next[next.length - 1] = {
+                ...last,
+                role: "assistant",
+                agentSteps: [...(last.agentSteps || []), parsed],
+              };
+              return next;
+            });
+          },
           onAgent: (agent) => {
             // Governed plans pause server-side as awaiting_approval — attach
             // the resume token to this reply so the inline approval card can
@@ -158,13 +181,26 @@ export function useBrainChat({
               agent.final_state === "NEEDS_REVIEW" || agent.final_state === "FAILED"
                 ? agent.final_state
                 : undefined;
-            if (!files.length && !agentState) return;
+            // Loop honesty meta + post-hoc transcript. This merge must stay
+            // symmetric with the approval-resume merge in
+            // handleApprovalResolved below.
+            const loopSummary = parseLoopSummary(agent.loop);
+            const transcriptSteps = parseAgentTranscript(agent.steps);
+            if (!files.length && !agentState && !loopSummary && !transcriptSteps.length) return;
             setMessages((items) => {
               const next = [...items];
+              const current = next[next.length - 1];
+              // Streamed agent_step frames win over the post-hoc transcript —
+              // they carry the same run with richer per-event detail.
+              const agentSteps = current.agentSteps?.length
+                ? current.agentSteps
+                : transcriptSteps;
               next[next.length - 1] = {
-                ...next[next.length - 1],
+                ...current,
                 ...(files.length ? { files } : {}),
                 ...(agentState ? { agentState } : {}),
+                ...(loopSummary ? { loopSummary } : {}),
+                ...(agentSteps.length ? { agentSteps } : {}),
               };
               return next;
             });
@@ -255,11 +291,18 @@ export function useBrainChat({
             ? agent.final_state
             : undefined;
         const response = typeof agent.response === "string" ? agent.response.trim() : "";
+        // Symmetry invariant: this merge mirrors the streaming onAgent merge
+        // (files + agentState + loopSummary + step timeline).
+        const loopSummary = parseLoopSummary(agent.loop);
+        const transcriptSteps = parseAgentTranscript(agent.steps);
+        const agentSteps = message.agentSteps?.length ? message.agentSteps : transcriptSteps;
         next[messageIndex] = {
           ...message,
           content: response || message.content,
           ...(files.length ? { files } : {}),
           ...(agentState ? { agentState } : {}),
+          ...(loopSummary ? { loopSummary } : {}),
+          ...(agentSteps.length ? { agentSteps } : {}),
           approval: { ...message.approval, status: "approved" },
         };
       } else if (resolution.kind === "error") {
@@ -270,7 +313,15 @@ export function useBrainChat({
       } else {
         next[messageIndex] = {
           ...message,
-          approval: { ...message.approval, status: resolution.kind },
+          approval: {
+            ...message.approval,
+            status: resolution.kind,
+            // A 410 expiry may carry the original request back — keep it on
+            // the approval so the card can offer "다시 계획하기".
+            ...(resolution.kind === "expired" && resolution.replanMessage
+              ? { replanMessage: resolution.replanMessage }
+              : {}),
+          },
         };
       }
       return next;

@@ -154,6 +154,30 @@ def test_first_timestamps_are_never_overwritten(tmp_path):
     )
 
 
+def test_approval_counters_exist_and_rate_is_none_without_pauses(tmp_path):
+    service = _service(tmp_path)
+    snapshot = service.snapshot()
+    assert snapshot["counters"]["approval_pauses"] == 0
+    assert snapshot["counters"]["approval_resumes"] == 0
+    # Honest rate: no pause has happened yet, so there is no denominator.
+    assert snapshot["rates"]["approval_resume_rate"] is None
+
+
+def test_approval_resume_rate_derivation_and_persistence(tmp_path):
+    service = _service(tmp_path)
+    for _ in range(4):
+        service.increment("approval_pauses")
+    for _ in range(3):
+        service.increment("approval_resumes")
+    assert service.snapshot()["rates"]["approval_resume_rate"] == 0.75
+
+    reopened = _service(tmp_path)
+    snapshot = reopened.snapshot()
+    assert snapshot["counters"]["approval_pauses"] == 4
+    assert snapshot["counters"]["approval_resumes"] == 3
+    assert snapshot["rates"]["approval_resume_rate"] == 0.75
+
+
 # ── endpoint (admin gated) ──────────────────────────────────────────────
 
 def _client(tmp_path):

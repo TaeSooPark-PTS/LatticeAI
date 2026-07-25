@@ -17,7 +17,11 @@ from latticeai.api.chat_helpers import (
     format_network_status,
     inline_file_action_content,
 )
-from latticeai.api.chat_stream import agent_payload_stream, single_answer_response
+from latticeai.api.chat_stream import (
+    agent_live_stream,
+    agent_payload_stream,
+    single_answer_response,
+)
 from latticeai.core.agent import AgentState
 from latticeai.core.file_generation import (
     PREVIEWABLE_EXTENSIONS,
@@ -596,31 +600,46 @@ class ChatIntentController:
             user_nickname=req.user_nickname,
             workspace_id=workspace_id,
         )
-        result = await self.agent_controller.agent(agent_request, request)
-        answer = str(result.get("response") or "파일 작업을 처리했습니다.")
-        # UX funnel (backlog #16): a file-intent request that the agent loop
-        # finished without producing a single artifact is the "code-only"
-        # failure mode the >95% real-file goal watches. Paused/failed runs
-        # count neither way — they did not answer with code instead of files.
-        delivered = bool(result.get("created_files") or result.get("artifacts"))
-        if delivered:
-            self._funnel_increment("real_file_delivered")
-        elif str(result.get("status") or "") == "ok":
-            self._funnel_increment("code_only_responses")
-        self.notify("user", req.message, req.source)
-        self.notify("assistant", answer, req.source)
-        result["routed_to_agent"] = True
+
+        def finalize(result: Dict) -> str:
+            """History/funnel side effects once the run has a terminal payload."""
+            answer = str(result.get("response") or "파일 작업을 처리했습니다.")
+            # UX funnel (backlog #16): a file-intent request that the agent loop
+            # finished without producing a single artifact is the "code-only"
+            # failure mode the >95% real-file goal watches. Paused/failed runs
+            # count neither way — they did not answer with code instead of files.
+            delivered = bool(result.get("created_files") or result.get("artifacts"))
+            if delivered:
+                self._funnel_increment("real_file_delivered")
+            elif str(result.get("status") or "") == "ok":
+                self._funnel_increment("code_only_responses")
+            self.notify("user", req.message, req.source)
+            self.notify("assistant", answer, req.source)
+            result["routed_to_agent"] = True
+            return answer
+
         if req.stream:
+            # Live loop visibility (review Wave 1.1): run the agent inside the
+            # SSE generator so step events stream while EXECUTING; the final
+            # frames keep the exact historical payload shape.
+            async def start(observer):
+                return await self.agent_controller.agent(
+                    agent_request, request, on_step=observer
+                )
+
             return StreamingResponse(
-                agent_payload_stream(
-                    answer,
-                    result,
+                agent_live_stream(
+                    start,
                     router=self.router,
                     model_id=model_id,
+                    finalize=finalize,
                 ),
                 media_type="text/event-stream",
                 headers={"X-Model": model_id or "agent", "X-Routed-To": "agent"},
             )
+
+        result = await self.agent_controller.agent(agent_request, request)
+        finalize(result)
         return JSONResponse(content=result)
 
 

@@ -7,9 +7,11 @@ keyword search into UI-ready contracts without tying routers to store internals.
 from __future__ import annotations
 
 from dataclasses import dataclass
-from typing import Any, Dict, Mapping, Optional
+from datetime import datetime
+from typing import Any, Dict, List, Mapping, Optional
 
-from lattice_brain.graph.fusion import fusion_profile
+from lattice_brain.graph._kg_fsutil import _parse_iso, _recency_score
+from lattice_brain.graph.retrieval_policy import resolve_policy
 
 
 DEFAULT_HYBRID_WEIGHTS = {
@@ -404,35 +406,44 @@ class SearchService:
         allowed_workspaces=None,
         include_legacy_global: bool = False,
     ) -> Dict[str, Any]:
-        # Query-class fusion (backlog #5): when the caller does not pin
-        # explicit weights, detect the query class (fact/code/person/recency)
-        # and use its per-class channel weights. Explicit weights still win,
-        # and the "fact" class equals DEFAULT_HYBRID_WEIGHTS, so pinned-weight
-        # callers and fact-class queries behave exactly as before.
+        # Single retrieval policy (review Wave 0.2): when the caller does not
+        # pin explicit weights, resolve the query class + per-class channel
+        # weights + deterministic rewrite from lattice_brain.graph.
+        # retrieval_policy (the same policy the graph-layer hybrid consults).
+        # Explicit weights still win (and disable rewrite/decay), and the
+        # "fact" class equals DEFAULT_HYBRID_WEIGHTS, so pinned-weight callers
+        # and fact-class queries behave exactly as before.
         query_class: Optional[str] = None
+        search_query = query
+        rewrite_rules: List[str] = []
+        recency_half_life_days: Optional[float] = None
         if weights is None:
-            profile = fusion_profile(query)
-            query_class = profile["query_class"]
-            weights = dict(profile["weights"])
+            policy = resolve_policy(query)
+            query_class = policy["query_class"]
+            weights = dict(policy["weights"])
+            rewrite_rules = list(policy["rewrite_rules"])
+            recency_half_life_days = policy["recency_half_life_days"]
+            if policy["search_query"] and policy["search_query"] != policy["original_query"]:
+                search_query = policy["search_query"]
         else:
             weights = {**DEFAULT_HYBRID_WEIGHTS, **dict(weights)}
         # Scope each channel at the source so out-of-scope rows never enter the
         # fusion set (defense-in-depth — the fused result is re-scoped below too).
         channels = {
             "keyword": self.keyword_search(
-                query,
+                search_query,
                 limit=keyword_limit,
                 allowed_workspaces=allowed_workspaces,
                 include_legacy_global=include_legacy_global,
             ),
             "vector": self.vector_search(
-                query,
+                search_query,
                 limit=vector_limit,
                 allowed_workspaces=allowed_workspaces,
                 include_legacy_global=include_legacy_global,
             ),
             "graph": self.graph_search(
-                query,
+                search_query,
                 limit=graph_limit,
                 allowed_workspaces=allowed_workspaces,
                 include_legacy_global=include_legacy_global,
@@ -465,6 +476,24 @@ class SearchService:
                     current.setdefault("graph_context", [])
                     current["graph_context"].extend(result.get("graph_context") or [])
 
+        # Recency-class age decay (retrieval_policy): dampen each fused score
+        # into the [0.5, 1.0] band so old-but-relevant items sink without ever
+        # being zeroed. Missing/unparseable updated_at keeps multiplier 1.0 —
+        # unknown age is not evidence of staleness. Other classes skip this
+        # block byte-identically.
+        if recency_half_life_days is not None:
+            decay_now = datetime.now()
+            for item in fused.values():
+                stamp = item.get("updated_at")
+                if _parse_iso(stamp):
+                    multiplier = 0.5 + 0.5 * _recency_score(
+                        stamp, now=decay_now, half_life_days=recency_half_life_days
+                    )
+                else:
+                    multiplier = 1.0
+                item["source_scores"]["age_decay"] = round(multiplier, 6)
+                item["score"] = float(item["score"]) * multiplier
+
         matches = self._scope(
             sorted(fused.values(), key=lambda item: item["score"], reverse=True),
             allowed_workspaces,
@@ -484,6 +513,7 @@ class SearchService:
             "mode": "hybrid",
             "query_class": query_class,
             "weights": weights,
+            "policy": {"search_query": search_query, "rewrite_rules": rewrite_rules},
             "channels": {
                 name: {
                     key: value

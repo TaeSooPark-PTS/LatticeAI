@@ -4,6 +4,22 @@ from __future__ import annotations
 
 from ._kg_common import *  # noqa: F403,F401
 
+# ── promotion review mode (review 2026-07-25 Wave 4) ─────────────────────────
+# When enabled, curate() parks would-be Topic promotions in graph_meta for a
+# human decision instead of writing them immediately. Explicit review_mode=
+# argument wins; otherwise this env opt-in decides; default stays auto-promote.
+_PROMOTION_REVIEW_ENV = "LATTICEAI_GRAPH_PROMOTION_REVIEW"
+_PENDING_PROMOTIONS_KEY = "pending_promotions"
+_PENDING_PROMOTIONS_CAP = 100
+
+# graph_meta stamp written by an applied (dry_run=False) noise-curate run; the
+# Command Center hygiene advisory reads it to pace its suggestion (Wave 2.5).
+_LAST_NOISE_CURATE_KEY = "last_noise_curate_at"
+
+
+def _promotion_review_default() -> bool:
+    return os.getenv(_PROMOTION_REVIEW_ENV, "").strip().lower() in ("1", "true", "yes")
+
 
 class KnowledgeGraphProjectionMixin:
     _FTS_SQL = """
@@ -408,7 +424,11 @@ class KnowledgeGraphProjectionMixin:
             )
 
     def curate(
-        self, *, max_documents: int = 200, max_new_nodes: int = 8
+        self,
+        *,
+        max_documents: int = 200,
+        max_new_nodes: int = 8,
+        review_mode: Optional[bool] = None,
     ) -> Dict[str, Any]:
         """On-demand graph curation (T4.4 — graph_curator goes live).
 
@@ -418,6 +438,14 @@ class KnowledgeGraphProjectionMixin:
         Topic nodes (with MENTIONS edges back to their sources and a real
         importance_score in nodes_v2). Explicit and observable — the result
         reports everything promoted AND everything skipped, with reasons.
+
+        ``review_mode`` (review 2026-07-25 Wave 4): when True, nothing is
+        written — the would-be promotions are parked in ``graph_meta`` as
+        ``pending_promotions`` for a human decision via
+        :meth:`apply_pending_promotions` / :meth:`reject_pending_promotions`.
+        Explicit argument wins; ``None`` falls back to the
+        ``LATTICEAI_GRAPH_PROMOTION_REVIEW`` env opt-in; default stays the
+        historical auto-promote behavior.
         """
         from .curator import auto_build_graph_overlay
 
@@ -464,46 +492,37 @@ class KnowledgeGraphProjectionMixin:
             existing_node_labels=existing_labels,
             max_new_nodes=max(1, min(int(max_new_nodes), 50)),
         )
+        valid_ids = {row["id"] for row in rows}
+        review = review_mode if review_mode is not None else _promotion_review_default()
+        if review:
+            proposed_at = _now()
+            proposed = [
+                {
+                    "id": f"topic:{_slug(promo['label'])}",
+                    "label": promo["label"],
+                    "importance": promo["importance"],
+                    "aliases": promo["aliases"],
+                    "sources": [s for s in promo["sources"][:10] if s in valid_ids],
+                    "proposed_at": proposed_at,
+                }
+                for promo in overlay["promotions"]
+            ]
+            with self._connect() as conn:
+                merged = self._merge_pending_promotions(conn, proposed)
+            return {
+                "status": "pending_review",
+                "documents_scanned": len(documents),
+                "candidates_total": overlay["candidates_total"],
+                "pending": proposed,
+                "pending_total": len(merged),
+                "skipped": overlay["skipped"][:50],
+                "skipped_total": len(overlay["skipped"]),
+            }
         promoted: List[Dict[str, Any]] = []
         with self._connect() as conn:
-            valid_ids = {row["id"] for row in rows}
             for promo in overlay["promotions"]:
-                topic_id = f"topic:{_slug(promo['label'])}"
-                self._upsert_node(
-                    conn,
-                    topic_id,
-                    "Topic",
-                    promo["label"],
-                    metadata={
-                        "curated": True,
-                        "importance": promo["importance"],
-                        "aliases": promo["aliases"],
-                        "source": "graph_curator",
-                    },
-                )
-                conn.execute(
-                    "UPDATE nodes_v2 SET importance_score=? WHERE id=?",
-                    (float(promo["importance"]), topic_id),
-                )
-                linked = 0
-                for source_id in promo["sources"][:10]:
-                    if source_id in valid_ids:
-                        self._upsert_edge(
-                            conn,
-                            source_id,
-                            topic_id,
-                            "MENTIONS",
-                            weight=0.6,
-                            metadata={"source": "graph_curator"},
-                        )
-                        linked += 1
                 promoted.append(
-                    {
-                        "node_id": topic_id,
-                        "label": promo["label"],
-                        "importance": promo["importance"],
-                        "linked_sources": linked,
-                    }
+                    self._write_promotion(conn, promo, valid_source_ids=valid_ids)
                 )
         return {
             "status": "ok",
@@ -513,6 +532,148 @@ class KnowledgeGraphProjectionMixin:
             "skipped": overlay["skipped"][:50],
             "skipped_total": len(overlay["skipped"]),
         }
+
+    def _write_promotion(
+        self,
+        conn: sqlite3.Connection,
+        promo: Dict[str, Any],
+        *,
+        valid_source_ids: Optional[set] = None,
+    ) -> Dict[str, Any]:
+        """Write one curator promotion: Topic node + importance + MENTIONS edges.
+
+        Single write path shared by direct ``curate()`` and
+        :meth:`apply_pending_promotions`, so a human-approved promotion lands
+        exactly like an auto-promoted one. ``valid_source_ids`` restricts the
+        linkable sources to this curate run's scanned rows; when ``None``
+        (apply-after-review), each stored source is checked for existence so a
+        node deleted between propose and apply is skipped, not an error.
+        """
+        topic_id = str(promo.get("id") or f"topic:{_slug(str(promo['label']))}")
+        self._upsert_node(
+            conn,
+            topic_id,
+            "Topic",
+            str(promo["label"]),
+            metadata={
+                "curated": True,
+                "importance": promo["importance"],
+                "aliases": list(promo.get("aliases") or []),
+                "source": "graph_curator",
+            },
+        )
+        conn.execute(
+            "UPDATE nodes_v2 SET importance_score=? WHERE id=?",
+            (float(promo["importance"]), topic_id),
+        )
+        linked = 0
+        for source_id in list(promo.get("sources") or [])[:10]:
+            if valid_source_ids is not None:
+                if source_id not in valid_source_ids:
+                    continue
+            elif not conn.execute(
+                "SELECT 1 FROM nodes WHERE id=?", (source_id,)
+            ).fetchone():
+                continue
+            self._upsert_edge(
+                conn,
+                source_id,
+                topic_id,
+                "MENTIONS",
+                weight=0.6,
+                metadata={"source": "graph_curator"},
+            )
+            linked += 1
+        return {
+            "node_id": topic_id,
+            "label": promo["label"],
+            "importance": promo["importance"],
+            "linked_sources": linked,
+        }
+
+    # ── pending promotion queue (review 2026-07-25 Wave 4) ───────────────────
+
+    def _read_pending_promotions(
+        self, conn: sqlite3.Connection
+    ) -> List[Dict[str, Any]]:
+        try:
+            row = conn.execute(
+                "SELECT value FROM graph_meta WHERE key=?",
+                (_PENDING_PROMOTIONS_KEY,),
+            ).fetchone()
+        except sqlite3.Error:
+            return []
+        if not row or not row["value"]:
+            return []
+        try:
+            parsed = json.loads(row["value"])
+        except (TypeError, ValueError):
+            return []
+        if not isinstance(parsed, list):
+            return []
+        return [
+            item for item in parsed if isinstance(item, dict) and item.get("id")
+        ]
+
+    def _store_pending_promotions(
+        self, conn: sqlite3.Connection, entries: List[Dict[str, Any]]
+    ) -> None:
+        conn.execute(
+            "INSERT OR REPLACE INTO graph_meta(key, value) VALUES (?, ?)",
+            (_PENDING_PROMOTIONS_KEY, json.dumps(entries, ensure_ascii=False)),
+        )
+
+    def _merge_pending_promotions(
+        self, conn: sqlite3.Connection, proposed: List[Dict[str, Any]]
+    ) -> List[Dict[str, Any]]:
+        """Merge new proposals into the stored queue (dedupe by id, cap 100)."""
+        merged: Dict[str, Dict[str, Any]] = {}
+        for item in self._read_pending_promotions(conn) + list(proposed):
+            merged[str(item["id"])] = item  # newest proposal wins per id
+        entries = list(merged.values())[-_PENDING_PROMOTIONS_CAP:]
+        self._store_pending_promotions(conn, entries)
+        return entries
+
+    def pending_promotions(self) -> List[Dict[str, Any]]:
+        """List promotions waiting for a human decision (review mode)."""
+        with self._connect() as conn:
+            return self._read_pending_promotions(conn)
+
+    def apply_pending_promotions(
+        self, ids: Optional[List[str]] = None
+    ) -> Dict[str, Any]:
+        """Apply stored pending promotions (all of them when ``ids`` is None).
+
+        Uses the exact node-writing path as direct ``curate()`` via
+        :meth:`_write_promotion`; applied entries leave the queue.
+        """
+        wanted = None if ids is None else {str(item) for item in ids}
+        applied: List[Dict[str, Any]] = []
+        remaining: List[Dict[str, Any]] = []
+        with self._connect() as conn:
+            for promo in self._read_pending_promotions(conn):
+                if wanted is not None and str(promo.get("id")) not in wanted:
+                    remaining.append(promo)
+                    continue
+                applied.append(self._write_promotion(conn, promo))
+            self._store_pending_promotions(conn, remaining)
+        return {"status": "ok", "applied": applied, "remaining": len(remaining)}
+
+    def reject_pending_promotions(
+        self, ids: Optional[List[str]] = None
+    ) -> Dict[str, Any]:
+        """Drop pending promotions without writing (all when ``ids`` is None)."""
+        wanted = None if ids is None else {str(item) for item in ids}
+        rejected: List[str] = []
+        remaining: List[Dict[str, Any]] = []
+        with self._connect() as conn:
+            for promo in self._read_pending_promotions(conn):
+                if wanted is not None and str(promo.get("id")) not in wanted:
+                    remaining.append(promo)
+                    continue
+                rejected.append(str(promo.get("id")))
+            self._store_pending_promotions(conn, remaining)
+        return {"status": "ok", "rejected": rejected, "remaining": len(remaining)}
 
     _NOISE_CONTENT_TYPES = (
         "Document",
@@ -651,6 +812,13 @@ class KnowledgeGraphProjectionMixin:
                         (canonical, original),
                     )
                     conn.execute("DELETE FROM edges WHERE type=?", (original,))
+                # Stamp every applied run — even a no-op one means the graph
+                # was inspected, so the Command Center hygiene advisory
+                # (review 2026-07-25 Wave 2.5) stops re-suggesting for a while.
+                conn.execute(
+                    "INSERT OR REPLACE INTO graph_meta(key, value) VALUES (?, ?)",
+                    (_LAST_NOISE_CURATE_KEY, _now()),
+                )
 
         return {
             "status": "ok",
@@ -674,6 +842,22 @@ class KnowledgeGraphProjectionMixin:
                 "min_corpus_docs": int(min_corpus_docs),
             },
         }
+
+    def last_noise_curate_at(self) -> Optional[str]:
+        """Timestamp of the last applied (dry_run=False) noise-curate run.
+
+        ``None`` when the job never ran or the meta table is unreadable —
+        advisory readers treat both as "curation is due" (fail-open).
+        """
+        try:
+            with self._connect() as conn:
+                row = conn.execute(
+                    "SELECT value FROM graph_meta WHERE key=?",
+                    (_LAST_NOISE_CURATE_KEY,),
+                ).fetchone()
+        except sqlite3.Error:
+            return None
+        return str(row["value"]) if row and row["value"] else None
 
     def mark_superseded(self, old_node_id: str, new_node_id: str) -> Dict[str, Any]:
         """Record that ``old_node_id`` was replaced by ``new_node_id``.

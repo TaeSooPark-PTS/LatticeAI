@@ -1,6 +1,6 @@
 # Why Lattice AI Exists
 
-Current release: **9.9.3 — Closed Loops**.
+Current release: **9.9.4 — Durable Loops**.
 
 **Lattice AI is a local-first Digital Brain that keeps your knowledge durable
 across any AI model.**

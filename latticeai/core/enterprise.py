@@ -52,6 +52,11 @@ class EnterpriseCapability(str, Enum):
     DLP_POLICY = "dlp_policy"
     EDISCOVERY = "ediscovery"
     ADMIN_POLICY_PACKS = "admin_policy_packs"
+    # Human review-before-promote governance for knowledge-graph concept
+    # promotions (review 2026-07-25 Wave 4). Community users can opt in per
+    # deployment via LATTICEAI_GRAPH_PROMOTION_REVIEW; this capability is the
+    # seam for Enterprise policy packs that mandate reviewed promotions.
+    GRAPH_PROMOTION_REVIEW = "graph_promotion_review"
 
 
 @runtime_checkable

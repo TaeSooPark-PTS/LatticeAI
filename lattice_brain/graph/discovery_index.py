@@ -474,7 +474,12 @@ class KnowledgeGraphLocalIndexMixin:
                 metadata={"source": "ocr", "workspace_id": workspace_id},
             )
 
-        for index, chunk in enumerate(_chunks(text)):
+        # Typed chunking by file extension (markdown/code/plain); plain files
+        # keep legacy _chunks boundaries and therefore identical chunk ids.
+        chunk_strategy = chunk_strategy_for(file_path.name)
+        for index, piece in enumerate(typed_chunks(text, strategy=chunk_strategy)):
+            chunk = piece["text"]
+            chunk_fields = typed_chunk_meta_fields(piece)
             chunk_id = f"chunk:{_sha256_text(f'{file_node_id}:{index}:{chunk}')[:24]}"
             self._upsert_node(
                 conn,
@@ -487,6 +492,7 @@ class KnowledgeGraphLocalIndexMixin:
                     "source_node": file_node_id,
                     "source_id": source_id,
                     "workspace_id": workspace_id,
+                    **chunk_fields,
                 },
                 owner=user_email,
                 workspace_id=workspace_id,
@@ -501,6 +507,7 @@ class KnowledgeGraphLocalIndexMixin:
                     "source_node": file_node_id,
                     "source_id": source_id,
                     "workspace_id": workspace_id,
+                    **chunk_fields,
                 },
             )
             self._upsert_edge(

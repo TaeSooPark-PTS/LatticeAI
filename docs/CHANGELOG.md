@@ -4,6 +4,71 @@ The top entry is either the current unreleased main-branch work or the current
 release line. Older entries are historical and may describe behavior as it
 existed at that release.
 
+## [9.9.4] - 2026-07-26
+
+### Added
+- Durable approval/run store (`latticeai/core/run_store.py`): paused
+  `awaiting_approval` runs are mirrored to `data/agent_runs/` (one JSON file
+  per run, SHA-256 token hashes, wall-clock expiry) and resume across server
+  restarts; expired resumes answer 410 with a one-click replan hint;
+  `GET /agent/approvals` lists pending runs (memory ∪ disk).
+- Single retrieval policy (`lattice_brain/graph/retrieval_policy.py`):
+  rule-based query rewrite (env kill-switch `LATTICEAI_QUERY_REWRITE=0`),
+  query-class fusion weights, and a 14-day recency half-life consumed by both
+  the 3-channel service fusion and the 2-channel graph fusion; responses
+  carry `policy {search_query, rewrite_rules}` and recency-class matches a
+  `scores.age_decay` multiplier in the [0.5, 1.0] band.
+- Live agent step streaming: `AgentDeps.on_step` / per-run `ctx.on_step`
+  observers emit plan/approval/execute/verify/rollback/terminal events;
+  streamed agent chats send named `event: agent_step` SSE frames
+  (`agent_live_stream`) before the unchanged final payload frames; the UI
+  renders a live step timeline with a collapsed post-run summary.
+- Type-aware chunking: markdown chunks at heading boundaries with
+  `heading_path` provenance, code chunks at function/blank-line boundaries,
+  plain text byte-identical to the legacy chunker (same chunk ids); every
+  chunk records `strategy` + `start_char`; PDF chunks carry a 1-based `page`
+  derived from per-page extraction offsets (omitted when implausible).
+- Embedder fingerprint: the vector index records the embedder model id +
+  dimension; a swap surfaces `stale_embedder` in `index_status().embedder`,
+  vector freshness, and hybrid `vector_degraded` instead of silently empty
+  vector channels.
+- Citation-instructed answers: one `_compose_system` helper (all four prompt
+  paths) appends `CITATION_INSTRUCTION` whenever retrieved context exists; a
+  deterministic synthetic grounding bench gates `assess_answer_grounding`
+  verdict accuracy in CI.
+- Graph hygiene cadence: Command Center briefing gains a `hygiene` section +
+  one-click dry-run quick action suggesting `/knowledge-graph/curate/noise`
+  when the graph exceeds 200 nodes and no curation ran in 7 days
+  (`last_noise_curate_at` in graph_meta).
+- Review-before-promote: `LATTICEAI_GRAPH_PROMOTION_REVIEW=1` (or the
+  `GRAPH_PROMOTION_REVIEW` enterprise capability) stages curator topic
+  promotions as `pending_promotions` instead of writing them;
+  `GET /knowledge-graph/promotions` + `apply`/`reject` endpoints.
+- Project manifests beyond web: React/Vite starter (package.json, module-entry
+  index.html, src/main.jsx, src/App.jsx, src/App.css) and Python package
+  (`pkg/__init__.py`, `core.py`, `cli.py`, README.md); `normalize_plan`
+  rewrites empty/partial pure-file plans to the manifest
+  (`manifest_steps`/`manifest_rewrite` plan fixes).
+- Harness: five deterministic workflow/multi-agent scenarios;
+  `scripts/funnel_soft_gate.py` (advisory code_only/needs_review thresholds,
+  `--strict` opt-in); `approval_pauses`/`approval_resumes` counters +
+  `approval_resume_rate`; `scripts/bench_agent_smoke.py` weekly fail-open
+  real-model agent smoke + `agent-smoke.yml` workflow (report artifact, never
+  a gate).
+- Frontend: agent step timeline, source-card → stored-chunk modal, folder
+  watch health card, approval TTL countdown with expiry replan, generated-file
+  "remembered in Brain" chips, demo-corpus → "connect your own data" CTA,
+  parse-repair count note — all ko/en parity and bundle-budget clean.
+- `docs/SURFACE_PARITY.md`: per-surface capability matrix with honest gaps.
+
+### Changed
+- Executor prompts use a sliding transcript window (recent 8 steps full,
+  older steps one-line summaries, per-string truncation caps, last 3
+  corrections); the critic sees every step with capped string bodies
+  (`TranscriptBudget`, `LATTICEAI_AGENT_TRANSCRIPT_*`).
+- Agent memory learnings now record the actual terminal status (ok /
+  needs_review / failed) and prompt for what-went-wrong on non-DONE runs.
+
 ## [9.9.3] - 2026-07-22
 
 ### Added

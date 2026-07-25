@@ -30,12 +30,28 @@ export type ApprovalDecision = {
 
 // What the chat message should record after a resume attempt. `finished`
 // carries the standard agent finish payload (response/created_files/
-// artifacts/final_state) to merge like a normal completion.
+// artifacts/final_state) to merge like a normal completion. `expired` may
+// carry the original user request from the 410 detail's replan hint so the
+// UI can offer a one-click "다시 계획" as a fresh chat send.
 export type ApprovalResolution =
   | { kind: "finished"; payload: ChatAgentPayload }
   | { kind: "cancelled" }
-  | { kind: "expired" }
+  | { kind: "expired"; replanMessage?: string }
   | { kind: "error"; reason: string };
+
+// Extracts detail.replan.message (or replan.message) from an expiry response
+// body. Defensive: absent/malformed → empty string (no replan offer).
+export function parseReplanMessage(body: unknown): string {
+  if (!body || typeof body !== "object") return "";
+  const root = body as Record<string, unknown>;
+  const detail = root.detail && typeof root.detail === "object" && !Array.isArray(root.detail)
+    ? root.detail as Record<string, unknown>
+    : root;
+  const replan = detail.replan;
+  if (!replan || typeof replan !== "object" || Array.isArray(replan)) return "";
+  const message = (replan as Record<string, unknown>).message;
+  return typeof message === "string" ? message.trim() : "";
+}
 
 // Presents the single-use token to /agent/resume and classifies the outcome.
 // 410 (token TTL elapsed) and 404 (run lost, e.g. server restart) both mean
@@ -51,7 +67,10 @@ export async function resolveApprovalRequest(
     ...(decision.editedPlan ? { edited_plan: decision.editedPlan } : {}),
   });
   if (!result.ok) {
-    if (result.status === 410 || result.status === 404) return { kind: "expired" };
+    if (result.status === 410 || result.status === 404) {
+      const replanMessage = parseReplanMessage(result.data);
+      return { kind: "expired", ...(replanMessage ? { replanMessage } : {}) };
+    }
     return { kind: "error", reason: result.error || String(result.status || "") };
   }
   const payload = result.data as ChatAgentPayload;

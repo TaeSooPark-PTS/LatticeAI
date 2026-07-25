@@ -78,6 +78,27 @@ If context or old chat history mentions those names, treat them only as legacy a
 You are a Vision-Language Model (VLM). If an image is provided, analyze it.
 Be concise and respond in the user's language."""
 
+# Appended ONLY when retrieved context exists (review 2026-07-25 Wave 2.3):
+# grounded answers should cite their sources and admit gaps. Advisory prompt
+# guidance — grounding assessment stays annotation-only and never blocks.
+CITATION_INSTRUCTION = """The Context section above contains retrieved sources.
+Ground your claims in those sources and cite them inline as [1], [2], ... matching the order they appear in the Context.
+If the context does not cover the question, say so instead of inventing sources.
+Never cite a source that is not in the Context."""
+
+
+def _compose_system(base: str, context: str) -> str:
+    """Compose the system prompt with optional retrieved context.
+
+    Byte-compatible with the historical prompt when ``context`` is empty:
+    the return value is exactly ``base``. When context exists, the Context
+    block plus :data:`CITATION_INSTRUCTION` are appended.
+    """
+    if not context:
+        return base
+    return f"{base}\n\nContext:\n{context}\n\n{CITATION_INSTRUCTION}"
+
+
 def normalize_branding(text: Optional[str]) -> str:
     if not text:
         return ""
@@ -497,10 +518,8 @@ class LLMRouter:
         return raw
 
     def _build_prompt(self, message: str, context: Optional[str], tokenizer) -> str:
-        system = SYSTEM_PROMPT
         context = normalize_branding(context)
-        if context:
-            system += f"\n\nContext:\n{context}"
+        system = _compose_system(SYSTEM_PROMPT, context)
         if hasattr(tokenizer, "apply_chat_template"):
             try:
                 msgs = [{"role": "system", "content": system}, {"role": "user", "content": message}]
@@ -510,10 +529,8 @@ class LLMRouter:
         return f"<|im_start|>system\n{system}<|im_end|>\n<|im_start|>user\n{message}<|im_end|>\n<|im_start|>assistant\n"
 
     def _build_vlm_prompt(self, model, processor, message: str, context: Optional[str], num_images: int) -> str:
-        system = SYSTEM_PROMPT
         context = normalize_branding(context)
-        if context:
-            system += f"\n\nContext:\n{context}"
+        system = _compose_system(SYSTEM_PROMPT, context)
         try:
             from mlx_vlm import apply_chat_template
 
@@ -616,10 +633,8 @@ class LLMRouter:
         return normalize_branding(str(result))
 
     async def _cloud_generate(self, cloud: CloudModel, message: str, context: Optional[str], max_tokens: int, temperature: float) -> str:
-        system = SYSTEM_PROMPT
         context = normalize_branding(context)
-        if context:
-            system += f"\n\nContext:\n{context}"
+        system = _compose_system(SYSTEM_PROMPT, context)
         try:
             response = await cloud.client.chat.completions.create(
                 model=cloud.model,
@@ -703,10 +718,8 @@ class LLMRouter:
             yield chunk
 
     async def _cloud_stream_generate(self, cloud: CloudModel, message: str, context: Optional[str], max_tokens: int, temperature: float) -> AsyncIterator[str]:
-        system = SYSTEM_PROMPT
         context = normalize_branding(context)
-        if context:
-            system += f"\n\nContext:\n{context}"
+        system = _compose_system(SYSTEM_PROMPT, context)
         try:
             stream = await cloud.client.chat.completions.create(
                 model=cloud.model,

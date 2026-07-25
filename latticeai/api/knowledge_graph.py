@@ -7,7 +7,7 @@ data endpoints back the v3 SPA (Files, Hybrid Search, graph explorer).
 """
 
 from pathlib import Path
-from typing import Any, Callable, Dict, Optional
+from typing import Any, Callable, Dict, List, Optional
 
 from fastapi import APIRouter, HTTPException, Request
 from pydantic import BaseModel
@@ -36,6 +36,11 @@ class CurateNoiseRequest(BaseModel):
     min_corpus_docs: int = 5
     normalize_verbs: bool = True
     max_removals: int = 200
+
+
+class PromotionActionRequest(BaseModel):
+    # None applies/rejects every pending promotion; otherwise only these ids.
+    ids: Optional[List[str]] = None
 
 
 def _workspace_scope_from_request(request: Request) -> Optional[str]:
@@ -172,6 +177,35 @@ def create_knowledge_graph_router(
             normalize_verbs=req.normalize_verbs,
             max_removals=req.max_removals,
         )
+
+    @router.get("/knowledge-graph/promotions")
+    async def knowledge_graph_promotions(request: Request):
+        """Pending curator promotions awaiting human review (review Wave 4).
+
+        Populated when ``curate()`` runs in review mode (explicit
+        ``review_mode=True`` or the LATTICEAI_GRAPH_PROMOTION_REVIEW env
+        opt-in). Administrative like ``/knowledge-graph/curate``: the queue
+        governs the shared graph.
+        """
+        (require_admin or require_user)(request)
+        pending = graph().pending_promotions()
+        return {"pending": pending, "total": len(pending)}
+
+    @router.post("/knowledge-graph/promotions/apply")
+    async def knowledge_graph_promotions_apply(
+        req: PromotionActionRequest, request: Request
+    ):
+        """Apply pending promotions (all when ``ids`` is omitted)."""
+        (require_admin or require_user)(request)
+        return graph().apply_pending_promotions(ids=req.ids)
+
+    @router.post("/knowledge-graph/promotions/reject")
+    async def knowledge_graph_promotions_reject(
+        req: PromotionActionRequest, request: Request
+    ):
+        """Reject pending promotions without writing (all when ``ids`` omitted)."""
+        (require_admin or require_user)(request)
+        return graph().reject_pending_promotions(ids=req.ids)
 
     @router.get("/knowledge-graph/provenance/coverage")
     async def knowledge_graph_provenance_coverage(request: Request):

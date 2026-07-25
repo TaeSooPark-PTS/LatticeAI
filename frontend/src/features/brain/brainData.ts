@@ -1,5 +1,5 @@
 import { asArray, isRecord as isRecordValue } from "@/lib/utils";
-import type { ApiRecord, BrainBrief, BrainDepth, BrainProof, BrainReadiness, ConversationSummary, ExtractionQuality, IngestionEvidence, IngestionJob, KnowledgeConcept, KnowledgeGraphModel, MemoryFragment, Message, MessageContextQuality, MessageFile, MessageGrounding, RelationshipThread, VectorFreshness } from "./types";
+import type { AgentStepEvent, ApiRecord, BrainBrief, BrainDepth, BrainProof, BrainReadiness, ConversationSummary, ExtractionQuality, IngestionEvidence, IngestionJob, IngestionWatch, IngestionWatchStatus, KnowledgeConcept, KnowledgeGraphModel, MemoryFragment, Message, MessageBrainIngest, MessageContextQuality, MessageFile, MessageGrounding, MessageLoopSummary, PendingApprovalSummary, RelationshipThread, VectorFreshness } from "./types";
 import { clamp } from "./graphLayout";
 
 export function buildConversationSummaries(historyData: unknown): ConversationSummary[] {
@@ -195,13 +195,25 @@ export function parseGrounding(value: unknown): MessageGrounding | null {
   return { status, reason };
 }
 
+// "Brain remembered" chip data from a brain_ingest entry. Only ok/pending/
+// failed become a chip; other statuses (skipped/unavailable/...) stay silent.
+function parseBrainIngestEntry(entry: unknown): MessageBrainIngest | null {
+  if (!isRecord(entry)) return null;
+  const status = textValue(entry, ["status"]);
+  if (status !== "ok" && status !== "pending" && status !== "failed") return null;
+  const detail = textValue(entry, ["detail"]);
+  return { status, ...(detail ? { detail } : {}) };
+}
+
 // Joins an agent payload's created_files with the artifacts[] preview verdict
-// (keyed by path, defensively) — shared by the streaming onAgent handler and
-// the approval-resume merge so both render through the same file-card path.
+// and the payload-level brain_ingest verdict (single dict for the one-file
+// path, {path,...} list for bundles) — shared by the streaming onAgent handler
+// and the approval-resume merge so both render through the same file-card path.
 export function agentPayloadFiles(agent: {
   created_files?: Array<{ path: string; filename?: string; bytes?: number }>;
   artifacts?: Array<Record<string, unknown>>;
   generation?: { repaired?: boolean };
+  brain_ingest?: Record<string, unknown> | Array<Record<string, unknown>>;
 }): MessageFile[] {
   const repaired = Boolean(agent.generation?.repaired);
   const previewableByPath = new Map<string, boolean>();
@@ -210,15 +222,161 @@ export function agentPayloadFiles(agent: {
       previewableByPath.set(artifact.path, Boolean(artifact.previewable));
     }
   }
-  return (agent.created_files || []).map((file) => ({
-    path: file.path,
-    filename: file.filename || file.path.split("/").pop() || file.path,
-    bytes: file.bytes || 0,
-    repaired,
-    ...(previewableByPath.has(file.path)
-      ? { previewable: previewableByPath.get(file.path) }
-      : {}),
-  }));
+  const ingestByPath = new Map<string, MessageBrainIngest>();
+  let singleIngest: MessageBrainIngest | null = null;
+  if (Array.isArray(agent.brain_ingest)) {
+    for (const entry of agent.brain_ingest) {
+      const ingest = parseBrainIngestEntry(entry);
+      if (ingest && isRecord(entry) && typeof entry.path === "string") {
+        ingestByPath.set(entry.path, ingest);
+      }
+    }
+  } else {
+    singleIngest = parseBrainIngestEntry(agent.brain_ingest);
+  }
+  const files = agent.created_files || [];
+  return files.map((file) => {
+    const brainIngest = ingestByPath.get(file.path)
+      || (files.length === 1 ? singleIngest : null);
+    return {
+      path: file.path,
+      filename: file.filename || file.path.split("/").pop() || file.path,
+      bytes: file.bytes || 0,
+      repaired,
+      ...(previewableByPath.has(file.path)
+        ? { previewable: previewableByPath.get(file.path) }
+        : {}),
+      ...(brainIngest ? { brainIngest } : {}),
+    };
+  });
+}
+
+// One live `event: agent_step` frame → typed step event. Requires phase +
+// event strings; every other field is optional and unknown fields are dropped
+// so future backend additions never break rendering.
+export function parseAgentStepEvent(value: unknown): AgentStepEvent | null {
+  if (!isRecord(value)) return null;
+  const phase = textValue(value, ["phase"]);
+  const event = textValue(value, ["event"]);
+  if (!phase || !event) return null;
+  const step = Number(value.step);
+  return {
+    phase,
+    event,
+    ...(textValue(value, ["action"]) ? { action: textValue(value, ["action"]) } : {}),
+    ...(textValue(value, ["path"]) ? { path: textValue(value, ["path"]) } : {}),
+    ...(Number.isFinite(step) ? { step: Math.round(step) } : {}),
+    ...(typeof value.ok === "boolean" ? { ok: value.ok } : {}),
+    ...(textValue(value, ["decision"]) ? { decision: textValue(value, ["decision"]) } : {}),
+    ...(textValue(value, ["verdict"]) ? { verdict: textValue(value, ["verdict"]) } : {}),
+    ...(textValue(value, ["state"]) ? { state: textValue(value, ["state"]) } : {}),
+    ...(textValue(value, ["detail", "error"]) ? { detail: textValue(value, ["detail", "error"]) } : {}),
+  };
+}
+
+// Post-hoc timeline from the final payload's `steps` transcript, for runs that
+// did not stream progress frames (approval resumes, direct file routes).
+// EXECUTING entries with an action become tool events (ok unless an error is
+// recorded); other entries collapse into state markers.
+export function parseAgentTranscript(steps: unknown): AgentStepEvent[] {
+  return asArray<ApiRecord>(steps).flatMap((item): AgentStepEvent[] => {
+    if (!isRecord(item)) return [];
+    const action = textValue(item, ["action", "tool"]);
+    const state = textValue(item, ["state"]);
+    const error = textValue(item, ["error"]);
+    if (!action && !state && !error) return [];
+    const args = isRecord(item.args) ? item.args : {};
+    const path = textValue(args, ["path", "target", "file"]);
+    if (action) {
+      return [{
+        phase: "execute",
+        event: "tool",
+        action,
+        ...(path ? { path } : {}),
+        ok: !error,
+        ...(error ? { detail: error } : {}),
+      }];
+    }
+    if (error) {
+      return [{ phase: "execute", event: "state", ...(state ? { state } : {}), ok: false, detail: error }];
+    }
+    return [{ phase: "terminal", event: "state", state }];
+  });
+}
+
+// Loop honesty meta (payload.loop): null unless something was actually
+// repaired, so the "N회 보정" note only appears when it is true.
+export function parseLoopSummary(value: unknown): MessageLoopSummary | null {
+  if (!isRecord(value)) return null;
+  const repairs: Record<string, number> = {};
+  if (isRecord(value.repairs)) {
+    for (const [kind, raw] of Object.entries(value.repairs)) {
+      const count = Number(raw);
+      if (Number.isFinite(count) && count > 0) repairs[kind] = Math.round(count);
+    }
+  }
+  const parseErrors = Math.max(0, Math.round(numberValue(value, ["parse_errors", "parseErrors"])));
+  const parseRecovered = Math.max(0, Math.round(numberValue(value, ["parse_recovered", "parseRecovered"])));
+  const total = Object.values(repairs).reduce((sum, count) => sum + count, 0) + parseRecovered;
+  if (total < 1) return null;
+  return { repairs, parseErrors, parseRecovered, total };
+}
+
+// GET /agent/approvals → pending paused runs. The token stays with the
+// original approval card; these summaries only inform.
+export function parsePendingApprovals(data: unknown): PendingApprovalSummary[] {
+  const record = isRecord(data) ? data : {};
+  return asArray<ApiRecord>(record.pending).flatMap((item): PendingApprovalSummary[] => {
+    const runId = textValue(item, ["run_id", "runId"]);
+    if (!runId) return [];
+    return [{
+      runId,
+      goal: textValue(item, ["goal"]),
+      expiresAt: textValue(item, ["expires_at", "expiresAt"]),
+    }];
+  });
+}
+
+// GET /api/ingestion/watch → watch-mode health. Defensive: last_result and
+// last_errors may be absent (older servers) — every line hides itself then.
+export function parseIngestionWatchStatus(data: unknown): IngestionWatchStatus {
+  const record = isRecord(data) ? data : {};
+  const watches = asArray<ApiRecord>(record.watches).flatMap((item): IngestionWatch[] => {
+    if (!isRecord(item)) return [];
+    const id = textValue(item, ["id"]);
+    const path = textValue(item, ["path"]);
+    if (!id && !path) return [];
+    const lastResultRecord = isRecord(item.last_result) ? item.last_result : null;
+    const lastErrors = asArray<unknown>(item.last_errors).flatMap((entry) => {
+      if (typeof entry === "string" && entry.trim()) return [{ path: "", detail: entry.trim() }];
+      if (!isRecord(entry)) return [];
+      const detail = textValue(entry, ["detail", "reason", "error"]);
+      const errorPath = textValue(entry, ["path", "source", "file"]);
+      if (!detail && !errorPath) return [];
+      return [{ path: errorPath, detail }];
+    });
+    return [{
+      id: id || path,
+      path,
+      enabled: booleanValue(item, ["enabled"], false),
+      lastScanAt: textValue(item, ["last_scan_at", "lastScanAt"]),
+      lastResult: lastResultRecord
+        ? {
+            status: textValue(lastResultRecord, ["status"]),
+            ingested: Math.max(0, Math.round(numberValue(lastResultRecord, ["ingested"]))),
+            failed: Math.max(0, Math.round(numberValue(lastResultRecord, ["failed"]))),
+          }
+        : null,
+      trackedFiles: Math.max(0, Math.round(numberValue(item, ["tracked_files", "trackedFiles"]))),
+      lastErrors: lastErrors.slice(0, 3),
+    }];
+  });
+  return {
+    enabledCount: Math.max(0, Math.round(numberValue(record, ["enabled_count", "enabledCount"]))),
+    polling: booleanValue(record, ["polling"], false),
+    intervalSeconds: Math.max(0, Math.round(numberValue(record, ["interval_seconds", "intervalSeconds"]))),
+    watches,
+  };
 }
 
 // "unavailable" here is a machine state, not display copy: consumers gate on

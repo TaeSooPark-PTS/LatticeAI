@@ -32,7 +32,11 @@ from typing import Any, Awaitable, Callable, Dict, FrozenSet, List, Mapping, Opt
 from lattice_brain.runtime.hooks import dispatch_tool
 from lattice_brain.runtime.contracts import runtime_boundary_contract, single_agent_contract
 from latticeai.core.agent_trace import LoopTrace
-from latticeai.core.file_generation import infer_file_target, sanitize_write_content
+from latticeai.core.file_generation import (
+    infer_file_target,
+    infer_project_manifest,
+    sanitize_write_content,
+)
 from latticeai.core.tool_registry import SCOPED_KNOWLEDGE_TOOLS
 from latticeai.tools import ToolError
 
@@ -62,7 +66,8 @@ class AgentRunContext:
     """Mutable state carrier passed through all agent phases."""
     __slots__ = ("state", "plan", "transcript", "retry_count",
                  "state_history", "corrections", "final_message", "rollback_log",
-                 "executing_model", "reviewing_model", "approved_by_human", "trace")
+                 "executing_model", "reviewing_model", "approved_by_human", "trace",
+                 "on_step")
 
     def __init__(self) -> None:
         self.state:           AgentState   = AgentState.IDLE
@@ -77,6 +82,10 @@ class AgentRunContext:
         self.executing_model: Optional[str] = None
         self.reviewing_model: Optional[str] = None
         self.approved_by_human: bool       = False
+        # Per-run step observer (review Wave 1.1): the HTTP layer attaches a
+        # callback here so live SSE clients see progress while EXECUTING.
+        # Never serialized; a broken observer never breaks the loop.
+        self.on_step: Optional[Callable[[Dict[str, Any]], None]] = None
 
 
 _THINK_BLOCK_RE = re.compile(
@@ -142,6 +151,30 @@ def extract_action(raw: str) -> Dict:
     return action
 
 
+_FILE_CREATE_PLAN_ACTIONS = frozenset({"write_file", "generate_file"})
+
+
+def _plan_misses_manifest(steps: List[Dict[str, Any]], manifest: Dict[str, Any]) -> bool:
+    """True when a pure file-writing plan fails to cover the manifest's file types.
+
+    Only pure file-creation plans are candidates for rewriting — a plan with
+    read/search steps reflects real planner intent and stays untouched.
+    """
+    if any(s.get("action") not in _FILE_CREATE_PLAN_ACTIONS for s in steps):
+        return False
+
+    def _ext(path: Any) -> str:
+        text = str(path or "")
+        dot = text.rfind(".")
+        return text[dot:].lower() if dot >= 0 else ""
+
+    planned_exts = {
+        _ext((s.get("args") or {}).get("path")) for s in steps
+    }
+    manifest_exts = {_ext(spec.get("path")) for spec in manifest.get("files", [])}
+    return not manifest_exts.issubset(planned_exts)
+
+
 def normalize_plan(plan: Any, user_message: str) -> Tuple[Dict[str, Any], List[str]]:
     """Enforce the minimal plan schema so execution never starts adrift.
 
@@ -173,6 +206,27 @@ def normalize_plan(plan: Any, user_message: str) -> Tuple[Dict[str, Any], List[s
     ]
     if raw_steps and steps != raw_steps:
         fixes.append("steps_filtered")
+
+    # Manifest-aware planning (review Wave 0.4): when the request is a
+    # recognized multi-file project, the deterministic manifest — not the
+    # planner's improvisation — decides the file set, exactly like the direct
+    # chat path. Rewrites apply only when the plan is empty or is a pure
+    # file-writing plan that misses part of the manifest, so a planner that
+    # already covered every requested file type is left untouched.
+    manifest = infer_project_manifest(user_message)
+    if manifest:
+        manifest_steps = [{
+            "action": "write_file",
+            "args": {"path": spec["path"]},
+            "description": spec["brief"],
+        } for spec in manifest["files"]]
+        if not steps:
+            steps = manifest_steps
+            fixes.append("manifest_steps")
+        elif _plan_misses_manifest(steps, manifest):
+            steps = manifest_steps
+            fixes.append("manifest_rewrite")
+
     if not steps:
         inferred = infer_file_target(user_message)
         if inferred:
@@ -225,6 +279,97 @@ def filter_learnings(learnings: List[Any]) -> List[str]:
         seen.add(key)
         kept.append(text)
     return kept
+
+
+def _truncate_strings(value: Any, limit: int) -> Any:
+    """Deep-copy ``value`` with every string capped at ``limit`` chars.
+
+    Long tool outputs (file bodies, command output) dominate executor prompt
+    size without adding decision-relevant signal. The cap keeps the head of
+    each string and names how much was dropped, so the model still sees what
+    the value was — never a silent hole.
+    """
+    if isinstance(value, str):
+        if len(value) <= limit:
+            return value
+        return value[:limit] + f"…[+{len(value) - limit} chars]"
+    if isinstance(value, dict):
+        return {k: _truncate_strings(v, limit) for k, v in value.items()}
+    if isinstance(value, list):
+        return [_truncate_strings(v, limit) for v in value]
+    return value
+
+
+def compact_transcript(
+    transcript: List[Dict[str, Any]],
+    *,
+    window: int = 8,
+    result_chars: int = 700,
+) -> List[Dict[str, Any]]:
+    """Bounded executor view of a transcript (review Wave 0.3).
+
+    The executor prompt previously embedded the *entire* transcript JSON every
+    step — O(steps²) token growth that starved :class:`PhaseBudgets` on long
+    runs and buried weak models in stale detail. This view keeps the most
+    recent ``window`` steps in full (with string values capped at
+    ``result_chars``) and reduces every older step to a one-line summary, so
+    the prompt stays bounded while no step disappears entirely.
+    """
+    steps = list(transcript or [])
+    if len(steps) <= window:
+        return [_truncate_strings(step, result_chars) for step in steps]
+    older, recent = steps[:-window], steps[-window:]
+    summarized: List[Dict[str, Any]] = [{
+        "summarized_older_steps": len(older),
+        "note": "older steps compacted — full detail retained in the run record",
+    }]
+    for step in older:
+        entry: Dict[str, Any] = {"state": step.get("state")}
+        for key in ("action", "verdict", "retry_attempt"):
+            if step.get(key) is not None:
+                entry[key] = step.get(key)
+        if step.get("error"):
+            entry["error"] = str(step["error"])[:160]
+        elif isinstance(step.get("result"), dict):
+            entry["ok"] = True
+            path = step["result"].get("path") or (step.get("args") or {}).get("path")
+            if path:
+                entry["path"] = str(path)
+        summarized.append(entry)
+    summarized.extend(_truncate_strings(step, result_chars) for step in recent)
+    return summarized
+
+
+@dataclass(frozen=True)
+class TranscriptBudget:
+    """Executor/critic prompt shaping caps (review Wave 0.3).
+
+    ``window`` full recent steps for the executor; per-string caps keep tool
+    output bodies from dominating either prompt. Overridable through the same
+    ``Config.from_env`` pattern as :class:`PhaseBudgets`.
+    """
+
+    window: int = 8
+    result_chars: int = 700
+    verify_chars: int = 1200
+
+    @classmethod
+    def from_env(cls, env: Optional[Mapping[str, str]] = None) -> "TranscriptBudget":
+        from latticeai.core.config import _int
+
+        if env is None:
+            import os
+
+            env = os.environ
+
+        def cap(key: str, default: int, floor: int) -> int:
+            return max(floor, _int(env, key, default))
+
+        return cls(
+            window=cap("LATTICEAI_AGENT_TRANSCRIPT_WINDOW", cls.window, 2),
+            result_chars=cap("LATTICEAI_AGENT_TRANSCRIPT_CHARS", cls.result_chars, 120),
+            verify_chars=cap("LATTICEAI_AGENT_VERIFY_CHARS", cls.verify_chars, 200),
+        )
 
 
 @dataclass(frozen=True)
@@ -329,6 +474,16 @@ class AgentDeps:
     # environment once at first use; tests inject a fixed PhaseBudgets.
     phase_budgets: Optional[PhaseBudgets] = None
 
+    # ── transcript shaping (optional) ────────────────────────────────
+    # Executor/critic prompt window caps. None reads the environment once;
+    # tests inject a fixed TranscriptBudget.
+    transcript_budget: Optional["TranscriptBudget"] = None
+
+    # ── step observer port (optional) ────────────────────────────────
+    # Default per-runtime observer for live step events; a per-run observer
+    # can also be attached on AgentRunContext.on_step. Both are advisory.
+    on_step: Optional[Callable[[Dict[str, Any]], None]] = None
+
 
 class SingleAgentRuntime:
     """Drives the agent state machine over injected :class:`AgentDeps`."""
@@ -336,6 +491,7 @@ class SingleAgentRuntime:
     def __init__(self, deps: AgentDeps) -> None:
         self.deps = deps
         self._env_phase_budgets: Optional[PhaseBudgets] = None
+        self._env_transcript_budget: Optional[TranscriptBudget] = None
 
     @property
     def phase_budgets(self) -> PhaseBudgets:
@@ -347,6 +503,34 @@ class SingleAgentRuntime:
         if getattr(self, "_env_phase_budgets", None) is None:
             self._env_phase_budgets = PhaseBudgets.from_env()
         return self._env_phase_budgets
+
+    @property
+    def transcript_budget(self) -> TranscriptBudget:
+        injected = getattr(self.deps, "transcript_budget", None)
+        if injected is not None:
+            return injected
+        if getattr(self, "_env_transcript_budget", None) is None:
+            self._env_transcript_budget = TranscriptBudget.from_env()
+        return self._env_transcript_budget
+
+    def _emit_step(self, ctx: AgentRunContext, phase: str, event: str, **details: Any) -> None:
+        """Fire the per-run / deps step observers (review Wave 1.1).
+
+        Observers power the live step timeline in the UI. They are pure
+        telemetry: any observer failure is logged and swallowed — the loop
+        itself must never notice.
+        """
+        payload: Dict[str, Any] = {"phase": phase, "event": event}
+        for key, value in details.items():
+            if value is not None:
+                payload[key] = value
+        for observer in (getattr(ctx, "on_step", None), getattr(self.deps, "on_step", None)):
+            if observer is None:
+                continue
+            try:
+                observer(dict(payload))
+            except Exception as exc:  # noqa: BLE001 — observers are advisory
+                logging.warning("agent step observer failed: %s", exc)
 
     def boundary(self) -> Dict[str, Any]:
         return runtime_boundary_contract(
@@ -412,6 +596,12 @@ class SingleAgentRuntime:
             "estimated_steps": plan.get("estimated_steps", 1),
             **({"plan_fixes": plan_fixes} if plan_fixes else {}),
         })
+        self._emit_step(
+            ctx, "plan", "planned",
+            goal=str(plan.get("goal") or "")[:200],
+            steps=len(plan.get("steps") or []),
+            requires_approval=bool(plan.get("requires_approval", False)),
+        )
         ctx.state = AgentState.WAITING_APPROVAL
 
     # ── APPROVAL ─────────────────────────────────────────────────────
@@ -467,6 +657,7 @@ class SingleAgentRuntime:
         })
         decision = "human_approved" if requires and approved_by_human else ("blocked_pending_approval" if requires else "auto_approved")
         ctx.trace.decision("approve", decision=decision, non_auto_steps=len(non_auto))
+        self._emit_step(ctx, "approval", "decision", decision=decision)
         d.audit(
             "agent_approval", user_email=current_user,
             requires_approval=requires,
@@ -530,6 +721,7 @@ class SingleAgentRuntime:
                     "state": AgentState.EXECUTING.value, "action": "final", "thoughts": thoughts,
                 })
                 ctx.trace.decision("execute", decision="final")
+                self._emit_step(ctx, "execute", "final")
                 ctx.state = AgentState.VERIFYING
                 return
 
@@ -540,6 +732,7 @@ class SingleAgentRuntime:
                     "error": "LOOP_DETECTED: identical action+args repeated — halted.",
                 })
                 ctx.trace.decision("execute", decision="loop_detected", tool=name)
+                self._emit_step(ctx, "execute", "blocked", action=name, reason="loop_detected")
                 break
 
             if name == "clear_history":
@@ -548,6 +741,7 @@ class SingleAgentRuntime:
                     "state": AgentState.EXECUTING.value, "action": name,
                     "thoughts": thoughts, "args": args, "result": result,
                 })
+                self._emit_step(ctx, "execute", "tool", action=name, ok=True)
                 continue
 
             policy = d.policy_for(name, args)
@@ -576,10 +770,13 @@ class SingleAgentRuntime:
     ) -> str:
         """Assemble one executor turn's prompt (plan, corrections, recent chat)."""
         d = self.deps
+        # Only the latest corrections steer the next attempt — stale hints
+        # from earlier retries dilute weak models (review Wave 0.3).
+        active_corrections = ctx.corrections[-3:]
         corrections_hint = (
             "\n\nCritic corrections from previous attempt:\n"
-            + "\n".join(f"- {c}" for c in ctx.corrections)
-        ) if ctx.corrections else ""
+            + "\n".join(f"- {c}" for c in active_corrections)
+        ) if active_corrections else ""
 
         recent_kwargs = {
             "conversation_id": req.conversation_id,
@@ -588,6 +785,12 @@ class SingleAgentRuntime:
         if request_workspace is not None:
             recent_kwargs["workspace_id"] = request_workspace
         recent_conversation = d.recent_chat_context(**recent_kwargs) or "(none)"
+        budget = self.transcript_budget
+        bounded_transcript = compact_transcript(
+            ctx.transcript,
+            window=budget.window,
+            result_chars=budget.result_chars,
+        )
         return (
             f"{d.executor_prompt}\n\n"
             f"[LANGUAGE HINT: {lang_hint}]\n"
@@ -595,7 +798,7 @@ class SingleAgentRuntime:
             f"PLAN:\n{json.dumps(ctx.plan, ensure_ascii=False)}\n\n"
             f"Recent conversation:\n{recent_conversation}\n\n"
             f"User request: {req.message}{corrections_hint}\n\n"
-            f"Execution transcript:\n{json.dumps(ctx.transcript, ensure_ascii=False, indent=2)}"
+            f"Execution transcript:\n{json.dumps(bounded_transcript, ensure_ascii=False, indent=2)}"
         )
 
     def _note_parse_failure(
@@ -608,8 +811,10 @@ class SingleAgentRuntime:
         })
         if parse_failures >= 3:
             ctx.trace.parse_error("execute", error=str(exc), recovered=False)
+            self._emit_step(ctx, "execute", "parse_error", recovered=False)
             return True
         ctx.trace.parse_error("execute", error=str(exc), recovered=True)
+        self._emit_step(ctx, "execute", "parse_error", recovered=True)
         # Weak models often need one concrete reminder of the wire
         # format; feed it through the corrections channel and retry
         # instead of aborting the whole run on the first slip.
@@ -665,6 +870,7 @@ class SingleAgentRuntime:
         if verdict is not None and verdict.get("decision") == "proposed":
             proposal = verdict.get("proposal") or {}
             ctx.trace.tool("execute", name=name, outcome="proposed", risk=risk)
+            self._emit_step(ctx, "execute", "proposed", action=name)
             ctx.transcript.append({
                 "state": AgentState.EXECUTING.value, "action": name,
                 "thoughts": thoughts, "args": {k: v for k, v in args.items() if k != "content"},
@@ -691,6 +897,7 @@ class SingleAgentRuntime:
         d = self.deps
         if policy["risk"] == "destructive":
             ctx.trace.tool("execute", name=name, outcome="blocked_destructive", risk=risk)
+            self._emit_step(ctx, "execute", "blocked", action=name, reason="destructive")
             ctx.transcript.append({
                 "state": AgentState.EXECUTING.value, "action": name,
                 "thoughts": thoughts, "args": args, "risk": risk,
@@ -713,6 +920,7 @@ class SingleAgentRuntime:
                 args={k: v for k, v in args.items() if k != "content"},
             )
             ctx.trace.tool("execute", name=name, outcome="blocked_approval", risk=risk)
+            self._emit_step(ctx, "execute", "blocked", action=name, reason="approval")
             ctx.transcript.append({
                 "state": AgentState.EXECUTING.value, "action": name,
                 "thoughts": thoughts, "args": args, "risk": risk,
@@ -748,6 +956,11 @@ class SingleAgentRuntime:
                         "artifact_repair" if meta.get("repaired") else "artifact_sanitize"
                     ],
                 )
+        step_index = 1 + sum(
+            1 for s in ctx.transcript
+            if s.get("state") == AgentState.EXECUTING.value
+            and s.get("action") not in (None, "final", "parse_error")
+        )
         try:
             d.check_role(name, current_user)
             # Shared tool lifecycle: pre_tool (may block) → execute → post_tool.
@@ -763,6 +976,10 @@ class SingleAgentRuntime:
                 "risk": risk, "governance": dict(policy), "result": result,
                 **({"content_sanitize": sanitize_meta} if sanitize_meta else {}),
             })
+            self._emit_step(
+                ctx, "execute", "tool", action=name, ok=True, step=step_index,
+                path=str(args.get("path")) if args.get("path") else None,
+            )
         except (ToolError, KeyError, TypeError, PermissionError) as exc:
             ctx.trace.tool("execute", name=name, outcome="error", risk=risk)
             ctx.transcript.append({
@@ -770,6 +987,10 @@ class SingleAgentRuntime:
                 "thoughts": thoughts, "args": args,
                 "risk": risk, "governance": dict(policy), "error": str(exc),
             })
+            self._emit_step(
+                ctx, "execute", "tool", action=name, ok=False, step=step_index,
+                path=str(args.get("path")) if args.get("path") else None,
+            )
 
     # ── VERIFY ───────────────────────────────────────────────────────
     def _has_execution_evidence(self, ctx: AgentRunContext) -> bool:
@@ -798,12 +1019,18 @@ class SingleAgentRuntime:
         NEEDS_REVIEW so the user is told to check the result themselves.
         """
         d = self.deps
+        # The critic must see every step (evidence completeness), but not
+        # every byte of tool output — long bodies are capped per string so
+        # verification stays affordable on long runs (review Wave 0.3).
+        verify_transcript = _truncate_strings(
+            ctx.transcript, self.transcript_budget.verify_chars
+        )
         context = (
             f"{d.critic_prompt}\n\n"
             f"[LANGUAGE HINT: {lang_hint}]\n\n"
             f"Original request: {req.message}\n"
             f"Plan goal: {ctx.plan.get('goal', req.message)}\n\n"
-            f"Full transcript:\n{json.dumps(ctx.transcript, ensure_ascii=False, indent=2)}"
+            f"Full transcript:\n{json.dumps(verify_transcript, ensure_ascii=False, indent=2)}"
         )
         raw = await d.generate_as(
             model_id,
@@ -857,6 +1084,7 @@ class SingleAgentRuntime:
                 "verify", decision="verification_unavailable",
                 verifier_available=False, verdict_valid=False, evidence=has_evidence,
             )
+            self._emit_step(ctx, "verify", "verdict", verdict="UNAVAILABLE")
             ctx.final_message = (
                 "검증을 완료하지 못했습니다 — 검증 모델의 응답을 해석할 수 없었습니다. "
                 "실행 결과를 직접 확인해 주시고, 필요하면 다시 시도해 주세요."
@@ -884,6 +1112,10 @@ class SingleAgentRuntime:
         ctx.trace.decision(
             "verify", decision=str(verdict.get("verdict", "")), next_state=next_s,
             verifier_available=True, verdict_valid=True, evidence=has_evidence,
+        )
+        self._emit_step(
+            ctx, "verify", "verdict",
+            verdict=str(verdict.get("verdict", "")), next_state=next_s,
         )
         if verdict.get("verdict") == "PASS":
             # DONE requires both: a validly parsed PASS verdict AND
@@ -966,16 +1198,33 @@ class SingleAgentRuntime:
             else "롤백을 시도했으나 복구할 파일이 없거나 git이 초기화되지 않았습니다."
         )
         d.audit("agent_rollback", user_email=current_user, rolled_back=rolled)
+        self._emit_step(ctx, "rollback", "rolled_back", recovered=len(recovered))
         # Rollback is a recovery from a failed verification — terminal state is FAILED
         ctx.state = AgentState.FAILED
 
     # ── MEMORY ───────────────────────────────────────────────────────
     async def memory_update(self, ctx: AgentRunContext, req: Any, current_user: str) -> None:
-        """Background: Memory Updater role extracts learnings after DONE."""
+        """Background: Memory Updater role extracts learnings from a terminal run.
+
+        Terminal-state learning policy (review §4.2 L6): DONE runs record what
+        worked; FAILED / NEEDS_REVIEW runs record what went wrong — failure is
+        exactly the experience worth remembering. The run status stored with
+        the experience is the *actual* terminal state, never a blanket "ok".
+        """
         d = self.deps
+        terminal = ctx.state.value if ctx.state in AGENT_TERMINAL_STATES else "UNKNOWN"
+        outcome_hint = (
+            "The task completed successfully."
+            if ctx.state == AgentState.DONE
+            else (
+                f"The task ended as {terminal} — extract what went wrong and "
+                "what to do differently next time, not a success story."
+            )
+        )
         context = (
             f"{d.memory_updater_prompt}\n\n"
-            f"Completed task: {req.message}\n\n"
+            f"Task: {req.message}\n"
+            f"Terminal status: {terminal}. {outcome_hint}\n\n"
             f"Last 5 transcript steps:\n{json.dumps(ctx.transcript[-5:], ensure_ascii=False)}"
         )
         try:
@@ -987,6 +1236,11 @@ class SingleAgentRuntime:
             kept_learnings = filter_learnings(mem.get("learnings") or [])
             if mem.get("save_to_knowledge") and kept_learnings:
                 learnings = "\n".join(kept_learnings)
+                status_label = {
+                    AgentState.DONE: "ok",
+                    AgentState.NEEDS_REVIEW: "needs_review",
+                    AgentState.FAILED: "failed",
+                }.get(ctx.state, "unknown")
                 if d.brain_memory is not None:
                     # This runtime is LLM-driven — its learnings are real
                     # experiences and enter the brain with provenance.
@@ -995,7 +1249,7 @@ class SingleAgentRuntime:
                         learnings,
                         run={
                             "mode": "llm",
-                            "status": "ok",
+                            "status": status_label,
                             "agent_id": "agent:executor",
                             "steps": len(ctx.transcript),
                         },
@@ -1036,3 +1290,4 @@ class SingleAgentRuntime:
                 ctx.state = AgentState.FAILED
 
         ctx.state_history.append(ctx.state.value)
+        self._emit_step(ctx, "terminal", "state", state=ctx.state.value)

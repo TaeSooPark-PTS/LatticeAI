@@ -19,6 +19,37 @@ export type Message = {
   approval?: MessageApproval;
   // Answer-citation binding verdict ("근거 있음/근거 없음") from the backend.
   grounding?: MessageGrounding;
+  // Live agent-loop step events (streamed `event: agent_step` frames) or the
+  // post-hoc transcript derived from the final payload's `steps`.
+  agentSteps?: AgentStepEvent[];
+  // Loop transparency: how many times the model output had to be repaired.
+  loopSummary?: MessageLoopSummary;
+};
+
+// One agent-loop step event. Streamed frames carry {phase, event, ...detail};
+// unknown extra fields are dropped at parse time so future backend additions
+// never break rendering.
+export type AgentStepEvent = {
+  phase: string; // plan | execute | verify | rollback | terminal | ...
+  event: string; // planned | tool | proposed | blocked | parse_error | final | verdict | state | ...
+  action?: string;
+  path?: string;
+  step?: number;
+  ok?: boolean;
+  decision?: string;
+  verdict?: string;
+  state?: string;
+  detail?: string;
+};
+
+// Aggregated loop honesty meta from payload.loop: deterministic repairs the
+// loop applied to model output, keyed by repair kind.
+export type MessageLoopSummary = {
+  repairs: Record<string, number>;
+  parseErrors: number;
+  parseRecovered: number;
+  // Sum of repair counts + recovered parse errors — the "N회 보정" number.
+  total: number;
 };
 
 export type ApprovalStatus =
@@ -39,6 +70,19 @@ export type MessageApproval = {
   plan: Record<string, unknown> | null;
   status: ApprovalStatus;
   errorReason?: string;
+  // The original user request, offered by the server on a 410 expiry so the
+  // UI can propose "다시 계획" as a fresh chat send. Absent on client-side
+  // expiry (no server round-trip happened).
+  replanMessage?: string;
+};
+
+// A paused approval reported by GET /agent/approvals (survives reloads and
+// server restarts). The single-use token stays with the original card — this
+// summary only informs.
+export type PendingApprovalSummary = {
+  runId: string;
+  goal: string;
+  expiresAt: string;
 };
 
 // Honest answer-grounding signal: whether the reply actually used retrieved
@@ -68,6 +112,16 @@ export type MessageFile = {
   // file safe/sensible to preview inline. Undefined when the artifact meta is
   // absent (older responses) — the UI then falls back to an extension check.
   previewable?: boolean;
+  // From the payload-level `brain_ingest` field: whether this generated file
+  // was actually indexed into the Brain. Absent → unknown → no chip.
+  brainIngest?: MessageBrainIngest;
+};
+
+// "Brain remembered" verdict for a generated file. Only ok/pending/failed
+// render a chip; any other status stays silent (never oversold).
+export type MessageBrainIngest = {
+  status: "ok" | "pending" | "failed" | string;
+  detail?: string;
 };
 
 export type EvidenceConfidence = "high" | "medium" | "low";
@@ -298,6 +352,34 @@ export type VectorFreshness = {
   pendingItems: number;
   totalItems: number;
   detail: string;
+};
+
+// Folder watch mode health (GET /api/ingestion/watch): per-watch scan results
+// so the home surface can show whether "connected" folders actually flow.
+export type IngestionWatchError = {
+  path: string;
+  detail: string;
+};
+
+export type IngestionWatch = {
+  id: string;
+  path: string;
+  enabled: boolean;
+  lastScanAt: string;
+  lastResult: {
+    status: string;
+    ingested: number;
+    failed: number;
+  } | null;
+  trackedFiles: number;
+  lastErrors: IngestionWatchError[];
+};
+
+export type IngestionWatchStatus = {
+  enabledCount: number;
+  polling: boolean;
+  intervalSeconds: number;
+  watches: IngestionWatch[];
 };
 
 export type IngestionJobStatus = "queued" | "running" | "completed" | "failed" | "partial" | string;

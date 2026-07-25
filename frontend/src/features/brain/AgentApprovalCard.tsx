@@ -15,20 +15,35 @@ function expiryTime(language: Language, expiresAt: string): string {
   });
 }
 
+// mm:ss for the live countdown (never negative).
+export function formatCountdown(remainingMs: number): string {
+  const totalSeconds = Math.max(0, Math.floor(remainingMs / 1000));
+  const minutes = Math.floor(totalSeconds / 60);
+  const seconds = totalSeconds % 60;
+  return `${minutes}:${String(seconds).padStart(2, "0")}`;
+}
+
+// Under two minutes left → amber urgency treatment + explicit warning.
+const URGENT_REMAINING_MS = 120_000;
+
 // Inline governance surface for an awaiting_approval agent run (backlog #2).
 // Not a modal: the run is parked server-side behind a single-use token, so the
 // card lives in the conversation where the pause happened. The primary action
 // receives focus when the card appears; terminal states (approved/cancelled/
 // expired/error) persist on the message so the card stays honest across
-// re-renders.
+// re-renders. A live countdown runs against the token TTL; when it reaches
+// zero the card flips to expired locally — no server call for a token we
+// already know is dead.
 export function AgentApprovalCard({
   language,
   approval,
   onResolved,
+  onReplan,
 }: {
   language: Language;
   approval: MessageApproval;
   onResolved: (resolution: ApprovalResolution) => void;
+  onReplan?: (message: string) => void;
 }) {
   const [busy, setBusy] = React.useState(false);
   const [editOpen, setEditOpen] = React.useState(false);
@@ -42,6 +57,34 @@ export function AgentApprovalCard({
     if (approval.status === "pending") primaryRef.current?.focus();
     // Intentionally mount-only.
   }, []); // eslint-disable-line react-hooks/exhaustive-deps
+
+  const pending = approval.status === "pending";
+  const expiryMs = React.useMemo(() => {
+    if (!approval.expiresAt) return null;
+    const parsed = Date.parse(approval.expiresAt);
+    return Number.isFinite(parsed) ? parsed : null;
+  }, [approval.expiresAt]);
+  const [now, setNow] = React.useState(() => Date.now());
+
+  // 1s tick only while the decision is actually pending and has a TTL.
+  React.useEffect(() => {
+    if (!pending || expiryMs === null) return;
+    setNow(Date.now());
+    const timer = window.setInterval(() => setNow(Date.now()), 1000);
+    return () => window.clearInterval(timer);
+  }, [pending, expiryMs]);
+
+  const remainingMs = expiryMs === null ? null : expiryMs - now;
+  const urgent = pending && remainingMs !== null && remainingMs > 0 && remainingMs < URGENT_REMAINING_MS;
+
+  // Client-side expiry: flip the message state without spending a request on
+  // a token the server would 410 anyway. One-shot per card instance.
+  const expiredLocallyRef = React.useRef(false);
+  React.useEffect(() => {
+    if (!pending || remainingMs === null || remainingMs > 0 || expiredLocallyRef.current) return;
+    expiredLocallyRef.current = true;
+    onResolved({ kind: "expired" });
+  }, [pending, remainingMs, onResolved]);
 
   async function resolve(decision: { approve: boolean; editedPlan?: Record<string, unknown> }) {
     if (busy) return;
@@ -87,27 +130,46 @@ export function AgentApprovalCard({
       : approval.status === "cancelled" ? "brain.approval.cancelled"
       : approval.status === "expired" ? "brain.approval.expired"
       : "brain.approval.error";
+    const replanMessage = approval.status === "expired" ? approval.replanMessage || "" : "";
     return (
-      <p
+      <div
         className={`brain-approval-note is-${approval.status}`}
         role={approval.status === "approved" ? "status" : "alert"}
         data-testid="agent-approval-note"
       >
-        {t(language, noteKey, { reason: approval.errorReason || "" })}
-      </p>
+        <span>{t(language, noteKey, { reason: approval.errorReason || "" })}</span>
+        {replanMessage && onReplan ? (
+          <button
+            type="button"
+            className="brain-approval-replan"
+            data-testid="approval-replan"
+            onClick={() => onReplan(replanMessage)}
+          >
+            {t(language, "brain.approval.expiredReplan")}
+          </button>
+        ) : null}
+      </div>
     );
   }
 
   const expiry = expiryTime(language, approval.expiresAt);
   return (
     <section
-      className="brain-approval-card"
+      className={`brain-approval-card ${urgent ? "is-urgent" : ""}`}
       aria-label={t(language, "brain.approval.aria")}
       data-testid="agent-approval-card"
     >
       <header className="brain-approval-head">
         <ShieldAlert className="h-4 w-4" aria-hidden="true" />
         <strong>{t(language, "brain.approval.title")}</strong>
+        {remainingMs !== null ? (
+          <span
+            className={`brain-approval-countdown ${urgent ? "is-urgent" : ""}`}
+            data-testid="approval-countdown"
+          >
+            {t(language, "brain.approval.countdown", { time: formatCountdown(remainingMs) })}
+          </span>
+        ) : null}
       </header>
       {approval.planSummary ? (
         <div className="brain-approval-summary">
@@ -117,6 +179,11 @@ export function AgentApprovalCard({
       ) : null}
       {expiry ? (
         <small className="brain-approval-expiry">{t(language, "brain.approval.expiry", { time: expiry })}</small>
+      ) : null}
+      {urgent ? (
+        <small className="brain-approval-urgency" role="alert" data-testid="approval-urgency">
+          {t(language, "brain.approval.countdown.warning")}
+        </small>
       ) : null}
       {editOpen ? (
         <div className="brain-approval-editor">

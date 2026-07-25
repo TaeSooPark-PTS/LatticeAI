@@ -1,0 +1,37 @@
+name: Agent Smoke (weekly, fail-open)
+
+# Review 2026-07-25 Wave 3.4: a weekly real-model agent-loop smoke.
+# The CI runner has no local MLX models, so the script's fail-open path
+# produces an honest "skipped" report there; on self-hosted runners with
+# models installed it exercises the live loop. This workflow must NEVER
+# gate the repository — the report artifact is the deliverable.
+
+on:
+  schedule:
+    - cron: "0 4 * * 1"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  agent-smoke:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - name: Install package
+        run: pip install -e "."
+      - name: Run agent smoke (fail-open)
+        continue-on-error: true
+        run: |
+          python scripts/bench_agent_smoke.py --json > agent-smoke-report.json || true
+          python scripts/bench_agent_smoke.py || true
+      - name: Upload report
+        uses: actions/upload-artifact@v4
+        with:
+          name: agent-smoke-report
+          path: agent-smoke-report.json
+          if-no-files-found: warn

@@ -23,15 +23,23 @@ calls a model.
 from __future__ import annotations
 
 import logging
+from datetime import datetime, timedelta
 from typing import Any, Dict, List, Optional
 
-from latticeai.core.timeutil import now_iso as _now
+from latticeai.core.timeutil import local_now, now_iso as _now, parse_iso
 
 LOGGER = logging.getLogger(__name__)
 
 _RECENT_NODE_LIMIT = 6
 _SEARCH_HISTORY_LIMIT = 2000
 _BRIEFING_HISTORY_LIMIT = 2000
+
+# Graph-hygiene advisory (review 2026-07-25 Wave 2.5): once the graph passes
+# this many nodes with no noise-curate pass in the stale window, the briefing
+# suggests a *dry-run* /knowledge-graph/curate/noise. Advisory only — nothing
+# is deleted until the user explicitly applies the job.
+_HYGIENE_MIN_NODES = 200
+_HYGIENE_STALE_DAYS = 7
 
 
 def _clip(text: Any, limit: int = 160) -> str:
@@ -240,6 +248,73 @@ class CommandCenterService:
         ]
         return {"available": True, "count": len(suggestions), "top": top}
 
+    def _hygiene_section(self) -> Dict[str, Any]:
+        """Advisory graph-hygiene signal (review 2026-07-25 Wave 2.5).
+
+        Suggests a dry-run noise-curate pass when the graph has grown past
+        ``_HYGIENE_MIN_NODES`` nodes and the last applied pass is missing or
+        older than ``_HYGIENE_STALE_DAYS`` days. Fail-open: any backend error
+        degrades to "no suggestion" — the briefing itself never breaks.
+        """
+        section: Dict[str, Any] = {
+            "available": False,
+            "suggest_noise_curate": False,
+            "reason": "",
+            "last_noise_curate_at": None,
+            "node_count": 0,
+        }
+        if not self._enable_graph or not hasattr(self._kg, "stats"):
+            return section
+        try:
+            stats = self._kg.stats() or {}
+            node_count = sum(
+                int(count or 0) for count in (stats.get("nodes") or {}).values()
+            )
+            last = (
+                self._kg.last_noise_curate_at()
+                if hasattr(self._kg, "last_noise_curate_at")
+                else None
+            )
+            section.update(
+                {
+                    "available": True,
+                    "node_count": node_count,
+                    "last_noise_curate_at": last,
+                }
+            )
+            if node_count < _HYGIENE_MIN_NODES:
+                return section
+            if last is not None and not self._older_than_days(
+                last, _HYGIENE_STALE_DAYS
+            ):
+                return section
+            section["suggest_noise_curate"] = True
+            section["reason"] = (
+                f"{node_count} nodes and no noise curation in the last "
+                f"{_HYGIENE_STALE_DAYS} days"
+                if last
+                else f"{node_count} nodes and no noise curation recorded"
+            )
+        except Exception:
+            LOGGER.exception("command center hygiene read failed")
+            return {
+                "available": False,
+                "suggest_noise_curate": False,
+                "reason": "",
+                "last_noise_curate_at": None,
+                "node_count": 0,
+            }
+        return section
+
+    @staticmethod
+    def _older_than_days(stamp: str, days: int) -> bool:
+        parsed = parse_iso(stamp)
+        if parsed is None:
+            # Unreadable stamp → treat as stale; suggesting a dry-run is safe.
+            return True
+        now = datetime.now(parsed.tzinfo) if parsed.tzinfo else local_now()
+        return (now - parsed) > timedelta(days=days)
+
     # ── quick actions ────────────────────────────────────────────────────
 
     def _quick_actions(self, sections: Dict[str, Dict[str, Any]]) -> List[Dict[str, Any]]:
@@ -295,6 +370,19 @@ class CommandCenterService:
                     "target": "/brain/graph",
                 }
             )
+        hygiene = sections.get("hygiene") or {}
+        if hygiene.get("suggest_noise_curate"):
+            actions.append(
+                {
+                    "id": "curate-noise",
+                    "kind": "hygiene",
+                    "count": int(hygiene.get("node_count") or 0),
+                    "target": "/brain/graph",
+                    # Dry-run by default on the API side: this endpoint only
+                    # *reports* removals until dry_run=false is sent explicitly.
+                    "endpoint": "/knowledge-graph/curate/noise",
+                }
+            )
         if not actions:
             actions.append(
                 {"id": "ask-brain", "kind": "chat", "count": 0, "target": "/brain"}
@@ -319,6 +407,7 @@ class CommandCenterService:
             "suggestions": self._suggestion_section(
                 user_email=user_email, workspace_id=workspace_id
             ),
+            "hygiene": self._hygiene_section(),
         }
         return {
             "generated_at": _now(),

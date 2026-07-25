@@ -11,7 +11,7 @@ import threading
 import time
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
-from typing import Any, Dict
+from typing import Any, Dict, Optional
 
 from fastapi import APIRouter, HTTPException, Request
 
@@ -19,6 +19,11 @@ from lattice_brain.runtime.hooks import dispatch_tool
 from latticeai.api.chat_contracts import AgentEvalRequest, AgentRequest, AgentResumeRequest
 from latticeai.api.chat_helpers import _LANG_HINT, detect_language, workspace_scope_from_request
 from latticeai.core.agent import AgentRunContext, AgentState, normalize_plan
+from latticeai.core.run_store import (
+    AgentRunStore,
+    hash_approval_token,
+    restore_run_context,
+)
 from latticeai.services.tool_dispatch import collect_artifacts, collect_created_files
 
 
@@ -42,6 +47,7 @@ class AgentHTTPController:
         agent_root: Path,
         ensure_agent_root: Any,
         funnel_metrics: Any = None,
+        run_store: Any = None,
     ) -> None:
         self.runtime = runtime
         self.model_router = model_router
@@ -68,6 +74,16 @@ class AgentHTTPController:
         # explicit human-in-loop context flow above).
         self._approvals: Dict[str, Dict[str, Any]] = {}
         self._approval_ttl_seconds = 10 * 60
+        # Durable side of the approval loop (review Wave 0.1): paused runs are
+        # mirrored to disk so a valid token still resumes after a restart or
+        # from another worker process. In-memory stays the fast path.
+        self.run_store = run_store if run_store is not None else AgentRunStore(
+            Path(base_dir) / "data" / "agent_runs"
+        )
+        try:
+            self.run_store.sweep_expired()
+        except Exception as exc:  # noqa: BLE001 — hygiene must not break startup
+            logging.warning("agent run store sweep failed: %s", exc)
         self._background_tasks: set[asyncio.Task] = set()
 
     def register_routes(self, router: APIRouter) -> None:
@@ -82,6 +98,10 @@ class AgentHTTPController:
         @router.post("/agent/resume")
         async def agent_resume(req: AgentResumeRequest, request: Request):
             return await self.resume(req, request)
+
+        @router.get("/agent/approvals")
+        async def agent_approvals(request: Request):
+            return self.pending_approvals(request)
 
     def _schedule_background_task(self, coro: Any) -> None:
         task = asyncio.create_task(coro)
@@ -180,8 +200,17 @@ class AgentHTTPController:
             "results": results,
         }
 
-    async def agent(self, req: AgentRequest, request: Request) -> Dict[str, Any]:
-        """Plan and execute a natural-language local agent run."""
+    async def agent(
+        self,
+        req: AgentRequest,
+        request: Request,
+        on_step: Any = None,
+    ) -> Dict[str, Any]:
+        """Plan and execute a natural-language local agent run.
+
+        ``on_step`` (optional) is a per-run step observer — the live SSE
+        route attaches one so the client sees progress while EXECUTING.
+        """
         current_user = self.require_user(request)
         self.enforce_rate_limit(current_user, "agent")
         effective_email = self.authenticated_identity(current_user, req.user_email)
@@ -207,6 +236,8 @@ class AgentHTTPController:
         max_steps = max(1, min(req.max_steps, 50))
         max_retry = 3
         ctx = AgentRunContext()
+        if on_step is not None:
+            ctx.on_step = on_step
         ctx.executing_model = req.executing_model
         ctx.reviewing_model = req.reviewing_model
         ctx.state = AgentState.PLANNING
@@ -289,6 +320,26 @@ class AgentHTTPController:
                 "expires_monotonic": now_monotonic + self._approval_ttl_seconds,
                 "expires_at": expires_at,
             }
+        # Durable mirror: a restart between pause and resume must not orphan
+        # the run. Best-effort — the in-memory pause still answers on failure.
+        try:
+            self.run_store.save(
+                run_id,
+                ctx=ctx,
+                req_payload=req.model_dump(),
+                language_hint=language_hint,
+                user=current_user,
+                token=approval_token,
+                expires_epoch=time.time() + self._approval_ttl_seconds,
+                expires_at=expires_at,
+            )
+        except Exception as exc:  # noqa: BLE001
+            logging.warning("agent run store persist failed: %s", exc)
+        if self.funnel_metrics is not None:
+            try:
+                self.funnel_metrics.increment("approval_pauses")
+            except Exception as exc:  # noqa: BLE001 — advisory only
+                logging.warning("funnel metrics increment failed: %s", exc)
         ctx.state_history.append(AgentState.WAITING_APPROVAL.value)
         message = (
             "이 작업에는 승인이 필요한 단계가 있어 실행을 잠시 멈췄습니다. "
@@ -318,6 +369,101 @@ class AgentHTTPController:
         for run_id, entry in list(self._approvals.items()):
             if now_monotonic >= entry["expires_monotonic"]:
                 self._approvals.pop(run_id, None)
+                try:
+                    self.run_store.delete(run_id)
+                except Exception:  # noqa: BLE001 — hygiene only
+                    pass
+
+    def pending_approvals(self, request: Request) -> Dict[str, Any]:
+        """Unexpired paused runs for the current user (memory ∪ disk).
+
+        Lets the UI re-surface an approval card after a reload/restart instead
+        of the run silently vanishing.
+        """
+        current_user = self.require_user(request)
+        now_monotonic = time.monotonic()
+        pending: Dict[str, Dict[str, Any]] = {}
+        with self._pending_lock:
+            for run_id, entry in self._approvals.items():
+                if entry["user"] != current_user:
+                    continue
+                if now_monotonic >= entry["expires_monotonic"]:
+                    continue
+                plan = getattr(entry["ctx"], "plan", {}) or {}
+                pending[run_id] = {
+                    "run_id": run_id,
+                    "goal": str(plan.get("goal") or "")[:200],
+                    "expires_at": entry["expires_at"],
+                }
+        try:
+            for summary in self.run_store.pending_summaries(current_user):
+                run_id = summary.get("run_id")
+                if run_id and run_id not in pending:
+                    pending[run_id] = {
+                        "run_id": run_id,
+                        "goal": summary.get("goal") or "",
+                        "expires_at": summary.get("expires_at"),
+                    }
+        except Exception as exc:  # noqa: BLE001 — disk listing is best-effort
+            logging.warning("agent run store listing failed: %s", exc)
+        return {"pending": sorted(pending.values(), key=lambda p: p["run_id"])}
+
+    def _restore_persisted_approval(self, run_id: str) -> Optional[Dict[str, Any]]:
+        """Rebuild an approval entry from disk after a restart.
+
+        Returns an entry shaped like the in-memory ones but carrying
+        ``token_hash`` instead of the plaintext token. Expired records are
+        deleted and reported via the same 410 contract as the memory path.
+        """
+        try:
+            record = self.run_store.load(run_id)
+        except Exception as exc:  # noqa: BLE001 — load error == not found
+            logging.warning("agent run store load failed: %s", exc)
+            return None
+        if record is None:
+            return None
+        req_payload = record.get("req") or {}
+        if time.time() >= float(record.get("expires_epoch") or 0):
+            try:
+                self.run_store.delete(run_id)
+            except Exception:  # noqa: BLE001
+                pass
+            raise HTTPException(
+                status_code=410,
+                detail={
+                    "error": "approval_expired",
+                    "message": "Approval token expired. Start a new request.",
+                    "replan": {"message": str(req_payload.get("message") or "")},
+                },
+            )
+        try:
+            restored_req = AgentRequest(**req_payload)
+        except Exception as exc:  # noqa: BLE001 — unreconstructable == not found
+            logging.warning("agent run store request restore failed: %s", exc)
+            return None
+        remaining = max(1.0, float(record["expires_epoch"]) - time.time())
+        return {
+            "ctx": restore_run_context(record.get("ctx") or {}),
+            "req": restored_req,
+            "language_hint": str(record.get("language_hint") or "English"),
+            "user": record.get("user"),
+            "token_hash": str(record.get("token_hash") or ""),
+            "expires_monotonic": time.monotonic() + remaining,
+            "expires_at": record.get("expires_at"),
+        }
+
+    @staticmethod
+    def _token_matches(entry: Dict[str, Any], supplied: str) -> bool:
+        """Constant-time token check for both plaintext and hashed entries."""
+        if not supplied:
+            return False
+        stored = entry.get("token")
+        if stored is not None:
+            return secrets.compare_digest(str(stored), supplied)
+        stored_hash = str(entry.get("token_hash") or "")
+        return bool(stored_hash) and secrets.compare_digest(
+            stored_hash, hash_approval_token(supplied)
+        )
 
     async def _finish(
         self,
@@ -469,6 +615,10 @@ class AgentHTTPController:
         with self._pending_lock:
             entry = self._approvals.get(req.run_id or "")
             if entry is None:
+                # Restart survival (review Wave 0.1): the in-memory dict is
+                # gone but the durable record may still be valid.
+                entry = self._restore_persisted_approval(req.run_id or "")
+            if entry is None:
                 raise HTTPException(
                     status_code=404,
                     detail="Agent run not found. It may have expired — start a new request.",
@@ -480,23 +630,42 @@ class AgentHTTPController:
                 )
             if now_monotonic >= entry["expires_monotonic"]:
                 self._approvals.pop(req.run_id, None)
+                try:
+                    self.run_store.delete(req.run_id or "")
+                except Exception:  # noqa: BLE001
+                    pass
                 raise HTTPException(
                     status_code=410,
-                    detail="Approval token expired. Start a new request.",
+                    detail={
+                        "error": "approval_expired",
+                        "message": "Approval token expired. Start a new request.",
+                        "replan": {"message": getattr(entry.get("req"), "message", "")},
+                    },
                 )
-            supplied = req.approval_token or ""
-            if not supplied or not secrets.compare_digest(entry["token"], supplied):
+            if not self._token_matches(entry, req.approval_token or ""):
                 raise HTTPException(
                     status_code=403,
                     detail="Invalid approval token for this run.",
                 )
             # Token validated — the pending run is consumed either way.
             self._approvals.pop(req.run_id, None)
+            try:
+                self.run_store.delete(req.run_id or "")
+            except Exception as exc:  # noqa: BLE001 — consumption must proceed
+                logging.warning("agent run store delete failed: %s", exc)
             self._purge_expired_approvals_locked(now_monotonic)
 
         ctx: AgentRunContext = entry["ctx"]
         original_request: AgentRequest = entry["req"]
         language_hint: str = entry["language_hint"]
+
+        if self.funnel_metrics is not None:
+            # approval_resume_rate = resumes / pauses (review §4.3): counted on
+            # every token-valid resume decision, approve and deny alike.
+            try:
+                self.funnel_metrics.increment("approval_resumes")
+            except Exception as exc:  # noqa: BLE001 — advisory only
+                logging.warning("funnel metrics increment failed: %s", exc)
 
         approved = req.approve if req.approve is not None else req.approved
         if not approved:

@@ -13,6 +13,78 @@ class KnowledgeGraphVectorMixin:
     retrieval/write helpers (e.g. self._vector_text_for_node) through the MRO.
     """
 
+    # ── embedder fingerprint (review Wave 2.2 — stale_embedder) ──────────────
+    # vector_search filters on the CURRENT model/dim, so swapping the embedder
+    # silently yields zero vector rows. The fingerprint persisted in graph_meta
+    # records which embedder actually built the index; a mismatch is surfaced
+    # as the honest ``stale_embedder`` signal instead of a silent degradation.
+
+    _EMBEDDER_FINGERPRINT_KEY = "embedder_fingerprint"
+
+    def _embedder_fingerprint_record(
+        self, conn: sqlite3.Connection
+    ) -> Optional[Dict[str, Any]]:
+        """Read the recorded embedder fingerprint from graph_meta (or None)."""
+        row = conn.execute(
+            "SELECT value FROM graph_meta WHERE key=?",
+            (self._EMBEDDER_FINGERPRINT_KEY,),
+        ).fetchone()
+        if not row:
+            return None
+        payload = _safe_loads(row["value"])
+        if not isinstance(payload, dict) or not payload.get("model_id"):
+            return None
+        try:
+            dim = int(payload.get("dim") or 0)
+        except (TypeError, ValueError):
+            dim = 0
+        return {"model_id": str(payload["model_id"]), "dim": dim}
+
+    def _write_embedder_fingerprint(self, conn: sqlite3.Connection) -> Dict[str, Any]:
+        """Persist the CURRENT embedder identity (same transaction as caller)."""
+        fingerprint = {
+            "model_id": self._embedding_model.model_id,
+            "dim": int(self._embedding_model.dim),
+        }
+        conn.execute(
+            "INSERT OR REPLACE INTO graph_meta(key, value) VALUES (?, ?)",
+            (self._EMBEDDER_FINGERPRINT_KEY, _json(fingerprint)),
+        )
+        return fingerprint
+
+    def record_embedder_fingerprint(self) -> Dict[str, Any]:
+        """Record the current embedder (model_id + dim) as the index builder."""
+        with self._connect() as conn:
+            return self._write_embedder_fingerprint(conn)
+
+    def embedder_fingerprint_status(self) -> Dict[str, Any]:
+        """Compare the current embedder against the recorded index fingerprint.
+
+        Returns ``{"current": {model_id, dim}, "recorded": {...} | None,
+        "stale_embedder": bool}``. ``stale_embedder`` is True only when a
+        fingerprint was recorded AND it differs from the current embedder —
+        an unrecorded index (legacy DBs, nothing indexed yet) is honestly
+        "unknown", never reported stale. Never raises.
+        """
+        current = {
+            "model_id": self._embedding_model.model_id,
+            "dim": int(self._embedding_model.dim),
+        }
+        recorded: Optional[Dict[str, Any]] = None
+        try:
+            with self._connect() as conn:
+                recorded = self._embedder_fingerprint_record(conn)
+        except Exception:  # noqa: BLE001 — status must degrade, never raise
+            recorded = None
+        stale = bool(
+            recorded is not None
+            and (
+                recorded.get("model_id") != current["model_id"]
+                or recorded.get("dim") != current["dim"]
+            )
+        )
+        return {"current": current, "recorded": recorded, "stale_embedder": stale}
+
     def _iter_vector_source_items(
         self,
         conn: sqlite3.Connection,
@@ -153,6 +225,11 @@ class KnowledgeGraphVectorMixin:
                         indexed += 1
                     else:
                         skipped += 1
+                if indexed and self._embedder_fingerprint_record(conn) is None:
+                    # First successful vector write establishes the fingerprint;
+                    # later incremental writes never overwrite it (only a full
+                    # rebuild may flip it after an embedder swap).
+                    self._write_embedder_fingerprint(conn)
             summary.update(
                 {
                     "items_total": len(items),
@@ -254,6 +331,10 @@ class KnowledgeGraphVectorMixin:
                         op_id,
                     ),
                 )
+                # A successful rebuild (re)establishes which embedder built
+                # the index — this is the only path that may flip a recorded
+                # fingerprint after an embedder swap.
+                self._write_embedder_fingerprint(conn)
             return {
                 "status": "completed",
                 "operation_id": op_id,
@@ -401,8 +482,10 @@ class KnowledgeGraphVectorMixin:
                         "within_target": float(duration_ms) <= 10_000,
                     }
                 )
+        embedder_status = self.embedder_fingerprint_status()
         return {
             "status": "ready" if pending == 0 else "needs_reindex",
+            "embedder": embedder_status,
             "storage": {
                 "db_path": str(self.db_path),
                 "backend": "sqlite",
@@ -449,7 +532,11 @@ class KnowledgeGraphVectorMixin:
                 "backlog_reasons": backlog_reasons,
                 "backlog_samples": backlog_samples,
                 "incremental_reindex_recommended": pending > 0,
-                "full_rebuild_recommended": orphaned_items > 0,
+                # A stale embedder means every old-model row must be re-embedded;
+                # only a full rebuild (which re-records the fingerprint) heals it.
+                "full_rebuild_recommended": bool(
+                    orphaned_items > 0 or embedder_status["stale_embedder"]
+                ),
                 "latency_budget": latency_budget,
             },
             "operations": [
@@ -475,7 +562,11 @@ class KnowledgeGraphVectorMixin:
 
         Reduces :meth:`index_status` (``pending = missing + stale``) to the
         fixed contract ``{"status", "pending_items", "total_items", "detail"}``
-        with ``status`` in ``ready`` / ``pending`` / ``unavailable``.
+        with ``status`` in ``ready`` / ``pending`` / ``stale_embedder`` /
+        ``unavailable``. ``stale_embedder`` (review Wave 2.2) is reported only
+        when the recorded embedder fingerprint differs from the current
+        embedder AND rows indexed under the old model still exist — the index
+        needs a full rebuild, not an incremental sync.
 
         Never raises: environments where the embedding provider or index
         storage cannot be used report ``"unavailable"`` with the cause in
@@ -492,6 +583,35 @@ class KnowledgeGraphVectorMixin:
             }
         pending = int(status.get("pending_items") or 0)
         total = int(status.get("source_items") or 0)
+        embedder = status.get("embedder") or {}
+        if embedder.get("stale_embedder"):
+            old_model_rows = 0
+            try:
+                with self._connect() as conn:
+                    old_model_rows = int(
+                        conn.execute(
+                            "SELECT COUNT(*) AS c FROM vector_embeddings "
+                            "WHERE embedding_model<>? OR embedding_dim<>?",
+                            (
+                                self._embedding_model.model_id,
+                                int(self._embedding_model.dim),
+                            ),
+                        ).fetchone()["c"]
+                    )
+            except Exception:  # noqa: BLE001 — keep the existing statuses on failure
+                old_model_rows = 0
+            if old_model_rows > 0:
+                recorded = embedder.get("recorded") or {}
+                return {
+                    "status": "stale_embedder",
+                    "pending_items": pending,
+                    "total_items": total,
+                    "detail": (
+                        f"embedding model changed ({recorded.get('model_id')} → "
+                        f"{self._embedding_model.model_id}); {old_model_rows} indexed "
+                        "rows still use the previous model — run a full vector index rebuild"
+                    ),
+                }
         if pending > 0:
             return {
                 "status": "pending",

@@ -1,9 +1,17 @@
+import * as React from "react";
+import { X } from "lucide-react";
+
+import { latticeApi } from "@/api/client";
 import { t, type Language } from "@/i18n";
+import { useFocusTrap } from "@/lib/useFocusTrap";
+import { isRecord, textValue } from "./brainData";
 import type { Message } from "./types";
 
 function citationDomId(messageId: string, citationId: string): string {
   return `${messageId}-cite-${citationId}`;
 }
+
+type Citation = NonNullable<Message["proof"]>["citations"][number];
 
 // Inline, keyboard-focusable citation markers rendered next to the answer text.
 // Activating one moves focus to the matching row in the evidence card below.
@@ -43,6 +51,7 @@ export function InlineCitationMarkers({
 }
 
 export function AnswerProofCard({ language, proof, messageId }: { language: Language; proof: NonNullable<Message["proof"]>; messageId: string }) {
+  const [openCitation, setOpenCitation] = React.useState<Citation | null>(null);
   return (
     <section className="brain-answer-proof" role="group" aria-label={t(language, "brain.answerProof.aria")}>
       <div className="brain-answer-proof-head">
@@ -61,17 +70,36 @@ export function AnswerProofCard({ language, proof, messageId }: { language: Lang
               tabIndex={-1}
               aria-label={t(language, "brain.answerProof.citationItem", { index: index + 1, title: citation.title })}
             >
-              <span className="brain-answer-proof-index" aria-hidden="true">{index + 1}</span>
-              <span>{citation.source}</span>
-              <strong>{citation.title}</strong>
-              <small>{citation.snippet || proof.query}</small>
-              <CitationWhy language={language} citation={citation} />
+              <button
+                type="button"
+                className="brain-citation-open"
+                aria-haspopup="dialog"
+                aria-label={t(language, "brain.sourceModal.openAria", { title: citation.title })}
+                data-testid="citation-open"
+                onClick={() => setOpenCitation(citation)}
+              >
+                <span className="brain-answer-proof-index" aria-hidden="true">{index + 1}</span>
+                <span>{citation.source}</span>
+                <strong>{citation.title}</strong>
+                <small>{citation.snippet || proof.query}</small>
+                <CitationWhy language={language} citation={citation} />
+                <span className="brain-citation-open-hint" aria-hidden="true">
+                  {t(language, "brain.sourceModal.open")}
+                </span>
+              </button>
             </li>
           ))}
         </ol>
       ) : (
         <small>{t(language, "brain.answerProof.empty")}</small>
       )}
+      {openCitation ? (
+        <SourceChunkModal
+          language={language}
+          citation={openCitation}
+          onClose={() => setOpenCitation(null)}
+        />
+      ) : null}
     </section>
   );
 }
@@ -84,7 +112,7 @@ function CitationWhy({
   citation,
 }: {
   language: Language;
-  citation: NonNullable<Message["proof"]>["citations"][number];
+  citation: Citation;
 }) {
   const hasTerms = citation.matchedTerms.length > 0;
   return (
@@ -103,5 +131,143 @@ function CitationWhy({
         <span className="brain-citation-why-label">{t(language, "brain.answerProof.matched.none")}</span>
       )}
     </span>
+  );
+}
+
+type SourceNode = {
+  title: string;
+  type: string;
+  summary: string;
+  provenance: Array<{ key: string; value: string }>;
+};
+
+// Metadata keys worth surfacing as provenance ("where this text came from").
+const PROVENANCE_KEYS = [
+  "source",
+  "source_uri",
+  "origin",
+  "relative_path",
+  "path",
+  "filename",
+  "conversation_id",
+  "provenance_id",
+];
+
+// GET /api/graph/node → {node: {id,type,title,summary,metadata,...}}.
+// Defensive parse; null when the payload has no node record.
+export function parseSourceNode(data: unknown): SourceNode | null {
+  const root = isRecord(data) ? data : {};
+  const node = isRecord(root.node) ? root.node : null;
+  if (!node) return null;
+  const metadata = isRecord(node.metadata) ? node.metadata : {};
+  const provenance = PROVENANCE_KEYS.flatMap((key) => {
+    const value = textValue(metadata, [key]);
+    return value ? [{ key, value }] : [];
+  });
+  return {
+    title: textValue(node, ["title", "label", "id"]),
+    type: textValue(node, ["type"]),
+    summary: textValue(node, ["summary", "content", "text"]),
+    provenance,
+  };
+}
+
+// The cited source's stored text (graph node summary) + provenance, in the
+// same modal shell as file previews. The honest failure mode matters:
+// citations that are not graph nodes (older recalls) show a clear error
+// instead of pretending there is nothing to see.
+function SourceChunkModal({
+  language,
+  citation,
+  onClose,
+}: {
+  language: Language;
+  citation: Citation;
+  onClose: () => void;
+}) {
+  const trapRef = useFocusTrap<HTMLDivElement>(onClose);
+  const [state, setState] = React.useState<
+    { status: "loading" } | { status: "error"; reason: string } | { status: "ready"; node: SourceNode }
+  >({ status: "loading" });
+
+  React.useEffect(() => {
+    let cancelled = false;
+    setState({ status: "loading" });
+    void latticeApi.graphNode(citation.id).then((result) => {
+      if (cancelled) return;
+      const node = result.ok ? parseSourceNode(result.data) : null;
+      if (node) setState({ status: "ready", node });
+      else setState({ status: "error", reason: result.error || String(result.status || "") });
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, [citation.id]);
+
+  const title = state.status === "ready" && state.node.title ? state.node.title : citation.title;
+  return (
+    <div
+      className="file-preview-backdrop"
+      role="presentation"
+      onMouseDown={(event) => {
+        if (event.target === event.currentTarget) onClose();
+      }}
+    >
+      <div
+        ref={trapRef}
+        className="file-preview-modal source-chunk-modal"
+        role="dialog"
+        aria-modal="true"
+        aria-label={t(language, "brain.sourceModal.aria", { title })}
+        data-testid="source-chunk-modal"
+      >
+        <header className="file-preview-head">
+          <strong className="file-preview-name">{title}</strong>
+          <div className="file-preview-actions">
+            {state.status === "ready" && state.node.type ? (
+              <span className="source-chunk-type">{state.node.type}</span>
+            ) : null}
+            <button
+              type="button"
+              className="file-preview-close"
+              aria-label={t(language, "brain.sourceModal.close")}
+              onClick={onClose}
+            >
+              <X className="h-4 w-4" aria-hidden="true" />
+            </button>
+          </div>
+        </header>
+        <div className="file-preview-body source-chunk-body">
+          {state.status === "loading" ? (
+            <p className="file-preview-note" role="status">{t(language, "brain.sourceModal.loading")}</p>
+          ) : state.status === "error" ? (
+            <p className="file-preview-note is-error" role="alert">
+              {t(language, "brain.sourceModal.error", { reason: state.reason })}
+            </p>
+          ) : (
+            <>
+              {state.node.summary ? (
+                <pre className="source-chunk-text" data-testid="source-chunk-text">{state.node.summary}</pre>
+              ) : (
+                <p className="file-preview-note">{t(language, "brain.sourceModal.empty")}</p>
+              )}
+              {state.node.provenance.length ? (
+                <div className="source-chunk-provenance" data-testid="source-chunk-provenance">
+                  <small>{t(language, "brain.sourceModal.provenance")}</small>
+                  <ul>
+                    {state.node.provenance.map((entry) => (
+                      <li key={entry.key}>
+                        <span>{entry.key}</span>
+                        <code>{entry.value}</code>
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+              ) : null}
+            </>
+          )}
+        </div>
+      </div>
+    </div>
   );
 }

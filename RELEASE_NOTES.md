@@ -1,16 +1,17 @@
 # Release Notes
 
-This repository keeps public release history from **8.0.0 through 9.9.3**.
+This repository keeps public release history from **8.0.0 through 9.9.4**.
 Earlier release notes and release evidence were removed from the Git tree so the
 history stays focused on the current product era.
 
 ## Current Release
 
+- [v9.9.4 - Durable Loops](RELEASE_NOTES_v9.9.4.md)
 - [v9.9.3 - Closed Loops](RELEASE_NOTES_v9.9.3.md)
-- [v9.9.2 - Artifact Trust](RELEASE_NOTES_v9.9.2.md)
 
 ## Recent Release Notes
 
+- [v9.9.2 - Artifact Trust](RELEASE_NOTES_v9.9.2.md)
 - [v9.9.1 - Clean Foundations](RELEASE_NOTES_v9.9.1.md)
 - [v9.9.0 - Fail-Closed Trust](RELEASE_NOTES_v9.9.0.md)
 - [v9.8.0 - Honest Knowledge Pipeline](RELEASE_NOTES_v9.8.0.md)

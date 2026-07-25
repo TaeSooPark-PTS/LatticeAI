@@ -19,4 +19,7 @@ historical evidence and are intentionally not rewritten during release bumps.
   — v9.9.3 Closed Loops post-ship review: what the 22 closed loops achieved,
   remaining durability/consistency/visibility gaps, and a Wave 0–4 roadmap
   (durable approval, RetrievalPolicy, chunking, citations, multi-agent harness)
+- [V9.9.4 work status](V9.9.4_WORK_STATUS.md) — the 2026-07-25 review's
+  Wave 0–4 roadmap mapped to its 9.9.4 implementations, with the honest
+  remaining-gap backlog
 - [Brain simplification UX review](UX_BRAIN_SIMPLIFICATION_REVIEW.md)

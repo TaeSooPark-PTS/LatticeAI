@@ -5,7 +5,13 @@ import userEvent from "@testing-library/user-event";
 import { describe, expect, it, vi } from "vitest";
 
 import { latticeApi } from "@/api/client";
-import { IngestionJobReportCard, IngestionJobsPanel, VectorFreshnessNotice } from "./BrainSignals";
+import {
+  IngestionJobReportCard,
+  IngestionJobsPanel,
+  PendingApprovalsNotice,
+  VectorFreshnessNotice,
+  WatchHealthCard,
+} from "./BrainSignals";
 import type { IngestionJob, VectorFreshness } from "./types";
 
 function renderWithQuery(ui: React.ReactElement) {
@@ -134,5 +140,102 @@ describe("IngestionJobReportCard", () => {
       />,
     );
     expect(screen.getByTestId("ingestion-job-report").textContent).not.toContain("%");
+  });
+});
+
+describe("WatchHealthCard", () => {
+  function mockWatchStatus(data: Record<string, unknown>, ok = true) {
+    return vi.spyOn(latticeApi, "ingestionWatchStatus").mockResolvedValue({
+      ok, status: ok ? 200 : 503, source: ok ? "live" : "unavailable", data,
+    } as never);
+  }
+
+  it("shows watch basenames, scan results, errors, and the not-live note", async () => {
+    mockWatchStatus({
+      enabled_count: 1,
+      polling: false,
+      interval_seconds: 60,
+      watches: [{
+        id: "watch_1",
+        path: "/Users/me/Documents/프로젝트노트",
+        enabled: true,
+        last_scan_at: new Date(Date.now() - 5 * 60_000).toISOString(),
+        last_result: { status: "ok", new: 3, ingested: 3, failed: 2 },
+        tracked_files: 41,
+        last_errors: [
+          { path: "/Users/me/Documents/프로젝트노트/broken.pdf", detail: "parse failed" },
+          { path: "/Users/me/Documents/프로젝트노트/locked.docx", detail: "permission denied" },
+        ],
+      }],
+    });
+
+    renderWithQuery(<WatchHealthCard language="ko" />);
+    const card = await screen.findByTestId("watch-health-card");
+    expect(card.textContent).toContain("프로젝트노트");
+    expect(card.textContent).toContain("5분 전 스캔");
+    expect(card.textContent).toContain("+3 반영");
+    expect(card.textContent).toContain("실패 2건");
+    expect(card.textContent).toContain("broken.pdf — parse failed");
+    expect(screen.getByTestId("watch-polling-note")).toBeTruthy();
+  });
+
+  it("renders nothing when no watch is enabled", async () => {
+    mockWatchStatus({ enabled_count: 0, polling: false, interval_seconds: 60, watches: [] });
+    renderWithQuery(<WatchHealthCard language="ko" />);
+    await Promise.resolve();
+    expect(screen.queryByTestId("watch-health-card")).toBeNull();
+  });
+
+  it("stays silent when the endpoint is unavailable", async () => {
+    mockWatchStatus({}, false);
+    renderWithQuery(<WatchHealthCard language="ko" />);
+    await Promise.resolve();
+    expect(screen.queryByTestId("watch-health-card")).toBeNull();
+  });
+
+  it("hides the periodic-scan note while the poller is live", async () => {
+    mockWatchStatus({
+      enabled_count: 1,
+      polling: true,
+      interval_seconds: 60,
+      watches: [{ id: "w", path: "/tmp/docs", enabled: true, tracked_files: 3 }],
+    });
+    renderWithQuery(<WatchHealthCard language="ko" />);
+    await screen.findByTestId("watch-health-card");
+    expect(screen.queryByTestId("watch-polling-note")).toBeNull();
+  });
+});
+
+describe("PendingApprovalsNotice", () => {
+  function mockApprovals(pending: Array<Record<string, unknown>>) {
+    return vi.spyOn(latticeApi, "agentApprovals").mockResolvedValue({
+      ok: true, status: 200, source: "live", data: { pending },
+    } as never);
+  }
+
+  it("surfaces a paused run that no visible message represents", async () => {
+    mockApprovals([
+      { run_id: "run-lost", goal: "주간 보고서 정리", expires_at: "2026-07-26T09:30:00+09:00" },
+    ]);
+    renderWithQuery(<PendingApprovalsNotice language="ko" knownRunIds={[]} />);
+    const notice = await screen.findByTestId("pending-approvals-notice");
+    expect(notice.textContent).toContain("주간 보고서 정리");
+    expect(notice.getAttribute("role")).toBe("note");
+  });
+
+  it("stays silent when the paused run already has an inline card", async () => {
+    mockApprovals([
+      { run_id: "run-visible", goal: "이미 보이는 실행", expires_at: "2026-07-26T09:30:00+09:00" },
+    ]);
+    renderWithQuery(<PendingApprovalsNotice language="ko" knownRunIds={["run-visible"]} />);
+    await Promise.resolve();
+    expect(screen.queryByTestId("pending-approvals-notice")).toBeNull();
+  });
+
+  it("stays silent when nothing is pending", async () => {
+    mockApprovals([]);
+    renderWithQuery(<PendingApprovalsNotice language="ko" knownRunIds={[]} />);
+    await Promise.resolve();
+    expect(screen.queryByTestId("pending-approvals-notice")).toBeNull();
   });
 });

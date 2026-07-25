@@ -1,10 +1,10 @@
-import { fireEvent, render, screen, waitFor } from "@testing-library/react";
+import { act, fireEvent, render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
-import { describe, expect, it, vi } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vitest";
 
 import { latticeApi } from "@/api/client";
-import { AgentApprovalCard } from "./AgentApprovalCard";
-import { parseApprovalPayload } from "./approvalFlow";
+import { AgentApprovalCard, formatCountdown } from "./AgentApprovalCard";
+import { parseApprovalPayload, resolveApprovalRequest } from "./approvalFlow";
 import type { MessageApproval } from "./types";
 
 function pendingApproval(overrides: Partial<MessageApproval> = {}): MessageApproval {
@@ -149,5 +149,129 @@ describe("AgentApprovalCard", () => {
       approve: true,
       edited_plan: { goal: "edited", steps: [] },
     });
+  });
+});
+
+describe("resolveApprovalRequest replan passthrough", () => {
+  it("carries the 410 detail's replan message into the expired resolution", async () => {
+    mockResume({
+      ok: false,
+      status: 410,
+      error: "Approval token expired.",
+      data: {
+        detail: {
+          error: "approval_expired",
+          message: "The approval window expired.",
+          replan: { message: "원래 사용자 요청" },
+        },
+      },
+    });
+    const resolution = await resolveApprovalRequest({ runId: "run-1", token: "token-1" }, { approve: true });
+    expect(resolution).toEqual({ kind: "expired", replanMessage: "원래 사용자 요청" });
+  });
+
+  it("stays a plain expired resolution when the 410 carries no replan hint", async () => {
+    mockResume({ ok: false, status: 410, error: "Approval token expired.", data: { detail: "gone" } });
+    const resolution = await resolveApprovalRequest({ runId: "run-1", token: "token-1" }, { approve: true });
+    expect(resolution).toEqual({ kind: "expired" });
+  });
+});
+
+describe("AgentApprovalCard TTL countdown", () => {
+  afterEach(() => {
+    vi.useRealTimers();
+  });
+
+  it("formats remaining time as m:ss and clamps at zero", () => {
+    expect(formatCountdown(90_000)).toBe("1:30");
+    expect(formatCountdown(605_000)).toBe("10:05");
+    expect(formatCountdown(-2_000)).toBe("0:00");
+  });
+
+  it("shows a live countdown with urgency styling under two minutes", () => {
+    vi.useFakeTimers();
+    vi.setSystemTime(new Date("2026-07-26T09:00:00+09:00"));
+    render(
+      <AgentApprovalCard
+        language="ko"
+        approval={pendingApproval({ expiresAt: new Date(Date.now() + 90_000).toISOString() })}
+        onResolved={() => {}}
+      />,
+    );
+
+    expect(screen.getByTestId("approval-countdown").textContent).toContain("1:30");
+    expect(screen.getByTestId("agent-approval-card").className).toContain("is-urgent");
+    expect(screen.getByTestId("approval-urgency")).toBeTruthy();
+
+    act(() => {
+      vi.advanceTimersByTime(30_000);
+    });
+    expect(screen.getByTestId("approval-countdown").textContent).toContain("1:00");
+  });
+
+  it("keeps the calm treatment while more than two minutes remain", () => {
+    vi.useFakeTimers();
+    vi.setSystemTime(new Date("2026-07-26T09:00:00+09:00"));
+    render(
+      <AgentApprovalCard
+        language="ko"
+        approval={pendingApproval({ expiresAt: new Date(Date.now() + 10 * 60_000).toISOString() })}
+        onResolved={() => {}}
+      />,
+    );
+
+    expect(screen.getByTestId("approval-countdown").textContent).toContain("10:00");
+    expect(screen.getByTestId("agent-approval-card").className).not.toContain("is-urgent");
+    expect(screen.queryByTestId("approval-urgency")).toBeNull();
+  });
+
+  it("flips to expired client-side at zero without calling the server", () => {
+    vi.useFakeTimers();
+    vi.setSystemTime(new Date("2026-07-26T09:00:00+09:00"));
+    const resume = vi.spyOn(latticeApi, "resumeAgentApproval");
+    const onResolved = vi.fn();
+    render(
+      <AgentApprovalCard
+        language="ko"
+        approval={pendingApproval({ expiresAt: new Date(Date.now() + 5_000).toISOString() })}
+        onResolved={onResolved}
+      />,
+    );
+
+    act(() => {
+      vi.advanceTimersByTime(6_000);
+    });
+    expect(onResolved).toHaveBeenCalledTimes(1);
+    expect(onResolved).toHaveBeenCalledWith({ kind: "expired" });
+    expect(resume).not.toHaveBeenCalled();
+  });
+
+  it("offers 다시 계획하기 on an expired card that carries the replan message", () => {
+    const onReplan = vi.fn();
+    render(
+      <AgentApprovalCard
+        language="ko"
+        approval={pendingApproval({ status: "expired", replanMessage: "정리 페이지 다시 만들어줘" })}
+        onResolved={() => {}}
+        onReplan={onReplan}
+      />,
+    );
+
+    const note = screen.getByTestId("agent-approval-note");
+    expect(note.textContent).toContain("만료");
+    fireEvent.click(screen.getByTestId("approval-replan"));
+    expect(onReplan).toHaveBeenCalledWith("정리 페이지 다시 만들어줘");
+  });
+
+  it("shows no replan action after a client-side expiry (no server hint)", () => {
+    render(
+      <AgentApprovalCard
+        language="ko"
+        approval={pendingApproval({ status: "expired" })}
+        onResolved={() => {}}
+        onReplan={() => {}}
+      />,
+    );
+    expect(screen.queryByTestId("approval-replan")).toBeNull();
   });
 });

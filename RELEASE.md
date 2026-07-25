@@ -13,6 +13,24 @@
 > (`LTCAI_RELEASE_EVIDENCE_KEEP`으로 조정), 과거 증거는 언제든 해당 태그를
 > 체크아웃해 재생성할 수 있습니다.
 
+## v9.9.4 — Durable Loops (2026-07-26)
+
+9.9.4 ships every improvement wave from the 2026-07-25 full-stack review:
+durable approval/run persistence that survives restarts (hashed tokens, 410
+replan hints, `GET /agent/approvals`), a bounded executor context window, a
+single RetrievalPolicy consumed by both fusion layers (rule-based query
+rewrite + recency age-decay), manifest-aware plan rewriting plus React/Vite
+and Python-package manifests, live `agent_step` SSE streaming with a step
+timeline UI, type-aware chunking (markdown headings / code boundaries, PDF
+page metadata) with byte-identical plain chunks, embedder fingerprinting with
+honest `stale_embedder` signals, citation-instructed answers with a grounding
+bench gate, periodic noise-curate suggestions, a review-before-promote mode
+for graph promotions, five workflow harness scenarios, a funnel soft gate,
+approval TTL countdown/replan UX, source→chunk drill-down, watch health
+signals, and a weekly fail-open real-model agent smoke.
+
+- 상세: [RELEASE_NOTES_v9.9.4.md](RELEASE_NOTES_v9.9.4.md)
+
 ## v9.9.3 — Closed Loops (2026-07-22)
 
 9.9.3 ships the complete 22-item backlog left by the 2026-07-21 full-stack

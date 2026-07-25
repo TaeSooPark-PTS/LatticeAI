@@ -23,10 +23,14 @@ export function FirstValueLoopCard({
   language,
   streaming,
   onSendText,
+  onConnectData,
 }: {
   language: Language;
   streaming: boolean;
   onSendText: (text: string) => void;
+  // "내 폴더 연결하기" next step after the tour: scrolls/focuses the real
+  // ingestion dock on the same screen (wired by BrainConversation).
+  onConnectData?: () => void;
 }) {
   const qc = useQueryClient();
   const [track, setTrack] = React.useState(readFirstValueLoopState);
@@ -189,21 +193,52 @@ export function FirstValueLoopCard({
             </div>
           ) : null}
           {track.fileGenTried ? (
-            <p className="brain-fvl-done">{t(language, "brain.fvl.done")}</p>
+            <div className="brain-fvl-done">
+              <p>{t(language, "brain.fvl.done")}</p>
+              {/* The tour ends into real next steps instead of a dead end:
+                  connect real data, or clean the samples back out. */}
+              <div className="brain-fvl-done-actions">
+                {onConnectData ? (
+                  <button
+                    type="button"
+                    className="brain-fvl-chip is-connect"
+                    data-testid="fvl-connect-cta"
+                    onClick={onConnectData}
+                  >
+                    {t(language, "brain.fvl.connectCta")}
+                  </button>
+                ) : null}
+                <button
+                  type="button"
+                  className="brain-fvl-chip"
+                  data-testid="fvl-cleanup-cta"
+                  disabled={removeMutation.isPending}
+                  onClick={() => removeMutation.mutate()}
+                >
+                  {removeMutation.isPending
+                    ? t(language, "brain.fvl.removing")
+                    : t(language, "brain.fvl.cleanupCta")}
+                </button>
+              </div>
+            </div>
           ) : null}
 
-          <button
-            type="button"
-            className="brain-fvl-remove"
-            data-testid="fvl-remove"
-            disabled={removeMutation.isPending}
-            onClick={() => removeMutation.mutate()}
-          >
-            <Trash2 className="h-3.5 w-3.5" aria-hidden="true" />
-            {removeMutation.isPending
-              ? t(language, "brain.fvl.removing")
-              : t(language, "brain.fvl.remove")}
-          </button>
+          {/* The always-available remove control collapses into the done-state
+              "샘플 정리하기" CTA once the tour is complete. */}
+          {track.fileGenTried ? null : (
+            <button
+              type="button"
+              className="brain-fvl-remove"
+              data-testid="fvl-remove"
+              disabled={removeMutation.isPending}
+              onClick={() => removeMutation.mutate()}
+            >
+              <Trash2 className="h-3.5 w-3.5" aria-hidden="true" />
+              {removeMutation.isPending
+                ? t(language, "brain.fvl.removing")
+                : t(language, "brain.fvl.remove")}
+            </button>
+          )}
           {removeError ? (
             <small className="brain-fvl-error" role="alert">
               {t(language, "brain.fvl.error", { reason: removeError })}

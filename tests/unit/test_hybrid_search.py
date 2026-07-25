@@ -144,6 +144,59 @@ def test_hybrid_search_respects_workspace_scope(tmp_path):
     assert all(scopes.get(m["node_id"]) == "org:a" for m in scoped["matches"])
 
 
+def test_hybrid_search_recency_class_applies_age_decay(tmp_path):
+    """recency age decay (review Wave 0.2): for recency-class queries each
+    fused score is dampened into the [0.5, 1.0] band by node age, so a stale
+    node that wins lexically loses to a fresh one — without ever being zeroed."""
+    store = _store(tmp_path)
+    old = store.ingest_source(
+        source_type="note",
+        title="배포 기록 아카이브",
+        text="지난주 배포 회의 내용 정리: 배포 체크리스트, 롤백 절차, 배포 회고 내용.",
+        source_uri="note:deploy-old",
+    )
+    new = store.ingest_source(
+        source_type="note",
+        title="배포 기록 요약",
+        text="지난주 배포 회의 정리: 배포 체크리스트와 롤백 절차.",
+        source_uri="note:deploy-new",
+    )
+    # Backdate the lexically-stronger note far past the 14-day half-life.
+    # Both write surfaces age together: the legacy table and the v2 master
+    # (the default read path reconstructs from nodes_v2).
+    with store._connect() as conn:
+        for table in ("nodes", "nodes_v2"):
+            conn.execute(
+                f"UPDATE {table} SET updated_at=? WHERE id=?",
+                ("2026-01-01T00:00:00", old["node_id"]),
+            )
+
+    result = store.hybrid_search("지난주 배포 회의 내용", top_k=10)
+    assert result["query_class"] == "recency"
+    by_id = {m["node_id"]: m for m in result["matches"]}
+    assert old["node_id"] in by_id and new["node_id"] in by_id
+    for match in result["matches"]:
+        assert 0.5 <= match["scores"]["age_decay"] <= 1.0
+    # The backdated note is dampened toward the 0.5 floor, the fresh one is not.
+    assert by_id[old["node_id"]]["scores"]["age_decay"] < 0.51
+    assert by_id[new["node_id"]]["scores"]["age_decay"] > 0.99
+    assert by_id[new["node_id"]]["rank"] < by_id[old["node_id"]]["rank"]
+
+
+def test_hybrid_search_fact_class_never_applies_age_decay(tmp_path):
+    """Byte-compat guard: non-recency classes keep the exact legacy score
+    shape — no age_decay key, scores untouched."""
+    store = _store(tmp_path)
+    _seed(store)
+
+    result = store.hybrid_search("hybrid retrieval vector similarity", top_k=10)
+    assert result["query_class"] == "fact"
+    assert result["policy"]["search_query"] == "hybrid retrieval vector similarity"
+    for match in result["matches"]:
+        assert "age_decay" not in match["scores"]
+        assert set(match["scores"]) == {"lexical", "vector"}
+
+
 def test_context_for_query_default_and_hybrid_paths(tmp_path):
     store = _store(tmp_path)
     _seed(store)

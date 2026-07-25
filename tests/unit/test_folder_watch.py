@@ -104,6 +104,48 @@ def test_scan_ingests_new_and_changed_files_with_scope(tmp_path):
     assert again["new"] == again["changed"] == again["ingested"] == 0
 
 
+def test_scan_failures_surface_as_last_errors_sample(tmp_path):
+    """Watch trust UI (review Wave 1.3): the health card needs *why*, so the
+    latest scan keeps up to 3 error samples on the public watch record."""
+    root = tmp_path / "corpus"
+    _corpus(root)
+
+    class FailingPipeline:
+        def ingest_folder(self, *a, **k):
+            return {"status": "ok"}
+
+        def ingest(self, item, user_email=None):
+            raise OSError("disk unreadable")
+
+    service = _service(tmp_path)
+    enabled = service.enable(str(root), owner="owner@example.com")
+    watch_id = enabled["watch"]["id"]
+    (root / "extra.txt").write_text("새 파일", encoding="utf-8")
+
+    real_ingest = service._pipeline.ingest
+
+    def failing_ingest(item, user_email=None):
+        outcome = real_ingest(item, user_email=user_email)
+        outcome.status = "failed"
+        outcome.detail = "simulated ingest failure"
+        return outcome
+
+    service._pipeline.ingest = failing_ingest
+    result = service.scan_once(watch_id)
+    assert result["failed"] >= 1
+
+    public = service.status()["watches"][0]
+    assert public["last_errors"]
+    assert len(public["last_errors"]) <= 3
+    assert public["last_errors"][0]["path"] == "extra.txt"
+    assert "simulated ingest failure" in public["last_errors"][0]["detail"]
+
+    # a clean follow-up scan clears the sample — stale errors never linger
+    service._pipeline.ingest = real_ingest
+    service.scan_once(watch_id)
+    assert service.status()["watches"][0]["last_errors"] == []
+
+
 def test_deleted_files_are_counted_but_not_removed_from_graph(tmp_path):
     root = tmp_path / "corpus"
     _corpus(root)

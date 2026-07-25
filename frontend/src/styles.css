@@ -9822,3 +9822,463 @@ body {
   background: hsl(var(--muted) / 0.4);
   color: hsl(var(--muted-foreground));
 }
+
+/* ── Agent step timeline ────────────────────────────────────────────────────
+   Compact per-step transparency for agent runs: live while streaming, a
+   collapsed one-line summary once done. Muted by default; success/amber/red
+   only on the state dots so the timeline never competes with the answer. */
+.brain-step-timeline {
+  margin-top: 0.5rem;
+  border: 1px solid hsl(var(--border) / 0.55);
+  border-radius: 8px;
+  background: hsl(var(--surface) / 0.5);
+  padding: 0.4rem 0.6rem;
+  font-size: 0.72rem;
+}
+
+.brain-step-timeline > summary {
+  cursor: pointer;
+  color: hsl(var(--fg-muted));
+  font-size: 0.7rem;
+  font-weight: 700;
+  user-select: none;
+}
+
+.brain-step-live-head {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  margin: 0;
+  color: hsl(var(--fg-muted));
+  font-size: 0.7rem;
+  font-weight: 700;
+}
+
+.brain-step-list {
+  display: grid;
+  gap: 0.24rem;
+  margin: 0.35rem 0 0;
+  padding: 0;
+  list-style: none;
+}
+
+.brain-step-item {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 0.4rem;
+}
+
+.brain-step-dot {
+  flex: none;
+  align-self: center;
+  width: 0.44rem;
+  height: 0.44rem;
+  border-radius: 999px;
+  background: hsl(var(--fg-muted) / 0.7);
+}
+
+.brain-step-item.is-ok .brain-step-dot {
+  background: hsl(var(--success));
+}
+
+.brain-step-item.is-error .brain-step-dot,
+.brain-step-item.is-blocked .brain-step-dot {
+  background: hsl(0 72% 52%);
+}
+
+.brain-step-item.is-proposed .brain-step-dot {
+  background: hsl(38 92% 50%);
+}
+
+.brain-step-label {
+  color: hsl(var(--fg));
+  font-weight: 650;
+}
+
+.brain-step-item.is-error .brain-step-label,
+.brain-step-item.is-blocked .brain-step-label {
+  color: hsl(0 80% 72%);
+}
+
+.brain-step-item.is-proposed .brain-step-label {
+  color: hsl(38 92% 68%);
+}
+
+.brain-step-meta {
+  overflow-wrap: anywhere;
+  color: hsl(var(--fg-muted));
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-size: 0.66rem;
+}
+
+.brain-step-detail {
+  flex-basis: 100%;
+  overflow-wrap: anywhere;
+  padding-left: 0.84rem;
+  color: hsl(var(--fg-muted));
+  font-size: 0.64rem;
+}
+
+:root[data-theme="light"] .brain-step-item.is-error .brain-step-label,
+:root[data-theme="light"] .brain-step-item.is-blocked .brain-step-label {
+  color: hsl(0 62% 40%);
+}
+
+:root[data-theme="light"] .brain-step-item.is-proposed .brain-step-label {
+  color: hsl(30 80% 34%);
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  .brain-step-dot.is-live {
+    animation: brain-step-live-pulse 1.4s ease-in-out infinite;
+  }
+
+  @keyframes brain-step-live-pulse {
+    0%, 100% { opacity: 0.45; }
+    50% { opacity: 1; }
+  }
+}
+
+/* Loop transparency note ("모델 응답을 N회 보정했어요") — quiet, muted. */
+.brain-loop-repairs {
+  display: block;
+  margin: 0.4rem 0 0;
+  color: hsl(var(--fg-muted));
+  font-size: 0.72rem;
+}
+
+/* ── Approval TTL: countdown + urgency ───────────────────────────────────── */
+.brain-approval-countdown {
+  margin-left: auto;
+  color: hsl(var(--muted-foreground));
+  font-size: 0.7rem;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+}
+
+.brain-approval-countdown.is-urgent {
+  color: hsl(38 92% 68%);
+}
+
+.brain-approval-card.is-urgent {
+  border-color: hsl(38 92% 42% / 0.85);
+  background: hsl(38 92% 50% / 0.14);
+}
+
+.brain-approval-urgency {
+  color: hsl(38 92% 70%);
+  font-size: 0.72rem;
+  font-weight: 700;
+}
+
+:root[data-theme="light"] .brain-approval-countdown.is-urgent,
+:root[data-theme="light"] .brain-approval-urgency {
+  color: hsl(30 80% 32%);
+}
+
+/* Expired note gains the "다시 계획하기" action when the server offered a
+   replan hint. The note keeps its warm warning treatment. */
+.brain-approval-note {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.brain-approval-replan {
+  border: 1px solid hsl(38 92% 42% / 0.7);
+  border-radius: 999px;
+  background: hsl(38 92% 50% / 0.14);
+  color: inherit;
+  padding: 0.26rem 0.72rem;
+  font-size: 0.74rem;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.brain-approval-replan:hover,
+.brain-approval-replan:focus-visible {
+  background: hsl(38 92% 50% / 0.24);
+}
+
+/* Paused approvals that survived a reload — inform only, never pretend the
+   token is reachable from here. */
+.brain-pending-approvals {
+  display: grid;
+  gap: 0.4rem;
+  margin: 0 0 0.6rem;
+  border: 1px solid hsl(38 92% 42% / 0.5);
+  border-left-width: 4px;
+  border-radius: 8px;
+  background: hsl(38 92% 50% / 0.08);
+  padding: 0.5rem 0.7rem;
+}
+
+.brain-pending-approvals p {
+  display: grid;
+  gap: 0.15rem;
+  margin: 0;
+}
+
+.brain-pending-approvals span {
+  color: hsl(38 92% 70%);
+  font-size: 0.78rem;
+  font-weight: 700;
+  overflow-wrap: anywhere;
+}
+
+.brain-pending-approvals small {
+  color: hsl(var(--fg-muted));
+  font-size: 0.7rem;
+}
+
+:root[data-theme="light"] .brain-pending-approvals span {
+  color: hsl(30 70% 32%);
+}
+
+/* ── Watch health card (folder watch mode) ─────────────────────────────── */
+.brain-watch-card {
+  margin-top: 0.6rem;
+  border: 1px solid hsl(var(--border) / 0.6);
+  border-radius: 8px;
+  background: hsl(var(--surface) / 0.58);
+  padding: 0.6rem 0.7rem;
+}
+
+.brain-watch-head {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  color: hsl(var(--fg));
+}
+
+.brain-watch-head strong {
+  font-size: 0.76rem;
+  font-weight: 780;
+}
+
+.brain-watch-note {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.3rem;
+  margin: 0.35rem 0 0;
+  color: hsl(var(--fg-muted));
+  font-size: 0.66rem;
+  font-weight: 640;
+}
+
+.brain-watch-list {
+  display: grid;
+  gap: 0.5rem;
+  margin: 0.45rem 0 0;
+  padding: 0;
+  list-style: none;
+}
+
+.brain-watch-item-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 0.45rem;
+}
+
+.brain-watch-path {
+  overflow-wrap: anywhere;
+  color: hsl(var(--fg));
+  font-size: 0.72rem;
+  font-weight: 720;
+}
+
+.brain-watch-scan {
+  color: hsl(var(--fg-muted));
+  font-size: 0.64rem;
+}
+
+.brain-watch-stat {
+  color: hsl(var(--success));
+  font-size: 0.66rem;
+  font-weight: 700;
+}
+
+.brain-watch-stat.is-failed {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.24rem;
+  color: hsl(var(--warning));
+}
+
+.brain-watch-tracked {
+  color: hsl(var(--fg-muted));
+  font-size: 0.62rem;
+}
+
+.brain-watch-errors {
+  margin-top: 0.25rem;
+}
+
+.brain-watch-errors small {
+  color: hsl(var(--warning));
+  font-size: 0.62rem;
+  font-weight: 700;
+}
+
+.brain-watch-errors ul {
+  display: grid;
+  gap: 0.16rem;
+  margin: 0.2rem 0 0;
+  padding: 0;
+  list-style: none;
+}
+
+.brain-watch-errors li {
+  overflow-wrap: anywhere;
+  color: hsl(var(--fg-muted));
+  font-size: 0.64rem;
+}
+
+/* ── "Brain remembered" chip on created-file rows ─────────────────────────
+   Same pill anatomy as .brain-created-file-repaired; success = actually
+   indexed, amber = failed (tooltip carries the reason), muted = pending. */
+.brain-created-file-brain {
+  border: 1px solid hsl(var(--border) / 0.7);
+  border-radius: 999px;
+  padding: 0.16rem 0.55rem;
+  font-size: 0.7rem;
+  font-weight: 700;
+}
+
+.brain-created-file-brain.is-ok {
+  border-color: hsl(var(--success) / 0.55);
+  background: hsl(var(--success) / 0.12);
+  color: hsl(var(--success));
+}
+
+.brain-created-file-brain.is-pending {
+  background: hsl(var(--muted) / 0.4);
+  color: hsl(var(--fg-muted));
+}
+
+.brain-created-file-brain.is-failed {
+  border-color: hsl(38 92% 42% / 0.55);
+  background: hsl(38 92% 50% / 0.14);
+  color: hsl(38 92% 68%);
+}
+
+:root[data-theme="light"] .brain-created-file-brain.is-failed {
+  color: hsl(30 80% 34%);
+}
+
+/* ── Source chunk modal (citation → 원문) ────────────────────────────────
+   Reuses the .file-preview-* shell; the cited source rows become buttons. */
+.brain-answer-proof li .brain-citation-open {
+  display: grid;
+  width: 100%;
+  gap: 0.1rem;
+  border: 0;
+  background: none;
+  padding: 0;
+  color: inherit;
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+
+.brain-answer-proof li:has(.brain-citation-open:hover),
+.brain-answer-proof li:has(.brain-citation-open:focus-visible) {
+  border-color: hsl(var(--memory) / 0.7);
+  background: hsl(var(--memory) / 0.1);
+}
+
+.brain-citation-open-hint {
+  justify-self: start;
+  margin-top: 0.15rem;
+  color: hsl(var(--memory));
+  font-size: 0.62rem;
+  font-weight: 700;
+}
+
+.source-chunk-type {
+  border: 1px solid hsl(var(--border) / 0.7);
+  border-radius: 999px;
+  padding: 0.16rem 0.55rem;
+  color: hsl(var(--fg-muted));
+  font-size: 0.68rem;
+  font-weight: 700;
+}
+
+.source-chunk-body {
+  gap: 0.6rem;
+}
+
+.source-chunk-text {
+  margin: 0;
+  padding: 0.9rem 1rem;
+  overflow: auto;
+  color: hsl(var(--fg));
+  font-family: inherit;
+  font-size: 0.86rem;
+  line-height: 1.55;
+  white-space: pre-wrap;
+  word-break: break-word;
+}
+
+.source-chunk-provenance {
+  border-top: 1px solid hsl(var(--border) / 0.6);
+  padding: 0.6rem 1rem 0.8rem;
+}
+
+.source-chunk-provenance > small {
+  color: hsl(var(--fg-muted));
+  font-size: 0.66rem;
+  font-weight: 780;
+  text-transform: uppercase;
+}
+
+.source-chunk-provenance ul {
+  display: grid;
+  gap: 0.24rem;
+  margin: 0.35rem 0 0;
+  padding: 0;
+  list-style: none;
+}
+
+.source-chunk-provenance li {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.4rem;
+  align-items: baseline;
+}
+
+.source-chunk-provenance li span {
+  color: hsl(var(--fg-muted));
+  font-size: 0.66rem;
+  font-weight: 700;
+}
+
+.source-chunk-provenance li code {
+  overflow-wrap: anywhere;
+  font-size: 0.7rem;
+}
+
+/* ── First Value Loop done-state CTAs ────────────────────────────────────── */
+.brain-fvl-done {
+  display: grid;
+  gap: 0.4rem;
+}
+
+.brain-fvl-done p {
+  margin: 0;
+}
+
+.brain-fvl-done-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.4rem;
+}
+
+.brain-fvl-chip.is-connect {
+  border-color: hsl(var(--brain-core) / 0.65);
+  background: hsl(var(--brain-core) / 0.14);
+  font-weight: 750;
+}

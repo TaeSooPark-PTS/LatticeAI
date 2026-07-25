@@ -6,7 +6,7 @@ import { describe, expect, it, vi } from "vitest";
 
 import { latticeApi } from "@/api/client";
 import { FirstValueLoopCard } from "./FirstValueLoopCard";
-import { markFirstValueLoopAsked, readFirstValueLoopState } from "./firstValueLoop";
+import { markFirstValueLoopAsked, markFirstValueLoopFileGenTried, readFirstValueLoopState } from "./firstValueLoop";
 
 const DOCS = [
   { demo_id: "meeting-note", title: "주간 회의록 — 사이드 프로젝트 킥오프", source_uri: "demo://meeting-note", status: "ok" },
@@ -110,5 +110,34 @@ describe("FirstValueLoopCard", () => {
     renderWithQuery(<FirstValueLoopCard language="ko" streaming={false} onSendText={() => {}} />);
     await Promise.resolve();
     expect(screen.queryByTestId("first-value-loop")).toBeNull();
+  });
+
+  it("ends the done state in real next steps: connect a folder or clean up", async () => {
+    mockStatus({ installed: true, documents: DOCS, suggested_questions: QUESTIONS });
+    markFirstValueLoopAsked();
+    markFirstValueLoopFileGenTried();
+    const remove = vi.spyOn(latticeApi, "removeDemoCorpus").mockResolvedValue({
+      ok: true, status: 200, source: "live",
+      data: { status: "ok", removed_count: 3, removed: [] },
+    } as never);
+    const onConnectData = vi.fn();
+    renderWithQuery(
+      <FirstValueLoopCard
+        language="ko"
+        streaming={false}
+        onSendText={() => {}}
+        onConnectData={onConnectData}
+      />,
+    );
+
+    // The connect CTA hands off to the real ingestion dock.
+    await userEvent.click(await screen.findByTestId("fvl-connect-cta"));
+    expect(onConnectData).toHaveBeenCalledTimes(1);
+
+    // The standalone remove button collapsed into the cleanup CTA.
+    expect(screen.queryByTestId("fvl-remove")).toBeNull();
+    await userEvent.click(screen.getByTestId("fvl-cleanup-cta"));
+    await waitFor(() => expect(remove).toHaveBeenCalledTimes(1));
+    await waitFor(() => expect(screen.queryByTestId("first-value-loop")).toBeNull());
   });
 });

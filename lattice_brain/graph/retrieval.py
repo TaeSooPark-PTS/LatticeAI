@@ -478,10 +478,16 @@ class KnowledgeGraphRetrievalMixin:
         richer ``allowed_workspaces`` set wins when both are provided.
 
         ``alpha=None`` (the default) resolves the vector share from the
-        query-class fusion table (:mod:`lattice_brain.graph.fusion`):
-        fact 0.6 (the historical default) / code 0.35 / person 0.45 /
-        recency 0.5, config-overridable via ``LATTICEAI_FUSION_WEIGHTS``.
-        Passing an explicit ``alpha`` pins it exactly as before.
+        single retrieval policy (:mod:`lattice_brain.graph.retrieval_policy`,
+        which wraps the query-class fusion table): fact 0.6 (the historical
+        default) / code 0.35 / person 0.45 / recency 0.5, config-overridable
+        via ``LATTICEAI_FUSION_WEIGHTS``. The policy also supplies a
+        deterministic rule-based query rewrite (echoed additively under
+        ``"policy"``; the response ``"query"`` stays the original) and, for
+        the ``recency`` class only, an age-decay half-life that dampens each
+        fused score into the ``[0.5, 1.0]`` band (``scores.age_decay``).
+        Passing an explicit ``alpha`` pins it exactly as before and disables
+        rewrite + decay.
         """
         query = str(query or "").strip()
         try:
@@ -490,14 +496,24 @@ class KnowledgeGraphRetrievalMixin:
             top_k = 20
         top_k = max(1, min(top_k, 100))
         query_class: Optional[str] = None
+        search_query = query
+        rewrite_rules: List[str] = []
+        recency_half_life_days: Optional[float] = None
         if alpha is None:
             try:
-                from .fusion import fusion_profile
+                from .retrieval_policy import resolve_policy
 
-                profile = fusion_profile(query)
-                query_class = profile["query_class"]
-                alpha = float(profile["alpha"])
-            except Exception:  # noqa: BLE001 — fusion table must never break search
+                policy = resolve_policy(query)
+                query_class = policy["query_class"]
+                alpha = float(policy["alpha"])
+                rewrite_rules = list(policy.get("rewrite_rules") or [])
+                rewritten = str(policy.get("search_query") or "")
+                if rewritten and rewritten != query:
+                    search_query = rewritten
+                half_life = policy.get("recency_half_life_days")
+                if half_life is not None:
+                    recency_half_life_days = float(half_life)
+            except Exception:  # noqa: BLE001 — policy resolution must never break search
                 alpha = 0.6
         try:
             alpha = float(alpha)
@@ -516,6 +532,7 @@ class KnowledgeGraphRetrievalMixin:
                 "top_k": top_k,
                 "sources": {"lexical": 0, "vector": 0},
                 "matches": [],
+                "policy": {"search_query": search_query, "rewrite_rules": rewrite_rules},
                 "detail": None,
             }
 
@@ -523,7 +540,7 @@ class KnowledgeGraphRetrievalMixin:
         vec_fetch = max(1, min(int(vector_limit or max(top_k * 2, 20)), 100))
 
         lexical_matches = self.search(
-            query,
+            search_query,
             lex_fetch,
             allowed_workspaces=allowed_workspaces,
             include_legacy_global=include_legacy_global,
@@ -539,7 +556,7 @@ class KnowledgeGraphRetrievalMixin:
         else:
             try:
                 vector_matches = list(
-                    (vector_fn(query, limit=vec_fetch, min_score=min_vector_score) or {}).get(
+                    (vector_fn(search_query, limit=vec_fetch, min_score=min_vector_score) or {}).get(
                         "matches", []
                     )
                 )
@@ -547,6 +564,17 @@ class KnowledgeGraphRetrievalMixin:
                 mode = "lexical_only"
                 detail = f"vector index unavailable: {exc}"
                 vector_matches = []
+        # An embedder swap makes the vector channel silently return zero rows
+        # (vector_search filters on the CURRENT model/dim). Surface the honest
+        # cause additively without changing the mode string.
+        vector_degraded: Optional[str] = None
+        if mode == "hybrid" and not vector_matches:
+            try:
+                fingerprint_fn = getattr(self, "embedder_fingerprint_status", None)
+                if callable(fingerprint_fn) and fingerprint_fn().get("stale_embedder"):
+                    vector_degraded = "stale_embedder"
+            except Exception:  # noqa: BLE001 — fingerprint status must never break search
+                vector_degraded = None
         if vector_matches and allowed_workspaces is not None:
             vector_matches = self.filter_scoped_nodes(
                 vector_matches,
@@ -633,11 +661,28 @@ class KnowledgeGraphRetrievalMixin:
                 entry["fusion"] = "lexical"
             matches.append(entry)
 
+        # Recency-class age decay (retrieval_policy): dampen each fused score
+        # into the [0.5, 1.0] band so old-but-relevant items sink without ever
+        # being zeroed. Other classes skip this block byte-identically.
+        if recency_half_life_days is not None:
+            decay_now = datetime.now()
+            for match in matches:
+                stamp = match.get("updated_at")
+                if _parse_iso(stamp):
+                    multiplier = 0.5 + 0.5 * _recency_score(
+                        stamp, now=decay_now, half_life_days=recency_half_life_days
+                    )
+                else:
+                    # Unknown age is not evidence of staleness — never dampen.
+                    multiplier = 1.0
+                match["scores"]["age_decay"] = round(multiplier, 6)
+                match["score"] = round(float(match["score"]) * multiplier, 6)
+
         matches.sort(key=lambda item: (-item["score"], item["node_id"]))
         matches = matches[:top_k]
         for rank, match in enumerate(matches, start=1):
             match["rank"] = rank
-        return {
+        result = {
             "query": query,
             "mode": mode,
             "alpha": alpha,
@@ -645,8 +690,12 @@ class KnowledgeGraphRetrievalMixin:
             "top_k": top_k,
             "sources": {"lexical": len(lexical_matches), "vector": len(vector_matches)},
             "matches": matches,
+            "policy": {"search_query": search_query, "rewrite_rules": rewrite_rules},
             "detail": detail,
         }
+        if vector_degraded is not None:
+            result["vector_degraded"] = vector_degraded
+        return result
 
     def context_for_query(
         self,

@@ -159,12 +159,28 @@ export type ChatAgentPayload = {
   run_id?: string;
   approval?: { token?: string; expires_at?: string; plan_summary?: string };
   plan?: Record<string, unknown>;
+  // Loop transcript (parsed defensively into the step timeline for runs that
+  // did not stream `event: agent_step` frames, e.g. approval resumes).
+  steps?: unknown[];
+  // Loop honesty meta: deterministic repairs applied to model output.
+  loop?: {
+    repairs?: Record<string, number>;
+    parse_errors?: number;
+    parse_recovered?: number;
+  };
+  // Payload-level "Brain remembered" verdict for generated files: a single
+  // {status,...} dict on the one-file path, or a list of {path, status, ...}
+  // entries on the project-bundle path. Absent → unknown (no chip).
+  brain_ingest?: Record<string, unknown> | Array<Record<string, unknown>>;
 };
 
 export type ChatEventHandlers = {
   onChunk?: (delta: string, fullText: string) => void;
   onTrace?: (trace: unknown) => void;
   onAgent?: (agent: ChatAgentPayload) => void;
+  // Live `event: agent_step` frames emitted before the final payload frames.
+  // Raw records — callers parse defensively and ignore unknown fields.
+  onAgentStep?: (step: Record<string, unknown>) => void;
   signal?: AbortSignal;
 };
 
@@ -265,9 +281,26 @@ async function streamChat(body: Record<string, unknown>, handlers: ChatEventHand
     const parts = buffer.split("\n\n");
     buffer = parts.pop() || "";
     for (const part of parts) {
-      const line = part.split("\n").find((item) => item.startsWith("data:"));
+      const lines = part.split("\n");
+      const line = lines.find((item) => item.startsWith("data:"));
       if (!line) continue;
       const raw = line.slice(5).trim();
+      // Named frames (same `event:` convention as streamModelPrepare). The
+      // agent loop emits `event: agent_step` progress frames before the final
+      // plain data frames; unknown named events are ignored gracefully.
+      const eventName = lines.find((item) => item.startsWith("event:"))?.slice(6).trim() || "message";
+      if (eventName === "agent_step") {
+        try {
+          const step = raw ? JSON.parse(raw) : null;
+          if (step && typeof step === "object" && !Array.isArray(step)) {
+            handlers.onAgentStep?.(step as Record<string, unknown>);
+          }
+        } catch {
+          // A malformed progress frame must never break the answer stream.
+        }
+        continue;
+      }
+      if (eventName !== "message") continue;
       if (raw === "[DONE]") return { source: "live", text, trace, agent, contextQuality, grounding };
       const data = JSON.parse(raw);
       const delta = data.chunk || data.text || "";
@@ -558,6 +591,24 @@ export const latticeApi = {
   deleteConversation: (id: string) => del(`/history/conversations/${encodeURIComponent(id)}`, {}),
   streamChat,
   resumeAgentApproval,
+  // Pending paused approvals for the current user (GET /agent/approvals is
+  // not in the generated OpenAPI spec yet; the plain path-based wrapper keeps
+  // the same ApiResult contract until the next regeneration).
+  agentApprovals: () => get<{ pending: Array<Record<string, unknown>> }>("/agent/approvals", { pending: [] }),
+  // One graph node with its stored text/summary + provenance metadata, for
+  // the citation "원문 보기" modal. Neighbors are skipped — this is a read of
+  // one chunk, not an exploration.
+  graphNode: (nodeId: string) => get<Record<string, unknown>>(
+    "/api/graph/node",
+    { node: {} },
+    { node_id: nodeId, include_neighbors: false },
+  ),
+  // Folder watch-mode health (opt-in poller): stored watches + last scan
+  // results, so the home can show whether connected folders actually flow.
+  ingestionWatchStatus: () => get<Record<string, unknown>>(
+    "/api/ingestion/watch",
+    { enabled_count: 0, polling: false, interval_seconds: 0, watches: [] },
+  ),
   demoCorpusStatus: () => get<DemoCorpusStatus>(
     "/api/setup/demo-corpus",
     { installed: false, documents: [], document_count: 0, suggested_questions: [] },

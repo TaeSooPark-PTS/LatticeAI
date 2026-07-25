@@ -22,6 +22,7 @@ import type {
   Message,
 } from "./types";
 import { AgentApprovalCard } from "./AgentApprovalCard";
+import { AgentStepTimeline, LoopRepairsNote } from "./AgentStepTimeline";
 import type { ApprovalResolution } from "./approvalFlow";
 import { AnswerProofCard, InlineCitationMarkers } from "./AnswerProof";
 import { BrainCarePanel } from "./BrainCarePanel";
@@ -41,7 +42,7 @@ import {
   PastConversationsPanel,
 } from "./HomePanels";
 import { BrainIngestionDock, BrainIngestionPanel, IngestionTimelineSection } from "./IngestionPanels";
-import { IngestionJobsPanel, VectorFreshnessNotice } from "./BrainSignals";
+import { IngestionJobsPanel, PendingApprovalsNotice, VectorFreshnessNotice, WatchHealthCard } from "./BrainSignals";
 import { BrainKnowledgeFlow, BrainMemoryAutomation, ConversationKnowledgeTrace } from "./BrainKnowledgeFlow";
 import { CreatedFilesCard, MessageBody } from "./MessageMarkdown";
 import { MemoryRings } from "./MemoryRings";
@@ -164,6 +165,24 @@ export function BrainConversation({
     [pastConversations.length, ingestionStates],
   );
 
+  // Shared "take me to the ingestion dock" behavior: used by the first-five
+  // "add" step and the First Value Loop "내 폴더 연결하기" CTA.
+  const focusSourceDock = React.useCallback(() => {
+    const dock = sourceDockRef.current;
+    if (!dock) return;
+    dock.scrollIntoView?.({ behavior: "smooth", block: "center" });
+    window.setTimeout(() => {
+      dock.querySelector<HTMLElement>("button, input, [tabindex]")?.focus({ preventScroll: true });
+    }, 0);
+  }, []);
+
+  // Approval runs already represented by an inline card — the pending-
+  // approvals notice only surfaces runs that would otherwise be invisible.
+  const knownApprovalRunIds = React.useMemo(
+    () => messages.flatMap((message) => (message.approval ? [message.approval.runId] : [])),
+    [messages],
+  );
+
   const handleFirstFiveStep = React.useCallback(
     (step: FirstFiveStep) => {
       if (step === "ask") {
@@ -173,12 +192,7 @@ export function BrainConversation({
           homeDeckRef.current?.querySelector<HTMLTextAreaElement>(".brain-composer textarea")?.focus();
         }, 0);
       } else if (step === "add") {
-        const dock = sourceDockRef.current;
-        if (!dock) return;
-        dock.scrollIntoView?.({ behavior: "smooth", block: "center" });
-        window.setTimeout(() => {
-          dock.querySelector<HTMLElement>("button, input, [tabindex]")?.focus({ preventScroll: true });
-        }, 0);
+        focusSourceDock();
       } else {
         const shelf = insightsShelfRef.current;
         if (!shelf) return;
@@ -189,7 +203,7 @@ export function BrainConversation({
         }, 0);
       }
     },
-    [starterPrompts, language, onDraftChange],
+    [starterPrompts, language, onDraftChange, focusSourceDock],
   );
 
   return (
@@ -197,6 +211,7 @@ export function BrainConversation({
       <div className="brain-chat-home-layout">
         <section className={`brain-chat-home-card ${hasMessages ? "has-messages" : "is-empty-home"}`} aria-label={t(language, "brain.chatHome.aria")}>
           <VectorFreshnessNotice language={language} />
+          <PendingApprovalsNotice language={language} knownRunIds={knownApprovalRunIds} />
           {hasMessages ? (
             <>
               <header className="brain-chat-header">
@@ -268,6 +283,14 @@ export function BrainConversation({
                           language={language}
                           approval={message.approval}
                           onResolved={(resolution) => onApprovalResolved(index, resolution)}
+                          onReplan={onSendText}
+                        />
+                      ) : null}
+                      {message.role === "assistant" && message.agentSteps?.length ? (
+                        <AgentStepTimeline
+                          language={language}
+                          steps={message.agentSteps}
+                          streaming={streaming && index === messages.length - 1}
                         />
                       ) : null}
                       {showActions ? (
@@ -284,6 +307,9 @@ export function BrainConversation({
                       {message.files?.length ? <CreatedFilesCard language={language} files={message.files} /> : null}
                       {message.role === "assistant" && message.agentState ? (
                         <AgentStateNote language={language} state={message.agentState} />
+                      ) : null}
+                      {message.role === "assistant" && message.loopSummary ? (
+                        <LoopRepairsNote language={language} summary={message.loopSummary} />
                       ) : null}
                       {proof ? <AnswerProofCard language={language} proof={proof} messageId={messageId} /> : null}
                     </div>
@@ -381,6 +407,7 @@ export function BrainConversation({
                     onIngestNote={onIngestNote}
                     onIngestWeb={onIngestWeb}
                   />
+                  <WatchHealthCard language={language} />
                   <IngestionJobsPanel language={language} />
                 </div>
 
@@ -519,7 +546,12 @@ export function BrainConversation({
                   controls so compact viewports keep the composer and docks
                   fully on screen. */}
               <div className="brain-home-intro-row">
-                <FirstValueLoopCard language={language} streaming={streaming} onSendText={onSendText} />
+                <FirstValueLoopCard
+                  language={language}
+                  streaming={streaming}
+                  onSendText={onSendText}
+                  onConnectData={focusSourceDock}
+                />
                 <FirstFiveCard language={language} autoDone={firstFiveAutoDone} onStep={handleFirstFiveStep} />
                 <DailyBriefingPanel language={language} variant="home" />
               </div>

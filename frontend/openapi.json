@@ -2205,6 +2205,26 @@
         "title": "PresenceRequest",
         "type": "object"
       },
+      "PromotionActionRequest": {
+        "properties": {
+          "ids": {
+            "anyOf": [
+              {
+                "items": {
+                  "type": "string"
+                },
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Ids"
+          }
+        },
+        "title": "PromotionActionRequest",
+        "type": "object"
+      },
       "PruneRequest": {
         "properties": {
           "ids": {
@@ -4127,7 +4147,7 @@
   },
   "info": {
     "title": "Lattice AI Server (local)",
-    "version": "9.9.3"
+    "version": "9.9.4"
   },
   "openapi": "3.1.0",
   "paths": {
@@ -5266,6 +5286,22 @@
           }
         },
         "summary": "Agent"
+      }
+    },
+    "/agent/approvals": {
+      "get": {
+        "operationId": "agent_approvals_agent_approvals_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": "Agent Approvals"
       }
     },
     "/agent/eval": {
@@ -10763,6 +10799,97 @@
           }
         },
         "summary": "Knowledge Graph Neighbors"
+      }
+    },
+    "/knowledge-graph/promotions": {
+      "get": {
+        "description": "Pending curator promotions awaiting human review (review Wave 4).\n\nPopulated when ``curate()`` runs in review mode (explicit\n``review_mode=True`` or the LATTICEAI_GRAPH_PROMOTION_REVIEW env\nopt-in). Administrative like ``/knowledge-graph/curate``: the queue\ngoverns the shared graph.",
+        "operationId": "knowledge_graph_promotions_knowledge_graph_promotions_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": "Knowledge Graph Promotions"
+      }
+    },
+    "/knowledge-graph/promotions/apply": {
+      "post": {
+        "description": "Apply pending promotions (all when ``ids`` is omitted).",
+        "operationId": "knowledge_graph_promotions_apply_knowledge_graph_promotions_apply_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/PromotionActionRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Knowledge Graph Promotions Apply"
+      }
+    },
+    "/knowledge-graph/promotions/reject": {
+      "post": {
+        "description": "Reject pending promotions without writing (all when ``ids`` omitted).",
+        "operationId": "knowledge_graph_promotions_reject_knowledge_graph_promotions_reject_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/PromotionActionRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Knowledge Graph Promotions Reject"
       }
     },
     "/knowledge-graph/provenance/coverage": {

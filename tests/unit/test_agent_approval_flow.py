@@ -322,6 +322,132 @@ def test_resume_with_edited_plan_normalizes_and_uses_it(tmp_path):
     assert any(step.get("edited_plan") for step in final["steps"])
 
 
+# ── durable run store (restart survival, review Wave 0.1) ───────────────
+
+def test_resume_after_restart_recovers_run_from_disk(tmp_path):
+    """A restart between pause and resume must not orphan the run."""
+    controller = _controller(tmp_path, _runtime([]))
+    result = _start(controller)
+
+    executed_after = []
+    reborn = _controller(tmp_path, _runtime(executed_after))
+    assert result["run_id"] not in reborn._approvals  # memory really is gone
+
+    final = asyncio.run(reborn.resume(
+        AgentResumeRequest(
+            run_id=result["run_id"],
+            approval_token=result["approval"]["token"],
+            approve=True,
+        ),
+        _request(),
+    ))
+    assert final["status"] == "ok"
+    assert final["final_state"] == "DONE"
+    assert executed_after == [{"action": "run_command", "args": {"command": "ls"}}]
+
+    # consumed on disk too — a third controller cannot replay it
+    third = _controller(tmp_path, _runtime([]))
+    with pytest.raises(HTTPException) as excinfo:
+        asyncio.run(third.resume(
+            AgentResumeRequest(
+                run_id=result["run_id"],
+                approval_token=result["approval"]["token"],
+                approve=True,
+            ),
+            _request(),
+        ))
+    assert excinfo.value.status_code == 404
+
+
+def test_restart_resume_rejects_wrong_token_and_other_user(tmp_path):
+    controller = _controller(tmp_path, _runtime([]))
+    result = _start(controller)
+
+    executed_after = []
+    reborn = _controller(tmp_path, _runtime(executed_after))
+    with pytest.raises(HTTPException) as excinfo:
+        asyncio.run(reborn.resume(
+            AgentResumeRequest(run_id=result["run_id"], approval_token="wrong", approve=True),
+            _request(),
+        ))
+    assert excinfo.value.status_code == 403
+
+    with pytest.raises(HTTPException) as excinfo:
+        asyncio.run(reborn.resume(
+            AgentResumeRequest(
+                run_id=result["run_id"],
+                approval_token=result["approval"]["token"],
+                approve=True,
+            ),
+            _request(user="intruder@example.com"),
+        ))
+    assert excinfo.value.status_code == 403
+    assert executed_after == []
+
+
+def test_expired_disk_record_is_gone_with_replan_hint(tmp_path):
+    controller = _controller(tmp_path, _runtime([]))
+    result = _start(controller)
+    run_id = result["run_id"]
+
+    store_path = tmp_path / "data" / "agent_runs" / f"{run_id}.json"
+    record = json.loads(store_path.read_text(encoding="utf-8"))
+    record["expires_epoch"] = time.time() - 5
+    store_path.write_text(json.dumps(record), encoding="utf-8")
+
+    reborn = _controller(tmp_path, _runtime([]))
+    with pytest.raises(HTTPException) as excinfo:
+        asyncio.run(reborn.resume(
+            AgentResumeRequest(
+                run_id=run_id,
+                approval_token=result["approval"]["token"],
+                approve=True,
+            ),
+            _request(),
+        ))
+    assert excinfo.value.status_code == 410
+    detail = excinfo.value.detail
+    assert detail["error"] == "approval_expired"
+    # the expiry answer carries enough to replan with one click
+    assert detail["replan"]["message"] == "run ls in the workspace"
+    assert not store_path.exists()
+
+
+def test_pause_still_answers_when_run_store_fails(tmp_path):
+    class BrokenStore:
+        def sweep_expired(self):
+            return 0
+
+        def save(self, *a, **k):
+            raise OSError("disk full")
+
+        def delete(self, run_id):
+            pass
+
+    controller = _controller(tmp_path, _runtime([]))
+    controller.run_store = BrokenStore()
+    result = _start(controller)
+    assert result["status"] == "awaiting_approval"
+    assert result["approval"]["token"]
+
+
+def test_pending_approvals_lists_runs_from_memory_and_disk(tmp_path):
+    controller = _controller(tmp_path, _runtime([]))
+    result = _start(controller)
+
+    listed = controller.pending_approvals(_request())
+    assert [p["run_id"] for p in listed["pending"]] == [result["run_id"]]
+    assert "list workspace files" in listed["pending"][0]["goal"]
+
+    # after a restart the disk record still surfaces the pending run
+    reborn = _controller(tmp_path, _runtime([]))
+    listed_after = reborn.pending_approvals(_request())
+    assert [p["run_id"] for p in listed_after["pending"]] == [result["run_id"]]
+    # and never leaks to another user
+    other = reborn.pending_approvals(_request(user="intruder@example.com"))
+    assert other["pending"] == []
+
+
 # ── phase budgets ───────────────────────────────────────────────────────
 
 def test_phase_budgets_from_env_overrides_and_clamps():

@@ -2,9 +2,10 @@
 
 from __future__ import annotations
 
+import asyncio
 import json
 import logging
-from typing import Any, AsyncIterator, Dict, Optional
+from typing import Any, AsyncIterator, Awaitable, Callable, Dict, Optional
 
 from fastapi.responses import JSONResponse, StreamingResponse
 
@@ -32,6 +33,74 @@ def agent_payload_stream(
         response_model = model_id or router.current_model_id
         yield f"data: {json.dumps({'chunk': answer, 'model': response_model, 'agent': payload}, ensure_ascii=False)}\n\n"
         yield f"data: {json.dumps({'chunk': '', 'model': response_model, 'agent': payload}, ensure_ascii=False)}\n\n"
+        yield "data: [DONE]\n\n"
+
+    return _stream()
+
+
+def agent_live_stream(
+    start: Callable[[Callable[[Dict[str, Any]], None]], Awaitable[Dict[str, Any]]],
+    *,
+    router: Any,
+    model_id: Optional[str] = None,
+    finalize: Optional[Callable[[Dict[str, Any]], str]] = None,
+) -> AsyncIterator[str]:
+    """Live SSE for an agent run (review Wave 1.1).
+
+    ``start(observer)`` runs the agent with a per-run step observer; every
+    observed step is emitted immediately as a named ``agent_step`` frame, so
+    the user watches the loop work instead of staring at silence. When the
+    run finishes, ``finalize(result)`` (history/funnel side effects) produces
+    the answer text and the classic final payload frames follow — clients
+    that ignore named events see exactly the historical stream shape.
+    """
+
+    async def _stream() -> AsyncIterator[str]:
+        response_model = model_id or router.current_model_id
+        queue: asyncio.Queue = asyncio.Queue()
+
+        def observer(event: Dict[str, Any]) -> None:
+            # Called synchronously from the agent coroutine on this loop.
+            queue.put_nowait(event)
+
+        task = asyncio.create_task(start(observer))
+        try:
+            while True:
+                getter = asyncio.create_task(queue.get())
+                done, _ = await asyncio.wait(
+                    {getter, task}, return_when=asyncio.FIRST_COMPLETED
+                )
+                if getter in done:
+                    step = getter.result()
+                    yield (
+                        "event: agent_step\n"
+                        f"data: {json.dumps(step, ensure_ascii=False)}\n\n"
+                    )
+                    continue
+                getter.cancel()
+                break
+            while not queue.empty():
+                step = queue.get_nowait()
+                yield (
+                    "event: agent_step\n"
+                    f"data: {json.dumps(step, ensure_ascii=False)}\n\n"
+                )
+            result = task.result()
+        except Exception as exc:  # noqa: BLE001 — already streaming a 200
+            logging.warning("agent live stream failed: %s", exc)
+            detail = getattr(exc, "detail", None) or str(exc)
+            yield f"data: {json.dumps({'error': str(detail), 'model': response_model}, ensure_ascii=False)}\n\n"
+            yield "data: [DONE]\n\n"
+            return
+
+        answer = str(result.get("response") or "작업을 완료했습니다.")
+        if finalize is not None:
+            try:
+                answer = finalize(result)
+            except Exception as exc:  # noqa: BLE001 — side effects must not kill the stream
+                logging.warning("agent live stream finalize failed: %s", exc)
+        yield f"data: {json.dumps({'chunk': answer, 'model': response_model, 'agent': result}, ensure_ascii=False)}\n\n"
+        yield f"data: {json.dumps({'chunk': '', 'model': response_model, 'agent': result}, ensure_ascii=False)}\n\n"
         yield "data: [DONE]\n\n"
 
     return _stream()
@@ -136,4 +205,9 @@ async def stream_chat(
     yield "data: [DONE]\n\n"
 
 
-__all__ = ["agent_payload_stream", "single_answer_response", "stream_chat"]
+__all__ = [
+    "agent_live_stream",
+    "agent_payload_stream",
+    "single_answer_response",
+    "stream_chat",
+]

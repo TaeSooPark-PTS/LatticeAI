@@ -108,7 +108,11 @@ class KnowledgeGraphIngestMixin:
             )
 
             # ── 4. RAG chunks  (검색용, 그래프에서 숨김) ──────────────────────
-            for index, chunk in enumerate(_chunks(content)):
+            # Chat text is always the plain strategy: boundaries (and thus
+            # chunk ids) stay byte-identical to the legacy _chunks path.
+            for index, piece in enumerate(typed_chunks(content, strategy="plain")):
+                chunk = piece["text"]
+                chunk_fields = typed_chunk_meta_fields(piece)
                 chunk_id = f"chunk:{_sha256_text(f'{node_id}:{index}:{chunk}')[:24]}"
                 self._upsert_node(
                     conn,
@@ -116,7 +120,7 @@ class KnowledgeGraphIngestMixin:
                     "Chunk",
                     f"chunk {index + 1}",
                     summary=chunk[:500],
-                    metadata={"index": index, "source_node": node_id},
+                    metadata={"index": index, "source_node": node_id, **chunk_fields},
                     owner=user_email,
                     workspace_id=workspace_id,
                 )
@@ -125,7 +129,7 @@ class KnowledgeGraphIngestMixin:
                     chunk_id=chunk_id,
                     source_node=node_id,
                     text=chunk,
-                    metadata={"index": index, "source_node": node_id},
+                    metadata={"index": index, "source_node": node_id, **chunk_fields},
                 )
                 self._upsert_edge(conn, node_id, chunk_id, "포함함")
 
@@ -322,7 +326,25 @@ class KnowledgeGraphIngestMixin:
                 self._upsert_edge(conn, conv_id, file_id, "언급함", weight=0.8)
 
             # ── RAG chunks (검색용, 그래프 비표시) ────────────────────────────
-            for index, chunk in enumerate(_chunks(text)):
+            # Strategy from the filename (plain files keep legacy boundaries →
+            # identical chunk ids). For PDFs, per-page start offsets in the
+            # "\n\n"-joined page text let each chunk carry a 1-based "page" —
+            # only when the claimed extent matches the text we actually chunk
+            # (honest absence over wrong labels).
+            chunk_strategy = chunk_strategy_for(filename, content_type=mime_type or "")
+            page_offsets: List[int] = []
+            if ext == ".pdf":
+                page_offsets = pdf_page_offsets(doc_meta)
+                cleaned_len = len(str(text or "").strip())
+                if not page_offsets or page_offsets[-1] >= cleaned_len * 1.2:
+                    page_offsets = []
+            for index, piece in enumerate(typed_chunks(text, strategy=chunk_strategy)):
+                chunk = piece["text"]
+                chunk_fields = typed_chunk_meta_fields(piece)
+                if page_offsets:
+                    page = page_for_offset(page_offsets, chunk_fields["start_char"])
+                    if page is not None:
+                        chunk_fields["page"] = page
                 chunk_id = f"chunk:{_sha256_text(f'{file_id}:{index}:{chunk}')[:24]}"
                 chunk_ids.append(chunk_id)
                 self._upsert_node(
@@ -331,7 +353,7 @@ class KnowledgeGraphIngestMixin:
                     "Chunk",
                     f"{filename} chunk {index + 1}",
                     summary=chunk[:500],
-                    metadata={"index": index, "source_node": file_id, "workspace_id": workspace_id},
+                    metadata={"index": index, "source_node": file_id, "workspace_id": workspace_id, **chunk_fields},
                     owner=owner or uploader,
                     workspace_id=workspace_id,
                 )
@@ -340,7 +362,7 @@ class KnowledgeGraphIngestMixin:
                     chunk_id=chunk_id,
                     source_node=file_id,
                     text=chunk,
-                    metadata={"index": index, "source_node": file_id},
+                    metadata={"index": index, "source_node": file_id, **chunk_fields},
                 )
                 self._upsert_edge(conn, file_id, chunk_id, "포함함")
 
@@ -651,7 +673,19 @@ class KnowledgeGraphIngestMixin:
                 )
                 self._upsert_edge(conn, conv_id, content_id, "언급함", weight=0.8)
             # ── RAG 청크 ────────────────────────────────────────────────────
-            for index, chunk in enumerate(_chunks(text)):
+            # Best available filename hint: source URI, then path/filename from
+            # caller metadata. Plain content keeps legacy chunk boundaries and
+            # therefore identical chunk ids.
+            chunk_strategy = chunk_strategy_for(
+                source_uri
+                or (metadata or {}).get("path")
+                or (metadata or {}).get("filename")
+                or "",
+                content_type=str((metadata or {}).get("mime_type") or ""),
+            )
+            for index, piece in enumerate(typed_chunks(text, strategy=chunk_strategy)):
+                chunk = piece["text"]
+                chunk_fields = typed_chunk_meta_fields(piece)
                 chunk_id = f"chunk:{_sha256_text(f'{content_id}:{index}:{chunk}')[:24]}"
                 chunk_ids.append(chunk_id)
                 self._upsert_node(
@@ -660,7 +694,7 @@ class KnowledgeGraphIngestMixin:
                     "Chunk",
                     f"{title} chunk {index + 1}",
                     summary=chunk[:500],
-                    metadata={"index": index, "source_node": content_id, "workspace_id": workspace_id},
+                    metadata={"index": index, "source_node": content_id, "workspace_id": workspace_id, **chunk_fields},
                     owner=owner,
                     workspace_id=workspace_id,
                 )
@@ -669,7 +703,7 @@ class KnowledgeGraphIngestMixin:
                     chunk_id=chunk_id,
                     source_node=content_id,
                     text=chunk,
-                    metadata={"index": index, "source_node": content_id},
+                    metadata={"index": index, "source_node": content_id, **chunk_fields},
                 )
                 self._upsert_edge(conn, content_id, chunk_id, "포함함")
             # ── Concept / Feature / Error / Code 노드 + 엣지 ────────────────

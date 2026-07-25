@@ -11,7 +11,7 @@
 [![CI Status](https://github.com/TaeSooPark-PTS/LatticeAI/actions/workflows/ci.yml/badge.svg?branch=main)](https://github.com/TaeSooPark-PTS/LatticeAI/actions/workflows/ci.yml)
 [![License](https://img.shields.io/badge/license-MIT-green)](LICENSE)
 
-![v9.9.3 Living Brain walkthrough](output/release/v9.9.3/gifs/v9.9.3-living-brain-walkthrough.gif)
+![v9.9.4 Living Brain walkthrough](output/release/v9.9.4/gifs/v9.9.4-living-brain-walkthrough.gif)
 
 Chat, files, folders, notes, and web pages all flow into one durable knowledge
 graph on your computer. Any model — local MLX or cloud — can speak with that
@@ -24,9 +24,9 @@ memory. Nothing leaves your machine without explicit consent.
 
 | | |
 | --- | --- |
-| **Chat with a Brain that remembers** — every conversation grows durable, source-linked memory ![Brain Chat](output/release/v9.9.3/screenshots/04-brain-chat-home.png) | **See how knowledge connects** — a real relationship graph, not a file list ![Memory Graph](output/release/v9.9.3/screenshots/05-memory-graph.png) |
-| **Capture anything** — files, whole folders, notes, screenshots, web pages ![Capture](output/release/v9.9.3/screenshots/06-capture.png) | **Automate with review** — agent changes become proposals you approve first ![Review Center](output/release/v9.9.3/screenshots/12-review-center.png) |
-| **Pick a model in one click** — recommended local models for your hardware ![Recommended Models](output/release/v9.9.3/screenshots/02-recommended-models.png) | **Stay in control** — audit, roles, retention in a separate admin surface ![Admin Console](output/release/v9.9.3/screenshots/10-admin-console.png) |
+| **Chat with a Brain that remembers** — every conversation grows durable, source-linked memory ![Brain Chat](output/release/v9.9.4/screenshots/04-brain-chat-home.png) | **See how knowledge connects** — a real relationship graph, not a file list ![Memory Graph](output/release/v9.9.4/screenshots/05-memory-graph.png) |
+| **Capture anything** — files, whole folders, notes, screenshots, web pages ![Capture](output/release/v9.9.4/screenshots/06-capture.png) | **Automate with review** — agent changes become proposals you approve first ![Review Center](output/release/v9.9.4/screenshots/12-review-center.png) |
+| **Pick a model in one click** — recommended local models for your hardware ![Recommended Models](output/release/v9.9.4/screenshots/02-recommended-models.png) | **Stay in control** — audit, roles, retention in a separate admin surface ![Admin Console](output/release/v9.9.4/screenshots/10-admin-console.png) |
 
 ## Why Lattice AI
 
@@ -57,48 +57,52 @@ First-run flow — wake the Brain, pick the owner, load a recommended model:
 
 | | | |
 | --- | --- | --- |
-| ![Login](output/release/v9.9.3/screenshots/01-login.png) | ![Model install](output/release/v9.9.3/screenshots/03-install-load-progress.png) | ![Model library](output/release/v9.9.3/screenshots/07-model-library.png) |
+| ![Login](output/release/v9.9.4/screenshots/01-login.png) | ![Model install](output/release/v9.9.4/screenshots/03-install-load-progress.png) | ![Model library](output/release/v9.9.4/screenshots/07-model-library.png) |
 
 Screenshot index and capture notes:
-[output/release/v9.9.3/SCREENSHOT_INDEX.md](output/release/v9.9.3/SCREENSHOT_INDEX.md)
+[output/release/v9.9.4/SCREENSHOT_INDEX.md](output/release/v9.9.4/SCREENSHOT_INDEX.md)
 
 ## Current Release
 
-The current release is **9.9.3 — Closed Loops**:
+The current release is **9.9.4 — Durable Loops**:
 
-- **Multi-file projects, not single files.** "todo 앱 html+css+js" now infers
-  a project manifest, generates and validates every file through the same
-  sanitize pipeline, repairs cross-file references, verifies the bundle, and
-  offers a safe zip download — every file rides the `artifacts[]` contract.
-- **Approval is a conversation, not a dead end.** Runs that need human
-  approval pause as `awaiting_approval` with a plan summary and a short-TTL
-  token; an inline card lets you approve, edit the plan, or cancel — the
-  fail-closed guarantee is unchanged.
-- **First value in 30 seconds.** One click installs a 3-document demo corpus,
-  suggested questions prove recall with real sources, and answers carry an
-  honest grounding badge (근거 있음/근거 없음) bound to retrieved sources.
-- **Retrieval that knows what you asked.** Hybrid search classifies queries
-  (fact/code/person/recency) and fuses channels with per-class weights, gated
-  by a benchmark-threshold CI test; a graph noise-curation job and an opt-in
-  folder watch keep the Brain fresh and clean.
-- **Automation you can see and trust.** Per-automation "run now" with
-  dry-run-first, last execution surfaced on cards and the daily briefing,
-  failures routed to the Review queue — plus inline file previews, global
-  drag-and-drop capture, 409 conflict rebase, and a funnel-metrics endpoint.
-- **A deeper harness.** 23 agent_eval scenarios including dirty-write filegen
-  paths, golden sanitize fixtures, a multi-model filegen benchmark, a
-  deterministic knowledge-pipeline E2E test, per-phase token budgets, and
-  `.tsx/.vue/.svelte` support with `ast.parse` Python validation.
+- **Loops that survive restarts.** Paused `awaiting_approval` runs are
+  persisted to disk (hashed tokens, wall-clock expiry) and resume after a
+  server restart; expired approvals answer with a one-click replan hint, and
+  `GET /agent/approvals` re-surfaces pending runs. Approval cards show a live
+  TTL countdown.
+- **You can watch the loop work.** Streamed agent runs emit named
+  `agent_step` SSE events (plan → tools → verify → terminal) rendered as a
+  live step timeline; weak-model parse repairs are counted and surfaced
+  honestly ("모델 응답을 N회 보정했어요").
+- **One retrieval policy.** A single `RetrievalPolicy` module (rule-based
+  query rewrite, query-class weights, 14-day recency age-decay in a
+  [0.5, 1.0] band) feeds both the service and graph fusion layers, gated by
+  the benchmark CI test; embedder swaps now report `stale_embedder` instead
+  of silently emptying the vector channel.
+- **Retrieval quality at the chunk level.** Markdown chunks at heading
+  boundaries (with `heading_path` provenance), code at function boundaries,
+  PDF chunks carry page numbers, plain text stays byte-identical — and
+  cited source cards click through to the stored chunk text.
+- **Grounded answers, cited sources.** When retrieved context exists the
+  answer prompt instructs [1]-style citations; a synthetic grounding bench
+  gates the verdict heuristic in CI; briefings suggest periodic graph noise
+  curation, and an opt-in review mode stages curator promotions for human
+  approval.
+- **A wider harness.** Manifest-aware plan rewriting plus React/Vite and
+  Python-package manifests, a bounded executor context window, five
+  deterministic workflow scenarios, a funnel soft gate, and a weekly
+  fail-open real-model agent smoke with a report artifact.
 
 Release notes: [RELEASE.md](RELEASE.md) · Full history: [docs/CHANGELOG.md](docs/CHANGELOG.md)
 
-Expected artifacts for 9.9.3 release must use exact filenames:
+Expected artifacts for 9.9.4 release must use exact filenames:
 
-- `dist/ltcai-9.9.3-py3-none-any.whl`
-- `dist/ltcai-9.9.3.tar.gz`
-- `ltcai-9.9.3.tgz`
-- `dist/ltcai-9.9.3.vsix`
-- `src-tauri/target/release/bundle/dmg/Lattice AI_9.9.3_aarch64.dmg`
+- `dist/ltcai-9.9.4-py3-none-any.whl`
+- `dist/ltcai-9.9.4.tar.gz`
+- `ltcai-9.9.4.tgz`
+- `dist/ltcai-9.9.4.vsix`
+- `src-tauri/target/release/bundle/dmg/Lattice AI_9.9.4_aarch64.dmg`
 
 Do not use wildcard artifact uploads. Package registry publishing remains owner-run.
 
@@ -118,7 +122,7 @@ See [ARCHITECTURE.md](ARCHITECTURE.md) for details and
 
 - External package registries are owner-published and can lag behind GitHub.
 - PostgreSQL/pgvector is optional scale/migration tooling. SQLite remains the
-  live local Brain store in 9.9.3.
+  live local Brain store in 9.9.4.
 - Docker, model downloads, cloud model calls, Telegram, Brain Network, and
   update checks require explicit user action.
 - Conversation does not fabricate answers when no model is loaded. Agent and
@@ -130,6 +134,7 @@ See [ARCHITECTURE.md](ARCHITECTURE.md) for details and
 
 | Version | Theme |
 | --- | --- |
+| 9.9.4 | Durable Loops |
 | 9.9.3 | Closed Loops |
 | 9.9.2 | Artifact Trust |
 | 9.9.1 | Clean Foundations |

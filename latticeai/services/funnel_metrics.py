@@ -10,7 +10,10 @@ Tracks the product's core value funnel with honest, local-only counters:
 * ``needs_review_runs``      — agent runs that ended in ``NEEDS_REVIEW``;
 * ``ingest_completions``     — successful ingestion pipeline completions;
 * ``recall_successes``       — chat turns whose context was grounded in at
-  least one Brain node.
+  least one Brain node;
+* ``approval_pauses``        — agent/workflow runs paused for human approval;
+* ``approval_resumes``       — paused runs a human explicitly resumed
+  (approved), the ``approval_resume_rate`` numerator.
 
 TTFV ("time to first value") derives from two first-occurrence timestamps:
 the first successful ingest and the first grounded recall/answer.
@@ -44,6 +47,8 @@ COUNTER_NAMES = (
     "needs_review_runs",
     "ingest_completions",
     "recall_successes",
+    "approval_pauses",
+    "approval_resumes",
 )
 
 _FIRST_NAMES = ("first_ingest_at", "first_value_at")
@@ -192,6 +197,9 @@ class FunnelMetricsService:
                 ),
                 "needs_review_rate": _rate(
                     counters["needs_review_runs"], counters["agent_runs"]
+                ),
+                "approval_resume_rate": _rate(
+                    counters["approval_resumes"], counters["approval_pauses"]
                 ),
             },
             "ttfv_seconds": self.ttfv_seconds(),
