@@ -14,6 +14,7 @@ any cloud service. Two complementary mechanisms, both fully local:
 from __future__ import annotations
 
 import json
+import logging
 import os
 import shutil
 import sqlite3
@@ -74,9 +75,12 @@ def _checkpoint_sqlite(db_path: Path) -> None:
 
 
 def _restore_sibling(path: Path, backup: Path) -> None:
-    if backup.exists():
+    try:
         shutil.copy2(backup, path)
-    else:
+    except FileNotFoundError:
+        # The backup vanished (or never existed — transient -wal/-shm): the
+        # honest reconstruction is "no such sibling", never a crash that
+        # masks the error that triggered the rollback.
         path.unlink(missing_ok=True)
 
 
@@ -101,10 +105,22 @@ def _replace_sqlite_atomically(src: Path, dest: Path, backup_dir: Path) -> None:
             sibling.unlink(missing_ok=True)
         os.replace(tmp, dest)
     except Exception:
-        if tmp.exists():
-            tmp.unlink()
+        # Recovery I/O must never replace the swap error being reported —
+        # an exception raised here would mask it (the CI-observed
+        # "[Errno 2]" over the real failure). Best-effort restore, then
+        # always re-raise the original.
+        try:
+            tmp.unlink(missing_ok=True)
+        except OSError as cleanup_exc:
+            logging.warning("restore tmp cleanup failed: %s", cleanup_exc)
         for sibling in _sqlite_siblings(dest):
-            _restore_sibling(sibling, backups.get(sibling, backup_dir / sibling.name))
+            try:
+                _restore_sibling(sibling, backups.get(sibling, backup_dir / sibling.name))
+            except OSError as rollback_exc:
+                logging.warning(
+                    "restore sibling rollback incomplete for %s: %s",
+                    sibling, rollback_exc,
+                )
         raise
 
 
@@ -127,12 +143,17 @@ def _replace_tree_with_backup(src: Optional[Path], dest: Path, backup_dir: Path)
             shutil.rmtree(dest)
         os.replace(staged, dest)
     except Exception:
-        if staged.exists():
-            shutil.rmtree(staged)
-        if dest.exists():
-            shutil.rmtree(dest)
-        if backup.exists():
-            shutil.copytree(backup, dest)
+        # Same masking guard as the sqlite swap: rollback I/O is
+        # best-effort and the original failure always propagates.
+        try:
+            if staged.exists():
+                shutil.rmtree(staged)
+            if dest.exists():
+                shutil.rmtree(dest)
+            if backup.exists():
+                shutil.copytree(backup, dest)
+        except OSError as rollback_exc:
+            logging.warning("blob tree rollback incomplete: %s", rollback_exc)
         raise
 
 
@@ -307,7 +328,15 @@ class KGPortabilityService:
                     blob_src = tmp / "blobs"
                     _replace_tree_with_backup(blob_src if blob_src.exists() else None, blob_dest, backup_dir)
                 except Exception:
-                    _rollback_sqlite_from_backup(db_dest, backup_dir)
+                    # The rollback is best-effort recovery; an I/O slip inside
+                    # it must never mask the restore failure being reported.
+                    try:
+                        _rollback_sqlite_from_backup(db_dest, backup_dir)
+                    except OSError as rollback_exc:
+                        logging.warning(
+                            "pre-restore rollback incomplete (backup kept at %s): %s",
+                            backup_dir, rollback_exc,
+                        )
                     raise
         stats = self._kg.stats()
         return {

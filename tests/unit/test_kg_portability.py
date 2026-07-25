@@ -188,6 +188,32 @@ def test_restore_failure_preserves_current_brain_and_pre_restore_backup(tmp_path
     assert (backups[0] / Path(store.db_path).name).exists()
 
 
+def test_rollback_io_failure_never_masks_the_original_restore_error(tmp_path, monkeypatch):
+    """Exception-masking guard (v9.9.4 CI flake): a FileNotFoundError raised
+    by rollback I/O inside the except path must not replace the real swap
+    failure — the caller has to see *why* the restore failed."""
+    store = _seeded(tmp_path, "kg")
+    svc = KGPortabilityService(knowledge_graph=store, data_dir=tmp_path / "data")
+    out = svc.backup()
+
+    original_replace = portability_module.os.replace
+
+    def fail_db_swap(src, dst):
+        if Path(dst) == Path(store.db_path):
+            raise OSError("simulated restore swap failure")
+        return original_replace(src, dst)
+
+    def exploding_copy2(src, dst, **kwargs):
+        raise FileNotFoundError(2, "No such file or directory")
+
+    monkeypatch.setattr(portability_module.os, "replace", fail_db_swap)
+    # Every rollback copy explodes — the original error must still surface.
+    monkeypatch.setattr(portability_module.shutil, "copy2", exploding_copy2)
+
+    with pytest.raises(OSError, match="swap failure"):
+        svc.restore(out["path"], confirm=True)
+
+
 def test_restore_blob_failure_rolls_back_database_and_blobs(tmp_path, monkeypatch):
     store = _seeded(tmp_path, "kg")
     Path(store.blob_dir).mkdir(parents=True, exist_ok=True)
