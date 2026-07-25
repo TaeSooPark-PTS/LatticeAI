@@ -45,7 +45,7 @@ class AgentResumeRequest(BaseModel):
     modified_plan: Optional[dict] = None
     executing_model: Optional[str] = None
     reviewing_model: Optional[str] = None
-    # awaiting_approval flow (v9.10): run_id + short-TTL approval token.
+    # awaiting_approval flow (v9.9.x): run_id + short-TTL approval token.
     run_id: Optional[str] = None
     approval_token: Optional[str] = None
     approve: Optional[bool] = None

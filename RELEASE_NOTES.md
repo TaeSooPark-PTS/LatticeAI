@@ -1,6 +1,18 @@
+# [v9.9.5 - Closed Gaps] (2026-07-26)
+
+Closes the seven residual gaps from 9.9.4: live sidecar Playwright E2E,
+optional cross-encoder rerank, mid-run workspace awareness, rollback
+none|git|snapshot, critic artifact checklist, VS Code/Telegram approval
+parity, and human_in_loop unification onto the durable approval store.
+
+See [RELEASE_NOTES_v9.9.5.md](RELEASE_NOTES_v9.9.5.md) and
+[docs/CHANGELOG.md](docs/CHANGELOG.md).
+
+---
+
 # Release Notes
 
-This repository keeps public release history from **8.0.0 through 9.9.4**.
+This repository keeps public release history from **8.0.0 through 9.9.5**.
 Earlier release notes and release evidence were removed from the Git tree so the
 history stays focused on the current product era.
 

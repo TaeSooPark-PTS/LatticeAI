@@ -4147,7 +4147,7 @@
   },
   "info": {
     "title": "Lattice AI Server (local)",
-    "version": "9.9.4"
+    "version": "9.9.5"
   },
   "openapi": "3.1.0",
   "paths": {

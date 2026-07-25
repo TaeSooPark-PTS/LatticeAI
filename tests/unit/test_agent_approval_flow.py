@@ -491,3 +491,75 @@ def test_injected_phase_budgets_cap_each_phase(tmp_path):
     assert by_message["Produce a JSON execution plan for this request."] == {333}
     assert by_message["Execute the next step."] == {777}
     assert by_message["Review the execution transcript and return your verdict JSON."] == {222}
+
+
+# ── L1: legacy human_in_loop rides the durable store (9.9.5) ───────────
+
+def test_human_in_loop_uses_durable_store_with_legacy_wire_contract(tmp_path):
+    """Deprecated human_in_loop pauses via the same store as awaiting_approval."""
+    executed = []
+    controller = _controller(tmp_path, _runtime(executed))
+    result = asyncio.run(
+        controller.agent(
+            AgentRequest(message="run ls in the workspace", human_in_loop=True),
+            _request(),
+        )
+    )
+    assert result["status"] == "waiting_approval"
+    assert result["context_id"] == result["run_id"]
+    assert result["approval"]["token"]
+    # Durable on disk
+    store_path = tmp_path / "data" / "agent_runs" / f"{result['run_id']}.json"
+    assert store_path.exists()
+    record = json.loads(store_path.read_text(encoding="utf-8"))
+    assert record.get("legacy_context") is True
+    assert executed == []
+
+
+def test_legacy_context_id_resume_approves_without_token(tmp_path):
+    executed = []
+    controller = _controller(tmp_path, _runtime(executed))
+    result = asyncio.run(
+        controller.agent(
+            AgentRequest(message="run ls in the workspace", human_in_loop=True),
+            _request(),
+        )
+    )
+    final = asyncio.run(controller.resume(
+        AgentResumeRequest(context_id=result["context_id"], approved=True),
+        _request(),
+    ))
+    assert final["status"] == "ok"
+    assert final["final_state"] == "DONE"
+    assert executed == [{"action": "run_command", "args": {"command": "ls"}}]
+
+
+def test_legacy_context_id_cannot_resume_token_gated_pause(tmp_path):
+    """A modern awaiting_approval pause must not accept bare context_id."""
+    controller = _controller(tmp_path, _runtime([]))
+    result = _start(controller)  # no human_in_loop → awaiting_approval
+    assert result["status"] == "awaiting_approval"
+    with pytest.raises(HTTPException) as excinfo:
+        asyncio.run(controller.resume(
+            AgentResumeRequest(context_id=result["run_id"], approved=True),
+            _request(),
+        ))
+    assert excinfo.value.status_code == 404
+
+
+def test_legacy_context_survives_restart(tmp_path):
+    controller = _controller(tmp_path, _runtime([]))
+    result = asyncio.run(
+        controller.agent(
+            AgentRequest(message="run ls in the workspace", human_in_loop=True),
+            _request(),
+        )
+    )
+    executed_after = []
+    reborn = _controller(tmp_path, _runtime(executed_after))
+    final = asyncio.run(reborn.resume(
+        AgentResumeRequest(context_id=result["context_id"], approved=True),
+        _request(),
+    ))
+    assert final["status"] == "ok"
+    assert executed_after == [{"action": "run_command", "args": {"command": "ls"}}]

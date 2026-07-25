@@ -1,0 +1,62 @@
+name: Sidecar E2E (nightly)
+
+# Wave 3.2 residual — real FastAPI sidecar + Playwright first-value loop.
+# Mock-server visual smoke stays in visual.yml; this job is the live path.
+
+on:
+  schedule:
+    - cron: "27 4 * * *"
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths:
+      - "tests/e2e/**"
+      - "scripts/run_sidecar_e2e.mjs"
+      - "playwright.e2e.config.js"
+      - ".github/workflows/e2e-sidecar.yml"
+      - "latticeai/**"
+      - "frontend/**"
+      - "static/app/**"
+
+env:
+  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: "true"
+
+jobs:
+  sidecar-e2e:
+    name: Playwright first-value (live sidecar)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5.1.0
+
+      - name: Set up Python 3.12
+        uses: actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065 # v5.6.0
+        with:
+          python-version: "3.12"
+          cache: pip
+
+      - name: Set up Node 20
+        uses: actions/setup-node@a0853c24544627f65ddf259abe73b1d18a591444 # v5.0.0
+        with:
+          node-version: "20"
+          cache: npm
+
+      - name: Install dependencies
+        run: |
+          pip install -e "."
+          npm ci
+          npx playwright install --with-deps chromium
+
+      - name: Build frontend assets
+        run: npm run build:assets
+
+      - name: Run sidecar E2E
+        run: npm run test:e2e:sidecar
+
+      - name: Upload E2E failure report
+        if: failure()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        with:
+          name: sidecar-e2e-report
+          path: |
+            test-results/
+            playwright-report/

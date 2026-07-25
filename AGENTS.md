@@ -1,6 +1,6 @@
 # LatticeAI Project AGENTS.md
 
-Current release: **9.9.4 — Durable Loops**.
+Current release: **9.9.5 — Closed Gaps**.
 
 This file is part of the release documentation gate
 (`scripts/check_current_release_docs.mjs`): the current-release marker above

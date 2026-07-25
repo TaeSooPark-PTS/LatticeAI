@@ -1,6 +1,6 @@
 {
   "name": "ltcai",
-  "version": "9.9.4",
+  "version": "9.9.5",
   "description": "Lattice AI — local-first Digital Brain that keeps your knowledge durable across any AI model.",
   "homepage": "https://github.com/TaeSooPark-PTS/LatticeAI#readme",
   "repository": {
@@ -41,6 +41,7 @@
     "test:integration": "node scripts/run_integration_tests.mjs",
     "test:browser-extension": "node --check browser-extension/popup.js && node --check browser-extension/capture-page.js && node --test tests/browser-extension.test.cjs",
     "test:visual": "playwright test",
+    "test:e2e:sidecar": "node scripts/run_sidecar_e2e.mjs",
     "vercel:build": "node scripts/build_vercel_static.mjs",
     "desktop:tauri": "tauri dev",
     "desktop:tauri:build": "tauri build",

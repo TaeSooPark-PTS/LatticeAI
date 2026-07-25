@@ -13,6 +13,17 @@
 > (`LTCAI_RELEASE_EVIDENCE_KEEP`으로 조정), 과거 증거는 언제든 해당 태그를
 > 체크아웃해 재생성할 수 있습니다.
 
+## v9.9.5 — Closed Gaps (2026-07-26)
+
+9.9.5 closes the seven residual gaps left by 9.9.4 Durable Loops: sidecar
+Playwright nightly E2E, optional cross-encoder rerank, mid-run workspace
+awareness (L5), rollback none|git|snapshot (L7), critic↔artifacts meta
+checklist (L4), VS Code/Telegram approval flows (SURFACE_PARITY), and
+unification of legacy human_in_loop onto the durable approval store (L1).
+Also finishes the knowledge-graph retrieval_reads decomposition.
+
+- 상세: [RELEASE_NOTES_v9.9.5.md](RELEASE_NOTES_v9.9.5.md)
+
 ## v9.9.4 — Durable Loops (2026-07-26)
 
 9.9.4 ships every improvement wave from the 2026-07-25 full-stack review:

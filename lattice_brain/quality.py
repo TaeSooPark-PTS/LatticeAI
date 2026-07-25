@@ -131,13 +131,33 @@ class HybridFusion:
         return sorted(results, key=lambda x: x["fused_score"], reverse=True)
 
 class RerankerInterface:
-    """Pluggable reranker interface"""
+    """Pluggable reranker interface.
+
+    Default is identity (fused score). When
+    ``LATTICEAI_CROSS_ENCODER_RERANK=1`` and a CrossEncoder is importable,
+    delegates to :func:`lattice_brain.graph.rerank.rerank_matches`. Failures
+    never raise — always returns a ranked list.
+    """
+
     def rerank(self, query: str, candidates: List[Dict], top_k: int = 5) -> List[Dict]:
-        # Default local-safe fallback: preserve fused ordering without making
-        # unearned cross-encoder claims.
-        for c in candidates:
-            c["rerank_score"] = c.get("fused_score", 0.0)
-        return sorted(candidates, key=lambda x: x.get("rerank_score", 0), reverse=True)[:top_k]
+        try:
+            from lattice_brain.graph.rerank import rerank_matches
+
+            # Map fused_score → score so the shared helper ranks consistently.
+            prepared = []
+            for c in candidates:
+                item = dict(c)
+                if "score" not in item:
+                    item["score"] = item.get("fused_score", 0.0)
+                prepared.append(item)
+            result = rerank_matches(query, prepared, top_k=top_k)
+            return list(result.get("matches") or [])
+        except Exception:  # noqa: BLE001 — quality path must never raise
+            for c in candidates:
+                c["rerank_score"] = c.get("fused_score", 0.0)
+            return sorted(
+                candidates, key=lambda x: x.get("rerank_score", 0), reverse=True
+            )[:top_k]
 
 # -----------------------------
 # 3. Memory Candidate Extraction / Scoring / Dedupe / Merge / Conflict / Retention

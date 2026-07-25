@@ -12,7 +12,7 @@ chat, run model workflows, and trigger coding actions from the editor.
 
 ## Current Release
 
-**9.9.4 — Durable Loops.** The extension follows
+**9.9.5 — Closed Gaps.** The extension follows
 the main app positioning: Lattice AI is a local-first Digital Brain, not just a
 model launcher or editor chat panel. It connects editor actions to the same
 durable Brain context, explicit consent gates, replaceable model workflow, and

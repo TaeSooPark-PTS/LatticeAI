@@ -4,6 +4,41 @@ The top entry is either the current unreleased main-branch work or the current
 release line. Older entries are historical and may describe behavior as it
 existed at that release.
 
+## [9.9.5] - 2026-07-26
+
+### Added
+- Optional cross-encoder rerank (`lattice_brain/graph/rerank.py`): env
+  `LATTICEAI_CROSS_ENCODER_RERANK=1` (model via
+  `LATTICEAI_CROSS_ENCODER_MODEL`); hybrid_search returns additive `rerank`
+  meta; default path is identity with no model download.
+- Sidecar-backed Playwright first-value E2E: `tests/e2e/`,
+  `scripts/run_sidecar_e2e.mjs`, `npm run test:e2e:sidecar`, nightly
+  `.github/workflows/e2e-sidecar.yml`.
+- VS Code approval commands: `ltcai.listApprovals`, `ltcai.approveAgent`,
+  `ltcai.rejectAgent` with pause-token session cache.
+- Telegram approval handles both `waiting_approval` and `awaiting_approval`
+  with run_id+token resume preferred.
+- Agent loop L4/L5/L7 helpers: `artifact_checklist`, `files_written`,
+  snapshot rollback ports (`snapshot_file` / `restore_snapshot`) with
+  mode-tagged results (`git` | `snapshot` | `none`).
+- Knowledge-graph read surface decomposition:
+  `lattice_brain/graph/retrieval_reads.py` (`KnowledgeGraphReadsMixin`).
+
+### Changed
+- Legacy `human_in_loop` pauses now use the durable `AgentRunStore` path
+  (`legacy_context=True`); the separate in-memory `_pending` map is removed.
+  Wire contract (`status=waiting_approval`, `context_id`) is preserved.
+- Rollback recovers file-create actions via pre-write snapshots when git is
+  unavailable or not governed.
+- Critic verify prompts include a deterministic artifact checklist derived
+  from transcript sanitize/repair flags.
+- Executor prompts list files already written in the current run.
+- `docs/SURFACE_PARITY.md` marks VS Code/Telegram approval as provided.
+
+### Tests
+- `test_agent_loop_l4_l5_l7.py`, `test_cross_encoder_rerank.py`,
+  `test_snapshot_rollback_ports.py`, L1 approval flow extensions.
+
 ## [9.9.4] - 2026-07-26
 
 ### Added

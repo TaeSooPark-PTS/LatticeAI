@@ -283,7 +283,9 @@ def test_rollback_uses_injected_port():
     assert rolled_paths == ["changed.py"]
     assert ctx.state == AgentState.FAILED
     assert ctx.rollback_log == []
-    assert ctx.transcript[-1]["rolled_back"] == [{"path": "changed.py", "ok": True, "stderr": ""}]
+    assert ctx.transcript[-1]["rolled_back"] == [
+        {"path": "changed.py", "ok": True, "stderr": "", "mode": "git"}
+    ]
 
 
 def test_product_agent_runtime_name_is_not_shadowed_by_single_agent_loop():

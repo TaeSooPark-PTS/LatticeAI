@@ -40,7 +40,8 @@ UPLOAD_DOC_URL  = f"{BASE_URL}/upload/document"
 AGENT_RESUME_URL      = f"{BASE_URL}/agent/resume"
 AGENT_WORKSPACE       = Path(env_value("LATTICEAI_AGENT_ROOT", "agent_workspace")).resolve()
 
-# Pending plan approvals: context_id → (chat_id, executing_model, reviewing_model)
+# Pending plan approvals keyed by run_id (or legacy context_id).
+# Values: chat_id, models, and the resume credentials (token and/or legacy).
 _bot_pending_plans: dict[str, dict] = {}
 MAX_TELEGRAM_FILE_BYTES = 45 * 1024 * 1024
 INVITE_CODE           = env_value("LATTICEAI_INVITE_CODE")
@@ -711,35 +712,65 @@ async def send_generated_files(client, chat_id, generated_files):
 
 # ── Plan approval (Human-in-the-loop) ────────────────────────────────────────
 
+def _approval_pause_id(data: dict) -> str:
+    """Stable key for a paused plan: run_id preferred, legacy context_id fallback."""
+    return str(data.get("run_id") or data.get("context_id") or "")
+
+
+def _is_approval_pause(data: dict) -> bool:
+    status = str(data.get("status") or "")
+    return status in {"waiting_approval", "awaiting_approval"}
+
+
 async def send_plan_for_approval(client, chat_id, data: dict) -> None:
-    """Show the agent plan to the user and present Done/Cancel buttons."""
-    context_id = data.get("context_id", "")
-    plan = data.get("plan", {})
-    goal = plan.get("goal", "")
-    steps = plan.get("steps", [])
+    """Show the agent plan to the user and present Done/Cancel buttons.
+
+    Handles both the modern ``awaiting_approval`` (run_id + token) and the
+    legacy ``waiting_approval`` / ``context_id`` wire contracts (v9.9.5
+    SURFACE_PARITY — Telegram approval flow).
+    """
+    pause_id = _approval_pause_id(data)
+    if not pause_id:
+        await send_message(client, chat_id, "❌ 승인할 계획을 식별할 수 없습니다.")
+        return
+    plan = data.get("plan", {}) or {}
+    goal = plan.get("goal") or (data.get("approval") or {}).get("plan_summary") or ""
+    steps = plan.get("steps", []) or data.get("non_auto_steps") or []
     p_model = data.get("planning_model", "current")
     e_model = data.get("executing_model", "current")
     r_model = data.get("reviewing_model", "current")
+    approval = data.get("approval") or {}
+    expires_at = approval.get("expires_at")
 
     lines = ["📋 *플래닝 완료* — 실행 전 확인해주세요\n"]
     if goal:
         lines.append(f"*목표:* {goal}\n")
     for i, step in enumerate(steps, 1):
-        desc = step.get("description") or step.get("action") or str(step)
+        if isinstance(step, dict):
+            desc = step.get("description") or step.get("action") or str(step)
+        else:
+            desc = str(step)
         lines.append(f"{i}. {desc}")
     lines.append(f"\n🧠 플래닝: `{p_model}`")
     lines.append(f"⚙️ 실행: `{e_model}`")
     lines.append(f"🔍 검토: `{r_model}`")
+    if expires_at:
+        lines.append(f"⏳ 승인 만료: `{expires_at}`")
 
-    _bot_pending_plans[context_id] = {
+    _bot_pending_plans[pause_id] = {
         "chat_id": chat_id,
+        "run_id": data.get("run_id") or pause_id,
+        "context_id": data.get("context_id"),
+        "approval_token": approval.get("token"),
+        "legacy": data.get("status") == "waiting_approval" or bool(data.get("context_id")),
         "executing_model": data.get("executing_model"),
         "reviewing_model": data.get("reviewing_model"),
     }
 
+    # callback_data max 64 bytes — pause ids are token_urlsafe(16) (~22 chars).
     keyboard = {"inline_keyboard": [[
-        {"text": "✅ Done — 실행 시작", "callback_data": f"plan:approve:{context_id}"},
-        {"text": "❌ 취소", "callback_data": f"plan:cancel:{context_id}"},
+        {"text": "✅ Done — 실행 시작", "callback_data": f"plan:approve:{pause_id}"},
+        {"text": "❌ 취소", "callback_data": f"plan:cancel:{pause_id}"},
     ]]}
     await send_message(client, chat_id, "\n".join(lines), reply_markup=keyboard)
 
@@ -749,8 +780,8 @@ async def handle_plan_callback(client, chat_id, data: str) -> None:
     parts = data.split(":", 2)
     if len(parts) != 3:
         return
-    _, action, context_id = parts
-    pending = _bot_pending_plans.get(context_id)
+    _, action, pause_id = parts
+    pending = _bot_pending_plans.get(pause_id)
 
     # A callback is bound to the chat that received the plan. Even two allowed
     # chats cannot approve or cancel each other's plan by replaying callback
@@ -758,9 +789,19 @@ async def handle_plan_callback(client, chat_id, data: str) -> None:
     if pending and int(pending.get("chat_id")) != int(chat_id):
         await send_message(client, chat_id, "❌ 다른 채팅의 작업은 처리할 수 없습니다.")
         return
-    pending = _bot_pending_plans.pop(context_id, None)
+    pending = _bot_pending_plans.pop(pause_id, None)
 
-    if action == "cancel" or not pending:
+    if action == "cancel":
+        if pending:
+            try:
+                resume_body = _resume_payload(pending, approved=False)
+                async with _server_client() as sc:
+                    await sc.post(AGENT_RESUME_URL, json=resume_body, timeout=30.0)
+            except Exception as exc:  # noqa: BLE001 — cancel is best-effort
+                logger.warning("telegram cancel resume failed: %s", safe_log_text(exc))
+        await send_message(client, chat_id, "❌ 작업이 취소되었습니다.")
+        return
+    if not pending:
         await send_message(client, chat_id, "❌ 작업이 취소되었습니다.")
         return
 
@@ -769,12 +810,11 @@ async def handle_plan_callback(client, chat_id, data: str) -> None:
 
     try:
         async with _server_client() as sc:
-            res = await sc.post(AGENT_RESUME_URL, json={
-                "context_id": context_id,
-                "approved": True,
-                "executing_model": pending.get("executing_model"),
-                "reviewing_model": pending.get("reviewing_model"),
-            }, timeout=300.0)
+            res = await sc.post(
+                AGENT_RESUME_URL,
+                json=_resume_payload(pending, approved=True),
+                timeout=300.0,
+            )
         data_r = res.json() if res.status_code == 200 else {}
         ans = data_r.get("response", f"❌ 서버 에러 ({res.status_code})")
         await send_message(client, chat_id, str(ans))
@@ -783,6 +823,25 @@ async def handle_plan_callback(client, chat_id, data: str) -> None:
             await send_preview_links(client, chat_id, collect_preview_urls(data_r))
     except Exception as e:
         await send_message(client, chat_id, f"❌ 실행 중 오류: {e}")
+
+
+def _resume_payload(pending: dict, *, approved: bool) -> dict:
+    """Build /agent/resume body: token path preferred, else legacy context_id."""
+    body: dict = {
+        "approved": approved,
+        "executing_model": pending.get("executing_model"),
+        "reviewing_model": pending.get("reviewing_model"),
+    }
+    token = pending.get("approval_token")
+    run_id = pending.get("run_id")
+    # Unified durable store (9.9.5): token-gated resume works for both the
+    # modern awaiting_approval and the legacy human_in_loop pause.
+    if token and run_id:
+        body["run_id"] = run_id
+        body["approval_token"] = token
+        return body
+    body["context_id"] = pending.get("context_id") or run_id
+    return body
 
 
 # ── AI request task ───────────────────────────────────────────────────────────
@@ -794,8 +853,8 @@ async def process_ai_request(client, chat_id, user_text, image_data=None):
         data  = await ask_ai(client, user_text, image_data, agent_mode=not image_data)
         logger.info("ask_ai 완료: chat_id=%s result_keys=%s", chat_id, list(data.keys()) if isinstance(data, dict) else type(data))
 
-        # Human-in-the-loop: show plan and wait for approval
-        if isinstance(data, dict) and data.get("status") == "waiting_approval":
+        # Approval pause (legacy waiting_approval or modern awaiting_approval)
+        if isinstance(data, dict) and _is_approval_pause(data):
             await send_plan_for_approval(client, chat_id, data)
             return
 
@@ -887,7 +946,7 @@ async def handle_command(client, chat_id, command: str, args: str):
         await send_chat_action(client, chat_id, "typing")
         data = await ask_ai(client, task_text, agent_mode=True,
                             executing_model=exec_model, reviewing_model=reviewing_model)
-        if isinstance(data, dict) and data.get("status") == "waiting_approval":
+        if isinstance(data, dict) and _is_approval_pause(data):
             await send_plan_for_approval(client, chat_id, data)
         else:
             ans = data.get("response", str(data)) if isinstance(data, dict) else str(data)

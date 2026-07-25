@@ -1,6 +1,6 @@
 # Privacy
 
-Current release: **9.9.4 — Durable Loops**.
+Current release: **9.9.5 — Closed Gaps**.
 
 Lattice AI is local-first. It does not send your prompts, files, graph, or Brain
 archive to Lattice-owned servers by default. Some user-chosen features can

@@ -220,6 +220,60 @@ class ToolDispatchService:
         )
         return {"path": path, "ok": r.returncode == 0, "stderr": r.stderr[:200]}
 
+    # ── snapshot rollback ports (review L7) ──────────────────────────────
+    # Pre-write capture + restore for workspaces where git rollback does not
+    # apply (untracked new files, no git). Strictly confined to AGENT_ROOT.
+
+    _SNAPSHOT_MAX_BYTES = 512 * 1024
+
+    def _workspace_path(self, path: str) -> Optional[Path]:
+        raw = Path(path)
+        candidate = raw if raw.is_absolute() else AGENT_ROOT / raw
+        try:
+            resolved = candidate.resolve()
+            root = AGENT_ROOT.resolve()
+        except OSError:
+            return None
+        if resolved != root and root not in resolved.parents:
+            return None
+        return resolved
+
+    def snapshot_file(self, path: str) -> Dict[str, Any]:
+        """Pre-write state of a workspace file: existence + bounded content."""
+        target = self._workspace_path(path)
+        if target is None:
+            return {"existed": False, "content": None, "too_large": False,
+                    "error": "path escapes the agent workspace"}
+        if not target.exists() or not target.is_file():
+            return {"existed": False, "content": None, "too_large": False}
+        try:
+            if target.stat().st_size > self._SNAPSHOT_MAX_BYTES:
+                return {"existed": True, "content": None, "too_large": True}
+            return {
+                "existed": True,
+                "content": target.read_text(encoding="utf-8", errors="replace"),
+                "too_large": False,
+            }
+        except OSError as exc:
+            return {"existed": True, "content": None, "too_large": True,
+                    "error": str(exc)}
+
+    def restore_snapshot(self, path: str, content: Optional[str]) -> Dict[str, Any]:
+        """Restore a pre-write snapshot: rewrite prior content, or delete a
+        file the run created (``content=None``)."""
+        target = self._workspace_path(path)
+        if target is None:
+            return {"path": path, "ok": False, "error": "path escapes the agent workspace"}
+        try:
+            if content is None:
+                target.unlink(missing_ok=True)
+                return {"path": path, "ok": True, "action": "deleted"}
+            target.parent.mkdir(parents=True, exist_ok=True)
+            target.write_text(content, encoding="utf-8")
+            return {"path": path, "ok": True, "action": "restored"}
+        except OSError as exc:
+            return {"path": path, "ok": False, "error": str(exc)}
+
 
 DEFAULT_TOOL_DISPATCH_SERVICE = ToolDispatchService()
 
@@ -375,6 +429,8 @@ def build_agent_runtime(
         memory_updater_prompt=MEMORY_UPDATER_PROMPT,
         agent_root=AGENT_ROOT,
         rollback_file=dispatch_service.rollback_file,
+        snapshot_file=dispatch_service.snapshot_file,
+        restore_snapshot=dispatch_service.restore_snapshot,
         hooks=hooks,
         brain_memory=brain_memory,
     )

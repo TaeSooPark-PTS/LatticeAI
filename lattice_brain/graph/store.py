@@ -11,6 +11,7 @@ from .projection import KnowledgeGraphProjectionMixin
 from .provenance import KnowledgeGraphProvenanceMixin
 from .retrieval import KnowledgeGraphRetrievalMixin
 from .retrieval_docgen import KnowledgeGraphDocGenMixin
+from .retrieval_reads import KnowledgeGraphReadsMixin
 from .retrieval_vector import KnowledgeGraphVectorMixin
 from .write_master import KnowledgeGraphWriteMixin
 
@@ -24,6 +25,7 @@ class KnowledgeGraphStore(
     KnowledgeGraphProvenanceMixin,
     KnowledgeGraphDocumentsMixin,
     KnowledgeGraphRetrievalMixin,
+    KnowledgeGraphReadsMixin,
     KnowledgeGraphVectorMixin,
     KnowledgeGraphDocGenMixin,
 ):

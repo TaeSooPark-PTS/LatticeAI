@@ -13,8 +13,24 @@ export interface ModelInfo {
   internet_requirement?: string;
 }
 
+/** In-memory cache of approval tokens for runs this extension started (or was given). */
+const approvalTokenCache = new Map<string, string>();
+
 export class LatticeAIClient {
   constructor(private baseUrl: string) { }
+
+  /** Remember a token so List/Approve can resume runs after a pause. */
+  cacheApprovalToken(runId: string, token: string): void {
+    if (runId && token) approvalTokenCache.set(runId, token);
+  }
+
+  takeCachedApprovalToken(runId: string): string | undefined {
+    return approvalTokenCache.get(runId);
+  }
+
+  clearCachedApprovalToken(runId: string): void {
+    approvalTokenCache.delete(runId);
+  }
 
   // ── Health ────────────────────────────────────────────────────────────────
 
@@ -127,6 +143,60 @@ export class LatticeAIClient {
     detail?: string;
   }): Promise<any> {
     return this._post("/workspace/vscode/status", payload);
+  }
+
+  // ── Agent approval (SURFACE_PARITY, v9.9.5) ───────────────────────────────
+
+  async runAgent(message: string, opts: {
+    human_in_loop?: boolean;
+    planning_model?: string;
+    executing_model?: string;
+    reviewing_model?: string;
+  } = {}): Promise<any> {
+    const result = await this._post("/agent", {
+      message,
+      source: "vscode",
+      human_in_loop: opts.human_in_loop ?? false,
+      planning_model: opts.planning_model,
+      executing_model: opts.executing_model,
+      reviewing_model: opts.reviewing_model,
+    });
+    // Cache tokens for both modern awaiting_approval and legacy waiting_approval.
+    const status = String(result?.status || "");
+    if (status === "awaiting_approval" || status === "waiting_approval") {
+      const runId = String(result?.run_id || result?.context_id || "");
+      const token = String(result?.approval?.token || "");
+      this.cacheApprovalToken(runId, token);
+    }
+    return result;
+  }
+
+  async listApprovals(): Promise<any> {
+    return this._get("/agent/approvals");
+  }
+
+  async resumeAgent(payload: {
+    run_id?: string;
+    approval_token?: string;
+    context_id?: string;
+    approved?: boolean;
+    approve?: boolean;
+    edited_plan?: any;
+  }): Promise<any> {
+    const runId = payload.run_id || payload.context_id || "";
+    const token = payload.approval_token || (runId ? this.takeCachedApprovalToken(runId) : undefined);
+    const body: any = {
+      run_id: payload.run_id,
+      approval_token: token,
+      context_id: payload.context_id,
+      approved: payload.approved ?? payload.approve ?? true,
+      edited_plan: payload.edited_plan,
+    };
+    // API accepts both approve and approved; send both for wire compatibility.
+    body.approve = body.approved;
+    const result = await this._post("/agent/resume", body);
+    if (runId) this.clearCachedApprovalToken(runId);
+    return result;
   }
 
   // ── HTTP Helpers ──────────────────────────────────────────────────────────

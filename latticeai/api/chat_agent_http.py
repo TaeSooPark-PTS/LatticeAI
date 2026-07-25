@@ -65,9 +65,7 @@ class AgentHTTPController:
         self.agent_root = Path(agent_root)
         self.ensure_agent_root = ensure_agent_root
         self.funnel_metrics = funnel_metrics
-        self._pending: Dict[str, tuple] = {}
         self._pending_lock = threading.Lock()
-        self._pending_ttl_seconds = 15 * 60
         # awaiting_approval runs: run_id -> paused run state + approval token.
         # Fail-closed: governed steps only ever execute after resume presents
         # the matching, unexpired token for this run (or via the legacy
@@ -250,33 +248,29 @@ class AgentHTTPController:
             model_id=req.planning_model,
         )
 
+        requirements_probe = getattr(self.runtime, "approval_requirements", None)
+
         if req.human_in_loop:
-            context_id = secrets.token_urlsafe(16)
-            with self._pending_lock:
-                self._pending[context_id] = (
-                    ctx,
-                    req,
-                    language_hint,
-                    current_user,
-                    time.monotonic(),
-                )
-            return {
-                "status": "waiting_approval",
-                "context_id": context_id,
-                "plan": ctx.plan,
-                "steps": ctx.transcript,
-                "state_history": ctx.state_history,
-                "planning_model": req.planning_model or self.model_router.current_model_id,
-                "executing_model": req.executing_model or self.model_router.current_model_id,
-                "reviewing_model": req.reviewing_model or self.model_router.current_model_id,
-                "loop": ctx.trace.summary(),
-            }
+            # Deprecated explicit pause (L1 unification, 9.9.5): the legacy
+            # ``human_in_loop`` flow now rides the same durable approval
+            # store as ``awaiting_approval`` — one pause path, one resume
+            # path, restart-safe. The legacy wire contract is preserved:
+            # ``status="waiting_approval"`` + ``context_id`` (token-less,
+            # same-user resume).
+            requirements = (
+                requirements_probe(ctx)
+                if callable(requirements_probe)
+                else {"requires_approval": True, "non_auto_steps": [], "plan_summary": ""}
+            )
+            return self._pause_for_approval(
+                ctx, req, language_hint, current_user, requirements,
+                legacy_context=True,
+            )
 
         # Interactive approval: when the plan needs human approval, pause the
         # run as awaiting_approval (short-TTL token) instead of failing it.
         # ``getattr`` keeps injected fake runtimes without the preview method
         # on the historical fail-closed path.
-        requirements_probe = getattr(self.runtime, "approval_requirements", None)
         if callable(requirements_probe):
             requirements = requirements_probe(ctx)
             if requirements.get("requires_approval"):
@@ -301,8 +295,16 @@ class AgentHTTPController:
         language_hint: str,
         current_user: str,
         requirements: Dict[str, Any],
+        *,
+        legacy_context: bool = False,
     ) -> Dict[str, Any]:
-        """Park a plan that needs approval and hand the user a resume token."""
+        """Park a plan that needs approval and hand the user a resume token.
+
+        ``legacy_context=True`` marks a deprecated ``human_in_loop`` pause:
+        same durable storage, but the response speaks the historical
+        ``waiting_approval``/``context_id`` contract and resume may present
+        the ``context_id`` instead of the approval token (same user only).
+        """
         run_id = secrets.token_urlsafe(16)
         approval_token = secrets.token_urlsafe(32)
         now_monotonic = time.monotonic()
@@ -319,6 +321,7 @@ class AgentHTTPController:
                 "token": approval_token,
                 "expires_monotonic": now_monotonic + self._approval_ttl_seconds,
                 "expires_at": expires_at,
+                "legacy_context": legacy_context,
             }
         # Durable mirror: a restart between pause and resume must not orphan
         # the run. Best-effort — the in-memory pause still answers on failure.
@@ -332,6 +335,7 @@ class AgentHTTPController:
                 token=approval_token,
                 expires_epoch=time.time() + self._approval_ttl_seconds,
                 expires_at=expires_at,
+                legacy_context=legacy_context,
             )
         except Exception as exc:  # noqa: BLE001
             logging.warning("agent run store persist failed: %s", exc)
@@ -345,8 +349,8 @@ class AgentHTTPController:
             "이 작업에는 승인이 필요한 단계가 있어 실행을 잠시 멈췄습니다. "
             "계획을 확인한 뒤 승인하면 이어서 실행합니다."
         )
-        return {
-            "status": "awaiting_approval",
+        payload = {
+            "status": "waiting_approval" if legacy_context else "awaiting_approval",
             "run_id": run_id,
             "approval": {
                 "token": approval_token,
@@ -364,6 +368,10 @@ class AgentHTTPController:
             "reviewing_model": req.reviewing_model or self.model_router.current_model_id,
             "loop": ctx.trace.summary(),
         }
+        if legacy_context:
+            # Historical wire field — the run id doubles as the context id.
+            payload["context_id"] = run_id
+        return payload
 
     def _purge_expired_approvals_locked(self, now_monotonic: float) -> None:
         for run_id, entry in list(self._approvals.items()):
@@ -450,6 +458,7 @@ class AgentHTTPController:
             "token_hash": str(record.get("token_hash") or ""),
             "expires_monotonic": time.monotonic() + remaining,
             "expires_at": record.get("expires_at"),
+            "legacy_context": bool(record.get("legacy_context")),
         }
 
     @staticmethod
@@ -565,31 +574,63 @@ class AgentHTTPController:
                 status_code=400,
                 detail="run_id (with approval_token) or context_id is required.",
             )
+        # Deprecated context_id resume (L1 unification, 9.9.5): the legacy
+        # pause lives in the same durable approval store now. Token-less
+        # resume stays allowed for it — bound to the pausing user, and only
+        # for entries that were created through the legacy pause.
+        now_monotonic = time.monotonic()
         with self._pending_lock:
-            now = time.monotonic()
-            for context_id, pending in list(self._pending.items()):
-                if now - pending[4] >= self._pending_ttl_seconds:
-                    self._pending.pop(context_id, None)
-            entry = self._pending.get(req.context_id)
-            if entry and entry[3] == current_user:
-                self._pending.pop(req.context_id, None)
-        if not entry:
-            raise HTTPException(
-                status_code=404,
-                detail="Agent context not found or expired. Start a new request.",
-            )
+            entry = self._approvals.get(req.context_id)
+            if entry is None:
+                try:
+                    entry = self._restore_persisted_approval(req.context_id)
+                except HTTPException as exc:
+                    if exc.status_code == 410:
+                        # Legacy contract never had a distinct expiry answer.
+                        raise HTTPException(
+                            status_code=404,
+                            detail="Agent context not found or expired. Start a new request.",
+                        ) from exc
+                    raise
+            if entry is None or not entry.get("legacy_context"):
+                raise HTTPException(
+                    status_code=404,
+                    detail="Agent context not found or expired. Start a new request.",
+                )
+            if entry["user"] != current_user:
+                raise HTTPException(
+                    status_code=403,
+                    detail="Agent context belongs to another user.",
+                )
+            if now_monotonic >= entry["expires_monotonic"]:
+                self._approvals.pop(req.context_id, None)
+                try:
+                    self.run_store.delete(req.context_id)
+                except Exception:  # noqa: BLE001
+                    pass
+                raise HTTPException(
+                    status_code=404,
+                    detail="Agent context not found or expired. Start a new request.",
+                )
+            self._approvals.pop(req.context_id, None)
+            try:
+                self.run_store.delete(req.context_id)
+            except Exception as exc:  # noqa: BLE001
+                logging.warning("agent run store delete failed: %s", exc)
 
-        ctx, original_request, language_hint, original_user, _created_at = entry
-        if original_user != current_user:
-            raise HTTPException(
-                status_code=403,
-                detail="Agent context belongs to another user.",
-            )
+        ctx = entry["ctx"]
+        original_request = entry["req"]
+        language_hint = entry["language_hint"]
         if not req.approved:
             return {"status": "cancelled", "response": "사용자가 계획을 취소했습니다."}
         if req.modified_plan:
-            ctx.plan = req.modified_plan
-            ctx.transcript[-1].update(ctx.plan)
+            plan, plan_fixes = normalize_plan(req.modified_plan, original_request.message)
+            ctx.plan = plan
+            ctx.transcript.append({
+                "state": AgentState.WAITING_APPROVAL.value,
+                "edited_plan": True,
+                **({"plan_fixes": plan_fixes} if plan_fixes else {}),
+            })
         ctx.executing_model = req.executing_model or ctx.executing_model
         ctx.reviewing_model = req.reviewing_model or ctx.reviewing_model
         # The authenticated owner of this pending context explicitly approved

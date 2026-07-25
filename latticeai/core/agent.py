@@ -340,6 +340,77 @@ def compact_transcript(
     return summarized
 
 
+def files_written(
+    transcript: List[Dict[str, Any]],
+    file_create_actions: FrozenSet[str],
+) -> List[str]:
+    """Ordered unique paths of files this run successfully wrote (review L5).
+
+    Later executor steps get this as explicit context, so "만들고 이어서
+    설명해" multi-step work sees its own output instead of a stale
+    workspace picture.
+    """
+    seen: List[str] = []
+    for step in transcript:
+        if step.get("state") != AgentState.EXECUTING.value:
+            continue
+        if step.get("action") not in file_create_actions:
+            continue
+        if not isinstance(step.get("result"), dict):
+            continue
+        path = step["result"].get("path") or (step.get("args") or {}).get("path")
+        if path and str(path) not in seen:
+            seen.append(str(path))
+    return seen
+
+
+def artifact_checklist(
+    transcript: List[Dict[str, Any]],
+    file_create_actions: FrozenSet[str],
+) -> List[Dict[str, Any]]:
+    """Deterministic artifact facts for the critic (review L4).
+
+    The critic previously judged file work from prose alone; this surfaces
+    the sanitize/repair honesty flags per written file so a repaired
+    placeholder can never pass as a fulfilled request unchecked.
+    """
+    checklist: List[Dict[str, Any]] = []
+    for step in transcript:
+        if step.get("state") != AgentState.EXECUTING.value:
+            continue
+        if step.get("action") not in file_create_actions:
+            continue
+        if not isinstance(step.get("result"), dict):
+            continue
+        path = step["result"].get("path") or (step.get("args") or {}).get("path")
+        if not path:
+            continue
+        sanitize_meta = step.get("content_sanitize") or {}
+        checklist.append({
+            "path": str(path),
+            "sanitized": bool(sanitize_meta.get("sanitized")),
+            "repaired": bool(sanitize_meta.get("repaired")),
+        })
+    return checklist
+
+
+def _format_artifact_checklist(checklist: List[Dict[str, Any]]) -> str:
+    lines = []
+    for item in checklist:
+        state = (
+            "auto-REPAIRED scaffold" if item["repaired"]
+            else ("sanitized model output" if item["sanitized"] else "written as produced")
+        )
+        lines.append(f"- {item['path']}: {state}")
+    return (
+        "Artifact checklist (deterministic, from the transcript):\n"
+        + "\n".join(lines)
+        + "\nVerify each artifact actually fulfills the user's request. An "
+        "auto-repaired scaffold is NOT completion unless its content "
+        "satisfies what was asked."
+    )
+
+
 @dataclass(frozen=True)
 class TranscriptBudget:
     """Executor/critic prompt shaping caps (review Wave 0.3).
@@ -449,6 +520,16 @@ class AgentDeps:
     # Production injects this from the tool dispatch service so this pure
     # state machine does not shell out directly. Tests can pass a recorder.
     rollback_file: Optional[Callable[[str], Dict[str, Any]]] = None
+
+    # ── snapshot rollback ports (optional, review L7) ────────────────
+    # git-only rollback left non-git workspaces and newly created files
+    # unrecoverable. ``snapshot_file(path)`` captures pre-write state
+    # ({"existed", "content", "too_large"}) before a file-create action;
+    # ``restore_snapshot(path, content)`` restores it (content=None deletes
+    # a file the run created). Both are production-wired with workspace
+    # path safety; tests pass recorders.
+    snapshot_file: Optional[Callable[[str], Dict[str, Any]]] = None
+    restore_snapshot: Optional[Callable[[str, Optional[str]], Dict[str, Any]]] = None
 
     # ── lifecycle hooks port (optional) ──────────────────────────────
     # When present, every tool execution fires the shared pre_tool/post_tool
@@ -791,11 +872,18 @@ class SingleAgentRuntime:
             window=budget.window,
             result_chars=budget.result_chars,
         )
+        # Mid-run workspace awareness (review L5): later steps must see what
+        # this run already produced instead of a stale workspace picture.
+        written = files_written(ctx.transcript, d.file_create_actions)
+        written_hint = (
+            "\n\nFiles written by this run so far (they exist in the workspace now):\n"
+            + "\n".join(f"- {path}" for path in written)
+        ) if written else ""
         return (
             f"{d.executor_prompt}\n\n"
             f"[LANGUAGE HINT: {lang_hint}]\n"
             f"Workspace root: {d.agent_root}\n\n"
-            f"PLAN:\n{json.dumps(ctx.plan, ensure_ascii=False)}\n\n"
+            f"PLAN:\n{json.dumps(ctx.plan, ensure_ascii=False)}{written_hint}\n\n"
             f"Recent conversation:\n{recent_conversation}\n\n"
             f"User request: {req.message}{corrections_hint}\n\n"
             f"Execution transcript:\n{json.dumps(bounded_transcript, ensure_ascii=False, indent=2)}"
@@ -961,6 +1049,22 @@ class SingleAgentRuntime:
             if s.get("state") == AgentState.EXECUTING.value
             and s.get("action") not in (None, "final", "parse_error")
         )
+        if (
+            name in d.file_create_actions
+            and d.snapshot_file is not None
+            and args.get("path")
+        ):
+            # Pre-write snapshot (review L7): the first capture per path is
+            # the true pre-run state — later writes to the same path must
+            # not overwrite it. Best-effort: a snapshot failure never
+            # blocks the write, it only narrows rollback options.
+            path_str = str(args["path"])
+            if not any(entry.get("path") == path_str for entry in ctx.rollback_log):
+                try:
+                    pre = d.snapshot_file(path_str)
+                    ctx.rollback_log.append({"path": path_str, **(pre or {})})
+                except Exception as exc:  # noqa: BLE001
+                    logging.warning("pre-write snapshot failed for %s: %s", path_str, exc)
         try:
             d.check_role(name, current_user)
             # Shared tool lifecycle: pre_tool (may block) → execute → post_tool.
@@ -1025,11 +1129,17 @@ class SingleAgentRuntime:
         verify_transcript = _truncate_strings(
             ctx.transcript, self.transcript_budget.verify_chars
         )
+        # Deterministic artifact facts (review L4): the critic sees the
+        # sanitize/repair honesty flags per written file, not just prose.
+        checklist = artifact_checklist(ctx.transcript, d.file_create_actions)
+        checklist_hint = (
+            f"\n\n{_format_artifact_checklist(checklist)}" if checklist else ""
+        )
         context = (
             f"{d.critic_prompt}\n\n"
             f"[LANGUAGE HINT: {lang_hint}]\n\n"
             f"Original request: {req.message}\n"
-            f"Plan goal: {ctx.plan.get('goal', req.message)}\n\n"
+            f"Plan goal: {ctx.plan.get('goal', req.message)}{checklist_hint}\n\n"
             f"Full transcript:\n{json.dumps(verify_transcript, ensure_ascii=False, indent=2)}"
         )
         raw = await d.generate_as(
@@ -1162,40 +1272,68 @@ class SingleAgentRuntime:
             ctx.state = AgentState.FAILED
 
     # ── ROLLBACK ─────────────────────────────────────────────────────
+    def _snapshot_for(self, ctx: AgentRunContext, path: str) -> Optional[Dict[str, Any]]:
+        for entry in ctx.rollback_log:
+            if entry.get("path") == path:
+                return entry
+        return None
+
+    def _rollback_one(self, ctx: AgentRunContext, path: str, gov: Dict[str, Any]) -> Dict[str, Any]:
+        """Recover one path: git when governed and available, else the
+        pre-write snapshot, else an honest ``mode="none"`` (review L7)."""
+        d = self.deps
+        if gov.get("rollback") == "git" and d.rollback_file is not None:
+            try:
+                result = dict(d.rollback_file(str(path)))
+            except Exception as exc:  # noqa: BLE001
+                result = {"path": path, "ok": False, "error": str(exc)}
+            if result.get("ok"):
+                result["mode"] = "git"
+                return result
+        snapshot = self._snapshot_for(ctx, str(path))
+        if snapshot is not None and d.restore_snapshot is not None and not snapshot.get("too_large"):
+            content = snapshot.get("content") if snapshot.get("existed") else None
+            try:
+                restored = dict(d.restore_snapshot(str(path), content))
+            except Exception as exc:  # noqa: BLE001
+                restored = {"path": path, "ok": False, "error": str(exc)}
+            restored.setdefault("path", path)
+            restored["mode"] = "snapshot"
+            return restored
+        return {
+            "path": path, "ok": False, "mode": "none",
+            "error": "no rollback available (git not applicable, no usable snapshot)",
+        }
+
     def rollback(self, ctx: AgentRunContext, current_user: str) -> None:
-        """ROLLBACK: attempt git checkout for each edited file, then FAILED."""
+        """ROLLBACK: recover written files (git → snapshot → none), then FAILED."""
         d = self.deps
         rolled: List[dict] = []
+        seen_paths: set = set()
         for step in ctx.transcript:
             if step.get("state") != AgentState.EXECUTING.value:
                 continue
-            gov = step.get("governance", {})
-            if gov.get("rollback") != "git":
+            if not isinstance(step.get("result"), dict):
                 continue
-            result = step.get("result", {})
-            if not isinstance(result, dict):
-                result = {}
-            path = result.get("path") or (step.get("args") or {}).get("path", "")
-            if not path:
+            gov = step.get("governance", {}) or {}
+            path = step["result"].get("path") or (step.get("args") or {}).get("path", "")
+            if not path or str(path) in seen_paths:
                 continue
-            if d.rollback_file is None:
-                rolled.append({"path": path, "ok": False, "error": "rollback_file port is not configured"})
+            if gov.get("rollback") != "git" and step.get("action") not in d.file_create_actions:
                 continue
-            try:
-                rolled.append(d.rollback_file(str(path)))
-            except Exception as exc:
-                rolled.append({"path": path, "ok": False, "error": str(exc)})
+            seen_paths.add(str(path))
+            rolled.append(self._rollback_one(ctx, str(path), gov))
 
         ctx.transcript.append({"state": AgentState.ROLLBACK.value, "rolled_back": rolled})
         ctx.trace.decision(
             "rollback", decision="rolled_back",
             attempted=len(rolled), recovered=sum(1 for r in rolled if r.get("ok")),
         )
-        recovered = [r["path"] for r in rolled if r.get("ok")]
+        recovered = [f"{r['path']} ({r.get('mode')})" for r in rolled if r.get("ok")]
         ctx.final_message = (
             f"실행 실패로 롤백했습니다. 복구 파일: {recovered}"
             if recovered
-            else "롤백을 시도했으나 복구할 파일이 없거나 git이 초기화되지 않았습니다."
+            else "롤백을 시도했으나 복구할 파일이 없거나 git/스냅샷 복구 수단이 없습니다."
         )
         d.audit("agent_rollback", user_email=current_user, rolled_back=rolled)
         self._emit_step(ctx, "rollback", "rolled_back", recovered=len(recovered))

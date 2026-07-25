@@ -113,6 +113,7 @@ class AgentRunStore:
         token: str,
         expires_epoch: float,
         expires_at: str,
+        legacy_context: bool = False,
     ) -> bool:
         """Persist a paused run. Best-effort: returns False on any failure."""
         path = self._path_for(run_id)
@@ -126,6 +127,7 @@ class AgentRunStore:
             "token_hash": hash_approval_token(token),
             "expires_epoch": float(expires_epoch),
             "expires_at": expires_at,
+            "legacy_context": bool(legacy_context),
             "req": req_payload,
             "ctx": serialize_run_context(ctx),
         }
