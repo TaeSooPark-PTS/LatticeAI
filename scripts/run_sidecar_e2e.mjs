@@ -129,10 +129,18 @@ async function main() {
   try {
     await waitForHealth(baseUrl);
     console.log("[e2e] sidecar healthy — running Playwright");
+    // Playwright must use the host browser install (npx playwright install).
+    // The sidecar isolation rewrites HOME/XDG_* into a disposable sandbox —
+    // reusing that env here makes Chromium look under /tmp/.../ms-playwright
+    // and fail with "Executable doesn't exist".
+    const playwrightEnv = {
+      ...process.env,
+      LTCAI_E2E_BASE_URL: baseUrl,
+    };
     const playwright = spawn(
       "npx",
       ["playwright", "test", "-c", "playwright.e2e.config.js"],
-      { stdio: "inherit", env: isolatedEnv, cwd: process.cwd() },
+      { stdio: "inherit", env: playwrightEnv, cwd: process.cwd() },
     );
     exitCode = await new Promise((resolve, reject) => {
       playwright.on("error", reject);
