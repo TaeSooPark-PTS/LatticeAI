@@ -187,7 +187,13 @@ def test_chunk_strategy_for_routes_by_extension():
     assert chunk_strategy_for("App.TSX") == "code"
     assert chunk_strategy_for(Path("nested/dir/lib.rs")) == "code"
     assert chunk_strategy_for("https://example.com/docs/guide.md?ref=1#top") == "markdown"
-    assert chunk_strategy_for("report.pdf") == "plain"
+    # Running-prose document formats (v9.9.6): sentence-aware boundaries.
+    assert chunk_strategy_for("report.pdf") == "prose"
+    assert chunk_strategy_for("notes.TXT") == "prose"
+    assert chunk_strategy_for("brief.docx") == "prose"
+    assert chunk_strategy_for("https://example.com/a/page.html?x=1") == "prose"
+    assert chunk_strategy_for("page", content_type="text/html; charset=utf-8") == "prose"
+    # Unknown/extension-less input stays on the byte-compatible plain walk.
     assert chunk_strategy_for("no_extension") == "plain"
     assert chunk_strategy_for("") == "plain"
     assert chunk_strategy_for(None) == "plain"
@@ -253,7 +259,8 @@ def test_markdown_document_chunks_carry_typed_metadata_end_to_end(tmp_path):
 def test_plain_document_chunk_ids_match_legacy_recipe_end_to_end(tmp_path):
     """Unchanged plain content produces the exact pre-feature chunk ids."""
     body = ("plain text sentence kept for chunk id identity. " * 60).strip()
-    src = tmp_path / "notes.txt"
+    # Extension-less input keeps the legacy plain walk (see routing test).
+    src = tmp_path / "notes"
     src.write_text(body, encoding="utf-8")
     store = _store(tmp_path)
     res = store.ingest_document(src, extracted={"content": body})
@@ -286,12 +293,16 @@ def test_pdf_chunks_carry_page_numbers_end_to_end(tmp_path, monkeypatch):
         pdf_path, original_filename="report.pdf", extracted={"content": joined}
     )
     rows = _chunk_rows(store, res["node_id"])
-    assert len(rows) == 2  # 1852 chars → windows at 0 and 1040
-    assert rows[0][1]["strategy"] == "plain"
+    assert len(rows) == 2
+    # Prose strategy: the first chunk ends at the page break instead of mid-page.
+    assert rows[0][1]["strategy"] == "prose"
     assert rows[0][1]["start_char"] == 0
     assert rows[0][1]["page"] == 1
-    assert rows[1][1]["start_char"] == 1040
-    assert rows[1][1]["page"] == 2  # 1040 >= page-2 start offset (902)
+    assert "page_end" not in rows[0][1]
+    # The second chunk starts inside page 1 (overlap) and runs into page 2, so
+    # it is labelled as the span it really covers.
+    assert rows[1][1]["page"] == 1
+    assert rows[1][1]["page_end"] == 2
 
 
 def test_pdf_page_meta_omitted_when_structure_disagrees_with_text(tmp_path, monkeypatch):
@@ -312,4 +323,78 @@ def test_pdf_page_meta_omitted_when_structure_disagrees_with_text(tmp_path, monk
     assert rows
     for _text, meta in rows:
         assert "page" not in meta
-        assert meta["strategy"] == "plain"
+        assert meta["strategy"] == "prose"
+
+
+# ── Prose strategy + citation locator (review 2026-07-27 P1 #4) ──────────────
+# "한국어/코드/긴 문서에서 recall·인용 정확도를 한 단계 더". The plain walk cut
+# every N characters, which in Korean routinely separates a claim from the
+# sentence-final verb that carries its meaning.
+
+
+def _korean_prose() -> str:
+    return (
+        "1분기 예산은 1200만원으로 확정되었습니다. "
+        "마케팅 비중은 전체의 40퍼센트를 차지합니다. "
+        "나머지 예산은 인건비와 운영비로 나누어 집행합니다.\n\n"
+        "2분기 계획은 아직 승인되지 않았습니다. "
+        "이사회 검토는 2월 첫째 주에 예정되어 있습니다."
+    )
+
+
+def test_prose_chunks_end_at_sentence_boundaries():
+    text = _korean_prose()
+    pieces = typed_chunks(text, strategy="prose", size=90, overlap=10)
+    assert len(pieces) > 1
+    cleaned = text.strip()
+    for piece in pieces[:-1]:
+        body = piece["text"].rstrip()
+        # Every non-final chunk ends on a real sentence/paragraph boundary.
+        assert body.endswith((".", "!", "?", "다", "요")) or body.endswith("\n")
+    for piece in pieces:
+        start = piece["meta"]["start_char"]
+        assert cleaned[start : start + len(piece["text"])] == piece["text"]
+        assert piece["meta"]["strategy"] == "prose"
+
+
+def test_prose_chunks_cover_the_whole_document():
+    text = _korean_prose()
+    pieces = typed_chunks(text, strategy="prose", size=90, overlap=10)
+    cleaned = text.strip()
+    # Chunks advance monotonically and the last one reaches the end.
+    starts = [piece["meta"]["start_char"] for piece in pieces]
+    assert starts == sorted(starts)
+    last = pieces[-1]
+    assert last["meta"]["start_char"] + len(last["text"]) == len(cleaned)
+
+
+def test_prose_falls_back_to_a_hard_cut_when_no_boundary_exists():
+    text = "가" * 500
+    pieces = typed_chunks(text, strategy="prose", size=100, overlap=10)
+    assert [piece["meta"]["start_char"] for piece in pieces][:3] == [0, 90, 180]
+    assert "".join(piece["text"] for piece in pieces).replace("", "") != ""
+
+
+def test_prose_never_emits_a_chunk_below_half_the_window():
+    # A boundary right after the window start must not produce a tiny chunk.
+    text = "짧다. " + ("긴 문장이 계속 이어집니다 " * 40)
+    pieces = typed_chunks(text, strategy="prose", size=200, overlap=20)
+    assert all(len(piece["text"]) >= 100 for piece in pieces[:-1])
+
+
+def test_plain_strategy_stays_byte_identical_to_the_legacy_walk():
+    text = _korean_prose()
+    assert [piece["text"] for piece in typed_chunks(text)] == _chunks(text)
+    assert [piece["text"] for piece in typed_chunks(text, strategy="plain")] == _chunks(text)
+
+
+def test_citation_locator_only_claims_what_the_chunk_proves():
+    from lattice_brain.graph._kg_common import citation_locator
+
+    assert citation_locator({"heading_path": "Guide > Setup"}) == "Guide > Setup"
+    assert citation_locator({"page": 4}) == "p.4"
+    assert citation_locator({"page": 4, "page_end": 5}) == "p.4–5"
+    assert citation_locator({"heading_path": "A", "page": 2}) == "A · p.2"
+    # Honest absence: no provenance → no claim.
+    for empty in ({}, None, "x", {"page": 0}, {"page": "n/a"}, {"heading_path": ""}):
+        assert citation_locator(empty) == ""

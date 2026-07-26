@@ -13,6 +13,7 @@ def build_context_runtime(
     gardener: Any,
     require_auth: bool,
     allowed_scopes_for_user: Callable[[Any], Any],
+    artifact_ledger: Any = None,
 ) -> Dict[str, Any]:
     """Construct search, brain memory, and context assembly services."""
 
@@ -41,15 +42,25 @@ def build_context_runtime(
                 allowed = allowed_scopes_for_user(user_email)
         return gardener.get_relevant_context(q, allowed_workspaces=allowed, **kw)
 
+    # Re-search loop (v9.9.6): files this conversation just produced are a
+    # deterministic context section, so "그 파일에 다크모드 넣어줘" works before
+    # asynchronous indexing catches up. Optional — absent ledger, absent section.
+    if artifact_ledger is None:
+        from latticeai.core.artifact_ledger import ArtifactLedger
+
+        artifact_ledger = ArtifactLedger()
+
     context_assembler = ContextAssembler(
         memory_recall=memory_service.recall,
         hybrid_search=scoped_hybrid_search,
         notes_context=scoped_notes_context,
+        recent_artifacts=artifact_ledger.recent,
     )
 
     return {
         "SEARCH_SERVICE": search_service,
         "BRAIN_MEMORY": brain_memory,
         "CONTEXT_ASSEMBLER": context_assembler,
+        "ARTIFACT_LEDGER": artifact_ledger,
         "_scoped_hybrid_search": scoped_hybrid_search,
     }

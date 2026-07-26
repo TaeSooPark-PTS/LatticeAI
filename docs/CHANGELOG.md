@@ -4,6 +4,66 @@ The top entry is either the current unreleased main-branch work or the current
 release line. Older entries are historical and may describe behavior as it
 existed at that release.
 
+## [9.9.6] - 2026-07-27
+
+### Added
+- Surface parity for VS Code: `ltcai.askBrain` (grounding badge on recall),
+  `ltcai.reviewCenter` (list/approve/reject staged change proposals via
+  `/api/proposals`, 409 conflicts reported honestly), `ltcai.runAgent`
+  (post-run step + outcome summary). Parity logic lives in
+  `vscode-extension/surface.ts`, asserted by `tests/vscode-extension.test.cjs`
+  (wired into `npm run lint`).
+- `POST /api/evidence/actions` + `latticeai/services/evidence_actions.py`:
+  deterministic, model-free composition of evidence-scoped follow-up prompts
+  (summary / checklist / document / one-page) from an answer's citations.
+- `latticeai/core/run_explain.py`: deterministic plain-language run outcome
+  (`code`, `headline`, `details`, `model_strain`, `next_step`), returned as
+  `explanation` on `/agent` and rendered in the web app, VS Code, and Telegram.
+- `prose` chunking strategy (`lattice_brain/graph/_kg_common.py`): sentence and
+  paragraph-aware boundaries for `.txt/.pdf/.docx/.html/…`; `plain` stays
+  byte-identical to the legacy walk.
+- `citation_locator()` + chunk metadata on vector hits: citations name the
+  section/page they came from (`Guide > Setup · p.4`, `p.4–5` across a page
+  break) and stay silent when the chunk cannot prove it.
+- `infer_edge_relation()` + `plan_relation_noise_reduction()`: relations carry
+  an evidence class (`verb` | `cooccurrence`) with matching weights; the
+  curator can demote weak/hub co-occurrence edges without touching verb-backed
+  or legacy ones.
+- Project sessions: `latticeai/core/project_sessions.py` + `/api/projects`
+  (files produced, open TODOs, last honest verification, run history). `/agent`
+  accepts `project_id`, injects the project state into planning/execution, and
+  folds the run's outcome back in.
+- `latticeai/core/artifact_ledger.py` + a `Files created in this conversation`
+  context section: files a run just wrote are recallable before asynchronous
+  indexing catches up.
+- `requirement_coverage()`: a critic `PASS` that left a declared manifest file
+  unwritten now ends as `NEEDS_REVIEW`.
+- `funnel_alerts()`: `GET /api/admin/funnel-metrics` returns named, actionable
+  alerts with the triggering value; silent below 10 samples.
+- Stale-embedder recovery UI: names the problem and offers a one-click
+  re-index, with an honest failure message.
+- `lattice_brain/ingestion_jobs.py` and
+  `latticeai/core/workspace_review_items.py`: behaviour-preserving extractions.
+- Six additional multi-agent/workflow scenarios (retry exhaustion, recovery,
+  two-gate pause/resume, stale resume cursor, per-role observability, cross-run
+  role isolation).
+
+### Changed
+- Document generation shares chat's context contract: same `approx_tokens`
+  budget, same `context_quality` signal, same assembly `trace` shape.
+- `chunk_strategy_for()` routes prose document formats to the new `prose`
+  strategy (newly ingested `.txt/.pdf/.docx/.html` content gets different chunk
+  ids; existing indexed content is untouched).
+- The VS Code HTTP client rejects on 4xx/5xx instead of resolving an error body
+  as success.
+
+### Fixed
+- A verb-less sentence listing more than four concepts no longer manufactures
+  a chain of `관련됨` relations.
+- `stale_embedder` was computed but never surfaced in the UI.
+- PDF chunks that span a page break are labelled with the page range they
+  actually cover instead of only their starting page.
+
 ## [9.9.5] - 2026-07-26
 
 ### Added

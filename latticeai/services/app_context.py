@@ -33,6 +33,9 @@ class AppContext:
     local_kg_watcher: Any = None
     chat_service: Any = None
     context_assembler: Any = None
+    # Re-search loop (v9.9.6): conversation-scoped ledger of just-written
+    # artifacts, so a follow-up turn sees them before indexing catches up.
+    artifact_ledger: Any = None
     brain_memory: Any = None
     # Unified ingestion gateway (lattice_brain.ingestion.IngestionPipeline);
     # None when the knowledge graph is disabled.

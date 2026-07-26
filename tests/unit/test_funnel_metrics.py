@@ -211,3 +211,88 @@ def test_endpoint_returns_snapshot(tmp_path):
     assert body["rates"]["real_file_rate"] == 1.0
     assert "ttfv_seconds" in body
     assert body["generated_at"]
+
+
+# ── Funnel → decision (review 2026-07-27 P2 #10) ─────────────────────────────
+# "soft gate는 있으나 '제품이 실제로 나빠졌을 때' 알림/대시보드 연결이 약함".
+# Rates now become named, actionable alerts — and stay silent below the
+# sample floor, because an alert nobody can trust gets ignored.
+
+def _alerts(**counters):
+    from latticeai.services.funnel_metrics import funnel_alerts
+
+    base = {name: 0 for name in COUNTER_NAMES}
+    base.update(counters)
+    rates = {
+        "real_file_rate": (
+            base["real_file_delivered"] / base["file_requests"]
+            if base["file_requests"] else None
+        ),
+        "code_only_rate": (
+            base["code_only_responses"] / base["file_requests"]
+            if base["file_requests"] else None
+        ),
+        "needs_review_rate": (
+            base["needs_review_runs"] / base["agent_runs"] if base["agent_runs"] else None
+        ),
+        "approval_resume_rate": (
+            base["approval_resumes"] / base["approval_pauses"]
+            if base["approval_pauses"] else None
+        ),
+    }
+    return {alert["key"] for alert in funnel_alerts(base, rates)}
+
+
+def test_healthy_funnel_raises_no_alerts():
+    assert _alerts(
+        file_requests=20, real_file_delivered=20,
+        agent_runs=20, needs_review_runs=1,
+        approval_pauses=20, approval_resumes=18,
+        ingest_completions=5, recall_successes=4,
+    ) == set()
+
+
+def test_a_degraded_file_pipeline_is_named():
+    keys = _alerts(file_requests=20, real_file_delivered=10, code_only_responses=10)
+    assert "real_file_rate_low" in keys
+    assert "code_only_rate_high" in keys
+
+
+def test_a_high_needs_review_rate_is_named():
+    assert "needs_review_rate_high" in _alerts(agent_runs=20, needs_review_runs=10)
+
+
+def test_unresumed_approvals_are_named():
+    assert "approval_resume_rate_low" in _alerts(approval_pauses=20, approval_resumes=2)
+
+
+def test_ingested_but_never_recalled_is_named():
+    assert "no_grounded_recall" in _alerts(ingest_completions=3, recall_successes=0)
+
+
+def test_alerts_stay_silent_below_the_sample_floor():
+    # Two bad runs out of two is not evidence of a regression.
+    assert _alerts(file_requests=2, real_file_delivered=0, code_only_responses=2) == set()
+    assert _alerts(agent_runs=3, needs_review_runs=3) == set()
+    assert _alerts(approval_pauses=2, approval_resumes=0) == set()
+
+
+def test_alerts_carry_the_number_that_triggered_them(tmp_path):
+    from latticeai.services.funnel_metrics import funnel_alerts
+
+    alerts = funnel_alerts(
+        {name: 0 for name in COUNTER_NAMES} | {"agent_runs": 20, "needs_review_runs": 10},
+        {"needs_review_rate": 0.5},
+    )
+    assert alerts[0]["value"] == 0.5
+    assert alerts[0]["samples"] == 20
+    assert alerts[0]["ko"] and alerts[0]["en"]
+
+
+def test_snapshot_exposes_alerts_to_the_admin_surface(tmp_path):
+    service = FunnelMetricsService(tmp_path / "funnel.json")
+    for _ in range(20):
+        service.increment("agent_runs")
+        service.increment("needs_review_runs")
+    snapshot = service.snapshot()
+    assert {alert["key"] for alert in snapshot["alerts"]} == {"needs_review_rate_high"}

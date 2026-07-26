@@ -930,6 +930,15 @@ class MemoryService:
                 similarity = round(float(hit.get("score") or 0.0), 4)
                 if similarity <= 0:
                     continue
+                # Citation precision (v9.9.6): a chunk hit knows where in the
+                # document it came from (section heading / page). Carry that
+                # locator onto the recall row so the citation can say it.
+                hit_metadata = hit.get("metadata")
+                locator = (
+                    str(hit_metadata.get("locator") or "")
+                    if isinstance(hit_metadata, dict)
+                    else ""
+                )
                 existing = by_node_id.get(node_id)
                 if existing is not None:
                     existing["vector_score"] = max(existing.get("vector_score", 0.0), similarity)
@@ -937,6 +946,8 @@ class MemoryService:
                         max(existing.get("score", 0.0), 0.4 * existing.get("score", 0.0) + 0.6 * similarity),
                         4,
                     )
+                    if locator and not existing.get("locator"):
+                        existing["locator"] = locator
                 else:
                     matched = _matched_terms(hit.get("title"), hit.get("summary"))
                     row = {
@@ -948,6 +959,7 @@ class MemoryService:
                         "score": round(max(_lexical_score(matched), 0.6 * similarity), 4),
                         "matched_terms": matched,
                         "vector_score": similarity,
+                        **({"locator": locator} if locator else {}),
                     }
                     results.append(row)
                     if node_id:

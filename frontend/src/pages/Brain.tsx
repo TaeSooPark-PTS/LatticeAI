@@ -10,7 +10,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { BrainHome } from "@/features/brain/BrainHome";
-import { VectorFreshnessNotice } from "@/features/brain/BrainSignals";
+import { StaleEmbedderNotice, VectorFreshnessNotice } from "@/features/brain/BrainSignals";
 import { useAppStore } from "@/store/appStore";
 import { t, type Language } from "@/i18n";
 import { asArray, fmtNumber, pct, titleize } from "@/lib/utils";
@@ -54,6 +54,7 @@ export function BrainPage({ initialTab }: { initialTab?: string }) {
         </div>
       </header>
       <Tabs tabs={tabs.map((item) => ({ id: item.id, label: t(language, item.labelKey) }))} value={tab} onChange={(id) => selectTab(id as BrainTab)} />
+      <StaleEmbedderNotice language={language} />
       <VectorFreshnessNotice language={language} />
 
       {tab === "graph" ? (

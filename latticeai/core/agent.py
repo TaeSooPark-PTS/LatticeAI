@@ -67,7 +67,7 @@ class AgentRunContext:
     __slots__ = ("state", "plan", "transcript", "retry_count",
                  "state_history", "corrections", "final_message", "rollback_log",
                  "executing_model", "reviewing_model", "approved_by_human", "trace",
-                 "on_step")
+                 "on_step", "project_context")
 
     def __init__(self) -> None:
         self.state:           AgentState   = AgentState.IDLE
@@ -86,6 +86,11 @@ class AgentRunContext:
         # callback here so live SSE clients see progress while EXECUTING.
         # Never serialized; a broken observer never breaks the loop.
         self.on_step: Optional[Callable[[Dict[str, Any]], None]] = None
+        # Multi-turn project loop (v9.9.6): a prompt block describing where the
+        # project stands — files already produced, open TODOs, the last honest
+        # verification. Empty for a standalone run, which behaves exactly as
+        # before. Set by the HTTP layer, read by plan/execute/verify.
+        self.project_context: str = ""
 
 
 _THINK_BLOCK_RE = re.compile(
@@ -394,6 +399,75 @@ def artifact_checklist(
     return checklist
 
 
+# Explicit requirement lines a user writes out: "- 다크모드", "1. 검색 기능",
+# "* dark mode". Free prose is deliberately NOT parsed — a wrong requirement
+# is worse than no requirement.
+_REQUIREMENT_LINE_RE = re.compile(r"^\s*(?:[-*•]|\d+[.)])\s+(.{3,120})$", re.MULTILINE)
+
+
+def requirement_coverage(
+    user_message: str,
+    transcript: List[Dict[str, Any]],
+    file_create_actions: FrozenSet[str],
+) -> Dict[str, Any]:
+    """Did the run produce what the request actually asked for? (review 루프 §2)
+
+    The critic judged prose against prose, so "make an HTML+CSS+JS todo app"
+    could pass with one file written. This is the deterministic half of the
+    answer, built from two sources that are honest about their own limits:
+
+    * **manifest files** — when the request maps to a known multi-file project
+      (:func:`infer_project_manifest`), every declared path must have been
+      written. A missing manifest file is a *hard* miss: it is not a matter of
+      taste whether ``style.css`` exists.
+    * **explicit requirement lines** — bullet/numbered lines the user wrote
+      out. These are reported to the critic as a checklist but never block on
+      their own: matching a feature to a transcript is a judgement call, and
+      guessing it wrong would either fake completion or block real work.
+
+    Returns ``{"files": {...}, "requirements": [...], "missing_files": [...],
+    "complete": bool}`` where ``complete`` is false only when a declared
+    manifest file is missing.
+    """
+    written = files_written(transcript, file_create_actions)
+    written_names = {Path(path).name.lower() for path in written}
+    manifest = infer_project_manifest(user_message) or {}
+    declared = [str(spec.get("path") or "") for spec in manifest.get("files", [])]
+    missing = [
+        path for path in declared
+        if path and Path(path).name.lower() not in written_names
+    ]
+    requirements = [
+        line.strip()
+        for line in _REQUIREMENT_LINE_RE.findall(str(user_message or ""))
+    ][:10]
+    return {
+        "files": {"declared": declared, "written": written},
+        "missing_files": missing,
+        "requirements": requirements,
+        "complete": not missing,
+    }
+
+
+def _format_requirement_coverage(coverage: Dict[str, Any]) -> str:
+    """Requirement facts for the critic prompt, or "" when there is nothing."""
+    lines: List[str] = []
+    declared = coverage["files"]["declared"]
+    if declared:
+        written = set(coverage["files"]["written"])
+        lines.append("Requested files (deterministic, from the request):")
+        for path in declared:
+            got = any(Path(item).name.lower() == Path(path).name.lower() for item in written)
+            lines.append(f"- {path}: {'written' if got else 'MISSING'}")
+    if coverage["requirements"]:
+        lines.append(
+            "Requirements the user listed explicitly — check each one against "
+            "the artifacts, not against the plan:"
+        )
+        lines.extend(f"- {item}" for item in coverage["requirements"])
+    return "\n\n" + "\n".join(lines) if lines else ""
+
+
 def _format_artifact_checklist(checklist: List[Dict[str, Any]]) -> str:
     lines = []
     for item in checklist:
@@ -613,6 +687,17 @@ class SingleAgentRuntime:
             except Exception as exc:  # noqa: BLE001 — observers are advisory
                 logging.warning("agent step observer failed: %s", exc)
 
+    @staticmethod
+    def _project_block(ctx: AgentRunContext) -> str:
+        """Project-session context for prompts, or "" for a standalone run.
+
+        Multi-turn project loop (v9.9.6): a later run must see the files the
+        project already produced and what is still open, instead of planning
+        from a blank workspace every time.
+        """
+        summary = str(getattr(ctx, "project_context", "") or "").strip()
+        return f"\n\n[PROJECT SESSION]\n{summary}" if summary else ""
+
     def boundary(self) -> Dict[str, Any]:
         return runtime_boundary_contract(
             name="SingleAgentRuntime",
@@ -642,10 +727,11 @@ class SingleAgentRuntime:
     ) -> None:
         """PLAN: Planner role produces a structured plan JSON."""
         d = self.deps
+        project_block = self._project_block(ctx)
         context = (
             f"{d.planner_prompt}\n\n"
             f"[LANGUAGE HINT: {lang_hint}]\n"
-            f"Workspace root: {d.agent_root}\n\n"
+            f"Workspace root: {d.agent_root}{project_block}\n\n"
             f"User request: {req.message}"
         )
         raw = await d.generate_as(
@@ -882,7 +968,7 @@ class SingleAgentRuntime:
         return (
             f"{d.executor_prompt}\n\n"
             f"[LANGUAGE HINT: {lang_hint}]\n"
-            f"Workspace root: {d.agent_root}\n\n"
+            f"Workspace root: {d.agent_root}{self._project_block(ctx)}\n\n"
             f"PLAN:\n{json.dumps(ctx.plan, ensure_ascii=False)}{written_hint}\n\n"
             f"Recent conversation:\n{recent_conversation}\n\n"
             f"User request: {req.message}{corrections_hint}\n\n"
@@ -1135,11 +1221,19 @@ class SingleAgentRuntime:
         checklist_hint = (
             f"\n\n{_format_artifact_checklist(checklist)}" if checklist else ""
         )
+        # Requirement coverage (review 루프 §2): the critic previously judged
+        # "did this fulfill the request?" from prose alone. It now also sees
+        # which requested files actually exist and which requirements the user
+        # spelled out.
+        coverage = requirement_coverage(
+            req.message, ctx.transcript, d.file_create_actions
+        )
         context = (
             f"{d.critic_prompt}\n\n"
             f"[LANGUAGE HINT: {lang_hint}]\n\n"
             f"Original request: {req.message}\n"
-            f"Plan goal: {ctx.plan.get('goal', req.message)}{checklist_hint}\n\n"
+            f"Plan goal: {ctx.plan.get('goal', req.message)}{checklist_hint}"
+            f"{_format_requirement_coverage(coverage)}\n\n"
             f"Full transcript:\n{json.dumps(verify_transcript, ensure_ascii=False, indent=2)}"
         )
         raw = await d.generate_as(
@@ -1236,6 +1330,24 @@ class SingleAgentRuntime:
                 ctx.final_message = (
                     "검증자는 통과를 보고했지만 실제 실행 근거(도구 실행 기록)가 없어 "
                     "완료로 처리하지 않았습니다. 결과를 직접 확인해 주세요."
+                )
+                ctx.state = AgentState.NEEDS_REVIEW
+                return
+            if not coverage["complete"]:
+                # A PASS that leaves a *requested file* unwritten is not a
+                # completion — this is a fact, not a judgement, so it is
+                # enforced rather than merely reported to the critic.
+                missing = ", ".join(coverage["missing_files"])
+                ctx.trace.decision(
+                    "verify", decision="needs_review_missing_files",
+                    missing=len(coverage["missing_files"]),
+                )
+                ctx.transcript.append({
+                    "state": AgentState.VERIFYING.value,
+                    "requirement_coverage": coverage,
+                })
+                ctx.final_message = (
+                    f"요청한 파일 중 일부가 만들어지지 않아 완료로 처리하지 않았습니다: {missing}"
                 )
                 ctx.state = AgentState.NEEDS_REVIEW
                 return

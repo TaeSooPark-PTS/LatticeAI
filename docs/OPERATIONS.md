@@ -1,4 +1,4 @@
-# Lattice AI — Operations Guide (v9.9.5)
+# Lattice AI — Operations Guide (v9.9.6)
 
 > **Status: canonical** — kept in sync with the current release. Storage layout
 > below reflects the SQLite live Brain store and workspace scoping, not the
@@ -14,6 +14,8 @@
 | `~/.ltcai/audit.json` | 감사 로그 (agent 실행, 사용자 변경 등) |
 | `~/.ltcai/chat_history.json` | 레거시 대화 히스토리 — 최초 1회 SQLite로 idempotent 임포트 후 미사용 |
 | `~/ltcai-agent/` | Agent workspace (agent가 생성한 파일) |
+| `~/.ltcai/agent_runs/` | 승인 대기 중인 에이전트 런 (재시작 생존, 토큰은 해시로만 저장) |
+| `~/.ltcai/project_sessions/` | 프로젝트 세션 (v9.9.6) — 프로젝트가 만든 파일, 남은 할 일, 마지막 검증 결과 |
 
 ## 2. 백업 및 복구
 

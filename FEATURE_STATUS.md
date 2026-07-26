@@ -1,9 +1,9 @@
-# Lattice AI Feature Status (v9.9.5)
+# Lattice AI Feature Status (v9.9.6)
 
 > **Status: canonical** — current-truth feature state, kept in sync with the
 > current release.
 
-Current release: **9.9.5 — Closed Gaps**.
+Current release: **9.9.6 — Same Brain Everywhere**.
 
 This file describes the current product state and known limitations. Historical
 change history is intentionally limited to 8.0.0-9.9.0 in `RELEASE.md` and
@@ -26,7 +26,11 @@ and reindexable. The 9.9.0 line hardens trust: change proposals are
 conflict-checked against the original content hash and applied atomically,
 every mutating tool is inventory-governed with a fail-closed CI gate, the agent
 verifier fails closed into review rather than reporting false success, and
-device analysis no longer fabricates a "ready" model card on probe failure.
+device analysis no longer fabricates a "ready" model card on probe failure. The
+9.9.6 line makes the Brain the same everywhere: the editor and the chat bot
+report the same grounding verdict and the same plain-language run outcome, an
+answer's evidence turns into one-click follow-ups, and work that spans several
+runs keeps its state in a project session.
 
 ## Current Feature Status
 
@@ -51,11 +55,17 @@ device analysis no longer fabricates a "ready" model card on probe failure.
 | Agent Runtime | Current | AgentRuntime preview/readiness contracts avoid tool execution during preview, reject unknown roles, require explicit human approval for non-auto-approved plans, tolerate legacy run events with contract envelopes, and expose orchestration boundaries. |
 | Tool Registry / MCP | Current | ToolRegistry diagnostics, explicit desktop/knowledge/network policy gates, masked MCP paths, and MCP install state are separated from app-factory helpers and covered by focused tests. |
 | Workspaces | Current | Personal workspace is default. Organization/admin surfaces remain separated from normal Brain use. |
-| VS Code Extension | Current | Sync/status endpoints expose connection and indexing state. File contents move only through explicit user actions. |
+| VS Code Extension | Current | Sync/status endpoints expose connection and indexing state. File contents move only through explicit user actions. Recall carries the same `grounding` verdict as the web badge, staged change proposals are reviewable in place (409 conflicts reported honestly), and agent runs report steps/files/outcome. Evidence→action and live step SSE are web-only (`docs/SURFACE_PARITY.md`). |
 | Frontend Reliability | Current | Core API failures render unavailable states, successful callbacks require successful results, and Vitest/visual tests protect result, proof, conversation, primitive, i18n, and service-error behavior. |
 | Trusted Agent Loop | Current | LoopTrace observability + `loop` API payload, python-literal weak-model repair with escalating corrections, deterministic agent-eval CI gate, and proposal-first change governance (`/api/proposals`, 변경 제안 panel) where edits/deletions of existing files are reviewed before applying. |
 | Command Center | Current | `/api/command/briefing` + `/api/command/search` aggregate knowledge, conversations, automations, review, health, and suggestions read-only and workspace-scoped; surfaced as the Cmd+K palette and Today's Briefing panel. |
-| Release Assets | Current | 9.9.0 package metadata, static app, release notes, current documentation, and exact artifact names are aligned. |
+| Evidence → Action | Current | `POST /api/evidence/actions` composes evidence-scoped follow-up prompts (요약/체크리스트/문서/한 페이지) from an answer's real citations; deterministic and model-free, executed through the normal chat path. Unresolvable citations are reported, never dropped. |
+| Run Explanation | Current | Every agent run returns a deterministic `explanation` (why it ended, how much the model struggled, one concrete next step). It never upgrades a non-success; `ok` is true only for a verified `DONE`. Rendered on web, VS Code, and Telegram. |
+| Project Sessions | Current | `/api/projects` keeps a project's produced files, open TODOs, and last honest verification across runs; `/agent` accepts `project_id` and folds each run's outcome (including the last failure's diagnosis) back in. |
+| Citation Precision | Current | A sentence-aware `prose` chunking strategy keeps Korean claims whole for `.txt/.pdf/.docx/.html`; chunk hits carry a locator (`Guide > Setup · p.4`) and stay silent when they cannot prove it. `plain` chunking is byte-identical to the legacy walk. |
+| Graph Relation Evidence | Current | Relations record whether they came from a verb or from co-occurrence, with matching weights; enumerations no longer manufacture relation chains, and the curator can demote weak/hub adjacency edges without touching verb-backed or legacy ones. |
+| Funnel Alerts | Current | `GET /api/admin/funnel-metrics` returns named, actionable alerts with the value that triggered them; rules stay silent below 10 samples. |
+| Release Assets | Current | 9.9.6 package metadata, static app, release notes, current documentation, and exact artifact names are aligned. |
 
 ## Known Limitations
 
@@ -69,6 +79,16 @@ device analysis no longer fabricates a "ready" model card on probe failure.
   labeled as model-free rather than autonomous model execution.
 - Local file privacy depends on the user's OS account, disk encryption, and
   backup policy outside Lattice AI.
+- Surface parity is documented, not universal: VS Code has no evidence→action
+  one-click and no live step SSE timeline; Telegram has no grounding badge or
+  Review Center. The browser extension is capture-only **by design**. See
+  `docs/SURFACE_PARITY.md`.
+- The conversation artifact ledger is process-local and bounded — it answers
+  "what did this conversation just make?" for minutes, not days. After a
+  restart, normal retrieval covers it because indexing has caught up.
+- Requirement coverage blocks completion only for *declared* project files;
+  matching a prose feature request to a transcript stays the critic's
+  judgement and is advisory.
 - Root compatibility shims were removed in 9.9.1 (only `server.py` remains
   for `uvicorn server:app`); the managed compatibility inventory tracks the
   removals, internal-only Brain shim layers were removed in 8.8.0, and the

@@ -168,6 +168,15 @@ export type ChatAgentPayload = {
     parse_errors?: number;
     parse_recovered?: number;
   };
+  // Plain-language outcome (v9.9.6): why the run ended this way, localized
+  // server-side into {ko, en}. `ok` is true only for a verified DONE.
+  explanation?: {
+    code?: string;
+    ok?: boolean;
+    headline?: Record<string, string>;
+    details?: Array<Record<string, string>>;
+    model_strain?: Record<string, unknown>;
+  };
   // Payload-level "Brain remembered" verdict for generated files: a single
   // {status,...} dict on the one-file path, or a list of {path, status, ...}
   // entries on the project-bundle path. Absent → unknown (no chip).
@@ -400,6 +409,22 @@ export type DemoCorpusInstallResult = {
   suggested_questions: DemoCorpusQuestion[];
 };
 
+export type EvidenceAction = {
+  id: string;
+  kind: string;
+  label: { ko: string; en: string };
+  prompt: string;
+  source_ids: string[];
+  suggested_path?: string;
+};
+
+export type EvidenceActionsPayload = {
+  sources: Array<{ id: string; title: string; type: string; origin: string; excerpt: string; truncated: boolean }>;
+  missing: string[];
+  actions: EvidenceAction[];
+  reason: string;
+};
+
 // One-click First Value Loop corpus install. Raw fetch without the 10s client
 // timeout: the three documents run through the real ingestion pipeline
 // (chunking + embedding), which can exceed it on first use.
@@ -595,6 +620,15 @@ export const latticeApi = {
   // not in the generated OpenAPI spec yet; the plain path-based wrapper keeps
   // the same ApiResult contract until the next regeneration).
   agentApprovals: () => get<{ pending: Array<Record<string, unknown>> }>("/agent/approvals", { pending: [] }),
+  // Evidence → action (v9.9.6): the citations an answer actually used become
+  // ready-to-send, evidence-scoped follow-up prompts. Composition only — the
+  // prompt still runs through the normal chat path.
+  evidenceActions: (question: string, sourceIds: string[], language: string) =>
+    post<EvidenceActionsPayload>(
+      "/api/evidence/actions",
+      { question, source_ids: sourceIds, language },
+      { sources: [], missing: [], actions: [], reason: "" },
+    ),
   // One graph node with its stored text/summary + provenance metadata, for
   // the citation "원문 보기" modal. Neighbors are skipped — this is a read of
   // one chunk, not an exploration.

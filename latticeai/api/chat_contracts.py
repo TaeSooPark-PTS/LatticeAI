@@ -36,6 +36,10 @@ class AgentRequest(BaseModel):
     executing_model: Optional[str] = None
     reviewing_model: Optional[str] = None
     human_in_loop: bool = False
+    # Multi-turn project loop (v9.9.6): when set, the run reads the project's
+    # accumulated state (files, open TODOs, last verification) and folds its
+    # own outcome back in when it finishes.
+    project_id: Optional[str] = None
 
 
 class AgentResumeRequest(BaseModel):

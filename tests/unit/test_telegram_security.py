@@ -121,3 +121,46 @@ def test_bot_does_not_poll_without_acl_or_server_token(monkeypatch):
     monkeypatch.delenv("LATTICEAI_SERVER_SESSION_TOKEN", raising=False)
 
     asyncio.run(telegram_bot.run_bot())
+
+
+# ── Run explanation parity (v9.9.6) ──────────────────────────────────────────
+# Review 2026-07-27 P0 #1: Telegram used to render a NEEDS_REVIEW run exactly
+# like a success. It now repeats the server's plain-language outcome.
+
+def test_telegram_reports_a_non_success_run_honestly():
+    from latticeai.integrations.telegram_bot import format_run_explanation
+
+    text = format_run_explanation({
+        "explanation": {
+            "ok": False,
+            "headline": {"ko": "완료로 처리하지 않았습니다.", "en": "Not complete."},
+            "details": [{"ko": "형식을 2번 틀렸습니다.", "en": "Format broke twice."}],
+        }
+    })
+    assert text.startswith("⚠️")
+    assert "완료로 처리하지 않았습니다." in text
+    assert "· 형식을 2번 틀렸습니다." in text
+
+
+def test_telegram_adds_nothing_for_a_clean_verified_run():
+    from latticeai.integrations.telegram_bot import format_run_explanation
+
+    assert format_run_explanation({
+        "explanation": {"ok": True, "headline": {"ko": "끝", "en": "Done"}, "details": []}
+    }) == ""
+    for bad in (None, {}, {"explanation": "x"}, 7):
+        assert format_run_explanation(bad) == ""
+
+
+def test_telegram_explains_a_strained_but_successful_run():
+    from latticeai.integrations.telegram_bot import format_run_explanation
+
+    text = format_run_explanation({
+        "explanation": {
+            "ok": True,
+            "headline": {"ko": "끝났습니다.", "en": "Done."},
+            "details": [{"ko": "형식을 3번 고쳤습니다.", "en": "Fixed 3 times."}],
+        }
+    })
+    assert text.startswith("✅")
+    assert "형식을 3번 고쳤습니다." in text

@@ -1,5 +1,5 @@
 import { t, type Language } from "@/i18n";
-import type { AgentStepEvent, MessageLoopSummary } from "./types";
+import type { AgentStepEvent, MessageLoopSummary, MessageRunExplanation } from "./types";
 
 // How each loop event renders: a styled dot (CSS class, never an emoji in
 // code) + a short i18n label. Unknown events fall back to a neutral marker so
@@ -144,5 +144,35 @@ export function LoopRepairsNote({
     >
       {t(language, "brain.agent.repairs", { count: summary.total })}
     </p>
+  );
+}
+
+// Plain-language run outcome (v9.9.6). The repairs note above is a number;
+// this is the sentence. Rendered as a caution for every non-DONE code so a
+// NEEDS_REVIEW run can never be skimmed as a success.
+export function RunExplanationNote({
+  language,
+  explanation,
+}: {
+  language: Language;
+  explanation: MessageRunExplanation;
+}) {
+  return (
+    <div
+      className={`brain-run-explanation is-${explanation.ok ? "ok" : "caution"} strain-${explanation.strainLevel}`}
+      role="note"
+      data-testid="run-explanation"
+      data-code={explanation.code}
+    >
+      {explanation.headline ? <strong>{explanation.headline}</strong> : null}
+      {explanation.details.length ? (
+        <ul>
+          {explanation.details.map((detail) => (
+            <li key={detail}>{detail}</li>
+          ))}
+        </ul>
+      ) : null}
+      <small>{t(language, "brain.agent.explanation.why")}</small>
+    </div>
   );
 }

@@ -665,6 +665,41 @@ def collect_generated_files(agent_data):
             files.append((path, target))
     return files
 
+def format_run_explanation(agent_data, *, language: str = "ko") -> str:
+    """Plain-language outcome line for a finished agent run (v9.9.6).
+
+    Telegram used to show only the final message, so a NEEDS_REVIEW run read
+    exactly like a success. The server already computes the honest sentence
+    (`explanation`); this renders it. Returns "" when there is nothing to add
+    — a clean, verified run gets no extra noise.
+    """
+    if not isinstance(agent_data, dict):
+        return ""
+    explanation = agent_data.get("explanation")
+    if not isinstance(explanation, dict):
+        return ""
+    lang = "ko" if str(language or "ko").startswith("ko") else "en"
+
+    def pick(entry):
+        return str(entry.get(lang) or "") if isinstance(entry, dict) else ""
+
+    details = [pick(item) for item in explanation.get("details") or []]
+    details = [line for line in details if line]
+    if explanation.get("ok") and not details:
+        return ""
+    headline = pick(explanation.get("headline"))
+    marker = "✅" if explanation.get("ok") else "⚠️"
+    lines = [f"{marker} {headline}" if headline else marker]
+    lines.extend(f"· {line}" for line in details[:4])
+    return "\n".join(lines)
+
+
+async def send_run_explanation(client, chat_id, agent_data):
+    text = format_run_explanation(agent_data)
+    if text:
+        await send_message(client, chat_id, text)
+
+
 def collect_preview_urls(agent_data):
     urls, seen = [], set()
     for step in agent_data.get("steps", []):
@@ -819,6 +854,7 @@ async def handle_plan_callback(client, chat_id, data: str) -> None:
         ans = data_r.get("response", f"❌ 서버 에러 ({res.status_code})")
         await send_message(client, chat_id, str(ans))
         if isinstance(data_r, dict):
+            await send_run_explanation(client, chat_id, data_r)
             await send_generated_files(client, chat_id, collect_generated_files(data_r))
             await send_preview_links(client, chat_id, collect_preview_urls(data_r))
     except Exception as e:
@@ -863,6 +899,7 @@ async def process_ai_request(client, chat_id, user_text, image_data=None):
             ans = "⚠️ AI가 답변을 생성하지 못했습니다."
         await send_message(client, chat_id, str(ans))
         if not image_data and isinstance(data, dict):
+            await send_run_explanation(client, chat_id, data)
             await send_generated_files(client, chat_id, collect_generated_files(data))
             await send_preview_links(client, chat_id, collect_preview_urls(data))
     except Exception as e:

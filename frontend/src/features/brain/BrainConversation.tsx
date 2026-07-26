@@ -22,7 +22,7 @@ import type {
   Message,
 } from "./types";
 import { AgentApprovalCard } from "./AgentApprovalCard";
-import { AgentStepTimeline, LoopRepairsNote } from "./AgentStepTimeline";
+import { AgentStepTimeline, LoopRepairsNote, RunExplanationNote } from "./AgentStepTimeline";
 import type { ApprovalResolution } from "./approvalFlow";
 import { AnswerProofCard, InlineCitationMarkers } from "./AnswerProof";
 import { BrainCarePanel } from "./BrainCarePanel";
@@ -42,7 +42,7 @@ import {
   PastConversationsPanel,
 } from "./HomePanels";
 import { BrainIngestionDock, BrainIngestionPanel, IngestionTimelineSection } from "./IngestionPanels";
-import { IngestionJobsPanel, PendingApprovalsNotice, VectorFreshnessNotice, WatchHealthCard } from "./BrainSignals";
+import { IngestionJobsPanel, PendingApprovalsNotice, StaleEmbedderNotice, VectorFreshnessNotice, WatchHealthCard } from "./BrainSignals";
 import { BrainKnowledgeFlow, BrainMemoryAutomation, ConversationKnowledgeTrace } from "./BrainKnowledgeFlow";
 import { CreatedFilesCard, MessageBody } from "./MessageMarkdown";
 import { MemoryRings } from "./MemoryRings";
@@ -210,6 +210,7 @@ export function BrainConversation({
     <section className="brain-conversation" aria-label={t(language, "brain.aria.conversation")}>
       <div className="brain-chat-home-layout">
         <section className={`brain-chat-home-card ${hasMessages ? "has-messages" : "is-empty-home"}`} aria-label={t(language, "brain.chatHome.aria")}>
+          <StaleEmbedderNotice language={language} />
           <VectorFreshnessNotice language={language} />
           <PendingApprovalsNotice language={language} knownRunIds={knownApprovalRunIds} />
           {hasMessages ? (
@@ -311,7 +312,17 @@ export function BrainConversation({
                       {message.role === "assistant" && message.loopSummary ? (
                         <LoopRepairsNote language={language} summary={message.loopSummary} />
                       ) : null}
-                      {proof ? <AnswerProofCard language={language} proof={proof} messageId={messageId} /> : null}
+                      {message.role === "assistant" && message.runExplanation ? (
+                        <RunExplanationNote language={language} explanation={message.runExplanation} />
+                      ) : null}
+                      {proof ? (
+                        <AnswerProofCard
+                          language={language}
+                          proof={proof}
+                          messageId={messageId}
+                          onUseEvidence={onSendText}
+                        />
+                      ) : null}
                     </div>
                   );
                 })}

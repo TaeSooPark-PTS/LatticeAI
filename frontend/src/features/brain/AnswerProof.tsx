@@ -1,7 +1,7 @@
 import * as React from "react";
 import { X } from "lucide-react";
 
-import { latticeApi } from "@/api/client";
+import { latticeApi, type EvidenceAction } from "@/api/client";
 import { t, type Language } from "@/i18n";
 import { useFocusTrap } from "@/lib/useFocusTrap";
 import { isRecord, textValue } from "./brainData";
@@ -50,7 +50,17 @@ export function InlineCitationMarkers({
   );
 }
 
-export function AnswerProofCard({ language, proof, messageId }: { language: Language; proof: NonNullable<Message["proof"]>; messageId: string }) {
+export function AnswerProofCard({
+  language,
+  proof,
+  messageId,
+  onUseEvidence,
+}: {
+  language: Language;
+  proof: NonNullable<Message["proof"]>;
+  messageId: string;
+  onUseEvidence?: (prompt: string) => void;
+}) {
   const [openCitation, setOpenCitation] = React.useState<Citation | null>(null);
   return (
     <section className="brain-answer-proof" role="group" aria-label={t(language, "brain.answerProof.aria")}>
@@ -81,6 +91,12 @@ export function AnswerProofCard({ language, proof, messageId }: { language: Lang
                 <span className="brain-answer-proof-index" aria-hidden="true">{index + 1}</span>
                 <span>{citation.source}</span>
                 <strong>{citation.title}</strong>
+                {/* Where inside the document — only when the chunk proves it. */}
+                {citation.locator ? (
+                  <em className="brain-citation-locator" data-testid="citation-locator">
+                    {citation.locator}
+                  </em>
+                ) : null}
                 <small>{citation.snippet || proof.query}</small>
                 <CitationWhy language={language} citation={citation} />
                 <span className="brain-citation-open-hint" aria-hidden="true">
@@ -93,6 +109,14 @@ export function AnswerProofCard({ language, proof, messageId }: { language: Lang
       ) : (
         <small>{t(language, "brain.answerProof.empty")}</small>
       )}
+      {onUseEvidence && proof.citations.length ? (
+        <EvidenceActionRow
+          language={language}
+          query={proof.query}
+          sourceIds={proof.citations.map((citation) => citation.id)}
+          onUseEvidence={onUseEvidence}
+        />
+      ) : null}
       {openCitation ? (
         <SourceChunkModal
           language={language}
@@ -101,6 +125,91 @@ export function AnswerProofCard({ language, proof, messageId }: { language: Lang
         />
       ) : null}
     </section>
+  );
+}
+
+// Evidence → action (v9.9.6): the sources this answer actually used become
+// one-click follow-ups. The server composes evidence-scoped prompts; clicking
+// one sends it through the normal chat path, so there is no second, weaker
+// generation road. Actions are fetched lazily — an answer nobody follows up on
+// costs nothing.
+export function EvidenceActionRow({
+  language,
+  query,
+  sourceIds,
+  onUseEvidence,
+}: {
+  language: Language;
+  query: string;
+  sourceIds: string[];
+  onUseEvidence: (prompt: string) => void;
+}) {
+  const [state, setState] = React.useState<
+    | { status: "idle" }
+    | { status: "loading" }
+    | { status: "ready"; actions: EvidenceAction[]; reason: string }
+  >({ status: "idle" });
+
+  const load = React.useCallback(() => {
+    setState({ status: "loading" });
+    void latticeApi.evidenceActions(query, sourceIds, language).then((result) => {
+      const payload = result.data;
+      setState({
+        status: "ready",
+        actions: result.ok ? payload.actions : [],
+        reason: result.ok ? payload.reason : result.error || "",
+      });
+    });
+  }, [language, query, sourceIds]);
+
+  if (state.status === "idle") {
+    return (
+      <div className="brain-evidence-actions">
+        <button
+          type="button"
+          className="brain-evidence-action-trigger"
+          data-testid="evidence-actions-open"
+          onClick={load}
+        >
+          {t(language, "brain.evidenceActions.open")}
+        </button>
+      </div>
+    );
+  }
+  if (state.status === "loading") {
+    return (
+      <div className="brain-evidence-actions">
+        <small role="status">{t(language, "brain.evidenceActions.loading")}</small>
+      </div>
+    );
+  }
+  if (!state.actions.length) {
+    return (
+      <div className="brain-evidence-actions">
+        <small className="is-error" role="status">
+          {state.reason || t(language, "brain.evidenceActions.unavailable")}
+        </small>
+      </div>
+    );
+  }
+  return (
+    <div className="brain-evidence-actions" data-testid="evidence-actions">
+      <small>{t(language, "brain.evidenceActions.title")}</small>
+      <div className="brain-evidence-action-list">
+        {state.actions.map((action) => (
+          <button
+            key={action.id}
+            type="button"
+            className="brain-evidence-action"
+            data-testid={`evidence-action-${action.id}`}
+            title={action.suggested_path || undefined}
+            onClick={() => onUseEvidence(action.prompt)}
+          >
+            {action.label[language === "ko" ? "ko" : "en"]}
+          </button>
+        ))}
+      </div>
+    </div>
   );
 }
 

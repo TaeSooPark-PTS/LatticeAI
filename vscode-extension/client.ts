@@ -88,6 +88,27 @@ export class LatticeAIClient {
     return res.response as string;
   }
 
+  /**
+   * Non-streamed /chat, returning the full payload — including the
+   * `grounding` verdict and `context_quality` meta the web app badges.
+   * `generate` above throws that away; recall parity needs it.
+   */
+  async chat(
+    message: string,
+    context?: string,
+    maxTokens = 2048,
+    temperature = 0.2
+  ): Promise<any> {
+    return this._post("/chat", {
+      message,
+      context,
+      max_tokens: maxTokens,
+      temperature,
+      stream: false,
+      source: "vscode",
+    });
+  }
+
   async *streamGenerate(
     message: string,
     context?: string,
@@ -199,6 +220,22 @@ export class LatticeAIClient {
     return result;
   }
 
+  // ── Review Center (change proposals, SURFACE_PARITY v9.9.6) ───────────────
+  // The same /api/proposals surface the web Review Center uses: mutations to
+  // existing files are staged, never applied, until a human approves them.
+
+  async listProposals(): Promise<any> {
+    return this._get("/api/proposals");
+  }
+
+  async approveProposal(itemId: string): Promise<any> {
+    return this._post(`/api/proposals/${encodeURIComponent(itemId)}/approve`, {});
+  }
+
+  async rejectProposal(itemId: string, reason = ""): Promise<any> {
+    return this._post(`/api/proposals/${encodeURIComponent(itemId)}/reject`, { reason });
+  }
+
   // ── HTTP Helpers ──────────────────────────────────────────────────────────
 
   private _get(path: string): Promise<any> {
@@ -232,7 +269,19 @@ export class LatticeAIClient {
           let data = "";
           res.on("data", (c) => (data += c));
           res.on("end", () => {
-            try { resolve(JSON.parse(data)); } catch { reject(new Error(data)); }
+            let parsed: any;
+            try { parsed = JSON.parse(data); } catch { parsed = undefined; }
+            const status = res.statusCode ?? 0;
+            if (status >= 400) {
+              // A 409 (proposal conflict) or 4xx must not look like success.
+              const detail = parsed?.detail ?? parsed?.error ?? data;
+              const error: any = new Error(String(detail || `HTTP ${status}`));
+              error.status = status;
+              reject(error);
+              return;
+            }
+            if (parsed === undefined) reject(new Error(data));
+            else resolve(parsed);
           });
         }
       );

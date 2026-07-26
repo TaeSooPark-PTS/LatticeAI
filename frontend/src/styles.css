@@ -3217,6 +3217,13 @@ body {
   font-weight: 600;
 }
 
+.brain-citation-locator {
+  color: hsl(var(--fg-muted));
+  font-size: 0.62rem;
+  font-style: normal;
+  font-weight: 700;
+}
+
 .brain-citation-confidence {
   font-style: normal;
   font-size: 0.6rem;
@@ -3255,6 +3262,53 @@ body {
   background: hsl(var(--memory) / 0.18);
   border-radius: 4px;
   padding: 0 5px;
+}
+
+/* 근거 → 행동 (v9.9.6): 이 답변이 실제로 쓴 출처로 바로 만들 수 있는 것들 */
+.brain-evidence-actions {
+  display: grid;
+  gap: 0.32rem;
+  border-top: 1px solid hsl(var(--border) / 0.45);
+  padding-top: 0.42rem;
+}
+
+.brain-evidence-actions small {
+  color: hsl(var(--fg-muted));
+  font-size: 0.62rem;
+  font-weight: 700;
+}
+
+.brain-evidence-actions small.is-error {
+  color: hsl(var(--warning, 32 78% 42%));
+}
+
+.brain-evidence-action-list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.3rem;
+}
+
+.brain-evidence-action,
+.brain-evidence-action-trigger {
+  border: 1px solid hsl(var(--memory) / 0.42);
+  border-radius: 999px;
+  background: hsl(var(--memory) / 0.1);
+  color: hsl(var(--fg));
+  cursor: pointer;
+  padding: 0.22rem 0.62rem;
+  font-size: 0.68rem;
+  font-weight: 700;
+}
+
+.brain-evidence-action:hover,
+.brain-evidence-action-trigger:hover {
+  background: hsl(var(--memory) / 0.2);
+}
+
+.brain-evidence-action:focus-visible,
+.brain-evidence-action-trigger:focus-visible {
+  outline: 2px solid hsl(var(--brain-core));
+  outline-offset: 2px;
 }
 
 .brain-answer-proof li small,
@@ -9946,6 +10000,94 @@ body {
   margin: 0.4rem 0 0;
   color: hsl(var(--fg-muted));
   font-size: 0.72rem;
+}
+
+/* ── 실행 결과 설명 (v9.9.6): 숫자가 아니라 문장으로 ────────────────────── */
+/* 임베딩 모델 교체 복구 (v9.9.6): 문제를 이름 붙이고, 고치는 버튼을 준다 */
+.brain-stale-embedder {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.55rem;
+  margin: 0.4rem 0;
+  border: 1px solid hsl(var(--warning, 32 78% 42%) / 0.4);
+  border-radius: 8px;
+  background: hsl(var(--warning, 32 78% 42%) / 0.08);
+  padding: 0.55rem 0.65rem;
+}
+
+.brain-stale-embedder > div {
+  display: grid;
+  gap: 0.15rem;
+  flex: 1;
+}
+
+.brain-stale-embedder strong {
+  font-size: 0.78rem;
+  font-weight: 800;
+}
+
+.brain-stale-embedder small {
+  color: hsl(var(--fg-muted));
+  font-size: 0.7rem;
+}
+
+.brain-stale-embedder small.is-error {
+  color: hsl(var(--warning, 32 78% 42%));
+}
+
+.brain-stale-embedder button {
+  border: 1px solid hsl(var(--border));
+  border-radius: 999px;
+  background: hsl(var(--surface));
+  cursor: pointer;
+  padding: 0.25rem 0.7rem;
+  font-size: 0.72rem;
+  font-weight: 700;
+  white-space: nowrap;
+}
+
+.brain-stale-embedder button:disabled {
+  cursor: progress;
+  opacity: 0.6;
+}
+
+.brain-run-explanation {
+  display: grid;
+  gap: 0.25rem;
+  margin-top: 0.4rem;
+  border: 1px solid hsl(var(--border) / 0.6);
+  border-left-width: 3px;
+  border-radius: 8px;
+  padding: 0.5rem 0.6rem;
+  background: hsl(var(--surface) / 0.5);
+  font-size: 0.74rem;
+}
+
+.brain-run-explanation.is-caution {
+  border-left-color: hsl(var(--warning, 32 78% 42%));
+  background: hsl(var(--warning, 32 78% 42%) / 0.07);
+}
+
+.brain-run-explanation.is-ok {
+  border-left-color: hsl(var(--success, 152 46% 34%));
+}
+
+.brain-run-explanation strong {
+  color: hsl(var(--fg));
+  font-weight: 800;
+}
+
+.brain-run-explanation ul {
+  display: grid;
+  gap: 0.15rem;
+  margin: 0;
+  padding-left: 1rem;
+  color: hsl(var(--fg) / 0.86);
+}
+
+.brain-run-explanation small {
+  color: hsl(var(--fg-muted));
+  font-size: 0.66rem;
 }
 
 /* ── Approval TTL: countdown + urgency ───────────────────────────────────── */

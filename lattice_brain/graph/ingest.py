@@ -19,6 +19,27 @@ def _scoped_hash_id(prefix: str, value: str, workspace_id: Optional[str]) -> str
     return f"{prefix}:{_sha256_text(identity)[:24]}"
 
 
+def _triple_edge_metadata(triple: Dict[str, Any]) -> Dict[str, Any]:
+    """Edge metadata that keeps the relation's evidence class visible.
+
+    Review 2026-07-27 P1 #6: a verb-backed relation and a bare co-occurrence
+    used to land in the graph identically. ``evidence`` travels with the edge
+    so readers (graph views, curator, promotion review) can tell a meaning
+    edge from an adjacency edge instead of guessing from the label.
+    """
+    metadata: Dict[str, Any] = {"context": str(triple.get("context") or "")[:240]}
+    evidence = str(triple.get("evidence") or "")
+    if evidence:
+        metadata["evidence"] = evidence
+    confidence = triple.get("confidence")
+    if confidence is not None:
+        try:
+            metadata["confidence"] = round(float(confidence), 4)
+        except (TypeError, ValueError):
+            pass
+    return metadata
+
+
 class KnowledgeGraphIngestMixin:
     def ingest_message(
         self,
@@ -168,8 +189,8 @@ class KnowledgeGraphIngestMixin:
                         subj_id,
                         obj_id,
                         triple["relation"],  # 동사형 레이블
-                        weight=1.0,
-                        metadata={"context": triple.get("context", "")[:240]},
+                        weight=float(triple.get("weight") or 1.0),
+                        metadata=_triple_edge_metadata(triple),
                     )
 
             # ── 7. Task / Decision 노드  (점: 명사) ────────────────────────────
@@ -342,9 +363,18 @@ class KnowledgeGraphIngestMixin:
                 chunk = piece["text"]
                 chunk_fields = typed_chunk_meta_fields(piece)
                 if page_offsets:
-                    page = page_for_offset(page_offsets, chunk_fields["start_char"])
+                    start_char = chunk_fields["start_char"]
+                    page = page_for_offset(page_offsets, start_char)
                     if page is not None:
                         chunk_fields["page"] = page
+                        # Sentence-aware chunks can straddle a page break, so
+                        # the start page alone would under-describe them.
+                        # `page_end` is recorded only when it really differs.
+                        end_page = page_for_offset(
+                            page_offsets, max(start_char, start_char + len(chunk) - 1)
+                        )
+                        if end_page is not None and end_page > page:
+                            chunk_fields["page_end"] = end_page
                 chunk_id = f"chunk:{_sha256_text(f'{file_id}:{index}:{chunk}')[:24]}"
                 chunk_ids.append(chunk_id)
                 self._upsert_node(
@@ -394,8 +424,8 @@ class KnowledgeGraphIngestMixin:
                         subj_id,
                         obj_id,
                         triple["relation"],
-                        weight=1.0,
-                        metadata={"context": triple.get("context", "")[:240]},
+                        weight=float(triple.get("weight") or 1.0),
+                        metadata=_triple_edge_metadata(triple),
                     )
 
             # ── Task / Decision 노드 ──────────────────────────────────────────
@@ -735,8 +765,8 @@ class KnowledgeGraphIngestMixin:
                         subj_id,
                         obj_id,
                         triple["relation"],
-                        weight=1.0,
-                        metadata={"context": triple.get("context", "")[:240]},
+                        weight=float(triple.get("weight") or 1.0),
+                        metadata=_triple_edge_metadata(triple),
                     )
             # ── Task / Decision 노드 ────────────────────────────────────────
             for item in _semantic_items(text):

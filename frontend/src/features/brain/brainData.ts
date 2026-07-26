@@ -1,5 +1,5 @@
 import { asArray, isRecord as isRecordValue } from "@/lib/utils";
-import type { AgentStepEvent, ApiRecord, BrainBrief, BrainDepth, BrainProof, BrainReadiness, ConversationSummary, ExtractionQuality, IngestionEvidence, IngestionJob, IngestionWatch, IngestionWatchStatus, KnowledgeConcept, KnowledgeGraphModel, MemoryFragment, Message, MessageBrainIngest, MessageContextQuality, MessageFile, MessageGrounding, MessageLoopSummary, PendingApprovalSummary, RelationshipThread, VectorFreshness } from "./types";
+import type { AgentStepEvent, ApiRecord, BrainBrief, BrainDepth, BrainProof, BrainReadiness, ConversationSummary, ExtractionQuality, IngestionEvidence, IngestionJob, IngestionWatch, IngestionWatchStatus, KnowledgeConcept, KnowledgeGraphModel, MemoryFragment, Message, MessageBrainIngest, MessageContextQuality, MessageFile, MessageGrounding, MessageLoopSummary, MessageRunExplanation, PendingApprovalSummary, RelationshipThread, VectorFreshness } from "./types";
 import { clamp } from "./graphLayout";
 
 export function buildConversationSummaries(historyData: unknown): ConversationSummary[] {
@@ -322,6 +322,33 @@ export function parseLoopSummary(value: unknown): MessageLoopSummary | null {
   return { repairs, parseErrors, parseRecovered, total };
 }
 
+// Backend `explanation` payload (v9.9.6). The server already localizes into
+// {ko, en}; this picks the surface language and keeps only what the note
+// renders. A clean, verified run carries no details — nothing to show, so it
+// stays null and the UI adds no noise.
+export function parseRunExplanation(
+  value: unknown,
+  language: "ko" | "en",
+): MessageRunExplanation | null {
+  if (!isRecord(value)) return null;
+  const pick = (entry: unknown): string => {
+    if (!isRecord(entry)) return "";
+    const text = entry[language];
+    return typeof text === "string" ? text : "";
+  };
+  const headline = pick(value.headline);
+  const details = asArray<unknown>(value.details).map(pick).filter(Boolean);
+  const code = textValue(value, ["code"]);
+  if (!headline && !details.length) return null;
+  const strain = isRecord(value.model_strain) ? textValue(value.model_strain, ["level"]) : "";
+  const strainLevel =
+    strain === "light" || strain === "moderate" || strain === "heavy" ? strain : "none";
+  const ok = value.ok === true;
+  // A verified, effortless run needs no explanation at all.
+  if (ok && !details.length) return null;
+  return { code, ok, headline, details, strainLevel };
+}
+
 // GET /agent/approvals → pending paused runs. The token stays with the
 // original approval card; these summaries only inform.
 export function parsePendingApprovals(data: unknown): PendingApprovalSummary[] {
@@ -507,6 +534,7 @@ export function buildBrainProof(data: unknown, fallbackModelName = ""): BrainPro
         score: numberValue(item, ["score"]),
         matchedTerms: stringArrayValue(item, ["matched_terms", "matchedTerms"]),
         confidence: confidenceValue(item, numberValue(item, ["score"])),
+        locator: textValue(item, ["locator"]),
       })),
     },
     claims: {

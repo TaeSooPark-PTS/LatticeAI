@@ -31,6 +31,7 @@ from .workspace_plugins import WorkspacePluginManager
 from .workspace_memory import WorkspaceMemory
 from .workspace_snapshots import WorkspaceSnapshots
 from .workspace_graph_trace import WorkspaceGraphTrace
+from .workspace_review_items import WorkspaceReviewItems
 from .workspace_runs import WorkspaceRuns
 from .workspace_skills import WorkspaceSkills
 
@@ -49,7 +50,7 @@ __all__ = [
     "remove_skill_directory",
 ]
 
-WORKSPACE_OS_VERSION = "9.9.5"
+WORKSPACE_OS_VERSION = "9.9.6"
 
 # Workspace types separate single-user Personal workspaces from shared
 # Organization workspaces. Both keep the same local-first JSON store; the type
@@ -189,6 +190,7 @@ class WorkspaceOSStore:
         self.snapshots = WorkspaceSnapshots(self)
         self.graph_trace = WorkspaceGraphTrace(self)
         self.runs = WorkspaceRuns(self)
+        self.review_items = WorkspaceReviewItems(self)
         self.skills = WorkspaceSkills(self)
 
     def _connect_state_db(self) -> sqlite3.Connection:
@@ -1125,88 +1127,21 @@ class WorkspaceOSStore:
         return self.runs.record_workflow_event(*args, **kwargs)
 
     # ── review queue (5.6.0) ─────────────────────────────────────────────
-    # Workspace-scoped suggestion inbox. Automation/trigger runs write drafts
-    # here for the user to approve/dismiss/snooze. Persistence only; the
-    # transition policy lives in ReviewQueueService (services/review_queue.py).
+    # Workspace-scoped suggestion inbox. Persistence moved to
+    # ``workspace_review_items.WorkspaceReviewItems`` (v9.9.6); the transition
+    # policy still lives in ReviewQueueService (services/review_queue.py).
 
-    def create_review_item(
-        self,
-        *,
-        title: str,
-        summary: str = "",
-        source: str = "workflow_run",
-        kind: str = "suggestion",
-        payload: Optional[Dict[str, Any]] = None,
-        provenance: Optional[Dict[str, Any]] = None,
-        user_email: Optional[str] = None,
-        workspace_id: Optional[str] = None,
-    ) -> Dict[str, Any]:
-        if not str(title or "").strip():
-            raise ValueError("title is required")
-        state = self.load_state()
-        resolved_workspace = self._resolve_scope(workspace_id, state)
-        now = _now()
-        item = {
-            "id": f"review-{_json_hash([title, source, kind, user_email, now])[:16]}",
-            "status": "pending",
-            "title": title,
-            "summary": summary or "",
-            "source": source or "workflow_run",
-            "kind": kind or "suggestion",
-            "payload": dict(payload or {}),
-            "provenance": dict(provenance or {}),
-            "snoozed_until": None,
-            "user_email": user_email,
-            "workspace_id": resolved_workspace,
-            "created_at": now,
-            "updated_at": now,
-        }
-        state.setdefault("review_items", []).append(item)
-        self.save_state(state)
-        self.record_timeline_event(
-            "review", "review_item_created",
-            {"item_id": item["id"], "source": item["source"], "kind": item["kind"]},
-            workspace_id=resolved_workspace,
-        )
-        return item
+    def create_review_item(self, *args: Any, **kwargs: Any) -> Dict[str, Any]:
+        return self.review_items.create_review_item(*args, **kwargs)
 
-    def list_review_items(
-        self, *, workspace_id: Optional[str] = None, user_email: Optional[str] = None,
-        source: Optional[str] = None,
-    ) -> List[Dict[str, Any]]:
-        items = self._scoped(_listify(self.load_state().get("review_items")), workspace_id)
-        if user_email:
-            items = [item for item in items if item.get("user_email") in {None, user_email}]
-        if source:
-            items = [item for item in items if item.get("source") == source]
-        return list(reversed(items))
+    def list_review_items(self, *args: Any, **kwargs: Any) -> List[Dict[str, Any]]:
+        return self.review_items.list_review_items(*args, **kwargs)
 
-    def get_review_item(self, item_id: str, *, workspace_id: Optional[str] = None) -> Dict[str, Any]:
-        item = next(
-            (it for it in _listify(self.load_state().get("review_items")) if it.get("id") == item_id),
-            None,
-        )
-        if item is None or (workspace_id and self._record_workspace(item) != str(workspace_id)):
-            raise FileNotFoundError(item_id)
-        return item
+    def get_review_item(self, *args: Any, **kwargs: Any) -> Dict[str, Any]:
+        return self.review_items.get_review_item(*args, **kwargs)
 
-    def update_review_item(
-        self, item_id: str, *, workspace_id: Optional[str] = None, **fields: Any,
-    ) -> Dict[str, Any]:
-        state = self.load_state()
-        item = next((it for it in _listify(state.get("review_items")) if it.get("id") == item_id), None)
-        if item is None or (workspace_id and self._record_workspace(item) != str(workspace_id)):
-            raise FileNotFoundError(item_id)
-        for key, value in fields.items():
-            item[key] = value
-        item["updated_at"] = _now()
-        self.save_state(state)
-        self.record_timeline_event(
-            "review", "review_item_updated",
-            {"item_id": item_id, "status": item.get("status")},
-            workspace_id=self._record_workspace(item),
-        )
-        return item
+    def update_review_item(self, *args: Any, **kwargs: Any) -> Dict[str, Any]:
+        return self.review_items.update_review_item(*args, **kwargs)
 
     # ------------------------------------------------------------------
     # Relationship explorer

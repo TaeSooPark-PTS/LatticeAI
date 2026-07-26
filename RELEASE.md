@@ -13,6 +13,19 @@
 > (`LTCAI_RELEASE_EVIDENCE_KEEP`으로 조정), 과거 증거는 언제든 해당 태그를
 > 체크아웃해 재생성할 수 있습니다.
 
+## v9.9.6 — Same Brain Everywhere (2026-07-27)
+
+9.9.6 answers the 2026-07-27 full-stack review: VS Code/Telegram surface
+parity (recall grounding badge, Review Center, agent run summary), evidence →
+action one-click follow-ups, plain-language run outcomes with a concrete next
+step, sentence-aware prose chunking plus document locators in citations, one
+context contract shared by chat and document generation, evidence-classified
+graph relations, persistent project sessions, three closed agent loops
+(re-search, critic requirement coverage, failure learning), funnel alerts, and
+embedding-swap recovery UX.
+
+- 상세: [RELEASE_NOTES_v9.9.6.md](RELEASE_NOTES_v9.9.6.md)
+
 ## v9.9.5 — Closed Gaps (2026-07-26)
 
 9.9.5 closes the seven residual gaps left by 9.9.4 Durable Loops: sidecar

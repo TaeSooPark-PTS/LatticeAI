@@ -28,6 +28,47 @@ export function useVectorFreshness() {
   );
 }
 
+// Embedding-model swap recovery (v9.9.6). `stale_embedder` means the vector
+// index still holds rows built by the *previous* embedder: recall silently
+// degrades until a full rebuild runs. The old chip only rendered "pending",
+// so this state was invisible and offered no way out. It now names the
+// problem and does the one thing that fixes it.
+export function StaleEmbedderNotice({ language }: { language: Language }) {
+  const qc = useQueryClient();
+  const freshness = useVectorFreshness();
+  const rebuild = useMutation({
+    mutationFn: () => latticeApi.memoryRebuild(),
+    onSuccess: async () => {
+      await qc.invalidateQueries({ queryKey: ["vectorFreshness"] });
+    },
+  });
+  if (!freshness || freshness.status !== "stale_embedder") return null;
+  const failed = rebuild.isSuccess && rebuild.data && !rebuild.data.ok;
+  return (
+    <div className="brain-stale-embedder" role="status" data-testid="stale-embedder-notice">
+      <AlertTriangle className="h-4 w-4" aria-hidden="true" />
+      <div>
+        <strong>{t(language, "brain.freshness.staleEmbedder")}</strong>
+        <small>{t(language, "brain.freshness.staleEmbedder.detail")}</small>
+        {failed ? (
+          <small className="is-error">{t(language, "brain.freshness.reindex.failed")}</small>
+        ) : null}
+      </div>
+      <button
+        type="button"
+        data-testid="stale-embedder-reindex"
+        disabled={rebuild.isPending}
+        onClick={() => rebuild.mutate()}
+      >
+        {t(
+          language,
+          rebuild.isPending ? "brain.freshness.reindex.running" : "brain.freshness.reindex",
+        )}
+      </button>
+    </div>
+  );
+}
+
 // Soft chip shown while some knowledge still waits for vector indexing.
 export function VectorFreshnessNotice({ language }: { language: Language }) {
   const freshness = useVectorFreshness();

@@ -16,6 +16,7 @@ from fastapi import APIRouter, HTTPException, Request
 from fastapi.responses import JSONResponse, StreamingResponse
 
 from latticeai.api.chat_agent_http import AgentHTTPController
+from latticeai.core.project_sessions import ProjectSessionStore
 from latticeai.api.chat_contracts import (
     AgentEvalRequest,
     AgentRequest,
@@ -197,6 +198,14 @@ def create_chat_router(context: AppContext) -> APIRouter:
             if context.data_dir
             else None
         ),
+        # Multi-turn project loop (v9.9.6): optional — without a data dir the
+        # agent runs exactly as before, one run at a time with no project state.
+        project_sessions=(
+            ProjectSessionStore(Path(context.data_dir) / "project_sessions")
+            if context.data_dir
+            else None
+        ),
+        artifact_ledger=context.artifact_ledger,
     )
     intent_controller = ChatIntentController(
         model_router=model_router,

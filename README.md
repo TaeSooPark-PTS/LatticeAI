@@ -11,7 +11,7 @@
 [![CI Status](https://github.com/TaeSooPark-PTS/LatticeAI/actions/workflows/ci.yml/badge.svg?branch=main)](https://github.com/TaeSooPark-PTS/LatticeAI/actions/workflows/ci.yml)
 [![License](https://img.shields.io/badge/license-MIT-green)](LICENSE)
 
-![v9.9.5 Living Brain walkthrough](output/release/v9.9.5/gifs/v9.9.5-living-brain-walkthrough.gif)
+![v9.9.6 Living Brain walkthrough](output/release/v9.9.6/gifs/v9.9.6-living-brain-walkthrough.gif)
 
 Chat, files, folders, notes, and web pages all flow into one durable knowledge
 graph on your computer. Any model — local MLX or cloud — can speak with that
@@ -24,9 +24,9 @@ memory. Nothing leaves your machine without explicit consent.
 
 | | |
 | --- | --- |
-| **Chat with a Brain that remembers** — every conversation grows durable, source-linked memory ![Brain Chat](output/release/v9.9.5/screenshots/04-brain-chat-home.png) | **See how knowledge connects** — a real relationship graph, not a file list ![Memory Graph](output/release/v9.9.5/screenshots/05-memory-graph.png) |
-| **Capture anything** — files, whole folders, notes, screenshots, web pages ![Capture](output/release/v9.9.5/screenshots/06-capture.png) | **Automate with review** — agent changes become proposals you approve first ![Review Center](output/release/v9.9.5/screenshots/12-review-center.png) |
-| **Pick a model in one click** — recommended local models for your hardware ![Recommended Models](output/release/v9.9.5/screenshots/02-recommended-models.png) | **Stay in control** — audit, roles, retention in a separate admin surface ![Admin Console](output/release/v9.9.5/screenshots/10-admin-console.png) |
+| **Chat with a Brain that remembers** — every conversation grows durable, source-linked memory ![Brain Chat](output/release/v9.9.6/screenshots/04-brain-chat-home.png) | **See how knowledge connects** — a real relationship graph, not a file list ![Memory Graph](output/release/v9.9.6/screenshots/05-memory-graph.png) |
+| **Capture anything** — files, whole folders, notes, screenshots, web pages ![Capture](output/release/v9.9.6/screenshots/06-capture.png) | **Automate with review** — agent changes become proposals you approve first ![Review Center](output/release/v9.9.6/screenshots/12-review-center.png) |
+| **Pick a model in one click** — recommended local models for your hardware ![Recommended Models](output/release/v9.9.6/screenshots/02-recommended-models.png) | **Stay in control** — audit, roles, retention in a separate admin surface ![Admin Console](output/release/v9.9.6/screenshots/10-admin-console.png) |
 
 ## Why Lattice AI
 
@@ -57,47 +57,54 @@ First-run flow — wake the Brain, pick the owner, load a recommended model:
 
 | | | |
 | --- | --- | --- |
-| ![Login](output/release/v9.9.5/screenshots/01-login.png) | ![Model install](output/release/v9.9.5/screenshots/03-install-load-progress.png) | ![Model library](output/release/v9.9.5/screenshots/07-model-library.png) |
+| ![Login](output/release/v9.9.6/screenshots/01-login.png) | ![Model install](output/release/v9.9.6/screenshots/03-install-load-progress.png) | ![Model library](output/release/v9.9.6/screenshots/07-model-library.png) |
 
 Screenshot index and capture notes:
-[output/release/v9.9.5/SCREENSHOT_INDEX.md](output/release/v9.9.5/SCREENSHOT_INDEX.md)
+[output/release/v9.9.6/SCREENSHOT_INDEX.md](output/release/v9.9.6/SCREENSHOT_INDEX.md)
 
 ## Current Release
 
-The current release is **9.9.5 — Closed Gaps**:
+The current release is **9.9.6 — Same Brain Everywhere**:
 
-- **One approval path.** Legacy `human_in_loop` now rides the same durable
-  approval store as `awaiting_approval` (hashed tokens, restart-safe). The
-  old wire contract (`waiting_approval` + `context_id`) still works; the
-  separate in-memory `_pending` map is gone.
-- **Rollback that is honest.** File recovery is `git` → pre-write `snapshot`
-  → `none`, so non-git workspaces and newly created files can still be
-  restored. Each rollback entry reports its mode.
-- **Critic sees artifact truth.** Before judging file work, the critic gets a
-  deterministic checklist of written paths with sanitize/repair flags — an
-  auto-repaired scaffold cannot pass as fulfillment unchecked.
-- **Mid-run workspace awareness.** Later executor steps see files this run
-  already wrote, so multi-step "create then explain" work is not blind.
-- **Optional cross-encoder rerank.** Off by default; set
-  `LATTICEAI_CROSS_ENCODER_RERANK=1` to reorder hybrid matches (identity
-  fallback when the model is missing). Hybrid responses carry a `rerank`
-  meta block.
-- **Surface parity for approvals.** VS Code gains List/Approve/Reject
-  commands with token cache; Telegram handles both `waiting_approval` and
-  `awaiting_approval` with token-first resume.
-- **Live sidecar E2E.** Nightly Playwright first-value tests hit a real
-  FastAPI sidecar (`npm run test:e2e:sidecar`), not only the visual mock
-  server.
+- **The same Brain on every surface.** VS Code gains the grounding badge on
+  recall, a Review Center for staged change proposals, and an agent run
+  summary; Telegram repeats the same plain-language outcome. What each
+  surface does and does not provide is recorded in
+  [docs/SURFACE_PARITY.md](docs/SURFACE_PARITY.md).
+- **Evidence becomes action.** The sources an answer actually used turn into
+  one-click follow-ups — 요약, 체크리스트, 문서 파일, 한 페이지 — as
+  evidence-scoped prompts that run through the normal chat path.
+- **Weak models explained in plain language.** Every run returns an honest
+  sentence about how it ended and how hard the model had to work, plus one
+  concrete next step. It never upgrades a non-success into a success.
+- **Sharper citations.** A new sentence-aware `prose` chunking strategy keeps
+  Korean claims whole, and citations name where inside a document they came
+  from (`Guide > Setup · p.4`).
+- **One context contract.** Chat and document generation now share the same
+  budget, the same `context_quality` signal, and the same assembly trace.
+- **A graph that knows meaning from coincidence.** Relations carry their
+  evidence class (`verb` vs `cooccurrence`); enumerations no longer
+  manufacture relation chains.
+- **Projects that continue.** `/api/projects` remembers the files a project
+  produced, what is still open, and the last honest verification — and the
+  next run reads it, including what the last failure said to do differently.
+- **Loops closed.** Files a run just wrote are recallable immediately; a
+  critic PASS that left a requested file unwritten is `NEEDS_REVIEW`, not
+  `DONE`.
+- **Funnel metrics become decisions.** Admin funnel metrics now return named
+  alerts with the number that triggered them, silent below 10 samples.
+- **Embedding-swap recovery.** A stale embedder index is named on screen with
+  a one-click re-index instead of silently degrading recall.
 
 Release notes: [RELEASE.md](RELEASE.md) · Full history: [docs/CHANGELOG.md](docs/CHANGELOG.md)
 
-Expected artifacts for 9.9.5 release must use exact filenames:
+Expected artifacts for 9.9.6 release must use exact filenames:
 
-- `dist/ltcai-9.9.5-py3-none-any.whl`
-- `dist/ltcai-9.9.5.tar.gz`
-- `ltcai-9.9.5.tgz`
-- `dist/ltcai-9.9.5.vsix`
-- `src-tauri/target/release/bundle/dmg/Lattice AI_9.9.5_aarch64.dmg`
+- `dist/ltcai-9.9.6-py3-none-any.whl`
+- `dist/ltcai-9.9.6.tar.gz`
+- `ltcai-9.9.6.tgz`
+- `dist/ltcai-9.9.6.vsix`
+- `src-tauri/target/release/bundle/dmg/Lattice AI_9.9.6_aarch64.dmg`
 
 Do not use wildcard artifact uploads. Package registry publishing remains owner-run.
 
@@ -129,6 +136,7 @@ See [ARCHITECTURE.md](ARCHITECTURE.md) for details and
 
 | Version | Theme |
 | --- | --- |
+| 9.9.6 | Same Brain Everywhere |
 | 9.9.5 | Closed Gaps |
 | 9.9.4 | Durable Loops |
 | 9.9.3 | Closed Loops |

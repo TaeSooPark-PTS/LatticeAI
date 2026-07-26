@@ -657,6 +657,7 @@ class KnowledgeGraphVectorMixin:
                       n.type AS node_type, n.title AS node_title, n.summary AS node_summary,
                       n.metadata_json AS node_metadata, n.updated_at AS node_updated_at,
                       c.text AS chunk_text, c.source_node AS parent_node_id,
+                      c.metadata_json AS chunk_metadata,
                       pn.type AS parent_type, pn.title AS parent_title,
                       pn.summary AS parent_summary, pn.metadata_json AS parent_metadata,
                       pn.updated_at AS parent_updated_at
@@ -690,6 +691,13 @@ class KnowledgeGraphVectorMixin:
             )
             parent_metadata = _safe_loads(row["parent_metadata"])
             node_metadata = _safe_loads(row["node_metadata"])
+            # Citation precision (review 2026-07-27 P1 #4): a chunk hit used to
+            # cite only its parent document, so a 200-page PDF answered with
+            # "from report.pdf". The chunk's own provenance (section heading,
+            # page, offset) now rides along, and `locator` is the one-line
+            # human form — absent when the chunk carries no such metadata.
+            chunk_metadata = _safe_loads(row["chunk_metadata"]) if is_chunk else {}
+            locator = citation_locator(chunk_metadata)
             scored.append(
                 {
                     "id": row["item_id"],
@@ -708,6 +716,8 @@ class KnowledgeGraphVectorMixin:
                         "vector": _safe_loads(row["vector_metadata"]),
                         "parent_node_id": row["parent_node_id"],
                         "parent_type": row["parent_type"],
+                        **({"chunk": chunk_metadata} if chunk_metadata else {}),
+                        **({"locator": locator} if locator else {}),
                     },
                     "updated_at": row["parent_updated_at"]
                     if is_chunk and row["parent_updated_at"]

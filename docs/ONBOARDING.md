@@ -1,6 +1,6 @@
 # Lattice AI Onboarding
 
-Current release: **9.9.5 — Closed Gaps**.
+Current release: **9.9.6 — Same Brain Everywhere**.
 
 The first-run goal is a five-minute path from "I opened the app" to "my Brain
 has a source, a question, and proof." This page is the product contract behind

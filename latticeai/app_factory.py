@@ -857,6 +857,7 @@ def _build(config: "Optional[Config]" = None) -> Dict[str, Any]:
     SEARCH_SERVICE = _context_runtime["SEARCH_SERVICE"]
     BRAIN_MEMORY = _context_runtime["BRAIN_MEMORY"]
     CONTEXT_ASSEMBLER = _context_runtime["CONTEXT_ASSEMBLER"]
+    ARTIFACT_LEDGER = _context_runtime["ARTIFACT_LEDGER"]
     _scoped_hybrid_search = _context_runtime["_scoped_hybrid_search"]
 
 
@@ -911,6 +912,7 @@ def _build(config: "Optional[Config]" = None) -> Dict[str, Any]:
         local_kg_watcher=LOCAL_KG_WATCHER,
         chat_service=CHAT_SERVICE,
         context_assembler=CONTEXT_ASSEMBLER,
+        artifact_ledger=ARTIFACT_LEDGER,
         brain_memory=BRAIN_MEMORY,
         ingestion_pipeline=INGESTION_PIPELINE if ENABLE_GRAPH else None,
         chat_agent_runtime=CHAT_AGENT_RUNTIME,
@@ -1148,6 +1150,38 @@ def _build(config: "Optional[Config]" = None) -> Dict[str, Any]:
         if not REQUIRE_AUTH or not user:
             return None
         return PLATFORM.allowed_scopes(user)
+
+    # Evidence → action (v9.9.6): an answer's citations become ready-to-send,
+    # evidence-scoped follow-ups. Deterministic composition only — execution
+    # stays on the chat/file-generation path.
+    from latticeai.api.evidence_actions import create_evidence_actions_router
+    from latticeai.services.evidence_actions import EvidenceActionService
+
+    EVIDENCE_ACTIONS_SERVICE = EvidenceActionService(
+        node_reader=getattr(KNOWLEDGE_GRAPH, "get_node", None)
+    )
+    app.include_router(
+        create_evidence_actions_router(
+            service=EVIDENCE_ACTIONS_SERVICE,
+            require_user=require_user,
+            allowed_workspaces_for=_allowed_workspaces_for,
+        )
+    )
+
+    # Multi-turn project loop (v9.9.6): work that spans several runs keeps its
+    # files, open TODOs, and last honest verification in one project session.
+    from latticeai.api.project_sessions import create_project_sessions_router
+    from latticeai.core.project_sessions import ProjectSessionStore
+
+    PROJECT_SESSIONS = ProjectSessionStore(DATA_DIR / "project_sessions")
+    app.include_router(
+        create_project_sessions_router(
+            store=PROJECT_SESSIONS,
+            require_user=require_user,
+            gate_read=PLATFORM.gate_read,
+            gate_write=PLATFORM.gate_write,
+        )
+    )
 
     tool_router_context, interaction_router_context = build_interaction_contexts(
         config=CONFIG,

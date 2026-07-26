@@ -12,6 +12,7 @@ import {
   parseContextQuality,
   parseGrounding,
   parseLoopSummary,
+  parseRunExplanation,
 } from "../brainData";
 import { useConversationSession } from "../conversationSession";
 import type {
@@ -185,8 +186,12 @@ export function useBrainChat({
             // symmetric with the approval-resume merge in
             // handleApprovalResolved below.
             const loopSummary = parseLoopSummary(agent.loop);
+            const runExplanation = parseRunExplanation(agent.explanation, language);
             const transcriptSteps = parseAgentTranscript(agent.steps);
-            if (!files.length && !agentState && !loopSummary && !transcriptSteps.length) return;
+            if (
+              !files.length && !agentState && !loopSummary
+              && !runExplanation && !transcriptSteps.length
+            ) return;
             setMessages((items) => {
               const next = [...items];
               const current = next[next.length - 1];
@@ -200,6 +205,7 @@ export function useBrainChat({
                 ...(files.length ? { files } : {}),
                 ...(agentState ? { agentState } : {}),
                 ...(loopSummary ? { loopSummary } : {}),
+                ...(runExplanation ? { runExplanation } : {}),
                 ...(agentSteps.length ? { agentSteps } : {}),
               };
               return next;
@@ -294,6 +300,7 @@ export function useBrainChat({
         // Symmetry invariant: this merge mirrors the streaming onAgent merge
         // (files + agentState + loopSummary + step timeline).
         const loopSummary = parseLoopSummary(agent.loop);
+        const runExplanation = parseRunExplanation(agent.explanation, language);
         const transcriptSteps = parseAgentTranscript(agent.steps);
         const agentSteps = message.agentSteps?.length ? message.agentSteps : transcriptSteps;
         next[messageIndex] = {
@@ -302,6 +309,7 @@ export function useBrainChat({
           ...(files.length ? { files } : {}),
           ...(agentState ? { agentState } : {}),
           ...(loopSummary ? { loopSummary } : {}),
+          ...(runExplanation ? { runExplanation } : {}),
           ...(agentSteps.length ? { agentSteps } : {}),
           approval: { ...message.approval, status: "approved" },
         };

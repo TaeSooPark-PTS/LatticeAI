@@ -2,6 +2,7 @@ import * as vscode from "vscode";
 import { ChatPanel } from "./ChatPanel";
 import { LatticeAIClient } from "./client";
 import { ModelPicker } from "./modelPicker";
+import { groundingLine, parseProposals, runReport, type ProposalSummary } from "./surface";
 
 let client: LatticeAIClient;
 let statusBar: vscode.StatusBarItem;
@@ -194,8 +195,7 @@ export async function activate(context: vscode.ExtensionContext) {
       });
       if (!question) return;
       const fileName = editor.document.fileName.split("/").pop() ?? "file";
-      ChatPanel.createOrShow(context.extensionUri, client);
-      ChatPanel.sendMessage([
+      const message = [
         question,
         "",
         `Current file: ${editor.document.fileName}`,
@@ -204,7 +204,9 @@ export async function activate(context: vscode.ExtensionContext) {
         `// ${fileName}`,
         editor.document.getText().slice(0, 12000),
         "```",
-      ].join("\n"));
+      ].join("\n");
+      ChatPanel.createOrShow(context.extensionUri, client);
+      ChatPanel.sendMessage(message);
       await client.sendToWorkspace({
         action: "ask_current_file",
         file_path: editor.document.fileName,
@@ -214,6 +216,22 @@ export async function activate(context: vscode.ExtensionContext) {
         workspace_folder: currentWorkspaceFolder(),
       });
       await reportSyncStatus("synced", "synced", editor.document.fileName);
+      // Recall parity (SURFACE_PARITY v9.9.6): the web app badges every
+      // answer with the server's grounding verdict. Ask the same /chat
+      // surface for the verdict on this question so the editor is not the
+      // one place that hides whether the answer used the Brain.
+      await showRecallGrounding(question, message);
+    }),
+
+    vscode.commands.registerCommand("ltcai.askBrain", async () => {
+      const question = await vscode.window.showInputBox({
+        prompt: "Ask your Brain",
+        placeHolder: "Anything your Brain already knows",
+      });
+      if (!question) return;
+      ChatPanel.createOrShow(context.extensionUri, client);
+      ChatPanel.sendMessage(question);
+      await showRecallGrounding(question, question);
     }),
 
     vscode.commands.registerCommand("ltcai.createFile", async () => {
@@ -312,6 +330,15 @@ export async function activate(context: vscode.ExtensionContext) {
 
     vscode.commands.registerCommand("ltcai.rejectAgent", async () => {
       await rejectPendingApproval(client);
+    }),
+
+    // ── Review Center + agent run summary (SURFACE_PARITY, v9.9.6) ───────
+    vscode.commands.registerCommand("ltcai.reviewCenter", async () => {
+      await showReviewCenter(client);
+    }),
+
+    vscode.commands.registerCommand("ltcai.runAgent", async () => {
+      await runAgentWithSummary(client);
     })
   );
 
@@ -323,6 +350,131 @@ export async function activate(context: vscode.ExtensionContext) {
 }
 
 // ── Helpers ──────────────────────────────────────────────────────────────────
+
+/** Ask /chat for the grounding verdict on a recall and report it honestly. */
+async function showRecallGrounding(question: string, message: string): Promise<void> {
+  try {
+    const payload = await vscode.window.withProgress(
+      { location: vscode.ProgressLocation.Window, title: "Lattice AI: checking evidence..." },
+      async () => client.chat(message),
+    );
+    const line = groundingLine(payload);
+    const openWeb = "Open Web UI";
+    const pick = await vscode.window.showInformationMessage(
+      `Lattice AI — ${question.slice(0, 60)}\n${line}`,
+      openWeb,
+    );
+    if (pick === openWeb) await openAppSurface("/app");
+  } catch (err: any) {
+    // No verdict is not a passing verdict — say so rather than badge nothing.
+    vscode.window.showWarningMessage(
+      `Lattice AI: could not confirm evidence for this answer (${err?.message || err}).`,
+    );
+  }
+}
+
+async function openAppSurface(path: string): Promise<void> {
+  const base = vscode.workspace.getConfiguration("ltcai").get<string>("serverUrl") || "http://localhost:4825";
+  await vscode.env.openExternal(vscode.Uri.parse(`${base.replace(/\/$/, "")}${path}`));
+}
+
+interface ProposalPickItem extends vscode.QuickPickItem {
+  proposal: ProposalSummary;
+}
+
+/**
+ * Review Center parity: list staged change proposals and approve/reject them
+ * without leaving the editor. Approval applies the staged content exactly as
+ * reviewed; a 409 means the file drifted since staging, which is reported as
+ * a conflict rather than retried behind the user's back.
+ */
+async function showReviewCenter(c: LatticeAIClient): Promise<void> {
+  let proposals: ProposalSummary[];
+  try {
+    proposals = parseProposals(await c.listProposals());
+  } catch (err: any) {
+    vscode.window.showErrorMessage(`Lattice AI: review center unavailable (${err?.message || err}).`);
+    return;
+  }
+  if (!proposals.length) {
+    vscode.window.showInformationMessage("Lattice AI: no pending change proposals.");
+    return;
+  }
+  const items: ProposalPickItem[] = proposals.map((proposal) => ({
+    label: proposal.title.slice(0, 80),
+    description: proposal.changeClass || undefined,
+    detail: proposal.path || proposal.id,
+    proposal,
+  }));
+  const chosen = await vscode.window.showQuickPick(items, {
+    placeHolder: `${proposals.length} pending change proposal(s) — pick one to review`,
+    matchOnDetail: true,
+  });
+  if (!chosen) return;
+  const decision = await vscode.window.showInformationMessage(
+    `Apply “${chosen.proposal.title}”?${chosen.proposal.path ? `\n${chosen.proposal.path}` : ""}`,
+    { modal: true },
+    "Approve & apply",
+    "Reject",
+    "Open in Web UI",
+  );
+  if (decision === "Open in Web UI") {
+    await openAppSurface("/app#/act");
+    return;
+  }
+  if (!decision) return;
+  try {
+    if (decision === "Approve & apply") {
+      const result = await c.approveProposal(chosen.proposal.id);
+      vscode.window.showInformationMessage(
+        `Lattice AI: applied — ${String(result?.path || chosen.proposal.path || chosen.proposal.id)}`,
+      );
+    } else {
+      await c.rejectProposal(chosen.proposal.id, "rejected from VS Code");
+      vscode.window.showInformationMessage("Lattice AI: proposal rejected.");
+    }
+  } catch (err: any) {
+    if (err?.status === 409) {
+      vscode.window.showWarningMessage(
+        "Lattice AI: the file changed since this proposal was staged — nothing was written. Re-run the request to restage it.",
+      );
+      return;
+    }
+    vscode.window.showErrorMessage(`Lattice AI: proposal action failed (${err?.message || err}).`);
+  }
+}
+
+/** Run an agent task and report its steps + plain-language outcome. */
+async function runAgentWithSummary(c: LatticeAIClient): Promise<void> {
+  const goal = await vscode.window.showInputBox({
+    prompt: "What should the Lattice agent do?",
+    placeHolder: "e.g. write a README for this project",
+  });
+  if (!goal) return;
+  try {
+    const payload = await vscode.window.withProgress(
+      { location: vscode.ProgressLocation.Notification, title: "Lattice AI: running agent..." },
+      async () => c.runAgent(goal, { human_in_loop: true }),
+    );
+    const status = String(payload?.status || "");
+    if (status === "awaiting_approval" || status === "waiting_approval") {
+      const approve = "Review approvals";
+      const pick = await vscode.window.showInformationMessage(
+        `Lattice AI: the plan needs approval.\n${String(payload?.approval?.plan_summary || "").slice(0, 300)}`,
+        approve,
+      );
+      if (pick === approve) await showPendingApprovals(c, true);
+      return;
+    }
+    const report = runReport(payload);
+    const output = vscode.window.createOutputChannel("Lattice AI");
+    output.appendLine(`--- ${goal} ---`);
+    output.appendLine(report);
+    output.show(true);
+  } catch (err: any) {
+    vscode.window.showErrorMessage(`Lattice AI: agent run failed (${err?.message || err}).`);
+  }
+}
 
 interface PendingApprovalItem extends vscode.QuickPickItem {
   runId: string;

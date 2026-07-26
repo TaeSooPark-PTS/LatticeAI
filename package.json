@@ -1,6 +1,6 @@
 {
   "name": "ltcai",
-  "version": "9.9.5",
+  "version": "9.9.6",
   "description": "Lattice AI — local-first Digital Brain that keeps your knowledge durable across any AI model.",
   "homepage": "https://github.com/TaeSooPark-PTS/LatticeAI#readme",
   "repository": {
@@ -24,7 +24,7 @@
     "build:assets": "vite build && node scripts/build_frontend_assets.mjs",
     "build:python": "node scripts/run_python.mjs -m build",
     "check:python": "node scripts/run_python.mjs scripts/check_python.py",
-    "lint": "npm run lint:python && node --check tests/visual/mock_server.cjs && node --check tests/visual/v3.spec.js && npm run lint:frontend && npm run frontend:openapi:check && node scripts/check_i18n_literals.mjs && npm run check:bundle && npm run check:legacy-debt && npm run test:browser-extension",
+    "lint": "npm run lint:python && node --check tests/visual/mock_server.cjs && node --check tests/visual/v3.spec.js && npm run lint:frontend && npm run frontend:openapi:check && node scripts/check_i18n_literals.mjs && npm run check:bundle && npm run check:legacy-debt && npm run test:browser-extension && npm run test:vscode-extension",
     "check:legacy-debt": "node scripts/check_legacy_debt.mjs",
     "lint:python": "node scripts/run_python.mjs -m ruff check .",
     "lint:frontend": "node scripts/lint_frontend.mjs",
@@ -57,7 +57,8 @@
     "publish:pypi": "npm run build:python && node scripts/run_python.mjs -m twine upload --skip-existing dist/ltcai-$npm_package_version.tar.gz dist/ltcai-$npm_package_version-py3-none-any.whl",
     "publish:vscode": "cd vscode-extension && npm run package:vsix && npm run publish:vscode",
     "publish:openvsx": "cd vscode-extension && npm run package:vsix && npm run publish:openvsx",
-    "publish:all": "npm run release:artifacts && npm run release:validate && npm publish ltcai-$npm_package_version.tgz --access public && node scripts/run_python.mjs -m twine upload --skip-existing dist/ltcai-$npm_package_version.tar.gz dist/ltcai-$npm_package_version-py3-none-any.whl && cd vscode-extension && npm run publish:vscode && npm run publish:openvsx"
+    "publish:all": "npm run release:artifacts && npm run release:validate && npm publish ltcai-$npm_package_version.tgz --access public && node scripts/run_python.mjs -m twine upload --skip-existing dist/ltcai-$npm_package_version.tar.gz dist/ltcai-$npm_package_version-py3-none-any.whl && cd vscode-extension && npm run publish:vscode && npm run publish:openvsx",
+    "test:vscode-extension": "cd vscode-extension && npm run build && cd .. && node --test tests/vscode-extension.test.cjs"
   },
   "keywords": [
     "ltcai",

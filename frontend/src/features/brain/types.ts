@@ -24,6 +24,9 @@ export type Message = {
   agentSteps?: AgentStepEvent[];
   // Loop transparency: how many times the model output had to be repaired.
   loopSummary?: MessageLoopSummary;
+  // Plain-language outcome for an agent run (v9.9.6): why it ended the way it
+  // did and how hard the model had to work to get there.
+  runExplanation?: MessageRunExplanation;
 };
 
 // One agent-loop step event. Streamed frames carry {phase, event, ...detail};
@@ -50,6 +53,17 @@ export type MessageLoopSummary = {
   parseRecovered: number;
   // Sum of repair counts + recovered parse errors — the "N회 보정" number.
   total: number;
+};
+
+// Backend `explanation` payload: an honest, deterministic sentence about how
+// the run ended. `ok` is true only for a verified DONE — every other code
+// renders as a caution, never as success.
+export type MessageRunExplanation = {
+  code: string;
+  ok: boolean;
+  headline: string;
+  details: string[];
+  strainLevel: "none" | "light" | "moderate" | "heavy";
 };
 
 export type ApprovalStatus =
@@ -139,6 +153,9 @@ export type MessageProof = {
     matchedTerms: string[];
     confidence: EvidenceConfidence;
     score: number;
+    // Where inside the document this chunk came from ("Guide > Setup · p.4").
+    // Empty when the chunk carries no such provenance — never guessed.
+    locator: string;
   }>;
 };
 
@@ -229,6 +246,7 @@ export type BrainProof = {
       score: number;
       matchedTerms: string[];
       confidence: EvidenceConfidence;
+      locator: string;
     }>;
   };
   claims: {

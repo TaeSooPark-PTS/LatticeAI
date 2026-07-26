@@ -134,6 +134,11 @@ class DocumentGenerationCoordinator:
                     logging.debug(
                         "Document generation context retrieved from knowledge graph."
                     )
+                # Shared context contract (v9.9.6): document generation now
+                # reports the same context_quality signal chat does, so a
+                # thin-context document is as visible as a thin-context answer.
+                if retrieval.get("stats", {}).get("budget_trimmed"):
+                    logging.debug("Document context trimmed to the shared budget.")
             except Exception as exc:
                 logging.warning("Knowledge graph reinforcement skipped: %s", exc)
         return DocumentPreparation(is_document, context, retrieval)
@@ -165,6 +170,16 @@ class DocumentGenerationCoordinator:
         graph_markdown = (preparation.retrieval or {}).get("context_markdown", "")
         system_prompt = session.get_system_prompt(graph_markdown)
         footnote = format_sources_footnote((preparation.retrieval or {}).get("sources", []))
+        # Shared context contract (v9.9.6): the document path records the same
+        # context_quality + assembly trace on the answer trace that chat does,
+        # so both surfaces answer "how well was this grounded?" identically.
+        context_quality = (preparation.retrieval or {}).get("context_quality")
+        if isinstance(trace_seed, dict):
+            if context_quality:
+                trace_seed["context_quality"] = context_quality
+            assembly_trace = (preparation.retrieval or {}).get("trace")
+            if assembly_trace:
+                trace_seed["context_assembly"] = assembly_trace
 
         if req.stream:
             async def stream_document():
@@ -245,6 +260,7 @@ class DocumentGenerationCoordinator:
                 "response": response_text,
                 "trace_id": trace_record["id"],
                 "trace": trace_record,
+                **({"context_quality": context_quality} if context_quality else {}),
             }
         )
 

@@ -4,6 +4,8 @@ from pathlib import Path
 import importlib
 import json
 
+import pytest
+
 
 ROOT = Path(__file__).resolve().parents[2]
 
@@ -87,3 +89,42 @@ def test_create_mcp_install_state_focused_interface(tmp_path):
 
     loaded2 = state["load_mcp_installs"]()
     assert "test" in loaded2.get("installed", {})
+
+
+# ── v9.9.6 extractions (review 2026-07-27 P2 #8) ─────────────────────────────
+# "대형 모듈 추가 분해 (workspace_os, ingestion job/watch 분리) — 동작 보존
+# 이동 우선". Both moves must be invisible to every existing importer.
+
+def test_ingestion_job_queue_moved_but_stays_importable_from_the_pipeline():
+    import lattice_brain.ingestion as pipeline
+    import lattice_brain.ingestion_jobs as jobs
+
+    assert pipeline.BackgroundIngestionQueue is jobs.BackgroundIngestionQueue
+    assert pipeline.BackgroundIngestionJob is jobs.BackgroundIngestionJob
+    assert pipeline.JOB_ERRORS_CAP == jobs.JOB_ERRORS_CAP
+    # The job module owns scheduling only — it must not drag the pipeline in.
+    assert not hasattr(jobs, "IngestionPipeline")
+
+
+def test_review_queue_persistence_moved_but_store_methods_are_unchanged(tmp_path):
+    from latticeai.core.workspace_os import WorkspaceOSStore
+    from latticeai.core.workspace_review_items import WorkspaceReviewItems
+
+    store = WorkspaceOSStore(tmp_path / "workspace.json")
+    assert isinstance(store.review_items, WorkspaceReviewItems)
+
+    item = store.create_review_item(title="검토 항목", source="workflow_run")
+    assert item["status"] == "pending"
+    assert [row["id"] for row in store.list_review_items()] == [item["id"]]
+    assert store.get_review_item(item["id"])["title"] == "검토 항목"
+    updated = store.update_review_item(item["id"], status="approved")
+    assert updated["status"] == "approved"
+
+
+def test_review_queue_scope_isolation_survives_the_move(tmp_path):
+    from latticeai.core.workspace_os import WorkspaceOSStore
+
+    store = WorkspaceOSStore(tmp_path / "workspace.json")
+    item = store.create_review_item(title="a", workspace_id="team")
+    with pytest.raises(FileNotFoundError):
+        store.get_review_item(item["id"], workspace_id="other")

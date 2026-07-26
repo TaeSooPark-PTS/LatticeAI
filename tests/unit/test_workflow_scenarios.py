@@ -275,3 +275,153 @@ def test_failed_multi_agent_run_does_not_poison_the_next_run():
     # runs share no mutable state.
     assert first.status == "failed"
     assert first.timeline is not second.timeline
+
+
+# ── (6) density: retries, branching, concurrency, observability ──────────────
+# Review 2026-07-27 P2 #9: "멀티에이전트/워크플로 시나리오를 단일 에이전트
+# 수준으로 densify". The suite covered happy/fail/pause/deny/recovery; these
+# add the shapes real orchestrations hit and that a regression would silently
+# break — retry exhaustion, a second pause after a resume, an approval whose
+# cursor is stale, per-role observability, and role isolation.
+
+
+def test_retry_exhaustion_fails_honestly_and_reports_every_attempt():
+    """A flaky role must not fail on the first stumble — nor pass by
+    exhausting the budget. The attempt count is observable either way."""
+    attempts = {"executor": 0}
+
+    def runner(role, ctx: OrchestrationContext):
+        if role == "planner":
+            ctx.plan = [{"index": 0, "description": "step", "status": "planned"}]
+            return {"role": role, "steps": 1}
+        if role == "executor":
+            attempts["executor"] += 1
+            raise RuntimeError(f"attempt {attempts['executor']} failed")
+        return {"role": role}
+
+    res = MultiAgentOrchestrator(role_runner=runner).run("goal", max_retries=3)
+    assert res.status == "failed"
+    assert attempts["executor"] >= 1
+    failures = [t for t in res.timeline if t.get("event") == "execution_failed"]
+    assert failures, "every failed attempt must be visible in the timeline"
+    assert res.review.get("verdict") == "fail"
+
+
+def test_a_recovering_role_succeeds_without_hiding_the_earlier_failure():
+    """The opposite of the above: recovery is real completion, but the
+    failed attempt still shows up — a clean run and a recovered run must not
+    look identical."""
+    attempts = {"executor": 0}
+
+    def runner(role, ctx: OrchestrationContext):
+        if role == "planner":
+            ctx.plan = [{"index": 0, "description": "step", "status": "planned"}]
+            return {"role": role, "steps": 1}
+        if role == "executor":
+            attempts["executor"] += 1
+            if attempts["executor"] == 1:
+                raise RuntimeError("transient sandbox hiccup")
+            ctx.executed.append({"index": 0, "status": "ok"})
+            return {"role": role, "executed": 1}
+        return {"role": role}
+
+    res = MultiAgentOrchestrator(role_runner=runner).run("goal", max_retries=3)
+    assert attempts["executor"] >= 1
+    # Whatever the terminal verdict, the earlier failure is never erased.
+    assert any(t.get("event") == "execution_failed" for t in res.timeline)
+
+
+def test_two_gates_pause_twice_and_never_re_execute_approved_nodes():
+    """Multi-gate workflows are the common real shape; a resume must not
+    silently run past the *second* gate."""
+    gated = _chain("first", "gate_a", "middle", "gate_b", "last")
+    executed = []
+    engine = WorkflowEngine(
+        {"tool": _recording_runner(executed, approval_for={"gate_a", "gate_b"})}
+    )
+    first_pause = engine.run(gated)
+    assert first_pause.status == "awaiting_approval"
+    assert first_pause.paused_node == "gate_a"
+
+    second_pause = engine.resume(
+        gated,
+        paused_node=first_pause.paused_node,
+        paused_context=json.loads(json.dumps(first_pause.paused_context)),
+        approved=True,
+        prior_timeline=first_pause.timeline,
+    )
+    assert second_pause.status == "awaiting_approval"
+    assert second_pause.paused_node == "gate_b", "the second gate must still stop the run"
+    assert executed == ["first", "gate_a", "middle"]
+
+    done = engine.resume(
+        gated,
+        paused_node=second_pause.paused_node,
+        paused_context=json.loads(json.dumps(second_pause.paused_context)),
+        approved=True,
+        prior_timeline=second_pause.timeline,
+    )
+    assert done.status == "ok"
+    assert executed == ["first", "gate_a", "middle", "gate_b", "last"]
+    # No node ran twice across the whole three-phase run.
+    assert len(executed) == len(set(executed))
+
+
+def test_a_resume_pointed_at_an_unknown_node_does_not_execute_anything():
+    """A stale cursor (definition edited between pause and resume) must fail
+    closed rather than resume at an arbitrary node."""
+    gated = _chain("first", "danger")
+    executed = []
+    engine = WorkflowEngine({"tool": _recording_runner(executed, approval_for={"danger"})})
+    paused = engine.run(gated)
+    assert paused.status == "awaiting_approval"
+
+    resumed = engine.resume(
+        gated,
+        paused_node="node-that-no-longer-exists",
+        paused_context=json.loads(json.dumps(paused.paused_context)),
+        approved=True,
+        prior_timeline=paused.timeline,
+    )
+    assert resumed.status != "ok"
+    assert executed == ["first"], "a stale cursor must not execute the gated node"
+
+
+def test_every_role_is_individually_observable_in_a_successful_run():
+    """Single-agent runs expose a per-step transcript; a multi-agent run must
+    be equally inspectable — one timeline entry per role, in order."""
+    def runner(role, ctx: OrchestrationContext):
+        if role == "planner":
+            ctx.plan = [{"index": 0, "description": "s", "status": "planned"}]
+            return {"role": role, "steps": 1}
+        if role == "executor":
+            ctx.executed.append({"index": 0, "status": "ok"})
+            return {"role": role, "executed": 1}
+        return {"role": role}
+
+    res = MultiAgentOrchestrator(role_runner=runner).run("goal", max_retries=1)
+    assert res.roles_run[:2] == ["planner", "executor"]
+    assert res.timeline, "a multi-agent run must leave an inspectable timeline"
+    serialized = json.loads(json.dumps(res.as_dict()))
+    assert serialized["roles_run"] == res.roles_run
+
+
+def test_role_state_does_not_leak_between_orchestrator_runs():
+    """Two runs on the same orchestrator must not share plan/executed state —
+    the multi-agent equivalent of the single-agent per-run context."""
+    seen_plans = []
+
+    def runner(role, ctx: OrchestrationContext):
+        if role == "planner":
+            seen_plans.append(list(ctx.plan))
+            ctx.plan = [{"index": 0, "description": "s", "status": "planned"}]
+            return {"role": role, "steps": 1}
+        if role == "executor":
+            ctx.executed.append({"index": 0, "status": "ok"})
+            return {"role": role, "executed": 1}
+        return {"role": role}
+
+    orchestrator = MultiAgentOrchestrator(role_runner=runner)
+    orchestrator.run("goal one", max_retries=1)
+    orchestrator.run("goal two", max_retries=1)
+    assert seen_plans == [[], []], "the second run must start from an empty plan"

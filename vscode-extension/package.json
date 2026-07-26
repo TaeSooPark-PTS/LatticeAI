@@ -2,7 +2,7 @@
   "name": "ltcai",
   "displayName": "Lattice AI",
   "description": "Lattice AI extension for the local-first Digital Brain that keeps your knowledge durable across any AI model.",
-  "version": "9.9.5",
+  "version": "9.9.6",
   "publisher": "parktaesoo",
   "license": "MIT",
   "homepage": "https://github.com/TaeSooPark-PTS/LatticeAI#readme",
@@ -54,7 +54,10 @@
     "onCommand:ltcai.showSyncStatus",
     "onCommand:ltcai.listApprovals",
     "onCommand:ltcai.approveAgent",
-    "onCommand:ltcai.rejectAgent"
+    "onCommand:ltcai.rejectAgent",
+    "onCommand:ltcai.askBrain",
+    "onCommand:ltcai.reviewCenter",
+    "onCommand:ltcai.runAgent"
   ],
   "main": "./out/extension.js",
   "contributes": {
@@ -126,6 +129,18 @@
       {
         "command": "ltcai.rejectAgent",
         "title": "Lattice AI: Reject Agent Run"
+      },
+      {
+        "command": "ltcai.askBrain",
+        "title": "Lattice AI: Ask Your Brain"
+      },
+      {
+        "command": "ltcai.reviewCenter",
+        "title": "Lattice AI: Review Center (Change Proposals)"
+      },
+      {
+        "command": "ltcai.runAgent",
+        "title": "Lattice AI: Run Agent Task"
       }
     ],
     "configuration": {

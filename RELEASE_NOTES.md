@@ -1,3 +1,17 @@
+# [v9.9.6 - Same Brain Everywhere] (2026-07-27)
+
+Answers the 2026-07-27 full-stack review: VS Code/Telegram surface parity
+(grounding badge, Review Center, run summary), evidence→action one-click
+follow-ups, plain-language run outcomes, sentence-aware prose chunking with
+document locators in citations, one context contract for chat and docgen,
+evidence-classified graph relations, persistent project sessions, three closed
+agent loops, funnel alerts, and embedding-swap recovery UX.
+
+See [RELEASE_NOTES_v9.9.6.md](RELEASE_NOTES_v9.9.6.md) and
+[docs/CHANGELOG.md](docs/CHANGELOG.md).
+
+---
+
 # [v9.9.5 - Closed Gaps] (2026-07-26)
 
 Closes the seven residual gaps from 9.9.4: live sidecar Playwright E2E,
@@ -12,12 +26,14 @@ See [RELEASE_NOTES_v9.9.5.md](RELEASE_NOTES_v9.9.5.md) and
 
 # Release Notes
 
-This repository keeps public release history from **8.0.0 through 9.9.5**.
+This repository keeps public release history from **8.0.0 through 9.9.6**.
 Earlier release notes and release evidence were removed from the Git tree so the
 history stays focused on the current product era.
 
 ## Current Release
 
+- [v9.9.6 - Same Brain Everywhere](RELEASE_NOTES_v9.9.6.md)
+- [v9.9.5 - Closed Gaps](RELEASE_NOTES_v9.9.5.md)
 - [v9.9.4 - Durable Loops](RELEASE_NOTES_v9.9.4.md)
 - [v9.9.3 - Closed Loops](RELEASE_NOTES_v9.9.3.md)
 

@@ -19,6 +19,7 @@ from lattice_brain.runtime.hooks import dispatch_tool
 from latticeai.api.chat_contracts import AgentEvalRequest, AgentRequest, AgentResumeRequest
 from latticeai.api.chat_helpers import _LANG_HINT, detect_language, workspace_scope_from_request
 from latticeai.core.agent import AgentRunContext, AgentState, normalize_plan
+from latticeai.core.run_explain import explain_run
 from latticeai.core.run_store import (
     AgentRunStore,
     hash_approval_token,
@@ -48,6 +49,8 @@ class AgentHTTPController:
         ensure_agent_root: Any,
         funnel_metrics: Any = None,
         run_store: Any = None,
+        project_sessions: Any = None,
+        artifact_ledger: Any = None,
     ) -> None:
         self.runtime = runtime
         self.model_router = model_router
@@ -65,6 +68,12 @@ class AgentHTTPController:
         self.agent_root = Path(agent_root)
         self.ensure_agent_root = ensure_agent_root
         self.funnel_metrics = funnel_metrics
+        # Multi-turn project loop (v9.9.6). Optional: without a store the
+        # agent behaves exactly as before — single runs, no project memory.
+        self.project_sessions = project_sessions
+        # Re-search loop (v9.9.6): the next turn must see files this run just
+        # wrote, even before asynchronous indexing catches up.
+        self.artifact_ledger = artifact_ledger
         self._pending_lock = threading.Lock()
         # awaiting_approval runs: run_id -> paused run state + approval token.
         # Fail-closed: governed steps only ever execute after resume presents
@@ -238,6 +247,7 @@ class AgentHTTPController:
             ctx.on_step = on_step
         ctx.executing_model = req.executing_model
         ctx.reviewing_model = req.reviewing_model
+        ctx.project_context = self._project_summary(req, current_user)
         ctx.state = AgentState.PLANNING
         ctx.state_history.append(ctx.state.value)
         await self.runtime.plan(
@@ -287,6 +297,55 @@ class AgentHTTPController:
             max_steps,
             max_retry,
         )
+
+    def _project_summary(self, req: AgentRequest, current_user: str) -> str:
+        """Where this project stands, for the planner/executor prompt.
+
+        Advisory: a missing store, an unknown project id, or a read failure
+        yields "" and the run proceeds as a standalone run.
+        """
+        project_id = getattr(req, "project_id", None)
+        if not project_id or self.project_sessions is None:
+            return ""
+        try:
+            return self.project_sessions.summary(
+                str(project_id),
+                user_email=current_user or None,
+                workspace_id=req.workspace_id,
+            )
+        except Exception as exc:  # noqa: BLE001 — project context never gates a run
+            logging.warning("project session summary failed: %s", exc)
+            return ""
+
+    def _record_project_run(
+        self,
+        req: AgentRequest,
+        current_user: str,
+        ctx: AgentRunContext,
+        payload: Dict[str, Any],
+    ) -> None:
+        """Fold a finished run into its project session (best effort).
+
+        The verification result is stored exactly as the run reported it — a
+        NEEDS_REVIEW run never becomes a project's "done".
+        """
+        project_id = getattr(req, "project_id", None)
+        if not project_id or self.project_sessions is None:
+            return
+        try:
+            self.project_sessions.record_run(
+                str(project_id),
+                run_id=str(payload.get("run_id") or ""),
+                goal=str(ctx.plan.get("goal") or req.message),
+                status=str(payload.get("status") or ""),
+                final_state=ctx.state.value,
+                files=payload.get("created_files") or [],
+                explanation=payload.get("explanation"),
+                user_email=current_user or None,
+                workspace_id=req.workspace_id,
+            )
+        except Exception as exc:  # noqa: BLE001 — bookkeeping never fails a run
+            logging.warning("project session record failed: %s", exc)
 
     def _pause_for_approval(
         self,
@@ -541,7 +600,8 @@ class AgentHTTPController:
                     self.funnel_metrics.increment("needs_review_runs")
             except Exception as exc:  # noqa: BLE001
                 logging.warning("funnel metrics increment failed: %s", exc)
-        return {
+        loop_summary = ctx.trace.summary()
+        payload = {
             "status": "ok" if ctx.state == AgentState.DONE else "failed",
             "response": message,
             "workspace": str(self.agent_root),
@@ -550,8 +610,34 @@ class AgentHTTPController:
             "final_state": ctx.state.value,
             "created_files": collect_created_files(ctx.transcript),
             "artifacts": collect_artifacts(ctx.transcript),
-            "loop": ctx.trace.summary(),
+            "loop": loop_summary,
+            # Plain-language outcome (v9.9.6): the loop counters say a weak
+            # model needed three repairs; this says it in a sentence a person
+            # can read, and never upgrades a non-success into a success.
+            "explanation": explain_run(
+                state=ctx.state,
+                loop=loop_summary,
+                transcript=ctx.transcript,
+                max_retry=max_retry,
+            ),
         }
+        # Multi-turn project loop (v9.9.6): the project remembers this run's
+        # files and its honest verdict, so the next turn continues instead of
+        # restarting.
+        self._record_project_run(req, current_user, ctx, payload)
+        if self.artifact_ledger is not None and payload.get("created_files"):
+            try:
+                self.artifact_ledger.record(
+                    payload["created_files"],
+                    user_email=current_user or None,
+                    conversation_id=req.conversation_id,
+                    workspace_id=req.workspace_id,
+                )
+            except Exception as exc:  # noqa: BLE001 — advisory context only
+                logging.warning("artifact ledger record failed: %s", exc)
+        if getattr(req, "project_id", None):
+            payload["project_id"] = str(req.project_id)
+        return payload
 
     async def resume(
         self,

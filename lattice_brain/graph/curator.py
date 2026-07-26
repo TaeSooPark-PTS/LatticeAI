@@ -548,6 +548,68 @@ def plan_concept_noise_reduction(
     return {"remove": remove, "keep": keep}
 
 
+def plan_relation_noise_reduction(
+    edges: Iterable[Dict[str, Any]],
+    *,
+    min_cooccurrence_weight: float = 0.3,
+    max_cooccurrence_degree: int = 12,
+) -> Dict[str, List[Dict[str, Any]]]:
+    """Separate meaning edges from adjacency edges (review 2026-07-27 P1 #6).
+
+    ``edges``: ``[{"id", "from", "to", "type", "weight", "evidence", "degree"}]``
+    where ``evidence`` is the class recorded at ingest (``"verb"`` |
+    ``"cooccurrence"``) and ``degree`` is how many co-occurrence edges the
+    source node already carries.
+
+    Rules (pure decision, dry-run friendly):
+
+    * verb-backed edges are **never** demoted — the sentence carried a real
+      relation;
+    * edges with no recorded evidence class are legacy rows: kept, and marked
+      ``unknown_evidence`` rather than guessed at;
+    * co-occurrence edges below ``min_cooccurrence_weight`` are noise;
+    * a node whose co-occurrence degree exceeds ``max_cooccurrence_degree`` is
+      a hub built by adjacency, not meaning — its extra co-occurrence edges
+      are demoted.
+
+    Returns ``{"keep": [...], "demote": [...]}``. "Demote" is deliberate:
+    these edges are candidates for review, not silent deletion.
+    """
+    keep: List[Dict[str, Any]] = []
+    demote: List[Dict[str, Any]] = []
+    for edge in edges:
+        entry = {
+            "id": str(edge.get("id") or ""),
+            "from": edge.get("from"),
+            "to": edge.get("to"),
+            "type": edge.get("type"),
+            "evidence": str(edge.get("evidence") or ""),
+        }
+        try:
+            entry["weight"] = float(edge.get("weight") or 0.0)
+        except (TypeError, ValueError):
+            entry["weight"] = 0.0
+        try:
+            degree = int(edge.get("degree") or 0)
+        except (TypeError, ValueError):
+            degree = 0
+        entry["degree"] = degree
+        if entry["evidence"] == "verb":
+            keep.append({**entry, "reason": "verb_evidence"})
+            continue
+        if not entry["evidence"]:
+            keep.append({**entry, "reason": "unknown_evidence"})
+            continue
+        if entry["weight"] < float(min_cooccurrence_weight):
+            demote.append({**entry, "reason": "weak_cooccurrence"})
+            continue
+        if degree > int(max_cooccurrence_degree):
+            demote.append({**entry, "reason": "cooccurrence_hub"})
+            continue
+        keep.append({**entry, "reason": "cooccurrence_within_budget"})
+    return {"keep": keep, "demote": demote}
+
+
 # ── End-to-end helper ─────────────────────────────────────────────────────────
 
 

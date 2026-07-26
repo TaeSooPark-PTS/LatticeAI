@@ -116,12 +116,19 @@ class ContextAssembler:
 
     Section priority (kept under budget in this order — semantic memories
     first because they are cheap and durable; recency last):
-      1. memories  — workspace semantic memories (preferences/decisions/…)
-      2. knowledge — hybrid search over the brain (the product's own engine)
-      3. notes     — garden-note context
-      4. recent    — the user's recent exchange
+      1. memories   — workspace semantic memories (preferences/decisions/…)
+      2. artifacts  — files this conversation just produced (v9.9.6)
+      3. knowledge  — hybrid search over the brain (the product's own engine)
+      4. notes      — garden-note context
+      5. recent     — the user's recent exchange
     Every seam is optional; an absent seam contributes nothing (honest
     absence), never a fabricated section.
+
+    The ``artifacts`` seam closes the re-search loop (review 2026-07-27 루프
+    §1): a file written moments ago may not be indexed yet — embedding and
+    graph writes are asynchronous — so asking "what did you just make?" could
+    miss it. The artifact ledger is a deterministic, high-priority section: it
+    does not depend on retrieval catching up.
     """
 
     def __init__(
@@ -131,11 +138,13 @@ class ContextAssembler:
         hybrid_search: Optional[Callable[..., Dict[str, Any]]] = None,
         notes_context: Optional[Callable[..., str]] = None,
         recent_chat: Optional[Callable[..., str]] = None,
+        recent_artifacts: Optional[Callable[..., List[Dict[str, Any]]]] = None,
     ) -> None:
         self._memory_recall = memory_recall
         self._hybrid_search = hybrid_search
         self._notes_context = notes_context
         self._recent_chat = recent_chat
+        self._recent_artifacts = recent_artifacts
 
     def assemble(
         self,
@@ -152,6 +161,8 @@ class ContextAssembler:
 
         if self._memory_recall is not None:
             sections.append(self._memories_section(query, user_email, workspace_id, memory_limit))
+        if self._recent_artifacts is not None:
+            sections.append(self._artifacts_section(user_email, conversation_id, workspace_id))
         if self._hybrid_search is not None:
             sections.append(self._knowledge_section(query, knowledge_limit, user_email, workspace_id))
         if self._notes_context is not None:
@@ -180,6 +191,30 @@ class ContextAssembler:
                 {"id": r.get("id"), "kind": r.get("kind"), "score": r.get("score")}
                 for r in results
             ],
+        )
+
+    def _artifacts_section(self, user_email, conversation_id, workspace_id) -> ContextSection:
+        """Files this conversation produced, whether or not retrieval indexed them yet."""
+        try:
+            items = _call_keyword_seam(
+                self._recent_artifacts,
+                user_email=user_email,
+                conversation_id=conversation_id,
+                workspace_id=workspace_id,
+            ) or []
+        except Exception as exc:
+            logging.debug("context: recent artifacts failed: %s", exc)
+            items = []
+        rows = [item for item in items if isinstance(item, dict) and item.get("path")][:10]
+        lines = [
+            f"- {item['path']}" + (f" ({item['at']})" if item.get("at") else "")
+            for item in rows
+        ]
+        return ContextSection(
+            name="Files created in this conversation",
+            content="\n".join(lines),
+            source="artifacts",
+            provenance=[{"path": item.get("path"), "run_id": item.get("run_id")} for item in rows],
         )
 
     def _knowledge_section(self, query, limit, user_email=None, workspace_id=None) -> ContextSection:

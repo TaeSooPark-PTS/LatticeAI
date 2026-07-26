@@ -105,7 +105,10 @@ _CODE_CHUNK_EXTENSIONS = {
     ".c", ".h", ".cpp", ".css", ".sh", ".sql", ".vue", ".svelte",
     ".json", ".yaml", ".yml", ".toml",
 }
-_CHUNK_STRATEGIES = {"plain", "markdown", "code"}
+_PROSE_CHUNK_EXTENSIONS = {
+    ".txt", ".pdf", ".docx", ".doc", ".rtf", ".odt", ".epub", ".html", ".htm",
+}
+_CHUNK_STRATEGIES = {"plain", "markdown", "code", "prose"}
 # Markdown sections smaller than this merge forward into the next section so
 # heading-dense documents don't shatter into confetti chunks.
 _MARKDOWN_MIN_SECTION_CHARS = 200
@@ -120,9 +123,15 @@ def chunk_strategy_for(filename: Any, *, content_type: str = "") -> str:
     """Route a filename / path / URI (plus optional MIME hint) to a strategy.
 
     Returns ``"markdown"`` for .md/.markdown, ``"code"`` for known source-code
-    extensions, ``"plain"`` otherwise. Case-insensitive, tolerant of URLs
-    (query/fragment stripped) and ``Path`` objects; never raises — any
-    malformed input falls back to ``"plain"``.
+    extensions, ``"prose"`` for document formats whose text is running prose
+    (.txt/.pdf/.docx/.html/…), ``"plain"`` otherwise. Case-insensitive,
+    tolerant of URLs (query/fragment stripped) and ``Path`` objects; never
+    raises — any malformed input falls back to ``"plain"``.
+
+    Unknown/extension-less input stays ``"plain"`` on purpose: the plain
+    strategy is the byte-compatible legacy walk, and guessing prose for
+    something that might be a data dump would move chunk boundaries for no
+    retrieval gain.
     """
     try:
         name = str(filename or "").strip().lower()
@@ -135,8 +144,13 @@ def chunk_strategy_for(filename: Any, *, content_type: str = "") -> str:
             return "markdown"
         if ext in _CODE_CHUNK_EXTENSIONS:
             return "code"
-        if "markdown" in str(content_type or "").strip().lower():
+        if ext in _PROSE_CHUNK_EXTENSIONS:
+            return "prose"
+        mime = str(content_type or "").strip().lower()
+        if "markdown" in mime:
             return "markdown"
+        if mime.startswith("text/html") or mime.startswith("text/plain"):
+            return "prose"
     except Exception:
         pass
     return "plain"
@@ -324,6 +338,72 @@ def _code_chunks(cleaned: str, size: int, overlap: int) -> List[Dict[str, Any]]:
     return out
 
 
+# ── Prose chunking (review 2026-07-27 P1 #4) ────────────────────────────────
+# The plain walk cuts every ``size`` characters, which lands mid-sentence and
+# — for Korean, where the verb carrying the meaning sits at the end — routinely
+# splits a claim from its predicate. Retrieval then matches half a statement
+# and the citation shows a fragment. The prose strategy keeps the same window
+# budget but ends each chunk at the last sentence/paragraph boundary inside it.
+
+# Strong: sentence-final punctuation (ASCII + CJK) with optional closing
+# quotes/brackets, followed by whitespace; or a blank-line paragraph break.
+_PROSE_STRONG_BOUNDARY_RE = re.compile(
+    r"(?:[.!?。！？…]+[\"'”’」』\)\]]*\s+|\n[ \t]*\n)"
+)
+# Weak: a single line break. Korean notes and bullet lists often carry no
+# sentence punctuation at all; a line end is still a real boundary there.
+_PROSE_WEAK_BOUNDARY_RE = re.compile(r"\n")
+# Never emit a chunk shorter than this fraction of ``size`` just to hit a
+# boundary — tiny chunks hurt recall more than a mid-sentence cut.
+_PROSE_MIN_SPAN_RATIO = 0.5
+
+
+def _last_boundary(cleaned: str, lo: int, hi: int) -> Optional[int]:
+    """End offset of the last sentence/paragraph boundary in ``cleaned[lo:hi]``.
+
+    Strong boundaries win; a single line break is the fallback. Returns None
+    when the span holds neither, so the caller keeps the hard window cut.
+    """
+    window = cleaned[lo:hi]
+    for pattern in (_PROSE_STRONG_BOUNDARY_RE, _PROSE_WEAK_BOUNDARY_RE):
+        last = None
+        for match in pattern.finditer(window):
+            last = match.end()
+        if last:
+            return lo + last
+    return None
+
+
+def _prose_chunks(cleaned: str, size: int, overlap: int) -> List[Dict[str, Any]]:
+    out: List[Dict[str, Any]] = []
+    total = len(cleaned)
+    min_span = max(1, int(size * _PROSE_MIN_SPAN_RATIO))
+    start = 0
+    while start < total:
+        hard_end = min(total, start + size)
+        end = hard_end
+        if hard_end < total:
+            boundary = _last_boundary(cleaned, start + min_span, hard_end)
+            if boundary is not None and boundary > start:
+                end = boundary
+        out.append(
+            {
+                "text": cleaned[start:end],
+                "meta": {
+                    "strategy": "prose",
+                    "start_char": start,
+                    "heading_path": None,
+                },
+            }
+        )
+        if end >= total:
+            break
+        # Overlap carries the tail of the previous chunk into the next one so
+        # a claim split across a boundary is still retrievable from both.
+        start = max(start + 1, end - overlap)
+    return out
+
+
 def typed_chunks(
     text: str,
     *,
@@ -356,6 +436,8 @@ def typed_chunks(
         return _markdown_chunks(cleaned, size, overlap)
     if label == "code":
         return _code_chunks(cleaned, size, overlap)
+    if label == "prose":
+        return _prose_chunks(cleaned, size, overlap)
     return _plain_windows(cleaned, size, overlap)
 
 
@@ -375,6 +457,35 @@ def typed_chunk_meta_fields(piece: Dict[str, Any]) -> Dict[str, Any]:
     if heading_path:
         fields["heading_path"] = str(heading_path)
     return fields
+
+
+def citation_locator(chunk_metadata: Any) -> str:
+    """Human "where in the document" label for one chunk, or "".
+
+    Built only from provenance the chunk actually carries — a section heading
+    path and/or a page number. When neither is known the answer is the empty
+    string, so a citation never claims a location it cannot prove.
+    """
+    if not isinstance(chunk_metadata, dict):
+        return ""
+    parts: List[str] = []
+    heading = str(chunk_metadata.get("heading_path") or "").strip()
+    if heading:
+        parts.append(heading)
+    def _page(key: str) -> int:
+        value = chunk_metadata.get(key)
+        try:
+            return int(value) if value is not None else 0
+        except (TypeError, ValueError):
+            return 0
+
+    page_number = _page("page")
+    if page_number > 0:
+        page_end = _page("page_end")
+        parts.append(
+            f"p.{page_number}–{page_end}" if page_end > page_number else f"p.{page_number}"
+        )
+    return " · ".join(parts)
 
 
 def pdf_page_offsets(structure: Any) -> List[int]:
@@ -538,13 +649,27 @@ def _llm_extract_triples(
             triples = []
             for item in parsed[:limit]:
                 if isinstance(item, dict) and "subject" in item and "object" in item:
+                    relation = str(item.get("relation", "관련됨"))
+                    evidence_text = str(item.get("evidence", ""))[:240]
+                    confidence = float(item.get("confidence", 0.8))
+                    # An LLM triple that names a real verb and cites the
+                    # sentence it came from is semantic evidence; a bare
+                    # "관련됨" with no quoted evidence is the model restating
+                    # co-occurrence, and is weighted (and labelled) as such.
+                    is_semantic = bool(evidence_text) and relation != "관련됨"
                     triples.append(
                         {
                             "subject": str(item["subject"]),
-                            "relation": str(item.get("relation", "관련됨")),
+                            "relation": relation,
                             "object": str(item["object"]),
-                            "context": str(item.get("evidence", ""))[:240],
-                            "confidence": float(item.get("confidence", 0.8)),
+                            "context": evidence_text,
+                            "confidence": confidence,
+                            "evidence": "verb" if is_semantic else "cooccurrence",
+                            "weight": round(
+                                (VERB_EDGE_WEIGHT if is_semantic else COOCCURRENCE_EDGE_WEIGHT)
+                                * max(0.1, min(confidence, 1.0)),
+                                4,
+                            ),
                         }
                     )
             return triples if triples else None
@@ -820,13 +945,52 @@ EDGE_VERB = {
 }
 
 
-def _infer_edge(sentence: str) -> str:
-    """Return the best-matching verb-form edge label for a sentence."""
-    s = sentence.lower()
+# Concepts in a list-like sentence ("A, B, C, D를 사용한다") sit together by
+# enumeration, not by relation. Beyond this many concepts in one sentence, a
+# verb-less pairing is enumeration noise and is dropped outright.
+COOCCURRENCE_CONCEPT_LIMIT = 4
+# Verb-backed relations carry the sentence's own evidence; co-occurrence
+# relations carry only adjacency, so they enter the graph at a lower weight
+# and are labelled as such.
+VERB_EDGE_WEIGHT = 1.0
+COOCCURRENCE_EDGE_WEIGHT = 0.35
+
+
+def infer_edge_relation(sentence: str) -> Dict[str, Any]:
+    """Classify the relation between two concepts in one sentence.
+
+    Review 2026-07-27 P1 #6: the graph drifted toward co-occurrence because a
+    verb-less sentence still produced a "관련됨" edge indistinguishable from a
+    real semantic relation. The label alone cannot carry that difference, so
+    the evidence class rides with it::
+
+        {"relation": "사용함", "evidence": "verb",         "weight": 1.0}
+        {"relation": "관련됨", "evidence": "cooccurrence", "weight": 0.35}
+
+    ``evidence`` is what the graph, the curator, and the UI use to tell a
+    meaning edge from an adjacency edge — the honest distinction the previous
+    label-only output erased.
+    """
+    s = str(sentence or "").lower()
     for label, pattern in EDGE_VERB.items():
         if re.search(pattern, s):
-            return label
-    return "관련됨"
+            # "관련됨" is itself a weak, generic label: matching it by keyword
+            # ("관련", "related") is still verb evidence, but nothing stronger.
+            return {
+                "relation": label,
+                "evidence": "verb",
+                "weight": VERB_EDGE_WEIGHT,
+            }
+    return {
+        "relation": "관련됨",
+        "evidence": "cooccurrence",
+        "weight": COOCCURRENCE_EDGE_WEIGHT,
+    }
+
+
+def _infer_edge(sentence: str) -> str:
+    """Back-compat wrapper: the verb label only (see :func:`infer_edge_relation`)."""
+    return infer_edge_relation(sentence)["relation"]
 
 
 # Technical words that cannot be person names
@@ -940,7 +1104,16 @@ def _extract_triples_rules(
         if len(present) < 2:
             continue
 
-        edge = _infer_edge(sent)
+        relation = infer_edge_relation(sent)
+        edge = relation["relation"]
+        # Enumeration guard (review 2026-07-27 P1 #6): a verb-less sentence
+        # listing many concepts is a list, not a set of relations. Verb-backed
+        # sentences keep every pair — the verb is the evidence.
+        if (
+            relation["evidence"] == "cooccurrence"
+            and len(present) > COOCCURRENCE_CONCEPT_LIMIT
+        ):
+            continue
 
         for i in range(len(present) - 1):
             subj, obj = present[i], present[i + 1]
@@ -955,6 +1128,8 @@ def _extract_triples_rules(
                     "relation": edge,  # verb form (동사)
                     "object": obj,
                     "context": sent[:240],
+                    "evidence": relation["evidence"],
+                    "weight": relation["weight"],
                 }
             )
             if len(triples) >= limit:

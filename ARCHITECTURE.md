@@ -4,7 +4,7 @@
 > with the current release. Historical subsystem detail lives in
 > [`docs/architecture.md`](docs/architecture.md).
 
-Current release: **9.9.5 — Closed Gaps**.
+Current release: **9.9.6 — Same Brain Everywhere**.
 
 Lattice AI is a local-first Digital Brain platform. The current architecture is
 organized around a private Brain, replaceable model runtimes, explicit tool
@@ -193,7 +193,7 @@ migration safety, and equivalence tests.
 
 ## Runtime Contracts
 
-The 8.0 architecture contract remains active in 9.9.5:
+The 8.0 architecture contract remains active in 9.9.6:
 
 - AgentRuntime has explicit preview/readiness contracts and does not execute
   tools during preview.
@@ -228,7 +228,7 @@ Change governance and agent-eval extend the contract:
 
 SQLite is the live local Brain store. PostgreSQL/pgvector remains optional
 scale/migration tooling and must be explicitly configured; it is not the
-default live KnowledgeGraphStore backend in 9.9.5. Backups and `.latticebrain`
+default live KnowledgeGraphStore backend in 9.9.6. Backups and `.latticebrain`
 archives are user-controlled portability paths.
 
 ## Local-First Boundary
@@ -239,13 +239,13 @@ Docker/Postgres setup, marketplace refresh, and update checks are opt-in paths.
 
 ## Release Artifact Map
 
-9.9.5 exact artifact names:
+9.9.6 exact artifact names:
 
-- `dist/ltcai-9.9.5-py3-none-any.whl`
-- `dist/ltcai-9.9.5.tar.gz`
-- `ltcai-9.9.5.tgz`
-- `dist/ltcai-9.9.5.vsix`
-- `src-tauri/target/release/bundle/dmg/Lattice AI_9.9.5_aarch64.dmg`
+- `dist/ltcai-9.9.6-py3-none-any.whl`
+- `dist/ltcai-9.9.6.tar.gz`
+- `ltcai-9.9.6.tgz`
+- `dist/ltcai-9.9.6.vsix`
+- `src-tauri/target/release/bundle/dmg/Lattice AI_9.9.6_aarch64.dmg`
 
 Do not document or use wildcard artifact upload commands.
 
